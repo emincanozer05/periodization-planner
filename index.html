@@ -791,50 +791,98 @@ function _loadSectionHTML(title,subtitle,colLabels,perAthlete,accent){
     <table><thead>${head}</thead><tbody>${rows}${foot}</tbody></table>
   </div>`;
 }
-/* Print BOTH team-load sections side-by-side on a single A4-landscape page. */
-function printCombinedReport(teamName,weekly,daily){
-  const w=window.open('','_blank','width=1260,height=900');
-  if(!w){alert('Pop-up blocked — allow pop-ups for this site in your browser.');return;}
-  const secW=_loadSectionHTML(weekly.title,weekly.subtitle,weekly.colLabels,weekly.perAthlete,weekly.accent||'#0891b2');
-  const secD=_loadSectionHTML(daily.title,daily.subtitle,daily.colLabels,daily.perAthlete,daily.accent||'#7c3aed');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Load Report</title><style>
-@page{size:A4 landscape;margin:9mm}
+/* Build a Turkish monthly team report (A4 landscape, multi-section):
+   summary metrics + Weekly Load Distribution + Daily Team Load + ACWR +
+   Weekly Monotony + Training Purpose Distribution. */
+function printMonthlyReportTR(R){
+  const w=window.open('','_blank','width=1280,height=920');
+  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
+  const nf=v=>Number(v||0).toLocaleString('tr-TR');
+  const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
+  const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
+  const zoneTR=v=>!v?'—':v>1.5?'Yüksek risk':(v>=0.8&&v<=1.3)?'Optimal':v<0.8?'Düşük':'Dikkat';
+  const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
+
+  const metrics=`<div class="mt">
+    <div class="mc" style="--c:${R.acwrZone.c}"><div class="mk">ACWR (dönem sonu)</div><div class="mv">${R.acwr?R.acwr.toFixed(2):'—'}</div><div class="mh">${acwrTR} · Güvenli 0.8–1.3</div></div>
+    <div class="mc" style="--c:#0891b2"><div class="mk">Ortalama Monotoni</div><div class="mv">${R.meanMono?R.meanMono.toFixed(2):'—'}</div><div class="mh">&gt;2 aşırı</div></div>
+    <div class="mc" style="--c:#7c3aed"><div class="mk">Aylık Toplam Yük</div><div class="mv">${nf(Math.round(R.monthTotal))}</div><div class="mh">AU (takım)</div></div>
+    <div class="mc" style="--c:#10b981"><div class="mk">Antrenman Günü</div><div class="mv">${R.trainDays}</div><div class="mh">yük &gt; 0</div></div>
+  </div>`;
+
+  const weeklySec=_loadSectionHTML('Haftalık Yük Dağılımı (AU)','Sporcu × Hafta · yüke göre sıralı',R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
+
+  const maxDay=Math.max(1,...R.monthDays.map(d=>d.val));
+  const dailyBars=R.monthDays.map(d=>{const h=Math.round((d.val/maxDay)*118);return `<div class="bc"><div class="bv">${d.val?nf(d.val):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,#7c3aed,#7c3aedaa)"></div><div class="bl">${d.lab}</div></div>`;}).join('');
+  const dailySec=`<div class="sec" style="--ac:#7c3aed"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.monthLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
+
+  const acwrRows=R.acwrWeekly.map(x=>`<tr><td class="ath">${x.label}</td><td>${x.acwr?x.acwr.toFixed(2):'—'}</td><td>${zoneTR(x.acwr)}</td></tr>`).join('')||`<tr><td class="ath">—</td><td>—</td><td>—</td></tr>`;
+  const acwrSec=`<div class="sec" style="--ac:#0891b2"><div class="sh"><span class="dot"></span><span class="st">ACWR — Akut:Kronik Yük Oranı</span><span class="ssub">${R.acwr?R.acwr.toFixed(2):'—'} (${acwrTR})</span></div>
+    <table><thead><tr><th class="ath">Hafta</th><th>ACWR</th><th>Bölge</th></tr></thead><tbody>${acwrRows}</tbody></table>
+    <div class="note"><b>Akut</b> = son 7 günün toplam takım yükü · <b>Kronik</b> = son 28 günün haftalık ortalaması · <b>ACWR</b> = Akut ÷ Kronik. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. Değerler her haftanın sonunda, takımın kayıtlı (sRPE) yükünden hesaplanır.</div></div>`;
+
+  const monoRows=R.mWeeks.map(w2=>`<tr><td class="ath">${fd(w2.wkStart).slice(0,5)}</td><td>${nf(Math.round(w2.total))}</td><td>${w2.mean.toFixed(0)}</td><td>${w2.sd.toFixed(1)}</td><td>${w2.monotony.toFixed(2)}</td><td>${nf(Math.round(w2.strain))}</td><td>${monoTR(w2.monotony)}</td></tr>`).join('');
+  const monoSec=`<div class="sec" style="--ac:#f59e0b"><div class="sh"><span class="dot"></span><span class="st">Haftalık Monotoni</span><span class="ssub">Ort. ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
+    <table><thead><tr><th class="ath">Hafta</th><th>Toplam</th><th>Ort.</th><th>SS</th><th>Monotoni</th><th>Zorlanma</th><th>Durum</th></tr></thead><tbody>${monoRows}</tbody></table>
+    <div class="note"><b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Yüksek monotoni (&gt;2) tek düze yükü ve artan yaralanma riskini gösterir. <b>Zorlanma</b> = Toplam × Monotoni.</div></div>`;
+
+  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
+  const purposeSec=`<div class="sec" style="--ac:#ec4899"><div class="sh"><span class="dot"></span><span class="st">Antrenman Amacı Dağılımı</span><span class="ssub">Dakika bazında</span></div>
+    <table class="pt"><thead><tr><th class="ath">Amaç</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
+
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Aylık Antrenman Raporu — ${R.teamName}</title><style>
+@page{size:A4 landscape;margin:10mm}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-html,body{height:100%}
-body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:9px;display:flex;flex-direction:column}
-.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2.5px solid #0891b2;padding-bottom:6px;margin-bottom:9px}
-.hd h1{font-size:17px;font-weight:800;line-height:1.1}
-.hd .tm{font-size:11px;color:#475569;font-weight:600;margin-top:2px}
-.hd .dt{font-size:10px;color:#64748b;white-space:nowrap}
-.cols{display:flex;gap:12px;flex:1;min-height:0}
-.col{flex:1;min-width:0;display:flex}
-.sec{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;width:100%;display:flex;flex-direction:column}
-.sh{display:flex;align-items:center;gap:6px;padding:7px 9px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
-.sh .dot{width:9px;height:9px;border-radius:3px;background:var(--ac)}
-.sh .st{font-size:11px;font-weight:800;color:#0f172a}
-.sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:2px 9px;border-radius:10px;font-weight:700;white-space:nowrap}
-.chart{display:flex;align-items:flex-end;gap:5px;height:94px;padding:8px 8px 0}
+body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:10px}
+.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0891b2;padding-bottom:9px;margin-bottom:14px}
+.hd h1{font-size:21px;font-weight:800;line-height:1.05}
+.hd .tm{font-size:12px;color:#475569;font-weight:600;margin-top:3px}
+.hd .rng{font-size:13px;font-weight:800;color:#0891b2;background:#ecfeff;padding:6px 16px;border-radius:14px;white-space:nowrap}
+.mt{display:flex;gap:10px;margin-bottom:16px}
+.mc{flex:1;border:1px solid #e5e7eb;border-left:4px solid var(--c);border-radius:8px;padding:9px 12px;background:#f8fafc}
+.mk{font-size:9px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:.3px}
+.mv{font-size:23px;font-weight:800;color:var(--c);line-height:1.15}
+.mh{font-size:9px;color:#94a3b8;font-weight:600}
+.sec{border:1px solid #e5e7eb;border-radius:9px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid}
+.sh{display:flex;align-items:center;gap:7px;padding:8px 11px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
+.sh .dot{width:10px;height:10px;border-radius:3px;background:var(--ac)}
+.sh .st{font-size:12px;font-weight:800;color:#0f172a}
+.sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:3px 10px;border-radius:11px;font-weight:700;white-space:nowrap}
+.chart{display:flex;align-items:flex-end;gap:5px;height:128px;padding:10px 10px 0}
+.chart.tall{height:158px}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-.bar{width:74%;max-width:32px;border-radius:4px 4px 0 0}
-.bv{font-size:8px;font-weight:800;margin-bottom:2px}
-.bl{font-size:7.5px;color:#64748b;margin-top:3px;text-align:center;font-weight:600;line-height:1.1}
-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;margin-top:5px}
-th{background:var(--ac);color:#fff;font-size:8px;font-weight:700;padding:5px 2px;text-transform:uppercase;letter-spacing:.2px;text-align:center}
-th.ath,td.ath{text-align:left;width:33%;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-td{padding:4px 2px;text-align:center;font-size:9px;border-top:1px solid #f1f5f9;font-weight:600;color:#1e293b}
+.bar{width:72%;max-width:42px;border-radius:4px 4px 0 0}
+.bv{font-size:8px;font-weight:800;margin-bottom:2px;white-space:nowrap}
+.bl{font-size:7.5px;color:#64748b;margin-top:5px;text-align:center;font-weight:600;line-height:1.1}
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+th{background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:7px 4px;text-transform:uppercase;letter-spacing:.3px;text-align:center}
+th.ath,td.ath{text-align:left;width:34%;padding-left:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td{padding:6px 4px;text-align:center;font-size:10px;border-top:1px solid #f1f5f9;font-weight:600;color:#1e293b}
 tbody tr:nth-child(even) td{background:#f8fafc}
 td.tot,th.tot{font-weight:800;color:var(--ac);background:#f0f9ff}
 .z{color:#cbd5e1}
 .tr2 td{background:#0f172a!important;color:#fff;font-weight:800;border-top:2px solid var(--ac)}
 .tr2 td.grand{background:var(--ac)!important;color:#fff}
-.ft{margin-top:7px;font-size:8px;color:#94a3b8;display:flex;justify-content:space-between}
+.note{font-size:9px;color:#64748b;padding:8px 11px;background:#f8fafc;border-top:1px solid #f1f5f9;line-height:1.5}
+.grid2{display:flex;gap:14px}
+.grid2>.sec{flex:1;margin-bottom:0}
+.gwrap{margin-bottom:14px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.pt td.ath{width:42%}
+.pbar{height:10px;background:#eef2f7;border-radius:5px;overflow:hidden}
+.pbar>div{height:100%;border-radius:5px}
+.ft{margin-top:8px;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;border-top:1px solid #e5e7eb;padding-top:6px}
 </style></head><body>
-<div class="hd"><div><h1>Team Load Report</h1><div class="tm">${teamName}</div></div><div class="dt">${new Date().toLocaleDateString('tr-TR')}</div></div>
-<div class="cols"><div class="col">${secW}</div><div class="col">${secD}</div></div>
-<div class="ft"><span>Athletes ranked by total load (high → low). Values in AU.</span><span>Periodization Planner</span></div>
+<div class="hd"><div><h1>Aylık Antrenman Raporu</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
+${metrics}
+${weeklySec}
+${dailySec}
+<div class="gwrap"><div class="grid2">${acwrSec}${monoSec}</div></div>
+${purposeSec}
+<div class="ft"><span>AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.</span><span>Periodization Planner · ${new Date().toLocaleDateString('tr-TR')}</span></div>
 </body></html>`);
   w.document.close();
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},350);
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
 }
 
 /* =========================================================
@@ -1859,13 +1907,16 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
    TEAM REPORTS
    ========================================================= */
 function TeamReports({team,weeks,selected,setSelected}){
-  const exportPDF=async(period,extra)=>{
-    const label=period==='weekly'?`Week of ${fd(wk(parseD(selected.date)))}`:`${MN[selected.month-1]} ${selected.year}`;
-    let mw=extra.mWeeks;
-    if(period==='weekly'){const wkS=wk(parseD(selected.date));const wkE=fmt(addD(parseD(wkS),6));mw=[{wkStart:wkS,wkEnd:wkE,...weekMono(dailyLoads(team.days,wkS,wkE))}];}
-    await generateCoachReport(team.setup.teamName,label,team.days,weeks,mw,extra.pMix,extra.acwrVal);
-  };
-  // ---- All-athletes weekly AU chart (stacked bars; each athlete = a segment) ----
+  const{year,month}=selected;
+  const ms=`${year}-${pad(month)}-01`;
+  const me=fmt(new Date(year,month,0));
+  // Team daily load (AU) by date — summed across athletes' inner-load (sRPE) log,
+  // the same source the weekly/daily charts use, so ACWR & monotony stay consistent.
+  const teamDaily=useMemo(()=>{const m={};(team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+    if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
+    m[e.date]=(m[e.date]||0)+v;}));return m;},[team.athletes]);
+  const dayLoad=d=>Math.round(teamDaily[d]||0);
+  // ---- All-athletes weekly AU chart (per athlete = a segment) ----
   const allAthletesChart=useMemo(()=>{
     const{year,month}=selected;
     const ms=`${year}-${pad(month)}-01`;
@@ -1922,24 +1973,69 @@ function TeamReports({team,weeks,selected,setSelected}){
     return{days7,labels,perAthlete,dayTotals,weekTotal};
   },[team.athletes,dailyWeek]);
 
-  // Combined single-page print: weekly distribution + the shown daily week, side by side.
-  const printCombined=()=>{
-    const weekly={title:'Weekly Load Distribution',subtitle:MN[selected.month-1]+' '+selected.year,
-      colLabels:allAthletesChart?allAthletesChart.labels.map(l=>'W '+l):[],
-      perAthlete:allAthletesChart?allAthletesChart.perAthlete:[],accent:'#0891b2'};
-    const daily={title:'Daily Team Load',subtitle:fd(dailyWeek).slice(0,5)+' → '+fd(fmt(addD(parseD(dailyWeek),6))).slice(0,5),
-      colLabels:dailyData.labels,perAthlete:dailyData.perAthlete,accent:'#7c3aed'};
-    printCombinedReport(team.setup.teamName,weekly,daily);
-  };
+  // ---- Weekly monotony (Foster) for the selected month, from team daily load ----
+  const mWeeks=useMemo(()=>{const o=[];let c=sow(parseD(ms));while(c<=parseD(me)){
+    const loads=Array.from({length:7},(_,i)=>({load:dayLoad(fmt(addD(c,i)))}));
+    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDaily,ms,me]);
+  const monoW=mWeeks.filter(w=>w.monotony>0);
+  const meanMono=monoW.length?monoW.reduce((a,b)=>a+b.monotony,0)/monoW.length:0;
+  const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
+
+  // ---- ACWR: acute(7d) : chronic(28d/4), from team daily load, at end of period ----
+  const acwrAt=ref=>{const r=parseD(ref);let ac=0,ch=0;
+    for(let i=0;i<7;i++)ac+=dayLoad(fmt(addD(r,-i)));
+    for(let i=0;i<28;i++)ch+=dayLoad(fmt(addD(r,-i)));
+    ch/=4;return ch===0?0:ac/ch;};
+  const refDate=me<=fmt(today)?me:fmt(today);   // end of selected month, capped at today
+  const acwrVal=acwrAt(refDate);
+  const acwrZone=acwrVal===0?{t:'No data',c:'#94a3b8'}:acwrVal>1.5?{t:'High risk',c:'#ef4444'}
+    :(acwrVal>=0.8&&acwrVal<=1.3)?{t:'Optimal',c:'#10b981'}:acwrVal<0.8?{t:'Undertraining',c:'#f59e0b'}:{t:'Caution',c:'#f59e0b'};
+  const acwrWeekly=mWeeks.map(w=>({label:fd(w.wkStart).slice(0,5),acwr:+acwrAt(w.wkEnd).toFixed(2)}));
+
+  // ---- Training purpose distribution (planned sessions, by minutes) ----
+  const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
+    (d.sessions||[]).forEach(s=>{const dur=+s.duration||0;t[s.purpose||'—']=(t[s.purpose||'—']||0)+dur;});});
+    const tot=Object.values(t).reduce((a,b)=>a+b,0);
+    return Object.entries(t).map(([k,v])=>({label:k,min:v,pct:tot?v/tot*100:0})).sort((a,b)=>b.pct-a.pct);},[team.days,ms,me]);
+
+  // ---- Every day of the month (team total) for the printed daily section ----
+  const monthDays=useMemo(()=>{const out=[];let c=parseD(ms),e=parseD(me);while(c<=e){const k=fmt(c);out.push({date:k,lab:fd(k).slice(0,5),val:dayLoad(k)});c=addD(c,1);}return out;},[teamDaily,ms,me]);
+
+  const monthLabel=MN[month-1]+' '+year;
+  const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
+  const printMonthly=()=>printMonthlyReportTR({
+    teamName:team.setup.teamName,monthLabel,acwr:acwrVal,acwrZone,
+    meanMono,monthTotal,trainDays:monthDays.filter(d=>d.val>0).length,
+    weekly:{colLabels:(allAthletesChart?allAthletesChart.labels:[]).map(l=>'Hf '+l),perAthlete:allAthletesChart?allAthletesChart.perAthlete:[]},
+    monthDays,acwrWeekly,mWeeks,pMix});
+
+  const setYear=y=>setSelected({...selected,year:y,date:`${y}-${pad(month)}-01`});
+  const setMonth=m=>setSelected({...selected,month:m,date:`${year}-${pad(m)}-01`});
 
   return(<div>
+    <div className="panel">
+      <div className="row" style={{justifyContent:'space-between',flexWrap:'wrap',gap:10,alignItems:'flex-end'}}>
+        <div className="row" style={{gap:12,alignItems:'flex-end',flexWrap:'wrap'}}>
+          <div><label>Year</label><input type="number" value={year} onChange={e=>setYear(+e.target.value)} style={{width:90}}/></div>
+          <div><label>Month</label><select value={month} onChange={e=>setMonth(+e.target.value)} style={{width:140}}>{Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>{MN[i]}</option>)}</select></div>
+          <div style={{fontSize:12,color:'var(--muted)'}}>Report month: <strong style={{color:'var(--text)'}}>{monthLabel}</strong></div>
+        </div>
+        <button className="btn" onClick={printMonthly}>🖨 Aylık Rapor (Türkçe · A4)</button>
+      </div>
+      <div className="help" style={{marginTop:8}}>Pick a month above. The button prints one Turkish monthly report with every section below (Weekly Load, Daily Load, ACWR, Monotony, Training Purpose).</div>
+    </div>
+
+    <div className="metrics">
+      <div className="metric" style={{borderColor:acwrZone.c}}><div className="ml">ACWR (period end)</div><div className="mv" style={{color:acwrZone.c}}>{acwrVal?acwrVal.toFixed(2):'—'}</div><div className="mh">{acwrZone.t} · safe 0.8–1.3</div></div>
+      <div className="metric"><div className="ml">Mean monotony</div><div className="mv">{meanMono?meanMono.toFixed(2):'—'}</div><div className="mh">&gt;2 = excessive</div></div>
+      <div className="metric"><div className="ml">Month total</div><div className="mv">{Math.round(monthTotal).toLocaleString('tr-TR')}</div><div className="mh">AU (team)</div></div>
+      <div className="metric"><div className="ml">Training days</div><div className="mv">{monthDays.filter(d=>d.val>0).length}</div><div className="mh">in {monthLabel}</div></div>
+    </div>
+
     {allAthletesChart&&allAthletesChart.datasets.length>0&&
       <div className="panel">
-        <div className="row" style={{justifyContent:'space-between',alignItems:'flex-start'}}>
-          <h2 style={{margin:0}}>👥 All Athletes — Weekly Load Distribution (AU)</h2>
-          <button className="btn sec sm" onClick={printCombined} title="Prints BOTH the weekly and daily charts on one A4 landscape page">🖨 Print Both (A4 Landscape)</button>
-        </div>
-        <div className="help" style={{marginBottom:8,marginTop:6}}>Each bar shows the team's total weekly load. Hover a bar to see all athletes ranked from highest to lowest.</div>
+        <h2 style={{margin:'0 0 6px'}}>👥 All Athletes — Weekly Load Distribution (AU)</h2>
+        <div className="help" style={{marginBottom:8}}>Each bar shows the team's total weekly load. Hover a bar to see all athletes ranked from highest to lowest.</div>
         <div id="teamWeeklyChart" className="chart-box" style={{height:360}}>
           <ChartC type="bar" chartData={allAthletesChart} options={{
             responsive:true,maintainAspectRatio:false,
@@ -1984,7 +2080,6 @@ function TeamReports({team,weeks,selected,setSelected}){
             <strong style={{fontSize:13,minWidth:170,textAlign:'center'}}>{fd(dailyWeek)} → {fd(fmt(addD(parseD(dailyWeek),6)))}</strong>
             <button className="btn sec sm" onClick={()=>setDailyWeek(fmt(addD(parseD(dailyWeek),7)))}>Week ›</button>
             <button className="btn sm sec" onClick={()=>setDailyWeek(fmt(sow(parseD(allLogDates[allLogDates.length-1]))))}>Latest</button>
-            <button className="btn sec sm" onClick={printCombined} title="Prints BOTH the weekly and daily charts on one A4 landscape page">🖨 Print Both (A4 Landscape)</button>
           </div>
         </div>
         <div className="help" style={{marginBottom:8}}>The team's total daily load for the selected week. Hover a bar to see each athlete's AU for that day, ranked highest → lowest.</div>
@@ -2018,7 +2113,52 @@ function TeamReports({team,weeks,selected,setSelected}){
           }}/>:<div className="empty-st">No athlete load this week — try ‹ Week / Week › or click Latest.</div>}
         </div>
       </div>}
-    <ReportsBody days={team.days} weeks={weeks} selected={selected} setSelected={setSelected} ownerName={team.setup.teamName} onExportPDF={exportPDF}/>
+    <div className="panel">
+      <div className="row" style={{justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:8}}>
+        <h2 style={{margin:0}}>📈 ACWR — Acute:Chronic Workload Ratio</h2>
+        <span className="tag" style={{background:acwrZone.c+'22',color:acwrZone.c,borderColor:acwrZone.c}}>{acwrVal?acwrVal.toFixed(2):'—'} · {acwrZone.t}</span>
+      </div>
+      <div className="help" style={{marginTop:6,marginBottom:8}}>Acute = last 7 days' total team load · Chronic = average weekly load over the last 28 days · ACWR = Acute ÷ Chronic. Safe band 0.8–1.3 · &gt;1.5 = high injury risk. Computed at each week's end from the team's logged (sRPE) load.</div>
+      <div className="chart-box sm">
+        {acwrWeekly.some(x=>x.acwr>0)?<ChartC type="bar" chartData={{labels:acwrWeekly.map(x=>x.label),datasets:[{
+          label:'ACWR',data:acwrWeekly.map(x=>x.acwr),
+          backgroundColor:acwrWeekly.map(x=>x.acwr>1.5?'#ef4444':(x.acwr>=0.8&&x.acwr<=1.3)?'#10b981':x.acwr>0?'#f59e0b':'#334155'),borderRadius:5,
+          datalabels:{display:true,anchor:'end',align:'end',color:'#e2e8f0',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}
+        }]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
+          scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y,title:{display:true,text:'ACWR',color:'#94a3b8'},suggestedMax:2}},
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>'ACWR: '+i.parsed.y.toFixed(2)}}}}}/>
+        :<div className="empty-st">Not enough logged load to compute ACWR for this month.</div>}
+      </div>
+    </div>
+
+    <div className="panel">
+      <h2>📉 Weekly Monotony</h2>
+      <div className="help" style={{marginBottom:8}}>Monotony = mean daily load ÷ its standard deviation (within each week). High monotony (&gt;2) = too-uniform load and rising injury risk. Strain = Total × Monotony.</div>
+      <div className="chart-box sm" style={{marginBottom:12}}>
+        <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),
+          backgroundColor:mWeeks.map(w=>w.monotony>2?'#ef4444':w.monotony>1.5?'#f59e0b':w.monotony>0?'#10b981':'#334155'),borderRadius:5,
+          datalabels:{display:true,anchor:'end',align:'end',color:'#e2e8f0',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}}]}}
+          options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,plugins:{legend:{display:false}}}}/>
+      </div>
+      <table><thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Monotony</th><th>Strain</th><th>Flag</th></tr></thead><tbody>
+        {mWeeks.map(w=><tr key={w.wkStart}><td>{fd(w.wkStart).slice(0,5)}</td><td>{Math.round(w.total)}</td><td>{w.mean.toFixed(0)}</td><td>{w.sd.toFixed(1)}</td>
+          <td>{w.monotony.toFixed(2)}</td><td>{Math.round(w.strain)}</td>
+          <td>{w.monotony>2?<span className="pill high">Excess</span>:w.monotony>1.5?<span className="pill med">Watch</span>:w.monotony>0?<span className="pill low">OK</span>:'—'}</td></tr>)}</tbody></table>
+    </div>
+
+    <div className="panel">
+      <h2>🎯 Training Purpose Distribution</h2>
+      <div className="help" style={{marginBottom:8}}>Share of planned session minutes by training purpose in {monthLabel}.</div>
+      {pMix.length>0?<div className="grid cols-2">
+        <div className="chart-box sm">
+          <ChartC type="doughnut" chartData={{labels:pMix.map(p=>p.label),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),backgroundColor:PCOL}]}}
+            options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#e2e8f0'}}}}}/>
+        </div>
+        <div><table><thead><tr><th>Purpose</th><th>Minutes</th><th>%</th></tr></thead><tbody>
+          {pMix.map((p,i)=><tr key={p.label}><td><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:PCOL[i%PCOL.length],marginRight:7}}/>{p.label}</td><td>{p.min}</td><td>{p.pct.toFixed(1)}%</td></tr>)}
+        </tbody></table></div>
+      </div>:<div className="empty-st">No planned sessions in {monthLabel}.</div>}
+    </div>
   </div>);
 }
 
