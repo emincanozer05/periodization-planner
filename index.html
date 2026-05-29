@@ -64,14 +64,14 @@ body{
 h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif;letter-spacing:-0.01em}
 .app{min-height:100vh;display:flex;flex-direction:row}
 .sidebar{
-  width:230px;flex:none;background:rgba(15,20,36,.85);backdrop-filter:blur(12px);
+  width:252px;flex:none;background:rgba(15,20,36,.85);backdrop-filter:blur(12px);
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;gap:8px;padding:16px 12px;
   position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
 }
-.brand{display:flex;align-items:center;justify-content:center;padding:6px 2px 14px;margin-bottom:4px}
+.brand{display:flex;align-items:center;justify-content:center;padding:4px 0 14px;margin-bottom:4px}
 .brand-logo{
-  width:100%;max-width:205px;height:auto;display:block;
+  width:100%;max-width:236px;height:auto;display:block;
   filter:drop-shadow(0 0 3px rgba(255,255,255,.38)) drop-shadow(0 0 8px rgba(255,255,255,.16));
 }
 .content{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -174,9 +174,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cal-day.empty:hover{transform:none;box-shadow:none}
 .cal-day .dn{font-weight:700;font-size:14px}
 .cal-day .dt{font-size:10px;color:var(--text2);margin-top:1px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal-day .dt.sn{color:#0f172a;font-weight:700;background:#ffffff;padding:3px 6px;border-radius:5px;margin-top:3px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
-.cal-day .dt.au{color:#0891b2;font-weight:800;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:5px;margin-top:3px;display:inline-block}
-.cal-day .dt.au{color:var(--accent2);font-weight:700;margin-top:2px}
+.cal-day .dt.sn{font-weight:700;background:transparent;padding:0;border-radius:0;margin-top:3px;box-shadow:none;text-shadow:0 0 6px currentColor}
+.cal-day .dt.au{color:#fff;font-weight:800;background:transparent;padding:0;margin-top:3px;display:block;text-shadow:0 0 4px rgba(0,0,0,.5)}
 .cal-day.low{background:var(--low)}.cal-day.med{background:var(--med)}.cal-day.high{background:var(--high)}.cal-day.peak{background:var(--peak)}
 .cal-day.today{box-shadow:0 0 0 2px var(--accent2) inset,0 0 18px rgba(34,211,238,.25)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}
@@ -1410,6 +1409,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 /* =========================================================
    CALENDAR (reusable for team & athlete)
    ========================================================= */
+const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
 function CalendarView({days,selected,setSelected,goDayView,weeks}){
   const ref=parseD(selected.date);const yr=ref.getFullYear(),mo=ref.getMonth();
   const first=new Date(yr,mo,1);const offset=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
@@ -1435,7 +1435,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks}){
         const ss=day?.sessions||[];
         return<div key={i} className={`cal-day ${dc(d)}`} onClick={()=>goDayView(k)}>
           <div className="dn">{d.getDate()}</div>
-          {ss.slice(0,3).map((s,j)=><div key={j} className="dt sn">{s.name}</div>)}
+          {ss.slice(0,3).map((s,j)=><div key={j} className="dt sn" style={{color:SESS_COLORS[j%SESS_COLORS.length]}}>{s.name}</div>)}
           {ss.length>3&&<div className="dt">+{ss.length-3} more</div>}
           {dLoad(day)>0&&<div className="dt au">{Math.round(dLoad(day))} AU</div>}
         </div>;})}
@@ -1488,7 +1488,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate}){
                 </select>
               </div>
             </td>
-            <td><input className="en" value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"/></td>
+            <td><input className="en" list="lib-exercises" value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"/></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
@@ -3421,6 +3421,14 @@ function videoEmbed(src){
   if(/^https?:\/\//i.test(src))return{kind:'iframe',src};
   return null;
 }
+// Derive a cover-image URL from a video link (YouTube / Vimeo). Returns '' if none.
+function videoThumb(src){
+  if(!src)return'';
+  let m;
+  if((m=src.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/)))return'https://img.youtube.com/vi/'+m[1]+'/hqdefault.jpg';
+  if((m=src.match(/vimeo\.com\/(?:video\/)?(\d+)/)))return'https://vumbnail.com/'+m[1]+'.jpg';
+  return'';
+}
 
 function VideoPlayer({ex}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
@@ -3453,8 +3461,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         </div>
         <div style={{marginTop:14}}>
           <label>Video Linki (YouTube / Vimeo / mp4)</label>
-          <input value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)} placeholder="https://youtube.com/watch?v=…"/>
-          <div className="help" style={{marginTop:4}}>Önerilen yöntem — link her cihazda sorunsuz açılır ve hafıza yemez.</div>
+          <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
+          <div className="help" style={{marginTop:4}}>Önerilen yöntem — link her cihazda sorunsuz açılır ve hafıza yemez. YouTube/Vimeo linkinde kapak otomatik gelir.</div>
         </div>
         <div className="row" style={{marginTop:12,gap:10}}>
           <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Video Yükle
@@ -3572,10 +3580,11 @@ function App(){
   const goDayView=k=>{setDayKey(k);setView('program');};
 
   const TABS=[{id:'setup',label:'Setup'},{id:'season',label:'Season Plan'},{id:'calendar',label:'Calendar'},
-    {id:'program',label:'Program'},{id:'athletes',label:'Athletes'},{id:'exercises',label:'🏋 Exercises'},{id:'reports',label:'Reports'},
+    {id:'program',label:'Program'},{id:'athletes',label:'Athletes'},{id:'exercises',label:'Exercises'},{id:'reports',label:'Reports'},
     {id:'notion',label:'🔗 Notion Sync'},{id:'teams',label:'Teams'},{id:'backup',label:'Backup'}];
 
   return(<div className="app">
+    <datalist id="lib-exercises">{[...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))].map((n,i)=><option key={i} value={n}/>)}</datalist>
     <aside className="sidebar">
       <div className="brand"><img className="brand-logo" src="logo.png" alt="Tofaş"/></div>
       <nav>{TABS.map(t=><button key={t.id} className={view===t.id?'active':''} onClick={()=>setView(t.id)}>{t.label}</button>)}</nav>
