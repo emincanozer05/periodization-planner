@@ -3177,7 +3177,14 @@ function useCloudSync(data,setData){
             if(useCloud){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
             else{await seed(localStr);}
           }else if(cloud&&cloud.str){lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');}
-          else{await seed(localStr);}
+          else{
+            // brand-new account: cloud is empty. Decide what this account starts with.
+            const hasReal=(dataRef.current.teams||[]).some(t=>(t.athletes&&t.athletes.length)||(t.days&&Object.keys(t.days).length));
+            let keepLocal=false;
+            if(hasReal)keepLocal=window.confirm('Bu YENİ bir hesap (bulutta veri yok).\n\nTAMAM = şu an ekrandaki verileri bu hesaba yükle\nİPTAL = TEMİZ / boş sayfa ile başla');
+            if(keepLocal){await seed(localStr);}
+            else{const def=migrate(makeDefault());const defStr=JSON.stringify(def);setData(def);await seed(defStr);}
+          }
         }else if(rev&&rev!==lastRev.current){
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.str){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
