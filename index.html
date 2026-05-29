@@ -17,6 +17,23 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<!-- Firebase (cloud sync) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  try{
+    firebase.initializeApp({
+      apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
+      authDomain:"periodization-planner.firebaseapp.com",
+      projectId:"periodization-planner",
+      storageBucket:"periodization-planner.firebasestorage.app",
+      messagingSenderId:"225598184270",
+      appId:"1:225598184270:web:a2b812983e298441df1c1f"
+    });
+    try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
+  }catch(e){console.warn('Firebase init failed',e);}
+</script>
 <style>
 :root{
   --bg:#0a0e1a;--bg2:#0f1424;--panel:#151a2e;--elevated:#1c2238;--hover:#232a45;
@@ -3088,8 +3105,133 @@ function Backup({data,setData}){
 /* =========================================================
    ROOT
    ========================================================= */
+/* =========================================================
+   CLOUD SYNC (Firebase Auth + Firestore)
+   Stores the whole app state as one JSON string at
+   users/{uid}.payload — survives nested-array limits and
+   keeps conflict logic trivial (last-write-wins + first-login
+   merge prompt). Real-time pull via onSnapshot.
+   ========================================================= */
+const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
+function useCloudSync(data,setData){
+  const[user,setUser]=useState(null);
+  const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
+  const lastJson=useRef(null);
+  const dataRef=useRef(data); dataRef.current=data;
+  const timer=useRef(null);
+
+  // auth state
+  useEffect(()=>{
+    const fb=FB(); if(!fb)return;
+    return fb.auth().onAuthStateChanged(u=>{
+      setUser(u||null);
+      if(!u){setStatus('offline');lastJson.current=null;}
+    });
+  },[]);
+
+  // subscribe to cloud doc on login
+  useEffect(()=>{
+    const fb=FB(); if(!fb||!user)return;
+    setStatus('syncing');
+    const ref=fb.firestore().collection('users').doc(user.uid);
+    const stamp=()=>fb.firestore.FieldValue.serverTimestamp();
+    let first=true;
+    const push=str=>{lastJson.current=str;return ref.set({payload:str,updatedAt:stamp()});};
+    const unsub=ref.onSnapshot(snap=>{
+      const cloudStr=(snap.exists&&snap.data())?snap.data().payload:null;
+      if(first){
+        first=false;
+        const localStr=JSON.stringify(dataRef.current);
+        if(cloudStr&&cloudStr!==localStr){
+          const useCloud=window.confirm('Bulutta kayıtlı veri bulundu.\n\nTAMAM = bulut verisini bu cihaza yükle (bu cihazdaki veri değişir)\nİPTAL = bu cihazdaki veriyi buluta yükle (buluttaki veri değişir)');
+          if(useCloud){const p=migrate(JSON.parse(cloudStr));lastJson.current=JSON.stringify(p);setData(p);setStatus('synced');}
+          else{push(localStr).then(()=>setStatus('synced')).catch(()=>setStatus('error'));}
+        }else if(cloudStr){lastJson.current=cloudStr;setStatus('synced');}
+        else{push(localStr).then(()=>setStatus('synced')).catch(()=>setStatus('error'));}
+      }else if(cloudStr&&cloudStr!==lastJson.current){
+        const p=migrate(JSON.parse(cloudStr));lastJson.current=JSON.stringify(p);setData(p);setStatus('synced');
+      }
+    },err=>{console.warn('sync error',err);setStatus('error');});
+    return unsub;
+  },[user]);
+
+  // write local changes up (debounced)
+  useEffect(()=>{
+    const fb=FB(); if(!fb||!user)return;
+    const j=JSON.stringify(data);
+    if(j===lastJson.current)return;
+    setStatus('syncing');
+    if(timer.current)clearTimeout(timer.current);
+    timer.current=setTimeout(()=>{
+      lastJson.current=j;
+      fb.firestore().collection('users').doc(user.uid)
+        .set({payload:j,updatedAt:fb.firestore.FieldValue.serverTimestamp()})
+        .then(()=>setStatus('synced')).catch(e=>{console.warn(e);setStatus('error');});
+    },800);
+  },[data,user]);
+
+  return{user,status,
+    signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
+    signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(e,p),
+    signOut:()=>FB().auth().signOut()};
+}
+
+function AuthModal({sync,onClose}){
+  const[mode,setMode]=useState('signin');
+  const[email,setEmail]=useState('');
+  const[pw,setPw]=useState('');
+  const[err,setErr]=useState('');
+  const[busy,setBusy]=useState(false);
+  const submit=async()=>{
+    setErr('');setBusy(true);
+    try{
+      if(mode==='signin')await sync.signIn(email.trim(),pw);
+      else await sync.signUp(email.trim(),pw);
+      onClose();
+    }catch(e){
+      const m={'auth/invalid-email':'Geçersiz e-posta.','auth/missing-password':'Şifre gir.',
+        'auth/weak-password':'Şifre en az 6 karakter olmalı.','auth/email-already-in-use':'Bu e-posta zaten kayıtlı — Giriş yap.',
+        'auth/invalid-credential':'E-posta veya şifre hatalı.','auth/user-not-found':'Hesap bulunamadı — önce kayıt ol.',
+        'auth/wrong-password':'Şifre hatalı.','auth/network-request-failed':'Bağlantı hatası.'}[e.code]||e.message;
+      setErr(m);
+    }finally{setBusy(false);}
+  };
+  return(<div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+    <div onClick={e=>e.stopPropagation()} className="panel" style={{width:360,maxWidth:'92vw',margin:0}}>
+      <h2>☁ {mode==='signin'?'Buluta Giriş':'Hesap Oluştur'}</h2>
+      <div className="help" style={{marginBottom:12}}>Aynı e-posta/şifre ile tüm cihazlarında giriş yap — verilerin otomatik senkronlanır.</div>
+      <label>E-posta</label>
+      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
+      <label style={{marginTop:10}}>Şifre {mode==='signup'&&<span style={{textTransform:'none',color:'var(--dim)'}}>(en az 6 karakter)</span>}</label>
+      <input type="password" value={pw} onChange={e=>setPw(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'}
+        onKeyDown={e=>{if(e.key==='Enter')submit();}} placeholder="••••••"/>
+      {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err}</div>}
+      <button className="btn" style={{width:'100%',marginTop:14}} disabled={busy} onClick={submit}>{busy?'...':(mode==='signin'?'Giriş Yap':'Kayıt Ol')}</button>
+      <div style={{textAlign:'center',marginTop:12,fontSize:12,color:'var(--muted)'}}>
+        {mode==='signin'?'Hesabın yok mu? ':'Zaten hesabın var mı? '}
+        <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setMode(mode==='signin'?'signup':'signin');}}>{mode==='signin'?'Kayıt ol':'Giriş yap'}</a>
+      </div>
+    </div>
+  </div>);
+}
+
+function CloudBar({sync,onOpen}){
+  const{user,status}=sync;
+  const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
+  const label={offline:'Çevrimdışı',syncing:'Senkronlanıyor…',synced:'Senkron',error:'Hata'}[status];
+  if(!FB())return null;
+  if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Giriş yap / Senkron</button>;
+  return(<div className="team-sw" style={{gap:8,paddingRight:8}} title={user.email}>
+    <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
+    <span style={{fontSize:12,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
+    <button className="btn sec xs" onClick={()=>sync.signOut()}>Çıkış</button>
+  </div>);
+}
+
 function App(){
   const[data,setData]=useLocal('pp-data',makeDefault());
+  const sync=useCloudSync(data,setData);
+  const[authOpen,setAuthOpen]=useState(false);
   const[view,setView]=useState('setup');
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
@@ -3119,8 +3261,10 @@ function App(){
           </select>
         </div>
         <button className="btn sec sm" onClick={()=>setView('teams')}>Manage</button>
+        <CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/>
       </div>
     </header>
+    {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
     <nav>{TABS.map(t=><button key={t.id} className={view===t.id?'active':''} onClick={()=>setView(t.id)}>{t.label}</button>)}</nav>
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
