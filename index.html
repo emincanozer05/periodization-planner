@@ -803,13 +803,6 @@ function printMonthlyReportTR(R){
   const zoneTR=v=>!v?'—':v>1.5?'Yüksek risk':(v>=0.8&&v<=1.3)?'Optimal':v<0.8?'Düşük':'Dikkat';
   const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
 
-  const metrics=`<div class="mt">
-    <div class="mc" style="--c:${R.acwrZone.c}"><div class="mk">ACWR (dönem sonu)</div><div class="mv">${R.acwr?R.acwr.toFixed(2):'—'}</div><div class="mh">${acwrTR} · Güvenli 0.8–1.3</div></div>
-    <div class="mc" style="--c:#0891b2"><div class="mk">Ortalama Monotoni</div><div class="mv">${R.meanMono?R.meanMono.toFixed(2):'—'}</div><div class="mh">&gt;2 aşırı</div></div>
-    <div class="mc" style="--c:#7c3aed"><div class="mk">Aylık Toplam Yük</div><div class="mv">${nf(Math.round(R.monthTotal))}</div><div class="mh">AU (takım)</div></div>
-    <div class="mc" style="--c:#10b981"><div class="mk">Antrenman Günü</div><div class="mv">${R.trainDays}</div><div class="mh">yük &gt; 0</div></div>
-  </div>`;
-
   const weeklySec=_loadSectionHTML('Haftalık Yük Dağılımı (AU)','Sporcu × Hafta · yüke göre sıralı',R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
 
   const maxDay=Math.max(1,...R.monthDays.map(d=>d.val));
@@ -874,7 +867,6 @@ td.tot,th.tot{font-weight:800;color:var(--ac);background:#f0f9ff}
 .ft{margin-top:8px;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;border-top:1px solid #e5e7eb;padding-top:6px}
 </style></head><body>
 <div class="hd"><div><h1>Aylık Antrenman Raporu</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
-${metrics}
 ${weeklySec}
 ${dailySec}
 <div class="gwrap"><div class="grid2">${acwrSec}${monoSec}</div></div>
