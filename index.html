@@ -3199,7 +3199,8 @@ function Backup({data,setData,sync}){
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
 const SYNC_CHUNK=700000;
-async function cloudWrite(fb,uid,str){
+const mkRev=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+async function cloudWrite(fb,uid,str,rev){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   const dataCol=userDoc.collection('data');
@@ -3223,7 +3224,7 @@ async function cloudWrite(fb,uid,str){
     }
   }catch(e){console.warn('backup-guard',e);}
   const n=Math.max(1,Math.ceil(str.length/SYNC_CHUNK));
-  const rev=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  rev=rev||mkRev();
   const batch=db.batch();
   for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
   batch.set(userDoc,{chunks:n,rev:rev,size:str.length,updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
@@ -3283,7 +3284,7 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     const userDoc=fb.firestore().collection('users').doc(user.uid);
     let first=true;
-    const seed=async str=>{try{const rev=await cloudWrite(fb,user.uid,str);lastJson.current=str;lastRev.current=rev;setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
+    const seed=async str=>{const rev=mkRev();lastRev.current=rev;lastJson.current=str;try{await cloudWrite(fb,user.uid,str,rev);setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
     const unsub=userDoc.onSnapshot(async snap=>{
       try{
         const rev=(snap.exists&&snap.data())?snap.data().rev:null;
@@ -3293,17 +3294,12 @@ function useCloudSync(data,setData){
           const cloud=await cloudRead(fb,user.uid);
           const localReal=hasRealData(dataRef.current);
           if(cloud&&cloud.str){
+            // Cloud is the source of truth: on login ALWAYS show the cloud copy.
+            // This is predictable and a stale/empty device can never overwrite the account.
             if(cloud.str===localStr){
               lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');
-            }else if(!localReal){
-              // This device has no real data of its own (fresh phone/browser).
-              // ALWAYS pull the cloud copy down — never let an empty device overwrite the account.
-              const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');
             }else{
-              // Genuine conflict: both this device and the cloud hold real, differing data.
-              const useCloud=window.confirm('Hem bu cihazda hem de bulutta veri var ve birbirinden farklı.\n\nTAMAM = BULUTTAKİ veriyi yükle (önerilen — bu cihazdaki değişir)\nİPTAL = bu cihazdaki veriyi buluta yaz (buluttaki sürüm otomatik yedeklenir)');
-              if(useCloud){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
-              else{await seed(localStr);}
+              const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');
             }
           }else{
             // brand-new account: cloud is empty.
@@ -3317,8 +3313,15 @@ function useCloudSync(data,setData){
             }
           }
         }else if(rev&&rev!==lastRev.current){
+          // A genuinely remote change (different device). Our own writes are skipped
+          // because the writer claims its rev BEFORE committing.
           const cloud=await cloudRead(fb,user.uid);
-          if(cloud&&cloud.str){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
+          if(cloud&&cloud.str){
+            const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
+            lastJson.current=pstr;lastRev.current=cloud.rev;
+            if(pstr!==JSON.stringify(dataRef.current))setData(p);
+            setStatus('synced');
+          }
         }
       }catch(e){console.warn('sync',e);setStatus('error');}
     },err=>{console.warn('sync sub',err);setStatus('error');});
@@ -3333,7 +3336,9 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     if(timer.current)clearTimeout(timer.current);
     timer.current=setTimeout(async()=>{
-      try{const rev=await cloudWrite(fb,user.uid,j);lastJson.current=j;lastRev.current=rev;setStatus('synced');}
+      const rev=mkRev();
+      lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
+      try{await cloudWrite(fb,user.uid,j,rev);setStatus('synced');}
       catch(e){console.warn('write',e);setStatus('error');}
     },800);
   },[data,user]);
@@ -3490,7 +3495,6 @@ function ExerciseCard({ex,onOpen}){
 function ExercisesView({data,setData}){
   const exercises=data.exercises||[];
   const setExercises=arr=>setData({...data,exercises:arr});
-  const[sub,setSub]=useState('all');
   const[q,setQ]=useState('');
   const[sort,setSort]=useState('default');
   const[fMuscle,setFMuscle]=useState('');
@@ -3510,11 +3514,6 @@ function ExercisesView({data,setData}){
   if(sort==='name')list=[...list].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   else if(sort==='muscle')list=[...list].sort((a,b)=>(a.muscle||'').localeCompare(b.muscle||''));
 
-  const groups=useMemo(()=>{
-    const g={};list.forEach(e=>{const k=e.muscle||'Diğer';(g[k]=g[k]||[]).push(e);});
-    return Object.keys(g).sort().map(k=>({muscle:k,items:g[k]}));
-  },[list]);
-
   const open=exercises.find(e=>e.id===openId);
 
   return(<div className="ex-wrap">
@@ -3523,7 +3522,7 @@ function ExercisesView({data,setData}){
 
     <div className="ex-top">
       <div>
-        <h1 className="ex-h1">{sub==='all'?'All Exercises':'By Muscle'}</h1>
+        <h1 className="ex-h1">All Exercises</h1>
         <div className="sub">Egzersiz demolarını, videolarını ve amaçlarını yönet</div>
       </div>
       <div className="row" style={{gap:8}}>
@@ -3534,11 +3533,6 @@ function ExercisesView({data,setData}){
           <option value="muscle">Kas grubuna göre</option>
         </select>
       </div>
-    </div>
-
-    <div className="ex-subtabs">
-      <button className={sub==='all'?'on':''} onClick={()=>setSub('all')}>All Exercises</button>
-      <button className={sub==='muscle'?'on':''} onClick={()=>setSub('muscle')}>By Muscle</button>
     </div>
 
     <div className="ex-toolbar">
@@ -3552,13 +3546,7 @@ function ExercisesView({data,setData}){
 
     {list.length===0 && <div className="ex-empty">Henüz egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ilk hareketi oluştur — video linki/yüklemesi ve amaç ekleyebilirsin.</div>}
 
-    {sub==='all'
-      ? <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
-      : groups.map(g=><div key={g.muscle} className="ex-group">
-          <h3 className="ex-gh">{g.muscle}<span>{g.items.length}</span></h3>
-          <div className="ex-grid">{g.items.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
-        </div>)
-    }
+    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
 
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
