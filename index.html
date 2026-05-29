@@ -3136,13 +3136,28 @@ function NotionSync({data,setData,team}){
 /* =========================================================
    BACKUP
    ========================================================= */
-function Backup({data,setData}){
+function Backup({data,setData,sync}){
   const fRef=useRef(null);
+  const[busy,setBusy]=useState(false);
   const exp=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert('Invalid file');return;}if(confirm('Replace all data?'))setData(migrate(p));}catch{alert('Read error');}};
     r.readAsText(f);e.target.value='';};
+  const restore=async()=>{
+    const fb=FB();
+    if(!fb||!sync||!sync.user){alert('Bulut yedeği için önce hesabınla giriş yapmalısın.');return;}
+    setBusy(true);
+    try{
+      const bk=await cloudReadBackup(fb,sync.user.uid);
+      if(!bk||!bk.str){alert('Bulutta yedek (önceki sürüm) bulunamadı.');return;}
+      const p=migrate(JSON.parse(bk.str));
+      const ath=(p.teams||[]).reduce((s,t)=>s+((t.athletes||[]).length),0);
+      const when=bk.at&&bk.at.toDate?bk.at.toDate().toLocaleString('tr-TR'):'bilinmiyor';
+      if(confirm('Önceki bulut sürümü geri yüklensin mi?\n\nYedek tarihi: '+when+'\nYedekteki sporcu sayısı: '+ath+'\n\nŞu anki veriler bununla DEĞİŞTİRİLECEK.'))setData(p);
+    }catch(e){alert('Yedek okunamadı: '+(e.message||e));}
+    finally{setBusy(false);}
+  };
   return(<div>
     <div className="panel"><h2>All Teams Summary</h2>
       <table><thead><tr><th>Team</th><th>Sport</th><th>Season</th><th>Days planned</th><th>Athletes</th></tr></thead><tbody>
@@ -3159,6 +3174,13 @@ function Backup({data,setData}){
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 Load Backup</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
       </div>
+    </div>
+    <div className="panel"><h2>☁️ Bulut Yedeği (Otomatik)</h2>
+      <div className="help" style={{marginBottom:12}}>Veriler büyük ölçüde küçüldüğünde (yanlışlıkla silme veya boş bir cihazdan giriş), bir önceki bulut sürümü otomatik olarak saklanır. Bir şeyler kaybolduysa buradan geri yükleyebilirsin.</div>
+      <div className="row">
+        <button className="btn" disabled={busy} onClick={restore}>{busy?'Yükleniyor…':'♻️ Önceki Bulut Sürümünü Geri Yükle'}</button>
+      </div>
+      {(!sync||!sync.user)&&<div className="help" style={{marginTop:10,color:'var(--warn,#f59e0b)'}}>Bu özellik için sağ üstten hesabınla giriş yapmalısın.</div>}
     </div>
   </div>);
 }
@@ -3181,11 +3203,30 @@ async function cloudWrite(fb,uid,str){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   const dataCol=userDoc.collection('data');
+  // SHRINK-GUARD: if we're about to drastically reduce what's stored
+  // (e.g. an empty device overwriting a full account, or a mass delete),
+  // copy the CURRENT cloud version into a backup slot first so it can be restored.
+  try{
+    const cur=await userDoc.get();
+    if(cur.exists&&cur.data()&&cur.data().chunks){
+      const oldSize=cur.data().size||0,oldN=cur.data().chunks;
+      if(oldSize>5000 && str.length < oldSize*0.5){
+        const bCol=userDoc.collection('backup');
+        const snaps=await Promise.all(Array.from({length:oldN},(_,i)=>dataCol.doc(String(i)).get()));
+        const bb=db.batch();
+        snaps.forEach((d,i)=>bb.set(bCol.doc(String(i)),{c:(d.exists&&d.data())?(d.data().c||''):''}));
+        bb.set(userDoc,{bChunks:oldN,bRev:cur.data().rev||'',bSize:oldSize,bAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+        await bb.commit();
+        const allB=await bCol.get();const sb=[];allB.forEach(d=>{if(Number(d.id)>=oldN)sb.push(d.ref);});
+        if(sb.length){const b2=db.batch();sb.forEach(r=>b2.delete(r));await b2.commit();}
+      }
+    }
+  }catch(e){console.warn('backup-guard',e);}
   const n=Math.max(1,Math.ceil(str.length/SYNC_CHUNK));
   const rev=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   const batch=db.batch();
   for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
-  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
+  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
   await batch.commit();
   // drop leftover chunks from a previously larger payload
   const all=await dataCol.get();
@@ -3201,6 +3242,23 @@ async function cloudRead(fb,uid){
   const md=meta.data(),n=md.chunks,parts=[];
   for(let i=0;i<n;i++){const d=await userDoc.collection('data').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
   return{str:parts.join(''),rev:md.rev};
+}
+async function cloudReadBackup(fb,uid){
+  const db=fb.firestore();
+  const userDoc=db.collection('users').doc(uid);
+  const meta=await userDoc.get();
+  if(!meta.exists||!meta.data()||!meta.data().bChunks)return null;
+  const md=meta.data(),n=md.bChunks,parts=[];
+  for(let i=0;i<n;i++){const d=await userDoc.collection('backup').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
+  return{str:parts.join(''),rev:md.bRev,size:md.bSize||0,at:md.bAt};
+}
+// "real data" = this device actually has athletes / planned days / exercises,
+// not just the empty default template. Used to decide sync direction safely.
+function hasRealData(d){
+  if(!d||!Array.isArray(d.teams))return false;
+  if(d.teams.some(t=>(t.athletes&&t.athletes.length)||(t.days&&Object.keys(t.days).length)))return true;
+  if(Array.isArray(d.exercises)&&d.exercises.length)return true;
+  return false;
 }
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
@@ -3233,18 +3291,30 @@ function useCloudSync(data,setData){
           first=false;
           const localStr=JSON.stringify(dataRef.current);
           const cloud=await cloudRead(fb,user.uid);
-          if(cloud&&cloud.str&&cloud.str!==localStr){
-            const useCloud=window.confirm('Bulutta kayıtlı veri bulundu.\n\nTAMAM = bulut verisini bu cihaza yükle (bu cihazdaki veri değişir)\nİPTAL = bu cihazdaki veriyi buluta yükle (buluttaki veri değişir)');
-            if(useCloud){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
-            else{await seed(localStr);}
-          }else if(cloud&&cloud.str){lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');}
-          else{
-            // brand-new account: cloud is empty. Decide what this account starts with.
-            const hasReal=(dataRef.current.teams||[]).some(t=>(t.athletes&&t.athletes.length)||(t.days&&Object.keys(t.days).length));
-            let keepLocal=false;
-            if(hasReal)keepLocal=window.confirm('Bu YENİ bir hesap (bulutta veri yok).\n\nTAMAM = şu an ekrandaki verileri bu hesaba yükle\nİPTAL = TEMİZ / boş sayfa ile başla');
-            if(keepLocal){await seed(localStr);}
-            else{const def=migrate(makeDefault());const defStr=JSON.stringify(def);setData(def);await seed(defStr);}
+          const localReal=hasRealData(dataRef.current);
+          if(cloud&&cloud.str){
+            if(cloud.str===localStr){
+              lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');
+            }else if(!localReal){
+              // This device has no real data of its own (fresh phone/browser).
+              // ALWAYS pull the cloud copy down — never let an empty device overwrite the account.
+              const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');
+            }else{
+              // Genuine conflict: both this device and the cloud hold real, differing data.
+              const useCloud=window.confirm('Hem bu cihazda hem de bulutta veri var ve birbirinden farklı.\n\nTAMAM = BULUTTAKİ veriyi yükle (önerilen — bu cihazdaki değişir)\nİPTAL = bu cihazdaki veriyi buluta yaz (buluttaki sürüm otomatik yedeklenir)');
+              if(useCloud){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
+              else{await seed(localStr);}
+            }
+          }else{
+            // brand-new account: cloud is empty.
+            if(localReal){
+              const keepLocal=window.confirm('Bu hesapta bulutta veri yok.\n\nTAMAM = şu an ekrandaki verileri bu hesaba yükle\nİPTAL = TEMİZ / boş sayfa ile başla');
+              if(keepLocal){await seed(localStr);}
+              else{const def=migrate(makeDefault());const defStr=JSON.stringify(def);setData(def);await seed(defStr);}
+            }else{
+              // Empty device + empty cloud: just start. Don't push an empty payload up.
+              lastJson.current=localStr;setStatus('synced');
+            }
           }
         }else if(rev&&rev!==lastRev.current){
           const cloud=await cloudRead(fb,user.uid);
@@ -3549,7 +3619,7 @@ function App(){
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='notion'&&<NotionSync data={data} setData={setData} team={team}/>}
-      {view==='backup'&&<Backup data={data} setData={setData}/>}
+      {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
   </div>);
