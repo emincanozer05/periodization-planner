@@ -3107,16 +3107,45 @@ function Backup({data,setData}){
    ========================================================= */
 /* =========================================================
    CLOUD SYNC (Firebase Auth + Firestore)
-   Stores the whole app state as one JSON string at
-   users/{uid}.payload — survives nested-array limits and
-   keeps conflict logic trivial (last-write-wins + first-login
-   merge prompt). Real-time pull via onSnapshot.
+   The whole app state is JSON-stringified and split into
+   ~700KB chunks stored at users/{uid}/data/{i}, with a meta
+   doc at users/{uid} holding {chunks,rev}. This sidesteps the
+   1 MiB per-document limit (athlete photos push real data
+   past 2 MB). Conflict = last-write-wins + first-login merge
+   prompt. Real-time pull via onSnapshot on the meta doc (rev).
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
+const SYNC_CHUNK=700000;
+async function cloudWrite(fb,uid,str){
+  const db=fb.firestore();
+  const userDoc=db.collection('users').doc(uid);
+  const dataCol=userDoc.collection('data');
+  const n=Math.max(1,Math.ceil(str.length/SYNC_CHUNK));
+  const rev=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const batch=db.batch();
+  for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
+  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
+  await batch.commit();
+  // drop leftover chunks from a previously larger payload
+  const all=await dataCol.get();
+  const stale=[]; all.forEach(d=>{if(Number(d.id)>=n)stale.push(d.ref);});
+  if(stale.length){const b=db.batch();stale.forEach(r=>b.delete(r));await b.commit();}
+  return rev;
+}
+async function cloudRead(fb,uid){
+  const db=fb.firestore();
+  const userDoc=db.collection('users').doc(uid);
+  const meta=await userDoc.get();
+  if(!meta.exists||!meta.data()||!meta.data().chunks)return null;
+  const md=meta.data(),n=md.chunks,parts=[];
+  for(let i=0;i<n;i++){const d=await userDoc.collection('data').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
+  return{str:parts.join(''),rev:md.rev};
+}
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
   const lastJson=useRef(null);
+  const lastRev=useRef(null);
   const dataRef=useRef(data); dataRef.current=data;
   const timer=useRef(null);
 
@@ -3125,33 +3154,36 @@ function useCloudSync(data,setData){
     const fb=FB(); if(!fb)return;
     return fb.auth().onAuthStateChanged(u=>{
       setUser(u||null);
-      if(!u){setStatus('offline');lastJson.current=null;}
+      if(!u){setStatus('offline');lastJson.current=null;lastRev.current=null;}
     });
   },[]);
 
-  // subscribe to cloud doc on login
+  // subscribe to cloud (meta doc) on login
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
-    const ref=fb.firestore().collection('users').doc(user.uid);
-    const stamp=()=>fb.firestore.FieldValue.serverTimestamp();
+    const userDoc=fb.firestore().collection('users').doc(user.uid);
     let first=true;
-    const push=str=>{lastJson.current=str;return ref.set({payload:str,updatedAt:stamp()});};
-    const unsub=ref.onSnapshot(snap=>{
-      const cloudStr=(snap.exists&&snap.data())?snap.data().payload:null;
-      if(first){
-        first=false;
-        const localStr=JSON.stringify(dataRef.current);
-        if(cloudStr&&cloudStr!==localStr){
-          const useCloud=window.confirm('Bulutta kayıtlı veri bulundu.\n\nTAMAM = bulut verisini bu cihaza yükle (bu cihazdaki veri değişir)\nİPTAL = bu cihazdaki veriyi buluta yükle (buluttaki veri değişir)');
-          if(useCloud){const p=migrate(JSON.parse(cloudStr));lastJson.current=JSON.stringify(p);setData(p);setStatus('synced');}
-          else{push(localStr).then(()=>setStatus('synced')).catch(()=>setStatus('error'));}
-        }else if(cloudStr){lastJson.current=cloudStr;setStatus('synced');}
-        else{push(localStr).then(()=>setStatus('synced')).catch(()=>setStatus('error'));}
-      }else if(cloudStr&&cloudStr!==lastJson.current){
-        const p=migrate(JSON.parse(cloudStr));lastJson.current=JSON.stringify(p);setData(p);setStatus('synced');
-      }
-    },err=>{console.warn('sync error',err);setStatus('error');});
+    const seed=async str=>{try{const rev=await cloudWrite(fb,user.uid,str);lastJson.current=str;lastRev.current=rev;setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
+    const unsub=userDoc.onSnapshot(async snap=>{
+      try{
+        const rev=(snap.exists&&snap.data())?snap.data().rev:null;
+        if(first){
+          first=false;
+          const localStr=JSON.stringify(dataRef.current);
+          const cloud=await cloudRead(fb,user.uid);
+          if(cloud&&cloud.str&&cloud.str!==localStr){
+            const useCloud=window.confirm('Bulutta kayıtlı veri bulundu.\n\nTAMAM = bulut verisini bu cihaza yükle (bu cihazdaki veri değişir)\nİPTAL = bu cihazdaki veriyi buluta yükle (buluttaki veri değişir)');
+            if(useCloud){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
+            else{await seed(localStr);}
+          }else if(cloud&&cloud.str){lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');}
+          else{await seed(localStr);}
+        }else if(rev&&rev!==lastRev.current){
+          const cloud=await cloudRead(fb,user.uid);
+          if(cloud&&cloud.str){const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');}
+        }
+      }catch(e){console.warn('sync',e);setStatus('error');}
+    },err=>{console.warn('sync sub',err);setStatus('error');});
     return unsub;
   },[user]);
 
@@ -3162,11 +3194,9 @@ function useCloudSync(data,setData){
     if(j===lastJson.current)return;
     setStatus('syncing');
     if(timer.current)clearTimeout(timer.current);
-    timer.current=setTimeout(()=>{
-      lastJson.current=j;
-      fb.firestore().collection('users').doc(user.uid)
-        .set({payload:j,updatedAt:fb.firestore.FieldValue.serverTimestamp()})
-        .then(()=>setStatus('synced')).catch(e=>{console.warn(e);setStatus('error');});
+    timer.current=setTimeout(async()=>{
+      try{const rev=await cloudWrite(fb,user.uid,j);lastJson.current=j;lastRev.current=rev;setStatus('synced');}
+      catch(e){console.warn('write',e);setStatus('error');}
     },800);
   },[data,user]);
 
