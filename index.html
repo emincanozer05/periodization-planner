@@ -3268,13 +3268,14 @@ function useCloudSync(data,setData){
   const lastRev=useRef(null);
   const dataRef=useRef(data); dataRef.current=data;
   const timer=useRef(null);
+  const ready=useRef(false); // true only AFTER the cloud has been reconciled on login
 
   // auth state
   useEffect(()=>{
     const fb=FB(); if(!fb)return;
     return fb.auth().onAuthStateChanged(u=>{
       setUser(u||null);
-      if(!u){setStatus('offline');lastJson.current=null;lastRev.current=null;}
+      if(!u){setStatus('offline');lastJson.current=null;lastRev.current=null;ready.current=false;}
     });
   },[]);
 
@@ -3282,6 +3283,7 @@ function useCloudSync(data,setData){
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
+    ready.current=false; // block uploads until the first cloud reconcile finishes
     const userDoc=fb.firestore().collection('users').doc(user.uid);
     let first=true;
     const seed=async str=>{const rev=mkRev();lastRev.current=rev;lastJson.current=str;try{await cloudWrite(fb,user.uid,str,rev);setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
@@ -3312,6 +3314,7 @@ function useCloudSync(data,setData){
               lastJson.current=localStr;setStatus('synced');
             }
           }
+          ready.current=true; // cloud reconciled — uploads from this device are now safe
         }else if(rev&&rev!==lastRev.current){
           // A genuinely remote change (different device). Our own writes are skipped
           // because the writer claims its rev BEFORE committing.
@@ -3331,10 +3334,11 @@ function useCloudSync(data,setData){
   // write local changes up (debounced)
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;} // cancel any pending (possibly stale) write
+    if(!ready.current)return;          // don't upload until the cloud has been reconciled on login
     const j=JSON.stringify(data);
     if(j===lastJson.current)return;
     setStatus('syncing');
-    if(timer.current)clearTimeout(timer.current);
     timer.current=setTimeout(async()=>{
       const rev=mkRev();
       lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
