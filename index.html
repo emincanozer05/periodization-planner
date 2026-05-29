@@ -768,6 +768,39 @@ function ChartC({type,chartData,options}){
   return <canvas ref={ref}/>;
 }
 
+/* Print a chart canvas on a single landscape-A4 page (chart kept on its dark
+   panel background so the light gridlines/labels stay readable). */
+function printChartLandscape(title,subtitle,canvasSel,summary){
+  const cv=document.querySelector(canvasSel);
+  if(!cv){alert('Grafik bulunamadı.');return;}
+  const img=cv.toDataURL('image/png');
+  const w=window.open('','_blank','width=1100,height=800');
+  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.');return;}
+  const sumHtml=(summary&&summary.length)
+    ?`<div class="sum">${summary.map(s=>`<div class="cell"><div class="k">${s.k}</div><div class="v">${s.v}</div></div>`).join('')}</div>`:'';
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+@page{size:A4 landscape;margin:10mm}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;padding:4mm}
+h1{font-size:20px;font-weight:800;margin-bottom:2px}
+.sub{font-size:12px;color:#64748b;margin-bottom:12px}
+.chartwrap{background:#0f1424;border-radius:10px;padding:14px;border:1px solid #1e293b}
+.chartwrap img{width:100%;height:auto;max-height:150mm;object-fit:contain;display:block}
+.sum{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:space-around}
+.cell{text-align:center;min-width:90px;padding:8px 12px;background:#f1f5f9;border-radius:8px}
+.cell .k{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.cell .v{font-size:16px;font-weight:800;color:#0891b2}
+</style></head><body>
+<h1>${title}</h1><div class="sub">${subtitle}</div>
+<div class="chartwrap"><img src="${img}"/></div>
+${sumHtml}
+</body></html>`);
+  w.document.close();
+  const doPrint=()=>{try{w.focus();w.print();}catch(e){}};
+  const im=w.document.querySelector('img');
+  if(im&&!im.complete){im.onload=doPrint;im.onerror=doPrint;}else setTimeout(doPrint,300);
+}
+
 /* =========================================================
    PRINT — A4 portrait (single day) & landscape (week)
    Print and Share both render the SAME HTML so the output is identical
@@ -1825,12 +1858,43 @@ function TeamReports({team,weeks,selected,setSelected}){
   },[team.athletes,selected]);
   const weekTotals=allAthletesChart?allAthletesChart.datasets[0].data:[];
 
+  // ---- All-athletes DAILY AU chart (each bar = one day; weeks colour-alternate) ----
+  const dailyAthletesChart=useMemo(()=>{
+    const{year,month}=selected;
+    const ms=`${year}-${pad(month)}-01`;
+    const me=fmt(new Date(year,month,0));
+    const weekStarts=[];let c=sow(parseD(ms));
+    while(c<=parseD(me)){weekStarts.push(fmt(c));c=addD(c,7);}
+    const athletes=team.athletes||[];
+    if(athletes.length===0||weekStarts.length===0)return null;
+    const start=parseD(weekStarts[0]);
+    const days=Array.from({length:weekStarts.length*7},(_,i)=>fmt(addD(start,i)));
+    const perAthlete=athletes.map(a=>{
+      const byDate={};
+      (a.srpeLog||[]).forEach(e=>{
+        if(!e.date)return;
+        const tp=Number(e.tpLoad)||0,sc=Number(e.scLoad)||0,gm=Number(e.gameLoad)||0;
+        byDate[e.date]=(byDate[e.date]||0)+(Number(e.totalLoad)||(tp+sc+gm));
+      });
+      return{name:a.name,data:days.map(d=>Math.round(byDate[d]||0))};
+    }).filter(a=>a.data.some(v=>v>0));
+    if(perAthlete.length===0)return null;
+    const totals=days.map((_,di)=>perAthlete.reduce((s,a)=>s+(a.data[di]||0),0));
+    const bg=days.map((_,i)=>Math.floor(i/7)%2===0?'rgba(139,92,246,.7)':'rgba(34,211,238,.6)');
+    const bd=days.map((_,i)=>Math.floor(i/7)%2===0?'#a78bfa':'#22d3ee');
+    return{labels:days.map(d=>fd(d).slice(0,5)),datasets:[{label:'Team Daily Total',data:totals,backgroundColor:bg,borderColor:bd,borderWidth:1}],perAthlete,days};
+  },[team.athletes,selected]);
+  const weekSummary=allAthletesChart?allAthletesChart.labels.map((lab,i)=>({k:'Wk '+lab,v:weekTotals[i]+' AU'})):[];
+
   return(<div>
     {allAthletesChart&&allAthletesChart.datasets.length>0&&
       <div className="panel">
-        <h2>👥 All Athletes — Weekly Load Distribution (AU)</h2>
-        <div className="help" style={{marginBottom:8}}>Each bar shows the team's total weekly load. Hover a bar to see all athletes ranked from highest to lowest.</div>
-        <div className="chart-box" style={{height:360}}>
+        <div className="row" style={{justifyContent:'space-between',alignItems:'flex-start'}}>
+          <h2 style={{margin:0}}>👥 All Athletes — Weekly Load Distribution (AU)</h2>
+          <button className="btn sec sm" onClick={()=>printChartLandscape('All Athletes — Weekly Load Distribution (AU)',team.setup.teamName+' · '+MN[selected.month-1]+' '+selected.year,'#teamWeeklyChart canvas',weekSummary)}>🖨 Yazdır (A4 Yatay)</button>
+        </div>
+        <div className="help" style={{marginBottom:8,marginTop:6}}>Each bar shows the team's total weekly load. Hover a bar to see all athletes ranked from highest to lowest.</div>
+        <div id="teamWeeklyChart" className="chart-box" style={{height:360}}>
           <ChartC type="bar" chartData={allAthletesChart} options={{
             responsive:true,maintainAspectRatio:false,
             scales:{
@@ -1863,6 +1927,42 @@ function TeamReports({team,weeks,selected,setSelected}){
             <div style={{fontSize:14,fontWeight:800,color:'var(--accent2)'}}>{weekTotals[i]} AU</div>
           </div>))}
         </div>}
+      </div>}
+
+    {dailyAthletesChart&&dailyAthletesChart.datasets.length>0&&
+      <div className="panel">
+        <div className="row" style={{justifyContent:'space-between',alignItems:'flex-start'}}>
+          <h2 style={{margin:0}}>📅 All Athletes — Daily Load (7-Day) (AU)</h2>
+          <button className="btn sec sm" onClick={()=>printChartLandscape('All Athletes — Daily Load (AU)',team.setup.teamName+' · '+MN[selected.month-1]+' '+selected.year,'#teamDailyChart canvas',weekSummary)}>🖨 Yazdır (A4 Yatay)</button>
+        </div>
+        <div className="help" style={{marginBottom:8,marginTop:6}}>Her çubuk bir günün takım toplam yükü (haftalar dönüşümlü renkte). Çubuğun üzerine gelince o günün oyuncu AU değerleri sıralı görünür.</div>
+        <div id="teamDailyChart" className="chart-box" style={{height:360}}>
+          <ChartC type="bar" chartData={dailyAthletesChart} options={{
+            responsive:true,maintainAspectRatio:false,
+            scales:{
+              x:{...CHART_DARK.scales.x,title:{display:true,text:'Gün',color:'#94a3b8',font:{size:11}}},
+              y:{...CHART_DARK.scales.y,title:{display:true,text:'AU',color:'#94a3b8',font:{size:11}}}
+            },
+            plugins:{
+              legend:{display:false},
+              tooltip:{
+                callbacks:{
+                  title:items=>'Gün: '+fd(dailyAthletesChart.days[items[0].dataIndex]),
+                  label:item=>'TEAM TOTAL: '+Math.round(item.parsed.y)+' AU',
+                  afterBody:items=>{
+                    const di=items[0].dataIndex;
+                    const rows=(dailyAthletesChart.perAthlete||[])
+                      .map(a=>({name:a.name,v:a.data[di]||0}))
+                      .filter(r=>r.v>0)
+                      .sort((a,b)=>b.v-a.v);
+                    if(!rows.length)return[];
+                    return ['',...rows.map((r,i)=>`${i+1}. ${r.name}: ${r.v} AU`)];
+                  }
+                }
+              }
+            }
+          }}/>
+        </div>
       </div>}
     <ReportsBody days={team.days} weeks={weeks} selected={selected} setSelected={setSelected} ownerName={team.setup.teamName} onExportPDF={exportPDF}/>
   </div>);
