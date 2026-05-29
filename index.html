@@ -62,7 +62,20 @@ body{
   background-attachment:fixed;min-height:100vh;
 }
 h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif;letter-spacing:-0.01em}
-.app{min-height:100vh;display:flex;flex-direction:column}
+.app{min-height:100vh;display:flex;flex-direction:row}
+.sidebar{
+  width:212px;flex:none;background:rgba(15,20,36,.85);backdrop-filter:blur(12px);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;gap:8px;padding:16px 12px;
+  position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
+}
+.brand{display:flex;align-items:center;justify-content:center;padding:4px 2px 14px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.brand-logo{
+  width:100%;max-width:180px;height:auto;display:block;
+  mix-blend-mode:screen;
+  filter:drop-shadow(0 0 4px rgba(255,255,255,.5)) drop-shadow(0 0 12px rgba(255,255,255,.28));
+}
+.content{flex:1;min-width:0;display:flex;flex-direction:column}
 header{
   background:rgba(15,20,36,.85);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);padding:14px 24px;
@@ -80,20 +93,26 @@ header h1{
 .team-sw select:focus{outline:none}
 .team-sw select option{background:var(--elevated)}
 nav{
-  display:flex;gap:6px;background:rgba(21,26,46,.5);backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--border);padding:8px 24px;overflow-x:auto;
-  position:sticky;top:60px;z-index:40;
+  display:flex;flex-direction:column;gap:8px;
+  background:transparent;border:none;padding:0;
 }
 nav button{
-  background:transparent;border:1px solid rgba(255,255,255,.7);padding:10px 16px;cursor:pointer;
+  background:transparent;border:1px solid rgba(255,255,255,.7);padding:11px 14px;cursor:pointer;
   color:#ffffff;font-size:13px;font-weight:700;
-  border-radius:8px;white-space:nowrap;
+  border-radius:8px;white-space:nowrap;width:100%;text-align:left;
   transition:box-shadow .15s,border-color .15s,transform .15s;font-family:inherit;
   box-shadow:0 0 6px rgba(255,255,255,.35),inset 0 0 6px rgba(255,255,255,.15);
   text-shadow:0 0 6px rgba(255,255,255,.6);
 }
 nav button.active{border-color:#ffffff;box-shadow:0 0 12px rgba(255,255,255,.8),inset 0 0 10px rgba(255,255,255,.25);text-shadow:0 0 10px rgba(255,255,255,.95)}
-nav button:hover{border-color:#ffffff;box-shadow:0 0 12px rgba(255,255,255,.8),inset 0 0 10px rgba(255,255,255,.25);text-shadow:0 0 10px rgba(255,255,255,.95);transform:translateY(-1px)}
+nav button:hover{border-color:#ffffff;box-shadow:0 0 12px rgba(255,255,255,.8),inset 0 0 10px rgba(255,255,255,.25);text-shadow:0 0 10px rgba(255,255,255,.95);transform:translateX(2px)}
+@media(max-width:760px){
+  .app{flex-direction:column}
+  .sidebar{width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
+  .brand{border-bottom:none;padding-bottom:8px}
+  nav{flex-direction:row;flex-wrap:wrap}
+  nav button{width:auto}
+}
 main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto;animation:fadeIn .25s ease-out}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pop{0%{transform:scale(.96)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
@@ -3285,6 +3304,11 @@ function App(){
     {id:'notion',label:'🔗 Notion Sync'},{id:'teams',label:'Teams'},{id:'backup',label:'Backup'}];
 
   return(<div className="app">
+    <aside className="sidebar">
+      <div className="brand"><img className="brand-logo" src="logo.png" alt="Tofaş"/></div>
+      <nav>{TABS.map(t=><button key={t.id} className={view===t.id?'active':''} onClick={()=>setView(t.id)}>{t.label}</button>)}</nav>
+    </aside>
+    <div className="content">
     <header>
       <div>
         <h1>PERIODIZATION PLANNER</h1>
@@ -3302,7 +3326,6 @@ function App(){
       </div>
     </header>
     {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
-    <nav>{TABS.map(t=><button key={t.id} className={view===t.id?'active':''} onClick={()=>setView(t.id)}>{t.label}</button>)}</nav>
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
@@ -3317,6 +3340,7 @@ function App(){
       {view==='notion'&&<NotionSync data={data} setData={setData} team={team}/>}
       {view==='backup'&&<Backup data={data} setData={setData}/>}
     </main>
+    </div>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
