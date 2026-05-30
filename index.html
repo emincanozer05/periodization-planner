@@ -1518,6 +1518,36 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
 /* =========================================================
    PHOTO RESIZE
    ========================================================= */
+/* ---- Firebase Storage media upload (keeps big files OUT of the synced JSON) ---- */
+function resizePhotoBlob(file,cb,mx=900,q=0.85){
+  const img=new Image();const rd=new FileReader();
+  rd.onload=e=>{img.src=e.target.result;};
+  img.onload=()=>{let w=img.width,h=img.height;
+    if(w>h&&w>mx){h=Math.round(h*mx/w);w=mx;}else if(h>=w&&h>mx){w=Math.round(w*mx/h);h=mx;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+    c.toBlob(b=>cb(b||file),'image/jpeg',q);};
+  rd.readAsDataURL(file);
+}
+async function uploadMedia(blob,folder,onProgress,name){
+  const fb=(typeof FB==='function')?FB():null;
+  if(!fb||!fb.storage)throw new Error('Bulut depolama yüklenmedi.');
+  const user=fb.auth().currentUser;if(!user)throw new Error('Medya yüklemek için önce hesabınla giriş yap.');
+  const ext=((name&&name.indexOf('.')>=0)?name.split('.').pop():((blob.type||'').split('/')[1]||'bin')).toLowerCase().replace(/[^a-z0-9]/g,'')||'bin';
+  const path='users/'+user.uid+'/'+folder+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  const ref=fb.storage().ref().child(path);
+  const task=ref.put(blob);
+  await new Promise((res,rej)=>task.on('state_changed',s=>{if(onProgress)onProgress(Math.round(s.bytesTransferred/Math.max(1,s.totalBytes)*100));},rej,res));
+  return await ref.getDownloadURL();
+}
+function handleImageUpload(file,folder,done,onProgress){
+  if(!file)return;
+  const fb=(typeof FB==='function')?FB():null;
+  const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
+  resizePhotoBlob(file,async blob=>{
+    if(loggedIn){try{const url=await uploadMedia(blob,folder,onProgress);done(url);return;}catch(e){console.warn('image upload failed → base64 fallback',e);}}
+    const r=new FileReader();r.onload=e=>done(e.target.result);r.readAsDataURL(blob);
+  });
+}
 function resizePhoto(file,cb){
   // Higher quality for sport-science test photos: 700px max, JPEG 0.90.
   // ~3-5× more pixels than the old 200/0.75 setting → noticeably sharper
