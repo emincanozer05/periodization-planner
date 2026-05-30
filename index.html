@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script>
   try{
     firebase.initializeApp({
@@ -2927,7 +2928,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       <div className="ath-hero ath-hero-c">
         <div className="ath-hero-photo" onClick={()=>photoRef.current?.click()} title="Click to change photo" style={{cursor:'pointer'}}>
           {ath.photo?<img src={ath.photo} alt=""/>:'📷'}
-          <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)resizePhoto(f,d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
+          <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
         </div>
         <div className="ath-hero-info">
           <h1>{ath.name||'Unnamed Athlete'}</h1>
@@ -3819,14 +3820,26 @@ function VideoPlayer({ex}){
 
 function ExerciseModal({ex,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
-  const onVideoFile=file=>{
+  const[upPct,setUpPct]=useState(null);
+  const onVideoFile=async file=>{
     if(!file)return;
     const mb=file.size/1048576;
-    if(mb>25){alert('Video çok büyük ('+mb.toFixed(1)+' MB). 25 MB altı bir dosya seç ya da YouTube/Vimeo linki kullan.');return;}
-    if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Büyük videolar cihaz hafızasını zorlayabilir; link (YouTube) önerilir. Yine de yüklensin mi?'))return;
+    const fb=(typeof FB==='function')?FB():null;
+    const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
+    if(loggedIn){
+      // Logged in → upload to cloud Storage; store the URL (no localStorage bloat).
+      if(mb>200){alert('Video çok büyük ('+mb.toFixed(0)+' MB). 200 MB altı bir dosya seç ya da YouTube linki kullan.');return;}
+      try{setUpPct(0);const url=await uploadMedia(file,'videos',p=>setUpPct(p),file.name);set('videoUrl',url);set('videoData','');}
+      catch(e){alert('Video yüklenemedi: '+(e.message||e));}
+      finally{setUpPct(null);}
+      return;
+    }
+    // Not logged in → small base64 fallback only.
+    if(mb>25){alert('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB. Daha büyük videoda YouTube linki kullan.');return;}
+    if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
     const r=new FileReader();r.onload=e=>set('videoData',e.target.result);r.readAsDataURL(file);
   };
-  const onThumb=file=>{if(file)resizePhoto(file,d=>set('thumb',d));};
+  const onThumb=file=>{if(file)handleImageUpload(file,'covers',d=>set('thumb',d));};
   return(<div className="modal-bg" onClick={onClose}>
     <div className="modal ex-modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
