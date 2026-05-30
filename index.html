@@ -3587,22 +3587,21 @@ async function cloudWrite(fb,uid,str,rev){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   const dataCol=userDoc.collection('data');
-  // SHRINK-GUARD: if we're about to drastically reduce what's stored
-  // (e.g. an empty device overwriting a full account, or a mass delete),
-  // copy the CURRENT cloud version into a backup slot first so it can be restored.
+  // Read the meta doc ONCE — it gives the previous chunk count so we never
+  // re-download the whole payload just to find stale chunks (main slowdown).
+  let oldN=0;
   try{
     const cur=await userDoc.get();
-    if(cur.exists&&cur.data()&&cur.data().chunks){
-      const oldSize=cur.data().size||0,oldN=cur.data().chunks;
-      if(oldSize>5000 && str.length < oldSize*0.5){
+    if(cur.exists&&cur.data()){
+      const md=cur.data();oldN=md.chunks||0;const oldSize=md.size||0;
+      // SHRINK-GUARD: before drastically shrinking the cloud copy, back it up.
+      if(oldN&&oldSize>5000&&str.length<oldSize*0.5){
         const bCol=userDoc.collection('backup');
         const snaps=await Promise.all(Array.from({length:oldN},(_,i)=>dataCol.doc(String(i)).get()));
         const bb=db.batch();
         snaps.forEach((d,i)=>bb.set(bCol.doc(String(i)),{c:(d.exists&&d.data())?(d.data().c||''):''}));
-        bb.set(userDoc,{bChunks:oldN,bRev:cur.data().rev||'',bSize:oldSize,bAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+        bb.set(userDoc,{bChunks:oldN,bRev:md.rev||'',bSize:oldSize,bAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
         await bb.commit();
-        const allB=await bCol.get();const sb=[];allB.forEach(d=>{if(Number(d.id)>=oldN)sb.push(d.ref);});
-        if(sb.length){const b2=db.batch();sb.forEach(r=>b2.delete(r));await b2.commit();}
       }
     }
   }catch(e){console.warn('backup-guard',e);}
@@ -3612,10 +3611,8 @@ async function cloudWrite(fb,uid,str,rev){
   for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
   batch.set(userDoc,{chunks:n,rev:rev,size:str.length,updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
   await batch.commit();
-  // drop leftover chunks from a previously larger payload
-  const all=await dataCol.get();
-  const stale=[]; all.forEach(d=>{if(Number(d.id)>=n)stale.push(d.ref);});
-  if(stale.length){const b=db.batch();stale.forEach(r=>b.delete(r));await b.commit();}
+  // Drop leftover chunks ONLY when the payload shrank — by reference, no read.
+  if(oldN>n){const b=db.batch();for(let i=n;i<oldN;i++)b.delete(dataCol.doc(String(i)));await b.commit();}
   return rev;
 }
 async function cloudRead(fb,uid){
