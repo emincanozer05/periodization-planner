@@ -460,6 +460,19 @@ tr:hover td{background:#f8fafc}
 .rs-meta{font-size:12px;color:var(--accent2);font-weight:600;margin-bottom:3px}
 .rs-jr{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px}
 .rs-sum{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+/* Research modal — bigger, with rich-text summary editor */
+.rs-modal{max-width:920px;width:95vw}
+.rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
+.rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
+.rt-b:hover{border-color:var(--accent);color:var(--accent2)}
+.rt-sep{width:1px;align-self:stretch;background:var(--border);margin:0 3px}
+.rt-edit{min-height:320px;max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--elevated);color:var(--text);font-size:14.5px;line-height:1.65}
+.rt-edit:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(8,145,178,.15)}
+.rt-edit:empty:before{content:attr(data-ph);color:var(--dim)}
+.rt-edit h2{font-size:21px;font-weight:800;margin:.5em 0}
+.rt-edit h3{font-size:17px;font-weight:700;margin:.5em 0}
+.rt-edit ul,.rt-edit ol{padding-left:24px;margin:.4em 0}
+.rt-edit a{color:var(--accent2)}
 /* Athlete profile — centered hero + tile nav */
 .ath-hero-c{flex-direction:column;align-items:center;text-align:center;gap:10px;background:#0b0f1a;border:1px solid #1b2435;border-radius:16px;padding:26px 20px;margin-top:12px}
 .ath-hero-c .ath-hero-photo{width:120px;height:120px;border-radius:50%;border:3px solid #2a3550;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:40px;background:#11192c;flex:none}
@@ -3967,6 +3980,62 @@ function authorsLine(m){
   const A=m.authors||[];if(!A.length)return m.authorsText||'';
   return A.map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
 }
+// Minimal rich-text editor (contentEditable + execCommand) — stores HTML.
+function RichText({html,onChange}){
+  const ref=useRef(null);
+  useEffect(()=>{if(ref.current&&ref.current.innerHTML!==(html||''))ref.current.innerHTML=html||'';},[]);
+  const cmd=(c,v)=>{ref.current.focus();document.execCommand(c,false,v);onChange(ref.current.innerHTML);};
+  const Btn=({c,v,children,st})=><button type="button" className="rt-b" style={st} onMouseDown={e=>e.preventDefault()} onClick={()=>cmd(c,v)}>{children}</button>;
+  return(<div>
+    <div className="rt-tools">
+      <Btn c="bold" st={{fontWeight:800}}>B</Btn>
+      <Btn c="italic" st={{fontStyle:'italic'}}>I</Btn>
+      <Btn c="underline" st={{textDecoration:'underline'}}>U</Btn>
+      <span className="rt-sep"/>
+      <Btn c="formatBlock" v="H2">Başlık</Btn>
+      <Btn c="formatBlock" v="H3">Alt Başlık</Btn>
+      <Btn c="formatBlock" v="P">Paragraf</Btn>
+      <span className="rt-sep"/>
+      <select className="rt-b" defaultValue="" onMouseDown={e=>e.stopPropagation()} onChange={e=>{const v=e.target.value;e.target.value='';if(v)cmd('fontSize',v);}}>
+        <option value="" disabled>Boyut</option>
+        <option value="2">Küçük</option><option value="4">Normal</option><option value="6">Büyük</option><option value="7">Çok Büyük</option>
+      </select>
+      <Btn c="insertUnorderedList">• Liste</Btn>
+      <Btn c="insertOrderedList">1. Liste</Btn>
+      <span className="rt-sep"/>
+      <Btn c="removeFormat">✕ Biçimi Temizle</Btn>
+    </div>
+    <div ref={ref} className="rt-edit" contentEditable suppressContentEditableWarning
+      onInput={e=>onChange(e.currentTarget.innerHTML)}
+      data-ph="Makalenin özeti, çıkarımlar, uygulama notları… (metni seçip yukarıdan kalın/büyük yapabilirsin)"/>
+  </div>);
+}
+// Print a single research note on A4 (title, authors, APA, formatted summary).
+function printResearch(rec){
+  const w=window.open('','_blank','width=900,height=1100');
+  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(rec.title||'Makale')}</title><style>
+@page{size:A4 portrait;margin:18mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
+h1{font-size:23px;font-weight:800;margin-bottom:8px;line-height:1.2}
+.meta{font-size:12px;color:#475569;margin-bottom:2px}
+.apa{font-size:12px;color:#334155;background:#f1f5f9;border-left:3px solid #0891b2;padding:10px 12px;border-radius:6px;margin:14px 0;word-break:break-word}
+.sumh{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#0891b2;margin:20px 0 8px;border-bottom:2px solid #e5e7eb;padding-bottom:5px}
+.sum{font-size:13px}
+.sum h2{font-size:18px;margin:.5em 0}.sum h3{font-size:15px;margin:.5em 0}.sum ul,.sum ol{padding-left:22px;margin:.4em 0}
+</style></head><body>
+<h1>${esc(rec.title||'(başlıksız makale)')}</h1>
+${rec.authorsText?`<div class="meta"><b>Yazar(lar):</b> ${esc(rec.authorsText)}</div>`:''}
+${(rec.journal||rec.year)?`<div class="meta">${esc([rec.journal,rec.year].filter(Boolean).join(' · '))}</div>`:''}
+${rec.apa?`<div class="apa">${esc(rec.apa)}</div>`:''}
+<div class="sumh">Özet</div>
+<div class="sum">${rec.summary||'<i>Özet girilmemiş.</i>'}</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
+}
 function ResearchModal({rec,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
   const[busy,setBusy]=useState(false);const[err,setErr]=useState('');
@@ -3974,13 +4043,13 @@ function ResearchModal({rec,onChange,onDelete,onClose}){
     setErr('');setBusy(true);
     try{const m=await fetchCrossref(rec.url||rec.doi);
       onChange({doi:m.doi,url:m.url,year:String(m.year||''),date:m.date,journal:m.journal,
-        title:rec.title||m.title,authors:m.authors,authorsText:authorsLine(m),apa:apaCite(m)});
+        authors:m.authors,authorsText:authorsLine(m),apa:apaCite(m)});
     }catch(e){setErr(e.message||String(e));}finally{setBusy(false);}
   };
   return(<div className="modal-bg" onClick={onClose}>
-    <div className="modal ex-modal" onClick={e=>e.stopPropagation()}>
+    <div className="modal ex-modal rs-modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
-        <input className="ex-title-in" value={rec.title} placeholder="Makale başlığı…" onChange={e=>set('title',e.target.value)}/>
+        <input className="ex-title-in" value={rec.title} placeholder="Makale başlığını elle yaz…" onChange={e=>set('title',e.target.value)}/>
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
       <div className="ex-modal-body">
@@ -4000,13 +4069,16 @@ function ResearchModal({rec,onChange,onDelete,onClose}){
         <div style={{marginTop:14}}><label>Dergi</label><input value={rec.journal||''} onChange={e=>set('journal',e.target.value)} placeholder="Journal of …"/></div>
         <div style={{marginTop:14}}><label>APA Kaynakça</label>
           <textarea value={rec.apa||''} onChange={e=>set('apa',e.target.value)} placeholder="Otomatik oluşur — düzenleyebilirsin." style={{minHeight:70}}/></div>
-        <div style={{marginTop:14}}><label>Özet / Blog</label>
-          <textarea value={rec.summary||''} onChange={e=>set('summary',e.target.value)} placeholder="Makalenin özeti, çıkarımlar, uygulama notları…" style={{minHeight:180}}/></div>
         <div style={{marginTop:14}}><label>Etiketler (virgülle)</label><input value={rec.tags||''} onChange={e=>set('tags',e.target.value)} placeholder="kuvvet, ACWR, yaralanma…"/></div>
+        <div style={{marginTop:16}}><label>Özet / Blog</label>
+          <RichText html={rec.summary} onChange={v=>set('summary',v)}/></div>
       </div>
       <div className="modal-foot">
         <button className="btn danger sm" onClick={onDelete}>Sil</button>
-        <button className="btn sm" onClick={onClose}>Bitti</button>
+        <div className="row" style={{gap:8}}>
+          <button className="btn sec sm" onClick={()=>printResearch(rec)}>🖨 Yazdır (A4)</button>
+          <button className="btn sm" onClick={onClose}>Bitti</button>
+        </div>
       </div>
     </div>
   </div>);
@@ -4018,7 +4090,6 @@ function ResearchCard({rec,onOpen}){
       <div className="ex-cname">{rec.title||'(başlıksız makale)'}</div>
       <div className="rs-meta">{[rec.authorsText,rec.year].filter(Boolean).join(' · ')||'—'}</div>
       {rec.journal&&<div className="rs-jr">{rec.journal}</div>}
-      {rec.summary&&<div className="rs-sum">{rec.summary}</div>}
       <div className="ex-ctags">{tags.slice(0,4).map((t,i)=><span key={i} className="ex-tag">{t}</span>)}</div>
     </div>
   </div>);
