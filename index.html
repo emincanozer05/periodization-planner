@@ -398,6 +398,47 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-novid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px}
 .modal-foot{display:flex;justify-content:space-between;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
 @media(max-width:720px){.ex-h1{font-size:24px}.ex-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
+/* ===================================================================
+   LIGHT THEME OVERRIDE — flat colors, black sidebar, readable charts.
+   Placed last so it wins over the original dark rules above.
+   =================================================================== */
+:root{
+  --bg:#eef2f7;--bg2:#ffffff;--panel:#ffffff;--elevated:#f1f5f9;--hover:rgba(15,23,42,.05);
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--text2:#334155;--muted:#64748b;--dim:#94a3b8;
+  --accent:#0891b2;--accent2:#0e7490;--accent-bg:rgba(8,145,178,.10);
+  --grad:#0891b2;--grad-soft:rgba(8,145,178,.10);   /* flat, no gradients */
+  --low:#cffafe;--med:#fef3c7;--high:#fee2e2;--peak:#ede9fe;
+  --low-t:#0e7490;--med-t:#b45309;--high-t:#b91c1c;--peak-t:#6d28d9;
+  --shadow:0 1px 3px rgba(15,23,42,.06),0 1px 2px rgba(15,23,42,.04);
+  --shadow-glow:0 0 0 1px rgba(8,145,178,.22),0 6px 18px rgba(15,23,42,.08);
+}
+body{background:var(--bg);background-image:none;color:var(--text)}
+::selection{background:var(--accent);color:#fff}
+::-webkit-scrollbar-thumb{background:#cbd5e1}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+/* Black left sidebar with light tabs */
+.sidebar{background:#0b0f1a;backdrop-filter:none;border-right:1px solid #1b2435}
+nav button{background:transparent;border:1px solid #28324a;color:#cbd5e1}
+nav button:hover{background:rgba(255,255,255,.06);border-color:#3a4663;color:#fff}
+nav button.active{background:rgba(8,145,178,.22);border-color:#0891b2;color:#67e8f9}
+/* Light header, flat dark title (kill gradient text) */
+header{background:rgba(255,255,255,.92);backdrop-filter:saturate(1.2) blur(8px);border-bottom:1px solid var(--border)}
+header h1{background:none;-webkit-text-fill-color:#0f172a;color:#0f172a}
+/* Flat primary buttons + flat accent bars */
+.btn{background:var(--accent);color:#fff;box-shadow:none}
+.btn:hover{background:#0e7490;box-shadow:none;transform:none}
+.btn.danger{background:#dc2626}
+.panel h2::before{background:var(--accent)}
+.metric::before{background:var(--accent);opacity:1}
+.sbar .sn,.srpe-bar button.on,.subnav button.active{background:var(--accent)}
+/* Tables: light header, dark text, subtle hover */
+th{background:#f1f5f9;color:#475569}
+tr:hover td{background:#f8fafc}
+/* Calendar: light tints, dark readable labels, no glow */
+.cal-day .dt.sn{text-shadow:none}
+.cal-day .dt.au{color:#0f172a;text-shadow:none}
+.cal-day .dn{color:#0f172a}
 </style>
 </head>
 <body>
@@ -431,8 +472,8 @@ const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CHART_DARK={
-  scales:{x:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'}},y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},beginAtZero:true}},
-  plugins:{legend:{labels:{color:'#e2e8f0',font:{family:'Inter'}}}}
+  scales:{x:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.08)'}},y:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.07)'},beginAtZero:true}},
+  plugins:{legend:{labels:{color:'#334155',font:{family:'Inter'}}}}
 };
 
 /* =========================================================
@@ -1518,7 +1559,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 /* =========================================================
    CALENDAR (reusable for team & athlete)
    ========================================================= */
-const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
+const SESS_COLORS=['#0e7490','#b45309','#15803d','#be185d'];
 function CalendarView({days,selected,setSelected,goDayView,weeks}){
   const ref=parseD(selected.date);const yr=ref.getFullYear(),mo=ref.getMonth();
   const first=new Date(yr,mo,1);const offset=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
@@ -1882,7 +1923,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
       <div className="panel"><h2>Training Purpose Distribution</h2><div className="chart-box sm">
         {pMix.length>0?<ChartC type="doughnut" chartData={{labels:pMix.map(p=>p.label),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),
           backgroundColor:['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e']}]}}
-          options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#e2e8f0'}}}}}/>
+          options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#334155'}}}}}/>
         :<div className="empty-st">No data for this month</div>}
       </div></div>
       <div className="panel"><h2>Weekly Detail</h2>
@@ -2115,7 +2156,7 @@ function TeamReports({team,weeks,selected,setSelected}){
         {acwrWeekly.some(x=>x.acwr>0)?<ChartC type="bar" chartData={{labels:acwrWeekly.map(x=>x.label),datasets:[{
           label:'ACWR',data:acwrWeekly.map(x=>x.acwr),
           backgroundColor:acwrWeekly.map(x=>x.acwr>1.5?'#ef4444':(x.acwr>=0.8&&x.acwr<=1.3)?'#10b981':x.acwr>0?'#f59e0b':'#334155'),borderRadius:5,
-          datalabels:{display:true,anchor:'end',align:'end',color:'#e2e8f0',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}
+          datalabels:{display:true,anchor:'end',align:'end',color:'#334155',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}
         }]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
           scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y,title:{display:true,text:'ACWR',color:'#94a3b8'},suggestedMax:2}},
           plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>'ACWR: '+i.parsed.y.toFixed(2)}}}}}/>
@@ -2129,7 +2170,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       <div className="chart-box sm" style={{marginBottom:12}}>
         <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),
           backgroundColor:mWeeks.map(w=>w.monotony>2?'#ef4444':w.monotony>1.5?'#f59e0b':w.monotony>0?'#10b981':'#334155'),borderRadius:5,
-          datalabels:{display:true,anchor:'end',align:'end',color:'#e2e8f0',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}}]}}
+          datalabels:{display:true,anchor:'end',align:'end',color:'#334155',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}}]}}
           options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,plugins:{legend:{display:false}}}}/>
       </div>
       <table><thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Monotony</th><th>Strain</th><th>Flag</th></tr></thead><tbody>
@@ -2144,7 +2185,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       {pMix.length>0?<div className="grid cols-2">
         <div className="chart-box sm">
           <ChartC type="doughnut" chartData={{labels:pMix.map(p=>p.label),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),backgroundColor:PCOL}]}}
-            options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#e2e8f0'}}}}}/>
+            options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#334155'}}}}}/>
         </div>
         <div><table><thead><tr><th>Purpose</th><th>Minutes</th><th>%</th></tr></thead><tbody>
           {pMix.map((p,i)=><tr key={p.label}><td><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:PCOL[i%PCOL.length],marginRight:7}}/>{p.label}</td><td>{p.min}</td><td>{p.pct.toFixed(1)}%</td></tr>)}
@@ -2641,7 +2682,7 @@ function TestProgressionCharts({tests}){
           {label:'Wingspan (cm)',data:sorted.map(t=>Number(t.wingspan)||null),borderColor:'#22d3ee',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#a5f3fc')},
           {label:'Body Fat (%)',data:sorted.map(t=>Number(t.bodyFat)||null),borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle,datalabels:labelOpt('#fdba74')},
         ]}} options={{...baseOpt,
-          scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},title:{display:true,text:'cm / kg',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Body Fat (%)',color:'#94a3b8'}}}}}/>
+          scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'cm / kg',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Body Fat (%)',color:'#94a3b8'}}}}}/>
       </div>
     </div>
 
@@ -2703,7 +2744,7 @@ function TestProgressionCharts({tests}){
           {label:'Ankle DF Right (°)',data:sorted.map(t=>Number(t.ankleDF?.right)||null),borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle},
           {label:'Ankle DF Left (°)',data:sorted.map(t=>Number(t.ankleDF?.left)||null),borderColor:'#fb923c',borderDash:[5,5],tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle},
         ]}} options={{...baseOpt,
-          scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},title:{display:true,text:'FMS Score',color:'#94a3b8'},min:0,max:3},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Degrees',color:'#94a3b8'}}}}}/>
+          scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'FMS Score',color:'#94a3b8'},min:0,max:3},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Degrees',color:'#94a3b8'}}}}}/>
       </div>
     </div>
   </div>);
@@ -2946,7 +2987,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                 {label:'Weight (kg)',data:ath.measurements.map(m=>Number(m.weight)||null),borderColor:'#06b6d4',backgroundColor:'rgba(6,182,212,.15)',tension:.3,spanGaps:true,borderWidth:2,fill:true},
                 {label:'Body Fat (%)',data:ath.measurements.map(m=>Number(m.bodyFat)||null),borderColor:'#f97316',tension:.3,yAxisID:'y1',spanGaps:true,borderWidth:2},
               ]}} options={{responsive:true,maintainAspectRatio:false,
-                scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},title:{display:true,text:'kg',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'%',color:'#94a3b8'}}},
+                scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'kg',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'%',color:'#94a3b8'}}},
                 plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>
             </div>
             <div className="chart-box sm">
@@ -2955,7 +2996,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                 {label:'Height (cm)',data:ath.measurements.map(m=>Number(m.height)||null),borderColor:'#a855f7',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1'}]}}
                 options={{responsive:true,maintainAspectRatio:false,
                   scales:{x:CHART_DARK.scales.x,
-                    y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},title:{display:true,text:'Muscle (kg)',color:'#94a3b8'}},
+                    y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'Muscle (kg)',color:'#94a3b8'}},
                     y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Height (cm)',color:'#94a3b8'}}},
                   plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>
             </div>
@@ -3015,7 +3056,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:24,bottom:20}},
                 scales:{x:CHART_DARK.scales.x,
-                  y:{ticks:{color:'#94a3b8'},grid:{color:'#2d3548'},title:{display:true,text:'RHR (bpm)',color:'#94a3b8'}},
+                  y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'RHR (bpm)',color:'#94a3b8'}},
                   y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Readiness',color:'#94a3b8'},min:0,max:5}},
                 plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>:
               <div className="empty-st">No wellness entries this week — try ‹ Week / Week › or click Latest.</div>}
