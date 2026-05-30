@@ -454,6 +454,12 @@ tr:hover td{background:#f8fafc}
 .wv-day .ws-actions button{background:rgba(255,255,255,.08);color:#cbd5e1}
 .sbar{background:#0f1526;border-color:#27314a}
 .sbar input{color:#f1f5f9}
+/* Researches cards */
+.rs-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.rs-card .ex-cbody{padding:14px 15px 15px}
+.rs-meta{font-size:12px;color:var(--accent2);font-weight:600;margin-bottom:3px}
+.rs-jr{font-size:11px;color:var(--muted);font-style:italic;margin-bottom:8px}
+.rs-sum{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 </style>
 </head>
 <body>
@@ -666,6 +672,10 @@ function migrate(data){
   data.teams=data.teams.map(migrateTeam);
   if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
   if(!data.notionSync)data.notionSync={workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+  if(!Array.isArray(data.researches))data.researches=[];
+  data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
+    authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
+    journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.exercises))data.exercises=[];
   data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:e.type||'',muscle:e.muscle||'',
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
@@ -3922,7 +3932,7 @@ function App(){
   const goDayView=k=>{setDayKey(k);setView('program');};
 
   const TABS=[{id:'setup',label:'Setup'},{id:'season',label:'Season Plan'},{id:'calendar',label:'Calendar'},
-    {id:'program',label:'Program'},{id:'athletes',label:'Athletes'},{id:'exercises',label:'Exercises'},{id:'reports',label:'Reports'},
+    {id:'program',label:'Program'},{id:'athletes',label:'Athletes'},{id:'exercises',label:'Exercises'},{id:'researches',label:'Researches'},{id:'reports',label:'Reports'},
     {id:'notion',label:'🔗 Notion Sync'},{id:'teams',label:'Teams'},{id:'backup',label:'Backup'}];
 
   return(<div className="app">
@@ -3959,6 +3969,7 @@ function App(){
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
       {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
+      {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='notion'&&<NotionSync data={data} setData={setData} team={team}/>}
