@@ -2910,25 +2910,26 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
   return(<div>
     <div className="panel">
       <button className="btn sec sm" onClick={onBack} style={{marginBottom:14}}>← Back to Roster</button>
-      <div className="ath-profile">
-        <div className="photo-lg" onClick={()=>photoRef.current?.click()} title="Click to change photo">
+      <div className="ath-hero ath-hero-c">
+        <div className="ath-hero-photo" onClick={()=>photoRef.current?.click()} title="Click to change photo" style={{cursor:'pointer'}}>
           {ath.photo?<img src={ath.photo} alt=""/>:'📷'}
           <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)resizePhoto(f,d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
         </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:26,fontWeight:700,fontFamily:'Space Grotesk',color:'var(--text)'}}>{ath.name}</div>
-          <div style={{color:'var(--muted)',fontSize:14,marginTop:3}}>#{ath.number||'—'} · {ath.position}{ath.dateOfBirth?` · Born ${fd(ath.dateOfBirth)}`:''}</div>
-          <div style={{color:'var(--muted)',fontSize:14}}>{ath.height?`${ath.height} cm`:''}{ath.weight?` · ${ath.weight} kg`:''}</div>
-          {ath.notes&&<div style={{marginTop:8,fontSize:13,color:'var(--text2)',padding:'8px 12px',background:'var(--elevated)',borderRadius:6,borderLeft:'3px solid var(--accent)'}}>{ath.notes}</div>}
+        <div className="ath-hero-info">
+          <h1>{ath.name||'Unnamed Athlete'}</h1>
+          <div className="ath-hero-sub">{setup.teamName}{ath.position?<span> › {ath.position}</span>:null}</div>
+          <div className="ath-hero-meta">
+            {ath.number&&<span className="ath-hero-stat">#{ath.number}</span>}
+            {ath.height&&<span className="ath-hero-stat">{ath.height} cm</span>}
+            {ath.weight&&<span className="ath-hero-stat">{ath.weight} kg</span>}
+            {ath.dateOfBirth&&<span className="ath-hero-stat">{fd(ath.dateOfBirth)}</span>}
+          </div>
         </div>
       </div>
 
-      <div className="subnav">
-        <button className={tab==='profile'?'active':''} onClick={()=>setTab('profile')}>Profile</button>
-        <button className={tab==='calendar'?'active':''} onClick={()=>setTab('calendar')}>Calendar (Monthly)</button>
-        <button className={tab==='week'?'active':''} onClick={()=>setTab('week')}>Program (Weekly)</button>
-        <button className={tab==='reports'?'active':''} onClick={()=>setTab('reports')}>Reports & ACWR</button>
-        <button className={tab==='tests'?'active':''} onClick={()=>setTab('tests')}>📋 Tests</button>
+      <div className="ath-tiles">
+        {[{id:'profile',ic:'📊',l:'Profile'},{id:'calendar',ic:'📅',l:'Calendar'},{id:'week',ic:'📋',l:'Program'},{id:'reports',ic:'📈',l:'Reports & ACWR'},{id:'tests',ic:'🧪',l:'Testing'}]
+          .map(t=><button key={t.id} className={`ath-tile${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}><span className="ati">{t.ic}</span><span className="atl">{t.l}</span></button>)}
       </div>
     </div>
 
@@ -3929,6 +3930,120 @@ function ExercisesView({data,setData}){
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
 
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
+  </div>);
+}
+
+/* =========================================================
+   RESEARCHES — article-summary blog (auto APA via CrossRef)
+   ========================================================= */
+async function fetchCrossref(input){
+  const m=(input||'').match(/10\.\d{4,9}\/[^\s"<>]+/i);
+  if(!m)throw new Error('DOI bulunamadı — makalenin DOI içeren linkini ya da DOI’sini gir (ör. 10.1234/abcd).');
+  const doi=m[0].replace(/[).,;]+$/,'');
+  const r=await fetch('https://api.crossref.org/works/'+encodeURIComponent(doi),{headers:{'Accept':'application/json'}});
+  if(!r.ok)throw new Error('CrossRef HTTP '+r.status);
+  const w=(await r.json()).message;
+  const dp=((w.issued||w['published']||w['published-print']||w['published-online']||{})['date-parts']||[[]])[0]||[];
+  return{doi,url:w.URL||input,
+    authors:(w.author||[]).map(a=>({family:a.family||'',given:a.given||''})),
+    year:dp[0]||'',date:dp.join('-'),
+    title:(w.title&&w.title[0])||'',journal:(w['container-title']&&w['container-title'][0])||'',
+    volume:w.volume||'',issue:w.issue||'',page:w.page||''};
+}
+function apaCite(m){
+  const fmtA=a=>{const ini=(a.given||'').split(/[\s.]+/).filter(Boolean).map(s=>s[0].toUpperCase()+'.').join(' ');return (a.family||'')+(ini?', '+ini:'');};
+  const A=m.authors||[];let auth='';
+  if(A.length===1)auth=fmtA(A[0]);
+  else if(A.length>=2&&A.length<=20)auth=A.slice(0,-1).map(fmtA).join(', ')+', & '+fmtA(A[A.length-1]);
+  else if(A.length>20)auth=A.slice(0,19).map(fmtA).join(', ')+', … '+fmtA(A[A.length-1]);
+  const yr=m.year?`(${m.year}).`:'(n.d.).';
+  const title=m.title?(m.title.replace(/\s*\.\s*$/,'')+'.'):'';
+  let src='';
+  if(m.journal){src=m.journal+(m.volume?`, ${m.volume}`:'')+(m.issue?`(${m.issue})`:'')+(m.page?`, ${m.page}`:'')+'.';}
+  const link=m.doi?`https://doi.org/${m.doi}`:(m.url||'');
+  return [auth,yr,title,src,link].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+}
+function authorsLine(m){
+  const A=m.authors||[];if(!A.length)return m.authorsText||'';
+  return A.map(a=>[a.given,a.family].filter(Boolean).join(' ')).join(', ');
+}
+function ResearchModal({rec,onChange,onDelete,onClose}){
+  const set=(k,v)=>onChange({[k]:v});
+  const[busy,setBusy]=useState(false);const[err,setErr]=useState('');
+  const fetchMeta=async()=>{
+    setErr('');setBusy(true);
+    try{const m=await fetchCrossref(rec.url||rec.doi);
+      onChange({doi:m.doi,url:m.url,year:String(m.year||''),date:m.date,journal:m.journal,
+        title:rec.title||m.title,authors:m.authors,authorsText:authorsLine(m),apa:apaCite(m)});
+    }catch(e){setErr(e.message||String(e));}finally{setBusy(false);}
+  };
+  return(<div className="modal-bg" onClick={onClose}>
+    <div className="modal ex-modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-head">
+        <input className="ex-title-in" value={rec.title} placeholder="Makale başlığı…" onChange={e=>set('title',e.target.value)}/>
+        <button className="x-btn" onClick={onClose}>✕</button>
+      </div>
+      <div className="ex-modal-body">
+        <div>
+          <label>Makale Linki / DOI</label>
+          <div className="row" style={{gap:8,flexWrap:'nowrap'}}>
+            <input value={rec.url} onChange={e=>set('url',e.target.value)} placeholder="https://doi.org/10.1234/… ya da DOI"/>
+            <button className="btn sm" disabled={busy} onClick={fetchMeta} style={{whiteSpace:'nowrap'}}>{busy?'Alınıyor…':'⤓ Bilgileri Getir'}</button>
+          </div>
+          <div className="help" style={{marginTop:4}}>Linki yapıştırıp <b>Bilgileri Getir</b>’e bas — yazarlar, tarih ve APA otomatik dolar (DOI’li makalelerde).</div>
+          {err&&<div className="help" style={{marginTop:6,color:'#dc2626'}}>{err}</div>}
+        </div>
+        <div className="grid cols-2" style={{marginTop:14}}>
+          <div><label>Yazar(lar)</label><input value={rec.authorsText||''} onChange={e=>set('authorsText',e.target.value)} placeholder="Surname, N., …"/></div>
+          <div><label>Yıl / Tarih</label><input value={rec.year||''} onChange={e=>set('year',e.target.value)} placeholder="2024"/></div>
+        </div>
+        <div style={{marginTop:14}}><label>Dergi</label><input value={rec.journal||''} onChange={e=>set('journal',e.target.value)} placeholder="Journal of …"/></div>
+        <div style={{marginTop:14}}><label>APA Kaynakça</label>
+          <textarea value={rec.apa||''} onChange={e=>set('apa',e.target.value)} placeholder="Otomatik oluşur — düzenleyebilirsin." style={{minHeight:70}}/></div>
+        <div style={{marginTop:14}}><label>Özet / Blog</label>
+          <textarea value={rec.summary||''} onChange={e=>set('summary',e.target.value)} placeholder="Makalenin özeti, çıkarımlar, uygulama notları…" style={{minHeight:180}}/></div>
+        <div style={{marginTop:14}}><label>Etiketler (virgülle)</label><input value={rec.tags||''} onChange={e=>set('tags',e.target.value)} placeholder="kuvvet, ACWR, yaralanma…"/></div>
+      </div>
+      <div className="modal-foot">
+        <button className="btn danger sm" onClick={onDelete}>Sil</button>
+        <button className="btn sm" onClick={onClose}>Bitti</button>
+      </div>
+    </div>
+  </div>);
+}
+function ResearchCard({rec,onOpen}){
+  const tags=(rec.tags||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return(<div className="ex-card rs-card" onClick={onOpen}>
+    <div className="ex-cbody">
+      <div className="ex-cname">{rec.title||'(başlıksız makale)'}</div>
+      <div className="rs-meta">{[rec.authorsText,rec.year].filter(Boolean).join(' · ')||'—'}</div>
+      {rec.journal&&<div className="rs-jr">{rec.journal}</div>}
+      {rec.summary&&<div className="rs-sum">{rec.summary}</div>}
+      <div className="ex-ctags">{tags.slice(0,4).map((t,i)=><span key={i} className="ex-tag">{t}</span>)}</div>
+    </div>
+  </div>);
+}
+function ResearchesView({data,setData}){
+  const items=data.researches||[];
+  const setItems=arr=>setData({...data,researches:arr});
+  const[q,setQ]=useState('');const[openId,setOpenId]=useState(null);
+  const add=()=>{const r={id:uid(),title:'',url:'',doi:'',authors:[],authorsText:'',year:'',date:'',journal:'',apa:'',summary:'',tags:'',addedAt:Date.now()};setItems([r,...items]);setOpenId(r.id);};
+  const patch=(id,p)=>setItems(items.map(r=>r.id===id?{...r,...p}:r));
+  const remove=id=>{if(window.confirm('Bu makale silinsin mi?')){setItems(items.filter(r=>r.id!==id));setOpenId(null);}};
+  const ql=q.toLowerCase();
+  const list=items.filter(r=>!q||(r.title||'').toLowerCase().includes(ql)||(r.authorsText||'').toLowerCase().includes(ql)||(r.tags||'').toLowerCase().includes(ql)||(r.summary||'').toLowerCase().includes(ql));
+  const open=items.find(r=>r.id===openId);
+  return(<div className="ex-wrap">
+    <div className="ex-top">
+      <div><h1 className="ex-h1">Researches</h1><div className="sub">Makale özetleri & APA kaynakçası — link yapıştır, bilgiler otomatik gelsin.</div></div>
+    </div>
+    <div className="ex-toolbar">
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Makale ara…"/></div>
+      <button className="btn sm" onClick={add}>＋ Makale Ekle</button>
+    </div>
+    {list.length===0&&<div className="ex-empty">Henüz makale yok. <b>＋ Makale Ekle</b> ile ilk özeti oluştur — DOI linkini yapıştırınca yazar/tarih/APA otomatik yazılır.</div>}
+    <div className="ex-grid rs-grid">{list.map(r=><ResearchCard key={r.id} rec={r} onOpen={()=>setOpenId(r.id)}/>)}</div>
+    {open&&<ResearchModal rec={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
 }
 
