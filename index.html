@@ -377,6 +377,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-thumb img{width:100%;height:100%;object-fit:cover}
 .ex-thumb-ph{font-size:42px;opacity:.5}
 .ex-vbadge{position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:50%;background:rgba(6,182,212,.9);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.ex-thumb-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border:none;background:#000}
 .ex-cbody{padding:12px 13px 14px}
 .ex-cname{font-weight:700;font-size:14px;color:var(--text);margin-bottom:8px;line-height:1.3;overflow-wrap:break-word;word-break:break-word}
 .ex-ctags{display:flex;flex-wrap:wrap;gap:6px}
@@ -534,8 +535,13 @@ tr:hover td{background:#f8fafc}
 .rs-card .rs-jr{color:#94a3b8}
 .rs-card .rs-sum{color:#cbd5e1}
 .ex-h1{color:#f1f5f9}
-.ex-search input{background:#1a2238;border-color:#2b3550;color:#f1f5f9}
-.ex-filter{background:#1a2238;border-color:#2b3550;color:#f1f5f9}
+/* Search + filter — keep light on the page */
+.ex-toolbar .ex-search{background:#ffffff;border-color:#e2e8f0}
+.ex-toolbar .ex-search input{background:transparent;border:none;color:#0f172a}
+.ex-toolbar .ex-search input::placeholder{color:#94a3b8}
+.ex-toolbar .ex-search span{color:#0891b2}
+.ex-toolbar .ex-filter{background:#ffffff;border-color:#e2e8f0;color:#0f172a}
+.ex-toolbar .ex-filter option{background:#ffffff;color:#0f172a}
 /* Metric cards (Reports) */
 .metric{background:#0f1526;border:1px solid #27314a;color:#cbd5e1}
 .metric .ml{color:#94a3b8}
@@ -3971,10 +3977,16 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
 
 function ExerciseCard({ex,onOpen}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
-  return(<div className="ex-card" onClick={onOpen}>
+  const[hov,setHov]=useState(false);
+  // Add autoplay+mute params to YouTube/Vimeo URLs so the preview plays silently on hover
+  const previewSrc=v&&v.kind==='iframe'?(v.src+(v.src.indexOf('?')>=0?'&':'?')+'autoplay=1&mute=1&muted=1&controls=0&playsinline=1&loop=1&modestbranding=1'):null;
+  return(<div className="ex-card" onClick={onOpen} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
     <div className="ex-thumb">
-      {ex.thumb?<img src={ex.thumb} alt=""/>:<div className="ex-thumb-ph">🏋</div>}
-      {v&&<span className="ex-vbadge">▶</span>}
+      {hov&&v?(v.kind==='file'
+        ? <video className="ex-thumb-vid" src={v.src} autoPlay muted loop playsInline/>
+        : <iframe className="ex-thumb-vid" src={previewSrc} title="preview" allow="autoplay; encrypted-media" frameBorder="0"/>
+      ):(ex.thumb?<img src={ex.thumb} alt=""/>:<div className="ex-thumb-ph">🏋</div>)}
+      {v&&!hov&&<span className="ex-vbadge">▶</span>}
     </div>
     <div className="ex-cbody">
       <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
