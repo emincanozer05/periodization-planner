@@ -442,8 +442,8 @@ th{background:#f1f5f9;color:#475569}
 tr:hover td{background:#f8fafc}
 /* Calendar: light tints, dark readable labels, no glow */
 /* Calendar labels: bright, inset chip pills inside the cell */
-.cal-day .dt.sn{display:block;background:rgba(15,23,42,.55);color:#ffffff;font-weight:700;padding:3px 7px;border-radius:6px;margin:4px 0 0;text-shadow:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cal-day .dt.au{display:block;background:rgba(15,23,42,.55);color:#ffffff;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;text-shadow:none;width:fit-content}
+.cal-day .dt.sn{display:block;background:transparent;font-weight:700;padding:2px 0;border-radius:0;margin:4px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 0 6px currentColor,0 0 12px currentColor}
+.cal-day .dt.au{display:block;background:transparent;color:#ffffff;font-weight:800;padding:0;margin-top:4px;text-shadow:0 0 5px rgba(255,255,255,.45)}
 .cal-day .dn{color:#ffffff}
 /* Dark program week-day cards + session header bar (per request) */
 .wv-day{background:#0f1526;border-color:#27314a}
@@ -482,6 +482,13 @@ tr:hover td{background:#f8fafc}
 .rt-edit h3{font-size:17px;font-weight:700;margin:.5em 0}
 .rt-edit ul,.rt-edit ol{padding-left:24px;margin:.4em 0}
 .rt-edit a{color:var(--accent2)}
+/* Multi-select muscle chips */
+.mus-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:var(--elevated);border:1px solid var(--border);border-radius:8px;min-height:42px}
+.mus-pick select{flex:1;min-width:140px;border:none;background:transparent;color:var(--text);padding:6px 4px;font-size:13px;cursor:pointer}
+.mus-pick select:focus{outline:none}
+.mus-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(34,211,238,.14);color:#67e8f9;border:1px solid rgba(34,211,238,.30);padding:4px 10px;border-radius:14px;font-size:12px;font-weight:600}
+.mus-chip button{background:none;border:none;color:#67e8f9;cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 2px}
+.mus-chip button:hover{color:#ef4444}
 /* Reading-mode "paper" — easy on the eyes for long summaries */
 .rt-edit.rs-paper{background:#fdf6e3;color:#1f2937;border:1px solid #ede0c4;min-height:280px;max-height:60vh;font-size:15px;line-height:1.75;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 10px rgba(0,0,0,.18);font-family:'Aptos Display','Aptos','Segoe UI',system-ui,sans-serif}
 .rt-edit.rs-paper h2,.rt-edit.rs-paper h3{color:#0f172a}
@@ -595,16 +602,16 @@ const MODELS=[
   {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
-const PURPOSES=['Base Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Tactical','Recovery','Mobility'];
+const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Team Practice','Recovery','Mobility'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
   {name:'Strength',d:{name:'Strength Session',time:'09:00',loadType:'Mechanical load',purpose:'Maximal Strength',duration:75,bl:[]}},
-  {name:'Practice',d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Tactical',duration:90,bl:[]}},
+  {name:'Practice',d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Team Practice',duration:90,bl:[]}},
   {name:'Speed',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed & Agility',duration:45,bl:[]}},
   {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Aerobic Endurance',duration:45,bl:[]}},
   {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',duration:30,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Tactical',duration:90,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Team Practice',duration:90,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
@@ -691,7 +698,7 @@ function sessionType(s){
      n.includes('speed')||n.includes('agility')||n.includes('sürat')||n.includes('çeviklik')||n.includes('çabukluk'))return'speed';
   if(p.includes('aerobic')||p.includes('anaerobic')||p.includes('endurance')||
      n.includes('endurance')||n.includes('conditioning')||n.includes('dayanıklılık'))return'endurance';
-  return'practice'; // Tactical / Technical / Team Practice default
+  return'practice'; // Team Practice / Technical default
 }
 const sessionColor=s=>SESSION_COLORS[sessionType(s)];
 
@@ -794,7 +801,7 @@ function migrate(data){
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.exercises))data.exercises=[];
-  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:e.type||'',muscle:e.muscle||'',
+  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:e.type||'',muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
   return data;
 }
@@ -977,6 +984,84 @@ function _loadSectionHTML(title,subtitle,colLabels,perAthlete,accent){
 /* Build a Turkish monthly team report (A4 landscape, multi-section):
    summary metrics + Weekly Load Distribution + Daily Team Load + ACWR +
    Weekly Monotony + Training Purpose Distribution. */
+/* Turkish single-week team report (A4 landscape) — mirrors monthly but
+   scoped to one Monday-anchored week (per-day team load + athlete x day
+   matrix + week ACWR/monotony/strain + week purpose distribution). */
+function printWeeklyReportTR(R){
+  const w=window.open('','_blank','width=1280,height=920');
+  if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
+  const nf=v=>Number(v||0).toLocaleString('tr-TR');
+  const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
+  const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
+  const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
+  // Daily team-load mini bar chart for the week
+  const maxDay=Math.max(1,...R.dayTotals);
+  const dailyBars=R.dailyLabels.map((lab,i)=>{const h=Math.round((R.dayTotals[i]/maxDay)*118);return `<div class="bc"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,#0891b2,#0891b2aa)"></div><div class="bl">${lab}</div></div>`;}).join('');
+  const dailySec=`<div class="sec" style="--ac:#0891b2"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
+  // Per-athlete x day matrix
+  const matrixSec=_loadSectionHTML('Sporcu × Gün Yük Dağılımı (AU)','Yüke göre sıralı',R.dailyLabels,R.perAthlete,'#7c3aed');
+  // Week ACWR / Monotony summary card
+  const summary=`<div class="sec" style="--ac:#f59e0b"><div class="sh"><span class="dot"></span><span class="st">Haftalık Özet</span><span class="ssub">${R.weekLabel}</span></div>
+    <table><thead><tr><th class="ath">Gösterge</th><th>Değer</th><th>Durum / Açıklama</th></tr></thead><tbody>
+      <tr><td class="ath">ACWR (hafta sonu)</td><td>${R.acwr?R.acwr.toFixed(2):'—'}</td><td>${acwrTR} · Güvenli aralık 0.8–1.3</td></tr>
+      <tr><td class="ath">Haftalık Toplam Yük</td><td>${nf(Math.round(R.weekTotal))}</td><td>AU (takım)</td></tr>
+      <tr><td class="ath">Ortalama Günlük Yük</td><td>${nf(Math.round(R.weekMean))}</td><td>AU</td></tr>
+      <tr><td class="ath">Standart Sapma</td><td>${R.weekSD.toFixed(1)}</td><td>Günler arası dağılım</td></tr>
+      <tr><td class="ath">Monotoni</td><td>${R.weekMono.toFixed(2)}</td><td>${monoTR(R.weekMono)} (Ortalama ÷ SS)</td></tr>
+      <tr><td class="ath">Zorlanma</td><td>${nf(Math.round(R.weekStrain))}</td><td>Toplam × Monotoni</td></tr>
+      <tr><td class="ath">Antrenman Günü</td><td>${R.trainDays}</td><td>yük &gt; 0 olan günler</td></tr>
+    </tbody></table>
+    <div class="note"><b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — &gt;2 aşırı tek düze.</div></div>`;
+  // Purpose mix
+  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
+  const purposeSec=`<div class="sec" style="--ac:#ec4899"><div class="sh"><span class="dot"></span><span class="st">Antrenman Amacı Dağılımı</span><span class="ssub">Dakika bazında</span></div>
+    <table class="pt"><thead><tr><th class="ath">Amaç</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Haftalık Antrenman Raporu — ${R.teamName}</title><style>
+@page{size:A4 landscape;margin:10mm}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:10px}
+.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0891b2;padding-bottom:9px;margin-bottom:14px}
+.hd h1{font-size:21px;font-weight:800;line-height:1.05}
+.hd .tm{font-size:12px;color:#475569;font-weight:600;margin-top:3px}
+.hd .rng{font-size:13px;font-weight:800;color:#0891b2;background:#ecfeff;padding:6px 16px;border-radius:14px;white-space:nowrap}
+.sec{border:1px solid #e5e7eb;border-radius:9px;overflow:hidden;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
+.sh{display:flex;align-items:center;gap:7px;padding:8px 11px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
+.sh .dot{width:10px;height:10px;border-radius:3px;background:var(--ac)}
+.sh .st{font-size:12px;font-weight:800;color:#0f172a}
+.sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:3px 10px;border-radius:11px;font-weight:700;white-space:nowrap}
+.chart{display:flex;align-items:flex-end;gap:5px;height:128px;padding:10px 10px 0}
+.chart.tall{height:158px}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.bar{width:72%;max-width:46px;border-radius:4px 4px 0 0}
+.bv{font-size:9px;font-weight:800;margin-bottom:2px;white-space:nowrap}
+.bl{font-size:8.5px;color:#64748b;margin-top:5px;text-align:center;font-weight:600;line-height:1.1}
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+th{background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:7px 4px;text-transform:uppercase;letter-spacing:.3px;text-align:center}
+th.ath,td.ath{text-align:left;width:34%;padding-left:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td{padding:6px 4px;text-align:center;font-size:10px;border-top:1px solid #f1f5f9;font-weight:600;color:#1e293b}
+tbody tr:nth-child(even) td{background:#f8fafc}
+td.tot,th.tot{font-weight:800;color:var(--ac);background:#f0f9ff}
+.z{color:#cbd5e1}
+.tr2 td{background:#0f172a!important;color:#fff;font-weight:800;border-top:2px solid var(--ac)}
+.tr2 td.grand{background:var(--ac)!important;color:#fff}
+.note{font-size:9px;color:#64748b;padding:8px 11px;background:#f8fafc;border-top:1px solid #f1f5f9;line-height:1.5}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:7px;vertical-align:middle}
+.pt td.ath{width:42%}
+.pbar{height:10px;background:#eef2f7;border-radius:5px;overflow:hidden}
+.pbar>div{height:100%;border-radius:5px}
+.ft{margin-top:8px;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;border-top:1px solid #e5e7eb;padding-top:6px}
+.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;margin-bottom:12px}
+.grid2>.sec{margin-bottom:0}
+</style></head><body>
+<div class="hd"><div><h1>Haftalık Antrenman Raporu</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.weekLabel}</div></div>
+${dailySec}
+<div class="grid2">${matrixSec}${summary}</div>
+${purposeSec}
+<div class="ft"><span>AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.</span><span>Periodization Planner · ${new Date().toLocaleDateString('tr-TR')}</span></div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
+}
 function printMonthlyReportTR(R){
   const w=window.open('','_blank','width=1280,height=920');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
@@ -1731,7 +1816,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 /* =========================================================
    CALENDAR (reusable for team & athlete)
    ========================================================= */
-const SESS_COLORS=['#0e7490','#b45309','#15803d','#be185d'];
+const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
 function CalendarView({days,selected,setSelected,goDayView,weeks}){
   const ref=parseD(selected.date);const yr=ref.getFullYear(),mo=ref.getMonth();
   const first=new Date(yr,mo,1);const offset=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
@@ -1886,7 +1971,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div>
           <label>RPE (0-10) — auto-fills AU</label>
           <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="RPE'yi yaz (örn. 7.5)"
-            onChange={e=>{const v=e.target.value;u(v===''?{sRPE:''}:{sRPE:v,au:Math.round(Number(v)*session.duration)});}}
+            onChange={e=>u({sRPE:e.target.value})}
             style={{fontSize:17,fontWeight:700,padding:11,color:'var(--accent2)'}}/>
           <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
         </div>
@@ -1994,7 +2079,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
             className={`ws${dragInfo?.sessionId===s.id?' dragging':''}`}
             draggable
             title={`${sessionType(s).toUpperCase()} · Drag to move · hold Ctrl/⌥ to copy`}
-            style={{borderLeft:`4px solid ${col.c}`,background:`linear-gradient(90deg, ${col.g} 0%, #161d30 75%)`,boxShadow:`inset 0 0 0 1px ${col.g}`}}
+            style={{border:`1px solid ${col.c}`,borderLeft:`4px solid ${col.c}`,background:'transparent',boxShadow:`0 0 6px ${col.g}, inset 0 0 4px ${col.g}`}}
             onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:dk,sessionId:s.id});}}
             onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}>
             <div className="ws-actions" onClick={e=>e.stopPropagation()}>
@@ -2215,6 +2300,31 @@ function TeamReports({team,weeks,selected,setSelected}){
     weekly:{colLabels:(allAthletesChart?allAthletesChart.labels:[]).map(l=>'Hf '+l),perAthlete:allAthletesChart?allAthletesChart.perAthlete:[]},
     monthDays,acwrWeekly,mWeeks,pMix});
 
+  // Weekly report → uses the currently shown daily-chart week (dailyWeek state)
+  const printWeekly=()=>{
+    const wkS=dailyWeek,wkE=fmt(addD(parseD(wkS),6));
+    const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wkS),i)));
+    const loads=days7.map(d=>({load:dayLoad(d)}));
+    const wMono=weekMono(loads);
+    const wAcwr=acwrAt(wkE);
+    const wZone=wAcwr===0?{t:'No data',c:'#94a3b8'}:wAcwr>1.5?{t:'High risk',c:'#ef4444'}:(wAcwr>=0.8&&wAcwr<=1.3)?{t:'Optimal',c:'#10b981'}:wAcwr<0.8?{t:'Undertraining',c:'#f59e0b'}:{t:'Caution',c:'#f59e0b'};
+    // Week purpose mix
+    const pT={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<wkS||d.date>wkE)return;
+      (d.sessions||[]).forEach(s=>{const dur=+s.duration||0;pT[s.purpose||'—']=(pT[s.purpose||'—']||0)+dur;});});
+    const pTot=Object.values(pT).reduce((a,b)=>a+b,0);
+    const wpMix=Object.entries(pT).map(([k,v])=>({label:k,min:v,pct:pTot?v/pTot*100:0})).sort((a,b)=>b.pct-a.pct);
+    printWeeklyReportTR({
+      teamName:team.setup.teamName,
+      weekLabel:fd(wkS)+' → '+fd(wkE),
+      acwr:wAcwr,acwrZone:wZone,
+      weekTotal:wMono.total,weekMean:wMono.mean,weekSD:wMono.sd,
+      weekMono:wMono.monotony,weekStrain:wMono.strain,
+      trainDays:days7.filter(d=>dayLoad(d)>0).length,
+      dailyLabels:dailyData.labels,dayTotals:dailyData.dayTotals,
+      perAthlete:dailyData.perAthlete,pMix:wpMix
+    });
+  };
+
   const setYear=y=>setSelected({...selected,year:y,date:`${y}-${pad(month)}-01`});
   const setMonth=m=>setSelected({...selected,month:m,date:`${year}-${pad(m)}-01`});
 
@@ -2226,9 +2336,12 @@ function TeamReports({team,weeks,selected,setSelected}){
           <div><label>Month</label><select value={month} onChange={e=>setMonth(+e.target.value)} style={{width:140}}>{Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>{MN[i]}</option>)}</select></div>
           <div style={{fontSize:12,color:'var(--muted)'}}>Report month: <strong style={{color:'var(--text)'}}>{monthLabel}</strong></div>
         </div>
-        <button className="btn" onClick={printMonthly}>🖨 Aylık Rapor (Türkçe · A4)</button>
+        <div className="row" style={{gap:8}}>
+          <button className="btn sec" onClick={printWeekly}>🖨 Weekly Report (TR · A4)</button>
+          <button className="btn" onClick={printMonthly}>🖨 Monthly Report (TR · A4)</button>
+        </div>
       </div>
-      <div className="help" style={{marginTop:8}}>Pick a month above. The button prints one Turkish monthly report with every section below (Weekly Load, Daily Load, ACWR, Monotony, Training Purpose).</div>
+      <div className="help" style={{marginTop:8}}>Pick a month above. <b>Monthly Report</b> prints every section below in Turkish; <b>Weekly Report</b> prints a Turkish single-page report for the week currently shown in the Daily Team Load panel.</div>
     </div>
 
     <div className="metrics">
@@ -3906,8 +4019,8 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Üst Vücut İtiş','Üst Vücut Çekiş','Kalça Dominant','Diz Dominant','Isolation','Compound','Plyometric','Olympic','Mobility','Core','Cardio','Stretching'];
-const EX_MUSCLES=['Abs & Core','Chest','Back','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Full Body','Cardio'];
+const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Agility','COD','Plyometric','Sprint'];
+const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
 
 function videoEmbed(src){
   if(!src)return null;
@@ -3981,7 +4094,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <div className="ex-modal-right">
           <div className="grid cols-2">
             <div><label>Tür</label><input list="ex-types" value={ex.type} onChange={e=>set('type',e.target.value)} placeholder="Üst Vücut İtiş…"/></div>
-            <div><label>Kas Grubu</label><input list="ex-muscles" value={ex.muscle} onChange={e=>set('muscle',e.target.value)} placeholder="Abs & Core…"/></div>
+            <div><label>Muscle Groups (multi)</label>
+              <div className="mus-pick">
+                {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
+                <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
+                  <option value="">+ Add muscle…</option>
+                  {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
+                </select>
+              </div></div>
           </div>
           <div style={{marginTop:14}}>
             <label>Video Linki (YouTube / Vimeo / mp4)</label>
@@ -4019,7 +4139,7 @@ function ExerciseCard({ex,onOpen}){
       <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
       <div className="ex-ctags">
         {ex.type&&<span className="ex-tag">▦ {ex.type}</span>}
-        {ex.muscle&&<span className="ex-tag">◎ {ex.muscle}</span>}
+        {(ex.muscle||[]).map((m,i)=><span key={i} className="ex-tag">◎ {m}</span>)}
       </div>
     </div>
   </div>);
@@ -4033,19 +4153,19 @@ function ExercisesView({data,setData}){
   const[fMuscle,setFMuscle]=useState('');
   const[openId,setOpenId]=useState(null);
 
-  const add=()=>{const e={id:uid(),name:'',type:'',muscle:'',videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
+  const add=()=>{const e={id:uid(),name:'',type:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const patch=(id,p)=>setExercises(exercises.map(e=>e.id===id?{...e,...p}:e));
   const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
 
-  const muscles=useMemo(()=>{const s=new Set();exercises.forEach(e=>{if(e.muscle)s.add(e.muscle);});return[...s].sort();},[exercises]);
+  const muscles=useMemo(()=>{const s=new Set();exercises.forEach(e=>(e.muscle||[]).forEach(m=>s.add(m)));return[...s].sort();},[exercises]);
 
   let list=exercises.filter(e=>{
     if(q&&!(e.name||'').toLowerCase().includes(q.toLowerCase()))return false;
-    if(fMuscle&&e.muscle!==fMuscle)return false;
+    if(fMuscle&&!(e.muscle||[]).includes(fMuscle))return false;
     return true;
   });
   if(sort==='name')list=[...list].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  else if(sort==='muscle')list=[...list].sort((a,b)=>(a.muscle||'').localeCompare(b.muscle||''));
+  else if(sort==='muscle')list=[...list].sort((a,b)=>((a.muscle||[])[0]||'').localeCompare((b.muscle||[])[0]||''));
 
   const open=exercises.find(e=>e.id===openId);
 
