@@ -478,6 +478,15 @@ tr:hover td{background:#f8fafc}
 .rt-edit h3{font-size:17px;font-weight:700;margin:.5em 0}
 .rt-edit ul,.rt-edit ol{padding-left:24px;margin:.4em 0}
 .rt-edit a{color:var(--accent2)}
+/* Reading-mode "paper" — easy on the eyes for long summaries */
+.rt-edit.rs-paper{background:#fdf6e3;color:#1f2937;border:1px solid #ede0c4;min-height:280px;max-height:60vh;font-size:15px;line-height:1.75;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 10px rgba(0,0,0,.18);font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif}
+.rt-edit.rs-paper h2,.rt-edit.rs-paper h3{color:#0f172a}
+.rt-edit.rs-paper a{color:#0e7490}
+.rt-edit.rs-paper b,.rt-edit.rs-paper strong{color:#111827}
+/* Read-mode meta line under the title */
+.rs-readmeta{margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.rs-readmeta-au{font-size:13px;font-weight:600;color:var(--accent2)}
+.rs-readmeta-jr{font-size:12px;color:var(--muted);font-style:italic;margin-top:2px}
 /* Athlete profile — centered hero + tile nav */
 .ath-hero-c{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;background:#0b0f1a;border:1px solid #1b2435;border-radius:16px;padding:26px 20px;margin-top:12px}
 .ath-hero-c .ath-hero-photo{margin:0 auto}
@@ -4154,6 +4163,9 @@ ${rec.apa?`<div class="apa">${esc(rec.apa)}</div>`:''}
 function ResearchModal({rec,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
   const[busy,setBusy]=useState(false);const[err,setErr]=useState('');
+  // New (empty) entries start in edit mode so the user can fill meta + summary.
+  const isNew=!rec.title&&!rec.summary&&!rec.authorsText;
+  const[editing,setEditing]=useState(isNew);
   const fetchMeta=async()=>{
     setErr('');setBusy(true);
     try{const m=await fetchCrossref(rec.url||rec.doi);
@@ -4161,36 +4173,50 @@ function ResearchModal({rec,onChange,onDelete,onClose}){
         authors:m.authors,authorsText:authorsLine(m),apa:apaCite(m)});
     }catch(e){setErr(e.message||String(e));}finally{setBusy(false);}
   };
+  const metaLine=[rec.authorsText,rec.year].filter(Boolean).join(' · ');
   return(<div className="modal-bg" onClick={onClose}>
     <div className="modal ex-modal rs-modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
-        <input className="ex-title-in" value={rec.title} placeholder="Makale başlığını elle yaz…" onChange={e=>set('title',e.target.value)}/>
+        {editing
+          ? <input className="ex-title-in" value={rec.title} placeholder="Makale başlığını elle yaz…" onChange={e=>set('title',e.target.value)}/>
+          : <div className="ex-title-in" style={{cursor:'default'}}>{rec.title||'(başlıksız makale)'}</div>}
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
       <div className="ex-modal-body">
-        <div>
-          <label>Makale Linki / DOI</label>
-          <div className="row" style={{gap:8,flexWrap:'nowrap'}}>
-            <input value={rec.url} onChange={e=>set('url',e.target.value)} placeholder="https://doi.org/10.1234/… ya da DOI"/>
-            <button className="btn sm" disabled={busy} onClick={fetchMeta} style={{whiteSpace:'nowrap'}}>{busy?'Alınıyor…':'⤓ Bilgileri Getir'}</button>
+        {editing&&<>
+          <div>
+            <label>Makale Linki / DOI</label>
+            <div className="row" style={{gap:8,flexWrap:'nowrap'}}>
+              <input value={rec.url} onChange={e=>set('url',e.target.value)} placeholder="https://doi.org/10.1234/… ya da DOI"/>
+              <button className="btn sm" disabled={busy} onClick={fetchMeta} style={{whiteSpace:'nowrap'}}>{busy?'Alınıyor…':'⤓ Bilgileri Getir'}</button>
+            </div>
+            <div className="help" style={{marginTop:4}}>Linki yapıştırıp <b>Bilgileri Getir</b>’e bas — yazarlar, tarih ve APA otomatik dolar (DOI’li makalelerde).</div>
+            {err&&<div className="help" style={{marginTop:6,color:'#dc2626'}}>{err}</div>}
           </div>
-          <div className="help" style={{marginTop:4}}>Linki yapıştırıp <b>Bilgileri Getir</b>’e bas — yazarlar, tarih ve APA otomatik dolar (DOI’li makalelerde).</div>
-          {err&&<div className="help" style={{marginTop:6,color:'#dc2626'}}>{err}</div>}
+          <div className="grid cols-2" style={{marginTop:14}}>
+            <div><label>Yazar(lar)</label><input value={rec.authorsText||''} onChange={e=>set('authorsText',e.target.value)} placeholder="Surname, N., …"/></div>
+            <div><label>Yıl / Tarih</label><input value={rec.year||''} onChange={e=>set('year',e.target.value)} placeholder="2024"/></div>
+          </div>
+          <div style={{marginTop:14}}><label>Dergi</label><input value={rec.journal||''} onChange={e=>set('journal',e.target.value)} placeholder="Journal of …"/></div>
+          <div style={{marginTop:14}}><label>APA Kaynakça</label>
+            <textarea value={rec.apa||''} onChange={e=>set('apa',e.target.value)} placeholder="Otomatik oluşur — düzenleyebilirsin." style={{minHeight:70}}/></div>
+          <div style={{marginTop:14}}><label>Etiketler (virgülle)</label><input value={rec.tags||''} onChange={e=>set('tags',e.target.value)} placeholder="kuvvet, ACWR, yaralanma…"/></div>
+        </>}
+        {!editing&&(metaLine||rec.journal)&&<div className="rs-readmeta">
+          {metaLine&&<div className="rs-readmeta-au">{metaLine}</div>}
+          {rec.journal&&<div className="rs-readmeta-jr">{rec.journal}</div>}
+        </div>}
+        <div style={{marginTop:editing?16:8}}>
+          {editing&&<label>Özet / Blog</label>}
+          {editing
+            ? <RichText html={rec.summary} onChange={v=>set('summary',v)}/>
+            : <div className="rt-edit rs-paper" dangerouslySetInnerHTML={{__html:rec.summary||'<i style="color:#9ca3af">Henüz özet yazılmamış — Düzenle’ye basıp ekleyebilirsin.</i>'}}/>}
         </div>
-        <div className="grid cols-2" style={{marginTop:14}}>
-          <div><label>Yazar(lar)</label><input value={rec.authorsText||''} onChange={e=>set('authorsText',e.target.value)} placeholder="Surname, N., …"/></div>
-          <div><label>Yıl / Tarih</label><input value={rec.year||''} onChange={e=>set('year',e.target.value)} placeholder="2024"/></div>
-        </div>
-        <div style={{marginTop:14}}><label>Dergi</label><input value={rec.journal||''} onChange={e=>set('journal',e.target.value)} placeholder="Journal of …"/></div>
-        <div style={{marginTop:14}}><label>APA Kaynakça</label>
-          <textarea value={rec.apa||''} onChange={e=>set('apa',e.target.value)} placeholder="Otomatik oluşur — düzenleyebilirsin." style={{minHeight:70}}/></div>
-        <div style={{marginTop:14}}><label>Etiketler (virgülle)</label><input value={rec.tags||''} onChange={e=>set('tags',e.target.value)} placeholder="kuvvet, ACWR, yaralanma…"/></div>
-        <div style={{marginTop:16}}><label>Özet / Blog</label>
-          <RichText html={rec.summary} onChange={v=>set('summary',v)}/></div>
       </div>
       <div className="modal-foot">
         <button className="btn danger sm" onClick={onDelete}>Sil</button>
         <div className="row" style={{gap:8}}>
+          <button className="btn sec sm" onClick={()=>setEditing(e=>!e)}>{editing?'👁 Görüntüle':'✎ Düzenle'}</button>
           <button className="btn sec sm" onClick={()=>printResearch(rec)}>🖨 Yazdır (A4)</button>
           <button className="btn sm" onClick={onClose}>Bitti</button>
         </div>
