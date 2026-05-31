@@ -163,7 +163,7 @@ th{background:var(--elevated);font-weight:600;color:var(--muted);font-size:10px;
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.02)}
 /* Calendar */
-.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:12px}
 .cal-head{font-size:11px;color:var(--muted);text-align:center;padding:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .cal-day{
   background:var(--elevated);border:1px solid var(--border);border-radius:8px;
@@ -441,9 +441,10 @@ header h1{background:none;-webkit-text-fill-color:#0f172a;color:#0f172a}
 th{background:#f1f5f9;color:#475569}
 tr:hover td{background:#f8fafc}
 /* Calendar: light tints, dark readable labels, no glow */
-.cal-day .dt.sn{text-shadow:none}
-.cal-day .dt.au{color:#0f172a;text-shadow:none}
-.cal-day .dn{color:#0f172a}
+/* Calendar labels: bright, inset chip pills inside the cell */
+.cal-day .dt.sn{display:block;background:rgba(15,23,42,.55);color:#ffffff;font-weight:700;padding:3px 7px;border-radius:6px;margin:4px 0 0;text-shadow:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-day .dt.au{display:block;background:rgba(15,23,42,.55);color:#ffffff;font-weight:800;padding:2px 7px;border-radius:6px;margin-top:5px;text-shadow:none;width:fit-content}
+.cal-day .dn{color:#ffffff}
 /* Dark program week-day cards + session header bar (per request) */
 .wv-day{background:#0f1526;border-color:#27314a}
 .wv-day:hover,.wv-day.sel{border-color:var(--accent)}
@@ -467,6 +468,9 @@ tr:hover td{background:#f8fafc}
 .rs-sum{font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 /* Research modal — bigger, with rich-text summary editor */
 .rs-modal{max-width:920px;width:95vw}
+.ex-modal-wide{max-width:1080px;width:96vw}
+.ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
+@media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
 .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
 .rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
 .rt-b:hover{border-color:var(--accent);color:var(--accent2)}
@@ -479,7 +483,7 @@ tr:hover td{background:#f8fafc}
 .rt-edit ul,.rt-edit ol{padding-left:24px;margin:.4em 0}
 .rt-edit a{color:var(--accent2)}
 /* Reading-mode "paper" — easy on the eyes for long summaries */
-.rt-edit.rs-paper{background:#fdf6e3;color:#1f2937;border:1px solid #ede0c4;min-height:280px;max-height:60vh;font-size:15px;line-height:1.75;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 10px rgba(0,0,0,.18);font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif}
+.rt-edit.rs-paper{background:#fdf6e3;color:#1f2937;border:1px solid #ede0c4;min-height:280px;max-height:60vh;font-size:15px;line-height:1.75;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 10px rgba(0,0,0,.18);font-family:'Aptos Display','Aptos','Segoe UI',system-ui,sans-serif}
 .rt-edit.rs-paper h2,.rt-edit.rs-paper h3{color:#0f172a}
 .rt-edit.rs-paper a{color:#0e7490}
 .rt-edit.rs-paper b,.rt-edit.rs-paper strong{color:#111827}
@@ -526,7 +530,7 @@ tr:hover td{background:#f8fafc}
 .panel .btn.ghost{color:#94a3b8;border-color:#2b3550}
 .panel .btn.ghost:hover{color:var(--accent2);border-color:var(--accent2);background:rgba(34,211,238,.08)}
 /* Calendar — dark cells with subtle, readable accent fills */
-.cal-day{background:#1a2238;border-color:#27314a;color:#cbd5e1}
+.cal-day{background:#1a2238;border-color:#27314a;color:#e2e8f0;min-width:0}
 .cal-day .dn{color:#f1f5f9}
 .cal-day:hover{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2),0 4px 14px rgba(34,211,238,.20)}
 .cal-day.low{background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.40)}
@@ -548,12 +552,12 @@ tr:hover td{background:#f8fafc}
 .rs-card .rs-sum{color:#cbd5e1}
 .ex-h1{color:#f1f5f9}
 /* Search + filter — keep light on the page */
-.ex-toolbar .ex-search{background:#ffffff;border-color:#e2e8f0}
-.ex-toolbar .ex-search input{background:transparent;border:none;color:#0f172a}
-.ex-toolbar .ex-search input::placeholder{color:#94a3b8}
-.ex-toolbar .ex-search span{color:#0891b2}
-.ex-toolbar .ex-filter{background:#ffffff;border-color:#e2e8f0;color:#0f172a}
-.ex-toolbar .ex-filter option{background:#ffffff;color:#0f172a}
+.ex-wrap .ex-toolbar .ex-search,.ex-wrap .ex-toolbar .ex-filter{background:#ffffff;border-color:#e2e8f0}
+.ex-wrap .ex-toolbar .ex-search input{background:transparent;border:none;color:#0f172a}
+.ex-wrap .ex-toolbar .ex-search input::placeholder{color:#94a3b8}
+.ex-wrap .ex-toolbar .ex-search span{color:#0891b2}
+.ex-wrap .ex-toolbar .ex-filter{color:#0f172a}
+.ex-wrap .ex-toolbar .ex-filter option{background:#ffffff;color:#0f172a}
 /* Metric cards (Reports) */
 .metric{background:#0f1526;border:1px solid #27314a;color:#cbd5e1}
 .metric .ml{color:#94a3b8}
@@ -568,6 +572,11 @@ tr:hover td{background:#f8fafc}
 .pill.high{background:rgba(239,68,68,.22);color:#fca5a5}
 /* Headers / brand title kept on light page */
 header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
+/* Roster cards (white) — dark readable text */
+.ath-card{background:#ffffff;border-color:#e2e8f0}
+.ath-card .ath-name{color:#0f172a}
+.ath-card .ath-meta{color:#475569}
+.ath-photo{background:#e0f7fa;color:#0e7490;border-color:#cbd5e1}
 </style>
 </head>
 <body>
@@ -1876,8 +1885,9 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <div className="grid cols-3">
         <div>
           <label>RPE (0-10) — auto-fills AU</label>
-          <div className="srpe-bar">{[0,1,2,3,4,5,6,7,8,9,10].map(v=><button key={v} className={Number(session.sRPE)===v?'on':''} onClick={()=>u({sRPE:v,au:Math.round(v*session.duration)})}>{v}</button>)}
-            <button className="btn xs sec" onClick={()=>u({sRPE:''})}>Clear</button></div>
+          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="RPE'yi yaz (örn. 7.5)"
+            onChange={e=>{const v=e.target.value;u(v===''?{sRPE:''}:{sRPE:v,au:Math.round(Number(v)*session.duration)});}}
+            style={{fontSize:17,fontWeight:700,padding:11,color:'var(--accent2)'}}/>
           <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
         </div>
         <div>
@@ -3896,7 +3906,7 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Isolation','Compound','Plyometric','Olympic','Mobility','Core','Cardio','Stretching'];
+const EX_TYPES=['Üst Vücut İtiş','Üst Vücut Çekiş','Kalça Dominant','Diz Dominant','Isolation','Compound','Plyometric','Olympic','Mobility','Core','Cardio','Stretching'];
 const EX_MUSCLES=['Abs & Core','Chest','Back','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Full Body','Cardio'];
 
 function videoEmbed(src){
@@ -3948,35 +3958,40 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   };
   const onThumb=file=>{if(file)handleImageUpload(file,'covers',d=>set('thumb',d));};
   return(<div className="modal-bg" onClick={onClose}>
-    <div className="modal ex-modal" onClick={e=>e.stopPropagation()}>
+    <div className="modal ex-modal ex-modal-wide" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
         <input className="ex-title-in" value={ex.name} placeholder="Egzersiz adı…" onChange={e=>set('name',e.target.value)}/>
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
-      <div className="ex-modal-body">
-        <div className="ex-player-wrap"><VideoPlayer ex={ex}/></div>
-        <div className="grid cols-2" style={{marginTop:14}}>
-          <div><label>Tür</label><input list="ex-types" value={ex.type} onChange={e=>set('type',e.target.value)} placeholder="Isolation / Compound…"/></div>
-          <div><label>Kas Grubu</label><input list="ex-muscles" value={ex.muscle} onChange={e=>set('muscle',e.target.value)} placeholder="Abs & Core…"/></div>
+      <div className="ex-modal-body ex-modal-grid">
+        <div className="ex-modal-left">
+          <div className="ex-player-wrap"><VideoPlayer ex={ex}/></div>
+          <div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Video Yükle
+              <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
+            </label>
+            {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Yüklenen videoyu kaldır</button>}
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Kapak Resmi
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onThumb(e.target.files[0])}/>
+            </label>
+            {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Kapağı kaldır</button>}
+          </div>
+          {upPct!=null&&<div className="help" style={{marginTop:6}}>Video yükleniyor… %{upPct}</div>}
         </div>
-        <div style={{marginTop:14}}>
-          <label>Video Linki (YouTube / Vimeo / mp4)</label>
-          <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
-          <div className="help" style={{marginTop:4}}>Önerilen yöntem — link her cihazda sorunsuz açılır ve hafıza yemez. YouTube/Vimeo linkinde kapak otomatik gelir.</div>
-        </div>
-        <div className="row" style={{marginTop:12,gap:10}}>
-          <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Video Yükle
-            <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
-          </label>
-          {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Yüklenen videoyu kaldır</button>}
-          <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Kapak Resmi
-            <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onThumb(e.target.files[0])}/>
-          </label>
-          {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Kapağı kaldır</button>}
-        </div>
-        <div style={{marginTop:16}}>
-          <label>Hareketin Amacı / Açıklaması</label>
-          <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Bu hareket hangi kası, hangi amaçla çalıştırır? Teknik ipuçları, set/tekrar önerisi…" style={{minHeight:120}}/>
+        <div className="ex-modal-right">
+          <div className="grid cols-2">
+            <div><label>Tür</label><input list="ex-types" value={ex.type} onChange={e=>set('type',e.target.value)} placeholder="Üst Vücut İtiş…"/></div>
+            <div><label>Kas Grubu</label><input list="ex-muscles" value={ex.muscle} onChange={e=>set('muscle',e.target.value)} placeholder="Abs & Core…"/></div>
+          </div>
+          <div style={{marginTop:14}}>
+            <label>Video Linki (YouTube / Vimeo / mp4)</label>
+            <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
+            <div className="help" style={{marginTop:4}}>YouTube/Vimeo linkinde kapak otomatik gelir.</div>
+          </div>
+          <div style={{marginTop:14}}>
+            <label>Hareketin Amacı / Açıklaması</label>
+            <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Bu hareket hangi kası, hangi amaçla çalıştırır? Teknik ipuçları, set/tekrar önerisi…" style={{minHeight:200}}/>
+          </div>
         </div>
       </div>
       <div className="modal-foot">
