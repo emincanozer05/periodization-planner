@@ -255,7 +255,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .inj-tbl input:focus,.inj-tbl select:focus{border-color:#0891b2;outline:none;box-shadow:0 0 0 2px rgba(8,145,178,.15)}
 .inj-tbl input[type="date"]{min-width:120px}
 .inj-tbl select{min-width:90px}
-.ex-tbl .en{width:100%}.ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
+.ex-tbl .en{width:100%;resize:none;overflow:hidden;line-height:1.35;min-height:30px;font-family:inherit;white-space:pre-wrap;word-break:break-word}
+.ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
 .ex-desc{padding:0 6px 4px}
 .ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
 .ex-desc input:focus{background:var(--elevated);color:var(--text);font-style:normal}
@@ -1991,7 +1992,9 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate}){
                 </select>
               </div>
             </td>
-            <td><input className="en" list="lib-exercises" value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"/></td>
+            <td><textarea className="en" rows={1} value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"
+              ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}}
+              onInput={e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}}/></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
