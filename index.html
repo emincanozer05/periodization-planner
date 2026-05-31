@@ -584,6 +584,30 @@ header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
 .ath-card .ath-name{color:#0f172a}
 .ath-card .ath-meta{color:#475569}
 .ath-photo{background:#e0f7fa;color:#0e7490;border-color:#cbd5e1}
+/* Block (workout block) card: orange header + light body */
+.block-card{background:#ffffff;border-color:#e2e8f0}
+.block-head{background:linear-gradient(90deg,#f97316,#fb923c);color:#fff}
+.block-head:hover{background:linear-gradient(90deg,#ea580c,#f97316)}
+.block-head .bn,.block-head .bc{color:#fff!important}
+.block-head>span{color:#fff!important}
+.block-head .ba button{color:rgba(255,255,255,.85)}
+.block-head .ba button:hover{background:rgba(255,255,255,.15);color:#fff}
+.block-body{background:#f8fafc;color:#0f172a}
+.block-body table{color:#0f172a}
+.block-body th{background:#e2e8f0;color:#475569;border-color:#cbd5e1}
+.block-body td{border-color:#e2e8f0}
+.block-body tr:hover td{background:rgba(15,23,42,.04)}
+.block-body input,.block-body select{background:#ffffff;border-color:#cbd5e1;color:#0f172a}
+.block-body input::placeholder{color:#94a3b8}
+.block-body .ex-tag{background:#e0f7fa;color:#0e7490}
+.block-body .help{color:#64748b}
+.ex-desc input{background:#ffffff!important}
+/* Exercise muscle chips — dark readable text */
+.mus-chip{background:#e0f7fa;color:#0f172a;border-color:#a5f3fc}
+.mus-chip button{color:#475569}
+.mus-chip button:hover{color:#dc2626}
+/* Exercise Library / Researches title dark on light page */
+.ex-h1{color:#0f172a}
 </style>
 </head>
 <body>
@@ -4154,7 +4178,7 @@ function ExercisesView({data,setData}){
   const setExercises=arr=>setData({...data,exercises:arr});
   const[q,setQ]=useState('');
   const[sort,setSort]=useState('default');
-  const[fMuscle,setFMuscle]=useState('');
+  const[fType,setFType]=useState('');
   const[openId,setOpenId]=useState(null);
 
   const add=()=>{const e={id:uid(),name:'',type:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
@@ -4165,7 +4189,7 @@ function ExercisesView({data,setData}){
 
   let list=exercises.filter(e=>{
     if(q&&!(e.name||'').toLowerCase().includes(q.toLowerCase()))return false;
-    if(fMuscle&&!(e.muscle||[]).includes(fMuscle))return false;
+    if(fType&&e.type!==fType)return false;
     return true;
   });
   if(sort==='name')list=[...list].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -4179,7 +4203,7 @@ function ExercisesView({data,setData}){
 
     <div className="ex-top">
       <div>
-        <h1 className="ex-h1">All Exercises</h1>
+        <h1 className="ex-h1">Exercise Library</h1>
         <div className="sub">Egzersiz demolarını, videolarını ve amaçlarını yönet</div>
       </div>
       <div className="row" style={{gap:8}}>
@@ -4194,9 +4218,9 @@ function ExercisesView({data,setData}){
 
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Egzersiz ara…"/></div>
-      <select value={fMuscle} onChange={e=>setFMuscle(e.target.value)} className="ex-filter">
-        <option value="">Tüm kaslar</option>
-        {muscles.map(m=><option key={m} value={m}>{m}</option>)}
+      <select value={fType} onChange={e=>setFType(e.target.value)} className="ex-filter">
+        <option value="">Exercise Type</option>
+        {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
       </select>
       <button className="btn sm" onClick={add}>＋ Egzersiz Ekle</button>
     </div>
