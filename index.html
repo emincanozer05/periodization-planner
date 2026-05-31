@@ -610,7 +610,7 @@ header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
 .type-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 @media(max-width:560px){.type-grid{grid-template-columns:1fr!important}}
 .type-card{
-  cursor:pointer;background:#0f1526;border:2px solid;border-radius:16px;
+  cursor:pointer;background:#0f1526;border:5px solid;border-radius:16px;
   padding:46px 22px;min-height:150px;position:relative;
   display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
   transition:transform .18s, box-shadow .18s;
@@ -627,6 +627,15 @@ header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
   font-size:11px;font-weight:800;padding:4px 11px;border-radius:14px;
   box-shadow:0 2px 6px rgba(0,0,0,.35);
 }
+/* Chip-style filters inside a category */
+.chip-filters{margin-bottom:18px;display:flex;flex-direction:column;gap:10px}
+.chip-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
+.chip-row-lbl{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;min-width:120px}
+.fchip{background:transparent;border:1.5px solid;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;line-height:1.1}
+.fchip:hover{transform:translateY(-1px)}
+/* Difficulty badge on the exercise card */
+.ex-cbody{position:relative}
+.diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 /* Exercise Library / Researches title dark on light page */
 .ex-h1{color:#0f172a}
 </style>
@@ -847,7 +856,7 @@ function migrate(data){
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.exercises))data.exercises=[];
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant'};
-  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
+  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:e.difficulty||'',muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
   return data;
 }
@@ -4119,6 +4128,8 @@ const TYPE_COLORS={
   'Plyometric':'#5eead4',                // teal
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
+const DIFFICULTIES=['Easy','Moderate','Hard'];
+const DIFF_COLOR={Easy:'#10b981',Moderate:'#f59e0b',Hard:'#ef4444'};
 // Each Exercise Type has its own secondary filter dimension.
 const SUB_TYPES={
   'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
@@ -4215,12 +4226,19 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
               </select>
             </div>
           </div>
-          {ex.type==='Knee Dominant'&&<div style={{marginTop:14}}><label>Movement Pattern</label>
-            <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
-              <option value="">—</option>
-              {KNEE_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>}
+          <div className="grid cols-2" style={{marginTop:14}}>
+            {ex.type==='Knee Dominant'?<div><label>Movement Pattern</label>
+              <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
+                <option value="">—</option>
+                {KNEE_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
+              </select></div>:<div></div>}
+            <div><label>Difficulty</label>
+              <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
+                <option value="">—</option>
+                {DIFFICULTIES.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
           <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
             <div className="mus-pick">
               {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
@@ -4264,10 +4282,7 @@ function ExerciseCard({ex,onOpen}){
     </div>
     <div className="ex-cbody">
       <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
-      <div className="ex-ctags">
-        {ex.subType&&<span className="ex-tag">⚙ {ex.subType}</span>}
-        {(ex.muscle||[]).map((m,i)=><span key={i} className="ex-tag">◎ {m}</span>)}
-      </div>
+      {ex.difficulty&&<div className="diff-badge" style={{background:DIFF_COLOR[ex.difficulty],color:'#fff'}}>{ex.difficulty}</div>}
     </div>
   </div>);
 }
@@ -4338,20 +4353,19 @@ function ExercisesView({data,setData}){
     </div>
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`${activeType} ara…`}/></div>
-      {sub&&<select value={fSub} onChange={e=>setFSub(e.target.value)} className="ex-filter" title={sub.label}>
-        <option value="">All {sub.label}</option>
-        {sub.values.map(v=><option key={v} value={v}>{v}</option>)}
-      </select>}
-      {hasMuscleFilter&&<select value={fMuscle} onChange={e=>setFMuscle(e.target.value)} className="ex-filter" title="Muscle Group">
-        <option value="">All Muscles</option>
-        {EX_MUSCLES.map(m=><option key={m} value={m}>{m}</option>)}
-      </select>}
-      {hasPatternFilter&&<select value={fPattern} onChange={e=>setFPattern(e.target.value)} className="ex-filter" title="Movement Pattern">
-        <option value="">All Movement Patterns</option>
-        {KNEE_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
-      </select>}
       <button className="btn sm" onClick={()=>addExercise()}>＋ Egzersiz Ekle</button>
     </div>
+    {(()=>{const c=TYPE_COLORS[activeType]||'#22d3ee';
+      const ChipRow=({label,values,val,setVal})=>(<div className="chip-row">
+        <span className="chip-row-lbl">{label}</span>
+        <button className={`fchip${val===''?' on':''}`} style={val===''?{background:c,borderColor:c,color:'#0f1526'}:{borderColor:c+'66',color:c}} onClick={()=>setVal('')}>All</button>
+        {values.map(v=><button key={v} className={`fchip${val===v?' on':''}`} style={val===v?{background:c,borderColor:c,color:'#0f1526'}:{borderColor:c+'66',color:c}} onClick={()=>setVal(val===v?'':v)}>{v}</button>)}
+      </div>);
+      return(<div className="chip-filters">
+        {sub&&<ChipRow label={sub.label} values={sub.values} val={fSub} setVal={setFSub}/>}
+        {hasMuscleFilter&&<ChipRow label="Muscle Group" values={EX_MUSCLES} val={fMuscle} setVal={setFMuscle}/>}
+        {hasPatternFilter&&<ChipRow label="Movement Pattern" values={KNEE_PATTERNS} val={fPattern} setVal={setFPattern}/>}
+      </div>);})()}
     {list.length===0&&<div className="ex-empty">Bu kategoride{(fSub||fMuscle||fPattern||q)?' filtreyle eşleşen':''} egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ekle.</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
