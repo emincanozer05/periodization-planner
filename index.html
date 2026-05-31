@@ -606,6 +606,15 @@ header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
 .mus-chip{background:#e0f7fa;color:#0f172a;border-color:#a5f3fc}
 .mus-chip button{color:#475569}
 .mus-chip button:hover{color:#dc2626}
+/* Exercise Library — category landing tiles */
+.type-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))!important}
+.type-card{cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}
+.type-card:hover{transform:translateY(-4px);border-color:var(--accent2);box-shadow:0 0 18px rgba(34,211,238,.30)}
+.type-card .ex-thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#1c2238,#0f1424);position:relative}
+.type-card .ex-cname{color:#f1f5f9!important;font-size:16px;font-weight:800;margin-bottom:4px}
+.type-card .type-sub{color:var(--accent2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.type-card .type-card-body{padding:12px 14px 14px}
+.type-count-badge{position:absolute;top:8px;right:8px;background:rgba(8,145,178,.92);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 /* Exercise Library / Researches title dark on light page */
 .ex-h1{color:#0f172a}
 </style>
@@ -825,7 +834,8 @@ function migrate(data){
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.exercises))data.exercises=[];
-  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:e.type||'',muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
+  const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant'};
+  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
   return data;
 }
@@ -4083,8 +4093,19 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Agility','COD','Plyometric','Sprint'];
+const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
+// Each Exercise Type has its own secondary filter dimension.
+const SUB_TYPES={
+  'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
+  'Upper Body Pull':{label:'Plane of Motion',values:['Horizontal','Vertical']},
+  'Hip Dominant':{label:'Contraction Type',values:['Push','Pull','Eccentric','Isometric']},
+  'Knee Dominant':{label:'Contraction Type',values:['Push','Pull','Eccentric','Isometric']},
+  'Core':{label:'Movement Pattern',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
+  'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
+  'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
+  'Plyometric':{label:'Type',values:['Non-CMJ','CMJ','Double Contact','Continuous','Depth/Drop Jump']},
+};
 
 function videoEmbed(src){
   if(!src)return null;
@@ -4157,15 +4178,27 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         </div>
         <div className="ex-modal-right">
           <div className="grid cols-2">
-            <div><label>Tür</label><input list="ex-types" value={ex.type} onChange={e=>set('type',e.target.value)} placeholder="Üst Vücut İtiş…"/></div>
-            <div><label>Muscle Groups (multi)</label>
-              <div className="mus-pick">
-                {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
-                <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
-                  <option value="">+ Add muscle…</option>
-                  {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
-                </select>
-              </div></div>
+            <div><label>Exercise Type</label>
+              <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:''});}}>
+                <option value="">—</option>
+                {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div><label>{SUB_TYPES[ex.type]?.label||'Alt Tür'}</label>
+              <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUB_TYPES[ex.type]}>
+                <option value="">{SUB_TYPES[ex.type]?'—':'Önce Type seç'}</option>
+                {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
+            <div className="mus-pick">
+              {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
+              <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
+                <option value="">+ Add muscle…</option>
+                {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
           </div>
           <div style={{marginTop:14}}>
             <label>Video Linki (YouTube / Vimeo / mp4)</label>
@@ -4202,7 +4235,7 @@ function ExerciseCard({ex,onOpen}){
     <div className="ex-cbody">
       <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
       <div className="ex-ctags">
-        {ex.type&&<span className="ex-tag">▦ {ex.type}</span>}
+        {ex.subType&&<span className="ex-tag">⚙ {ex.subType}</span>}
         {(ex.muscle||[]).map((m,i)=><span key={i} className="ex-tag">◎ {m}</span>)}
       </div>
     </div>
@@ -4212,59 +4245,83 @@ function ExerciseCard({ex,onOpen}){
 function ExercisesView({data,setData}){
   const exercises=data.exercises||[];
   const setExercises=arr=>setData({...data,exercises:arr});
+  const[activeType,setActiveType]=useState(null);  // null => category grid; type name => exercises within
   const[q,setQ]=useState('');
-  const[sort,setSort]=useState('default');
-  const[fType,setFType]=useState('');
+  const[fSub,setFSub]=useState('');
+  const[fMuscle,setFMuscle]=useState('');     // extra filter for Hip/Knee Dominant
   const[openId,setOpenId]=useState(null);
 
-  const add=()=>{const e={id:uid(),name:'',type:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const patch=(id,p)=>setExercises(exercises.map(e=>e.id===id?{...e,...p}:e));
   const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
+  const addExercise=type=>{const e={id:uid(),name:'',type:type||activeType||'',subType:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
+  const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
+  // Pick a sample exercise per type for the category-tile preview
+  const typeSample=useMemo(()=>{const m={};EX_TYPES.forEach(t=>{m[t]=exercises.find(e=>e.type===t&&(e.thumb||e.videoUrl||e.videoData));});return m;},[exercises]);
+  const open=exercises.find(e=>e.id===openId);
+  const goBack=()=>{setActiveType(null);setFSub('');setFMuscle('');setQ('');};
 
-  const muscles=useMemo(()=>{const s=new Set();exercises.forEach(e=>(e.muscle||[]).forEach(m=>s.add(m)));return[...s].sort();},[exercises]);
+  // ----- Category landing -----
+  if(!activeType){
+    return(<div className="ex-wrap">
+      <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
+      <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
+      <div className="ex-top">
+        <div><h1 className="ex-h1">Exercise Library</h1>
+          <div className="sub">Bir kategori seç ve içindeki egzersizleri yönet.</div></div>
+      </div>
+      <div className="ex-grid type-grid">
+        {EX_TYPES.map(t=>{const sample=typeSample[t];return(
+          <div key={t} className="ex-card type-card" onClick={()=>setActiveType(t)}>
+            <div className="ex-thumb">
+              {sample?.thumb?<img src={sample.thumb} alt=""/>:<div className="ex-thumb-ph">🏋</div>}
+              <div className="type-count-badge">{typeCounts[t]} egzersiz</div>
+            </div>
+            <div className="ex-cbody type-card-body">
+              <div className="ex-cname">{t}</div>
+              <div className="type-sub">{SUB_TYPES[t]?.label||''}</div>
+            </div>
+          </div>);})}
+      </div>
+      {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
+    </div>);
+  }
 
-  let list=exercises.filter(e=>{
-    if(q&&!(e.name||'').toLowerCase().includes(q.toLowerCase()))return false;
-    if(fType&&e.type!==fType)return false;
+  // ----- Inside a category -----
+  const sub=SUB_TYPES[activeType]||null;
+  const needsMuscleFilter=activeType==='Hip Dominant'||activeType==='Knee Dominant';
+  const ql=q.toLowerCase();
+  const list=exercises.filter(e=>{
+    if(e.type!==activeType)return false;
+    if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
+    if(fSub&&e.subType!==fSub)return false;
+    if(needsMuscleFilter&&fMuscle&&!(e.muscle||[]).includes(fMuscle))return false;
     return true;
   });
-  if(sort==='name')list=[...list].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  else if(sort==='muscle')list=[...list].sort((a,b)=>((a.muscle||[])[0]||'').localeCompare((b.muscle||[])[0]||''));
-
-  const open=exercises.find(e=>e.id===openId);
 
   return(<div className="ex-wrap">
     <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
     <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
-
     <div className="ex-top">
       <div>
-        <h1 className="ex-h1">Exercise Library</h1>
-        <div className="sub">Egzersiz demolarını, videolarını ve amaçlarını yönet</div>
-      </div>
-      <div className="row" style={{gap:8}}>
-        <span style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>Sırala</span>
-        <select value={sort} onChange={e=>setSort(e.target.value)} style={{width:170}}>
-          <option value="default">Varsayılan</option>
-          <option value="name">İsme göre (A-Z)</option>
-          <option value="muscle">Kas grubuna göre</option>
-        </select>
+        <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← Kategoriler</button>
+        <h1 className="ex-h1">{activeType}</h1>
+        {sub&&<div className="sub">Filtre: <b>{sub.label}</b>{needsMuscleFilter?' · Kas Grubu':''}</div>}
       </div>
     </div>
-
     <div className="ex-toolbar">
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Egzersiz ara…"/></div>
-      <select value={fType} onChange={e=>setFType(e.target.value)} className="ex-filter">
-        <option value="">Exercise Type</option>
-        {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-      </select>
-      <button className="btn sm" onClick={add}>＋ Egzersiz Ekle</button>
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`${activeType} ara…`}/></div>
+      {sub&&<select value={fSub} onChange={e=>setFSub(e.target.value)} className="ex-filter" title={sub.label}>
+        <option value="">All {sub.label}</option>
+        {sub.values.map(v=><option key={v} value={v}>{v}</option>)}
+      </select>}
+      {needsMuscleFilter&&<select value={fMuscle} onChange={e=>setFMuscle(e.target.value)} className="ex-filter" title="Muscle Group">
+        <option value="">All Muscles</option>
+        {EX_MUSCLES.map(m=><option key={m} value={m}>{m}</option>)}
+      </select>}
+      <button className="btn sm" onClick={()=>addExercise()}>＋ Egzersiz Ekle</button>
     </div>
-
-    {list.length===0 && <div className="ex-empty">Henüz egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ilk hareketi oluştur — video linki/yüklemesi ve amaç ekleyebilirsin.</div>}
-
+    {list.length===0&&<div className="ex-empty">Bu kategoride{(fSub||fMuscle||q)?' filtreyle eşleşen':''} egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ekle.</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
-
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
 }
