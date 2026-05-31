@@ -1018,13 +1018,25 @@ function printWeeklyReportTR(R){
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
   const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
   const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
-  // Daily team-load chart — workout chips on top, value, bar, day label
+  // Daily team-load chart — colored session pills on top, value, bar, day label
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const SC={
+    strength:{c:'#10b981',g:'rgba(16,185,129,.55)'},
+    practice:{c:'#f97316',g:'rgba(249,115,22,.55)'},
+    speed:{c:'#a855f7',g:'rgba(168,85,247,.55)'},
+    recovery:{c:'#06b6d4',g:'rgba(6,182,212,.55)'},
+    match:{c:'#ef4444',g:'rgba(239,68,68,.55)'},
+    endurance:{c:'#14b8a6',g:'rgba(20,184,166,.55)'},
+  };
   const maxDay=Math.max(1,...R.dayTotals);
   const dailyBars=R.dailyLabels.map((lab,i)=>{
-    const h=Math.round((R.dayTotals[i]/maxDay)*88);
+    const h=Math.round((R.dayTotals[i]/maxDay)*64);
     const wks=(R.daySessions&&R.daySessions[i])||[];
-    const wkHtml=wks.slice(0,3).map(n=>`<div>${esc(n)}</div>`).join('');
+    const wkHtml=wks.slice(0,3).map(s=>{
+      const col=SC[s.type]||SC.practice;
+      const meta=[s.duration?s.duration+'min':null,s.au?nf(s.au)+' AU':null].filter(Boolean).join(' · ');
+      return `<div class="wkchip" style="border-color:${col.c};box-shadow:0 0 5px ${col.g},inset 0 0 3px ${col.g}"><div class="wn">${esc(s.name)}</div>${meta?`<div class="wm">${esc(meta)}</div>`:''}</div>`;
+    }).join('');
     return `<div class="bc"><div class="bworks-top">${wkHtml}</div><div class="bgraph"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,#0891b2,#0891b2aa)"></div></div><div class="bl">${lab}</div></div>`;
   }).join('');
   const dailySec=`<div class="sec" style="--ac:#0891b2"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
@@ -1063,10 +1075,12 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-si
 .sh .st{font-size:12px;font-weight:800;color:#0f172a}
 .sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:3px 10px;border-radius:11px;font-weight:700;white-space:nowrap}
 .chart{display:flex;align-items:stretch;gap:5px;height:108px;padding:10px 10px 0}
-.chart.tall{height:200px;align-items:stretch}
+.chart.tall{height:220px;align-items:stretch}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
-.bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;align-self:stretch;padding:0 1px;margin-bottom:5px;min-height:28px}
-.bworks-top>div{background:rgba(8,145,178,.14);color:#0e7490;border:1px solid rgba(8,145,178,.35);padding:4px 5px;border-radius:6px;font-size:9px;font-weight:700;text-align:center;line-height:1.25;word-break:break-word;hyphens:auto;-webkit-hyphens:auto}
+.bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-self:stretch;padding:0 1px;margin-bottom:6px;min-height:30px}
+.wkchip{background:#0f1526;border:1px solid;border-left-width:4px;border-radius:6px;padding:4px 6px;color:#fff;text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto}
+.wkchip .wn{font-size:9px;font-weight:800;color:#fff;line-height:1.25}
+.wkchip .wm{font-size:8px;font-weight:700;color:#e2e8f0;opacity:.95;line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
 .bv{font-size:10px;font-weight:800;margin-bottom:3px;color:#0f172a;white-space:nowrap}
 .bar{width:74%;max-width:46px;border-radius:4px 4px 0 0}
@@ -2362,7 +2376,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       (d.sessions||[]).forEach(s=>{const dur=+s.duration||0;pT[s.purpose||'—']=(pT[s.purpose||'—']||0)+dur;});});
     const pTot=Object.values(pT).reduce((a,b)=>a+b,0);
     const wpMix=Object.entries(pT).map(([k,v])=>({label:k,min:v,pct:pTot?v/pTot*100:0})).sort((a,b)=>b.pct-a.pct);
-    const daySessions=days7.map(d=>{const day=team.days?.[d];return(day?.sessions||[]).map(s=>s.name).filter(Boolean);});
+    const daySessions=days7.map(d=>{const day=team.days?.[d];return(day?.sessions||[]).map(s=>({name:s.name||'',type:sessionType(s),duration:Number(s.duration)||0,au:Number(s.au)||0})).filter(s=>s.name);});
     printWeeklyReportTR({
       teamName:team.setup.teamName,
       weekLabel:fd(wkS)+' → '+fd(wkE),
