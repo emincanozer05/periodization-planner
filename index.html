@@ -1018,9 +1018,15 @@ function printWeeklyReportTR(R){
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
   const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
   const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
-  // Daily team-load mini bar chart for the week
+  // Daily team-load mini bar chart for the week — workout names rendered INSIDE the bars
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const maxDay=Math.max(1,...R.dayTotals);
-  const dailyBars=R.dailyLabels.map((lab,i)=>{const h=Math.round((R.dayTotals[i]/maxDay)*118);return `<div class="bc"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,#0891b2,#0891b2aa)"></div><div class="bl">${lab}</div></div>`;}).join('');
+  const dailyBars=R.dailyLabels.map((lab,i)=>{
+    const h=Math.round((R.dayTotals[i]/maxDay)*128);
+    const wks=(R.daySessions&&R.daySessions[i])||[];
+    const wkHtml=h>=36?wks.slice(0,3).map(n=>`<div>${esc(n)}</div>`).join(''):'';
+    return `<div class="bc"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,#0891b2,#0891b2aa)"><div class="bworks">${wkHtml}</div></div><div class="bl">${lab}</div></div>`;
+  }).join('');
   const dailySec=`<div class="sec" style="--ac:#0891b2"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
   // Per-athlete x day matrix (allows in-page break)
   const matrixSec=_loadSectionHTML('Sporcu × Gün Yük Dağılımı (AU)','Yüke göre sıralı',R.dailyLabels,R.perAthlete,'#7c3aed').replace('class="sec"','class="sec matrix-sec"');
@@ -1049,7 +1055,7 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-si
 .hd .tm{font-size:12px;color:#475569;font-weight:600;margin-top:3px}
 .hd .rng{font-size:13px;font-weight:800;color:#0891b2;background:#ecfeff;padding:6px 16px;border-radius:14px;white-space:nowrap}
 .sec{border:1px solid #e5e7eb;border-radius:9px;overflow:hidden;margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
-.matrix-sec.sec{page-break-inside:auto;break-inside:auto} /* athlete x day table may span pages */
+.matrix-sec.sec{page-break-before:always;break-before:page;page-break-inside:auto;break-inside:auto} /* full athlete x day table starts on page 2 */
 .matrix-sec tbody tr{page-break-inside:avoid;break-inside:avoid} /* but rows stay together */
 .matrix-sec thead{display:table-header-group} /* repeat header on new pages */
 .sh{display:flex;align-items:center;gap:7px;padding:8px 11px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
@@ -1058,8 +1064,10 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-si
 .sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:3px 10px;border-radius:11px;font-weight:700;white-space:nowrap}
 .chart{display:flex;align-items:flex-end;gap:5px;height:108px;padding:10px 10px 0}
 .chart.tall{height:128px}
-.bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-.bar{width:72%;max-width:46px;border-radius:4px 4px 0 0}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar{width:72%;max-width:56px;border-radius:4px 4px 0 0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.bworks{font-size:7.5px;font-weight:700;color:#fff;text-align:center;line-height:1.25;padding:3px 2px;text-shadow:0 1px 2px rgba(0,0,0,.4);width:100%}
+.bworks>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 0}
 .bv{font-size:9px;font-weight:800;margin-bottom:2px;white-space:nowrap}
 .bl{font-size:8.5px;color:#64748b;margin-top:5px;text-align:center;font-weight:600;line-height:1.1}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
@@ -2343,6 +2351,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       (d.sessions||[]).forEach(s=>{const dur=+s.duration||0;pT[s.purpose||'—']=(pT[s.purpose||'—']||0)+dur;});});
     const pTot=Object.values(pT).reduce((a,b)=>a+b,0);
     const wpMix=Object.entries(pT).map(([k,v])=>({label:k,min:v,pct:pTot?v/pTot*100:0})).sort((a,b)=>b.pct-a.pct);
+    const daySessions=days7.map(d=>{const day=team.days?.[d];return(day?.sessions||[]).map(s=>s.name).filter(Boolean);});
     printWeeklyReportTR({
       teamName:team.setup.teamName,
       weekLabel:fd(wkS)+' → '+fd(wkE),
@@ -2350,7 +2359,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       weekTotal:wMono.total,weekMean:wMono.mean,weekSD:wMono.sd,
       weekMono:wMono.monotony,weekStrain:wMono.strain,
       trainDays:days7.filter(d=>dayLoad(d)>0).length,
-      dailyLabels:dailyData.labels,dayTotals:dailyData.dayTotals,
+      dailyLabels:dailyData.labels,dayTotals:dailyData.dayTotals,daySessions,
       perAthlete:dailyData.perAthlete,pMix:wpMix
     });
   };
