@@ -606,15 +606,30 @@ header h1{color:#0f172a;background:none;-webkit-text-fill-color:#0f172a}
 .mus-chip{background:#e0f7fa;color:#0f172a;border-color:#a5f3fc}
 .mus-chip button{color:#475569}
 .mus-chip button:hover{color:#dc2626}
-/* Exercise Library — category landing tiles */
-.type-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))!important}
-.type-card{cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s}
-.type-card:hover{transform:translateY(-4px);border-color:var(--accent2);box-shadow:0 0 18px rgba(34,211,238,.30)}
-.type-card .ex-thumb{aspect-ratio:16/9;background:linear-gradient(135deg,#1c2238,#0f1424);position:relative}
-.type-card .ex-cname{color:#f1f5f9!important;font-size:16px;font-weight:800;margin-bottom:4px}
-.type-card .type-sub{color:var(--accent2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.type-card .type-card-body{padding:12px 14px 14px}
-.type-count-badge{position:absolute;top:8px;right:8px;background:rgba(8,145,178,.92);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+/* Exercise Library — category landing tiles (no thumb, colored phosphor borders) */
+.type-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important}
+.type-card{
+  cursor:pointer;background:#0f1526;border:2px solid;border-radius:16px;
+  padding:42px 24px 32px;min-height:170px;position:relative;
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  transition:transform .18s, box-shadow .18s;
+}
+.type-card:hover{transform:translateY(-5px) scale(1.015)}
+.type-card .ex-cname{
+  font-family:'Space Grotesk','Inter',sans-serif;
+  font-style:italic;font-weight:800;
+  font-size:26px;line-height:1.1;letter-spacing:-.5px;
+  color:#ffffff!important;margin-bottom:10px;
+}
+.type-card .type-sub{
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;
+  color:inherit;opacity:.85;
+}
+.type-count-badge{
+  position:absolute;top:10px;right:10px;
+  font-size:11px;font-weight:800;padding:4px 11px;border-radius:14px;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+}
 /* Exercise Library / Researches title dark on light page */
 .ex-h1{color:#0f172a}
 </style>
@@ -4095,6 +4110,17 @@ function CloudBar({sync,onOpen}){
    ========================================================= */
 const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
+// Phosphor color for each category tile.
+const TYPE_COLORS={
+  'Upper Body Push':'#22d3ee',           // cyan
+  'Upper Body Pull':'#fcd34d',           // amber
+  'Hip Dominant':'#86efac',              // green
+  'Knee Dominant':'#fb923c',             // orange
+  'Core':'#c4b5fd',                      // purple
+  'Full Body':'#f9a8d4',                 // pink
+  'Multi Directional Speed':'#fca5a5',   // red
+  'Plyometric':'#5eead4',                // teal
+};
 // Each Exercise Type has its own secondary filter dimension.
 const SUB_TYPES={
   'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
@@ -4270,16 +4296,12 @@ function ExercisesView({data,setData}){
           <div className="sub">Bir kategori seç ve içindeki egzersizleri yönet.</div></div>
       </div>
       <div className="ex-grid type-grid">
-        {EX_TYPES.map(t=>{const sample=typeSample[t];return(
-          <div key={t} className="ex-card type-card" onClick={()=>setActiveType(t)}>
-            <div className="ex-thumb">
-              {sample?.thumb?<img src={sample.thumb} alt=""/>:<div className="ex-thumb-ph">🏋</div>}
-              <div className="type-count-badge">{typeCounts[t]} egzersiz</div>
-            </div>
-            <div className="ex-cbody type-card-body">
-              <div className="ex-cname">{t}</div>
-              <div className="type-sub">{SUB_TYPES[t]?.label||''}</div>
-            </div>
+        {EX_TYPES.map(t=>{const c=TYPE_COLORS[t]||'#22d3ee';return(
+          <div key={t} className="type-card" onClick={()=>setActiveType(t)}
+            style={{borderColor:c,boxShadow:`0 0 16px ${c}66, 0 0 32px ${c}33, inset 0 0 22px ${c}1f`,color:c}}>
+            <div className="type-count-badge" style={{background:c,color:'#0f1526'}}>{typeCounts[t]} egzersiz</div>
+            <div className="ex-cname" style={{textShadow:`0 0 12px ${c}aa`}}>{t}</div>
+            <div className="type-sub">{SUB_TYPES[t]?.label||''}</div>
           </div>);})}
       </div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
