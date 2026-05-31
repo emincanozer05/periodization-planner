@@ -993,7 +993,7 @@ function _loadSectionHTML(title,subtitle,colLabels,perAthlete,accent){
   const maxCol=Math.max(1,...colTotals);
   const bars=colLabels.map((lab,i)=>{
     const h=Math.round((colTotals[i]/maxCol)*88);
-    return `<div class="bc"><div class="bv">${colTotals[i]?nf(colTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,${accent},${accent}aa)"></div><div class="bl">${lab}</div></div>`;
+    return `<div class="bc"><div class="bgraph"><div class="bv">${colTotals[i]?nf(colTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px;background:linear-gradient(180deg,${accent},${accent}aa)"></div></div><div class="bl">${lab}</div></div>`;
   }).join('');
   const head=`<tr><th class="ath"># Athlete</th>${colLabels.map(l=>`<th>${l}</th>`).join('')}<th class="tot">Tot</th></tr>`;
   const rows=sorted.length?sorted.map((a,ri)=>`<tr><td class="ath">${ri+1}. ${a.name}</td>${a.data.map(v=>`<td>${v?nf(v):'<span class=z>·</span>'}</td>`).join('')}<td class="tot">${nf(a.total)}</td></tr>`).join('')
@@ -1044,11 +1044,8 @@ function printWeeklyReportTR(R){
     <div class="note"><b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — &gt;2 aşırı tek düze.</div></div>`;
   // Purpose mix
   const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
-  const _cx=55,_cy=55,_rr=40,_circ=2*Math.PI*_rr;let _cum=0;
-  const _pieSlices=R.pMix.length?R.pMix.map((p,i)=>{const len=(p.pct/100)*_circ;const off=-_cum;_cum+=len;return `<circle cx="${_cx}" cy="${_cy}" r="${_rr}" fill="transparent" stroke="${PCOL[i%PCOL.length]}" stroke-width="22" stroke-dasharray="${len} ${_circ-len}" stroke-dashoffset="${off}" transform="rotate(-90 ${_cx} ${_cy})"/>`;}).join(''):`<circle cx="${_cx}" cy="${_cy}" r="${_rr}" fill="transparent" stroke="#e5e7eb" stroke-width="22"/>`;
-  const _pieSvg=`<svg width="110" height="110" viewBox="0 0 110 110">${_pieSlices}<text x="${_cx}" y="${_cy+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#0f172a">100%</text></svg>`;
   const purposeSec=`<div class="sec" style="--ac:#ec4899"><div class="sh"><span class="dot"></span><span class="st">Antrenman Türü Dağılımı</span><span class="ssub">Dakika bazında</span></div>
-    <div class="psplit"><div class="ppie">${_pieSvg}</div><div class="ptbl"><table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div></div></div>`;
+    <table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Haftalık Antrenman Raporu — ${R.teamName}</title><style>
 @page{size:A4 landscape;margin:10mm}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
@@ -1066,13 +1063,14 @@ body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-si
 .sh .st{font-size:12px;font-weight:800;color:#0f172a}
 .sh .ssub{margin-left:auto;font-size:9px;color:#fff;background:var(--ac);padding:3px 10px;border-radius:11px;font-weight:700;white-space:nowrap}
 .chart{display:flex;align-items:stretch;gap:5px;height:108px;padding:10px 10px 0}
-.chart.tall{height:180px;align-items:stretch}
+.chart.tall{height:200px;align-items:stretch}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
-.bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;align-self:stretch;padding:0 1px;margin-bottom:4px;min-height:24px}
-.bworks-top>div{background:rgba(8,145,178,.12);color:#0e7490;border:1px solid rgba(8,145,178,.30);padding:2px 4px;border-radius:5px;font-size:7px;font-weight:700;text-align:center;line-height:1.2;word-break:break-word;hyphens:auto;-webkit-hyphens:auto}
+.bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:3px;align-self:stretch;padding:0 1px;margin-bottom:5px;min-height:28px}
+.bworks-top>div{background:rgba(8,145,178,.14);color:#0e7490;border:1px solid rgba(8,145,178,.35);padding:4px 5px;border-radius:6px;font-size:9px;font-weight:700;text-align:center;line-height:1.25;word-break:break-word;hyphens:auto;-webkit-hyphens:auto}
 .bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
-.bv{font-size:9px;font-weight:800;margin-bottom:2px;color:#0f172a;white-space:nowrap}
+.bv{font-size:10px;font-weight:800;margin-bottom:3px;color:#0f172a;white-space:nowrap}
 .bar{width:74%;max-width:46px;border-radius:4px 4px 0 0}
+.bl{font-size:9px;color:#475569;font-weight:700;margin-top:6px;text-align:center;line-height:1.1;flex:0 0 auto}
 .bv{font-size:9px;font-weight:800;margin-bottom:2px;white-space:nowrap}
 .bl{font-size:8.5px;color:#64748b;margin-top:5px;text-align:center;font-weight:600;line-height:1.1}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
@@ -1135,11 +1133,8 @@ function printMonthlyReportTR(R){
     <div class="note"><b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Yüksek monotoni (&gt;2) tek düze yükü ve artan yaralanma riskini gösterir. <b>Zorlanma</b> = Toplam × Monotoni.</div></div>`;
 
   const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
-  const _cx=55,_cy=55,_rr=40,_circ=2*Math.PI*_rr;let _cum=0;
-  const _pieSlices=R.pMix.length?R.pMix.map((p,i)=>{const len=(p.pct/100)*_circ;const off=-_cum;_cum+=len;return `<circle cx="${_cx}" cy="${_cy}" r="${_rr}" fill="transparent" stroke="${PCOL[i%PCOL.length]}" stroke-width="22" stroke-dasharray="${len} ${_circ-len}" stroke-dashoffset="${off}" transform="rotate(-90 ${_cx} ${_cy})"/>`;}).join(''):`<circle cx="${_cx}" cy="${_cy}" r="${_rr}" fill="transparent" stroke="#e5e7eb" stroke-width="22"/>`;
-  const _pieSvg=`<svg width="110" height="110" viewBox="0 0 110 110">${_pieSlices}<text x="${_cx}" y="${_cy+4}" text-anchor="middle" font-size="11" font-weight="800" fill="#0f172a">100%</text></svg>`;
   const purposeSec=`<div class="sec" style="--ac:#ec4899"><div class="sh"><span class="dot"></span><span class="st">Antrenman Türü Dağılımı</span><span class="ssub">Dakika bazında</span></div>
-    <div class="psplit"><div class="ppie">${_pieSvg}</div><div class="ptbl"><table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div></div></div>`;
+    <table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
 
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Aylık Antrenman Raporu — ${R.teamName}</title><style>
 @page{size:A4 landscape;margin:10mm}
