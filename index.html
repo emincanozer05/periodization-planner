@@ -234,6 +234,34 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-ex .en{font-size:13.5px;font-weight:500;flex:1;color:var(--text)}
 .dw-ex .ed{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);text-align:right}
 .dw-empty{color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;text-align:center;padding:18px;border:1px dashed var(--border);border-radius:9px}
+/* Editable planner drawer — wider to fit the session editor */
+.dw.edit{width:min(780px,97vw)}
+.dw-quickadd{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:16px}
+.dw-quickadd .qa-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-right:2px}
+.dw-quickadd button{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(230,255,85,.30);padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s}
+.dw-quickadd button:hover{background:rgba(230,255,85,.18);transform:translateY(-1px)}
+.dw-quickadd button.copy{background:transparent;color:var(--text2);border-color:var(--border2)}
+.dw-quickadd button.copy:hover{border-color:var(--text2);color:var(--text);background:var(--panel)}
+/* Month calendar below the week strip */
+.calm-wrap{margin-top:26px;padding-top:22px;border-top:1px solid var(--border)}
+.calm-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.calm-head .nav-arrows{display:flex;gap:6px}
+.calm-head .nav-arrows button{width:30px;height:30px;border-radius:8px;background:var(--panel);border:1px solid var(--border2);color:var(--text);display:grid;place-items:center;cursor:pointer;font-size:15px;line-height:1;transition:border-color .2s;font-family:inherit}
+.calm-head .nav-arrows button:hover{border-color:var(--text2)}
+.calm-head .ml{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.calm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.calm-dow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-align:center;text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px}
+.calm-cell{min-height:74px;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:7px 8px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:transform .12s,border-color .15s}
+.calm-cell:hover{border-color:var(--accent);transform:translateY(-2px)}
+.calm-cell.empty{background:transparent;border:none;cursor:default}
+.calm-cell.empty:hover{transform:none}
+.calm-cell.inweek{box-shadow:0 0 0 1px var(--accent2) inset;border-color:var(--accent2)}
+.calm-cell.today .d{color:var(--accent)}
+.calm-cell .d{font-size:13px;font-weight:600;color:var(--text)}
+.calm-cell .dots{display:flex;gap:3px;flex-wrap:wrap}
+.calm-cell .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.calm-cell .mau{margin-top:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--accent);font-weight:600}
+.calm-cell.low{background:var(--low)}.calm-cell.med{background:var(--med)}.calm-cell.high{background:var(--high)}.calm-cell.peak{background:var(--peak)}
 .timeline{display:flex;height:36px;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin:10px 0 16px;box-shadow:var(--shadow)}
 .timeline .seg{color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 2px rgba(0,0,0,.4);transition:filter .15s}
 .timeline .seg:hover{filter:brightness(1.15)}
@@ -1833,13 +1861,38 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
    CALENDAR (reusable for team & athlete)
    ========================================================= */
 const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
-function CalendarView({days,selected,setSelected,goDayView,weeks}){
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
   const dayCells=[];for(let i=0;i<7;i++)dayCells.push(addD(weekStart,i));
   const setWeek=d=>{const n=addD(weekStart,d*7);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:fmt(n)});};
   const[drawerSes,setDrawerSes]=useState(null);
+  const[drawerDate,setDrawerDate]=useState(null);
+  const[editDate,setEditDate]=useState(null);
+  const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
+  useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
+  // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
+  const canEdit=typeof saveDays==='function';
+  const teamMode=Array.isArray(athletes)&&typeof saveAthletes==='function';
+  const edDay=editDate?(days[editDate]||EDAY(editDate)):null;
+  const svDay=(dateK,upd)=>{
+    const d0=days[dateK]||EDAY(dateK);
+    const oldS=d0.sessions||[];
+    const newDay={...d0,...upd,date:dateK};
+    const newS=newDay.sessions||[];
+    const nd={...days,[dateK]:newDay};
+    if(teamMode&&newS!==oldS){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}
+    else saveDays(nd);
+  };
+  const edAdd=p=>svDay(editDate,{sessions:[...(edDay.sessions||[]),SESS(p)]});
+  const edUpd=(sid,ns)=>svDay(editDate,{sessions:edDay.sessions.map(s=>s.id===sid?ns:s)});
+  const edDel=sid=>svDay(editDate,{sessions:edDay.sessions.filter(s=>s.id!==sid)});
+  const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
+  const edMv=(sid,dir)=>{const a=[...edDay.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];svDay(editDate,{sessions:a});};
+  const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('Önceki günde antrenman yok');return;}
+    svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
+  const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
   const ltCls=lt=>{if(!lt)return'';const x=lt.toLowerCase();
     if(x.includes('mechanical'))return'mech';
     if(x.includes('metabolic'))return'metab';
@@ -1865,12 +1918,12 @@ function CalendarView({days,selected,setSelected,goDayView,weeks}){
         return(<div key={k} className="calw-col">
           <div className="dh">
             <span>{DN[i]} {d.getDate()}</span>
-            <button className="add" onClick={e=>{e.stopPropagation();goDayView(k);}} title="Open day">+</button>
+            <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title="Antrenman ekle / planla">+</button>
           </div>
           {ss.length===0&&<div className="calw-empty">rest</div>}
           {ss.map(s=>{
             const au=s.au||(s.sRPE!==''&&s.sRPE!=null?Math.round(Number(s.sRPE)*Number(s.duration||0)):0);
-            return(<button key={s.id} type="button" className={`calw-ses ${ltCls(s.loadType)}`} onClick={()=>setDrawerSes(s)}>
+            return(<button key={s.id} type="button" className={`calw-ses ${ltCls(s.loadType)}`} onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               <div className="nm">{s.name}</div>
               <div className="pr">{s.purpose}</div>
               <div className="mt"><span>{s.time}</span><span>{s.duration}m</span></div>
@@ -1926,12 +1979,80 @@ function CalendarView({days,selected,setSelected,goDayView,weeks}){
           })}
           {drawerSes.notes&&<div style={{marginTop:14,padding:14,background:'var(--panel)',border:'1px solid var(--border)',borderRadius:9,fontSize:13,color:'var(--text2)',whiteSpace:'pre-wrap',lineHeight:1.55}}>{drawerSes.notes}</div>}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
-            <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>Close</button>
-            <button className="btn sm" onClick={()=>{const k=Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));if(k){setDrawerSes(null);goDayView(k);}}}>Open day</button>
+            <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>Kapat</button>
+            <button className="btn sm" onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ Düzenle</button>
           </div>
         </div>
       </aside>
     </>)}
+    {editDate&&(<>
+      <div className="dw-scrim" onClick={()=>setEditDate(null)}/>
+      <aside className="dw edit">
+        <div className="dw-h">
+          <div style={{flex:1,minWidth:0}}>
+            <div className="ti">Antrenman Planı</div>
+            <div className="su">{fdLong(editDate)} · {Math.round(dLoad(edDay))} AU</div>
+          </div>
+          <button className="x" onClick={()=>setEditDate(null)}>×</button>
+        </div>
+        <div className="dw-b">
+          <div className="dw-quickadd">
+            <span className="qa-lbl">Hızlı ekle</span>
+            {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(p.d)}>+ {p.name}</button>)}
+            <button onClick={()=>edAdd()}>+ Boş</button>
+            <button className="copy" onClick={edCopyYesterday}>Dünü kopyala</button>
+          </div>
+          {(edDay.sessions||[]).length===0&&<div className="dw-empty">Henüz antrenman yok — yukarıdan hızlı ekle ile başla</div>}
+          {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
+            onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
+            printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
+            athletes={teamMode?athletes:undefined}/>)}
+          <div className="hr"/>
+          <label>Günlük notlar</label>
+          <textarea value={edDay.dailyNotes||''} onChange={e=>svDay(editDate,{dailyNotes:e.target.value})} placeholder="Wellness, uyku, ağrı…"/>
+          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <button className="btn sm" onClick={()=>setEditDate(null)}>Bitti</button>
+          </div>
+        </div>
+      </aside>
+    </>)}
+    <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
+      weeks={weeks} ltCls={ltCls} ltColor={ltColor}
+      onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
+  </div>);
+}
+
+function MonthCalendar({days,monthRef,setMonthRef,weekStart,weekEnd,weeks,ltCls,ltColor,onPick}){
+  const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
+  const first=new Date(yr,mo,1);const offset=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
+  const cells=[];for(let i=0;i<offset;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(new Date(yr,mo,d));
+  const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
+  const wsK=fmt(weekStart),weK=fmt(weekEnd);
+  const loadCls=(k,day)=>{const w=weeks?.find(w=>k>=w.week&&k<=fmt(addD(parseD(w.week),6)));
+    if(w?.taper)return'peak';
+    if(day?.sessions?.length){const mx=dSRPEMax(day);if(mx>=8)return'high';if(mx>=5)return'med';if(mx>0)return'low';}
+    if(w){if(w.intensity>=85)return'high';if(w.intensity>=70)return'med';return'low';}
+    return'';};
+  return(<div className="calm-wrap">
+    <div className="calm-head">
+      <div className="nav-arrows"><button onClick={()=>setMo(-1)}>‹</button><button onClick={()=>setMo(1)}>›</button></div>
+      <div className="ml">{MN[mo]} {yr}</div>
+    </div>
+    <div className="calm-grid">
+      {DN.map(d=><div key={d} className="calm-dow">{d}</div>)}
+      {cells.map((d,i)=>{
+        if(!d)return<div key={i} className="calm-cell empty"/>;
+        const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
+        const inWeek=k>=wsK&&k<=weK;
+        const isToday=k===fmt(today);
+        const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
+        return(<div key={k} className={`calm-cell ${loadCls(k,day)}${inWeek?' inweek':''}${isToday?' today':''}`} onClick={()=>onPick(k)} title="Planla">
+          <div className="d">{d.getDate()}</div>
+          {ss.length>0&&<div className="dots">{ss.slice(0,4).map((s,j)=><span key={j} className="dot" style={{background:ltColor(ltCls(s.loadType))}}/>)}</div>}
+          {au>0&&<div className="mau">{Math.round(au)} AU</div>}
+        </div>);
+      })}
+    </div>
   </div>);
 }
 
@@ -3560,7 +3681,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
     </div>}
 
     {tab==='calendar'&&<CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
-      goDayView={k=>{setAthDayKey(k);setTab('week');}} weeks={weeks}/>}
+      goDayView={k=>{setAthDayKey(k);setTab('week');}} weeks={weeks}
+      saveDays={saveAthDays} setup={setup} labelOwner={ath.name}/>}
 
     {tab==='week'&&<Planner days={ath.days||{}} saveDays={saveAthDays} setup={setup} dateKey={athDayKey} setDateKey={setAthDayKey} labelOwner={ath.name}/>}
 
@@ -4601,7 +4723,10 @@ function App(){
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
-      {view==='calendar'&&<CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}/>}
+      {view==='calendar'&&<CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
+        setup={team.setup} labelOwner={team.setup.teamName} athletes={team.athletes||[]}
+        saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
+        saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
       {view==='program'&&<Planner days={team.days} setup={team.setup} dateKey={dayKey} setDateKey={setDayKey} labelOwner={team.setup.teamName}
         athletes={team.athletes||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
