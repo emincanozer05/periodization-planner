@@ -91,17 +91,23 @@ header h1{
 .team-sw select:focus{outline:none}
 .team-sw select option{background:var(--elevated)}
 nav{
-  display:flex;flex-direction:column;gap:8px;
+  display:flex;flex-direction:column;gap:18px;
   background:transparent;border:none;padding:0;
 }
-nav button{
+.nav-group{display:flex;flex-direction:column;gap:3px}
+.nav-glabel{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;padding:6px 12px 8px;font-weight:500}
+.nav-item{
   background:transparent;border:1px solid transparent;padding:10px 12px;cursor:pointer;
   color:var(--text2);font-size:14px;font-weight:500;
   border-radius:9px;white-space:nowrap;width:100%;text-align:left;
   transition:background .15s,border-color .15s,color .15s;font-family:inherit;
+  display:flex;align-items:center;gap:12px;
 }
-nav button.active{background:var(--panel);border-color:var(--border);color:var(--text);font-weight:600}
-nav button:hover{background:var(--panel);color:var(--text)}
+.nav-item .ni-ic{color:var(--accent);font-size:15px;line-height:1;width:18px;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.nav-item .ni-lbl{flex:1}
+.nav-item .ni-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--text2)}
+.nav-item.active{background:var(--panel);border-color:var(--border);color:var(--text);font-weight:600}
+.nav-item:hover{background:var(--panel);color:var(--text)}
 @media(max-width:760px){
   .app{flex-direction:column}
   .sidebar{width:auto;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
@@ -391,7 +397,28 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pbar button{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(230,255,85,.3);padding:7px 13px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s}
 .pbar button:hover{background:rgba(230,255,85,.18);border-color:var(--accent);transform:translateY(-1px)}
 /* Athletes */
-.ath-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.ath-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.ath-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.ath-search{flex:1;min-width:200px;max-width:380px;background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:9px 13px;display:flex;align-items:center;gap:9px}
+.ath-search .ic{color:var(--dim);font-size:14px}
+.ath-search input{background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-size:14px;width:100%;padding:0}
+.ath-search input::placeholder{color:var(--dim)}
+.ath-seg{display:flex;background:var(--panel);border:1px solid var(--border2);border-radius:9px;overflow:hidden}
+.ath-seg button{background:none;border:none;color:var(--text2);font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit;font-weight:500;transition:background .15s,color .15s}
+.ath-seg button.on{background:var(--bg2);color:var(--text)}
+.ath-card-v{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:18px;cursor:pointer;transition:transform .15s,border-color .15s;display:flex;flex-direction:column;gap:6px;position:relative;min-height:172px}
+.ath-card-v:hover{transform:translateY(-3px);border-color:var(--border2)}
+.ath-card-v .ac-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.ath-card-v .ac-av{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-weight:700;color:var(--text2);font-size:15px;overflow:hidden;flex:none}
+.ath-card-v .ac-av img{width:100%;height:100%;object-fit:cover}
+.ath-card-v .ac-num{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim)}
+.ath-card-v .ac-name{font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--text)}
+.ath-card-v .ac-meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:2px}
+.ath-card-v .ac-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:13px;border-top:1px solid var(--border)}
+.ath-card-v .ac-au{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);font-weight:500}
+.ath-card-v .ac-pill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;border-radius:5px;padding:2px 8px;font-weight:500;letter-spacing:.04em}
+.ath-card-v .ac-pill.inj{background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3)}
+.ath-card-v .ac-pill.ok{color:var(--dim);border:1px solid var(--border2)}
 /* Athlete picker (in session editor) */
 .ath-pick{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px}
 .ath-pick-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
@@ -3699,32 +3726,52 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
    ========================================================= */
 function Athletes({team,updateTeam,weeks}){
   const[sel,setSel]=useState(null);const athletes=team.athletes||[];
+  const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
   const save=a=>updateTeam(team.id,{athletes:a});
   const addAth=()=>{const a={id:uid(),name:'New Athlete',number:'',position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
     dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
   const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
   const delAth=id=>{if(!confirm('Delete this athlete and all their data?'))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
-
+  const ageOf=a=>{if(!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
+  const totalAU=a=>Object.values(a.days||{}).reduce((s,d)=>s+(d.sessions||[]).reduce((x,ses)=>x+Number(ses.au||0),0),0);
+  const isInjured=a=>(a.injuries||[]).some(i=>i.status!=='Recovered');
+  const initials=name=>(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const list=athletes.filter(a=>{
+    if(filter==='injured'&&!isInjured(a))return false;
+    if(!q)return true;
+    const s=q.toLowerCase();
+    return(a.name||'').toLowerCase().includes(s)||(a.position||'').toLowerCase().includes(s)||String(a.number||'').includes(s);
+  });
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← Back</button><p>Athlete not found</p></div>;
     return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks}/>;}
-
   return(<div>
-    <div className="panel">
-      <div className="row" style={{justifyContent:'space-between',marginBottom:18}}>
-        <h2 style={{margin:0}}>Roster — {athletes.length} athlete{athletes.length!==1?'s':''}</h2>
-        <button className="btn" onClick={addAth}>+ Add Athlete</button>
+    <div className="ath-toolbar">
+      <div className="ath-search"><span className="ic">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search athletes or position…"/></div>
+      <div className="ath-seg">
+        <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>All</button>
+        <button className={filter==='injured'?'on':''} onClick={()=>setFilter('injured')}>Injured</button>
       </div>
-      {athletes.length===0&&<div className="empty-st">No athletes yet — click "+ Add Athlete" to start.</div>}
-      <div className="ath-grid">{athletes.map(a=>(
-        <div key={a.id} className="ath-card" onClick={()=>setSel(a.id)}>
-          <div className="ath-photo">{a.photo?<img src={a.photo} alt=""/>:'👤'}</div>
-          <div className="ath-info"><div className="ath-name">{a.name}</div>
-            <div className="ath-meta">#{a.number||'—'} · {a.position}{a.height?` · ${a.height}cm`:''}{a.weight?` · ${a.weight}kg`:''}</div>
-            <div className="ath-meta">{Object.values(a.days||{}).filter(d=>d.sessions?.length).length} days planned · {(a.injuries||[]).filter(i=>i.status!=='Recovered').length} active injuries</div></div>
-          <button className="btn xs danger" onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
-        </div>))}</div>
+      <div style={{flex:1}}/>
+      <button className="btn sec sm" onClick={addAth}>+ Add</button>
     </div>
+    {athletes.length===0&&<div className="empty-st">No athletes yet — click "+ Add" to start.</div>}
+    {athletes.length>0&&list.length===0&&<div className="empty-st">No matches.</div>}
+    <div className="ath-grid">{list.map(a=>{
+      const age=ageOf(a);const injured=isInjured(a);const tau=totalAU(a);
+      return(<div key={a.id} className="ath-card-v" onClick={()=>setSel(a.id)}>
+        <div className="ac-top">
+          <div className="ac-av">{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
+          <div className="ac-num">#{a.number||'—'}</div>
+        </div>
+        <div className="ac-name">{a.name}</div>
+        <div className="ac-meta">{a.position||'—'}{age!=null?` · ${age} yo`:''}</div>
+        <div className="ac-foot">
+          <span className="ac-au">{tau.toLocaleString('en-US').replace(/,/g,'.')} AU</span>
+          <span className={`ac-pill ${injured?'inj':'ok'}`}>{injured?'INJURED':'AVAILABLE'}</span>
+        </div>
+      </div>);
+    })}</div>
   </div>);
 }
 
@@ -4694,15 +4741,38 @@ function App(){
   const weeks=useMemo(()=>buildWeeks(team.setup,periods,team.weekOverrides),[team.setup,periods,team.weekOverrides]);
   const goDayView=k=>{setDayKey(k);setView('program');};
 
-  const TABS=[{id:'setup',label:'Setup'},{id:'season',label:'Season Plan'},{id:'calendar',label:'Calendar'},
-    {id:'program',label:'Program'},{id:'athletes',label:'Athletes'},{id:'exercises',label:'Exercises'},{id:'researches',label:'Researches'},{id:'reports',label:'Reports'},
-    {id:'notion',label:'🔗 Notion Sync'},{id:'teams',label:'Teams'},{id:'backup',label:'Backup'}];
+  const exCount=(data.exercises||[]).length;
+  const NAV_GROUPS=[
+    {label:'Workspace',items:[
+      {id:'season',label:'Season',icon:'◐'},
+      {id:'calendar',label:'Calendar',icon:'▣'},
+      {id:'athletes',label:'Athletes',icon:'◉',count:(team.athletes||[]).length},
+      {id:'reports',label:'Training Load',icon:'▤'},
+      {id:'exercises',label:'Exercise Library',icon:'❙❙',count:exCount||null},
+      {id:'researches',label:'Researches',icon:'⌕'},
+    ]},
+    {label:'Account',items:[
+      {id:'setup',label:'Setup',icon:'⚙'},
+      {id:'teams',label:'Teams',icon:'⌂'},
+      {id:'notion',label:'Notion Sync',icon:'⇄'},
+      {id:'backup',label:'Backup',icon:'↓'},
+    ]},
+  ];
 
   return(<div className="app">
     <datalist id="lib-exercises">{[...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))].map((n,i)=><option key={i} value={n}/>)}</datalist>
     <aside className="sidebar">
-      <div className="brand"><img className="brand-logo" src="logo.png" alt="Tofaş"/></div>
-      <nav>{TABS.map(t=><button key={t.id} className={view===t.id?'active':''} onClick={()=>setView(t.id)}>{t.label}</button>)}</nav>
+      <div className="brand"><img className="brand-logo" src="logo.png" alt={team.setup.teamName}/></div>
+      <nav>
+        {NAV_GROUPS.map(g=><div key={g.label} className="nav-group">
+          <div className="nav-glabel">{g.label}</div>
+          {g.items.map(it=><button key={it.id} className={`nav-item${view===it.id?' active':''}`} onClick={()=>setView(it.id)}>
+            <span className="ni-ic">{it.icon}</span>
+            <span className="ni-lbl">{it.label}</span>
+            {it.count!=null&&<span className="ni-count">{it.count}</span>}
+          </button>)}
+        </div>)}
+      </nav>
     </aside>
     <div className="content">
     <header>
