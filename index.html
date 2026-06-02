@@ -268,6 +268,41 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
 .calm-cell .mau{margin-top:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--accent);font-weight:600}
 .calm-cell.low{background:var(--low)}.calm-cell.med{background:var(--med)}.calm-cell.high{background:var(--high)}.calm-cell.peak{background:var(--peak)}
+/* Season — top stat row, macrocycle bar, weekly bars, phase list */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+@media(max-width:760px){.stat-row{grid-template-columns:1fr 1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+.stat .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.stat .v{font-size:28px;font-weight:700;margin-top:8px;letter-spacing:-.01em;color:var(--text)}
+.tl-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+.tl-head .t{font-size:14px;font-weight:600;color:var(--text)}
+.tl-head .s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+.tl-track{display:flex;gap:5px;height:54px;margin-bottom:8px}
+.tl-seg{border-radius:8px;display:flex;flex-direction:column;justify-content:center;padding:0 14px;font-size:13px;font-weight:600;color:#0a0b0d;white-space:nowrap;overflow:hidden;cursor:default;transition:transform .15s}
+.tl-seg .tl-seg-n{font-size:13px;font-weight:600}
+.tl-seg:hover{transform:translateY(-2px)}
+.tl-seg small{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;opacity:.75;display:block}
+.tl-seg.gp{background:var(--accent)}
+.tl-seg.sp{background:#cfd8e6;color:#0a0b0d}
+.tl-seg.comp{background:var(--peak-t);color:#fff}
+.tl-seg.trans{background:var(--border2);color:var(--text2)}
+.tl-months{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.06em;margin-top:6px}
+.two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+.bars{display:flex;align-items:flex-end;gap:7px;height:140px}
+.bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.bars .col .bar{width:100%;background:linear-gradient(180deg,var(--border2),#3a4049);border-radius:4px 4px 0 0;min-height:3px;transition:background .2s}
+.bars .col .bar.hi{background:linear-gradient(180deg,var(--accent),#9aab3a)}
+.bars .col .lb{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+.phase-list{display:flex;flex-direction:column;gap:8px}
+.phase{display:grid;grid-template-columns:14px 1fr auto;gap:13px;align-items:center;padding:13px 15px;background:var(--bg2);border:1px solid var(--border);border-radius:10px}
+.phase .dot{width:12px;height:12px;border-radius:3px;background:var(--accent)}
+.phase .dot.sp{background:#cfd8e6}
+.phase .dot.comp{background:var(--peak-t)}
+.phase .dot.trans{background:var(--border2)}
+.phase .pn{font-size:14px;font-weight:600;color:var(--text)}
+.phase .pd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:2px}
+.phase .pdur{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text2)}
 .timeline{display:flex;height:36px;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin:10px 0 16px;box-shadow:var(--shadow)}
 .timeline .seg{color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;text-shadow:0 1px 2px rgba(0,0,0,.4);transition:filter .15s}
 .timeline .seg:hover{filter:brightness(1.15)}
@@ -1851,9 +1886,49 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const updPeriod=(id,field,val)=>{const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);updateTeam(team.id,{setup:{...s,periods:np}});};
   const resetPeriods=()=>{if(confirm('Reset periods to auto-generated from season + competition dates?'))updateTeam(team.id,{setup:{...s,periods:null}});};
   const usingCustom=!!s.periods;
-
+  // Period long names + monthly tick labels for the macrocycle bar
+  const periodLong={gp:'General',sp:'Specific Prep',comp:'Competition',trans:'Transition'};
+  const monthTicks=useMemo(()=>{const a=[];if(!s.seasonStart||!s.seasonEnd)return a;
+    const start=parseD(s.seasonStart),end=parseD(s.seasonEnd);
+    let cur=new Date(start.getFullYear(),start.getMonth(),1);
+    while(cur<=end){a.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
+    return a;},[s.seasonStart,s.seasonEnd]);
+  const weeklyMax=Math.max(1,...weeks.map(w=>(Number(w.volume)||0)+(Number(w.intensity)||0)));
+  const athleteCount=(team.athletes||[]).length;
   return(<div>
-    <div className="panel"><h2>Macrocycle Timeline</h2>
+    <div className="stat-row">
+      <div className="stat"><div className="k">Season</div><div className="v">{weeks.length} wks</div></div>
+      <div className="stat"><div className="k">Model</div><div className="v">{(MODELS.find(m=>m.id===s.model)?.name)||s.model}</div></div>
+      <div className="stat"><div className="k">Phases</div><div className="v">{periods.length}</div></div>
+      <div className="stat"><div className="k">Athletes</div><div className="v">{athleteCount}</div></div>
+    </div>
+    <div className="panel">
+      <div className="tl-head">
+        <div className="t">Macrocycle</div>
+        <div className="s">{fd(s.seasonStart)} → {fd(s.seasonEnd)}</div>
+      </div>
+      <div className="tl-track">{periods.map(p=>{const span=diffD(p.start,p.end)+1;const wks=Math.max(1,Math.round(span/7));return<div key={p.id} className={`tl-seg ${p.id}`} style={{flex:`${span} 1 0`}}>
+        <span className="tl-seg-n">{periodLong[p.id]||p.name}</span>
+        <small>{wks} wk</small>
+      </div>;})}</div>
+      <div className="tl-months">{monthTicks.map((d,i)=><span key={i}>{MN[d.getMonth()].toUpperCase()}</span>)}</div>
+    </div>
+    <div className="two-col">
+      <div className="panel">
+        <div className="tl-head"><div className="t">Weekly Load · AU</div><div className="s">microcycle</div></div>
+        <div className="bars">{weeks.slice(0,16).map((w,i)=>{const sum=(Number(w.volume)||0)+(Number(w.intensity)||0);const h=Math.max(3,Math.round((sum/weeklyMax)*100));const cur=fmt(today)>=w.week&&fmt(today)<=fmt(addD(parseD(w.week),6));
+          return(<div key={w.week} className="col"><div className={`bar${cur?' hi':''}`} style={{height:h+'%'}}/><div className="lb">{i+1}</div></div>);})}</div>
+      </div>
+      <div className="panel"><div className="tl-head"><div className="t">Phases</div></div>
+        <div className="phase-list">{periods.map(p=>{const wks=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));const longName={gp:'General Preparation',sp:'Specific Preparation',comp:'Competition',trans:'Transition'}[p.id]||p.name;
+          return(<div key={p.id} className="phase">
+            <div className={`dot ${p.id}`}/>
+            <div><div className="pn">{longName}</div><div className="pd">{fd(p.start)} → {fd(p.end)}</div></div>
+            <div className="pdur">{wks} wk</div>
+          </div>);})}</div>
+      </div>
+    </div>
+    <div className="panel"><h2>Macrocycle Timeline (detail)</h2>
       <div className="timeline">{periods.map(p=>{const span=diffD(p.start,p.end)+1;return<div key={p.id} className={`seg ${p.id}`} style={{width:(span/(total+1))*100+'%'}}>{p.name}</div>;})}</div>
       <div className="row" style={{justifyContent:'space-between',color:'var(--muted)',fontSize:12,marginBottom:8}}>
         <span>{fd(s.seasonStart)}</span><span>{fd(s.seasonEnd)}</span>
