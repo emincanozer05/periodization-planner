@@ -597,6 +597,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rs-readmeta-au{font-size:13px;font-weight:600;color:var(--accent)}
 .rs-readmeta-jr{font-size:12px;color:var(--muted);margin-top:2px}
 /* Athlete profile — centered hero + tile nav */
+/* Athlete detail — top bar + tab nav + stat cards (mockup design) */
+.ath-bar{display:flex;align-items:center;gap:16px;padding:8px 0 20px;flex-wrap:wrap}
+.ath-bar .back{background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text);padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:border-color .2s}
+.ath-bar .back:hover{border-color:var(--text2)}
+.ath-bar .av{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-weight:700;color:var(--text2);font-size:15px;overflow:hidden;flex:none;cursor:pointer;position:relative}
+.ath-bar .av img{width:100%;height:100%;object-fit:cover}
+.ath-bar .info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.ath-bar .info h1{font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin:0;line-height:1.15}
+.ath-bar .info .meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em;display:flex;flex-wrap:wrap;gap:8px}
+.ath-bar .info .meta span+span::before{content:"·";margin-right:8px;color:var(--border2)}
+.ath-bar .info .meta span+span{padding-left:0}
+.ath-bar .pill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;border-radius:5px;padding:3px 10px;font-weight:500;letter-spacing:.06em;align-self:flex-start}
+.ath-bar .pill.inj{background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3)}
+.ath-bar .pill.ok{color:var(--low-t);border:1px solid rgba(70,214,160,.3);background:rgba(70,214,160,.10)}
+.ath-tabs{display:flex;gap:6px;margin:0 0 22px;border-bottom:1px solid var(--border);overflow-x:auto;padding-bottom:0;flex-wrap:wrap}
+.ath-tabs button{background:none;border:none;color:var(--dim);font-size:13px;padding:10px 14px 12px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:8px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap}
+.ath-tabs button .ic{font-size:14px;line-height:1}
+.ath-tabs button:hover{color:var(--text2)}
+.ath-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+.ath-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.ath-stat{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:16px 18px}
+.ath-stat .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.ath-stat .v{font-size:28px;font-weight:700;margin-top:8px;letter-spacing:-.01em;color:var(--text);line-height:1}
+.ath-stat .v .u{font-size:13px;font-weight:500;color:var(--dim);margin-left:4px}
+.ath-stat .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;margin-top:6px;font-weight:500}
+.ath-stat .d.pos{color:var(--low-t)}
+.ath-stat .d.neg{color:var(--high-t)}
+.ath-stat .sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:6px;letter-spacing:.02em}
+.ath-section-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.ath-section-h .t{font-size:14px;font-weight:600;color:var(--text)}
+.ath-section-h .s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 .ath-hero-c{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:26px 20px;margin-top:12px}
 .ath-hero-c .ath-hero-photo{margin:0 auto;width:120px;height:120px;border-radius:50%;border:3px solid var(--border2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:40px;background:var(--panel);flex:none}
 .ath-hero-c .ath-hero-photo img{width:100%;height:100%;object-fit:cover}
@@ -3473,7 +3504,7 @@ function TestPanel({ath,updAth,setup}){
    ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests)
    ========================================================= */
 function AthleteDetail({ath,onBack,updAth,setup,weeks}){
-  const[tab,setTab]=useState('profile');
+  const[tab,setTab]=useState('overview');
   // Find the most recent date that has any data (sessions/wellness/measurements)
   // so charts open on a month with actual data instead of an empty current month.
   const recentDate=useMemo(()=>{
@@ -3506,34 +3537,42 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
     await generateCoachReport(`${ath.name} (${setup.teamName})`,label,ath.days||{},weeks,mw,extra.pMix,extra.acwrVal);
   };
 
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  const dobLong=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);return`b. ${String(b.getDate()).padStart(2,'0')} ${MN[b.getMonth()]} ${b.getFullYear()}`;})():null;
+  const injured=(ath.injuries||[]).some(i=>i.status!=='Recovered');
+  const ATH_TABS=[
+    {id:'overview',ic:'◉',l:'Overview'},
+    {id:'load',ic:'▤',l:'Load'},
+    {id:'body',ic:'⌇',l:'Body Comp'},
+    {id:'tests',ic:'⌖',l:'Tests'},
+    {id:'injuries',ic:'⊘',l:'Injuries'},
+    {id:'wellness',ic:'♡',l:'Wellness'},
+    {id:'report',ic:'⎘',l:'Report'},
+  ];
   return(<div>
-    <div className="panel">
-      <button className="btn sec sm" onClick={onBack} style={{marginBottom:14}}>← Back to Roster</button>
-      <div className="ath-hero ath-hero-c">
-        <div className="ath-hero-photo" onClick={()=>photoRef.current?.click()} title="Click to change photo" style={{cursor:'pointer'}}>
-          {ath.photo?<img src={ath.photo} alt=""/>:'📷'}
-          <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
-        </div>
-        <div className="ath-hero-info">
-          <h1>{ath.name||'Unnamed Athlete'}</h1>
-          <div className="ath-hero-sub">{setup.teamName}{ath.position?<span> › {ath.position}</span>:null}</div>
-          <div className="ath-hero-meta">
-            {ath.number&&<span className="ath-hero-stat">#{ath.number}</span>}
-            {ath.height&&<span className="ath-hero-stat">{ath.height} cm</span>}
-            {ath.weight&&<span className="ath-hero-stat">{ath.weight} kg</span>}
-            {ath.dateOfBirth&&<span className="ath-hero-stat">{fd(ath.dateOfBirth)}</span>}
-          </div>
+    <div className="ath-bar">
+      <button className="back" onClick={onBack}>‹ Athletes</button>
+      <div className="av" onClick={()=>photoRef.current?.click()} title="Foto değiştirmek için tıkla">
+        {ath.photo?<img src={ath.photo} alt=""/>:initials}
+        <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
+      </div>
+      <div className="info">
+        <h1>{ath.name||'Unnamed Athlete'}</h1>
+        <div className="meta">
+          {ath.number&&<span>#{ath.number}</span>}
+          {ath.position&&<span>{ath.position}</span>}
+          {ath.height&&<span>{ath.height} cm</span>}
+          {ath.weight&&<span>{ath.weight} kg</span>}
+          {dobLong&&<span>{dobLong}</span>}
+          {age!=null&&<span>{age} yo</span>}
         </div>
       </div>
-
-      <div className="ath-tiles">
-        {[{id:'profile',ic:'📊',l:'Profile'},{id:'calendar',ic:'📅',l:'Calendar'},{id:'week',ic:'📋',l:'Program'},{id:'reports',ic:'📈',l:'Reports & ACWR'},{id:'tests',ic:'🧪',l:'Testing'}]
-          .map(t=><button key={t.id} className={`ath-tile${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}><span className="ati">{t.ic}</span><span className="atl">{t.l}</span></button>)}
-      </div>
+      <span className={`pill ${injured?'inj':'ok'}`}>{injured?'INJURED':'AVAILABLE'}</span>
     </div>
+    <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
 
-    {tab==='profile'&&<div>
-      <div className="panel"><h2>Edit Profile</h2>
+    {tab==='overview'&&<div className="panel"><h2>Edit Profile</h2>
         <div className="grid cols-3">
           <div><label>Full name</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
           <div><label>Jersey #</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
@@ -3545,7 +3584,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           <div><label>Weight (kg)</label><input type="number" value={ath.weight} onChange={e=>updAth(ath.id,{weight:e.target.value})}/></div>
         </div>
         <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
-      </div>
+      </div>}
+    {tab==='injuries'&&<div>
 
       <div className="panel" style={{padding:0,overflow:'hidden'}}>
         {/* Red banner header */}
@@ -3615,7 +3655,21 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           </table>
         </div>}
       </div>
-
+    </div>}
+    {tab==='body'&&<div>
+      {(()=>{const m=(ath.measurements||[]).filter(x=>x.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));const cur=m[m.length-1];const prev=m[m.length-2];
+        const d=(a,b,k,dp=1)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(dp);};
+        const w=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null;
+        const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass');
+        const fmtD=(v,u)=>v==null?null:(v>0?`+${v}${u}`:`${v}${u}`);
+        return(<div className="ath-stat-row">
+          <div className="ath-stat"><div className="k">Current Wt</div><div className="v">{w!=null?w:'—'}<span className="u">kg</span></div></div>
+          <div className="ath-stat"><div className="k">Change</div><div className="v">{fmtD(dw,'')||'—'}<span className="u">kg</span></div>{dw!=null&&<div className={`d ${dw>0?'pos':'neg'}`}>{dw>0?'gain':'loss'}</div>}</div>
+          <div className="ath-stat"><div className="k">Body Fat</div><div className="v">{bf!=null?bf:'—'}<span className="u">%</span></div></div>
+          <div className="ath-stat"><div className="k">BF Change</div><div className="v">{fmtD(dbf,'')||'—'}<span className="u">%</span></div>{dbf!=null&&<div className={`d ${dbf<0?'pos':'neg'}`}>{dbf<0?'better':'higher'}</div>}</div>
+          <div className="ath-stat"><div className="k">Muscle</div><div className="v">{mm!=null?mm:'—'}<span className="u">kg</span></div></div>
+          {dmm!=null&&<div className="ath-stat"><div className="k">MM Change</div><div className="v">{fmtD(dmm,'')}<span className="u">kg</span></div><div className={`d ${dmm>0?'pos':'neg'}`}>{dmm>0?'gain':'loss'}</div></div>}
+        </div>);})()}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:12}}>
           <h2 style={{margin:0}}>Body Composition Tracking</h2>
@@ -3665,7 +3719,18 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         </div>}
         {(!ath.measurements||ath.measurements.length===0)&&<div className="empty-st">No measurements yet</div>}
       </div>
-
+    </div>}
+    {tab==='wellness'&&<div>
+      {(()=>{const ws=(ath.wellness||[]).filter(w=>w.date).slice().sort((a,b)=>a.date.localeCompare(b.date));const cur=ws[ws.length-1];
+        const num=(k)=>{const v=cur?.[k];return v===''||v==null?null:Number(v);};
+        const rhr=num('RHR'),rd=num('readiness'),sl=num('sleep'),fg=num('fatigue'),sr=num('soreness');
+        return(<div className="ath-stat-row">
+          <div className="ath-stat"><div className="k">RHR</div><div className="v">{rhr!=null?rhr.toFixed(1):'—'}<span className="u">bpm</span></div></div>
+          <div className="ath-stat"><div className="k">Readiness</div><div className="v">{rd!=null?rd.toFixed(1):'—'}<span className="u">/10</span></div></div>
+          <div className="ath-stat"><div className="k">Sleep</div><div className="v">{sl!=null?sl.toFixed(1):'—'}<span className="u">h</span></div></div>
+          <div className="ath-stat"><div className="k">Fatigue</div><div className="v">{fg!=null?fg.toFixed(1):'—'}<span className="u">/10</span></div></div>
+          <div className="ath-stat"><div className="k">Soreness</div><div className="v">{sr!=null?sr.toFixed(1):'—'}<span className="u">/10</span></div></div>
+        </div>);})()}
       {/* ---- Wellness Log (from Notion sync or manual) ---- */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
@@ -3826,13 +3891,51 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       </div>
     </div>}
 
-    {tab==='calendar'&&<CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
-      goDayView={k=>{setAthDayKey(k);setTab('week');}} weeks={weeks}
+    {tab==='load'&&<CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
+      goDayView={k=>{setAthDayKey(k);}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name}/>}
 
-    {tab==='week'&&<Planner days={ath.days||{}} saveDays={saveAthDays} setup={setup} dateKey={athDayKey} setDateKey={setAthDayKey} labelOwner={ath.name}/>}
-
-    {tab==='reports'&&<ReportsBody days={ath.days||{}} weeks={weeks} selected={athSel} setSelected={setAthSel} ownerName={ath.name} onExportPDF={exportPDF}/>}
+    {tab==='report'&&(()=>{
+      // Stat-row summaries on top of the existing ReportsBody (mockup design)
+      const wkS=wk(parseD(athSel.date));const wkE=fmt(addD(parseD(wkS),6));
+      const prevS=fmt(addD(parseD(wkS),-7));const prevE=fmt(addD(parseD(wkS),-1));
+      const sumLoad=(s,e)=>Object.entries(ath.days||{}).filter(([k])=>k>=s&&k<=e).reduce((t,[,d])=>t+(d.sessions||[]).reduce((x,ses)=>x+(Number(ses.au)||0),0),0);
+      const sumDur=(s,e)=>Object.entries(ath.days||{}).filter(([k])=>k>=s&&k<=e).reduce((t,[,d])=>t+(d.sessions||[]).reduce((x,ses)=>x+(Number(ses.duration)||0),0),0);
+      const avgRPE=(s,e)=>{const rs=Object.entries(ath.days||{}).filter(([k])=>k>=s&&k<=e).flatMap(([,d])=>(d.sessions||[]).map(x=>Number(x.sRPE)).filter(n=>!isNaN(n)&&n>0));return rs.length?(rs.reduce((a,b)=>a+b,0)/rs.length):null;};
+      const sessCount=(s,e)=>Object.entries(ath.days||{}).filter(([k])=>k>=s&&k<=e).reduce((t,[,d])=>t+(d.sessions||[]).length,0);
+      const wkLoad=Math.round(sumLoad(wkS,wkE));const prevLoad=Math.round(sumLoad(prevS,prevE));const loadDelta=wkLoad-prevLoad;
+      const wkRPE=avgRPE(wkS,wkE);const wkDur=sumDur(wkS,wkE);
+      const recentReadiness=(ath.wellness||[]).filter(w=>w.date>=wkS&&w.date<=wkE&&w.readiness!==''&&w.readiness!=null).map(w=>Number(w.readiness));
+      const wkReadiness=recentReadiness.length?recentReadiness.reduce((a,b)=>a+b,0)/recentReadiness.length:null;
+      // Monthly = last 4 weeks
+      const m4start=fmt(addD(parseD(wkS),-21));const m4end=wkE;
+      const mLoad=sumLoad(m4start,m4end);const avgWkLoad=Math.round(mLoad/4);const totalSess=sessCount(m4start,m4end);
+      const mReady=(ath.wellness||[]).filter(w=>w.date>=m4start&&w.date<=m4end&&w.readiness!==''&&w.readiness!=null).map(w=>Number(w.readiness));
+      const avgReady=mReady.length?(mReady.reduce((a,b)=>a+b,0)/mReady.length):null;
+      const mRHR=(ath.wellness||[]).filter(w=>w.date>=m4start&&w.date<=m4end&&w.RHR!==''&&w.RHR!=null).map(w=>Number(w.RHR));
+      const avgRHR=mRHR.length?(mRHR.reduce((a,b)=>a+b,0)/mRHR.length):null;
+      return(<div>
+        <div className="panel">
+          <div className="ath-section-h"><div className="t">Weekly Report</div><div className="s">current week · {fd(wkS).slice(0,5)} → {fd(wkE).slice(0,5)}</div></div>
+          <div className="ath-stat-row" style={{marginBottom:0}}>
+            <div className="ath-stat"><div className="k">This week load</div><div className="v">{wkLoad.toLocaleString('en-US').replace(/,/g,'.')}<span className="u">AU</span></div>{prevLoad>0&&<div className={`d ${loadDelta>=0?'pos':'neg'}`}>{loadDelta>=0?'+':''}{loadDelta} vs prev wk</div>}</div>
+            <div className="ath-stat"><div className="k">Avg sRPE</div><div className="v">{wkRPE!=null?wkRPE.toFixed(1):'—'}</div><div className="sub">session intensity</div></div>
+            <div className="ath-stat"><div className="k">Volume</div><div className="v">{wkDur}<span className="u">min</span></div><div className="sub">total session time</div></div>
+            <div className="ath-stat"><div className="k">Readiness</div><div className="v">{wkReadiness!=null?wkReadiness.toFixed(1):'—'}</div><div className="sub">/ 10</div></div>
+          </div>
+        </div>
+        <div className="panel">
+          <div className="ath-section-h"><div className="t">Monthly Report</div><div className="s">last 4 weeks</div></div>
+          <div className="ath-stat-row" style={{marginBottom:0}}>
+            <div className="ath-stat"><div className="k">Avg weekly load</div><div className="v">{avgWkLoad.toLocaleString('en-US').replace(/,/g,'.')}<span className="u">AU</span></div></div>
+            <div className="ath-stat"><div className="k">Total sessions</div><div className="v">{totalSess}</div></div>
+            <div className="ath-stat"><div className="k">Avg readiness</div><div className="v">{avgReady!=null?avgReady.toFixed(1):'—'}</div></div>
+            <div className="ath-stat"><div className="k">Avg RHR</div><div className="v">{avgRHR!=null?Math.round(avgRHR):'—'}<span className="u">bpm</span></div></div>
+          </div>
+        </div>
+        <ReportsBody days={ath.days||{}} weeks={weeks} selected={athSel} setSelected={setAthSel} ownerName={ath.name} onExportPDF={exportPDF}/>
+      </div>);
+    })()}
 
     {tab==='tests'&&<TestPanel ath={ath} updAth={updAth} setup={setup}/>}
   </div>);
