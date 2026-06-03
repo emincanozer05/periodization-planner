@@ -3504,12 +3504,6 @@ function TestPanel({ath,updAth,setup}){
 
     {editing&&<TestEditor test={editing} ath={ath} setup={setup} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
 
-    {/* Progression charts (always shown, across all years/periods) */}
-    {tests.length>0&&<div>
-      <div className="hr"/>
-      <h2 style={{margin:'8px 0 14px',fontSize:18,fontFamily:'Space Grotesk'}}>📊 Progression Across All Tests</h2>
-      <TestProgressionCharts tests={tests}/>
-    </div>}
   </div>);
 }
 
@@ -3983,32 +3977,22 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         if(ts.length===0)return null;
         const labels=ts.map(t=>{const d=parseD(t.date);return MN[d.getMonth()];});
         const cards=[
-          {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
-          {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#3b82f6',dot:'#60a5fa'},
-          {t:'Drop Jump',u:'cm',f:t=>Number(t.dropJump),up:true,col:'#7c3aed',dot:'#a78bfa'},
-          {t:'Broad Jump',u:'cm',f:t=>Number(t.horizontalJump),up:true,col:'#f97316',dot:'#fb923c'},
-          {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#3b82f6',dot:'#60a5fa'},
-          {t:'T-Test',u:'s',f:t=>Number(t.tTest),up:false,col:'#10b981',dot:'#34d399'},
+          {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),col:'#3b82f6',dot:'#60a5fa'},
+          {t:'CMJ',u:'cm',f:t=>Number(t.cmj),col:'#f97316',dot:'#fb923c'},
+          {t:'Drop Jump',u:'cm',f:t=>Number(t.dropJump),col:'#10b981',dot:'#34d399'},
+          {t:'Horizontal Jump',u:'cm',f:t=>Number(t.horizontalJump),col:'#9aab3a',dot:'#e6ff55'},
+          {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),col:'#7c3aed',dot:'#a78bfa'},
+          {t:'T-Test',u:'s',f:t=>Number(t.tTest),col:'#ec4899',dot:'#f472b6'},
+          {t:'Shuttle Run',u:'s',f:t=>Number(t.shuttleRun),col:'#06b6d4',dot:'#22d3ee'},
         ];
         const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
         if(!haveAny)return null;
         const dataLbl=color=>({display:true,align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':v});
         return(<div className="metric-grid" style={{marginTop:18}}>
           {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
-            const valid=data.filter(v=>v!=null);
-            if(valid.length===0)return null;
-            const cur=valid[valid.length-1],prev=valid.length>1?valid[valid.length-2]:null;
-            const d=prev!=null?+(cur-prev).toFixed(2):null;
-            // For "up=true" metrics (jumps): positive delta is good. For "up=false" (sprints): negative is good.
-            const isGood=d==null?null:(c.up?d>0:d<0);
-            const sign=d==null?'':(d>0?'+':'');
             return(<div key={c.t} className="metric-card">
               <div className="mc-h"><div className="mc-t">{c.t}</div><div className="mc-u">{c.u}</div></div>
-              <div className="mc-val">
-                <span className="mv" style={{color:c.dot}}>{cur}</span>
-                {d!=null&&d!==0&&<span className={`md ${isGood?'pos':'neg'}`}>{sign}{d}</span>}
-              </div>
-              <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
+              <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
                 {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2.5,
                   pointRadius:4,pointBackgroundColor:c.dot,pointBorderColor:c.dot,
                   datalabels:dataLbl(c.dot)}
