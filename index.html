@@ -2926,65 +2926,61 @@ function generateTestPDF(test,ath,setup){
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Test Report — ${ath.name}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 @page{size:A4 portrait;margin:12mm}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:11px;line-height:1.5}
-/* Tables — rounded, modern, equal column widths */
-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;margin-top:6px}
-th{color:#fff;font-weight:700;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.6px;text-transform:uppercase;border:none}
-td{padding:11px 7px;text-align:center;font-size:11px;color:#0f172a;border:none;border-top:1px solid #f1f5f9;background:#fff;font-weight:500}
-.kv td{font-size:14px;font-weight:700;padding:14px 7px;color:#0f172a}
-/* Athlete header — modern minimal */
-.athlete-header{display:flex;gap:20px;align-items:center;padding:8px 4px 22px 4px;margin-bottom:18px;border-bottom:3px solid #0891b2}
-.athlete-photo{width:90px;height:115px;border-radius:8px;border:2px solid #0891b2;object-fit:cover;flex-shrink:0;box-shadow:0 2px 10px rgba(8,145,178,.18)}
-.athlete-photo-x{width:90px;height:115px;border-radius:8px;border:2px solid #0891b2;background:#ecfeff;color:#0891b2;display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0}
+:root{--accent:#9aab3a;--bg:#ffffff;--bg2:#f4f5f7;--panel:#ffffff;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
+body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
+.mono{font-family:'IBM Plex Mono',monospace}
+/* Tables — rounded, single dark header */
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-top:6px}
+th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;padding:9px 7px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff;font-weight:500}
+.kv td{font-size:15px;font-weight:600;padding:14px 7px;color:var(--text);font-family:'Space Grotesk',Arial,sans-serif;letter-spacing:-.01em}
+/* Athlete header — dark card matching app theme */
+.athlete-header{display:flex;gap:20px;align-items:center;padding:18px 22px;margin-bottom:18px;background:#0a0b0d;color:#fff;border-radius:14px}
+.athlete-photo{width:90px;height:115px;border-radius:10px;border:1px solid rgba(154,171,58,.4);object-fit:cover;flex-shrink:0}
+.athlete-photo-x{width:90px;height:115px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:700;flex-shrink:0;letter-spacing:-.02em}
 .athlete-info{flex:1}
-.athlete-info h1{font-size:26px;margin-bottom:5px;color:#0f172a;font-weight:800;letter-spacing:.2px;line-height:1.1}
-.athlete-info .meta{font-size:12px;color:#475569;line-height:1.6}
-.athlete-info .date{display:inline-block;margin-top:9px;font-size:11px;font-weight:700;color:#0891b2;background:#ecfeff;padding:4px 12px;border-radius:12px;letter-spacing:.3px}
+.athlete-info h1{font-size:24px;margin-bottom:6px;color:#fff;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.athlete-info .meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.7);line-height:1.6;letter-spacing:.02em}
+.athlete-info .date{display:inline-block;margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
 .right-block{text-align:right}
-.right-block .ttl{font-size:14px;font-weight:800;color:#0f172a;letter-spacing:1px;line-height:1.3}
-/* Modern section header — accent bar + clean uppercase. NO page-break-after
-   rule, otherwise headers drag their following content to the next page and
-   leave empty space behind. We accept that a header may very rarely land
-   alone at page bottom; in practice with section margin-top:18px this almost
-   never happens. */
-.section-h{position:relative;padding:0 0 9px 16px;font-weight:700;font-size:13px;color:#0f172a;letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid #e5e7eb;margin:0 0 4px 0;page-break-after:avoid;break-after:avoid-page}
-/* Page-break rules: only atomic, small blocks stay together. Everything
-   else flows freely so we never leave half-page gaps. */
+.right-block .ttl{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;line-height:1.4;text-transform:uppercase}
+/* Section header — single lime accent bar, mono uppercase */
+.section-h{position:relative;padding:0 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
+.section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:16px;background:var(--accent);border-radius:2px}
 table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
-/* Photo groups and wraps: explicitly allow breaks. The browser will keep
-   each .ph (photo + label) together; that's the only atomic unit we need. */
 .posture-photos,.ohs-wrap,.ohs-photos,.ohs-problems{break-inside:auto;page-break-inside:auto}
 .section{margin-top:18px;break-inside:auto;page-break-inside:auto}
-.section-h::before{content:'';position:absolute;left:0;top:2px;width:5px;height:18px;background:var(--c,#888);border-radius:3px}
 .ph{text-align:center;display:inline-block;margin:0 4px}
-.ph img{border-radius:6px;border:1px solid #ddd;display:block}
-.phx{background:#f5f5f5;border:1px dashed #ccc;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#aaa;font-size:24px}
-.phl{font-size:10px;font-weight:600;margin-top:5px;color:#475569}
-.posture-photos{display:flex;justify-content:space-around;align-items:flex-start;gap:18px;padding:18px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-top:4px}
-.obs-box{background:#f8fafc;padding:10px 14px;font-size:11px;border:1px solid #e5e7eb;border-radius:8px;border-left:3px solid var(--c,#94a3b8);margin-top:8px;color:#334155}
-.obs-box strong{color:#0f172a;font-weight:700}
-.ohs-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-top:4px}
+.ph img{border-radius:8px;border:1px solid var(--border);display:block}
+.phx{background:var(--bg2);border:1px dashed var(--border);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:24px}
+.phl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
+.posture-photos{display:flex;justify-content:space-around;align-items:flex-start;gap:18px;padding:18px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin-top:4px}
+.obs-box{background:var(--bg2);padding:11px 14px;font-size:11px;border:1px solid var(--border);border-radius:9px;border-left:3px solid var(--accent);margin-top:8px;color:var(--text2);line-height:1.55}
+.obs-box strong{color:var(--text);font-weight:600}
+.ohs-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px}
 .ohs-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.ohs-col{display:flex;align-items:stretch;gap:8px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;min-height:210px}
-.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-style:italic;font-weight:700;font-size:13px;color:#475569;padding:4px 2px;letter-spacing:.5px;display:flex;align-items:center;justify-content:center}
+.ohs-col{display:flex;align-items:stretch;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px;min-height:210px}
+.ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
 .ohs-photo-box{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ohs-problems{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
-.ohs-problem-h{background:#ef4444;color:#fff;padding:6px 8px;font-weight:700;font-style:italic;text-align:center;font-size:11px;letter-spacing:.4px;border-radius:6px 6px 0 0}
-.ohs-problem-c{background:#fef2f2;min-height:50px;padding:8px 10px;font-size:10px;border:1px solid #fecaca;border-top:none;border-radius:0 0 6px 6px;white-space:pre-wrap;color:#7f1d1d;line-height:1.5}
-/* Sprint section — compact single-row design that always fits as one block */
-.sprint-panel{display:flex;align-items:stretch;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-top:4px;gap:8px}
+.ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
+.ohs-problem-c{background:#fff;min-height:50px;padding:8px 10px;font-size:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;white-space:pre-wrap;color:var(--text2);line-height:1.5}
+.sprint-panel{display:flex;align-items:stretch;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;gap:8px}
 .sprint-col{display:flex;flex-direction:column}
-.sprint-col-h{text-align:center;font-weight:700;font-size:11px;letter-spacing:1.5px;margin-bottom:10px;padding-bottom:7px;border-bottom:2px solid var(--c,#0891b2);color:#0f172a;text-transform:uppercase}
+.sprint-col-h{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;letter-spacing:.08em;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border);color:var(--muted);text-transform:uppercase}
 .sprint-row{display:flex;justify-content:space-around;align-items:flex-start;gap:8px;flex:1}
-.sprint-sep{width:1px;background:#e5e7eb;margin:8px 4px}
+.sprint-sep{width:1px;background:var(--border);margin:8px 4px}
 .sprint-section{page-break-inside:avoid;break-inside:avoid}
-.footer{text-align:center;font-size:9px;color:#94a3b8;margin-top:22px;padding-top:10px;border-top:1px solid #e5e7eb;letter-spacing:.3px}
-.print-bar{position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#0891b2,#7c3aed);color:#fff;padding:12px;text-align:center;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.15)}
-.print-bar button{background:#fff;color:#0891b2;border:none;padding:8px 18px;border-radius:6px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
-.print-bar button:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);margin-top:22px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+.print-bar button:hover{filter:brightness(1.07)}
 @media print{.print-bar{display:none}}
 </style>
 </head><body>
@@ -3011,24 +3007,24 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 </div>
 
 <div class="section">
-  <div class="section-h" style="--c:#0891b2">ANTHROPOMETRICS</div>
+  <div class="section-h" >ANTHROPOMETRICS</div>
   <table class="kv">
-    <tr><th style="background:#0891b2">Height (cm)</th><th style="background:#0891b2">Weight (kg)</th><th style="background:#0891b2">Wingspan (cm)</th><th style="background:#0891b2">Body Fat (%)</th></tr>
+    <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th></tr>
     <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td></tr>
   </table>
 </div>
 
 <div class="section">
-  <div class="section-h" style="--c:#7c3aed">CIRCUMFERENCE MEASUREMENTS (cm)</div>
+  <div class="section-h" >CIRCUMFERENCE MEASUREMENTS (cm)</div>
   <table class="kv">
     <tr>
-      <th style="background:#7c3aed">Shoulder</th>
-      <th style="background:#7c3aed">Waist</th>
-      <th style="background:#7c3aed">Hip</th>
-      <th style="background:#7c3aed">Thigh R</th>
-      <th style="background:#7c3aed">Thigh L</th>
-      <th style="background:#7c3aed">Calf R</th>
-      <th style="background:#7c3aed">Calf L</th>
+      <th>Shoulder</th>
+      <th>Waist</th>
+      <th>Hip</th>
+      <th>Thigh R</th>
+      <th>Thigh L</th>
+      <th>Calf R</th>
+      <th>Calf L</th>
     </tr>
     <tr>
       <td>${test.circ?.shoulder||'—'}</td>
@@ -3044,7 +3040,7 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 
 ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||test.posture?.observations)?`
 <div class="section">
-  <div class="section-h" style="--c:#10b981">STATIC POSTURE ASSESSMENT</div>
+  <div class="section-h" >STATIC POSTURE ASSESSMENT</div>
   <div class="posture-photos">
     ${ph(test.posture.frontPhoto,'Front',180,300)}
     ${ph(test.posture.sidePhoto,'Side',180,300)}
@@ -3054,17 +3050,17 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 </div>`:''}
 
 <div class="section">
-  <div class="section-h" style="--c:#10b981">MOBILITY — ASLR & ANKLE DORSIFLEXION</div>
+  <div class="section-h" >MOBILITY — ASLR & ANKLE DORSIFLEXION</div>
   <table>
     <colgroup><col style="width:36%"/><col style="width:14%"/><col style="width:14%"/><col style="width:22%"/><col style="width:14%"/></colgroup>
-    <tr><th style="background:#10b981">Test</th><th style="background:#10b981">Right</th><th style="background:#10b981">Left</th><th style="background:#10b981">Asymmetry</th><th style="background:#10b981">Scale</th></tr>
+    <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th><th>Scale</th></tr>
     <tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)</td><td>${test.aslr?.right||'—'}</td><td>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>
     <tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)</td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>
   </table>
 </div>
 
 <div class="section">
-  <div class="section-h" style="--c:#f59e0b">OVERHEAD SQUAT ASSESSMENT — Score: ${test.ohs?.score||'—'} / 3</div>
+  <div class="section-h" >OVERHEAD SQUAT ASSESSMENT — Score: ${test.ohs?.score||'—'} / 3</div>
   <div class="ohs-wrap">
     <div class="ohs-photos">
       <div class="ohs-col"><div class="ohs-label">Front View</div><div class="ohs-photo-box">${ohsPh(test.ohs?.frontPhoto)}</div></div>
@@ -3079,10 +3075,10 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 </div>
 
 <div class="section sprint-section">
-  <div class="section-h" style="--c:#ef4444">20M SPRINT ANALYSIS${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
+  <div class="section-h" >20M SPRINT ANALYSIS${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
   <div class="sprint-panel">
     <div class="sprint-col" style="flex:3">
-      <div class="sprint-col-h" style="--c:#ef4444">SIDE VIEW</div>
+      <div class="sprint-col-h" >SIDE VIEW</div>
       <div class="sprint-row">
         ${ph(test.sprint20m?.sideStep1,'Step 1',105,150)}
         ${ph(test.sprint20m?.sideStep2,'Step 2',105,150)}
@@ -3091,7 +3087,7 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
     </div>
     <div class="sprint-sep"></div>
     <div class="sprint-col" style="flex:2">
-      <div class="sprint-col-h" style="--c:#ef4444">FRONT VIEW</div>
+      <div class="sprint-col-h" >FRONT VIEW</div>
       <div class="sprint-row">
         ${ph(test.sprint20m?.frontRightFoot,'Right Foot',120,165)}
         ${ph(test.sprint20m?.frontLeftFoot,'Left Foot',120,165)}
@@ -3101,25 +3097,25 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 </div>
 
 <div class="section">
-  <div class="section-h" style="--c:#f97316">POWER TESTS</div>
+  <div class="section-h" >POWER TESTS</div>
   <table class="kv">
-    <tr><th style="background:#f97316">Vertical Jump (cm)</th><th style="background:#f97316">CMJ (cm)</th><th style="background:#f97316">Drop Jump (RSI)</th><th style="background:#f97316">Horizontal Jump (cm)</th></tr>
+    <tr><th>Vertical Jump (cm)</th><th>CMJ (cm)</th><th>Drop Jump (RSI)</th><th>Horizontal Jump (cm)</th></tr>
     <tr><td>${test.verticalJump||'—'}</td><td>${test.cmj||'—'}</td><td>${test.dropJump||'—'}</td><td>${test.horizontalJump||'—'}</td></tr>
   </table>
 </div>
 
 <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
   <div>
-    <div class="section-h" style="--c:#ec4899">AGILITY</div>
+    <div class="section-h" >AGILITY</div>
     <table class="kv">
-      <tr><th style="background:#ec4899">Agility T-Test (s)</th></tr>
+      <tr><th>Agility T-Test (s)</th></tr>
       <tr><td>${test.tTest||'—'}</td></tr>
     </table>
   </div>
   <div>
-    <div class="section-h" style="--c:#0ea5e9">ENDURANCE / CONDITIONING</div>
+    <div class="section-h" >ENDURANCE / CONDITIONING</div>
     <table class="kv">
-      <tr><th style="background:#0ea5e9">Shuttle Run (s)</th></tr>
+      <tr><th>Shuttle Run (s)</th></tr>
       <tr><td>${test.shuttleRun||'—'}</td></tr>
     </table>
   </div>
@@ -3127,8 +3123,8 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 
 ${test.notes?`
 <div class="section">
-  <div class="section-h" style="--c:#64748b">GENERAL NOTES</div>
-  <div class="obs-box" style="border-left-color:#64748b">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+  <div class="section-h" >GENERAL NOTES</div>
+  <div class="obs-box">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
 </div>`:''}
 
 <div class="footer">Generated ${fd(fmt(today))} · ${setup.teamName}</div>
