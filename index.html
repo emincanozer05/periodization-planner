@@ -608,6 +608,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ath-bar .info .meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em;display:flex;flex-wrap:wrap;gap:8px}
 .ath-bar .info .meta span+span::before{content:"·";margin-right:8px;color:var(--border2)}
 .ath-bar .info .meta span+span{padding-left:0}
+.ath-bar-edit{background:var(--panel);border:1px solid var(--border2);border-radius:8px;color:var(--text2);width:32px;height:32px;display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1;font-family:inherit;transition:border-color .2s,color .2s}
+.ath-bar-edit:hover{border-color:var(--accent);color:var(--accent)}
 .ath-bar .pill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;border-radius:5px;padding:3px 10px;font-weight:500;letter-spacing:.06em;align-self:flex-start}
 .ath-bar .pill.inj{background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3)}
 .ath-bar .pill.ok{color:var(--low-t);border:1px solid rgba(70,214,160,.3);background:rgba(70,214,160,.10)}
@@ -2904,6 +2906,104 @@ function PhotoCell({photo,onChange,label,size=68}){
    support and renders all photos at their native high resolution.
    User selects "Save as PDF" in the print dialog (or sends to printer).
    ========================================================= */
+function printBodyComp(ath,setup){
+  const w=window.open('','_blank','width=1100,height=900');
+  if(!w){alert('Pop-up engellendi — bu site için pop-up izni ver.');return;}
+  const sorted=[...(ath.measurements||[])].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(sorted.length===0){alert('No measurements');w.close();return;}
+  const cur=sorted[sorted.length-1],prev=sorted.length>1?sorted[sorted.length-2]:null;
+  const d=(a,b,k)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(1);};
+  const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null;
+  const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass');
+  const fmtD=v=>v==null?'—':(v>0?`+${v}`:`${v}`);
+  // SVG line chart helper
+  const lineChart=(field,color)=>{
+    const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
+    const valid=data.map((v,i)=>({v,i})).filter(p=>p.v!=null);
+    if(valid.length===0)return'<div class="empty">—</div>';
+    const cw=420,ch=140,padX=24,padT=22,padB=26;
+    const mn=Math.min(...valid.map(p=>p.v)),mx=Math.max(...valid.map(p=>p.v));
+    const range=mx-mn||1;const pad=range*.15;const yMin=mn-pad,yMax=mx+pad;
+    const xs=valid.map(p=>padX+(p.i/Math.max(1,data.length-1))*(cw-2*padX));
+    const ys=valid.map(p=>padT+(1-(p.v-yMin)/(yMax-yMin))*(ch-padT-padB));
+    const pts=xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+    const labels=sorted.map(m=>{const dt=parseD(m.date);return MN[dt.getMonth()];});
+    return`<svg viewBox="0 0 ${cw} ${ch}" style="width:100%;height:auto">
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5"/>
+      ${valid.map((p,i)=>`<circle cx="${xs[i]}" cy="${ys[i]}" r="3.5" fill="${color}"/><text x="${xs[i]}" y="${ys[i]-8}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10" font-weight="600" fill="${color}">${p.v}</text>`).join('')}
+      ${data.map((_,i)=>`<text x="${padX+(i/Math.max(1,data.length-1))*(cw-2*padX)}" y="${ch-6}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10" fill="#74808f">${labels[i]}</text>`).join('')}
+    </svg>`;
+  };
+  const period=`${fd(sorted[0].date)} → ${fd(sorted[sorted.length-1].date)}`;
+  const rows=sorted.slice().reverse().slice(0,12).map(m=>`<tr><td>${fd(m.date)}</td><td>${m.height||'—'}</td><td>${m.weight||'—'}</td><td>${m.bodyFat||'—'}</td><td>${m.muscleMass||'—'}</td></tr>`).join('');
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Body Composition — ${ath.name}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 portrait;margin:12mm}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+:root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
+body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:11px;line-height:1.5;background:#fff}
+.hdr{display:flex;align-items:center;gap:20px;padding:18px 22px;background:#0a0b0d;color:#fff;border-radius:14px;margin-bottom:14px}
+.hdr .av{width:64px;height:64px;border-radius:12px;background:#1c2030;border:1px solid rgba(154,171,58,.4);display:grid;place-items:center;font-weight:700;font-size:20px;color:var(--accent);letter-spacing:-.02em;flex:none}
+.hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.hdr .info h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.04em}
+.hdr .info .date{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:3px 10px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;text-transform:uppercase;line-height:1.5}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.stat .k{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.stat .v{font-size:26px;font-weight:700;letter-spacing:-.01em;margin-top:6px;color:var(--text)}
+.stat .v .u{font-size:12px;font-weight:500;color:var(--dim);margin-left:4px}
+.stat .d{font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:4px}
+.stat .d.pos{color:#16a34a}.stat .d.neg{color:#dc2626}
+.chart-card{background:#fff;border:1px solid var(--border);border-radius:13px;padding:14px 16px;margin-bottom:10px;break-inside:avoid}
+.chart-card .ch-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:9px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.chart-card .ch-t{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.chart-card .ch-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-top:8px}
+th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10px;padding:8px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
+td{padding:9px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
+.section-h{position:relative;padding:0 0 8px 14px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:14px 0 8px}
+.section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:16px;background:var(--accent);border-radius:2px}
+.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);margin-top:18px;padding-top:10px;border-top:1px solid var(--border);letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+@media print{.print-bar{display:none}}
+.empty{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:24px}
+</style>
+</head><body>
+<div class="print-bar">📄 Body Composition Report is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
+<div style="margin-top:50px"></div>
+<div class="hdr">
+  ${ath.photo?`<img class="av" src="${ath.photo}"/>`:`<div class="av">${initials}</div>`}
+  <div class="info">
+    <h1>${ath.name||'—'}</h1>
+    <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}${ath.height?' · '+ath.height+' cm':''}${ath.weight?' · '+ath.weight+' kg':''}</div>
+    <div class="date">📊 ${period}</div>
+  </div>
+  <div class="ttl">BODY<br>COMPOSITION</div>
+</div>
+<div class="stat-row">
+  <div class="stat"><div class="k">Current Weight</div><div class="v">${w_!=null?w_:'—'}<span class="u">kg</span></div>${dw!=null?`<div class="d ${dw>0?'neg':'pos'}">${fmtD(dw)} kg vs prev</div>`:''}</div>
+  <div class="stat"><div class="k">Body Fat</div><div class="v">${bf!=null?bf:'—'}<span class="u">%</span></div>${dbf!=null?`<div class="d ${dbf>0?'neg':'pos'}">${fmtD(dbf)} % vs prev</div>`:''}</div>
+  <div class="stat"><div class="k">Muscle Mass</div><div class="v">${mm!=null?mm:'—'}<span class="u">kg</span></div>${dmm!=null?`<div class="d ${dmm>0?'pos':'neg'}">${fmtD(dmm)} kg vs prev</div>`:''}</div>
+</div>
+<div class="chart-card"><div class="ch-h"><div class="ch-t">Weight</div><div class="ch-u">kg</div></div>${lineChart('weight','#3b82f6')}</div>
+<div class="chart-card"><div class="ch-h"><div class="ch-t">Body Fat</div><div class="ch-u">%</div></div>${lineChart('bodyFat','#f97316')}</div>
+<div class="chart-card"><div class="ch-h"><div class="ch-t">Muscle Mass</div><div class="ch-u">kg</div></div>${lineChart('muscleMass','#10b981')}</div>
+<div class="section-h">Measurements History</div>
+<table><thead><tr><th style="width:24%">Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Muscle (kg)</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="footer">Generated ${fd(fmt(today))} · ${setup.teamName}</div>
+</body></html>`;
+  w.document.write(html);w.document.close();
+  setTimeout(()=>{try{w.focus();}catch(e){}},400);
+}
+
 function generateTestPDF(test,ath,setup){
   const w=window.open('','_blank','width=900,height=1200');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.');return;}
@@ -3507,7 +3607,9 @@ function TestPanel({ath,updAth,setup}){
    ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests)
    ========================================================= */
 function AthleteDetail({ath,onBack,updAth,setup,weeks}){
-  const[tab,setTab]=useState('overview');
+  const[tab,setTab]=useState('load');
+  const[editProfileOpen,setEditProfileOpen]=useState(false);
+  const[srpeTableOpen,setSrpeTableOpen]=useState(false);
   // Find the most recent date that has any data (sessions/wellness/measurements)
   // so charts open on a month with actual data instead of an empty current month.
   const recentDate=useMemo(()=>{
@@ -3545,7 +3647,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
   const dobLong=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);return`b. ${String(b.getDate()).padStart(2,'0')} ${MN[b.getMonth()]} ${b.getFullYear()}`;})():null;
   const injured=(ath.injuries||[]).some(i=>i.status!=='Recovered');
   const ATH_TABS=[
-    {id:'overview',ic:'◉',l:'Overview'},
     {id:'load',ic:'▤',l:'Load'},
     {id:'body',ic:'⌇',l:'Body Comp'},
     {id:'tests',ic:'⌖',l:'Tests'},
@@ -3571,23 +3672,30 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           {age!=null&&<span>{age} yo</span>}
         </div>
       </div>
+      <button className="ath-bar-edit" onClick={()=>setEditProfileOpen(true)} title="Profili düzenle">✎</button>
       <span className={`pill ${injured?'inj':'ok'}`}>{injured?'INJURED':'AVAILABLE'}</span>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
 
-    {tab==='overview'&&<div className="panel"><h2>Edit Profile</h2>
-        <div className="grid cols-3">
-          <div><label>Full name</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-          <div><label>Jersey #</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-          <div><label>Position</label><select value={ath.position} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+    {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
+      <div className="modal" style={{maxWidth:680,width:'95vw'}} onClick={e=>e.stopPropagation()}>
+        <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>Edit Profile</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
+        <div style={{padding:'18px 22px'}}>
+          <div className="grid cols-3">
+            <div><label>Full name</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
+            <div><label>Jersey #</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
+            <div><label>Position</label><select value={ath.position} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+          </div>
+          <div className="grid cols-3" style={{marginTop:12}}>
+            <div><label>Date of birth</label><input type="date" value={ath.dateOfBirth} onChange={e=>updAth(ath.id,{dateOfBirth:e.target.value})}/><div className="help">{fd(ath.dateOfBirth)}</div></div>
+            <div><label>Height (cm)</label><input type="number" value={ath.height} onChange={e=>updAth(ath.id,{height:e.target.value})}/></div>
+            <div><label>Weight (kg)</label><input type="number" value={ath.weight} onChange={e=>updAth(ath.id,{weight:e.target.value})}/></div>
+          </div>
+          <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
+          <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>Bitti</button></div>
         </div>
-        <div className="grid cols-3" style={{marginTop:12}}>
-          <div><label>Date of birth</label><input type="date" value={ath.dateOfBirth} onChange={e=>updAth(ath.id,{dateOfBirth:e.target.value})}/><div className="help">{fd(ath.dateOfBirth)}</div></div>
-          <div><label>Height (cm)</label><input type="number" value={ath.height} onChange={e=>updAth(ath.id,{height:e.target.value})}/></div>
-          <div><label>Weight (kg)</label><input type="number" value={ath.weight} onChange={e=>updAth(ath.id,{weight:e.target.value})}/></div>
-        </div>
-        <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
-      </div>}
+      </div>
+    </div>}
     {tab==='injuries'&&<div>
 
       <div className="panel" style={{padding:0,overflow:'hidden'}}>
@@ -3674,9 +3782,12 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           {dmm!=null&&<div className="ath-stat"><div className="k">MM Change</div><div className="v">{fmtD(dmm,'')}<span className="u">kg</span></div><div className={`d ${dmm>0?'pos':'neg'}`}>{dmm>0?'gain':'loss'}</div></div>}
         </div>);})()}
       <div className="panel">
-        <div className="row" style={{justifyContent:'space-between',marginBottom:12}}>
+        <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <h2 style={{margin:0}}>Body Composition Tracking</h2>
-          <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',muscleMass:'',notes:''};updAth(ath.id,{measurements:[...(ath.measurements||[]),m]});}}>+ Add Measurement</button>
+          <div className="row" style={{gap:6}}>
+            <button className="btn sec sm" disabled={(ath.measurements||[]).length===0} onClick={()=>printBodyComp(ath,setup)} title="Body Composition raporu (A4 yazdırma)">⎙ Print</button>
+            <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',muscleMass:'',notes:''};updAth(ath.id,{measurements:[...(ath.measurements||[]),m]});}}>+ Add Measurement</button>
+          </div>
         </div>
         {(ath.measurements||[]).length>0&&<div>
           {(()=>{const sorted=[...ath.measurements].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
@@ -3730,47 +3841,42 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         const rhr=num('RHR'),rd=num('readiness'),sl=num('sleep'),fg=num('fatigue'),sr=num('soreness');
         return(<div className="ath-stat-row">
           <div className="ath-stat"><div className="k">RHR</div><div className="v">{rhr!=null?rhr.toFixed(1):'—'}<span className="u">bpm</span></div></div>
-          <div className="ath-stat"><div className="k">Readiness</div><div className="v">{rd!=null?rd.toFixed(1):'—'}<span className="u">/10</span></div></div>
-          <div className="ath-stat"><div className="k">Sleep</div><div className="v">{sl!=null?sl.toFixed(1):'—'}<span className="u">h</span></div></div>
-          <div className="ath-stat"><div className="k">Fatigue</div><div className="v">{fg!=null?fg.toFixed(1):'—'}<span className="u">/10</span></div></div>
-          <div className="ath-stat"><div className="k">Soreness</div><div className="v">{sr!=null?sr.toFixed(1):'—'}<span className="u">/10</span></div></div>
+          <div className="ath-stat"><div className="k">Readiness</div><div className="v">{rd!=null?rd.toFixed(1):'—'}<span className="u">/5</span></div></div>
+          <div className="ath-stat"><div className="k">Sleep</div><div className="v">{sl!=null?sl.toFixed(1):'—'}<span className="u">/5</span></div></div>
+          <div className="ath-stat"><div className="k">Fatigue</div><div className="v">{fg!=null?fg.toFixed(1):'—'}<span className="u">/5</span></div></div>
+          <div className="ath-stat"><div className="k">Soreness</div><div className="v">{sr!=null?sr.toFixed(1):'—'}<span className="u">/5</span></div></div>
         </div>);})()}
       {/* ---- Wellness Log (from Notion sync or manual) ---- */}
       <div className="panel">
-        <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
-          <h2 style={{margin:0}}>Wellness Log <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>(RHR + recovery state)</span></h2>
-          <div className="row" style={{gap:6}}>
-            <button className="btn sec sm" onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),-7)))}>‹ Week</button>
-            <strong style={{fontSize:13,minWidth:170,textAlign:'center'}}>{fd(wellnessWeek)} → {fd(fmt(addD(parseD(wellnessWeek),6)))}</strong>
-            <button className="btn sec sm" onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),7)))}>Week ›</button>
-            <button className="btn sm sec" onClick={()=>setWellnessWeek(_mostRecent(ath.wellness||[]))}>Latest</button>
-            <button className="btn sm sec" onClick={()=>{const w={id:uid(),notionId:null,date:fmt(today),RHR:'',sleep:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...(ath.wellness||[]),w]});}}>+ Manual</button>
+      <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>Wellness Log <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>(RHR + recovery state)</span></h2>
+        <button className="btn sm sec" onClick={()=>{const w={id:uid(),notionId:null,date:fmt(today),RHR:'',sleep:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...(ath.wellness||[]),w]});}}>+ Manual</button>
+      </div>
+      {(ath.wellness||[]).length===0&&<div className="empty-st">No wellness data — sync from Notion or add manually</div>}
+      {(ath.wellness||[]).length>0&&(()=>{
+        const sorted=[...ath.wellness].filter(w=>w.date).sort((a,b)=>a.date.localeCompare(b.date));
+        const labels=sorted.map(w=>{const d=parseD(w.date);return `${MN[d.getMonth()]} ${d.getDate()}`;});
+        const dataLbl=color=>({display:true,align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':v});
+        const mkChart=(title,unit,field,color,dotColor)=>{const data=sorted.map(w=>{const v=Number(w[field]);return isNaN(v)?null:v;});
+          return(<div className="metric-card">
+            <div className="mc-h"><div className="mc-t">{title}</div><div className="mc-u">{unit}</div></div>
+            <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
+              {label:title,data,borderColor:color,backgroundColor:color,tension:.3,spanGaps:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dotColor||color,pointBorderColor:dotColor||color,
+                datalabels:dataLbl(dotColor||color)}
+            ]}} options={{responsive:true,maintainAspectRatio:false,
+              layout:{padding:{top:24,bottom:6,left:8,right:8}},
+              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
+                y:{display:false,grid:{display:false},beginAtZero:false}},
+              plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
+          </div>);};
+        return(<div>
+          <div className="metric-grid" style={{marginBottom:18}}>
+            {mkChart('RHR','bpm','RHR','#ef4444','#fca5a5')}
+            {mkChart('Readiness','/5','readiness','#10b981','#34d399')}
+            {mkChart('Sleep','/5','sleep','#3b82f6','#60a5fa')}
+            {mkChart('Fatigue','/5','fatigue','#f97316','#fb923c')}
+            {mkChart('Soreness','/5','soreness','#a855f7','#c084fc')}
           </div>
-        </div>
-        {(ath.wellness||[]).length===0&&<div className="empty-st">No wellness data — sync from Notion or add manually</div>}
-        {(ath.wellness||[]).length>0&&(()=>{
-          // Build 7-day series for the current week (always show all 7 days, even gaps)
-          const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wellnessWeek),i)));
-          const byDate=Object.fromEntries((ath.wellness||[]).map(w=>[w.date,w]));
-          const labels=days7.map((d,i)=>`${DN[i]} ${fd(d).slice(0,5)}`);
-          const rhrData=days7.map(d=>{const w=byDate[d];return w&&w.RHR!==''&&w.RHR!=null?Number(w.RHR):null;});
-          const readyData=days7.map(d=>{const w=byDate[d];return w&&w.readiness!==''&&w.readiness!=null?Number(w.readiness):null;});
-          const hasAnyData=rhrData.some(v=>v!=null)||readyData.some(v=>v!=null);
-          return(<div>
-            <div className="chart-box sm" style={{marginBottom:12}}>
-              {hasAnyData?<ChartC type="line" chartData={{labels,datasets:[
-                {label:'RHR (bpm)',data:rhrData,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.15)',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',pointRadius:5,pointBackgroundColor:'#ef4444',
-                  datalabels:{display:true,align:'top',anchor:'end',color:'#fca5a5',backgroundColor:'rgba(15,20,36,.85)',borderRadius:4,padding:{top:2,bottom:2,left:5,right:5},font:{size:10,weight:'bold'},formatter:v=>v==null?'':Math.round(v)}},
-                {label:'Readiness (/5)',data:readyData,borderColor:'#10b981',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',pointRadius:5,pointBackgroundColor:'#10b981',
-                  datalabels:{display:true,align:'bottom',anchor:'start',color:'#6ee7b7',backgroundColor:'rgba(15,20,36,.85)',borderRadius:4,padding:{top:2,bottom:2,left:5,right:5},font:{size:10,weight:'bold'},formatter:v=>v==null?'':Number(v).toFixed(1)}},
-              ]}} options={{responsive:true,maintainAspectRatio:false,
-                layout:{padding:{top:24,bottom:20}},
-                scales:{x:CHART_DARK.scales.x,
-                  y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'RHR (bpm)',color:'#94a3b8'}},
-                  y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Readiness',color:'#94a3b8'},min:0,max:5}},
-                plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>:
-              <div className="empty-st">No wellness entries this week — try ‹ Week / Week › or click Latest.</div>}
-            </div>
             {/* Paginated table (most recent first) */}
             {(()=>{const rev=[...ath.wellness].reverse();const vis=rev.slice(0,wlLimit);const hasMore=rev.length>wlLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
@@ -3857,8 +3963,12 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                 scales:{x:CHART_DARK.scales.x,y:{...CHART_DARK.scales.y,min:0,max:10,title:{display:true,text:'RPE (0-10)',color:'#94a3b8'}}},
                 plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>}
             </div>
-            {/* Paginated table */}
-            {(()=>{const rev=[...ath.srpeLog].reverse();const vis=rev.slice(0,srLimit);const hasMore=rev.length>srLimit;
+            {/* Collapsible paginated table */}
+            <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:srpeTableOpen?10:0}}>
+              <strong style={{fontSize:13,color:'var(--text2)'}}>Detaylı kayıtlar <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.srpeLog.length} satır)</span></strong>
+              <button className="btn sec sm" onClick={()=>setSrpeTableOpen(o=>!o)}>{srpeTableOpen?'▲ Gizle':'▼ Göster'}</button>
+            </div>
+            {srpeTableOpen&&(()=>{const rev=[...ath.srpeLog].reverse();const vis=rev.slice(0,srLimit);const hasMore=rev.length>srLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
                 <th>Date</th><th>TP RPE</th><th>TP min</th><th>TP AU</th><th>S&C RPE</th><th>S&C min</th><th>S&C AU</th><th>Game RPE</th><th>Game min</th><th>Game AU</th><th>Total AU</th><th>Source</th><th style={{width:50}}></th>
               </tr></thead><tbody>
