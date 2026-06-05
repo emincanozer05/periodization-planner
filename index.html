@@ -70,11 +70,21 @@ h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;lette
   display:flex;flex-direction:column;gap:8px;padding:16px 12px;
   position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
 }
-.brand{display:flex;align-items:center;justify-content:center;padding:4px 0 14px;margin-bottom:4px}
+.brand{display:flex;align-items:center;justify-content:center;padding:0 0 6px;margin-bottom:0}
 .brand-logo{
   width:100%;max-width:220px;height:auto;display:block;
   filter:drop-shadow(0 0 6px rgba(230,255,85,.35));
 }
+.brand-team{display:flex;flex-direction:column;gap:6px;padding:0 4px 10px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.brand-team .bt-row{display:flex;align-items:center;gap:6px}
+.brand-team .bt-row.team-sel{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:6px 10px}
+.brand-team .bt-label{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;flex:none}
+.brand-team .bt-row.team-sel select{background:transparent;border:none;color:var(--text);font-weight:600;font-size:13px;padding:2px 0;cursor:pointer;width:100%;font-family:inherit}
+.brand-team .bt-row.team-sel select:focus{outline:none}
+.brand-team .bt-row.team-sel select option{background:var(--panel)}
+.brand-team .btn{padding:6px 10px;font-size:12px;border-radius:8px}
+.brand-team .team-sw{flex:1;min-width:0;padding:6px 10px;border-radius:8px;font-size:11px;background:var(--panel);border-color:var(--border)}
+.brand-team .team-sw>div:first-child{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:500}
 .content{flex:1;min-width:0;display:flex;flex-direction:column}
 header{
   background:rgba(15,20,36,.85);backdrop-filter:blur(12px);
@@ -3635,6 +3645,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
   const injured=(ath.injuries||[]).some(i=>i.status!=='Recovered');
   const ATH_TABS=[
     {id:'load',ic:'▤',l:'Load'},
+    {id:'calendar',ic:'▣',l:'Calendar'},
     {id:'body',ic:'⌇',l:'Body Comp'},
     {id:'tests',ic:'⌖',l:'Tests'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
@@ -3897,6 +3908,33 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         })()}
       </div>
 
+    </div>}
+
+    {tab==='load'&&<div>
+      {(()=>{// Daily RPE line chart for the visible week — chart only, no Notion data.
+        const wkS=fmt(sow(parseD(athSel.date)));
+        const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wkS),i)));
+        const sRPEs=days7.map(d=>{const day=ath.days?.[d];if(!day)return null;
+          const vals=(day.sessions||[]).map(s=>Number(s.sRPE)).filter(n=>!isNaN(n)&&n>0);
+          if(vals.length===0)return null;
+          return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);});
+        const aus=days7.map(d=>{const day=ath.days?.[d];return day?(day.sessions||[]).reduce((s,x)=>s+(Number(x.au)||0),0):0;});
+        const labels=days7.map((d,i)=>`${DN[i]} ${fd(d).slice(0,5)}`);
+        const hasAny=sRPEs.some(v=>v!=null)||aus.some(v=>v>0);
+        return(<div className="panel">
+          <div className="ath-section-h"><div className="t">Daily RPE</div><div className="s">/10 · current week</div></div>
+          {!hasAny&&<div className="empty-st">Bu hafta için RPE verisi yok</div>}
+          {hasAny&&<div className="mc-chart" style={{height:240}}>
+            <ChartC type="line" chartData={{labels,datasets:[
+              {label:'RPE',data:sRPEs,borderColor:'#e6ff55',backgroundColor:'#e6ff55',tension:.3,spanGaps:true,borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#e6ff55',pointBorderColor:'#e6ff55',
+                datalabels:{display:true,align:'top',anchor:'end',color:'#e6ff55',backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':Number(v).toFixed(1)}}
+            ]}} options={{responsive:true,maintainAspectRatio:false,
+              layout:{padding:{top:24,bottom:6}},
+              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
+                y:{min:0,max:10,ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11},stepSize:2},grid:{color:'rgba(35,39,46,.5)'},border:{display:false}}},
+              plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`RPE: ${c.parsed.y}`}}}}}/>
+          </div>}
+        </div>);})()}
       {/* ---- sRPE Log (Inner Load — synced from Notion form) ---- */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
@@ -3921,14 +3959,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           const scRPEs=days7.map(d=>byDate[d]?.scRPE!==''&&byDate[d]?.scRPE!=null?Number(byDate[d].scRPE):null);
           const gmRPEs=days7.map(d=>byDate[d]?.gameRPE!==''&&byDate[d]?.gameRPE!=null?Number(byDate[d].gameRPE):null);
           const weekTotal=tpVals.reduce((a,b)=>a+b,0)+scVals.reduce((a,b)=>a+b,0)+gmVals.reduce((a,b)=>a+b,0);
-          // Common segment label config (inside the bar, only if value is meaningful)
           const segLbl={display:ctx=>ctx.dataset.data[ctx.dataIndex]>=60,color:'#fff',font:{weight:'bold',size:10},formatter:v=>Math.round(v),anchor:'center',align:'center'};
-          // Total label on the topmost dataset (Match) — sums all 3
           const totalLbl={display:true,align:'end',anchor:'end',color:'#22d3ee',backgroundColor:'rgba(15,20,36,.9)',borderRadius:5,padding:{top:3,bottom:3,left:7,right:7},font:{weight:'bold',size:11},formatter:(v,ctx)=>{const i=ctx.dataIndex;const t=ctx.chart.data.datasets.reduce((s,ds)=>s+(ds.data[i]||0),0);return t>0?Math.round(t):'';}};
           return(<div>
-            <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}>
-              <span className="tag">Week total: {Math.round(weekTotal)} AU</span>
-            </div>
+            <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
                 {label:'Team Practice (AU)',data:tpVals,backgroundColor:'rgba(249,115,22,.85)',stack:'load',datalabels:segLbl},
@@ -3954,7 +3988,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                 scales:{x:CHART_DARK.scales.x,y:{...CHART_DARK.scales.y,min:0,max:10,title:{display:true,text:'RPE (0-10)',color:'#94a3b8'}}},
                 plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>}
             </div>
-            {/* Collapsible paginated table */}
             <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:srpeTableOpen?10:0}}>
               <strong style={{fontSize:13,color:'var(--text2)'}}>Detaylı kayıtlar <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.srpeLog.length} satır)</span></strong>
               <button className="btn sec sm" onClick={()=>setSrpeTableOpen(o=>!o)}>{srpeTableOpen?'▲ Gizle':'▼ Göster'}</button>
@@ -3996,35 +4029,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       </div>
     </div>}
 
-    {tab==='load'&&<div>
-      {(()=>{// Daily RPE line chart for the visible week — chart only, no Notion data.
-        const wkS=fmt(sow(parseD(athSel.date)));
-        const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wkS),i)));
-        const sRPEs=days7.map(d=>{const day=ath.days?.[d];if(!day)return null;
-          const vals=(day.sessions||[]).map(s=>Number(s.sRPE)).filter(n=>!isNaN(n)&&n>0);
-          if(vals.length===0)return null;
-          return +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1);});
-        const aus=days7.map(d=>{const day=ath.days?.[d];return day?(day.sessions||[]).reduce((s,x)=>s+(Number(x.au)||0),0):0;});
-        const labels=days7.map((d,i)=>`${DN[i]} ${fd(d).slice(0,5)}`);
-        const hasAny=sRPEs.some(v=>v!=null)||aus.some(v=>v>0);
-        return(<div className="panel">
-          <div className="ath-section-h"><div className="t">Daily RPE</div><div className="s">/10 · current week</div></div>
-          {!hasAny&&<div className="empty-st">Bu hafta için RPE verisi yok</div>}
-          {hasAny&&<div className="mc-chart" style={{height:240}}>
-            <ChartC type="line" chartData={{labels,datasets:[
-              {label:'RPE',data:sRPEs,borderColor:'#e6ff55',backgroundColor:'#e6ff55',tension:.3,spanGaps:true,borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#e6ff55',pointBorderColor:'#e6ff55',
-                datalabels:{display:true,align:'top',anchor:'end',color:'#e6ff55',backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':Number(v).toFixed(1)}}
-            ]}} options={{responsive:true,maintainAspectRatio:false,
-              layout:{padding:{top:24,bottom:6}},
-              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
-                y:{min:0,max:10,ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11},stepSize:2},grid:{color:'rgba(35,39,46,.5)'},border:{display:false}}},
-              plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`RPE: ${c.parsed.y}`}}}}}/>
-          </div>}
-        </div>);})()}
-      <CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
-        goDayView={k=>{setAthDayKey(k);}} weeks={weeks}
-        saveDays={saveAthDays} setup={setup} labelOwner={ath.name}/>
-    </div>}
+    {tab==='calendar'&&<CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
+      goDayView={k=>{setAthDayKey(k);}} weeks={weeks}
+      saveDays={saveAthDays} setup={setup} labelOwner={ath.name}/>}
 
     {tab==='report'&&(()=>{
       // Stat-row summaries on top of the existing ReportsBody (mockup design)
@@ -5145,6 +5152,18 @@ function App(){
     <datalist id="lib-exercises">{[...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))].map((n,i)=><option key={i} value={n}/>)}</datalist>
     <aside className="sidebar">
       <div className="brand"><img className="brand-logo" src="logo.png" alt="Zone Planner"/></div>
+      <div className="brand-team">
+        <div className="bt-row team-sel">
+          <span className="bt-label">Team</span>
+          <select value={data.activeTeamId} onChange={e=>setData({...data,activeTeamId:e.target.value})}>
+            {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
+          </select>
+        </div>
+        <div className="bt-row">
+          <button className="btn sec xs" onClick={()=>setView('teams')} style={{flex:1,justifyContent:'center'}}>Manage</button>
+          <CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/>
+        </div>
+      </div>
       <nav>
         {NAV_GROUPS.map(g=><div key={g.label} className="nav-group">
           <div className="nav-glabel">{g.label}</div>
@@ -5161,16 +5180,6 @@ function App(){
       <div>
         <h1>PERIODIZATION PLANNER</h1>
         <div className="sub">{team.setup.sport} · {team.setup.model} model · season {fd(team.setup.seasonStart)} → {fd(team.setup.seasonEnd)}</div>
-      </div>
-      <div className="row">
-        <div className="team-sw">
-          <span style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>Team</span>
-          <select value={data.activeTeamId} onChange={e=>setData({...data,activeTeamId:e.target.value})}>
-            {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
-          </select>
-        </div>
-        <button className="btn sec sm" onClick={()=>setView('teams')}>Manage</button>
-        <CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/>
       </div>
     </header>
     {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
