@@ -406,6 +406,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Session bar */
 .sess-card{margin-bottom:14px}
 .sess-card:last-child{margin-bottom:0}
+/* Color picker swatches inside SessEd */
+.color-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.color-swatch{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);cursor:pointer;padding:0;transition:transform .12s,border-color .12s}
+.color-swatch:hover{transform:scale(1.1)}
+.color-swatch.on{border-color:#fff;box-shadow:0 0 0 2px var(--text)}
+.color-custom{width:34px;height:30px;padding:0;border:1px solid var(--border2);border-radius:7px;background:var(--bg2);cursor:pointer}
+.color-custom::-webkit-color-swatch-wrapper{padding:2px}
+.color-custom::-webkit-color-swatch{border:none;border-radius:5px}
+.color-clear{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:7px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:500}
+.color-clear:hover{border-color:var(--text2);color:var(--text)}
 .sbar{display:flex;align-items:center;gap:10px;background:var(--grad-soft);border:1px solid var(--border);border-radius:12px;padding:12px 16px;flex-wrap:wrap}
 .sbar .sn{background:var(--accent);color:#0a0b0d;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
 .sbar .grow{flex:1}
@@ -650,6 +660,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .metric-card .mc-val .md.neg{color:var(--high-t)}
 .metric-card .mc-chart{height:170px;position:relative}
 .metric-card .mc-chart.tall{height:200px}
+/* Injury card */
+.inj-card{margin-bottom:14px}
+.inj-h{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.inj-h-l{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.inj-pill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;border-radius:5px;padding:3px 9px;font-weight:500;letter-spacing:.06em}
+.inj-pill.inj{background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3)}
+.inj-pill.ok{color:var(--low-t);border:1px solid rgba(70,214,160,.3);background:rgba(70,214,160,.10)}
+.inj-grade{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);padding:3px 8px;border:1px solid var(--border2);border-radius:5px}
+.inj-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding-top:12px;border-top:1px solid var(--border)}
+.inj-stat{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px 14px}
+.inj-stat .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.inj-stat .v{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-.01em;color:var(--text)}
+.inj-stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:4px}
 .ath-section-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
 .ath-section-h .t{font-size:14px;font-weight:600;color:var(--text)}
 .ath-section-h .s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
@@ -732,7 +755,7 @@ const MODELS=[
   {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
-const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Team Practice','Recovery','Mobility'];
+const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Team Practice','Game Day','Recovery','Mobility'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
@@ -774,7 +797,7 @@ const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',desc
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
-    purpose:p.purpose||'Technical',duration:p.duration||60,sRPE:'',au:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
+    purpose:p.purpose||'Technical',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2121,8 +2144,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {ss.length===0&&<div className="calw-empty">rest</div>}
           {ss.map(s=>{
             const au=s.au||(s.sRPE!==''&&s.sRPE!=null?Math.round(Number(s.sRPE)*Number(s.duration||0)):0);
-            return(<button key={s.id} type="button" className={`calw-ses ${ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
+            return(<button key={s.id} type="button" className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
+              style={s.color?{borderLeft:`3px solid ${s.color}`}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
@@ -2372,6 +2396,15 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div><label>Load type</label><select value={session.loadType} onChange={e=>u({loadType:e.target.value})}>{LOAD_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
         <div><label>Purpose</label><select value={session.purpose} onChange={e=>u({purpose:e.target.value})}>{PURPOSES.map(x=><option key={x}>{x}</option>)}</select></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <label>Card color <span style={{color:'var(--dim)',fontWeight:400,textTransform:'none',letterSpacing:0,fontFamily:'inherit',fontSize:11}}>(takvimdeki kart kenar rengi)</span></label>
+        <div className="color-row">
+          {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
+            <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
+          <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Özel renk"/>
+          <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
+        </div>
       </div>
       {session.blocks.map(b=><BlockEd key={b.id} block={b} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}/>)}
       <div className="add-blk">{BLOCK_NAMES.map(n=><button key={n} onClick={()=>addBlk(n)}>+ {n}</button>)}</div>
@@ -3695,75 +3728,50 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       </div>
     </div>}
     {tab==='injuries'&&<div>
-
-      <div className="panel" style={{padding:0,overflow:'hidden'}}>
-        {/* Red banner header */}
-        <div style={{background:'#dc2626',color:'#fff',padding:'14px 18px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <h2 style={{margin:0,fontSize:18,fontWeight:800,letterSpacing:'1.5px',color:'#fff'}}>ATHLETE INJURY RECORD</h2>
-          <button className="btn sm" style={{background:'#fff',color:'#dc2626',border:'none'}} onClick={()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};updAth(ath.id,{injuries:[...(ath.injuries||[]),inj]});}}>+ Add Injury</button>
-        </div>
-        {(!ath.injuries||ath.injuries.length===0)&&<div className="empty-st" style={{padding:'24px 12px',background:'#fff',color:'#94a3b8'}}>No injuries recorded</div>}
-        {(ath.injuries||[]).length>0&&<div style={{overflowX:'auto',background:'#fff'}}>
-          <table className="inj-tbl">
-            <thead><tr>
-              <th>Athlete Name</th>
-              <th>Injury Date</th>
-              <th>Context</th>
-              <th>Injury Mechanism</th>
-              <th>Side</th>
-              <th>Anatomical Location</th>
-              <th>Tissue Type</th>
-              <th>Injury Type</th>
-              <th>Severity Grade</th>
-              <th>First Injury Day</th>
-              <th>Sidelined Date</th>
-              <th>Estimated Return Date</th>
-              <th>Actual Return Date</th>
-              <th className="calc-col-train">Missed Training Days</th>
-              <th className="calc-col-match">Missed Matches</th>
-              <th></th>
-            </tr></thead>
-            <tbody>
-              {ath.injuries.map((inj,idx)=>{
-                const ui=(k,v)=>{const a=[...ath.injuries];a[idx]={...a[idx],[k]:v};updAth(ath.id,{injuries:a});};
-                // Calculate missed training days: from sidelinedDate to actualReturn (or today if not returned)
-                const sd=inj.sidelinedDate,ar=inj.actualReturn;
-                let missedTraining='—',missedMatches='—';
-                if(sd){
-                  const endDate=ar||fmt(today);
-                  if(endDate>=sd){
-                    missedTraining=Math.max(0,diffD(sd,endDate));
-                    // Count team competitions/matches in this date range
-                    const comps=(setup.competitions||[]).filter(c=>c.date>=sd&&c.date<=endDate);
-                    missedMatches=comps.length;
-                  }
-                }
-                return<tr key={inj.id||idx}>
-                  <td className="athlete-cell"><strong>{ath.name}</strong></td>
-                  <td><input type="date" value={inj.date||''} onChange={e=>ui('date',e.target.value)}/></td>
-                  <td><select value={inj.context||'Training'} onChange={e=>ui('context',e.target.value)}>
-                    <option>Training</option><option>Match</option><option>Other</option></select></td>
-                  <td><input value={inj.mechanism||''} onChange={e=>ui('mechanism',e.target.value)} placeholder="Non-contact pivot…"/></td>
-                  <td><select value={inj.side||''} onChange={e=>ui('side',e.target.value)}>
-                    <option value="">—</option><option>Right</option><option>Left</option><option>Bilateral</option><option>N/A</option></select></td>
-                  <td><input value={inj.location||''} onChange={e=>ui('location',e.target.value)} placeholder="Knee, Ankle…"/></td>
-                  <td><select value={inj.tissueType||''} onChange={e=>ui('tissueType',e.target.value)}>
-                    <option value="">—</option><option>Muscle</option><option>Ligament</option><option>Tendon</option><option>Bone</option><option>Cartilage</option><option>Joint capsule</option><option>Nerve</option><option>Other</option></select></td>
-                  <td><input value={inj.type||''} onChange={e=>ui('type',e.target.value)} placeholder="ACL sprain…"/></td>
-                  <td><select value={inj.grade||'1'} onChange={e=>ui('grade',e.target.value)}>
-                    <option value="1">Grade 1</option><option value="2">Grade 2</option><option value="3">Grade 3</option><option value="4">Grade 4</option></select></td>
-                  <td><input type="date" value={inj.firstInjuryDay||''} onChange={e=>ui('firstInjuryDay',e.target.value)}/></td>
-                  <td><input type="date" value={inj.sidelinedDate||''} onChange={e=>ui('sidelinedDate',e.target.value)}/></td>
-                  <td><input type="date" value={inj.estimatedReturn||''} onChange={e=>ui('estimatedReturn',e.target.value)}/></td>
-                  <td><input type="date" value={inj.actualReturn||''} onChange={e=>ui('actualReturn',e.target.value)}/></td>
-                  <td className="calc-cell-train"><strong>{missedTraining}</strong>{missedTraining!=='—'?<span style={{fontSize:9,color:'#0891b2',marginLeft:3}}>days</span>:null}</td>
-                  <td className="calc-cell-match"><strong>{missedMatches}</strong></td>
-                  <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{injuries:ath.injuries.filter((_,j)=>j!==idx)})}>✕</button></td>
-                </tr>;})}
-            </tbody>
-          </table>
-        </div>}
+      <div className="row" style={{justifyContent:'space-between',marginBottom:14}}>
+        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>Athlete Injury Record <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>({(ath.injuries||[]).length})</span></h2>
+        <button className="btn sm" onClick={()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};updAth(ath.id,{injuries:[...(ath.injuries||[]),inj]});}}>+ Add Injury</button>
       </div>
+      {(!ath.injuries||ath.injuries.length===0)&&<div className="empty-st">No injuries recorded</div>}
+      {(ath.injuries||[]).map((inj,idx)=>{
+        const ui=(k,v)=>{const a=[...ath.injuries];a[idx]={...a[idx],[k]:v};updAth(ath.id,{injuries:a});};
+        const sd=inj.sidelinedDate,ar=inj.actualReturn;
+        let missedTraining=null,missedMatches=null;
+        if(sd){const endDate=ar||fmt(today);if(endDate>=sd){missedTraining=Math.max(0,diffD(sd,endDate));missedMatches=(setup.competitions||[]).filter(c=>c.date>=sd&&c.date<=endDate).length;}}
+        const isActive=!ar;
+        return(<div key={inj.id||idx} className="panel inj-card">
+          <div className="inj-h">
+            <div className="inj-h-l">
+              <span className={`inj-pill ${isActive?'inj':'ok'}`}>{isActive?'ACTIVE':'RECOVERED'}</span>
+              <strong style={{fontSize:14,color:'var(--text)'}}>{inj.location||inj.type||'(unspecified injury)'}</strong>
+              {inj.grade&&<span className="inj-grade">Grade {inj.grade}</span>}
+            </div>
+            <button className="btn xs danger" onClick={()=>{if(confirm('Delete this injury record?'))updAth(ath.id,{injuries:ath.injuries.filter((_,j)=>j!==idx)});}}>✕ Delete</button>
+          </div>
+          <div className="grid cols-4" style={{marginBottom:10}}>
+            <div><label>Injury Date</label><input type="date" value={inj.date||''} onChange={e=>ui('date',e.target.value)}/></div>
+            <div><label>Context</label><select value={inj.context||'Training'} onChange={e=>ui('context',e.target.value)}><option>Training</option><option>Match</option><option>Other</option></select></div>
+            <div><label>Side</label><select value={inj.side||''} onChange={e=>ui('side',e.target.value)}><option value="">—</option><option>Right</option><option>Left</option><option>Bilateral</option><option>N/A</option></select></div>
+            <div><label>Severity Grade</label><select value={inj.grade||'1'} onChange={e=>ui('grade',e.target.value)}><option value="1">Grade 1</option><option value="2">Grade 2</option><option value="3">Grade 3</option><option value="4">Grade 4</option></select></div>
+          </div>
+          <div className="grid cols-4" style={{marginBottom:10}}>
+            <div><label>Anatomical Location</label><input value={inj.location||''} onChange={e=>ui('location',e.target.value)} placeholder="Knee, Ankle…"/></div>
+            <div><label>Tissue Type</label><select value={inj.tissueType||''} onChange={e=>ui('tissueType',e.target.value)}><option value="">—</option><option>Muscle</option><option>Ligament</option><option>Tendon</option><option>Bone</option><option>Cartilage</option><option>Joint capsule</option><option>Nerve</option><option>Other</option></select></div>
+            <div><label>Injury Type</label><input value={inj.type||''} onChange={e=>ui('type',e.target.value)} placeholder="ACL sprain…"/></div>
+            <div><label>Injury Mechanism</label><input value={inj.mechanism||''} onChange={e=>ui('mechanism',e.target.value)} placeholder="Non-contact pivot…"/></div>
+          </div>
+          <div className="grid cols-4" style={{marginBottom:10}}>
+            <div><label>First Injury Day</label><input type="date" value={inj.firstInjuryDay||''} onChange={e=>ui('firstInjuryDay',e.target.value)}/></div>
+            <div><label>Sidelined Date</label><input type="date" value={inj.sidelinedDate||''} onChange={e=>ui('sidelinedDate',e.target.value)}/></div>
+            <div><label>Estimated Return</label><input type="date" value={inj.estimatedReturn||''} onChange={e=>ui('estimatedReturn',e.target.value)}/></div>
+            <div><label>Actual Return</label><input type="date" value={inj.actualReturn||''} onChange={e=>ui('actualReturn',e.target.value)}/></div>
+          </div>
+          <div className="inj-stats">
+            <div className="inj-stat"><div className="k">Missed Training</div><div className="v">{missedTraining!=null?missedTraining:'—'}<span className="u">days</span></div></div>
+            <div className="inj-stat"><div className="k">Missed Matches</div><div className="v">{missedMatches!=null?missedMatches:'—'}</div></div>
+          </div>
+        </div>);
+      })}
     </div>}
     {tab==='body'&&<div>
       {(()=>{const m=(ath.measurements||[]).filter(x=>x.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));const cur=m[m.length-1];const prev=m[m.length-2];
@@ -5159,10 +5167,8 @@ function App(){
             {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
           </select>
         </div>
-        <div className="bt-row">
-          <button className="btn sec xs" onClick={()=>setView('teams')} style={{flex:1,justifyContent:'center'}}>Manage</button>
-          <CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/>
-        </div>
+        <button className="btn sec xs" onClick={()=>setView('teams')} style={{width:'100%',justifyContent:'center'}}>Manage</button>
+        <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/></div>
       </div>
       <nav>
         {NAV_GROUPS.map(g=><div key={g.label} className="nav-group">
@@ -5176,12 +5182,6 @@ function App(){
       </nav>
     </aside>
     <div className="content">
-    <header>
-      <div>
-        <h1>PERIODIZATION PLANNER</h1>
-        <div className="sub">{team.setup.sport} · {team.setup.model} model · season {fd(team.setup.seasonStart)} → {fd(team.setup.seasonEnd)}</div>
-      </div>
-    </header>
     {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
