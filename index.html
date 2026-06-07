@@ -228,18 +228,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-col.drop{border-color:var(--accent);background:rgba(230,255,85,.05)}
 .calw-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-bottom:10px}
 .calw-hint strong{color:var(--text2);font-weight:600}
-/* Athletes' weekly sRPE table (Calendar page) */
-.srpe-wk-wrap{margin-top:26px;padding-top:22px;border-top:1px solid var(--border)}
-.srpe-wk{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;min-width:560px}
-.srpe-wk th{background:var(--bg2);color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;padding:9px 6px;text-align:center;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border)}
-.srpe-wk th.nmcol{text-align:left;padding-left:14px;width:200px}
+/* Athletes' weekly sRPE table (Calendar page) — between week strip and month grid */
+.srpe-wk-wrap{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.srpe-wk{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;min-width:560px}
+.srpe-wk th{background:var(--bg2);color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:500;padding:6px 5px;text-align:center;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+.srpe-wk th.nmcol{text-align:left;padding-left:12px;width:170px}
 .srpe-wk th.avgcol{background:rgba(154,171,58,.1);color:var(--accent)}
-.srpe-wk td{padding:9px 6px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;border-top:1px solid var(--border);color:var(--text)}
-.srpe-wk td.nmcol{text-align:left;padding-left:14px;font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text);white-space:nowrap}
-.srpe-wk td.nmcol .rnum{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);margin-right:7px}
+.srpe-wk th.aucol{background:#0a0b0d;color:#fff;width:80px}
+.srpe-wk td{padding:6px 5px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;border-top:1px solid var(--border);color:var(--text)}
+.srpe-wk td.nmcol{text-align:left;padding-left:12px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;color:var(--text);white-space:nowrap}
+.srpe-wk td.nmcol .rnum{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);margin-right:6px}
 .srpe-wk td.avgcol{background:rgba(154,171,58,.08);font-weight:700}
+.srpe-wk td.aucol{font-weight:700;color:var(--accent);background:rgba(154,171,58,.06)}
 .srpe-wk tbody tr:hover td{background:var(--panel)}
-.srpe-wk tbody tr:hover td.avgcol{background:rgba(154,171,58,.14)}
+.srpe-wk tbody tr:hover td.avgcol,.srpe-wk tbody tr:hover td.aucol{background:rgba(154,171,58,.14)}
 .calw-empty{flex:1;display:grid;place-items:center;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
@@ -2301,36 +2303,39 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
       </aside>
     </>)}
-    <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
-      weeks={weeks} ltCls={ltCls} ltColor={ltColor}
-      onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
     {teamMode&&(()=>{
       // Weekly (Mon-Sun) sRPE table for every athlete — uses each athlete's own day sessions
       const dayKeys=dayCells.map(d=>fmt(d));
       const rpeFor=(a,dk)=>{const day=(a.days||{})[dk];if(!day)return null;
         const vals=(day.sessions||[]).map(s=>Number(s.sRPE)).filter(n=>!isNaN(n)&&n>0);
         if(vals.length===0)return null;return +(vals.reduce((x,y)=>x+y,0)/vals.length).toFixed(1);};
+      const auFor=a=>dayKeys.reduce((tot,dk)=>{const day=(a.days||{})[dk];if(!day)return tot;
+        return tot+(day.sessions||[]).reduce((s,x)=>s+(Number(x.au)||(x.sRPE!==''&&x.sRPE!=null?Number(x.sRPE)*Number(x.duration||0):0)),0);},0);
       const rows=(athletes||[]).map(a=>{
         const cells=dayKeys.map(dk=>rpeFor(a,dk));
         const valid=cells.filter(v=>v!=null);
         const avg=valid.length?+(valid.reduce((x,y)=>x+y,0)/valid.length).toFixed(1):null;
-        return{name:a.name||'—',number:a.number,cells,avg};
+        return{name:a.name||'—',number:a.number,cells,avg,au:Math.round(auFor(a))};
       });
       const rpeColor=v=>v==null?'var(--dim)':v>=8?'var(--high-t)':v>=5?'var(--med-t)':'var(--low-t)';
       return(<div className="srpe-wk-wrap">
-        <div className="ath-section-h" style={{marginTop:8}}><div className="t">Sporcu Haftalık sRPE</div><div className="s">{fmtRange()} · /10</div></div>
+        <div className="ath-section-h"><div className="t">Sporcu Haftalık sRPE</div><div className="s">{fmtRange()} · /10</div></div>
         {rows.length===0&&<div className="empty-st">Kadroda sporcu yok</div>}
         {rows.length>0&&<div style={{overflowX:'auto'}}>
           <table className="srpe-wk">
-            <thead><tr><th className="nmcol">Sporcu</th>{DN.map((d,i)=><th key={i}>{d} {dayCells[i].getDate()}</th>)}<th className="avgcol">Ort.</th></tr></thead>
+            <thead><tr><th className="nmcol">Sporcu</th>{DN.map((d,i)=><th key={i}>{d} {dayCells[i].getDate()}</th>)}<th className="avgcol">Ort.</th><th className="aucol">Total AU</th></tr></thead>
             <tbody>{rows.map((r,ri)=><tr key={ri}>
               <td className="nmcol">{r.number?<span className="rnum">#{r.number}</span>:null}{r.name}</td>
               {r.cells.map((v,ci)=><td key={ci} style={{color:rpeColor(v)}}>{v!=null?v.toFixed(1):'·'}</td>)}
               <td className="avgcol" style={{color:rpeColor(r.avg)}}>{r.avg!=null?r.avg.toFixed(1):'·'}</td>
+              <td className="aucol">{r.au>0?r.au.toLocaleString('en-US').replace(/,/g,'.'):'·'}</td>
             </tr>)}</tbody>
           </table>
         </div>}
       </div>);})()}
+    <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
+      weeks={weeks} ltCls={ltCls} ltColor={ltColor}
+      onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
   </div>);
 }
 
