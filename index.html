@@ -242,6 +242,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .srpe-wk td.aucol{font-weight:700;color:var(--accent);background:rgba(154,171,58,.06)}
 .srpe-wk tbody tr:hover td{background:var(--panel)}
 .srpe-wk tbody tr:hover td.avgcol,.srpe-wk tbody tr:hover td.aucol{background:rgba(154,171,58,.14)}
+/* Three-RPE split cells (TP / S&C / Game) */
+.srpe-wk td.rpe3cell{padding:5px 4px}
+.rpe3{display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.rpe3 .rt{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;min-width:12px;text-align:center;display:inline-block}
+.rpe3 .rt.tp{color:#fb923c}
+.rpe3 .rt.sc{color:#22d3ee}
+.rpe3 .rt.gm{color:#f472b6}
+.rpe-empty{color:var(--dim)}
+.rpe-legend{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.rpe-leg{display:inline-flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2)}
+.rpe-leg b{width:8px;height:8px;border-radius:2px;display:inline-block}
+.rpe-leg b.tp{background:#fb923c}
+.rpe-leg b.sc{background:#22d3ee}
+.rpe-leg b.gm{background:#f472b6}
 .calw-empty{flex:1;display:grid;place-items:center;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
@@ -2304,30 +2318,30 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </aside>
     </>)}
     {teamMode&&(()=>{
-      // Weekly (Mon-Sun) sRPE table for every athlete — uses each athlete's own day sessions
+      // Weekly (Mon-Sun) sRPE table — TP / S&C / Game split from each athlete's Notion survey (srpeLog)
       const dayKeys=dayCells.map(d=>fmt(d));
-      const rpeFor=(a,dk)=>{const day=(a.days||{})[dk];if(!day)return null;
-        const vals=(day.sessions||[]).map(s=>Number(s.sRPE)).filter(n=>!isNaN(n)&&n>0);
-        if(vals.length===0)return null;return +(vals.reduce((x,y)=>x+y,0)/vals.length).toFixed(1);};
-      const auFor=a=>dayKeys.reduce((tot,dk)=>{const day=(a.days||{})[dk];if(!day)return tot;
-        return tot+(day.sessions||[]).reduce((s,x)=>s+(Number(x.au)||(x.sRPE!==''&&x.sRPE!=null?Number(x.sRPE)*Number(x.duration||0):0)),0);},0);
-      const rows=(athletes||[]).map(a=>{
-        const cells=dayKeys.map(dk=>rpeFor(a,dk));
-        const valid=cells.filter(v=>v!=null);
-        const avg=valid.length?+(valid.reduce((x,y)=>x+y,0)/valid.length).toFixed(1):null;
-        return{name:a.name||'—',number:a.number,cells,avg,au:Math.round(auFor(a))};
-      });
-      const rpeColor=v=>v==null?'var(--dim)':v>=8?'var(--high-t)':v>=5?'var(--med-t)':'var(--low-t)';
+      const num=v=>(v===''||v==null)?null:(isNaN(Number(v))?null:+Number(v).toFixed(1));
+      const entryFor=(a,dk)=>{const logs=(a.srpeLog||[]).filter(e=>e.date===dk);return logs.length?logs[logs.length-1]:null;};
+      const auFor=a=>dayKeys.reduce((tot,dk)=>{const e=entryFor(a,dk);if(!e)return tot;
+        const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));return tot+v;},0);
+      const rows=(athletes||[]).map(a=>({
+        name:a.name||'—',number:a.number,
+        days:dayKeys.map(dk=>{const e=entryFor(a,dk);return e?{tp:num(e.tpRPE),sc:num(e.scRPE),gm:num(e.gameRPE)}:null;}),
+        au:Math.round(auFor(a))
+      }));
+      const fmtN=v=>v==null?'·':v;
       return(<div className="srpe-wk-wrap">
-        <div className="ath-section-h"><div className="t">Sporcu Haftalık sRPE</div><div className="s">{fmtRange()} · /10</div></div>
+        <div className="ath-section-h"><div className="t">Sporcu Haftalık sRPE</div>
+          <div className="s rpe-legend"><span className="rpe-leg"><b className="tp"/>TP</span><span className="rpe-leg"><b className="sc"/>S&amp;C</span><span className="rpe-leg"><b className="gm"/>Game</span><span style={{color:'var(--dim)'}}>· {fmtRange()} · /10</span></div></div>
         {rows.length===0&&<div className="empty-st">Kadroda sporcu yok</div>}
         {rows.length>0&&<div style={{overflowX:'auto'}}>
-          <table className="srpe-wk">
-            <thead><tr><th className="nmcol">Sporcu</th>{DN.map((d,i)=><th key={i}>{d} {dayCells[i].getDate()}</th>)}<th className="avgcol">Ort.</th><th className="aucol">Total AU</th></tr></thead>
+          <table className="srpe-wk rpe3-tbl">
+            <thead><tr><th className="nmcol">Sporcu</th>{DN.map((d,i)=><th key={i}>{d} {dayCells[i].getDate()}</th>)}<th className="aucol">Total AU</th></tr></thead>
             <tbody>{rows.map((r,ri)=><tr key={ri}>
               <td className="nmcol">{r.number?<span className="rnum">#{r.number}</span>:null}{r.name}</td>
-              {r.cells.map((v,ci)=><td key={ci} style={{color:rpeColor(v)}}>{v!=null?v.toFixed(1):'·'}</td>)}
-              <td className="avgcol" style={{color:rpeColor(r.avg)}}>{r.avg!=null?r.avg.toFixed(1):'·'}</td>
+              {r.days.map((dd,ci)=><td key={ci} className="rpe3cell">{dd&&(dd.tp!=null||dd.sc!=null||dd.gm!=null)?
+                <span className="rpe3"><span className="rt tp">{fmtN(dd.tp)}</span><span className="rt sc">{fmtN(dd.sc)}</span><span className="rt gm">{fmtN(dd.gm)}</span></span>
+                :<span className="rpe-empty">·</span>}</td>)}
               <td className="aucol">{r.au>0?r.au.toLocaleString('en-US').replace(/,/g,'.'):'·'}</td>
             </tr>)}</tbody>
           </table>
