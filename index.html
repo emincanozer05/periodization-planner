@@ -633,8 +633,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .x-btn:hover{background:var(--hover);color:var(--text)}
 .ex-modal-body{padding:16px;overflow-y:auto}
 .ex-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-.ex-player-wrap.ig{aspect-ratio:auto;height:640px;background:#fff}
-.ex-video{width:100%;height:100%;display:block;border:none;background:#000}
+.ex-player-wrap.ig{aspect-ratio:auto;height:640px;background:#000}
+.ex-video{width:100%;height:100%;display:block;border:none;background:#000;object-fit:contain}
 .ex-novid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px}
 .modal-foot{display:flex;justify-content:space-between;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
 @media(max-width:720px){.ex-h1{font-size:24px}.ex-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
@@ -4826,10 +4826,51 @@ function videoThumb(src){
   return'';
 }
 
+// Instagram reel/post → fetch the real MP4 (og:video) via a CORS proxy and play
+// it inline as a <video>. Falls back to the official embed card if extraction fails.
+function InstagramVideo({url,embedSrc}){
+  const[st,setSt]=useState({loading:true,mp4:'',failed:false});
+  useEffect(()=>{
+    let alive=true;setSt({loading:true,mp4:'',failed:false});
+    const proxies=[
+      u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
+      u=>'https://corsproxy.io/?url='+encodeURIComponent(u),
+      u=>'https://r.jina.ai/'+u,
+    ];
+    const extract=html=>{
+      let m=html.match(/property=["']og:video(?::secure_url)?["']\s+content=["']([^"']+)["']/i)
+        ||html.match(/content=["']([^"']+)["']\s+property=["']og:video(?::secure_url)?["']/i)
+        ||html.match(/"video_url":"([^"]+)"/)
+        ||html.match(/"video_versions":\[\{[^}]*?"url":"([^"]+)"/);
+      if(!m)return'';
+      return m[1].replace(/\\u0026/g,'&').replace(/\\\//g,'/').replace(/&amp;/g,'&');
+    };
+    const fetchT=(u,ms=7000)=>{const c=new AbortController();const id=setTimeout(()=>c.abort(),ms);
+      return fetch(u,{cache:'no-store',signal:c.signal}).finally(()=>clearTimeout(id));};
+    (async()=>{
+      for(const p of proxies){
+        try{
+          const res=await fetchT(p(url));
+          if(!res.ok)continue;
+          const html=await res.text();
+          const v=extract(html);
+          if(v&&alive){setSt({loading:false,mp4:v,failed:false});return;}
+        }catch(e){/* try next proxy */}
+      }
+      if(alive)setSt({loading:false,mp4:'',failed:true});
+    })();
+    return()=>{alive=false;};
+  },[url]);
+  if(st.loading)return<div className="ex-novid">Instagram videosu yükleniyor…</div>;
+  if(st.mp4)return<video className="ex-video" src={st.mp4} controls playsInline preload="metadata"/>;
+  // Extraction failed → official embed card (plays inside the card; may need a tap)
+  return<iframe className="ex-video" src={embedSrc} title="exercise video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
+}
 function VideoPlayer({ex}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   if(!v)return<div className="ex-novid">Henüz video yok — aşağıdan link yapıştır ya da video yükle.</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
+  if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
   return<iframe className="ex-video" src={v.src} title="exercise video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
 }
 
