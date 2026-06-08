@@ -1019,7 +1019,8 @@ function migrate(data){
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.exercises))data.exercises=[];
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant'};
-  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:e.difficulty||'',muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
+  const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
+  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
   return data;
 }
@@ -4789,8 +4790,8 @@ const TYPE_COLORS={
   'Plyometric':'#5eead4',                // teal
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
-const DIFFICULTIES=['Easy','Moderate','Hard'];
-const DIFF_COLOR={Easy:'#10b981',Moderate:'#f59e0b',Hard:'#ef4444'};
+const DIFFICULTIES=['Level 1','Level 2','Level 3'];
+const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each Exercise Type has its own secondary filter dimension.
 const SUB_TYPES={
   'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
