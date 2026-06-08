@@ -633,6 +633,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .x-btn:hover{background:var(--hover);color:var(--text)}
 .ex-modal-body{padding:16px;overflow-y:auto}
 .ex-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.ex-player-wrap.ig{aspect-ratio:auto;height:640px;background:#fff}
 .ex-video{width:100%;height:100%;display:block;border:none;background:#000}
 .ex-novid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px}
 .modal-foot{display:flex;justify-content:space-between;gap:10px;padding:14px 16px;border-top:1px solid var(--border)}
@@ -4808,6 +4809,10 @@ function videoEmbed(src){
   let m;
   if((m=src.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/)))return{kind:'iframe',src:'https://www.youtube.com/embed/'+m[1]};
   if((m=src.match(/vimeo\.com\/(?:video\/)?(\d+)/)))return{kind:'iframe',src:'https://player.vimeo.com/video/'+m[1]};
+  // Instagram reels / posts / IGTV → official embeddable endpoint (raw URL blocks iframing)
+  if((m=src.match(/instagram\.com\/(reel|reels|p|tv)\/([\w-]+)/i))){const ty=m[1].toLowerCase()==='reels'?'reel':m[1].toLowerCase();return{kind:'iframe',ig:true,src:'https://www.instagram.com/'+ty+'/'+m[2]+'/embed/'};}
+  // TikTok video → embed player
+  if((m=src.match(/tiktok\.com\/(?:.*\/video\/|v\/)(\d+)/)))return{kind:'iframe',src:'https://www.tiktok.com/embed/v2/'+m[1]};
   if(/\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(src))return{kind:'file',src};
   if(/^https?:\/\//i.test(src))return{kind:'iframe',src};
   return null;
@@ -4831,6 +4836,7 @@ function VideoPlayer({ex}){
 function ExerciseModal({ex,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
   const[upPct,setUpPct]=useState(null);
+  const _vEmbed=videoEmbed(ex.videoData||ex.videoUrl);
   const onVideoFile=async file=>{
     if(!file)return;
     const mb=file.size/1048576;
@@ -4858,7 +4864,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div className="ex-modal-body ex-modal-grid">
         <div className="ex-modal-left">
-          <div className="ex-player-wrap"><VideoPlayer ex={ex}/></div>
+          <div className={`ex-player-wrap${_vEmbed&&_vEmbed.ig?' ig':''}`}><VideoPlayer ex={ex}/></div>
           <div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
             <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Video Yükle
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
