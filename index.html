@@ -2065,26 +2065,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       </div>;})}</div>
       <div className="tl-months">{monthTicks.map((d,i)=><span key={i}>{MN[d.getMonth()].toUpperCase()}</span>)}</div>
     </div>
-    <div className="two-col">
-      <div className="panel">
-        <div className="tl-head"><div className="t">Weekly Load · AU</div><div className="s">microcycle</div></div>
-        <div className="bars">{weeks.slice(0,16).map((w,i)=>{const sum=(Number(w.volume)||0)+(Number(w.intensity)||0);const h=Math.max(3,Math.round((sum/weeklyMax)*100));const cur=fmt(today)>=w.week&&fmt(today)<=fmt(addD(parseD(w.week),6));
-          return(<div key={w.week} className="col"><div className={`bar${cur?' hi':''}`} style={{height:h+'%'}}/><div className="lb">{i+1}</div></div>);})}</div>
-      </div>
-      <div className="panel"><div className="tl-head"><div className="t">Phases</div></div>
-        <div className="phase-list">{periods.map(p=>{const wks=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));const longName={gp:'General Preparation',sp:'Specific Preparation',comp:'Competition',trans:'Transition'}[p.id]||p.name;
-          return(<div key={p.id} className="phase">
-            <div className={`dot ${p.id}`}/>
-            <div><div className="pn">{longName}</div><div className="pd">{fd(p.start)} → {fd(p.end)}</div></div>
-            <div className="pdur">{wks} wk</div>
-          </div>);})}</div>
-      </div>
-    </div>
     <div className="panel"><h2>Macrocycle Timeline (detail)</h2>
-      <div className="timeline">{periods.map(p=>{const span=diffD(p.start,p.end)+1;return<div key={p.id} className={`seg ${p.id}`} style={{width:(span/(total+1))*100+'%'}}>{p.name}</div>;})}</div>
-      <div className="row" style={{justifyContent:'space-between',color:'var(--muted)',fontSize:12,marginBottom:8}}>
-        <span>{fd(s.seasonStart)}</span><span>{fd(s.seasonEnd)}</span>
-      </div>
       <div className="row" style={{justifyContent:'space-between',marginBottom:8}}>
         <strong style={{fontSize:13}}>Period Dates {usingCustom?<span className="tag" style={{marginLeft:8}}>CUSTOM</span>:<span className="tag" style={{marginLeft:8,background:'rgba(245,158,11,.15)',color:'var(--yellow)'}}>AUTO</span>}</strong>
         <button className="btn sec sm" onClick={resetPeriods}>Reset to auto</button>
