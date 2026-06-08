@@ -4886,7 +4886,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     if(loggedIn){
       // Logged in → upload to cloud Storage; store the URL (no localStorage bloat).
       if(mb>200){alert('Video çok büyük ('+mb.toFixed(0)+' MB). 200 MB altı bir dosya seç ya da YouTube linki kullan.');return;}
-      try{setUpPct(0);const url=await uploadMedia(file,'videos',p=>setUpPct(p),file.name);set('videoUrl',url);set('videoData','');}
+      try{setUpPct(0);const url=await uploadMedia(file,'videos',p=>setUpPct(p),file.name);onChange({videoUrl:url,videoData:''});}
       catch(e){alert('Video yüklenemedi: '+(e.message||e));}
       finally{setUpPct(null);}
       return;
@@ -5004,7 +5004,7 @@ function ExercisesView({data,setData}){
   const[fPattern,setFPattern]=useState('');   // extra filter for Knee Dominant
   const[openId,setOpenId]=useState(null);
 
-  const patch=(id,p)=>setExercises(exercises.map(e=>e.id===id?{...e,...p}:e));
+  const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
   const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
   const addExercise=type=>{const e={id:uid(),name:'',type:type||activeType||'',subType:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
