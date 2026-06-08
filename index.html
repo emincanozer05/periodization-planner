@@ -4825,6 +4825,19 @@ function videoThumb(src){
   if((m=src.match(/vimeo\.com\/(?:video\/)?(\d+)/)))return'https://vumbnail.com/'+m[1]+'.jpg';
   return'';
 }
+// Best-effort: fetch the og:image (cover) of an Instagram reel/post via CORS proxies.
+async function fetchOgImage(url){
+  if(!url||!/instagram\.com\//i.test(url))return'';
+  const proxies=[u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),u=>'https://corsproxy.io/?url='+encodeURIComponent(u)];
+  const fetchT=(u,ms=7000)=>{const c=new AbortController();const id=setTimeout(()=>c.abort(),ms);return fetch(u,{cache:'no-store',signal:c.signal}).finally(()=>clearTimeout(id));};
+  for(const p of proxies){
+    try{const res=await fetchT(p(url));if(!res.ok)continue;const html=await res.text();
+      let m=html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i)||html.match(/"display_url":"([^"]+)"/);
+      if(m)return m[1].replace(/\\u0026/g,'&').replace(/\\\//g,'/').replace(/&amp;/g,'&');
+    }catch(e){/* next */}
+  }
+  return'';
+}
 
 // Instagram reel/post → fetch the real MP4 (og:video) via a CORS proxy and play
 // it inline as a <video>. Falls back to the official embed card if extraction fails.
@@ -4977,6 +4990,15 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
 function ExerciseCard({ex,onOpen}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   const[hov,setHov]=useState(false);
+  const[igImg,setIgImg]=useState('');
+  // Static cover: manual cover → YouTube/Vimeo auto-thumb → fetched Instagram cover
+  const cover=ex.thumb||videoThumb(ex.videoData||ex.videoUrl)||igImg;
+  // Instagram reels have no auto thumbnail → fetch the og:image once, when no manual cover is set
+  useEffect(()=>{
+    if(ex.thumb||!v||!v.ig){setIgImg('');return;}
+    let alive=true;(async()=>{const img=await fetchOgImage(ex.videoData||ex.videoUrl);if(alive&&img)setIgImg(img);})();
+    return()=>{alive=false;};
+  },[ex.videoUrl,ex.videoData,ex.thumb]);
   // Add autoplay+mute params to YouTube/Vimeo URLs so the preview plays silently on hover
   const previewSrc=v&&v.kind==='iframe'?(v.src+(v.src.indexOf('?')>=0?'&':'?')+'autoplay=1&mute=1&muted=1&controls=0&playsinline=1&loop=1&modestbranding=1'):null;
   return(<div className="ex-card" onClick={onOpen} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
@@ -4984,7 +5006,11 @@ function ExerciseCard({ex,onOpen}){
       {hov&&v?(v.kind==='file'
         ? <video className="ex-thumb-vid" src={v.src} autoPlay muted loop playsInline/>
         : <iframe className="ex-thumb-vid" src={previewSrc} title="preview" allow="autoplay; encrypted-media" frameBorder="0"/>
-      ):(ex.thumb?<img src={ex.thumb} alt=""/>:<div className="ex-thumb-ph">🏋</div>)}
+      ):(
+        cover ? <img src={cover} alt="" onError={e=>{e.target.style.display='none';}}/>
+        : (v&&v.kind==='file') ? <video className="ex-thumb-vid" src={v.src+'#t=0.1'} muted preload="metadata" playsInline/>
+        : <div className="ex-thumb-ph">🏋</div>
+      )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
     </div>
     <div className="ex-cbody">
