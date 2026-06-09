@@ -905,10 +905,30 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lm-gauge-val{position:absolute;left:0;right:0;bottom:6px;text-align:center}
 .lm-gauge-val .gv{font-size:34px;font-weight:700;letter-spacing:-.01em}
 .lm-gauge-val .gz{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
-.lm-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.lm-mini .m{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:11px 14px}
+.lm-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.lm-mini .m{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:11px 13px;display:flex;align-items:center;gap:11px}
+.lm-mini .mi{width:30px;height:30px;border-radius:8px;background:var(--elevated);border:1px solid var(--border);display:grid;place-items:center;font-size:14px;color:var(--muted);flex:none}
+.lm-mini .mc{min-width:0}
 .lm-mini .m .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
-.lm-mini .m .v{font-size:22px;font-weight:700;color:var(--text);margin-top:3px;letter-spacing:-.01em}
+.lm-mini .m .v{font-size:20px;font-weight:700;color:var(--text);margin-top:3px;letter-spacing:-.01em;line-height:1}
+/* ACWR card header / value / horizontal bar */
+.lac-head{display:flex;align-items:center;justify-content:space-between}
+.lac-title{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.lac-zone{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;display:inline-flex;align-items:center;gap:6px}
+.lac-zdot{width:7px;height:7px;border-radius:50%;flex:none}
+.lac-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:3px}
+.lac-val{font-size:52px;font-weight:700;text-align:center;letter-spacing:-.02em;line-height:1;margin:16px 0 2px;font-family:'Space Grotesk',sans-serif}
+.lac-vsub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-align:center;margin-bottom:18px}
+.acwr-bar{margin-bottom:20px}
+.ab-track{position:relative;display:flex;gap:3px;height:9px}
+.ab-seg{border-radius:3px}
+.ab-seg:first-child{border-radius:5px 2px 2px 5px}
+.ab-seg:last-child{border-radius:2px 5px 5px 2px}
+.ab-marker{position:absolute;top:50%;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--green);transform:translate(-50%,-50%);box-shadow:0 1px 5px rgba(0,0,0,.55)}
+.ab-ticks{position:relative;height:13px;margin-top:8px}
+.ab-ticks span{position:absolute;transform:translateX(-50%);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
+.ab-zones{display:flex;gap:3px;margin-top:2px}
+.ab-zones span{text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
 .lm-trend-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;display:flex;flex-direction:column}
 .lm-trend-card .lm-th{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
 .lm-trend-card h3{font-size:14px;font-weight:600;color:var(--text);margin:0}
@@ -1250,24 +1270,27 @@ function Sparkline({data,color='#3b82f6',w=120,h=34}){
   </svg>);
 }
 /* Semicircular ACWR gauge (0–2 scale) with risk-zone arcs + needle */
-function AcwrGauge({value}){
-  // Half-circle gauge. Range 0.2–1.9 so the green safe band (0.8–1.3) is centered
-  // at the top and the side zones are symmetric — no skew.
-  const cx=100,cy=96,R=72,SW=16,LO=0.2,HI=1.9;
-  const frac=v=>Math.max(0,Math.min(1,(v-LO)/(HI-LO)));
-  const ang=v=>Math.PI-frac(v)*Math.PI;
-  const pt=(v,r)=>{const a=ang(v);return[cx+r*Math.cos(a),cy-r*Math.sin(a)];};
-  const arc=(v1,v2,color,key)=>{const[x1,y1]=pt(v1,R),[x2,y2]=pt(v2,R);
-    return<path key={key} d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 0 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`} fill="none" stroke={color} strokeWidth={SW} strokeLinecap="round"/>;};
-  const segs=[[0.2,0.8,'#f59e0b'],[0.8,1.3,'#2dd4a7'],[1.3,1.5,'#f59e0b'],[1.5,1.9,'#f43f5e']];
-  const[nx,ny]=pt(value||1,R-21);const z=acwrZoneOf(value);
-  return(<svg viewBox="0 0 200 146" style={{width:'100%',maxWidth:240,display:'block',margin:'4px auto 0'}}>
-    {segs.map((s,i)=>arc(s[0],s[1],s[2],i))}
-    <line x1={cx} y1={cy} x2={nx.toFixed(2)} y2={ny.toFixed(2)} stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
-    <circle cx={cx} cy={cy} r="6.5" fill="#fff"/>
-    <text x={cx} y="126" textAnchor="middle" fontSize="33" fontWeight="700" fill={z.c} fontFamily="'Space Grotesk',sans-serif">{value?value.toFixed(2):'—'}</text>
-    <text x={cx} y="141" textAnchor="middle" fontSize="9" fontWeight="600" fill={z.c} fontFamily="'IBM Plex Mono',monospace" letterSpacing="1.5">{(z.t||'').toUpperCase()}</text>
-  </svg>);
+function AcwrBar({value}){
+  // Horizontal segmented ACWR scale (0–2) with a marker at the value.
+  const pos=Math.max(2.5,Math.min(97.5,(value||0)/2*100));
+  const z=acwrZoneOf(value);
+  const ticks=[[0,'0'],[0.8,'0.8'],[1,'1'],[1.3,'1.3'],[1.5,'1.5'],[2,'2']];
+  return(<div className="acwr-bar">
+    <div className="ab-track">
+      <span className="ab-seg" style={{flexGrow:0.8,background:'#b9842f'}}/>
+      <span className="ab-seg" style={{flexGrow:0.5,background:'#2dd4a7'}}/>
+      <span className="ab-seg" style={{flexGrow:0.2,background:'#b9842f'}}/>
+      <span className="ab-seg" style={{flexGrow:0.5,background:'#cf4338'}}/>
+      <span className="ab-marker" style={{left:`${pos}%`,borderColor:z.dot}}/>
+    </div>
+    <div className="ab-ticks">{ticks.map((t,i)=>{const p=t[0]/2*100;const tx=p<=0?'0':p>=100?'-100%':'-50%';return<span key={i} style={{left:`${p}%`,transform:`translateX(${tx})`}}>{t[1]}</span>;})}</div>
+    <div className="ab-zones">
+      <span style={{flexGrow:0.8,color:'#e0a23a'}}>LOW</span>
+      <span style={{flexGrow:0.5,color:'#2dd4a7'}}>OPT</span>
+      <span style={{flexGrow:0.2,color:'#e0a23a'}}>CAUT</span>
+      <span style={{flexGrow:0.5,color:'#f43f5e'}}>HIGH</span>
+    </div>
+  </div>);
 }
 
 /* =========================================================
@@ -3071,6 +3094,7 @@ function TeamReports({team,weeks,selected,setSelected}){
   const m7=weekMono(last7);
   const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(refDate),-i)));return s/28;})();
   const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
+  const lmZone=acwrZoneOf(lmAcwr);
   const[lmWin,setLmWin]=useState(21);
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){const k=fmt(addD(parseD(refDate),-i));out.push({k,v:dayAvg(k)});}return out;},[teamDailyAvg,refDate,lmWin]);
 
@@ -3148,14 +3172,19 @@ function TeamReports({team,weeks,selected,setSelected}){
 
     <div className="lm-grid" style={{marginBottom:16}}>
       <div className="lm-gauge-card">
-        <h3>Team ACWR</h3>
-        <div className="lm-gh-sub">7:28 ratio</div>
-        <AcwrGauge value={lmAcwr}/>
+        <div className="lac-head">
+          <span className="lac-title">Team ACWR</span>
+          <span className="lac-zone" style={{color:lmZone.dot}}><span className="lac-zdot" style={{background:lmZone.dot}}/>{(lmZone.t||'').toUpperCase()}</span>
+        </div>
+        <div className="lac-sub">7 : 28 day ratio</div>
+        <div className="lac-val" style={{color:lmZone.c}}>{lmAcwr?lmAcwr.toFixed(2):'—'}</div>
+        <div className="lac-vsub">acute ÷ chronic</div>
+        <AcwrBar value={lmAcwr}/>
         <div className="lm-mini">
-          <div className="m"><div className="k">Acute · 7d</div><div className="v">{Math.round(m7.mean).toLocaleString('en-US').replace(/,/g,'.')}</div></div>
-          <div className="m"><div className="k">Chronic · 28d</div><div className="v">{Math.round(chronicMean).toLocaleString('en-US').replace(/,/g,'.')}</div></div>
-          <div className="m"><div className="k">Monotony</div><div className="v" style={{color:m7.monotony>2?'#f59e0b':'var(--text)'}}>{m7.monotony?m7.monotony.toFixed(2):'—'}</div></div>
-          <div className="m"><div className="k">Strain</div><div className="v">{Math.round(m7.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div>
+          <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">Acute · 7d</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(m7.mean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">Chronic · 28d</div><div className="v">{Math.round(chronicMean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">Monotony</div><div className="v" style={{color:m7.monotony>2?'#f59e0b':'var(--text)'}}>{m7.monotony?m7.monotony.toFixed(2):'—'}</div></div></div>
+          <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">Strain</div><div className="v">{Math.round(m7.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
       <div className="lm-trend-card">
