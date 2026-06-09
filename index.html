@@ -935,6 +935,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lm-trend-card .lm-th-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:8px;font-weight:400}
 .lm-legpill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);display:inline-flex;align-items:center;gap:6px}
 .lm-legpill::before{content:'';width:8px;height:8px;border-radius:50%;background:#3b6ef5}
+/* Load Monitoring week selector */
+.lm-wksel{display:inline-flex;align-items:center;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.lm-wksel>button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:15px;font-weight:600;width:28px;height:28px;border-radius:7px;cursor:pointer;display:grid;place-items:center;transition:all .15s}
+.lm-wksel>button:hover{background:var(--elevated);color:var(--text)}
+.lm-wklbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;color:var(--text);padding:0 8px;white-space:nowrap;display:inline-flex;align-items:baseline;gap:6px}
+.lm-wkk{font-size:9px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.lm-wknow{font-size:11px!important;font-weight:600!important;width:auto!important;padding:0 9px;color:var(--text2)!important}
 /* ===== Planned Microcycles + Load Mix ===== */
 .mc-extra{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:16px}
 @media(max-width:860px){.mc-extra{grid-template-columns:1fr}}
@@ -3089,14 +3096,16 @@ function TeamReports({team,weeks,selected,setSelected}){
   const acwrZone=acwrVal===0?{t:'No data',c:'#94a3b8'}:acwrVal>1.5?{t:'High risk',c:'#ef4444'}
     :(acwrVal>=0.8&&acwrVal<=1.3)?{t:'Optimal',c:'#10b981'}:acwrVal<0.8?{t:'Undertraining',c:'#f59e0b'}:{t:'Caution',c:'#f59e0b'};
   const acwrWeekly=mWeeks.map(w=>({label:fd(w.wkStart).slice(0,5),acwr:+acwrAt(w.wkEnd).toFixed(2)}));
-  // ---- Load Monitoring summary (acute/chronic means, monotony, strain) at refDate ----
-  const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(refDate),-(6-i))))}));
+  // ---- Load Monitoring summary (acute/chronic means, monotony, strain) at the selected week's end ----
+  const[lmWeek,setLmWeek]=useState(()=>fmt(sow(parseD(refDate))));   // Monday of the reference week
+  const lmEnd=fmt(addD(parseD(lmWeek),6));                            // Sunday of that week
+  const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(lmEnd),-(6-i))))}));
   const m7=weekMono(last7);
-  const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(refDate),-i)));return s/28;})();
+  const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(lmEnd),-i)));return s/28;})();
   const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
   const lmZone=acwrZoneOf(lmAcwr);
   const[lmWin,setLmWin]=useState(21);
-  const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){const k=fmt(addD(parseD(refDate),-i));out.push({k,v:dayAvg(k)});}return out;},[teamDailyAvg,refDate,lmWin]);
+  const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){const k=fmt(addD(parseD(lmEnd),-i));out.push({k,v:dayAvg(k)});}return out;},[teamDailyAvg,lmEnd,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -3143,6 +3152,7 @@ function TeamReports({team,weeks,selected,setSelected}){
 
   const setYear=y=>setSelected({...selected,year:y,date:`${y}-${pad(month)}-01`});
   const setMonth=m=>setSelected({...selected,month:m,date:`${year}-${pad(m)}-01`});
+  const fwd=ds=>{const d=parseD(ds);return d.getDate()+' '+MN[d.getMonth()];};
 
   return(<div>
     <div className="panel">
@@ -3165,8 +3175,16 @@ function TeamReports({team,weeks,selected,setSelected}){
         <div className="lm-title">Load Monitoring</div>
         <div className="lm-sub">Acute:chronic workload, training monotony &amp; wellness trends</div>
       </div>
-      <div className="lb-seg">
-        {[7,14,21].map(n=><button key={n} className={lmWin===n?'on':''} onClick={()=>setLmWin(n)}>{n}d</button>)}
+      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+        <div className="lm-wksel">
+          <button onClick={()=>setLmWeek(fmt(addD(parseD(lmWeek),-7)))} title="Previous week">‹</button>
+          <span className="lm-wklbl"><span className="lm-wkk">Week of</span>{fwd(lmWeek)} – {fwd(lmEnd)}</span>
+          <button onClick={()=>setLmWeek(fmt(addD(parseD(lmWeek),7)))} title="Next week">›</button>
+          <button className="lm-wknow" onClick={()=>setLmWeek(fmt(sow(today)))} title="Jump to current week">Now</button>
+        </div>
+        <div className="lb-seg">
+          {[7,14,21].map(n=><button key={n} className={lmWin===n?'on':''} onClick={()=>setLmWin(n)}>{n}d</button>)}
+        </div>
       </div>
     </div>
 
