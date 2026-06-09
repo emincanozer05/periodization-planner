@@ -3080,8 +3080,8 @@ function TeamReports({team,weeks,selected,setSelected}){
 
   // ---- Weekly monotony (Foster) for the selected month, from team daily load ----
   const mWeeks=useMemo(()=>{const o=[];let c=sow(parseD(ms));while(c<=parseD(me)){
-    const loads=Array.from({length:7},(_,i)=>({load:dayLoad(fmt(addD(c,i)))}));
-    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDaily,ms,me]);
+    const loads=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(c,i)))}));
+    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDailyAvg,ms,me]);
   const monoW=mWeeks.filter(w=>w.monotony>0);
   const meanMono=monoW.length?monoW.reduce((a,b)=>a+b.monotony,0)/monoW.length:0;
   const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
