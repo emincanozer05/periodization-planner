@@ -954,6 +954,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Standalone back button (athlete profile) */
 button.back{background:var(--panel);border:1px solid var(--border2);border-radius:9px;color:var(--text2);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:border-color .2s,color .2s,background .2s}
 button.back:hover{border-color:var(--accent);color:var(--accent);background:var(--elevated)}
+/* Wellness History card */
+.wh-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:18px}
+.wh-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.wh-title{font-size:17px;font-weight:700;color:var(--text)}
+.wh-tabs{flex-wrap:wrap}
+.wh-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+.wh-sum{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap}
+.wh-s .wh-v{font-size:23px;font-weight:700;color:var(--text);font-family:'Space Grotesk',sans-serif;line-height:1}
+.wh-s.big .wh-v{font-size:40px;letter-spacing:-.02em}
+.wh-s .wh-v small{font-size:13px;color:var(--dim);font-weight:500;margin-left:3px}
+.wh-s .wh-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.wh-delta{text-align:right}
+.wh-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:17px;font-weight:700}
+.wh-dk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+.wh-nav{display:flex;justify-content:flex-end;margin-bottom:8px}
+.wh-chart{height:270px;position:relative}
 </style>
 </head>
 <body>
@@ -4056,6 +4072,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
   // Week selectors for the per-panel charts (Wellness / sRPE) — Monday-anchored.
   const _mostRecent=(arr)=>{const ds=arr.map(x=>x.date).filter(Boolean).sort();return ds.length?wk(parseD(ds[ds.length-1])):wk(today);};
   const[wellnessWeek,setWellnessWeek]=useState(()=>_mostRecent(ath.wellness||[]));
+  const[wellMetric,setWellMetric]=useState('readiness');
   const[srpeWeek,setSrpeWeek]=useState(()=>_mostRecent(ath.srpeLog||[]));
   // Table pagination — show 10 by default, extendable in 10s.
   const[wlLimit,setWlLimit]=useState(10);
@@ -4257,16 +4274,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       </div>
     </div>}
     {tab==='wellness'&&<div>
-      {(()=>{const ws=(ath.wellness||[]).filter(w=>w.date).slice().sort((a,b)=>a.date.localeCompare(b.date));const cur=ws[ws.length-1];
-        const num=(k)=>{const v=cur?.[k];return v===''||v==null?null:Number(v);};
-        const rhr=num('RHR'),rd=num('readiness'),sl=num('sleep'),fg=num('fatigue'),sr=num('soreness');
-        return(<div className="ath-stat-row">
-          <div className="ath-stat"><div className="k">RHR</div><div className="v">{rhr!=null?rhr.toFixed(1):'—'}<span className="u">bpm</span></div></div>
-          <div className="ath-stat"><div className="k">Readiness</div><div className="v">{rd!=null?rd.toFixed(1):'—'}<span className="u">/5</span></div></div>
-          <div className="ath-stat"><div className="k">Sleep</div><div className="v">{sl!=null?sl.toFixed(1):'—'}<span className="u">/5</span></div></div>
-          <div className="ath-stat"><div className="k">Fatigue</div><div className="v">{fg!=null?fg.toFixed(1):'—'}<span className="u">/5</span></div></div>
-          <div className="ath-stat"><div className="k">Soreness</div><div className="v">{sr!=null?sr.toFixed(1):'—'}<span className="u">/5</span></div></div>
-        </div>);})()}
       {/* ---- Wellness Log (from Notion sync or manual) ---- */}
       <div className="panel">
       <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
@@ -4275,28 +4282,69 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       </div>
       {(ath.wellness||[]).length===0&&<div className="empty-st">No wellness data — sync from Notion or add manually</div>}
       {(ath.wellness||[]).length>0&&(()=>{
-        const sorted=[...ath.wellness].filter(w=>w.date).sort((a,b)=>a.date.localeCompare(b.date));
-        const labels=sorted.map(w=>{const d=parseD(w.date);return `${MN[d.getMonth()]} ${d.getDate()}`;});
-        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-        const mkChart=(title,unit,field,color,dotColor)=>{const data=sorted.map(w=>{const v=Number(w[field]);return isNaN(v)?null:v;});
-          return(<div className="metric-card">
-            <div className="mc-h"><div className="mc-t">{title}</div><div className="mc-u">{unit}</div></div>
-            <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
-              {label:title,data,borderColor:color,backgroundColor:color+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,pointRadius:3,pointHoverRadius:5,pointBackgroundColor:dotColor||color,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
-                datalabels:dataLbl(dotColor||color)}
-            ]}} options={{responsive:true,maintainAspectRatio:false,
-              layout:{padding:{top:24,bottom:6,left:8,right:8}},
-              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
-                y:{display:false,grid:{display:false},beginAtZero:false}},
-              plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
-          </div>);};
+        const METRICS=[
+          {id:'readiness',label:'Readiness',color:'#10b981',dot:'#34d399',unit:'/5',hi:true},
+          {id:'sleep',label:'Sleep',color:'#3b82f6',dot:'#60a5fa',unit:'/5',hi:true},
+          {id:'fatigue',label:'Fatigue',color:'#f97316',dot:'#fb923c',unit:'/5',hi:false},
+          {id:'soreness',label:'Soreness',color:'#a855f7',dot:'#c084fc',unit:'/5',hi:false},
+          {id:'RHR',label:'Resting',color:'#ef4444',dot:'#fca5a5',unit:'bpm',hi:false},
+        ];
+        const M=METRICS.find(x=>x.id===wellMetric)||METRICS[0];
+        const sevColor=v=>{if(v==null)return'var(--dim)';if(M.unit!=='/5')return M.color;return M.hi?(v>=4?'#2dd4a7':v>=3?'#f59e0b':'#f43f5e'):(v<=2?'#2dd4a7':v<=3?'#f59e0b':'#f43f5e');};
+        const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wellnessWeek),i)));
+        const valOn=dk=>{const e=ath.wellness.filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
+        const weekData=days7.map(valOn);
+        const weekVals=weekData.filter(v=>v!=null);
+        const weekAvg=weekVals.length?weekVals.reduce((a,b)=>a+b,0)/weekVals.length:null;
+        const seasonVals=ath.wellness.filter(w=>w[M.id]!==''&&w[M.id]!=null).map(w=>Number(w[M.id]));
+        const seasonAvg=seasonVals.length?seasonVals.reduce((a,b)=>a+b,0)/seasonVals.length:null;
+        const latestEntry=[...ath.wellness].filter(w=>w.date&&w[M.id]!==''&&w[M.id]!=null).sort((a,b)=>a.date.localeCompare(b.date)).pop();
+        const latest=latestEntry?Number(latestEntry[M.id]):null;
+        const delta=(latest!=null&&seasonAvg!=null)?latest-seasonAvg:null;
+        const deltaGood=delta==null?true:(M.hi?delta>=0:delta<=0);
+        const fmtV=v=>v==null?'—':(M.unit==='/5'?(+v.toFixed(1)):Math.round(v));
+        const labels7=days7.map(d=>{const dt=parseD(d);return `${MN[dt.getMonth()]} ${dt.getDate()}`;});
+        const wkLbl=`${parseD(days7[0]).getDate()} ${MN[parseD(days7[0]).getMonth()]} – ${parseD(days7[6]).getDate()} ${MN[parseD(days7[6]).getMonth()]}`;
         return(<div>
-          <div className="metric-grid" style={{marginBottom:18}}>
-            {mkChart('RHR','bpm','RHR','#ef4444','#fca5a5')}
-            {mkChart('Readiness','/5','readiness','#10b981','#34d399')}
-            {mkChart('Sleep','/5','sleep','#3b82f6','#60a5fa')}
-            {mkChart('Fatigue','/5','fatigue','#f97316','#fb923c')}
-            {mkChart('Soreness','/5','soreness','#a855f7','#c084fc')}
+          <div className="wh-card">
+            <div className="wh-head">
+              <div className="wh-title">Wellness History</div>
+              <div className="lb-seg wh-tabs">{METRICS.map(x=><button key={x.id} className={wellMetric===x.id?'on':''} onClick={()=>setWellMetric(x.id)}>{x.label}</button>)}</div>
+            </div>
+            <div className="wh-top">
+              <div className="wh-sum">
+                <div className="wh-s big"><div className="wh-v" style={{color:sevColor(latest)}}>{fmtV(latest)}<small>{M.unit}</small></div><div className="wh-k">Latest check-in</div></div>
+                <div className="wh-s"><div className="wh-v">{fmtV(weekAvg)}</div><div className="wh-k">7-day avg</div></div>
+                <div className="wh-s"><div className="wh-v" style={{color:'var(--dim)'}}>{fmtV(seasonAvg)}</div><div className="wh-k">Season avg</div></div>
+              </div>
+              {delta!=null&&<div className="wh-delta">
+                <div className="wh-d" style={{color:deltaGood?'#2dd4a7':'#f43f5e'}}>{delta>=0?'▲':'▼'} {Math.abs(delta).toFixed(1)}</div>
+                <div className="wh-dk">vs season avg</div>
+              </div>}
+            </div>
+            <div className="wh-nav">
+              <div className="lm-wksel">
+                <button onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),-7)))} title="Previous week">‹</button>
+                <span className="lm-wklbl"><span className="lm-wkk">Week of</span>{wkLbl}</span>
+                <button onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),7)))} title="Next week">›</button>
+                <button className="lm-wknow" onClick={()=>setWellnessWeek(wk(today))} title="Current week">Now</button>
+              </div>
+            </div>
+            <div className="wh-chart">
+              <ChartC type="line" chartData={{labels:labels7,datasets:[
+                {label:M.label,data:weekData,borderColor:M.color,backgroundColor:M.color+'26',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:M.dot,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,order:1,datalabels:{display:false}},
+                ...(weekAvg!=null?[{label:'avg',data:days7.map(()=>weekAvg),borderColor:M.dot,borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:2,datalabels:{display:ctx=>ctx.dataIndex===6,align:'top',anchor:'end',color:M.dot,font:{size:10,weight:'bold',family:'IBM Plex Mono'},formatter:()=>'avg'}}]:[])
+              ]}} options={{responsive:true,maintainAspectRatio:false,
+                interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
+                layout:{padding:{top:18,right:26,left:4,bottom:2}},
+                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:7},grid:{display:false},border:{display:false}},
+                  y:M.unit==='/5'
+                    ?{min:1,max:5,ticks:{stepSize:1,color:'#74808f',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}
+                    :{beginAtZero:false,ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}},
+                plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,filter:i=>i.datasetIndex===0,callbacks:{
+                  title:items=>{const dt=parseD(days7[items[0].dataIndex]);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
+                  label:i=>`${M.label}: ${i.parsed.y}${M.unit==='/5'?'/5':' bpm'}`}}}}}/>
+            </div>
           </div>
             {/* Collapsible paginated table */}
             <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:wellnessTableOpen?10:0}}>
