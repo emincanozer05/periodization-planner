@@ -943,7 +943,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lm-wkk{font-size:9px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .lm-wknow{font-size:11px!important;font-weight:600!important;width:auto!important;padding:0 9px;color:var(--text2)!important}
 /* ===== Planned Microcycles + Load Mix ===== */
-.mc-extra{display:grid;grid-template-columns:1fr 320px;gap:16px;margin-top:16px}
+.mc-extra{display:grid;grid-template-columns:1fr 320px;gap:16px;margin:16px 0}
 @media(max-width:860px){.mc-extra{grid-template-columns:1fr}}
 .lmix-list{display:flex;flex-direction:column;gap:18px}
 .lmix-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
@@ -2320,7 +2320,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           ]}} options={{responsive:true,maintainAspectRatio:false,
             interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
             scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:true,maxRotation:0,font:{size:10}}},y:{...CHART_DARK.scales.y,suggestedMax:110}},
-            plugins:{legend:{position:'top',align:'end',labels:{...CHART_DARK.plugins.legend.labels,usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+            plugins:{legend:{position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:13,weight:'600',family:'Space Grotesk'},usePointStyle:true,pointStyle:'circle',boxWidth:9,padding:16}},
               tooltip:{mode:'index',intersect:false,callbacks:{title:items=>{const w=weeks[items[0].dataIndex];return w?`${fd(w.week)} · ${w.focus||''}`:'';},label:i=>`${i.dataset.label}: ${i.parsed.y}%`}}}}}/>
         </div>
       </div>
@@ -3105,7 +3105,13 @@ function TeamReports({team,weeks,selected,setSelected}){
   const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
   const lmZone=acwrZoneOf(lmAcwr);
   const[lmWin,setLmWin]=useState(21);
-  const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){const k=fmt(addD(parseD(lmEnd),-i));out.push({k,v:dayAvg(k)});}return out;},[teamDailyAvg,lmEnd,lmWin]);
+  // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
+  const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
+    const k=fmt(addD(parseD(lmEnd),-i));const daily=dayAvg(k);
+    let a=0;for(let j=0;j<7;j++)a+=dayAvg(fmt(addD(parseD(k),-j)));a/=7;
+    let c=0;for(let j=0;j<28;j++)c+=dayAvg(fmt(addD(parseD(k),-j)));c/=28;
+    out.push({k,daily,acute:Math.round(a),chronic:Math.round(c),acwr:c>0?a/c:0});}
+    return out;},[teamDailyAvg,lmEnd,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -3207,17 +3213,22 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
       <div className="lm-trend-card">
         <div className="lm-th">
-          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">avg session AU · last {lmWin} days</span></div>
-          <span className="lm-legpill">Daily AU</span>
+          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">daily AU · acute &amp; chronic · last {lmWin} days</span></div>
         </div>
         <div className="chart-box" style={{flex:1,minHeight:240}}>
-          <ChartC type="line" chartData={{labels:lmTrend.map(d=>fd(d.k).slice(0,5)),datasets:[{
-            label:'Daily AU',data:lmTrend.map(d=>d.v),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',
-            tension:.35,fill:true,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}]}}
+          <ChartC type="bar" chartData={{labels:lmTrend.map(d=>fd(d.k).slice(0,5)),datasets:[
+            {type:'bar',label:'Daily',data:lmTrend.map(d=>d.daily),backgroundColor:'rgba(59,110,245,.5)',hoverBackgroundColor:'rgba(59,110,245,.85)',borderRadius:3,order:3,categoryPercentage:.85,barPercentage:.9},
+            {type:'line',label:'Acute 7d',data:lmTrend.map(d=>d.acute),borderColor:'#f59e0b',backgroundColor:'#f59e0b',tension:.4,borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:false,order:1},
+            {type:'line',label:'Chronic 28d',data:lmTrend.map(d=>d.chronic),borderColor:'#a78bfa',backgroundColor:'#a78bfa',borderDash:[6,5],tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,order:2}
+          ]}}
             options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
               interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
-              scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:8,autoSkip:true}},y:{...CHART_DARK.scales.y}},
-              plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:items=>lmTrend[items[0].dataIndex]?fd(lmTrend[items[0].dataIndex].k):'',label:i=>Math.round(i.parsed.y)+' AU'}}}}}/>
+              scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},y:{...CHART_DARK.scales.y}},
+              plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:'IBM Plex Mono'},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
+                tooltip:{mode:'index',intersect:false,callbacks:{
+                  title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
+                  label:i=>`${i.dataset.label}: ${Math.round(i.parsed.y)}`,
+                  afterBody:items=>{const d=lmTrend[items[0].dataIndex];return d?['ACWR: '+(d.acwr?d.acwr.toFixed(2):'—')]:[];}}}}}}/>
         </div>
       </div>
     </div>
@@ -4202,17 +4213,17 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         {(ath.measurements||[]).length>0&&<div>
           {(()=>{const sorted=[...ath.measurements].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
             const labels=sorted.map(m=>{const d=parseD(m.date);return MN[d.getMonth()];});
-            const dataLbl=color=>({display:true,align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+            const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
             const mkChart=(title,unit,field,color,dotColor)=>{const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
               return(<div className="metric-card">
                 <div className="mc-h"><div className="mc-t">{title}</div><div className="mc-u">{unit}</div></div>
                 <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
-                  {label:title,data,borderColor:color,backgroundColor:color,tension:.3,spanGaps:true,borderWidth:2.5,
-                    pointRadius:4,pointBackgroundColor:dotColor||color,pointBorderColor:dotColor||color,
+                  {label:title,data,borderColor:color,backgroundColor:color+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,
+                    pointRadius:3,pointHoverRadius:5,pointBackgroundColor:dotColor||color,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
                     datalabels:dataLbl(dotColor||color)}
                 ]}} options={{responsive:true,maintainAspectRatio:false,
                   layout:{padding:{top:24,bottom:6,left:8,right:8}},
-                  scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
+                  scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
                     y:{display:false,grid:{display:false},beginAtZero:false}},
                   plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
               </div>);};
@@ -4266,16 +4277,16 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       {(ath.wellness||[]).length>0&&(()=>{
         const sorted=[...ath.wellness].filter(w=>w.date).sort((a,b)=>a.date.localeCompare(b.date));
         const labels=sorted.map(w=>{const d=parseD(w.date);return `${MN[d.getMonth()]} ${d.getDate()}`;});
-        const dataLbl=color=>({display:true,align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
         const mkChart=(title,unit,field,color,dotColor)=>{const data=sorted.map(w=>{const v=Number(w[field]);return isNaN(v)?null:v;});
           return(<div className="metric-card">
             <div className="mc-h"><div className="mc-t">{title}</div><div className="mc-u">{unit}</div></div>
             <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
-              {label:title,data,borderColor:color,backgroundColor:color,tension:.3,spanGaps:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dotColor||color,pointBorderColor:dotColor||color,
+              {label:title,data,borderColor:color,backgroundColor:color+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,pointRadius:3,pointHoverRadius:5,pointBackgroundColor:dotColor||color,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
                 datalabels:dataLbl(dotColor||color)}
             ]}} options={{responsive:true,maintainAspectRatio:false,
               layout:{padding:{top:24,bottom:6,left:8,right:8}},
-              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
+              scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
                 y:{display:false,grid:{display:false},beginAtZero:false}},
               plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
           </div>);};
@@ -4479,7 +4490,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
         ];
         const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
         if(!haveAny)return null;
-        const dataLbl=color=>({display:true,align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:11,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
         return(<div className="metric-grid" style={{marginTop:18}}>
           {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
             const valid=data.filter(v=>v!=null);
@@ -4497,7 +4508,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                   datalabels:dataLbl(c.dot)}
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:24,bottom:6,left:8,right:8}},
-                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:11}},grid:{display:false},border:{display:false}},
+                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
                   y:{display:false,grid:{display:false},beginAtZero:false}},
                 plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
             </div>);})}
@@ -4552,7 +4563,7 @@ function Athletes({team,updateTeam,weeks}){
       const age=ageOf(a);const ref=athLatestDate(a);
       const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
       const rd=athWellnessVal(a,'readiness',ref);
-      const rhr=athWellnessVal(a,'RHR',ref);
+      const acwr=athACWR(a,ref);const az=acwrZoneOf(acwr);
       const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
@@ -4566,7 +4577,7 @@ function Athletes({team,updateTeam,weeks}){
         </div>
         <div className="rc-stats">
           <div className="rc-st"><span className="k">Readiness</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
-          <div className="rc-st"><span className="k">RHR</span><span className="v">{rhr!=null?Math.round(rhr):'—'}</span></div>
+          <div className="rc-st"><span className="k">ACWR</span><span className="v" style={{color:az.c}}>{acwr?acwr.toFixed(2):'—'}</span></div>
           <div className="rc-st"><span className="k">7d load</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
         </div>
       </div>);
