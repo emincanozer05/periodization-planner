@@ -421,8 +421,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .wv-day .wl{font-size:10px;color:var(--accent2);font-weight:700;margin-top:6px;letter-spacing:.3px}
 .wv-day .wa{color:var(--dim);font-size:11px;margin-top:8px;text-align:center;font-style:italic}
 /* Blocks */
-.block-card{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;transition:border-color .15s}
+.block-card{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;transition:border-color .15s,opacity .15s,box-shadow .15s}
 .block-card:hover{border-color:var(--border2)}
+.block-card.dragging{opacity:.45;box-shadow:0 0 0 2px var(--accent)}
+.blk-grip{color:var(--muted);font-size:14px;cursor:grab;padding:0 2px;line-height:1;user-select:none}
+.blk-grip:active{cursor:grabbing}
 .block-head{background:var(--elevated);padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .15s}
 .block-head:hover{background:var(--hover)}
 .block-head .bn{font-weight:600;font-size:13px;flex:1}
@@ -1587,7 +1590,7 @@ function printWeeklyReportTR(R){
     const wkHtml=wks.slice(0,3).map(s=>{
       const col=SC[s.type]||SC.practice;
       const meta=[s.duration?s.duration+'min':null,s.au?nf(s.au)+' AU':null].filter(Boolean).join(' · ');
-      return `<div class="wkchip" style="border-color:${col.c};box-shadow:0 0 5px ${col.g},inset 0 0 3px ${col.g}"><div class="wn">${esc(s.name)}</div>${meta?`<div class="wm">${esc(meta)}</div>`:''}</div>`;
+      return `<div class="wkchip" style="border-left-color:${col.c};background:${col.c}14"><div class="wn">${esc(s.name)}</div>${meta?`<div class="wm">${esc(meta)}</div>`:''}</div>`;
     }).join('');
     return `<div class="bc"><div class="bworks-top">${wkHtml}</div><div class="bgraph"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div></div><div class="bl">${lab}</div></div>`;
   }).join('');
@@ -1634,7 +1637,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .chart.tall{height:220px;align-items:stretch}
 .bc{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;min-width:0}
 .bworks-top{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;align-self:stretch;padding:0 1px;margin-bottom:6px;min-height:30px}
-.wkchip{background:#fff;border:1px solid var(--border);border-left-width:3px;border-radius:6px;padding:4px 6px;color:var(--text);text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto}
+.wkchip{background:#fff;border:1px solid var(--border);border-left-width:3px;border-radius:7px;padding:5px 8px;color:var(--text);text-align:left;font-weight:600;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;box-shadow:0 1px 2px rgba(15,23,42,.05)}
 .wkchip .wn{font-size:9px;font-weight:600;color:var(--text);line-height:1.25}
 .wkchip .wm{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);line-height:1.2;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bgraph{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;align-self:stretch;min-height:30px}
@@ -1822,11 +1825,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    metadata / block headings glue themselves to the next content using
    break-after:avoid, so we never get orphaned section headers. */
 .sess{margin-bottom:8px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04)}
-.sh{padding:8px 14px;background:linear-gradient(135deg,#e6ff55 0%,#9aab3a 100%);color:#0a0b0d;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
+.sh{padding:8px 14px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
 .sh-l{font-size:15px;font-weight:700;letter-spacing:.2px;flex:1}
-.sh-l .sn{display:inline-block;background:rgba(10,11,13,.18);color:#0a0b0d;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:11px;font-weight:800;margin-right:10px}
+.sh-l .sn{display:inline-block;background:#e6ff55;color:#0a0b0d;width:24px;height:24px;border-radius:50%;text-align:center;line-height:24px;font-size:11px;font-weight:800;margin-right:10px}
 .sh-r{display:flex;gap:5px;font-size:9px;align-items:center}
-.sh-pill{background:rgba(10,11,13,.14);color:#0a0b0d;padding:4px 10px;border-radius:14px;font-weight:700;letter-spacing:.3px;font-size:10px}
+.sh-pill{background:rgba(255,255,255,.14);color:#fff;padding:4px 10px;border-radius:14px;font-weight:700;letter-spacing:.3px;font-size:10px}
 
 /* Metadata bar — stays with following content */
 .meta-bar{padding:5px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:18px;align-items:center;flex-wrap:wrap;break-after:avoid;page-break-after:avoid}
@@ -2659,7 +2662,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
         <div className="dw-b">
-          <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+            <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
+            <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Bu seansı yazdır">⎙ Print</button>
+          </div>
           <div className="dw-meta">
             <div className="dw-dm"><div className="k">Time</div><div className="v">{drawerSes.time||'—'}</div></div>
             <div className="dw-dm"><div className="k">Duration</div><div className="v">{drawerSes.duration}m</div></div>
@@ -2724,7 +2730,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
       </aside>
     </>)}
-    {teamMode&&<AthleteLoadBoard athletes={athletes} refDate={fmt(weekEnd)}/>}
     <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
       weeks={weeks} ltCls={ltCls} ltColor={ltColor}
       onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
@@ -2771,7 +2776,7 @@ function MonthCalendar({days,monthRef,setMonthRef,weekStart,weekEnd,weeks,ltCls,
 /* =========================================================
    BLOCK EDITOR (now with exercise description row)
    ========================================================= */
-function BlockEd({block,onUpdate,onRemove,onDuplicate}){
+function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   const setExs=a=>onUpdate({...block,exercises:a});
   const upEx=(i,ex)=>{const a=[...exs];a[i]=ex;setExs(a);};
@@ -2785,8 +2790,15 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate}){
   });},[exs]);
   // Quick stats — how many superset groups exist
   const groups=[...new Set(exs.map(e=>(e.superset||'').toUpperCase().trim()).filter(Boolean))].sort();
-  return(<div className="block-card">
+  const isDragging=dragB!=null&&dragB===index;
+  return(<div className={`block-card${isDragging?' dragging':''}`}
+    onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
+    onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="block-head" onClick={()=>setOpen(!open)}>
+      <span className="blk-grip" draggable={setDragB!=null}
+        onClick={e=>e.stopPropagation()}
+        onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
+        onDragEnd={()=>setDragB&&setDragB(null)} title="Sürükleyerek sırala">⠿</span>
       <span style={{color:'var(--accent2)',fontSize:13}}>{open?'▼':'▶'}</span>
       <span className="bn">{block.name}</span>
       <span className="bc">{exs.length} Exercise{exs.length!==1?'s':''}{groups.length?` · Supersets: ${groups.join(', ')}`:''}</span>
@@ -2841,6 +2853,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate}){
    ========================================================= */
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
+  const[dragB,setDragB]=useState(null);
+  const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
   const updBlk=(bid,nb)=>u({blocks:session.blocks.map(b=>b.id===bid?nb:b)});
   const delBlk=bid=>u({blocks:session.blocks.filter(b=>b.id!==bid)});
   const dupBlk=bid=>{const o=session.blocks.find(b=>b.id===bid);const i=session.blocks.indexOf(o);
@@ -2892,7 +2906,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
         </div>
       </div>
-      {session.blocks.map(b=><BlockEd key={b.id} block={b} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}/>)}
+      {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
+        dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
       <div className="add-blk">{BLOCK_NAMES.map(n=><button key={n} onClick={()=>addBlk(n)}>+ {n}</button>)}</div>
       <div className="hr"/>
       <div className="grid cols-3">
