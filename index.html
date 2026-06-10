@@ -2056,8 +2056,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
       ${ss.length===0?'<div class="rest-tag">REST</div>':
         ss.map(s=>{const c=colorOf(s);return`<div class="sess" style="border-left:4px solid ${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span>${s.sRPE!==''?`<span class="srpe-pill">sRPE ${s.sRPE}</span>`:''}</div>
-          <div class="sess-meta"><span>⏱ ${s.time}</span><span>${s.duration}min</span>${s.au?`<span class="au-pill">${s.au} AU</span>`:''}</div>
-          ${(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name)).map(b=>{const labs=labelsFor(b.exercises||[]);return`<div class="blk"><div class="blk-h" style="color:${c}">${b.name}</div>${(b.exercises||[]).map((e,i)=>e.name?renderEx(e,labs[i]):'').join('')}</div>`;}).join('')}
+          <div class="sess-meta"><span>⏱ ${s.time}</span><span>${s.duration}min</span>${s.au?`<span class="au-pill">${s.au} AU</span>`:''}${s.purpose?`<span class="sess-purpose">${s.purpose}</span>`:''}</div>
         </div>`;}).join('')}
       ${ss.length>0?`<div class="day-total">Total: ${Math.round(dayLoad)} AU</div>`:''}
       ${day?.dailyNotes?`<div class="day-notes"><em>${day.dailyNotes}</em></div>`:''}
@@ -2077,7 +2076,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--tex
 .hdr-r{text-align:right;font-size:11px;line-height:1.4}
 .hdr-r .label{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.6);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
 .hdr-r .pill{display:inline-block;background:var(--accent);color:#0a0b0d;padding:3px 11px;border-radius:6px;margin-left:6px;font-weight:600;font-size:11px}
-table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed;flex:1}
+table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .day-cell{vertical-align:top;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0;width:14.28%;overflow:hidden}
 .day-head{padding:7px 10px;display:flex;justify-content:space-between;align-items:baseline}
 .day-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
@@ -2087,7 +2086,8 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed;
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
 .srpe-pill{background:#0a0b0d;color:#fff;padding:1px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap}
-.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.sess-purpose{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:600;color:var(--text2);background:var(--bg2);border:1px solid var(--border);padding:1px 7px;border-radius:4px}
 .au-pill{background:var(--accent);color:#0a0b0d;padding:1px 7px;border-radius:4px;font-weight:600}
 .blk{margin-top:6px}
 .blk-h{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9.5px;letter-spacing:.06em;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid var(--border)}
@@ -2145,6 +2145,7 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed;
   </div>
 </div>
 <table>${dates.map(renderDay).join('')}</table>
+${monotonyBlock}
 </body></html>`;
   w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);
 }
