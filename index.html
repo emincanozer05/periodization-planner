@@ -1949,7 +1949,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const w=window.open('','_blank','width=1300,height=900');if(!w)return;
   const dates=Array.from({length:7},(_,i)=>fmt(addD(parseD(weekStart),i)));
   // Per-day AU loads (Mon..Sun)
-  const dayLoads=dates.map(d=>(days[d]?.sessions||[]).reduce((s,x)=>s+(Number(x.au)||0),0));
+  const dayLoads=dates.map(d=>(days[d]?.sessions||[]).reduce((s,x)=>s+(Number(x.au)||(x.sRPE!==''&&x.sRPE!=null?Number(x.sRPE)*Number(x.duration||0):0)),0));
   const totalLoad=dayLoads.reduce((a,b)=>a+b,0);
   const totalSessions=dates.reduce((a,d)=>a+(days[d]?.sessions||[]).length,0);
   // Foster monotony & strain
