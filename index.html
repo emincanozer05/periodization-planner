@@ -2052,7 +2052,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
     c._=(c._||0)+1;return{tag:c._+'.',ss:''};});};
   const renderEx=(e,lab)=>`<div class="ex"><span class="ex-no${lab.ss?' ss':''}">${lab.tag}</span><span class="exn">${e.name||''}</span>${(e.sets||e.reps)?`<span class="exr">${e.sets||''}×${e.reps||''}</span>`:''}${e.load?`<span class="exl">@${e.load}</span>`:''}${e.duration?`<span class="exd">${e.duration}</span>`:''}${e.tempo?`<span class="ext">t:${e.tempo}</span>`:''}${e.rest?`<span class="exrr">r:${e.rest}</span>`:''}${e.description?`<div class="exdesc">${e.description}</div>`:''}</div>`;
   const renderDay=(date,i)=>{const day=days[date];const ss=day?.sessions||[];const isWeekend=i>=5;
-    const dayLoad=ss.reduce((s,x)=>s+(Number(x.au)||0),0);
+    const dayLoad=rDay[i];   // realized team load for the day (matches chart + monotony)
     return`<td class="day-cell${isWeekend?' weekend':''}">
       <div class="day-head">
         <div class="day-name">${DN[i]}</div>
@@ -2061,7 +2061,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
       ${ss.length===0?'<div class="rest-tag">REST</div>':
         ss.map(s=>{const c=colorOf(s);return`<div class="sess" style="border-left:4px solid ${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span>${s.sRPE!==''?`<span class="srpe-pill">sRPE ${s.sRPE}</span>`:''}</div>
-          <div class="sess-meta"><span>⏱ ${s.time}</span><span>${s.duration}min</span>${s.au?`<span class="au-pill">${s.au} AU</span>`:''}${s.purpose?`<span class="sess-purpose">${s.purpose}</span>`:''}</div>
+          <div class="sess-meta"><span>⏱ ${s.time}</span><span>${s.duration}min</span>${s.purpose?`<span class="sess-purpose">${s.purpose}</span>`:''}</div>
         </div>`;}).join('')}
       ${ss.length>0?`<div class="day-total">Total: ${Math.round(dayLoad)} AU</div>`:''}
       ${day?.dailyNotes?`<div class="day-notes"><em>${day.dailyNotes}</em></div>`:''}
@@ -2146,7 +2146,7 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
     <div class="sub">📅 Week of ${fd(weekStart)} — ${fd(dates[6])}</div>
   </div>
   <div class="hdr-r">
-    <div><span class="label">Sessions</span> <span class="pill">${totalSessions}</span> <span class="label" style="margin-left:10px">Total Load</span> <span class="pill">${Math.round(totalLoad)} AU</span></div>
+    <div><span class="label">Sessions</span> <span class="pill">${totalSessions}</span> <span class="label" style="margin-left:10px">Total Load</span> <span class="pill">${Math.round(rTotal)} AU</span></div>
   </div>
 </div>
 <table>${dates.map(renderDay).join('')}</table>
@@ -3501,8 +3501,8 @@ function printBodyComp(ath,setup){
 @page{size:A4 landscape;margin:8mm}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
-html,body{height:100%}
-body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff;display:flex;flex-direction:column}
+html,body{height:auto}
+body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
 .hdr{display:flex;align-items:center;gap:16px;padding:12px 16px;background:#0a0b0d;color:#fff;border-radius:12px;margin-bottom:10px;flex:none}
 .hdr .av{width:54px;height:54px;border-radius:10px;background:#1c2030;border:1px solid rgba(154,171,58,.4);display:grid;place-items:center;font-weight:700;font-size:18px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden}
 .hdr .av img{width:100%;height:100%;object-fit:cover}
@@ -3517,12 +3517,12 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:3px}
 .stat .d{font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:2px}
 .stat .d.pos{color:#16a34a}.stat .d.neg{color:#dc2626}
-.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;flex:1;min-height:0}
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
 .chart-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column}
 .chart-card .ch-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;flex:none}
 .chart-card .ch-t{font-size:13px;font-weight:600;letter-spacing:-.01em}
 .chart-card .ch-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
-.chart-card svg{width:100%;flex:1;min-height:0}
+.chart-card svg{width:100%;height:auto;max-height:140px}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:9px;overflow:hidden;border:1px solid var(--border);flex:none}
 th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
 td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
@@ -4345,12 +4345,17 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           {(()=>{const sorted=[...ath.measurements].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
             const labels=sorted.map(m=>{const d=parseD(m.date);return MN[d.getMonth()];});
             const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-            const mkChart=(title,unit,field,color,dotColor)=>{const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
+            const mkChart=(title,unit,field,color,dotColor,goodUp)=>{const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
+              const valid=data.filter(v=>v!=null);
+              const cur=valid.length?valid[valid.length-1]:null,first=valid.length?valid[0]:null;
+              const imp=valid.length>1?+((cur-first).toFixed(1)):null;
+              const fav=(imp==null||goodUp==null)?null:(goodUp?imp>0:imp<0);
               return(<div className="metric-card">
                 <div className="mc-h"><div className="mc-t">{title}</div><div className="mc-u">{unit}</div></div>
-                <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
+                <div className="mc-val"><span className="mv" style={{color:dotColor||color}}>{cur!=null?cur:'—'}</span>{imp!=null&&imp!==0&&<span className={`md ${fav==null?'':(fav?'pos':'neg')}`}>{imp>0?'+':''}{imp}</span>}</div>
+                <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
                   {label:title,data,borderColor:color,backgroundColor:color+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,
-                    pointRadius:3,pointHoverRadius:5,pointBackgroundColor:dotColor||color,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
+                    pointRadius:4,pointHoverRadius:6,pointBackgroundColor:dotColor||color,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
                     datalabels:dataLbl(dotColor||color)}
                 ]}} options={{responsive:true,maintainAspectRatio:false,
                   layout:{padding:{top:24,bottom:6,left:8,right:8}},
@@ -4359,9 +4364,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                   plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
               </div>);};
             return(<div className="metric-grid" style={{marginBottom:18}}>
-              {mkChart('Weight','kg','weight','#3b82f6','#60a5fa')}
-              {mkChart('Body Fat','%','bodyFat','#f97316','#fb923c')}
-              {mkChart('Muscle Mass','kg','muscleMass','#10b981','#34d399')}
+              {mkChart('Weight','kg','weight','#3b82f6','#60a5fa',null)}
+              {mkChart('Body Fat','%','bodyFat','#f97316','#fb923c',false)}
+              {mkChart('Muscle Mass','kg','muscleMass','#10b981','#34d399',true)}
             </div>);})()}
           {/* Paginated table (10 rows by default, expand in 10s) */}
           {(()=>{const rev=[...ath.measurements].reverse();const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
