@@ -3472,22 +3472,29 @@ function printBodyComp(ath,setup){
   const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null;
   const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass');
   const fmtD=v=>v==null?'—':(v>0?`+${v}`:`${v}`);
-  // SVG line chart helper
+  // SVG line chart helper (area fill + points + labels)
   const lineChart=(field,color)=>{
     const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
     const valid=data.map((v,i)=>({v,i})).filter(p=>p.v!=null);
-    if(valid.length===0)return'<div class="empty">—</div>';
-    const cw=420,ch=140,padX=24,padT=22,padB=26;
+    if(valid.length===0)return'<div class="empty">No data</div>';
+    const cw=420,ch=150,padX=26,padT=26,padB=26;
     const mn=Math.min(...valid.map(p=>p.v)),mx=Math.max(...valid.map(p=>p.v));
-    const range=mx-mn||1;const pad=range*.15;const yMin=mn-pad,yMax=mx+pad;
-    const xs=valid.map(p=>padX+(p.i/Math.max(1,data.length-1))*(cw-2*padX));
-    const ys=valid.map(p=>padT+(1-(p.v-yMin)/(yMax-yMin))*(ch-padT-padB));
+    const range=mx-mn||1;const pad=range*.2;const yMin=mn-pad,yMax=mx+pad;
+    const X=i=>padX+(i/Math.max(1,data.length-1))*(cw-2*padX);
+    const Y=v=>padT+(1-(v-yMin)/(yMax-yMin))*(ch-padT-padB);
+    const xs=valid.map(p=>X(p.i)),ys=valid.map(p=>Y(p.v));
     const pts=xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+    const baseY=ch-padB;
+    const area=valid.length>1?`${xs[0].toFixed(1)},${baseY} ${pts} ${xs[xs.length-1].toFixed(1)},${baseY}`:'';
     const labels=sorted.map(m=>{const dt=parseD(m.date);return MN[dt.getMonth()];});
+    const gid='g'+field;
     return`<svg viewBox="0 0 ${cw} ${ch}" style="width:100%;height:auto">
-      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5"/>
-      ${valid.map((p,i)=>`<circle cx="${xs[i]}" cy="${ys[i]}" r="3.5" fill="${color}"/><text x="${xs[i]}" y="${ys[i]-8}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10" font-weight="600" fill="${color}">${p.v}</text>`).join('')}
-      ${data.map((_,i)=>`<text x="${padX+(i/Math.max(1,data.length-1))*(cw-2*padX)}" y="${ch-6}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10" fill="#74808f">${labels[i]}</text>`).join('')}
+      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.18"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+      <line x1="${padX}" y1="${baseY}" x2="${cw-padX}" y2="${baseY}" stroke="#e5e7eb" stroke-width="1"/>
+      ${area?`<polygon points="${area}" fill="url(#${gid})"/>`:''}
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${valid.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}" r="4" fill="${color}" stroke="#fff" stroke-width="1.5"/><text x="${xs[i].toFixed(1)}" y="${(ys[i]-9).toFixed(1)}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="10" font-weight="700" fill="${color}">${p.v}</text>`).join('')}
+      ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-7}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="9" fill="#9ca3af">${labels[i]}</text>`).join('')}
     </svg>`;
   };
   const period=`${fd(sorted[0].date)} → ${fd(sorted[sorted.length-1].date)}`;
@@ -3503,26 +3510,27 @@ function printBodyComp(ath,setup){
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 html,body{height:auto}
 body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
-.hdr{display:flex;align-items:center;gap:16px;padding:12px 16px;background:#0a0b0d;color:#fff;border-radius:12px;margin-bottom:10px;flex:none}
-.hdr .av{width:54px;height:54px;border-radius:10px;background:#1c2030;border:1px solid rgba(154,171,58,.4);display:grid;place-items:center;font-weight:700;font-size:18px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden}
-.hdr .av img{width:100%;height:100%;object-fit:cover}
-.hdr .info h1{font-size:20px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
-.hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);margin-top:4px;letter-spacing:.04em}
-.hdr .info .date{display:inline-block;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:3px 9px;border-radius:5px;letter-spacing:.06em}
-.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.08em;text-transform:uppercase;line-height:1.4}
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;flex:none}
-.stat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px}
-.stat .k{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.stat .v{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-top:4px;color:var(--text)}
-.stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:3px}
-.stat .d{font-family:'IBM Plex Mono',monospace;font-size:10px;margin-top:2px}
-.stat .d.pos{color:#16a34a}.stat .d.neg{color:#dc2626}
-.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
-.chart-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column}
-.chart-card .ch-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;flex:none}
-.chart-card .ch-t{font-size:13px;font-weight:600;letter-spacing:-.01em}
-.chart-card .ch-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
-.chart-card svg{width:100%;height:auto;max-height:140px}
+.hdr{display:flex;align-items:center;gap:18px;padding:16px 22px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:14px;margin-bottom:14px}
+.hdr .av{width:62px;height:62px;border-radius:14px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;font-weight:700;font-size:20px;color:var(--accent);letter-spacing:-.02em;flex:none;overflow:hidden;padding:2px}
+.hdr .av img{width:100%;height:100%;object-fit:cover;border-radius:11px;display:block}
+.hdr .info{min-width:0}
+.hdr .info h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
+.hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .info .date{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
+.hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.mcards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.mcard{background:#fff;border:1px solid var(--border);border-radius:13px;padding:15px 17px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column}
+.mcard .mc-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--border)}
+.mcard .mc-t{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
+.mcard .mc-u{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.mcard .mc-val{display:flex;align-items:baseline;gap:9px;margin-bottom:2px}
+.mcard .mc-val .mv{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1;font-family:'Space Grotesk',sans-serif}
+.mcard .mc-val .mu{font-size:12px;font-weight:500;color:var(--dim);margin-left:-4px}
+.mcard .mc-val .md{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600}
+.mcard .mc-val .md.pos{color:#16a34a}.mcard .mc-val .md.neg{color:#dc2626}
+.mcard .mc-chart{margin-top:6px}
+.mcard .mc-chart svg{width:100%;height:auto;max-height:150px}
+.mcard .empty{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-align:center;padding:40px 6px}
 table{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-radius:9px;overflow:hidden;border:1px solid var(--border);flex:none}
 th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:9px;padding:6px;text-align:center;letter-spacing:.08em;text-transform:uppercase;border:none}
 td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text);border:none;border-top:1px solid var(--border);background:#fff}
@@ -3532,12 +3540,12 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
-@media print{.print-bar{display:none}}
+@media print{.print-bar,.scr-sp{display:none}}
 .empty{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:24px}
 </style>
 </head><body>
 <div class="print-bar">📄 Body Composition Report is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
-<div style="margin-top:50px"></div>
+<div class="scr-sp" style="margin-top:50px"></div>
 <div class="hdr">
   ${ath.photo?`<img class="av" src="${ath.photo}"/>`:`<div class="av">${initials}</div>`}
   <div class="info">
@@ -3547,16 +3555,24 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
   </div>
   <div class="ttl">BODY<br>COMPOSITION</div>
 </div>
-<div class="stat-row">
-  <div class="stat"><div class="k">Current Weight</div><div class="v">${w_!=null?w_:'—'}<span class="u">kg</span></div>${dw!=null?`<div class="d ${dw>0?'neg':'pos'}">${fmtD(dw)} kg vs prev</div>`:''}</div>
-  <div class="stat"><div class="k">Body Fat</div><div class="v">${bf!=null?bf:'—'}<span class="u">%</span></div>${dbf!=null?`<div class="d ${dbf>0?'neg':'pos'}">${fmtD(dbf)} % vs prev</div>`:''}</div>
-  <div class="stat"><div class="k">Muscle Mass</div><div class="v">${mm!=null?mm:'—'}<span class="u">kg</span></div>${dmm!=null?`<div class="d ${dmm>0?'pos':'neg'}">${fmtD(dmm)} kg vs prev</div>`:''}</div>
+<div class="mcards">
+  <div class="mcard">
+    <div class="mc-h"><div class="mc-t">Weight</div><div class="mc-u">kg</div></div>
+    <div class="mc-val"><span class="mv" style="color:#3b82f6">${w_!=null?w_:'—'}</span>${dw!=null&&dw!==0?`<span class="md ${dw>0?'neg':'pos'}">${fmtD(dw)}</span>`:''}</div>
+    <div class="mc-chart">${lineChart('weight','#3b82f6')}</div>
+  </div>
+  <div class="mcard">
+    <div class="mc-h"><div class="mc-t">Body Fat</div><div class="mc-u">%</div></div>
+    <div class="mc-val"><span class="mv" style="color:#f97316">${bf!=null?bf:'—'}</span>${dbf!=null&&dbf!==0?`<span class="md ${dbf>0?'neg':'pos'}">${fmtD(dbf)}</span>`:''}</div>
+    <div class="mc-chart">${lineChart('bodyFat','#f97316')}</div>
+  </div>
+  <div class="mcard">
+    <div class="mc-h"><div class="mc-t">Muscle Mass</div><div class="mc-u">kg</div></div>
+    <div class="mc-val"><span class="mv" style="color:#10b981">${mm!=null?mm:'—'}</span>${dmm!=null&&dmm!==0?`<span class="md ${dmm>0?'pos':'neg'}">${fmtD(dmm)}</span>`:''}</div>
+    <div class="mc-chart">${lineChart('muscleMass','#10b981')}</div>
+  </div>
 </div>
-<div class="charts-row">
-  <div class="chart-card"><div class="ch-h"><div class="ch-t">Weight</div><div class="ch-u">kg</div></div>${lineChart('weight','#3b82f6')}</div>
-  <div class="chart-card"><div class="ch-h"><div class="ch-t">Body Fat</div><div class="ch-u">%</div></div>${lineChart('bodyFat','#f97316')}</div>
-  <div class="chart-card"><div class="ch-h"><div class="ch-t">Muscle Mass</div><div class="ch-u">kg</div></div>${lineChart('muscleMass','#10b981')}</div>
-</div>
+<div class="section-h">Measurement History</div>
 <table><thead><tr><th style="width:18%">Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Muscle (kg)</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="footer">Generated ${fd(fmt(today))} · ${setup.teamName}</div>
 </body></html>`;
