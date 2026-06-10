@@ -314,6 +314,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .d{font-size:13px;font-weight:600;color:var(--text)}
 .calm-cell .dots{display:flex;gap:3px;flex-wrap:wrap}
 .calm-cell .dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.calm-cell .csess{display:flex;flex-direction:column;gap:2px;margin-top:1px}
+.calm-cell .cs-item{display:flex;align-items:center;gap:5px;min-width:0}
+.calm-cell .cs-dot{width:6px;height:6px;border-radius:2px;flex:none}
+.calm-cell .cs-name{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.calm-cell .cs-more{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);padding-left:11px}
 .calm-cell .mau{margin-top:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--accent);font-weight:600}
 .calm-cell.low{background:var(--low)}.calm-cell.med{background:var(--med)}.calm-cell.high{background:var(--high)}.calm-cell.peak{background:var(--peak)}
 /* Season — top stat row, macrocycle bar, weekly bars, phase list */
@@ -824,7 +829,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mc-leg-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 
 /* ===== Athlete Load Board (Calendar tab) ===== */
-.lb-wrap{margin-top:22px}
+.lb-wrap.panel{padding:20px}
 .lb-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
 .lb-title{font-size:18px;font-weight:700;color:var(--text)}
 .lb-title .lb-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:400;color:var(--dim);margin-left:10px}
@@ -970,6 +975,26 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-dk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
 .wh-nav{display:flex;justify-content:flex-end;margin-bottom:8px}
 .wh-chart{height:270px;position:relative}
+/* Wellness Heatmap */
+.wh-hm-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.wh-hm{border-collapse:separate;border-spacing:5px 4px;min-width:560px}
+.wh-hm th{font-weight:500;vertical-align:bottom}
+.wh-hm .wh-ath-h{min-width:190px}
+.wh-hm .wh-day{text-align:center;padding:0 1px}
+.wh-hm .wh-day .wh-mon{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--text2);font-weight:600;height:12px}
+.wh-hm .wh-day .wh-wd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
+.wh-hm .wh-day .wh-dd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);font-weight:600}
+.wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
+.wh-hm .wh-ath{display:flex;align-items:center;gap:9px;white-space:nowrap}
+.wh-hm .wh-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
+.wh-hm .wh-av img{width:100%;height:100%;object-fit:cover}
+.wh-hm .wh-nm{font-size:13px;font-weight:600;color:var(--text)}
+.wh-hm .wh-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);margin-left:auto;padding-left:8px}
+.wh-hm .wh-cell{text-align:center;padding:0}
+.wh-hm .wh-box{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:6px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:#0a0b0d;cursor:default}
+.wh-hm .wh-empty{display:inline-block;width:30px;height:30px;border-radius:6px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.018) 0 4px,transparent 4px 8px);border:1px solid var(--border)}
+.wh-hm .wh-avg{text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text);background:var(--bg2);border-radius:7px;padding:6px 10px;white-space:nowrap}
+.wh-hm .wh-adot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -1313,6 +1338,105 @@ function AcwrBar({value}){
       <span style={{flexGrow:0.2,color:'#e0a23a'}}>CAUT</span>
       <span style={{flexGrow:0.5,color:'#f43f5e'}}>HIGH</span>
     </div>
+  </div>);
+}
+
+/* Athlete Load Board — per-athlete 7-day load, 21-day trend, ACWR, readiness & RHR */
+function AthleteLoadBoard({athletes,refDate}){
+  const[lbSort,setLbSort]=useState('load');
+  const ref=refDate||fmt(today);
+  const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const rows=(athletes||[]).map(a=>{
+    const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
+    return{a,name:a.name||'—',pos:a.position||'',l7,acwr:athACWR(a,ref),
+      trend:athTrend(a,ref,21),rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
+  });
+  const maxL7=Math.max(1,...rows.map(r=>r.l7));
+  const sorted=[...rows].sort((x,y)=>lbSort==='acwr'?y.acwr-x.acwr:lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
+  return(<div className="panel lb-wrap">
+    <div className="lb-head">
+      <div className="lb-title">Athlete Load Board<span className="lb-sub">7-day load · individual ACWR</span></div>
+      <div className="lb-seg">
+        <button className={lbSort==='load'?'on':''} onClick={()=>setLbSort('load')}>By load</button>
+        <button className={lbSort==='acwr'?'on':''} onClick={()=>setLbSort('acwr')}>By ACWR</button>
+        <button className={lbSort==='az'?'on':''} onClick={()=>setLbSort('az')}>A–Z</button>
+      </div>
+    </div>
+    {sorted.length===0&&<div className="empty-st">Kadroda sporcu yok</div>}
+    {sorted.length>0&&<div style={{overflowX:'auto'}}>
+      <table className="lb-tbl">
+        <thead><tr>
+          <th>Athlete</th><th>Pos</th><th>7-day load</th><th>21-day trend</th>
+          <th>ACWR</th><th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
+        </tr></thead>
+        <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
+          <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
+          <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
+          <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
+          <td><Sparkline data={r.trend}/></td>
+          <td><span className="lb-acwr" style={{color:z.c}}>{r.acwr?r.acwr.toFixed(2):'—'}</span></td>
+          <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{z.t}</span></td>
+          <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
+          <td className="r"><span className="lb-rhr">{r.rhr!=null?Math.round(r.rhr):'—'}</span></td>
+        </tr>);})}</tbody>
+      </table>
+    </div>}
+  </div>);
+}
+
+/* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
+function WellnessHeatmap({athletes}){
+  const METRICS=[
+    {id:'readiness',label:'Readiness',hi:true,scale:5},
+    {id:'sleep',label:'Sleep',hi:true,scale:5},
+    {id:'fatigue',label:'Fatigue',hi:true,scale:5},
+    {id:'soreness',label:'Soreness',hi:true,scale:5},
+    {id:'RHR',label:'RHR',hi:false,scale:null},
+  ];
+  const[metric,setMetric]=useState('readiness');
+  const M=METRICS.find(m=>m.id===metric)||METRICS[0];
+  const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  // All distinct dates that carry any value for this metric, sorted
+  const dates=useMemo(()=>{const s=new Set();
+    (athletes||[]).forEach(a=>(a.wellness||[]).forEach(w=>{if(w.date&&w[M.id]!==''&&w[M.id]!=null)s.add(w.date);}));
+    return[...s].sort();},[athletes,M.id]);
+  const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
+  const cellCol=v=>{if(v==null)return null;
+    if(M.id==='RHR')return v<=55?'#3f9c52':v<=65?'#9a7b2f':'#a44';
+    return v>=4?'#3f9c52':v>=3?'#9a7b2f':'#a44';};
+  const dotCol=v=>{if(v==null)return 'var(--dim)';
+    if(M.id==='RHR')return v<=55?'#2dd4a7':v<=65?'#f59e0b':'#f43f5e';
+    return v>=4?'#2dd4a7':v>=3?'#f59e0b':'#f43f5e';};
+  const rows=(athletes||[]).map(a=>{
+    const cells=dates.map(dk=>valOf(a,dk));
+    const vals=cells.filter(v=>v!=null);
+    const avg=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
+    return{a,cells,avg};
+  }).filter(r=>r.avg!=null).sort((x,y)=>M.hi?(y.avg-x.avg):(x.avg-y.avg));
+  const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
+  return(<div className="panel">
+    <div className="wh-hm-head">
+      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>full reporting window · sorted by average</span></h2></div>
+      <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
+    </div>
+    {dates.length===0?<div className="empty-st">No wellness data yet.</div>:
+    <div style={{overflowX:'auto'}}>
+      <table className="wh-hm">
+        <thead><tr>
+          <th className="wh-ath-h"></th>
+          {dates.map((d,i)=>{const dt=parseD(d);const prev=i>0?parseD(dates[i-1]):null;const showMonth=!prev||prev.getMonth()!==dt.getMonth();
+            return<th key={d} className="wh-day"><div className="wh-mon">{showMonth?MN[dt.getMonth()]:''}</div><div className="wh-wd">{DN[(dt.getDay()+6)%7][0]}</div><div className="wh-dd">{dt.getDate()}</div></th>;})}
+          <th className="wh-avg-h">AVG</th>
+        </tr></thead>
+        <tbody>{rows.map((r,ri)=><tr key={ri}>
+          <td className="wh-ath"><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{r.a.position}</span>}</td>
+          {r.cells.map((v,ci)=><td key={ci} className="wh-cell">{v!=null
+            ?<span className="wh-box" style={{background:cellCol(v)}} title={`${r.a.name}\n${(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})()}\n${M.label}: ${fmtV(v)}${M.scale?'/5':''}`}>{fmtV(v)}</span>
+            :<span className="wh-empty"/>}</td>)}
+          <td className="wh-avg"><span className="wh-adot" style={{background:dotCol(r.avg)}}/>{fmtV(r.avg)}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>}
   </div>);
 }
 
@@ -2438,7 +2562,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // ---- Drag & drop sessions across days (mirrors Planner.moveOrCopySession) ----
   const[dragInfo,setDragInfo]=useState(null);
   const[dragOverDate,setDragOverDate]=useState(null);
-  const[lbSort,setLbSort]=useState('load');
   const moveOrCopy=(fromDate,sessionId,toDate,copy)=>{
     if(!canEdit||(fromDate===toDate&&!copy))return;
     const fromDay=days[fromDate];if(!fromDay?.sessions)return;
@@ -2601,47 +2724,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
       </aside>
     </>)}
-    {teamMode&&(()=>{
-      // Athlete Load Board — per-athlete 7-day load, 21-day trend, individual ACWR,
-      // readiness & RHR, computed at the end of the currently-shown week.
-      const ref=fmt(weekEnd);
-      const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-      const rows=(athletes||[]).map(a=>{
-        const l7=athLoadSum(a,fmt(addD(weekEnd,-6)),ref);
-        return{a,name:a.name||'—',pos:a.position||'',l7,acwr:athACWR(a,ref),
-          trend:athTrend(a,ref,21),rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
-      });
-      const maxL7=Math.max(1,...rows.map(r=>r.l7));
-      const sorted=[...rows].sort((x,y)=>lbSort==='acwr'?y.acwr-x.acwr:lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
-      return(<div className="lb-wrap">
-        <div className="lb-head">
-          <div className="lb-title">Athlete Load Board<span className="lb-sub">7-day load · individual ACWR</span></div>
-          <div className="lb-seg">
-            <button className={lbSort==='load'?'on':''} onClick={()=>setLbSort('load')}>By load</button>
-            <button className={lbSort==='acwr'?'on':''} onClick={()=>setLbSort('acwr')}>By ACWR</button>
-            <button className={lbSort==='az'?'on':''} onClick={()=>setLbSort('az')}>A–Z</button>
-          </div>
-        </div>
-        {sorted.length===0&&<div className="empty-st">Kadroda sporcu yok</div>}
-        {sorted.length>0&&<div style={{overflowX:'auto'}}>
-          <table className="lb-tbl">
-            <thead><tr>
-              <th>Athlete</th><th>Pos</th><th>7-day load</th><th>21-day trend</th>
-              <th>ACWR</th><th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
-            </tr></thead>
-            <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
-              <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
-              <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
-              <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
-              <td><Sparkline data={r.trend}/></td>
-              <td><span className="lb-acwr" style={{color:z.c}}>{r.acwr?r.acwr.toFixed(2):'—'}</span></td>
-              <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{z.t}</span></td>
-              <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
-              <td className="r"><span className="lb-rhr">{r.rhr!=null?Math.round(r.rhr):'—'}</span></td>
-            </tr>);})}</tbody>
-          </table>
-        </div>}
-      </div>);})()}
+    {teamMode&&<AthleteLoadBoard athletes={athletes} refDate={fmt(weekEnd)}/>}
     <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
       weeks={weeks} ltCls={ltCls} ltColor={ltColor}
       onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
@@ -2674,7 +2757,10 @@ function MonthCalendar({days,monthRef,setMonthRef,weekStart,weekEnd,weeks,ltCls,
         const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
         return(<div key={k} className={`calm-cell ${loadCls(k,day)}${inWeek?' inweek':''}${isToday?' today':''}`} onClick={()=>onPick(k)} title="Planla">
           <div className="d">{d.getDate()}</div>
-          {ss.length>0&&<div className="dots">{ss.slice(0,4).map((s,j)=><span key={j} className="dot" style={{background:ltColor(ltCls(s.loadType))}}/>)}</div>}
+          {ss.length>0&&<div className="csess">
+            {ss.slice(0,3).map((s,j)=><div key={j} className="cs-item" title={s.name||'Session'}><span className="cs-dot" style={{background:ltColor(ltCls(s.loadType))}}/><span className="cs-name">{s.name||'Session'}</span></div>)}
+            {ss.length>3&&<div className="cs-more">+{ss.length-3} more</div>}
+          </div>}
           {au>0&&<div className="mau">{Math.round(au)} AU</div>}
         </div>);
       })}
@@ -3249,6 +3335,10 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
     </div>
 
+    <AthleteLoadBoard athletes={team.athletes} refDate={lmEnd}/>
+
+    <WellnessHeatmap athletes={team.athletes}/>
+
     {allLogDates.length>0&&
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
@@ -3293,13 +3383,17 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>}
 
     <div className="panel">
-      <h2>📉 Weekly Monotony</h2>
-      <div className="help" style={{marginBottom:8}}>Monotony = mean daily load ÷ its standard deviation (within each week). High monotony (&gt;2) = too-uniform load and rising injury risk. Strain = Total × Monotony.</div>
-      <div className="chart-box sm" style={{marginBottom:12}}>
+      <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
+        <h2 style={{margin:0,fontSize:18}}>Weekly Monotony</h2>
+        <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>Foster monotony &amp; strain · {monthLabel}</span>
+      </div>
+      <div className="help" style={{marginBottom:12}}>Monotony = mean daily load ÷ its standard deviation (within each week). High monotony (&gt;2) = too-uniform load and rising injury risk. Strain = Total × Monotony.</div>
+      <div className="chart-box sm" style={{marginBottom:14}}>
         <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),
-          backgroundColor:mWeeks.map(w=>w.monotony>2?'#ef4444':w.monotony>1.5?'#f59e0b':w.monotony>0?'#10b981':'#334155'),borderRadius:5,
-          datalabels:{display:true,anchor:'end',align:'end',color:'#334155',font:{weight:'bold',size:11},formatter:v=>v>0?v.toFixed(2):''}}]}}
-          options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,plugins:{legend:{display:false}}}}/>
+          backgroundColor:mWeeks.map(w=>w.monotony>2?'#f43f5e':w.monotony>1.5?'#f59e0b':w.monotony>0?'#2dd4a7':'#2e333c'),borderRadius:5,maxBarThickness:46,
+          datalabels:{display:true,anchor:'end',align:'end',color:'#cdd3dc',font:{weight:'bold',size:11,family:'IBM Plex Mono'},formatter:v=>v>0?v.toFixed(2):''}}]}}
+          options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,
+            scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y}},plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
       </div>
       <table><thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Monotony</th><th>Strain</th><th>Flag</th></tr></thead><tbody>
         {mWeeks.map(w=><tr key={w.wkStart}><td>{fd(w.wkStart).slice(0,5)}</td><td>{Math.round(w.total)}</td><td>{w.mean.toFixed(0)}</td><td>{w.sd.toFixed(1)}</td>
@@ -3308,17 +3402,16 @@ function TeamReports({team,weeks,selected,setSelected}){
     </div>
 
     <div className="panel">
-      <h2>🎯 Training Purpose Distribution</h2>
-      <div className="help" style={{marginBottom:8}}>Share of planned session minutes by training purpose in {monthLabel}.</div>
-      {pMix.length>0?<div className="grid cols-2">
-        <div className="chart-box sm">
-          <ChartC type="doughnut" chartData={{labels:pMix.map(p=>p.label),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),backgroundColor:PCOL}]}}
-            options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#334155'}}}}}/>
-        </div>
-        <div><table><thead><tr><th>Purpose</th><th>Minutes</th><th>%</th></tr></thead><tbody>
-          {pMix.map((p,i)=><tr key={p.label}><td><span style={{display:'inline-block',width:10,height:10,borderRadius:2,background:PCOL[i%PCOL.length],marginRight:7}}/>{p.label}</td><td>{p.min}</td><td>{p.pct.toFixed(1)}%</td></tr>)}
-        </tbody></table></div>
-      </div>:<div className="empty-st">No planned sessions in {monthLabel}.</div>}
+      <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
+        <h2 style={{margin:0,fontSize:18}}>Training Purpose Distribution</h2>
+        <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>planned session minutes · {monthLabel}</span>
+      </div>
+      {pMix.length>0?<div className="lmix-list" style={{marginTop:14}}>
+        {pMix.map((p,i)=><div key={p.label} className="lmix-row">
+          <div className="lmix-h"><span className="lmix-lbl"><span style={{display:'inline-block',width:9,height:9,borderRadius:3,background:PCOL[i%PCOL.length],marginRight:8,verticalAlign:'middle'}}/>{p.label}</span><span className="lmix-n">{p.min}<small style={{color:'var(--dim)',fontWeight:500}}> min</small> · {p.pct.toFixed(0)}%</span></div>
+          <div className="lmix-bar"><i style={{width:`${p.pct}%`,background:PCOL[i%PCOL.length]}}/></div>
+        </div>)}
+      </div>:<div className="empty-st" style={{marginTop:10}}>No planned sessions in {monthLabel}.</div>}
     </div>
   </div>);
 }
@@ -5149,6 +5242,8 @@ const TYPE_COLORS={
   'Plyometric':'#5eead4',                // teal
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
+const HIP_PATTERNS=['Bilateral','Unilateral'];
+const PATTERNS_FOR={'Knee Dominant':KNEE_PATTERNS,'Hip Dominant':HIP_PATTERNS};
 const DIFFICULTIES=['Level 1','Level 2','Level 3'];
 const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each Exercise Type has its own secondary filter dimension.
@@ -5307,10 +5402,10 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
             </div>
           </div>
           <div className="grid cols-2" style={{marginTop:14}}>
-            {ex.type==='Knee Dominant'?<div><label>Movement Pattern</label>
+            {PATTERNS_FOR[ex.type]?<div><label>Movement Pattern</label>
               <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
                 <option value="">—</option>
-                {KNEE_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
+                {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{p}</option>)}
               </select></div>:<div></div>}
             <div><label>Difficulty</label>
               <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
@@ -5421,8 +5516,9 @@ function ExercisesView({data,setData}){
 
   // ----- Inside a category -----
   const sub=SUB_TYPES[activeType]||null;
-  const hasMuscleFilter=activeType==='Hip Dominant';
-  const hasPatternFilter=activeType==='Knee Dominant';
+  const hasMuscleFilter=false;   // muscle-group filter removed; Hip/Knee Dominant use Movement Pattern
+  const hasPatternFilter=!!PATTERNS_FOR[activeType];
+  const patternVals=PATTERNS_FOR[activeType]||KNEE_PATTERNS;
   const ql=q.toLowerCase();
   const list=exercises.filter(e=>{
     if(e.type!==activeType)return false;
@@ -5440,7 +5536,7 @@ function ExercisesView({data,setData}){
       <div>
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← Kategoriler</button>
         <h1 className="ex-h1">{activeType}</h1>
-        {sub&&<div className="sub">Filtre: <b>{sub.label}</b>{hasMuscleFilter?' · Muscle Group':hasPatternFilter?' · Movement Pattern':''}</div>}
+        {sub&&<div className="sub">Filtre: <b>{sub.label}</b>{hasPatternFilter?' · Movement Pattern':''}</div>}
       </div>
     </div>
     <div className="ex-toolbar">
@@ -5457,8 +5553,7 @@ function ExercisesView({data,setData}){
       </div>);
       return(<div className="chip-filters">
         {sub&&<ChipRow label={sub.label} values={sub.values} val={fSub} setVal={setFSub}/>}
-        {hasMuscleFilter&&<ChipRow label="Muscle Group" values={EX_MUSCLES} val={fMuscle} setVal={setFMuscle}/>}
-        {hasPatternFilter&&<ChipRow label="Movement Pattern" values={KNEE_PATTERNS} val={fPattern} setVal={setFPattern}/>}
+        {hasPatternFilter&&<ChipRow label="Movement Pattern" values={patternVals} val={fPattern} setVal={setFPattern}/>}
       </div>);})()}
     {list.length===0&&<div className="ex-empty">Bu kategoride{(fSub||fMuscle||fPattern||q)?' filtreyle eşleşen':''} egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ekle.</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
