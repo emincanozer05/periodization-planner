@@ -1952,17 +1952,22 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const dayLoads=dates.map(d=>(days[d]?.sessions||[]).reduce((s,x)=>s+(Number(x.au)||(x.sRPE!==''&&x.sRPE!=null?Number(x.sRPE)*Number(x.duration||0):0)),0));
   const totalLoad=dayLoads.reduce((a,b)=>a+b,0);
   const totalSessions=dates.reduce((a,d)=>a+(days[d]?.sessions||[]).length,0);
-  // Foster monotony & strain
-  const meanLoad=totalLoad/7;
-  const sd=Math.sqrt(dayLoads.reduce((a,b)=>a+(b-meanLoad)**2,0)/7);
+  // Realized weekly load = avg session AU per athlete (matches on-screen Training Load)
+  const rDay=dates.map(d=>{let sum=0,cnt=0;(athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+    if(e.date!==d)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
+    if(v>0){sum+=v;cnt++;}}));return cnt?Math.round(sum/cnt):0;});
+  const rTotal=rDay.reduce((a,b)=>a+b,0);
+  // Foster monotony & strain (from realized load)
+  const meanLoad=rTotal/7;
+  const sd=Math.sqrt(rDay.reduce((a,b)=>a+(b-meanLoad)**2,0)/7);
   const monotony=(sd===0||meanLoad===0)?0:meanLoad/sd;
-  const strain=totalLoad*monotony;
-  const maxLoad=Math.max(...dayLoads,1);
+  const strain=rTotal*monotony;
+  const maxLoad=Math.max(...rDay,1);
   // Build SVG bar chart
   const cBarW=58,cGap=10,cPad=28,cBottomLbl=18;
   const cUsableH=160-cPad-cBottomLbl;
   const cTotalW=7*cBarW+6*cGap;
-  const bars=dayLoads.map((load,i)=>{
+  const bars=rDay.map((load,i)=>{
     const h=maxLoad>0?Math.max((load/maxLoad)*cUsableH,0):0;
     const x=i*(cBarW+cGap);const y=cPad+cUsableH-h;
     return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/>${load>0?`<text x="${x+cBarW/2}" y="${y-5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text>`:''}<text x="${x+cBarW/2}" y="${160-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${DN[i]}</text>`;
@@ -1972,14 +1977,14 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const chartSvg=`<svg viewBox="0 0 ${cTotalW} 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:170px">${meanLine}${bars}</svg>`;
   // Monotony flag
   const mF=monotony>2?{c:'#ff6b5b',t:'EXCESSIVE'}:monotony>1.5?{c:'#f59e0b',t:'WATCH'}:monotony>0?{c:'#9aab3a',t:'GOOD'}:{c:'#8b9099',t:'—'};
-  const monotonyBlock=totalLoad>0?`<div class="mono-row">
+  const monotonyBlock=rTotal>0?`<div class="mono-row">
     <div class="mono-chart">
-      <div class="mono-h">📊 Weekly Load Distribution</div>
+      <div class="mono-h">📊 Weekly Load Distribution <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· gerçekleşen yük (AU)</span></div>
       ${chartSvg}
     </div>
     <div class="mono-side">
       <div class="mono-stats">
-        <div class="stat"><div class="stat-l">Total</div><div class="stat-v">${Math.round(totalLoad)}<span class="stat-u">AU</span></div></div>
+        <div class="stat"><div class="stat-l">Total</div><div class="stat-v">${Math.round(rTotal)}<span class="stat-u">AU</span></div></div>
         <div class="stat"><div class="stat-l">Mean</div><div class="stat-v">${Math.round(meanLoad)}<span class="stat-u">AU</span></div></div>
         <div class="stat"><div class="stat-l">SD</div><div class="stat-v">${sd.toFixed(1)}</div></div>
       </div>
