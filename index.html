@@ -3482,8 +3482,8 @@ function printBodyComp(ath,setup){
   if(sorted.length===0){alert('No measurements');w.close();return;}
   const cur=sorted[sorted.length-1],prev=sorted.length>1?sorted[sorted.length-2]:null;
   const d=(a,b,k)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(1);};
-  const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null;
-  const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass');
+  const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null,h_=cur?Number(cur.height)||null:null;
+  const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass'),dh=d(cur,prev,'height');
   const fmtD=v=>v==null?'—':(v>0?`+${v}`:`${v}`);
   // SVG line chart helper (area fill + points + labels)
   const lineChart=(field,color)=>{
@@ -3531,7 +3531,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .hdr .info .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
 .hdr .info .date{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 11px;border-radius:6px;letter-spacing:.06em}
 .hdr .ttl{margin-left:auto;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
-.mcards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.mcards{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
 .mcard{background:#fff;border:1px solid var(--border);border-radius:13px;padding:15px 17px;box-shadow:0 1px 3px rgba(15,23,42,.05);display:flex;flex-direction:column}
 .mcard .mc-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--border)}
 .mcard .mc-t{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
@@ -3569,6 +3569,11 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
   <div class="ttl">BODY<br>COMPOSITION</div>
 </div>
 <div class="mcards">
+  <div class="mcard">
+    <div class="mc-h"><div class="mc-t">Height</div><div class="mc-u">cm</div></div>
+    <div class="mc-val"><span class="mv" style="color:#a855f7">${h_!=null?h_:'—'}</span>${dh!=null&&dh!==0?`<span class="md ${dh>0?'pos':'neg'}">${fmtD(dh)}</span>`:''}</div>
+    <div class="mc-chart">${lineChart('height','#a855f7')}</div>
+  </div>
   <div class="mcard">
     <div class="mc-h"><div class="mc-t">Weight</div><div class="mc-u">kg</div></div>
     <div class="mc-val"><span class="mv" style="color:#3b82f6">${w_!=null?w_:'—'}</span>${dw!=null&&dw!==0?`<span class="md ${dw>0?'neg':'pos'}">${fmtD(dw)}</span>`:''}</div>
@@ -4476,7 +4481,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
                     y:{display:false,grid:{display:false},beginAtZero:false}},
                   plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
               </div>);};
-            return(<div className="metric-grid" style={{marginBottom:18}}>
+            return(<div className="metric-grid" style={{marginBottom:18,gridTemplateColumns:'repeat(4,minmax(0,1fr))'}}>
+              {mkChart('Height','cm','height','#a855f7','#c084fc',null)}
               {mkChart('Weight','kg','weight','#3b82f6','#60a5fa',null)}
               {mkChart('Body Fat','%','bodyFat','#f97316','#fb923c',false)}
               {mkChart('Muscle Mass','kg','muscleMass','#10b981','#34d399',true)}
