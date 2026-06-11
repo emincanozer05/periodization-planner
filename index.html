@@ -32,6 +32,13 @@
       messagingSenderId:"225598184270",
       appId:"1:225598184270:web:a2b812983e298441df1c1f"
     });
+    // Some networks / proxies / antivirus / browser extensions buffer or block
+    // Firestore's default streaming (WebChannel) transport. When that happens the
+    // connection looks "up" for cached reads but writes never reach the server —
+    // the indicator stays stuck on "syncing" and other devices never see the
+    // change. Auto-detect that case and fall back to long-polling, which gets the
+    // writes through. Must be set BEFORE any other Firestore use (incl. persistence).
+    try{firebase.firestore().settings({experimentalAutoDetectLongPolling:true});}catch(e){}
     try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
@@ -5526,7 +5533,7 @@ function AuthModal({sync,onClose}){
 
 // Bump this on every deploy so you can verify (e.g. on your phone) that the
 // device actually loaded the latest version and isn't serving a cached old build.
-const APP_BUILD='2026-06-12 · b5';
+const APP_BUILD='2026-06-12 · b6';
 function CloudBar({sync,onOpen}){
   const{user,status}=sync;
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
