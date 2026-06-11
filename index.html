@@ -5238,15 +5238,18 @@ async function cloudWrite(fb,uid,str,rev){
   const dataCol=userDoc.collection('data');
   // Read the meta doc ONCE — it gives the previous chunk count so we never
   // re-download the whole payload just to find stale chunks (main slowdown).
+  // Read from CACHE so a slow/blocked Firestore connection can never stall this
+  // read and prevent the actual write below from ever running. The cache is kept
+  // fresh by the onSnapshot listener, so the chunk count is accurate.
   let oldN=0;
   try{
-    const cur=await userDoc.get();
-    if(cur.exists&&cur.data()){
+    let cur;try{cur=await userDoc.get({source:'cache'});}catch(_){cur=null;}
+    if(cur&&cur.exists&&cur.data()){
       const md=cur.data();oldN=md.chunks||0;const oldSize=md.size||0;
       // SHRINK-GUARD: before drastically shrinking the cloud copy, back it up.
       if(oldN&&oldSize>5000&&str.length<oldSize*0.5){
         const bCol=userDoc.collection('backup');
-        const snaps=await Promise.all(Array.from({length:oldN},(_,i)=>dataCol.doc(String(i)).get()));
+        const snaps=await Promise.all(Array.from({length:oldN},(_,i)=>dataCol.doc(String(i)).get({source:'cache'})));
         const bb=db.batch();
         snaps.forEach((d,i)=>bb.set(bCol.doc(String(i)),{c:(d.exists&&d.data())?(d.data().c||''):''}));
         bb.set(userDoc,{bChunks:oldN,bRev:md.rev||'',bSize:oldSize,bAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
@@ -5269,8 +5272,9 @@ async function cloudRead(fb,uid){
   const userDoc=db.collection('users').doc(uid);
   const meta=await userDoc.get();
   if(!meta.exists||!meta.data()||!meta.data().chunks)return null;
-  const md=meta.data(),n=md.chunks,parts=[];
-  for(let i=0;i<n;i++){const d=await userDoc.collection('data').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
+  const md=meta.data(),n=md.chunks;
+  // Read all chunks in parallel (was sequential = N round-trips = slow reconcile)
+  const parts=await Promise.all(Array.from({length:n},(_,i)=>userDoc.collection('data').doc(String(i)).get().then(d=>(d.exists&&d.data())?(d.data().c||''):'')));
   return{str:parts.join(''),rev:md.rev};
 }
 async function cloudReadBackup(fb,uid){
@@ -5372,11 +5376,10 @@ function useCloudSync(data,setData){
       if(j===lastJson.current)return;
       const rev=mkRev();
       lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
-      // Optimistic: the change is durably stored locally (offline persistence) and
-      // will sync — show "synced" right away instead of waiting for the server ack,
-      // which can be slow/absent on flaky connections. Only flag a real rejection.
-      setStatus('synced');
-      cloudWrite(fb,user.uid,j,rev).catch(e=>{console.warn('write',e);setStatus('error');});
+      setStatus('syncing');
+      // "synced" (green) only once the SERVER acknowledges the write — so the
+      // indicator truthfully means other devices can now read this change.
+      cloudWrite(fb,user.uid,j,rev).then(()=>setStatus('synced')).catch(e=>{console.warn('write',e);setStatus('error');});
     };
     writeRef.current=writeNow;
     // Firestore offline-persistence queues the mutation locally, so even if the
