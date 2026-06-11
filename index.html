@@ -1624,7 +1624,14 @@ function WeekChartSVG({data,avg,color,dot,unit,labels}){
         {area&&<path d={area} fill={color} opacity="0.15"/>}
         {avg!=null&&<line x1={padL} y1={yOf(avg)} x2={w-padR} y2={yOf(avg)} stroke={dot} strokeWidth="1.5" strokeDasharray="5 4"/>}
         {line&&<path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}
-        {pts.map((p,k)=><circle key={'p'+k} cx={p.x} cy={p.y} r="4" fill={dot} stroke="#0d0f13" strokeWidth="1.5"><title>{(labels[p.i]||'')+': '+p.v+(five?'/5':' '+unit)}</title></circle>)}
+        {pts.map((p,k)=>{
+          const vt=five?(Number.isInteger(p.v)?String(p.v):p.v.toFixed(1)):String(Math.round(p.v));
+          const ly=p.y-10<padT+4?p.y+17:p.y-10; // flip below the point when too close to the top
+          return<g key={'p'+k}>
+            <circle cx={p.x} cy={p.y} r="4" fill={dot} stroke="#0d0f13" strokeWidth="1.5"><title>{(labels[p.i]||'')+': '+p.v+(five?'/5':' '+unit)}</title></circle>
+            <text x={p.x} y={ly} textAnchor="middle" fill="#e6e9ee" fontFamily="IBM Plex Mono" fontSize="11" fontWeight="bold">{vt}</text>
+          </g>;
+        })}
       </svg>}
   </div>;
 }
