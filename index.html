@@ -106,6 +106,11 @@ nav{
 }
 .nav-group{display:flex;flex-direction:column;gap:3px}
 .nav-glabel{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;padding:6px 12px 8px;font-weight:500}
+.rlang{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 8px 4px;border-top:1px solid var(--border)}
+.rlang-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.rlang-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.rlang-seg button{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer;transition:all .15s}
+.rlang-seg button.on{background:var(--accent);color:#0a0b0d}
 .nav-item{
   background:transparent;border:1px solid transparent;padding:10px 12px;cursor:pointer;
   color:var(--text2);font-size:14px;font-weight:500;
@@ -1065,6 +1070,19 @@ const wk=d=>fmt(sow(d));
 const today=new Date();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
+/* ===== Report language (global TR/EN switch used by all print outputs) ===== */
+let REPORT_LANG=(()=>{try{return localStorage.getItem('pp-report-lang')||'tr';}catch(e){return 'tr';}})();
+function setReportLang(l){REPORT_LANG=l;try{localStorage.setItem('pp-report-lang',l);}catch(e){}}
+const MN_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MN_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const DN_EN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DN_TR=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+// Long date in the active report language: "7 June 2026" / "7 Haziran 2026"
+function fdL(ds){if(!ds)return'';const d=parseD(ds);const M=REPORT_LANG==='tr'?MN_TR:MN_EN;return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`;}
+function dnL(i){return (REPORT_LANG==='tr'?DN_TR:DN_EN)[i];}
+// Pick a value by language: tr(...) helper returns the right string of a {tr,en} pair
+function L(tr,en){return REPORT_LANG==='tr'?tr:en;}
+
 /* =========================================================
    FACTORIES
    ========================================================= */
@@ -1563,10 +1581,10 @@ function _loadSectionHTML(title,subtitle,colLabels,perAthlete,accent){
     const h=Math.round((colTotals[i]/maxCol)*88);
     return `<div class="bc"><div class="bgraph"><div class="bv">${colTotals[i]?nf(colTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div></div><div class="bl">${lab}</div></div>`;
   }).join('');
-  const head=`<tr><th class="ath"># Athlete</th>${colLabels.map(l=>`<th>${l}</th>`).join('')}<th class="tot">Tot</th></tr>`;
+  const head=`<tr><th class="ath"># ${L('Sporcu','Athlete')}</th>${colLabels.map(l=>`<th>${l}</th>`).join('')}<th class="tot">${L('Top','Tot')}</th></tr>`;
   const rows=sorted.length?sorted.map((a,ri)=>`<tr><td class="ath">${ri+1}. ${a.name}</td>${a.data.map(v=>`<td>${v?nf(v):'<span class=z>·</span>'}</td>`).join('')}<td class="tot">${nf(a.total)}</td></tr>`).join('')
     :`<tr><td class="ath">—</td>${colLabels.map(()=>'<td>·</td>').join('')}<td class="tot">0</td></tr>`;
-  const foot=`<tr class="tr2"><td class="ath">TEAM TOTAL</td>${colTotals.map(v=>`<td>${nf(v)}</td>`).join('')}<td class="tot grand">${nf(grand)}</td></tr>`;
+  const foot=`<tr class="tr2"><td class="ath">${L('TAKIM TOPLAMI','TEAM TOTAL')}</td>${colTotals.map(v=>`<td>${nf(v)}</td>`).join('')}<td class="tot grand">${nf(grand)}</td></tr>`;
   return `<div class="sec">
     <div class="sh"><span class="dot"></span><span class="st">${title}</span><span class="ssub">${subtitle}</span></div>
     <div class="chart">${bars}</div>
@@ -1584,8 +1602,8 @@ function printWeeklyReportTR(R){
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
   const nf=v=>Number(v||0).toLocaleString('tr-TR');
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
-  const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
-  const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
+  const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
+  const monoTR=m=>m>2?L('Aşırı','Excessive'):m>1.5?L('İzle','Watch'):m>0?L('İyi','Good'):'—';
   // Daily team-load chart — colored session pills on top, value, bar, day label
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const SC={
@@ -1607,26 +1625,26 @@ function printWeeklyReportTR(R){
     }).join('');
     return `<div class="bc"><div class="bworks-top">${wkHtml}</div><div class="bgraph"><div class="bv">${R.dayTotals[i]?nf(R.dayTotals[i]):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div></div><div class="bl">${lab}</div></div>`;
   }).join('');
-  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
+  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Günlük Takım Yükü (AU)','Daily Team Load (AU)')}</span><span class="ssub">${R.weekLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
   // Per-athlete x day matrix (allows in-page break)
-  const matrixSec=_loadSectionHTML('Sporcu × Gün Yük Dağılımı (AU)','Yüke göre sıralı',R.dailyLabels,R.perAthlete,'#9aab3a').replace('class="sec"','class="sec matrix-sec"');
+  const matrixSec=_loadSectionHTML(L('Sporcu × Gün Yük Dağılımı (AU)','Athlete × Day Load (AU)'),L('Yüke göre sıralı','Sorted by load'),R.dailyLabels,R.perAthlete,'#9aab3a').replace('class="sec"','class="sec matrix-sec"');
   // Week ACWR / Monotony summary card
-  const summary=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Haftalık Özet</span><span class="ssub">${R.weekLabel}</span></div>
-    <table><thead><tr><th class="ath">Gösterge</th><th>Değer</th><th>Durum / Açıklama</th></tr></thead><tbody>
-      <tr><td class="ath">ACWR (hafta sonu)</td><td>${R.acwr?R.acwr.toFixed(2):'—'}</td><td>${acwrTR} · Güvenli aralık 0.8–1.3</td></tr>
-      <tr><td class="ath">Haftalık Toplam Yük</td><td>${nf(Math.round(R.weekTotal))}</td><td>AU (takım)</td></tr>
-      <tr><td class="ath">Ortalama Günlük Yük</td><td>${nf(Math.round(R.weekMean))}</td><td>AU</td></tr>
-      <tr><td class="ath">Standart Sapma</td><td>${R.weekSD.toFixed(1)}</td><td>Günler arası dağılım</td></tr>
-      <tr><td class="ath">Monotoni</td><td>${R.weekMono.toFixed(2)}</td><td>${monoTR(R.weekMono)} (Ortalama ÷ SS)</td></tr>
-      <tr><td class="ath">Zorlanma</td><td>${nf(Math.round(R.weekStrain))}</td><td>Toplam × Monotoni</td></tr>
-      <tr><td class="ath">Antrenman Günü</td><td>${R.trainDays}</td><td>yük &gt; 0 olan günler</td></tr>
+  const summary=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Özet','Weekly Summary')}</span><span class="ssub">${R.weekLabel}</span></div>
+    <table><thead><tr><th class="ath">${L('Gösterge','Metric')}</th><th>${L('Değer','Value')}</th><th>${L('Durum / Açıklama','Status / Note')}</th></tr></thead><tbody>
+      <tr><td class="ath">${L('ACWR (hafta sonu)','ACWR (week end)')}</td><td>${R.acwr?R.acwr.toFixed(2):'—'}</td><td>${acwrTR} · ${L('Güvenli aralık','Safe band')} 0.8–1.3</td></tr>
+      <tr><td class="ath">${L('Haftalık Toplam Yük','Weekly Total Load')}</td><td>${nf(Math.round(R.weekTotal))}</td><td>${L('AU (takım)','AU (team)')}</td></tr>
+      <tr><td class="ath">${L('Ortalama Günlük Yük','Mean Daily Load')}</td><td>${nf(Math.round(R.weekMean))}</td><td>AU</td></tr>
+      <tr><td class="ath">${L('Standart Sapma','Standard Deviation')}</td><td>${R.weekSD.toFixed(1)}</td><td>${L('Günler arası dağılım','Day-to-day spread')}</td></tr>
+      <tr><td class="ath">${L('Monotoni','Monotony')}</td><td>${R.weekMono.toFixed(2)}</td><td>${monoTR(R.weekMono)} ${L('(Ortalama ÷ SS)','(Mean ÷ SD)')}</td></tr>
+      <tr><td class="ath">${L('Zorlanma','Strain')}</td><td>${nf(Math.round(R.weekStrain))}</td><td>${L('Toplam × Monotoni','Total × Monotony')}</td></tr>
+      <tr><td class="ath">${L('Antrenman Günü','Training Days')}</td><td>${R.trainDays}</td><td>${L('yük > 0 olan günler','days with load > 0')}</td></tr>
     </tbody></table>
-    <div class="note"><b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — &gt;2 aşırı tek düze.</div></div>`;
+    <div class="note">${L('<b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — &gt;2 aşırı tek düze.','<b>ACWR</b> = total team load of the last 7 days ÷ the weekly average of the last 28 days. Safe band 0.8–1.3, &gt;1.5 high injury risk. <b>Monotony</b>: within-week load variety — &gt;2 too uniform.')}</div></div>`;
   // Purpose mix
-  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
-  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Antrenman Türü Dağılımı</span><span class="ssub">Dakika bazında</span></div>
-    <table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Haftalık Antrenman Raporu — ${R.teamName}</title>
+  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
+  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
+    <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Haftalık Antrenman Raporu','Weekly Training Report')} — ${R.teamName}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
 @page{size:A4 landscape;margin:9mm}
@@ -1680,11 +1698,11 @@ td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .grid2>.sec>table,.grid2>.sec>.note{flex:0 0 auto}
 .grid2>.sec>.chart{flex:1 1 auto;min-height:130px;padding-bottom:14px;align-items:flex-end}
 </style></head><body>
-<div class="hd"><div><h1>Haftalık Antrenman Raporu</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.weekLabel}</div></div>
+<div class="hd"><div><h1>${L('Haftalık Antrenman Raporu','Weekly Training Report')}</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.weekLabel}</div></div>
 <div class="grid2 top2">${dailySec}${summary}</div>
 ${purposeSec}
 ${matrixSec}
-<div class="ft"><span>AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.</span><span>Periodization Planner · ${new Date().toLocaleDateString('tr-TR')}</span></div>
+<div class="ft"><span>${L('AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.','AU = sRPE × minutes · Athletes sorted by total load.')}</span><span>Periodization Planner · ${new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB')}</span></div>
 </body></html>`);
   w.document.close();
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
@@ -1694,31 +1712,31 @@ function printMonthlyReportTR(R){
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
   const nf=v=>Number(v||0).toLocaleString('tr-TR');
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
-  const acwrTR={'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t;
-  const zoneTR=v=>!v?'—':v>1.5?'Yüksek risk':(v>=0.8&&v<=1.3)?'Optimal':v<0.8?'Düşük':'Dikkat';
-  const monoTR=m=>m>2?'Aşırı':m>1.5?'İzle':m>0?'İyi':'—';
+  const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
+  const zoneTR=v=>!v?'—':v>1.5?L('Yüksek risk','High risk'):(v>=0.8&&v<=1.3)?'Optimal':v<0.8?L('Düşük','Low'):L('Dikkat','Caution');
+  const monoTR=m=>m>2?L('Aşırı','Excessive'):m>1.5?L('İzle','Watch'):m>0?L('İyi','Good'):'—';
 
-  const weeklySec=_loadSectionHTML('Haftalık Yük Dağılımı (AU)','Sporcu × Hafta · yüke göre sıralı',R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
+  const weeklySec=_loadSectionHTML(L('Haftalık Yük Dağılımı (AU)','Weekly Load Distribution (AU)'),L('Sporcu × Hafta · yüke göre sıralı','Athlete × Week · sorted by load'),R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
 
   const maxDay=Math.max(1,...R.monthDays.map(d=>d.val));
   const dailyBars=R.monthDays.map(d=>{const h=Math.round((d.val/maxDay)*118);return `<div class="bc"><div class="bv">${d.val?nf(d.val):''}</div><div class="bar" style="height:${Math.max(2,h)}px"></div><div class="bl">${d.lab}</div></div>`;}).join('');
-  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Günlük Takım Yükü (AU)</span><span class="ssub">${R.monthLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
+  const dailySec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Günlük Takım Yükü (AU)','Daily Team Load (AU)')}</span><span class="ssub">${R.monthLabel}</span></div><div class="chart tall">${dailyBars}</div></div>`;
 
   const acwrRows=R.acwrWeekly.map(x=>`<tr><td class="ath">${x.label}</td><td>${x.acwr?x.acwr.toFixed(2):'—'}</td><td>${zoneTR(x.acwr)}</td></tr>`).join('')||`<tr><td class="ath">—</td><td>—</td><td>—</td></tr>`;
-  const acwrSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">ACWR — Akut:Kronik Yük Oranı</span><span class="ssub">${R.acwr?R.acwr.toFixed(2):'—'} (${acwrTR})</span></div>
-    <table><thead><tr><th class="ath">Hafta</th><th>ACWR</th><th>Bölge</th></tr></thead><tbody>${acwrRows}</tbody></table>
-    <div class="note"><b>Akut</b> = son 7 günün toplam takım yükü · <b>Kronik</b> = son 28 günün haftalık ortalaması · <b>ACWR</b> = Akut ÷ Kronik. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. Değerler her haftanın sonunda, takımın kayıtlı (sRPE) yükünden hesaplanır.</div></div>`;
+  const acwrSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('ACWR — Akut:Kronik Yük Oranı','ACWR — Acute:Chronic Workload Ratio')}</span><span class="ssub">${R.acwr?R.acwr.toFixed(2):'—'} (${acwrTR})</span></div>
+    <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>ACWR</th><th>${L('Bölge','Zone')}</th></tr></thead><tbody>${acwrRows}</tbody></table>
+    <div class="note">${L('<b>Akut</b> = son 7 günün toplam takım yükü · <b>Kronik</b> = son 28 günün haftalık ortalaması · <b>ACWR</b> = Akut ÷ Kronik. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. Değerler her haftanın sonunda, takımın kayıtlı (sRPE) yükünden hesaplanır.','<b>Acute</b> = total team load of the last 7 days · <b>Chronic</b> = weekly average over the last 28 days · <b>ACWR</b> = Acute ÷ Chronic. Safe band 0.8–1.3, &gt;1.5 high injury risk. Computed at each week end from the logged (sRPE) team load.')}</div></div>`;
 
   const monoRows=R.mWeeks.map(w2=>`<tr><td class="ath">${fd(w2.wkStart).slice(0,5)}</td><td>${nf(Math.round(w2.total))}</td><td>${w2.mean.toFixed(0)}</td><td>${w2.sd.toFixed(1)}</td><td>${w2.monotony.toFixed(2)}</td><td>${nf(Math.round(w2.strain))}</td><td>${monoTR(w2.monotony)}</td></tr>`).join('');
-  const monoSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Haftalık Monotoni</span><span class="ssub">Ort. ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
-    <table><thead><tr><th class="ath">Hafta</th><th>Toplam</th><th>Ort.</th><th>SS</th><th>Monotoni</th><th>Zorlanma</th><th>Durum</th></tr></thead><tbody>${monoRows}</tbody></table>
-    <div class="note"><b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Yüksek monotoni (&gt;2) tek düze yükü ve artan yaralanma riskini gösterir. <b>Zorlanma</b> = Toplam × Monotoni.</div></div>`;
+  const monoSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Monotoni','Weekly Monotony')}</span><span class="ssub">${L('Ort.','Avg')} ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
+    <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>${L('Toplam','Total')}</th><th>${L('Ort.','Mean')}</th><th>${L('SS','SD')}</th><th>${L('Monotoni','Monotony')}</th><th>${L('Zorlanma','Strain')}</th><th>${L('Durum','Status')}</th></tr></thead><tbody>${monoRows}</tbody></table>
+    <div class="note">${L('<b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Yüksek monotoni (&gt;2) tek düze yükü ve artan yaralanma riskini gösterir. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = mean daily load ÷ standard deviation (within the week). High monotony (&gt;2) means too-uniform load and rising injury risk. <b>Strain</b> = Total × Monotony.')}</div></div>`;
 
-  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">Veri yok</td><td>0</td><td>0%</td><td></td></tr>`;
-  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">Antrenman Türü Dağılımı</span><span class="ssub">Dakika bazında</span></div>
-    <table class="pt"><thead><tr><th class="ath">Tür</th><th>Dakika</th><th>%</th><th>Dağılım</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
+  const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
+  const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
+    <table class="pt"><thead><tr><th class="ath">${L('Tür','Purpose')}</th><th>${L('Dakika','Minutes')}</th><th>%</th><th>${L('Dağılım','Distribution')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`;
 
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Aylık Antrenman Raporu — ${R.teamName}</title>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${L('Aylık Antrenman Raporu','Monthly Training Report')} — ${R.teamName}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
 @page{size:A4 landscape;margin:9mm}
@@ -1766,12 +1784,12 @@ td.tot,th.tot{font-weight:600;color:var(--text);background:rgba(154,171,58,.12)}
 .pbar>div{height:100%;border-radius:5px}
 .ft{margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;letter-spacing:.04em}
 </style></head><body>
-<div class="hd"><div><h1>Aylık Antrenman Raporu</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
+<div class="hd"><div><h1>${L('Aylık Antrenman Raporu','Monthly Training Report')}</h1><div class="tm">${R.teamName}</div></div><div class="rng">${R.monthLabel}</div></div>
 ${weeklySec}
 ${dailySec}
 <div class="gwrap"><div class="grid2">${acwrSec}${monoSec}</div></div>
 ${purposeSec}
-<div class="ft"><span>AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.</span><span>Periodization Planner · ${new Date().toLocaleDateString('tr-TR')}</span></div>
+<div class="ft"><span>${L('AU = sRPE × dakika · Sporcular toplam yüke göre sıralıdır.','AU = sRPE × minutes · Athletes sorted by total load.')}</span><span>Periodization Planner · ${new Date().toLocaleDateString(REPORT_LANG==='tr'?'tr-TR':'en-GB')}</span></div>
 </body></html>`);
   w.document.close();
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
@@ -1789,7 +1807,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions){
     cnt._=(cnt._||0)+1;return{tag:`${cnt._}.`,letter:''};});};
   const exTable=b=>{
     const namedExs=(b.exercises||[]).filter(e=>e.name);
-    if(namedExs.length===0)return'<div class="empty-block">No exercises</div>';
+    if(namedExs.length===0)return`<div class="empty-block">${L('Egzersiz yok','No exercises')}</div>`;
     const labs=computeLabels(b.exercises||[]);
     return`<div class="ex-list">${(b.exercises||[]).map((e,i)=>{
       if(!e.name)return'';
@@ -1817,7 +1835,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions){
     }).join('')}</div>`;
   };
   const dateLine=subtitle.replace(/,/g,'·');
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — Training Program</title>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -1910,7 +1928,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 
 <div class="doc-head">
   <div class="doc-l">
-    <div class="lbl">Training Program</div>
+    <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
     <h1>${title}</h1>
   </div>
   <div class="doc-r">
@@ -1921,33 +1939,33 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 ${sessions.map((s,i)=>`<div class="sess">
   <div class="sh">
     <div class="sh-l"><span class="sn">${i+1}</span>${s.name}</div>
-    <div class="sh-r"><span class="sh-pill">${s.time}</span><span class="sh-pill">${s.duration} MIN</span></div>
+    <div class="sh-r"><span class="sh-pill">${s.time}</span><span class="sh-pill">${s.duration} ${L('DK','MIN')}</span></div>
   </div>
   <div class="meta-bar">
-    <div class="meta-item"><span class="lbl">Type</span><span class="val">${s.loadType}</span></div>
-    <div class="meta-item"><span class="lbl">Purpose</span><span class="val">${s.purpose}</span></div>
+    <div class="meta-item"><span class="lbl">${L('Tip','Type')}</span><span class="val">${s.loadType}</span></div>
+    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${s.purpose}</span></div>
   </div>
   ${(()=>{
     // Categorize each block: warmup / main / cooldown — three columns side-by-side in landscape.
     const isWarm=n=>{n=(n||'').toLowerCase();return n.includes('prep')||n.includes('warm')||n.includes('activation')||n.includes('pillar')||n.includes('movement prep');};
     const isCool=n=>{n=(n||'').toLowerCase();return n.includes('cool')||n.includes('regen')||n.includes('mobility')||n.includes('flexibility')||n.includes('stretch');};
     const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
-    if(blks.length===0)return'<div class="bs"><div class="empty-block">No exercises planned</div></div>';
+    if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
     const warm=blks.filter(b=>isWarm(b.name));
     const cool=blks.filter(b=>isCool(b.name));
     const main=blks.filter(b=>!isWarm(b.name)&&!isCool(b.name));
     const colHTML=(label,arr,placeholder)=>`<div class="bs-col"><div class="bs-col-h">${label}</div>${arr.length>0?arr.map(b=>`<div class="block"><div class="bh">${b.name}</div>${exTable(b)}</div>`).join(''):`<div class="bs-col-empty">${placeholder}</div>`}</div>`;
-    return`<div class="bs three-col">${colHTML('PREPARATION',warm,'No preparation planned')}${colHTML('MAIN PHASE',main,'No main block planned')}${colHTML('COOL-DOWN',cool,'No cool-down planned')}</div>`;
+    return`<div class="bs three-col">${colHTML(L('HAZIRLIK','PREPARATION'),warm,L('Hazırlık planlanmadı','No preparation planned'))}${colHTML(L('ANA FAZ','MAIN PHASE'),main,L('Ana blok planlanmadı','No main block planned'))}${colHTML(L('SOĞUMA','COOL-DOWN'),cool,L('Soğuma planlanmadı','No cool-down planned'))}</div>`;
   })()}
   <div class="sf">
-    <div class="sf-item"><div class="sf-lbl">Session sRPE</div><div class="sf-val ${s.sRPE===''?'placeholder':''}">${s.sRPE!==''?s.sRPE:'___'}<span class="unit">/10</span></div></div>
+    <div class="sf-item"><div class="sf-lbl">${L('Seans sRPE','Session sRPE')}</div><div class="sf-val ${s.sRPE===''?'placeholder':''}">${s.sRPE!==''?s.sRPE:'___'}<span class="unit">/10</span></div></div>
     <div class="sf-divider"></div>
-    <div class="sf-item"><div class="sf-lbl">Session Load</div><div class="sf-val ${!s.au?'placeholder':''}">${s.au||'___'}<span class="unit">AU</span></div></div>
-    ${s.notes?`<div class="sf-divider"></div><div class="sf-notes"><strong style="color:#0f172a">Notes:</strong> ${s.notes}</div>`:''}
+    <div class="sf-item"><div class="sf-lbl">${L('Seans Yükü','Session Load')}</div><div class="sf-val ${!s.au?'placeholder':''}">${s.au||'___'}<span class="unit">AU</span></div></div>
+    ${s.notes?`<div class="sf-divider"></div><div class="sf-notes"><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
   </div>
 </div>`).join('')}
 
-<div class="page-footer">Generated ${fd(fmt(today))} · Periodization Planner</div>
+<div class="page-footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · Periodization Planner</div>
 
 </body></html>`;
 }
@@ -1983,35 +2001,35 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const bars=rDay.map((load,i)=>{
     const h=maxLoad>0?Math.max((load/maxLoad)*cUsableH,0):0;
     const x=i*(cBarW+cGap);const y=cPad+cUsableH-h;
-    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/>${load>0?`<text x="${x+cBarW/2}" y="${y-5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text>`:''}<text x="${x+cBarW/2}" y="${160-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${DN[i]}</text>`;
+    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/>${load>0?`<text x="${x+cBarW/2}" y="${y-5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text>`:''}<text x="${x+cBarW/2}" y="${160-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${dnL(i)}</text>`;
   }).join('');
   const meanY=meanLoad>0?cPad+cUsableH-(meanLoad/maxLoad)*cUsableH:0;
   const meanLine=meanLoad>0?`<line x1="0" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#0a0b0d" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/><text x="${cTotalW-4}" y="${meanY-4}" text-anchor="end" font-size="9" fill="#0a0b0d" font-weight="700" font-family="'IBM Plex Mono',monospace">Mean ${Math.round(meanLoad)}</text>`:'';
   const chartSvg=`<svg viewBox="0 0 ${cTotalW} 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:170px">${meanLine}${bars}</svg>`;
   // Monotony flag
-  const mF=monotony>2?{c:'#ff6b5b',t:'EXCESSIVE'}:monotony>1.5?{c:'#f59e0b',t:'WATCH'}:monotony>0?{c:'#9aab3a',t:'GOOD'}:{c:'#8b9099',t:'—'};
+  const mF=monotony>2?{c:'#ff6b5b',t:L('AŞIRI','EXCESSIVE')}:monotony>1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>0?{c:'#9aab3a',t:L('İYİ','GOOD')}:{c:'#8b9099',t:'—'};
   const monotonyBlock=rTotal>0?`<div class="mono-row">
     <div class="mono-chart">
-      <div class="mono-h">📊 Weekly Load Distribution <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· gerçekleşen yük (AU)</span></div>
+      <div class="mono-h">📊 ${L('Haftalık Yük Dağılımı','Weekly Load Distribution')} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· ${L('gerçekleşen yük','realized load')} (AU)</span></div>
       ${chartSvg}
     </div>
     <div class="mono-side">
       <div class="mono-stats">
-        <div class="stat"><div class="stat-l">Total</div><div class="stat-v">${Math.round(rTotal)}<span class="stat-u">AU</span></div></div>
-        <div class="stat"><div class="stat-l">Mean</div><div class="stat-v">${Math.round(meanLoad)}<span class="stat-u">AU</span></div></div>
-        <div class="stat"><div class="stat-l">SD</div><div class="stat-v">${sd.toFixed(1)}</div></div>
+        <div class="stat"><div class="stat-l">${L('Toplam','Total')}</div><div class="stat-v">${Math.round(rTotal)}<span class="stat-u">AU</span></div></div>
+        <div class="stat"><div class="stat-l">${L('Ortalama','Mean')}</div><div class="stat-v">${Math.round(meanLoad)}<span class="stat-u">AU</span></div></div>
+        <div class="stat"><div class="stat-l">${L('SS','SD')}</div><div class="stat-v">${sd.toFixed(1)}</div></div>
       </div>
       <div class="mono-big" style="border-color:${mF.c}">
-        <div class="mono-big-l">MONOTONY</div>
+        <div class="mono-big-l">${L('MONOTONİ','MONOTONY')}</div>
         <div class="mono-big-v" style="color:${mF.c}">${monotony.toFixed(2)}</div>
         <span class="mono-big-t" style="background:${mF.c}">${mF.t}</span>
-        <div class="mono-big-s">Strain: <strong>${Math.round(strain)}</strong></div>
+        <div class="mono-big-s">${L('Zorlanma','Strain')}: <strong>${Math.round(strain)}</strong></div>
       </div>
       <div class="mono-help">
-        <div class="mono-help-h">Foster's Monotony = Mean / SD</div>
-        <div class="mono-help-line"><span class="dot" style="background:#10b981"></span><strong>&lt; 1.5</strong> — Healthy variation <span class="tr">(Sağlıklı varyasyon)</span></div>
-        <div class="mono-help-line"><span class="dot" style="background:#f59e0b"></span><strong>1.5–2.0</strong> — Monitor closely <span class="tr">(Yakın takip)</span></div>
-        <div class="mono-help-line"><span class="dot" style="background:#ef4444"></span><strong>&gt; 2.0</strong> — Excessive (overtraining risk) <span class="tr">(Aşırı — aşırı yüklenme riski)</span></div>
+        <div class="mono-help-h">${L('Foster Monotonisi = Ortalama / SS','Foster Monotony = Mean / SD')}</div>
+        <div class="mono-help-line"><span class="dot" style="background:#10b981"></span><strong>&lt; 1.5</strong> — ${L('Sağlıklı varyasyon','Healthy variation')}</div>
+        <div class="mono-help-line"><span class="dot" style="background:#f59e0b"></span><strong>1.5–2.0</strong> — ${L('Yakın takip','Monitor closely')}</div>
+        <div class="mono-help-line"><span class="dot" style="background:#ef4444"></span><strong>&gt; 2.0</strong> — ${L('Aşırı (aşırı yüklenme riski)','Excessive (overtraining risk)')}</div>
       </div>
     </div>
   </div>`:'';
@@ -2068,18 +2086,18 @@ function printWeekA4Land(title,weekStart,days,athletes){
     const dayLoad=rDay[i];   // realized team load for the day (matches chart + monotony)
     return`<td class="day-cell${isWeekend?' weekend':''}">
       <div class="day-head">
-        <div class="day-name">${DN[i]}</div>
+        <div class="day-name">${dnL(i)}</div>
         <div class="day-date">${fd(date).slice(0,5)}</div>
       </div>
-      ${ss.length===0?'<div class="rest-tag">REST</div>':
+      ${ss.length===0?`<div class="rest-tag">${L('DİNLENME','REST')}</div>`:
         ss.map(s=>{const c=colorOf(s);return`<div class="sess" style="border-left:4px solid ${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span>${s.sRPE!==''?`<span class="srpe-pill">sRPE ${s.sRPE}</span>`:''}</div>
           <div class="sess-meta"><span>⏱ ${s.time}</span><span>${s.duration}min</span>${s.purpose?`<span class="sess-purpose">${s.purpose}</span>`:''}</div>
         </div>`;}).join('')}
-      ${ss.length>0?`<div class="day-total">Total: ${Math.round(dayLoad)} AU</div>`:''}
+      ${ss.length>0?`<div class="day-total">${L('Toplam','Total')}: ${Math.round(dayLoad)} AU</div>`:''}
       ${day?.dailyNotes?`<div class="day-notes"><em>${day.dailyNotes}</em></div>`:''}
     </td>`;};
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — Weekly Plan</title>
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Haftalık Plan','Weekly Plan')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
 @page{size:A4 landscape;margin:6mm}
@@ -2156,10 +2174,10 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 <div class="hdr">
   <div>
     <h1>${title}</h1>
-    <div class="sub">📅 Week of ${fd(weekStart)} — ${fd(dates[6])}</div>
+    <div class="sub">📅 ${L('Hafta','Week of')} ${fdL(weekStart)} — ${fdL(dates[6])}</div>
   </div>
   <div class="hdr-r">
-    <div><span class="label">Sessions</span> <span class="pill">${totalSessions}</span> <span class="label" style="margin-left:10px">Total Load</span> <span class="pill">${Math.round(rTotal)} AU</span></div>
+    <div><span class="label">${L('Seans','Sessions')}</span> <span class="pill">${totalSessions}</span> <span class="label" style="margin-left:10px">${L('Toplam Yük','Total Load')}</span> <span class="pill">${Math.round(rTotal)} AU</span></div>
   </div>
 </div>
 <table>${dates.map(renderDay).join('')}</table>
@@ -2307,20 +2325,20 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
   // header
   doc.setFillColor(8,145,178);doc.rect(0,0,210,28,'F');
   doc.setTextColor(255);doc.setFontSize(18);doc.text(teamName,14,14);
-  doc.setFontSize(11);doc.text(`Coach Report — ${periodLabel}`,14,22);
+  doc.setFontSize(11);doc.text(`${L('Koç Raporu','Coach Report')} — ${periodLabel}`,14,22);
   doc.setTextColor(40);
   // metrics
-  doc.setFontSize(11);doc.setFont(fontName,'bold');doc.text('Key Metrics',14,38);doc.setFont(fontName,'normal');
+  doc.setFontSize(11);doc.setFont(fontName,'bold');doc.text(L('Temel Göstergeler','Key Metrics'),14,38);doc.setFont(fontName,'normal');
   doc.setFontSize(10);
-  doc.text(`ACWR (today): ${acwrVal.toFixed(2)}  ${acwrVal>1.5?'(HIGH RISK)':acwrVal>=.8&&acwrVal<=1.3?'(safe)':'(low)'}`,14,46);
-  doc.text(`Total load: ${Math.round(monthWeeks.reduce((a,b)=>a+b.total,0))} AU`,14,52);
-  doc.text(`Mean weekly monotony: ${(monthWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,monthWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}`,14,58);
+  doc.text(`${L('ACWR (bugün)','ACWR (today)')}: ${acwrVal.toFixed(2)}  ${acwrVal>1.5?L('(YÜKSEK RİSK)','(HIGH RISK)'):acwrVal>=.8&&acwrVal<=1.3?L('(güvenli)','(safe)'):L('(düşük)','(low)')}`,14,46);
+  doc.text(`${L('Toplam yük','Total load')}: ${Math.round(monthWeeks.reduce((a,b)=>a+b.total,0))} AU`,14,52);
+  doc.text(`${L('Ortalama haftalık monotoni','Mean weekly monotony')}: ${(monthWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,monthWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}`,14,58);
   // weekly table
-  doc.autoTable({startY:66,head:[['Week starting','Total AU','Mean','SD','Monotony','Strain','Flag']],
-    body:monthWeeks.map(w=>[fd(w.wkStart),Math.round(w.total),w.mean.toFixed(0),w.sd.toFixed(1),w.monotony.toFixed(2),Math.round(w.strain),w.monotony>2?'EXCESS':w.monotony>1.5?'WATCH':w.monotony>0?'OK':'—']),
+  doc.autoTable({startY:66,head:[[L('Hafta başı','Week starting'),L('Toplam AU','Total AU'),L('Ort.','Mean'),L('SS','SD'),L('Monotoni','Monotony'),L('Zorlanma','Strain'),L('Durum','Flag')]],
+    body:monthWeeks.map(w=>[fd(w.wkStart),Math.round(w.total),w.mean.toFixed(0),w.sd.toFixed(1),w.monotony.toFixed(2),Math.round(w.strain),w.monotony>2?L('AŞIRI','EXCESS'):w.monotony>1.5?L('İZLE','WATCH'):w.monotony>0?L('İYİ','OK'):'—']),
     headStyles:{font:fontName,fillColor:[8,145,178]},styles:{font:fontName,fontSize:9}});
   // purpose mix
-  if(pMix.length){doc.autoTable({head:[['Training Purpose','Minutes','% of total']],
+  if(pMix.length){doc.autoTable({head:[[L('Antrenman Türü','Training Purpose'),L('Dakika','Minutes'),L('% toplam','% of total')]],
     body:pMix.map(p=>[p.label,p.min,p.pct.toFixed(1)+'%']),headStyles:{font:fontName,fillColor:[139,92,246]},styles:{font:fontName,fontSize:9}});}
   doc.save(`${teamName.replace(/\s+/g,'_')}_report_${periodLabel.replace(/[\s/]+/g,'_')}.pdf`);
 }
@@ -3489,7 +3507,7 @@ function printBodyComp(ath,setup){
   const lineChart=(field,color)=>{
     const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
     const valid=data.map((v,i)=>({v,i})).filter(p=>p.v!=null);
-    if(valid.length===0)return'<div class="empty">No data</div>';
+    if(valid.length===0)return`<div class="empty">${L('Veri yok','No data')}</div>`;
     const cw=420,ch=150,padX=26,padT=26,padB=26;
     const mn=Math.min(...valid.map(p=>p.v)),mx=Math.max(...valid.map(p=>p.v));
     const range=mx-mn||1;const pad=range*.2;const yMin=mn-pad,yMax=mx+pad;
@@ -3510,7 +3528,7 @@ function printBodyComp(ath,setup){
       ${data.map((_,i)=>`<text x="${X(i).toFixed(1)}" y="${ch-7}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="9" fill="#9ca3af">${labels[i]}</text>`).join('')}
     </svg>`;
   };
-  const period=`${fd(sorted[0].date)} → ${fd(sorted[sorted.length-1].date)}`;
+  const period=`${fdL(sorted[0].date)} → ${fdL(sorted[sorted.length-1].date)}`;
   const rows=sorted.slice().reverse().slice(0,5).map(m=>`<tr><td>${fd(m.date)}</td><td>${m.height||'—'}</td><td>${m.weight||'—'}</td><td>${m.bodyFat||'—'}</td><td>${m.muscleMass||'—'}</td></tr>`).join('');
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const html=`<!DOCTYPE html>
@@ -3557,7 +3575,7 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
 .empty{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;padding:24px}
 </style>
 </head><body>
-<div class="print-bar">📄 Body Composition Report is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
+<div class="print-bar">📄 ${L('Vücut Kompozisyonu raporu hazır','Body Composition report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
 <div class="hdr">
   ${ath.photo?`<img class="av" src="${ath.photo}"/>`:`<div class="av">${initials}</div>`}
@@ -3566,33 +3584,33 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
     <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}${ath.height?' · '+ath.height+' cm':''}${ath.weight?' · '+ath.weight+' kg':''}</div>
     <div class="date">📊 ${period}</div>
   </div>
-  <div class="ttl">BODY<br>COMPOSITION</div>
+  <div class="ttl">${L('VÜCUT<br>KOMPOZİSYONU','BODY<br>COMPOSITION')}</div>
 </div>
 <div class="mcards">
   <div class="mcard">
-    <div class="mc-h"><div class="mc-t">Height</div><div class="mc-u">cm</div></div>
+    <div class="mc-h"><div class="mc-t">${L('Boy','Height')}</div><div class="mc-u">cm</div></div>
     <div class="mc-val"><span class="mv" style="color:#a855f7">${h_!=null?h_:'—'}</span>${dh!=null&&dh!==0?`<span class="md ${dh>0?'pos':'neg'}">${fmtD(dh)}</span>`:''}</div>
     <div class="mc-chart">${lineChart('height','#a855f7')}</div>
   </div>
   <div class="mcard">
-    <div class="mc-h"><div class="mc-t">Weight</div><div class="mc-u">kg</div></div>
+    <div class="mc-h"><div class="mc-t">${L('Kilo','Weight')}</div><div class="mc-u">kg</div></div>
     <div class="mc-val"><span class="mv" style="color:#3b82f6">${w_!=null?w_:'—'}</span>${dw!=null&&dw!==0?`<span class="md ${dw>0?'neg':'pos'}">${fmtD(dw)}</span>`:''}</div>
     <div class="mc-chart">${lineChart('weight','#3b82f6')}</div>
   </div>
   <div class="mcard">
-    <div class="mc-h"><div class="mc-t">Body Fat</div><div class="mc-u">%</div></div>
+    <div class="mc-h"><div class="mc-t">${L('Yağ Oranı','Body Fat')}</div><div class="mc-u">%</div></div>
     <div class="mc-val"><span class="mv" style="color:#f97316">${bf!=null?bf:'—'}</span>${dbf!=null&&dbf!==0?`<span class="md ${dbf>0?'neg':'pos'}">${fmtD(dbf)}</span>`:''}</div>
     <div class="mc-chart">${lineChart('bodyFat','#f97316')}</div>
   </div>
   <div class="mcard">
-    <div class="mc-h"><div class="mc-t">Muscle Mass</div><div class="mc-u">kg</div></div>
+    <div class="mc-h"><div class="mc-t">${L('Kas Kütlesi','Muscle Mass')}</div><div class="mc-u">kg</div></div>
     <div class="mc-val"><span class="mv" style="color:#10b981">${mm!=null?mm:'—'}</span>${dmm!=null&&dmm!==0?`<span class="md ${dmm>0?'pos':'neg'}">${fmtD(dmm)}</span>`:''}</div>
     <div class="mc-chart">${lineChart('muscleMass','#10b981')}</div>
   </div>
 </div>
-<div class="section-h">Measurement History</div>
-<table><thead><tr><th style="width:18%">Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Muscle (kg)</th></tr></thead><tbody>${rows}</tbody></table>
-<div class="footer">Generated ${fd(fmt(today))} · ${setup.teamName}</div>
+<div class="section-h">${L('Ölçüm Geçmişi','Measurement History')}</div>
+<table><thead><tr><th style="width:18%">${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>${L('Kas (kg)','Muscle (kg)')}</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
@@ -3603,7 +3621,6 @@ function printTeamBodyComp(athletes,setup){
   const w=window.open('','_blank','width=1300,height=900');
   if(!w){alert('Pop-up engellendi — bu site için pop-up izni ver.');return;}
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const fdTR=ds=>{if(!ds)return'';try{return parseD(ds).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});}catch(e){return fd(ds);}};
   const initials=s=>(s||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const n=(o,k)=>{if(!o)return null;const v=Number(o[k]);return(o[k]===''||o[k]==null||isNaN(v))?null:v;};
   const groups=(athletes||[]).map(a=>({a,ms:[...(a.measurements||[])].filter(m=>m.date).sort((x,y)=>x.date.localeCompare(y.date))}))
@@ -3620,7 +3637,7 @@ function printTeamBodyComp(athletes,setup){
     const dbf=dl('bodyFat'),dmm=dl('muscleMass');
     return`<tr class="${mi===0?'grp':''}">
       <td class="l">${mi===0?`<span class="ath-cell">${g.a.photo?`<img class="av" src="${g.a.photo}"/>`:`<span class="av ph">${esc(initials(g.a.name))}</span>`}<span class="ath-nm">${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}</span></span>`:'<span class="subm">↳</span>'}</td>
-      <td class="mono">${fdTR(m.date)}</td>
+      <td class="mono">${fdL(m.date)}</td>
       <td class="b">${n(m,'height')!=null?n(m,'height'):'—'}</td>
       <td class="b">${n(m,'weight')!=null?n(m,'weight'):'—'}</td>
       <td>${dcell(dl('weight'),null)}</td>
@@ -3670,20 +3687,20 @@ tbody tr.grp:first-child td{border-top:none}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>
-<div class="print-bar">📄 Team Body Composition is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
+<div class="print-bar">📄 ${L('Takım Vücut Kompozisyonu hazır','Team Body Composition is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
 <div class="hdr">
-  <div><h1>${esc(setup.teamName)}</h1><div class="sub">📊 Vücut Kompozisyonu · ${groups.length} sporcu · ${total} ölçüm · ${fdTR(fmt(today))}</div></div>
-  <div class="ttl">BODY<br>COMPOSITION</div>
+  <div><h1>${esc(setup.teamName)}</h1><div class="sub">📊 ${L('Vücut Kompozisyonu','Body Composition')} · ${groups.length} ${L('sporcu','athletes')} · ${total} ${L('ölçüm','measurements')} · ${fdL(fmt(today))}</div></div>
+  <div class="ttl">${L('VÜCUT<br>KOMPOZİSYONU','BODY<br>COMPOSITION')}</div>
 </div>
 <div class="stats">
-  <div class="stat"><div class="k">Avg Height</div><div class="v">${av(avg('height'),'cm')}</div></div>
-  <div class="stat"><div class="k">Avg Weight</div><div class="v">${av(avg('weight'),'kg')}</div></div>
-  <div class="stat"><div class="k">Avg Body Fat</div><div class="v">${av(avg('bodyFat'),'%')}</div></div>
-  <div class="stat"><div class="k">Avg Muscle Mass</div><div class="v">${av(avg('muscleMass'),'kg')}</div></div>
+  <div class="stat"><div class="k">${L('Ort. Boy','Avg Height')}</div><div class="v">${av(avg('height'),'cm')}</div></div>
+  <div class="stat"><div class="k">${L('Ort. Kilo','Avg Weight')}</div><div class="v">${av(avg('weight'),'kg')}</div></div>
+  <div class="stat"><div class="k">${L('Ort. Yağ','Avg Body Fat')}</div><div class="v">${av(avg('bodyFat'),'%')}</div></div>
+  <div class="stat"><div class="k">${L('Ort. Kas Kütlesi','Avg Muscle Mass')}</div><div class="v">${av(avg('muscleMass'),'kg')}</div></div>
 </div>
-<table><thead><tr><th class="l">Athlete</th><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Δ</th><th>Body Fat (%)</th><th>Δ</th><th>Muscle (kg)</th><th>Δ</th></tr></thead><tbody>${tr}</tbody></table>
-<div class="footer">Δ = bir önceki ölçüme göre değişim · ${fdTR(fmt(today))} tarihinde oluşturuldu · ${esc(setup.teamName)}</div>
+<table><thead><tr><th class="l">${L('Sporcu','Athlete')}</th><th>${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>Δ</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>Δ</th><th>${L('Kas (kg)','Muscle (kg)')}</th><th>Δ</th></tr></thead><tbody>${tr}</tbody></table>
+<div class="footer">${L('Δ = bir önceki ölçüme göre değişim','Δ = change vs previous measurement')} · ${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(setup.teamName)}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
@@ -5942,6 +5959,17 @@ function ResearchesView({data,setData}){
   </div>);
 }
 
+function ReportLangToggle(){
+  const[,force]=useState(0);
+  const set=l=>{setReportLang(l);force(x=>x+1);};
+  return(<div className="rlang">
+    <span className="rlang-lbl">{L('Çıktı dili','Report language')}</span>
+    <div className="rlang-seg">
+      <button className={REPORT_LANG==='tr'?'on':''} onClick={()=>set('tr')}>TR</button>
+      <button className={REPORT_LANG==='en'?'on':''} onClick={()=>set('en')}>EN</button>
+    </div>
+  </div>);
+}
 function App(){
   const[data,setData]=useLocal('pp-data',makeDefault());
   const sync=useCloudSync(data,setData);
@@ -5999,6 +6027,7 @@ function App(){
           </button>)}
         </div>)}
       </nav>
+      <ReportLangToggle/>
     </aside>
     <div className="content">
     {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
