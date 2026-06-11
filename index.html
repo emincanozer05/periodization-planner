@@ -5268,14 +5268,24 @@ async function cloudWrite(fb,uid,str,rev){
   return rev;
 }
 async function cloudRead(fb,uid){
+  // Reconcile MUST hit the server, never the local Firestore cache — otherwise a
+  // device with a stale offline cache "reads" old data on login and then clobbers
+  // the account. fromServer tells the caller whether we actually confirmed the
+  // server's truth (false = offline / read failed = it is NOT safe to upload).
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
-  const meta=await userDoc.get();
-  if(!meta.exists||!meta.data()||!meta.data().chunks)return null;
+  let meta,fromServer=false;
+  try{meta=await userDoc.get({source:'server'});fromServer=true;}
+  catch(e){try{meta=await userDoc.get();}catch(e2){return{str:null,rev:null,fromServer:false};}}
+  if(!meta.exists||!meta.data()||!meta.data().chunks)return{str:null,rev:null,fromServer};
   const md=meta.data(),n=md.chunks;
+  const opt=fromServer?{source:'server'}:undefined;
+  const chunk=i=>userDoc.collection('data').doc(String(i)).get(opt)
+    .then(d=>(d.exists&&d.data())?(d.data().c||''):'')
+    .catch(()=>userDoc.collection('data').doc(String(i)).get().then(d=>(d.exists&&d.data())?(d.data().c||''):''));
   // Read all chunks in parallel (was sequential = N round-trips = slow reconcile)
-  const parts=await Promise.all(Array.from({length:n},(_,i)=>userDoc.collection('data').doc(String(i)).get().then(d=>(d.exists&&d.data())?(d.data().c||''):'')));
-  return{str:parts.join(''),rev:md.rev};
+  const parts=await Promise.all(Array.from({length:n},(_,i)=>chunk(i)));
+  return{str:parts.join(''),rev:md.rev,fromServer};
 }
 async function cloudReadBackup(fb,uid){
   const db=fb.firestore();
@@ -5337,8 +5347,9 @@ function useCloudSync(data,setData){
             }else{
               const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);lastRev.current=cloud.rev;setData(p);setStatus('synced');
             }
-          }else{
-            // brand-new account: cloud is empty.
+            ready.current=true; // server truth loaded — uploads from this device are now safe
+          }else if(cloud&&cloud.fromServer){
+            // Server CONFIRMED the account is empty (brand-new account).
             if(localReal){
               const keepLocal=window.confirm('Bu hesapta bulutta veri yok.\n\nTAMAM = şu an ekrandaki verileri bu hesaba yükle\nİPTAL = TEMİZ / boş sayfa ile başla');
               if(keepLocal){await seed(localStr);}
@@ -5347,17 +5358,24 @@ function useCloudSync(data,setData){
               // Empty device + empty cloud: just start. Don't push an empty payload up.
               lastJson.current=localStr;setStatus('synced');
             }
+            ready.current=true; // server reconciled — uploads are now safe
+          }else{
+            // Could NOT reach the server (offline / read failed). Show whatever we
+            // have locally, but DO NOT mark ready: uploading now might overwrite a
+            // newer copy made on another device. We reconcile when a server snapshot
+            // arrives in the branch below.
+            lastJson.current=localStr;setStatus('error');
           }
-          ready.current=true; // cloud reconciled — uploads from this device are now safe
-        }else if(rev&&rev!==lastRev.current){
-          // A genuinely remote change (different device). Our own writes are skipped
-          // because the writer claims its rev BEFORE committing.
+        }else if(rev&&rev!==lastRev.current&&!(snap.metadata&&snap.metadata.hasPendingWrites)){
+          // A genuinely remote change (different device). Skip our own optimistic
+          // write echoes (hasPendingWrites) and always reconcile against the server.
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.str){
             const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
             lastJson.current=pstr;lastRev.current=cloud.rev;
             if(pstr!==JSON.stringify(dataRef.current))setData(p);
             setStatus('synced');
+            ready.current=true; // covers the case where the first reconcile was offline
           }
         }
       }catch(e){console.warn('sync',e);setStatus('error');}
@@ -5378,8 +5396,13 @@ function useCloudSync(data,setData){
       lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
       setStatus('syncing');
       // "synced" (green) only once the SERVER acknowledges the write — so the
-      // indicator truthfully means other devices can now read this change.
-      cloudWrite(fb,user.uid,j,rev).then(()=>setStatus('synced')).catch(e=>{console.warn('write',e);setStatus('error');});
+      // indicator truthfully means other devices can now read this change. With
+      // offline persistence commit() resolves from the LOCAL cache, so we also
+      // wait for waitForPendingWrites() (resolves only after the backend acks).
+      cloudWrite(fb,user.uid,j,rev)
+        .then(()=>fb.firestore().waitForPendingWrites().catch(()=>{}))
+        .then(()=>setStatus('synced'))
+        .catch(e=>{console.warn('write',e);setStatus('error');});
     };
     writeRef.current=writeNow;
     // Firestore offline-persistence queues the mutation locally, so even if the
