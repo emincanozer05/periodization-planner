@@ -1583,6 +1583,52 @@ function ChartC({type,chartData,options}){
   return <canvas ref={ref}/>;
 }
 
+/* Dependency-free weekly chart (inline SVG). Measures its own container and
+   draws at exact pixel size, so unlike the Chart.js canvas it can never end up
+   blank from a 0-size/timing race. Used by the Wellness History card. */
+function WeekChartSVG({data,avg,color,dot,unit,labels}){
+  const wrapRef=useRef(null);
+  const[sz,setSz]=useState({w:640,h:240});
+  useEffect(()=>{const el=wrapRef.current;if(!el)return;
+    const m=()=>setSz({w:Math.max(120,el.clientWidth),h:Math.max(120,el.clientHeight)});
+    m();let ro;if(window.ResizeObserver){ro=new ResizeObserver(m);try{ro.observe(el);}catch{}}
+    window.addEventListener('resize',m);
+    return()=>{window.removeEventListener('resize',m);try{ro&&ro.disconnect();}catch{}};
+  },[]);
+  const{w,h}=sz;
+  const has=data.some(v=>v!=null);
+  const padL=34,padR=16,padT=16,padB=24;
+  const plotW=Math.max(1,w-padL-padR),plotH=Math.max(1,h-padT-padB),n=data.length;
+  const xOf=i=>padL+(n<=1?plotW/2:i*(plotW/(n-1)));
+  const five=unit==='/5';
+  const vals=data.filter(v=>v!=null);
+  let lo,hi;
+  if(five){lo=1;hi=5;}
+  else if(vals.length){const mn=Math.min(...vals),mx=Math.max(...vals),pad=Math.max(1,Math.round((mx-mn)*0.15));lo=Math.floor(mn-pad);hi=Math.ceil(mx+pad);if(lo>=hi){lo-=1;hi+=1;}}
+  else{lo=0;hi=1;}
+  const yOf=v=>padT+(1-(v-lo)/((hi-lo)||1))*plotH;
+  const ticks=five?[1,2,3,4,5]:[...new Set(Array.from({length:5},(_,k)=>Math.round(lo+((hi-lo)/4)*k)))];
+  const pts=data.map((v,i)=>v==null?null:{x:xOf(i),y:yOf(v),v,i}).filter(Boolean);
+  const line=pts.map((p,k)=>(k?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const base=(h-padB).toFixed(1);
+  const area=pts.length>1?`M${pts[0].x.toFixed(1)} ${base} `+pts.map(p=>'L'+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')+` L${pts[pts.length-1].x.toFixed(1)} ${base} Z`:'';
+  return <div ref={wrapRef} style={{width:'100%',height:'100%'}}>
+    {!has
+      ?<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--dim)',fontSize:13}}>Bu hafta için veri yok</div>
+      :<svg width={w} height={h} style={{display:'block'}}>
+        {ticks.map((t,k)=><g key={'t'+k}>
+          <line x1={padL} y1={yOf(t)} x2={w-padR} y2={yOf(t)} stroke="rgba(255,255,255,.05)"/>
+          <text x={padL-8} y={yOf(t)+3} textAnchor="end" fill="#74808f" fontFamily="IBM Plex Mono" fontSize="10">{t}</text>
+        </g>)}
+        {labels.map((lb,i)=><text key={'x'+i} x={xOf(i)} y={h-8} textAnchor="middle" fill="#74808f" fontFamily="IBM Plex Mono" fontSize="10">{lb}</text>)}
+        {area&&<path d={area} fill={color} opacity="0.15"/>}
+        {avg!=null&&<line x1={padL} y1={yOf(avg)} x2={w-padR} y2={yOf(avg)} stroke={dot} strokeWidth="1.5" strokeDasharray="5 4"/>}
+        {line&&<path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>}
+        {pts.map((p,k)=><circle key={'p'+k} cx={p.x} cy={p.y} r="4" fill={dot} stroke="#0d0f13" strokeWidth="1.5"><title>{(labels[p.i]||'')+': '+p.v+(five?'/5':' '+unit)}</title></circle>)}
+      </svg>}
+  </div>;
+}
+
 /* Build one report section (compact CSS bar chart of column team totals +
    athlete x column matrix with per-athlete totals, column totals and grand
    total). Returns an HTML string. `perAthlete` = [{name,data:[...]}]. */
@@ -4608,19 +4654,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
               </div>
             </div>
             <div className="wh-chart">
-              <ChartC type="line" chartData={{labels:labels7,datasets:[
-                {label:M.label,data:weekData,borderColor:M.color,backgroundColor:M.color+'26',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:M.dot,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,order:1,datalabels:{display:false}},
-                ...(weekAvg!=null?[{label:'avg',data:days7.map(()=>weekAvg),borderColor:M.dot,borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:2,datalabels:{display:ctx=>ctx.dataIndex===6,align:'top',anchor:'end',color:M.dot,font:{size:10,weight:'bold',family:'IBM Plex Mono'},formatter:()=>'avg'}}]:[])
-              ]}} options={{responsive:true,maintainAspectRatio:false,
-                interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
-                layout:{padding:{top:18,right:26,left:4,bottom:2}},
-                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},maxRotation:0,autoSkip:true,maxTicksLimit:7},grid:{display:false},border:{display:false}},
-                  y:M.unit==='/5'
-                    ?{min:1,max:5,ticks:{stepSize:1,color:'#74808f',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}
-                    :{beginAtZero:false,ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}},
-                plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,filter:i=>i.datasetIndex===0,callbacks:{
-                  title:items=>{const dt=parseD(days7[items[0].dataIndex]);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
-                  label:i=>`${M.label}: ${i.parsed.y}${M.unit==='/5'?'/5':' bpm'}`}}}}}/>
+              <WeekChartSVG data={weekData} avg={weekAvg} color={M.color} dot={M.dot} unit={M.unit} labels={labels7}/>
             </div>
           </div>
             {/* Collapsible paginated table */}
