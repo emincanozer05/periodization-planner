@@ -2932,7 +2932,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>
         <div><label>Load type</label><select value={session.loadType} onChange={e=>u({loadType:e.target.value})}>{LOAD_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
         <div><label>Purpose</label><select value={session.purpose} onChange={e=>u({purpose:e.target.value})}>{PURPOSES.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
+        <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
       <div style={{marginBottom:14}}>
         <label>Card color <span style={{color:'var(--dim)',fontWeight:400,textTransform:'none',letterSpacing:0,fontFamily:'inherit',fontSize:11}}>(takvimdeki kart kenar rengi)</span></label>
@@ -2951,14 +2951,14 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div>
           <label>RPE (0-10) — auto-fills AU</label>
           <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="RPE'yi yaz (örn. 7.5)"
-            onChange={e=>u({sRPE:e.target.value})}
+            onChange={e=>{const v=e.target.value;const upd={sRPE:v};if(!session.auManual&&v!=='')upd.au=Math.round(Number(v)*Number(session.duration||0));u(upd);}}
             style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
           <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
         </div>
         <div>
           <label>Session Load (AU) — editable</label>
-          <input type="number" value={session.au} onChange={e=>u({au:e.target.value})} placeholder="Type AU or use sRPE" style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          <div className="help">{session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
+          <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder="Type AU or use sRPE" style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
+          <div className="help">{session.auManual?'Manuel AU — sRPE/süre değişince korunur':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
         </div>
         <div><label>Notes</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder="Observations…"/></div>
       </div>
@@ -5365,15 +5365,18 @@ function useCloudSync(data,setData){
   // when the tab is hidden / closed / the user switches device.
   useEffect(()=>{
     const fb=FB(); if(!fb||!user){writeRef.current=null;return;}
-    const writeNow=async()=>{
+    const writeNow=()=>{
       if(!ready.current)return;
       if(timer.current){clearTimeout(timer.current);timer.current=null;}
       const j=JSON.stringify(dataRef.current);
       if(j===lastJson.current)return;
       const rev=mkRev();
       lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
-      try{await cloudWrite(fb,user.uid,j,rev);setStatus('synced');}
-      catch(e){console.warn('write',e);setStatus('error');}
+      // Optimistic: the change is durably stored locally (offline persistence) and
+      // will sync — show "synced" right away instead of waiting for the server ack,
+      // which can be slow/absent on flaky connections. Only flag a real rejection.
+      setStatus('synced');
+      cloudWrite(fb,user.uid,j,rev).catch(e=>{console.warn('write',e);setStatus('error');});
     };
     writeRef.current=writeNow;
     // Firestore offline-persistence queues the mutation locally, so even if the
