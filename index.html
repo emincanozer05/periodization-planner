@@ -881,6 +881,18 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc-st .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
 .rc-st .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text)}
 .rc-st .v small{font-size:10px;font-weight:500;color:var(--dim)}
+/* Team Body Composition table */
+.tbc-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
+.tbc-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+.tbc-tbl th.l{text-align:left}
+.tbc-tbl td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);white-space:nowrap}
+.tbc-tbl td.l{text-align:left}
+.tbc-tbl td.b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;color:var(--text)}
+.tbc-tbl tr.tbc-row{cursor:pointer}
+.tbc-tbl tbody tr:hover td{background:var(--panel)}
+.tbc-ath{display:inline-flex;align-items:center;gap:11px;font-weight:600;color:var(--text)}
+.tbc-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
+.tbc-av img{width:100%;height:100%;object-fit:cover}
 
 /* ===== Athlete profile header card ===== */
 .ap-head{display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px 24px;margin-bottom:18px}
@@ -3580,6 +3592,89 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
 }
 
+/* Team Body Composition — landscape A4 report of all athletes' latest measurements */
+function printTeamBodyComp(athletes,setup){
+  const w=window.open('','_blank','width=1300,height=900');
+  if(!w){alert('Pop-up engellendi — bu site için pop-up izni ver.');return;}
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const n=(o,k)=>{if(!o)return null;const v=Number(o[k]);return(o[k]===''||o[k]==null||isNaN(v))?null:v;};
+  const rows=(athletes||[]).map(a=>{
+    const ms=[...(a.measurements||[])].filter(m=>m.date).sort((x,y)=>x.date.localeCompare(y.date));
+    const cur=ms[ms.length-1],prev=ms.length>1?ms[ms.length-2]:null;
+    const dl=k=>{const c=n(cur,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
+    return{name:a.name||'—',num:a.number,pos:a.position||'',date:cur?cur.date:null,
+      h:n(cur,'height'),wt:n(cur,'weight'),bf:n(cur,'bodyFat'),mm:n(cur,'muscleMass'),
+      dw:dl('weight'),dbf:dl('bodyFat'),dmm:dl('muscleMass'),has:!!cur};
+  }).filter(r=>r.has).sort((a,b)=>a.name.localeCompare(b.name));
+  if(rows.length===0){alert('No body composition data');w.close();return;}
+  const avg=k=>{const vs=rows.map(r=>r[k]).filter(v=>v!=null);return vs.length?+(vs.reduce((a,b)=>a+b,0)/vs.length).toFixed(1):null;};
+  const av=(v,u)=>v==null?'—':`${v}<span class="u">${u}</span>`;
+  const dcell=(v,good)=>v==null?'<span class="dim">—</span>':`<span class="${good==null?'':(good?'pos':'neg')}">${v>0?'+'+v:v}</span>`;
+  const tr=rows.map(r=>`<tr>
+    <td class="l">${r.num?`<span class="jn">#${esc(String(r.num))}</span>`:''}${esc(r.name)}</td>
+    <td>${r.pos?esc(r.pos):'—'}</td>
+    <td class="b">${r.h!=null?r.h:'—'}</td>
+    <td class="b">${r.wt!=null?r.wt:'—'}</td>
+    <td>${dcell(r.dw,null)}</td>
+    <td class="b">${r.bf!=null?r.bf:'—'}</td>
+    <td>${dcell(r.dbf,r.dbf==null?null:r.dbf<0)}</td>
+    <td class="b">${r.mm!=null?r.mm:'—'}</td>
+    <td>${dcell(r.dmm,r.dmm==null?null:r.dmm>0)}</td>
+    <td class="mono">${r.date?fd(r.date):'—'}</td>
+  </tr>`).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Body Composition — ${esc(setup.teamName)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 landscape;margin:9mm}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+:root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#9aa0a8;--bg2:#f4f5f7}
+body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+.hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#0a0b0d,#15171c);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
+.hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
+.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
+.hdr .ttl{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:11px;padding:11px 15px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+.stat .k{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.stat .v{font-size:24px;font-weight:700;letter-spacing:-.01em;margin-top:4px}
+.stat .v .u{font-size:11px;font-weight:500;color:var(--dim);margin-left:3px}
+table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:11px;overflow:hidden}
+th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;padding:9px 8px;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+th.l,td.l{text-align:left;padding-left:14px}
+td{padding:8px;text-align:center;font-size:11px;border-top:1px solid var(--border);color:var(--text)}
+td.l{font-weight:600}
+td.b{font-weight:700}
+td.mono,td .jn,.dim,.pos,.neg{font-family:'IBM Plex Mono',monospace}
+td.mono{font-size:10px;color:var(--muted)}
+.jn{font-size:9px;color:var(--dim);margin-right:7px}
+.pos{color:#16a34a;font-weight:600}.neg{color:#dc2626;font-weight:600}.dim{color:#c2c6cc}
+tr:nth-child(even) td{background:var(--bg2)}
+.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);margin-top:10px;letter-spacing:.06em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;z-index:9999}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+@media print{.print-bar,.scr-sp{display:none}}
+</style></head><body>
+<div class="print-bar">📄 Team Body Composition is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
+<div class="scr-sp" style="margin-top:50px"></div>
+<div class="hdr">
+  <div><h1>${esc(setup.teamName)}</h1><div class="sub">📊 Team Body Composition · ${rows.length} athletes · ${fd(fmt(today))}</div></div>
+  <div class="ttl">BODY<br>COMPOSITION</div>
+</div>
+<div class="stats">
+  <div class="stat"><div class="k">Avg Height</div><div class="v">${av(avg('h'),'cm')}</div></div>
+  <div class="stat"><div class="k">Avg Weight</div><div class="v">${av(avg('wt'),'kg')}</div></div>
+  <div class="stat"><div class="k">Avg Body Fat</div><div class="v">${av(avg('bf'),'%')}</div></div>
+  <div class="stat"><div class="k">Avg Muscle Mass</div><div class="v">${av(avg('mm'),'kg')}</div></div>
+</div>
+<table><thead><tr><th class="l">Athlete</th><th>Pos</th><th>Height (cm)</th><th>Weight (kg)</th><th>Δ</th><th>Body Fat (%)</th><th>Δ</th><th>Muscle (kg)</th><th>Δ</th><th>Last Measured</th></tr></thead><tbody>${tr}</tbody></table>
+<div class="footer">Δ = change vs previous measurement · Generated ${fd(fmt(today))} · ${esc(setup.teamName)}</div>
+</body></html>`;
+  w.document.write(html);w.document.close();
+  setTimeout(()=>{try{w.focus();}catch(e){}},400);
+}
+
 function generateTestPDF(test,ath,setup){
   const w=window.open('','_blank','width=900,height=1200');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.');return;}
@@ -4765,6 +4860,44 @@ function Athletes({team,updateTeam,weeks}){
         </div>
       </div>);
     })}</div>
+    {athletes.length>0&&(()=>{
+      const n=(o,k)=>{if(!o)return null;const v=Number(o[k]);return(o[k]===''||o[k]==null||isNaN(v))?null:v;};
+      const rows=athletes.map(a=>{
+        const ms=[...(a.measurements||[])].filter(m=>m.date).sort((x,y)=>x.date.localeCompare(y.date));
+        const cur=ms[ms.length-1],prev=ms.length>1?ms[ms.length-2]:null;
+        const dl=k=>{const c=n(cur,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
+        return{a,cur,date:cur?cur.date:null,h:n(cur,'height'),w:n(cur,'weight'),bf:n(cur,'bodyFat'),mm:n(cur,'muscleMass'),
+          dw:dl('weight'),dbf:dl('bodyFat'),dmm:dl('muscleMass')};
+      }).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||''));
+      const withData=rows.filter(r=>r.cur);
+      const dCell=(v,good)=>v==null?<span style={{color:'var(--dim)'}}>—</span>:<span style={{color:good==null?'var(--text2)':(good?'var(--low-t)':'var(--high-t)'),fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontWeight:600}}>{v>0?'+'+v:v}</span>;
+      return(<div className="panel" style={{marginTop:18}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
+            <h2 style={{margin:0,fontSize:18}}>Team Body Composition</h2>
+            <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{withData.length} with data · latest measurement</span>
+          </div>
+          <button className="btn sec sm" disabled={withData.length===0} onClick={()=>printTeamBodyComp(athletes,team.setup)} title="Tüm sporcuların body composition raporu (yatay A4)">⎙ Print (A4)</button>
+        </div>
+        {withData.length===0?<div className="empty-st">No measurements yet — add them in an athlete's Body Comp tab.</div>:
+        <div style={{overflowX:'auto'}}>
+          <table className="tbc-tbl">
+            <thead><tr><th className="l">Athlete</th><th>Pos</th><th>Height</th><th>Weight</th><th>Δ</th><th>Body Fat</th><th>Δ</th><th>Muscle</th><th>Δ</th><th>Last</th></tr></thead>
+            <tbody>{rows.map((r,i)=><tr key={i} style={r.cur?null:{opacity:.45}} onClick={()=>setSel(r.a.id)} className="tbc-row">
+              <td className="l"><span className="tbc-ath"><span className="tbc-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</span>{r.a.name}</span></td>
+              <td>{r.a.position||'—'}</td>
+              <td>{r.h!=null?r.h:'—'}</td>
+              <td className="b">{r.w!=null?r.w:'—'}</td>
+              <td>{dCell(r.dw,null)}</td>
+              <td className="b">{r.bf!=null?r.bf:'—'}</td>
+              <td>{dCell(r.dbf,r.dbf==null?null:r.dbf<0)}</td>
+              <td className="b">{r.mm!=null?r.mm:'—'}</td>
+              <td>{dCell(r.dmm,r.dmm==null?null:r.dmm>0)}</td>
+              <td style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>{r.date?fd(r.date).slice(0,5):'—'}</td>
+            </tr>)}</tbody>
+          </table>
+        </div>}
+      </div>);})()}
   </div>);
 }
 
