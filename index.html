@@ -5275,8 +5275,14 @@ async function cloudRead(fb,uid){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   let meta,fromServer=false;
-  try{meta=await userDoc.get({source:'server'});fromServer=true;}
-  catch(e){try{meta=await userDoc.get();}catch(e2){return{str:null,rev:null,fromServer:false};}}
+  // Insist on the server, retrying a few times — on mobile the connection often
+  // isn't warm yet at page load and the first server read fails. Without this we
+  // would silently fall back to the stale local cache and show old data on open.
+  for(let attempt=0;attempt<4&&!fromServer;attempt++){
+    try{meta=await userDoc.get({source:'server'});fromServer=true;}
+    catch(e){await new Promise(r=>setTimeout(r,400*(attempt+1)));}
+  }
+  if(!fromServer){try{meta=await userDoc.get();}catch(e2){return{str:null,rev:null,fromServer:false};}}
   if(!meta.exists||!meta.data()||!meta.data().chunks)return{str:null,rev:null,fromServer};
   const md=meta.data(),n=md.chunks;
   const opt=fromServer?{source:'server'}:undefined;
@@ -5312,6 +5318,7 @@ function useCloudSync(data,setData){
   const dataRef=useRef(data); dataRef.current=data;
   const timer=useRef(null);
   const writeRef=useRef(null); // current immediate-write fn (used by debounce + flush-on-hide)
+  const pullRef=useRef(null);  // current pull-from-server fn (focus/online + retry after a cache-only load)
   const ready=useRef(false); // true only AFTER the cloud has been reconciled on login
 
   // auth state
@@ -5339,9 +5346,9 @@ function useCloudSync(data,setData){
           const localStr=JSON.stringify(dataRef.current);
           const cloud=await cloudRead(fb,user.uid);
           const localReal=hasRealData(dataRef.current);
-          if(cloud&&cloud.str){
-            // Cloud is the source of truth: on login ALWAYS show the cloud copy.
-            // This is predictable and a stale/empty device can never overwrite the account.
+          if(cloud&&cloud.str&&cloud.fromServer){
+            // Server truth: on login ALWAYS show the cloud copy. This is predictable
+            // and a stale/empty device can never overwrite the account.
             if(cloud.str===localStr){
               lastJson.current=cloud.str;lastRev.current=cloud.rev;setStatus('synced');
             }else{
@@ -5359,12 +5366,19 @@ function useCloudSync(data,setData){
               lastJson.current=localStr;setStatus('synced');
             }
             ready.current=true; // server reconciled — uploads are now safe
+          }else if(cloud&&cloud.str){
+            // Only the offline cache was reachable (server still unavailable). Show it
+            // so the screen isn't empty, but do NOT trust it as final and do NOT mark
+            // ready — uploading now could overwrite a newer copy from another device.
+            // Keep retrying the server in the background until it confirms.
+            const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
+            if(pstr!==localStr)setData(p);
+            lastJson.current=pstr;lastRev.current=cloud.rev;setStatus('syncing');
+            [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
           }else{
-            // Could NOT reach the server (offline / read failed). Show whatever we
-            // have locally, but DO NOT mark ready: uploading now might overwrite a
-            // newer copy made on another device. We reconcile when a server snapshot
-            // arrives in the branch below.
-            lastJson.current=localStr;setStatus('error');
+            // Nothing reachable at all — keep local, retry on focus/online + timers.
+            lastJson.current=localStr;setStatus('syncing');
+            [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
           }
         }else if(rev&&rev!==lastRev.current&&!(snap.metadata&&snap.metadata.hasPendingWrites)){
           // A genuinely remote change (different device). Skip our own optimistic
@@ -5412,23 +5426,28 @@ function useCloudSync(data,setData){
     // no manual reload.
     let pulling=false;
     const pullNow=async()=>{
-      if(!ready.current||pulling)return;
+      if(pulling)return;
       if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
-      // If THIS device has edits not yet uploaded, push them instead of pulling —
-      // never clobber the change the user is currently looking at.
-      if(JSON.stringify(dataRef.current)!==lastJson.current){writeNow();return;}
+      // If we're already reconciled AND have local edits not yet uploaded, push them
+      // instead of pulling — never clobber the change the user is looking at.
+      if(ready.current&&JSON.stringify(dataRef.current)!==lastJson.current){writeNow();return;}
       pulling=true;
       try{
         const cloud=await cloudRead(fb,user.uid);
-        if(cloud&&cloud.str&&cloud.rev&&cloud.rev!==lastRev.current){
-          const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
-          lastJson.current=pstr;lastRev.current=cloud.rev;
-          if(pstr!==JSON.stringify(dataRef.current))setData(p);
-          setStatus('synced');
+        if(cloud&&cloud.fromServer){
+          // Server confirmed. Apply if it's newer than what we have, then mark ready
+          // (this also un-sticks a load that could only reach the offline cache).
+          if(cloud.str&&cloud.rev!==lastRev.current){
+            const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
+            lastJson.current=pstr;lastRev.current=cloud.rev;
+            if(pstr!==JSON.stringify(dataRef.current))setData(p);
+          }
+          ready.current=true;setStatus('synced');
         }
       }catch(e){console.warn('pull',e);}
       finally{pulling=false;}
     };
+    pullRef.current=pullNow;
     // Firestore offline-persistence queues the mutation locally, so even if the
     // page is closing the change survives and syncs on the next opportunity.
     const onVis=()=>{if(document.visibilityState==='hidden')writeNow();else pullNow();};
@@ -5439,7 +5458,7 @@ function useCloudSync(data,setData){
     window.addEventListener('pagehide',onLeave);
     window.addEventListener('beforeunload',onLeave);
     return ()=>{
-      writeRef.current=null;
+      writeRef.current=null;pullRef.current=null;
       document.removeEventListener('visibilitychange',onVis);
       window.removeEventListener('focus',pullNow);
       window.removeEventListener('online',pullNow);
