@@ -5409,12 +5409,13 @@ function useCloudSync(data,setData){
       const rev=mkRev();
       lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
       setStatus('syncing');
-      // "synced" (green) only once the SERVER acknowledges the write — so the
-      // indicator truthfully means other devices can now read this change. With
-      // offline persistence commit() resolves from the LOCAL cache, so we also
-      // wait for waitForPendingWrites() (resolves only after the backend acks).
+      // When online, batch.commit() already resolves only AFTER the server
+      // acknowledges the write, so "synced" here honestly means other devices can
+      // read this change. When offline the promise stays pending (the mutation is
+      // safely queued in IndexedDB) and resolves — flipping to "synced" — once the
+      // connection returns. (An earlier waitForPendingWrites() wrapper was removed:
+      // it was redundant and left the indicator stuck on "syncing".)
       cloudWrite(fb,user.uid,j,rev)
-        .then(()=>fb.firestore().waitForPendingWrites().catch(()=>{}))
         .then(()=>setStatus('synced'))
         .catch(e=>{console.warn('write',e);setStatus('error');});
     };
@@ -5523,6 +5524,9 @@ function AuthModal({sync,onClose}){
   </div>);
 }
 
+// Bump this on every deploy so you can verify (e.g. on your phone) that the
+// device actually loaded the latest version and isn't serving a cached old build.
+const APP_BUILD='2026-06-12 · b5';
 function CloudBar({sync,onOpen}){
   const{user,status}=sync;
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
@@ -6108,7 +6112,7 @@ function App(){
   return(<div className="app">
     <datalist id="lib-exercises">{[...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))].map((n,i)=><option key={i} value={n}/>)}</datalist>
     <aside className="sidebar">
-      <div className="brand"><img className="brand-logo" src="logo.png" alt="Zone Planner"/></div>
+      <div className="brand"><img className="brand-logo" src="logo.png" alt="Zone Planner"/><span style={{fontSize:9,color:'var(--dim)',marginLeft:6,letterSpacing:.3,whiteSpace:'nowrap'}} title="App version — make sure each device shows this after an update">{APP_BUILD}</span></div>
       <div className="brand-team">
         <div className="bt-row team-sel">
           <span className="bt-label">Team</span>
