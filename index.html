@@ -5297,6 +5297,7 @@ function useCloudSync(data,setData){
   const lastRev=useRef(null);
   const dataRef=useRef(data); dataRef.current=data;
   const timer=useRef(null);
+  const writeRef=useRef(null); // current immediate-write fn (used by debounce + flush-on-hide)
   const ready=useRef(false); // true only AFTER the cloud has been reconciled on login
 
   // auth state
@@ -5360,7 +5361,37 @@ function useCloudSync(data,setData){
     return unsub;
   },[user]);
 
-  // write local changes up (debounced)
+  // Immediate write helper + flush-on-hide so a pending change is never lost
+  // when the tab is hidden / closed / the user switches device.
+  useEffect(()=>{
+    const fb=FB(); if(!fb||!user){writeRef.current=null;return;}
+    const writeNow=async()=>{
+      if(!ready.current)return;
+      if(timer.current){clearTimeout(timer.current);timer.current=null;}
+      const j=JSON.stringify(dataRef.current);
+      if(j===lastJson.current)return;
+      const rev=mkRev();
+      lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
+      try{await cloudWrite(fb,user.uid,j,rev);setStatus('synced');}
+      catch(e){console.warn('write',e);setStatus('error');}
+    };
+    writeRef.current=writeNow;
+    // Firestore offline-persistence queues the mutation locally, so even if the
+    // page is closing the change survives and syncs on the next opportunity.
+    const onHide=()=>{if(document.visibilityState==='hidden')writeNow();};
+    const onLeave=()=>writeNow();
+    document.addEventListener('visibilitychange',onHide);
+    window.addEventListener('pagehide',onLeave);
+    window.addEventListener('beforeunload',onLeave);
+    return ()=>{
+      writeRef.current=null;
+      document.removeEventListener('visibilitychange',onHide);
+      window.removeEventListener('pagehide',onLeave);
+      window.removeEventListener('beforeunload',onLeave);
+    };
+  },[user]);
+
+  // write local changes up (short debounce, flushed via writeRef)
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;} // cancel any pending (possibly stale) write
@@ -5368,12 +5399,7 @@ function useCloudSync(data,setData){
     const j=JSON.stringify(data);
     if(j===lastJson.current)return;
     setStatus('syncing');
-    timer.current=setTimeout(async()=>{
-      const rev=mkRev();
-      lastRev.current=rev;lastJson.current=j;   // claim rev BEFORE writing so our own snapshot is ignored
-      try{await cloudWrite(fb,user.uid,j,rev);setStatus('synced');}
-      catch(e){console.warn('write',e);setStatus('error');}
-    },800);
+    timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},400);
   },[data,user]);
 
   return{user,status,
