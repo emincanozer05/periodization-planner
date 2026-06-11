@@ -5405,16 +5405,44 @@ function useCloudSync(data,setData){
         .catch(e=>{console.warn('write',e);setStatus('error');});
     };
     writeRef.current=writeNow;
+    // Pull the latest from the server whenever this tab becomes active again.
+    // Browsers throttle/suspend the realtime listener in background tabs, so a
+    // change made on another device may not arrive until you come back here. This
+    // makes "switch back to a device" behave like other apps — it refreshes itself,
+    // no manual reload.
+    let pulling=false;
+    const pullNow=async()=>{
+      if(!ready.current||pulling)return;
+      if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
+      // If THIS device has edits not yet uploaded, push them instead of pulling —
+      // never clobber the change the user is currently looking at.
+      if(JSON.stringify(dataRef.current)!==lastJson.current){writeNow();return;}
+      pulling=true;
+      try{
+        const cloud=await cloudRead(fb,user.uid);
+        if(cloud&&cloud.str&&cloud.rev&&cloud.rev!==lastRev.current){
+          const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
+          lastJson.current=pstr;lastRev.current=cloud.rev;
+          if(pstr!==JSON.stringify(dataRef.current))setData(p);
+          setStatus('synced');
+        }
+      }catch(e){console.warn('pull',e);}
+      finally{pulling=false;}
+    };
     // Firestore offline-persistence queues the mutation locally, so even if the
     // page is closing the change survives and syncs on the next opportunity.
-    const onHide=()=>{if(document.visibilityState==='hidden')writeNow();};
+    const onVis=()=>{if(document.visibilityState==='hidden')writeNow();else pullNow();};
     const onLeave=()=>writeNow();
-    document.addEventListener('visibilitychange',onHide);
+    document.addEventListener('visibilitychange',onVis);
+    window.addEventListener('focus',pullNow);
+    window.addEventListener('online',pullNow);
     window.addEventListener('pagehide',onLeave);
     window.addEventListener('beforeunload',onLeave);
     return ()=>{
       writeRef.current=null;
-      document.removeEventListener('visibilitychange',onHide);
+      document.removeEventListener('visibilitychange',onVis);
+      window.removeEventListener('focus',pullNow);
+      window.removeEventListener('online',pullNow);
       window.removeEventListener('pagehide',onLeave);
       window.removeEventListener('beforeunload',onLeave);
     };
