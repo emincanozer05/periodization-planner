@@ -3727,7 +3727,7 @@ function generateTestPDF(test,ath,setup){
   const probs=test.ohs?.problems||['','','','',''];
 
   const html=`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Test Report — ${ath.name}</title>
+<html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${ath.name}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -3788,8 +3788,8 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 </head><body>
 
 <div class="print-bar">
-  📄 Test Report is ready · <button onclick="window.print()">Print / Save as PDF</button> · <button onclick="window.close()">Close</button>
-  <div style="font-size:11px;font-weight:400;margin-top:6px;opacity:.95">Tip: In the print dialog, enable <strong>"Background graphics"</strong> (More settings) for full colors.</div>
+  📄 ${L('Test Raporu hazır','Test Report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> · <button onclick="window.close()">${L('Kapat','Close')}</button>
+  <div style="font-size:11px;font-weight:400;margin-top:6px;opacity:.95">${L('İpucu: Yazdırma penceresinde tam renk için <strong>"Arka plan grafikleri"</strong> seçeneğini (Diğer ayarlar) açın.','Tip: In the print dialog, enable <strong>"Background graphics"</strong> (More settings) for full colors.')}</div>
 </div>
 
 <div style="margin-top:50px"></div>
@@ -3800,16 +3800,16 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
     <h1>${ath.name}</h1>
     <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}</div>
     <div class="meta">${setup.teamName} · ${setup.sport}</div>
-    <div class="date">📅 ${fd(test.date)} · ${periodLabel} ${test.year}</div>
+    <div class="date">📅 ${fdL(test.date)} · ${periodLabel} ${test.year}</div>
   </div>
   <div class="right-block">
-    <div class="ttl">PERFORMANCE</div>
-    <div class="ttl">TEST REPORT</div>
+    <div class="ttl">${L('PERFORMANS','PERFORMANCE')}</div>
+    <div class="ttl">${L('TEST RAPORU','TEST REPORT')}</div>
   </div>
 </div>
 
 <div class="section">
-  <div class="section-h" >ANTHROPOMETRICS</div>
+  <div class="section-h" >${L('ANTROPOMETRİ','ANTHROPOMETRICS')}</div>
   <table class="kv">
     <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th></tr>
     <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td></tr>
@@ -3817,7 +3817,7 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 </div>
 
 <div class="section">
-  <div class="section-h" >CIRCUMFERENCE MEASUREMENTS (cm)</div>
+  <div class="section-h" >${L('ÇEVRE ÖLÇÜMLERİ (cm)','CIRCUMFERENCE MEASUREMENTS (cm)')}</div>
   <table class="kv">
     <tr>
       <th>Shoulder</th>
@@ -3842,17 +3842,17 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 
 ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||test.posture?.observations)?`
 <div class="section">
-  <div class="section-h" >STATIC POSTURE ASSESSMENT</div>
+  <div class="section-h" >${L('STATİK POSTÜR DEĞERLENDİRMESİ','STATIC POSTURE ASSESSMENT')}</div>
   <div class="posture-photos">
     ${ph(test.posture.frontPhoto,'Front',180,300)}
     ${ph(test.posture.sidePhoto,'Side',180,300)}
     ${ph(test.posture.backPhoto,'Back',180,300)}
   </div>
-  ${test.posture.observations?`<div class="obs-box"><strong>Observations:</strong> ${test.posture.observations.replace(/</g,'&lt;')}</div>`:''}
+  ${test.posture.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.posture.observations.replace(/</g,'&lt;')}</div>`:''}
 </div>`:''}
 
 <div class="section">
-  <div class="section-h" >MOBILITY — ASLR & ANKLE DORSIFLEXION</div>
+  <div class="section-h" >${L('MOBİLİTE — ASLR & AYAK BİLEĞİ DORSİFLEKSİYON','MOBILITY — ASLR & ANKLE DORSIFLEXION')}</div>
   <table>
     <colgroup><col style="width:36%"/><col style="width:14%"/><col style="width:14%"/><col style="width:22%"/><col style="width:14%"/></colgroup>
     <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th><th>Scale</th></tr>
@@ -3862,25 +3862,25 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 </div>
 
 <div class="section">
-  <div class="section-h" >OVERHEAD SQUAT ASSESSMENT — Score: ${test.ohs?.score||'—'} / 3</div>
+  <div class="section-h" >${L('OVERHEAD SQUAT DEĞERLENDİRMESİ','OVERHEAD SQUAT ASSESSMENT')} — ${L('Skor','Score')}: ${test.ohs?.score||'—'} / 3</div>
   <div class="ohs-wrap">
     <div class="ohs-photos">
-      <div class="ohs-col"><div class="ohs-label">Front View</div><div class="ohs-photo-box">${ohsPh(test.ohs?.frontPhoto)}</div></div>
-      <div class="ohs-col"><div class="ohs-label">Side View</div><div class="ohs-photo-box">${ohsPh(test.ohs?.sidePhoto)}</div></div>
-      <div class="ohs-col"><div class="ohs-label">Back View</div><div class="ohs-photo-box">${ohsPh(test.ohs?.backPhoto)}</div></div>
+      <div class="ohs-col"><div class="ohs-label">${L('Önden','Front View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.frontPhoto)}</div></div>
+      <div class="ohs-col"><div class="ohs-label">${L('Yandan','Side View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.sidePhoto)}</div></div>
+      <div class="ohs-col"><div class="ohs-label">${L('Arkadan','Back View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.backPhoto)}</div></div>
     </div>
     <div class="ohs-problems">
       ${[0,1,2,3,4].map(i=>`<div><div class="ohs-problem-h">Problem ${i+1}</div><div class="ohs-problem-c">${(probs[i]||'').replace(/</g,'&lt;')||'&nbsp;'}</div></div>`).join('')}
     </div>
-    ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>Additional Observations:</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
+    ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>${L('Ek Gözlemler:','Additional Observations:')}</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
   </div>
 </div>
 
 <div class="section sprint-section">
-  <div class="section-h" >20M SPRINT ANALYSIS${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
+  <div class="section-h" >${L('20M SPRINT ANALİZİ','20M SPRINT ANALYSIS')}${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
   <div class="sprint-panel">
     <div class="sprint-col" style="flex:3">
-      <div class="sprint-col-h" >SIDE VIEW</div>
+      <div class="sprint-col-h" >${L('YANDAN','SIDE VIEW')}</div>
       <div class="sprint-row">
         ${ph(test.sprint20m?.sideStep1,'Step 1',105,150)}
         ${ph(test.sprint20m?.sideStep2,'Step 2',105,150)}
@@ -3889,7 +3889,7 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
     </div>
     <div class="sprint-sep"></div>
     <div class="sprint-col" style="flex:2">
-      <div class="sprint-col-h" >FRONT VIEW</div>
+      <div class="sprint-col-h" >${L('ÖNDEN','FRONT VIEW')}</div>
       <div class="sprint-row">
         ${ph(test.sprint20m?.frontRightFoot,'Right Foot',120,165)}
         ${ph(test.sprint20m?.frontLeftFoot,'Left Foot',120,165)}
@@ -3899,7 +3899,7 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 </div>
 
 <div class="section">
-  <div class="section-h" >POWER TESTS</div>
+  <div class="section-h" >${L('GÜÇ TESTLERİ','POWER TESTS')}</div>
   <table class="kv">
     <tr><th>Vertical Jump (cm)</th><th>CMJ (cm)</th><th>Drop Jump (RSI)</th><th>Horizontal Jump (cm)</th></tr>
     <tr><td>${test.verticalJump||'—'}</td><td>${test.cmj||'—'}</td><td>${test.dropJump||'—'}</td><td>${test.horizontalJump||'—'}</td></tr>
@@ -3908,14 +3908,14 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 
 <div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
   <div>
-    <div class="section-h" >AGILITY</div>
+    <div class="section-h" >${L('ÇEVİKLİK','AGILITY')}</div>
     <table class="kv">
       <tr><th>Agility T-Test (s)</th></tr>
       <tr><td>${test.tTest||'—'}</td></tr>
     </table>
   </div>
   <div>
-    <div class="section-h" >ENDURANCE / CONDITIONING</div>
+    <div class="section-h" >${L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING')}</div>
     <table class="kv">
       <tr><th>Shuttle Run (s)</th></tr>
       <tr><td>${test.shuttleRun||'—'}</td></tr>
@@ -3925,11 +3925,11 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
 
 ${test.notes?`
 <div class="section">
-  <div class="section-h" >GENERAL NOTES</div>
+  <div class="section-h" >${L('GENEL NOTLAR','GENERAL NOTES')}</div>
   <div class="obs-box">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
 </div>`:''}
 
-<div class="footer">Generated ${fd(fmt(today))} · ${setup.teamName}</div>
+<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>
 
 </body></html>`;
 
@@ -5839,7 +5839,7 @@ function printResearch(rec){
   const w=window.open('','_blank','width=900,height=1100');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up iznini aç.');return;}
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(rec.title||'Makale')}</title><style>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(rec.title||L('Makale','Article'))}</title><style>
 @page{size:A4 portrait;margin:18mm}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{font-family:'Segoe UI',-apple-system,Arial,sans-serif;color:#0f172a;font-size:13px;line-height:1.65}
@@ -5850,12 +5850,12 @@ h1{font-size:23px;font-weight:800;margin-bottom:8px;line-height:1.2}
 .sum{font-size:13px}
 .sum h2{font-size:18px;margin:.5em 0}.sum h3{font-size:15px;margin:.5em 0}.sum ul,.sum ol{padding-left:22px;margin:.4em 0}
 </style></head><body>
-<h1>${esc(rec.title||'(başlıksız makale)')}</h1>
-${rec.authorsText?`<div class="meta"><b>Yazar(lar):</b> ${esc(rec.authorsText)}</div>`:''}
+<h1>${esc(rec.title||L('(başlıksız makale)','(untitled article)'))}</h1>
+${rec.authorsText?`<div class="meta"><b>${L('Yazar(lar):','Author(s):')}</b> ${esc(rec.authorsText)}</div>`:''}
 ${(rec.journal||rec.year)?`<div class="meta">${esc([rec.journal,rec.year].filter(Boolean).join(' · '))}</div>`:''}
 ${rec.apa?`<div class="apa">${esc(rec.apa)}</div>`:''}
-<div class="sumh">Özet</div>
-<div class="sum">${rec.summary||'<i>Özet girilmemiş.</i>'}</div>
+<div class="sumh">${L('Özet','Summary')}</div>
+<div class="sum">${rec.summary||L('<i>Özet girilmemiş.</i>','<i>No summary entered.</i>')}</div>
 </body></html>`);
   w.document.close();
   setTimeout(()=>{try{w.focus();w.print();}catch(e){}},300);
