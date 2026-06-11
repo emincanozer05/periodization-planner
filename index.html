@@ -3603,6 +3603,8 @@ function printTeamBodyComp(athletes,setup){
   const w=window.open('','_blank','width=1300,height=900');
   if(!w){alert('Pop-up engellendi — bu site için pop-up izni ver.');return;}
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fdTR=ds=>{if(!ds)return'';try{return parseD(ds).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});}catch(e){return fd(ds);}};
+  const initials=s=>(s||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const n=(o,k)=>{if(!o)return null;const v=Number(o[k]);return(o[k]===''||o[k]==null||isNaN(v))?null:v;};
   const groups=(athletes||[]).map(a=>({a,ms:[...(a.measurements||[])].filter(m=>m.date).sort((x,y)=>x.date.localeCompare(y.date))}))
     .filter(g=>g.ms.length>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||''));
@@ -3617,8 +3619,8 @@ function printTeamBodyComp(athletes,setup){
     const dl=k=>{const c=n(m,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
     const dbf=dl('bodyFat'),dmm=dl('muscleMass');
     return`<tr class="${mi===0?'grp':''}">
-      <td class="l">${mi===0?`${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}`:'<span class="dim">↳</span>'}</td>
-      <td class="mono">${fd(m.date)}</td>
+      <td class="l">${mi===0?`<span class="ath-cell">${g.a.photo?`<img class="av" src="${g.a.photo}"/>`:`<span class="av ph">${esc(initials(g.a.name))}</span>`}<span class="ath-nm">${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}</span></span>`:'<span class="subm">↳</span>'}</td>
+      <td class="mono">${fdTR(m.date)}</td>
       <td class="b">${n(m,'height')!=null?n(m,'height'):'—'}</td>
       <td class="b">${n(m,'weight')!=null?n(m,'weight'):'—'}</td>
       <td>${dcell(dl('weight'),null)}</td>
@@ -3632,10 +3634,15 @@ function printTeamBodyComp(athletes,setup){
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-@page{size:A4 landscape;margin:9mm}
+@page{size:A4 portrait;margin:11mm}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#9aa0a8;--bg2:#f4f5f7}
 body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+.ath-cell{display:flex;align-items:center;gap:9px}
+.av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex:none}
+.av.ph{display:inline-flex;align-items:center;justify-content:center;background:#0a0b0d;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700}
+.ath-nm{font-weight:600;line-height:1.2}
+.subm{padding-left:37px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
 .hdr{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(120deg,#0a0b0d,#15171c);color:#fff;border-radius:14px;padding:16px 22px;margin-bottom:14px}
 .hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
 .hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.65);margin-top:5px;letter-spacing:.04em}
@@ -3666,7 +3673,7 @@ tbody tr.grp:first-child td{border-top:none}
 <div class="print-bar">📄 Team Body Composition is ready · <button onclick="window.print()">Print / Save as PDF</button> <button class="sec" onclick="window.close()">Close</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
 <div class="hdr">
-  <div><h1>${esc(setup.teamName)}</h1><div class="sub">📊 Team Body Composition · ${groups.length} athletes · ${total} measurements · ${fd(fmt(today))}</div></div>
+  <div><h1>${esc(setup.teamName)}</h1><div class="sub">📊 Vücut Kompozisyonu · ${groups.length} sporcu · ${total} ölçüm · ${fdTR(fmt(today))}</div></div>
   <div class="ttl">BODY<br>COMPOSITION</div>
 </div>
 <div class="stats">
@@ -3676,7 +3683,7 @@ tbody tr.grp:first-child td{border-top:none}
   <div class="stat"><div class="k">Avg Muscle Mass</div><div class="v">${av(avg('muscleMass'),'kg')}</div></div>
 </div>
 <table><thead><tr><th class="l">Athlete</th><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Δ</th><th>Body Fat (%)</th><th>Δ</th><th>Muscle (kg)</th><th>Δ</th></tr></thead><tbody>${tr}</tbody></table>
-<div class="footer">Δ = change vs previous measurement · Generated ${fd(fmt(today))} · ${esc(setup.teamName)}</div>
+<div class="footer">Δ = bir önceki ölçüme göre değişim · ${fdTR(fmt(today))} tarihinde oluşturuldu · ${esc(setup.teamName)}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
