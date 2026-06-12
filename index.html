@@ -3269,17 +3269,26 @@ function TeamReports({team,weeks,selected,setSelected}){
   const{year,month}=selected;
   const ms=`${year}-${pad(month)}-01`;
   const me=fmt(new Date(year,month,0));
-  // Team daily load (AU) by date — summed across athletes' inner-load (sRPE) log,
-  // the same source the weekly/daily charts use, so ACWR & monotony stay consistent.
+  // Planned team load (AU) by date = sum of that day's team-plan session AU (the
+  // value shown in the calendar). Used as a fallback so a day that is planned but
+  // has no athlete sRPE log still registers its load in the trend & reports.
+  const plannedByDay=useMemo(()=>{const m={};Object.entries(team.days||{}).forEach(([d,day])=>{
+    const v=((day&&day.sessions)||[]).reduce((t,s)=>t+sLoad(s),0);if(v>0)m[d]=v;});return m;},[team.days]);
+  // Team daily load (AU) by date — athletes' inner-load (sRPE) log when present,
+  // otherwise the planned team-plan session AU, so planned days are never dropped
+  // and ACWR & monotony stay consistent.
   const teamDaily=useMemo(()=>{const m={};(team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
     if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-    m[e.date]=(m[e.date]||0)+v;}));return m;},[team.athletes]);
+    m[e.date]=(m[e.date]||0)+v;}));
+    Object.entries(plannedByDay).forEach(([d,v])=>{if(!m[d])m[d]=v;});return m;},[team.athletes,plannedByDay]);
   const dayLoad=d=>Math.round(teamDaily[d]||0);
-  // Average session AU per day = total logged load that day ÷ athletes who logged.
+  // Average session AU per day = logged load ÷ athletes who logged; falls back to
+  // the planned team session AU on days with no sRPE log.
   const teamDailyAvg=useMemo(()=>{const sum={},cnt={};(team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
     if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
     if(v>0){sum[e.date]=(sum[e.date]||0)+v;cnt[e.date]=(cnt[e.date]||0)+1;}}));
-    const avg={};Object.keys(sum).forEach(d=>{avg[d]=sum[d]/cnt[d];});return avg;},[team.athletes]);
+    const avg={};Object.keys(sum).forEach(d=>{avg[d]=sum[d]/cnt[d];});
+    Object.entries(plannedByDay).forEach(([d,v])=>{if(!avg[d])avg[d]=v;});return avg;},[team.athletes,plannedByDay]);
   const dayAvg=d=>Math.round(teamDailyAvg[d]||0);
   // ---- All-athletes weekly AU chart (per athlete = a segment) ----
   const allAthletesChart=useMemo(()=>{
@@ -3333,10 +3342,10 @@ function TeamReports({team,weeks,selected,setSelected}){
       });
       return{name:a.name,data:days7.map(d=>Math.round(byDate[d]||0))};
     }).filter(a=>a.data.some(v=>v>0));
-    const dayTotals=days7.map((_,i)=>perAthlete.reduce((s,a)=>s+(a.data[i]||0),0));
+    const dayTotals=days7.map((d,i)=>{const t=perAthlete.reduce((s,a)=>s+(a.data[i]||0),0);return t>0?t:(plannedByDay[d]||0);});
     const weekTotal=dayTotals.reduce((a,b)=>a+b,0);
     return{days7,labels,perAthlete,dayTotals,weekTotal};
-  },[team.athletes,dailyWeek]);
+  },[team.athletes,dailyWeek,plannedByDay]);
 
   // ---- Weekly monotony (Foster) for the selected month, from team daily load ----
   const mWeeks=useMemo(()=>{const o=[];let c=sow(parseD(ms));while(c<=parseD(me)){
