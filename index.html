@@ -291,6 +291,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-dm{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:12px}
 .dw-dm .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
 .dw-dm .v{font-size:16px;font-weight:600;margin-top:6px;color:var(--text)}
+.dw-inp{background:transparent;border:none;outline:none;color:var(--text);font-size:16px;font-weight:600;margin-top:6px;width:100%;font-family:inherit;border-bottom:1px solid transparent;padding:0}
+.dw-inp:focus{border-bottom-color:var(--accent)}
+.dw-inrow{display:flex;align-items:baseline;gap:5px;margin-top:6px}
+.dw-inrow .dw-inp{margin-top:0}
+.dw-unit{font-size:12px;color:var(--dim);font-weight:600}
 .dw-blk{margin-bottom:16px}
 .dw-blk .bh{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--accent);margin-bottom:9px;letter-spacing:.05em;display:flex;align-items:center;gap:9px;font-weight:500}
 .dw-blk .bh::after{content:"";flex:1;height:1px;background:var(--border)}
@@ -2708,6 +2713,18 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('Önceki günde antrenman yok');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
   const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  // Inline edit of the open drawer session (time / duration / load) without opening
+  // the full editor. Persists to days (and syncs to athletes in team mode).
+  const drwUpd=patch=>{
+    if(!canEdit||!drawerSes)return;
+    const dateK=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
+    if(!dateK)return;
+    const ns={...drawerSes,...patch};
+    const d0=days[dateK]||EDAY(dateK);const oldS=d0.sessions||[];const newS=oldS.map(s=>s.id===drawerSes.id?ns:s);
+    const nd={...days,[dateK]:{...d0,sessions:newS,date:dateK}};
+    if(teamMode){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}else saveDays(nd);
+    setDrawerSes(ns);
+  };
   // ---- Drag & drop sessions across days (mirrors Planner.moveOrCopySession) ----
   const[dragInfo,setDragInfo]=useState(null);
   const[dragOverDate,setDragOverDate]=useState(null);
@@ -2813,9 +2830,21 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Bu seansı yazdır">⎙ Print</button>
           </div>
           <div className="dw-meta">
-            <div className="dw-dm"><div className="k">Time</div><div className="v">{drawerSes.time||'—'}</div></div>
-            <div className="dw-dm"><div className="k">Duration</div><div className="v">{drawerSes.duration}m</div></div>
-            <div className="dw-dm"><div className="k">Load</div><div className="v">{(drawerSes.au||(drawerSes.sRPE!==''&&drawerSes.sRPE!=null?Math.round(Number(drawerSes.sRPE)*Number(drawerSes.duration||0)):0))} AU</div></div>
+            <div className="dw-dm"><div className="k">Time</div>
+              {canEdit
+                ?<input type="time" className="dw-inp" value={drawerSes.time||''} onChange={e=>drwUpd({time:e.target.value})}/>
+                :<div className="v">{drawerSes.time||'—'}</div>}
+            </div>
+            <div className="dw-dm"><div className="k">Duration</div>
+              {canEdit
+                ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'3.2em'}} value={drawerSes.duration??''} onChange={e=>{const d=+e.target.value||0;const patch={duration:d};if(!drawerSes.auManual&&drawerSes.sRPE!==''&&drawerSes.sRPE!=null)patch.au=Math.round(Number(drawerSes.sRPE)*d);drwUpd(patch);}}/><span className="dw-unit">m</span></div>
+                :<div className="v">{drawerSes.duration}m</div>}
+            </div>
+            <div className="dw-dm"><div className="k">Load</div>
+              {canEdit
+                ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'4.2em'}} value={drawerSes.au??''} placeholder={String(drawerSes.sRPE!==''&&drawerSes.sRPE!=null?Math.round(Number(drawerSes.sRPE)*Number(drawerSes.duration||0)):0)} onChange={e=>{const v=e.target.value;drwUpd({au:v,auManual:v!==''});}}/><span className="dw-unit">AU</span></div>
+                :<div className="v">{(drawerSes.au||(drawerSes.sRPE!==''&&drawerSes.sRPE!=null?Math.round(Number(drawerSes.sRPE)*Number(drawerSes.duration||0)):0))} AU</div>}
+            </div>
           </div>
           {(drawerSes.blocks||[]).length===0&&<div className="dw-empty">No exercise blocks</div>}
           {(drawerSes.blocks||[]).map(b=>{
