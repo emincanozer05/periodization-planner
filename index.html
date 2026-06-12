@@ -2090,9 +2090,12 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const totalLoad=dayLoads.reduce((a,b)=>a+b,0);
   const totalSessions=dates.reduce((a,d)=>a+(days[d]?.sessions||[]).length,0);
   // Realized weekly load = avg session AU per athlete (matches on-screen Training Load)
-  const rDay=dates.map(d=>{let sum=0,cnt=0;(athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+  const rDay=dates.map((d,idx)=>{let sum=0,cnt=0;(athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
     if(e.date!==d)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-    if(v>0){sum+=v;cnt++;}}));return cnt?Math.round(sum/cnt):0;});
+    if(v>0){sum+=v;cnt++;}}));
+    // No athlete sRPE log that day → fall back to the planned team-session AU
+    // (au, or sRPE×duration) so planned days aren't shown as 0.
+    return cnt?Math.round(sum/cnt):Math.round(dayLoads[idx]||0);});
   const rTotal=rDay.reduce((a,b)=>a+b,0);
   // Foster monotony & strain (from realized load)
   const meanLoad=rTotal/7;
@@ -3273,7 +3276,7 @@ function TeamReports({team,weeks,selected,setSelected}){
   // value shown in the calendar). Used as a fallback so a day that is planned but
   // has no athlete sRPE log still registers its load in the trend & reports.
   const plannedByDay=useMemo(()=>{const m={};Object.entries(team.days||{}).forEach(([d,day])=>{
-    const v=((day&&day.sessions)||[]).reduce((t,s)=>t+sLoad(s),0);if(v>0)m[d]=v;});return m;},[team.days]);
+    const v=((day&&day.sessions)||[]).reduce((t,s)=>t+(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0)),0);if(v>0)m[d]=v;});return m;},[team.days]);
   // Team daily load (AU) by date — athletes' inner-load (sRPE) log when present,
   // otherwise the planned team-plan session AU, so planned days are never dropped
   // and ACWR & monotony stay consistent.
