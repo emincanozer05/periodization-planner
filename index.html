@@ -1636,6 +1636,44 @@ function WeekChartSVG({data,avg,color,dot,unit,labels}){
   </div>;
 }
 
+/* Compact wellness sparkline (inline SVG). Plots one metric across all check-ins
+   with an area fill, a faint dashed average line, an emphasised latest point and
+   a value label above every point. Measures its own width so it never goes blank. */
+function SparkSVG({id,data,color,avg,unit,showValues}){
+  const wrapRef=useRef(null);
+  const[w,setW]=useState(600);
+  useEffect(()=>{const el=wrapRef.current;if(!el)return;
+    const m=()=>setW(Math.max(80,el.clientWidth));m();
+    let ro;if(window.ResizeObserver){ro=new ResizeObserver(m);try{ro.observe(el);}catch{}}
+    window.addEventListener('resize',m);
+    return()=>{window.removeEventListener('resize',m);try{ro&&ro.disconnect();}catch{}};
+  },[]);
+  const h=62,padX=12,padT=18,padB=10,five=unit==='/5';
+  const fmt=v=>five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v));
+  const present=data.map((v,i)=>({v,i})).filter(p=>p.v!=null);
+  if(!present.length)return <div ref={wrapRef} style={{width:'100%',height:h,display:'flex',alignItems:'center',color:'var(--dim)',fontSize:12}}>—</div>;
+  const vals=present.map(p=>p.v);
+  let lo=Math.min(...vals),hi=Math.max(...vals);
+  if(lo===hi){lo-=1;hi+=1;}else{const pd=(hi-lo)*0.3;lo-=pd;hi+=pd;}
+  const n=data.length;
+  const xOf=i=>padX+(n<=1?(w-2*padX)/2:i*((w-2*padX)/(n-1)));
+  const yOf=v=>padT+(1-(v-lo)/((hi-lo)||1))*(h-padT-padB);
+  const P=present.map(p=>({x:xOf(p.i),y:yOf(p.v),v:p.v}));
+  const line=P.map((p,k)=>(k?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+  const base=(h-padB).toFixed(1);
+  const area=P.length>1?`M${P[0].x.toFixed(1)} ${base} `+P.map(p=>'L'+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')+` L${P[P.length-1].x.toFixed(1)} ${base} Z`:'';
+  return <div ref={wrapRef} style={{width:'100%',height:h}}>
+    <svg width={w} height={h} style={{display:'block'}}>
+      <defs><linearGradient id={'wlg-'+id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={color} stopOpacity="0.33"/><stop offset="1" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+      {avg!=null&&<line x1={padX} y1={yOf(avg)} x2={w-padX} y2={yOf(avg)} stroke={color} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="4 4"/>}
+      {area&&<path d={area} fill={'url(#wlg-'+id+')'}/>}
+      {line&&<path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>}
+      {P.map((p,k)=><circle key={k} cx={p.x} cy={p.y} r={k===P.length-1?3.4:2} fill={color}/>)}
+      {showValues&&P.map((p,k)=>{const ly=p.y-7<padT-4?p.y+13:p.y-7;return<text key={'v'+k} x={p.x} y={ly} textAnchor="middle" fill="#cdd3dc" fontFamily="IBM Plex Mono" fontSize="9.5" fontWeight="700">{fmt(p.v)}</text>;})}
+    </svg>
+  </div>;
+}
+
 /* Build one report section (compact CSS bar chart of column team totals +
    athlete x column matrix with per-athlete totals, column totals and grand
    total). Returns an HTML string. `perAthlete` = [{name,data:[...]}]. */
@@ -4617,52 +4655,37 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
           {id:'sleep',label:'Sleep',color:'#3b82f6',dot:'#60a5fa',unit:'/5',hi:true},
           {id:'fatigue',label:'Fatigue',color:'#f97316',dot:'#fb923c',unit:'/5',hi:false},
           {id:'soreness',label:'Soreness',color:'#a855f7',dot:'#c084fc',unit:'/5',hi:false},
-          {id:'RHR',label:'Resting',color:'#ef4444',dot:'#fca5a5',unit:'bpm',hi:false},
+          {id:'RHR',label:'Resting HR',color:'#22d3ee',dot:'#67e8f9',unit:'bpm',hi:false},
         ];
-        const M=METRICS.find(x=>x.id===wellMetric)||METRICS[0];
-        const sevColor=v=>{if(v==null)return'var(--dim)';if(M.unit!=='/5')return M.color;return M.hi?(v>=4?'#2dd4a7':v>=3?'#f59e0b':'#f43f5e'):(v<=2?'#2dd4a7':v<=3?'#f59e0b':'#f43f5e');};
-        const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wellnessWeek),i)));
-        const valOn=dk=>{const e=ath.wellness.filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
-        const weekData=days7.map(valOn);
-        const weekVals=weekData.filter(v=>v!=null);
-        const weekAvg=weekVals.length?weekVals.reduce((a,b)=>a+b,0)/weekVals.length:null;
-        const seasonVals=ath.wellness.filter(w=>w[M.id]!==''&&w[M.id]!=null).map(w=>Number(w[M.id]));
-        const seasonAvg=seasonVals.length?seasonVals.reduce((a,b)=>a+b,0)/seasonVals.length:null;
-        const latestEntry=[...ath.wellness].filter(w=>w.date&&w[M.id]!==''&&w[M.id]!=null).sort((a,b)=>a.date.localeCompare(b.date)).pop();
-        const latest=latestEntry?Number(latestEntry[M.id]):null;
-        const delta=(latest!=null&&seasonAvg!=null)?latest-seasonAvg:null;
-        const deltaGood=delta==null?true:(M.hi?delta>=0:delta<=0);
-        const fmtV=v=>v==null?'—':(M.unit==='/5'?(+v.toFixed(1)):Math.round(v));
-        const labels7=days7.map(d=>{const dt=parseD(d);return `${MN[dt.getMonth()]} ${dt.getDate()}`;});
-        const wkLbl=`${parseD(days7[0]).getDate()} ${MN[parseD(days7[0]).getMonth()]} – ${parseD(days7[6]).getDate()} ${MN[parseD(days7[6]).getMonth()]}`;
+        const valColor='#2dd4a7';
+        const fmtN=(v,five)=>v==null?'—':(five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v)));
+        const logsAll=[...ath.wellness].filter(w=>w.date).sort((a,b)=>a.date.localeCompare(b.date));
         return(<div>
-          <div className="wh-card">
-            <div className="wh-head">
-              <div className="wh-title">Wellness History</div>
-              <div className="lb-seg wh-tabs">{METRICS.map(x=><button key={x.id} className={wellMetric===x.id?'on':''} onClick={()=>setWellMetric(x.id)}>{x.label}</button>)}</div>
-            </div>
-            <div className="wh-top">
-              <div className="wh-sum">
-                <div className="wh-s big"><div className="wh-v" style={{color:sevColor(latest)}}>{fmtV(latest)}<small>{M.unit}</small></div><div className="wh-k">Latest check-in</div></div>
-                <div className="wh-s"><div className="wh-v">{fmtV(weekAvg)}</div><div className="wh-k">7-day avg</div></div>
-                <div className="wh-s"><div className="wh-v" style={{color:'var(--dim)'}}>{fmtV(seasonAvg)}</div><div className="wh-k">Season avg</div></div>
-              </div>
-              {delta!=null&&<div className="wh-delta">
-                <div className="wh-d" style={{color:deltaGood?'#2dd4a7':'#f43f5e'}}>{delta>=0?'▲':'▼'} {Math.abs(delta).toFixed(1)}</div>
-                <div className="wh-dk">vs season avg</div>
-              </div>}
-            </div>
-            <div className="wh-nav">
-              <div className="lm-wksel">
-                <button onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),-7)))} title="Previous week">‹</button>
-                <span className="lm-wklbl"><span className="lm-wkk">Week of</span>{wkLbl}</span>
-                <button onClick={()=>setWellnessWeek(fmt(addD(parseD(wellnessWeek),7)))} title="Next week">›</button>
-                <button className="lm-wknow" onClick={()=>setWellnessWeek(wk(today))} title="Current week">Now</button>
-              </div>
-            </div>
-            <div className="wh-chart">
-              <WeekChartSVG data={weekData} avg={weekAvg} color={M.color} dot={M.dot} unit={M.unit} labels={labels7}/>
-            </div>
+          <div className="wl-card" style={{border:'1px solid var(--border)',borderRadius:12,padding:'14px 18px',marginBottom:14,background:'rgba(255,255,255,.015)'}}>
+            <div style={{fontSize:13,fontWeight:700,color:'var(--text)',marginBottom:2}}>Wellness Log <span style={{fontSize:11,fontWeight:400,color:'var(--muted)'}}>· {METRICS.length} metrics · per check-in</span></div>
+            {METRICS.map(m=>{
+              const five=m.unit==='/5';
+              const series=logsAll.map(w=>w[m.id]!==''&&w[m.id]!=null?Number(w[m.id]):null);
+              const present=series.filter(v=>v!=null);
+              const count=present.length;
+              const latest=count?present[count-1]:null;
+              const prev=count>1?present[count-2]:null;
+              const avg=count?present.reduce((a,b)=>a+b,0)/count:null;
+              const delta=(latest!=null&&prev!=null)?latest-prev:null;
+              const good=delta==null?true:(m.hi?delta>=0:delta<=0);
+              return<div key={m.id} style={{display:'flex',alignItems:'center',gap:16,padding:'11px 0',borderTop:'1px solid var(--border)'}}>
+                <div style={{width:150,flex:'none'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:7,fontSize:13,fontWeight:600,color:'var(--text)'}}><span style={{width:9,height:9,borderRadius:2,background:m.color,flex:'none'}}/>{m.label}</div>
+                  <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
+                    <span style={{fontSize:26,fontWeight:700,lineHeight:1,color:latest==null?'var(--dim)':valColor}}>{fmtN(latest,five)}</span>
+                    <span style={{fontSize:11,color:'var(--dim)'}}>{m.unit}</span>
+                    {delta!=null&&delta!==0&&<span style={{fontSize:12,fontWeight:700,color:good?'#2dd4a7':'#f43f5e'}}>{delta>0?'↑':'↓'}{fmtN(Math.abs(delta),five)}</span>}
+                  </div>
+                  <div style={{fontSize:10.5,color:'var(--dim)',marginTop:3,letterSpacing:.3}}>avg {fmtN(avg,five)} · {count} logs</div>
+                </div>
+                <div style={{flex:1,minWidth:0}}><SparkSVG id={m.id} data={series} color={m.color} avg={avg} unit={m.unit} showValues/></div>
+              </div>;
+            })}
           </div>
             {/* Collapsible paginated table */}
             <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:wellnessTableOpen?10:0}}>
