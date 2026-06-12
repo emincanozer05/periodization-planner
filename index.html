@@ -305,7 +305,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* tidy number inputs inside the drawer metric cards */
 .dw-inp[type=number]::-webkit-inner-spin-button,.dw-inp[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dw-inp[type=number]{-moz-appearance:textfield}
-.dw-inp[type=time]::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
+.dw-inp[type=time]::-webkit-calendar-picker-indicator{display:none;-webkit-appearance:none}
 .dw-blk{margin-bottom:16px}
 .dw-blk .bh{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--accent);margin-bottom:9px;letter-spacing:.05em;display:flex;align-items:center;gap:9px;font-weight:500}
 .dw-blk .bh::after{content:"";flex:1;height:1px;background:var(--border)}
@@ -1596,6 +1596,14 @@ function ChartC({type,chartData,options}){
     return()=>{clearTimeout(t1);clearTimeout(t2);try{ro&&ro.disconnect();}catch{}try{inst.current?.destroy();}catch{}};
   },[type,JSON.stringify(chartData),JSON.stringify(options)]);
   return <canvas ref={ref}/>;
+}
+
+/* Scriptable vertical gradient for Chart.js fills (bottom→top). Returns a solid
+   fallback until the chart area exists. Makes bars/areas feel less flat. */
+function vGrad(topColor,bottomColor){
+  return ctx=>{const ch=ctx.chart,a=ch.chartArea;if(!a)return topColor;
+    const g=ch.ctx.createLinearGradient(0,a.bottom,0,a.top);
+    g.addColorStop(0,bottomColor);g.addColorStop(1,topColor);return g;};
 }
 
 /* Dependency-free weekly chart (inline SVG). Measures its own container and
@@ -3531,8 +3539,8 @@ function TeamReports({team,weeks,selected,setSelected}){
         </div>
         <div className="chart-box" style={{flex:1,minHeight:240}}>
           <ChartC type="bar" chartData={{labels:lmTrend.map(d=>fd(d.k).slice(0,5)),datasets:[
-            {type:'bar',label:'Daily',data:lmTrend.map(d=>d.daily),backgroundColor:'rgba(59,110,245,.5)',hoverBackgroundColor:'rgba(59,110,245,.85)',borderRadius:3,order:3,categoryPercentage:.85,barPercentage:.9},
-            {type:'line',label:'Acute 7d',data:lmTrend.map(d=>d.acute),borderColor:'#f59e0b',backgroundColor:'#f59e0b',tension:.4,borderWidth:2.5,pointRadius:0,pointHoverRadius:4,fill:false,order:1},
+            {type:'bar',label:'Daily',data:lmTrend.map(d=>d.daily),backgroundColor:vGrad('rgba(99,140,255,.95)','rgba(59,110,245,.12)'),hoverBackgroundColor:vGrad('rgba(130,165,255,1)','rgba(59,110,245,.3)'),borderRadius:7,borderSkipped:false,order:3,categoryPercentage:.82,barPercentage:.9},
+            {type:'line',label:'Acute 7d',data:lmTrend.map(d=>d.acute),borderColor:'#f59e0b',backgroundColor:vGrad('rgba(245,158,11,.28)','rgba(245,158,11,0)'),tension:.4,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:'#f59e0b',fill:true,order:1},
             {type:'line',label:'Chronic 28d',data:lmTrend.map(d=>d.chronic),borderColor:'#a78bfa',backgroundColor:'#a78bfa',borderDash:[6,5],tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,order:2}
           ]}}
             options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
@@ -4807,9 +4815,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:'rgba(249,115,22,.85)',stack:'load',datalabels:segLbl},
-                {label:'S&C (AU)',data:scVals,backgroundColor:'rgba(6,182,212,.85)',stack:'load',datalabels:segLbl},
-                {label:'Match (AU)',data:gmVals,backgroundColor:'rgba(236,72,153,.85)',stack:'load',datalabels:totalLbl},
+                {label:'Team Practice (AU)',data:tpVals,backgroundColor:vGrad('rgba(249,115,22,.95)','rgba(249,115,22,.45)'),hoverBackgroundColor:'rgba(249,115,22,1)',stack:'load',borderRadius:5,borderSkipped:false,maxBarThickness:64,datalabels:segLbl},
+                {label:'S&C (AU)',data:scVals,backgroundColor:vGrad('rgba(6,182,212,.95)','rgba(6,182,212,.45)'),hoverBackgroundColor:'rgba(6,182,212,1)',stack:'load',borderRadius:5,borderSkipped:false,maxBarThickness:64,datalabels:segLbl},
+                {label:'Match (AU)',data:gmVals,backgroundColor:vGrad('rgba(236,72,153,.95)','rgba(236,72,153,.45)'),hoverBackgroundColor:'rgba(236,72,153,1)',stack:'load',borderRadius:5,borderSkipped:false,maxBarThickness:64,datalabels:totalLbl},
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
@@ -4819,11 +4827,11 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
             </div>
             <div className="chart-box sm" style={{marginBottom:12}}>
               {(tpRPEs.some(v=>v!=null)||scRPEs.some(v=>v!=null)||gmRPEs.some(v=>v!=null))&&<ChartC type="line" chartData={{labels,datasets:[
-                {label:'TP RPE',data:tpRPEs,borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,pointRadius:4,
+                {label:'TP RPE',data:tpRPEs,borderColor:'#f97316',backgroundColor:vGrad('rgba(249,115,22,.18)','rgba(249,115,22,0)'),tension:.35,spanGaps:true,borderWidth:2.5,fill:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:'#0d0f13',pointBorderColor:'#f97316',pointBorderWidth:2.5,
                   datalabels:{display:'auto',align:'top',anchor:'end',color:'#fdba74',backgroundColor:'rgba(15,20,36,.85)',borderRadius:4,padding:{top:2,bottom:2,left:5,right:5},font:{size:10,weight:'bold'},formatter:v=>v==null?'':Number(v).toFixed(1)}},
-                {label:'S&C RPE',data:scRPEs,borderColor:'#06b6d4',tension:.3,spanGaps:true,borderWidth:2,pointRadius:4,
+                {label:'S&C RPE',data:scRPEs,borderColor:'#06b6d4',backgroundColor:vGrad('rgba(6,182,212,.18)','rgba(6,182,212,0)'),tension:.35,spanGaps:true,borderWidth:2.5,fill:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:'#0d0f13',pointBorderColor:'#06b6d4',pointBorderWidth:2.5,
                   datalabels:{display:'auto',align:'top',anchor:'end',color:'#67e8f9',backgroundColor:'rgba(15,20,36,.85)',borderRadius:4,padding:{top:2,bottom:2,left:5,right:5},font:{size:10,weight:'bold'},formatter:v=>v==null?'':Number(v).toFixed(1)}},
-                {label:'Match RPE',data:gmRPEs,borderColor:'#ec4899',tension:.3,spanGaps:true,borderWidth:2,pointRadius:4,
+                {label:'Match RPE',data:gmRPEs,borderColor:'#ec4899',backgroundColor:vGrad('rgba(236,72,153,.18)','rgba(236,72,153,0)'),tension:.35,spanGaps:true,borderWidth:2.5,fill:true,pointRadius:5,pointHoverRadius:7,pointBackgroundColor:'#0d0f13',pointBorderColor:'#ec4899',pointBorderWidth:2.5,
                   datalabels:{display:'auto',align:'bottom',anchor:'start',color:'#f9a8d4',backgroundColor:'rgba(15,20,36,.85)',borderRadius:4,padding:{top:2,bottom:2,left:5,right:5},font:{size:10,weight:'bold'},formatter:v=>v==null?'':Number(v).toFixed(1)}},
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:20,bottom:20}},
