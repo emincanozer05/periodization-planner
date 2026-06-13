@@ -302,6 +302,31 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-inrow{display:flex;align-items:baseline;gap:4px;margin-top:6px}
 .dw-inrow .dw-inp{margin-top:0}
 .dw-unit{font-size:11px;color:var(--dim);font-weight:600;font-family:'IBM Plex Mono',ui-monospace,monospace}
+/* ---- AI Coach assistant ---- */
+.aic-fab{position:fixed;right:22px;bottom:22px;z-index:300;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;background:linear-gradient(135deg,var(--accent),#aecb2f);color:#0a0b0d;display:grid;place-items:center;box-shadow:0 8px 24px -6px rgba(230,255,85,.5),0 2px 8px rgba(0,0,0,.45);transition:transform .18s ease,box-shadow .18s ease}
+.aic-fab:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 12px 30px -6px rgba(230,255,85,.65)}
+.aic-fab svg{width:26px;height:26px}
+.aic-scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);z-index:310}
+.aic-panel{position:fixed;top:0;right:0;bottom:0;width:min(440px,100vw);z-index:320;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;box-shadow:-14px 0 44px rgba(0,0,0,.5);animation:aicIn .2s ease-out}
+@keyframes aicIn{from{transform:translateX(28px);opacity:.4}to{transform:none;opacity:1}}
+.aic-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.aic-title{font-weight:700;font-size:15px;color:var(--text);display:flex;align-items:center;gap:8px}
+.aic-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);flex:none}
+.aic-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:11px}
+.aic-msg{max-width:88%;padding:10px 13px;border-radius:13px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.aic-msg.user{align-self:flex-end;background:var(--accent);color:#0a0b0d;border-bottom-right-radius:4px;font-weight:500}
+.aic-msg.bot{align-self:flex-start;background:var(--elevated);color:var(--text2);border:1px solid var(--border);border-bottom-left-radius:4px}
+.aic-foot{border-top:1px solid var(--border);padding:12px;display:flex;gap:8px;align-items:flex-end}
+.aic-input{flex:1;resize:none;background:var(--elevated);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:13.5px;padding:10px 12px;max-height:120px;outline:none;line-height:1.4}
+.aic-input:focus{border-color:var(--accent)}
+.aic-send{flex:none;width:40px;height:40px;border-radius:10px;border:none;background:var(--accent);color:#0a0b0d;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.aic-send:disabled{opacity:.45;cursor:default}
+.aic-chip{font-size:12.5px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;text-align:left;transition:border-color .15s,color .15s;line-height:1.35}
+.aic-chip:hover{border-color:var(--accent);color:var(--text)}
+.aic-typing{display:flex;gap:4px;padding:2px}
+.aic-typing i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:aicBlink 1.2s infinite}
+.aic-typing i:nth-child(2){animation-delay:.2s}.aic-typing i:nth-child(3){animation-delay:.4s}
+@keyframes aicBlink{0%,60%,100%{opacity:.25}30%{opacity:1}}
 /* tidy number inputs inside the drawer metric cards */
 .dw-inp[type=number]::-webkit-inner-spin-button,.dw-inp[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dw-inp[type=number]{-moz-appearance:textfield}
@@ -6223,6 +6248,159 @@ const NAV_ICONS={
   notion:<NIc><path d="M20 11a8 8 0 0 0-14-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.6L20 16"/><path d="M20 20v-4h-4"/></NIc>,
   backup:<NIc><path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19.5h14"/></NIc>,
 };
+/* =========================================================
+   AI COACH ASSISTANT — talks to the Claude Messages API directly
+   from the browser using the coach's own API key (stored locally).
+   It is given a live, compact snapshot of the active team so it can
+   advise on programming, load management and exercise content.
+   ========================================================= */
+const AI_MODELS=[
+  {id:'claude-opus-4-8',label:'Claude Opus 4.8 — en yetenekli'},
+  {id:'claude-sonnet-4-6',label:'Claude Sonnet 4.6 — hızlı / uygun'},
+  {id:'claude-haiku-4-5',label:'Claude Haiku 4.5 — en hızlı / ucuz'},
+];
+const AIC_SUGGESTIONS=[
+  'Bu haftanın takım yükünü değerlendir ve riskleri söyle.',
+  'Yüksek ACWR veya kötü wellness olan sporcular var mı?',
+  'Önümüzdeki kuvvet seansı için egzersiz, set, tekrar ve şiddet öner.',
+  'Sezon planımı periyodlama açısından gözden geçir.',
+];
+const AIC_SYSTEM=`Sen, bu antrenman periyodlama uygulamasına gömülü uzman bir kuvvet & kondisyon ve periyodlama antrenör asistanısın. Görevin koça takım ve sporcular için programlama yaparken pratik, kanıta dayalı tavsiyeler vermek.
+
+Uzmanlık alanların: periyodlama (makro/mezo/mikro döngüler), antrenman yükü yönetimi (AU, akut:kronik oran ACWR, monotoni, zorlanma), egzersiz seçimi (set, tekrar, %1RM veya RPE şiddeti, tempo, dinlenme), sporcu hazır bulunuşluğu (wellness, sRPE, dinlenme nabzı RHR), yaralanma riskini azaltma ve yükü akıllıca dağıtma.
+
+Kurallar:
+- Aşağıda "GÜNCEL TAKIM VERİSİ" bölümünde verilen gerçek verilere dayan. Sporcu, yük veya plan hakkında konuşurken bu veriyi kullan; veri yoksa "veri yok" de, ASLA uydurma.
+- Somut ol: set×tekrar, %1RM/RPE, dinlenme süresi, haftalık AU hedefi gibi uygulanabilir sayılar ver.
+- ACWR 0.8–1.3 optimal, >1.5 yüksek yaralanma riski; monotoni >2 riskli. Yorumlarken bunları kullan.
+- Kısa, net ve madde işaretli yaz; gereksiz uzatma.
+- Kullanıcı hangi dilde yazarsa o dilde yanıtla (varsayılan Türkçe).
+- Kesin tıbbi teşhis koyma; gerektiğinde sağlık ekibine yönlendir.`;
+
+function buildCoachContext(team,data){
+  if(!team)return 'Aktif takım yok.';
+  const out=[];const s=team.setup||{};
+  out.push(`TAKIM: ${s.teamName||'—'} | Spor: ${s.sport||'—'} | Model: ${s.model||s.trainingModel||s.periodizationModel||'—'}`);
+  if(s.seasonStart||s.startDate)out.push(`Sezon: ${s.seasonStart||s.startDate||'?'} → ${s.seasonEnd||s.endDate||'?'}`);
+  out.push(`Bugün: ${fmt(today)}`);
+  try{const periods=(typeof getPeriods==='function')?getPeriods(s):null;
+    if(periods&&periods.length){out.push('\nPERİYOTLAR:');periods.forEach(p=>out.push(`- ${p.name||p.type||'Periyot'}: ${p.weeks||'?'} hf (${p.start||p.startDate||'?'} → ${p.end||p.endDate||'?'})`));}
+  }catch(e){}
+  try{const ws=fmt(sow(today)),we=fmt(addD(parseD(ws),6));const DN=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+    out.push(`\nBU HAFTA PLANLI ANTRENMANLAR (${ws} → ${we}):`);let wtot=0;
+    for(let i=0;i<7;i++){const dk=fmt(addD(parseD(ws),i));const ss=(team.days&&team.days[dk]&&team.days[dk].sessions)||[];
+      if(!ss.length){out.push(`- ${DN[i]} ${dk}: dinlenme`);continue;}
+      const parts=ss.map(x=>{const au=Number(x.au)||((x.sRPE!==''&&x.sRPE!=null)?Math.round(Number(x.sRPE)*Number(x.duration||0)):0);wtot+=au;return `${x.name||'Antrenman'} [${x.purpose||x.loadType||'—'}, ${x.duration||'?'}dk, ${au} AU]`;});
+      out.push(`- ${DN[i]} ${dk}: ${parts.join(' + ')}`);}
+    out.push(`Hafta toplam planlı yük: ${wtot} AU`);
+  }catch(e){}
+  try{const aths=team.athletes||[];out.push(`\nSPORCULAR (${aths.length}):`);
+    aths.slice(0,40).forEach(a=>{
+      const wl=[...(a.wellness||[])].filter(w=>w.date).sort((x,y)=>x.date.localeCompare(y.date));const lw=wl[wl.length-1];
+      const wtxt=lw?`son check-in ${lw.date} → Hazırlık ${lw.readiness??'—'}/5, Uyku ${lw.sleep??'—'}, Yorgunluk ${lw.fatigue??'—'}, Ağrı ${lw.soreness??'—'}, RHR ${lw.RHR??'—'}`:'wellness verisi yok';
+      const log=a.srpeLog||[];const loadOn=dk=>log.filter(e=>e.date===dk).reduce((t,e)=>t+(Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0))),0);
+      let a7=0;for(let i=0;i<7;i++)a7+=loadOn(fmt(addD(today,-i)));let c28=0;for(let i=0;i<28;i++)c28+=loadOn(fmt(addD(today,-i)));
+      const acwr=(c28/4)>0?a7/(c28/4):0;const zone=acwr===0?'veri yok':acwr>1.5?'YÜKSEK RİSK':(acwr>=0.8&&acwr<=1.3)?'optimal':acwr<0.8?'düşük yük':'dikkat';
+      out.push(`- ${a.name||'Sporcu'}${a.position?' ('+a.position+')':''}: ${wtxt}. Son 7g yük ${Math.round(a7)} AU, ACWR≈${acwr?acwr.toFixed(2):'—'} (${zone}).`);});
+    if(aths.length>40)out.push(`… ve ${aths.length-40} sporcu daha (kısaltıldı).`);
+  }catch(e){}
+  try{const exs=data.exercises||[];if(exs.length){out.push(`\nEGZERSİZ KÜTÜPHANESİ (${exs.length} egzersiz):`);
+    const byType={};exs.forEach(e=>{const t=e.type||'Diğer';(byType[t]=byType[t]||[]).push((e.name||'?')+(e.difficulty?' ('+e.difficulty+')':''));});
+    Object.entries(byType).forEach(([t,n])=>{const sh=n.slice(0,25);out.push(`- ${t} (${n.length}): ${sh.join(', ')}${n.length>sh.length?', …':''}`);});}
+  }catch(e){}
+  let txt=out.join('\n');if(txt.length>32000)txt=txt.slice(0,32000)+'\n…(kısaltıldı)';return txt;
+}
+
+async function askCoach(apiKey,model,system,messages){
+  let r;
+  try{
+    const body={model,max_tokens:6000,system,messages};
+    if(model!=='claude-haiku-4-5'){body.thinking={type:'adaptive'};body.output_config={effort:'medium'};}
+    r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify(body)});
+  }catch(e){throw new Error('Ağ hatası — internet bağlantını kontrol et.');}
+  if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
+    if(r.status===401)throw new Error('API anahtarı geçersiz (401). Ayarlardan kontrol et.');
+    if(r.status===429)throw new Error('Hız sınırı (429). Biraz sonra tekrar dene.');
+    if(/credit|balance|billing/i.test(msg))throw new Error('Bakiye/faturalandırma: '+msg);
+    throw new Error('API '+r.status+(msg?': '+msg:''));}
+  const j=await r.json();
+  return (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+}
+
+const AIC_ICON=<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.7 4L18 8.6l-4.3 1.6L12 14l-1.7-3.8L6 8.6l4.3-1.6L12 3z"/><path d="M5 15.5l.9 2.1 2.1.9-2.1.9L5 21.5l-.9-2.1L2 18.5l2.1-.9.9-2.1z"/></svg>;
+
+function AICoach({data,team}){
+  const[open,setOpen]=useState(false);
+  const[apiKey,setApiKey]=useLocal('pp-ai-key','');
+  const[model,setModel]=useLocal('pp-ai-model','claude-opus-4-8');
+  const[msgs,setMsgs]=useState([]);
+  const[input,setInput]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState(null);
+  const[setupOpen,setSetupOpen]=useState(false);
+  const bodyRef=useRef(null);
+  useEffect(()=>{if(bodyRef.current)bodyRef.current.scrollTop=bodyRef.current.scrollHeight;},[msgs,busy,err]);
+  const needKey=!apiKey;
+  const send=async q=>{
+    const text=(typeof q==='string'?q:input).trim();if(!text||busy)return;
+    setInput('');setErr(null);
+    const hist=[...msgs,{role:'user',text}];setMsgs(hist);setBusy(true);
+    try{
+      const system=AIC_SYSTEM+'\n\n=== GÜNCEL TAKIM VERİSİ ===\n'+buildCoachContext(team,data);
+      const ans=await askCoach(apiKey,model,system,hist.map(m=>({role:m.role,content:m.text})));
+      setMsgs(m=>[...m,{role:'assistant',text:ans||'(boş yanıt)'}]);
+    }catch(e){setErr(e.message||String(e));}
+    finally{setBusy(false);}
+  };
+  if(!open)return <button className="aic-fab" title="AI Antrenör Asistanı" onClick={()=>setOpen(true)}>{AIC_ICON}</button>;
+  return(<>
+    <div className="aic-scrim" onClick={()=>setOpen(false)}/>
+    <aside className="aic-panel">
+      <div className="aic-head">
+        <div className="aic-title"><span className="aic-dot"/>AI Antrenör Asistanı</div>
+        <div style={{marginLeft:'auto',display:'flex',gap:6}}>
+          <button className="btn sec xs" title="Ayarlar" onClick={()=>setSetupOpen(o=>!o)}>⚙</button>
+          {msgs.length>0&&<button className="btn sec xs" title="Sohbeti temizle" onClick={()=>{setMsgs([]);setErr(null);}}>🗑</button>}
+          <button className="btn sec xs" title="Kapat" onClick={()=>setOpen(false)}>✕</button>
+        </div>
+      </div>
+      {(needKey||setupOpen)?(
+        <div className="aic-body">
+          <div className="help" style={{marginBottom:12,lineHeight:1.55}}>Bu asistan senin kendi <b>Anthropic (Claude) API anahtarınla</b> çalışır. Anahtar yalnızca bu tarayıcıda saklanır. Sorularını yanıtlamak için takım verisi Claude API'sine gönderilir.</div>
+          <label>Claude API anahtarı</label>
+          <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="sk-ant-..." style={{width:'100%'}}/>
+          <div className="help" style={{margin:'6px 0 14px'}}>Anahtarı <b>console.anthropic.com</b> → API Keys bölümünden oluşturabilirsin.</div>
+          <label>Model</label>
+          <select value={model} onChange={e=>setModel(e.target.value)} style={{width:'100%'}}>{AI_MODELS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select>
+          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
+            {!needKey&&<button className="btn sec sm" onClick={()=>setSetupOpen(false)}>Kapat</button>}
+            <button className="btn sm" disabled={!apiKey} onClick={()=>setSetupOpen(false)}>Kaydet</button>
+          </div>
+        </div>
+      ):(<>
+        <div className="aic-body" ref={bodyRef}>
+          {msgs.length===0&&<div style={{color:'var(--dim)',fontSize:13,lineHeight:1.6}}>
+            <div style={{fontSize:15,fontWeight:700,color:'var(--text)',marginBottom:6}}>👋 Antrenman asistanın hazır</div>
+            <b>{team&&team.setup?team.setup.teamName:'Takımın'}</b> ve sporcuların güncel verisini görüyorum. Programlama, yük yönetimi, egzersiz seçimi ve hazır bulunuşluk hakkında sor.
+            <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:14}}>
+              {AIC_SUGGESTIONS.map((q,i)=><button key={i} className="aic-chip" onClick={()=>send(q)}>{q}</button>)}
+            </div>
+          </div>}
+          {msgs.map((m,i)=><div key={i} className={'aic-msg '+(m.role==='user'?'user':'bot')}>{m.text}</div>)}
+          {busy&&<div className="aic-msg bot"><div className="aic-typing"><i/><i/><i/></div></div>}
+          {err&&<div className="aic-msg bot" style={{borderColor:'var(--red)',color:'var(--red)'}}>⚠ {err}</div>}
+        </div>
+        <div className="aic-foot">
+          <textarea className="aic-input" rows={1} value={input} placeholder="Soru sor… (Enter ile gönder)" onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}}/>
+          <button className="aic-send" disabled={busy||!input.trim()} title="Gönder" onClick={()=>send()}>➤</button>
+        </div>
+      </>)}
+    </aside>
+  </>);
+}
+
 function App(){
   const[data,setData]=useLocal('pp-data',makeDefault());
   const sync=useCloudSync(data,setData);
@@ -6304,6 +6482,7 @@ function App(){
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
+    <AICoach data={data} team={team}/>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
