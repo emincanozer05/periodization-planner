@@ -769,9 +769,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rsf-top-r{display:flex;align-items:center;gap:6px;flex:none}
 .rsf-oa{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--low-t);border:1px solid rgba(70,214,160,.3);background:rgba(70,214,160,.1);border-radius:5px;padding:2px 6px}
 .rsf-year{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
-.rsf-title{font-size:16px;font-weight:700;line-height:1.32;letter-spacing:-.01em;margin-bottom:8px}
+.rsf-title{position:relative;font-size:16px;font-weight:700;line-height:1.32;letter-spacing:-.01em;margin-bottom:8px}
 .rsf-title a{color:var(--text);text-decoration:none;transition:color .15s}
 .rsf-title a:hover{color:var(--accent2)}
+.rsf-tt{position:absolute;top:calc(100% + 7px);left:0;right:0;z-index:25;background:var(--bg2);border:1px solid var(--accent);border-radius:10px;padding:9px 12px 10px;font-size:13px;font-weight:500;line-height:1.45;color:var(--accent2);box-shadow:0 12px 30px rgba(0,0,0,.65);opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .16s ease,transform .16s ease;pointer-events:none}
+.rsf-tt-lbl{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.rsf-title:hover .rsf-tt{opacity:1;visibility:visible;transform:none}
 .rsf-meta{font-size:12px;color:var(--muted);margin-bottom:11px;line-height:1.45}
 .rsf-abs{font-size:13px;color:var(--text2);line-height:1.62;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
 .rsf-abs.open{-webkit-line-clamp:unset;display:block}
@@ -6239,8 +6242,9 @@ function ResearchCard({rec,onOpen}){
    cached in localStorage so it stays stable through the day and only
    the abstract + a source link are shown.
    --------------------------------------------------------------- */
-const RS_FEED_KEY='pp_research_feed_v1';   // {date, roll, items}
+const RS_FEED_KEY='pp_research_feed_v2';   // {date, roll, items}  (v2: 6 items + TR titles)
 const RS_SEEN_KEY='pp_research_seen_v1';   // recently shown ids (avoid repeats)
+const RS_TR_KEY='pp_research_tr_v1';       // cached EN→TR title translations
 const RS_MAILTO='emincanozer05@gmail.com';
 const RS_TOPICS=[
   {tr:'Periyotlama',q:'periodization resistance training program'},
@@ -6282,43 +6286,77 @@ function rsNorm(w,topic){
   return{
     id:w.id,doi:w.doi||'',
     url:w.doi||oa.oa_url||loc.landing_page_url||w.id,
-    title:w.title||w.display_name||'(başlıksız)',
+    title:w.title||w.display_name||'(başlıksız)',titleTr:'',
     abstract:rsAbstract(w.abstract_inverted_index),
     journal:(loc.source&&loc.source.display_name)||'',
     year:w.publication_year||'',authors:authStr,isOA:!!oa.is_oa,topic};
 }
-// Fetch one strong article for each of 5 day-rotated topics.
+// Translate an English title to Turkish via Google's free endpoint; cached locally.
+async function rsTranslate(text){
+  if(!text)return'';
+  try{const c=JSON.parse(localStorage.getItem(RS_TR_KEY)||'{}');if(c[text])return c[text];}catch(e){}
+  try{
+    const ctrl=new AbortController(),to=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t&q='+encodeURIComponent(text),{signal:ctrl.signal});
+    clearTimeout(to);if(!r.ok)return'';
+    const j=await r.json();
+    const tr=(j&&Array.isArray(j[0]))?j[0].map(s=>s&&s[0]).filter(Boolean).join(''):'';
+    if(tr){try{const c=JSON.parse(localStorage.getItem(RS_TR_KEY)||'{}');c[text]=tr;localStorage.setItem(RS_TR_KEY,JSON.stringify(c));}catch(e){}}
+    return tr;
+  }catch(e){return'';}
+}
+// Query OpenAlex for one strong, recent article on a topic, rotating among the
+// most-relevant top results for daily variety while skipping recently-shown ids.
+async function rsQuery(qstr,topicTr,from,sel,rng,used,seen){
+  const url='https://api.openalex.org/works?search='+encodeURIComponent(qstr)
+    +'&filter=from_publication_date:'+from+',has_abstract:true,type:article,language:en,cited_by_count:>1'
+    +'&per-page=50&sort=relevance_score:desc&select='+sel+'&mailto='+RS_MAILTO;
+  let res;try{const r=await fetch(url);if(!r.ok)return null;res=(await r.json()).results||[];}catch(e){return null;}
+  if(!res.length)return null;
+  const topN=Math.min(20,res.length);
+  const order=rsShuffle(Array.from({length:topN},(_,i)=>i),rng)
+    .concat(Array.from({length:Math.max(0,res.length-topN)},(_,i)=>i+topN));
+  // Within the topically-ranked pool, prefer hard evidence (RCT / meta-analysis /
+  // systematic review) and an article not shown recently.
+  const isHE=n=>/randomi[sz]ed|controlled trial|meta-?analysis|systematic review/i.test(n.title+' '+(n.abstract||''));
+  let heUnseen=null,heSeen=null,anyUnseen=null,anyAny=null;
+  for(const i of order){
+    const w=res[i];if(!w||used.has(w.id))continue;
+    const n=rsNorm(w,topicTr);if(!n.abstract||n.abstract.length<120)continue;
+    const he=isHE(n),sn=seen.includes(w.id);
+    if(he&&!sn){heUnseen=n;break;}
+    if(he&&!heSeen)heSeen=n;
+    if(!sn&&!anyUnseen)anyUnseen=n;
+    if(!anyAny)anyAny=n;
+  }
+  return heUnseen||heSeen||anyUnseen||anyAny;
+}
+// Fetch 6 day-rotated topics, preferring randomized controlled trials & other
+// high-evidence designs, then translate each title to Turkish (best-effort).
 async function rsFetchDaily(seed){
   const rng=rsRng(Math.imul(seed||1,2654435761));
-  const topics=rsShuffle(RS_TOPICS.slice(),rng).slice(0,5);
+  const topics=rsShuffle(RS_TOPICS.slice(),rng).slice(0,6);
   const from=(()=>{const d=new Date();d.setFullYear(d.getFullYear()-5);return d.toISOString().slice(0,10);})();
   const seen=rsLoadSeen(),used=new Set(),out=[];
   const sel='id,doi,title,display_name,publication_year,abstract_inverted_index,authorships,primary_location,open_access';
+  // Build an on-topic pool enriched with RCTs (search nudge), then let rsQuery
+  // prefer the hardest evidence within it. Fall back to the plain topic if empty.
   for(const t of topics){
-    try{
-      const url='https://api.openalex.org/works?search='+encodeURIComponent(t.q)
-        +'&filter=from_publication_date:'+from+',has_abstract:true,type:article,language:en,cited_by_count:>1'
-        +'&per-page=50&sort=relevance_score:desc&select='+sel+'&mailto='+RS_MAILTO;
-      const r=await fetch(url);if(!r.ok)continue;
-      const res=(await r.json()).results||[];
-      // Rotate among the most-relevant results (top 20) for topicality, then
-      // fall back to the rest only if everything up top was already shown.
-      const topN=Math.min(20,res.length);
-      const order=rsShuffle(Array.from({length:topN},(_,i)=>i),rng)
-        .concat(Array.from({length:Math.max(0,res.length-topN)},(_,i)=>i+topN));
-      let pick=null,fallback=null;
-      for(const i of order){const w=res[i];if(!w||used.has(w.id))continue;const n=rsNorm(w,t.tr);if(!n.abstract||n.abstract.length<120)continue;if(!fallback)fallback=n;if(seen.includes(w.id))continue;pick=n;break;}
-      pick=pick||fallback;
-      if(pick){out.push(pick);used.add(pick.id);}
-    }catch(e){/* skip this topic, keep going */}
+    let pick=await rsQuery(t.q+' randomized controlled trial',t.tr,from,sel,rng,used,seen);
+    if(!pick)pick=await rsQuery(t.q,t.tr,from,sel,rng,used,seen);
+    if(pick){out.push(pick);used.add(pick.id);}
   }
+  await Promise.all(out.map(async o=>{try{o.titleTr=await rsTranslate(o.title);}catch(e){}}));
   if(out.length)rsSaveSeen(seen.concat(out.map(o=>o.id)));
   return out;
 }
 
 function ResearchFeedCard({rec,idx,saved,onToggleSave}){
   const[exp,setExp]=useState(false);
+  const[tt,setTt]=useState(rec.titleTr||'');
   const ab=rec.abstract||'';const long=ab.length>360;
+  // Show the Turkish translation on hover; translate lazily for older saved items.
+  const hoverTr=()=>{if(!tt)rsTranslate(rec.title).then(t=>{if(t)setTt(t);});};
   return(<article className="rsf-card" style={{animationDelay:(idx*70)+'ms'}}>
     <div className="rsf-top">
       <span className="rsf-topic">{rec.topic||'Araştırma'}</span>
@@ -6327,7 +6365,10 @@ function ResearchFeedCard({rec,idx,saved,onToggleSave}){
         {rec.year&&<span className="rsf-year">{rec.year}</span>}
       </div>
     </div>
-    <h3 className="rsf-title"><a href={rec.url} target="_blank" rel="noopener noreferrer">{rec.title}</a></h3>
+    <h3 className="rsf-title" onMouseEnter={hoverTr}>
+      <a href={rec.url} target="_blank" rel="noopener noreferrer">{rec.title}</a>
+      {tt&&<span className="rsf-tt"><span className="rsf-tt-lbl">TR çeviri</span>{tt}</span>}
+    </h3>
     <div className="rsf-meta">{[rec.journal,rec.authors].filter(Boolean).join(' · ')||'—'}</div>
     <p className={'rsf-abs'+(exp?' open':'')}>{ab||'Bu makale için özet bulunamadı.'}</p>
     {long&&<button className="rsf-more" onClick={()=>setExp(e=>!e)}>{exp?'Daha az ↑':'Devamını oku ↓'}</button>}
@@ -6367,9 +6408,9 @@ function ResearchFeed({savedIds,onToggleSave}){
   return(<div>
     <div className="rsf-bar">
       <div className="rsf-date">📅 {dateStr} · bugünün seçkisi</div>
-      <button className="btn sec sm" onClick={()=>setRoll(r=>r+1)} disabled={items===null}>🔀 Yeni 5 makale</button>
+      <button className="btn sec sm" onClick={()=>setRoll(r=>r+1)} disabled={items===null}>🔀 Yeni 6 makale</button>
     </div>
-    {items===null&&<div className="rsf-grid">{[0,1,2,3,4].map(i=><div key={i} className="rsf-skel"><div className="sk sk1"/><div className="sk sk2"/><div className="sk sk3"/><div className="sk sk4"/></div>)}</div>}
+    {items===null&&<div className="rsf-grid">{[0,1,2,3,4,5].map(i=><div key={i} className="rsf-skel"><div className="sk sk1"/><div className="sk sk2"/><div className="sk sk3"/><div className="sk sk4"/></div>)}</div>}
     {items&&items.length===0&&<div className="ex-empty">{err||'Sonuç bulunamadı.'}<div style={{marginTop:12}}><button className="btn sm" onClick={()=>setRoll(r=>r+1)}>Tekrar dene</button></div></div>}
     {items&&items.length>0&&<div className="rsf-grid">{items.map((r,i)=><ResearchFeedCard key={r.id} rec={r} idx={i} saved={savedIds.has(r.id)} onToggleSave={onToggleSave}/>)}</div>}
   </div>);
@@ -6413,7 +6454,7 @@ function ResearchesView({data,setData}){
   const notesN=(data.researches||[]).length;
   return(<div className="ex-wrap">
     <div className="ex-top">
-      <div><h1 className="ex-h1">Researches</h1><div className="sub">Her gün antrenman bilimi alanından seçilmiş 5 güncel araştırma — özet + kaynak linki.</div></div>
+      <div><h1 className="ex-h1">Researches</h1><div className="sub">Her gün antrenman bilimi alanından seçilmiş 6 güncel araştırma (RCT öncelikli) — özet + kaynak linki. Başlığın üzerine gelince Türkçe çevirisi görünür.</div></div>
     </div>
     <div className="rsf-tabs">
       <button className={tab==='feed'?'on':''} onClick={()=>setTab('feed')}>📰 Günlük Akış</button>
