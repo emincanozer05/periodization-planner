@@ -823,6 +823,31 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ath-stat .d.pos{color:var(--low-t)}
 .ath-stat .d.neg{color:var(--high-t)}
 .ath-stat .sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:6px;letter-spacing:.02em}
+/* Athlete AI recommendations tab */
+.rec-wrap{display:flex;flex-direction:column;gap:14px}
+.rec-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:14px 16px}
+.rec-bar-t{font-size:15px;font-weight:700;color:var(--text)}
+.rec-bar-s{font-size:12px;color:var(--muted);margin-top:3px}
+.rec-err{background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.35);color:#fda4af;border-radius:10px;padding:10px 14px;font-size:13px}
+.rec-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:46px 20px;color:var(--muted);font-size:13px}
+.rec-spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:recSpin .8s linear infinite}
+@keyframes recSpin{to{transform:rotate(360deg)}}
+.rec-card{background:linear-gradient(180deg,var(--elevated),var(--panel));border:1px solid var(--border);border-radius:14px;padding:8px 22px 18px;position:relative;transition:opacity .2s}
+.rec-card.dim{opacity:.5}
+.rec-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);border-radius:14px 14px 0 0}
+.rec-md{color:var(--text2);font-size:14px;line-height:1.7}
+.rec-md h3{font-size:15px;font-weight:700;color:var(--accent2);margin:20px 0 9px;padding-bottom:6px;border-bottom:1px solid var(--border);letter-spacing:-.01em}
+.rec-md h4{font-size:13.5px;font-weight:700;color:var(--text);margin:14px 0 6px}
+.rec-md p{margin:8px 0}
+.rec-md ul,.rec-md ol{margin:8px 0;padding-left:22px}
+.rec-md li{margin:5px 0}
+.rec-md strong{color:var(--text)}
+.rec-foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--dim);font-style:italic}
+.rec-hint{background:var(--panel);border:1px dashed var(--border);border-radius:12px;padding:20px;color:var(--muted);font-size:13px;line-height:1.6}
+.rec-empty{text-align:center;padding:46px 24px;background:var(--panel);border:1px dashed var(--border);border-radius:14px;max-width:560px;margin:8px auto 0}
+.rec-empty-ic{font-size:40px;margin-bottom:8px}
+.rec-empty h3{font-size:17px;margin-bottom:8px;color:var(--text)}
+.rec-empty p{font-size:13px;color:var(--muted);line-height:1.65}
 /* Mockup-style metric chart cards (Body Comp / Tests) */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .metric-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
@@ -4543,7 +4568,162 @@ function TestPanel({ath,updAth,setup}){
 /* =========================================================
    ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests)
    ========================================================= */
-function AthleteDetail({ath,onBack,updAth,setup,weeks}){
+/* =========================================================
+   ATHLETE RECOMMENDATIONS — per-athlete, evidence-based AI advice
+   built from the athlete's body composition, fatigue/wellness and
+   test results. Uses the same provider/API key the coach already set
+   for the AI Coach assistant (data.ai). Result is stored on the
+   athlete record (ath.recommend) so it persists & syncs.
+   ========================================================= */
+const ATH_REC_SYSTEM=`Sen, elit bir kuvvet & kondisyon ve spor performans uzmanısın. Sana TEK bir sporcunun güncel profili (vücut kompozisyonu, yorgunluk/hazır bulunuşluk verileri, yük/ACWR ve test sonuçları) verilecek. Görevin bu sporcuya ÖZEL, uygulanabilir, kanıta dayalı bir antrenman önerisi hazırlamak.
+
+Çıktını TAM OLARAK şu Markdown başlıklarıyla ve Türkçe ver:
+## Genel Değerlendirme
+2-4 cümlede sporcunun mevcut durumu (güçlü yanlar + risk/zayıf alanlar).
+## Yüklenme Önerisi
+ACWR, hazır bulunuşluk ve yorgunluğa göre yükü ARTIR / KORU / AZALT diye öner; somut haftalık AU hedef aralığı ve mikro dağılım (yoğun/hafif gün) ver.
+## Yapması Gereken Çalışmalar
+Madde madde; test ve vücut kompozisyonu eksiklerine yönelik egzersiz tipleri ve mümkünse "EGZERSİZ KÜTÜPHANESİ"nden somut egzersiz adları, set×tekrar ve şiddet (%1RM/RPE) ile.
+## Kaçınması / Dikkat Etmesi Gerekenler
+Yorgunluk, asimetri (ankle DF / ASLR / OHS), sakatlık geçmişi veya yüksek ACWR'ye göre kaçınılması ya da dikkatle yapılması gereken çalışmalar.
+## İzleme & Yeniden Test
+Önümüzdeki haftalarda neyi takip etmeli, ne zaman yeniden test edilmeli.
+
+Kurallar:
+- SADECE verilen verilere dayan. Eksik veri varsa "veri yok/eksik" diye belirt; ASLA test değeri veya ölçüm uydurma.
+- Somut sayılar kullan (set×tekrar, %1RM/RPE, dinlenme, haftalık AU).
+- ACWR 0.8–1.3 optimal, >1.5 yüksek yaralanma riski; hazır bulunuşluk <3/5 ve yorgunluk yüksekse yükü azalt.
+- Asimetri >%10 (örn. ayak bileği dorsifleksiyon) veya ASLR/OHS düşük skor ise mobilite/stabilite ve tek taraflı (unilateral) çalışmayı önceliklendir.
+- Kısa, net, madde işaretli yaz. Kesin tıbbi teşhis koyma; gerekirse sağlık ekibine yönlendir.`;
+
+function recNum(v){return v!==''&&v!=null&&!isNaN(Number(v))?Number(v):null;}
+function buildAthleteSnapshot(ath,setup,exercises){
+  const out=[];
+  const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  out.push(`SPORCU: ${ath.name||'—'}${ath.number?` (#${ath.number})`:''}`);
+  out.push(`Pozisyon: ${POS_FULL[ath.position]||ath.position||'—'} | Yaş: ${age??'—'} | Spor: ${setup.sport||'—'}`);
+  out.push(`Bugün: ${fmt(today)}`);
+  // Body composition (latest + change vs previous)
+  const ms=[...(ath.measurements||[])].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
+  out.push('\n=== VÜCUT KOMPOZİSYONU ===');
+  if(ms.length){
+    const cur=ms[ms.length-1],prev=ms[ms.length-2];
+    const line=(k,lbl,u)=>{const c=recNum(cur[k]);if(c==null)return null;const p=prev?recNum(prev[k]):null;const d=p!=null?` (Δ ${(c-p>=0?'+':'')+(c-p).toFixed(1)})`:'';return `${lbl}: ${c}${u||''}${d}`;};
+    const parts=[line('height','Boy','cm'),line('weight','Kilo','kg'),line('bodyFat','Yağ','%'),line('muscleMass','Kas kütlesi','kg')].filter(Boolean);
+    out.push(`Son ölçüm (${cur.date}): ${parts.join(' | ')||'—'}`);
+    const h=recNum(cur.height),w=recNum(cur.weight);if(h&&w)out.push(`BMI: ${(w/((h/100)**2)).toFixed(1)}`);
+    if(ms.length>1)out.push(`Toplam ${ms.length} ölçüm var (ilk: ${ms[0].date}).`);
+  } else out.push('Vücut kompozisyonu verisi yok.');
+  // Wellness / fatigue (last 14 days averages + latest)
+  out.push('\n=== YORGUNLUK / HAZIR BULUNUŞLUK (son 14 gün) ===');
+  const ref=athLatestDate(ath);
+  const recent=(ath.wellness||[]).filter(w=>w.date&&w.date>=fmt(addD(parseD(ref),-13))&&w.date<=ref);
+  if(recent.length){
+    const avg=f=>{const v=recent.map(w=>recNum(w[f])).filter(x=>x!=null);return v.length?(v.reduce((a,b)=>a+b,0)/v.length):null;};
+    const fmtA=(f,u)=>{const a=avg(f);return a!=null?a.toFixed(1)+(u||''):'—';};
+    out.push(`Ortalama → Hazır bulunuşluk: ${fmtA('readiness','/5')} | Yorgunluk: ${fmtA('fatigue','/5')} | Ağrı: ${fmtA('soreness','/5')} | Uyku: ${fmtA('sleep')} | RHR: ${fmtA('RHR','bpm')}`);
+    const last=[...recent].sort((a,b)=>a.date.localeCompare(b.date)).pop();
+    out.push(`Son check-in (${last.date}): Hazırlık ${last.readiness??'—'}/5, Yorgunluk ${last.fatigue??'—'}/5, Ağrı ${last.soreness??'—'}/5${last.areaOfPain?`, Ağrı bölgesi: ${last.areaOfPain}`:''} (${recent.length} check-in)`);
+  } else out.push('Son 14 günde wellness verisi yok.');
+  // Load / ACWR
+  out.push('\n=== YÜK / ACWR ===');
+  const l7=athLoadSum(ath,fmt(addD(parseD(ref),-6)),ref);const acwr=athACWR(ath,ref);const z=acwrZoneOf(acwr);
+  out.push(`Son 7 gün yük: ${l7} AU | ACWR: ${acwr?acwr.toFixed(2):'—'} (${z.t})`);
+  // Injuries
+  const inj=(ath.injuries||[]).filter(i=>i.status&&i.status!=='Recovered');
+  out.push('\n=== SAKATLIK ===');
+  out.push(inj.length?inj.map(i=>`- ${i.type||i.area||'Sakatlık'}${i.area&&i.type?` (${i.area})`:''} — durum: ${i.status}${i.date?`, ${i.date}`:''}`).join('\n'):'Aktif sakatlık yok.');
+  // Latest test
+  out.push('\n=== SON TEST SONUÇLARI ===');
+  const ts=[...(ath.tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(ts.length){
+    const t=ts[ts.length-1];
+    out.push(`Tarih: ${t.date}${t.period?` (${(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period})`:''}`);
+    const add=(lbl,v,u)=>{const n=recNum(v);if(n!=null)out.push(`- ${lbl}: ${n}${u||''}`);};
+    add('Dikey sıçrama',t.verticalJump,' cm');add('CMJ',t.cmj,' cm');add('Drop Jump (RSI)',t.dropJump);add('Yatay sıçrama',t.horizontalJump,' cm');
+    add('20m sprint',t.sprint20m&&t.sprint20m.time,' s');add('T-Test çeviklik',t.tTest,' s');add('Shuttle/dayanıklılık',t.shuttleRun,' s');
+    add('Boy',t.height,' cm');add('Kilo',t.weight,' kg');add('Yağ',t.bodyFat,' %');add('Kulaç',t.wingspan,' cm');
+    const adfR=recNum(t.ankleDF&&t.ankleDF.right),adfL=recNum(t.ankleDF&&t.ankleDF.left);
+    if(adfR!=null||adfL!=null){const diff=(adfR!=null&&adfL!=null)?Math.abs(adfR-adfL).toFixed(1):'—';out.push(`- Ayak bileği dorsifleksiyon: R ${adfR??'—'}° / L ${adfL??'—'}° (fark ${diff}°)`);}
+    const asR=recNum(t.aslr&&t.aslr.right),asL=recNum(t.aslr&&t.aslr.left);
+    if(asR!=null||asL!=null)out.push(`- ASLR (FMS 0-3): R ${asR??'—'} / L ${asL??'—'}`);
+    if(t.ohs&&t.ohs.score!==''&&t.ohs.score!=null)out.push(`- Overhead Squat (FMS 0-3): ${t.ohs.score}${(t.ohs.problems||[]).filter(Boolean).length?` — sorunlar: ${(t.ohs.problems||[]).filter(Boolean).join('; ')}`:''}`);
+    const circ=t.circ||{};const ca=[];const cl=(k,lbl)=>{const n=recNum(circ[k]);if(n!=null)ca.push(`${lbl} ${n}`);};
+    cl('shoulder','Omuz');cl('waist','Bel');cl('hip','Kalça');cl('thighRight','Uyluk R');cl('thighLeft','Uyluk L');cl('calfRight','Baldır R');cl('calfLeft','Baldır L');
+    if(ca.length)out.push(`- Çevre ölçümleri (cm): ${ca.join(', ')}`);
+    if(t.posture&&t.posture.observations)out.push(`- Postür notları: ${t.posture.observations}`);
+    if(t.notes)out.push(`- Genel notlar: ${t.notes}`);
+    if(ts.length>1)out.push(`(Toplam ${ts.length} test; bir önceki: ${ts[ts.length-2].date})`);
+  } else out.push('Test verisi yok.');
+  // Exercise library so the model can recommend the coach's own exercises
+  const exs=exercises||[];
+  if(exs.length){
+    out.push('\n=== EGZERSİZ KÜTÜPHANESİ (öneriler buradan seçilebilir) ===');
+    const byType={};exs.forEach(e=>{const ty=e.type||'Diğer';(byType[ty]=byType[ty]||[]).push((e.name||'?')+(e.difficulty?` (${e.difficulty})`:''));});
+    Object.entries(byType).forEach(([ty,n])=>{const sh=n.slice(0,30);out.push(`- ${ty}: ${sh.join(', ')}${n.length>sh.length?' …':''}`);});
+  }
+  let txt=out.join('\n');if(txt.length>28000)txt=txt.slice(0,28000)+'\n…(kısaltıldı)';return txt;
+}
+// Minimal Markdown → HTML for rendering the recommendation nicely.
+function recMd(src){
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const inline=s=>esc(s).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  const lines=(src||'').replace(/\r/g,'').split('\n');let html='',list=null;
+  const closeList=()=>{if(list){html+=`</${list}>`;list=null;}};
+  for(const ln of lines){
+    const t=ln.trim();
+    if(!t){closeList();continue;}
+    let m;
+    if(m=t.match(/^#{1,3}\s+(.*)/)){closeList();html+=`<h3>${inline(m[1])}</h3>`;continue;}
+    if(m=t.match(/^#{4,6}\s+(.*)/)){closeList();html+=`<h4>${inline(m[1])}</h4>`;continue;}
+    if(m=t.match(/^[-*•]\s+(.*)/)){if(list!=='ul'){closeList();list='ul';html+='<ul>';}html+=`<li>${inline(m[1])}</li>`;continue;}
+    if(m=t.match(/^\d+[.)]\s+(.*)/)){if(list!=='ol'){closeList();list='ol';html+='<ol>';}html+=`<li>${inline(m[1])}</li>`;continue;}
+    closeList();html+=`<p>${inline(t)}</p>`;
+  }
+  closeList();return html;
+}
+
+function RecommendsTab({ath,updAth,setup,ai,exercises}){
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const rec=ath.recommend||null;
+  const provider=(ai&&ai.provider)||'gemini';
+  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
+  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const gen=async()=>{
+    if(busy||!apiKey)return;setErr('');setBusy(true);
+    try{
+      const snap=buildAthleteSnapshot(ath,setup,exercises);
+      const msgs=[{role:'user',content:'Aşağıdaki sporcu için kişiselleştirilmiş öneri hazırla.\n\n'+snap}];
+      const ans=provider==='anthropic'?await askCoach(apiKey,model,ATH_REC_SYSTEM,msgs):await askGemini(apiKey,model,ATH_REC_SYSTEM,msgs);
+      updAth(ath.id,{recommend:{text:ans||'(boş yanıt)',at:Date.now(),provider,model}});
+    }catch(e){setErr(e.message||String(e));}
+    finally{setBusy(false);}
+  };
+  if(!apiKey)return(<div className="rec-empty">
+    <div className="rec-empty-ic">✨</div>
+    <h3>AI önerisi için anahtar gerekli</h3>
+    <p>Bu sekme; sporcunun <b>vücut kompozisyonu, yorgunluk/hazır bulunuşluk ve test sonuçlarını</b> değerlendirip kişiye özel yüklenme ve çalışma önerisi üretir. Çalışması için sağ alttaki <b>✨ AI Antrenör Asistanı</b>’nı açıp bir API anahtarı gir — <b>Gemini ücretsizdir</b>. Anahtar hesabınla tüm cihazlarda saklanır.</p>
+  </div>);
+  return(<div className="rec-wrap">
+    <div className="rec-bar">
+      <div className="rec-bar-l">
+        <div className="rec-bar-t">✨ Yapay Zekâ Önerisi</div>
+        <div className="rec-bar-s">{rec?`Oluşturuldu: ${new Date(rec.at).toLocaleString('tr-TR')} · ${rec.model}`:'Vücut kompozisyonu, yorgunluk ve test verilerine göre kişiye özel.'}</div>
+      </div>
+      <button className="btn sm" disabled={busy} onClick={gen}>{busy?'Oluşturuluyor…':(rec?'↻ Yeniden Oluştur':'✨ Öneri Oluştur')}</button>
+    </div>
+    {err&&<div className="rec-err">⚠ {err}</div>}
+    {busy&&!rec&&<div className="rec-loading"><div className="rec-spin"/><div>Sporcu verileri değerlendiriliyor…</div></div>}
+    {rec&&<div className={'rec-card'+(busy?' dim':'')}>
+      <div className="rec-md" dangerouslySetInnerHTML={{__html:recMd(rec.text)}}/>
+      <div className="rec-foot">Bu öneri karar-destek amaçlıdır; klinik/tıbbi kararlar için sağlık ekibine danışın.</div>
+    </div>}
+    {!rec&&!busy&&<div className="rec-hint">Henüz öneri yok. Yukarıdaki <b>✨ Öneri Oluştur</b>’a bas — sporcunun profilindeki verilere göre yüklenme, yapması/kaçınması gereken çalışmalar ve egzersiz önerileri çıkar.</div>}
+  </div>);
+}
+
+function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const[tab,setTab]=useState('load');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   const[srpeTableOpen,setSrpeTableOpen]=useState(false);
@@ -4602,6 +4782,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
     {id:'tests',ic:'⌖',l:'Tests'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
     {id:'wellness',ic:'♡',l:'Wellness'},
+    {id:'recommends',ic:'✨',l:'Öneriler'},
   ];
   return(<div>
     <button className="back" onClick={onBack} style={{marginBottom:14}}>‹ Athletes</button>
@@ -4629,6 +4810,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Profili düzenle">✎</button>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
+    {tab==='recommends'&&<RecommendsTab ath={ath} updAth={updAth} setup={setup} ai={ai} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
       <div className="modal" style={{maxWidth:680,width:'95vw'}} onClick={e=>e.stopPropagation()}>
@@ -5026,7 +5208,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
 /* =========================================================
    ATHLETES ROSTER
    ========================================================= */
-function Athletes({team,updateTeam,weeks}){
+function Athletes({team,updateTeam,weeks,ai,exercises}){
   const[sel,setSel]=useState(null);const athletes=team.athletes||[];
   const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
   const save=a=>updateTeam(team.id,{athletes:a});
@@ -5047,7 +5229,7 @@ function Athletes({team,updateTeam,weeks}){
   });
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← Back</button><p>Athlete not found</p></div>;
-    return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks}/>;}
+    return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks} ai={ai} exercises={exercises}/>;}
   return(<div>
     <div className="rost-head">
       <div>
@@ -6765,7 +6947,7 @@ function App(){
         athletes={team.athletes||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
-      {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks}/>}
+      {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
