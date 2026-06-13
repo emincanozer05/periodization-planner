@@ -6254,11 +6254,14 @@ const NAV_ICONS={
    It is given a live, compact snapshot of the active team so it can
    advise on programming, load management and exercise content.
    ========================================================= */
-const AI_MODELS=[
-  {id:'claude-opus-4-8',label:'Claude Opus 4.8 — en yetenekli'},
-  {id:'claude-sonnet-4-6',label:'Claude Sonnet 4.6 — hızlı / uygun'},
-  {id:'claude-haiku-4-5',label:'Claude Haiku 4.5 — en hızlı / ucuz'},
-];
+const AIC_PROVIDERS={
+  gemini:{label:'Gemini',short:'Gemini · ücretsiz',keyPlaceholder:'AIza…',
+    keyHelp:<>Ücretsiz anahtarı <b>aistudio.google.com/apikey</b> adresinden, Google hesabınla, <b>kart gerekmeden</b> alabilirsin.</>,
+    models:[{id:'gemini-2.5-flash',label:'Gemini 2.5 Flash — önerilen (ücretsiz)'},{id:'gemini-2.0-flash',label:'Gemini 2.0 Flash — daha hızlı (ücretsiz)'},{id:'gemini-2.5-pro',label:'Gemini 2.5 Pro — en yetenekli (sıkı ücretsiz kota)'}]},
+  anthropic:{label:'Claude',short:'Claude · ücretli',keyPlaceholder:'sk-ant-…',
+    keyHelp:<>Anahtarı <b>console.anthropic.com</b> → API Keys'ten alırsın (kullandıkça öde, ~5$ bakiye gerekir).</>,
+    models:[{id:'claude-opus-4-8',label:'Opus 4.8 — en yetenekli'},{id:'claude-sonnet-4-6',label:'Sonnet 4.6 — hızlı/uygun'},{id:'claude-haiku-4-5',label:'Haiku 4.5 — en ucuz'}]},
+};
 const AIC_SUGGESTIONS=[
   'Bu haftanın takım yükünü değerlendir ve riskleri söyle.',
   'Yüksek ACWR veya kötü wellness olan sporcular var mı?',
@@ -6329,12 +6332,46 @@ async function askCoach(apiKey,model,system,messages){
   return (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
 }
 
+async function askGemini(apiKey,model,system,messages){
+  let r;
+  try{
+    const body={
+      systemInstruction:{parts:[{text:system}]},
+      contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
+      generationConfig:{maxOutputTokens:6000,temperature:0.6},
+    };
+    r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-goog-api-key':apiKey},
+      body:JSON.stringify(body)});
+  }catch(e){throw new Error('Ağ hatası — internet bağlantını kontrol et.');}
+  if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
+    if(r.status===400&&/API key|api_key|invalid/i.test(msg))throw new Error('Gemini API anahtarı geçersiz. Ayarlardan kontrol et.');
+    if(r.status===429)throw new Error('Gemini ücretsiz kota sınırı doldu (429). Biraz bekleyip tekrar dene.');
+    if(r.status===403)throw new Error('Erişim reddedildi (403). Anahtarı ve Gemini API erişimini kontrol et.');
+    throw new Error('Gemini '+r.status+(msg?': '+msg:''));}
+  const j=await r.json();
+  const cand=(j.candidates||[])[0];
+  if(!cand){const br=j.promptFeedback&&j.promptFeedback.blockReason;throw new Error(br?('İçerik güvenlik nedeniyle engellendi: '+br):'Gemini boş yanıt döndürdü.');}
+  const text=(((cand.content||{}).parts)||[]).map(p=>p.text||'').join('').trim();
+  if(!text)throw new Error('Yanıt tamamlanamadı'+(cand.finishReason?(' ('+cand.finishReason+')'):'')+'.');
+  return text;
+}
+
 const AIC_ICON=<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.7 4L18 8.6l-4.3 1.6L12 14l-1.7-3.8L6 8.6l4.3-1.6L12 3z"/><path d="M5 15.5l.9 2.1 2.1.9-2.1.9L5 21.5l-.9-2.1L2 18.5l2.1-.9.9-2.1z"/></svg>;
 
 function AICoach({data,team}){
   const[open,setOpen]=useState(false);
-  const[apiKey,setApiKey]=useLocal('pp-ai-key','');
-  const[model,setModel]=useLocal('pp-ai-model','claude-opus-4-8');
+  const[provider,setProvider]=useLocal('pp-ai-provider','gemini');
+  const[anthKey,setAnthKey]=useLocal('pp-ai-key','');
+  const[gemKey,setGemKey]=useLocal('pp-ai-gkey','');
+  const[anthModel,setAnthModel]=useLocal('pp-ai-model','claude-opus-4-8');
+  const[gemModel,setGemModel]=useLocal('pp-ai-gmodel','gemini-2.5-flash');
+  const cfg=AIC_PROVIDERS[provider]||AIC_PROVIDERS.gemini;
+  const apiKey=provider==='anthropic'?anthKey:gemKey;
+  const setApiKey=provider==='anthropic'?setAnthKey:setGemKey;
+  const model=provider==='anthropic'?anthModel:gemModel;
+  const setModel=provider==='anthropic'?setAnthModel:setGemModel;
   const[msgs,setMsgs]=useState([]);
   const[input,setInput]=useState('');
   const[busy,setBusy]=useState(false);
@@ -6349,7 +6386,8 @@ function AICoach({data,team}){
     const hist=[...msgs,{role:'user',text}];setMsgs(hist);setBusy(true);
     try{
       const system=AIC_SYSTEM+'\n\n=== GÜNCEL TAKIM VERİSİ ===\n'+buildCoachContext(team,data);
-      const ans=await askCoach(apiKey,model,system,hist.map(m=>({role:m.role,content:m.text})));
+      const apiMsgs=hist.map(m=>({role:m.role,content:m.text}));
+      const ans=provider==='anthropic'?await askCoach(apiKey,model,system,apiMsgs):await askGemini(apiKey,model,system,apiMsgs);
       setMsgs(m=>[...m,{role:'assistant',text:ans||'(boş yanıt)'}]);
     }catch(e){setErr(e.message||String(e));}
     finally{setBusy(false);}
@@ -6368,12 +6406,16 @@ function AICoach({data,team}){
       </div>
       {(needKey||setupOpen)?(
         <div className="aic-body">
-          <div className="help" style={{marginBottom:12,lineHeight:1.55}}>Bu asistan senin kendi <b>Anthropic (Claude) API anahtarınla</b> çalışır. Anahtar yalnızca bu tarayıcıda saklanır. Sorularını yanıtlamak için takım verisi Claude API'sine gönderilir.</div>
-          <label>Claude API anahtarı</label>
-          <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="sk-ant-..." style={{width:'100%'}}/>
-          <div className="help" style={{margin:'6px 0 14px'}}>Anahtarı <b>console.anthropic.com</b> → API Keys bölümünden oluşturabilirsin.</div>
+          <div className="help" style={{marginBottom:12,lineHeight:1.55}}>Bu asistan senin kendi API anahtarınla çalışır; anahtar yalnızca bu tarayıcıda saklanır. <b>Gemini ücretsizdir</b> (Google, kart istemez); <b>Claude</b> daha güçlüdür ama ücretlidir. Soruları yanıtlamak için takım verisi seçtiğin sağlayıcıya gönderilir.</div>
+          <label>Sağlayıcı</label>
+          <div className="lb-seg" style={{marginBottom:14}}>
+            {Object.entries(AIC_PROVIDERS).map(([k,p])=><button key={k} className={provider===k?'on':''} onClick={()=>setProvider(k)}>{p.short}</button>)}
+          </div>
+          <label>{cfg.label} API anahtarı</label>
+          <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={cfg.keyPlaceholder} style={{width:'100%'}}/>
+          <div className="help" style={{margin:'6px 0 14px'}}>{cfg.keyHelp}</div>
           <label>Model</label>
-          <select value={model} onChange={e=>setModel(e.target.value)} style={{width:'100%'}}>{AI_MODELS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select>
+          <select value={model} onChange={e=>setModel(e.target.value)} style={{width:'100%'}}>{cfg.models.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select>
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             {!needKey&&<button className="btn sec sm" onClick={()=>setSetupOpen(false)}>Kapat</button>}
             <button className="btn sm" disabled={!apiKey} onClick={()=>setSetupOpen(false)}>Kaydet</button>
