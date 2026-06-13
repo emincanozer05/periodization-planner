@@ -327,6 +327,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .aic-typing i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:aicBlink 1.2s infinite}
 .aic-typing i:nth-child(2){animation-delay:.2s}.aic-typing i:nth-child(3){animation-delay:.4s}
 @keyframes aicBlink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+.aic-fab::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;animation:aicPulse 2.6s ease-out infinite}
+@keyframes aicPulse{0%{box-shadow:0 0 0 0 rgba(230,255,85,.4)}70%,100%{box-shadow:0 0 0 16px rgba(230,255,85,0)}}
+.aic-msg{animation:aicMsgIn .22s ease-out}
+@keyframes aicMsgIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.aic-hicon{display:inline-flex;align-items:center;color:var(--accent)}
+.aic-hicon svg{width:18px;height:18px}
+.aic-head{background:linear-gradient(180deg,rgba(230,255,85,.05),transparent)}
 /* tidy number inputs inside the drawer metric cards */
 .dw-inp[type=number]::-webkit-inner-spin-button,.dw-inp[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .dw-inp[type=number]{-moz-appearance:textfield}
@@ -1021,8 +1028,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lm-wkk{font-size:9px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .lm-wknow{font-size:11px!important;font-weight:600!important;width:auto!important;padding:0 9px;color:var(--text2)!important}
 /* ===== Planned Microcycles + Load Mix ===== */
-.mc-extra{display:grid;grid-template-columns:1fr 320px;gap:16px;margin:16px 0}
-@media(max-width:860px){.mc-extra{grid-template-columns:1fr}}
+.mc-extra{display:grid;grid-template-columns:1fr;gap:16px;margin:16px 0}
 .lmix-list{display:flex;flex-direction:column;gap:18px}
 .lmix-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
 .lmix-lbl{font-size:13px;color:var(--text2)}
@@ -2655,7 +2661,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           <h2 style={{margin:0,fontSize:16}}>Planned Microcycles</h2>
           <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>volume × intensity per week</span>
         </div>
-        <div className="chart-box" style={{height:300}}>
+        <div className="chart-box" style={{height:340}}>
           <ChartC type="line" chartData={{labels:weeks.map(w=>[fd(w.week).slice(0,5),w.focus||'']),datasets:[
             {label:'Volume',data:weeks.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},
             {label:'Intensity',data:weeks.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#f59e0b',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}
@@ -2665,17 +2671,6 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             plugins:{legend:{position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:13,weight:'600',family:'Space Grotesk'},usePointStyle:true,pointStyle:'circle',boxWidth:9,padding:16}},
               tooltip:{mode:'index',intersect:false,callbacks:{title:items=>{const w=weeks[items[0].dataIndex];return w?`${fd(w.week)} · ${w.focus||''}`:'';},label:i=>`${i.dataset.label}: ${i.parsed.y}%`}}}}}/>
         </div>
-      </div>
-      <div className="panel" style={{margin:0}}>
-        <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:16}}>
-          <h2 style={{margin:0,fontSize:16}}>Load Mix</h2>
-          <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>all sessions</span>
-        </div>
-        {loadMix.tot===0?<div className="empty-st">No planned sessions yet</div>:
-          <div className="lmix-list">{loadMix.rows.map(r=><div key={r.label} className="lmix-row">
-            <div className="lmix-h"><span className="lmix-lbl">{r.label}</span><span className="lmix-n">{r.n}</span></div>
-            <div className="lmix-bar"><i style={{width:`${r.pct}%`,background:LT_COL[r.label]||'#64748b'}}/></div>
-          </div>)}</div>}
       </div>
     </div>
     <div className="panel"><h2>Macrocycle Timeline (detail)</h2>
@@ -4565,7 +4560,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
     {id:'tests',ic:'⌖',l:'Tests'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
     {id:'wellness',ic:'♡',l:'Wellness'},
-    {id:'report',ic:'⎘',l:'Report'},
   ];
   return(<div>
     <button className="back" onClick={onBack} style={{marginBottom:14}}>‹ Athletes</button>
@@ -4847,13 +4841,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:vGrad('rgba(249,115,22,.95)','rgba(249,115,22,.45)'),hoverBackgroundColor:'rgba(249,115,22,1)',stack:'load',borderRadius:6,borderSkipped:false,maxBarThickness:70,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C (AU)',data:scVals,backgroundColor:vGrad('rgba(6,182,212,.95)','rgba(6,182,212,.45)'),hoverBackgroundColor:'rgba(6,182,212,1)',stack:'load',borderRadius:6,borderSkipped:false,maxBarThickness:70,datalabels:rpeMid(scRPEs)},
-                {label:'Match (AU)',data:gmVals,backgroundColor:vGrad('rgba(236,72,153,.95)','rgba(236,72,153,.45)'),hoverBackgroundColor:'rgba(236,72,153,1)',stack:'load',borderRadius:6,borderSkipped:false,maxBarThickness:70,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+                {label:'Team Practice (AU)',data:tpVals,backgroundColor:vGrad('rgba(251,146,60,1)','rgba(234,88,12,.35)'),hoverBackgroundColor:'rgba(253,164,90,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C (AU)',data:scVals,backgroundColor:vGrad('rgba(34,211,238,1)','rgba(6,182,212,.35)'),hoverBackgroundColor:'rgba(103,232,249,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
+                {label:'Match (AU)',data:gmVals,backgroundColor:vGrad('rgba(244,114,182,1)','rgba(236,72,153,.35)'),hoverBackgroundColor:'rgba(249,168,212,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
-                scales:{x:{...CHART_DARK.scales.x,stacked:true},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
-                plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels},
+                scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'600'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
+                plugins:{legend:{position:'bottom',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',font:{size:12,weight:'600'}}},
                   tooltip:{callbacks:{footer:items=>{const t=items.reduce((a,b)=>a+b.parsed.y,0);return'Total: '+Math.round(t)+' AU';}}}}}}/>:
               <div className="empty-st">No sRPE entries this week — try ‹ Week / Week › or click Latest.</div>}
             </div>
@@ -6360,18 +6354,20 @@ async function askGemini(apiKey,model,system,messages){
 
 const AIC_ICON=<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.7 4L18 8.6l-4.3 1.6L12 14l-1.7-3.8L6 8.6l4.3-1.6L12 3z"/><path d="M5 15.5l.9 2.1 2.1.9-2.1.9L5 21.5l-.9-2.1L2 18.5l2.1-.9.9-2.1z"/></svg>;
 
-function AICoach({data,team}){
+function AICoach({data,setData,team}){
   const[open,setOpen]=useState(false);
-  const[provider,setProvider]=useLocal('pp-ai-provider','gemini');
-  const[anthKey,setAnthKey]=useLocal('pp-ai-key','');
-  const[gemKey,setGemKey]=useLocal('pp-ai-gkey','');
-  const[anthModel,setAnthModel]=useLocal('pp-ai-model','claude-opus-4-8');
-  const[gemModel,setGemModel]=useLocal('pp-ai-gmodel','gemini-2.5-flash');
+  // AI config lives in the SYNCED data (data.ai), so a key/model entered on one
+  // device is available on every device — you never re-enter it. (One-time migrate
+  // from the older per-device localStorage keys below.)
+  const ai=data.ai||{provider:'gemini'};
+  const setAi=patch=>setData(prev=>({...prev,ai:{...(prev.ai||{provider:'gemini'}),...patch}}));
+  const provider=ai.provider||'gemini';
+  const setProvider=p=>setAi({provider:p});
   const cfg=AIC_PROVIDERS[provider]||AIC_PROVIDERS.gemini;
-  const apiKey=provider==='anthropic'?anthKey:gemKey;
-  const setApiKey=provider==='anthropic'?setAnthKey:setGemKey;
-  const model=provider==='anthropic'?anthModel:gemModel;
-  const setModel=provider==='anthropic'?setAnthModel:setGemModel;
+  const apiKey=provider==='anthropic'?(ai.akey||''):(ai.gkey||'');
+  const setApiKey=v=>setAi(provider==='anthropic'?{akey:v}:{gkey:v});
+  const model=provider==='anthropic'?(ai.amodel||'claude-opus-4-8'):(ai.gmodel||'gemini-2.5-flash');
+  const setModel=v=>setAi(provider==='anthropic'?{amodel:v}:{gmodel:v});
   const[msgs,setMsgs]=useState([]);
   const[input,setInput]=useState('');
   const[busy,setBusy]=useState(false);
@@ -6379,6 +6375,9 @@ function AICoach({data,team}){
   const[setupOpen,setSetupOpen]=useState(false);
   const bodyRef=useRef(null);
   useEffect(()=>{if(bodyRef.current)bodyRef.current.scrollTop=bodyRef.current.scrollHeight;},[msgs,busy,err]);
+  // One-time migration: lift an existing key from the old per-device localStorage
+  // into the synced data.ai so it propagates to every device.
+  useEffect(()=>{try{if(data.ai)return;const gk=localStorage.getItem('pp-ai-gkey')||'',ak=localStorage.getItem('pp-ai-key')||'';if(gk||ak)setData(prev=>prev.ai?prev:{...prev,ai:{provider:localStorage.getItem('pp-ai-provider')||'gemini',gkey:gk,akey:ak,gmodel:localStorage.getItem('pp-ai-gmodel')||'gemini-2.5-flash',amodel:localStorage.getItem('pp-ai-model')||'claude-opus-4-8'}});}catch(e){}},[]);
   const needKey=!apiKey;
   const send=async q=>{
     const text=(typeof q==='string'?q:input).trim();if(!text||busy)return;
@@ -6397,7 +6396,7 @@ function AICoach({data,team}){
     <div className="aic-scrim" onClick={()=>setOpen(false)}/>
     <aside className="aic-panel">
       <div className="aic-head">
-        <div className="aic-title"><span className="aic-dot"/>AI Antrenör Asistanı</div>
+        <div className="aic-title"><span className="aic-hicon">{AIC_ICON}</span>AI Antrenör Asistanı</div>
         <div style={{marginLeft:'auto',display:'flex',gap:6}}>
           <button className="btn sec xs" title="Ayarlar" onClick={()=>setSetupOpen(o=>!o)}>⚙</button>
           {msgs.length>0&&<button className="btn sec xs" title="Sohbeti temizle" onClick={()=>{setMsgs([]);setErr(null);}}>🗑</button>}
@@ -6406,7 +6405,7 @@ function AICoach({data,team}){
       </div>
       {(needKey||setupOpen)?(
         <div className="aic-body">
-          <div className="help" style={{marginBottom:12,lineHeight:1.55}}>Bu asistan senin kendi API anahtarınla çalışır; anahtar yalnızca bu tarayıcıda saklanır. <b>Gemini ücretsizdir</b> (Google, kart istemez); <b>Claude</b> daha güçlüdür ama ücretlidir. Soruları yanıtlamak için takım verisi seçtiğin sağlayıcıya gönderilir.</div>
+          <div className="help" style={{marginBottom:12,lineHeight:1.55}}>Bu asistan senin kendi API anahtarınla çalışır; anahtar <b>hesabınla senkronlanır</b>, böylece tüm cihazlarında tekrar girmene gerek kalmaz. <b>Gemini ücretsizdir</b> (Google, kart istemez); <b>Claude</b> daha güçlüdür ama ücretlidir. Soruları yanıtlamak için takım verisi seçtiğin sağlayıcıya gönderilir.</div>
           <label>Sağlayıcı</label>
           <div className="lb-seg" style={{marginBottom:14}}>
             {Object.entries(AIC_PROVIDERS).map(([k,p])=><button key={k} className={provider===k?'on':''} onClick={()=>setProvider(k)}>{p.short}</button>)}
@@ -6524,7 +6523,7 @@ function App(){
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
-    <AICoach data={data} team={team}/>
+    <AICoach data={data} setData={setData} team={team}/>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
