@@ -1217,11 +1217,20 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
    profiles, cards, tables & charts with frosted backdrop blur.
    The body's ambient colour glows show through the blur.
    ========================================================= */
-.panel,.ap-head,.rc,.ex-card,.rsf-card,.rec-card{
-  background:linear-gradient(160deg,rgba(255,255,255,.065),rgba(255,255,255,.02));
-  -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
+/* Main glass surfaces keep a (lighter) backdrop blur — there are only a few on
+   screen at once, so the scroll-repaint cost stays low. */
+.panel,.ap-head{
+  background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  -webkit-backdrop-filter:blur(12px) saturate(140%);backdrop-filter:blur(12px) saturate(140%);
   border:1px solid rgba(255,255,255,.09);
   box-shadow:0 10px 34px -12px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.08);
+}
+/* Grid cards can be numerous → NO backdrop blur (kills scroll jank). A
+   translucent gradient over the ambient background keeps the glassy look cheaply. */
+.rc,.ex-card,.rsf-card,.rec-card{
+  background:linear-gradient(160deg,rgba(36,40,48,.74),rgba(22,25,30,.74));
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 10px 30px -14px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07);
 }
 /* Inner cards / chips — translucent tint, lighter (no nested blur for perf) */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{
@@ -1229,10 +1238,9 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
   border:1px solid rgba(255,255,255,.08);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
 }
-/* Frosted segmented controls, search & inputs */
+/* Segmented controls, search & inputs — translucent tint, no blur (perf) */
 .lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search{
   background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.09);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
 }
 /* Tables — translucent header & hairline rows for a glassy grid */
 .mono-tbl thead th{border-bottom-color:rgba(255,255,255,.1)}
@@ -1242,14 +1250,14 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 /* Modal & AI panel — more opaque for readability, still frosted */
 .modal{
   background:linear-gradient(160deg,rgba(30,33,40,.82),rgba(18,20,25,.82));
-  -webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
   border:1px solid rgba(255,255,255,.12);
   box-shadow:0 26px 70px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.1);
 }
 .modal-bg{background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .aic-panel{
   background:linear-gradient(160deg,rgba(22,25,31,.8),rgba(15,17,21,.8));
-  -webkit-backdrop-filter:blur(24px) saturate(165%);backdrop-filter:blur(24px) saturate(165%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
   border-left:1px solid rgba(255,255,255,.1);
 }
 .aic-scrim{background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -1258,14 +1266,13 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 /* =========================================================
    Motion — living-glass background, entrances & micro-interactions
    ========================================================= */
-/* Drifting colour orbs behind the frosted glass (fixed → no scroll overflow).
-   z-index:-1 keeps them behind content within .app's isolated stacking context,
-   so modals/sidebar still layer correctly above everything. */
-.app::before,.app::after{content:"";position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;z-index:-1;pointer-events:none;will-change:transform}
-.app::before{width:48vw;height:48vw;left:-10vw;top:-12vw;background:radial-gradient(circle,rgba(6,182,212,.55),transparent 70%);animation:orbA 28s ease-in-out infinite alternate}
-.app::after{width:44vw;height:44vw;right:-8vw;bottom:-14vw;background:radial-gradient(circle,rgba(139,92,246,.55),transparent 70%);animation:orbB 34s ease-in-out infinite alternate}
-@keyframes orbA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(16vw,12vh) scale(1.18)}100%{transform:translate(7vw,26vh) scale(.92)}}
-@keyframes orbB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-14vw,-10vh) scale(1.14)}100%{transform:translate(-5vw,-22vh) scale(.88)}}
+/* Static colour orbs behind the frosted glass (fixed → no scroll overflow).
+   Kept STATIC (no drift animation) — moving blurred layers behind backdrop-filter
+   panels forced constant re-rasterisation and caused jank. z-index:-1 keeps them
+   behind content within .app's isolated stacking context. */
+.app::before,.app::after{content:"";position:fixed;border-radius:50%;filter:blur(64px);opacity:.4;z-index:-1;pointer-events:none}
+.app::before{width:46vw;height:46vw;left:-8vw;top:-10vw;background:radial-gradient(circle,rgba(6,182,212,.5),transparent 70%)}
+.app::after{width:42vw;height:42vw;right:-6vw;bottom:-12vw;background:radial-gradient(circle,rgba(139,92,246,.5),transparent 70%)}
 /* Staggered entrance for grids & stat rows */
 @keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
 .rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card{animation:cardIn .5s cubic-bezier(.2,.7,.3,1) both}
@@ -1299,14 +1306,10 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 .nav-item:hover{transform:translateX(2px)}
 .nav-item.active::before{content:"";position:absolute;left:-2px;top:50%;width:3px;height:0;background:var(--accent);border-radius:2px;transform:translateY(-50%);animation:navBar .3s cubic-bezier(.2,.7,.3,1) forwards;box-shadow:0 0 8px rgba(230,255,85,.6)}
 @keyframes navBar{to{height:62%}}
-/* Brand logo + FAB ambient pulse (glow only → keeps hover transforms intact) */
-.brand-logo{animation:logoPulse 4.5s ease-in-out infinite}
-@keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(230,255,85,.35))}50%{filter:drop-shadow(0 0 14px rgba(230,255,85,.6))}}
+/* FAB ambient pulse (box-shadow only → keeps hover transforms intact).
+   Logo glow kept static — animating drop-shadow is a continuous repaint cost. */
 .aic-fab{animation:fabGlow 3s ease-in-out infinite}
 @keyframes fabGlow{0%,100%{box-shadow:0 8px 24px -6px rgba(230,255,85,.5),0 2px 8px rgba(0,0,0,.45)}50%{box-shadow:0 10px 30px -4px rgba(230,255,85,.85),0 0 0 6px rgba(230,255,85,.1)}}
-/* Flowing gradient on card accent bars */
-.rsf-card::before,.rec-card::before{background-size:200% 100%;animation:barFlow 6s linear infinite}
-@keyframes barFlow{to{background-position:-200% 0}}
 /* Count-up number reveal */
 .countup{display:inline-block}
 /* Modal pop-in (box scales up; transform reverts to none after, no fill) */
@@ -6616,7 +6619,7 @@ function ResearchCard({rec,onOpen}){
    cached in localStorage so it stays stable through the day and only
    the abstract + a source link are shown.
    --------------------------------------------------------------- */
-const RS_FEED_KEY='pp_research_feed_v2';   // {date, roll, items}  (v2: 6 items + TR titles)
+const RS_FEED_KEY='pp_research_feed_v4';   // {date, roll, items}  (v4: athlete-focused query+filter)
 const RS_SEEN_KEY='pp_research_seen_v1';   // recently shown ids (avoid repeats)
 const RS_TR_KEY='pp_research_tr_v1';       // cached EN→TR title translations
 const RS_MAILTO='emincanozer05@gmail.com';
@@ -6681,6 +6684,11 @@ async function rsTranslate(text){
 }
 // Query OpenAlex for one strong, recent article on a topic, rotating among the
 // most-relevant top results for daily variety while skipping recently-shown ids.
+// Drop studies on non-athlete / clinical / special populations (elderly, women,
+// children, patients & disease groups) — the coach wants athlete research only.
+const RS_EXCLUDE=/\b(older adults?|elderly|geriatric|sarcopenia|nursing home|menopaus\w*|postmenopaus\w*|premenopaus\w*|pregnan\w*|menstrual|diabet\w*|cancer|carcinoma|tumou?rs?|oncolog\w*|obes\w*|overweight|parkinson\w*|alzheimer\w*|dementia|\bstroke\b|cardiovascular disease|coronary|hypertens\w*|\bcopd\b|asthma|covid\w*|bariatric|rheumat\w*|osteoporo\w*|fibromyalgia|multiple sclerosis|cerebral palsy|low(er)? back pain|chronic pain|non-?specific|children|paediatric|pediatric|prepubertal|\binfants?\b|toddler|schoolchild\w*|\bwomen\b|\bwoman\b|\bgirls?\b|\bfemales?\b|patients with|in patients)\b/i;
+// Positive signal that a study is about athletes / sport performance.
+const RS_ATHLETE=/\b(athletes?|sport|sports|players?|soccer|football|basketball|volleyball|handball|rugby|tennis|sprint\w*|jumping|track and field|team[- ]?sport|elite|competiti\w*|trained (men|males|individuals)|physically active|collegiate|professional|academy)\b/i;
 async function rsQuery(qstr,topicTr,from,sel,rng,used,seen){
   const url='https://api.openalex.org/works?search='+encodeURIComponent(qstr)
     +'&filter=from_publication_date:'+from+',has_abstract:true,type:article,language:en,cited_by_count:>1'
@@ -6690,20 +6698,27 @@ async function rsQuery(qstr,topicTr,from,sel,rng,used,seen){
   const topN=Math.min(20,res.length);
   const order=rsShuffle(Array.from({length:topN},(_,i)=>i),rng)
     .concat(Array.from({length:Math.max(0,res.length-topN)},(_,i)=>i+topN));
-  // Within the topically-ranked pool, prefer hard evidence (RCT / meta-analysis /
-  // systematic review) and an article not shown recently.
-  const isHE=n=>/randomi[sz]ed|controlled trial|meta-?analysis|systematic review/i.test(n.title+' '+(n.abstract||''));
-  let heUnseen=null,heSeen=null,anyUnseen=null,anyAny=null;
+  // Pick within the topically-ranked pool. Priority: athletes > non-clinical;
+  // hard evidence (RCT/meta-analysis) and unseen preferred. Clinical/special
+  // populations are skipped and only used as an absolute last resort.
+  const txt=n=>n.title+' '+(n.abstract||'');
+  const isHE=n=>/randomi[sz]ed|controlled trial|meta-?analysis|systematic review/i.test(txt(n));
+  let t1,t2,t3,t4,t5,t6;
   for(const i of order){
     const w=res[i];if(!w||used.has(w.id))continue;
     const n=rsNorm(w,topicTr);if(!n.abstract||n.abstract.length<120)continue;
-    const he=isHE(n),sn=seen.includes(w.id);
-    if(he&&!sn){heUnseen=n;break;}
-    if(he&&!heSeen)heSeen=n;
-    if(!sn&&!anyUnseen)anyUnseen=n;
-    if(!anyAny)anyAny=n;
+    if(!t6)t6=n;                                 // absolute last resort (may be clinical)
+    if(RS_EXCLUDE.test(txt(n)))continue;          // skip elderly/women/children/patients
+    const sn=seen.includes(w.id);
+    if(!t5)t5=n;                                  // non-clinical (seen ok)
+    if(!sn&&!t4)t4=n;                             // non-clinical, fresh
+    if(RS_ATHLETE.test(txt(n))){
+      if(!t3)t3=n;                               // athlete (seen ok)
+      if(!sn&&!t2)t2=n;                          // athlete, fresh
+      if(!sn&&isHE(n)){t1=n;break;}             // athlete + hard evidence + fresh ★
+    }
   }
-  return heUnseen||heSeen||anyUnseen||anyAny;
+  return t1||t2||t3||t4||t5||t6;
 }
 // Fetch 6 day-rotated topics, preferring randomized controlled trials & other
 // high-evidence designs, then translate each title to Turkish (best-effort).
@@ -6713,10 +6728,11 @@ async function rsFetchDaily(seed){
   const from=(()=>{const d=new Date();d.setFullYear(d.getFullYear()-5);return d.toISOString().slice(0,10);})();
   const seen=rsLoadSeen(),used=new Set(),out=[];
   const sel='id,doi,title,display_name,publication_year,abstract_inverted_index,authorships,primary_location,open_access';
-  // Build an on-topic pool enriched with RCTs (search nudge), then let rsQuery
-  // prefer the hardest evidence within it. Fall back to the plain topic if empty.
+  // Build an athlete-focused pool (search nudges toward athletes + RCTs), then let
+  // rsQuery prefer hard evidence on athletes. Progressive fallback keeps it non-empty.
   for(const t of topics){
-    let pick=await rsQuery(t.q+' randomized controlled trial',t.tr,from,sel,rng,used,seen);
+    let pick=await rsQuery(t.q+' athletes randomized controlled trial',t.tr,from,sel,rng,used,seen);
+    if(!pick)pick=await rsQuery(t.q+' sport performance athletes',t.tr,from,sel,rng,used,seen);
     if(!pick)pick=await rsQuery(t.q,t.tr,from,sel,rng,used,seen);
     if(pick){out.push(pick);used.add(pick.id);}
   }
