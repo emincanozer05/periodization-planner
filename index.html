@@ -76,7 +76,7 @@ body{
 }
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;letter-spacing:-0.01em}
-.app{min-height:100vh;display:flex;flex-direction:row}
+.app{min-height:100vh;display:flex;flex-direction:row;isolation:isolate}
 .sidebar{
   width:252px;flex:none;background:rgba(16,18,22,.85);backdrop-filter:blur(12px);
   border-right:1px solid var(--border);
@@ -172,7 +172,11 @@ nav{
   .ap-stat{flex:1 1 84px}
   .modal-bg{padding:10px}
 }
-main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto;animation:fadeIn .25s ease-out}
+/* NOTE: never animate transform on <main> — a transformed ancestor makes
+   position:fixed modals relative to main instead of the viewport (they'd no
+   longer cover the sidebar). The page-transition motion lives on the panels &
+   cards below, which are NOT ancestors of the modals. */
+main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pop{0%{transform:scale(.96)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
 .panel{
@@ -731,7 +735,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-gh span{font-size:11px;font-weight:700;color:var(--accent2);background:var(--accent-bg);border-radius:20px;padding:2px 9px}
 .ex-empty{padding:40px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed var(--border);border-radius:14px}
 /* modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s ease-out}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:260;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s ease-out}
 .modal{background:var(--panel);border:1px solid var(--border2);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.55);width:100%;max-width:640px;max-height:90vh;display:flex;flex-direction:column}
 .modal-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border)}
 .ex-title-in{font-size:18px;font-weight:700;background:transparent;border:1px solid transparent;border-radius:8px;padding:6px 10px}
@@ -1254,9 +1258,10 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 /* =========================================================
    Motion — living-glass background, entrances & micro-interactions
    ========================================================= */
-.content{position:relative;z-index:1}
-/* Drifting colour orbs behind the frosted glass (fixed → no scroll overflow) */
-.app::before,.app::after{content:"";position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;z-index:0;pointer-events:none;will-change:transform}
+/* Drifting colour orbs behind the frosted glass (fixed → no scroll overflow).
+   z-index:-1 keeps them behind content within .app's isolated stacking context,
+   so modals/sidebar still layer correctly above everything. */
+.app::before,.app::after{content:"";position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;z-index:-1;pointer-events:none;will-change:transform}
 .app::before{width:48vw;height:48vw;left:-10vw;top:-12vw;background:radial-gradient(circle,rgba(6,182,212,.55),transparent 70%);animation:orbA 28s ease-in-out infinite alternate}
 .app::after{width:44vw;height:44vw;right:-8vw;bottom:-14vw;background:radial-gradient(circle,rgba(139,92,246,.55),transparent 70%);animation:orbB 34s ease-in-out infinite alternate}
 @keyframes orbA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(16vw,12vh) scale(1.18)}100%{transform:translate(7vw,26vh) scale(.92)}}
@@ -1273,9 +1278,16 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .rost-grid>.rc:nth-child(7),.ex-grid>.ex-card:nth-child(7){animation-delay:.33s}
 .rost-grid>.rc:nth-child(8),.ex-grid>.ex-card:nth-child(8){animation-delay:.38s}
 .rost-grid>.rc:nth-child(n+9),.ex-grid>.ex-card:nth-child(n+9){animation-delay:.42s}
-/* Panels rise in on view change (main remounts per view) */
-@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-main .panel,main .ap-head{animation:panelIn .45s ease both}
+/* Page transition — panels & profile cascade up when the view (re)mounts.
+   Panels are NOT ancestors of modals, so transforms here are safe. */
+@keyframes panelIn{from{opacity:0;transform:translateY(22px) scale(.99)}to{opacity:1;transform:none}}
+main .panel,main .ap-head{animation:panelIn .5s cubic-bezier(.22,.61,.36,1) both}
+main .panel:nth-child(1){animation-delay:.04s}
+main .panel:nth-child(2){animation-delay:.1s}
+main .panel:nth-child(3){animation-delay:.16s}
+main .panel:nth-child(4){animation-delay:.22s}
+main .panel:nth-child(5){animation-delay:.28s}
+main .panel:nth-child(n+6){animation-delay:.33s}
 /* Primary buttons: press + shine sweep on hover */
 .btn{position:relative;overflow:hidden}
 .btn:active{transform:translateY(0) scale(.97)}
@@ -1297,6 +1309,9 @@ main .panel,main .ap-head{animation:panelIn .45s ease both}
 @keyframes barFlow{to{background-position:-200% 0}}
 /* Count-up number reveal */
 .countup{display:inline-block}
+/* Modal pop-in (box scales up; transform reverts to none after, no fill) */
+@keyframes modalPop{from{opacity:0;transform:translateY(14px) scale(.955)}to{opacity:1;transform:translateY(0) scale(1)}}
+.modal{animation:modalPop .28s cubic-bezier(.2,.7,.3,1)}
 /* Respect users who prefer less motion */
 @media (prefers-reduced-motion: reduce){
   .app::before,.app::after,.brand-logo,.aic-fab,.rsf-card::before,.rec-card::before,
@@ -1338,6 +1353,12 @@ const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CHART_DARK={
+  // Impactful entrance: bars/points cascade in left→right, easing out smoothly.
+  // Only on the initial 'default' draw (not hover/resize), and the per-item delay
+  // is capped so long series don't take forever.
+  animation:{duration:950,easing:'easeOutQuart',
+    delay:ctx=>(ctx.type==='data'&&ctx.mode==='default')?Math.min((ctx.dataIndex||0)*28,640):0},
+  animations:{y:{from:ctx=>{const s=ctx.chart&&ctx.chart.scales&&ctx.chart.scales.y;return s?s.getPixelForValue(0):undefined;}}},
   scales:{x:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.08)'}},y:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.07)'},beginAtZero:true}},
   plugins:{legend:{labels:{color:'#334155',font:{family:'Inter'}}}}
 };
