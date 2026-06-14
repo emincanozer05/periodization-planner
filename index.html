@@ -1251,6 +1251,59 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .aic-scrim{background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 /* Athlete profile avatar ring + readiness halo sit nicely on glass */
 .ap-head .ap-av{box-shadow:0 6px 18px -6px rgba(0,0,0,.6)}
+/* =========================================================
+   Motion — living-glass background, entrances & micro-interactions
+   ========================================================= */
+.content{position:relative;z-index:1}
+/* Drifting colour orbs behind the frosted glass (fixed → no scroll overflow) */
+.app::before,.app::after{content:"";position:fixed;border-radius:50%;filter:blur(80px);opacity:.45;z-index:0;pointer-events:none;will-change:transform}
+.app::before{width:48vw;height:48vw;left:-10vw;top:-12vw;background:radial-gradient(circle,rgba(6,182,212,.55),transparent 70%);animation:orbA 28s ease-in-out infinite alternate}
+.app::after{width:44vw;height:44vw;right:-8vw;bottom:-14vw;background:radial-gradient(circle,rgba(139,92,246,.55),transparent 70%);animation:orbB 34s ease-in-out infinite alternate}
+@keyframes orbA{0%{transform:translate(0,0) scale(1)}50%{transform:translate(16vw,12vh) scale(1.18)}100%{transform:translate(7vw,26vh) scale(.92)}}
+@keyframes orbB{0%{transform:translate(0,0) scale(1)}50%{transform:translate(-14vw,-10vh) scale(1.14)}100%{transform:translate(-5vw,-22vh) scale(.88)}}
+/* Staggered entrance for grids & stat rows */
+@keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card{animation:cardIn .5s cubic-bezier(.2,.7,.3,1) both}
+.rost-grid>.rc:nth-child(1),.ex-grid>.ex-card:nth-child(1),.ath-stat-row>.ath-stat:nth-child(1),.metric-grid>.metric-card:nth-child(1){animation-delay:.03s}
+.rost-grid>.rc:nth-child(2),.ex-grid>.ex-card:nth-child(2),.ath-stat-row>.ath-stat:nth-child(2),.metric-grid>.metric-card:nth-child(2){animation-delay:.08s}
+.rost-grid>.rc:nth-child(3),.ex-grid>.ex-card:nth-child(3),.ath-stat-row>.ath-stat:nth-child(3),.metric-grid>.metric-card:nth-child(3){animation-delay:.13s}
+.rost-grid>.rc:nth-child(4),.ex-grid>.ex-card:nth-child(4),.ath-stat-row>.ath-stat:nth-child(4),.metric-grid>.metric-card:nth-child(4){animation-delay:.18s}
+.rost-grid>.rc:nth-child(5),.ex-grid>.ex-card:nth-child(5),.ath-stat-row>.ath-stat:nth-child(5),.metric-grid>.metric-card:nth-child(5){animation-delay:.23s}
+.rost-grid>.rc:nth-child(6),.ex-grid>.ex-card:nth-child(6),.ath-stat-row>.ath-stat:nth-child(6),.metric-grid>.metric-card:nth-child(6){animation-delay:.28s}
+.rost-grid>.rc:nth-child(7),.ex-grid>.ex-card:nth-child(7){animation-delay:.33s}
+.rost-grid>.rc:nth-child(8),.ex-grid>.ex-card:nth-child(8){animation-delay:.38s}
+.rost-grid>.rc:nth-child(n+9),.ex-grid>.ex-card:nth-child(n+9){animation-delay:.42s}
+/* Panels rise in on view change (main remounts per view) */
+@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+main .panel,main .ap-head{animation:panelIn .45s ease both}
+/* Primary buttons: press + shine sweep on hover */
+.btn{position:relative;overflow:hidden}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn:not(.sec):not(.danger)::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);pointer-events:none}
+.btn:not(.sec):not(.danger):hover::after{animation:btnShine .7s ease}
+@keyframes btnShine{from{left:-130%}to{left:160%}}
+/* Nav item hover slide + animated active accent bar */
+.nav-item{position:relative}
+.nav-item:hover{transform:translateX(2px)}
+.nav-item.active::before{content:"";position:absolute;left:-2px;top:50%;width:3px;height:0;background:var(--accent);border-radius:2px;transform:translateY(-50%);animation:navBar .3s cubic-bezier(.2,.7,.3,1) forwards;box-shadow:0 0 8px rgba(230,255,85,.6)}
+@keyframes navBar{to{height:62%}}
+/* Brand logo + FAB ambient pulse (glow only → keeps hover transforms intact) */
+.brand-logo{animation:logoPulse 4.5s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(230,255,85,.35))}50%{filter:drop-shadow(0 0 14px rgba(230,255,85,.6))}}
+.aic-fab{animation:fabGlow 3s ease-in-out infinite}
+@keyframes fabGlow{0%,100%{box-shadow:0 8px 24px -6px rgba(230,255,85,.5),0 2px 8px rgba(0,0,0,.45)}50%{box-shadow:0 10px 30px -4px rgba(230,255,85,.85),0 0 0 6px rgba(230,255,85,.1)}}
+/* Flowing gradient on card accent bars */
+.rsf-card::before,.rec-card::before{background-size:200% 100%;animation:barFlow 6s linear infinite}
+@keyframes barFlow{to{background-position:-200% 0}}
+/* Count-up number reveal */
+.countup{display:inline-block}
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce){
+  .app::before,.app::after,.brand-logo,.aic-fab,.rsf-card::before,.rec-card::before,
+  .rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card,
+  main .panel,main .ap-head{animation:none!important}
+  .nav-item:hover{transform:none}
+}
 </style>
 </head>
 <body>
@@ -4826,6 +4879,21 @@ function RecommendsTab({ath,updAth,setup,ai,exercises}){
   </div>);
 }
 
+// Animated number that eases from 0 → value on mount/change (cubic ease-out).
+function CountUp({value,decimals=0,dur=850,format}){
+  const[v,setV]=useState(0);
+  const raf=useRef(0);
+  useEffect(()=>{
+    const target=Number(value)||0;let start=0;
+    const tick=ts=>{if(!start)start=ts;const p=Math.min(1,(ts-start)/dur);const e=1-Math.pow(1-p,3);setV(target*e);if(p<1)raf.current=requestAnimationFrame(tick);};
+    raf.current=requestAnimationFrame(tick);
+    // Fallback: guarantee the final value lands even if rAF is paused (bg tab).
+    const done=setTimeout(()=>setV(target),dur+80);
+    return()=>{cancelAnimationFrame(raf.current);clearTimeout(done);};
+  },[value,dur]);
+  return<span className="countup">{format?format(v):v.toFixed(decimals)}</span>;
+}
+
 function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const[tab,setTab]=useState('load');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
@@ -4904,11 +4972,11 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         </div>
       </div>
       <div className="ap-stats">
-        <div className="ap-stat"><div className="k">Readiness</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?apRd.toFixed(1):'—'}<small>/5</small></div></div>
-        <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?Math.round(apRhr):'—'}<small>bpm</small></div></div>
-        <div className="ap-stat"><div className="k">7d load</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?apL7.toLocaleString('en-US').replace(/,/g,'.'):'—'}<small>AU</small></div></div>
-        <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?apAcwr.toFixed(2):'—'}</div></div>
-        <div className="ap-stat"><div className="k">Avg sleep</div><div className="v">{apSleep!=null?apSleep.toFixed(1):'—'}<small>/5</small></div></div>
+        <div className="ap-stat"><div className="k">Readiness</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
+        <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
+        <div className="ap-stat"><div className="k">7d load</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
+        <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
+        <div className="ap-stat"><div className="k">Avg sleep</div><div className="v">{apSleep!=null?<CountUp value={apSleep} decimals={1}/>:'—'}<small>/5</small></div></div>
       </div>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Profili düzenle">✎</button>
     </div>
