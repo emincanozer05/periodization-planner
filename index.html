@@ -1010,6 +1010,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-seg button.on{background:var(--elevated);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
 .lb-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
 .lb-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:0 14px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+/* Frosted header bar that matches the glass panel */
+.lb-tbl thead th{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));color:var(--text2);padding-top:11px;padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.1)}
+.lb-tbl thead th:first-child{border-radius:11px 0 0 11px;padding-left:16px}
+.lb-tbl thead th:last-child{border-radius:0 11px 11px 0}
 .lb-tbl th.r,.lb-tbl td.r{text-align:right}
 .lb-tbl th.c,.lb-tbl td.c{text-align:center}
 .lb-tbl td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -1169,7 +1173,8 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-scroll{overflow-x:auto;border-radius:10px;padding-bottom:2px}
 .wh-hm{border-collapse:separate;border-spacing:5px 4px;min-width:560px}
 .wh-hm th{font-weight:500;vertical-align:bottom}
-.wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;background:var(--panel);z-index:3}
+.wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;z-index:3;background:linear-gradient(90deg,rgba(28,32,39,.97),rgba(22,25,31,.97));vertical-align:bottom;border-right:1px solid rgba(255,255,255,.08)}
+.wh-corner{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px 4px}
 .wh-hm .wh-day{text-align:center;padding:0 1px}
 .wh-hm .wh-day .wh-mon{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--text2);font-weight:600;height:12px}
 .wh-hm .wh-day .wh-wd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
@@ -1177,8 +1182,8 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
 .wh-row{animation:whRowIn .45s ease both}
 @keyframes whRowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.wh-hm .wh-ath{position:sticky;left:0;background:var(--panel);z-index:2;display:flex;align-items:center;gap:9px;white-space:nowrap;padding-right:10px}
-.wh-row:hover .wh-ath{background:var(--elevated)}
+.wh-hm .wh-ath{position:sticky;left:0;z-index:2;background:linear-gradient(90deg,rgba(28,32,39,.96),rgba(22,25,31,.96));border-right:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:9px;white-space:nowrap;padding-right:10px}
+.wh-row:hover .wh-ath{background:linear-gradient(90deg,rgba(40,45,54,.97),rgba(32,36,44,.97))}
 .wh-rank{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);width:16px;text-align:right;flex:none}
 .wh-hm .wh-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
 .wh-hm .wh-av img{width:100%;height:100%;object-fit:cover}
@@ -1780,7 +1785,7 @@ function WellnessHeatmap({athletes}){
       <div className="wh-scroll">
         <table className="wh-hm">
           <thead><tr>
-            <th className="wh-ath-h"></th>
+            <th className="wh-ath-h"><span className="wh-corner">Sporcu</span></th>
             {dates.map((d,i)=>{const dt=parseD(d);const prev=i>0?parseD(dates[i-1]):null;const showMonth=!prev||prev.getMonth()!==dt.getMonth();
               return<th key={d} className="wh-day"><div className="wh-mon">{showMonth?MN[dt.getMonth()]:''}</div><div className="wh-wd">{DN[(dt.getDay()+6)%7][0]}</div><div className="wh-dd">{dt.getDate()}</div></th>;})}
             <th className="wh-avg-h">AVG</th>
@@ -1906,6 +1911,17 @@ function vGrad(topColor,bottomColor){
   return ctx=>{const ch=ctx.chart,a=ch.chartArea;if(!a)return topColor;
     const g=ch.ctx.createLinearGradient(0,a.bottom,0,a.top);
     g.addColorStop(0,bottomColor);g.addColorStop(1,topColor);return g;};
+}
+/* Frosted-glass bar fill: translucent top→bottom gradient of an rgb colour, so the
+   dark background shows through for an iOS-glass look. `boost` brightens on hover. */
+function glassGrad(r,g,b,boost=0){
+  const a=(o)=>Math.min(1,o+boost);
+  return ctx=>{const ch=ctx.chart,ar=ch.chartArea;if(!ar)return`rgba(${r},${g},${b},${a(.32)})`;
+    const grad=ch.ctx.createLinearGradient(0,ar.top,0,ar.bottom);
+    grad.addColorStop(0,`rgba(${r},${g},${b},${a(.60)})`);
+    grad.addColorStop(.5,`rgba(${r},${g},${b},${a(.34)})`);
+    grad.addColorStop(1,`rgba(${r},${g},${b},${a(.14)})`);
+    return grad;};
 }
 
 /* Dependency-free weekly chart (inline SVG). Measures its own container and
@@ -3940,8 +3956,8 @@ function printBodyComp(ath,setup){
   if(sorted.length===0){alert('No measurements');w.close();return;}
   const cur=sorted[sorted.length-1],prev=sorted.length>1?sorted[sorted.length-2]:null;
   const d=(a,b,k)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(1);};
-  const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null,h_=cur?Number(cur.height)||null:null;
-  const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass'),dh=d(cur,prev,'height');
+  const w_=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,ws=cur?Number(cur.wingspan)||null:null,h_=cur?Number(cur.height)||null:null;
+  const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dws=d(cur,prev,'wingspan'),dh=d(cur,prev,'height');
   const fmtD=v=>v==null?'—':(v>0?`+${v}`:`${v}`);
   // SVG line chart helper (area fill + points + labels)
   const lineChart=(field,color)=>{
@@ -3969,7 +3985,7 @@ function printBodyComp(ath,setup){
     </svg>`;
   };
   const period=`${fdL(sorted[0].date)} → ${fdL(sorted[sorted.length-1].date)}`;
-  const rows=sorted.slice().reverse().slice(0,5).map(m=>`<tr><td>${fd(m.date)}</td><td>${m.height||'—'}</td><td>${m.weight||'—'}</td><td>${m.bodyFat||'—'}</td><td>${m.muscleMass||'—'}</td></tr>`).join('');
+  const rows=sorted.slice().reverse().slice(0,5).map(m=>`<tr><td>${fd(m.date)}</td><td>${m.height||'—'}</td><td>${m.weight||'—'}</td><td>${m.bodyFat||'—'}</td><td>${m.wingspan||'—'}</td></tr>`).join('');
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Body Composition — ${ath.name}</title>
@@ -4043,13 +4059,13 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
     <div class="mc-chart">${lineChart('bodyFat','#f97316')}</div>
   </div>
   <div class="mcard">
-    <div class="mc-h"><div class="mc-t">${L('Kas Kütlesi','Muscle Mass')}</div><div class="mc-u">kg</div></div>
-    <div class="mc-val"><span class="mv" style="color:#10b981">${mm!=null?mm:'—'}</span>${dmm!=null&&dmm!==0?`<span class="md ${dmm>0?'pos':'neg'}">${fmtD(dmm)}</span>`:''}</div>
-    <div class="mc-chart">${lineChart('muscleMass','#10b981')}</div>
+    <div class="mc-h"><div class="mc-t">${L('Kulaç','Wingspan')}</div><div class="mc-u">cm</div></div>
+    <div class="mc-val"><span class="mv" style="color:#10b981">${ws!=null?ws:'—'}</span>${dws!=null&&dws!==0?`<span class="md ${dws>0?'pos':'neg'}">${fmtD(dws)}</span>`:''}</div>
+    <div class="mc-chart">${lineChart('wingspan','#10b981')}</div>
   </div>
 </div>
 <div class="section-h">${L('Ölçüm Geçmişi','Measurement History')}</div>
-<table><thead><tr><th style="width:18%">${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>${L('Kas (kg)','Muscle (kg)')}</th></tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th style="width:18%">${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>${L('Kulaç (cm)','Wingspan (cm)')}</th></tr></thead><tbody>${rows}</tbody></table>
 <div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
@@ -4074,7 +4090,7 @@ function printTeamBodyComp(athletes,setup){
   const tr=groups.map(g=>g.ms.map((m,mi)=>{
     const prev=mi>0?g.ms[mi-1]:null;
     const dl=k=>{const c=n(m,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
-    const dbf=dl('bodyFat'),dmm=dl('muscleMass');
+    const dbf=dl('bodyFat'),dws=dl('wingspan');
     return`<tr class="${mi===0?'grp':''}">
       <td class="l">${mi===0?`<span class="ath-cell">${g.a.photo?`<img class="av" src="${g.a.photo}"/>`:`<span class="av ph">${esc(initials(g.a.name))}</span>`}<span class="ath-nm">${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}</span></span>`:'<span class="subm">↳</span>'}</td>
       <td class="mono">${fdL(m.date)}</td>
@@ -4083,8 +4099,8 @@ function printTeamBodyComp(athletes,setup){
       <td>${dcell(dl('weight'),null)}</td>
       <td class="b">${n(m,'bodyFat')!=null?n(m,'bodyFat'):'—'}</td>
       <td>${dcell(dbf,dbf==null?null:dbf<0)}</td>
-      <td class="b">${n(m,'muscleMass')!=null?n(m,'muscleMass'):'—'}</td>
-      <td>${dcell(dmm,dmm==null?null:dmm>0)}</td>
+      <td class="b">${n(m,'wingspan')!=null?n(m,'wingspan'):'—'}</td>
+      <td>${dcell(dws,dws==null?null:dws>0)}</td>
     </tr>`;
   }).join('')).join('');
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Body Composition — ${esc(setup.teamName)}</title>
@@ -4137,9 +4153,9 @@ tbody tr.grp:first-child td{border-top:none}
   <div class="stat"><div class="k">${L('Ort. Boy','Avg Height')}</div><div class="v">${av(avg('height'),'cm')}</div></div>
   <div class="stat"><div class="k">${L('Ort. Kilo','Avg Weight')}</div><div class="v">${av(avg('weight'),'kg')}</div></div>
   <div class="stat"><div class="k">${L('Ort. Yağ','Avg Body Fat')}</div><div class="v">${av(avg('bodyFat'),'%')}</div></div>
-  <div class="stat"><div class="k">${L('Ort. Kas Kütlesi','Avg Muscle Mass')}</div><div class="v">${av(avg('muscleMass'),'kg')}</div></div>
+  <div class="stat"><div class="k">${L('Ort. Kulaç','Avg Wingspan')}</div><div class="v">${av(avg('wingspan'),'cm')}</div></div>
 </div>
-<table><thead><tr><th class="l">${L('Sporcu','Athlete')}</th><th>${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>Δ</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>Δ</th><th>${L('Kas (kg)','Muscle (kg)')}</th><th>Δ</th></tr></thead><tbody>${tr}</tbody></table>
+<table><thead><tr><th class="l">${L('Sporcu','Athlete')}</th><th>${L('Tarih','Date')}</th><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>Δ</th><th>${L('Yağ (%)','Body Fat (%)')}</th><th>Δ</th><th>${L('Kulaç (cm)','Wingspan (cm)')}</th><th>Δ</th></tr></thead><tbody>${tr}</tbody></table>
 <div class="footer">${L('Δ = bir önceki ölçüme göre değişim','Δ = change vs previous measurement')} · ${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(setup.teamName)}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
@@ -4789,7 +4805,7 @@ function buildAthleteSnapshot(ath,setup,exercises){
   if(ms.length){
     const cur=ms[ms.length-1],prev=ms[ms.length-2];
     const line=(k,lbl,u)=>{const c=recNum(cur[k]);if(c==null)return null;const p=prev?recNum(prev[k]):null;const d=p!=null?` (Δ ${(c-p>=0?'+':'')+(c-p).toFixed(1)})`:'';return `${lbl}: ${c}${u||''}${d}`;};
-    const parts=[line('height','Boy','cm'),line('weight','Kilo','kg'),line('bodyFat','Yağ','%'),line('muscleMass','Kas kütlesi','kg')].filter(Boolean);
+    const parts=[line('height','Boy','cm'),line('weight','Kilo','kg'),line('bodyFat','Yağ','%'),line('wingspan','Kulaç','cm')].filter(Boolean);
     out.push(`Son ölçüm (${cur.date}): ${parts.join(' | ')||'—'}`);
     const h=recNum(cur.height),w=recNum(cur.weight);if(h&&w)out.push(`BMI: ${(w/((h/100)**2)).toFixed(1)}`);
     if(ms.length>1)out.push(`Toplam ${ms.length} ölçüm var (ilk: ${ms[0].date}).`);
@@ -5075,23 +5091,23 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {tab==='body'&&<div>
       {(()=>{const m=(ath.measurements||[]).filter(x=>x.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));const cur=m[m.length-1];const prev=m[m.length-2];
         const d=(a,b,k,dp=1)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(dp);};
-        const w=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,mm=cur?Number(cur.muscleMass)||null:null;
-        const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dmm=d(cur,prev,'muscleMass');
+        const w=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,ws=cur?Number(cur.wingspan)||null:null;
+        const dw=d(cur,prev,'weight'),dbf=d(cur,prev,'bodyFat'),dws=d(cur,prev,'wingspan');
         const fmtD=(v,u)=>v==null?null:(v>0?`+${v}${u}`:`${v}${u}`);
-        return(<div className="ath-stat-row" style={{gridTemplateColumns:`repeat(${dmm!=null?6:5},minmax(0,1fr))`}}>
+        return(<div className="ath-stat-row" style={{gridTemplateColumns:`repeat(${dws!=null?6:5},minmax(0,1fr))`}}>
           <div className="ath-stat"><div className="k">Current Wt</div><div className="v">{w!=null?w:'—'}<span className="u">kg</span></div></div>
           <div className="ath-stat"><div className="k">Change</div><div className="v">{fmtD(dw,'')||'—'}<span className="u">kg</span></div>{dw!=null&&<div className={`d ${dw>0?'pos':'neg'}`}>{dw>0?'gain':'loss'}</div>}</div>
           <div className="ath-stat"><div className="k">Body Fat</div><div className="v">{bf!=null?bf:'—'}<span className="u">%</span></div></div>
           <div className="ath-stat"><div className="k">BF Change</div><div className="v">{fmtD(dbf,'')||'—'}<span className="u">%</span></div>{dbf!=null&&<div className={`d ${dbf<0?'pos':'neg'}`}>{dbf<0?'better':'higher'}</div>}</div>
-          <div className="ath-stat"><div className="k">Muscle</div><div className="v">{mm!=null?mm:'—'}<span className="u">kg</span></div></div>
-          {dmm!=null&&<div className="ath-stat"><div className="k">MM Change</div><div className="v">{fmtD(dmm,'')}<span className="u">kg</span></div><div className={`d ${dmm>0?'pos':'neg'}`}>{dmm>0?'gain':'loss'}</div></div>}
+          <div className="ath-stat"><div className="k">Wingspan</div><div className="v">{ws!=null?ws:'—'}<span className="u">cm</span></div></div>
+          {dws!=null&&<div className="ath-stat"><div className="k">WS Change</div><div className="v">{fmtD(dws,'')}<span className="u">cm</span></div><div className={`d ${dws>0?'pos':'neg'}`}>{dws>0?'gain':'loss'}</div></div>}
         </div>);})()}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <h2 style={{margin:0}}>Body Composition Tracking</h2>
           <div className="row" style={{gap:6}}>
             <button className="btn sec sm" disabled={(ath.measurements||[]).length===0} onClick={()=>printBodyComp(ath,setup)} title="Body Composition raporu (A4 yazdırma)">⎙ Print</button>
-            <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',muscleMass:'',notes:''};updAth(ath.id,{measurements:[...(ath.measurements||[]),m]});}}>+ Add Measurement</button>
+            <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',wingspan:'',notes:''};updAth(ath.id,{measurements:[...(ath.measurements||[]),m]});}}>+ Add Measurement</button>
           </div>
         </div>
         {(ath.measurements||[]).length>0&&<div>
@@ -5120,11 +5136,11 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
               {mkChart('Height','cm','height','#a855f7','#c084fc',null)}
               {mkChart('Weight','kg','weight','#3b82f6','#60a5fa',null)}
               {mkChart('Body Fat','%','bodyFat','#f97316','#fb923c',false)}
-              {mkChart('Muscle Mass','kg','muscleMass','#10b981','#34d399',true)}
+              {mkChart('Wingspan','cm','wingspan','#10b981','#34d399',null)}
             </div>);})()}
           {/* Paginated table (10 rows by default, expand in 10s) */}
           {(()=>{const rev=[...ath.measurements].reverse();const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
-            return<div style={{overflowX:'auto'}}><table><thead><tr><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Muscle Mass (kg)</th><th>Notes</th><th style={{width:50}}></th></tr></thead><tbody>
+            return<div style={{overflowX:'auto'}}><table><thead><tr><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Wingspan (cm)</th><th>Notes</th><th style={{width:50}}></th></tr></thead><tbody>
               {vis.map((m,idx)=>{const realIdx=ath.measurements.length-1-idx;
                 const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
                 return<tr key={m.id||idx}>
@@ -5132,7 +5148,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                   <td><input type="number" step="0.1" value={m.height||''} onChange={e=>um('height',e.target.value)} placeholder="cm" style={{width:80}}/></td>
                   <td><input type="number" step="0.1" value={m.weight} onChange={e=>um('weight',e.target.value)} placeholder="kg" style={{width:80}}/></td>
                   <td><input type="number" step="0.1" value={m.bodyFat} onChange={e=>um('bodyFat',e.target.value)} placeholder="%" style={{width:70}}/></td>
-                  <td><input type="number" step="0.1" value={m.muscleMass||''} onChange={e=>um('muscleMass',e.target.value)} placeholder="kg" style={{width:80}}/></td>
+                  <td><input type="number" step="0.1" value={m.wingspan||''} onChange={e=>um('wingspan',e.target.value)} placeholder="cm" style={{width:80}}/></td>
                   <td><input value={m.notes||''} onChange={e=>um('notes',e.target.value)} placeholder="Notes…"/></td>
                   <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button></td>
                 </tr>;})}
@@ -5260,9 +5276,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:vGrad('rgba(251,146,60,1)','rgba(234,88,12,.35)'),hoverBackgroundColor:'rgba(253,164,90,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C (AU)',data:scVals,backgroundColor:vGrad('rgba(34,211,238,1)','rgba(6,182,212,.35)'),hoverBackgroundColor:'rgba(103,232,249,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
-                {label:'Match (AU)',data:gmVals,backgroundColor:vGrad('rgba(244,114,182,1)','rgba(236,72,153,.35)'),hoverBackgroundColor:'rgba(249,168,212,1)',stack:'load',borderRadius:8,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+                {label:'Team Practice (AU)',data:tpVals,backgroundColor:glassGrad(251,146,60),hoverBackgroundColor:glassGrad(251,146,60,.18),borderColor:'rgba(251,146,60,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C (AU)',data:scVals,backgroundColor:glassGrad(34,211,238),hoverBackgroundColor:glassGrad(34,211,238,.18),borderColor:'rgba(34,211,238,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
+                {label:'Match (AU)',data:gmVals,backgroundColor:glassGrad(244,114,182),hoverBackgroundColor:glassGrad(244,114,182,.18),borderColor:'rgba(244,114,182,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'600'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
