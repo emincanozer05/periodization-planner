@@ -32,13 +32,14 @@
       messagingSenderId:"225598184270",
       appId:"1:225598184270:web:a2b812983e298441df1c1f"
     });
-    // Some networks / proxies / antivirus / browser extensions buffer or block
-    // Firestore's default streaming (WebChannel) transport. When that happens the
-    // connection looks "up" for cached reads but writes never reach the server —
-    // the indicator stays stuck on "syncing" and other devices never see the
-    // change. Auto-detect that case and fall back to long-polling, which gets the
-    // writes through. Must be set BEFORE any other Firestore use (incl. persistence).
-    try{firebase.firestore().settings({experimentalAutoDetectLongPolling:true});}catch(e){}
+    // Some mobile carrier networks / proxies / antivirus / extensions buffer or block
+    // Firestore's default streaming (WebChannel) transport. The connection then looks
+    // "up" for cached reads but writes never confirm — the indicator sticks on "syncing"
+    // (exactly what the phone showed) and that device can never finish a sync. Auto-detect
+    // missed this on mobile, so we FORCE long-polling (plain HTTP request/response), which
+    // reliably gets writes through everywhere, at a tiny latency cost on good connections.
+    // Must be set BEFORE any other Firestore use (incl. persistence).
+    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
     try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
@@ -6234,7 +6235,21 @@ function useCloudSync(data,setData){
     })();
   },[status,user]);
 
-  return{user,status,authLoading,syncErr,
+  // Manual override: pull the cloud copy and make THIS device match it, no questions asked.
+  // Escape hatch for "the wrong device became dominant" — tap it on the device showing the
+  // stale data and it adopts whatever the cloud (i.e. the other device) last saved.
+  const forcePull=async()=>{
+    const fb=FB(); if(!fb||!user)return;
+    setStatus('syncing');
+    try{
+      const cloud=await cloudRead(fb,user.uid);
+      if(cloud&&cloud.fromServer&&cloud.str)adopt(cloud);
+      else if(cloud&&cloud.fromServer){ready.current=true;setStatus('synced');} // cloud empty
+      else setStatus('error');
+    }catch(e){console.warn('forcePull',e);setStatus('error');}
+  };
+
+  return{user,status,authLoading,syncErr,forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(e,p),
     signOut:()=>FB().auth().signOut(),
@@ -6389,7 +6404,8 @@ function CloudBar({sync,onOpen}){
   return(<div style={{width:'100%'}}>
     <div className="team-sw" style={{gap:8,paddingRight:8}} title={user.email}>
       <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
-      <span style={{fontSize:12,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
+      <span style={{fontSize:12,color:'var(--text2)',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
+      <button className="btn sec xs" title="Bu cihazı buluttaki son veriyle güncelle (yanlış cihaz baskın çıktıysa)" onClick={()=>sync.forcePull&&sync.forcePull()}>⟳</button>
       <button className="btn sec xs" onClick={()=>sync.signOut()}>Çıkış</button>
     </div>
     {status==='error'&&syncErr&&(
