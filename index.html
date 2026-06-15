@@ -401,7 +401,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-rpe{margin-top:12px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,.012));padding:10px 12px 12px}
 .dw-rpe-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
 .dw-rpe-h>span:first-child{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
-.dw-rpe-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+.dw-rpe-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);display:block;margin-bottom:8px}
+.dw-rpe-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.dw-rpe-seg button{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer;transition:all .15s}
+.dw-rpe-seg button.on{background:var(--accent);color:#0a0b0d}
+.dw-rpe-seg button:hover:not(.on){color:var(--text)}
 .dw-rpe-row{display:flex;align-items:center;gap:10px;padding:6px 2px;border-top:1px solid var(--border)}
 .dw-rpe-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
 .dw-rpe-av img{width:100%;height:100%;object-fit:cover}
@@ -3103,7 +3107,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
     if(!dk)return;
     const dur=Number(drawerSes.duration)||0;
-    const slot=srpeSlot(drawerSes.loadType);
+    const slot=drawerSes.rpeCat||srpeSlot(drawerSes.loadType);
     const rpe=(rpeRaw===''||rpeRaw==null)?'':Number(rpeRaw);
     const load=(rpe===''||isNaN(rpe))?'':Math.round(rpe*dur);
     saveAthletes(athletes.map(a=>{
@@ -3116,6 +3120,31 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       entry[slot+'RPE']=rpe;entry[slot+'Duration']=dur;entry[slot+'Load']=load;
       if(idx>=0)log[idx]=entry;else log.push(entry);
       return{...a,srpeLog:log};
+    }));
+  };
+  // Change which sRPE category (tp / sc / game) the manual RPE is recorded under,
+  // persist the choice on the session, and migrate any values already entered.
+  const changeRpeCat=cat=>{
+    if(!drawerSes)return;
+    const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
+    if(dk){const d0=days[dk]||EDAY(dk);
+      const newS=(d0.sessions||[]).map(s=>s.id===drawerSes.id?{...s,rpeCat:cat}:s);
+      saveDays({...days,[dk]:{...d0,sessions:newS,date:dk}});}
+    setDrawerSes(s=>s?{...s,rpeCat:cat}:s);
+    if(!teamMode)return;
+    const dur=Number(drawerSes.duration)||0;
+    saveAthletes(athletes.map(a=>{
+      const log=[...(a.srpeLog||[])];
+      const idx=log.findIndex(e=>e.sessionId===drawerSes.id);
+      if(idx<0)return a;
+      const old=log[idx];
+      const rpeV=[old.scRPE,old.tpRPE,old.gameRPE].find(v=>v!==''&&v!=null);
+      if(rpeV===''||rpeV==null)return a;
+      const load=Math.round(Number(rpeV)*dur);
+      const entry={id:old.id,notionId:null,sessionId:drawerSes.id,date:old.date,
+        tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
+      entry[cat+'RPE']=Number(rpeV);entry[cat+'Duration']=dur;entry[cat+'Load']=load;
+      log[idx]=entry;return{...a,srpeLog:log};
     }));
   };
   // ---- Drag & drop sessions across days (mirrors Planner.moveOrCopySession) ----
@@ -3229,8 +3258,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             const ids=drawerSes.athletes||[];
             const parts=ids.map(id=>(athletes||[]).find(a=>a.id===id)).filter(Boolean);
             const list=parts.length?parts:(athletes||[]);
+            const CATS=[['tp','TP'],['sc','S&C'],['game','Match']];
+            const cat=drawerSes.rpeCat||srpeSlot(drawerSes.loadType);
+            const catLbl=(CATS.find(c=>c[0]===cat)||['','S&C'])[1];
             return(<div className="dw-rpe">
-              <div className="dw-rpe-h"><span>Manual RPE</span><span className="dw-rpe-sub">{list.length} athletes · {Number(drawerSes.duration)||0} min · syncs to profile</span></div>
+              <div className="dw-rpe-h">
+                <span>Manual RPE</span>
+                <div className="dw-rpe-seg">{CATS.map(([v,lbl])=><button key={v} className={cat===v?'on':''} onClick={()=>changeRpeCat(v)} title={'RPE → '+lbl}>{lbl}</button>)}</div>
+              </div>
+              <div className="dw-rpe-sub">{list.length} athletes · {Number(drawerSes.duration)||0} min · saved to <b style={{color:'var(--accent)'}}>{catLbl}</b> on profile</div>
               {list.length===0?<div className="dw-empty">No athletes on roster — add them in the Athletes tab.</div>:list.map(a=>{
                 const e=(a.srpeLog||[]).find(x=>x.sessionId===drawerSes.id);
                 const cur=e?(([e.scRPE,e.tpRPE,e.gameRPE].find(v=>v!==''&&v!=null))??''):'';
