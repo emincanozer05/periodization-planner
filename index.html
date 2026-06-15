@@ -1387,17 +1387,17 @@ const MODELS=[
   {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
-const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Team Practice','Game Day','Recovery','Mobility'];
+const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Ball Practice','Game Day','Recovery','Mobility'];
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
   {name:'Strength',d:{name:'Strength Session',time:'09:00',loadType:'Mechanical load',purpose:'Maximal Strength',duration:75,bl:[]}},
-  {name:'Practice',d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Team Practice',duration:90,bl:[]}},
+  {name:'Practice',d:{name:'Ball Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Ball Practice',duration:90,bl:[]}},
   {name:'Speed',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed & Agility',duration:45,bl:[]}},
   {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Aerobic Endurance',duration:45,bl:[]}},
   {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',duration:30,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Team Practice',duration:90,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Ball Practice',duration:90,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
@@ -1503,7 +1503,7 @@ function sessionType(s){
      n.includes('speed')||n.includes('agility')||n.includes('sürat')||n.includes('çeviklik')||n.includes('çabukluk'))return'speed';
   if(p.includes('aerobic')||p.includes('anaerobic')||p.includes('endurance')||
      n.includes('endurance')||n.includes('conditioning')||n.includes('dayanıklılık'))return'endurance';
-  return'practice'; // Team Practice / Technical default
+  return'practice'; // Ball Practice / Technical default
 }
 const sessionColor=s=>SESSION_COLORS[sessionType(s)];
 
@@ -1547,6 +1547,8 @@ function migrateTeam(t){
         }
         if(!s.blocks)s.blocks=[];
         if(!s.name)s.name=s.loadType||'Workout';
+        if(s.purpose==='Team Practice')s.purpose='Ball Practice';
+        if(s.name==='Team Practice')s.name='Ball Practice';
         if(s.au===undefined)s.au='';
         if(!Array.isArray(s.athletes))s.athletes=[];
         if(s.sourceId===undefined)s.sourceId=null;
@@ -1585,7 +1587,10 @@ function migrateTeam(t){
   t.athletes.forEach(a=>{
     for(const k of Object.keys(a.days||{})){
       const d=a.days[k];if(!d?.sessions)continue;
-      d.sessions=d.sessions.map(s=>({...s,blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',...e}))}))}));
+      d.sessions=d.sessions.map(s=>({...s,
+        purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose,
+        name:s.name==='Team Practice'?'Ball Practice':s.name,
+        blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',...e}))}))}));
     }
   });
   return t;
@@ -3258,7 +3263,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             const ids=drawerSes.athletes||[];
             const parts=ids.map(id=>(athletes||[]).find(a=>a.id===id)).filter(Boolean);
             const list=parts.length?parts:(athletes||[]);
-            const CATS=[['tp','TP'],['sc','S&C'],['game','Match']];
+            const CATS=[['tp','BP'],['sc','S&C'],['game','Match']];
             const cat=drawerSes.rpeCat||srpeSlot(drawerSes.loadType);
             const catLbl=(CATS.find(c=>c[0]===cat)||['','S&C'])[1];
             return(<div className="dw-rpe">
@@ -5402,7 +5407,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:'rgba(251,146,60,.30)',hoverBackgroundColor:'rgba(251,146,60,.46)',borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'Ball Practice (AU)',data:tpVals,backgroundColor:'rgba(251,146,60,.30)',hoverBackgroundColor:'rgba(251,146,60,.46)',borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
                 {label:'S&C (AU)',data:scVals,backgroundColor:'rgba(34,211,238,.28)',hoverBackgroundColor:'rgba(34,211,238,.44)',borderColor:'rgba(34,211,238,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0,above=(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:rpeMid(scRPEs)},
                 {label:'Match (AU)',data:gmVals,backgroundColor:'rgba(244,114,182,.28)',hoverBackgroundColor:'rgba(244,114,182,.44)',borderColor:'rgba(244,114,182,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0||(scVals[i]||0)>0;return{topLeft:R,topRight:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
@@ -5907,6 +5912,10 @@ function Backup({data,setData,sync}){
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
 const SYNC_CHUNK=700000;
 const mkRev=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+// Fast non-crypto hash (djb2) — lets us tell whether the local copy has unsynced edits
+// vs the last-synced snapshot WITHOUT trusting the device clock (skewed/stale clocks
+// were letting an old device overwrite newer cloud data from another computer).
+const djb2=str=>{let h=5381;for(let i=0;i<str.length;i++)h=((h*33)^str.charCodeAt(i))>>>0;return h.toString(36);};
 async function cloudWrite(fb,uid,str,rev,ts){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
@@ -6000,6 +6009,17 @@ function useCloudSync(data,setData){
   // and the most-recently-edited copy always wins on any device.
   const localTs=useRef((()=>{try{return +localStorage.getItem('pp-data-ts')||0;}catch(e){return 0;}})());
   const persistTs=t=>{localTs.current=t;try{localStorage.setItem('pp-data-ts',String(t));}catch(e){}};
+  // Revision lineage + content hash of the last-synced copy, persisted across reloads so
+  // that on login we can tell whether THIS device truly has unsynced edits — independent
+  // of the clock. A device that merely holds an old copy will now always defer to the cloud.
+  const baseRev=useRef((()=>{try{return localStorage.getItem('pp-data-rev')||null;}catch(e){return null;}})());
+  const cleanHash=useRef((()=>{try{return localStorage.getItem('pp-data-hash')||null;}catch(e){return null;}})());
+  const markSynced=(rev,str,ts)=>{
+    lastRev.current=rev;lastJson.current=str;baseRev.current=rev||null;
+    if(ts!=null)persistTs(ts);
+    const h=djb2(str);cleanHash.current=h;
+    try{localStorage.setItem('pp-data-rev',rev||'');localStorage.setItem('pp-data-hash',h);}catch(e){}
+  };
 
   // auth state
   useEffect(()=>{
@@ -6017,7 +6037,7 @@ function useCloudSync(data,setData){
     ready.current=false; // block uploads until the first cloud reconcile finishes
     const userDoc=fb.firestore().collection('users').doc(user.uid);
     let first=true;
-    const seedUp=async(str,ts)=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,ts);lastRev.current=rev;lastJson.current=str;persistTs(ts);setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
+    const seedUp=async(str,ts)=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,ts);markSynced(rev,str,ts);setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
     const unsub=userDoc.onSnapshot(async snap=>{
       try{
         const rev=(snap.exists&&snap.data())?snap.data().rev:null;
@@ -6028,20 +6048,34 @@ function useCloudSync(data,setData){
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.fromServer){
             const sts=cloud.ts||0,lts=localTs.current||0;
-            if(cloud.str&&(sts>=lts||!localReal)){
-              // Server copy is at least as new (or this device has nothing real) →
-              // show the server's truth.
-              if(cloud.str===localStr){lastJson.current=cloud.str;}
-              else{const p=migrate(JSON.parse(cloud.str));lastJson.current=JSON.stringify(p);setData(p);}
-              lastRev.current=cloud.rev;persistTs(sts);setStatus('synced');ready.current=true;
-            }else if(localReal&&lts>sts){
-              // This device holds NEWER unsynced edits than the server → push them up.
-              // Last-writer-wins: the more recent changes are never discarded.
-              ready.current=true;await seedUp(localStr,lts);
+            // "dirty" = this device has edits the cloud doesn't. Decided by a clock-independent
+            // content-hash baseline; the timestamp is only a fallback when there is no baseline
+            // yet (first run after this version) or the two copies are identical.
+            const haveBase=cleanHash.current!=null;
+            const dirty = !localReal ? false
+              : (cloud.str&&cloud.str===localStr) ? false
+              : haveBase ? (djb2(localStr)!==cleanHash.current)
+              : (lts>sts);
+            if(!cloud.str){
+              // Server empty → seed our real data up; otherwise just start clean.
+              if(localReal){ready.current=true;await seedUp(localStr,lts||Date.now());}
+              else{markSynced(cloud.rev||null,localStr,lts);setStatus('synced');ready.current=true;}
+            }else if(!dirty){
+              // We have NO unsynced edits → the cloud is the source of truth, even if our
+              // clock looks newer. Core fix for "switching computers loses my latest changes":
+              // a stale device always defers to the cloud instead of overwriting it.
+              if(cloud.str===localStr){markSynced(cloud.rev,localStr,Math.max(sts,lts));}
+              else{const p=migrate(JSON.parse(cloud.str));setData(p);markSynced(cloud.rev,JSON.stringify(p),sts);}
+              setStatus('synced');ready.current=true;
+            }else if(cloud.rev===baseRev.current){
+              // We branched from the cloud's current revision and have unsynced edits (no
+              // other device wrote since) → push ours up so they win.
+              ready.current=true;await seedUp(localStr,lts||Date.now());
             }else{
-              // Server empty. Seed real local data up; otherwise just start fresh.
-              lastJson.current=localStr;setStatus('synced');ready.current=true;
-              if(localReal)await seedUp(localStr,lts||Date.now());
+              // Genuine divergence: both this device and the cloud changed independently
+              // (rare). Fall back to last-writer-wins by edit time.
+              if(lts>sts){ready.current=true;await seedUp(localStr,lts);}
+              else{const p=migrate(JSON.parse(cloud.str));setData(p);markSynced(cloud.rev,JSON.stringify(p),sts);setStatus('synced');ready.current=true;}
             }
           }else if(cloud&&cloud.str){
             // Only the offline cache was reachable — show it, but don't trust it and
@@ -6061,8 +6095,8 @@ function useCloudSync(data,setData){
             const sts=cloud.ts||0;const dirty=JSON.stringify(dataRef.current)!==lastJson.current;
             if(sts>=(localTs.current||0)||!dirty){
               const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
-              lastJson.current=pstr;lastRev.current=cloud.rev;persistTs(sts);
               if(pstr!==JSON.stringify(dataRef.current))setData(p);
+              markSynced(cloud.rev,pstr,sts);
               setStatus('synced');ready.current=true;
             }else{
               // Our local edits are newer and unsynced → push ours so they win.
@@ -6091,7 +6125,7 @@ function useCloudSync(data,setData){
       // still-queued write therefore stays "dirty" and is retried on focus/reconcile —
       // it is never silently treated as synced and then overwritten by a stale copy.
       cloudWrite(fb,user.uid,j,rev,ts)
-        .then(()=>{lastRev.current=rev;lastJson.current=j;setStatus('synced');})
+        .then(()=>{markSynced(rev,j,ts);setStatus('synced');})
         .catch(e=>{console.warn('write',e);setStatus('error');});
     };
     writeRef.current=writeNow;
@@ -6113,10 +6147,11 @@ function useCloudSync(data,setData){
           const sts=cloud.ts||0;
           // Apply only when the server copy is at least as new as our local stamp —
           // a stale server read can never roll our newer local changes back.
-          if(cloud.str&&cloud.rev!==lastRev.current&&sts>=(localTs.current||0)){
+          const dirtyNow=JSON.stringify(dataRef.current)!==lastJson.current;
+          if(cloud.str&&cloud.rev!==lastRev.current&&(!dirtyNow||sts>=(localTs.current||0))){
             const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
-            lastJson.current=pstr;lastRev.current=cloud.rev;persistTs(sts);
             if(pstr!==JSON.stringify(dataRef.current))setData(p);
+            markSynced(cloud.rev,pstr,sts);
           }
           ready.current=true;setStatus('synced');
         }
