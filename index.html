@@ -2900,6 +2900,39 @@ function resizePhoto(file,cb){
     ctx.drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.90));
   };img.src=e.target.result;};r.readAsDataURL(file);
 }
+// One-time data healer: walk the whole state and lift any base64 image still embedded in it
+// out to Firebase Storage, replacing it with a tiny download URL. Inline images are what made
+// the synced payload several MB (and sync crawl); afterwards the synced JSON stays small.
+// Mutates `obj` in place; returns true if anything was moved. Failed uploads keep the base64
+// (so nothing is ever lost) and get retried on the next load.
+async function migrateEmbeddedPhotos(obj,fb,uid){
+  if(!fb||!fb.storage||!uid)return false;
+  let changed=false;
+  const up=async dataUrl=>{
+    try{
+      const blob=await (await fetch(dataUrl)).blob();
+      const url=await uploadMedia(blob,'migrated',null);
+      changed=true;return url;
+    }catch(e){console.warn('photo migrate failed',e);return dataUrl;}
+  };
+  const walk=async node=>{
+    if(Array.isArray(node)){
+      for(let i=0;i<node.length;i++){
+        const v=node[i];
+        if(typeof v==='string'&&v.indexOf('data:image')===0)node[i]=await up(v);
+        else if(v&&typeof v==='object')await walk(v);
+      }
+    }else if(node&&typeof node==='object'){
+      for(const k of Object.keys(node)){
+        const v=node[k];
+        if(typeof v==='string'&&v.indexOf('data:image')===0)node[k]=await up(v);
+        else if(v&&typeof v==='object')await walk(v);
+      }
+    }
+  };
+  await walk(obj);
+  return changed;
+}
 
 /* =========================================================
    SETUP
@@ -4081,7 +4114,7 @@ function PhotoCell({photo,onChange,label,size=68}){
     <div style={{fontSize:10,color:'var(--muted)',marginTop:4,fontWeight:500}}>{label}</div>
     {photo&&<button onClick={()=>onChange(null)} style={{marginTop:1,background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:10,padding:0}}>Remove</button>}
     <input ref={ref} type="file" accept="image/*" style={{display:'none'}}
-      onChange={e=>{const f=e.target.files?.[0];if(f)resizePhoto(f,d=>onChange(d));e.target.value='';}}/>
+      onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'tests',d=>onChange(d));e.target.value='';}}/>
   </div>);
 }
 
@@ -6184,6 +6217,22 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},600);
   },[data,user]);
+
+  // One-time per session: once the cloud copy is in sync, heal it by moving any inline base64
+  // photos out to Storage. This shrinks an already-bloated account so every later sync is fast.
+  const migrated=useRef(false);
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb||!user||status!=='synced'||migrated.current)return;
+    migrated.current=true;
+    (async()=>{
+      try{
+        const clone=JSON.parse(JSON.stringify(dataRef.current));
+        const changed=await migrateEmbeddedPhotos(clone,fb,user.uid);
+        if(changed)setData(clone); // small payload now → syncs up quickly to every device
+      }catch(e){console.warn('photo-migrate',e);}
+    })();
+  },[status,user]);
 
   return{user,status,authLoading,syncErr,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
