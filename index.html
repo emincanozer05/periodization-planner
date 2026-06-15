@@ -3153,6 +3153,32 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // tagged with sessionId so re-entering a value updates it instead of duplicating.
   const aInit=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const srpeSlot=lt=>{const x=(lt||'').toLowerCase();return(x.includes('mechanical')||x.includes('neuromuscular'))?'sc':'tp';};
+  // Auto-fill the SESSION's own team sRPE / AU from the manual per-athlete RPEs entered for
+  // it, so the session card shows the load automatically (no separate manual session entry).
+  // Team sRPE = average of the entered athlete RPEs; AU = avg × duration (unless AU is manual).
+  const syncSessionSRPE=(aths,dk)=>{
+    if(!drawerSes)return;
+    const d0=days[dk];if(!d0)return;
+    const rs=[];
+    (aths||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+      if(e.sessionId!==drawerSes.id)return;
+      const r=[e.tpRPE,e.scRPE,e.gameRPE].find(v=>v!==''&&v!=null);
+      if(r!=null&&r!==''&&!isNaN(Number(r)))rs.push(Number(r));
+    }));
+    const dur=Number(drawerSes.duration)||0;
+    const avg=rs.length?rs.reduce((x,y)=>x+y,0)/rs.length:null;
+    let patch;
+    if(avg!=null){
+      patch={sRPE:Math.round(avg*10)/10,srpeFromManual:true};
+      if(!drawerSes.auManual)patch.au=Math.round(avg*dur);
+    }else if(drawerSes.srpeFromManual){ // last manual RPE removed → clear what we auto-set
+      patch={sRPE:'',srpeFromManual:false};
+      if(!drawerSes.auManual)patch.au='';
+    }else return;
+    const newS=(d0.sessions||[]).map(s=>s.id===drawerSes.id?{...s,...patch}:s);
+    saveDays({...days,[dk]:{...d0,sessions:newS,date:dk}});
+    setDrawerSes(s=>s?{...s,...patch}:s);
+  };
   const setAthRPE=(athId,rpeRaw)=>{
     if(!teamMode||!drawerSes)return;
     const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
@@ -3161,7 +3187,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const slot=drawerSes.rpeCat||srpeSlot(drawerSes.loadType);
     const rpe=(rpeRaw===''||rpeRaw==null)?'':Number(rpeRaw);
     const load=(rpe===''||isNaN(rpe))?'':Math.round(rpe*dur);
-    saveAthletes(athletes.map(a=>{
+    const newAthletes=athletes.map(a=>{
       if(a.id!==athId)return a;
       const log=[...(a.srpeLog||[])];
       const idx=log.findIndex(e=>e.sessionId===drawerSes.id);
@@ -3171,7 +3197,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       entry[slot+'RPE']=rpe;entry[slot+'Duration']=dur;entry[slot+'Load']=load;
       if(idx>=0)log[idx]=entry;else log.push(entry);
       return{...a,srpeLog:log};
-    }));
+    });
+    saveAthletes(newAthletes);
+    syncSessionSRPE(newAthletes,dk);     // keep the session's own sRPE/AU in step automatically
   };
   // Change which sRPE category (tp / sc / game) the manual RPE is recorded under,
   // persist the choice on the session, and migrate any values already entered.
@@ -5436,14 +5464,29 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         {(ath.srpeLog||[]).length===0&&<div className="empty-st">No sRPE data yet — sync from Notion or add manually</div>}
         {(ath.srpeLog||[]).length>0&&(()=>{
           const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(srpeWeek),i)));
-          const byDate=Object.fromEntries((ath.srpeLog||[]).map(s=>[s.date,s]));
+          // Aggregate ALL entries per date. A single day can hold several sessions (e.g. an
+          // S&C session AND a Ball Practice session), each its own srpeLog row. The old
+          // Object.fromEntries(date→entry) kept only the LAST row per date, so a second
+          // same-day session (the S&C manual RPE) silently disappeared from the chart.
+          const agg={};
+          (ath.srpeLog||[]).forEach(s=>{
+            if(!s||!s.date)return;
+            const a=agg[s.date]||(agg[s.date]={tpLoad:0,scLoad:0,gmLoad:0,tpRW:0,tpDW:0,scRW:0,scDW:0,gmRW:0,gmDW:0});
+            const add=(P,load,rpe,dur)=>{a[P+'Load']+=Number(load)||0;const r=(rpe===''||rpe==null)?null:Number(rpe);const du=Number(dur)||0;if(r!=null&&!isNaN(r)&&du>0){a[P+'RW']+=r*du;a[P+'DW']+=du;}};
+            add('tp',s.tpLoad,s.tpRPE,s.tpDuration);
+            add('sc',s.scLoad,s.scRPE,s.scDuration);
+            add('gm',s.gameLoad,s.gameRPE,s.gameDuration);
+          });
           const labels=days7.map((d,i)=>`${DN[i]} ${fd(d).slice(0,5)}`);
-          const tpVals=days7.map(d=>Number(byDate[d]?.tpLoad)||0);
-          const scVals=days7.map(d=>Number(byDate[d]?.scLoad)||0);
-          const gmVals=days7.map(d=>Number(byDate[d]?.gameLoad)||0);
-          const tpRPEs=days7.map(d=>byDate[d]?.tpRPE!==''&&byDate[d]?.tpRPE!=null?Number(byDate[d].tpRPE):null);
-          const scRPEs=days7.map(d=>byDate[d]?.scRPE!==''&&byDate[d]?.scRPE!=null?Number(byDate[d].scRPE):null);
-          const gmRPEs=days7.map(d=>byDate[d]?.gameRPE!==''&&byDate[d]?.gameRPE!=null?Number(byDate[d].gameRPE):null);
+          const tpVals=days7.map(d=>agg[d]?.tpLoad||0);
+          const scVals=days7.map(d=>agg[d]?.scLoad||0);
+          const gmVals=days7.map(d=>agg[d]?.gmLoad||0);
+          // Segment RPE = duration-weighted average across that day's sessions in that category
+          // (for a single session this is exactly its own RPE).
+          const wAvg=(d,P)=>agg[d]&&agg[d][P+'DW']>0?agg[d][P+'RW']/agg[d][P+'DW']:null;
+          const tpRPEs=days7.map(d=>wAvg(d,'tp'));
+          const scRPEs=days7.map(d=>wAvg(d,'sc'));
+          const gmRPEs=days7.map(d=>wAvg(d,'gm'));
           const weekTotal=tpVals.reduce((a,b)=>a+b,0)+scVals.reduce((a,b)=>a+b,0)+gmVals.reduce((a,b)=>a+b,0);
           // Middle-of-segment label now shows that segment's RPE (the bottom RPE
           // line chart was removed in favour of this). Top label shows total AU.
