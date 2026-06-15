@@ -1819,15 +1819,15 @@ function WellnessHeatmap({athletes}){
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
   return(<div className="panel">
     <div className="wh-hm-head">
-      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>tüm dönem · ortalamaya göre sıralı</span></h2></div>
+      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>all-time · sorted by average</span></h2></div>
       <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
     </div>
     {dates.length===0?<div className="empty-st">No wellness data yet.</div>:<>
       <div className="wh-legend">
-        <span className="wh-leg-cap">{M.id==='RHR'?'yüksek':'düşük'}</span>
+        <span className="wh-leg-cap">{M.id==='RHR'?'high':'low'}</span>
         <span className="wh-leg-bar"/>
-        <span className="wh-leg-cap">{M.id==='RHR'?'düşük':'yüksek'}</span>
-        {teamAvg!=null&&<span className="wh-leg-team"><span className="wh-adot" style={{background:dotCol(teamAvg)}}/>takım ort.<b>{fmtV(teamAvg)}</b></span>}
+        <span className="wh-leg-cap">{M.id==='RHR'?'low':'high'}</span>
+        {teamAvg!=null&&<span className="wh-leg-team"><span className="wh-adot" style={{background:dotCol(teamAvg)}}/>team avg <b>{fmtV(teamAvg)}</b></span>}
       </div>
       <div className="wh-scroll">
         <table className="wh-hm">
@@ -1961,7 +1961,19 @@ function vGrad(topColor,bottomColor){
 }
 /* Frosted-glass bar fill: translucent top→bottom gradient of an rgb colour, so the
    dark background shows through for an iOS-glass look. `boost` brightens on hover. */
-/* Light phosphor halo behind each bar — a soft neon glow (no glass/gradient fill).
+/* Frosted-glass vertical gradient fill for chart bars: a bright glassy top fading to a
+   translucent base so the ambient background shows through. `boost` brightens on hover. */
+function glassBar(r,g,b,boost=0){
+  const a=o=>Math.min(1,o+boost);
+  return ctx=>{const ch=ctx.chart,ar=ch.chartArea;if(!ar)return`rgba(${r},${g},${b},${a(.3)})`;
+    const grad=ch.ctx.createLinearGradient(0,ar.top,0,ar.bottom);
+    grad.addColorStop(0,`rgba(${r},${g},${b},${a(.54)})`);
+    grad.addColorStop(.08,`rgba(${r},${g},${b},${a(.40)})`);
+    grad.addColorStop(.5,`rgba(${r},${g},${b},${a(.24)})`);
+    grad.addColorStop(1,`rgba(${r},${g},${b},${a(.10)})`);
+    return grad;};
+}
+/* Soft neon halo behind each glass bar — gives depth & a stylish frosted glow.
    Scoped: pass `plugins={[barGlow]}` to the chart that wants it. */
 const barGlow={
   id:'barGlow',
@@ -1969,7 +1981,7 @@ const barGlow={
     const ds=chart.data.datasets[args.index];if(!ds)return;
     const ctx=chart.ctx;ctx.save();
     ctx.shadowColor=(typeof ds.borderColor==='string'?ds.borderColor:'rgba(34,211,238,.7)');
-    ctx.shadowBlur=15;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+    ctx.shadowBlur=18;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
   },
   afterDatasetDraw(chart){chart.ctx.restore();}
 };
@@ -2005,7 +2017,7 @@ function WeekChartSVG({data,avg,color,dot,unit,labels}){
   const area=pts.length>1?`M${pts[0].x.toFixed(1)} ${base} `+pts.map(p=>'L'+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')+` L${pts[pts.length-1].x.toFixed(1)} ${base} Z`:'';
   return <div ref={wrapRef} style={{width:'100%',height:'100%'}}>
     {!has
-      ?<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--dim)',fontSize:13}}>Bu hafta için veri yok</div>
+      ?<div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--dim)',fontSize:13}}>No data for this week</div>
       :<svg width={w} height={h} style={{display:'block'}}>
         {ticks.map((t,k)=><g key={'t'+k}>
           <line x1={padL} y1={yOf(t)} x2={w-padR} y2={yOf(t)} stroke="rgba(255,255,255,.05)"/>
@@ -3086,7 +3098,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edDel=sid=>svDay(editDate,{sessions:edDay.sessions.filter(s=>s.id!==sid)});
   const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
   const edMv=(sid,dir)=>{const a=[...edDay.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];svDay(editDate,{sessions:a});};
-  const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('Önceki günde antrenman yok');return;}
+  const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
   const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
   // Inline edit of the open drawer session (time / duration / load) without opening
@@ -3203,10 +3215,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </div>
       <div className="wk">{fmtRange()}</div>
       <div style={{flex:1}}/>
-      {canEdit&&<button className="btn sec sm" onClick={printWeek} title="Haftalık plan çıktısı (A4 yatay)">⎙ Print week</button>}
+      {canEdit&&<button className="btn sec sm" onClick={printWeek} title="Weekly plan export (A4 landscape)">⎙ Print week</button>}
       <button className="btn sec sm" onClick={()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});}}>Today</button>
     </div>
-    {canEdit&&<div className="calw-hint">Bir antrenmanı başka güne sürükle · <strong>Ctrl/⌥</strong> bas ve bırak → kopyalar</div>}
+    {canEdit&&<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>}
     <div className="calw-grid">
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
@@ -3229,8 +3241,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
-                <button title="Çoğalt" onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
-                <button title="Sil" className="del" onClick={e=>{e.stopPropagation();if(confirm('Bu antrenmanı sil?'))delSession(k,s.id);}}>✕</button>
+                <button title="Duplicate" onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
+                <button title="Delete" className="del" onClick={e=>{e.stopPropagation();if(confirm('Delete this session?'))delSession(k,s.id);}}>✕</button>
               </div>}
               <div className="nm">{s.name}</div>
               <div className="pr">{s.purpose}</div>
@@ -3256,7 +3268,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
             <div style={{display:'flex',gap:8,alignItems:'center'}}>
               {teamMode&&<button className={`btn sm ${rpeOpen?'':'sec'}`} onClick={()=>setRpeOpen(o=>!o)} title="Enter each athlete's RPE — syncs to their profile">⚡ Manual RPE</button>}
-              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Bu seansı yazdır">⎙ Print</button>
+              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Print this session">⎙ Print</button>
             </div>
           </div>
           {teamMode&&rpeOpen&&(()=>{
@@ -3328,7 +3340,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {drawerSes.notes&&<div style={{marginTop:14,padding:14,background:'var(--panel)',border:'1px solid var(--border)',borderRadius:9,fontSize:13,color:'var(--text2)',whiteSpace:'pre-wrap',lineHeight:1.55}}>{drawerSes.notes}</div>}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>Kapat</button>
-            <button className="btn sm" onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ Düzenle</button>
+            <button className="btn sm" onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ Edit</button>
           </div>
         </div>
       </aside>
@@ -3338,26 +3350,26 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       <aside className="dw edit">
         <div className="dw-h">
           <div style={{flex:1,minWidth:0}}>
-            <div className="ti">Antrenman Planı</div>
+            <div className="ti">Training Plan</div>
             <div className="su">{fdLong(editDate)} · {Math.round(dLoad(edDay))} AU</div>
           </div>
           <button className="x" onClick={()=>setEditDate(null)}>×</button>
         </div>
         <div className="dw-b">
           <div className="dw-quickadd">
-            <span className="qa-lbl">Hızlı ekle</span>
+            <span className="qa-lbl">Quick add</span>
             {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(p.d)}>+ {p.name}</button>)}
-            <button onClick={()=>edAdd()}>+ Boş</button>
-            <button className="copy" onClick={edCopyYesterday}>Dünü kopyala</button>
+            <button onClick={()=>edAdd()}>+ Empty</button>
+            <button className="copy" onClick={edCopyYesterday}>Copy yesterday</button>
           </div>
-          {(edDay.sessions||[]).length===0&&<div className="dw-empty">Henüz antrenman yok — yukarıdan hızlı ekle ile başla</div>}
+          {(edDay.sessions||[]).length===0&&<div className="dw-empty">No sessions yet — start with quick add above</div>}
           {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}/>)}
           <div className="hr"/>
-          <label>Günlük notlar</label>
-          <textarea value={edDay.dailyNotes||''} onChange={e=>svDay(editDate,{dailyNotes:e.target.value})} placeholder="Wellness, uyku, ağrı…"/>
+          <label>Daily notes</label>
+          <textarea value={edDay.dailyNotes||''} onChange={e=>svDay(editDate,{dailyNotes:e.target.value})} placeholder="Wellness, sleep, soreness…"/>
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>Bitti</button>
           </div>
@@ -3432,7 +3444,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
       <span className="blk-grip" draggable={setDragB!=null}
         onClick={e=>e.stopPropagation()}
         onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
-        onDragEnd={()=>setDragB&&setDragB(null)} title="Sürükleyerek sırala">⠿</span>
+        onDragEnd={()=>setDragB&&setDragB(null)} title="Drag to reorder">⠿</span>
       <span style={{color:'var(--accent2)',fontSize:13}}>{open?'▼':'▶'}</span>
       <span className="bn">{block.name}</span>
       <span className="bc">{exs.length} Exercise{exs.length!==1?'s':''}{groups.length?` · Supersets: ${groups.join(', ')}`:''}</span>
@@ -3536,7 +3548,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div className="color-row">
           {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
             <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
-          <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Özel renk"/>
+          <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
           <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
         </div>
       </div>
@@ -3547,7 +3559,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <div className="grid cols-3">
         <div>
           <label>RPE (0-10) — auto-fills AU</label>
-          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="RPE'yi yaz (örn. 7.5)"
+          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="Enter RPE (e.g. 7.5)"
             onChange={e=>{const v=e.target.value;const upd={sRPE:v};if(!session.auManual&&v!=='')upd.au=Math.round(Number(v)*Number(session.duration||0));u(upd);}}
             style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
           <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
@@ -3555,7 +3567,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div>
           <label>Session Load (AU) — editable</label>
           <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder="Type AU or use sRPE" style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          <div className="help">{session.auManual?'Manuel AU — sRPE/süre değişince korunur':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
+          <div className="help">{session.auManual?'Manual AU — kept when sRPE/duration change':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
         </div>
         <div><label>Notes</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder="Observations…"/></div>
       </div>
@@ -4015,7 +4027,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       <div className="mono-sum">
         <div className="mono-chip"><div className="k">Ort. Monotoni</div><div className="v" style={{color:monoCol(avgMono)}}>{avgMono?avgMono.toFixed(2):'—'}</div><div className="d">{mv.length} hafta</div></div>
         <div className="mono-chip"><div className="k">Riskli Hafta</div><div className="v" style={{color:excessN>0?'#f43f5e':'var(--text)'}}>{excessN}</div><div className="d">monotoni &gt; 2.0</div></div>
-        <div className="mono-chip"><div className="k">Son Hafta</div><div className="v" style={{color:last?monoCol(last.monotony):'var(--text)'}}>{last?last.monotony.toFixed(2):'—'}</div><div className="d">{trend!=null?(trend>0?'▲ +':trend<0?'▼ −':'– ')+Math.abs(trend).toFixed(2):'önceki haftaya göre'}</div></div>
+        <div className="mono-chip"><div className="k">Last Week</div><div className="v" style={{color:last?monoCol(last.monotony):'var(--text)'}}>{last?last.monotony.toFixed(2):'—'}</div><div className="d">{trend!=null?(trend>0?'▲ +':trend<0?'▼ −':'– ')+Math.abs(trend).toFixed(2):'vs previous week'}</div></div>
       </div>
       <div className="chart-box sm" style={{marginBottom:16}}>
         <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[
@@ -4023,12 +4035,12 @@ function TeamReports({team,weeks,selected,setSelected}){
             backgroundColor:mWeeks.map(w=>w.monotony>2?'rgba(244,63,94,.9)':w.monotony>1.5?'rgba(245,158,11,.9)':w.monotony>0?'rgba(45,212,167,.9)':'#2e333c'),
             borderColor:mWeeks.map(w=>w.monotony>2?'#f43f5e':w.monotony>1.5?'#f59e0b':w.monotony>0?'#2dd4a7':'#2e333c'),borderWidth:1,borderRadius:6,maxBarThickness:46,
             datalabels:{display:true,anchor:'end',align:'end',color:'#cdd3dc',font:{weight:'bold',size:11,family:'IBM Plex Mono'},formatter:v=>v>0?v.toFixed(2):''}},
-          {type:'line',label:'Risk eşiği (2.0)',data:mWeeks.map(()=>2),order:1,borderColor:'rgba(244,63,94,.65)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,pointHitRadius:0,fill:false,tension:0,datalabels:{display:false}}
+          {type:'line',label:'Risk threshold (2.0)',data:mWeeks.map(()=>2),order:1,borderColor:'rgba(244,63,94,.65)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,pointHitRadius:0,fill:false,tension:0,datalabels:{display:false}}
         ]}}
           options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,
             scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y,beginAtZero:true}},
             plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#94a3b8',font:{size:10,family:'IBM Plex Mono'},usePointStyle:true,pointStyle:'line',boxWidth:18,filter:i=>i.text.indexOf('Risk')===0}},
-              tooltip:{callbacks:{label:i=>i.dataset.type==='line'?'Risk eşiği: 2.0':'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
+              tooltip:{callbacks:{label:i=>i.dataset.type==='line'?'Risk threshold: 2.0':'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
       </div>
       <div className="mono-tbl-wrap"><table className="mono-tbl">
         <thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Monotony</th><th>Strain</th><th>Flag</th></tr></thead>
@@ -4577,7 +4589,7 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
     <div className="grid cols-4">
       <div><label>Height (cm)</label><input type="number" step="0.1" value={test.height} onChange={e=>u('height',e.target.value)}/></div>
       <div><label>Weight (kg)</label><input type="number" step="0.1" value={test.weight} onChange={e=>u('weight',e.target.value)}/></div>
-      <div><label>Wingspan / Kulaç (cm)</label><input type="number" step="0.1" value={test.wingspan} onChange={e=>u('wingspan',e.target.value)}/></div>
+      <div><label>Wingspan (cm)</label><input type="number" step="0.1" value={test.wingspan} onChange={e=>u('wingspan',e.target.value)}/></div>
       <div><label>Body Fat (%)</label><input type="number" step="0.1" value={test.bodyFat} onChange={e=>u('bodyFat',e.target.value)}/></div>
     </div>
 
@@ -4586,11 +4598,11 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
     <div className="grid" style={{gridTemplateColumns:'repeat(7,1fr)',gap:8}}>
       <div><label>Shoulder (Omuz)</label><input type="number" step="0.1" value={test.circ?.shoulder||''} onChange={e=>uN('circ','shoulder',e.target.value)}/></div>
       <div><label>Waist (Bel)</label><input type="number" step="0.1" value={test.circ?.waist||''} onChange={e=>uN('circ','waist',e.target.value)}/></div>
-      <div><label>Hip (Kalça)</label><input type="number" step="0.1" value={test.circ?.hip||''} onChange={e=>uN('circ','hip',e.target.value)}/></div>
-      <div><label>Thigh R (Sağ Uyluk)</label><input type="number" step="0.1" value={test.circ?.thighRight||''} onChange={e=>uN('circ','thighRight',e.target.value)}/></div>
+      <div><label>Hip</label><input type="number" step="0.1" value={test.circ?.hip||''} onChange={e=>uN('circ','hip',e.target.value)}/></div>
+      <div><label>Thigh R</label><input type="number" step="0.1" value={test.circ?.thighRight||''} onChange={e=>uN('circ','thighRight',e.target.value)}/></div>
       <div><label>Thigh L (Sol Uyluk)</label><input type="number" step="0.1" value={test.circ?.thighLeft||''} onChange={e=>uN('circ','thighLeft',e.target.value)}/></div>
-      <div><label>Calf R (Sağ Baldır)</label><input type="number" step="0.1" value={test.circ?.calfRight||''} onChange={e=>uN('circ','calfRight',e.target.value)}/></div>
-      <div><label>Calf L (Sol Baldır)</label><input type="number" step="0.1" value={test.circ?.calfLeft||''} onChange={e=>uN('circ','calfLeft',e.target.value)}/></div>
+      <div><label>Calf R</label><input type="number" step="0.1" value={test.circ?.calfRight||''} onChange={e=>uN('circ','calfRight',e.target.value)}/></div>
+      <div><label>Calf L</label><input type="number" step="0.1" value={test.circ?.calfLeft||''} onChange={e=>uN('circ','calfLeft',e.target.value)}/></div>
     </div>
 
     <div className="hr"/>
@@ -5029,24 +5041,24 @@ function RecommendsTab({ath,updAth,setup,ai,exercises}){
   };
   if(!apiKey)return(<div className="rec-empty">
     <div className="rec-empty-ic">✨</div>
-    <h3>AI önerisi için anahtar gerekli</h3>
-    <p>Bu sekme; sporcunun <b>vücut kompozisyonu, yorgunluk/hazır bulunuşluk ve test sonuçlarını</b> değerlendirip kişiye özel yüklenme ve çalışma önerisi üretir. Çalışması için sağ alttaki <b>✨ AI Antrenör Asistanı</b>’nı açıp bir API anahtarı gir — <b>Gemini ücretsizdir</b>. Anahtar hesabınla tüm cihazlarda saklanır.</p>
+    <h3>An API key is required for AI recommendations</h3>
+    <p>This tab evaluates the athlete's <b>body composition, fatigue/readiness and test results</b> and produces a personalized load and training recommendation. To use it, open the <b>✨ AI Coach Assistant</b> at the bottom right and enter an API key — <b>Gemini is free</b>. The key is stored with your account across all devices.</p>
   </div>);
   return(<div className="rec-wrap">
     <div className="rec-bar">
       <div className="rec-bar-l">
-        <div className="rec-bar-t">✨ Yapay Zekâ Önerisi</div>
-        <div className="rec-bar-s">{rec?`Oluşturuldu: ${new Date(rec.at).toLocaleString('tr-TR')} · ${rec.model}`:'Vücut kompozisyonu, yorgunluk ve test verilerine göre kişiye özel.'}</div>
+        <div className="rec-bar-t">✨ AI Recommendation</div>
+        <div className="rec-bar-s">{rec?`Generated: ${new Date(rec.at).toLocaleString('en-GB')} · ${rec.model}`:'Personalized from body composition, fatigue and test data.'}</div>
       </div>
-      <button className="btn sm" disabled={busy} onClick={gen}>{busy?'Oluşturuluyor…':(rec?'↻ Yeniden Oluştur':'✨ Öneri Oluştur')}</button>
+      <button className="btn sm" disabled={busy} onClick={gen}>{busy?'Generating…':(rec?'↻ Regenerate':'✨ Generate Recommendation')}</button>
     </div>
     {err&&<div className="rec-err">⚠ {err}</div>}
-    {busy&&!rec&&<div className="rec-loading"><div className="rec-spin"/><div>Sporcu verileri değerlendiriliyor…</div></div>}
+    {busy&&!rec&&<div className="rec-loading"><div className="rec-spin"/><div>Evaluating athlete data…</div></div>}
     {rec&&<div className={'rec-card'+(busy?' dim':'')}>
       <div className="rec-md" dangerouslySetInnerHTML={{__html:recMd(rec.text)}}/>
-      <div className="rec-foot">Bu öneri karar-destek amaçlıdır; klinik/tıbbi kararlar için sağlık ekibine danışın.</div>
+      <div className="rec-foot">This recommendation is decision-support only; consult your medical team for clinical decisions.</div>
     </div>}
-    {!rec&&!busy&&<div className="rec-hint">Henüz öneri yok. Yukarıdaki <b>✨ Öneri Oluştur</b>’a bas — sporcunun profilindeki verilere göre yüklenme, yapması/kaçınması gereken çalışmalar ve egzersiz önerileri çıkar.</div>}
+    {!rec&&!busy&&<div className="rec-hint">No recommendation yet. Press <b>✨ Generate Recommendation</b> above — based on the athlete's profile it produces load guidance, things to do/avoid and exercise suggestions.</div>}
   </div>);
 }
 
@@ -5124,12 +5136,12 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {id:'tests',ic:'⌖',l:'Tests'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
     {id:'wellness',ic:'♡',l:'Wellness'},
-    {id:'recommends',ic:'✨',l:'Öneriler'},
+    {id:'recommends',ic:'✨',l:'Recommendations'},
   ];
   return(<div>
     <button className="back" onClick={onBack} style={{marginBottom:14}}>‹ Athletes</button>
     <div className="ap-head">
-      <div className={`ap-av ${apRcls}`} onClick={()=>photoRef.current?.click()} title="Foto değiştirmek için tıkla">
+      <div className={`ap-av ${apRcls}`} onClick={()=>photoRef.current?.click()} title="Click to change photo">
         {ath.photo?<img src={ath.photo} alt=""/>:initials}
         <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
       </div>
@@ -5149,7 +5161,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
         <div className="ap-stat"><div className="k">Avg sleep</div><div className="v">{apSleep!=null?<CountUp value={apSleep} decimals={1}/>:'—'}<small>/5</small></div></div>
       </div>
-      <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Profili düzenle">✎</button>
+      <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Edit profile">✎</button>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
     {tab==='recommends'&&<RecommendsTab ath={ath} updAth={updAth} setup={setup} ai={ai} exercises={exercises}/>}
@@ -5237,7 +5249,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
           <h2 style={{margin:0}}>Body Composition Tracking</h2>
           <div className="row" style={{gap:6}}>
-            <button className="btn sec sm" disabled={(ath.measurements||[]).length===0} onClick={()=>printBodyComp(ath,setup)} title="Body Composition raporu (A4 yazdırma)">⎙ Print</button>
+            <button className="btn sec sm" disabled={(ath.measurements||[]).length===0} onClick={()=>printBodyComp(ath,setup)} title="Body Composition report (A4 print)">⎙ Print</button>
             <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',wingspan:'',notes:''};updAth(ath.id,{measurements:[...(ath.measurements||[]),m]});}}>+ Add Measurement</button>
           </div>
         </div>
@@ -5341,8 +5353,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           </div>
             {/* Collapsible paginated table */}
             <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:wellnessTableOpen?10:0}}>
-              <strong style={{fontSize:13,color:'var(--text2)'}}>Detaylı kayıtlar <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.wellness.length} satır)</span></strong>
-              <button className="btn sec sm" onClick={()=>setWellnessTableOpen(o=>!o)}>{wellnessTableOpen?'▲ Gizle':'▼ Göster'}</button>
+              <strong style={{fontSize:13,color:'var(--text2)'}}>Detailed records <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.wellness.length} rows)</span></strong>
+              <button className="btn sec sm" onClick={()=>setWellnessTableOpen(o=>!o)}>{wellnessTableOpen?'▲ Hide':'▼ Show'}</button>
             </div>
             {wellnessTableOpen&&(()=>{const rev=[...ath.wellness].reverse();const vis=rev.slice(0,wlLimit);const hasMore=rev.length>wlLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
@@ -5407,9 +5419,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Ball Practice (AU)',data:tpVals,backgroundColor:'rgba(251,146,60,.30)',hoverBackgroundColor:'rgba(251,146,60,.46)',borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C (AU)',data:scVals,backgroundColor:'rgba(34,211,238,.28)',hoverBackgroundColor:'rgba(34,211,238,.44)',borderColor:'rgba(34,211,238,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0,above=(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:rpeMid(scRPEs)},
-                {label:'Match (AU)',data:gmVals,backgroundColor:'rgba(244,114,182,.28)',hoverBackgroundColor:'rgba(244,114,182,.44)',borderColor:'rgba(244,114,182,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0||(scVals[i]||0)>0;return{topLeft:R,topRight:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+                {label:'Ball Practice (AU)',data:tpVals,backgroundColor:glassBar(251,146,60),hoverBackgroundColor:glassBar(251,146,60,.16),borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C (AU)',data:scVals,backgroundColor:glassBar(34,211,238),hoverBackgroundColor:glassBar(34,211,238,.16),borderColor:'rgba(34,211,238,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0,above=(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:rpeMid(scRPEs)},
+                {label:'Match (AU)',data:gmVals,backgroundColor:glassBar(244,114,182),hoverBackgroundColor:glassBar(244,114,182,.16),borderColor:'rgba(244,114,182,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0||(scVals[i]||0)>0;return{topLeft:R,topRight:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
@@ -5418,8 +5430,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
               <div className="empty-st">No sRPE entries this week — try ‹ Week / Week › or click Latest.</div>}
             </div>
             <div className="row" style={{justifyContent:'space-between',marginTop:6,marginBottom:srpeTableOpen?10:0}}>
-              <strong style={{fontSize:13,color:'var(--text2)'}}>Detaylı kayıtlar <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.srpeLog.length} satır)</span></strong>
-              <button className="btn sec sm" onClick={()=>setSrpeTableOpen(o=>!o)}>{srpeTableOpen?'▲ Gizle':'▼ Göster'}</button>
+              <strong style={{fontSize:13,color:'var(--text2)'}}>Detailed records <span style={{fontSize:11,color:'var(--dim)',fontWeight:400}}>({ath.srpeLog.length} rows)</span></strong>
+              <button className="btn sec sm" onClick={()=>setSrpeTableOpen(o=>!o)}>{srpeTableOpen?'▲ Hide':'▼ Show'}</button>
             </div>
             {srpeTableOpen&&(()=>{const rev=[...ath.srpeLog].reverse();const vis=rev.slice(0,srLimit);const hasMore=rev.length>srLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
@@ -5746,7 +5758,7 @@ function NotionSync({data,setData,team}){
   const saveCfg=upd=>setData(prev=>({...prev,notionSync:{...(prev.notionSync||cfg),...upd}}));
 
   const doSync=async()=>{
-    if(!cfg.workerUrl){alert('Önce Worker URL gir ve Save bas.');return;}
+    if(!cfg.workerUrl){alert('Enter the Worker URL and press Save first.');return;}
     setSyncing(true);setError(null);
     try{
       const{athletes,stats:s,syncedAt}=await performNotionSync(cfg.workerUrl,team);
@@ -5812,7 +5824,7 @@ function NotionSync({data,setData,team}){
       {error&&<div style={{marginTop:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'var(--high-t)',fontSize:13}}>
         <strong>Error:</strong> {error}
         <div className="help" style={{marginTop:6,color:'var(--text2)'}}>
-          Yaygın nedenler: Worker URL yanlış · Worker token eksik (NOTION_TOKEN) · Notion integration database'lere bağlı değil · İnternet bağlantısı yok.
+          Common causes: wrong Worker URL · missing Worker token (NOTION_TOKEN) · Notion integration not connected to the databases · no internet connection.
         </div>
       </div>}
       {stats&&!error&&<div style={{marginTop:14}}>
@@ -5858,16 +5870,16 @@ function Backup({data,setData,sync}){
     r.readAsText(f);e.target.value='';};
   const restore=async()=>{
     const fb=FB();
-    if(!fb||!sync||!sync.user){alert('Bulut yedeği için önce hesabınla giriş yapmalısın.');return;}
+    if(!fb||!sync||!sync.user){alert('Sign in with your account first to use cloud backup.');return;}
     setBusy(true);
     try{
       const bk=await cloudReadBackup(fb,sync.user.uid);
-      if(!bk||!bk.str){alert('Bulutta yedek (önceki sürüm) bulunamadı.');return;}
+      if(!bk||!bk.str){alert('No cloud backup (previous version) found.');return;}
       const p=migrate(JSON.parse(bk.str));
       const ath=(p.teams||[]).reduce((s,t)=>s+((t.athletes||[]).length),0);
       const when=bk.at&&bk.at.toDate?bk.at.toDate().toLocaleString('tr-TR'):'bilinmiyor';
-      if(confirm('Önceki bulut sürümü geri yüklensin mi?\n\nYedek tarihi: '+when+'\nYedekteki sporcu sayısı: '+ath+'\n\nŞu anki veriler bununla DEĞİŞTİRİLECEK.'))setData(p);
-    }catch(e){alert('Yedek okunamadı: '+(e.message||e));}
+      if(confirm('Restore the previous cloud version?\n\nBackup date: '+when+'\nAthletes in backup: '+ath+'\n\nYour current data will be REPLACED with this.'))setData(p);
+    }catch(e){alert('Could not read backup: '+(e.message||e));}
     finally{setBusy(false);}
   };
   return(<div>
@@ -5887,12 +5899,12 @@ function Backup({data,setData,sync}){
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
       </div>
     </div>
-    <div className="panel"><h2>☁️ Bulut Yedeği (Otomatik)</h2>
-      <div className="help" style={{marginBottom:12}}>Veriler büyük ölçüde küçüldüğünde (yanlışlıkla silme veya boş bir cihazdan giriş), bir önceki bulut sürümü otomatik olarak saklanır. Bir şeyler kaybolduysa buradan geri yükleyebilirsin.</div>
+    <div className="panel"><h2>☁️ Cloud Backup (Automatic)</h2>
+      <div className="help" style={{marginBottom:12}}>When the data shrinks substantially (accidental deletion or signing in from an empty device), the previous cloud version is kept automatically. If something was lost, you can restore it here.</div>
       <div className="row">
-        <button className="btn" disabled={busy} onClick={restore}>{busy?'Yükleniyor…':'♻️ Önceki Bulut Sürümünü Geri Yükle'}</button>
+        <button className="btn" disabled={busy} onClick={restore}>{busy?'Loading…':'♻️ Restore Previous Cloud Version'}</button>
       </div>
-      {(!sync||!sync.user)&&<div className="help" style={{marginTop:10,color:'var(--warn,#f59e0b)'}}>Bu özellik için sağ üstten hesabınla giriş yapmalısın.</div>}
+      {(!sync||!sync.user)&&<div className="help" style={{marginTop:10,color:'var(--warn,#f59e0b)'}}>Sign in with your account from the top right to use this feature.</div>}
     </div>
   </div>);
 }
@@ -5996,6 +6008,7 @@ function hasRealData(d){
 }
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
   const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
   const lastJson=useRef(null);
   const lastRev=useRef(null);
@@ -6023,10 +6036,16 @@ function useCloudSync(data,setData){
 
   // auth state
   useEffect(()=>{
-    const fb=FB(); if(!fb)return;
+    const fb=FB();
+    if(!fb){setAuthLoading(false);return;}
     return fb.auth().onAuthStateChanged(u=>{
+      setAuthLoading(false);
       setUser(u||null);
-      if(!u){setStatus('offline');lastJson.current=null;lastRev.current=null;ready.current=false;}
+      if(!u){
+        setStatus('offline');lastJson.current=null;lastRev.current=null;ready.current=false;
+        setData(makeDefault());
+        try{localStorage.removeItem('pp-data-ts');localStorage.removeItem('pp-data-rev');localStorage.removeItem('pp-data-hash');}catch(e){}
+      }
     });
   },[]);
 
@@ -6189,10 +6208,102 @@ function useCloudSync(data,setData){
     timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},400);
   },[data,user]);
 
-  return{user,status,
+  return{user,status,authLoading,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(e,p),
-    signOut:()=>FB().auth().signOut()};
+    signOut:()=>FB().auth().signOut(),
+    signInWithGoogle:()=>{const p=new firebase.auth.GoogleAuthProvider();return FB().auth().signInWithPopup(p);}}
+}
+
+function LoadingScreen(){
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
+      <div style={{textAlign:'center'}}>
+        <img src="logo.png" alt="Zone Planner" style={{height:52,marginBottom:14,opacity:.7}}/>
+        <div style={{color:'var(--dim)',fontSize:14}}>Yükleniyor…</div>
+      </div>
+    </div>
+  );
+}
+
+function GoogleBtn({onClick,busy}){
+  return(
+    <button onClick={onClick} disabled={busy} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'10px 16px',borderRadius:8,border:'1px solid var(--border)',background:'#fff',color:'#1f1f1f',fontSize:14,fontWeight:600,cursor:busy?'default':'pointer',boxShadow:'0 1px 3px rgba(0,0,0,.15)'}}>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+      {busy?'…':'Google ile Giriş Yap'}
+    </button>
+  );
+}
+
+function LoginPage({sync}){
+  const[tab,setTab]=useState('google'); // google|email
+  const[isSignup,setIsSignup]=useState(false);
+  const[email,setEmail]=useState('');
+  const[pw,setPw]=useState('');
+  const[err,setErr]=useState('');
+  const[busy,setBusy]=useState(false);
+  const googleLogin=async()=>{
+    setErr('');setBusy(true);
+    try{await sync.signInWithGoogle();}
+    catch(e){
+      const skip=['auth/popup-closed-by-user','auth/cancelled-popup-request'];
+      if(!skip.includes(e.code))setErr(e.code==='auth/network-request-failed'?'Bağlantı hatası.':e.message);
+    }finally{setBusy(false);}
+  };
+  const emailSubmit=async()=>{
+    setErr('');setBusy(true);
+    try{
+      if(isSignup)await sync.signUp(email.trim(),pw);
+      else await sync.signIn(email.trim(),pw);
+    }catch(e){
+      const msgs={'auth/invalid-email':'Geçersiz e-posta.','auth/missing-password':'Şifre girin.',
+        'auth/weak-password':'Şifre en az 6 karakter olmalı.','auth/email-already-in-use':'Bu e-posta zaten kayıtlı — giriş yap.',
+        'auth/invalid-credential':'Yanlış e-posta veya şifre.','auth/user-not-found':'Hesap bulunamadı.',
+        'auth/wrong-password':'Yanlış şifre.','auth/network-request-failed':'Bağlantı hatası.'};
+      setErr(msgs[e.code]||e.message);
+    }finally{setBusy(false);}
+  };
+  return(
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'24px'}}>
+      <div className="panel" style={{width:400,maxWidth:'100%',margin:0}}>
+        <div style={{textAlign:'center',marginBottom:24}}>
+          <img src="logo.png" alt="Zone Planner" style={{height:52,marginBottom:10}}/>
+          <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>Zone Planner</div>
+          <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
+        </div>
+        <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
+        <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
+          <div style={{flex:1,height:1,background:'var(--border)'}}/>
+          <span>veya</span>
+          <div style={{flex:1,height:1,background:'var(--border)'}}/>
+        </div>
+        {tab==='google'?(
+          <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>E-posta / Şifre ile Giriş</button>
+        ):(
+          <>
+            <label>E-posta</label>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
+            <label style={{marginTop:10}}>Şifre {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>(en az 6 karakter)</span>}</label>
+            <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+              autoComplete={isSignup?'new-password':'current-password'}
+              onKeyDown={e=>{if(e.key==='Enter')emailSubmit();}}
+              placeholder="••••••"/>
+            {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:8}}>{err}</div>}
+            <button className="btn" style={{width:'100%',marginTop:12}} disabled={busy} onClick={emailSubmit}>
+              {busy?'…':(isSignup?'Kayıt Ol':'Giriş Yap')}
+            </button>
+            <div style={{textAlign:'center',marginTop:10,fontSize:12,color:'var(--dim)'}}>
+              {isSignup?'Zaten hesabın var mı? ':'Hesabın yok mu? '}
+              <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setIsSignup(!isSignup);}}>
+                {isSignup?'Giriş yap':'Kayıt ol'}
+              </a>
+            </div>
+            <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>← Geri</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AuthModal({sync,onClose}){
@@ -6208,27 +6319,27 @@ function AuthModal({sync,onClose}){
       else await sync.signUp(email.trim(),pw);
       onClose();
     }catch(e){
-      const m={'auth/invalid-email':'Geçersiz e-posta.','auth/missing-password':'Şifre gir.',
-        'auth/weak-password':'Şifre en az 6 karakter olmalı.','auth/email-already-in-use':'Bu e-posta zaten kayıtlı — Giriş yap.',
-        'auth/invalid-credential':'E-posta veya şifre hatalı.','auth/user-not-found':'Hesap bulunamadı — önce kayıt ol.',
-        'auth/wrong-password':'Şifre hatalı.','auth/network-request-failed':'Bağlantı hatası.'}[e.code]||e.message;
+      const m={'auth/invalid-email':'Invalid email.','auth/missing-password':'Enter a password.',
+        'auth/weak-password':'Password must be at least 6 characters.','auth/email-already-in-use':'This email is already registered — Sign in.',
+        'auth/invalid-credential':'Wrong email or password.','auth/user-not-found':'Account not found — sign up first.',
+        'auth/wrong-password':'Wrong password.','auth/network-request-failed':'Connection error.'}[e.code]||e.message;
       setErr(m);
     }finally{setBusy(false);}
   };
   return(<div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
     <div onClick={e=>e.stopPropagation()} className="panel" style={{width:360,maxWidth:'92vw',margin:0}}>
-      <h2>☁ {mode==='signin'?'Buluta Giriş':'Hesap Oluştur'}</h2>
-      <div className="help" style={{marginBottom:12}}>Aynı e-posta/şifre ile tüm cihazlarında giriş yap — verilerin otomatik senkronlanır.</div>
+      <h2>☁ {mode==='signin'?'Cloud Sign-in':'Create Account'}</h2>
+      <div className="help" style={{marginBottom:12}}>Sign in with the same email/password on all your devices — your data syncs automatically.</div>
       <label>E-posta</label>
       <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
-      <label style={{marginTop:10}}>Şifre {mode==='signup'&&<span style={{textTransform:'none',color:'var(--dim)'}}>(en az 6 karakter)</span>}</label>
+      <label style={{marginTop:10}}>Password {mode==='signup'&&<span style={{textTransform:'none',color:'var(--dim)'}}>(at least 6 characters)</span>}</label>
       <input type="password" value={pw} onChange={e=>setPw(e.target.value)} autoComplete={mode==='signin'?'current-password':'new-password'}
         onKeyDown={e=>{if(e.key==='Enter')submit();}} placeholder="••••••"/>
       {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err}</div>}
-      <button className="btn" style={{width:'100%',marginTop:14}} disabled={busy} onClick={submit}>{busy?'...':(mode==='signin'?'Giriş Yap':'Kayıt Ol')}</button>
+      <button className="btn" style={{width:'100%',marginTop:14}} disabled={busy} onClick={submit}>{busy?'...':(mode==='signin'?'Sign In':'Sign Up')}</button>
       <div style={{textAlign:'center',marginTop:12,fontSize:12,color:'var(--muted)'}}>
-        {mode==='signin'?'Hesabın yok mu? ':'Zaten hesabın var mı? '}
-        <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setMode(mode==='signin'?'signup':'signin');}}>{mode==='signin'?'Kayıt ol':'Giriş yap'}</a>
+        {mode==='signin'?"Don't have an account? ":'Already have an account? '}
+        <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setMode(mode==='signin'?'signup':'signin');}}>{mode==='signin'?'Sign up':'Sign in'}</a>
       </div>
     </div>
   </div>);
@@ -6237,13 +6348,13 @@ function AuthModal({sync,onClose}){
 function CloudBar({sync,onOpen}){
   const{user,status}=sync;
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
-  const label={offline:'Çevrimdışı',syncing:'Senkronlanıyor…',synced:'Senkron',error:'Hata'}[status];
+  const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Error'}[status];
   if(!FB())return null;
-  if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Giriş yap / Senkron</button>;
+  if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
   return(<div className="team-sw" style={{gap:8,paddingRight:8}} title={user.email}>
     <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
     <span style={{fontSize:12,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
-    <button className="btn sec xs" onClick={()=>sync.signOut()}>Çıkış</button>
+    <button className="btn sec xs" onClick={()=>sync.signOut()}>Sign out</button>
   </div>);
 }
 
@@ -7223,17 +7334,17 @@ function AICoach({data,setData,team}){
 function App(){
   const[data,setData]=useLocal('pp-data',makeDefault());
   const sync=useCloudSync(data,setData);
-  const[authOpen,setAuthOpen]=useState(false);
   const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
-
   const team=useMemo(()=>data.teams.find(t=>t.id===data.activeTeamId)||data.teams[0],[data]);
-  const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
-
   const periods=useMemo(()=>getPeriods(team.setup),[team.setup]);
   const weeks=useMemo(()=>buildWeeks(team.setup,periods,team.weekOverrides),[team.setup,periods,team.weekOverrides]);
+  // All hooks must be called before any conditional return
+  if(sync.authLoading)return<LoadingScreen/>;
+  if(!sync.user)return<LoginPage sync={sync}/>;
+  const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
   const goDayView=k=>{setDayKey(k);setView('program');};
 
   const exCount=(data.exercises||[]).length;
@@ -7268,7 +7379,7 @@ function App(){
           </select>
         </div>
         <button className="btn sec xs" onClick={()=>setView('teams')} style={{width:'100%',justifyContent:'center'}}>Manage</button>
-        <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>setAuthOpen(true)}/></div>
+        <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>{}}/></div>
       </div>
       <nav>
         {NAV_GROUPS.map(g=><div key={g.label} className="nav-group">
@@ -7288,7 +7399,6 @@ function App(){
       <img className="mtb-logo" src="logo.png" alt="Zone Planner"/>
       <span className="mtb-team">{team.setup.teamName}</span>
     </div>
-    {authOpen&&<AuthModal sync={sync} onClose={()=>setAuthOpen(false)}/>}
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
