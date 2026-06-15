@@ -1198,7 +1198,7 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-scroll{overflow-x:auto;border-radius:10px;padding-bottom:2px}
 .wh-hm{border-collapse:separate;border-spacing:5px 4px;min-width:560px}
 .wh-hm th{font-weight:500;vertical-align:bottom}
-.wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;z-index:3;background:linear-gradient(90deg,rgba(28,32,39,.97),rgba(22,25,31,.97));vertical-align:bottom;border-right:1px solid rgba(255,255,255,.08)}
+.wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;z-index:3;background:linear-gradient(90deg,rgba(34,38,47,.55),rgba(24,27,34,.42));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);vertical-align:bottom;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 18px -10px rgba(0,0,0,.55)}
 .wh-corner{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px 4px}
 .wh-hm .wh-day{text-align:center;padding:0 1px}
 .wh-hm .wh-day .wh-mon{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--text2);font-weight:600;height:12px}
@@ -1207,8 +1207,8 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
 .wh-row{animation:whRowIn .45s ease both}
 @keyframes whRowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.wh-hm .wh-ath{position:sticky;left:0;z-index:2;background:linear-gradient(90deg,rgba(28,32,39,.96),rgba(22,25,31,.96));border-right:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:9px;white-space:nowrap;padding-right:10px}
-.wh-row:hover .wh-ath{background:linear-gradient(90deg,rgba(40,45,54,.97),rgba(32,36,44,.97))}
+.wh-hm .wh-ath{position:sticky;left:0;z-index:2;background:linear-gradient(90deg,rgba(34,38,47,.5),rgba(24,27,34,.38));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px -10px rgba(0,0,0,.5);display:flex;align-items:center;gap:9px;white-space:nowrap;padding-left:11px;padding-right:10px;transition:background .18s ease,box-shadow .18s ease}
+.wh-row:hover .wh-ath{background:linear-gradient(90deg,rgba(46,52,63,.62),rgba(34,39,48,.5));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px -10px rgba(0,0,0,.6)}
 .wh-rank{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);width:16px;text-align:right;flex:none}
 .wh-hm .wh-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
 .wh-hm .wh-av img{width:100%;height:100%;object-fit:cover}
@@ -1941,18 +1941,7 @@ function vGrad(topColor,bottomColor){
 }
 /* Frosted-glass bar fill: translucent top→bottom gradient of an rgb colour, so the
    dark background shows through for an iOS-glass look. `boost` brightens on hover. */
-function glassGrad(r,g,b,boost=0){
-  const a=(o)=>Math.min(1,o+boost);
-  return ctx=>{const ch=ctx.chart,ar=ch.chartArea;if(!ar)return`rgba(${r},${g},${b},${a(.32)})`;
-    const grad=ch.ctx.createLinearGradient(0,ar.top,0,ar.bottom);
-    grad.addColorStop(0,`rgba(${r},${g},${b},${a(.92)})`);
-    grad.addColorStop(.12,`rgba(${r},${g},${b},${a(.70)})`);
-    grad.addColorStop(.5,`rgba(${r},${g},${b},${a(.40)})`);
-    grad.addColorStop(1,`rgba(${r},${g},${b},${a(.07)})`);
-    return grad;};
-}
-
-/* Soft neon halo behind each bar — gives the frosted-glass bars depth & glow.
+/* Light phosphor halo behind each bar — a soft neon glow (no glass/gradient fill).
    Scoped: pass `plugins={[barGlow]}` to the chart that wants it. */
 const barGlow={
   id:'barGlow',
@@ -1960,7 +1949,7 @@ const barGlow={
     const ds=chart.data.datasets[args.index];if(!ds)return;
     const ctx=chart.ctx;ctx.save();
     ctx.shadowColor=(typeof ds.borderColor==='string'?ds.borderColor:'rgba(34,211,238,.7)');
-    ctx.shadowBlur=22;ctx.shadowOffsetX=0;ctx.shadowOffsetY=3;
+    ctx.shadowBlur=15;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
   },
   afterDatasetDraw(chart){chart.ctx.restore();}
 };
@@ -5317,9 +5306,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:glassGrad(251,146,60),hoverBackgroundColor:glassGrad(251,146,60,.18),borderColor:'rgba(251,146,60,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C (AU)',data:scVals,backgroundColor:glassGrad(34,211,238),hoverBackgroundColor:glassGrad(34,211,238,.18),borderColor:'rgba(34,211,238,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
-                {label:'Match (AU)',data:gmVals,backgroundColor:glassGrad(244,114,182),hoverBackgroundColor:glassGrad(244,114,182,.18),borderColor:'rgba(244,114,182,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+                {label:'Team Practice (AU)',data:tpVals,backgroundColor:'rgba(251,146,60,.30)',hoverBackgroundColor:'rgba(251,146,60,.46)',borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C (AU)',data:scVals,backgroundColor:'rgba(34,211,238,.28)',hoverBackgroundColor:'rgba(34,211,238,.44)',borderColor:'rgba(34,211,238,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0,above=(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:rpeMid(scRPEs)},
+                {label:'Match (AU)',data:gmVals,backgroundColor:'rgba(244,114,182,.28)',hoverBackgroundColor:'rgba(244,114,182,.44)',borderColor:'rgba(244,114,182,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=7,below=(tpVals[i]||0)>0||(scVals[i]||0)>0;return{topLeft:R,topRight:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
