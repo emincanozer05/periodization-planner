@@ -397,6 +397,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-ex .en{font-size:13.5px;font-weight:500;flex:1;color:var(--text)}
 .dw-ex .ed{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);text-align:right}
 .dw-empty{color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;text-align:center;padding:18px;border:1px dashed var(--border);border-radius:9px}
+/* Manual RPE panel (session drawer) */
+.dw-rpe{margin-top:12px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,.012));padding:10px 12px 12px}
+.dw-rpe-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
+.dw-rpe-h>span:first-child{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.dw-rpe-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+.dw-rpe-row{display:flex;align-items:center;gap:10px;padding:6px 2px;border-top:1px solid var(--border)}
+.dw-rpe-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
+.dw-rpe-av img{width:100%;height:100%;object-fit:cover}
+.dw-rpe-nm{flex:1;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dw-rpe-au{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent);min-width:46px;text-align:right}
+.dw-rpe-in{width:66px;flex:none;padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
 /* Editable planner drawer — wider to fit the session editor */
 .dw.edit{width:min(780px,97vw)}
 .dw-quickadd{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:16px}
@@ -3044,6 +3055,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const setWeek=d=>{const n=addD(weekStart,d*7);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:fmt(n)});};
   const[drawerSes,setDrawerSes]=useState(null);
   const[drawerDate,setDrawerDate]=useState(null);
+  const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
@@ -3079,6 +3091,32 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const nd={...days,[dateK]:{...d0,sessions:newS,date:dateK}};
     if(teamMode){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}else saveDays(nd);
     setDrawerSes(ns);
+  };
+  // ---- Manual per-athlete RPE for a team session ----
+  // Writes to each athlete's srpeLog (the canonical inner-load record that powers
+  // the sRPE chart, Wellness heatmap & ACWR). One entry per athlete per session,
+  // tagged with sessionId so re-entering a value updates it instead of duplicating.
+  const aInit=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const srpeSlot=lt=>{const x=(lt||'').toLowerCase();return(x.includes('mechanical')||x.includes('neuromuscular'))?'sc':'tp';};
+  const setAthRPE=(athId,rpeRaw)=>{
+    if(!teamMode||!drawerSes)return;
+    const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
+    if(!dk)return;
+    const dur=Number(drawerSes.duration)||0;
+    const slot=srpeSlot(drawerSes.loadType);
+    const rpe=(rpeRaw===''||rpeRaw==null)?'':Number(rpeRaw);
+    const load=(rpe===''||isNaN(rpe))?'':Math.round(rpe*dur);
+    saveAthletes(athletes.map(a=>{
+      if(a.id!==athId)return a;
+      const log=[...(a.srpeLog||[])];
+      const idx=log.findIndex(e=>e.sessionId===drawerSes.id);
+      if(rpe===''||isNaN(rpe)){if(idx>=0)log.splice(idx,1);return{...a,srpeLog:log};}
+      const entry={id:idx>=0?log[idx].id:uid(),notionId:null,sessionId:drawerSes.id,date:dk,
+        tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
+      entry[slot+'RPE']=rpe;entry[slot+'Duration']=dur;entry[slot+'Load']=load;
+      if(idx>=0)log[idx]=entry;else log.push(entry);
+      return{...a,srpeLog:log};
+    }));
   };
   // ---- Drag & drop sessions across days (mirrors Planner.moveOrCopySession) ----
   const[dragInfo,setDragInfo]=useState(null);
@@ -3180,10 +3218,32 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
         <div className="dw-b">
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
-            <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Bu seansı yazdır">⎙ Print</button>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              {teamMode&&<button className={`btn sm ${rpeOpen?'':'sec'}`} onClick={()=>setRpeOpen(o=>!o)} title="Enter each athlete's RPE — syncs to their profile">⚡ Manual RPE</button>}
+              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Bu seansı yazdır">⎙ Print</button>
+            </div>
           </div>
+          {teamMode&&rpeOpen&&(()=>{
+            const ids=drawerSes.athletes||[];
+            const parts=ids.map(id=>(athletes||[]).find(a=>a.id===id)).filter(Boolean);
+            const list=parts.length?parts:(athletes||[]);
+            return(<div className="dw-rpe">
+              <div className="dw-rpe-h"><span>Manual RPE</span><span className="dw-rpe-sub">{list.length} athletes · {Number(drawerSes.duration)||0} min · syncs to profile</span></div>
+              {list.length===0?<div className="dw-empty">No athletes on roster — add them in the Athletes tab.</div>:list.map(a=>{
+                const e=(a.srpeLog||[]).find(x=>x.sessionId===drawerSes.id);
+                const cur=e?(([e.scRPE,e.tpRPE,e.gameRPE].find(v=>v!==''&&v!=null))??''):'';
+                const au=e&&e.totalLoad!==''&&e.totalLoad!=null?e.totalLoad:'';
+                return(<div key={a.id} className="dw-rpe-row">
+                  <span className="dw-rpe-av">{a.photo?<img src={a.photo} alt=""/>:aInit(a.name)}</span>
+                  <span className="dw-rpe-nm">{a.name}</span>
+                  <span className="dw-rpe-au">{au!==''?au+' AU':''}</span>
+                  <input type="number" min="0" max="10" step="0.5" className="dw-rpe-in" placeholder="RPE" value={cur} onChange={ev=>setAthRPE(a.id,ev.target.value)}/>
+                </div>);
+              })}
+            </div>);
+          })()}
           <div className="dw-meta">
             <div className="dw-dm" style={{'--dm-ac':'#22d3ee'}}>
               <div className="dm-top"><span className="k">Time</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg></span></div>
@@ -5511,46 +5571,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
         </div>
       </div>);
     })}</div>
-    {athletes.length>0&&(()=>{
-      const n=(o,k)=>{if(!o)return null;const v=Number(o[k]);return(o[k]===''||o[k]==null||isNaN(v))?null:v;};
-      // Every measurement, grouped by athlete (name asc), each athlete's rows by date asc
-      const groups=[...athletes].sort((x,y)=>(x.name||'').localeCompare(y.name||''))
-        .map(a=>({a,ms:[...(a.measurements||[])].filter(m=>m.date).sort((p,q)=>p.date.localeCompare(q.date))}))
-        .filter(g=>g.ms.length>0);
-      const total=groups.reduce((s,g)=>s+g.ms.length,0);
-      const dCell=(v,good)=>v==null?<span style={{color:'var(--dim)'}}>·</span>:<span style={{color:good==null?'var(--text2)':(good?'var(--low-t)':'var(--high-t)'),fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontWeight:600}}>{v>0?'+'+v:v}</span>;
-      return(<div className="panel" style={{marginTop:18}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10,marginBottom:14}}>
-          <div style={{display:'flex',alignItems:'baseline',gap:8,flexWrap:'wrap'}}>
-            <h2 style={{margin:0,fontSize:18}}>Team Body Composition</h2>
-            <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{groups.length} athletes · {total} measurements · all dates</span>
-          </div>
-          <button className="btn sec sm" disabled={total===0} onClick={()=>printTeamBodyComp(athletes,team.setup)} title="Tüm sporcuların tüm ölçümleri (yatay A4)">⎙ Print (A4)</button>
-        </div>
-        {total===0?<div className="empty-st">No measurements yet — add them in an athlete's Body Comp tab.</div>:
-        <div style={{overflowX:'auto'}}>
-          <table className="tbc-tbl">
-            <thead><tr><th className="l">Athlete</th><th>Date</th><th>Height</th><th>Weight</th><th>Δ</th><th>Body Fat</th><th>Δ</th><th>Muscle</th><th>Δ</th></tr></thead>
-            <tbody>{groups.map((g,gi)=>g.ms.map((m,mi)=>{
-              const prev=mi>0?g.ms[mi-1]:null;
-              const dl=k=>{const c=n(m,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
-              return(<tr key={g.a.id+'-'+mi} onClick={()=>setSel(g.a.id)} className={`tbc-row${mi===0&&gi>0?' tbc-grp':''}`}>
-                <td className="l">{mi===0
-                  ?<span className="tbc-ath"><span className="tbc-av">{g.a.photo?<img src={g.a.photo} alt=""/>:initials(g.a.name)}</span>{g.a.name}{g.ms.length>1?<span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:9,color:'var(--dim)',marginLeft:7}}>×{g.ms.length}</span>:null}</span>
-                  :<span style={{paddingLeft:41,color:'var(--dim)'}}>↳</span>}</td>
-                <td style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>{fd(m.date).slice(0,5)}</td>
-                <td>{n(m,'height')!=null?n(m,'height'):'—'}</td>
-                <td className="b">{n(m,'weight')!=null?n(m,'weight'):'—'}</td>
-                <td>{dCell(dl('weight'),null)}</td>
-                <td className="b">{n(m,'bodyFat')!=null?n(m,'bodyFat'):'—'}</td>
-                <td>{dCell(dl('bodyFat'),(()=>{const v=dl('bodyFat');return v==null?null:v<0;})())}</td>
-                <td className="b">{n(m,'muscleMass')!=null?n(m,'muscleMass'):'—'}</td>
-                <td>{dCell(dl('muscleMass'),(()=>{const v=dl('muscleMass');return v==null?null:v>0;})())}</td>
-              </tr>);
-            }))}</tbody>
-          </table>
-        </div>}
-      </div>);})()}
   </div>);
 }
 
