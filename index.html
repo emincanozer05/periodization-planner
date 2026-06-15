@@ -1915,10 +1915,10 @@ if(window.Chart&&window.ChartDataLabels){
     window.Chart.defaults.set('plugins.datalabels',{display:false});
   }catch(e){console.warn('datalabels register failed:',e);}
 }
-function ChartC({type,chartData,options}){
+function ChartC({type,chartData,options,plugins}){
   const ref=useRef(null),inst=useRef(null);
   useEffect(()=>{try{if(inst.current)inst.current.destroy();if(!ref.current||!window.Chart)return;
-    inst.current=new window.Chart(ref.current,{type,data:chartData,options});}catch(e){console.error(e);}
+    inst.current=new window.Chart(ref.current,{type,data:chartData,options,plugins:plugins||[]});}catch(e){console.error(e);}
     // A canvas can be created while its container is still 0-sized (tab switch,
     // panel remount, a section that was just shown) → Chart.js renders blank until
     // the next window resize. Nudge a resize on the next frames AND observe the
@@ -1945,11 +1945,25 @@ function glassGrad(r,g,b,boost=0){
   const a=(o)=>Math.min(1,o+boost);
   return ctx=>{const ch=ctx.chart,ar=ch.chartArea;if(!ar)return`rgba(${r},${g},${b},${a(.32)})`;
     const grad=ch.ctx.createLinearGradient(0,ar.top,0,ar.bottom);
-    grad.addColorStop(0,`rgba(${r},${g},${b},${a(.60)})`);
-    grad.addColorStop(.5,`rgba(${r},${g},${b},${a(.34)})`);
-    grad.addColorStop(1,`rgba(${r},${g},${b},${a(.14)})`);
+    grad.addColorStop(0,`rgba(${r},${g},${b},${a(.92)})`);
+    grad.addColorStop(.12,`rgba(${r},${g},${b},${a(.70)})`);
+    grad.addColorStop(.5,`rgba(${r},${g},${b},${a(.40)})`);
+    grad.addColorStop(1,`rgba(${r},${g},${b},${a(.07)})`);
     return grad;};
 }
+
+/* Soft neon halo behind each bar — gives the frosted-glass bars depth & glow.
+   Scoped: pass `plugins={[barGlow]}` to the chart that wants it. */
+const barGlow={
+  id:'barGlow',
+  beforeDatasetDraw(chart,args){
+    const ds=chart.data.datasets[args.index];if(!ds)return;
+    const ctx=chart.ctx;ctx.save();
+    ctx.shadowColor=(typeof ds.borderColor==='string'?ds.borderColor:'rgba(34,211,238,.7)');
+    ctx.shadowBlur=22;ctx.shadowOffsetX=0;ctx.shadowOffsetY=3;
+  },
+  afterDatasetDraw(chart){chart.ctx.restore();}
+};
 
 /* Dependency-free weekly chart (inline SVG). Measures its own container and
    draws at exact pixel size, so unlike the Chart.js canvas it can never end up
@@ -5297,19 +5311,19 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           const weekTotal=tpVals.reduce((a,b)=>a+b,0)+scVals.reduce((a,b)=>a+b,0)+gmVals.reduce((a,b)=>a+b,0);
           // Middle-of-segment label now shows that segment's RPE (the bottom RPE
           // line chart was removed in favour of this). Top label shows total AU.
-          const rpeMid=arr=>({display:ctx=>ctx.dataset.data[ctx.dataIndex]>=50&&arr[ctx.dataIndex]!=null,anchor:'center',align:'center',color:'#fff',font:{weight:'bold',size:13},formatter:(v,ctx)=>arr[ctx.dataIndex]!=null?'RPE '+Number(arr[ctx.dataIndex]).toFixed(1):''});
-          const totalLbl={display:true,align:'end',anchor:'end',color:'#22d3ee',backgroundColor:'rgba(15,20,36,.9)',borderRadius:5,padding:{top:3,bottom:3,left:7,right:7},font:{weight:'bold',size:11},formatter:(v,ctx)=>{const i=ctx.dataIndex;const t=ctx.chart.data.datasets.reduce((s,ds)=>s+(ds.data[i]||0),0);return t>0?Math.round(t)+' AU':'';}};
+          const rpeMid=arr=>({display:ctx=>ctx.dataset.data[ctx.dataIndex]>=50&&arr[ctx.dataIndex]!=null,anchor:'center',align:'center',color:'#fff',font:{weight:'500',size:13},formatter:(v,ctx)=>arr[ctx.dataIndex]!=null?'RPE '+Number(arr[ctx.dataIndex]).toFixed(1):''});
+          const totalLbl={display:true,align:'end',anchor:'end',color:'#22d3ee',backgroundColor:'rgba(15,20,36,.9)',borderRadius:5,padding:{top:3,bottom:3,left:7,right:7},font:{weight:'500',size:11},formatter:(v,ctx)=>{const i=ctx.dataIndex;const t=ctx.chart.data.datasets.reduce((s,ds)=>s+(ds.data[i]||0),0);return t>0?Math.round(t)+' AU':'';}};
           return(<div>
             <div className="row" style={{justifyContent:'flex-end',marginBottom:6}}><span className="tag">Week total: {Math.round(weekTotal)} AU</span></div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice (AU)',data:tpVals,backgroundColor:glassGrad(251,146,60),hoverBackgroundColor:glassGrad(251,146,60,.18),borderColor:'rgba(251,146,60,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C (AU)',data:scVals,backgroundColor:glassGrad(34,211,238),hoverBackgroundColor:glassGrad(34,211,238,.18),borderColor:'rgba(34,211,238,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
-                {label:'Match (AU)',data:gmVals,backgroundColor:glassGrad(244,114,182),hoverBackgroundColor:glassGrad(244,114,182,.18),borderColor:'rgba(244,114,182,.85)',borderWidth:1.25,stack:'load',borderRadius:10,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
-              ]}} options={{responsive:true,maintainAspectRatio:false,
+                {label:'Team Practice (AU)',data:tpVals,backgroundColor:glassGrad(251,146,60),hoverBackgroundColor:glassGrad(251,146,60,.18),borderColor:'rgba(251,146,60,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C (AU)',data:scVals,backgroundColor:glassGrad(34,211,238),hoverBackgroundColor:glassGrad(34,211,238,.18),borderColor:'rgba(34,211,238,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:rpeMid(scRPEs)},
+                {label:'Match (AU)',data:gmVals,backgroundColor:glassGrad(244,114,182),hoverBackgroundColor:glassGrad(244,114,182,.18),borderColor:'rgba(244,114,182,.85)',borderWidth:1.5,stack:'load',borderRadius:12,borderSkipped:false,maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+              ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
-                scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'600'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
-                plugins:{legend:{position:'bottom',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',font:{size:12,weight:'600'}}},
+                scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
+                plugins:{legend:{position:'bottom',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',font:{size:12,weight:'500'}}},
                   tooltip:{callbacks:{footer:items=>{const t=items.reduce((a,b)=>a+b.parsed.y,0);return'Total: '+Math.round(t)+' AU';}}}}}}/>:
               <div className="empty-st">No sRPE entries this week — try ‹ Week / Week › or click Latest.</div>}
             </div>
