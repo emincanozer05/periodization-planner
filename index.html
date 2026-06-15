@@ -6010,6 +6010,7 @@ function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
   const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
+  const[syncErr,setSyncErr]=useState('');
   const lastJson=useRef(null);
   const lastRev=useRef(null);
   const dataRef=useRef(data); dataRef.current=data;
@@ -6043,7 +6044,9 @@ function useCloudSync(data,setData){
       setUser(u||null);
       if(!u){
         setStatus('offline');lastJson.current=null;lastRev.current=null;ready.current=false;
-        setData(makeDefault());
+        setSyncErr('');
+        // Do NOT clear pp-data — keep it so it can be seeded to Firestore on next sign-in.
+        // Only wipe sync-metadata so the next login always reconciles cleanly from the server.
         try{localStorage.removeItem('pp-data-ts');localStorage.removeItem('pp-data-rev');localStorage.removeItem('pp-data-hash');}catch(e){}
       }
     });
@@ -6056,7 +6059,7 @@ function useCloudSync(data,setData){
     ready.current=false; // block uploads until the first cloud reconcile finishes
     const userDoc=fb.firestore().collection('users').doc(user.uid);
     let first=true;
-    const seedUp=async(str,ts)=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,ts);markSynced(rev,str,ts);setStatus('synced');}catch(e){console.warn('seed',e);setStatus('error');}};
+    const seedUp=async(str,ts)=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,ts);markSynced(rev,str,ts);setStatus('synced');setSyncErr('');}catch(e){console.warn('seed',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}};
     const unsub=userDoc.onSnapshot(async snap=>{
       try{
         const rev=(snap.exists&&snap.data())?snap.data().rev:null;
@@ -6144,8 +6147,8 @@ function useCloudSync(data,setData){
       // still-queued write therefore stays "dirty" and is retried on focus/reconcile —
       // it is never silently treated as synced and then overwritten by a stale copy.
       cloudWrite(fb,user.uid,j,rev,ts)
-        .then(()=>{markSynced(rev,j,ts);setStatus('synced');})
-        .catch(e=>{console.warn('write',e);setStatus('error');});
+        .then(()=>{markSynced(rev,j,ts);setStatus('synced');setSyncErr('');})
+        .catch(e=>{console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');});
     };
     writeRef.current=writeNow;
     // Pull the latest from the server whenever this tab becomes active again.
@@ -6208,7 +6211,7 @@ function useCloudSync(data,setData){
     timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},400);
   },[data,user]);
 
-  return{user,status,authLoading,
+  return{user,status,authLoading,syncErr,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(e,p),
     signOut:()=>FB().auth().signOut(),
@@ -6247,7 +6250,15 @@ function LoginPage({sync}){
     try{await sync.signInWithGoogle();}
     catch(e){
       const skip=['auth/popup-closed-by-user','auth/cancelled-popup-request'];
-      if(!skip.includes(e.code))setErr(e.code==='auth/network-request-failed'?'Bağlantı hatası.':e.message);
+      if(!skip.includes(e.code)){
+        const msgs={
+          'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.',
+          'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains → emincanozer05.github.io ekle.',
+          'auth/network-request-failed':'İnternet bağlantısı hatası.',
+          'auth/popup-blocked':'Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.',
+        };
+        setErr(msgs[e.code]||e.message);
+      }
     }finally{setBusy(false);}
   };
   const emailSubmit=async()=>{
@@ -6346,15 +6357,29 @@ function AuthModal({sync,onClose}){
 }
 
 function CloudBar({sync,onOpen}){
-  const{user,status}=sync;
+  const{user,status,syncErr}=sync;
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
-  const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Error'}[status];
+  const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync Hatası!'}[status];
   if(!FB())return null;
   if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
-  return(<div className="team-sw" style={{gap:8,paddingRight:8}} title={user.email}>
-    <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
-    <span style={{fontSize:12,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
-    <button className="btn sec xs" onClick={()=>sync.signOut()}>Sign out</button>
+  const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
+  return(<div style={{width:'100%'}}>
+    <div className="team-sw" style={{gap:8,paddingRight:8}} title={user.email}>
+      <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
+      <span style={{fontSize:12,color:'var(--text2)',maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
+      <button className="btn sec xs" onClick={()=>sync.signOut()}>Çıkış</button>
+    </div>
+    {status==='error'&&syncErr&&(
+      <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
+        {isRules?(
+          <>⚠ <b>Firestore izin hatası.</b> Firebase Console → Firestore → Kurallar sekmesine gidip aşağıdaki kuralları yapıştır ve yayınla:<br/>
+          <code style={{display:'block',marginTop:4,padding:4,background:'rgba(0,0,0,.3)',borderRadius:4,fontSize:10,whiteSpace:'pre',userSelect:'all'}}>{'rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{uid}/{doc=**} {\n      allow read, write: if request.auth.uid == uid;\n    }\n  }\n}'}</code>
+          </>
+        ):(
+          <>⚠ Senkronizasyon hatası: <b>{syncErr}</b><br/>Sayfayı yenile veya tekrar giriş yap.</>
+        )}
+      </div>
+    )}
   </div>);
 }
 
