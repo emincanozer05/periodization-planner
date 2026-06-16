@@ -6092,6 +6092,53 @@ function hasRealData(d){
   if(Array.isArray(d.exercises)&&d.exercises.length)return true;
   return false;
 }
+/* ---- Structural merge: union two divergent copies so additions on EITHER device survive. ----
+   Whole-document last-writer-wins is what caused "add a session on PC1, lose it the moment PC2
+   syncs": a device flagged dirty used to overwrite the entire cloud with its own copy. We instead
+   union calendar days (by date) and the sessions inside them (by id), athletes (by id) and their
+   sub-records, plus exercises & researches (by id). On a genuine same-key conflict we prefer
+   `local` (the device currently holding unsynced edits). A deletion on one device yields to the
+   other's copy — acceptable here because the user's stated priority is never losing what was
+   added on any device. */
+function _mergeBy(cloudArr,localArr,keyFn,mergeItem){
+  const order=[];const map=new Map();
+  (cloudArr||[]).forEach(x=>{const k=keyFn(x);if(!map.has(k))order.push(k);map.set(k,x);});
+  (localArr||[]).forEach(x=>{const k=keyFn(x);
+    if(map.has(k))map.set(k,mergeItem?mergeItem(map.get(k),x):x);
+    else{order.push(k);map.set(k,x);}});
+  return order.map(k=>map.get(k));
+}
+function _mergeDayMap(cloudDays,localDays){
+  const out={};const dates=new Set([...Object.keys(cloudDays||{}),...Object.keys(localDays||{})]);
+  dates.forEach(dt=>{const c=cloudDays&&cloudDays[dt],l=localDays&&localDays[dt];
+    if(c&&l)out[dt]={date:dt,sessions:_mergeBy(c.sessions,l.sessions,s=>s.id,(_,ls)=>ls),dailyNotes:l.dailyNotes||c.dailyNotes||''};
+    else out[dt]=l||c;});
+  return out;
+}
+function _mergeAthlete(c,l){
+  return{...c,...l,
+    days:_mergeDayMap(c.days,l.days),
+    srpeLog:_mergeBy(c.srpeLog,l.srpeLog,e=>(e.sessionId||'')+'@'+(e.date||''),(_,b)=>b),
+    wellness:_mergeBy(c.wellness,l.wellness,w=>w.date||JSON.stringify(w),(_,b)=>b),
+    measurements:_mergeBy(c.measurements,l.measurements,m=>m.date||JSON.stringify(m),(_,b)=>b),
+    injuries:_mergeBy(c.injuries,l.injuries,x=>x.id||x.date||JSON.stringify(x),(_,b)=>b),
+    tests:_mergeBy(c.tests,l.tests,t=>t.id||t.date||JSON.stringify(t),(_,b)=>b)};
+}
+function _mergeTeam(c,l){
+  return{...c,...l,
+    setup:l.setup||c.setup,
+    weekOverrides:{...(c.weekOverrides||{}),...(l.weekOverrides||{})},
+    days:_mergeDayMap(c.days,l.days),
+    athletes:_mergeBy(c.athletes,l.athletes,a=>a.id,_mergeAthlete)};
+}
+function mergeStates(cloud,local){
+  if(!cloud)return local;if(!local)return cloud;
+  return{...cloud,...local,
+    activeTeamId:local.activeTeamId||cloud.activeTeamId,
+    teams:_mergeBy(cloud.teams,local.teams,t=>t.id,_mergeTeam),
+    exercises:_mergeBy(cloud.exercises,local.exercises,e=>e.id,(_,b)=>b),
+    researches:_mergeBy(cloud.researches,local.researches,r=>r.id,(_,b)=>b)};
+}
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
@@ -6128,6 +6175,18 @@ function useCloudSync(data,setData){
     if(pstr!==JSON.stringify(dataRef.current))setData(p);
     markSynced(cloud.rev,pstr);
     setStatus('synced');ready.current=true;
+  };
+  // This device is dirty AND the cloud has diverged → union both (so neither device's additions
+  // are lost), show the merged result here, and push it up as the new shared truth.
+  const mergeUp=async cloud=>{
+    const fb=FB(); if(!fb||!user)return;
+    const merged=mergeStates(migrate(JSON.parse(cloud.str)),dataRef.current);
+    const mstr=JSON.stringify(merged);
+    if(mstr!==JSON.stringify(dataRef.current))setData(merged);
+    ready.current=true;
+    const rev=mkRev();setStatus('syncing');
+    try{await cloudWrite(fb,user.uid,mstr,rev);markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
+    catch(e){console.warn('mergeUp',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
   // auth state
@@ -6174,10 +6233,10 @@ function useCloudSync(data,setData){
               if(hasRealData(dataRef.current)){ready.current=true;await seedUp(localStr);}
               else{markSynced(cloud.rev||null,localStr);setStatus('synced');ready.current=true;}
             }else if(dirty()){
-              // This device has unsynced edits → they win, so the user never loses what they
-              // just changed here. (The previous cloud copy is preserved by the shrink-guard
-              // backup in cloudWrite if the payload shrinks a lot.)
-              ready.current=true;await seedUp(localStr);
+              // This device has unsynced edits AND the cloud holds another device's copy → MERGE
+              // the two so additions on both survive, rather than overwriting the cloud with ours
+              // (the old behavior that silently dropped the other device's new sessions).
+              await mergeUp(cloud);
             }else{
               // Clean device → the cloud is the single source of truth. This is the cross-device
               // case: open the app elsewhere and you get exactly what the other device saved.
@@ -6199,7 +6258,7 @@ function useCloudSync(data,setData){
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.fromServer&&cloud.str){
             if(!dirty())adopt(cloud);                                   // no local edits → take theirs
-            else{lastRev.current=cloud.rev;if(writeRef.current)writeRef.current();} // keep ours → push them
+            else await mergeUp(cloud);                                  // both changed → union, never drop either side
           }
         }
       }catch(e){console.warn('sync',e);setStatus('error');}
@@ -6233,19 +6292,25 @@ function useCloudSync(data,setData){
     const pullNow=async()=>{
       if(pulling)return;
       if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
-      // Already reconciled AND holding unsynced edits → push them; never pull over what the
-      // user just changed here. (When not yet reconciled we fall through to read the server,
-      // which is how a mobile cold-start that could only reach the cache finally catches up.)
-      if(ready.current&&dirty()){writeNow();return;}
       pulling=true;
       try{
+        // ALWAYS look at the server before deciding. The old code, when this device was dirty,
+        // pushed our copy up WITHOUT reading the cloud — so clicking back into a window could
+        // overwrite the other device's new sessions. Now: if the cloud has moved on, we merge;
+        // if it hasn't, our edits are pure additions on the shared base and are safe to push.
         const cloud=await cloudRead(fb,user.uid);
         if(cloud&&cloud.fromServer){
-          if(cloud.str&&cloud.rev!==lastRev.current&&!dirty())adopt(cloud);
+          const cloudMoved=cloud.str&&cloud.rev!==lastRev.current;
+          if(dirty()){
+            if(cloudMoved)await mergeUp(cloud);   // both sides changed → union, never drop either
+            else writeNow();                       // only we changed → push our additions
+          }else if(cloudMoved){
+            adopt(cloud);                           // only the cloud changed → take it
+          }
           ready.current=true;setStatus('synced');
-          // Covers a cold start that couldn't reconcile on login: if this device still holds
-          // data the confirmed-empty cloud doesn't have, or unsynced edits, push them up.
-          if(dirty()||(!cloud.str&&hasRealData(dataRef.current)))writeNow();
+          // Cold start that couldn't reconcile on login but the cloud is confirmed empty:
+          // push our real data up so it isn't stranded on this device.
+          if(!cloud.str&&hasRealData(dataRef.current)){ready.current=true;writeNow();}
         }
       }catch(e){console.warn('pull',e);}
       finally{pulling=false;}
