@@ -6293,8 +6293,10 @@ function useCloudSync(data,setData){
   };
 
   return{user,status,authLoading,syncErr,forcePull,
-    signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(e,p),
-    signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(e,p),
+    signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
+    signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
+    // returns the providers a given email is registered with, e.g. ['google.com'] or ['password']; [] if unknown/none
+    methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
     signOut:()=>FB().auth().signOut(),
     signInWithGoogle:()=>{const p=new firebase.auth.GoogleAuthProvider();return FB().auth().signInWithPopup(p);}}
 }
@@ -6343,15 +6345,33 @@ function LoginPage({sync}){
     }finally{setBusy(false);}
   };
   const emailSubmit=async()=>{
+    const mail=email.trim(), pass=pw;
+    if(!mail){setErr('E-posta girin.');return;}
+    if(!pass){setErr('Şifre girin.');return;}
+    if(isSignup&&pass.length<6){setErr('Şifre en az 6 karakter olmalı.');return;}
     setErr('');setBusy(true);
     try{
-      if(isSignup)await sync.signUp(email.trim(),pw);
-      else await sync.signIn(email.trim(),pw);
+      if(isSignup)await sync.signUp(mail,pass);
+      else await sync.signIn(mail,pass);
     }catch(e){
+      // When the credential is rejected, check which provider this email is actually registered with.
+      // The #1 cause here: the account was created via Google Sign-In and has NO password.
+      if(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||
+         e.code==='auth/user-not-found'||e.code==='auth/email-already-in-use'){
+        const methods=await sync.methodsFor(mail);
+        if(methods.includes('google.com')&&!methods.includes('password')){
+          setErr('Bu e-posta Google ile kayıtlı; şifresi yok. Yukarıdaki "Google ile Giriş" butonunu kullan.');
+          setBusy(false);return;
+        }
+        if(isSignup&&methods.length){setErr('Bu e-posta zaten kayıtlı — giriş yap.');setBusy(false);return;}
+        if(!isSignup&&methods.length===0){
+          setErr('Bu e-postayla hesap yok (ya da şifresi yanlış). Önce "Kayıt ol".');setBusy(false);return;}
+      }
       const msgs={'auth/invalid-email':'Geçersiz e-posta.','auth/missing-password':'Şifre girin.',
         'auth/weak-password':'Şifre en az 6 karakter olmalı.','auth/email-already-in-use':'Bu e-posta zaten kayıtlı — giriş yap.',
         'auth/invalid-credential':'Yanlış e-posta veya şifre.','auth/user-not-found':'Hesap bulunamadı.',
-        'auth/wrong-password':'Yanlış şifre.','auth/network-request-failed':'Bağlantı hatası.'};
+        'auth/wrong-password':'Yanlış şifre.','auth/network-request-failed':'Bağlantı hatası.',
+        'auth/too-many-requests':'Çok fazla deneme — biraz bekleyip tekrar dene.'};
       setErr(msgs[e.code]||e.message);
     }finally{setBusy(false);}
   };
@@ -6405,16 +6425,29 @@ function AuthModal({sync,onClose}){
   const[err,setErr]=useState('');
   const[busy,setBusy]=useState(false);
   const submit=async()=>{
+    const mail=email.trim(), pass=pw;
+    if(!mail){setErr('Enter an email.');return;}
+    if(!pass){setErr('Enter a password.');return;}
+    if(mode==='signup'&&pass.length<6){setErr('Password must be at least 6 characters.');return;}
     setErr('');setBusy(true);
     try{
-      if(mode==='signin')await sync.signIn(email.trim(),pw);
-      else await sync.signUp(email.trim(),pw);
+      if(mode==='signin')await sync.signIn(mail,pass);
+      else await sync.signUp(mail,pass);
       onClose();
     }catch(e){
+      if(e.code==='auth/invalid-credential'||e.code==='auth/wrong-password'||
+         e.code==='auth/user-not-found'||e.code==='auth/email-already-in-use'){
+        const methods=await sync.methodsFor(mail);
+        if(methods.includes('google.com')&&!methods.includes('password')){
+          setErr('This email is registered via Google (no password). Use the Google Sign-In button.');setBusy(false);return;}
+        if(mode==='signup'&&methods.length){setErr('This email is already registered — Sign in.');setBusy(false);return;}
+        if(mode==='signin'&&methods.length===0){setErr('No account for this email (or wrong password). Sign up first.');setBusy(false);return;}
+      }
       const m={'auth/invalid-email':'Invalid email.','auth/missing-password':'Enter a password.',
         'auth/weak-password':'Password must be at least 6 characters.','auth/email-already-in-use':'This email is already registered — Sign in.',
         'auth/invalid-credential':'Wrong email or password.','auth/user-not-found':'Account not found — sign up first.',
-        'auth/wrong-password':'Wrong password.','auth/network-request-failed':'Connection error.'}[e.code]||e.message;
+        'auth/wrong-password':'Wrong password.','auth/network-request-failed':'Connection error.',
+        'auth/too-many-requests':'Too many attempts — wait a bit and retry.'}[e.code]||e.message;
       setErr(m);
     }finally{setBusy(false);}
   };
