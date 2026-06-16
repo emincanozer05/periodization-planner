@@ -1375,6 +1375,37 @@ main .panel:nth-child(n+6){animation-delay:.33s}
   .nav-item:hover{transform:none}
   .panel:hover,.stat:hover{transform:none}
 }
+/* ===== Auth / login split layout ===== */
+.auth-wrap{min-height:100vh;display:flex;align-items:stretch;background:var(--bg)}
+.auth-hero{flex:1 1 0;min-width:0;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:64px 72px;
+  background:
+    linear-gradient(transparent 95%,rgba(230,255,85,.05) 95%) 0 0/100% 46px,
+    linear-gradient(90deg,transparent 95%,rgba(255,255,255,.025) 95%) 0 0/46px 100%,
+    radial-gradient(120% 90% at 80% 10%,rgba(230,255,85,.07),transparent 60%),
+    var(--bg);}
+.auth-hero-in{max-width:600px;position:relative;z-index:1}
+.auth-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--border2);border-radius:999px;font-size:13px;color:var(--text2);margin-bottom:30px}
+.auth-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.auth-h1{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;font-size:60px;line-height:1.02;letter-spacing:-.02em;color:var(--text);margin:0 0 22px}
+.auth-sub{font-size:17px;line-height:1.6;color:var(--muted);max-width:480px}
+.auth-mock{margin-top:42px;max-width:560px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,var(--elevated),var(--panel));box-shadow:var(--shadow);overflow:hidden}
+.auth-mock-top{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
+.auth-mock-dots{display:flex;gap:6px}
+.auth-mock-dots i{width:10px;height:10px;border-radius:50%;background:var(--border2)}
+.auth-mock-tag{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);letter-spacing:.04em}
+.auth-mock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border)}
+.auth-stat{background:var(--panel);padding:16px 18px}
+.auth-stat .k{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.auth-stat .v{font-size:26px;font-weight:700;color:var(--text);margin-top:8px;letter-spacing:-.01em}
+.auth-stat .v small{font-size:13px;font-weight:600;color:var(--accent);margin-left:5px}
+.auth-mock-bars{display:flex;align-items:flex-end;gap:9px;height:96px;padding:20px 18px 18px}
+.auth-mock-bars span{flex:1;background:var(--hover);border-radius:5px}
+.auth-mock-bars span.on{background:var(--accent)}
+.auth-right{flex:0 0 460px;display:flex;align-items:center;justify-content:center;padding:24px;border-left:1px solid var(--border);background:var(--bg2)}
+@media (max-width:900px){
+  .auth-hero{display:none}
+  .auth-right{flex:1 1 100%;border-left:none;background:var(--bg)}
+}
 </style>
 </head>
 <body>
@@ -6471,11 +6502,33 @@ function LoginPage({sync}){
     }finally{setBusy(false);}
   };
   return(
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'24px'}}>
+    <div className="auth-wrap">
+      <div className="auth-hero">
+        <div className="auth-hero-in">
+          <div className="auth-badge"><span className="dot"></span>Built for high-performance staff</div>
+          <h1 className="auth-h1">The performance OS for strength &amp; conditioning.</h1>
+          <p className="auth-sub">Program periodized training, deliver it to every athlete, and read load, velocity and readiness as the data lands — all in one system.</p>
+          <div className="auth-mock">
+            <div className="auth-mock-top">
+              <div className="auth-mock-dots"><i></i><i></i><i></i></div>
+              <div className="auth-mock-tag">forge · readiness</div>
+            </div>
+            <div className="auth-mock-stats">
+              <div className="auth-stat"><div className="k">Acute Load</div><div className="v">847<small>▲4%</small></div></div>
+              <div className="auth-stat"><div className="k">A:C Ratio</div><div className="v">1.08</div></div>
+              <div className="auth-stat"><div className="k">Ready</div><div className="v">22/24</div></div>
+            </div>
+            <div className="auth-mock-bars">
+              {[38,46,52,64,92,58,70,44,60,50].map((h,i)=><span key={i} className={i===4?'on':''} style={{height:h+'%'}}/>)}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="auth-right">
       <div className="panel" style={{width:400,maxWidth:'100%',margin:0}}>
         <div style={{textAlign:'center',marginBottom:24}}>
-          <img src="logo.png" alt="Zone Planner" style={{height:52,marginBottom:10}}/>
-          <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>Zone Planner</div>
+          <img src="logo.png" alt="The Coaching Operating System" style={{height:52,marginBottom:10}}/>
+          <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>The Coaching Operating System</div>
           <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
         </div>
         <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
@@ -6509,6 +6562,7 @@ function LoginPage({sync}){
             <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>← Geri</button>
           </>
         )}
+      </div>
       </div>
     </div>
   );
