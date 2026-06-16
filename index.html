@@ -3848,22 +3848,21 @@ function TeamReports({team,weeks,selected,setSelected}){
   // has no athlete sRPE log still registers its load in the trend & reports.
   const plannedByDay=useMemo(()=>{const m={};Object.entries(team.days||{}).forEach(([d,day])=>{
     const v=((day&&day.sessions)||[]).reduce((t,s)=>t+(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0)),0);if(v>0)m[d]=v;});return m;},[team.days]);
-  // Team daily load (AU) by date — athletes' inner-load (sRPE) log when present,
-  // otherwise the planned team-plan session AU, so planned days are never dropped
-  // and ACWR & monotony stay consistent.
-  const teamDaily=useMemo(()=>{const m={};(team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
-    if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-    m[e.date]=(m[e.date]||0)+v;}));
-    Object.entries(plannedByDay).forEach(([d,v])=>{if(!m[d])m[d]=v;});return m;},[team.athletes,plannedByDay]);
+  // Team daily load (AU) by date = the SUM of that day's session AU boxes, exactly what the
+  // calendar shows (e.g. 420 + 455 = 875). This is the single source for the trend chart, ACWR
+  // and monotony so every load number matches the calendar. A day that has only an athlete sRPE
+  // log but no planned session still registers (summed) so it isn't dropped.
+  const teamDaily=useMemo(()=>{
+    const m={...plannedByDay};
+    const logged={};
+    (team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+      if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
+      if(v>0)logged[e.date]=(logged[e.date]||0)+v;}));
+    Object.entries(logged).forEach(([d,v])=>{if(m[d]==null)m[d]=v;});
+    return m;},[team.athletes,plannedByDay]);
   const dayLoad=d=>Math.round(teamDaily[d]||0);
-  // Average session AU per day = logged load ÷ athletes who logged; falls back to
-  // the planned team session AU on days with no sRPE log.
-  const teamDailyAvg=useMemo(()=>{const sum={},cnt={};(team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
-    if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-    if(v>0){sum[e.date]=(sum[e.date]||0)+v;cnt[e.date]=(cnt[e.date]||0)+1;}}));
-    const avg={};Object.keys(sum).forEach(d=>{avg[d]=sum[d]/cnt[d];});
-    Object.entries(plannedByDay).forEach(([d,v])=>{if(!avg[d])avg[d]=v;});return avg;},[team.athletes,plannedByDay]);
-  const dayAvg=d=>Math.round(teamDailyAvg[d]||0);
+  // Load Monitoring uses the same calendar-matching session-AU sum everywhere (trend, ACWR, monotony).
+  const dayAvg=dayLoad;
   // ---- All-athletes weekly AU chart (per athlete = a segment) ----
   const allAthletesChart=useMemo(()=>{
     const{year,month}=selected;
@@ -3924,7 +3923,7 @@ function TeamReports({team,weeks,selected,setSelected}){
   // ---- Weekly monotony (Foster) for the selected month, from team daily load ----
   const mWeeks=useMemo(()=>{const o=[];let c=sow(parseD(ms));while(c<=parseD(me)){
     const loads=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(c,i)))}));
-    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDailyAvg,ms,me]);
+    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDaily,ms,me]);
   const monoW=mWeeks.filter(w=>w.monotony>0);
   const meanMono=monoW.length?monoW.reduce((a,b)=>a+b.monotony,0)/monoW.length:0;
   const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
@@ -3954,7 +3953,7 @@ function TeamReports({team,weeks,selected,setSelected}){
     let a=0;for(let j=0;j<7;j++)a+=dayAvg(fmt(addD(parseD(k),-j)));a/=7;
     let c=0;for(let j=0;j<28;j++)c+=dayAvg(fmt(addD(parseD(k),-j)));c/=28;
     out.push({k,daily,acute:Math.round(a),chronic:Math.round(c),acwr:c>0?a/c:0});}
-    return out;},[teamDailyAvg,lmEnd,lmWin]);
+    return out;},[teamDaily,lmEnd,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
