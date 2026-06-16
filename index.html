@@ -6088,6 +6088,7 @@ function useCloudSync(data,setData){
   const[authLoading,setAuthLoading]=useState(true);
   const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
   const[syncErr,setSyncErr]=useState('');
+  const[authErr,setAuthErr]=useState(''); // surfaced from redirect sign-in (errors happen on page load, not in a click handler)
   const dataRef=useRef(data); dataRef.current=data;
   const lastJson=useRef(null); // exact JSON string we currently know is in the cloud
   const lastRev=useRef(null);  // the cloud revision we are currently in sync with
@@ -6124,6 +6125,15 @@ function useCloudSync(data,setData){
   useEffect(()=>{
     const fb=FB();
     if(!fb){setAuthLoading(false);return;}
+    // Complete any pending redirect sign-in (popup→redirect fallback). Success flows
+    // through onAuthStateChanged; here we only need to surface a failure to the user.
+    fb.auth().getRedirectResult().catch(e=>{
+      const m={'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.',
+        'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkin değil.',
+        'auth/account-exists-with-different-credential':'Bu e-posta başka bir yöntemle kayıtlı.',
+        'auth/network-request-failed':'İnternet bağlantısı hatası.'}[e.code]||(e.code?e.code+': '+e.message:e.message);
+      setAuthErr(m);
+    });
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
       setUser(u||null);
@@ -6292,13 +6302,27 @@ function useCloudSync(data,setData){
     }catch(e){console.warn('forcePull',e);setStatus('error');}
   };
 
-  return{user,status,authLoading,syncErr,forcePull,
+  return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     // returns the providers a given email is registered with, e.g. ['google.com'] or ['password']; [] if unknown/none
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
     signOut:()=>FB().auth().signOut(),
-    signInWithGoogle:()=>{const p=new firebase.auth.GoogleAuthProvider();return FB().auth().signInWithPopup(p);}}
+    signInWithGoogle:async()=>{
+      const p=new firebase.auth.GoogleAuthProvider();
+      p.setCustomParameters({prompt:'select_account'});
+      try{return await FB().auth().signInWithPopup(p);}
+      catch(e){
+        // On some hosts (e.g. Netlify) COOP / popup blockers sever the popup's window.opener,
+        // so the popup just closes and the result never returns. Fall back to a full-page
+        // redirect, which doesn't depend on window.opener. The result is picked up by
+        // getRedirectResult() on reload. A genuinely unauthorized domain etc. is rethrown.
+        const toRedirect=['auth/popup-closed-by-user','auth/cancelled-popup-request','auth/popup-blocked',
+          'auth/web-storage-unsupported','auth/operation-not-supported-in-this-environment','auth/internal-error'];
+        if(toRedirect.includes(e.code)){await FB().auth().signInWithRedirect(p);return;}
+        throw e;
+      }
+    }}
 }
 
 function LoadingScreen(){
@@ -6329,19 +6353,16 @@ function LoginPage({sync}){
   const[err,setErr]=useState('');
   const[busy,setBusy]=useState(false);
   const googleLogin=async()=>{
-    setErr('');setBusy(true);
+    setErr('');sync.clearAuthErr&&sync.clearAuthErr();setBusy(true);
     try{await sync.signInWithGoogle();}
     catch(e){
-      const skip=['auth/popup-closed-by-user','auth/cancelled-popup-request'];
-      if(!skip.includes(e.code)){
-        const msgs={
-          'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.',
-          'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains → emincanozer05.github.io ekle.',
-          'auth/network-request-failed':'İnternet bağlantısı hatası.',
-          'auth/popup-blocked':'Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.',
-        };
-        setErr(msgs[e.code]||e.message);
-      }
+      const msgs={
+        'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.',
+        'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.',
+        'auth/network-request-failed':'İnternet bağlantısı hatası.',
+        'auth/popup-blocked':'Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.',
+      };
+      setErr(msgs[e.code]||(e.code?e.code+': '+e.message:e.message));
     }finally{setBusy(false);}
   };
   const emailSubmit=async()=>{
@@ -6384,6 +6405,7 @@ function LoginPage({sync}){
           <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
         </div>
         <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
+        {(tab==='google'&&(err||sync.authErr))&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err||sync.authErr}</div>}
         <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
           <div style={{flex:1,height:1,background:'var(--border)'}}/>
           <span>veya</span>
