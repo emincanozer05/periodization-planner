@@ -2880,12 +2880,20 @@ async function uploadMedia(blob,folder,onProgress,name){
   await new Promise((res,rej)=>task.on('state_changed',s=>{if(onProgress)onProgress(Math.round(s.bytesTransferred/Math.max(1,s.totalBytes)*100));},rej,res));
   return await ref.getDownloadURL();
 }
+let _storageWarned=false; // surface a misconfigured Storage (e.g. missing security rules) once per session
+function warnStorageFailure(e){
+  console.warn('image upload failed → base64 fallback',e);
+  if(_storageWarned)return;_storageWarned=true;
+  const perm=e&&(e.code==='storage/unauthorized'||/unauthorized|permission|rules/i.test(String(e&&e.message)));
+  alert('Fotoğraf buluta yüklenemedi'+(perm?' (Storage güvenlik kuralları eksik olabilir)':'')+
+    '; geçici olarak cihaza gömülü kaydedildi. Bu, senkronu yavaşlatır. Firebase Console → Storage → Rules kısmının yayınlandığından emin ol.');
+}
 function handleImageUpload(file,folder,done,onProgress){
   if(!file)return;
   const fb=(typeof FB==='function')?FB():null;
   const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
   resizePhotoBlob(file,async blob=>{
-    if(loggedIn){try{const url=await uploadMedia(blob,folder,onProgress);done(url);return;}catch(e){console.warn('image upload failed → base64 fallback',e);}}
+    if(loggedIn){try{const url=await uploadMedia(blob,folder,onProgress);done(url);return;}catch(e){warnStorageFailure(e);}}
     const r=new FileReader();r.onload=e=>done(e.target.result);r.readAsDataURL(blob);
   });
 }
@@ -2916,17 +2924,18 @@ async function migrateEmbeddedPhotos(obj,fb,uid){
       changed=true;return url;
     }catch(e){console.warn('photo migrate failed',e);return dataUrl;}
   };
+  const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.indexOf('data:video')===0);
   const walk=async node=>{
     if(Array.isArray(node)){
       for(let i=0;i<node.length;i++){
         const v=node[i];
-        if(typeof v==='string'&&v.indexOf('data:image')===0)node[i]=await up(v);
+        if(isInlineMedia(v))node[i]=await up(v);
         else if(v&&typeof v==='object')await walk(v);
       }
     }else if(node&&typeof node==='object'){
       for(const k of Object.keys(node)){
         const v=node[k];
-        if(typeof v==='string'&&v.indexOf('data:image')===0)node[k]=await up(v);
+        if(isInlineMedia(v))node[k]=await up(v);
         else if(v&&typeof v==='object')await walk(v);
       }
     }
