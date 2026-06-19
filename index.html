@@ -6067,7 +6067,7 @@ const mkRev=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 // vs the last-synced snapshot WITHOUT trusting the device clock (skewed/stale clocks
 // were letting an old device overwrite newer cloud data from another computer).
 const djb2=str=>{let h=5381;for(let i=0;i<str.length;i++)h=((h*33)^str.charCodeAt(i))>>>0;return h.toString(36);};
-async function cloudWrite(fb,uid,str,rev,ts){
+async function cloudWrite(fb,uid,str,rev,ts,editedAt){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   const dataCol=userDoc.collection('data');
@@ -6096,7 +6096,7 @@ async function cloudWrite(fb,uid,str,rev,ts){
   rev=rev||mkRev();
   const batch=db.batch();
   for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
-  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,ts:ts||Date.now(),updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,ts:ts||Date.now(),editedAt:editedAt||ts||Date.now(),updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
   await batch.commit();
   // Drop leftover chunks ONLY when the payload shrank — by reference, no read.
   if(oldN>n){const b=db.batch();for(let i=n;i<oldN;i++)b.delete(dataCol.doc(String(i)));await b.commit();}
@@ -6126,7 +6126,7 @@ async function cloudRead(fb,uid){
     .catch(()=>userDoc.collection('data').doc(String(i)).get().then(d=>(d.exists&&d.data())?(d.data().c||''):''));
   // Read all chunks in parallel (was sequential = N round-trips = slow reconcile)
   const parts=await Promise.all(Array.from({length:n},(_,i)=>chunk(i)));
-  return{str:parts.join(''),rev:md.rev,ts:md.ts||0,fromServer};
+  return{str:parts.join(''),rev:md.rev,ts:md.ts||0,editedAt:md.editedAt||md.ts||0,fromServer};
 }
 async function cloudReadBackup(fb,uid){
   const db=fb.firestore();
@@ -6211,8 +6211,15 @@ function useCloudSync(data,setData){
   // used to make its older data look "newer" and silently overwrite a computer's fresh
   // edits. Ordering is therefore based purely on content + revision identity, never time.
   const cleanHash=useRef((()=>{try{return localStorage.getItem('pp-data-hash')||null;}catch(e){return null;}})());
+  // Last-writer-wins ordering across devices, WITHOUT trusting a raw device clock. We calibrate
+  // an offset to the Firestore SERVER clock once per session, so every device stamps its edits on
+  // the same skew-free timeline. The most recently edited copy wins everywhere → "the last action
+  // shows on every device", like Google Drive, with no flip-flop.
+  const serverOffset=useRef(0);            // ms to add to Date.now() to approximate server time
+  const localEditAt=useRef(0);             // server-time of this device's latest UNSYNCED user edit
+  const nowTs=()=>Date.now()+serverOffset.current;
   const markSynced=(rev,str)=>{
-    lastRev.current=rev;lastJson.current=str;
+    lastRev.current=rev;lastJson.current=str;localEditAt.current=0; // synced → no pending local edit
     const h=djb2(str);cleanHash.current=h;
     try{localStorage.setItem('pp-data-rev',rev||'');localStorage.setItem('pp-data-hash',h);}catch(e){}
   };
@@ -6238,7 +6245,7 @@ function useCloudSync(data,setData){
     if(mstr!==JSON.stringify(dataRef.current))setData(merged);
     ready.current=true;
     const rev=mkRev();setStatus('syncing');
-    try{await cloudWrite(fb,user.uid,mstr,rev);markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
+    try{await cloudWrite(fb,user.uid,mstr,rev,null,localEditAt.current||nowTs());markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
     catch(e){console.warn('mergeUp',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
@@ -6271,8 +6278,19 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     ready.current=false;lastJson.current=null;lastRev.current=null; // block uploads until reconciled
     const userDoc=fb.firestore().collection('users').doc(user.uid);
+    // Calibrate our offset to the Firestore server clock (round-trip estimate) so cross-device
+    // edit-time comparisons are skew-free. Writes a tiny field on the (always-writable) meta doc
+    // and reads back its server time. Fire-and-forget; until it resolves we fall back to the raw
+    // device clock (good enough, and corrected within ~1s of login).
+    (async()=>{try{
+      const t0=Date.now();
+      await userDoc.set({clockPing:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+      const cs=await userDoc.get({source:'server'});
+      const sm=(cs.exists&&cs.data()&&cs.data().clockPing)?cs.data().clockPing.toMillis():null;
+      if(sm){const t1=Date.now();serverOffset.current=Math.round(sm-(t0+t1)/2);}
+    }catch(e){/* offline / blocked → keep raw clock */}})();
     let first=true;
-    const seedUp=async str=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev);markSynced(rev,str);setStatus('synced');setSyncErr('');}catch(e){console.warn('seed',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}};
+    const seedUp=async str=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,null,localEditAt.current||nowTs());markSynced(rev,str);setStatus('synced');setSyncErr('');}catch(e){console.warn('seed',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}};
     const unsub=userDoc.onSnapshot(async snap=>{
       try{
         const rev=(snap.exists&&snap.data())?snap.data().rev:null;
@@ -6307,11 +6325,13 @@ function useCloudSync(data,setData){
             [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
           }
         }else if(rev&&rev!==lastRev.current&&!(snap.metadata&&snap.metadata.hasPendingWrites)){
-          // A genuine change from another device.
+          // A genuine change from another device. LAST-WRITER-WINS by skew-corrected edit time:
+          // whatever was edited most recently shows on every device (Google-Drive style).
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.fromServer&&cloud.str){
-            if(!dirty())adopt(cloud);                                   // no local edits → take theirs
-            else await mergeUp(cloud);                                  // both changed → union, never drop either side
+            if(!dirty())adopt(cloud);                                   // we have no local edit → take theirs
+            else if(localEditAt.current>(cloud.editedAt||0))writeNow(); // our edit is newer → it wins
+            else adopt(cloud);                                          // their edit is newer → it wins (our older edit yields)
           }
         }
       }catch(e){console.warn('sync',e);setStatus('error');}
@@ -6329,10 +6349,11 @@ function useCloudSync(data,setData){
       const j=JSON.stringify(dataRef.current);
       if(j===lastJson.current)return;
       const rev=mkRev();
+      const editedAt=localEditAt.current||nowTs(); // stamp the actual user-edit time (for LWW ordering)
       setStatus('syncing');
       // Advance lastJson/lastRev ONLY after the server confirms the write, so a failed or
       // still-queued write stays "dirty" and is retried on focus — never silently lost.
-      cloudWrite(fb,user.uid,j,rev)
+      cloudWrite(fb,user.uid,j,rev,null,editedAt)
         .then(()=>{markSynced(rev,j);setStatus('synced');setSyncErr('');})
         .catch(e=>{console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');});
     };
@@ -6355,8 +6376,10 @@ function useCloudSync(data,setData){
         if(cloud&&cloud.fromServer){
           const cloudMoved=cloud.str&&cloud.rev!==lastRev.current;
           if(dirty()){
-            if(cloudMoved)await mergeUp(cloud);   // both sides changed → union, never drop either
-            else writeNow();                       // only we changed → push our additions
+            // Last-writer-wins: push ours only if our edit is newer than the cloud's; otherwise
+            // the cloud holds a more recent action and we adopt it (no flip-flop, no stale clobber).
+            if(!cloudMoved||localEditAt.current>(cloud.editedAt||0))writeNow();
+            else adopt(cloud);
           }else if(cloudMoved){
             adopt(cloud);                           // only the cloud changed → take it
           }
@@ -6395,6 +6418,7 @@ function useCloudSync(data,setData){
     if(!ready.current)return;          // don't upload until the cloud has been reconciled on login
     const j=JSON.stringify(data);
     if(j===lastJson.current)return;
+    localEditAt.current=nowTs();        // a real local user edit just happened — stamp its time (for LWW)
     setStatus('syncing');
     timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},600);
   },[data,user]);
