@@ -1428,6 +1428,17 @@ main .panel:nth-child(n+6){animation-delay:.33s}
   .auth-h1{font-size:38px}
   .lp-actions .lp-btn{padding:8px 13px;font-size:13px}
 }
+/* ===== Glass effect fully removed → flat, solid, opaque surfaces ===== */
+*{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+:root{--panel-glass:linear-gradient(transparent,transparent);--glass-hi:0 0 transparent}
+.sidebar{background:var(--bg2)!important}
+header{background:var(--bg2)!important}
+.panel,.stat{background:var(--panel)!important}
+.wh-hm .wh-ath-h,.wh-hm .wh-ath{background:var(--elevated)!important;box-shadow:none!important}
+.app::before,.app::after{display:none!important}   /* ambient colour orbs behind the old frosted glass */
+.calm-grid{align-items:stretch}
+.calm-cell{aspect-ratio:1;min-height:0;overflow:hidden}
+.calm-cell.empty{aspect-ratio:1}
 </style>
 </head>
 <body>
@@ -1585,6 +1596,8 @@ function migrateTeam(t){
   if(!t.setup)t.setup=makeDefaultTeam().setup;
   if(!('periods'in t.setup))t.setup.periods=null;
   if(!t.days)t.days={};if(!t.weekOverrides)t.weekOverrides={};if(!t.athletes)t.athletes=[];
+  // Per-team Notion sync config (each team connects its own Notion workspace/worker).
+  if(!t.notionSync)t.notionSync={workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
   // Days migration (sections→blocks, etc.)
   for(const k of Object.keys(t.days)){
     const d=t.days[k];if(!d)continue;
@@ -1854,10 +1867,11 @@ function WellnessHeatmap({athletes}){
   const[metric,setMetric]=useState('readiness');
   const M=METRICS.find(m=>m.id===metric)||METRICS[0];
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-  // All distinct dates that carry any value for this metric, sorted
-  const dates=useMemo(()=>{const s=new Set();
-    (athletes||[]).forEach(a=>(a.wellness||[]).forEach(w=>{if(w.date&&w[M.id]!==''&&w[M.id]!=null)s.add(w.date);}));
-    return[...s].sort();},[athletes,M.id]);
+  // Two-week (14-day) window ending at `winEnd`; navigate by week from the header.
+  const[winEnd,setWinEnd]=useState(()=>fmt(today));
+  const dates=useMemo(()=>Array.from({length:14},(_,i)=>fmt(addD(parseD(winEnd),-13+i))),[winEnd]);
+  const shiftWk=d=>setWinEnd(w=>fmt(addD(parseD(w),d*7)));
+  const rangeLabel=fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
   const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
   // Normalised quality 0 (kötü) → 1 (iyi), then a smooth red→amber→green colour ramp.
   const goodT=v=>{if(v==null)return null;
@@ -1878,10 +1892,20 @@ function WellnessHeatmap({athletes}){
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
   return(<div className="panel">
     <div className="wh-hm-head">
-      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>all-time · sorted by average</span></h2></div>
-      <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
+      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>son 2 hafta · ortalamaya göre</span></h2></div>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          {(()=>{const nb={width:30,height:30,borderRadius:8,background:'var(--panel)',border:'1px solid var(--border2)',color:'var(--text)',cursor:'pointer',fontSize:15,lineHeight:1,fontFamily:'inherit'};return<>
+            <button style={nb} onClick={()=>shiftWk(-1)} title="Önceki hafta">‹</button>
+            <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:12,color:'var(--text2)',minWidth:96,textAlign:'center'}}>{rangeLabel}</span>
+            <button style={nb} onClick={()=>shiftWk(1)} title="Sonraki hafta">›</button>
+            <button style={{...nb,width:'auto',padding:'0 10px',fontSize:12}} onClick={()=>setWinEnd(fmt(today))} title="Bu haftaya dön">Bugün</button>
+          </>;})()}
+        </div>
+        <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
+      </div>
     </div>
-    {dates.length===0?<div className="empty-st">No wellness data yet.</div>:<>
+    {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?'high':'low'}</span>
         <span className="wh-leg-bar"/>
@@ -5887,14 +5911,16 @@ async function performNotionSync(workerUrl,team){
 }
 
 function NotionSync({data,setData,team}){
-  const cfg=data.notionSync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+  // Config lives on the TEAM, so each team connects its own Notion workspace independently.
+  const cfg=team.notionSync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
   const[url,setUrl]=useState(cfg.workerUrl);
   const[syncing,setSyncing]=useState(false);
   const[error,setError]=useState(null);
   const[stats,setStats]=useState(cfg.lastStats);
   const[lastAt,setLastAt]=useState(cfg.lastSyncedAt);
 
-  const saveCfg=upd=>setData(prev=>({...prev,notionSync:{...(prev.notionSync||cfg),...upd}}));
+  const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,notionSync:{...(t.notionSync||cfg),...upd}}:t)}));
+  const saveCfg=patchTeam;
 
   const doSync=async()=>{
     if(!cfg.workerUrl){alert('Enter the Worker URL and press Save first.');return;}
@@ -5902,8 +5928,7 @@ function NotionSync({data,setData,team}){
     try{
       const{athletes,stats:s,syncedAt}=await performNotionSync(cfg.workerUrl,team);
       setData(prev=>({...prev,
-        teams:prev.teams.map(t=>t.id===team.id?{...t,athletes}:t),
-        notionSync:{...(prev.notionSync||cfg),lastSyncedAt:syncedAt,lastStats:s}}));
+        teams:prev.teams.map(t=>t.id===team.id?{...t,athletes,notionSync:{...(t.notionSync||cfg),lastSyncedAt:syncedAt,lastStats:s}}:t)}));
       setStats(s);setLastAt(syncedAt);
     }catch(e){setError(e.message||String(e));}
     finally{setSyncing(false);}
@@ -7775,7 +7800,7 @@ function App(){
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
-      {view==='notion'&&<NotionSync data={data} setData={setData} team={team}/>}
+      {view==='notion'&&<NotionSync key={team.id} data={data} setData={setData} team={team}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
