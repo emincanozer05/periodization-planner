@@ -1375,20 +1375,34 @@ main .panel:nth-child(n+6){animation-delay:.33s}
   .nav-item:hover{transform:none}
   .panel:hover,.stat:hover{transform:none}
 }
-/* ===== Auth / login split layout ===== */
-.auth-wrap{min-height:100vh;display:flex;align-items:stretch;background:var(--bg)}
-.auth-hero{flex:1 1 0;min-width:0;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:64px 72px;
-  background:
-    linear-gradient(transparent 95%,rgba(230,255,85,.05) 95%) 0 0/100% 46px,
-    linear-gradient(90deg,transparent 95%,rgba(255,255,255,.025) 95%) 0 0/46px 100%,
-    radial-gradient(120% 90% at 80% 10%,rgba(230,255,85,.07),transparent 60%),
-    var(--bg);}
-.auth-hero-in{max-width:600px;position:relative;z-index:1}
+/* ===== Landing page + login modal ===== */
+.lp{min-height:100vh;display:flex;flex-direction:column;background:
+  linear-gradient(transparent 95%,rgba(230,255,85,.05) 95%) 0 0/100% 46px,
+  linear-gradient(90deg,transparent 95%,rgba(255,255,255,.022) 95%) 0 0/46px 100%,
+  radial-gradient(120% 75% at 78% 0%,rgba(230,255,85,.06),transparent 55%),
+  var(--bg);}
+.lp-nav{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:24px;padding:20px 40px}
+.lp-logo{display:flex;align-items:center;gap:11px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;letter-spacing:.03em;color:var(--text)}
+.lp-logo svg{width:26px;height:26px;flex:none}
+.lp-links{display:flex;gap:34px;flex:1;justify-content:center}
+.lp-links a{color:var(--text2);font-size:15px;font-weight:500;cursor:pointer;text-decoration:none}
+.lp-links a:hover{color:var(--text)}
+.lp-actions{display:flex;align-items:center;gap:12px}
+.lp-btn{font-family:inherit;font-size:14px;font-weight:600;padding:9px 18px;border-radius:9px;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:filter .15s,background .15s}
+.lp-btn.ghost{background:transparent;border-color:var(--border2);color:var(--text)}
+.lp-btn.ghost:hover{background:var(--hover)}
+.lp-btn.accent{background:var(--accent);color:#0a0b0d}
+.lp-btn.accent:hover{filter:brightness(1.06)}
+.lp-hero{flex:1;display:flex;align-items:center;gap:48px;width:100%;max-width:1320px;margin:0 auto;padding:24px 40px 64px}
+.lp-hero-l{flex:1 1 0;min-width:0}
+.lp-hero-r{flex:0 0 auto;width:560px;max-width:46%}
+.lp-cta{display:flex;gap:14px;margin-top:34px}
+.lp-cta .lp-btn{padding:13px 24px;font-size:15px}
 .auth-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid var(--border2);border-radius:999px;font-size:13px;color:var(--text2);margin-bottom:30px}
 .auth-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
-.auth-h1{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;font-size:60px;line-height:1.02;letter-spacing:-.02em;color:var(--text);margin:0 0 22px}
+.auth-h1{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;font-size:62px;line-height:1.0;letter-spacing:-.02em;color:var(--text);margin:0 0 22px}
 .auth-sub{font-size:17px;line-height:1.6;color:var(--muted);max-width:480px}
-.auth-mock{margin-top:42px;max-width:560px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,var(--elevated),var(--panel));box-shadow:var(--shadow);overflow:hidden}
+.auth-mock{border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,var(--elevated),var(--panel));box-shadow:var(--shadow);overflow:hidden}
 .auth-mock-top{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
 .auth-mock-dots{display:flex;gap:6px}
 .auth-mock-dots i{width:10px;height:10px;border-radius:50%;background:var(--border2)}
@@ -1401,10 +1415,18 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 .auth-mock-bars{display:flex;align-items:flex-end;gap:9px;height:96px;padding:20px 18px 18px}
 .auth-mock-bars span{flex:1;background:var(--hover);border-radius:5px}
 .auth-mock-bars span.on{background:var(--accent)}
-.auth-right{flex:0 0 460px;display:flex;align-items:center;justify-content:center;padding:24px;border-left:1px solid var(--border);background:var(--bg2)}
-@media (max-width:900px){
-  .auth-hero{display:none}
-  .auth-right{flex:1 1 100%;border-left:none;background:var(--bg)}
+.lp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.66);backdrop-filter:blur(5px);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
+@media (max-width:980px){
+  .lp-links{display:none}
+  .lp-hero{flex-direction:column;align-items:flex-start;gap:34px}
+  .lp-hero-r{width:100%;max-width:520px;align-self:center}
+  .auth-h1{font-size:46px}
+}
+@media (max-width:560px){
+  .lp-nav{padding:16px 18px}
+  .lp-hero{padding:16px 18px 40px}
+  .auth-h1{font-size:38px}
+  .lp-actions .lp-btn{padding:8px 13px;font-size:13px}
 }
 </style>
 </head>
@@ -6457,6 +6479,8 @@ function LoginPage({sync}){
   const[pw,setPw]=useState('');
   const[err,setErr]=useState('');
   const[busy,setBusy]=useState(false);
+  const[showLogin,setShowLogin]=useState(false); // landing CTA / "Log in" opens the auth modal
+  const openLogin=()=>{setErr('');sync.clearAuthErr&&sync.clearAuthErr();setShowLogin(true);};
   const googleLogin=async()=>{
     setErr('');sync.clearAuthErr&&sync.clearAuthErr();setBusy(true);
     try{await sync.signInWithGoogle();}
@@ -6501,13 +6525,33 @@ function LoginPage({sync}){
       setErr(msgs[e.code]||e.message);
     }finally{setBusy(false);}
   };
+  const Diamond=()=><svg viewBox="0 0 24 24" fill="none"><rect x="6.7" y="6.7" width="10.6" height="10.6" rx="2.4" transform="rotate(45 12 12)" stroke="#e6ff55" strokeWidth="2.2"/></svg>;
   return(
-    <div className="auth-wrap">
-      <div className="auth-hero">
-        <div className="auth-hero-in">
+    <div className="lp">
+      <nav className="lp-nav">
+        <div className="lp-logo"><Diamond/> CoachOS</div>
+        <div className="lp-links">
+          <a onClick={openLogin}>Platform</a>
+          <a onClick={openLogin}>Workflow</a>
+          <a onClick={openLogin}>Analytics</a>
+          <a onClick={openLogin}>Pricing</a>
+        </div>
+        <div className="lp-actions">
+          <button className="lp-btn ghost" onClick={openLogin}>Log in</button>
+          <button className="lp-btn accent" onClick={openLogin}>Book a demo</button>
+        </div>
+      </nav>
+      <div className="lp-hero">
+        <div className="lp-hero-l">
           <div className="auth-badge"><span className="dot"></span>Built for high-performance staff</div>
           <h1 className="auth-h1">The performance OS for strength &amp; conditioning.</h1>
           <p className="auth-sub">Program periodized training, deliver it to every athlete, and read load, velocity and readiness as the data lands — all in one system.</p>
+          <div className="lp-cta">
+            <button className="lp-btn accent" onClick={openLogin}>Book a demo</button>
+            <button className="lp-btn ghost" onClick={openLogin}>See the dashboard</button>
+          </div>
+        </div>
+        <div className="lp-hero-r">
           <div className="auth-mock">
             <div className="auth-mock-top">
               <div className="auth-mock-dots"><i></i><i></i><i></i></div>
@@ -6524,46 +6568,48 @@ function LoginPage({sync}){
           </div>
         </div>
       </div>
-      <div className="auth-right">
-      <div className="panel" style={{width:400,maxWidth:'100%',margin:0}}>
-        <div style={{textAlign:'center',marginBottom:24}}>
-          <img src="logo.png" alt="The Coaching Operating System" style={{height:52,marginBottom:10}}/>
-          <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>The Coaching Operating System</div>
-          <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
+      {showLogin&&(
+      <div className="lp-modal-bg" onClick={()=>setShowLogin(false)}>
+        <div className="panel" style={{width:400,maxWidth:'100%',margin:0}} onClick={e=>e.stopPropagation()}>
+          <div style={{textAlign:'center',marginBottom:24}}>
+            <img src="logo.png" alt="The Coaching Operating System" style={{height:52,marginBottom:10}}/>
+            <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>The Coaching Operating System</div>
+            <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
+          </div>
+          <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
+          {(tab==='google'&&(err||sync.authErr))&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err||sync.authErr}</div>}
+          <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
+            <div style={{flex:1,height:1,background:'var(--border)'}}/>
+            <span>veya</span>
+            <div style={{flex:1,height:1,background:'var(--border)'}}/>
+          </div>
+          {tab==='google'?(
+            <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>E-posta / Şifre ile Giriş</button>
+          ):(
+            <>
+              <label>E-posta</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
+              <label style={{marginTop:10}}>Şifre {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>(en az 6 karakter)</span>}</label>
+              <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+                autoComplete={isSignup?'new-password':'current-password'}
+                onKeyDown={e=>{if(e.key==='Enter')emailSubmit();}}
+                placeholder="••••••"/>
+              {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:8}}>{err}</div>}
+              <button className="btn" style={{width:'100%',marginTop:12}} disabled={busy} onClick={emailSubmit}>
+                {busy?'…':(isSignup?'Kayıt Ol':'Giriş Yap')}
+              </button>
+              <div style={{textAlign:'center',marginTop:10,fontSize:12,color:'var(--dim)'}}>
+                {isSignup?'Zaten hesabın var mı? ':'Hesabın yok mu? '}
+                <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setIsSignup(!isSignup);}}>
+                  {isSignup?'Giriş yap':'Kayıt ol'}
+                </a>
+              </div>
+              <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>← Geri</button>
+            </>
+          )}
         </div>
-        <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
-        {(tab==='google'&&(err||sync.authErr))&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err||sync.authErr}</div>}
-        <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
-          <div style={{flex:1,height:1,background:'var(--border)'}}/>
-          <span>veya</span>
-          <div style={{flex:1,height:1,background:'var(--border)'}}/>
-        </div>
-        {tab==='google'?(
-          <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>E-posta / Şifre ile Giriş</button>
-        ):(
-          <>
-            <label>E-posta</label>
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
-            <label style={{marginTop:10}}>Şifre {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>(en az 6 karakter)</span>}</label>
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
-              autoComplete={isSignup?'new-password':'current-password'}
-              onKeyDown={e=>{if(e.key==='Enter')emailSubmit();}}
-              placeholder="••••••"/>
-            {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:8}}>{err}</div>}
-            <button className="btn" style={{width:'100%',marginTop:12}} disabled={busy} onClick={emailSubmit}>
-              {busy?'…':(isSignup?'Kayıt Ol':'Giriş Yap')}
-            </button>
-            <div style={{textAlign:'center',marginTop:10,fontSize:12,color:'var(--dim)'}}>
-              {isSignup?'Zaten hesabın var mı? ':'Hesabın yok mu? '}
-              <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setIsSignup(!isSignup);}}>
-                {isSignup?'Giriş yap':'Kayıt ol'}
-              </a>
-            </div>
-            <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>← Geri</button>
-          </>
-        )}
       </div>
-      </div>
+      )}
     </div>
   );
 }
