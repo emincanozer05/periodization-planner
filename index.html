@@ -1141,16 +1141,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .evc-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
 .evc-badge{position:absolute;top:9px;right:11px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-bg);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
 .evc-num{position:absolute;top:10px;left:12px;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--border2);line-height:1}
-/* test-pick chips */
-.tpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
-.tpc{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:11px 12px;cursor:pointer;transition:border-color .12s,background .12s;position:relative}
-.tpc:hover{border-color:var(--border2)}
+/* test-pick chips — uniform, equally sized tiles */
+.tpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.tpc{display:flex;align-items:center;justify-content:center;text-align:center;min-height:64px;background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:10px 26px;cursor:pointer;transition:border-color .12s,background .12s,transform .12s;position:relative}
+.tpc:hover{border-color:var(--border2);transform:translateY(-1px)}
 .tpc.on{border-color:var(--accent);background:var(--accent-bg)}
-.tpc-ic{font-size:18px;line-height:1.1;flex:none}
-.tpc-t{font-size:12.5px;font-weight:700;color:var(--text)}
-.tpc-d{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+.tpc-t{font-size:13px;font-weight:600;color:var(--text);line-height:1.28}
 .tpc-chk{position:absolute;top:9px;right:9px;width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border2);display:grid;place-items:center;font-size:11px;color:var(--bg);background:transparent}
 .tpc.on .tpc-chk{background:var(--accent);border-color:var(--accent)}
+.tpc-tag{position:absolute;top:8px;left:10px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase;font-weight:700}
+.tpc-del{position:absolute;bottom:6px;right:9px;font-size:12px;color:var(--dim);background:none;border:none;cursor:pointer;padding:0 2px;line-height:1}
+.tpc-del:hover{color:var(--red)}
+.tpc.add{border-style:dashed;color:var(--accent);font-weight:700}
+.tpc.add .tpc-t{color:var(--accent)}
+/* battery summary tags on result cards */
+.bat-tags{display:flex;gap:4px;flex-wrap:wrap}
+.bat-tag{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
 /* 2D body circumference model */
 .bcm-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
 .bcm-canvas{position:relative;width:340px;height:400px;flex:none}
@@ -1606,27 +1612,48 @@ const makeTest=(period='pre')=>({
     sideStep1:null,sideStep2:null,sideStep3:null,
     frontRightFoot:null,frontLeftFoot:null},
   // Power
-  verticalJump:'',cmj:'',dropJump:'',horizontalJump:'',
-  // Agility
-  tTest:'',shuttleRun:'',
+  verticalJump:'',cmj:'',squatJump:'',dropJump:'',horizontalJump:'',
+  // Agility / Conditioning
+  tTest:'',fiveZeroFive:'',shuttleRun:'',
+  // Coach-defined custom tests: { [customTestId]: value }
+  custom:{},
   notes:'',
 });
 
 /* Test battery catalog — individual tests the coach can pick & choose freely
-   for ANY athlete (no age gating). Each id maps to a section the TestEditor
-   renders; `battery` on a test record holds the selected ids. */
+   for ANY athlete (no age gating). Each id maps to a field/section the
+   TestEditor renders; `battery` on a test record holds the selected ids. */
 const TEST_CATALOG=[
-  {id:'anthro',  ic:'🏃', tr:'Antropometri',          en:'Anthropometrics',   d:'Boy, kilo, kanat açıklığı, yağ %'},
-  {id:'circ',    ic:'📏', tr:'Çevre Ölçümleri',        en:'Circumferences',    d:'2D model üzerinde çevre ölçümleri'},
-  {id:'posture', ic:'🧍', tr:'Statik Postür',          en:'Static Posture',    d:'Önden / yandan / arkadan duruş'},
-  {id:'mobility',ic:'🤸', tr:'Mobilite (ASLR / Ayak)', en:'Mobility',          d:'ASLR & ayak bileği dorsifleksiyon'},
-  {id:'ohs',     ic:'🏋️', tr:'Overhead Squat',         en:'Overhead Squat',    d:'FMS overhead squat değerlendirme'},
-  {id:'sprint',  ic:'⚡', tr:'20m Sprint',             en:'20m Sprint',        d:'Süre + adım/ayak analiz fotoğrafları'},
-  {id:'power',   ic:'🚀', tr:'Kuvvet / Sıçrama',       en:'Power Tests',       d:'Dikey, CMJ, drop jump, yatay sıçrama'},
-  {id:'agility', ic:'🔀', tr:'Çeviklik (T-Test)',      en:'Agility',           d:'Agility T-Test süresi'},
-  {id:'endurance',ic:'🫁',tr:'Dayanıklılık',           en:'Endurance',         d:'Shuttle run / beep / Yo-Yo'},
+  {id:'anthro',        name:'Anthropometric Measurement', short:'Anthro'},
+  {id:'circ',          name:'Body Circumference',         short:'Circumf.'},
+  {id:'posture',       name:'Static Posture',             short:'Posture'},
+  {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF'},
+  {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR'},
+  {id:'ohs',           name:'Overhead Squat Test',        short:'OHS'},
+  {id:'verticalJump',  name:'Vertical Jump',              short:'VJ'},
+  {id:'cmj',           name:'Counter-Movement Jump',      short:'CMJ'},
+  {id:'squatJump',     name:'Squat Jump',                 short:'SJ'},
+  {id:'horizontalJump',name:'Horizontal Jump',            short:'HJ'},
+  {id:'dropJump',      name:'Drop Jump (RSI)',            short:'DJ'},
+  {id:'sprint',        name:'20m Sprint',                 short:'20m'},
+  {id:'tTest',         name:'T-Agility',                  short:'T-Test'},
+  {id:'fiveZeroFive',  name:'5-0-5',                      short:'5-0-5'},
+  {id:'shuttleRun',    name:'Shuttle Run',                short:'Shuttle'},
 ];
-const TEST_CAT_LABEL=id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?L(c.tr,c.en):id;};
+const TEST_CAT_LABEL=id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?c.name:id;};
+// Legacy grouped battery ids → granular ids (keeps older test records working).
+const BATTERY_ALIAS={
+  mobility:['ankleDF','aslr'],
+  power:['verticalJump','cmj','squatJump','horizontalJump','dropJump'],
+  agility:['tTest','fiveZeroFive'],
+  endurance:['shuttleRun'],
+};
+function expandBattery(b){
+  if(!Array.isArray(b))return b; // undefined → editor shows everything
+  const out=new Set();
+  b.forEach(id=>(BATTERY_ALIAS[id]||[id]).forEach(x=>out.add(x)));
+  return[...out];
+}
 
 /* =========================================================
    LOAD CALC — AU is the source of truth
@@ -1766,6 +1793,7 @@ function migrate(data){
   data.teams=data.teams.map(migrateTeam);
   if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
   delete data.notionSync;
+  if(!Array.isArray(data.customTests))data.customTests=[];
   if(!Array.isArray(data.researches))data.researches=[];
   data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
@@ -4888,8 +4916,11 @@ function BodyCircumferenceModel({test,onUpdate,lang}){
    TEST EDITOR — full performance test form
    `battery` (optional array of TEST_CATALOG ids) limits which sections show.
    ========================================================= */
-function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
-  const show=id=>!Array.isArray(battery)||battery.length===0||battery.includes(id);
+function TestEditor({test,ath,setup,onUpdate,onClose,battery,customTests}){
+  const bat=expandBattery(battery);
+  const show=id=>!Array.isArray(bat)||bat.length===0||bat.includes(id);
+  const cTests=Array.isArray(customTests)?customTests:[];
+  const setCustom=(id,v)=>onUpdate({custom:{...(test.custom||{}),[id]:v}});
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
   const uStep=(stepKey,view,val)=>onUpdate({sprint20m:{...(test.sprint20m||{}),[stepKey]:{...(test.sprint20m?.[stepKey]||{}),[view]:val}}});
@@ -4933,7 +4964,7 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
     </div>
 
     {show('anthro')&&<><div className="hr"/>
-    <h3 style={H3}>🏃 Anthropometrics</h3>
+    <h3 style={H3}>Anthropometric Measurement</h3>
     <div className="grid cols-4">
       <div><label>Height (cm)</label><input type="number" step="0.1" value={test.height} onChange={e=>u('height',e.target.value)}/></div>
       <div><label>Weight (kg)</label><input type="number" step="0.1" value={test.weight} onChange={e=>u('weight',e.target.value)}/></div>
@@ -4942,11 +4973,11 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
     </div></>}
 
     {show('circ')&&<><div className="hr"/>
-    <h3 style={H3}>📏 Circumference Measurements (cm)</h3>
+    <h3 style={H3}>Body Circumference (cm)</h3>
     <BodyCircumferenceModel test={test} onUpdate={onUpdate} lang={REPORT_LANG}/></>}
 
     {show('posture')&&<><div className="hr"/>
-    <h3 style={H3}>🧍 Static Posture Assessment</h3>
+    <h3 style={H3}>Static Posture</h3>
     <div className="grid cols-2">
       <div className="row" style={{gap:16,alignItems:'flex-start',justifyContent:'center',padding:'8px 0'}}>
         <PhotoCell photo={test.posture?.frontPhoto} onChange={v=>uN('posture','frontPhoto',v)} label="Front"/>
@@ -4956,10 +4987,10 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
       <div><label>Observations</label><textarea value={test.posture?.observations||''} onChange={e=>uN('posture','observations',e.target.value)} placeholder="Alignment, asymmetries, postural deviations…" style={{minHeight:100}}/></div>
     </div></>}
 
-    {show('mobility')&&<><div className="hr"/>
-    <h3 style={H3}>🤸 Mobility — ASLR & Ankle Dorsiflexion</h3>
+    {(show('aslr')||show('ankleDF'))&&<><div className="hr"/>
+    <h3 style={H3}>Mobility</h3>
     <div className="grid cols-2" style={{marginBottom:14}}>
-      <div>
+      {show('aslr')&&<div>
         <label>Active Straight Leg Raise (FMS 0-3)</label>
         <div className="row">
           <div style={{flex:1}}>
@@ -4976,8 +5007,8 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
           </div>
         </div>
         {aslrAsym&&aslrAsym.diff>0&&<div className="help" style={{marginTop:4,color:'var(--warn)'}}>Asymmetry: {aslrAsym.diff} point(s)</div>}
-      </div>
-      <div>
+      </div>}
+      {show('ankleDF')&&<div>
         <label>Ankle Dorsiflexion (°)</label>
         <div className="row">
           <div style={{flex:1}}>
@@ -4990,11 +5021,11 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
           </div>
         </div>
         {asym&&<div className="help" style={{marginTop:4}}>Asymmetry: <strong style={{color:asym.pct>10?'var(--red)':asym.pct>5?'var(--warn)':'var(--green)'}}>{asym.diff.toFixed(1)}° ({asym.pct.toFixed(1)}%)</strong></div>}
-      </div>
+      </div>}
     </div></>}
 
     {show('ohs')&&<><div className="hr"/>
-    <h3 style={H3}>🏋️ Overhead Squat Assessment</h3>
+    <h3 style={H3}>Overhead Squat Test</h3>
     <div className="row" style={{marginBottom:14,gap:18,flexWrap:'wrap'}}>
       <div style={{maxWidth:280,flex:'0 1 280px'}}>
         <label>OHS Score (FMS 0-3)</label>
@@ -5031,7 +5062,7 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
     </div></>}
 
     {show('sprint')&&<><div className="hr"/>
-    <h3 style={H3}>⚡ 20m Sprint Analysis</h3>
+    <h3 style={H3}>20m Sprint Analysis</h3>
     <div className="row" style={{marginBottom:14,gap:18}}>
       <div style={{maxWidth:200}}><label>20m Sprint Time (s)</label><input type="number" step="0.01" value={test.sprint20m?.time||''} onChange={e=>uN('sprint20m','time',e.target.value)}/></div>
     </div>
@@ -5055,25 +5086,30 @@ function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
       </div>
     </div></>}
 
-    {show('power')&&<><div className="hr"/>
-    <h3 style={H3}>🚀 Power Tests</h3>
+    {(show('verticalJump')||show('cmj')||show('squatJump')||show('dropJump')||show('horizontalJump'))&&<><div className="hr"/>
+    <h3 style={H3}>Power / Jump Tests</h3>
     <div className="grid cols-4">
-      <div><label>Vertical Jump (cm)</label><input type="number" step="0.1" value={test.verticalJump||''} onChange={e=>u('verticalJump',e.target.value)}/></div>
-      <div><label>CMJ (cm)</label><input type="number" step="0.1" value={test.cmj||''} onChange={e=>u('cmj',e.target.value)}/></div>
-      <div><label>Drop Jump (RSI)</label><input type="number" step="0.01" value={test.dropJump||''} onChange={e=>u('dropJump',e.target.value)}/><div className="help">Reactive Strength Index = Jump Height / Contact Time</div></div>
-      <div><label>Horizontal Jump (cm)</label><input type="number" step="0.1" value={test.horizontalJump||''} onChange={e=>u('horizontalJump',e.target.value)}/></div>
+      {show('verticalJump')&&<div><label>Vertical Jump (cm)</label><input type="number" step="0.1" value={test.verticalJump||''} onChange={e=>u('verticalJump',e.target.value)}/></div>}
+      {show('cmj')&&<div><label>Counter-Movement Jump (cm)</label><input type="number" step="0.1" value={test.cmj||''} onChange={e=>u('cmj',e.target.value)}/></div>}
+      {show('squatJump')&&<div><label>Squat Jump (cm)</label><input type="number" step="0.1" value={test.squatJump||''} onChange={e=>u('squatJump',e.target.value)}/><div className="help">Concentric-only jump from a paused squat</div></div>}
+      {show('horizontalJump')&&<div><label>Horizontal Jump (cm)</label><input type="number" step="0.1" value={test.horizontalJump||''} onChange={e=>u('horizontalJump',e.target.value)}/></div>}
+      {show('dropJump')&&<div><label>Drop Jump (RSI)</label><input type="number" step="0.01" value={test.dropJump||''} onChange={e=>u('dropJump',e.target.value)}/><div className="help">Reactive Strength Index = Jump Height / Contact Time</div></div>}
     </div></>}
 
-    {show('agility')&&<><div className="hr"/>
-    <h3 style={H3}>🏃‍♂️ Agility</h3>
-    <div className="grid cols-2">
-      <div><label>Agility T-Test (s)</label><input type="number" step="0.01" value={test.tTest||''} onChange={e=>u('tTest',e.target.value)}/></div>
+    {(show('tTest')||show('fiveZeroFive')||show('shuttleRun'))&&<><div className="hr"/>
+    <h3 style={H3}>Agility / Conditioning</h3>
+    <div className="grid cols-4">
+      {show('tTest')&&<div><label>T-Agility (s)</label><input type="number" step="0.01" value={test.tTest||''} onChange={e=>u('tTest',e.target.value)}/></div>}
+      {show('fiveZeroFive')&&<div><label>5-0-5 (s)</label><input type="number" step="0.01" value={test.fiveZeroFive||''} onChange={e=>u('fiveZeroFive',e.target.value)}/><div className="help">Change-of-direction speed</div></div>}
+      {show('shuttleRun')&&<div><label>Shuttle Run (s)</label><input type="number" step="0.01" value={test.shuttleRun||''} onChange={e=>u('shuttleRun',e.target.value)}/><div className="help">Aerobic / anaerobic (20m beep, Yo-Yo IR)</div></div>}
     </div></>}
 
-    {show('endurance')&&<><div className="hr"/>
-    <h3 style={H3}>🫁 Endurance / Conditioning</h3>
-    <div className="grid cols-2">
-      <div><label>Shuttle Run (s)</label><input type="number" step="0.01" value={test.shuttleRun||''} onChange={e=>u('shuttleRun',e.target.value)}/><div className="help">Aerobic / anaerobic capacity (e.g., 20m beep test, Yo-Yo IR)</div></div>
+    {cTests.filter(c=>show(c.id)).length>0&&<><div className="hr"/>
+    <h3 style={H3}>Custom Tests</h3>
+    <div className="grid cols-3">
+      {cTests.filter(c=>show(c.id)).map(c=>(
+        <div key={c.id}><label>{c.name}</label><input value={(test.custom&&test.custom[c.id])||''} onChange={e=>setCustom(c.id,e.target.value)} placeholder="Result / note…"/></div>
+      ))}
     </div></>}
 
     <div className="hr"/>
@@ -5249,9 +5285,14 @@ function TestPanel({ath,updAth,setup}){
    Player grid → pick which tests to administer (any test, any age) →
    "Take Test" creates a battery-scoped test record → battery-aware editor.
    ========================================================= */
-function EvaluationView({team,updateTeam}){
+function EvaluationView({team,updateTeam,data,setData}){
   const setup=team.setup;const athletes=team.athletes||[];
   const lang=REPORT_LANG;const Lx=(tr,en)=>lang==='en'?en:tr;
+  const customTests=Array.isArray(data?.customTests)?data.customTests:[];
+  // Full pickable catalog = built-in tests + this coach's own custom tests.
+  const fullCatalog=[...TEST_CATALOG.map(c=>({id:c.id,name:c.name,custom:false})),
+                     ...customTests.map(c=>({id:c.id,name:c.name,custom:true}))];
+  const catName=id=>{const c=fullCatalog.find(x=>x.id===id);return c?c.name:id;};
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
@@ -5265,10 +5306,22 @@ function EvaluationView({team,updateTeam}){
   const initials=name=>(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const ageOf=a=>{if(!a?.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
   const toggle=id=>setPick(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  const addCustom=()=>{
+    const name=(prompt(Lx('Yeni testin adı:','Name of the new test:'))||'').trim();
+    if(!name)return;
+    const c={id:'ct_'+uid(),name};
+    setData({...data,customTests:[...customTests,c]});
+    setPick(p=>new Set([...p,c.id]));
+  };
+  const delCustom=id=>{
+    if(!confirm(Lx('Bu özel testi listeden kaldır?','Remove this custom test from the list?')))return;
+    setData({...data,customTests:customTests.filter(c=>c.id!==id)});
+    setPick(p=>{const n=new Set(p);n.delete(id);return n;});
+  };
   const takeTest=()=>{
     if(!ath){alert(Lx('Önce bir sporcu seç.','Select an athlete first.'));return;}
     if(pick.size===0){alert(Lx('En az bir test seç.','Pick at least one test.'));return;}
-    const ids=TEST_CATALOG.filter(c=>pick.has(c.id)).map(c=>c.id);
+    const ids=fullCatalog.filter(c=>pick.has(c.id)).map(c=>c.id);
     const t={...makeTest(period),date,year:parseD(date).getFullYear(),battery:ids};
     updAth(ath.id,{tests:[...tests,t]});
     setEditingId(t.id);
@@ -5302,23 +5355,24 @@ function EvaluationView({team,updateTeam}){
       {/* Alınacak Test — pick the battery */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
-          <h2 style={{margin:0}}>🎯 {Lx('Alınacak Test','Test to Administer')} — <span style={{color:'var(--accent)'}}>{ath.name}</span></h2>
+          <h2 style={{margin:0}}>{Lx('Alınacak Test','Test to Administer')} — <span style={{color:'var(--accent)'}}>{ath.name}</span></h2>
           <div className="row" style={{gap:6}}>
-            <button className="btn xs sec" onClick={()=>setPick(new Set(TEST_CATALOG.map(c=>c.id)))}>{Lx('Tümünü seç','Select all')}</button>
+            <button className="btn xs sec" onClick={()=>setPick(new Set(fullCatalog.map(c=>c.id)))}>{Lx('Tümünü seç','Select all')}</button>
             <button className="btn xs sec" onClick={()=>setPick(new Set())}>{Lx('Temizle','Clear')}</button>
           </div>
         </div>
         <div className="help" style={{marginBottom:14}}>{Lx('Bu sporcu için uygulamak istediğin testleri seç — yaş sınırı yok, her sporcu için istediğin bataryayı oluşturabilirsin.','Pick the tests you want for this athlete — no age limit, build any battery for any athlete.')}</div>
         <div className="tpick">
-          {TEST_CATALOG.map(c=>{const on=pick.has(c.id);
+          {fullCatalog.map(c=>{const on=pick.has(c.id);
             return(<div key={c.id} className={'tpc'+(on?' on':'')} onClick={()=>toggle(c.id)}>
-              <div className="tpc-ic">{c.ic}</div>
-              <div style={{minWidth:0}}>
-                <div className="tpc-t">{Lx(c.tr,c.en)}</div>
-                <div className="tpc-d">{c.d}</div>
-              </div>
+              {c.custom&&<div className="tpc-tag">{Lx('özel','custom')}</div>}
+              <div className="tpc-t">{c.name}</div>
               <div className="tpc-chk">{on?'✓':''}</div>
+              {c.custom&&<button className="tpc-del" title={Lx('Sil','Remove')} onClick={e=>{e.stopPropagation();delCustom(c.id);}}>✕</button>}
             </div>);})}
+          <div className="tpc add" onClick={addCustom}>
+            <div className="tpc-t">＋ {Lx('Test Ekle','Add Test')}</div>
+          </div>
         </div>
         <div className="row" style={{marginTop:16,gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
           <div><label style={{fontSize:11}}>{Lx('Test tarihi','Test date')}</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:150}}/></div>
@@ -5330,28 +5384,29 @@ function EvaluationView({team,updateTeam}){
 
       {/* Existing tests */}
       <div className="panel">
-        <h2 style={{marginTop:0}}>📋 {Lx('Test Sonuçları','Test Results')} <span style={{fontSize:12,color:'var(--muted)',fontWeight:400}}>({tests.length})</span></h2>
+        <h2 style={{marginTop:0}}>{Lx('Test Sonuçları','Test Results')} <span style={{fontSize:12,color:'var(--muted)',fontWeight:400}}>({tests.length})</span></h2>
         {tests.length===0&&<div className="empty-st">{Lx('Bu sporcu için henüz test yok. Yukarıdan test seçip "Test Al"a bas.','No tests yet. Pick tests above and press "Take Test".')}</div>}
         {tests.length>0&&<div className="ath-grid">
           {[...tests].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>{
-            const isEd=editingId===t.id;const bat=Array.isArray(t.battery)?t.battery:TEST_CATALOG.map(c=>c.id);
+            const isEd=editingId===t.id;const bat=Array.isArray(t.battery)?t.battery:fullCatalog.map(c=>c.id);
             return(<div key={t.id} className="ath-card" style={{flexDirection:'column',alignItems:'stretch',cursor:'default',borderColor:isEd?'var(--accent)':'var(--border)'}}>
-              <div className="row" style={{justifyContent:'space-between',marginBottom:6}}>
+              <div className="row" style={{justifyContent:'space-between',marginBottom:8}}>
                 <div><strong style={{fontSize:14}}>{fd(t.date)}</strong>
-                  <div style={{fontSize:11,color:'var(--muted)'}}>{TEST_PERIODS.find(p=>p.id===t.period)?.label} · {t.year}</div></div>
+                  <div style={{fontSize:11,color:'var(--muted)'}}>{TEST_PERIODS.find(p=>p.id===t.period)?.label} · {t.year} · {bat.length} {Lx('test','tests')}</div></div>
                 <div className="row" style={{gap:4}}>
                   <button className="btn xs sec" onClick={()=>setEditingId(isEd?null:t.id)}>{isEd?Lx('Kapat','Close'):Lx('Aç','Open')}</button>
                   <button className="btn xs danger" onClick={()=>delTest(t.id)}>✕</button>
                 </div>
               </div>
-              <div className="row" style={{gap:4,flexWrap:'wrap'}}>
-                {bat.map(id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?<span key={id} title={Lx(c.tr,c.en)} style={{fontSize:14}}>{c.ic}</span>:null;})}
+              <div className="bat-tags">
+                {expandBattery(bat).map(id=>{const c=TEST_CATALOG.find(x=>x.id===id)||customTests.find(x=>x.id===id);
+                  return c?<span key={id} className="bat-tag" title={c.name}>{c.short||c.name}</span>:null;})}
               </div>
             </div>);})}
         </div>}
       </div>
 
-      {editing&&<TestEditor test={editing} ath={ath} setup={setup} battery={editing.battery} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
+      {editing&&<TestEditor test={editing} ath={ath} setup={setup} battery={editing.battery} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
 
       {/* Progression charts */}
       {(()=>{const ts=[...tests].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
@@ -5360,15 +5415,18 @@ function EvaluationView({team,updateTeam}){
         const cards=[
           {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
           {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#f97316',dot:'#fb923c'},
+          {t:'Squat Jump',u:'cm',f:t=>Number(t.squatJump),up:true,col:'#eab308',dot:'#facc15'},
+          {t:'Horizontal Jump',u:'cm',f:t=>Number(t.horizontalJump),up:true,col:'#10b981',dot:'#34d399'},
           {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
-          {t:'T-Test',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
+          {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
+          {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
           {t:'Weight',u:'kg',f:t=>Number(t.weight),up:null,col:'#3b82f6',dot:'#60a5fa'},
           {t:'Body Fat',u:'%',f:t=>Number(t.bodyFat),up:false,col:'#06b6d4',dot:'#22d3ee'},
         ];
         const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
         if(!haveAny)return null;
         const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-        return(<div className="panel"><h2 style={{marginTop:0}}>📈 {Lx('Gelişim','Progression')}</h2><div className="metric-grid">
+        return(<div className="panel"><h2 style={{marginTop:0}}>{Lx('Gelişim','Progression')}</h2><div className="metric-grid">
           {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
             const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
             const cur=valid[valid.length-1],first=valid[0];
@@ -8250,7 +8308,7 @@ function App(){
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
       {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
-      {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam}/>}
+      {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
