@@ -457,9 +457,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .cs-more{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
 .calm-cell .mau{margin-top:auto;text-align:right;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6b8aff;font-weight:700}
 .calm-cell .mau small{font-size:8px;color:var(--dim);font-weight:500;margin-left:2px}
-.calm-legend{display:flex;gap:22px;margin-top:18px;padding-top:15px;border-top:1px solid var(--border);flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.calm-legend span{display:flex;align-items:center;gap:7px}
-.calm-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
 /* Season — top stat row, macrocycle bar, weekly bars, phase list */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 @media(max-width:760px){.stat-row{grid-template-columns:1fr 1fr}}
@@ -3208,6 +3205,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
+  const[calMode,setCalMode]=useState('month');   // single calendar: 'week' (rich strip) | 'month' (grid)
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
   const canEdit=typeof saveDays==='function';
@@ -3364,17 +3362,37 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const fmtRange=()=>{const ws=weekStart,we=weekEnd;
     if(ws.getMonth()===we.getMonth())return`${ws.getDate()} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;
     return`${ws.getDate()} ${MN[ws.getMonth()]} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;};
+  // ---- Month view (grid) — same single card, toggled from the header ----
+  const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
+  const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
+  const goToday=()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});setMonthRef(new Date(today.getFullYear(),today.getMonth(),1));};
+  // Session bar colour — identical to the weekly cards (custom s.color, else load-type colour).
+  const sesColor=s=>s.color||ltColor(ltCls(s.loadType));
+  // Full weeks: pad leading days from the previous month and trailing from the next.
+  const monthCells=(()=>{const first=new Date(yr,mo,1);const off=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();const a=[];
+    for(let i=off;i>0;i--)a.push({d:new Date(yr,mo,1-i),out:true});
+    for(let d=1;d<=dim;d++)a.push({d:new Date(yr,mo,d),out:false});
+    while(a.length%7!==0){const l=a[a.length-1].d;a.push({d:new Date(l.getFullYear(),l.getMonth(),l.getDate()+1),out:true});}
+    return a;})();
+  const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
   return(<div className="panel">
-    <div className="calw-toolbar">
-      <div className="nav-arrows">
-        <button onClick={()=>setWeek(-1)}>‹</button>
-        <button onClick={()=>setWeek(1)}>›</button>
+    <div className="calm-bar">
+      <div className="calm-ttl"><span>Program Block</span><em>{calMode==='week'?'weekly overview':'monthly overview'}</em></div>
+      <div className="calm-ctrl">
+        <div className="calm-seg">
+          <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>Week</button>
+          <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>Month</button>
+        </div>
+        {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title="Weekly plan export (A4 landscape)">⎙ Print week</button>}
+        <div className="calm-nav">
+          <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title="Geri">‹</button>
+          <button className="td" onClick={goToday}>Today</button>
+          <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title="İleri">›</button>
+        </div>
       </div>
-      <div className="wk">{fmtRange()}</div>
-      <div style={{flex:1}}/>
-      {canEdit&&<button className="btn sec sm" onClick={printWeek} title="Weekly plan export (A4 landscape)">⎙ Print week</button>}
-      <button className="btn sec sm" onClick={()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});}}>Today</button>
     </div>
+    {calMode==='week'?<>
+    <div className="calm-month">{fmtRange()}</div>
     {canEdit&&<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>}
     <div className="calw-grid">
       {dayCells.map((d,i)=>{
@@ -3410,6 +3428,25 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>);
       })}
     </div>
+    </>:<>
+    <div className="calm-month">{MN[mo]} {yr}</div>
+    <div className="calm-grid">
+      {DN.map(d=><div key={d} className="calm-dow">{d}</div>)}
+      {monthCells.map((c,i)=>{
+        const d=c.d;const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
+        const isToday=k===fmt(today);const isSel=k===selected.date;
+        const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
+        return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>pickMonth(k)} title="Planla">
+          <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
+          {ss.length>0&&<div className="csess">
+            {ss.slice(0,2).map((s,j)=><div key={j} className="cs-item" style={{borderLeftColor:sesColor(s)}} title={s.name||'Session'}>{s.name||'Session'}</div>)}
+            {ss.length>2&&<div className="cs-more">+{ss.length-2} more</div>}
+          </div>}
+          {au>0&&<div className="mau">{Math.round(au)}<small>AU</small></div>}
+        </div>);
+      })}
+    </div>
+    </>}
     {drawerSes&&(<>
       <div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>
       <aside className="dw">
@@ -3533,73 +3570,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
       </aside>
     </>)}
-    <MonthCalendar days={days} monthRef={monthRef} setMonthRef={setMonthRef} weekStart={weekStart} weekEnd={weekEnd}
-      weeks={weeks} ltCls={ltCls} ltColor={ltColor} selectedKey={selected.date}
-      onPick={k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);}}/>
-  </div>);
-}
-
-function MonthCalendar({days,monthRef,setMonthRef,weekStart,weekEnd,weeks,ltCls,ltColor,onPick,selectedKey}){
-  const[view,setView]=useState('month');
-  const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
-  const first=new Date(yr,mo,1);const offset=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();
-  // Build full weeks: pad leading days from the previous month and trailing days from
-  // the next, so every row is complete (out-of-month days render dimmed).
-  const cells=[];
-  for(let i=offset;i>0;i--)cells.push({d:new Date(yr,mo,1-i),out:true});
-  for(let d=1;d<=dim;d++)cells.push({d:new Date(yr,mo,d),out:false});
-  while(cells.length%7!==0){const l=cells[cells.length-1].d;cells.push({d:new Date(l.getFullYear(),l.getMonth(),l.getDate()+1),out:true});}
-  const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
-  const goToday=()=>setMonthRef(new Date(today.getFullYear(),today.getMonth(),1));
-  // Week view → just the selected week's 7 days (same cell design).
-  const weekCells=Array.from({length:7},(_,i)=>{const d=addD(weekStart,i);return{d,out:d.getMonth()!==mo};});
-  const list=view==='week'?weekCells:cells;
-  // Colour a session bar by its load type, matching the legend below.
-  const barColor=s=>{const x=(s.loadType||'').toLowerCase(),p=(s.purpose||'').toLowerCase(),n=(s.name||'').toLowerCase();
-    if(p.includes('recovery')||n.includes('recovery')||n.includes('toparlan')||n.includes('regener')||x.includes('cognitive'))return'#22c55e';
-    if(x.includes('mechanical'))return'#8b5cf6';
-    if(x.includes('metabolic'))return'#06b6d4';
-    if(x.includes('neuromuscular'))return'#f97316';
-    return s.color||'#6b8aff';};
-  return(<div className="calm-wrap">
-    <div className="calm-bar">
-      <div className="calm-ttl"><span>Program Block</span><em>monthly overview</em></div>
-      <div className="calm-ctrl">
-        <div className="calm-seg">
-          <button className={view==='week'?'on':''} onClick={()=>setView('week')}>Week</button>
-          <button className={view==='month'?'on':''} onClick={()=>setView('month')}>Month</button>
-        </div>
-        <div className="calm-nav">
-          <button onClick={()=>setMo(-1)} title="Önceki ay">‹</button>
-          <button className="td" onClick={goToday}>Today</button>
-          <button onClick={()=>setMo(1)} title="Sonraki ay">›</button>
-        </div>
-      </div>
-    </div>
-    <div className="calm-month">{MN[mo]} {yr}</div>
-    <div className="calm-grid">
-      {DN.map(d=><div key={d} className="calm-dow">{d}</div>)}
-      {list.map((c,i)=>{
-        const d=c.d;const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
-        const isToday=k===fmt(today);
-        const isSel=selectedKey&&k===selectedKey;
-        const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
-        return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>onPick(k)} title="Planla">
-          <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
-          {ss.length>0&&<div className="csess">
-            {ss.slice(0,2).map((s,j)=><div key={j} className="cs-item" style={{borderLeftColor:barColor(s)}} title={s.name||'Session'}>{s.name||'Session'}</div>)}
-            {ss.length>2&&<div className="cs-more">+{ss.length-2} more</div>}
-          </div>}
-          {au>0&&<div className="mau">{Math.round(au)}<small>AU</small></div>}
-        </div>);
-      })}
-    </div>
-    <div className="calm-legend">
-      <span><i style={{background:'#8b5cf6'}}/>Mechanical load</span>
-      <span><i style={{background:'#06b6d4'}}/>Metabolic load</span>
-      <span><i style={{background:'#f97316'}}/>Neuromuscular load</span>
-      <span><i style={{background:'#22c55e'}}/>Recovery</span>
-    </div>
   </div>);
 }
 
