@@ -2098,6 +2098,35 @@ const barGlow={
   },
   afterDatasetDraw(chart){chart.ctx.restore();}
 };
+/* Fully-rounded, gapped stacked bars — Chart.js won't round the inner corners of
+   stacked segments, so we draw the bars ourselves. Datasets keep a transparent fill
+   (Chart.js still computes geometry for labels/tooltips) and a `solidColor` we paint.
+   Runs in beforeDatasetsDraw so the value labels still render on top. */
+function roundRectPath(ctx,x,y,w,h,r){r=Math.max(0,Math.min(r,w/2,h/2));ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+const roundBars={
+  id:'roundBars',
+  beforeDatasetsDraw(chart){
+    const ctx=chart.ctx;const GAP=4,R=9;
+    chart.data.datasets.forEach((ds,di)=>{
+      const meta=chart.getDatasetMeta(di);
+      if(!meta||meta.hidden||!ds.solidColor)return;
+      const active=new Set((chart.getActiveElements()||[]).filter(a=>a.datasetIndex===di).map(a=>a.index));
+      (meta.data||[]).forEach((bar,i)=>{
+        const v=Number(ds.data[i])||0;if(v<=0)return;
+        const p=bar.getProps(['x','y','base','width'],true);
+        const w=p.width;const x=p.x-w/2;
+        let top=Math.min(p.y,p.base);const bot=Math.max(p.y,p.base);
+        top+=GAP;const h=bot-top;if(h<=1)return;
+        ctx.save();
+        ctx.shadowColor=ds.solidColor;ctx.shadowBlur=11;ctx.shadowOffsetX=0;ctx.shadowOffsetY=2;
+        ctx.fillStyle=active.has(i)&&ds.hoverSolidColor?ds.hoverSolidColor:ds.solidColor;
+        roundRectPath(ctx,x,top,w,h,R);
+        ctx.fill();
+        ctx.restore();
+      });
+    });
+  }
+};
 
 /* Dependency-free weekly chart (inline SVG). Measures its own container and
    draws at exact pixel size, so unlike the Chart.js canvas it can never end up
@@ -5635,15 +5664,16 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             </div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice',data:tpVals,backgroundColor:'rgb(245,147,40)',hoverBackgroundColor:'rgb(255,166,74)',borderColor:'transparent',borderWidth:2,stack:'load',borderSkipped:false,enableBorderRadius:true,borderRadius:9,maxBarThickness:74,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C',data:scVals,backgroundColor:'rgb(26,168,95)',hoverBackgroundColor:'rgb(38,190,114)',borderColor:'transparent',borderWidth:2,stack:'load',borderSkipped:false,enableBorderRadius:true,borderRadius:9,maxBarThickness:74,datalabels:rpeMid(scRPEs)},
-                {label:'Game',data:gmVals,backgroundColor:'rgb(239,68,68)',hoverBackgroundColor:'rgb(248,100,100)',borderColor:'transparent',borderWidth:2,stack:'load',borderSkipped:false,enableBorderRadius:true,borderRadius:9,maxBarThickness:74,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
-              ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
+                {label:'Team Practice',data:tpVals,backgroundColor:'transparent',solidColor:'rgb(245,147,40)',hoverSolidColor:'rgb(255,166,74)',stack:'load',maxBarThickness:74,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C',data:scVals,backgroundColor:'transparent',solidColor:'rgb(26,168,95)',hoverSolidColor:'rgb(38,190,114)',stack:'load',maxBarThickness:74,datalabels:rpeMid(scRPEs)},
+                {label:'Game',data:gmVals,backgroundColor:'transparent',solidColor:'rgb(239,68,68)',hoverSolidColor:'rgb(248,100,100)',stack:'load',maxBarThickness:74,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+              ]}} plugins={[roundBars]} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
-                plugins:{legend:{position:'top',align:'end',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12,weight:'500'}}},
+                plugins:{legend:{position:'top',align:'end',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12,weight:'500'},generateLabels:chart=>chart.data.datasets.map((ds,i)=>({text:ds.label,fillStyle:ds.solidColor,strokeStyle:ds.solidColor,lineWidth:0,pointStyle:'circle',hidden:!chart.isDatasetVisible(i),datasetIndex:i}))}},
                   tooltip:{enabled:true,mode:'nearest',intersect:true,backgroundColor:'rgba(18,20,25,.94)',borderColor:'rgba(255,255,255,.14)',borderWidth:1,cornerRadius:10,padding:{top:9,bottom:9,left:12,right:12},displayColors:true,boxPadding:5,caretSize:6,titleColor:'#eef1f5',bodyColor:'#cdd3dc',footerColor:'#8b94a3',titleFont:{family:'Space Grotesk',size:13,weight:'700'},bodyFont:{family:'IBM Plex Mono',size:12},footerFont:{family:'IBM Plex Mono',size:10,weight:'400'},
-                    callbacks:{title:items=>{const it=items[0];if(!it)return'';const nm=namesFor(it.datasetIndex,it.dataIndex);return nm.length?nm.join(' · '):(SRC_LABELS[it.datasetIndex]||it.dataset.label);},
+                    callbacks:{labelColor:ctx=>({backgroundColor:ctx.dataset.solidColor,borderColor:ctx.dataset.solidColor,borderWidth:0,borderRadius:3}),
+                      title:items=>{const it=items[0];if(!it)return'';const nm=namesFor(it.datasetIndex,it.dataIndex);return nm.length?nm.join(' · '):(SRC_LABELS[it.datasetIndex]||it.dataset.label);},
                       label:ctx=>{const r=rpeByDs[ctx.datasetIndex]&&rpeByDs[ctx.datasetIndex][ctx.dataIndex];const au=Math.round(ctx.parsed.y);return '  '+(SRC_LABELS[ctx.datasetIndex]||'')+' · '+au.toLocaleString()+' AU'+(r!=null?' · RPE '+fmtRPE(r):'');},
                       footer:items=>{const it=items[0];return it?labels[it.dataIndex]:'';}}}}}}/>:
               <div className="empty-st">No sRPE entries this week — try ‹ Week / Week › or click Latest.</div>}
