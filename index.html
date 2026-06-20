@@ -5914,7 +5914,8 @@ function TeamsPanel({data,setData}){
    ========================================================= */
 const NORM=s=>(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');
 
-async function performTallySync(workerUrl,team){
+async function performTallySync(workerUrl,team,opts={}){
+  const autoCreate=!!opts.autoCreate;
   const base=workerUrl.replace(/\/+$/,'');
   // Guard against the most common mistakes before we even fetch.
   if(/tally\.so/i.test(base))
@@ -5940,13 +5941,17 @@ async function performTallySync(workerUrl,team){
     srpeLog:[...(a.srpeLog||[])],
   }));
   const stats={sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
-    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,athletesMatched:new Set(),namesSeen:new Set()};
+    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set()};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
-  const getOrCreate=name=>{
+  // Match an existing athlete by name. New names are auto-created ONLY if the coach
+  // enabled it; otherwise the submission is skipped (and reported) so the roster
+  // never fills up with typos/test names.
+  const getOrMatch=name=>{
     stats.namesSeen.add((name||'').trim());
     let i=findIdx(name);
     if(i===-1){
+      if(!autoCreate){stats.skipped++;stats.skippedNames.add((name||'').trim());return null;}
       athletes.push({id:uid(),name:name.trim(),number:'',
         position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
         dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',
@@ -5964,7 +5969,8 @@ async function performTallySync(workerUrl,team){
     const name=row['Athlete'];
     const date=row['Date']?String(row['Date']).slice(0,10):null;
     if(!name||!date)continue;
-    const ath=getOrCreate(name);
+    const ath=getOrMatch(name);
+    if(!ath)continue;
     const nid=`tally-srpe-${row._id}`;
     const tpRPE=num(row['TP RPE']),    tpDur=num(row['TP Duration']);
     const scRPE=num(row['S&C RPE']),   scDur=num(row['S&C Duration']);
@@ -5991,7 +5997,8 @@ async function performTallySync(workerUrl,team){
     // Strip any time portion: "2026-05-22T10:00:00+03:00" → "2026-05-22"
     const date=row['Date']?String(row['Date']).slice(0,10):null;
     if(!name||!date)continue;
-    const ath=getOrCreate(name);
+    const ath=getOrMatch(name);
+    if(!ath)continue;
     const nid=`tally-w-${row._id}`;
     const i=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
@@ -6009,6 +6016,7 @@ async function performTallySync(workerUrl,team){
   });
   stats.athletesMatched=stats.athletesMatched.size;
   stats.namesSeen=[...stats.namesSeen].filter(Boolean);
+  stats.skippedNames=[...stats.skippedNames].filter(Boolean);
   return{athletes,stats,syncedAt:data.syncedAt||new Date().toISOString()};
 }
 
@@ -6028,7 +6036,7 @@ function TallySync({data,setData,team}){
     if(!cfg.workerUrl){alert('Enter the Worker URL and press Save first.');return;}
     setSyncing(true);setError(null);
     try{
-      const{athletes,stats:s,syncedAt}=await performTallySync(cfg.workerUrl,team);
+      const{athletes,stats:s,syncedAt}=await performTallySync(cfg.workerUrl,team,{autoCreate:!!cfg.autoCreate});
       setData(prev=>({...prev,
         teams:prev.teams.map(t=>t.id===team.id?{...t,athletes,tallySync:{...(t.tallySync||cfg),lastSyncedAt:syncedAt,lastStats:s}}:t)}));
       setStats(s);setLastAt(syncedAt);
@@ -6061,6 +6069,10 @@ function TallySync({data,setData,team}){
           <button className="btn" onClick={()=>saveCfg({workerUrl:url.trim()})}>Save URL</button>
         </div>
       </div>
+      <label className="ath-chip" style={{cursor:'pointer',marginTop:12,display:'inline-flex'}}>
+        <input type="checkbox" checked={!!cfg.autoCreate} onChange={e=>saveCfg({autoCreate:e.target.checked})}/>
+        <span>{cfg.autoCreate?'Eşleşmeyen isimler için yeni sporcu OLUŞTUR':'Yalnızca kadrodaki sporculara yaz (eşleşmeyen isimler atlanır)'}</span>
+      </label>
       <div className="grid cols-3" style={{marginTop:14}}>
         <div>
           <label>Auto-sync</label>
@@ -6105,8 +6117,13 @@ function TallySync({data,setData,team}){
             <tr><td>Wellness entries updated</td><td><strong>{stats.wellnessUpdated}</strong></td></tr>
             <tr><td>Athletes matched to roster</td><td><strong>{stats.athletesMatched}</strong></td></tr>
             <tr><td>Athletes auto-created (new on roster)</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
+            <tr><td>Eşleşmeyip atlanan gönderim</td><td><strong style={{color:stats.skipped>0?'var(--high-t)':'inherit'}}>{stats.skipped||0}</strong></td></tr>
           </tbody>
         </table>
+        {Array.isArray(stats.skippedNames)&&stats.skippedNames.length>0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⏭️ Kadroda bulunmadığı için atlanan isimler: <strong>{stats.skippedNames.join(', ')}</strong>.
+          Bunları almak istersen ya formdaki/kadrodaki adı birebir aynı yap, ya da yukarıdaki <em>"yeni sporcu oluştur"</em> kutusunu işaretle.
+        </div>}
         {(stats.sRPERows===0&&stats.wellnessRows===0)&&<div style={{marginTop:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Worker'a ulaşıldı ama <strong>0 satır</strong> geldi. Olası sebepler: Worker'daki <code>SRPE_FORM</code>/<code>WELLNESS_FORM</code> ID'leri yanlış · formlara henüz cevap gelmemiş · soru başlıkları beklenen adlarla eşleşmiyor. Tarayıcıda <code>…workers.dev/sync</code> açıp <code>sRPE</code>/<code>wellness</code> dizilerinin dolu olup olmadığını gör.
         </div>}
