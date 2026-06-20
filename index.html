@@ -2092,8 +2092,9 @@ const barGlow={
   beforeDatasetDraw(chart,args){
     const ds=chart.data.datasets[args.index];if(!ds)return;
     const ctx=chart.ctx;ctx.save();
-    ctx.shadowColor=(typeof ds.borderColor==='string'?ds.borderColor:'rgba(34,211,238,.7)');
-    ctx.shadowBlur=18;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;
+    const bc=ds.borderColor;
+    ctx.shadowColor=(typeof bc==='string'&&bc!=='transparent')?bc:(typeof ds.backgroundColor==='string'?ds.backgroundColor:'rgba(34,211,238,.6)');
+    ctx.shadowBlur=12;ctx.shadowOffsetX=0;ctx.shadowOffsetY=2;
   },
   afterDatasetDraw(chart){chart.ctx.restore();}
 };
@@ -5612,6 +5613,17 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           const rpeByDs=[tpRPEs,scRPEs,gmRPEs];
           const SRC_LABELS=['Team Practice','S&C','Game'];
           const fmtRPE=x=>x==null?'':(Number(x)%1===0?String(Number(x)):Number(x).toFixed(1));
+          // Real session titles for the hover tooltip — matched from the athlete's calendar
+          // by date + source category (tp / sc / gm), so a bar segment shows the actual
+          // session name(s) (e.g. "Temel Kuvvet & Güç", "Recovery Session"). Falls back to
+          // the source label when no calendar session is found (e.g. Notion-only data).
+          const sesCat=s=>{const lt=(s.loadType||'').toLowerCase(),p=(s.purpose||'').toLowerCase(),n=(s.name||'').toLowerCase();
+            if(s.rpeCat==='game'||p.includes('game')||p.includes('match')||n.includes('maç')||n.includes('match')||n.includes('game'))return'gm';
+            if(s.rpeCat==='sc'||lt.includes('mechanical')||lt.includes('neuromuscular'))return'sc';
+            return'tp';};
+          const namesByDay={};
+          days7.forEach(d=>{const o={tp:[],sc:[],gm:[]};((ath.days&&ath.days[d]&&ath.days[d].sessions)||[]).forEach(s=>{if(s.name)o[sesCat(s)].push(s.name);});namesByDay[d]=o;});
+          const namesFor=(dsIdx,dayIdx)=>{const cat=['tp','sc','gm'][dsIdx];return(namesByDay[days7[dayIdx]]&&namesByDay[days7[dayIdx]][cat])||[];};
           // Middle-of-segment label = that segment's RPE (plain number). Top label = total AU.
           const rpeMid=arr=>({display:ctx=>ctx.dataset.data[ctx.dataIndex]>=50&&arr[ctx.dataIndex]!=null,anchor:'center',align:'center',color:'#fff',font:{weight:'600',size:13},formatter:(v,ctx)=>fmtRPE(arr[ctx.dataIndex])});
           const totalLbl={display:true,align:'end',anchor:'end',color:'#eef1f5',font:{weight:'700',size:12},formatter:(v,ctx)=>{const i=ctx.dataIndex;const t=ctx.chart.data.datasets.reduce((s,ds)=>s+(ds.data[i]||0),0);return t>0?Math.round(t).toLocaleString():'';}};
@@ -5623,16 +5635,16 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             </div>
             <div className="chart-box" style={{marginBottom:12,height:380}}>
               {weekTotal>0?<ChartC type="bar" chartData={{labels,datasets:[
-                {label:'Team Practice',data:tpVals,backgroundColor:glassBar(251,146,60),hoverBackgroundColor:glassBar(251,146,60,.16),borderColor:'rgba(251,146,60,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=11,above=(scVals[i]||0)>0||(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:R,bottomRight:R};},maxBarThickness:76,datalabels:rpeMid(tpRPEs)},
-                {label:'S&C',data:scVals,backgroundColor:glassBar(34,197,94),hoverBackgroundColor:glassBar(34,197,94,.16),borderColor:'rgba(34,197,94,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=11,below=(tpVals[i]||0)>0,above=(gmVals[i]||0)>0;return{topLeft:above?0:R,topRight:above?0:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:rpeMid(scRPEs)},
-                {label:'Game',data:gmVals,backgroundColor:glassBar(239,68,68),hoverBackgroundColor:glassBar(239,68,68,.16),borderColor:'rgba(239,68,68,.9)',borderWidth:1.5,stack:'load',borderSkipped:false,borderRadius:ctx=>{const i=ctx.dataIndex,R=11,below=(tpVals[i]||0)>0||(scVals[i]||0)>0;return{topLeft:R,topRight:R,bottomLeft:below?0:R,bottomRight:below?0:R};},maxBarThickness:76,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
+                {label:'Team Practice',data:tpVals,backgroundColor:'rgb(245,147,40)',hoverBackgroundColor:'rgb(255,166,74)',borderColor:'transparent',borderWidth:{top:2,bottom:2,left:0,right:0},stack:'load',borderSkipped:false,borderRadius:8,maxBarThickness:74,datalabels:rpeMid(tpRPEs)},
+                {label:'S&C',data:scVals,backgroundColor:'rgb(26,168,95)',hoverBackgroundColor:'rgb(38,190,114)',borderColor:'transparent',borderWidth:{top:2,bottom:2,left:0,right:0},stack:'load',borderSkipped:false,borderRadius:8,maxBarThickness:74,datalabels:rpeMid(scRPEs)},
+                {label:'Game',data:gmVals,backgroundColor:'rgb(239,68,68)',hoverBackgroundColor:'rgb(248,100,100)',borderColor:'transparent',borderWidth:{top:2,bottom:2,left:0,right:0},stack:'load',borderSkipped:false,borderRadius:8,maxBarThickness:74,datalabels:{labels:{total:totalLbl,rpe:rpeMid(gmRPEs)}}},
               ]}} plugins={[barGlow]} options={{responsive:true,maintainAspectRatio:false,
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
                 plugins:{legend:{position:'top',align:'end',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12,weight:'500'}}},
                   tooltip:{enabled:true,mode:'nearest',intersect:true,backgroundColor:'rgba(18,20,25,.94)',borderColor:'rgba(255,255,255,.14)',borderWidth:1,cornerRadius:10,padding:{top:9,bottom:9,left:12,right:12},displayColors:true,boxPadding:5,caretSize:6,titleColor:'#eef1f5',bodyColor:'#cdd3dc',footerColor:'#8b94a3',titleFont:{family:'Space Grotesk',size:13,weight:'700'},bodyFont:{family:'IBM Plex Mono',size:12},footerFont:{family:'IBM Plex Mono',size:10,weight:'400'},
-                    callbacks:{title:items=>{const it=items[0];return it?(SRC_LABELS[it.datasetIndex]||it.dataset.label):'';},
-                      label:ctx=>{const r=rpeByDs[ctx.datasetIndex]&&rpeByDs[ctx.datasetIndex][ctx.dataIndex];const au=Math.round(ctx.parsed.y);return '  '+au.toLocaleString()+' AU'+(r!=null?'   ·   RPE '+fmtRPE(r):'');},
+                    callbacks:{title:items=>{const it=items[0];if(!it)return'';const nm=namesFor(it.datasetIndex,it.dataIndex);return nm.length?nm.join(' · '):(SRC_LABELS[it.datasetIndex]||it.dataset.label);},
+                      label:ctx=>{const r=rpeByDs[ctx.datasetIndex]&&rpeByDs[ctx.datasetIndex][ctx.dataIndex];const au=Math.round(ctx.parsed.y);return '  '+(SRC_LABELS[ctx.datasetIndex]||'')+' · '+au.toLocaleString()+' AU'+(r!=null?' · RPE '+fmtRPE(r):'');},
                       footer:items=>{const it=items[0];return it?labels[it.dataIndex]:'';}}}}}}/>:
               <div className="empty-st">No sRPE entries this week — try ‹ Week / Week › or click Latest.</div>}
             </div>
