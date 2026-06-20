@@ -1113,6 +1113,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
 .rc:hover{transform:translateY(-3px);border-color:var(--border2)}
 .rc-num{position:absolute;top:14px;right:18px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
+.rc-del{position:absolute;top:10px;right:10px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid var(--border2);background:rgba(20,22,28,.85);color:var(--muted);font-size:13px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
+.rc:hover .rc-del{opacity:1}
+.rc-del:hover{border-color:var(--high-t);color:var(--high-t);background:rgba(239,68,68,.12)}
 .rc-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 .rc-av{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
 .rc-av.warn{border-color:#f59e0b}.rc-av.bad{border-color:#f43f5e}.rc-av.na{border-color:var(--border2)}
@@ -5864,6 +5867,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
+        <button className="rc-del" title="Sporcuyu sil" onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
           <div className={`rc-av ${rcls}`}>{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
