@@ -1170,6 +1170,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .bcm-u{font-size:10px;color:var(--dim);flex:none}
 .bcm-hint{font-size:11px;color:var(--muted);text-align:center;max-width:420px}
 @media(max-width:380px){.bcm-canvas{transform:scale(.92);transform-origin:top center}}
+/* ===== Testing session — per-test designed cards ===== */
+.tsess-h{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.tsess-av{width:54px;height:68px;border-radius:9px;object-fit:cover;border:2px solid var(--accent)}
+.tsess-avph{width:54px;height:68px;border-radius:9px;background:var(--grad-soft,linear-gradient(135deg,#2a2f37,#171a1f));display:grid;place-items:center;font-size:22px;border:2px solid var(--border2)}
+.tsess-nm{font-size:18px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:-.01em}
+.tsess-meta{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-top:2px}
+.ts-wrap{display:flex;flex-direction:column;gap:16px}
+.tcard{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:border-color .15s,box-shadow .15s}
+.tcard:hover{border-color:var(--border2)}
+.tcard-h{display:flex;align-items:center;gap:11px;padding:12px 18px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.022),transparent)}
+.tcard-ix{width:25px;height:25px;border-radius:7px;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#0a0b0d;flex:none}
+.tcard-nm{font-size:15px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+.tcard-cat{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
+.tcard-body{display:grid;grid-template-columns:300px 1fr}
+.tcard-body.solo{grid-template-columns:1fr}
+.ts-stage{position:relative;display:grid;place-items:center;padding:18px;min-height:228px;border-right:1px solid var(--border);background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.04),transparent 72%),var(--bg2)}
+.ts-fields{padding:20px;display:flex;flex-direction:column;gap:15px;justify-content:center}
+.ts-frow{display:grid;gap:12px}
+.tf-l{display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.tf-in{display:flex;align-items:baseline;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 12px;transition:border-color .12s,box-shadow .12s}
+.tf-in:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tf-in input,.tf-in select{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;padding:0}
+.tf-in select{font-size:14px}
+.tf-u{font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace;flex:none}
+.tf-h{font-size:10.5px;color:var(--dim);margin-top:5px}
+.tf-badge{display:inline-flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;border-radius:7px;padding:4px 9px}
+.ts-pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ts-photos{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.ts-probs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.ts-probs input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:7px 9px;font-size:12px;color:var(--text)}
+@media(max-width:720px){.tcard-body{grid-template-columns:1fr}.ts-stage{border-right:none;border-bottom:1px solid var(--border);min-height:200px}}
 /* Team Body Composition table */
 .tbc-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
 .tbc-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -4913,208 +4944,320 @@ function BodyCircumferenceModel({test,onUpdate,lang}){
 }
 
 /* =========================================================
-   TEST EDITOR — full performance test form
-   `battery` (optional array of TEST_CATALOG ids) limits which sections show.
+   TESTING SESSION — every test renders its own purpose-built,
+   dynamic visual (stopwatch, jump bars, course maps, body-angle
+   models …) instead of a generic form.
    ========================================================= */
-function TestEditor({test,ath,setup,onUpdate,onClose,battery,customTests}){
-  const bat=expandBattery(battery);
-  const show=id=>!Array.isArray(bat)||bat.length===0||bat.includes(id);
-  const cTests=Array.isArray(customTests)?customTests:[];
-  const setCustom=(id,v)=>onUpdate({custom:{...(test.custom||{}),[id]:v}});
+const TEST_THEME={anthro:'#e6ff55',circ:'#e6ff55',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',verticalJump:'#e6ff55',cmj:'#fb923c',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
+
+function TField({label,unit,value,onChange,step,placeholder,hint,text}){
+  return(<div><label className="tf-l">{label}</label>
+    <div className="tf-in"><input type={text?'text':'number'} step={step||'0.1'} inputMode={text?'text':'decimal'} value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'—'}/>{unit&&<span className="tf-u">{unit}</span>}</div>
+    {hint&&<div className="tf-h">{hint}</div>}</div>);
+}
+function TSelect({label,value,onChange,options,hint}){
+  return(<div><label className="tf-l">{label}</label>
+    <div className="tf-in"><select value={value||''} onChange={e=>onChange(e.target.value)}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>
+    {hint&&<div className="tf-h">{hint}</div>}</div>);
+}
+
+/* ---- Per-test stage illustrations (SVG, value-driven) ---- */
+function AnthroStage({bmi,theme}){
+  return(<svg viewBox="0 0 240 210" width="200">
+    <line x1="40" y1="24" x2="40" y2="186" stroke={theme} strokeWidth="2"/>
+    {[0,1,2,3,4,5,6].map(i=>{const y=24+i*27;return<g key={i}><line x1="32" y1={y} x2="40" y2={y} stroke="var(--muted)" strokeWidth="1.3"/><text x="28" y={y+3} textAnchor="end" fontSize="7" fill="var(--muted)" fontFamily="IBM Plex Mono">{210-i*20}</text></g>;})}
+    <g fill="none" stroke="#cfd6e0" strokeWidth="3" strokeLinecap="round">
+      <circle cx="118" cy="50" r="13" fill="#1a1e25"/>
+      <line x1="118" y1="63" x2="118" y2="118"/><line x1="118" y1="74" x2="92" y2="96"/><line x1="118" y1="74" x2="150" y2="88"/>
+      <line x1="118" y1="118" x2="104" y2="166"/><line x1="118" y1="118" x2="132" y2="166"/>
+    </g>
+    <rect x="92" y="170" width="54" height="9" rx="3" fill="#12151b" stroke={theme} strokeWidth="1.3"/>
+    <line x1="40" y1="37" x2="118" y2="37" stroke={theme} strokeWidth="1" strokeDasharray="3 3"/>
+    {bmi&&<g><rect x="158" y="44" width="60" height="34" rx="9" fill="#0a0b0d" stroke={theme}/><text x="188" y="58" textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="IBM Plex Mono">BMI</text><text x="188" y="71" textAnchor="middle" fontSize="13" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{bmi.toFixed(1)}</text></g>}
+  </svg>);
+}
+function PostureStage({theme}){
+  return(<svg viewBox="0 0 200 210" width="178">
+    {[40,70,100,130,160].map(x=><line key={x} x1={x} y1="16" x2={x} y2="194" stroke="rgba(255,255,255,.045)"/>)}
+    {[40,80,120,160].map(y=><line key={y} x1="20" y1={y} x2="180" y2={y} stroke="rgba(255,255,255,.045)"/>)}
+    <line x1="100" y1="14" x2="100" y2="196" stroke={theme} strokeWidth="1.2" strokeDasharray="5 4"/>
+    <line x1="66" y1="66" x2="134" y2="66" stroke={theme} strokeWidth="1" opacity=".5"/>
+    <line x1="74" y1="120" x2="126" y2="120" stroke={theme} strokeWidth="1" opacity=".5"/>
+    <g fill="#1a1e25" stroke="#cfd6e0" strokeWidth="2">
+      <circle cx="100" cy="44" r="14"/>
+      <path d="M70 66 q30 -10 60 0 l-6 56 q-24 8 -48 0 Z"/>
+      <rect x="84" y="120" width="13" height="62" rx="5"/><rect x="103" y="120" width="13" height="62" rx="5"/>
+    </g>
+    <circle cx="100" cy="44" r="2.5" fill={theme}/><circle cx="100" cy="120" r="2.5" fill={theme}/>
+  </svg>);
+}
+function AnkleStage({deg,theme}){
+  const d=Math.max(0,Math.min(55,Number(deg)||0));const ax=120,ay=150,len=80,rad=d*Math.PI/180;
+  const kx=ax-len*Math.sin(rad),ky=ay-len*Math.cos(rad);
+  return(<svg viewBox="0 0 240 200" width="210">
+    <line x1="58" y1="40" x2="58" y2="150" stroke="#cfd6e0" strokeWidth="3"/>
+    {[52,72,92,112,132].map(y=><line key={y} x1="50" y1={y} x2="58" y2={y+6} stroke="var(--muted)" strokeWidth="1"/>)}
+    <line x1="58" y1="150" x2="208" y2="150" stroke="#cfd6e0" strokeWidth="3"/>
+    <line x1="106" y1="150" x2="166" y2="150" stroke="#cfd6e0" strokeWidth="6" strokeLinecap="round"/>
+    <line x1={ax} y1={ay} x2={kx} y2={ky} stroke="#cfd6e0" strokeWidth="6" strokeLinecap="round"/>
+    <line x1={kx} y1={ky} x2={kx-24} y2={ky+8} stroke="#cfd6e0" strokeWidth="6" strokeLinecap="round"/>
+    <circle cx={kx} cy={ky} r="4.5" fill={theme}/>
+    <path d={`M${ax} ${ay-34} A 34 34 0 0 1 ${ax-34*Math.sin(rad)} ${ay-34*Math.cos(rad)}`} fill="none" stroke={theme} strokeWidth="2"/>
+    <rect x="150" y="40" width="58" height="26" rx="8" fill="#0a0b0d" stroke={theme}/>
+    <text x="179" y="51" textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="IBM Plex Mono">DORSIFLEXION</text>
+    <text x="179" y="62" textAnchor="middle" fontSize="12" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{d?d+'°':'—'}</text>
+    <text x="132" y="192" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">KNEE-TO-WALL</text>
+  </svg>);
+}
+function AslrStage({score,theme}){
+  const s=Math.max(0,Math.min(3,Number(score)||0));const ang=18+(s/3)*72,rad=ang*Math.PI/180,len=80;
+  const fx=120+len*Math.cos(rad),fy=152-len*Math.sin(rad);
+  return(<svg viewBox="0 0 240 200" width="210">
+    <line x1="20" y1="162" x2="220" y2="162" stroke="#cfd6e0" strokeWidth="3"/>
+    <circle cx="44" cy="150" r="11" fill="#1a1e25" stroke="#cfd6e0" strokeWidth="2.5"/>
+    <line x1="55" y1="152" x2="120" y2="152" stroke="#cfd6e0" strokeWidth="6" strokeLinecap="round"/>
+    <line x1="120" y1="152" x2="182" y2="156" stroke="#9aa0a8" strokeWidth="6" strokeLinecap="round"/>
+    <line x1="120" y1="152" x2={fx} y2={fy} stroke={theme} strokeWidth="6" strokeLinecap="round"/>
+    <circle cx={fx} cy={fy} r="4.5" fill={theme}/>
+    <path d={`M154 152 A 34 34 0 0 0 ${120+34*Math.cos(rad)} ${152-34*Math.sin(rad)}`} fill="none" stroke={theme} strokeWidth="2"/>
+    <rect x="150" y="40" width="56" height="28" rx="8" fill="#0a0b0d" stroke={theme}/>
+    <text x="178" y="52" textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="IBM Plex Mono">FMS</text>
+    <text x="178" y="64" textAnchor="middle" fontSize="14" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{s||'—'}</text>
+    <text x="120" y="190" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">ACTIVE STRAIGHT LEG RAISE</text>
+  </svg>);
+}
+function OhsStage({theme}){
+  return(<svg viewBox="0 0 200 210" width="168">
+    <line x1="60" y1="24" x2="140" y2="24" stroke={theme} strokeWidth="4" strokeLinecap="round"/>
+    <circle cx="60" cy="24" r="6" fill={theme}/><circle cx="140" cy="24" r="6" fill={theme}/>
+    <g fill="none" stroke="#cfd6e0" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="100" cy="56" r="14" fill="#1a1e25"/>
+      <line x1="100" y1="60" x2="74" y2="26"/><line x1="100" y1="60" x2="126" y2="26"/>
+      <line x1="100" y1="70" x2="100" y2="112"/>
+      <line x1="100" y1="112" x2="74" y2="138"/><line x1="74" y1="138" x2="80" y2="178"/>
+      <line x1="100" y1="112" x2="126" y2="138"/><line x1="126" y1="138" x2="120" y2="178"/>
+    </g>
+    <text x="100" y="200" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">OVERHEAD SQUAT</text>
+  </svg>);
+}
+function VertJumpStage({value,theme,motif}){
+  const max=110,v=Math.max(0,Math.min(max,Number(value)||0)),y0=190,yTop=30;
+  const fillY=y0-(v/max)*(y0-yTop);
+  return(<svg viewBox="0 0 240 210" width="200">
+    <rect x="150" y="30" width="20" height="160" rx="5" fill="#12151b" stroke="var(--border)"/>
+    {v>0&&<rect x="150" y={fillY} width="20" height={y0-fillY} rx="5" fill={theme} opacity=".85"/>}
+    {[0,25,50,75,100].map(t=>{const y=y0-(t/max)*(y0-yTop);return<g key={t}><line x1="170" y1={y} x2="178" y2={y} stroke="var(--muted)" strokeWidth="1"/><text x="182" y={y+3} fontSize="7" fill="var(--muted)" fontFamily="IBM Plex Mono">{t}</text></g>;})}
+    {v>0&&<g><line x1="60" y1={fillY} x2="150" y2={fillY} stroke={theme} strokeWidth="1" strokeDasharray="3 3"/><rect x="22" y={fillY-10} width="40" height="19" rx="5" fill="#0a0b0d" stroke={theme}/><text x="42" y={fillY+3} textAnchor="middle" fontSize="10" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{v}</text></g>}
+    <g fill="none" stroke="#cfd6e0" strokeWidth="3" strokeLinecap="round">
+      <circle cx="95" cy="80" r="11" fill="#1a1e25"/>
+      <line x1="95" y1="91" x2="95" y2="130"/><line x1="95" y1="99" x2="78" y2="72"/><line x1="95" y1="99" x2="112" y2="70"/>
+      <line x1="95" y1="130" x2="84" y2="165"/><line x1="95" y1="130" x2="106" y2="165"/>
+    </g>
+    {motif}
+  </svg>);
+}
+function HorizJumpStage({value,theme}){
+  const max=320,v=Math.max(0,Math.min(max,Number(value)||0)),x0=40,xEnd=210,floor=168;
+  const landX=x0+(v/max)*(xEnd-x0);
+  return(<svg viewBox="0 0 240 200" width="210">
+    <line x1={x0} y1={floor} x2={xEnd} y2={floor} stroke="#cfd6e0" strokeWidth="2"/>
+    {[0,80,160,240,320].map(t=>{const x=x0+(t/max)*(xEnd-x0);return<g key={t}><line x1={x} y1={floor} x2={x} y2={floor+7} stroke="var(--muted)"/><text x={x} y={floor+18} textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="IBM Plex Mono">{t}</text></g>;})}
+    {v>0&&<path d={`M${x0} ${floor} Q ${(x0+landX)/2} ${floor-92} ${landX} ${floor}`} fill="none" stroke={theme} strokeWidth="1.5" strokeDasharray="4 3"/>}
+    {v>0&&<g><line x1={landX} y1={floor-13} x2={landX} y2={floor} stroke={theme} strokeWidth="2"/><rect x={landX-20} y={floor-35} width="40" height="19" rx="5" fill="#0a0b0d" stroke={theme}/><text x={landX} y={floor-22} textAnchor="middle" fontSize="10" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{v}</text></g>}
+    <g fill="none" stroke="#cfd6e0" strokeWidth="3" strokeLinecap="round" transform={`translate(${x0-4},0)`}>
+      <circle cx="10" cy="118" r="9" fill="#1a1e25"/>
+      <line x1="10" y1="127" x2="20" y2="148"/><line x1="10" y1="132" x2="-4" y2="124"/><line x1="10" y1="132" x2="28" y2="120"/>
+      <line x1="20" y1="148" x2="8" y2="166"/><line x1="20" y1="148" x2="32" y2="158"/>
+    </g>
+  </svg>);
+}
+function DropJumpStage({value,theme}){
+  const v=Math.max(0,Math.min(3,Number(value)||0)),pct=v/3,cx=168,cy=138,r=44;
+  const a1=Math.PI*(1+pct),ex=cx+r*Math.cos(a1),ey=cy+r*Math.sin(a1);
+  return(<svg viewBox="0 0 240 200" width="210">
+    <rect x="32" y="98" width="46" height="58" rx="3" fill="#12151b" stroke="var(--border)" strokeWidth="2"/>
+    <text x="55" y="172" textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="IBM Plex Mono">BOX</text>
+    <g fill="none" stroke="#cfd6e0" strokeWidth="3" strokeLinecap="round">
+      <circle cx="55" cy="66" r="9" fill="#1a1e25"/><line x1="55" y1="75" x2="55" y2="94"/><line x1="55" y1="82" x2="44" y2="94"/><line x1="55" y1="82" x2="66" y2="94"/>
+    </g>
+    <path d="M96 78 v34" stroke={theme} strokeWidth="2"/><path d="M96 112 l-4 -7 m4 7 l4 -7" stroke={theme} strokeWidth="2" fill="none"/>
+    <path d="M112 112 v-34" stroke={theme} strokeWidth="2"/><path d="M112 78 l-4 7 m4 -7 l4 7" stroke={theme} strokeWidth="2" fill="none"/>
+    <path d={`M${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}`} fill="none" stroke="#12151b" strokeWidth="8"/>
+    {v>0&&<path d={`M${cx-r} ${cy} A ${r} ${r} 0 0 1 ${ex} ${ey}`} fill="none" stroke={theme} strokeWidth="8" strokeLinecap="round"/>}
+    <text x={cx} y={cy-6} textAnchor="middle" fontSize="17" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{v?v.toFixed(2):'—'}</text>
+    <text x={cx} y={cy+11} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="IBM Plex Mono">RSI</text>
+  </svg>);
+}
+function StopwatchStage({time,theme}){
+  const t=Math.max(0,Number(time)||0),cx=120,cy=116,R=64,ang=(t%6)/6*360,rad=(ang-90)*Math.PI/180;
+  const nx=cx+(R-15)*Math.cos(rad),ny=cy+(R-15)*Math.sin(rad);
+  return(<svg viewBox="0 0 240 210" width="200">
+    <rect x="112" y="30" width="16" height="11" rx="2" fill="#cfd6e0"/><rect x="116" y="21" width="8" height="10" rx="2" fill={theme}/>
+    <rect x="69" y="43" width="9" height="7" rx="2" transform="rotate(-42 73 46)" fill="#9aa0a8"/>
+    <circle cx={cx} cy={cy} r={R+6} fill="#12151b" stroke="#2a2f37" strokeWidth="3"/>
+    <circle cx={cx} cy={cy} r={R} fill="#0a0b0d" stroke={theme} strokeWidth="2"/>
+    {Array.from({length:12}).map((_,i)=>{const a=(i*30-90)*Math.PI/180,r1=R-3,r2=i%2===0?R-11:R-7;return<line key={i} x1={cx+r1*Math.cos(a)} y1={cy+r1*Math.sin(a)} x2={cx+r2*Math.cos(a)} y2={cy+r2*Math.sin(a)} stroke={i%2===0?'#cfd6e0':'var(--muted)'} strokeWidth={i%2===0?2:1}/>;})}
+    <text x={cx} y={cy+32} textAnchor="middle" fontSize="14" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{(t||0).toFixed(2)}s</text>
+    <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={theme} strokeWidth="2.5" strokeLinecap="round"/>
+    <circle cx={cx} cy={cy} r="4" fill={theme}/>
+    <text x={cx} y={202} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">20 METRE SPRINT</text>
+  </svg>);
+}
+function CourseStage({kind,theme,time}){
+  const cone=(x,y,k)=><path key={k} d={`M${x} ${y-8} L${x+6} ${y+4} L${x-6} ${y+4} Z`} fill={theme}/>;
+  const tval=time?Number(time).toFixed(2)+'s':'—';
+  if(kind==='t')return(<svg viewBox="0 0 240 200" width="210">
+    <line x1="58" y1="64" x2="182" y2="64" stroke="var(--border)" strokeWidth="2" strokeDasharray="5 4"/>
+    <line x1="120" y1="64" x2="120" y2="162" stroke="var(--border)" strokeWidth="2" strokeDasharray="5 4"/>
+    <path d="M120 158 L120 72" stroke={theme} strokeWidth="2" fill="none"/><path d="M120 66 l-4 10 m4 -10 l4 10" stroke={theme} strokeWidth="2" fill="none"/>
+    {cone(120,170,'a')}{cone(120,60,'b')}{cone(58,60,'c')}{cone(182,60,'d')}
+    <text x="120" y="118" textAnchor="middle" fontSize="14" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{tval}</text>
+    <text x="120" y="192" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">T-AGILITY DRILL</text>
+  </svg>);
+  if(kind==='505')return(<svg viewBox="0 0 240 190" width="210">
+    <line x1="100" y1="92" x2="100" y2="150" stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="3 3"/>
+    <line x1="172" y1="88" x2="172" y2="154" stroke={theme} strokeWidth="2"/>
+    <path d="M48 110 H176 A12 12 0 0 1 176 134 H48" fill="none" stroke={theme} strokeWidth="2"/>
+    <path d="M56 134 l-10 -4 m10 4 l-10 4" stroke={theme} strokeWidth="2" fill="none"/>
+    {cone(100,122,'a')}{cone(172,122,'b')}
+    <text x="136" y="84" textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="IBM Plex Mono">5m</text>
+    <text x="120" y="64" textAnchor="middle" fontSize="14" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{tval}</text>
+    <text x="120" y="176" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">5-0-5 CHANGE OF DIRECTION</text>
+  </svg>);
+  return(<svg viewBox="0 0 240 190" width="210">
+    <line x1="50" y1="68" x2="50" y2="150" stroke={theme} strokeWidth="2"/><line x1="190" y1="68" x2="190" y2="150" stroke={theme} strokeWidth="2"/>
+    <path d="M50 92 H190 M190 110 H50 M50 128 H190" fill="none" stroke="var(--muted)" strokeWidth="1.5" strokeDasharray="4 3"/>
+    <path d="M196 100 a10 10 0 0 1 0 20" fill="none" stroke={theme} strokeWidth="1.5"/><path d="M201 96 a16 16 0 0 1 0 28" fill="none" stroke={theme} strokeWidth="1" opacity=".55"/>
+    {cone(50,162,'a')}{cone(190,162,'b')}
+    <text x="120" y="56" textAnchor="middle" fontSize="14" fontWeight="700" fill={theme} fontFamily="IBM Plex Mono">{tval}</text>
+    <text x="120" y="182" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">SHUTTLE / BEEP TEST</text>
+  </svg>);
+}
+function CustomStage({theme}){
+  return(<svg viewBox="0 0 200 200" width="150">
+    <rect x="58" y="40" width="84" height="118" rx="12" fill="#12151b" stroke="var(--border)" strokeWidth="2"/>
+    <rect x="84" y="32" width="32" height="16" rx="5" fill={theme}/>
+    <circle cx="100" cy="96" r="26" fill="none" stroke={theme} strokeWidth="3"/><circle cx="100" cy="96" r="13" fill="none" stroke={theme} strokeWidth="2" opacity=".6"/><circle cx="100" cy="96" r="3" fill={theme}/>
+    <text x="100" y="150" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="IBM Plex Mono">CUSTOM TEST</text>
+  </svg>);
+}
+
+function TestCard({id,index,test,onUpdate,custom}){
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
-  const uStep=(stepKey,view,val)=>onUpdate({sprint20m:{...(test.sprint20m||{}),[stepKey]:{...(test.sprint20m?.[stepKey]||{}),[view]:val}}});
-  const asym=useMemo(()=>{
-    const r=Number(test.ankleDF?.right)||0,l=Number(test.ankleDF?.left)||0;
-    if(r===0&&l===0)return null;
-    const diff=Math.abs(r-l),mx=Math.max(r,l);
-    return{diff,pct:mx>0?(diff/mx*100):0};
-  },[test.ankleDF]);
-  const aslrAsym=useMemo(()=>{
-    const r=Number(test.aslr?.right)||0,l=Number(test.aslr?.left)||0;
-    if(r===0&&l===0)return null;
-    return{diff:Math.abs(r-l)};
-  },[test.aslr]);
-
-  const H3={fontSize:14,fontWeight:600,color:'var(--accent2)',marginBottom:10,marginTop:4,fontFamily:'Space Grotesk',letterSpacing:'-0.01em'};
-
-  return(<div className="panel" style={{borderColor:'var(--accent)',boxShadow:'0 0 0 1px rgba(230,255,85,.3)'}}>
-    <div className="row" style={{justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:12}}>
-      <div className="row" style={{gap:14,alignItems:'center'}}>
-        {ath.photo
-          ?<img src={ath.photo} alt={ath.name} style={{width:58,height:74,borderRadius:8,objectFit:'cover',border:'2px solid var(--accent)',boxShadow:'0 0 0 1px var(--bg)'}}/>
-          :<div style={{width:58,height:74,borderRadius:8,background:'var(--grad-soft)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,border:'2px solid var(--border)'}}>👤</div>}
-        <div>
-          <div style={{fontSize:17,fontWeight:700,fontFamily:'Space Grotesk'}}>{ath.name}</div>
-          <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>📋 Test · {fd(test.date)} · {TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period}</div>
-        </div>
+  const theme=TEST_THEME[id]||'#9aa0a8';
+  const cat=TEST_CATALOG.find(c=>c.id===id);
+  const name=custom?custom.name:(cat?cat.name:id);
+  let stage=null,fields=null,solo=false;
+  if(id==='anthro'){const h=Number(test.height)||0,w=Number(test.weight)||0;const bmi=h>0&&w>0?w/((h/100)**2):null;
+    stage=<AnthroStage bmi={bmi} theme={theme}/>;
+    fields=<><div className="ts-pair">
+      <TField label="Height" unit="cm" value={test.height} onChange={v=>u('height',v)}/>
+      <TField label="Weight" unit="kg" value={test.weight} onChange={v=>u('weight',v)}/>
+      <TField label="Wingspan" unit="cm" value={test.wingspan} onChange={v=>u('wingspan',v)}/>
+      <TField label="Body Fat" unit="%" value={test.bodyFat} onChange={v=>u('bodyFat',v)}/>
+    </div>{bmi&&<div className="tf-badge" style={{background:'rgba(230,255,85,.1)',color:theme,alignSelf:'flex-start'}}>BMI {bmi.toFixed(1)}</div>}</>;
+  }else if(id==='circ'){solo=true;
+  }else if(id==='posture'){stage=<PostureStage theme={theme}/>;
+    fields=<><div className="ts-photos">
+      <PhotoCell photo={test.posture?.frontPhoto} onChange={v=>uN('posture','frontPhoto',v)} label="Front" size={90}/>
+      <PhotoCell photo={test.posture?.sidePhoto} onChange={v=>uN('posture','sidePhoto',v)} label="Side" size={90}/>
+      <PhotoCell photo={test.posture?.backPhoto} onChange={v=>uN('posture','backPhoto',v)} label="Back" size={90}/>
+    </div><div><label className="tf-l">Observations</label><textarea value={test.posture?.observations||''} onChange={e=>uN('posture','observations',e.target.value)} placeholder="Alignment, asymmetries, postural deviations…" style={{minHeight:64}}/></div></>;
+  }else if(id==='ankleDF'){const r=Number(test.ankleDF?.right)||0,l=Number(test.ankleDF?.left)||0,diff=Math.abs(r-l);
+    stage=<AnkleStage deg={Math.max(r,l)} theme={theme}/>;
+    fields=<><div className="ts-pair">
+      <TField label="Right" unit="°" value={test.ankleDF?.right} onChange={v=>uN('ankleDF','right',v)}/>
+      <TField label="Left" unit="°" value={test.ankleDF?.left} onChange={v=>uN('ankleDF','left',v)}/>
+    </div>{(r>0||l>0)&&<div className="tf-badge" style={{background:diff>5?'rgba(244,63,94,.12)':'rgba(45,212,167,.12)',color:diff>5?'#f43f5e':'#2dd4a7',alignSelf:'flex-start'}}>{diff>0?`Asimetri ${diff.toFixed(1)}°`:'Simetrik'}</div>}</>;
+  }else if(id==='aslr'){const r=Number(test.aslr?.right)||0,l=Number(test.aslr?.left)||0,diff=Math.abs(r-l);const opt=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
+    stage=<AslrStage score={Math.max(r,l)} theme={theme}/>;
+    fields=<><div className="ts-pair">
+      <TSelect label="Right (FMS)" value={test.aslr?.right} onChange={v=>uN('aslr','right',v)} options={opt}/>
+      <TSelect label="Left (FMS)" value={test.aslr?.left} onChange={v=>uN('aslr','left',v)} options={opt}/>
+    </div>{(r>0||l>0)&&diff>0&&<div className="tf-badge" style={{background:'rgba(245,158,11,.12)',color:'#f59e0b',alignSelf:'flex-start'}}>Asimetri {diff} puan</div>}</>;
+  }else if(id==='ohs'){const opt=[{v:'',l:'—'},{v:'0',l:'0 — Failed (pain)'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Clean'}];
+    stage=<OhsStage theme={theme}/>;
+    fields=<><TSelect label="OHS Score (FMS 0-3)" value={test.ohs?.score} onChange={v=>uN('ohs','score',v)} options={opt}/>
+      <div className="ts-photos">
+        <PhotoCell photo={test.ohs?.frontPhoto} onChange={v=>uN('ohs','frontPhoto',v)} label="Front" size={78}/>
+        <PhotoCell photo={test.ohs?.sidePhoto} onChange={v=>uN('ohs','sidePhoto',v)} label="Side" size={78}/>
+        <PhotoCell photo={test.ohs?.backPhoto} onChange={v=>uN('ohs','backPhoto',v)} label="Back" size={78}/>
       </div>
-      <div className="row" style={{gap:6}}>
-        <button className="btn sm" onClick={()=>{try{generateTestPDF(test,ath,setup);}catch(e){alert('PDF error: '+e.message);}}}>📄 Print Test (A4)</button>
+      <div><label className="tf-l">Compensations</label><div className="ts-probs">
+        {[0,1,2,3,4].map(i=><input key={i} className="ts-prob-in" value={(test.ohs?.problems||[])[i]||''} onChange={e=>{const p=[...((test.ohs?.problems)||['','','','',''])];while(p.length<5)p.push('');p[i]=e.target.value;uN('ohs','problems',p);}} placeholder={`#${i+1}`}/>)}
+      </div></div></>;
+  }else if(id==='verticalJump'||id==='cmj'||id==='squatJump'){
+    const motif=id==='cmj'
+      ?<g><path d="M30 176 q8 9 16 0 q8 -9 16 0" fill="none" stroke={theme} strokeWidth="2"/><text x="46" y="196" textAnchor="middle" fontSize="6.5" fill="var(--muted)" fontFamily="IBM Plex Mono">COUNTER-MOVEMENT</text></g>
+      :id==='squatJump'
+      ?<g><path d="M30 176 h32 M30 176 v-8 M62 176 v-8" stroke={theme} strokeWidth="2" fill="none"/><text x="46" y="196" textAnchor="middle" fontSize="6.5" fill="var(--muted)" fontFamily="IBM Plex Mono">PAUSED SQUAT</text></g>
+      :<g><path d="M46 184 V166 M46 166 l-4 6 M46 166 l4 6" stroke={theme} strokeWidth="2" fill="none"/><text x="46" y="196" textAnchor="middle" fontSize="6.5" fill="var(--muted)" fontFamily="IBM Plex Mono">CONCENTRIC</text></g>;
+    const lbl=id==='verticalJump'?'Vertical Jump':id==='cmj'?'Counter-Movement Jump':'Squat Jump';
+    stage=<VertJumpStage value={test[id]} theme={theme} motif={motif}/>;
+    fields=<TField label={lbl} unit="cm" value={test[id]} onChange={v=>u(id,v)} hint={id==='squatJump'?'Paused squat — yalnızca konsentrik faz.':id==='cmj'?'Dip + patlayıcı yukarı çıkış.':'Standing reach farkı.'}/>;
+  }else if(id==='horizontalJump'){stage=<HorizJumpStage value={test.horizontalJump} theme={theme}/>;
+    fields=<TField label="Horizontal Jump" unit="cm" value={test.horizontalJump} onChange={v=>u('horizontalJump',v)} hint="Broad jump — yatay sıçrama mesafesi."/>;
+  }else if(id==='dropJump'){stage=<DropJumpStage value={test.dropJump} theme={theme}/>;
+    fields=<TField label="Drop Jump (RSI)" step="0.01" value={test.dropJump} onChange={v=>u('dropJump',v)} hint="RSI = Sıçrama yüksekliği / Temas süresi."/>;
+  }else if(id==='sprint'){stage=<StopwatchStage time={test.sprint20m?.time} theme={theme}/>;
+    fields=<><TField label="20m Sprint Time" unit="s" step="0.01" value={test.sprint20m?.time} onChange={v=>uN('sprint20m','time',v)}/>
+      <div><label className="tf-l">Step / foot photos</label><div className="ts-photos">
+        <PhotoCell photo={test.sprint20m?.sideStep1} onChange={v=>uN('sprint20m','sideStep1',v)} label="Step 1" size={64}/>
+        <PhotoCell photo={test.sprint20m?.sideStep2} onChange={v=>uN('sprint20m','sideStep2',v)} label="Step 2" size={64}/>
+        <PhotoCell photo={test.sprint20m?.sideStep3} onChange={v=>uN('sprint20m','sideStep3',v)} label="Step 3" size={64}/>
+        <PhotoCell photo={test.sprint20m?.frontRightFoot} onChange={v=>uN('sprint20m','frontRightFoot',v)} label="R Foot" size={64}/>
+        <PhotoCell photo={test.sprint20m?.frontLeftFoot} onChange={v=>uN('sprint20m','frontLeftFoot',v)} label="L Foot" size={64}/>
+      </div></div></>;
+  }else if(id==='tTest'){stage=<CourseStage kind="t" theme={theme} time={test.tTest}/>;
+    fields=<TField label="T-Agility Time" unit="s" step="0.01" value={test.tTest} onChange={v=>u('tTest',v)}/>;
+  }else if(id==='fiveZeroFive'){stage=<CourseStage kind="505" theme={theme} time={test.fiveZeroFive}/>;
+    fields=<TField label="5-0-5 Time" unit="s" step="0.01" value={test.fiveZeroFive} onChange={v=>u('fiveZeroFive',v)}/>;
+  }else if(id==='shuttleRun'){stage=<CourseStage kind="shuttle" theme={theme} time={test.shuttleRun}/>;
+    fields=<TField label="Shuttle Run" unit="s" step="0.01" value={test.shuttleRun} onChange={v=>u('shuttleRun',v)} hint="20m beep / Yo-Yo IR."/>;
+  }else{stage=<CustomStage theme={theme}/>;
+    fields=<TField label={name} text value={(test.custom&&test.custom[id])||''} onChange={v=>onUpdate({custom:{...(test.custom||{}),[id]:v}})} placeholder="Result / note…"/>;
+  }
+  const tag=custom?'CUSTOM':(cat?cat.short:'');
+  return(<div className="tcard">
+    <div className="tcard-h">
+      <div className="tcard-ix" style={{background:theme}}>{index}</div>
+      <div className="tcard-nm">{name}</div>
+      {tag&&<div className="tcard-cat">{tag}</div>}
+    </div>
+    {solo
+      ?<div className="tcard-body solo"><div style={{padding:18}}><BodyCircumferenceModel test={test} onUpdate={onUpdate} lang={REPORT_LANG}/></div></div>
+      :<div className="tcard-body"><div className="ts-stage">{stage}</div><div className="ts-fields">{fields}</div></div>}
+  </div>);
+}
+
+function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
+  const cTests=Array.isArray(customTests)?customTests:[];
+  const ids=expandBattery(test.battery)||TEST_CATALOG.map(c=>c.id);
+  const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id));
+  const u=(k,v)=>onUpdate({[k]:v});
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  return(<div className="panel" style={{borderColor:'var(--accent)',boxShadow:'0 0 0 1px rgba(230,255,85,.22)'}}>
+    <div className="tsess-h">
+      <div className="row" style={{gap:12,alignItems:'center'}}>
+        {ath.photo?<img className="tsess-av" src={ath.photo} alt=""/>:<div className="tsess-avph">{initials}</div>}
+        <div><div className="tsess-nm">{ath.name}</div><div className="tsess-meta">{valid.length} test · {fd(test.date)}</div></div>
+      </div>
+      <div className="row" style={{gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
+        <div><label style={{fontSize:11}}>Date</label><input type="date" value={test.date} onChange={e=>u('date',e.target.value)} style={{width:150}}/></div>
+        <div><label style={{fontSize:11}}>Period</label><select value={test.period} onChange={e=>u('period',e.target.value)} style={{width:140}}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
+        <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup);}catch(e){alert('PDF error: '+e.message);}}}>⎙ Print</button>
         <button className="btn sm sec" onClick={onClose}>Close ✕</button>
       </div>
     </div>
-
-    {/* Basic */}
-    <div className="grid cols-4">
-      <div><label>Athlete</label><input value={ath.name} readOnly style={{background:'var(--bg2)',color:'var(--muted)',cursor:'not-allowed'}}/></div>
-      <div><label>Test date</label><input type="date" value={test.date} onChange={e=>u('date',e.target.value)}/><div className="help">{fd(test.date)}</div></div>
-      <div><label>Year</label><input type="number" value={test.year} onChange={e=>u('year',+e.target.value||today.getFullYear())}/></div>
-      <div><label>Period</label><select value={test.period} onChange={e=>u('period',e.target.value)}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
-    </div>
-
-    {show('anthro')&&<><div className="hr"/>
-    <h3 style={H3}>Anthropometric Measurement</h3>
-    <div className="grid cols-4">
-      <div><label>Height (cm)</label><input type="number" step="0.1" value={test.height} onChange={e=>u('height',e.target.value)}/></div>
-      <div><label>Weight (kg)</label><input type="number" step="0.1" value={test.weight} onChange={e=>u('weight',e.target.value)}/></div>
-      <div><label>Wingspan (cm)</label><input type="number" step="0.1" value={test.wingspan} onChange={e=>u('wingspan',e.target.value)}/></div>
-      <div><label>Body Fat (%)</label><input type="number" step="0.1" value={test.bodyFat} onChange={e=>u('bodyFat',e.target.value)}/></div>
-    </div></>}
-
-    {show('circ')&&<><div className="hr"/>
-    <h3 style={H3}>Body Circumference (cm)</h3>
-    <BodyCircumferenceModel test={test} onUpdate={onUpdate} lang={REPORT_LANG}/></>}
-
-    {show('posture')&&<><div className="hr"/>
-    <h3 style={H3}>Static Posture</h3>
-    <div className="grid cols-2">
-      <div className="row" style={{gap:16,alignItems:'flex-start',justifyContent:'center',padding:'8px 0'}}>
-        <PhotoCell photo={test.posture?.frontPhoto} onChange={v=>uN('posture','frontPhoto',v)} label="Front"/>
-        <PhotoCell photo={test.posture?.sidePhoto} onChange={v=>uN('posture','sidePhoto',v)} label="Side"/>
-        <PhotoCell photo={test.posture?.backPhoto} onChange={v=>uN('posture','backPhoto',v)} label="Back"/>
-      </div>
-      <div><label>Observations</label><textarea value={test.posture?.observations||''} onChange={e=>uN('posture','observations',e.target.value)} placeholder="Alignment, asymmetries, postural deviations…" style={{minHeight:100}}/></div>
-    </div></>}
-
-    {(show('aslr')||show('ankleDF'))&&<><div className="hr"/>
-    <h3 style={H3}>Mobility</h3>
-    <div className="grid cols-2" style={{marginBottom:14}}>
-      {show('aslr')&&<div>
-        <label>Active Straight Leg Raise (FMS 0-3)</label>
-        <div className="row">
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>Right</div>
-            <select value={test.aslr?.right||''} onChange={e=>uN('aslr','right',e.target.value)}>
-              <option value="">—</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
-            </select>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>Left</div>
-            <select value={test.aslr?.left||''} onChange={e=>uN('aslr','left',e.target.value)}>
-              <option value="">—</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option>
-            </select>
-          </div>
-        </div>
-        {aslrAsym&&aslrAsym.diff>0&&<div className="help" style={{marginTop:4,color:'var(--warn)'}}>Asymmetry: {aslrAsym.diff} point(s)</div>}
-      </div>}
-      {show('ankleDF')&&<div>
-        <label>Ankle Dorsiflexion (°)</label>
-        <div className="row">
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>Right</div>
-            <input type="number" step="0.1" value={test.ankleDF?.right||''} onChange={e=>uN('ankleDF','right',e.target.value)}/>
-          </div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:10,color:'var(--muted)',marginBottom:3}}>Left</div>
-            <input type="number" step="0.1" value={test.ankleDF?.left||''} onChange={e=>uN('ankleDF','left',e.target.value)}/>
-          </div>
-        </div>
-        {asym&&<div className="help" style={{marginTop:4}}>Asymmetry: <strong style={{color:asym.pct>10?'var(--red)':asym.pct>5?'var(--warn)':'var(--green)'}}>{asym.diff.toFixed(1)}° ({asym.pct.toFixed(1)}%)</strong></div>}
-      </div>}
-    </div></>}
-
-    {show('ohs')&&<><div className="hr"/>
-    <h3 style={H3}>Overhead Squat Test</h3>
-    <div className="row" style={{marginBottom:14,gap:18,flexWrap:'wrap'}}>
-      <div style={{maxWidth:280,flex:'0 1 280px'}}>
-        <label>OHS Score (FMS 0-3)</label>
-        <select value={test.ohs?.score||''} onChange={e=>uN('ohs','score',e.target.value)}>
-          <option value="">—</option>
-          <option value="0">0 — Failed (pain)</option>
-          <option value="1">1 — Major compensation</option>
-          <option value="2">2 — Minor compensation</option>
-          <option value="3">3 — Clean</option>
-        </select>
+    <div className="ts-wrap">
+      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu}/>;})}
+      {valid.length===0&&<div className="empty-st">No tests in this battery.</div>}
+      <div className="tcard">
+        <div className="tcard-h"><div className="tcard-ix" style={{background:'var(--muted)'}}>✎</div><div className="tcard-nm">General Notes</div></div>
+        <div style={{padding:'16px 18px'}}><textarea value={test.notes||''} onChange={e=>u('notes',e.target.value)} placeholder="Session conditions, fatigue level, observations…" style={{minHeight:62}}/></div>
       </div>
     </div>
-    <div className="grid cols-3" style={{gap:10,marginBottom:8}}>
-      {[['frontPhoto','Front View'],['sidePhoto','Side View'],['backPhoto','Back View']].map(([key,lbl])=>(
-        <div key={key} style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:8,padding:10,display:'flex',alignItems:'center',gap:8,minHeight:170}}>
-          <div style={{writingMode:'vertical-rl',transform:'rotate(180deg)',fontStyle:'italic',fontWeight:700,fontSize:14,color:'var(--accent2)',padding:'4px 2px',letterSpacing:'0.5px',whiteSpace:'nowrap'}}>{lbl}</div>
-          <div style={{flex:1,textAlign:'center'}}>
-            <PhotoCell photo={test.ohs?.[key]} onChange={v=>uN('ohs',key,v)} label="" size={140}/>
-          </div>
-        </div>
-      ))}
-    </div>
-    <div className="grid" style={{gridTemplateColumns:'repeat(5,1fr)',gap:4,marginTop:4}}>
-      {[0,1,2,3,4].map(i=>(
-        <div key={i}>
-          <div style={{background:'#ef4444',color:'#fff',padding:'5px 8px',borderRadius:'6px 6px 0 0',fontWeight:700,fontStyle:'italic',textAlign:'center',fontSize:12,letterSpacing:'0.3px'}}>Problem {i+1}</div>
-          <textarea
-            value={(test.ohs?.problems||[])[i]||''}
-            onChange={e=>{const probs=[...((test.ohs?.problems)||['','','','',''])];while(probs.length<5)probs.push('');probs[i]=e.target.value;uN('ohs','problems',probs);}}
-            style={{borderRadius:'0 0 6px 6px',minHeight:70,fontSize:11,padding:'8px 10px',background:'var(--elevated)',borderTop:'none'}}
-            placeholder="Observation…"/>
-        </div>
-      ))}
-    </div></>}
-
-    {show('sprint')&&<><div className="hr"/>
-    <h3 style={H3}>20m Sprint Analysis</h3>
-    <div className="row" style={{marginBottom:14,gap:18}}>
-      <div style={{maxWidth:200}}><label>20m Sprint Time (s)</label><input type="number" step="0.01" value={test.sprint20m?.time||''} onChange={e=>uN('sprint20m','time',e.target.value)}/></div>
-    </div>
-    <div className="grid cols-2" style={{gap:16}}>
-      {/* Side view — 3 first steps */}
-      <div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:16,textAlign:'center'}}>
-        <div style={{fontWeight:700,fontSize:12,color:'var(--accent2)',letterSpacing:'1.5px',marginBottom:14,borderBottom:'1px solid var(--border)',paddingBottom:8}}>SIDE VIEW</div>
-        <div className="row" style={{justifyContent:'space-around',gap:8,alignItems:'flex-start'}}>
-          <PhotoCell photo={test.sprint20m?.sideStep1} onChange={v=>uN('sprint20m','sideStep1',v)} label="Step 1" size={88}/>
-          <PhotoCell photo={test.sprint20m?.sideStep2} onChange={v=>uN('sprint20m','sideStep2',v)} label="Step 2" size={88}/>
-          <PhotoCell photo={test.sprint20m?.sideStep3} onChange={v=>uN('sprint20m','sideStep3',v)} label="Step 3" size={88}/>
-        </div>
-      </div>
-      {/* Front view — right/left foot */}
-      <div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:16,textAlign:'center'}}>
-        <div style={{fontWeight:700,fontSize:12,color:'var(--accent2)',letterSpacing:'1.5px',marginBottom:14,borderBottom:'1px solid var(--border)',paddingBottom:8}}>FRONT VIEW</div>
-        <div className="row" style={{justifyContent:'space-around',gap:8,alignItems:'flex-start'}}>
-          <PhotoCell photo={test.sprint20m?.frontRightFoot} onChange={v=>uN('sprint20m','frontRightFoot',v)} label="Right Foot" size={88}/>
-          <PhotoCell photo={test.sprint20m?.frontLeftFoot} onChange={v=>uN('sprint20m','frontLeftFoot',v)} label="Left Foot" size={88}/>
-        </div>
-      </div>
-    </div></>}
-
-    {(show('verticalJump')||show('cmj')||show('squatJump')||show('dropJump')||show('horizontalJump'))&&<><div className="hr"/>
-    <h3 style={H3}>Power / Jump Tests</h3>
-    <div className="grid cols-4">
-      {show('verticalJump')&&<div><label>Vertical Jump (cm)</label><input type="number" step="0.1" value={test.verticalJump||''} onChange={e=>u('verticalJump',e.target.value)}/></div>}
-      {show('cmj')&&<div><label>Counter-Movement Jump (cm)</label><input type="number" step="0.1" value={test.cmj||''} onChange={e=>u('cmj',e.target.value)}/></div>}
-      {show('squatJump')&&<div><label>Squat Jump (cm)</label><input type="number" step="0.1" value={test.squatJump||''} onChange={e=>u('squatJump',e.target.value)}/><div className="help">Concentric-only jump from a paused squat</div></div>}
-      {show('horizontalJump')&&<div><label>Horizontal Jump (cm)</label><input type="number" step="0.1" value={test.horizontalJump||''} onChange={e=>u('horizontalJump',e.target.value)}/></div>}
-      {show('dropJump')&&<div><label>Drop Jump (RSI)</label><input type="number" step="0.01" value={test.dropJump||''} onChange={e=>u('dropJump',e.target.value)}/><div className="help">Reactive Strength Index = Jump Height / Contact Time</div></div>}
-    </div></>}
-
-    {(show('tTest')||show('fiveZeroFive')||show('shuttleRun'))&&<><div className="hr"/>
-    <h3 style={H3}>Agility / Conditioning</h3>
-    <div className="grid cols-4">
-      {show('tTest')&&<div><label>T-Agility (s)</label><input type="number" step="0.01" value={test.tTest||''} onChange={e=>u('tTest',e.target.value)}/></div>}
-      {show('fiveZeroFive')&&<div><label>5-0-5 (s)</label><input type="number" step="0.01" value={test.fiveZeroFive||''} onChange={e=>u('fiveZeroFive',e.target.value)}/><div className="help">Change-of-direction speed</div></div>}
-      {show('shuttleRun')&&<div><label>Shuttle Run (s)</label><input type="number" step="0.01" value={test.shuttleRun||''} onChange={e=>u('shuttleRun',e.target.value)}/><div className="help">Aerobic / anaerobic (20m beep, Yo-Yo IR)</div></div>}
-    </div></>}
-
-    {cTests.filter(c=>show(c.id)).length>0&&<><div className="hr"/>
-    <h3 style={H3}>Custom Tests</h3>
-    <div className="grid cols-3">
-      {cTests.filter(c=>show(c.id)).map(c=>(
-        <div key={c.id}><label>{c.name}</label><input value={(test.custom&&test.custom[c.id])||''} onChange={e=>setCustom(c.id,e.target.value)} placeholder="Result / note…"/></div>
-      ))}
-    </div></>}
-
-    <div className="hr"/>
-    <label>General Notes</label>
-    <textarea value={test.notes||''} onChange={e=>u('notes',e.target.value)} placeholder="General observations, test conditions, fatigue level…"/>
   </div>);
 }
 
@@ -5208,82 +5351,9 @@ function TestProgressionCharts({tests}){
 }
 
 /* =========================================================
-   TEST PANEL — year + period filter + test list + editor + charts
-   ========================================================= */
-function TestPanel({ath,updAth,setup}){
-  const tests=ath.tests||[];
-  const[year,setYear]=useState(()=>{const ys=tests.map(t=>t.year).filter(Boolean);return ys.length?Math.max(...ys):today.getFullYear();});
-  const[period,setPeriod]=useState('pre');
-  const[editingId,setEditingId]=useState(null);
-  const filtered=useMemo(()=>tests.filter(t=>t.year===year&&t.period===period).sort((a,b)=>(a.date||'').localeCompare(b.date||'')),[tests,year,period]);
-  const yearsAvail=useMemo(()=>{const s=new Set([today.getFullYear()]);tests.forEach(t=>{if(t.year)s.add(t.year);});return[...s].sort();},[tests]);
-
-  const addTest=()=>{const t={...makeTest(period),year};updAth(ath.id,{tests:[...tests,t]});setEditingId(t.id);};
-  const updTest=(id,upd)=>updAth(ath.id,{tests:tests.map(t=>t.id===id?{...t,...upd}:t)});
-  const delTest=id=>{if(!confirm('Delete this test (all photos and data)?'))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id)});if(editingId===id)setEditingId(null);};
-
-  const editing=editingId?tests.find(t=>t.id===editingId):null;
-
-  return(<div>
-    <div className="panel">
-      <div className="row" style={{justifyContent:'space-between',marginBottom:14,flexWrap:'wrap',gap:10}}>
-        <h2 style={{margin:0}}>📋 Performance Tests</h2>
-        <div className="row">
-          <label style={{margin:0,fontSize:11}}>Year:</label>
-          <select value={year} onChange={e=>setYear(+e.target.value)} style={{width:100}}>
-            {Array.from(new Set([...yearsAvail,...Array.from({length:11},(_,i)=>today.getFullYear()-5+i)])).sort().map(y=><option key={y}>{y}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="subnav" style={{marginBottom:16,maxWidth:600}}>
-        {TEST_PERIODS.map(p=><button key={p.id} className={period===p.id?'active':''} onClick={()=>setPeriod(p.id)}>{p.label}</button>)}
-      </div>
-
-      <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap'}}>
-        <div style={{color:'var(--muted)',fontSize:13}}>
-          <strong style={{color:'var(--text)'}}>{filtered.length}</strong> test{filtered.length!==1?'s':''} in {year} — {TEST_PERIODS.find(p=>p.id===period)?.label}
-        </div>
-        <button className="btn" onClick={addTest}>+ Add New Test</button>
-      </div>
-
-      {filtered.length===0&&<div className="empty-st">No tests for this period yet. Click "Add New Test" to begin.</div>}
-
-      {filtered.length>0&&<div className="ath-grid">
-        {filtered.map(t=>{
-          const isEditing=editingId===t.id;
-          return(<div key={t.id} className="ath-card" style={{flexDirection:'column',alignItems:'stretch',cursor:'default',borderColor:isEditing?'var(--accent)':'var(--border)'}}>
-            <div className="row" style={{justifyContent:'space-between',marginBottom:6}}>
-              <div><strong style={{fontSize:14}}>{fd(t.date)}</strong>
-                <div style={{fontSize:11,color:'var(--muted)'}}>{TEST_PERIODS.find(p=>p.id===t.period)?.label} · {t.year}</div></div>
-              <div className="row" style={{gap:4}}>
-                <button className="btn xs sec" onClick={()=>setEditingId(isEditing?null:t.id)}>{isEditing?'Close':'Edit'}</button>
-                <button className="btn xs danger" onClick={()=>delTest(t.id)}>✕</button>
-              </div>
-            </div>
-            <div style={{fontSize:11,color:'var(--text2)',lineHeight:1.6}}>
-              {t.height&&<span>📏 {t.height}cm </span>}
-              {t.weight&&<span>⚖️ {t.weight}kg </span>}
-              {t.bodyFat&&<span>📊 {t.bodyFat}% BF </span>}
-              {t.cmj&&<span>· CMJ {t.cmj}cm </span>}
-              {t.verticalJump&&<span>· VJ {t.verticalJump}cm </span>}
-              {t.sprint20m?.time&&<span>· 20m {t.sprint20m.time}s </span>}
-              {t.tTest&&<span>· T {t.tTest}s</span>}
-            </div>
-          </div>);
-        })}
-      </div>}
-    </div>
-
-    {editing&&<TestEditor test={editing} ath={ath} setup={setup} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
-
-  </div>);
-}
-
-/* =========================================================
-   TEST & EVALUATION — dedicated section
+   TESTING & ASSESSMENT — dedicated section
    Player grid → pick which tests to administer (any test, any age) →
-   "Take Test" creates a battery-scoped test record → battery-aware editor.
+   "Take Test" creates a battery-scoped record → designed session view.
    ========================================================= */
 function EvaluationView({team,updateTeam,data,setData}){
   const setup=team.setup;const athletes=team.athletes||[];
@@ -5332,7 +5402,7 @@ function EvaluationView({team,updateTeam,data,setData}){
   return(<div>
     <div className="rost-head">
       <div>
-        <div className="rh-t">{Lx('Test & Değerlendirme','Test & Evaluation')}</div>
+        <div className="rh-t">Testing &amp; Assessment</div>
         <div className="rh-s">{athletes.length} {Lx('sporcu','athletes')} · {setup.teamName}</div>
       </div>
     </div>
@@ -5406,7 +5476,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         </div>}
       </div>
 
-      {editing&&<TestEditor test={editing} ath={ath} setup={setup} battery={editing.battery} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
+      {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
 
       {/* Progression charts */}
       {(()=>{const ts=[...tests].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
@@ -5679,7 +5749,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {id:'load',ic:'▤',l:'Load'},
     {id:'calendar',ic:'▣',l:'Calendar'},
     {id:'body',ic:'⌇',l:'Body Comp'},
-    {id:'tests',ic:'⌖',l:'Tests'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
     {id:'wellness',ic:'♡',l:'Wellness'},
     {id:'recommends',ic:'✨',l:'Recommendations'},
@@ -6112,46 +6181,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
       </div>);
     })()}
 
-    {tab==='tests'&&<div>
-      <TestPanel ath={ath} updAth={updAth} setup={setup}/>
-      {(()=>{const ts=[...(ath.tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
-        if(ts.length===0)return null;
-        const labels=ts.map(t=>{const d=parseD(t.date);return MN[d.getMonth()];});
-        const cards=[
-          {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
-          {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#f97316',dot:'#fb923c'},
-          {t:'Drop Jump',u:'cm',f:t=>Number(t.dropJump),up:true,col:'#10b981',dot:'#34d399'},
-          {t:'Horizontal Jump',u:'cm',f:t=>Number(t.horizontalJump),up:true,col:'#3b82f6',dot:'#60a5fa'},
-          {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
-          {t:'T-Test',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
-          {t:'Shuttle Run',u:'s',f:t=>Number(t.shuttleRun),up:false,col:'#06b6d4',dot:'#22d3ee'},
-        ];
-        const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
-        if(!haveAny)return null;
-        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-        return(<div className="metric-grid" style={{marginTop:18}}>
-          {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
-            const valid=data.filter(v=>v!=null);
-            if(valid.length===0)return null;
-            const cur=valid[valid.length-1],first=valid[0];
-            // Improvement vs first test: jumps→higher better, sprints→lower better. Positive = improved (green).
-            const imp=valid.length>1?+((c.up?cur-first:first-cur).toFixed(2)):null;
-            const sign=imp==null?'':(imp>0?'+':'');
-            return(<div key={c.t} className="metric-card">
-              <div className="mc-h"><div className="mc-t">{c.t}</div><div className="mc-u">{c.u}</div></div>
-              <div className="mc-val"><span className="mv" style={{color:c.dot}}>{cur}</span>{imp!=null&&imp!==0&&<span className={`md ${imp>0?'pos':'neg'}`}>{sign}{imp}</span>}</div>
-              <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
-                {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2.5,
-                  pointRadius:4,pointBackgroundColor:c.dot,pointBorderColor:c.dot,
-                  datalabels:dataLbl(c.dot)}
-              ]}} options={{responsive:true,maintainAspectRatio:false,
-                layout:{padding:{top:24,bottom:6,left:8,right:8}},
-                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
-                  y:{display:false,grid:{display:false},beginAtZero:false}},
-                plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
-            </div>);})}
-        </div>);})()}
-    </div>}
   </div>);
 }
 
@@ -8249,7 +8278,7 @@ function App(){
       {id:'season',label:'Season',icon:NAV_ICONS.season},
       {id:'calendar',label:'Calendar',icon:NAV_ICONS.calendar},
       {id:'athletes',label:'Athletes',icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
-      {id:'evaluation',label:'Test & Evaluation',icon:NAV_ICONS.evaluation},
+      {id:'evaluation',label:'Testing & Assessment',icon:NAV_ICONS.evaluation},
       {id:'reports',label:'Training Load',icon:NAV_ICONS.reports},
       {id:'exercises',label:'Exercise Library',icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'researches',label:'Researches',icon:NAV_ICONS.researches},
