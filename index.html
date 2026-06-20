@@ -1625,8 +1625,12 @@ function migrateTeam(t){
   if(!t.setup)t.setup=makeDefaultTeam().setup;
   if(!('periods'in t.setup))t.setup.periods=null;
   if(!t.days)t.days={};if(!t.weekOverrides)t.weekOverrides={};if(!t.athletes)t.athletes=[];
-  // Per-team Notion sync config (each team connects its own Notion workspace/worker).
-  if(!t.notionSync)t.notionSync={workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+  // Per-team form-sync config (each team connects its own Tally forms via a Worker).
+  if(!t.tallySync){
+    // migrate from the old Notion config if present, otherwise start fresh
+    t.tallySync=t.notionSync?{...t.notionSync}:{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+  }
+  delete t.notionSync;
   // Days migration (sections→blocks, etc.)
   for(const k of Object.keys(t.days)){
     const d=t.days[k];if(!d)continue;
@@ -1706,7 +1710,7 @@ function migrate(data){
   if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam()];
   data.teams=data.teams.map(migrateTeam);
   if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
-  if(!data.notionSync)data.notionSync={workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+  delete data.notionSync;
   if(!Array.isArray(data.researches))data.researches=[];
   data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
@@ -3339,7 +3343,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       const log=[...(a.srpeLog||[])];
       const idx=log.findIndex(e=>e.sessionId===drawerSes.id);
       if(rpe===''||isNaN(rpe)){if(idx>=0)log.splice(idx,1);return{...a,srpeLog:log};}
-      const entry={id:idx>=0?log[idx].id:uid(),notionId:null,sessionId:drawerSes.id,date:dk,
+      const entry={id:idx>=0?log[idx].id:uid(),srcId:null,sessionId:drawerSes.id,date:dk,
         tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
       entry[slot+'RPE']=rpe;entry[slot+'Duration']=dur;entry[slot+'Load']=load;
       if(idx>=0)log[idx]=entry;else log.push(entry);
@@ -3367,7 +3371,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       const rpeV=[old.scRPE,old.tpRPE,old.gameRPE].find(v=>v!==''&&v!=null);
       if(rpeV===''||rpeV==null)return a;
       const load=Math.round(Number(rpeV)*dur);
-      const entry={id:old.id,notionId:null,sessionId:drawerSes.id,date:old.date,
+      const entry={id:old.id,srcId:null,sessionId:drawerSes.id,date:old.date,
         tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:load};
       entry[cat+'RPE']=Number(rpeV);entry[cat+'Duration']=dur;entry[cat+'Load']=load;
       log[idx]=entry;return{...a,srpeLog:log};
@@ -5518,7 +5522,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>Wellness Log <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>(RHR + recovery state)</span></h2>
         <button className="btn sm sec" onClick={()=>{const w={id:uid(),notionId:null,date:fmt(today),RHR:'',sleep:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...(ath.wellness||[]),w]});}}>+ Manual</button>
       </div>
-      {(ath.wellness||[]).length===0&&<div className="empty-st">No wellness data — sync from Notion or add manually</div>}
+      {(ath.wellness||[]).length===0&&<div className="empty-st">No wellness data — sync from Tally or add manually</div>}
       {(ath.wellness||[]).length>0&&(()=>{
         const METRICS=[
           {id:'readiness',label:'Readiness',color:'#10b981',dot:'#34d399',unit:'/5',hi:true},
@@ -5578,7 +5582,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                     <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw('soreness',e.target.value)} style={{width:55}}/></td>
                     <td><input value={w.areaOfPain||''} onChange={e=>uw('areaOfPain',e.target.value)} style={{width:140}} placeholder="—"/></td>
                     <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
-                    <td>{w.notionId?<span className="team-badge">NOTION</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
+                    <td>{(w.srcId||w.notionId)?<span className="team-badge">TALLY</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
                     <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{wellness:ath.wellness.filter((_,j)=>j!==realIdx)})}>✕</button></td>
                   </tr>;})}
               </tbody></table>
@@ -5607,7 +5611,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <button className="btn sm sec" onClick={()=>{const s={id:uid(),notionId:null,date:fmt(today),tpRPE:'',tpDuration:'',tpLoad:'',scRPE:'',scDuration:'',scLoad:'',gameRPE:'',gameDuration:'',gameLoad:'',totalLoad:''};updAth(ath.id,{srpeLog:[...(ath.srpeLog||[]),s]});}}>+ Manual</button>
           </div>
         </div>
-        {(ath.srpeLog||[]).length===0&&<div className="empty-st">No sRPE data yet — sync from Notion or add manually</div>}
+        {(ath.srpeLog||[]).length===0&&<div className="empty-st">No sRPE data yet — sync from Tally or add manually</div>}
         {(ath.srpeLog||[]).length>0&&(()=>{
           const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(srpeWeek),i)));
           // Aggregate ALL entries per date. A single day can hold several sessions (e.g. an
@@ -5704,7 +5708,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                     <td><input type="number" value={s.gameDuration??''} onChange={e=>us('gameDuration',e.target.value)} style={{width:55}}/></td>
                     <td style={{color:'var(--accent2)',fontWeight:600}}>{s.gameLoad||'—'}</td>
                     <td style={{color:'var(--accent)',fontWeight:700}}>{s.totalLoad||'—'}</td>
-                    <td>{s.notionId?<span className="team-badge">NOTION</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
+                    <td>{(s.srcId||s.notionId)?<span className="team-badge">TALLY</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
                     <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{srpeLog:ath.srpeLog.filter((_,j)=>j!==realIdx)})}>✕</button></td>
                   </tr>;})}
               </tbody></table>
@@ -5904,28 +5908,28 @@ function TeamsPanel({data,setData}){
 }
 
 /* =========================================================
-   NOTION SYNC
-   Pulls sRPE + Wellness data from a Cloudflare Worker proxy
-   and merges it into the active team's athletes.
+   TALLY / FORM SYNC
+   Pulls sRPE + Wellness submissions from a Cloudflare Worker
+   (which reads the Tally forms) and merges them into the team.
    ========================================================= */
 const NORM=s=>(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');
 
-async function performNotionSync(workerUrl,team){
+async function performTallySync(workerUrl,team){
   const base=workerUrl.replace(/\/+$/,'');
   // Guard against the most common mistakes before we even fetch.
-  if(/notion\.(so|site)/i.test(base))
-    throw new Error('Bu bir Notion linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Notion DB/sayfa linkini değil.');
+  if(/tally\.so/i.test(base))
+    throw new Error('Bu bir Tally linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Tally form linkini değil.');
   if(!/^https?:\/\//i.test(base))
-    throw new Error('Worker URL "https://" ile başlamalı (ör. https://periodization-sync.ADIN.workers.dev).');
+    throw new Error('Worker URL "https://" ile başlamalı (ör. https://tally-sync.ADIN.workers.dev).');
   let r;
   try{
     r=await fetch(base+'/sync');
   }catch(e){
-    throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim notion-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
+    throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim tally-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
   }
   if(!r.ok)throw new Error(`Worker HTTP ${r.status} döndürdü. Tarayıcıda ${base}/sync adresini açıp dönen mesaja bak.`);
   const data=await r.json();
-  if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde NOTION_TOKEN eksik, DB ID yanlış ya da entegrasyon veritabanına bağlı değil demektir.');
+  if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde TALLY_API_KEY eksik ya da form ID (SRPE_FORM / WELLNESS_FORM) yanlış demektir.');
   const sRPE=data.sRPE||[],wellness=data.wellness||[];
 
   let athletes=(team.athletes||[]).map(a=>({...a,
@@ -5952,8 +5956,8 @@ async function performNotionSync(workerUrl,team){
     return athletes[i];
   };
 
-  // ---- sRPE: each Notion row → one srpeLog entry (NOT auto-created sessions) ----
-  // The coach plans team sessions manually; Notion sRPE is shown only as a chart
+  // ---- sRPE: each Tally submission → one srpeLog entry (NOT auto-created sessions) ----
+  // The coach plans team sessions manually; sRPE is shown only as a chart
   // on the athlete profile so it doesn't pollute the calendar.
   const num=v=>(v==null||v==='')?null:Number(v);
   for(const row of sRPE){
@@ -5961,7 +5965,7 @@ async function performNotionSync(workerUrl,team){
     const date=row['Date']?String(row['Date']).slice(0,10):null;
     if(!name||!date)continue;
     const ath=getOrCreate(name);
-    const nid=`notion-srpe-${row._id}`;
+    const nid=`tally-srpe-${row._id}`;
     const tpRPE=num(row['TP RPE']),    tpDur=num(row['TP Duration']);
     const scRPE=num(row['S&C RPE']),   scDur=num(row['S&C Duration']);
     const gmRPE=num(row['Game RPE']),  gmDur=num(row['Game Duration']);
@@ -5970,27 +5974,27 @@ async function performNotionSync(workerUrl,team){
     const gmLoad=gmRPE&&gmDur?gmRPE*gmDur:null;
     const totalLoad=num(row['Total sRPE']) ?? ((tpLoad||0)+(scLoad||0)+(gmLoad||0)||null);
     const entry={
-      id:uid(),notionId:nid,date,
+      id:uid(),srcId:nid,date,
       tpRPE,tpDuration:tpDur,tpLoad:tpLoad?Math.round(tpLoad):null,
       scRPE,scDuration:scDur,scLoad:scLoad?Math.round(scLoad):null,
       gameRPE:gmRPE,gameDuration:gmDur,gameLoad:gmLoad?Math.round(gmLoad):null,
       totalLoad:totalLoad?Math.round(totalLoad):null,
     };
-    const i=ath.srpeLog.findIndex(e=>e.notionId===nid);
+    const i=ath.srpeLog.findIndex(e=>(e.srcId||e.notionId)===nid);
     if(i>=0){entry.id=ath.srpeLog[i].id;ath.srpeLog[i]=entry;stats.srpeUpdated++;}
     else{ath.srpeLog.push(entry);stats.srpeAdded++;}
   }
 
-  // ---- Wellness: each Notion row → entry in athlete.wellness ----
+  // ---- Wellness: each Tally submission → entry in athlete.wellness ----
   for(const row of wellness){
     const name=row['Athlete'];
     // Strip any time portion: "2026-05-22T10:00:00+03:00" → "2026-05-22"
     const date=row['Date']?String(row['Date']).slice(0,10):null;
     if(!name||!date)continue;
     const ath=getOrCreate(name);
-    const nid=`notion-w-${row._id}`;
-    const i=ath.wellness.findIndex(w=>w.notionId===nid);
-    const entry={id:i>=0?ath.wellness[i].id:uid(),notionId:nid,date,
+    const nid=`tally-w-${row._id}`;
+    const i=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
+    const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
       RHR:row['RHR'],sleep:row['Sleep'],fatigue:row['Fatigue'],
       soreness:(row['Soreness ']!=null?row['Soreness ']:row['Soreness']),
       areaOfPain:row['Area of Pain']||'',readiness:row['Readiness']};
@@ -6008,25 +6012,25 @@ async function performNotionSync(workerUrl,team){
   return{athletes,stats,syncedAt:data.syncedAt||new Date().toISOString()};
 }
 
-function NotionSync({data,setData,team}){
-  // Config lives on the TEAM, so each team connects its own Notion workspace independently.
-  const cfg=team.notionSync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
+function TallySync({data,setData,team}){
+  // Config lives on the TEAM, so each team connects its own Tally forms independently.
+  const cfg=team.tallySync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
   const[url,setUrl]=useState(cfg.workerUrl);
   const[syncing,setSyncing]=useState(false);
   const[error,setError]=useState(null);
   const[stats,setStats]=useState(cfg.lastStats);
   const[lastAt,setLastAt]=useState(cfg.lastSyncedAt);
 
-  const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,notionSync:{...(t.notionSync||cfg),...upd}}:t)}));
+  const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
   const saveCfg=patchTeam;
 
   const doSync=async()=>{
     if(!cfg.workerUrl){alert('Enter the Worker URL and press Save first.');return;}
     setSyncing(true);setError(null);
     try{
-      const{athletes,stats:s,syncedAt}=await performNotionSync(cfg.workerUrl,team);
+      const{athletes,stats:s,syncedAt}=await performTallySync(cfg.workerUrl,team);
       setData(prev=>({...prev,
-        teams:prev.teams.map(t=>t.id===team.id?{...t,athletes,notionSync:{...(t.notionSync||cfg),lastSyncedAt:syncedAt,lastStats:s}}:t)}));
+        teams:prev.teams.map(t=>t.id===team.id?{...t,athletes,tallySync:{...(t.tallySync||cfg),lastSyncedAt:syncedAt,lastStats:s}}:t)}));
       setStats(s);setLastAt(syncedAt);
     }catch(e){setError(e.message||String(e));}
     finally{setSyncing(false);}
@@ -6045,14 +6049,14 @@ function NotionSync({data,setData,team}){
 
   return(<div>
     <div className="panel">
-      <h2>Notion Sync — Connection</h2>
+      <h2>Tally Sync — Connection</h2>
       <div className="help" style={{marginBottom:14}}>
         Cloudflare Worker URL (the one ending in <code>.workers.dev</code>, without <code>/sync</code>).
-        The Worker proxies your Notion sRPE + Wellness databases into this app.
+        The Worker reads your Tally sRPE + Wellness form submissions and pulls them into this app.
       </div>
       <div className="grid cols-3">
         <div style={{gridColumn:'span 2'}}><label>Worker URL</label>
-          <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://periodization-sync.YOURNAME.workers.dev"/></div>
+          <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://tally-sync.YOURNAME.workers.dev"/></div>
         <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
           <button className="btn" onClick={()=>saveCfg({workerUrl:url.trim()})}>Save URL</button>
         </div>
@@ -6086,15 +6090,15 @@ function NotionSync({data,setData,team}){
       {error&&<div style={{marginTop:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'var(--high-t)',fontSize:13}}>
         <strong>Error:</strong> {error}
         <div className="help" style={{marginTop:6,color:'var(--text2)'}}>
-          Common causes: wrong Worker URL · missing Worker token (NOTION_TOKEN) · Notion integration not connected to the databases · no internet connection.
+          Common causes: wrong Worker URL · missing Worker token (TALLY_API_KEY) · wrong form IDs (SRPE_FORM / WELLNESS_FORM) · no internet connection.
         </div>
       </div>}
       {stats&&!error&&<div style={{marginTop:14}}>
         <h3 style={{fontSize:13,marginBottom:8,color:'var(--accent2)'}}>Last sync summary</h3>
         <table style={{maxWidth:560}}>
           <tbody>
-            <tr><td>sRPE rows from Notion</td><td><strong>{stats.sRPERows}</strong></td></tr>
-            <tr><td>Wellness rows from Notion</td><td><strong>{stats.wellnessRows}</strong></td></tr>
+            <tr><td>sRPE submissions from Tally</td><td><strong>{stats.sRPERows}</strong></td></tr>
+            <tr><td>Wellness submissions from Tally</td><td><strong>{stats.wellnessRows}</strong></td></tr>
             <tr><td>sRPE entries added (to athlete log)</td><td><strong>{stats.srpeAdded||0}</strong></td></tr>
             <tr><td>sRPE entries updated</td><td><strong>{stats.srpeUpdated||0}</strong></td></tr>
             <tr><td>Wellness entries added</td><td><strong>{stats.wellnessAdded}</strong></td></tr>
@@ -6104,11 +6108,11 @@ function NotionSync({data,setData,team}){
           </tbody>
         </table>
         {(stats.sRPERows===0&&stats.wellnessRows===0)&&<div style={{marginTop:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-          ⚠️ Worker'a ulaşıldı ama <strong>0 satır</strong> geldi. Olası sebepler: Worker'daki <code>SRPE_DB</code>/<code>WELLNESS_DB</code> ID'leri yanlış · entegrasyon o veritabanlarına bağlı değil · veritabanları boş. Tarayıcıda <code>…workers.dev/sync</code> açıp <code>sRPE</code>/<code>wellness</code> dizilerinin dolu olup olmadığını gör.
+          ⚠️ Worker'a ulaşıldı ama <strong>0 satır</strong> geldi. Olası sebepler: Worker'daki <code>SRPE_FORM</code>/<code>WELLNESS_FORM</code> ID'leri yanlış · formlara henüz cevap gelmemiş · soru başlıkları beklenen adlarla eşleşmiyor. Tarayıcıda <code>…workers.dev/sync</code> açıp <code>sRPE</code>/<code>wellness</code> dizilerinin dolu olup olmadığını gör.
         </div>}
         {Array.isArray(stats.namesSeen)&&stats.namesSeen.length>0&&<div className="help" style={{marginTop:10}}>
-          Notion'da görülen sporcu adları ({stats.namesSeen.length}): {stats.namesSeen.join(', ')}.
-          {stats.athletesCreated>0&&' Bunlardan bazıları kadrodaki adlarla eşleşmediği için yeni sporcu olarak eklendi — adların Notion ve CoachOS\'ta birebir aynı olmasına dikkat et.'}
+          Formda görülen sporcu adları ({stats.namesSeen.length}): {stats.namesSeen.join(', ')}.
+          {stats.athletesCreated>0&&' Bunlardan bazıları kadrodaki adlarla eşleşmediği için yeni sporcu olarak eklendi — adların Tally formu ve CoachOS\'ta birebir aynı olmasına dikkat et.'}
         </div>}
       </div>}
     </div>
@@ -6119,8 +6123,8 @@ function NotionSync({data,setData,team}){
         <li><strong>sRPE</strong> rows are saved to each athlete's <strong>sRPE Log</strong> (shown as a chart on the athlete profile). They are <em>not</em> auto-converted to calendar sessions — the coach plans team sessions manually and assigns athletes via the Program tab.</li>
         <li><strong>Wellness</strong> rows (RHR, Sleep, Fatigue, Soreness, Readiness) are saved into each athlete's Wellness log (under Athletes → click athlete).</li>
         <li>Name matching is case-/space-insensitive. Athletes not found on the roster are <strong>auto-created</strong>.</li>
-        <li>Re-syncing the same Notion row <strong>updates</strong> the existing session/entry (no duplicates) — safe to run many times.</li>
-        <li>Your manual edits to other (non-Notion) sessions are never touched.</li>
+        <li>Re-syncing the same Tally submission <strong>updates</strong> the existing entry (no duplicates) — safe to run many times.</li>
+        <li>Turn on <strong>Auto-sync</strong> so new form submissions land automatically every few minutes.</li>
       </ul>
     </div>
   </div>);
@@ -7650,7 +7654,7 @@ const NAV_ICONS={
   researches:<NIc><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></NIc>,
   setup:<NIc><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></NIc>,
   teams:<NIc><path d="M12 3l7 2.5v5.6c0 4.1-2.9 7.1-7 8.4-4.1-1.3-7-4.3-7-8.4V5.5L12 3z"/></NIc>,
-  notion:<NIc><path d="M20 11a8 8 0 0 0-14-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.6L20 16"/><path d="M20 20v-4h-4"/></NIc>,
+  tally:<NIc><path d="M20 11a8 8 0 0 0-14-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.6L20 16"/><path d="M20 20v-4h-4"/></NIc>,
   backup:<NIc><path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19.5h14"/></NIc>,
 };
 /* =========================================================
@@ -7888,7 +7892,7 @@ function App(){
     {label:'Account',items:[
       {id:'setup',label:'Setup',icon:NAV_ICONS.setup},
       {id:'teams',label:'Teams',icon:NAV_ICONS.teams},
-      {id:'notion',label:'Notion Sync',icon:NAV_ICONS.notion},
+      {id:'tally',label:'Tally Sync',icon:NAV_ICONS.tally},
       {id:'backup',label:'Backup',icon:NAV_ICONS.backup},
     ]},
   ];
@@ -7943,7 +7947,7 @@ function App(){
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
-      {view==='notion'&&<NotionSync key={team.id} data={data} setData={setData} team={team}/>}
+      {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
