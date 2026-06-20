@@ -3988,17 +3988,19 @@ function TeamReports({team,weeks,selected,setSelected}){
   // has no athlete sRPE log still registers its load in the trend & reports.
   const plannedByDay=useMemo(()=>{const m={};Object.entries(team.days||{}).forEach(([d,day])=>{
     const v=((day&&day.sessions)||[]).reduce((t,s)=>t+(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0)),0);if(v>0)m[d]=v;});return m;},[team.days]);
-  // Team daily load (AU) by date = the SUM of that day's session AU boxes, exactly what the
-  // calendar shows (e.g. 420 + 455 = 875). This is the single source for the trend chart, ACWR
-  // and monotony so every load number matches the calendar. A day that has only an athlete sRPE
-  // log but no planned session still registers (summed) so it isn't dropped.
+  // Team daily load (AU) by date = the per-athlete AVERAGE for that day (not the squad
+  // sum), so the number reflects mean load per athlete and isn't skewed by how many
+  // athletes happened to log. Drives the trend chart, ACWR, monotony & strain. Days with
+  // only a planned (calendar) session and no logs keep the planned value.
   const teamDaily=useMemo(()=>{
     const m={...plannedByDay};
-    const logged={};
+    const byDate={};   // date -> { athleteId: that athlete's total AU for the day }
     (team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
       if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-      if(v>0)logged[e.date]=(logged[e.date]||0)+v;}));
-    Object.entries(logged).forEach(([d,v])=>{if(m[d]==null)m[d]=v;});
+      if(v>0){(byDate[e.date]||(byDate[e.date]={}));byDate[e.date][a.id]=(byDate[e.date][a.id]||0)+v;}}));
+    Object.entries(byDate).forEach(([d,aths])=>{
+      const vals=Object.values(aths);
+      if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
     return m;},[team.athletes,plannedByDay]);
   const dayLoad=d=>Math.round(teamDaily[d]||0);
   // Load Monitoring uses the same calendar-matching session-AU sum everywhere (trend, ACWR, monotony).
@@ -4195,7 +4197,7 @@ function TeamReports({team,weeks,selected,setSelected}){
       </div>
       <div className="lm-trend-card">
         <div className="lm-th">
-          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">daily AU · acute &amp; chronic · last {lmWin} days</span></div>
+          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">avg AU / athlete · acute &amp; chronic · last {lmWin} days</span></div>
         </div>
         <div className="chart-box" style={{flex:1,minHeight:240}}>
           <ChartC type="bar" chartData={{labels:lmTrend.map(d=>fd(d.k).slice(0,5)),datasets:[
