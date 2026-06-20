@@ -1,33 +1,25 @@
 /**
  * CoachOS — Tally Sync Worker (Cloudflare Workers, ES module)
  *
- * Reads submissions from your two Tally forms (sRPE + Wellness) via the Tally API
- * and exposes them at  GET <worker-url>/sync  in the shape CoachOS expects:
+ * Reads submissions from your two Tally forms (sRPE / "İçsel Yük Takibi" +
+ * Wellness / "Wellness Takibi") via the Tally API and serves them at
+ *   GET <worker-url>/sync
+ * in the shape CoachOS expects:
  *
  *   { "sRPE":     [ {_id, "Athlete", "Date", "TP RPE", ...}, ... ],
  *     "wellness": [ {_id, "Athlete", "Date", "RHR", "Sleep", ...}, ... ],
  *     "syncedAt": "<ISO timestamp>" }
  *
- * Each row's keys are the Tally QUESTION TITLES, so name your form questions
- * exactly like the columns the app reads:
- *   sRPE form:     Athlete, Date, TP RPE, TP Duration, S&C RPE, S&C Duration,
- *                  Game RPE, Game Duration   (optional: TP sRPE, S&C sRPE, Total sRPE)
- *   Wellness form: Athlete, Date, RHR, Sleep, Fatigue, Soreness, Area of Pain, Readiness
- *
- * "Athlete" must be the athlete's NAME (a short-text question, or a dropdown whose
- * option label is the name). If there is no "Date" question, the submission time is
- * used as the date automatically.
+ * Your form questions are in Turkish, so this Worker AUTO-MAPS the Turkish
+ * question titles to the keys the app reads (see canonicalKey() below).
+ * You do NOT need to rename anything in Tally.
  *
  * Required environment variables (Cloudflare → Worker → Settings → Variables):
- *   TALLY_API_KEY  — your Tally API key  (Tally → Settings → API keys)  [encrypt as a Secret]
- *   SRPE_FORM      — the sRPE form ID
- *   WELLNESS_FORM  — the Wellness form ID
+ *   TALLY_API_KEY  — your Tally API key (Tally → Settings → API)  [add as a Secret]
+ *   SRPE_FORM      — the "İçsel Yük Takibi" form ID
+ *   WELLNESS_FORM  — the "Wellness Takibi" form ID
  *
- * Form ID: open the form in Tally; the ID is the code in the URL
- *   https://tally.so/forms/<FORM_ID>/...   (also shown as wXXXXX in the editor URL)
- *
- * Tip for "automatic": turn ON Auto-sync in CoachOS → Tally Sync. The app then
- * polls this Worker every few minutes, so new submissions appear on their own.
+ * Form ID = the code in the form's editor URL, e.g. https://tally.so/forms/<FORM_ID>/edit
  */
 
 const TALLY_API = 'https://api.tally.so';
@@ -37,6 +29,42 @@ const CORS = {
   'Access-Control-Allow-Methods': 'GET,OPTIONS',
   'Access-Control-Allow-Headers': '*',
 };
+
+// Normalise a Turkish title: lowercase + strip Turkish diacritics so we can keyword-match.
+function norm(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/i̇/g, 'i').replace(/İ/g, 'i').replace(/ı/g, 'i')
+    .replace(/ş/g, 's').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+    .replace(/ö/g, 'o').replace(/ç/g, 'c');
+}
+
+// Map a Tally question title → the canonical key CoachOS reads. Unknown titles
+// pass through unchanged (so extra questions still appear under their own name).
+function canonicalKey(rawTitle) {
+  const t = norm(rawTitle);
+  if (t.includes('tarih') || t.includes('date')) return 'Date';
+  if (t.includes('sporcu') || t.includes('athlete') || t.includes('isim')) return 'Athlete';
+
+  // ----- sRPE (İçsel Yük Takibi) -----
+  if (t.includes('top') && t.includes('yorucu')) return 'TP RPE';
+  if (t.includes('top') && (t.includes('sure') || t.includes('dakika'))) return 'TP Duration';
+  if (t.includes('kuvvet') && t.includes('yorucu')) return 'S&C RPE';
+  if (t.includes('kuvvet') && (t.includes('sure') || t.includes('dakika'))) return 'S&C Duration';
+  if ((t.includes('musabaka') || t.includes('mac')) && t.includes('yorucu')) return 'Game RPE';
+  if (t.includes('dakika') && t.includes('aldin')) return 'Game Duration';
+  if ((t.includes('musabaka') || t.includes('mac')) && t.includes('sure')) return 'Game Duration';
+
+  // ----- Wellness (Wellness Takibi) -----
+  if (t.includes('kah') || t.includes('dinlenik') || t.includes('rhr')) return 'RHR';
+  if (t.includes('uyku') || t.includes('sleep')) return 'Sleep';
+  if (t.includes('yorgun')) return 'Fatigue';
+  if (t.includes('kas') || ((t.includes('agri') || t.includes('agrin')) && t.includes('derece'))) return 'Soreness';
+  if (t.includes('bolge') || t.includes('area of pain')) return 'Area of Pain';
+  if (t.includes('readiness') || t.includes('hazir')) return 'Readiness';
+
+  return rawTitle;
+}
 
 // Turn one Tally answer into a plain value, mapping choice option-IDs to their labels.
 function answerToValue(resp, question) {
@@ -59,7 +87,7 @@ function answerToValue(resp, question) {
   return a;
 }
 
-// Fetch every submission of a form (paginated) → array of {_id, <QuestionTitle>: value}.
+// Fetch every submission of a form (paginated) → array of {_id, <CanonicalKey>: value}.
 async function fetchForm(formId, key) {
   const rows = [];
   let page = 1;
@@ -76,12 +104,12 @@ async function fetchForm(formId, key) {
     (j.questions || []).forEach(q => { qById[q.id] = q; });
     for (const s of (j.submissions || [])) {
       const row = { _id: s.id };
-      if (s.submittedAt) row['Date'] = String(s.submittedAt).slice(0, 10); // default; a "Date" question overrides
+      if (s.submittedAt) row['Date'] = String(s.submittedAt).slice(0, 10); // default; a "Tarih" question overrides
       for (const resp of (s.responses || [])) {
         const q = qById[resp.questionId];
         const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
         const v = answerToValue(resp, q);
-        if (v != null && v !== '') row[title] = v;
+        if (v != null && v !== '') row[canonicalKey(title)] = v;
       }
       rows.push(row);
     }
@@ -110,9 +138,16 @@ export default {
           env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key)     : Promise.resolve([]),
           env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key) : Promise.resolve([]),
         ]);
+        // The Wellness form has no "Readiness" question, so derive it as the mean of the
+        // 1-5 subscores present (Sleep, Fatigue, Soreness). Remove this block if unwanted.
+        for (const r of wellness) {
+          if (r['Readiness'] == null) {
+            const vals = ['Sleep', 'Fatigue', 'Soreness'].map(k => Number(r[k])).filter(n => !isNaN(n));
+            if (vals.length) r['Readiness'] = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+          }
+        }
         return json({ sRPE, wellness, syncedAt: new Date().toISOString() });
       } catch (e) {
-        // Return 200 + {error} so the app surfaces the message instead of a bare HTTP error.
         return json({ error: String(e && e.message || e) });
       }
     }

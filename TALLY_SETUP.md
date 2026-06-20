@@ -9,19 +9,40 @@ vardır. Bir kez kurulur; sonra **Auto-sync** açıkken yeni cevaplar kendiliği
 
 ---
 
-## 1) İki Tally formunu hazırla
-İki form oluştur (ya da mevcutları kullan): **sRPE** ve **Wellness**.
-Soru başlıkları **birebir** şu adlarda olmalı (uygulama bu adlara bakıyor):
+## 1) Formların hazır — başlıkları değiştirmene gerek yok
+İki Tally formun (**İçsel Yük Takibi** = sRPE, **Wellness Takibi** = Wellness) zaten var.
+Worker, senin **Türkçe soru başlıklarını otomatik eşliyor** (`canonicalKey()`), dolayısıyla
+Tally'de hiçbir şeyi yeniden adlandırmana gerek yok. Eşleşmeler:
 
-- **sRPE formu:** `Athlete`, `Date`, `TP RPE`, `TP Duration`, `S&C RPE`, `S&C Duration`,
-  `Game RPE`, `Game Duration` _(opsiyonel: `TP sRPE`, `S&C sRPE`, `Total sRPE`)_
-- **Wellness formu:** `Athlete`, `Date`, `RHR`, `Sleep`, `Fatigue`, `Soreness`,
-  `Area of Pain`, `Readiness`
+**İçsel Yük Takibi → sRPE**
+| Form sorusu | Uygulama alanı |
+|---|---|
+| Antrenman / Maç tarihi | Date |
+| Sporcu ismi | Athlete |
+| Top antrenmanı ne kadar yorucuydu? | TP RPE |
+| Top antrenmanı süresi | TP Duration |
+| Kuvvet & Kondisyon ne kadar yorucuydu? | S&C RPE |
+| Kuvvet & Kondisyon antrenmanı süresi | S&C Duration |
+| Müsabaka ne kadar yorucuydu? | Game RPE |
+| Kaç dakika süre aldın? | Game Duration |
+
+**Wellness Takibi → Wellness**
+| Form sorusu | Uygulama alanı |
+|---|---|
+| Tarih | Date |
+| Sporcu ismi | Athlete |
+| Dinlenik KAH nedir? | RHR |
+| Uyku kaliten nasıldı? | Sleep |
+| Yorgunluk düzeyin nedir? | Fatigue |
+| Kas ağrın ne derecede? | Soreness |
+| Ağrın hangi bölgede? | Area of Pain |
 
 Notlar:
-- `Athlete` sporcunun **adını** vermeli — kısa metin sorusu ya da seçeneği sporcu adı olan
-  bir açılır liste. (Adlar CoachOS kadrosuyla birebir aynı olsun; eşleşmeyen ad yeni sporcu açar.)
-- `Date` sorusu yoksa sorun değil — **gönderim tarihi** otomatik kullanılır.
+- Wellness formunda **Readiness sorusu yok**; Worker, Readiness'i `Sleep`, `Fatigue`,
+  `Soreness` ortalamasından otomatik hesaplıyor (istemezsen `tally-worker.js` içindeki
+  ilgili bloğu sil — söyle, ben kaldırayım).
+- `Sporcu ismi` açılır listesindeki adlar, CoachOS kadrosundaki adlarla birebir aynı olsun;
+  eşleşmeyen ad **yeni sporcu** olarak eklenir.
 
 ## 2) Tally API anahtarı al
 Tally → **Settings → API keys** (workspace ayarları) → **Create API key** → kopyala.
