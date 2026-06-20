@@ -7045,27 +7045,28 @@ function ExercisesView({data,setData}){
       {uncatCount>0&&<option value="__uncat__">Kategorisiz ({uncatCount})</option>}
     </select>);
 
-  // ----- Category landing -----
+  // ----- Library landing — ALL exercises mixed across categories -----
   if(!activeType){
+    const ql0=q.trim().toLowerCase();
+    // Stable pseudo-random order (seeded by id) so categories are intermixed but the
+    // grid doesn't reshuffle on every render.
+    const hashStr=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return h;};
+    const mixed=[...exercises].sort((a,b)=>hashStr(String(a.id||a.name||''))-hashStr(String(b.id||b.name||'')));
+    const flat=ql0?mixed.filter(e=>(e.name||'').toLowerCase().includes(ql0)):mixed;
     return(<div className="ex-wrap">
       <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <div className="ex-top">
         <div><h1 className="ex-h1">Exercise Library</h1>
-          <div className="sub">Bir kategori seç ve içindeki egzersizleri yönet.</div></div>
+          <div className="sub">{exercises.length} egzersiz · tüm kategoriler karışık</div></div>
         {catDropdown}
       </div>
-      <div className="ex-grid type-grid">
-        {EX_TYPES.map(t=>(
-          <div key={t} className="type-card" onClick={()=>setActiveType(t)}>
-            <div className="type-count-badge">{typeCounts[t]} egzersiz</div>
-            <div className="ex-cname">{t}</div>
-          </div>))}
-        {uncatCount>0&&<div className="type-card" onClick={()=>setActiveType('__uncat__')}>
-          <div className="type-count-badge">{uncatCount} egzersiz</div>
-          <div className="ex-cname">Kategorisiz</div>
-        </div>}
+      <div className="ex-toolbar">
+        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Egzersiz ara…"/></div>
+        <button className="btn sm" onClick={()=>addExercise()}>＋ Egzersiz Ekle</button>
       </div>
+      {flat.length===0&&<div className="ex-empty">{exercises.length===0?'Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.':'Aramayla eşleşen egzersiz yok.'}</div>}
+      <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
     </div>);
   }
