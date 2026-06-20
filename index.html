@@ -5912,10 +5912,20 @@ const NORM=s=>(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');
 
 async function performNotionSync(workerUrl,team){
   const base=workerUrl.replace(/\/+$/,'');
-  const r=await fetch(base+'/sync');
-  if(!r.ok)throw new Error(`Worker returned HTTP ${r.status}`);
+  // Guard against the most common mistakes before we even fetch.
+  if(/notion\.(so|site)/i.test(base))
+    throw new Error('Bu bir Notion linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Notion DB/sayfa linkini değil.');
+  if(!/^https?:\/\//i.test(base))
+    throw new Error('Worker URL "https://" ile başlamalı (ör. https://periodization-sync.ADIN.workers.dev).');
+  let r;
+  try{
+    r=await fetch(base+'/sync');
+  }catch(e){
+    throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim notion-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
+  }
+  if(!r.ok)throw new Error(`Worker HTTP ${r.status} döndürdü. Tarayıcıda ${base}/sync adresini açıp dönen mesaja bak.`);
   const data=await r.json();
-  if(data.error)throw new Error('Worker error: '+data.error);
+  if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde NOTION_TOKEN eksik, DB ID yanlış ya da entegrasyon veritabanına bağlı değil demektir.');
   const sRPE=data.sRPE||[],wellness=data.wellness||[];
 
   let athletes=(team.athletes||[]).map(a=>({...a,
@@ -5926,10 +5936,11 @@ async function performNotionSync(workerUrl,team){
     srpeLog:[...(a.srpeLog||[])],
   }));
   const stats={sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
-    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,athletesMatched:new Set()};
+    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,athletesMatched:new Set(),namesSeen:new Set()};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
   const getOrCreate=name=>{
+    stats.namesSeen.add((name||'').trim());
     let i=findIdx(name);
     if(i===-1){
       athletes.push({id:uid(),name:name.trim(),number:'',
@@ -5993,6 +6004,7 @@ async function performNotionSync(workerUrl,team){
     if(a.srpeLog)a.srpeLog.sort((x,y)=>(x.date||'').localeCompare(y.date||''));
   });
   stats.athletesMatched=stats.athletesMatched.size;
+  stats.namesSeen=[...stats.namesSeen].filter(Boolean);
   return{athletes,stats,syncedAt:data.syncedAt||new Date().toISOString()};
 }
 
@@ -6091,6 +6103,13 @@ function NotionSync({data,setData,team}){
             <tr><td>Athletes auto-created (new on roster)</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
           </tbody>
         </table>
+        {(stats.sRPERows===0&&stats.wellnessRows===0)&&<div style={{marginTop:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Worker'a ulaşıldı ama <strong>0 satır</strong> geldi. Olası sebepler: Worker'daki <code>SRPE_DB</code>/<code>WELLNESS_DB</code> ID'leri yanlış · entegrasyon o veritabanlarına bağlı değil · veritabanları boş. Tarayıcıda <code>…workers.dev/sync</code> açıp <code>sRPE</code>/<code>wellness</code> dizilerinin dolu olup olmadığını gör.
+        </div>}
+        {Array.isArray(stats.namesSeen)&&stats.namesSeen.length>0&&<div className="help" style={{marginTop:10}}>
+          Notion'da görülen sporcu adları ({stats.namesSeen.length}): {stats.namesSeen.join(', ')}.
+          {stats.athletesCreated>0&&' Bunlardan bazıları kadrodaki adlarla eşleşmediği için yeni sporcu olarak eklendi — adların Notion ve CoachOS\'ta birebir aynı olmasına dikkat et.'}
+        </div>}
       </div>}
     </div>
 
