@@ -611,7 +611,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .inj-tbl input:focus,.inj-tbl select:focus{border-color:#0891b2;outline:none;box-shadow:0 0 0 2px rgba(8,145,178,.15)}
 .inj-tbl input[type="date"]{min-width:120px}
 .inj-tbl select{min-width:90px}
-.ex-tbl .en{width:100%;resize:none;overflow:hidden;line-height:1.35;min-height:30px;font-family:inherit;white-space:pre-wrap;word-break:break-word}
+.ex-tbl .en{width:100%;line-height:1.35;min-height:30px;font-family:inherit}
 .ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
 .ex-desc{padding:0 6px 4px}
 .ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
@@ -774,6 +774,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-vbadge{position:absolute;right:10px;bottom:10px;z-index:2;width:34px;height:34px;border-radius:50%;background:var(--accent);color:#0a0b0d;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 10px rgba(0,0,0,.45);transition:transform .2s ease,box-shadow .2s ease}
 .ex-card:hover .ex-vbadge{transform:scale(1.15);box-shadow:0 5px 20px rgba(230,255,85,.55)}
 .ex-thumb-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;border:none;background:#000}
+/* Small "N× used" badge (top-right) — auto usage count across the season program */
+.ex-used{position:absolute;top:8px;right:8px;z-index:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:#bbf7d0;background:rgba(13,38,26,.8);border:1px solid rgba(34,197,94,.4);border-radius:6px;padding:2px 7px;line-height:1.5;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+/* Category dropdown (library top-right) */
+.ex-cat-dd{min-width:200px;align-self:flex-start}
 /* YouTube/Vimeo iframe: scale up + offset so the title bar (top) and
    the YouTube logo/controls (bottom) are cropped outside the thumb. */
 .ex-thumb iframe.ex-thumb-vid{inset:auto;left:-20%;top:-30%;width:140%;height:180%;pointer-events:none}
@@ -1521,6 +1525,11 @@ function L(tr,en){return REPORT_LANG==='tr'?tr:en;}
    FACTORIES
    ========================================================= */
 const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',description:'',notes:'',superset:''});
+/* Library auto-add bridge — the App registers a setter so the program editor can push a
+   newly-typed exercise name into the shared library (data.exercises) without prop-threading. */
+let _libAdd=null;
+function registerLibAdd(fn){_libAdd=fn;}
+function addExerciseToLibrary(name){const nm=(name||'').trim();if(nm&&_libAdd)_libAdd(nm);}
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
@@ -3624,9 +3633,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
                 </select>
               </div>
             </td>
-            <td><textarea className="en" rows={1} value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"
-              ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}}
-              onInput={e=>{e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}}/></td>
+            <td><input className="en" list="lib-exercises" value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"
+              onBlur={e=>addExerciseToLibrary(e.target.value)}/></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
@@ -6967,7 +6975,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   </div>);
 }
 
-function ExerciseCard({ex,onOpen}){
+function ExerciseCard({ex,onOpen,used=0}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   const[hov,setHov]=useState(false);
   const[igImg,setIgImg]=useState('');
@@ -6992,6 +7000,7 @@ function ExerciseCard({ex,onOpen}){
         : <div className="ex-thumb-ph">🏋</div>
       )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
+      {used>0&&<span className="ex-used" title={`Sezon programında ${used} kez kullanıldı`}>{used}× used</span>}
     </div>
     <div className="ex-cbody">
       <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
@@ -7012,12 +7021,29 @@ function ExercisesView({data,setData}){
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
   const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
-  const addExercise=type=>{const e={id:uid(),name:'',type:type||activeType||'',subType:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
+  const addExercise=type=>{const t=type||activeType||'';const e={id:uid(),name:'',type:t==='__uncat__'?'':t,subType:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
   // Pick a sample exercise per type for the category-tile preview
   const typeSample=useMemo(()=>{const m={};EX_TYPES.forEach(t=>{m[t]=exercises.find(e=>e.type===t&&(e.thumb||e.videoUrl||e.videoData));});return m;},[exercises]);
   const open=exercises.find(e=>e.id===openId);
   const goBack=()=>{setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setQ('');};
+  // How many times each exercise name is prescribed across the whole season program (all teams).
+  const usageCounts=useMemo(()=>{const m={};
+    (data.teams||[]).forEach(t=>Object.values(t.days||{}).forEach(day=>(day.sessions||[]).forEach(s=>(s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(ex=>{
+      const n=(ex.name||'').trim().toLowerCase();if(n)m[n]=(m[n]||0)+1;})))));
+    return m;},[data.teams]);
+  const usedOf=e=>usageCounts[(e.name||'').trim().toLowerCase()]||0;
+  // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
+  // so the coach can find and categorise them later.
+  const uncatCount=exercises.filter(e=>!EX_TYPES.includes(e.type)).length;
+  // Top-right category dropdown (label → EX_TYPES value).
+  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric']];
+  const catDropdown=(
+    <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setQ('');}}}>
+      <option value="">Tüm kategoriler</option>
+      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{lbl}</option>)}
+      {uncatCount>0&&<option value="__uncat__">Kategorisiz ({uncatCount})</option>}
+    </select>);
 
   // ----- Category landing -----
   if(!activeType){
@@ -7027,6 +7053,7 @@ function ExercisesView({data,setData}){
       <div className="ex-top">
         <div><h1 className="ex-h1">Exercise Library</h1>
           <div className="sub">Bir kategori seç ve içindeki egzersizleri yönet.</div></div>
+        {catDropdown}
       </div>
       <div className="ex-grid type-grid">
         {EX_TYPES.map(t=>(
@@ -7034,21 +7061,27 @@ function ExercisesView({data,setData}){
             <div className="type-count-badge">{typeCounts[t]} egzersiz</div>
             <div className="ex-cname">{t}</div>
           </div>))}
+        {uncatCount>0&&<div className="type-card" onClick={()=>setActiveType('__uncat__')}>
+          <div className="type-count-badge">{uncatCount} egzersiz</div>
+          <div className="ex-cname">Kategorisiz</div>
+        </div>}
       </div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
     </div>);
   }
 
   // ----- Inside a category -----
-  const sub=SUB_TYPES[activeType]||null;
+  const isUncat=activeType==='__uncat__';
+  const sub=isUncat?null:(SUB_TYPES[activeType]||null);
   const hasMuscleFilter=false;   // muscle-group filter removed; Hip/Knee Dominant use Movement Pattern
-  const hasPatternFilter=!!PATTERNS_FOR[activeType];
+  const hasPatternFilter=!isUncat&&!!PATTERNS_FOR[activeType];
   const patternVals=PATTERNS_FOR[activeType]||KNEE_PATTERNS;
   const ql=q.toLowerCase();
   const list=exercises.filter(e=>{
-    if(e.type!==activeType)return false;
+    if(isUncat){if(EX_TYPES.includes(e.type))return false;}
+    else if(e.type!==activeType)return false;
     if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
-    if(fSub&&e.subType!==fSub)return false;
+    if(!isUncat&&fSub&&e.subType!==fSub)return false;
     if(hasMuscleFilter&&fMuscle&&!(e.muscle||[]).includes(fMuscle))return false;
     if(hasPatternFilter&&fPattern&&e.pattern!==fPattern)return false;
     return true;
@@ -7060,9 +7093,11 @@ function ExercisesView({data,setData}){
     <div className="ex-top">
       <div>
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← Kategoriler</button>
-        <h1 className="ex-h1">{activeType}</h1>
+        <h1 className="ex-h1">{isUncat?'Kategorisiz':activeType}</h1>
+        {isUncat&&<div className="sub">Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart'a tıklayıp kategori ata.</div>}
         {sub&&<div className="sub">Filtre: <b>{sub.label}</b>{hasPatternFilter?' · Movement Pattern':''}</div>}
       </div>
+      {catDropdown}
     </div>
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`${activeType} ara…`}/></div>
@@ -7081,7 +7116,7 @@ function ExercisesView({data,setData}){
         {hasPatternFilter&&<ChipRow label="Movement Pattern" values={patternVals} val={fPattern} setVal={setFPattern}/>}
       </div>);})()}
     {list.length===0&&<div className="ex-empty">Bu kategoride{(fSub||fMuscle||fPattern||q)?' filtreyle eşleşen':''} egzersiz yok. <b>＋ Egzersiz Ekle</b> ile ekle.</div>}
-    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} onOpen={()=>setOpenId(e.id)}/>)}</div>
+    <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
 }
@@ -7733,6 +7768,12 @@ function App(){
   const team=useMemo(()=>data.teams.find(t=>t.id===data.activeTeamId)||data.teams[0],[data]);
   const periods=useMemo(()=>getPeriods(team.setup),[team.setup]);
   const weeks=useMemo(()=>buildWeeks(team.setup,periods,team.weekOverrides),[team.setup,periods,team.weekOverrides]);
+  // Let the program editor auto-add newly-typed exercise names to the shared library.
+  useEffect(()=>{registerLibAdd(nm=>setData(prev=>{
+    const exs=prev.exercises||[];
+    if(exs.some(e=>(e.name||'').trim().toLowerCase()===nm.toLowerCase()))return prev;   // already in library
+    return{...prev,exercises:[{id:uid(),name:nm,type:'',subType:'',pattern:'',difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''},...exs]};
+  }));return()=>registerLibAdd(null);},[setData]);
   // All hooks must be called before any conditional return
   if(sync.authLoading)return<LoadingScreen/>;
   if(!sync.user)return<LoginPage sync={sync}/>;
