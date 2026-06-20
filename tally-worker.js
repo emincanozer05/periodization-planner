@@ -87,12 +87,14 @@ function answerToValue(resp, question) {
   return a;
 }
 
-// Fetch every submission of a form (paginated) → array of {_id, <CanonicalKey>: value}.
+// Fetch submissions of a form → array of {_id, <CanonicalKey>: value}.
+// Uses a large page size and a hard page cap so we never exceed Cloudflare's
+// per-invocation subrequest limit (~50 on the free plan).
 async function fetchForm(formId, key) {
   const rows = [];
-  let page = 1;
-  for (;;) {
-    const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}`, {
+  const LIMIT = 500, MAX_PAGES = 8;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${LIMIT}`, {
       headers: { 'Authorization': `Bearer ${key}` },
     });
     if (!res.ok) {
@@ -102,7 +104,8 @@ async function fetchForm(formId, key) {
     const j = await res.json();
     const qById = {};
     (j.questions || []).forEach(q => { qById[q.id] = q; });
-    for (const s of (j.submissions || [])) {
+    const subs = j.submissions || [];
+    for (const s of subs) {
       const row = { _id: s.id };
       if (s.submittedAt) row['Date'] = String(s.submittedAt).slice(0, 10); // default; a "Tarih" question overrides
       for (const resp of (s.responses || [])) {
@@ -113,7 +116,7 @@ async function fetchForm(formId, key) {
       }
       rows.push(row);
     }
-    if (j.hasMore) page++; else break;
+    if (!j.hasMore || subs.length === 0) break;
   }
   return rows;
 }
