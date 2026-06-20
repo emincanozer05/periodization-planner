@@ -1129,6 +1129,41 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc-st .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
 .rc-st .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text)}
 .rc-st .v small{font-size:10px;font-weight:500;color:var(--dim)}
+/* ===== Test & Evaluation ===== */
+.eval-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.evc{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;text-align:center;overflow:hidden}
+.evc:hover{transform:translateY(-3px);border-color:var(--border2)}
+.evc.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 8px 24px rgba(0,0,0,.4)}
+.evc-av{width:58px;height:58px;border-radius:50%;margin:0 auto 9px;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:18px;font-weight:700;color:var(--text2);overflow:hidden;border:2.5px solid var(--border2);padding:2px}
+.evc-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.evc.on .evc-av{border-color:var(--accent)}
+.evc-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evc-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
+.evc-badge{position:absolute;top:9px;right:11px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-bg);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
+.evc-num{position:absolute;top:10px;left:12px;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--border2);line-height:1}
+/* test-pick chips */
+.tpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.tpc{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:11px 12px;cursor:pointer;transition:border-color .12s,background .12s;position:relative}
+.tpc:hover{border-color:var(--border2)}
+.tpc.on{border-color:var(--accent);background:var(--accent-bg)}
+.tpc-ic{font-size:18px;line-height:1.1;flex:none}
+.tpc-t{font-size:12.5px;font-weight:700;color:var(--text)}
+.tpc-d{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+.tpc-chk{position:absolute;top:9px;right:9px;width:17px;height:17px;border-radius:5px;border:1.5px solid var(--border2);display:grid;place-items:center;font-size:11px;color:var(--bg);background:transparent}
+.tpc.on .tpc-chk{background:var(--accent);border-color:var(--accent)}
+/* 2D body circumference model */
+.bcm-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.bcm-canvas{position:relative;width:340px;height:400px;flex:none}
+.bcm-svg{position:absolute;inset:0}
+.bcm-card{position:absolute;width:100px;background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:6px 8px;cursor:pointer;transition:border-color .12s,box-shadow .12s;z-index:2}
+.bcm-card.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.bcm-lbl{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bcm-in{display:flex;align-items:baseline;gap:3px;margin-top:2px}
+.bcm-in input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:14px;font-weight:700;color:var(--text);font-family:'IBM Plex Mono',monospace}
+.bcm-in input:focus{border-color:var(--accent);outline:none}
+.bcm-u{font-size:10px;color:var(--dim);flex:none}
+.bcm-hint{font-size:11px;color:var(--muted);text-align:center;max-width:420px}
+@media(max-width:380px){.bcm-canvas{transform:scale(.92);transform-origin:top center}}
 /* Team Body Composition table */
 .tbc-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
 .tbc-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -1576,6 +1611,22 @@ const makeTest=(period='pre')=>({
   tTest:'',shuttleRun:'',
   notes:'',
 });
+
+/* Test battery catalog — individual tests the coach can pick & choose freely
+   for ANY athlete (no age gating). Each id maps to a section the TestEditor
+   renders; `battery` on a test record holds the selected ids. */
+const TEST_CATALOG=[
+  {id:'anthro',  ic:'🏃', tr:'Antropometri',          en:'Anthropometrics',   d:'Boy, kilo, kanat açıklığı, yağ %'},
+  {id:'circ',    ic:'📏', tr:'Çevre Ölçümleri',        en:'Circumferences',    d:'2D model üzerinde çevre ölçümleri'},
+  {id:'posture', ic:'🧍', tr:'Statik Postür',          en:'Static Posture',    d:'Önden / yandan / arkadan duruş'},
+  {id:'mobility',ic:'🤸', tr:'Mobilite (ASLR / Ayak)', en:'Mobility',          d:'ASLR & ayak bileği dorsifleksiyon'},
+  {id:'ohs',     ic:'🏋️', tr:'Overhead Squat',         en:'Overhead Squat',    d:'FMS overhead squat değerlendirme'},
+  {id:'sprint',  ic:'⚡', tr:'20m Sprint',             en:'20m Sprint',        d:'Süre + adım/ayak analiz fotoğrafları'},
+  {id:'power',   ic:'🚀', tr:'Kuvvet / Sıçrama',       en:'Power Tests',       d:'Dikey, CMJ, drop jump, yatay sıçrama'},
+  {id:'agility', ic:'🔀', tr:'Çeviklik (T-Test)',      en:'Agility',           d:'Agility T-Test süresi'},
+  {id:'endurance',ic:'🫁',tr:'Dayanıklılık',           en:'Endurance',         d:'Shuttle run / beep / Yo-Yo'},
+];
+const TEST_CAT_LABEL=id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?L(c.tr,c.en):id;};
 
 /* =========================================================
    LOAD CALC — AU is the source of truth
@@ -4754,9 +4805,91 @@ ${test.notes?`
 }
 
 /* =========================================================
-   TEST EDITOR — full performance test form
+   2D BODY CIRCUMFERENCE MODEL
+   A front-view stylised human silhouette. Each measurement is entered in a
+   small card flanking the body and is also shown ON the model (pill at the
+   measuring-tape ellipse). Clicking a body band focuses its input.
    ========================================================= */
-function TestEditor({test,ath,setup,onUpdate,onClose}){
+const CIRC_FIELDS=[
+  {k:'shoulder',  tr:'Omuz',       en:'Shoulder', side:'r', cardTop:54,  cx:170,cy:72, rx:36,ry:6, px:206,py:72},
+  {k:'waist',     tr:'Bel',        en:'Waist',    side:'l', cardTop:138, cx:170,cy:150,rx:26,ry:6, px:144,py:150},
+  {k:'hip',       tr:'Kalça',      en:'Hip',      side:'r', cardTop:170, cx:170,cy:182,rx:30,ry:6, px:200,py:182},
+  {k:'thighRight',tr:'Uyluk (Sağ)',en:'Thigh R',  side:'l', cardTop:226, cx:157,cy:240,rx:13,ry:5, px:144,py:240},
+  {k:'thighLeft', tr:'Uyluk (Sol)',en:'Thigh L',  side:'r', cardTop:226, cx:183,cy:240,rx:13,ry:5, px:196,py:240},
+  {k:'calfRight', tr:'Baldır (Sağ)',en:'Calf R',  side:'l', cardTop:314, cx:158,cy:322,rx:10,ry:5, px:148,py:322},
+  {k:'calfLeft',  tr:'Baldır (Sol)',en:'Calf L',  side:'r', cardTop:314, cx:182,cy:322,rx:10,ry:5, px:192,py:322},
+];
+function BodyCircumferenceModel({test,onUpdate,lang}){
+  const[active,setActive]=useState(null);
+  const circ=test.circ||{};
+  const setVal=(k,v)=>onUpdate({circ:{...(test.circ||{}),[k]:v}});
+  const Lx=(tr,en)=>lang==='en'?en:tr;
+  // leader-line anchor on the card side (px coords, canvas is fixed 340x400)
+  const cardAnchor=f=>f.side==='l'?{x:112,y:f.cardTop+24}:{x:228,y:f.cardTop+24};
+  return(<div className="bcm-wrap">
+    <div className="bcm-canvas">
+      <svg className="bcm-svg" viewBox="0 0 340 400" width="340" height="400">
+        <defs>
+          <linearGradient id="bcmBody" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2b313b"/><stop offset="1" stopColor="#1a1e25"/>
+          </linearGradient>
+        </defs>
+        {/* leader lines */}
+        {CIRC_FIELDS.map(f=>{const a=cardAnchor(f);const on=active===f.k;
+          return<line key={'l'+f.k} x1={a.x} y1={a.y} x2={f.px} y2={f.py}
+            stroke={on?'#e6ff55':'#3a4150'} strokeWidth={on?1.6:1} strokeDasharray="3 3"/>;})}
+        {/* body silhouette */}
+        <g fill="url(#bcmBody)" stroke="#3a4150" strokeWidth="1.2" strokeLinejoin="round">
+          <circle cx="170" cy="34" r="17"/>
+          <rect x="162" y="48" width="16" height="13" rx="4"/>
+          <polygon points="142,66 198,66 196,118 190,150 192,182 148,182 150,150 144,118"/>
+          <polygon points="126,70 142,68 147,150 133,152"/>
+          <polygon points="214,70 198,68 193,150 207,152"/>
+          <circle cx="139" cy="158" r="7"/>
+          <circle cx="201" cy="158" r="7"/>
+          <polygon points="148,184 170,184 169,250 166,322 168,374 150,374 150,322 145,250"/>
+          <polygon points="170,184 192,184 195,250 192,322 190,374 172,374 171,322 171,250"/>
+        </g>
+        {/* measuring-tape ellipses */}
+        {CIRC_FIELDS.map(f=>{const on=active===f.k;const has=circ[f.k]!==''&&circ[f.k]!=null;
+          return<g key={'e'+f.k} onClick={()=>setActive(f.k)} style={{cursor:'pointer'}}>
+            <ellipse cx={f.cx} cy={f.cy} rx={f.rx} ry={f.ry} fill="none"
+              stroke={on?'#e6ff55':has?'#9aab3a':'#5c626c'} strokeWidth={on?2.4:1.8}
+              opacity={on?1:.9}/>
+            <circle cx={f.px} cy={f.py} r={on?4.5:3.5} fill={on?'#e6ff55':has?'#9aab3a':'#5c626c'}/>
+          </g>;})}
+        {/* on-body value pills */}
+        {CIRC_FIELDS.map(f=>{const has=circ[f.k]!==''&&circ[f.k]!=null;if(!has)return null;
+          const tx=f.cx,ty=f.cy-(f.ry+9);
+          return<g key={'v'+f.k}>
+            <rect x={tx-15} y={ty-9} width="30" height="15" rx="7.5" fill="#0a0b0d" stroke="#9aab3a" strokeWidth="1"/>
+            <text x={tx} y={ty+1.5} textAnchor="middle" fontSize="9" fontWeight="700" fill="#e6ff55" fontFamily="IBM Plex Mono, monospace">{circ[f.k]}</text>
+          </g>;})}
+      </svg>
+      {/* flanking input cards */}
+      {CIRC_FIELDS.map(f=>{const on=active===f.k;
+        return<div key={'c'+f.k} className={'bcm-card'+(on?' on':'')}
+          style={f.side==='l'?{left:6,top:f.cardTop}:{right:6,top:f.cardTop}}
+          onClick={()=>setActive(f.k)}>
+          <div className="bcm-lbl">{Lx(f.tr,f.en)}</div>
+          <div className="bcm-in">
+            <input type="number" step="0.1" inputMode="decimal" value={circ[f.k]||''}
+              onFocus={()=>setActive(f.k)}
+              onChange={e=>setVal(f.k,e.target.value)} placeholder="—"/>
+            <span className="bcm-u">cm</span>
+          </div>
+        </div>;})}
+    </div>
+    <div className="bcm-hint">{Lx('Vücut üzerindeki bir bölgeye tıklayıp ölçümü gir — değerler model üzerinde gösterilir.','Click a body region and enter the measurement — values are shown on the model.')}</div>
+  </div>);
+}
+
+/* =========================================================
+   TEST EDITOR — full performance test form
+   `battery` (optional array of TEST_CATALOG ids) limits which sections show.
+   ========================================================= */
+function TestEditor({test,ath,setup,onUpdate,onClose,battery}){
+  const show=id=>!Array.isArray(battery)||battery.length===0||battery.includes(id);
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
   const uStep=(stepKey,view,val)=>onUpdate({sprint20m:{...(test.sprint20m||{}),[stepKey]:{...(test.sprint20m?.[stepKey]||{}),[view]:val}}});
@@ -4799,28 +4932,20 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
       <div><label>Period</label><select value={test.period} onChange={e=>u('period',e.target.value)}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
     </div>
 
-    <div className="hr"/>
+    {show('anthro')&&<><div className="hr"/>
     <h3 style={H3}>🏃 Anthropometrics</h3>
     <div className="grid cols-4">
       <div><label>Height (cm)</label><input type="number" step="0.1" value={test.height} onChange={e=>u('height',e.target.value)}/></div>
       <div><label>Weight (kg)</label><input type="number" step="0.1" value={test.weight} onChange={e=>u('weight',e.target.value)}/></div>
       <div><label>Wingspan (cm)</label><input type="number" step="0.1" value={test.wingspan} onChange={e=>u('wingspan',e.target.value)}/></div>
       <div><label>Body Fat (%)</label><input type="number" step="0.1" value={test.bodyFat} onChange={e=>u('bodyFat',e.target.value)}/></div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('circ')&&<><div className="hr"/>
     <h3 style={H3}>📏 Circumference Measurements (cm)</h3>
-    <div className="grid" style={{gridTemplateColumns:'repeat(7,1fr)',gap:8}}>
-      <div><label>Shoulder (Omuz)</label><input type="number" step="0.1" value={test.circ?.shoulder||''} onChange={e=>uN('circ','shoulder',e.target.value)}/></div>
-      <div><label>Waist (Bel)</label><input type="number" step="0.1" value={test.circ?.waist||''} onChange={e=>uN('circ','waist',e.target.value)}/></div>
-      <div><label>Hip</label><input type="number" step="0.1" value={test.circ?.hip||''} onChange={e=>uN('circ','hip',e.target.value)}/></div>
-      <div><label>Thigh R</label><input type="number" step="0.1" value={test.circ?.thighRight||''} onChange={e=>uN('circ','thighRight',e.target.value)}/></div>
-      <div><label>Thigh L (Sol Uyluk)</label><input type="number" step="0.1" value={test.circ?.thighLeft||''} onChange={e=>uN('circ','thighLeft',e.target.value)}/></div>
-      <div><label>Calf R</label><input type="number" step="0.1" value={test.circ?.calfRight||''} onChange={e=>uN('circ','calfRight',e.target.value)}/></div>
-      <div><label>Calf L</label><input type="number" step="0.1" value={test.circ?.calfLeft||''} onChange={e=>uN('circ','calfLeft',e.target.value)}/></div>
-    </div>
+    <BodyCircumferenceModel test={test} onUpdate={onUpdate} lang={REPORT_LANG}/></>}
 
-    <div className="hr"/>
+    {show('posture')&&<><div className="hr"/>
     <h3 style={H3}>🧍 Static Posture Assessment</h3>
     <div className="grid cols-2">
       <div className="row" style={{gap:16,alignItems:'flex-start',justifyContent:'center',padding:'8px 0'}}>
@@ -4829,9 +4954,9 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
         <PhotoCell photo={test.posture?.backPhoto} onChange={v=>uN('posture','backPhoto',v)} label="Back"/>
       </div>
       <div><label>Observations</label><textarea value={test.posture?.observations||''} onChange={e=>uN('posture','observations',e.target.value)} placeholder="Alignment, asymmetries, postural deviations…" style={{minHeight:100}}/></div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('mobility')&&<><div className="hr"/>
     <h3 style={H3}>🤸 Mobility — ASLR & Ankle Dorsiflexion</h3>
     <div className="grid cols-2" style={{marginBottom:14}}>
       <div>
@@ -4866,9 +4991,9 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
         </div>
         {asym&&<div className="help" style={{marginTop:4}}>Asymmetry: <strong style={{color:asym.pct>10?'var(--red)':asym.pct>5?'var(--warn)':'var(--green)'}}>{asym.diff.toFixed(1)}° ({asym.pct.toFixed(1)}%)</strong></div>}
       </div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('ohs')&&<><div className="hr"/>
     <h3 style={H3}>🏋️ Overhead Squat Assessment</h3>
     <div className="row" style={{marginBottom:14,gap:18,flexWrap:'wrap'}}>
       <div style={{maxWidth:280,flex:'0 1 280px'}}>
@@ -4903,9 +5028,9 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
             placeholder="Observation…"/>
         </div>
       ))}
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('sprint')&&<><div className="hr"/>
     <h3 style={H3}>⚡ 20m Sprint Analysis</h3>
     <div className="row" style={{marginBottom:14,gap:18}}>
       <div style={{maxWidth:200}}><label>20m Sprint Time (s)</label><input type="number" step="0.01" value={test.sprint20m?.time||''} onChange={e=>uN('sprint20m','time',e.target.value)}/></div>
@@ -4928,28 +5053,28 @@ function TestEditor({test,ath,setup,onUpdate,onClose}){
           <PhotoCell photo={test.sprint20m?.frontLeftFoot} onChange={v=>uN('sprint20m','frontLeftFoot',v)} label="Left Foot" size={88}/>
         </div>
       </div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('power')&&<><div className="hr"/>
     <h3 style={H3}>🚀 Power Tests</h3>
     <div className="grid cols-4">
       <div><label>Vertical Jump (cm)</label><input type="number" step="0.1" value={test.verticalJump||''} onChange={e=>u('verticalJump',e.target.value)}/></div>
       <div><label>CMJ (cm)</label><input type="number" step="0.1" value={test.cmj||''} onChange={e=>u('cmj',e.target.value)}/></div>
       <div><label>Drop Jump (RSI)</label><input type="number" step="0.01" value={test.dropJump||''} onChange={e=>u('dropJump',e.target.value)}/><div className="help">Reactive Strength Index = Jump Height / Contact Time</div></div>
       <div><label>Horizontal Jump (cm)</label><input type="number" step="0.1" value={test.horizontalJump||''} onChange={e=>u('horizontalJump',e.target.value)}/></div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('agility')&&<><div className="hr"/>
     <h3 style={H3}>🏃‍♂️ Agility</h3>
     <div className="grid cols-2">
       <div><label>Agility T-Test (s)</label><input type="number" step="0.01" value={test.tTest||''} onChange={e=>u('tTest',e.target.value)}/></div>
-    </div>
+    </div></>}
 
-    <div className="hr"/>
+    {show('endurance')&&<><div className="hr"/>
     <h3 style={H3}>🫁 Endurance / Conditioning</h3>
     <div className="grid cols-2">
       <div><label>Shuttle Run (s)</label><input type="number" step="0.01" value={test.shuttleRun||''} onChange={e=>u('shuttleRun',e.target.value)}/><div className="help">Aerobic / anaerobic capacity (e.g., 20m beep test, Yo-Yo IR)</div></div>
-    </div>
+    </div></>}
 
     <div className="hr"/>
     <label>General Notes</label>
@@ -5116,6 +5241,152 @@ function TestPanel({ath,updAth,setup}){
 
     {editing&&<TestEditor test={editing} ath={ath} setup={setup} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
 
+  </div>);
+}
+
+/* =========================================================
+   TEST & EVALUATION — dedicated section
+   Player grid → pick which tests to administer (any test, any age) →
+   "Take Test" creates a battery-scoped test record → battery-aware editor.
+   ========================================================= */
+function EvaluationView({team,updateTeam}){
+  const setup=team.setup;const athletes=team.athletes||[];
+  const lang=REPORT_LANG;const Lx=(tr,en)=>lang==='en'?en:tr;
+  const[selId,setSelId]=useState(athletes[0]?.id||null);
+  const[editingId,setEditingId]=useState(null);
+  const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
+  const[date,setDate]=useState(fmt(today));
+  const[period,setPeriod]=useState('pre');
+  const save=a=>updateTeam(team.id,{athletes:a});
+  const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
+  const ath=athletes.find(a=>a.id===selId)||null;
+  const tests=ath?.tests||[];
+  const editing=editingId?tests.find(t=>t.id===editingId):null;
+  const initials=name=>(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const ageOf=a=>{if(!a?.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
+  const toggle=id=>setPick(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  const takeTest=()=>{
+    if(!ath){alert(Lx('Önce bir sporcu seç.','Select an athlete first.'));return;}
+    if(pick.size===0){alert(Lx('En az bir test seç.','Pick at least one test.'));return;}
+    const ids=TEST_CATALOG.filter(c=>pick.has(c.id)).map(c=>c.id);
+    const t={...makeTest(period),date,year:parseD(date).getFullYear(),battery:ids};
+    updAth(ath.id,{tests:[...tests,t]});
+    setEditingId(t.id);
+  };
+  const updTest=(id,upd)=>updAth(ath.id,{tests:tests.map(t=>t.id===id?{...t,...upd}:t)});
+  const delTest=id=>{if(!confirm(Lx('Bu testi sil?','Delete this test?')))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id)});if(editingId===id)setEditingId(null);};
+
+  return(<div>
+    <div className="rost-head">
+      <div>
+        <div className="rh-t">{Lx('Test & Değerlendirme','Test & Evaluation')}</div>
+        <div className="rh-s">{athletes.length} {Lx('sporcu','athletes')} · {setup.teamName}</div>
+      </div>
+    </div>
+
+    {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Athletes sekmesinden ekle.','No athletes yet — add them in the Athletes tab.')}</div>}
+
+    {/* Player grid */}
+    <div className="eval-grid">{athletes.map(a=>{
+      const age=ageOf(a);const n=(a.tests||[]).length;const on=a.id===selId;
+      return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);}}>
+        {a.number&&<div className="evc-num">{a.number}</div>}
+        {n>0&&<div className="evc-badge">{n} {Lx('test','tests')}</div>}
+        <div className="evc-av">{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
+        <div className="evc-name">{a.name}</div>
+        <div className="evc-meta">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
+      </div>);
+    })}</div>
+
+    {ath&&<div style={{marginTop:18}}>
+      {/* Alınacak Test — pick the battery */}
+      <div className="panel">
+        <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
+          <h2 style={{margin:0}}>🎯 {Lx('Alınacak Test','Test to Administer')} — <span style={{color:'var(--accent)'}}>{ath.name}</span></h2>
+          <div className="row" style={{gap:6}}>
+            <button className="btn xs sec" onClick={()=>setPick(new Set(TEST_CATALOG.map(c=>c.id)))}>{Lx('Tümünü seç','Select all')}</button>
+            <button className="btn xs sec" onClick={()=>setPick(new Set())}>{Lx('Temizle','Clear')}</button>
+          </div>
+        </div>
+        <div className="help" style={{marginBottom:14}}>{Lx('Bu sporcu için uygulamak istediğin testleri seç — yaş sınırı yok, her sporcu için istediğin bataryayı oluşturabilirsin.','Pick the tests you want for this athlete — no age limit, build any battery for any athlete.')}</div>
+        <div className="tpick">
+          {TEST_CATALOG.map(c=>{const on=pick.has(c.id);
+            return(<div key={c.id} className={'tpc'+(on?' on':'')} onClick={()=>toggle(c.id)}>
+              <div className="tpc-ic">{c.ic}</div>
+              <div style={{minWidth:0}}>
+                <div className="tpc-t">{Lx(c.tr,c.en)}</div>
+                <div className="tpc-d">{c.d}</div>
+              </div>
+              <div className="tpc-chk">{on?'✓':''}</div>
+            </div>);})}
+        </div>
+        <div className="row" style={{marginTop:16,gap:12,flexWrap:'wrap',alignItems:'flex-end'}}>
+          <div><label style={{fontSize:11}}>{Lx('Test tarihi','Test date')}</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:150}}/></div>
+          <div><label style={{fontSize:11}}>{Lx('Dönem','Period')}</label><select value={period} onChange={e=>setPeriod(e.target.value)} style={{width:150}}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
+          <div style={{flex:1}}/>
+          <button className="btn" disabled={pick.size===0} onClick={takeTest}>＋ {Lx('Test Al','Take Test')} ({pick.size})</button>
+        </div>
+      </div>
+
+      {/* Existing tests */}
+      <div className="panel">
+        <h2 style={{marginTop:0}}>📋 {Lx('Test Sonuçları','Test Results')} <span style={{fontSize:12,color:'var(--muted)',fontWeight:400}}>({tests.length})</span></h2>
+        {tests.length===0&&<div className="empty-st">{Lx('Bu sporcu için henüz test yok. Yukarıdan test seçip "Test Al"a bas.','No tests yet. Pick tests above and press "Take Test".')}</div>}
+        {tests.length>0&&<div className="ath-grid">
+          {[...tests].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>{
+            const isEd=editingId===t.id;const bat=Array.isArray(t.battery)?t.battery:TEST_CATALOG.map(c=>c.id);
+            return(<div key={t.id} className="ath-card" style={{flexDirection:'column',alignItems:'stretch',cursor:'default',borderColor:isEd?'var(--accent)':'var(--border)'}}>
+              <div className="row" style={{justifyContent:'space-between',marginBottom:6}}>
+                <div><strong style={{fontSize:14}}>{fd(t.date)}</strong>
+                  <div style={{fontSize:11,color:'var(--muted)'}}>{TEST_PERIODS.find(p=>p.id===t.period)?.label} · {t.year}</div></div>
+                <div className="row" style={{gap:4}}>
+                  <button className="btn xs sec" onClick={()=>setEditingId(isEd?null:t.id)}>{isEd?Lx('Kapat','Close'):Lx('Aç','Open')}</button>
+                  <button className="btn xs danger" onClick={()=>delTest(t.id)}>✕</button>
+                </div>
+              </div>
+              <div className="row" style={{gap:4,flexWrap:'wrap'}}>
+                {bat.map(id=>{const c=TEST_CATALOG.find(x=>x.id===id);return c?<span key={id} title={Lx(c.tr,c.en)} style={{fontSize:14}}>{c.ic}</span>:null;})}
+              </div>
+            </div>);})}
+        </div>}
+      </div>
+
+      {editing&&<TestEditor test={editing} ath={ath} setup={setup} battery={editing.battery} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
+
+      {/* Progression charts */}
+      {(()=>{const ts=[...tests].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+        if(ts.length<1)return null;
+        const labels=ts.map(t=>{const d=parseD(t.date);return MN[d.getMonth()];});
+        const cards=[
+          {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
+          {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#f97316',dot:'#fb923c'},
+          {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
+          {t:'T-Test',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
+          {t:'Weight',u:'kg',f:t=>Number(t.weight),up:null,col:'#3b82f6',dot:'#60a5fa'},
+          {t:'Body Fat',u:'%',f:t=>Number(t.bodyFat),up:false,col:'#06b6d4',dot:'#22d3ee'},
+        ];
+        const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
+        if(!haveAny)return null;
+        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+        return(<div className="panel"><h2 style={{marginTop:0}}>📈 {Lx('Gelişim','Progression')}</h2><div className="metric-grid">
+          {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
+            const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
+            const cur=valid[valid.length-1],first=valid[0];
+            const imp=valid.length>1&&c.up!=null?+((c.up?cur-first:first-cur).toFixed(2)):null;
+            const sign=imp==null?'':(imp>0?'+':'');
+            return(<div key={c.t} className="metric-card">
+              <div className="mc-h"><div className="mc-t">{c.t}</div><div className="mc-u">{c.u}</div></div>
+              <div className="mc-val"><span className="mv" style={{color:c.dot}}>{cur}</span>{imp!=null&&imp!==0&&<span className={`md ${imp>0?'pos':'neg'}`}>{sign}{imp}</span>}</div>
+              <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
+                {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2.5,
+                  pointRadius:4,pointBackgroundColor:c.dot,pointBorderColor:c.dot,datalabels:dataLbl(c.dot)}
+              ]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:24,bottom:6,left:8,right:8}},
+                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
+                  y:{display:false,grid:{display:false},beginAtZero:false}},
+                plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
+            </div>);})}
+        </div></div>);})()}
+    </div>}
   </div>);
 }
 
@@ -7684,6 +7955,7 @@ const NAV_ICONS={
   reports:<NIc><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V8"/><path d="M17 20v-9"/></NIc>,
   exercises:<NIc><path d="M6 8v8"/><path d="M9 6v12"/><path d="M15 6v12"/><path d="M18 8v8"/><path d="M9 12h6"/></NIc>,
   researches:<NIc><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></NIc>,
+  evaluation:<NIc><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5h6v2.5H9z"/><path d="M8.5 11.5l2 2 4-4.5"/></NIc>,
   setup:<NIc><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></NIc>,
   teams:<NIc><path d="M12 3l7 2.5v5.6c0 4.1-2.9 7.1-7 8.4-4.1-1.3-7-4.3-7-8.4V5.5L12 3z"/></NIc>,
   tally:<NIc><path d="M20 11a8 8 0 0 0-14-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.6L20 16"/><path d="M20 20v-4h-4"/></NIc>,
@@ -7919,6 +8191,7 @@ function App(){
       {id:'season',label:'Season',icon:NAV_ICONS.season},
       {id:'calendar',label:'Calendar',icon:NAV_ICONS.calendar},
       {id:'athletes',label:'Athletes',icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
+      {id:'evaluation',label:'Test & Evaluation',icon:NAV_ICONS.evaluation},
       {id:'reports',label:'Training Load',icon:NAV_ICONS.reports},
       {id:'exercises',label:'Exercise Library',icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'researches',label:'Researches',icon:NAV_ICONS.researches},
@@ -7977,6 +8250,7 @@ function App(){
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
       {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
+      {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
