@@ -1268,6 +1268,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* upload: paste a Google Drive link instead of a local file */
 .mk-up-drive{position:absolute;top:5px;left:5px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.62);color:#cfe8ff;font-size:10px;cursor:pointer;display:grid;place-items:center;line-height:1;backdrop-filter:blur(2px);transition:background .15s ease,color .15s ease;z-index:2}
 .mk-up-drive:hover{background:rgba(59,110,245,.9);color:#fff}
+.mk-up-ph{width:100%;height:100%;display:grid;place-items:center;color:var(--muted)}
+.mk-up-gd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:11px;display:grid;place-items:center;padding-left:2px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.5);backdrop-filter:blur(2px)}
+.mk-lb-frame{display:block;width:min(90vw,1100px);height:min(84vh,660px);border:0;border-radius:12px;background:#000;box-shadow:0 28px 80px -22px rgba(0,0,0,.85)}
 /* ===== Google Drive video embed (responsive 16:9, centred) ===== */
 .dv-box{width:100%;max-width:760px;margin:0 auto}
 .dv-frame{position:relative;width:100%;padding-top:56.25%;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.1);background:#000;box-shadow:0 16px 44px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.06)}
@@ -1504,6 +1507,9 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
   box-shadow:0 26px 70px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.1);
 }
 .modal-bg{background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+/* Research reader: solid (non-glass) modal sitting over a blurred page */
+.modal.rs-modal{background:#15181e;-webkit-backdrop-filter:none;backdrop-filter:none;border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 80px -10px rgba(0,0,0,.8)}
+.modal-bg.rs-bg{background:rgba(0,0,0,.5);-webkit-backdrop-filter:blur(11px) saturate(118%);backdrop-filter:blur(11px) saturate(118%)}
 .aic-panel{
   background:linear-gradient(160deg,rgba(22,25,31,.8),rgba(15,17,21,.8));
   -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
@@ -5351,31 +5357,45 @@ function MkSelectField({value,onChange,options}){
 function MkUpload({photo,onChange,label}){
   const ref=useRef(null);
   const[open,setOpen]=useState(false);
+  const[imgErr,setImgErr]=useState(false);
   useEffect(()=>{if(!open)return;const h=e=>{if(e.key==='Escape')setOpen(false);};window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);},[open]);
+  useEffect(()=>{setImgErr(false);},[photo]);
+  const isDrive=typeof photo==='string'&&photo.indexOf('drive:')===0;
+  const dId=isDrive?photo.slice(6):'';
+  const thumbSrc=isDrive?driveImg(dId):photo;
   const pick=()=>ref.current?.click();
   const pickDrive=()=>{
-    const u=prompt('Paste a Google Drive image share link (or file ID):');
+    const u=prompt('Paste a Google Drive share link (image OR video) — or just the file ID:');
     if(u==null)return;
     const did=driveId(u);
     if(!did){if(u.trim())alert('Could not read a Drive file ID from that link.');return;}
-    onChange(driveImg(did));
+    onChange('drive:'+did); // stored tagged → opened in Drive's native viewer (image or video)
   };
   return(<div className="mk-up">
     <div className="mk-up-box" onClick={()=>{if(photo)setOpen(true);else pick();}}>
       {photo
-        ?<React.Fragment><img src={photo} alt={label}/><button className="mk-up-rm" onClick={e=>{e.stopPropagation();onChange(null);}}>✕</button></React.Fragment>
-        :<React.Fragment><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><button className="mk-up-drive" title="Use a Google Drive link" onClick={e=>{e.stopPropagation();pickDrive();}}>🔗</button></React.Fragment>}
+        ?<React.Fragment>
+            {isDrive&&imgErr
+              ?<div className="mk-up-ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></div>
+              :<img src={thumbSrc} alt={label} onError={()=>setImgErr(true)}/>}
+            {isDrive&&<span className="mk-up-gd" title="Google Drive media">▶</span>}
+            <button className="mk-up-rm" onClick={e=>{e.stopPropagation();onChange(null);}}>✕</button>
+          </React.Fragment>
+        :<React.Fragment><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><button className="mk-up-drive" title="Use a Google Drive link (image or video)" onClick={e=>{e.stopPropagation();pickDrive();}}>🔗</button></React.Fragment>}
     </div>
     <div className="mk-up-cap">{label}</div>
     <input ref={ref} type="file" accept="image/*" style={{display:'none'}}
       onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'tests',d=>onChange(d));e.target.value='';}}/>
-    {open&&photo&&<div className="mk-lb" onClick={()=>setOpen(false)}>
-      <div className="mk-lb-inner" onClick={e=>e.stopPropagation()}>
-        <img className="mk-lb-img" src={photo} alt={label}/>
-        <button className="mk-lb-close" onClick={()=>setOpen(false)}>✕</button>
-        <button className="mk-lb-change" onClick={pick}>↻ Change photo</button>
-      </div>
-    </div>}
+    {open&&photo&&ReactDOM.createPortal(
+      <div className="mk-lb" onClick={()=>setOpen(false)}>
+        <div className="mk-lb-inner" onClick={e=>e.stopPropagation()}>
+          {isDrive
+            ?<iframe className="mk-lb-frame" src={`https://drive.google.com/file/d/${dId}/preview`} allow="autoplay; fullscreen" allowFullScreen title={label}/>
+            :<img className="mk-lb-img" src={photo} alt={label}/>}
+          <button className="mk-lb-close" onClick={()=>setOpen(false)}>✕</button>
+          {!isDrive&&<button className="mk-lb-change" onClick={pick}>↻ Change photo</button>}
+        </div>
+      </div>, document.body)}
   </div>);
 }
 const MK_ICONS={
@@ -5694,6 +5714,7 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catName=id=>{const c=fullCatalog.find(x=>x.id===id);return c?c.name:id;};
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
+  const[showReports,setShowReports]=useState(false);
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
   const[period,setPeriod]=useState('pre');
@@ -5741,7 +5762,7 @@ function EvaluationView({team,updateTeam,data,setData}){
     {/* Player grid */}
     <div className="eval-grid">{athletes.map(a=>{
       const age=ageOf(a);const n=(a.tests||[]).length;const on=a.id===selId;
-      return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);}}>
+      return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);setShowReports(false);}}>
         {a.number&&<div className="evc-num">{a.number}</div>}
         {n>0&&<div className="evc-badge">{n} {Lx('test','tests')}</div>}
         <div className="evc-av">{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
@@ -5751,6 +5772,10 @@ function EvaluationView({team,updateTeam,data,setData}){
     })}</div>
 
     {ath&&<div style={{marginTop:18}}>
+      <div className="rep-actions">
+        <button className="rep-btn go" onClick={()=>setShowReports(s=>!s)}>{showReports?'← Back to Testing':'📋 Reports'}</button>
+      </div>
+      {showReports?<TestReportsTab ath={ath}/>:<React.Fragment>
       {/* Alınacak Test — pick the battery */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
@@ -5825,7 +5850,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
         if(!haveAny)return null;
         const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-        return(<div className="panel"><h2 style={{marginTop:0}}>{Lx('Gelişim','Progression')}</h2><div className="metric-grid">
+        return(<div className="panel"><h2 style={{marginTop:0}}>Development</h2><div className="metric-grid">
           {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
             const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
             const cur=valid[valid.length-1],first=valid[0];
@@ -5843,6 +5868,7 @@ function EvaluationView({team,updateTeam,data,setData}){
                 plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
             </div>);})}
         </div></div>);})()}
+      </React.Fragment>}
     </div>}
   </div>);
 }
@@ -5985,9 +6011,9 @@ function TestReportsTab({ath,onAskAI}){
   const hasAny=arr=>arr.some(([,v])=>num(v)!=null);
   const hasMobility=adfR!=null||adfL!=null||asR!=null||asL!=null||ohs!=null;
   return(<div>
-    <div className="rep-actions">
+    {onAskAI&&<div className="rep-actions">
       <button className="rep-btn ai" onClick={onAskAI}>✨ Ask AI — what should this athlete do?</button>
-    </div>
+    </div>}
     <div className="panel">
       <div className="rep-head"><h2 style={{margin:0,fontSize:17}}>📋 Latest Test Report</h2><div className="rep-date">{fd(t.date)}{period?` · ${period}`:''}</div></div>
       {tests.length>1&&<div className="rep-hist">{tests.slice(0,-1).slice(-6).map((x,i)=><span key={i}>{fd(x.date)}</span>)}</div>}
@@ -6135,7 +6161,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {id:'body',ic:'⌇',l:'Body Comp'},
     {id:'injuries',ic:'⊘',l:'Injuries'},
     {id:'wellness',ic:'♡',l:'Wellness'},
-    {id:'reports',ic:'📋',l:'Reports'},
     {id:'recommends',ic:'✨',l:'Recommendations'},
   ];
   return(<div>
@@ -6164,11 +6189,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Edit profile">✎</button>
     </div>
     <div className="rep-actions">
-      <button className="rep-btn go" onClick={()=>setTab('reports')}>📋 Go to Reports</button>
       <button className="rep-btn ai" onClick={askAI}>✨ Ask AI</button>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
-    {tab==='reports'&&<TestReportsTab ath={ath} onAskAI={askAI}/>}
     {tab==='recommends'&&<RecommendsTab ath={ath} updAth={updAth} setup={setup} ai={ai} exercises={exercises} autoGen={aiAuto} onAutoDone={()=>setAiAuto(false)}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
@@ -8100,7 +8123,7 @@ function ResearchModal({rec,onChange,onDelete,onClose}){
     }catch(e){setErr(e.message||String(e));}finally{setBusy(false);}
   };
   const metaLine=[rec.authorsText,rec.year].filter(Boolean).join(' · ');
-  return(<div className="modal-bg" onClick={onClose}>
+  return(<div className="modal-bg rs-bg" onClick={onClose}>
     <div className="modal ex-modal rs-modal" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
         {editing
