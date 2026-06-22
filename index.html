@@ -1222,7 +1222,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* upload boxes */
 .mk-uploads{display:flex;gap:14px;flex-wrap:wrap}
 .mk-up{display:flex;flex-direction:column;align-items:center;gap:7px}
-.mk-up-box{position:relative;width:100px;height:100px;border:1.5px dashed rgba(255,255,255,.22);border-radius:12px;display:grid;place-items:center;cursor:pointer;overflow:hidden;background:rgba(255,255,255,.03);transition:border-color .16s ease,background .16s ease}
+.mk-up-box{position:relative;width:78px;height:78px;border:1.5px dashed rgba(255,255,255,.22);border-radius:10px;display:grid;place-items:center;cursor:pointer;overflow:hidden;background:rgba(255,255,255,.03);transition:border-color .16s ease,background .16s ease}
 .mk-up-box:hover{border-color:var(--card-accent,#8fd633);background:rgba(255,255,255,.06)}
 .mk-up-box svg{width:28px;height:28px;opacity:.45;transition:opacity .16s ease}
 .mk-up-box:hover svg{opacity:.75}
@@ -1237,6 +1237,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ohs-comp-input:focus{border-color:var(--card-accent,#8fd633)}
 /* legacy (kept for any still-used references) */
 .mk-flabel{display:flex;align-items:center;gap:8px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+/* Simple 2D body circumference */
+.bcm2-wrap{display:flex;gap:32px;align-items:flex-start;padding-top:4px}
+.bcm2-svg{flex:none;opacity:.9}
+.bcm2-fields{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
+/* 2×2 photo grid (posture) */
+.photo-grid2x2{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:fit-content}
 @media(max-width:1200px){.ts-wrap{columns:1}}
 @media(max-width:760px){.tcard-content{flex-direction:column;gap:18px}.tc-obs{flex:1 1 auto}.mk-anthro{grid-template-columns:1fr}}
 /* image lightbox (large preview + change button) */
@@ -4926,109 +4932,59 @@ const CIRC_FIELDS=[
   {k:'calfLeft',  tr:'Baldır (Sol)',en:'Calf L',  side:'r', cardTop:362, cx:193,cy:348,rx:12,ry:6, px:207,py:348},
 ];
 function BodyCircumferenceModel({test,onUpdate,lang}){
-  const[active,setActive]=useState(null);
   const circ=test.circ||{};
   const setVal=(k,v)=>onUpdate({circ:{...(test.circ||{}),[k]:v}});
   const Lx=(tr,en)=>lang==='en'?en:tr;
-  // leader-line anchor on the card side (px coords, canvas is fixed 360x440)
-  const cardAnchor=f=>f.side==='l'?{x:110,y:f.cardTop+24}:{x:250,y:f.cardTop+24};
-  // anatomical front-view figure (paths sized to the measurement ellipses)
-  const FIG={
-    head:"M180 18 C171 18 164 25 163 35 C162 44 165 52 171 57 C174 60 177 61 180 61 C183 61 186 60 189 57 C195 52 198 44 197 35 C196 25 189 18 180 18 Z",
-    neck:"M173 55 L171 71 C176 75 184 75 189 71 L187 55 C184 60 176 60 173 55 Z",
-    torso:"M152 78 C146 79 139 83 137 90 C136 97 142 103 149 108 C152 122 154 140 155 156 C156 170 151 184 149 197 C160 202 173 205 180 214 C187 205 200 202 211 197 C209 184 204 170 205 156 C206 140 208 122 211 108 C218 103 224 97 223 90 C221 83 214 79 208 78 C198 73 188 70 180 70 C172 70 162 73 152 78 Z",
-    armL:"M137 90 C129 95 126 108 126 124 C126 142 128 160 131 174 C133 188 136 200 139 210 C141 216 146 216 148 211 C150 202 150 190 150 176 C151 158 151 138 150 120 C149 108 148 98 148 92 C145 88 140 87 137 90 Z",
-    armR:"M223 90 C231 95 234 108 234 124 C234 142 232 160 229 174 C227 188 224 200 221 210 C219 216 214 216 212 211 C210 202 210 190 210 176 C209 158 209 138 210 120 C211 108 212 98 212 92 C215 88 220 87 223 90 Z",
-    legL:"M148 196 C149 230 151 248 154 270 C156 286 158 296 158 308 C158 326 154 336 155 352 C156 372 161 386 164 398 C159 405 156 411 157 415 L176 415 C178 409 178 403 178 397 C179 380 178 360 179 344 C180 326 179 314 180 300 C181 282 181 262 181 246 C181 232 181 222 180 214 C170 201 158 196 148 196 Z",
-    legR:"M212 196 C211 230 209 248 206 270 C204 286 202 296 202 308 C202 326 206 336 205 352 C204 372 199 386 196 398 C201 405 204 411 203 415 L184 415 C182 409 182 403 182 397 C181 380 182 360 181 344 C180 326 181 314 180 300 C179 282 179 262 179 246 C179 232 179 222 180 214 C190 201 202 196 212 196 Z",
-  };
-  return(<div className="bcm-wrap">
-    <div className="bcm-canvas">
-      <svg className="bcm-svg" viewBox="0 0 360 440" width="360" height="440">
-        <defs>
-          <linearGradient id="bcmBody" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#61707f"/><stop offset=".5" stopColor="#3f4853"/><stop offset="1" stopColor="#222932"/>
-          </linearGradient>
-          <linearGradient id="bcmCyl" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#0a0e13" stopOpacity=".42"/>
-            <stop offset=".28" stopColor="#0a0e13" stopOpacity="0"/>
-            <stop offset=".52" stopColor="#e2edf8" stopOpacity=".14"/>
-            <stop offset=".74" stopColor="#0a0e13" stopOpacity="0"/>
-            <stop offset="1" stopColor="#0a0e13" stopOpacity=".44"/>
-          </linearGradient>
-        </defs>
-        {/* ground shadow */}
-        <ellipse cx="180" cy="418" rx="52" ry="8" fill="#000" opacity=".3"/>
-        {/* leader lines */}
-        {CIRC_FIELDS.map(f=>{const a=cardAnchor(f);const on=active===f.k;
-          return<line key={'l'+f.k} x1={a.x} y1={a.y} x2={f.px} y2={f.py}
-            stroke={on?'#e6ff55':'#3a4150'} strokeWidth={on?1.6:1} strokeDasharray="3 3"/>;})}
-        {/* body — anatomical front-view figure */}
-        <g stroke="#11151b" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
-          <path d={FIG.legL} fill="url(#bcmBody)"/>
-          <path d={FIG.legR} fill="url(#bcmBody)"/>
-          <path d={FIG.torso} fill="url(#bcmBody)"/>
-          <path d={FIG.armL} fill="url(#bcmBody)"/>
-          <path d={FIG.armR} fill="url(#bcmBody)"/>
-          <path d={FIG.neck} fill="url(#bcmBody)"/>
-          <path d={FIG.head} fill="url(#bcmBody)"/>
-        </g>
-        {/* volumetric cylinder shading (per-part bbox gradient) */}
-        <g stroke="none">
-          <path d={FIG.legL} fill="url(#bcmCyl)"/>
-          <path d={FIG.legR} fill="url(#bcmCyl)"/>
-          <path d={FIG.torso} fill="url(#bcmCyl)"/>
-          <path d={FIG.armL} fill="url(#bcmCyl)"/>
-          <path d={FIG.armR} fill="url(#bcmCyl)"/>
-          <path d={FIG.head} fill="url(#bcmCyl)"/>
-        </g>
-        {/* muscle definition */}
-        <g fill="none" stroke="#161d26" strokeOpacity=".55" strokeWidth="1.3" strokeLinecap="round">
-          <path d="M158 84 C168 80 192 80 202 84"/>
-          <path d="M156 100 C166 115 174 118 180 118 C186 118 194 115 204 100"/>
-          <path d="M180 118 V156"/>
-          <path d="M170 127 H190 M170 140 H190 M171 151 H189"/>
-          <path d="M139 93 C134 103 133 113 135 123"/><path d="M221 93 C226 103 227 113 225 123"/>
-          <path d="M166 224 C169 250 168 274 163 296"/><path d="M194 224 C191 250 192 274 197 296"/>
-          <path d="M156 300 Q160 305 164 301"/><path d="M204 300 Q200 305 196 301"/>
-        </g>
-        {/* soft highlights */}
-        <g fill="none" stroke="#dce8f6" strokeOpacity=".12" strokeWidth="2" strokeLinecap="round">
-          <path d="M147 91 C141 101 140 113 143 125"/>
-          <path d="M213 91 C219 101 220 113 217 125"/>
-          <path d="M166 104 C163 120 164 138 168 154"/>
-        </g>
-        {/* measuring-tape ellipses */}
-        {CIRC_FIELDS.map(f=>{const on=active===f.k;const has=circ[f.k]!==''&&circ[f.k]!=null;
-          return<g key={'e'+f.k} onClick={()=>setActive(f.k)} style={{cursor:'pointer'}}>
-            <ellipse cx={f.cx} cy={f.cy} rx={f.rx} ry={f.ry} fill="none"
-              stroke={on?'#e6ff55':has?'#9aab3a':'#5c626c'} strokeWidth={on?2.4:1.8}
-              opacity={on?1:.9}/>
-            <circle cx={f.px} cy={f.py} r={on?4.5:3.5} fill={on?'#e6ff55':has?'#9aab3a':'#5c626c'}/>
-          </g>;})}
-        {/* on-body value pills */}
-        {CIRC_FIELDS.map(f=>{const has=circ[f.k]!==''&&circ[f.k]!=null;if(!has)return null;
-          const tx=f.cx,ty=f.cy-(f.ry+9);
-          return<g key={'v'+f.k}>
-            <rect x={tx-15} y={ty-9} width="30" height="15" rx="7.5" fill="#0a0b0d" stroke="#9aab3a" strokeWidth="1"/>
-            <text x={tx} y={ty+1.5} textAnchor="middle" fontSize="9" fontWeight="700" fill="#e6ff55" fontFamily="IBM Plex Mono, monospace">{circ[f.k]}</text>
-          </g>;})}
-      </svg>
-      {/* flanking input cards */}
-      {CIRC_FIELDS.map(f=>{const on=active===f.k;
-        return<div key={'c'+f.k} className={'bcm-card'+(on?' on':'')}
-          style={f.side==='l'?{left:6,top:f.cardTop}:{right:6,top:f.cardTop}}
-          onClick={()=>setActive(f.k)}>
-          <div className="bcm-lbl">{Lx(f.tr,f.en)}</div>
-          <div className="bcm-in">
-            <input type="number" step="0.1" inputMode="decimal" value={circ[f.k]||''}
-              onFocus={()=>setActive(f.k)}
-              onChange={e=>setVal(f.k,e.target.value)} placeholder="—"/>
-            <span className="bcm-u">cm</span>
-          </div>
-        </div>;})}
+  const FIELDS=[
+    {k:'shoulder', tr:'Omuz',        en:'Shoulder'},
+    {k:'waist',    tr:'Bel',         en:'Waist'},
+    {k:'hip',      tr:'Kalça',       en:'Hip'},
+    {k:'thighRight',tr:'Uyluk (Sağ)',en:'Thigh R'},
+    {k:'thighLeft', tr:'Uyluk (Sol)',en:'Thigh L'},
+    {k:'calfRight', tr:'Baldır (Sağ)',en:'Calf R'},
+    {k:'calfLeft',  tr:'Baldır (Sol)',en:'Calf L'},
+  ];
+  /* measurement line y-positions on the 100×280 viewBox */
+  const MARKS=[
+    {k:'shoulder', y:52},
+    {k:'waist',    y:112},
+    {k:'hip',      y:132},
+    {k:'thighRight',y:168,left:true},
+    {k:'thighLeft', y:168,left:false},
+    {k:'calfRight', y:214,left:true},
+    {k:'calfLeft',  y:214,left:false},
+  ];
+  return(<div className="bcm2-wrap">
+    <svg className="bcm2-svg" viewBox="0 0 100 280" width="90" height="252" aria-hidden="true">
+      {/* head */}
+      <circle cx="50" cy="17" r="12" fill="#1c2028" stroke="#3a4150" strokeWidth="1.5"/>
+      {/* neck */}
+      <rect x="44" y="29" width="12" height="10" rx="3" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      {/* torso */}
+      <path d="M24 46 Q50 41 76 46 L72 134 Q61 138 50 138 Q39 138 28 134 Z" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      {/* arms */}
+      <rect x="9"  y="46" width="15" height="64" rx="7" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      <rect x="76" y="46" width="15" height="64" rx="7" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      {/* legs */}
+      <rect x="27" y="134" width="19" height="104" rx="7" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      <rect x="54" y="134" width="19" height="104" rx="7" fill="#1c2028" stroke="#3a4150" strokeWidth="1.4"/>
+      {/* measurement tape marks */}
+      <line x1="10" y1="52"  x2="90" y2="52"  stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="24" y1="112" x2="76" y2="112" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="24" y1="132" x2="76" y2="132" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="27" y1="168" x2="46" y2="168" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="54" y1="168" x2="73" y2="168" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="27" y1="214" x2="46" y2="214" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+      <line x1="54" y1="214" x2="73" y2="214" stroke="var(--card-accent,#8fd633)" strokeWidth="1.2" strokeDasharray="3 2" opacity=".75"/>
+    </svg>
+    <div className="bcm2-fields">
+      {FIELDS.map(f=>(
+        <div key={f.k} className="mk-field">
+          <div className="mk-flbl">{Lx(f.tr,f.en)}</div>
+          <MkInput value={circ[f.k]} onChange={v=>setVal(f.k,v)} unit="cm"/>
+        </div>
+      ))}
     </div>
-    <div className="bcm-hint">{Lx('Vücut üzerindeki bir bölgeye tıklayıp ölçümü gir — değerler model üzerinde gösterilir.','Click a body region and enter the measurement — values are shown on the model.')}</div>
   </div>);
 }
 
@@ -5306,6 +5262,7 @@ const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF'
 const BADGE_COLS=['#8fd633','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#8fd633','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#8fd633','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
 const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
+const JUMP_IDS=new Set(['verticalJump','cmj','squatJump','horizontalJump','dropJump']);
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
@@ -5386,11 +5343,11 @@ function TestCard({id,index,test,onUpdate,custom}){
   }
 
   if(id==='posture'){
-    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-content">
         <div className="tc-fields">
-          <div className="mk-uploads">
+          <div className="photo-grid2x2">
             <MkUpload photo={test.posture?.frontPhoto} onChange={v=>uN('posture','frontPhoto',v)} label="Front"/>
             <MkUpload photo={test.posture?.sidePhoto} onChange={v=>uN('posture','sidePhoto',v)} label="Side (R)"/>
             <MkUpload photo={test.posture?.sideLPhoto} onChange={v=>uN('posture','sideLPhoto',v)} label="Side (L)"/>
@@ -5435,7 +5392,7 @@ function TestCard({id,index,test,onUpdate,custom}){
 
   if(id==='ankleDF'){
     const r=Number(test.ankleDF?.right)||0,l=Number(test.ankleDF?.left)||0,diff=Math.abs(r-l);
-    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-content">
         <div className="tc-fields">
@@ -5452,7 +5409,7 @@ function TestCard({id,index,test,onUpdate,custom}){
 
   if(id==='aslr'){
     const r=Number(test.aslr?.right)||0,l=Number(test.aslr?.left)||0,diff=Math.abs(r-l);
-    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-content">
         <div className="tc-fields">
@@ -5494,10 +5451,22 @@ function TestCard({id,index,test,onUpdate,custom}){
 
   if(MK_SOLO_UNIT[id]){
     const step=(id==='dropJump'||id==='tTest'||id==='fiveZeroFive'||id==='shuttleRun')?'0.01':'0.1';
-    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
+    const isJump=JUMP_IDS.has(id);
+    if(isJump){
+      return(<div className="tcard" style={{'--card-accent':badgeColor}}>
+        <Hd/>
+        <div className="tcard-col">
+          <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
+          <MkObs value={obsVal} onChange={setObs}/>
+        </div>
+      </div>);
+    }
+    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
-      <div className="tcard-col">
-        <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
+      <div className="tcard-content">
+        <div className="tc-fields">
+          <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
+        </div>
         <MkObs value={obsVal} onChange={setObs}/>
       </div>
     </div>);
@@ -5535,10 +5504,6 @@ function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
     <div className="ts-wrap">
       {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu}/>;})}
       {valid.length===0&&<div className="empty-st">No tests in this battery.</div>}
-      <div className="tcard tcard-wide">
-        <div className="tcard-hd"><span className="tcard-title">General Notes</span></div>
-        <div style={{padding:'16px 22px 20px'}}><textarea value={test.notes||''} onChange={e=>u('notes',e.target.value)} placeholder="Session conditions, fatigue level, observations…" style={{minHeight:74,width:'100%',boxSizing:'border-box',background:'rgba(255,255,255,.018)',border:'1.5px solid #8fd633',borderRadius:10,padding:'10px 12px',color:'var(--text)',fontSize:12.5,lineHeight:1.5,resize:'vertical',outline:'none',boxShadow:'inset 0 2px 8px rgba(0,0,0,.24)'}}/></div>
-      </div>
     </div>
   </div>);
 }
