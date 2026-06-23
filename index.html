@@ -7003,10 +7003,15 @@ async function performTallySync(workerUrl,team,opts={}){
     if(!ath)continue;
     const nid=`tally-w-${row._id}`;
     const i=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
+    const _toN=v=>{const n=parseFloat(v);return isNaN(n)?null:n;};
+    const _sleep=_toN(row['Sleep']),_fat=_toN(row['Fatigue']);
+    const _sor=_toN(row['Soreness ']!=null?row['Soreness ']:row['Soreness']);
+    const _rhr=_toN(row['RHR']);
+    let _ready=_toN(row['Readiness']);
+    if(_ready==null){const sc=[_sleep,_fat,_sor].filter(v=>v!=null);if(sc.length)_ready=+(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1);}
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
-      RHR:row['RHR'],sleep:row['Sleep'],fatigue:row['Fatigue'],
-      soreness:(row['Soreness ']!=null?row['Soreness ']:row['Soreness']),
-      areaOfPain:row['Area of Pain']||'',readiness:row['Readiness']};
+      RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
+      areaOfPain:row['Area of Pain']||'',readiness:_ready};
     if(i>=0){ath.wellness[i]=entry;stats.wellnessUpdated++;}
     else{ath.wellness.push(entry);stats.wellnessAdded++;}
   }
