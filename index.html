@@ -1301,6 +1301,45 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rep-hist{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .rep-hist span{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:4px 10px}
 .rep-note{font-size:13px;color:var(--text2);line-height:1.55;background:rgba(255,255,255,.03);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:10px 13px}
+/* Reports two-column: report (left) | Ask AI Coach chatbox (right) */
+.rep-cols{display:grid;grid-template-columns:1fr 380px;gap:14px;align-items:start;margin-bottom:14px}
+@media(max-width:1000px){.rep-cols{grid-template-columns:1fr}}
+.rep-cols>.panel{margin:0}
+/* compact Development mini-cards */
+.rep-dev{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:10px}
+.metric-card.dev-mini{padding:11px 13px;gap:5px;border-radius:11px}
+.metric-card.dev-mini .mc-h{padding-bottom:7px}
+.metric-card.dev-mini .mc-t{font-size:12.5px}
+.metric-card.dev-mini .mc-u{font-size:10px}
+.metric-card.dev-mini .mc-val{margin:1px 0 -2px}
+.metric-card.dev-mini .mc-val .mv{font-size:23px}
+.metric-card.dev-mini .mc-val .md{font-size:11px}
+.metric-card.dev-mini .mc-chart{height:78px}
+/* Ask AI Coach chatbox */
+.aicb{position:sticky;top:14px;background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px;display:flex;flex-direction:column;min-height:380px;max-height:600px;box-shadow:0 10px 30px -16px rgba(0,0,0,.7)}
+.aicb-h{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:var(--text);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.aicb-h span{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:400;color:var(--dim)}
+.aicb-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin:11px 0;padding-right:4px;min-height:140px}
+.aicb-hint{font-size:12px;color:var(--dim);line-height:1.5;margin:auto 0;text-align:center;padding:10px}
+.aicb-msg{display:flex;max-width:92%}
+.aicb-msg.user{align-self:flex-end}
+.aicb-msg.assistant{align-self:flex-start}
+.aicb-bub{font-size:12.5px;line-height:1.55;padding:8px 11px;border-radius:12px}
+.aicb-msg.user .aicb-bub{background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-bottom-right-radius:4px}
+.aicb-msg.assistant .aicb-bub{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:var(--text2);border-bottom-left-radius:4px}
+.aicb-bub p{margin:0 0 6px}.aicb-bub p:last-child{margin:0}.aicb-bub ul,.aicb-bub ol{margin:4px 0;padding-left:17px}.aicb-bub li{margin:2px 0}.aicb-bub h3,.aicb-bub h4{font-size:12.5px;margin:7px 0 3px;color:var(--text)}.aicb-bub strong{color:var(--text)}
+.aicb-typing{letter-spacing:1px;color:var(--dim);font-size:9px}
+.aicb-err{font-size:11px;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:6px 9px;margin-bottom:8px}
+.aicb-sugg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+.aicb-sugg button{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text2);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:5px 11px;cursor:pointer;transition:border-color .14s,color .14s}
+.aicb-sugg button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.aicb-sugg button:disabled{opacity:.5;cursor:not-allowed}
+.aicb-in{display:flex;gap:7px;align-items:center}
+.aicb-in input{flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;color:var(--text);font-size:12.5px;outline:none;font-family:inherit;transition:border-color .14s}
+.aicb-in input:focus{border-color:var(--accent)}
+.aicb-in button{flex:none;width:36px;height:36px;border-radius:10px;border:none;background:var(--accent);color:#14210a;font-size:14px;cursor:pointer;display:grid;place-items:center;transition:opacity .14s}
+.aicb-in button:disabled{opacity:.4;cursor:not-allowed}
+.aicb-empty{font-size:12px;color:var(--dim);line-height:1.55;margin:auto 0;text-align:center;padding:14px}
 /* Team Body Composition table */
 .tbc-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
 .tbc-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
@@ -5775,7 +5814,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       <div className="rep-actions">
         <button className="rep-btn go" onClick={()=>setShowReports(s=>!s)}>{showReports?'← Back to Testing':'📋 Reports'}</button>
       </div>
-      {showReports?<TestReportsTab ath={ath}/>:<React.Fragment>
+      {showReports?<TestReportsTab ath={ath} setup={setup} ai={data&&data.ai} exercises={(data&&data.exercises)||[]}/>:<React.Fragment>
       {/* Alınacak Test — pick the battery */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
@@ -5831,43 +5870,6 @@ function EvaluationView({team,updateTeam,data,setData}){
       </div>
 
       {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
-
-      {/* Progression charts */}
-      {(()=>{const ts=[...tests].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
-        if(ts.length<1)return null;
-        const labels=ts.map(t=>{const d=parseD(t.date);return MN[d.getMonth()];});
-        const cards=[
-          {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
-          {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#f97316',dot:'#fb923c'},
-          {t:'Squat Jump',u:'cm',f:t=>Number(t.squatJump),up:true,col:'#eab308',dot:'#facc15'},
-          {t:'Horizontal Jump',u:'cm',f:t=>Number(t.horizontalJump),up:true,col:'#10b981',dot:'#34d399'},
-          {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
-          {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
-          {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
-          {t:'Weight',u:'kg',f:t=>Number(t.weight),up:null,col:'#3b82f6',dot:'#60a5fa'},
-          {t:'Body Fat',u:'%',f:t=>Number(t.bodyFat),up:false,col:'#06b6d4',dot:'#22d3ee'},
-        ];
-        const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
-        if(!haveAny)return null;
-        const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-        return(<div className="panel"><h2 style={{marginTop:0}}>Development</h2><div className="metric-grid">
-          {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
-            const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
-            const cur=valid[valid.length-1],first=valid[0];
-            const imp=valid.length>1&&c.up!=null?+((c.up?cur-first:first-cur).toFixed(2)):null;
-            const sign=imp==null?'':(imp>0?'+':'');
-            return(<div key={c.t} className="metric-card">
-              <div className="mc-h"><div className="mc-t">{c.t}</div><div className="mc-u">{c.u}</div></div>
-              <div className="mc-val"><span className="mv" style={{color:c.dot}}>{cur}</span>{imp!=null&&imp!==0&&<span className={`md ${imp>0?'pos':'neg'}`}>{sign}{imp}</span>}</div>
-              <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
-                {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2.5,
-                  pointRadius:4,pointBackgroundColor:c.dot,pointBorderColor:c.dot,datalabels:dataLbl(c.dot)}
-              ]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:24,bottom:6,left:8,right:8}},
-                scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
-                  y:{display:false,grid:{display:false},beginAtZero:false}},
-                plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
-            </div>);})}
-        </div></div>);})()}
       </React.Fragment>}
     </div>}
   </div>);
@@ -5991,8 +5993,92 @@ function recMd(src){
   closeList();return html;
 }
 
+/* Compact "Development" progression mini-charts (one per metric over time). */
+function DevelopmentCharts({tests}){
+  const ts=[...(tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  if(ts.length<1)return null;
+  const labels=ts.map(t=>{const d=parseD(t.date);return MN[d.getMonth()];});
+  const cards=[
+    {t:'Vertical Jump',u:'cm',f:t=>Number(t.verticalJump),up:true,col:'#9aab3a',dot:'#e6ff55'},
+    {t:'CMJ',u:'cm',f:t=>Number(t.cmj),up:true,col:'#f97316',dot:'#fb923c'},
+    {t:'Squat Jump',u:'cm',f:t=>Number(t.squatJump),up:true,col:'#eab308',dot:'#facc15'},
+    {t:'Horizontal Jump',u:'cm',f:t=>Number(t.horizontalJump),up:true,col:'#10b981',dot:'#34d399'},
+    {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
+    {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
+    {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
+    {t:'Weight',u:'kg',f:t=>Number(t.weight),up:null,col:'#3b82f6',dot:'#60a5fa'},
+    {t:'Body Fat',u:'%',f:t=>Number(t.bodyFat),up:false,col:'#06b6d4',dot:'#22d3ee'},
+  ];
+  const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
+  if(!haveAny)return null;
+  const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:9,weight:'bold',family:'IBM Plex Mono'},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+  return(<div className="panel"><h2 style={{marginTop:0,fontSize:17}}>📈 Development</h2><div className="rep-dev">
+    {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
+      const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
+      const cur=valid[valid.length-1],first=valid[0];
+      const imp=valid.length>1&&c.up!=null?+((c.up?cur-first:first-cur).toFixed(2)):null;
+      const sign=imp==null?'':(imp>0?'+':'');
+      return(<div key={c.t} className="metric-card dev-mini">
+        <div className="mc-h"><div className="mc-t">{c.t}</div><div className="mc-u">{c.u}</div></div>
+        <div className="mc-val"><span className="mv" style={{color:c.dot}}>{cur}</span>{imp!=null&&imp!==0&&<span className={`md ${imp>0?'pos':'neg'}`}>{sign}{imp}</span>}</div>
+        <div className="mc-chart"><ChartC type="line" chartData={{labels,datasets:[
+          {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2,
+            pointRadius:3,pointBackgroundColor:c.dot,pointBorderColor:c.dot,datalabels:dataLbl(c.dot)}
+        ]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:18,bottom:4,left:6,right:6}},
+          scales:{x:{ticks:{color:'#74808f',font:{family:'IBM Plex Mono',size:9},autoSkip:true,maxRotation:0,maxTicksLimit:6},grid:{display:false},border:{display:false}},
+            y:{display:false,grid:{display:false},beginAtZero:false}},
+          plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
+      </div>);})}
+  </div></div>);
+}
+
+/* Ask AI Coach — inline chatbox that evaluates THIS athlete's test results. */
+function AskAICoachBox({ath,setup,ai,exercises}){
+  const provider=(ai&&ai.provider)||'gemini';
+  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
+  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const[msgs,setMsgs]=useState([]);
+  const[input,setInput]=useState('');
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const scrollRef=useRef(null);
+  const snap=useMemo(()=>{try{return buildAthleteSnapshot(ath,setup||{},exercises||[]);}catch(e){return '';}},[ath,setup,exercises]);
+  const system='You are an elite strength & conditioning assistant coach. Evaluate THIS athlete\'s TEST RESULTS and answer the coach\'s questions concisely and concretely. Base everything ONLY on the provided data — never invent test numbers; if data is missing, say so. Prefer short bullet points, give actual set×rep / %1RM / RPE when suggesting work. Reply in the SAME language as the coach\'s message.\n\n=== ATHLETE DATA ===\n'+snap;
+  useEffect(()=>{if(scrollRef.current)scrollRef.current.scrollTop=scrollRef.current.scrollHeight;},[msgs,busy]);
+  const send=async(text)=>{
+    const q=(text!=null?text:input).trim();
+    if(!q||busy||!apiKey)return;
+    setErr('');const next=[...msgs,{role:'user',content:q}];setMsgs(next);setInput('');setBusy(true);
+    try{
+      const ans=provider==='anthropic'?await askCoach(apiKey,model,system,next):await askGemini(apiKey,model,system,next);
+      setMsgs(m=>[...m,{role:'assistant',content:ans||'(empty response)'}]);
+    }catch(e){setErr(e.message||String(e));}
+    finally{setBusy(false);}
+  };
+  return(<div className="aicb">
+    <div className="aicb-h">🤖 Ask AI Coach <span>· evaluates test results</span></div>
+    {!apiKey
+      ?<div className="aicb-empty">Add an API key in the <b>✨ AI Coach</b> panel (bottom-right) to chat about <b>{ath.name}</b>'s results. <b>Gemini is free.</b></div>
+      :<React.Fragment>
+        <div className="aicb-msgs" ref={scrollRef}>
+          {msgs.length===0&&<div className="aicb-hint">Ask anything about {ath.name}'s test results — or tap a suggestion below.</div>}
+          {msgs.map((m,i)=><div key={i} className={'aicb-msg '+m.role}><div className="aicb-bub" dangerouslySetInnerHTML={{__html:recMd(m.content)}}/></div>)}
+          {busy&&<div className="aicb-msg assistant"><div className="aicb-bub aicb-typing">● ● ●</div></div>}
+        </div>
+        {err&&<div className="aicb-err">⚠ {err}</div>}
+        {msgs.length===0&&<div className="aicb-sugg">
+          {['Evaluate these test results','Biggest weakness?','What to train next?'].map(s=><button key={s} disabled={busy} onClick={()=>send(s)}>{s}</button>)}
+        </div>}
+        <form className="aicb-in" onSubmit={e=>{e.preventDefault();send();}}>
+          <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Ask about the results…" disabled={busy}/>
+          <button type="submit" disabled={busy||!input.trim()} title="Send">➤</button>
+        </form>
+      </React.Fragment>}
+  </div>);
+}
+
 /* Simple, readable test-results report for an athlete (latest session + history). */
-function TestReportsTab({ath,onAskAI}){
+function TestReportsTab({ath,setup,ai,exercises}){
   const num=v=>(v!==''&&v!=null&&!isNaN(Number(v)))?Number(v):null;
   const tests=[...(ath.tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
   const t=tests.length?tests[tests.length-1]:null;
@@ -6011,30 +6097,27 @@ function TestReportsTab({ath,onAskAI}){
   const hasAny=arr=>arr.some(([,v])=>num(v)!=null);
   const hasMobility=adfR!=null||adfL!=null||asR!=null||asL!=null||ohs!=null;
   return(<div>
-    {onAskAI&&<div className="rep-actions">
-      <button className="rep-btn ai" onClick={onAskAI}>✨ Ask AI — what should this athlete do?</button>
-    </div>}
-    <div className="panel">
-      <div className="rep-head"><h2 style={{margin:0,fontSize:17}}>📋 Latest Test Report</h2><div className="rep-date">{fd(t.date)}{period?` · ${period}`:''}</div></div>
-      {tests.length>1&&<div className="rep-hist">{tests.slice(0,-1).slice(-6).map((x,i)=><span key={i}>{fd(x.date)}</span>)}</div>}
-      {hasAny(anthro)&&<><div className="rep-sec-t">Anthropometrics</div><div className="rep-grid">{anthro.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}{bmi!=null&&<Tile k="BMI" raw={bmi.toFixed(1)}/>}</div></>}
-      {hasAny(power)&&<><div className="rep-sec-t">Power / Jumps</div><div className="rep-grid">{power.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}</div></>}
-      {hasAny(speed)&&<><div className="rep-sec-t">Speed / Agility</div><div className="rep-grid">{speed.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}</div></>}
-      {hasMobility&&<><div className="rep-sec-t">Mobility / Movement</div><div className="rep-grid">
-        {adfR!=null&&<Tile k="Ankle DF — R" v={adfR} u="°"/>}
-        {adfL!=null&&<Tile k="Ankle DF — L" v={adfL} u="°"/>}
-        {asR!=null&&<Tile k="ASLR — R" raw={asR+' /3'}/>}
-        {asL!=null&&<Tile k="ASLR — L" raw={asL+' /3'}/>}
-        {ohs!=null&&<Tile k="Overhead Squat" raw={ohs+' /3'}/>}
-      </div></>}
-      {hasAny(circList)&&<><div className="rep-sec-t">Body Circumference (cm)</div><div className="rep-grid">{circList.map(([k,v])=><Tile key={k} k={k} v={v} u="cm"/>)}</div></>}
-      {t.posture&&t.posture.observations&&<><div className="rep-sec-t">Posture Notes</div><div className="rep-note">{t.posture.observations}</div></>}
-      {t.notes&&<><div className="rep-sec-t">General Notes</div><div className="rep-note">{t.notes}</div></>}
+    <div className="rep-cols">
+      <div className="panel">
+        <div className="rep-head"><h2 style={{margin:0,fontSize:17}}>📋 Latest Test Report</h2><div className="rep-date">{fd(t.date)}{period?` · ${period}`:''}</div></div>
+        {tests.length>1&&<div className="rep-hist">{tests.slice(0,-1).slice(-6).map((x,i)=><span key={i}>{fd(x.date)}</span>)}</div>}
+        {hasAny(anthro)&&<><div className="rep-sec-t">Anthropometrics</div><div className="rep-grid">{anthro.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}{bmi!=null&&<Tile k="BMI" raw={bmi.toFixed(1)}/>}</div></>}
+        {hasAny(power)&&<><div className="rep-sec-t">Power / Jumps</div><div className="rep-grid">{power.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}</div></>}
+        {hasAny(speed)&&<><div className="rep-sec-t">Speed / Agility</div><div className="rep-grid">{speed.map(([k,v,u])=><Tile key={k} k={k} v={v} u={u}/>)}</div></>}
+        {hasMobility&&<><div className="rep-sec-t">Mobility / Movement</div><div className="rep-grid">
+          {adfR!=null&&<Tile k="Ankle DF — R" v={adfR} u="°"/>}
+          {adfL!=null&&<Tile k="Ankle DF — L" v={adfL} u="°"/>}
+          {asR!=null&&<Tile k="ASLR — R" raw={asR+' /3'}/>}
+          {asL!=null&&<Tile k="ASLR — L" raw={asL+' /3'}/>}
+          {ohs!=null&&<Tile k="Overhead Squat" raw={ohs+' /3'}/>}
+        </div></>}
+        {hasAny(circList)&&<><div className="rep-sec-t">Body Circumference (cm)</div><div className="rep-grid">{circList.map(([k,v])=><Tile key={k} k={k} v={v} u="cm"/>)}</div></>}
+        {t.posture&&t.posture.observations&&<><div className="rep-sec-t">Posture Notes</div><div className="rep-note">{t.posture.observations}</div></>}
+        {t.notes&&<><div className="rep-sec-t">General Notes</div><div className="rep-note">{t.notes}</div></>}
+      </div>
+      <AskAICoachBox ath={ath} setup={setup} ai={ai} exercises={exercises}/>
     </div>
-    <div className="panel">
-      <div className="rep-head"><h2 style={{margin:0,fontSize:17}}>🎬 Reference / Technique Video</h2></div>
-      <DriveVideo id={DRIVE_VIDEO_ID} title="Hosted on Google Drive"/>
-    </div>
+    <DevelopmentCharts tests={ath.tests}/>
   </div>);
 }
 
