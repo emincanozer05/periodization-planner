@@ -1464,12 +1464,12 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-hm{border-collapse:separate;border-spacing:5px 4px;min-width:560px}
 .wh-hm th{font-weight:500;vertical-align:bottom}
 .wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;z-index:3;background:linear-gradient(90deg,rgba(34,38,47,.55),rgba(24,27,34,.42));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);vertical-align:bottom;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 18px -10px rgba(0,0,0,.55)}
-.wh-corner{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px 4px}
+.wh-corner{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px 4px}
 .wh-hm .wh-day{text-align:center;padding:0 1px}
 .wh-hm .wh-day .wh-mon{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--text2);font-weight:600;height:12px}
 .wh-hm .wh-day .wh-wd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
 .wh-hm .wh-day .wh-dd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);font-weight:600}
-.wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
+.wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
 .wh-row{animation:whRowIn .45s ease both}
 @keyframes whRowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .wh-hm .wh-ath{position:sticky;left:0;z-index:2;background:linear-gradient(90deg,rgba(34,38,47,.5),rgba(24,27,34,.38));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px -10px rgba(0,0,0,.5);display:flex;align-items:center;gap:9px;white-space:nowrap;padding-left:11px;padding-right:10px;transition:background .18s ease,box-shadow .18s ease}
@@ -1522,11 +1522,12 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 }
 /* Grid cards can be numerous → NO backdrop blur (kills scroll jank). A
    translucent gradient over the ambient background keeps the glassy look cheaply. */
-.rc,.ex-card,.rsf-card,.rec-card{
+.rc,.rsf-card,.rec-card{
   background:linear-gradient(160deg,rgba(36,40,48,.74),rgba(22,25,30,.74));
   border:1px solid rgba(255,255,255,.09);
   box-shadow:0 10px 30px -14px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07);
 }
+.ex-card{background:var(--panel);border:1px solid var(--border);box-shadow:0 4px 14px -6px rgba(0,0,0,.5);}
 /* Inner cards / chips — translucent tint, lighter (no nested blur for perf) */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{
   background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
@@ -2196,7 +2197,7 @@ function WellnessHeatmap({athletes}){
             <button style={nb} onClick={()=>shiftWk(-1)} title="Önceki hafta">‹</button>
             <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:12,color:'var(--text2)',minWidth:96,textAlign:'center'}}>{rangeLabel}</span>
             <button style={nb} onClick={()=>shiftWk(1)} title="Sonraki hafta">›</button>
-            <button style={{...nb,width:'auto',padding:'0 10px',fontSize:12}} onClick={()=>setWinEnd(fmt(today))} title="Bu haftaya dön">Bugün</button>
+            <button style={{...nb,width:'auto',padding:'0 10px',fontSize:12}} onClick={()=>setWinEnd(fmt(today))} title="Go to today">Today</button>
           </>;})()}
         </div>
         <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
@@ -2212,7 +2213,7 @@ function WellnessHeatmap({athletes}){
       <div className="wh-scroll">
         <table className="wh-hm">
           <thead><tr>
-            <th className="wh-ath-h"><span className="wh-corner">Sporcu</span></th>
+            <th className="wh-ath-h"><span className="wh-corner">Athlete</span></th>
             {dates.map((d,i)=>{const dt=parseD(d);const prev=i>0?parseD(dates[i-1]):null;const showMonth=!prev||prev.getMonth()!==dt.getMonth();
               return<th key={d} className="wh-day"><div className="wh-mon">{showMonth?MN[dt.getMonth()]:''}</div><div className="wh-wd">{DN[(dt.getDay()+6)%7][0]}</div><div className="wh-dd">{dt.getDate()}</div></th>;})}
             <th className="wh-avg-h">AVG</th>
@@ -3508,6 +3509,86 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 }
 
 /* =========================================================
+   MANUAL WELLNESS SURVEY (Calendar page)
+   ========================================================= */
+function ManualWellnessSurvey({athletes,saveAthletes}){
+  const WF=[
+    {id:'readiness',label:'Readiness',hint:'1 = exhausted · 5 = great',rpe:true},
+    {id:'sleep',label:'Sleep Quality',hint:'1 = very poor · 5 = excellent',rpe:true},
+    {id:'fatigue',label:'Fatigue',hint:'1 = very tired · 5 = fresh',rpe:true},
+    {id:'soreness',label:'Soreness',hint:'1 = very sore · 5 = none',rpe:true},
+    {id:'RHR',label:'RHR (bpm)',hint:'Resting heart rate in bpm',rpe:false},
+  ];
+  const[athId,setAthId]=useState('');
+  const[date,setDate]=useState(fmt(today));
+  const[vals,setVals]=useState({readiness:'',sleep:'',fatigue:'',soreness:'',RHR:''});
+  const[toast,setToast]=useState('');
+  if(!athletes||athletes.length===0)return null;
+  const setV=(k,v)=>setVals(p=>({...p,[k]:v}));
+  const toggle=(k,n)=>setVals(p=>({...p,[k]:p[k]===String(n)?'':String(n)}));
+  const submit=()=>{
+    const ath=athletes.find(a=>a.id===athId);
+    if(!ath)return;
+    const entry={date};
+    WF.forEach(f=>{if(vals[f.id]!=='')entry[f.id]=Number(vals[f.id]);});
+    if(Object.keys(entry).length===1)return;
+    const wellness=[...(ath.wellness||[])];
+    const idx=wellness.findIndex(w=>w.date===date);
+    if(idx>=0)wellness[idx]={...wellness[idx],...entry};else wellness.push(entry);
+    saveAthletes(athletes.map(a=>a.id===athId?{...a,wellness}:a));
+    setToast('Saved ✓');setTimeout(()=>setToast(''),2500);
+    setVals({readiness:'',sleep:'',fatigue:'',soreness:'',RHR:''});
+  };
+  const btnS=(active)=>({width:34,height:34,borderRadius:8,border:'1px solid',cursor:'pointer',fontWeight:700,fontSize:13,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",transition:'all .14s',
+    borderColor:active?'var(--accent)':'var(--border2)',
+    background:active?'var(--accent-bg)':'transparent',
+    color:active?'var(--accent)':'var(--muted)'});
+  const lbl={fontSize:11,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.06em',display:'block',marginBottom:5};
+  return(<div className="panel" style={{marginTop:16}}>
+    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+      <div>
+        <h2 style={{margin:0,fontSize:16,fontWeight:700,letterSpacing:'-.01em'}}>Wellness Survey</h2>
+        <p style={{margin:'3px 0 0',fontSize:12,color:'var(--dim)'}}>Manually log an athlete's daily wellness check-in</p>
+      </div>
+      {toast&&<span style={{fontSize:12,fontWeight:700,color:'#22c55e',background:'rgba(34,197,94,.12)',padding:'5px 13px',borderRadius:8,border:'1px solid rgba(34,197,94,.3)',alignSelf:'center'}}>{toast}</span>}
+    </div>
+    <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:16}}>
+      <div style={{flex:'1 1 180px',minWidth:0}}>
+        <label style={lbl}>Athlete</label>
+        <select value={athId} onChange={e=>setAthId(e.target.value)} style={{width:'100%'}}>
+          <option value="">— Select athlete —</option>
+          {athletes.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      </div>
+      <div style={{flex:'0 1 170px',minWidth:0}}>
+        <label style={lbl}>Date</label>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:'100%'}}/>
+      </div>
+    </div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:18}}>
+      {WF.map(f=>(
+        <div key={f.id} style={{background:'var(--elevated)',borderRadius:12,padding:'12px 13px',border:'1px solid var(--border)'}}>
+          <div style={{fontWeight:700,fontSize:12,color:'var(--text2)',marginBottom:3}}>{f.label}</div>
+          <div style={{fontSize:10,color:'var(--dim)',marginBottom:9,lineHeight:1.4}}>{f.hint}</div>
+          {f.rpe
+            ?<div style={{display:'flex',gap:5,justifyContent:'center'}}>
+              {[1,2,3,4,5].map(n=>(
+                <button key={n} onClick={()=>toggle(f.id,n)} style={btnS(vals[f.id]===String(n))}>{n}</button>
+              ))}
+            </div>
+            :<input type="number" min="30" max="120" placeholder="—" value={vals.RHR} onChange={e=>setV('RHR',e.target.value)}
+                style={{width:'100%',fontSize:16,textAlign:'center',padding:'7px',borderRadius:8,fontFamily:"'IBM Plex Mono',monospace",border:'1px solid var(--border)',background:'var(--bg2)',color:'var(--text)'}}/>
+          }
+        </div>
+      ))}
+    </div>
+    <div style={{display:'flex',justifyContent:'flex-end'}}>
+      <button className="btn sm" onClick={submit} style={{opacity:athId?1:.4,pointerEvents:athId?'auto':'none'}}>Save Entry</button>
+    </div>
+  </div>);
+}
+
+/* =========================================================
    CALENDAR (reusable for team & athlete)
    ========================================================= */
 const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
@@ -3692,7 +3773,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     while(a.length%7!==0){const l=a[a.length-1].d;a.push({d:new Date(l.getFullYear(),l.getMonth(),l.getDate()+1),out:true});}
     return a;})();
   const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
-  return(<div className="panel">
+  return(<>
+  <h2 style={{fontSize:22,fontWeight:800,letterSpacing:'-.02em',marginBottom:14,color:'var(--text)'}}>Calendar</h2>
+  <div className="panel">
     <div className="calm-bar">
       <div className="calm-ttl"><span>Program Block</span><em>{calMode==='week'?'weekly overview':'monthly overview'}</em></div>
       <div className="calm-ctrl">
@@ -3887,7 +3970,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
       </aside>
     </>),document.body)}
-  </div>);
+  </div>
+  {teamMode&&<ManualWellnessSurvey athletes={athletes} saveAthletes={saveAthletes}/>}
+  </>);
 }
 
 /* =========================================================
@@ -7860,6 +7945,7 @@ function VideoPlayer({ex}){
 function ExerciseModal({ex,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
   const[upPct,setUpPct]=useState(null);
+  const[editing,setEditing]=useState(!ex.name);
   const _vEmbed=videoEmbed(ex.videoData||ex.videoUrl);
   const onVideoFile=async file=>{
     if(!file)return;
@@ -7867,91 +7953,123 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     const fb=(typeof FB==='function')?FB():null;
     const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
     if(loggedIn){
-      // Logged in → upload to cloud Storage; store the URL (no localStorage bloat).
       if(mb>200){alert('Video çok büyük ('+mb.toFixed(0)+' MB). 200 MB altı bir dosya seç ya da YouTube linki kullan.');return;}
       try{setUpPct(0);const url=await uploadMedia(file,'videos',p=>setUpPct(p),file.name);onChange({videoUrl:url,videoData:''});}
       catch(e){alert('Video yüklenemedi: '+(e.message||e));}
       finally{setUpPct(null);}
       return;
     }
-    // Not logged in → small base64 fallback only.
     if(mb>25){alert('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB. Daha büyük videoda YouTube linki kullan.');return;}
     if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
     const r=new FileReader();r.onload=e=>set('videoData',e.target.result);r.readAsDataURL(file);
   };
   const onThumb=file=>{if(file)handleImageUpload(file,'covers',d=>set('thumb',d));};
+  const metaLbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4,display:'block'};
+  const metaBox=(label,value,extra)=>value?(<div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 13px'}}>
+    <span style={metaLbl}>{label}</span>
+    <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
+  </div>):null;
+  const viewRight=(
+    <div className="ex-modal-right">
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+        {metaBox('Exercise Type',ex.type)}
+        {SUB_TYPES[ex.type]&&metaBox(SUB_TYPES[ex.type].label,ex.subType||'—')}
+        {PATTERNS_FOR[ex.type]&&metaBox('Movement Pattern',ex.pattern||'—')}
+        {metaBox('Difficulty',ex.difficulty,ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
+      </div>
+      {(ex.muscle||[]).length>0&&<div style={{marginBottom:14}}>
+        <span style={metaLbl}>Muscle Groups</span>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip">{m}</span>)}
+        </div>
+      </div>}
+      {ex.purpose&&<div>
+        <span style={metaLbl}>Purpose / Description</span>
+        <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
+      </div>}
+      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
+    </div>
+  );
+  const editRight=(
+    <div className="ex-modal-right">
+      <div className="grid cols-2">
+        <div><label>Exercise Type</label>
+          <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:''});}}>
+            <option value="">—</option>
+            {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div><label>{SUB_TYPES[ex.type]?.label||'Sub Type'}</label>
+          <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUB_TYPES[ex.type]}>
+            <option value="">{SUB_TYPES[ex.type]?'—':'Select type first'}</option>
+            {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid cols-2" style={{marginTop:14}}>
+        {PATTERNS_FOR[ex.type]?<div><label>Movement Pattern</label>
+          <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
+            <option value="">—</option>
+            {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{p}</option>)}
+          </select></div>:<div></div>}
+        <div><label>Difficulty</label>
+          <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
+            <option value="">—</option>
+            {DIFFICULTIES.map(d=><option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
+        <div className="mus-pick">
+          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
+          <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
+            <option value="">+ Add muscle…</option>
+            {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{marginTop:14}}>
+        <label>Video Link (YouTube / Vimeo / mp4)</label>
+        <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
+        <div className="help" style={{marginTop:4}}>YouTube/Vimeo cover auto-detected.</div>
+      </div>
+      <div style={{marginTop:14}}>
+        <label>Purpose / Description</label>
+        <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
+      </div>
+    </div>
+  );
   return(<div className="modal-bg" onClick={onClose}>
     <div className="modal ex-modal ex-modal-wide" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
-        <input className="ex-title-in" value={ex.name} placeholder="Egzersiz adı…" onChange={e=>set('name',e.target.value)}/>
+        {editing
+          ?<input className="ex-title-in" value={ex.name} placeholder="Exercise name…" onChange={e=>set('name',e.target.value)}/>
+          :<div style={{flex:1,fontWeight:700,fontSize:17,color:'var(--text)',padding:'6px 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ex.name||'—'}</div>
+        }
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
       <div className="ex-modal-body ex-modal-grid">
         <div className="ex-modal-left">
           <div className={`ex-player-wrap${_vEmbed&&_vEmbed.ig?' ig':''}`}><VideoPlayer ex={ex}/></div>
-          <div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Video Yükle
+          {editing&&<div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Upload Video
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
-            {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Yüklenen videoyu kaldır</button>}
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Kapak Resmi
+            {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Remove video</button>}
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Cover Image
               <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onThumb(e.target.files[0])}/>
             </label>
-            {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Kapağı kaldır</button>}
-          </div>
-          {upPct!=null&&<div className="help" style={{marginTop:6}}>Video yükleniyor… %{upPct}</div>}
+            {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove cover</button>}
+          </div>}
+          {upPct!=null&&<div className="help" style={{marginTop:6}}>Uploading… {upPct}%</div>}
         </div>
-        <div className="ex-modal-right">
-          <div className="grid cols-2">
-            <div><label>Exercise Type</label>
-              <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:''});}}>
-                <option value="">—</option>
-                {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div><label>{SUB_TYPES[ex.type]?.label||'Alt Tür'}</label>
-              <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUB_TYPES[ex.type]}>
-                <option value="">{SUB_TYPES[ex.type]?'—':'Önce Type seç'}</option>
-                {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{v}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid cols-2" style={{marginTop:14}}>
-            {PATTERNS_FOR[ex.type]?<div><label>Movement Pattern</label>
-              <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
-                <option value="">—</option>
-                {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{p}</option>)}
-              </select></div>:<div></div>}
-            <div><label>Difficulty</label>
-              <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
-                <option value="">—</option>
-                {DIFFICULTIES.map(d=><option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
-            <div className="mus-pick">
-              {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
-              <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
-                <option value="">+ Add muscle…</option>
-                {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{marginTop:14}}>
-            <label>Video Linki (YouTube / Vimeo / mp4)</label>
-            <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
-            <div className="help" style={{marginTop:4}}>YouTube/Vimeo linkinde kapak otomatik gelir.</div>
-          </div>
-          <div style={{marginTop:14}}>
-            <label>Hareketin Amacı / Açıklaması</label>
-            <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Bu hareket hangi kası, hangi amaçla çalıştırır? Teknik ipuçları, set/tekrar önerisi…" style={{minHeight:200}}/>
-          </div>
-        </div>
+        {editing?editRight:viewRight}
       </div>
       <div className="modal-foot">
-        <button className="btn danger sm" onClick={onDelete}>Sil</button>
-        <button className="btn sm" onClick={onClose}>Bitti</button>
+        {editing
+          ?<><button className="btn danger sm" onClick={onDelete}>Delete</button><button className="btn sm" onClick={()=>setEditing(false)}>Done</button></>
+          :<><button className="btn sec sm" onClick={()=>setEditing(true)}>✎ Edit</button><button className="btn sm" onClick={onClose}>Close</button></>
+        }
       </div>
     </div>
   </div>);
