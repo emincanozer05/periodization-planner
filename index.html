@@ -331,10 +331,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 @media(max-width:1000px){.calw-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.calw-grid{grid-template-columns:1fr}}
 /* Session drawer */
-.dw-scrim{position:fixed;inset:0;background:rgba(5,6,8,.62);backdrop-filter:blur(2px);z-index:80;animation:dwfade .2s ease}
+.dw-scrim{position:fixed;inset:0;background:rgba(5,6,8,.55);-webkit-backdrop-filter:blur(7px) saturate(115%);backdrop-filter:blur(7px) saturate(115%);z-index:80;animation:dwfade .2s ease}
 @keyframes dwfade{from{opacity:0}}
-.dw{position:fixed;top:0;right:0;height:100vh;width:min(480px,94vw);background:var(--bg2);border-left:1px solid var(--border);z-index:90;display:flex;flex-direction:column;animation:dwslide .26s cubic-bezier(.2,.7,.2,1)}
+/* Read-only session view: centred modal (like the research reader) */
+.dw{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:auto;max-height:90vh;width:min(720px,94vw);background:var(--bg2);border:1px solid var(--border);border-radius:16px;z-index:90;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px -12px rgba(0,0,0,.82);animation:dwpop .22s cubic-bezier(.2,.7,.3,1)}
+@keyframes dwpop{from{opacity:0;transform:translate(-50%,-48%) scale(.97)}}
 @keyframes dwslide{from{transform:translateX(100%)}}
+/* Editor variant stays a right-side slide-in drawer */
+.dw.edit{left:auto;right:0;top:0;transform:none;height:100vh;max-height:none;width:min(780px,97vw);border:none;border-left:1px solid var(--border);border-radius:0;box-shadow:-14px 0 44px rgba(0,0,0,.5);animation:dwslide .26s cubic-bezier(.2,.7,.2,1)}
 .dw-h{display:flex;align-items:flex-start;gap:12px;padding:18px 22px;border-bottom:1px solid var(--border)}
 .dw-h .x{margin-left:auto;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text2);width:32px;height:32px;display:grid;place-items:center;cursor:pointer;transition:all .2s;flex:none;font-size:18px;line-height:1;font-family:inherit}
 .dw-h .x:hover{border-color:var(--text2);color:var(--text)}
@@ -6007,8 +6011,6 @@ function DevelopmentCharts({tests}){
     {t:'20m Sprint',u:'s',f:t=>Number(t.sprint20m?.time),up:false,col:'#7c3aed',dot:'#a78bfa'},
     {t:'T-Agility',u:'s',f:t=>Number(t.tTest),up:false,col:'#ec4899',dot:'#f472b6'},
     {t:'5-0-5',u:'s',f:t=>Number(t.fiveZeroFive),up:false,col:'#f43f5e',dot:'#fb7185'},
-    {t:'Weight',u:'kg',f:t=>Number(t.weight),up:null,col:'#3b82f6',dot:'#60a5fa'},
-    {t:'Body Fat',u:'%',f:t=>Number(t.bodyFat),up:false,col:'#06b6d4',dot:'#22d3ee'},
   ];
   const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
   if(!haveAny)return null;
