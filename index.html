@@ -3509,41 +3509,56 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 }
 
 /* =========================================================
-   MANUAL WELLNESS SURVEY (Calendar page)
+   MANUAL WELLNESS SURVEY
    ========================================================= */
 function ManualWellnessSurvey({athletes,saveAthletes}){
-  const WF=[
-    {id:'readiness',label:'Readiness',hint:'1 = exhausted · 5 = great',rpe:true},
-    {id:'sleep',label:'Sleep Quality',hint:'1 = very poor · 5 = excellent',rpe:true},
-    {id:'fatigue',label:'Fatigue',hint:'1 = very tired · 5 = fresh',rpe:true},
-    {id:'soreness',label:'Soreness',hint:'1 = very sore · 5 = none',rpe:true},
-    {id:'RHR',label:'RHR (bpm)',hint:'Resting heart rate in bpm',rpe:false},
+  const SCORE_COL=['','#ef4444','#f97316','#eab308','#22c55e','#38bdf8'];
+  const QS=[
+    {id:'sleep',   q:'How was the quality of your sleep?',  hint:'1 = very poor · 5 = excellent'},
+    {id:'fatigue', q:'How tired are you?',                  hint:'1 = very tired · 5 = fresh'},
+    {id:'soreness',q:'How severe is your muscle pain?',     hint:'1 = very severe · 5 = none'},
   ];
   const[athId,setAthId]=useState('');
   const[date,setDate]=useState(fmt(today));
-  const[vals,setVals]=useState({readiness:'',sleep:'',fatigue:'',soreness:'',RHR:''});
+  const[vals,setVals]=useState({sleep:'',fatigue:'',soreness:''});
   const[toast,setToast]=useState('');
+  const[showLog,setShowLog]=useState(false);
   if(!athletes||athletes.length===0)return null;
-  const setV=(k,v)=>setVals(p=>({...p,[k]:v}));
   const toggle=(k,n)=>setVals(p=>({...p,[k]:p[k]===String(n)?'':String(n)}));
+  const selAth=athletes.find(a=>a.id===athId);
+  const readinessPreview=(vals.sleep&&vals.fatigue&&vals.soreness)
+    ?+((Number(vals.sleep)+Number(vals.fatigue)+Number(vals.soreness))/3).toFixed(1):null;
   const submit=()=>{
-    const ath=athletes.find(a=>a.id===athId);
-    if(!ath)return;
-    const entry={date};
-    WF.forEach(f=>{if(vals[f.id]!=='')entry[f.id]=Number(vals[f.id]);});
-    if(Object.keys(entry).length===1)return;
-    const wellness=[...(ath.wellness||[])];
+    if(!selAth)return;
+    const scored=QS.map(q=>Number(vals[q.id])).filter(v=>v>0);
+    if(scored.length===0)return;
+    const readiness=+(scored.reduce((a,b)=>a+b,0)/scored.length).toFixed(1);
+    const entry={date,readiness};
+    QS.forEach(q=>{if(vals[q.id]!=='')entry[q.id]=Number(vals[q.id]);});
+    const wellness=[...(selAth.wellness||[])];
     const idx=wellness.findIndex(w=>w.date===date);
     if(idx>=0)wellness[idx]={...wellness[idx],...entry};else wellness.push(entry);
     saveAthletes(athletes.map(a=>a.id===athId?{...a,wellness}:a));
     setToast('Saved ✓');setTimeout(()=>setToast(''),2500);
-    setVals({readiness:'',sleep:'',fatigue:'',soreness:'',RHR:''});
+    setVals({sleep:'',fatigue:'',soreness:''});
   };
-  const btnS=(active)=>({width:34,height:34,borderRadius:8,border:'1px solid',cursor:'pointer',fontWeight:700,fontSize:13,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",transition:'all .14s',
-    borderColor:active?'var(--accent)':'var(--border2)',
-    background:active?'var(--accent-bg)':'transparent',
-    color:active?'var(--accent)':'var(--muted)'});
-  const lbl={fontSize:11,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.06em',display:'block',marginBottom:5};
+  const delEntry=dk=>{
+    if(!selAth)return;
+    const wellness=(selAth.wellness||[]).filter(w=>w.date!==dk);
+    saveAthletes(athletes.map(a=>a.id===athId?{...a,wellness}:a));
+  };
+  const recentLog=selAth?[...(selAth.wellness||[])].filter(w=>w.date).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,12):[];
+  const lbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:5};
+  const scoreBtn=(id,n)=>{const active=vals[id]===String(n);const col=SCORE_COL[n];return(
+    <button key={n} onClick={()=>toggle(id,n)} style={{width:38,height:38,borderRadius:9,border:'2px solid',cursor:'pointer',fontWeight:800,fontSize:14,
+      fontFamily:"'IBM Plex Mono',ui-monospace,monospace",transition:'all .12s',
+      borderColor:active?col:'rgba(255,255,255,.10)',
+      background:active?col+'28':'transparent',
+      color:active?col:'var(--muted)',
+      transform:active?'scale(1.08)':'scale(1)'}}>
+      {n}
+    </button>
+  );};
   return(<div className="panel" style={{marginTop:16}}>
     <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:16,flexWrap:'wrap'}}>
       <div>
@@ -3552,7 +3567,7 @@ function ManualWellnessSurvey({athletes,saveAthletes}){
       </div>
       {toast&&<span style={{fontSize:12,fontWeight:700,color:'#22c55e',background:'rgba(34,197,94,.12)',padding:'5px 13px',borderRadius:8,border:'1px solid rgba(34,197,94,.3)',alignSelf:'center'}}>{toast}</span>}
     </div>
-    <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:16}}>
+    <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20}}>
       <div style={{flex:'1 1 180px',minWidth:0}}>
         <label style={lbl}>Athlete</label>
         <select value={athId} onChange={e=>setAthId(e.target.value)} style={{width:'100%'}}>
@@ -3565,26 +3580,54 @@ function ManualWellnessSurvey({athletes,saveAthletes}){
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:'100%'}}/>
       </div>
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10,marginBottom:18}}>
-      {WF.map(f=>(
-        <div key={f.id} style={{background:'var(--elevated)',borderRadius:12,padding:'12px 13px',border:'1px solid var(--border)'}}>
-          <div style={{fontWeight:700,fontSize:12,color:'var(--text2)',marginBottom:3}}>{f.label}</div>
-          <div style={{fontSize:10,color:'var(--dim)',marginBottom:9,lineHeight:1.4}}>{f.hint}</div>
-          {f.rpe
-            ?<div style={{display:'flex',gap:5,justifyContent:'center'}}>
-              {[1,2,3,4,5].map(n=>(
-                <button key={n} onClick={()=>toggle(f.id,n)} style={btnS(vals[f.id]===String(n))}>{n}</button>
-              ))}
-            </div>
-            :<input type="number" min="30" max="120" placeholder="—" value={vals.RHR} onChange={e=>setV('RHR',e.target.value)}
-                style={{width:'100%',fontSize:16,textAlign:'center',padding:'7px',borderRadius:8,fontFamily:"'IBM Plex Mono',monospace",border:'1px solid var(--border)',background:'var(--bg2)',color:'var(--text)'}}/>
-          }
+    <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:18}}>
+      {QS.map(q=>(
+        <div key={q.id} style={{background:'var(--elevated)',borderRadius:12,padding:'14px 16px',border:'1px solid var(--border)'}}>
+          <div style={{fontWeight:600,fontSize:13,color:'var(--text)',marginBottom:3}}>{q.q}</div>
+          <div style={{fontSize:11,color:'var(--dim)',marginBottom:12}}>{q.hint}</div>
+          <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap'}}>
+            {[1,2,3,4,5].map(n=>scoreBtn(q.id,n))}
+            {vals[q.id]&&<span style={{fontSize:12,color:SCORE_COL[Number(vals[q.id])],fontWeight:800,marginLeft:4}}>{vals[q.id]}/5</span>}
+          </div>
         </div>
       ))}
     </div>
-    <div style={{display:'flex',justifyContent:'flex-end'}}>
-      <button className="btn sm" onClick={submit} style={{opacity:athId?1:.4,pointerEvents:athId?'auto':'none'}}>Save Entry</button>
+    {readinessPreview!=null&&(
+      <div style={{marginBottom:16,padding:'11px 16px',background:'var(--elevated)',borderRadius:10,border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:12}}>
+        <span style={{fontSize:11,color:'var(--dim)',fontFamily:"'IBM Plex Mono',monospace",textTransform:'uppercase',letterSpacing:'.06em'}}>Readiness (avg)</span>
+        <span style={{fontSize:22,fontWeight:800,color:SCORE_COL[Math.round(readinessPreview)]||'var(--accent)'}}>{readinessPreview}</span>
+        <span style={{fontSize:11,color:'var(--dim)'}}>/5 · will be saved automatically</span>
+      </div>
+    )}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+      {selAth&&recentLog.length>0
+        ?<button className="btn ghost xs" onClick={()=>setShowLog(p=>!p)} style={{fontSize:12}}>{showLog?'▲ Hide':'▼ Show'} saved entries ({recentLog.length})</button>
+        :<div/>}
+      <button className="btn sm" onClick={submit} style={{opacity:athId?1:.38,pointerEvents:athId?'auto':'none'}}>Save Entry</button>
     </div>
+    {showLog&&selAth&&recentLog.length>0&&(
+      <div style={{marginTop:14,borderTop:'1px solid var(--border)',paddingTop:12}}>
+        <div style={{fontWeight:700,fontSize:12,color:'var(--text2)',marginBottom:8,fontFamily:"'IBM Plex Mono',monospace",textTransform:'uppercase',letterSpacing:'.06em'}}>Saved for {selAth.name}</div>
+        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+          {recentLog.map(w=>(
+            <div key={w.date} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',background:'var(--elevated)',borderRadius:9,border:'1px solid var(--border)',flexWrap:'wrap'}}>
+              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:12,color:'var(--text2)',minWidth:90}}>{w.date}</span>
+              {['sleep','fatigue','soreness','readiness'].map(k=>w[k]!=null&&(
+                <span key={k} style={{fontSize:11,display:'inline-flex',gap:4,alignItems:'center'}}>
+                  <span style={{color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.04em'}}>{k}</span>
+                  <span style={{fontWeight:700,color:SCORE_COL[Math.round(Number(w[k]))]||'var(--text)'}}>{+(+w[k]).toFixed(1)}</span>
+                </span>
+              ))}
+              <button onClick={()=>delEntry(w.date)} style={{marginLeft:'auto',flexShrink:0,background:'transparent',border:'1px solid rgba(244,63,94,.35)',color:'#f43f5e',borderRadius:6,padding:'3px 9px',fontSize:11,cursor:'pointer',fontWeight:700,transition:'background .12s'}}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(244,63,94,.12)'}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>);
 }
 
@@ -4280,6 +4323,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
     const l=dailyLoads(days,w.week,e);return{week:w.week,load:l.reduce((a,b)=>a+b.load,0),target:w.volume*w.intensity/10};});},[weeks,days]);
   // daily sRPE chart for selected month
   const dailySRPE=useMemo(()=>{const out=[];let c=parseD(ms),e=parseD(me);while(c<=e){const k=fmt(c);out.push({date:k,sRPE:dSRPEAvg(days[k]),au:dLoad(days[k])});c=addD(c,1);}return out;},[days,ms,me]);
+  const saveAthletes=setData?a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)})):null;
 
   return(<div>
     <div className="metrics">
@@ -4323,7 +4367,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
 /* =========================================================
    TEAM REPORTS
    ========================================================= */
-function TeamReports({team,weeks,selected,setSelected}){
+function TeamReports({team,weeks,selected,setSelected,setData}){
   const{year,month}=selected;
   const ms=`${year}-${pad(month)}-01`;
   const me=fmt(new Date(year,month,0));
@@ -4564,6 +4608,7 @@ function TeamReports({team,weeks,selected,setSelected}){
     <AthleteLoadBoard athletes={team.athletes} refDate={lmEnd}/>
 
     <WellnessHeatmap athletes={team.athletes}/>
+    {saveAthletes&&<ManualWellnessSurvey athletes={team.athletes||[]} saveAthletes={saveAthletes}/>}
 
     {(()=>{
       const mv=mWeeks.filter(w=>w.monotony>0);
@@ -8956,7 +9001,7 @@ function App(){
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
-      {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
+      {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected} setData={setData}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
