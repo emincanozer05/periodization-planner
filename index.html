@@ -4324,7 +4324,6 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
     const l=dailyLoads(days,w.week,e);return{week:w.week,load:l.reduce((a,b)=>a+b.load,0),target:w.volume*w.intensity/10};});},[weeks,days]);
   // daily sRPE chart for selected month
   const dailySRPE=useMemo(()=>{const out=[];let c=parseD(ms),e=parseD(me);while(c<=e){const k=fmt(c);out.push({date:k,sRPE:dSRPEAvg(days[k]),au:dLoad(days[k])});c=addD(c,1);}return out;},[days,ms,me]);
-  const saveAthletes=setData?a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)})):null;
 
   return(<div>
     <div className="metrics">
@@ -4392,6 +4391,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
       if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
     return m;},[team.athletes,plannedByDay]);
   const dayLoad=d=>Math.round(teamDaily[d]||0);
+  const saveAthletes=setData?a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)})):null;
   // Load Monitoring uses the same calendar-matching session-AU sum everywhere (trend, ACWR, monotony).
   const dayAvg=dayLoad;
   // ---- All-athletes weekly AU chart (per athlete = a segment) ----
