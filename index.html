@@ -423,7 +423,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-rpe-au{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent);min-width:46px;text-align:right}
 .dw-rpe-in{width:66px;flex:none;padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
 /* Editable planner modal — wider to fit the session editor */
-.dw.edit{width:min(820px,95vw)}
+.dw.edit{width:min(1100px,96vw)}
 /* Session drawer — two-column view (read-only) */
 .dw-layout{display:flex;flex:1;overflow:hidden;min-height:0}
 .dw-left-panel{width:256px;flex:none;border-right:1px solid var(--border);overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
@@ -433,6 +433,30 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-move-chip .mc-dot{width:7px;height:7px;border-radius:50%;flex:none;opacity:.9}
 .dw-move-chip .mc-count{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
 .dw-empty-panel{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);padding:8px 4px}
+/* Interactive muscle / movement model (manual, session-scoped) */
+.mm-wrap{display:flex;flex-direction:column}
+.mm-chips{display:flex;flex-wrap:wrap;gap:5px}
+.mm-chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--text2);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;transition:background .14s,border-color .14s,color .14s;letter-spacing:.02em;line-height:1.2}
+.mm-chip:hover{border-color:var(--border2);color:var(--text)}
+.mm-chip.on{background:var(--accent);border-color:var(--accent);color:#0a0b0d}
+.mm-bodies{display:flex;gap:6px;justify-content:center;margin-top:4px}
+.mm-fig{flex:1;min-width:0;text-align:center}
+.mm-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;color:var(--dim);letter-spacing:.08em;margin-bottom:2px}
+.mm-svg{width:100%;height:auto;display:block;touch-action:manipulation}
+.mm-body path,.mm-body ellipse{fill:rgba(255,255,255,.045);stroke:rgba(255,255,255,.15);stroke-width:.7;stroke-linejoin:round}
+.mm-reg{cursor:pointer}
+.mm-reg path{fill:rgba(255,255,255,.08);stroke:rgba(255,255,255,.22);stroke-width:.5;stroke-linejoin:round;transition:fill .14s,stroke .14s}
+.mm-reg:hover path{fill:rgba(230,255,85,.32);stroke:rgba(230,255,85,.6)}
+.mm-reg.on path{fill:rgba(230,255,85,.62);stroke:rgba(230,255,85,.95);stroke-width:.7}
+.mm-reg.on:hover path{fill:rgba(230,255,85,.72)}
+.mm-cut path{stroke:rgba(0,0,0,.45);stroke-width:.7;fill:none}
+.mm-wrap.ro .mm-reg,.mm-wrap.ro .mm-chip{cursor:default}
+.mm-wrap.ro .mm-reg:hover path{fill:rgba(255,255,255,.08);stroke:rgba(255,255,255,.22)}
+.mm-wrap.ro .mm-reg.on:hover path{fill:rgba(230,255,85,.62)}
+.mm-wrap.ro .mm-chip:hover{border-color:var(--border);color:var(--text2)}
+.mm-sess-switch{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
+.mm-sess-tab{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;color:var(--text2);background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mm-sess-tab.on{background:var(--accent);border-color:var(--accent);color:#0a0b0d}
 /* Calendar session hover tooltip */
 .ses-tooltip{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#0e1117;border:1px solid var(--border2);border-radius:9px;padding:8px 11px;z-index:500;min-width:170px;max-width:240px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.8);animation:tipIn .12s ease-out}
 @keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(3px)}}
@@ -3741,6 +3765,86 @@ function BodySVG({muscles,size=88}){
 }
 
 /* =========================================================
+   INTERACTIVE MUSCLE / MOVEMENT MODEL  (manual, session-scoped)
+   The coach selects muscles / movement pattern / plane directly on
+   the figure — NOT derived from the exercise library.
+   ========================================================= */
+const MOVE_PATTERNS=[['Squat','Squat'],['Hinge','Hinge'],['Lunge','Lunge'],['Push','İtme'],['Pull','Çekme'],['Carry','Taşıma'],['Rotation','Rotasyon']];
+const MOVE_PLANES=[['Sagittal','Sagital'],['Frontal','Frontal'],['Transverse','Transvers']];
+// Anatomical figure — left half only; right half is the mirror image. viewBox 0 0 120 272.
+const MM_NECK="M54 34 L66 34 C 65 40 65 44 64 47 L 56 47 C 55 44 55 40 54 34 Z";
+const MM_TORSO="M37 53 C 48 48 72 48 83 53 C 85 67 83 81 81 92 C 80 103 77 113 75 121 C 77 131 78 139 77 146 C 69 151 51 151 43 146 C 42 139 43 131 45 121 C 43 113 40 103 39 92 C 37 81 35 67 37 53 Z";
+const MM_ARM="M34 54 C 27 56 23 63 23 75 C 23 93 25 117 28 140 C 29 150 29 159 32 163 C 36 166 41 163 41 156 C 42 140 41 116 40 96 C 40 80 40 64 39 57 C 38 54 36 53 34 54 Z";
+const MM_LEG="M44 148 C 40 152 41 167 42 181 C 43 197 44 211 45 224 C 45 236 45 249 48 257 C 51 261 56 260 57 253 C 58 240 58 224 58 208 C 59 190 59 170 58 156 C 57 150 54 148 50 148 C 47 148 45 148 44 148 Z";
+const MM_ABCUTS=["M49 90 H58","M48 104 H58"];
+const MM_DELT="M40 52 C 33 49 26 51 24 58 C 23 64 26 69 32 69 C 38 68 41 62 41 56 C 41 54 41 53 40 52 Z";
+const MM_ARMF="M38 70 C 31 69 26 73 26 84 C 26 93 29 98 34 98 C 38 97 39 88 39 80 C 39 75 39 71 38 70 Z";
+const MM_FOREARM="M37 102 C 30 101 26 106 26 118 C 26 130 29 139 34 140 C 38 139 39 128 39 116 C 39 109 39 104 37 102 Z";
+const MM_FRONT=[
+ ['Shoulders',MM_DELT],
+ ['Chest',"M58 53 C 50 51 43 53 40 59 C 39 65 42 70 49 71 C 55 71 58 67 58 61 Z"],
+ ['Biceps',MM_ARMF],
+ ['Forearms',MM_FOREARM],
+ ['Abs & Core',"M58 75 L48 76 C 46 88 46 104 49 117 C 52 121 56 121 58 120 Z"],
+ ['Hip Flexors',"M58 121 L49 122 C 48 127 50 132 55 134 L58 132 Z"],
+ ['Quadriceps',"M58 140 C 49 139 45 146 44 158 C 44 170 47 182 52 186 C 56 184 58 172 58 158 Z"],
+ ['Adductors',"M58 141 C 54 144 53 154 53 164 C 53 174 55 180 58 181 Z"],
+ ['Calves',"M56 192 C 49 191 47 199 46 210 C 46 222 49 229 53 230 C 56 228 57 216 57 204 Z"],
+];
+const MM_BACK=[
+ ['Shoulders',MM_DELT],
+ ['Upper Back',"M58 49 C 50 49 43 53 41 60 C 40 68 44 76 58 78 Z"],
+ ['Lats',"M57 80 C 49 80 44 86 43 96 C 44 106 50 114 56 116 C 57 110 57 92 57 80 Z"],
+ ['Triceps',MM_ARMF],
+ ['Forearms',MM_FOREARM],
+ ['Glutes',"M58 129 C 49 128 44 135 44 145 C 45 154 51 158 58 157 Z"],
+ ['Hamstrings',"M58 162 C 49 161 45 169 44 181 C 45 194 49 202 53 203 C 57 200 58 184 58 168 Z"],
+ ['Abductors',"M46 131 C 40 133 38 141 38 150 C 38 158 41 162 45 162 C 46 154 46 142 46 131 Z"],
+ ['Calves',"M57 194 C 49 193 46 200 45 212 C 46 225 50 232 54 232 C 57 229 57 214 57 202 Z"],
+];
+const MMmirror={transform:"translate(120,0) scale(-1,1)"};
+function MMReg({d,on,onClick,title}){
+  return(<g className={'mm-reg'+(on?' on':'')} onClick={onClick}>
+    <path d={d}/><path d={d} transform="translate(120,0) scale(-1,1)"/><title>{title}</title>
+  </g>);
+}
+function MMFigure({label,regions,sel,onToggle,front}){
+  return(<div className="mm-fig">
+    <div className="mm-cap">{label}</div>
+    <svg viewBox="0 0 120 272" xmlns="http://www.w3.org/2000/svg" className="mm-svg">
+      <g className="mm-body">
+        <ellipse cx="60" cy="22" rx="11.5" ry="14"/>
+        <path d={MM_NECK}/>
+        <path d={MM_TORSO}/>
+        <path d={MM_ARM}/><path d={MM_ARM} {...MMmirror}/>
+        <path d={MM_LEG}/><path d={MM_LEG} {...MMmirror}/>
+      </g>
+      {regions.map(([m,d])=><MMReg key={m} d={d} title={m} on={sel.has(m)} onClick={()=>onToggle(m)}/>)}
+      {front&&<g className="mm-cut">{MM_ABCUTS.map((d,i)=><React.Fragment key={i}><path d={d}/><path d={d} {...MMmirror}/></React.Fragment>)}</g>}
+    </svg>
+  </div>);
+}
+function MuscleModel({session,onPatch,readOnly}){
+  const pats=session.selPatterns||[];
+  const pls=session.selPlanes||[];
+  const sel=new Set(session.selMuscles||[]);
+  const tog=(field,list,key)=>{if(readOnly)return;const s=new Set(list);s.has(key)?s.delete(key):s.add(key);onPatch({[field]:[...s]});};
+  const togM=m=>tog('selMuscles',[...sel],m);
+  return(<div className={'mm-wrap'+(readOnly?' ro':'')}>
+    <div className="dw-panel-lbl">Hareket Deseni</div>
+    <div className="mm-chips">{MOVE_PATTERNS.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pats.includes(k)?' on':'')} onClick={()=>tog('selPatterns',pats,k)}>{l}</button>)}</div>
+    <div className="dw-panel-lbl">Düzlem</div>
+    <div className="mm-chips">{MOVE_PLANES.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pls.includes(k)?' on':'')} onClick={()=>tog('selPlanes',pls,k)}>{l}</button>)}</div>
+    <div className="dw-panel-lbl">Kas Grupları</div>
+    <div className="mm-bodies">
+      <MMFigure label="ÖN" regions={MM_FRONT} sel={sel} onToggle={togM} front/>
+      <MMFigure label="ARKA" regions={MM_BACK} sel={sel} onToggle={togM}/>
+    </div>
+    <div className="mm-chips" style={{marginTop:8}}>{[['Full Body','Tüm Vücut'],['Cardio','Kardiyo']].map(([k,l])=><button key={k} type="button" className={'mm-chip'+(sel.has(k)?' on':'')} onClick={()=>togM(k)}>{l}</button>)}</div>
+  </div>);
+}
+
+/* =========================================================
    CALENDAR (reusable for team & athlete)
    ========================================================= */
 const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
@@ -3755,6 +3859,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const[hovSes,setHovSes]=useState(null);
   const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
+  const[editSel,setEditSel]=useState(null);   // which session's muscle model is shown in the edit drawer
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
   const[calMode,setCalMode]=useState('week');   // single calendar: 'week' (rich strip) | 'month' (grid)
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
@@ -4021,7 +4126,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           </div>
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
-        <div className="dw-layout">{(()=>{const _ana=sesAnalyze(drawerSes,exercises||[]);const _types=Object.entries(_ana.types).sort((a,b)=>b[1]-a[1]);const _planes=Object.entries(_ana.planes).sort((a,b)=>b[1]-a[1]);return(<div className="dw-left-panel"><div className="dw-panel-lbl">Hareket Deseni</div>{_types.length===0?<div className="dw-empty-panel">Kütüphane eşleşmesi yok</div>:_types.map(([type,cnt])=>(<div key={type} className="dw-move-chip" style={{borderColor:TYPE_COLORS[type]||'var(--border)'}}><span className="mc-dot" style={{background:TYPE_COLORS[type]||'var(--dim)'}}/><span style={{flex:1,fontSize:11}}>{type}</span><span className="mc-count">{cnt}×</span></div>))}{_planes.length>0&&<><div className="dw-panel-lbl">Düzlem / Tip</div>{_planes.map(([p,c])=>(<div key={p} className="dw-move-chip"><span className="mc-dot" style={{background:'var(--border2)'}}/><span style={{flex:1,fontSize:11}}>{p}</span><span className="mc-count">{c}×</span></div>))}</>}<div className="dw-panel-lbl">Kas Grupları</div><BodySVG muscles={_ana.muscles}/></div>);})()}
+        <div className="dw-layout"><div className="dw-left-panel"><MuscleModel session={drawerSes} onPatch={drwUpd} readOnly={!canEdit}/></div>
           <div className="dw-b">
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
@@ -4114,6 +4219,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           </div>
           <button className="x" onClick={()=>setEditDate(null)}>×</button>
         </div>
+        <div className="dw-layout">
+          <div className="dw-left-panel">{(()=>{const _ss=edDay.sessions||[];if(_ss.length===0)return(<div className="dw-empty-panel">Model için önce bir antrenman ekleyin.</div>);const _cur=_ss.find(s=>s.id===editSel)||_ss[0];return(<React.Fragment>{_ss.length>1&&<div className="mm-sess-switch">{_ss.map((s,i)=><button key={s.id} type="button" className={'mm-sess-tab'+(_cur.id===s.id?' on':'')} onClick={()=>setEditSel(s.id)} title={s.name||'Antrenman'}>{i+1}· {s.name||'Antrenman'}</button>)}</div>}<MuscleModel session={_cur} onPatch={patch=>edUpd(_cur.id,{..._cur,...patch})}/></React.Fragment>);})()}</div>
         <div className="dw-b">
           <div className="dw-quickadd">
             <span className="qa-lbl">Quick add</span>
@@ -4132,6 +4239,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>Bitti</button>
           </div>
+        </div>
         </div>
       </aside>
     </>),document.body)}
