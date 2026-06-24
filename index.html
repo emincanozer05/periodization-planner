@@ -698,6 +698,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .inj-tbl select{min-width:90px}
 .ex-tbl .en{width:100%;line-height:1.35;min-height:30px;font-family:inherit}
 .ex-tbl textarea.en{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box}
+.en-wrap{position:relative;width:100%}
+.en-sugg{position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--elevated);border:1px solid var(--border2);border-radius:6px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:220px;overflow:auto}
+.en-sopt{padding:6px 9px;font-size:12px;color:var(--text2);cursor:pointer;white-space:normal;word-break:break-word}
+.en-sopt:hover,.en-sopt.on{background:var(--hover);color:var(--text)}
 .ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
 .ex-desc{padding:0 6px 4px}
 .ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
@@ -1850,6 +1854,11 @@ const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',desc
 let _libAdd=null;
 function registerLibAdd(fn){_libAdd=fn;}
 function addExerciseToLibrary(name){const nm=(name||'').trim();if(nm&&_libAdd)_libAdd(nm);}
+/* Shared library exercise-name list, mirrored here so the deeply-nested exercise
+   editor can show autocomplete suggestions without prop-threading. */
+let _libNames=[];
+function setLibNames(a){_libNames=Array.isArray(a)?a:[];}
+function getLibNames(){return _libNames;}
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
@@ -4361,6 +4370,34 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
 /* =========================================================
    BLOCK EDITOR (now with exercise description row)
    ========================================================= */
+/* Exercise-name field: auto-growing textarea (long names wrap & stay visible)
+   WITH a custom autocomplete dropdown fed from the shared exercise library
+   (textarea can't use a native <datalist>, so we render our own list). */
+function ExNameField({value,onChange,onCommit}){
+  const[focus,setFocus]=useState(false);
+  const[hi,setHi]=useState(-1);
+  const taRef=useRef(null);
+  const fit=el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}};
+  useEffect(()=>{fit(taRef.current);},[value]);
+  const q=(value||'').trim().toLowerCase();
+  const sugg=(focus&&q)?getLibNames().filter(n=>n.toLowerCase().includes(q)&&n.toLowerCase()!==q).slice(0,8):[];
+  const pick=n=>{onChange(n);setFocus(false);setHi(-1);onCommit&&onCommit(n);};
+  return(<div className="en-wrap">
+    <textarea ref={taRef} className="en" rows={1} value={value} placeholder="Exercise name"
+      onChange={e=>{onChange(e.target.value);fit(e.target);setHi(-1);}}
+      onFocus={()=>setFocus(true)}
+      onBlur={()=>{setTimeout(()=>setFocus(false),120);onCommit&&onCommit(value);}}
+      onKeyDown={e=>{
+        if(sugg.length&&e.key==='ArrowDown'){e.preventDefault();setHi(h=>Math.min(h+1,sugg.length-1));}
+        else if(sugg.length&&e.key==='ArrowUp'){e.preventDefault();setHi(h=>Math.max(h-1,0));}
+        else if(e.key==='Enter'){e.preventDefault();if(hi>=0&&sugg[hi])pick(sugg[hi]);else e.target.blur();}
+        else if(e.key==='Escape'){setFocus(false);setHi(-1);}
+      }}/>
+    {sugg.length>0&&<div className="en-sugg">{sugg.map((n,i)=>
+      <div key={n} className={"en-sopt"+(i===hi?" on":"")}
+        onMouseDown={e=>{e.preventDefault();pick(n);}}>{n}</div>)}</div>}
+  </div>);
+}
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   const setExs=a=>onUpdate({...block,exercises:a});
@@ -4412,10 +4449,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
                 </select>
               </div>
             </td>
-            <td><textarea className="en" rows={1} value={ex.name} placeholder="Exercise name"
-              ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}}
-              onChange={e=>{f('name',e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}}
-              onBlur={e=>addExerciseToLibrary(e.target.value)}/></td>
+            <td><ExNameField value={ex.name} onChange={v=>f('name',v)} onCommit={v=>addExerciseToLibrary(v)}/></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
@@ -9278,6 +9312,8 @@ function App(){
     if(exs.some(e=>(e.name||'').trim().toLowerCase()===nm.toLowerCase()))return prev;   // already in library
     return{...prev,exercises:[{id:uid(),name:nm,type:'',subType:'',pattern:'',difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''},...exs]};
   }));return()=>registerLibAdd(null);},[setData]);
+  // Keep the autocomplete name list in sync for the exercise editor's suggestion dropdown.
+  useEffect(()=>{setLibNames([...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))]);},[data.exercises]);
   // All hooks must be called before any conditional return
   if(sync.authLoading)return<LoadingScreen/>;
   if(!sync.user)return<LoginPage sync={sync}/>;
