@@ -1791,12 +1791,11 @@ const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak',
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
-  {name:'Strength',d:{name:'Strength Session',time:'09:00',loadType:'Mechanical load',purpose:'Maximal Strength',duration:75,bl:[]}},
-  {name:'Practice',d:{name:'Ball Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Ball Practice',duration:90,bl:[]}},
-  {name:'Speed',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed & Agility',duration:45,bl:[]}},
+  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Maximal Strength',duration:75,bl:[]}},
+  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed & Agility',duration:45,bl:[]}},
   {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Aerobic Endurance',duration:45,bl:[]}},
-  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',duration:30,bl:[]}},
   {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Ball Practice',duration:90,bl:[]}},
+  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',duration:30,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
@@ -4347,9 +4346,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}/>)}
-          <div className="hr"/>
-          <label>Daily notes</label>
-          <textarea value={edDay.dailyNotes||''} onChange={e=>svDay(editDate,{dailyNotes:e.target.value})} placeholder="Wellness, sleep, soreness…"/>
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>Bitti</button>
           </div>
@@ -4388,7 +4384,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
         onDragEnd={()=>setDragB&&setDragB(null)} title="Drag to reorder">⠿</span>
       <span style={{color:'var(--accent2)',fontSize:13}}>{open?'▼':'▶'}</span>
-      <span className="bn">{block.name}</span>
+      <input className="bn" value={block.name} placeholder="Block title"
+        onClick={e=>e.stopPropagation()}
+        onChange={e=>onUpdate({...block,name:e.target.value})}
+        style={{background:'transparent',border:'none',borderBottom:'1px solid var(--border)',borderRadius:0,color:'var(--text)',fontWeight:600,fontSize:14,padding:'2px 4px',width:180}}/>
       <span className="bc">{exs.length} Exercise{exs.length!==1?'s':''}{groups.length?` · Supersets: ${groups.join(', ')}`:''}</span>
       <div className="ba" onClick={e=>e.stopPropagation()}>
         <button onClick={onDuplicate} title="Duplicate">⎘</button>
@@ -4485,7 +4484,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
       <div style={{marginBottom:14}}>
-        <label>Card color <span style={{color:'var(--dim)',fontWeight:400,textTransform:'none',letterSpacing:0,fontFamily:'inherit',fontSize:11}}>(takvimdeki kart kenar rengi)</span></label>
+        <label>Card color</label>
         <div className="color-row">
           {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
             <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
@@ -4495,18 +4494,18 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       </div>
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
-      <div className="add-blk">{BLOCK_NAMES.map(n=><button key={n} onClick={()=>addBlk(n)}>+ {n}</button>)}</div>
+      <div className="add-blk"><button onClick={()=>addBlk('')}>+ Add Block</button></div>
       <div className="hr"/>
       <div className="grid cols-3">
         <div>
-          <label>RPE (0-10) — auto-fills AU</label>
+          <label>RPE (0-10)</label>
           <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="Enter RPE (e.g. 7.5)"
             onChange={e=>{const v=e.target.value;const upd={sRPE:v};if(!session.auManual&&v!=='')upd.au=Math.round(Number(v)*Number(session.duration||0));u(upd);}}
             style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
           <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
         </div>
         <div>
-          <label>Session Load (AU) — editable</label>
+          <label>Session Load (AU)</label>
           <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder="Type AU or use sRPE" style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
           <div className="help">{session.auManual?'Manual AU — kept when sRPE/duration change':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
         </div>
