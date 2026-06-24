@@ -434,7 +434,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-move-chip .mc-count{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
 .dw-empty-panel{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);padding:8px 4px}
 .dw-model-tgl{margin-right:8px;flex:none}
-.dw-model-tgl.on{border-color:#daff02;color:#daff02}
+.dw-model-tgl.on{background:#daff02;border-color:#daff02;color:#0a0b0d}
 /* Interactive muscle / movement model (manual, session-scoped) */
 .mm-wrap{display:flex;flex-direction:column}
 .mm-chips{display:flex;flex-wrap:wrap;gap:5px}
@@ -3828,10 +3828,14 @@ function MuscleModel({session,onPatch,readOnly}){
   return(<div className={'mm-wrap'+(readOnly?' ro':'')}>
     <div className="dw-panel-lbl">Movement Pattern</div>
     <div className="mm-chips mm-chips-col">{MOVE_PATTERNS.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pats.includes(k)?' on':'')} onClick={()=>togPat(k)}>{l}</button>)}</div>
-    {pats.includes('Core')&&<>
-      <div className="dw-panel-lbl">Core</div>
-      <div className="mm-chips">{(PATTERN_PLANES['Core']||[]).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls['Core']||[]).includes(pl)?' on':'')} onClick={()=>togPlane('Core',pl)}>{pl}</button>)}</div>
-    </>}
+    <div className="dw-panel-lbl">Plane</div>
+    {pats.length===0
+      ? <div className="mm-hint">Select a movement pattern to set its plane.</div>
+      : <div className="mm-planes">{pats.map(p=>(
+          <div key={p} className="mm-plane-row">
+            <span className="mm-plane-pat">{p}</span>
+            <div className="mm-chips">{(PATTERN_PLANES[p]||ALL_PLANES).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls[p]||[]).includes(pl)?' on':'')} onClick={()=>togPlane(p,pl)}>{pl}</button>)}</div>
+          </div>))}</div>}
     <div className="dw-panel-lbl">Muscle Groups</div>
     <div className="mm-bodies">
       <MMFigure label="FRONT" data={MM_DATA_FRONT} front sel={sel} onToggle={togM}/>
