@@ -3904,13 +3904,14 @@ function MuscleLoadDistribution({days,title,refDate}){
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
   const mEntries=Object.entries(agg.muscles).sort((a,b)=>b[1]-a[1]);
-  const pEntries=Object.entries(agg.patterns).sort((a,b)=>b[1]-a[1]);
+  // Patterns shown in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
+  const pEntries=MOVE_PATTERNS.map(([k])=>k).filter(k=>agg.patterns[k]).map(k=>[k,agg.patterns[k]]);
   const coreEntries=Object.entries(agg.planes).filter(([k])=>CORE_QUALITIES.has(k)).sort((a,b)=>b[1]-a[1]);
   const hasData=mEntries.length||pEntries.length||coreEntries.length;
   const sum=es=>es.reduce((s,[,v])=>s+v,0);
   const slugLoad={};
   mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
-  const bars=(entries,tot)=>{const mx=entries.length?entries[0][1]:1;return entries.map(([k,v])=>{const pct=tot?Math.round(v/tot*100):0;return(
+  const bars=(entries,tot)=>{const mx=entries.reduce((m,[,v])=>Math.max(m,v),1);return entries.map(([k,v])=>{const pct=tot?Math.round(v/tot*100):0;return(
     <div key={k} className="ath-mmap-row"><span className="ath-mmap-name">{k}</span>
       <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',background:loadColor(v/mx)}}/></div>
       <span className="ath-mmap-pct">{pct}%</span></div>);});};
