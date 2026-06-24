@@ -676,8 +676,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-tbl td{padding:4px 6px;border:none;border-top:1px solid var(--border)}
 .ex-tbl tr.exrow:first-child td{border-top:none}
 .ex-tbl tr:hover td{background:transparent}
-.ex-tbl input{padding:5px 8px;font-size:12px;border:1px solid transparent;border-radius:5px;background:var(--elevated)}
-.ex-tbl input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(230,255,85,.13)}
+.ex-tbl input,.ex-tbl textarea{padding:5px 8px;font-size:12px;border:1px solid transparent;border-radius:5px;background:var(--elevated)}
+.ex-tbl input:focus,.ex-tbl textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(230,255,85,.13)}
 .ex-tag{display:inline-flex;align-items:center;justify-content:center;min-width:26px;padding:3px 6px;border-radius:5px;font-size:11px;letter-spacing:.3px}
 /* Athlete Injury Record — Excel-style table */
 .inj-tbl{width:100%;border-collapse:separate;border-spacing:0;background:#fff;font-size:11px;color:#0f172a}
@@ -697,6 +697,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .inj-tbl input[type="date"]{min-width:120px}
 .inj-tbl select{min-width:90px}
 .ex-tbl .en{width:100%;line-height:1.35;min-height:30px;font-family:inherit}
+.ex-tbl textarea.en{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box}
 .ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
 .ex-desc{padding:0 6px 4px}
 .ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
@@ -4411,7 +4412,9 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
                 </select>
               </div>
             </td>
-            <td><input className="en" list="lib-exercises" value={ex.name} onChange={e=>f('name',e.target.value)} placeholder="Exercise name"
+            <td><textarea className="en" rows={1} value={ex.name} placeholder="Exercise name"
+              ref={el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}}}
+              onChange={e=>{f('name',e.target.value);e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}}
               onBlur={e=>addExerciseToLibrary(e.target.value)}/></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
