@@ -433,12 +433,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-move-chip .mc-dot{width:7px;height:7px;border-radius:50%;flex:none;opacity:.9}
 .dw-move-chip .mc-count{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
 .dw-empty-panel{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);padding:8px 4px}
+.dw-model-tgl{margin-right:8px;flex:none}
+.dw-model-tgl.on{border-color:#daff02;color:#daff02}
 /* Interactive muscle / movement model (manual, session-scoped) */
 .mm-wrap{display:flex;flex-direction:column}
 .mm-chips{display:flex;flex-wrap:wrap;gap:5px}
+.mm-chips-col{flex-direction:column;align-items:stretch}
+.mm-chips-col .mm-chip{text-align:center}
 .mm-chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;color:var(--text2);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .16s ease;letter-spacing:.03em;line-height:1.2}
 .mm-chip:hover{border-color:var(--border2);color:var(--text);transform:translateY(-1px);background:rgba(255,255,255,.06)}
-.mm-chip.on{background:#daff02;border-color:#daff02;color:#0a0b0d;font-weight:700;box-shadow:0 0 0 1px rgba(218,255,2,.3),0 2px 9px rgba(218,255,2,.28)}
+.mm-chip.on{background:transparent;border-color:#daff02;color:#daff02;font-weight:700;box-shadow:0 0 0 1px rgba(218,255,2,.35)}
+.mm-chip.on:hover{background:rgba(218,255,2,.08);color:#daff02}
 .mm-bodies{display:flex;gap:6px;justify-content:center;margin-top:4px}
 .mm-fig{flex:1;min-width:0;text-align:center}
 .mm-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;color:var(--dim);letter-spacing:.08em;margin-bottom:2px}
@@ -3822,15 +3827,11 @@ function MuscleModel({session,onPatch,readOnly}){
   const togPlane=(pat,plane)=>{if(readOnly)return;const cur=pls[pat]||[];const next=cur.includes(plane)?cur.filter(x=>x!==plane):[...cur,plane];onPatch({selPlanes:{...pls,[pat]:next}});};
   return(<div className={'mm-wrap'+(readOnly?' ro':'')}>
     <div className="dw-panel-lbl">Movement Pattern</div>
-    <div className="mm-chips">{MOVE_PATTERNS.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pats.includes(k)?' on':'')} onClick={()=>togPat(k)}>{l}</button>)}</div>
-    <div className="dw-panel-lbl">Plane</div>
-    {pats.length===0
-      ? <div className="mm-hint">Select a movement pattern to set its plane.</div>
-      : <div className="mm-planes">{pats.map(p=>(
-          <div key={p} className="mm-plane-row">
-            <span className="mm-plane-pat">{p}</span>
-            <div className="mm-chips">{(PATTERN_PLANES[p]||ALL_PLANES).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls[p]||[]).includes(pl)?' on':'')} onClick={()=>togPlane(p,pl)}>{pl}</button>)}</div>
-          </div>))}</div>}
+    <div className="mm-chips mm-chips-col">{MOVE_PATTERNS.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pats.includes(k)?' on':'')} onClick={()=>togPat(k)}>{l}</button>)}</div>
+    {pats.includes('Core')&&<>
+      <div className="dw-panel-lbl">Core</div>
+      <div className="mm-chips">{(PATTERN_PLANES['Core']||[]).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls['Core']||[]).includes(pl)?' on':'')} onClick={()=>togPlane('Core',pl)}>{pl}</button>)}</div>
+    </>}
     <div className="dw-panel-lbl">Muscle Groups</div>
     <div className="mm-bodies">
       <MMFigure label="FRONT" data={MM_DATA_FRONT} front sel={sel} onToggle={togM}/>
@@ -3844,8 +3845,8 @@ function MuscleModel({session,onPatch,readOnly}){
    interactive model used in the session box. Driven by the coach's manual
    muscle selections (session.selMuscles → MM_MUSCLES labels). */
 const MM_LABEL_TO_SLUG=Object.fromEntries(Object.entries(MM_MUSCLES).map(([slug,label])=>[label,slug]));
-// Load colour ramp: low usage → light green, high usage → red.
-function loadColor(t){const x=Math.max(0,Math.min(1,t));const h=Math.round(120*(1-x));const l=Math.round(62-12*x);return `hsl(${h} 78% ${l}%)`;}
+// Load colour ramp: teal (#2dd7c8 family) that grows more vivid with usage.
+function loadColor(t){const x=Math.max(0,Math.min(1,t));const s=Math.round(52+30*x);const l=Math.round(74-28*x);return `hsl(176 ${s}% ${l}%)`;}
 function MLPart({part,fill}){
   const c=MM_MUSCLES[part.s]?fill(part.s):null;
   const st=c?{fill:c}:undefined;
@@ -3896,9 +3897,8 @@ function MuscleLoadDistribution({days,title,refDate}){
   const agg=aggSessions(fdays);
   const mEntries=Object.entries(agg.muscles).sort((a,b)=>b[1]-a[1]);
   const pEntries=Object.entries(agg.patterns).sort((a,b)=>b[1]-a[1]);
-  const planeEntries=Object.entries(agg.planes).filter(([k])=>!CORE_QUALITIES.has(k)).sort((a,b)=>b[1]-a[1]);
   const coreEntries=Object.entries(agg.planes).filter(([k])=>CORE_QUALITIES.has(k)).sort((a,b)=>b[1]-a[1]);
-  const hasData=mEntries.length||pEntries.length||planeEntries.length||coreEntries.length;
+  const hasData=mEntries.length||pEntries.length||coreEntries.length;
   const sum=es=>es.reduce((s,[,v])=>s+v,0);
   const slugLoad={};
   mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
@@ -3928,10 +3928,9 @@ function MuscleLoadDistribution({days,title,refDate}){
         <MuscleLoadFigure slugLoad={slugLoad}/>
         <div className="ath-mmap-list">{mEntries.length?bars(mEntries,sum(mEntries)):<div className="mm-hint">No muscle groups selected.</div>}</div>
       </div>
-      {(pEntries.length>0||planeEntries.length>0||coreEntries.length>0)&&<div className="mld-breakdown">
+      {(pEntries.length>0||coreEntries.length>0)&&<div className="mld-breakdown">
         {pEntries.length>0&&<div className="mld-col"><div className="mld-sub">Movement Pattern</div><div className="ath-mmap-list">{bars(pEntries,sum(pEntries))}</div></div>}
-        {planeEntries.length>0&&<div className="mld-col"><div className="mld-sub">Plane</div><div className="ath-mmap-list">{bars(planeEntries,sum(planeEntries))}</div></div>}
-        {coreEntries.length>0&&<div className="mld-col"><div className="mld-sub">Core Quality</div><div className="ath-mmap-list">{bars(coreEntries,sum(coreEntries))}</div></div>}
+        {coreEntries.length>0&&<div className="mld-col"><div className="mld-sub">Core</div><div className="ath-mmap-list">{bars(coreEntries,sum(coreEntries))}</div></div>}
       </div>}
       </>}
   </div>);
@@ -3953,6 +3952,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
   const[editSel,setEditSel]=useState(null);   // which session's muscle model is shown in the edit drawer
+  const[editLeftOpen,setEditLeftOpen]=useState(false);   // model panel collapsed by default when editing
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
   const[calMode,setCalMode]=useState('week');   // single calendar: 'week' (rich strip) | 'month' (grid)
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
@@ -3976,7 +3976,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edMv=(sid,dir)=>{const a=[...edDay.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];svDay(editDate,{sessions:a});};
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
-  const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditLeftOpen(false);setEditDate(k);}else goDayView(k);};
   // Inline edit of the open drawer session (time / duration / load) without opening
   // the full editor. Persists to days (and syncs to athletes in team mode).
   const drwUpd=patch=>{
@@ -4310,10 +4310,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <div className="ti">Training Plan</div>
             <div className="su">{fdLong(editDate)} · {Math.round(dLoad(edDay))} AU</div>
           </div>
+          <button type="button" className={'btn sm dw-model-tgl'+(editLeftOpen?' on':'')} onClick={()=>setEditLeftOpen(o=>!o)}>{editLeftOpen?'Hide model':'Model'}</button>
           <button className="x" onClick={()=>setEditDate(null)}>×</button>
         </div>
         <div className="dw-layout">
-          <div className="dw-left-panel">{(()=>{const _ss=edDay.sessions||[];if(_ss.length===0)return(<div className="dw-empty-panel">Model için önce bir antrenman ekleyin.</div>);const _cur=_ss.find(s=>s.id===editSel)||_ss[0];return(<React.Fragment>{_ss.length>1&&<div className="mm-sess-switch">{_ss.map((s,i)=><button key={s.id} type="button" className={'mm-sess-tab'+(_cur.id===s.id?' on':'')} onClick={()=>setEditSel(s.id)} title={s.name||'Antrenman'}>{i+1}· {s.name||'Antrenman'}</button>)}</div>}<MuscleModel session={_cur} onPatch={patch=>edUpd(_cur.id,{..._cur,...patch})}/></React.Fragment>);})()}</div>
+          {editLeftOpen&&<div className="dw-left-panel">{(()=>{const _ss=edDay.sessions||[];if(_ss.length===0)return(<div className="dw-empty-panel">Model için önce bir antrenman ekleyin.</div>);const _cur=_ss.find(s=>s.id===editSel)||_ss[0];return(<React.Fragment>{_ss.length>1&&<div className="mm-sess-switch">{_ss.map((s,i)=><button key={s.id} type="button" className={'mm-sess-tab'+(_cur.id===s.id?' on':'')} onClick={()=>setEditSel(s.id)} title={s.name||'Antrenman'}>{i+1}· {s.name||'Antrenman'}</button>)}</div>}<MuscleModel session={_cur} onPatch={patch=>edUpd(_cur.id,{..._cur,...patch})}/></React.Fragment>);})()}</div>}
         <div className="dw-b">
           <div className="dw-quickadd">
             <span className="qa-lbl">Quick add</span>
