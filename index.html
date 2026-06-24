@@ -3903,11 +3903,12 @@ function MuscleLoadDistribution({days,title,refDate}){
   const shift=dir=>{const a=parseD(anchor);setAnchor(mode==='week'?fmt(addD(a,dir*7)):fmt(new Date(a.getFullYear(),a.getMonth()+dir,1)));};
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
-  const mEntries=Object.entries(agg.muscles).sort((a,b)=>b[1]-a[1]);
-  // Patterns shown in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
-  const pEntries=MOVE_PATTERNS.map(([k])=>k).filter(k=>agg.patterns[k]).map(k=>[k,agg.patterns[k]]);
-  const coreEntries=Object.entries(agg.planes).filter(([k])=>CORE_QUALITIES.has(k)).sort((a,b)=>b[1]-a[1]);
-  const hasData=mEntries.length||pEntries.length||coreEntries.length;
+  // Always show the full set of rows — including 0% ones.
+  const mEntries=Object.values(MM_MUSCLES).map(l=>[l,agg.muscles[l]||0]).sort((a,b)=>b[1]-a[1]);
+  // Patterns in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
+  const pEntries=MOVE_PATTERNS.map(([k])=>[k,agg.patterns[k]||0]);
+  const coreEntries=(PATTERN_PLANES['Core']||[]).map(q=>[q,agg.planes[q]||0]);
+  const hasData=Object.keys(agg.muscles).length||Object.keys(agg.patterns).length||Object.keys(agg.planes).length;
   const sum=es=>es.reduce((s,[,v])=>s+v,0);
   const slugLoad={};
   mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
