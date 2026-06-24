@@ -3823,19 +3823,23 @@ function MuscleModel({session,onPatch,readOnly}){
   const pls=(session.selPlanes&&!Array.isArray(session.selPlanes))?session.selPlanes:{};
   const sel=new Set(session.selMuscles||[]);
   const togM=m=>{if(readOnly)return;const s=new Set(sel);s.has(m)?s.delete(m):s.add(m);onPatch({selMuscles:[...s]});};
-  const togPat=k=>{if(readOnly)return;const has=pats.includes(k);const next=has?pats.filter(x=>x!==k):[...pats,k];const np={...pls};if(has)delete np[k];onPatch({selPatterns:next,selPlanes:np});};
-  const togPlane=(pat,plane)=>{if(readOnly)return;const cur=pls[pat]||[];const next=cur.includes(plane)?cur.filter(x=>x!==plane):[...cur,plane];onPatch({selPlanes:{...pls,[pat]:next}});};
+  // Toggling a plane also keeps selPatterns in sync (a pattern is "on" while it
+  // has at least one plane selected) so the load distribution still works.
+  const togPlane=(pat,plane)=>{if(readOnly)return;
+    const cur=pls[pat]||[];
+    const next=cur.includes(plane)?cur.filter(x=>x!==plane):[...cur,plane];
+    const np={...pls,[pat]:next};
+    let nextPats;
+    if(next.length>0){nextPats=pats.includes(pat)?pats:[...pats,pat];}
+    else{nextPats=pats.filter(x=>x!==pat);delete np[pat];}
+    onPatch({selPlanes:np,selPatterns:nextPats});};
   return(<div className={'mm-wrap'+(readOnly?' ro':'')}>
-    <div className="dw-panel-lbl">Movement Pattern</div>
-    <div className="mm-chips mm-chips-col">{MOVE_PATTERNS.map(([k,l])=><button key={k} type="button" className={'mm-chip'+(pats.includes(k)?' on':'')} onClick={()=>togPat(k)}>{l}</button>)}</div>
-    <div className="dw-panel-lbl">Plane</div>
-    {pats.length===0
-      ? <div className="mm-hint">Select a movement pattern to set its plane.</div>
-      : <div className="mm-planes">{pats.map(p=>(
-          <div key={p} className="mm-plane-row">
-            <span className="mm-plane-pat">{p}</span>
-            <div className="mm-chips">{(PATTERN_PLANES[p]||ALL_PLANES).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls[p]||[]).includes(pl)?' on':'')} onClick={()=>togPlane(p,pl)}>{pl}</button>)}</div>
-          </div>))}</div>}
+    <div className="dw-panel-lbl">Movements &amp; Patterns</div>
+    <div className="mm-planes">{MOVE_PATTERNS.map(([p])=>(
+      <div key={p} className="mm-plane-row">
+        <span className="mm-plane-pat">{p}</span>
+        <div className="mm-chips">{(PATTERN_PLANES[p]||ALL_PLANES).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls[p]||[]).includes(pl)?' on':'')} onClick={()=>togPlane(p,pl)}>{pl}</button>)}</div>
+      </div>))}</div>
     <div className="dw-panel-lbl">Muscle Groups</div>
     <div className="mm-bodies">
       <MMFigure label="FRONT" data={MM_DATA_FRONT} front sel={sel} onToggle={togM}/>
