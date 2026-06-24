@@ -4380,7 +4380,8 @@ function ExNameField({value,onChange,onCommit}){
   const fit=el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}};
   useEffect(()=>{fit(taRef.current);},[value]);
   const q=(value||'').trim().toLowerCase();
-  const sugg=(focus&&q)?getLibNames().filter(n=>n.toLowerCase().includes(q)&&n.toLowerCase()!==q).slice(0,8):[];
+  // On focus: empty box → show all saved exercises; typing → filter the library.
+  const sugg=!focus?[]:(q?getLibNames().filter(n=>n.toLowerCase().includes(q)&&n.toLowerCase()!==q):getLibNames()).slice(0,50);
   const pick=n=>{onChange(n);setFocus(false);setHi(-1);onCommit&&onCommit(n);};
   return(<div className="en-wrap">
     <textarea ref={taRef} className="en" rows={1} value={value} placeholder="Exercise name"
