@@ -699,7 +699,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-tbl .en{width:100%;line-height:1.35;min-height:30px;font-family:inherit}
 .ex-tbl textarea.en{resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box}
 .en-wrap{position:relative;width:100%}
-.en-sugg{position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--elevated);border:1px solid var(--border2);border-radius:6px;margin-top:2px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:220px;overflow:auto}
+.en-sugg{position:fixed;z-index:99999;background:var(--elevated);border:1px solid var(--border2);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:240px;overflow:auto}
 .en-sopt{padding:6px 9px;font-size:12px;color:var(--text2);cursor:pointer;white-space:normal;word-break:break-word}
 .en-sopt:hover,.en-sopt.on{background:var(--hover);color:var(--text)}
 .ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
@@ -4376,13 +4376,19 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
 function ExNameField({value,onChange,onCommit}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
+  const[,setTick]=useState(0); // force re-position on scroll/resize
   const taRef=useRef(null);
   const fit=el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}};
   useEffect(()=>{fit(taRef.current);},[value]);
+  // While open, keep the portal dropdown glued to the input as the page scrolls.
+  useEffect(()=>{if(!focus)return;const on=()=>setTick(t=>t+1);
+    window.addEventListener('scroll',on,true);window.addEventListener('resize',on);
+    return()=>{window.removeEventListener('scroll',on,true);window.removeEventListener('resize',on);};},[focus]);
   const q=(value||'').trim().toLowerCase();
   // On focus: empty box → show all saved exercises; typing → filter the library.
   const sugg=!focus?[]:(q?getLibNames().filter(n=>n.toLowerCase().includes(q)&&n.toLowerCase()!==q):getLibNames()).slice(0,50);
   const pick=n=>{onChange(n);setFocus(false);setHi(-1);onCommit&&onCommit(n);};
+  const rect=(focus&&taRef.current)?taRef.current.getBoundingClientRect():null;
   return(<div className="en-wrap">
     <textarea ref={taRef} className="en" rows={1} value={value} placeholder="Exercise name"
       onChange={e=>{onChange(e.target.value);fit(e.target);setHi(-1);}}
@@ -4394,9 +4400,13 @@ function ExNameField({value,onChange,onCommit}){
         else if(e.key==='Enter'){e.preventDefault();if(hi>=0&&sugg[hi])pick(sugg[hi]);else e.target.blur();}
         else if(e.key==='Escape'){setFocus(false);setHi(-1);}
       }}/>
-    {sugg.length>0&&<div className="en-sugg">{sugg.map((n,i)=>
-      <div key={n} className={"en-sopt"+(i===hi?" on":"")}
-        onMouseDown={e=>{e.preventDefault();pick(n);}}>{n}</div>)}</div>}
+    {/* Rendered in a body portal so no ancestor's overflow:hidden can clip it. */}
+    {sugg.length>0&&rect&&ReactDOM.createPortal(
+      <div className="en-sugg" style={{position:'fixed',left:rect.left,top:rect.bottom+2,width:rect.width,right:'auto'}}>
+        {sugg.map((n,i)=>
+          <div key={n} className={"en-sopt"+(i===hi?" on":"")}
+            onMouseDown={e=>{e.preventDefault();pick(n);}}>{n}</div>)}
+      </div>,document.body)}
   </div>);
 }
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk}){
