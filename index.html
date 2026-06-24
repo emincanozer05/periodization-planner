@@ -481,6 +481,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ml-fig-wrap{width:340px;max-width:100%}
 .ml-fig-wrap .mm-bodies{gap:10px}
 .ml-fig-wrap .mm-cap{font-size:10px}
+.mld-breakdown{display:flex;gap:34px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.mld-col{flex:1;min-width:230px}
+.mld-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:11px}
 .ml-svg{width:100%;height:auto;display:block}
 .ml-svg path{fill:#2a2f37;stroke:#3a414b;stroke-width:2;stroke-linejoin:round}
 .dw-quickadd{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin-bottom:16px}
@@ -3831,30 +3834,23 @@ function MuscleModel({session,onPatch,readOnly}){
   </div>);
 }
 
-/* Realistic anatomy figure that shades each muscle by accumulated training
-   load. Reuses the react-muscle-highlighter paths (MM_DATA_*) so it matches
-   the interactive model used in the session box. Exercise-library muscle
-   labels (EX_MUSCLES) are mapped onto the anatomy slugs below. */
-const EX_TO_MM={'Abs & Core':['abs','obliques'],'Chest':['chest'],'Upper Back':['upper-back','trapezius'],'Lats':['upper-back'],'Shoulders':['deltoids'],'Biceps':['biceps'],'Triceps':['triceps'],'Quadriceps':['quadriceps'],'Hamstrings':['hamstring'],'Glutes':['gluteal'],'Calves':['calves','tibialis'],'Forearms':['forearm'],'Hip Flexors':['adductors'],'Adductors':['adductors'],'Abductors':['gluteal']};
+/* Realistic anatomy figure that shades each muscle by training load.
+   Reuses the react-muscle-highlighter paths (MM_DATA_*) so it matches the
+   interactive model used in the session box. Driven by the coach's manual
+   muscle selections (session.selMuscles → MM_MUSCLES labels). */
+const MM_LABEL_TO_SLUG=Object.fromEntries(Object.entries(MM_MUSCLES).map(([slug,label])=>[label,slug]));
+// Load colour ramp: low usage → light green, high usage → red.
+function loadColor(t){const x=Math.max(0,Math.min(1,t));const h=Math.round(120*(1-x));const l=Math.round(62-12*x);return `hsl(${h} 78% ${l}%)`;}
 function MLPart({part,fill}){
   const c=MM_MUSCLES[part.s]?fill(part.s):null;
   const st=c?{fill:c}:undefined;
   const paths=[].concat(part.l||[],part.r||[]);
   return(<g>{paths.map((d,i)=><path key={i} d={d} style={st}/>)}{MM_MUSCLES[part.s]&&<title>{MM_MUSCLES[part.s]}</title>}</g>);
 }
-function MuscleLoadFigure({muscles}){
-  const slugLoad={};let full=0;
-  Object.entries(muscles||{}).forEach(([m,v])=>{
-    if(m==='Full Body'){full+=v;return;}
-    if(m==='Cardio')return;
-    (EX_TO_MM[m]||[]).forEach(sl=>{slugLoad[sl]=(slugLoad[sl]||0)+v;});
-  });
-  if(full)Object.keys(MM_MUSCLES).forEach(sl=>{slugLoad[sl]=(slugLoad[sl]||0)+full;});
-  const vals=Object.values(slugLoad);
+function MuscleLoadFigure({slugLoad}){
+  const vals=Object.values(slugLoad||{});
   const max=vals.length?Math.max(...vals):1;
-  // Colour each muscle by its share of total load (usage %), matching the bars.
-  const fill=sl=>{const v=slugLoad[sl]||0;if(!v)return null;const t=v/max;
-    if(t<0.25)return'#22d3ee';if(t<0.5)return'#67e8f9';if(t<0.75)return'#daff02';return'#ef4444';};
+  const fill=sl=>{const v=(slugLoad||{})[sl]||0;if(!v)return null;return loadColor(v/max);};
   const fig=(data,front)=>(<div className="mm-fig">
     <div className="mm-cap">{front?'FRONT':'BACK'}</div>
     <svg viewBox={front?'0 0 724 1448':'724 0 724 1448'} xmlns="http://www.w3.org/2000/svg" className="ml-svg" preserveAspectRatio="xMidYMid meet">
@@ -3862,6 +3858,43 @@ function MuscleLoadFigure({muscles}){
     </svg>
   </div>);
   return(<div className="ml-fig-wrap"><div className="mm-bodies">{fig(MM_DATA_FRONT,true)}{fig(MM_DATA_BACK,false)}</div></div>);
+}
+/* Aggregate the coach's manual selections (muscles / patterns / planes) over a
+   set of days — used by both the team Calendar and the athlete profile. */
+function aggSessions(days){
+  const muscles={},patterns={},planes={};
+  Object.values(days||{}).forEach(d=>(d.sessions||[]).forEach(s=>{
+    (s.selMuscles||[]).forEach(m=>{muscles[m]=(muscles[m]||0)+1;});
+    (s.selPatterns||[]).forEach(p=>{patterns[p]=(patterns[p]||0)+1;});
+    const pls=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
+    Object.values(pls).forEach(arr=>(arr||[]).forEach(pl=>{planes[pl]=(planes[pl]||0)+1;}));
+  }));
+  return{muscles,patterns,planes};
+}
+function MuscleLoadDistribution({days,title}){
+  const agg=aggSessions(days);
+  const mEntries=Object.entries(agg.muscles).sort((a,b)=>b[1]-a[1]);
+  const pEntries=Object.entries(agg.patterns).sort((a,b)=>b[1]-a[1]);
+  const plEntries=Object.entries(agg.planes).sort((a,b)=>b[1]-a[1]);
+  if(!mEntries.length&&!pEntries.length&&!plEntries.length)return null;
+  const sum=es=>es.reduce((s,[,v])=>s+v,0);
+  const slugLoad={};
+  mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
+  const bars=(entries,tot)=>{const mx=entries.length?entries[0][1]:1;return entries.map(([k,v])=>{const pct=tot?Math.round(v/tot*100):0;return(
+    <div key={k} className="ath-mmap-row"><span className="ath-mmap-name">{k}</span>
+      <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',background:loadColor(v/mx)}}/></div>
+      <span className="ath-mmap-pct">{pct}%</span></div>);});};
+  return(<div className="panel ath-mmap-wrap">
+    <h2 style={{margin:'0 0 12px',fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||'Muscle Load Distribution'}</h2>
+    <div className="ath-mmap-body">
+      <MuscleLoadFigure slugLoad={slugLoad}/>
+      <div className="ath-mmap-list">{mEntries.length?bars(mEntries,sum(mEntries)):<div className="mm-hint">No muscle groups selected yet — pick them on the session model.</div>}</div>
+    </div>
+    {(pEntries.length>0||plEntries.length>0)&&<div className="mld-breakdown">
+      {pEntries.length>0&&<div className="mld-col"><div className="mld-sub">Movement Pattern</div><div className="ath-mmap-list">{bars(pEntries,sum(pEntries))}</div></div>}
+      {plEntries.length>0&&<div className="mld-col"><div className="mld-sub">Plane / Quality</div><div className="ath-mmap-list">{bars(plEntries,sum(plEntries))}</div></div>}
+    </div>}
+  </div>);
 }
 
 /* =========================================================
@@ -7015,34 +7048,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {tab==='calendar'&&<><CalendarView days={ath.days||{}} selected={athSel} setSelected={setAthSel}
       goDayView={k=>{setAthDayKey(k);}} weeks={weeks}
       saveDays={saveAthDays} setup={setup} labelOwner={ath.name} exercises={exercises}/>
-    {(()=>{
-      const muscleMap={};
-      Object.values(ath.days||{}).forEach(d=>(d.sessions||[]).forEach(s=>{
-        const ana=sesAnalyze(s,exercises||[]);
-        Object.entries(ana.muscles).forEach(([m,c])=>{muscleMap[m]=(muscleMap[m]||0)+c;});
-      }));
-      const total=Object.values(muscleMap).reduce((a,b)=>a+b,0);
-      if(total===0)return null;
-      const sorted=Object.entries(muscleMap).sort((a,b)=>b[1]-a[1]);
-      const maxV=sorted[0][1];
-      const fillColor=v=>{const t=v/maxV;if(t<0.25)return'#22d3ee';if(t<0.5)return'#67e8f9';if(t<0.75)return'#daff02';return'#ef4444';};
-      return(<div className="panel ath-mmap-wrap">
-        <h2 style={{margin:'0 0 12px',fontSize:15,fontWeight:700,color:'var(--text)'}}>Muscle Load Distribution</h2>
-        <div className="ath-mmap-body">
-          <MuscleLoadFigure muscles={muscleMap}/>
-          <div className="ath-mmap-list">
-            {sorted.map(([m,v])=>{
-              const pct=total?Math.round(v/total*100):0;
-              return(<div key={m} className="ath-mmap-row">
-                <span className="ath-mmap-name">{m}</span>
-                <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',background:fillColor(v)}}/></div>
-                <span className="ath-mmap-pct">{pct}%</span>
-              </div>);
-            })}
-          </div>
-        </div>
-      </div>);
-    })()}</>}
+    <MuscleLoadDistribution days={ath.days||{}}/></>}
 
     {tab==='report'&&(()=>{
       // Stat-row summaries on top of the existing ReportsBody (mockup design)
@@ -9271,10 +9277,11 @@ function App(){
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
-      {view==='calendar'&&<CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
+      {view==='calendar'&&<><CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
         setup={team.setup} labelOwner={team.setup.teamName} athletes={team.athletes||[]} exercises={data.exercises||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
-        saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
+        saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>
+        <MuscleLoadDistribution days={team.days}/></>}
       {view==='program'&&<Planner days={team.days} setup={team.setup} dateKey={dayKey} setDateKey={setDayKey} labelOwner={team.setup.teamName}
         athletes={team.athletes||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
