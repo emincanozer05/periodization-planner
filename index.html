@@ -485,6 +485,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tip-row .tip-dot{width:7px;height:7px;border-radius:50%;flex:none}
 .tip-row .tip-lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tip-row .tip-ct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
+.ses-tooltip .tip-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.ses-tooltip .tip-pat{padding:3px 0}
+.ses-tooltip .tip-pat+.tip-pat{border-top:1px solid rgba(255,255,255,.05)}
+.ses-tooltip .tip-pat-nm{font-size:11px;font-weight:600;color:var(--text)}
+.ses-tooltip .tip-pat-pl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--accent);margin-top:1px}
+.ses-tooltip .tip-empty{font-size:10.5px;color:var(--dim);font-style:italic}
 /* Athlete muscle load map */
 .ath-mmap-wrap{margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
 .ath-mmap-body{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
@@ -4278,8 +4284,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {ss.length===0&&<div className="calw-empty">rest</div>}
           {ss.map(s=>{
             const au=s.au||(s.sRPE!==''&&s.sRPE!=null?Math.round(Number(s.sRPE)*Number(s.duration||0)):0);
-            const _hovActive=hovSes===s.id&&exercises&&exercises.length>0;
-            const _tipTypes=_hovActive?(()=>{const a=sesAnalyze(s,exercises);return Object.entries(a.types).sort((x,y)=>y[1]-x[1]);})():[];
+            const _hov=hovSes===s.id;
+            const _pats=s.selPatterns||[];
+            const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
             return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
               style={s.color?{borderLeft:`3px solid ${s.color}`}:undefined}
@@ -4288,12 +4295,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});setHovSes(null);}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
-              {_hovActive&&_tipTypes.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
-                {_tipTypes.map(([type,cnt])=><div key={type} className="tip-row">
-                  <span className="tip-dot" style={{background:TYPE_COLORS[type]||'var(--border2)'}}/>
-                  <span className="tip-lbl">{type}</span>
-                  <span className="tip-ct">{cnt}×</span>
-                </div>)}
+              {_hov&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
+                <div className="tip-h">Movements &amp; Patterns</div>
+                {_pats.length>0
+                  ?_pats.map(p=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat">
+                      <div className="tip-pat-nm">{p}</div>
+                      {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
+                    </div>);})
+                  :<div className="tip-empty">No movements selected</div>}
               </div>}
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title="Duplicate" onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
