@@ -547,6 +547,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .bdot{width:7px;height:7px;border-radius:50%;background:#6b8aff;flex:none}
 .calm-cell.out .bdot{background:var(--dim)}
 .calm-cell .csess{display:flex;flex-direction:column;gap:3px}
+.calm-cell .cs-item-wrap{position:relative}
 .calm-cell .cs-item{font-size:10.5px;color:var(--text);background:rgba(255,255,255,.05);border-left:3px solid var(--accent);border-radius:4px;padding:3px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
 .calm-cell .cs-more{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
 .calm-cell .mau{margin-top:auto;text-align:right;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6b8aff;font-weight:700}
@@ -4328,7 +4329,19 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>pickMonth(k)} title="Planla">
           <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
           {ss.length>0&&<div className="csess">
-            {ss.slice(0,2).map((s,j)=><div key={j} className="cs-item" style={{borderLeftColor:sesColor(s)}} title={s.name||'Session'}>{s.name||'Session'}</div>)}
+            {ss.slice(0,2).map((s,j)=>{
+              const _hov=hovSes===s.id;const _pats=s.selPatterns||[];const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
+              return(<div key={s.id||j} className="cs-item-wrap" onMouseEnter={e=>{e.stopPropagation();setHovSes(s.id);}} onMouseLeave={()=>setHovSes(null)}>
+                <div className="cs-item" style={{borderLeftColor:sesColor(s)}}>{s.name||'Session'}</div>
+                {_hov&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
+                  <div className="tip-h">Movements &amp; Patterns</div>
+                  {MOVE_PATTERNS.map(([p])=>{const on=_pats.includes(p);const pl=_planes[p]||[];return(<div key={p} className={"tip-pat"+(on?" on":"")}>
+                      <div className="tip-pat-nm"><span className="tip-pat-dot"/>{p}</div>
+                      {on&&pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
+                    </div>);})}
+                </div>}
+              </div>);
+            })}
             {ss.length>2&&<div className="cs-more">+{ss.length-2} more</div>}
           </div>}
           {au>0&&<div className="mau">{Math.round(au)}<small>AU</small></div>}
