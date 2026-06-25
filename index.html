@@ -7746,36 +7746,40 @@ function _mergeBy(cloudArr,localArr,keyFn,mergeItem){
     else{order.push(k);map.set(k,x);}});
   return order.map(k=>map.get(k));
 }
-function _mergeDayMap(cloudDays,localDays){
+// `pl` (preferLocal) decides ONLY genuine same-key conflicts (the same record edited on both
+// devices). Additions are unioned regardless of `pl`, so nothing added on either device is ever
+// lost. Both devices compute `pl` from the SAME cloud.editedAt vs their own edit time, so they
+// agree on the winner of a conflict → deterministic, no flip-flop, no ping-pong.
+function _mergeDayMap(cloudDays,localDays,pl){
   const out={};const dates=new Set([...Object.keys(cloudDays||{}),...Object.keys(localDays||{})]);
   dates.forEach(dt=>{const c=cloudDays&&cloudDays[dt],l=localDays&&localDays[dt];
-    if(c&&l)out[dt]={date:dt,sessions:_mergeBy(c.sessions,l.sessions,s=>s.id,(_,ls)=>ls),dailyNotes:l.dailyNotes||c.dailyNotes||''};
+    if(c&&l)out[dt]={date:dt,sessions:_mergeBy(c.sessions,l.sessions,s=>s.id,(cs,ls)=>pl?ls:cs),dailyNotes:pl?(l.dailyNotes||c.dailyNotes||''):(c.dailyNotes||l.dailyNotes||'')};
     else out[dt]=l||c;});
   return out;
 }
-function _mergeAthlete(c,l){
-  return{...c,...l,
-    days:_mergeDayMap(c.days,l.days),
-    srpeLog:_mergeBy(c.srpeLog,l.srpeLog,e=>(e.sessionId||'')+'@'+(e.date||''),(_,b)=>b),
-    wellness:_mergeBy(c.wellness,l.wellness,w=>w.date||JSON.stringify(w),(_,b)=>b),
-    measurements:_mergeBy(c.measurements,l.measurements,m=>m.date||JSON.stringify(m),(_,b)=>b),
-    injuries:_mergeBy(c.injuries,l.injuries,x=>x.id||x.date||JSON.stringify(x),(_,b)=>b),
-    tests:_mergeBy(c.tests,l.tests,t=>t.id||t.date||JSON.stringify(t),(_,b)=>b)};
+function _mergeAthlete(c,l,pl){
+  return{...(pl?{...c,...l}:{...l,...c}),
+    days:_mergeDayMap(c.days,l.days,pl),
+    srpeLog:_mergeBy(c.srpeLog,l.srpeLog,e=>(e.sessionId||'')+'@'+(e.date||''),(a,b)=>pl?b:a),
+    wellness:_mergeBy(c.wellness,l.wellness,w=>w.date||JSON.stringify(w),(a,b)=>pl?b:a),
+    measurements:_mergeBy(c.measurements,l.measurements,m=>m.date||JSON.stringify(m),(a,b)=>pl?b:a),
+    injuries:_mergeBy(c.injuries,l.injuries,x=>x.id||x.date||JSON.stringify(x),(a,b)=>pl?b:a),
+    tests:_mergeBy(c.tests,l.tests,t=>t.id||t.date||JSON.stringify(t),(a,b)=>pl?b:a)};
 }
-function _mergeTeam(c,l){
-  return{...c,...l,
-    setup:l.setup||c.setup,
-    weekOverrides:{...(c.weekOverrides||{}),...(l.weekOverrides||{})},
-    days:_mergeDayMap(c.days,l.days),
-    athletes:_mergeBy(c.athletes,l.athletes,a=>a.id,_mergeAthlete)};
+function _mergeTeam(c,l,pl){
+  return{...(pl?{...c,...l}:{...l,...c}),
+    setup:pl?(l.setup||c.setup):(c.setup||l.setup),
+    weekOverrides:pl?{...(c.weekOverrides||{}),...(l.weekOverrides||{})}:{...(l.weekOverrides||{}),...(c.weekOverrides||{})},
+    days:_mergeDayMap(c.days,l.days,pl),
+    athletes:_mergeBy(c.athletes,l.athletes,a=>a.id,(a,b)=>_mergeAthlete(a,b,pl))};
 }
-function mergeStates(cloud,local){
+function mergeStates(cloud,local,pl=true){
   if(!cloud)return local;if(!local)return cloud;
-  return{...cloud,...local,
-    activeTeamId:local.activeTeamId||cloud.activeTeamId,
-    teams:_mergeBy(cloud.teams,local.teams,t=>t.id,_mergeTeam),
-    exercises:_mergeBy(cloud.exercises,local.exercises,e=>e.id,(_,b)=>b),
-    researches:_mergeBy(cloud.researches,local.researches,r=>r.id,(_,b)=>b)};
+  return{...(pl?{...cloud,...local}:{...local,...cloud}),
+    activeTeamId:pl?(local.activeTeamId||cloud.activeTeamId):(cloud.activeTeamId||local.activeTeamId),
+    teams:_mergeBy(cloud.teams,local.teams,t=>t.id,(a,b)=>_mergeTeam(a,b,pl)),
+    exercises:_mergeBy(cloud.exercises,local.exercises,e=>e.id,(a,b)=>pl?b:a),
+    researches:_mergeBy(cloud.researches,local.researches,r=>r.id,(a,b)=>pl?b:a)};
 }
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
@@ -7823,14 +7827,23 @@ function useCloudSync(data,setData){
   };
   // This device is dirty AND the cloud has diverged → union both (so neither device's additions
   // are lost), show the merged result here, and push it up as the new shared truth.
-  const mergeUp=async cloud=>{
+  const mergeUp=async(cloud,pl)=>{
     const fb=FB(); if(!fb||!user)return;
-    const merged=mergeStates(migrate(JSON.parse(cloud.str)),dataRef.current);
-    const mstr=JSON.stringify(merged);
-    if(mstr!==JSON.stringify(dataRef.current))setData(merged);
+    const cobj=migrate(JSON.parse(cloud.str));const cstr=JSON.stringify(cobj);
+    const merged=mergeStates(cobj,dataRef.current,pl);const mstr=JSON.stringify(merged);
     ready.current=true;
+    // The union added nothing the cloud doesn't already have → just adopt the cloud copy and do
+    // NOT write (prevents pointless write ping-pong between two devices; guarantees convergence).
+    if(mstr===cstr){
+      if(cstr!==JSON.stringify(dataRef.current))setData(cobj);
+      markSynced(cloud.rev,cstr);setStatus('synced');return;
+    }
+    if(mstr!==JSON.stringify(dataRef.current))setData(merged);
     const rev=mkRev();setStatus('syncing');
-    try{await cloudWrite(fb,user.uid,mstr,rev,null,localEditAt.current||nowTs());markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
+    // Stamp the merged write with the newest real edit time that fed into it, so future LWW
+    // comparisons stay correct (not the merge moment).
+    const editedAt=Math.max(localEditAt.current||0,cloud.editedAt||0)||nowTs();
+    try{await cloudWrite(fb,user.uid,mstr,rev,null,editedAt);markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
     catch(e){console.warn('mergeUp',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
@@ -7892,7 +7905,8 @@ function useCloudSync(data,setData){
               // This device has unsynced edits AND the cloud holds another device's copy → MERGE
               // the two so additions on both survive, rather than overwriting the cloud with ours
               // (the old behavior that silently dropped the other device's new sessions).
-              await mergeUp(cloud);
+              // Same-key conflicts go to whichever side was edited more recently (skew-corrected).
+              await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
             }else{
               // Clean device → the cloud is the single source of truth. This is the cross-device
               // case: open the app elsewhere and you get exactly what the other device saved.
@@ -7910,13 +7924,14 @@ function useCloudSync(data,setData){
             [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
           }
         }else if(rev&&rev!==lastRev.current&&!(snap.metadata&&snap.metadata.hasPendingWrites)){
-          // A genuine change from another device. LAST-WRITER-WINS by skew-corrected edit time:
-          // whatever was edited most recently shows on every device (Google-Drive style).
+          // A genuine change from another device. We always UNION the two copies so additions on
+          // either device survive; only a genuine same-key conflict is resolved by skew-corrected
+          // edit time (most recent wins, Google-Drive style — but never at the cost of dropping
+          // the other device's NEW records).
           const cloud=await cloudRead(fb,user.uid);
           if(cloud&&cloud.fromServer&&cloud.str){
-            if(!dirty())adopt(cloud);                                   // we have no local edit → take theirs
-            else if(localEditAt.current>(cloud.editedAt||0))writeNow(); // our edit is newer → it wins
-            else adopt(cloud);                                          // their edit is newer → it wins (our older edit yields)
+            if(!dirty())adopt(cloud);                                   // no local edit → take theirs as-is
+            else await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0)); // merge, conflict→newer wins
           }
         }
       }catch(e){console.warn('sync',e);setStatus('error');}
@@ -7961,10 +7976,12 @@ function useCloudSync(data,setData){
         if(cloud&&cloud.fromServer){
           const cloudMoved=cloud.str&&cloud.rev!==lastRev.current;
           if(dirty()){
-            // Last-writer-wins: push ours only if our edit is newer than the cloud's; otherwise
-            // the cloud holds a more recent action and we adopt it (no flip-flop, no stale clobber).
-            if(!cloudMoved||localEditAt.current>(cloud.editedAt||0))writeNow();
-            else adopt(cloud);
+            // Cloud unchanged since our last sync → our edits are pure additions on the shared base,
+            // just push them. Cloud moved → UNION both copies (additions on both survive) and let a
+            // genuine same-key conflict go to the more recently edited side. No stale clobber, no
+            // flip-flop, and the other device's new records are never dropped.
+            if(!cloudMoved)writeNow();
+            else await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
           }else if(cloudMoved){
             adopt(cloud);                           // only the cloud changed → take it
           }
