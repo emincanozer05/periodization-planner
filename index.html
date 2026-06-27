@@ -7781,7 +7781,7 @@ async function cloudWrite(fb,uid,str,rev,ts,editedAt){
   rev=rev||mkRev();
   const batch=db.batch();
   for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
-  batch.set(userDoc,{chunks:n,rev:rev,size:str.length,ts:ts||Date.now(),editedAt:editedAt||ts||Date.now(),updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+  batch.set(userDoc,{userId:uid,chunks:n,rev:rev,size:str.length,ts:ts||Date.now(),editedAt:editedAt||ts||Date.now(),updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
   await batch.commit();
   // Drop leftover chunks ONLY when the payload shrank — by reference, no read.
   if(oldN>n){const b=db.batch();for(let i=n;i<oldN;i++)b.delete(dataCol.doc(String(i)));await b.commit();}
@@ -7947,6 +7947,17 @@ function useCloudSync(data,setData){
     catch(e){console.warn('mergeUp',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
+  // Hard-wipe this device's in-memory state AND the local baseline so the previous account's
+  // data can never be shown, merged, or seeded into the next account that signs in here. This is
+  // the cross-account "data bleed" guard: a clean device on the next login takes the cloud as the
+  // single source of truth instead of re-uploading whoever was signed in before.
+  const resetLocal=()=>{
+    lastJson.current=null;lastRev.current=null;ready.current=false;
+    cleanHash.current=null;localEditAt.current=0;
+    try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
+    setData(makeDefault());
+  };
+
   // auth state
   useEffect(()=>{
     const fb=FB();
@@ -7962,11 +7973,23 @@ function useCloudSync(data,setData){
     });
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
-      setUser(u||null);
+      let prevUid=null;try{prevUid=localStorage.getItem('pp-uid');}catch(e){}
       if(!u){
-        setStatus('offline');lastJson.current=null;lastRev.current=null;ready.current=false;setSyncErr('');
-        // Keep pp-data (and its hash baseline) so unsynced edits can still seed on next sign-in.
+        // Signed out → wipe the device so nothing of the previous account lingers in the UI or
+        // gets pushed up when someone else signs in here. Cloud already holds the synced copy.
+        resetLocal();
+        try{localStorage.removeItem('pp-uid');}catch(e){}
+        setStatus('offline');setSyncErr('');
+        setUser(null);
+        return;
       }
+      // A DIFFERENT account just signed in on this device → discard the previous account's local
+      // data/baseline BEFORE the snapshot effect reconciles, so its records can't merge/seed into
+      // the new account. Restoring the SAME account (page reload, prevUid===uid) keeps its offline
+      // cache so unsynced edits still seed normally.
+      if(prevUid&&prevUid!==u.uid)resetLocal();
+      try{localStorage.setItem('pp-uid',u.uid);}catch(e){}
+      setUser(u);
     });
   },[]);
 
@@ -8160,7 +8183,7 @@ function useCloudSync(data,setData){
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     // returns the providers a given email is registered with, e.g. ['google.com'] or ['password']; [] if unknown/none
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
-    signOut:()=>FB().auth().signOut(),
+    signOut:async()=>{try{if(writeRef.current)writeRef.current();}catch(e){}return FB().auth().signOut();},
     signInWithGoogle:async()=>{
       const p=new firebase.auth.GoogleAuthProvider();
       p.setCustomParameters({prompt:'select_account'});
