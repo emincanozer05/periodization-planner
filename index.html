@@ -7921,9 +7921,29 @@ function useCloudSync(data,setData){
   const writeNow=async(forceStr)=>{
     const fb=FB();const u=userRef.current; if(!fb||!u||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    const j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
+    let j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
     if(j===lastJson.current)return;
-    if(j.length>950000){setStatus('error');setSyncErr('Veri çok büyük (~'+Math.round(j.length/1024)+'KB). Fotoğraflar Storage konumuna taşınmalı.');return;}
+    if(j.length>950000){
+      // Too big for one Firestore doc (~1 MiB limit) — almost always inline base64 photos still in
+      // the state. Move them to Storage (replaces each with a tiny URL), which shrinks the JSON
+      // dramatically, then write the slimmed copy. Failed uploads keep their base64 (nothing lost).
+      setStatus('syncing');setSyncErr('Fotoğraflar Storage’a taşınıyor…');
+      try{
+        const clone=JSON.parse(j);
+        const changed=await migrateEmbeddedPhotos(clone,fb,u.uid);
+        const slim=JSON.stringify(clone);
+        if(changed&&slim.length<=950000){
+          setData(clone);j=slim;setSyncErr(''); // reflect slimmed data locally and write it below
+        }else{
+          setData(clone); // keep whatever moved
+          setStatus('error');
+          setSyncErr(changed
+            ?'Veri hâlâ çok büyük (~'+Math.round(slim.length/1024)+'KB). Bazı fotoğraf/içerikleri silmen gerekebilir.'
+            :'Veri çok büyük (~'+Math.round(j.length/1024)+'KB) ve Storage’a taşınacak gömülü fotoğraf bulunamadı. Firebase Storage kuralları yayında mı?');
+          return;
+        }
+      }catch(e){console.warn('shrink',e);setStatus('error');setSyncErr('Küçültme başarısız: '+(e.code||e.message||e));return;}
+    }
     const editedAt=localEditAt.current||nowTs();
     setStatus('syncing');
     try{
