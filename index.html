@@ -8551,8 +8551,40 @@ function AuthModal({sync,onClose}){
 
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr}=sync;
+  const[diagOpen,setDiagOpen]=useState(false);
+  const[diag,setDiag]=useState('');
+  const[diagBusy,setDiagBusy]=useState(false);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync error!'}[status];
+  // RAW round-trip probe — bypasses all app sync logic. Writes/reads a tiny doc straight to
+  // Firestore so we can tell, per device, whether writes actually reach the server and whether
+  // THIS device can read what ANOTHER device wrote. Usage: press "Sunucuya yaz" on PC1, then
+  // "Sunucudan oku" on PC2 — if PC2 shows PC1's device id + a recent time, the server round-trip
+  // works and the bug is in the sync logic; if not, the transport/read is the problem.
+  const devId=(()=>{try{let x=localStorage.getItem('pp-devid');if(!x){x=Math.random().toString(36).slice(2,7);localStorage.setItem('pp-devid',x);}return x;}catch(e){return'dev';}})();
+  const diagWrite=async()=>{
+    if(!FB()||!user)return;setDiagBusy(true);
+    try{
+      const db=FB().firestore();const probe=Date.now().toString(36).slice(-5);const t0=Date.now();
+      await db.collection('users').doc(user.uid).collection('diag').doc('probe')
+        .set({probe,device:devId,at:FB().firestore.FieldValue.serverTimestamp()});
+      setDiag('✓ YAZMA sunucuya ulaştı ('+(Date.now()-t0)+'ms)\nbu cihaz: '+devId+' · probe: '+probe+'\n\nŞimdi DİĞER bilgisayarda "Sunucudan oku"ya bas.');
+    }catch(e){setDiag('✗ YAZMA BAŞARISIZ: '+(e.code||e.message||e)+'\n(yazma sunucuya ulaşmıyor → transport/kurallar)');}
+    setDiagBusy(false);
+  };
+  const diagRead=async()=>{
+    if(!FB()||!user)return;setDiagBusy(true);
+    try{
+      const db=FB().firestore();const t0=Date.now();
+      const s=await db.collection('users').doc(user.uid).collection('diag').doc('probe').get({source:'server'});
+      const d=s.exists?s.data():null;
+      const ageMs=(d&&d.at&&d.at.toMillis)?(Date.now()-d.at.toMillis()):null;
+      const age=ageMs==null?'?':(ageMs<60000?Math.round(ageMs/1000)+' sn önce':Math.round(ageMs/60000)+' dk önce');
+      const mine=d&&d.device===devId;
+      setDiag('✓ SUNUCUDAN OKUMA ('+(Date.now()-t0)+'ms)\nson yazan cihaz: '+(d?d.device:'(yok)')+(mine?' (BU cihaz)':' (BAŞKA cihaz)')+'\nprobe: '+(d?d.probe:'?')+' · '+age+'\n\n'+(d&&!mine?'➜ Bu cihaz DİĞER cihazın yazdığını GÖRÜYOR — sunucu çalışıyor, sorun sync mantığında.':d&&mine?'➜ Sadece kendi yazdığını görüyor; diğer cihazda önce "Sunucuya yaz"a bas.':'➜ Sunucuda kayıt yok.'));
+    }catch(e){setDiag('✗ OKUMA BAŞARISIZ: '+(e.code||e.message||e)+'\n(bu cihaz sunucudan okuyamıyor → transport/kurallar)');}
+    setDiagBusy(false);
+  };
   if(!FB())return null;
   if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
   const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
@@ -8568,6 +8600,19 @@ function CloudBar({sync,onOpen}){
     <div style={{marginTop:5}}>
       <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} title="Force pull latest cloud data" onClick={()=>sync.forcePull&&sync.forcePull()}>⟳ Sync</button>
     </div>
+    <div style={{marginTop:5}}>
+      <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} onClick={()=>setDiagOpen(o=>!o)}>🔧 Senkron testi</button>
+    </div>
+    {diagOpen&&(
+      <div style={{marginTop:6,padding:'8px 10px',background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:6}}>
+        <div style={{display:'flex',gap:6}}>
+          <button className="btn sec xs no-italic" disabled={diagBusy} style={{flex:1,justifyContent:'center'}} onClick={diagWrite}>1) Sunucuya yaz</button>
+          <button className="btn sec xs no-italic" disabled={diagBusy} style={{flex:1,justifyContent:'center'}} onClick={diagRead}>2) Sunucudan oku</button>
+        </div>
+        <div className="no-italic" style={{marginTop:6,fontSize:10,color:'var(--dim)'}}>PC1'de <b>1) Sunucuya yaz</b>, sonra PC2'de <b>2) Sunucudan oku</b>.</div>
+        {diag&&<pre className="no-italic" style={{marginTop:6,marginBottom:0,fontSize:10,color:'var(--text2)',whiteSpace:'pre-wrap',wordBreak:'break-word',userSelect:'all',fontFamily:'monospace'}}>{diag}</pre>}
+      </div>
+    )}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
