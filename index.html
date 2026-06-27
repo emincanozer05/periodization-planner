@@ -7897,6 +7897,7 @@ function useCloudSync(data,setData){
   // so we union instead of blindly adopting the cloud and losing them.
   const cleanHash=useRef((()=>{try{return localStorage.getItem('pp-data-hash')||null;}catch(e){return null;}})());
   const localEditAt=useRef(0);     // edit time of this device's latest UNSYNCED user edit (conflict tiebreak)
+  const lastN=useRef(0);           // number of cloud chunks we last wrote/saw (to delete leftovers)
   const nowTs=()=>Date.now();
   const setHash=str=>{const h=djb2(str);cleanHash.current=h;try{localStorage.setItem('pp-data-hash',h);}catch(e){}};
   const markSynced=str=>{lastJson.current=str;localEditAt.current=0;setHash(str);};
@@ -7914,41 +7915,31 @@ function useCloudSync(data,setData){
     if(cstr!==JSON.stringify(dataRef.current))setData(cobj);
     setStatus('synced');ready.current=true;
   };
-  // Write the WHOLE state into ONE document. We listen to that SAME document, so the write is
-  // delivered to every other device instantly by the snapshot itself — no separate read. This is
-  // the core of "a change shows on every device at once". `forceStr` lets callers write an exact
-  // string (e.g. a freshly merged copy) without waiting for React's async setData to land.
+  // Store the whole state as ordered chunks in the users/{uid}/data sub-collection, plus a `_meta`
+  // doc holding {n, editedAt}. We LISTEN to that same collection (below), so a write is delivered to
+  // every other device by the snapshot itself — the chunk contents ride along, no separate read.
+  // Chunking sidesteps Firestore's ~1 MiB per-document limit, so the payload can be any size (photos
+  // included) and sync still works with no dependency on Storage. `forceStr` lets callers write an
+  // exact string (e.g. a freshly merged copy) without waiting for React's async setData to land.
+  const CHUNK=700000;
   const writeNow=async(forceStr)=>{
     const fb=FB();const u=userRef.current; if(!fb||!u||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    let j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
+    const j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
     if(j===lastJson.current)return;
-    if(j.length>950000){
-      // Too big for one Firestore doc (~1 MiB limit) — almost always inline base64 photos still in
-      // the state. Move them to Storage (replaces each with a tiny URL), which shrinks the JSON
-      // dramatically, then write the slimmed copy. Failed uploads keep their base64 (nothing lost).
-      setStatus('syncing');setSyncErr('Fotoğraflar Storage’a taşınıyor…');
-      try{
-        const clone=JSON.parse(j);
-        const changed=await migrateEmbeddedPhotos(clone,fb,u.uid);
-        const slim=JSON.stringify(clone);
-        if(changed&&slim.length<=950000){
-          setData(clone);j=slim;setSyncErr(''); // reflect slimmed data locally and write it below
-        }else{
-          setData(clone); // keep whatever moved
-          setStatus('error');
-          setSyncErr(changed
-            ?'Veri hâlâ çok büyük (~'+Math.round(slim.length/1024)+'KB). Bazı fotoğraf/içerikleri silmen gerekebilir.'
-            :'Veri çok büyük (~'+Math.round(j.length/1024)+'KB) ve Storage’a taşınacak gömülü fotoğraf bulunamadı. Firebase Storage kuralları yayında mı?');
-          return;
-        }
-      }catch(e){console.warn('shrink',e);setStatus('error');setSyncErr('Küçültme başarısız: '+(e.code||e.message||e));return;}
-    }
     const editedAt=localEditAt.current||nowTs();
+    const n=Math.max(1,Math.ceil(j.length/CHUNK));
     setStatus('syncing');
     try{
-      await fb.firestore().collection('users').doc(u.uid)
-        .set({userId:u.uid,state:j,editedAt:editedAt,updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+      const db=fb.firestore();const dataCol=db.collection('users').doc(u.uid).collection('data');
+      const batch=db.batch();
+      for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:j.slice(i*CHUNK,(i+1)*CHUNK)});
+      batch.set(dataCol.doc('_meta'),{n:n,editedAt:editedAt,userId:u.uid,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
+      await batch.commit();
+      // Best-effort: drop leftover higher-index chunks from a previously larger payload (the reader
+      // is already safe — it only joins _meta.n chunks — this just frees space).
+      if(lastN.current>n){const b=db.batch();for(let i=n;i<lastN.current;i++)b.delete(dataCol.doc(String(i)));try{await b.commit();}catch(e){}}
+      lastN.current=n;
       markSynced(j);setStatus('synced');setSyncErr('');
     }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -8012,57 +8003,54 @@ function useCloudSync(data,setData){
     });
   },[]);
 
-  // Subscribe to the single state document on login. Its snapshots ARE the live data: the moment
-  // another device writes, this listener fires here with the full new state — no separate read, no
-  // meta-rev indirection. THAT is what makes a change appear on every device at once. (The old
-  // design listened to a meta doc but stored the data in a separate sub-collection, so it needed an
-  // extra server read that frequently failed — the real reason the other computer never updated.)
+  // Reassemble the state JSON from the ordered chunk docs in a collection snapshot. New writes carry
+  // a `_meta` doc with the authoritative chunk count `n`; data written by the OLD code has no `_meta`
+  // so we join every numeric chunk doc present (it left none stale beyond the count).
+  const reassemble=snap=>{
+    let n=0,editedAt=0,metaSeen=false;const partsMap={};
+    snap.forEach(doc=>{
+      if(doc.id==='_meta'){const dd=doc.data()||{};n=dd.n||0;editedAt=dd.editedAt||0;metaSeen=true;return;}
+      const i=parseInt(doc.id,10);if(!isNaN(i))partsMap[i]=(doc.data()&&doc.data().c)||'';
+    });
+    const idxs=Object.keys(partsMap).map(Number);
+    let count=0;
+    if(metaSeen&&n>0)count=n;
+    else if(idxs.length)count=Math.max.apply(null,idxs)+1;
+    if(!count)return{str:null,editedAt:0,n:0};
+    const arr=[];for(let i=0;i<count;i++)arr.push(partsMap[i]||'');
+    return{str:arr.join(''),editedAt:editedAt,n:count};
+  };
+  // Subscribe to the users/{uid}/data sub-collection on login. Its snapshots ARE the live data: the
+  // moment another device writes, this listener fires here with the chunk contents themselves — no
+  // separate read, no meta-rev indirection. THAT is what makes a change appear on every device at
+  // once, at ANY data size. (The old design listened to a meta doc but kept the data in a separate
+  // sub-collection it did NOT listen to, forcing an extra server read that frequently failed — the
+  // real reason the other computer never updated.)
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
-    ready.current=false;lastJson.current=null;
-    const ref=fb.firestore().collection('users').doc(user.uid);
-    let first=true;
-    const unsub=ref.onSnapshot(async snap=>{
+    ready.current=false;lastJson.current=null;lastN.current=0;
+    const dataCol=fb.firestore().collection('users').doc(user.uid).collection('data');
+    const unsub=dataCol.onSnapshot(async snap=>{
       try{
         if(snap.metadata&&snap.metadata.hasPendingWrites)return; // our own local write echo — ignore
-        const d=snap.exists?snap.data():null;
-        let cloudStr=(d&&typeof d.state==='string')?d.state:null;
-        let cloudEditedAt=(d&&d.editedAt)||0;
-        let hadState=!!(d&&typeof d.state==='string');
-        if(first){
-          first=false;
-          let serverOk=hadState; // a state from the live snapshot is authoritative enough
-          if(!cloudStr){
-            // The first snapshot can come from the offline CACHE and simply not have the doc yet,
-            // even though the server holds data. Confirm against the SERVER before deciding the cloud
-            // is empty — otherwise we could seed local data over real cloud data on a cold start.
-            try{
-              const ss=await ref.get({source:'server'});serverOk=true;
-              const sd=ss.exists?ss.data():null;
-              if(sd&&typeof sd.state==='string'){cloudStr=sd.state;cloudEditedAt=sd.editedAt||0;hadState=true;}
-              else{try{const legacy=await cloudRead(fb,user.uid);if(legacy&&legacy.fromServer&&legacy.str){cloudStr=legacy.str;cloudEditedAt=legacy.editedAt||0;}}catch(e){}}
-            }catch(e){/* offline — cannot confirm; do NOT clobber */}
-          }
-          if(cloudStr){
+        const r=reassemble(snap);const cloudStr=r.str,cloudEditedAt=r.editedAt;
+        if(cloudStr!=null&&r.n)lastN.current=r.n;
+        if(!ready.current){
+          // first reconcile after login
+          if(cloudStr!=null){
             ready.current=true;
             if(dirty())await mergeRemote(cloudStr,cloudEditedAt); // local offline edits + cloud → union
             else applyRemote(cloudStr);
-            // Migrated from the OLD chunked format (the doc had no .state field) → persist the copy we
-            // just adopted into the new single-doc field. Use the canonical string we settled on
-            // (held in lastJson) rather than dataRef, which React hasn't re-rendered yet.
-            if(!hadState){const finalStr=lastJson.current;lastJson.current=null;await writeNow(finalStr);}
-          }else if(serverOk){
-            // Server CONFIRMED empty → safe to seed our data up (or mark clean if nothing real yet).
+          }else if(!(snap.metadata&&snap.metadata.fromCache)){
+            // SERVER confirms the cloud is empty → safe to seed our data up (or mark clean).
             ready.current=true;
             if(hasRealData(dataRef.current))await writeNow();
             else{markSynced(JSON.stringify(dataRef.current));setStatus('synced');}
           }else{
-            // Couldn't reach the server and have no cloud copy → stay not-ready (never write/clobber);
-            // show local data, let the next snapshot reconcile.
-            setStatus('syncing');
+            setStatus('syncing'); // empty but only from cache → wait for the server before seeding
           }
-        }else if(cloudStr){
+        }else if(cloudStr!=null){
           // A live change from another device → show it at once.
           if(dirty())await mergeRemote(cloudStr,cloudEditedAt);
           else applyRemote(cloudStr);
@@ -8119,16 +8107,14 @@ function useCloudSync(data,setData){
     })();
   },[status,user]);
 
-  // Manual override: re-read the cloud copy from the server and adopt it on THIS device.
+  // Manual override: re-read the cloud chunks from the server and adopt them on THIS device.
   const forcePull=async()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
     try{
-      const s=await fb.firestore().collection('users').doc(user.uid).get({source:'server'});
-      const d=s.exists?s.data():null;
-      let cloudStr=(d&&typeof d.state==='string')?d.state:null;
-      if(!cloudStr){try{const legacy=await cloudRead(fb,user.uid);if(legacy&&legacy.fromServer&&legacy.str)cloudStr=legacy.str;}catch(e){}}
-      if(cloudStr){lastJson.current=null;applyRemote(cloudStr);}
+      const snap=await fb.firestore().collection('users').doc(user.uid).collection('data').get({source:'server'});
+      const r=reassemble(snap);
+      if(r.str!=null){lastJson.current=null;lastN.current=r.n||0;applyRemote(r.str);}
       else{ready.current=true;setStatus('synced');} // cloud empty
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -8454,40 +8440,8 @@ function AuthModal({sync,onClose}){
 
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr}=sync;
-  const[diagOpen,setDiagOpen]=useState(false);
-  const[diag,setDiag]=useState('');
-  const[diagBusy,setDiagBusy]=useState(false);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync error!'}[status];
-  // RAW round-trip probe — bypasses all app sync logic. Writes/reads a tiny doc straight to
-  // Firestore so we can tell, per device, whether writes actually reach the server and whether
-  // THIS device can read what ANOTHER device wrote. Usage: press "Sunucuya yaz" on PC1, then
-  // "Sunucudan oku" on PC2 — if PC2 shows PC1's device id + a recent time, the server round-trip
-  // works and the bug is in the sync logic; if not, the transport/read is the problem.
-  const devId=(()=>{try{let x=localStorage.getItem('pp-devid');if(!x){x=Math.random().toString(36).slice(2,7);localStorage.setItem('pp-devid',x);}return x;}catch(e){return'dev';}})();
-  const diagWrite=async()=>{
-    if(!FB()||!user)return;setDiagBusy(true);
-    try{
-      const db=FB().firestore();const probe=Date.now().toString(36).slice(-5);const t0=Date.now();
-      await db.collection('users').doc(user.uid).collection('diag').doc('probe')
-        .set({probe,device:devId,at:FB().firestore.FieldValue.serverTimestamp()});
-      setDiag('✓ YAZMA sunucuya ulaştı ('+(Date.now()-t0)+'ms)\nbu cihaz: '+devId+' · probe: '+probe+'\n\nŞimdi DİĞER bilgisayarda "Sunucudan oku"ya bas.');
-    }catch(e){setDiag('✗ YAZMA BAŞARISIZ: '+(e.code||e.message||e)+'\n(yazma sunucuya ulaşmıyor → transport/kurallar)');}
-    setDiagBusy(false);
-  };
-  const diagRead=async()=>{
-    if(!FB()||!user)return;setDiagBusy(true);
-    try{
-      const db=FB().firestore();const t0=Date.now();
-      const s=await db.collection('users').doc(user.uid).collection('diag').doc('probe').get({source:'server'});
-      const d=s.exists?s.data():null;
-      const ageMs=(d&&d.at&&d.at.toMillis)?(Date.now()-d.at.toMillis()):null;
-      const age=ageMs==null?'?':(ageMs<60000?Math.round(ageMs/1000)+' sn önce':Math.round(ageMs/60000)+' dk önce');
-      const mine=d&&d.device===devId;
-      setDiag('✓ SUNUCUDAN OKUMA ('+(Date.now()-t0)+'ms)\nson yazan cihaz: '+(d?d.device:'(yok)')+(mine?' (BU cihaz)':' (BAŞKA cihaz)')+'\nprobe: '+(d?d.probe:'?')+' · '+age+'\n\n'+(d&&!mine?'➜ Bu cihaz DİĞER cihazın yazdığını GÖRÜYOR — sunucu çalışıyor, sorun sync mantığında.':d&&mine?'➜ Sadece kendi yazdığını görüyor; diğer cihazda önce "Sunucuya yaz"a bas.':'➜ Sunucuda kayıt yok.'));
-    }catch(e){setDiag('✗ OKUMA BAŞARISIZ: '+(e.code||e.message||e)+'\n(bu cihaz sunucudan okuyamıyor → transport/kurallar)');}
-    setDiagBusy(false);
-  };
   if(!FB())return null;
   if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
   const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
@@ -8503,19 +8457,6 @@ function CloudBar({sync,onOpen}){
     <div style={{marginTop:5}}>
       <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} title="Force pull latest cloud data" onClick={()=>sync.forcePull&&sync.forcePull()}>⟳ Sync</button>
     </div>
-    <div style={{marginTop:5}}>
-      <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} onClick={()=>setDiagOpen(o=>!o)}>🔧 Senkron testi</button>
-    </div>
-    {diagOpen&&(
-      <div style={{marginTop:6,padding:'8px 10px',background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:6}}>
-        <div style={{display:'flex',gap:6}}>
-          <button className="btn sec xs no-italic" disabled={diagBusy} style={{flex:1,justifyContent:'center'}} onClick={diagWrite}>1) Sunucuya yaz</button>
-          <button className="btn sec xs no-italic" disabled={diagBusy} style={{flex:1,justifyContent:'center'}} onClick={diagRead}>2) Sunucudan oku</button>
-        </div>
-        <div className="no-italic" style={{marginTop:6,fontSize:10,color:'var(--dim)'}}>PC1'de <b>1) Sunucuya yaz</b>, sonra PC2'de <b>2) Sunucudan oku</b>.</div>
-        {diag&&<pre className="no-italic" style={{marginTop:6,marginBottom:0,fontSize:10,color:'var(--text2)',whiteSpace:'pre-wrap',wordBreak:'break-word',userSelect:'all',fontFamily:'monospace'}}>{diag}</pre>}
-      </div>
-    )}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
