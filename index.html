@@ -8083,13 +8083,20 @@ function useCloudSync(data,setData){
       const j=JSON.stringify(dataRef.current);
       if(j===lastJson.current)return;
       try{
-        const cloud=await cloudRead(fb,user.uid);
-        if(cloud&&cloud.fromServer&&cloud.str&&cloud.rev!==lastRev.current){
-          // Cloud advanced since our last sync → merge both copies and push the union, never clobber.
-          await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
-          return;
+        // CHEAP safety check: read ONLY the meta doc's rev (one small doc) to see if another device
+        // moved the cloud since our last sync. Avoids downloading the whole payload before every save
+        // (that made saves visibly slow). Full pull+merge happens ONLY when the cloud actually moved.
+        const meta=await fb.firestore().collection('users').doc(user.uid).get({source:'server'});
+        const crev=(meta.exists&&meta.data())?meta.data().rev:null;
+        if(crev&&crev!==lastRev.current){
+          const cloud=await cloudRead(fb,user.uid);
+          if(cloud&&cloud.fromServer&&cloud.str&&cloud.rev!==lastRev.current){
+            // Cloud advanced since our last sync → merge both copies and push the union, never clobber.
+            await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
+            return;
+          }
         }
-        // cloud.rev===lastRev → our edits are pure additions on the shared base, safe to push as-is.
+        // crev===lastRev → our edits are pure additions on the shared base, safe to push as-is.
       }catch(e){/* couldn't confirm the server (offline) → fall through to a normal queued write */}
       const rev=mkRev();
       const editedAt=localEditAt.current||nowTs(); // stamp the actual user-edit time (for LWW ordering)
