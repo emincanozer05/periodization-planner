@@ -8557,10 +8557,14 @@ function CloudBar({sync,onOpen}){
   if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
   const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
   return(<div style={{width:'100%'}}>
-    <div className="team-sw no-italic" style={{gap:8,paddingRight:8}} title={user.email}>
+    <div className="team-sw no-italic" style={{gap:8,paddingRight:8}} title={user.email+' · uid:'+user.uid}>
       <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
       <span className="no-italic" style={{fontSize:12,color:'var(--text2)',maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
     </div>
+    {/* Account identity — two devices that show the SAME email but DIFFERENT codes here are signed
+        into two separate Firebase accounts (e.g. Google vs email/password on the same address) and
+        will never sync. The two computers MUST show the same code. */}
+    <div className="no-italic" style={{marginTop:3,fontSize:10,color:'var(--dim)',userSelect:'all',letterSpacing:.3}} title="Account ID — must match on every device">Hesap kodu: <b style={{color:'var(--text2)'}}>{(user.uid||'').slice(0,8)}</b> · {user.providerData&&user.providerData[0]?user.providerData[0].providerId:'?'}</div>
     <div style={{marginTop:5}}>
       <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} title="Force pull latest cloud data" onClick={()=>sync.forcePull&&sync.forcePull()}>⟳ Sync</button>
     </div>
