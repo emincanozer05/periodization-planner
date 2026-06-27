@@ -7888,30 +7888,18 @@ function useCloudSync(data,setData){
   const[syncErr,setSyncErr]=useState('');
   const[authErr,setAuthErr]=useState(''); // surfaced from redirect sign-in (errors happen on page load, not in a click handler)
   const dataRef=useRef(data); dataRef.current=data;
-  const lastJson=useRef(null); // exact JSON string we currently know is in the cloud
-  const lastRev=useRef(null);  // the cloud revision we are currently in sync with
-  const ready=useRef(false);   // true only AFTER the first cloud reconcile on login
+  const lastJson=useRef(null);     // exact JSON string we currently know is in the cloud (and last set locally)
+  const ready=useRef(false);       // true only AFTER the first cloud reconcile on login
   const timer=useRef(null);
-  const writeRef=useRef(null); // current immediate-write fn (debounce + flush-on-hide)
-  const pullRef=useRef(null);  // current pull-from-server fn (focus/online)
-  // Content hash of the last-synced copy, persisted across reloads. THIS is how we tell —
-  // without ever trusting a device clock — whether this device holds edits the cloud does
-  // not have yet. Device clocks are unreliable: a phone running a couple of minutes ahead
-  // used to make its older data look "newer" and silently overwrite a computer's fresh
-  // edits. Ordering is therefore based purely on content + revision identity, never time.
+  const userRef=useRef(null); userRef.current=user;
+  // Persisted content hash of the last-synced copy — lets us tell, across a page reload and before
+  // the first snapshot arrives, whether this device holds OFFLINE edits the cloud doesn't have yet,
+  // so we union instead of blindly adopting the cloud and losing them.
   const cleanHash=useRef((()=>{try{return localStorage.getItem('pp-data-hash')||null;}catch(e){return null;}})());
-  // Last-writer-wins ordering across devices, WITHOUT trusting a raw device clock. We calibrate
-  // an offset to the Firestore SERVER clock once per session, so every device stamps its edits on
-  // the same skew-free timeline. The most recently edited copy wins everywhere → "the last action
-  // shows on every device", like Google Drive, with no flip-flop.
-  const serverOffset=useRef(0);            // ms to add to Date.now() to approximate server time
-  const localEditAt=useRef(0);             // server-time of this device's latest UNSYNCED user edit
-  const nowTs=()=>Date.now()+serverOffset.current;
-  const markSynced=(rev,str)=>{
-    lastRev.current=rev;lastJson.current=str;localEditAt.current=0; // synced → no pending local edit
-    const h=djb2(str);cleanHash.current=h;
-    try{localStorage.setItem('pp-data-rev',rev||'');localStorage.setItem('pp-data-hash',h);}catch(e){}
-  };
+  const localEditAt=useRef(0);     // edit time of this device's latest UNSYNCED user edit (conflict tiebreak)
+  const nowTs=()=>Date.now();
+  const setHash=str=>{const h=djb2(str);cleanHash.current=h;try{localStorage.setItem('pp-data-hash',h);}catch(e){}};
+  const markSynced=str=>{lastJson.current=str;localEditAt.current=0;setHash(str);};
   // Does this device hold edits not yet pushed to the cloud?
   const dirty=()=>{
     const cur=JSON.stringify(dataRef.current);
@@ -7919,32 +7907,43 @@ function useCloudSync(data,setData){
     if(cleanHash.current!=null)return djb2(cur)!==cleanHash.current;  // fresh page load: vs persisted baseline
     return false;                                                    // never synced & no baseline → defer to cloud
   };
-  const adopt=cloud=>{
-    const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
-    if(pstr!==JSON.stringify(dataRef.current))setData(p);
-    markSynced(cloud.rev,pstr);
+  // Take the cloud copy as-is — the common cross-device path: the other device saved, we show it.
+  const applyRemote=cloudStr=>{
+    const cobj=migrate(JSON.parse(cloudStr));const cstr=JSON.stringify(cobj);
+    markSynced(cstr);
+    if(cstr!==JSON.stringify(dataRef.current))setData(cobj);
     setStatus('synced');ready.current=true;
   };
-  // This device is dirty AND the cloud has diverged → union both (so neither device's additions
-  // are lost), show the merged result here, and push it up as the new shared truth.
-  const mergeUp=async(cloud,pl)=>{
-    const fb=FB(); if(!fb||!user)return;
-    const cobj=migrate(JSON.parse(cloud.str));const cstr=JSON.stringify(cobj);
+  // Write the WHOLE state into ONE document. We listen to that SAME document, so the write is
+  // delivered to every other device instantly by the snapshot itself — no separate read. This is
+  // the core of "a change shows on every device at once". `forceStr` lets callers write an exact
+  // string (e.g. a freshly merged copy) without waiting for React's async setData to land.
+  const writeNow=async(forceStr)=>{
+    const fb=FB();const u=userRef.current; if(!fb||!u||!ready.current)return;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    const j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
+    if(j===lastJson.current)return;
+    if(j.length>950000){setStatus('error');setSyncErr('Veri çok büyük (~'+Math.round(j.length/1024)+'KB). Fotoğraflar Storage konumuna taşınmalı.');return;}
+    const editedAt=localEditAt.current||nowTs();
+    setStatus('syncing');
+    try{
+      await fb.firestore().collection('users').doc(u.uid)
+        .set({userId:u.uid,state:j,editedAt:editedAt,updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
+      markSynced(j);setStatus('synced');setSyncErr('');
+    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+  };
+  // This device has unsynced edits AND the cloud differs → UNION both so nothing on either device is
+  // lost; a genuine same-key conflict goes to whichever side was edited more recently. Then push the
+  // union up as the new shared truth (unless it adds nothing → just adopt, no write → no ping-pong).
+  const mergeRemote=async(cloudStr,cloudEditedAt)=>{
+    const cobj=migrate(JSON.parse(cloudStr));const cstr=JSON.stringify(cobj);
+    const pl=(localEditAt.current||0)>(cloudEditedAt||0);
     const merged=mergeStates(cobj,dataRef.current,pl);const mstr=JSON.stringify(merged);
     ready.current=true;
-    // The union added nothing the cloud doesn't already have → just adopt the cloud copy and do
-    // NOT write (prevents pointless write ping-pong between two devices; guarantees convergence).
-    if(mstr===cstr){
-      if(cstr!==JSON.stringify(dataRef.current))setData(cobj);
-      markSynced(cloud.rev,cstr);setStatus('synced');return;
-    }
+    if(mstr===cstr){applyRemote(cloudStr);return;}                 // union == cloud → just adopt, don't write
     if(mstr!==JSON.stringify(dataRef.current))setData(merged);
-    const rev=mkRev();setStatus('syncing');
-    // Stamp the merged write with the newest real edit time that fed into it, so future LWW
-    // comparisons stay correct (not the merge moment).
-    const editedAt=Math.max(localEditAt.current||0,cloud.editedAt||0)||nowTs();
-    try{await cloudWrite(fb,user.uid,mstr,rev,null,editedAt);markSynced(rev,mstr);setStatus('synced');setSyncErr('');}
-    catch(e){console.warn('mergeUp',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    localEditAt.current=Math.max(localEditAt.current||0,cloudEditedAt||0)||nowTs();
+    await writeNow(mstr);                                          // write the merged string explicitly
   };
 
   // Hard-wipe this device's in-memory state AND the local baseline so the previous account's
@@ -7952,7 +7951,7 @@ function useCloudSync(data,setData){
   // the cross-account "data bleed" guard: a clean device on the next login takes the cloud as the
   // single source of truth instead of re-uploading whoever was signed in before.
   const resetLocal=()=>{
-    lastJson.current=null;lastRev.current=null;ready.current=false;
+    lastJson.current=null;ready.current=false;
     cleanHash.current=null;localEditAt.current=0;
     try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
     setData(makeDefault());
@@ -7993,211 +7992,95 @@ function useCloudSync(data,setData){
     });
   },[]);
 
-  // subscribe to cloud (meta doc) on login
+  // Subscribe to the single state document on login. Its snapshots ARE the live data: the moment
+  // another device writes, this listener fires here with the full new state — no separate read, no
+  // meta-rev indirection. THAT is what makes a change appear on every device at once. (The old
+  // design listened to a meta doc but stored the data in a separate sub-collection, so it needed an
+  // extra server read that frequently failed — the real reason the other computer never updated.)
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
-    ready.current=false;lastJson.current=null;lastRev.current=null; // block uploads until reconciled
-    const userDoc=fb.firestore().collection('users').doc(user.uid);
-    // Calibrate our offset to the Firestore server clock (round-trip estimate) so cross-device
-    // edit-time comparisons are skew-free. Writes a tiny field on the (always-writable) meta doc
-    // and reads back its server time. Fire-and-forget; until it resolves we fall back to the raw
-    // device clock (good enough, and corrected within ~1s of login).
-    (async()=>{try{
-      const t0=Date.now();
-      await userDoc.set({clockPing:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
-      const cs=await userDoc.get({source:'server'});
-      const sm=(cs.exists&&cs.data()&&cs.data().clockPing)?cs.data().clockPing.toMillis():null;
-      if(sm){const t1=Date.now();serverOffset.current=Math.round(sm-(t0+t1)/2);}
-    }catch(e){/* offline / blocked → keep raw clock */}})();
+    ready.current=false;lastJson.current=null;
+    const ref=fb.firestore().collection('users').doc(user.uid);
     let first=true;
-    const seedUp=async str=>{const rev=mkRev();setStatus('syncing');try{await cloudWrite(fb,user.uid,str,rev,null,localEditAt.current||nowTs());markSynced(rev,str);setStatus('synced');setSyncErr('');}catch(e){console.warn('seed',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}};
-    const unsub=userDoc.onSnapshot(async snap=>{
+    const unsub=ref.onSnapshot(async snap=>{
       try{
-        const rev=(snap.exists&&snap.data())?snap.data().rev:null;
+        if(snap.metadata&&snap.metadata.hasPendingWrites)return; // our own local write echo — ignore
+        const d=snap.exists?snap.data():null;
+        let cloudStr=(d&&typeof d.state==='string')?d.state:null;
+        let cloudEditedAt=(d&&d.editedAt)||0;
+        let hadState=!!(d&&typeof d.state==='string');
         if(first){
           first=false;
-          const localStr=JSON.stringify(dataRef.current);
-          const cloud=await cloudRead(fb,user.uid);
-          if(cloud&&cloud.fromServer){
-            if(!cloud.str){
-              // Cloud is empty → seed our data up if we have any, else just start clean.
-              if(hasRealData(dataRef.current)){ready.current=true;await seedUp(localStr);}
-              else{markSynced(cloud.rev||null,localStr);setStatus('synced');ready.current=true;}
-            }else if(dirty()){
-              // This device has unsynced edits AND the cloud holds another device's copy → MERGE
-              // the two so additions on both survive, rather than overwriting the cloud with ours
-              // (the old behavior that silently dropped the other device's new sessions).
-              // Same-key conflicts go to whichever side was edited more recently (skew-corrected).
-              await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
-            }else{
-              // Clean device → the cloud is the single source of truth. This is the cross-device
-              // case: open the app elsewhere and you get exactly what the other device saved.
-              adopt(cloud);
-            }
-          }else if(cloud&&cloud.str){
-            // Only the offline cache answered — show it but don't trust it / don't allow uploads
-            // yet (could be stale). Retry the server shortly.
-            const p=migrate(JSON.parse(cloud.str));const pstr=JSON.stringify(p);
-            if(pstr!==localStr)setData(p);
-            lastJson.current=pstr;lastRev.current=cloud.rev;setStatus('syncing');
-            [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
+          let serverOk=hadState; // a state from the live snapshot is authoritative enough
+          if(!cloudStr){
+            // The first snapshot can come from the offline CACHE and simply not have the doc yet,
+            // even though the server holds data. Confirm against the SERVER before deciding the cloud
+            // is empty — otherwise we could seed local data over real cloud data on a cold start.
+            try{
+              const ss=await ref.get({source:'server'});serverOk=true;
+              const sd=ss.exists?ss.data():null;
+              if(sd&&typeof sd.state==='string'){cloudStr=sd.state;cloudEditedAt=sd.editedAt||0;hadState=true;}
+              else{try{const legacy=await cloudRead(fb,user.uid);if(legacy&&legacy.fromServer&&legacy.str){cloudStr=legacy.str;cloudEditedAt=legacy.editedAt||0;}}catch(e){}}
+            }catch(e){/* offline — cannot confirm; do NOT clobber */}
+          }
+          if(cloudStr){
+            ready.current=true;
+            if(dirty())await mergeRemote(cloudStr,cloudEditedAt); // local offline edits + cloud → union
+            else applyRemote(cloudStr);
+            // Migrated from the OLD chunked format (the doc had no .state field) → persist the copy we
+            // just adopted into the new single-doc field. Use the canonical string we settled on
+            // (held in lastJson) rather than dataRef, which React hasn't re-rendered yet.
+            if(!hadState){const finalStr=lastJson.current;lastJson.current=null;await writeNow(finalStr);}
+          }else if(serverOk){
+            // Server CONFIRMED empty → safe to seed our data up (or mark clean if nothing real yet).
+            ready.current=true;
+            if(hasRealData(dataRef.current))await writeNow();
+            else{markSynced(JSON.stringify(dataRef.current));setStatus('synced');}
           }else{
+            // Couldn't reach the server and have no cloud copy → stay not-ready (never write/clobber);
+            // show local data, let the next snapshot reconcile.
             setStatus('syncing');
-            [1500,4000,9000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
           }
-        }else if(rev&&rev!==lastRev.current&&!(snap.metadata&&snap.metadata.hasPendingWrites)){
-          // A genuine change from another device. We always UNION the two copies so additions on
-          // either device survive; only a genuine same-key conflict is resolved by skew-corrected
-          // edit time (most recent wins, Google-Drive style — but never at the cost of dropping
-          // the other device's NEW records).
-          const cloud=await cloudRead(fb,user.uid);
-          if(cloud&&cloud.fromServer&&cloud.str){
-            if(!dirty())adopt(cloud);                                   // no local edit → take theirs as-is
-            else await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0)); // merge, conflict→newer wins
-          }else{
-            // The meta doc changed (another device wrote) but the server read flaked — common on a
-            // cold long-polling connection. Don't silently drop the update; retry shortly so the
-            // change still lands live, without waiting for a focus/visibility event.
-            [800,2500,6000].forEach(ms=>setTimeout(()=>{pullRef.current&&pullRef.current();},ms));
-          }
+        }else if(cloudStr){
+          // A live change from another device → show it at once.
+          if(dirty())await mergeRemote(cloudStr,cloudEditedAt);
+          else applyRemote(cloudStr);
         }
-      }catch(e){console.warn('sync',e);setStatus('error');}
-    },err=>{console.warn('sync sub',err);setStatus('error');});
+      }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return unsub;
   },[user]);
 
-  // Immediate write helper + pull-on-focus. Flush-on-hide so a pending change is never lost
-  // when the tab is hidden / closed / the user switches device.
+  // Flush a pending debounced write when the tab is hidden or closing, so switching devices never
+  // strands the last edit. (The live listener handles incoming changes by itself; no focus-pull or
+  // poll needed — it delivers as soon as the other device writes.)
   useEffect(()=>{
-    const fb=FB(); if(!fb||!user){writeRef.current=null;pullRef.current=null;return;}
-    // SAFE WRITE — never blindly overwrite the cloud. Before pushing our copy we look at the
-    // server: if another device moved the cloud past the revision we last synced with, we UNION
-    // the two copies (mergeUp) instead of clobbering their change. This closes the last
-    // blind-overwrite hole — the one that caused "edit on PC A, PC B reverts it to the old state":
-    // the debounced editor write used to call cloudWrite directly with no cloud check, so a device
-    // that hadn't yet received the other's update would overwrite it wholesale.
-    const writeNow=async()=>{
-      if(!ready.current)return;
-      if(timer.current){clearTimeout(timer.current);timer.current=null;}
-      const j=JSON.stringify(dataRef.current);
-      if(j===lastJson.current)return;
-      try{
-        // CHEAP safety check: read ONLY the meta doc's rev (one small doc) to see if another device
-        // moved the cloud since our last sync. Avoids downloading the whole payload before every save
-        // (that made saves visibly slow). Full pull+merge happens ONLY when the cloud actually moved.
-        const meta=await fb.firestore().collection('users').doc(user.uid).get({source:'server'});
-        const crev=(meta.exists&&meta.data())?meta.data().rev:null;
-        if(crev&&crev!==lastRev.current){
-          const cloud=await cloudRead(fb,user.uid);
-          if(cloud&&cloud.fromServer&&cloud.str&&cloud.rev!==lastRev.current){
-            // Cloud advanced since our last sync → merge both copies and push the union, never clobber.
-            await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
-            return;
-          }
-        }
-        // crev===lastRev → our edits are pure additions on the shared base, safe to push as-is.
-      }catch(e){/* couldn't confirm the server (offline) → fall through to a normal queued write */}
-      const rev=mkRev();
-      const editedAt=localEditAt.current||nowTs(); // stamp the actual user-edit time (for LWW ordering)
-      setStatus('syncing');
-      // Advance lastJson/lastRev ONLY after the server confirms the write, so a failed or
-      // still-queued write stays "dirty" and is retried on focus — never silently lost.
-      cloudWrite(fb,user.uid,j,rev,null,editedAt)
-        .then(()=>{markSynced(rev,j);setStatus('synced');setSyncErr('');})
-        .catch(e=>{console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');});
-    };
-    // Last-resort flush on page unload: we can't await a server read while the page is closing, so
-    // this queues the write blind (Firestore offline-persistence delivers it on next launch). Used
-    // ONLY for pagehide/beforeunload; the next device to open reconciles via the merge paths.
-    const writeNowBlind=()=>{
-      if(!ready.current)return;
-      const j=JSON.stringify(dataRef.current);
-      if(j===lastJson.current)return;
-      const rev=mkRev();const editedAt=localEditAt.current||nowTs();
-      try{cloudWrite(fb,user.uid,j,rev,null,editedAt).then(()=>markSynced(rev,j)).catch(()=>{});}catch(e){}
-    };
-    writeRef.current=writeNow;
-    // Pull the latest from the server whenever this tab becomes active again. Browsers
-    // throttle/suspend the realtime listener in background tabs, so a change made on another
-    // device may not arrive until you come back here — this makes "switch back to a device"
-    // refresh itself, like other apps, with no manual reload.
-    let pulling=false;
-    const pullNow=async()=>{
-      if(pulling)return;
-      if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
-      pulling=true;
-      try{
-        // ALWAYS look at the server before deciding. The old code, when this device was dirty,
-        // pushed our copy up WITHOUT reading the cloud — so clicking back into a window could
-        // overwrite the other device's new sessions. Now: if the cloud has moved on, we merge;
-        // if it hasn't, our edits are pure additions on the shared base and are safe to push.
-        const cloud=await cloudRead(fb,user.uid);
-        if(cloud&&cloud.fromServer){
-          const cloudMoved=cloud.str&&cloud.rev!==lastRev.current;
-          if(dirty()){
-            // Cloud unchanged since our last sync → our edits are pure additions on the shared base,
-            // just push them. Cloud moved → UNION both copies (additions on both survive) and let a
-            // genuine same-key conflict go to the more recently edited side. No stale clobber, no
-            // flip-flop, and the other device's new records are never dropped.
-            if(!cloudMoved)await writeNow();
-            else await mergeUp(cloud,localEditAt.current>(cloud.editedAt||0));
-          }else if(cloudMoved){
-            adopt(cloud);                           // only the cloud changed → take it
-          }
-          ready.current=true;setStatus('synced');
-          // Cold start that couldn't reconcile on login but the cloud is confirmed empty:
-          // push our real data up so it isn't stranded on this device.
-          if(!cloud.str&&hasRealData(dataRef.current)){ready.current=true;await writeNow();}
-        }
-      }catch(e){console.warn('pull',e);}
-      finally{pulling=false;}
-    };
-    pullRef.current=pullNow;
-    // Firestore offline-persistence queues the mutation locally, so even if the page is
-    // closing the change survives and syncs on the next opportunity.
-    const onVis=()=>{if(document.visibilityState==='hidden')writeNow();else pullNow();};
-    const onLeave=()=>writeNowBlind();
+    const fb=FB(); if(!fb||!user)return;
+    const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
+    const onVis=()=>{if(document.visibilityState==='hidden')flush();};
     document.addEventListener('visibilitychange',onVis);
-    window.addEventListener('focus',pullNow);
-    window.addEventListener('online',pullNow);
-    window.addEventListener('pagehide',onLeave);
-    window.addEventListener('beforeunload',onLeave);
-    // Safety-net poll: realtime onSnapshot is the primary live channel, but long-polling snapshots
-    // can be missed/throttled. While this tab is visible, cheaply check the meta doc's revision
-    // every 15s and do a full reconcile ONLY when it actually advanced — so a change still lands
-    // within seconds even if its snapshot never arrived. One tiny read per tick; no full re-read
-    // unless something changed.
-    const poll=setInterval(async()=>{
-      if(typeof document!=='undefined'&&document.visibilityState==='hidden')return;
-      if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
-      try{
-        const m=await fb.firestore().collection('users').doc(user.uid).get({source:'server'});
-        const r=(m.exists&&m.data())?m.data().rev:null;
-        if(r&&r!==lastRev.current)pullNow();
-      }catch(e){}
-    },15000);
+    window.addEventListener('pagehide',flush);
+    window.addEventListener('beforeunload',flush);
     return ()=>{
-      writeRef.current=null;pullRef.current=null;
-      clearInterval(poll);
       document.removeEventListener('visibilitychange',onVis);
-      window.removeEventListener('focus',pullNow);
-      window.removeEventListener('online',pullNow);
-      window.removeEventListener('pagehide',onLeave);
-      window.removeEventListener('beforeunload',onLeave);
+      window.removeEventListener('pagehide',flush);
+      window.removeEventListener('beforeunload',flush);
     };
   },[user]);
 
-  // write local changes up (short debounce, flushed via writeRef)
+  // Push local edits up (short debounce). The single-doc listener keeps lastJson fresh, so by the
+  // time we write we've already absorbed any remote change; a true same-instant conflict is still
+  // unioned via mergeRemote on the next snapshot.
   useEffect(()=>{
     const fb=FB(); if(!fb||!user)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;} // cancel any pending (possibly stale) write
     if(!ready.current)return;          // don't upload until the cloud has been reconciled on login
     const j=JSON.stringify(data);
     if(j===lastJson.current)return;
-    localEditAt.current=nowTs();        // a real local user edit just happened — stamp its time (for LWW)
+    localEditAt.current=nowTs();        // a real local user edit just happened — stamp its time (tiebreak)
     setStatus('syncing');
-    timer.current=setTimeout(()=>{writeRef.current&&writeRef.current();},600);
+    timer.current=setTimeout(()=>{writeNow();},700);
   },[data,user]);
 
   // One-time per session: once the cloud copy is in sync, heal it by moving any inline base64
@@ -8216,18 +8099,18 @@ function useCloudSync(data,setData){
     })();
   },[status,user]);
 
-  // Manual override: pull the cloud copy and make THIS device match it, no questions asked.
-  // Escape hatch for "the wrong device became dominant" — tap it on the device showing the
-  // stale data and it adopts whatever the cloud (i.e. the other device) last saved.
+  // Manual override: re-read the cloud copy from the server and adopt it on THIS device.
   const forcePull=async()=>{
     const fb=FB(); if(!fb||!user)return;
     setStatus('syncing');
     try{
-      const cloud=await cloudRead(fb,user.uid);
-      if(cloud&&cloud.fromServer&&cloud.str)adopt(cloud);
-      else if(cloud&&cloud.fromServer){ready.current=true;setStatus('synced');} // cloud empty
-      else setStatus('error');
-    }catch(e){console.warn('forcePull',e);setStatus('error');}
+      const s=await fb.firestore().collection('users').doc(user.uid).get({source:'server'});
+      const d=s.exists?s.data():null;
+      let cloudStr=(d&&typeof d.state==='string')?d.state:null;
+      if(!cloudStr){try{const legacy=await cloudRead(fb,user.uid);if(legacy&&legacy.fromServer&&legacy.str)cloudStr=legacy.str;}catch(e){}}
+      if(cloudStr){lastJson.current=null;applyRemote(cloudStr);}
+      else{ready.current=true;setStatus('synced');} // cloud empty
+    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
@@ -8235,7 +8118,7 @@ function useCloudSync(data,setData){
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     // returns the providers a given email is registered with, e.g. ['google.com'] or ['password']; [] if unknown/none
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
-    signOut:async()=>{try{if(writeRef.current)writeRef.current();}catch(e){}return FB().auth().signOut();},
+    signOut:async()=>{try{writeNow();}catch(e){}return FB().auth().signOut();},
     signInWithGoogle:async()=>{
       const p=new firebase.auth.GoogleAuthProvider();
       p.setCustomParameters({prompt:'select_account'});
