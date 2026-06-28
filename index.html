@@ -7790,14 +7790,28 @@ function hasRealData(d){
 
 // Uygulama durumunu kullanici_verileri koleksiyonundaki doküman haritasına çevirir
 // (id -> payload). Her varlık tek doküman; böylece SADECE değişen doküman yazılır.
+// ÖNEMLİ: Doküman türü ayırıcısı için `_type` kullanılır, `type` DEĞİL. Egzersiz
+// nesnesinin kendi `type` alanı (kategori: 'Upper Body Push' vb.) vardır; ayırıcıyı
+// `type` yapsaydık `...r` yayılımı onu ezip egzersiz dokümanını "type=kategori" ile
+// yazardı ve okurken tanınmaz → egzersizler kaybolurdu. `_type` çakışmaz.
 function buildSyncDocs(d,uid){
   const m=new Map();
   const{teams,exercises,researches,...settings}=d;
-  m.set(uid+'_settings',{type:'settings',userId:uid,...settings});
-  (teams||[]).forEach(t=>{const{id,...r}=t;if(id)m.set(id,{type:'team',userId:uid,id,...r});});
-  (exercises||[]).forEach(e=>{const{id,...r}=e;if(id)m.set(id,{type:'exercise',userId:uid,id,...r});});
-  (researches||[]).forEach(res=>{const{id,...r}=res;if(id)m.set(id,{type:'research',userId:uid,id,...r});});
+  m.set(uid+'_settings',{_type:'settings',userId:uid,...settings});
+  (teams||[]).forEach(t=>{const{id,...r}=t;if(id)m.set(id,{_type:'team',userId:uid,id,...r});});
+  (exercises||[]).forEach(e=>{const{id,...r}=e;if(id)m.set(id,{_type:'exercise',userId:uid,id,...r});});
+  (researches||[]).forEach(res=>{const{id,...r}=res;if(id)m.set(id,{_type:'research',userId:uid,id,...r});});
   return m;
+}
+// Bir bulut dokümanının türünü belirler. Yeni format `_type` taşır. Eski format
+// yalnızca `type` taşır: team/research/settings güvenilir; egzersiz dokümanı ise
+// `type`=kategori (ayırıcı ezilmişti) olduğundan team/research/settings DEĞİLSE
+// egzersiz kabul edilir → eski egzersizler de doğru okunur (otomatik kurtarma).
+function docKind(d){
+  if(!d)return null;
+  if(d._type)return d._type;
+  if(d.type==='team'||d.type==='research'||d.type==='settings')return d.type;
+  return 'exercise';
 }
 // Doküman haritasını id -> JSON dizesi haritasına çevirir (diff karşılaştırması için)
 function serializeSyncDocs(m){const o=new Map();m.forEach((v,k)=>o.set(k,JSON.stringify(v)));return o;}
@@ -7818,55 +7832,82 @@ function useCloudSync(data,setData){
 
   const COL='kullanici_verileri';
 
-  // --- Snapshot -> uygulama durumu -------------------------------------------
-  const fromSnap=snap=>{
+  // --- Snapshot/payload -> uygulama durumu -----------------------------------
+  // docKind ile hem yeni (_type) hem eski (type) formatı tanır. team/research/
+  // settings için ayırıcı alan(lar) sıyrılır; egzersizde `type` KORUNUR (kategori).
+  const fromPayloads=arr=>{
     const teams=[],exercises=[],researches=[];
     let extra={activeTeamId:null,customTests:[],savedResearch:[],ai:null};
-    snap.forEach(doc=>{
-      const d=doc.data();if(!d)return;
-      if(d.type==='team'){const{type,userId,...r}=d;teams.push(r);}
-      else if(d.type==='exercise'){const{type,userId,...r}=d;exercises.push(r);}
-      else if(d.type==='research'){const{type,userId,...r}=d;researches.push(r);}
-      else if(d.type==='settings'){const{type,userId,...r}=d;Object.assign(extra,r);}
+    arr.forEach(d=>{
+      if(!d)return;
+      const k=docKind(d);
+      if(k==='team'){const{_type,type,userId,...r}=d;teams.push(r);}
+      else if(k==='research'){const{_type,type,userId,...r}=d;researches.push(r);}
+      else if(k==='settings'){const{_type,type,userId,...r}=d;Object.assign(extra,r);}
+      else if(k==='exercise'){const{_type,userId,...r}=d;exercises.push(r);}  // type=kategori KORUNUR
     });
     return migrate({...extra,teams,exercises,researches});
   };
 
-  // Baseline'ı (diff için) yazımın ÜRETTİĞİ format ile BİREBİR aynı boru hattından
-  // (migrate → buildSyncDocs) geçirerek kaydeder. Firestore iç-içe map anahtarlarını
-  // okurken yeniden sıralar; migrate ise bazı alanları (ör. description/superset) başa
-  // alır. Baseline'ı ham snapshot'tan kurarsak bu sıra farkı her render'da hayalet bir
-  // "değişiklik" üretir ve sonsuz yazım döngüsüne (gösterge sürekli "syncing") yol açar.
-  // computeOps ile AYNI dönüşümü kullanarak diff'in yüklemede boş kalmasını garantileriz.
-  const captureBaseline=assembled=>{
-    const u=userRef.current;
-    if(!u){lastDocs.current=new Map();return;}
-    const d=migrate(JSON.parse(JSON.stringify(assembled)));
-    lastDocs.current=serializeSyncDocs(buildSyncDocs(d,u.uid));
+  // KANONİK (anahtar sırasından bağımsız) serileştirme — diff/karşılaştırma için.
+  // Firestore iç-içe map anahtarlarını okurken yeniden sıralar, migrate ise bazı
+  // alanları başa alır. Karşılaştırmayı sıra-bağımsız yaparak "içerik aynı ama sıra
+  // farklı" yüzünden hayalet değişiklik/sonsuz yazım oluşmasını engelleriz.
+  const canon=v=>{
+    if(v===null||typeof v!=='object')return JSON.stringify(v);
+    if(Array.isArray(v))return '['+v.map(canon).join(',')+']';
+    const keys=Object.keys(v).filter(k=>v[k]!==undefined).sort();
+    return '{'+keys.map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';
   };
+  const canonDocs=m=>{const o=new Map();m.forEach((payload,id)=>o.set(id,canon(payload)));return o;};
+  const localDocs=()=>{const u=userRef.current;if(!u)return new Map();return buildSyncDocs(migrate(JSON.parse(JSON.stringify(dataRef.current))),u.uid);};
 
-  // Bulut tek kaynaktır: gelen anlık görüntüyü uygular. setData yalnızca durum
-  // gerçekten değiştiyse çağrılır → sonsuz döngü / titreme olmaz.
+  // Bekleyen yerel-yalnız öğeleri buluta yükle (3-yönlü birleştirmenin "koru" tarafı).
+  const flushLocalOnly=()=>{if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>writeNow(),200);};
+
+  // Gelen bulut anlık görüntüsünü 3-YÖNLÜ BİRLEŞTİRME ile uygular:
+  //   base   = en son bilinen bulut (lastDocs)
+  //   local  = mevcut yerel durum
+  //   remote = yeni snapshot
+  // Kural: bir öğe base'te VARDI ve uzaktan SİLİNDİYSE → sil (başka cihazdaki silme yayılır).
+  //        base'te HİÇ YOKTU ve yalnız yereldeyse → KORU + buluta geri yükle (VERİ KAYBI YOK).
+  // Böylece "Sync'e basınca egzersizler gidiyor" sorunu biter; senkronlanmamış yerel veri
+  // asla düşmez, ama gerçek silmeler de dirilmez.
   const applySnap=snap=>{
-    const assembled=fromSnap(snap);
-    const srvStr=JSON.stringify(assembled);
-    captureBaseline(assembled);
-    lastRaw.current=srvStr;             // bu ham durum artık bulutla eşit → gereksiz yazım tetiklenmez
+    const remote=new Map();           // id -> payload (gerçek bulut)
+    snap.forEach(doc=>{const d=doc.data();if(d)remote.set(doc.id,d);});
+    const local=localDocs();          // id -> payload (yerel)
+    const base=lastDocs.current;      // id -> canon (en son bilinen bulut)
+    const merged=new Map();           // id -> payload (nihai: gösterilecek)
+    let unsynced=false;               // yerelde olup buluta gitmemiş öğe var mı
+    const ids=new Set([...base.keys(),...local.keys(),...remote.keys()]);
+    ids.forEach(id=>{
+      const bj=base.has(id)?base.get(id):undefined;
+      const lp=local.get(id), rp=remote.get(id);
+      const lj=lp!==undefined?canon(lp):undefined;
+      const rj=rp!==undefined?canon(rp):undefined;
+      if(lj===rj){ if(rp!==undefined)merged.set(id,rp); }                       // yerel==uzak
+      else if(lj===bj){ if(rp!==undefined)merged.set(id,rp); }                  // yalnız uzak değişti/silindi → uzağı uygula
+      else if(rj===bj){ if(lp!==undefined){merged.set(id,lp);unsynced=true;} }  // yalnız yerel değişti/eklendi → yereli KORU
+      else { if(rp!==undefined)merged.set(id,rp); else if(lp!==undefined){merged.set(id,lp);unsynced=true;} } // çakışma: bulut kazanır; uzak silindiyse yereli koru
+    });
+    const assembled=fromPayloads([...merged.values()]);
+    lastDocs.current=canonDocs(remote);   // baseline = GERÇEK bulut; yerel-yalnız öğeler writeNow başarınca eklenir
     ready.current=true;
-    if(srvStr!==JSON.stringify(dataRef.current)){
-      dataRef.current=assembled;        // write effect anında doğru baseline'ı görsün
-      setData(assembled);
-    }
-    setStatus('synced');setSyncErr('');
+    const a=JSON.stringify(assembled);
+    if(a!==JSON.stringify(dataRef.current)){dataRef.current=assembled;setData(assembled);}
+    if(unsynced){lastRaw.current=null;flushLocalOnly();setStatus('syncing');}   // yerel-yalnız veriyi buluta geri yükle
+    else{lastRaw.current=a;setStatus('synced');}
+    setSyncErr('');
   };
 
-  // --- Yazım: yalnızca DEĞİŞEN/SİLİNEN dokümanları hesapla -------------------
+  // --- Yazım: yalnızca DEĞİŞEN/SİLİNEN dokümanları hesapla (kanonik diff) -----
   const computeOps=()=>{
     const u=userRef.current;if(!u)return null;
     const d=migrate(JSON.parse(JSON.stringify(dataRef.current)));
     const newDocs=buildSyncDocs(d,u.uid);             // Map<id, payload>
     const ops=[];
-    newDocs.forEach((payload,id)=>{const js=JSON.stringify(payload);if(lastDocs.current.get(id)!==js)ops.push({set:1,id,payload,js});});
+    newDocs.forEach((payload,id)=>{const cj=canon(payload);if(lastDocs.current.get(id)!==cj)ops.push({set:1,id,payload,cj});});
     lastDocs.current.forEach((_v,id)=>{if(!newDocs.has(id))ops.push({del:1,id});});
     return{d,ops};
   };
@@ -7891,9 +7932,9 @@ function useCloudSync(data,setData){
         await batch.commit();
       }
       // Baseline'ı yazılan duruma güncelle → bir sonraki diff temiz başlasın
-      ops.forEach(o=>{if(o.set)lastDocs.current.set(o.id,o.js);else lastDocs.current.delete(o.id);});
+      ops.forEach(o=>{if(o.set)lastDocs.current.set(o.id,o.cj);else lastDocs.current.delete(o.id);});
       lastRaw.current=raw;
-      try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
+      try{localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}  // pp-data yerel yedek olarak KALIR
       setStatus('synced');setSyncErr('');
     }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -7924,7 +7965,7 @@ function useCloudSync(data,setData){
         return;
       }
       let prevUid=null;try{prevUid=localStorage.getItem('pp-uid');}catch(e){}
-      if(prevUid&&prevUid!==u.uid)resetLocal();
+      if(prevUid&&prevUid!==u.uid){try{localStorage.removeItem('pp-data');}catch(e){}resetLocal();}  // hesap değişti → yerel yedeği temizle (karışma olmasın)
       try{localStorage.setItem('pp-uid',u.uid);}catch(e){}
       setUser(u);
     });
@@ -7999,6 +8040,14 @@ function useCloudSync(data,setData){
     if(JSON.stringify(data)===lastRaw.current)return;   // gerçek değişiklik yoksa yazma
     setStatus('syncing');
     timer.current=setTimeout(()=>{writeNow();},150);
+  },[data,user]);
+
+  // --- YEREL YEDEK: bulut yazımı başarısız olsa bile veri yeniden yüklemede ----
+  // kaybolmasın. App, pp-data'yı açılışta okur; bir sonraki snapshot 3-yönlü
+  // birleştirmede bu yereli koruyup buluta geri yükler (otomatik kurtarma).
+  useEffect(()=>{
+    if(!user||!ready.current||!hasRealData(data))return;
+    try{localStorage.setItem('pp-data',JSON.stringify(data));}catch(e){}
   },[data,user]);
 
   // --- Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı -----------
