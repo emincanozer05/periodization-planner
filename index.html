@@ -7788,6 +7788,20 @@ function hasRealData(d){
   return false;
 }
 
+// Uygulama durumunu kullanici_verileri koleksiyonundaki doküman haritasına çevirir
+// (id -> payload). Her varlık tek doküman; böylece SADECE değişen doküman yazılır.
+function buildSyncDocs(d,uid){
+  const m=new Map();
+  const{teams,exercises,researches,...settings}=d;
+  m.set(uid+'_settings',{type:'settings',userId:uid,...settings});
+  (teams||[]).forEach(t=>{const{id,...r}=t;if(id)m.set(id,{type:'team',userId:uid,id,...r});});
+  (exercises||[]).forEach(e=>{const{id,...r}=e;if(id)m.set(id,{type:'exercise',userId:uid,id,...r});});
+  (researches||[]).forEach(res=>{const{id,...r}=res;if(id)m.set(id,{type:'research',userId:uid,id,...r});});
+  return m;
+}
+// Doküman haritasını id -> JSON dizesi haritasına çevirir (diff karşılaştırması için)
+function serializeSyncDocs(m){const o=new Map();m.forEach((v,k)=>o.set(k,JSON.stringify(v)));return o;}
+
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
@@ -7801,6 +7815,7 @@ function useCloudSync(data,setData){
   const userRef=useRef(null); userRef.current=user;
   const knownIds=useRef(new Set()); // buluttaki mevcut doküman ID'leri (silme için)
   const knownEx=useRef(new Set());  // buluttaki egzersiz doküman ID'leri (kütüphane koruması)
+  const lastDocs=useRef(new Map()); // buluttaki her dokümanın son hali (id -> JSON) — per-doc diff yazımı için
 
   // Snapshot'tan uygulama durumunu yeniden oluşturur
   const fromSnap=snap=>{
@@ -7830,6 +7845,8 @@ function useCloudSync(data,setData){
     const localOnlyEx=(dataRef.current.exercises||[]).filter(e=>e&&e.id&&!srvExIds.has(e.id));
     const merged=localOnlyEx.length?{...assembled,exercises:[...localOnlyEx,...(assembled.exercises||[])]}:assembled;
     lastWritten.current=srvStr;
+    // Buluttaki gerçek durumu per-doc diff baseline'ı olarak kaydet → bir sonraki yazım SADECE değişeni gönderir
+    {const u0=userRef.current;lastDocs.current=u0?serializeSyncDocs(buildSyncDocs(assembled,u0.uid)):new Map();}
     if(JSON.stringify(merged)!==JSON.stringify(dataRef.current))setData(merged);
     else if(localOnlyEx.length){ // veri değişmedi ama bulutta egzersiz eksik → geri yüklemeyi tetikle
       if(timer.current)clearTimeout(timer.current);
@@ -7852,30 +7869,28 @@ function useCloudSync(data,setData){
       const db=fb.firestore();
       const col=db.collection('kullanici_verileri');
       const uid=u.uid;
-      const{teams,exercises,researches,...settings}=d;
-      const newIds=new Set();
-      const newExIds=new Set();
-      const batch=db.batch();
-      // Ayarlar dokümanı
-      const sid=uid+'_settings';
-      batch.set(col.doc(sid),{type:'settings',userId:uid,...settings});
-      newIds.add(sid);
-      // Takımlar
-      (teams||[]).forEach(t=>{const{id,...r}=t;batch.set(col.doc(id),{type:'team',userId:uid,id,...r});newIds.add(id);});
-      // Egzersizler
-      (exercises||[]).forEach(e=>{const{id,...r}=e;batch.set(col.doc(id),{type:'exercise',userId:uid,id,...r});newIds.add(id);newExIds.add(id);});
-      // Araştırmalar
-      (researches||[]).forEach(res=>{const{id,...r}=res;batch.set(col.doc(id),{type:'research',userId:uid,id,...r});newIds.add(id);});
+      const newDocs=buildSyncDocs(d,uid);
+      const newExIds=new Set();newDocs.forEach((v,id)=>{if(v.type==='exercise')newExIds.add(id);});
       // GÜVENLİK 2: egzersiz kütüphanesi tek hamlede komple boşaldıysa, buluttaki egzersizleri TOPTAN silme.
       // (Tek tek egzersiz silme normal çalışır; sadece "hepsi birden gitti" durumu şüpheli sayılır.)
       const wipingLibrary=newExIds.size===0&&knownEx.current.size>0;
-      // Artık olmayan dokümanları sil (korunan kütüphane hariç)
-      knownIds.current.forEach(id=>{if(newIds.has(id))return;if(wipingLibrary&&knownEx.current.has(id))return;batch.delete(col.doc(id));});
-      await batch.commit();
-      // Kütüphaneyi koruduysak, o egzersizler hâlâ bulutta — bir sonraki çekişte geri gelsinler diye bilinen sette tut
-      if(wipingLibrary)knownEx.current.forEach(id=>newIds.add(id));
+      // SADECE değişen/yeni dokümanları yaz, SADECE gerçekten silineni sil → küçük, anlık yazımlar
+      const ops=[];
+      newDocs.forEach((payload,id)=>{const js=JSON.stringify(payload);if(lastDocs.current.get(id)!==js)ops.push({set:1,id,payload});});
+      lastDocs.current.forEach((_v,id)=>{if(newDocs.has(id))return;if(wipingLibrary&&knownEx.current.has(id))return;ops.push({del:1,id});});
+      // Firestore batch limiti (500) için parçala
+      for(let i=0;i<ops.length;i+=450){
+        const batch=db.batch();
+        ops.slice(i,i+450).forEach(o=>{if(o.set)batch.set(col.doc(o.id),o.payload);else batch.delete(col.doc(o.id));});
+        await batch.commit();
+      }
+      // Baseline ve bilinen ID setlerini güncelle
+      const newLast=serializeSyncDocs(newDocs);
+      // Kütüphaneyi koruduysak, o egzersizler hâlâ bulutta — bilinen/baseline sette tut ki tekrar silinmesin
+      if(wipingLibrary)knownEx.current.forEach(id=>{const p=lastDocs.current.get(id);if(p!==undefined)newLast.set(id,p);});
       else knownEx.current=newExIds;
-      knownIds.current=newIds;
+      lastDocs.current=newLast;
+      knownIds.current=new Set(newLast.keys());
       lastWritten.current=j;
       try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
       setStatus('synced');setSyncErr('');
@@ -7883,7 +7898,7 @@ function useCloudSync(data,setData){
   };
 
   const resetLocal=()=>{
-    lastWritten.current=null;ready.current=false;knownIds.current=new Set();
+    lastWritten.current=null;ready.current=false;knownIds.current=new Set();knownEx.current=new Set();lastDocs.current=new Map();
     try{localStorage.removeItem('pp-uid');}catch(e){}
     setData(makeDefault());
   };
@@ -7917,7 +7932,7 @@ function useCloudSync(data,setData){
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     setStatus('syncing');
-    ready.current=false;lastWritten.current=null;
+    ready.current=false;lastWritten.current=null;lastDocs.current=new Map();
     const unsub=fb.firestore().collection('kullanici_verileri')
       .where('userId','==',user.uid)
       .onSnapshot(async snap=>{
@@ -7967,7 +7982,7 @@ function useCloudSync(data,setData){
     };
   },[user]);
 
-  // Kullanıcı düzenlemelerini 700ms debounce ile yaz
+  // Kullanıcı düzenlemelerini kısa debounce ile yaz (artık SADECE değişen doküman gittiği için yazım küçük → anında)
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
@@ -7975,7 +7990,7 @@ function useCloudSync(data,setData){
     const j=JSON.stringify(data);
     if(j===lastWritten.current)return;
     setStatus('syncing');
-    timer.current=setTimeout(()=>{writeNow();},700);
+    timer.current=setTimeout(()=>{writeNow();},250);
   },[data,user]);
 
   // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı
