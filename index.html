@@ -7708,18 +7708,18 @@ function Backup({data,setData,sync}){
    ROOT
    ========================================================= */
 /* =========================================================
-   CLOUD SYNC — BASİT (Firebase Auth + Firestore)
-   Tüm uygulama durumu, kullanici_verileri koleksiyonunda
-   kullanıcı başına TEK bir dokümanda saklanır:
-       { icerik: "<JSON>", userId: <uid> }      (doc id = uid)
-   onSnapshot ile canlı dinlenir; değişiklikte tek doküman set()
-   ile güncellenir. Parçalama (chunk) yok, tarayıcı yerel deposu yok.
+   CLOUD SYNC — Storage dosyası + Firestore canlı sinyal
+   Firestore'un 1MB doküman sınırı olduğu için tüm uygulama
+   durumu Firebase STORAGE'da TEK bir dosyada saklanır:
+       users/<uid>/state.json     (BOYUT SINIRI YOK)
+   Firestore'daki kullanici_verileri/<uid> dokümanı yalnızca
+   küçük bir CANLI SİNYAL'dir: { userId, url, guncellenme }.
+   onSnapshot bu sinyali dinler; değişince state.json indirilir.
+   Yazımda: dosya Storage'a yüklenir → sinyal dokümanı güncellenir.
+   Parçalama (chunk) yok, tarayıcı yerel deposu yok.
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
-
-// Firestore tek doküman sınırı ~1.048.576 byte. Güvenli eşik (alan adı + ek yük payı):
-const DOC_LIMIT=1040000;
-const byteLen=s=>{try{return new TextEncoder().encode(s).length;}catch(e){return (s||'').length;}};
+const STATE_PATH=uid=>'users/'+uid+'/state.json';
 
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
@@ -7767,46 +7767,47 @@ function useCloudSync(data,setData){
   const timer=useRef(null);
   const COL='kullanici_verileri';
 
-  // Eski per-entity dokümanları sil (geçiş sonrası temizlik). {icerik} dokümanına dokunmaz.
-  const cleanupOld=async(fb,uid)=>{
+  // Sinyal (pointer) DIŞINDAki dokümanları sil: eski per-entity + ara {icerik} dokümanları.
+  // Sinyal dokümanı `url` alanı taşır; onu silmeyiz.
+  const cleanupNonPointer=async(fb,uid)=>{
     try{
       const col=fb.firestore().collection(COL);
       const snap=await col.where('userId','==',uid).get();
-      const dels=[];snap.forEach(d=>{const v=d.data();if(v&&typeof v.icerik!=='string')dels.push(d.id);});
+      const dels=[];snap.forEach(d=>{const v=d.data();if(v&&typeof v.url!=='string')dels.push(d.id);});
       for(let i=0;i<dels.length;i+=450){const b=fb.firestore().batch();dels.slice(i,i+450).forEach(id=>b.delete(col.doc(id)));await b.commit();}
     }catch(e){console.warn('cleanup',e);}
   };
 
-  // TEK dokümanı yaz: { icerik:<JSON>, userId }
+  // state.json'u Storage'a yükle, indirme URL'ini döndür
+  const uploadState=async(fb,uid,jsonStr)=>{
+    const ref=fb.storage().ref().child(STATE_PATH(uid));
+    await ref.putString(jsonStr,'raw',{contentType:'application/json'});
+    return await ref.getDownloadURL();
+  };
+  // state.json'u indir (sinyal dokümanındaki url'den)
+  const downloadState=async url=>{const r=await fetch(url);if(!r.ok)throw new Error('download '+r.status);return await r.text();};
+
+  // YAZIM: state.json'u Storage'a yükle → Firestore sinyal dokümanını güncelle
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
-    let icerik=JSON.stringify(dataRef.current);
-    if(icerik===lastSynced.current){setStatus('synced');return;}
+    const jsonStr=JSON.stringify(dataRef.current);
+    if(jsonStr===lastSynced.current){setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
     if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
-    // Firestore doküman sınırı ~1.048.576 byte. JSON büyükse: gömülü base64
-    // fotoğraf/videoları Storage'a taşıyıp küçült (tek doküman modeli korunur).
-    if(byteLen(icerik)>DOC_LIMIT){
-      try{
-        const clone=JSON.parse(icerik);
-        const changed=await migrateEmbeddedPhotos(clone,fb,u.uid);
-        if(changed){dataRef.current=clone;setData(clone);icerik=JSON.stringify(clone);}
-      }catch(e){console.warn('shrink',e);}
-    }
-    if(byteLen(icerik)>DOC_LIMIT){
-      setStatus('error');
-      setSyncErr('Veri tek Firestore dokümanına sığmayacak kadar büyük (≈1MB sınırı). Gömülü medya otomatik Storage\'a taşınır; ama Storage kuralları yayında değilse taşınamaz. Firebase → Storage → Rules\'ı yayınla, sonra tekrar dene.');
-      return;
-    }
     try{
-      await fb.firestore().collection(COL).doc(u.uid).set({icerik,userId:u.uid,guncellenme:Date.now()});
-      lastSynced.current=icerik;
+      const url=await uploadState(fb,u.uid,jsonStr);                       // boyut sınırı yok
+      await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,url,guncellenme:Date.now()});
+      lastSynced.current=jsonStr;
       setStatus('synced');setSyncErr('');
-    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    }catch(e){
+      console.warn('write',e);setStatus('error');
+      const perm=e&&(String(e.code||'').indexOf('unauthorized')>=0||/unauthorized|permission|rules|cors/i.test(String(e.message||'')));
+      setSyncErr(perm?'Storage\'a yazılamadı — Firebase → Storage → Rules yayınlanmamış olabilir (veya tarayıcı izleme koruması engelliyor). Kuralları yayınla / Chrome\'da dene.':(e.code||e.message||'unknown'));
+    }
   };
 
   // Sunucudan elle çek
@@ -7815,8 +7816,8 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     try{
       const snap=await fb.firestore().collection(COL).where('userId','==',u.uid).get({source:'server'});
-      let icerik=null;snap.forEach(d=>{const v=d.data();if(v&&typeof v.icerik==='string')icerik=v.icerik;});
-      if(icerik!=null){lastSynced.current=icerik;const parsed=migrate(JSON.parse(icerik));dataRef.current=parsed;setData(parsed);}
+      let url=null;snap.forEach(d=>{const v=d.data();if(v&&typeof v.url==='string')url=v.url;});
+      if(url){const jsonStr=await downloadState(url);lastSynced.current=jsonStr;const parsed=migrate(JSON.parse(jsonStr));dataRef.current=parsed;setData(parsed);}
       ready.current=true;setStatus('synced');setSyncErr('');
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -7847,7 +7848,7 @@ function useCloudSync(data,setData){
     });
   },[]);
 
-  // CANLI DİNLEYİCİ: kullanici_verileri (tek {icerik,userId} doküman)
+  // CANLI DİNLEYİCİ: kullanici_verileri sinyal dokümanı → state.json indir
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     setStatus('syncing');ready.current=false;lastSynced.current=null;
@@ -7856,31 +7857,38 @@ function useCloudSync(data,setData){
       .onSnapshot(async snap=>{
         try{
           if(snap.metadata&&snap.metadata.hasPendingWrites)return;   // kendi yazımımızın yankısı
-          let icerik=null,oldCount=0;const oldDocs=[];
+          let url=null,icerik=null;const oldDocs=[];
           snap.forEach(d=>{const v=d.data();if(!v)return;
-            if(typeof v.icerik==='string')icerik=v.icerik;
-            else{oldCount++;oldDocs.push(v);}});
-          if(icerik!=null){
-            // Normal yol: tek dokümanı uygula
-            ready.current=true;lastSynced.current=icerik;
-            let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
+            if(typeof v.url==='string')url=v.url;            // yeni: Storage sinyal dokümanı
+            else if(typeof v.icerik==='string')icerik=v.icerik; // ara: tek-doküman {icerik}
+            else oldDocs.push(v);});                          // eski: per-entity dokümanlar
+          if(url){
+            // NORMAL YOL: sinyal değişti → state.json indir ve uygula
+            ready.current=true;
+            const jsonStr=await downloadState(url);
+            if(jsonStr===lastSynced.current){setStatus('synced');setSyncErr('');return;} // kendi yazımımız
+            lastSynced.current=jsonStr;
+            let parsed;try{parsed=migrate(JSON.parse(jsonStr));}catch(e){parsed=makeDefault();}
             if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
             setStatus('synced');setSyncErr('');
-            // Eski dokümanları YALNIZCA icerik gerçek veri içeriyorsa temizle (yoksa kaybı önle)
-            if(oldCount&&hasRealData(parsed))cleanupOld(fb,user.uid);
-          }else if(oldCount){
-            // GEÇİŞ: eski per-entity dokümanlardan durumu kur → tek {icerik} doc yaz → eskileri sil
+            if(icerik!=null||oldDocs.length)cleanupNonPointer(fb,user.uid);  // artık gereksiz dokümanları temizle
+          }else if(icerik!=null){
+            // GEÇİŞ (ara model): {icerik} dokümanından durumu al → Storage dosyasına taşı
+            ready.current=true;
+            let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
+            dataRef.current=parsed;setData(parsed);
+            if(hasRealData(parsed)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupNonPointer(fb,user.uid);}
+            else lastSynced.current=JSON.stringify(parsed);
+            setStatus('synced');
+          }else if(oldDocs.length){
+            // GEÇİŞ (eski per-entity): durumu kur → Storage dosyasına yaz → eskileri sil
             ready.current=true;
             const state=stateFromOldDocs(oldDocs);
             dataRef.current=state;setData(state);
             if(hasRealData(state)){
               lastSynced.current=null;await writeNow();
-              // Eskileri SADECE yazım gerçekten başarılıysa sil (aksi halde veriyi koru)
-              if(lastSynced.current!=null)await cleanupOld(fb,user.uid);
-            }else{
-              // Eski dokümanlardan gerçek veri çıkmadı → hiçbir şeyi silme, durumu koru
-              lastSynced.current=JSON.stringify(state);
-            }
+              if(lastSynced.current!=null)await cleanupNonPointer(fb,user.uid);  // yalnızca yazım başarılıysa sil
+            }else lastSynced.current=JSON.stringify(state);
             setStatus('synced');
           }else{
             // Bulutta hiç veri yok
@@ -7914,7 +7922,7 @@ function useCloudSync(data,setData){
     timer.current=setTimeout(()=>writeNow(),200);
   },[data,user]);
 
-  // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı (tek doküman 1MB sınırını aşmasın)
+  // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı (state.json küçük → hızlı senkron)
   const migrated=useRef(false);
   useEffect(()=>{
     const fb=FB();
