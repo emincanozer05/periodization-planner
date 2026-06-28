@@ -7822,9 +7822,19 @@ function useCloudSync(data,setData){
   // Snapshot verisini uygular; aynıysa setData çağrılmaz → sonsuz döngü olmaz
   const applySnap=snap=>{
     const assembled=fromSnap(snap);
-    const astr=JSON.stringify(assembled);
-    lastWritten.current=astr;
-    if(astr!==JSON.stringify(dataRef.current))setData(assembled);
+    // GÜVENLİK 3: ÇEKME (forcePull/listener) yerel egzersiz kütüphanesini DÜŞÜRMESİN.
+    // Sunucuda olmayan yerel egzersizleri koru; lastWritten'ı sunucunun gerçek haline
+    // ayarla ki bir sonraki yazım bu egzersizleri buluta GERİ YÜKLESİN (otomatik kurtarma).
+    const srvStr=JSON.stringify(assembled);
+    const srvExIds=new Set((assembled.exercises||[]).map(e=>e&&e.id));
+    const localOnlyEx=(dataRef.current.exercises||[]).filter(e=>e&&e.id&&!srvExIds.has(e.id));
+    const merged=localOnlyEx.length?{...assembled,exercises:[...localOnlyEx,...(assembled.exercises||[])]}:assembled;
+    lastWritten.current=srvStr;
+    if(JSON.stringify(merged)!==JSON.stringify(dataRef.current))setData(merged);
+    else if(localOnlyEx.length){ // veri değişmedi ama bulutta egzersiz eksik → geri yüklemeyi tetikle
+      if(timer.current)clearTimeout(timer.current);
+      timer.current=setTimeout(()=>writeNow(),300);
+    }
     setStatus('synced');ready.current=true;
   };
 
