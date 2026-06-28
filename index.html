@@ -44,9 +44,12 @@
     // missed this on mobile, so we FORCE long-polling (plain HTTP request/response), which
     // reliably gets writes through everywhere, at a tiny latency cost on good connections.
     // Must be set BEFORE any other Firestore use (incl. persistence).
-    // autoDetect: iyi ağda anlık WebChannel (masaüstünde gecikme yok), kötü/mobil ağda
-    // otomatik long-polling'e düşer. forceLongPolling tüm cihazlarda gecikme yaratıyordu.
-    try{firebase.firestore().settings({experimentalAutoDetectLongPolling:true});}catch(e){}
+    // forceLongPolling: WebChannel akışı bazı ağlarda (mobil operatör, VPN, antivirüs,
+    // tarayıcı eklentisi) tamponlanıp yazımı ONAYLAMIYOR → gösterge SARIDA ("Syncing…")
+    // takılıyor (kullanıcının yaşadığı sorun). autoDetect bu durumu kaçırabiliyordu.
+    // Düz HTTP request/response her yerde çalışır; per-doc diff yazımı küçük olduğu için
+    // gecikme ihmal edilebilir → hem güvenilir hem yeterince anlık.
+    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
     try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
@@ -7861,7 +7864,7 @@ function useCloudSync(data,setData){
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const d=migrate(JSON.parse(JSON.stringify(dataRef.current)));
     const j=JSON.stringify(d);
-    if(j===lastWritten.current)return;
+    if(j===lastWritten.current){setStatus('synced');return;} // veri zaten bulutla aynı → sarıda takılı kalma
     // GÜVENLİK 1: boş/varsayılan veri buluttaki dolu veriyi SİLMESİN (sıfırlama/migrasyon/transport kazaları)
     if(!hasRealData(d)&&knownIds.current.size>0){console.warn('sync: boş veri yazımı atlandı, bulut korundu');setStatus('synced');return;}
     setStatus('syncing');
