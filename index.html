@@ -7738,81 +7738,32 @@ function Backup({data,setData,sync}){
    ========================================================= */
 /* =========================================================
    CLOUD SYNC (Firebase Auth + Firestore)
-   The whole app state is JSON-stringified and split into
-   ~700KB chunks stored at users/{uid}/data/{i}, with a meta
-   doc at users/{uid} holding {chunks,rev}. This sidesteps the
-   1 MiB per-document limit (athlete photos push real data
-   past 2 MB). Conflict = last-write-wins + first-login merge
-   prompt. Real-time pull via onSnapshot on the meta doc (rev).
+   Her varlık (team, exercise, research) kullanici_verileri
+   koleksiyonunda ayrı bir doküman olarak saklanır. Her
+   dokümanda userId alanı vardır. Tek bir onSnapshot sorgusu
+   userId'ye göre filtreler ve tüm değişiklikleri anlık iletir.
+   LocalStorage (pp-data) kullanılmaz.
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
-const SYNC_CHUNK=700000;
-const mkRev=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-// Fast non-crypto hash (djb2) — lets us tell whether the local copy has unsynced edits
-// vs the last-synced snapshot WITHOUT trusting the device clock (skewed/stale clocks
-// were letting an old device overwrite newer cloud data from another computer).
-const djb2=str=>{let h=5381;for(let i=0;i<str.length;i++)h=((h*33)^str.charCodeAt(i))>>>0;return h.toString(36);};
-async function cloudWrite(fb,uid,str,rev,ts,editedAt){
-  const db=fb.firestore();
-  const userDoc=db.collection('users').doc(uid);
-  const dataCol=userDoc.collection('data');
-  // Read the meta doc ONCE — it gives the previous chunk count so we never
-  // re-download the whole payload just to find stale chunks (main slowdown).
-  // Read from CACHE so a slow/blocked Firestore connection can never stall this
-  // read and prevent the actual write below from ever running. The cache is kept
-  // fresh by the onSnapshot listener, so the chunk count is accurate.
-  let oldN=0;
-  try{
-    let cur;try{cur=await userDoc.get({source:'cache'});}catch(_){cur=null;}
-    if(cur&&cur.exists&&cur.data()){
-      const md=cur.data();oldN=md.chunks||0;const oldSize=md.size||0;
-      // SHRINK-GUARD: before drastically shrinking the cloud copy, back it up.
-      if(oldN&&oldSize>5000&&str.length<oldSize*0.5){
-        const bCol=userDoc.collection('backup');
-        const snaps=await Promise.all(Array.from({length:oldN},(_,i)=>dataCol.doc(String(i)).get({source:'cache'})));
-        const bb=db.batch();
-        snaps.forEach((d,i)=>bb.set(bCol.doc(String(i)),{c:(d.exists&&d.data())?(d.data().c||''):''}));
-        bb.set(userDoc,{bChunks:oldN,bRev:md.rev||'',bSize:oldSize,bAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
-        await bb.commit();
-      }
-    }
-  }catch(e){console.warn('backup-guard',e);}
-  const n=Math.max(1,Math.ceil(str.length/SYNC_CHUNK));
-  rev=rev||mkRev();
-  const batch=db.batch();
-  for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:str.slice(i*SYNC_CHUNK,(i+1)*SYNC_CHUNK)});
-  batch.set(userDoc,{userId:uid,chunks:n,rev:rev,size:str.length,ts:ts||Date.now(),editedAt:editedAt||ts||Date.now(),updatedAt:fb.firestore.FieldValue.serverTimestamp()},{merge:true});
-  await batch.commit();
-  // Drop leftover chunks ONLY when the payload shrank — by reference, no read.
-  if(oldN>n){const b=db.batch();for(let i=n;i<oldN;i++)b.delete(dataCol.doc(String(i)));await b.commit();}
-  return rev;
-}
+
+// Eski format (users/{uid}/data chunks) → yalnızca geçiş için kullanılır
 async function cloudRead(fb,uid){
-  // Reconcile MUST hit the server, never the local Firestore cache — otherwise a
-  // device with a stale offline cache "reads" old data on login and then clobbers
-  // the account. fromServer tells the caller whether we actually confirmed the
-  // server's truth (false = offline / read failed = it is NOT safe to upload).
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
   let meta,fromServer=false;
-  // Insist on the server, retrying a few times — on mobile the connection often
-  // isn't warm yet at page load and the first server read fails. Without this we
-  // would silently fall back to the stale local cache and show old data on open.
-  for(let attempt=0;attempt<4&&!fromServer;attempt++){
+  for(let attempt=0;attempt<3&&!fromServer;attempt++){
     try{meta=await userDoc.get({source:'server'});fromServer=true;}
     catch(e){await new Promise(r=>setTimeout(r,400*(attempt+1)));}
   }
-  if(!fromServer){try{meta=await userDoc.get();}catch(e2){return{str:null,rev:null,fromServer:false};}}
-  if(!meta.exists||!meta.data()||!meta.data().chunks)return{str:null,rev:null,fromServer};
+  if(!fromServer){try{meta=await userDoc.get();}catch(e2){return{str:null};}}
+  if(!meta.exists||!meta.data()||!meta.data().chunks)return{str:null};
   const md=meta.data(),n=md.chunks;
-  const opt=fromServer?{source:'server'}:undefined;
-  const chunk=i=>userDoc.collection('data').doc(String(i)).get(opt)
-    .then(d=>(d.exists&&d.data())?(d.data().c||''):'')
-    .catch(()=>userDoc.collection('data').doc(String(i)).get().then(d=>(d.exists&&d.data())?(d.data().c||''):''));
-  // Read all chunks in parallel (was sequential = N round-trips = slow reconcile)
+  const chunk=i=>userDoc.collection('data').doc(String(i)).get()
+    .then(d=>(d.exists&&d.data())?(d.data().c||''):'').catch(()=>'');
   const parts=await Promise.all(Array.from({length:n},(_,i)=>chunk(i)));
-  return{str:parts.join(''),rev:md.rev,ts:md.ts||0,editedAt:md.editedAt||md.ts||0,fromServer};
+  return{str:parts.join('')};
 }
+
 async function cloudReadBackup(fb,uid){
   const db=fb.firestore();
   const userDoc=db.collection('users').doc(uid);
@@ -7822,160 +7773,100 @@ async function cloudReadBackup(fb,uid){
   for(let i=0;i<n;i++){const d=await userDoc.collection('backup').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
   return{str:parts.join(''),rev:md.bRev,size:md.bSize||0,at:md.bAt};
 }
-// "real data" = this device actually has athletes / planned days / exercises,
-// not just the empty default template. Used to decide sync direction safely.
+
 function hasRealData(d){
   if(!d||!Array.isArray(d.teams))return false;
   if(d.teams.some(t=>(t.athletes&&t.athletes.length)||(t.days&&Object.keys(t.days).length)))return true;
   if(Array.isArray(d.exercises)&&d.exercises.length)return true;
   return false;
 }
-/* ---- Structural merge: union two divergent copies so additions on EITHER device survive. ----
-   Whole-document last-writer-wins is what caused "add a session on PC1, lose it the moment PC2
-   syncs": a device flagged dirty used to overwrite the entire cloud with its own copy. We instead
-   union calendar days (by date) and the sessions inside them (by id), athletes (by id) and their
-   sub-records, plus exercises & researches (by id). On a genuine same-key conflict we prefer
-   `local` (the device currently holding unsynced edits). A deletion on one device yields to the
-   other's copy — acceptable here because the user's stated priority is never losing what was
-   added on any device. */
-function _mergeBy(cloudArr,localArr,keyFn,mergeItem){
-  const order=[];const map=new Map();
-  (cloudArr||[]).forEach(x=>{const k=keyFn(x);if(!map.has(k))order.push(k);map.set(k,x);});
-  (localArr||[]).forEach(x=>{const k=keyFn(x);
-    if(map.has(k))map.set(k,mergeItem?mergeItem(map.get(k),x):x);
-    else{order.push(k);map.set(k,x);}});
-  return order.map(k=>map.get(k));
-}
-// `pl` (preferLocal) decides ONLY genuine same-key conflicts (the same record edited on both
-// devices). Additions are unioned regardless of `pl`, so nothing added on either device is ever
-// lost. Both devices compute `pl` from the SAME cloud.editedAt vs their own edit time, so they
-// agree on the winner of a conflict → deterministic, no flip-flop, no ping-pong.
-function _mergeDayMap(cloudDays,localDays,pl){
-  const out={};const dates=new Set([...Object.keys(cloudDays||{}),...Object.keys(localDays||{})]);
-  dates.forEach(dt=>{const c=cloudDays&&cloudDays[dt],l=localDays&&localDays[dt];
-    if(c&&l)out[dt]={date:dt,sessions:_mergeBy(c.sessions,l.sessions,s=>s.id,(cs,ls)=>pl?ls:cs),dailyNotes:pl?(l.dailyNotes||c.dailyNotes||''):(c.dailyNotes||l.dailyNotes||'')};
-    else out[dt]=l||c;});
-  return out;
-}
-function _mergeAthlete(c,l,pl){
-  return{...(pl?{...c,...l}:{...l,...c}),
-    days:_mergeDayMap(c.days,l.days,pl),
-    srpeLog:_mergeBy(c.srpeLog,l.srpeLog,e=>(e.sessionId||'')+'@'+(e.date||''),(a,b)=>pl?b:a),
-    wellness:_mergeBy(c.wellness,l.wellness,w=>w.date||JSON.stringify(w),(a,b)=>pl?b:a),
-    measurements:_mergeBy(c.measurements,l.measurements,m=>m.date||JSON.stringify(m),(a,b)=>pl?b:a),
-    injuries:_mergeBy(c.injuries,l.injuries,x=>x.id||x.date||JSON.stringify(x),(a,b)=>pl?b:a),
-    tests:_mergeBy(c.tests,l.tests,t=>t.id||t.date||JSON.stringify(t),(a,b)=>pl?b:a)};
-}
-function _mergeTeam(c,l,pl){
-  return{...(pl?{...c,...l}:{...l,...c}),
-    setup:pl?(l.setup||c.setup):(c.setup||l.setup),
-    weekOverrides:pl?{...(c.weekOverrides||{}),...(l.weekOverrides||{})}:{...(l.weekOverrides||{}),...(c.weekOverrides||{})},
-    days:_mergeDayMap(c.days,l.days,pl),
-    athletes:_mergeBy(c.athletes,l.athletes,a=>a.id,(a,b)=>_mergeAthlete(a,b,pl))};
-}
-function mergeStates(cloud,local,pl=true){
-  if(!cloud)return local;if(!local)return cloud;
-  return{...(pl?{...cloud,...local}:{...local,...cloud}),
-    activeTeamId:pl?(local.activeTeamId||cloud.activeTeamId):(cloud.activeTeamId||local.activeTeamId),
-    teams:_mergeBy(cloud.teams,local.teams,t=>t.id,(a,b)=>_mergeTeam(a,b,pl)),
-    exercises:_mergeBy(cloud.exercises,local.exercises,e=>e.id,(a,b)=>pl?b:a),
-    researches:_mergeBy(cloud.researches,local.researches,r=>r.id,(a,b)=>pl?b:a)};
-}
+
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
   const[authLoading,setAuthLoading]=useState(true);
-  const[status,setStatus]=useState('offline'); // offline|syncing|synced|error
+  const[status,setStatus]=useState('offline');
   const[syncErr,setSyncErr]=useState('');
-  const[authErr,setAuthErr]=useState(''); // surfaced from redirect sign-in (errors happen on page load, not in a click handler)
+  const[authErr,setAuthErr]=useState('');
   const dataRef=useRef(data); dataRef.current=data;
-  const lastJson=useRef(null);     // exact JSON string we currently know is in the cloud (and last set locally)
-  const ready=useRef(false);       // true only AFTER the first cloud reconcile on login
+  const lastWritten=useRef(null);  // onSnapshot'tan sonra yazılan son JSON
+  const ready=useRef(false);
   const timer=useRef(null);
   const userRef=useRef(null); userRef.current=user;
-  // Persisted content hash of the last-synced copy — lets us tell, across a page reload and before
-  // the first snapshot arrives, whether this device holds OFFLINE edits the cloud doesn't have yet,
-  // so we union instead of blindly adopting the cloud and losing them.
-  const cleanHash=useRef((()=>{try{return localStorage.getItem('pp-data-hash')||null;}catch(e){return null;}})());
-  const localEditAt=useRef(0);     // edit time of this device's latest UNSYNCED user edit (conflict tiebreak)
-  const lastN=useRef(0);           // number of cloud chunks we last wrote/saw (to delete leftovers)
-  const nowTs=()=>Date.now();
-  const setHash=str=>{const h=djb2(str);cleanHash.current=h;try{localStorage.setItem('pp-data-hash',h);}catch(e){}};
-  const markSynced=str=>{lastJson.current=str;localEditAt.current=0;setHash(str);};
-  // Does this device hold edits not yet pushed to the cloud?
-  const dirty=()=>{
-    const cur=JSON.stringify(dataRef.current);
-    if(lastJson.current!=null)return cur!==lastJson.current;          // since login: vs the known cloud copy
-    if(cleanHash.current!=null)return djb2(cur)!==cleanHash.current;  // fresh page load: vs persisted baseline
-    return false;                                                    // never synced & no baseline → defer to cloud
-  };
-  // Take the cloud copy as-is — the common cross-device path: the other device saved, we show it.
-  const applyRemote=cloudStr=>{
-    const cobj=migrate(JSON.parse(cloudStr));const cstr=JSON.stringify(cobj);
-    markSynced(cstr);
-    if(cstr!==JSON.stringify(dataRef.current))setData(cobj);
-    setStatus('synced');ready.current=true;
-  };
-  // Store the whole state as ordered chunks in the users/{uid}/data sub-collection, plus a `_meta`
-  // doc holding {n, editedAt}. We LISTEN to that same collection (below), so a write is delivered to
-  // every other device by the snapshot itself — the chunk contents ride along, no separate read.
-  // Chunking sidesteps Firestore's ~1 MiB per-document limit, so the payload can be any size (photos
-  // included) and sync still works with no dependency on Storage. `forceStr` lets callers write an
-  // exact string (e.g. a freshly merged copy) without waiting for React's async setData to land.
-  const CHUNK=700000;
-  const writeNow=async(forceStr)=>{
-    const fb=FB();const u=userRef.current; if(!fb||!u||!ready.current)return;
-    if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    const j=forceStr!=null?forceStr:JSON.stringify(dataRef.current);
-    if(j===lastJson.current)return;
-    const editedAt=localEditAt.current||nowTs();
-    const n=Math.max(1,Math.ceil(j.length/CHUNK));
-    setStatus('syncing');
-    try{
-      const db=fb.firestore();const dataCol=db.collection('users').doc(u.uid).collection('data');
-      const batch=db.batch();
-      for(let i=0;i<n;i++)batch.set(dataCol.doc(String(i)),{c:j.slice(i*CHUNK,(i+1)*CHUNK)});
-      batch.set(dataCol.doc('_meta'),{n:n,editedAt:editedAt,userId:u.uid,updatedAt:fb.firestore.FieldValue.serverTimestamp()});
-      await batch.commit();
-      // Best-effort: drop leftover higher-index chunks from a previously larger payload (the reader
-      // is already safe — it only joins _meta.n chunks — this just frees space).
-      if(lastN.current>n){const b=db.batch();for(let i=n;i<lastN.current;i++)b.delete(dataCol.doc(String(i)));try{await b.commit();}catch(e){}}
-      lastN.current=n;
-      markSynced(j);setStatus('synced');setSyncErr('');
-    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
-  };
-  // This device has unsynced edits AND the cloud differs → UNION both so nothing on either device is
-  // lost; a genuine same-key conflict goes to whichever side was edited more recently. Then push the
-  // union up as the new shared truth (unless it adds nothing → just adopt, no write → no ping-pong).
-  const mergeRemote=async(cloudStr,cloudEditedAt)=>{
-    const cobj=migrate(JSON.parse(cloudStr));const cstr=JSON.stringify(cobj);
-    const pl=(localEditAt.current||0)>(cloudEditedAt||0);
-    const merged=mergeStates(cobj,dataRef.current,pl);const mstr=JSON.stringify(merged);
-    ready.current=true;
-    if(mstr===cstr){applyRemote(cloudStr);return;}                 // union == cloud → just adopt, don't write
-    if(mstr!==JSON.stringify(dataRef.current))setData(merged);
-    localEditAt.current=Math.max(localEditAt.current||0,cloudEditedAt||0)||nowTs();
-    await writeNow(mstr);                                          // write the merged string explicitly
+  const knownIds=useRef(new Set()); // buluttaki mevcut doküman ID'leri (silme için)
+
+  // Snapshot'tan uygulama durumunu yeniden oluşturur
+  const fromSnap=snap=>{
+    const teams=[],exercises=[],researches=[];
+    let extra={activeTeamId:null,customTests:[],savedResearch:[],ai:null};
+    const ids=new Set();
+    snap.forEach(doc=>{
+      ids.add(doc.id);
+      const d=doc.data();if(!d)return;
+      if(d.type==='team'){const{type,userId,...r}=d;teams.push(r);}
+      else if(d.type==='exercise'){const{type,userId,...r}=d;exercises.push(r);}
+      else if(d.type==='research'){const{type,userId,...r}=d;researches.push(r);}
+      else if(d.type==='settings'){const{type,userId,...r}=d;Object.assign(extra,r);}
+    });
+    knownIds.current=ids;
+    return migrate({...extra,teams,exercises,researches});
   };
 
-  // Hard-wipe this device's in-memory state AND the local baseline so the previous account's
-  // data can never be shown, merged, or seeded into the next account that signs in here. This is
-  // the cross-account "data bleed" guard: a clean device on the next login takes the cloud as the
-  // single source of truth instead of re-uploading whoever was signed in before.
+  // Snapshot verisini uygular; aynıysa setData çağrılmaz → sonsuz döngü olmaz
+  const applySnap=snap=>{
+    const assembled=fromSnap(snap);
+    const astr=JSON.stringify(assembled);
+    lastWritten.current=astr;
+    if(astr!==JSON.stringify(dataRef.current))setData(assembled);
+    setStatus('synced');ready.current=true;
+  };
+
+  const writeNow=async()=>{
+    const fb=FB();const u=userRef.current;
+    if(!fb||!u||!ready.current)return;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    const d=migrate(JSON.parse(JSON.stringify(dataRef.current)));
+    const j=JSON.stringify(d);
+    if(j===lastWritten.current)return;
+    setStatus('syncing');
+    try{
+      const db=fb.firestore();
+      const col=db.collection('kullanici_verileri');
+      const uid=u.uid;
+      const{teams,exercises,researches,...settings}=d;
+      const newIds=new Set();
+      const batch=db.batch();
+      // Ayarlar dokümanı
+      const sid=uid+'_settings';
+      batch.set(col.doc(sid),{type:'settings',userId:uid,...settings});
+      newIds.add(sid);
+      // Takımlar
+      (teams||[]).forEach(t=>{const{id,...r}=t;batch.set(col.doc(id),{type:'team',userId:uid,id,...r});newIds.add(id);});
+      // Egzersizler
+      (exercises||[]).forEach(e=>{const{id,...r}=e;batch.set(col.doc(id),{type:'exercise',userId:uid,id,...r});newIds.add(id);});
+      // Araştırmalar
+      (researches||[]).forEach(res=>{const{id,...r}=res;batch.set(col.doc(id),{type:'research',userId:uid,id,...r});newIds.add(id);});
+      // Artık olmayan dokümanları sil
+      knownIds.current.forEach(id=>{if(!newIds.has(id))batch.delete(col.doc(id));});
+      await batch.commit();
+      knownIds.current=newIds;
+      lastWritten.current=j;
+      try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
+      setStatus('synced');setSyncErr('');
+    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+  };
+
   const resetLocal=()=>{
-    lastJson.current=null;ready.current=false;
-    cleanHash.current=null;localEditAt.current=0;
-    try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
+    lastWritten.current=null;ready.current=false;knownIds.current=new Set();
+    try{localStorage.removeItem('pp-uid');}catch(e){}
     setData(makeDefault());
   };
 
-  // auth state
+  // Auth durumu dinleyicisi
   useEffect(()=>{
     const fb=FB();
     if(!fb){setAuthLoading(false);return;}
-    // Complete any pending redirect sign-in (popup→redirect fallback). Success flows
-    // through onAuthStateChanged; here we only need to surface a failure to the user.
     fb.auth().getRedirectResult().catch(e=>{
-      const m={'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.',
+      const m={'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini ekle.',
         'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkin değil.',
         'auth/account-exists-with-different-credential':'Bu e-posta başka bir yöntemle kayıtlı.',
         'auth/network-request-failed':'İnternet bağlantısı hatası.'}[e.code]||(e.code?e.code+': '+e.message:e.message);
@@ -7983,116 +7874,84 @@ function useCloudSync(data,setData){
     });
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
-      let prevUid=null;try{prevUid=localStorage.getItem('pp-uid');}catch(e){}
       if(!u){
-        // Signed out → wipe the device so nothing of the previous account lingers in the UI or
-        // gets pushed up when someone else signs in here. Cloud already holds the synced copy.
         resetLocal();
-        try{localStorage.removeItem('pp-uid');}catch(e){}
-        setStatus('offline');setSyncErr('');
-        setUser(null);
+        setStatus('offline');setSyncErr('');setUser(null);
         return;
       }
-      // A DIFFERENT account just signed in on this device → discard the previous account's local
-      // data/baseline BEFORE the snapshot effect reconciles, so its records can't merge/seed into
-      // the new account. Restoring the SAME account (page reload, prevUid===uid) keeps its offline
-      // cache so unsynced edits still seed normally.
+      let prevUid=null;try{prevUid=localStorage.getItem('pp-uid');}catch(e){}
       if(prevUid&&prevUid!==u.uid)resetLocal();
       try{localStorage.setItem('pp-uid',u.uid);}catch(e){}
       setUser(u);
     });
   },[]);
 
-  // Reassemble the state JSON from the ordered chunk docs in a collection snapshot. New writes carry
-  // a `_meta` doc with the authoritative chunk count `n`; data written by the OLD code has no `_meta`
-  // so we join every numeric chunk doc present (it left none stale beyond the count).
-  const reassemble=snap=>{
-    let n=0,editedAt=0,metaSeen=false;const partsMap={};
-    snap.forEach(doc=>{
-      if(doc.id==='_meta'){const dd=doc.data()||{};n=dd.n||0;editedAt=dd.editedAt||0;metaSeen=true;return;}
-      const i=parseInt(doc.id,10);if(!isNaN(i))partsMap[i]=(doc.data()&&doc.data().c)||'';
-    });
-    const idxs=Object.keys(partsMap).map(Number);
-    let count=0;
-    if(metaSeen&&n>0)count=n;
-    else if(idxs.length)count=Math.max.apply(null,idxs)+1;
-    if(!count)return{str:null,editedAt:0,n:0};
-    const arr=[];for(let i=0;i<count;i++)arr.push(partsMap[i]||'');
-    return{str:arr.join(''),editedAt:editedAt,n:count};
-  };
-  // Subscribe to the users/{uid}/data sub-collection on login. Its snapshots ARE the live data: the
-  // moment another device writes, this listener fires here with the chunk contents themselves — no
-  // separate read, no meta-rev indirection. THAT is what makes a change appear on every device at
-  // once, at ANY data size. (The old design listened to a meta doc but kept the data in a separate
-  // sub-collection it did NOT listen to, forcing an extra server read that frequently failed — the
-  // real reason the other computer never updated.)
+  // kullanici_verileri koleksiyonunu dinle
   useEffect(()=>{
-    const fb=FB(); if(!fb||!user)return;
+    const fb=FB();if(!fb||!user)return;
     setStatus('syncing');
-    ready.current=false;lastJson.current=null;lastN.current=0;
-    const dataCol=fb.firestore().collection('users').doc(user.uid).collection('data');
-    const unsub=dataCol.onSnapshot(async snap=>{
-      try{
-        if(snap.metadata&&snap.metadata.hasPendingWrites)return; // our own local write echo — ignore
-        const r=reassemble(snap);const cloudStr=r.str,cloudEditedAt=r.editedAt;
-        if(cloudStr!=null&&r.n)lastN.current=r.n;
-        if(!ready.current){
-          // first reconcile after login
-          if(cloudStr!=null){
-            ready.current=true;
-            if(dirty())await mergeRemote(cloudStr,cloudEditedAt); // local offline edits + cloud → union
-            else applyRemote(cloudStr);
-          }else if(!(snap.metadata&&snap.metadata.fromCache)){
-            // SERVER confirms the cloud is empty → safe to seed our data up (or mark clean).
-            ready.current=true;
-            if(hasRealData(dataRef.current))await writeNow();
-            else{markSynced(JSON.stringify(dataRef.current));setStatus('synced');}
-          }else{
-            setStatus('syncing'); // empty but only from cache → wait for the server before seeding
+    ready.current=false;lastWritten.current=null;
+    const unsub=fb.firestore().collection('kullanici_verileri')
+      .where('userId','==',user.uid)
+      .onSnapshot(async snap=>{
+        try{
+          if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+          const hasCloud=snap.docs&&snap.docs.length>0&&snap.docs.some(d=>d.exists&&d.data());
+          if(!ready.current){
+            if(!snap.metadata.fromCache||hasCloud){
+              if(hasCloud){
+                applySnap(snap);
+              }else{
+                // Yeni format boş → eski formattan geçiş dene
+                ready.current=true;
+                const old=await cloudRead(fb,user.uid).catch(()=>({str:null}));
+                if(old.str){
+                  const parsed=migrate(JSON.parse(old.str));
+                  setData(parsed); // data effect writeNow'u tetikler
+                }else if(hasRealData(dataRef.current)){
+                  await writeNow();
+                }else{
+                  lastWritten.current=JSON.stringify(dataRef.current);
+                  setStatus('synced');
+                }
+              }
+            }
+            // fromCache ve boş → sunucu onayı bekle
+          }else if(hasCloud){
+            applySnap(snap);
           }
-        }else if(cloudStr!=null){
-          // A live change from another device → show it at once.
-          if(dirty())await mergeRemote(cloudStr,cloudEditedAt);
-          else applyRemote(cloudStr);
-        }
-      }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
-    },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
+        }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+      },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return unsub;
   },[user]);
 
-  // Flush a pending debounced write when the tab is hidden or closing, so switching devices never
-  // strands the last edit. (The live listener handles incoming changes by itself; no focus-pull or
-  // poll needed — it delivers as soon as the other device writes.)
+  // Sekme gizlenince / kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
-    const fb=FB(); if(!fb||!user)return;
+    const fb=FB();if(!fb||!user)return;
     const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
     const onVis=()=>{if(document.visibilityState==='hidden')flush();};
     document.addEventListener('visibilitychange',onVis);
     window.addEventListener('pagehide',flush);
     window.addEventListener('beforeunload',flush);
-    return ()=>{
+    return()=>{
       document.removeEventListener('visibilitychange',onVis);
       window.removeEventListener('pagehide',flush);
       window.removeEventListener('beforeunload',flush);
     };
   },[user]);
 
-  // Push local edits up (short debounce). The single-doc listener keeps lastJson fresh, so by the
-  // time we write we've already absorbed any remote change; a true same-instant conflict is still
-  // unioned via mergeRemote on the next snapshot.
+  // Kullanıcı düzenlemelerini 700ms debounce ile yaz
   useEffect(()=>{
-    const fb=FB(); if(!fb||!user)return;
-    if(timer.current){clearTimeout(timer.current);timer.current=null;} // cancel any pending (possibly stale) write
-    if(!ready.current)return;          // don't upload until the cloud has been reconciled on login
+    const fb=FB();if(!fb||!user)return;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    if(!ready.current)return;
     const j=JSON.stringify(data);
-    if(j===lastJson.current)return;
-    localEditAt.current=nowTs();        // a real local user edit just happened — stamp its time (tiebreak)
+    if(j===lastWritten.current)return;
     setStatus('syncing');
     timer.current=setTimeout(()=>{writeNow();},700);
   },[data,user]);
 
-  // One-time per session: once the cloud copy is in sync, heal it by moving any inline base64
-  // photos out to Storage. This shrinks an already-bloated account so every later sync is fast.
+  // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı
   const migrated=useRef(false);
   useEffect(()=>{
     const fb=FB();
@@ -8102,27 +7961,24 @@ function useCloudSync(data,setData){
       try{
         const clone=JSON.parse(JSON.stringify(dataRef.current));
         const changed=await migrateEmbeddedPhotos(clone,fb,user.uid);
-        if(changed)setData(clone); // small payload now → syncs up quickly to every device
+        if(changed)setData(clone);
       }catch(e){console.warn('photo-migrate',e);}
     })();
   },[status,user]);
 
-  // Manual override: re-read the cloud chunks from the server and adopt them on THIS device.
+  // Manuel sunucu çekme
   const forcePull=async()=>{
-    const fb=FB(); if(!fb||!user)return;
+    const fb=FB();if(!fb||!user)return;
     setStatus('syncing');
     try{
-      const snap=await fb.firestore().collection('users').doc(user.uid).collection('data').get({source:'server'});
-      const r=reassemble(snap);
-      if(r.str!=null){lastJson.current=null;lastN.current=r.n||0;applyRemote(r.str);}
-      else{ready.current=true;setStatus('synced');} // cloud empty
+      const snap=await fb.firestore().collection('kullanici_verileri').where('userId','==',user.uid).get({source:'server'});
+      ready.current=false;lastWritten.current=null;applySnap(snap);
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
-    // returns the providers a given email is registered with, e.g. ['google.com'] or ['password']; [] if unknown/none
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
     signOut:async()=>{try{writeNow();}catch(e){}return FB().auth().signOut();},
     signInWithGoogle:async()=>{
@@ -8130,16 +7986,12 @@ function useCloudSync(data,setData){
       p.setCustomParameters({prompt:'select_account'});
       try{return await FB().auth().signInWithPopup(p);}
       catch(e){
-        // On some hosts (e.g. Netlify) COOP / popup blockers sever the popup's window.opener,
-        // so the popup just closes and the result never returns. Fall back to a full-page
-        // redirect, which doesn't depend on window.opener. The result is picked up by
-        // getRedirectResult() on reload. A genuinely unauthorized domain etc. is rethrown.
         const toRedirect=['auth/popup-closed-by-user','auth/cancelled-popup-request','auth/popup-blocked',
           'auth/web-storage-unsupported','auth/operation-not-supported-in-this-environment','auth/internal-error'];
         if(toRedirect.includes(e.code)){await FB().auth().signInWithRedirect(p);return;}
         throw e;
       }
-    }}
+    }};
 }
 
 function LoadingScreen(){
@@ -9515,7 +9367,7 @@ function AICoach({data,setData,team}){
 }
 
 function App(){
-  const[data,setData]=useLocal('pp-data',makeDefault());
+  const[data,setData]=useState(()=>{try{const s=localStorage.getItem('pp-data');if(s){const p=JSON.parse(s);if(p&&(p.teams||p.setup))return migrate(p);};}catch(e){}return makeDefault();});
   const sync=useCloudSync(data,setData);
   const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
