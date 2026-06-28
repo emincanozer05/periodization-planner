@@ -40,13 +40,13 @@
     // Some mobile carrier networks / proxies / antivirus / extensions buffer or block
     // Firestore's default streaming (WebChannel) transport. The connection then looks
     // "up" for cached reads but writes never confirm — the indicator sticks on "syncing"
-    // (exactly what the phone showed) and that device can never finish a sync. Auto-detect
-    // missed this on mobile, so we FORCE long-polling (plain HTTP request/response), which
-    // reliably gets writes through everywhere, at a tiny latency cost on good connections.
-    // Must be set BEFORE any other Firestore use (incl. persistence).
-    // autoDetect: iyi ağda anlık WebChannel (masaüstünde gecikme yok), kötü/mobil ağda
-    // otomatik long-polling'e düşer. forceLongPolling tüm cihazlarda gecikme yaratıyordu.
-    try{firebase.firestore().settings({experimentalAutoDetectLongPolling:true});}catch(e){}
+    // and that device can never finish a sync.
+    // autoDetectLongPolling, bazı kurulumlarda WebChannel'i "çalışıyor" sanıp long-polling'e
+    // düşmediği için yazımlar takılı kalıyordu (gösterge sürekli "Syncing…"). Bu yüzden
+    // long-polling'i ZORLUYORUZ: düz HTTP istek/yanıt, her ağda yazımları güvenilir biçimde
+    // geçirir. Gerçek zamanlı dinleyici hâlâ anlık güncellenir (hanging-GET), gecikme çok küçük.
+    // Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı.
+    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
     try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
@@ -7813,6 +7813,7 @@ function useCloudSync(data,setData){
   const userRef=useRef(null); userRef.current=user;
   const ready=useRef(false);            // ilk bulut anlık görüntüsü alındı mı
   const lastDocs=useRef(new Map());     // buluttaki her dokümanın son hali (id -> JSON) — yazım diff'i için TEK kaynak
+  const lastRaw=useRef(null);           // bulutla eşitlenmiş ham uygulama durumu (JSON) — hafif yazım kapısı
   const timer=useRef(null);             // yazım debounce zamanlayıcısı
 
   const COL='kullanici_verileri';
@@ -7831,20 +7832,28 @@ function useCloudSync(data,setData){
     return migrate({...extra,teams,exercises,researches});
   };
 
-  // Baseline'ı (diff için) yazımın ÜRETTİĞİ formatla kaydeder — anahtar sırası birebir
-  // eşleşsin ki uzak değişikliği uyguladıktan sonra sahte (gereksiz) yazım tetiklenmesin.
+  // Baseline'ı (diff için) yazımın ÜRETTİĞİ format ile BİREBİR aynı boru hattından
+  // (migrate → buildSyncDocs) geçirerek kaydeder. Firestore iç-içe map anahtarlarını
+  // okurken yeniden sıralar; migrate ise bazı alanları (ör. description/superset) başa
+  // alır. Baseline'ı ham snapshot'tan kurarsak bu sıra farkı her render'da hayalet bir
+  // "değişiklik" üretir ve sonsuz yazım döngüsüne (gösterge sürekli "syncing") yol açar.
+  // computeOps ile AYNI dönüşümü kullanarak diff'in yüklemede boş kalmasını garantileriz.
   const captureBaseline=assembled=>{
     const u=userRef.current;
-    lastDocs.current=u?serializeSyncDocs(buildSyncDocs(assembled,u.uid)):new Map();
+    if(!u){lastDocs.current=new Map();return;}
+    const d=migrate(JSON.parse(JSON.stringify(assembled)));
+    lastDocs.current=serializeSyncDocs(buildSyncDocs(d,u.uid));
   };
 
   // Bulut tek kaynaktır: gelen anlık görüntüyü uygular. setData yalnızca durum
   // gerçekten değiştiyse çağrılır → sonsuz döngü / titreme olmaz.
   const applySnap=snap=>{
     const assembled=fromSnap(snap);
+    const srvStr=JSON.stringify(assembled);
     captureBaseline(assembled);
+    lastRaw.current=srvStr;             // bu ham durum artık bulutla eşit → gereksiz yazım tetiklenmez
     ready.current=true;
-    if(JSON.stringify(assembled)!==JSON.stringify(dataRef.current)){
+    if(srvStr!==JSON.stringify(dataRef.current)){
       dataRef.current=assembled;        // write effect anında doğru baseline'ı görsün
       setData(assembled);
     }
@@ -7866,11 +7875,12 @@ function useCloudSync(data,setData){
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
+    const raw=JSON.stringify(dataRef.current);   // yazım kapısının karşılaştırdığı ham durum
     const r=computeOps();if(!r)return;
     const{d,ops}=r;
-    if(!ops.length){setStatus('synced');return;}      // değişiklik yok → yazma
+    if(!ops.length){lastRaw.current=raw;setStatus('synced');return;}      // değişiklik yok → yazma
     // GÜVENLİK: boş/varsayılan veri buluttaki dolu veriyi SİLMESİN (sıfırlama/migrasyon yarışları)
-    if(!hasRealData(d)&&lastDocs.current.size>0){console.warn('sync: boş veri yazımı atlandı, bulut korundu');setStatus('synced');return;}
+    if(!hasRealData(d)&&lastDocs.current.size>0){console.warn('sync: boş veri yazımı atlandı, bulut korundu');lastRaw.current=raw;setStatus('synced');return;}
     setStatus('syncing');
     try{
       const db=fb.firestore();const col=db.collection(COL);
@@ -7882,13 +7892,14 @@ function useCloudSync(data,setData){
       }
       // Baseline'ı yazılan duruma güncelle → bir sonraki diff temiz başlasın
       ops.forEach(o=>{if(o.set)lastDocs.current.set(o.id,o.js);else lastDocs.current.delete(o.id);});
+      lastRaw.current=raw;
       try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
       setStatus('synced');setSyncErr('');
     }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
   const resetLocal=()=>{
-    ready.current=false;lastDocs.current=new Map();
+    ready.current=false;lastDocs.current=new Map();lastRaw.current=null;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     try{localStorage.removeItem('pp-uid');}catch(e){}
     setData(makeDefault());
@@ -7925,7 +7936,7 @@ function useCloudSync(data,setData){
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     setStatus('syncing');
-    ready.current=false;lastDocs.current=new Map();
+    ready.current=false;lastDocs.current=new Map();lastRaw.current=null;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const unsub=fb.firestore().collection(COL)
       .where('userId','==',user.uid)
@@ -7978,13 +7989,14 @@ function useCloudSync(data,setData){
   },[user]);
 
   // --- Kullanıcı düzenlemelerini çok kısa debounce ile ANINDA yaz ------------
-  // Yalnızca değişen doküman gittiği için yazım küçük ve hızlı. Diff boşsa
-  // (örn. uzak değişikliği yeni uyguladık) hiçbir şey yapılmaz → yankı/ping-pong yok.
+  // HAFİF kapı: yalnızca ham durum (JSON) bulutla eşit DEĞİLSE yazım planla.
+  // Bu karşılaştırma migrate/buildSyncDocs çalıştırmaz → her tuş vuruşunda hızlı,
+  // ve uzak değişikliği uyguladıktan sonra (lastRaw güncel) yankı/ping-pong olmaz.
+  // Ağır per-doküman diff sadece gerçekten yazarken writeNow içinde çalışır.
   useEffect(()=>{
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    const r=computeOps();
-    if(!r||!r.ops.length)return;        // gerçek değişiklik yoksa yazma
+    if(JSON.stringify(data)===lastRaw.current)return;   // gerçek değişiklik yoksa yazma
     setStatus('syncing');
     timer.current=setTimeout(()=>{writeNow();},150);
   },[data,user]);
