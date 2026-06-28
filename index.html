@@ -44,7 +44,9 @@
     // missed this on mobile, so we FORCE long-polling (plain HTTP request/response), which
     // reliably gets writes through everywhere, at a tiny latency cost on good connections.
     // Must be set BEFORE any other Firestore use (incl. persistence).
-    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+    // autoDetect: iyi ağda anlık WebChannel (masaüstünde gecikme yok), kötü/mobil ağda
+    // otomatik long-polling'e düşer. forceLongPolling tüm cihazlarda gecikme yaratıyordu.
+    try{firebase.firestore().settings({experimentalAutoDetectLongPolling:true});}catch(e){}
     try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
@@ -7798,21 +7800,22 @@ function useCloudSync(data,setData){
   const timer=useRef(null);
   const userRef=useRef(null); userRef.current=user;
   const knownIds=useRef(new Set()); // buluttaki mevcut doküman ID'leri (silme için)
+  const knownEx=useRef(new Set());  // buluttaki egzersiz doküman ID'leri (kütüphane koruması)
 
   // Snapshot'tan uygulama durumunu yeniden oluşturur
   const fromSnap=snap=>{
     const teams=[],exercises=[],researches=[];
     let extra={activeTeamId:null,customTests:[],savedResearch:[],ai:null};
-    const ids=new Set();
+    const ids=new Set();const exIds=new Set();
     snap.forEach(doc=>{
       ids.add(doc.id);
       const d=doc.data();if(!d)return;
       if(d.type==='team'){const{type,userId,...r}=d;teams.push(r);}
-      else if(d.type==='exercise'){const{type,userId,...r}=d;exercises.push(r);}
+      else if(d.type==='exercise'){const{type,userId,...r}=d;exercises.push(r);exIds.add(doc.id);}
       else if(d.type==='research'){const{type,userId,...r}=d;researches.push(r);}
       else if(d.type==='settings'){const{type,userId,...r}=d;Object.assign(extra,r);}
     });
-    knownIds.current=ids;
+    knownIds.current=ids;knownEx.current=exIds;
     return migrate({...extra,teams,exercises,researches});
   };
 
@@ -7832,6 +7835,8 @@ function useCloudSync(data,setData){
     const d=migrate(JSON.parse(JSON.stringify(dataRef.current)));
     const j=JSON.stringify(d);
     if(j===lastWritten.current)return;
+    // GÜVENLİK 1: boş/varsayılan veri buluttaki dolu veriyi SİLMESİN (sıfırlama/migrasyon/transport kazaları)
+    if(!hasRealData(d)&&knownIds.current.size>0){console.warn('sync: boş veri yazımı atlandı, bulut korundu');setStatus('synced');return;}
     setStatus('syncing');
     try{
       const db=fb.firestore();
@@ -7839,6 +7844,7 @@ function useCloudSync(data,setData){
       const uid=u.uid;
       const{teams,exercises,researches,...settings}=d;
       const newIds=new Set();
+      const newExIds=new Set();
       const batch=db.batch();
       // Ayarlar dokümanı
       const sid=uid+'_settings';
@@ -7847,12 +7853,18 @@ function useCloudSync(data,setData){
       // Takımlar
       (teams||[]).forEach(t=>{const{id,...r}=t;batch.set(col.doc(id),{type:'team',userId:uid,id,...r});newIds.add(id);});
       // Egzersizler
-      (exercises||[]).forEach(e=>{const{id,...r}=e;batch.set(col.doc(id),{type:'exercise',userId:uid,id,...r});newIds.add(id);});
+      (exercises||[]).forEach(e=>{const{id,...r}=e;batch.set(col.doc(id),{type:'exercise',userId:uid,id,...r});newIds.add(id);newExIds.add(id);});
       // Araştırmalar
       (researches||[]).forEach(res=>{const{id,...r}=res;batch.set(col.doc(id),{type:'research',userId:uid,id,...r});newIds.add(id);});
-      // Artık olmayan dokümanları sil
-      knownIds.current.forEach(id=>{if(!newIds.has(id))batch.delete(col.doc(id));});
+      // GÜVENLİK 2: egzersiz kütüphanesi tek hamlede komple boşaldıysa, buluttaki egzersizleri TOPTAN silme.
+      // (Tek tek egzersiz silme normal çalışır; sadece "hepsi birden gitti" durumu şüpheli sayılır.)
+      const wipingLibrary=newExIds.size===0&&knownEx.current.size>0;
+      // Artık olmayan dokümanları sil (korunan kütüphane hariç)
+      knownIds.current.forEach(id=>{if(newIds.has(id))return;if(wipingLibrary&&knownEx.current.has(id))return;batch.delete(col.doc(id));});
       await batch.commit();
+      // Kütüphaneyi koruduysak, o egzersizler hâlâ bulutta — bir sonraki çekişte geri gelsinler diye bilinen sette tut
+      if(wipingLibrary)knownEx.current.forEach(id=>newIds.add(id));
+      else knownEx.current=newExIds;
       knownIds.current=newIds;
       lastWritten.current=j;
       try{localStorage.removeItem('pp-data');localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}
