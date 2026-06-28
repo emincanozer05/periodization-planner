@@ -47,7 +47,6 @@
     // geçirir. Gerçek zamanlı dinleyici hâlâ anlık güncellenir (hanging-GET), gecikme çok küçük.
     // Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı.
     try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
-    try{firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(function(){});}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
 <style>
@@ -1919,8 +1918,8 @@ const today=new Date();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ===== Report language (global TR/EN switch used by all print outputs) ===== */
-let REPORT_LANG=(()=>{try{return localStorage.getItem('pp-report-lang')||'en';}catch(e){return 'en';}})();
-function setReportLang(l){REPORT_LANG=l;try{localStorage.setItem('pp-report-lang',l);}catch(e){}}
+let REPORT_LANG='en';   // rapor dili (bellek-içi; kalıcılık yok)
+function setReportLang(l){REPORT_LANG=l;}
 const MN_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MN_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const DN_EN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -2167,14 +2166,6 @@ function migrate(data){
   return data;
 }
 
-/* =========================================================
-   LOCAL STORAGE
-   ========================================================= */
-function useLocal(key,init){
-  const[v,setV]=useState(()=>{try{const s=localStorage.getItem(key);return s?migrate(JSON.parse(s)):init;}catch{return init;}});
-  useEffect(()=>{try{localStorage.setItem(key,JSON.stringify(v));}catch(e){console.warn('Storage error:',e);}},[key,v]);
-  return[v,setV];
-}
 
 /* =========================================================
    PERIODS & WEEKS
@@ -3492,7 +3483,7 @@ function handleImageUpload(file,folder,done,onProgress){
 function resizePhoto(file,cb){
   // Higher quality for sport-science test photos: 700px max, JPEG 0.90.
   // ~3-5× more pixels than the old 200/0.75 setting → noticeably sharper
-  // in the printed PDF. Trade-off is more localStorage usage per photo.
+  // in the printed PDF. Trade-off is a larger stored payload per photo.
   const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{
     const c=document.createElement('canvas');let w=img.width,h=img.height;const mx=700;
     if(w>h){if(w>mx){h*=mx/w;w=mx;}}else{if(h>mx){w*=mx/h;h=mx;}}
@@ -7688,26 +7679,11 @@ function TallySync({data,setData,team}){
    ========================================================= */
 function Backup({data,setData,sync}){
   const fRef=useRef(null);
-  const[busy,setBusy]=useState(false);
   const exp=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert('Invalid file');return;}if(confirm('Replace all data?'))setData(migrate(p));}catch{alert('Read error');}};
     r.readAsText(f);e.target.value='';};
-  const restore=async()=>{
-    const fb=FB();
-    if(!fb||!sync||!sync.user){alert('Sign in with your account first to use cloud backup.');return;}
-    setBusy(true);
-    try{
-      const bk=await cloudReadBackup(fb,sync.user.uid);
-      if(!bk||!bk.str){alert('No cloud backup (previous version) found.');return;}
-      const p=migrate(JSON.parse(bk.str));
-      const ath=(p.teams||[]).reduce((s,t)=>s+((t.athletes||[]).length),0);
-      const when=bk.at&&bk.at.toDate?bk.at.toDate().toLocaleString('tr-TR'):'bilinmiyor';
-      if(confirm('Restore the previous cloud version?\n\nBackup date: '+when+'\nAthletes in backup: '+ath+'\n\nYour current data will be REPLACED with this.'))setData(p);
-    }catch(e){alert('Could not read backup: '+(e.message||e));}
-    finally{setBusy(false);}
-  };
   return(<div>
     <div className="panel"><h2>All Teams Summary</h2>
       <table><thead><tr><th>Team</th><th>Sport</th><th>Season</th><th>Days planned</th><th>Athletes</th></tr></thead><tbody>
@@ -7725,13 +7701,6 @@ function Backup({data,setData,sync}){
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
       </div>
     </div>
-    <div className="panel"><h2>☁️ Cloud Backup (Automatic)</h2>
-      <div className="help" style={{marginBottom:12}}>When the data shrinks substantially (accidental deletion or signing in from an empty device), the previous cloud version is kept automatically. If something was lost, you can restore it here.</div>
-      <div className="row">
-        <button className="btn" disabled={busy} onClick={restore}>{busy?'Loading…':'♻️ Restore Previous Cloud Version'}</button>
-      </div>
-      {(!sync||!sync.user)&&<div className="help" style={{marginTop:10,color:'var(--warn,#f59e0b)'}}>Sign in with your account from the top right to use this feature.</div>}
-    </div>
   </div>);
 }
 
@@ -7739,48 +7708,16 @@ function Backup({data,setData,sync}){
    ROOT
    ========================================================= */
 /* =========================================================
-   CLOUD SYNC (Firebase Auth + Firestore)
-   Her varlık (team, exercise, research) kullanici_verileri
-   koleksiyonunda ayrı bir doküman olarak saklanır. Her
-   dokümanda userId alanı vardır. Tek bir onSnapshot sorgusu
-   userId'ye göre filtreler ve tüm değişiklikleri anlık iletir.
-   LocalStorage (pp-data) kullanılmaz.
+   CLOUD SYNC — BASİT (Firebase Auth + Firestore)
+   Tüm uygulama durumu, kullanici_verileri koleksiyonunda
+   kullanıcı başına TEK bir dokümanda saklanır:
+       { icerik: "<JSON>", userId: <uid> }      (doc id = uid)
+   onSnapshot ile canlı dinlenir; değişiklikte tek doküman set()
+   ile güncellenir. Parçalama (chunk) yok, tarayıcı yerel deposu yok.
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
 
-// Eski format (users/{uid}/data chunks) → yalnızca geçiş için kullanılır
-// _meta dokümanındaki n değerini kullanır (üst belgedeki eski chunks alanını değil)
-async function cloudRead(fb,uid){
-  const db=fb.firestore();
-  const dataCol=db.collection('users').doc(uid).collection('data');
-  let snap;
-  try{snap=await dataCol.get({source:'server'});}
-  catch(e){try{snap=await dataCol.get();}catch(e2){return{str:null};}}
-  if(!snap||snap.empty)return{str:null};
-  let n=0,metaSeen=false;const partsMap={};
-  snap.forEach(doc=>{
-    if(doc.id==='_meta'){const dd=doc.data()||{};n=dd.n||0;metaSeen=true;return;}
-    const i=parseInt(doc.id,10);if(!isNaN(i))partsMap[i]=(doc.data()&&doc.data().c)||'';
-  });
-  const idxs=Object.keys(partsMap).map(Number);
-  let count=0;
-  if(metaSeen&&n>0)count=n;
-  else if(idxs.length)count=Math.max.apply(null,idxs)+1;
-  if(!count)return{str:null};
-  const arr=[];for(let i=0;i<count;i++)arr.push(partsMap[i]||'');
-  return{str:arr.join('')};
-}
-
-async function cloudReadBackup(fb,uid){
-  const db=fb.firestore();
-  const userDoc=db.collection('users').doc(uid);
-  const meta=await userDoc.get();
-  if(!meta.exists||!meta.data()||!meta.data().bChunks)return null;
-  const md=meta.data(),n=md.bChunks,parts=[];
-  for(let i=0;i<n;i++){const d=await userDoc.collection('backup').doc(String(i)).get();parts.push((d.exists&&d.data())?(d.data().c||''):'');}
-  return{str:parts.join(''),rev:md.bRev,size:md.bSize||0,at:md.bAt};
-}
-
+// Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
   if(!d||!Array.isArray(d.teams))return false;
   if(d.teams.some(t=>(t.athletes&&t.athletes.length)||(t.days&&Object.keys(t.days).length)))return true;
@@ -7788,33 +7725,29 @@ function hasRealData(d){
   return false;
 }
 
-// Uygulama durumunu kullanici_verileri koleksiyonundaki doküman haritasına çevirir
-// (id -> payload). Her varlık tek doküman; böylece SADECE değişen doküman yazılır.
-// ÖNEMLİ: Doküman türü ayırıcısı için `_type` kullanılır, `type` DEĞİL. Egzersiz
-// nesnesinin kendi `type` alanı (kategori: 'Upper Body Push' vb.) vardır; ayırıcıyı
-// `type` yapsaydık `...r` yayılımı onu ezip egzersiz dokümanını "type=kategori" ile
-// yazardı ve okurken tanınmaz → egzersizler kaybolurdu. `_type` çakışmaz.
-function buildSyncDocs(d,uid){
-  const m=new Map();
-  const{teams,exercises,researches,...settings}=d;
-  m.set(uid+'_settings',{_type:'settings',userId:uid,...settings});
-  (teams||[]).forEach(t=>{const{id,...r}=t;if(id)m.set(id,{_type:'team',userId:uid,id,...r});});
-  (exercises||[]).forEach(e=>{const{id,...r}=e;if(id)m.set(id,{_type:'exercise',userId:uid,id,...r});});
-  (researches||[]).forEach(res=>{const{id,...r}=res;if(id)m.set(id,{_type:'research',userId:uid,id,...r});});
-  return m;
-}
-// Bir bulut dokümanının türünü belirler. Yeni format `_type` taşır. Eski format
-// yalnızca `type` taşır: team/research/settings güvenilir; egzersiz dokümanı ise
-// `type`=kategori (ayırıcı ezilmişti) olduğundan team/research/settings DEĞİLSE
-// egzersiz kabul edilir → eski egzersizler de doğru okunur (otomatik kurtarma).
+// --- ESKİ FORMAT GEÇİŞİ (yalnızca tek seferlik) ----------------------------
+// Önceki sürüm veriyi per-entity dokümanlara (team/exercise/research/settings)
+// yazıyordu. İlk açılışta bunları okuyup TEK {icerik} dokümanına taşır, sonra
+// eski dokümanları sileriz. Sonrasında bu yola hiç girilmez.
 function docKind(d){
   if(!d)return null;
   if(d._type)return d._type;
   if(d.type==='team'||d.type==='research'||d.type==='settings')return d.type;
-  return 'exercise';
+  return 'exercise';   // eski egzersiz dokümanında type=kategori olabilir
 }
-// Doküman haritasını id -> JSON dizesi haritasına çevirir (diff karşılaştırması için)
-function serializeSyncDocs(m){const o=new Map();m.forEach((v,k)=>o.set(k,JSON.stringify(v)));return o;}
+function stateFromOldDocs(arr){
+  const teams=[],exercises=[],researches=[];
+  let extra={activeTeamId:null,customTests:[],savedResearch:[],ai:null};
+  arr.forEach(d=>{
+    if(!d)return;
+    const k=docKind(d);
+    if(k==='team'){const{_type,type,userId,...r}=d;teams.push(r);}
+    else if(k==='research'){const{_type,type,userId,...r}=d;researches.push(r);}
+    else if(k==='settings'){const{_type,type,userId,...r}=d;Object.assign(extra,r);}
+    else if(k==='exercise'){const{_type,userId,...r}=d;exercises.push(r);}  // type=kategori KORUNUR
+  });
+  return migrate({...extra,teams,exercises,researches});
+}
 
 function useCloudSync(data,setData){
   const[user,setUser]=useState(null);
@@ -7822,131 +7755,55 @@ function useCloudSync(data,setData){
   const[status,setStatus]=useState('offline');   // offline | syncing | synced | error
   const[syncErr,setSyncErr]=useState('');
   const[authErr,setAuthErr]=useState('');
-
-  const dataRef=useRef(data); dataRef.current=data;       // her zaman en güncel uygulama durumu
+  const dataRef=useRef(data); dataRef.current=data;
   const userRef=useRef(null); userRef.current=user;
-  const ready=useRef(false);            // ilk bulut anlık görüntüsü alındı mı
-  const lastDocs=useRef(new Map());     // buluttaki her dokümanın son hali (id -> JSON) — yazım diff'i için TEK kaynak
-  const lastRaw=useRef(null);           // bulutla eşitlenmiş ham uygulama durumu (JSON) — hafif yazım kapısı
-  const timer=useRef(null);             // yazım debounce zamanlayıcısı
-
+  const prevUid=useRef(null);           // hesap değişimini saptamak için (bellek-içi)
+  const ready=useRef(false);            // ilk bulut yanıtı alındı mı
+  const lastSynced=useRef(null);        // bulutla eşit son içerik (JSON) — gereksiz yazım/yankı önler
+  const timer=useRef(null);
   const COL='kullanici_verileri';
 
-  // --- Snapshot/payload -> uygulama durumu -----------------------------------
-  // docKind ile hem yeni (_type) hem eski (type) formatı tanır. team/research/
-  // settings için ayırıcı alan(lar) sıyrılır; egzersizde `type` KORUNUR (kategori).
-  const fromPayloads=arr=>{
-    const teams=[],exercises=[],researches=[];
-    let extra={activeTeamId:null,customTests:[],savedResearch:[],ai:null};
-    arr.forEach(d=>{
-      if(!d)return;
-      const k=docKind(d);
-      if(k==='team'){const{_type,type,userId,...r}=d;teams.push(r);}
-      else if(k==='research'){const{_type,type,userId,...r}=d;researches.push(r);}
-      else if(k==='settings'){const{_type,type,userId,...r}=d;Object.assign(extra,r);}
-      else if(k==='exercise'){const{_type,userId,...r}=d;exercises.push(r);}  // type=kategori KORUNUR
-    });
-    return migrate({...extra,teams,exercises,researches});
+  // Eski per-entity dokümanları sil (geçiş sonrası temizlik). {icerik} dokümanına dokunmaz.
+  const cleanupOld=async(fb,uid)=>{
+    try{
+      const col=fb.firestore().collection(COL);
+      const snap=await col.where('userId','==',uid).get();
+      const dels=[];snap.forEach(d=>{const v=d.data();if(v&&typeof v.icerik!=='string')dels.push(d.id);});
+      for(let i=0;i<dels.length;i+=450){const b=fb.firestore().batch();dels.slice(i,i+450).forEach(id=>b.delete(col.doc(id)));await b.commit();}
+    }catch(e){console.warn('cleanup',e);}
   };
 
-  // KANONİK (anahtar sırasından bağımsız) serileştirme — diff/karşılaştırma için.
-  // Firestore iç-içe map anahtarlarını okurken yeniden sıralar, migrate ise bazı
-  // alanları başa alır. Karşılaştırmayı sıra-bağımsız yaparak "içerik aynı ama sıra
-  // farklı" yüzünden hayalet değişiklik/sonsuz yazım oluşmasını engelleriz.
-  const canon=v=>{
-    if(v===null||typeof v!=='object')return JSON.stringify(v);
-    if(Array.isArray(v))return '['+v.map(canon).join(',')+']';
-    const keys=Object.keys(v).filter(k=>v[k]!==undefined).sort();
-    return '{'+keys.map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';
-  };
-  const canonDocs=m=>{const o=new Map();m.forEach((payload,id)=>o.set(id,canon(payload)));return o;};
-  const localDocs=()=>{const u=userRef.current;if(!u)return new Map();return buildSyncDocs(migrate(JSON.parse(JSON.stringify(dataRef.current))),u.uid);};
-
-  // Bekleyen yerel-yalnız öğeleri buluta yükle (3-yönlü birleştirmenin "koru" tarafı).
-  const flushLocalOnly=()=>{if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>writeNow(),200);};
-
-  // Gelen bulut anlık görüntüsünü 3-YÖNLÜ BİRLEŞTİRME ile uygular:
-  //   base   = en son bilinen bulut (lastDocs)
-  //   local  = mevcut yerel durum
-  //   remote = yeni snapshot
-  // Kural: bir öğe base'te VARDI ve uzaktan SİLİNDİYSE → sil (başka cihazdaki silme yayılır).
-  //        base'te HİÇ YOKTU ve yalnız yereldeyse → KORU + buluta geri yükle (VERİ KAYBI YOK).
-  // Böylece "Sync'e basınca egzersizler gidiyor" sorunu biter; senkronlanmamış yerel veri
-  // asla düşmez, ama gerçek silmeler de dirilmez.
-  const applySnap=snap=>{
-    const remote=new Map();           // id -> payload (gerçek bulut)
-    snap.forEach(doc=>{const d=doc.data();if(d)remote.set(doc.id,d);});
-    const local=localDocs();          // id -> payload (yerel)
-    const base=lastDocs.current;      // id -> canon (en son bilinen bulut)
-    const merged=new Map();           // id -> payload (nihai: gösterilecek)
-    let unsynced=false;               // yerelde olup buluta gitmemiş öğe var mı
-    const ids=new Set([...base.keys(),...local.keys(),...remote.keys()]);
-    ids.forEach(id=>{
-      const bj=base.has(id)?base.get(id):undefined;
-      const lp=local.get(id), rp=remote.get(id);
-      const lj=lp!==undefined?canon(lp):undefined;
-      const rj=rp!==undefined?canon(rp):undefined;
-      if(lj===rj){ if(rp!==undefined)merged.set(id,rp); }                       // yerel==uzak
-      else if(lj===bj){ if(rp!==undefined)merged.set(id,rp); }                  // yalnız uzak değişti/silindi → uzağı uygula
-      else if(rj===bj){ if(lp!==undefined){merged.set(id,lp);unsynced=true;} }  // yalnız yerel değişti/eklendi → yereli KORU
-      else { if(rp!==undefined)merged.set(id,rp); else if(lp!==undefined){merged.set(id,lp);unsynced=true;} } // çakışma: bulut kazanır; uzak silindiyse yereli koru
-    });
-    const assembled=fromPayloads([...merged.values()]);
-    lastDocs.current=canonDocs(remote);   // baseline = GERÇEK bulut; yerel-yalnız öğeler writeNow başarınca eklenir
-    ready.current=true;
-    const a=JSON.stringify(assembled);
-    if(a!==JSON.stringify(dataRef.current)){dataRef.current=assembled;setData(assembled);}
-    if(unsynced){lastRaw.current=null;flushLocalOnly();setStatus('syncing');}   // yerel-yalnız veriyi buluta geri yükle
-    else{lastRaw.current=a;setStatus('synced');}
-    setSyncErr('');
-  };
-
-  // --- Yazım: yalnızca DEĞİŞEN/SİLİNEN dokümanları hesapla (kanonik diff) -----
-  const computeOps=()=>{
-    const u=userRef.current;if(!u)return null;
-    const d=migrate(JSON.parse(JSON.stringify(dataRef.current)));
-    const newDocs=buildSyncDocs(d,u.uid);             // Map<id, payload>
-    const ops=[];
-    newDocs.forEach((payload,id)=>{const cj=canon(payload);if(lastDocs.current.get(id)!==cj)ops.push({set:1,id,payload,cj});});
-    lastDocs.current.forEach((_v,id)=>{if(!newDocs.has(id))ops.push({del:1,id});});
-    return{d,ops};
-  };
-
+  // TEK dokümanı yaz: { icerik:<JSON>, userId }
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
-    const raw=JSON.stringify(dataRef.current);   // yazım kapısının karşılaştırdığı ham durum
-    const r=computeOps();if(!r)return;
-    const{d,ops}=r;
-    if(!ops.length){lastRaw.current=raw;setStatus('synced');return;}      // değişiklik yok → yazma
-    // GÜVENLİK: boş/varsayılan veri buluttaki dolu veriyi SİLMESİN (sıfırlama/migrasyon yarışları)
-    if(!hasRealData(d)&&lastDocs.current.size>0){console.warn('sync: boş veri yazımı atlandı, bulut korundu');lastRaw.current=raw;setStatus('synced');return;}
+    const icerik=JSON.stringify(dataRef.current);
+    if(icerik===lastSynced.current){setStatus('synced');return;}
+    // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
+    let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
+    if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
     try{
-      const db=fb.firestore();const col=db.collection(COL);
-      // Firestore batch limiti (500) için parçala. SADECE değişen/silinen doküman yazılır → küçük, anlık yazımlar.
-      for(let i=0;i<ops.length;i+=450){
-        const batch=db.batch();
-        ops.slice(i,i+450).forEach(o=>{if(o.set)batch.set(col.doc(o.id),o.payload);else batch.delete(col.doc(o.id));});
-        await batch.commit();
-      }
-      // Baseline'ı yazılan duruma güncelle → bir sonraki diff temiz başlasın
-      ops.forEach(o=>{if(o.set)lastDocs.current.set(o.id,o.cj);else lastDocs.current.delete(o.id);});
-      lastRaw.current=raw;
-      try{localStorage.removeItem('pp-data-hash');localStorage.removeItem('pp-data-rev');}catch(e){}  // pp-data yerel yedek olarak KALIR
+      await fb.firestore().collection(COL).doc(u.uid).set({icerik,userId:u.uid,guncellenme:Date.now()});
+      lastSynced.current=icerik;
       setStatus('synced');setSyncErr('');
     }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
-  const resetLocal=()=>{
-    ready.current=false;lastDocs.current=new Map();lastRaw.current=null;
-    if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    try{localStorage.removeItem('pp-uid');}catch(e){}
-    setData(makeDefault());
+  // Sunucudan elle çek
+  const forcePull=async()=>{
+    const fb=FB();const u=userRef.current;if(!fb||!u)return;
+    setStatus('syncing');
+    try{
+      const snap=await fb.firestore().collection(COL).where('userId','==',u.uid).get({source:'server'});
+      let icerik=null;snap.forEach(d=>{const v=d.data();if(v&&typeof v.icerik==='string')icerik=v.icerik;});
+      if(icerik!=null){lastSynced.current=icerik;const parsed=migrate(JSON.parse(icerik));dataRef.current=parsed;setData(parsed);}
+      ready.current=true;setStatus('synced');setSyncErr('');
+    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
-  // --- Auth durumu dinleyicisi ----------------------------------------------
+  // Auth durumu
   useEffect(()=>{
     const fb=FB();
     if(!fb){setAuthLoading(false);return;}
@@ -7960,61 +7817,66 @@ function useCloudSync(data,setData){
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
       if(!u){
-        resetLocal();
-        setStatus('offline');setSyncErr('');setUser(null);
+        ready.current=false;lastSynced.current=null;prevUid.current=null;
+        if(timer.current){clearTimeout(timer.current);timer.current=null;}
+        setData(makeDefault());setStatus('offline');setSyncErr('');setUser(null);
         return;
       }
-      let prevUid=null;try{prevUid=localStorage.getItem('pp-uid');}catch(e){}
-      if(prevUid&&prevUid!==u.uid){try{localStorage.removeItem('pp-data');}catch(e){}resetLocal();}  // hesap değişti → yerel yedeği temizle (karışma olmasın)
-      try{localStorage.setItem('pp-uid',u.uid);}catch(e){}
+      // Hesap değiştiyse yerel durumu sıfırla (eski hesabın verisi yeni hesaba yazılmasın)
+      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;setData(makeDefault());}
+      prevUid.current=u.uid;
       setUser(u);
     });
   },[]);
 
-  // --- GERÇEK ZAMANLI dinleyici: kullanici_verileri koleksiyonu --------------
-  // Tek bir onSnapshot, userId'ye göre filtreler. Başka cihazdaki her yazım
-  // anında buraya düşer ve applySnap ile ekrana yansır.
+  // CANLI DİNLEYİCİ: kullanici_verileri (tek {icerik,userId} doküman)
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
-    setStatus('syncing');
-    ready.current=false;lastDocs.current=new Map();lastRaw.current=null;
+    setStatus('syncing');ready.current=false;lastSynced.current=null;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    const unsub=fb.firestore().collection(COL)
-      .where('userId','==',user.uid)
+    const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
       .onSnapshot(async snap=>{
         try{
-          // Yerel (henüz sunucuca onaylanmamış) kendi yazımımızın yankısını atla
-          if(snap.metadata&&snap.metadata.hasPendingWrites)return;
-          const hasCloud=snap.docs&&snap.docs.length>0&&snap.docs.some(d=>d.exists&&d.data());
-          if(!ready.current){
-            // İlk yükleme: önbellekten gelen BOŞ sonucu yok say, sunucu yanıtını bekle
-            if(snap.metadata.fromCache&&!hasCloud)return;
-            if(hasCloud){
-              applySnap(snap);
+          if(snap.metadata&&snap.metadata.hasPendingWrites)return;   // kendi yazımımızın yankısı
+          let icerik=null,oldCount=0;const oldDocs=[];
+          snap.forEach(d=>{const v=d.data();if(!v)return;
+            if(typeof v.icerik==='string')icerik=v.icerik;
+            else{oldCount++;oldDocs.push(v);}});
+          if(icerik!=null){
+            // Normal yol: tek dokümanı uygula
+            ready.current=true;lastSynced.current=icerik;
+            let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
+            if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            setStatus('synced');setSyncErr('');
+            // Eski dokümanları YALNIZCA icerik gerçek veri içeriyorsa temizle (yoksa kaybı önle)
+            if(oldCount&&hasRealData(parsed))cleanupOld(fb,user.uid);
+          }else if(oldCount){
+            // GEÇİŞ: eski per-entity dokümanlardan durumu kur → tek {icerik} doc yaz → eskileri sil
+            ready.current=true;
+            const state=stateFromOldDocs(oldDocs);
+            dataRef.current=state;setData(state);
+            if(hasRealData(state)){
+              lastSynced.current=null;await writeNow();
+              // Eskileri SADECE yazım gerçekten başarılıysa sil (aksi halde veriyi koru)
+              if(lastSynced.current!=null)await cleanupOld(fb,user.uid);
             }else{
-              // Yeni koleksiyon boş → eski formattan (users/{uid}/data) tek seferlik geçiş
-              ready.current=true;
-              const old=await cloudRead(fb,user.uid).catch(()=>({str:null}));
-              if(old&&old.str){
-                const parsed=migrate(JSON.parse(old.str));
-                dataRef.current=parsed;setData(parsed);
-                await writeNow();                  // yeni koleksiyona taşı
-              }else if(hasRealData(dataRef.current)){
-                await writeNow();                  // mevcut yerel veriyi buluta yükle
-              }else{
-                setStatus('synced');
-              }
+              // Eski dokümanlardan gerçek veri çıkmadı → hiçbir şeyi silme, durumu koru
+              lastSynced.current=JSON.stringify(state);
             }
+            setStatus('synced');
           }else{
-            // Hazır: bulut artık TEK kaynak — boşalsa bile uygula (silmeler de yansısın)
-            applySnap(snap);
+            // Bulutta hiç veri yok
+            if(snap.metadata&&snap.metadata.fromCache)return;
+            ready.current=true;
+            if(hasRealData(dataRef.current)){lastSynced.current=null;await writeNow();}
+            else{lastSynced.current=JSON.stringify(dataRef.current);setStatus('synced');}
           }
         }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
       },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return unsub;
   },[user]);
 
-  // --- Sekme gizlenince / kapatılınca bekleyen yazmayı hemen gönder ----------
+  // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
@@ -8022,58 +7884,28 @@ function useCloudSync(data,setData){
     document.addEventListener('visibilitychange',onVis);
     window.addEventListener('pagehide',flush);
     window.addEventListener('beforeunload',flush);
-    return()=>{
-      document.removeEventListener('visibilitychange',onVis);
-      window.removeEventListener('pagehide',flush);
-      window.removeEventListener('beforeunload',flush);
-    };
+    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',flush);};
   },[user]);
 
-  // --- Kullanıcı düzenlemelerini çok kısa debounce ile ANINDA yaz ------------
-  // HAFİF kapı: yalnızca ham durum (JSON) bulutla eşit DEĞİLSE yazım planla.
-  // Bu karşılaştırma migrate/buildSyncDocs çalıştırmaz → her tuş vuruşunda hızlı,
-  // ve uzak değişikliği uyguladıktan sonra (lastRaw güncel) yankı/ping-pong olmaz.
-  // Ağır per-doküman diff sadece gerçekten yazarken writeNow içinde çalışır.
+  // Düzenlemeleri kısa debounce ile yaz
   useEffect(()=>{
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    if(JSON.stringify(data)===lastRaw.current)return;   // gerçek değişiklik yoksa yazma
+    if(JSON.stringify(data)===lastSynced.current)return;
     setStatus('syncing');
-    timer.current=setTimeout(()=>{writeNow();},150);
+    timer.current=setTimeout(()=>writeNow(),200);
   },[data,user]);
 
-  // --- YEREL YEDEK: bulut yazımı başarısız olsa bile veri yeniden yüklemede ----
-  // kaybolmasın. App, pp-data'yı açılışta okur; bir sonraki snapshot 3-yönlü
-  // birleştirmede bu yereli koruyup buluta geri yükler (otomatik kurtarma).
-  useEffect(()=>{
-    if(!user||!ready.current||!hasRealData(data))return;
-    try{localStorage.setItem('pp-data',JSON.stringify(data));}catch(e){}
-  },[data,user]);
-
-  // --- Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı -----------
+  // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı (tek doküman 1MB sınırını aşmasın)
   const migrated=useRef(false);
   useEffect(()=>{
     const fb=FB();
     if(!fb||!user||status!=='synced'||migrated.current)return;
     migrated.current=true;
     (async()=>{
-      try{
-        const clone=JSON.parse(JSON.stringify(dataRef.current));
-        const changed=await migrateEmbeddedPhotos(clone,fb,user.uid);
-        if(changed)setData(clone);
-      }catch(e){console.warn('photo-migrate',e);}
+      try{const clone=JSON.parse(JSON.stringify(dataRef.current));const changed=await migrateEmbeddedPhotos(clone,fb,user.uid);if(changed)setData(clone);}catch(e){console.warn('photo-migrate',e);}
     })();
   },[status,user]);
-
-  // --- Manuel sunucu çekme ---------------------------------------------------
-  const forcePull=async()=>{
-    const fb=FB();if(!fb||!user)return;
-    setStatus('syncing');
-    try{
-      const snap=await fb.firestore().collection(COL).where('userId','==',user.uid).get({source:'server'});
-      ready.current=false;applySnap(snap);
-    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
-  };
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
@@ -8995,12 +8827,13 @@ function ResearchCard({rec,onOpen}){
    OpenAlex (free, no key, CORS-open) every day. Topics + the article
    picked within each topic rotate deterministically by calendar day,
    so the coach gets 5 different studies each morning. Today's set is
-   cached in localStorage so it stays stable through the day and only
+   kept in memory so it stays stable through the session and only
    the abstract + a source link are shown.
    --------------------------------------------------------------- */
-const RS_FEED_KEY='pp_research_feed_v4';   // {date, roll, items}  (v4: athlete-focused query+filter)
-const RS_SEEN_KEY='pp_research_seen_v1';   // recently shown ids (avoid repeats)
-const RS_TR_KEY='pp_research_tr_v1';       // cached EN→TR title translations
+// Bellek-içi önbellekler (sayfa yenilenince sıfırlanır; kalıcı depo kullanılmaz)
+let RS_FEED_CACHE=null;     // {date, roll, items}
+let RS_SEEN_CACHE=[];       // son gösterilen id'ler (tekrarı azalt)
+let RS_TR_CACHE={};         // EN→TR başlık çevirileri
 const RS_MAILTO='emincanozer05@gmail.com';
 const RS_TOPICS=[
   {tr:'Periodization',q:'periodization resistance training program'},
@@ -9031,8 +8864,8 @@ const RS_TOPICS=[
 function rsRng(seed){let a=(seed>>>0)||1;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function rsShuffle(arr,rng){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
 function rsTodayKey(){return new Date().toISOString().slice(0,10);}
-function rsLoadSeen(){try{return JSON.parse(localStorage.getItem(RS_SEEN_KEY))||[];}catch(e){return[];}}
-function rsSaveSeen(a){try{localStorage.setItem(RS_SEEN_KEY,JSON.stringify(a.slice(-90)));}catch(e){}}
+function rsLoadSeen(){return RS_SEEN_CACHE.slice();}
+function rsSaveSeen(a){RS_SEEN_CACHE=a.slice(-90);}
 // OpenAlex stores abstracts as an inverted index {word:[positions]} — rebuild it.
 function rsAbstract(inv){if(!inv)return'';const arr=[];for(const w in inv)for(const p of inv[w])arr[p]=w;return arr.join(' ').replace(/\s+/g,' ').trim();}
 function rsNorm(w,topic){
@@ -9047,17 +8880,17 @@ function rsNorm(w,topic){
     journal:(loc.source&&loc.source.display_name)||'',
     year:w.publication_year||'',authors:authStr,isOA:!!oa.is_oa,topic};
 }
-// Translate an English title to Turkish via Google's free endpoint; cached locally.
+// Translate an English title to Turkish via Google's free endpoint; cached in memory.
 async function rsTranslate(text){
   if(!text)return'';
-  try{const c=JSON.parse(localStorage.getItem(RS_TR_KEY)||'{}');if(c[text])return c[text];}catch(e){}
+  if(RS_TR_CACHE[text])return RS_TR_CACHE[text];
   try{
     const ctrl=new AbortController(),to=setTimeout(()=>ctrl.abort(),6000);
     const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=tr&dt=t&q='+encodeURIComponent(text),{signal:ctrl.signal});
     clearTimeout(to);if(!r.ok)return'';
     const j=await r.json();
     const tr=(j&&Array.isArray(j[0]))?j[0].map(s=>s&&s[0]).filter(Boolean).join(''):'';
-    if(tr){try{const c=JSON.parse(localStorage.getItem(RS_TR_KEY)||'{}');c[text]=tr;localStorage.setItem(RS_TR_KEY,JSON.stringify(c));}catch(e){}}
+    if(tr)RS_TR_CACHE[text]=tr;
     return tr;
   }catch(e){return'';}
 }
@@ -9159,7 +8992,7 @@ function ResearchFeed({savedIds,onToggleSave}){
     let alive=true;setItems(null);setErr('');
     const today=rsTodayKey();
     if(roll===0){
-      let cache=null;try{cache=JSON.parse(localStorage.getItem(RS_FEED_KEY));}catch(e){}
+      const cache=RS_FEED_CACHE;
       if(cache&&cache.date===today&&cache.roll===0&&Array.isArray(cache.items)&&cache.items.length){setItems(cache.items);return;}
     }
     (async()=>{
@@ -9168,7 +9001,7 @@ function ResearchFeed({savedIds,onToggleSave}){
         if(!alive)return;
         if(!res.length){setErr('Could not load articles right now. Check your internet connection and try again.');setItems([]);return;}
         setItems(res);
-        try{localStorage.setItem(RS_FEED_KEY,JSON.stringify({date:today,roll,items:res}));}catch(e){}
+        RS_FEED_CACHE={date:today,roll,items:res};
       }catch(e){if(alive){setErr('Connection error — please try again.');setItems([]);}}
     })();
     return()=>{alive=false;};
@@ -9380,8 +9213,7 @@ const AIC_COACH_ICON=<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 function AICoach({data,setData,team}){
   const[open,setOpen]=useState(false);
   // AI config lives in the SYNCED data (data.ai), so a key/model entered on one
-  // device is available on every device — you never re-enter it. (One-time migrate
-  // from the older per-device localStorage keys below.)
+  // device is available on every device — you never re-enter it.
   const ai=data.ai||{provider:'gemini'};
   const setAi=patch=>setData(prev=>({...prev,ai:{...(prev.ai||{provider:'gemini'}),...patch}}));
   const provider=ai.provider||'gemini';
@@ -9398,9 +9230,6 @@ function AICoach({data,setData,team}){
   const[setupOpen,setSetupOpen]=useState(false);
   const bodyRef=useRef(null);
   useEffect(()=>{if(bodyRef.current)bodyRef.current.scrollTop=bodyRef.current.scrollHeight;},[msgs,busy,err]);
-  // One-time migration: lift an existing key from the old per-device localStorage
-  // into the synced data.ai so it propagates to every device.
-  useEffect(()=>{try{if(data.ai)return;const gk=localStorage.getItem('pp-ai-gkey')||'',ak=localStorage.getItem('pp-ai-key')||'';if(gk||ak)setData(prev=>prev.ai?prev:{...prev,ai:{provider:localStorage.getItem('pp-ai-provider')||'gemini',gkey:gk,akey:ak,gmodel:localStorage.getItem('pp-ai-gmodel')||'gemini-2.5-flash',amodel:localStorage.getItem('pp-ai-model')||'claude-opus-4-8'}});}catch(e){}},[]);
   const needKey=!apiKey;
   const send=async q=>{
     const text=(typeof q==='string'?q:input).trim();if(!text||busy)return;
@@ -9466,7 +9295,7 @@ function AICoach({data,setData,team}){
 }
 
 function App(){
-  const[data,setData]=useState(()=>{try{const s=localStorage.getItem('pp-data');if(s){const p=JSON.parse(s);if(p&&(p.teams||p.setup))return migrate(p);};}catch(e){}return makeDefault();});
+  const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   const sync=useCloudSync(data,setData);
   const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
