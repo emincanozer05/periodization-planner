@@ -7708,18 +7708,19 @@ function Backup({data,setData,sync}){
    ROOT
    ========================================================= */
 /* =========================================================
-   CLOUD SYNC — Storage dosyası + Firestore canlı sinyal
+   CLOUD SYNC — Firestore parçalı (Storage YOK)
    Firestore'un 1MB doküman sınırı olduğu için tüm uygulama
-   durumu Firebase STORAGE'da TEK bir dosyada saklanır:
-       users/<uid>/state.json     (BOYUT SINIRI YOK)
-   Firestore'daki kullanici_verileri/<uid> dokümanı yalnızca
-   küçük bir CANLI SİNYAL'dir: { userId, url, guncellenme }.
-   onSnapshot bu sinyali dinler; değişince state.json indirilir.
-   Yazımda: dosya Storage'a yüklenir → sinyal dokümanı güncellenir.
-   Parçalama (chunk) yok, tarayıcı yerel deposu yok.
+   durumu (JSON) birkaç küçük dokümana BÖLÜNÜR:
+       kullanici_verileri/<uid>_<i> = { userId, i, c, rev }
+   Bir de manifest dokümanı:
+       kullanici_verileri/<uid>      = { userId, n, rev }
+   onSnapshot tüm parçaları+manifesti dinler; manifest.rev ile
+   eşleşen n parça birleştirilip uygulanır → anlık, cihazlar arası.
+   Storage, indirme URL'i, parça-dışı bağımlılık YOK.
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
-const STATE_PATH=uid=>'users/'+uid+'/state.json';
+const CHUNK_SIZE=400000;   // karakter — her parça <1MB (base64 dahil güvenli)
+const splitChunks=s=>{const a=[];for(let i=0;i<s.length;i+=CHUNK_SIZE)a.push(s.slice(i,i+CHUNK_SIZE));return a.length?a:[''];};
 
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
@@ -7729,10 +7730,7 @@ function hasRealData(d){
   return false;
 }
 
-// --- ESKİ FORMAT GEÇİŞİ (yalnızca tek seferlik) ----------------------------
-// Önceki sürüm veriyi per-entity dokümanlara (team/exercise/research/settings)
-// yazıyordu. İlk açılışta bunları okuyup TEK {icerik} dokümanına taşır, sonra
-// eski dokümanları sileriz. Sonrasında bu yola hiç girilmez.
+// --- ESKİ FORMAT GEÇİŞİ (tek seferlik): per-entity dokümanlardan durumu kur ---
 function docKind(d){
   if(!d)return null;
   if(d._type)return d._type;
@@ -7764,50 +7762,60 @@ function useCloudSync(data,setData){
   const prevUid=useRef(null);           // hesap değişimini saptamak için (bellek-içi)
   const ready=useRef(false);            // ilk bulut yanıtı alındı mı
   const lastSynced=useRef(null);        // bulutla eşit son içerik (JSON) — gereksiz yazım/yankı önler
+  const prevN=useRef(0);                // önceki parça sayısı (fazlalıkları silmek için)
   const timer=useRef(null);
   const COL='kullanici_verileri';
 
-  // Sinyal (pointer) DIŞINDAki dokümanları sil: eski per-entity + ara {icerik} dokümanları.
-  // Sinyal dokümanı `url` alanı taşır; onu silmeyiz.
-  const cleanupNonPointer=async(fb,uid)=>{
+  // Eski {url} pointer'ından (Storage) veriyi kurtarmayı dene — sadece fetch, SDK gerekmez
+  const tryDownload=async url=>{const r=await fetch(url);if(!r.ok)throw new Error('download '+r.status);return await r.text();};
+
+  // manifest+parça DIŞINDAki eski dokümanları sil (per-entity / {icerik} / {url})
+  const cleanupLegacy=async(fb,uid)=>{
     try{
       const col=fb.firestore().collection(COL);
       const snap=await col.where('userId','==',uid).get();
-      const dels=[];snap.forEach(d=>{const v=d.data();if(v&&typeof v.url!=='string')dels.push(d.id);});
+      const dels=[];
+      snap.forEach(d=>{const v=d.data();if(!v)return;
+        const isManifest=(d.id===uid&&typeof v.n==='number');
+        const isChunk=(typeof v.i==='number'&&typeof v.c==='string');
+        if(!isManifest&&!isChunk)dels.push(d.id);});
       for(let i=0;i<dels.length;i+=450){const b=fb.firestore().batch();dels.slice(i,i+450).forEach(id=>b.delete(col.doc(id)));await b.commit();}
     }catch(e){console.warn('cleanup',e);}
   };
 
-  // state.json'u Storage'a yükle, indirme URL'ini döndür
-  const uploadState=async(fb,uid,jsonStr)=>{
-    const ref=fb.storage().ref().child(STATE_PATH(uid));
-    await ref.putString(jsonStr,'raw',{contentType:'application/json'});
-    return await ref.getDownloadURL();
-  };
-  // state.json'u indir (sinyal dokümanındaki url'den)
-  const downloadState=async url=>{const r=await fetch(url);if(!r.ok)throw new Error('download '+r.status);return await r.text();};
-
-  // YAZIM: state.json'u Storage'a yükle → Firestore sinyal dokümanını güncelle
+  // YAZIM: JSON'u parçalara böl → parça dokümanları (önce) + manifest (sonra) yaz
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
-    const jsonStr=JSON.stringify(dataRef.current);
-    if(jsonStr===lastSynced.current){setStatus('synced');return;}
+    const json=JSON.stringify(dataRef.current);
+    if(json===lastSynced.current){setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
     if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
     try{
-      const url=await uploadState(fb,u.uid,jsonStr);                       // boyut sınırı yok
-      await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,url,guncellenme:Date.now()});
-      lastSynced.current=jsonStr;
+      const col=fb.firestore().collection(COL);
+      const parts=splitChunks(json);const n=parts.length;const rev=Date.now();
+      const ops=[];
+      parts.forEach((c,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c,rev}}));
+      for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i});   // fazlalık eski parçaları sil
+      for(let i=0;i<ops.length;i+=450){
+        const b=fb.firestore().batch();
+        ops.slice(i,i+450).forEach(o=>{if(o.set)b.set(col.doc(o.id),o.data);else b.delete(col.doc(o.id));});
+        await b.commit();
+      }
+      await col.doc(u.uid).set({userId:u.uid,n,rev});   // manifest EN SON → okuyucu tüm parçaları görür
+      prevN.current=n;lastSynced.current=json;
       setStatus('synced');setSyncErr('');
-    }catch(e){
-      console.warn('write',e);setStatus('error');
-      const perm=e&&(String(e.code||'').indexOf('unauthorized')>=0||/unauthorized|permission|rules|cors/i.test(String(e.message||'')));
-      setSyncErr(perm?'Storage\'a yazılamadı — Firebase → Storage → Rules yayınlanmamış olabilir (veya tarayıcı izleme koruması engelliyor). Kuralları yayınla / Chrome\'da dene.':(e.code||e.message||'unknown'));
-    }
+    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+  };
+
+  // manifest.rev ile eşleşen n parçayı birleştir; eksikse null (tutarsız ara durum → bekle)
+  const assemble=(manifest,chunks)=>{
+    const n=manifest.n,rev=manifest.rev,parts=[];
+    for(let i=0;i<n;i++){const ch=chunks[i];if(!ch||ch.rev!==rev)return null;parts.push(ch.c);}
+    return parts.join('');
   };
 
   // Sunucudan elle çek
@@ -7816,8 +7824,11 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     try{
       const snap=await fb.firestore().collection(COL).where('userId','==',u.uid).get({source:'server'});
-      let url=null;snap.forEach(d=>{const v=d.data();if(v&&typeof v.url==='string')url=v.url;});
-      if(url){const jsonStr=await downloadState(url);lastSynced.current=jsonStr;const parsed=migrate(JSON.parse(jsonStr));dataRef.current=parsed;setData(parsed);}
+      let manifest=null;const chunks={};
+      snap.forEach(d=>{const v=d.data();if(!v)return;
+        if(d.id===u.uid&&typeof v.n==='number')manifest=v;
+        else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v;});
+      if(manifest){const json=assemble(manifest,chunks);if(json!=null){lastSynced.current=json;prevN.current=manifest.n;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);}}
       ready.current=true;setStatus('synced');setSyncErr('');
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -7836,60 +7847,70 @@ function useCloudSync(data,setData){
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
       if(!u){
-        ready.current=false;lastSynced.current=null;prevUid.current=null;
+        ready.current=false;lastSynced.current=null;prevUid.current=null;prevN.current=0;
         if(timer.current){clearTimeout(timer.current);timer.current=null;}
         setData(makeDefault());setStatus('offline');setSyncErr('');setUser(null);
         return;
       }
-      // Hesap değiştiyse yerel durumu sıfırla (eski hesabın verisi yeni hesaba yazılmasın)
-      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;setData(makeDefault());}
+      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;prevN.current=0;setData(makeDefault());}
       prevUid.current=u.uid;
       setUser(u);
     });
   },[]);
 
-  // CANLI DİNLEYİCİ: kullanici_verileri sinyal dokümanı → state.json indir
+  // CANLI DİNLEYİCİ: manifest + parçalar (+ eski formatlardan tek seferlik geçiş)
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
-    setStatus('syncing');ready.current=false;lastSynced.current=null;
+    setStatus('syncing');ready.current=false;lastSynced.current=null;prevN.current=0;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
       .onSnapshot(async snap=>{
         try{
           if(snap.metadata&&snap.metadata.hasPendingWrites)return;   // kendi yazımımızın yankısı
-          let url=null,icerik=null;const oldDocs=[];
+          let manifest=null,url=null,icerik=null;const chunks={};const oldDocs=[];
           snap.forEach(d=>{const v=d.data();if(!v)return;
-            if(typeof v.url==='string')url=v.url;            // yeni: Storage sinyal dokümanı
-            else if(typeof v.icerik==='string')icerik=v.icerik; // ara: tek-doküman {icerik}
-            else oldDocs.push(v);});                          // eski: per-entity dokümanlar
-          if(url){
-            // NORMAL YOL: sinyal değişti → state.json indir ve uygula
-            ready.current=true;
-            const jsonStr=await downloadState(url);
-            if(jsonStr===lastSynced.current){setStatus('synced');setSyncErr('');return;} // kendi yazımımız
-            lastSynced.current=jsonStr;
-            let parsed;try{parsed=migrate(JSON.parse(jsonStr));}catch(e){parsed=makeDefault();}
+            if(d.id===user.uid&&typeof v.n==='number')manifest=v;          // yeni: manifest
+            else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v; // yeni: parça
+            else if(typeof v.url==='string')url=v.url;                     // eski: Storage pointer
+            else if(typeof v.icerik==='string')icerik=v.icerik;           // eski: tek-doküman
+            else oldDocs.push(v);});                                       // eski: per-entity
+          if(manifest){
+            const json=assemble(manifest,chunks);
+            if(json==null)return;                 // parçalar henüz tam değil → bekle
+            ready.current=true;prevN.current=manifest.n;
+            if(json===lastSynced.current){setStatus('synced');setSyncErr('');return;}
+            lastSynced.current=json;
+            let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
             if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
             setStatus('synced');setSyncErr('');
-            if(icerik!=null||oldDocs.length)cleanupNonPointer(fb,user.uid);  // artık gereksiz dokümanları temizle
+            if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
+          }else if(oldDocs.length){
+            // GEÇİŞ: eski per-entity → parçalı
+            ready.current=true;const state=stateFromOldDocs(oldDocs);dataRef.current=state;setData(state);
+            if(hasRealData(state)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);}
+            else lastSynced.current=JSON.stringify(state);
+            setStatus('synced');
           }else if(icerik!=null){
-            // GEÇİŞ (ara model): {icerik} dokümanından durumu al → Storage dosyasına taşı
-            ready.current=true;
-            let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
+            // GEÇİŞ: ara {icerik} → parçalı
+            ready.current=true;let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
             dataRef.current=parsed;setData(parsed);
-            if(hasRealData(parsed)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupNonPointer(fb,user.uid);}
+            if(hasRealData(parsed)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);}
             else lastSynced.current=JSON.stringify(parsed);
             setStatus('synced');
-          }else if(oldDocs.length){
-            // GEÇİŞ (eski per-entity): durumu kur → Storage dosyasına yaz → eskileri sil
+          }else if(url){
+            // GEÇİŞ: eski Storage pointer → veriyi indirip parçalıya taşımayı DENE
             ready.current=true;
-            const state=stateFromOldDocs(oldDocs);
-            dataRef.current=state;setData(state);
-            if(hasRealData(state)){
-              lastSynced.current=null;await writeNow();
-              if(lastSynced.current!=null)await cleanupNonPointer(fb,user.uid);  // yalnızca yazım başarılıysa sil
-            }else lastSynced.current=JSON.stringify(state);
-            setStatus('synced');
+            try{
+              const json=await tryDownload(url);
+              lastSynced.current=null;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
+              await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);
+              setStatus('synced');
+            }catch(e){
+              // Storage'dan indirilemedi (403 vb.) → default'u YAZMA (pointer'ı ezme); kullanıcı backup import etsin
+              lastSynced.current=JSON.stringify(dataRef.current);
+              setStatus('error');
+              setSyncErr('Eski verin önceki sürümde Firebase Storage\'a kaydedilmiş ve oradan indirilemiyor. Kurtarmak için: Firebase Console → Storage → Files → users/'+user.uid+'/state.json dosyasını indir, sonra bu uygulamada Backup → "Load Backup" ile o dosyayı içe aktar. İçe aktarınca veri otomatik olarak yeni (parçalı) sisteme kaydedilir.');
+            }
           }else{
             // Bulutta hiç veri yok
             if(snap.metadata&&snap.metadata.fromCache)return;
@@ -7921,17 +7942,6 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     timer.current=setTimeout(()=>writeNow(),200);
   },[data,user]);
-
-  // Fotoğraf geçişi: inline base64 fotoğrafları Storage'a taşı (state.json küçük → hızlı senkron)
-  const migrated=useRef(false);
-  useEffect(()=>{
-    const fb=FB();
-    if(!fb||!user||status!=='synced'||migrated.current)return;
-    migrated.current=true;
-    (async()=>{
-      try{const clone=JSON.parse(JSON.stringify(dataRef.current));const changed=await migrateEmbeddedPhotos(clone,fb,user.uid);if(changed)setData(clone);}catch(e){console.warn('photo-migrate',e);}
-    })();
-  },[status,user]);
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
