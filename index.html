@@ -7747,21 +7747,26 @@ function Backup({data,setData,sync}){
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
 
 // Eski format (users/{uid}/data chunks) → yalnızca geçiş için kullanılır
+// _meta dokümanındaki n değerini kullanır (üst belgedeki eski chunks alanını değil)
 async function cloudRead(fb,uid){
   const db=fb.firestore();
-  const userDoc=db.collection('users').doc(uid);
-  let meta,fromServer=false;
-  for(let attempt=0;attempt<3&&!fromServer;attempt++){
-    try{meta=await userDoc.get({source:'server'});fromServer=true;}
-    catch(e){await new Promise(r=>setTimeout(r,400*(attempt+1)));}
-  }
-  if(!fromServer){try{meta=await userDoc.get();}catch(e2){return{str:null};}}
-  if(!meta.exists||!meta.data()||!meta.data().chunks)return{str:null};
-  const md=meta.data(),n=md.chunks;
-  const chunk=i=>userDoc.collection('data').doc(String(i)).get()
-    .then(d=>(d.exists&&d.data())?(d.data().c||''):'').catch(()=>'');
-  const parts=await Promise.all(Array.from({length:n},(_,i)=>chunk(i)));
-  return{str:parts.join('')};
+  const dataCol=db.collection('users').doc(uid).collection('data');
+  let snap;
+  try{snap=await dataCol.get({source:'server'});}
+  catch(e){try{snap=await dataCol.get();}catch(e2){return{str:null};}}
+  if(!snap||snap.empty)return{str:null};
+  let n=0,metaSeen=false;const partsMap={};
+  snap.forEach(doc=>{
+    if(doc.id==='_meta'){const dd=doc.data()||{};n=dd.n||0;metaSeen=true;return;}
+    const i=parseInt(doc.id,10);if(!isNaN(i))partsMap[i]=(doc.data()&&doc.data().c)||'';
+  });
+  const idxs=Object.keys(partsMap).map(Number);
+  let count=0;
+  if(metaSeen&&n>0)count=n;
+  else if(idxs.length)count=Math.max.apply(null,idxs)+1;
+  if(!count)return{str:null};
+  const arr=[];for(let i=0;i<count;i++)arr.push(partsMap[i]||'');
+  return{str:arr.join('')};
 }
 
 async function cloudReadBackup(fb,uid){
