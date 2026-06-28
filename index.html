@@ -7717,6 +7717,10 @@ function Backup({data,setData,sync}){
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
 
+// Firestore tek doküman sınırı ~1.048.576 byte. Güvenli eşik (alan adı + ek yük payı):
+const DOC_LIMIT=1040000;
+const byteLen=s=>{try{return new TextEncoder().encode(s).length;}catch(e){return (s||'').length;}};
+
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
   if(!d||!Array.isArray(d.teams))return false;
@@ -7778,12 +7782,26 @@ function useCloudSync(data,setData){
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
-    const icerik=JSON.stringify(dataRef.current);
+    let icerik=JSON.stringify(dataRef.current);
     if(icerik===lastSynced.current){setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
     if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
+    // Firestore doküman sınırı ~1.048.576 byte. JSON büyükse: gömülü base64
+    // fotoğraf/videoları Storage'a taşıyıp küçült (tek doküman modeli korunur).
+    if(byteLen(icerik)>DOC_LIMIT){
+      try{
+        const clone=JSON.parse(icerik);
+        const changed=await migrateEmbeddedPhotos(clone,fb,u.uid);
+        if(changed){dataRef.current=clone;setData(clone);icerik=JSON.stringify(clone);}
+      }catch(e){console.warn('shrink',e);}
+    }
+    if(byteLen(icerik)>DOC_LIMIT){
+      setStatus('error');
+      setSyncErr('Veri tek Firestore dokümanına sığmayacak kadar büyük (≈1MB sınırı). Gömülü medya otomatik Storage\'a taşınır; ama Storage kuralları yayında değilse taşınamaz. Firebase → Storage → Rules\'ı yayınla, sonra tekrar dene.');
+      return;
+    }
     try{
       await fb.firestore().collection(COL).doc(u.uid).set({icerik,userId:u.uid,guncellenme:Date.now()});
       lastSynced.current=icerik;
