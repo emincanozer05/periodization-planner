@@ -491,9 +491,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ses-tooltip .tip-pat+.tip-pat{border-top:1px solid rgba(255,255,255,.05)}
 .ses-tooltip .tip-pat-nm{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--dim)}
 .ses-tooltip .tip-pat.on .tip-pat-nm{color:var(--text)}
-.ses-tooltip .tip-pat-dot{width:6px;height:6px;border-radius:50%;flex:none;background:var(--border2)}
-.ses-tooltip .tip-pat.on .tip-pat-dot{background:var(--accent);box-shadow:0 0 6px rgba(230,255,85,.55)}
-.ses-tooltip .tip-pat-pl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--accent);margin-top:1px;margin-left:13px}
+.ses-tooltip .tip-pat-dot{display:none}
+.ses-tooltip .tip-pat-pl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--accent);margin-top:1px;margin-left:0}
 /* Athlete muscle load map */
 .ath-mmap-wrap{margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
 .ath-mmap-body{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
@@ -806,12 +805,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Athlete picker (in session editor) */
 .ath-pick{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px}
 .ath-pick-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.ath-pick-grid{display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto}
-.ath-chip{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--border);padding:6px 12px;border-radius:18px;cursor:pointer;font-size:12px;transition:all .15s;user-select:none;font-weight:500}
-.ath-chip:hover{border-color:var(--accent);transform:translateY(-1px)}
-.ath-chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
-.ath-chip input{width:auto;margin:0;accent-color:var(--accent)}
-.ath-chip .num{color:var(--muted);font-size:10px;font-weight:700}
+.ath-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:5px;max-height:170px;overflow-y:auto}
+.ath-chip{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:11px;transition:all .15s;user-select:none;font-weight:700;letter-spacing:.03em;white-space:nowrap;overflow:hidden;min-width:0}
+.ath-chip:hover{border-color:var(--accent);background:var(--hover)}
+.ath-chip.on{background:rgba(230,255,85,.08);border-color:var(--accent);color:var(--accent)}
+.ath-chip input{width:12px;height:12px;margin:0;accent-color:var(--accent);flex-shrink:0}
+.ath-chip .num{color:var(--muted);font-size:9.5px;font-weight:700;margin-left:auto;flex-shrink:0}
 .team-badge{background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(236,72,153,.2));color:#c4b5fd;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.4px;border:1px solid rgba(139,92,246,.3)}
 .ath-card{
   background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;
@@ -1845,6 +1844,7 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 .sidebar{background:var(--bg2)!important}
 header{background:var(--bg2)!important}
 .panel,.stat{background:var(--panel)!important}
+.panel,.ap-head{border:1px solid var(--border)!important;box-shadow:none!important}
 /* Inner cards / chips — drop the translucent tint + inset highlight so they're flat & solid too */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{background:var(--panel)!important;border:1px solid var(--border)!important;box-shadow:none!important}
 .lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search{background:var(--bg2)!important;border-color:var(--border)!important}
@@ -2159,7 +2159,7 @@ function migrate(data){
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.savedResearch))data.savedResearch=[];
   if(!Array.isArray(data.exercises))data.exercises=[];
-  const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant'};
+  const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
   data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
@@ -4291,11 +4291,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});setHovSes(null);}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
-              {_hov&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
+              {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
                 <div className="tip-h">Movements &amp; Patterns</div>
-                {MOVE_PATTERNS.map(([p])=>{const on=_pats.includes(p);const pl=_planes[p]||[];return(<div key={p} className={"tip-pat"+(on?" on":"")}>
-                    <div className="tip-pat-nm"><span className="tip-pat-dot"/>{p}</div>
-                    {on&&pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
+                {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
+                    <div className="tip-pat-nm">{p}</div>
+                    {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
                   </div>);})}
               </div>}
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
@@ -4326,11 +4326,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               const _hov=hovSes===s.id;const _pats=s.selPatterns||[];const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
               return(<div key={s.id||j} className="cs-item-wrap" onMouseEnter={e=>{e.stopPropagation();setHovSes(s.id);}} onMouseLeave={()=>setHovSes(null)}>
                 <div className="cs-item" style={{borderLeftColor:sesColor(s)}}>{s.name||'Session'}</div>
-                {_hov&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
+                {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
                   <div className="tip-h">Movements &amp; Patterns</div>
-                  {MOVE_PATTERNS.map(([p])=>{const on=_pats.includes(p);const pl=_planes[p]||[];return(<div key={p} className={"tip-pat"+(on?" on":"")}>
-                      <div className="tip-pat-nm"><span className="tip-pat-dot"/>{p}</div>
-                      {on&&pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
+                  {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
+                      <div className="tip-pat-nm">{p}</div>
+                      {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
                     </div>);})}
                 </div>}
               </div>);
@@ -8293,7 +8293,7 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Power'];
+const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
 // Phosphor color for each category tile.
 const TYPE_COLORS={
@@ -8305,7 +8305,7 @@ const TYPE_COLORS={
   'Full Body':'#f9a8d4',                 // pink
   'Multi Directional Speed':'#fca5a5',   // red
   'Plyometric':'#5eead4',                // teal
-  'Power':'#a78bfa',                     // violet
+  'Medicine Ball':'#a78bfa',             // violet
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
 const HIP_PATTERNS=['Bilateral','Unilateral'];
@@ -8322,6 +8322,7 @@ const SUB_TYPES={
   'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
   'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
   'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational']},
+  'Medicine Ball':{label:'Movement Pattern',values:['Horizontal','Vertical','Rotational']},
 };
 
 function videoEmbed(src){
@@ -8603,7 +8604,7 @@ function ExercisesView({data,setData}){
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!EX_TYPES.includes(e.type)).length;
   // Top-right category dropdown (label → EX_TYPES value).
-  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Power','Power']];
+  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball']];
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setQ('');}}}>
       <option value="">All categories</option>
