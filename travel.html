@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gezgin — Seyahat Günlüğü</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M32 12c-7.2 0-13 5.8-13 13 0 9.7 13 27 13 27s13-17.3 13-27c0-7.2-5.8-13-13-13zm0 17.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- Leaflet (harita) — API anahtarı gerekmez, OpenStreetMap -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- React + Babel (klasik runtime; periodization-planner ile aynı yaklaşım) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+
+<!-- Firebase (Google girişi + bulut senkronizasyonu) — planner ile aynı proje -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  try{
+    firebase.initializeApp({
+      apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
+      authDomain:"periodization-planner.firebaseapp.com",
+      projectId:"periodization-planner",
+      storageBucket:"periodization-planner.firebasestorage.app",
+      messagingSenderId:"225598184270",
+      appId:"1:225598184270:web:a2b812983e298441df1c1f"
+    });
+    // Bazı ağlarda WebChannel yazımları takılı bırakıyor; long-polling'i zorla (planner ile aynı).
+    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+  }catch(e){console.warn('Firebase init failed',e);}
+</script>
+
+<style>
+:root{
+  --bg:#0b0f17; --panel:#121826; --panel2:#171f30; --border:#243049;
+  --text:#e8edf6; --dim:#8b97ad; --accent:#06b6d4; --accent2:#8b5cf6;
+  --gold:#fbbf24; --danger:#ef4444; --ok:#22c55e;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body,#root{height:100%}
+body{margin:0;font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0}
+button{font-family:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#2a3754;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{display:flex;flex-direction:column;height:100%}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(18,24,38,.9);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--border);z-index:1200;flex:0 0 auto}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Space Grotesk';font-weight:700;font-size:18px}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:17px}
+.spacer{flex:1}
+
+.sync{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);
+  padding:5px 10px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.synced{background:var(--ok)} .dot.syncing{background:var(--gold);animation:pulse 1s infinite}
+.dot.offline{background:#64748b} .dot.error{background:var(--danger)}
+@keyframes pulse{50%{opacity:.3}}
+
+.btn{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:8px 14px;
+  border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;
+  align-items:center;gap:7px}
+.btn:hover{border-color:#3a4a6b;background:#1c2538}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{color:#fff;background:var(--danger);border:none}
+.btn:disabled{opacity:.5;cursor:default}
+
+.avatar{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);object-fit:cover}
+
+.main{flex:1;display:flex;min-height:0;position:relative}
+#map{flex:1;height:100%;background:#0e1420;z-index:1}
+.leaflet-container{background:#0e1420;font-family:inherit}
+
+/* Sidebar */
+.sidebar{width:380px;max-width:90vw;background:var(--panel);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;min-height:0;z-index:1100}
+.side-head{padding:14px 16px;border-bottom:1px solid var(--border)}
+.search{display:flex;gap:8px}
+.search input{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);
+  padding:9px 12px;border-radius:9px;font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.geo-results{margin-top:8px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.geo-results .gr{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border)}
+.geo-results .gr:last-child{border:none}
+.geo-results .gr:hover{background:#1c2538}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.chip{border:1px solid var(--border);background:var(--panel2);padding:5px 10px;border-radius:999px;
+  font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px}
+.chip.active{border-color:var(--accent);background:rgba(6,182,212,.15);color:#fff}
+
+.list{flex:1;overflow-y:auto;padding:10px}
+.card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.card:hover{border-color:#3a4a6b;transform:translateY(-1px)}
+.card .row{display:flex;align-items:flex-start;gap:10px}
+.card .emoji{font-size:24px;line-height:1}
+.card .nm{font-weight:700;font-size:15px}
+.card .cat{font-size:11px;color:var(--dim);margin-top:2px}
+.card .stars{font-size:13px;color:var(--gold);margin-top:4px;letter-spacing:1px}
+.card .thumbs{display:flex;gap:5px;margin-top:8px}
+.card .thumbs img{width:46px;height:46px;border-radius:7px;object-fit:cover}
+.card .more{width:46px;height:46px;border-radius:7px;background:#0e1420;display:flex;align-items:center;
+  justify-content:center;font-size:12px;color:var(--dim)}
+.empty{text-align:center;color:var(--dim);padding:40px 20px;font-size:14px}
+
+/* Emoji marker */
+.emoji-marker{font-size:26px;text-align:center;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));
+  transition:transform .12s}
+.emoji-marker:hover{transform:scale(1.25)}
+.emoji-marker .pin-rate{font-size:9px;background:rgba(0,0,0,.7);color:var(--gold);border-radius:6px;
+  padding:0 3px;display:inline-block;margin-top:-2px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(5,8,14,.7);backdrop-filter:blur(3px);z-index:2000;
+  display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);
+  width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--panel);z-index:2}
+.modal-head h2{font-size:17px;flex:1}
+.modal-body{padding:18px}
+.close{background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.field input[type=text],.field textarea{width:100%;background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);padding:10px 12px;border-radius:10px;font-size:14px;outline:none;font-family:inherit}
+.field input:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:80px}
+
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.emoji-grid button{font-size:22px;padding:7px 0;border:1px solid var(--border);background:var(--panel2);
+  border-radius:10px;cursor:pointer}
+.emoji-grid button.sel{border-color:var(--accent);background:rgba(6,182,212,.2)}
+
+.stars-input{display:flex;gap:4px;font-size:30px;cursor:pointer}
+.stars-input span{color:#33415c;transition:.1s}
+.stars-input span.on{color:var(--gold)}
+
+.photos{display:flex;flex-wrap:wrap;gap:8px}
+.photos .ph{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.photos .ph img{width:100%;height:100%;object-fit:cover}
+.photos .ph .del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;color:#fff;
+  width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:13px;line-height:1}
+.photos .add{width:84px;height:84px;border:1.5px dashed var(--border);border-radius:10px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;color:var(--dim);cursor:pointer;font-size:12px;gap:3px}
+.photos .add:hover{border-color:var(--accent);color:var(--text)}
+
+.detail-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.detail-photos img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer}
+.detail-stars{font-size:24px;color:var(--gold);letter-spacing:2px}
+.detail-meta{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.detail-meta .big-emoji{font-size:36px}
+.review{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;
+  font-size:14px;line-height:1.5;white-space:pre-wrap;margin-top:10px}
+.coord{font-size:11px;color:var(--dim);font-family:monospace;margin-top:4px}
+
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:3000;display:flex;align-items:center;justify-content:center}
+.lightbox img{max-width:94vw;max-height:90vh;border-radius:10px}
+.lightbox .lb-close{position:absolute;top:18px;right:20px;font-size:34px;color:#fff;background:none;border:none;cursor:pointer}
+
+/* Sign-in screen */
+.signin{height:100%;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(1200px 600px at 70% -10%,rgba(139,92,246,.18),transparent),
+             radial-gradient(900px 500px at 0% 100%,rgba(6,182,212,.16),transparent),var(--bg)}
+.signin-card{text-align:center;max-width:420px}
+.signin-card .big-logo{width:74px;height:74px;border-radius:20px;margin:0 auto 18px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:40px}
+.signin-card h1{font-size:30px;margin-bottom:10px}
+.signin-card p{color:var(--dim);font-size:15px;line-height:1.6;margin-bottom:26px}
+.gbtn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:11px;border:none;
+  background:#fff;color:#1f1f1f;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.gbtn:hover{filter:brightness(.97)}
+.note{margin-top:16px;font-size:12px;color:var(--dim)}
+.err{color:#fca5a5;font-size:13px;margin-top:14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  padding:10px 12px;border-radius:9px}
+
+.fab{position:absolute;left:16px;bottom:24px;z-index:1000;display:flex;flex-direction:column;gap:10px}
+.fab button{width:46px;height:46px;border-radius:50%;border:1px solid var(--border);background:var(--panel);
+  color:var(--text);font-size:20px;cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center}
+.fab button:hover{background:var(--panel2)}
+.hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(18,24,38,.94);
+  border:1px solid var(--border);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--text);box-shadow:var(--shadow)}
+
+.mobile-toggle{display:none}
+@media(max-width:820px){
+  .sidebar{position:absolute;right:0;top:0;height:100%;transform:translateX(100%);transition:transform .25s;box-shadow:var(--shadow)}
+  .sidebar.open{transform:translateX(0)}
+  .mobile-toggle{display:inline-flex}
+  .brand span.full{display:none}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef,useCallback}=React;
+
+/* ============================ Sabitler ============================ */
+const EMOJIS=[
+  {e:'📍',label:'Genel'},{e:'❤️',label:'Favori'},{e:'⭐',label:'Gidilecek'},{e:'✅',label:'Gidildi'},
+  {e:'🍽️',label:'Restoran'},{e:'☕',label:'Kafe'},{e:'🍺',label:'Bar'},{e:'🏨',label:'Otel'},
+  {e:'🏛️',label:'Müze'},{e:'🏖️',label:'Plaj'},{e:'⛰️',label:'Dağ'},{e:'🌳',label:'Park'},
+  {e:'🛍️',label:'Alışveriş'},{e:'🎭',label:'Eğlence'},{e:'🏞️',label:'Doğa'},{e:'🗺️',label:'Görülecek'},
+  {e:'🕌',label:'İbadet'},{e:'🎡',label:'Lunapark'},{e:'🍷',label:'Şarap'},{e:'📸',label:'Manzara'},
+  {e:'🏰',label:'Tarihi'},{e:'🚗',label:'Yol'},{e:'🏕️',label:'Kamp'},{e:'✈️',label:'Havalimanı'}
+];
+const emojiLabel=e=>(EMOJIS.find(x=>x.e===e)||{}).label||'';
+
+/* ============================ Yardımcılar ============================ */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const makeDefault=()=>({places:[],_v:1});
+const hasRealData=d=>!!(d&&Array.isArray(d.places)&&d.places.length);
+
+// Fotoğrafı küçült + JPEG'e çevir (bulut senkronizasyonunu hafif tut)
+function compressImage(file,maxDim=1280,quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width:w,height:h}=img;
+        if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}
+        else if(h>=w&&h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',quality));
+      };
+      img.onerror=reject;img.src=fr.result;
+    };
+    fr.onerror=reject;fr.readAsDataURL(file);
+  });
+}
+
+const stars=(n)=>'★'.repeat(n)+'☆'.repeat(5-n);
+
+/* ============================ Bulut Senkronizasyonu ============================ */
+// periodization-planner ile aynı parçalı Firestore modeli, ayrı koleksiyon: seyahat_verileri
+const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
+const CHUNK_SIZE=400000;
+const splitChunks=s=>{const a=[];for(let i=0;i<s.length;i+=CHUNK_SIZE)a.push(s.slice(i,i+CHUNK_SIZE));return a.length?a:[''];};
+
+function useCloudSync(data,setData){
+  const[user,setUser]=useState(null);
+  const[authLoading,setAuthLoading]=useState(true);
+  const[status,setStatus]=useState('offline');
+  const[authErr,setAuthErr]=useState('');
+  const dataRef=useRef(data);dataRef.current=data;
+  const userRef=useRef(null);userRef.current=user;
+  const prevUid=useRef(null);
+  const ready=useRef(false);
+  const lastSynced=useRef(null);
+  const prevN=useRef(0);
+  const timer=useRef(null);
+  const COL='seyahat_verileri';
+
+  const assemble=(manifest,chunks)=>{
+    const n=manifest.n,rev=manifest.rev,parts=[];
+    for(let i=0;i<n;i++){const ch=chunks[i];if(!ch||ch.rev!==rev)return null;parts.push(ch.c);}
+    return parts.join('');
+  };
+
+  const writeNow=useCallback(async()=>{
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    const fb=FB();const u=userRef.current;
+    if(!fb||!u||!ready.current)return;
+    const json=JSON.stringify(dataRef.current);
+    if(json===lastSynced.current){setStatus('synced');return;}
+    setStatus('syncing');
+    try{
+      const col=fb.firestore().collection(COL);
+      const parts=splitChunks(json);const n=parts.length;const rev=Date.now();
+      const ops=[];
+      parts.forEach((c,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c,rev}}));
+      for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i});
+      for(let i=0;i<ops.length;i+=450){
+        const b=fb.firestore().batch();
+        ops.slice(i,i+450).forEach(o=>{if(o.set)b.set(col.doc(o.id),o.data);else b.delete(col.doc(o.id));});
+        await b.commit();
+      }
+      await col.doc(u.uid).set({userId:u.uid,n,rev});
+      prevN.current=n;lastSynced.current=json;
+      setStatus('synced');
+    }catch(e){console.warn('write',e);setStatus('error');}
+  },[]);
+
+  // Auth durumu
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb){setAuthLoading(false);return;}
+    fb.auth().getRedirectResult().catch(e=>{
+      const m={'auth/unauthorized-domain':'Bu adres Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine ekle.',
+        'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkin değil.',
+        'auth/network-request-failed':'İnternet bağlantısı hatası.'}[e.code]||(e.code?e.code+': '+e.message:e.message);
+      setAuthErr(m);
+    });
+    return fb.auth().onAuthStateChanged(u=>{
+      setAuthLoading(false);
+      if(!u){
+        ready.current=false;lastSynced.current=null;prevUid.current=null;prevN.current=0;
+        if(timer.current){clearTimeout(timer.current);timer.current=null;}
+        setData(makeDefault());setStatus('offline');setUser(null);return;
+      }
+      if(prevUid.current&&prevUid.current!==u.uid){ready.current=false;lastSynced.current=null;prevN.current=0;setData(makeDefault());}
+      prevUid.current=u.uid;setUser(u);
+    });
+  },[]);
+
+  // Canlı dinleyici
+  useEffect(()=>{
+    const fb=FB();if(!fb||!user)return;
+    setStatus('syncing');ready.current=false;lastSynced.current=null;prevN.current=0;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
+      .onSnapshot(snap=>{
+        try{
+          if(snap.metadata&&snap.metadata.hasPendingWrites)return;
+          let manifest=null;const chunks={};
+          snap.forEach(d=>{const v=d.data();if(!v)return;
+            if(d.id===user.uid&&typeof v.n==='number')manifest=v;
+            else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v;});
+          if(manifest){
+            const json=assemble(manifest,chunks);
+            if(json==null)return;
+            ready.current=true;prevN.current=manifest.n;
+            if(json===lastSynced.current){setStatus('synced');return;}
+            lastSynced.current=json;
+            let parsed;try{parsed=JSON.parse(json);}catch(e){return;}
+            if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            setStatus('synced');
+          }else{
+            if(snap.metadata&&snap.metadata.fromCache)return;
+            ready.current=true;
+            if(hasRealData(dataRef.current)){lastSynced.current=null;writeNow();}
+            else{lastSynced.current=JSON.stringify(dataRef.current);setStatus('synced');}
+          }
+        }catch(e){console.warn('sync',e);setStatus('error');}
+      },err=>{console.warn('sync sub',err);setStatus('error');});
+    return unsub;
+  },[user,writeNow]);
+
+  // Sekme kapanınca yazımı gönder
+  useEffect(()=>{
+    const fb=FB();if(!fb||!user)return;
+    const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
+    const onVis=()=>{if(document.visibilityState==='hidden')flush();};
+    document.addEventListener('visibilitychange',onVis);
+    window.addEventListener('pagehide',flush);
+    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);};
+  },[user,writeNow]);
+
+  // Debounce yazım
+  useEffect(()=>{
+    const fb=FB();if(!fb||!user||!ready.current)return;
+    if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    if(JSON.stringify(data)===lastSynced.current)return;
+    setStatus('syncing');
+    timer.current=setTimeout(()=>writeNow(),300);
+  },[data,user,writeNow]);
+
+  return{user,status,authLoading,authErr,
+    signInWithGoogle:async()=>{
+      const p=new firebase.auth.GoogleAuthProvider();
+      p.setCustomParameters({prompt:'select_account'});
+      try{return await FB().auth().signInWithPopup(p);}
+      catch(e){
+        const toRedirect=['auth/popup-closed-by-user','auth/cancelled-popup-request','auth/popup-blocked',
+          'auth/web-storage-unsupported','auth/operation-not-supported-in-this-environment','auth/internal-error'];
+        if(toRedirect.includes(e.code)){await FB().auth().signInWithRedirect(p);return;}
+        throw e;
+      }
+    },
+    signOut:async()=>{try{await writeNow();}catch(e){}return FB().auth().signOut();}
+  };
+}
+
+/* ============================ Geocoding (Nominatim / OSM) ============================ */
+async function geocode(q){
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=6&accept-language=tr&q='+encodeURIComponent(q),
+    {headers:{'Accept':'application/json'}});
+  if(!r.ok)return[];
+  return await r.json();
+}
+async function reverseGeocode(lat,lng){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&accept-language=tr&lat='+lat+'&lon='+lng);
+    if(!r.ok)return'';
+    const j=await r.json();
+    const a=j.address||{};
+    return a.attraction||a.tourism||a.amenity||a.shop||a.building||a.road||j.display_name?.split(',')[0]||'';
+  }catch(e){return'';}
+}
+
+/* ============================ Harita ============================ */
+function MapView({places,onMapClick,focusId,onMarkerClick,flyTo}){
+  const elRef=useRef(null);
+  const mapRef=useRef(null);
+  const layerRef=useRef(null);
+  const clickRef=useRef(onMapClick);clickRef.current=onMapClick;
+  const markerClickRef=useRef(onMarkerClick);markerClickRef.current=onMarkerClick;
+
+  // init
+  useEffect(()=>{
+    if(mapRef.current||!elRef.current)return;
+    const map=L.map(elRef.current,{zoomControl:true,attributionControl:true})
+      .setView([39.0,35.0],5); // Türkiye merkezli başlangıç
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+      attribution:'&copy; OpenStreetMap &copy; CARTO',maxZoom:19,subdomains:'abcd'
+    }).addTo(map);
+    map.on('click',e=>clickRef.current&&clickRef.current(e.latlng.lat,e.latlng.lng));
+    layerRef.current=L.layerGroup().addTo(map);
+    mapRef.current=map;
+    setTimeout(()=>map.invalidateSize(),200);
+  },[]);
+
+  // markerları çiz
+  useEffect(()=>{
+    const map=mapRef.current,layer=layerRef.current;if(!map||!layer)return;
+    layer.clearLayers();
+    places.forEach(p=>{
+      const rate=p.rating?`<span class="pin-rate">${'★'.repeat(p.rating)}</span>`:'';
+      const icon=L.divIcon({className:'',html:`<div class="emoji-marker">${p.emoji||'📍'}<br>${rate}</div>`,
+        iconSize:[34,40],iconAnchor:[17,34]});
+      const m=L.marker([p.lat,p.lng],{icon,title:p.name});
+      m.on('click',()=>markerClickRef.current&&markerClickRef.current(p.id));
+      m.addTo(layer);
+    });
+  },[places]);
+
+  // odaklan
+  useEffect(()=>{
+    const map=mapRef.current;if(!map||!focusId)return;
+    const p=places.find(x=>x.id===focusId);
+    if(p)map.flyTo([p.lat,p.lng],Math.max(map.getZoom(),14),{duration:.6});
+  },[focusId]);
+
+  // dış konuma uç (arama)
+  useEffect(()=>{
+    const map=mapRef.current;if(!map||!flyTo)return;
+    map.flyTo([flyTo.lat,flyTo.lng],flyTo.zoom||14,{duration:.7});
+  },[flyTo]);
+
+  return <div id="map" ref={elRef}/>;
+}
+
+/* ============================ Yıldız girişi ============================ */
+function StarInput({value,onChange}){
+  const[hover,setHover]=useState(0);
+  return(
+    <div className="stars-input" onMouseLeave={()=>setHover(0)}>
+      {[1,2,3,4,5].map(n=>(
+        <span key={n} className={(hover||value)>=n?'on':''}
+          onMouseEnter={()=>setHover(n)}
+          onClick={()=>onChange(value===n?0:n)}>★</span>
+      ))}
+    </div>
+  );
+}
+
+/* ============================ Ekle / Düzenle modalı ============================ */
+function PlaceModal({initial,coord,onSave,onClose,onDelete}){
+  const[name,setName]=useState(initial?.name||'');
+  const[emoji,setEmoji]=useState(initial?.emoji||'📍');
+  const[rating,setRating]=useState(initial?.rating||0);
+  const[notes,setNotes]=useState(initial?.notes||'');
+  const[photos,setPhotos]=useState(initial?.photos||[]);
+  const[busy,setBusy]=useState(false);
+  const fileRef=useRef(null);
+  const lat=initial?.lat??coord?.lat,lng=initial?.lng??coord?.lng;
+
+  // Yeni yer: adı otomatik doldurmayı dene
+  useEffect(()=>{
+    if(!initial&&coord&&!name){
+      reverseGeocode(coord.lat,coord.lng).then(n=>{if(n)setName(prev=>prev||n);});
+    }
+  },[]);
+
+  const addPhotos=async(files)=>{
+    setBusy(true);
+    const arr=[];
+    for(const f of files){if(f.type.startsWith('image/')){try{arr.push(await compressImage(f));}catch(e){}}}
+    setPhotos(p=>[...p,...arr]);setBusy(false);
+  };
+
+  const save=()=>{
+    if(!name.trim()){alert('Lütfen bir isim girin.');return;}
+    onSave({id:initial?.id||uid(),lat,lng,name:name.trim(),emoji,rating,notes:notes.trim(),photos,
+      createdAt:initial?.createdAt||Date.now(),updatedAt:Date.now()});
+  };
+
+  return(
+    <div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal">
+        <div className="modal-head">
+          <h2>{initial?'Yeri Düzenle':'Yeni Yer Ekle'}</h2>
+          <button className="close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="field">
+            <label>İsim</label>
+            <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="ör. Galata Kulesi" autoFocus/>
+            <div className="coord">📌 {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}</div>
+          </div>
+          <div className="field">
+            <label>İşaret (emoji)</label>
+            <div className="emoji-grid">
+              {EMOJIS.map(x=>(
+                <button key={x.e} className={emoji===x.e?'sel':''} title={x.label}
+                  onClick={()=>setEmoji(x.e)}>{x.e}</button>
+              ))}
+            </div>
+          </div>
+          <div className="field">
+            <label>Puan</label>
+            <StarInput value={rating} onChange={setRating}/>
+          </div>
+          <div className="field">
+            <label>Yorum / Notlar</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Burası nasıldı? İzlenimlerini yaz…"/>
+          </div>
+          <div className="field">
+            <label>Fotoğraflar</label>
+            <div className="photos">
+              {photos.map((src,i)=>(
+                <div className="ph" key={i}>
+                  <img src={src} alt=""/>
+                  <button className="del" onClick={()=>setPhotos(p=>p.filter((_,j)=>j!==i))}>×</button>
+                </div>
+              ))}
+              <div className="add" onClick={()=>fileRef.current.click()}>
+                <span style={{fontSize:22}}>＋</span>{busy?'Yükleniyor…':'Ekle'}
+              </div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{display:'none'}}
+              onChange={e=>{addPhotos([...e.target.files]);e.target.value='';}}/>
+          </div>
+          <div style={{display:'flex',gap:10,marginTop:6}}>
+            <button className="btn primary" style={{flex:1}} onClick={save} disabled={busy}>Kaydet</button>
+            {initial&&<button className="btn danger" onClick={()=>{if(confirm('Bu yer silinsin mi?'))onDelete(initial.id);}}>Sil</button>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================ Detay modalı ============================ */
+function DetailModal({place,onClose,onEdit,onZoom,onLightbox}){
+  return(
+    <div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div className="modal">
+        <div className="modal-head">
+          <h2>{place.name}</h2>
+          <button className="close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div className="detail-meta">
+            <span className="big-emoji">{place.emoji}</span>
+            <div>
+              <div style={{fontSize:13,color:'var(--dim)'}}>{emojiLabel(place.emoji)}</div>
+              {place.rating>0&&<div className="detail-stars">{stars(place.rating)}</div>}
+            </div>
+          </div>
+          <div className="coord">📌 {Number(place.lat).toFixed(5)}, {Number(place.lng).toFixed(5)}</div>
+          {place.photos&&place.photos.length>0&&(
+            <div className="detail-photos">
+              {place.photos.map((src,i)=><img key={i} src={src} alt="" onClick={()=>onLightbox(src)}/>)}
+            </div>
+          )}
+          {place.notes&&<div className="review">{place.notes}</div>}
+          <div style={{display:'flex',gap:10,marginTop:16}}>
+            <button className="btn primary" style={{flex:1}} onClick={()=>onEdit(place)}>Düzenle</button>
+            <button className="btn" onClick={()=>{onZoom(place.id);onClose();}}>Haritada Göster</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================ Giriş ekranı ============================ */
+function SignIn({onGoogle,err}){
+  const[busy,setBusy]=useState(false);
+  return(
+    <div className="signin">
+      <div className="signin-card">
+        <div className="big-logo">🌍</div>
+        <h1>Gezgin</h1>
+        <p>Gezdiğin yerleri haritada işaretle, puanla, yorum yaz ve fotoğraflarını ekle.
+          Her şey Google hesabınla senkronize olur — tüm cihazlarından erişebilirsin.</p>
+        <button className="gbtn" disabled={busy} onClick={async()=>{setBusy(true);try{await onGoogle();}catch(e){alert(e.message||e.code);}setBusy(false);}}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+          {busy?'Giriş yapılıyor…':'Google ile Giriş Yap'}
+        </button>
+        {err&&<div className="err">{err}</div>}
+        <div className="note">Harita: OpenStreetMap · Senkronizasyon: Firebase</div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================ Ana uygulama ============================ */
+function App(){
+  const[data,setData]=useState(makeDefault());
+  const{user,status,authLoading,authErr,signInWithGoogle,signOut}=useCloudSync(data,setData);
+
+  const[adding,setAdding]=useState(null);     // {lat,lng}
+  const[editing,setEditing]=useState(null);   // place obj
+  const[detail,setDetail]=useState(null);     // place obj
+  const[focusId,setFocusId]=useState(null);
+  const[flyTo,setFlyTo]=useState(null);
+  const[lightbox,setLightbox]=useState(null);
+  const[filter,setFilter]=useState('all');
+  const[query,setQuery]=useState('');
+  const[geoResults,setGeoResults]=useState([]);
+  const[sidebarOpen,setSidebarOpen]=useState(false);
+
+  const places=data.places||[];
+
+  const upsert=p=>{
+    setData(d=>{
+      const arr=(d.places||[]).slice();
+      const i=arr.findIndex(x=>x.id===p.id);
+      if(i>=0)arr[i]=p;else arr.push(p);
+      return{...d,places:arr};
+    });
+    setAdding(null);setEditing(null);
+    setFocusId(p.id);
+  };
+  const remove=id=>{
+    setData(d=>({...d,places:(d.places||[]).filter(x=>x.id!==id)}));
+    setEditing(null);setDetail(null);
+  };
+
+  // emoji filtreleri (sadece kullanılanlar)
+  const usedEmojis=[...new Set(places.map(p=>p.emoji))];
+  const filtered=places.filter(p=>{
+    if(filter!=='all'&&p.emoji!==filter)return false;
+    if(query.trim()){
+      const q=query.toLowerCase();
+      return (p.name||'').toLowerCase().includes(q)||(p.notes||'').toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  // arama: önce yerel, eşleşme yoksa geocode öner
+  const runSearch=async()=>{
+    if(!query.trim()){setGeoResults([]);return;}
+    const res=await geocode(query.trim());
+    setGeoResults(res);
+  };
+
+  const locateMe=()=>{
+    if(!navigator.geolocation)return alert('Tarayıcı konumu desteklemiyor.');
+    navigator.geolocation.getCurrentPosition(
+      pos=>setFlyTo({lat:pos.coords.latitude,lng:pos.coords.longitude,zoom:14,_t:Date.now()}),
+      ()=>alert('Konum alınamadı.'),{enableHighAccuracy:true});
+  };
+
+  if(authLoading)return(<div className="signin"><div className="signin-card"><div className="big-logo">🌍</div><p>Yükleniyor…</p></div></div>);
+  if(!user)return <SignIn onGoogle={signInWithGoogle} err={authErr}/>;
+
+  return(
+    <div className="app">
+      <div className="topbar">
+        <div className="brand"><span className="logo">🌍</span><span className="full">Gezgin</span></div>
+        <div className="spacer"/>
+        <div className="sync"><span className={'dot '+status}/>{
+          status==='synced'?'Senkron':status==='syncing'?'Eşitleniyor…':status==='error'?'Hata':'Çevrimdışı'}</div>
+        {user.photoURL&&<img className="avatar" src={user.photoURL} alt="" referrerPolicy="no-referrer"/>}
+        <button className="btn ghost sm" onClick={signOut} title="Çıkış">Çıkış</button>
+        <button className="btn sm mobile-toggle" onClick={()=>setSidebarOpen(o=>!o)}>☰ {places.length}</button>
+      </div>
+
+      <div className="main">
+        <MapView places={filtered} focusId={focusId} flyTo={flyTo}
+          onMapClick={(lat,lng)=>{setAdding({lat,lng});}}
+          onMarkerClick={id=>{const p=places.find(x=>x.id===id);if(p)setDetail(p);}}/>
+
+        <div className="hint">🗺️ Yer eklemek için haritaya dokun</div>
+        <div className="fab">
+          <button title="Konumum" onClick={locateMe}>🎯</button>
+        </div>
+
+        <div className={'sidebar'+(sidebarOpen?' open':'')}>
+          <div className="side-head">
+            <div className="search">
+              <input value={query} onChange={e=>{setQuery(e.target.value);setGeoResults([]);}}
+                onKeyDown={e=>{if(e.key==='Enter')runSearch();}}
+                placeholder="Yerlerimde ara veya konum bul…"/>
+              <button className="btn sm" onClick={runSearch}>🔎</button>
+            </div>
+            {geoResults.length>0&&(
+              <div className="geo-results">
+                {geoResults.map((r,i)=>(
+                  <div className="gr" key={i} onClick={()=>{
+                    setFlyTo({lat:+r.lat,lng:+r.lon,zoom:14,_t:Date.now()});
+                    setGeoResults([]);setSidebarOpen(false);
+                  }}>📍 {r.display_name}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {places.length>0&&(
+            <div className="filters">
+              <button className={'chip'+(filter==='all'?' active':'')} onClick={()=>setFilter('all')}>Tümü {places.length}</button>
+              {usedEmojis.map(e=>(
+                <button key={e} className={'chip'+(filter===e?' active':'')} onClick={()=>setFilter(filter===e?'all':e)}>
+                  {e} {places.filter(p=>p.emoji===e).length}</button>
+              ))}
+            </div>
+          )}
+
+          <div className="list">
+            {filtered.length===0&&(
+              <div className="empty">
+                {places.length===0
+                  ?'Henüz yer eklemedin.\nHaritaya dokunarak ilk yerini ekle! 🗺️'
+                  :'Eşleşen yer yok.'}
+              </div>
+            )}
+            {filtered.slice().sort((a,b)=>b.updatedAt-a.updatedAt).map(p=>(
+              <div className="card" key={p.id} onClick={()=>setDetail(p)}>
+                <div className="row">
+                  <div className="emoji">{p.emoji}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="nm">{p.name}</div>
+                    <div className="cat">{emojiLabel(p.emoji)}</div>
+                    {p.rating>0&&<div className="stars">{stars(p.rating)}</div>}
+                  </div>
+                </div>
+                {p.photos&&p.photos.length>0&&(
+                  <div className="thumbs">
+                    {p.photos.slice(0,4).map((src,i)=><img key={i} src={src} alt=""/>)}
+                    {p.photos.length>4&&<div className="more">+{p.photos.length-4}</div>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {adding&&<PlaceModal coord={adding} onSave={upsert} onClose={()=>setAdding(null)} onDelete={remove}/>}
+      {editing&&<PlaceModal initial={editing} onSave={upsert} onClose={()=>setEditing(null)} onDelete={remove}/>}
+      {detail&&!editing&&<DetailModal place={places.find(x=>x.id===detail.id)||detail}
+        onClose={()=>setDetail(null)}
+        onEdit={p=>{setEditing(p);}}
+        onZoom={id=>{setFocusId(id);setFlyTo({lat:detail.lat,lng:detail.lng,zoom:15,_t:Date.now()});}}
+        onLightbox={src=>setLightbox(src)}/>}
+      {lightbox&&(
+        <div className="lightbox" onClick={()=>setLightbox(null)}>
+          <button className="lb-close">×</button>
+          <img src={lightbox} alt=""/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
