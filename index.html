@@ -496,12 +496,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Athlete muscle load map */
 .ath-mmap-wrap{margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
 .ath-mmap-body{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
-.ath-mmap-list{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px}
-.ath-mmap-row{display:flex;align-items:center;gap:8px;font-size:12px}
-.ath-mmap-name{min-width:110px;color:var(--text2)}
-.ath-mmap-bar{flex:1;height:5px;border-radius:3px;background:var(--border);overflow:hidden}
-.ath-mmap-fill{height:100%;border-radius:3px}
-.ath-mmap-pct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);min-width:32px;text-align:right}
+.ath-mmap-list{flex:1;min-width:200px;display:flex;flex-direction:column;gap:7px}
+.ath-mmap-row{display:flex;align-items:center;gap:10px;font-size:12px;transition:opacity .2s}
+.ath-mmap-row.zero{opacity:.38}
+.ath-mmap-row:hover{opacity:1}
+.ath-mmap-row:hover .ath-mmap-name{color:var(--text)}
+.ath-mmap-name{min-width:110px;color:var(--text2);transition:color .15s}
+.ath-mmap-bar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
+.ath-mmap-fill{height:100%;border-radius:99px;background-image:linear-gradient(90deg,rgba(255,255,255,.16),rgba(255,255,255,0) 55%);box-shadow:0 0 10px -1px rgba(230,255,85,.4)}
+.ath-mmap-row.zero .ath-mmap-fill{box-shadow:none}
+.ath-mmap-pct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;color:var(--text2);min-width:34px;text-align:right}
+.ath-mmap-row.zero .ath-mmap-pct{color:var(--dim);font-weight:400}
+/* Wide screens: split the muscle list into two compact columns */
+@media(min-width:1080px){
+  .ath-mmap-body>.ath-mmap-list{display:block;column-count:2;column-gap:32px}
+  .ath-mmap-body>.ath-mmap-list .ath-mmap-row{break-inside:avoid;padding:3.5px 0}
+}
 .ml-fig-wrap{width:340px;max-width:100%}
 .ml-fig-wrap .mm-bodies{gap:10px}
 .ml-fig-wrap .mm-cap{font-size:10px}
@@ -616,8 +626,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .week-card input{padding:3px 6px;font-size:11px}
 /* Weekly Load Targets — list rows with sliders */
 .wlt-list{display:flex;flex-direction:column;gap:6px}
-.wlt-row{display:grid;grid-template-columns:74px 130px 130px 1fr 1fr auto;align-items:center;gap:14px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;border-left:3px solid var(--border2);transition:border-color .15s}
-.wlt-row:hover{border-color:var(--border2)}
+.wlt-row{display:grid;grid-template-columns:74px 118px 172px 1fr 1fr auto;align-items:center;gap:14px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;border-left:3px solid var(--border2);transition:border-color .15s,background .15s,transform .15s}
+.wlt-row:hover{border-color:var(--border2);background:var(--elevated);transform:translateX(2px)}
 .wlt-row.gp{border-left-color:var(--accent)}
 .wlt-row.sp{border-left-color:#cfd8e6}
 .wlt-row.comp{border-left-color:var(--peak-t)}
@@ -629,7 +639,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .wlt-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--accent)}
 .wlt-dot.sp{background:#cfd8e6}.wlt-dot.comp{background:var(--peak-t)}.wlt-dot.trans{background:var(--border2)}
 .wlt-focus{font-size:11px}
-.wlt-focus-sel{border:1px solid transparent;border-radius:12px;padding:4px 26px 4px 11px;font-size:11px;font-weight:700;letter-spacing:.3px;font-family:inherit;cursor:pointer;width:100%;max-width:170px;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;transition:filter .15s}
+.wlt-focus-sel{border:1px solid transparent;border-radius:12px;padding:4px 26px 4px 11px;font-size:11px;font-weight:700;letter-spacing:.3px;font-family:inherit;cursor:pointer;width:100%;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;transition:filter .15s}
 .wlt-focus-sel:hover{filter:brightness(1.08)}
 .wlt-focus-sel:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
 .wlt-focus-sel.low{background-color:var(--low);color:var(--low-t)}
@@ -638,8 +648,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .wlt-focus-sel option{background:var(--panel);color:var(--text);font-weight:500}
 .wlt-slider{display:flex;align-items:center;gap:8px;min-width:0}
 .wlt-slider .wlt-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin:0;width:54px;flex:none;font-weight:500}
-.wlt-slider input[type=range]{flex:1;min-width:60px;height:4px;accent-color:var(--accent);background:transparent;cursor:pointer;padding:0;border:none;border-radius:0;margin:0}
-.wlt-slider .wlt-num{width:46px;padding:4px 6px;font-size:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:right;border:1px solid var(--border);border-radius:6px;background:var(--panel)}
+/* Filled-track sliders: volume = blue, intensity = orange (matches the
+   Planned Microcycles chart). --p carries the current value from JSX. */
+.wlt-slider.vol{--sl:#3b6ef5}
+.wlt-slider.int{--sl:#f59e0b}
+.wlt-slider input[type=range]{flex:1;min-width:60px;height:6px;-webkit-appearance:none;appearance:none;cursor:pointer;padding:0;border:none;margin:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--sl,var(--accent)) var(--p,0%),rgba(255,255,255,.09) var(--p,0%))}
+.wlt-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--sl,var(--accent));box-shadow:0 1px 5px rgba(0,0,0,.55);transition:transform .15s;cursor:grab}
+.wlt-slider input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+.wlt-slider input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);cursor:grabbing}
+.wlt-slider input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--sl,var(--accent));box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab}
+.wlt-slider input[type=range]:focus-visible{outline:2px solid var(--sl,var(--accent));outline-offset:3px}
+.wlt-slider .wlt-num{width:54px;padding:4px 7px;font-size:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:right;border:1px solid var(--border);border-radius:6px;background:var(--panel);-moz-appearance:textfield;appearance:textfield}
+.wlt-slider .wlt-num::-webkit-outer-spin-button,.wlt-slider .wlt-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.wlt-slider .wlt-num:focus{border-color:var(--sl,var(--accent))}
 .wlt-slider .wlt-pct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:-4px}
 .wlt-taper{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3);border-radius:5px;padding:3px 8px;font-weight:500;letter-spacing:.06em}
 @media(max-width:1100px){.wlt-row{grid-template-columns:74px 1fr 1fr;row-gap:10px}.wlt-row .wlt-focus,.wlt-row .wlt-taper{grid-column:span 3}}
@@ -1157,18 +1179,27 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mc-gantt{position:relative;margin-top:26px;padding-left:6px}
 .mc-axis{position:relative;height:18px;margin-bottom:8px;margin-left:0}
 .mc-mtick{position:absolute;top:0;transform:translateX(-2px);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em;white-space:nowrap}
-.mc-today{position:absolute;top:-20px;transform:translateX(-1px);z-index:3}
-.mc-today span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text)}
+.mc-today{position:absolute;top:-22px;transform:translateX(-1px);z-index:3}
+.mc-today span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(230,255,85,.3);border-radius:5px;padding:2px 7px}
 .mc-rows{position:relative}
-.mc-todayline{position:absolute;top:-4px;bottom:0;width:2px;background:linear-gradient(180deg,#fff,rgba(255,255,255,.15));z-index:2;pointer-events:none}
-.mc-row{position:relative;height:40px;border-top:1px solid var(--border);display:flex;align-items:center}
+.mc-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--border);opacity:.6;pointer-events:none}
+.mc-todayline{position:absolute;top:-4px;bottom:0;width:2px;background:linear-gradient(180deg,var(--accent),rgba(230,255,85,.08));box-shadow:0 0 8px rgba(230,255,85,.45);z-index:2;pointer-events:none}
+.mc-row{position:relative;height:42px;border-top:1px solid var(--border);display:flex;align-items:center}
 .mc-row:last-child{border-bottom:1px solid var(--border)}
-.mc-bar{position:absolute;height:28px;border-radius:9px;display:flex;align-items:center;padding:0 14px;box-shadow:0 2px 10px rgba(0,0,0,.35);overflow:hidden;min-width:0}
+.mc-bar{position:absolute;height:29px;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 8px 0 14px;overflow:hidden;min-width:0;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.04) 48%,rgba(0,0,0,.18));
+  box-shadow:0 2px 10px rgba(0,0,0,.35),0 8px 20px -10px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.12);
+  transform-origin:left center;animation:mcGrow .8s cubic-bezier(.22,.61,.36,1) backwards;
+  transition:filter .18s,transform .18s,box-shadow .18s}
+.mc-bar:hover{filter:brightness(1.14);transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.45),0 12px 26px -10px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.2)}
+@keyframes mcGrow{from{transform:scaleX(0)}}
 .mc-bar span{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.3)}
-.mc-legend{display:flex;flex-wrap:wrap;gap:22px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
-.mc-leg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text)}
+.mc-bar .mc-wk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-style:normal;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);background:rgba(0,0,0,.28);border-radius:99px;padding:2px 8px;flex:none;margin-left:auto}
+.mc-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.mc-leg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:6px 14px 6px 11px;transition:border-color .15s}
+.mc-leg:hover{border-color:var(--border2)}
 .mc-leg b{font-weight:600}
-.mc-dot{width:11px;height:11px;border-radius:50%;flex:none}
+.mc-dot{width:10px;height:10px;border-radius:50%;flex:none}
 .mc-leg-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 
 /* ===== Athlete Load Board (Calendar tab) ===== */
@@ -1769,8 +1800,9 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 @media (prefers-reduced-motion: reduce){
   .app::before,.app::after,.brand-logo,.aic-fab,.rsf-card::before,.rec-card::before,
   .rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card,
-  .ath-mmap-fill,.ml-fig-wrap .mm-fig,.rsf-save.on .rsf-heart,.ex-h1::after,.rsf-card,
+  .ath-mmap-fill,.ml-fig-wrap .mm-fig,.rsf-save.on .rsf-heart,.ex-h1::after,.rsf-card,.mc-bar,
   main .panel,main .ap-head,.stat .v{animation:none!important}
+  .mc-bar:hover,.wlt-row:hover{transform:none}
   .stat .v{-webkit-text-fill-color:var(--text);color:var(--text);background:none}
   .nav-item:hover{transform:none}
   .nav-item:hover .ni-ic{transform:none}
@@ -3641,10 +3673,14 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             {ticks.map((d,i)=><span key={i} className="mc-mtick" style={{left:`${pctOf(fmt(d))}%`}}>{MN[d.getMonth()]}</span>)}
           </div>
           <div className="mc-rows">
+            {ticks.map((d,i)=><div key={'g'+i} className="mc-grid" style={{left:`${pctOf(fmt(d))}%`}}/>)}
             {todayPct!=null&&<div className="mc-todayline" style={{left:`${todayPct}%`}}/>}
-            {periods.map(p=>{const l=pctOf(p.start),r=pctOf(p.end);return(
+            {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));return(
               <div key={p.id} className="mc-row">
-                <div className="mc-bar" style={{left:`${l}%`,width:`${Math.max(2,r-l)}%`,background:PHASE_COL[p.id]||'#64748b'}}><span>{PHASE_NAME[p.id]||p.name}</span></div>
+                <div className="mc-bar" title={`${PHASE_NAME[p.id]||p.name} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`}
+                  style={{left:`${l}%`,width:`${Math.max(2,r-l)}%`,backgroundColor:PHASE_COL[p.id]||'#64748b',animationDelay:(pi*90)+'ms'}}>
+                  <span>{PHASE_NAME[p.id]||p.name}</span><em className="mc-wk">{wk} wk</em>
+                </div>
               </div>);})}
           </div>
         </div>
@@ -3701,14 +3737,14 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
                 {WEEK_FOCUS.map(f=><option key={f} value={f}>{f}</option>)}
               </select>
             </div>
-            <div className="wlt-slider">
+            <div className="wlt-slider vol">
               <label className="wlt-lbl">Volume</label>
-              <input type="range" min="0" max="100" step="5" value={w.volume} onChange={e=>ew(w.week,'volume',e.target.value)}/>
+              <input type="range" min="0" max="100" step="5" value={w.volume} style={{['--p']:(Number(w.volume)||0)+'%'}} onChange={e=>ew(w.week,'volume',e.target.value)}/>
               <input type="number" min="0" max="100" value={w.volume} onChange={e=>ew(w.week,'volume',e.target.value)} className="wlt-num"/><span className="wlt-pct">%</span>
             </div>
-            <div className="wlt-slider">
+            <div className="wlt-slider int">
               <label className="wlt-lbl">Intensity</label>
-              <input type="range" min="0" max="100" step="5" value={w.intensity} onChange={e=>ew(w.week,'intensity',e.target.value)}/>
+              <input type="range" min="0" max="100" step="5" value={w.intensity} style={{['--p']:(Number(w.intensity)||0)+'%'}} onChange={e=>ew(w.week,'intensity',e.target.value)}/>
               <input type="number" min="0" max="100" value={w.intensity} onChange={e=>ew(w.week,'intensity',e.target.value)} className="wlt-num"/><span className="wlt-pct">%</span>
             </div>
             {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
@@ -4052,8 +4088,8 @@ function MuscleLoadDistribution({days,title,refDate}){
   const slugLoad={};
   mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
   const bars=(entries,tot)=>{const mx=entries.reduce((m,[,v])=>Math.max(m,v),1);return entries.map(([k,v])=>{const pct=tot?Math.round(v/tot*100):0;return(
-    <div key={k} className="ath-mmap-row"><span className="ath-mmap-name">{k}</span>
-      <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',background:loadColor(v/mx)}}/></div>
+    <div key={k} className={'ath-mmap-row'+(v?'':' zero')}><span className="ath-mmap-name">{k}</span>
+      <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',backgroundColor:loadColor(v/mx)}}/></div>
       <span className="ath-mmap-pct">{pct}%</span></div>);});};
   return(<div className="panel ath-mmap-wrap">
     <div className="mld-head">
