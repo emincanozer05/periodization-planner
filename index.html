@@ -4131,7 +4131,8 @@ const ML_OUTLABELS={
 const ML_CORE_COLS={'Flexion':'#3987e5','Extension':'#199e70','Lateral Flexion':'#c98500','Rotation':'#008300','Anti-Flexion':'#9085e9','Anti-Extension':'#e66767','Anti-Lateral Flexion':'#d55181','Anti-Rotation':'#d95926'};
 /* One callout-labelled doughnut (shared by the Movement Pattern and Core pies). */
 function LoadPie({entries,colors,empty,pad,fontSize}){
-  const nz=entries.filter(([,v])=>v>0);
+  // Slices run clockwise from the top, largest share first (colors stay keyed by name).
+  const nz=entries.filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   if(!nz.length)return<div className="mm-hint">{empty}</div>;
   const tot=nz.reduce((s,[,v])=>s+v,0);
   return(<ChartC type="doughnut"
