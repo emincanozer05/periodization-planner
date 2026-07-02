@@ -513,6 +513,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .ath-mmap-body>.ath-mmap-list .ath-mmap-row{break-inside:avoid;padding:3.5px 0}
 }
 .ml-fig-wrap{width:340px;max-width:100%}
+.ml-pie-wrap{flex:1;min-width:280px;height:300px;position:relative}
 .ml-fig-wrap .mm-bodies{gap:10px}
 .ml-fig-wrap .mm-cap{font-size:10px}
 .mld-breakdown{display:flex;gap:34px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
@@ -1046,6 +1047,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ath-tabs button .ic{font-size:14px;line-height:1}
 .ath-tabs button:hover{color:var(--text2)}
 .ath-tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+/* Athlete profile: meta row, Ask AI button and tab bar read upright (override global italic) */
+.ap-meta,.ap-meta span,.rep-btn.ai,.ath-tabs button,.ath-tabs button .ic{font-style:normal !important}
 .ath-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
 .ath-stat{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:16px 18px}
 .ath-stat .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
@@ -1358,6 +1361,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mk-field{display:flex;flex-direction:column}
 .mk-anthro{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;width:100%}
 .mk-rows{display:flex;flex-direction:column;gap:14px;width:100%}
+.mk-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%}
 .mk-row-v{display:flex;flex-direction:column}
 /* asymmetry pill */
 .mk-asym-pill{display:inline-flex;align-items:center;padding:5px 13px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#fbbf24;margin-top:4px;width:fit-content}
@@ -1396,7 +1400,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 @media(max-width:560px){.bcm2{max-width:340px}.bcm2-chip{width:96px}}
 /* posture photos — single side-by-side row */
 .photo-grid2x2{display:flex;flex-wrap:wrap;gap:12px;width:fit-content}
-@media(max-width:1200px){.ts-wrap{columns:1}}
+@media(max-width:1200px){.ts-wrap{grid-template-columns:1fr}}
 @media(max-width:760px){.tcard-content{flex-direction:column;gap:18px}.tc-obs{flex:1 1 auto}.mk-anthro{grid-template-columns:1fr}}
 /* image lightbox (large preview + change button) */
 .mk-lb{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;background:rgba(8,8,10,.5);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);animation:mkLbIn .15s ease}
@@ -4060,6 +4064,9 @@ function aggSessions(days){
   }));
   return{muscles,patterns,planes};
 }
+/* Fixed per-muscle pie colors (CVD-validated against the dark panel surface).
+   Keyed by muscle label so each muscle keeps its color week to week. */
+const ML_PIE_COLS={Chest:'#2a78d6',Abs:'#ea580c',Obliques:'#0d9463',Shoulders:'#8b5cf6',Biceps:'#bc8004',Triceps:'#0891b2',Forearms:'#d55181',Trapezius:'#88991f',Quadriceps:'#3b82f6',Adductors:'#c2410c',Tibialis:'#199e70',Calves:'#9085e9',Glutes:'#c98500',Hamstrings:'#ec4899','Upper Back':'#06a3c0','Lower Back':'#65a30d'};
 function MuscleLoadDistribution({days,title,refDate}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
@@ -4111,7 +4118,25 @@ function MuscleLoadDistribution({days,title,refDate}){
       :<>
       <div className="ath-mmap-body">
         <MuscleLoadFigure slugLoad={slugLoad}/>
-        <div className="ath-mmap-list">{mEntries.length?bars(mEntries,sum(mEntries)):<div className="mm-hint">No muscle groups selected.</div>}</div>
+        <div className="ml-pie-wrap">
+          {(()=>{
+            const pieEntries=mEntries.filter(([,v])=>v>0);
+            if(!pieEntries.length)return<div className="mm-hint">No muscle groups selected.</div>;
+            const mTot=sum(pieEntries);
+            return(<ChartC type="pie"
+              chartData={{
+                labels:pieEntries.map(([k,v])=>`${k} · ${Math.round(v/mTot*100)}%`),
+                datasets:[{data:pieEntries.map(([,v])=>v),
+                  backgroundColor:pieEntries.map(([k])=>ML_PIE_COLS[k]||'#5c626c'),
+                  borderColor:'#14171c',borderWidth:2,hoverOffset:6}]
+              }}
+              options={{responsive:true,maintainAspectRatio:false,layout:{padding:6},
+                plugins:{
+                  legend:{position:'right',labels:{color:'#b5bac4',boxWidth:10,boxHeight:10,padding:7,font:{size:11}}},
+                  tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/mTot*100)}%`}}
+                }}}/>);
+          })()}
+        </div>
       </div>
       {(pEntries.length>0||coreEntries.length>0)&&<div className="mld-breakdown">
         {pEntries.length>0&&<div className="mld-col"><div className="mld-sub">Movement Pattern</div><div className="ath-mmap-list">{bars(pEntries,sum(pEntries))}</div></div>}
@@ -6067,7 +6092,6 @@ const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF'
 const BADGE_COLS=['#8fd633','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#8fd633','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#8fd633','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
 const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
-const JUMP_IDS=new Set(['verticalJump','cmj','squatJump','horizontalJump','dropJump']);
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
@@ -6163,7 +6187,6 @@ function TestCard({id,index,test,onUpdate,custom}){
           <div className="mk-field"><div className="mk-flbl">Wingspan</div><MkInput value={test.wingspan} onChange={v=>u('wingspan',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">Body Fat</div><MkInput value={test.bodyFat} onChange={v=>u('bodyFat',v)} unit="%"/></div>
         </div>
-        <MkObs value={obsVal} onChange={setObs} placeholder="Alignment, body comp observations…"/>
       </div>
     </div>);
   }
@@ -6186,7 +6209,7 @@ function TestCard({id,index,test,onUpdate,custom}){
   }
 
   if(id==='ohs'){
-    const probs=Array.isArray(test.ohs?.problems)?test.ohs.problems:['','','','',''];
+    const probs=[0,1,2,3].map(i=>(Array.isArray(test.ohs?.problems)?test.ohs.problems:[])[i]||'');
     const setProb=(i,v)=>uN('ohs','problems',probs.map((p,j)=>j===i?v:p));
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
@@ -6207,7 +6230,7 @@ function TestCard({id,index,test,onUpdate,custom}){
           <div style={{flex:1,minWidth:220}}>
             <div className="mk-flbl" style={{marginBottom:10}}>Compensations</div>
             <div className="ohs-comp-grid">
-              {[0,1,2,3,4].map(i=><input key={i} className="ohs-comp-input" placeholder={'#'+(i+1)} value={probs[i]||''} onChange={e=>setProb(i,e.target.value)}/>)}
+              {[0,1,2,3].map(i=><input key={i} className="ohs-comp-input" placeholder={'#'+(i+1)} value={probs[i]||''} onChange={e=>setProb(i,e.target.value)}/>)}
             </div>
           </div>
         </div>
@@ -6218,34 +6241,28 @@ function TestCard({id,index,test,onUpdate,custom}){
 
   if(id==='ankleDF'){
     const r=Number(test.ankleDF?.right)||0,l=Number(test.ankleDF?.left)||0,diff=Math.abs(r-l);
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
       <Hd/>
-      <div className="tcard-content">
-        <div className="tc-fields">
-          <div className="mk-rows">
-            <div className="mk-row-v"><div className="mk-flbl">Right</div><MkInput value={test.ankleDF?.right} onChange={v=>uN('ankleDF','right',v)} unit="°"/></div>
-            <div className="mk-row-v"><div className="mk-flbl">Left</div><MkInput value={test.ankleDF?.left} onChange={v=>uN('ankleDF','left',v)} unit="°"/></div>
-          </div>
-          {(r>0||l>0)&&<div className="mk-asym-pill">Asymmetry {diff.toFixed(1)}°</div>}
+      <div className="tcard-col">
+        <div className="mk-pair">
+          <div className="mk-field"><div className="mk-flbl">Right</div><MkInput value={test.ankleDF?.right} onChange={v=>uN('ankleDF','right',v)} unit="°"/></div>
+          <div className="mk-field"><div className="mk-flbl">Left</div><MkInput value={test.ankleDF?.left} onChange={v=>uN('ankleDF','left',v)} unit="°"/></div>
         </div>
-        <MkObs value={obsVal} onChange={setObs} placeholder="Mobility restrictions, notes…"/>
+        {(r>0||l>0)&&<div className="mk-asym-pill">Asymmetry {diff.toFixed(1)}°</div>}
       </div>
     </div>);
   }
 
   if(id==='aslr'){
     const r=Number(test.aslr?.right)||0,l=Number(test.aslr?.left)||0,diff=Math.abs(r-l);
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
       <Hd/>
-      <div className="tcard-content">
-        <div className="tc-fields">
-          <div className="mk-rows">
-            <div className="mk-row-v"><div className="mk-flbl">Right (FMS)</div><MkSelectField value={test.aslr?.right??''} onChange={v=>uN('aslr','right',v)} options={FMS_OPTS}/></div>
-            <div className="mk-row-v"><div className="mk-flbl">Left (FMS)</div><MkSelectField value={test.aslr?.left??''} onChange={v=>uN('aslr','left',v)} options={FMS_OPTS}/></div>
-          </div>
-          {(r>0||l>0)&&<div className="mk-asym-pill">Asymmetry {diff} pts</div>}
+      <div className="tcard-col">
+        <div className="mk-pair">
+          <div className="mk-field"><div className="mk-flbl">Right (FMS)</div><MkSelectField value={test.aslr?.right??''} onChange={v=>uN('aslr','right',v)} options={FMS_OPTS}/></div>
+          <div className="mk-field"><div className="mk-flbl">Left (FMS)</div><MkSelectField value={test.aslr?.left??''} onChange={v=>uN('aslr','left',v)} options={FMS_OPTS}/></div>
         </div>
-        <MkObs value={obsVal} onChange={setObs} placeholder="Hip flexion, hamstring notes…"/>
+        {(r>0||l>0)&&<div className="mk-asym-pill">Asymmetry {diff} pts</div>}
       </div>
     </div>);
   }
@@ -6277,22 +6294,10 @@ function TestCard({id,index,test,onUpdate,custom}){
 
   if(MK_SOLO_UNIT[id]){
     const step=(id==='dropJump'||id==='tTest'||id==='fiveZeroFive'||id==='shuttleRun')?'0.01':'0.1';
-    const isJump=JUMP_IDS.has(id);
-    if(isJump){
-      return(<div className="tcard" style={{'--card-accent':badgeColor}}>
-        <Hd/>
-        <div className="tcard-col">
-          <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
-          <MkObs value={obsVal} onChange={setObs}/>
-        </div>
-      </div>);
-    }
-    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+    return(<div className="tcard" style={{'--card-accent':badgeColor}}>
       <Hd/>
-      <div className="tcard-content">
-        <div className="tc-fields">
-          <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
-        </div>
+      <div className="tcard-col">
+        <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
         <MkObs value={obsVal} onChange={setObs}/>
       </div>
     </div>);
@@ -6926,7 +6931,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const apAcwr=athACWR(ath,apRef);
   const apRd=athWellnessVal(ath,'readiness',apRef);
   const apRhr=athWellnessVal(ath,'RHR',apRef);
-  const apSleep=athWellnessVal(ath,'sleep',apRef);
   const apEntries=(ath.srpeLog||[]).length;
   const apCheckins=(ath.wellness||[]).length;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
@@ -6959,7 +6963,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
         <div className="ap-stat"><div className="k">7d load</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
-        <div className="ap-stat"><div className="k">Avg sleep</div><div className="v">{apSleep!=null?<CountUp value={apSleep} decimals={1}/>:'—'}<small>/5</small></div></div>
       </div>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Edit profile">✎</button>
     </div>
