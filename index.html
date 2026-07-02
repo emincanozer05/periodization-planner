@@ -513,7 +513,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .ath-mmap-body>.ath-mmap-list .ath-mmap-row{break-inside:avoid;padding:3.5px 0}
 }
 .ml-fig-wrap{width:340px;max-width:100%}
-.ml-pie-wrap{flex:1;min-width:320px;height:360px;position:relative}
+.ml-pie-col{flex:1;min-width:340px}
+.ml-pie-wrap{width:100%;height:360px;position:relative}
 .ml-fig-wrap .mm-bodies{gap:10px}
 .ml-fig-wrap .mm-cap{font-size:10px}
 .mld-breakdown{display:flex;gap:34px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
@@ -2688,7 +2689,7 @@ function WeekChartSVG({data,avg,color,dot,unit,labels}){
 /* Compact wellness sparkline (inline SVG). Plots one metric across all check-ins
    with an area fill, a faint dashed average line, an emphasised latest point and
    a value label above every point. Measures its own width so it never goes blank. */
-function SparkSVG({id,data,color,avg,unit,showValues}){
+function SparkSVG({id,data,color,avg,unit,showValues,valueColor}){
   const wrapRef=useRef(null);
   const[w,setW]=useState(600);
   useEffect(()=>{const el=wrapRef.current;if(!el)return;
@@ -2717,8 +2718,8 @@ function SparkSVG({id,data,color,avg,unit,showValues}){
       {avg!=null&&<line x1={padX} y1={yOf(avg)} x2={w-padX} y2={yOf(avg)} stroke={color} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="4 4"/>}
       {area&&<path d={area} fill={'url(#wlg-'+id+')'}/>}
       {line&&<path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>}
-      {P.map((p,k)=><circle key={k} cx={p.x} cy={p.y} r={k===P.length-1?3.4:2} fill={color}/>)}
-      {showValues&&P.map((p,k)=>{const ly=p.y-7<padT-4?p.y+13:p.y-7;return<text key={'v'+k} x={p.x} y={ly} textAnchor="middle" fill="#cdd3dc" fontFamily="IBM Plex Mono" fontSize="9.5" fontWeight="700">{fmt(p.v)}</text>;})}
+      {P.map((p,k)=><circle key={k} cx={p.x} cy={p.y} r={k===P.length-1?3.4:2} fill={valueColor?valueColor(p.v):color}/>)}
+      {showValues&&P.map((p,k)=>{const ly=p.y-7<padT-4?p.y+13:p.y-7;return<text key={'v'+k} x={p.x} y={ly} textAnchor="middle" fill={valueColor?valueColor(p.v):'#cdd3dc'} fontFamily="IBM Plex Mono" fontSize="9.5" fontWeight="700">{fmt(p.v)}</text>;})}
     </svg>
   </div>;
 }
@@ -4072,7 +4073,8 @@ const ML_PIE_COLS={'Hip Dominant':'#3987e5','Knee Dominant':'#199e70','Upper Bod
    Labels on each side are collision-resolved vertically so they never overlap. */
 const ML_OUTLABELS={
   id:'mlOutLabels',
-  afterDatasetsDraw(chart){
+  afterDatasetsDraw(chart,args,opts){
+    const fs=(opts&&opts.fontSize)||11;
     const meta=chart.getDatasetMeta(0);
     if(!meta||!meta.data||!meta.data.length)return;
     const data=chart.data.datasets[0].data||[];
@@ -4113,14 +4115,38 @@ const ML_OUTLABELS={
       ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.lineJoin='round';
       ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(it.cx+it.side*(it.r+13),it.y);ctx.lineTo(hx,it.y);ctx.stroke();
       ctx.textAlign=it.side>0?'left':'right';ctx.textBaseline='middle';
-      ctx.font='italic 700 11px "TT Fors","Space Grotesk",sans-serif';
+      ctx.font='italic 700 '+fs+'px "TT Fors","Space Grotesk",sans-serif';
       ctx.fillStyle='#b5bac4';ctx.fillText(it.name,tx,it.y-7.5);
-      ctx.font='italic 700 13px "TT Fors","Space Grotesk",sans-serif';
+      ctx.font='italic 700 '+(fs+2)+'px "TT Fors","Space Grotesk",sans-serif';
       ctx.fillStyle='#f3f4f6';ctx.fillText(it.pct+'%',tx,it.y+7);
     });
     ctx.restore();
   }
 };
+/* Fixed colors for the Core qualities pie (validated 8-slot dark palette;
+   floor-band CVD pairs are covered by the callout labels + slice gaps). */
+const ML_CORE_COLS={'Flexion':'#3987e5','Extension':'#199e70','Lateral Flexion':'#c98500','Rotation':'#008300','Anti-Flexion':'#9085e9','Anti-Extension':'#e66767','Anti-Lateral Flexion':'#d55181','Anti-Rotation':'#d95926'};
+/* One callout-labelled doughnut (shared by the Movement Pattern and Core pies). */
+function LoadPie({entries,colors,empty,pad,fontSize}){
+  const nz=entries.filter(([,v])=>v>0);
+  if(!nz.length)return<div className="mm-hint">{empty}</div>;
+  const tot=nz.reduce((s,[,v])=>s+v,0);
+  return(<ChartC type="doughnut"
+    chartData={{
+      labels:nz.map(([k])=>k),
+      datasets:[{data:nz.map(([,v])=>v),
+        backgroundColor:nz.map(([k])=>colors[k]||'#5c626c'),
+        borderColor:'#14171c',borderWidth:2,borderRadius:5,hoverOffset:8}]
+    }}
+    plugins={[ML_OUTLABELS]}
+    options={{responsive:true,maintainAspectRatio:false,cutout:'52%',
+      layout:{padding:{left:pad||118,right:pad||118,top:26,bottom:26}},
+      plugins:{
+        mlOutLabels:{fontSize:fontSize||11},
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/tot*100)}%`}}
+      }}}/>);
+}
 function MuscleLoadDistribution({days,title,refDate}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
@@ -4139,16 +4165,13 @@ function MuscleLoadDistribution({days,title,refDate}){
   const shift=dir=>{const a=parseD(anchor);setAnchor(mode==='week'?fmt(addD(a,dir*7)):fmt(new Date(a.getFullYear(),a.getMonth()+dir,1)));};
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
-  const mEntries=Object.values(MM_MUSCLES).map(l=>[l,agg.muscles[l]||0]).sort((a,b)=>b[1]-a[1]);
   // Patterns in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
   const pEntries=MOVE_PATTERNS.map(([k])=>[k,agg.patterns[k]||0]);
+  const coreEntries=(PATTERN_PLANES['Core']||[]).map(q=>[q,agg.planes[q]||0]);
   const hasData=Object.keys(agg.muscles).length||Object.keys(agg.patterns).length||Object.keys(agg.planes).length;
-  const sum=es=>es.reduce((s,[,v])=>s+v,0);
-  const slugLoad={};
-  mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
   return(<div className="panel ath-mmap-wrap">
     <div className="mld-head">
-      <h2 style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||'Muscle Load Distribution'}</h2>
+      <h2 style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||'Load Distribution'}</h2>
       <div className="mld-ctrl">
         <div className="calm-seg">
           <button type="button" className={mode==='week'?'on':''} onClick={()=>setMode('week')}>Weekly</button>
@@ -4165,27 +4188,13 @@ function MuscleLoadDistribution({days,title,refDate}){
       ?<div className="mm-hint" style={{padding:'12px 0'}}>No selections in this {mode==='week'?'week':'month'} — pick muscles / patterns on the session model.</div>
       :<>
       <div className="ath-mmap-body">
-        <MuscleLoadFigure slugLoad={slugLoad}/>
-        <div className="ml-pie-wrap">
-          {(()=>{
-            const pieEntries=pEntries.filter(([,v])=>v>0);
-            if(!pieEntries.length)return<div className="mm-hint">No movement patterns selected.</div>;
-            const mTot=sum(pieEntries);
-            return(<ChartC type="doughnut"
-              chartData={{
-                labels:pieEntries.map(([k])=>k),
-                datasets:[{data:pieEntries.map(([,v])=>v),
-                  backgroundColor:pieEntries.map(([k])=>ML_PIE_COLS[k]||'#5c626c'),
-                  borderColor:'#14171c',borderWidth:2,borderRadius:5,hoverOffset:8}]
-              }}
-              plugins={[ML_OUTLABELS]}
-              options={{responsive:true,maintainAspectRatio:false,cutout:'52%',
-                layout:{padding:{left:118,right:118,top:26,bottom:26}},
-                plugins:{
-                  legend:{display:false},
-                  tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/mTot*100)}%`}}
-                }}}/>);
-          })()}
+        <div className="ml-pie-col">
+          <div className="mld-sub">Movement Pattern</div>
+          <div className="ml-pie-wrap"><LoadPie entries={pEntries} colors={ML_PIE_COLS} empty="No movement patterns selected."/></div>
+        </div>
+        <div className="ml-pie-col">
+          <div className="mld-sub">Core</div>
+          <div className="ml-pie-wrap"><LoadPie entries={coreEntries} colors={ML_CORE_COLS} empty="No core qualities selected." pad={128} fontSize={10}/></div>
         </div>
       </div>
       </>}
@@ -7180,8 +7189,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           {id:'RHR',label:'Resting HR',color:'#22d3ee',dot:'#67e8f9',unit:'bpm',hi:false},
         ];
         const valColor='#2dd4a7';
-        // Fatigue & Soreness: 5 = great (no pain), 1 = very bad → 5/4 green, 3 yellow, 2 orange, 1 red.
-        const lvlCol=v=>{if(v==null)return'var(--dim)';const n=Math.round(v);return n>=4?'#22c55e':n===3?'#eab308':n===2?'#f97316':'#ef4444';};
+        // 1-5 score scale colors: 1 red, 2 orange, 3 yellow, 4 green, 5 light blue.
+        const score5Col=v=>{if(v==null)return'var(--dim)';const n=Math.round(Number(v));return n>=5?'#38bdf8':n===4?'#22c55e':n===3?'#eab308':n===2?'#f97316':'#ef4444';};
         const fmtN=(v,five)=>v==null?'—':(five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v)));
         const _wStart=fmt(addD(parseD(wlWeekEnd),-13));
         const logsAll=[...ath.wellness].filter(w=>w.date&&w.date>=_wStart&&w.date<=wlWeekEnd).sort((a,b)=>a.date.localeCompare(b.date));
@@ -7202,13 +7211,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                 <div style={{width:150,flex:'none'}}>
                   <div style={{display:'flex',alignItems:'center',gap:7,fontSize:13,fontWeight:600,color:'var(--text)'}}><span style={{width:9,height:9,borderRadius:2,background:m.color,flex:'none'}}/>{m.label}</div>
                   <div style={{display:'flex',alignItems:'baseline',gap:6,marginTop:4}}>
-                    <span style={{fontSize:26,fontWeight:700,lineHeight:1,color:latest==null?'var(--dim)':((m.id==='fatigue'||m.id==='soreness')?lvlCol(latest):valColor)}}>{fmtN(latest,five)}</span>
+                    <span style={{fontSize:26,fontWeight:700,lineHeight:1,color:latest==null?'var(--dim)':(five?score5Col(latest):valColor)}}>{fmtN(latest,five)}</span>
                     <span style={{fontSize:11,color:'var(--dim)'}}>{m.unit}</span>
                     {delta!=null&&delta!==0&&<span style={{fontSize:12,fontWeight:700,color:good?'#2dd4a7':'#f43f5e'}}>{delta>0?'↑':'↓'}{fmtN(Math.abs(delta),five)}</span>}
                   </div>
                   <div style={{fontSize:10.5,color:'var(--dim)',marginTop:3,letterSpacing:.3}}>avg {fmtN(avg,five)} · {count} logs</div>
                 </div>
-                <div style={{flex:1,minWidth:0}}><SparkSVG id={m.id} data={series} color={m.color} avg={avg} unit={m.unit} showValues/></div>
+                <div style={{flex:1,minWidth:0}}><SparkSVG id={m.id} data={series} color={m.color} avg={avg} unit={m.unit} showValues valueColor={five?score5Col:null}/></div>
               </div>;
             })}
           </div>
