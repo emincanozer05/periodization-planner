@@ -513,7 +513,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .ath-mmap-body>.ath-mmap-list .ath-mmap-row{break-inside:avoid;padding:3.5px 0}
 }
 .ml-fig-wrap{width:340px;max-width:100%}
-.ml-pie-wrap{flex:1;min-width:280px;height:300px;position:relative}
+.ml-pie-wrap{flex:1;min-width:320px;height:360px;position:relative}
 .ml-fig-wrap .mm-bodies{gap:10px}
 .ml-fig-wrap .mm-cap{font-size:10px}
 .mld-breakdown{display:flex;gap:34px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
@@ -4067,6 +4067,60 @@ function aggSessions(days){
 /* Fixed per-muscle pie colors (CVD-validated against the dark panel surface).
    Keyed by muscle label so each muscle keeps its color week to week. */
 const ML_PIE_COLS={Chest:'#2a78d6',Abs:'#ea580c',Obliques:'#0d9463',Shoulders:'#8b5cf6',Biceps:'#bc8004',Triceps:'#0891b2',Forearms:'#d55181',Trapezius:'#88991f',Quadriceps:'#3b82f6',Adductors:'#c2410c',Tibialis:'#199e70',Calves:'#9085e9',Glutes:'#c98500',Hamstrings:'#ec4899','Upper Back':'#06a3c0','Lower Back':'#65a30d'};
+/* Callout labels around the muscle pie: each slice's name + % sits outside the
+   ring, matched to its slice with a leader line in the slice's own color.
+   Labels on each side are collision-resolved vertically so they never overlap. */
+const ML_OUTLABELS={
+  id:'mlOutLabels',
+  afterDatasetsDraw(chart){
+    const meta=chart.getDatasetMeta(0);
+    if(!meta||!meta.data||!meta.data.length)return;
+    const data=chart.data.datasets[0].data||[];
+    const total=data.reduce((a,b)=>a+(Number(b)||0),0)||1;
+    const labels=chart.data.labels||[];
+    const items=[];
+    meta.data.forEach((arc,idx)=>{
+      const v=Number(data[idx])||0;
+      if(v<=0||!arc)return;
+      const p=arc.getProps(['x','y','startAngle','endAngle','outerRadius'],true);
+      if(p.endAngle===p.startAngle)return;
+      const a=(p.startAngle+p.endAngle)/2;
+      items.push({a,cx:p.x,cy:p.y,r:p.outerRadius,name:String(labels[idx]||''),
+        pct:Math.round(v/total*100),color:arc.options.backgroundColor,
+        side:Math.cos(a)>=0?1:-1,y:p.y+Math.sin(a)*(p.outerRadius+14)});
+    });
+    if(!items.length)return;
+    const LH=27,topLim=16,botLim=chart.height-16;
+    const solve=arr=>{
+      arr.sort((p,q)=>p.y-q.y);
+      for(let k=1;k<arr.length;k++)if(arr[k].y<arr[k-1].y+LH)arr[k].y=arr[k-1].y+LH;
+      if(arr.length&&arr[arr.length-1].y>botLim){
+        arr[arr.length-1].y=botLim;
+        for(let k=arr.length-2;k>=0;k--)if(arr[k].y>arr[k+1].y-LH)arr[k].y=arr[k+1].y-LH;
+      }
+      if(arr.length&&arr[0].y<topLim){
+        arr[0].y=topLim;
+        for(let k=1;k<arr.length;k++)if(arr[k].y<arr[k-1].y+LH)arr[k].y=arr[k-1].y+LH;
+      }
+    };
+    solve(items.filter(it=>it.side>0));
+    solve(items.filter(it=>it.side<0));
+    const ctx=chart.ctx;
+    ctx.save();
+    items.forEach(it=>{
+      const sx=it.cx+Math.cos(it.a)*(it.r+2),sy=it.cy+Math.sin(it.a)*(it.r+2);
+      const hx=it.cx+it.side*(it.r+24),tx=hx+it.side*5;
+      ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(it.cx+it.side*(it.r+13),it.y);ctx.lineTo(hx,it.y);ctx.stroke();
+      ctx.textAlign=it.side>0?'left':'right';ctx.textBaseline='middle';
+      ctx.font='italic 700 10.5px "TT Fors","Space Grotesk",sans-serif';
+      ctx.fillStyle='#b5bac4';ctx.fillText(it.name,tx,it.y-7.5);
+      ctx.font='italic 700 12.5px "TT Fors","Space Grotesk",sans-serif';
+      ctx.fillStyle='#f3f4f6';ctx.fillText(it.pct+'%',tx,it.y+7);
+    });
+    ctx.restore();
+  }
+};
 function MuscleLoadDistribution({days,title,refDate}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
@@ -4123,16 +4177,18 @@ function MuscleLoadDistribution({days,title,refDate}){
             const pieEntries=mEntries.filter(([,v])=>v>0);
             if(!pieEntries.length)return<div className="mm-hint">No muscle groups selected.</div>;
             const mTot=sum(pieEntries);
-            return(<ChartC type="pie"
+            return(<ChartC type="doughnut"
               chartData={{
-                labels:pieEntries.map(([k,v])=>`${k} · ${Math.round(v/mTot*100)}%`),
+                labels:pieEntries.map(([k])=>k),
                 datasets:[{data:pieEntries.map(([,v])=>v),
                   backgroundColor:pieEntries.map(([k])=>ML_PIE_COLS[k]||'#5c626c'),
-                  borderColor:'#14171c',borderWidth:2,hoverOffset:6}]
+                  borderColor:'#14171c',borderWidth:2,borderRadius:5,hoverOffset:8}]
               }}
-              options={{responsive:true,maintainAspectRatio:false,layout:{padding:6},
+              plugins={[ML_OUTLABELS]}
+              options={{responsive:true,maintainAspectRatio:false,cutout:'52%',
+                layout:{padding:{left:108,right:108,top:26,bottom:26}},
                 plugins:{
-                  legend:{position:'right',labels:{color:'#b5bac4',boxWidth:10,boxHeight:10,padding:7,font:{size:11}}},
+                  legend:{display:false},
                   tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/mTot*100)}%`}}
                 }}}/>);
           })()}
