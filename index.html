@@ -4064,10 +4064,10 @@ function aggSessions(days){
   }));
   return{muscles,patterns,planes};
 }
-/* Fixed per-muscle pie colors (CVD-validated against the dark panel surface).
-   Keyed by muscle label so each muscle keeps its color week to week. */
-const ML_PIE_COLS={Chest:'#2a78d6',Abs:'#ea580c',Obliques:'#0d9463',Shoulders:'#8b5cf6',Biceps:'#bc8004',Triceps:'#0891b2',Forearms:'#d55181',Trapezius:'#88991f',Quadriceps:'#3b82f6',Adductors:'#c2410c',Tibialis:'#199e70',Calves:'#9085e9',Glutes:'#c98500',Hamstrings:'#ec4899','Upper Back':'#06a3c0','Lower Back':'#65a30d'};
-/* Callout labels around the muscle pie: each slice's name + % sits outside the
+/* Fixed per-pattern pie colors (CVD-validated against the dark panel surface).
+   Keyed by movement pattern so each pattern keeps its color week to week. */
+const ML_PIE_COLS={'Hip Dominant':'#3987e5','Knee Dominant':'#199e70','Upper Body Push':'#ea580c','Upper Body Pull':'#8b5cf6','Core':'#c98500'};
+/* Callout labels around the load pie: each slice's name + % sits outside the
    ring, matched to its slice with a leader line in the slice's own color.
    Labels on each side are collision-resolved vertically so they never overlap. */
 const ML_OUTLABELS={
@@ -4113,9 +4113,9 @@ const ML_OUTLABELS={
       ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.lineJoin='round';
       ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(it.cx+it.side*(it.r+13),it.y);ctx.lineTo(hx,it.y);ctx.stroke();
       ctx.textAlign=it.side>0?'left':'right';ctx.textBaseline='middle';
-      ctx.font='italic 700 10.5px "TT Fors","Space Grotesk",sans-serif';
+      ctx.font='italic 700 11px "TT Fors","Space Grotesk",sans-serif';
       ctx.fillStyle='#b5bac4';ctx.fillText(it.name,tx,it.y-7.5);
-      ctx.font='italic 700 12.5px "TT Fors","Space Grotesk",sans-serif';
+      ctx.font='italic 700 13px "TT Fors","Space Grotesk",sans-serif';
       ctx.fillStyle='#f3f4f6';ctx.fillText(it.pct+'%',tx,it.y+7);
     });
     ctx.restore();
@@ -4139,19 +4139,13 @@ function MuscleLoadDistribution({days,title,refDate}){
   const shift=dir=>{const a=parseD(anchor);setAnchor(mode==='week'?fmt(addD(a,dir*7)):fmt(new Date(a.getFullYear(),a.getMonth()+dir,1)));};
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
-  // Always show the full set of rows — including 0% ones.
   const mEntries=Object.values(MM_MUSCLES).map(l=>[l,agg.muscles[l]||0]).sort((a,b)=>b[1]-a[1]);
   // Patterns in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
   const pEntries=MOVE_PATTERNS.map(([k])=>[k,agg.patterns[k]||0]);
-  const coreEntries=(PATTERN_PLANES['Core']||[]).map(q=>[q,agg.planes[q]||0]);
   const hasData=Object.keys(agg.muscles).length||Object.keys(agg.patterns).length||Object.keys(agg.planes).length;
   const sum=es=>es.reduce((s,[,v])=>s+v,0);
   const slugLoad={};
   mEntries.forEach(([label,v])=>{const sl=MM_LABEL_TO_SLUG[label];if(sl)slugLoad[sl]=(slugLoad[sl]||0)+v;});
-  const bars=(entries,tot)=>{const mx=entries.reduce((m,[,v])=>Math.max(m,v),1);return entries.map(([k,v])=>{const pct=tot?Math.round(v/tot*100):0;return(
-    <div key={k} className={'ath-mmap-row'+(v?'':' zero')}><span className="ath-mmap-name">{k}</span>
-      <div className="ath-mmap-bar"><div className="ath-mmap-fill" style={{width:pct+'%',backgroundColor:loadColor(v/mx)}}/></div>
-      <span className="ath-mmap-pct">{pct}%</span></div>);});};
   return(<div className="panel ath-mmap-wrap">
     <div className="mld-head">
       <h2 style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||'Muscle Load Distribution'}</h2>
@@ -4174,8 +4168,8 @@ function MuscleLoadDistribution({days,title,refDate}){
         <MuscleLoadFigure slugLoad={slugLoad}/>
         <div className="ml-pie-wrap">
           {(()=>{
-            const pieEntries=mEntries.filter(([,v])=>v>0);
-            if(!pieEntries.length)return<div className="mm-hint">No muscle groups selected.</div>;
+            const pieEntries=pEntries.filter(([,v])=>v>0);
+            if(!pieEntries.length)return<div className="mm-hint">No movement patterns selected.</div>;
             const mTot=sum(pieEntries);
             return(<ChartC type="doughnut"
               chartData={{
@@ -4186,7 +4180,7 @@ function MuscleLoadDistribution({days,title,refDate}){
               }}
               plugins={[ML_OUTLABELS]}
               options={{responsive:true,maintainAspectRatio:false,cutout:'52%',
-                layout:{padding:{left:108,right:108,top:26,bottom:26}},
+                layout:{padding:{left:118,right:118,top:26,bottom:26}},
                 plugins:{
                   legend:{display:false},
                   tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/mTot*100)}%`}}
@@ -4194,10 +4188,6 @@ function MuscleLoadDistribution({days,title,refDate}){
           })()}
         </div>
       </div>
-      {(pEntries.length>0||coreEntries.length>0)&&<div className="mld-breakdown">
-        {pEntries.length>0&&<div className="mld-col"><div className="mld-sub">Movement Pattern</div><div className="ath-mmap-list">{bars(pEntries,sum(pEntries))}</div></div>}
-        {coreEntries.length>0&&<div className="mld-col"><div className="mld-sub">Core</div><div className="ath-mmap-list">{bars(coreEntries,sum(coreEntries))}</div></div>}
-      </div>}
       </>}
   </div>);
 }
