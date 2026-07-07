@@ -1066,6 +1066,38 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ath-stat .d.pos{color:var(--low-t)}
 .ath-stat .d.neg{color:var(--high-t)}
 .ath-stat .sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:6px;letter-spacing:.02em}
+/* ===== Athlete Profile tab — identity, training background & animal type ===== */
+.pf-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.pf-cols{grid-template-columns:1fr}}
+.pf-auto{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8px;border:1px solid var(--border2);color:var(--dim);border-radius:4px;padding:1px 5px;letter-spacing:.12em;margin-left:7px;vertical-align:2px;text-transform:uppercase;font-style:normal !important}
+.pf-chiprow{display:flex;gap:8px;flex-wrap:wrap}
+.pf-chip{padding:8px 14px;border-radius:9px;border:1px solid var(--border2);background:var(--bg2);color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;font-style:normal !important;transition:all .2s}
+.pf-chip:hover{border-color:var(--text2);color:var(--text2)}
+.pf-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);box-shadow:0 0 14px rgba(230,255,85,.15)}
+.pf-injrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px}
+.pf-injrow .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex:none}
+.pf-injrow .t{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Animal type selector — the chosen beast lights up, the rest fade out */
+.animal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:860px){.animal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.animal-card{position:relative;overflow:hidden;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:22px 12px 18px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .45s,filter .45s,border-color .45s,box-shadow .45s}
+.animal-card,.animal-card *{font-style:normal !important}
+.animal-card:hover{border-color:var(--text2);transform:translateY(-2px)}
+.animal-card svg{width:72px;height:72px;color:var(--muted);margin-bottom:8px;transition:color .45s,filter .45s}
+.animal-card svg .cut{fill:var(--bg2);transition:fill .45s}
+.animal-card svg .cutl{stroke:var(--bg2);fill:none;transition:stroke .45s}
+.animal-card .animal-name{font-size:14px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);transition:color .45s,text-shadow .45s}
+.animal-card .animal-trait{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.02em;text-align:center;transition:color .45s}
+.animal-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(230,255,85,.4),0 0 34px rgba(230,255,85,.16),inset 0 0 30px rgba(230,255,85,.05);transform:translateY(-4px);animation:animalPop .5s cubic-bezier(.34,1.56,.64,1)}
+.animal-card.sel svg{color:var(--accent);animation:animalBreath 2.6s ease-in-out infinite}
+.animal-card.sel .animal-name{color:var(--accent);text-shadow:0 0 14px rgba(230,255,85,.55)}
+.animal-card.sel .animal-trait{color:var(--accent2)}
+.animal-card.sel::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:45%;background:linear-gradient(105deg,transparent,rgba(230,255,85,.16),transparent);transform:translateX(-140%) skewX(-18deg);animation:animalSweep .9s ease .1s forwards}
+.animal-grid.has-sel .animal-card:not(.sel){opacity:.32;filter:grayscale(.85);transform:scale(.96)}
+.animal-grid.has-sel .animal-card:not(.sel):hover{opacity:.7;filter:grayscale(.3);transform:scale(.99)}
+@keyframes animalPop{0%{transform:translateY(0) scale(.94)}55%{transform:translateY(-6px) scale(1.045)}100%{transform:translateY(-4px) scale(1)}}
+@keyframes animalBreath{0%,100%{filter:drop-shadow(0 0 5px rgba(230,255,85,.45))}50%{filter:drop-shadow(0 0 14px rgba(230,255,85,.85))}}
+@keyframes animalSweep{to{transform:translateX(320%) skewX(-18deg)}}
 /* Athlete AI recommendations tab */
 .rec-wrap{display:flex;flex-direction:column;gap:14px}
 .rec-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:14px 16px}
@@ -6938,8 +6970,140 @@ function CountUp({value,decimals=0,dur=850,format}){
   return<span className="countup">{format?format(v):v.toFixed(decimals)}</span>;
 }
 
+/* =========================================================
+   ATHLETE PROFILE TAB — identity & anthropometrics (auto-pulled),
+   training background, injury history (auto) and animal type.
+   ========================================================= */
+const SOMATOTYPES=['Ectomorph','Ecto-Mesomorph','Mesomorph','Endo-Mesomorph','Endomorph'];
+const ANIMAL_TYPES=[
+  {id:'cheetah',name:'Cheetah',trait:'Explosive speed · Acceleration',svg:(
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="currentColor">
+        <ellipse cx="32" cy="33" rx="20" ry="19"/>
+        <circle cx="16.5" cy="16" r="6"/>
+        <circle cx="47.5" cy="16" r="6"/>
+      </g>
+      <g className="cut">
+        <circle cx="16" cy="14.5" r="2"/><circle cx="48" cy="14.5" r="2"/>
+        <circle cx="24" cy="18" r="1.7"/><circle cx="32" cy="15" r="1.7"/><circle cx="40" cy="18" r="1.7"/>
+        <circle cx="21" cy="25" r="1.5"/><circle cx="43" cy="25" r="1.5"/><circle cx="28" cy="22" r="1.3"/><circle cx="36" cy="22" r="1.3"/>
+        <path d="M22 29 Q25 26.5 28 29 Q25 31.5 22 29 Z"/>
+        <path d="M36 29 Q39 26.5 42 29 Q39 31.5 36 29 Z"/>
+        <path d="M29 41 L35 41 L32 45 Z"/>
+      </g>
+      <g className="cutl" strokeWidth="1.8">
+        <path d="M26.5 31 C26.5 35 28.5 37 28.5 41"/>
+        <path d="M37.5 31 C37.5 35 35.5 37 35.5 41"/>
+        <path d="M32 45 L32 47.5 M32 47.5 Q29.5 50 27 48.5 M32 47.5 Q34.5 50 37 48.5"/>
+      </g>
+    </svg>)},
+  {id:'rhino',name:'Rhino',trait:'Raw power · Contact strength',svg:(
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="currentColor">
+        <path d="M12 14 C16 8 24 6 30 9 C36 12 40 17 43 23 L52 31 C56 34 58 39 55 43 C52 47 45 47 41 44 C36 49 26 50 19 46 C11 41 8 32 9 23 C9.5 19 10.5 16 12 14 Z"/>
+        <path d="M43 27 C46 18 52 9 59 4 C58 14 54 25 48 31 Z"/>
+        <path d="M35 21 C37 15 40 10 43 8 C43 14 41 20 38 23 Z"/>
+        <path d="M22 9 C21 3 27 1 30 4 C28 7 26 9 25 12 Z"/>
+      </g>
+      <g className="cut">
+        <circle cx="31" cy="22" r="1.8"/>
+        <circle cx="51" cy="38" r="1.7"/>
+      </g>
+      <g className="cutl" strokeWidth="1.8"><path d="M54 41 Q48 44 43 43"/></g>
+    </svg>)},
+  {id:'horse',name:'Horse',trait:'Endurance · Work capacity',svg:(
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="currentColor">
+        <path d="M8 30 C8 27 9 25 11 24 L22 13 L26 4 L30 11 L33 6 L36 12 C46 16 53 26 54 38 C55 46 52 54 47 60 L26 60 C28 50 27 44 22 40 C16 38 10 36 8 33 C7.5 32 7.5 31 8 30 Z"/>
+      </g>
+      <g className="cut">
+        <circle cx="19" cy="24" r="1.8"/>
+        <circle cx="11" cy="29" r="1.3"/>
+      </g>
+      <g className="cutl" strokeWidth="1.5">
+        <path d="M31 12 C36 20 36 28 33 36 C36 42 35 50 31 58"/>
+      </g>
+    </svg>)},
+  {id:'rabbit',name:'Rabbit',trait:'Agility · Quickness',svg:(
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="currentColor">
+        <path d="M18 2 C24 7 27 16 27 26 L27 34 L21 30 C16 22 15 10 18 2 Z"/>
+        <path d="M46 2 C40 7 37 16 37 26 L37 34 L43 30 C48 22 49 10 46 2 Z"/>
+        <path d="M32 27 L44 34 C46 40 45 46 41 51 C38 55 35 57 33 62 L32 63 L31 62 C29 57 26 55 23 51 C19 46 18 40 20 34 Z"/>
+      </g>
+      <g className="cut">
+        <path d="M21.5 39.5 C24 37.5 27 38 28.5 39.5 C27 42 23.5 42.5 21.5 39.5 Z"/>
+        <path d="M42.5 39.5 C40 37.5 37 38 35.5 39.5 C37 42 40.5 42.5 42.5 39.5 Z"/>
+        <path d="M29.5 48 L34.5 48 L32 52 Z"/>
+      </g>
+    </svg>)},
+];
+function ProfileTab({ath,updAth,setup}){
+  const positions=POSITIONS[setup.sport]||POSITIONS.default;
+  const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  // Anthropometrics auto-pulled from the most recent dated measurement/test record,
+  // falling back to the static profile fields entered via ✎ Edit Profile.
+  const pull=k=>{
+    const src=[...(ath.measurements||[]),...(ath.tests||[])]
+      .filter(x=>x.date&&x[k]!==''&&x[k]!=null&&!isNaN(Number(x[k])))
+      .sort((a,b)=>a.date.localeCompare(b.date));
+    const last=src[src.length-1];
+    return last?{v:Number(last[k]),date:last.date}:null;
+  };
+  const h=pull('height')||(Number(ath.height)?{v:Number(ath.height)}:null);
+  const w=pull('weight')||(Number(ath.weight)?{v:Number(ath.weight)}:null);
+  const ws=pull('wingspan');
+  const inj=(ath.injuries||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const srcLbl=x=>x?(x.date?`last measured ${fd(x.date)}`:'from profile'):'no data yet';
+  return(<div>
+    <div className="ath-stat-row" style={{gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))'}}>
+      <div className="ath-stat"><div className="k">Age<span className="pf-auto">auto</span></div><div className="v">{age!=null?age:'—'}<span className="u">yrs</span></div><div className="sub">{ath.dateOfBirth?`b. ${fd(ath.dateOfBirth)}`:'set date of birth via ✎'}</div></div>
+      <div className="ath-stat"><div className="k">Height<span className="pf-auto">auto</span></div><div className="v">{h?h.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(h)}</div></div>
+      <div className="ath-stat"><div className="k">Weight<span className="pf-auto">auto</span></div><div className="v">{w?w.v:'—'}<span className="u">kg</span></div><div className="sub">{srcLbl(w)}</div></div>
+      <div className="ath-stat"><div className="k">Wingspan<span className="pf-auto">auto</span></div><div className="v">{ws?ws.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(ws)}</div></div>
+    </div>
+    <div className="panel" style={{marginBottom:14}}>
+      <h2>Training Background</h2>
+      <div className="grid cols-2">
+        <div><label>Position</label><select value={ath.position||''} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]?`${p} — ${POS_FULL[p]}`:p}</option>)}</select></div>
+        <div><label>Training Age (years)</label><input type="number" min="0" step="0.5" value={ath.trainingAge||''} onChange={e=>updAth(ath.id,{trainingAge:e.target.value})} placeholder="e.g. 4"/><div className="help">Years of structured training</div></div>
+      </div>
+      <div style={{marginTop:14}}>
+        <label>Somatotype</label>
+        <div className="pf-chiprow">{SOMATOTYPES.map(s=><button key={s} type="button" className={`pf-chip${ath.somatotype===s?' on':''}`} onClick={()=>updAth(ath.id,{somatotype:ath.somatotype===s?'':s})}>{s}</button>)}</div>
+      </div>
+    </div>
+    <div className="panel" style={{marginBottom:14}}>
+      <h2>Animal Type</h2>
+      <div className="sub" style={{margin:'-8px 0 16px'}}>Which archetype drives this athlete? Pick one — the chosen beast lights up.</div>
+      <div className={`animal-grid${ath.animalType?' has-sel':''}`}>
+        {ANIMAL_TYPES.map(a=><button key={a.id} type="button" className={`animal-card${ath.animalType===a.id?' sel':''}`} onClick={()=>updAth(ath.id,{animalType:ath.animalType===a.id?'':a.id})}>
+          {a.svg}
+          <div className="animal-name">{a.name}</div>
+          <div className="animal-trait">{a.trait}</div>
+        </button>)}
+      </div>
+    </div>
+    <div className="pf-cols">
+      <div className="panel">
+        <h2>Injury History<span className="pf-auto">auto</span></h2>
+        {inj.length===0&&<div className="empty-st">No injuries recorded — syncs from the Injuries tab</div>}
+        {inj.map((i,ix)=>{const active=!i.actualReturn;return(
+          <div key={i.id||ix} className="pf-injrow">
+            <span className="d">{i.date?fd(i.date):'—'}</span>
+            <span className="t">{i.location||i.type||'(unspecified)'}{i.tissueType?` · ${i.tissueType}`:''}{i.grade?` · Grade ${i.grade}`:''}</span>
+            <span className={`inj-pill ${active?'inj':'ok'}`}>{active?'ACTIVE':'RECOVERED'}</span>
+          </div>);})}
+      </div>
+      <div className="panel">
+        <h2>Current Constraints / Risks</h2>
+        <textarea rows={6} value={ath.constraints||''} onChange={e=>updAth(ath.id,{constraints:e.target.value})} placeholder="Movement restrictions, medical constraints, load-management risks, return-to-play limitations…"/>
+      </div>
+    </div>
+  </div>);
+}
 function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
-  const[tab,setTab]=useState('load');
+  const[tab,setTab]=useState('profile');
   const[aiAuto,setAiAuto]=useState(false);
   const askAI=()=>{setTab('recommends');setAiAuto(true);};
   const[editProfileOpen,setEditProfileOpen]=useState(false);
@@ -6994,6 +7158,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const apCheckins=(ath.wellness||[]).length;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
+    {id:'profile',ic:'◈',l:'Profile'},
     {id:'load',ic:'▤',l:'Load'},
     {id:'calendar',ic:'▣',l:'Calendar'},
     {id:'body',ic:'⌇',l:'Body Comp'},
@@ -7029,6 +7194,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
       <button className="rep-btn ai" onClick={askAI}>✨ Ask AI</button>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
+    {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
     {tab==='recommends'&&<RecommendsTab ath={ath} updAth={updAth} setup={setup} ai={ai} exercises={exercises} autoGen={aiAuto} onAutoDone={()=>setAiAuto(false)}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
@@ -7443,7 +7609,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
   const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
   const save=a=>updateTeam(team.id,{athletes:a});
   const addAth=()=>{const a={id:uid(),name:'New Athlete',number:'',position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
-    dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
+    dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',trainingAge:'',somatotype:'',animalType:'',constraints:'',injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
   const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
   const delAth=id=>{if(!confirm('Delete this athlete and all their data?'))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
   const ageOf=a=>{if(!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
@@ -7604,6 +7770,7 @@ async function performTallySync(workerUrl,team,opts={}){
       athletes.push({id:uid(),name:name.trim(),number:'',
         position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
         dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',
+        trainingAge:'',somatotype:'',animalType:'',constraints:'',
         injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}});
       i=athletes.length-1;stats.athletesCreated++;
     } else stats.athletesMatched.add(i);
@@ -9244,7 +9411,6 @@ const NAV_ICONS={
   athletes:<NIc><circle cx="9" cy="8" r="3"/><path d="M3.6 19.4c.6-3 2.8-4.7 5.4-4.7s4.8 1.7 5.4 4.7"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.6 14.9c1.9.5 3.3 2.1 3.7 4.5"/></NIc>,
   reports:<NIc><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V8"/><path d="M17 20v-9"/></NIc>,
   exercises:<NIc><path d="M6 8v8"/><path d="M9 6v12"/><path d="M15 6v12"/><path d="M18 8v8"/><path d="M9 12h6"/></NIc>,
-  researches:<NIc><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></NIc>,
   evaluation:<NIc><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5h6v2.5H9z"/><path d="M8.5 11.5l2 2 4-4.5"/></NIc>,
   setup:<NIc><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></NIc>,
   teams:<NIc><path d="M12 3l7 2.5v5.6c0 4.1-2.9 7.1-7 8.4-4.1-1.3-7-4.3-7-8.4V5.5L12 3z"/></NIc>,
@@ -9495,7 +9661,6 @@ function App(){
       {id:'evaluation',label:'Testing & Assessment',icon:NAV_ICONS.evaluation},
       {id:'reports',label:'Load Monitoring',icon:NAV_ICONS.reports},
       {id:'exercises',label:'Exercise Library',icon:NAV_ICONS.exercises,count:exCount||null},
-      {id:'researches',label:'Researches',icon:NAV_ICONS.researches},
     ]},
     {label:'Account',items:[
       {id:'setup',label:'Setup',icon:NAV_ICONS.setup},
@@ -9554,7 +9719,6 @@ function App(){
       {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
-      {view==='researches'&&<ResearchesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected} setData={setData}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
