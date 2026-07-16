@@ -8151,6 +8151,9 @@ function useCloudSync(data,setData){
   const lastSynced=useRef(null);        // bulutla eşit son içerik (JSON) — gereksiz yazım/yankı önler
   const prevN=useRef(0);                // önceki parça sayısı (fazlalıkları silmek için)
   const timer=useRef(null);
+  const dirty=useRef(false);            // yerelde buluta yazılmamış değişiklik var mı → yeşil ancak bu false iken yanar
+  const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
+  const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
   const COL='kullanici_verileri';
 
   // Eski {url} pointer'ından (Storage) veriyi kurtarmayı dene — sadece fetch, SDK gerekmez
@@ -8175,12 +8178,14 @@ function useCloudSync(data,setData){
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
+    if(writing.current){queued.current=true;return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
     const json=JSON.stringify(dataRef.current);
-    if(json===lastSynced.current){setStatus('synced');return;}
+    if(json===lastSynced.current){dirty.current=false;setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
     if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
+    writing.current=true;
     try{
       const col=fb.firestore().collection(COL);
       const parts=splitChunks(json);const n=parts.length;const rev=Date.now();
@@ -8195,8 +8200,16 @@ function useCloudSync(data,setData){
         await b.commit();
       }
       prevN.current=n;lastSynced.current=json;
-      setStatus('synced');setSyncErr('');
-    }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    }catch(e){
+      console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
+      writing.current=false;
+      const rerun=queued.current;queued.current=false;if(rerun)writeNow();   // yeni değişiklik beklemesin
+      return;
+    }
+    writing.current=false;
+    // Yazım sürerken yeni değişiklik geldiyse: yeşil YAKMADAN hemen onu da yaz.
+    if(queued.current||JSON.stringify(dataRef.current)!==json){queued.current=false;writeNow();return;}
+    dirty.current=false;setStatus('synced');setSyncErr('');   // yeşil = bulut, ekrandaki halin birebir aynısı
   };
 
   // manifest.rev ile eşleşen n parçayı birleştir; eksikse null (tutarsız ara durum → bekle)
@@ -8242,6 +8255,7 @@ function useCloudSync(data,setData){
           try{await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
         }
         lastSynced.current=json;prevN.current=n;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
+        dirty.current=false;   // sunucudan çekilen durum uygulandı → yerel bulutla aynı
       }
       ready.current=true;setStatus('synced');setSyncErr('');
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
@@ -8301,10 +8315,15 @@ function useCloudSync(data,setData){
               try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:healed.n,rev:healed.rev});}catch(e){console.warn('manifest heal',e);}
             }
             ready.current=true;prevN.current=healed?healed.n:manifest.n;
-            if(json===lastSynced.current){setStatus('synced');setSyncErr('');return;}
+            if(json===lastSynced.current){
+              // Kendi eski yazımımızın yankısı: yerelde henüz yazılmamış değişiklik varken YEŞİL YAKMA
+              if(!dirty.current&&!writing.current){setStatus('synced');setSyncErr('');}
+              return;
+            }
             lastSynced.current=json;
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
             if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            dirty.current=false;   // bulut durumu uygulandı → yerel artık bulutla aynı
             setStatus('synced');setSyncErr('');
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
           }else if(oldDocs.length){
@@ -8351,26 +8370,36 @@ function useCloudSync(data,setData){
     const fb=FB();if(!fb||!user)return;
     const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
     const onVis=()=>{if(document.visibilityState==='hidden')flush();};
+    // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
+    // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
+    const onBeforeUnload=e=>{flush();if(dirty.current||writing.current){e.preventDefault();e.returnValue='';}};
     document.addEventListener('visibilitychange',onVis);
     window.addEventListener('pagehide',flush);
-    window.addEventListener('beforeunload',flush);
-    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',flush);};
+    window.addEventListener('beforeunload',onBeforeUnload);
+    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',onBeforeUnload);};
   },[user]);
 
   // Düzenlemeleri kısa debounce ile yaz
   useEffect(()=>{
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    if(JSON.stringify(data)===lastSynced.current)return;
-    setStatus('syncing');
-    timer.current=setTimeout(()=>writeNow(),200);
+    if(JSON.stringify(data)===lastSynced.current){
+      if(!writing.current){dirty.current=false;setStatus('synced');}   // geri alınan değişiklik → zaten bulutla aynı
+      return;
+    }
+    dirty.current=true;setStatus('syncing');
+    timer.current=setTimeout(()=>writeNow(),120);
   },[data,user]);
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
-    signOut:async()=>{try{await writeNow();}catch(e){}return FB().auth().signOut();},
+    signOut:async()=>{
+      // Çıkıştan önce bekleyen yazımın gerçekten bitmesini bekle (en fazla ~6 sn)
+      try{await writeNow();let k=0;while((writing.current||dirty.current)&&k++<40)await new Promise(r=>setTimeout(r,150));}catch(e){}
+      return FB().auth().signOut();
+    },
     signInWithGoogle:async()=>{
       const p=new firebase.auth.GoogleAuthProvider();
       p.setCustomParameters({prompt:'select_account'});
