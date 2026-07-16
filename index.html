@@ -5629,10 +5629,22 @@ tbody tr.grp:first-child td{border-top:none}
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
 }
 
-function generateTestPDF(test,ath,setup){
+function generateTestPDF(test,ath,setup,customTests){
   const w=window.open('','_blank','width=900,height=1200');
   if(!w){alert('Pop-up engellendi — tarayıcıdan bu site için pop-up izni ver.');return;}
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period;
+  // Raporda SADECE bu kayıtta alınan (bataryada seçili) testler gösterilir.
+  // Eski kayıtlarda battery alanı yok → eskisi gibi tüm bölümler basılır.
+  const bat=expandBattery(test.battery);
+  const has=id=>!Array.isArray(bat)||bat.includes(id);
+  const cList=Array.isArray(customTests)?customTests:[];
+  const customSel=cList.filter(c=>Array.isArray(bat)?bat.includes(c.id):((test.custom||{})[c.id]||'')!=='');
+  const esc=s=>String(s).replace(/</g,'&lt;');
+  const powerSel=[['verticalJump','Vertical Jump (cm)'],['cmj','CMJ (cm)'],['squatJump','Squat Jump (cm)'],['dropJump','Drop Jump (RSI)'],['horizontalJump','Horizontal Jump (cm)']].filter(([id])=>has(id));
+  const soloBlocks=[];
+  if(has('tTest'))soloBlocks.push({h:L('ÇEVİKLİK — T-TEST','AGILITY — T-TEST'),th:'Agility T-Test (s)',v:test.tTest});
+  if(has('fiveZeroFive'))soloBlocks.push({h:L('ÇEVİKLİK — 5-0-5','AGILITY — 5-0-5'),th:'5-0-5 (s)',v:test.fiveZeroFive});
+  if(has('shuttleRun'))soloBlocks.push({h:L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING'),th:'Shuttle Run (s)',v:test.shuttleRun});
   // asymmetries
   const adR=Number(test.ankleDF?.right)||0,adL=Number(test.ankleDF?.left)||0;
   const adD=Math.abs(adR-adL),adMx=Math.max(adR,adL),adPct=adMx?(adD/adMx*100).toFixed(1):'0';
@@ -5735,14 +5747,16 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
   </div>
 </div>
 
+${has('anthro')?`
 <div class="section">
   <div class="section-h" >${L('ANTROPOMETRİ','ANTHROPOMETRICS')}</div>
   <table class="kv">
     <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th></tr>
     <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td></tr>
   </table>
-</div>
+</div>`:''}
 
+${has('circ')?`
 <div class="section">
   <div class="section-h" >${L('ÇEVRE ÖLÇÜMLERİ (cm)','CIRCUMFERENCE MEASUREMENTS (cm)')}</div>
   <table class="kv">
@@ -5765,9 +5779,9 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
       <td>${test.circ?.calfLeft||test.circ?.calf||'—'}</td>
     </tr>
   </table>
-</div>
+</div>`:''}
 
-${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||test.posture?.observations)?`
+${has('posture')&&(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||test.posture?.observations)?`
 <div class="section">
   <div class="section-h" >${L('STATİK POSTÜR DEĞERLENDİRMESİ','STATIC POSTURE ASSESSMENT')}</div>
   <div class="posture-photos">
@@ -5778,17 +5792,18 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
   ${test.posture.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.posture.observations.replace(/</g,'&lt;')}</div>`:''}
 </div>`:''}
 
+${(has('aslr')||has('ankleDF'))?`
 <div class="section">
-  <div class="section-h" >${L('MOBİLİTE — ASLR & AYAK BİLEĞİ DORSİFLEKSİYON','MOBILITY — ASLR & ANKLE DORSIFLEXION')}</div>
+  <div class="section-h" >${L('MOBİLİTE','MOBILITY')}</div>
   <table>
     <colgroup><col style="width:36%"/><col style="width:14%"/><col style="width:14%"/><col style="width:22%"/><col style="width:14%"/></colgroup>
     <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th><th>Scale</th></tr>
-    <tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)</td><td>${test.aslr?.right||'—'}</td><td>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>
-    <tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)</td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>
+    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)</td><td>${test.aslr?.right||'—'}</td><td>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>`:''}
+    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)</td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>`:''}
   </table>
-</div>
+</div>`:''}
 
-${hasYB?`
+${(Array.isArray(bat)?has('yBalance'):hasYB)?`
 <div class="section">
   <div class="section-h">${L('Y BALANCE TESTİ','Y BALANCE TEST')} — ${L('Bacak Uzunluğu','Leg Length')} (ASIS–${L('Medial Malleol','Medial Malleolus')}): ${yb.limb!=null?yb.limb+' cm':'—'}</div>
   <table>
@@ -5803,6 +5818,7 @@ ${hasYB?`
   <div class="obs-box">${L('Kompozit Skor = (Anterior + Posteromedial + Posterolateral) / (3 × Bacak Uzunluğu) × 100 — sağ/sol uzanma farkı 4 cm’den az olmalıdır.','Composite Score = (Anterior + Posteromedial + Posterolateral) / (3 × Leg Length) × 100 — R/L reach difference should be less than 4 cm.')}</div>
 </div>`:''}
 
+${has('ohs')?`
 <div class="section">
   <div class="section-h" >${L('OVERHEAD SQUAT DEĞERLENDİRMESİ','OVERHEAD SQUAT ASSESSMENT')} — ${L('Skor','Score')}: ${test.ohs?.score||'—'} / 3</div>
   <div class="ohs-wrap">
@@ -5816,8 +5832,9 @@ ${hasYB?`
     </div>
     ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>${L('Ek Gözlemler:','Additional Observations:')}</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
   </div>
-</div>
+</div>`:''}
 
+${has('sprint')?`
 <div class="section sprint-section">
   <div class="section-h" >${L('20M SPRINT ANALİZİ','20M SPRINT ANALYSIS')}${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
   <div class="sprint-panel">
@@ -5838,32 +5855,37 @@ ${hasYB?`
       </div>
     </div>
   </div>
-</div>
+</div>`:''}
 
+${powerSel.length?`
 <div class="section">
   <div class="section-h" >${L('GÜÇ TESTLERİ','POWER TESTS')}</div>
   <table class="kv">
-    <tr><th>Vertical Jump (cm)</th><th>CMJ (cm)</th><th>Drop Jump (RSI)</th><th>Horizontal Jump (cm)</th></tr>
-    <tr><td>${test.verticalJump||'—'}</td><td>${test.cmj||'—'}</td><td>${test.dropJump||'—'}</td><td>${test.horizontalJump||'—'}</td></tr>
+    <tr>${powerSel.map(([,lbl])=>`<th>${lbl}</th>`).join('')}</tr>
+    <tr>${powerSel.map(([id])=>`<td>${test[id]||'—'}</td>`).join('')}</tr>
   </table>
-</div>
+</div>`:''}
 
-<div class="section" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-  <div>
-    <div class="section-h" >${L('ÇEVİKLİK','AGILITY')}</div>
+${soloBlocks.length?`
+<div class="section" style="display:grid;grid-template-columns:repeat(${Math.min(soloBlocks.length,3)},1fr);gap:12px">
+  ${soloBlocks.map(b=>`<div>
+    <div class="section-h" >${b.h}</div>
     <table class="kv">
-      <tr><th>Agility T-Test (s)</th></tr>
-      <tr><td>${test.tTest||'—'}</td></tr>
+      <tr><th>${b.th}</th></tr>
+      <tr><td>${b.v||'—'}</td></tr>
     </table>
-  </div>
-  <div>
-    <div class="section-h" >${L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING')}</div>
-    <table class="kv">
-      <tr><th>Shuttle Run (s)</th></tr>
-      <tr><td>${test.shuttleRun||'—'}</td></tr>
-    </table>
-  </div>
-</div>
+  </div>`).join('')}
+</div>`:''}
+
+${customSel.length?`
+<div class="section">
+  <div class="section-h" >${L('ÖZEL TESTLER','CUSTOM TESTS')}</div>
+  <table>
+    <colgroup><col style="width:60%"/><col style="width:40%"/></colgroup>
+    <tr><th>Test</th><th>${L('Sonuç','Result')}</th></tr>
+    ${customSel.map(c=>`<tr><td style="text-align:left;font-weight:600">${esc(c.name)}</td><td>${esc((test.custom||{})[c.id]||'—')}</td></tr>`).join('')}
+  </table>
+</div>`:''}
 
 ${test.notes?`
 <div class="section">
@@ -6538,7 +6560,7 @@ function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
       <div className="row" style={{gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
         <div><label style={{fontSize:11}}>Date</label><input type="date" value={test.date} onChange={e=>u('date',e.target.value)} style={{width:150}}/></div>
         <div><label style={{fontSize:11}}>Period</label><select value={test.period} onChange={e=>u('period',e.target.value)} style={{width:140}}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
-        <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup);}catch(e){alert('PDF error: '+e.message);}}}>⎙ Print</button>
+        <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup,customTests);}catch(e){alert('PDF error: '+e.message);}}}>⎙ Print</button>
         <button className="btn sm sec" onClick={onClose}>Close ✕</button>
       </div>
     </div>
