@@ -8165,12 +8165,13 @@ function useCloudSync(data,setData){
       const ops=[];
       parts.forEach((c,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c,rev}}));
       for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i});   // fazlalık eski parçaları sil
+      ops.push({set:1,id:u.uid,data:{userId:u.uid,n,rev}});   // manifest AYNI batch'in SON işlemi → yazım atomik,
+                                                              // yarıda kalan kayıt parça/manifest tutarsızlığı bırakamaz
       for(let i=0;i<ops.length;i+=450){
         const b=fb.firestore().batch();
         ops.slice(i,i+450).forEach(o=>{if(o.set)b.set(col.doc(o.id),o.data);else b.delete(col.doc(o.id));});
         await b.commit();
       }
-      await col.doc(u.uid).set({userId:u.uid,n,rev});   // manifest EN SON → okuyucu tüm parçaları görür
       prevN.current=n;lastSynced.current=json;
       setStatus('synced');setSyncErr('');
     }catch(e){console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
@@ -8183,6 +8184,23 @@ function useCloudSync(data,setData){
     return parts.join('');
   };
 
+  // KURTARMA: manifest parçalarla tutuşmuyorsa (yarıda kalmış eski bir yazım), parçaların kendi
+  // rev'lerinden en yeni tutarlı seti bul: 0'dan itibaren ardışık parçaları birleştir, JSON.parse
+  // doğrularsa geçerli say. Böylece "sync sarıda takılı, veri boş" kilidi kendiliğinden açılır.
+  const assembleAny=chunks=>{
+    const byRev={};
+    Object.values(chunks).forEach(ch=>{if(ch&&typeof ch.i==='number'&&typeof ch.c==='string')(byRev[ch.rev]=byRev[ch.rev]||{})[ch.i]=ch;});
+    const revs=Object.keys(byRev).map(Number).sort((a,b)=>b-a);   // en yeni rev önce
+    for(const rev of revs){
+      const g=byRev[rev];const parts=[];
+      for(let i=0;g[i];i++)parts.push(g[i].c);
+      if(!parts.length)continue;
+      const json=parts.join('');
+      try{JSON.parse(json);return{json,n:parts.length,rev};}catch(e){/* eksik/kesik set → sonraki rev */}
+    }
+    return null;
+  };
+
   // Sunucudan elle çek
   const forcePull=async()=>{
     const fb=FB();const u=userRef.current;if(!fb||!u)return;
@@ -8193,7 +8211,16 @@ function useCloudSync(data,setData){
       snap.forEach(d=>{const v=d.data();if(!v)return;
         if(d.id===u.uid&&typeof v.n==='number')manifest=v;
         else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v;});
-      if(manifest){const json=assemble(manifest,chunks);if(json!=null){lastSynced.current=json;prevN.current=manifest.n;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);}}
+      if(manifest){
+        let json=assemble(manifest,chunks);let n=manifest.n;
+        if(json==null){
+          const rec=assembleAny(chunks);   // yarıda kalmış yazımdan kurtar
+          if(!rec){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
+          json=rec.json;n=rec.n;
+          try{await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
+        }
+        lastSynced.current=json;prevN.current=n;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
+      }
       ready.current=true;setStatus('synced');setSyncErr('');
     }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
@@ -8240,9 +8267,18 @@ function useCloudSync(data,setData){
             else if(typeof v.icerik==='string')icerik=v.icerik;           // eski: tek-doküman
             else oldDocs.push(v);});                                       // eski: per-entity
           if(manifest){
-            const json=assemble(manifest,chunks);
-            if(json==null)return;                 // parçalar henüz tam değil → bekle
-            ready.current=true;prevN.current=manifest.n;
+            let json=assemble(manifest,chunks);
+            let healed=null;
+            if(json==null){
+              // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
+              // Sunucu henüz tüm parçaları göndermediyse (fromCache) kurtarmaya kalkma, bekle.
+              if(snap.metadata&&snap.metadata.fromCache)return;
+              healed=assembleAny(chunks);
+              if(!healed){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
+              json=healed.json;
+              try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:healed.n,rev:healed.rev});}catch(e){console.warn('manifest heal',e);}
+            }
+            ready.current=true;prevN.current=healed?healed.n:manifest.n;
             if(json===lastSynced.current){setStatus('synced');setSyncErr('');return;}
             lastSynced.current=json;
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
