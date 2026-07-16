@@ -1419,6 +1419,28 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ohs-comp-input{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;width:100%;box-sizing:border-box;font-family:inherit;transition:border-color .15s ease}
 .ohs-comp-input::placeholder{color:rgba(255,255,255,.22)}
 .ohs-comp-input:focus{border-color:var(--card-accent,#8fd633)}
+/* ===== Y Balance Test card ===== */
+.yb-wrap{display:flex;gap:18px;align-items:stretch;flex-wrap:wrap}
+.yb-left{flex:1 1 380px;min-width:0;display:flex;flex-direction:column;gap:15px}
+.yb-sides{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.yb-side{display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px}
+.yb-side-h{display:flex;align-items:center;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.yb-side-h svg{color:var(--card-accent,#8fd633);flex:none}
+.yb-score{flex:0 1 300px;min-width:250px;display:flex;flex-direction:column;gap:14px;background:linear-gradient(165deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:16px}
+.yb-score-t{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.yb-comps{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.yb-comp{background:rgba(255,255,255,.03);border-left:3px solid var(--card-accent,#8fd633);border-radius:0 9px 9px 0;padding:10px 12px}
+.yb-comp-l{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.yb-comp-v{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;line-height:1}
+.yb-comp-v small{font-size:12px;font-weight:600;margin-left:3px;color:var(--muted)}
+.yb-diffs{display:flex;flex-direction:column;gap:7px}
+.yb-diffs-t{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.yb-diff-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text2)}
+.yb-diff-val{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid transparent;color:var(--muted)}
+.yb-diff-val.ok{background:rgba(52,211,153,.13);border-color:rgba(52,211,153,.3);color:#34d399}
+.yb-diff-val.bad{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.32);color:#f87171}
+.yb-formula{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);line-height:1.6;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;margin-top:auto}
+@media(max-width:760px){.yb-sides{grid-template-columns:1fr}.yb-score{flex:1 1 auto;min-width:0}}
 /* legacy (kept for any still-used references) */
 .mk-flabel{display:flex;align-items:center;gap:8px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 /* 2D body circumference — inputs overlaid on the figure */
@@ -2068,6 +2090,8 @@ const makeTest=(period='pre')=>({
   aslr:{right:'',left:''},        // FMS 0-3
   ankleDF:{right:'',left:''},     // degrees
   ohs:{score:'',frontPhoto:null,sidePhoto:null,backPhoto:null,observations:'',problems:['','','','','']},
+  // Y Balance Test — leg length (ASIS–medial malleolus, cm) + 3 reach directions per foot (cm)
+  yBalance:{limbLength:'',right:{ant:'',pm:'',pl:''},left:{ant:'',pm:'',pl:''}},
   // Sprint — side-view of 3 first steps + front-view of right/left foot
   sprint20m:{time:'',
     sideStep1:null,sideStep2:null,sideStep3:null,
@@ -2091,6 +2115,7 @@ const TEST_CATALOG=[
   {id:'ankleDF',       name:'Ankle Dorsiflexion Degree',  short:'Ankle DF'},
   {id:'aslr',          name:'Active Straight Leg Raise',  short:'ASLR'},
   {id:'ohs',           name:'Overhead Squat Test',        short:'OHS'},
+  {id:'yBalance',      name:'Y Balance Test',             short:'YBT'},
   {id:'verticalJump',  name:'Vertical Jump',              short:'VJ'},
   {id:'cmj',           name:'Counter-Movement Jump',      short:'CMJ'},
   {id:'squatJump',     name:'Squat Jump',                 short:'SJ'},
@@ -2114,6 +2139,19 @@ function expandBattery(b){
   const out=new Set();
   b.forEach(id=>(BATTERY_ALIAS[id]||[id]).forEach(x=>out.add(x)));
   return[...out];
+}
+
+/* Y Balance Test scoring.
+   Composite Score = (Anterior + Posteromedial + Posterolateral) / (3 × Leg Length) × 100
+   R/L reach difference per direction should be < 4 cm (return-to-sport / screening cut-off). */
+function ybCalc(yb){
+  const num=v=>{const x=Number(v);return isFinite(x)&&x>0?x:null;};
+  const limb=num(yb&&yb.limbLength);
+  const side=s=>{const o=(yb&&yb[s])||{};return{ant:num(o.ant),pm:num(o.pm),pl:num(o.pl)};};
+  const right=side('right'),left=side('left');
+  const comp=s=>(limb!=null&&s.ant!=null&&s.pm!=null&&s.pl!=null)?+(((s.ant+s.pm+s.pl)/(3*limb))*100).toFixed(1):null;
+  const diff=k=>(right[k]!=null&&left[k]!=null)?+Math.abs(right[k]-left[k]).toFixed(1):null;
+  return{limb,right,left,compR:comp(right),compL:comp(left),dAnt:diff('ant'),dPm:diff('pm'),dPl:diff('pl')};
 }
 
 /* =========================================================
@@ -5600,6 +5638,9 @@ function generateTestPDF(test,ath,setup){
   const adD=Math.abs(adR-adL),adMx=Math.max(adR,adL),adPct=adMx?(adD/adMx*100).toFixed(1):'0';
   const slR=Number(test.aslr?.right)||0,slL=Number(test.aslr?.left)||0;
   const slAsym=Math.abs(slR-slL);
+  // Y Balance Test
+  const yb=ybCalc(test.yBalance);
+  const hasYB=yb.limb!=null||['ant','pm','pl'].some(k=>yb.right[k]!=null||yb.left[k]!=null);
   // photo helper — preserves original aspect ratio.
   // `w` = display width (px), `maxH` = max height before scaling kicks in.
   // Empty/missing photo shows a placeholder with the same target size.
@@ -5746,6 +5787,21 @@ ${(test.posture?.frontPhoto||test.posture?.sidePhoto||test.posture?.backPhoto||t
     <tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)</td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>
   </table>
 </div>
+
+${hasYB?`
+<div class="section">
+  <div class="section-h">${L('Y BALANCE TESTİ','Y BALANCE TEST')} — ${L('Bacak Uzunluğu','Leg Length')} (ASIS–${L('Medial Malleol','Medial Malleolus')}): ${yb.limb!=null?yb.limb+' cm':'—'}</div>
+  <table>
+    <colgroup><col style="width:34%"/><col style="width:17%"/><col style="width:17%"/><col style="width:32%"/></colgroup>
+    <tr><th>${L('Uzanma Yönü','Reach Direction')}</th><th>Right (cm)</th><th>Left (cm)</th><th>${L('Fark','Difference')}</th></tr>
+    ${[['Anterior',yb.right.ant,yb.left.ant,yb.dAnt],['Posteromedial',yb.right.pm,yb.left.pm,yb.dPm],['Posterolateral',yb.right.pl,yb.left.pl,yb.dPl]].map(([lbl,r,l,d])=>`<tr><td style="text-align:left;font-weight:600">${lbl}</td><td>${r!=null?r:'—'}</td><td>${l!=null?l:'—'}</td><td${d!=null?` style="color:${d<4?'#16a34a':'#dc2626'};font-weight:600"`:''}>${d==null?'—':d.toFixed(1)+' cm '+(d<4?'✓':'⚠')}</td></tr>`).join('')}
+  </table>
+  <table class="kv" style="margin-top:8px">
+    <tr><th>${L('Kompozit Skor — Sağ','Composite Score — Right')} (%)</th><th>${L('Kompozit Skor — Sol','Composite Score — Left')} (%)</th></tr>
+    <tr><td>${yb.compR!=null?yb.compR:'—'}</td><td>${yb.compL!=null?yb.compL:'—'}</td></tr>
+  </table>
+  <div class="obs-box">${L('Kompozit Skor = (Anterior + Posteromedial + Posterolateral) / (3 × Bacak Uzunluğu) × 100 — sağ/sol uzanma farkı 4 cm’den az olmalıdır.','Composite Score = (Anterior + Posteromedial + Posterolateral) / (3 × Leg Length) × 100 — R/L reach difference should be less than 4 cm.')}</div>
+</div>`:''}
 
 <div class="section">
   <div class="section-h" >${L('OVERHEAD SQUAT DEĞERLENDİRMESİ','OVERHEAD SQUAT ASSESSMENT')} — ${L('Skor','Score')}: ${test.ohs?.score||'—'} / 3</div>
@@ -5912,7 +5968,7 @@ function BodyCircumferenceModel({test,onUpdate,lang}){
    dynamic visual (stopwatch, jump bars, course maps, body-angle
    models …) instead of a generic form.
    ========================================================= */
-const TEST_THEME={anthro:'#e6ff55',circ:'#e6ff55',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',verticalJump:'#e6ff55',cmj:'#fb923c',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
+const TEST_THEME={anthro:'#e6ff55',circ:'#e6ff55',posture:'#a78bfa',ankleDF:'#f59e0b',aslr:'#22d3ee',ohs:'#fb923c',yBalance:'#38bdf8',verticalJump:'#e6ff55',cmj:'#fb923c',squatJump:'#facc15',horizontalJump:'#34d399',dropJump:'#f472b6',sprint:'#a78bfa',tTest:'#f472b6',fiveZeroFive:'#fb7185',shuttleRun:'#22d3ee'};
 
 function TField({label,unit,value,onChange,step,placeholder,hint,text}){
   return(<div><label className="tf-l">{label}</label>
@@ -6175,9 +6231,9 @@ function CustomStage({theme}){
 }
 
 /* ---- Mockup-style test card helpers ---- */
-const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'5-0-5 Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference'};
+const MK_TITLE={anthro:'Anthropometric Measurement',posture:'Static Posture',ankleDF:'Ankle Dorsiflexion Degree',aslr:'Active Straight Leg Raise',ohs:'Overhead Squat Test',yBalance:'Y Balance Test',verticalJump:'Vertical Jump',cmj:'Counter-Movement Jump',squatJump:'Squat Jump',dropJump:'Drop Jump (RSI)',horizontalJump:'Horizontal Jump',sprint:'20m Sprint',tTest:'T-Agility Test',fiveZeroFive:'5-0-5 Agility Test',shuttleRun:'Shuttle Run',circ:'Body Circumference'};
 const MK_SOLO_UNIT={verticalJump:'cm',cmj:'cm',squatJump:'cm',horizontalJump:'cm',dropJump:'RSI',tTest:'sec',fiveZeroFive:'sec',shuttleRun:'vo2max'};
-const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',verticalJump:'VJ',cmj:'CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'5-0-5',shuttleRun:'SHUTTLE'};
+const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF',aslr:'ASLR',ohs:'OHS',yBalance:'YBT',verticalJump:'VJ',cmj:'CMJ',squatJump:'SJ',dropJump:'DROP J',horizontalJump:'H JUMP',sprint:'20M',tTest:'T-TEST',fiveZeroFive:'5-0-5',shuttleRun:'SHUTTLE'};
 const BADGE_COLS=['#8fd633','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#8fd633','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#8fd633','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
 const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
@@ -6241,6 +6297,18 @@ const MK_ICONS={
   wingspan:(<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8fd633" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2.2"/><path d="M12 7.2v8"/><path d="M3 11h18"/><path d="M12 15.2l-3 5.5"/><path d="M12 15.2l3 5.5"/></svg>),
   bodyfat:(<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8fd633" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1.7"/><path d="M12 6.7l-5 14"/><path d="M12 6.7l5 14"/><path d="M8.5 16h7"/></svg>),
 };
+
+/* Small Y-shaped stance diagram for the Y Balance card (mirrored for left stance). */
+function YbDiag({flip}){
+  return(<svg width="30" height="30" viewBox="0 0 34 34" style={flip?{transform:'scaleX(-1)'}:undefined}>
+    <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" fill="none">
+      <line x1="17" y1="17" x2="17" y2="4"/>
+      <line x1="17" y1="17" x2="6" y2="28"/>
+      <line x1="17" y1="17" x2="28" y2="28"/>
+    </g>
+    <circle cx="17" cy="17" r="2.6" fill="currentColor"/>
+  </svg>);
+}
 
 function TestCard({id,index,test,onUpdate,custom}){
   const u=(k,v)=>onUpdate({[k]:v});
@@ -6352,6 +6420,59 @@ function TestCard({id,index,test,onUpdate,custom}){
           <div className="mk-field"><div className="mk-flbl">Left (FMS)</div><MkSelectField value={test.aslr?.left??''} onChange={v=>uN('aslr','left',v)} options={FMS_OPTS}/></div>
         </div>
         {(r>0||l>0)&&<div className="mk-asym-pill">Asymmetry {diff} pts</div>}
+      </div>
+    </div>);
+  }
+
+  if(id==='yBalance'){
+    const yb=ybCalc(test.yBalance);
+    const set=(k,v)=>onUpdate({yBalance:{...(test.yBalance||{}),[k]:v}});
+    const setSide=(s,k,v)=>onUpdate({yBalance:{...(test.yBalance||{}),[s]:{...((test.yBalance||{})[s]||{}),[k]:v}}});
+    const DIRS=[['ant','Anterior'],['pm','Posteromedial'],['pl','Posterolateral']];
+    const diffs=[['Anterior',yb.dAnt],['Posteromedial',yb.dPm],['Posterolateral',yb.dPl]];
+    return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
+      <Hd/>
+      <div className="tcard-body-wide">
+        <div className="yb-wrap">
+          <div className="yb-left">
+            <div className="mk-field" style={{maxWidth:360}}>
+              <div className="mk-flbl">Leg Length (ASIS – Medial Malleolus)</div>
+              <MkInput value={test.yBalance?.limbLength} onChange={v=>set('limbLength',v)} unit="cm"/>
+            </div>
+            <div className="yb-sides">
+              {[['right','Right Foot'],['left','Left Foot']].map(([s,lbl])=>(
+                <div key={s} className="yb-side">
+                  <div className="yb-side-h"><YbDiag flip={s==='left'}/><span>{lbl}</span></div>
+                  {DIRS.map(([k,dl])=>(
+                    <div key={k} className="mk-field">
+                      <div className="mk-flbl">{dl}</div>
+                      <MkInput value={test.yBalance?.[s]?.[k]} onChange={v=>setSide(s,k,v)} unit="cm"/>
+                    </div>))}
+                </div>))}
+            </div>
+          </div>
+          <div className="yb-score">
+            <div className="yb-score-t">Composite Score</div>
+            <div className="yb-comps">
+              {[['Right',yb.compR],['Left',yb.compL]].map(([lbl,v])=>(
+                <div key={lbl} className="yb-comp">
+                  <div className="yb-comp-l">{lbl}</div>
+                  <div className="yb-comp-v" style={{color:v!=null?'var(--card-accent,#8fd633)':'rgba(255,255,255,.25)'}}>{v!=null?v:'—'}<small>%</small></div>
+                </div>))}
+            </div>
+            {yb.compR!=null&&yb.compL!=null&&<div className="mk-asym-pill" style={{marginTop:0}}>Asymmetry {Math.abs(yb.compR-yb.compL).toFixed(1)}%</div>}
+            <div className="yb-diffs">
+              <div className="yb-diffs-t">R / L Reach Difference (&lt; 4 cm)</div>
+              {diffs.map(([lbl,d])=>(
+                <div key={lbl} className="yb-diff-row">
+                  <span>{lbl}</span>
+                  <span className={'yb-diff-val'+(d==null?'':(d<4?' ok':' bad'))}>{d==null?'—':d.toFixed(1)+' cm'}</span>
+                </div>))}
+            </div>
+            <div className="yb-formula">Composite = (ANT + PM + PL) / (3 × Leg Length) × 100</div>
+          </div>
+        </div>
+        <MkObs value={obsVal} onChange={setObs} placeholder="Balance strategy, wobble, touch-downs…"/>
       </div>
     </div>);
   }
@@ -6745,6 +6866,8 @@ function buildAthleteSnapshot(ath,setup,exercises){
     if(adfR!=null||adfL!=null){const diff=(adfR!=null&&adfL!=null)?Math.abs(adfR-adfL).toFixed(1):'—';out.push(`- Ayak bileği dorsifleksiyon: R ${adfR??'—'}° / L ${adfL??'—'}° (fark ${diff}°)`);}
     const asR=recNum(t.aslr&&t.aslr.right),asL=recNum(t.aslr&&t.aslr.left);
     if(asR!=null||asL!=null)out.push(`- ASLR (FMS 0-3): R ${asR??'—'} / L ${asL??'—'}`);
+    const ybAI=ybCalc(t.yBalance);
+    if(ybAI.compR!=null||ybAI.compL!=null)out.push(`- Y Balance kompozit skor: R ${ybAI.compR??'—'}% / L ${ybAI.compL??'—'}% (bacak uzunluğu ${ybAI.limb??'—'} cm)`);
     if(t.ohs&&t.ohs.score!==''&&t.ohs.score!=null)out.push(`- Overhead Squat (FMS 0-3): ${t.ohs.score}${(t.ohs.problems||[]).filter(Boolean).length?` — sorunlar: ${(t.ohs.problems||[]).filter(Boolean).join('; ')}`:''}`);
     const circ=t.circ||{};const ca=[];const cl=(k,lbl)=>{const n=recNum(circ[k]);if(n!=null)ca.push(`${lbl} ${n}`);};
     cl('shoulder','Omuz');cl('waist','Bel');cl('hip','Kalça');cl('thighRight','Uyluk R');cl('thighLeft','Uyluk L');cl('calfRight','Baldır R');cl('calfLeft','Baldır L');
@@ -6880,8 +7003,9 @@ function TestReportsTab({ath,setup,ai,exercises}){
   const adfR=num(t.ankleDF&&t.ankleDF.right),adfL=num(t.ankleDF&&t.ankleDF.left);
   const asR=num(t.aslr&&t.aslr.right),asL=num(t.aslr&&t.aslr.left);
   const ohs=(t.ohs&&t.ohs.score!==''&&t.ohs.score!=null)?t.ohs.score:null;
+  const ybt=ybCalc(t.yBalance);
   const hasAny=arr=>arr.some(([,v])=>num(v)!=null);
-  const hasMobility=adfR!=null||adfL!=null||asR!=null||asL!=null||ohs!=null;
+  const hasMobility=adfR!=null||adfL!=null||asR!=null||asL!=null||ohs!=null||ybt.compR!=null||ybt.compL!=null;
   return(<div>
     <div className="rep-cols">
       <div className="panel">
@@ -6896,6 +7020,8 @@ function TestReportsTab({ath,setup,ai,exercises}){
           {asR!=null&&<Tile k="ASLR — R" raw={asR+' /3'}/>}
           {asL!=null&&<Tile k="ASLR — L" raw={asL+' /3'}/>}
           {ohs!=null&&<Tile k="Overhead Squat" raw={ohs+' /3'}/>}
+          {ybt.compR!=null&&<Tile k="Y Balance — R" raw={ybt.compR+' %'}/>}
+          {ybt.compL!=null&&<Tile k="Y Balance — L" raw={ybt.compL+' %'}/>}
         </div></>}
         {hasAny(circList)&&<><div className="rep-sec-t">Body Circumference (cm)</div><div className="rep-grid">{circList.map(([k,v])=><Tile key={k} k={k} v={v} u="cm"/>)}</div></>}
         {t.posture&&t.posture.observations&&<><div className="rep-sec-t">Posture Notes</div><div className="rep-note">{t.posture.observations}</div></>}
