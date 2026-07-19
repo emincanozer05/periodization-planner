@@ -2187,6 +2187,20 @@ function sessionType(s){
 }
 const sessionColor=s=>SESSION_COLORS[sessionType(s)];
 
+/* Template clipboard — module-level bridge (same approach as _libAdd/_libNames above) so the
+   Templates tab can copy and any Quick Add bar (calendar drawer / Planner) can paste without
+   prop-threading. Stores a deep copy, so deleting the template later can't break a paste. */
+let _templateClipboard=null;
+function copyTemplateToClipboard(t){_templateClipboard=t?JSON.parse(JSON.stringify(t)):null;}
+function getTemplateClipboard(){return _templateClipboard;}
+/* Fresh SESS clone of a template's stored session (same cloning pattern as dupS/edDup):
+   new session/block ids, sRPE/au/athletes/sourceId reset. */
+function sessionFromTemplate(t){const s=(t&&t.session)||{};
+  return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
+    purpose:s.purpose||'Technical',duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
+    notes:s.notes||'',athletes:[],sourceId:null};}
+
 /* =========================================================
    DEFAULT DATA & MIGRATION
    ========================================================= */
@@ -2199,7 +2213,7 @@ function makeDefaultTeam(){
       model:'block',periods:null},
     days:{},weekOverrides:{},athletes:[]};
 }
-function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t]};}
+function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t],templates:[]};}
 
 function migrateTeam(t){
   if(!t.id)t.id=uid();
@@ -4693,6 +4707,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(p.d)}>+ {p.name}</button>)}
             <button onClick={()=>edAdd()}>+ Empty</button>
             <button className="copy" onClick={edCopyYesterday}>Copy yesterday</button>
+            {getTemplateClipboard()&&<button className="copy" title="Panodaki şablonu bu güne yapıştır" onClick={()=>svDay(editDate,{sessions:[...(edDay.sessions||[]),sessionFromTemplate(getTemplateClipboard())]})}>📋 Yapıştır: {getTemplateClipboard().name}</button>}
           </div>
           {(edDay.sessions||[]).length===0&&<div className="dw-empty">No sessions yet — start with quick add above</div>}
           {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
@@ -5034,7 +5049,8 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
       </div>
       <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>Quick Add</strong>
         {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(p.d)}>+ {p.name}</button>)}
-        <button className="btn xs sec" onClick={cpY}>Copy yesterday</button></div>
+        <button className="btn xs sec" onClick={cpY}>Copy yesterday</button>
+        {getTemplateClipboard()&&<button className="btn xs sec" title="Panodaki şablonu bu güne yapıştır" onClick={()=>sv({sessions:[...day.sessions,sessionFromTemplate(getTemplateClipboard())]})}>📋 Yapıştır: {getTemplateClipboard().name}</button>}</div>
       {day.sessions.length===0&&<div className="empty-st">No sessions planned — use Quick Add above</div>}
       {day.sessions.map((s,i)=><SessEd key={s.id} session={s} index={i} total={day.sessions.length}
         onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onDuplicate={()=>dupS(s.id)} onMove={d=>mvS(s.id,d)}
@@ -5043,6 +5059,93 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
       <div className="hr"/><label>Daily notes</label>
       <textarea value={day.dailyNotes||''} onChange={e=>sv({dailyNotes:e.target.value})} placeholder="Wellness, sleep, soreness…"/>
     </div>
+  </div>);
+}
+
+/* =========================================================
+   TEMPLATES — shared single-session workout template library
+   (data.templates, copy → paste into any team/athlete calendar)
+   ========================================================= */
+const TPL_CATS=Object.keys(SESSION_COLORS);   // the 6 canonical sessionType categories
+const tplCatLabel=c=>c.charAt(0).toUpperCase()+c.slice(1);
+function TemplatesView({data,setData}){
+  const templates=data.templates||[];
+  const setTemplates=arr=>setData({...data,templates:arr});
+  const[q,setQ]=useState('');
+  const[cat,setCat]=useState('all');
+  const[editId,setEditId]=useState(null);
+  const[copiedId,setCopiedId]=useState(null);
+  const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
+  const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',category:'practice',
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,duration:s.duration,color:'',blocks:s.blocks,notes:''}};
+    setTemplates([t,...templates]);setEditId(t.id);};
+  const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
+  const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||'Template')+' (copy)',session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
+  const copyTpl=t=>{copyTemplateToClipboard(t);setCopiedId(t.id);setTimeout(()=>setCopiedId(c=>c===t.id?null:c),2000);};
+  const blkCount=t=>((t.session&&t.session.blocks)||[]).length;
+  const exCount=t=>((t.session&&t.session.blocks)||[]).reduce((n,b)=>n+((b.exercises||[]).filter(e=>(e.name||'').trim()).length),0);
+  const ql=q.trim().toLowerCase();
+  const shown=templates.filter(t=>(cat==='all'||(t.category||'practice')===cat)&&(!ql||(t.name||'').toLowerCase().includes(ql)));
+  const groups=cat==='all'?TPL_CATS.map(c=>({c,items:shown.filter(t=>(t.category||'practice')===c)})).filter(g=>g.items.length):[{c:cat,items:shown}].filter(g=>g.items.length);
+  const editing=templates.find(t=>t.id===editId);
+  // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
+  const edSession=editing?{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',...(editing.session||{}),name:editing.name||''}:null;
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes}});
+  return(<div className="ex-wrap">
+    <div className="ex-top">
+      <div><h1 className="ex-h1">Templates</h1>
+        <div className="sub">{templates.length} antrenman şablonu · kopyala → takım veya sporcu takvimine yapıştır</div></div>
+      <button className="btn sm" onClick={addTpl}>＋ Yeni Şablon</button>
+    </div>
+    <div className="ex-toolbar">
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Şablon ara…"/></div>
+      <div className="lb-seg" style={{flexWrap:'wrap'}}>
+        <button className={cat==='all'?'on':''} onClick={()=>setCat('all')}>All</button>
+        {TPL_CATS.map(c=><button key={c} className={cat===c?'on':''} style={cat===c?{color:SESSION_COLORS[c].c}:{}} onClick={()=>setCat(c)}>{tplCatLabel(c)}</button>)}
+      </div>
+    </div>
+    {shown.length===0&&<div className="ex-empty">{templates.length===0?'Henüz şablon yok — ＋ Yeni Şablon ile başla.':'Filtreyle eşleşen şablon yok.'}</div>}
+    {groups.map(g=><div key={g.c} style={{marginBottom:22}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,margin:'0 0 10px'}}>
+        <span style={{width:9,height:9,borderRadius:'50%',background:SESSION_COLORS[g.c].c,boxShadow:'0 0 6px '+SESSION_COLORS[g.c].g}}/>
+        <h2 style={{margin:0,fontSize:15}}>{tplCatLabel(g.c)}</h2>
+        <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
+      </div>
+      <div className="ath-grid">
+        {g.items.map(t=>{const col=SESSION_COLORS[t.category||'practice']||SESSION_COLORS.practice;return(
+        <div key={t.id} style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text)',minWidth:0,overflowWrap:'anywhere'}}>{t.name||'—'}</div>
+            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{tplCatLabel(t.category||'practice')}</span>
+          </div>
+          <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{(t.session&&t.session.duration)||0} min · {blkCount(t)} blok · {exCount(t)} egzersiz</div>
+          <div style={{display:'flex',gap:6,marginTop:'auto',paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
+            <button className="btn xs sec" onClick={()=>setEditId(t.id)}>✎ Düzenle</button>
+            <button className="btn xs sec" style={copiedId===t.id?{color:'var(--green)',borderColor:'var(--green)'}:{}} onClick={()=>copyTpl(t)}>{copiedId===t.id?'✓ Kopyalandı':'⧉ Kopyala'}</button>
+            <button className="btn xs danger" onClick={()=>delTpl(t.id)}>🗑 Sil</button>
+          </div>
+        </div>);})}
+      </div>
+    </div>)}
+    {editing&&ReactDOM.createPortal((<>
+      <div className="dw-scrim" onClick={()=>setEditId(null)}/>
+      <aside className="dw edit">
+        <div className="dw-h">
+          <div style={{flex:1,minWidth:0}}><div className="ti">Şablon Düzenle</div><div className="su">{editing.name||'—'} · panoya kopyalayıp takvime yapıştırabilirsin</div></div>
+          <button className="x" onClick={()=>setEditId(null)}>×</button>
+        </div>
+        <div className="dw-b">
+          <div style={{marginBottom:14,maxWidth:280}}><label>Kategori</label>
+            <select value={editing.category||'practice'} onChange={e=>patch(editing.id,{category:e.target.value})}>{TPL_CATS.map(c=><option key={c} value={c}>{tplCatLabel(c)}</option>)}</select></div>
+          <SessEd session={edSession} index={0} total={1}
+            onUpdate={edUpdate}
+            onRemove={()=>{setTemplates(templates.filter(x=>x.id!==editing.id));setEditId(null);}}
+            onDuplicate={()=>dupTpl(editing)} onMove={()=>{}}
+            printContext={{title:'Template',subtitle:editing.name||''}}/>
+          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditId(null)}>Bitti</button></div>
+        </div>
+      </aside>
+    </>),document.body)}
   </div>);
 }
 
@@ -9610,6 +9713,7 @@ const NAV_ICONS={
   athletes:<NIc><circle cx="9" cy="8" r="3"/><path d="M3.6 19.4c.6-3 2.8-4.7 5.4-4.7s4.8 1.7 5.4 4.7"/><path d="M16 5.2a3 3 0 0 1 0 5.6"/><path d="M17.6 14.9c1.9.5 3.3 2.1 3.7 4.5"/></NIc>,
   reports:<NIc><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V8"/><path d="M17 20v-9"/></NIc>,
   exercises:<NIc><path d="M6 8v8"/><path d="M9 6v12"/><path d="M15 6v12"/><path d="M18 8v8"/><path d="M9 12h6"/></NIc>,
+  templates:<NIc><rect x="8" y="8" width="12.5" height="12.5" rx="2"/><path d="M4.5 15.5V5.5a2 2 0 0 1 2-2h9"/></NIc>,
   evaluation:<NIc><rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 3.5h6v2.5H9z"/><path d="M8.5 11.5l2 2 4-4.5"/></NIc>,
   setup:<NIc><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></NIc>,
   teams:<NIc><path d="M12 3l7 2.5v5.6c0 4.1-2.9 7.1-7 8.4-4.1-1.3-7-4.3-7-8.4V5.5L12 3z"/></NIc>,
@@ -9860,6 +9964,7 @@ function App(){
       {id:'evaluation',label:'Testing & Assessment',icon:NAV_ICONS.evaluation},
       {id:'reports',label:'Load Monitoring',icon:NAV_ICONS.reports},
       {id:'exercises',label:'Exercise Library',icon:NAV_ICONS.exercises,count:exCount||null},
+      {id:'templates',label:'Templates',icon:NAV_ICONS.templates,count:(data.templates||[]).length||null},
     ]},
     {label:'Account',items:[
       {id:'setup',label:'Setup',icon:NAV_ICONS.setup},
@@ -9918,6 +10023,7 @@ function App(){
       {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
+      {view==='templates'&&<TemplatesView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected} setData={setData}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
