@@ -1251,6 +1251,30 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px}
 .lb-seg button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:7px;cursor:pointer;transition:all .15s}
 .lb-seg button.on{background:var(--elevated);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* Session focus multi-select dropdown */
+.focus-sel{position:relative}
+.focus-trig{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;text-align:left;transition:border-color .15s}
+.focus-trig:hover,.focus-trig.open{border-color:var(--muted)}
+.focus-trig span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.focus-trig span.ph{color:var(--dim)}
+.focus-trig i{font-style:normal;color:var(--dim);flex:0 0 auto;font-size:11px}
+.focus-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:220px;z-index:80;background:var(--elevated,var(--bg2));border:1px solid var(--border);border-radius:11px;padding:6px;max-height:280px;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.focus-opt{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);text-transform:none;letter-spacing:0;font-weight:500;margin:0}
+.focus-opt:hover{background:var(--bg2)}
+.focus-opt.on{color:var(--text);font-weight:600}
+.focus-opt input[type=checkbox]{width:14px;height:14px;accent-color:var(--green,#46d6a0);margin:0;padding:0;flex:0 0 auto}
+.focus-opt span{flex:1;min-width:0}
+/* Template card focus tags + hover exercise tooltip */
+.tpl-focus-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;white-space:nowrap}
+.tpl-card{position:relative}
+.tpl-card .tpl-tip{display:none;position:absolute;left:6px;right:6px;top:calc(100% - 8px);z-index:70;background:var(--elevated,var(--bg2));border:1px solid var(--border);border-radius:11px;padding:11px 13px;max-height:280px;overflow:auto;box-shadow:0 16px 44px rgba(0,0,0,.6)}
+.tpl-card:hover .tpl-tip{display:block}
+.tpl-tip-blk{margin-bottom:8px}
+.tpl-tip-blk:last-child{margin-bottom:0}
+.tpl-tip-bn{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.tpl-tip-ex{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:2px 0;font-size:12px}
+.tpl-tip-ex .n{color:var(--text);min-width:0;overflow-wrap:anywhere}
+.tpl-tip-ex .m{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);flex:0 0 auto;white-space:nowrap}
 .lb-tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
 .lb-tbl th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:0 14px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
 /* Frosted header bar that matches the glass panel */
@@ -2000,16 +2024,26 @@ const MODELS=[
   {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
-const PURPOSES=['Fundamental Strength','Hypertrophy','Maximal Strength','Power','Speed & Agility','Aerobic Endurance','Anaerobic Capacity','Technical','Ball Practice','Game Day','Recovery','Mobility'];
+const SESSION_FOCUS=['Strength','Hypertrophy','Power','Speed','Acceleration','Deceleration','Change of Direction','Agility','Plyometrics','Conditioning','Mobility','Stability','Injury Prevention','Technical','Tactical','Competition','Assessment','Recovery'];
+/* Old single-value "purpose" values → new multi-select session focus values */
+const LEGACY_FOCUS_MAP={'Fundamental Strength':['Strength'],'Maximal Strength':['Strength'],'Hypertrophy':['Hypertrophy'],'Power':['Power'],'Speed & Agility':['Speed','Agility'],'Aerobic Endurance':['Conditioning'],'Anaerobic Capacity':['Conditioning'],'Technical':['Technical'],'Ball Practice':['Technical'],'Team Practice':['Technical'],'Game Day':['Competition'],'Recovery':['Recovery'],'Mobility':['Mobility']};
+/* Session focus list for a session (or template session): prefers the new
+   `focus` array, otherwise derives it from the legacy `purpose` string. */
+const sesFocus=s=>{
+  if(Array.isArray(s?.focus))return s.focus;
+  const p=(s?.purpose||'').trim();if(!p)return[];
+  if(LEGACY_FOCUS_MAP[p])return LEGACY_FOCUS_MAP[p];
+  return p.split(',').map(x=>x.trim()).filter(x=>SESSION_FOCUS.includes(x));
+};
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
-  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Maximal Strength',duration:75,bl:[]}},
-  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed & Agility',duration:45,bl:[]}},
-  {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Aerobic Endurance',duration:45,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Ball Practice',duration:90,bl:[]}},
-  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',duration:30,bl:[]}},
+  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power',focus:['Strength','Power'],duration:75,bl:[]}},
+  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Agility',focus:['Speed','Agility'],duration:45,bl:[]}},
+  {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning',focus:['Conditioning'],duration:45,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition',focus:['Competition'],duration:90,bl:[]}},
+  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',focus:['Recovery'],duration:30,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
@@ -2076,7 +2110,7 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
-    purpose:p.purpose||'Technical',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
+    purpose:p.purpose||'Technical',focus:Array.isArray(p.focus)?p.focus:sesFocus({purpose:p.purpose||'Technical'}),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2174,14 +2208,15 @@ const SESSION_COLORS={
   endurance:{c:'#00ffd5',t:'rgba(0,255,213,0.10)',g:'rgba(0,255,213,0.40)'},  // fosfor turkuaz
 };
 function sessionType(s){
-  const n=(s?.name||'').toLowerCase(),p=(s?.purpose||'').toLowerCase(),lt=(s?.loadType||'').toLowerCase();
+  const n=(s?.name||'').toLowerCase(),lt=(s?.loadType||'').toLowerCase(),
+    p=(((Array.isArray(s?.focus)?s.focus.join(' '):'')+' '+(s?.purpose||'')).trim()).toLowerCase();
   if(p.includes('recovery')||n.includes('recovery')||n.includes('toparlan')||n.includes('regener'))return'recovery';
-  if(n.includes('match')||n.includes('maç')||n.includes('match day'))return'match';
-  if(p.includes('strength')||p.includes('hypertrophy')||p.includes('power')||
+  if(p.includes('competition')||n.includes('match')||n.includes('maç')||n.includes('match day'))return'match';
+  if(p.includes('strength')||p.includes('hypertrophy')||p.includes('power')||p.includes('plyometric')||
      n.includes('kuvvet')||n.includes('strength')||n.includes('power')||lt.includes('mechanical'))return'strength';
-  if(p.includes('speed')||p.includes('agility')||lt.includes('neuromuscular')||
+  if(p.includes('speed')||p.includes('agility')||p.includes('celeration')||p.includes('change of direction')||lt.includes('neuromuscular')||
      n.includes('speed')||n.includes('agility')||n.includes('sürat')||n.includes('çeviklik')||n.includes('çabukluk'))return'speed';
-  if(p.includes('aerobic')||p.includes('anaerobic')||p.includes('endurance')||
+  if(p.includes('aerobic')||p.includes('anaerobic')||p.includes('endurance')||p.includes('conditioning')||
      n.includes('endurance')||n.includes('conditioning')||n.includes('dayanıklılık'))return'endurance';
   return'practice'; // Ball Practice / Technical default
 }
@@ -2197,7 +2232,7 @@ function getTemplateClipboard(){return _templateClipboard;}
    new session/block ids, sRPE/au/athletes/sourceId reset. */
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
-    purpose:s.purpose||'Technical',duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
+    purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
     notes:s.notes||'',athletes:[],sourceId:null};}
 
@@ -2248,6 +2283,7 @@ function migrateTeam(t){
         if(!s.blocks)s.blocks=[];
         if(!s.name)s.name=s.loadType||'Workout';
         if(s.purpose==='Team Practice')s.purpose='Ball Practice';
+        if(!Array.isArray(s.focus))s.focus=sesFocus(s);
         if(s.name==='Team Practice')s.name='Ball Practice';
         if(s.au===undefined)s.au='';
         if(!Array.isArray(s.athletes))s.athletes=[];
@@ -2289,6 +2325,7 @@ function migrateTeam(t){
       const d=a.days[k];if(!d?.sessions)continue;
       d.sessions=d.sessions.map(s=>({...s,
         purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose,
+        focus:Array.isArray(s.focus)?s.focus:sesFocus({...s,purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose}),
         name:s.name==='Team Practice'?'Ball Practice':s.name,
         blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',...e}))}))}));
     }
@@ -2312,6 +2349,9 @@ function migrate(data){
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
     journal:r.journal||'',apa:r.apa||'',summary:r.summary||'',tags:r.tags||'',addedAt:r.addedAt||Date.now()}));
   if(!Array.isArray(data.savedResearch))data.savedResearch=[];
+  if(!Array.isArray(data.templates))data.templates=[];
+  data.templates=data.templates.map(t=>{const s=t.session||{};
+    return{...t,session:{...s,focus:Array.isArray(s.focus)?s.focus:sesFocus(s)}};});
   if(!Array.isArray(data.exercises))data.exercises=[];
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
@@ -4850,6 +4890,33 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
 /* =========================================================
    SESSION EDITOR
    ========================================================= */
+/* Multi-select dropdown for session focus — shows selected values on the trigger,
+   opens a checkbox list; closes on outside click. */
+function FocusSelect({value,onChange,placeholder}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open)return;
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const sel=Array.isArray(value)?value:[];
+  const toggle=f=>onChange(sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
+  return(<div ref={ref} className="focus-sel">
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}>
+      <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select focus…')}</span>
+      <i>▾</i>
+    </button>
+    {open&&<div className="focus-dd">
+      {SESSION_FOCUS.map(f=><label key={f} className={`focus-opt${sel.includes(f)?' on':''}`}>
+        <input type="checkbox" checked={sel.includes(f)} onChange={()=>toggle(f)}/>
+        <span>{f}</span>
+      </label>)}
+    </div>}
+  </div>);
+}
+
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
   const[dragB,setDragB]=useState(null);
@@ -4890,10 +4957,9 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     {open&&<div className="sbody">
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
-      <div className="grid cols-4" style={{marginBottom:14}}>
+      <div className="grid cols-3" style={{marginBottom:14}}>
         <div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>
-        <div><label>Load type</label><select value={session.loadType} onChange={e=>u({loadType:e.target.value})}>{LOAD_TYPES.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><label>Purpose</label><select value={session.purpose} onChange={e=>u({purpose:e.target.value})}>{PURPOSES.map(x=><option key={x}>{x}</option>)}</select></div>
+        <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
       <div style={{marginBottom:14}}>
@@ -5072,25 +5138,29 @@ function TemplatesView({data,setData}){
   const templates=data.templates||[];
   const setTemplates=arr=>setData({...data,templates:arr});
   const[q,setQ]=useState('');
-  const[cat,setCat]=useState('all');
+  const[selFocus,setSelFocus]=useState([]);   // multi-select session-focus filter
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
   const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',category:'practice',
-    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,duration:s.duration,color:'',blocks:s.blocks,notes:''}};
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,duration:s.duration,color:'',blocks:s.blocks,notes:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
   const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||'Template')+' (copy)',session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
   const copyTpl=t=>{copyTemplateToClipboard(t);setCopiedId(t.id);setTimeout(()=>setCopiedId(c=>c===t.id?null:c),2000);};
   const blkCount=t=>((t.session&&t.session.blocks)||[]).length;
   const exCount=t=>((t.session&&t.session.blocks)||[]).reduce((n,b)=>n+((b.exercises||[]).filter(e=>(e.name||'').trim()).length),0);
+  const tplFocus=t=>sesFocus(t.session||{});
+  const toggleFocus=f=>setSelFocus(sel=>sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   const ql=q.trim().toLowerCase();
-  const shown=templates.filter(t=>(cat==='all'||(t.category||'practice')===cat)&&(!ql||(t.name||'').toLowerCase().includes(ql)));
-  const groups=cat==='all'?TPL_CATS.map(c=>({c,items:shown.filter(t=>(t.category||'practice')===c)})).filter(g=>g.items.length):[{c:cat,items:shown}].filter(g=>g.items.length);
+  const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))&&(!ql||(t.name||'').toLowerCase().includes(ql)));
+  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>(t.category||'practice')===c)})).filter(g=>g.items.length);
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
-  const edSession=editing?{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',...(editing.session||{}),name:editing.name||''}:null;
-  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes}});
+  const edSession=editing?(()=>{const s=editing.session||{};
+    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',...s,name:editing.name||'',
+      focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical']};})():null;
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes}});
   return(<div className="ex-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">Templates</h1>
@@ -5100,8 +5170,8 @@ function TemplatesView({data,setData}){
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Şablon ara…"/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
-        <button className={cat==='all'?'on':''} onClick={()=>setCat('all')}>All</button>
-        {TPL_CATS.map(c=><button key={c} className={cat===c?'on':''} style={cat===c?{color:SESSION_COLORS[c].c}:{}} onClick={()=>setCat(c)}>{tplCatLabel(c)}</button>)}
+        <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>All</button>
+        {SESSION_FOCUS.map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{f}</button>)}
       </div>
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'Henüz şablon yok — ＋ Yeni Şablon ile başla.':'Filtreyle eşleşen şablon yok.'}</div>}
@@ -5112,18 +5182,34 @@ function TemplatesView({data,setData}){
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
       </div>
       <div className="ath-grid">
-        {g.items.map(t=>{const col=SESSION_COLORS[t.category||'practice']||SESSION_COLORS.practice;return(
-        <div key={t.id} style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
+        {g.items.map(t=>{const col=SESSION_COLORS[t.category||'practice']||SESSION_COLORS.practice;
+          const foci=tplFocus(t);
+          const blocks=((t.session&&t.session.blocks)||[]).map(b=>({...b,exercises:(b.exercises||[]).filter(e=>(e.name||'').trim())})).filter(b=>b.exercises.length);
+          return(
+        <div key={t.id} className="tpl-card" style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',minWidth:0,overflowWrap:'anywhere'}}>{t.name||'—'}</div>
             <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{tplCatLabel(t.category||'practice')}</span>
           </div>
+          {foci.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+            {foci.map(f=><span key={f} className="tpl-focus-tag">{f}</span>)}
+          </div>}
           <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{(t.session&&t.session.duration)||0} min · {blkCount(t)} blok · {exCount(t)} egzersiz</div>
           <div style={{display:'flex',gap:6,marginTop:'auto',paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
             <button className="btn xs sec" onClick={()=>setEditId(t.id)}>✎ Düzenle</button>
             <button className="btn xs sec" style={copiedId===t.id?{color:'var(--green)',borderColor:'var(--green)'}:{}} onClick={()=>copyTpl(t)}>{copiedId===t.id?'✓ Kopyalandı':'⧉ Kopyala'}</button>
             <button className="btn xs danger" onClick={()=>delTpl(t.id)}>🗑 Sil</button>
           </div>
+          {blocks.length>0&&<div className="tpl-tip">
+            {blocks.map(b=><div key={b.id} className="tpl-tip-blk">
+              <div className="tpl-tip-bn">{b.name||'Block'}</div>
+              {b.exercises.map((e,i)=>{
+                const _v=e.reps||e.duration;
+                const vol=e.sets&&_v?`${e.sets} × ${_v}`:(_v||(e.sets?`${e.sets} set`:''));
+                const meta=[vol,e.load?'@'+e.load:'',e.tempo?'tempo '+e.tempo:'',e.rest?'rest '+e.rest:''].filter(Boolean).join(' · ');
+                return <div key={i} className="tpl-tip-ex"><span className="n">{e.name}</span>{meta&&<span className="m">{meta}</span>}</div>;})}
+            </div>)}
+          </div>}
         </div>);})}
       </div>
     </div>)}
@@ -5447,28 +5533,6 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
         </div>
       </div>
     </div>
-
-    {(()=>{
-      const risks=getAthleteRisks(team,lmEnd);
-      const rDot=r=>r.metric==='acwr'?acwrZoneOf(r.value).dot:r.metric==='mono'?(r.value>2.5?'#f43f5e':'#f59e0b'):readyColor(r.value);
-      const rVal=r=>r.metric==='acwr'?'ACWR '+r.value.toFixed(2):r.metric==='mono'?'Monotoni '+r.value.toFixed(2):'Readiness '+r.value.toFixed(1)+'/5';
-      return <div className="panel">
-        <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
-          <h2 style={{margin:0,fontSize:18}}>Riskli Sporcular</h2>
-          <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>otomatik risk taraması · {fwd(lmWeek)} – {fwd(lmEnd)}</span>
-        </div>
-        <div className="help" style={{marginBottom:10}}>ACWR &gt; 1.5, 7 günlük monotoni &gt; 2 veya readiness ≤ 2 olan sporcular. Seçili haftanın sonuna ({fwd(lmEnd)}) göre hesaplanır.</div>
-        {risks.length===0?<div className="empty-st">Şu an risk bölgesinde sporcu yok ✓</div>
-        :<div style={{display:'flex',flexDirection:'column',gap:6}}>
-          {risks.map(r=><div key={r.athleteId} style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 12px',background:'var(--bg2)',border:'1px solid '+(r.severity==='high'?'rgba(244,63,94,.45)':'var(--border)'),borderRadius:10}}>
-            <span style={{width:9,height:9,borderRadius:'50%',background:rDot(r),flex:'0 0 auto'}}/>
-            <span style={{fontSize:13,color:'var(--text)',minWidth:140}}>{r.name}</span>
-            <span style={{fontSize:12,color:'var(--muted)',flex:1}}>{r.reason}</span>
-            <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:12,color:rDot(r)}}>{rVal(r)}</span>
-            <span className={'pill '+(r.severity==='high'?'high':'med')}>{r.severity==='high'?'Yüksek':'Orta'}</span>
-          </div>)}
-        </div>}
-      </div>;})()}
 
     <AthleteLoadBoard athletes={team.athletes} refDate={lmEnd}/>
 
