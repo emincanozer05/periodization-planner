@@ -2133,7 +2133,7 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
-    purpose:p.purpose||'Technical',focus:Array.isArray(p.focus)?p.focus:sesFocus({purpose:p.purpose||'Technical'}),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
+    purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2251,6 +2251,10 @@ const sessionColor=s=>SESSION_COLORS[sessionType(s)];
 let _templateClipboard=null;
 function copyTemplateToClipboard(t){_templateClipboard=t?JSON.parse(JSON.stringify(t)):null;}
 function getTemplateClipboard(){return _templateClipboard;}
+/* Set by <App/> so any session editor can save its session to Templates without
+   prop-threading (mirrors the clipboard pattern above). Returns true on success. */
+let _saveSessionAsTemplate=null;
+function saveSessionAsTemplate(session){return _saveSessionAsTemplate?_saveSessionAsTemplate(session):false;}
 /* Fresh SESS clone of a template's stored session (same cloning pattern as dupS/edDup):
    new session/block ids, sRPE/au/athletes/sourceId reset. */
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
@@ -4991,6 +4995,9 @@ function FocusSelect({value,onChange,placeholder}){
 
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
+  const[savedTpl,setSavedTpl]=useState(false);
+  const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
+  const saveTpl=()=>{if(saveSessionAsTemplate(session)){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
   const[dragB,setDragB]=useState(null);
   const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
   const updBlk=(bid,nb)=>u({blocks:session.blocks.map(b=>b.id===bid?nb:b)});
@@ -5017,6 +5024,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
         <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
         <button className="btn xs sec" onClick={onDuplicate}>Clone</button>
+        {!isTemplate&&<button className="btn xs sec" onClick={saveTpl} title="Save this session to the Templates tab" style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>{savedTpl?'✓ Saved':'Save to Templates'}</button>}
         <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session])}>Print</button>
         <button className="btn xs" style={{background:'var(--purple)',color:'#fff'}}
           onClick={()=>shareTrainingPDF({title:printContext.title,subtitle:printContext.subtitle,sessions:[session],athleteName:printContext.title})}
@@ -10117,6 +10125,17 @@ function AICoach({data,setData,team}){
 function App(){
   const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   const sync=useCloudSync(data,setData);
+  // Wire the global "Save to Templates" helper so any session editor can add the
+  // current session to data.templates (matching the Templates tab's stored shape).
+  _saveSessionAsTemplate=session=>{
+    const s=JSON.parse(JSON.stringify(session||{}));
+    const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',category:'practice',
+      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),
+        duration:s.duration||60,color:s.color||'',
+        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||''}};
+    setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
+    return true;
+  };
   const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
