@@ -2307,7 +2307,21 @@ function migrateTeam(t){
       if(tt.ohs&&!Array.isArray(tt.ohs.problems))tt.ohs.problems=['','','','',''];
       return tt;
     });
-    return{...a,phone:a.phone||'',days:a.days||{},injuries:a.injuries||[],measurements:a.measurements||[],wellness:a.wellness||[],srpeLog:a.srpeLog||[],tests};
+    // Sync Anthropometric Measurement tests into the Body Comp measurements list.
+    // Any test carrying height/weight/wingspan/bodyFat with a date is mirrored as a
+    // measurement row linked via srcTest, so past tests populate Body Comp too.
+    let measurements=(a.measurements||[]).slice();
+    tests.forEach(tt=>{
+      const hasAnthro=['height','weight','wingspan','bodyFat'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
+      const exIdx=measurements.findIndex(m=>m.srcTest===tt.id);
+      if(hasAnthro&&tt.date){
+        const rec={id:exIdx>=0?measurements[exIdx].id:uid(),srcTest:tt.id,date:tt.date,
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',
+          notes:exIdx>=0?(measurements[exIdx].notes||''):''};
+        if(exIdx>=0)measurements[exIdx]={...measurements[exIdx],...rec};else measurements.push(rec);
+      }else if(exIdx>=0){measurements.splice(exIdx,1);}
+    });
+    return{...a,phone:a.phone||'',days:a.days||{},injuries:a.injuries||[],measurements,wellness:a.wellness||[],srpeLog:a.srpeLog||[],tests};
   });
   // One-time cleanup: remove sessions previously created by Notion sync.
   // (We now keep sRPE as srpeLog only, not as sessions on the calendar.)
@@ -6915,8 +6929,31 @@ function EvaluationView({team,updateTeam,data,setData}){
     updAth(ath.id,{tests:[...tests,t]});
     setEditingId(t.id);
   };
-  const updTest=(id,upd)=>updAth(ath.id,{tests:tests.map(t=>t.id===id?{...t,...upd}:t)});
-  const delTest=id=>{if(!confirm(Lx('Bu testi sil?','Delete this test?')))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id)});if(editingId===id)setEditingId(null);};
+  const updTest=(id,upd)=>{
+    const nextTests=tests.map(t=>t.id===id?{...t,...upd}:t);
+    const patch={tests:nextTests};
+    // Keep the Body Comp section in sync: mirror this test's Anthropometric
+    // Measurement (height/weight/wingspan/body fat + its date) into ath.measurements.
+    const tt=nextTests.find(t=>t.id===id);
+    if(tt){
+      const ANTHRO=['height','weight','wingspan','bodyFat'];
+      const has=k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k]));
+      const hasAnthro=ANTHRO.some(has);
+      const ms=ath.measurements||[];
+      const exIdx=ms.findIndex(m=>m.srcTest===id);
+      if(hasAnthro&&tt.date){
+        const rec={id:exIdx>=0?ms[exIdx].id:uid(),srcTest:id,date:tt.date,
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',
+          notes:exIdx>=0?(ms[exIdx].notes||''):''};
+        patch.measurements=exIdx>=0?ms.map((m,i)=>i===exIdx?{...m,...rec}:m):[...ms,rec];
+      }else if(exIdx>=0){
+        // Anthropometric data cleared (or date removed) — drop the mirrored row.
+        patch.measurements=ms.filter((_,i)=>i!==exIdx);
+      }
+    }
+    updAth(ath.id,patch);
+  };
+  const delTest=id=>{if(!confirm(Lx('Bu testi sil?','Delete this test?')))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id),measurements:(ath.measurements||[]).filter(m=>m.srcTest!==id)});if(editingId===id)setEditingId(null);};
 
   return(<div>
     <div className="rost-head">
@@ -7369,10 +7406,6 @@ function ProfileTab({ath,updAth,setup}){
         <div><label>Position</label><select value={ath.position||''} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]?`${p} — ${POS_FULL[p]}`:p}</option>)}</select></div>
         <div><label>Training Age (years)</label><input type="number" min="0" step="0.5" value={ath.trainingAge||''} onChange={e=>updAth(ath.id,{trainingAge:e.target.value})} placeholder="e.g. 4"/><div className="help">Years of structured training</div></div>
       </div>
-      <div style={{marginTop:14}}>
-        <label>Somatotype</label>
-        <div className="pf-chiprow">{SOMATOTYPES.map(s=><button key={s} type="button" className={`pf-chip${ath.somatotype===s?' on':''}`} onClick={()=>updAth(ath.id,{somatotype:ath.somatotype===s?'':s})}>{s}</button>)}</div>
-      </div>
     </div>
     <div className="panel" style={{marginBottom:14}}>
       <h2>Animal Type</h2>
@@ -7509,8 +7542,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
             <div><label>Date of birth</label><input type="date" value={ath.dateOfBirth} onChange={e=>updAth(ath.id,{dateOfBirth:e.target.value})}/><div className="help">{fd(ath.dateOfBirth)}</div></div>
-            <div><label>Height (cm)</label><input type="number" value={ath.height} onChange={e=>updAth(ath.id,{height:e.target.value})}/></div>
-            <div><label>Weight (kg)</label><input type="number" value={ath.weight} onChange={e=>updAth(ath.id,{weight:e.target.value})}/></div>
           </div>
           <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
           <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>Bitti</button></div>
@@ -7618,14 +7649,17 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             return<div style={{overflowX:'auto'}}><table><thead><tr><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Wingspan (cm)</th><th>Notes</th><th style={{width:50}}></th></tr></thead><tbody>
               {vis.map((m,idx)=>{const realIdx=ath.measurements.length-1-idx;
                 const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
-                return<tr key={m.id||idx}>
-                  <td><input type="date" value={m.date} onChange={e=>um('date',e.target.value)} style={{width:130}}/><div className="help">{fd(m.date)}</div></td>
-                  <td><input type="number" step="0.1" value={m.height||''} onChange={e=>um('height',e.target.value)} placeholder="cm" style={{width:80}}/></td>
-                  <td><input type="number" step="0.1" value={m.weight} onChange={e=>um('weight',e.target.value)} placeholder="kg" style={{width:80}}/></td>
-                  <td><input type="number" step="0.1" value={m.bodyFat} onChange={e=>um('bodyFat',e.target.value)} placeholder="%" style={{width:70}}/></td>
-                  <td><input type="number" step="0.1" value={m.wingspan||''} onChange={e=>um('wingspan',e.target.value)} placeholder="cm" style={{width:80}}/></td>
+                // Rows mirrored from an Anthropometric Measurement test are read-only here —
+                // edit them from the Testing tab so the source and Body Comp stay in sync.
+                const synced=!!m.srcTest;
+                return<tr key={m.id||idx} style={synced?{opacity:.92}:undefined}>
+                  <td><input type="date" value={m.date} onChange={e=>um('date',e.target.value)} style={{width:130}} disabled={synced}/><div className="help">{fd(m.date)}{synced&&<span title="Synced from Anthropometric Measurement test" style={{marginLeft:6,fontSize:9,fontWeight:700,letterSpacing:'.05em',color:'var(--accent)',border:'1px solid var(--accent)',borderRadius:4,padding:'1px 4px'}}>ANTHRO</span>}</div></td>
+                  <td><input type="number" step="0.1" value={m.height||''} onChange={e=>um('height',e.target.value)} placeholder="cm" style={{width:80}} disabled={synced}/></td>
+                  <td><input type="number" step="0.1" value={m.weight} onChange={e=>um('weight',e.target.value)} placeholder="kg" style={{width:80}} disabled={synced}/></td>
+                  <td><input type="number" step="0.1" value={m.bodyFat} onChange={e=>um('bodyFat',e.target.value)} placeholder="%" style={{width:70}} disabled={synced}/></td>
+                  <td><input type="number" step="0.1" value={m.wingspan||''} onChange={e=>um('wingspan',e.target.value)} placeholder="cm" style={{width:80}} disabled={synced}/></td>
                   <td><input value={m.notes||''} onChange={e=>um('notes',e.target.value)} placeholder="Notes…"/></td>
-                  <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button></td>
+                  <td>{synced?<span className="help" title="Managed by the Testing tab" style={{fontSize:16}}>🔗</span>:<button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button>}</td>
                 </tr>;})}
             </tbody></table>
             <div className="row" style={{justifyContent:'center',marginTop:10,gap:6}}>
