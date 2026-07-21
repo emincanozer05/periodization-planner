@@ -1077,6 +1077,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pf-injrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px}
 .pf-injrow .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex:none}
 .pf-injrow .t{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Dated notes panel — arrow-navigated, light (non-italic) body text */
+.notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.notes-add{width:auto;flex:none;padding:6px 12px;font-size:12px;background:var(--elevated);border:1px solid var(--border2);border-radius:8px;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
+.notes-add:hover{border-color:var(--accent);background:var(--hover)}
+.notes-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.notes-arrow{width:30px;height:30px;flex:none;border-radius:8px;background:var(--panel);border:1px solid var(--border2);color:var(--text);display:grid;place-items:center;cursor:pointer;font-size:16px;line-height:1;padding:0;font-family:inherit;transition:border-color .15s,opacity .15s}
+.notes-arrow:hover:not(:disabled){border-color:var(--accent)}
+.notes-arrow:disabled{opacity:.35;cursor:default}
+.notes-date{width:auto;flex:none;padding:6px 10px;font-size:12.5px}
+.notes-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);white-space:nowrap;font-style:normal !important;font-weight:500 !important}
+.notes-del{margin-left:auto;width:30px;height:30px;flex:none;border-radius:8px;background:var(--panel);border:1px solid var(--border2);color:var(--muted);display:grid;place-items:center;cursor:pointer;font-size:12px;line-height:1;padding:0;font-family:inherit;transition:border-color .15s,color .15s}
+.notes-del:hover{border-color:var(--high-t);color:var(--high-t)}
+.notes-text{font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important;line-height:1.6;font-size:13.5px}
 /* Animal type selector — the chosen beast lights up, the rest fade out */
 .animal-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 @media(max-width:860px){.animal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -7421,8 +7434,38 @@ const ANIMAL_TYPES=[
   {id:'rabbit',name:'Rabbit',img:'animals/rabbit.png',trait:'Low relative strength · Build base first',
     tip:'• Low relative strength\n• Often younger/early training age\n• Movement looks fine, strength lacking\n• Priority: basic strength before heavy load or plyo'},
 ];
+// Dated coaching notes with arrow navigation. Legacy free-text `constraints`
+// is migrated in as the first note so nothing entered before is lost.
+function NotesPanel({ath,updAth}){
+  const stored=Array.isArray(ath.constraintNotes)?ath.constraintNotes:null;
+  const notes=stored||(ath.constraints?[{id:'seed',date:'',text:ath.constraints}]:[]);
+  const[idx,setIdx]=useState(0);
+  const i=Math.max(0,Math.min(idx,notes.length-1));
+  const cur=notes[i];
+  const write=n=>updAth(ath.id,{constraintNotes:n});
+  const addNote=()=>{const n=[...notes,{id:uid(),date:fmt(today),text:''}];write(n);setIdx(n.length-1);};
+  const patch=p=>write(notes.map((x,k)=>k===i?{...x,...p}:x));
+  const del=()=>{const n=notes.filter((_,k)=>k!==i);write(n);setIdx(Math.max(0,i-1));};
+  return(<div className="panel">
+    <div className="notes-head">
+      <h2 style={{margin:0}}>Notes</h2>
+      <button className="notes-add" onClick={addNote} title="Add a new note">+ Note</button>
+    </div>
+    {notes.length===0
+      ?<div className="empty-st">No notes yet — add one to track movement constraints, load-management risks or coaching observations.</div>
+      :<React.Fragment>
+        <div className="notes-nav">
+          <button className="notes-arrow" disabled={i<=0} onClick={()=>setIdx(i-1)} title="Previous note">‹</button>
+          <input type="date" className="notes-date" value={cur.date||''} onChange={e=>patch({date:e.target.value})}/>
+          <span className="notes-count">{i+1} / {notes.length}</span>
+          <button className="notes-arrow" disabled={i>=notes.length-1} onClick={()=>setIdx(i+1)} title="Next note">›</button>
+          <button className="notes-del" onClick={del} title="Delete this note">✕</button>
+        </div>
+        <textarea className="notes-text" rows={6} value={cur.text||''} onChange={e=>patch({text:e.target.value})} placeholder="Movement restrictions, medical constraints, load-management risks, return-to-play limitations…"/>
+      </React.Fragment>}
+  </div>);
+}
 function ProfileTab({ath,updAth,setup}){
-  const positions=POSITIONS[setup.sport]||POSITIONS.default;
   const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
   // Anthropometrics auto-pulled from the most recent dated measurement/test record,
   // falling back to the static profile fields entered via ✎ Edit Profile.
@@ -7446,13 +7489,6 @@ function ProfileTab({ath,updAth,setup}){
       <div className="ath-stat"><div className="k">Wingspan<span className="pf-auto">auto</span></div><div className="v">{ws?ws.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(ws)}</div></div>
     </div>
     <div className="panel" style={{marginBottom:14}}>
-      <h2>Training Background</h2>
-      <div className="grid cols-2">
-        <div><label>Position</label><select value={ath.position||''} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]?`${p} — ${POS_FULL[p]}`:p}</option>)}</select></div>
-        <div><label>Training Age (years)</label><input type="number" min="0" step="0.5" value={ath.trainingAge||''} onChange={e=>updAth(ath.id,{trainingAge:e.target.value})} placeholder="e.g. 4"/><div className="help">Years of structured training</div></div>
-      </div>
-    </div>
-    <div className="panel" style={{marginBottom:14}}>
       <h2>Animal Type</h2>
       <div className="sub" style={{margin:'-8px 0 16px'}}>Which archetype drives this athlete? Pick one — the chosen beast lights up.</div>
       <div className={`animal-grid${ath.animalType?' has-sel':''}`}>
@@ -7474,10 +7510,7 @@ function ProfileTab({ath,updAth,setup}){
             <span className={`inj-pill ${active?'inj':'ok'}`}>{active?'ACTIVE':'RECOVERED'}</span>
           </div>);})}
       </div>
-      <div className="panel">
-        <h2>Current Constraints / Risks</h2>
-        <textarea rows={6} value={ath.constraints||''} onChange={e=>updAth(ath.id,{constraints:e.target.value})} placeholder="Movement restrictions, medical constraints, load-management risks, return-to-play limitations…"/>
-      </div>
+      <NotesPanel ath={ath} updAth={updAth}/>
     </div>
   </div>);
 }
