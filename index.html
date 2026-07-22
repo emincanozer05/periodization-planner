@@ -7726,7 +7726,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
           {(()=>{const sorted=[...ath.measurements].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
             const labels=sorted.map(m=>{const d=parseD(m.date);return MN[d.getMonth()];});
             const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:"'TT Fors','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-            const mkChart=(title,unit,field,color,dotColor,goodUp)=>{const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
+            const mkChart=(title,unit,field,color,dotColor,goodUp)=>{const data=sorted.map(m=>{const raw=m[field];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
               const valid=data.filter(v=>v!=null);
               const cur=valid.length?valid[valid.length-1]:null,first=valid.length?valid[0]:null;
               const imp=valid.length>1?+((cur-first).toFixed(1)):null;
@@ -7751,9 +7751,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
               {mkChart('Wingspan','cm','wingspan','#10b981','#34d399',null)}
             </div>);})()}
           {/* Paginated table (10 rows by default, expand in 10s) */}
-          {(()=>{const rev=[...ath.measurements].reverse();const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
+          {(()=>{const rev=ath.measurements.map((m,i)=>({m,i})).sort((a,b)=>(b.m.date||'').localeCompare(a.m.date||''));const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
             return<div style={{overflowX:'auto'}}><table><thead><tr><th>Date</th><th>Height (cm)</th><th>Weight (kg)</th><th>Body Fat (%)</th><th>Wingspan (cm)</th><th>Notes</th><th style={{width:50}}></th></tr></thead><tbody>
-              {vis.map((m,idx)=>{const realIdx=ath.measurements.length-1-idx;
+              {vis.map(({m,i:realIdx},idx)=>{
                 const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
                 // Rows mirrored from an Anthropometric Measurement test are read-only here —
                 // edit them from the Testing tab so the source and Body Comp stay in sync.
