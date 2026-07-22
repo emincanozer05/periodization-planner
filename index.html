@@ -5714,7 +5714,7 @@ function printBodyComp(ath,setup){
   const fmtD=v=>v==null?'—':(v>0?`+${v}`:`${v}`);
   // SVG line chart helper (area fill + points + labels)
   const lineChart=(field,color)=>{
-    const data=sorted.map(m=>{const v=Number(m[field]);return isNaN(v)?null:v;});
+    const data=sorted.map(m=>{const raw=m[field];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
     const valid=data.map((v,i)=>({v,i})).filter(p=>p.v!=null);
     if(valid.length===0)return`<div class="empty">${L('Veri yok','No data')}</div>`;
     const cw=420,ch=160,padX=28,padT=38,padB=30;
