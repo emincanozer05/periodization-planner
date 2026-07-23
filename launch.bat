@@ -1,13 +1,14 @@
 @echo off
 REM ============================================================
 REM  Periodization Planner — Windows launcher
-REM  Opens index.html in Edge (or Chrome) "app mode" — borderless
+REM  Opens the live app in Edge (or Chrome) "app mode" — borderless
 REM  standalone window that behaves like a real desktop app.
 REM ============================================================
 setlocal
 
-set "DIR=%~dp0"
-set "URL=file:///%DIR:\=/%index.html"
+REM The app is hosted on GitHub Pages and updates automatically on every
+REM release — always open the live site, never a stale local copy.
+set "URL=https://emincanozer05.github.io/periodization-planner/"
 
 REM Prefer Edge (default on Windows 11), fall back to Chrome
 where /q msedge.exe

@@ -10,13 +10,11 @@
 
 $ErrorActionPreference = "Stop"
 
-$Root   = $PSScriptRoot
-$Html   = Join-Path $Root "index.html"
+$Root = $PSScriptRoot
 
-if (-not (Test-Path $Html)) {
-    Write-Host "ERROR: index.html not found in $Root" -ForegroundColor Red
-    Read-Host "Press Enter to close"; exit 1
-}
+# The app is hosted on GitHub Pages and updates automatically on every
+# release — shortcuts open the live site, never a stale local copy.
+$Url = "https://emincanozer05.github.io/periodization-planner/"
 
 # Find a Chromium-based browser
 $browser = $null
@@ -43,8 +41,6 @@ if (-not $browser) {
 
 Write-Host "Found browser: $browser" -ForegroundColor Green
 
-# Build the file:// URL with forward slashes
-$Url = "file:///" + ($Html -replace '\\','/')
 $Arguments = "--app=`"$Url`" --window-size=1400,900"
 
 function New-Shortcut($Path, $Description) {
