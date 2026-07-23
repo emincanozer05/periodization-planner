@@ -6,9 +6,9 @@ REM  standalone window that behaves like a real desktop app.
 REM ============================================================
 setlocal
 
-REM The app is hosted on GitHub Pages and updates automatically on every
+REM The app is hosted on Vercel and updates automatically on every
 REM release — always open the live site, never a stale local copy.
-set "URL=https://emincanozer05.github.io/periodization-planner/"
+set "URL=https://periodization-planner-rust.vercel.app/"
 
 REM Prefer Edge (default on Windows 11), fall back to Chrome
 where /q msedge.exe
