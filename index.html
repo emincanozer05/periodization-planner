@@ -1413,7 +1413,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tc-fields{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:12px}
 .tc-obs{flex:0 0 42%;display:flex;flex-direction:column;min-width:0}
 .tc-obs-l{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.tc-obs textarea{flex:1;min-height:78px;width:100%;box-sizing:border-box;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;color:var(--text);font-size:12.5px;line-height:1.5;resize:vertical;outline:none;font-family:inherit;transition:border-color .15s ease}
+.tc-obs textarea{flex:1;min-height:78px;width:100%;box-sizing:border-box;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;color:var(--text);font-size:12.5px;line-height:1.5;resize:vertical;outline:none;font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:500 !important;transition:border-color .15s ease}
+/* Posture observations: fill the right-hand region flush to the card edge */
+.tc-obs-posture{flex:0 0 46%}
+.tc-obs-posture textarea{min-height:150px}
 .tc-obs textarea::placeholder{color:rgba(255,255,255,.25)}
 .tc-obs textarea:focus{border-color:var(--card-accent,#8fd633);box-shadow:0 0 0 3px rgba(143,214,51,.1)}
 /* column layout: fields stacked, obs below */
@@ -5927,6 +5930,9 @@ function generateTestPDF(test,ath,setup,customTests){
   const adD=Math.abs(adR-adL),adMx=Math.max(adR,adL),adPct=adMx?(adD/adMx*100).toFixed(1):'0';
   const slR=Number(test.aslr?.right)||0,slL=Number(test.aslr?.left)||0;
   const slAsym=Math.abs(slR-slL);
+  // Colour helpers: FMS score 1=red / 2=yellow / 3=green; ankle DF asymmetry 0-5°=green / 5-9°=yellow / ≥10°=red
+  const fmsColor=v=>{const n=Number(v);return n===1?'#dc2626':n===2?'#eab308':n===3?'#16a34a':'';};
+  const ankleAsymColor=d=>{const n=Math.abs(Number(d)||0);return n<5?'#16a34a':n<10?'#eab308':'#dc2626';};
   // Y Balance Test
   const yb=ybCalc(test.yBalance);
   const hasYB=yb.limb!=null||['ant','pm','pl'].some(k=>yb.right[k]!=null||yb.left[k]!=null);
@@ -5985,7 +5991,7 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 .ohs-col{display:flex;align-items:stretch;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:10px;min-height:210px}
 .ohs-label{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;color:var(--muted);padding:4px 2px;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center}
 .ohs-photo-box{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.ohs-problems{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.ohs-problems{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .ohs-problem-h{background:#0a0b0d;color:#fff;padding:6px 8px;font-family:'IBM Plex Mono',monospace;font-weight:500;text-align:center;font-size:10px;letter-spacing:.06em;border-radius:6px 6px 0 0;text-transform:uppercase}
 .ohs-problem-c{background:#fff;min-height:50px;padding:8px 10px;font-size:10px;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;white-space:pre-wrap;color:var(--text2);line-height:1.5}
 .sprint-panel{display:flex;align-items:stretch;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;gap:8px}
@@ -6019,8 +6025,8 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
     <div class="date">📅 ${fdL(test.date)} · ${periodLabel} ${test.year}</div>
   </div>
   <div class="right-block">
-    <div class="ttl">${L('PERFORMANS','PERFORMANCE')}</div>
-    <div class="ttl">${L('TEST RAPORU','TEST REPORT')}</div>
+    <div class="ttl">${L('ÖLÇÜM &','TEST &')}</div>
+    <div class="ttl">${L('DEĞERLENDİRME','ASSESSMENT')}</div>
   </div>
 </div>
 
@@ -6075,8 +6081,8 @@ ${(has('aslr')||has('ankleDF'))?`
   <table>
     <colgroup><col style="width:36%"/><col style="width:14%"/><col style="width:14%"/><col style="width:22%"/><col style="width:14%"/></colgroup>
     <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th><th>Scale</th></tr>
-    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)</td><td>${test.aslr?.right||'—'}</td><td>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>`:''}
-    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)</td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>`:''}
+    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)<div style="font-weight:400;font-style:italic;font-size:9px;color:var(--muted);margin-top:2px">${L('Hamstring esnekliği ve lumbopelvik kontrol','Hamstring flexibility and lumbopelvic control')}</div></td><td${test.aslr?.right?` style="color:${fmsColor(test.aslr.right)};font-weight:600"`:''}>${test.aslr?.right||'—'}</td><td${test.aslr?.left?` style="color:${fmsColor(test.aslr.left)};font-weight:600"`:''}>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>`:''}
+    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)<div style="font-weight:400;font-style:italic;font-size:9px;color:var(--muted);margin-top:2px">${L('Ayak bileği mobilitesi','Ankle mobility')}</div></td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td${adD?` style="color:${ankleAsymColor(adD)};font-weight:600"`:''}>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>`:''}
   </table>
 </div>`:''}
 
@@ -6105,7 +6111,7 @@ ${has('ohs')?`
       <div class="ohs-col"><div class="ohs-label">${L('Arkadan','Back View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.backPhoto)}</div></div>
     </div>
     <div class="ohs-problems">
-      ${[0,1,2,3,4].map(i=>`<div><div class="ohs-problem-h">Problem ${i+1}</div><div class="ohs-problem-c">${(probs[i]||'').replace(/</g,'&lt;')||'&nbsp;'}</div></div>`).join('')}
+      ${[0,1,2,3].map(i=>`<div><div class="ohs-problem-h">Problem ${i+1}</div><div class="ohs-problem-c">${(probs[i]||'').replace(/</g,'&lt;')||'&nbsp;'}</div></div>`).join('')}
     </div>
     ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>${L('Ek Gözlemler:','Additional Observations:')}</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
   </div>
@@ -6539,8 +6545,8 @@ const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
-function MkObs({value,onChange,placeholder}){
-  return(<div className="tc-obs"><div className="tc-obs-l">Observations</div>
+function MkObs({value,onChange,placeholder,className}){
+  return(<div className={"tc-obs"+(className?" "+className:"")}><div className="tc-obs-l">Observations</div>
     <textarea value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'—'}/></div>);
 }
 function MkSelectField({value,onChange,options}){
@@ -6662,7 +6668,7 @@ function TestCard({id,index,test,onUpdate,custom}){
             <MkUpload photo={test.posture?.backPhoto} onChange={v=>uN('posture','backPhoto',v)} label="Back"/>
           </div>
         </div>
-        <MkObs value={obsVal} onChange={setObs} placeholder="Alignment, asymmetries, postural deviations…"/>
+        <MkObs value={obsVal} onChange={setObs} className="tc-obs-posture" placeholder="Alignment, asymmetries, postural deviations…"/>
       </div>
     </div>);
   }
@@ -7483,10 +7489,10 @@ function ProfileTab({ath,updAth,setup}){
   const srcLbl=x=>x?(x.date?`last measured ${fd(x.date)}`:'from profile'):'no data yet';
   return(<div>
     <div className="ath-stat-row" style={{gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))'}}>
-      <div className="ath-stat"><div className="k">Age<span className="pf-auto">auto</span></div><div className="v">{age!=null?age:'—'}<span className="u">yrs</span></div><div className="sub">{ath.dateOfBirth?`b. ${fd(ath.dateOfBirth)}`:'set date of birth via ✎'}</div></div>
-      <div className="ath-stat"><div className="k">Height<span className="pf-auto">auto</span></div><div className="v">{h?h.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(h)}</div></div>
-      <div className="ath-stat"><div className="k">Weight<span className="pf-auto">auto</span></div><div className="v">{w?w.v:'—'}<span className="u">kg</span></div><div className="sub">{srcLbl(w)}</div></div>
-      <div className="ath-stat"><div className="k">Wingspan<span className="pf-auto">auto</span></div><div className="v">{ws?ws.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(ws)}</div></div>
+      <div className="ath-stat"><div className="k">Age</div><div className="v">{age!=null?age:'—'}<span className="u">yrs</span></div><div className="sub">{ath.dateOfBirth?`b. ${fd(ath.dateOfBirth)}`:'set date of birth via ✎'}</div></div>
+      <div className="ath-stat"><div className="k">Height</div><div className="v">{h?h.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(h)}</div></div>
+      <div className="ath-stat"><div className="k">Weight</div><div className="v">{w?w.v:'—'}<span className="u">kg</span></div><div className="sub">{srcLbl(w)}</div></div>
+      <div className="ath-stat"><div className="k">Wingspan</div><div className="v">{ws?ws.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(ws)}</div></div>
     </div>
     <div className="panel" style={{marginBottom:14}}>
       <h2>Animal Type</h2>
@@ -7519,6 +7525,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const[aiAuto,setAiAuto]=useState(false);
   const askAI=()=>{setTab('recommends');setAiAuto(true);};
   const[editProfileOpen,setEditProfileOpen]=useState(false);
+  const[dobText,setDobText]=useState('');
+  useEffect(()=>{setDobText(fd(ath.dateOfBirth));},[ath.dateOfBirth,editProfileOpen]);
   const[srpeTableOpen,setSrpeTableOpen]=useState(false);
   const[wellnessTableOpen,setWellnessTableOpen]=useState(false);
   // Find the most recent date that has any data (sessions/wellness/measurements)
@@ -7627,7 +7635,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
     {tab==='recommends'&&<RecommendsTab ath={ath} updAth={updAth} setup={setup} ai={ai} exercises={exercises} autoGen={aiAuto} onAutoDone={()=>setAiAuto(false)}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
-      <div className="modal" style={{maxWidth:680,width:'95vw'}} onClick={e=>e.stopPropagation()}>
+      <div className="modal" style={{maxWidth:680,width:'95vw',background:'#15181e',backdropFilter:'none',WebkitBackdropFilter:'none'}} onClick={e=>e.stopPropagation()}>
         <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>Edit Profile</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
         <div style={{padding:'18px 22px'}}>
           <div className="grid cols-3">
@@ -7636,7 +7644,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
             <div><label>Position</label><select value={ath.position} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>Date of birth</label><input type="date" value={ath.dateOfBirth} onChange={e=>updAth(ath.id,{dateOfBirth:e.target.value})}/><div className="help">{fd(ath.dateOfBirth)}</div></div>
+            <div><label>Date of birth</label><input type="text" inputMode="numeric" placeholder="gg/aa/yyyy" value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">gün / ay / yıl</div></div>
           </div>
           <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
           <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>Bitti</button></div>
