@@ -12,9 +12,9 @@ $ErrorActionPreference = "Stop"
 
 $Root = $PSScriptRoot
 
-# The app is hosted on GitHub Pages and updates automatically on every
+# The app is hosted on Vercel and updates automatically on every
 # release — shortcuts open the live site, never a stale local copy.
-$Url = "https://emincanozer05.github.io/periodization-planner/"
+$Url = "https://periodization-planner-rust.vercel.app/"
 
 # Find a Chromium-based browser
 $browser = $null
