@@ -1417,6 +1417,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Posture observations: fill the right-hand region flush to the card edge */
 .tc-obs-posture{flex:0 0 46%}
 .tc-obs-posture textarea{min-height:150px}
+.tc-obs-flex{flex:1 1 220px;min-width:220px}
+.tc-obs-flex textarea{min-height:150px}
 .tc-obs textarea::placeholder{color:rgba(255,255,255,.25)}
 .tc-obs textarea:focus{border-color:var(--card-accent,#8fd633);box-shadow:0 0 0 3px rgba(143,214,51,.1)}
 /* column layout: fields stacked, obs below */
@@ -5961,7 +5963,6 @@ function generateTestPDF(test,ath,setup,customTests){
   const ohsPh=(photo)=>photo
     ?`<img src="${photo}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px"/>`
     :`<div style="width:100%;height:170px;background:#eee;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:24px;border-radius:4px">—</div>`;
-  const probs=test.ohs?.problems||['','','','',''];
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${L('Test Raporu','Test Report')} — ${ath.name}</title>
@@ -6126,10 +6127,7 @@ ${has('ohs')?`
       <div class="ohs-col"><div class="ohs-label">${L('Yandan','Side View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.sidePhoto)}</div></div>
       <div class="ohs-col"><div class="ohs-label">${L('Arkadan','Back View')}</div><div class="ohs-photo-box">${ohsPh(test.ohs?.backPhoto)}</div></div>
     </div>
-    <div class="ohs-problems">
-      ${[0,1,2,3].map(i=>`<div><div class="ohs-problem-h">Problem ${i+1}</div><div class="ohs-problem-c">${(probs[i]||'').replace(/</g,'&lt;')||'&nbsp;'}</div></div>`).join('')}
-    </div>
-    ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>${L('Ek Gözlemler:','Additional Observations:')}</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
+    ${test.ohs?.observations?`<div class="obs-box" style="margin-top:8px"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.ohs.observations.replace(/</g,'&lt;')}</div>`:''}
   </div>
 </div>`:''}
 
@@ -6690,8 +6688,6 @@ function TestCard({id,index,test,onUpdate,custom}){
   }
 
   if(id==='ohs'){
-    const probs=[0,1,2,3].map(i=>(Array.isArray(test.ohs?.problems)?test.ohs.problems:[])[i]||'');
-    const setProb=(i,v)=>uN('ohs','problems',probs.map((p,j)=>j===i?v:p));
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <Hd/>
       <div className="tcard-body-wide">
@@ -6708,14 +6704,8 @@ function TestCard({id,index,test,onUpdate,custom}){
               <MkUpload photo={test.ohs?.backPhoto} onChange={v=>uN('ohs','backPhoto',v)} label="Back"/>
             </div>
           </div>
-          <div style={{flex:1,minWidth:220}}>
-            <div className="mk-flbl" style={{marginBottom:10}}>Compensations</div>
-            <div className="ohs-comp-grid">
-              {[0,1,2,3].map(i=><input key={i} className="ohs-comp-input" placeholder={'#'+(i+1)} value={probs[i]||''} onChange={e=>setProb(i,e.target.value)}/>)}
-            </div>
-          </div>
+          <MkObs value={obsVal} onChange={setObs} placeholder="Movement quality, notes…" className="tc-obs-flex"/>
         </div>
-        <MkObs value={obsVal} onChange={setObs} placeholder="Movement quality, notes…"/>
       </div>
     </div>);
   }
