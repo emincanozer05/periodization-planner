@@ -337,6 +337,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rpe-leg b.sc{background:#22d3ee}
 .rpe-leg b.gm{background:#f472b6}
 .calw-empty{flex:1;display:grid;place-items:center;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
+.calw-daytot{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.calw-daytot span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+.calw-daytot b{font-size:13px;font-weight:700;color:var(--accent)}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
 .calw-legend i b{width:9px;height:9px;border-radius:2px;display:inline-block}
@@ -4642,6 +4645,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     <div className="calw-grid">
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
+        // Daily load = SUM of that day's session AU boxes (multiple sessions add up),
+        // mirroring the "Daily" value in the Team Load Trend chart & the month grid.
+        const dayAU=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
         const isDrop=canEdit&&dragInfo&&dragOverDate===k&&dragInfo.fromDate!==k;
         return(<div key={k} className={`calw-col${isDrop?' drop':''}`}
           onDragOver={e=>{if(canEdit&&dragInfo){e.preventDefault();e.dataTransfer.dropEffect=(e.ctrlKey||e.metaKey||e.altKey)?'copy':'move';setDragOverDate(k);}}}
@@ -4682,6 +4688,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               {au>0&&<span className="au">{au} AU</span>}
             </div>);
           })}
+          {dayAU>0&&<div className="calw-daytot"><span>Daily</span><b>{Math.round(dayAU)} AU</b></div>}
         </div>);
       })}
     </div>
