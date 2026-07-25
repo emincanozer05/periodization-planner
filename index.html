@@ -760,6 +760,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .add-blk{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}
 .add-blk button{background:var(--elevated);color:var(--muted);border:1px dashed var(--border);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s;font-weight:500}
 .add-blk button:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-bg)}
+/* Free-text session note opened by "+ Add Notes" next to "+ Add Block" —
+   deliberately light and upright, unlike the global italic/bold display font. */
+.ses-note{margin-top:10px}
+.ses-note textarea{min-height:80px;font-size:13.5px;line-height:1.6;letter-spacing:0;
+  font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important}
+.ses-note textarea::placeholder{font-style:normal !important;font-weight:300 !important}
+.plan-note-view{margin-top:14px;padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:9px;
+  color:var(--text2);white-space:pre-wrap;font-size:13.5px;line-height:1.6;
+  font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important}
 /* Session bar */
 .sess-card{margin-bottom:14px}
 .sess-card:last-child{margin-bottom:0}
@@ -2141,7 +2150,7 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
-    purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',athletes:[],sourceId:null};};
+    purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2269,7 +2278,7 @@ function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
     purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
-    notes:s.notes||'',athletes:[],sourceId:null};}
+    notes:s.notes||'',planNote:s.planNote||'',athletes:[],sourceId:null};}
 
 /* =========================================================
    DEFAULT DATA & MIGRATION
@@ -3167,6 +3176,7 @@ ${purposeSec}
    Print and Share both render the SAME HTML so the output is identical
    regardless of which path the user takes.
    ========================================================= */
+const escHTML=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function buildSessionHTMLDoc(title,subtitle,sessions){
   const computeLabels=exs=>{const cnt={};return exs.map(ex=>{
     const ss=(ex.superset||'').toString().toUpperCase().trim();
@@ -3286,7 +3296,8 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .sf-val.placeholder{color:#cbd5e1;font-weight:700}
 .sf-val .unit{font-size:12px;color:#94a3b8;font-weight:600;margin-left:3px}
 .sf-divider{width:1px;background:#e2e8f0}
-.sf-notes{flex:1;font-size:12px;color:#475569;font-style:italic;line-height:1.5}
+.sf-notes{flex:1;font-size:12px;color:#475569;font-style:italic;line-height:1.5;display:flex;flex-direction:column;gap:5px}
+.sf-plan-note{font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important;font-size:12px;color:#334155;line-height:1.55;white-space:pre-wrap}
 
 /* Page footer */
 .page-footer{font-family:'IBM Plex Mono',monospace;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
@@ -3317,8 +3328,11 @@ ${sessions.map((s,i)=>`<div class="sess">
     if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
     return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block"><div class="bh">${b.name}</div>${exTable(b)}</div>`).join('')}</div>`;
   })()}
-  ${s.notes?`<div class="sf">
-    <div class="sf-notes"><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>
+  ${(s.planNote||s.notes)?`<div class="sf">
+    <div class="sf-notes">
+      ${s.planNote?`<div class="sf-plan-note">${escHTML(s.planNote)}</div>`:''}
+      ${s.notes?`<div><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
+    </div>
   </div>`:''}
 </div>`).join('')}
 
@@ -4812,6 +4826,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               })}
             </div>);
           })}
+          {drawerSes.planNote&&<div className="plan-note-view">{drawerSes.planNote}</div>}
           {drawerSes.notes&&<div style={{marginTop:14,padding:14,background:'var(--panel)',border:'1px solid var(--border)',borderRadius:9,fontSize:13,color:'var(--text2)',whiteSpace:'pre-wrap',lineHeight:1.55}}>{drawerSes.notes}</div>}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>Kapat</button>
@@ -5020,6 +5035,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const dupBlk=bid=>{const o=session.blocks.find(b=>b.id===bid);const i=session.blocks.indexOf(o);
     const nb={...o,id:uid(),exercises:o.exercises.map(e=>({...e}))};const a=[...session.blocks];a.splice(i+1,0,nb);u({blocks:a});};
   const addBlk=n=>u({blocks:[...session.blocks,BLK(n)]});
+  const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
   const load=sLoad(session);
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
@@ -5030,11 +5046,11 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <span className="sn">{index+1}</span>
       <input value={session.name} onChange={e=>u({name:e.target.value})} onClick={e=>e.stopPropagation()}
         style={{width:200,background:'transparent',border:'none',borderBottom:'1px solid var(--border)',borderRadius:0,fontWeight:700,fontSize:14,padding:'2px 4px',fontFamily:'Space Grotesk'}}/>
-      <span style={{color:'var(--muted)',fontSize:12}}>{session.time} · {session.duration}min</span>
+      <span style={{color:'var(--muted)',fontSize:12}}>{isTemplate?`${session.duration}min`:`${session.time} · ${session.duration}min`}</span>
       {fromTeam&&<span className="team-badge" title="This session was copied from a team plan. Edits to the team session will sync here.">⚡ FROM TEAM</span>}
       {showPicker&&participantCount>0&&<span className="tag" style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd'}}>👥 {participantCount} athlete{participantCount!==1?'s':''}</span>}
       <span className="grow"/>
-      <span className="tag">{Math.round(load)} AU</span>
+      {!isTemplate&&<span className="tag">{Math.round(load)} AU</span>}
       <div className="row" onClick={e=>e.stopPropagation()}>
         <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
         <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
@@ -5052,12 +5068,13 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     {open&&<div className="sbody">
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
-      <div className="grid cols-3" style={{marginBottom:14}}>
-        <div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>
+      {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
+      <div className={`grid ${isTemplate?'cols-2':'cols-3'}`} style={{marginBottom:14}}>
+        {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
-      <div style={{marginBottom:14}}>
+      {!isTemplate&&<div style={{marginBottom:14}}>
         <label>Card color</label>
         <div className="color-row">
           {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
@@ -5065,11 +5082,17 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
           <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
         </div>
-      </div>
+      </div>}
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
-      <div className="add-blk"><button onClick={()=>addBlk('')}>+ Add Block</button></div>
-      <div className="hr"/>
+      <div className="add-blk">
+        <button onClick={()=>addBlk('')}>+ Add Block</button>
+        <button onClick={()=>setNoteOpen(o=>!o)} title="Add a free-text note to this session">{noteOpen?'− Hide Notes':'+ Add Notes'}</button>
+      </div>
+      {noteOpen&&<div className="ses-note">
+        <textarea value={session.planNote||''} onChange={e=>u({planNote:e.target.value})} placeholder="Write a note for this session…"/>
+      </div>}
+      {!isTemplate&&<><div className="hr"/>
       <div className="grid cols-3">
         <div>
           <label>RPE (0-10)</label>
@@ -5084,7 +5107,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           <div className="help">{session.auManual?'Manual AU — kept when sRPE/duration change':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
         </div>
         <div><label>Notes</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder="Observations…"/></div>
-      </div>
+      </div></>}
     </div>}
   </div>);
 }
@@ -5238,7 +5261,7 @@ function TemplatesView({data,setData}){
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
   const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',category:'practice',
-    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,duration:s.duration,color:'',blocks:s.blocks,notes:''}};
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
   const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||'Template')+' (copy)',session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
@@ -5253,9 +5276,9 @@ function TemplatesView({data,setData}){
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
-    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',...s,name:editing.name||'',
+    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',planNote:'',...s,name:editing.name||'',
       focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical']};})():null;
-  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes}});
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">Templates</h1>
@@ -10146,7 +10169,7 @@ function App(){
     const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',category:'practice',
       session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),
         duration:s.duration||60,color:s.color||'',
-        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||''}};
+        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
     return true;
   };
