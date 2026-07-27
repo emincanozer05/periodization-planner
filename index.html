@@ -2466,15 +2466,17 @@ function defWeek(model,period,idx,comps,ws){
 function dailyLoads(days,from,to){const o=[];let c=parseD(from);const e=parseD(to);while(c<=e){o.push({date:fmt(c),load:dLoad(days[fmt(c)])});c=addD(c,1);}return o;}
 function weekMono(loads){const a=loads.map(l=>l.load);const m=a.reduce((s,v)=>s+v,0)/a.length;if(m===0)return{mean:0,sd:0,monotony:0,strain:0,total:0};
   const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);return{mean:m,sd,monotony:mono,strain:total*mono,total};}
-/* Chronic load must be a *weekly average*, but with less than 4 weeks of history a fixed
-   ÷4 shrinks it artificially (all data in the last 7 days → chronic=acute/4 → ACWR pinned
-   at 4.00). Normalize by the weeks of data actually available at `ref` instead: days from
-   the earliest loaded day to ref, capped at 28, min 1 week. */
-function histDaysAt(earliest,ref,cap=28){if(!earliest)return 0;
-  const d=Math.round((parseD(ref)-parseD(earliest))/864e5)+1;return Math.max(0,Math.min(cap,d));}
-function chronicWeeksAt(earliest,ref){return Math.min(4,Math.max(1,histDaysAt(earliest,ref)/7));}
-function earliestLoadDay(days){let m='';Object.keys(days||{}).forEach(k=>{if(dLoad(days[k])>0&&(!m||k<m))m=k;});return m;}
-function calcACWR(days,ref){const r=parseD(ref);let ac=0,ch=0;for(let i=0;i<7;i++)ac+=dLoad(days[fmt(addD(r,-i))]);for(let i=0;i<28;i++)ch+=dLoad(days[fmt(addD(r,-i))]);ch/=chronicWeeksAt(earliestLoadDay(days),ref);return ch===0?0:ac/ch;}
+/* Chronic load must be a *weekly average*, but a fixed ÷4 misreads sparse history: when
+   all in-window data sits in the last 7 days, chronic=acute/4 and ACWR pins at exactly
+   4.00 — both on a cold start and on a return after a ≥4-week logging gap (old logs far
+   outside the window used to count as "history", pinning the divisor at 4 weeks for the
+   whole roster). Normalize by the history inside the 28-day window itself: days from the
+   oldest in-window load day to ref, min 1 week, max 4. */
+function loadWindows(loadAt,ref){const r=parseD(ref);let ac=0,ch=0,hist=0;
+  for(let i=0;i<28;i++){const v=loadAt(fmt(addD(r,-i)))||0;ch+=v;if(v>0)hist=i+1;if(i<7)ac+=v;}
+  return{ac,ch,hist,weeks:Math.min(4,Math.max(1,hist/7))};}
+function acwrFrom(loadAt,ref){const w=loadWindows(loadAt,ref);const c=w.ch/w.weeks;return c===0?0:w.ac/c;}
+function calcACWR(days,ref){return acwrFrom(k=>dLoad(days[k]),ref);}
 
 /* ---- Per-athlete inner-load + wellness metrics (from srpeLog / wellness) ---- */
 const POS_FULL={PG:'Point Guard',SG:'Shooting Guard',SF:'Small Forward',PF:'Power Forward',C:'Center',GK:'Goalkeeper'};
@@ -2484,13 +2486,7 @@ function athDayLoad(a,dk){let v=0;(a.srpeLog||[]).forEach(e=>{if(e.date!==dk)ret
   v+=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));});return Math.round(v);}
 function athLoadSum(a,from,to){let s=0,c=parseD(from);const e=parseD(to);while(c<=e){s+=athDayLoad(a,fmt(c));c=addD(c,1);}return s;}
 function athTrend(a,ref,n){const r=parseD(ref),out=[];for(let i=n-1;i>=0;i--)out.push(athDayLoad(a,fmt(addD(r,-i))));return out;}
-function athEarliestLoad(a){let m='';(a.srpeLog||[]).forEach(e=>{if(!e.date)return;
-  const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-  if(v>0&&(!m||e.date<m))m=e.date;});return m;}
-function athACWR(a,ref){const r=parseD(ref);let ac=0,ch=0;
-  for(let i=0;i<7;i++)ac+=athDayLoad(a,fmt(addD(r,-i)));
-  for(let i=0;i<28;i++)ch+=athDayLoad(a,fmt(addD(r,-i)));
-  ch/=chronicWeeksAt(athEarliestLoad(a),ref);return ch===0?0:ac/ch;}
+function athACWR(a,ref){return acwrFrom(k=>athDayLoad(a,k),ref);}
 function athLatestDate(a){let m='';(a.srpeLog||[]).forEach(e=>{if(e.date&&e.date>m)m=e.date;});
   (a.wellness||[]).forEach(w=>{if(w.date&&w.date>m)m=w.date;});return m||fmt(today);}
 function athWellnessVal(a,field,ref){const ws=(a.wellness||[]).filter(w=>w.date&&w[field]!==''&&w[field]!=null&&(!ref||w.date<=ref))
@@ -5515,13 +5511,9 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
 
   // ---- ACWR: acute(7d) : chronic(28d weekly avg), from team daily load, at end of period.
-  // Chronic normalized by weeks of data actually available (chronicWeeksAt) so a short
-  // history doesn't pin the ratio at 4.00.
-  const earliestDataDay=useMemo(()=>{let m='';Object.keys(teamDaily).forEach(k=>{if((teamDaily[k]||0)>0&&(!m||k<m))m=k;});return m;},[teamDaily]);
-  const acwrAt=ref=>{const r=parseD(ref);let ac=0,ch=0;
-    for(let i=0;i<7;i++)ac+=dayLoad(fmt(addD(r,-i)));
-    for(let i=0;i<28;i++)ch+=dayLoad(fmt(addD(r,-i)));
-    ch/=chronicWeeksAt(earliestDataDay,ref);return ch===0?0:ac/ch;};
+  // Chronic normalized by the history present in the 28-day window (loadWindows) so a
+  // short or restarted history doesn't pin the ratio at 4.00.
+  const acwrAt=ref=>acwrFrom(dayLoad,ref);
   const refDate=me<=fmt(today)?me:fmt(today);   // end of selected month, capped at today
   const acwrVal=acwrAt(refDate);
   const acwrZone=acwrVal===0?{t:'No data',c:'#94a3b8'}:acwrVal>1.5?{t:'High risk',c:'#ef4444'}
@@ -5539,18 +5531,17 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
   const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(lmRef),-(6-i))))}));
   const m7=weekMono(last7);
-  const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(lmRef),-i)));
-    return s/Math.max(7,histDaysAt(earliestDataDay,lmRef));})();
+  const w28=loadWindows(dayAvg,lmRef);
+  const chronicMean=w28.ch/Math.max(7,w28.hist);
   const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
   const lmZone=acwrZoneOf(lmAcwr);
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
     const k=fmt(addD(parseD(lmRef),-i));const daily=dayAvg(k);
-    let a=0;for(let j=0;j<7;j++)a+=dayAvg(fmt(addD(parseD(k),-j)));a/=7;
-    let c=0;for(let j=0;j<28;j++)c+=dayAvg(fmt(addD(parseD(k),-j)));c/=Math.max(7,histDaysAt(earliestDataDay,k));
+    const w=loadWindows(dayAvg,k);const a=w.ac/7,c=w.ch/Math.max(7,w.hist);
     out.push({k,daily,acute:Math.round(a),chronic:Math.round(c),acwr:c>0?a/c:0});}
-    return out;},[teamDaily,lmRef,lmWin,earliestDataDay]);
+    return out;},[teamDaily,lmRef,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -5618,7 +5609,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
     <div className="lm-head" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
       <div>
         <div className="lm-title">Load Monitoring</div>
-        <div className="lm-sub">Acute:chronic workload, training monotony &amp; wellness trends · <span style={{color:'#2dd4a7',fontWeight:700}}>build 27.07 — ACWR week-ref fix</span></div>
+        <div className="lm-sub">Acute:chronic workload, training monotony &amp; wellness trends · <span style={{color:'#2dd4a7',fontWeight:700}}>build 27.07b — ACWR gap fix</span></div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
         <div className="lm-wksel">
