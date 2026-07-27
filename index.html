@@ -5260,7 +5260,7 @@ function TemplatesView({data,setData}){
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
-  const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',category:'practice',
+  const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',
     session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
@@ -5269,10 +5269,13 @@ function TemplatesView({data,setData}){
   const blkCount=t=>((t.session&&t.session.blocks)||[]).length;
   const exCount=t=>((t.session&&t.session.blocks)||[]).reduce((n,b)=>n+((b.exercises||[]).filter(e=>(e.name||'').trim()).length),0);
   const tplFocus=t=>sesFocus(t.session||{});
+  // Category is derived from the session focus (no separate category field) —
+  // same classification the calendar uses, so a pasted template keeps its color.
+  const tplCat=t=>sessionType({focus:tplFocus(t)});
   const toggleFocus=f=>setSelFocus(sel=>sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   const ql=q.trim().toLowerCase();
   const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))&&(!ql||(t.name||'').toLowerCase().includes(ql)));
-  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>(t.category||'practice')===c)})).filter(g=>g.items.length);
+  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c)})).filter(g=>g.items.length);
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
@@ -5300,14 +5303,14 @@ function TemplatesView({data,setData}){
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
       </div>
       <div className="ath-grid">
-        {g.items.map(t=>{const col=SESSION_COLORS[t.category||'practice']||SESSION_COLORS.practice;
+        {g.items.map(t=>{const col=SESSION_COLORS[tplCat(t)]||SESSION_COLORS.practice;
           const foci=tplFocus(t);
           const blocks=((t.session&&t.session.blocks)||[]).map(b=>({...b,exercises:(b.exercises||[]).filter(e=>(e.name||'').trim())})).filter(b=>b.exercises.length);
           return(
         <div key={t.id} className="tpl-card" style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',minWidth:0,overflowWrap:'anywhere'}}>{t.name||'—'}</div>
-            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{tplCatLabel(t.category||'practice')}</span>
+            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{tplCatLabel(tplCat(t))}</span>
           </div>
           {foci.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
             {foci.map(f=><span key={f} className="tpl-focus-tag">{f}</span>)}
@@ -5339,8 +5342,6 @@ function TemplatesView({data,setData}){
           <button className="x" onClick={()=>setEditId(null)}>×</button>
         </div>
         <div className="dw-b">
-          <div style={{marginBottom:14,maxWidth:280}}><label>Kategori</label>
-            <select value={editing.category||'practice'} onChange={e=>patch(editing.id,{category:e.target.value})}>{TPL_CATS.map(c=><option key={c} value={c}>{tplCatLabel(c)}</option>)}</select></div>
           <SessEd session={edSession} index={0} total={1}
             onUpdate={edUpdate}
             onRemove={()=>{setTemplates(templates.filter(x=>x.id!==editing.id));setEditId(null);}}
@@ -10166,7 +10167,7 @@ function App(){
   // current session to data.templates (matching the Templates tab's stored shape).
   _saveSessionAsTemplate=session=>{
     const s=JSON.parse(JSON.stringify(session||{}));
-    const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',category:'practice',
+    const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',
       session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),
         duration:s.duration||60,color:s.color||'',
         blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
