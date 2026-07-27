@@ -5250,8 +5250,18 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
    TEMPLATES — shared single-session workout template library
    (data.templates, copy → paste into any team/athlete calendar)
    ========================================================= */
-const TPL_CATS=Object.keys(SESSION_COLORS);   // the 6 canonical sessionType categories
-const tplCatLabel=c=>c.charAt(0).toUpperCase()+c.slice(1);
+/* Template categories — session-focus groups. A template's category comes from its
+   Session Focus (no separate category field); the first group below whose foci match
+   wins, so a mixed Strength + Mobility template lands in Strength & Power. */
+const TPL_CATS=[
+  {id:'strength',    label:'Strength & Power',        color:'strength', foci:['Strength','Hypertrophy','Power','Plyometrics']},
+  {id:'mdspeed',     label:'Multi-Directional Speed', color:'speed',    foci:['Speed','Acceleration','Deceleration','Change of Direction','Agility']},
+  {id:'conditioning',label:'Conditioning',            color:'endurance',foci:['Conditioning']},
+  {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Mobility','Stability']},
+  {id:'other',       label:'Other',                   color:'practice', foci:[]},   // Technical / Tactical / Competition / no focus
+];
+const tplCatOf=focus=>TPL_CATS.find(c=>c.foci.some(f=>focus.includes(f)))||TPL_CATS[TPL_CATS.length-1];
+const tplCatColor=c=>SESSION_COLORS[c.color]||SESSION_COLORS.practice;
 function TemplatesView({data,setData}){
   const templates=data.templates||[];
   const setTemplates=arr=>setData({...data,templates:arr});
@@ -5269,9 +5279,7 @@ function TemplatesView({data,setData}){
   const blkCount=t=>((t.session&&t.session.blocks)||[]).length;
   const exCount=t=>((t.session&&t.session.blocks)||[]).reduce((n,b)=>n+((b.exercises||[]).filter(e=>(e.name||'').trim()).length),0);
   const tplFocus=t=>sesFocus(t.session||{});
-  // Category is derived from the session focus (no separate category field) —
-  // same classification the calendar uses, so a pasted template keeps its color.
-  const tplCat=t=>sessionType({focus:tplFocus(t)});
+  const tplCat=t=>tplCatOf(tplFocus(t));
   const toggleFocus=f=>setSelFocus(sel=>sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   const ql=q.trim().toLowerCase();
   const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))&&(!ql||(t.name||'').toLowerCase().includes(ql)));
@@ -5296,21 +5304,21 @@ function TemplatesView({data,setData}){
       </div>
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
-    {groups.map(g=><div key={g.c} style={{marginBottom:22}}>
+    {groups.map(g=><div key={g.c.id} style={{marginBottom:22}}>
       <div style={{display:'flex',alignItems:'center',gap:8,margin:'0 0 10px'}}>
-        <span style={{width:9,height:9,borderRadius:'50%',background:SESSION_COLORS[g.c].c,boxShadow:'0 0 6px '+SESSION_COLORS[g.c].g}}/>
-        <h2 style={{margin:0,fontSize:15}}>{tplCatLabel(g.c)}</h2>
+        <span style={{width:9,height:9,borderRadius:'50%',background:tplCatColor(g.c).c,boxShadow:'0 0 6px '+tplCatColor(g.c).g}}/>
+        <h2 style={{margin:0,fontSize:15}}>{g.c.label}</h2>
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
       </div>
       <div className="ath-grid">
-        {g.items.map(t=>{const col=SESSION_COLORS[tplCat(t)]||SESSION_COLORS.practice;
+        {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const foci=tplFocus(t);
           const blocks=((t.session&&t.session.blocks)||[]).map(b=>({...b,exercises:(b.exercises||[]).filter(e=>(e.name||'').trim())})).filter(b=>b.exercises.length);
           return(
         <div key={t.id} className="tpl-card" style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',minWidth:0,overflowWrap:'anywhere'}}>{t.name||'—'}</div>
-            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{tplCatLabel(tplCat(t))}</span>
+            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto'}}>{cat.label}</span>
           </div>
           {foci.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
             {foci.map(f=><span key={f} className="tpl-focus-tag">{f}</span>)}
