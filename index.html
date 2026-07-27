@@ -5526,24 +5526,31 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const acwrVal=acwrAt(refDate);
   const acwrZone=acwrVal===0?{t:'No data',c:'#94a3b8'}:acwrVal>1.5?{t:'High risk',c:'#ef4444'}
     :(acwrVal>=0.8&&acwrVal<=1.3)?{t:'Optimal',c:'#10b981'}:acwrVal<0.8?{t:'Undertraining',c:'#f59e0b'}:{t:'Caution',c:'#f59e0b'};
-  const acwrWeekly=mWeeks.map(w=>({label:fd(w.wkStart).slice(0,5),acwr:+acwrAt(w.wkEnd).toFixed(2)}));
+  // Completed weeks use their own Sunday; the in-progress week uses today (its Sunday is
+  // still ahead and would dilute the acute window); fully future weeks stay as-is ('—').
+  const wkRefOf=w=>w.wkEnd<=fmt(today)?w.wkEnd:w.wkStart<=fmt(today)?fmt(today):w.wkEnd;
+  const acwrWeekly=mWeeks.map(w=>({label:fd(w.wkStart).slice(0,5),acwr:+acwrAt(wkRefOf(w)).toFixed(2)}));
   // ---- Load Monitoring summary (acute/chronic means, monotony, strain) at the selected week's end ----
   const[lmWeek,setLmWeek]=useState(()=>fmt(sow(parseD(refDate))));   // Monday of the reference week
   const lmEnd=fmt(addD(parseD(lmWeek),6));                            // Sunday of that week
-  const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(lmEnd),-(6-i))))}));
+  // Metrics reference date: the selected week's Sunday, but never a future day. For the
+  // in-progress week the Sunday hasn't happened yet, and using it pads the acute window
+  // with empty future days (steady 500 AU/day reads ACWR 0.18 on Monday instead of 1.00).
+  const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
+  const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(lmRef),-(6-i))))}));
   const m7=weekMono(last7);
-  const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(lmEnd),-i)));
-    return s/Math.max(7,histDaysAt(earliestDataDay,lmEnd));})();
+  const chronicMean=(()=>{let s=0;for(let i=0;i<28;i++)s+=dayAvg(fmt(addD(parseD(lmRef),-i)));
+    return s/Math.max(7,histDaysAt(earliestDataDay,lmRef));})();
   const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
   const lmZone=acwrZoneOf(lmAcwr);
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
-    const k=fmt(addD(parseD(lmEnd),-i));const daily=dayAvg(k);
+    const k=fmt(addD(parseD(lmRef),-i));const daily=dayAvg(k);
     let a=0;for(let j=0;j<7;j++)a+=dayAvg(fmt(addD(parseD(k),-j)));a/=7;
     let c=0;for(let j=0;j<28;j++)c+=dayAvg(fmt(addD(parseD(k),-j)));c/=Math.max(7,histDaysAt(earliestDataDay,k));
     out.push({k,daily,acute:Math.round(a),chronic:Math.round(c),acwr:c>0?a/c:0});}
-    return out;},[teamDaily,lmEnd,lmWin,earliestDataDay]);
+    return out;},[teamDaily,lmRef,lmWin,earliestDataDay]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -5568,7 +5575,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
     const days7=Array.from({length:7},(_,i)=>fmt(addD(parseD(wkS),i)));
     const loads=days7.map(d=>({load:dayLoad(d)}));
     const wMono=weekMono(loads);
-    const wAcwr=acwrAt(wkE);
+    const wAcwr=acwrAt(wkRefOf({wkStart:wkS,wkEnd:wkE}));
     const wZone=wAcwr===0?{t:'No data',c:'#94a3b8'}:wAcwr>1.5?{t:'High risk',c:'#ef4444'}:(wAcwr>=0.8&&wAcwr<=1.3)?{t:'Optimal',c:'#10b981'}:wAcwr<0.8?{t:'Undertraining',c:'#f59e0b'}:{t:'Caution',c:'#f59e0b'};
     // Week purpose mix
     const pT={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<wkS||d.date>wkE)return;
@@ -5611,7 +5618,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
     <div className="lm-head" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
       <div>
         <div className="lm-title">Load Monitoring</div>
-        <div className="lm-sub">Acute:chronic workload, training monotony &amp; wellness trends · <span style={{color:'#2dd4a7',fontWeight:700}}>build 23.07 — ACWR fix</span></div>
+        <div className="lm-sub">Acute:chronic workload, training monotony &amp; wellness trends · <span style={{color:'#2dd4a7',fontWeight:700}}>build 27.07 — ACWR week-ref fix</span></div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
         <div className="lm-wksel">
@@ -5665,7 +5672,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
       </div>
     </div>
 
-    <AthleteLoadBoard athletes={team.athletes} refDate={lmEnd}/>
+    <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
 
     <WellnessHeatmap athletes={team.athletes}/>
     {saveAthletes&&<ManualWellnessSurvey athletes={team.athletes||[]} saveAthletes={saveAthletes}/>}
