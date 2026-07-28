@@ -1159,6 +1159,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pda-summary{font-size:14px;color:var(--text2);line-height:1.65;padding:2px 2px 12px;border-bottom:1px solid var(--border)}
 .pda-summary b{color:var(--text)}
 .pda-list{display:flex;flex-direction:column;gap:12px}
+.pda-sec{display:flex;flex-direction:column;gap:10px}
+.pda-sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.pda-sec-t{font-size:15px;font-weight:700;color:var(--accent2);letter-spacing:-.01em}
+.pda-sec-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.pda-sec-d{font-size:12px;color:var(--muted);margin-top:-4px}
 .pda-item{background:var(--bg2);border:1px solid var(--border);border-left-width:3px;border-radius:12px;padding:13px 16px 14px;display:flex;flex-direction:column;gap:8px}
 .pda-item.high{border-left-color:#f43f5e}
 .pda-item.mid{border-left-color:#f59e0b}
@@ -7334,7 +7339,12 @@ GÖREV SIRASI
    - Yüksek: yaralanma riski taşıyan asimetri/kompensasyon paterni veya ağrı bildirimi
    - Orta: performansı doğrudan sınırlayan zayıflık (ör. düşük dikey sıçrama + zayıf RFD göstergesi)
    - Düşük: gelişim potansiyeli olan ama acil olmayan alan
-4. Egzersiz eşleme (EKLEM BAZLI): Önerileri eklem/bölge bazında kur. Şu ana eklemlerin/bölgelerin HER BİRİ için en az bir hareket önerisi ver: ayak bileği, diz, kalça, gövde/core, omuz. TOPLAMDA EN AZ 6 egzersiz öner.
+4. Egzersiz eşleme (EKLEM BAZLI + ÜÇ KATEGORİ): Önerileri eklem/bölge bazında kur ve her öneriyi şu üç kategoriden birine ata:
+   - mobilizasyon: eklem hareket açıklığı / doku kısıtlılığına yönelik çalışmalar (ör. dorsifleksiyon kısıtı için yüklü ayak bileği mobilizasyonu)
+   - kuvvet: kas kuvveti / güç / RFD geliştirmeye yönelik yüklenmeli çalışmalar
+   - stabilizasyon: motor kontrol, denge ve eklem stabilitesine yönelik çalışmalar (ör. Y-Balance asimetrisi, OHS kompensasyonları için)
+   Şu ana eklemlerin/bölgelerin HER BİRİ için en az bir hareket önerisi ver: ayak bileği, diz, kalça, gövde/core, omuz. Üç kategorinin HER BİRİNDEN en az bir öneri olsun ve TOPLAMDA EN AZ 6 egzersiz öner. Kategoriyi ihtiyaca göre seç: hareket açıklığı kısıtı olan ekleme mobilizasyon, kuvvet açığı olana kuvvet, kontrol/denge sorunu olana stabilizasyon önceliklidir; aynı eklem için birden fazla kategoriden öneri verilebilir.
+   - Egzersiz seçiminde herhangi bir kütüphane veya listeyle sınırlı DEĞİLSİN — sporcunun ihtiyacına en uygun egzersizi serbestçe öner.
    - Bulgusu olan eklemde önceliği bulguya göre belirle (yüksek/orta) ve önerini o veriye dayandır.
    - Bulgu veya test verisi olmayan eklemde, pozisyon/yaş/vücut tipine uygun DÜŞÜK öncelikli bir gelişim-koruma egzersizi öner; dayanak_veri alanına bunun genel profile dayandığını açıkça yaz (ör. "bu eklem için test verisi yok — pozisyon/vücut tipine göre genel öneri"). Test değeri uydurma.
    - Vücut tipi (Cheetah/Horse/Rhino/Rabbit) varsa, egzersiz seçimini ve yükleme parametrelerini bu çerçeveyle uyumlu hale getir.
@@ -7349,6 +7359,7 @@ Sadece aşağıdaki JSON formatında yanıt ver, başka metin ekleme (markdown k
   "oneriler": [
     {
       "oncelik": "yüksek | orta | düşük",
+      "kategori": "mobilizasyon | kuvvet | stabilizasyon",
       "hedef_eklem": "ayak bileği | diz | kalça | gövde/core | omuz | genel",
       "tespit_edilen_kisitlilik": "string",
       "dayanak_veri": "hangi test/ölçüm sonucuna dayandığı",
@@ -7364,7 +7375,8 @@ KISITLAR
 - Tanı koyma; sadece antrenman/egzersiz odaklı öneri ver. Ağrı veya klinik bulgu varsa fizyoterapiste yönlendirme öner, tedavi önerme.
 - Youth takım sporcularında yaşa uygun yük ve teknik/koordinasyon önceliğini gözet; A takım sporcularında performans limitleyici faktörlere daha fazla ağırlık ver.
 - Sadece verilen veriye dayan — sağlanmayan bir test sonucunu varsayma veya uydurma. Veri olmayan eklem için verilen genel profil önerilerinde bunu dayanak_veri alanında açıkça belirt.
-- Her ana ekleme (ayak bileği, diz, kalça, gövde/core, omuz) en az bir öneri ver ve toplamda en az 6 egzersiz öner.
+- Her ana ekleme (ayak bileği, diz, kalça, gövde/core, omuz) en az bir öneri ver; mobilizasyon, kuvvet ve stabilizasyon kategorilerinin her birinden en az bir öneri olsun; toplamda en az 6 egzersiz öner.
+- Egzersizler herhangi bir kütüphanede bulunmak zorunda değil — sporcunun ihtiyacına göre serbestçe seç.
 - ACWR yüksekse (>1.5) veya readiness düşükse, yeni yük ekleyen önerilerde temkinli ol ve bunu notlarda belirt.
 - Kanıta dayalı, spekülatif olmayan öneriler ver; egzersiz seçimini güncel S&C literatürüyle tutarlı tut.
 - Kısa, antrenörün sahada hızlıca okuyup uygulayabileceği net dil kullan.
@@ -7474,6 +7486,16 @@ function pdaPrio(p){
   if(/y[uü]ksek|high/.test(s))return{cls:'high',lbl:'YÜKSEK',rank:0};
   if(/d[uü][sş][uü]k|low/.test(s))return{cls:'low',lbl:'DÜŞÜK',rank:2};
   return{cls:'mid',lbl:'ORTA',rank:1};
+}
+// Category sections shown in the result — order matters (mobilize → strengthen → stabilize).
+const PDA_CATS=[
+  {id:'mob',ic:'🧘',lbl:'Mobilizasyon',desc:'Eklem hareket açıklığı / doku kısıtlılığı çalışmaları',re:/mobili|mobility|streç|stret|germe/},
+  {id:'str',ic:'🏋️',lbl:'Kuvvet',desc:'Kuvvet / güç / RFD geliştirme çalışmaları',re:/kuvvet|strength|g[uü][cç]|power/},
+  {id:'stab',ic:'⚖️',lbl:'Stabilizasyon',desc:'Motor kontrol, denge ve eklem stabilitesi çalışmaları',re:/stabili|denge|balance|motor/},
+];
+function pdaCat(c){
+  const s=(c||'').toString().toLowerCase();
+  return PDA_CATS.find(k=>k.re.test(s))||null;
 }
 // Minimal Markdown → HTML for rendering the recommendation nicely.
 function recMd(src){
@@ -7656,7 +7678,7 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
     <div className="rec-bar">
       <div className="rec-bar-l">
         <div className="rec-bar-t">🧩 Program Design Assistant</div>
-        <div className="rec-bar-s">{pd?`Analyzed: ${new Date(pd.at).toLocaleString('en-GB')} · ${pd.model}`:'Joint-by-joint constraint analysis from anthropometrics, tests, movement screen & questionnaires — at least 6 justified exercise suggestions.'}</div>
+        <div className="rec-bar-s">{pd?`Analyzed: ${new Date(pd.at).toLocaleString('en-GB')} · ${pd.model}`:'Joint-by-joint constraint analysis — mobilization, strength & stabilization suggestions (at least 6 justified exercises).'}</div>
       </div>
       <button className="btn sm" disabled={pdBusy} onClick={genPD}>{pdBusy?'Analyzing…':(pd?'↻ Re-analyze':'🧩 Analyze Athlete')}</button>
     </div>
@@ -7665,8 +7687,12 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
     {pd&&pd.data&&<div className={'pda-card'+(pdBusy?' dim':'')}>
       {pd.data.kirmizi_bayrak&&pd.data.kirmizi_bayrak!=='null'&&<div className="pda-flag"><span className="ic">🚩</span><div><b>Kırmızı bayrak:</b> {pd.data.kirmizi_bayrak}</div></div>}
       {pd.data.sporcu_ozeti&&<div className="pda-summary"><b>Özet:</b> {pd.data.sporcu_ozeti}</div>}
-      <div className="pda-list">
-        {[...pd.data.oneriler].sort((a,b)=>pdaPrio(a.oncelik).rank-pdaPrio(b.oncelik).rank).map((r,i)=>{const p=pdaPrio(r.oncelik);return(
+      {(()=>{
+        const byPrio=a=>[...a].sort((x,y)=>pdaPrio(x.oncelik).rank-pdaPrio(y.oncelik).rank);
+        const groups=PDA_CATS.map(c=>({...c,items:byPrio(pd.data.oneriler.filter(r=>(pdaCat(r.kategori)||{}).id===c.id))}));
+        const rest=byPrio(pd.data.oneriler.filter(r=>!pdaCat(r.kategori)));
+        if(rest.length)groups.push({id:'other',ic:'📌',lbl:'Diğer',desc:'',items:rest});
+        const card=(r,i)=>{const p=pdaPrio(r.oncelik);return(
           <div key={i} className={'pda-item '+p.cls}>
             <div className="pda-item-h">
               <span className={'pda-pill '+p.cls}>{p.lbl}</span>
@@ -7678,13 +7704,24 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
             {r.dayanak_veri&&<div className="pda-kv"><span className="k">Dayanak</span><span className="v">{r.dayanak_veri}</span></div>}
             {r.gerekce&&<div className="pda-kv"><span className="k">Gerekçe</span><span className="v">{r.gerekce}</span></div>}
             {r.notlar&&r.notlar!=='null'&&<div className="pda-kv warn"><span className="k">Not</span><span className="v">{r.notlar}</span></div>}
-          </div>);})}
-        {pd.data.oneriler.length===0&&<div className="rec-hint">Analiz tamamlandı ancak öneri üretilecek yeterli veri bulunamadı — Body Comp, Testing ve Wellness sekmelerine veri girip tekrar deneyin.</div>}
-      </div>
+          </div>);};
+        return(<React.Fragment>
+          {groups.filter(g=>g.items.length).map(g=>(
+            <div key={g.id} className="pda-sec">
+              <div className="pda-sec-h">
+                <span className="pda-sec-t">{g.ic} {g.lbl}</span>
+                <span className="pda-sec-n">{g.items.length} öneri</span>
+              </div>
+              {g.desc&&<div className="pda-sec-d">{g.desc}</div>}
+              <div className="pda-list">{g.items.map(card)}</div>
+            </div>))}
+          {pd.data.oneriler.length===0&&<div className="rec-hint">Analiz tamamlandı ancak öneri üretilecek yeterli veri bulunamadı — Body Comp, Testing ve Wellness sekmelerine veri girip tekrar deneyin.</div>}
+        </React.Fragment>);
+      })()}
       {pd.input&&<details className="pda-details"><summary>📄 Analizde kullanılan veri (JSON)</summary><pre>{JSON.stringify(pd.input,null,2)}</pre></details>}
       <div className="rec-foot">Bu çıktı gerekçeli bir öneridir, kesin talimat değildir — nihai karar antrenöre aittir. Ağrı veya klinik bulguda fizyoterapiste yönlendirin.</div>
     </div>}
-    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests at least 6 justified exercises with a movement for every major joint (ankle, knee, hip, core, shoulder), matched to the athlete's animal type.</div>}
+    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests at least 6 justified exercises grouped as <b>🧘 mobilization</b>, <b>🏋️ strength</b> and <b>⚖️ stabilization</b>, with a movement for every major joint (ankle, knee, hip, core, shoulder), matched to the athlete's animal type. Exercises are chosen freely for the athlete's needs — not limited to your library.</div>}
   </div>);
 }
 
