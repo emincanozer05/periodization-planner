@@ -1168,6 +1168,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pda-pill.high{background:rgba(244,63,94,.13);color:#fb7185;border:1px solid rgba(244,63,94,.35)}
 .pda-pill.mid{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.35)}
 .pda-pill.low{background:rgba(45,212,167,.1);color:#2dd4a7;border:1px solid rgba(45,212,167,.3)}
+.pda-joint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);background:var(--panel);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;flex:none}
 .pda-cons{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.01em}
 .pda-ex{font-size:13.5px;font-weight:600;color:var(--accent2)}
 .pda-dose{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;width:fit-content;max-width:100%}
@@ -7195,33 +7196,11 @@ function EvaluationView({team,updateTeam,data,setData}){
    ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests)
    ========================================================= */
 /* =========================================================
-   ATHLETE RECOMMENDATIONS — per-athlete, evidence-based AI advice
-   built from the athlete's body composition, fatigue/wellness and
-   test results. Uses the same provider/API key the coach already set
-   for the AI Coach assistant (data.ai). Result is stored on the
-   athlete record (ath.recommend) so it persists & syncs.
+   ATHLETE SNAPSHOT — compact text summary of an athlete's body
+   composition, fatigue/wellness, load and test results, fed to the
+   "Ask AI Coach" chatbox. Uses the same provider/API key the coach
+   already set for the AI Coach assistant (data.ai).
    ========================================================= */
-const ATH_REC_SYSTEM=`Sen, elit bir kuvvet & kondisyon ve spor performans uzmanısın. Sana TEK bir sporcunun güncel profili (vücut kompozisyonu, yorgunluk/hazır bulunuşluk verileri, yük/ACWR ve test sonuçları) verilecek. Görevin bu sporcuya ÖZEL, uygulanabilir, kanıta dayalı bir antrenman önerisi hazırlamak.
-
-Çıktını TAM OLARAK şu Markdown başlıklarıyla ve Türkçe ver:
-## Genel Değerlendirme
-2-4 cümlede sporcunun mevcut durumu (güçlü yanlar + risk/zayıf alanlar).
-## Yüklenme Önerisi
-ACWR, hazır bulunuşluk ve yorgunluğa göre yükü ARTIR / KORU / AZALT diye öner; somut haftalık AU hedef aralığı ve mikro dağılım (yoğun/hafif gün) ver.
-## Yapması Gereken Çalışmalar
-Madde madde; test ve vücut kompozisyonu eksiklerine yönelik egzersiz tipleri ve mümkünse "EGZERSİZ KÜTÜPHANESİ"nden somut egzersiz adları, set×tekrar ve şiddet (%1RM/RPE) ile.
-## Kaçınması / Dikkat Etmesi Gerekenler
-Yorgunluk, asimetri (ankle DF / ASLR / OHS), sakatlık geçmişi veya yüksek ACWR'ye göre kaçınılması ya da dikkatle yapılması gereken çalışmalar.
-## İzleme & Yeniden Test
-Önümüzdeki haftalarda neyi takip etmeli, ne zaman yeniden test edilmeli.
-
-Kurallar:
-- SADECE verilen verilere dayan. Eksik veri varsa "veri yok/eksik" diye belirt; ASLA test değeri veya ölçüm uydurma.
-- Somut sayılar kullan (set×tekrar, %1RM/RPE, dinlenme, haftalık AU).
-- ACWR 0.8–1.3 optimal, >1.5 yüksek yaralanma riski; hazır bulunuşluk <3/5 ve yorgunluk yüksekse yükü azalt.
-- Asimetri >%10 (örn. ayak bileği dorsifleksiyon) veya ASLR/OHS düşük skor ise mobilite/stabilite ve tek taraflı (unilateral) çalışmayı önceliklendir.
-- Kısa, net, madde işaretli yaz. Kesin tıbbi teşhis koyma; gerekirse sağlık ekibine yönlendir.`;
-
 function recNum(v){return v!==''&&v!=null&&!isNaN(Number(v))?Number(v):null;}
 function buildAthleteSnapshot(ath,setup,exercises){
   const out=[];
@@ -7355,7 +7334,10 @@ GÖREV SIRASI
    - Yüksek: yaralanma riski taşıyan asimetri/kompensasyon paterni veya ağrı bildirimi
    - Orta: performansı doğrudan sınırlayan zayıflık (ör. düşük dikey sıçrama + zayıf RFD göstergesi)
    - Düşük: gelişim potansiyeli olan ama acil olmayan alan
-4. Egzersiz eşleme: Her bulgu için 1-3 hedefe yönelik egzersiz öner. Vücut tipi (Cheetah/Horse/Rhino/Rabbit) varsa, egzersiz seçimini ve yükleme parametrelerini bu çerçeveyle uyumlu hale getir.
+4. Egzersiz eşleme (EKLEM BAZLI): Önerileri eklem/bölge bazında kur. Şu ana eklemlerin/bölgelerin HER BİRİ için en az bir hareket önerisi ver: ayak bileği, diz, kalça, gövde/core, omuz. TOPLAMDA EN AZ 6 egzersiz öner.
+   - Bulgusu olan eklemde önceliği bulguya göre belirle (yüksek/orta) ve önerini o veriye dayandır.
+   - Bulgu veya test verisi olmayan eklemde, pozisyon/yaş/vücut tipine uygun DÜŞÜK öncelikli bir gelişim-koruma egzersizi öner; dayanak_veri alanına bunun genel profile dayandığını açıkça yaz (ör. "bu eklem için test verisi yok — pozisyon/vücut tipine göre genel öneri"). Test değeri uydurma.
+   - Vücut tipi (Cheetah/Horse/Rhino/Rabbit) varsa, egzersiz seçimini ve yükleme parametrelerini bu çerçeveyle uyumlu hale getir.
 5. Gerekçelendirme: Her öneri için hangi veri noktasına dayandığını, fizyolojik/biyomekanik mekanizmayı ve beklenen çıktıyı açıkça belirt.
 
 ÇIKTI FORMATI
@@ -7367,6 +7349,7 @@ Sadece aşağıdaki JSON formatında yanıt ver, başka metin ekleme (markdown k
   "oneriler": [
     {
       "oncelik": "yüksek | orta | düşük",
+      "hedef_eklem": "ayak bileği | diz | kalça | gövde/core | omuz | genel",
       "tespit_edilen_kisitlilik": "string",
       "dayanak_veri": "hangi test/ölçüm sonucuna dayandığı",
       "onerilen_egzersiz": "string",
@@ -7380,7 +7363,8 @@ Sadece aşağıdaki JSON formatında yanıt ver, başka metin ekleme (markdown k
 KISITLAR
 - Tanı koyma; sadece antrenman/egzersiz odaklı öneri ver. Ağrı veya klinik bulgu varsa fizyoterapiste yönlendirme öner, tedavi önerme.
 - Youth takım sporcularında yaşa uygun yük ve teknik/koordinasyon önceliğini gözet; A takım sporcularında performans limitleyici faktörlere daha fazla ağırlık ver.
-- Sadece verilen veriye dayan — sağlanmayan bir test sonucunu varsayma veya uydurma.
+- Sadece verilen veriye dayan — sağlanmayan bir test sonucunu varsayma veya uydurma. Veri olmayan eklem için verilen genel profil önerilerinde bunu dayanak_veri alanında açıkça belirt.
+- Her ana ekleme (ayak bileği, diz, kalça, gövde/core, omuz) en az bir öneri ver ve toplamda en az 6 egzersiz öner.
 - ACWR yüksekse (>1.5) veya readiness düşükse, yeni yük ekleyen önerilerde temkinli ol ve bunu notlarda belirt.
 - Kanıta dayalı, spekülatif olmayan öneriler ver; egzersiz seçimini güncel S&C literatürüyle tutarlı tut.
 - Kısa, antrenörün sahada hızlıca okuyup uygulayabileceği net dil kullan.
@@ -7640,9 +7624,6 @@ function TestReportsTab({ath,setup,ai,exercises}){
 }
 
 function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
-  const[busy,setBusy]=useState(false);
-  const[err,setErr]=useState('');
-  const rec=ath.recommend||null;
   const[pdBusy,setPdBusy]=useState(false);
   const[pdErr,setPdErr]=useState('');
   const pd=ath.programDesign||null;
@@ -7660,46 +7641,22 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
     }catch(e){setPdErr(e.message||String(e));}
     finally{setPdBusy(false);}
   };
-  const gen=async()=>{
-    if(busy||!apiKey)return;setErr('');setBusy(true);
-    try{
-      const snap=buildAthleteSnapshot(ath,setup,exercises);
-      const msgs=[{role:'user',content:'Aşağıdaki sporcu için kişiselleştirilmiş öneri hazırla.\n\n'+snap}];
-      const ans=provider==='anthropic'?await askCoach(apiKey,model,ATH_REC_SYSTEM,msgs):await askGemini(apiKey,model,ATH_REC_SYSTEM,msgs);
-      updAth(ath.id,{recommend:{text:ans||'(boş yanıt)',at:Date.now(),provider,model}});
-    }catch(e){setErr(e.message||String(e));}
-    finally{setBusy(false);}
-  };
-  // "Ask AI" shortcut: auto-generate once when arriving with no recommendation yet.
+  // "Ask AI" shortcut: auto-run the analysis once when arriving with no result yet.
   useEffect(()=>{
     if(!autoGen)return;
-    if(!rec&&apiKey&&!busy)gen();
+    if(!pd&&apiKey&&!pdBusy)genPD();
     onAutoDone&&onAutoDone();
   },[autoGen]);
   if(!apiKey)return(<div className="rec-empty">
-    <div className="rec-empty-ic">✨</div>
-    <h3>An API key is required for AI recommendations</h3>
-    <p>This tab evaluates the athlete's <b>body composition, fatigue/readiness and test results</b> and produces a personalized load and training recommendation. To use it, open the <b>✨ AI Coach Assistant</b> at the bottom right and enter an API key — <b>Gemini is free</b>. The key is stored with your account across all devices.</p>
+    <div className="rec-empty-ic">🧩</div>
+    <h3>An API key is required for the Program Design Assistant</h3>
+    <p>This tab analyzes the athlete's <b>anthropometrics, test results, movement screen and questionnaires</b> and produces joint-by-joint, justified exercise suggestions. To use it, open the <b>✨ AI Coach Assistant</b> at the bottom right and enter an API key — <b>Gemini is free</b>. The key is stored with your account across all devices.</p>
   </div>);
   return(<div className="rec-wrap">
     <div className="rec-bar">
       <div className="rec-bar-l">
-        <div className="rec-bar-t">✨ AI Recommendation</div>
-        <div className="rec-bar-s">{rec?`Generated: ${new Date(rec.at).toLocaleString('en-GB')} · ${rec.model}`:'Personalized from body composition, fatigue and test data.'}</div>
-      </div>
-      <button className="btn sm" disabled={busy} onClick={gen}>{busy?'Generating…':(rec?'↻ Regenerate':'✨ Generate Recommendation')}</button>
-    </div>
-    {err&&<div className="rec-err">⚠ {err}</div>}
-    {busy&&!rec&&<div className="rec-loading"><div className="rec-spin"/><div>Evaluating athlete data…</div></div>}
-    {rec&&<div className={'rec-card'+(busy?' dim':'')}>
-      <div className="rec-md" dangerouslySetInnerHTML={{__html:recMd(rec.text)}}/>
-      <div className="rec-foot">This recommendation is decision-support only; consult your medical team for clinical decisions.</div>
-    </div>}
-    {!rec&&!busy&&<div className="rec-hint">No recommendation yet. Press <b>✨ Generate Recommendation</b> above — based on the athlete's profile it produces load guidance, things to do/avoid and exercise suggestions.</div>}
-    <div className="rec-bar" style={{marginTop:6}}>
-      <div className="rec-bar-l">
         <div className="rec-bar-t">🧩 Program Design Assistant</div>
-        <div className="rec-bar-s">{pd?`Analyzed: ${new Date(pd.at).toLocaleString('en-GB')} · ${pd.model}`:'Constraint analysis from anthropometrics, tests, movement screen & questionnaires — with justified exercise suggestions.'}</div>
+        <div className="rec-bar-s">{pd?`Analyzed: ${new Date(pd.at).toLocaleString('en-GB')} · ${pd.model}`:'Joint-by-joint constraint analysis from anthropometrics, tests, movement screen & questionnaires — at least 6 justified exercise suggestions.'}</div>
       </div>
       <button className="btn sm" disabled={pdBusy} onClick={genPD}>{pdBusy?'Analyzing…':(pd?'↻ Re-analyze':'🧩 Analyze Athlete')}</button>
     </div>
@@ -7713,6 +7670,7 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
           <div key={i} className={'pda-item '+p.cls}>
             <div className="pda-item-h">
               <span className={'pda-pill '+p.cls}>{p.lbl}</span>
+              {r.hedef_eklem&&<span className="pda-joint">🦴 {r.hedef_eklem}</span>}
               <span className="pda-cons">{r.tespit_edilen_kisitlilik||'—'}</span>
             </div>
             <div className="pda-ex">🏋️ {r.onerilen_egzersiz||'—'}</div>
@@ -7726,7 +7684,7 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
       {pd.input&&<details className="pda-details"><summary>📄 Analizde kullanılan veri (JSON)</summary><pre>{JSON.stringify(pd.input,null,2)}</pre></details>}
       <div className="rec-foot">Bu çıktı gerekçeli bir öneridir, kesin talimat değildir — nihai karar antrenöre aittir. Ağrı veya klinik bulguda fizyoterapiste yönlendirin.</div>
     </div>}
-    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests 1-3 justified exercises per finding (matched to the athlete's animal type).</div>}
+    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests at least 6 justified exercises with a movement for every major joint (ankle, knee, hip, core, shoulder), matched to the athlete's animal type.</div>}
   </div>);
 }
 
