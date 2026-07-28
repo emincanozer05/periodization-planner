@@ -1149,6 +1149,35 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rec-empty-ic{font-size:40px;margin-bottom:8px}
 .rec-empty h3{font-size:17px;margin-bottom:8px;color:var(--text)}
 .rec-empty p{font-size:13px;color:var(--muted);line-height:1.65}
+/* Program Design Assistant module (Recommendations tab) */
+.pda-card{background:linear-gradient(180deg,var(--elevated),var(--panel));border:1px solid var(--border);border-radius:14px;padding:18px 20px;position:relative;transition:opacity .2s;display:flex;flex-direction:column;gap:14px}
+.pda-card.dim{opacity:.5}
+.pda-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);border-radius:14px 14px 0 0}
+.pda-flag{display:flex;gap:10px;align-items:flex-start;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.4);color:#fda4af;border-radius:11px;padding:12px 15px;font-size:13px;line-height:1.55}
+.pda-flag .ic{font-size:16px;line-height:1.3}
+.pda-flag b{color:#fb7185}
+.pda-summary{font-size:14px;color:var(--text2);line-height:1.65;padding:2px 2px 12px;border-bottom:1px solid var(--border)}
+.pda-summary b{color:var(--text)}
+.pda-list{display:flex;flex-direction:column;gap:12px}
+.pda-item{background:var(--bg2);border:1px solid var(--border);border-left-width:3px;border-radius:12px;padding:13px 16px 14px;display:flex;flex-direction:column;gap:8px}
+.pda-item.high{border-left-color:#f43f5e}
+.pda-item.mid{border-left-color:#f59e0b}
+.pda-item.low{border-left-color:#2dd4a7}
+.pda-item-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pda-pill{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:.08em;border-radius:5px;padding:3px 9px;flex:none}
+.pda-pill.high{background:rgba(244,63,94,.13);color:#fb7185;border:1px solid rgba(244,63,94,.35)}
+.pda-pill.mid{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.35)}
+.pda-pill.low{background:rgba(45,212,167,.1);color:#2dd4a7;border:1px solid rgba(45,212,167,.3)}
+.pda-cons{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+.pda-ex{font-size:13.5px;font-weight:600;color:var(--accent2)}
+.pda-dose{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;width:fit-content;max-width:100%}
+.pda-kv{display:flex;gap:10px;font-size:12.5px;line-height:1.55}
+.pda-kv .k{flex:none;width:64px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding-top:2px}
+.pda-kv .v{color:var(--text2)}
+.pda-kv.warn .v{color:#fbbf24}
+.pda-details summary{cursor:pointer;font-size:12px;color:var(--muted);user-select:none}
+.pda-details summary:hover{color:var(--text2)}
+.pda-details pre{margin-top:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.5;color:var(--muted);overflow-x:auto;max-height:340px}
 /* Mockup-style metric chart cards (Body Comp / Tests) */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .metric-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
@@ -7263,6 +7292,205 @@ function buildAthleteSnapshot(ath,setup,exercises){
   }
   let txt=out.join('\n');if(txt.length>28000)txt=txt.slice(0,28000)+'\n…(kısaltıldı)';return txt;
 }
+
+/* =========================================================
+   PROGRAM DESIGN ASSISTANT — analyses the athlete's profile
+   (anthropometrics, tests, movement screen, questionnaires)
+   and returns prioritized, justified exercise suggestions
+   as structured JSON. Lives in the Recommendations tab.
+   ========================================================= */
+const PROGRAM_DESIGN_SYSTEM=`CoachOS — Program Design Assistant
+
+ROL
+Sen CoachOS platformunda çalışan bir "Program Design Assistant" modülüsün. Görevin, bir sporcunun profil verilerini (antropometrik ölçümler, performans testleri, hareket taraması ve anket sonuçları) analiz ederek, o sporcunun kısıtlı veya zayıf yönlerini geliştirecek, gerekçelendirilmiş egzersiz önerileri sunmaktır. Sen bir antrenörün asistanısın, nihai kararı her zaman antrenör verir — bu yüzden önerilerini "kesin talimat" değil "gerekçeli öneri" olarak sun.
+
+GİRDİ VERİSİ
+Sana kullanıcı mesajında aşağıdaki formatta bir JSON objesi verilecek. Alanlardan bazıları boş/null olabilir — eksik veriyi "değerlendirilemedi" olarak işaretle, asla varsayımla doldurma. Şemada listelenmeyen ek alanlar da gelebilir (ör. ek_testler, wellness_detay) — bunları da değerlendirmeye kat.
+
+{
+  "sporcu_profili": {
+    "isim": "string",
+    "yas": "number",
+    "pozisyon": "string (PG/SG/SF/PF/C)",
+    "takim_seviyesi": "youth | A takım",
+    "vucut_tipi": "Cheetah | Horse | Rhino | Rabbit | belirsiz",
+    "sakatlik_gecmisi": ["string"]
+  },
+  "antropometrik_olcumler": {
+    "boy_cm": "number",
+    "kilo_kg": "number",
+    "vucut_yag_yuzde": "number",
+    "kol_acikligi_cm": "number",
+    "bacak_uzunlugu_cm": "number",
+    "cevre_olcumleri": { "uyluk": "number", "baldir": "number", "...": "number" }
+  },
+  "performans_testleri": {
+    "dikey_sicrama_cm": "number",
+    "sprint_10m_sn": "number",
+    "sprint_20m_sn": "number",
+    "pro_agility_sn": "number",
+    "ohs_skoru": "string/number + gözlemlenen kompensasyon paternleri",
+    "aslr_skoru": { "sag": "number", "sol": "number" },
+    "ayak_bilegi_dorsifleksiyon_derece": { "sag": "number", "sol": "number" }
+  },
+  "anketler": {
+    "wellness_skoru": "number",
+    "readiness_skoru": "number",
+    "sRPE_son_7_gun": "number",
+    "acwr": "number",
+    "agri_bolgesi_bildirimi": ["string"]
+  }
+}
+
+VÜCUT TİPİ ÇERÇEVESİ (varsa egzersiz seçimi ve yükleme bununla uyumlu olsun)
+- Cheetah: yağsız/elastik yapı, kısa yer temas süresi → hafif-orta yük + pliometrik ağırlıklı; aşırı ağır kaldırma hızını köreltebilir.
+- Rhino: büyük çerçeve, yüksek kas kütlesi, uzun yer temas süresi → ağır kuvvet çalışmasına iyi yanıt verir.
+- Horse: kas kütlesi + elastikiyet dengeli → hem kuvvet hem pliometrik çalışmaya yanıt verir; esnek programlama.
+- Rabbit: düşük rölatif kuvvet, genellikle genç/erken antrenman yaşı → ağır yük veya yoğun pliometrik ÖNCESİ temel kuvvet ve teknik önceliği.
+
+GÖREV SIRASI
+1. Veri taraması: Tüm alanları oku. Eksik/null alanları not et, onlar hakkında öneri üretme.
+2. Asimetri ve norm karşılaştırması: Sağ-sol farkları (ör. ASLR, dorsifleksiyon derecesi) %10 ve üzeri ise işaretle. Eğer normatif referans aralığı sağlanmamışsa, sporcunun yaş/pozisyon grubuna göre genel kabul görmüş kabaca aralıklarla kıyasla ve bunu "yaklaşık referans" olarak belirt — kesin klinik norm gibi sunma.
+3. Önceliklendirme: Bulguları şu sırayla sırala:
+   - Yüksek: yaralanma riski taşıyan asimetri/kompensasyon paterni veya ağrı bildirimi
+   - Orta: performansı doğrudan sınırlayan zayıflık (ör. düşük dikey sıçrama + zayıf RFD göstergesi)
+   - Düşük: gelişim potansiyeli olan ama acil olmayan alan
+4. Egzersiz eşleme: Her bulgu için 1-3 hedefe yönelik egzersiz öner. Vücut tipi (Cheetah/Horse/Rhino/Rabbit) varsa, egzersiz seçimini ve yükleme parametrelerini bu çerçeveyle uyumlu hale getir.
+5. Gerekçelendirme: Her öneri için hangi veri noktasına dayandığını, fizyolojik/biyomekanik mekanizmayı ve beklenen çıktıyı açıkça belirt.
+
+ÇIKTI FORMATI
+Sadece aşağıdaki JSON formatında yanıt ver, başka metin ekleme (markdown kod bloğu da ekleme):
+
+{
+  "sporcu_ozeti": "1-2 cümlelik genel durum özeti",
+  "kirmizi_bayrak": "varsa; persistan ağrı, >%20 asimetri gibi durumlarda fizyoterapiste yönlendirme notu, yoksa null",
+  "oneriler": [
+    {
+      "oncelik": "yüksek | orta | düşük",
+      "tespit_edilen_kisitlilik": "string",
+      "dayanak_veri": "hangi test/ölçüm sonucuna dayandığı",
+      "onerilen_egzersiz": "string",
+      "gerekce": "neden bu egzersiz — mekanizma açıklaması",
+      "set_tekrar_yuk_onerisi": "string",
+      "notlar": "varsa uyarı, ilerleme kriteri"
+    }
+  ]
+}
+
+KISITLAR
+- Tanı koyma; sadece antrenman/egzersiz odaklı öneri ver. Ağrı veya klinik bulgu varsa fizyoterapiste yönlendirme öner, tedavi önerme.
+- Youth takım sporcularında yaşa uygun yük ve teknik/koordinasyon önceliğini gözet; A takım sporcularında performans limitleyici faktörlere daha fazla ağırlık ver.
+- Sadece verilen veriye dayan — sağlanmayan bir test sonucunu varsayma veya uydurma.
+- ACWR yüksekse (>1.5) veya readiness düşükse, yeni yük ekleyen önerilerde temkinli ol ve bunu notlarda belirt.
+- Kanıta dayalı, spekülatif olmayan öneriler ver; egzersiz seçimini güncel S&C literatürüyle tutarlı tut.
+- Kısa, antrenörün sahada hızlıca okuyup uygulayabileceği net dil kullan.
+
+TON
+Antrenör diline uygun, teknik ama gösterişsiz. Akademik jargon yerine uygulanabilir, doğrudan ifadeler tercih et.`;
+
+// Builds the Program Design Assistant input JSON from the athlete's stored
+// data, following the module's input schema. Missing values stay null so the
+// model marks them "değerlendirilemedi" instead of guessing.
+function buildProgramDesignInput(ath,setup){
+  const n=recNum;
+  const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  // Latest dated value for a field across measurements + tests, falling back to the static profile.
+  const pull=k=>{
+    const src=[...(ath.measurements||[]),...(ath.tests||[])].filter(x=>x.date&&n(x[k])!=null).sort((a,b)=>a.date.localeCompare(b.date));
+    return src.length?n(src[src.length-1][k]):n(ath[k]);
+  };
+  const ts=[...(ath.tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  const t=ts.length?ts[ts.length-1]:null;
+  const ANIMAL_LBL={cheetah:'Cheetah',horse:'Horse',rhino:'Rhino',rabbit:'Rabbit'};
+  const injuries=[...(ath.injuries||[])].sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+    .map(i=>{const parts=[i.date||'',i.location||i.type||'sakatlık',i.side?`(${i.side})`:'',i.tissueType||'',i.grade?`Grade ${i.grade}`:'',i.actualReturn?'— iyileşti':'— AKTİF'];return parts.filter(Boolean).join(' ');});
+  const circ=(t&&t.circ)||{};
+  const cevre={};
+  [['thighRight','uyluk_sag'],['thighLeft','uyluk_sol'],['calfRight','baldir_sag'],['calfLeft','baldir_sol'],['shoulder','omuz'],['waist','bel'],['hip','kalca']]
+    .forEach(([k,lbl])=>{const v=n(circ[k]);if(v!=null)cevre[lbl]=v;});
+  const yb=t?ybCalc(t.yBalance):{};
+  const ohsProblems=t?((t.ohs&&t.ohs.problems)||[]).filter(Boolean):[];
+  const ohs=(t&&t.ohs&&t.ohs.score!==''&&t.ohs.score!=null)
+    ?`${t.ohs.score}/3${ohsProblems.length?` — kompensasyonlar: ${ohsProblems.join('; ')}`:''}`:null;
+  // Questionnaires — last 14 days of wellness check-ins around the athlete's latest data date.
+  const ref=athLatestDate(ath);
+  const recent=(ath.wellness||[]).filter(w=>w.date&&w.date>=fmt(addD(parseD(ref),-13))&&w.date<=ref).sort((a,b)=>a.date.localeCompare(b.date));
+  const avg=f=>{const v=recent.map(w=>n(w[f])).filter(x=>x!=null);return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;};
+  const last=recent.length?recent[recent.length-1]:null;
+  const pains=[];
+  recent.forEach(w=>{if(w.areaOfPain)pains.push(`${w.date}: ${w.areaOfPain}`);});
+  (ath.injuries||[]).filter(i=>!i.actualReturn).forEach(i=>{pains.push(`aktif sakatlık: ${i.location||i.type||'?'}${i.side?` (${i.side})`:''}`);});
+  const acwr=athACWR(ath,ref);
+  return{
+    sporcu_profili:{
+      isim:ath.name||null,
+      yas:age,
+      pozisyon:ath.position||null,
+      takim_seviyesi:age==null?null:(age<18?'youth':'A takım'),
+      vucut_tipi:ANIMAL_LBL[ath.animalType]||'belirsiz',
+      sakatlik_gecmisi:injuries,
+    },
+    antropometrik_olcumler:{
+      boy_cm:pull('height'),
+      kilo_kg:pull('weight'),
+      vucut_yag_yuzde:pull('bodyFat'),
+      kol_acikligi_cm:pull('wingspan'),
+      bacak_uzunlugu_cm:n(t&&t.yBalance&&t.yBalance.limbLength),
+      cevre_olcumleri:Object.keys(cevre).length?cevre:null,
+    },
+    performans_testleri:{
+      test_tarihi:t?t.date:null,
+      dikey_sicrama_cm:t?n(t.verticalJump):null,
+      sprint_10m_sn:null,
+      sprint_20m_sn:t?n(t.sprint20m&&t.sprint20m.time):null,
+      pro_agility_sn:null,
+      ohs_skoru:ohs,
+      aslr_skoru:{sag:t?n(t.aslr&&t.aslr.right):null,sol:t?n(t.aslr&&t.aslr.left):null},
+      ayak_bilegi_dorsifleksiyon_derece:{sag:t?n(t.ankleDF&&t.ankleDF.right):null,sol:t?n(t.ankleDF&&t.ankleDF.left):null},
+      ek_testler:t?{
+        cmj_cm:n(t.cmj),
+        squat_jump_cm:n(t.squatJump),
+        drop_jump_rsi:n(t.dropJump),
+        yatay_sicrama_cm:n(t.horizontalJump),
+        t_test_ceviklik_sn:n(t.tTest),
+        sprint_5_0_5_sn:n(t.fiveZeroFive),
+        y_balance_kompozit_yuzde:{sag:yb.compR??null,sol:yb.compL??null},
+        postur_notlari:(t.posture&&t.posture.observations)||null,
+      }:null,
+    },
+    anketler:{
+      wellness_skoru:avg('readiness'),
+      readiness_skoru:last?n(last.readiness):null,
+      sRPE_son_7_gun:athLoadSum(ath,fmt(addD(parseD(ref),-6)),ref)||null,
+      acwr:acwr?+acwr.toFixed(2):null,
+      agri_bolgesi_bildirimi:pains,
+      wellness_detay:recent.length?{
+        son_14_gun_checkin_sayisi:recent.length,
+        ortalama_yorgunluk_5:avg('fatigue'),
+        ortalama_agri_5:avg('soreness'),
+        ortalama_uyku:avg('sleep'),
+        ortalama_rhr_bpm:avg('RHR'),
+        son_checkin_tarihi:last.date,
+      }:null,
+    },
+  };
+}
+// Extracts the JSON object from a model reply (tolerates ``` fences / stray text).
+function pdaParse(text){
+  let s=(text||'').trim();
+  const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)s=fence[1].trim();
+  const a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a===-1||b<=a)throw new Error('Model yanıtında JSON bulunamadı — tekrar dene.');
+  let obj;try{obj=JSON.parse(s.slice(a,b+1));}catch(e){throw new Error('Model geçersiz JSON döndürdü — tekrar dene.');}
+  if(!obj||!Array.isArray(obj.oneriler))throw new Error('Yanıt beklenen formatta değil ("oneriler" listesi yok) — tekrar dene.');
+  return obj;
+}
+function pdaPrio(p){
+  const s=(p||'').toString().toLowerCase();
+  if(/y[uü]ksek|high/.test(s))return{cls:'high',lbl:'YÜKSEK',rank:0};
+  if(/d[uü][sş][uü]k|low/.test(s))return{cls:'low',lbl:'DÜŞÜK',rank:2};
+  return{cls:'mid',lbl:'ORTA',rank:1};
+}
 // Minimal Markdown → HTML for rendering the recommendation nicely.
 function recMd(src){
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -7415,9 +7643,23 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const rec=ath.recommend||null;
+  const[pdBusy,setPdBusy]=useState(false);
+  const[pdErr,setPdErr]=useState('');
+  const pd=ath.programDesign||null;
   const provider=(ai&&ai.provider)||'gemini';
   const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
   const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const genPD=async()=>{
+    if(pdBusy||!apiKey)return;setPdErr('');setPdBusy(true);
+    try{
+      const input=buildProgramDesignInput(ath,setup);
+      const msgs=[{role:'user',content:'Aşağıdaki sporcu verisini analiz et ve SADECE istenen JSON formatında yanıt ver.\n\n'+JSON.stringify(input,null,2)}];
+      const ans=provider==='anthropic'?await askCoach(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs):await askGemini(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs);
+      const data=pdaParse(ans);
+      updAth(ath.id,{programDesign:{data,input,at:Date.now(),provider,model}});
+    }catch(e){setPdErr(e.message||String(e));}
+    finally{setPdBusy(false);}
+  };
   const gen=async()=>{
     if(busy||!apiKey)return;setErr('');setBusy(true);
     try{
@@ -7454,6 +7696,37 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
       <div className="rec-foot">This recommendation is decision-support only; consult your medical team for clinical decisions.</div>
     </div>}
     {!rec&&!busy&&<div className="rec-hint">No recommendation yet. Press <b>✨ Generate Recommendation</b> above — based on the athlete's profile it produces load guidance, things to do/avoid and exercise suggestions.</div>}
+    <div className="rec-bar" style={{marginTop:6}}>
+      <div className="rec-bar-l">
+        <div className="rec-bar-t">🧩 Program Design Assistant</div>
+        <div className="rec-bar-s">{pd?`Analyzed: ${new Date(pd.at).toLocaleString('en-GB')} · ${pd.model}`:'Constraint analysis from anthropometrics, tests, movement screen & questionnaires — with justified exercise suggestions.'}</div>
+      </div>
+      <button className="btn sm" disabled={pdBusy} onClick={genPD}>{pdBusy?'Analyzing…':(pd?'↻ Re-analyze':'🧩 Analyze Athlete')}</button>
+    </div>
+    {pdErr&&<div className="rec-err">⚠ {pdErr}</div>}
+    {pdBusy&&!pd&&<div className="rec-loading"><div className="rec-spin"/><div>Scanning data, checking asymmetries, matching exercises…</div></div>}
+    {pd&&pd.data&&<div className={'pda-card'+(pdBusy?' dim':'')}>
+      {pd.data.kirmizi_bayrak&&pd.data.kirmizi_bayrak!=='null'&&<div className="pda-flag"><span className="ic">🚩</span><div><b>Kırmızı bayrak:</b> {pd.data.kirmizi_bayrak}</div></div>}
+      {pd.data.sporcu_ozeti&&<div className="pda-summary"><b>Özet:</b> {pd.data.sporcu_ozeti}</div>}
+      <div className="pda-list">
+        {[...pd.data.oneriler].sort((a,b)=>pdaPrio(a.oncelik).rank-pdaPrio(b.oncelik).rank).map((r,i)=>{const p=pdaPrio(r.oncelik);return(
+          <div key={i} className={'pda-item '+p.cls}>
+            <div className="pda-item-h">
+              <span className={'pda-pill '+p.cls}>{p.lbl}</span>
+              <span className="pda-cons">{r.tespit_edilen_kisitlilik||'—'}</span>
+            </div>
+            <div className="pda-ex">🏋️ {r.onerilen_egzersiz||'—'}</div>
+            {r.set_tekrar_yuk_onerisi&&<div className="pda-dose">{r.set_tekrar_yuk_onerisi}</div>}
+            {r.dayanak_veri&&<div className="pda-kv"><span className="k">Dayanak</span><span className="v">{r.dayanak_veri}</span></div>}
+            {r.gerekce&&<div className="pda-kv"><span className="k">Gerekçe</span><span className="v">{r.gerekce}</span></div>}
+            {r.notlar&&r.notlar!=='null'&&<div className="pda-kv warn"><span className="k">Not</span><span className="v">{r.notlar}</span></div>}
+          </div>);})}
+        {pd.data.oneriler.length===0&&<div className="rec-hint">Analiz tamamlandı ancak öneri üretilecek yeterli veri bulunamadı — Body Comp, Testing ve Wellness sekmelerine veri girip tekrar deneyin.</div>}
+      </div>
+      {pd.input&&<details className="pda-details"><summary>📄 Analizde kullanılan veri (JSON)</summary><pre>{JSON.stringify(pd.input,null,2)}</pre></details>}
+      <div className="rec-foot">Bu çıktı gerekçeli bir öneridir, kesin talimat değildir — nihai karar antrenöre aittir. Ağrı veya klinik bulguda fizyoterapiste yönlendirin.</div>
+    </div>}
+    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests 1-3 justified exercises per finding (matched to the athlete's animal type).</div>}
   </div>);
 }
 
