@@ -7475,14 +7475,39 @@ function buildProgramDesignInput(ath,setup){
     },
   };
 }
+// Repairs JSON cut off mid-answer (model hit its token cap): drops the unfinished
+// tail back to the last completed value and closes every bracket still open.
+// Returns null when there is nothing complete enough to salvage.
+function pdaRepair(src){
+  let inStr=false,esc=false;const stack=[];let cut=-1,cutStack=null;
+  for(let i=0;i<src.length;i++){
+    const c=src[i];
+    if(inStr){if(esc)esc=false;else if(c==='\\')esc=true;else if(c==='"')inStr=false;continue;}
+    if(c==='"'){inStr=true;continue;}
+    if(c==='{'||c==='[')stack.push(c==='{'?'}':']');
+    else if(c==='}'||c===']'){stack.pop();cut=i+1;cutStack=stack.slice();}
+  }
+  if(cut===-1||!cutStack||!cutStack.length)return null;
+  return src.slice(0,cut)+cutStack.reverse().join('');
+}
 // Extracts the JSON object from a model reply (tolerates ``` fences / stray text).
 function pdaParse(text){
   let s=(text||'').trim();
   const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)s=fence[1].trim();
-  const a=s.indexOf('{'),b=s.lastIndexOf('}');
-  if(a===-1||b<=a)throw new Error('Model yanıtında JSON bulunamadı — tekrar dene.');
-  let obj;try{obj=JSON.parse(s.slice(a,b+1));}catch(e){throw new Error('Model geçersiz JSON döndürdü — tekrar dene.');}
-  if(!obj||!Array.isArray(obj.oneriler))throw new Error('Yanıt beklenen formatta değil ("oneriler" listesi yok) — tekrar dene.');
+  const a=s.indexOf('{');
+  if(a===-1)throw new Error('Model yanıtında JSON bulunamadı — tekrar dene.');
+  const body=s.slice(a);
+  const b=body.lastIndexOf('}');
+  let obj=null,cut=false;
+  if(b>0){try{obj=JSON.parse(body.slice(0,b+1));}catch(e){}}
+  // The requested answer is long, so replies sometimes arrive truncated —
+  // salvage the complete part rather than throwing the whole analysis away.
+  if(!obj){const rep=pdaRepair(body);if(rep){try{obj=JSON.parse(rep);cut=true;}catch(e){}}}
+  if(!obj)throw new Error('Model geçersiz JSON döndürdü — tekrar dene.');
+  if(!Array.isArray(obj.oneriler))throw new Error('Yanıt beklenen formatta değil ("oneriler" listesi yok) — tekrar dene.');
+  obj.oneriler=obj.oneriler.filter(r=>r&&typeof r==='object'&&(r.onerilen_egzersiz||r.tespit_edilen_kisitlilik));
+  if(cut&&!obj.oneriler.length)throw new Error('Model yanıtı yarıda kesildi ve öneri üretemedi — tekrar dene.');
+  if(cut)obj.kesildi=true;
   return obj;
 }
 function pdaPrio(p){
@@ -7677,8 +7702,18 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
     try{
       const input=buildProgramDesignInput(ath,setup);
       const msgs=[{role:'user',content:'Aşağıdaki sporcu verisini analiz et ve SADECE istenen JSON formatında yanıt ver.\n\n'+JSON.stringify(input,null,2)}];
-      const ans=provider==='anthropic'?await askCoach(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs):await askGemini(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs);
-      const data=pdaParse(ans);
+      // This answer is a long JSON document, so it needs a much larger output
+      // budget than the chat calls — and on Gemini the thinking step has to be
+      // capped, otherwise it eats the budget and the JSON arrives truncated.
+      const ask=()=>provider==='anthropic'
+        ?askCoach(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs,{maxTokens:16000})
+        :askGemini(apiKey,model,PROGRAM_DESIGN_SYSTEM,msgs,{maxTokens:16000,json:true,thinkingBudget:0,temperature:0.4});
+      // Retry only a parse failure (transient formatting slip) — an API error
+      // such as 401/429 propagates as is instead of burning a second call.
+      const ans=await ask();
+      let data;
+      try{data=pdaParse(ans);}
+      catch(e){data=pdaParse(await ask());}
       updAth(ath.id,{programDesign:{data,input,at:Date.now(),provider,model}});
     }catch(e){setPdErr(e.message||String(e));}
     finally{setPdBusy(false);}
@@ -7705,6 +7740,7 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
     {pdErr&&<div className="rec-err">⚠ {pdErr}</div>}
     {pdBusy&&!pd&&<div className="rec-loading"><div className="rec-spin"/><div>Scanning data, checking asymmetries, matching exercises…</div></div>}
     {pd&&pd.data&&<div className={'pda-card'+(pdBusy?' dim':'')}>
+      {pd.data.kesildi&&<div className="rec-err">⚠ Model yanıtı token sınırında kesildi — aşağıda yalnızca tamamlanan öneriler var. Tam liste için <b>↻ Re-analyze</b> deneyin.</div>}
       {pd.data.kirmizi_bayrak&&pd.data.kirmizi_bayrak!=='null'&&<div className="pda-flag"><span className="ic">🚩</span><div><b>Kırmızı bayrak:</b> {pd.data.kirmizi_bayrak}</div></div>}
       {pd.data.sporcu_ozeti&&<div className="pda-summary"><b>Özet:</b> {pd.data.sporcu_ozeti}</div>}
       {(()=>{
@@ -10325,10 +10361,11 @@ function buildCoachContext(team,data){
   let txt=out.join('\n');if(txt.length>32000)txt=txt.slice(0,32000)+'\n…(kısaltıldı)';return txt;
 }
 
-async function askCoach(apiKey,model,system,messages){
+async function askCoach(apiKey,model,system,messages,opts){
+  const o=opts||{};
   let r;
   try{
-    const body={model,max_tokens:6000,system,messages};
+    const body={model,max_tokens:o.maxTokens||6000,system,messages};
     if(model!=='claude-haiku-4-5'){body.thinking={type:'adaptive'};body.output_config={effort:'medium'};}
     r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
       headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -10340,16 +10377,27 @@ async function askCoach(apiKey,model,system,messages){
     if(/credit|balance|billing/i.test(msg))throw new Error('Bakiye/faturalandırma: '+msg);
     throw new Error('API '+r.status+(msg?': '+msg:''));}
   const j=await r.json();
-  return (j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+  const txt=(j.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+  if(!txt&&j.stop_reason==='max_tokens')throw new Error('Yanıt token sınırına takıldı (max_tokens) — tekrar dene.');
+  return txt;
 }
 
-async function askGemini(apiKey,model,system,messages){
+async function askGemini(apiKey,model,system,messages,opts){
+  const o=opts||{};
   let r;
   try{
+    const gc={maxOutputTokens:o.maxTokens||6000,temperature:o.temperature!=null?o.temperature:0.6};
+    // Force a raw JSON reply when the caller parses the answer (no ``` fences / prose).
+    if(o.json)gc.responseMimeType='application/json';
+    // Gemini 2.5 thinks by default and those tokens are billed against
+    // maxOutputTokens — uncapped, a long JSON answer gets truncated before the
+    // model ever writes a closing brace. 2.5 Pro cannot disable thinking (min 128).
+    if(o.thinkingBudget!=null&&/2\.5/.test(model))
+      gc.thinkingConfig={thinkingBudget:(/pro/.test(model)&&o.thinkingBudget<128)?128:o.thinkingBudget};
     const body={
       systemInstruction:{parts:[{text:system}]},
       contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),
-      generationConfig:{maxOutputTokens:6000,temperature:0.6},
+      generationConfig:gc,
     };
     r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
       method:'POST',
@@ -10364,8 +10412,11 @@ async function askGemini(apiKey,model,system,messages){
   const j=await r.json();
   const cand=(j.candidates||[])[0];
   if(!cand){const br=j.promptFeedback&&j.promptFeedback.blockReason;throw new Error(br?('İçerik güvenlik nedeniyle engellendi: '+br):'Gemini boş yanıt döndürdü.');}
-  const text=(((cand.content||{}).parts)||[]).map(p=>p.text||'').join('').trim();
-  if(!text)throw new Error('Yanıt tamamlanamadı'+(cand.finishReason?(' ('+cand.finishReason+')'):'')+'.');
+  const text=(((cand.content||{}).parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('').trim();
+  if(!text){
+    if(cand.finishReason==='MAX_TOKENS')throw new Error('Model tüm token bütçesini düşünme adımında harcadı ve yanıt üretemedi — tekrar dene.');
+    throw new Error('Yanıt tamamlanamadı'+(cand.finishReason?(' ('+cand.finishReason+')'):'')+'.');
+  }
   return text;
 }
 
