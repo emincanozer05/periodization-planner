@@ -1174,6 +1174,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pda-pill.mid{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.35)}
 .pda-pill.low{background:rgba(45,212,167,.1);color:#2dd4a7;border:1px solid rgba(45,212,167,.3)}
 .pda-joint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);background:var(--panel);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;flex:none}
+.pda-pattern{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--accent2);background:rgba(230,255,85,.07);border:1px solid rgba(230,255,85,.28);border-radius:5px;padding:3px 9px;flex:none}
 .pda-cons{font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.01em}
 .pda-ex{font-size:13.5px;font-weight:600;color:var(--accent2)}
 .pda-dose{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text);background:var(--panel);border:1px solid var(--border2);border-radius:8px;padding:7px 11px;width:fit-content;max-width:100%}
@@ -7344,6 +7345,7 @@ GÖREV SIRASI
    - kuvvet: kas kuvveti / güç / RFD geliştirmeye yönelik yüklenmeli çalışmalar
    - stabilizasyon: motor kontrol, denge ve eklem stabilitesine yönelik çalışmalar (ör. Y-Balance asimetrisi, OHS kompensasyonları için)
    Şu ana eklemlerin/bölgelerin HER BİRİ için en az bir hareket önerisi ver: ayak bileği, diz, kalça, gövde/core, omuz. Üç kategorinin HER BİRİNDEN en az bir öneri olsun ve TOPLAMDA EN AZ 6 egzersiz öner. Kategoriyi ihtiyaca göre seç: hareket açıklığı kısıtı olan ekleme mobilizasyon, kuvvet açığı olana kuvvet, kontrol/denge sorunu olana stabilizasyon önceliklidir; aynı eklem için birden fazla kategoriden öneri verilebilir.
+   KUVVET KATEGORİSİ HAREKET PATERNLERİ: kuvvet kategorisinde EN AZ 6 hareket öner ve şu paternlerin HER BİRİNİ kapsa (her paternden en az bir egzersiz): yatay itiş (ör. bench press, push-up), yatay çekiş (ör. row varyasyonları), dikey itiş (ör. overhead press), dikey çekiş (ör. pull-up, lat pulldown), diz dominant (ör. squat, split squat), kalça dominant (ör. RDL, hip thrust) ve core (ör. anti-ekstansiyon/anti-rotasyon çalışmaları). Her kuvvet önerisinde hareket_paterni alanını doldur; sporcunun verisiyle ilişkili paternlerde önceliği ve gerekçeyi veriye bağla, veriyle doğrudan ilişkisi olmayan paternlerde genel gelişim önerisi ver ve dayanak_veri alanında bunu belirt (mobilizasyon/stabilizasyon önerilerinde hareket_paterni null olabilir).
    - Egzersiz seçiminde herhangi bir kütüphane veya listeyle sınırlı DEĞİLSİN — sporcunun ihtiyacına en uygun egzersizi serbestçe öner.
    - Bulgusu olan eklemde önceliği bulguya göre belirle (yüksek/orta) ve önerini o veriye dayandır.
    - Bulgu veya test verisi olmayan eklemde, pozisyon/yaş/vücut tipine uygun DÜŞÜK öncelikli bir gelişim-koruma egzersizi öner; dayanak_veri alanına bunun genel profile dayandığını açıkça yaz (ör. "bu eklem için test verisi yok — pozisyon/vücut tipine göre genel öneri"). Test değeri uydurma.
@@ -7360,6 +7362,7 @@ Sadece aşağıdaki JSON formatında yanıt ver, başka metin ekleme (markdown k
     {
       "oncelik": "yüksek | orta | düşük",
       "kategori": "mobilizasyon | kuvvet | stabilizasyon",
+      "hareket_paterni": "sadece kuvvet kategorisinde: yatay itiş | yatay çekiş | dikey itiş | dikey çekiş | diz dominant | kalça dominant | core — diğer kategorilerde null",
       "hedef_eklem": "ayak bileği | diz | kalça | gövde/core | omuz | genel",
       "tespit_edilen_kisitlilik": "string",
       "dayanak_veri": "hangi test/ölçüm sonucuna dayandığı",
@@ -7376,6 +7379,7 @@ KISITLAR
 - Youth takım sporcularında yaşa uygun yük ve teknik/koordinasyon önceliğini gözet; A takım sporcularında performans limitleyici faktörlere daha fazla ağırlık ver.
 - Sadece verilen veriye dayan — sağlanmayan bir test sonucunu varsayma veya uydurma. Veri olmayan eklem için verilen genel profil önerilerinde bunu dayanak_veri alanında açıkça belirt.
 - Her ana ekleme (ayak bileği, diz, kalça, gövde/core, omuz) en az bir öneri ver; mobilizasyon, kuvvet ve stabilizasyon kategorilerinin her birinden en az bir öneri olsun; toplamda en az 6 egzersiz öner.
+- Kuvvet kategorisinde en az 6 hareket olsun ve yedi hareket paterninin (yatay itiş, yatay çekiş, dikey itiş, dikey çekiş, diz dominant, kalça dominant, core) her biri kapsansın.
 - Egzersizler herhangi bir kütüphanede bulunmak zorunda değil — sporcunun ihtiyacına göre serbestçe seç.
 - ACWR yüksekse (>1.5) veya readiness düşükse, yeni yük ekleyen önerilerde temkinli ol ve bunu notlarda belirt.
 - Kanıta dayalı, spekülatif olmayan öneriler ver; egzersiz seçimini güncel S&C literatürüyle tutarlı tut.
@@ -7490,12 +7494,28 @@ function pdaPrio(p){
 // Category sections shown in the result — order matters (mobilize → strengthen → stabilize).
 const PDA_CATS=[
   {id:'mob',ic:'🧘',lbl:'Mobilizasyon',desc:'Eklem hareket açıklığı / doku kısıtlılığı çalışmaları',re:/mobili|mobility|streç|stret|germe/},
-  {id:'str',ic:'🏋️',lbl:'Kuvvet',desc:'Kuvvet / güç / RFD geliştirme çalışmaları',re:/kuvvet|strength|g[uü][cç]|power/},
+  {id:'str',ic:'🏋️',lbl:'Kuvvet',desc:'Tüm hareket paternleri: yatay/dikey itiş-çekiş, diz & kalça dominant, core',re:/kuvvet|strength|g[uü][cç]|power/},
   {id:'stab',ic:'⚖️',lbl:'Stabilizasyon',desc:'Motor kontrol, denge ve eklem stabilitesi çalışmaları',re:/stabili|denge|balance|motor/},
 ];
 function pdaCat(c){
   const s=(c||'').toString().toLowerCase();
   return PDA_CATS.find(k=>k.re.test(s))||null;
+}
+// Strength movement patterns — canonical labels + display order for the Kuvvet section.
+const PDA_PATTERNS=[
+  {re:/yatay.*it|horizontal.*push/,lbl:'Yatay İtiş'},
+  {re:/yatay.*[cç]ek|horizontal.*pull/,lbl:'Yatay Çekiş'},
+  {re:/dikey.*it|vertical.*push/,lbl:'Dikey İtiş'},
+  {re:/dikey.*[cç]ek|vertical.*pull/,lbl:'Dikey Çekiş'},
+  {re:/diz|knee|quad/,lbl:'Diz Dominant'},
+  {re:/kal[cç]a|hip|hinge/,lbl:'Kalça Dominant'},
+  {re:/core|g[oö]vde/,lbl:'Core'},
+];
+function pdaPat(s){
+  const t=(s||'').toString().toLowerCase();
+  if(!t||t==='null')return null;
+  const i=PDA_PATTERNS.findIndex(p=>p.re.test(t));
+  return i===-1?{rank:PDA_PATTERNS.length,lbl:s}:{rank:i,lbl:PDA_PATTERNS[i].lbl};
 }
 // Minimal Markdown → HTML for rendering the recommendation nicely.
 function recMd(src){
@@ -7689,13 +7709,16 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
       {pd.data.sporcu_ozeti&&<div className="pda-summary"><b>Özet:</b> {pd.data.sporcu_ozeti}</div>}
       {(()=>{
         const byPrio=a=>[...a].sort((x,y)=>pdaPrio(x.oncelik).rank-pdaPrio(y.oncelik).rank);
-        const groups=PDA_CATS.map(c=>({...c,items:byPrio(pd.data.oneriler.filter(r=>(pdaCat(r.kategori)||{}).id===c.id))}));
+        // Kuvvet reads in movement-pattern order (yatay itiş → … → core), others by priority.
+        const byPat=a=>[...a].sort((x,y)=>{const rx=(pdaPat(x.hareket_paterni)||{rank:99}).rank,ry=(pdaPat(y.hareket_paterni)||{rank:99}).rank;return rx-ry||pdaPrio(x.oncelik).rank-pdaPrio(y.oncelik).rank;});
+        const groups=PDA_CATS.map(c=>{const items=pd.data.oneriler.filter(r=>(pdaCat(r.kategori)||{}).id===c.id);return{...c,items:c.id==='str'?byPat(items):byPrio(items)};});
         const rest=byPrio(pd.data.oneriler.filter(r=>!pdaCat(r.kategori)));
         if(rest.length)groups.push({id:'other',ic:'📌',lbl:'Diğer',desc:'',items:rest});
-        const card=(r,i)=>{const p=pdaPrio(r.oncelik);return(
+        const card=(r,i)=>{const p=pdaPrio(r.oncelik);const pat=pdaPat(r.hareket_paterni);return(
           <div key={i} className={'pda-item '+p.cls}>
             <div className="pda-item-h">
               <span className={'pda-pill '+p.cls}>{p.lbl}</span>
+              {pat&&<span className="pda-pattern">🎯 {pat.lbl}</span>}
               {r.hedef_eklem&&<span className="pda-joint">🦴 {r.hedef_eklem}</span>}
               <span className="pda-cons">{r.tespit_edilen_kisitlilik||'—'}</span>
             </div>
@@ -7721,7 +7744,7 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
       {pd.input&&<details className="pda-details"><summary>📄 Analizde kullanılan veri (JSON)</summary><pre>{JSON.stringify(pd.input,null,2)}</pre></details>}
       <div className="rec-foot">Bu çıktı gerekçeli bir öneridir, kesin talimat değildir — nihai karar antrenöre aittir. Ağrı veya klinik bulguda fizyoterapiste yönlendirin.</div>
     </div>}
-    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests at least 6 justified exercises grouped as <b>🧘 mobilization</b>, <b>🏋️ strength</b> and <b>⚖️ stabilization</b>, with a movement for every major joint (ankle, knee, hip, core, shoulder), matched to the athlete's animal type. Exercises are chosen freely for the athlete's needs — not limited to your library.</div>}
+    {!pd&&!pdBusy&&<div className="rec-hint">No analysis yet. Press <b>🧩 Analyze Athlete</b> above — it scans the athlete's profile data, flags right-left asymmetries (≥10%) and weaknesses, prioritizes them by injury risk, and suggests justified exercises grouped as <b>🧘 mobilization</b>, <b>🏋️ strength</b> and <b>⚖️ stabilization</b>, with a movement for every major joint (ankle, knee, hip, core, shoulder). The strength block covers all movement patterns with at least 6 exercises: horizontal push/pull, vertical push/pull, knee dominant, hip dominant and core. Exercises are chosen freely for the athlete's needs — not limited to your library.</div>}
   </div>);
 }
 
