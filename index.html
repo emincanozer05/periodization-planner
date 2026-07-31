@@ -1374,6 +1374,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-zdot{width:8px;height:8px;border-radius:50%;flex:none}
 .lb-rd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700}
 .lb-rhr{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:600;color:var(--text2)}
+/* Mon–Sun RPE strip (replaces the old 21-day trend sparkline) */
+.lb-rpe-row{display:flex;gap:4px;align-items:center}
+.lb-rpe-cell{width:27px;height:27px;border-radius:7px;display:grid;place-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--elevated);color:var(--dim);cursor:default;flex:none;transition:transform .12s}
+.lb-rpe-cell:hover{transform:translateY(-1px)}
+.lb-rpe-cell.empty{opacity:.5}
+.lb-rpe-tip{position:fixed;z-index:120;transform:translate(-50%,calc(-100% - 8px));background:var(--elevated,var(--bg2));border:1px solid var(--border2,var(--border));border-radius:9px;padding:7px 11px;box-shadow:0 12px 34px rgba(0,0,0,.55);pointer-events:none;max-width:260px}
+.lb-rpe-tip .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;white-space:nowrap}
+.lb-rpe-tip .s{display:block;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-rpe-tip .none{font-size:11px;color:var(--dim);font-style:italic;white-space:nowrap}
 
 /* ===== Roster (Athletes) ===== */
 .rost-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
@@ -2563,23 +2572,38 @@ function getAthleteRisks(team,ref=fmt(today)){
   });
   return out.sort((x,y)=>(x.severity==='high'?0:1)-(y.severity==='high'?0:1));
 }
-/* Tiny inline SVG sparkline for load trend cells */
-function Sparkline({data,color='#3b82f6',w=120,h=34}){
-  const vals=(data||[]).map(v=>Number(v)||0);
-  if(vals.length<2||vals.every(v=>v===0))return<svg width={w} height={h}/>;
-  const mx=Math.max(...vals),mn=Math.min(...vals),rng=mx-mn||1;
-  const px=i=>(i/(vals.length-1))*(w-2)+1;
-  const py=v=>h-2-((v-mn)/rng)*(h-5);
-  const pts=vals.map((v,i)=>`${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
-  const area=`1,${h} ${pts} ${(w-1)},${h}`;
-  const gid='spk'+Math.random().toString(36).slice(2,8);
-  return(<svg width={w} height={h} style={{display:'block'}}>
-    <defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stopColor={color} stopOpacity="0.28"/><stop offset="1" stopColor={color} stopOpacity="0"/>
-    </linearGradient></defs>
-    <polygon points={area} fill={`url(#${gid})`}/>
-    <polyline points={pts} fill="none" stroke={color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round"/>
-  </svg>);
+/* Day-level session RPE for an athlete: duration-weighted average across all of that
+   day's srpeLog rows and sources (TP / S&C / Game). Falls back to a plain average when
+   durations are missing. null = no RPE logged that day. */
+function athDayRPE(a,dk){let rw=0,dw=0;const rs=[];
+  (a.srpeLog||[]).forEach(e=>{if(e.date!==dk)return;
+    [['tpRPE','tpDuration'],['scRPE','scDuration'],['gameRPE','gameDuration']].forEach(([rk,du])=>{
+      const r=(e[rk]===''||e[rk]==null)?NaN:Number(e[rk]);if(isNaN(r))return;
+      const d=Number(e[du])||0;rs.push(r);if(d>0){rw+=r*d;dw+=d;}});});
+  if(dw>0)return rw/dw;
+  return rs.length?rs.reduce((x,y)=>x+y,0)/rs.length:null;}
+function rpeColor(v){return v==null?null:v<=3?'#22c55e':v<=5?'#a3e635':v<=6?'#eab308':v<=8?'#f97316':'#ef4444';}
+/* Mon–Sun RPE strip for a load-board row: one small square per day tinted by that day's
+   RPE. Hovering a square shows the session title(s) from the athlete's own calendar for
+   that day in a floating box (fixed-position so the table's overflow can't clip it). */
+function RpeWeekStrip({athlete,refDate}){
+  const[tip,setTip]=useState(null);
+  const days7=Array.from({length:7},(_,i)=>fmt(addD(sow(parseD(refDate)),i)));
+  const fmtRPE=v=>v==null?'·':(v%1===0?String(v):v.toFixed(1));
+  const show=(ev,dk)=>{const r=ev.currentTarget.getBoundingClientRect();
+    const names=(((athlete.days||{})[dk]||{}).sessions||[]).map(s=>s.name).filter(Boolean);
+    setTip({x:r.left+r.width/2,y:r.top,dk,names});};
+  return(<div className="lb-rpe-row">
+    {days7.map(dk=>{const rpe=athDayRPE(athlete,dk);const c=rpeColor(rpe);
+      return<span key={dk} className={'lb-rpe-cell'+(rpe==null?' empty':'')}
+        style={c?{background:c+'26',borderColor:c+'66',color:c}:null}
+        onMouseEnter={ev=>show(ev,dk)} onMouseLeave={()=>setTip(null)}>{fmtRPE(rpe)}</span>;})}
+    {tip&&<div className="lb-rpe-tip" style={{left:tip.x,top:tip.y}}>
+      <div className="d">{DN[(parseD(tip.dk).getDay()+6)%7]} · {fd(tip.dk)}</div>
+      {tip.names.length?tip.names.map((n,i)=><span key={i} className="s">{n}</span>)
+        :<span className="none">Takvimde antrenman yok</span>}
+    </div>}
+  </div>);
 }
 /* Semicircular ACWR gauge (0–2 scale) with risk-zone arcs + needle */
 function AcwrBar({value}){
@@ -2605,7 +2629,7 @@ function AcwrBar({value}){
   </div>);
 }
 
-/* Athlete Load Board — per-athlete 7-day load, 21-day trend, ACWR, readiness & RHR */
+/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, ACWR, readiness & RHR */
 function AthleteLoadBoard({athletes,refDate}){
   const[lbSort,setLbSort]=useState('load');
   const ref=refDate||fmt(today);
@@ -2613,7 +2637,7 @@ function AthleteLoadBoard({athletes,refDate}){
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
     return{a,name:a.name||'—',pos:a.position||'',l7,acwr:athACWR(a,ref),
-      trend:athTrend(a,ref,21),rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
+      rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
   const sorted=[...rows].sort((x,y)=>lbSort==='acwr'?y.acwr-x.acwr:lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
@@ -2630,14 +2654,14 @@ function AthleteLoadBoard({athletes,refDate}){
     {sorted.length>0&&<div style={{overflowX:'auto'}}>
       <table className="lb-tbl">
         <thead><tr>
-          <th>Athlete</th><th>Pos</th><th>7-day load</th><th>21-day trend</th>
+          <th>Athlete</th><th>Pos</th><th>7-day load</th><th>7-day RPE</th>
           <th>ACWR</th><th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
           <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
-          <td><Sparkline data={r.trend}/></td>
+          <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-acwr" style={{color:z.c}}>{r.acwr?r.acwr.toFixed(2):'—'}</span></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{z.t}</span></td>
           <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
