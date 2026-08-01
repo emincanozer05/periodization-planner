@@ -1376,6 +1376,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-rhr{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:600;color:var(--text2)}
 /* Mon–Sun RPE strip (replaces the old 21-day trend sparkline) */
 .lb-rpe-row{display:flex;gap:4px;align-items:center}
+/* Weekday initials in the column header — same 27px/4px grid as .lb-rpe-cell */
+.lb-rpe-hd{display:flex;flex-direction:column;gap:7px}
+.lb-rpe-days{display:flex;gap:4px}
+.lb-rpe-days span{width:27px;flex:none;text-align:center;font-size:10px;font-weight:700;color:var(--dim);letter-spacing:0}
 .lb-rpe-cell{width:27px;height:27px;border-radius:7px;display:grid;place-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;border:1px solid var(--border);background:var(--elevated);color:var(--dim);cursor:default;flex:none;transition:transform .12s}
 .lb-rpe-cell:hover{transform:translateY(-1px)}
 .lb-rpe-cell.empty{opacity:.5}
@@ -1527,22 +1531,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mk-up-cap{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
 .mk-up-rm{position:absolute;top:5px;right:5px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,.7);color:#fff;font-size:11px;cursor:pointer;display:grid;place-items:center;line-height:1;backdrop-filter:blur(2px);transition:background .15s ease}
 .mk-up-rm:hover{background:rgba(239,68,68,.92)}
-/* assessment file: upload + "Read the file" (posture / OHS) */
-.mk-file{display:flex;flex-direction:column;gap:8px;max-width:420px}
 .ohs-top{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
-.mk-file-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.mk-file-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--text2);font-size:12.5px;cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease}
-.mk-file-btn:hover:not(:disabled){border-color:var(--card-accent,#8fd633);background:rgba(255,255,255,.08);color:var(--text)}
-.mk-file-btn.go{border-color:var(--card-accent,#8fd633);color:var(--card-accent,#8fd633)}
-.mk-file-btn.go:hover:not(:disabled){background:var(--card-accent,#8fd633);color:#0a0b0d}
-.mk-file-btn:disabled{opacity:.4;cursor:not-allowed}
-.mk-file-rm{width:28px;height:28px;flex:none;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--muted);font-size:11px;cursor:pointer;display:grid;place-items:center;transition:background .15s ease,color .15s ease}
-.mk-file-rm:hover{background:rgba(239,68,68,.85);color:#fff}
-.mk-file-nm{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mk-file-hint{font-size:11px;color:var(--dim);line-height:1.5}
-.mk-file-msg{font-size:11px;line-height:1.5;border-radius:8px;padding:7px 10px}
-.mk-file-msg.err{color:#fca5a5;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.28)}
-.mk-file-msg.ok{color:#86efac;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.28)}
 /* OHS compensations grid */
 .ohs-comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ohs-comp-input{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:9px 12px;color:var(--text);font-size:13px;outline:none;width:100%;box-sizing:border-box;font-family:inherit;transition:border-color .15s ease}
@@ -2230,12 +2219,12 @@ const makeTest=(period='pre')=>({
   height:'',weight:'',wingspan:'',bodyFat:'',
   // Circumferences (cm) — bilateral for thigh & calf
   circ:{shoulder:'',waist:'',hip:'',thighRight:'',thighLeft:'',calfRight:'',calfLeft:''},
-  // Static posture — `dataFile` holds an attached assessment export (see MkFileRead)
-  posture:{frontPhoto:null,sidePhoto:null,backPhoto:null,observations:'',dataFile:null},
+  // Static posture
+  posture:{frontPhoto:null,sidePhoto:null,backPhoto:null,observations:''},
   // Mobility & Movement
   aslr:{right:'',left:''},        // FMS 0-3
   ankleDF:{right:'',left:''},     // degrees
-  ohs:{score:'',frontPhoto:null,sidePhoto:null,backPhoto:null,observations:'',problems:['','','','',''],dataFile:null},
+  ohs:{score:'',frontPhoto:null,sidePhoto:null,backPhoto:null,observations:'',problems:['','','','','']},
   // Y Balance Test — leg length (ASIS–medial malleolus, cm) + 3 reach directions per foot (cm)
   yBalance:{limbLength:'',right:{ant:'',pm:'',pl:''},left:{ant:'',pm:'',pl:''}},
   // Sprint — side-view of 3 first steps + front-view of right/left foot
@@ -2604,24 +2593,33 @@ function athDayRPE(a,dk){let rw=0,dw=0;const rs=[];
 function rpeColor(v){return v==null?null:v<=3?'#22c55e':v<=5?'#a3e635':v<=6?'#eab308':v<=8?'#f97316':'#ef4444';}
 /* Mon–Sun RPE strip for a load-board row: one small square per day tinted by that day's
    RPE. Hovering a square shows the session title(s) from the athlete's own calendar for
-   that day in a floating box (fixed-position so the table's overflow can't clip it). */
+   that day in a floating box.
+   The box is portalled to <body> on purpose: hovering a square also hovers the
+   surrounding panel, and `.panel:hover` applies a transform — a transformed ancestor
+   becomes the containing block for position:fixed children, so a tooltip rendered in
+   place was pushed right by the panel's own offset (the sidebar width, ~275px) and
+   landed over the ACWR/Zone columns instead of the square it describes. */
 function RpeWeekStrip({athlete,refDate}){
   const[tip,setTip]=useState(null);
   const days7=Array.from({length:7},(_,i)=>fmt(addD(sow(parseD(refDate)),i)));
   const fmtRPE=v=>v==null?'·':(v%1===0?String(v):v.toFixed(1));
   const show=(ev,dk)=>{const r=ev.currentTarget.getBoundingClientRect();
     const names=(((athlete.days||{})[dk]||{}).sessions||[]).map(s=>s.name).filter(Boolean);
-    setTip({x:r.left+r.width/2,y:r.top,dk,names});};
+    // Keep the box on screen without letting it drift off the square it belongs to.
+    const half=134,vw=window.innerWidth||0;
+    const cx=Math.min(Math.max(r.left+r.width/2,half),Math.max(half,vw-half));
+    setTip({x:cx,y:r.top,dk,names});};
   return(<div className="lb-rpe-row">
     {days7.map(dk=>{const rpe=athDayRPE(athlete,dk);const c=rpeColor(rpe);
       return<span key={dk} className={'lb-rpe-cell'+(rpe==null?' empty':'')}
         style={c?{background:c+'26',borderColor:c+'66',color:c}:null}
         onMouseEnter={ev=>show(ev,dk)} onMouseLeave={()=>setTip(null)}>{fmtRPE(rpe)}</span>;})}
-    {tip&&<div className="lb-rpe-tip" style={{left:tip.x,top:tip.y}}>
-      <div className="d">{DN[(parseD(tip.dk).getDay()+6)%7]} · {fd(tip.dk)}</div>
-      {tip.names.length?tip.names.map((n,i)=><span key={i} className="s">{n}</span>)
-        :<span className="none">Takvimde antrenman yok</span>}
-    </div>}
+    {tip&&ReactDOM.createPortal(
+      <div className="lb-rpe-tip" style={{left:tip.x,top:tip.y}}>
+        <div className="d">{DN[(parseD(tip.dk).getDay()+6)%7]} · {fd(tip.dk)}</div>
+        {tip.names.length?tip.names.map((n,i)=><span key={i} className="s">{n}</span>)
+          :<span className="none">Takvimde antrenman yok</span>}
+      </div>, document.body)}
   </div>);
 }
 /* Semicircular ACWR gauge (0–2 scale) with risk-zone arcs + needle */
@@ -2673,7 +2671,12 @@ function AthleteLoadBoard({athletes,refDate}){
     {sorted.length>0&&<div style={{overflowX:'auto'}}>
       <table className="lb-tbl">
         <thead><tr>
-          <th>Athlete</th><th>Pos</th><th>7-day load</th><th>7-day RPE</th>
+          <th>Athlete</th><th>Pos</th><th>7-day load</th>
+          {/* Day initials sit under the column label, on the same 27px grid as the
+              squares below, so a coach can read which weekday a value belongs to. */}
+          <th><div className="lb-rpe-hd">7-day RPE
+            <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
+          </div></th>
           <th>ACWR</th><th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
@@ -3899,138 +3902,6 @@ function imageFileFromPaste(e){
   return null;
 }
 
-/* =========================================================
-   TEST ASSESSMENT FILES — attach + "Read the file"
-   Coaches export their static-posture / overhead-squat screening from the
-   measurement system they use (a PDF report, a screenshot of the result page,
-   or a CSV/TXT export). The file is attached to that test section and
-   "Read the file" hands it to the configured AI provider, which writes the
-   athlete's deficits and weak points straight into the observations box.
-
-   Payload handling keeps the synced document small: extracted text is stored
-   inline (it is tiny), binaries go to Firebase Storage and only the URL is
-   kept. The raw base64 also lives in a session cache so the read right after
-   the upload never needs a round-trip.
-   ========================================================= */
-const TEST_FILE_MAX=8*1024*1024;       // hard cap — above this the model call is pointless
-const TEST_FILE_INLINE_MAX=350*1024;   // base64 embedded in the record only below this
-const TEST_TEXT_MAX=60000;             // characters of a text export we store / send
-const ANTHROPIC_IMG=['image/jpeg','image/png','image/gif','image/webp'];
-const _testFileCache={};               // fileId → {mime,b64} (this browser session only)
-
-function testFileMime(f){
-  const t=(f.type||'').toLowerCase();
-  if(t)return t;
-  return /\.pdf$/i.test(f.name||'')?'application/pdf':'application/octet-stream';
-}
-// Extension first: browsers hand out surprising MIME types for CSV (Excel) and
-// none at all for .md. Substring-matching the MIME is NOT safe here — Office
-// types like …openxmlformats-officedocument… contain "xml" but are ZIP blobs.
-const TEST_TEXT_MIMES=['application/json','application/xml','application/csv','application/markdown','application/x-ndjson'];
-function isTestTextFile(f){
-  if(/\.(txt|csv|tsv|json|md|log|xml|html?)$/i.test(f.name||''))return true;
-  const t=(f.type||'').toLowerCase().split(';')[0].trim();
-  return t.startsWith('text/')||TEST_TEXT_MIMES.indexOf(t)>=0;
-}
-function isTestBinaryFile(f){
-  const t=testFileMime(f);
-  return t.startsWith('image/')||t==='application/pdf';
-}
-
-/* Attaches a picked file: extracts text, or stores the binary and caches its
-   base64. Calls done(record) / fail(message) — never throws. */
-function attachTestFile(file,done,fail){
-  if(!file)return;
-  if(file.size>TEST_FILE_MAX){fail(L('Dosya çok büyük — en fazla 8 MB.','File is too large — 8 MB max.'));return;}
-  const rec={id:uid(),name:file.name||'file',type:testFileMime(file),size:file.size,at:Date.now()};
-  const r=new FileReader();
-  r.onerror=()=>fail(L('Dosya okunamadı.','Could not read the file.'));
-  if(isTestTextFile(file)){
-    r.onload=e=>{
-      let txt=String(e.target.result||'');
-      if(txt.length>TEST_TEXT_MAX)txt=txt.slice(0,TEST_TEXT_MAX)+'\n…'+L('(kısaltıldı)','(truncated)');
-      done({...rec,text:txt});
-    };
-    r.readAsText(file);
-    return;
-  }
-  if(!isTestBinaryFile(file)){
-    fail(L('Bu dosya türü okunamıyor — PDF, görsel ya da CSV/TXT yükle.','This file type cannot be read — upload a PDF, an image or a CSV/TXT export.'));
-    return;
-  }
-  r.onload=async e=>{
-    const dataUrl=String(e.target.result||'');
-    _testFileCache[rec.id]={mime:rec.type,b64:dataUrl.slice(dataUrl.indexOf(',')+1)};
-    const fb=(typeof FB==='function')?FB():null;
-    if(fb&&fb.auth&&fb.auth().currentUser){
-      try{const url=await uploadMedia(file,'tests',null,rec.name);done({...rec,url});return;}
-      catch(err){console.warn('assessment file upload failed → local fallback',err);}
-    }
-    // Not signed in (or Storage refused): embed small files, otherwise the
-    // session cache carries it until the coach reloads.
-    done(file.size<=TEST_FILE_INLINE_MAX?{...rec,data:dataUrl}:rec);
-  };
-  r.readAsDataURL(file);
-}
-
-/* Resolves an attached record to what the model needs: {text} or {mime,b64}. */
-async function testFilePayload(rec){
-  if(!rec)throw new Error(L('Önce bir dosya yükle.','Upload a file first.'));
-  if(rec.text)return{text:rec.text};
-  const cached=_testFileCache[rec.id];
-  if(cached)return cached;
-  if(rec.data)return{mime:rec.type,b64:rec.data.slice(rec.data.indexOf(',')+1)};
-  if(rec.url){
-    let blob;
-    try{const r=await fetch(rec.url);if(!r.ok)throw new Error('HTTP '+r.status);blob=await r.blob();}
-    catch(e){throw new Error(L('Dosya buluttan indirilemedi — yeniden yükleyip tekrar dene.','Could not download the file — re-upload it and try again.'));}
-    const dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onerror=rej;fr.onload=ev=>res(String(ev.target.result||''));fr.readAsDataURL(blob);});
-    const p={mime:rec.type,b64:dataUrl.slice(dataUrl.indexOf(',')+1)};
-    _testFileCache[rec.id]=p;
-    return p;
-  }
-  throw new Error(L('Dosya bu oturumda bellekte değil — yeniden yükleyip tekrar dene.','The file is not in memory for this session — re-upload it and try again.'));
-}
-
-/* Sends the attached file to the coach's AI provider and returns a short
-   bullet list of the athlete's deficits / weak points, in the report language. */
-async function readTestFileFindings(ai,section,rec,athName){
-  const provider=(ai&&ai.provider)||'gemini';
-  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
-  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
-  if(!apiKey)throw new Error(L('Önce sağ alttaki ✨ AI Coach panelinden bir API anahtarı gir — Gemini ücretsiz.','Add an API key in the ✨ AI Coach panel (bottom-right) first — Gemini is free.'));
-  const payload=await testFilePayload(rec);
-  const what=section==='ohs'?'overhead squat (OHS) movement screen':'static posture assessment';
-  const system='You are an elite strength & conditioning and movement-screening assistant. '+
-    'The coach attaches a '+what+' file for '+(athName||'an athlete')+' — it may be a report export, a screenshot or a photo of the result sheet. '+
-    'Read ONLY what the file actually contains and list that athlete\'s DEFICITS and WEAK POINTS. '+
-    'Name the finding together with the body region and the side (right/left) whenever the file gives it. '+
-    'Never invent measurements, scores or findings that are not in the file. '+
-    'If the file is unreadable or holds no relevant assessment data, reply with a single line saying exactly that.';
-  const instr='Bu dosyayı oku ve sporcunun eksikliklerini / zayıf yönlerini çıkar.\n'+
-    '- Yanıtı SADECE "- " ile başlayan kısa maddeler halinde ver (en fazla 8 madde).\n'+
-    '- Her madde: bulgu + vücut bölgesi/taraf + kısa antrenman çıkarımı.\n'+
-    '- Son satır: "'+L('Öncelik','Priority')+': …" — en kritik tek başlık.\n'+
-    '- Başlık, giriş cümlesi ve markdown kullanma.\n'+
-    '- Yanıt dili: '+(REPORT_LANG==='tr'?'Türkçe':'İngilizce')+'.';
-  if(payload.text){
-    const msg=instr+'\n\n=== '+(rec.name||'file')+' ===\n'+payload.text;
-    return provider==='anthropic'
-      ?await askCoach(apiKey,model,system,[{role:'user',content:msg}],{maxTokens:1500})
-      :await askGemini(apiKey,model,system,[{role:'user',content:msg}],{maxTokens:1500});
-  }
-  if(provider==='anthropic'){
-    if(payload.mime!=='application/pdf'&&ANTHROPIC_IMG.indexOf(payload.mime)<0)
-      throw new Error(L('Claude bu görsel biçimini okuyamıyor — JPG, PNG, GIF, WEBP veya PDF yükle.','Claude cannot read this image format — upload a JPG, PNG, GIF, WEBP or PDF.'));
-    const blocks=[payload.mime==='application/pdf'
-      ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:payload.b64}}
-      :{type:'image',source:{type:'base64',media_type:payload.mime,data:payload.b64}},
-      {type:'text',text:instr}];
-    return await askCoach(apiKey,model,system,[{role:'user',content:blocks}],{maxTokens:1500});
-  }
-  const parts=[{inlineData:{mimeType:payload.mime,data:payload.b64}},{text:instr}];
-  return await askGemini(apiKey,model,system,[{role:'user',content:parts}],{maxTokens:1500});
-}
 function resizePhoto(file,cb){
   // Higher quality for sport-science test photos: 700px max, JPEG 0.90.
   // ~3-5× more pixels than the old 200/0.75 setting → noticeably sharper
@@ -6938,52 +6809,6 @@ function MkUpload({photo,onChange,label}){
       </div>, document.body)}
   </div>);
 }
-/* Assessment-file attach + "Read the file" — Static Posture and OHS cards.
-   Reading appends the model's findings to that section's observations box, so
-   the coach keeps whatever they had already typed. */
-function MkFileRead({section,file,onChange,onRead,ai,athName}){
-  const ref=useRef(null);
-  const[busy,setBusy]=useState(false);
-  const[err,setErr]=useState('');
-  const[ok,setOk]=useState('');
-  const reset=()=>{setErr('');setOk('');};
-  const attach=f=>{reset();attachTestFile(f,rec=>onChange(rec),msg=>setErr(msg));};
-  const read=async()=>{
-    if(busy||!file)return;
-    reset();setBusy(true);
-    try{
-      const ans=(await readTestFileFindings(ai,section,file,athName)||'').trim();
-      if(!ans)throw new Error(L('Model boş yanıt döndürdü.','The model returned an empty answer.'));
-      const head=L('— Dosya analizi','— File analysis')+' ('+(file.name||'file')+'):';
-      // The findings and the read stamp go out in ONE update: two separate
-      // calls would each spread the same (stale) section object, and the
-      // second would silently drop the observations the first just wrote.
-      onRead({...file,readAt:Date.now()},head+'\n'+ans);
-      setOk(L('Bulgular gözlem notuna yazıldı.','Findings written into the observations.'));
-    }catch(e){setErr(e.message||String(e));}
-    finally{setBusy(false);}
-  };
-  return(<div className="mk-file">
-    <div className="mk-flbl">{L('Değerlendirme dosyası','Assessment file')}</div>
-    <div className="mk-file-row">
-      <button type="button" className="mk-file-btn" onClick={()=>ref.current?.click()}>
-        ⇪ {file?L('Değiştir','Change'):L('Dosya Yükle','Upload File')}
-      </button>
-      <button type="button" className="mk-file-btn go" disabled={!file||busy} onClick={read}>
-        {busy?L('Okunuyor…','Reading…'):'Read the file'}
-      </button>
-      {file&&<button type="button" className="mk-file-rm" title={L('Kaldır','Remove')} onClick={()=>{onChange(null);reset();}}>✕</button>}
-    </div>
-    {file
-      ?<div className="mk-file-nm" title={file.name}>📄 {file.name}{file.size?` · ${Math.max(1,Math.round(file.size/1024))} KB`:''}</div>
-      :<div className="mk-file-hint">{L('PDF, görsel veya CSV/TXT. Yükledikten sonra “Read the file” sporcunun eksik ve zayıf yönlerini nota yazar.','PDF, image or CSV/TXT. After uploading, “Read the file” writes the athlete\'s deficits and weak points into the notes.')}</div>}
-    {err&&<div className="mk-file-msg err">⚠ {err}</div>}
-    {ok&&<div className="mk-file-msg ok">✓ {ok}</div>}
-    <input ref={ref} type="file" style={{display:'none'}}
-      accept=".pdf,.txt,.csv,.tsv,.json,.md,.log,.xml,.htm,.html,image/*,application/pdf"
-      onChange={e=>{const f=e.target.files?.[0];if(f)attach(f);e.target.value='';}}/>
-  </div>);
-}
 
 const MK_ICONS={
   height:(<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#8fd633" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="2.5" width="5" height="19" rx="1"/><line x1="3" y1="7" x2="6" y2="7"/><line x1="3" y1="11" x2="6" y2="11"/><line x1="3" y1="15" x2="6" y2="15"/><line x1="3" y1="19" x2="6" y2="19"/><circle cx="15.5" cy="6" r="2"/><path d="M15.5 8v6"/><path d="M11.5 11h8"/><path d="M15.5 14l-3 6"/><path d="M15.5 14l3 6"/></svg>),
@@ -7004,16 +6829,9 @@ function YbDiag({flip}){
   </svg>);
 }
 
-function TestCard({id,index,test,onUpdate,custom,ai,athName}){
+function TestCard({id,index,test,onUpdate,custom}){
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
-  // "Read the file" result → appended to that section's observations and the
-  // file record stamped, in a single update (see MkFileRead).
-  const readInto=key=>(rec,findings)=>{
-    const sec=test[key]||{};
-    const prev=(sec.observations||'').trim();
-    onUpdate({[key]:{...sec,dataFile:rec,observations:(prev?prev+'\n\n':'')+findings}});
-  };
   const cat=TEST_CATALOG.find(c=>c.id===id);
   const name=custom?custom.name:(MK_TITLE[id]||(cat?cat.name:id));
   const tag=custom?'':(MK_SHORT[id]||'');
@@ -7060,9 +6878,6 @@ function TestCard({id,index,test,onUpdate,custom,ai,athName}){
             <MkUpload photo={test.posture?.sideLPhoto} onChange={v=>uN('posture','sideLPhoto',v)} label="Side (L)"/>
             <MkUpload photo={test.posture?.backPhoto} onChange={v=>uN('posture','backPhoto',v)} label="Back"/>
           </div>
-          <MkFileRead section="posture" ai={ai} athName={athName}
-            file={test.posture?.dataFile} onChange={v=>uN('posture','dataFile',v)}
-            onRead={readInto('posture')}/>
         </div>
         <MkObs value={obsVal} onChange={setObs} className="tc-obs-posture" placeholder="Alignment, asymmetries, postural deviations…"/>
       </div>
@@ -7078,9 +6893,6 @@ function TestCard({id,index,test,onUpdate,custom,ai,athName}){
             <div className="mk-flbl">OHS Score (FMS 0-3)</div>
             <MkSelectField value={test.ohs?.score??''} onChange={v=>uN('ohs','score',v)} options={OHS_SCORES}/>
           </div>
-          <MkFileRead section="ohs" ai={ai} athName={athName}
-            file={test.ohs?.dataFile} onChange={v=>uN('ohs','dataFile',v)}
-            onRead={readInto('ohs')}/>
         </div>
         <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start'}}>
           <div>
@@ -7240,7 +7052,7 @@ function TestCard({id,index,test,onUpdate,custom,ai,athName}){
   </div>);
 }
 
-function TestSession({test,ath,setup,customTests,ai,onUpdate,onClose}){
+function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
   const cTests=Array.isArray(customTests)?customTests:[];
   const ids=expandBattery(test.battery)||TEST_CATALOG.map(c=>c.id);
   const valid=ids.filter(id=>TEST_CATALOG.find(c=>c.id===id)||cTests.find(c=>c.id===id));
@@ -7260,7 +7072,7 @@ function TestSession({test,ath,setup,customTests,ai,onUpdate,onClose}){
       </div>
     </div>
     <div className="ts-wrap">
-      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu} ai={ai} athName={ath.name}/>;})}
+      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu}/>;})}
       {valid.length===0&&<div className="empty-st">No tests in this battery.</div>}
     </div>
   </div>);
@@ -7520,7 +7332,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         </div>}
       </div>
 
-      {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} ai={data&&data.ai} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
+      {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
       </React.Fragment>}
     </div>}
   </div>);
@@ -8926,7 +8738,20 @@ function TeamsPanel({data,setData}){
    Pulls sRPE + Wellness submissions from a Cloudflare Worker
    (which reads the Tally forms) and merges them into the team.
    ========================================================= */
-const NORM=s=>(s||'').toString().trim().toUpperCase().replace(/\s+/g,' ');
+// Name key used to match a Tally submission to a roster athlete. Plain
+// toUpperCase() is not enough for Turkish names: "i"→"I" but "İ"→"İ", so a
+// roster "İsmail" never matched a form "ismail", and "Bakırcı"/"Bakirci" or
+// "Öztürk"/"Ozturk" typed with an English keyboard fell apart the same way.
+// Folding the Turkish letters to their ASCII base makes the match stable —
+// which is what keeps half the squad's RPE from disappearing after a sync.
+const NORM=s=>(s||'').toString()
+  .replace(/[İIı]/g,'i').replace(/Ş/g,'ş').replace(/Ğ/g,'ğ')
+  .replace(/Ü/g,'ü').replace(/Ö/g,'ö').replace(/Ç/g,'ç')
+  .toLowerCase()
+  .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u')
+  .replace(/ö/g,'o').replace(/ç/g,'c').replace(/â/g,'a').replace(/î/g,'i').replace(/û/g,'u')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .trim().replace(/\s+/g,' ').toUpperCase();
 
 async function performTallySync(workerUrl,team,opts={}){
   const autoCreate=!!opts.autoCreate;
@@ -8936,16 +8761,45 @@ async function performTallySync(workerUrl,team,opts={}){
     throw new Error('Bu bir Tally linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Tally form linkini değil.');
   if(!/^https?:\/\//i.test(base))
     throw new Error('Worker URL "https://" ile başlamalı (ör. https://tally-sync.ADIN.workers.dev).');
-  let r;
-  try{
-    r=await fetch(base+'/sync');
-  }catch(e){
-    throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim tally-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
+  // One Worker invocation can only page through so many Tally submissions before
+  // it runs out of Cloudflare subrequests, so it hands back where it stopped and
+  // we keep asking until both forms are exhausted. Without this loop a season's
+  // sRPE history arrives truncated and half the athletes' RPE strips stay empty.
+  const MAX_ROUNDS=40;
+  const sRPE=[],wellness=[];
+  let srpePage=1,wellnessPage=1,rounds=0,syncedAt=null,truncated=false;
+  const totals={sRPE:null,wellness:null};
+  let legacyWorker=false;
+  for(;;){
+    const qs=rounds===0?'':`?srpePage=${srpePage}&wellnessPage=${wellnessPage}`;
+    let r;
+    try{
+      r=await fetch(base+'/sync'+qs);
+    }catch(e){
+      throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim tally-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
+    }
+    if(!r.ok)throw new Error(`Worker HTTP ${r.status} döndürdü. Tarayıcıda ${base}/sync adresini açıp dönen mesaja bak.`);
+    const data=await r.json();
+    if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde TALLY_API_KEY eksik ya da form ID (SRPE_FORM / WELLNESS_FORM) yanlış demektir.');
+    if(!syncedAt)syncedAt=data.syncedAt;
+    const m=data.meta||null;
+    // A Worker deployed before paged sync returns no `meta` at all — take its one
+    // page and tell the coach to redeploy, because that build silently truncates.
+    if(!m)legacyWorker=true;
+    // A form that is already exhausted just returns an empty page for the page
+    // number we keep sending, so both arrays can be merged unconditionally.
+    sRPE.push(...(data.sRPE||[]));
+    wellness.push(...(data.wellness||[]));
+    if(m){
+      if(m.srpe&&m.srpe.total!=null)totals.sRPE=m.srpe.total;
+      if(m.wellness&&m.wellness.total!=null)totals.wellness=m.wellness.total;
+      srpePage=m.srpe?m.srpe.nextPage:srpePage;
+      wellnessPage=m.wellness?m.wellness.nextPage:wellnessPage;
+    }
+    rounds++;
+    if(!(m&&((m.srpe&&m.srpe.hasMore)||(m.wellness&&m.wellness.hasMore))))break;
+    if(rounds>=MAX_ROUNDS){truncated=true;break;}
   }
-  if(!r.ok)throw new Error(`Worker HTTP ${r.status} döndürdü. Tarayıcıda ${base}/sync adresini açıp dönen mesaja bak.`);
-  const data=await r.json();
-  if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde TALLY_API_KEY eksik ya da form ID (SRPE_FORM / WELLNESS_FORM) yanlış demektir.');
-  const sRPE=data.sRPE||[],wellness=data.wellness||[];
 
   let athletes=(team.athletes||[]).map(a=>({...a,
     days:JSON.parse(JSON.stringify(a.days||{})),
@@ -8955,7 +8809,10 @@ async function performTallySync(workerUrl,team,opts={}){
     srpeLog:[...(a.srpeLog||[])],
   }));
   const stats={sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
-    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set()};
+    wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set(),
+    // Fetch bookkeeping — lets the coach see at a glance whether every Tally
+    // submission actually made it over, instead of silently losing half of them.
+    sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
   // Match an existing athlete by name. New names are auto-created ONLY if the coach
@@ -9037,7 +8894,7 @@ async function performTallySync(workerUrl,team,opts={}){
   stats.athletesMatched=stats.athletesMatched.size;
   stats.namesSeen=[...stats.namesSeen].filter(Boolean);
   stats.skippedNames=[...stats.skippedNames].filter(Boolean);
-  return{athletes,stats,syncedAt:data.syncedAt||new Date().toISOString()};
+  return{athletes,stats,syncedAt:syncedAt||new Date().toISOString()};
 }
 
 function TallySync({data,setData,team}){
@@ -9129,8 +8986,8 @@ function TallySync({data,setData,team}){
         <h3 style={{fontSize:13,marginBottom:8,color:'var(--accent2)'}}>Last sync summary</h3>
         <table style={{maxWidth:560}}>
           <tbody>
-            <tr><td>sRPE submissions from Tally</td><td><strong>{stats.sRPERows}</strong></td></tr>
-            <tr><td>Wellness submissions from Tally</td><td><strong>{stats.wellnessRows}</strong></td></tr>
+            <tr><td>sRPE submissions from Tally</td><td><strong>{stats.sRPERows}</strong>{stats.sRPETotal!=null&&<span style={{color:stats.sRPERows>=stats.sRPETotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.sRPETotal}</span>}</td></tr>
+            <tr><td>Wellness submissions from Tally</td><td><strong>{stats.wellnessRows}</strong>{stats.wellnessTotal!=null&&<span style={{color:stats.wellnessRows>=stats.wellnessTotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.wellnessTotal}</span>}</td></tr>
             <tr><td>sRPE entries added (to athlete log)</td><td><strong>{stats.srpeAdded||0}</strong></td></tr>
             <tr><td>sRPE entries updated</td><td><strong>{stats.srpeUpdated||0}</strong></td></tr>
             <tr><td>Wellness entries added</td><td><strong>{stats.wellnessAdded}</strong></td></tr>
@@ -9140,6 +8997,13 @@ function TallySync({data,setData,team}){
             <tr><td>Eşleşmeyip atlanan gönderim</td><td><strong style={{color:stats.skipped>0?'var(--high-t)':'inherit'}}>{stats.skipped||0}</strong></td></tr>
           </tbody>
         </table>
+        {stats.legacyWorker&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Worker eski sürüm — <strong>gönderimlerin sadece ilk sayfaları</strong> geliyor, gerisi sessizce düşüyor.
+          Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yeniden deploy et; ondan sonra bütün sRPE geçmişi eksiksiz gelir.
+        </div>}
+        {stats.truncated&&<div style={{marginTop:10,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Tally'de o kadar çok gönderim var ki tek senkronda bitmedi ({stats.fetchRounds} tur). Bir kez daha <strong>Sync Now</strong> de.
+        </div>}
         {Array.isArray(stats.skippedNames)&&stats.skippedNames.length>0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⏭️ Kadroda bulunmadığı için atlanan isimler: <strong>{stats.skippedNames.join(', ')}</strong>.
           Bunları almak istersen ya formdaki/kadrodaki adı birebir aynı yap, ya da yukarıdaki <em>"yeni sporcu oluştur"</em> kutusunu işaretle.
@@ -10783,8 +10647,8 @@ async function askGemini(apiKey,model,system,messages,opts){
       gc.thinkingConfig={thinkingBudget:(/pro/.test(model)&&o.thinkingBudget<128)?128:o.thinkingBudget};
     const body={
       systemInstruction:{parts:[{text:system}]},
-      // `content` is normally a plain string; callers that attach a file (see
-      // readTestFileFindings) pass a ready-made parts array instead.
+      // `content` is normally a plain string; callers that attach media pass a
+      // ready-made parts array instead.
       contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:Array.isArray(m.content)?m.content:[{text:m.content}]})),
       generationConfig:gc,
     };

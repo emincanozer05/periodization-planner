@@ -8,7 +8,13 @@
  *
  *   { "sRPE":     [ {_id, "Athlete", "Date", "TP RPE", ...}, ... ],
  *     "wellness": [ {_id, "Athlete", "Date", "RHR", "Sleep", ...}, ... ],
+ *     "meta":     { "srpe": {nextPage, hasMore, total, fetched}, "wellness": {...} },
  *     "syncedAt": "<ISO timestamp>" }
+ *
+ * Forms with more submissions than one Worker invocation can page through
+ * report `meta.<form>.hasMore: true`; call
+ *   GET <worker-url>/sync?srpePage=<meta.srpe.nextPage>&wellnessPage=<meta.wellness.nextPage>
+ * to continue. CoachOS does this automatically.
  *
  * Your form questions are in Turkish, so this Worker AUTO-MAPS the Turkish
  * question titles to the keys the app reads (see canonicalKey() below).
@@ -87,14 +93,25 @@ function answerToValue(resp, question) {
   return a;
 }
 
-// Fetch submissions of a form → array of {_id, <CanonicalKey>: value}.
-// Uses a large page size and a hard page cap so we never exceed Cloudflare's
-// per-invocation subrequest limit (~50 on the free plan).
-async function fetchForm(formId, key) {
+// Tally caps the page size (50 by default) and silently ignores anything larger,
+// so asking for 500 does NOT return 500 — it returns one capped page. The old
+// code combined that with a hard 8-page stop, which quietly truncated any form
+// with more than a few hundred submissions: the rest of the season simply never
+// reached the app. We now paginate until `hasMore` is false and, when a single
+// Worker invocation would blow Cloudflare's subrequest budget, we hand the next
+// page number back so the app can resume in a follow-up request.
+const PAGE_LIMIT = 50;   // Tally's documented page size
+const PAGE_BUDGET = 20;  // pages per form per invocation (2 forms → 40 subrequests < 50)
+
+// Fetch one page-run of a form's submissions.
+// → {rows, total, nextPage, hasMore} — `hasMore` true means Tally still has
+//   submissions after `nextPage - 1` and the caller should come back for them.
+async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
   const rows = [];
-  const LIMIT = 500, MAX_PAGES = 8;
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${LIMIT}`, {
+  let page = Math.max(1, Number(startPage) || 1);
+  let total = null, more = false;
+  for (let n = 0; n < budget; n++, page++) {
+    const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`, {
       headers: { 'Authorization': `Bearer ${key}` },
     });
     if (!res.ok) {
@@ -102,6 +119,10 @@ async function fetchForm(formId, key) {
       throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
     }
     const j = await res.json();
+    if (total == null) {
+      const t = j.totalNumberOfSubmissionsPerFilter ?? j.total;
+      total = (t == null || isNaN(Number(t))) ? null : Number(t);
+    }
     const qById = {};
     (j.questions || []).forEach(q => { qById[q.id] = q; });
     const subs = j.submissions || [];
@@ -116,9 +137,12 @@ async function fetchForm(formId, key) {
       }
       rows.push(row);
     }
-    if (!j.hasMore || subs.length === 0) break;
+    // `hasMore` is authoritative; a short/empty page is the fallback signal for
+    // API versions that omit it.
+    more = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
+    if (!more || subs.length === 0) { more = false; page++; break; }
   }
-  return rows;
+  return { rows, total, nextPage: page, hasMore: more };
 }
 
 function json(body, status = 200) {
@@ -137,10 +161,18 @@ export default {
       try {
         const key = env.TALLY_API_KEY;
         if (!key) throw new Error('TALLY_API_KEY secret is not set on the Worker');
-        const [sRPE, wellness] = await Promise.all([
-          env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key)     : Promise.resolve([]),
-          env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key) : Promise.resolve([]),
+        // The app resumes a truncated sync by echoing back the page numbers from
+        // the previous response's `meta`. Each round-trip is a fresh Worker
+        // invocation, so a season's worth of submissions can be pulled in full
+        // without ever exceeding one invocation's subrequest budget.
+        const srpeFrom = Number(url.searchParams.get('srpePage')) || 1;
+        const wellFrom = Number(url.searchParams.get('wellnessPage')) || 1;
+        const EMPTY = { rows: [], total: 0, nextPage: 1, hasMore: false };
+        const [srpeRes, wellRes] = await Promise.all([
+          env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key, srpeFrom)     : Promise.resolve(EMPTY),
+          env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key, wellFrom) : Promise.resolve(EMPTY),
         ]);
+        const sRPE = srpeRes.rows, wellness = wellRes.rows;
         // The Wellness form has no "Readiness" question, so derive it as the mean of the
         // 1-5 subscores present (Sleep, Fatigue, Soreness). Remove this block if unwanted.
         for (const r of wellness) {
@@ -149,7 +181,12 @@ export default {
             if (vals.length) r['Readiness'] = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
           }
         }
-        return json({ sRPE, wellness, syncedAt: new Date().toISOString() });
+        const meta = {
+          srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length },
+          wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length },
+          pageLimit: PAGE_LIMIT,
+        };
+        return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
       } catch (e) {
         return json({ error: String(e && e.message || e) });
       }

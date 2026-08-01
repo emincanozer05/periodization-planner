@@ -41,8 +41,10 @@ Notlar:
 - Wellness formunda **Readiness sorusu yok**; Worker, Readiness'i `Sleep`, `Fatigue`,
   `Soreness` ortalamasından otomatik hesaplıyor (istemezsen `tally-worker.js` içindeki
   ilgili bloğu sil — söyle, ben kaldırayım).
-- `Sporcu ismi` açılır listesindeki adlar, CoachOS kadrosundaki adlarla birebir aynı olsun;
-  eşleşmeyen ad **yeni sporcu** olarak eklenir.
+- `Sporcu ismi` açılır listesindeki adlar, CoachOS kadrosundaki adlarla aynı olsun.
+  Eşleştirme büyük/küçük harf ve Türkçe karakter farklarını yok sayar — `İsmail`/`ismail`,
+  `Bakırcı`/`Bakirci`, `Öztürk`/`Ozturk` aynı sporcu sayılır. Gerçekten farklı bir ad
+  ise ayarına göre **atlanır** ya da **yeni sporcu** olarak eklenir.
 
 ## 2) Tally API anahtarı al
 Tally → **Settings → API keys** (workspace ayarları) → **Create API key** → kopyala.
@@ -73,9 +75,27 @@ https://tally.so/forms/<FORM_ID>/edit
 3. **Auto-sync**'i AÇ (ON) ve **Sync Now**'a bas. Bundan sonra forma gelen her cevap
    birkaç dakikada bir otomatik düşer.
 
+## Zaten kurduysan: Worker'ı yeniden deploy et (veri eksikliği düzeltmesi)
+Worker'ın önceki sürümü her formdan yalnızca ilk **400** gönderimi çekiyordu:
+Tally sayfa başına en fazla 50 kayıt döndürüyor (istenen `limit=500` sessizce
+50'ye kırpılıyor) ve Worker 8 sayfada duruyordu. Gerisi hiç gelmiyordu; bu yüzden
+sezon ilerledikçe sporcuların **7 günlük RPE şeritleri boş** görünüyordu.
+
+Güncel `tally-worker.js` sayfalamayı `hasMore` bitene kadar sürdürüyor,
+Cloudflare'ın istek sınırına takılmadan kaldığı sayfayı uygulamaya bildiriyor ve
+uygulama kalanını otomatik istiyor — böylece kaç gönderim olursa olsun hepsi geliyor.
+
+**Düzeltmenin devreye girmesi için Cloudflare'deki Worker kodunu bu repodaki güncel
+`tally-worker.js` ile değiştirip yeniden Deploy etmelisin.** Eski sürüm hâlâ
+yayındaysa CoachOS → Tally Sync ekranı bunu uyarı olarak gösterir. Senkron sonrası
+"sRPE submissions from Tally" satırındaki sayı, formdaki toplam gönderim sayısına
+eşit olmalı.
+
 ## Hızlı test
 Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:
 - `{ "sRPE":[...], "wellness":[...] }` ve diziler doluysa → çalışıyor.
+- `meta.srpe.total` formdaki toplam gönderim sayısını gösterir; `meta.srpe.hasMore`
+  true ise uygulama kalan sayfaları kendisi ister.
 - `{ "error": "..." }` → mesaj sorunu söyler (API anahtarı yok / form ID yanlış).
 - Diziler boşsa → forma henüz cevap gelmemiş ya da form ID yanlış.
 
