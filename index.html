@@ -6941,7 +6941,7 @@ function MkUpload({photo,onChange,label}){
 /* Assessment-file attach + "Read the file" — Static Posture and OHS cards.
    Reading appends the model's findings to that section's observations box, so
    the coach keeps whatever they had already typed. */
-function MkFileRead({section,file,onChange,observations,onObs,ai,athName}){
+function MkFileRead({section,file,onChange,onRead,ai,athName}){
   const ref=useRef(null);
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
@@ -6955,9 +6955,10 @@ function MkFileRead({section,file,onChange,observations,onObs,ai,athName}){
       const ans=(await readTestFileFindings(ai,section,file,athName)||'').trim();
       if(!ans)throw new Error(L('Model boş yanıt döndürdü.','The model returned an empty answer.'));
       const head=L('— Dosya analizi','— File analysis')+' ('+(file.name||'file')+'):';
-      const prev=(observations||'').trim();
-      onObs((prev?prev+'\n\n':'')+head+'\n'+ans);
-      onChange({...file,readAt:Date.now()});
+      // The findings and the read stamp go out in ONE update: two separate
+      // calls would each spread the same (stale) section object, and the
+      // second would silently drop the observations the first just wrote.
+      onRead({...file,readAt:Date.now()},head+'\n'+ans);
       setOk(L('Bulgular gözlem notuna yazıldı.','Findings written into the observations.'));
     }catch(e){setErr(e.message||String(e));}
     finally{setBusy(false);}
@@ -7006,6 +7007,13 @@ function YbDiag({flip}){
 function TestCard({id,index,test,onUpdate,custom,ai,athName}){
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
+  // "Read the file" result → appended to that section's observations and the
+  // file record stamped, in a single update (see MkFileRead).
+  const readInto=key=>(rec,findings)=>{
+    const sec=test[key]||{};
+    const prev=(sec.observations||'').trim();
+    onUpdate({[key]:{...sec,dataFile:rec,observations:(prev?prev+'\n\n':'')+findings}});
+  };
   const cat=TEST_CATALOG.find(c=>c.id===id);
   const name=custom?custom.name:(MK_TITLE[id]||(cat?cat.name:id));
   const tag=custom?'':(MK_SHORT[id]||'');
@@ -7054,7 +7062,7 @@ function TestCard({id,index,test,onUpdate,custom,ai,athName}){
           </div>
           <MkFileRead section="posture" ai={ai} athName={athName}
             file={test.posture?.dataFile} onChange={v=>uN('posture','dataFile',v)}
-            observations={obsVal} onObs={setObs}/>
+            onRead={readInto('posture')}/>
         </div>
         <MkObs value={obsVal} onChange={setObs} className="tc-obs-posture" placeholder="Alignment, asymmetries, postural deviations…"/>
       </div>
@@ -7072,7 +7080,7 @@ function TestCard({id,index,test,onUpdate,custom,ai,athName}){
           </div>
           <MkFileRead section="ohs" ai={ai} athName={athName}
             file={test.ohs?.dataFile} onChange={v=>uN('ohs','dataFile',v)}
-            observations={obsVal} onObs={setObs}/>
+            onRead={readInto('ohs')}/>
         </div>
         <div style={{display:'flex',gap:28,flexWrap:'wrap',alignItems:'flex-start'}}>
           <div>
