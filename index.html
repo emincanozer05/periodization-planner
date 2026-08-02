@@ -2592,10 +2592,27 @@ function teamDailyLoadMap(days,athletes){
   Object.entries(byDate).forEach(([d,aths])=>{const vals=Object.values(aths);
     if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
   return m;}
-/* Foster monotony for one Mon–Sun week off that shared map. */
+/* ---- Team monotony for one Mon–Sun week ------------------------------------------
+   Computed the standard way: each athlete's OWN weekly monotony first
+   (their mean daily load ÷ the SD of their daily loads), then the plain average of
+   those values across the squad. Collapsing the roster into one average load curve
+   first and taking the monotony of that curve is a different — and wrong — number,
+   because averaging smooths away exactly the day-to-day variation monotony measures.
+   Athletes with no load logged in the week are skipped, so the mean isn't dragged
+   down by players who simply didn't train or log. mean / sd / strain are averaged the
+   same way, so the Load Monitoring card's mini stats stay per-athlete too.
+   With no logs at all the week falls back to the planned team-plan daily loads, so a
+   purely planned week still reads instead of showing "no data". */
+function athWeekLoads(a,weekStartKey){
+  return Array.from({length:7},(_,i)=>({load:athDayLoad(a,fmt(addD(parseD(weekStartKey),i)))}));}
 function teamWeekMono(days,athletes,weekStartKey){
-  const m=teamDailyLoadMap(days,athletes);
-  return weekMono(Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)})));}
+  const per=(athletes||[]).map(a=>weekMono(athWeekLoads(a,weekStartKey))).filter(r=>r.monotony>0);
+  if(per.length){
+    const avg=k=>per.reduce((s,r)=>s+r[k],0)/per.length;
+    return{mean:avg('mean'),sd:avg('sd'),monotony:avg('monotony'),strain:avg('strain'),total:avg('total'),n:per.length};
+  }
+  const m=plannedDayLoadMap(days);
+  return{...weekMono(Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)}))),n:0};}
 function weekMono(loads){const a=loads.map(l=>l.load);const m=a.reduce((s,v)=>s+v,0)/a.length;if(m===0)return{mean:0,sd:0,monotony:0,strain:0,total:0};
   const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);return{mean:m,sd,monotony:mono,strain:total*mono,total};}
 /* Chronic load must be a *weekly average*, but a fixed ÷4 misreads sparse history: when
@@ -3337,7 +3354,7 @@ function printMonthlyReportTR(R){
   const monoRows=R.mWeeks.map(w2=>`<tr><td class="ath">${fd(w2.wkStart).slice(0,5)}</td><td>${nf(Math.round(w2.total))}</td><td>${w2.mean.toFixed(0)}</td><td>${w2.sd.toFixed(1)}</td><td>${w2.monotony.toFixed(2)}</td><td>${nf(Math.round(w2.strain))}</td><td>${monoTR(w2.monotony)}</td></tr>`).join('');
   const monoSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Monotoni','Weekly Monotony')}</span><span class="ssub">${L('Ort.','Avg')} ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
     <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>${L('Toplam','Total')}</th><th>${L('Ort.','Mean')}</th><th>${L('SS','SD')}</th><th>${L('Monotoni','Monotony')}</th><th>${L('Zorlanma','Strain')}</th><th>${L('Durum','Status')}</th></tr></thead><tbody>${monoRows}</tbody></table>
-    <div class="note">${L('<b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Bantlar: 1.0 altı düşük (yükler oldukça değişken), 1.0–1.5 normal, 1.5–2.0 artmaya başlayan monotoni, 2.0 üstü yüksek — aşırı yüklenme ve hastalık/sakatlık riski artabilir. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = mean daily load ÷ standard deviation (within the week). Bands: below 1.0 low (loads highly varied), 1.0–1.5 normal, 1.5–2.0 rising monotony, above 2.0 high — overload and illness/injury risk climbs. <b>Strain</b> = Total × Monotony.')}</div></div>`;
+    <div class="note">${L('<b>Monotoni</b> = her sporcunun günlük yük ortalaması ÷ standart sapması (hafta içi), takım geneline göre ortalaması. Bantlar: 1.0 altı düşük (yükler oldukça değişken), 1.0–1.5 normal, 1.5–2.0 artmaya başlayan monotoni, 2.0 üstü yüksek — aşırı yüklenme ve hastalık/sakatlık riski artabilir. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = per-athlete mean daily load ÷ standard deviation (within the week), averaged across the squad. Bands: below 1.0 low (loads highly varied), 1.0–1.5 normal, 1.5–2.0 rising monotony, above 2.0 high — overload and illness/injury risk climbs. <b>Strain</b> = Total × Monotony.')}</div></div>`;
 
   const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
   const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
@@ -4912,7 +4929,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     <div className="calm-month">{fmtRange()}</div>
     <div className="calw-topline">
       {canEdit?<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>:<span/>}
-      <div className="calw-mono" title="Foster training monotony for this week = mean daily load ÷ standard deviation.&#10;<1.0 low — loads highly varied&#10;1.0–1.5 normal / acceptable&#10;1.5–2.0 rising monotony — watch it&#10;>2.0 high — overload and illness/injury risk climbs">
+      <div className="calw-mono" title="Team monotony for this week = each athlete's own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.&#10;<1.0 low — loads highly varied&#10;1.0–1.5 normal / acceptable&#10;1.5–2.0 rising monotony — watch it&#10;>2.0 high — overload and illness/injury risk climbs">
         <span className="k">Team monotony</span>
         <b style={{color:weekMonoZ.c}}>{weekMonoV?weekMonoV.toFixed(2):'—'}</b>
         <span className="z" style={{color:weekMonoZ.dot}}><i style={{background:weekMonoZ.dot}}/>{weekMonoZ.t}</span>
@@ -5836,9 +5853,10 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   },[team.athletes,dailyWeek,plannedByDay]);
 
   // ---- Weekly monotony (Foster) for the selected month, from team daily load ----
+  // Same per-athlete-then-average monotony the gauge card and the calendar chip use.
   const mWeeks=useMemo(()=>{const o=[];let c=sow(parseD(ms));while(c<=parseD(me)){
-    const loads=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(c,i)))}));
-    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...weekMono(loads)});c=addD(c,7);}return o;},[teamDaily,ms,me]);
+    o.push({wkStart:fmt(c),wkEnd:fmt(addD(c,6)),...teamWeekMono(team.days,team.athletes,fmt(c))});c=addD(c,7);}
+    return o;},[team.days,team.athletes,ms,me]);
   const monoW=mWeeks.filter(w=>w.monotony>0);
   const meanMono=monoW.length?monoW.reduce((a,b)=>a+b.monotony,0)/monoW.length:0;
   const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
@@ -5965,9 +5983,9 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
           <span className="lac-title">Team Monotony</span>
           <span className="lac-zone" style={{color:lmMonoZone.dot}}><span className="lac-zdot" style={{background:lmMonoZone.dot}}/>{(lmMonoZone.t||'').toUpperCase()}</span>
         </div>
-        <div className="lac-sub">7 day Foster index</div>
+        <div className="lac-sub">Foster · avg across {mWk.n||0} athlete{(mWk.n||0)===1?'':'s'}</div>
         <div className="lac-val" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div>
-        <div className="lac-vsub">mean ÷ SD</div>
+        <div className="lac-vsub">each athlete's mean ÷ SD, averaged</div>
         <MonoBar value={mWk.monotony}/>
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">Acute · 7d</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(m7.mean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
@@ -6017,7 +6035,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
         <h2 style={{margin:0,fontSize:18}}>Weekly Monotony</h2>
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>Foster monotony &amp; strain · {monthLabel}</span>
       </div>
-      <div className="help" style={{marginBottom:14}}>Monotony = mean daily load ÷ its standard deviation (within each week). Banding: &lt;1.0 low (loads highly varied) · 1.0–1.5 normal · 1.5–2.0 rising, watch it · &gt;2.0 high — overload and illness/injury risk climbs. Strain = Total × Monotony.</div>
+      <div className="help" style={{marginBottom:14}}>Monotony = each athlete's mean daily load ÷ its standard deviation (within each week), averaged across the squad. Banding: &lt;1.0 low (loads highly varied) · 1.0–1.5 normal · 1.5–2.0 rising, watch it · &gt;2.0 high — overload and illness/injury risk climbs. Strain = Total × Monotony.</div>
       <div className="mono-sum">
         <div className="mono-chip"><div className="k">Ort. Monotoni</div><div className="v" style={{color:monoCol(avgMono)}}>{avgMono?avgMono.toFixed(2):'—'}</div><div className="d">{mv.length} hafta</div></div>
         <div className="mono-chip"><div className="k">Riskli Hafta</div><div className="v" style={{color:excessN>0?'#f43f5e':'var(--text)'}}>{excessN}</div><div className="d">monotoni &gt; 2.0</div></div>
