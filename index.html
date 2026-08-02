@@ -2518,7 +2518,7 @@ function migrate(data){
   data.templates=data.templates.map(t=>{const s=t.session||{};
     return{...t,session:{...s,focus:Array.isArray(s.focus)?s.focus:sesFocus(s)}};});
   if(!Array.isArray(data.exercises))data.exercises=[];
-  const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Mobility':'','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
+  const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
   data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
@@ -9986,7 +9986,7 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball'];
+const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
 // Phosphor color for each category tile.
 const TYPE_COLORS={
@@ -9999,6 +9999,7 @@ const TYPE_COLORS={
   'Multi Directional Speed':'#fca5a5',   // red
   'Plyometric':'#5eead4',                // teal
   'Medicine Ball':'#a78bfa',             // violet
+  'Mobility':'#a7f3d0',                  // mint
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
 const HIP_PATTERNS=['Bilateral','Unilateral'];
@@ -10016,6 +10017,7 @@ const SUB_TYPES={
   'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
   'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational']},
   'Medicine Ball':{label:'Movement Pattern',values:['Horizontal','Vertical','Rotational']},
+  'Mobility':{label:'Region',values:['Thoracic','Hip','Ankle']},
 };
 
 function videoEmbed(src){
@@ -10297,7 +10299,7 @@ function ExercisesView({data,setData}){
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!EX_TYPES.includes(e.type)).length;
   // Top-right category dropdown (label → EX_TYPES value).
-  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball']];
+  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility']];
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setQ('');}}}>
       <option value="">All categories</option>
