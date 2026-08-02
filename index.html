@@ -2563,19 +2563,33 @@ function athDayLoad(a,dk){let v=0;(a.srpeLog||[]).forEach(e=>{if(e.date!==dk)ret
 function athLoadSum(a,from,to){let s=0,c=parseD(from);const e=parseD(to);while(c<=e){s+=athDayLoad(a,fmt(c));c=addD(c,1);}return s;}
 function athTrend(a,ref,n){const r=parseD(ref),out=[];for(let i=n-1;i>=0;i--)out.push(athDayLoad(a,fmt(addD(r,-i))));return out;}
 function athACWR(a,ref){return acwrFrom(k=>athDayLoad(a,k),ref);}
+/* The macrocycle window as set up in Season → Macrocycle Timeline: General
+   Preparation's start through Transition's end. Follows the coach's custom
+   period dates when there are any, otherwise the auto-generated ones. */
+function macroWindow(setup){
+  const ps=getPeriods(setup||{});
+  if(!ps.length)return null;
+  const gp=ps.find(p=>p.id==='gp')||ps[0];
+  const tr=ps.find(p=>p.id==='trans')||ps[ps.length-1];
+  return(gp&&tr&&gp.start&&tr.end)?{from:gp.start,to:tr.end}:null;
+}
 /* Attendance off the TEAM calendar, counted in TRAINING DAYS rather than sessions:
-   every past day carrying at least one session is one training day. The athlete
+   every day carrying at least one session is one training day. The athlete
    attended it if they're assigned to any of that day's sessions — otherwise the
-   whole day counts as missed, no matter how many sessions it held. Days that
-   haven't happened yet stay out of both counts. */
-function athTrainingDays(teamDays,athId){
-  const todayKey=fmt(today);let attended=0,missed=0;
+   whole day counts as missed, no matter how many sessions it held.
+   Only the macrocycle counts: days before General Preparation starts or after
+   Transition ends are ignored, as are days that haven't happened yet. */
+function athTrainingDays(teamDays,athId,setup){
+  const todayKey=fmt(today);const win=macroWindow(setup);
+  const from=win?win.from:null;
+  const to=(win&&win.to<todayKey)?win.to:todayKey;
+  let attended=0,missed=0;
   for(const key of Object.keys(teamDays||{})){
     const sessions=(teamDays[key]||{}).sessions||[];
-    if(!sessions.length||key>todayKey)continue;
+    if(!sessions.length||key>to||(from&&key<from))continue;
     if(sessions.some(s=>(s.athletes||[]).includes(athId)))attended++;else missed++;
   }
-  return{attended,missed};
+  return{attended,missed,from,to:win?win.to:null};
 }
 function athLatestDate(a){let m='';(a.srpeLog||[]).forEach(e=>{if(e.date&&e.date>m)m=e.date;});
   (a.wellness||[]).forEach(w=>{if(w.date&&w.date>m)m=w.date;});return m||fmt(today);}
@@ -8733,7 +8747,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
       const rd=athWellnessVal(a,'readiness',ref);
       const acwr=athACWR(a,ref);const az=acwrZoneOf(acwr);
-      const td=athTrainingDays(team.days,a.id);
+      const td=athTrainingDays(team.days,a.id,team.setup);
       const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
@@ -8752,7 +8766,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
           <div className="rc-st"><span className="k">7d load</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
           <div className="rc-st">
             <span className="k">Training days</span>
-            <span className="v" title={`${td.attended} training days attended · ${td.missed} missed`}>
+            <span className="v" title={`${td.attended} training days attended · ${td.missed} missed${td.from?` — macrocycle ${fd(td.from)} → ${fd(td.to)}`:''}`}>
               <span style={{color:'var(--green)'}}>{td.attended}</span>
               <span style={{color:'var(--dim)',fontWeight:500,margin:'0 3px'}}>/</span>
               <span style={{color:td.missed>0?'#f43f5e':'var(--dim)'}}>{td.missed}</span>
