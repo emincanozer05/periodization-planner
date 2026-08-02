@@ -1407,13 +1407,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc-id{min-width:0;padding-right:46px}
 .rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word}
 .rc-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
-.rc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;border-top:1px solid var(--border);padding-top:14px}
-.rc-st{display:flex;flex-direction:column;gap:3px}
-.rc-st .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
-.rc-st .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text)}
+/* Four centred metrics on one row. Each .rc-st dissolves into the grid so all
+   labels share row 1 and all values share row 2 — a label that wraps to two
+   lines then can't knock its own value out of line with the others. */
+.rc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:3px 6px;border-top:1px solid var(--border);padding-top:14px;text-align:center;align-items:end}
+.rc-st{display:contents}
+.rc-st .k{grid-row:1;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;line-height:1.25}
+.rc-st .v{grid-row:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
 .rc-st .v small{font-size:10px;font-weight:500;color:var(--dim)}
-/* Training-day attendance sits on its own full-width row under the three metrics */
-.rc-st.wide{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
 /* ===== Test & Evaluation ===== */
 .eval-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .evc{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;text-align:center;overflow:hidden}
@@ -8749,13 +8750,12 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
           <div className="rc-st"><span className="k">Readiness</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
           <div className="rc-st"><span className="k">ACWR</span><span className="v" style={{color:az.c}}>{acwr?acwr.toFixed(2):'—'}</span></div>
           <div className="rc-st"><span className="k">7d load</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
-          <div className="rc-st wide" title={`${td.attended} training days attended · ${td.missed} missed`}>
+          <div className="rc-st">
             <span className="k">Training days</span>
-            <span className="v">
+            <span className="v" title={`${td.attended} training days attended · ${td.missed} missed`}>
               <span style={{color:'var(--green)'}}>{td.attended}</span>
-              <span style={{color:'var(--dim)',fontWeight:500,margin:'0 4px'}}>/</span>
+              <span style={{color:'var(--dim)',fontWeight:500,margin:'0 3px'}}>/</span>
               <span style={{color:td.missed>0?'#f43f5e':'var(--dim)'}}>{td.missed}</span>
-              <small style={{marginLeft:7}}>attended / missed</small>
             </span>
           </div>
         </div>
