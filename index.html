@@ -306,8 +306,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-ses[draggable=true]{cursor:grab}
 .calw-ses.dragging{opacity:.45;cursor:grabbing}
 .calw-col.drop{border-color:var(--accent);background:rgba(230,255,85,.05)}
-.calw-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-bottom:10px}
+.calw-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 .calw-hint strong{color:var(--text2);font-weight:600}
+/* Row under the week date: drag hint on the left, team monotony chip on the right */
+.calw-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.calw-mono{display:inline-flex;align-items:center;gap:9px;padding:6px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.calw-mono .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.calw-mono b{font-size:16px;font-weight:800;line-height:1}
+.calw-mono .z{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.calw-mono .z i{width:7px;height:7px;border-radius:50%;display:inline-block}
+/* Per-day team averages (RPE / readiness) directly under the day's date */
+.calw-avg{display:flex;gap:6px;margin:-2px 0 2px}
+.calw-avg .cav{flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px;border:1px solid var(--border);border-radius:7px;background:rgba(255,255,255,.02);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.calw-avg .cav em{font-style:normal;font-size:9px;letter-spacing:.06em;color:var(--dim)}
+.calw-avg .cav b{font-size:12px;font-weight:800;line-height:1}
 /* Athletes' weekly sRPE table (Calendar page) — between week strip and month grid */
 .srpe-wk-wrap{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
 .srpe-wk{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;min-width:560px}
@@ -1339,6 +1351,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-opt.on{color:var(--text);font-weight:600}
 .focus-opt input[type=checkbox]{width:14px;height:14px;accent-color:var(--green,#46d6a0);margin:0;padding:0;flex:0 0 auto}
 .focus-opt span{flex:1;min-width:0}
+.focus-grp{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:9px 10px 4px}
+.focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
+.focus-search:focus{outline:none;border-color:var(--muted)}
 /* Template card focus tags + hover exercise tooltip */
 .tpl-focus-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;white-space:nowrap}
 .tpl-card{position:relative}
@@ -2148,6 +2163,20 @@ const sesFocus=s=>{
   if(LEGACY_FOCUS_MAP[p])return LEGACY_FOCUS_MAP[p];
   return p.split(',').map(x=>x.trim()).filter(x=>SESSION_FOCUS.includes(x));
 };
+/* Training methods — the means used to deliver the session focus. Grouped the way the
+   S&C literature does (Zatsiorsky/Verkhoshansky strength means, Buchheit/Laursen
+   conditioning formats, sprint & mobility means) so a coach can tag *how* a session was
+   trained, not just what it targeted. Stored on the session as `methods: []`. */
+const TRAINING_METHODS=[
+  ['Strength & Resistance',['Maximal Effort Method','Repeated Effort Method','Dynamic Effort Method','Velocity-Based Training','Cluster Sets','Eccentric Overload','Accentuated Eccentric Loading','Isometric Training','Accommodating Resistance (Bands / Chains)','Flywheel / Isoinertial Training','Blood Flow Restriction','Circuit Training','Supersets / Paired Sets','Drop Sets','Tempo / Time Under Tension','Unilateral Training','Machine-Based Resistance']],
+  ['Power & Explosive',['Olympic Lifting Derivatives','Ballistic Training','Plyometric Training','Shock Method (Depth Jumps)','Medicine Ball Throws','Complex Training','Contrast Training','French Contrast','Post-Activation Potentiation (PAP/PAPE)','Jump Squats / Loaded Jumps']],
+  ['Speed & Agility',['Acceleration Sprints','Maximal Velocity Sprints','Flying Sprints','Resisted Sprints (Sled / Band)','Assisted (Overspeed) Sprints','Change-of-Direction Drills','Reactive / Open-Skill Agility','Deceleration & Landing Mechanics','Sprint Technique Drills','Speed Endurance']],
+  ['Conditioning & Energy System',['Continuous Steady-State','Long Slow Distance','Fartlek','Extensive Intervals','Intensive Intervals','High-Intensity Interval Training (HIIT)','Sprint Interval Training (SIT)','Repeated Sprint Ability (RSA)','Repeated High-Intensity Efforts','Tempo Runs','Threshold / Lactate Training','30-15 Intermittent Fitness','Small-Sided Games','Game-Based Conditioning']],
+  ['Neuromuscular & Prehab',['Core / Anti-Movement Training','Balance & Proprioception Training','Nordic / Eccentric Hamstring','Copenhagen Adduction','Tendon Loading (Heavy Slow Resistance)','Movement Skill / Motor Learning','Coordination & Rhythm Drills']],
+  ['Mobility & Recovery',['Dynamic Stretching','Static Stretching','PNF Stretching','Joint Mobility / CARs','Self-Myofascial Release','Active Recovery','Pool / Hydrotherapy Recovery','Breathing & Parasympathetic Work']],
+];
+const TRAINING_METHOD_LIST=TRAINING_METHODS.reduce((a,g)=>a.concat(g[1]),[]);
+const sesMethods=s=>Array.isArray(s?.methods)?s.methods:[];
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
@@ -2223,7 +2252,8 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
-    purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
+    purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),
+    methods:Array.isArray(p.methods)?p.methods:[],duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2352,7 +2382,8 @@ function saveSessionAsTemplate(session){return _saveSessionAsTemplate?_saveSessi
    new session/block ids, sRPE/au/athletes/sourceId reset. */
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
-    purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
+    purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],
+    methods:sesMethods(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
     notes:s.notes||'',planNote:s.planNote||'',athletes:[],sourceId:null};}
 
@@ -2631,6 +2662,25 @@ function athDayRPE(a,dk){let rw=0,dw=0;const rs=[];
   if(dw>0)return rw/dw;
   return rs.length?rs.reduce((x,y)=>x+y,0)/rs.length:null;}
 function rpeColor(v){return v==null?null:v<=3?'#22c55e':v<=5?'#a3e635':v<=6?'#eab308':v<=8?'#f97316':'#ef4444';}
+/* Team averages for a single calendar day.
+   RPE     = mean of every athlete's duration-weighted day RPE (athDayRPE).
+   Readiness = mean of the wellness check-ins actually dated on that day (not the
+   "latest known value", so an empty day stays empty instead of echoing last week). */
+function teamDayRPE(athletes,dk){
+  const vs=(athletes||[]).map(a=>athDayRPE(a,dk)).filter(v=>v!=null&&!isNaN(v));
+  return vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null;}
+function teamDayReadiness(athletes,dk){
+  const vs=[];
+  (athletes||[]).forEach(a=>(a.wellness||[]).forEach(w=>{
+    if(w.date!==dk||w.readiness===''||w.readiness==null)return;
+    const v=Number(w.readiness);if(!isNaN(v))vs.push(v);}));
+  return vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null;}
+/* Monotony traffic light — shared by the calendar header chip and the Load Monitoring card.
+   Foster: >2 excessive (too-uniform load), 1.5–2 watch, <=1.5 good. */
+function monoZoneOf(v){return!v?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
+  :v>2?{t:'Excessive',c:'#f43f5e',dot:'#f43f5e'}
+  :v>1.5?{t:'Watch',c:'#f59e0b',dot:'#f59e0b'}
+  :{t:'Good',c:'#2dd4a7',dot:'#2dd4a7'};}
 /* Mon–Sun RPE strip for a load-board row: one small square per day tinted by that day's
    RPE. Hovering a square shows the session title(s) from the athlete's own calendar for
    that day in a floating box.
@@ -2682,6 +2732,28 @@ function AcwrBar({value}){
       <span style={{flexGrow:0.5,color:'#2dd4a7'}}>OPT</span>
       <span style={{flexGrow:0.2,color:'#e0a23a'}}>CAUT</span>
       <span style={{flexGrow:0.5,color:'#f43f5e'}}>HIGH</span>
+    </div>
+  </div>);
+}
+
+/* Segmented monotony scale (0–3) with a marker at the value — same visual language as
+   AcwrBar so the Load Monitoring card reads identically after the ACWR → monotony swap. */
+function MonoBar({value}){
+  const pos=Math.max(2.5,Math.min(97.5,(value||0)/3*100));
+  const z=monoZoneOf(value);
+  const ticks=[[0,'0'],[1,'1'],[1.5,'1.5'],[2,'2'],[2.5,'2.5'],[3,'3']];
+  return(<div className="acwr-bar">
+    <div className="ab-track">
+      <span className="ab-seg" style={{flexGrow:1.5,background:'#2dd4a7'}}/>
+      <span className="ab-seg" style={{flexGrow:0.5,background:'#b9842f'}}/>
+      <span className="ab-seg" style={{flexGrow:1,background:'#cf4338'}}/>
+      <span className="ab-marker" style={{left:`${pos}%`,borderColor:z.dot}}/>
+    </div>
+    <div className="ab-ticks">{ticks.map((t,i)=>{const p=t[0]/3*100;const tx=p<=0?'0':p>=100?'-100%':'-50%';return<span key={i} style={{left:`${p}%`,transform:`translateX(${tx})`}}>{t[1]}</span>;})}</div>
+    <div className="ab-zones">
+      <span style={{flexGrow:1.5,color:'#2dd4a7'}}>GOOD</span>
+      <span style={{flexGrow:0.5,color:'#e0a23a'}}>WATCH</span>
+      <span style={{flexGrow:1,color:'#f43f5e'}}>EXCESS</span>
     </div>
   </div>);
 }
@@ -4770,6 +4842,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const fmtRange=()=>{const ws=weekStart,we=weekEnd;
     if(ws.getMonth()===we.getMonth())return`${ws.getDate()} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;
     return`${ws.getDate()} ${MN[ws.getMonth()]} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;};
+  // ---- Week monotony (Foster) for the week on screen, from the same daily AU the cards show ----
+  const weekMonoV=useMemo(()=>weekMono(dailyLoads(days,fmt(weekStart),fmt(weekEnd))).monotony,[days,weekStart,weekEnd]);
+  const weekMonoZ=monoZoneOf(weekMonoV);
   // ---- Month view (grid) — same single card, toggled from the header ----
   const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
   const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
@@ -4803,13 +4878,26 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     </div>
     {calMode==='week'?<>
     <div className="calm-month">{fmtRange()}</div>
-    {canEdit&&<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>}
+    <div className="calw-topline">
+      {canEdit?<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>:<span/>}
+      <div className="calw-mono" title="Foster training monotony for this week = mean daily load ÷ standard deviation. >2 means the week is too uniform.">
+        <span className="k">Team monotony</span>
+        <b style={{color:weekMonoZ.c}}>{weekMonoV?weekMonoV.toFixed(2):'—'}</b>
+        <span className="z" style={{color:weekMonoZ.dot}}><i style={{background:weekMonoZ.dot}}/>{weekMonoZ.t}</span>
+      </div>
+    </div>
     <div className="calw-grid">
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
         // Daily load = SUM of that day's session AU boxes (multiple sessions add up),
         // mirroring the "Daily" value in the Team Load Trend chart & the month grid.
         const dayAU=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
+        // Team averages under the date. In team mode they come from the roster's logs;
+        // on a personal calendar the "team" is the single athlete, so fall back to the
+        // day's own session RPEs.
+        const dayRPE=teamMode?teamDayRPE(athletes,k)
+          :(()=>{const v=ss.map(s=>Number(s.sRPE)).filter(x=>!isNaN(x)&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;})();
+        const dayRdy=teamMode?teamDayReadiness(athletes,k):null;
         const isDrop=canEdit&&dragInfo&&dragOverDate===k&&dragInfo.fromDate!==k;
         return(<div key={k} className={`calw-col${isDrop?' drop':''}`}
           onDragOver={e=>{if(canEdit&&dragInfo){e.preventDefault();e.dataTransfer.dropEffect=(e.ctrlKey||e.metaKey||e.altKey)?'copy':'move';setDragOverDate(k);}}}
@@ -4818,6 +4906,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="dh">
             <span>{DN[i]} {d.getDate()}</span>
             <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title="Antrenman ekle / planla">+</button>
+          </div>
+          {/* Team averages for the day, right under the date: session RPE (0–10) and
+              wellness readiness (0–5), each tinted by its own severity scale. */}
+          <div className="calw-avg">
+            <span className="cav" title="Team average session RPE for this day (0–10)">
+              <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
+            </span>
+            <span className="cav" title="Team average readiness from this day's wellness check-ins (0–5)">
+              <em>RDY</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
+            </span>
           </div>
           {ss.length===0&&<div className="calw-empty">rest</div>}
           {ss.map(s=>{
@@ -5115,7 +5213,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
       <input className="bn" value={block.name} placeholder="Block title"
         onClick={e=>e.stopPropagation()}
         onChange={e=>onUpdate({...block,name:e.target.value})}
-        style={{background:'transparent',border:'none',borderBottom:'1px solid var(--border)',borderRadius:0,color:'var(--text)',fontWeight:600,fontSize:14,padding:'2px 4px',width:180}}/>
+        style={{background:'transparent',border:'none',borderRadius:0,color:'var(--text)',fontWeight:600,fontSize:14,padding:'2px 4px',width:180}}/>
       <span className="bc">{exs.length} Exercise{exs.length!==1?'s':''}{groups.length?` · Supersets: ${groups.join(', ')}`:''}</span>
       <div className="ba" onClick={e=>e.stopPropagation()}>
         <button onClick={onDuplicate} title="Duplicate">⎘</button>
@@ -5191,6 +5289,44 @@ function FocusSelect({value,onChange,placeholder}){
   </div>);
 }
 
+/* Training method picker — same dropdown mechanics as FocusSelect, but the options are
+   grouped by method family and filterable (the list is long by design). */
+function MethodSelect({value,onChange,placeholder}){
+  const[open,setOpen]=useState(false);
+  const[q,setQ]=useState('');
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open){setQ('');return;}
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const sel=Array.isArray(value)?value:[];
+  const toggle=m=>onChange(sel.includes(m)?sel.filter(x=>x!==m):[...sel,m]);
+  const needle=q.trim().toLowerCase();
+  const groups=TRAINING_METHODS
+    .map(([g,items])=>[g,needle?items.filter(m=>m.toLowerCase().includes(needle)):items])
+    .filter(([,items])=>items.length);
+  return(<div ref={ref} className="focus-sel">
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}>
+      <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select training method…')}</span>
+      <i>▾</i>
+    </button>
+    {open&&<div className="focus-dd">
+      <input className="focus-search" value={q} autoFocus placeholder="Search methods…"
+        onChange={e=>setQ(e.target.value)} onClick={e=>e.stopPropagation()}/>
+      {groups.map(([g,items])=><div key={g}>
+        <div className="focus-grp">{g}</div>
+        {items.map(m=><label key={m} className={`focus-opt${sel.includes(m)?' on':''}`}>
+          <input type="checkbox" checked={sel.includes(m)} onChange={()=>toggle(m)}/>
+          <span>{m}</span>
+        </label>)}
+      </div>)}
+      {!groups.length&&<div className="focus-grp">No method matches “{q}”</div>}
+    </div>}
+  </div>);
+}
+
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
   const[savedTpl,setSavedTpl]=useState(false);
@@ -5238,15 +5374,16 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
       {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
-      <div className={`grid ${isTemplate?'cols-2':'cols-3'}`} style={{marginBottom:14}}>
+      <div className={`grid ${isTemplate?'cols-3':'cols-4'}`} style={{marginBottom:14}}>
         {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
+        <div><label>Training Method</label><MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
       {!isTemplate&&<div style={{marginBottom:14}}>
         <label>Card color</label>
         <div className="color-row">
-          {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
+          {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#a7f3d0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
             <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
           <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
           <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
@@ -5708,8 +5845,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const m7=weekMono(last7);
   const w28=loadWindows(dayAvg,lmRef);
   const chronicMean=w28.ch/Math.max(7,w28.hist);
-  const lmAcwr=chronicMean===0?0:m7.mean/chronicMean;
-  const lmZone=acwrZoneOf(lmAcwr);
+  const lmMonoZone=monoZoneOf(m7.monotony);   // gauge card shows monotony, not ACWR
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
@@ -5802,17 +5938,17 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
     <div className="lm-grid" style={{marginBottom:16}}>
       <div className="lm-gauge-card">
         <div className="lac-head">
-          <span className="lac-title">Team ACWR</span>
-          <span className="lac-zone" style={{color:lmZone.dot}}><span className="lac-zdot" style={{background:lmZone.dot}}/>{(lmZone.t||'').toUpperCase()}</span>
+          <span className="lac-title">Team Monotony</span>
+          <span className="lac-zone" style={{color:lmMonoZone.dot}}><span className="lac-zdot" style={{background:lmMonoZone.dot}}/>{(lmMonoZone.t||'').toUpperCase()}</span>
         </div>
-        <div className="lac-sub">7 : 28 day ratio</div>
-        <div className="lac-val" style={{color:lmZone.c}}>{lmAcwr?lmAcwr.toFixed(2):'—'}</div>
-        <div className="lac-vsub">acute ÷ chronic</div>
-        <AcwrBar value={lmAcwr}/>
+        <div className="lac-sub">7 day Foster index</div>
+        <div className="lac-val" style={{color:lmMonoZone.c}}>{m7.monotony?m7.monotony.toFixed(2):'—'}</div>
+        <div className="lac-vsub">mean ÷ SD</div>
+        <MonoBar value={m7.monotony}/>
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">Acute · 7d</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(m7.mean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">Chronic · 28d</div><div className="v">{Math.round(chronicMean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">Monotony</div><div className="v" style={{color:m7.monotony>2?'#f59e0b':'var(--text)'}}>{m7.monotony?m7.monotony.toFixed(2):'—'}</div></div></div>
+          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">Daily SD</div><div className="v">{m7.sd?Math.round(m7.sd).toLocaleString('en-US').replace(/,/g,'.'):'—'}</div></div></div>
           <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">Strain</div><div className="v">{Math.round(m7.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
@@ -9788,13 +9924,9 @@ function CloudBar({sync,onOpen}){
       <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
       <span className="no-italic" style={{fontSize:12,color:'var(--text2)',maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
     </div>
-    {/* Account identity — two devices that show the SAME email but DIFFERENT codes here are signed
-        into two separate Firebase accounts (e.g. Google vs email/password on the same address) and
-        will never sync. The two computers MUST show the same code. */}
-    <div className="no-italic" style={{marginTop:3,fontSize:10,color:'var(--dim)',userSelect:'all',letterSpacing:.3}} title="Account ID — must match on every device">Hesap kodu: <b style={{color:'var(--text2)'}}>{(user.uid||'').slice(0,8)}</b> · {user.providerData&&user.providerData[0]?user.providerData[0].providerId:'?'}</div>
-    <div style={{marginTop:5}}>
-      <button className="btn sec xs no-italic" style={{width:'100%',justifyContent:'center'}} title="Force pull latest cloud data" onClick={()=>sync.forcePull&&sync.forcePull()}>⟳ Sync</button>
-    </div>
+    {/* The account-code line and the manual "⟳ Sync" button used to live here. They are
+        intentionally hidden from the sidebar — syncing is automatic and the uid is still
+        available from the status row's tooltip. */}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
@@ -10866,7 +10998,7 @@ function App(){
   _saveSessionAsTemplate=session=>{
     const s=JSON.parse(JSON.stringify(session||{}));
     const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',
-      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),
+      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),methods:sesMethods(s),
         duration:s.duration||60,color:s.color||'',
         blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
