@@ -2571,6 +2571,31 @@ function defWeek(model,period,idx,comps,ws){
    MONOTONY / ACWR
    ========================================================= */
 function dailyLoads(days,from,to){const o=[];let c=parseD(from);const e=parseD(to);while(c<=e){o.push({date:fmt(c),load:dLoad(days[fmt(c)])});c=addD(c,1);}return o;}
+/* ---- Team daily load: ONE source of truth ----------------------------------------
+   The calendar's monotony chip and the Load Monitoring card used to compute their own
+   daily loads and could disagree. Both now go through these helpers.
+   A planned day uses its team-plan session AU (exactly what the calendar cards show);
+   a day with only athlete logs uses the per-athlete AVERAGE, so the number isn't
+   skewed by how many athletes happened to log. */
+function plannedDayLoadMap(days){const m={};
+  Object.entries(days||{}).forEach(([d,day])=>{
+    const v=((day&&day.sessions)||[]).reduce((t,s)=>t+(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0)),0);
+    if(v>0)m[d]=v;});
+  return m;}
+function teamDailyLoadMap(days,athletes){
+  const m=plannedDayLoadMap(days);
+  const byDate={};   // date -> { athleteId: that athlete's total AU for the day }
+  (athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
+    if(!e.date)return;
+    const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
+    if(v>0){(byDate[e.date]||(byDate[e.date]={}));byDate[e.date][a.id]=(byDate[e.date][a.id]||0)+v;}}));
+  Object.entries(byDate).forEach(([d,aths])=>{const vals=Object.values(aths);
+    if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
+  return m;}
+/* Foster monotony for one Mon–Sun week off that shared map. */
+function teamWeekMono(days,athletes,weekStartKey){
+  const m=teamDailyLoadMap(days,athletes);
+  return weekMono(Array.from({length:7},(_,i)=>({load:Math.round(m[fmt(addD(parseD(weekStartKey),i))]||0)})));}
 function weekMono(loads){const a=loads.map(l=>l.load);const m=a.reduce((s,v)=>s+v,0)/a.length;if(m===0)return{mean:0,sd:0,monotony:0,strain:0,total:0};
   const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);return{mean:m,sd,monotony:mono,strain:total*mono,total};}
 /* Chronic load must be a *weekly average*, but a fixed ÷4 misreads sparse history: when
@@ -2661,7 +2686,9 @@ function athDayRPE(a,dk){let rw=0,dw=0;const rs=[];
       const d=Number(e[du])||0;rs.push(r);if(d>0){rw+=r*d;dw+=d;}});});
   if(dw>0)return rw/dw;
   return rs.length?rs.reduce((x,y)=>x+y,0)/rs.length:null;}
-function rpeColor(v){return v==null?null:v<=3?'#22c55e':v<=5?'#a3e635':v<=6?'#eab308':v<=8?'#f97316':'#ef4444';}
+/* RPE traffic light: 3–4 blue · 5–6 green · 7–8 orange · 9–10 red. Half-points fall into
+   the band below the next whole number (4.5 is still blue, 6.9 still green). */
+function rpeColor(v){return v==null?null:v<5?'#3b82f6':v<7?'#22c55e':v<9?'#f97316':'#ef4444';}
 /* Team averages for a single calendar day.
    RPE     = mean of every athlete's duration-weighted day RPE (athDayRPE).
    Readiness = mean of the wellness check-ins actually dated on that day (not the
@@ -2675,12 +2702,13 @@ function teamDayReadiness(athletes,dk){
     if(w.date!==dk||w.readiness===''||w.readiness==null)return;
     const v=Number(w.readiness);if(!isNaN(v))vs.push(v);}));
   return vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null;}
-/* Monotony traffic light — shared by the calendar header chip and the Load Monitoring card.
-   Foster: >2 excessive (too-uniform load), 1.5–2 watch, <=1.5 good. */
+/* Monotony traffic light — the staff's own banding, used everywhere monotony is shown:
+   <3.00 red · 3.00–3.49 orange · 3.50–3.99 yellow · >=4.00 green. */
 function monoZoneOf(v){return!v?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
-  :v>2?{t:'Excessive',c:'#f43f5e',dot:'#f43f5e'}
-  :v>1.5?{t:'Watch',c:'#f59e0b',dot:'#f59e0b'}
-  :{t:'Good',c:'#2dd4a7',dot:'#2dd4a7'};}
+  :v>=4?{t:'Good',c:'#2dd4a7',dot:'#2dd4a7'}
+  :v>=3.5?{t:'Watch',c:'#eab308',dot:'#eab308'}
+  :v>=3?{t:'Caution',c:'#f97316',dot:'#f97316'}
+  :{t:'Low',c:'#f43f5e',dot:'#f43f5e'};}
 /* Mon–Sun RPE strip for a load-board row: one small square per day tinted by that day's
    RPE. Hovering a square shows the session title(s) from the athlete's own calendar for
    that day in a floating box.
@@ -2736,24 +2764,26 @@ function AcwrBar({value}){
   </div>);
 }
 
-/* Segmented monotony scale (0–3) with a marker at the value — same visual language as
-   AcwrBar so the Load Monitoring card reads identically after the ACWR → monotony swap. */
+/* Segmented monotony scale (0–5) with a marker at the value — same visual language as
+   AcwrBar. Band widths mirror monoZoneOf: <3 red, 3–3.5 orange, 3.5–4 yellow, 4+ green. */
 function MonoBar({value}){
-  const pos=Math.max(2.5,Math.min(97.5,(value||0)/3*100));
+  const pos=Math.max(2.5,Math.min(97.5,(value||0)/5*100));
   const z=monoZoneOf(value);
-  const ticks=[[0,'0'],[1,'1'],[1.5,'1.5'],[2,'2'],[2.5,'2.5'],[3,'3']];
+  const ticks=[[0,'0'],[1,'1'],[2,'2'],[3,'3'],[3.5,'3.5'],[4,'4'],[5,'5']];
   return(<div className="acwr-bar">
     <div className="ab-track">
-      <span className="ab-seg" style={{flexGrow:1.5,background:'#2dd4a7'}}/>
+      <span className="ab-seg" style={{flexGrow:3,background:'#cf4338'}}/>
+      <span className="ab-seg" style={{flexGrow:0.5,background:'#c2622b'}}/>
       <span className="ab-seg" style={{flexGrow:0.5,background:'#b9842f'}}/>
-      <span className="ab-seg" style={{flexGrow:1,background:'#cf4338'}}/>
+      <span className="ab-seg" style={{flexGrow:1,background:'#2dd4a7'}}/>
       <span className="ab-marker" style={{left:`${pos}%`,borderColor:z.dot}}/>
     </div>
-    <div className="ab-ticks">{ticks.map((t,i)=>{const p=t[0]/3*100;const tx=p<=0?'0':p>=100?'-100%':'-50%';return<span key={i} style={{left:`${p}%`,transform:`translateX(${tx})`}}>{t[1]}</span>;})}</div>
+    <div className="ab-ticks">{ticks.map((t,i)=>{const p=t[0]/5*100;const tx=p<=0?'0':p>=100?'-100%':'-50%';return<span key={i} style={{left:`${p}%`,transform:`translateX(${tx})`}}>{t[1]}</span>;})}</div>
     <div className="ab-zones">
-      <span style={{flexGrow:1.5,color:'#2dd4a7'}}>GOOD</span>
-      <span style={{flexGrow:0.5,color:'#e0a23a'}}>WATCH</span>
-      <span style={{flexGrow:1,color:'#f43f5e'}}>EXCESS</span>
+      <span style={{flexGrow:3,color:'#f43f5e'}}>LOW</span>
+      <span style={{flexGrow:0.5,color:'#f97316'}}>CAUT</span>
+      <span style={{flexGrow:0.5,color:'#eab308'}}>WATCH</span>
+      <span style={{flexGrow:1,color:'#2dd4a7'}}>GOOD</span>
     </div>
   </div>);
 }
@@ -3178,7 +3208,7 @@ function printWeeklyReportTR(R){
   const nf=v=>Number(v||0).toLocaleString('tr-TR');
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
   const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
-  const monoTR=m=>m>2?L('Aşırı','Excessive'):m>1.5?L('İzle','Watch'):m>0?L('İyi','Good'):'—';
+  const monoTR=m=>!m?'—':m>=4?L('İyi','Good'):m>=3.5?L('İzle','Watch'):m>=3?L('Dikkat','Caution'):L('Düşük','Low');
   // Daily team-load chart — colored session pills on top, value, bar, day label
   const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const SC={
@@ -3214,7 +3244,7 @@ function printWeeklyReportTR(R){
       <tr><td class="ath">${L('Zorlanma','Strain')}</td><td>${nf(Math.round(R.weekStrain))}</td><td>${L('Toplam × Monotoni','Total × Monotony')}</td></tr>
       <tr><td class="ath">${L('Antrenman Günü','Training Days')}</td><td>${R.trainDays}</td><td>${L('yük > 0 olan günler','days with load > 0')}</td></tr>
     </tbody></table>
-    <div class="note">${L('<b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — &gt;2 aşırı tek düze.','<b>ACWR</b> = total team load of the last 7 days ÷ the weekly average of the last 28 days. Safe band 0.8–1.3, &gt;1.5 high injury risk. <b>Monotony</b>: within-week load variety — &gt;2 too uniform.')}</div></div>`;
+    <div class="note">${L('<b>ACWR</b> = son 7 günün toplam takım yükü ÷ son 28 günün haftalık ortalaması. Güvenli aralık 0.8–1.3, &gt;1.5 yüksek yaralanma riski. <b>Monotoni</b>: hafta içi yük çeşitliliği — 4.00+ iyi, 3.00 altı düşük.','<b>ACWR</b> = total team load of the last 7 days ÷ the weekly average of the last 28 days. Safe band 0.8–1.3, &gt;1.5 high injury risk. <b>Monotony</b>: within-week load variety — 4.00+ good, below 3.00 low.')}</div></div>`;
   // Purpose mix
   const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
   const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
@@ -3290,7 +3320,7 @@ function printMonthlyReportTR(R){
   const PCOL=['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e'];
   const acwrTR=REPORT_LANG==='tr'?({'High risk':'Yüksek risk','Optimal':'Optimal','Undertraining':'Düşük yük','Caution':'Dikkat','No data':'Veri yok'}[R.acwrZone.t]||R.acwrZone.t):R.acwrZone.t;
   const zoneTR=v=>!v?'—':v>1.5?L('Yüksek risk','High risk'):(v>=0.8&&v<=1.3)?'Optimal':v<0.8?L('Düşük','Low'):L('Dikkat','Caution');
-  const monoTR=m=>m>2?L('Aşırı','Excessive'):m>1.5?L('İzle','Watch'):m>0?L('İyi','Good'):'—';
+  const monoTR=m=>!m?'—':m>=4?L('İyi','Good'):m>=3.5?L('İzle','Watch'):m>=3?L('Dikkat','Caution'):L('Düşük','Low');
 
   const weeklySec=_loadSectionHTML(L('Haftalık Yük Dağılımı (AU)','Weekly Load Distribution (AU)'),L('Sporcu × Hafta · yüke göre sıralı','Athlete × Week · sorted by load'),R.weekly.colLabels,R.weekly.perAthlete,'#0891b2');
 
@@ -3306,7 +3336,7 @@ function printMonthlyReportTR(R){
   const monoRows=R.mWeeks.map(w2=>`<tr><td class="ath">${fd(w2.wkStart).slice(0,5)}</td><td>${nf(Math.round(w2.total))}</td><td>${w2.mean.toFixed(0)}</td><td>${w2.sd.toFixed(1)}</td><td>${w2.monotony.toFixed(2)}</td><td>${nf(Math.round(w2.strain))}</td><td>${monoTR(w2.monotony)}</td></tr>`).join('');
   const monoSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Haftalık Monotoni','Weekly Monotony')}</span><span class="ssub">${L('Ort.','Avg')} ${R.meanMono?R.meanMono.toFixed(2):'—'}</span></div>
     <table><thead><tr><th class="ath">${L('Hafta','Week')}</th><th>${L('Toplam','Total')}</th><th>${L('Ort.','Mean')}</th><th>${L('SS','SD')}</th><th>${L('Monotoni','Monotony')}</th><th>${L('Zorlanma','Strain')}</th><th>${L('Durum','Status')}</th></tr></thead><tbody>${monoRows}</tbody></table>
-    <div class="note">${L('<b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Yüksek monotoni (&gt;2) tek düze yükü ve artan yaralanma riskini gösterir. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = mean daily load ÷ standard deviation (within the week). High monotony (&gt;2) means too-uniform load and rising injury risk. <b>Strain</b> = Total × Monotony.')}</div></div>`;
+    <div class="note">${L('<b>Monotoni</b> = günlük yük ortalaması ÷ standart sapma (hafta içi). Bantlar: 3.00 altı kırmızı, 3.00–3.49 turuncu, 3.50–3.99 sarı, 4.00+ yeşil. <b>Zorlanma</b> = Toplam × Monotoni.','<b>Monotony</b> = mean daily load ÷ standard deviation (within the week). Bands: below 3.00 red, 3.00–3.49 orange, 3.50–3.99 yellow, 4.00+ green. <b>Strain</b> = Total × Monotony.')}</div></div>`;
 
   const pRows=R.pMix.length?R.pMix.map((p,i)=>`<tr><td class="ath"><span class="sw" style="background:${PCOL[i%PCOL.length]}"></span>${p.label}</td><td>${nf(p.min)}</td><td>${p.pct.toFixed(1)}%</td><td><div class="pbar"><div style="width:${Math.round(p.pct)}%;background:${PCOL[i%PCOL.length]}"></div></div></td></tr>`).join(''):`<tr><td class="ath">${L('Veri yok','No data')}</td><td>0</td><td>0%</td><td></td></tr>`;
   const purposeSec=`<div class="sec"><div class="sh"><span class="dot"></span><span class="st">${L('Antrenman Türü Dağılımı','Training Purpose Distribution')}</span><span class="ssub">${L('Dakika bazında','By minutes')}</span></div>
@@ -3596,7 +3626,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const meanLine=meanLoad>0?`<line x1="0" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#0a0b0d" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/><text x="${cTotalW-4}" y="${meanY-4}" text-anchor="end" font-size="9" fill="#0a0b0d" font-weight="700" font-family="'IBM Plex Mono',monospace">Mean ${Math.round(meanLoad)}</text>`:'';
   const chartSvg=`<svg viewBox="0 0 ${cTotalW} 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:170px">${meanLine}${bars}</svg>`;
   // Monotony flag
-  const mF=monotony>2?{c:'#ff6b5b',t:L('AŞIRI','EXCESSIVE')}:monotony>1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>0?{c:'#9aab3a',t:L('İYİ','GOOD')}:{c:'#8b9099',t:'—'};
+  const mF=!monotony?{c:'#8b9099',t:'—'}:monotony>=4?{c:'#9aab3a',t:L('İYİ','GOOD')}:monotony>=3.5?{c:'#eab308',t:L('İZLE','WATCH')}:monotony>=3?{c:'#f59e0b',t:L('DİKKAT','CAUTION')}:{c:'#ff6b5b',t:L('DÜŞÜK','LOW')};
   const monotonyBlock=rTotal>0?`<div class="mono-row">
     <div class="mono-chart">
       <div class="mono-h">📊 ${L('Haftalık Yük Dağılımı','Weekly Load Distribution')} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· ${L('gerçekleşen yük','realized load')} (AU)</span></div>
@@ -3929,7 +3959,7 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
   doc.text(`${L('Ortalama haftalık monotoni','Mean weekly monotony')}: ${(monthWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,monthWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}`,14,58);
   // weekly table
   doc.autoTable({startY:66,head:[[L('Hafta başı','Week starting'),L('Toplam AU','Total AU'),L('Ort.','Mean'),L('SS','SD'),L('Monotoni','Monotony'),L('Zorlanma','Strain'),L('Durum','Flag')]],
-    body:monthWeeks.map(w=>[fd(w.wkStart),Math.round(w.total),w.mean.toFixed(0),w.sd.toFixed(1),w.monotony.toFixed(2),Math.round(w.strain),w.monotony>2?L('AŞIRI','EXCESS'):w.monotony>1.5?L('İZLE','WATCH'):w.monotony>0?L('İYİ','OK'):'—']),
+    body:monthWeeks.map(w=>[fd(w.wkStart),Math.round(w.total),w.mean.toFixed(0),w.sd.toFixed(1),w.monotony.toFixed(2),Math.round(w.strain),!w.monotony?'—':w.monotony>=4?L('İYİ','GOOD'):w.monotony>=3.5?L('İZLE','WATCH'):w.monotony>=3?L('DİKKAT','CAUTION'):L('DÜŞÜK','LOW')]),
     headStyles:{font:fontName,fillColor:[8,145,178]},styles:{font:fontName,fontSize:9}});
   // purpose mix
   if(pMix.length){doc.autoTable({head:[[L('Antrenman Türü','Training Purpose'),L('Dakika','Minutes'),L('% toplam','% of total')]],
@@ -4842,8 +4872,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const fmtRange=()=>{const ws=weekStart,we=weekEnd;
     if(ws.getMonth()===we.getMonth())return`${ws.getDate()} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;
     return`${ws.getDate()} ${MN[ws.getMonth()]} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;};
-  // ---- Week monotony (Foster) for the week on screen, from the same daily AU the cards show ----
-  const weekMonoV=useMemo(()=>weekMono(dailyLoads(days,fmt(weekStart),fmt(weekEnd))).monotony,[days,weekStart,weekEnd]);
+  // ---- Week monotony (Foster) for the week on screen. Same helper the Load Monitoring
+  // card uses, so the two screens can never show different numbers for the same week. ----
+  const weekMonoV=useMemo(()=>teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart]);
   const weekMonoZ=monoZoneOf(weekMonoV);
   // ---- Month view (grid) — same single card, toggled from the header ----
   const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
@@ -5383,7 +5414,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {!isTemplate&&<div style={{marginBottom:14}}>
         <label>Card color</label>
         <div className="color-row">
-          {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#a7f3d0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
+          {['#e6ff55','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#22c55e','#a7f3d0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
             <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
           <input type="color" className="color-custom" value={session.color||'#e6ff55'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
           <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
@@ -5692,7 +5723,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
     <div className="metrics">
       <div className={`metric ${acwrCls}`}><div className="ml">ACWR (today)</div><div className="mv">{acwrVal.toFixed(2)}</div><div className="mh">Safe 0.8-1.3 · Risk &gt;1.5</div></div>
       <div className="metric"><div className="ml">Month total</div><div className="mv">{Math.round(mWeeks.reduce((a,b)=>a+b.total,0))}</div><div className="mh">AU = sRPE × min</div></div>
-      <div className="metric"><div className="ml">Mean monotony</div><div className="mv">{(mWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,mWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}</div><div className="mh">&gt;2 = excessive</div></div>
+      <div className="metric"><div className="ml">Mean monotony</div><div className="mv">{(mWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,mWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}</div><div className="mh">4.00+ = green</div></div>
       <div className="metric"><div className="ml">Sessions logged</div><div className="mv">{Object.values(days).filter(d=>d?.date>=ms&&d?.date<=me).reduce((a,d)=>a+(d.sessions||[]).length,0)}</div><div className="mh">in {MN[month-1]} {year}</div></div>
     </div>
 
@@ -5705,7 +5736,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
       </div></div>
       <div className="panel"><h2>Weekly Monotony</h2><div className="chart-box sm">
         <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),
-          backgroundColor:mWeeks.map(w=>w.monotony>2?'#ef4444':w.monotony>1.5?'#f59e0b':'#10b981')}]}}
+          backgroundColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot:'#2e333c')}]}}
           options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,plugins:{legend:{display:false}}}}/>
       </div></div>
     </div>
@@ -5721,7 +5752,7 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
         <table><thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Mono</th><th>Strain</th><th>Flag</th></tr></thead><tbody>
           {mWeeks.map(w=><tr key={w.wkStart}><td>{fd(w.wkStart).slice(0,5)}</td><td>{Math.round(w.total)}</td><td>{w.mean.toFixed(0)}</td><td>{w.sd.toFixed(1)}</td>
             <td>{w.monotony.toFixed(2)}</td><td>{Math.round(w.strain)}</td>
-            <td>{w.monotony>2?<span className="pill high">Excess</span>:w.monotony>1.5?<span className="pill med">Watch</span>:w.monotony>0?<span className="pill low">OK</span>:'—'}</td></tr>)}</tbody></table>
+            <td>{w.monotony>0?<span className="pill" style={{color:monoZoneOf(w.monotony).c,borderColor:monoZoneOf(w.monotony).c+'55',background:monoZoneOf(w.monotony).c+'1f'}}>{monoZoneOf(w.monotony).t}</span>:'—'}</td></tr>)}</tbody></table>
       </div>
     </div>
   </div>);
@@ -5737,22 +5768,11 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   // Planned team load (AU) by date = sum of that day's team-plan session AU (the
   // value shown in the calendar). Used as a fallback so a day that is planned but
   // has no athlete sRPE log still registers its load in the trend & reports.
-  const plannedByDay=useMemo(()=>{const m={};Object.entries(team.days||{}).forEach(([d,day])=>{
-    const v=((day&&day.sessions)||[]).reduce((t,s)=>t+(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0)),0);if(v>0)m[d]=v;});return m;},[team.days]);
-  // Team daily load (AU) by date = the per-athlete AVERAGE for that day (not the squad
-  // sum), so the number reflects mean load per athlete and isn't skewed by how many
-  // athletes happened to log. Drives the trend chart, ACWR, monotony & strain. Days with
-  // only a planned (calendar) session and no logs keep the planned value.
-  const teamDaily=useMemo(()=>{
-    const m={...plannedByDay};
-    const byDate={};   // date -> { athleteId: that athlete's total AU for the day }
-    (team.athletes||[]).forEach(a=>(a.srpeLog||[]).forEach(e=>{
-      if(!e.date)return;const v=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));
-      if(v>0){(byDate[e.date]||(byDate[e.date]={}));byDate[e.date][a.id]=(byDate[e.date][a.id]||0)+v;}}));
-    Object.entries(byDate).forEach(([d,aths])=>{
-      const vals=Object.values(aths);
-      if(m[d]==null&&vals.length)m[d]=vals.reduce((x,y)=>x+y,0)/vals.length;});
-    return m;},[team.athletes,plannedByDay]);
+  const plannedByDay=useMemo(()=>plannedDayLoadMap(team.days),[team.days]);
+  // Team daily load (AU) by date — the shared map the calendar's monotony chip also
+  // reads, so the two screens agree by construction. Drives the trend chart, monotony
+  // & strain here.
+  const teamDaily=useMemo(()=>teamDailyLoadMap(team.days,team.athletes),[team.days,team.athletes]);
   const dayLoad=d=>Math.round(teamDaily[d]||0);
   const saveAthletes=setData?a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)})):null;
   // Load Monitoring uses the same calendar-matching session-AU sum everywhere (trend, ACWR, monotony).
@@ -5842,10 +5862,13 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   // with empty future days (steady 500 AU/day reads ACWR 0.18 on Monday instead of 1.00).
   const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
   const last7=Array.from({length:7},(_,i)=>({load:dayAvg(fmt(addD(parseD(lmRef),-(6-i))))}));
-  const m7=weekMono(last7);
+  const m7=weekMono(last7);                            // rolling 7 days → acute mean
+  // Monotony / SD / strain come from the selected Mon–Sun week via the shared helper, so
+  // this card and the calendar's chip report the identical number for the same week.
+  const mWk=teamWeekMono(team.days,team.athletes,lmWeek);
   const w28=loadWindows(dayAvg,lmRef);
   const chronicMean=w28.ch/Math.max(7,w28.hist);
-  const lmMonoZone=monoZoneOf(m7.monotony);   // gauge card shows monotony, not ACWR
+  const lmMonoZone=monoZoneOf(mWk.monotony);   // gauge card shows monotony, not ACWR
   const[lmWin,setLmWin]=useState(7);
   // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
@@ -5942,14 +5965,14 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
           <span className="lac-zone" style={{color:lmMonoZone.dot}}><span className="lac-zdot" style={{background:lmMonoZone.dot}}/>{(lmMonoZone.t||'').toUpperCase()}</span>
         </div>
         <div className="lac-sub">7 day Foster index</div>
-        <div className="lac-val" style={{color:lmMonoZone.c}}>{m7.monotony?m7.monotony.toFixed(2):'—'}</div>
+        <div className="lac-val" style={{color:lmMonoZone.c}}>{mWk.monotony?mWk.monotony.toFixed(2):'—'}</div>
         <div className="lac-vsub">mean ÷ SD</div>
-        <MonoBar value={m7.monotony}/>
+        <MonoBar value={mWk.monotony}/>
         <div className="lm-mini">
           <div className="m"><span className="mi">⚡</span><div className="mc"><div className="k">Acute · 7d</div><div className="v" style={{color:'#3b6ef5'}}>{Math.round(m7.mean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
           <div className="m"><span className="mi">▤</span><div className="mc"><div className="k">Chronic · 28d</div><div className="v">{Math.round(chronicMean).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
-          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">Daily SD</div><div className="v">{m7.sd?Math.round(m7.sd).toLocaleString('en-US').replace(/,/g,'.'):'—'}</div></div></div>
-          <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">Strain</div><div className="v">{Math.round(m7.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
+          <div className="m"><span className="mi">∿</span><div className="mc"><div className="k">Daily SD</div><div className="v">{mWk.sd?Math.round(mWk.sd).toLocaleString('en-US').replace(/,/g,'.'):'—'}</div></div></div>
+          <div className="m"><span className="mi">◍</span><div className="mc"><div className="k">Strain</div><div className="v">{Math.round(mWk.strain).toLocaleString('en-US').replace(/,/g,'.')}</div></div></div>
         </div>
       </div>
       <div className="lm-trend-card">
@@ -5982,35 +6005,35 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
     {(()=>{
       const mv=mWeeks.filter(w=>w.monotony>0);
       const avgMono=mv.length?mv.reduce((s,w)=>s+w.monotony,0)/mv.length:0;
-      const excessN=mWeeks.filter(w=>w.monotony>2).length;
+      const excessN=mv.filter(w=>w.monotony<3).length;
       const last=mv.length?mv[mv.length-1]:null;
       const prev=mv.length>1?mv[mv.length-2]:null;
       const trend=last&&prev?last.monotony-prev.monotony:null;
       const maxStrain=Math.max(1,...mWeeks.map(w=>w.strain||0));
-      const monoCol=m=>m>2?'#f43f5e':m>1.5?'#f59e0b':m>0?'#2dd4a7':'var(--dim)';
+      const monoCol=m=>monoZoneOf(m).c;
       return <div className="panel">
       <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:6}}>
         <h2 style={{margin:0,fontSize:18}}>Weekly Monotony</h2>
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>Foster monotony &amp; strain · {monthLabel}</span>
       </div>
-      <div className="help" style={{marginBottom:14}}>Monotony = mean daily load ÷ its standard deviation (within each week). High monotony (&gt;2) = too-uniform load and rising injury risk. Strain = Total × Monotony.</div>
+      <div className="help" style={{marginBottom:14}}>Monotony = mean daily load ÷ its standard deviation (within each week). Banding: &lt;3.00 red · 3.00–3.49 orange · 3.50–3.99 yellow · 4.00+ green. Strain = Total × Monotony.</div>
       <div className="mono-sum">
         <div className="mono-chip"><div className="k">Ort. Monotoni</div><div className="v" style={{color:monoCol(avgMono)}}>{avgMono?avgMono.toFixed(2):'—'}</div><div className="d">{mv.length} hafta</div></div>
-        <div className="mono-chip"><div className="k">Riskli Hafta</div><div className="v" style={{color:excessN>0?'#f43f5e':'var(--text)'}}>{excessN}</div><div className="d">monotoni &gt; 2.0</div></div>
+        <div className="mono-chip"><div className="k">Riskli Hafta</div><div className="v" style={{color:excessN>0?'#f43f5e':'var(--text)'}}>{excessN}</div><div className="d">monotoni &lt; 3.00</div></div>
         <div className="mono-chip"><div className="k">Last Week</div><div className="v" style={{color:last?monoCol(last.monotony):'var(--text)'}}>{last?last.monotony.toFixed(2):'—'}</div><div className="d">{trend!=null?(trend>0?'▲ +':trend<0?'▼ −':'– ')+Math.abs(trend).toFixed(2):'vs previous week'}</div></div>
       </div>
       <div className="chart-box sm" style={{marginBottom:16}}>
         <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[
           {label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),order:2,
-            backgroundColor:mWeeks.map(w=>w.monotony>2?'rgba(244,63,94,.9)':w.monotony>1.5?'rgba(245,158,11,.9)':w.monotony>0?'rgba(45,212,167,.9)':'#2e333c'),
-            borderColor:mWeeks.map(w=>w.monotony>2?'#f43f5e':w.monotony>1.5?'#f59e0b':w.monotony>0?'#2dd4a7':'#2e333c'),borderWidth:1,borderRadius:6,maxBarThickness:46,
+            backgroundColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot+'e6':'#2e333c'),
+            borderColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot:'#2e333c'),borderWidth:1,borderRadius:6,maxBarThickness:46,
             datalabels:{display:true,anchor:'end',align:'end',color:'#cdd3dc',font:{weight:'bold',size:11,family:"'TT Fors','IBM Plex Mono',monospace"},formatter:v=>v>0?v.toFixed(2):''}},
-          {type:'line',label:'Risk threshold (2.0)',data:mWeeks.map(()=>2),order:1,borderColor:'rgba(244,63,94,.65)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,pointHitRadius:0,fill:false,tension:0,datalabels:{display:false}}
+          {type:'line',label:'Risk threshold (3.0)',data:mWeeks.map(()=>3),order:1,borderColor:'rgba(244,63,94,.65)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,pointHitRadius:0,fill:false,tension:0,datalabels:{display:false}}
         ]}}
           options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,
             scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y,beginAtZero:true}},
             plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#94a3b8',font:{size:10,family:"'TT Fors','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'line',boxWidth:18,filter:i=>i.text.indexOf('Risk')===0}},
-              tooltip:{callbacks:{label:i=>i.dataset.type==='line'?'Risk threshold: 2.0':'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
+              tooltip:{callbacks:{label:i=>i.dataset.type==='line'?'Risk threshold: 3.0':'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
       </div>
       <div className="mono-tbl-wrap"><table className="mono-tbl">
         <thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Monotony</th><th>Strain</th><th>Flag</th></tr></thead>
@@ -6018,7 +6041,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
           <td className="mono-wk">{fd(w.wkStart).slice(0,5)}</td><td>{Math.round(w.total)}</td><td>{w.mean.toFixed(0)}</td><td>{w.sd.toFixed(1)}</td>
           <td><span className="mono-val" style={{color:monoCol(w.monotony)}}>{w.monotony.toFixed(2)}</span></td>
           <td><div className="mono-strain"><span>{Math.round(w.strain)}</span><i style={{width:Math.min(100,(w.strain/maxStrain*100))+'%'}}/></div></td>
-          <td>{w.monotony>2?<span className="pill high">Excess</span>:w.monotony>1.5?<span className="pill med">Watch</span>:w.monotony>0?<span className="pill low">OK</span>:'—'}</td></tr>)}</tbody>
+          <td>{w.monotony>0?<span className="pill" style={{color:monoZoneOf(w.monotony).c,borderColor:monoZoneOf(w.monotony).c+'55',background:monoZoneOf(w.monotony).c+'1f'}}>{monoZoneOf(w.monotony).t}</span>:'—'}</td></tr>)}</tbody>
       </table></div>
     </div>;})()}
 
