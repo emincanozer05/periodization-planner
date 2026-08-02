@@ -1440,6 +1440,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* battery summary tags on result cards */
 .bat-tags{display:flex;gap:4px;flex-wrap:wrap}
 .bat-tag{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+/* Inline picker for adding more measurements to an already-taken test record.
+   The card spans the whole grid row while open so the picker isn't squeezed
+   into one 240px column. */
+.test-card.adding{grid-column:1/-1;border-color:var(--accent)}
+.bat-add{margin-top:12px;padding-top:12px;border-top:1px dashed var(--border2)}
+.bat-add .tpick{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.bat-add .tpc{min-height:54px;padding:8px 22px}
+.bat-add .tpc-t{font-size:12px}
 /* ===== Test result cards ===== */
 .test-card{background:var(--elevated);border:1px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;transition:border-color .2s,box-shadow .2s;position:relative;overflow:hidden}
 .test-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border2);border-radius:3px 0 0 3px;transition:background .2s}
@@ -1514,7 +1522,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mk-solo{flex:1 1 auto;max-width:380px}
 /* field wrappers */
 .mk-field{display:flex;flex-direction:column}
-.mk-anthro{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;width:100%}
+.mk-anthro{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 24px;width:100%}
 .mk-rows{display:flex;flex-direction:column;gap:14px;width:100%}
 .mk-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%}
 .mk-row-v{display:flex;flex-direction:column}
@@ -1579,6 +1587,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* posture photos — single side-by-side row */
 .photo-grid2x2{display:flex;flex-wrap:wrap;gap:12px;width:fit-content}
 @media(max-width:1200px){.ts-wrap{grid-template-columns:1fr}}
+@media(max-width:1040px){.mk-anthro{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.tcard-content{flex-direction:column;gap:18px}.tc-obs{flex:1 1 auto}.mk-anthro{grid-template-columns:1fr}}
 /* image lightbox (large preview + change button) */
 .mk-lb{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:24px;background:rgba(8,8,10,.5);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);animation:mkLbIn .15s ease}
@@ -1701,6 +1710,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ap-stat .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
 .ap-stat .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:18px;font-weight:700;color:var(--text);margin-top:4px}
 .ap-stat .v small{font-size:10px;font-weight:500;color:var(--dim);margin-left:1px}
+.ap-stat .s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
 .ap-edit{background:var(--bg2);border:1px solid var(--border2);border-radius:9px;color:var(--text2);width:34px;height:34px;display:grid;place-items:center;cursor:pointer;font-size:15px;flex:none;transition:border-color .2s,color .2s}
 .ap-edit:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -2215,8 +2225,8 @@ const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
-  // Anthropometrics
-  height:'',weight:'',wingspan:'',bodyFat:'',
+  // Anthropometrics — legLength = ASIS → medial malleolus (cm), sittingHeight = seated stature (cm)
+  height:'',weight:'',wingspan:'',bodyFat:'',legLength:'',sittingHeight:'',
   // Circumferences (cm) — bilateral for thigh & calf
   circ:{shoulder:'',waist:'',hip:'',thighRight:'',thighLeft:'',calfRight:'',calfLeft:''},
   // Static posture
@@ -6232,8 +6242,8 @@ ${has('anthro')?`
 <div class="section">
   <div class="section-h" >${L('ANTROPOMETRİ','ANTHROPOMETRICS')}</div>
   <table class="kv">
-    <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th></tr>
-    <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td></tr>
+    <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th><th>${L('Bacak Uzunluğu (cm)','Leg Length (cm)')}</th><th>${L('Oturma Yüksekliği (cm)','Sitting Height (cm)')}</th></tr>
+    <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td><td>${test.legLength||'—'}</td><td>${test.sittingHeight||'—'}</td></tr>
   </table>
 </div>`:''}
 
@@ -6862,6 +6872,8 @@ function TestCard({id,index,test,onUpdate,custom}){
           <div className="mk-field"><div className="mk-flbl">Weight</div><MkInput value={test.weight} onChange={v=>u('weight',v)} unit="kg"/></div>
           <div className="mk-field"><div className="mk-flbl">Wingspan</div><MkInput value={test.wingspan} onChange={v=>u('wingspan',v)} unit="cm"/></div>
           <div className="mk-field"><div className="mk-flbl">Body Fat</div><MkInput value={test.bodyFat} onChange={v=>u('bodyFat',v)} unit="%"/></div>
+          <div className="mk-field"><div className="mk-flbl">Leg Length (ASIS – Medial Malleolus)</div><MkInput value={test.legLength} onChange={v=>u('legLength',v)} unit="cm"/></div>
+          <div className="mk-field"><div className="mk-flbl">Sitting Height</div><MkInput value={test.sittingHeight} onChange={v=>u('sittingHeight',v)} unit="cm"/></div>
         </div>
       </div>
     </div>);
@@ -7097,6 +7109,8 @@ function TestProgressionCharts({tests}){
           {label:'Height (cm)',data:sorted.map(t=>Number(t.height)||null),borderColor:'#a855f7',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#d8b4fe')},
           {label:'Weight (kg)',data:sorted.map(t=>Number(t.weight)||null),borderColor:'#06b6d4',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#67e8f9')},
           {label:'Wingspan (cm)',data:sorted.map(t=>Number(t.wingspan)||null),borderColor:'#22d3ee',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#a5f3fc')},
+          {label:'Leg Length (cm)',data:sorted.map(t=>Number(t.legLength)||null),borderColor:'#84cc16',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#bef264')},
+          {label:'Sitting Height (cm)',data:sorted.map(t=>Number(t.sittingHeight)||null),borderColor:'#eab308',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y',...ptStyle,datalabels:labelOpt('#fde047')},
           {label:'Body Fat (%)',data:sorted.map(t=>Number(t.bodyFat)||null),borderColor:'#f97316',tension:.3,spanGaps:true,borderWidth:2,yAxisID:'y1',...ptStyle,datalabels:labelOpt('#fdba74')},
         ]}} options={{...baseOpt,
           scales:{x:CHART_DARK.scales.x,y:{ticks:{color:'#94a3b8'},grid:{color:'rgba(15,23,42,.07)'},title:{display:true,text:'cm / kg',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},title:{display:true,text:'Body Fat (%)',color:'#94a3b8'}}}}}/>
@@ -7184,6 +7198,7 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catName=id=>{const c=fullCatalog.find(x=>x.id===id);return c?c.name:id;};
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
+  const[addBatId,setAddBatId]=useState(null);   // test whose battery is being extended
   const[showReports,setShowReports]=useState(false);
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
@@ -7239,6 +7254,30 @@ function EvaluationView({team,updateTeam,data,setData}){
       }
     }
     updAth(ath.id,patch);
+  };
+  // Battery of an already-taken test (legacy records without `battery` cover everything).
+  const batOf=t=>Array.isArray(t.battery)?t.battery:fullCatalog.map(c=>c.id);
+  // Create a custom test AND drop it into an existing record's battery. customTests and
+  // the team live in the same `data` object, so both edits must go through one setData.
+  const addCustomToTest=t=>{
+    const name=(prompt(Lx('Yeni testin adı:','Name of the new test:'))||'').trim();
+    if(!name)return;
+    const c={id:'ct_'+uid(),name};
+    const nextTests=tests.map(x=>x.id===t.id?{...x,battery:[...batOf(t),c.id]}:x);
+    setData({...data,customTests:[...customTests,c],
+      teams:data.teams.map(tm=>tm.id===team.id
+        ?{...tm,athletes:athletes.map(a=>a.id===ath.id?{...a,tests:nextTests}:a)}
+        :tm)});
+    setPick(p=>new Set([...p,c.id]));
+  };
+  // Add / remove a test from an existing record's battery. Removing only hides the
+  // section — the values stay on the record and come back if it is re-added.
+  const toggleBattery=(t,cid)=>{
+    const bat=batOf(t);
+    if(!bat.includes(cid)){updTest(t.id,{battery:[...bat,cid]});return;}
+    if(bat.length===1){alert(Lx('Bir testte en az bir ölçüm kalmalı.','A test record must keep at least one measurement.'));return;}
+    if(!confirm(Lx('Bu ölçümü kayıttan çıkar? (girilen değerler silinmez)','Remove this measurement from the record? (entered values are kept)')))return;
+    updTest(t.id,{battery:bat.filter(x=>x!==cid)});
   };
   const delTest=id=>{if(!confirm(Lx('Bu testi sil?','Delete this test?')))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id),measurements:(ath.measurements||[]).filter(m=>m.srcTest!==id)});if(editingId===id)setEditingId(null);};
 
@@ -7305,9 +7344,10 @@ function EvaluationView({team,updateTeam,data,setData}){
         {tests.length===0&&<div className="empty-st">{Lx('Bu sporcu için henüz test yok. Yukarıdan test seçip "Test Al"a bas.','No tests yet. Pick tests above and press "Take Test".')}</div>}
         {tests.length>0&&<div className="ath-grid">
           {[...tests].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>{
-            const isEd=editingId===t.id;const bat=Array.isArray(t.battery)?t.battery:fullCatalog.map(c=>c.id);
+            const isEd=editingId===t.id;const bat=batOf(t);
+            const isAdding=addBatId===t.id;
             const period=TEST_PERIODS.find(p=>p.id===t.period);
-            return(<div key={t.id} className={`test-card${isEd?' open':''}`}>
+            return(<div key={t.id} className={`test-card${isEd?' open':''}${isAdding?' adding':''}`}>
               <div className="test-card-header">
                 <div>
                   <div className="test-card-date">{fd(t.date)}</div>
@@ -7320,6 +7360,7 @@ function EvaluationView({team,updateTeam,data,setData}){
                   </div>
                 </div>
                 <div className="test-card-btns">
+                  <button className="btn xs sec" style={isAdding?{background:'var(--accent)',color:'#0a0b0d',borderColor:'var(--accent)'}:{}} onClick={()=>setAddBatId(isAdding?null:t.id)} title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>＋ {Lx('Test Ekle','Add Tests')}</button>
                   <button className="btn xs sec" style={isEd?{background:'var(--accent)',color:'#0a0b0d',borderColor:'var(--accent)'}:{}} onClick={()=>setEditingId(isEd?null:t.id)}>{isEd?Lx('Kapat','Close'):Lx('Aç','Open')}</button>
                   <button className="btn xs danger" onClick={()=>delTest(t.id)}>✕</button>
                 </div>
@@ -7328,6 +7369,20 @@ function EvaluationView({team,updateTeam,data,setData}){
                 {expandBattery(bat).map(id=>{const c=TEST_CATALOG.find(x=>x.id===id)||customTests.find(x=>x.id===id);
                   return c?<span key={id} className="bat-tag" title={c.name}>{c.short||c.name}</span>:null;})}
               </div>
+              {isAdding&&<div className="bat-add">
+                <div className="help" style={{marginBottom:10}}>{Lx('Bu teste eklemek istediğin ölçümleri seç — seçtiklerin hemen kaydın bataryasına girer, "Aç" ile değerleri girebilirsin.','Pick the measurements to add to this record — they join its battery right away, then press "Open" to fill in the values.')}</div>
+                <div className="tpick">
+                  {fullCatalog.map(c=>{const on=bat.includes(c.id);
+                    return(<div key={c.id} className={'tpc'+(on?' on':'')} onClick={()=>toggleBattery(t,c.id)}>
+                      {c.custom&&<div className="tpc-tag">{Lx('özel','custom')}</div>}
+                      <div className="tpc-t">{c.name}</div>
+                      <div className="tpc-chk">{on?'✓':''}</div>
+                    </div>);})}
+                  <div className="tpc add" onClick={()=>addCustomToTest(t)}>
+                    <div className="tpc-t">＋ {Lx('Özel Test','Custom Test')}</div>
+                  </div>
+                </div>
+              </div>}
             </div>);})}
         </div>}
       </div>
@@ -7396,6 +7451,7 @@ function buildAthleteSnapshot(ath,setup,exercises){
     if(lcjR!=null||lcjL!=null)out.push(`- Lateral CMJ (yana sıçrama): R ${lcjR??'—'} cm / L ${lcjL??'—'} cm${(lcjR!=null&&lcjL!=null)?` (fark ${Math.abs(lcjR-lcjL).toFixed(1)} cm)`:''}`);
     add('20m sprint',t.sprint20m&&t.sprint20m.time,' s');add('T-Test çeviklik',t.tTest,' s');add('Shuttle/dayanıklılık',t.shuttleRun,' s');
     add('Boy',t.height,' cm');add('Kilo',t.weight,' kg');add('Yağ',t.bodyFat,' %');add('Kulaç',t.wingspan,' cm');
+    add('Bacak uzunluğu (ASIS–medial malleol)',t.legLength,' cm');add('Oturma yüksekliği',t.sittingHeight,' cm');
     const adfR=recNum(t.ankleDF&&t.ankleDF.right),adfL=recNum(t.ankleDF&&t.ankleDF.left);
     if(adfR!=null||adfL!=null){const diff=(adfR!=null&&adfL!=null)?Math.abs(adfR-adfL).toFixed(1):'—';out.push(`- Ayak bileği dorsifleksiyon: R ${adfR??'—'}° / L ${adfL??'—'}° (fark ${diff}°)`);}
     const asR=recNum(t.aslr&&t.aslr.right),asL=recNum(t.aslr&&t.aslr.left);
@@ -7593,7 +7649,8 @@ function buildProgramDesignInput(ath,setup){
       kilo_kg:pull('weight'),
       vucut_yag_yuzde:pull('bodyFat'),
       kol_acikligi_cm:pull('wingspan'),
-      bacak_uzunlugu_cm:n(t&&t.yBalance&&t.yBalance.limbLength),
+      bacak_uzunlugu_cm:n(t&&t.legLength)??n(t&&t.yBalance&&t.yBalance.limbLength),
+      oturma_yuksekligi_cm:n(t&&t.sittingHeight),
       cevre_olcumleri:Object.keys(cevre).length?cevre:null,
     },
     performans_testleri:{
@@ -7826,7 +7883,8 @@ function TestReportsTab({ath,setup,ai,exercises}){
   if(!t)return(<div className="empty-st">No test sessions recorded yet. Add results in the <b>Testing &amp; Assessment</b> tab, then come back here.</div>);
   const period=(TEST_PERIODS.find(p=>p.id===t.period)||{}).label||t.period||'';
   const h=num(t.height),w=num(t.weight);const bmi=(h&&w)?(w/((h/100)**2)):null;
-  const anthro=[['Height',t.height,'cm'],['Weight',t.weight,'kg'],['Body Fat',t.bodyFat,'%'],['Wingspan',t.wingspan,'cm']];
+  const anthro=[['Height',t.height,'cm'],['Weight',t.weight,'kg'],['Body Fat',t.bodyFat,'%'],['Wingspan',t.wingspan,'cm'],
+    ['Leg Length',t.legLength,'cm'],['Sitting Height',t.sittingHeight,'cm']];
   const power=[['Vertical Jump',t.verticalJump,'cm'],['CMJ',t.cmj,'cm'],
     ['Lateral CMJ — R',t.lateralCmj&&t.lateralCmj.right,'cm'],['Lateral CMJ — L',t.lateralCmj&&t.lateralCmj.left,'cm'],
     ['Squat Jump',t.squatJump,'cm'],['Drop Jump',t.dropJump,'RSI'],['Horizontal Jump',t.horizontalJump,'cm']];
@@ -8093,7 +8151,7 @@ function ProfileTab({ath,updAth,setup}){
     </div>
   </div>);
 }
-function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
+function AthleteDetail({ath,onBack,updAth,setup,teamDays,weeks,ai,exercises}){
   const[tab,setTab]=useState('profile');
   const[aiAuto,setAiAuto]=useState(false);
   const askAI=()=>{setTab('recommends');setAiAuto(true);};
@@ -8161,6 +8219,20 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
   const apRhr=athWellnessVal(ath,'RHR',apRef);
   const apEntries=(ath.srpeLog||[]).length;
   const apCheckins=(ath.wellness||[]).length;
+  // Attendance counted in TRAINING DAYS, not sessions: any past day on the team
+  // calendar that carries at least one session is a training day. The athlete
+  // attended it if they're assigned to any of that day's sessions — otherwise the
+  // whole day counts as missed, no matter how many sessions it held. Days that
+  // haven't happened yet are left out of both counts.
+  const attend=useMemo(()=>{
+    const todayKey=fmt(today);let attended=0,missed=0;
+    Object.entries(teamDays||{}).forEach(([key,day])=>{
+      const sessions=(day&&day.sessions)||[];
+      if(!sessions.length||key>todayKey)return;
+      if(sessions.some(s=>(s.athletes||[]).includes(ath.id)))attended++;else missed++;
+    });
+    return{attended,missed};
+  },[teamDays,ath.id]);
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
     {id:'profile',ic:'◈',l:'Profile'},
@@ -8197,6 +8269,15 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
         <div className="ap-stat"><div className="k">7d load</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
+        <div className="ap-stat" title={`${attend.attended} training days attended · ${attend.missed} missed`}>
+          <div className="k">Training Days</div>
+          <div className="v">
+            <span style={{color:'var(--green)'}}>{attend.attended}</span>
+            <span style={{color:'var(--dim)',margin:'0 5px',fontWeight:500}}>/</span>
+            <span style={{color:attend.missed>0?'#f43f5e':'var(--dim)'}}>{attend.missed}</span>
+          </div>
+          <div className="s">attended / missed</div>
+        </div>
       </div>
       <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Edit profile">✎</button>
     </div>
@@ -8636,7 +8717,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
   });
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← Back</button><p>Athlete not found</p></div>;
-    return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks} ai={ai} exercises={exercises}/>;}
+    return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} teamDays={team.days||{}} weeks={weeks} ai={ai} exercises={exercises}/>;}
   return(<div>
     <div className="rost-head">
       <div>
