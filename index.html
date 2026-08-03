@@ -651,21 +651,23 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .week-card:hover{border-color:var(--accent)}
 .week-card .wk-t{font-weight:700;font-size:12px;color:var(--text)}
 .week-card input{padding:3px 6px;font-size:11px}
-/* Weekly Load Targets — list rows with sliders */
-.wlt-list{display:flex;flex-direction:column;gap:6px}
-.wlt-row{display:grid;grid-template-columns:74px 118px 172px 1fr 1fr auto;align-items:center;gap:14px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;border-left:3px solid var(--border2);transition:border-color .15s,background .15s,transform .15s}
-.wlt-row:hover{border-color:var(--border2);background:var(--elevated);transform:translateX(2px)}
-.wlt-row.gp{border-left-color:var(--accent)}
-.wlt-row.sp{border-left-color:#cfd8e6}
-.wlt-row.comp{border-left-color:var(--peak-t)}
-.wlt-row.trans{border-left-color:var(--border2)}
+/* Weekly Load Targets — one card per week, laid out side by side and wrapping down the
+   panel. The focus dropdown is the only control: it drives volume and intensity, which the
+   card reports back as read-only meters. */
+.wlt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));gap:10px}
+.wlt-card{display:flex;flex-direction:column;gap:9px;padding:12px 13px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;border-top:3px solid var(--border2);transition:border-color .15s,background .15s,transform .15s,box-shadow .15s}
+.wlt-card:hover{border-color:var(--border2);background:var(--elevated);transform:translateY(-2px);box-shadow:0 12px 26px -18px rgba(0,0,0,.8)}
+.wlt-card.gp{border-top-color:var(--accent)}
+.wlt-card.sp{border-top-color:#cfd8e6}
+.wlt-card.comp{border-top-color:var(--peak-t)}
+.wlt-card.trans{border-top-color:var(--border2)}
+.wlt-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .wlt-wk{display:flex;flex-direction:column;gap:1px}
 .wlt-wk .wkn{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em}
 .wlt-wk .wkd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
 .wlt-phase{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
 .wlt-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--accent)}
 .wlt-dot.sp{background:#cfd8e6}.wlt-dot.comp{background:var(--peak-t)}.wlt-dot.trans{background:var(--border2)}
-.wlt-focus{font-size:11px}
 .wlt-focus-sel{border:1px solid transparent;border-radius:12px;padding:4px 26px 4px 11px;font-size:11px;font-weight:700;letter-spacing:.3px;font-family:inherit;cursor:pointer;width:100%;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffffff' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;transition:filter .15s}
 .wlt-focus-sel:hover{filter:brightness(1.08)}
 .wlt-focus-sel:focus{outline:none;box-shadow:0 0 0 2px var(--accent)}
@@ -673,25 +675,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .wlt-focus-sel.med{background-color:var(--med);color:var(--med-t)}
 .wlt-focus-sel.high{background-color:var(--high);color:var(--high-t)}
 .wlt-focus-sel option{background:var(--panel);color:var(--text);font-weight:500}
-.wlt-slider{display:flex;align-items:center;gap:8px;min-width:0}
-.wlt-slider .wlt-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin:0;width:54px;flex:none;font-weight:500}
-/* Filled-track sliders: volume = blue, intensity = orange (matches the
-   Planned Microcycles chart). --p carries the current value from JSX. */
-.wlt-slider.vol{--sl:#3b6ef5}
-.wlt-slider.int{--sl:#f59e0b}
-.wlt-slider input[type=range]{flex:1;min-width:60px;height:6px;-webkit-appearance:none;appearance:none;cursor:pointer;padding:0;border:none;margin:0;border-radius:99px;
-  background:linear-gradient(90deg,var(--sl,var(--accent)) var(--p,0%),rgba(255,255,255,.09) var(--p,0%))}
-.wlt-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--sl,var(--accent));box-shadow:0 1px 5px rgba(0,0,0,.55);transition:transform .15s;cursor:grab}
-.wlt-slider input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
-.wlt-slider input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2);cursor:grabbing}
-.wlt-slider input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--sl,var(--accent));box-shadow:0 1px 5px rgba(0,0,0,.55);cursor:grab}
-.wlt-slider input[type=range]:focus-visible{outline:2px solid var(--sl,var(--accent));outline-offset:3px}
-.wlt-slider .wlt-num{width:54px;padding:4px 7px;font-size:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:right;border:1px solid var(--border);border-radius:6px;background:var(--panel);-moz-appearance:textfield;appearance:textfield}
-.wlt-slider .wlt-num::-webkit-outer-spin-button,.wlt-slider .wlt-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.wlt-slider .wlt-num:focus{border-color:var(--sl,var(--accent))}
-.wlt-slider .wlt-pct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-left:-4px}
-.wlt-taper{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3);border-radius:5px;padding:3px 8px;font-weight:500;letter-spacing:.06em}
-@media(max-width:1100px){.wlt-row{grid-template-columns:74px 1fr 1fr;row-gap:10px}.wlt-row .wlt-focus,.wlt-row .wlt-taper{grid-column:span 3}}
+/* Read-only load meters: volume = blue, intensity = orange (matches the
+   Planned Microcycles chart). Both follow whatever focus the dropdown is set to. */
+.wlt-meters{display:flex;flex-direction:column;gap:6px}
+.wlt-m{display:grid;grid-template-columns:26px 1fr 34px;align-items:center;gap:7px}
+.wlt-m.vol{--sl:#3b6ef5}
+.wlt-m.int{--sl:#f59e0b}
+.wlt-mk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.wlt-mt{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.wlt-mt i{display:block;height:100%;border-radius:99px;background:var(--sl);transition:width .25s cubic-bezier(.2,.7,.3,1)}
+.wlt-mv{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--text2);text-align:right}
+.wlt-taper{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;background:rgba(255,107,91,.13);color:var(--high-t);border:1px solid rgba(255,107,91,.3);border-radius:5px;padding:2px 6px;font-weight:500;letter-spacing:.06em;flex:none;white-space:nowrap}
 /* Week view (program) */
 .wv-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .wv-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:18px}
@@ -1299,36 +1293,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-cbody{position:relative}
 .diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 
-/* ===== Macrocycle Gantt ===== */
+/* ===== Macrocycle Gantt =====
+   Phase names live in a fixed label column instead of inside the bars: a 4-week phase is
+   only a sliver of a 10-month season, and a label printed inside it was clipped to nothing.
+   The bars carry colour and span only, so nothing on this chart can be truncated. */
 .mc-panel{padding:22px 24px}
-.mc-head{margin-bottom:6px}
+.mc-head{margin-bottom:4px}
 .mc-title{font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
 .mc-title .mc-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:400;color:var(--dim);margin-left:10px;letter-spacing:0}
-.mc-gantt{position:relative;margin-top:26px;padding-left:6px}
-.mc-axis{position:relative;height:18px;margin-bottom:8px;margin-left:0}
-.mc-mtick{position:absolute;top:0;transform:translateX(-2px);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em;white-space:nowrap}
-.mc-today{position:absolute;top:-22px;transform:translateX(-1px);z-index:3}
+.mc-gantt{--mc-lbl:180px;--mc-gap:16px;margin-top:20px}
+@media(max-width:820px){.mc-gantt{--mc-lbl:130px;--mc-gap:10px}}
+.mc-axis,.mc-row{display:grid;grid-template-columns:var(--mc-lbl) 1fr;gap:var(--mc-gap);align-items:center}
+.mc-axis{height:34px}
+.mc-axis-tr{position:relative;height:100%}
+.mc-mtick{position:absolute;bottom:1px;transform:translateX(-2px);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em;white-space:nowrap}
+.mc-today{position:absolute;top:0;transform:translateX(-2px);z-index:3}
 .mc-today span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(230,255,85,.3);border-radius:5px;padding:2px 7px}
-.mc-rows{position:relative}
-.mc-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--border);opacity:.6;pointer-events:none}
-.mc-todayline{position:absolute;top:-4px;bottom:0;width:2px;background:linear-gradient(180deg,var(--accent),rgba(230,255,85,.08));box-shadow:0 0 8px rgba(230,255,85,.45);z-index:2;pointer-events:none}
-.mc-row{position:relative;height:42px;border-top:1px solid var(--border);display:flex;align-items:center}
+.mc-row{height:46px;border-top:1px solid var(--border)}
 .mc-row:last-child{border-bottom:1px solid var(--border)}
-.mc-bar{position:absolute;height:29px;border-radius:9px;display:flex;align-items:center;gap:8px;padding:0 8px 0 14px;overflow:hidden;min-width:0;
-  background-image:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.04) 48%,rgba(0,0,0,.18));
-  box-shadow:0 2px 10px rgba(0,0,0,.35),0 8px 20px -10px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.12);
-  transform-origin:left center;animation:mcGrow .8s cubic-bezier(.22,.61,.36,1) backwards;
-  transition:filter .18s,transform .18s,box-shadow .18s}
-.mc-bar:hover{filter:brightness(1.14);transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.45),0 12px 26px -10px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.2)}
+.mc-lbl{display:flex;align-items:center;gap:9px;min-width:0}
+.mc-lbl-tx{min-width:0}
+.mc-lbl b{display:block;font-size:13px;font-weight:600;color:var(--text);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-lbl i{display:block;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-dot{width:9px;height:9px;border-radius:50%;flex:none}
+.mc-track{position:relative;height:100%}
+.mc-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--border);opacity:.55;pointer-events:none}
+.mc-todayline{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);opacity:.75;z-index:2;pointer-events:none}
+.mc-bar{position:absolute;top:50%;height:22px;margin-top:-11px;border-radius:7px;min-width:6px;
+  transform-origin:left center;animation:mcGrow .6s cubic-bezier(.22,.61,.36,1) backwards;
+  transition:filter .18s}
+.mc-bar:hover{filter:brightness(1.18)}
 @keyframes mcGrow{from{transform:scaleX(0)}}
-.mc-bar span{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.3)}
-.mc-bar .mc-wk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-style:normal;font-size:10px;font-weight:600;color:rgba(255,255,255,.9);background:rgba(0,0,0,.28);border-radius:99px;padding:2px 8px;flex:none;margin-left:auto}
-.mc-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
-.mc-leg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text);background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:6px 14px 6px 11px;transition:border-color .15s}
-.mc-leg:hover{border-color:var(--border2)}
-.mc-leg b{font-weight:600}
-.mc-dot{width:10px;height:10px;border-radius:50%;flex:none}
-.mc-leg-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 
 /* ===== Athlete Load Board (Calendar tab) ===== */
 .lb-wrap.panel{padding:20px}
@@ -1828,6 +1823,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lm-wknow{font-size:11px!important;font-weight:600!important;width:auto!important;padding:0 9px;color:var(--text2)!important}
 /* ===== Planned Microcycles + Load Mix ===== */
 .mc-extra{display:grid;grid-template-columns:1fr;gap:16px;margin:16px 0}
+/* Planned Microcycles: season-wide or month-by-month */
+.pm-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pm-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+.pm-seg{display:inline-flex;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px}
+.pm-seg>button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;padding:5px 14px;border-radius:7px;cursor:pointer;transition:background .15s,color .15s}
+.pm-seg>button:hover{color:var(--text)}
+.pm-seg>button.on{background:var(--accent);color:#0a0b0d}
+.pm-months{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.pm-month{display:inline-flex;align-items:baseline;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;transition:all .15s}
+.pm-month:hover{border-color:var(--border2);color:var(--text)}
+.pm-month small{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:500;color:var(--dim)}
+.pm-month.on{background:var(--accent-bg);border-color:var(--accent);color:var(--text)}
+.pm-month.on small{color:var(--accent2)}
 .lmix-list{display:flex;flex-direction:column;gap:18px}
 .lmix-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
 .lmix-lbl{font-size:13px;color:var(--text2)}
@@ -2046,7 +2055,7 @@ main .panel:nth-child(n+6){animation-delay:.33s}
   .rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card,
   .ath-mmap-fill,.ml-fig-wrap .mm-fig,.rsf-save.on .rsf-heart,.ex-h1::after,.rsf-card,.mc-bar,
   main .panel,main .ap-head,.stat .v{animation:none!important}
-  .mc-bar:hover,.wlt-row:hover{transform:none}
+  .wlt-card:hover{transform:none}
   .stat .v{-webkit-text-fill-color:var(--text);color:var(--text);background:none}
   .nav-item:hover{transform:none}
   .nav-item:hover .ni-ic{transform:none}
@@ -2210,6 +2219,16 @@ const sesMethods=s=>Array.isArray(s?.methods)?s.methods:[];
 const SESSION_REGIONS=['Upper Body Strength','Upper Body Power','Lower Body Strength','Lower Body Power','Full Body Strength','Full Body Power'];
 const sesRegion=s=>{const r=(s?.region||'').trim();return SESSION_REGIONS.includes(r)?r:'';};
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
+/* Every week focus carries its own load profile. Weekly Load Targets sets volume and
+   intensity from this table when the focus changes, so the focus dropdown is the only
+   control a coach needs. Values follow the per-period/per-model defaults in defWeek().
+   A focus outside this table (e.g. an auto-generated "Taper 5d") keeps its own numbers. */
+const FOCUS_LOAD={
+  'General':{v:70,i:70},'Base + aerobic':{v:85,i:55},'Sport-specific':{v:75,i:75},
+  'Maintain & peak':{v:55,i:85},'Active recovery':{v:35,i:40},'Accumulation':{v:88,i:58},
+  'Transmutation':{v:75,i:72},'Realization':{v:60,i:88},'Hi-volume wave':{v:85,i:60},
+  'Hi-intensity wave':{v:62,i:85},'Max-effort':{v:70,i:88},'Dynamic-effort':{v:70,i:78},
+  'Deload':{v:45,i:50},'Peak':{v:50,i:92}};
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 const SPRESETS=[
@@ -4181,7 +4200,10 @@ function Setup({team,updateTeam}){
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
-  const ew=(k,f,v)=>{const w=team.weekOverrides[k]||{};updateTeam(team.id,{weekOverrides:{...team.weekOverrides,[k]:{...w,[f]:+v||v}}});};
+  /* Picking a week focus also writes that focus's volume/intensity profile, so the two
+     numbers stay in step with the choice without the coach touching them. */
+  const setWeekFocus=(k,f)=>{const w=team.weekOverrides[k]||{},fl=FOCUS_LOAD[f];
+    updateTeam(team.id,{weekOverrides:{...team.weekOverrides,[k]:{...w,focus:f,...(fl?{volume:fl.v,intensity:fl.i}:{})}}});};
   const updPeriod=(id,field,val)=>{const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);updateTeam(team.id,{setup:{...s,periods:np}});};
   const resetPeriods=()=>{if(confirm('Reset periods to auto-generated from season + competition dates?'))updateTeam(team.id,{setup:{...s,periods:null}});};
   const usingCustom=!!s.periods;
@@ -4192,8 +4214,19 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     let cur=new Date(start.getFullYear(),start.getMonth(),1);
     while(cur<=end){a.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
     return a;},[s.seasonStart,s.seasonEnd]);
-  const weeklyMax=Math.max(1,...weeks.map(w=>(Number(w.volume)||0)+(Number(w.intensity)||0)));
   const athleteCount=(team.athletes||[]).length;
+  /* Planned Microcycles: the whole season at once, or one month at a time. A week that
+     straddles two months shows up under both, so no microcycle falls out of the monthly view. */
+  const[mcView,setMcView]=useState('year');
+  const[mcMonth,setMcMonth]=useState('');
+  const months=useMemo(()=>monthTicks.map(d=>({k:fmt(d).slice(0,7),label:MN[d.getMonth()],year:d.getFullYear()})),[monthTicks]);
+  const monthKeys=months.map(m=>m.k);
+  const thisMonth=fmt(today).slice(0,7);
+  const curMonth=monthKeys.includes(mcMonth)?mcMonth:(monthKeys.includes(thisMonth)?thisMonth:(monthKeys[0]||''));
+  const chartWeeks=useMemo(()=>{
+    if(mcView!=='month'||!curMonth)return weeks;
+    return weeks.filter(w=>w.week.slice(0,7)===curMonth||fmt(addD(parseD(w.week),6)).slice(0,7)===curMonth);
+  },[weeks,mcView,curMonth]);
   // Load Mix — share of planned sessions by load type
   const LT_COL={'Mechanical load':'#8b5cf6','Metabolic load':'#06b6d4','Neuromuscular load':'#f97316','Cognitive/perceptual load':'#ec4899'};
   const loadMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>(d.sessions||[]).forEach(ses=>{const k=ses.loadType||'—';t[k]=(t[k]||0)+1;}));
@@ -4221,41 +4254,56 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         <div className="mc-head"><div className="mc-title">Season Macrocycle<span className="mc-sub">{modelName} · {periods.length} phases</span></div></div>
         <div className="mc-gantt">
           <div className="mc-axis">
-            {todayPct!=null&&<div className="mc-today" style={{left:`${todayPct}%`}}><span>TODAY</span></div>}
-            {ticks.map((d,i)=><span key={i} className="mc-mtick" style={{left:`${pctOf(fmt(d))}%`}}>{MN[d.getMonth()]}</span>)}
+            <div/>
+            <div className="mc-axis-tr">
+              {todayPct!=null&&<div className="mc-today" style={{left:`${todayPct}%`}}><span>TODAY</span></div>}
+              {ticks.map((d,i)=><span key={i} className="mc-mtick" style={{left:`${pctOf(fmt(d))}%`}}>{MN[d.getMonth()]}</span>)}
+            </div>
           </div>
-          <div className="mc-rows">
-            {ticks.map((d,i)=><div key={'g'+i} className="mc-grid" style={{left:`${pctOf(fmt(d))}%`}}/>)}
-            {todayPct!=null&&<div className="mc-todayline" style={{left:`${todayPct}%`}}/>}
-            {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));return(
-              <div key={p.id} className="mc-row">
-                <div className="mc-bar" title={`${PHASE_NAME[p.id]||p.name} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`}
-                  style={{left:`${l}%`,width:`${Math.max(2,r-l)}%`,backgroundColor:PHASE_COL[p.id]||'#64748b',animationDelay:(pi*90)+'ms'}}>
-                  <span>{PHASE_NAME[p.id]||p.name}</span><em className="mc-wk">{wk} wk</em>
-                </div>
-              </div>);})}
-          </div>
-        </div>
-        <div className="mc-legend">
-          {periods.map(p=><div key={p.id} className="mc-leg"><span className="mc-dot" style={{background:PHASE_COL[p.id]||'#64748b'}}/><b>{PHASE_NAME[p.id]||p.name}</b><span className="mc-leg-d">{fmd(p.start)}–{fmd(p.end)}</span></div>)}
+          {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));
+            const nm=PHASE_NAME[p.id]||p.name,col=PHASE_COL[p.id]||'#64748b';return(
+            <div key={p.id} className="mc-row">
+              <div className="mc-lbl" title={nm}>
+                <span className="mc-dot" style={{background:col}}/>
+                <div className="mc-lbl-tx"><b>{nm}</b><i>{wk} wk · {fmd(p.start)}–{fmd(p.end)}</i></div>
+              </div>
+              <div className="mc-track">
+                {ticks.map((d,i)=><div key={'g'+i} className="mc-grid" style={{left:`${pctOf(fmt(d))}%`}}/>)}
+                {todayPct!=null&&<div className="mc-todayline" style={{left:`${todayPct}%`}}/>}
+                <div className="mc-bar" title={`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`}
+                  style={{left:`${l}%`,width:`${Math.max(.6,r-l)}%`,backgroundColor:col,animationDelay:(pi*80)+'ms'}}/>
+              </div>
+            </div>);})}
         </div>
       </div>);
     })()}
     <div className="mc-extra">
       <div className="panel" style={{margin:0}}>
-        <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:12}}>
+        <div className="pm-head">
           <h2 style={{margin:0,fontSize:16}}>Planned Microcycles</h2>
-          <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>volume × intensity per week</span>
+          <span className="pm-sub">volume × intensity per week</span>
+          <span style={{flex:'1 1 auto'}}/>
+          <div className="pm-seg">
+            <button className={mcView==='year'?'on':''} onClick={()=>setMcView('year')}>Yıllık</button>
+            <button className={mcView==='month'?'on':''} onClick={()=>setMcView('month')}>Aylık</button>
+          </div>
         </div>
+        {mcView==='month'&&<div className="pm-months">
+          {months.map(m=><button key={m.k} className={`pm-month${m.k===curMonth?' on':''}`} onClick={()=>setMcMonth(m.k)}>
+            {m.label}<small>{String(m.year).slice(2)}</small>
+          </button>)}
+        </div>}
         <div className="chart-box" style={{height:340}}>
-          <ChartC type="line" chartData={{labels:weeks.map(w=>[fd(w.week).slice(0,5),w.focus||'']),datasets:[
-            {label:'Volume',data:weeks.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},
-            {label:'Intensity',data:weeks.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointHoverBackgroundColor:'#f59e0b',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}
+          {chartWeeks.length===0
+            ?<div className="ex-empty" style={{margin:0}}>Bu ayda planlı mikrosiklus yok.</div>
+            :<ChartC type="line" chartData={{labels:chartWeeks.map(w=>[fd(w.week).slice(0,5),w.focus||'']),datasets:[
+            {label:'Volume',data:chartWeeks.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#3b6ef5',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},
+            {label:'Intensity',data:chartWeeks.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#f59e0b',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#f59e0b',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}
           ]}} options={{responsive:true,maintainAspectRatio:false,
             interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
-            scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:true,maxRotation:0,font:{size:10}}},y:{...CHART_DARK.scales.y,suggestedMax:110}},
+            scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:mcView!=='month',maxRotation:0,font:{size:10}}},y:{...CHART_DARK.scales.y,suggestedMax:110}},
             plugins:{legend:{position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:13,weight:'600',family:"'TT Fors','Space Grotesk',sans-serif"},usePointStyle:true,pointStyle:'circle',boxWidth:9,padding:16}},
-              tooltip:{mode:'index',intersect:false,callbacks:{title:items=>{const w=weeks[items[0].dataIndex];return w?`${fd(w.week)} · ${w.focus||''}`:'';},label:i=>`${i.dataset.label}: ${i.parsed.y}%`}}}}}/>
+              tooltip:{mode:'index',intersect:false,callbacks:{title:items=>{const w=chartWeeks[items[0].dataIndex];return w?`${fd(w.week)} · ${w.focus||''}`:'';},label:i=>`${i.dataset.label}: ${i.parsed.y}%`}}}}}/>}
         </div>
       </div>
     </div>
@@ -4275,31 +4323,26 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     </div>
 
     <div className="panel"><h2>Weekly Load Targets</h2>
-      <div className="help" style={{marginBottom:12}}>Modelden otomatik hesaplanır · slider'larla manuel ayarlayabilirsin · taper haftaları sağdaki ⚠ rozetle işaretlenir.</div>
-      <div className="wlt-list">
+      <div className="help" style={{marginBottom:14}}>Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.</div>
+      <div className="wlt-grid">
         {weeks.map((w,i)=>{const cls=w.intensity>=85?'high':w.intensity>=70?'med':'low';
           const pcls=w.period==='gp'?'gp':w.period==='sp'?'sp':w.period==='comp'?'comp':'trans';
           const pName={gp:'General',sp:'Specific',comp:'Competition',trans:'Transition'}[w.period]||w.period;
-          return(<div key={w.week} className={`wlt-row ${pcls}`}>
-            <div className="wlt-wk"><div className="wkn">W{i+1}</div><div className="wkd">{fd(w.week).slice(0,5)}</div></div>
+          const vol=Math.max(0,Math.min(100,Number(w.volume)||0)),int=Math.max(0,Math.min(100,Number(w.intensity)||0));
+          return(<div key={w.week} className={`wlt-card ${pcls}`}>
+            <div className="wlt-top">
+              <div className="wlt-wk"><div className="wkn">W{i+1}</div><div className="wkd">{fd(w.week).slice(0,5)}</div></div>
+              {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
+            </div>
             <div className="wlt-phase"><span className={`wlt-dot ${pcls}`}/>{pName}</div>
-            <div className="wlt-focus">
-              <select className={`wlt-focus-sel ${cls}`} value={w.focus} onChange={e=>ew(w.week,'focus',e.target.value)}>
-                {!WEEK_FOCUS.includes(w.focus)&&<option value={w.focus}>{w.focus}</option>}
-                {WEEK_FOCUS.map(f=><option key={f} value={f}>{f}</option>)}
-              </select>
+            <select className={`wlt-focus-sel ${cls}`} value={w.focus} onChange={e=>setWeekFocus(w.week,e.target.value)}>
+              {!WEEK_FOCUS.includes(w.focus)&&<option value={w.focus}>{w.focus}</option>}
+              {WEEK_FOCUS.map(f=><option key={f} value={f}>{f}</option>)}
+            </select>
+            <div className="wlt-meters">
+              <div className="wlt-m vol"><span className="wlt-mk">Vol</span><div className="wlt-mt"><i style={{width:vol+'%'}}/></div><span className="wlt-mv">{vol}%</span></div>
+              <div className="wlt-m int"><span className="wlt-mk">Int</span><div className="wlt-mt"><i style={{width:int+'%'}}/></div><span className="wlt-mv">{int}%</span></div>
             </div>
-            <div className="wlt-slider vol">
-              <label className="wlt-lbl">Volume</label>
-              <input type="range" min="0" max="100" step="5" value={w.volume} style={{['--p']:(Number(w.volume)||0)+'%'}} onChange={e=>ew(w.week,'volume',e.target.value)}/>
-              <input type="number" min="0" max="100" value={w.volume} onChange={e=>ew(w.week,'volume',e.target.value)} className="wlt-num"/><span className="wlt-pct">%</span>
-            </div>
-            <div className="wlt-slider int">
-              <label className="wlt-lbl">Intensity</label>
-              <input type="range" min="0" max="100" step="5" value={w.intensity} style={{['--p']:(Number(w.intensity)||0)+'%'}} onChange={e=>ew(w.week,'intensity',e.target.value)}/>
-              <input type="number" min="0" max="100" value={w.intensity} onChange={e=>ew(w.week,'intensity',e.target.value)} className="wlt-num"/><span className="wlt-pct">%</span>
-            </div>
-            {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
           </div>);})}
       </div>
     </div>
@@ -5681,11 +5724,13 @@ function TemplatesView({data,setData}){
   // The Region picker lives in the Strength & Power heading and narrows that group only,
   // so the other categories keep listing everything while a region is selected.
   const inRegion=(c,t)=>c.id!=='strength'||!selRegion||tplRegion(t)===selRegion;
-  /* Categories start folded; a search, a focus chip or a region pick is a request to see the
-     matches, so those unfold every group — until the coach folds one shut by hand. */
-  const filtering=!!ql||selFocus.length>0||!!selRegion;
-  const catOpen=c=>catState[c.id]!==undefined?catState[c.id]:filtering;
-  const toggleCat=id=>setCatState(s=>({...s,[id]:!(s[id]!==undefined?s[id]:filtering)}));
+  /* Categories start folded; a search or a focus chip asks to see matches everywhere, so those
+     unfold every group. The Region picker only narrows Strength & Power, so it unfolds that one
+     group alone — the other training types stay shut. An explicit click always wins. */
+  const filtering=!!ql||selFocus.length>0;
+  const catAuto=c=>filtering||(c.id==='strength'&&!!selRegion);
+  const catOpen=c=>catState[c.id]!==undefined?catState[c.id]:catAuto(c);
+  const toggleCat=c=>setCatState(s=>({...s,[c.id]:!(s[c.id]!==undefined?s[c.id]:catAuto(c))}));
   const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inRegion(c,t))}))
     .filter(g=>g.items.length||(g.c.id==='strength'&&selRegion&&shown.some(t=>tplCat(t)===g.c)));
   const editing=templates.find(t=>t.id===editId);
@@ -5710,8 +5755,8 @@ function TemplatesView({data,setData}){
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
     {groups.map(g=>{const gc=tplCatColor(g.c),op=catOpen(g.c);return(<div key={g.c.id} className={`tpl-cat-sec${op?' on':''}`}>
       <div className={`tpl-cat${op?' on':''}`} style={{'--cat-c':gc.c,'--cat-t':gc.t,'--cat-g':gc.g}}
-        role="button" tabIndex={0} aria-expanded={op} onClick={()=>toggleCat(g.c.id)}
-        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCat(g.c.id);}}}>
+        role="button" tabIndex={0} aria-expanded={op} onClick={()=>toggleCat(g.c)}
+        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCat(g.c);}}}>
         <span className="tpl-cat-ch">▶</span>
         <span className="tpl-cat-dot"/>
         <h2 className="tpl-cat-l">{g.c.label}</h2>
