@@ -2330,9 +2330,9 @@ const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',desc
 let _libAdd=null;
 function registerLibAdd(fn){_libAdd=fn;}
 function addExerciseToLibrary(name){const nm=(name||'').trim();if(nm&&_libAdd)_libAdd(nm);}
-/* Shared library entries (name + type + muscles), mirrored here so the deeply-nested
-   exercise editor can drive its picker without prop-threading: the left pane lists
-   exercises, the right pane the categories they belong to. */
+/* Shared library entries (name + type + movement pattern), mirrored here so the
+   deeply-nested exercise editor can drive its picker without prop-threading: the left
+   pane lists exercises, the right pane the categories they belong to. */
 let _libItems=[];
 function setLibItems(a){_libItems=Array.isArray(a)?a:[];}
 function getLibItems(){return _libItems;}
@@ -5370,12 +5370,13 @@ function ExNameField({value,onChange}){
   // Text query narrows the pool first; the category counts on the right are computed
   // from that pool so they always say how many rows a category would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  // A category is any Exercise Type or muscle group used by the library. An exercise with
-  // neither lands in "Kategorisiz" so freshly typed names stay reachable.
+  // A category is an Exercise Type or one of the library's movement-pattern dimensions
+  // (plane of motion, contraction type, direction, skill, region, bilateral/unilateral…).
+  // An exercise with none of those lands in "Kategorisiz" so new names stay reachable.
   const catList=useMemo(()=>{
     const cnt=new Map();
     for(const e of pool){
-      const tags=[...(e.type?[e.type]:[]),...e.muscle];
+      const tags=[...(e.type?[e.type]:[]),...e.sub];
       if(!tags.length){cnt.set(UNCAT,(cnt.get(UNCAT)||0)+1);continue;}
       for(const t of new Set(tags))cnt.set(t,(cnt.get(t)||0)+1);
     }
@@ -5386,7 +5387,7 @@ function ExNameField({value,onChange}){
   // Selected categories are OR-ed — ticking two shows the exercises of both.
   const matchesCats=e=>{
     if(!cats.length)return true;
-    const tags=[...(e.type?[e.type]:[]),...e.muscle];
+    const tags=[...(e.type?[e.type]:[]),...e.sub];
     if(!tags.length)return cats.includes(UNCAT);
     return tags.some(t=>cats.includes(t));
   };
@@ -5436,7 +5437,7 @@ function ExNameField({value,onChange}){
                 onMouseDown={ev=>{ev.preventDefault();pick(e.name);}}>
                 <span className="en-badge">{(e.name[0]||'?').toUpperCase()}</span>
                 <span className="en-nm">{e.name}</span>
-                <span className="en-tag">{e.type||e.muscle[0]||UNCAT}</span>
+                <span className="en-tag">{e.type||e.sub[0]||UNCAT}</span>
               </div>)}
             {shown.length===0&&<div className="en-none">Bu filtreyle eşleşen egzersiz yok</div>}
             {shown.length>sugg.length&&<div className="en-none">+{shown.length-sugg.length} egzersiz daha — aramayı daraltın</div>}
@@ -11353,7 +11354,7 @@ function App(){
     for(const e of (data.exercises||[])){
       const nm=(e.name||'').trim();if(!nm)continue;
       const k=nm.toLowerCase();if(seen.has(k))continue;seen.add(k);
-      items.push({name:nm,type:e.type||'',muscle:Array.isArray(e.muscle)?e.muscle.filter(Boolean):[]});
+      items.push({name:nm,type:e.type||'',sub:[e.subType,e.pattern].filter(Boolean)});
     }
     setLibItems(items);
   },[data.exercises]);
