@@ -218,7 +218,7 @@ main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto}
 }
 .panel h2::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grid{display:grid;gap:12px}
-.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}
+.cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(5,1fr)}
 label{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-bottom:7px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
 input,select,textarea{
   width:100%;padding:10px 13px;border:1px solid var(--border2);border-radius:9px;
@@ -919,8 +919,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Glow on hover for clickable cards */
 @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
 .glow{animation:pulse 2s ease-in-out infinite}
-@media(max-width:1100px){.wv-grid{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:720px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}.wv-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.wv-grid{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:720px){.cols-2,.cols-3,.cols-4,.cols-5{grid-template-columns:1fr}.wv-grid{grid-template-columns:repeat(2,1fr)}}
 /* Exercises library */
 .ex-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .ex-h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
@@ -1354,7 +1354,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-grp{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:9px 10px 4px}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
+/* Templates: body-region filter row, above the search + focus chips */
+.tpl-region-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tpl-region-lb{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;flex:none}
+.tpl-region-sel{width:auto;min-width:210px;padding:8px 12px;font-size:13px;font-weight:600;background:var(--elevated);border:1px solid var(--border);border-radius:9px;cursor:pointer}
+.tpl-region-sel:focus{outline:none;border-color:var(--muted)}
+.tpl-region-sel option{background:var(--elevated)}
 /* Template card focus tags + hover exercise tooltip */
+.tpl-region-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--border2);padding:2px 8px;border-radius:20px;white-space:nowrap}
 .tpl-focus-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;white-space:nowrap}
 .tpl-card{position:relative}
 /* Exercise list opens upward, above the card, so it never covers the cards below it. */
@@ -2178,6 +2185,10 @@ const TRAINING_METHODS=[
 ];
 const TRAINING_METHOD_LIST=TRAINING_METHODS.reduce((a,g)=>a.concat(g[1]),[]);
 const sesMethods=s=>Array.isArray(s?.methods)?s.methods:[];
+/* Body region × quality for strength & power work — which part of the body the session
+   trains and with which quality. Single value, stored on the session as `region`. */
+const SESSION_REGIONS=['Upper Body Strength','Upper Body Power','Lower Body Strength','Lower Body Power','Full Body Strength','Full Body Power'];
+const sesRegion=s=>{const r=(s?.region||'').trim();return SESSION_REGIONS.includes(r)?r:'';};
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
@@ -2254,7 +2265,7 @@ const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
     purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),
-    methods:Array.isArray(p.methods)?p.methods:[],duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
+    methods:Array.isArray(p.methods)?p.methods:[],region:p.region||'',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
   id:uid(),date:fmt(today),period,year:today.getFullYear(),
@@ -2384,7 +2395,7 @@ function saveSessionAsTemplate(session){return _saveSessionAsTemplate?_saveSessi
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
     purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],
-    methods:sesMethods(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
+    methods:sesMethods(s),region:sesRegion(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
     notes:s.notes||'',planNote:s.planNote||'',athletes:[],sourceId:null};}
 
@@ -5422,9 +5433,15 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
       {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
-      <div className={`grid ${isTemplate?'cols-3':'cols-4'}`} style={{marginBottom:14}}>
+      <div className={`grid ${isTemplate?'cols-4':'cols-5'}`} style={{marginBottom:14}}>
         {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
+        <div><label>Region</label>
+          <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+            <option value="">Select region…</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
         <div><label>Training Method</label><MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
@@ -5621,11 +5638,12 @@ function TemplatesView({data,setData}){
   const setTemplates=arr=>setData({...data,templates:arr});
   const[q,setQ]=useState('');
   const[selFocus,setSelFocus]=useState([]);   // multi-select session-focus filter
+  const[selRegion,setSelRegion]=useState(''); // single-value body-region filter ('' = all)
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
   const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',
-    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
   const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||'Template')+' (copy)',session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
@@ -5636,19 +5654,31 @@ function TemplatesView({data,setData}){
   const tplCat=t=>tplCatOf(tplFocus(t));
   const toggleFocus=f=>setSelFocus(sel=>sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   const ql=q.trim().toLowerCase();
-  const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))&&(!ql||(t.name||'').toLowerCase().includes(ql)));
+  const tplRegion=t=>sesRegion(t.session||{});
+  const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))
+    &&(!selRegion||tplRegion(t)===selRegion)
+    &&(!ql||(t.name||'').toLowerCase().includes(ql)));
   const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c)})).filter(g=>g.items.length);
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
-    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',planNote:'',...s,name:editing.name||'',
+    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',planNote:'',methods:[],region:'',...s,name:editing.name||'',
       focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical']};})():null;
-  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">Templates</h1>
         <div className="sub">{templates.length} training templates · copy → paste into a team or athlete calendar</div></div>
       <button className="btn sm" onClick={addTpl}>＋ New Template</button>
+    </div>
+    {/* Region filter sits on its own row above the search + focus chips. */}
+    <div className="tpl-region-bar">
+      <span className="tpl-region-lb">Region</span>
+      <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
+        <option value="">All regions</option>
+        {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+      </select>
+      {selRegion&&<button className="btn xs sec" onClick={()=>setSelRegion('')}>✕ Clear</button>}
     </div>
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates…"/></div>
@@ -5676,7 +5706,8 @@ function TemplatesView({data,setData}){
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',flex:'1 1 120px',minWidth:0,overflowWrap:'break-word'}}>{t.name||'—'}</div>
             <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto',maxWidth:'100%'}}>{cat.label}</span>
           </div>
-          {foci.length>0&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+          {(foci.length>0||tplRegion(t))&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+            {tplRegion(t)&&<span className="tpl-region-tag">{tplRegion(t)}</span>}
             {foci.map(f=><span key={f} className="tpl-focus-tag">{f}</span>)}
           </div>}
           <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{(t.session&&t.session.duration)||0} min · {blkCount(t)} blok · {exCount(t)} egzersiz</div>
@@ -11035,7 +11066,7 @@ function App(){
   _saveSessionAsTemplate=session=>{
     const s=JSON.parse(JSON.stringify(session||{}));
     const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',
-      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),methods:sesMethods(s),
+      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),methods:sesMethods(s),region:sesRegion(s),
         duration:s.duration||60,color:s.color||'',
         blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
