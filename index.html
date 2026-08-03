@@ -1293,6 +1293,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-cbody{position:relative}
 .diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
 
+/* ===== DD/MM/YYYY date field ===== */
+.dmy{position:relative;display:block;width:100%}
+.dmy-t{width:100%;padding-right:32px!important;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.02em}
+.dmy-btn{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:24px;height:24px;padding:0;
+  display:grid;place-items:center;background:none;border:none;border-radius:6px;color:var(--muted);
+  font-size:13px;line-height:1;cursor:pointer;transition:color .15s,background .15s}
+.dmy-btn:hover{color:var(--text);background:var(--elevated)}
+/* Rendered but invisible: showPicker() refuses to open on a hidden control. */
+.dmy-p{position:absolute;right:14px;bottom:0;width:1px;height:1px;min-width:0;padding:0;margin:0;border:none;opacity:0;pointer-events:none}
+
 /* ===== Macrocycle Gantt =====
    Phase names live in a fixed label column instead of inside the bars: a 4-week phase is
    only a sliver of a 10-month season, and a label printed inside it was clipped to nothing.
@@ -2259,6 +2269,13 @@ const CHART_DARK={
 const pad=n=>String(n).padStart(2,'0');
 const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const fd=s=>{if(!s)return'';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;};
+/* fd() in reverse: DD/MM/YYYY typed by a coach → the ISO string we store.
+   Returns '' for anything that isn't a real calendar date, so a half-typed value
+   never overwrites a good one. */
+const pdmy=t=>{const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((t||'').trim());if(!m)return'';
+  const d=+m[1],mo=+m[2],y=+m[3];if(mo<1||mo>12||d<1||d>31)return'';
+  const dt=new Date(y,mo-1,d);
+  return(dt.getFullYear()===y&&dt.getMonth()===mo-1&&dt.getDate()===d)?fmt(dt):'';};
 const fdLong=s=>{if(!s)return'';const d=parseD(s);return`${DN[(d.getDay()+6)%7]}, ${d.getDate()} ${MN[d.getMonth()]} ${d.getFullYear()}`;};
 const parseD=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
 const addD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
@@ -4159,11 +4176,52 @@ async function migrateEmbeddedPhotos(obj,fb,uid){
 }
 
 /* =========================================================
+   DD/MM/YYYY DATE FIELD
+   A native <input type="date"> renders in the browser's own locale, so a coach on a
+   US-locale browser saw 08/16/2026 under a column headed DD/MM/YYYY. This types and
+   shows the date the way the rest of the app writes it, keeps storing ISO, and hands
+   the calendar picker off to a hidden native input so nothing is lost.
+   ========================================================= */
+function DateDMY({value,onChange,style,title}){
+  const[txt,setTxt]=useState(()=>fd(value));
+  const pick=useRef(null);
+  useEffect(()=>{setTxt(fd(value));},[value]);
+  const type=t=>{
+    const d=t.replace(/\D/g,'').slice(0,8);
+    let out=d.slice(0,2);
+    if(d.length>2)out+='/'+d.slice(2,4);
+    if(d.length>4)out+='/'+d.slice(4,8);
+    setTxt(out);
+    const iso=pdmy(out);if(iso)onChange(iso);
+  };
+  // A partial or impossible date snaps back to the stored one rather than clearing it.
+  const blur=()=>{const iso=pdmy(txt);if(iso)onChange(iso);else setTxt(fd(value));};
+  const open=()=>{const el=pick.current;if(!el)return;
+    try{el.showPicker?el.showPicker():el.focus();}catch(e){el.focus();}};
+  return(<div className="dmy" style={style}>
+    <input className="dmy-t" value={txt} title={title} placeholder="gg/aa/yyyy" inputMode="numeric" maxLength={10}
+      onChange={e=>type(e.target.value)} onBlur={blur}/>
+    <button type="button" className="dmy-btn" onClick={open} tabIndex={-1} aria-label="Takvimden seç">🗓</button>
+    <input ref={pick} className="dmy-p" type="date" tabIndex={-1} aria-hidden="true" value={value||''}
+      onChange={e=>{if(e.target.value)onChange(e.target.value);}}/>
+  </div>);
+}
+
+/* =========================================================
    SETUP
    ========================================================= */
 function Setup({team,updateTeam}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
   const uc=(i,k,v)=>{const c=[...s.competitions];c[i]={...c[i],[k]:v};u('competitions',c);};
+  /* The season and the macrocycle are the same window: it opens with General Preparation
+     and closes with Transition. Auto periods already follow the season dates; custom ones
+     are moved by hand here so the two ends stay the same dates. */
+  const uSeason=(k,v)=>{if(!v)return;
+    if(!s.periods){u(k,v);return;}
+    const np=s.periods.map((p,i)=>
+      (k==='seasonStart'&&i===0)?{...p,start:v}:
+      (k==='seasonEnd'&&i===s.periods.length-1)?{...p,end:v}:p);
+    updateTeam(team.id,{setup:{...s,[k]:v,periods:np}});};
   return(<div>
     <div className="panel"><h2>Team / Athlete Information</h2>
       <div className="grid cols-3">
@@ -4172,8 +4230,8 @@ function Setup({team,updateTeam}){
         <div><label>Athletes</label><input type="number" min="1" value={s.athleteCount} onChange={e=>u('athleteCount',+e.target.value)}/></div>
       </div>
       <div className="grid cols-2" style={{marginTop:12}}>
-        <div><label>Season start (dd/mm/yyyy)</label><input type="date" value={s.seasonStart} onChange={e=>u('seasonStart',e.target.value)}/><div className="help">{fd(s.seasonStart)}</div></div>
-        <div><label>Season end (dd/mm/yyyy)</label><input type="date" value={s.seasonEnd} onChange={e=>u('seasonEnd',e.target.value)}/><div className="help">{fd(s.seasonEnd)}</div></div>
+        <div><label>Season start (dd/mm/yyyy)</label><DateDMY value={s.seasonStart} onChange={v=>uSeason('seasonStart',v)}/><div className="help">General Preparation başlangıcı</div></div>
+        <div><label>Season end (dd/mm/yyyy)</label><DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/><div className="help">Transition sonu</div></div>
       </div>
     </div>
     <div className="panel"><h2>Periodization Model</h2>
@@ -4183,9 +4241,8 @@ function Setup({team,updateTeam}){
         <div className="help" style={{marginLeft:24,marginTop:4}}>{m.desc}</div></label>))}</div>
     </div>
     <div className="panel"><h2>Competition Dates</h2>
-      <table><thead><tr><th>Date</th><th>Display</th><th>Event</th><th style={{width:90}}></th></tr></thead><tbody>
-        {s.competitions.map((c,i)=><tr key={i}><td><input type="date" value={c.date} onChange={e=>uc(i,'date',e.target.value)}/></td>
-          <td style={{color:'var(--muted)'}}>{fd(c.date)}</td>
+      <table><thead><tr><th>Date (dd/mm/yyyy)</th><th>Event</th><th style={{width:90}}></th></tr></thead><tbody>
+        {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
           <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
           <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>Remove</button></td></tr>)}
       </tbody></table>
@@ -4204,7 +4261,13 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
      numbers stay in step with the choice without the coach touching them. */
   const setWeekFocus=(k,f)=>{const w=team.weekOverrides[k]||{},fl=FOCUS_LOAD[f];
     updateTeam(team.id,{weekOverrides:{...team.weekOverrides,[k]:{...w,focus:f,...(fl?{volume:fl.v,intensity:fl.i}:{})}}});};
-  const updPeriod=(id,field,val)=>{const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);updateTeam(team.id,{setup:{...s,periods:np}});};
+  /* The season runs from the first period's start to the last period's end — General
+     Preparation opens it, Transition closes it. Editing a period date therefore moves the
+     season window with it, so the stat row, the weeks and both charts can't drift apart
+     from the dates in this table. */
+  const updPeriod=(id,field,val)=>{if(!val)return;
+    const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);
+    updateTeam(team.id,{setup:{...s,periods:np,seasonStart:np[0].start,seasonEnd:np[np.length-1].end}});};
   const resetPeriods=()=>{if(confirm('Reset periods to auto-generated from season + competition dates?'))updateTeam(team.id,{setup:{...s,periods:null}});};
   const usingCustom=!!s.periods;
   // Period long names + monthly tick labels for the macrocycle bar
@@ -4240,9 +4303,13 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       <div className="stat"><div className="k">Athletes</div><div className="v">{athleteCount}</div></div>
     </div>
     {(()=>{
+      /* The chart used to start at today, which chopped off whatever a phase had already
+         spent — a General Preparation running Jul 20–Aug 16 drew as a stub on Aug 3. The
+         window is the macrocycle itself now: General Preparation's start to Transition's
+         end, with TODAY marked wherever it actually falls inside it. */
       const tk=fmt(today);
-      const winStart=(tk>s.seasonStart&&tk<s.seasonEnd)?tk:s.seasonStart;
-      const winEnd=s.seasonEnd;
+      const winStart=periods.length?periods[0].start:s.seasonStart;
+      const winEnd=periods.length?periods[periods.length-1].end:s.seasonEnd;
       const span=Math.max(1,diffD(winStart,winEnd));
       const pctOf=ds=>{const d=Math.max(0,Math.min(span,diffD(winStart,ds)));return d/span*100;};
       const todayPct=(tk>=winStart&&tk<=winEnd)?pctOf(tk):null;
@@ -4315,8 +4382,8 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       <table><thead><tr><th>Period</th><th>Start (dd/mm/yyyy)</th><th>End (dd/mm/yyyy)</th><th>Duration</th></tr></thead><tbody>
         {periods.map(p=><tr key={p.id}>
           <td><strong style={{color:'var(--text)'}}><span style={{display:'inline-block',width:9,height:9,borderRadius:'50%',marginRight:8,verticalAlign:'middle',background:p.id==='gp'?'var(--accent)':p.id==='sp'?'#cfd8e6':p.id==='comp'?'var(--peak-t)':'var(--border2)'}}/>{p.name}</strong></td>
-          <td><input type="date" value={p.start} onChange={e=>updPeriod(p.id,'start',e.target.value)} style={{width:160}}/><div className="help">{fd(p.start)}</div></td>
-          <td><input type="date" value={p.end} onChange={e=>updPeriod(p.id,'end',e.target.value)} style={{width:160}}/><div className="help">{fd(p.end)}</div></td>
+          <td><DateDMY value={p.start} onChange={v=>updPeriod(p.id,'start',v)} style={{width:160}}/></td>
+          <td><DateDMY value={p.end} onChange={v=>updPeriod(p.id,'end',v)} style={{width:160}}/></td>
           <td><strong>{diffD(p.start,p.end)+1}</strong> days</td>
         </tr>)}
       </tbody></table>
