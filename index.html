@@ -1354,10 +1354,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-grp{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:9px 10px 4px}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
-/* Templates: body-region filter row, above the search + focus chips */
-.tpl-region-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
-.tpl-region-lb{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;flex:none}
-.tpl-region-sel{width:auto;min-width:210px;padding:8px 12px;font-size:13px;font-weight:600;background:var(--elevated);border:1px solid var(--border);border-radius:9px;cursor:pointer}
+/* Templates: body-region filter, inline in the Strength & Power group heading */
+.tpl-region-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:8px}
+.tpl-region-sel{width:auto;min-width:190px;padding:5px 10px;font-size:12px;font-weight:600;background:var(--elevated);border:1px solid var(--border);border-radius:8px;cursor:pointer}
 .tpl-region-sel:focus{outline:none;border-color:var(--muted)}
 .tpl-region-sel option{background:var(--elevated)}
 /* Template card focus tags + hover exercise tooltip */
@@ -5656,9 +5655,12 @@ function TemplatesView({data,setData}){
   const ql=q.trim().toLowerCase();
   const tplRegion=t=>sesRegion(t.session||{});
   const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))
-    &&(!selRegion||tplRegion(t)===selRegion)
     &&(!ql||(t.name||'').toLowerCase().includes(ql)));
-  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c)})).filter(g=>g.items.length);
+  // The Region picker lives in the Strength & Power heading and narrows that group only,
+  // so the other categories keep listing everything while a region is selected.
+  const inRegion=(c,t)=>c.id!=='strength'||!selRegion||tplRegion(t)===selRegion;
+  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inRegion(c,t))}))
+    .filter(g=>g.items.length||(g.c.id==='strength'&&selRegion&&shown.some(t=>tplCat(t)===g.c)));
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
@@ -5671,15 +5673,6 @@ function TemplatesView({data,setData}){
         <div className="sub">{templates.length} training templates · copy → paste into a team or athlete calendar</div></div>
       <button className="btn sm" onClick={addTpl}>＋ New Template</button>
     </div>
-    {/* Region filter sits on its own row above the search + focus chips. */}
-    <div className="tpl-region-bar">
-      <span className="tpl-region-lb">Region</span>
-      <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
-        <option value="">All regions</option>
-        {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
-      </select>
-      {selRegion&&<button className="btn xs sec" onClick={()=>setSelRegion('')}>✕ Clear</button>}
-    </div>
     <div className="ex-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates…"/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
@@ -5689,11 +5682,20 @@ function TemplatesView({data,setData}){
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
     {groups.map(g=><div key={g.c.id} style={{marginBottom:22}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,margin:'0 0 10px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,margin:'0 0 10px',flexWrap:'wrap'}}>
         <span style={{width:9,height:9,borderRadius:'50%',background:tplCatColor(g.c).c,boxShadow:'0 0 6px '+tplCatColor(g.c).g}}/>
         <h2 style={{margin:0,fontSize:15}}>{g.c.label}</h2>
         <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
+        {/* Region picker rides along with the Strength & Power heading it filters. */}
+        {g.c.id==='strength'&&<div className="tpl-region-bar">
+          <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
+            <option value="">All regions</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+          {selRegion&&<button className="btn xs sec" onClick={()=>setSelRegion('')}>✕ Clear</button>}
+        </div>}
       </div>
+      {g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{selRegion}” template yet.</div>}
       <div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const foci=tplFocus(t);
