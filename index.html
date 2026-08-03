@@ -1384,7 +1384,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-load .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--text);min-width:46px}
 .lb-bar{height:5px;border-radius:3px;background:var(--border);width:64px;overflow:hidden;flex:none}
 .lb-bar i{display:block;height:100%;border-radius:3px;background:#3b6ef5}
-.lb-acwr{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700}
 .lb-zone{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);white-space:nowrap}
 .lb-zdot{width:8px;height:8px;border-radius:50%;flex:none}
 .lb-rd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700}
@@ -1422,10 +1421,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc-id{min-width:0;padding-right:46px}
 .rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word}
 .rc-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
-/* Four centred metrics on one row. Each .rc-st dissolves into the grid so all
+/* Three centred metrics on one row. Each .rc-st dissolves into the grid so all
    labels share row 1 and all values share row 2 — a label that wraps to two
    lines then can't knock its own value out of line with the others. */
-.rc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:3px 6px;border-top:1px solid var(--border);padding-top:14px;text-align:center;align-items:end}
+.rc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 6px;border-top:1px solid var(--border);padding-top:14px;text-align:center;align-items:end}
 .rc-st{display:contents}
 .rc-st .k{grid-row:1;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;line-height:1.25}
 .rc-st .v{grid-row:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
@@ -2817,13 +2816,12 @@ function AthleteLoadBoard({athletes,refDate}){
       rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
-  const sorted=[...rows].sort((x,y)=>lbSort==='acwr'?y.acwr-x.acwr:lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
+  const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
   return(<div className="panel lb-wrap">
     <div className="lb-head">
-      <div className="lb-title">Athlete Load Board<span className="lb-sub">7-day load · individual ACWR</span></div>
+      <div className="lb-title">Athlete Load Board<span className="lb-sub">7-day load · weekly RPE</span></div>
       <div className="lb-seg">
         <button className={lbSort==='load'?'on':''} onClick={()=>setLbSort('load')}>By load</button>
-        <button className={lbSort==='acwr'?'on':''} onClick={()=>setLbSort('acwr')}>By ACWR</button>
         <button className={lbSort==='az'?'on':''} onClick={()=>setLbSort('az')}>A–Z</button>
       </div>
     </div>
@@ -2837,14 +2835,13 @@ function AthleteLoadBoard({athletes,refDate}){
           <th><div className="lb-rpe-hd">7-day RPE
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
-          <th>ACWR</th><th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
+          <th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
           <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
-          <td><span className="lb-acwr" style={{color:z.c}}>{r.acwr?r.acwr.toFixed(2):'—'}</span></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{z.t}</span></td>
           <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
           <td className="r"><span className="lb-rhr">{r.rhr!=null?Math.round(r.rhr):'—'}</span></td>
@@ -5889,11 +5886,11 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const chronicMean=w28.ch/Math.max(7,w28.hist);
   const lmMonoZone=monoZoneOf(mWk.monotony);   // gauge card shows monotony, not ACWR
   const[lmWin,setLmWin]=useState(7);
-  // Per-day daily load + rolling acute(7d)/chronic(28d) means + ACWR, over the trend window
+  // Per-day daily load + rolling acute(7d)/chronic(28d) means, over the trend window
   const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
     const k=fmt(addD(parseD(lmRef),-i));const daily=dayAvg(k);
     const w=loadWindows(dayAvg,k);const a=w.ac/7,c=w.ch/Math.max(7,w.hist);
-    out.push({k,daily,acute:Math.round(a),chronic:Math.round(c),acwr:c>0?a/c:0});}
+    out.push({k,daily,acute:Math.round(a),chronic:Math.round(c)});}
     return out;},[teamDaily,lmRef,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
@@ -6010,8 +6007,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
               plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'TT Fors','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
                 tooltip:{mode:'index',intersect:false,callbacks:{
                   title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
-                  label:i=>`${i.dataset.label}: ${Math.round(i.parsed.y)}`,
-                  afterBody:items=>{const d=lmTrend[items[0].dataIndex];return d?['ACWR: '+(d.acwr?d.acwr.toFixed(2):'—')]:[];}}}}}}/>
+                  label:i=>`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
         </div>
       </div>
     </div>
@@ -8924,7 +8920,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       const age=ageOf(a);const ref=athLatestDate(a);
       const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
       const rd=athWellnessVal(a,'readiness',ref);
-      const acwr=athACWR(a,ref);const az=acwrZoneOf(acwr);
       const td=athTrainingDays(team.days,a.id,team.setup);
       const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
@@ -8940,7 +8935,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
         </div>
         <div className="rc-stats">
           <div className="rc-st"><span className="k">Readiness</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
-          <div className="rc-st"><span className="k">ACWR</span><span className="v" style={{color:az.c}}>{acwr?acwr.toFixed(2):'—'}</span></div>
           <div className="rc-st"><span className="k">7d load</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
           <div className="rc-st">
             <span className="k">Training days</span>
