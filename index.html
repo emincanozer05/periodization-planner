@@ -1354,6 +1354,27 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-grp{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:9px 10px 4px}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
+/* Templates: collapsible category header. Folded by default — the cards only mount when
+   the coach opens the group, so the page lands on a short list of training types. */
+.tpl-cat-sec{margin-bottom:10px}
+.tpl-cat-sec.on{margin-bottom:22px}
+.tpl-cat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;cursor:pointer;user-select:none;
+  background:linear-gradient(90deg,var(--cat-t) 0%,rgba(255,255,255,.012) 42%,rgba(255,255,255,0) 100%),var(--panel);
+  border:1px solid var(--border);border-left:3px solid var(--cat-c);border-radius:12px;
+  transition:border-color .16s,box-shadow .16s,transform .16s}
+.tpl-cat:hover{border-color:var(--border2);border-left-color:var(--cat-c);transform:translateY(-1px);box-shadow:0 10px 24px -18px var(--cat-c)}
+.tpl-cat:focus-visible{outline:none;border-color:var(--cat-c)}
+.tpl-cat.on{margin-bottom:12px}
+.tpl-cat-ch{color:var(--muted);font-size:9px;line-height:1;flex:none;transition:transform .18s ease,color .18s}
+.tpl-cat.on .tpl-cat-ch{transform:rotate(90deg);color:var(--cat-c)}
+.tpl-cat-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--cat-c);box-shadow:0 0 7px var(--cat-g)}
+.tpl-cat-l{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
+.tpl-cat-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:var(--text2);
+  background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1px 9px;flex:none}
+.tpl-cat-grow{flex:1 1 auto}
+.tpl-cat-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--dim);flex:none;opacity:0;transition:opacity .16s}
+.tpl-cat:hover .tpl-cat-hint{opacity:1}
 /* Templates: body-region filter, inline in the Strength & Power group heading */
 .tpl-region-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:8px}
 .tpl-region-sel{width:auto;min-width:190px;padding:5px 10px;font-size:12px;font-weight:600;background:var(--elevated);border:1px solid var(--border);border-radius:8px;cursor:pointer}
@@ -5638,6 +5659,7 @@ function TemplatesView({data,setData}){
   const[q,setQ]=useState('');
   const[selFocus,setSelFocus]=useState([]);   // multi-select session-focus filter
   const[selRegion,setSelRegion]=useState(''); // single-value body-region filter ('' = all)
+  const[catState,setCatState]=useState({});   // category id → explicitly opened/closed by the coach
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
@@ -5659,6 +5681,11 @@ function TemplatesView({data,setData}){
   // The Region picker lives in the Strength & Power heading and narrows that group only,
   // so the other categories keep listing everything while a region is selected.
   const inRegion=(c,t)=>c.id!=='strength'||!selRegion||tplRegion(t)===selRegion;
+  /* Categories start folded; a search, a focus chip or a region pick is a request to see the
+     matches, so those unfold every group — until the coach folds one shut by hand. */
+  const filtering=!!ql||selFocus.length>0||!!selRegion;
+  const catOpen=c=>catState[c.id]!==undefined?catState[c.id]:filtering;
+  const toggleCat=id=>setCatState(s=>({...s,[id]:!(s[id]!==undefined?s[id]:filtering)}));
   const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inRegion(c,t))}))
     .filter(g=>g.items.length||(g.c.id==='strength'&&selRegion&&shown.some(t=>tplCat(t)===g.c)));
   const editing=templates.find(t=>t.id===editId);
@@ -5681,22 +5708,27 @@ function TemplatesView({data,setData}){
       </div>
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
-    {groups.map(g=><div key={g.c.id} style={{marginBottom:22}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,margin:'0 0 10px',flexWrap:'wrap'}}>
-        <span style={{width:9,height:9,borderRadius:'50%',background:tplCatColor(g.c).c,boxShadow:'0 0 6px '+tplCatColor(g.c).g}}/>
-        <h2 style={{margin:0,fontSize:15}}>{g.c.label}</h2>
-        <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{g.items.length}</span>
-        {/* Region picker rides along with the Strength & Power heading it filters. */}
-        {g.c.id==='strength'&&<div className="tpl-region-bar">
+    {groups.map(g=>{const gc=tplCatColor(g.c),op=catOpen(g.c);return(<div key={g.c.id} className={`tpl-cat-sec${op?' on':''}`}>
+      <div className={`tpl-cat${op?' on':''}`} style={{'--cat-c':gc.c,'--cat-t':gc.t,'--cat-g':gc.g}}
+        role="button" tabIndex={0} aria-expanded={op} onClick={()=>toggleCat(g.c.id)}
+        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCat(g.c.id);}}}>
+        <span className="tpl-cat-ch">▶</span>
+        <span className="tpl-cat-dot"/>
+        <h2 className="tpl-cat-l">{g.c.label}</h2>
+        <span className="tpl-cat-n">{g.items.length}</span>
+        {/* Region picker rides along with the Strength & Power heading it filters —
+            clicks stay inside it so picking a region doesn't fold the group shut. */}
+        {g.c.id==='strength'&&<div className="tpl-region-bar" onClick={e=>e.stopPropagation()}>
           <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
             <option value="">All regions</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>
           {selRegion&&<button className="btn xs sec" onClick={()=>setSelRegion('')}>✕ Clear</button>}
         </div>}
+        <span className="tpl-cat-hint">{op?'Gizle':'Göster'}</span>
       </div>
-      {g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{selRegion}” template yet.</div>}
-      <div className="ath-grid">
+      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{selRegion}” template yet.</div>}
+      {op&&<div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const foci=tplFocus(t);
           const blocks=((t.session&&t.session.blocks)||[]).map(b=>({...b,exercises:(b.exercises||[]).filter(e=>(e.name||'').trim())})).filter(b=>b.exercises.length);
@@ -5726,8 +5758,8 @@ function TemplatesView({data,setData}){
             </div>)}
           </div>}
         </div>);})}
-      </div>
-    </div>)}
+      </div>}
+    </div>);})}
     {editing&&ReactDOM.createPortal((<>
       <div className="dw-scrim" onClick={()=>setEditId(null)}/>
       <aside className="dw edit">
