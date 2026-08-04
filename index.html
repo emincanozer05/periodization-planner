@@ -219,6 +219,15 @@ main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto}
 .panel h2::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grid{display:grid;gap:12px}
 .cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(5,1fr)}
+/* Session meta row (time · focus · region · method · duration). Plain 1fr tracks can't
+   shrink below their content, so picking several focus/method values used to widen those
+   two columns and squeeze the rest. minmax(0,…) pins every box to the same width and the
+   triggers ellipsise instead — the row keeps its height whatever is selected. */
+.sess-meta.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.sess-meta.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.sess-meta>div{min-width:0}
+.sess-meta label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-meta select{text-overflow:ellipsis}
 label{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-bottom:7px;font-weight:500;text-transform:uppercase;letter-spacing:.08em}
 input,select,textarea{
   width:100%;padding:10px 13px;border:1px solid var(--border2);border-radius:9px;
@@ -936,8 +945,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Glow on hover for clickable cards */
 @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
 .glow{animation:pulse 2s ease-in-out infinite}
-@media(max-width:1100px){.wv-grid{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:720px){.cols-2,.cols-3,.cols-4,.cols-5{grid-template-columns:1fr}.wv-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.wv-grid{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(3,1fr)}
+  .sess-meta.cols-5{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:720px){.cols-2,.cols-3,.cols-4,.cols-5{grid-template-columns:1fr}.wv-grid{grid-template-columns:repeat(2,1fr)}
+  .sess-meta.cols-4,.sess-meta.cols-5{grid-template-columns:minmax(0,1fr)}}
 /* Exercises library */
 .ex-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .ex-h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
@@ -5569,7 +5580,8 @@ function FocusSelect({value,onChange,placeholder}){
   const sel=Array.isArray(value)?value:[];
   const toggle=f=>onChange(sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   return(<div ref={ref} className="focus-sel">
-    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}>
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
+      title={sel.length?sel.join(', '):undefined}>
       <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select focus…')}</span>
       <i>▾</i>
     </button>
@@ -5601,7 +5613,8 @@ function MethodSelect({value,onChange,placeholder}){
     .map(([g,items])=>[g,needle?items.filter(m=>m.toLowerCase().includes(needle)):items])
     .filter(([,items])=>items.length);
   return(<div ref={ref} className="focus-sel">
-    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}>
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
+      title={sel.length?sel.join(', '):undefined}>
       <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select training method…')}</span>
       <i>▾</i>
     </button>
@@ -5667,7 +5680,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
       {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
-      <div className={`grid ${isTemplate?'cols-4':'cols-5'}`} style={{marginBottom:14}}>
+      <div className={`grid sess-meta ${isTemplate?'cols-4':'cols-5'}`} style={{marginBottom:14}}>
         {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
         <div><label>Region</label>
