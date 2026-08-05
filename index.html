@@ -1423,7 +1423,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tpl-region-sel:focus{outline:none;border-color:var(--muted)}
 .tpl-region-sel option{background:var(--elevated)}
 /* Templates toolbar + card (clickable, with the hover exercise tooltip) */
-.tpl-method-sel{min-width:210px;max-width:260px}
+.tpl-method-sel{min-width:210px;max-width:290px}
 /* Search box and the focus-chip row below it share one full-width column. */
 .ex-toolbar.tpl-toolbar{flex-direction:column;align-items:stretch}
 .ex-toolbar.tpl-toolbar .ex-search{flex:0 0 auto;width:100%}
@@ -5984,6 +5984,18 @@ function TemplatesView({data,setData}){
   const inHeadFilters=(c,t)=>(!regionOn(c)||!selRegion||tplRegion(t)===selRegion)
     &&(!methodOf(c)||tplMethods(t).includes(methodOf(c)));
   const headFiltered=c=>(regionOn(c)&&!!selRegion)||!!methodOf(c);
+  /* How many templates each training method is used by, per category — the number shown next
+     to every option in the picker. Counted over the templates the heading would list with its
+     OTHER filters applied (search, focus chips, Region) but the method filter itself ignored,
+     so the numbers stay put instead of collapsing to the current pick. */
+  const methodCountsFor=c=>{const m={};let n=0;
+    for(const t of shown){
+      if(tplCat(t)!==c)continue;
+      if(regionOn(c)&&selRegion&&tplRegion(t)!==selRegion)continue;
+      n++;
+      for(const x of new Set(tplMethods(t)))m[x]=(m[x]||0)+1;
+    }
+    return{m,n};};
   /* Categories start folded; a search or a focus chip asks to see matches everywhere, so those
      unfold every group. A heading picker unfolds its own group alone — the other training
      types stay shut. An explicit click always wins. */
@@ -6014,7 +6026,9 @@ function TemplatesView({data,setData}){
       </div>
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
-    {groups.map(g=>{const gc=tplCatColor(g.c),op=catOpen(g.c);return(<div key={g.c.id} className={`tpl-cat-sec${op?' on':''}`}>
+    {groups.map(g=>{const gc=tplCatColor(g.c),op=catOpen(g.c);
+      const mc=METHOD_CATS.includes(g.c.id)?methodCountsFor(g.c):null;
+      return(<div key={g.c.id} className={`tpl-cat-sec${op?' on':''}`}>
       <div className={`tpl-cat${op?' on':''}`} style={{'--cat-c':gc.c,'--cat-t':gc.t,'--cat-g':gc.g}}
         role="button" tabIndex={0} aria-expanded={op} onClick={()=>toggleCat(g.c)}
         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCat(g.c);}}}>
@@ -6029,10 +6043,13 @@ function TemplatesView({data,setData}){
             <option value="">All regions</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>}
-          {METHOD_CATS.includes(g.c.id)&&<select className="tpl-region-sel tpl-method-sel" value={methodOf(g.c)} onChange={e=>setMethodFor(g.c,e.target.value)}>
-            <option value="">All training methods</option>
+          {/* Every method carries its usage count — a native <select> can't render a badge,
+              so the number rides in the option text. Unused methods stay listed as (0): in a
+              periodization tool "what haven't I programmed yet" is worth seeing too. */}
+          {mc&&<select className="tpl-region-sel tpl-method-sel" value={methodOf(g.c)} onChange={e=>setMethodFor(g.c,e.target.value)}>
+            <option value="">All training methods ({mc.n})</option>
             {TRAINING_METHODS.map(([grp,items])=><optgroup key={grp} label={grp}>
-              {items.map(m=><option key={m} value={m}>{m}</option>)}
+              {items.map(m=><option key={m} value={m}>{m} ({mc.m[m]||0})</option>)}
             </optgroup>)}
           </select>}
           {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,'');}}>✕ Clear</button>}
