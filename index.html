@@ -1394,6 +1394,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Selected options are pinned to the top of the list; this rule marks that block. */
 .focus-grp.sel{color:var(--green,#46d6a0);font-weight:700}
 .focus-sep{height:1px;background:var(--border);margin:6px 6px}
+/* Usage count next to a filter option. Only rendered when it is 1 or more, so the badge
+   itself is the "this one is in use" signal. */
+.focus-cnt{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  color:var(--green,#46d6a0);background:rgba(70,214,160,.13);border:1px solid rgba(70,214,160,.32);
+  border-radius:20px;padding:1px 7px;flex:0 0 auto;line-height:1.5}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
 /* Templates: collapsible category header. Folded by default — the cards only mount when
@@ -1423,7 +1428,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tpl-region-sel:focus{outline:none;border-color:var(--muted)}
 .tpl-region-sel option{background:var(--elevated)}
 /* Templates toolbar + card (clickable, with the hover exercise tooltip) */
-.tpl-method-sel{min-width:210px;max-width:290px}
+/* The method picker is the shared MethodSelect dropdown; shrink its trigger to match the
+   Region <select> sitting next to it in the category heading. */
+.tpl-method-pick{flex:0 0 auto;width:250px}
+.tpl-method-pick .focus-trig{padding:5px 10px;font-size:12px;font-weight:600;background:var(--elevated);border-radius:8px}
+.tpl-method-pick .focus-dd{width:320px;right:auto;max-height:330px}
 /* Search box and the focus-chip row below it share one full-width column. */
 .ex-toolbar.tpl-toolbar{flex-direction:column;align-items:stretch}
 .ex-toolbar.tpl-toolbar .ex-search{flex:0 0 auto;width:100%}
@@ -5649,8 +5658,10 @@ function FocusSelect({value,onChange,placeholder}){
 }
 
 /* Training method picker — same dropdown mechanics as FocusSelect, but the options are
-   grouped by method family and filterable (the list is long by design). */
-function MethodSelect({value,onChange,placeholder}){
+   grouped by method family and filterable (the list is long by design).
+   `counts` (optional, method → n) turns it into a filter that also reports how often each
+   method is used; only non-zero counts get a badge. */
+function MethodSelect({value,onChange,placeholder,counts}){
   const[open,setOpen]=useState(false);
   const[q,setQ]=useState('');
   const[pin,setPin]=useState([]);   // selection snapshot taken when the list opens
@@ -5672,10 +5683,12 @@ function MethodSelect({value,onChange,placeholder}){
   const groups=TRAINING_METHODS
     .map(([g,items])=>[g,items.filter(m=>!pin.includes(m)&&hit(m))])
     .filter(([,items])=>items.length);
-  const opt=m=><label key={m} className={`focus-opt${sel.includes(m)?' on':''}`}>
-    <input type="checkbox" checked={sel.includes(m)} onChange={()=>toggle(m)}/>
-    <span>{m}</span>
-  </label>;
+  const opt=m=>{const n=counts?(counts[m]||0):0;
+    return<label key={m} className={`focus-opt${sel.includes(m)?' on':''}`}>
+      <input type="checkbox" checked={sel.includes(m)} onChange={()=>toggle(m)}/>
+      <span>{m}</span>
+      {n>0&&<b className="focus-cnt">{n}</b>}
+    </label>;};
   return(<div ref={ref} className="focus-sel">
     <button type="button" className={`focus-trig${open?' open':''}`} onClick={trig}
       title={sel.length?sel.join(', '):undefined}>
@@ -5978,12 +5991,13 @@ function TemplatesView({data,setData}){
      (its own value per heading); the Region picker exists on Strength & Power alone, since
      SESSION_REGIONS is a strength/power dimension. */
   const METHOD_CATS=['strength','mdspeed'];
-  const methodOf=c=>selMethod[c.id]||'';
+  const methodOf=c=>selMethod[c.id]||[];   // multi-select: several methods can be picked
   const setMethodFor=(c,v)=>setSelMethod(s=>({...s,[c.id]:v}));
   const regionOn=c=>c.id==='strength';
+  // Picked methods are OR-ed, like the focus chips: a template matching any of them shows.
   const inHeadFilters=(c,t)=>(!regionOn(c)||!selRegion||tplRegion(t)===selRegion)
-    &&(!methodOf(c)||tplMethods(t).includes(methodOf(c)));
-  const headFiltered=c=>(regionOn(c)&&!!selRegion)||!!methodOf(c);
+    &&(!methodOf(c).length||tplMethods(t).some(x=>methodOf(c).includes(x)));
+  const headFiltered=c=>(regionOn(c)&&!!selRegion)||methodOf(c).length>0;
   /* How many templates each training method is used by, per category — the number shown next
      to every option in the picker. Counted over the templates the heading would list with its
      OTHER filters applied (search, focus chips, Region) but the method filter itself ignored,
@@ -6043,20 +6057,17 @@ function TemplatesView({data,setData}){
             <option value="">All regions</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>}
-          {/* Every method carries its usage count — a native <select> can't render a badge,
-              so the number rides in the option text. Unused methods stay listed as (0): in a
-              periodization tool "what haven't I programmed yet" is worth seeing too. */}
-          {mc&&<select className="tpl-region-sel tpl-method-sel" value={methodOf(g.c)} onChange={e=>setMethodFor(g.c,e.target.value)}>
-            <option value="">All training methods ({mc.n})</option>
-            {TRAINING_METHODS.map(([grp,items])=><optgroup key={grp} label={grp}>
-              {items.map(m=><option key={m} value={m}>{m} ({mc.m[m]||0})</option>)}
-            </optgroup>)}
-          </select>}
-          {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,'');}}>✕ Clear</button>}
+          {/* The session editor's checkbox picker, reused as a filter: several methods can be
+              ticked at once, and each one that is actually in use carries a green count badge
+              — neither is possible with a native <select>. */}
+          {mc&&<div className="tpl-method-pick"><MethodSelect value={methodOf(g.c)} counts={mc.m}
+            onChange={arr=>setMethodFor(g.c,arr)} placeholder={`All training methods (${mc.n})`}/></div>}
+          {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,[]);}}>✕ Clear</button>}
         </div>}
         <span className="tpl-cat-hint">{op?'Gizle':'Göster'}</span>
       </div>
-      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[regionOn(g.c)?selRegion:'',methodOf(g.c)].filter(Boolean).join(' + ')}” template yet.</div>}
+      {/* Methods are OR-ed, so they read "A / B"; the Region narrows on top of them: "R + A / B". */}
+      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[regionOn(g.c)?selRegion:'',methodOf(g.c).join(' / ')].filter(Boolean).join(' + ')}” template yet.</div>}
       {op&&<div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const region=tplRegion(t);
