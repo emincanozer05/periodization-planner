@@ -1391,6 +1391,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-opt input[type=checkbox]{width:14px;height:14px;accent-color:var(--green,#46d6a0);margin:0;padding:0;flex:0 0 auto}
 .focus-opt span{flex:1;min-width:0}
 .focus-grp{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:9px 10px 4px}
+/* Selected options are pinned to the top of the list; this rule marks that block. */
+.focus-grp.sel{color:var(--green,#46d6a0);font-weight:700}
+.focus-sep{height:1px;background:var(--border);margin:6px 6px}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
 /* Templates: collapsible category header. Folded by default — the cards only mount when
@@ -1419,10 +1422,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tpl-region-sel{width:auto;min-width:190px;padding:5px 10px;font-size:12px;font-weight:600;background:var(--elevated);border:1px solid var(--border);border-radius:8px;cursor:pointer}
 .tpl-region-sel:focus{outline:none;border-color:var(--muted)}
 .tpl-region-sel option{background:var(--elevated)}
-/* Template card focus tags + hover exercise tooltip */
-.tpl-region-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text);background:rgba(255,255,255,.06);border:1px solid var(--border2);padding:2px 8px;border-radius:20px;white-space:nowrap}
-.tpl-focus-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;white-space:nowrap}
+/* Templates toolbar + card (clickable, with the hover exercise tooltip) */
+.tpl-method-sel{min-width:210px;max-width:260px}
+/* Search box and the focus-chip row below it share one full-width column. */
+.ex-toolbar.tpl-toolbar{flex-direction:column;align-items:stretch}
+.ex-toolbar.tpl-toolbar .ex-search{flex:0 0 auto;width:100%}
+.ex-toolbar.tpl-toolbar .lb-seg{display:flex;width:100%;justify-content:flex-start}
 .tpl-card{position:relative}
+/* box-shadow / outline rather than border-color: the card's border is an inline style. */
+.tpl-card:hover{box-shadow:0 10px 26px -18px rgba(0,0,0,.9)}
+.tpl-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Exercise list opens upward, above the card, so it never covers the cards below it. */
 .tpl-card .tpl-tip{display:none;position:absolute;left:6px;right:6px;bottom:calc(100% - 8px);z-index:70;background:var(--elevated,var(--bg2));border:1px solid var(--border);border-radius:11px;padding:11px 13px;max-height:280px;overflow:auto;box-shadow:0 -16px 44px rgba(0,0,0,.6)}
 .tpl-card:hover .tpl-tip{display:block}
@@ -1936,6 +1945,17 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-hm .wh-box{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:#0a0b0d;cursor:default;box-shadow:inset 0 1px 0 rgba(255,255,255,.20);transition:transform .12s ease,box-shadow .12s ease}
 .wh-hm .wh-box:hover{transform:scale(1.22);box-shadow:0 5px 16px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.28);position:relative;z-index:5}
 .wh-hm .wh-empty{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;line-height:1}
+/* Day where the athlete wrote a complaint into "Area of Pain" — ringed red as a warning. */
+.wh-hm .wh-alert{box-shadow:0 0 0 2px #f43f5e,0 0 10px rgba(244,63,94,.55);border-color:#f43f5e;cursor:help;position:relative;z-index:4}
+.wh-hm .wh-empty.wh-alert{color:#f43f5e;font-weight:700}
+.wh-hm .wh-box.wh-alert:hover{box-shadow:0 0 0 2px #f43f5e,0 6px 18px rgba(0,0,0,.6)}
+.wh-note-tip{position:fixed;transform:translate(-50%,-100%) translateY(-10px);z-index:200;width:230px;pointer-events:none;
+  background:var(--elevated,var(--bg2));border:1px solid #f43f5e;border-radius:10px;padding:9px 11px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.wh-nt-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--text)}
+.wh-nt-h span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);white-space:nowrap}
+.wh-nt-v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--muted);margin-top:2px}
+.wh-nt-n{margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:12px;line-height:1.45;color:#fecdd3;overflow-wrap:break-word}
+.wh-nt-ic{color:#f43f5e;margin-right:6px}
 .wh-hm .wh-avg{text-align:center;vertical-align:middle}
 .wh-avg-in{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 9px;min-width:56px}
 .wh-aval{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700}
@@ -2973,6 +2993,15 @@ function WellnessHeatmap({athletes}){
   const shiftWk=d=>setWinEnd(w=>fmt(addD(parseD(w),d*7)));
   const rangeLabel=fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
   const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
+  // Free-text the athlete typed into the check-in's "Area of Pain" box ("dizlerim ağrıyor"…).
+  // Independent of the selected metric — it flags the day, whichever metric is on screen.
+  const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&String(w.areaOfPain||'').trim());
+    return e.length?String(e[e.length-1].areaOfPain).trim():'';};
+  const[tip,setTip]=useState(null);   // hovered note cell → {x,y,name,date,note,val}
+  // The heatmap sits inside a horizontally scrolling wrapper, so the bubble is rendered
+  // fixed-position into <body> instead of absolutely inside the cell (which would clip).
+  const showTip=(e,p)=>{const r=e.currentTarget.getBoundingClientRect();
+    setTip({...p,x:Math.max(120,Math.min(window.innerWidth-120,r.left+r.width/2)),y:r.top});};
   // Normalised quality 0 (kötü) → 1 (iyi), then a smooth red→amber→green colour ramp.
   const goodT=v=>{if(v==null)return null;
     if(M.id==='RHR')return Math.max(0,Math.min(1,1-(v-48)/24));
@@ -2988,9 +3017,10 @@ function WellnessHeatmap({athletes}){
   const dotCol=v=>{if(isDiscrete)return lvlCol(v)||'var(--dim)';const t=goodT(v);return t==null?'var(--dim)':t>=0.66?'#2dd4a7':t>=0.33?'#f59e0b':'#f43f5e';};
   const rows=(athletes||[]).map(a=>{
     const cells=dates.map(dk=>valOf(a,dk));
+    const notes=dates.map(dk=>noteOf(a,dk));
     const vals=cells.filter(v=>v!=null);
     const avg=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
-    return{a,cells,avg};
+    return{a,cells,notes,avg};
   }).filter(r=>r.avg!=null).sort((x,y)=>M.hi?(y.avg-x.avg):(x.avg-y.avg));
   const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
@@ -3026,14 +3056,27 @@ function WellnessHeatmap({athletes}){
           </tr></thead>
           <tbody>{rows.map((r,ri)=><tr key={ri} className="wh-row" style={{animationDelay:(ri*45)+'ms'}}>
             <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{r.a.position}</span>}</td>
-            {r.cells.map((v,ci)=><td key={ci} className="wh-cell">{v!=null
-              ?<span className="wh-box" style={{background:cellBg(v)}} title={`${r.a.name}\n${(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})()}\n${M.label}: ${fmtV(v)}${M.scale?'/5':''}`}>{fmtV(v)}</span>
-              :<span className="wh-empty" title={`${r.a.name}\n${(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})()}\nVeri yok`}>·</span>}</td>)}
+            {r.cells.map((v,ci)=>{
+              const note=r.notes[ci];
+              const dl=(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})();
+              const vl=v!=null?`${M.label}: ${fmtV(v)}${M.scale?'/5':''}`:'Veri yok';
+              // A day with a written complaint gets a red ring; the note itself rides in the
+              // hover bubble, so the native title tooltip is dropped there (it would double up).
+              const hov=note?{onMouseEnter:e=>showTip(e,{name:r.a.name,date:dl,val:vl,note}),onMouseLeave:()=>setTip(null)}:{};
+              return<td key={ci} className="wh-cell">{v!=null
+                ?<span className={'wh-box'+(note?' wh-alert':'')} style={{background:cellBg(v)}} title={note?undefined:`${r.a.name}\n${dl}\n${vl}`} {...hov}>{fmtV(v)}</span>
+                :<span className={'wh-empty'+(note?' wh-alert':'')} title={note?undefined:`${r.a.name}\n${dl}\nVeri yok`} {...hov}>{note?'!':'·'}</span>}</td>;})}
             <td className="wh-avg"><div className="wh-avg-in"><span className="wh-aval" style={{color:dotCol(r.avg)}}>{fmtV(r.avg)}</span><span className="wh-abar"><i style={{width:Math.round((goodT(r.avg)||0)*100)+'%',background:cellBg(r.avg)}}/></span></div></td>
           </tr>)}</tbody>
         </table>
       </div>
     </>}
+    {tip&&ReactDOM.createPortal(
+      <div className="wh-note-tip" style={{left:tip.x,top:tip.y}}>
+        <div className="wh-nt-h"><b>{tip.name}</b><span>{tip.date}</span></div>
+        <div className="wh-nt-v">{tip.val}</div>
+        <div className="wh-nt-n"><span className="wh-nt-ic">⚠</span>{tip.note}</div>
+      </div>,document.body)}
   </div>);
 }
 
@@ -5567,9 +5610,13 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
    SESSION EDITOR
    ========================================================= */
 /* Multi-select dropdown for session focus — shows selected values on the trigger,
-   opens a checkbox list; closes on outside click. */
+   opens a checkbox list; closes on outside click.
+   What is already selected is listed first so the coach can read the current choice at a
+   glance. The order is snapshotted when the list opens (`pin`), not recomputed on every
+   tick, so an option never jumps out from under the cursor mid-click. */
 function FocusSelect({value,onChange,placeholder}){
   const[open,setOpen]=useState(false);
+  const[pin,setPin]=useState([]);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -5579,17 +5626,24 @@ function FocusSelect({value,onChange,placeholder}){
   },[open]);
   const sel=Array.isArray(value)?value:[];
   const toggle=f=>onChange(sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
+  const trig=()=>{if(open){setOpen(false);}else{setPin(sel);setOpen(true);}};
+  // Stable sort keeps each half in the canonical SESSION_FOCUS order.
+  const opts=[...SESSION_FOCUS].sort((a,b)=>(pin.includes(b)?1:0)-(pin.includes(a)?1:0));
+  const pinnedN=opts.filter(f=>pin.includes(f)).length;
   return(<div ref={ref} className="focus-sel">
-    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={trig}
       title={sel.length?sel.join(', '):undefined}>
       <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select focus…')}</span>
       <i>▾</i>
     </button>
     {open&&<div className="focus-dd">
-      {SESSION_FOCUS.map(f=><label key={f} className={`focus-opt${sel.includes(f)?' on':''}`}>
-        <input type="checkbox" checked={sel.includes(f)} onChange={()=>toggle(f)}/>
-        <span>{f}</span>
-      </label>)}
+      {opts.map((f,i)=><React.Fragment key={f}>
+        {i===pinnedN&&pinnedN>0&&<div className="focus-sep"/>}
+        <label className={`focus-opt${sel.includes(f)?' on':''}`}>
+          <input type="checkbox" checked={sel.includes(f)} onChange={()=>toggle(f)}/>
+          <span>{f}</span>
+        </label>
+      </React.Fragment>)}
     </div>}
   </div>);
 }
@@ -5599,6 +5653,7 @@ function FocusSelect({value,onChange,placeholder}){
 function MethodSelect({value,onChange,placeholder}){
   const[open,setOpen]=useState(false);
   const[q,setQ]=useState('');
+  const[pin,setPin]=useState([]);   // selection snapshot taken when the list opens
   const ref=useRef(null);
   useEffect(()=>{
     if(!open){setQ('');return;}
@@ -5608,12 +5663,21 @@ function MethodSelect({value,onChange,placeholder}){
   },[open]);
   const sel=Array.isArray(value)?value:[];
   const toggle=m=>onChange(sel.includes(m)?sel.filter(x=>x!==m):[...sel,m]);
+  const trig=()=>{if(open){setOpen(false);}else{setPin(sel);setOpen(true);}};
   const needle=q.trim().toLowerCase();
+  const hit=m=>!needle||m.toLowerCase().includes(needle);
+  // Already-picked methods get lifted out of their family into a "Seçilenler" group at the
+  // top, so the current selection reads at a glance instead of hiding down the long list.
+  const pinned=TRAINING_METHOD_LIST.filter(m=>pin.includes(m)&&hit(m));
   const groups=TRAINING_METHODS
-    .map(([g,items])=>[g,needle?items.filter(m=>m.toLowerCase().includes(needle)):items])
+    .map(([g,items])=>[g,items.filter(m=>!pin.includes(m)&&hit(m))])
     .filter(([,items])=>items.length);
+  const opt=m=><label key={m} className={`focus-opt${sel.includes(m)?' on':''}`}>
+    <input type="checkbox" checked={sel.includes(m)} onChange={()=>toggle(m)}/>
+    <span>{m}</span>
+  </label>;
   return(<div ref={ref} className="focus-sel">
-    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={trig}
       title={sel.length?sel.join(', '):undefined}>
       <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select training method…')}</span>
       <i>▾</i>
@@ -5621,14 +5685,16 @@ function MethodSelect({value,onChange,placeholder}){
     {open&&<div className="focus-dd">
       <input className="focus-search" value={q} autoFocus placeholder="Search methods…"
         onChange={e=>setQ(e.target.value)} onClick={e=>e.stopPropagation()}/>
+      {pinned.length>0&&<div>
+        <div className="focus-grp sel">✓ Seçilenler</div>
+        {pinned.map(opt)}
+        <div className="focus-sep"/>
+      </div>}
       {groups.map(([g,items])=><div key={g}>
         <div className="focus-grp">{g}</div>
-        {items.map(m=><label key={m} className={`focus-opt${sel.includes(m)?' on':''}`}>
-          <input type="checkbox" checked={sel.includes(m)} onChange={()=>toggle(m)}/>
-          <span>{m}</span>
-        </label>)}
+        {items.map(opt)}
       </div>)}
-      {!groups.length&&<div className="focus-grp">No method matches “{q}”</div>}
+      {!groups.length&&!pinned.length&&<div className="focus-grp">No method matches “{q}”</div>}
     </div>}
   </div>);
 }
@@ -5886,6 +5952,7 @@ function TemplatesView({data,setData}){
   const[q,setQ]=useState('');
   const[selFocus,setSelFocus]=useState([]);   // multi-select session-focus filter
   const[selRegion,setSelRegion]=useState(''); // single-value body-region filter ('' = all)
+  const[selMethod,setSelMethod]=useState(''); // single-value training-method filter ('' = all)
   const[catState,setCatState]=useState({});   // category id → explicitly opened/closed by the coach
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
@@ -5903,20 +5970,23 @@ function TemplatesView({data,setData}){
   const toggleFocus=f=>setSelFocus(sel=>sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
   const ql=q.trim().toLowerCase();
   const tplRegion=t=>sesRegion(t.session||{});
+  const tplMethods=t=>sesMethods(t.session||{});
   const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))
     &&(!ql||(t.name||'').toLowerCase().includes(ql)));
-  // The Region picker lives in the Strength & Power heading and narrows that group only,
-  // so the other categories keep listing everything while a region is selected.
-  const inRegion=(c,t)=>c.id!=='strength'||!selRegion||tplRegion(t)===selRegion;
+  // The Region and Training Method pickers live in the Strength & Power heading and narrow
+  // that group only, so the other categories keep listing everything while one is selected.
+  const inHeadFilters=(c,t)=>c.id!=='strength'
+    ||((!selRegion||tplRegion(t)===selRegion)&&(!selMethod||tplMethods(t).includes(selMethod)));
+  const headFiltered=!!selRegion||!!selMethod;
   /* Categories start folded; a search or a focus chip asks to see matches everywhere, so those
-     unfold every group. The Region picker only narrows Strength & Power, so it unfolds that one
-     group alone — the other training types stay shut. An explicit click always wins. */
+     unfold every group. The heading pickers only narrow Strength & Power, so they unfold that
+     one group alone — the other training types stay shut. An explicit click always wins. */
   const filtering=!!ql||selFocus.length>0;
-  const catAuto=c=>filtering||(c.id==='strength'&&!!selRegion);
+  const catAuto=c=>filtering||(c.id==='strength'&&headFiltered);
   const catOpen=c=>catState[c.id]!==undefined?catState[c.id]:catAuto(c);
   const toggleCat=c=>setCatState(s=>({...s,[c.id]:!(s[c.id]!==undefined?s[c.id]:catAuto(c))}));
-  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inRegion(c,t))}))
-    .filter(g=>g.items.length||(g.c.id==='strength'&&selRegion&&shown.some(t=>tplCat(t)===g.c)));
+  const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inHeadFilters(c,t))}))
+    .filter(g=>g.items.length||(g.c.id==='strength'&&headFiltered&&shown.some(t=>tplCat(t)===g.c)));
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
@@ -5929,7 +5999,8 @@ function TemplatesView({data,setData}){
         <div className="sub">{templates.length} training templates · copy → paste into a team or athlete calendar</div></div>
       <button className="btn sm" onClick={addTpl}>＋ New Template</button>
     </div>
-    <div className="ex-toolbar">
+    {/* Stacked so the focus chips row lines up edge-to-edge with the search box above it. */}
+    <div className="ex-toolbar tpl-toolbar">
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates…"/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
         <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>All</button>
@@ -5945,37 +6016,45 @@ function TemplatesView({data,setData}){
         <span className="tpl-cat-dot"/>
         <h2 className="tpl-cat-l">{g.c.label}</h2>
         <span className="tpl-cat-n">{g.items.length}</span>
-        {/* Region picker rides along with the Strength & Power heading it filters —
-            clicks stay inside it so picking a region doesn't fold the group shut. */}
+        {/* Region + Training Method pickers ride along with the Strength & Power heading they
+            filter — clicks stay inside them so picking one doesn't fold the group shut. */}
         {g.c.id==='strength'&&<div className="tpl-region-bar" onClick={e=>e.stopPropagation()}>
           <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
             <option value="">All regions</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>
-          {selRegion&&<button className="btn xs sec" onClick={()=>setSelRegion('')}>✕ Clear</button>}
+          <select className="tpl-region-sel tpl-method-sel" value={selMethod} onChange={e=>setSelMethod(e.target.value)}>
+            <option value="">All training methods</option>
+            {TRAINING_METHODS.map(([grp,items])=><optgroup key={grp} label={grp}>
+              {items.map(m=><option key={m} value={m}>{m}</option>)}
+            </optgroup>)}
+          </select>
+          {headFiltered&&<button className="btn xs sec" onClick={()=>{setSelRegion('');setSelMethod('');}}>✕ Clear</button>}
         </div>}
         <span className="tpl-cat-hint">{op?'Gizle':'Göster'}</span>
       </div>
-      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{selRegion}” template yet.</div>}
+      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[selRegion,selMethod].filter(Boolean).join(' + ')}” template yet.</div>}
       {op&&<div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
-          const foci=tplFocus(t);
+          const region=tplRegion(t);
           const blocks=((t.session&&t.session.blocks)||[]).map(b=>({...b,exercises:(b.exercises||[]).filter(e=>(e.name||'').trim())})).filter(b=>b.exercises.length);
           return(
-        <div key={t.id} className="tpl-card" style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8}}>
+        /* The whole card opens the editor — clicking anywhere but the Kopyala / Sil buttons
+           (which stop propagation) is the same as the old "Düzenle" button. */
+        <div key={t.id} className="tpl-card" role="button" tabIndex={0}
+          onClick={()=>setEditId(t.id)}
+          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setEditId(t.id);}}}
+          style={{background:'var(--panel)',border:'1px solid var(--border)',borderLeft:'4px solid '+col.c,borderRadius:13,padding:16,display:'flex',flexDirection:'column',gap:8,cursor:'pointer'}}>
           {/* Wraps the tag onto its own line rather than squeezing the title into a
-              column so narrow that words break mid-word (240px min card width). */}
+              column so narrow that words break mid-word (240px min card width).
+              The only tag on the card is the session's Region — the category badge and the
+              session-focus tags repeated what the group heading already says. */}
           <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8,flexWrap:'wrap'}}>
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',flex:'1 1 120px',minWidth:0,overflowWrap:'break-word'}}>{t.name||'—'}</div>
-            <span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto',maxWidth:'100%'}}>{cat.label}</span>
+            {region&&<span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto',maxWidth:'100%'}}>{region}</span>}
           </div>
-          {(foci.length>0||tplRegion(t))&&<div style={{display:'flex',flexWrap:'wrap',gap:4}}>
-            {tplRegion(t)&&<span className="tpl-region-tag">{tplRegion(t)}</span>}
-            {foci.map(f=><span key={f} className="tpl-focus-tag">{f}</span>)}
-          </div>}
           <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{(t.session&&t.session.duration)||0} min · {blkCount(t)} blok · {exCount(t)} egzersiz</div>
-          <div style={{display:'flex',gap:6,marginTop:'auto',paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
-            <button className="btn xs sec" onClick={()=>setEditId(t.id)}>✎ Düzenle</button>
+          <div style={{display:'flex',gap:6,marginTop:'auto',paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
             <button className="btn xs sec" style={copiedId===t.id?{color:'var(--green)',borderColor:'var(--green)'}:{}} onClick={()=>copyTpl(t)}>{copiedId===t.id?'✓ Kopyalandı':'⧉ Kopyala'}</button>
             <button className="btn xs danger" onClick={()=>delTpl(t.id)}>🗑 Sil</button>
           </div>
@@ -6179,12 +6258,19 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
   const chronicMean=w28.ch/Math.max(7,w28.hist);
   const lmMonoZone=monoZoneOf(mWk.monotony);   // gauge card shows monotony, not ACWR
   const[lmWin,setLmWin]=useState(7);
-  // Per-day daily load + rolling acute(7d)/chronic(28d) means, over the trend window
-  const lmTrend=useMemo(()=>{const out=[];for(let i=lmWin-1;i>=0;i--){
-    const k=fmt(addD(parseD(lmRef),-i));const daily=dayAvg(k);
-    const w=loadWindows(dayAvg,k);const a=w.ac/7,c=w.ch/Math.max(7,w.hist);
-    out.push({k,daily,acute:Math.round(a),chronic:Math.round(c)});}
-    return out;},[teamDaily,lmRef,lmWin]);
+  // Per-day daily load + rolling acute(7d)/chronic(28d) means, over the trend window.
+  // The window always ENDS on the selected week's Sunday (not on `lmRef`, which is clamped
+  // to today) — every window length is a multiple of 7, so the chart always reads
+  // Monday → Sunday. Days still ahead simply plot as 0.
+  const lmTrend=useMemo(()=>{const out=[];const tk=fmt(today);
+    for(let i=lmWin-1;i>=0;i--){
+      const k=fmt(addD(parseD(lmEnd),-i));const daily=dayAvg(k);
+      // Rolling means are left blank past today: their windows would be padded with days
+      // that simply haven't happened yet and the lines would nosedive at the week's end.
+      if(k>tk){out.push({k,daily,acute:null,chronic:null});continue;}
+      const w=loadWindows(dayAvg,k);const a=w.ac/7,c=w.ch/Math.max(7,w.hist);
+      out.push({k,daily,acute:Math.round(a),chronic:Math.round(c)});}
+    return out;},[teamDaily,lmEnd,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;
@@ -6286,10 +6372,11 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
       </div>
       <div className="lm-trend-card">
         <div className="lm-th">
-          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">avg AU / athlete · acute &amp; chronic · last {lmWin} days</span></div>
+          <div><h3 style={{display:'inline'}}>Team Load Trend</h3><span className="lm-th-sub">avg AU / athlete · acute &amp; chronic · {lmWin} days · Mon–Sun</span></div>
         </div>
         <div className="chart-box" style={{flex:1,minHeight:240}}>
-          <ChartC type="bar" chartData={{labels:lmTrend.map(d=>fd(d.k).slice(0,5)),datasets:[
+          {/* One week fits weekday names; longer windows would crowd, so those stay dd/mm. */}
+          <ChartC type="bar" chartData={{labels:lmTrend.map(d=>lmWin===7?DN[(parseD(d.k).getDay()+6)%7]:fd(d.k).slice(0,5)),datasets:[
             {type:'bar',label:'Daily',data:lmTrend.map(d=>d.daily),backgroundColor:vGrad('rgba(99,140,255,.95)','rgba(59,110,245,.12)'),hoverBackgroundColor:vGrad('rgba(130,165,255,1)','rgba(59,110,245,.3)'),borderRadius:7,borderSkipped:false,order:3,categoryPercentage:.82,barPercentage:.9},
             {type:'line',label:'Acute 7d',data:lmTrend.map(d=>d.acute),borderColor:'#f59e0b',backgroundColor:vGrad('rgba(245,158,11,.28)','rgba(245,158,11,0)'),tension:.4,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:'#f59e0b',fill:true,order:1},
             {type:'line',label:'Chronic 28d',data:lmTrend.map(d=>d.chronic),borderColor:'#a78bfa',backgroundColor:'#a78bfa',borderDash:[6,5],tension:.4,borderWidth:2,pointRadius:0,pointHoverRadius:4,fill:false,order:2}
@@ -6300,7 +6387,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
               plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'TT Fors','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
                 tooltip:{mode:'index',intersect:false,callbacks:{
                   title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
-                  label:i=>`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
+                  label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
         </div>
       </div>
     </div>
@@ -10273,10 +10360,11 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility'];
+const EX_TYPES=['Warm-Up','Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
 // Phosphor color for each category tile.
 const TYPE_COLORS={
+  'Warm-Up':'#fdba74',                   // peach
   'Upper Body Push':'#22d3ee',           // cyan
   'Upper Body Pull':'#fcd34d',           // amber
   'Hip Dominant':'#86efac',              // green
@@ -10295,6 +10383,7 @@ const DIFFICULTIES=['Level 1','Level 2','Level 3'];
 const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each Exercise Type has its own secondary filter dimension.
 const SUB_TYPES={
+  'Warm-Up':{label:'Category',values:['General','Specific','Activation','Mobilisation','Dynamic Stretching','Neural Priming']},
   'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
   'Upper Body Pull':{label:'Plane of Motion',values:['Horizontal','Vertical']},
   'Hip Dominant':{label:'Contraction Type',values:['Push','Pull','Eccentric','Isometric']},
@@ -10586,7 +10675,7 @@ function ExercisesView({data,setData}){
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!EX_TYPES.includes(e.type)).length;
   // Top-right category dropdown (label → EX_TYPES value).
-  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility']];
+  const CAT_OPTIONS=[['Warm-Up','Warm-Up'],['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility']];
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setQ('');}}}>
       <option value="">All categories</option>
