@@ -5952,7 +5952,7 @@ function TemplatesView({data,setData}){
   const[q,setQ]=useState('');
   const[selFocus,setSelFocus]=useState([]);   // multi-select session-focus filter
   const[selRegion,setSelRegion]=useState(''); // single-value body-region filter ('' = all)
-  const[selMethod,setSelMethod]=useState(''); // single-value training-method filter ('' = all)
+  const[selMethod,setSelMethod]=useState({});  // category id → training-method filter ('' = all)
   const[catState,setCatState]=useState({});   // category id → explicitly opened/closed by the coach
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
@@ -5973,20 +5973,26 @@ function TemplatesView({data,setData}){
   const tplMethods=t=>sesMethods(t.session||{});
   const shown=templates.filter(t=>(selFocus.length===0||tplFocus(t).some(f=>selFocus.includes(f)))
     &&(!ql||(t.name||'').toLowerCase().includes(ql)));
-  // The Region and Training Method pickers live in the Strength & Power heading and narrow
-  // that group only, so the other categories keep listing everything while one is selected.
-  const inHeadFilters=(c,t)=>c.id!=='strength'
-    ||((!selRegion||tplRegion(t)===selRegion)&&(!selMethod||tplMethods(t).includes(selMethod)));
-  const headFiltered=!!selRegion||!!selMethod;
+  /* Heading pickers. Each one narrows ONLY the category whose heading it sits in, so the
+     other training types keep listing everything. The Training Method picker is per-category
+     (its own value per heading); the Region picker exists on Strength & Power alone, since
+     SESSION_REGIONS is a strength/power dimension. */
+  const METHOD_CATS=['strength','mdspeed'];
+  const methodOf=c=>selMethod[c.id]||'';
+  const setMethodFor=(c,v)=>setSelMethod(s=>({...s,[c.id]:v}));
+  const regionOn=c=>c.id==='strength';
+  const inHeadFilters=(c,t)=>(!regionOn(c)||!selRegion||tplRegion(t)===selRegion)
+    &&(!methodOf(c)||tplMethods(t).includes(methodOf(c)));
+  const headFiltered=c=>(regionOn(c)&&!!selRegion)||!!methodOf(c);
   /* Categories start folded; a search or a focus chip asks to see matches everywhere, so those
-     unfold every group. The heading pickers only narrow Strength & Power, so they unfold that
-     one group alone — the other training types stay shut. An explicit click always wins. */
+     unfold every group. A heading picker unfolds its own group alone — the other training
+     types stay shut. An explicit click always wins. */
   const filtering=!!ql||selFocus.length>0;
-  const catAuto=c=>filtering||(c.id==='strength'&&headFiltered);
+  const catAuto=c=>filtering||headFiltered(c);
   const catOpen=c=>catState[c.id]!==undefined?catState[c.id]:catAuto(c);
   const toggleCat=c=>setCatState(s=>({...s,[c.id]:!(s[c.id]!==undefined?s[c.id]:catAuto(c))}));
   const groups=TPL_CATS.map(c=>({c,items:shown.filter(t=>tplCat(t)===c&&inHeadFilters(c,t))}))
-    .filter(g=>g.items.length||(g.c.id==='strength'&&headFiltered&&shown.some(t=>tplCat(t)===g.c)));
+    .filter(g=>g.items.length||(headFiltered(g.c)&&shown.some(t=>tplCat(t)===g.c)));
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
@@ -6016,24 +6022,24 @@ function TemplatesView({data,setData}){
         <span className="tpl-cat-dot"/>
         <h2 className="tpl-cat-l">{g.c.label}</h2>
         <span className="tpl-cat-n">{g.items.length}</span>
-        {/* Region + Training Method pickers ride along with the Strength & Power heading they
-            filter — clicks stay inside them so picking one doesn't fold the group shut. */}
-        {g.c.id==='strength'&&<div className="tpl-region-bar" onClick={e=>e.stopPropagation()}>
-          <select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
+        {/* The pickers ride along with the heading they filter — clicks stay inside them so
+            picking one doesn't fold the group shut. */}
+        {(regionOn(g.c)||METHOD_CATS.includes(g.c.id))&&<div className="tpl-region-bar" onClick={e=>e.stopPropagation()}>
+          {regionOn(g.c)&&<select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
             <option value="">All regions</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
-          </select>
-          <select className="tpl-region-sel tpl-method-sel" value={selMethod} onChange={e=>setSelMethod(e.target.value)}>
+          </select>}
+          {METHOD_CATS.includes(g.c.id)&&<select className="tpl-region-sel tpl-method-sel" value={methodOf(g.c)} onChange={e=>setMethodFor(g.c,e.target.value)}>
             <option value="">All training methods</option>
             {TRAINING_METHODS.map(([grp,items])=><optgroup key={grp} label={grp}>
               {items.map(m=><option key={m} value={m}>{m}</option>)}
             </optgroup>)}
-          </select>
-          {headFiltered&&<button className="btn xs sec" onClick={()=>{setSelRegion('');setSelMethod('');}}>✕ Clear</button>}
+          </select>}
+          {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,'');}}>✕ Clear</button>}
         </div>}
         <span className="tpl-cat-hint">{op?'Gizle':'Göster'}</span>
       </div>
-      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[selRegion,selMethod].filter(Boolean).join(' + ')}” template yet.</div>}
+      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[regionOn(g.c)?selRegion:'',methodOf(g.c)].filter(Boolean).join(' + ')}” template yet.</div>}
       {op&&<div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const region=tplRegion(t);
