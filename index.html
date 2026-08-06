@@ -219,12 +219,13 @@ main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto}
 .panel h2::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grid{display:grid;gap:12px}
 .cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(5,1fr)}
-/* Session meta row (time · focus · region · method · duration). Plain 1fr tracks can't
+/* Session meta row (time · focus · method · duration). Plain 1fr tracks can't
    shrink below their content, so picking several focus/method values used to widen those
    two columns and squeeze the rest. minmax(0,…) pins every box to the same width and the
    triggers ellipsise instead — the row keeps its height whatever is selected. */
 .sess-meta.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
 .sess-meta.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.sess-meta.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sess-meta>div{min-width:0}
 .sess-meta label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess-meta select{text-overflow:ellipsis}
@@ -1405,7 +1406,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
    the coach opens the group, so the page lands on a short list of training types. */
 .tpl-cat-sec{margin-bottom:10px}
 .tpl-cat-sec.on{margin-bottom:22px}
-.tpl-cat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;cursor:pointer;user-select:none;
+/* The section holding an open heading picker floats over the groups below it, so a long
+   dropdown is not cut off by the next category heading (raised by the .tpl-cat rule below). */
+.tpl-cat-sec:has(.focus-trig.open){position:relative;z-index:40}
+/* position+z-index, not just the transform's implicit stacking context: :hover raises the
+   heading with translateY, and a transform makes the heading a stacking context that traps
+   its Region / Training Method dropdowns at the heading's own paint level — under the cards
+   below it. Pinning the heading above the card grid lets the open dropdown cover the cards. */
+.tpl-cat{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 14px;cursor:pointer;user-select:none;position:relative;z-index:20;
   background:linear-gradient(90deg,var(--cat-t) 0%,rgba(255,255,255,.012) 42%,rgba(255,255,255,0) 100%),var(--panel);
   border:1px solid var(--border);border-left:3px solid var(--cat-c);border-radius:12px;
   transition:border-color .16s,box-shadow .16s,transform .16s}
@@ -5759,15 +5767,12 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
       {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
-      <div className={`grid sess-meta ${isTemplate?'cols-4':'cols-5'}`} style={{marginBottom:14}}>
+      {/* No Region picker: the Training Method already says what the session trains, so writing
+          a program asks for focus, method and duration only. Any region already stored on a
+          session is left untouched — it is just no longer editable here. */}
+      <div className={`grid sess-meta ${isTemplate?'cols-3':'cols-4'}`} style={{marginBottom:14}}>
         {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
-        <div><label>Region</label>
-          <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-            <option value="">Select region…</option>
-            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
         <div><label>Training Method</label><MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
