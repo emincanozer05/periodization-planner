@@ -782,6 +782,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .en-cat{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;color:var(--text2);font-size:12px}
 .en-cat:hover{background:var(--hover);color:var(--text)}
 .en-cat.on{color:var(--text)}
+/* A category the current search has nothing for still holds its place in the rail — dimmed,
+   so the list order stays constant while typing narrows the counts. */
+.en-cat.zero{opacity:.42}
 .en-cbx{flex:none;width:15px;height:15px;border:1px solid var(--border2);border-radius:3px;background:var(--bg2);display:grid;place-items:center;font-size:10px;line-height:1;color:#0a0b0d}
 .en-cat.on .en-cbx{background:var(--accent);border-color:var(--accent)}
 .en-cnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -5408,6 +5411,41 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
    WITH a custom autocomplete dropdown fed from the shared exercise library
    (textarea can't use a native <datalist>, so we render our own list). */
 const UNCAT='Kategorisiz';
+/* The picker's category rail is a FIXED, ordered list — the coach's own taxonomy — instead
+   of every tag found in the library, which piled Exercise Types, contraction types and
+   movement patterns into one alphabetical list ("Anti-Extension" next to "Bilateral").
+   A category claims an exercise when any of its `tags` matches the exercise's Exercise
+   Type, sub-type or pattern (case-insensitive), so one row can gather several library
+   values — Agility takes both agility skills, Change of Direction takes the stored "COD".
+   Rows are always rendered in this order, count included, so the rail never reshuffles. */
+const EX_PICK_CATS=[
+  {name:'Upper Body Push',tags:['Upper Body Push']},
+  {name:'Upper Body Pull',tags:['Upper Body Pull']},
+  {name:'Hip Dominant',tags:['Hip Dominant']},
+  {name:'Knee Dominant',tags:['Knee Dominant']},
+  {name:'Core',tags:['Core']},
+  {name:'Eccentric',tags:['Eccentric']},
+  {name:'Isometric',tags:['Isometric']},
+  {name:'Plyometric',tags:['Plyometric']},
+  {name:'Medicine Ball',tags:['Medicine Ball']},
+  // Plain "Multi Directional Speed" work (no skill picked yet) reads as sprint/speed work,
+  // so it lands here rather than falling out of the rail entirely.
+  {name:'Speed/Sprint Technique',tags:['Sprint Technique','Speed/Sprint Technique','Speed','Multi Directional Speed']},
+  {name:'Acceleration',tags:['Acceleration']},
+  {name:'Deceleration',tags:['Deceleration']},
+  {name:'Change of Direction',tags:['COD','Change of Direction']},
+  {name:'Agility',tags:['Agility','Reactive Agility','Non-Reactive Agility']},
+  {name:'Mobility',tags:['Mobility','Mobilisation']},
+  {name:'Stability',tags:['Stability']},
+  {name:'Warm-Up',tags:['Warm-Up','Warm Up','Warmup']},
+  {name:'Recovery',tags:['Recovery']},
+  {name:'Corrective',tags:['Corrective']},
+];
+const exCatKey=s=>String(s||'').trim().toLowerCase();
+const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
+// Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
+const exCatsOf=e=>{const t=exCatTags(e);
+  return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
 function ExNameField({value,onChange}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
@@ -5441,26 +5479,26 @@ function ExNameField({value,onChange}){
   // Text query narrows the pool first; the category counts on the right are computed
   // from that pool so they always say how many rows a category would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  // A category is an Exercise Type or one of the library's movement-pattern dimensions
-  // (plane of motion, contraction type, direction, skill, region, bilateral/unilateral…).
-  // An exercise with none of those lands in "Kategorisiz" so new names stay reachable.
+  // Every category of EX_PICK_CATS is listed, in order, with how many of the currently
+  // searched exercises it holds. Anything the list doesn't claim (an untagged name, a
+  // Full Body lift) is gathered at the end under "Kategorisiz" so it stays reachable.
   const catList=useMemo(()=>{
-    const cnt=new Map();
+    const cnt=new Map();let uncat=0;
     for(const e of pool){
-      const tags=[...(e.type?[e.type]:[]),...e.sub];
-      if(!tags.length){cnt.set(UNCAT,(cnt.get(UNCAT)||0)+1);continue;}
-      for(const t of new Set(tags))cnt.set(t,(cnt.get(t)||0)+1);
+      const hits=exCatsOf(e);
+      if(!hits.length){uncat++;continue;}
+      for(const n of hits)cnt.set(n,(cnt.get(n)||0)+1);
     }
-    const out=[...cnt.entries()].map(([name,n])=>({name,n}));
-    out.sort((a,b)=>a.name===UNCAT?1:b.name===UNCAT?-1:a.name.localeCompare(b.name,'tr'));
+    const out=EX_PICK_CATS.map(c=>({name:c.name,n:cnt.get(c.name)||0}));
+    if(uncat)out.push({name:UNCAT,n:uncat});
     return out;
   },[pool]);
   // Selected categories are OR-ed — ticking two shows the exercises of both.
   const matchesCats=e=>{
     if(!cats.length)return true;
-    const tags=[...(e.type?[e.type]:[]),...e.sub];
-    if(!tags.length)return cats.includes(UNCAT);
-    return tags.some(t=>cats.includes(t));
+    const hits=exCatsOf(e);
+    if(!hits.length)return cats.includes(UNCAT);
+    return hits.some(n=>cats.includes(n));
   };
   const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
@@ -5518,7 +5556,7 @@ function ExNameField({value,onChange}){
           <div className="en-phd"><span>Kategoriler</span></div>
           <div className="en-plist">
             {catList.map(c=>
-              <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")}
+              <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
                 <span className="en-cnm">{c.name}</span>
