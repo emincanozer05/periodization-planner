@@ -1048,9 +1048,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
 /* Cover-image slot in the exercise details column — dashed until a picture is set */
-.ex-cover-drop{display:flex;align-items:center;gap:8px;padding:13px 15px;border:1px dashed var(--border2);
-  border-radius:10px;background:var(--elevated);color:var(--muted);font-size:12.5px;font-weight:600;
-  cursor:pointer;transition:border-color .15s,color .15s}
+.ex-cover-drop{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:13px 15px;
+  border:1px dashed var(--border2);border-radius:10px;background:var(--elevated);color:var(--muted);
+  font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
 .ex-cover-drop:hover{border-color:var(--accent);color:var(--accent)}
 .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
 .rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
@@ -10674,16 +10674,18 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
     const r=new FileReader();r.onload=e=>set('videoData',e.target.result);r.readAsDataURL(file);
   };
-  const onThumb=file=>{if(file)handleImageUpload(file,'covers',d=>set('thumb',d));};
   const metaLbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4,display:'block'};
   const metaBox=(label,value,extra)=>value?(<div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 13px'}}>
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
   /* Cover image sits in the details column, right under Purpose / Description — that is
-     where the coach reads the exercise, and it is uploadable without entering Edit mode.
-     What lands here is what the program editor drops onto the exercise row later. */
-  const pickCover=e=>{onThumb(e.target.files[0]);e.target.value='';};
+     where the coach reads the exercise, and it is set without entering Edit mode.
+     Pasted, not uploaded: copy a picture anywhere, click the slot (or press Ctrl/Cmd+V
+     over it). What lands here is what the program editor drops onto the exercise row. */
+  const setCover=d=>set('thumb',d);
+  const pasteCover=()=>pasteImageFromClipboard('covers',setCover);
+  const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
   const coverBox=(
     <div style={{marginTop:14}}>
       <span style={metaLbl}>Cover Image</span>
@@ -10692,18 +10694,13 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           <img src={ex.thumb} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
             borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
           <div className="row" style={{gap:8}}>
-            <label className="btn sec xs" style={{cursor:'pointer',margin:0}}>Change
-              <input type="file" accept="image/*" style={{display:'none'}} onChange={pickCover}/>
-            </label>
+            <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
+              title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 Paste new</button>
             <button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove</button>
           </div>
         </div>
-        :<label className="ex-cover-drop">🖼 <span>Add cover image</span>
-          <input type="file" accept="image/*" style={{display:'none'}} onChange={pickCover}/>
-        </label>}
-      <div className="help" style={{marginTop:6}}>
-        Program yazarken bu egzersizi seçtiğinde kapak görseli ve Purpose / Description metni otomatik olarak programa geçer.
-      </div>
+        :<button type="button" className="ex-cover-drop" onClick={pasteCover} onPaste={onCoverPaste}
+          title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 <span>Paste cover image</span></button>}
     </div>
   );
   const viewRight=(
@@ -10775,6 +10772,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <label>Purpose / Description</label>
         <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
       </div>
+      {coverBox}
     </div>
   );
   return(<div className="modal-bg" onClick={onClose}>
@@ -10794,14 +10792,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
             {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Remove video</button>}
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Cover Image
-              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onThumb(e.target.files[0])}/>
-            </label>
-            {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove cover</button>}
-          </div>}
-          {editing&&<div className="help" style={{marginTop:6}}>
-            Kapak fotoğrafı — program yazarken bu egzersizi seçtiğinde görsel otomatik olarak programa geçer,
-            video linki de egzersizin link alanına yazılır.
           </div>}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>Uploading… {upPct}%</div>}
         </div>
