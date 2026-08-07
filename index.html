@@ -794,6 +794,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-desc{padding:0 6px 4px}
 .ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
 .ex-desc input:focus{background:var(--elevated);color:var(--text);font-style:normal}
+/* Exercise link row — sits between the exercise row and its description. Collapsed to a
+   dashed "Add link" chip until the exercise actually has one. */
+.ex-link{padding:0 6px 2px}
+.lk-add{background:transparent;border:1px dashed var(--border);border-radius:6px;color:var(--dim);
+  font-family:inherit;font-size:10.5px;letter-spacing:.02em;padding:2px 9px;margin-left:8px;cursor:pointer;transition:border-color .15s,color .15s}
+.lk-add:hover{border-color:var(--accent);color:var(--accent)}
+.lk-row{display:flex;align-items:center;gap:4px;padding-left:8px}
+.lk-ic{font-size:11px;opacity:.75;flex:none}
+.lk-row input{flex:1 1 auto;min-width:0;max-width:520px;background:transparent;border:none;font-size:11px;color:var(--accent2);padding:2px 6px}
+.lk-row input:focus{background:var(--elevated)}
+.lk-go,.lk-x{flex:none;background:transparent;border:none;color:var(--dim);font-size:11px;line-height:1;padding:3px 5px;border-radius:4px;cursor:pointer;text-decoration:none}
+.lk-go:hover{color:var(--accent)}
+.lk-x:hover{color:var(--red)}
 /* Exercise-name cell: name field + tiny image button side by side */
 .exname-cell{display:flex;align-items:center;gap:4px}
 .exname-cell .en-wrap{flex:1;min-width:0}
@@ -1034,6 +1047,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-modal-wide{max-width:1080px;width:96vw}
 .ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
+/* Cover-image slot in the exercise details column — dashed until a picture is set */
+.ex-cover-drop{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:13px 15px;
+  border:1px dashed var(--border2);border-radius:10px;background:var(--elevated);color:var(--muted);
+  font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
+.ex-cover-drop:hover{border-color:var(--accent);color:var(--accent)}
 .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
 .rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
 .rt-b:hover{border-color:var(--accent);color:var(--accent)}
@@ -2380,7 +2398,13 @@ function L(tr,en){return REPORT_LANG==='tr'?tr:en;}
 /* =========================================================
    FACTORIES
    ========================================================= */
-const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',description:'',notes:'',superset:'',image:''});
+const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',description:'',notes:'',superset:'',image:'',link:''});
+/* Only http(s) links are ever stored/rendered — keeps `javascript:` and friends out of the
+   printed document's href, and quotes out of the attribute. Returns '' for anything else. */
+const safeURL=u=>{const s=String(u==null?'':u).trim();
+  return/^https?:\/\//i.test(s)?s.replace(/"/g,'%22').replace(/'/g,'%27').replace(/</g,'%3C').replace(/>/g,'%3E'):'';};
+// "https://www.youtube.com/watch?v=x" → "youtube.com", for a compact link label on the sheet.
+const linkLabel=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch(_){return'link';}};
 /* Library auto-add bridge — the App registers a setter so the program editor can push a
    newly-typed exercise name into the shared library (data.exercises) without prop-threading. */
 let _libAdd=null;
@@ -2394,9 +2418,10 @@ function addExerciseToLibrary(name){const nm=(name||'').trim();if(nm&&_libAdd)_l
 let _teamLogo='';
 function registerTeamLogo(src){_teamLogo=typeof src==='string'?src:'';}
 function teamLogo(){return _teamLogo;}
-/* Shared library entries (name + type + movement pattern), mirrored here so the
-   deeply-nested exercise editor can drive its picker without prop-threading: the left
-   pane lists exercises, the right pane the categories they belong to. */
+/* Shared library entries (name + type + movement pattern + cover image + video link),
+   mirrored here so the deeply-nested exercise editor can drive its picker without
+   prop-threading: the left pane lists exercises, the right pane the categories they belong
+   to, and picking a row copies the library's cover/link onto the program's exercise. */
 let _libItems=[];
 function setLibItems(a){_libItems=Array.isArray(a)?a:[];}
 function getLibItems(){return _libItems;}
@@ -2596,7 +2621,7 @@ function migrateTeam(t){
         if(!Array.isArray(s.athletes))s.athletes=[];
         if(s.sourceId===undefined)s.sourceId=null;
         // ensure description field on exercises
-        s.blocks=s.blocks.map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',...e}))}));
+        s.blocks=s.blocks.map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',image:'',link:'',...e}))}));
         return s;
       });
     } else{t.days[k]={date:k,sessions:[],dailyNotes:''};}
@@ -2648,7 +2673,7 @@ function migrateTeam(t){
         purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose,
         focus:Array.isArray(s.focus)?s.focus:sesFocus({...s,purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose}),
         name:s.name==='Team Practice'?'Ball Practice':s.name,
-        blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',...e}))}))}));
+        blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',image:'',link:'',...e}))}))}));
     }
   });
   return t;
@@ -3630,13 +3655,18 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.load)meta.push(`<span class="m-l"><strong>Load:</strong> ${e.load}</span>`);
       if(e.tempo)meta.push(`<span class="m-t"><strong>Tempo:</strong> ${e.tempo}</span>`);
       if(e.rest)meta.push(`<span class="m-r"><strong>Resting:</strong> ${e.rest}</span>`);
+      // Reference link — clickable in the shared PDF, and short enough on paper to type out.
+      const lnk=safeURL(e.link);
+      // The image is a sibling of .ex-body, not a child, so it forms its own column on
+      // the left and the name / volume / meta read down the free space beside it.
       return`<div class="ex-card">
         <span class="ex-no${isSS?' ss':''}">${lab.tag}</span>
+        ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
         <div class="ex-body">
           <div class="ex-row-top"><span class="ex-name">${e.name}</span>${vol?`<span class="ex-vol">${vol}</span>`:''}</div>
           ${meta.length?`<div class="ex-meta">${meta.join(' · ')}</div>`:''}
           ${e.description?`<div class="ex-desc">${e.description}</div>`:''}
-          ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
+          ${lnk?`<div class="ex-lnk"><a href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a></div>`:''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -3644,7 +3674,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const dateLine=subtitle.replace(/,/g,'·');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
    (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
@@ -3721,11 +3751,21 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-t{color:#7c3aed;font-weight:800}
 .ex-meta .m-r{color:#6f7d29;font-weight:800}
 .ex-meta strong{font-weight:800}
-.ex-desc{font-size:11.5px;color:#94a3b8;font-style:italic;line-height:1.35;margin-top:2px}
-/* Exercise image — only rendered by "Print with Image". Kept to a thumbnail: it is there
-   to remind the athlete what the movement looks like, not to fill the page. Bounding both
-   sides (rather than width:100%) keeps portrait and landscape images the same visual size. */
-.ex-imgwrap{margin-top:5px}
+/* Coaching cues read as a quiet note next to the prescription, so they break out of the
+   sheet's bold-italic display face: light, upright Inter. The !important flags are what
+   beat the document-wide RPT_FONT rule that forces TT Fors italic on every element.
+   Width is capped short of the sets/reps column so the cue never runs under it. */
+.ex-desc{font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;
+  font-weight:300 !important;font-size:11.5px;color:#94a3b8;line-height:1.4;margin-top:3px;max-width:78%}
+/* Reference link — a clickable host name in the shared PDF, readable on paper. */
+.ex-lnk{font-size:11px;margin-top:2px;line-height:1.3}
+.ex-lnk a{color:#6f7d29;font-weight:700;text-decoration:none;word-break:break-all}
+/* Exercise image — only rendered by "Print with Image". Sits in its own column to the
+   left of the text, so the name / volume / meta fill the width beside it instead of
+   leaving a blank band. Kept to a thumbnail: it is there to remind the athlete what the
+   movement looks like, not to fill the page. Bounding both sides (rather than
+   width:100%) keeps portrait and landscape images the same visual size. */
+.ex-imgwrap{flex:none;line-height:0}
 .ex-img{display:block;width:auto;max-width:46mm;max-height:30mm;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
 .dash{color:#cbd5e1;font-weight:400}
 
@@ -5476,7 +5516,7 @@ const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
 // Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
 const exCatsOf=e=>{const t=exCatTags(e);
   return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
-function ExNameField({value,onChange}){
+function ExNameField({value,onChange,onPick}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
   const[cats,setCats]=useState([]);   // selected category names (empty = no filter)
@@ -5533,7 +5573,10 @@ function ExNameField({value,onChange}){
   const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
   const toggleCat=c=>{setHi(-1);setCats(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
-  const pick=n=>{onChange(n);setFocus(false);setHi(-1);commit(n);};
+  // Picking a library row hands the whole entry back (not just the name) so the caller can
+  // pull its cover image and video link onto the exercise; typing a free name never does.
+  const pick=it=>{const n=it.name;if(onPick)onPick(it);else onChange(n);
+    setFocus(false);setHi(-1);commit(n);};
   const rect=(focus&&taRef.current)?taRef.current.getBoundingClientRect():null;
   // Keep the panel inside the viewport: it is wider than the input, and flips above the
   // field when there isn't room below.
@@ -5557,7 +5600,7 @@ function ExNameField({value,onChange}){
       onKeyDown={e=>{
         if(sugg.length&&e.key==='ArrowDown'){e.preventDefault();setHi(h=>Math.min(h+1,sugg.length-1));}
         else if(sugg.length&&e.key==='ArrowUp'){e.preventDefault();setHi(h=>Math.max(h-1,0));}
-        else if(e.key==='Enter'){e.preventDefault();if(hi>=0&&sugg[hi])pick(sugg[hi].name);else e.target.blur();}
+        else if(e.key==='Enter'){e.preventDefault();if(hi>=0&&sugg[hi])pick(sugg[hi]);else e.target.blur();}
         else if(e.key==='Escape'){setFocus(false);setHi(-1);}
       }}/>
     {/* Rendered in a body portal so no ancestor's overflow:hidden can clip it. */}
@@ -5573,7 +5616,7 @@ function ExNameField({value,onChange}){
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
-                onMouseDown={ev=>{ev.preventDefault();pick(e.name);}}>
+                onMouseDown={ev=>{ev.preventDefault();pick(e);}}>
                 <span className="en-badge">{(e.name[0]||'?').toUpperCase()}</span>
                 <span className="en-nm">{e.name}</span>
                 <span className="en-tag">{e.type||e.sub[0]||UNCAT}</span>
@@ -5617,6 +5660,24 @@ function ExImgBtn({image,onChange}){
     <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}}
       onChange={e=>{const f=e.target.files?.[0];if(f)save(f);e.target.value='';}}/>
   </span>);
+}
+/* Per-exercise reference link (video / article / cue clip). Stays behind a small
+   "Add link" button until it holds something, so untouched rows are as compact as before.
+   Picking an exercise from the library fills it from that entry's video link. */
+function ExLinkCell({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const link=value||'';
+  const href=safeURL(link);
+  if(!link&&!open)return<button type="button" className="lk-add" onClick={()=>setOpen(true)}
+    title="Attach a video / reference link to this exercise">🔗 Add link</button>;
+  return(<div className="lk-row">
+    <span className="lk-ic">🔗</span>
+    <input value={link} autoFocus={!link} placeholder="https://…  (video / reference link)"
+      onChange={e=>onChange(e.target.value)}/>
+    {href&&<a className="lk-go" href={href} target="_blank" rel="noopener noreferrer" title="Open link">↗</a>}
+    <button type="button" className="lk-x" title="Remove link"
+      onClick={()=>{onChange('');setOpen(false);}}>✕</button>
+  </div>);
 }
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
@@ -5669,7 +5730,15 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
                 </select>
               </div>
             </td>
-            <td><div className="exname-cell"><ExNameField value={ex.name} onChange={v=>f('name',v)}/><ExImgBtn image={ex.image||''} onChange={url=>f('image',url||'')}/></div></td>
+            <td><div className="exname-cell">
+              {/* Choosing a library exercise carries its cover image, video link and
+                  Purpose / Description over — what the library knows wins, what it
+                  doesn't know is left untouched. */}
+              <ExNameField value={ex.name} onChange={v=>f('name',v)}
+                onPick={it=>upEx(i,{...ex,name:it.name,image:it.image||ex.image||'',
+                  link:it.link||ex.link||'',description:it.desc||ex.description||''})}/>
+              <ExImgBtn image={ex.image||''} onChange={url=>f('image',url||'')}/>
+            </div></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
@@ -5680,6 +5749,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
               <button onClick={()=>{const a=[...exs];a.splice(i+1,0,{...ex});setExs(a);}} title="Duplicate">⎘</button>
               <button className="del" onClick={()=>setExs(exs.filter((_,j)=>j!==i))} title="Remove">✕</button></div></td>
           </tr>
+          <tr><td colSpan="9" className="ex-link"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></td></tr>
           <tr><td colSpan="9" className="ex-desc"><input value={ex.description||''} onChange={e=>f('description',e.target.value)} placeholder="Description / coaching cues (optional)…"/></td></tr>
         </React.Fragment>;})}</tbody>
       </table>
@@ -10584,7 +10654,11 @@ function InstagramVideo({url,embedSrc}){
 }
 function VideoPlayer({ex}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
-  if(!v)return<div className="ex-novid">Henüz video yok — aşağıdan link yapıştır ya da video yükle.</div>;
+  // No video, but a cover photo → show the photo. An exercise can be documented with an
+  // image alone, and that image is what the program editor copies onto the exercise row.
+  if(!v)return ex.thumb
+    ?<img className="ex-video" src={ex.thumb} alt={ex.name||''}/>
+    :<div className="ex-novid">Henüz görsel yok — aşağıdan kapak fotoğrafı ya da video yükle, veya link yapıştır.</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
   if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
   return<iframe className="ex-video" src={v.src} title="exercise video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
@@ -10611,12 +10685,35 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
     const r=new FileReader();r.onload=e=>set('videoData',e.target.result);r.readAsDataURL(file);
   };
-  const onThumb=file=>{if(file)handleImageUpload(file,'covers',d=>set('thumb',d));};
   const metaLbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4,display:'block'};
   const metaBox=(label,value,extra)=>value?(<div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 13px'}}>
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
+  /* Cover image sits in the details column, right under Purpose / Description — that is
+     where the coach reads the exercise, and it is set without entering Edit mode.
+     Pasted, not uploaded: copy a picture anywhere, click the slot (or press Ctrl/Cmd+V
+     over it). What lands here is what the program editor drops onto the exercise row. */
+  const setCover=d=>set('thumb',d);
+  const pasteCover=()=>pasteImageFromClipboard('covers',setCover);
+  const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
+  const coverBox=(
+    <div style={{marginTop:14}}>
+      <span style={metaLbl}>Cover Image</span>
+      {ex.thumb
+        ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
+          <img src={ex.thumb} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
+            borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
+          <div className="row" style={{gap:8}}>
+            <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
+              title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 Paste new</button>
+            <button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove</button>
+          </div>
+        </div>
+        :<button type="button" className="ex-cover-drop" onClick={pasteCover} onPaste={onCoverPaste}
+          title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 <span>Paste cover image</span></button>}
+    </div>
+  );
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
@@ -10635,7 +10732,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <span style={metaLbl}>Purpose / Description</span>
         <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
       </div>}
-      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
+      {coverBox}
+      {!ex.type&&!ex.purpose&&!ex.thumb&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
     </div>
   );
   const editRight=(
@@ -10685,6 +10783,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <label>Purpose / Description</label>
         <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
       </div>
+      {coverBox}
     </div>
   );
   return(<div className="modal-bg" onClick={onClose}>
@@ -10704,10 +10803,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
             {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Remove video</button>}
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 Cover Image
-              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onThumb(e.target.files[0])}/>
-            </label>
-            {ex.thumb&&<button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove cover</button>}
           </div>}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>Uploading… {upPct}%</div>}
         </div>
@@ -11560,13 +11655,20 @@ function App(){
     return next===exs?prev:{...prev,exercises:next};
   }));
   return()=>{registerLibAdd(null);registerLibReplace(null);};},[setData]);
-  // Keep the exercise editor's picker in sync with the library (names + categories).
+  // Keep the exercise editor's picker in sync with the library (names + categories), and
+  // carry each entry's cover image and video link along: picking the exercise while writing
+  // a program copies both onto the row, so the coach never hunts for the image again.
+  // The cover falls back to the auto-derived YouTube/Vimeo thumbnail, exactly like the
+  // library card does, so an entry with only a video link still hands over a picture.
   useEffect(()=>{
     const seen=new Set();const items=[];
     for(const e of (data.exercises||[])){
       const nm=(e.name||'').trim();if(!nm)continue;
       const k=nm.toLowerCase();if(seen.has(k))continue;seen.add(k);
-      items.push({name:nm,type:e.type||'',sub:[e.subType,e.pattern].filter(Boolean)});
+      items.push({name:nm,type:e.type||'',sub:[e.subType,e.pattern].filter(Boolean),
+        image:e.thumb||videoThumb(e.videoData||e.videoUrl)||'',
+        link:safeURL(e.videoUrl),
+        desc:(e.purpose||'').trim()});
     }
     setLibItems(items);
   },[data.exercises]);
