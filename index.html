@@ -219,13 +219,12 @@ main{flex:1;padding:24px;max-width:1500px;width:100%;margin:0 auto}
 .panel h2::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px}
 .grid{display:grid;gap:12px}
 .cols-2{grid-template-columns:1fr 1fr}.cols-3{grid-template-columns:1fr 1fr 1fr}.cols-4{grid-template-columns:repeat(4,1fr)}.cols-5{grid-template-columns:repeat(5,1fr)}
-/* Session meta row (time · focus · method · duration). Plain 1fr tracks can't
+/* Session meta row (time · focus · region · method · duration). Plain 1fr tracks can't
    shrink below their content, so picking several focus/method values used to widen those
    two columns and squeeze the rest. minmax(0,…) pins every box to the same width and the
    triggers ellipsise instead — the row keeps its height whatever is selected. */
 .sess-meta.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
 .sess-meta.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
-.sess-meta.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sess-meta>div{min-width:0}
 .sess-meta label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sess-meta select{text-overflow:ellipsis}
@@ -2298,10 +2297,16 @@ const TRAINING_METHODS=[
 ];
 const TRAINING_METHOD_LIST=TRAINING_METHODS.reduce((a,g)=>a.concat(g[1]),[]);
 const sesMethods=s=>Array.isArray(s?.methods)?s.methods:[];
-/* Body region × quality for strength & power work — which part of the body the session
-   trains and with which quality. Single value, stored on the session as `region`. */
-const SESSION_REGIONS=['Upper Body Strength','Upper Body Power','Lower Body Strength','Lower Body Power','Full Body Strength','Full Body Power'];
-const sesRegion=s=>{const r=(s?.region||'').trim();return SESSION_REGIONS.includes(r)?r:'';};
+/* Which part of the body a strength & power session trains — plus Corrective for the
+   remedial work that isn't aimed at a region. Single value, stored on the session as
+   `region`. */
+const SESSION_REGIONS=['Upper Body Strength&Power','Lower Body Strength&Power','Full Body Strength&Power','Corrective'];
+/* Strength and Power used to be a separate pick per region (six options); they are one
+   option per region now, so old sessions map onto the new value instead of losing it. */
+const LEGACY_REGION_MAP={'Upper Body Strength':'Upper Body Strength&Power','Upper Body Power':'Upper Body Strength&Power',
+  'Lower Body Strength':'Lower Body Strength&Power','Lower Body Power':'Lower Body Strength&Power',
+  'Full Body Strength':'Full Body Strength&Power','Full Body Power':'Full Body Strength&Power'};
+const sesRegion=s=>{const r=(s?.region||'').trim();return SESSION_REGIONS.includes(r)?r:(LEGACY_REGION_MAP[r]||'');};
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 /* Every week focus carries its own load profile. Weekly Load Targets sets volume and
    intensity from this table when the focus changes, so the focus dropdown is the only
@@ -5805,12 +5810,15 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
       {/* Templates only carry the workout itself — no clock time, card color or post-session feedback. */}
-      {/* No Region picker: the Training Method already says what the session trains, so writing
-          a program asks for focus, method and duration only. Any region already stored on a
-          session is left untouched — it is just no longer editable here. */}
-      <div className={`grid sess-meta ${isTemplate?'cols-3':'cols-4'}`} style={{marginBottom:14}}>
+      <div className={`grid sess-meta ${isTemplate?'cols-4':'cols-5'}`} style={{marginBottom:14}}>
         {!isTemplate&&<div><label>Time</label><input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/></div>}
         <div><label>Session Focus</label><FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/></div>
+        <div><label>Region</label>
+          <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+            <option value="">Select region…</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
         <div><label>Training Method</label><MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/></div>
         <div><label>Duration (min)</label><input type="number" value={session.duration} onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/></div>
       </div>
