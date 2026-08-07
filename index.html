@@ -2386,6 +2386,14 @@ const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',desc
 let _libAdd=null;
 function registerLibAdd(fn){_libAdd=fn;}
 function addExerciseToLibrary(name){const nm=(name||'').trim();if(nm&&_libAdd)_libAdd(nm);}
+/* Active team's logo (data URL, uploaded in the Teams tab), mirrored here so the print and
+   PDF builders can brand their header. Same reason as the bridge above: a printout is fired
+   from several places (day view, session editor, templates) and none of them should have to
+   carry the team down as a prop. Empty string when the team has no logo — the header then
+   renders exactly as before. */
+let _teamLogo='';
+function registerTeamLogo(src){_teamLogo=typeof src==='string'?src:'';}
+function teamLogo(){return _teamLogo;}
 /* Shared library entries (name + type + movement pattern), mirrored here so the
    deeply-nested exercise editor can drive its picker without prop-threading: the left
    pane lists exercises, the right pane the categories they belong to. */
@@ -3597,6 +3605,8 @@ ${purposeSec}
 const escHTML=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const withImages=!!(opts&&opts.withImages);
+  // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
+  const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
   const computeLabels=exs=>{const cnt={};return exs.map(ex=>{
     const ss=(ex.superset||'').toString().toUpperCase().trim();
     if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:`${ss}${cnt[ss]}`,letter:ss};}
@@ -3636,13 +3646,18 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-@page{size:A4 landscape;margin:8mm}
+/* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
+   (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
+   meant the two outputs never matched. */
+@page{size:A4 portrait;margin:10mm}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em}
 
-/* Document header — clean editorial style */
-.doc-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
+/* Document header — clean editorial style, with the team's logo when one is uploaded */
+.doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
+.doc-l{display:flex;align-items:center;gap:12px;min-width:0}
+.doc-logo{height:42px;width:auto;max-width:64px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 .doc-r{text-align:right}
@@ -3666,13 +3681,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
 .meta-item .val{color:#0f172a;font-weight:600}
 
-/* Block grid — 3 vertical columns side-by-side: Warm-up | Main | Cool-down.
-   In landscape A4 this gives ~80mm per column which comfortably fits
-   exercise names + value cells without wrapping. */
 .bs{padding:12px 16px 12px}
-/* Every block flows side-by-side and wraps to a new row when it runs out of
-   width — no fixed warmup/main/cooldown columns. */
-.bs.blocks-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 18px;align-items:start}
+/* Blocks stack one under the other, in the order the coach arranged them, so the sheet
+   is read straight down. Side-by-side columns only made sense on a landscape page; on
+   portrait they squeezed exercise names into two-line wraps. */
+.bs.blocks-grid{display:flex;flex-direction:column;gap:12px}
 .block{break-inside:avoid;page-break-inside:avoid;min-width:0}
 .bh{font-size:13px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin:2px 0 4px 0;padding-bottom:4px;border-bottom:2px solid #9aab3a;display:block;break-after:avoid;page-break-after:avoid}
 
@@ -3700,10 +3713,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-r{color:#6f7d29;font-weight:800}
 .ex-meta strong{font-weight:800}
 .ex-desc{font-size:10px;color:#94a3b8;font-style:italic;line-height:1.35;margin-top:2px}
-/* Exercise image — only rendered by "Print with Image"; fills the block column
-   so the small on-screen thumbnail comes out big on paper. */
-.ex-imgwrap{margin-top:6px}
-.ex-img{display:block;width:100%;max-height:70mm;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
+/* Exercise image — only rendered by "Print with Image". Kept to a thumbnail: it is there
+   to remind the athlete what the movement looks like, not to fill the page. Bounding both
+   sides (rather than width:100%) keeps portrait and landscape images the same visual size. */
+.ex-imgwrap{margin-top:5px}
+.ex-img{display:block;width:auto;max-width:46mm;max-height:30mm;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
 .dash{color:#cbd5e1;font-weight:400}
 
 /* Number/superset tags */
@@ -3729,8 +3743,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 
 <div class="doc-head">
   <div class="doc-l">
-    <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
-    <h1>${title}</h1>
+    ${logo?`<img class="doc-logo" src="${escHTML(logo)}" alt="">`:''}
+    <div>
+      <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
+      <h1>${title}</h1>
+    </div>
   </div>
   <div class="doc-r">
     <div class="day-name">${dateLine}</div>
@@ -3770,17 +3787,16 @@ function printDayA4(title,subtitle,sessions,opts){
   w.document.write(buildSessionHTMLDoc(title,subtitle,sessions,opts));
   w.document.close();
   let printed=false;const go=()=>{if(printed)return;printed=true;try{w.focus();w.print();}catch(e){}};
-  if(opts&&opts.withImages){
-    // Exercise images can live in cloud storage — wait for them to load
-    // (with a safety timeout) so the printout never shows broken images.
-    setTimeout(()=>{
-      const pending=[...w.document.images].filter(i=>!i.complete);
-      if(!pending.length){go();return;}
-      let left=pending.length;const one=()=>{if(--left<=0)go();};
-      pending.forEach(i=>{i.onload=one;i.onerror=one;});
-      setTimeout(go,5000);
-    },300);
-  }else setTimeout(go,400);
+  // Exercise images and the team logo can live in cloud storage — wait for whatever the
+  // document actually holds (with a safety timeout) so the printout never shows a broken
+  // image. A document with no images prints as soon as it has settled.
+  setTimeout(()=>{
+    const pending=[...w.document.images].filter(i=>!i.complete);
+    if(!pending.length){go();return;}
+    let left=pending.length;const one=()=>{if(--left<=0)go();};
+    pending.forEach(i=>{i.onload=one;i.onerror=one;});
+    setTimeout(go,5000);
+  },350);
 }
 
 function printWeekA4Land(title,weekStart,days,athletes){
@@ -11545,6 +11561,8 @@ function App(){
     }
     setLibItems(items);
   },[data.exercises]);
+  // Brand every printout / shared PDF with the active team's logo.
+  useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');},[team]);
   // All hooks must be called before any conditional return
   if(sync.authLoading)return<LoadingScreen/>;
   if(!sync.user)return<LoginPage sync={sync}/>;
