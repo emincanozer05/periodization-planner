@@ -1047,6 +1047,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-modal-wide{max-width:1080px;width:96vw}
 .ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
+/* Cover-image slot in the exercise details column — dashed until a picture is set */
+.ex-cover-drop{display:flex;align-items:center;gap:8px;padding:13px 15px;border:1px dashed var(--border2);
+  border-radius:10px;background:var(--elevated);color:var(--muted);font-size:12.5px;font-weight:600;
+  cursor:pointer;transition:border-color .15s,color .15s}
+.ex-cover-drop:hover{border-color:var(--accent);color:var(--accent)}
 .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
 .rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
 .rt-b:hover{border-color:var(--accent);color:var(--accent)}
@@ -5715,10 +5720,12 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
               </div>
             </td>
             <td><div className="exname-cell">
-              {/* Choosing a library exercise carries its cover image and video link over —
-                  what the library knows wins, what it doesn't know is left untouched. */}
+              {/* Choosing a library exercise carries its cover image, video link and
+                  Purpose / Description over — what the library knows wins, what it
+                  doesn't know is left untouched. */}
               <ExNameField value={ex.name} onChange={v=>f('name',v)}
-                onPick={it=>upEx(i,{...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||''})}/>
+                onPick={it=>upEx(i,{...ex,name:it.name,image:it.image||ex.image||'',
+                  link:it.link||ex.link||'',description:it.desc||ex.description||''})}/>
               <ExImgBtn image={ex.image||''} onChange={url=>f('image',url||'')}/>
             </div></td>
             <td><input className="es" value={ex.sets} onChange={e=>f('sets',e.target.value)} placeholder="—"/></td>
@@ -10673,6 +10680,32 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
+  /* Cover image sits in the details column, right under Purpose / Description — that is
+     where the coach reads the exercise, and it is uploadable without entering Edit mode.
+     What lands here is what the program editor drops onto the exercise row later. */
+  const pickCover=e=>{onThumb(e.target.files[0]);e.target.value='';};
+  const coverBox=(
+    <div style={{marginTop:14}}>
+      <span style={metaLbl}>Cover Image</span>
+      {ex.thumb
+        ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
+          <img src={ex.thumb} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
+            borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
+          <div className="row" style={{gap:8}}>
+            <label className="btn sec xs" style={{cursor:'pointer',margin:0}}>Change
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={pickCover}/>
+            </label>
+            <button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove</button>
+          </div>
+        </div>
+        :<label className="ex-cover-drop">🖼 <span>Add cover image</span>
+          <input type="file" accept="image/*" style={{display:'none'}} onChange={pickCover}/>
+        </label>}
+      <div className="help" style={{marginTop:6}}>
+        Program yazarken bu egzersizi seçtiğinde kapak görseli ve Purpose / Description metni otomatik olarak programa geçer.
+      </div>
+    </div>
+  );
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
@@ -10691,7 +10724,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <span style={metaLbl}>Purpose / Description</span>
         <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
       </div>}
-      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
+      {coverBox}
+      {!ex.type&&!ex.purpose&&!ex.thumb&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
     </div>
   );
   const editRight=(
@@ -11632,7 +11666,8 @@ function App(){
       const k=nm.toLowerCase();if(seen.has(k))continue;seen.add(k);
       items.push({name:nm,type:e.type||'',sub:[e.subType,e.pattern].filter(Boolean),
         image:e.thumb||videoThumb(e.videoData||e.videoUrl)||'',
-        link:safeURL(e.videoUrl)});
+        link:safeURL(e.videoUrl),
+        desc:(e.purpose||'').trim()});
     }
     setLibItems(items);
   },[data.exercises]);
