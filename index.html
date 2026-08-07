@@ -3630,13 +3630,15 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.load)meta.push(`<span class="m-l"><strong>Load:</strong> ${e.load}</span>`);
       if(e.tempo)meta.push(`<span class="m-t"><strong>Tempo:</strong> ${e.tempo}</span>`);
       if(e.rest)meta.push(`<span class="m-r"><strong>Resting:</strong> ${e.rest}</span>`);
+      // The image is a sibling of .ex-body, not a child, so it forms its own column on
+      // the left and the name / volume / meta read down the free space beside it.
       return`<div class="ex-card">
         <span class="ex-no${isSS?' ss':''}">${lab.tag}</span>
+        ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
         <div class="ex-body">
           <div class="ex-row-top"><span class="ex-name">${e.name}</span>${vol?`<span class="ex-vol">${vol}</span>`:''}</div>
           ${meta.length?`<div class="ex-meta">${meta.join(' · ')}</div>`:''}
           ${e.description?`<div class="ex-desc">${e.description}</div>`:''}
-          ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -3716,10 +3718,12 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-r{color:#6f7d29;font-weight:800}
 .ex-meta strong{font-weight:800}
 .ex-desc{font-size:11.5px;color:#94a3b8;font-style:italic;line-height:1.35;margin-top:2px}
-/* Exercise image — only rendered by "Print with Image". Kept to a thumbnail: it is there
-   to remind the athlete what the movement looks like, not to fill the page. Bounding both
-   sides (rather than width:100%) keeps portrait and landscape images the same visual size. */
-.ex-imgwrap{margin-top:5px}
+/* Exercise image — only rendered by "Print with Image". Sits in its own column to the
+   left of the text, so the name / volume / meta fill the width beside it instead of
+   leaving a blank band. Kept to a thumbnail: it is there to remind the athlete what the
+   movement looks like, not to fill the page. Bounding both sides (rather than
+   width:100%) keeps portrait and landscape images the same visual size. */
+.ex-imgwrap{flex:none;line-height:0}
 .ex-img{display:block;width:auto;max-width:46mm;max-height:30mm;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
 .dash{color:#cbd5e1;font-weight:400}
 
