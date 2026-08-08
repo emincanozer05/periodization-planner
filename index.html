@@ -1051,7 +1051,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Purpose / Description in the exercise modal — long prose, so it reads light and
    upright instead of the global italic/bold display font. Same treatment in the
    edit textarea and the read-only view so switching modes doesn't shift the text. */
-.ex-purpose,.ex-purpose-view{letter-spacing:0;line-height:1.65;
+.ex-purpose,.ex-purpose-view{letter-spacing:0;line-height:1.65;font-size:14.5px;
   font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important}
 .ex-purpose::placeholder{font-style:normal !important;font-weight:300 !important}
 /* Cover-image slot in the exercise details column — dashed until a picture is set */
@@ -10703,10 +10703,10 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
-  /* Cover image sits in the details column, right under Purpose / Description — that is
-     where the coach reads the exercise, and it is set without entering Edit mode.
-     Pasted, not uploaded: copy a picture anywhere, click the slot (or press Ctrl/Cmd+V
-     over it). What lands here is what the program editor drops onto the exercise row. */
+  /* Cover image is an editing control, so it only shows in Edit mode — the view side
+     keeps to what the coach reads. Pasted, not uploaded: copy a picture anywhere, click
+     the slot (or press Ctrl/Cmd+V over it). What lands here is what the program editor
+     drops onto the exercise row. */
   const setCover=d=>set('thumb',d);
   const pasteCover=()=>pasteImageFromClipboard('covers',setCover);
   const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
@@ -10743,10 +10743,9 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>}
       {ex.purpose&&<div>
         <span style={metaLbl}>Purpose / Description</span>
-        <div className="ex-purpose-view" style={{fontSize:13,color:'var(--text2)',whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
+        <div className="ex-purpose-view" style={{color:'var(--text2)',whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
       </div>}
-      {coverBox}
-      {!ex.type&&!ex.purpose&&!ex.thumb&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
+      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
     </div>
   );
   const editRight=(
