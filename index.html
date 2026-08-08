@@ -1047,6 +1047,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-modal-wide{max-width:1080px;width:96vw}
 .ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
+/* Purpose / Description in the exercise modal — long prose, so it reads light and
+   upright instead of the global italic/bold display font. Same treatment in the
+   edit textarea and the read-only view so switching modes doesn't shift the text. */
+.ex-purpose,.ex-purpose-view{letter-spacing:0;line-height:1.65;
+  font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important}
+.ex-purpose::placeholder{font-style:normal !important;font-weight:300 !important}
 /* Cover-image slot in the exercise details column — dashed until a picture is set */
 .ex-cover-drop{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:13px 15px;
   border:1px dashed var(--border2);border-radius:10px;background:var(--elevated);color:var(--muted);
@@ -10736,7 +10742,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>}
       {ex.purpose&&<div>
         <span style={metaLbl}>Purpose / Description</span>
-        <div style={{fontSize:13,color:'var(--text2)',lineHeight:1.65,whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
+        <div className="ex-purpose-view" style={{fontSize:13,color:'var(--text2)',whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
       </div>}
       {coverBox}
       {!ex.type&&!ex.purpose&&!ex.thumb&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
@@ -10787,7 +10793,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div style={{marginTop:14}}>
         <label>Purpose / Description</label>
-        <textarea value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
+        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
       </div>
       {coverBox}
     </div>
