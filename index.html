@@ -1590,13 +1590,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .test-card:hover::before{background:var(--accent)}
 .test-card.open{border-color:var(--accent);box-shadow:0 0 0 1px rgba(230,255,85,.15),0 4px 20px rgba(0,0,0,.3)}
 .test-card.open::before{background:var(--accent)}
-.test-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+/* The cards sit in 240px-min grid columns, so the date and the button group
+   often can't share a line. Let the header wrap instead — without this the
+   buttons overflow the card and .test-card's overflow:hidden clips them. */
+.test-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 12px;flex-wrap:wrap}
+.test-card-headline{min-width:0;flex:1 1 auto}
 .test-card-date{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
 .test-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .test-period-pill{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(230,255,85,.25);border-radius:5px;padding:2px 8px}
 .test-meta-sep{color:var(--dim);font-size:12px}
 .test-meta-txt{font-size:12px;color:var(--text2)}
-.test-card-btns{display:flex;gap:6px;align-items:center;flex:none}
+.test-card-btns{display:flex;gap:6px;align-items:center;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 /* 2D body circumference model */
 .bcm-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
 .bcm-canvas{position:relative;width:360px;height:440px;flex:none}
@@ -8121,7 +8125,7 @@ function EvaluationView({team,updateTeam,data,setData}){
             const period=TEST_PERIODS.find(p=>p.id===t.period);
             return(<div key={t.id} className={`test-card${isEd?' open':''}${isAdding?' adding':''}`} title={Lx('Testi açmak için tıkla','Click to open the test')} onClick={()=>setEditingId(t.id)}>
               <div className="test-card-header">
-                <div>
+                <div className="test-card-headline">
                   <div className="test-card-date">{fd(t.date)}</div>
                   <div className="test-card-meta">
                     {period&&<span className="test-period-pill">{period.label}</span>}
