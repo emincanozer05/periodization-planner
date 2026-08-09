@@ -35,6 +35,38 @@ per athlete. Four layers stack, in this order:
      volume emphasis and substitution triggers. Tier +
      position + body type read as one profile key.
 
+  5. Set / rep count (daily volume)
+     Volume — not just load — is set from two inputs: today's
+     readiness and yesterday's logged load, the latter read
+     against that athlete's own 28-day daily mean. The two meet
+     in an editable 3×3 rule table (⚙ Kurallar → Set / tekrar)
+     rather than a weighted average, so the coach can read what
+     each combination does. Reps move a fraction of the way the
+     sets do, which turns 4×10 into 3×8 instead of 3×6.
+  6. Pain reported on the daily survey
+     When an athlete reports a painful region, every slot whose
+     movement pattern loads that region is handled. Two
+     responses, split by a severity threshold you set:
+       at / above → the exercise is substituted, redirected to a
+                    pattern that does not load the region (a knee
+                    report sends a squat to a hinge, not to
+                    another squat)
+       below      → the exercise stays, sets and reps come down
+     Both the structured picker in the wellness survey and
+     Tally's free-text "Area of Pain" field feed this.
+
+Every changed exercise carries a reason. Automatic changes write
+their own ("Ankette diz ağrısı 3/3 bildirildi → Back Squat yerine
+Trap Bar RDL"); a manual override gets a reason box that is asked
+for but never required — the card shows how many changes are
+still unexplained.
+
+Programs export as branded PDF / printable pages in two versions,
+for one athlete or for everyone with a program that day, over a
+single day or a Mon-Sun week:
+  Antrenör PDF — includes the reason recorded against every change
+  Sporcu PDF   — exercise, sets × reps, load / RPE target, nothing else
+
 Nothing is silent and nothing is forced. Every layer produces a
 SUGGESTION with a visible reason chip, each can be switched off
 per athlete, and every slot can be replaced either from the
