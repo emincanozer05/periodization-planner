@@ -2,6 +2,52 @@
  PERIODIZATION PLANNER — Sport Science Tool
 ============================================================
 
+PROGRAM INDIVIDUALIZATION (Individualization tab)
+-------------------------------------------------
+One template + rule layers instead of writing 15 separate
+programs. Pick a date, pick a source (a team session planned
+for that date, or a Template), and the tab builds one version
+per athlete. Four layers stack, in this order:
+
+  1. Tag substitution
+     Library exercises carry a movement pattern and
+     contraindication tags (knee / back / shoulder / ankle /
+     hip / hamstring / wrist) plus a difficulty level.
+     Athletes carry their own active restriction tags and a
+     tier. When they clash, the slot's own pinned alternatives
+     are offered first, then the library, matched on movement
+     pattern.
+  2. Readiness load adjustment
+     Readiness comes from the wellness check-in; with no recent
+     check-in it is estimated from that athlete's sRPE trend
+     (labelled "tahmin" wherever it shows).
+       Model A — scales the written load (e.g. low readiness → 85%)
+       Model B — writes an RPE target, kg left to the day
+     Either or both; every adjustment is printed on the program.
+  3. Tiers (kademe)
+     3–4 tiers, each with its own volume multiplier, RPE shift
+     and maximum exercise difficulty. Assigned by hand in
+     Athletes → Profile; never auto-assigned.
+  4. Profile axes
+     Position group (guard / wing / post), body type
+     (Cheetah / Horse / Rhino / Rabbit) and screening test
+     results (ankle dorsiflexion, OHS, ASLR, Y-Balance) feed
+     volume emphasis and substitution triggers. Tier +
+     position + body type read as one profile key.
+
+Nothing is silent and nothing is forced. Every layer produces a
+SUGGESTION with a visible reason chip, each can be switched off
+per athlete, and every slot can be replaced either from the
+library or with free text — an exercise name that exists
+nowhere in the library is accepted exactly the same way.
+
+"Sporcu takvimlerine yaz" writes the built programs into the
+athletes' own calendars (re-running it updates in place instead
+of duplicating). Coach notes on the athlete profile are shown
+next to the name while building, but are never parsed by the
+engine; keyword matches in them are offered as tag suggestions
+that need your approval.
+
 WHAT CHANGED IN THIS VERSION
 ----------------------------
 1. sRPE fixed
