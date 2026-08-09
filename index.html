@@ -11737,10 +11737,15 @@ function defaultIndivCfg(){return{
      each combination does. Rows = yesterday's logged load against this athlete's own
      28-day daily mean; columns = today's readiness. */
   volume:{on:true,useReadiness:true,usePrevLoad:true,repShare:0.6,
-    rdLow:3,rdHigh:4,prevHigh:1.25,prevLow:0.75,
-    matrix:{high_low:0.7,high_mid:0.85,high_high:1,
-            mid_low:0.85, mid_mid:1,   mid_high:1,
-            low_low:0.9,  low_mid:1,   low_high:1.1}},
+    prevHigh:1.25,prevLow:0.75,
+    /* Columns are the readiness bands themselves (the same ones the load-% and RPE
+       adjustments use), not three coarse buckets — so the set/rep count follows the
+       readiness score at its full resolution and keeps moving even on a day with no
+       previous-day load to compare against. Rows are yesterday's load against this
+       athlete's own 28-day daily mean. */
+    matrix:{high_low:0.6, high_below:0.7, high_mid:0.85, high_good:0.95, high_high:1,
+            mid_low:0.7,  mid_below:0.8,  mid_mid:0.95,  mid_good:1,     mid_high:1.05,
+            low_low:0.8,  low_below:0.9,  low_mid:1,     low_good:1.05,  low_high:1.1}},
   /* Survey-reported pain. At or above `subFrom` the exercise is substituted; below it
      the exercise stays and its volume is cut instead. Free-text reports (Tally's
      "Area of Pain") carry no number, so they enter at `textSeverity`. */
@@ -11904,15 +11909,21 @@ function dailyVolumeFactor(ath,ref,cfg,rd){
   const ratio=(days>=3&&daily>0)?prevLoad/daily:null;
   const prevLevel=(ratio==null||V.usePrevLoad===false)?'mid'
     :ratio>=Number(V.prevHigh||1.25)?'high':ratio<=Number(V.prevLow||0.75)?'low':'mid';
-  const rdLevel=(rd==null||rd.score==null||V.useReadiness===false)?'mid'
-    :rd.score<Number(V.rdLow||3)?'low':rd.score>=Number(V.rdHigh||4)?'high':'mid';
-  const raw=Number((V.matrix||{})[`${prevLevel}_${rdLevel}`]);
+  /* The readiness column. With readiness switched off (or unknown) the middle band
+     is used, so the previous-day row still applies on its own. */
+  const bands=volBands(cfg);
+  const band=(rd==null||rd.score==null||V.useReadiness===false)?bands[Math.floor(bands.length/2)]
+    :(rdBand(rd.score,cfg)||bands[Math.floor(bands.length/2)]);
+  const raw=Number((V.matrix||{})[`${prevLevel}_${band?band.id:'mid'}`]);
   const sets=(isFinite(raw)&&raw>0)?raw:1;
   const reps=1-(1-sets)*Number(V.repShare!=null?V.repShare:0.6);
-  return{sets,reps,prevLevel,rdLevel,prevLoad,daily,ratio,
+  return{sets,reps,prevLevel,band,rdLabel:band?band.label:'—',prevLoad,daily,ratio,
     known:!(ratio==null&&(rd==null||rd.score==null))};
 }
 const VOL_LVL={high:'yüksek',mid:'normal',low:'düşük'};
+// Readiness bands in ascending order — the columns of the set/rep rule table.
+const volBands=cfg=>[...((cfg&&cfg.readiness&&cfg.readiness.bands)||defaultIndivCfg().readiness.bands)]
+  .sort((x,y)=>Number(x.min)-Number(y.min));
 
 /* ---- Screening tests → substitution triggers (Feature 4b) -----------------
    Reads the athlete's most recent test record; a new screening automatically
@@ -12160,7 +12171,7 @@ function buildIndivPlan(src,ath,ctx){
       const shown=`${base.sets||'—'}×${base.reps||'—'} → ${sets||'—'}×${reps||'—'}`;
       reasons.push({k:'vol',t:`Hacim: ${shown} (${volParts.join(', ')})`});
       if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001)
-        reasons.push({k:'vol',t:`Dün yük ${VOL_LVL[dayVol.prevLevel]}${dayVol.ratio!=null?` (${Math.round(dayVol.prevLoad)} AU, ortalamanın ${dayVol.ratio.toFixed(2)}×)`:''} + bugün readiness ${VOL_LVL[dayVol.rdLevel]} → hacim ×${dayVol.sets}`});
+        reasons.push({k:'vol',t:`Readiness ${rd.score!=null?rd.score+'/5 ':''}(${dayVol.rdLabel}) + dün yük ${VOL_LVL[dayVol.prevLevel]}${dayVol.ratio!=null?` (${Math.round(dayVol.prevLoad)} AU, ortalamanın ${dayVol.ratio.toFixed(2)}×)`:''} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
       volWhy=`Hacim ${shown} — ${volParts.join(', ')}`;
     }
     // load: Model A scales the written load, Model B writes an RPE target
@@ -12199,7 +12210,7 @@ function buildIndivPlan(src,ath,ctx){
   if(st&&st.on&&(st.factors.length||st.cap))summary.push({k:'state',
     t:`Sporcu durumu: hacim ×${st.sets}${st.bounded?` (${st.raw} sınırlandı)`:''}${st.rpe?` · RPE ${st.rpe>0?'+':''}${st.rpe}`:''}${st.cap?` · max ${LEVEL_LABEL[st.cap]||st.cap}`:''}${st.factors.length?` (${st.factors.map(f=>`${f.label} ×${f.v}`).join(', ')})`:''}`});
   if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001)
-    summary.push({k:'vol',t:`Dün yük ${VOL_LVL[dayVol.prevLevel]}${dayVol.ratio!=null?` (${Math.round(dayVol.prevLoad)} AU)`:''} + readiness ${VOL_LVL[dayVol.rdLevel]} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
+    summary.push({k:'vol',t:`Readiness ${dayVol.rdLabel}${dayVol.ratio!=null?` + dün yük ${VOL_LVL[dayVol.prevLevel]} (${Math.round(dayVol.prevLoad)} AU)`:''} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
   pains.forEach(p=>summary.push({k:'pain',t:`Ankette ${ctLabel(p.tag)} ağrısı${p.src==='survey'?` ${p.sev}/3`:''} (${fd(p.date)}) → ${p.sev>=Number(cfg.pain.subFrom||2)?'etkilenen egzersizler değiştirildi':'etkilenen egzersizlerde hacim düşürüldü'}`}));
   if(pos&&pos.note)summary.push({k:'pos',t:`${pos.label} · ${pos.note}`});
   if(bt&&bt.note)summary.push({k:'pos',t:`${(ANIMAL_TYPES.find(x=>x.id===ath.animalType)||{}).name||ath.animalType} · ${bt.note}`});
@@ -12420,7 +12431,7 @@ function IndivConfig({cfg,save}){
   const setMx=(k,v)=>setV({matrix:{...V.matrix,[k]:v}});
   const setP=p=>save({...cfg,pain:{...P,...p}});
   const LV=[['high','Yüksek'],['mid','Normal'],['low','Düşük']];
-  const RD=[['low','Düşük'],['mid','Orta'],['high','Yüksek']];
+  const BANDS=volBands(cfg);
   return(<div className="panel iv-cfg">
     <div className="iv-cfg-tabs">
       {[['rd','Readiness yük ayarı'],['vol','Set / tekrar'],['pain','Ağrı tetikleyicisi'],['pos','Pozisyon & vücut tipi'],['sw','Katmanlar']].map(([id,l])=>
@@ -12435,7 +12446,8 @@ function IndivConfig({cfg,save}){
         <div className="iv-f" style={{maxWidth:150}}><label>Model B temel RPE</label>
           <input type="number" step="0.5" min="4" max="10" value={R.baseRPE} onChange={e=>setR({baseRPE:e.target.value})}/></div>
       </div>
-      <div className="help" style={{margin:'6px 0 12px'}}>İkisi birlikte açık olabilir: program hem ayarlanmış yükü hem RPE hedefini gösterir. Genç sporcularda tek başına Model B daha güvenli bir başlangıçtır.</div>
+      <div className="help" style={{margin:'6px 0 12px'}}>İkisi birlikte açık olabilir: program hem ayarlanmış yükü hem RPE hedefini gösterir. Genç sporcularda tek başına Model B daha güvenli bir başlangıçtır.
+        <br/>Aşağıdaki bantlar aynı zamanda <b>Set / tekrar</b> sekmesindeki tablonun sütunlarıdır — yani bir bant eklemek/silmek set ve tekrar sayısını da etkiler.</div>
       <table className="iv-tbl">
         <thead><tr><th>Bant</th><th>Readiness ≥</th><th>Yük çarpanı (Model A)</th><th>RPE kaydırma (Model B)</th></tr></thead>
         <tbody>{R.bands.map((b,i)=><tr key={b.id||i}>
@@ -12453,16 +12465,17 @@ function IndivConfig({cfg,save}){
         <label className="iv-switch"><input type="checkbox" checked={V.usePrevLoad!==false} onChange={e=>setV({usePrevLoad:e.target.checked})}/><span>Bir önceki günün yükünü kullan</span></label>
       </div>
       <div className="help" style={{margin:'8px 0 12px'}}>
-        İki girdi bir <b>kural tablosunda</b> birleşir — ağırlıklı ortalama değil, çünkü antrenörün hangi kombinasyonun ne yaptığını okuyabilmesi gerekir.
-        Satırlar: dünkü yükün, sporcunun <b>kendi</b> 28 günlük günlük ortalamasına oranı. Sütunlar: bugünün readiness skoru.
+        İki girdi bir <b>kural tablosunda</b> birleşir — ağırlıklı ortalama değil, çünkü antrenörün hangi kombinasyonun ne yaptığını okuyabilmesi gerekir.{' '}
+        <b>Sütunlar readiness bantlarıdır</b> (yük yüzdesi ve RPE ayarının kullandığı bantların aynısı — Readiness sekmesinden düzenlenir), yani set/tekrar sayısı readiness skorunu tam çözünürlükte takip eder ve dünkü yük verisi olmayan günde de hareket eder.
+        Satırlar: dünkü yükün, sporcunun <b>kendi</b> 28 günlük günlük ortalamasına oranı.
         Hücredeki değer set sayısının çarpanıdır; tekrar sayısı bu kesintinin bir kısmı kadar (aşağıdaki oran) hareket eder — 4×10 böylece 3×8 olur, 3×6 değil.
       </div>
       <table className="iv-tbl">
-        <thead><tr><th>Dünkü yük ↓ / Readiness →</th>{RD.map(([k,l])=><th key={k}>{l}</th>)}</tr></thead>
+        <thead><tr><th>Dünkü yük ↓ / Readiness →</th>{BANDS.map(b=><th key={b.id}>{b.label}<div className="iv-dim" style={{fontWeight:400}}>≥{b.min}</div></th>)}</tr></thead>
         <tbody>{LV.map(([pk,pl])=><tr key={pk}>
           <td style={{color:'var(--text2)',fontWeight:600}}>{pl}</td>
-          {RD.map(([rk])=><td key={rk}><input type="number" step="0.05" value={V.matrix[`${pk}_${rk}`]!=null?V.matrix[`${pk}_${rk}`]:1}
-            onChange={e=>setMx(`${pk}_${rk}`,e.target.value)}/></td>)}
+          {BANDS.map(b=><td key={b.id}><input type="number" step="0.05" value={V.matrix[`${pk}_${b.id}`]!=null?V.matrix[`${pk}_${b.id}`]:1}
+            onChange={e=>setMx(`${pk}_${b.id}`,e.target.value)}/></td>)}
         </tr>)}</tbody>
       </table>
       <div className="iv-row" style={{marginTop:12}}>
@@ -12470,10 +12483,6 @@ function IndivConfig({cfg,save}){
           <input type="number" step="0.05" value={V.prevHigh} onChange={e=>setV({prevHigh:e.target.value})}/></div>
         <div className="iv-f" style={{maxWidth:150}}><label>"Düşük yük" eşiği (×ort.)</label>
           <input type="number" step="0.05" value={V.prevLow} onChange={e=>setV({prevLow:e.target.value})}/></div>
-        <div className="iv-f" style={{maxWidth:150}}><label>"Düşük readiness" altı</label>
-          <input type="number" step="0.1" value={V.rdLow} onChange={e=>setV({rdLow:e.target.value})}/></div>
-        <div className="iv-f" style={{maxWidth:150}}><label>"Yüksek readiness" üstü</label>
-          <input type="number" step="0.1" value={V.rdHigh} onChange={e=>setV({rdHigh:e.target.value})}/></div>
         <div className="iv-f" style={{maxWidth:200}}><label>Tekrar kesinti oranı — günlük (0–1)</label>
           <input type="number" step="0.1" min="0" max="1" value={V.repShare} onChange={e=>setV({repShare:e.target.value})}/></div>
       </div>
