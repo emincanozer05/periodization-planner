@@ -7,14 +7,14 @@ PROGRAM INDIVIDUALIZATION (Individualization tab)
 One template + rule layers instead of writing 15 separate
 programs. Pick a date, pick a source (a team session planned
 for that date, or a Template), and the tab builds one version
-per athlete. Four layers stack, in this order:
+per athlete. These layers stack:
 
   1. Tag substitution
      Library exercises carry a movement pattern and
      contraindication tags (knee / back / shoulder / ankle /
      hip / hamstring / wrist) plus a difficulty level.
-     Athletes carry their own active restriction tags and a
-     tier. When they clash, the slot's own pinned alternatives
+     Athletes carry their own active restriction tags. When
+     they clash, the slot's own pinned alternatives
      are offered first, then the library, matched on movement
      pattern.
   2. Readiness load adjustment
@@ -24,16 +24,23 @@ per athlete. Four layers stack, in this order:
        Model A — scales the written load (e.g. low readiness → 85%)
        Model B — writes an RPE target, kg left to the day
      Either or both; every adjustment is printed on the program.
-  3. Tiers (kademe)
-     3–4 tiers, each with its own volume multiplier, RPE shift
-     and maximum exercise difficulty. Assigned by hand in
-     Athletes → Profile; never auto-assigned.
+  3. Athlete state
+     No tiers, no groups: each athlete's own standing is read
+     directly and turned into a set/rep multiplier, an RPE shift
+     and a maximum exercise difficulty. The inputs are their
+     level tag, training age, age, screening findings, active
+     injury, restriction tags, body type and where their 28-day
+     load sits in the squad. Conditions multiply, the product is
+     bounded (default 0.70–1.20) so several mild factors cannot
+     halve a session, and the card shows the result decomposed
+     into its factors. Every weight is editable in
+     ⚙ Kurallar → Set / tekrar.
   4. Profile axes
      Position group (guard / wing / post), body type
      (Cheetah / Horse / Rhino / Rabbit) and screening test
      results (ankle dorsiflexion, OHS, ASLR, Y-Balance) feed
-     volume emphasis and substitution triggers. Tier +
-     position + body type read as one profile key.
+     volume emphasis and substitution triggers. Position, body
+     type and the athlete-state factor read as one profile key.
 
   5. Set / rep count (daily volume)
      Volume — not just load — is set from two inputs: today's
@@ -42,7 +49,9 @@ per athlete. Four layers stack, in this order:
      in an editable 3×3 rule table (⚙ Kurallar → Set / tekrar)
      rather than a weighted average, so the coach can read what
      each combination does. Reps move a fraction of the way the
-     sets do, which turns 4×10 into 3×8 instead of 3×6.
+     sets do, which turns 4×10 into 3×8 instead of 3×6. This
+     daily factor multiplies with the athlete-state factor above,
+     and every resulting number stays editable per slot.
   6. Pain reported on the daily survey
      When an athlete reports a painful region, every slot whose
      movement pattern loads that region is handled. Two
