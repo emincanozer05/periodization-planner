@@ -46,12 +46,16 @@ per athlete. These layers stack:
      Volume — not just load — is set from two inputs: today's
      readiness and yesterday's logged load, the latter read
      against that athlete's own 28-day daily mean. The two meet
-     in an editable 3×3 rule table (⚙ Kurallar → Set / tekrar)
+     in an editable rule table (⚙ Kurallar → Set / tekrar)
      rather than a weighted average, so the coach can read what
-     each combination does. Reps move a fraction of the way the
-     sets do, which turns 4×10 into 3×8 instead of 3×6. This
-     daily factor multiplies with the athlete-state factor above,
-     and every resulting number stays editable per slot.
+     each combination does. Its columns ARE the readiness bands —
+     the same ones driving the load % and RPE target — so the set
+     and rep count follows the readiness score at full resolution
+     and keeps moving on a day with no previous-day load to
+     compare against. Reps move a fraction of the way the sets
+     do, which turns 4×10 into 3×8 instead of 3×6. This daily
+     factor multiplies with the athlete-state factor above, and
+     every resulting number stays editable per slot.
   6. Pain reported on the daily survey
      When an athlete reports a painful region, every slot whose
      movement pattern loads that region is handled. Two
