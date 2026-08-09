@@ -2361,6 +2361,9 @@ header{background:var(--bg2)!important}
 .iv-painrow.on .rg{color:#fda4af;font-weight:700}
 .iv-painrow .sv{width:23px;height:23px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--dim);font-size:11px;cursor:pointer;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-painrow .sv.on{background:#f43f5e;border-color:#f43f5e;color:#fff;font-weight:800}
+.iv-stbox{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.iv-stbox .v{font-size:12px;font-weight:700;color:var(--accent);background:rgba(230,255,85,.1);border:1px solid rgba(230,255,85,.35);border-radius:7px;padding:3px 10px}
+.iv-stbox .f{font-size:11px;color:var(--text2);background:var(--elevated);border:1px solid var(--border);border-radius:7px;padding:3px 9px}
 .iv-key{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);border:1px dashed var(--border);border-radius:6px;padding:1px 7px}
 .iv-warnchip{color:#fda4af;background:rgba(244,63,94,.14);border:1px solid rgba(244,63,94,.3);border-radius:6px;padding:1px 7px}
 .iv-rd{display:flex;flex-direction:column;align-items:center;border:1px solid var(--border);border-radius:10px;padding:4px 12px;min-width:74px}
@@ -9695,7 +9698,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
   const save=a=>updateTeam(team.id,{athletes:a});
   const addAth=()=>{const a={id:uid(),name:'New Athlete',number:'',position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
     dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',trainingAge:'',somatotype:'',animalType:'',constraints:'',
-    constraintTags:[],levelTag:'',tier:'',
+    constraintTags:[],levelTag:'',
     injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
   const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
   const delAth=id=>{if(!confirm('Delete this athlete and all their data?'))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
@@ -11656,7 +11659,9 @@ function ResearchesView({data,setData}){
    team-plan session), per athlete:
      1. tag substitution   — library contraindication tags × athlete constraint tags
      2. readiness          — wellness / sRPE trend → load % (Model A) and/or RPE target (Model B)
-     3. tier (kademe)      — volume & difficulty band, 3-4 groups instead of 15 programs
+     3. athlete state      — set/rep count & difficulty ceiling from the athlete's own
+                             standing (level, training age, age, screening findings,
+                             active injury, restrictions, chronic load)
      4. profile axes       — position (PG/SG/SF/PF/C), body type, screening test results
 
    Every layer produces a SUGGESTION the coach can override, and every override
@@ -11718,7 +11723,7 @@ const posGroupLabel=id=>((POS_GROUPS.find(g=>g.id===id)||{}).label)||'Diğer';
 /* Default rule set. Everything here is editable by the coach in the
    Individualization tab and stored on the team (team.indiv.cfg). */
 function defaultIndivCfg(){return{
-  subOn:true, tierOn:true, posOn:true, testOn:true,
+  subOn:true, posOn:true, testOn:true,
   readiness:{on:true,modelA:true,modelB:true,baseRPE:7,fallback:true,
     bands:[
       {id:'low',  min:0,   label:'Çok düşük', mult:0.80, rpe:-1.5, color:'#f43f5e'},
@@ -11740,12 +11745,13 @@ function defaultIndivCfg(){return{
      the exercise stays and its volume is cut instead. Free-text reports (Tally's
      "Area of Pain") carry no number, so they enter at `textSeverity`. */
   pain:{on:true,subFrom:2,textSeverity:2,volSets:0.75,volReps:0.85,windowDays:2},
-  tiers:[
-    {id:'t1',name:'Kademe 1 — Temel',      volume:0.8, rpe:-1,   maxLevel:'Level 1',note:'Basit varyasyon, düşük hacim, teknik önceliği'},
-    {id:'t2',name:'Kademe 2 — Gelişim',    volume:0.9, rpe:-0.5, maxLevel:'Level 2',note:'Orta hacim, kontrollü ilerleme'},
-    {id:'t3',name:'Kademe 3 — Performans', volume:1,   rpe:0,    maxLevel:'Level 3',note:'Tam hacim, tam varyasyon'},
-    {id:'t4',name:'Kademe 4 — İleri',      volume:1.1, rpe:0.5,  maxLevel:'Level 3',note:'Yüksek hacim, karmaşık varyasyon'},
-  ],
+  /* Athlete state → set/rep count. Each condition contributes a multiplier and they
+     multiply together, so the number a coach reads on the card is the product of a
+     handful of legible factors rather than a bucket an athlete was sorted into.
+     Every value here is editable. */
+  state:{on:true,repShare:0.5,rpeScale:5,capFromLevel:true,floor:0.7,ceil:1.2,
+    f:{lvl1:0.85,lvl2:0.95,lvl3:1,exp0:0.9,exp1:0.95,exp3:1,age14:0.9,age15:0.95,
+       screen:0.95,injury:0.75,tag:0.95,rabbit:0.9,loadHi:1.05,loadLo:0.95}},
   positions:{
     guard:{label:'Guard (PG/SG)',note:'Hız / çabukluk vurgusu',boost:{'Jump / Plyo':1.15,'Sprint / Locomotion':1.15},damp:{'Squat':0.95,'Hinge':0.95}},
     wing: {label:'Wing (SF)',    note:'Dengeli vurgu',          boost:{},damp:{}},
@@ -11768,7 +11774,7 @@ function indivCfg(team){
     readiness:{...d.readiness,...(s.readiness||{}),bands},
     volume:{...d.volume,...(s.volume||{}),matrix:{...d.volume.matrix,...((s.volume||{}).matrix||{})}},
     pain:{...d.pain,...(s.pain||{})},
-    tiers:(Array.isArray(s.tiers)&&s.tiers.length)?s.tiers:d.tiers,
+    state:{...d.state,...(s.state||{}),f:{...d.state.f,...((s.state||{}).f||{})}},
     positions:{...d.positions,...(s.positions||{})},
     bodyTypes:{...d.bodyTypes,...(s.bodyTypes||{})}};
 }
@@ -11830,6 +11836,58 @@ function athPainReports(a,ref,cfg){
       seen.add(t.id);out.push({tag:t.id,sev:Number(P.textSeverity||2),date:w.date,src:'text',raw:w.areaOfPain});}});
   return out;
 }
+/* ---- Athlete state → volume, RPE shift and difficulty ceiling -------------
+   What tiers used to do, without the bucket: instead of sorting athletes into
+   3-4 groups, each athlete's own standing is read directly and turned into a
+   set/rep multiplier. Conditions multiply, so the factor on the card decomposes
+   into a short list a coach can read ("Seviye: Orta ×0.9, Aktif sakatlık ×0.7").
+   `loadRank` (0-1 within the squad) is optional — it is only known where the
+   whole roster is in view. */
+const athAge=a=>{if(!a||!a.dateOfBirth)return null;
+  const b=parseD(a.dateOfBirth),t=new Date();let y=t.getFullYear()-b.getFullYear();
+  if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
+const halfStep=v=>Math.max(-2,Math.min(2,Math.round(v*2)/2));
+function athStateProfile(ath,cfg,ctx){
+  const S=(cfg&&cfg.state)||defaultIndivCfg().state;
+  if(S.on===false)return{on:false,sets:1,reps:1,rpe:0,cap:'',factors:[]};
+  const F=S.f||{},factors=[];let m=1;
+  const use=(label,v)=>{const n=Number(v);if(isFinite(n)&&n>0&&Math.abs(n-1)>0.001){m*=n;factors.push({label,v:+n.toFixed(3)});}};
+  const lv=ath.levelTag||'';
+  if(lv==='Level 1')use('Seviye: Başlangıç',F.lvl1);
+  else if(lv==='Level 2')use('Seviye: Orta',F.lvl2);
+  else if(lv==='Level 3')use('Seviye: İleri',F.lvl3);
+  const ta=Number(ath.trainingAge);
+  if(isFinite(ta)&&ta>0){if(ta<1)use('Antrenman yaşı <1 yıl',F.exp0);else if(ta<3)use('Antrenman yaşı 1-2 yıl',F.exp1);else use('Antrenman yaşı 3+ yıl',F.exp3);}
+  const age=athAge(ath);
+  if(age!=null){if(age<15)use('Yaş <15',F.age14);else if(age<17)use('Yaş 15-16',F.age15);}
+  const nf=(athTestFlags(ath)||[]).length;
+  if(nf)use(`${nf} tarama bulgusu`,Math.pow(Number(F.screen)||1,Math.min(nf,3)));
+  const hurt=(ath.injuries||[]).some(i=>!i.actualReturn);
+  if(hurt)use('Aktif sakatlık',F.injury);
+  const nt=(ath.constraintTags||[]).length;
+  if(nt)use(`${nt} kısıtlama etiketi`,Math.pow(Number(F.tag)||1,Math.min(nt,3)));
+  if(ath.animalType==='rabbit')use('Vücut tipi: Rabbit',F.rabbit);
+  const lr=ctx&&ctx.loadRank;
+  if(lr!=null){if(lr>=0.67)use('Kronik yük: üst üçte',F.loadHi);else if(lr<=0.33)use('Kronik yük: alt üçte',F.loadLo);}
+  /* Bounded on purpose: four mild conditions multiply to ~0.5 unchecked, which would
+     halve a young beginner's session rather than trim it. The raw product is kept for
+     display so the coach can see the bound bite. */
+  const raw=Math.round(m*1000)/1000;
+  const lo=Number(S.floor!=null?S.floor:0.7),hi=Number(S.ceil!=null?S.ceil:1.2);
+  const sets=Math.round(Math.max(lo,Math.min(hi,raw))*1000)/1000;
+  const bounded=Math.abs(sets-raw)>0.001;
+  const reps=1-(1-sets)*Number(S.repShare!=null?S.repShare:0.5);
+  const rpe=halfStep((sets-1)*Number(S.rpeScale||5));
+  /* The difficulty ceiling the substitution engine reads. It follows the coach's own
+     level tag; an active injury pulls it down one more step. */
+  let cap='';
+  if(S.capFromLevel!==false){
+    cap=lv==='Level 1'?'Level 1':lv==='Level 2'?'Level 2':'';
+    if(hurt)cap=(cap==='Level 1'||cap==='Level 2')?'Level 1':'Level 2';
+  }
+  return{on:true,sets,raw,bounded,reps,rpe,cap,factors};
+}
+
 /* ---- Daily volume factor (readiness × yesterday's load) -------------------
    Yesterday's logged load is read against this athlete's OWN 28-day daily mean, so
    "high" means high for them rather than high in absolute AU. The two levels index
@@ -11978,7 +12036,7 @@ function buildIndivPlan(src,ath,ctx){
   const byName=n=>{const k=(n||'').trim().toLowerCase();return k?(lib||[]).find(e=>(e.name||'').trim().toLowerCase()===k):null;};
   const rd=(cfg.readiness.on&&!off.readiness)?athReadiness(ath,ref,cfg):{score:null,src:null};
   const band=rd.score!=null?rdBand(rd.score,cfg):null;
-  const tier=(cfg.tierOn&&!off.tier)?(cfg.tiers.find(t=>t.id===ath.tier)||null):null;
+  const st=(!off.state)?athStateProfile(ath,cfg,ctx):null;
   const pgId=posGroupOf(ath.position);
   const pos=(cfg.posOn&&!off.pos)?(cfg.positions[pgId]||cfg.positions.other):null;
   const bt=(cfg.posOn&&!off.pos&&ath.animalType)?(cfg.bodyTypes[ath.animalType]||null):null;
@@ -11986,8 +12044,8 @@ function buildIndivPlan(src,ath,ctx){
   const pains=(cfg.pain.on&&!off.pain)?athPainReports(ath,ref,cfg):[];
   const painSubs=pains.filter(p=>p.sev>=Number(cfg.pain.subFrom||2));
   const constraints=[...new Set([...(ath.constraintTags||[]),...flags.flatMap(f=>f.constraints||[])])];
-  const tierCap=tier?tier.maxLevel:'';
-  const rpeTarget=clampRPE(Number(cfg.readiness.baseRPE||7)+(band?Number(band.rpe||0):0)+(tier?Number(tier.rpe||0):0));
+  const stateCap=(st&&st.on)?st.cap:'';
+  const rpeTarget=clampRPE(Number(cfg.readiness.baseRPE||7)+(band?Number(band.rpe||0):0)+((st&&st.on)?Number(st.rpe||0):0));
   // Set/rep count off readiness + yesterday's load, shared by every slot in the session.
   const dayVol=(!off.volume)?dailyVolumeFactor(ath,ref,cfg,rd):null;
 
@@ -12005,9 +12063,9 @@ function buildIndivPlan(src,ath,ctx){
     const conflict=slotConflicts(entry,constraints);
     const hitFlags=flags.filter(f=>(f.patterns||[]).includes(pattern));
     // A screening flag caps difficulty only for the movement it is about (a poor overhead
-    // squat says nothing about the bench press); the tier's cap applies to every slot.
+    // squat says nothing about the bench press); the athlete's own ceiling applies to every slot.
     const flagCap=hitFlags.map(f=>f.capLevel).filter(Boolean).sort((a,b)=>levelRank(a)-levelRank(b))[0]||'';
-    const cap=[flagCap,tierCap].filter(Boolean).sort((a,b)=>levelRank(a)-levelRank(b))[0]||'';
+    const cap=[flagCap,stateCap].filter(Boolean).sort((a,b)=>levelRank(a)-levelRank(b))[0]||'';
     const overCap=!!(cap&&levelRank(entry&&entry.difficulty)>levelRank(cap));
     // Reported pain only touches a slot whose movement pattern actually loads the
     // painful region. At or above the threshold it substitutes; below it, it cuts volume.
@@ -12046,7 +12104,7 @@ function buildIndivPlan(src,ath,ctx){
       painSub.forEach(p=>reasons.push({k:'pain',t:`Ankette ${painTxt(p)} bildirildi (${fd(p.date)}) — bu patern (${pattern}) o bölgeyi yüklüyor`}));
       if(conflict.length)reasons.push({k:'sub',t:`${conflict.map(ctLabel).join(' / ')} kısıtı — bu egzersiz kontrendike`});
       hitFlags.forEach(f=>reasons.push({k:'test',t:`${f.label}: ${f.reason}`}));
-      if(overCap)reasons.push({k:'tier',t:`Zorluk ${entry.difficulty} — ${LEVEL_LABEL[cap]||cap} seviyesinin üstünde`});
+      if(overCap)reasons.push({k:'state',t:`Zorluk ${entry.difficulty} — sporcunun ${LEVEL_LABEL[cap]||cap} tavanının üstünde`});
       if(suggested)reasons.push({k:'sub',t:`Önerilen alternatif: ${suggested.name}${suggested.from==='alt'?' (slot alternatifi)':' (kütüphane)'}`});
       else reasons.push({k:'warn',t:'Uygun alternatif bulunamadı — şablondaki egzersiz korundu, elle değiştirebilirsin'});
     }
@@ -12071,13 +12129,13 @@ function buildIndivPlan(src,ath,ctx){
       }
     }
 
-    // volume: daily factor (readiness × yesterday's load) × tier × position × body type
+    // volume: daily factor (readiness × yesterday's load) × athlete state × position × body type
     let vol=1,repVol=1;const volParts=[];
     if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001){
       vol*=dayVol.sets;repVol*=dayVol.reps;
       volParts.push(`Günlük hacim ×${dayVol.sets}`);
     }
-    if(tier&&Number(tier.volume)&&Number(tier.volume)!==1){vol*=Number(tier.volume);volParts.push(`${tier.name.split('—')[0].trim()} ×${tier.volume}`);}
+    if(st&&st.on&&Math.abs(st.sets-1)>0.001){vol*=st.sets;repVol*=st.reps;volParts.push(`Sporcu durumu ×${st.sets}`);}
     const pk=exPatternOf(byName(name))||pattern||'';
     if(pos&&pk){const f=(pos.boost||{})[pk]||(pos.damp||{})[pk];if(f){vol*=Number(f);volParts.push(`${pos.label} ×${f}`);}}
     if(bt&&pk){const f=(bt.boost||{})[pk]||(bt.damp||{})[pk];if(f){vol*=Number(f);volParts.push(`${(ANIMAL_TYPES.find(x=>x.id===ath.animalType)||{}).name||ath.animalType} ×${f}`);}}
@@ -12116,7 +12174,7 @@ function buildIndivPlan(src,ath,ctx){
       } else if(base.load)parts.push(base.load);
       if(cfg.readiness.modelB){
         const baseR=rpeInText(base.load);
-        const target=baseR!=null?clampRPE(baseR+(band?Number(band.rpe||0):0)+(tier?Number(tier.rpe||0):0)):rpeTarget;
+        const target=baseR!=null?clampRPE(baseR+(band?Number(band.rpe||0):0)+((st&&st.on)?Number(st.rpe||0):0)):rpeTarget;
         const txt=`@RPE ${target}`;
         const cleaned=parts.filter(p=>!/rpe/i.test(String(p)));
         cleaned.push(txt);
@@ -12138,8 +12196,8 @@ function buildIndivPlan(src,ath,ctx){
   const summary=[];
   if(band)summary.push({k:'rd',t:`Readiness ${rd.score}/5 · ${band.label}${cfg.readiness.modelA?` · yük %${Math.round(Number(band.mult)*100)}`:''}${cfg.readiness.modelB?` · @RPE ${rpeTarget}`:''}${rd.src==='srpe'?' (sRPE trendinden tahmin)':''}`});
   else if(cfg.readiness.on&&!off.readiness)summary.push({k:'warn',t:'Readiness verisi yok — yük ayarı uygulanmadı'});
-  if(tier)summary.push({k:'tier',t:`${tier.name} · hacim ×${tier.volume} · max ${LEVEL_LABEL[tier.maxLevel]||tier.maxLevel}`});
-  else if(cfg.tierOn&&!off.tier)summary.push({k:'warn',t:'Kademe atanmamış — kademe katmanı uygulanmadı'});
+  if(st&&st.on&&(st.factors.length||st.cap))summary.push({k:'state',
+    t:`Sporcu durumu: hacim ×${st.sets}${st.bounded?` (${st.raw} sınırlandı)`:''}${st.rpe?` · RPE ${st.rpe>0?'+':''}${st.rpe}`:''}${st.cap?` · max ${LEVEL_LABEL[st.cap]||st.cap}`:''}${st.factors.length?` (${st.factors.map(f=>`${f.label} ×${f.v}`).join(', ')})`:''}`});
   if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001)
     summary.push({k:'vol',t:`Dün yük ${VOL_LVL[dayVol.prevLevel]}${dayVol.ratio!=null?` (${Math.round(dayVol.prevLoad)} AU)`:''} + readiness ${VOL_LVL[dayVol.rdLevel]} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
   pains.forEach(p=>summary.push({k:'pain',t:`Ankette ${ctLabel(p.tag)} ağrısı${p.src==='survey'?` ${p.sev}/3`:''} (${fd(p.date)}) → ${p.sev>=Number(cfg.pain.subFrom||2)?'etkilenen egzersizler değiştirildi':'etkilenen egzersizlerde hacim düşürüldü'}`}));
@@ -12150,9 +12208,9 @@ function buildIndivPlan(src,ath,ctx){
   if(changed)summary.push({k:'sub',t:`${changed} egzersiz değiştirildi`});
   /* The three grouping axes read as ONE profile key — this is what decides which
      variation of the template an athlete gets, rather than the level alone. */
-  const profileKey=[tier?tier.id:'—',pgId,ath.animalType||'—'].join(' · ');
+  const profileKey=[pgId,ath.animalType||'—',(st&&st.on)?`hacim ×${st.sets}`:'—'].join(' · ');
   const missingWhy=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.needsWhy).length,0);
-  return{ath,rd,band,tier,pos,posGroup:pgId,bodyType:bt,flags,pains,painSubs,dayVol,constraints,blocks,rpeTarget,changed,
+  return{ath,rd,band,state:st,pos,posGroup:pgId,bodyType:bt,flags,pains,painSubs,dayVol,constraints,blocks,rpeTarget,changed,
     missingWhy,profileKey,notes:athNotesList(ath),summary,off};
 }
 
@@ -12174,7 +12232,7 @@ function planToSession(plan,src,dateKey,srcKey){
     notes:'',planNote:[src.planNote||'',head&&('Bireyselleştirme:\n'+head)].filter(Boolean).join('\n\n'),
     athletes:[],sourceId:null,
     indiv:{srcKey,date:dateKey,readiness:plan.rd.score,band:plan.band?plan.band.label:'',profileKey:plan.profileKey,
-      tier:plan.tier?plan.tier.id:'',pos:plan.posGroup,changed:plan.changed}};
+      state:plan.state?plan.state.sets:1,pos:plan.posGroup,changed:plan.changed}};
 }
 
 
@@ -12264,7 +12322,7 @@ function IndivProfilePanel({ath,updAth,cfg}){
   const[dismissed,setDismissed]=useState([]);
   const sugg=noteTagSuggestions(ath).filter(id=>!dismissed.includes(id));
   const flags=athTestFlags(ath);
-  const tiers=cfg.tiers||[];
+  const st=athStateProfile(ath,cfg,null);
   const set=p=>updAth(ath.id,p);
   return(<div className="panel iv-profile">
     <h2>Bireyselleştirme<span className="pf-auto" style={{background:'rgba(230,255,85,.12)',color:'var(--accent)'}}>program</span></h2>
@@ -12293,12 +12351,9 @@ function IndivProfilePanel({ath,updAth,cfg}){
         </select>
       </div>
       <div className="iv-f">
-        <label>Kademe</label>
-        <select value={ath.tier||''} onChange={e=>set({tier:e.target.value})}>
-          <option value="">— atanmadı</option>
-          {tiers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <div className="help" style={{marginTop:4}}>Kademe her zaman elle değiştirilebilir; otomatik atanmaz.</div>
+        <label>Antrenman yaşı (yıl)</label>
+        <input type="number" step="0.5" min="0" value={ath.trainingAge||''} onChange={e=>set({trainingAge:e.target.value})} placeholder="—"/>
+        <div className="help" style={{marginTop:4}}>Set/tekrar hesabına girer.</div>
       </div>
       <div className="iv-f">
         <label>Pozisyon</label>
@@ -12309,6 +12364,18 @@ function IndivProfilePanel({ath,updAth,cfg}){
         <label>Vücut tipi</label>
         <div className="iv-static">{ath.animalType?((ANIMAL_TYPES.find(a=>a.id===ath.animalType)||{}).name||ath.animalType):'—'}</div>
       </div>
+    </div>
+    <div style={{marginTop:14}}>
+      <label className="iv-lbl">Durumdan hesaplanan hacim</label>
+      <div className="iv-stbox">
+        <span className="v">hacim ×{st.sets}</span>
+        {st.bounded&&<span className="f">ham ×{st.raw} → sınıra çekildi</span>}
+        {st.rpe!==0&&<span className="v">RPE {st.rpe>0?'+':''}{st.rpe}</span>}
+        {st.cap&&<span className="v">max {LEVEL_LABEL[st.cap]||st.cap}</span>}
+        {st.factors.length===0&&<span className="iv-dim">Hacmi değiştiren bir durum yok — şablon değerleri aynen uygulanır.</span>}
+        {st.factors.map((f,i)=><span key={i} className="f">{f.label} ×{f.v}</span>)}
+      </div>
+      <div className="help" style={{marginTop:6}}>Set ve tekrar sayısı bu çarpandan ve günün readiness/dünkü yük tablosundan otomatik çıkar; program ekranında her slotta elle değiştirilebilir. Çarpanlar ⚙ Kurallar → Set / tekrar'dan düzenlenir.</div>
     </div>
     <div style={{marginTop:14}}>
       <label className="iv-lbl">Test verisinden gelen tetikleyiciler</label>
@@ -12328,7 +12395,25 @@ function IndivConfig({cfg,save}){
   const R=cfg.readiness;
   const setR=p=>save({...cfg,readiness:{...R,...p}});
   const setBand=(i,p)=>setR({bands:R.bands.map((b,k)=>k===i?{...b,...p}:b)});
-  const setTier=(i,p)=>save({...cfg,tiers:cfg.tiers.map((t,k)=>k===i?{...t,...p}:t)});
+  const ST=cfg.state;
+  const setS=p=>save({...cfg,state:{...ST,...p}});
+  const setF=(k,v)=>setS({f:{...ST.f,[k]:v}});
+  const STATE_ROWS=[
+    ['lvl1','Seviye: Başlangıç','Profildeki seviye etiketi Level 1'],
+    ['lvl2','Seviye: Orta','Level 2'],
+    ['lvl3','Seviye: İleri','Level 3'],
+    ['exp0','Antrenman yaşı <1 yıl','Profildeki antrenman yaşı'],
+    ['exp1','Antrenman yaşı 1-2 yıl',''],
+    ['exp3','Antrenman yaşı 3+ yıl',''],
+    ['age14','Yaş <15','Doğum tarihinden'],
+    ['age15','Yaş 15-16',''],
+    ['screen','Her tarama bulgusu','Çarpımsal, en fazla 3 bulgu sayılır'],
+    ['injury','Aktif sakatlık','Dönüş tarihi girilmemiş sakatlık'],
+    ['tag','Her kısıtlama etiketi','Çarpımsal, en fazla 3 etiket'],
+    ['rabbit','Vücut tipi: Rabbit','Önce temel kuvvet'],
+    ['loadHi','Kronik yük: üst üçte','Kadro içinde 28 günlük yük sıralaması'],
+    ['loadLo','Kronik yük: alt üçte',''],
+  ];
   const setPos=(id,p)=>save({...cfg,positions:{...cfg.positions,[id]:{...cfg.positions[id],...p}}});
   const V=cfg.volume,P=cfg.pain;
   const setV=p=>save({...cfg,volume:{...V,...p}});
@@ -12338,7 +12423,7 @@ function IndivConfig({cfg,save}){
   const RD=[['low','Düşük'],['mid','Orta'],['high','Yüksek']];
   return(<div className="panel iv-cfg">
     <div className="iv-cfg-tabs">
-      {[['rd','Readiness yük ayarı'],['vol','Set / tekrar'],['pain','Ağrı tetikleyicisi'],['tier','Kademeler'],['pos','Pozisyon & vücut tipi'],['sw','Katmanlar']].map(([id,l])=>
+      {[['rd','Readiness yük ayarı'],['vol','Set / tekrar'],['pain','Ağrı tetikleyicisi'],['pos','Pozisyon & vücut tipi'],['sw','Katmanlar']].map(([id,l])=>
         <button key={id} className={tab===id?'on':''} onClick={()=>setTab(id)}>{l}</button>)}
     </div>
     {tab==='rd'&&<div>
@@ -12389,9 +12474,36 @@ function IndivConfig({cfg,save}){
           <input type="number" step="0.1" value={V.rdLow} onChange={e=>setV({rdLow:e.target.value})}/></div>
         <div className="iv-f" style={{maxWidth:150}}><label>"Yüksek readiness" üstü</label>
           <input type="number" step="0.1" value={V.rdHigh} onChange={e=>setV({rdHigh:e.target.value})}/></div>
-        <div className="iv-f" style={{maxWidth:180}}><label>Tekrar kesinti oranı (0–1)</label>
+        <div className="iv-f" style={{maxWidth:200}}><label>Tekrar kesinti oranı — günlük (0–1)</label>
           <input type="number" step="0.1" min="0" max="1" value={V.repShare} onChange={e=>setV({repShare:e.target.value})}/></div>
       </div>
+      <div className="hr" style={{margin:'18px 0 14px'}}/>
+      <div className="iv-row">
+        <label className="iv-switch"><input type="checkbox" checked={ST.on!==false} onChange={e=>setS({on:e.target.checked})}/><span>Sporcu durumundan hacim hesabı açık</span></label>
+        <label className="iv-switch"><input type="checkbox" checked={ST.capFromLevel!==false} onChange={e=>setS({capFromLevel:e.target.checked})}/><span>Seviye etiketi zorluk tavanı olarak da kullanılsın</span></label>
+      </div>
+      <div className="iv-row" style={{marginTop:10}}>
+        <div className="iv-f" style={{maxWidth:200}}><label>Tekrar kesinti oranı — durum (0–1)</label>
+          <input type="number" step="0.1" min="0" max="1" value={ST.repShare} onChange={e=>setS({repShare:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:180}}><label>RPE kaydırma katsayısı</label>
+          <input type="number" step="0.5" value={ST.rpeScale} onChange={e=>setS({rpeScale:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:150}}><label>Alt sınır</label>
+          <input type="number" step="0.05" value={ST.floor} onChange={e=>setS({floor:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:150}}><label>Üst sınır</label>
+          <input type="number" step="0.05" value={ST.ceil} onChange={e=>setS({ceil:e.target.value})}/></div>
+      </div>
+      <div className="help" style={{margin:'8px 0 12px'}}>
+        Sporcunun kendi durumu doğrudan set/tekrar sayısına çevrilir — kademe/grup yok. Aşağıdaki koşullardan hangileri sporcuda geçerliyse
+        <b> çarpanları çarpılır</b>; sonuç sporcu kartında tek satırda ve bileşenleriyle birlikte görünür. 1 = etkisiz.
+      </div>
+      <table className="iv-tbl">
+        <thead><tr><th>Koşul</th><th style={{width:120}}>Çarpan</th><th>Açıklama</th></tr></thead>
+        <tbody>{STATE_ROWS.map(([k,l,h])=><tr key={k}>
+          <td style={{color:'var(--text2)',fontWeight:600}}>{l}</td>
+          <td><input type="number" step="0.05" value={ST.f[k]!=null?ST.f[k]:1} onChange={e=>setF(k,e.target.value)}/></td>
+          <td className="iv-dim">{h}</td>
+        </tr>)}</tbody>
+      </table>
     </div>}
     {tab==='pain'&&<div>
       <div className="iv-row">
@@ -12421,24 +12533,8 @@ function IndivConfig({cfg,save}){
         </tr>)}</tbody>
       </table>
     </div>}
-    {tab==='tier'&&<div>
-      <div className="help" style={{marginBottom:10}}>15 ayrı program yerine 3-4 kademe. Her kademe aynı şablonun kendi hacim/zorluk varyasyonunu taşır. Sporcunun kademesi Athletes → Profile'dan elle atanır.</div>
-      <table className="iv-tbl">
-        <thead><tr><th>Kademe</th><th>Hacim ×</th><th>RPE kaydırma</th><th>Max zorluk</th><th>Not</th></tr></thead>
-        <tbody>{cfg.tiers.map((t,i)=><tr key={t.id}>
-          <td><input value={t.name} onChange={e=>setTier(i,{name:e.target.value})}/></td>
-          <td><input type="number" step="0.05" value={t.volume} onChange={e=>setTier(i,{volume:e.target.value})}/></td>
-          <td><input type="number" step="0.5" value={t.rpe} onChange={e=>setTier(i,{rpe:e.target.value})}/></td>
-          <td><select value={t.maxLevel||''} onChange={e=>setTier(i,{maxLevel:e.target.value})}>
-            <option value="">— sınırsız</option>
-            {DIFFICULTIES.map(d=><option key={d} value={d}>{LEVEL_LABEL[d]||d}</option>)}
-          </select></td>
-          <td><input value={t.note||''} onChange={e=>setTier(i,{note:e.target.value})}/></td>
-        </tr>)}</tbody>
-      </table>
-    </div>}
     {tab==='pos'&&<div>
-      <div className="help" style={{marginBottom:10}}>Kademe tek boyutlu değil: profil anahtarı = kademe + pozisyon + vücut tipi. Aşağıdaki çarpanlar hareket paterni bazında hacme uygulanır.</div>
+      <div className="help" style={{marginBottom:10}}>Profil anahtarı tek boyutlu değil: pozisyon + vücut tipi + sporcunun kendi durumu. Aşağıdaki çarpanlar hareket paterni bazında hacme uygulanır.</div>
       {Object.entries(cfg.positions).map(([id,p])=><div key={id} className="iv-posrow">
         <div className="iv-poshd">{p.label||id}</div>
         <input className="iv-posnote" value={p.note||''} onChange={e=>setPos(id,{note:e.target.value})} placeholder="Vurgu notu (programda gösterilir)"/>
@@ -12466,7 +12562,7 @@ function IndivConfig({cfg,save}){
       </div>
     </div>}
     {tab==='sw'&&<div className="iv-row">
-      {[['subOn','Tag tabanlı substitüsyon'],['tierOn','Kademe varyasyonu'],['posOn','Pozisyon & vücut tipi'],['testOn','Test verisi tetikleyicileri']].map(([k,l])=>
+      {[['subOn','Tag tabanlı substitüsyon'],['posOn','Pozisyon & vücut tipi'],['testOn','Test verisi tetikleyicileri']].map(([k,l])=>
         <label key={k} className="iv-switch"><input type="checkbox" checked={cfg[k]!==false} onChange={e=>save({...cfg,[k]:e.target.checked})}/><span>{l}</span></label>)}
       <div className="help" style={{width:'100%'}}>Kapatılan katman hiç öneri üretmez. Her katman açıkken bile ürettiği her şey bir öneridir — sporcu kartında tek tek geçersiz kılınabilir.</div>
     </div>}
@@ -12474,7 +12570,7 @@ function IndivConfig({cfg,save}){
 }
 
 /* ---- One exercise slot in a generated program ---------------------------- */
-const IV_RK={sub:'#f59e0b',rd:'#38bdf8',tier:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e'};
+const IV_RK={sub:'#f59e0b',rd:'#38bdf8',state:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e'};
 function IndivSlotRow({row,lib,onOverride,onReset}){
   const[mode,setMode]=useState(null);   // null | 'lib' | 'free'
   const[free,setFree]=useState(row.name||'');
@@ -12533,7 +12629,7 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
 }
 
 /* ---- One athlete's generated program ------------------------------------- */
-function IndivAthleteCard({plan,lib,cfg,tiers,onOverride,onResetSlot,onToggleLayer,onTier,onExport,open,setOpen}){
+function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onExport,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12544,9 +12640,11 @@ function IndivAthleteCard({plan,lib,cfg,tiers,onOverride,onResetSlot,onToggleLay
         <div className="iv-nm">{a.name||'—'}</div>
         <div className="iv-meta">
           {a.position?<span>{a.position} · {posGroupLabel(plan.posGroup)}</span>:<span className="iv-dim">pozisyon yok</span>}
-          {plan.tier?<span>{plan.tier.name}</span>:<span className="iv-dim">kademe yok</span>}
+          {plan.state&&plan.state.on&&Math.abs(plan.state.sets-1)>0.001
+            ?<span title={plan.state.factors.map(f=>`${f.label} ×${f.v}`).join(' · ')}>durum ×{plan.state.sets}</span>
+            :<span className="iv-dim">durum etkisi yok</span>}
           {a.animalType&&<span>{(ANIMAL_TYPES.find(x=>x.id===a.animalType)||{}).name}</span>}
-          <span className="iv-key" title="Profil anahtarı: kademe · pozisyon · vücut tipi — şablon varyasyonunu bu kombinasyon seçer">{plan.profileKey}</span>
+          <span className="iv-key" title="Profil anahtarı: pozisyon · vücut tipi · durumdan gelen hacim çarpanı">{plan.profileKey}</span>
           {(a.constraintTags||[]).map(t=><span key={t} className="iv-warnchip">{ctLabel(t)}</span>)}
           {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Günlük anket · ${fd(p.date)}${p.raw?` · "${p.raw}"`:''}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
         </div>
@@ -12574,20 +12672,14 @@ function IndivAthleteCard({plan,lib,cfg,tiers,onOverride,onResetSlot,onToggleLay
     {open&&<div className="iv-card-body">
       <div className="iv-layers">
         <span className="h">Bu sporcuda katmanlar:</span>
-        {[['readiness','Readiness yük ayarı'],['volume','Günlük set/tekrar'],['pain','Ağrı tetikleyicisi'],['sub','Substitüsyon'],['tier','Kademe'],['pos','Pozisyon / vücut tipi'],['test','Test tetikleyicileri']].map(([k,l])=>
+        {[['readiness','Readiness yük ayarı'],['volume','Günlük set/tekrar'],['state','Sporcu durumu'],['pain','Ağrı tetikleyicisi'],['sub','Substitüsyon'],['pos','Pozisyon / vücut tipi'],['test','Test tetikleyicileri']].map(([k,l])=>
           <label key={k} className="iv-switch sm"><input type="checkbox" checked={!plan.off[k]} onChange={e=>onToggleLayer(k,!e.target.checked)}/><span>{l}</span></label>)}
         <span className="iv-expg" style={{marginLeft:'auto'}}>
           <span className="h">PDF:</span>
           <button className="btn xs sec" onClick={()=>onExport('coach')} title="Gerekçeler dahil antrenör kopyası">Antrenör</button>
           <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Sade sporcu kopyası — gerekçe yok">Sporcu</button>
         </span>
-        <label className="iv-switch sm">
-          <span>Kademe:</span>
-          <select value={a.tier||''} onChange={e=>onTier(e.target.value)}>
-            <option value="">— atanmadı</option>
-            {tiers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </label>
+
       </div>
       {plan.blocks.map((b,bi)=><div key={bi} className="iv-block">
         <div className="iv-block-hd">{b.name||`Blok ${bi+1}`}</div>
@@ -12641,7 +12733,15 @@ function IndividualizationView({data,setData,team,updateTeam}){
     const cur=ovrAll[athId]||{};
     setOvr(athId,{off:{...(cur.off||{}),[k]:v}});
   };
-  const setTier=(athId,tier)=>updateTeam(team.id,{athletes:athletes.map(a=>a.id===athId?{...a,tier}:a)});
+  /* Where the athlete sits in the squad's 28-day load, fed to the state profile.
+     Only meaningful when somebody actually has load logged, so it stays unset otherwise. */
+  const loadRanks=useMemo(()=>{
+    const vals=athletes.map(a=>({id:a.id,v:athLoadSum(a,fmt(addD(parseD(date),-28)),fmt(addD(parseD(date),-2)))}));
+    if(vals.length<3||!vals.some(x=>x.v>0))return{};
+    const sorted=[...vals].sort((x,y)=>x.v-y.v);
+    const m={};sorted.forEach((x,i)=>{m[x.id]=i/(sorted.length-1);});
+    return m;
+  },[athletes,date]);
 
   const autoIds=useMemo(()=>{
     if(src&&src.team&&(src.team.athletes||[]).length)return src.team.athletes;
@@ -12653,8 +12753,8 @@ function IndividualizationView({data,setData,team,updateTeam}){
   const plans=useMemo(()=>{
     if(!src)return[];
     return athletes.filter(a=>chosen.includes(a.id))
-      .map(a=>buildIndivPlan(src.session,a,{lib,cfg,ref:date,ovr:ovrAll[a.id]||{}}));
-  },[src,athletes,chosen,lib,cfg,date,ovrAll]);
+      .map(a=>buildIndivPlan(src.session,a,{lib,cfg,ref:date,ovr:ovrAll[a.id]||{},loadRank:loadRanks[a.id]}));
+  },[src,athletes,chosen,lib,cfg,date,ovrAll,loadRanks]);
 
   const apply=()=>{
     if(!src||plans.length===0)return;
@@ -12690,7 +12790,6 @@ function IndividualizationView({data,setData,team,updateTeam}){
     const list=athletes.filter(a=>(ids||chosen).includes(a.id));
     exportPrograms({athletes:list,dateKey:date,mode,range:expRange,teamName:team.setup.teamName});
   };
-  const missingTier=plans.filter(p=>!p.tier).length;
   const noReadiness=plans.filter(p=>p.rd.score==null).length;
 
   return(<div className="iv-wrap">
@@ -12733,21 +12832,19 @@ function IndividualizationView({data,setData,team,updateTeam}){
       <button className="btn xs sec" onClick={()=>setSel([])}>Hiçbiri</button>
       <button className="btn xs sec" onClick={()=>setSel(null)}>Otomatik</button>
       {athletes.map(a=><button key={a.id} className={'iv-athchip'+(chosen.includes(a.id)?' on':'')} onClick={()=>toggleAth(a.id)}>
-        {a.name||'—'}{a.tier?<i>{(cfg.tiers.find(t=>t.id===a.tier)||{}).name?.split('—')[0].trim()}</i>:null}
+        {a.name||'—'}{a.levelTag?<i>{LEVEL_LABEL[a.levelTag]||a.levelTag}</i>:null}
       </button>)}
     </div>}
     {!src&&<div className="ex-empty">Bu tarihte takım seansı yok ve henüz şablon oluşturulmamış. Templates sekmesinden bir şablon oluştur ya da takvimde bir seans planla.</div>}
-    {src&&(missingTier>0||noReadiness>0)&&<div className="iv-hint">
-      {missingTier>0&&<span>{missingTier} sporcunun kademesi atanmamış — kart içinden atayabilirsin.</span>}
-      {noReadiness>0&&<span>{noReadiness} sporcuda readiness verisi yok — wellness anketi ya da sRPE girildiğinde otomatik dolar.</span>}
+    {src&&noReadiness>0&&<div className="iv-hint">
+      <span>{noReadiness} sporcuda readiness verisi yok — wellness anketi ya da sRPE girildiğinde otomatik dolar.</span>
     </div>}
-    {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p} lib={lib} cfg={cfg} tiers={cfg.tiers}
+    {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p} lib={lib} cfg={cfg}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
       onToggleLayer={(k,v)=>toggleLayer(p.ath.id,k,v)}
-      onExport={mode=>doExport(mode,[p.ath.id])}
-      onTier={t=>setTier(p.ath.id,t)}/>)}
+      onExport={mode=>doExport(mode,[p.ath.id])}/>)}
     {src&&plans.length===0&&<div className="ex-empty">Seçili sporcu yok — yukarıdan sporcu seç.</div>}
   </div>);
 }
