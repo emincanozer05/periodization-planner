@@ -1590,9 +1590,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .test-card:hover::before{background:var(--accent)}
 .test-card.open{border-color:var(--accent);box-shadow:0 0 0 1px rgba(230,255,85,.15),0 4px 20px rgba(0,0,0,.3)}
 .test-card.open::before{background:var(--accent)}
-/* The cards sit in 240px-min grid columns, so the date and the button group
-   often can't share a line. Let the header wrap instead — without this the
-   buttons overflow the card and .test-card's overflow:hidden clips them. */
+/* Test cards get wider columns than the athlete cards so the date/meta block
+   and the button group sit side by side: 40px padding + 225px meta (the
+   widest case, "Post-Season · 2026 · 12 tests") + 12px gap + 128px buttons
+   = 405. The header still wraps as a fallback below that, otherwise the
+   buttons overflow and .test-card's overflow:hidden clips them. */
+.test-grid{grid-template-columns:repeat(auto-fill,minmax(410px,1fr))}
 .test-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 12px;flex-wrap:wrap}
 .test-card-headline{min-width:0;flex:1 1 auto}
 .test-card-date{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
@@ -8118,7 +8121,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       <div className="panel">
         <h2 style={{marginTop:0}}>{Lx('Test Sonuçları','Test Results')} <span style={{fontSize:12,color:'var(--muted)',fontWeight:400}}>({tests.length})</span></h2>
         {tests.length===0&&<div className="empty-st">{Lx('Bu sporcu için henüz test yok. Yukarıdan test seçip "Test Al"a bas.','No tests yet. Pick tests above and press "Take Test".')}</div>}
-        {tests.length>0&&<div className="ath-grid">
+        {tests.length>0&&<div className="ath-grid test-grid">
           {[...tests].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(t=>{
             const isEd=editingId===t.id;const bat=batOf(t);
             const isAdding=addBatId===t.id;
