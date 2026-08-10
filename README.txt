@@ -9,6 +9,36 @@ programs. Pick a date, pick a source (a team session planned
 for that date, or a Template), and the tab builds one version
 per athlete. These layers stack:
 
+  0. The automatic-reduction gate (read this first)
+     Nothing below touches a number while the athlete reads as
+     ready. The gate arms only when today's readiness is BELOW
+     the threshold (default 3.5); at or above it the team
+     program's sets, reps and intensity are written exactly as
+     the coach designed them. Once armed, the layers do not each
+     take a bite out of the numbers one after another — they
+     fold into ONE cumulative ratio, and that ratio is applied
+     once. Four rules ride on top of it:
+       - the ratio is never above 1. There is no automatic
+         progression; going up stays a manual coach decision.
+       - intensity follows volume, on the same ratio and in the
+         same direction (%1RM and kg scale down, the RPE target
+         comes down with them). Volume never drops while
+         intensity stays put.
+       - the floors are absolute: sets never below 1, reps never
+         below the rep floor (default 5). A floor never RAISES a
+         written value — a 3-rep strength set stays 3 reps, it is
+         simply not cut further.
+       - below the review threshold (default readiness 2.5) the
+         cut is still applied — a bad day is exactly when volume
+         should come down — but the session goes to the coach
+         marked ⚑ manuel_inceleme.
+     With no readiness reading at all the conservative branch
+     runs: the template's exercises are kept, a single flagged
+     trim (default ×0.90) is applied, and the session is marked
+     for manual review. Nothing is ever invented to fill the gap.
+     Thresholds, floors and the no-data multiplier are editable
+     in ⚙ Kurallar → Readiness yük ayarı.
+
   1. Tag substitution
      Library exercises carry a movement pattern and
      contraindication tags (knee / back / shoulder / ankle /
@@ -21,9 +51,14 @@ per athlete. These layers stack:
      Readiness comes from the wellness check-in; with no recent
      check-in it is estimated from that athlete's sRPE trend
      (labelled "tahmin" wherever it shows).
-       Model A — scales the written load (e.g. low readiness → 85%)
+       Model A — scales the written load on the session's
+                 cumulative ratio
        Model B — writes an RPE target, kg left to the day
      Either or both; every adjustment is printed on the program.
+     The readiness score is counted ONCE: the set/rep table below
+     already carries it (its columns are the readiness bands), so
+     the band's load multiplier only enters the ratio when that
+     table is switched off.
   3. Athlete state
      No tiers, no groups: each athlete's own standing is read
      directly and turned into a set/rep multiplier, an RPE shift
@@ -54,8 +89,10 @@ per athlete. These layers stack:
      and keeps moving on a day with no previous-day load to
      compare against. Reps move a fraction of the way the sets
      do, which turns 4×10 into 3×8 instead of 3×6. This daily
-     factor multiplies with the athlete-state factor above, and
-     every resulting number stays editable per slot.
+     factor and the athlete-state factor above are two of the
+     terms folded into the single cumulative ratio described in
+     layer 0 — they are not applied separately — and every
+     resulting number stays editable per slot.
   6. Pain reported on the daily survey
      When an athlete reports a painful region, every slot whose
      movement pattern loads that region is handled. Two
@@ -65,8 +102,22 @@ per athlete. These layers stack:
                     report sends a squat to a hinge, not to
                     another squat)
        below      → the exercise stays, sets and reps come down
+                    (as another term of the cumulative ratio). If
+                    readiness is above the gate that day nothing
+                    is cut automatically — the slot is flagged
+                    ⚑ manuel_inceleme instead, so the call is the
+                    coach's.
      Both the structured picker in the wellness survey and
      Tally's free-text "Area of Pain" field feed this.
+     Substitution itself runs on a trigger, never on a hunch: an
+     active restriction that contraindicates the exercise, a
+     reported pain region this movement pattern loads, a
+     screening finding about this movement, or a difficulty above
+     the athlete's ceiling. When a trigger fires but no suitable
+     alternative exists, the template's exercise is KEPT and the
+     slot is flagged for manual review rather than swapped for a
+     guess. Block count, block order and the number of slots in
+     each block are never changed.
 
 Every changed exercise carries a reason. Automatic changes write
 their own ("Ankette diz ağrısı 3/3 bildirildi → Back Squat yerine
@@ -79,6 +130,13 @@ for one athlete or for everyone with a program that day, over a
 single day or a Mon-Sun week:
   Antrenör PDF — includes the reason recorded against every change
   Sporcu PDF   — exercise, sets × reps, load / RPE target, nothing else
+
+⭳ JSON exports the same programs machine-readably for one athlete
+or the whole selection: the template's own block order, one row
+per slot ({blok, slot_sira, orijinal_egzersiz,
+uygulanacak_egzersiz, degisti_mi, gerekce, set, tekrar, siddet,
+flag}) plus a genel_not summarising what the gate decided and on
+what score. flag is null or "manuel_inceleme".
 
 Nothing is silent and nothing is forced. Every layer produces a
 SUGGESTION with a visible reason chip, each can be switched off
