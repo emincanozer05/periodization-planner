@@ -2346,6 +2346,14 @@ header{background:var(--bg2)!important}
 .iv-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text2);margin-top:2px}
 .iv-meta span{white-space:nowrap}
 .iv-painchip{color:#fecaca;background:rgba(244,63,94,.2);border:1px solid rgba(244,63,94,.5);border-radius:6px;padding:1px 7px;font-weight:600}
+/* Yesterday's reported load and today's pain reports, read next to the readiness
+   badge — the athlete's side of the header, opposite the program's. */
+.iv-daybar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;font-size:11px}
+.iv-daybar .iv-painchip{white-space:normal;max-width:280px}
+.iv-daybar .iv-painchip.note{font-weight:500;font-style:italic}
+.iv-dchip{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--border);border-radius:8px;padding:3px 10px;background:var(--elevated);white-space:nowrap}
+.iv-dchip i{font-size:8.5px;font-style:normal;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.iv-dchip b{font-size:12.5px;font-weight:700;color:var(--text2);font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-adj.miss{color:#f59e0b;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1)}
 .iv-why{margin-top:8px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.28);border-radius:8px;padding:6px 10px}
 .iv-why.miss{border-style:dashed;border-color:rgba(245,158,11,.55)}
@@ -2377,7 +2385,8 @@ header{background:var(--bg2)!important}
 .iv-adj{border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap}
 .iv-adj.sub{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
 .iv-ch{color:var(--dim);font-size:12px}
-.iv-writeb{white-space:nowrap;margin-left:auto}
+/* The day bar owns the auto margin now — the button just follows it right. */
+.iv-writeb{white-space:nowrap}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
@@ -2408,7 +2417,7 @@ header{background:var(--bg2)!important}
    equal width, side by side. Only the note stretches into what is left. */
 .iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:0 0 108px}
 .iv-numed label.wide{flex:1 1 200px}
-.iv-numed input{font-size:12px;padding:5px 8px}
+.iv-numed input,.iv-numed select{font-size:12px;padding:5px 8px}
 
 /* exercise-row alternatives inside the session/template editor */
 .ex-alts{padding:0 8px 8px}
@@ -11850,6 +11859,26 @@ function athPainReports(a,ref,cfg){
       seen.add(t.id);out.push({tag:t.id,sev:Number(P.textSeverity||2),date:w.date,src:'text',raw:w.areaOfPain});}});
   return out;
 }
+/* Whatever the athlete typed into the check-in's pain box, in their own words.
+   athPainReports only returns regions it could match to a rule, so a note that
+   matches nothing ("belim tutuldu") would otherwise disappear before the coach
+   ever sees it. Read from the same check-in and the same window. */
+function athPainNote(a,ref,cfg){
+  const P=(cfg&&cfg.pain)||defaultIndivCfg().pain;
+  const ws=(a.wellness||[]).filter(w=>w.date&&w.date<=ref).sort((x,y)=>x.date.localeCompare(y.date));
+  const w=ws[ws.length-1];
+  if(!w||dayGap(w.date,ref)>Number(P.windowDays||2))return null;
+  const t=String(w.areaOfPain||'').trim();
+  return t?{text:t,date:w.date}:null;
+}
+/* Yesterday, as the athlete reported it: the session RPE they rated and the load
+   (sRPE × duration) it worked out to. This is the number the daily volume layer
+   reasons about, so the coach should not have to leave the card to see it. */
+function athPrevDay(a,ref){
+  const date=fmt(addD(parseD(ref),-1));
+  const r=athDayRPE(a,date);
+  return{date,rpe:(r==null||isNaN(r))?null:Math.round(r*10)/10,load:athDayLoad(a,date)};
+}
 /* ---- Athlete state → volume, RPE shift and difficulty ceiling -------------
    What tiers used to do, without the bucket: instead of sorting athletes into
    3-4 groups, each athlete's own standing is read directly and turned into a
@@ -12357,6 +12386,7 @@ function buildIndivPlan(src,ath,ctx){
         ?`Readiness ${rdKnown?`${rd.score}/5`:'—'} < ${gate.from} → kümülatif azaltma ×${sessRatio} (${sessParts.join(', ')}). Hacim ve şiddet aynı oranla düşürüldü; taban set ≥${gate.setFloor}, tekrar ≥${gate.repFloor}.${gateReview?` Readiness ${gate.reviewFrom} kritik sınırının altında — antrenör onayına sunuldu.`:''}`
         :`Readiness ${rdKnown?`${rd.score}/5`:'—'} — azaltmayı tetikleyen bir katman yok, şablon değerleri korundu.${gateReview?' Manuel inceleme işaretlendi.':''}`;
   return{ath,rd,band,state:st,pos,posGroup:pgId,bodyType:bt,flags,pains,painSubs,dayVol,constraints,blocks,rpeTarget,changed,
+    prev:athPrevDay(ath,ref),painNote:athPainNote(ath,ref,cfg),
     missingWhy,flagged,gate,gateState,gateNote,profileKey,notes:athNotesList(ath),summary,off};
 }
 
@@ -12762,6 +12792,23 @@ function IndivConfig({cfg,save}){
   </div>);
 }
 
+/* Set, rep and RPE are picked from a list rather than typed. Reps are offered in
+   even numbers, matching what the automatic reduction prescribes, and RPE in the
+   half steps the engine clamps to. Whatever is already written stays selectable
+   even when it is not on the list — a template's rep RANGE ("8-10") or an odd
+   strength-set count must survive the coach opening the dropdown. */
+const SLOT_SETS=['1','2','3','4','5','6','7','8','9','10'];
+const SLOT_REPS=['2','4','6','8','10','12','14','16','18','20'];
+const SLOT_RPES=['4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10'];
+function SlotPick({value,options,onChange,title}){
+  const v=String(value==null?'':value);
+  const opts=(v&&!options.includes(v))?[v,...options]:options;
+  return(<select value={v} onChange={e=>onChange(e.target.value)} title={title}>
+    <option value="">—</option>
+    {opts.map(o=><option key={o} value={o}>{o}</option>)}
+  </select>);
+}
+
 /* ---- One exercise slot in a generated program ---------------------------- */
 function IndivSlotRow({row,onOverride,onReset}){
   const[altOpen,setAltOpen]=useState(false);
@@ -12821,9 +12868,9 @@ function IndivSlotRow({row,onOverride,onReset}){
         {alts.length<3&&<button type="button" className="alt-add" onClick={addAlt}>+ Alternatif</button>}
       </div>}
       <div className="iv-numed">
-        <label>set<input value={row.sets||''} onChange={e=>onOverride({sets:e.target.value})}/></label>
-        <label>tekrar<input value={row.reps||''} onChange={e=>onOverride({reps:e.target.value})}/></label>
-        <label>rpe<input value={row.rpe||''} onChange={e=>onOverride({rpe:e.target.value})}/></label>
+        <label>set<SlotPick value={row.sets} options={SLOT_SETS} onChange={v=>onOverride({sets:v})} title="Set sayısı"/></label>
+        <label>tekrar<SlotPick value={row.reps} options={SLOT_REPS} onChange={v=>onOverride({reps:v})} title="Tekrar sayısı — çift sayılar"/></label>
+        <label>rpe<SlotPick value={row.rpe} options={SLOT_RPES} onChange={v=>onOverride({rpe:v})} title="Hedef RPE"/></label>
         <label>yük<input value={row.load||''} onChange={e=>onOverride({load:e.target.value})}/></label>
         <label className="wide">not<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Sporcuya özel not…"/></label>
         {/* Reset drops this slot's alternatives back to the template's too, so the
@@ -12860,8 +12907,20 @@ function IndivAthleteCard({plan,cfg,onOverride,onResetSlot,onApply,onExport,onEx
           {a.animalType&&<span>{(ANIMAL_TYPES.find(x=>x.id===a.animalType)||{}).name}</span>}
           <span className="iv-key" title="Profil anahtarı: pozisyon · vücut tipi · durumdan gelen hacim çarpanı">{plan.profileKey}</span>
           {(a.constraintTags||[]).map(t=><span key={t} className="iv-warnchip">{ctLabel(t)}</span>)}
-          {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Günlük anket · ${fd(p.date)}${p.raw?` · "${p.raw}"`:''}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
         </div>
+      </div>
+      {/* What the athlete told us, next to what we are about to prescribe: yesterday's
+          session RPE and the load it came to, and anything they reported hurting —
+          the matched regions and, verbatim, whatever they typed. */}
+      <div className="iv-daybar">
+        <span className="iv-dchip" title={`Dünkü seans RPE'si (${fd(plan.prev.date)}) — sporcunun kendi değerlendirmesi`}>
+          <i>dün rpe</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
+        </span>
+        <span className="iv-dchip" title={`Dünkü iç yük (${fd(plan.prev.date)}) — sRPE × süre`}>
+          <i>dün srpe</i><b>{plan.prev.load>0?`${plan.prev.load} AU`:'—'}</b>
+        </span>
+        {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Günlük anket · ${fd(p.date)}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
+        {plan.painNote&&<span className="iv-painchip note" title={`Ağrı bildirimi · ${fd(plan.painNote.date)}`}>“{plan.painNote.text}”</span>}
       </div>
       {/* Write just this athlete's program to their own calendar — the squad-wide
           button above stays, this one keeps a single fix from touching everyone. */}
