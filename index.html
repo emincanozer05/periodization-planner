@@ -12451,11 +12451,17 @@ function indivWeekSessions(ath,dateKey){
 }
 function exportPrograms({athletes,dateKey,mode,range,teamName}){
   const coach=mode==='coach';
+  /* The document title already names a single athlete, so repeating it on every
+     session header just reads as clutter. The badge carries only what the title
+     cannot: which athlete, when several are printed on one document, and which
+     day, over a week. */
+  const solo=(athletes||[]).length===1;
   const items=[];
   (athletes||[]).forEach(a=>{
     const list=range==='week'?indivWeekSessions(a,dateKey):indivSessionsFor(a,dateKey).map(s=>({...s,_day:dateKey}));
     list.forEach((s,i)=>{
-      const label=range==='week'?`${a.name||'—'} · ${dnL((parseD(s._day).getDay()+6)%7)} ${fd(s._day)}`:(a.name||'—');
+      const day=range==='week'?`${dnL((parseD(s._day).getDay()+6)%7)} ${fd(s._day)}`:'';
+      const label=[solo?'':(a.name||'—'),day].filter(Boolean).join(' · ');
       const ses={...s,ownerName:label};
       items.push(coach?ses:stripForAthlete(ses));
     });
@@ -12465,8 +12471,10 @@ function exportPrograms({athletes,dateKey,mode,range,teamName}){
     ?`${fd(fmt(sow(parseD(dateKey))))} – ${fd(fmt(addD(sow(parseD(dateKey)),6)))}`
     :fdL(dateKey);
   const who=(athletes||[]).length===1?((athletes[0].name)||'Sporcu'):`${(athletes||[]).length} sporcu`;
+  /* Only the coach's copy says which copy it is — it is the one that differs from
+     what the athlete is handed, and the coach is the one who has both. */
   printDayA4(`${who}${teamName?` · ${teamName}`:''}`,
-    `${range_lbl} · ${coach?'Antrenör kopyası':'Sporcu kopyası'}`,
+    `${range_lbl}${coach?' · Antrenör kopyası':''}`,
     items,{withReasons:coach,pageBreaks:true});
 }
 
