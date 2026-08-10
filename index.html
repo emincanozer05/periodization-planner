@@ -2421,8 +2421,9 @@ header{background:var(--bg2)!important}
 .iv-librow .t{font-size:10.5px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
 .iv-librow .c{font-size:10.5px;color:#fda4af}
 .iv-numed{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
-.iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:0 0 78px}
-.iv-numed label.ld{flex:0 0 148px}
+/* Set / tekrar / rpe / yük are the same kind of number, so they get the same box:
+   equal width, side by side. Only the note stretches into what is left. */
+.iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:0 0 108px}
 .iv-numed label.wide{flex:1 1 200px}
 .iv-numed input{font-size:12px;padding:5px 8px}
 
@@ -2576,7 +2577,7 @@ function L(tr,en){return REPORT_LANG==='tr'?tr:en;}
 /* =========================================================
    FACTORIES
    ========================================================= */
-const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',load:'',rest:'',description:'',notes:'',superset:'',image:'',link:''});
+const EX=()=>({name:'',sets:'',reps:'',duration:'',tempo:'',rpe:'',load:'',rest:'',description:'',notes:'',superset:'',image:'',link:''});
 /* Only http(s) links are ever stored/rendered — keeps `javascript:` and friends out of the
    printed document's href, and quotes out of the attribute. Returns '' for anything else. */
 const safeURL=u=>{const s=String(u==null?'':u).trim();
@@ -3843,6 +3844,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       // Secondary meta — only show fields that are filled. Each label is
       // bold + colored so it stands out from the value.
       const meta=[];
+      if(e.rpe)meta.push(`<span class="m-p"><strong>RPE:</strong> ${e.rpe}</span>`);
       if(e.load)meta.push(`<span class="m-l"><strong>Load:</strong> ${e.load}</span>`);
       if(e.tempo)meta.push(`<span class="m-t"><strong>Tempo:</strong> ${e.tempo}</span>`);
       if(e.rest)meta.push(`<span class="m-r"><strong>Resting:</strong> ${e.rest}</span>`);
@@ -3948,6 +3950,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-l{color:#ea580c;font-weight:800}
 .ex-meta .m-t{color:#7c3aed;font-weight:800}
 .ex-meta .m-r{color:#6f7d29;font-weight:800}
+.ex-meta .m-p{color:#be123c;font-weight:800}
 .ex-meta strong{font-weight:800}
 /* Coaching cues read as a quiet note next to the prescription, so they break out of the
    sheet's bold-italic display face: light, upright Inter. The !important flags are what
@@ -4154,7 +4157,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
     const ss=(ex.superset||'').toString().toUpperCase().trim();
     if(ss){c[ss]=(c[ss]||0)+1;return{tag:ss+c[ss],ss};}
     c._=(c._||0)+1;return{tag:c._+'.',ss:''};});};
-  const renderEx=(e,lab)=>`<div class="ex"><span class="ex-no${lab.ss?' ss':''}">${lab.tag}</span><span class="exn">${e.name||''}</span>${(e.sets||e.reps)?`<span class="exr">${e.sets||''}×${e.reps||''}</span>`:''}${e.load?`<span class="exl">@${e.load}</span>`:''}${e.duration?`<span class="exd">${e.duration}</span>`:''}${e.tempo?`<span class="ext">t:${e.tempo}</span>`:''}${e.rest?`<span class="exrr">r:${e.rest}</span>`:''}${e.description?`<div class="exdesc">${e.description}</div>`:''}</div>`;
+  const renderEx=(e,lab)=>`<div class="ex"><span class="ex-no${lab.ss?' ss':''}">${lab.tag}</span><span class="exn">${e.name||''}</span>${(e.sets||e.reps)?`<span class="exr">${e.sets||''}×${e.reps||''}</span>`:''}${e.rpe?`<span class="exl">RPE ${e.rpe}</span>`:''}${e.load?`<span class="exl">@${e.load}</span>`:''}${e.duration?`<span class="exd">${e.duration}</span>`:''}${e.tempo?`<span class="ext">t:${e.tempo}</span>`:''}${e.rest?`<span class="exrr">r:${e.rest}</span>`:''}${e.description?`<div class="exdesc">${e.description}</div>`:''}</div>`;
   const renderDay=(date,i)=>{const day=days[date];const ss=day?.sessions||[];const isWeekend=i>=5;
     const dayLoad=rDay[i];   // realized team load for the day (matches chart + monotony)
     return`<td class="day-cell${isWeekend?' weekend':''}">
@@ -5644,10 +5647,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 const ss=(e.superset||'').toString().toUpperCase().trim();
                 let tag;if(ss){cnt[ss]=(cnt[ss]||0)+1;tag=`${ss}${cnt[ss]}`;}
                 else{cnt._=(cnt._||0)+1;tag=String(cnt._).padStart(2,'0');}
-                // Show whatever was filled in — volume (sets×reps / sets×duration / reps / duration / sets), plus load, tempo and rest.
+                // Show whatever was filled in — volume (sets×reps / sets×duration / reps / duration / sets), plus RPE, load, tempo and rest.
                 const _v=e.reps||e.duration;
                 const vol=e.sets&&_v?`${e.sets} × ${_v}`:(_v||(e.sets?`${e.sets} sets`:''));
-                const detail=[vol,e.load,e.tempo?`tempo ${e.tempo}`:'',e.rest?`rest ${e.rest}`:''].filter(Boolean).join(' · ');
+                const detail=[vol,e.rpe?`RPE ${e.rpe}`:'',e.load,e.tempo?`tempo ${e.tempo}`:'',e.rest?`rest ${e.rest}`:''].filter(Boolean).join(' · ');
                 return(<div key={i} className="dw-ex">
                   <span className={`ss${e.name?'':' empty'}`}>{tag}</span>
                   <span className="en">{e.name||'—'}</span>
@@ -5973,7 +5976,9 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     </div>
     {open&&<div className="block-body">
       <table className="ex-tbl">
-        <thead><tr><th style={{width:90}}>#</th><th style={{width:'24%'}}>Exercise</th><th>Sets</th><th>Reps</th><th>Time</th><th>Tempo</th><th>Load</th><th>Rest</th><th style={{width:90}}></th></tr></thead>
+        {/* Exercise keeps its own 24% share on a fixed-layout table, so adding the
+            RPE column narrows the numeric columns beside it and nothing else. */}
+        <thead><tr><th style={{width:90}}>#</th><th style={{width:'24%'}}>Exercise</th><th>Sets</th><th>Reps</th><th>Time</th><th>Tempo</th><th>RPE</th><th>Load</th><th>Rest</th><th style={{width:90}}></th></tr></thead>
         <tbody>{exs.map((ex,i)=>{
           const f=(k,v)=>upEx(i,{...ex,[k]:v});
           const lab=labels[i];
@@ -6001,15 +6006,16 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
             <td><input className="es" value={ex.reps} onChange={e=>f('reps',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.duration} onChange={e=>f('duration',e.target.value)} placeholder="—"/></td>
             <td><input className="em" value={ex.tempo} onChange={e=>f('tempo',e.target.value)} placeholder="—"/></td>
+            <td><input className="es" value={ex.rpe||''} onChange={e=>f('rpe',e.target.value)} placeholder="—" title="Hedef RPE (4–10)"/></td>
             <td><input className="em" value={ex.load} onChange={e=>f('load',e.target.value)} placeholder="—"/></td>
             <td><input className="es" value={ex.rest} onChange={e=>f('rest',e.target.value)} placeholder="—"/></td>
             <td><div className="eact"><button onClick={()=>mv(i,-1)} title="Up">↑</button><button onClick={()=>mv(i,1)} title="Down">↓</button>
               <button onClick={()=>{const a=[...exs];a.splice(i+1,0,{...ex});setExs(a);}} title="Duplicate">⎘</button>
               <button className="del" onClick={()=>setExs(exs.filter((_,j)=>j!==i))} title="Remove">✕</button></div></td>
           </tr>
-          <tr><td colSpan="9" className="ex-link"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></td></tr>
-          <tr><td colSpan="9" className="ex-desc"><input value={ex.description||''} onChange={e=>f('description',e.target.value)} placeholder="Description / coaching cues (optional)…"/></td></tr>
-          <tr><td colSpan="9" className="ex-alts"><ExAltsCell alts={ex.alts||[]} onChange={v=>f('alts',v)}/></td></tr>
+          <tr><td colSpan="10" className="ex-link"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></td></tr>
+          <tr><td colSpan="10" className="ex-desc"><input value={ex.description||''} onChange={e=>f('description',e.target.value)} placeholder="Description / coaching cues (optional)…"/></td></tr>
+          <tr><td colSpan="10" className="ex-alts"><ExAltsCell alts={ex.alts||[]} onChange={v=>f('alts',v)}/></td></tr>
         </React.Fragment>;})}</tbody>
       </table>
       <div className="row" style={{marginTop:6,gap:8}}>
@@ -12014,10 +12020,23 @@ function scaleSetsFloored(sets,mult,floor){
   if(!m)return sets;
   return String(sets).replace(/\d+/,String(floorNum(Number(m[0]),mult,floor)));
 }
+/* Reps are prescribed in even numbers — a cut that lands on 9 next to the 10 the
+   coach wrote reads as noise, not as a decision. The reduced value is rounded
+   DOWN to even (the cut only ever goes down anyway) and the rep floor is raised
+   to even with it, so the bottom of the window is a usable number too. Two
+   things are left alone: a value the cut did not reach, and an original below
+   the floor — an odd 3-rep strength set the coach wrote himself stays 3. */
+function floorNumEven(orig,mult,floor){
+  const raw=Math.round(orig*mult);
+  if(raw>=orig)return orig;
+  const lo=Math.min(orig,Math.max(1,Number(floor)||1));
+  const loEven=Math.min(orig,lo%2?lo+1:lo);
+  return Math.max(loEven,Math.min(orig,2*Math.floor(raw/2)));
+}
 function scaleRepsFloored(reps,mult,floor){
   const t=String(reps==null?'':reps);
   if(!/\d/.test(t))return reps;
-  return t.replace(/\d+/g,m=>String(floorNum(Number(m),mult,floor)));
+  return t.replace(/\d+/g,m=>String(floorNumEven(Number(m),mult,floor)));
 }
 /* Intensity moves with volume, on the same ratio and in the same direction —
    percentages and kg scale down, never up. */
@@ -12026,6 +12045,10 @@ function scaleLoadDown(txt,mult){
   return scaleNumText(txt,mult);
 }
 const rpeInText=t=>{const m=String(t||'').match(/rpe\s*([0-9]+(?:[.,][0-9])?)/i);return m?Number(m[1].replace(',','.')):null;};
+/* Takes an "@RPE 7" out of a load text and tidies up the separators it leaves
+   behind, so "%75 · @RPE 7" becomes "%75" and a bare "@RPE 7" becomes "". */
+const stripRPEText=t=>String(t||'').split('·').map(s=>s.trim())
+  .filter(s=>s&&!/^@?\s*rpe\s*[0-9]/i.test(s)).join(' · ').trim();
 const clampRPE=v=>Math.max(4,Math.min(10,Math.round(v*2)/2));
 
 /* ---- Substitution ---------------------------------------------------------
@@ -12259,25 +12282,30 @@ function buildIndivPlan(src,ath,ctx){
       else reasons.push({k:'vol',t:`Hacim tabana dayandı — ${base.sets||'—'}×${base.reps||'—'} korundu`});
       volWhy=`Toplam azaltma ×${slotRatio} (${volParts.join(', ')})${volChanged?` — hacim ${shown}`:' — taban nedeniyle hacim korundu'}`;
     }
-    // load: Model A scales the written load on the SAME ratio, Model B writes the
-    // matching RPE target. Intensity never stays put while volume comes down.
-    let load=o.load!=null&&o.load!==''?o.load:base.load;
-    if((o.load==null||o.load==='')&&cfg.readiness.on&&!off.readiness){
-      const parts=[];
-      if(cfg.readiness.modelA&&slotRatio<0.999&&base.load&&/\d/.test(String(base.load))){
-        const nl=scaleLoadDown(base.load,slotRatio);
-        parts.push(nl);
-        reasons.push({k:'rd',t:`Şiddet aynı oranla düştü (×${slotRatio}): ${base.load} → ${nl}`});
-      } else if(base.load)parts.push(base.load);
-      if(cfg.readiness.modelB){
-        const baseR=rpeInText(base.load);
-        const target=baseR!=null?clampRPE(Math.min(baseR,baseR*slotRatio)):rpeTarget;
-        const txt=`@RPE ${target}`;
-        const cleaned=parts.filter(p=>!/rpe/i.test(String(p)));
-        cleaned.push(txt);
-        reasons.push({k:'rd',t:`RPE hedefi ${txt} — kilo sporcu/antrenör tarafından güne göre belirlenir`});
-        load=cleaned.join(' · ');
-      } else load=parts.join(' · ')||base.load;
+    /* Intensity: Model A scales the written load on the SAME ratio, Model B writes
+       the matching RPE target. Intensity never stays put while volume comes down.
+       RPE has its own field now, so the target lands there instead of being folded
+       into the load text — but templates written before that column existed still
+       carry it as "@RPE 7" inside the load, so it is read from there as a fallback. */
+    const legacyRPE=rpeInText(base.load);
+    const baseRPE=String(base.rpe==null?'':base.rpe).trim()||(legacyRPE!=null?String(legacyRPE):'');
+    // Once the RPE lives in its own field, whatever named it inside the load text
+    // is dropped from there — otherwise the number would be prescribed twice, and
+    // Model A would "scale" an RPE as if it were kilos.
+    const baseLoad=(legacyRPE!=null?stripRPEText(base.load):String(base.load||'')).trim();
+    let load=o.load!=null&&o.load!==''?o.load:baseLoad;
+    let rpe=o.rpe!=null&&o.rpe!==''?o.rpe:baseRPE;
+    if(cfg.readiness.on&&!off.readiness){
+      if((o.load==null||o.load==='')&&cfg.readiness.modelA&&slotRatio<0.999&&/\d/.test(baseLoad)){
+        load=scaleLoadDown(baseLoad,slotRatio);
+        reasons.push({k:'rd',t:`Şiddet aynı oranla düştü (×${slotRatio}): ${baseLoad} → ${load}`});
+      }
+      if(cfg.readiness.modelB&&(o.rpe==null||o.rpe==='')){
+        const baseR=baseRPE===''?null:Number(baseRPE);
+        const target=(baseR!=null&&isFinite(baseR))?clampRPE(Math.min(baseR,baseR*slotRatio)):rpeTarget;
+        rpe=String(target);
+        reasons.push({k:'rd',t:`RPE hedefi @RPE ${target} — kilo sporcu/antrenör tarafından güne göre belirlenir`});
+      }
     }
     /* What the coach has to look at himself. The flag never blocks the session —
        it rides along with it, on the card and in the JSON hand-off. */
@@ -12290,7 +12318,7 @@ function buildIndivPlan(src,ath,ctx){
     const flag=flagReasons.length?'manuel_inceleme':null;
     if(flag)reasons.push({k:'flag',t:`⚑ Manuel inceleme: ${flagReasons.join(' · ')}`});
     if(name)used.add(name.trim().toLowerCase());
-    return{key,base,name,sets,reps,load,tempo:base.tempo,rest:base.rest,
+    return{key,base,name,sets,reps,rpe,load,tempo:base.tempo,rest:base.rest,
       description:base.description,image:base.image,link:base.link,superset:base.superset,
       alts:(ex.alts||[]).map(x=>(typeof x==='string'?{name:x}:x)).filter(x=>(x&&x.name||'').trim()),
       suggested,conflict,overridden,mode:o.mode||'',pattern:pk,reasons,
@@ -12355,6 +12383,7 @@ function planToIndivJSON(plan){
       gerekce:r.changedName?(r.why||''):'',
       set:num(r.sets),
       tekrar:String(r.reps==null?'':r.reps),
+      rpe:String(r.rpe==null?'':r.rpe),
       siddet:String(r.load==null?'':r.load),
       flag:r.flag||null,
     }))),
@@ -12377,7 +12406,7 @@ function downloadIndivJSON(plans,dateKey){
    itself later; the athlete's copy of the sheet drops it (stripForAthlete). */
 function planToSession(plan,src,dateKey,srcKey){
   const rows=b=>b.rows.map(r=>({name:r.name,sets:r.sets||'',reps:r.reps||'',duration:r.base.duration||'',
-    tempo:r.tempo||'',load:r.load||'',rest:r.rest||'',
+    tempo:r.tempo||'',rpe:r.rpe||'',load:r.load||'',rest:r.rest||'',
     description:[r.base.description||'',r.note].filter(Boolean).join(r.base.description&&r.note?' · ':''),
     notes:r.base.notes||'',superset:r.superset||'',image:r.image||'',link:r.link||'',
     why:[r.why,r.volWhy,r.flag?`⚑ Manuel inceleme: ${(r.flagReasons||[]).join(' · ')}`:''].filter(Boolean).join(' · '),
@@ -12753,7 +12782,7 @@ function IndivConfig({cfg,save}){
 /* ---- One exercise slot in a generated program ---------------------------- */
 const IV_RK={sub:'#f59e0b',rd:'#38bdf8',state:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e',flag:'#fb7185'};
 function IndivSlotRow({row,lib,onOverride,onReset}){
-  const[mode,setMode]=useState(null);   // null | 'lib' | 'free'
+  const[mode,setMode]=useState(null);   // null | 'alt' | 'lib' | 'free'
   const[free,setFree]=useState(row.name||'');
   const changed=(row.name||'').trim().toLowerCase()!==(row.base.name||'').trim().toLowerCase();
   return(<div className={'iv-slot'+(row.overridden?' ovr':changed?' sub':'')}>
@@ -12765,22 +12794,34 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
       <div className="iv-slot-nums">
         <span><i>set</i>{row.sets||'—'}</span>
         <span><i>tekrar</i>{row.reps||'—'}</span>
+        <span><i>rpe</i>{row.rpe||'—'}</span>
         <span className="ld"><i>yük</i>{row.load||'—'}</span>
       </div>
     </div>
     {row.reasons.length>0&&<div className="iv-reasons">
       {row.reasons.map((r,i)=><span key={i} className="iv-rc" style={{'--rc':IV_RK[r.k]||'var(--dim)'}}>{r.t}</span>)}
     </div>}
-    {row.alts.length>0&&<div className="iv-alts">
-      <span className="h">Slot alternatifleri:</span>
-      {row.alts.map((a,i)=><button key={i} type="button" className="iv-altb" onClick={()=>onOverride({name:a.name,mode:'lib'})}>{a.name}</button>)}
-    </div>}
     <div className="iv-slot-ed">
+      {/* Swapping an exercise starts with the alternatives the coach attached to
+          the slot in the template; the library and free text stay beside them for
+          a slot that has none. */}
       <div className="iv-pickpair">
+        <button type="button" className={'iv-pb'+(mode==='alt'?' on':'')} onClick={()=>setMode(mode==='alt'?null:'alt')}
+          title="Şablonda bu slota bağlanmış alternatif egzersizler">⇄ Alternatif egzersiz{row.alts.length>0?` (${row.alts.length})`:''}</button>
+        <span className="iv-or">veya</span>
         <button type="button" className={'iv-pb'+(mode==='lib'?' on':'')} onClick={()=>setMode(mode==='lib'?null:'lib')}>Kütüphaneden seç</button>
         <span className="iv-or">veya</span>
         <button type="button" className={'iv-pb'+(mode==='free'?' on':'')} onClick={()=>{setFree(row.name||'');setMode(mode==='free'?null:'free');}}>Serbest metin gir</button>
       </div>
+      {mode==='alt'&&<div className="iv-alts">
+        {row.alts.length>0
+          ?<>
+            <span className="h">Slot alternatifleri:</span>
+            {row.alts.map((a,i)=><button key={i} type="button" className="iv-altb"
+              onClick={()=>{onOverride({name:a.name,mode:'lib'});setMode(null);}}>{a.name}</button>)}
+          </>
+          :<span className="iv-dim">Şablonda bu slota alternatif bağlanmamış — Templates sekmesinde "⇄ Alternatif ekle" ile bağlanır. Şimdilik kütüphaneden ya da serbest metinle değiştirebilirsin.</span>}
+      </div>}
       {mode==='lib'&&<LibPickInline lib={lib} onPick={n=>onOverride({name:n,mode:'lib'})} onClose={()=>setMode(null)}/>}
       {mode==='free'&&<div className="iv-freerow">
         <input value={free} autoFocus onChange={e=>setFree(e.target.value)}
@@ -12791,6 +12832,7 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
       <div className="iv-numed">
         <label>set<input value={row.sets||''} onChange={e=>onOverride({sets:e.target.value})}/></label>
         <label>tekrar<input value={row.reps||''} onChange={e=>onOverride({reps:e.target.value})}/></label>
+        <label>rpe<input value={row.rpe||''} onChange={e=>onOverride({rpe:e.target.value})}/></label>
         <label className="ld">yük<input value={row.load||''} onChange={e=>onOverride({load:e.target.value})}/></label>
         <label className="wide">not<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Sporcuya özel not…"/></label>
         <button className="btn xs sec" onClick={onReset} title="Bu slotu şablona döndür">↺ Şablona dön</button>
