@@ -2381,8 +2381,6 @@ header{background:var(--bg2)!important}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
-.iv-sum{display:flex;gap:6px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid var(--border)}
-.iv-rc{font-size:11px;color:var(--rc,var(--dim));background:rgba(255,255,255,.04);border:1px solid currentColor;border-radius:7px;padding:3px 9px;line-height:1.5;opacity:.92}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
 .iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
@@ -2400,26 +2398,11 @@ header{background:var(--bg2)!important}
 .iv-slot-nums span{font-size:12.5px;color:var(--text);font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-slot-nums i{display:block;font-size:9px;color:var(--dim);font-style:normal;text-transform:uppercase;letter-spacing:.06em}
 .iv-slot-nums .ld{color:var(--accent)}
-.iv-reasons{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.iv-alts{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
-.iv-alts .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
-.iv-altb{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:3px 10px;font-size:11.5px;cursor:pointer}
-.iv-altb:hover{border-color:var(--accent);color:var(--accent)}
 .iv-slot-ed{margin-top:9px;display:flex;flex-direction:column;gap:8px}
-.iv-pickpair{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .iv-pb{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
 .iv-pb.on{border-color:var(--accent);color:var(--accent);background:rgba(230,255,85,.1)}
-.iv-or{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-family:'IBM Plex Mono',monospace}
-.iv-freerow{display:flex;gap:8px;align-items:center}
-.iv-freerow input{flex:1;font-size:12.5px}
-.iv-libpick{border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:8px}
-.iv-libpick>input{width:100%;font-size:12.5px;margin-bottom:6px}
-.iv-liblist{max-height:210px;overflow:auto;display:flex;flex-direction:column;gap:2px}
-.iv-librow{display:flex;gap:10px;align-items:baseline;background:transparent;border:none;border-radius:7px;padding:6px 9px;cursor:pointer;text-align:left;color:var(--text)}
-.iv-librow:hover{background:var(--panel)}
-.iv-librow .n{flex:1;font-size:12.5px}
-.iv-librow .t{font-size:10.5px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
-.iv-librow .c{font-size:10.5px;color:#fda4af}
+/* The slot editor is a column, so the button has to opt out of stretching. */
+.iv-slot-ed>.iv-pb{align-self:flex-start}
 .iv-numed{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
 /* Set / tekrar / rpe / yük are the same kind of number, so they get the same box:
    equal width, side by side. Only the note stretches into what is left. */
@@ -2436,9 +2419,15 @@ header{background:var(--bg2)!important}
 .alt-hd button{margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer}
 .alt-row{display:flex;gap:6px;align-items:center}
 .alt-row .n{flex:0 0 20px;font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',monospace}
-.alt-row input{flex:1;font-size:12px;padding:5px 8px}
+/* The name field is the one thing to fill in here, so it sits a shade lighter
+   than the box behind it instead of disappearing into it. */
+.alt-row input{flex:1;font-size:12px;padding:5px 8px;background:var(--hover);border-color:var(--border2)}
+.alt-row input::placeholder{color:var(--muted)}
 .alt-row select{flex:0 0 118px;font-size:11px;padding:5px 6px}
 .alt-row .x{background:transparent;border:none;color:var(--red,#f43f5e);cursor:pointer;font-size:13px;padding:0 4px}
+.alt-use{flex:none;background:var(--elevated);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:5px 11px;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.alt-use:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.alt-use:disabled{opacity:.4;cursor:default}
 @media(max-width:700px){
   .iv-card-hd{gap:8px}
   .iv-slot-nums{gap:10px}
@@ -12165,6 +12154,13 @@ function buildIndivPlan(src,ath,ctx){
     const key=`${bi}:${ei}`;
     const o=((ovr&&ovr.slots)||{})[key]||{};
     const reasons=[];const base={...ex};
+    /* Alternatives are pinned on the template slot and can be adjusted per athlete
+       on the card. Once this athlete's list has been touched it replaces the
+       template's — for the picker AND for the automatic substitution below, so the
+       two never disagree about what may stand in for this slot. */
+    const altList=(Array.isArray(o.alts)?o.alts:(ex.alts||[]))
+      .map(x=>(typeof x==='string'?{name:x,mode:'lib'}:x))
+      .filter(x=>(x&&x.name||'').trim());
     let name=(ex.name||'').trim();
     const entry=byName(name);
     const pattern=exPatternOf(entry)||'';
@@ -12198,8 +12194,7 @@ function buildIndivPlan(src,ath,ctx){
         ?[...new Set(painSub.flatMap(p=>(PAIN_RULES[p.tag]||{}).prefer||[]))].filter(x=>!avoid.has(x))
         :(pattern?[pattern]:[]);
       // 1) the alternatives the coach pinned on the slot come first
-      const alts=(ex.alts||[]).map(x=>(typeof x==='string'?{name:x}:x)).filter(x=>(x&&x.name||'').trim());
-      for(const alt of alts){
+      for(const alt of altList){
         const an=alt.name.trim();
         const ae=byName(an);
         if(slotConflicts(ae,constraints).length)continue;
@@ -12320,7 +12315,7 @@ function buildIndivPlan(src,ath,ctx){
     if(name)used.add(name.trim().toLowerCase());
     return{key,base,name,sets,reps,rpe,load,tempo:base.tempo,rest:base.rest,
       description:base.description,image:base.image,link:base.link,superset:base.superset,
-      alts:(ex.alts||[]).map(x=>(typeof x==='string'?{name:x}:x)).filter(x=>(x&&x.name||'').trim()),
+      alts:altList,
       suggested,conflict,overridden,mode:o.mode||'',pattern:pk,reasons,
       changedName,why,volWhy,painHits,flag,flagReasons,ratio:slotRatio,
       /* An override with no justification is nudged, never blocked. */
@@ -12483,26 +12478,6 @@ function TagChips({value,onChange,options,empty}){
     {options.map(o=><button key={o.id} type="button" className={'iv-chip'+(sel.includes(o.id)?' on':'')}
       onClick={()=>toggle(o.id)}>{o.label}</button>)}
     {options.length===0&&<span className="iv-dim">{empty||'—'}</span>}
-  </div>);
-}
-
-/* Library picker used inside an override: search + click. Never writes to the
-   library, and sits next to (not above) the free-text box — the two ways of
-   filling a slot are equal. */
-function LibPickInline({lib,onPick,onClose}){
-  const[q,setQ]=useState('');
-  const ql=q.trim().toLowerCase();
-  const list=(lib||[]).filter(e=>(e.name||'').trim()&&(!ql||e.name.toLowerCase().includes(ql))).slice(0,60);
-  return(<div className="iv-libpick">
-    <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="Kütüphanede ara…"/>
-    <div className="iv-liblist">
-      {list.map(e=><button key={e.id||e.name} type="button" className="iv-librow" onClick={()=>{onPick(e.name);onClose&&onClose();}}>
-        <span className="n">{e.name}</span>
-        <span className="t">{exPatternOf(e)||e.type||'—'}{e.difficulty?` · ${LEVEL_LABEL[e.difficulty]||e.difficulty}`:''}</span>
-        {exContraOf(e).length>0&&<span className="c">{exContraOf(e).map(ctLabel).join(', ')}</span>}
-      </button>)}
-      {list.length===0&&<div className="iv-dim" style={{padding:'8px 10px'}}>Eşleşen egzersiz yok — serbest metin kutusunu kullanabilirsin.</div>}
-    </div>
   </div>);
 }
 
@@ -12780,10 +12755,23 @@ function IndivConfig({cfg,save}){
 }
 
 /* ---- One exercise slot in a generated program ---------------------------- */
-const IV_RK={sub:'#f59e0b',rd:'#38bdf8',state:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e',flag:'#fb7185'};
-function IndivSlotRow({row,lib,onOverride,onReset}){
-  const[mode,setMode]=useState(null);   // null | 'alt' | 'lib' | 'free'
-  const[free,setFree]=useState(row.name||'');
+function IndivSlotRow({row,onOverride,onReset}){
+  const[altOpen,setAltOpen]=useState(false);
+  /* The list being edited is held locally while the panel is open so a half-typed
+     row can exist without being written to the athlete's overrides — only named
+     alternatives are stored. */
+  const[draft,setDraft]=useState(null);
+  const alts=draft||row.alts;
+  const pushAlts=next=>{setDraft(next);onOverride({alts:next.filter(x=>(x.name||'').trim())});};
+  const setAlt=(i,p)=>pushAlts(alts.map((a,k)=>k===i?{...a,...p}:a));
+  const addAlt=()=>{const n=[...alts,{name:'',mode:'lib'}];setDraft(n);};
+  const delAlt=i=>pushAlts(alts.filter((_,k)=>k!==i));
+  const openAlts=()=>{
+    if(altOpen){setAltOpen(false);setDraft(null);return;}
+    setDraft(row.alts.length?row.alts:[{name:'',mode:'lib'}]);
+    setAltOpen(true);
+  };
+  const useAlt=a=>{onOverride({name:(a.name||'').trim(),mode:a.mode||'lib'});setAltOpen(false);setDraft(null);};
   const changed=(row.name||'').trim().toLowerCase()!==(row.base.name||'').trim().toLowerCase();
   return(<div className={'iv-slot'+(row.overridden?' ovr':changed?' sub':'')}>
     <div className="iv-slot-main">
@@ -12798,44 +12786,42 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
         <span className="ld"><i>yük</i>{row.load||'—'}</span>
       </div>
     </div>
-    {row.reasons.length>0&&<div className="iv-reasons">
-      {row.reasons.map((r,i)=><span key={i} className="iv-rc" style={{'--rc':IV_RK[r.k]||'var(--dim)'}}>{r.t}</span>)}
-    </div>}
     <div className="iv-slot-ed">
-      {/* Swapping an exercise starts with the alternatives the coach attached to
-          the slot in the template; the library and free text stay beside them for
-          a slot that has none. */}
-      <div className="iv-pickpair">
-        <button type="button" className={'iv-pb'+(mode==='alt'?' on':'')} onClick={()=>setMode(mode==='alt'?null:'alt')}
-          title="Şablonda bu slota bağlanmış alternatif egzersizler">⇄ Alternatif egzersiz{row.alts.length>0?` (${row.alts.length})`:''}</button>
-        <span className="iv-or">veya</span>
-        <button type="button" className={'iv-pb'+(mode==='lib'?' on':'')} onClick={()=>setMode(mode==='lib'?null:'lib')}>Kütüphaneden seç</button>
-        <span className="iv-or">veya</span>
-        <button type="button" className={'iv-pb'+(mode==='free'?' on':'')} onClick={()=>{setFree(row.name||'');setMode(mode==='free'?null:'free');}}>Serbest metin gir</button>
-      </div>
-      {mode==='alt'&&<div className="iv-alts">
-        {row.alts.length>0
-          ?<>
-            <span className="h">Slot alternatifleri:</span>
-            {row.alts.map((a,i)=><button key={i} type="button" className="iv-altb"
-              onClick={()=>{onOverride({name:a.name,mode:'lib'});setMode(null);}}>{a.name}</button>)}
-          </>
-          :<span className="iv-dim">Şablonda bu slota alternatif bağlanmamış — Templates sekmesinde "⇄ Alternatif ekle" ile bağlanır. Şimdilik kütüphaneden ya da serbest metinle değiştirebilirsin.</span>}
-      </div>}
-      {mode==='lib'&&<LibPickInline lib={lib} onPick={n=>onOverride({name:n,mode:'lib'})} onClose={()=>setMode(null)}/>}
-      {mode==='free'&&<div className="iv-freerow">
-        <input value={free} autoFocus onChange={e=>setFree(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter'){onOverride({name:free,mode:'free'});setMode(null);}}}
-          placeholder="Egzersiz adını yaz — kütüphanede olmasına gerek yok"/>
-        <button className="btn xs" onClick={()=>{onOverride({name:free,mode:'free'});setMode(null);}}>Uygula</button>
+      {/* One way to swap an exercise: the slot's alternatives, edited right here.
+          The list starts as whatever the template pinned on the slot and becomes
+          this athlete's own once touched — a row can come from the library or be
+          typed free, exactly as in the template editor. */}
+      <button type="button" className={'iv-pb'+(altOpen?' on':'')} onClick={openAlts}
+        title="Bu slotun alternatif egzersizleri — ekle, düzenle, uygula">⇄ Alternatif egzersiz{row.alts.length>0?` (${row.alts.length})`:''}</button>
+      {altOpen&&<div className="alt-box">
+        <div className="alt-hd"><span>Slot alternatifleri ({alts.filter(a=>(a.name||'').trim()).length})</span>
+          <span style={{textTransform:'none',letterSpacing:0}}>kısıt çakışırsa sırayla denenir · "Uygula" bu slota yazar</span>
+          <button type="button" onClick={openAlts}>gizle</button></div>
+        {alts.map((a,i)=><div key={i} className="alt-row">
+          <span className="n">{i+1}.</span>
+          <select value={a.mode||'lib'} onChange={e=>setAlt(i,{mode:e.target.value})}>
+            <option value="lib">Kütüphaneden</option>
+            <option value="free">Serbest metin</option>
+          </select>
+          <input value={a.name||''} list={(a.mode||'lib')==='lib'?'lib-exercises':undefined}
+            onChange={e=>setAlt(i,{name:e.target.value})}
+            placeholder={(a.mode||'lib')==='lib'?'Kütüphaneden egzersiz…':'Egzersiz adını yaz (kütüphanede olmasına gerek yok)'}/>
+          <button type="button" className="alt-use" disabled={!(a.name||'').trim()}
+            onClick={()=>useAlt(a)} title="Bu alternatifi slota uygula">Uygula</button>
+          <button type="button" className="x" onClick={()=>delAlt(i)} title="Kaldır">✕</button>
+        </div>)}
+        {alts.length<3&&<button type="button" className="alt-add" onClick={addAlt}>+ Alternatif</button>}
       </div>}
       <div className="iv-numed">
         <label>set<input value={row.sets||''} onChange={e=>onOverride({sets:e.target.value})}/></label>
         <label>tekrar<input value={row.reps||''} onChange={e=>onOverride({reps:e.target.value})}/></label>
         <label>rpe<input value={row.rpe||''} onChange={e=>onOverride({rpe:e.target.value})}/></label>
-        <label className="ld">yük<input value={row.load||''} onChange={e=>onOverride({load:e.target.value})}/></label>
+        <label>yük<input value={row.load||''} onChange={e=>onOverride({load:e.target.value})}/></label>
         <label className="wide">not<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Sporcuya özel not…"/></label>
-        <button className="btn xs sec" onClick={onReset} title="Bu slotu şablona döndür">↺ Şablona dön</button>
+        {/* Reset drops this slot's alternatives back to the template's too, so the
+            open panel must let go of its draft. */}
+        <button className="btn xs sec" onClick={()=>{setAltOpen(false);setDraft(null);onReset();}}
+          title="Bu slotu şablona döndür">↺ Şablona dön</button>
       </div>
       {/* Justification for the change. Auto changes fill it themselves; a manual
           override leaves it to the coach — asked for, never required. */}
@@ -12852,7 +12838,7 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
 }
 
 /* ---- One athlete's generated program ------------------------------------- */
-function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onApply,onExport,onExportJSON,open,setOpen}){
+function IndivAthleteCard({plan,cfg,onOverride,onResetSlot,onApply,onExport,onExportJSON,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12863,9 +12849,6 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onApply,onExport,
         <div className="iv-nm">{a.name||'—'}</div>
         <div className="iv-meta">
           {a.position?<span>{a.position} · {posGroupLabel(plan.posGroup)}</span>:<span className="iv-dim">pozisyon yok</span>}
-          {plan.state&&plan.state.on&&Math.abs(plan.state.sets-1)>0.001
-            ?<span title={plan.state.factors.map(f=>`${f.label} ×${f.v}`).join(' · ')}>durum ×{plan.state.sets}</span>
-            :<span className="iv-dim">durum etkisi yok</span>}
           {a.animalType&&<span>{(ANIMAL_TYPES.find(x=>x.id===a.animalType)||{}).name}</span>}
           <span className="iv-key" title="Profil anahtarı: pozisyon · vücut tipi · durumdan gelen hacim çarpanı">{plan.profileKey}</span>
           {(a.constraintTags||[]).map(t=><span key={t} className="iv-warnchip">{ctLabel(t)}</span>)}
@@ -12895,9 +12878,9 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onApply,onExport,
       <span className="t">{plan.notes[0].date?`${fd(plan.notes[0].date)} — `:''}{plan.notes[0].text}</span>
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} not daha</span>}
     </div>}
-    {plan.summary.length>0&&<div className="iv-sum">
-      {plan.summary.map((s,i)=><span key={i} className="iv-rc" style={{'--rc':IV_RK[s.k]||'var(--dim)'}}>{s.t}</span>)}
-    </div>}
+    {/* The engine's reasoning is not printed on the card any more — it still rides
+        along with the program into the coach PDF, the JSON hand-off and the
+        session's plan note, which is where it gets read. */}
     {open&&<div className="iv-card-body">
       <div className="iv-cardtools">
         <span className="iv-expg" style={{marginLeft:'auto'}}>
@@ -12909,7 +12892,7 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onApply,onExport,
       </div>
       {plan.blocks.map((b,bi)=><div key={bi} className="iv-block">
         <div className="iv-block-hd">{b.name||`Blok ${bi+1}`}</div>
-        {b.rows.map(r=><IndivSlotRow key={r.key} row={r} lib={lib}
+        {b.rows.map(r=><IndivSlotRow key={r.key} row={r}
           onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}/>)}
         {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>Bu blokta egzersiz yok.</div>}
       </div>)}
@@ -13074,7 +13057,7 @@ function IndividualizationView({data,setData,team,updateTeam}){
     {src&&needReview>0&&<div className="iv-hint">
       <span>⚑ {needReview} sporcunun programı manuel inceleme bekliyor — kritik readiness, eksik veri ya da alternatifi bulunamayan bir slot.</span>
     </div>}
-    {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p} lib={lib} cfg={cfg}
+    {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p} cfg={cfg}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
