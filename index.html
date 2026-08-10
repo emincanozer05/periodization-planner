@@ -2306,13 +2306,15 @@ header{background:var(--bg2)!important}
 .iv-cfg-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .iv-cfg-tabs button{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 13px;font-size:12px;cursor:pointer}
 .iv-cfg-tabs button.on{background:var(--accent);border-color:var(--accent);color:#0f1526;font-weight:800}
+/* Rule explanations read as short bullets rather than a wall of prose. */
+.iv-cfg .help ul{margin:0;padding-left:15px;list-style:disc}
+.iv-cfg .help li{margin:3px 0;line-height:1.55}
 .iv-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .iv-tbl th{text-align:left;font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;border-bottom:1px solid var(--border)}
 .iv-tbl td{padding:5px 8px;border-bottom:1px solid var(--border)}
 .iv-tbl input,.iv-tbl select{width:100%;font-size:12px;padding:6px 8px}
 .iv-switch{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text2);cursor:pointer}
 .iv-switch input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
-.iv-switch.sm{font-size:11.5px}
 .iv-switch select{font-size:11.5px;padding:4px 8px}
 .iv-posrow{border:1px solid var(--border);border-radius:11px;padding:12px;margin-bottom:10px;background:var(--elevated)}
 .iv-poshd{font-weight:700;font-size:13px;color:var(--text);margin-bottom:8px}
@@ -2324,7 +2326,9 @@ header{background:var(--bg2)!important}
 
 .iv-bar{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;position:relative}
 .iv-actions{display:flex;gap:8px;margin-left:auto;align-items:flex-end}
-.iv-toast{position:absolute;right:14px;top:-12px;background:rgba(45,212,167,.14);border:1px solid rgba(45,212,167,.4);color:#2dd4a7;font-size:12px;font-weight:700;border-radius:8px;padding:5px 12px}
+/* Fixed, not pinned to the top bar: the per-athlete write button sits far down
+   the list, and its confirmation has to be visible from wherever it was clicked. */
+.iv-toast{position:fixed;right:24px;bottom:24px;z-index:300;box-shadow:0 6px 20px rgba(0,0,0,.35);background:rgba(45,212,167,.14);border:1px solid rgba(45,212,167,.4);color:#2dd4a7;font-size:12px;font-weight:700;border-radius:8px;padding:5px 12px}
 .iv-athbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .iv-athchip{background:var(--elevated);border:1px solid var(--border);color:var(--dim);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .iv-athchip.on{background:rgba(230,255,85,.12);border-color:var(--accent);color:var(--text);font-weight:600}
@@ -2373,14 +2377,14 @@ header{background:var(--bg2)!important}
 .iv-adj{border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap}
 .iv-adj.sub{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
 .iv-ch{color:var(--dim);font-size:12px}
+.iv-writeb{white-space:nowrap;margin-left:auto}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
 .iv-sum{display:flex;gap:6px;flex-wrap:wrap;padding:9px 14px;border-top:1px solid var(--border)}
 .iv-rc{font-size:11px;color:var(--rc,var(--dim));background:rgba(255,255,255,.04);border:1px solid currentColor;border-radius:7px;padding:3px 9px;line-height:1.5;opacity:.92}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.iv-layers{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
-.iv-layers .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em}
+.iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
 .iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border)}
 
@@ -12593,9 +12597,11 @@ function IndivConfig({cfg,save}){
         <div className="iv-f" style={{maxWidth:150}}><label>Model B temel RPE</label>
           <input type="number" step="0.5" min="4" max="10" value={R.baseRPE} onChange={e=>setR({baseRPE:e.target.value})}/></div>
       </div>
-      <div className="help" style={{margin:'6px 0 12px'}}>İkisi birlikte açık olabilir: program hem ayarlanmış yükü hem RPE hedefini gösterir. Genç sporcularda tek başına Model B daha güvenli bir başlangıçtır.
-        <br/>Aşağıdaki bantlar aynı zamanda <b>Set / tekrar</b> sekmesindeki tablonun sütunlarıdır — yani bir bant eklemek/silmek set ve tekrar sayısını da etkiler.
-        <br/>Azaltma tek bir kümülatif orana katlandığı için readiness skoru <b>bir kez</b> sayılır: set/tekrar tablosu açıkken oranı o tablo taşır, <b>Yük çarpanı</b> sütunu ise tablo kapalıyken readiness'in katkısı olarak devreye girer. <b>RPE kaydırma</b> sütunu bant etiketiyle birlikte okunur; RPE hedefi de aynı kümülatif orandan çıkar.</div>
+      <div className="help" style={{margin:'6px 0 12px'}}><ul>
+        <li>İki model birlikte açık olabilir. Genç sporcuda tek başına <b>Model B</b> daha güvenli.</li>
+        <li>Buradaki bantlar <b>Set / tekrar</b> tablosunun da sütunlarıdır.</li>
+        <li>Readiness bir kez sayılır: set/tekrar tablosu açıkken oranı o tablo taşır, kapalıyken <b>Yük çarpanı</b> devreye girer.</li>
+      </ul></div>
       <div className="hr" style={{margin:'18px 0 14px'}}/>
       <div className="iv-row">
         <label className="iv-switch"><input type="checkbox" checked={GA.on!==false} onChange={e=>setG({on:e.target.checked})}/><span>Otomatik azaltma eşiği açık</span></label>
@@ -12610,11 +12616,12 @@ function IndivConfig({cfg,save}){
         <div className="iv-f" style={{maxWidth:180}}><label>Veri yoksa çarpan</label>
           <input type="number" step="0.05" min="0" max="1" value={GA.noDataRatio} onChange={e=>setG({noDataRatio:e.target.value})}/></div>
       </div>
-      <div className="help" style={{margin:'6px 0 12px'}}>
-        Readiness <b>eşiğin üstündeyse sporcu hazır kabul edilir</b> ve takım programının set/tekrar/şiddeti hiç değiştirilmeden uygulanır — aşağıdaki bantlar, set/tekrar tablosu ve durum çarpanları o gün devreye girmez.
-        Eşiğin altında bütün katmanlar <b>tek bir kümülatif orana</b> katlanır (ayrı ayrı değil, çarpımsal), oran hiçbir zaman 1'in üstüne çıkmaz — yukarı yönlü progresyon antrenörün elle kararıdır.
-        Şiddet aynı oranla ve aynı yönde hareket eder. Tabanların altına inilmez; readiness manuel inceleme sınırının altındaysa azaltma yine uygulanır ama seans <b>⚑ manuel inceleme</b> ile antrenör onayına düşer.
-      </div>
+      <div className="help" style={{margin:'6px 0 12px'}}><ul>
+        <li><b>Eşiğin üstünde:</b> sporcu hazır sayılır, takım programı aynen uygulanır.</li>
+        <li><b>Eşiğin altında:</b> tüm katmanlar tek bir çarpanda birleşir (en fazla 1 — artırma antrenörün kararı). Şiddet de aynı yönde hareket eder.</li>
+        <li>Set ve tekrar tabanların altına inmez.</li>
+        <li>Manuel inceleme sınırının altında seans <b>⚑ manuel inceleme</b>'ye düşer.</li>
+      </ul></div>
       <table className="iv-tbl">
         <thead><tr><th>Bant</th><th>Readiness ≥</th><th>Yük çarpanı (Model A)</th><th>RPE kaydırma (Model B)</th></tr></thead>
         <tbody>{R.bands.map((b,i)=><tr key={b.id||i}>
@@ -12631,12 +12638,11 @@ function IndivConfig({cfg,save}){
         <label className="iv-switch"><input type="checkbox" checked={V.useReadiness!==false} onChange={e=>setV({useReadiness:e.target.checked})}/><span>Günün readiness skorunu kullan</span></label>
         <label className="iv-switch"><input type="checkbox" checked={V.usePrevLoad!==false} onChange={e=>setV({usePrevLoad:e.target.checked})}/><span>Bir önceki günün yükünü kullan</span></label>
       </div>
-      <div className="help" style={{margin:'8px 0 12px'}}>
-        İki girdi bir <b>kural tablosunda</b> birleşir — ağırlıklı ortalama değil, çünkü antrenörün hangi kombinasyonun ne yaptığını okuyabilmesi gerekir.{' '}
-        <b>Sütunlar readiness bantlarıdır</b> (yük yüzdesi ve RPE ayarının kullandığı bantların aynısı — Readiness sekmesinden düzenlenir), yani set/tekrar sayısı readiness skorunu tam çözünürlükte takip eder ve dünkü yük verisi olmayan günde de hareket eder.
-        Satırlar: dünkü yükün, sporcunun <b>kendi</b> 28 günlük günlük ortalamasına oranı.
-        Hücredeki değer set sayısının çarpanıdır; tekrar sayısı bu kesintinin bir kısmı kadar (aşağıdaki oran) hareket eder — 4×10 böylece 3×8 olur, 3×6 değil.
-      </div>
+      <div className="help" style={{margin:'8px 0 12px'}}><ul>
+        <li><b>Sütunlar:</b> readiness bantları (Readiness sekmesinden düzenlenir).</li>
+        <li><b>Satırlar:</b> dünkü yükün, sporcunun 28 günlük ortalamasına oranı.</li>
+        <li><b>Hücre:</b> set çarpanı. Tekrar, bu kesintinin aşağıdaki oran kadarı düşer — 4×10 → 3×8.</li>
+      </ul></div>
       <table className="iv-tbl">
         <thead><tr><th>Dünkü yük ↓ / Readiness →</th>{BANDS.map(b=><th key={b.id}>{b.label}<div className="iv-dim" style={{fontWeight:400}}>≥{b.min}</div></th>)}</tr></thead>
         <tbody>{LV.map(([pk,pl])=><tr key={pk}>
@@ -12669,8 +12675,7 @@ function IndivConfig({cfg,save}){
           <input type="number" step="0.05" value={ST.ceil} onChange={e=>setS({ceil:e.target.value})}/></div>
       </div>
       <div className="help" style={{margin:'8px 0 12px'}}>
-        Sporcunun kendi durumu doğrudan set/tekrar sayısına çevrilir — kademe/grup yok. Aşağıdaki koşullardan hangileri sporcuda geçerliyse
-        <b> çarpanları çarpılır</b>; sonuç sporcu kartında tek satırda ve bileşenleriyle birlikte görünür. 1 = etkisiz.
+        Sporcuda geçerli olan koşulların çarpanları çarpılır, sonuç sporcu kartında görünür. <b>1 = etkisiz.</b>
       </div>
       <table className="iv-tbl">
         <thead><tr><th>Koşul</th><th style={{width:120}}>Çarpan</th><th>Açıklama</th></tr></thead>
@@ -12695,11 +12700,11 @@ function IndivConfig({cfg,save}){
         <div className="iv-f" style={{maxWidth:170}}><label>Bildirim geçerlilik (gün)</label>
           <input type="number" step="1" min="1" value={P.windowDays} onChange={e=>setP({windowDays:e.target.value})}/></div>
       </div>
-      <div className="help" style={{margin:'8px 0 12px'}}>
-        Şiddet eşiğin <b>altındaysa</b> egzersiz kalır, set/tekrar düşer. Eşiğe eşit ya da üstündeyse egzersiz değiştirilir.
-        Her iki durumda da değişikliğin gerekçesi otomatik yazılır. Bildirim, sporcunun en son check-in'inden okunur; Tally'den gelen serbest metin
-        "Area of Pain" alanı da aynı bölge anahtar kelimeleriyle eşleştirilir.
-      </div>
+      <div className="help" style={{margin:'8px 0 12px'}}><ul>
+        <li><b>Şiddet eşiğin altında:</b> egzersiz kalır, set/tekrar düşer.</li>
+        <li><b>Eşikte ya da üstünde:</b> egzersiz değiştirilir.</li>
+        <li>Gerekçe her iki durumda da otomatik yazılır. Bildirim son check-in'den, Tally'nin "Area of Pain" metninden okunur.</li>
+      </ul></div>
       <table className="iv-tbl">
         <thead><tr><th>Bölge</th><th>Yüklediği paternler (etkilenir)</th><th>Yönlendirilen paternler</th></tr></thead>
         <tbody>{CONSTRAINT_TAGS.filter(t=>PAIN_RULES[t.id]).map(t=><tr key={t.id}>
@@ -12710,7 +12715,7 @@ function IndivConfig({cfg,save}){
       </table>
     </div>}
     {tab==='pos'&&<div>
-      <div className="help" style={{marginBottom:10}}>Profil anahtarı tek boyutlu değil: pozisyon + vücut tipi + sporcunun kendi durumu. Aşağıdaki çarpanlar hareket paterni bazında hacme uygulanır.</div>
+      <div className="help" style={{marginBottom:10}}>Çarpanlar hareket paterni bazında hacme uygulanır. <b>1 = etkisiz.</b></div>
       {Object.entries(cfg.positions).map(([id,p])=><div key={id} className="iv-posrow">
         <div className="iv-poshd">{p.label||id}</div>
         <input className="iv-posnote" value={p.note||''} onChange={e=>setPos(id,{note:e.target.value})} placeholder="Vurgu notu (programda gösterilir)"/>
@@ -12740,7 +12745,7 @@ function IndivConfig({cfg,save}){
     {tab==='sw'&&<div className="iv-row">
       {[['subOn','Tag tabanlı substitüsyon'],['posOn','Pozisyon & vücut tipi'],['testOn','Test verisi tetikleyicileri']].map(([k,l])=>
         <label key={k} className="iv-switch"><input type="checkbox" checked={cfg[k]!==false} onChange={e=>save({...cfg,[k]:e.target.checked})}/><span>{l}</span></label>)}
-      <div className="help" style={{width:'100%'}}>Kapatılan katman hiç öneri üretmez. Her katman açıkken bile ürettiği her şey bir öneridir — sporcu kartında tek tek geçersiz kılınabilir.</div>
+      <div className="help" style={{width:'100%'}}>Kapalı katman öneri üretmez. Açık katmanın ürettiği her şey öneridir — sporcu kartında tek tek değiştirilebilir.</div>
     </div>}
   </div>);
 }
@@ -12805,7 +12810,7 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
 }
 
 /* ---- One athlete's generated program ------------------------------------- */
-function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onExport,onExportJSON,open,setOpen}){
+function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onApply,onExport,onExportJSON,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12825,6 +12830,11 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onE
           {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Günlük anket · ${fd(p.date)}${p.raw?` · "${p.raw}"`:''}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
         </div>
       </div>
+      {/* Write just this athlete's program to their own calendar — the squad-wide
+          button above stays, this one keeps a single fix from touching everyone. */}
+      <button type="button" className="btn xs iv-writeb"
+        onClick={e=>{e.stopPropagation();onApply();}}
+        title="Bu sporcunun programını kendi takvimine yaz">Sporcu Takvimine Yaz</button>
       <div className="iv-rd" style={{borderColor:rdCol,color:rdCol}}>
         <b>{plan.rd.score!=null?plan.rd.score:'—'}</b><span>readiness</span>
         {plan.rd.src==='srpe'&&<i title="Wellness kaydı yok — sRPE trendinden tahmin">tahmin</i>}
@@ -12847,17 +12857,13 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onE
       {plan.summary.map((s,i)=><span key={i} className="iv-rc" style={{'--rc':IV_RK[s.k]||'var(--dim)'}}>{s.t}</span>)}
     </div>}
     {open&&<div className="iv-card-body">
-      <div className="iv-layers">
-        <span className="h">Bu sporcuda katmanlar:</span>
-        {[['readiness','Readiness yük ayarı'],['volume','Günlük set/tekrar'],['state','Sporcu durumu'],['pain','Ağrı tetikleyicisi'],['sub','Substitüsyon'],['pos','Pozisyon / vücut tipi'],['test','Test tetikleyicileri']].map(([k,l])=>
-          <label key={k} className="iv-switch sm"><input type="checkbox" checked={!plan.off[k]} onChange={e=>onToggleLayer(k,!e.target.checked)}/><span>{l}</span></label>)}
+      <div className="iv-cardtools">
         <span className="iv-expg" style={{marginLeft:'auto'}}>
           <span className="h">PDF:</span>
           <button className="btn xs sec" onClick={()=>onExport('coach')} title="Gerekçeler dahil antrenör kopyası">Antrenör</button>
           <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Sade sporcu kopyası — gerekçe yok">Sporcu</button>
           <button className="btn xs sec" onClick={onExportJSON} title="Makine okunur çıktı — slot slot karar, gerekçe ve manuel inceleme bayrağı">JSON</button>
         </span>
-
       </div>
       {plan.blocks.map((b,bi)=><div key={bi} className="iv-block">
         <div className="iv-block-hd">{b.name||`Blok ${bi+1}`}</div>
@@ -12907,10 +12913,6 @@ function IndividualizationView({data,setData,team,updateTeam}){
     const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};delete slots[key];
     setOvr(athId,{slots});
   };
-  const toggleLayer=(athId,k,v)=>{
-    const cur=ovrAll[athId]||{};
-    setOvr(athId,{off:{...(cur.off||{}),[k]:v}});
-  };
   /* Where the athlete sits in the squad's 28-day load, fed to the state profile.
      Only meaningful when somebody actually has load logged, so it stays unset otherwise. */
   const loadRanks=useMemo(()=>{
@@ -12934,11 +12936,15 @@ function IndividualizationView({data,setData,team,updateTeam}){
       .map(a=>buildIndivPlan(src.session,a,{lib,cfg,ref:date,ovr:ovrAll[a.id]||{},loadRank:loadRanks[a.id]}));
   },[src,athletes,chosen,lib,cfg,date,ovrAll,loadRanks]);
 
-  const apply=()=>{
-    if(!src||plans.length===0)return;
+  /* Writing is scoped to a list of athletes so the same path serves the squad
+     button in the bar and the per-athlete button on each card. */
+  const applyTo=ids=>{
+    if(!src)return;
+    const targets=plans.filter(p=>ids.includes(p.ath.id));
+    if(targets.length===0)return;
     const teamSrcId=src.team?src.team.id:null;
     const next=athletes.map(a=>{
-      const plan=plans.find(p=>p.ath.id===a.id);
+      const plan=targets.find(p=>p.ath.id===a.id);
       if(!plan)return a;
       const days={...(a.days||{})};
       const day=days[date]||{date,sessions:[],dailyNotes:''};
@@ -12958,9 +12964,12 @@ function IndividualizationView({data,setData,team,updateTeam}){
       return{...a,days};
     });
     updateTeam(team.id,{athletes:next});
-    setToast(`${plans.length} sporcunun ${fd(date)} takvimine yazıldı ✓`);
+    setToast(targets.length===1
+      ?`${targets[0].ath.name||'Sporcu'} · ${fd(date)} takvimine yazıldı ✓`
+      :`${targets.length} sporcunun ${fd(date)} takvimine yazıldı ✓`);
     setTimeout(()=>setToast(''),3500);
   };
+  const apply=()=>applyTo(plans.map(p=>p.ath.id));
   /* Export reads what is actually written on the athletes' calendars, so the sheet
      matches the program they were given — and the same call serves one athlete or
      everyone, a day or a week, in either version. */
@@ -13027,7 +13036,7 @@ function IndividualizationView({data,setData,team,updateTeam}){
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
-      onToggleLayer={(k,v)=>toggleLayer(p.ath.id,k,v)}
+      onApply={()=>applyTo([p.ath.id])}
       onExport={mode=>doExport(mode,[p.ath.id])}
       onExportJSON={()=>downloadIndivJSON([p],date)}/>)}
     {src&&plans.length===0&&<div className="ex-empty">Seçili sporcu yok — yukarıdan sporcu seç.</div>}
