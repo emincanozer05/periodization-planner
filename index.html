@@ -2371,7 +2371,14 @@ header{background:var(--bg2)!important}
   .iv-slot:last-child{border-bottom:none}
 }
 .iv-slot.sub{border-left:3px solid #f59e0b}
-.iv-slot-main{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* An emptied slot is on its way out of the program — dimmed so it reads as absent
+   rather than as an exercise still waiting to be prescribed. */
+.iv-slot.off{border-left:3px solid var(--border2);opacity:.55}
+.iv-gone{display:block;font-size:11px;color:var(--dim);font-style:italic;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iv-slot-main{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+/* The tag, the group select and the two buttons line up with the name box itself,
+   not with the middle of a name block that has grown a note under it. */
+.iv-slot-main>.iv-ss-tag,.iv-slot-main>.iv-ss-sel,.iv-slot-main>.iv-pb,.iv-slot-main>.btn{margin-top:2px}
 .iv-slot-nm{flex:1 1 220px;min-width:0}
 .iv-slot-nm input{width:100%;font-size:13.5px;font-weight:600;padding:6px 9px}
 .iv-was{display:block;font-size:11px;color:var(--dim);text-decoration:line-through;margin-top:3px}
@@ -11843,9 +11850,16 @@ function buildIndivPlan(src,ath,ctx){
     const legacyRPE=rpeInText(base.load);
     const baseRPE=String(base.rpe==null?'':base.rpe).trim()||(legacyRPE!=null?String(legacyRPE):'');
     const baseLoad=(legacyRPE!=null?stripRPEText(base.load):String(base.load||'')).trim();
-    const pick=(k,fallback)=>(o[k]!=null&&o[k]!=='')?o[k]:fallback;
-    const name=(o.name!=null&&String(o.name).trim())?String(o.name).trim():(ex.name||'').trim();
-    const changedName=name.toLowerCase()!==(base.name||'').trim().toLowerCase();
+    /* A field the coach has touched is HIS, empty included: the presence of the key
+       decides, never the value. Falling back on an empty value would refill the box
+       from the template the moment it was cleared — the field could not be emptied
+       at all, and a name could not be typed either, since every space is a trailing
+       space until the next letter arrives. ↺ Reset is what goes back to the
+       template; it drops the whole slot override. Values are stored exactly as
+       typed and trimmed only where they are read. */
+    const pick=(k,fallback)=>o[k]!==undefined&&o[k]!==null?o[k]:fallback;
+    const name=String(pick('name',ex.name||''));
+    const changedName=name.trim().toLowerCase()!==(base.name||'').trim().toLowerCase();
     return{key,base,name,
       sets:pick('sets',base.sets),
       reps:pick('reps',base.reps),
@@ -11857,8 +11871,8 @@ function buildIndivPlan(src,ath,ctx){
       superset:(o.superset!=null?o.superset:(base.superset||'')),
       description:base.description,image:base.image,link:base.link,
       alts:altList,mode:o.mode||'',changedName,
-      why:(o.why||'').trim(),
-      note:(o.note||'').trim()};
+      why:o.why||'',
+      note:o.note||''};
   })}));
   const changed=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
   return{ath,rd,band,posGroup:pgId,blocks,changed,
@@ -11866,25 +11880,31 @@ function buildIndivPlan(src,ath,ctx){
     well:athWellnessSnap(ath,ref),notes:athNotesList(ath)};
 }
 
+/* Clearing a slot's exercise name is how an exercise is deleted from one athlete's
+   sheet: the row stays on the card so it can be filled back in (or Reset to the
+   template), but it is not part of the program that gets written or exported. */
+const liveSlot=r=>!!String(r.name||'').trim();
+
 /* ---- Machine-readable hand-off -------------------------------------------
    The same sheet the card shows, in the shape the coach's downstream tools read:
-   the template's own block order, one row per slot (never dropped, never
-   reordered, never added to), each carrying the template's exercise, the one
-   actually prescribed and every number as written. */
+   the template's own block order, one row per slot, each carrying the template's
+   exercise, the one actually prescribed and every number as written. A slot the
+   coach emptied is a deleted exercise and does not appear — the remaining slots
+   are numbered as they are actually performed. */
 function planToIndivJSON(plan){
   const num=v=>{const t=String(v==null?'':v).trim();return /^\d+$/.test(t)?Number(t):t;};
-  const str=v=>String(v==null?'':v);
+  const str=v=>String(v==null?'':v).trim();
   return{
     athlete_id:plan.ath.id||'',
     athlete:plan.ath.name||'',
-    program:(plan.blocks||[]).flatMap((b,bi)=>b.rows.map((r,i)=>({
+    program:(plan.blocks||[]).flatMap((b,bi)=>b.rows.filter(liveSlot).map((r,i)=>({
       block:b.name||`Block ${bi+1}`,
       slot:i+1,
       superset:str(r.superset),
       template_exercise:r.base.name||'',
-      prescribed_exercise:r.name||'',
+      prescribed_exercise:str(r.name),
       changed:!!r.changedName,
-      reason:r.changedName?(r.why||''):'',
+      reason:r.changedName?str(r.why):'',
       sets:num(r.sets),
       reps:str(r.reps),
       time:str(r.duration),
@@ -11892,7 +11912,7 @@ function planToIndivJSON(plan){
       rpe:str(r.rpe),
       load:str(r.load),
       rest:str(r.rest),
-      note:r.note||'',
+      note:str(r.note),
     }))),
   };
 }
@@ -11911,11 +11931,14 @@ function downloadIndivJSON(plans,dateKey){
    `why` rides along on every changed exercise so the coach printout can explain
    itself later; the athlete's copy of the sheet drops it (stripForAthlete). */
 function planToSession(plan,src,dateKey,srcKey){
-  const rows=b=>b.rows.map(r=>({name:r.name,sets:r.sets||'',reps:r.reps||'',duration:r.duration||'',
-    tempo:r.tempo||'',rpe:r.rpe||'',load:r.load||'',rest:r.rest||'',
-    description:[r.base.description||'',r.note].filter(Boolean).join(r.base.description&&r.note?' · ':''),
-    notes:r.base.notes||'',superset:r.superset||'',image:r.image||'',link:r.link||'',
-    why:r.why||'',changed:!!r.changedName,fromName:r.base.name||''}));
+  const t=v=>String(v==null?'':v).trim();
+  const rows=b=>b.rows.filter(liveSlot).map(r=>{
+    const note=t(r.note);
+    return{name:t(r.name),sets:t(r.sets),reps:t(r.reps),duration:t(r.duration),
+      tempo:t(r.tempo),rpe:t(r.rpe),load:t(r.load),rest:t(r.rest),
+      description:[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':''),
+      notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
+      why:t(r.why),changed:!!r.changedName,fromName:r.base.name||''};});
   return{id:uid(),name:src.name||'Individual Program',time:src.time||'17:00',
     loadType:src.loadType||'Mechanical load',purpose:src.purpose||'',focus:sesFocus(src),
     methods:sesMethods(src),region:sesRegion(src),duration:src.duration||60,
@@ -12092,7 +12115,8 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
     {opts?<SlotPick value={row[k]} options={opts} onChange={v=>onOverride({[k]:v})} title={title}/>
          :<input value={row[k]||''} onChange={e=>onOverride({[k]:e.target.value})} placeholder="—" title={title}/>}
   </label>);
-  return(<div className={'iv-slot'+(row.changedName?' sub':'')}>
+  const empty=!String(row.name||'').trim();
+  return(<div className={'iv-slot'+(empty?' off':row.changedName?' sub':'')}>
     <div className="iv-slot-main">
       {/* The superset group sits in front of the exercise, exactly as it does in
           the template editor: the tag shows where the slot lands in the order, the
@@ -12105,8 +12129,12 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
       <div className="iv-slot-nm">
         <input value={row.name||''} list="lib-exercises" placeholder="Exercise name…"
           onChange={e=>onOverride({name:e.target.value})}
-          title="Pick from the library or type any name"/>
-        {row.changedName&&<span className="iv-was">template: {row.base.name||'—'}</span>}
+          title="Pick from the library, type any name, or clear the box to drop this exercise"/>
+        {/* An emptied slot says so once. Naming the template exercise as well would
+            be the same sentence twice, since ↺ Reset is what brings it back. */}
+        {empty
+          ?<span className="iv-gone" title="This slot is not written to the athlete. Type a name to put an exercise back, or ↺ Reset to restore the template's.">removed: {row.base.name||'—'}</span>
+          :row.changedName&&<span className="iv-was">template: {row.base.name||'—'}</span>}
       </div>
       <button type="button" className={'iv-pb'+(altOpen?' on':'')} onClick={openAlts}
         title="Alternative exercises pinned on this slot — add, edit, apply">⇄ Alternatives{row.alts.length>0?` (${row.alts.length})`:''}</button>
@@ -12148,7 +12176,7 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
         <label>note<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Note for this athlete…"/></label>
         {/* Why this exercise is not the template's — the coach's own words, asked
             for so the printout can explain itself, never required. */}
-        {row.changedName&&<label>reason<input value={row.why||''} onChange={e=>onOverride({why:e.target.value})}
+        {row.changedName&&!empty&&<label>reason<input value={row.why||''} onChange={e=>onOverride({why:e.target.value})}
           placeholder="Why did you change it? (optional, printed on the coach copy)"/></label>}
       </div>
     </div>
