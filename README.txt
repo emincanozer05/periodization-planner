@@ -13,14 +13,20 @@ onto their own card.
 There is NO rule engine and no automatic adjustment of any kind.
 Nothing is substituted, scaled, floored or flagged behind your
 back — every number on an athlete's sheet is either the one the
-template carries or the one you typed on that card. Block count,
-block order and the number of slots in each block are never
-changed.
+template carries or the one you typed on that card. Block count
+and block order are never changed.
+
+Every box is yours, empty included: clearing one clears it, it
+does not spring back to the template's value. ↺ Reset is the only
+thing that restores a slot, and it restores the whole slot.
 
 What you can edit on every slot:
   - the exercise itself (pick from the library or type any name;
     a name that exists nowhere in the library is accepted the
-    same way)
+    same way). Clear the box and the exercise is DELETED for this
+    athlete: the row stays on the card, dimmed and marked
+    "removed", so you can type something else in or Reset it, but
+    it is left out of what gets written and exported.
   - the superset group, in front of the exercise, exactly as in
     the template editor: slots sharing a letter read A1, A2, A3…,
     ungrouped slots keep their own 1., 2., 3.
