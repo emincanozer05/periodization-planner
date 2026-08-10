@@ -30,11 +30,23 @@ What you can edit on every slot:
   - the superset group, in front of the exercise, exactly as in
     the template editor: slots sharing a letter read A1, A2, A3…,
     ungrouped slots keep their own 1., 2., 3.
+  - the movement pattern and how it is executed, under the
+    exercise name. Pick the pattern first; the execution list
+    follows it:
+        Hip Dominant      Push · Pull · ISO · Eccentric
+        Knee Dominant     Push · Pull · ISO · Eccentric
+        Upper Body Push   Vertical · Horizontal · Rotational
+        Upper Body Pull   Vertical · Horizontal · Rotational
+        Core              Flexion · Extension · Lateral Flexion ·
+                          Rotation · Anti-Flexion · Anti-Extension ·
+                          Anti-Lateral Flexion · Anti-Rotation
+        Accessory         Push · Pull · ISO · Eccentric
+    Changing the pattern clears an execution that does not belong
+    to the new one. This pair is what the calendar's Load
+    Distribution counts (see below).
   - sets, reps, time, tempo, RPE, load and rest, side by side in
     one strip
   - a note for this athlete
-  - ⇄ Alternatives keeps a short list of stand-ins on the slot;
-    "Apply" writes the one you pick into the slot
   - ↺ Reset puts the slot back to exactly what the template says
 
 What the card SHOWS you (read-only context for those edits, in
@@ -60,9 +72,28 @@ single day or a Mon-Sun week:
 
 ⭳ JSON exports the same programs machine-readably for one athlete
 or the whole selection: the template's own block order, one row
-per slot ({block, slot, superset, template_exercise,
-prescribed_exercise, changed, sets, reps, time, tempo, rpe, load,
-rest, note}).
+per slot ({block, slot, superset, pattern, execution,
+template_exercise, prescribed_exercise, changed, sets, reps, time,
+tempo, rpe, load, rest, note}).
+
+LOAD DISTRIBUTION (Calendar tab, team and per athlete)
+The "Load Distribution" panel under the calendar reads the week or
+the month and draws two pies:
+  Movement Pattern — how the work splits across Hip Dominant,
+                     Knee Dominant, Upper Body Push, Upper Body
+                     Pull, Core and Accessory
+  Execution        — the same work split one level down, by
+                     pattern AND execution ("Hip · Eccentric",
+                     "UB Push · Horizontal", "Core · Anti-
+                     Rotation"), so you can see not just which
+                     patterns were trained but how. Each slice
+                     keeps its pattern's colour and separates by
+                     shade, and a pattern's own flavours sit next
+                     to each other in the ring.
+Both count two things together: the pattern/plane picked for a
+whole session on the muscle model, and the pattern/execution
+tagged on individual exercises from the Individualization card.
+
 
 "Write to athlete calendars" writes the sheets into the athletes'
 own calendars (re-running it updates in place instead of
