@@ -11871,7 +11871,6 @@ function buildIndivPlan(src,ath,ctx){
       superset:(o.superset!=null?o.superset:(base.superset||'')),
       description:base.description,image:base.image,link:base.link,
       alts:altList,mode:o.mode||'',changedName,
-      why:o.why||'',
       note:o.note||''};
   })}));
   const changed=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
@@ -11904,7 +11903,6 @@ function planToIndivJSON(plan){
       template_exercise:r.base.name||'',
       prescribed_exercise:str(r.name),
       changed:!!r.changedName,
-      reason:r.changedName?str(r.why):'',
       sets:num(r.sets),
       reps:str(r.reps),
       time:str(r.duration),
@@ -11927,9 +11925,9 @@ function downloadIndivJSON(plans,dateKey){
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
-/* Turn a built sheet into a session object for the athlete's own calendar.
-   `why` rides along on every changed exercise so the coach printout can explain
-   itself later; the athlete's copy of the sheet drops it (stripForAthlete). */
+/* Turn a built sheet into a session object for the athlete's own calendar. Which
+   exercise the template had asked for rides along on every changed slot so the
+   coach printout can still show it; the athlete's copy drops it (stripForAthlete). */
 function planToSession(plan,src,dateKey,srcKey){
   const t=v=>String(v==null?'':v).trim();
   const rows=b=>b.rows.filter(liveSlot).map(r=>{
@@ -11938,7 +11936,7 @@ function planToSession(plan,src,dateKey,srcKey){
       tempo:t(r.tempo),rpe:t(r.rpe),load:t(r.load),rest:t(r.rest),
       description:[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':''),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
-      why:t(r.why),changed:!!r.changedName,fromName:r.base.name||''};});
+      changed:!!r.changedName,fromName:r.base.name||''};});
   return{id:uid(),name:src.name||'Individual Program',time:src.time||'17:00',
     loadType:src.loadType||'Mechanical load',purpose:src.purpose||'',focus:sesFocus(src),
     methods:sesMethods(src),region:sesRegion(src),duration:src.duration||60,
@@ -11953,7 +11951,9 @@ function planToSession(plan,src,dateKey,srcKey){
 /* ---- Program export ------------------------------------------------------
    Two versions off the same session data, through the same branded document
    builder the screening reports use:
-     coach   — carries the "why" the coach recorded against every changed exercise
+     coach   — carries the session notes and marks which exercises differ from the
+               template (plus, on sheets written before the reason box was removed,
+               whatever reason was recorded against a change back then)
      athlete — exercise, sets × reps, load / RPE target and nothing else
    Both work for one athlete or for everyone with a program that day, and for a
    single day or a Mon-Sun week. */
@@ -12174,10 +12174,6 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
       </div>
       <div className="iv-noterow">
         <label>note<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Note for this athlete…"/></label>
-        {/* Why this exercise is not the template's — the coach's own words, asked
-            for so the printout can explain itself, never required. */}
-        {row.changedName&&!empty&&<label>reason<input value={row.why||''} onChange={e=>onOverride({why:e.target.value})}
-          placeholder="Why did you change it? (optional, printed on the coach copy)"/></label>}
       </div>
     </div>
   </div>);
@@ -12241,8 +12237,8 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onApply,onExport,onExport
       <div className="iv-cardtools">
         <span className="iv-expg" style={{marginLeft:'auto'}}>
           <span className="h">PDF:</span>
-          <button className="btn xs sec" onClick={()=>onExport('coach')} title="Coach copy — includes the reasons written for changed exercises">Coach</button>
-          <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Plain athlete copy — no reasons">Athlete</button>
+          <button className="btn xs sec" onClick={()=>onExport('coach')} title="Coach copy — carries the session notes and marks what differs from the template">Coach</button>
+          <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Plain athlete copy — the exercises and their numbers, nothing else">Athlete</button>
           <button className="btn xs sec" onClick={onExportJSON} title="Machine-readable hand-off — every slot with the numbers as prescribed">JSON</button>
         </span>
       </div>
@@ -12388,9 +12384,9 @@ function IndividualizationView({data,team,updateTeam}){
             <option value="week">Week</option>
           </select>
           <button className="btn sec sm" onClick={()=>doExport('coach')} disabled={!chosen.length}
-            title="Selected athletes' programs — with the reasons written for changed exercises">⭳ Coach PDF</button>
+            title="Selected athletes' programs — with the session notes and what differs from the template">⭳ Coach PDF</button>
           <button className="btn sec sm" onClick={()=>doExport('athlete')} disabled={!chosen.length}
-            title="Selected athletes' programs — plain, no reasons">⭳ Athlete PDF</button>
+            title="Selected athletes' programs — the exercises and their numbers, nothing else">⭳ Athlete PDF</button>
           <button className="btn sec sm" onClick={()=>downloadIndivJSON(plans,date)} disabled={!plans.length}
             title="Selected athletes' programs — machine-readable JSON">⭳ JSON</button>
         </span>

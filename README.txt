@@ -32,8 +32,7 @@ What you can edit on every slot:
     ungrouped slots keep their own 1., 2., 3.
   - sets, reps, time, tempo, RPE, load and rest, side by side in
     one strip
-  - a note for this athlete, and — when you change the exercise —
-    an optional reason that gets printed on the coach copy
+  - a note for this athlete
   - ⇄ Alternatives keeps a short list of stand-ins on the slot;
     "Apply" writes the one you pick into the slot
   - ↺ Reset puts the slot back to exactly what the template says
@@ -55,14 +54,15 @@ acting on it is your decision.
 Programs export as branded PDF / printable pages in two versions,
 for one athlete or for everyone with a program that day, over a
 single day or a Mon-Sun week:
-  Coach PDF   — includes the reason you recorded against a change
+  Coach PDF   — carries the session notes and marks which exercises
+                differ from the template
   Athlete PDF — exercise, sets × reps, load / RPE target, nothing else
 
 ⭳ JSON exports the same programs machine-readably for one athlete
 or the whole selection: the template's own block order, one row
 per slot ({block, slot, superset, template_exercise,
-prescribed_exercise, changed, reason, sets, reps, time, tempo,
-rpe, load, rest, note}).
+prescribed_exercise, changed, sets, reps, time, tempo, rpe, load,
+rest, note}).
 
 "Write to athlete calendars" writes the sheets into the athletes'
 own calendars (re-running it updates in place instead of
