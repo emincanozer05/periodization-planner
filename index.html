@@ -11724,6 +11724,15 @@ const posGroupLabel=id=>((POS_GROUPS.find(g=>g.id===id)||{}).label)||'Diğer';
    Individualization tab and stored on the team (team.indiv.cfg). */
 function defaultIndivCfg(){return{
   subOn:true, posOn:true, testOn:true,
+  /* The automatic-reduction gate. Volume and intensity are left exactly as the
+     coach wrote them while the athlete reads as ready: the machinery arms only
+     BELOW `from`. Once armed, every layer folds into ONE cumulative ratio (never
+     above 1 — upward progression stays a manual coach decision), the floors are
+     absolute, and below `review` the cut is still applied but the session is
+     handed to the coach flagged for manual review. `noDataRatio` is the
+     conservative trim used when there is no readiness reading at all; it is
+     always flagged, never silent. */
+  gate:{on:true,from:3.5,review:2.5,setFloor:1,repFloor:5,noDataRatio:0.9},
   readiness:{on:true,modelA:true,modelB:true,baseRPE:7,fallback:true,
     bands:[
       {id:'low',  min:0,   label:'Çok düşük', mult:0.80, rpe:-1.5, color:'#f43f5e'},
@@ -11776,6 +11785,7 @@ function indivCfg(team){
   const d=defaultIndivCfg(),s=(team&&team.indiv&&team.indiv.cfg)||{};
   const bands=(s.readiness&&Array.isArray(s.readiness.bands)&&s.readiness.bands.length)?s.readiness.bands:d.readiness.bands;
   return{...d,...s,
+    gate:{...d.gate,...(s.gate||{})},
     readiness:{...d.readiness,...(s.readiness||{}),bands},
     volume:{...d.volume,...(s.volume||{}),matrix:{...d.volume.matrix,...((s.volume||{}).matrix||{})}},
     pain:{...d.pain,...(s.pain||{})},
@@ -11986,17 +11996,30 @@ function scaleNumText(txt,mult){
     return String(Math.abs(v)>=10?Math.round(v):Math.round(v*10)/10);
   });
 }
-function scaleSets(sets,mult){
+/* Sets and reps under the floors the automatic reduction may never cross, and
+   never allowed ABOVE what the coach wrote (there is no automatic progression —
+   a ratio > 1 leaves the number alone). A floor never RAISES a written value
+   either: a 3-rep strength set stays 3 reps, it is simply not cut further.
+   Reps scale every number in the field, so a range survives: "8-10" → "6-8". */
+function floorNum(orig,mult,floor){
+  const lo=Math.min(orig,Math.max(1,Number(floor)||1));
+  return Math.max(lo,Math.min(orig,Math.round(orig*mult)));
+}
+function scaleSetsFloored(sets,mult,floor){
   const m=String(sets==null?'':sets).match(/\d+/);
   if(!m)return sets;
-  const v=Math.max(1,Math.round(Number(m[0])*mult));
-  return String(sets).replace(/\d+/,String(v));
+  return String(sets).replace(/\d+/,String(floorNum(Number(m[0]),mult,floor)));
 }
-/* Reps scale every number in the field, so a range survives: "8-10" → "6-8". */
-function scaleReps(reps,mult){
+function scaleRepsFloored(reps,mult,floor){
   const t=String(reps==null?'':reps);
   if(!/\d/.test(t))return reps;
-  return t.replace(/\d+/g,m=>String(Math.max(1,Math.round(Number(m)*mult))));
+  return t.replace(/\d+/g,m=>String(floorNum(Number(m),mult,floor)));
+}
+/* Intensity moves with volume, on the same ratio and in the same direction —
+   percentages and kg scale down, never up. */
+function scaleLoadDown(txt,mult){
+  if(mult>=0.999)return txt;
+  return scaleNumText(txt,mult);
 }
 const rpeInText=t=>{const m=String(t||'').match(/rpe\s*([0-9]+(?:[.,][0-9])?)/i);return m?Number(m[1].replace(',','.')):null;};
 const clampRPE=v=>Math.max(4,Math.min(10,Math.round(v*2)/2));
@@ -12056,9 +12079,56 @@ function buildIndivPlan(src,ath,ctx){
   const painSubs=pains.filter(p=>p.sev>=Number(cfg.pain.subFrom||2));
   const constraints=[...new Set([...(ath.constraintTags||[]),...flags.flatMap(f=>f.constraints||[])])];
   const stateCap=(st&&st.on)?st.cap:'';
-  const rpeTarget=clampRPE(Number(cfg.readiness.baseRPE||7)+(band?Number(band.rpe||0):0)+((st&&st.on)?Number(st.rpe||0):0));
   // Set/rep count off readiness + yesterday's load, shared by every slot in the session.
   const dayVol=(!off.volume)?dailyVolumeFactor(ath,ref,cfg,rd):null;
+
+  /* ---- The automatic-reduction gate --------------------------------------
+     One decision taken once for the whole session, before any slot is written:
+
+       ready (readiness ≥ from)  → the template's sets/reps/intensity stand
+                                   EXACTLY as the coach wrote them. No layer
+                                   touches a number.
+       armed (readiness < from)  → every layer folds into ONE cumulative ratio
+                                   (they multiply, they are not applied one after
+                                   another to the written numbers), bounded at 1
+                                   so nothing is ever raised automatically.
+       no data                   → the conservative branch: a single flagged trim,
+                                   the template's exercises kept, manual review.
+
+     Below `review` the cut still applies — a bad day is exactly when volume
+     should come down — but the whole session goes to the coach flagged. */
+  const G={...defaultIndivCfg().gate,...(cfg.gate||{})};
+  const gateArmed=G.on!==false;
+  const rdKnown=rd.score!=null;
+  const gateState=!gateArmed?'open'                       // gate switched off → layers behave as before
+    :!rdKnown?'nodata'
+    :Number(rd.score)<Number(G.from)?'open':'ready';
+  /* Anything the coach must look at himself: a critically low score, a session
+     built without a readiness reading, or one built off a stale/estimated one. */
+  const gateReview=gateState==='nodata'
+    ||(rdKnown&&gateArmed&&Number(rd.score)<Number(G.review))
+    ||!!rd.stale;
+  const sessParts=[];let sessRatio=1;
+  const fold=(label,v)=>{const n=Number(v);
+    if(isFinite(n)&&n>0&&n<0.999){sessRatio*=n;sessParts.push(`${label} ×${Math.round(n*1000)/1000}`);}};
+  if(gateState==='open'){
+    /* The readiness score enters ONCE. The set/rep table already carries it (its
+       columns are the readiness bands, its rows yesterday's load), so the band
+       multiplier is only folded in when that table is switched off — otherwise the
+       same score would bite twice. */
+    if(dayVol&&dayVol.known)fold(`Günlük hacim (readiness ${dayVol.rdLabel}${dayVol.ratio!=null?` + dün yük ${VOL_LVL[dayVol.prevLevel]}`:''})`,dayVol.sets);
+    else if(band&&cfg.readiness.on&&!off.readiness&&cfg.readiness.modelA)fold(`Readiness bandı ${band.label}`,band.mult);
+    if(st&&st.on)fold('Yapısal durum',st.sets);
+  } else if(gateState==='nodata'){
+    fold('Readiness verisi yok — temkinli',G.noDataRatio);
+  }
+  sessRatio=Math.min(1,Math.round(sessRatio*1000)/1000);
+  const gate={state:gateState,review:gateReview,ratio:sessRatio,parts:sessParts,
+    from:Number(G.from),reviewFrom:Number(G.review),setFloor:Number(G.setFloor||1),repFloor:Number(G.repFloor||5)};
+  /* The session's RPE target follows the very same ratio — volume never comes
+     down while intensity stays where it was. */
+  const baseTargetRPE=Number(cfg.readiness.baseRPE||7);
+  const rpeTarget=clampRPE(Math.min(baseTargetRPE,baseTargetRPE*sessRatio));
 
   /* Names already on this athlete's sheet — a suggestion that duplicates one of them
      would leave the same movement written twice, so they are skipped while a
@@ -12086,7 +12156,12 @@ function buildIndivPlan(src,ath,ctx){
     const painTxt=p=>`${ctLabel(p.tag)}${p.src==='survey'?` ağrısı ${p.sev}/3`:' ağrısı'}`;
     let suggested=null;
 
-    if(name&&(cfg.subOn&&!off.sub)&&(conflict.length||hitFlags.length||overCap||painSub.length)){
+    /* Substitution runs on a trigger, never on a hunch: an active restriction that
+       contraindicates this exercise, a reported pain region this pattern loads, a
+       screening finding about this movement, or a difficulty above the athlete's
+       ceiling. Nothing else moves an exercise. */
+    const subNeeded=!!(name&&(cfg.subOn&&!off.sub)&&(conflict.length||hitFlags.length||overCap||painSub.length));
+    if(subNeeded){
       const prefer=[...new Set([...hitFlags.flatMap(f=>f.prefer||[]),...painSub.flatMap(p=>(PAIN_RULES[p.tag]||{}).kw||[])])];
       const exclude=new Set([name.toLowerCase(),...used]);
       // Painful patterns are off the table for today — including the slot's own, which
@@ -12140,52 +12215,59 @@ function buildIndivPlan(src,ath,ctx){
       }
     }
 
-    // volume: daily factor (readiness × yesterday's load) × athlete state × position × body type
-    let vol=1,repVol=1;const volParts=[];
-    if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001){
-      vol*=dayVol.sets;repVol*=dayVol.reps;
-      volParts.push(`Günlük hacim ×${dayVol.sets}`);
-    }
-    if(st&&st.on&&Math.abs(st.sets-1)>0.001){vol*=st.sets;repVol*=st.reps;volParts.push(`Sporcu durumu ×${st.sets}`);}
+    /* Volume & intensity — ONE cumulative ratio, applied once.
+       The session ratio (readiness band × daily volume × athlete state) is the
+       same for every slot; the two slot-level factors that remain — the
+       position / body-type emphasis for THIS movement pattern, and a
+       sub-threshold pain report that loads it — multiply into it rather than
+       taking a second bite out of the already-reduced numbers. */
     const pk=exPatternOf(byName(name))||pattern||'';
-    if(pos&&pk){const f=(pos.boost||{})[pk]||(pos.damp||{})[pk];if(f){vol*=Number(f);volParts.push(`${pos.label} ×${f}`);}}
-    if(bt&&pk){const f=(bt.boost||{})[pk]||(bt.damp||{})[pk];if(f){vol*=Number(f);volParts.push(`${(ANIMAL_TYPES.find(x=>x.id===ath.animalType)||{}).name||ath.animalType} ×${f}`);}}
-    // Sub-threshold pain keeps the exercise and takes the volume down instead.
-    if(painVol.length&&!painSub.length){
-      vol*=Number(cfg.pain.volSets||0.75);repVol*=Number(cfg.pain.volReps||0.85);
-      volParts.push(`${painVol.map(painTxt).join(', ')} ×${cfg.pain.volSets}`);
+    let slotRatio=gate.ratio;const volParts=[...gate.parts];
+    const foldSlot=(label,v)=>{const n=Number(v);
+      if(isFinite(n)&&n>0&&n<0.999){slotRatio*=n;volParts.push(`${label} ×${Math.round(n*1000)/1000}`);}};
+    if(gateState!=='ready'){
+      // Emphasis multipliers above 1 are deliberately ignored: automatic work only
+      // ever comes down, going up stays the coach's decision.
+      if(pos&&pk)foldSlot(pos.label,(pos.damp||{})[pk]);
+      if(bt&&pk)foldSlot((ANIMAL_TYPES.find(x=>x.id===ath.animalType)||{}).name||ath.animalType,(bt.damp||{})[pk]);
+      // Sub-threshold pain keeps the exercise and takes the volume down instead.
+      if(painVol.length&&!painSub.length)foldSlot(painVol.map(painTxt).join(', '),cfg.pain.volSets);
     }
+    slotRatio=Math.min(1,Math.round(slotRatio*1000)/1000);
+    const repShare=Number(cfg.volume.repShare!=null?cfg.volume.repShare:0.6);
+    const repRatio=1-(1-slotRatio)*repShare;
     let sets=o.sets!=null&&o.sets!==''?o.sets:base.sets;
     let reps=o.reps!=null&&o.reps!==''?o.reps:base.reps;
     let volWhy='';
-    if(o.sets==null||o.sets===''){
-      if(Math.abs(vol-1)>0.001&&base.sets){const ns=scaleSets(base.sets,vol);
-        if(String(ns)!==String(base.sets))sets=ns;}
+    if((o.sets==null||o.sets==='')&&slotRatio<0.999&&base.sets){
+      const ns=scaleSetsFloored(base.sets,slotRatio,gate.setFloor);
+      if(String(ns)!==String(base.sets))sets=ns;
     }
-    if(o.reps==null||o.reps===''){
-      if(Math.abs(repVol-1)>0.001&&base.reps){const nr=scaleReps(base.reps,repVol);
-        if(String(nr)!==String(base.reps))reps=nr;}
+    if((o.reps==null||o.reps==='')&&repRatio<0.999&&base.reps){
+      const nr=scaleRepsFloored(base.reps,repRatio,gate.repFloor);
+      if(String(nr)!==String(base.reps))reps=nr;
     }
     const volChanged=String(sets)!==String(base.sets)||String(reps)!==String(base.reps);
-    if(volChanged&&volParts.length){
+    if(slotRatio<0.999&&volParts.length){
       const shown=`${base.sets||'—'}×${base.reps||'—'} → ${sets||'—'}×${reps||'—'}`;
-      reasons.push({k:'vol',t:`Hacim: ${shown} (${volParts.join(', ')})`});
-      if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001)
-        reasons.push({k:'vol',t:`Readiness ${rd.score!=null?rd.score+'/5 ':''}(${dayVol.rdLabel}) + dün yük ${VOL_LVL[dayVol.prevLevel]}${dayVol.ratio!=null?` (${Math.round(dayVol.prevLoad)} AU, ortalamanın ${dayVol.ratio.toFixed(2)}×)`:''} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
-      volWhy=`Hacim ${shown} — ${volParts.join(', ')}`;
+      reasons.push({k:'vol',t:`Toplam azaltma ×${slotRatio} — ${volParts.join(', ')}`});
+      if(volChanged)reasons.push({k:'vol',t:`Hacim: ${shown} (taban: set ≥${gate.setFloor}, tekrar ≥${gate.repFloor})`});
+      else reasons.push({k:'vol',t:`Hacim tabana dayandı — ${base.sets||'—'}×${base.reps||'—'} korundu`});
+      volWhy=`Toplam azaltma ×${slotRatio} (${volParts.join(', ')})${volChanged?` — hacim ${shown}`:' — taban nedeniyle hacim korundu'}`;
     }
-    // load: Model A scales the written load, Model B writes an RPE target
+    // load: Model A scales the written load on the SAME ratio, Model B writes the
+    // matching RPE target. Intensity never stays put while volume comes down.
     let load=o.load!=null&&o.load!==''?o.load:base.load;
     if((o.load==null||o.load==='')&&cfg.readiness.on&&!off.readiness){
       const parts=[];
-      if(cfg.readiness.modelA&&band&&Number(band.mult)!==1&&base.load&&/\d/.test(String(base.load))){
-        const nl=scaleNumText(base.load,Number(band.mult));
+      if(cfg.readiness.modelA&&slotRatio<0.999&&base.load&&/\d/.test(String(base.load))){
+        const nl=scaleLoadDown(base.load,slotRatio);
         parts.push(nl);
-        reasons.push({k:'rd',t:`Readiness ${rd.score}/5 (${band.label}) → yük %${Math.round(Number(band.mult)*100)}: ${base.load} → ${nl}`});
+        reasons.push({k:'rd',t:`Şiddet aynı oranla düştü (×${slotRatio}): ${base.load} → ${nl}`});
       } else if(base.load)parts.push(base.load);
       if(cfg.readiness.modelB){
         const baseR=rpeInText(base.load);
-        const target=baseR!=null?clampRPE(baseR+(band?Number(band.rpe||0):0)+((st&&st.on)?Number(st.rpe||0):0)):rpeTarget;
+        const target=baseR!=null?clampRPE(Math.min(baseR,baseR*slotRatio)):rpeTarget;
         const txt=`@RPE ${target}`;
         const cleaned=parts.filter(p=>!/rpe/i.test(String(p)));
         cleaned.push(txt);
@@ -12193,25 +12275,41 @@ function buildIndivPlan(src,ath,ctx){
         load=cleaned.join(' · ');
       } else load=parts.join(' · ')||base.load;
     }
+    /* What the coach has to look at himself. The flag never blocks the session —
+       it rides along with it, on the card and in the JSON hand-off. */
+    const flagReasons=[];
+    if(gateState==='nodata')flagReasons.push('readiness verisi yok — şablon değerleri temkinli uygulandı');
+    else if(rd.stale)flagReasons.push(`readiness kaydı güncel değil (${fd(rd.date)})`);
+    if(rdKnown&&gateArmed&&Number(rd.score)<gate.reviewFrom)flagReasons.push(`readiness ${rd.score}/5 — ${gate.reviewFrom} kritik sınırının altında`);
+    if(subNeeded&&!suggested)flagReasons.push('uygun alternatif bulunamadı — şablondaki egzersiz korundu');
+    if(painHits.length&&gateState==='ready')flagReasons.push('ağrı bildirimi var ama readiness eşiğin üstünde — hacim otomatik düşürülmedi');
+    const flag=flagReasons.length?'manuel_inceleme':null;
+    if(flag)reasons.push({k:'flag',t:`⚑ Manuel inceleme: ${flagReasons.join(' · ')}`});
     if(name)used.add(name.trim().toLowerCase());
     return{key,base,name,sets,reps,load,tempo:base.tempo,rest:base.rest,
       description:base.description,image:base.image,link:base.link,superset:base.superset,
       alts:(ex.alts||[]).map(x=>(typeof x==='string'?{name:x}:x)).filter(x=>(x&&x.name||'').trim()),
       suggested,conflict,overridden,mode:o.mode||'',pattern:pk,reasons,
-      changedName,why,volWhy,painHits,
+      changedName,why,volWhy,painHits,flag,flagReasons,ratio:slotRatio,
       /* An override with no justification is nudged, never blocked. */
       needsWhy:changedName&&overridden&&!why,
       note:(o.note||'').trim()};
   })}));
 
   const summary=[];
-  if(band)summary.push({k:'rd',t:`Readiness ${rd.score}/5 · ${band.label}${cfg.readiness.modelA?` · yük %${Math.round(Number(band.mult)*100)}`:''}${cfg.readiness.modelB?` · @RPE ${rpeTarget}`:''}${rd.src==='srpe'?' (sRPE trendinden tahmin)':''}`});
+  if(band)summary.push({k:'rd',t:`Readiness ${rd.score}/5 · ${band.label}${cfg.readiness.modelB?` · @RPE ${rpeTarget}`:''}${rd.src==='srpe'?' (sRPE trendinden tahmin)':''}`});
   else if(cfg.readiness.on&&!off.readiness)summary.push({k:'warn',t:'Readiness verisi yok — yük ayarı uygulanmadı'});
+  /* The gate, in one line, because it is the first thing that decides whether any
+     number on this sheet differs from the team program at all. */
+  if(gateState==='ready')summary.push({k:'rd',t:`Readiness ${rd.score}/5 ≥ ${gate.from} — sporcu hazır kabul edildi, takım programının set/tekrar/şiddeti aynen uygulandı`});
+  else if(gateState==='open'&&sessRatio<0.999)summary.push({k:'vol',t:`Readiness ${rd.score}/5 < ${gate.from} → kümülatif azaltma ×${sessRatio} (${sessParts.join(' · ')}) · taban: set ≥${gate.setFloor}, tekrar ≥${gate.repFloor}`});
+  else if(gateState==='open')summary.push({k:'vol',t:`Readiness ${rd.score}/5 < ${gate.from} ama azaltmayı tetikleyen bir katman yok — şablon değerleri korundu`});
+  else if(gateState==='nodata')summary.push({k:'flag',t:`Readiness verisi yok — en muhafazakâr seçenek uygulandı (×${sessRatio}), egzersizler korundu, manuel incelemeye açıldı`});
+  if(gateReview)summary.push({k:'flag',t:`⚑ Manuel inceleme gerekiyor${rdKnown&&Number(rd.score)<gate.reviewFrom?` — readiness ${rd.score}/5, ${gate.reviewFrom} kritik sınırının altında`:''}`});
   if(st&&st.on&&(st.factors.length||st.cap))summary.push({k:'state',
-    t:`Sporcu durumu: hacim ×${st.sets}${st.bounded?` (${st.raw} sınırlandı)`:''}${st.rpe?` · RPE ${st.rpe>0?'+':''}${st.rpe}`:''}${st.cap?` · max ${LEVEL_LABEL[st.cap]||st.cap}`:''}${st.factors.length?` (${st.factors.map(f=>`${f.label} ×${f.v}`).join(', ')})`:''}`});
-  if(dayVol&&dayVol.known&&Math.abs(dayVol.sets-1)>0.001)
-    summary.push({k:'vol',t:`Readiness ${dayVol.rdLabel}${dayVol.ratio!=null?` + dün yük ${VOL_LVL[dayVol.prevLevel]} (${Math.round(dayVol.prevLoad)} AU)`:''} → set ×${dayVol.sets}, tekrar ×${Math.round(dayVol.reps*100)/100}`});
-  pains.forEach(p=>summary.push({k:'pain',t:`Ankette ${ctLabel(p.tag)} ağrısı${p.src==='survey'?` ${p.sev}/3`:''} (${fd(p.date)}) → ${p.sev>=Number(cfg.pain.subFrom||2)?'etkilenen egzersizler değiştirildi':'etkilenen egzersizlerde hacim düşürüldü'}`}));
+    t:`Sporcu durumu: hacim ×${st.sets}${st.bounded?` (${st.raw} sınırlandı)`:''}${st.cap?` · max ${LEVEL_LABEL[st.cap]||st.cap}`:''}${st.factors.length?` (${st.factors.map(f=>`${f.label} ×${f.v}`).join(', ')})`:''}${gateState==='ready'?' — readiness eşiğin üstünde, uygulanmadı':''}`});
+  pains.forEach(p=>summary.push({k:'pain',t:`Ankette ${ctLabel(p.tag)} ağrısı${p.src==='survey'?` ${p.sev}/3`:''} (${fd(p.date)}) → ${p.sev>=Number(cfg.pain.subFrom||2)?'etkilenen egzersizler değiştirildi'
+    :gateState==='ready'?'eşik altı ağrı, readiness yeterli — hacim düşürülmedi, manuel incelemeye bırakıldı':'etkilenen egzersizlerde hacim düşürüldü'}`}));
   if(pos&&pos.note)summary.push({k:'pos',t:`${pos.label} · ${pos.note}`});
   if(bt&&bt.note)summary.push({k:'pos',t:`${(ANIMAL_TYPES.find(x=>x.id===ath.animalType)||{}).name||ath.animalType} · ${bt.note}`});
   flags.forEach(f=>summary.push({k:'test',t:`${f.label} — ${f.reason}`}));
@@ -12221,8 +12319,53 @@ function buildIndivPlan(src,ath,ctx){
      variation of the template an athlete gets, rather than the level alone. */
   const profileKey=[pgId,ath.animalType||'—',(st&&st.on)?`hacim ×${st.sets}`:'—'].join(' · ');
   const missingWhy=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.needsWhy).length,0);
+  const flagged=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.flag).length,0);
+  /* One sentence the coach (and the JSON hand-off) can read on its own: what the
+     gate decided, on what score, and what came out of it. */
+  const gateNote=gateState==='ready'
+    ?`Readiness ${rd.score}/5 ≥ ${gate.from} — otomatik azaltma devreye girmedi, takım programının set/tekrar/şiddeti aynen uygulandı.`
+    :gateState==='nodata'
+      ?`Readiness verisi yok. En muhafazakâr seçenek uygulandı (kümülatif ×${sessRatio}), egzersizler korundu; tüm seans manuel incelemeye işaretlendi.`
+      :sessRatio<0.999
+        ?`Readiness ${rdKnown?`${rd.score}/5`:'—'} < ${gate.from} → kümülatif azaltma ×${sessRatio} (${sessParts.join(', ')}). Hacim ve şiddet aynı oranla düşürüldü; taban set ≥${gate.setFloor}, tekrar ≥${gate.repFloor}.${gateReview?` Readiness ${gate.reviewFrom} kritik sınırının altında — antrenör onayına sunuldu.`:''}`
+        :`Readiness ${rdKnown?`${rd.score}/5`:'—'} — azaltmayı tetikleyen bir katman yok, şablon değerleri korundu.${gateReview?' Manuel inceleme işaretlendi.':''}`;
   return{ath,rd,band,state:st,pos,posGroup:pgId,bodyType:bt,flags,pains,painSubs,dayVol,constraints,blocks,rpeTarget,changed,
-    missingWhy,profileKey,notes:athNotesList(ath),summary,off};
+    missingWhy,flagged,gate,gateState,gateNote,profileKey,notes:athNotesList(ath),summary,off};
+}
+
+/* ---- Machine-readable hand-off -------------------------------------------
+   The same plan the card shows, in the shape the coach's downstream tools read:
+   the template's own block order, one row per slot (never dropped, never
+   reordered, never added to), each carrying the kept/changed decision, its
+   justification, the numbers actually prescribed and the manual-review flag. */
+function planToIndivJSON(plan){
+  const num=v=>{const t=String(v==null?'':v).trim();return /^\d+$/.test(t)?Number(t):t;};
+  return{
+    sporcu_id:plan.ath.id||'',
+    program:(plan.blocks||[]).flatMap((b,bi)=>b.rows.map((r,i)=>({
+      blok:b.name||`Blok ${bi+1}`,
+      slot_sira:i+1,
+      orijinal_egzersiz:r.base.name||'',
+      uygulanacak_egzersiz:r.name||'',
+      degisti_mi:!!r.changedName,
+      gerekce:r.changedName?(r.why||''):'',
+      set:num(r.sets),
+      tekrar:String(r.reps==null?'':r.reps),
+      siddet:String(r.load==null?'':r.load),
+      flag:r.flag||null,
+    }))),
+    genel_not:plan.gateNote||'',
+  };
+}
+function downloadIndivJSON(plans,dateKey){
+  const one=plans.length===1;
+  const payload=one?planToIndivJSON(plans[0]):plans.map(planToIndivJSON);
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`bireysel_program_${one?(plans[0].ath.name||plans[0].ath.id||'sporcu').replace(/\s+/g,'_'):'takim'}_${dateKey}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
 /* Turn a built plan into a session object for the athlete's own calendar.
@@ -12233,7 +12376,8 @@ function planToSession(plan,src,dateKey,srcKey){
     tempo:r.tempo||'',load:r.load||'',rest:r.rest||'',
     description:[r.base.description||'',r.note].filter(Boolean).join(r.base.description&&r.note?' · ':''),
     notes:r.base.notes||'',superset:r.superset||'',image:r.image||'',link:r.link||'',
-    why:[r.why,r.volWhy].filter(Boolean).join(' · '),changed:!!r.changedName,fromName:r.base.name||''}));
+    why:[r.why,r.volWhy,r.flag?`⚑ Manuel inceleme: ${(r.flagReasons||[]).join(' · ')}`:''].filter(Boolean).join(' · '),
+    changed:!!r.changedName,flag:r.flag||'',fromName:r.base.name||''}));
   const head=plan.summary.filter(s=>s.k!=='warn').map(s=>'• '+s.t).join('\n');
   return{id:uid(),name:src.name||'Bireysel Program',time:src.time||'17:00',
     loadType:src.loadType||'Mechanical load',purpose:src.purpose||'',focus:sesFocus(src),
@@ -12243,7 +12387,8 @@ function planToSession(plan,src,dateKey,srcKey){
     notes:'',planNote:[src.planNote||'',head&&('Bireyselleştirme:\n'+head)].filter(Boolean).join('\n\n'),
     athletes:[],sourceId:null,
     indiv:{srcKey,date:dateKey,readiness:plan.rd.score,band:plan.band?plan.band.label:'',profileKey:plan.profileKey,
-      state:plan.state?plan.state.sets:1,pos:plan.posGroup,changed:plan.changed}};
+      state:plan.state?plan.state.sets:1,pos:plan.posGroup,changed:plan.changed,
+      gate:plan.gateState,ratio:plan.gate?plan.gate.ratio:1,flagged:plan.flagged||0}};
 }
 
 
@@ -12260,7 +12405,7 @@ function stripForAthlete(ses){
     planNote:String(ses.planNote||'').replace(/Bireyselleştirme:[\s\S]*$/,'').trim(),
     notes:'',
     blocks:(ses.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>{
-      const{why,changed,fromName,...rest}=e;return rest;})}))};
+      const{why,changed,flag,fromName,...rest}=e;return rest;})}))};
   return clean;
 }
 function indivSessionsFor(ath,dateKey){
@@ -12406,6 +12551,8 @@ function IndivConfig({cfg,save}){
   const R=cfg.readiness;
   const setR=p=>save({...cfg,readiness:{...R,...p}});
   const setBand=(i,p)=>setR({bands:R.bands.map((b,k)=>k===i?{...b,...p}:b)});
+  const GA={...defaultIndivCfg().gate,...(cfg.gate||{})};
+  const setG=p=>save({...cfg,gate:{...GA,...p}});
   const ST=cfg.state;
   const setS=p=>save({...cfg,state:{...ST,...p}});
   const setF=(k,v)=>setS({f:{...ST.f,[k]:v}});
@@ -12447,7 +12594,27 @@ function IndivConfig({cfg,save}){
           <input type="number" step="0.5" min="4" max="10" value={R.baseRPE} onChange={e=>setR({baseRPE:e.target.value})}/></div>
       </div>
       <div className="help" style={{margin:'6px 0 12px'}}>İkisi birlikte açık olabilir: program hem ayarlanmış yükü hem RPE hedefini gösterir. Genç sporcularda tek başına Model B daha güvenli bir başlangıçtır.
-        <br/>Aşağıdaki bantlar aynı zamanda <b>Set / tekrar</b> sekmesindeki tablonun sütunlarıdır — yani bir bant eklemek/silmek set ve tekrar sayısını da etkiler.</div>
+        <br/>Aşağıdaki bantlar aynı zamanda <b>Set / tekrar</b> sekmesindeki tablonun sütunlarıdır — yani bir bant eklemek/silmek set ve tekrar sayısını da etkiler.
+        <br/>Azaltma tek bir kümülatif orana katlandığı için readiness skoru <b>bir kez</b> sayılır: set/tekrar tablosu açıkken oranı o tablo taşır, <b>Yük çarpanı</b> sütunu ise tablo kapalıyken readiness'in katkısı olarak devreye girer. <b>RPE kaydırma</b> sütunu bant etiketiyle birlikte okunur; RPE hedefi de aynı kümülatif orandan çıkar.</div>
+      <div className="hr" style={{margin:'18px 0 14px'}}/>
+      <div className="iv-row">
+        <label className="iv-switch"><input type="checkbox" checked={GA.on!==false} onChange={e=>setG({on:e.target.checked})}/><span>Otomatik azaltma eşiği açık</span></label>
+        <div className="iv-f" style={{maxWidth:190}}><label>Azaltma eşiği (readiness &lt;)</label>
+          <input type="number" step="0.1" min="0" max="5" value={GA.from} onChange={e=>setG({from:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:210}}><label>Manuel inceleme sınırı (readiness &lt;)</label>
+          <input type="number" step="0.1" min="0" max="5" value={GA.review} onChange={e=>setG({review:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:130}}><label>Set tabanı</label>
+          <input type="number" step="1" min="1" value={GA.setFloor} onChange={e=>setG({setFloor:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:130}}><label>Tekrar tabanı</label>
+          <input type="number" step="1" min="1" value={GA.repFloor} onChange={e=>setG({repFloor:e.target.value})}/></div>
+        <div className="iv-f" style={{maxWidth:180}}><label>Veri yoksa çarpan</label>
+          <input type="number" step="0.05" min="0" max="1" value={GA.noDataRatio} onChange={e=>setG({noDataRatio:e.target.value})}/></div>
+      </div>
+      <div className="help" style={{margin:'6px 0 12px'}}>
+        Readiness <b>eşiğin üstündeyse sporcu hazır kabul edilir</b> ve takım programının set/tekrar/şiddeti hiç değiştirilmeden uygulanır — aşağıdaki bantlar, set/tekrar tablosu ve durum çarpanları o gün devreye girmez.
+        Eşiğin altında bütün katmanlar <b>tek bir kümülatif orana</b> katlanır (ayrı ayrı değil, çarpımsal), oran hiçbir zaman 1'in üstüne çıkmaz — yukarı yönlü progresyon antrenörün elle kararıdır.
+        Şiddet aynı oranla ve aynı yönde hareket eder. Tabanların altına inilmez; readiness manuel inceleme sınırının altındaysa azaltma yine uygulanır ama seans <b>⚑ manuel inceleme</b> ile antrenör onayına düşer.
+      </div>
       <table className="iv-tbl">
         <thead><tr><th>Bant</th><th>Readiness ≥</th><th>Yük çarpanı (Model A)</th><th>RPE kaydırma (Model B)</th></tr></thead>
         <tbody>{R.bands.map((b,i)=><tr key={b.id||i}>
@@ -12579,7 +12746,7 @@ function IndivConfig({cfg,save}){
 }
 
 /* ---- One exercise slot in a generated program ---------------------------- */
-const IV_RK={sub:'#f59e0b',rd:'#38bdf8',state:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e'};
+const IV_RK={sub:'#f59e0b',rd:'#38bdf8',state:'#a78bfa',pos:'#2dd4a7',test:'#fb923c',vol:'#a78bfa',ovr:'#e6ff55',warn:'#f43f5e',pain:'#f43f5e',flag:'#fb7185'};
 function IndivSlotRow({row,lib,onOverride,onReset}){
   const[mode,setMode]=useState(null);   // null | 'lib' | 'free'
   const[free,setFree]=useState(row.name||'');
@@ -12638,7 +12805,7 @@ function IndivSlotRow({row,lib,onOverride,onReset}){
 }
 
 /* ---- One athlete's generated program ------------------------------------- */
-function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onExport,open,setOpen}){
+function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onExport,onExportJSON,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12667,7 +12834,8 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onE
       {plan.band&&cfg.readiness.on&&!plan.off.readiness&&cfg.readiness.modelB&&
         <div className="iv-adj">@RPE {plan.rpeTarget}</div>}
       {plan.changed>0&&<div className="iv-adj sub">{plan.changed} değişiklik</div>}
-      {plan.missingWhy>0&&<div className="iv-adj miss" title="Elle değiştirilen egzersizlerde gerekçe boş — çıktıda boş görünür">{plan.missingWhy} gerekçesiz</div>}
+      {plan.flagged>0&&<div className="iv-adj miss" title={`Manuel inceleme: ${plan.gateNote}`}>⚑ {plan.flagged} manuel inceleme</div>}
+    {plan.missingWhy>0&&<div className="iv-adj miss" title="Elle değiştirilen egzersizlerde gerekçe boş — çıktıda boş görünür">{plan.missingWhy} gerekçesiz</div>}
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
     {plan.notes.length>0&&<div className="iv-notes" title="Antrenör notları — motor tarafından işlenmez, karar anında referanstır">
@@ -12687,6 +12855,7 @@ function IndivAthleteCard({plan,lib,cfg,onOverride,onResetSlot,onToggleLayer,onE
           <span className="h">PDF:</span>
           <button className="btn xs sec" onClick={()=>onExport('coach')} title="Gerekçeler dahil antrenör kopyası">Antrenör</button>
           <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Sade sporcu kopyası — gerekçe yok">Sporcu</button>
+          <button className="btn xs sec" onClick={onExportJSON} title="Makine okunur çıktı — slot slot karar, gerekçe ve manuel inceleme bayrağı">JSON</button>
         </span>
 
       </div>
@@ -12800,6 +12969,7 @@ function IndividualizationView({data,setData,team,updateTeam}){
     exportPrograms({athletes:list,dateKey:date,mode,range:expRange,teamName:team.setup.teamName});
   };
   const noReadiness=plans.filter(p=>p.rd.score==null).length;
+  const needReview=plans.filter(p=>p.flagged>0).length;
 
   return(<div className="iv-wrap">
     <div className="ex-top">
@@ -12831,6 +13001,8 @@ function IndividualizationView({data,setData,team,updateTeam}){
             title="Seçili sporcuların programı — değişiklik gerekçeleri dahil">⭳ Antrenör PDF</button>
           <button className="btn sec sm" onClick={()=>doExport('athlete')} disabled={!chosen.length}
             title="Seçili sporcuların programı — sade, gerekçesiz">⭳ Sporcu PDF</button>
+          <button className="btn sec sm" onClick={()=>downloadIndivJSON(plans,date)} disabled={!plans.length}
+            title="Seçili sporcuların programı — makine okunur JSON (slot kararları, gerekçeler, manuel inceleme bayrakları)">⭳ JSON</button>
         </span>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
@@ -12846,14 +13018,18 @@ function IndividualizationView({data,setData,team,updateTeam}){
     </div>}
     {!src&&<div className="ex-empty">Bu tarihte takım seansı yok ve henüz şablon oluşturulmamış. Templates sekmesinden bir şablon oluştur ya da takvimde bir seans planla.</div>}
     {src&&noReadiness>0&&<div className="iv-hint">
-      <span>{noReadiness} sporcuda readiness verisi yok — wellness anketi ya da sRPE girildiğinde otomatik dolar.</span>
+      <span>{noReadiness} sporcuda readiness verisi yok — wellness anketi ya da sRPE girildiğinde otomatik dolar. O sporcularda şablon egzersizleri korunur, en muhafazakâr çarpan uygulanır ve seans manuel incelemeye işaretlenir.</span>
+    </div>}
+    {src&&needReview>0&&<div className="iv-hint">
+      <span>⚑ {needReview} sporcunun programı manuel inceleme bekliyor — kritik readiness, eksik veri ya da alternatifi bulunamayan bir slot.</span>
     </div>}
     {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p} lib={lib} cfg={cfg}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
       onToggleLayer={(k,v)=>toggleLayer(p.ath.id,k,v)}
-      onExport={mode=>doExport(mode,[p.ath.id])}/>)}
+      onExport={mode=>doExport(mode,[p.ath.id])}
+      onExportJSON={()=>downloadIndivJSON([p],date)}/>)}
     {src&&plans.length===0&&<div className="ex-empty">Seçili sporcu yok — yukarıdan sporcu seç.</div>}
   </div>);
 }
