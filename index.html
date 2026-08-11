@@ -2503,6 +2503,13 @@ header{background:var(--bg2)!important}
 .iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:1 1 62px;min-width:0}
 .iv-numed input,.iv-numed select{width:100%;min-width:0;font-size:12.5px;padding:5px 8px;font-weight:600;
   font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:center}
+/* Reference link, between the prescription strip and the note. The shared link
+   control indents itself for the session editor's table, which this row is not, so
+   the indent is taken back here and the input allowed to use the card's width. */
+.iv-linkrow{margin:8px 0 2px}
+.iv-linkrow .lk-add{margin-left:0}
+.iv-linkrow .lk-row{padding-left:0}
+.iv-linkrow .lk-row input{max-width:none;font-size:11.5px}
 .iv-noterow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
 .iv-noterow label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:1 1 220px;min-width:0}
 .iv-noterow input{width:100%;font-size:12px;padding:5px 8px}
@@ -12255,7 +12262,12 @@ function buildIndivPlan(src,ath,ctx){
          load distribution reads. Defaults to whatever the template row carries. */
       pattern:pick('pattern',base.pattern||''),
       plane:pick('plane',base.plane||''),
-      description:base.description,image:base.image,link:base.link,
+      /* The reference link is the coach's to set per athlete, like every other box on
+         the row: it starts from whatever the template attached and is overridden the
+         same way, so one athlete can be pointed at a different clip without the
+         template — or anyone else's sheet — moving. */
+      link:pick('link',base.link||''),
+      description:base.description,image:base.image,
       changedName,
       note:o.note||''};
   };
@@ -12311,6 +12323,7 @@ function planToIndivJSON(plan){
       load:str(r.load),
       rest:str(r.rest),
       note:str(r.note),
+      link:safeURL(r.link)||'',
     }))),
   };
 }
@@ -12567,6 +12580,11 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
         {num('load','load',null,'Load (kg, %1RM…)')}
         {num('rest','rest',null,'Rest between sets')}
       </div>
+      {/* Reference link (video / cue clip), above the note. Collapsed to a small
+          "Add link" chip until the row actually has one, and clickable straight from
+          the card — the same control the session editor uses, so a link set here
+          behaves exactly like a link set there. It rides into both PDFs. */}
+      <div className="iv-linkrow"><ExLinkCell value={row.link||''} onChange={v=>onOverride({link:v})}/></div>
       <div className="iv-noterow">
         <label>note<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Note for this athlete…"/></label>
       </div>

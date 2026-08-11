@@ -57,7 +57,15 @@ What you can edit on every slot:
     Distribution counts (see below).
   - sets, reps, time, tempo, RPE, load and rest, side by side in
     one strip
-  - a note for this athlete
+  - a reference link (video / cue clip), above the note. It starts
+    from whatever the template attached and is yours to change per
+    athlete — point one athlete at a different clip without moving
+    the template or anyone else's sheet. It stays a small "Add
+    link" chip until the row has one; ↗ opens it from the card.
+    Both PDFs carry it as a clickable chip next to the exercise
+    name (printing to PDF keeps it as a real link, not just text),
+    and it rides into the JSON as `link`. Only http/https links
+    are exported.
   - ↺ Reset puts the slot back to exactly what the template says
 
 What the card SHOWS you (read-only context for those edits, in
@@ -86,7 +94,7 @@ single day or a Mon-Sun week:
 or the whole selection: the template's own block order, one row
 per slot ({block, slot, superset, pattern, execution,
 template_exercise, prescribed_exercise, changed, added, sets, reps,
-time, tempo, rpe, load, rest, note}). "added" marks a row you put
+time, tempo, rpe, load, rest, note, link}). "added" marks a row you put
 on the sheet yourself, which the source session does not carry.
 
 WELLNESS HEATMAP (Load Monitoring tab)
