@@ -66,16 +66,48 @@ function canonicalKey(rawTitle) {
   if (t.includes('uyku') || t.includes('sleep')) return 'Sleep';
   if (t.includes('yorgun')) return 'Fatigue';
   if (t.includes('kas') || ((t.includes('agri') || t.includes('agrin')) && t.includes('derece'))) return 'Soreness';
+  // "Ağrın hangi bölgede ve şiddette?" is a MATRIX (region rows × severity columns) and
+  // is decoded into "Region: Severity" pairs — checked before the plain free-text
+  // "Ağrın hangi bölgede?", which is the same question without the severity axis.
+  if (t.includes('bolge') && (t.includes('siddet') || t.includes('severity'))) return 'Pain Map';
+  if (t.includes('pain map') || t.includes('pain grid')) return 'Pain Map';
   if (t.includes('bolge') || t.includes('area of pain')) return 'Area of Pain';
   if (t.includes('readiness') || t.includes('hazir')) return 'Readiness';
 
   return rawTitle;
 }
 
+// A MATRIX answer is a grid: {rowId: columnId} or {rowId: [columnIds]}. Tally sends the
+// ids, so both axes are resolved back to their labels and written out as
+// "Row: Column, Row: Column" — which is what the pain question needs to survive the trip
+// (region AND severity, not one or the other). Returns null when this is not a matrix,
+// so the ordinary answer handling below takes over.
+function matrixToValue(a, question) {
+  if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
+  const q = question || {};
+  const f = q.field || {};
+  const rows = q.rows || f.rows || null;
+  const cols = q.columns || f.columns || null;
+  if (!rows || !cols) return null;
+  const label = (list, id) => {
+    const o = (list || []).find(o => o.id === id || o.uuid === id);
+    return o ? (o.text || o.label || o.title || id) : id;
+  };
+  const out = [];
+  for (const [rowId, val] of Object.entries(a)) {
+    const picks = (Array.isArray(val) ? val : [val]).filter(v => v != null && v !== '');
+    if (!picks.length) continue;
+    out.push(`${label(rows, rowId)}: ${picks.map(c => label(cols, c)).join('/')}`);
+  }
+  return out.length ? out.join(', ') : null;
+}
+
 // Turn one Tally answer into a plain value, mapping choice option-IDs to their labels.
 function answerToValue(resp, question) {
   let a = resp.answer !== undefined ? resp.answer : resp.value;
   if (a == null) return null;
+  const grid = matrixToValue(a, question);
+  if (grid != null) return grid;
   const opts = (question && (question.options || (question.field && question.field.options))) || null;
   const mapOpt = id => {
     if (!opts) return id;
@@ -133,7 +165,12 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
         const q = qById[resp.questionId];
         const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
         const v = answerToValue(resp, q);
-        if (v != null && v !== '') row[canonicalKey(title)] = v;
+        if (v == null || v === '') continue;
+        const key = canonicalKey(title);
+        // Tally may hand a matrix over as one question or as one question PER ROW, in
+        // which case every row shares the same title and would otherwise overwrite the
+        // one before it. Merging keeps whichever shape the API sends.
+        row[key] = (key === 'Pain Map' && row[key]) ? `${row[key]}, ${v}` : v;
       }
       rows.push(row);
     }

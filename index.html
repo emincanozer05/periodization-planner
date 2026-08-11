@@ -2074,17 +2074,32 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-hm .wh-box{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:#0a0b0d;cursor:default;box-shadow:inset 0 1px 0 rgba(255,255,255,.20);transition:transform .12s ease,box-shadow .12s ease}
 .wh-hm .wh-box:hover{transform:scale(1.22);box-shadow:0 5px 16px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.28);position:relative;z-index:5}
 .wh-hm .wh-empty{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;line-height:1}
-/* Day where the athlete wrote a complaint into "Area of Pain" — ringed red as a warning. */
-.wh-hm .wh-alert{box-shadow:0 0 0 3px #f43f5e,0 0 12px rgba(244,63,94,.6);border-color:#f43f5e;cursor:help;position:relative;z-index:4}
-.wh-hm .wh-empty.wh-alert{color:#f43f5e;font-weight:700}
-.wh-hm .wh-box.wh-alert:hover{box-shadow:0 0 0 3px #f43f5e,0 6px 18px rgba(0,0,0,.6)}
+/* Day where the athlete reported pain — a ticked region on the check-in's grid, or a
+   complaint written into "Area of Pain". Ringed in the worst severity's colour
+   (--wh-ring, set per cell); free text with no severity behind it stays red. */
+.wh-hm .wh-alert{box-shadow:0 0 0 3px var(--wh-ring,#f43f5e),0 0 12px color-mix(in srgb,var(--wh-ring,#f43f5e) 60%,transparent);border-color:var(--wh-ring,#f43f5e);cursor:help;position:relative;z-index:4}
+.wh-hm .wh-empty.wh-alert{color:var(--wh-ring,#f43f5e);font-weight:700}
+.wh-hm .wh-box.wh-alert:hover{box-shadow:0 0 0 3px var(--wh-ring,#f43f5e),0 6px 18px rgba(0,0,0,.6)}
+/* The pain marker itself, inside the day's own box: a pip in the top-right corner
+   carrying the number of regions when more than one was ticked. */
+.wh-hm .wh-pain{position:absolute;top:-3px;right:-3px;min-width:13px;height:13px;border-radius:99px;
+  border:1.5px solid var(--panel);display:inline-flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;color:#0a0b0d;
+  line-height:1;padding:0 2px;box-shadow:0 1px 4px rgba(0,0,0,.55);pointer-events:none}
+.wh-hm .wh-box,.wh-hm .wh-empty{position:relative;overflow:visible}
 .wh-note-tip{position:fixed;transform:translate(-50%,-100%) translateY(-10px);z-index:200;width:230px;pointer-events:none;
-  background:var(--elevated,var(--bg2));border:1px solid #f43f5e;border-radius:10px;padding:9px 11px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+  background:var(--elevated,var(--bg2));border:1px solid var(--wh-ring,#f43f5e);border-radius:10px;padding:9px 11px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
 .wh-nt-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--text)}
 .wh-nt-h span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);white-space:nowrap}
 .wh-nt-v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--muted);margin-top:2px}
 .wh-nt-n{margin-top:7px;padding-top:7px;border-top:1px solid var(--border);font-size:12px;line-height:1.45;color:#fecdd3;overflow-wrap:break-word}
 .wh-nt-ic{color:#f43f5e;margin-right:6px}
+/* The ticked regions, one line each: a severity dot, the region as the form words it,
+   and the severity spelled out on the right so the colour is never the only carrier. */
+.wh-nt-p{margin-top:7px;padding-top:7px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px}
+.wh-nt-pr{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text)}
+.wh-nt-pr i{width:8px;height:8px;border-radius:50%;flex:none}
+.wh-nt-pr b{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700}
 .wh-hm .wh-avg{text-align:center;vertical-align:middle}
 .wh-avg-in{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 9px;min-width:56px}
 .wh-aval{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700}
@@ -3287,6 +3302,67 @@ function AthleteLoadBoard({athletes,refDate}){
   </div>);
 }
 
+/* ---- The check-in's pain grid --------------------------------------------
+   The wellness form asks "Ağrın hangi bölgede ve şiddette?" as a matrix: one row
+   per body region, one column per severity. It arrives as "Boyun: Orta, Bel: Fazla"
+   and is stored on the check-in as `painMap` — {region: 1|2|3}, the region label
+   kept exactly as the athlete's form words it so a region the app has no tag for
+   (Boyun, Göğüs, Karın…) is still reported rather than silently dropped. */
+const PAIN_SEV_LABEL={1:'Hafif',2:'Orta',3:'Fazla'};
+const PAIN_SEV_COL={1:'#eab308',2:'#f97316',3:'#ef4444'};
+/* Severity is matched worst-first: a column written "Çok Fazla" must not be read as
+   the "az" inside it. Numbers pass straight through, so a form that sends 1/2/3
+   works without any wording at all. */
+const PAIN_SEV_WORDS=[
+  {n:3,kw:['fazla','şiddet','siddet','severe','high']},
+  {n:2,kw:['orta','moderate','medium']},
+  {n:1,kw:['hafif','mild','light','low']},
+];
+function painSevN(v){
+  if(v==null)return 0;
+  const n=Number(v);
+  if(!isNaN(n)&&n>=1&&n<=3)return Math.round(n);
+  const t=String(v).toLowerCase();
+  for(const s of PAIN_SEV_WORDS)if(s.kw.some(k=>t.includes(k)))return s.n;
+  return 0;
+}
+/* "Boyun: Orta, Bel: Fazla" → {Boyun:2, Bel:3}. An object is accepted as-is, so a
+   worker that decodes the grid itself needs no different handling here. Anything
+   that yields no region/severity pair at all returns null — free text the athlete
+   typed ("belim tutuldu") is not a grid and stays in `areaOfPain`. */
+function parsePainMap(raw){
+  const out={};
+  const put=(region,sev)=>{const r=String(region||'').trim();const n=painSevN(sev);
+    if(r&&n)out[r]=Math.max(out[r]||0,n);};
+  if(raw&&typeof raw==='object'&&!Array.isArray(raw))Object.entries(raw).forEach(([k,v])=>put(k,v));
+  else String(raw==null?'':raw).split(/\s*,\s*/).forEach(part=>{
+    const i=part.indexOf(':');
+    if(i>0)put(part.slice(0,i),part.slice(i+1));
+  });
+  return Object.keys(out).length?out:null;
+}
+/* The grid as a list to show — worst first, then alphabetical so equal severities
+   keep a stable order instead of following object insertion. */
+function painEntries(map){
+  return Object.entries(map||{}).map(([region,sev])=>({region,sev:Number(sev)||0}))
+    .filter(p=>p.sev>0)
+    .sort((a,b)=>b.sev-a.sev||a.region.localeCompare(b.region));
+}
+/* Best-effort bridge to the constraint tags the Individualization card reads: a
+   region is matched by the same keywords the free-text box is matched by, keeping
+   the worst severity reported for it. Regions the tag list has no entry for simply
+   produce no tag — they are still in `painMap`, which is what the heatmap draws. */
+function painTagsFromMap(map){
+  const out={};
+  painEntries(map).forEach(({region,sev})=>{
+    const t=(region+' ').toLowerCase();
+    CONSTRAINT_TAGS.forEach(tag=>{
+      if(tag.kw.some(k=>t.includes(k)))out[tag.id]=Math.max(out[tag.id]||0,sev);
+    });
+  });
+  return Object.keys(out).length?out:null;
+}
+
 /* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
 function WellnessHeatmap({athletes}){
   const METRICS=[
@@ -3309,7 +3385,20 @@ function WellnessHeatmap({athletes}){
   // Independent of the selected metric — it flags the day, whichever metric is on screen.
   const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&String(w.areaOfPain||'').trim());
     return e.length?String(e[e.length-1].areaOfPain).trim():'';};
-  const[tip,setTip]=useState(null);   // hovered note cell → {x,y,name,date,note,val}
+  /* The pain grid the athlete ticked that day. Like the note it is independent of the
+     selected metric — a marked region flags the day whichever metric is on screen.
+     A check-in written before the grid existed still parses out of its free-text box,
+     so an old "Bel: Fazla" is not lost just because it arrived under the old key. */
+  const painOf=(a,dk)=>{
+    const e=(a.wellness||[]).filter(w=>w.date===dk);
+    for(let i=e.length-1;i>=0;i--){
+      const m=e[i].painMap&&typeof e[i].painMap==='object'?e[i].painMap:parsePainMap(e[i].areaOfPain);
+      const list=painEntries(m);
+      if(list.length)return{list,max:list[0].sev};
+    }
+    return null;
+  };
+  const[tip,setTip]=useState(null);   // hovered note cell → {x,y,name,date,note,val,pain}
   // The heatmap sits inside a horizontally scrolling wrapper, so the bubble is rendered
   // fixed-position into <body> instead of absolutely inside the cell (which would clip).
   const showTip=(e,p)=>{const r=e.currentTarget.getBoundingClientRect();
@@ -3330,10 +3419,15 @@ function WellnessHeatmap({athletes}){
   const rows=(athletes||[]).map(a=>{
     const cells=dates.map(dk=>valOf(a,dk));
     const notes=dates.map(dk=>noteOf(a,dk));
+    const pains=dates.map(dk=>painOf(a,dk));
     const vals=cells.filter(v=>v!=null);
     const avg=vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:null;
-    return{a,cells,notes,avg};
-  }).filter(r=>r.avg!=null).sort((x,y)=>M.hi?(y.avg-x.avg):(x.avg-y.avg));
+    return{a,cells,notes,pains,avg};
+  /* An athlete who only reported pain, with no scores behind it, still belongs on the
+     grid — dropping the row would hide the one thing on it worth seeing. Rows without
+     an average sort to the bottom, since there is no average to rank them by. */
+  }).filter(r=>r.avg!=null||r.pains.some(Boolean))
+    .sort((x,y)=>(x.avg==null)-(y.avg==null)||(x.avg==null?0:(M.hi?(y.avg-x.avg):(x.avg-y.avg))));
   const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
   return(<div className="panel">
@@ -3370,24 +3464,40 @@ function WellnessHeatmap({athletes}){
             <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{r.a.position}</span>}</td>
             {r.cells.map((v,ci)=>{
               const note=r.notes[ci];
+              const pain=r.pains[ci];
               const dl=(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})();
               const vl=v!=null?`${M.label}: ${fmtV(v)}${M.scale?'/5':''}`:'Veri yok';
-              // A day with a written complaint gets a red ring; the note itself rides in the
-              // hover bubble, so the native title tooltip is dropped there (it would double up).
-              const hov=note?{onMouseEnter:e=>showTip(e,{name:r.a.name,date:dl,val:vl,note}),onMouseLeave:()=>setTip(null)}:{};
+              /* A day carrying a complaint — a ticked region or a written one — gets a
+                 ring in the worst reported severity's colour, and the regions themselves
+                 ride in the hover bubble, so the native title tooltip is dropped there
+                 (it would double up). */
+              const flag=!!(note||pain);
+              const ringC=pain?PAIN_SEV_COL[pain.max]:'#f43f5e';
+              const hov=flag?{onMouseEnter:e=>showTip(e,{name:r.a.name,date:dl,val:vl,note,pain}),onMouseLeave:()=>setTip(null)}:{};
+              /* The marker sits INSIDE the day's own box: a pip in the worst severity's
+                 colour, carrying how many regions were ticked when it was more than one. */
+              const pip=pain?<i className="wh-pain" style={{background:PAIN_SEV_COL[pain.max]}}>{pain.list.length>1?pain.list.length:''}</i>:null;
               return<td key={ci} className="wh-cell">{v!=null
-                ?<span className={'wh-box'+(note?' wh-alert':'')} style={{background:cellBg(v)}} title={note?undefined:`${r.a.name}\n${dl}\n${vl}`} {...hov}>{fmtV(v)}</span>
-                :<span className={'wh-empty'+(note?' wh-alert':'')} title={note?undefined:`${r.a.name}\n${dl}\nVeri yok`} {...hov}>{note?'!':'·'}</span>}</td>;})}
+                ?<span className={'wh-box'+(flag?' wh-alert':'')} style={{background:cellBg(v),'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\n${vl}`} {...hov}>{fmtV(v)}{pip}</span>
+                :<span className={'wh-empty'+(flag?' wh-alert':'')} style={{'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\nVeri yok`} {...hov}>{flag?(pain?'':'!'):'·'}{pip}</span>}</td>;})}
             <td className="wh-avg"><div className="wh-avg-in"><span className="wh-aval" style={{color:dotCol(r.avg)}}>{fmtV(r.avg)}</span><span className="wh-abar"><i style={{width:Math.round((goodT(r.avg)||0)*100)+'%',background:cellBg(r.avg)}}/></span></div></td>
           </tr>)}</tbody>
         </table>
       </div>
     </>}
     {tip&&ReactDOM.createPortal(
-      <div className="wh-note-tip" style={{left:tip.x,top:tip.y}}>
+      <div className="wh-note-tip" style={{left:tip.x,top:tip.y,'--wh-ring':tip.pain?PAIN_SEV_COL[tip.pain.max]:'#f43f5e'}}>
         <div className="wh-nt-h"><b>{tip.name}</b><span>{tip.date}</span></div>
         <div className="wh-nt-v">{tip.val}</div>
-        <div className="wh-nt-n"><span className="wh-nt-ic">⚠</span>{tip.note}</div>
+        {/* Every region the athlete ticked, worst first, each with its own severity —
+            the grid's whole answer, not just that something hurt. */}
+        {tip.pain&&<div className="wh-nt-p">
+          {tip.pain.list.map(p=><span key={p.region} className="wh-nt-pr">
+            <i style={{background:PAIN_SEV_COL[p.sev]}}/>{p.region}
+            <b style={{color:PAIN_SEV_COL[p.sev]}}>{PAIN_SEV_LABEL[p.sev]}</b>
+          </span>)}
+        </div>}
+        {tip.note&&<div className="wh-nt-n"><span className="wh-nt-ic">⚠</span>{tip.note}</div>}
       </div>,document.body)}
   </div>);
 }
@@ -10222,9 +10332,16 @@ async function performTallySync(workerUrl,team,opts={}){
     const _rhr=_toN(row['RHR']);
     let _ready=_toN(row['Readiness']);
     if(_ready==null){const sc=[_sleep,_fat,_sor].filter(v=>v!=null);if(sc.length)_ready=+(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1);}
+    /* The pain grid ("Ağrın hangi bölgede ve şiddette?"): region → severity. A worker
+       that has not been redeployed since the question became a matrix still sends it
+       under the old free-text key, so that is tried too — and whatever the athlete
+       actually typed stays in `areaOfPain` either way. `pain` is the tag-keyed view
+       the Individualization card reads. */
+    const _painMap=parsePainMap(row['Pain Map'])||parsePainMap(row['Area of Pain']);
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
       RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
-      areaOfPain:row['Area of Pain']||'',readiness:_ready};
+      areaOfPain:row['Area of Pain']||'',painMap:_painMap,pain:painTagsFromMap(_painMap),
+      readiness:_ready};
     if(i>=0){ath.wellness[i]=entry;stats.wellnessUpdated++;}
     else{ath.wellness.push(entry);stats.wellnessAdded++;}
   }
