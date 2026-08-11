@@ -121,7 +121,7 @@ h1,h2,h3,h4,h5,h6,.ex-h1{font-family:'Space Grotesk','Inter',sans-serif;font-wei
    Collected here rather than nudged rule by rule so the two stay in step. Both need
    !important for the same reason the headings above do: the rules that style each of
    these surfaces are written further down and would otherwise win on source order. */
-.ex-tbl .en,.dw-ex .en,.iv-slot-nm input,.tpl-tip-ex .n,.en-sopt,
+.ex-tbl .en,.dw-ex .en,.iv-slot-nm .en,.tpl-tip-ex .n,.en-sopt,
 .nav-item,.ath-tabs button,.rsf-tabs button,.calm-seg button,.rlang-seg button
 {font-weight:700 !important}
 .app{min-height:100vh;display:flex;flex-direction:row;isolation:isolate}
@@ -2444,11 +2444,43 @@ header{background:var(--bg2)!important}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+.iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+/* Session heading, training time and purpose — the coach's per-athlete copy of what
+   the source session says at the top, editable right where the sheet is written. */
+.iv-meta-f{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace;min-width:0}
+.iv-meta-f.nm{flex:1 1 200px}
+.iv-meta-f.tm{flex:0 0 110px}
+.iv-meta-f.pp{flex:2 1 240px}
+.iv-meta-f input{width:100%;min-width:0;font-size:12.5px;padding:5px 8px;color:var(--text)}
+.iv-meta-f.nm input{font-size:13.5px;font-weight:700}
+.iv-meta-f.tm input{font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:center}
+/* A meta box the coach has rewritten for this athlete is marked the same way a
+   changed exercise is — the sheet says at a glance what no longer matches the source. */
+.iv-meta-f.edited input{border-color:rgba(245,158,11,.5)}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
 .iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+/* The heading is a text box, not a label: renaming a block is per athlete, like
+   every other thing on this sheet. It stays flush with the header until focused. */
+.iv-block-nm{flex:1 1 160px;min-width:0;max-width:340px;background:transparent;border:1px solid transparent;border-radius:6px;
+  padding:4px 7px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.01em}
+.iv-block-nm:hover{border-color:var(--border)}
+.iv-block-nm:focus{background:var(--panel);border-color:var(--accent);color:var(--text);outline:none}
+.iv-block-nm.edited{color:var(--text);border-color:rgba(245,158,11,.45)}
+.iv-blocktag{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(230,255,85,.3);border-radius:4px;padding:1px 6px}
+.iv-blockacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+.iv-blockacts .iv-rmb:hover{border-color:rgba(239,68,68,.55);color:#f87171}
+/* A removed template block keeps a slim bar on the card so it can be put back —
+   the same bargain as an emptied slot, which stays dimmed rather than vanishing. */
+.iv-block.gone{opacity:.55;border-style:dashed}
+.iv-block.gone .iv-block-hd{border-bottom:none}
+.iv-block.gone .iv-block-nm{text-decoration:line-through}
+.iv-block.newb{border-color:rgba(230,255,85,.35)}
 /* Adding sits in the block header, at the end of the block it adds to. */
-.iv-addb{margin-left:auto;flex:none}
+.iv-addb{flex:none}
+/* Adding a whole block sits under the last one, where a new block would land. */
+.iv-addblk{align-self:flex-start}
 
 /* Slots sit two to a row. The dividers are drawn on the cells themselves: every
    cell rules to its right and below, then the right-hand column and the final row
@@ -2484,7 +2516,12 @@ header{background:var(--bg2)!important}
    not with the middle of a name block that has grown a note under it. */
 .iv-slot-main>.iv-ss-tag,.iv-slot-main>.iv-ss-sel,.iv-slot-main>.iv-pb,.iv-slot-main>.btn{margin-top:2px}
 .iv-slot-nm{flex:1 1 220px;min-width:0}
-.iv-slot-nm input{width:100%;font-size:13.5px;font-weight:600;padding:6px 9px}
+/* The exercise box is the shared library picker (the same control the session
+   editor uses), so it is a growing textarea rather than an input — a long name
+   wraps and stays readable instead of scrolling out of a one-line field. */
+.iv-slot-nm .en{width:100%;font-size:13.5px;font-weight:600;padding:6px 9px;line-height:1.35;
+  min-height:32px;font-family:inherit;resize:none;overflow:hidden;white-space:pre-wrap;
+  word-break:break-word;display:block;box-sizing:border-box}
 .iv-was{display:block;font-size:11px;color:var(--dim);text-decoration:line-through;margin-top:3px}
 /* Superset group, in front of the exercise exactly as in the template editor:
    the tag says where the slot sits in the order, the select next to it moves the
@@ -12276,16 +12313,52 @@ function buildIndivPlan(src,ath,ctx){
      numbering never shifts under an override: slot "1:2" always means the same
      row of the same block, whatever was added around it. */
   const addedAll=(ovr&&Array.isArray(ovr.added)?ovr.added:[]).filter(a=>a&&a.id!=null);
-  const blocks=(src.blocks||[]).map((b,bi)=>({name:b.name||'',bi,rows:[
-    ...(b.exercises||[]).map((ex,ei)=>mkRow(`${bi}:${ei}`,ex,null)),
-    // Added slots sit after the template's own, in the order they were added.
-    ...addedAll.filter(a=>a.bi===bi).map(a=>mkRow(`add:${a.id}`,{},a.id)),
-  ]}));
-  const changed=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
-  return{ath,rd,band,posGroup:pgId,blocks,changed,
+  /* Blocks the coach ADDED for this athlete, and the per-block edits (a renamed or
+     removed heading) laid over the source session's own. Both are keyed the same way
+     slots are: a template block by its index, an added one by its id — so a rename
+     survives whatever is added around it. */
+  const addedBlocks=(ovr&&Array.isArray(ovr.addedBlocks)?ovr.addedBlocks:[]).filter(b=>b&&b.id!=null);
+  const blockOvr=(ovr&&ovr.blockOvr)||{};
+  const mkBlock=(key,baseName,exercises,addId)=>{
+    const o=blockOvr[key]||{};
+    // Same rule as a slot field: the presence of the key decides, so a heading can be
+    // cleared and typed into freely. ✕ Remove is what takes the block off the sheet.
+    const name=String(o.name!==undefined&&o.name!==null?o.name:(baseName||''));
+    return{key,name,baseName:baseName||'',added:!!addId,addId:addId||null,
+      removed:!addId&&!!o.removed,
+      renamed:!addId&&name.trim()!==(baseName||'').trim(),
+      rows:[
+        ...(exercises||[]).map((ex,ei)=>mkRow(`${key}:${ei}`,ex,null)),
+        // Added slots sit after the template's own, in the order they were added.
+        ...addedAll.filter(a=>String(a.bi)===key).map(a=>mkRow(`add:${a.id}`,{},a.id)),
+      ]};
+  };
+  const blocks=[
+    ...(src.blocks||[]).map((b,bi)=>mkBlock(String(bi),b.name||'',b.exercises||[],null)),
+    // Added blocks sit after the source session's own, in the order they were added.
+    ...addedBlocks.map(b=>mkBlock(`add:${b.id}`,'',[],b.id)),
+  ];
+  /* An exercise inside a block the coach removed is not prescribed, so it is not a
+     change either — counting it would leave the badge claiming edits the athlete
+     never sees on their sheet. */
+  const changed=blocks.filter(b=>!b.removed).reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
+  /* The session's own heading, training time and purpose, per athlete. They start
+     from the source session and are overridden exactly like a slot field. */
+  const mOvr=(ovr&&ovr.meta)||{};
+  const mPick=(k,fallback)=>mOvr[k]!==undefined&&mOvr[k]!==null?String(mOvr[k]):String(fallback||'');
+  const meta={
+    name:mPick('name',src.name||''),time:mPick('time',src.time||''),purpose:mPick('purpose',src.purpose||''),
+    baseName:src.name||'',baseTime:src.time||'',basePurpose:src.purpose||'',
+    edited:{name:mOvr.name!==undefined&&mOvr.name!==null,time:mOvr.time!==undefined&&mOvr.time!==null,
+      purpose:mOvr.purpose!==undefined&&mOvr.purpose!==null},
+  };
+  return{ath,rd,band,posGroup:pgId,blocks,changed,meta,
     prev:athPrevDay(ath,ref),pains:athPainReports(ath,ref),painNote:athPainNote(ath,ref),
     well:athWellnessSnap(ath,ref),notes:athNotesList(ath)};
 }
+/* Blocks that are actually prescribed — a removed one keeps its row on the card so
+   it can be put back, exactly like an emptied slot, but never leaves the screen. */
+const liveBlocks=plan=>(plan.blocks||[]).filter(b=>!b.removed);
 
 /* Clearing a slot's exercise name is how an exercise is deleted from one athlete's
    sheet: the row stays on the card so it can be filled back in (or Reset to the
@@ -12304,7 +12377,10 @@ function planToIndivJSON(plan){
   return{
     athlete_id:plan.ath.id||'',
     athlete:plan.ath.name||'',
-    program:(plan.blocks||[]).flatMap((b,bi)=>b.rows.filter(liveSlot).map((r,i)=>({
+    session:str(plan.meta&&plan.meta.name),
+    time:str(plan.meta&&plan.meta.time),
+    purpose:str(plan.meta&&plan.meta.purpose),
+    program:liveBlocks(plan).flatMap((b,bi)=>b.rows.filter(liveSlot).map((r,i)=>({
       block:b.name||`Block ${bi+1}`,
       slot:i+1,
       superset:str(r.superset),
@@ -12351,11 +12427,16 @@ function planToSession(plan,src,dateKey,srcKey){
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       pattern:t(r.pattern),plane:t(r.plane),
       changed:!!r.changedName,fromName:r.base.name||''};});
-  return{id:uid(),name:src.name||'Individual Program',time:src.time||'17:00',
-    loadType:src.loadType||'Mechanical load',purpose:src.purpose||'',focus:sesFocus(src),
+  /* Heading, training time and purpose come off the athlete's own sheet — the coach
+     may have rewritten any of the three for this athlete — and fall back to the
+     source session's when they were never touched. */
+  const m=plan.meta||{};
+  return{id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
+    loadType:src.loadType||'Mechanical load',purpose:t(m.purpose!=null?m.purpose:src.purpose),
+    focus:sesFocus({...src,purpose:t(m.purpose!=null?m.purpose:src.purpose)}),
     methods:sesMethods(src),region:sesRegion(src),duration:src.duration||60,
     sRPE:'',au:'',color:src.color||'',
-    blocks:(plan.blocks||[]).map(b=>({id:uid(),name:b.name,exercises:rows(b)})),
+    blocks:liveBlocks(plan).map(b=>({id:uid(),name:b.name,exercises:rows(b)})),
     notes:'',planNote:src.planNote||'',
     athletes:[],sourceId:null,
     indiv:{srcKey,date:dateKey,readiness:plan.rd.score,band:plan.band?plan.band.label:'',
@@ -12529,10 +12610,20 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
         <option value="">—</option>
         {SLOT_SS.map(o=><option key={o} value={o}>{o}</option>)}
       </select>
-      <div className="iv-slot-nm">
-        <input value={row.name||''} list="lib-exercises" placeholder="Exercise name…"
-          onChange={e=>onOverride({name:e.target.value})}
-          title={row.added?'Pick from the library or type any name — this exercise is not in the source session':'Pick from the library, type any name, or use ✕ Remove to drop this exercise'}/>
+      <div className="iv-slot-nm"
+        title={row.added?'Pick from the library or type any name — this exercise is not in the source session':'Pick from the library, type any name, or use ✕ Remove to drop this exercise'}>
+        {/* The same two-pane library picker the session editor uses — the library on
+            the left, its categories on the right — so an exercise is chosen the same
+            way wherever it is written. A name typed freehand is added to the shared
+            library by the field itself, and picking a library row copies that entry's
+            video link (and its movement pattern, when the row has none yet) onto the
+            slot, exactly as it does in the block editor. */}
+        <ExNameField value={row.name||''} onChange={v=>onOverride({name:v})}
+          onPick={it=>{
+            const pat=EX_PATTERNS.includes(it.type)?it.type:'';
+            onOverride({name:it.name,link:it.link||row.link||'',
+              ...(pat&&!row.pattern?{pattern:pat,plane:''}:{})});
+          }}/>
         {/* An emptied slot says so once. Naming the template exercise as well would
             be the same sentence twice, since ↺ Reset is what brings it back. */}
         {row.added
@@ -12593,7 +12684,7 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
 }
 
 /* ---- One athlete's sheet -------------------------------------------------- */
-function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onApply,onExport,onExportJSON,open,setOpen}){
+function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12647,12 +12738,28 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} more</span>}
     </div>}
     {open&&<div className="iv-card-body">
+      {/* What the session IS, for this athlete: its heading, when they train and what
+          it is for. All three start from the source session and are the coach's to
+          rewrite per athlete, like every other box on the sheet — they ride onto the
+          athlete's calendar and onto the printout with the program. */}
       <div className="iv-cardtools">
+        <label className={'iv-meta-f nm'+(plan.meta.edited.name?' edited':'')}>session
+          <input value={plan.meta.name} onChange={e=>onMeta({name:e.target.value})}
+            placeholder={plan.meta.baseName||'Session title…'}
+            title={plan.meta.edited.name&&plan.meta.baseName?`Source session: ${plan.meta.baseName}`:'The session heading written on this athlete’s program'}/>
+        </label>
+        <label className={'iv-meta-f tm'+(plan.meta.edited.time?' edited':'')}>time
+          <input type="time" value={plan.meta.time} onChange={e=>onMeta({time:e.target.value})}
+            title={plan.meta.edited.time&&plan.meta.baseTime?`Source session: ${plan.meta.baseTime}`:'When this athlete trains'}/>
+        </label>
+        <label className={'iv-meta-f pp'+(plan.meta.edited.purpose?' edited':'')}>purpose
+          <input value={plan.meta.purpose} onChange={e=>onMeta({purpose:e.target.value})}
+            placeholder={plan.meta.basePurpose||'What this session is for…'}
+            title={plan.meta.edited.purpose&&plan.meta.basePurpose?`Source session: ${plan.meta.basePurpose}`:'What this session is for'}/>
+        </label>
         <span className="iv-expg" style={{marginLeft:'auto'}}>
-          <span className="h">PDF:</span>
-          <button className="btn xs sec" onClick={()=>onExport('coach')} title="Coach copy — carries the session notes and marks what differs from the template">Coach</button>
-          <button className="btn xs sec" onClick={()=>onExport('athlete')} title="Plain athlete copy — the exercises and their numbers, nothing else">Athlete</button>
-          <button className="btn xs sec" onClick={onExportJSON} title="Machine-readable hand-off — every slot with the numbers as prescribed">JSON</button>
+          <button className="btn xs sec" onClick={()=>onExport('coach')}
+            title="Print this athlete's program">PDF</button>
         </span>
       </div>
       {plan.blocks.map((b,bi)=>{
@@ -12664,25 +12771,50 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           if(ss){cnt[ss]=(cnt[ss]||0)+1;return`${ss}${cnt[ss]}`;}
           cnt._=(cnt._||0)+1;return`${cnt._}.`;
         });
-        return(<div key={bi} className="iv-block">
+        const fallback=`Block ${bi+1}`;
+        return(<div key={b.key} className={'iv-block'+(b.removed?' gone':'')+(b.added?' newb':'')}>
           <div className="iv-block-hd">
-            <span>{b.name||`Block ${bi+1}`}</span>
-            {/* Adding is per block, because a block is what the sheet is organised
-                by — an exercise added here lands at the end of this block and is
-                numbered with the rest of it. */}
-            <button type="button" className="btn xs iv-addb" onClick={()=>onAddSlot(b.bi)}
-              title={`Add an exercise to ${b.name||`Block ${bi+1}`} for this athlete`}>+ Add exercise</button>
+            {/* The heading is the coach's, like everything else on this sheet: typing
+                in it renames the block for THIS athlete only, and the source session
+                keeps whatever it says. */}
+            <input className={'iv-block-nm'+(b.renamed||b.added?' edited':'')} value={b.name}
+              onChange={e=>onBlockName(b.key,e.target.value)}
+              placeholder={b.baseName||fallback}
+              title={b.renamed&&b.baseName?`Source session: ${b.baseName}`:'Rename this block for this athlete'}/>
+            {b.added&&<span className="iv-blocktag" title="Added by you for this athlete — the source session does not carry it">added</span>}
+            <span className="iv-blockacts">
+              {b.removed
+                /* A removed template block behaves like an emptied slot: it stays on
+                   the card, struck through, so it can be brought back. */
+                ?<button type="button" className="btn xs sec" onClick={()=>onBlockRemove(b,false)}
+                  title="Put this block back on this athlete’s program">↺ Restore</button>
+                :<>
+                  {/* Adding is per block, because a block is what the sheet is organised
+                      by — an exercise added here lands at the end of this block and is
+                      numbered with the rest of it. */}
+                  <button type="button" className="btn xs iv-addb" onClick={()=>onAddSlot(b.key)}
+                    title={`Add an exercise to ${b.name||fallback} for this athlete`}>+ Add exercise</button>
+                  <button type="button" className="btn xs sec iv-rmb" onClick={()=>onBlockRemove(b,true)}
+                    title={b.added?'Delete this added block and everything written in it':'Drop this block from this athlete’s program'}>✕ Remove</button>
+                </>}
+            </span>
           </div>
           {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable
               without scrolling past one exercise to reach the next. */}
-          <div className="iv-slots">
-            {b.rows.map((r,ri)=><IndivSlotRow key={r.key} row={r} tag={tags[ri]}
-              onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}
-              onRemove={()=>onRemoveSlot(r)}/>)}
-          </div>
-          {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block — use “+ Add exercise” to write one for this athlete.</div>}
+          {!b.removed&&<>
+            <div className="iv-slots">
+              {b.rows.map((r,ri)=><IndivSlotRow key={r.key} row={r} tag={tags[ri]}
+                onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}
+                onRemove={()=>onRemoveSlot(r)}/>)}
+            </div>
+            {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block — use “+ Add exercise” to write one for this athlete.</div>}
+          </>}
         </div>);
       })}
+      {/* A whole block the source session does not have — it lands at the end, where
+          a new block would go, and is filled in exercise by exercise. */}
+      <button type="button" className="btn xs sec iv-addblk" onClick={onAddBlock}
+        title="Add a block to this athlete’s program">+ Add block</button>
     </div>}
   </div>);
 }
@@ -12726,10 +12858,44 @@ function IndividualizationView({data,team,updateTeam}){
   };
   /* An exercise the coach adds to a block for THIS athlete. It is recorded as an
      empty slot (id + which block it belongs to); everything typed into it after
-     that goes through the same slot override as any template row. */
-  const addSlot=(athId,bi)=>{
+     that goes through the same slot override as any template row. `bkey` is the
+     block's key — a source block's index, or `add:<id>` for one the coach added. */
+  const addSlot=(athId,bkey)=>{
     const cur=ovrAll[athId]||{};
-    setOvr(athId,{added:[...(cur.added||[]),{id:uid(),bi}]});
+    setOvr(athId,{added:[...(cur.added||[]),{id:uid(),bi:bkey}]});
+  };
+  /* The session's own heading, training time and purpose, per athlete. Stored the
+     same way a slot field is: the key's presence is what makes it the coach's, so
+     any of the three can be cleared and left empty. */
+  const setMeta=(athId,patch)=>{
+    const cur=ovrAll[athId]||{};
+    setOvr(athId,{meta:{...(cur.meta||{}),...patch}});
+  };
+  const setBlock=(athId,key,p)=>{
+    const cur=ovrAll[athId]||{};const bo={...(cur.blockOvr||{})};
+    bo[key]={...(bo[key]||{}),...p};
+    setOvr(athId,{blockOvr:bo});
+  };
+  /* A block the coach adds for THIS athlete — empty, and filled in with the same
+     "+ Add exercise" button every other block carries. */
+  const addBlock=athId=>{
+    const cur=ovrAll[athId]||{};
+    setOvr(athId,{addedBlocks:[...(cur.addedBlocks||[]),{id:uid()}]});
+  };
+  /* Removing a block mirrors removing a slot. A block the SOURCE session wrote is
+     only marked removed — the bar stays on the card, struck through, so it can be
+     restored and it is left out of what gets written and exported. A block the coach
+     ADDED has no source behind it, so it goes away outright, together with the
+     exercises added into it and everything typed on them. */
+  const removeBlock=(athId,block,on)=>{
+    const cur=ovrAll[athId]||{};
+    if(block.added){
+      const gone=new Set((cur.added||[]).filter(a=>String(a.bi)===block.key).map(a=>`add:${a.id}`));
+      const slots={};Object.keys(cur.slots||{}).forEach(k=>{if(!gone.has(k))slots[k]=cur.slots[k];});
+      const bo={...(cur.blockOvr||{})};delete bo[block.key];
+      setOvr(athId,{addedBlocks:(cur.addedBlocks||[]).filter(b=>b.id!==block.addId),
+        added:(cur.added||[]).filter(a=>String(a.bi)!==block.key),slots,blockOvr:bo});
+    }else setBlock(athId,block.key,{removed:!!on});
   };
   /* Removing an exercise means two different things, and both are what the coach
      would expect: a slot the TEMPLATE wrote is emptied — the row stays on the card,
@@ -12851,10 +13017,13 @@ function IndividualizationView({data,team,updateTeam}){
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
       onRemoveSlot={r=>removeSlot(p.ath.id,r)}
-      onAddSlot={bi=>addSlot(p.ath.id,bi)}
+      onAddSlot={bkey=>addSlot(p.ath.id,bkey)}
+      onMeta={patch=>setMeta(p.ath.id,patch)}
+      onBlockName={(key,name)=>setBlock(p.ath.id,key,{name})}
+      onBlockRemove={(b,on)=>removeBlock(p.ath.id,b,on)}
+      onAddBlock={()=>addBlock(p.ath.id)}
       onApply={()=>applyTo([p.ath.id])}
-      onExport={mode=>doExport(mode,[p.ath.id])}
-      onExportJSON={()=>downloadIndivJSON([p],date)}/>)}
+      onExport={mode=>doExport(mode,[p.ath.id])}/>)}
     {src&&plans.length===0&&<div className="ex-empty">No athlete selected — pick one above.</div>}
   </div>);
 }
@@ -13191,7 +13360,6 @@ function App(){
   ];
 
   return(<div className={"app"+(menuOpen?' menu-open':'')}>
-    <datalist id="lib-exercises">{[...new Set((data.exercises||[]).map(e=>e.name).filter(Boolean))].map((n,i)=><option key={i} value={n}/>)}</datalist>
     <div className="mscrim" onClick={()=>setMenuOpen(false)}/>
     <aside className="sidebar">
       <button className="mclose" onClick={()=>setMenuOpen(false)} aria-label="Kapat">✕</button>
