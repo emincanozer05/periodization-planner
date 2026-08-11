@@ -107,20 +107,34 @@ executions across the whole area with each one's share OF THAT
 PATTERN. The ⊖ button in the corner (or another tap on the box)
 goes back to all patterns.
 
-An opened pattern also lists, under the treemap, WHICH EXERCISES
-made up that work — "Most used exercises", most prescribed first,
-each with the executions it was performed in, how many times it
-was written that period, and its share of the pattern. The bar is
-scaled to the top exercise, so it reads as "what did we lean on"
-rather than a row of stubs. Top 8, with "+n more" for the rest.
-The same exercise typed two ways counts once (case is ignored);
-only exercises that carry a pattern tag can appear, so work that
-was only tagged at session level is counted in the boxes above but
-has no name to rank.
+Opening a pattern also writes the EXERCISES themselves inside the
+boxes: each execution box lists the exercises performed that way,
+most prescribed first, with a ×count each — so the names sit in
+the coloured box they belong to rather than in a list beside the
+figure. A box shows as many as it is tall enough to hold and ends
+with "+n more"; hovering it names them all. Work with no execution
+is listed the same way inside the "not set" box. The same exercise
+typed two ways counts once (case is ignored).
 
-It counts two things together: the pattern/plane picked for a
-whole session on the muscle model, and the pattern/execution
-tagged on individual exercises from the Individualization card.
+WHERE THE PATTERNS COME FROM
+Three sources, in this order of authority:
+  1. the pattern/execution tagged on an exercise from the
+     Individualization card — always wins
+  2. the SHARED LIBRARY. Five of its Exercise Types are movement
+     patterns (Upper Body Push, Upper Body Pull, Hip Dominant,
+     Knee Dominant, Core), and for those five the sub-type is how
+     the pattern is executed — contraction for Hip/Knee, plane for
+     Upper Body Push/Pull, the core quality for Core. So an
+     exercise written straight into a team session, with no tag on
+     it at all, is still counted and still named, as long as it is
+     in the library. Types that are not movement patterns
+     (Warm-Up, Full Body, Medicine Ball, Plyometric, Multi
+     Directional Speed, Mobility) resolve to nothing on purpose —
+     filing them under a pattern they do not train would be worse
+     than leaving them out.
+  3. the pattern/plane picked for a whole SESSION on the muscle
+     model. This counts toward the boxes but names no exercise,
+     since a session-level pick names none.
 
 
 "Write to athlete calendars" writes the sheets into the athletes'
