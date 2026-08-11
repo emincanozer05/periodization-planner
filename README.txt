@@ -20,13 +20,24 @@ Every box is yours, empty included: clearing one clears it, it
 does not spring back to the template's value. ↺ Reset is the only
 thing that restores a slot, and it restores the whole slot.
 
+You can also change WHICH exercises are on the sheet, not just
+what they say:
+  - "+ Add exercise", in each block's header, puts an extra empty
+    slot at the end of that block for this athlete only. Fill it
+    in like any other slot; it is marked "added", it is numbered
+    with the rest of the block, and the source session is never
+    touched. An added slot left empty is simply ignored.
+  - "✕ Remove", on every slot, takes the exercise off this
+    athlete's program. On a slot the template wrote, the row stays
+    on the card, dimmed and marked "removed", so you can type
+    something else in or ↺ Reset it back — it is just left out of
+    what gets written and exported. On a slot you added yourself
+    there is no template to go back to, so the row goes away.
+
 What you can edit on every slot:
   - the exercise itself (pick from the library or type any name;
     a name that exists nowhere in the library is accepted the
-    same way). Clear the box and the exercise is DELETED for this
-    athlete: the row stays on the card, dimmed and marked
-    "removed", so you can type something else in or Reset it, but
-    it is left out of what gets written and exported.
+    same way). Clearing the box does the same thing as ✕ Remove.
   - the superset group, in front of the exercise, exactly as in
     the template editor: slots sharing a letter read A1, A2, A3…,
     ungrouped slots keep their own 1., 2., 3.
@@ -73,24 +84,29 @@ single day or a Mon-Sun week:
 ⭳ JSON exports the same programs machine-readably for one athlete
 or the whole selection: the template's own block order, one row
 per slot ({block, slot, superset, pattern, execution,
-template_exercise, prescribed_exercise, changed, sets, reps, time,
-tempo, rpe, load, rest, note}).
+template_exercise, prescribed_exercise, changed, added, sets, reps,
+time, tempo, rpe, load, rest, note}). "added" marks a row you put
+on the sheet yourself, which the source session does not carry.
 
 LOAD DISTRIBUTION (Calendar tab, team and per athlete)
 The "Load Distribution" panel under the calendar reads the week or
-the month and draws two pies:
-  Movement Pattern — how the work splits across Hip Dominant,
-                     Knee Dominant, Upper Body Push, Upper Body
-                     Pull, Core and Accessory
-  Execution        — the same work split one level down, by
-                     pattern AND execution ("Hip · Eccentric",
-                     "UB Push · Horizontal", "Core · Anti-
-                     Rotation"), so you can see not just which
-                     patterns were trained but how. Each slice
-                     keeps its pattern's colour and separates by
-                     shade, and a pattern's own flavours sit next
-                     to each other in the ring.
-Both count two things together: the pattern/plane picked for a
+the month and draws ONE treemap, not two pies:
+  - every movement pattern (Hip Dominant, Knee Dominant, Upper
+    Body Push, Upper Body Pull, Core, Accessory) is a box sized by
+    its share of the period, labelled with its name and %
+  - INSIDE each box sit that pattern's executions — Push, Pull,
+    ISO, Eccentric, Vertical, Horizontal, Anti-Rotation and the
+    rest — each its own box, in a shade of the pattern's colour.
+    So "how much hip work" and "which flavour of it" are read in
+    one glance instead of matched up between two rings.
+  - work tagged with a pattern but no execution shows up inside
+    the pattern as a dark "not set" box, so it is never silently
+    folded into the executions that were tagged.
+Tap any pattern box and it grows to fill the panel, re-laying its
+executions across the whole area with each one's share OF THAT
+PATTERN. The ⊖ button in the corner (or another tap on the box)
+goes back to all patterns.
+It counts two things together: the pattern/plane picked for a
 whole session on the muscle model, and the pattern/execution
 tagged on individual exercises from the Individualization card.
 

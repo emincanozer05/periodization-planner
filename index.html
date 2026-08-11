@@ -50,16 +50,22 @@
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
 <style>
-/* User-uploaded TT Fors — bold italic applied site-wide */
+/* User-uploaded Bebas Neue — the app's typeface, upright, applied site-wide.
+   The file ships a single upright weight; `font-weight:100 900` lets every weight
+   the app asks for map onto it (the browser synthesises the bold used by headings)
+   instead of the family dropping out to the fallback on any non-400 rule. */
 @font-face{
-  font-family:'TT Fors';
-  src:url('fonts/TTFors-BoldItalic.ttf') format('truetype');
+  font-family:'Bebas Neue';
+  src:url('fonts/BebasNeue-Regular.ttf') format('truetype');
   font-weight:100 900;
-  font-style:italic;
+  font-style:normal;
   font-display:swap;
 }
-/* Force the bold italic TT Fors across the whole page (overrides Space Grotesk / Inter / IBM Plex Mono) */
-*{font-family:'TT Fors','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:italic !important;font-weight:700 !important}
+/* Bebas Neue across the whole page (overrides Space Grotesk / Inter / IBM Plex Mono).
+   Upright everywhere — no italic anywhere in the app. Weight is deliberately NOT
+   forced here: each rule keeps the weight it declares, so headings read bold
+   (see the h1-h6 rule below) and body copy does not. */
+*{font-family:'Bebas Neue','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important}
 :root{
   --bg:#101010;--bg2:#101216;--panel:#14171c;--elevated:#181c22;--hover:#1d2128;
   --border:#23272e;--border2:#2e333c;
@@ -90,7 +96,10 @@ body{
   -webkit-font-smoothing:antialiased;min-height:100vh;
 }
 .mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
-h1,h2,h3,h4{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700;letter-spacing:-0.01em}
+/* Headings are the one place the app asks for bold. Bebas Neue ships a single
+   weight, so the browser synthesises it — which is why this has to beat every
+   lighter weight a component rule might set on its own title. */
+h1,h2,h3,h4,h5,h6,.ex-h1{font-family:'Space Grotesk','Inter',sans-serif;font-weight:700 !important;letter-spacing:-0.01em}
 .app{min-height:100vh;display:flex;flex-direction:row;isolation:isolate}
 .sidebar{
   width:252px;flex:none;background:rgba(16,18,22,.72);
@@ -542,6 +551,42 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .ath-mmap-body>.ath-mmap-list .ath-mmap-row{break-inside:avoid;padding:3.5px 0}
 }
 .ml-fig-wrap{width:340px;max-width:100%}
+/* Load distribution treemap — movement patterns as cells, each pattern's
+   executions nested inside it. Every box is positioned in px by the layout, so the
+   only thing CSS does here is paint and animate. The transitions on the geometry
+   are what turn a click into a zoom rather than a jump cut. */
+.mld-tm{position:relative;width:100%;overflow:hidden;border-radius:12px}
+.mld-tm-cell{position:absolute;border-radius:8px;overflow:hidden;cursor:pointer;
+  transition:left .42s cubic-bezier(.4,0,.2,1),top .42s cubic-bezier(.4,0,.2,1),
+             width .42s cubic-bezier(.4,0,.2,1),height .42s cubic-bezier(.4,0,.2,1),
+             opacity .3s ease,box-shadow .18s ease;
+  box-shadow:0 1px 0 rgba(255,255,255,.10) inset,0 2px 10px rgba(0,0,0,.35)}
+.mld-tm-cell:hover{box-shadow:0 0 0 2px rgba(255,255,255,.55) inset,0 4px 16px rgba(0,0,0,.5)}
+.mld-tm-cell.gone{opacity:0;pointer-events:none}
+.mld-tm-cell.zoom{cursor:zoom-out}
+.mld-tm-hd{position:absolute;left:0;top:0;right:0;display:flex;align-items:center;gap:8px;
+  padding:0 10px;pointer-events:none;z-index:2}
+.mld-tm-hd .n{font-size:13px;font-weight:700;letter-spacing:.02em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.mld-tm-hd .p{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
+  font-weight:600;opacity:.88;flex:none;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.mld-tm-cell.zoom .mld-tm-hd .n{font-size:17px}
+.mld-tm-cell.zoom .mld-tm-hd .p{font-size:14px}
+.mld-tm-body{position:absolute}
+.mld-tm-kid{position:absolute;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px;padding:2px 4px;text-align:center;
+  transition:left .42s cubic-bezier(.4,0,.2,1),top .42s cubic-bezier(.4,0,.2,1),
+             width .42s cubic-bezier(.4,0,.2,1),height .42s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 0 1px rgba(0,0,0,.28) inset}
+.mld-tm-kid .n{font-size:11.5px;font-weight:600;line-height:1.1;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mld-tm-kid .p{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;opacity:.9;line-height:1.1}
+.mld-tm-cell.zoom .mld-tm-kid .n{font-size:14px}
+.mld-tm-cell.zoom .mld-tm-kid .p{font-size:13px}
+.mld-tm-out{position:absolute;right:12px;bottom:12px;z-index:5;width:38px;height:38px;border-radius:50%;
+  border:1px solid var(--border2);background:rgba(20,23,28,.92);color:var(--text);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:all .16s}
+.mld-tm-out:hover{border-color:var(--accent);color:var(--accent)}
 .ml-pie-col{flex:1;min-width:340px}
 .ml-pie-wrap{width:100%;height:360px;position:relative}
 .ml-fig-wrap .mm-bodies{gap:10px}
@@ -711,7 +756,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ws-actions button:hover{background:var(--accent)}
 .wv-day .ws .wst{font-weight:600;color:var(--text)}
 .wv-day .wl{font-size:10px;color:var(--accent2);font-weight:700;margin-top:6px;letter-spacing:.3px}
-.wv-day .wa{color:var(--dim);font-size:11px;margin-top:8px;text-align:center;font-style:italic}
+.wv-day .wa{color:var(--dim);font-size:11px;margin-top:8px;text-align:center}
 /* Blocks */
 .block-card{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;transition:border-color .15s,opacity .15s,box-shadow .15s}
 .block-card:hover{border-color:var(--border2)}
@@ -787,7 +832,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 @media(max-width:640px){.en-pane-cat{flex-basis:44%}.en-plist{max-height:200px}}
 .ex-tbl .es,.ex-tbl .em{width:100%;text-align:center}
 .ex-desc{padding:0 6px 4px}
-.ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px;font-style:italic}
+.ex-desc input{background:transparent;border:none;font-size:11px;color:var(--muted);padding:2px 8px}
 .ex-desc input:focus{background:var(--elevated);color:var(--text);font-style:normal}
 /* Exercise link row — sits between the exercise row and its description. Collapsed to a
    dashed "Add link" chip until the exercise actually has one. */
@@ -874,7 +919,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .metric.danger .mv{color:var(--red)}
 .chart-box{position:relative;height:280px}.chart-box.sm{height:220px}
 .hr{height:1px;background:var(--border);margin:16px 0}
-.empty-st{text-align:center;color:var(--dim);padding:36px 20px;font-size:13px;font-style:italic}
+.empty-st{text-align:center;color:var(--dim);padding:36px 20px;font-size:13px}
 .help{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:5px;letter-spacing:.02em}
 .pill{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:.3px}
 .pill.low{background:var(--low);color:var(--low-t)}
@@ -1217,7 +1262,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rec-md ul,.rec-md ol{margin:8px 0;padding-left:22px}
 .rec-md li{margin:5px 0}
 .rec-md strong{color:var(--text)}
-.rec-foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--dim);font-style:italic}
+.rec-foot{margin-top:18px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--dim)}
 .rec-hint{background:var(--panel);border:1px dashed var(--border);border-radius:12px;padding:20px;color:var(--muted);font-size:13px;line-height:1.6}
 .rec-empty{text-align:center;padding:46px 24px;background:var(--panel);border:1px dashed var(--border);border-radius:14px;max-width:560px;margin:8px auto 0}
 .rec-empty-ic{font-size:40px;margin-bottom:8px}
@@ -1516,7 +1561,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-rpe-tip{position:fixed;z-index:120;transform:translate(-50%,calc(-100% - 8px));background:var(--elevated,var(--bg2));border:1px solid var(--border2,var(--border));border-radius:9px;padding:7px 11px;box-shadow:0 12px 34px rgba(0,0,0,.55);pointer-events:none;max-width:260px}
 .lb-rpe-tip .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;white-space:nowrap}
 .lb-rpe-tip .s{display:block;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lb-rpe-tip .none{font-size:11px;color:var(--dim);font-style:italic;white-space:nowrap}
+.lb-rpe-tip .none{font-size:11px;color:var(--dim);white-space:nowrap}
 
 /* ===== Roster (Athletes) ===== */
 .rost-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
@@ -2320,7 +2365,7 @@ header{background:var(--bg2)!important}
    badge — the athlete's side of the header, opposite the program's. */
 .iv-daybar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;font-size:11px}
 .iv-daybar .iv-painchip{white-space:normal;max-width:280px}
-.iv-daybar .iv-painchip.note{font-weight:500;font-style:italic}
+.iv-daybar .iv-painchip.note{font-weight:500}
 .iv-dchip{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--border);border-radius:8px;padding:3px 10px;background:var(--elevated);white-space:nowrap}
 .iv-dchip i{font-size:8.5px;font-style:normal;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-dchip b{font-size:12.5px;font-weight:700;color:var(--text2);font-family:'IBM Plex Mono',ui-monospace,monospace}
@@ -2352,7 +2397,9 @@ header{background:var(--bg2)!important}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
 .iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
-.iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border)}
+.iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+/* Adding sits in the block header, at the end of the block it adds to. */
+.iv-addb{margin-left:auto;flex:none}
 
 /* Slots sit two to a row. The dividers are drawn on the cells themselves: every
    cell rules to its right and below, then the right-hand column and the final row
@@ -2374,7 +2421,15 @@ header{background:var(--bg2)!important}
 /* An emptied slot is on its way out of the program — dimmed so it reads as absent
    rather than as an exercise still waiting to be prescribed. */
 .iv-slot.off{border-left:3px solid var(--border2);opacity:.55}
-.iv-gone{display:block;font-size:11px;color:var(--dim);font-style:italic;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* An exercise the coach added is marked in the accent, the same way a substituted
+   one is marked in amber — the sheet says at a glance which rows are not the
+   template's. An added slot that is still empty keeps the dimmed "off" treatment. */
+.iv-slot.added{border-left:3px solid var(--accent)}
+.iv-addtag{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--accent);background:var(--accent-bg);
+  border:1px solid rgba(230,255,85,.3);border-radius:4px;padding:1px 6px;margin-top:4px}
+.iv-rmb:hover{border-color:rgba(239,68,68,.55);color:#f87171}
+.iv-gone{display:block;font-size:11px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .iv-slot-main{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
 /* The tag, the group select and the two buttons line up with the name box itself,
    not with the middle of a name block that has grown a note under it. */
@@ -2441,11 +2496,12 @@ header{background:var(--bg2)!important}
 <script type="text/babel" data-presets="react">
 const{useState,useEffect,useMemo,useRef}=React;
 
-/* Report/print/PDF font — mirror the site's TT Fors bold-italic so exported
-   outputs use the same typeface as the web app. Uses an absolute URL so the
-   font resolves in both print windows (window.open) and offscreen iframes. */
-const RPT_FONT=`@font-face{font-family:'TT Fors';src:url('${location.origin}/fonts/TTFors-BoldItalic.ttf') format('truetype');font-weight:100 900;font-style:italic;font-display:swap}
-*{font-family:'TT Fors','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:italic !important}`;
+/* Report/print/PDF font — mirror the site's Bebas Neue so exported outputs use
+   the same typeface as the web app. Uses an absolute URL so the font resolves in
+   both print windows (window.open) and offscreen iframes. */
+const RPT_FONT=`@font-face{font-family:'Bebas Neue';src:url('${location.origin}/fonts/BebasNeue-Regular.ttf') format('truetype');font-weight:100 900;font-style:normal;font-display:swap}
+*{font-family:'Bebas Neue','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important}
+h1,h2,h3,h4,h5,h6{font-weight:700 !important}`;
 
 /* =========================================================
    CONSTANTS
@@ -2524,7 +2580,7 @@ const CHART_DARK={
     delay:ctx=>(ctx.type==='data'&&ctx.mode==='default')?Math.min((ctx.dataIndex||0)*28,640):0},
   animations:{y:{from:ctx=>{const s=ctx.chart&&ctx.chart.scales&&ctx.chart.scales.y;return s?s.getPixelForValue(0):undefined;}}},
   scales:{x:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.08)'}},y:{ticks:{color:'#475569'},grid:{color:'rgba(15,23,42,.07)'},beginAtZero:true}},
-  plugins:{legend:{labels:{color:'#334155',font:{family:"'TT Fors','Space Grotesk',sans-serif"}}}}
+  plugins:{legend:{labels:{color:'#334155',font:{family:"'Bebas Neue','Space Grotesk',sans-serif"}}}}
 };
 
 /* =========================================================
@@ -3366,7 +3422,7 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
    ========================================================= */
 function AthletePicker({athletes,selected,onChange}){
   if(!athletes||athletes.length===0)return(
-    <div className="ath-pick"><div className="help" style={{fontStyle:'italic'}}>No athletes on roster yet — add them in the Athletes tab to assign them to sessions.</div></div>
+    <div className="ath-pick"><div className="help">No athletes on roster yet — add them in the Athletes tab to assign them to sessions.</div></div>
   );
   const sel=new Set(selected||[]);
   const toggle=id=>{const a=sel.has(id)?(selected||[]).filter(x=>x!==id):[...(selected||[]),id];onChange(a);};
@@ -3400,8 +3456,8 @@ if(window.Chart&&window.ChartDataLabels){
     window.Chart.register(window.ChartDataLabels);
     window.Chart.defaults.set('plugins.datalabels',{display:false});
     // Match the site typeface for all canvas-drawn chart text (axes, labels, legend).
-    window.Chart.defaults.font.family="'TT Fors','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif";
-    window.Chart.defaults.font.style='italic';
+    window.Chart.defaults.font.family="'Bebas Neue','Space Grotesk','Inter','Segoe UI',system-ui,sans-serif";
+    window.Chart.defaults.font.style='normal';
   }catch(e){console.warn('datalabels register failed:',e);}
 }
 function ChartC({type,chartData,options,plugins}){
@@ -3942,8 +3998,8 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-p{color:#be123c;font-weight:800}
 .ex-meta strong{font-weight:800}
 /* Coaching cues read as a quiet note next to the prescription, so they break out of the
-   sheet's bold-italic display face: light, upright Inter. The !important flags are what
-   beat the document-wide RPT_FONT rule that forces TT Fors italic on every element.
+   sheet's display face: light Inter. The !important flags are what beat the
+   document-wide RPT_FONT rule that puts Bebas Neue on every element.
    Width is capped short of the sets/reps column so the cue never runs under it. */
 .ex-desc{font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;
   font-weight:300 !important;font-size:11.5px;color:#94a3b8;line-height:1.4;margin-top:3px;max-width:78%}
@@ -3967,7 +4023,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .seq-tag{display:inline-block;color:#94a3b8;font-weight:600;font-size:12px;letter-spacing:.2px}
 .ss-tag{display:inline-block;background:rgba(154,171,58,.14);color:#6f7d29;padding:2px 7px;border-radius:4px;font-weight:800;font-size:11.5px;border:1px solid rgba(154,171,58,.45);min-width:28px;text-align:center;letter-spacing:.2px}
 
-.empty-block{padding:16px;text-align:center;color:#cbd5e1;font-style:italic;font-size:12px;background:#fafbfc;border-radius:6px;border:1px dashed #e2e8f0}
+.empty-block{padding:16px;text-align:center;color:#cbd5e1;font-size:12px;background:#fafbfc;border-radius:6px;border:1px dashed #e2e8f0}
 
 /* Footer */
 .sf{padding:10px 16px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;gap:24px;align-items:stretch;border-radius:0 0 7px 7px;break-inside:avoid;page-break-inside:avoid}
@@ -3977,7 +4033,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .sf-val.placeholder{color:#cbd5e1;font-weight:700}
 .sf-val .unit{font-size:12px;color:#94a3b8;font-weight:600;margin-left:3px}
 .sf-divider{width:1px;background:#e2e8f0}
-.sf-notes{flex:1;font-size:12px;color:#475569;font-style:italic;line-height:1.5;display:flex;flex-direction:column;gap:5px}
+.sf-notes{flex:1;font-size:12px;color:#475569;line-height:1.5;display:flex;flex-direction:column;gap:5px}
 .sf-plan-note{font-family:'Inter','Segoe UI',system-ui,sans-serif !important;font-style:normal !important;font-weight:300 !important;font-size:12px;color:#334155;line-height:1.55;white-space:pre-wrap}
 
 /* Page footer */
@@ -4226,7 +4282,7 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .mono-help-h{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
 .mono-help-line{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
 .mono-help-line .dot{display:inline-block;width:8px;height:8px;border-radius:2px;flex-shrink:0}
-.mono-help-line .tr{color:var(--dim);font-style:italic;font-size:8px;margin-left:2px}
+.mono-help-line .tr{color:var(--dim);font-size:8px;margin-left:2px}
 /* Athletes table */
 .ath-tbl-wrap{margin-top:12px;page-break-inside:avoid;break-inside:avoid}
 .ath-tbl-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--accent);line-height:1.5}
@@ -4312,7 +4368,7 @@ async function buildSessionPDFBlob(title,subtitle,sessions){
     idoc.open();idoc.write(html);idoc.close();
     // Wait for the iframe to settle and any images to load
     await new Promise(r=>setTimeout(r,50));
-    // Make sure the TT Fors webfont is loaded before capture so the PDF matches the site.
+    // Make sure the Bebas Neue webfont is loaded before capture so the PDF matches the site.
     try{if(idoc.fonts&&idoc.fonts.ready)await idoc.fonts.ready;}catch(e){}
     const imgs=Array.from(idoc.images||[]);
     await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(rs=>{im.onload=rs;im.onerror=rs;})));
@@ -4731,7 +4787,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           ]}} options={{responsive:true,maintainAspectRatio:false,
             interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
             scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:mcView!=='month',maxRotation:0,font:{size:10}}},y:{...CHART_DARK.scales.y,suggestedMax:110}},
-            plugins:{legend:{position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:13,weight:'600',family:"'TT Fors','Space Grotesk',sans-serif"},usePointStyle:true,pointStyle:'circle',boxWidth:9,padding:16}},
+            plugins:{legend:{position:'top',align:'end',labels:{color:'#e5e7eb',font:{size:13,weight:'600',family:"'Bebas Neue','Space Grotesk',sans-serif"},usePointStyle:true,pointStyle:'circle',boxWidth:9,padding:16}},
               tooltip:{mode:'index',intersect:false,callbacks:{title:items=>{const w=chartWeeks[items[0].dataIndex];return w?`${fd(w.week)} · ${w.focus||''}`:'';},label:i=>`${i.dataset.label}: ${i.parsed.y}%`}}}}}/>}
         </div>
       </div>
@@ -5153,86 +5209,159 @@ const exComboColor=(pattern,style)=>{
   const mix=v=>Math.max(0,Math.min(255,Math.round(t>=0?v+(255-v)*t:v*(1+t))));
   return`#${[mix(r),mix(g),mix(b)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
 };
-/* Callout labels around the load pie: each slice's name + % sits outside the
-   ring, matched to its slice with a leader line in the slice's own color.
-   Labels on each side are collision-resolved vertically so they never overlap. */
-const ML_OUTLABELS={
-  id:'mlOutLabels',
-  afterDatasetsDraw(chart,args,opts){
-    const fs=(opts&&opts.fontSize)||11;
-    const meta=chart.getDatasetMeta(0);
-    if(!meta||!meta.data||!meta.data.length)return;
-    const data=chart.data.datasets[0].data||[];
-    const total=data.reduce((a,b)=>a+(Number(b)||0),0)||1;
-    const labels=chart.data.labels||[];
-    const items=[];
-    meta.data.forEach((arc,idx)=>{
-      const v=Number(data[idx])||0;
-      if(v<=0||!arc)return;
-      const p=arc.getProps(['x','y','startAngle','endAngle','outerRadius'],true);
-      if(p.endAngle===p.startAngle)return;
-      const a=(p.startAngle+p.endAngle)/2;
-      items.push({a,cx:p.x,cy:p.y,r:p.outerRadius,name:String(labels[idx]||''),
-        pct:Math.round(v/total*100),color:arc.options.backgroundColor,
-        side:Math.cos(a)>=0?1:-1,y:p.y+Math.sin(a)*(p.outerRadius+14)});
-    });
-    if(!items.length)return;
-    const LH=27,topLim=16,botLim=chart.height-16;
-    const solve=arr=>{
-      arr.sort((p,q)=>p.y-q.y);
-      for(let k=1;k<arr.length;k++)if(arr[k].y<arr[k-1].y+LH)arr[k].y=arr[k-1].y+LH;
-      if(arr.length&&arr[arr.length-1].y>botLim){
-        arr[arr.length-1].y=botLim;
-        for(let k=arr.length-2;k>=0;k--)if(arr[k].y>arr[k+1].y-LH)arr[k].y=arr[k+1].y-LH;
-      }
-      if(arr.length&&arr[0].y<topLim){
-        arr[0].y=topLim;
-        for(let k=1;k<arr.length;k++)if(arr[k].y<arr[k-1].y+LH)arr[k].y=arr[k-1].y+LH;
-      }
-    };
-    solve(items.filter(it=>it.side>0));
-    solve(items.filter(it=>it.side<0));
-    const ctx=chart.ctx;
-    ctx.save();
-    items.forEach(it=>{
-      const sx=it.cx+Math.cos(it.a)*(it.r+2),sy=it.cy+Math.sin(it.a)*(it.r+2);
-      const hx=it.cx+it.side*(it.r+24),tx=hx+it.side*5;
-      ctx.strokeStyle=it.color;ctx.lineWidth=1.5;ctx.lineJoin='round';
-      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(it.cx+it.side*(it.r+13),it.y);ctx.lineTo(hx,it.y);ctx.stroke();
-      ctx.textAlign=it.side>0?'left':'right';ctx.textBaseline='middle';
-      ctx.font='italic 700 '+fs+'px "TT Fors","Space Grotesk",sans-serif';
-      ctx.fillStyle='#b5bac4';ctx.fillText(it.name,tx,it.y-7.5);
-      ctx.font='italic 700 '+(fs+2)+'px "TT Fors","Space Grotesk",sans-serif';
-      ctx.fillStyle='#f3f4f6';ctx.fillText(it.pct+'%',tx,it.y+7);
-    });
-    ctx.restore();
-  }
+/* An execution's cell is its pattern's colour; the "not set" remainder (an exercise
+   tagged with a pattern but no execution) drops toward the panel surface so it reads
+   as absence rather than as one more execution style. */
+const tmDim=hex=>{
+  const n=parseInt(String(hex||'#5c626c').slice(1),16);
+  const m=v=>Math.max(0,Math.min(255,Math.round(v*0.42+0.58*22)));
+  return`#${[m((n>>16)&255),m((n>>8)&255),m(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
 };
-/* One callout-labelled doughnut (shared by the Movement Pattern and Core pies). */
-function LoadPie({entries,colors,empty,pad,fontSize}){
-  // Slices run clockwise from the top, largest share first (colors stay keyed by name).
-  const nz=entries.filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  if(!nz.length)return<div className="mm-hint">{empty}</div>;
-  const tot=nz.reduce((s,[,v])=>s+v,0);
-  return(<ChartC type="doughnut"
-    chartData={{
-      labels:nz.map(([k])=>k),
-      datasets:[{data:nz.map(([,v])=>v),
-        backgroundColor:nz.map(([k])=>colors[k]||'#5c626c'),
-        borderColor:'#14171c',borderWidth:2,borderRadius:5,hoverOffset:8}]
-    }}
-    plugins={[ML_OUTLABELS]}
-    options={{responsive:true,maintainAspectRatio:false,cutout:'52%',
-      layout:{padding:{left:pad||118,right:pad||118,top:26,bottom:26}},
-      plugins:{
-        mlOutLabels:{fontSize:fontSize||11},
-        legend:{display:false},
-        tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} selection${ctx.parsed===1?'':'s'} · ${Math.round(ctx.parsed/tot*100)}%`}}
-      }}}/>);
+/* Cell text flips to ink on the light cells and to paper on the dark ones, so a
+   label stays readable whatever colour the pattern carries. */
+const tmInk=hex=>{
+  const n=parseInt(String(hex||'#5c626c').slice(1),16);
+  const lum=(0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255;
+  return lum>0.62?'#0a0b0d':'#ffffff';
+};
+
+/* ---- Squarified treemap layout (Bruls / Huizing / van Wijk) ---------------
+   Lays `items` ([{key,value,…}], any order) into the rect (x,y,w,h) in pixels,
+   biggest first, keeping every cell as close to square as the areas allow — a
+   long thin sliver is unreadable and unclickable, which is the whole reason this
+   is not a simple slice-and-dice. Returns the items with x/y/w/h attached. */
+function tmSquarify(items,x,y,w,h){
+  const live=items.filter(i=>i.value>0).slice().sort((a,b)=>b.value-a.value);
+  if(!live.length||w<=0||h<=0)return[];
+  const total=live.reduce((s,i)=>s+i.value,0);
+  const scale=(w*h)/total;
+  const rest=live.map(i=>({...i,area:i.value*scale}));
+  /* Aspect ratio of the worst cell in a candidate row, laid along the short side
+     of what is left — the number the algorithm minimises row by row. */
+  const worst=(row,sum,side)=>{
+    if(!row.length||sum<=0||side<=0)return Infinity;
+    let mx=-Infinity,mn=Infinity;
+    row.forEach(it=>{if(it.area>mx)mx=it.area;if(it.area<mn)mn=it.area;});
+    const s2=sum*sum,d2=side*side;
+    return Math.max((d2*mx)/s2,s2/(d2*mn));
+  };
+  const out=[];
+  let rx=x,ry=y,rw=w,rh=h,i=0;
+  while(i<rest.length&&rw>0.5&&rh>0.5){
+    const side=Math.min(rw,rh);
+    const row=[];let sum=0,best=Infinity;
+    while(i<rest.length){
+      const cand=sum+rest[i].area;
+      const r=worst([...row,rest[i]],cand,side);
+      if(!row.length||r<=best){row.push(rest[i]);sum=cand;best=r;i++;}
+      else break;
+    }
+    if(rw>=rh){
+      const rowW=sum/rh;let cy=ry;
+      row.forEach(it=>{const ih=(it.area/sum)*rh;out.push({...it,x:rx,y:cy,w:rowW,h:ih});cy+=ih;});
+      rx+=rowW;rw-=rowW;
+    }else{
+      const rowH=sum/rw;let cx=rx;
+      row.forEach(it=>{const iw=(it.area/sum)*rw;out.push({...it,x:cx,y:ry,w:iw,h:rowH});cx+=iw;});
+      ry+=rowH;rh-=rowH;
+    }
+  }
+  return out;
+}
+
+/* Track a box's pixel width so the treemap can be laid out in real coordinates
+   (percent units cannot keep a cell square, and a header strip is a px height). */
+function useBoxWidth(ref){
+  const[w,setW]=useState(0);
+  useEffect(()=>{
+    const el=ref.current;if(!el)return;
+    const read=()=>setW(el.clientWidth||0);
+    read();
+    if(typeof ResizeObserver==='undefined'){window.addEventListener('resize',read);return()=>window.removeEventListener('resize',read);}
+    const ro=new ResizeObserver(read);ro.observe(el);return()=>ro.disconnect();
+  },[ref]);
+  return w;
+}
+
+/* ---- Load distribution treemap -------------------------------------------
+   One figure, not two: every movement pattern is a cell sized by its share of the
+   week (or month), and each pattern's executions are cells INSIDE it — so "how
+   much hip work" and "which flavour of it" are read in the same glance instead of
+   matched up between two rings.
+
+   Clicking a pattern zooms it: it grows to fill the figure and its executions are
+   re-laid out across the whole area, each labelled with its share OF THAT PATTERN
+   (the cells never leave the DOM, so the growth animates). The ⊖ button, or a
+   click on the pattern's own header, zooms back out. */
+function LoadTreemap({entries,zoom,setZoom}){
+  const boxRef=useRef(null);
+  const W=useBoxWidth(boxRef);
+  const H=Math.max(300,Math.min(460,Math.round(W*0.52)))||360;
+  const GAP=3,HD=22;
+  const live=entries.filter(e=>e.value>0);
+  const total=live.reduce((s,e)=>s+e.value,0);
+  const zoomed=zoom&&live.some(e=>e.key===zoom)?zoom:null;
+  /* Zoomed, the picked pattern is the only cell with area; the rest keep their
+     place in the DOM at zero size so growing and shrinking are the same animation. */
+  const cells=zoomed
+    ?live.map(e=>e.key===zoomed
+        ?{...e,x:0,y:0,w:Math.max(0,W),h:H}
+        :{...e,x:0,y:0,w:0,h:0})
+    :tmSquarify(live.map(e=>({...e})),0,0,Math.max(0,W),H);
+  const pct=v=>total?Math.round((v/total)*1000)/10:0;
+  const fmtPct=v=>`${Number.isInteger(pct(v))?pct(v):pct(v).toFixed(1)}%`;
+  return(<div className="mld-tm" ref={boxRef} style={{height:H}}>
+    {W>0&&cells.map(c=>{
+      const on=zoomed===c.key,hidden=zoomed&&!on;
+      const ink=tmInk(c.color);
+      /* Inside the cell: the header strip keeps the pattern's name, the rest of the
+         box is the execution treemap. Below ~46px tall there is no room for both,
+         so the executions take the whole cell and the header floats over them. */
+      const bodyY=c.h>=46?HD:0;
+      const bodyH=Math.max(0,c.h-bodyY-GAP);
+      const bodyW=Math.max(0,c.w-GAP*2);
+      const kidTotal=c.kids.reduce((s,k)=>s+k.value,0)||1;
+      const kids=tmSquarify(c.kids,0,0,bodyW,bodyH);
+      return(<div key={c.key} className={'mld-tm-cell'+(on?' zoom':'')+(hidden?' gone':'')}
+        style={{left:c.x,top:c.y,width:Math.max(0,c.w-GAP),height:Math.max(0,c.h-GAP),
+          background:c.color,color:ink}}
+        title={`${c.name} · ${c.value} selection${c.value===1?'':'s'} · ${fmtPct(c.value)} of the period`}
+        onClick={()=>setZoom(on?null:c.key)}>
+        <div className="mld-tm-hd" style={{height:bodyY||HD}}>
+          <span className="n">{c.name}</span>
+          <span className="p">{fmtPct(c.value)}</span>
+        </div>
+        <div className="mld-tm-body" style={{left:GAP,top:bodyY,width:bodyW,height:bodyH}}>
+          {kids.map(k=>{
+            const kink=tmInk(k.color);
+            /* Zoomed in, an execution's share is read against its own pattern —
+               that is the distribution the pattern was opened to see. Zoomed out
+               it stays a share of the whole period, so the cells still add up. */
+            const share=on?Math.round((k.value/kidTotal)*1000)/10:pct(k.value);
+            const txt=`${Number.isInteger(share)?share:share.toFixed(1)}%`;
+            return(<div key={k.key} className="mld-tm-kid"
+              style={{left:k.x,top:k.y,width:Math.max(0,k.w-2),height:Math.max(0,k.h-2),
+                background:k.color,color:kink}}
+              title={`${c.name} · ${k.name} — ${k.value} selection${k.value===1?'':'s'} · ${txt}${on?` of ${c.name}`:' of the period'}`}>
+              {k.w>52&&k.h>30&&<span className="n">{k.name}</span>}
+              {k.w>34&&k.h>16&&<span className="p">{txt}</span>}
+            </div>);
+          })}
+        </div>
+      </div>);
+    })}
+    {zoomed&&<button type="button" className="mld-tm-out" title="Back to every movement pattern"
+      onClick={()=>setZoom(null)} aria-label="Zoom out">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
+        <circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/>
+      </svg>
+    </button>}
+  </div>);
 }
 function MuscleLoadDistribution({days,title,refDate}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
+  const[zoom,setZoom]=useState(null);
   useEffect(()=>{if(refDate)setAnchor(refDate);},[refDate]);
   // Resolve the active period (synced to the calendar's selected date).
   let startK,endK,periodLabel;
@@ -5248,14 +5377,30 @@ function MuscleLoadDistribution({days,title,refDate}){
   const shift=dir=>{const a=parseD(anchor);setAnchor(mode==='week'?fmt(addD(a,dir*7)):fmt(new Date(a.getFullYear(),a.getMonth()+dir,1)));};
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
-  // Patterns in their canonical order; legacy/unknown keys (e.g. old Push/Pull) are dropped.
-  const pEntries=EX_PATTERNS.map(k=>[k,agg.patterns[k]||0]);
-  /* Every pattern × style the taxonomy allows, in taxonomy order, so a pattern's
-     own flavours stay adjacent in the ring and keep the same slot week to week. */
-  const cEntries=EX_PATTERNS.flatMap(p=>exStylesFor(p).map(st=>{
-    const k=EX_COMBO(p,st);return[k,agg.combos[k]||0];}));
-  const comboCols={};EX_PATTERNS.forEach(p=>exStylesFor(p).forEach(st=>{comboCols[EX_COMBO(p,st)]=exComboColor(p,st);}));
-  const hasData=Object.keys(agg.muscles).length||Object.keys(agg.patterns).length||Object.keys(agg.combos).length;
+  /* One entry per movement pattern, in canonical order, each carrying its own
+     executions as children — the shape the treemap nests. Legacy/unknown keys
+     (e.g. the old Push/Pull patterns) are dropped.
+
+     An exercise can be tagged with a pattern and no execution, so the children
+     rarely add up to the pattern on their own; the shortfall becomes a "not set"
+     child. Without it the executions inside a cell would silently claim the whole
+     pattern, and the untagged work would disappear from a figure whose only job
+     is showing where the load went. */
+  const entries=EX_PATTERNS.map(p=>{
+    const value=agg.patterns[p]||0;
+    const kids=exStylesFor(p).map(st=>{
+      const k=EX_COMBO(p,st);
+      return{key:k,name:st,value:agg.combos[k]||0,color:exComboColor(p,st)};
+    }).filter(k=>k.value>0);
+    const tagged=kids.reduce((s,k)=>s+k.value,0);
+    const base=ML_PIE_COLS[p]||'#5c626c';
+    if(value-tagged>0)kids.push({key:`${p}::none`,name:'not set',value:value-tagged,color:tmDim(base)});
+    return{key:p,name:p,value,color:base,kids};
+  }).filter(e=>e.value>0);
+  const hasData=entries.length>0;
+  // A pattern that fell out of the period must not leave the figure stuck zoomed on it.
+  useEffect(()=>{if(zoom&&!entries.some(e=>e.key===zoom))setZoom(null);},[startK,endK,zoom,entries.length]);
+  const zoomEntry=zoom?entries.find(e=>e.key===zoom):null;
   return(<div className="panel ath-mmap-wrap">
     <div className="mld-head">
       <h2 style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||'Load Distribution'}</h2>
@@ -5274,16 +5419,12 @@ function MuscleLoadDistribution({days,title,refDate}){
     {!hasData
       ?<div className="mm-hint" style={{padding:'12px 0'}}>Nothing tagged in this {mode==='week'?'week':'month'} — pick movement patterns on the session, or tag them per exercise on the Individualization card.</div>
       :<>
-      <div className="ath-mmap-body">
-        <div className="ml-pie-col">
-          <div className="mld-sub">Movement Pattern</div>
-          <div className="ml-pie-wrap"><LoadPie entries={pEntries} colors={ML_PIE_COLS} empty="No movement patterns selected."/></div>
-        </div>
-        <div className="ml-pie-col">
-          <div className="mld-sub">Execution</div>
-          <div className="ml-pie-wrap"><LoadPie entries={cEntries} colors={comboCols} empty="No execution styles tagged yet — set them per exercise on the Individualization card." pad={150} fontSize={10}/></div>
-        </div>
+      <div className="mld-sub">
+        {zoomEntry
+          ?<>Execution · <b style={{color:zoomEntry.color}}>{zoomEntry.name}</b> — share of this pattern</>
+          :<>Movement Pattern · Execution — tap a pattern to open it</>}
       </div>
+      <LoadTreemap entries={entries} zoom={zoom} setZoom={setZoom}/>
       </>}
   </div>);
 }
@@ -6864,7 +7005,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
             options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,
               interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
               scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,maxTicksLimit:9,autoSkip:true,maxRotation:0}},y:{...CHART_DARK.scales.y}},
-              plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'TT Fors','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
+              plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#cdd3dc',font:{size:11,family:"'Bebas Neue','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:14}},
                 tooltip:{mode:'index',intersect:false,callbacks:{
                   title:items=>{const d=lmTrend[items[0].dataIndex];if(!d)return'';const dt=parseD(d.k);return `${MN[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()}`;},
                   label:i=>i.parsed.y==null?'':`${i.dataset.label}: ${Math.round(i.parsed.y)}`}}}}}/>
@@ -6902,12 +7043,12 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
           {label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),order:2,
             backgroundColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot+'e6':'#2e333c'),
             borderColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot:'#2e333c'),borderWidth:1,borderRadius:6,maxBarThickness:46,
-            datalabels:{display:true,anchor:'end',align:'end',color:'#cdd3dc',font:{weight:'bold',size:11,family:"'TT Fors','IBM Plex Mono',monospace"},formatter:v=>v>0?v.toFixed(2):''}},
+            datalabels:{display:true,anchor:'end',align:'end',color:'#cdd3dc',font:{weight:'bold',size:11,family:"'Bebas Neue','IBM Plex Mono',monospace"},formatter:v=>v>0?v.toFixed(2):''}},
           {type:'line',label:'Risk threshold (2.0)',data:mWeeks.map(()=>2),order:1,borderColor:'rgba(244,63,94,.65)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,pointHitRadius:0,fill:false,tension:0,datalabels:{display:false}}
         ]}}
           options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},...CHART_DARK,
             scales:{x:{...CHART_DARK.scales.x},y:{...CHART_DARK.scales.y,beginAtZero:true}},
-            plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#94a3b8',font:{size:10,family:"'TT Fors','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'line',boxWidth:18,filter:i=>i.text.indexOf('Risk')===0}},
+            plugins:{legend:{display:true,position:'top',align:'end',labels:{color:'#94a3b8',font:{size:10,family:"'Bebas Neue','IBM Plex Mono',monospace"},usePointStyle:true,pointStyle:'line',boxWidth:18,filter:i=>i.text.indexOf('Risk')===0}},
               tooltip:{callbacks:{label:i=>i.dataset.type==='line'?'Risk threshold: 2.0':'Monotony: '+i.parsed.y.toFixed(2)}}}}}/>
       </div>
       <div className="mono-tbl-wrap"><table className="mono-tbl">
@@ -7353,8 +7494,8 @@ ${(has('aslr')||has('ankleDF'))?`
   <table>
     <colgroup><col style="width:36%"/><col style="width:14%"/><col style="width:14%"/><col style="width:22%"/><col style="width:14%"/></colgroup>
     <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th><th>Scale</th></tr>
-    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)<div style="font-weight:400;font-style:italic;font-size:9px;color:var(--muted);margin-top:2px">${L('Hamstring esnekliği ve lumbopelvik kontrol','Hamstring flexibility and lumbopelvic control')}</div></td><td${test.aslr?.right?` style="color:${fmsColor(test.aslr.right)};font-weight:600"`:''}>${test.aslr?.right||'—'}</td><td${test.aslr?.left?` style="color:${fmsColor(test.aslr.left)};font-weight:600"`:''}>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>`:''}
-    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)<div style="font-weight:400;font-style:italic;font-size:9px;color:var(--muted);margin-top:2px">${L('Ayak bileği mobilitesi','Ankle mobility')}</div></td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td${adD?` style="color:${ankleAsymColor(adD)};font-weight:600"`:''}>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>`:''}
+    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Hamstring esnekliği ve lumbopelvik kontrol','Hamstring flexibility and lumbopelvic control')}</div></td><td${test.aslr?.right?` style="color:${fmsColor(test.aslr.right)};font-weight:600"`:''}>${test.aslr?.right||'—'}</td><td${test.aslr?.left?` style="color:${fmsColor(test.aslr.left)};font-weight:600"`:''}>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td><td>/ 3</td></tr>`:''}
+    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Ayak bileği mobilitesi','Ankle mobility')}</div></td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td${adD?` style="color:${ankleAsymColor(adD)};font-weight:600"`:''}>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td><td>degrees</td></tr>`:''}
   </table>
 </div>`:''}
 
@@ -8871,7 +9012,7 @@ function DevelopmentCharts({tests}){
   ];
   const haveAny=cards.some(c=>ts.some(t=>{const v=c.f(t);return !isNaN(v)&&v>0;}));
   if(!haveAny)return null;
-  const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:9,weight:'bold',family:"'TT Fors','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+  const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:9,weight:'bold',family:"'Bebas Neue','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
   return(<div className="panel"><h2 style={{marginTop:0,fontSize:17}}>📈 Development</h2><div className="rep-dev">
     {cards.map(c=>{const data=ts.map(t=>{const v=c.f(t);return isNaN(v)||v===0?null:v;});
       const valid=data.filter(v=>v!=null);if(valid.length===0)return null;
@@ -8885,7 +9026,7 @@ function DevelopmentCharts({tests}){
           {label:c.t,data,borderColor:c.col,backgroundColor:c.col,tension:.3,spanGaps:true,borderWidth:2,
             pointRadius:3,pointBackgroundColor:c.dot,pointBorderColor:c.dot,datalabels:dataLbl(c.dot)}
         ]}} options={{responsive:true,maintainAspectRatio:false,layout:{padding:{top:18,bottom:4,left:6,right:6}},
-          scales:{x:{ticks:{color:'#74808f',font:{family:"'TT Fors','IBM Plex Mono',monospace",size:9},autoSkip:true,maxRotation:0,maxTicksLimit:6},grid:{display:false},border:{display:false}},
+          scales:{x:{ticks:{color:'#74808f',font:{family:"'Bebas Neue','IBM Plex Mono',monospace",size:9},autoSkip:true,maxRotation:0,maxTicksLimit:6},grid:{display:false},border:{display:false}},
             y:{display:false,grid:{display:false},beginAtZero:false}},
           plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
       </div>);})}
@@ -9417,7 +9558,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
         {(ath.measurements||[]).length>0&&<div>
           {(()=>{const sorted=[...ath.measurements].filter(m=>m.date).sort((a,b)=>a.date.localeCompare(b.date));
             const labels=sorted.map(m=>{const d=parseD(m.date);return MN[d.getMonth()];});
-            const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:"'TT Fors','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
+            const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',font:{size:10,weight:'bold',family:"'Bebas Neue','IBM Plex Mono',monospace"},clip:false,formatter:v=>v==null?'':(+Number(v).toFixed(1))});
             const mkChart=(title,unit,field,color,dotColor,goodUp)=>{const data=sorted.map(m=>{const raw=m[field];if(raw===''||raw==null)return null;const v=Number(raw);return(isNaN(v)||v===0)?null:v;});
               const valid=data.filter(v=>v!=null);
               const cur=valid.length?valid[valid.length-1]:null,first=valid.length?valid[0]:null;
@@ -9432,7 +9573,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                     datalabels:dataLbl(dotColor||color)}
                 ]}} options={{responsive:true,maintainAspectRatio:false,
                   layout:{padding:{top:24,bottom:6,left:8,right:8}},
-                  scales:{x:{ticks:{color:'#74808f',font:{family:"'TT Fors','IBM Plex Mono',monospace",size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
+                  scales:{x:{ticks:{color:'#74808f',font:{family:"'Bebas Neue','IBM Plex Mono',monospace",size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
                     y:{display:false,grid:{display:false},beginAtZero:false}},
                   plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
               </div>);};
@@ -9636,7 +9777,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,ai,exercises}){
                 layout:{padding:{top:28}},
                 scales:{x:{...CHART_DARK.scales.x,stacked:true,ticks:{...CHART_DARK.scales.x.ticks,color:'#eef1f5',font:{size:12,weight:'500'}}},y:{...CHART_DARK.scales.y,stacked:true,title:{display:true,text:'Daily Load (AU = RPE × min)',color:'#94a3b8'}}},
                 plugins:{legend:{position:'top',align:'end',labels:{...CHART_DARK.plugins.legend.labels,color:'#eef1f5',usePointStyle:true,pointStyle:'circle',boxWidth:8,padding:16,font:{size:12,weight:'500'},generateLabels:chart=>chart.data.datasets.map((ds,i)=>({text:ds.label,fillStyle:ds.solidColor,strokeStyle:ds.solidColor,fontColor:'#ffffff',lineWidth:0,pointStyle:'circle',hidden:!chart.isDatasetVisible(i),datasetIndex:i}))}},
-                  tooltip:{enabled:true,mode:'nearest',intersect:true,backgroundColor:'rgba(18,20,25,.94)',borderColor:'rgba(255,255,255,.14)',borderWidth:1,cornerRadius:10,padding:{top:9,bottom:9,left:12,right:12},displayColors:true,boxPadding:5,caretSize:6,titleColor:'#eef1f5',bodyColor:'#cdd3dc',footerColor:'#8b94a3',titleFont:{family:"'TT Fors','Space Grotesk',sans-serif",size:13,weight:'700'},bodyFont:{family:"'TT Fors','IBM Plex Mono',monospace",size:12},footerFont:{family:"'TT Fors','IBM Plex Mono',monospace",size:10,weight:'400'},
+                  tooltip:{enabled:true,mode:'nearest',intersect:true,backgroundColor:'rgba(18,20,25,.94)',borderColor:'rgba(255,255,255,.14)',borderWidth:1,cornerRadius:10,padding:{top:9,bottom:9,left:12,right:12},displayColors:true,boxPadding:5,caretSize:6,titleColor:'#eef1f5',bodyColor:'#cdd3dc',footerColor:'#8b94a3',titleFont:{family:"'Bebas Neue','Space Grotesk',sans-serif",size:13,weight:'700'},bodyFont:{family:"'Bebas Neue','IBM Plex Mono',monospace",size:12},footerFont:{family:"'Bebas Neue','IBM Plex Mono',monospace",size:10,weight:'400'},
                     callbacks:{labelColor:ctx=>({backgroundColor:ctx.dataset.solidColor,borderColor:ctx.dataset.solidColor,borderWidth:0,borderRadius:3}),
                       title:items=>{const it=items[0];if(!it)return'';const nm=namesFor(it.datasetIndex,it.dataIndex);return nm.length?nm.join(' · '):(SRC_LABELS[it.datasetIndex]||it.dataset.label);},
                       label:ctx=>{const r=rpeByDs[ctx.datasetIndex]&&rpeByDs[ctx.datasetIndex][ctx.dataIndex];const au=Math.round(ctx.parsed.y);return '  '+(SRC_LABELS[ctx.datasetIndex]||'')+' · '+au.toLocaleString()+' AU'+(r!=null?' · RPE '+fmtRPE(r):'');},
@@ -11886,8 +12027,11 @@ function buildIndivPlan(src,ath,ctx){
   const band=rdBand(rd.score);
   const pgId=posGroupOf(ath.position);
   const slotOvr=(ovr&&ovr.slots)||{};
-  const blocks=(src.blocks||[]).map((b,bi)=>({name:b.name||'',rows:(b.exercises||[]).map((ex,ei)=>{
-    const key=`${bi}:${ei}`;
+  /* One row on the sheet, built the same way whether the template wrote it or the
+     coach added it: `ex` is whatever the template put in the slot, and an ADDED
+     exercise simply has an empty one behind it — so every box on it is the
+     override, and the code below does not need to know the difference. */
+  const mkRow=(key,ex,addId)=>{
     const o=slotOvr[key]||{};
     const base={...ex};
     /* A template that predates the RPE column carries it inside the load text; it
@@ -11904,9 +12048,13 @@ function buildIndivPlan(src,ath,ctx){
        template; it drops the whole slot override. Values are stored exactly as
        typed and trimmed only where they are read. */
     const pick=(k,fallback)=>o[k]!==undefined&&o[k]!==null?o[k]:fallback;
-    const name=String(pick('name',ex.name||''));
-    const changedName=name.trim().toLowerCase()!==(base.name||'').trim().toLowerCase();
-    return{key,base,name,
+    const name=String(pick('name',base.name||''));
+    /* "Changed" means the coach put a different exercise where the template had
+       one. An added exercise replaced nothing, so it is never a change — counting
+       it would inflate the card's "n changed" badge with work that was simply
+       extra, and make the sheet read as if the template had been rewritten. */
+    const changedName=!addId&&name.trim().toLowerCase()!==(base.name||'').trim().toLowerCase();
+    return{key,base,name,added:!!addId,addId:addId||null,
       sets:pick('sets',base.sets),
       reps:pick('reps',base.reps),
       duration:pick('duration',base.duration),
@@ -11922,7 +12070,17 @@ function buildIndivPlan(src,ath,ctx){
       description:base.description,image:base.image,link:base.link,
       changedName,
       note:o.note||''};
-  })}));
+  };
+  /* Exercises the coach ADDED to a block. They are stored as a flat list of
+     {id,bi} rather than spliced into the template's own slots so the template
+     numbering never shifts under an override: slot "1:2" always means the same
+     row of the same block, whatever was added around it. */
+  const addedAll=(ovr&&Array.isArray(ovr.added)?ovr.added:[]).filter(a=>a&&a.id!=null);
+  const blocks=(src.blocks||[]).map((b,bi)=>({name:b.name||'',bi,rows:[
+    ...(b.exercises||[]).map((ex,ei)=>mkRow(`${bi}:${ei}`,ex,null)),
+    // Added slots sit after the template's own, in the order they were added.
+    ...addedAll.filter(a=>a.bi===bi).map(a=>mkRow(`add:${a.id}`,{},a.id)),
+  ]}));
   const changed=blocks.reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
   return{ath,rd,band,posGroup:pgId,blocks,changed,
     prev:athPrevDay(ath,ref),pains:athPainReports(ath,ref),painNote:athPainNote(ath,ref),
@@ -11955,6 +12113,8 @@ function planToIndivJSON(plan){
       template_exercise:r.base.name||'',
       prescribed_exercise:str(r.name),
       changed:!!r.changedName,
+      // Not in the source session at all — the coach added this one for this athlete.
+      added:!!r.added,
       sets:num(r.sets),
       reps:str(r.reps),
       time:str(r.duration),
@@ -12146,7 +12306,7 @@ function SlotPick({value,options,onChange,title}){
 /* ---- One exercise slot on an athlete's sheet -----------------------------
    Everything on this row is the coach's to set: the exercise itself, the superset
    group it belongs to, and all seven numbers, side by side in one strip. */
-function IndivSlotRow({row,tag,onOverride,onReset}){
+function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
   const ss=(row.superset||'').toUpperCase();
   const num=(lbl,k,opts,title)=>(<label key={k}>{lbl}
     {opts?<SlotPick value={row[k]} options={opts} onChange={v=>onOverride({[k]:v})} title={title}/>
@@ -12158,7 +12318,7 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
      under Hip Dominant would be a tag nothing can read. A style shared by both
      patterns (Push, Pull, ISO, Eccentric) survives the switch. */
   const setPattern=v=>onOverride({pattern:v,plane:exStylesFor(v).includes(row.plane)?row.plane:''});
-  return(<div className={'iv-slot'+(empty?' off':row.changedName?' sub':'')}>
+  return(<div className={'iv-slot'+(empty?' off':row.changedName?' sub':'')+(row.added?' added':'')}>
     <div className="iv-slot-main">
       {/* The superset group sits in front of the exercise, exactly as it does in
           the template editor: the tag shows where the slot lands in the order, the
@@ -12171,15 +12331,23 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
       <div className="iv-slot-nm">
         <input value={row.name||''} list="lib-exercises" placeholder="Exercise name…"
           onChange={e=>onOverride({name:e.target.value})}
-          title="Pick from the library, type any name, or clear the box to drop this exercise"/>
+          title={row.added?'Pick from the library or type any name — this exercise is not in the source session':'Pick from the library, type any name, or use ✕ Remove to drop this exercise'}/>
         {/* An emptied slot says so once. Naming the template exercise as well would
             be the same sentence twice, since ↺ Reset is what brings it back. */}
-        {empty
+        {row.added
+          ?<span className="iv-addtag" title="Added by you for this athlete — the source session does not carry it">added</span>
+          :empty
           ?<span className="iv-gone" title="This slot is not written to the athlete. Type a name to put an exercise back, or ↺ Reset to restore the template's.">removed: {row.base.name||'—'}</span>
           :row.changedName&&<span className="iv-was">template: {row.base.name||'—'}</span>}
       </div>
-      <button className="btn xs sec" onClick={onReset}
-        title="Put this slot back to the template">↺ Reset</button>
+      {/* Removing a template slot empties it — the row stays on the card, dimmed, so
+          it can be filled back in or Reset. An added exercise has no template behind
+          it, so removing it takes the row off the card outright and Reset would have
+          nothing to restore, which is why it is not offered there. */}
+      <button className="btn xs sec iv-rmb" onClick={onRemove}
+        title={row.added?'Delete this added exercise from the card':'Drop this exercise from this athlete’s program'}>✕ Remove</button>
+      {!row.added&&<button className="btn xs sec" onClick={onReset}
+        title="Put this slot back to the template">↺ Reset</button>}
     </div>
     <div className="iv-slot-ed">
       {/* What this exercise trains and how it is executed. The style list follows
@@ -12219,7 +12387,7 @@ function IndivSlotRow({row,tag,onOverride,onReset}){
 }
 
 /* ---- One athlete's sheet -------------------------------------------------- */
-function IndivAthleteCard({plan,onOverride,onResetSlot,onApply,onExport,onExportJSON,open,setOpen}){
+function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onApply,onExport,onExportJSON,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12291,14 +12459,22 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onApply,onExport,onExport
           cnt._=(cnt._||0)+1;return`${cnt._}.`;
         });
         return(<div key={bi} className="iv-block">
-          <div className="iv-block-hd">{b.name||`Block ${bi+1}`}</div>
+          <div className="iv-block-hd">
+            <span>{b.name||`Block ${bi+1}`}</span>
+            {/* Adding is per block, because a block is what the sheet is organised
+                by — an exercise added here lands at the end of this block and is
+                numbered with the rest of it. */}
+            <button type="button" className="btn xs iv-addb" onClick={()=>onAddSlot(b.bi)}
+              title={`Add an exercise to ${b.name||`Block ${bi+1}`} for this athlete`}>+ Add exercise</button>
+          </div>
           {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable
               without scrolling past one exercise to reach the next. */}
           <div className="iv-slots">
             {b.rows.map((r,ri)=><IndivSlotRow key={r.key} row={r} tag={tags[ri]}
-              onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}/>)}
+              onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}
+              onRemove={()=>onRemoveSlot(r)}/>)}
           </div>
-          {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block.</div>}
+          {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block — use “+ Add exercise” to write one for this athlete.</div>}
         </div>);
       })}
     </div>}
@@ -12341,6 +12517,28 @@ function IndividualizationView({data,team,updateTeam}){
   const resetSlot=(athId,key)=>{
     const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};delete slots[key];
     setOvr(athId,{slots});
+  };
+  /* An exercise the coach adds to a block for THIS athlete. It is recorded as an
+     empty slot (id + which block it belongs to); everything typed into it after
+     that goes through the same slot override as any template row. */
+  const addSlot=(athId,bi)=>{
+    const cur=ovrAll[athId]||{};
+    setOvr(athId,{added:[...(cur.added||[]),{id:uid(),bi}]});
+  };
+  /* Removing an exercise means two different things, and both are what the coach
+     would expect: a slot the TEMPLATE wrote is emptied — the row stays on the card,
+     dimmed, so it can be filled back in or Reset, and it is left out of what gets
+     written and exported. A slot the coach ADDED has no template behind it, so it
+     goes away entirely, along with whatever was typed into it. */
+  const removeSlot=(athId,row)=>{
+    const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};
+    if(row.added){
+      delete slots[row.key];
+      setOvr(athId,{added:(cur.added||[]).filter(a=>a.id!==row.addId),slots});
+    }else{
+      slots[row.key]={...(slots[row.key]||{}),name:''};
+      setOvr(athId,{slots});
+    }
   };
 
   const autoIds=useMemo(()=>{
@@ -12446,6 +12644,8 @@ function IndividualizationView({data,team,updateTeam}){
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
       onResetSlot={k=>resetSlot(p.ath.id,k)}
+      onRemoveSlot={r=>removeSlot(p.ath.id,r)}
+      onAddSlot={bi=>addSlot(p.ath.id,bi)}
       onApply={()=>applyTo([p.ath.id])}
       onExport={mode=>doExport(mode,[p.ath.id])}
       onExportJSON={()=>downloadIndivJSON([p],date)}/>)}
