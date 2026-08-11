@@ -2393,22 +2393,34 @@ header{background:var(--bg2)!important}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.iv-cardtools{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
-/* Session heading, training time and purpose — the coach's per-athlete copy of what
-   the source session says at the top, editable right where the sheet is written. */
-.iv-meta-f{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);
-  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace;min-width:0}
-.iv-meta-f.nm{flex:1 1 200px}
+.iv-cardtools{display:flex;gap:12px 14px;flex-wrap:wrap;align-items:flex-start;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+/* What the session IS — its title, when it runs, how long, and what it trains. Every
+   field is one label over one box, and the row aligns from the TOP: a native select, a
+   text input and the custom dropdown trigger are not naturally the same height, so
+   bottom-aligning them staggered the labels. Aligning to the top and then forcing one
+   shared control height lines both edges up. */
+.iv-meta-f{display:flex;flex-direction:column;gap:4px;font-size:9.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  min-width:0;line-height:1.25;white-space:nowrap}
+/* The caption is a bare text node inside the label, so nowrap is set on the field and
+   taken back on the control: every label is one line, whatever its length, and no box
+   starts lower than its neighbour's because the caption above it wrapped. */
+.iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{white-space:normal}
+.iv-meta-f.nm{flex:2 1 260px}
 .iv-meta-f.tm{flex:0 0 110px}
-.iv-meta-f.pp{flex:2 1 240px}
-.iv-meta-f input{width:100%;min-width:0;font-size:12.5px;padding:5px 8px;color:var(--text)}
+.iv-meta-f.pp{flex:1 1 190px}
+/* Training method stays on its own full-width row at the bottom of the strip: the list
+   it opens is the longest of the three, and its selection is the one most likely to run
+   to several names. */
+.iv-meta-f.wide{flex:1 1 100%}
+.iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{width:100%;min-width:0;height:34px;
+  font-size:12.5px;padding:5px 9px;border-radius:9px;color:var(--text)}
+.iv-meta-f select,.iv-meta-f .focus-trig{text-transform:none;letter-spacing:0;font-weight:500}
 .iv-meta-f.nm input{font-size:13.5px;font-weight:700}
 .iv-meta-f.tm input{font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:center}
-/* The session line's own pickers — a native select and the two custom dropdowns — wear
-   the same box as the text fields beside them, so the strip reads as one row of fields
-   instead of three unrelated controls. The dropdown panels keep their own styling. */
-.iv-meta-f select,.iv-meta-f .focus-trig{width:100%;min-width:0;font-size:12.5px;padding:5px 8px;
-  border-radius:9px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:500}
+/* The two custom dropdowns wear the same box as the fields beside them, so the strip
+   reads as one row of fields instead of three unrelated controls. The panels they open
+   keep their own styling. */
 .iv-meta-f .focus-trig{background:var(--bg2);border:1px solid var(--border2)}
 .iv-meta-f .focus-trig:hover,.iv-meta-f .focus-trig.open{border-color:var(--accent)}
 .iv-meta-f .focus-sel{width:100%;min-width:0}
@@ -4066,10 +4078,11 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.rest)meta.push(`<span class="m-r"><strong>Resting:</strong> ${e.rest}</span>`);
       // Reference link — clickable in the shared PDF, and short enough on paper to type out.
       const lnk=safeURL(e.link);
-      /* What the exercise trains and how, as one short chip beside the name: the pattern
-         abbreviated the way the execution pie abbreviates it ("Knee · Push"), so the pair
-         rides along on the line the name already occupies instead of taking a row of its
-         own. Absent entirely when the exercise carries no pattern. */
+      /* What the exercise trains and how, on its own line directly under the name: the
+         pattern abbreviated the way the execution pie abbreviates it ("Knee · Push").
+         Plain text rather than a chip — it is reference for whoever runs the session,
+         and a bordered box next to the name read as another prescription field.
+         Absent entirely when the exercise carries no pattern. */
       const patTag=[EX_PAT_SHORT[e.pattern]||e.pattern||'',e.plane||''].filter(Boolean).join(' · ');
       // The image is a sibling of .ex-body, not a child, so it forms its own column on
       // the left and the name / volume / meta read down the free space beside it.
@@ -4078,9 +4091,10 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
         <div class="ex-body">
           <div class="ex-row-top">
-            <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${patTag?`<span class="ex-pat">${escHTML(patTag)}</span>`:''}${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
+            <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
             ${vol?`<span class="ex-vol">${vol}</span>`:''}
           </div>
+          ${patTag?`<div class="ex-pat">${escHTML(patTag)}</div>`:''}
           ${meta.length?`<div class="ex-meta">${meta.join(' · ')}</div>`:''}
           ${withReasons&&e.why?`<div class="ex-why"><strong>${L('Gerekçe','Reason')}:</strong> ${escHTML(e.why)}</div>`:''}
           ${e.description?`<div class="ex-desc">${e.description}</div>`:''}
@@ -4109,10 +4123,10 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    Uploads are capped at 900px (resizePhotoBlob) and never upscaled here, so a low-res logo
    stays at its own size instead of being blown up into a blurry one. */
 .doc-logo{height:auto;width:auto;max-height:78px;max-width:170px;object-fit:contain;flex:none}
-.doc-l h1{font-size:23px;font-weight:800;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
+.doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 .doc-r{text-align:right}
-.doc-r .day-name{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#7e8b2e;letter-spacing:.4px}
+.doc-r .day-name{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:800;color:#7e8b2e;letter-spacing:.4px}
 .doc-r .date{font-size:13px;color:#64748b;font-weight:500;margin-top:2px;letter-spacing:.3px}
 
 /* Session card — refined; allow page breaks INSIDE the session so a long
@@ -4121,7 +4135,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    break-after:avoid, so we never get orphaned section headers. */
 .sess{margin-bottom:10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04)}
 .sh{padding:11px 16px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
-.sh-l{font-size:18px;font-weight:700;letter-spacing:.2px;flex:1}
+.sh-l{font-size:18px;font-weight:800;letter-spacing:.2px;flex:1}
 .sh-own{display:block;font-size:12px;font-weight:600;color:#e6ff55;letter-spacing:.6px;text-transform:uppercase;margin-left:39px}
 .sess.brk{break-before:page;page-break-before:always}
 .ex-why{margin-top:3px;font-size:11px;color:#7c5e10;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;padding:3px 7px;line-height:1.35}
@@ -4161,7 +4175,9 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-card{display:flex;gap:9px;padding:8px 11px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
 .ex-card:last-child{border-bottom:none}
 .ex-card:nth-child(even){background:#fcfdfe}
-.ex-no{font-size:12px;font-weight:700;color:#94a3b8;min-width:26px;padding-top:1px;text-align:center;flex-shrink:0}
+/* The tag centres itself against the whole exercise row — top-aligning it left it
+   floating above the name once the row grew a pattern line or a coaching cue. */
+.ex-no{font-size:12px;font-weight:700;color:#94a3b8;min-width:26px;text-align:center;flex-shrink:0;align-self:center}
 .ex-no.ss{background:rgba(154,171,58,.14);color:#6f7d29;border:1px solid rgba(154,171,58,.45);border-radius:4px;padding:1px 4px;min-width:28px}
 .ex-body{flex:1;min-width:0}
 .ex-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap}
@@ -4185,13 +4201,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#6f7d29;text-decoration:none;
   background:rgba(154,171,58,.14);border:1px solid rgba(154,171,58,.45);border-radius:5px;
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Movement pattern · execution — a quiet slate chip on the exercise's own line, sized
-   well under the name so it reads as a tag on the exercise rather than another field.
-   Deliberately unobtrusive: it is reference for whoever runs the session, not part of
-   the prescription the athlete works off. */
-.ex-pat{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;
-  color:#64748b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;
-  line-height:1.5;letter-spacing:.03em;white-space:nowrap}
+/* Movement pattern · execution — a quiet line directly under the exercise name, in the
+   mono face the other reference numbers use. No box: it is reference for whoever runs
+   the session, and a bordered chip beside the name read as another prescription field. */
+.ex-pat{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#94a3b8;
+  letter-spacing:.04em;margin-top:2px;line-height:1.35}
 /* Exercise image — only rendered by "Print with Image". Sits in its own column to the
    left of the text, so the name / volume / meta fill the width beside it instead of
    leaving a blank band. Kept to a thumbnail: it is there to remind the athlete what the
@@ -6666,7 +6680,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>
         </div>
-        <div className="iv-meta-f pp">training method
+        <div className="iv-meta-f wide">training method
           <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
         </div>
       </div>
@@ -12451,15 +12465,23 @@ function buildIndivPlan(src,ath,ctx){
      change either — counting it would leave the badge claiming edits the athlete
      never sees on their sheet. */
   const changed=blocks.filter(b=>!b.removed).reduce((n,b)=>n+b.rows.filter(r=>r.changedName).length,0);
-  /* The session's own heading, training time and purpose, per athlete. They start
-     from the source session and are overridden exactly like a slot field. */
+  /* The session's own line, per athlete — the same six fields the calendar's session
+     editor carries, so what a session IS reads identically on both screens: its title,
+     when it runs, how long, and what it trains. Each starts from the source session and
+     is overridden exactly like a slot field, the key's presence deciding. */
   const mOvr=(ovr&&ovr.meta)||{};
-  const mPick=(k,fallback)=>mOvr[k]!==undefined&&mOvr[k]!==null?String(mOvr[k]):String(fallback||'');
+  const has=k=>mOvr[k]!==undefined&&mOvr[k]!==null;
+  const mPick=(k,fallback)=>has(k)?String(mOvr[k]):String(fallback||'');
+  const mList=(k,fallback)=>Array.isArray(mOvr[k])?mOvr[k]:(fallback||[]);
+  const baseFocus=sesFocus(src),baseMethods=sesMethods(src),baseRegion=sesRegion(src);
   const meta={
-    name:mPick('name',src.name||''),time:mPick('time',src.time||''),purpose:mPick('purpose',src.purpose||''),
-    baseName:src.name||'',baseTime:src.time||'',basePurpose:src.purpose||'',
-    edited:{name:mOvr.name!==undefined&&mOvr.name!==null,time:mOvr.time!==undefined&&mOvr.time!==null,
-      purpose:mOvr.purpose!==undefined&&mOvr.purpose!==null},
+    name:mPick('name',src.name||''),time:mPick('time',src.time||''),
+    duration:mPick('duration',src.duration==null?'':src.duration),
+    focus:mList('focus',baseFocus),region:mPick('region',baseRegion),methods:mList('methods',baseMethods),
+    baseName:src.name||'',baseTime:src.time||'',baseDuration:src.duration==null?'':String(src.duration),
+    baseFocus,baseRegion,baseMethods,
+    edited:{name:has('name'),time:has('time'),duration:has('duration'),
+      focus:Array.isArray(mOvr.focus),region:has('region'),methods:Array.isArray(mOvr.methods)},
   };
   return{ath,rd,band,posGroup:pgId,blocks,changed,meta,
     prev:athPrevDay(ath,ref),pains:athPainReports(ath,ref),painNote:athPainNote(ath,ref),
@@ -12488,7 +12510,12 @@ function planToIndivJSON(plan){
     athlete:plan.ath.name||'',
     session:str(plan.meta&&plan.meta.name),
     time:str(plan.meta&&plan.meta.time),
-    purpose:str(plan.meta&&plan.meta.purpose),
+    duration:num((plan.meta&&plan.meta.duration)||''),
+    focus:((plan.meta&&plan.meta.focus)||[]).map(str).filter(Boolean),
+    region:str(plan.meta&&plan.meta.region),
+    methods:((plan.meta&&plan.meta.methods)||[]).map(str).filter(Boolean),
+    // The focus list as one string, the shape older readers of this file expect.
+    purpose:((plan.meta&&plan.meta.focus)||[]).map(str).filter(Boolean).join(', '),
     program:liveBlocks(plan).flatMap((b,bi)=>b.rows.filter(liveSlot).map((r,i)=>({
       block:b.name||`Block ${bi+1}`,
       slot:i+1,
@@ -12536,14 +12563,18 @@ function planToSession(plan,src,dateKey,srcKey){
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       pattern:t(r.pattern),plane:t(r.plane),
       changed:!!r.changedName,fromName:r.base.name||''};});
-  /* Heading, training time and purpose come off the athlete's own sheet — the coach
-     may have rewritten any of the three for this athlete — and fall back to the
-     source session's when they were never touched. */
+  /* The session's own line comes off the athlete's sheet — the coach may have rewritten
+     any of the six fields for this athlete — and falls back to the source session's
+     wherever one was never touched. `purpose` is the focus list written out, the same
+     way the session editor keeps the two in step. */
   const m=plan.meta||{};
+  const focus=Array.isArray(m.focus)?m.focus:sesFocus(src);
+  const dur=Number(t(m.duration));
   return{id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
-    loadType:src.loadType||'Mechanical load',purpose:t(m.purpose!=null?m.purpose:src.purpose),
-    focus:sesFocus({...src,purpose:t(m.purpose!=null?m.purpose:src.purpose)}),
-    methods:sesMethods(src),region:sesRegion(src),duration:src.duration||60,
+    loadType:src.loadType||'Mechanical load',purpose:focus.join(', '),focus,
+    methods:Array.isArray(m.methods)?m.methods:sesMethods(src),
+    region:m.region!=null?t(m.region):sesRegion(src),
+    duration:(dur>0?dur:(src.duration||60)),
     sRPE:'',au:'',color:src.color||'',
     blocks:liveBlocks(plan).map(b=>({id:uid(),name:b.name,exercises:rows(b)})),
     notes:'',planNote:src.planNote||'',
@@ -12611,10 +12642,10 @@ function exportPrograms({athletes,dateKey,mode,range,teamName}){
     ?`${fd(fmt(sow(parseD(dateKey))))} – ${fd(fmt(addD(sow(parseD(dateKey)),6)))}`
     :fdL(dateKey);
   const who=(athletes||[]).length===1?((athletes[0].name)||'Athlete'):`${(athletes||[]).length} athletes`;
-  /* Only the coach's copy says which copy it is — it is the one that differs from
-     what the athlete is handed, and the coach is the one who has both. */
-  printDayA4(`${who}${teamName?` · ${teamName}`:''}`,
-    `${range_lbl}${coach?` · ${L('Antrenör kopyası','Coach copy')}`:''}`,
+  /* Neither copy is labelled on the page. What separates them is what is printed —
+     the coach's carries the session notes and the marks against a changed exercise —
+     and the coach, who has both, knows which one he asked for. */
+  printDayA4(`${who}${teamName?` · ${teamName}`:''}`,range_lbl,
     items,{withReasons:coach,pageBreaks:true});
 }
 
@@ -12807,6 +12838,7 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
      runs the same way round as readiness: low is the one to look at. */
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
+  const m=plan.meta;
   return(<div className={'iv-card'+(open?' open':'')}>
     <div className="iv-card-hd" onClick={()=>setOpen(!open)}>
       <div className="iv-av">{a.photo?<img src={a.photo} alt=""/>:initials}</div>
@@ -12854,29 +12886,41 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} more</span>}
     </div>}
     {open&&<div className="iv-card-body">
-      {/* What the session IS, for this athlete: its heading, when they train and what
-          it is for. All three start from the source session and are the coach's to
-          rewrite per athlete, like every other box on the sheet — they ride onto the
-          athlete's calendar and onto the printout with the program. */}
+      {/* What the session IS, for this athlete — the same six fields, in the same strip,
+          that the calendar's session editor carries: its title, when they train, how
+          long, and what it trains. Every one starts from the source session and is the
+          coach's to rewrite per athlete, like every other box on the sheet; they ride
+          onto the athlete's calendar and onto the printout with the program. */}
       <div className="iv-cardtools">
-        <label className={'iv-meta-f nm'+(plan.meta.edited.name?' edited':'')}>session
-          <input value={plan.meta.name} onChange={e=>onMeta({name:e.target.value})}
-            placeholder={plan.meta.baseName||'Session title…'}
-            title={plan.meta.edited.name&&plan.meta.baseName?`Source session: ${plan.meta.baseName}`:'The session heading written on this athlete’s program'}/>
+        <label className={'iv-meta-f nm'+(m.edited.name?' edited':'')}>session
+          <input value={m.name} onChange={e=>onMeta({name:e.target.value})}
+            placeholder={m.baseName||'Session title…'}
+            title={m.edited.name&&m.baseName?`Source session: ${m.baseName}`:'The session heading written on this athlete’s program'}/>
         </label>
-        <label className={'iv-meta-f tm'+(plan.meta.edited.time?' edited':'')}>time
-          <input type="time" value={plan.meta.time} onChange={e=>onMeta({time:e.target.value})}
-            title={plan.meta.edited.time&&plan.meta.baseTime?`Source session: ${plan.meta.baseTime}`:'When this athlete trains'}/>
+        <label className={'iv-meta-f tm'+(m.edited.time?' edited':'')}>time
+          <input type="time" value={m.time} onChange={e=>onMeta({time:e.target.value})}
+            title={m.edited.time&&m.baseTime?`Source session: ${m.baseTime}`:'When this athlete trains'}/>
         </label>
-        <label className={'iv-meta-f pp'+(plan.meta.edited.purpose?' edited':'')}>purpose
-          <input value={plan.meta.purpose} onChange={e=>onMeta({purpose:e.target.value})}
-            placeholder={plan.meta.basePurpose||'What this session is for…'}
-            title={plan.meta.edited.purpose&&plan.meta.basePurpose?`Source session: ${plan.meta.basePurpose}`:'What this session is for'}/>
+        <label className={'iv-meta-f tm'+(m.edited.duration?' edited':'')}>duration
+          <input type="number" value={m.duration} onChange={e=>onMeta({duration:e.target.value})}
+            title={m.edited.duration&&m.baseDuration?`Source session: ${m.baseDuration} min`:'How long this athlete trains (min)'}/>
         </label>
-        <span className="iv-expg" style={{marginLeft:'auto'}}>
+        <div className={'iv-meta-f pp'+(m.edited.focus?' edited':'')}>session focus
+          <FocusSelect value={m.focus} onChange={arr=>onMeta({focus:arr})}/>
+        </div>
+        <div className={'iv-meta-f pp'+(m.edited.region?' edited':'')}>region
+          <select value={m.region} onChange={e=>onMeta({region:e.target.value})}>
+            <option value="">Select region…</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <span className="iv-expg" style={{marginLeft:'auto',alignSelf:'flex-end'}}>
           <button className="btn xs sec" onClick={()=>onExport('coach')}
             title="Print this athlete's program">PDF</button>
         </span>
+        <div className={'iv-meta-f wide'+(m.edited.methods?' edited':'')}>training method
+          <MethodSelect value={m.methods} onChange={arr=>onMeta({methods:arr})}/>
+        </div>
       </div>
       {plan.blocks.map((b,bi)=>{
         /* Slots in the same superset group read A1, A2, A3…; ungrouped slots keep
