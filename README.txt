@@ -106,6 +106,18 @@ Tap any pattern box and it grows to fill the panel, re-laying its
 executions across the whole area with each one's share OF THAT
 PATTERN. The ⊖ button in the corner (or another tap on the box)
 goes back to all patterns.
+
+An opened pattern also lists, under the treemap, WHICH EXERCISES
+made up that work — "Most used exercises", most prescribed first,
+each with the executions it was performed in, how many times it
+was written that period, and its share of the pattern. The bar is
+scaled to the top exercise, so it reads as "what did we lean on"
+rather than a row of stubs. Top 8, with "+n more" for the rest.
+The same exercise typed two ways counts once (case is ignored);
+only exercises that carry a pattern tag can appear, so work that
+was only tagged at session level is counted in the boxes above but
+has no name to rank.
+
 It counts two things together: the pattern/plane picked for a
 whole session on the muscle model, and the pattern/execution
 tagged on individual exercises from the Individualization card.
