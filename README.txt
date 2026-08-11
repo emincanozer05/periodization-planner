@@ -62,8 +62,9 @@ What you can edit on every slot:
 
 What the card SHOWS you (read-only context for those edits, in
 this order across the header):
-  - whatever the athlete typed into the check-in's pain box, in
-    their own words, plus the regions it matched
+  - whatever the athlete reported on the check-in's pain grid
+    (region + Hafif/Orta/Fazla) and typed into its pain box, in
+    their own words, plus the regions either one matched
   - yesterday's session RPE and the internal load (sRPE ×
     duration) it came to
   - soreness and fatigue from the latest check-in (1-5, 5 = good)
@@ -87,6 +88,33 @@ per slot ({block, slot, superset, pattern, execution,
 template_exercise, prescribed_exercise, changed, added, sets, reps,
 time, tempo, rpe, load, rest, note}). "added" marks a row you put
 on the sheet yourself, which the source session does not carry.
+
+WELLNESS HEATMAP (Load Monitoring tab)
+Athletes × the last 14 days, one box per day, coloured by the
+metric picked in the header (Readiness / Sleep / Fatigue /
+Soreness / RHR) and sorted by average.
+
+PAIN ON THE GRID
+The daily check-in asks "Ağrın hangi bölgede ve şiddette?" as a
+matrix: one row per body region, one column per severity (Hafif /
+Orta / Fazla). Whatever the athlete ticks shows up INSIDE that
+day's own box:
+  - a pip in the corner, coloured by the WORST severity reported
+    that day — yellow Hafif, orange Orta, red Fazla — carrying the
+    number of regions when more than one was ticked
+  - the box's ring takes the same colour
+  - hovering names every region with its own severity, plus
+    anything the athlete typed into the free-text pain box
+It is independent of the metric on screen: a marked region flags
+the day whether you are looking at Readiness or at RHR. Region
+names are kept exactly as the form words them, so a region the app
+has no tag for (Boyun, Göğüs, Karın…) is still reported rather
+than dropped. A day with pain and no scores behind it still gets
+a row, at the bottom — there is no average to rank it by.
+Where the app DOES recognise a region (Bel/Sırt → back, Omuz →
+shoulder, Kalça/Kasık → hip…) it also becomes a pain chip on the
+Individualization card, with the severity carried over.
+See TALLY_SETUP.md for the form side.
 
 LOAD DISTRIBUTION (Calendar tab, team and per athlete)
 The "Load Distribution" panel under the calendar reads the week or

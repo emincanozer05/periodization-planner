@@ -36,8 +36,17 @@ Tally'de hiçbir şeyi yeniden adlandırmana gerek yok. Eşleşmeler:
 | Yorgunluk düzeyin nedir? | Fatigue |
 | Kas ağrın ne derecede? | Soreness |
 | Ağrın hangi bölgede? | Area of Pain |
+| Ağrın hangi bölgede **ve şiddette**? (matris) | Pain Map |
 
 Notlar:
+- **Ağrı matrisi**: soruyu Tally'de *Matrix* olarak kurduysan (satırlar = bölgeler
+  — Boyun, Omuz, Sırt, Bel, Kalça, Hamstring… ; sütunlar = **Hafif / Orta / Fazla**),
+  Worker bunu `Boyun: Orta, Bel: Fazla` biçiminde tek bir `Pain Map` alanına çevirir.
+  CoachOS bunu check-in'e `painMap` olarak yazar ve **Wellness Heatmap**'te o günün
+  kutucuğunun içinde gösterir. Bölge adları formda yazdığın gibi korunur — uygulamanın
+  etiketi olmayan bölgeler (Boyun, Göğüs, Karın…) de görünür. Sütun başlıkları
+  Türkçe (Hafif/Orta/Fazla), İngilizce (Mild/Moderate/Severe) ya da 1/2/3 olabilir.
+  Serbest metin "Ağrın hangi bölgede?" sorusu kalabilir; ikisi birlikte çalışır.
 - Wellness formunda **Readiness sorusu yok**; Worker, Readiness'i `Sleep`, `Fatigue`,
   `Soreness` ortalamasından otomatik hesaplıyor (istemezsen `tally-worker.js` içindeki
   ilgili bloğu sil — söyle, ben kaldırayım).
@@ -90,6 +99,13 @@ uygulama kalanını otomatik istiyor — böylece kaç gönderim olursa olsun he
 yayındaysa CoachOS → Tally Sync ekranı bunu uyarı olarak gösterir. Senkron sonrası
 "sRPE submissions from Tally" satırındaki sayı, formdaki toplam gönderim sayısına
 eşit olmalı.
+
+## Ağrı matrisini eklediysen: Worker'ı yeniden deploy et
+Matris sorusunu forma yeni eklediysen, Cloudflare'deki Worker kodunu bu repodaki
+güncel `tally-worker.js` ile değiştirip **yeniden Deploy et**. Eski sürüm matrisin
+satır/sütun kimliklerini çözemez: cevabı ya ham JSON olarak ya da yalnızca son
+satırın şiddeti olarak gönderir, bölge adı kaybolur. Güncel sürüm satır ve sütun
+etiketlerini geri çözüp `Bölge: Şiddet` çiftleri hâlinde yollar.
 
 ## Hızlı test
 Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:
