@@ -2420,15 +2420,14 @@ header{background:var(--bg2)!important}
    card body only has to give it the width and stop its own padding from doubling up. */
 .iv-calbody{padding:12px 10px}
 .iv-calbody .panel{margin-left:0;margin-right:0}
-.iv-writeb{white-space:nowrap}
-/* Already on the athlete's calendar: the button steps back to a confirmation the coach
-   can read at a glance, since from here on the sheet keeps that calendar in step itself. */
-.iv-writeb.on{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
-.iv-writeb.on:hover{border-color:#2dd4a7;background:rgba(45,212,167,.14)}
-/* Written, then edited by hand on the athlete's calendar — the sheet is no longer what
-   is on that calendar, and pressing this would replace it. */
-.iv-writeb.edited{color:#f59e0b;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08)}
-.iv-writeb.edited:hover{border-color:#f59e0b;background:rgba(245,158,11,.15)}
+/* Not a button — the sheet writes by itself. This only says where the athlete stands:
+   on their calendar and current (green), or edited by hand there, in which case the sheet
+   is staying out of the way and the label is the way back (amber, clickable). */
+.iv-wstate{display:inline-flex;align-items:center;white-space:nowrap;border-radius:8px;padding:5px 10px;
+  font-size:11.5px;font-weight:700;border:1px solid transparent}
+.iv-wstate.ok{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
+.iv-wstate.edited{color:#f59e0b;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08);cursor:pointer}
+.iv-wstate.edited:hover{border-color:#f59e0b;background:rgba(245,158,11,.15)}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
@@ -13056,7 +13055,7 @@ function exportPrograms({athletes,dateKey,mode,range,teamName}){
       items.push(coach?ses:stripForAthlete(ses));
     });
   });
-  if(items.length===0){alert('No program has been written in this range yet. Send it first with "Write to athlete calendars".');return;}
+  if(items.length===0){alert('Bu aralıkta sporcuların takvimine yazılmış bir program yok. Individualization sekmesinde günü ve kaynak programı seç — sheet açıldığında program takvimlere kendiliğinden yazılır.');return;}
   const range_lbl=range==='week'
     ?`${fd(fmt(sow(parseD(dateKey))))} – ${fd(fmt(addD(sow(parseD(dateKey)),6)))}`
     :fdL(dateKey);
@@ -13306,20 +13305,25 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
         title={calOpen?"Takvimi kapat, program yazmaya dön":"Bu sporcunun takvimini bu kartta aç"}>
         {calOpen?'Close Athlete Calendar':'Open Athlete Calendar'}
       </button>
-      {/* Three states, because they mean three different things to the coach: nothing on
-          the calendar yet, the sheet's program sitting there and kept in step, or a
-          program they have since written by hand — which this button would replace. */}
+      {/* Writing is not something to press any more — the sheet keeps the athlete's
+          calendar in step by itself. What is left is the state, said plainly: the program
+          is on their calendar and current, or they have since edited it there and the
+          sheet is deliberately staying out of the way. That second one is the only case
+          with anything to decide, so it is the only one that answers a click. */}
       {(()=>{
+        if(!written)return null;
         const edited=indivHandEdited(written);
-        return<button type="button" className={'btn xs iv-writeb'+(written?(edited?' sec edited':' sec on'):'')}
+        const at=written.indiv&&written.indiv.writtenAt;
+        if(!edited)return<span className="iv-wstate ok"
+          title={`Bu sporcunun takviminde — ${at?new Date(at).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor.`}>
+          ✓ Takvimde{at?' · '+new Date(at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}
+        </span>;
+        return<span className="iv-wstate edited" role="button" tabIndex={0}
           onClick={e=>{e.stopPropagation();onApply();}}
-          title={!written?"Write this athlete's program to their own calendar"
-            :edited?'Bu sporcunun takvimindeki program elle düzenlendi — bu sayfa ona dokunmuyor. Basarsan sheet’teki programla değiştirmeyi onaylaman istenir.'
-            :`Bu sporcunun takviminde — ${written.indiv&&written.indiv.writtenAt?new Date(written.indiv.writtenAt).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor; yeniden yazmak için tıklayabilirsin.`}>
-          {!written?'Write to athlete calendar'
-            :edited?'✎ Takvimde elle düzenlendi'
-            :`✓ Takvimde${written.indiv&&written.indiv.writtenAt?' · '+new Date(written.indiv.writtenAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}`}
-        </button>;
+          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.stopPropagation();e.preventDefault();onApply();}}}
+          title="Bu sporcunun takvimindeki program elle düzenlendi — bu sayfa ona dokunmuyor. Sheet’teki programla değiştirmek için tıkla (onay istenir).">
+          ✎ Takvimde elle düzenlendi
+        </span>;
       })()}
       </div>
       <span className="iv-ch">{open?'▼':'▶'}</span>
@@ -13616,14 +13620,13 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     updateTeam(team.id,{athletes:next});
     setToast(opts.auto
       ?(targets.length===1
-        ?`${targets[0].ath.name||'Athlete'} · takvimi güncellendi ✓`
-        :`${targets.length} sporcunun takvimi güncellendi ✓`)
+        ?`${targets[0].ath.name||'Athlete'} · takvimine işlendi ✓`
+        :`${targets.length} sporcunun takvimine işlendi ✓`)
       :(targets.length===1
         ?`${targets[0].ath.name||'Athlete'} · written to the ${fd(date)} calendar ✓`
         :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`));
     setTimeout(()=>setToast(''),opts.auto?2000:3500);
   };
-  const apply=()=>applyTo(plans.map(p=>p.ath.id));
   /* Once a program has been written for an athlete, the sheet keeps their calendar in
      step with it — the coach edits the sheet and the athlete's copy follows, instead of
      the coach having to remember the button on every visit. Only athletes who were
@@ -13634,11 +13637,15 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     if(!src)return;
     const due=plans.filter(p=>{
       const w=written[p.ath.id];
-      if(!w)return false;
-      // Hand-edited on the athlete's calendar: theirs, not the sheet's. Left alone here
-      // and only replaced if the coach presses the button and confirms.
-      if(indivHandEdited(w))return false;
-      return (w.indiv&&w.indiv.sig)!==planToSession(p,src.session,date,activeKey).indiv.sig;
+      // Hand-edited on the athlete's calendar: theirs, not the sheet's. Never overwritten
+      // on the sheet's own initiative — only when the coach asks for it from the card.
+      if(w&&indivHandEdited(w))return false;
+      const ses=planToSession(p,src.session,date,activeKey);
+      // A sheet with nothing written on it yet does not put an empty session on anyone's
+      // calendar: the first write happens when there is a program to write. An athlete
+      // who already has one keeps being updated, emptied rows included.
+      if(!w)return liveBlocks(p).some(b=>(b.rows||[]).some(liveSlot));
+      return (w.indiv&&w.indiv.sig)!==ses.indiv.sig;
     }).map(p=>p.ath.id);
     if(!due.length)return;
     const t=setTimeout(()=>applyTo(due,{auto:true}),600);
@@ -13671,7 +13678,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         <div className="iv-static">{chosen.length} / {athletes.length} selected</div>
       </div>
       <div className="iv-actions">
-        <button className="btn sm" onClick={apply} disabled={!src||!plans.length}>Write to athlete calendars</button>
         <span className="iv-expbar">
           <select value={expRange} onChange={e=>setExpRange(e.target.value)} title="Export range">
             <option value="day">Day</option>
@@ -13687,8 +13693,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
-        {src&&src.team?'This is a team session: the individual program you write replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. ':''}
-        Bir sporcuya programı bir kez yazdıktan sonra bu sayfadaki düzenlemeler onun takvimine <strong>kendiliğinden</strong> işlenir — her girişte butona basman gerekmez. Yazılan program, sen yeniden yazana kadar olduğu gibi kalır.
+        {src&&src.team?'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. ':''}
+        Bu sayfada yazdığın program, seçili sporcuların takvimine <strong>kendiliğinden</strong> işlenir — yazma butonu yok. Bir sporcunun takvimini elle düzenlersen bu sayfa ona dokunmaz; kartındaki <em>“✎ Takvimde elle düzenlendi”</em> etiketine tıklayarak yeniden bu sayfadaki programa döndürebilirsin.
       </div>
     </div>
     {athletes.length>0&&<div className="panel iv-athbar">
