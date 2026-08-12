@@ -495,6 +495,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw.edit{width:min(1440px,96vw)}
 /* Session drawer — two-column view (read-only) */
 .dw-layout{display:flex;flex:1;overflow:hidden;min-height:0}
+/* In-place variant: the same panel, laid out as part of the page instead of over it,
+   so a session opened from a calendar embedded in a card is edited inside that card. */
+.dw.inline{position:static;transform:none;width:auto;max-width:100%;height:auto;max-height:none;z-index:auto;
+  margin:14px 0 4px;box-shadow:none;animation:none;overflow:visible;scroll-margin-top:12px}
+.dw.inline.edit{width:auto}
+.dw.inline .dw-layout{overflow:visible;flex-wrap:wrap}
+.dw.inline .dw-b{overflow:visible;flex:1 1 420px;min-width:0}
+.dw.inline .dw-left-panel{width:100%;max-width:520px;overflow:visible;border-right:0;border-bottom:1px solid var(--border)}
+@media(min-width:1100px){.dw.inline .dw-left-panel{width:440px;max-width:440px;border-right:1px solid var(--border);border-bottom:0}}
 .dw-left-panel{width:520px;flex:none;border-right:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
 .dw-panel-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px}
 .dw-panel-lbl:first-child{margin-top:0}
@@ -890,6 +899,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .sess-pat b{font-weight:700;color:var(--text)}
 .sess-pat i{font-style:normal;color:var(--text2);font-size:11px}
 .sess-pat em{font-style:normal;color:var(--muted);font-size:10.5px;font-weight:700}
+/* Ticked on the session's own Movements & Patterns panel — the coach's own statement
+   about the day, so it reads a shade stronger than one inferred from the rows. */
+.sess-pat.picked{border-color:rgba(0,148,255,.65);box-shadow:0 0 0 1px rgba(0,148,255,.14) inset}
 .sess-pat-empty{font-size:11.5px;color:var(--dim);padding:5px 0}
 .color-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .color-swatch{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);cursor:pointer;padding:0;transition:transform .12s,border-color .12s}
@@ -2410,24 +2422,10 @@ header{background:var(--bg2)!important}
 .iv-adj{border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--text2);white-space:nowrap}
 .iv-adj.sub{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
 .iv-ch{color:var(--dim);font-size:12px}
-/* The day bar owns the auto margin now — the button just follows it right. */
-/* The two card actions stack, so "Open Athlete Calendar" sits directly above the write
-   button instead of stretching the header row wider. */
-.iv-btncol{display:flex;flex-direction:column;gap:4px;align-items:stretch}
-.iv-calb{white-space:nowrap}
-.iv-calb.on{color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
 /* The calendar is a full view dropped inside a card: it brings its own panels, so the
    card body only has to give it the width and stop its own padding from doubling up. */
 .iv-calbody{padding:12px 10px}
 .iv-calbody .panel{margin-left:0;margin-right:0}
-/* Not a button — the sheet writes by itself. This only says where the athlete stands:
-   on their calendar and current (green), or edited by hand there, in which case the sheet
-   is staying out of the way and the label is the way back (amber, clickable). */
-.iv-wstate{display:inline-flex;align-items:center;white-space:nowrap;border-radius:8px;padding:5px 10px;
-  font-size:11.5px;font-weight:700;border:1px solid transparent}
-.iv-wstate.ok{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
-.iv-wstate.edited{color:#f59e0b;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08);cursor:pointer}
-.iv-wstate.edited:hover{border-color:#f59e0b;background:rgba(245,158,11,.15)}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
@@ -5529,19 +5527,31 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Accessory':'Accessory'};
-/* The movement patterns a session actually contains, read off its own exercise rows:
-   each pattern once, with the executions tagged for it and how many rows carry it.
-   Ordered the way the session is written rather than alphabetically, so the summary
-   reads like the session does. Rows with no pattern tagged are simply not counted. */
+/* What a session says it trains, from both places the coach says it: the Movements &
+   Patterns panel they tick on the session itself, and the pattern tagged on each
+   exercise row. Each pattern appears once, with every execution named for it from
+   either source and how many rows carry it. The ticked patterns lead — they are the
+   coach's statement about the day, made before a row is written — and the rest follow
+   in the order the session is written, so the summary reads like the session does.
+   `picked` marks the ones that came from the panel. */
 function sessionPatterns(session){
   const out=[],by={};
+  const get=p=>{if(!by[p]){by[p]={pattern:p,planes:[],count:0,picked:false};out.push(by[p]);}return by[p];};
+  const addPlane=(entry,st)=>{const s=String(st||'').trim();if(s&&entry.planes.indexOf(s)<0)entry.planes.push(s);};
+  const sel=(session&&session.selPatterns)||[];
+  const pls=(session&&session.selPlanes&&!Array.isArray(session.selPlanes))?session.selPlanes:{};
+  MOVE_PATTERNS.forEach(([p])=>{
+    const planes=pls[p]||[];
+    if(sel.indexOf(p)<0&&!planes.length)return;
+    const e=get(p);e.picked=true;
+    planes.forEach(st=>addPlane(e,st));
+  });
   ((session&&session.blocks)||[]).forEach(b=>((b&&b.exercises)||[]).forEach(e=>{
     const p=String((e&&e.pattern)||'').trim();
     if(!p)return;
-    if(!by[p]){by[p]={pattern:p,planes:[],count:0};out.push(by[p]);}
-    by[p].count++;
-    const st=String((e&&e.plane)||'').trim();
-    if(st&&by[p].planes.indexOf(st)<0)by[p].planes.push(st);
+    const entry=get(p);
+    entry.count++;
+    addPlane(entry,e&&e.plane);
   }));
   return out;
 }
@@ -5978,7 +5988,10 @@ function MuscleLoadDistribution({days,title,refDate}){
    CALENDAR (reusable for team & athlete)
    ========================================================= */
 const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises}){
+/* `inline` keeps the session view and the day editor inside the calendar itself instead
+   of throwing them over the page as a modal — the Individualization card uses it, so a
+   coach editing an athlete's session never leaves the athlete's card. */
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises,inline}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -6013,6 +6026,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
   const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  /* Inline mode renders the two panels where the calendar sits, so they need no scrim
+     and no portal — and the panel that just opened is scrolled to, because in place it
+     can land below the fold of the card it belongs to. */
+  const layer=node=>inline?node:ReactDOM.createPortal(node,document.body);
+  const inlineRef=useRef(null);
+  useEffect(()=>{
+    if(!inline||!inlineRef.current)return;
+    inlineRef.current.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },[inline,editDate,drawerSes&&drawerSes.id]);
   // Inline edit of the open drawer session (time / duration / load) without opening
   // the full editor. Persists to days (and syncs to athletes in team mode).
   const drwUpd=patch=>{
@@ -6289,9 +6311,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       })}
     </div>
     </>}
-    {drawerSes&&ReactDOM.createPortal((<>
-      <div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>
-      <aside className="dw">
+    {drawerSes&&layer((<>
+      {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
+      <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
         <div className="dw-h">
           <div style={{flex:1,minWidth:0}}>
             <div className="ti">{drawerSes.name}</div>
@@ -6385,10 +6407,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           </div>
         </div></div>
       </aside>
-    </>),document.body)}
-    {editDate&&ReactDOM.createPortal((<>
-      <div className="dw-scrim" onClick={()=>setEditDate(null)}/>
-      <aside className="dw edit">
+    </>))}
+    {editDate&&layer((<>
+      {!inline&&<div className="dw-scrim" onClick={()=>setEditDate(null)}/>}
+      <aside className={'dw edit'+(inline?' inline':'')} ref={inline?inlineRef:null}>
         <div className="dw-h">
           <div style={{flex:1,minWidth:0}}>
             <div className="ti">Training Plan</div>
@@ -6416,7 +6438,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
         </div>
       </aside>
-    </>),document.body)}
+    </>))}
   </div>
   </>);
 }
@@ -6935,17 +6957,19 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         </div>
       </div>
       {!isTemplate&&<div className="sess-strip">
-        {/* What this session actually trains, read off its own exercises: every movement
-            pattern tagged on a row, with the executions used for it and how many rows
-            carry it. It sits where the coach is already looking while writing the
-            session, so the balance of the day is visible without opening every block. */}
+        {/* What this session trains, from both places the coach says it: the patterns
+            ticked on the session's own Movements & Patterns panel, and the pattern
+            tagged on each exercise row. It sits where the coach is already looking
+            while writing the session, so the balance of the day is visible without
+            opening every block. */}
         <div className="sess-strip-l">
           <label>Movements &amp; patterns</label>
           {(()=>{
             const pats=sessionPatterns(session);
-            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — egzersiz satırlarındaki <b>Pattern</b> alanını doldur.</div>;
+            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — antrenmanın <b>Movements &amp; Patterns</b> panelinden seç ya da egzersiz satırlarındaki <b>Pattern</b> alanını doldur.</div>;
             return<div className="sess-pat-row">
-              {pats.map(p=><span key={p.pattern} className="sess-pat" title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — ${p.count} egzersiz`}>
+              {pats.map(p=><span key={p.pattern} className={'sess-pat'+(p.picked?' picked':'')}
+                title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — ${p.picked?'antrenman panelinden seçildi':''}${p.picked&&p.count?', ':''}${p.count?`${p.count} egzersiz`:''}`}>
                 <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
                 {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
                 {p.count>1&&<em>×{p.count}</em>}
@@ -12992,6 +13016,12 @@ function planToSession(plan,src,dateKey,srcKey){
     region:m.region!=null?t(m.region):sesRegion(src),
     duration:(dur>0?dur:(src.duration||60)),
     sRPE:'',au:'',color:src.color||'',
+    /* What the source session says it trains — the muscles and the movement patterns the
+       coach ticked on it — rides onto the athlete's copy, so their session opens with the
+       same Movements & Patterns panel and the same summary strip the team session has. */
+    selMuscles:Array.isArray(src.selMuscles)?[...src.selMuscles]:[],
+    selPatterns:Array.isArray(src.selPatterns)?[...src.selPatterns]:[],
+    selPlanes:(src.selPlanes&&!Array.isArray(src.selPlanes))?JSON.parse(JSON.stringify(src.selPlanes)):{},
     blocks:liveBlocks(plan).map(b=>({id:uid(),name:b.name,exercises:rows(b)})),
     notes:'',planNote:src.planNote||'',
     athletes:[],sourceId:null,
@@ -13147,116 +13177,14 @@ function SlotPick({value,options,onChange,title}){
   </select>);
 }
 
-/* ---- One exercise slot on an athlete's sheet -----------------------------
-   Everything on this row is the coach's to set: the exercise itself, the superset
-   group it belongs to, and all seven numbers, side by side in one strip. */
-function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
-  const ss=(row.superset||'').toUpperCase();
-  const num=(lbl,k,opts,title)=>(<label key={k}>{lbl}
-    {opts?<SlotPick value={row[k]} options={opts} onChange={v=>onOverride({[k]:v})} title={title}/>
-         :<input value={row[k]||''} onChange={e=>onOverride({[k]:e.target.value})} placeholder="—" title={title}/>}
-  </label>);
-  const empty=!String(row.name||'').trim();
-  const styles=exStylesFor(row.pattern);
-  /* Changing the pattern clears a style that belongs to the old one — "Horizontal"
-     under Hip Dominant would be a tag nothing can read. A style shared by both
-     patterns (Push, Pull, ISO, Eccentric) survives the switch. Either half of the pair
-     is also remembered against the exercise in the library, so tagging it once here
-     carries it into every program it is written into afterwards. */
-  const setPattern=v=>{
-    const plane=exStylesFor(v).includes(row.plane)?row.plane:'';
-    onOverride({pattern:v,plane});rememberExerciseTags(row.name,v,plane);
-  };
-  const setPlane=v=>{onOverride({plane:v});rememberExerciseTags(row.name,row.pattern,v);};
-  return(<div className={'iv-slot'+(empty?' off':row.changedName?' sub':'')+(row.added?' added':'')}>
-    <div className="iv-slot-main">
-      {/* The superset group sits in front of the exercise, exactly as it does in
-          the template editor: the tag shows where the slot lands in the order, the
-          dropdown next to it moves the slot into a group. */}
-      <span className={'iv-ss-tag'+(ss?' on':'')}>{tag}</span>
-      <select className="iv-ss-sel" value={ss} onChange={e=>onOverride({superset:e.target.value})} title="Superset group">
-        <option value="">—</option>
-        {SLOT_SS.map(o=><option key={o} value={o}>{o}</option>)}
-      </select>
-      <div className="iv-slot-nm"
-        title={row.added?'Pick from the library or type any name — this exercise is not in the source session':'Pick from the library, type any name, or use ✕ Remove to drop this exercise'}>
-        {/* The same two-pane library picker the session editor uses — the library on
-            the left, its categories on the right — so an exercise is chosen the same
-            way wherever it is written. A name typed freehand is added to the shared
-            library by the field itself, and picking a library row copies that entry's
-            video link and its remembered pattern / execution onto the slot, exactly as
-            it does in the session editor. */}
-        <ExNameField value={row.name||''} onChange={v=>onOverride({name:v})} tags={{pattern:row.pattern,plane:row.plane}}
-          onPick={it=>onOverride({name:it.name,link:it.link||row.link||'',
-            ...(exTagsFromLib(it,row)||{})})}/>
-        {/* An emptied slot says so once. Naming the template exercise as well would
-            be the same sentence twice, since ↺ Reset is what brings it back. */}
-        {row.added
-          ?<span className="iv-addtag" title="Added by you for this athlete — the source session does not carry it">added</span>
-          :empty
-          ?<span className="iv-gone" title="This slot is not written to the athlete. Type a name to put an exercise back, or ↺ Reset to restore the template's.">removed: {row.base.name||'—'}</span>
-          :row.changedName&&<span className="iv-was">template: {row.base.name||'—'}</span>}
-      </div>
-      {/* Removing a template slot empties it — the row stays on the card, dimmed, so
-          it can be filled back in or Reset. An added exercise has no template behind
-          it, so removing it takes the row off the card outright and Reset would have
-          nothing to restore, which is why it is not offered there. */}
-      <button className="btn xs sec iv-rmb" onClick={onRemove}
-        title={row.added?'Delete this added exercise from the card':'Drop this exercise from this athlete’s program'}>✕ Remove</button>
-      {!row.added&&<button className="btn xs sec" onClick={onReset}
-        title="Put this slot back to the template">↺ Reset</button>}
-    </div>
-    <div className="iv-slot-ed">
-      {/* What this exercise trains and how it is executed. The style list follows
-          the pattern, so the pair is always one the taxonomy allows — this is what
-          the calendar's execution pie counts. */}
-      <div className="iv-patrow" style={{'--pat-c':ML_PIE_COLS[row.pattern]||'var(--border2)'}}>
-        <label>pattern
-          <select value={row.pattern||''} onChange={e=>setPattern(e.target.value)} title="Movement pattern this exercise trains">
-            <option value="">— not set</option>
-            {EX_PATTERNS.map(o=><option key={o} value={o}>{o}</option>)}
-          </select>
-        </label>
-        <label>execution
-          <select value={row.plane||''} onChange={e=>setPlane(e.target.value)}
-            disabled={!styles.length} title={styles.length?'How the pattern is executed':'Pick a movement pattern first'}>
-            <option value="">{styles.length?'— not set':'—'}</option>
-            {styles.map(o=><option key={o} value={o}>{o}</option>)}
-          </select>
-        </label>
-      </div>
-      {/* The seven prescription fields in one strip, in the template editor's own
-          order, so the sheet reads the same way wherever the coach looks at it. */}
-      <div className="iv-numed">
-        {num('sets','sets',SLOT_SETS,'Number of sets')}
-        {num('reps','reps',SLOT_REPS,'Number of reps')}
-        {num('time','duration',null,'Work time (e.g. 30s)')}
-        {num('tempo','tempo',null,'Tempo (e.g. 3-1-1)')}
-        {num('rpe','rpe',SLOT_RPES,'Target RPE')}
-        {num('load','load',null,'Load (kg, %1RM…)')}
-        {num('rest','rest',null,'Rest between sets')}
-      </div>
-      {/* Reference link (video / cue clip), above the note. Collapsed to a small
-          "Add link" chip until the row actually has one, and clickable straight from
-          the card — the same control the session editor uses, so a link set here
-          behaves exactly like a link set there. It rides into both PDFs. */}
-      <div className="iv-linkrow"><ExLinkCell value={row.link||''} onChange={v=>onOverride({link:v})}/></div>
-      <div className="iv-noterow">
-        <label>note<input value={row.note||''} onChange={e=>onOverride({note:e.target.value})} placeholder="Note for this athlete…"/></label>
-      </div>
-    </div>
-  </div>);
-}
-
-/* ---- One athlete's sheet -------------------------------------------------- */
-function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,written,calOpen,onToggleCal,calendar,open,setOpen}){
+/* ---- One athlete's card: their readiness at a glance, their calendar underneath -- */
+function IndivAthleteCard({plan,calendar,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
      runs the same way round as readiness: low is the one to look at. */
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
-  const m=plan.meta;
   return(<div className={'iv-card'+(open?' open':'')}>
     <div className="iv-card-hd" onClick={()=>setOpen(!open)}>
       <div className="iv-av">{a.photo?<img src={a.photo} alt=""/>:initials}</div>
@@ -13291,41 +13219,6 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
         {plan.rd.src==='srpe'&&<i title="No wellness record — estimated from the sRPE trend">estimate</i>}
       </div>
       {plan.changed>0&&<div className="iv-adj sub">{plan.changed} changed</div>}
-      {/* Write just this athlete's program to their own calendar — the squad-wide
-          button above stays, this one keeps a single fix from touching everyone.
-          Once written it says so, with the time it was written: from then on the sheet
-          keeps that calendar in step by itself, so pressing again is optional rather
-          than something to remember on every visit. */}
-      <div className="iv-btncol">
-      {/* The athlete's own calendar, in place of the sheet. A coach deciding what to
-          prescribe usually wants to see what the week already holds first, and pressing
-          it again puts the sheet back exactly where it was. */}
-      <button type="button" className={'btn xs iv-calb'+(calOpen?' on':' sec')}
-        onClick={e=>{e.stopPropagation();onToggleCal&&onToggleCal();}}
-        title={calOpen?"Takvimi kapat, program yazmaya dön":"Bu sporcunun takvimini bu kartta aç"}>
-        {calOpen?'Close Athlete Calendar':'Open Athlete Calendar'}
-      </button>
-      {/* Writing is not something to press any more — the sheet keeps the athlete's
-          calendar in step by itself. What is left is the state, said plainly: the program
-          is on their calendar and current, or they have since edited it there and the
-          sheet is deliberately staying out of the way. That second one is the only case
-          with anything to decide, so it is the only one that answers a click. */}
-      {(()=>{
-        if(!written)return null;
-        const edited=indivHandEdited(written);
-        const at=written.indiv&&written.indiv.writtenAt;
-        if(!edited)return<span className="iv-wstate ok"
-          title={`Bu sporcunun takviminde — ${at?new Date(at).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor.`}>
-          ✓ Takvimde{at?' · '+new Date(at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}
-        </span>;
-        return<span className="iv-wstate edited" role="button" tabIndex={0}
-          onClick={e=>{e.stopPropagation();onApply();}}
-          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.stopPropagation();e.preventDefault();onApply();}}}
-          title="Bu sporcunun takvimindeki program elle düzenlendi — bu sayfa ona dokunmuyor. Sheet’teki programla değiştirmek için tıkla (onay istenir).">
-          ✎ Takvimde elle düzenlendi
-        </span>;
-      })()}
-      </div>
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
     {plan.notes.length>0&&<div className="iv-notes" title="Coach notes — reference while deciding, nothing reads them automatically">
@@ -13333,116 +13226,25 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
       <span className="t">{plan.notes[0].date?`${fd(plan.notes[0].date)} — `:''}{plan.notes[0].text}</span>
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} more</span>}
     </div>}
-    {/* The calendar takes the sheet's place rather than sitting under it: the card is
-        about one athlete, and showing both at once would only make the coach scroll. */}
-    {open&&calOpen&&<div className="iv-card-body iv-calbody">{calendar}</div>}
-    {open&&!calOpen&&<div className="iv-card-body">
-      {/* What the session IS, for this athlete — the same six fields, in the same strip,
-          that the calendar's session editor carries: its title, when they train, how
-          long, and what it trains. Every one starts from the source session and is the
-          coach's to rewrite per athlete, like every other box on the sheet; they ride
-          onto the athlete's calendar and onto the printout with the program. */}
-      <div className="iv-cardtools">
-        <label className={'iv-meta-f nm'+(m.edited.name?' edited':'')}>session
-          <input value={m.name} onChange={e=>onMeta({name:e.target.value})}
-            placeholder={m.baseName||'Session title…'}
-            title={m.edited.name&&m.baseName?`Source session: ${m.baseName}`:'The session heading written on this athlete’s program'}/>
-        </label>
-        <label className={'iv-meta-f tm'+(m.edited.time?' edited':'')}>time
-          <input type="time" value={m.time} onChange={e=>onMeta({time:e.target.value})}
-            title={m.edited.time&&m.baseTime?`Source session: ${m.baseTime}`:'When this athlete trains'}/>
-        </label>
-        <label className={'iv-meta-f tm'+(m.edited.duration?' edited':'')}>duration
-          <input type="number" value={m.duration} onChange={e=>onMeta({duration:e.target.value})}
-            title={m.edited.duration&&m.baseDuration?`Source session: ${m.baseDuration} min`:'How long this athlete trains (min)'}/>
-        </label>
-        <div className={'iv-meta-f pp'+(m.edited.focus?' edited':'')}>session focus
-          <FocusSelect value={m.focus} onChange={arr=>onMeta({focus:arr})}/>
-        </div>
-        <div className={'iv-meta-f pp'+(m.edited.region?' edited':'')}>region
-          <select value={m.region} onChange={e=>onMeta({region:e.target.value})}>
-            <option value="">Select region…</option>
-            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <span className="iv-expg" style={{marginLeft:'auto',alignSelf:'flex-end'}}>
-          <button className="btn xs sec" onClick={()=>onExport('coach')}
-            title="Print this athlete's program">PDF</button>
-        </span>
-        <div className={'iv-meta-f wide'+(m.edited.methods?' edited':'')}>training method
-          <MethodSelect value={m.methods} onChange={arr=>onMeta({methods:arr})}/>
-        </div>
-      </div>
-      {plan.blocks.map((b,bi)=>{
-        /* Slots in the same superset group read A1, A2, A3…; ungrouped slots keep
-           their own running 1., 2., 3. — the same numbering as the template editor. */
-        const cnt={};
-        const tags=b.rows.map(r=>{
-          const ss=(r.superset||'').toString().toUpperCase().trim();
-          if(ss){cnt[ss]=(cnt[ss]||0)+1;return`${ss}${cnt[ss]}`;}
-          cnt._=(cnt._||0)+1;return`${cnt._}.`;
-        });
-        const fallback=`Block ${bi+1}`;
-        return(<div key={b.key} className={'iv-block'+(b.removed?' gone':'')+(b.added?' newb':'')}>
-          <div className="iv-block-hd">
-            {/* The heading is the coach's, like everything else on this sheet: typing
-                in it renames the block for THIS athlete only, and the source session
-                keeps whatever it says. */}
-            <input className={'iv-block-nm'+(b.renamed||b.added?' edited':'')} value={b.name}
-              onChange={e=>onBlockName(b.key,e.target.value)}
-              placeholder={b.baseName||fallback}
-              title={b.renamed&&b.baseName?`Source session: ${b.baseName}`:'Rename this block for this athlete'}/>
-            {b.added&&<span className="iv-blocktag" title="Added by you for this athlete — the source session does not carry it">added</span>}
-            <span className="iv-blockacts">
-              {b.removed
-                /* A removed template block behaves like an emptied slot: it stays on
-                   the card, struck through, so it can be brought back. */
-                ?<button type="button" className="btn xs sec" onClick={()=>onBlockRemove(b,false)}
-                  title="Put this block back on this athlete’s program">↺ Restore</button>
-                :<>
-                  {/* Adding is per block, because a block is what the sheet is organised
-                      by — an exercise added here lands at the end of this block and is
-                      numbered with the rest of it. */}
-                  <button type="button" className="btn xs iv-addb" onClick={()=>onAddSlot(b.key)}
-                    title={`Add an exercise to ${b.name||fallback} for this athlete`}>+ Add exercise</button>
-                  <button type="button" className="btn xs sec iv-rmb" onClick={()=>onBlockRemove(b,true)}
-                    title={b.added?'Delete this added block and everything written in it':'Drop this block from this athlete’s program'}>✕ Remove</button>
-                </>}
-            </span>
-          </div>
-          {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable
-              without scrolling past one exercise to reach the next. */}
-          {!b.removed&&<>
-            <div className="iv-slotswrap"><div className="iv-slots">
-              {b.rows.map((r,ri)=><IndivSlotRow key={r.key} row={r} tag={tags[ri]}
-                onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}
-                onRemove={()=>onRemoveSlot(r)}/>)}
-            </div></div>
-            {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block — use “+ Add exercise” to write one for this athlete.</div>}
-          </>}
-        </div>);
-      })}
-      {/* A whole block the source session does not have — it lands at the end, where
-          a new block would go, and is filled in exercise by exercise. */}
-      <button type="button" className="btn xs sec iv-addblk" onClick={onAddBlock}
-        title="Add a block to this athlete’s program">+ Add block</button>
-    </div>}
+    {/* The card opens straight onto this athlete's own calendar: the program is written
+        and edited there, on the session itself, so there is one place it lives. */}
+    {open&&<div className="iv-card-body iv-calbody">{calendar}</div>}
   </div>);
 }
 
 /* ---- The Individualization workspace -------------------------------------
-   Pick a day, pick a source session, pick the athletes, then edit each sheet by
-   hand and write it to their calendars. There is no rule configuration because
-   there are no rules. */
-/* The athlete's own calendar, opened from their card on the sheet — the same component
-   the Athletes tab shows, with the same editing, so a coach checking what the week
-   already holds before prescribing does not have to leave the page and find their way
-   back. It keeps its own week cursor, starting on the day being individualized. */
+   Pick a day, pick a source session, pick the athletes; the program lands on each
+   athlete's own calendar and is edited there, on their card. There is no rule
+   configuration because there are no rules. */
+/* The athlete's own calendar — the same component the Athletes tab shows, with the same
+   editing, except that opening a session and editing it happens INSIDE the card rather
+   than in a modal over the page. It keeps its own week cursor, starting on the day
+   being individualized. */
 function IndivAthleteCalendar({ath,setup,weeks,exercises,saveDays,date}){
   const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
     return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
   return<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
-    weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises}/>;
+    weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline/>;
 }
 
 function IndividualizationView({data,team,updateTeam,weeks}){
@@ -13453,8 +13255,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const[srcKey,setSrcKey]=useState('');
   const[sel,setSel]=useState(null);           // null = auto (assigned / all)
   const[open,setOpen]=useState({});
-  // Athletes whose card is showing their calendar instead of the program sheet.
-  const[calOpen,setCalOpen]=useState({});
   const[toast,setToast]=useState('');
   const[expRange,setExpRange]=useState('day');   // 'day' | 'week' — export scope
   // Edits made from the calendar on a card go straight onto that athlete.
@@ -13468,76 +13268,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const src=sources.find(s=>s.key===srcKey)||sources[0]||null;
   const activeKey=src?src.key:'';
   const ovrAll=(store.ovr||{})[activeKey]||{};
-  const setOvr=(athId,patch)=>{
-    const cur=ovrAll[athId]||{};
-    const next={...(store.ovr||{}),[activeKey]:{...ovrAll,[athId]:{...cur,...patch}}};
-    updateTeam(team.id,{indiv:{...store,ovr:next}});
-  };
-  const setSlot=(athId,key,p)=>{
-    const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};
-    slots[key]={...(slots[key]||{}),...p};
-    setOvr(athId,{slots});
-  };
-  const resetSlot=(athId,key)=>{
-    const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};delete slots[key];
-    setOvr(athId,{slots});
-  };
-  /* An exercise the coach adds to a block for THIS athlete. It is recorded as an
-     empty slot (id + which block it belongs to); everything typed into it after
-     that goes through the same slot override as any template row. `bkey` is the
-     block's key — a source block's index, or `add:<id>` for one the coach added. */
-  const addSlot=(athId,bkey)=>{
-    const cur=ovrAll[athId]||{};
-    setOvr(athId,{added:[...(cur.added||[]),{id:uid(),bi:bkey}]});
-  };
-  /* The session's own heading, training time and purpose, per athlete. Stored the
-     same way a slot field is: the key's presence is what makes it the coach's, so
-     any of the three can be cleared and left empty. */
-  const setMeta=(athId,patch)=>{
-    const cur=ovrAll[athId]||{};
-    setOvr(athId,{meta:{...(cur.meta||{}),...patch}});
-  };
-  const setBlock=(athId,key,p)=>{
-    const cur=ovrAll[athId]||{};const bo={...(cur.blockOvr||{})};
-    bo[key]={...(bo[key]||{}),...p};
-    setOvr(athId,{blockOvr:bo});
-  };
-  /* A block the coach adds for THIS athlete — empty, and filled in with the same
-     "+ Add exercise" button every other block carries. */
-  const addBlock=athId=>{
-    const cur=ovrAll[athId]||{};
-    setOvr(athId,{addedBlocks:[...(cur.addedBlocks||[]),{id:uid()}]});
-  };
-  /* Removing a block mirrors removing a slot. A block the SOURCE session wrote is
-     only marked removed — the bar stays on the card, struck through, so it can be
-     restored and it is left out of what gets written and exported. A block the coach
-     ADDED has no source behind it, so it goes away outright, together with the
-     exercises added into it and everything typed on them. */
-  const removeBlock=(athId,block,on)=>{
-    const cur=ovrAll[athId]||{};
-    if(block.added){
-      const gone=new Set((cur.added||[]).filter(a=>String(a.bi)===block.key).map(a=>`add:${a.id}`));
-      const slots={};Object.keys(cur.slots||{}).forEach(k=>{if(!gone.has(k))slots[k]=cur.slots[k];});
-      const bo={...(cur.blockOvr||{})};delete bo[block.key];
-      setOvr(athId,{addedBlocks:(cur.addedBlocks||[]).filter(b=>b.id!==block.addId),
-        added:(cur.added||[]).filter(a=>String(a.bi)!==block.key),slots,blockOvr:bo});
-    }else setBlock(athId,block.key,{removed:!!on});
-  };
-  /* Removing an exercise means two different things, and both are what the coach
-     would expect: a slot the TEMPLATE wrote is emptied — the row stays on the card,
-     dimmed, so it can be filled back in or Reset, and it is left out of what gets
-     written and exported. A slot the coach ADDED has no template behind it, so it
-     goes away entirely, along with whatever was typed into it. */
-  const removeSlot=(athId,row)=>{
-    const cur=ovrAll[athId]||{};const slots={...(cur.slots||{})};
-    if(row.added){
-      delete slots[row.key];
-      setOvr(athId,{added:(cur.added||[]).filter(a=>a.id!==row.addId),slots});
-    }else{
-      slots[row.key]={...(slots[row.key]||{}),name:''};
-      setOvr(athId,{slots});
-    }
-  };
 
   const autoIds=useMemo(()=>{
     if(src&&src.team&&(src.team.athletes||[]).length)return src.team.athletes;
@@ -13663,7 +13393,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   return(<div className="iv-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">Program Individualization</h1>
-        <div className="sub">One source session, one editable sheet per athlete. Every exercise and every number is yours to set.</div></div>
+        <div className="sub">One source session per athlete, written onto their own calendar — open a card and edit the program there, on the day it is trained.</div></div>
     </div>
     <div className="panel iv-bar">
       <div className="iv-f"><label>Date</label><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSel(null);}}/></div>
@@ -13694,7 +13424,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
         {src&&src.team?'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. ':''}
-        Bu sayfada yazdığın program, seçili sporcuların takvimine <strong>kendiliğinden</strong> işlenir — yazma butonu yok. Bir sporcunun takvimini elle düzenlersen bu sayfa ona dokunmaz; kartındaki <em>“✎ Takvimde elle düzenlendi”</em> etiketine tıklayarak yeniden bu sayfadaki programa döndürebilirsin.
+        Seçtiğin kaynak program, seçili sporcuların takvimine <strong>kendiliğinden</strong> işlenir — yazma butonu yok. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Edit</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.
       </div>
     </div>
     {athletes.length>0&&<div className="panel iv-athbar">
@@ -13708,27 +13438,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     {!src&&<div className="ex-empty">There is no team session on this date and no template has been created yet. Create a template from the Templates tab, or plan a session on the calendar.</div>}
     {src&&plans.map(p=><IndivAthleteCard key={p.ath.id} plan={p}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
-      onOverride={(k,patch)=>setSlot(p.ath.id,k,patch)}
-      onResetSlot={k=>resetSlot(p.ath.id,k)}
-      onRemoveSlot={r=>removeSlot(p.ath.id,r)}
-      onAddSlot={bkey=>addSlot(p.ath.id,bkey)}
-      onMeta={patch=>setMeta(p.ath.id,patch)}
-      onBlockName={(key,name)=>setBlock(p.ath.id,key,{name})}
-      onBlockRemove={(b,on)=>removeBlock(p.ath.id,b,on)}
-      onAddBlock={()=>addBlock(p.ath.id)}
-      onApply={()=>applyTo([p.ath.id])}
-      written={written[p.ath.id]||null}
-      calOpen={!!calOpen[p.ath.id]}
-      onToggleCal={()=>{
-        // Opening the calendar expands the card, so closing it again lands back on the
-        // program sheet rather than collapsing the whole card.
-        setCalOpen(o=>({...o,[p.ath.id]:!o[p.ath.id]}));
-        setOpen(o=>({...o,[p.ath.id]:true}));
-      }}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={data.exercises||[]} date={date}
-        saveDays={d=>saveAthDays(p.ath.id,d)}/>}
-      onExport={mode=>doExport(mode,[p.ath.id])}/>)}
+        saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>)}
     {src&&plans.length===0&&<div className="ex-empty">No athlete selected — pick one above.</div>}
   </div>);
 }
