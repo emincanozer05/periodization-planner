@@ -77,37 +77,64 @@ function canonicalKey(rawTitle) {
   return rawTitle;
 }
 
-// A MATRIX answer is a grid: {rowId: columnId} or {rowId: [columnIds]}. Tally sends the
-// ids, so both axes are resolved back to their labels and written out as
-// "Row: Column, Row: Column" — which is what the pain question needs to survive the trip
-// (region AND severity, not one or the other). Returns null when this is not a matrix,
-// so the ordinary answer handling below takes over.
+// Tally does not keep a matrix's row and column lists in one fixed place — depending on
+// the API version they hang off the question, off its `field`, or off a nested list. The
+// old code looked at `rows`/`columns` only, and when they were not there the grid fell
+// through to the JSON.stringify fallback below, so the app received the raw answer object
+// (`{"eeb7ce0e-…":["Hafif"]}`) instead of regions. Rather than guess the path, walk the
+// question once and collect every {id, text}-shaped node, so a row or column id resolves
+// to its label wherever it happens to be declared.
+function collectLabels(node, out, depth) {
+  out = out || {};
+  depth = depth || 0;
+  if (!node || typeof node !== 'object' || depth > 6) return out;
+  const id = node.id || node.uuid;
+  const text = node.text ?? node.label ?? node.title ?? node.name;
+  if (typeof id === 'string' && typeof text === 'string' && text) out[id] = text;
+  for (const v of Object.values(node)) {
+    if (Array.isArray(v)) v.forEach(x => collectLabels(x, out, depth + 1));
+    else if (v && typeof v === 'object') collectLabels(v, out, depth + 1);
+  }
+  return out;
+}
+
+// Keys that mark an answer object as a single scalar wrapped up (a file upload, a signed
+// URL, a payment) rather than a grid — a matrix is keyed by row ids and never by these.
+const SCALAR_ANSWER_KEYS = ['value', 'text', 'url', 'name', 'title', 'label', 'id', 'uuid'];
+
+// A MATRIX answer is a grid: {rowId: columnId} or {rowId: [columnIds]}. Both axes are
+// resolved back to their labels and written out as "Row: Column, Row: Column" — which is
+// what the pain question needs to survive the trip (region AND severity, not one or the
+// other). An id the question does not explain is passed through as-is; the app knows to
+// report it as an unnamed region rather than print it at a coach. Returns null when this
+// is not a matrix, so the ordinary answer handling below takes over.
 function matrixToValue(a, question) {
   if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
-  const q = question || {};
-  const f = q.field || {};
-  const rows = q.rows || f.rows || null;
-  const cols = q.columns || f.columns || null;
-  if (!rows || !cols) return null;
-  const label = (list, id) => {
-    const o = (list || []).find(o => o.id === id || o.uuid === id);
-    return o ? (o.text || o.label || o.title || id) : id;
-  };
+  const vals = Object.values(a);
+  if (!vals.length) return null;
+  if (SCALAR_ANSWER_KEYS.some(k => k in a)) return null;
+  // Every row of a grid answers with its ticked column(s) — a plain value or a list of
+  // them. An object there is some other answer shape, so leave it to the caller.
+  if (vals.some(v => v && typeof v === 'object' && !Array.isArray(v))) return null;
+  const labels = collectLabels(question);
+  const label = id => (typeof id === 'string' && labels[id]) ? labels[id] : id;
   const out = [];
   for (const [rowId, val] of Object.entries(a)) {
-    const picks = (Array.isArray(val) ? val : [val]).filter(v => v != null && v !== '');
+    const picks = (Array.isArray(val) ? val : [val]).filter(v => v != null && v !== '' && v !== false);
     if (!picks.length) continue;
-    out.push(`${label(rows, rowId)}: ${picks.map(c => label(cols, c)).join('/')}`);
+    out.push(`${label(rowId)}: ${picks.map(label).join('/')}`);
   }
   return out.length ? out.join(', ') : null;
 }
 
 // Turn one Tally answer into a plain value, mapping choice option-IDs to their labels.
+// → {value, isGrid} — `isGrid` tells the caller the answer was a matrix, which is how the
+//   pain question is recognised even when its title never says "şiddet".
 function answerToValue(resp, question) {
   let a = resp.answer !== undefined ? resp.answer : resp.value;
-  if (a == null) return null;
+  if (a == null) return { value: null, isGrid: false };
   const grid = matrixToValue(a, question);
-  if (grid != null) return grid;
+  if (grid != null) return { value: grid, isGrid: true };
   const opts = (question && (question.options || (question.field && question.field.options))) || null;
   const mapOpt = id => {
     if (!opts) return id;
@@ -115,14 +142,14 @@ function answerToValue(resp, question) {
     return o ? (o.text || o.label || o.title || id) : id;
   };
   if (Array.isArray(a)) {
-    return a.map(x => (x && typeof x === 'object') ? (x.text || x.label || x.value || x.title || '') : mapOpt(x))
-            .filter(v => v !== '' && v != null).join(', ');
+    return { value: a.map(x => (x && typeof x === 'object') ? (x.text || x.label || x.value || x.title || '') : mapOpt(x))
+                        .filter(v => v !== '' && v != null).join(', '), isGrid: false };
   }
   if (typeof a === 'object') {
-    return a.value ?? a.text ?? a.url ?? a.name ?? JSON.stringify(a);
+    return { value: a.value ?? a.text ?? a.url ?? a.name ?? JSON.stringify(a), isGrid: false };
   }
-  if (opts && typeof a === 'string') { const m = mapOpt(a); if (m !== a) return m; }
-  return a;
+  if (opts && typeof a === 'string') { const m = mapOpt(a); if (m !== a) return { value: m, isGrid: false }; }
+  return { value: a, isGrid: false };
 }
 
 // Tally caps the page size (50 by default) and silently ignores anything larger,
@@ -164,9 +191,14 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
       for (const resp of (s.responses || [])) {
         const q = qById[resp.questionId];
         const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
-        const v = answerToValue(resp, q);
+        const { value: v, isGrid } = answerToValue(resp, q);
         if (v == null || v === '') continue;
-        const key = canonicalKey(title);
+        // A grid answer to the pain question is the pain map whatever the question is
+        // called: a form that words it "Ağrın hangi bölgede?" (no severity axis in the
+        // title) still asks it as a matrix, and reading that as free text is what put
+        // the raw answer object in front of the coach.
+        let key = canonicalKey(title);
+        if (isGrid && key === 'Area of Pain') key = 'Pain Map';
         // Tally may hand a matrix over as one question or as one question PER ROW, in
         // which case every row shares the same title and would otherwise overwrite the
         // one before it. Merging keeps whichever shape the API sends.
