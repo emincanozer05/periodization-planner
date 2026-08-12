@@ -329,6 +329,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-col .dh{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);padding-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
 .calw-col .dh .add{width:20px;height:20px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--dim);display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;transition:all .15s;font-family:inherit;padding:0}
 .calw-col .dh .add:hover{color:var(--accent);border-color:var(--accent)}
+/* The day's own buttons — paste (only while a training is on the clipboard) and add. */
+.calw-col .dh .dh-acts{display:flex;gap:4px;align-items:center}
+.calw-col .dh .add.paste{font-size:10px;border-color:var(--accent);color:var(--accent)}
+.calw-col .dh .add.paste:hover{background:var(--accent-bg)}
 .calw-ses{border-radius:9px;padding:10px 11px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;transition:transform .12s,border-color .15s;text-align:left;width:100%;display:block;color:inherit;font-family:inherit;position:relative}
 .calw-ses:hover{transform:translateY(-2px);border-color:var(--border2)}
 .calw-ses-act{position:absolute;top:6px;right:6px;display:flex;gap:3px;opacity:0;transition:opacity .12s}
@@ -2940,6 +2944,33 @@ const sessionColor=s=>SESSION_COLORS[sessionType(s)];
 let _templateClipboard=null;
 function copyTemplateToClipboard(t){_templateClipboard=t?JSON.parse(JSON.stringify(t)):null;}
 function getTemplateClipboard(){return _templateClipboard;}
+/* Training clipboard — one whole session, copied from wherever it is being read (an athlete's
+   own calendar, the team plan) and pasted onto any other day or any other athlete. Stored as a
+   deep copy, so editing or deleting the original afterwards cannot reach into what was copied.
+   Unlike the template clipboard this one is subscribed to: the paste buttons sit in a DIFFERENT
+   athlete's card from the copy button, and they have to appear the moment something is copied. */
+let _sessionClipboard=null;
+const _sesClipSubs=new Set();
+function copySessionToClipboard(s){
+  _sessionClipboard=s?JSON.parse(JSON.stringify(s)):null;
+  _sesClipSubs.forEach(f=>{try{f(_sessionClipboard);}catch{}});
+}
+function getSessionClipboard(){return _sessionClipboard;}
+function useSessionClipboard(){
+  const[v,setV]=useState(_sessionClipboard);
+  useEffect(()=>{const f=x=>setV(x);_sesClipSubs.add(f);setV(_sessionClipboard);return()=>{_sesClipSubs.delete(f);};},[]);
+  return v;
+}
+/* A fresh copy of the clipboard's training for a day. Everything that belonged to where it came
+   from is left behind: new ids throughout, no participants, no link to a team session or to an
+   individualization sheet, and none of the load feedback recorded against the original — what
+   is pasted is the program, not somebody's record of doing it. */
+function sessionFromClipboard(src){
+  const s=JSON.parse(JSON.stringify(src||{}));
+  delete s.indiv;
+  return{...s,id:uid(),sRPE:'',au:'',auManual:false,srpeFromManual:false,notes:'',athletes:[],sourceId:null,
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))};
+}
 /* Set by <App/> so any session editor can save its session to Templates without
    prop-threading (mirrors the clipboard pattern above). Returns true on success. */
 let _saveSessionAsTemplate=null;
@@ -6036,6 +6067,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const[editDate,setEditDate]=useState(null);
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
   const[calMode,setCalMode]=useState('week');   // single calendar: 'week' (rich strip) | 'month' (grid)
+  // What is on the training clipboard right now, so every day column here offers to paste it
+  // the moment it is copied — from this calendar or from another athlete's.
+  const sesClip=useSessionClipboard();
+  const[copied,setCopied]=useState(false);
+  useEffect(()=>{setCopied(false);},[drawerSes&&drawerSes.id]);
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
   const canEdit=typeof saveDays==='function';
@@ -6058,6 +6094,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
   const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  /* Paste the copied training onto a day — here it lands on THIS calendar, which on an
+     athlete's card is that athlete's own, so a program written for one player reaches
+     another without being typed again. It is added to the day, never over what is there. */
+  const pasteSession=k=>{
+    const clip=getSessionClipboard();
+    if(!canEdit||!clip)return;
+    const d0=days[k]||EDAY(k);
+    svDay(k,{sessions:[...(d0.sessions||[]),sessionFromClipboard(clip)]});
+  };
   /* Inline mode renders the two panels where the calendar sits, so they need no scrim
      and no portal — and the panel that just opened is scrolled to, because in place it
      can land below the fold of the card it belongs to. */
@@ -6364,7 +6409,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           onDrop={e=>{e.preventDefault();if(canEdit&&dragInfo){moveOrCopy(dragInfo.fromDate,dragInfo.sessionId,k,e.ctrlKey||e.metaKey||e.altKey);}setDragInfo(null);setDragOverDate(null);}}>
           <div className="dh">
             <span>{DN[i]} {d.getDate()}</span>
-            <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title="Antrenman ekle / planla">+</button>
+            <span className="dh-acts">
+              {/* Only while a training is on the clipboard — it is the paste half of the
+                  session view's "Copy the Training". */}
+              {canEdit&&sesClip&&<button className="add paste" onClick={e=>{e.stopPropagation();pasteSession(k);}}
+                title={`Yapıştır: ${sesClip.name||'Antrenman'}`}>📋</button>}
+              <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title="Antrenman ekle / planla">+</button>
+            </span>
           </div>
           {/* Team averages for the day, right under the date: session RPE (0–10) and
               wellness readiness (0–5), each tinted by its own severity scale. */}
@@ -6481,6 +6532,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <span className="dw-lt-tag"><b style={{background:ltColor(ltCls(drawerSes.loadType))}}/>{drawerSes.loadType}</span>
             <div style={{display:'flex',gap:8,alignItems:'center'}}>
               {teamMode&&<button className={`btn sm ${rpeOpen?'':'sec'}`} onClick={()=>setRpeOpen(o=>!o)} title="Each athlete's RPE — the ratings they submitted themselves, and anything you enter here; both sync to their profile">RPE Values</button>}
+              {/* Copy the whole training, to be pasted onto another day or another athlete's
+                  calendar: the paste button appears on every day column while something is
+                  on the clipboard, in this card and in every other athlete's. */}
+              <button className={'btn sm'+(copied?' outline':' sec')}
+                onClick={()=>{copySessionToClipboard(drawerSes);setCopied(true);}}
+                title={`“${drawerSes.name||'Antrenman'}” panoya kopyalanır — başka bir sporcunun (ya da günün) takviminde gün başlığındaki 📋 ile yapıştır`}>
+                {copied?'✓ Copied':'Copy the Training'}</button>
               <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Print this session">⎙ Print</button>
             </div>
           </div>
@@ -6580,6 +6638,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <button onClick={()=>edAdd()}>+ Empty</button>
             <button className="copy" onClick={edCopyYesterday}>Copy yesterday</button>
             {getTemplateClipboard()&&<button className="copy" title="Panodaki şablonu bu güne yapıştır" onClick={()=>svDay(editDate,{sessions:[...(edDay.sessions||[]),sessionFromTemplate(getTemplateClipboard())]})}>📋 Yapıştır: {getTemplateClipboard().name}</button>}
+            {/* The copied training, pasteable from inside the editor as well as from the day
+                column — whichever the coach happens to have open. */}
+            {sesClip&&<button className="copy" title="Kopyalanan antrenmanı bu güne yapıştır" onClick={()=>pasteSession(editDate)}>📋 Antrenman: {sesClip.name||'Antrenman'}</button>}
           </div>
           {(edDay.sessions||[]).length===0&&<div className="dw-empty">No sessions yet — start with quick add above</div>}
           {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
