@@ -34,7 +34,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 5;
+const WORKER_VERSION = 6;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -71,7 +71,10 @@ function canonicalKey(rawTitle) {
   if (t.includes('kah') || t.includes('dinlenik') || t.includes('rhr')) return 'RHR';
   if (t.includes('uyku') || t.includes('sleep')) return 'Sleep';
   if (t.includes('yorgun')) return 'Fatigue';
-  if (t.includes('kas') || ((t.includes('agri') || t.includes('agrin')) && t.includes('derece'))) return 'Soreness';
+  // "Kas ağrın ne derecede?" and "Ağrı düzeyin nedir?" are the same 1-5 question — the
+  // score, not the place. It is matched before the region question below, which asks
+  // about pain too but wants a body part back.
+  if (t.includes('kas') || (t.includes('agri') && (t.includes('derece') || t.includes('duzey') || t.includes('seviye') || t.includes('siddeti')))) return 'Soreness';
   // "Ağrın hangi bölgede ve şiddette?" is a MATRIX (region rows × severity columns) and
   // is decoded into "Region: Severity" pairs — checked before the plain free-text
   // "Ağrın hangi bölgede?", which is the same question without the severity axis.
@@ -257,10 +260,18 @@ function answerToValue(resp, question, fallbackLabels) {
   const grid = matrixToValue(a, question, fallbackLabels);
   if (grid != null) return { value: grid, isGrid: true };
   const opts = (question && (question.options || (question.field && question.field.options))) || null;
+  /* A choice answer is option ids. The question usually carries its own option list, but
+     a multi-select ("Ağrın hangi bölgede?" asked as a list of regions rather than a grid)
+     leaves the same trap the matrix did when it does not: unresolved ids reaching the
+     coach. The dictionary built for the grid — the form definition, the public form page
+     — names those options too, so it is used as the fallback here as well. */
   const mapOpt = id => {
-    if (!opts) return id;
-    const o = opts.find(o => o.id === id || o.uuid === id);
-    return o ? (o.text || o.label || o.title || id) : id;
+    if (typeof id !== 'string') return id;
+    if (opts) {
+      const o = opts.find(o => o.id === id || o.uuid === id);
+      if (o) return o.text || o.label || o.title || id;
+    }
+    return (fallbackLabels && fallbackLabels[id]) || id;
   };
   if (Array.isArray(a)) {
     return { value: a.map(x => (x && typeof x === 'object') ? (x.text || x.label || x.value || x.title || '') : mapOpt(x))
@@ -269,7 +280,7 @@ function answerToValue(resp, question, fallbackLabels) {
   if (typeof a === 'object') {
     return { value: a.value ?? a.text ?? a.url ?? a.name ?? JSON.stringify(a), isGrid: false };
   }
-  if (opts && typeof a === 'string') { const m = mapOpt(a); if (m !== a) return { value: m, isGrid: false }; }
+  if (typeof a === 'string') { const m = mapOpt(a); if (m !== a) return { value: m, isGrid: false }; }
   return { value: a, isGrid: false };
 }
 

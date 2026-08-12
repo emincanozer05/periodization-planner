@@ -3373,8 +3373,20 @@ function AthleteLoadBoard({athletes,refDate}){
    and is stored on the check-in as `painMap` — {region: 1|2|3}, the region label
    kept exactly as the athlete's form words it so a region the app has no tag for
    (Boyun, Göğüs, Karın…) is still reported rather than silently dropped. */
-const PAIN_SEV_LABEL={1:'Hafif',2:'Orta',3:'Fazla'};
-const PAIN_SEV_COL={1:'#eab308',2:'#f97316',3:'#ef4444'};
+/* Severity 0 = the athlete named the region but was never asked how bad it is — a
+   multi-select "Ağrın hangi bölgede?" has no severity axis. It is a real report, so it is
+   drawn like one; it just carries no word, and the day's own pain score fills it in where
+   the check-in has one. */
+const PAIN_SEV_LABEL={0:'',1:'Hafif',2:'Orta',3:'Fazla'};
+const PAIN_SEV_COL={0:'#f43f5e',1:'#eab308',2:'#f97316',3:'#ef4444'};
+/* The check-in's own "Ağrı düzeyin nedir?" (1 çok fazla … 5 çok az) as a 1-3 severity.
+   Same athlete, same day, same question about pain — so a region ticked without a
+   severity is shown at the level they reported for the day rather than colourless. */
+function sevFromSoreness(v){
+  const n=Number(v);
+  if(isNaN(n)||n<=0)return 0;
+  return n<=2?3:(n<=3.5?2:1);
+}
 /* Severity is matched worst-first: a column written "Çok Fazla" must not be read as
    the "az" inside it. Numbers pass straight through, so a form that sends 1/2/3
    works without any wording at all. */
@@ -3413,6 +3425,73 @@ const PAIN_REGION_UNKNOWN='Bölge adı gelmedi';
 const PAIN_REGION_LEGACY='Bölge belirtilmemiş';
 /* JSON text is a grid the app must decode, never a sentence the athlete wrote. */
 const looksLikeJSON=v=>/^\s*[{[]/.test(String(v==null?'':v));
+
+/* ---- "Bel, Diz" — the multi-select form of the pain question -----------------
+   The region question can be asked as a matrix (region × severity) or as a multi-select
+   that lists the regions and leaves the severity to the separate "Ağrı düzeyin nedir?"
+   score. The second shape arrives as a plain comma list, which reads exactly like a
+   sentence the athlete typed — and the two must not be confused: a list is drawn on the
+   heatmap as regions, a sentence is shown as their own words.
+   The test is vocabulary, not punctuation. Every part has to be made of body-region words
+   (plus side words like "sağ"), so "Bel, Diz" is a list while "belim tutuldu" and
+   "sol diz ağrıyor" stay notes. */
+const PAIN_REGION_WORDS=new Set([
+  // Tally's own option list, then the words a coach is likely to add to it
+  'boyun','omuz','sirt','gogus','karin','dirsek','bilek','bilegi','el','bel','kalca','kasik',
+  'hamstring','hamstrings','quadriceps','kuadriseps','quad','quads','diz','kalf','baldir',
+  'asil','ayak','topuk','uyluk','kaburga','trapez','omurga','adduktor','aduktor','abduktor',
+  'incik','tibia','parmak','kol','bacak','pazi','kalcalar','basparmak',
+  'ayak bilegi','bilek el','asil tendonu','alt sirt','ust sirt','el bilegi','ayak parmagi',
+  // English, for a form written in either language
+  'neck','shoulder','back','chest','abdomen','core','elbow','wrist','hand','hip','groin',
+  'knee','calf','ankle','foot','achilles','thigh','shin','rib','spine','lower back','upper back',
+]);
+/* Words that qualify a region without being one. They may appear beside a region word,
+   never alone. */
+const PAIN_SIDE_WORDS=new Set(['sag','sol','her','iki','ikisi','ve','ust','alt','on','arka',
+  'bolgesi','bolge','tarafi','taraf','kismi','right','left','both','and','upper','lower','low','mid','area']);
+const normPainWord=s=>String(s==null?'':s).toLowerCase()
+  .replace(/i̇/g,'i').replace(/ı/g,'i').replace(/İ/g,'i')
+  .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
+  .replace(/[^a-z0-9]+/g,' ').trim();
+function isPainRegionName(part){
+  const s=String(part==null?'':part).trim();
+  if(!s||s.length>28)return false;
+  const n=normPainWord(s);
+  if(!n)return false;
+  if(PAIN_REGION_WORDS.has(n))return true;
+  const words=n.split(' ');
+  if(words.length>4)return false;
+  let hit=false;
+  for(const w of words){
+    if(PAIN_REGION_WORDS.has(w)){hit=true;continue;}
+    if(PAIN_SIDE_WORDS.has(w))continue;
+    return false;   // a word that is not a region and not a qualifier ⇒ this is prose
+  }
+  return hit;
+}
+/* "Bel, Diz" → {Bel:0, Diz:0}. Severity 0 because the question did not ask. Returns null
+   the moment a part is not a region, so free text is left to `areaOfPain`. */
+function parsePainRegionList(raw,dict,seen){
+  const parts=String(raw==null?'':raw).split(/\s*[,;|\n•]+\s*/).map(s=>s.trim()).filter(Boolean);
+  if(!parts.length)return null;
+  const out={};
+  for(const part of parts){
+    const p=part.replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    if(!p)continue;
+    if(PAIN_ID_RE.test(p)){
+      // An option id the sync could not name — same escape hatch the grid has.
+      const named=dict&&String(dict[p]||'').trim();
+      if(named){out[named]=out[named]||0;continue;}
+      if(seen&&seen.indexOf(p)<0)seen.push(p);
+      out[PAIN_REGION_UNKNOWN]=out[PAIN_REGION_UNKNOWN]||0;
+      continue;
+    }
+    if(!isPainRegionName(p))return null;
+    out[p]=out[p]||0;
+  }
+  return Object.keys(out).length?out:null;
+}
 /* "Boyun: Orta, Bel: Fazla" → {Boyun:2, Bel:3}. An object — or the JSON of one — is
    decoded too, so a worker that has not resolved the grid's ids is still readable.
    Anything that yields no region/severity pair at all returns null: free text the
@@ -3447,7 +3526,10 @@ function parsePainMap(raw,opts){
     const i=part.indexOf(':');
     if(i>0)put(part.slice(0,i),part.slice(i+1));
   });
-  return Object.keys(out).length?out:null;
+  if(Object.keys(out).length)return out;
+  // No region/severity pair anywhere. The multi-select form of the question answers with
+  // the regions alone, so that is tried before giving up and calling it free text.
+  return parsePainRegionList(typeof src==='object'?'':src,dict,seen);
 }
 /* The check-in's pain box in the athlete's own words. A value that is really the grid —
    JSON the Worker could not resolve, or "Bel: Fazla" pairs — is already drawn region by
@@ -3477,7 +3559,8 @@ function namePainRegions(map,note){
    keep a stable order instead of following object insertion. */
 function painEntries(map){
   return Object.entries(map||{}).map(([region,sev])=>({region,sev:Number(sev)||0}))
-    .filter(p=>p.sev>0)
+    // Severity 0 stays: the region was reported, only its grading was never asked. It
+    // sorts last, after everything that carries one.
     .sort((a,b)=>b.sev-a.sev||a.region.localeCompare(b.region));
 }
 /* The check-in's pain as one line: every region of the grid with its severity, then
@@ -3485,7 +3568,7 @@ function painEntries(map){
    prose — the AI briefings, the Individualization note — rather than drawn. */
 function painSummary(w){
   const map=parsePainMap(w&&w.painMap&&typeof w.painMap==='object'?w.painMap:(w&&w.areaOfPain));
-  const parts=painEntries(map).map(p=>`${p.region}: ${PAIN_SEV_LABEL[p.sev]}`);
+  const parts=painEntries(map).map(p=>p.sev?`${p.region}: ${PAIN_SEV_LABEL[p.sev]}`:p.region);
   const note=painFreeText(w&&w.areaOfPain);
   if(note)parts.push(note);
   return parts.join(', ');
@@ -10453,7 +10536,7 @@ const NORM=s=>(s||'').toString()
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=5;
+const TALLY_WORKER_VERSION=6;
 async function performTallySync(workerUrl,team,opts={}){
   const autoCreate=!!opts.autoCreate;
   const base=workerUrl.replace(/\/+$/,'');
@@ -10605,6 +10688,13 @@ async function performTallySync(workerUrl,team,opts={}){
     if(_painMap&&_painMap[PAIN_REGION_UNKNOWN]&&_note){
       const named=namePainRegions(_painMap,_note);
       if(named!==_painMap){_painMap=named;_note='';}
+    }
+    /* A multi-select answer names regions but grades none of them — the grading for that
+       day is the athlete's own "Ağrı düzeyin nedir?" score, so it is carried onto every
+       region they ticked. Regions that arrived with their own severity keep it. */
+    if(_painMap){
+      const _dsev=sevFromSoreness(_sor);
+      if(_dsev)Object.keys(_painMap).forEach(r=>{if(!_painMap[r])_painMap[r]=_dsev;});
     }
     if(_painMap&&_painMap[PAIN_REGION_UNKNOWN])stats.painUnnamed++;
     /* Which check-ins an unnamed id turned up on. A coach cannot recognise a uuid, but
@@ -12522,9 +12612,11 @@ function athPainReports(a,ref){
   const out=[],seen=new Set();
   const known=new Set(CONSTRAINT_TAGS.map(t=>t.id));
   const pm=(w.pain&&typeof w.pain==='object')?w.pain:null;
+  // A tag with severity 0 is still a report — the region was ticked on a question that
+  // never asked how bad it is — so it counts as one and simply shows no grade.
   if(pm)Object.keys(pm).forEach(tag=>{
-    const sev=Number(pm[tag]);
-    if(sev>0&&known.has(tag)&&!seen.has(tag)){seen.add(tag);out.push({tag,sev,date:w.date,src:'survey'});}});
+    const sev=Number(pm[tag])||0;
+    if(sev>=0&&known.has(tag)&&!seen.has(tag)){seen.add(tag);out.push({tag,sev,date:w.date,src:'survey'});}});
   const raw=painFreeText(w.areaOfPain),txt=raw.toLowerCase();
   if(txt)CONSTRAINT_TAGS.forEach(t=>{
     if(!seen.has(t.id)&&t.kw.some(k=>txt.includes(k))){
@@ -13081,7 +13173,7 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           number, and the thing most likely to change what the coach writes. */}
       <div className="iv-daybar">
         {plan.painNote&&<span className="iv-painchip note" title={`Pain report · ${fd(plan.painNote.date)}`}>{plan.painNote.quoted?`“${plan.painNote.text}”`:`🩹 ${plan.painNote.text}`}</span>}
-        {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Daily check-in · ${fd(p.date)}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
+        {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Daily check-in · ${fd(p.date)}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'&&p.sev>0?` ${p.sev}/3`:''}</span>)}
         <span className="iv-dchip" title={`Yesterday's session RPE (${fd(plan.prev.date)}) — the athlete's own rating`}>
           <i>yest. rpe</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
         </span>

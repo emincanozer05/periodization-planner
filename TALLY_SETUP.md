@@ -34,11 +34,18 @@ Tally'de hiçbir şeyi yeniden adlandırmana gerek yok. Eşleşmeler:
 | Dinlenik KAH nedir? | RHR |
 | Uyku kaliten nasıldı? | Sleep |
 | Yorgunluk düzeyin nedir? | Fatigue |
-| Kas ağrın ne derecede? | Soreness |
-| Ağrın hangi bölgede? | Area of Pain |
+| Kas ağrın ne derecede? / **Ağrı düzeyin nedir?** | Soreness |
+| Ağrın hangi bölgede? (serbest metin **ya da çoklu seçim**) | Area of Pain |
 | Ağrın hangi bölgede **ve şiddette**? (matris) | Pain Map |
 
 Notlar:
+- **Ağrı bölgesi çoklu seçim olarak sorulduysa** (Multi-select / Dropdown; seçenekler
+  Boyun, Omuz, Sırt, … Diz, Kalf): sporcunun seçtiği bölgeler `Bel, Diz` biçiminde
+  gelir ve **Wellness Heatmap**'te o günün kutucuğunda tek tek görünür. Bu soru şiddet
+  sormadığı için her bölgenin şiddeti aynı check-in'deki **"Ağrı düzeyin nedir?"**
+  (1 çok fazla … 5 çok az) cevabından türetilir: 1-2 → Fazla, 3 → Orta, 4-5 → Hafif.
+  Sporcu kutuya cümle yazdıysa (`belim tutuldu`) bu bölge listesi sayılmaz, eskisi gibi
+  not olarak görünür — ayrım bölge sözlüğüyle yapılır, noktalama ile değil.
 - **Ağrı matrisi**: soruyu Tally'de *Matrix* olarak kurduysan (satırlar = bölgeler
   — Boyun, Omuz, Sırt, Bel, Kalça, Hamstring… ; sütunlar = **Hafif / Orta / Fazla**),
   Worker bunu `Boyun: Orta, Bel: Fazla` biçiminde tek bir `Pain Map` alanına çevirir.
