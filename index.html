@@ -282,6 +282,10 @@ textarea{resize:vertical;min-height:50px}
 .btn.danger:hover{box-shadow:0 6px 16px rgba(239,68,68,.25)}
 .btn.sm{padding:6px 12px;font-size:12px}
 .btn.xs{padding:4px 9px;font-size:11px}
+/* Outline: no fill, the accent on the edge, the label in white — for an action that sits
+   beside a filled button and should not compete with it for the eye. */
+.btn.outline{background:none;color:#fff;border:1px solid var(--accent);box-shadow:none}
+.btn.outline:hover{background:var(--accent-bg);border-color:var(--accent2);box-shadow:none}
 .btn.ghost{background:transparent;color:var(--muted);border:1px dashed var(--border)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-bg);box-shadow:none}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -386,9 +390,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rpe-leg b.sc{background:#22d3ee}
 .rpe-leg b.gm{background:#f472b6}
 .calw-empty{flex:1;display:grid;place-items:center;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
-.calw-daytot{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.calw-daytot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:8px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.calw-daytot .dtrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .calw-daytot span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
 .calw-daytot b{font-size:13px;font-weight:700;color:var(--accent)}
+/* The per-athlete average is the quieter of the two — the plan's total leads. */
+.calw-daytot .dtrow.avg span{font-size:9px}
+.calw-daytot .dtrow.avg b{font-size:11.5px;color:var(--text2)}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
 .calw-legend i b{width:9px;height:9px;border-radius:2px;display:inline-block}
@@ -684,8 +692,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .cs-item-wrap{position:relative}
 .calm-cell .cs-item{font-size:10.5px;color:var(--text);background:rgba(255,255,255,.05);border-left:3px solid var(--accent);border-radius:4px;padding:3px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
 .calm-cell .cs-more{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
-.calm-cell .mau{margin-top:auto;text-align:right;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6b8aff;font-weight:700}
+.calm-cell .mau{margin-top:auto;display:flex;justify-content:flex-end;align-items:baseline;gap:7px;flex-wrap:wrap;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:#6b8aff;font-weight:700}
 .calm-cell .mau small{font-size:8px;color:var(--dim);font-weight:500;margin-left:2px}
+/* The per-athlete average, beside the plan's own total and quieter than it. */
+.calm-cell .mau i{font-style:normal;font-size:9.5px;color:var(--text2);font-weight:600}
 /* Season — top stat row, macrocycle bar, weekly bars, phase list */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 @media(max-width:760px){.stat-row{grid-template-columns:1fr 1fr}}
@@ -3285,6 +3295,30 @@ function teamDayReadiness(athletes,dk){
     if(w.date!==dk||w.readiness===''||w.readiness==null)return;
     const v=Number(w.readiness);if(!isNaN(v))vs.push(v);}));
   return vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null;}
+/* What one athlete's own calendar says they did on a day: the AU on the sessions in their
+   profile, added up. A session with no AU box filled falls back to its sRPE × duration,
+   the same arithmetic the AU box does for itself. Their srpeLog is not read here — this is
+   the load that was PLANNED and written for them, not what a form later reported. */
+function athDayCalAU(a,dk){
+  return (((((a||{}).days)||{})[dk]||{}).sessions||[]).reduce((t,s)=>{
+    const au=Number(s.au);
+    if(!isNaN(au)&&au)return t+au;
+    const r=Number(s.sRPE),d=Number(s.duration);
+    return t+((s.sRPE!==''&&s.sRPE!=null&&!isNaN(r)&&!isNaN(d))?r*d:0);
+  },0);
+}
+/* The squad's average daily load for a date, read off the athletes' own calendars. Only
+   athletes who have something on that day count towards it: a rest day for half the squad
+   would otherwise halve the number and read like an easy day for everyone. */
+function teamDayAvgAU(athletes,dk){
+  const vs=[];
+  (athletes||[]).forEach(a=>{
+    const ss=((((a||{}).days)||{})[dk]||{}).sessions||[];
+    if(!ss.length)return;
+    vs.push(athDayCalAU(a,dk));
+  });
+  return vs.length?{avg:vs.reduce((x,y)=>x+y,0)/vs.length,n:vs.length}:null;
+}
 /* Monotony traffic light (Foster) — used everywhere monotony is shown:
    <1.0 low, loads highly varied · 1.0–1.5 normal · 1.5–2.0 rising, watch it
    · >2.0 high, overload and illness/injury risk climbs. */
@@ -6321,6 +6355,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         const dayRPE=teamMode?teamDayRPE(athletes,k)
           :(()=>{const v=ss.map(s=>Number(s.sRPE)).filter(x=>!isNaN(x)&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;})();
         const dayRdy=teamMode?teamDayReadiness(athletes,k):null;
+        // The squad's average daily load, read off the athletes' own calendars.
+        const dayAvg=teamMode?teamDayAvgAU(athletes,k):null;
         const isDrop=canEdit&&dragInfo&&dragOverDate===k&&dragInfo.fromDate!==k;
         return(<div key={k} className={`calw-col${isDrop?' drop':''}`}
           onDragOver={e=>{if(canEdit&&dragInfo){e.preventDefault();e.dataTransfer.dropEffect=(e.ctrlKey||e.metaKey||e.altKey)?'copy':'move';setDragOverDate(k);}}}
@@ -6371,7 +6407,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               {au>0&&<span className="au">{au} AU</span>}
             </div>);
           })}
-          {dayAU>0&&<div className="calw-daytot"><span>Daily</span><b>{Math.round(dayAU)} AU</b></div>}
+          {/* The plan's own total, then what it came to per athlete — their calendars added
+              up and averaged, so a day that was individualized reads as what the squad
+              actually carried rather than as what the team session said. */}
+          {(dayAU>0||dayAvg)&&<div className="calw-daytot">
+            {dayAU>0&&<div className="dtrow"><span>Daily</span><b>{Math.round(dayAU)} AU</b></div>}
+            {dayAvg&&<div className="dtrow avg" title={`Sporcuların takvimlerindeki günlük AU'ların ortalaması — bugün antrenmanı olan ${dayAvg.n} sporcu üzerinden`}>
+              <span>Avg / athlete</span><b>{Math.round(dayAvg.avg)} AU</b>
+            </div>}
+          </div>}
         </div>);
       })}
     </div>
@@ -6383,6 +6427,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         const d=c.d;const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
         const isToday=k===fmt(today);const isSel=k===selected.date;
         const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
+        const mAvg=teamMode?teamDayAvgAU(athletes,k):null;
         return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>pickMonth(k)} title="Planla">
           <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
           {ss.length>0&&<div className="csess">
@@ -6401,7 +6446,12 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             })}
             {ss.length>2&&<div className="cs-more">+{ss.length-2} more</div>}
           </div>}
-          {au>0&&<div className="mau">{Math.round(au)}<small>AU</small></div>}
+          {(au>0||mAvg)&&<div className="mau">
+            {au>0&&<span>{Math.round(au)}<small>AU</small></span>}
+            {/* The same per-athlete average the week strip carries, in the room a month
+                cell has for it: their own calendars, added up and averaged. */}
+            {mAvg&&<i title={`Sporcuların takvimlerindeki günlük AU ortalaması — ${mAvg.n} sporcu`}>ø {Math.round(mAvg.avg)}<small>AU</small></i>}
+          </div>}
         </div>);
       })}
     </div>
@@ -6418,7 +6468,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               the editor's athlete picker makes, without opening it and ticking seventeen
               boxes. It says so once everyone is on it, and stays pressable to pick up
               athletes added to the squad since. */}
-          {teamMode&&canEdit&&<button className={'btn sm'+(allAssigned?' sec':'')} style={{marginRight:8}}
+          {teamMode&&canEdit&&<button className="btn sm outline" style={{marginRight:8}}
             onClick={assignToTeam} disabled={!(athletes||[]).length}
             title={allAssigned?'Kadrodaki herkes bu antrenmana atandı — sonradan eklenen sporcular için tekrar bas':'Bu antrenmanı kadrodaki bütün sporcuların takvimine ata'}>
             {allAssigned?'✓ Assigned to the Team':'Assign the Practice to the Team'}</button>}
