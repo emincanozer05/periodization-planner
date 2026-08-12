@@ -34,7 +34,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 3;
+const WORKER_VERSION = 4;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -134,17 +134,34 @@ function collectLabels(node, out, depth) {
 // definition always knows: every matrix row and column is a block carrying its uuid and
 // its label. We read it once per form per sync and keep it as the fallback dictionary for
 // the grid's ids. Best effort throughout — a form we cannot read must never fail a sync.
+//
+// Every source is asked and the answers are merged. An earlier build stopped at the first
+// endpoint that produced ANY label — and `GET /forms/{id}` always produces one, its own
+// name — so the endpoint that actually carries the rows was never reached and the grid
+// stayed unnamed. Never stop early: a form object without blocks is not a dictionary.
+// → {labels, sources} — `sources` is what /diag reports, so a form we cannot read says
+//   which endpoint refused and with what status instead of failing silently.
+const FORM_LABEL_PATHS = [
+  id => `/forms/${id}`,
+  id => `/forms/${id}/questions`,
+  id => `/forms/${id}/blocks`,
+];
 async function fetchFormLabels(formId, key) {
-  const out = {};
-  for (const path of [`/forms/${formId}`, `/forms/${formId}/questions`]) {
+  const labels = {};
+  const sources = [];
+  for (const build of FORM_LABEL_PATHS) {
+    const path = build(formId);
+    const before = Object.keys(labels).length;
     try {
       const res = await fetch(`${TALLY_API}${path}`, { headers: { 'Authorization': `Bearer ${key}` } });
-      if (!res.ok) continue;
-      collectLabels(await res.json(), out);
-      if (Object.keys(out).length) break;
-    } catch (e) { /* ignore — the ids simply stay unresolved */ }
+      if (!res.ok) { sources.push({ path, status: res.status, added: 0 }); continue; }
+      collectLabels(await res.json(), labels);
+      sources.push({ path, status: res.status, added: Object.keys(labels).length - before });
+    } catch (e) {
+      sources.push({ path, status: 'error', error: String(e && e.message || e), added: 0 });
+    }
   }
-  return out;
+  return { labels, sources };
 }
 
 // An id that survived every dictionary — it is reported (not printed at a coach) so the
@@ -216,22 +233,23 @@ function answerToValue(resp, question, fallbackLabels) {
 // Worker invocation would blow Cloudflare's subrequest budget, we hand the next
 // page number back so the app can resume in a follow-up request.
 const PAGE_LIMIT = 50;   // Tally's documented page size
-// Pages per form per invocation. Two forms plus the (at most two) form-definition reads
-// each one makes for its matrix labels stay under Cloudflare's 50-subrequest budget.
-const PAGE_BUDGET = 18;
+// Pages per form per invocation. Two forms plus the three form-definition reads each one
+// makes for its matrix labels stay under Cloudflare's 50-subrequest budget.
+const PAGE_BUDGET = 16;
 
 // Fetch one page-run of a form's submissions.
-// → {rows, total, nextPage, hasMore, unnamedGridIds} — `hasMore` true means Tally still
-//   has submissions after `nextPage - 1` and the caller should come back for them;
-//   `unnamedGridIds` counts grid answers whose row id no dictionary could name, which is
-//   what the app reports when a coach sees a nameless pain region.
+// → {rows, total, nextPage, hasMore, unnamedGridIds, formLabelCount, labelSources} —
+//   `hasMore` true means Tally still has submissions after `nextPage - 1` and the caller
+//   should come back for them; `unnamedGridIds` counts grid answers whose row id no
+//   dictionary could name, which is what the app reports when a coach sees a nameless
+//   pain region, and the label fields say where the dictionary came from.
 async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
   const rows = [];
   let page = Math.max(1, Number(startPage) || 1);
   let total = null, more = false, unnamedGridIds = 0;
   // Read once per form, before the pages: the dictionary that names a matrix's rows and
   // columns when the submissions payload does not carry them.
-  const formLabels = await fetchFormLabels(formId, key);
+  const { labels: formLabels, sources: labelSources } = await fetchFormLabels(formId, key);
   for (let n = 0; n < budget; n++, page++) {
     const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`, {
       headers: { 'Authorization': `Bearer ${key}` },
@@ -277,7 +295,8 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
     more = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
     if (!more || subs.length === 0) { more = false; page++; break; }
   }
-  return { rows, total, nextPage: page, hasMore: more, unnamedGridIds };
+  return { rows, total, nextPage: page, hasMore: more, unnamedGridIds,
+           formLabelCount: Object.keys(formLabels).length, labelSources };
 }
 
 function json(body, status = 200) {
@@ -320,7 +339,8 @@ export default {
           worker:   { version: WORKER_VERSION },
           srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length },
           wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length,
-                      unnamedGridIds: wellRes.unnamedGridIds },
+                      unnamedGridIds: wellRes.unnamedGridIds, formLabels: wellRes.formLabelCount,
+                      labelSources: wellRes.labelSources },
           pageLimit: PAGE_LIMIT,
         };
         return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
@@ -329,6 +349,61 @@ export default {
       }
     }
 
-    return new Response('CoachOS Tally Worker is running. Append /sync to fetch data.', { headers: CORS });
+    /* GET /diag[?form=wellness|srpe] — what the Worker actually sees.
+       When a pain region arrives unnamed there is no way to tell from the app whether
+       Tally declares the matrix's rows, whether the API key may read the form definition,
+       or whether Cloudflare is simply running older code. This dumps exactly that: the
+       questions of the first page as Tally sends them, every label endpoint with its HTTP
+       status, and the newest grid answer with the value it decoded to. It carries one
+       submission's answers, so treat the output as you would the form itself. */
+    if (url.pathname === '/diag') {
+      try {
+        const key = env.TALLY_API_KEY;
+        if (!key) throw new Error('TALLY_API_KEY secret is not set on the Worker');
+        const which = (url.searchParams.get('form') || 'wellness').toLowerCase();
+        const formId = which === 'srpe' ? env.SRPE_FORM : env.WELLNESS_FORM;
+        if (!formId) throw new Error(`${which === 'srpe' ? 'SRPE_FORM' : 'WELLNESS_FORM'} is not set on the Worker`);
+        const { labels, sources } = await fetchFormLabels(formId, key);
+        const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=1&limit=1`, {
+          headers: { 'Authorization': `Bearer ${key}` },
+        });
+        const page = res.ok ? await res.json() : null;
+        const qById = {};
+        ((page && page.questions) || []).forEach(q => { qById[q.id] = q; });
+        const pageLabels = collectLabels({ questions: (page && page.questions) || [] });
+        const labelBook = Object.assign(pageLabels, labels);
+        const grids = [];
+        for (const s of ((page && page.submissions) || [])) {
+          for (const resp of (s.responses || [])) {
+            const a = resp.answer !== undefined ? resp.answer : resp.value;
+            if (!a || typeof a !== 'object' || Array.isArray(a)) continue;
+            const q = qById[resp.questionId];
+            grids.push({
+              questionId: resp.questionId,
+              questionTitle: q ? (q.title || q.label || null) : null,
+              canonicalKey: canonicalKey(q ? (q.title || q.label || resp.questionId) : resp.questionId),
+              rawAnswer: a,
+              decoded: answerToValue(resp, q, labelBook).value,
+            });
+          }
+        }
+        return json({
+          worker: { version: WORKER_VERSION },
+          form: { which, id: formId },
+          formLabels: { count: Object.keys(labels).length, sources, sample: Object.entries(labels).slice(0, 25) },
+          submissionsPage: { status: res.status, questions: (page && page.questions) || [] },
+          gridAnswers: grids,
+          hint: grids.length === 0
+            ? 'No object-shaped (matrix) answer in the newest submission — the pain grid may be answered on older submissions only.'
+            : (grids.some(g => (JSON.stringify(g.decoded) || '').match(GRID_ID_RE))
+              ? 'Row ids survived every dictionary: check formLabels.sources above — a 401/403 means TALLY_API_KEY cannot read the form definition, a 404 means the endpoint is not available on this plan.'
+              : 'Grid decoded to region names — if the app still shows unnamed regions, press Sync Now so the stored check-ins are rewritten.'),
+        });
+      } catch (e) {
+        return json({ error: String(e && e.message || e) });
+      }
+    }
+
+    return new Response('CoachOS Tally Worker is running. Append /sync to fetch data, or /diag to see what it reads from Tally.', { headers: CORS });
   },
 };
