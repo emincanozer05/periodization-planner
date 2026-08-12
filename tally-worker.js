@@ -30,6 +30,12 @@
 
 const TALLY_API = 'https://api.tally.so';
 
+// Build stamp of this Worker. It rides along in `meta.worker` so CoachOS can tell
+// whether Cloudflare is still running an older copy of this file. A stale Worker is the
+// usual reason a coach sees unnamed pain regions or a truncated history, and neither
+// symptom points at the Worker on its own — so the app names it outright.
+const WORKER_VERSION = 3;
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,OPTIONS',
@@ -77,26 +83,73 @@ function canonicalKey(rawTitle) {
   return rawTitle;
 }
 
+// A label reaches us as a plain string, as a rich-text array of {text} nodes, or as HTML
+// (the form definition stores block labels that way). All three have to end up as the
+// words the athlete read on the form.
+function plainText(v, depth) {
+  depth = depth || 0;
+  if (v == null || depth > 4) return '';
+  if (typeof v === 'string') {
+    return v.replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ').replace(/\s+([?!,.;:])/g, '$1').trim();
+  }
+  if (typeof v === 'number') return String(v);
+  if (Array.isArray(v)) return v.map(x => plainText(x, depth + 1)).filter(Boolean).join(' ').trim();
+  if (typeof v === 'object') return plainText(v.text ?? v.label ?? v.title ?? v.name ?? v.html, depth + 1);
+  return '';
+}
+
 // Tally does not keep a matrix's row and column lists in one fixed place — depending on
-// the API version they hang off the question, off its `field`, or off a nested list. The
-// old code looked at `rows`/`columns` only, and when they were not there the grid fell
-// through to the JSON.stringify fallback below, so the app received the raw answer object
-// (`{"eeb7ce0e-…":["Hafif"]}`) instead of regions. Rather than guess the path, walk the
-// question once and collect every {id, text}-shaped node, so a row or column id resolves
-// to its label wherever it happens to be declared.
+// the API version they hang off the question, off its `field`, off a nested list, or (for
+// the submissions endpoint) nowhere at all, in which case only the form definition knows
+// them. The old code looked at `rows`/`columns` only, and when they were not there the
+// grid fell through to the JSON.stringify fallback below, so the app received the raw
+// answer object (`{"eeb7ce0e-…":["Hafif"]}`) instead of regions. Rather than guess the
+// path, walk whatever we are given and collect every {id, text}-shaped node — including
+// the `payload` a form-definition block keeps its label in — so a row or column id
+// resolves to its label wherever it happens to be declared. First label wins: the nearest
+// declaration (the question itself) is collected before any wider fallback.
 function collectLabels(node, out, depth) {
   out = out || {};
   depth = depth || 0;
-  if (!node || typeof node !== 'object' || depth > 6) return out;
+  if (!node || typeof node !== 'object' || depth > 8) return out;
   const id = node.id || node.uuid;
-  const text = node.text ?? node.label ?? node.title ?? node.name;
-  if (typeof id === 'string' && typeof text === 'string' && text) out[id] = text;
+  if (typeof id === 'string' && !out[id]) {
+    const text = plainText(node.text ?? node.label ?? node.title ?? node.name)
+      || plainText(node.payload && (node.payload.text ?? node.payload.label ?? node.payload.title ?? node.payload.name ?? node.payload.html));
+    if (text) out[id] = text;
+  }
   for (const v of Object.values(node)) {
     if (Array.isArray(v)) v.forEach(x => collectLabels(x, out, depth + 1));
     else if (v && typeof v === 'object') collectLabels(v, out, depth + 1);
   }
   return out;
 }
+
+// The submissions endpoint describes a matrix question by little more than its title, so
+// the row ids in an answer cannot be named from that payload alone — which is exactly how
+// `{"eeb7ce0e-…":["Orta"]}` ends up in front of a coach as an unnamed region. The form
+// definition always knows: every matrix row and column is a block carrying its uuid and
+// its label. We read it once per form per sync and keep it as the fallback dictionary for
+// the grid's ids. Best effort throughout — a form we cannot read must never fail a sync.
+async function fetchFormLabels(formId, key) {
+  const out = {};
+  for (const path of [`/forms/${formId}`, `/forms/${formId}/questions`]) {
+    try {
+      const res = await fetch(`${TALLY_API}${path}`, { headers: { 'Authorization': `Bearer ${key}` } });
+      if (!res.ok) continue;
+      collectLabels(await res.json(), out);
+      if (Object.keys(out).length) break;
+    } catch (e) { /* ignore — the ids simply stay unresolved */ }
+  }
+  return out;
+}
+
+// An id that survived every dictionary — it is reported (not printed at a coach) so the
+// app can say "the grid came over unnamed" instead of leaving the coach to guess.
+const GRID_ID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 
 // Keys that mark an answer object as a single scalar wrapped up (a file upload, a signed
 // URL, a payment) rather than a grid — a matrix is keyed by row ids and never by these.
@@ -108,7 +161,7 @@ const SCALAR_ANSWER_KEYS = ['value', 'text', 'url', 'name', 'title', 'label', 'i
 // other). An id the question does not explain is passed through as-is; the app knows to
 // report it as an unnamed region rather than print it at a coach. Returns null when this
 // is not a matrix, so the ordinary answer handling below takes over.
-function matrixToValue(a, question) {
+function matrixToValue(a, question, fallbackLabels) {
   if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
   const vals = Object.values(a);
   if (!vals.length) return null;
@@ -116,7 +169,10 @@ function matrixToValue(a, question) {
   // Every row of a grid answers with its ticked column(s) — a plain value or a list of
   // them. An object there is some other answer shape, so leave it to the caller.
   if (vals.some(v => v && typeof v === 'object' && !Array.isArray(v))) return null;
-  const labels = collectLabels(question);
+  // What the question itself declares, overlaid with the dictionary the caller built —
+  // the form definition wins there, because it is the one place a matrix row is always
+  // spelled out (a per-row question only repeats the question's own title).
+  const labels = Object.assign(collectLabels(question), fallbackLabels || {});
   const label = id => (typeof id === 'string' && labels[id]) ? labels[id] : id;
   const out = [];
   for (const [rowId, val] of Object.entries(a)) {
@@ -130,10 +186,10 @@ function matrixToValue(a, question) {
 // Turn one Tally answer into a plain value, mapping choice option-IDs to their labels.
 // → {value, isGrid} — `isGrid` tells the caller the answer was a matrix, which is how the
 //   pain question is recognised even when its title never says "şiddet".
-function answerToValue(resp, question) {
+function answerToValue(resp, question, fallbackLabels) {
   let a = resp.answer !== undefined ? resp.answer : resp.value;
   if (a == null) return { value: null, isGrid: false };
-  const grid = matrixToValue(a, question);
+  const grid = matrixToValue(a, question, fallbackLabels);
   if (grid != null) return { value: grid, isGrid: true };
   const opts = (question && (question.options || (question.field && question.field.options))) || null;
   const mapOpt = id => {
@@ -160,15 +216,22 @@ function answerToValue(resp, question) {
 // Worker invocation would blow Cloudflare's subrequest budget, we hand the next
 // page number back so the app can resume in a follow-up request.
 const PAGE_LIMIT = 50;   // Tally's documented page size
-const PAGE_BUDGET = 20;  // pages per form per invocation (2 forms → 40 subrequests < 50)
+// Pages per form per invocation. Two forms plus the (at most two) form-definition reads
+// each one makes for its matrix labels stay under Cloudflare's 50-subrequest budget.
+const PAGE_BUDGET = 18;
 
 // Fetch one page-run of a form's submissions.
-// → {rows, total, nextPage, hasMore} — `hasMore` true means Tally still has
-//   submissions after `nextPage - 1` and the caller should come back for them.
+// → {rows, total, nextPage, hasMore, unnamedGridIds} — `hasMore` true means Tally still
+//   has submissions after `nextPage - 1` and the caller should come back for them;
+//   `unnamedGridIds` counts grid answers whose row id no dictionary could name, which is
+//   what the app reports when a coach sees a nameless pain region.
 async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
   const rows = [];
   let page = Math.max(1, Number(startPage) || 1);
-  let total = null, more = false;
+  let total = null, more = false, unnamedGridIds = 0;
+  // Read once per form, before the pages: the dictionary that names a matrix's rows and
+  // columns when the submissions payload does not carry them.
+  const formLabels = await fetchFormLabels(formId, key);
   for (let n = 0; n < budget; n++, page++) {
     const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`, {
       headers: { 'Authorization': `Bearer ${key}` },
@@ -184,6 +247,8 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
     }
     const qById = {};
     (j.questions || []).forEach(q => { qById[q.id] = q; });
+    // Everything this page's questions declare, with the form definition on top of it.
+    const labelBook = Object.assign(collectLabels({ questions: j.questions || [] }), formLabels);
     const subs = j.submissions || [];
     for (const s of subs) {
       const row = { _id: s.id };
@@ -191,8 +256,9 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
       for (const resp of (s.responses || [])) {
         const q = qById[resp.questionId];
         const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
-        const { value: v, isGrid } = answerToValue(resp, q);
+        const { value: v, isGrid } = answerToValue(resp, q, labelBook);
         if (v == null || v === '') continue;
+        if (isGrid) unnamedGridIds += (String(v).match(GRID_ID_RE) || []).length;
         // A grid answer to the pain question is the pain map whatever the question is
         // called: a form that words it "Ağrın hangi bölgede?" (no severity axis in the
         // title) still asks it as a matrix, and reading that as free text is what put
@@ -211,7 +277,7 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
     more = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
     if (!more || subs.length === 0) { more = false; page++; break; }
   }
-  return { rows, total, nextPage: page, hasMore: more };
+  return { rows, total, nextPage: page, hasMore: more, unnamedGridIds };
 }
 
 function json(body, status = 200) {
@@ -236,7 +302,7 @@ export default {
         // without ever exceeding one invocation's subrequest budget.
         const srpeFrom = Number(url.searchParams.get('srpePage')) || 1;
         const wellFrom = Number(url.searchParams.get('wellnessPage')) || 1;
-        const EMPTY = { rows: [], total: 0, nextPage: 1, hasMore: false };
+        const EMPTY = { rows: [], total: 0, nextPage: 1, hasMore: false, unnamedGridIds: 0 };
         const [srpeRes, wellRes] = await Promise.all([
           env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key, srpeFrom)     : Promise.resolve(EMPTY),
           env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key, wellFrom) : Promise.resolve(EMPTY),
@@ -251,8 +317,10 @@ export default {
           }
         }
         const meta = {
+          worker:   { version: WORKER_VERSION },
           srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length },
-          wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length },
+          wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length,
+                      unnamedGridIds: wellRes.unnamedGridIds },
           pageLimit: PAGE_LIMIT,
         };
         return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
