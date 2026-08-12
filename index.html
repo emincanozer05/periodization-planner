@@ -900,10 +900,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);font-size:11.5px;white-space:nowrap}
 .sess-pat b{font-weight:700;color:var(--text)}
 .sess-pat i{font-style:normal;color:var(--text2);font-size:11px}
-.sess-pat em{font-style:normal;color:var(--muted);font-size:10.5px;font-weight:700}
-/* Ticked on the session's own Movements & Patterns panel — the coach's own statement
-   about the day, so it reads a shade stronger than one inferred from the rows. */
-.sess-pat.picked{border-color:rgba(0,148,255,.65);box-shadow:0 0 0 1px rgba(0,148,255,.14) inset}
 .sess-pat-empty{font-size:11.5px;color:var(--dim);padding:5px 0}
 .color-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .color-swatch{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);cursor:pointer;padding:0;transition:transform .12s,border-color .12s}
@@ -2525,7 +2521,19 @@ header{background:var(--bg2)!important}
    editor reads the same wherever it is put. */
 .iv-slotswrap{container-type:inline-size}
 .iv-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-@container (max-width:980px){
+/* Two to a row is how the block is read, so it holds down to the width where a slot can
+   still carry its seven numbers side by side — the strip and the labels tighten first,
+   and only under that does the grid fall back to one. */
+@container (max-width:900px){
+  .iv-slot{padding:10px 10px}
+  .iv-numed{gap:4px}
+  .iv-numed label{min-width:32px;font-size:9px}
+  .iv-numed input,.iv-numed select{font-size:11.5px;padding:5px 2px}
+  .iv-patrow label{flex-basis:110px}
+  .iv-slot-nm{flex-basis:150px}
+  .iv-noterow label{flex-basis:150px}
+}
+@container (max-width:640px){
   .iv-slots{grid-template-columns:minmax(0,1fr)}
   .iv-slot{border-right:none}
   .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
@@ -2538,7 +2546,7 @@ header{background:var(--bg2)!important}
 /* Fallback for engines without container queries — the old viewport rule, which is
    right on a narrow window and merely conservative inside a drawer. */
 @supports not (container-type:inline-size){
-  @media(max-width:1180px){
+  @media(max-width:820px){
     .iv-slots{grid-template-columns:minmax(0,1fr)}
     .iv-slot{border-right:none}
     .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
@@ -5529,32 +5537,20 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Accessory':'Accessory'};
-/* What a session says it trains, from both places the coach says it: the Movements &
-   Patterns panel they tick on the session itself, and the pattern tagged on each
-   exercise row. Each pattern appears once, with every execution named for it from
-   either source and how many rows carry it. The ticked patterns lead — they are the
-   coach's statement about the day, made before a row is written — and the rest follow
-   in the order the session is written, so the summary reads like the session does.
-   `picked` marks the ones that came from the panel. */
+/* What a session says it trains: the patterns the coach ticked on its own Movements &
+   Patterns panel, and nothing else. It is a statement about the day, made and changed by
+   hand — the exercises written into the session do not add to it or take from it, so the
+   strip keeps saying exactly what was picked. Ordered as the panel lists them, each with
+   the executions ticked for it. */
 function sessionPatterns(session){
-  const out=[],by={};
-  const get=p=>{if(!by[p]){by[p]={pattern:p,planes:[],count:0,picked:false};out.push(by[p]);}return by[p];};
-  const addPlane=(entry,st)=>{const s=String(st||'').trim();if(s&&entry.planes.indexOf(s)<0)entry.planes.push(s);};
   const sel=(session&&session.selPatterns)||[];
   const pls=(session&&session.selPlanes&&!Array.isArray(session.selPlanes))?session.selPlanes:{};
+  const out=[];
   MOVE_PATTERNS.forEach(([p])=>{
-    const planes=pls[p]||[];
+    const planes=(pls[p]||[]).map(s=>String(s||'').trim()).filter(Boolean);
     if(sel.indexOf(p)<0&&!planes.length)return;
-    const e=get(p);e.picked=true;
-    planes.forEach(st=>addPlane(e,st));
+    out.push({pattern:p,planes});
   });
-  ((session&&session.blocks)||[]).forEach(b=>((b&&b.exercises)||[]).forEach(e=>{
-    const p=String((e&&e.pattern)||'').trim();
-    if(!p)return;
-    const entry=get(p);
-    entry.count++;
-    addPlane(entry,e&&e.plane);
-  }));
   return out;
 }
 const EX_COMBO=(p,st)=>`${EX_PAT_SHORT[p]||p} · ${st}`;
@@ -7065,22 +7061,20 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         </div>
       </div>
       {!isTemplate&&<div className="sess-strip">
-        {/* What this session trains, from both places the coach says it: the patterns
-            ticked on the session's own Movements & Patterns panel, and the pattern
-            tagged on each exercise row. It sits where the coach is already looking
-            while writing the session, so the balance of the day is visible without
-            opening every block. */}
+        {/* Exactly what was ticked on the session's own Movements & Patterns panel — the
+            coach's statement about the day, sitting where they are already looking while
+            writing it. The exercises below have no say in it: their own Pattern field
+            tags the row, and this strip stays the session's. */}
         <div className="sess-strip-l">
           <label>Movements &amp; patterns</label>
           {(()=>{
             const pats=sessionPatterns(session);
-            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — antrenmanın <b>Movements &amp; Patterns</b> panelinden seç ya da egzersiz satırlarındaki <b>Pattern</b> alanını doldur.</div>;
+            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — antrenmanı takvimden açıp <b>Movements &amp; Patterns</b> panelinden seç.</div>;
             return<div className="sess-pat-row">
-              {pats.map(p=><span key={p.pattern} className={'sess-pat'+(p.picked?' picked':'')}
-                title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — ${p.picked?'antrenman panelinden seçildi':''}${p.picked&&p.count?', ':''}${p.count?`${p.count} egzersiz`:''}`}>
+              {pats.map(p=><span key={p.pattern} className="sess-pat"
+                title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — antrenman panelinden seçildi`}>
                 <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
                 {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
-                {p.count>1&&<em>×{p.count}</em>}
               </span>)}
             </div>;
           })()}
