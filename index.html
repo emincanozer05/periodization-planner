@@ -490,7 +490,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-rpe-au{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent);min-width:46px;text-align:right}
 .dw-rpe-in{width:66px;flex:none;padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
 /* Editable planner modal — wider to fit the session editor */
-.dw.edit{width:min(1100px,96vw)}
+/* The session editor is the same editor the individualization sheet shows, so it gets
+   the same room to lay out — two slots to a row with all seven fields on one line. */
+.dw.edit{width:min(1440px,96vw)}
 /* Session drawer — two-column view (read-only) */
 .dw-layout{display:flex;flex:1;overflow:hidden;min-height:0}
 .dw-left-panel{width:520px;flex:none;border-right:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
@@ -2423,6 +2425,10 @@ header{background:var(--bg2)!important}
    can read at a glance, since from here on the sheet keeps that calendar in step itself. */
 .iv-writeb.on{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
 .iv-writeb.on:hover{border-color:#2dd4a7;background:rgba(45,212,167,.14)}
+/* Written, then edited by hand on the athlete's calendar — the sheet is no longer what
+   is on that calendar, and pressing this would replace it. */
+.iv-writeb.edited{color:#f59e0b;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08)}
+.iv-writeb.edited:hover{border-color:#f59e0b;background:rgba(245,158,11,.15)}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
@@ -2513,18 +2519,32 @@ header{background:var(--bg2)!important}
 /* Slots sit two to a row. The dividers are drawn on the cells themselves: every
    cell rules to its right and below, then the right-hand column and the final row
    drop theirs so the grid closes flush against the block's own border. */
+/* The grid measures ITSELF, not the window. The same editor is written inside a full
+   width sheet and inside the calendar's drawer, and a viewport-width rule made those two
+   look like different screens: a coach in the drawer got one slot per row with the rest
+   field wrapped underneath, while the sheet showed two. Asking the container means the
+   editor reads the same wherever it is put. */
+.iv-slotswrap{container-type:inline-size}
 .iv-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-.iv-slot{padding:11px 13px;min-width:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
-.iv-slot:nth-child(2n){border-right:none}
-.iv-slot:last-child{border-bottom:none;border-right:none}
-.iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:none}
-/* Below this the seven fields no longer fit in half a card, so the grid folds to
-   one slot per row rather than letting every cell wrap internally. */
-@media(max-width:1180px){
+@container (max-width:980px){
   .iv-slots{grid-template-columns:minmax(0,1fr)}
   .iv-slot{border-right:none}
   .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
   .iv-slot:last-child{border-bottom:none}
+}
+.iv-slot{padding:11px 13px;min-width:0;border-bottom:1px solid var(--border);border-right:1px solid var(--border)}
+.iv-slot:nth-child(2n){border-right:none}
+.iv-slot:last-child{border-bottom:none;border-right:none}
+.iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:none}
+/* Fallback for engines without container queries — the old viewport rule, which is
+   right on a narrow window and merely conservative inside a drawer. */
+@supports not (container-type:inline-size){
+  @media(max-width:1180px){
+    .iv-slots{grid-template-columns:minmax(0,1fr)}
+    .iv-slot{border-right:none}
+    .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
+    .iv-slot:last-child{border-bottom:none}
+  }
 }
 .iv-slot.sub{border-left:3px solid #f59e0b}
 /* An emptied slot is on its way out of the program — dimmed so it reads as absent
@@ -2564,9 +2584,11 @@ header{background:var(--bg2)!important}
 .iv-pb.on{border-color:var(--accent);color:var(--accent);background:rgba(0,148,255,.1)}
 /* Sets / reps / time / tempo / rpe / load / rest are the same kind of number, so
    they get the same box and sit side by side in one strip under the exercise. */
-.iv-numed{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:8px}
-.iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:1 1 62px;min-width:0}
-.iv-numed input,.iv-numed select{width:100%;min-width:0;font-size:12.5px;padding:5px 8px;font-weight:600;
+/* All seven share the strip and shrink together rather than letting the last one drop to
+   a line of its own: rest belongs beside load, not underneath it. */
+.iv-numed{display:flex;gap:6px;align-items:flex-end;flex-wrap:nowrap;border-top:1px solid var(--border);padding-top:8px}
+.iv-numed label{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace;flex:1 1 0;min-width:38px}
+.iv-numed input,.iv-numed select{width:100%;min-width:0;font-size:12.5px;padding:5px 4px;font-weight:600;
   font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:center}
 /* Reference link, between the prescription strip and the note. The shared link
    control indents itself for the session editor's table, which this row is not, so
@@ -2592,7 +2614,7 @@ header{background:var(--bg2)!important}
 @media(max-width:700px){
   .iv-card-hd{gap:8px}
   .iv-slot-nums{gap:10px}
-  .iv-numed label{flex:1 1 70px}
+  .iv-numed label{min-width:34px}
 }
 
 </style>
@@ -6442,7 +6464,7 @@ const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
 // Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
 const exCatsOf=e=>{const t=exCatTags(e);
   return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
-function ExNameField({value,onChange,onPick}){
+function ExNameField({value,onChange,onPick,tags}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
   const[cats,setCats]=useState([]);   // selected category names (empty = no filter)
@@ -6466,10 +6488,15 @@ function ExNameField({value,onChange,onPick}){
     return()=>document.removeEventListener('mousedown',on,true);},[focus]);
   // Save to library only the box's FINAL value: first commit adds it; later edits
   // (incl. clearing) replace the previously auto-added stub instead of piling up.
+  /* The row's movement pattern and execution ride into the library with the name, so an
+     exercise written here is filed the way it is trained — whichever order the coach
+     works in. Typing the name first and tagging it after already wrote the pair; this
+     covers the other order, and a rename, which otherwise left a bare stub behind. */
+  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'');};
   const commit=v=>{const nm=(v||'').trim();const prev=committedRef.current;
-    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;return;}
-    if(nm===prev)return;
-    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;};
+    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);return;}
+    if(nm===prev){withTags(nm);return;}
+    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);};
   const q=(value||'').trim().toLowerCase();
   const lib=focus?getLibItems():[];
   // Text query narrows the pool first; the category counts on the right are computed
@@ -6638,7 +6665,7 @@ function CalSlotEd({ex,tag,onChange,onMove,onDup,onRemove,first,last}){
       <div className="iv-slot-nm">
         {/* Picking a library exercise carries its cover image, video link, cues and —
             when the entry has been tagged — its pattern / execution across. */}
-        <ExNameField value={ex.name} onChange={v=>f('name',v)}
+        <ExNameField value={ex.name} onChange={v=>f('name',v)} tags={{pattern:ex.pattern,plane:ex.plane}}
           onPick={it=>onChange({...ex,name:it.name,image:it.image||ex.image||'',
             link:it.link||ex.link||'',description:it.desc||ex.description||'',
             ...(exTagsFromLib(it,ex)||{})})}/>
@@ -6723,12 +6750,12 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     {open&&<>
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
-      <div className="iv-slots">
+      <div className="iv-slotswrap"><div className="iv-slots">
         {exs.map((ex,i)=><CalSlotEd key={i} ex={ex} tag={labels[i]}
           onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
           onDup={()=>{const a=[...exs];a.splice(i+1,0,{...ex});setExs(a);}}
           onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
-      </div>
+      </div></div>
       {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>No exercises in this block — use “+ Add exercise” to write one.</div>}
     </>}
   </div>);
@@ -12915,14 +12942,29 @@ function downloadIndivJSON(plans,dateKey){
    sheet tell whether what sits on the athlete's calendar is still what the sheet says.
    `indiv` is left out on purpose: it carries the fingerprint itself and the readiness of
    the day, and a fresh check-in is not a change to the program. */
+/* The session-level fields that are filled in AFTER the fingerprint is taken — the link
+   to the team session and the athlete's own post-session feedback. Leaving them out is
+   what lets a stored session be fingerprinted again later and compared with the one that
+   was written, which is how a program edited by hand on the calendar is recognised. */
+const INDIV_SIG_SKIP=new Set(['id','indiv','sourceId','sRPE','au','athletes','notes']);
 function indivSig(ses){
-  const walk=v=>{
-    if(Array.isArray(v))return v.map(walk);
-    if(v&&typeof v==='object')return Object.keys(v).filter(k=>k!=='id'&&k!=='indiv').sort()
-      .reduce((o,k)=>{o[k]=walk(v[k]);return o;},{});
+  const walk=(v,d)=>{
+    if(Array.isArray(v))return v.map(x=>walk(x,d+1));
+    if(v&&typeof v==='object')return Object.keys(v)
+      .filter(k=>k!=='id'&&!(d===0&&INDIV_SIG_SKIP.has(k))).sort()
+      .reduce((o,k)=>{o[k]=walk(v[k],d+1);return o;},{});
     return v==null?'':v;
   };
-  return JSON.stringify(walk(ses));
+  return JSON.stringify(walk(ses,0));
+}
+/* A written program the coach has since edited on the athlete's own calendar. Its content
+   no longer matches the fingerprint taken when it was written, so rewriting the sheet
+   over it would throw those edits away — the sheet must ask first, and must never do it
+   on its own. Sessions written before fingerprints existed report false: there is nothing
+   to compare them against, and guessing would block writing for good. */
+function indivHandEdited(ses){
+  const sig=ses&&ses.indiv&&ses.indiv.sig;
+  return !!sig&&indivSig(ses)!==sig;
 }
 
 /* Turn a built sheet into a session object for the athlete's own calendar. Which
@@ -13145,7 +13187,7 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
             library by the field itself, and picking a library row copies that entry's
             video link and its remembered pattern / execution onto the slot, exactly as
             it does in the session editor. */}
-        <ExNameField value={row.name||''} onChange={v=>onOverride({name:v})}
+        <ExNameField value={row.name||''} onChange={v=>onOverride({name:v})} tags={{pattern:row.pattern,plane:row.plane}}
           onPick={it=>onOverride({name:it.name,link:it.link||row.link||'',
             ...(exTagsFromLib(it,row)||{})})}/>
         {/* An emptied slot says so once. Naming the template exercise as well would
@@ -13264,13 +13306,21 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
         title={calOpen?"Takvimi kapat, program yazmaya dön":"Bu sporcunun takvimini bu kartta aç"}>
         {calOpen?'Close Athlete Calendar':'Open Athlete Calendar'}
       </button>
-      <button type="button" className={'btn xs iv-writeb'+(written?' sec on':'')}
-        onClick={e=>{e.stopPropagation();onApply();}}
-        title={written
-          ?`Bu sporcunun takviminde — ${written.indiv&&written.indiv.writtenAt?new Date(written.indiv.writtenAt).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor; yeniden yazmak için tıklayabilirsin.`
-          :"Write this athlete's program to their own calendar"}>
-        {written?`✓ Takvimde${written.indiv&&written.indiv.writtenAt?' · '+new Date(written.indiv.writtenAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}`:'Write to athlete calendar'}
-      </button>
+      {/* Three states, because they mean three different things to the coach: nothing on
+          the calendar yet, the sheet's program sitting there and kept in step, or a
+          program they have since written by hand — which this button would replace. */}
+      {(()=>{
+        const edited=indivHandEdited(written);
+        return<button type="button" className={'btn xs iv-writeb'+(written?(edited?' sec edited':' sec on'):'')}
+          onClick={e=>{e.stopPropagation();onApply();}}
+          title={!written?"Write this athlete's program to their own calendar"
+            :edited?'Bu sporcunun takvimindeki program elle düzenlendi — bu sayfa ona dokunmuyor. Basarsan sheet’teki programla değiştirmeyi onaylaman istenir.'
+            :`Bu sporcunun takviminde — ${written.indiv&&written.indiv.writtenAt?new Date(written.indiv.writtenAt).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor; yeniden yazmak için tıklayabilirsin.`}>
+          {!written?'Write to athlete calendar'
+            :edited?'✎ Takvimde elle düzenlendi'
+            :`✓ Takvimde${written.indiv&&written.indiv.writtenAt?' · '+new Date(written.indiv.writtenAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}`}
+        </button>;
+      })()}
       </div>
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
@@ -13359,11 +13409,11 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable
               without scrolling past one exercise to reach the next. */}
           {!b.removed&&<>
-            <div className="iv-slots">
+            <div className="iv-slotswrap"><div className="iv-slots">
               {b.rows.map((r,ri)=><IndivSlotRow key={r.key} row={r} tag={tags[ri]}
                 onOverride={p=>onOverride(r.key,p)} onReset={()=>onResetSlot(r.key)}
                 onRemove={()=>onRemoveSlot(r)}/>)}
-            </div>
+            </div></div>
             {b.rows.length===0&&<div className="iv-dim" style={{padding:'6px 2px'}}>No exercises in this block — use “+ Add exercise” to write one for this athlete.</div>}
           </>}
         </div>);
@@ -13515,8 +13565,27 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      button in the bar and the per-athlete button on each card. */
   const applyTo=(ids,opts={})=>{
     if(!src)return;
-    const targets=plans.filter(p=>ids.includes(p.ath.id));
+    let targets=plans.filter(p=>ids.includes(p.ath.id));
     if(targets.length===0)return;
+    /* A program the coach has since written by hand on the athlete's own calendar — from
+       the calendar this card opens, or from the Athletes tab — is not the sheet's to
+       overwrite. Writing replaces the session outright, so exercises typed there would
+       simply vanish. The automatic pass leaves those athletes alone; a deliberate press
+       asks first, per athlete, and skips the ones the coach declines. */
+    const edited=targets.filter(p=>indivHandEdited(written[p.ath.id]));
+    if(edited.length){
+      if(opts.auto){
+        const skip=new Set(edited.map(p=>p.ath.id));
+        targets=targets.filter(p=>!skip.has(p.ath.id));
+      }else{
+        const names=edited.map(p=>p.ath.name||'—').join(', ');
+        if(!confirm(`${names} — takviminde elle yazılmış/düzenlenmiş bir program var. Bu sayfadaki program onun yerine yazılsın mı?\n\n(İptal edersen o sporcunun takvimi olduğu gibi kalır.)`)){
+          const skip=new Set(edited.map(p=>p.ath.id));
+          targets=targets.filter(p=>!skip.has(p.ath.id));
+        }
+      }
+      if(!targets.length)return;
+    }
     const teamSrcId=src.team?src.team.id:null;
     const next=athletes.map(a=>{
       const plan=targets.find(p=>p.ath.id===a.id);
@@ -13532,11 +13601,14 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         // Replace the athlete's mirror of this team session in place — no duplicate row.
         ses.sourceId=teamSrcId;
         const i=sessions.findIndex(s=>s.sourceId===teamSrcId);
-        if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';sessions[i]=ses;}
+        // The athlete's own post-session feedback is theirs, not the sheet's — it rides
+        // across a rewrite the same way it rides across a team re-sync.
+        if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';ses.notes=sessions[i].notes||'';sessions[i]=ses;}
         else sessions.push(ses);
       } else {
         const i=sessions.findIndex(s=>s.indiv&&s.indiv.srcKey===activeKey&&s.indiv.date===date);
-        if(i>=0){ses.id=sessions[i].id;sessions[i]=ses;}else sessions.push(ses);
+        if(i>=0){ses.id=sessions[i].id;ses.sRPE=sessions[i].sRPE||'';ses.au=sessions[i].au||'';ses.notes=sessions[i].notes||'';sessions[i]=ses;}
+        else sessions.push(ses);
       }
       days[date]={...day,sessions};
       return{...a,days};
@@ -13563,6 +13635,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     const due=plans.filter(p=>{
       const w=written[p.ath.id];
       if(!w)return false;
+      // Hand-edited on the athlete's calendar: theirs, not the sheet's. Left alone here
+      // and only replaced if the coach presses the button and confirms.
+      if(indivHandEdited(w))return false;
       return (w.indiv&&w.indiv.sig)!==planToSession(p,src.session,date,activeKey).indiv.sig;
     }).map(p=>p.ath.id);
     if(!due.length)return;
