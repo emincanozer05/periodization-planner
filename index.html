@@ -2397,6 +2397,10 @@ header{background:var(--bg2)!important}
 .iv-ch{color:var(--dim);font-size:12px}
 /* The day bar owns the auto margin now — the button just follows it right. */
 .iv-writeb{white-space:nowrap}
+/* Already on the athlete's calendar: the button steps back to a confirmation the coach
+   can read at a glance, since from here on the sheet keeps that calendar in step itself. */
+.iv-writeb.on{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.08)}
+.iv-writeb.on:hover{border-color:#2dd4a7;background:rgba(45,212,167,.14)}
 .iv-notes{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;padding:8px 14px;border-top:1px dashed var(--border);background:rgba(255,255,255,.02)}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
@@ -3646,6 +3650,8 @@ function WellnessHeatmap({athletes}){
    - The copy stores `sourceId` pointing to the team session.
    - Updates to the team session re-sync the copies; an athlete's personal
      sRPE / AU / notes are preserved across updates.
+   - A copy the coach has individualized (it carries `indiv`) is left alone: it is
+     rewritten from the Individualization sheet, never from the team session.
    ========================================================= */
 function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
   const newIds=new Set(newSessions.map(s=>s.id));
@@ -3662,6 +3668,16 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
       const eidx=sessions.findIndex(s=>s.sourceId===ts.id);
       const existing=eidx>=0?sessions[eidx]:null;
       if(includes){
+        /* An individual program written from the Individualization sheet is the coach's
+           own work, not a mirror of the team session: re-syncing it would throw away the
+           per-athlete exercises and numbers they set, which is what made the sheet ask to
+           be written again on every visit. It keeps its link to the team session — so
+           deleting the session or un-assigning the athlete still removes it — but its
+           content stays exactly as written until the coach writes it again. */
+        if(existing&&existing.indiv){
+          sessions[eidx]={...existing,sourceId:ts.id};
+          continue;
+        }
         const copy={
           ...ts,
           id:existing?.id||uid(),
@@ -12674,6 +12690,22 @@ function downloadIndivJSON(plans,dateKey){
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
+/* A written program's fingerprint: everything on it a coach can see, and nothing a
+   rewrite invents anew. Row and block ids are regenerated on every build, so two
+   identical programs never compare equal as objects — the fingerprint is what lets the
+   sheet tell whether what sits on the athlete's calendar is still what the sheet says.
+   `indiv` is left out on purpose: it carries the fingerprint itself and the readiness of
+   the day, and a fresh check-in is not a change to the program. */
+function indivSig(ses){
+  const walk=v=>{
+    if(Array.isArray(v))return v.map(walk);
+    if(v&&typeof v==='object')return Object.keys(v).filter(k=>k!=='id'&&k!=='indiv').sort()
+      .reduce((o,k)=>{o[k]=walk(v[k]);return o;},{});
+    return v==null?'':v;
+  };
+  return JSON.stringify(walk(ses));
+}
+
 /* Turn a built sheet into a session object for the athlete's own calendar. Which
    exercise the template had asked for rides along on every changed slot so the
    coach printout can still show it; the athlete's copy drops it (stripForAthlete). */
@@ -12694,7 +12726,7 @@ function planToSession(plan,src,dateKey,srcKey){
   const m=plan.meta||{};
   const focus=Array.isArray(m.focus)?m.focus:sesFocus(src);
   const dur=Number(t(m.duration));
-  return{id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
+  const ses={id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
     loadType:src.loadType||'Mechanical load',purpose:focus.join(', '),focus,
     methods:Array.isArray(m.methods)?m.methods:sesMethods(src),
     region:m.region!=null?t(m.region):sesRegion(src),
@@ -12705,6 +12737,8 @@ function planToSession(plan,src,dateKey,srcKey){
     athletes:[],sourceId:null,
     indiv:{srcKey,date:dateKey,readiness:plan.rd.score,band:plan.band?plan.band.label:'',
       pos:plan.posGroup,changed:plan.changed}};
+  ses.indiv.sig=indivSig(ses);
+  return ses;
 }
 
 /* ---- Program export ------------------------------------------------------
@@ -12955,7 +12989,7 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
 }
 
 /* ---- One athlete's sheet -------------------------------------------------- */
-function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,open,setOpen}){
+function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,written,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -12998,10 +13032,17 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
       </div>
       {plan.changed>0&&<div className="iv-adj sub">{plan.changed} changed</div>}
       {/* Write just this athlete's program to their own calendar — the squad-wide
-          button above stays, this one keeps a single fix from touching everyone. */}
-      <button type="button" className="btn xs iv-writeb"
+          button above stays, this one keeps a single fix from touching everyone.
+          Once written it says so, with the time it was written: from then on the sheet
+          keeps that calendar in step by itself, so pressing again is optional rather
+          than something to remember on every visit. */}
+      <button type="button" className={'btn xs iv-writeb'+(written?' sec on':'')}
         onClick={e=>{e.stopPropagation();onApply();}}
-        title="Write this athlete's program to their own calendar">Write to athlete calendar</button>
+        title={written
+          ?`Bu sporcunun takviminde — ${written.indiv&&written.indiv.writtenAt?new Date(written.indiv.writtenAt).toLocaleString('tr-TR'):'yazıldı'}. Bu sayfadaki değişiklikler otomatik işleniyor; yeniden yazmak için tıklayabilirsin.`
+          :"Write this athlete's program to their own calendar"}>
+        {written?`✓ Takvimde${written.indiv&&written.indiv.writtenAt?' · '+new Date(written.indiv.writtenAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}`:'Write to athlete calendar'}
+      </button>
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
     {plan.notes.length>0&&<div className="iv-notes" title="Coach notes — reference while deciding, nothing reads them automatically">
@@ -13210,9 +13251,22 @@ function IndividualizationView({data,team,updateTeam}){
       .map(a=>buildIndivPlan(src.session,a,{ref:date,ovr:ovrAll[a.id]||{}}));
   },[src,athletes,chosen,date,ovrAll]);
 
+  /* What is already on each athlete's own calendar for this source and date, keyed by
+     athlete. This is what makes the button a one-time action: the sheet can see that a
+     program was written, when, and whether it still matches what the sheet says. */
+  const written=useMemo(()=>{
+    const out={};
+    if(!activeKey)return out;
+    athletes.forEach(a=>{
+      const ses=((((a.days||{})[date])||{}).sessions||[]).find(s=>s.indiv&&s.indiv.srcKey===activeKey);
+      if(ses)out[a.id]=ses;
+    });
+    return out;
+  },[athletes,date,activeKey]);
+
   /* Writing is scoped to a list of athletes so the same path serves the squad
      button in the bar and the per-athlete button on each card. */
-  const applyTo=ids=>{
+  const applyTo=(ids,opts={})=>{
     if(!src)return;
     const targets=plans.filter(p=>ids.includes(p.ath.id));
     if(targets.length===0)return;
@@ -13224,6 +13278,9 @@ function IndividualizationView({data,team,updateTeam}){
       const day=days[date]||{date,sessions:[],dailyNotes:''};
       let sessions=[...(day.sessions||[])];
       const ses=planToSession(plan,src.session,date,activeKey);
+      // When it reached the athlete, so the card can say so instead of the coach having
+      // to press the button again to find out. Deliberately outside the fingerprint.
+      ses.indiv.writtenAt=new Date().toISOString();
       if(teamSrcId){
         // Replace the athlete's mirror of this team session in place — no duplicate row.
         ses.sourceId=teamSrcId;
@@ -13238,12 +13295,34 @@ function IndividualizationView({data,team,updateTeam}){
       return{...a,days};
     });
     updateTeam(team.id,{athletes:next});
-    setToast(targets.length===1
-      ?`${targets[0].ath.name||'Athlete'} · written to the ${fd(date)} calendar ✓`
-      :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`);
-    setTimeout(()=>setToast(''),3500);
+    setToast(opts.auto
+      ?(targets.length===1
+        ?`${targets[0].ath.name||'Athlete'} · takvimi güncellendi ✓`
+        :`${targets.length} sporcunun takvimi güncellendi ✓`)
+      :(targets.length===1
+        ?`${targets[0].ath.name||'Athlete'} · written to the ${fd(date)} calendar ✓`
+        :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`));
+    setTimeout(()=>setToast(''),opts.auto?2000:3500);
   };
   const apply=()=>applyTo(plans.map(p=>p.ath.id));
+  /* Once a program has been written for an athlete, the sheet keeps their calendar in
+     step with it — the coach edits the sheet and the athlete's copy follows, instead of
+     the coach having to remember the button on every visit. Only athletes who were
+     written before are touched: pressing the button stays the one deliberate act that
+     puts a program on someone's calendar. A written program is rewritten only when its
+     fingerprint differs, so this settles after one pass instead of looping. */
+  useEffect(()=>{
+    if(!src)return;
+    const due=plans.filter(p=>{
+      const w=written[p.ath.id];
+      if(!w)return false;
+      return (w.indiv&&w.indiv.sig)!==planToSession(p,src.session,date,activeKey).indiv.sig;
+    }).map(p=>p.ath.id);
+    if(!due.length)return;
+    const t=setTimeout(()=>applyTo(due,{auto:true}),600);
+    return()=>clearTimeout(t);
+    // eslint-disable-next-line
+  },[plans,written,src,date,activeKey]);
   /* Export reads what is actually written on the athletes' calendars, so the sheet
      matches the program they were given — and the same call serves one athlete or
      everyone, a day or a week, in either version. */
@@ -13285,7 +13364,10 @@ function IndividualizationView({data,team,updateTeam}){
         </span>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
-      {src&&src.team&&<div className="help" style={{width:'100%',margin:0}}>This is a team session: the individual program you write replaces the athlete's copy of it (no duplicate row is created). If you edit the team session afterwards the copy is re-synced from the team — write the individual program again in that case.</div>}
+      <div className="help" style={{width:'100%',margin:0}}>
+        {src&&src.team?'This is a team session: the individual program you write replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. ':''}
+        Bir sporcuya programı bir kez yazdıktan sonra bu sayfadaki düzenlemeler onun takvimine <strong>kendiliğinden</strong> işlenir — her girişte butona basman gerekmez. Yazılan program, sen yeniden yazana kadar olduğu gibi kalır.
+      </div>
     </div>
     {athletes.length>0&&<div className="panel iv-athbar">
       <button className="btn xs sec" onClick={()=>setSel(athletes.map(a=>a.id))}>All</button>
@@ -13307,6 +13389,7 @@ function IndividualizationView({data,team,updateTeam}){
       onBlockRemove={(b,on)=>removeBlock(p.ath.id,b,on)}
       onAddBlock={()=>addBlock(p.ath.id)}
       onApply={()=>applyTo([p.ath.id])}
+      written={written[p.ath.id]||null}
       onExport={mode=>doExport(mode,[p.ath.id])}/>)}
     {src&&plans.length===0&&<div className="ex-empty">No athlete selected — pick one above.</div>}
   </div>);
