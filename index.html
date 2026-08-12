@@ -3417,14 +3417,26 @@ const looksLikeJSON=v=>/^\s*[{[]/.test(String(v==null?'':v));
    decoded too, so a worker that has not resolved the grid's ids is still readable.
    Anything that yields no region/severity pair at all returns null: free text the
    athlete typed ("belim tutuldu") is not a grid and stays in `areaOfPain`. */
-function parsePainMap(raw){
+/* `opts.map` is the coach's own id → region dictionary (Tally Sync screen). Tally keys
+   the grid by row ids and only its form definition names them; when neither the Worker
+   nor the API can produce that definition, the ids are all anyone has, and a coach who
+   names one once should not have to name it again. `opts.seen` collects the ids that
+   stayed unnamed, so the sync can offer exactly those to be named. */
+function parsePainMap(raw,opts){
+  const dict=(opts&&opts.map)||null;
+  const seen=(opts&&opts.seen)||null;
   const out={};
   const put=(region,sev)=>{
     const n=painSevN(sev);
     if(!n)return;
     // Braces and quotes survive on the keys when a JSON payload had to be split by hand.
     let r=String(region==null?'':region).replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
-    if(!r||PAIN_ID_RE.test(r)||r===PAIN_REGION_LEGACY)r=PAIN_REGION_UNKNOWN;
+    if(PAIN_ID_RE.test(r)){
+      const named=dict&&String(dict[r]||'').trim();
+      if(named)r=named;
+      else{if(seen&&seen.indexOf(r)<0)seen.push(r);r=PAIN_REGION_UNKNOWN;}
+    }
+    if(!r||r===PAIN_REGION_LEGACY)r=PAIN_REGION_UNKNOWN;
     out[r]=Math.max(out[r]||0,n);
   };
   let src=raw;
@@ -3494,7 +3506,7 @@ function painTagsFromMap(map){
 }
 
 /* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
-function WellnessHeatmap({athletes}){
+function WellnessHeatmap({athletes,sync}){
   const METRICS=[
     {id:'readiness',label:'Readiness',hi:true,scale:5},
     {id:'sleep',label:'Sleep',hi:true,scale:5},
@@ -3584,7 +3596,16 @@ function WellnessHeatmap({athletes}){
     </div>
     {unnamedDays>0&&<div style={{margin:'0 0 12px',padding:'10px 12px',background:'rgba(245,158,11,.10)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:12.5,lineHeight:1.5}}>
       ⚠️ Bu aralıkta <strong>{unnamedDays} gün</strong> ağrı bölgesi isimsiz geldi. Sporcu bölgeyi Tally'de işaretledi; Tally cevabı satır kimlikleriyle yolluyor ve o kimlikleri bölge adına çeviren Cloudflare Worker'ı bunu yapamadı.
-      {' '}<strong>Tally Sync</strong> ekranına git: güncel <code>tally-worker.js</code> deploy edilmiş mi orada yazıyor. Deploy edip <strong>Sync Now</strong> dedikten sonra geçmiş check-in'ler de düzelir.
+      {' '}<strong>Tally Sync</strong> ekranına git: güncel <code>tally-worker.js</code> deploy edilmiş mi orada yazıyor, ve bölgeleri elle adlandırabileceğin kutu da orada. Deploy edip ya da adlandırıp <strong>Sync Now</strong> dedikten sonra geçmiş check-in'ler de düzelir.
+      {/* Which Worker the app is actually talking to. A second Worker on the account
+          running old code looks exactly like a Worker that was never redeployed — the
+          only way to tell them apart is to print the address being used. */}
+      <div style={{marginTop:6,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
+        bağlı worker: {sync&&sync.workerUrl?String(sync.workerUrl).replace(/^https?:\/\//,'').replace(/\/+$/,''):'ayarlanmamış'}
+        {sync&&sync.lastStats&&(sync.lastStats.legacyWorker
+          ?' · son senkronda ESKİ sürüm cevap verdi'
+          :(sync.lastStats.workerVersion!=null?` · v${sync.lastStats.workerVersion}`:''))}
+      </div>
     </div>}
     {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
       <div className="wh-legend">
@@ -7441,7 +7462,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
 
     <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
 
-    <WellnessHeatmap athletes={team.athletes}/>
+    <WellnessHeatmap athletes={team.athletes} sync={team.tallySync}/>
     {saveAthletes&&<ManualWellnessSurvey athletes={team.athletes||[]} saveAthletes={saveAthletes}/>}
 
     {(()=>{
@@ -10517,7 +10538,9 @@ async function performTallySync(workerUrl,team,opts={}){
     // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
     // name, and (filled in below) how many check-ins ended up with a nameless region.
     workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
-    unnamedGridIds,labelSources,painUnnamed:0};
+    unnamedGridIds,labelSources,painUnnamed:0,unnamedIds:{}};
+  // The coach's own id → region dictionary, applied while the check-ins are read.
+  const regionMap=(team.tallySync&&team.tallySync.regionMap)||{};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
   // Match an existing athlete by name. New names are auto-created ONLY if the coach
@@ -10589,7 +10612,9 @@ async function performTallySync(workerUrl,team,opts={}){
        under the old free-text key, so that is tried too — and whatever the athlete
        actually typed stays in `areaOfPain` either way. `pain` is the tag-keyed view
        the Individualization card reads. */
-    let _painMap=parsePainMap(row['Pain Map'])||parsePainMap(row['Area of Pain']);
+    const _ids=[];
+    const _po={map:regionMap,seen:_ids};
+    let _painMap=parsePainMap(row['Pain Map'],_po)||parsePainMap(row['Area of Pain'],_po);
     let _note=painFreeText(row['Area of Pain']);
     /* Rows that reached us as ids get their name from the free-text answer when there is
        one — and it is then not repeated underneath as a separate note. Whatever is still
@@ -10600,6 +10625,15 @@ async function performTallySync(workerUrl,team,opts={}){
       if(named!==_painMap){_painMap=named;_note='';}
     }
     if(_painMap&&_painMap[PAIN_REGION_UNKNOWN])stats.painUnnamed++;
+    /* Which check-ins an unnamed id turned up on. A coach cannot recognise a uuid, but
+       they can open that athlete's submission in Tally, read the region off it, and name
+       the id once on the Tally Sync screen — after which every check-in carrying it
+       reads properly, whatever the API does. */
+    _ids.forEach(id=>{
+      const e=stats.unnamedIds[id]||(stats.unnamedIds[id]={id,count:0,ex:[]});
+      e.count++;
+      if(e.ex.length<3)e.ex.push({name:ath.name||name,date});
+    });
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
       RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
       areaOfPain:_note,painMap:_painMap,pain:painTagsFromMap(_painMap),
@@ -10615,8 +10649,60 @@ async function performTallySync(workerUrl,team,opts={}){
   });
   stats.athletesMatched=stats.athletesMatched.size;
   stats.namesSeen=[...stats.namesSeen].filter(Boolean);
+  // Most-seen ids first: those are the regions worth naming.
+  stats.unnamedIds=Object.values(stats.unnamedIds).sort((a,b)=>b.count-a.count);
   stats.skippedNames=[...stats.skippedNames].filter(Boolean);
   return{athletes,stats,syncedAt:syncedAt||new Date().toISOString()};
+}
+
+/* Naming the grid's rows by hand — the last resort, and the one that always works.
+   Tally keys a matrix answer by row ids and only the form definition names them; when
+   that definition cannot be read (an API key without the scope, an endpoint the plan does
+   not serve), no amount of fixing the Worker will produce a region. The ids are stable
+   per form, so naming one once is enough: it is stored on the team and applied on every
+   sync from then on. The check-ins each id turned up on are listed beside it, so the
+   coach can look that submission up in Tally and read the region off it. */
+const PAIN_REGION_SUGGEST=['Boyun','Omuz','Sırt','Göğüs','Karın','Dirsek','Bilek/El','Bel','Kalça','Kasık','Hamstring','Quadriceps','Diz','Baldır','Ayak bileği','Ayak'];
+function PainRegionNamer({stats,cfg,saveCfg}){
+  const ids=Array.isArray(stats&&stats.unnamedIds)?stats.unnamedIds:[];
+  const map=cfg.regionMap||{};
+  const[draft,setDraft]=useState({});
+  if(!ids.length)return null;
+  const save=id=>{
+    const v=String(draft[id]||'').trim();
+    const next={...map};
+    if(v)next[id]=v;else delete next[id];
+    saveCfg({regionMap:next});
+    setDraft(d=>({...d,[id]:''}));
+  };
+  return(<div style={{marginTop:10,padding:12,background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:8,fontSize:13}}>
+    <div style={{fontWeight:700,marginBottom:4}}>Bölgeleri elle adlandır ({ids.length} kimlik)</div>
+    <div className="help" style={{marginTop:0,marginBottom:10}}>
+      Worker bu satır kimliklerini bölge adına çeviremedi. Her kimliğin yanında hangi sporcunun hangi günkü check-in'inde geçtiği yazıyor:
+      o gönderimi Tally'de aç, bölgeyi oku ve buraya yaz. Bir kez adlandırdıktan sonra <strong>Sync Now</strong> de — o kimliği taşıyan bütün check-in'ler düzelir, sonraki senkronlarda da adlandırılmış kalır.
+    </div>
+    <datalist id="pain-region-suggest">{PAIN_REGION_SUGGEST.map(r=><option key={r} value={r}/>)}</datalist>
+    <table style={{width:'100%',maxWidth:720}}>
+      <tbody>{ids.map(({id,count,ex})=>(
+        <tr key={id}>
+          <td style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--text2)',whiteSpace:'nowrap'}} title={id}>{id.slice(0,8)}…</td>
+          <td style={{fontSize:11,color:'var(--muted)'}}>
+            {(ex||[]).map(e=>`${e.name} · ${fd(e.date)}`).join(' | ')}{count>(ex||[]).length?` +${count-(ex||[]).length}`:''}
+          </td>
+          <td style={{width:200}}>
+            {map[id]
+              ?<span style={{display:'inline-flex',alignItems:'center',gap:8}}>
+                 <strong style={{color:'#2dd4a7'}}>{map[id]}</strong>
+                 <button className="btn xs sec" onClick={()=>{const n={...map};delete n[id];saveCfg({regionMap:n});}}>Sil</button>
+               </span>
+              :<input list="pain-region-suggest" value={draft[id]||''} placeholder="Bölge adı…"
+                 onChange={e=>setDraft(d=>({...d,[id]:e.target.value}))}
+                 onKeyDown={e=>{if(e.key==='Enter')save(id);}} onBlur={()=>save(id)} style={{width:'100%'}}/>}
+          </td>
+        </tr>))}
+      </tbody>
+    </table>
+  </div>);
 }
 
 function TallySync({data,setData,team}){
@@ -10736,6 +10822,7 @@ function TallySync({data,setData,team}){
           </div>}
           {!stats.workerOutdated&&stats.painUnnamed>0&&<> Worker güncel görünüyorsa, tarayıcıda <code>{(cfg.workerUrl||'…workers.dev').replace(/\/+$/,'')}/diag</code> adresini aç: Worker'ın Tally'den ne okuduğunu, hangi uç noktanın hangi HTTP koduyla cevap verdiğini ve matris cevabının neye çözüldüğünü satır satır gösterir.</>}
         </div>}
+        <PainRegionNamer stats={stats} cfg={cfg} saveCfg={saveCfg}/>
         {stats.legacyWorker&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Worker eski sürüm — <strong>gönderimlerin sadece ilk sayfaları</strong> geliyor, gerisi sessizce düşüyor.
           Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yeniden deploy et; ondan sonra bütün sRPE geçmişi eksiksiz gelir.
