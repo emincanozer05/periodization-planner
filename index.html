@@ -3377,26 +3377,58 @@ const PAIN_SEV_WORDS=[
 ];
 function painSevN(v){
   if(v==null)return 0;
+  // A grid cell can arrive as the list of columns ticked on that row (["Hafif"]) or as
+  // the column object itself — the worst of them is the severity for that region.
+  if(Array.isArray(v))return v.reduce((m,x)=>Math.max(m,painSevN(x)),0);
+  if(typeof v==='object')return painSevN(v.text??v.label??v.value??v.title);
   const n=Number(v);
   if(!isNaN(n)&&n>=1&&n<=3)return Math.round(n);
   const t=String(v).toLowerCase();
   for(const s of PAIN_SEV_WORDS)if(s.kw.some(k=>t.includes(k)))return s.n;
   return 0;
 }
-/* "Boyun: Orta, Bel: Fazla" → {Boyun:2, Bel:3}. An object is accepted as-is, so a
-   worker that decodes the grid itself needs no different handling here. Anything
-   that yields no region/severity pair at all returns null — free text the athlete
-   typed ("belim tutuldu") is not a grid and stays in `areaOfPain`. */
+/* Tally keys the grid by its own row ids, so a check-in that reached the app before the
+   Worker could resolve them carries ids where the body region should be — either as an
+   object or, when the whole answer fell through as text, as raw JSON:
+   {"eeb7ce0e-f7f4-4254-8722-fb402c45e8c7":["Hafif"]}. A coach cannot read an id, so
+   every region that is one is reported under a single unnamed region instead of being
+   printed verbatim. Old check-ins already stored that way are normalised on read, so
+   nothing has to be re-synced for the grid to make sense. */
+const PAIN_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PAIN_REGION_UNKNOWN='Bölge belirtilmemiş';
+/* JSON text is a grid the app must decode, never a sentence the athlete wrote. */
+const looksLikeJSON=v=>/^\s*[{[]/.test(String(v==null?'':v));
+/* "Boyun: Orta, Bel: Fazla" → {Boyun:2, Bel:3}. An object — or the JSON of one — is
+   decoded too, so a worker that has not resolved the grid's ids is still readable.
+   Anything that yields no region/severity pair at all returns null: free text the
+   athlete typed ("belim tutuldu") is not a grid and stays in `areaOfPain`. */
 function parsePainMap(raw){
   const out={};
-  const put=(region,sev)=>{const r=String(region||'').trim();const n=painSevN(sev);
-    if(r&&n)out[r]=Math.max(out[r]||0,n);};
-  if(raw&&typeof raw==='object'&&!Array.isArray(raw))Object.entries(raw).forEach(([k,v])=>put(k,v));
-  else String(raw==null?'':raw).split(/\s*,\s*/).forEach(part=>{
+  const put=(region,sev)=>{
+    const n=painSevN(sev);
+    if(!n)return;
+    // Braces and quotes survive on the keys when a JSON payload had to be split by hand.
+    let r=String(region==null?'':region).replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    if(!r||PAIN_ID_RE.test(r))r=PAIN_REGION_UNKNOWN;
+    out[r]=Math.max(out[r]||0,n);
+  };
+  let src=raw;
+  if(typeof src==='string'&&looksLikeJSON(src)){try{src=JSON.parse(src);}catch(e){}}
+  if(Array.isArray(src))src=src.join(', ');
+  if(src&&typeof src==='object')Object.entries(src).forEach(([k,v])=>put(k,v));
+  else String(src==null?'':src).split(/\s*,\s*/).forEach(part=>{
     const i=part.indexOf(':');
     if(i>0)put(part.slice(0,i),part.slice(i+1));
   });
   return Object.keys(out).length?out:null;
+}
+/* The check-in's pain box in the athlete's own words. A value that is really the grid —
+   JSON the Worker could not resolve, or "Bel: Fazla" pairs — is already drawn region by
+   region, so it is not repeated as a hand-written note. */
+function painFreeText(raw){
+  const t=String(raw==null?'':raw).trim();
+  if(!t||looksLikeJSON(t))return'';
+  return parsePainMap(t)?'':t;
 }
 /* The grid as a list to show — worst first, then alphabetical so equal severities
    keep a stable order instead of following object insertion. */
@@ -3404,6 +3436,16 @@ function painEntries(map){
   return Object.entries(map||{}).map(([region,sev])=>({region,sev:Number(sev)||0}))
     .filter(p=>p.sev>0)
     .sort((a,b)=>b.sev-a.sev||a.region.localeCompare(b.region));
+}
+/* The check-in's pain as one line: every region of the grid with its severity, then
+   whatever the athlete typed on top of it. For the places pain has to be written into
+   prose — the AI briefings, the Individualization note — rather than drawn. */
+function painSummary(w){
+  const map=parsePainMap(w&&w.painMap&&typeof w.painMap==='object'?w.painMap:(w&&w.areaOfPain));
+  const parts=painEntries(map).map(p=>`${p.region}: ${PAIN_SEV_LABEL[p.sev]}`);
+  const note=painFreeText(w&&w.areaOfPain);
+  if(note)parts.push(note);
+  return parts.join(', ');
 }
 /* Best-effort bridge to the constraint tags the Individualization card reads: a
    region is matched by the same keywords the free-text box is matched by, keeping
@@ -3440,8 +3482,8 @@ function WellnessHeatmap({athletes}){
   const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
   // Free-text the athlete typed into the check-in's "Area of Pain" box ("dizlerim ağrıyor"…).
   // Independent of the selected metric — it flags the day, whichever metric is on screen.
-  const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&String(w.areaOfPain||'').trim());
-    return e.length?String(e[e.length-1].areaOfPain).trim():'';};
+  const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&painFreeText(w.areaOfPain));
+    return e.length?painFreeText(e[e.length-1].areaOfPain):'';};
   /* The pain grid the athlete ticked that day. Like the note it is independent of the
      selected metric — a marked region flags the day whichever metric is on screen.
      A check-in written before the grid existed still parses out of its free-text box,
@@ -3449,7 +3491,9 @@ function WellnessHeatmap({athletes}){
   const painOf=(a,dk)=>{
     const e=(a.wellness||[]).filter(w=>w.date===dk);
     for(let i=e.length-1;i>=0;i--){
-      const m=e[i].painMap&&typeof e[i].painMap==='object'?e[i].painMap:parsePainMap(e[i].areaOfPain);
+      // Stored maps go back through the parser too: one written before the ids were
+      // resolved keeps them as its keys, and only the parser knows to fold those away.
+      const m=parsePainMap(e[i].painMap&&typeof e[i].painMap==='object'?e[i].painMap:e[i].areaOfPain);
       const list=painEntries(m);
       if(list.length)return{list,max:list[0].sev};
     }
@@ -8963,7 +9007,7 @@ function buildAthleteSnapshot(ath,setup,exercises){
     const fmtA=(f,u)=>{const a=avg(f);return a!=null?a.toFixed(1)+(u||''):'—';};
     out.push(`Ortalama → Hazır bulunuşluk: ${fmtA('readiness','/5')} | Yorgunluk: ${fmtA('fatigue','/5')} | Ağrı: ${fmtA('soreness','/5')} | Uyku: ${fmtA('sleep')} | RHR: ${fmtA('RHR','bpm')}`);
     const last=[...recent].sort((a,b)=>a.date.localeCompare(b.date)).pop();
-    out.push(`Son check-in (${last.date}): Hazırlık ${last.readiness??'—'}/5, Yorgunluk ${last.fatigue??'—'}/5, Ağrı ${last.soreness??'—'}/5${last.areaOfPain?`, Ağrı bölgesi: ${last.areaOfPain}`:''} (${recent.length} check-in)`);
+    out.push(`Son check-in (${last.date}): Hazırlık ${last.readiness??'—'}/5, Yorgunluk ${last.fatigue??'—'}/5, Ağrı ${last.soreness??'—'}/5${painSummary(last)?`, Ağrı bölgesi: ${painSummary(last)}`:''} (${recent.length} check-in)`);
   } else out.push('Son 14 günde wellness verisi yok.');
   // Load / ACWR
   out.push('\n=== YÜK / ACWR ===');
@@ -9166,7 +9210,7 @@ function buildProgramDesignInput(ath,setup){
   const avg=f=>{const v=recent.map(w=>n(w[f])).filter(x=>x!=null);return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;};
   const last=recent.length?recent[recent.length-1]:null;
   const pains=[];
-  recent.forEach(w=>{if(w.areaOfPain)pains.push(`${w.date}: ${w.areaOfPain}`);});
+  recent.forEach(w=>{const p=painSummary(w);if(p)pains.push(`${w.date}: ${p}`);});
   (ath.injuries||[]).filter(i=>!i.actualReturn).forEach(i=>{pains.push(`aktif sakatlık: ${i.location||i.type||'?'}${i.side?` (${i.side})`:''}`);});
   const acwr=athACWR(ath,ref);
   return{
@@ -10484,7 +10528,7 @@ async function performTallySync(workerUrl,team,opts={}){
     const _painMap=parsePainMap(row['Pain Map'])||parsePainMap(row['Area of Pain']);
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
       RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
-      areaOfPain:row['Area of Pain']||'',painMap:_painMap,pain:painTagsFromMap(_painMap),
+      areaOfPain:painFreeText(row['Area of Pain']),painMap:_painMap,pain:painTagsFromMap(_painMap),
       readiness:_ready};
     if(i>=0){ath.wellness[i]=entry;stats.wellnessUpdated++;}
     else{ath.wellness.push(entry);stats.wellnessAdded++;}
@@ -12321,22 +12365,28 @@ function athPainReports(a,ref){
   if(pm)Object.keys(pm).forEach(tag=>{
     const sev=Number(pm[tag]);
     if(sev>0&&known.has(tag)&&!seen.has(tag)){seen.add(tag);out.push({tag,sev,date:w.date,src:'survey'});}});
-  const txt=String(w.areaOfPain||'').toLowerCase().trim();
+  const raw=painFreeText(w.areaOfPain),txt=raw.toLowerCase();
   if(txt)CONSTRAINT_TAGS.forEach(t=>{
     if(!seen.has(t.id)&&t.kw.some(k=>txt.includes(k))){
-      seen.add(t.id);out.push({tag:t.id,date:w.date,src:'text',raw:w.areaOfPain});}});
+      seen.add(t.id);out.push({tag:t.id,date:w.date,src:'text',raw});}});
   return out;
 }
-/* Whatever the athlete typed into the check-in's pain box, in their own words.
+/* Whatever the athlete reported in the check-in's pain box, in their own words.
    athPainReports only returns regions it could match to a known tag, so a note
-   that matches nothing ("belim tutuldu") would otherwise disappear before the
-   coach ever sees it. Read from the same check-in and the same window. */
+   that matches nothing ("belim tutuldu") — or a ticked region the tag list has no
+   entry for — would otherwise disappear before the coach ever sees it. Read from
+   the same check-in and the same window. */
 function athPainNote(a,ref){
   const ws=(a.wellness||[]).filter(w=>w.date&&w.date<=ref).sort((x,y)=>x.date.localeCompare(y.date));
   const w=ws[ws.length-1];
   if(!w||dayGap(w.date,ref)>IV_CHECKIN_WINDOW)return null;
-  const t=String(w.areaOfPain||'').trim();
-  return t?{text:t,date:w.date}:null;
+  const note=painFreeText(w.areaOfPain);
+  if(note)return{text:note,date:w.date,quoted:true};
+  /* Nothing written, but a ticked region the tag list has no entry for still has to
+     reach the coach — reported as the grid recorded it, so it is not dressed up as
+     something the athlete said. */
+  const grid=painSummary(w);
+  return grid?{text:grid,date:w.date,quoted:false}:null;
 }
 /* Yesterday, as the athlete reported it: the session RPE they rated and the load
    (sRPE × duration) it worked out to — context for the coach's own edits, so he
@@ -12852,7 +12902,7 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           words about what hurts lead — it is the one thing here that is not a
           number, and the thing most likely to change what the coach writes. */}
       <div className="iv-daybar">
-        {plan.painNote&&<span className="iv-painchip note" title={`Pain report · ${fd(plan.painNote.date)}`}>“{plan.painNote.text}”</span>}
+        {plan.painNote&&<span className="iv-painchip note" title={`Pain report · ${fd(plan.painNote.date)}`}>{plan.painNote.quoted?`“${plan.painNote.text}”`:`🩹 ${plan.painNote.text}`}</span>}
         {(plan.pains||[]).map(p=><span key={'p'+p.tag} className="iv-painchip" title={`Daily check-in · ${fd(p.date)}`}>🩹 {ctLabel(p.tag)}{p.src==='survey'?` ${p.sev}/3`:''}</span>)}
         <span className="iv-dchip" title={`Yesterday's session RPE (${fd(plan.prev.date)}) — the athlete's own rating`}>
           <i>yest. rpe</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
