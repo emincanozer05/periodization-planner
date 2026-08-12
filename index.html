@@ -2396,6 +2396,15 @@ header{background:var(--bg2)!important}
 .iv-adj.sub{color:#f59e0b;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.08)}
 .iv-ch{color:var(--dim);font-size:12px}
 /* The day bar owns the auto margin now — the button just follows it right. */
+/* The two card actions stack, so "Open Athlete Calendar" sits directly above the write
+   button instead of stretching the header row wider. */
+.iv-btncol{display:flex;flex-direction:column;gap:4px;align-items:stretch}
+.iv-calb{white-space:nowrap}
+.iv-calb.on{color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
+/* The calendar is a full view dropped inside a card: it brings its own panels, so the
+   card body only has to give it the width and stop its own padding from doubling up. */
+.iv-calbody{padding:12px 10px}
+.iv-calbody .panel{margin-left:0;margin-right:0}
 .iv-writeb{white-space:nowrap}
 /* Already on the athlete's calendar: the button steps back to a confirmation the coach
    can read at a glance, since from here on the sheet keeps that calendar in step itself. */
@@ -13150,7 +13159,7 @@ function IndivSlotRow({row,tag,onOverride,onReset,onRemove}){
 }
 
 /* ---- One athlete's sheet -------------------------------------------------- */
-function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,written,open,setOpen}){
+function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,onMeta,onBlockName,onBlockRemove,onAddBlock,onApply,onExport,written,calOpen,onToggleCal,calendar,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -13197,6 +13206,15 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           Once written it says so, with the time it was written: from then on the sheet
           keeps that calendar in step by itself, so pressing again is optional rather
           than something to remember on every visit. */}
+      <div className="iv-btncol">
+      {/* The athlete's own calendar, in place of the sheet. A coach deciding what to
+          prescribe usually wants to see what the week already holds first, and pressing
+          it again puts the sheet back exactly where it was. */}
+      <button type="button" className={'btn xs iv-calb'+(calOpen?' on':' sec')}
+        onClick={e=>{e.stopPropagation();onToggleCal&&onToggleCal();}}
+        title={calOpen?"Takvimi kapat, program yazmaya dön":"Bu sporcunun takvimini bu kartta aç"}>
+        {calOpen?'Close Athlete Calendar':'Open Athlete Calendar'}
+      </button>
       <button type="button" className={'btn xs iv-writeb'+(written?' sec on':'')}
         onClick={e=>{e.stopPropagation();onApply();}}
         title={written
@@ -13204,6 +13222,7 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
           :"Write this athlete's program to their own calendar"}>
         {written?`✓ Takvimde${written.indiv&&written.indiv.writtenAt?' · '+new Date(written.indiv.writtenAt).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):''}`:'Write to athlete calendar'}
       </button>
+      </div>
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
     {plan.notes.length>0&&<div className="iv-notes" title="Coach notes — reference while deciding, nothing reads them automatically">
@@ -13211,7 +13230,10 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
       <span className="t">{plan.notes[0].date?`${fd(plan.notes[0].date)} — `:''}{plan.notes[0].text}</span>
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} more</span>}
     </div>}
-    {open&&<div className="iv-card-body">
+    {/* The calendar takes the sheet's place rather than sitting under it: the card is
+        about one athlete, and showing both at once would only make the coach scroll. */}
+    {open&&calOpen&&<div className="iv-card-body iv-calbody">{calendar}</div>}
+    {open&&!calOpen&&<div className="iv-card-body">
       {/* What the session IS, for this athlete — the same six fields, in the same strip,
           that the calendar's session editor carries: its title, when they train, how
           long, and what it trains. Every one starts from the source session and is the
@@ -13309,7 +13331,18 @@ function IndivAthleteCard({plan,onOverride,onResetSlot,onRemoveSlot,onAddSlot,on
    Pick a day, pick a source session, pick the athletes, then edit each sheet by
    hand and write it to their calendars. There is no rule configuration because
    there are no rules. */
-function IndividualizationView({data,team,updateTeam}){
+/* The athlete's own calendar, opened from their card on the sheet — the same component
+   the Athletes tab shows, with the same editing, so a coach checking what the week
+   already holds before prescribing does not have to leave the page and find their way
+   back. It keeps its own week cursor, starting on the day being individualized. */
+function IndivAthleteCalendar({ath,setup,weeks,exercises,saveDays,date}){
+  const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
+    return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
+  return<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
+    weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises}/>;
+}
+
+function IndividualizationView({data,team,updateTeam,weeks}){
   const athletes=team.athletes||[];
   const templates=data.templates||[];
   const store=team.indiv||{};
@@ -13317,8 +13350,12 @@ function IndividualizationView({data,team,updateTeam}){
   const[srcKey,setSrcKey]=useState('');
   const[sel,setSel]=useState(null);           // null = auto (assigned / all)
   const[open,setOpen]=useState({});
+  // Athletes whose card is showing their calendar instead of the program sheet.
+  const[calOpen,setCalOpen]=useState({});
   const[toast,setToast]=useState('');
   const[expRange,setExpRange]=useState('day');   // 'day' | 'week' — export scope
+  // Edits made from the calendar on a card go straight onto that athlete.
+  const saveAthDays=(athId,days)=>updateTeam(team.id,{athletes:athletes.map(a=>a.id===athId?{...a,days}:a)});
 
   const daySessions=((team.days||{})[date]||{}).sessions||[];
   const sources=useMemo(()=>[
@@ -13551,6 +13588,16 @@ function IndividualizationView({data,team,updateTeam}){
       onAddBlock={()=>addBlock(p.ath.id)}
       onApply={()=>applyTo([p.ath.id])}
       written={written[p.ath.id]||null}
+      calOpen={!!calOpen[p.ath.id]}
+      onToggleCal={()=>{
+        // Opening the calendar expands the card, so closing it again lands back on the
+        // program sheet rather than collapsing the whole card.
+        setCalOpen(o=>({...o,[p.ath.id]:!o[p.ath.id]}));
+        setOpen(o=>({...o,[p.ath.id]:true}));
+      }}
+      calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
+        exercises={data.exercises||[]} date={date}
+        saveDays={d=>saveAthDays(p.ath.id,d)}/>}
       onExport={mode=>doExport(mode,[p.ath.id])}/>)}
     {src&&plans.length===0&&<div className="ex-empty">No athlete selected — pick one above.</div>}
   </div>);
@@ -13952,7 +13999,7 @@ function App(){
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='templates'&&<TemplatesView data={data} setData={setData}/>}
-      {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam}/>}
+      {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam} weeks={weeks}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected} setData={setData}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
