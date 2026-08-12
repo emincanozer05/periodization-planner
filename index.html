@@ -3506,7 +3506,7 @@ function painTagsFromMap(map){
 }
 
 /* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
-function WellnessHeatmap({athletes,sync}){
+function WellnessHeatmap({athletes}){
   const METRICS=[
     {id:'readiness',label:'Readiness',hi:true,scale:5},
     {id:'sleep',label:'Sleep',hi:true,scale:5},
@@ -3574,11 +3574,6 @@ function WellnessHeatmap({athletes,sync}){
     .sort((x,y)=>(x.avg==null)-(y.avg==null)||(x.avg==null?0:(M.hi?(y.avg-x.avg):(x.avg-y.avg))));
   const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
-  /* Days on screen whose region the sync could not name. The cause is never visible from
-     the check-in — it is a Worker that could not turn Tally's row ids into the regions the
-     form asks about — so the grid says it once, here, instead of leaving every bubble
-     reading "Bölge adı gelmedi" with no way to find out why. */
-  const unnamedDays=rows.reduce((n,r)=>n+r.pains.filter(p=>p&&p.list.some(x=>x.region===PAIN_REGION_UNKNOWN)).length,0);
   return(<div className="panel">
     <div className="wh-hm-head">
       <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>son 2 hafta · ortalamaya göre</span></h2></div>
@@ -3594,23 +3589,6 @@ function WellnessHeatmap({athletes,sync}){
         <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
       </div>
     </div>
-    {unnamedDays>0&&<div style={{margin:'0 0 12px',padding:'10px 12px',background:'rgba(245,158,11,.10)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:12.5,lineHeight:1.5}}>
-      ⚠️ Bu aralıkta <strong>{unnamedDays} gün</strong> ağrı bölgesi isimsiz geldi. Sporcu bölgeyi Tally'de işaretledi; Tally cevabı satır kimlikleriyle yolluyor ve o kimlikleri bölge adına çeviren Cloudflare Worker'ı bunu yapamadı.
-      {' '}<strong>Tally Sync</strong> ekranına git: güncel <code>tally-worker.js</code> deploy edilmiş mi orada yazıyor, ve bölgeleri elle adlandırabileceğin kutu da orada. Deploy edip ya da adlandırıp <strong>Sync Now</strong> dedikten sonra geçmiş check-in'ler de düzelir.
-      {/* Which Worker the app is actually talking to. A second Worker on the account
-          running old code looks exactly like a Worker that was never redeployed — the
-          only way to tell them apart is to print the address being used. */}
-      <div style={{marginTop:6,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
-        bağlı worker: {sync&&sync.workerUrl?String(sync.workerUrl).replace(/^https?:\/\//,'').replace(/\/+$/,''):'ayarlanmamış'}
-        {sync&&sync.lastStats&&(sync.lastStats.legacyWorker
-          ?' · son senkronda ESKİ sürüm cevap verdi'
-          :(sync.lastStats.workerVersion!=null?` · v${sync.lastStats.workerVersion}`:''))}
-        {/* Why it could not be named, in the place the coach notices the symptom: which
-            source was asked for the form's rows and what it answered. */}
-        {sync&&sync.lastStats&&Array.isArray(sync.lastStats.labelSources)&&sync.lastStats.labelSources.length>0&&
-          <div>form tanımı: {sync.lastStats.labelSources.map(s=>`${String(s.path).replace(/^\/forms\/[^/?]+/,'…')||s.path}→${s.status}${s.added?`+${s.added}`:''}`).join(' · ')}</div>}
-      </div>
-    </div>}
     {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?'high':'low'}</span>
@@ -7466,7 +7444,7 @@ function TeamReports({team,weeks,selected,setSelected,setData}){
 
     <AthleteLoadBoard athletes={team.athletes} refDate={lmRef}/>
 
-    <WellnessHeatmap athletes={team.athletes} sync={team.tallySync}/>
+    <WellnessHeatmap athletes={team.athletes}/>
     {saveAthletes&&<ManualWellnessSurvey athletes={team.athletes||[]} saveAthletes={saveAthletes}/>}
 
     {(()=>{
