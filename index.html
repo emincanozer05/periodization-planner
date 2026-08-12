@@ -4404,7 +4404,45 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       </div>`;
     }).join('')}</div>`;
   };
-  const dateLine=subtitle.replace(/,/g,'·');
+  /* One document can carry several athletes: each is a group with its own header — the same
+     header a single athlete's printout has — starting on a fresh page. Called the plain way,
+     with (title, subtitle, sessions), there is exactly one group and the document is the one
+     it has always been. */
+  const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
+  const docHead=(t,sub)=>`<div class="doc-head">
+  <div class="doc-l">
+    ${logo?`<img class="doc-logo" src="${escHTML(logo)}" alt="">`:''}
+    <div>
+      <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
+      <h1>${t}</h1>
+    </div>
+  </div>
+  <div class="doc-r">
+    <div class="day-name">${String(sub==null?'':sub).replace(/,/g,'·')}</div>
+  </div>
+</div>`;
+  const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
+  <div class="sh">
+    <div class="sh-l"><span class="sn">${i+1}</span>${s.ownerName?`<span class="sh-own">${escHTML(s.ownerName)}</span>`:''}${s.name}</div>
+    <div class="sh-r"><span class="sh-pill">${s.time}</span><span class="sh-pill">${s.duration} ${L('DK','MIN')}</span></div>
+  </div>
+  <div class="meta-bar">
+    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${s.purpose}</span></div>
+  </div>
+  ${(()=>{
+    // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
+    // categorization, blocks stay in the order the user arranged them.
+    const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
+    if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
+    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block"><div class="bh">${b.name}</div>${exTable(b)}</div>`).join('')}</div>`;
+  })()}
+  ${(s.planNote||s.notes)?`<div class="sf">
+    <div class="sf-notes">
+      ${s.planNote?`<div class="sf-plan-note">${escHTML(s.planNote)}</div>`:''}
+      ${s.notes?`<div><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
+    </div>
+  </div>`:''}
+</div>`).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -4440,6 +4478,8 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .sh-l{font-size:18px;font-weight:800;letter-spacing:.2px;flex:1}
 .sh-own{display:block;font-size:12px;font-weight:600;color:#e6ff55;letter-spacing:.6px;text-transform:uppercase;margin-left:39px}
 .sess.brk{break-before:page;page-break-before:always}
+/* Each athlete on a document of several starts a fresh page, under their own header. */
+.ath-doc.brk{break-before:page;page-break-before:always}
 .ex-why{margin-top:3px;font-size:11px;color:#7c5e10;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;padding:3px 7px;line-height:1.35}
 .ex-why strong{color:#92400e}
 .sh-l .sn{display:inline-block;background:#e6ff55;color:#0a0b0d;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:800;margin-right:11px}
@@ -4538,41 +4578,10 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .page-footer{font-family:'IBM Plex Mono',monospace;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
 </style></head><body>
 
-<div class="doc-head">
-  <div class="doc-l">
-    ${logo?`<img class="doc-logo" src="${escHTML(logo)}" alt="">`:''}
-    <div>
-      <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
-      <h1>${title}</h1>
-    </div>
-  </div>
-  <div class="doc-r">
-    <div class="day-name">${dateLine}</div>
-  </div>
-</div>
-
-${sessions.map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
-  <div class="sh">
-    <div class="sh-l"><span class="sn">${i+1}</span>${s.ownerName?`<span class="sh-own">${escHTML(s.ownerName)}</span>`:''}${s.name}</div>
-    <div class="sh-r"><span class="sh-pill">${s.time}</span><span class="sh-pill">${s.duration} ${L('DK','MIN')}</span></div>
-  </div>
-  <div class="meta-bar">
-    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${s.purpose}</span></div>
-  </div>
-  ${(()=>{
-    // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
-    // categorization, blocks stay in the order the user arranged them.
-    const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
-    if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
-    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block"><div class="bh">${b.name}</div>${exTable(b)}</div>`).join('')}</div>`;
-  })()}
-  ${(s.planNote||s.notes)?`<div class="sf">
-    <div class="sf-notes">
-      ${s.planNote?`<div class="sf-plan-note">${escHTML(s.planNote)}</div>`:''}
-      ${s.notes?`<div><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
-    </div>
-  </div>`:''}
-</div>`).join('')}
+${groups.map((g,gi)=>`<section class="ath-doc${gi>0?' brk':''}">
+${docHead(g.title,g.subtitle)}
+${sessionsHTML(g.sessions)}
+</section>`).join('')}
 
 <div class="page-footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · Periodization Planner</div>
 
@@ -13122,59 +13131,6 @@ const liveBlocks=plan=>(plan.blocks||[]).filter(b=>!b.removed);
    template), but it is not part of the program that gets written or exported. */
 const liveSlot=r=>!!String(r.name||'').trim();
 
-/* ---- Machine-readable hand-off -------------------------------------------
-   The same sheet the card shows, in the shape the coach's downstream tools read:
-   the template's own block order, one row per slot, each carrying the template's
-   exercise, the one actually prescribed and every number as written. A slot the
-   coach emptied is a deleted exercise and does not appear — the remaining slots
-   are numbered as they are actually performed. */
-function planToIndivJSON(plan){
-  const num=v=>{const t=String(v==null?'':v).trim();return /^\d+$/.test(t)?Number(t):t;};
-  const str=v=>String(v==null?'':v).trim();
-  return{
-    athlete_id:plan.ath.id||'',
-    athlete:plan.ath.name||'',
-    session:str(plan.meta&&plan.meta.name),
-    time:str(plan.meta&&plan.meta.time),
-    duration:num((plan.meta&&plan.meta.duration)||''),
-    focus:((plan.meta&&plan.meta.focus)||[]).map(str).filter(Boolean),
-    region:str(plan.meta&&plan.meta.region),
-    methods:((plan.meta&&plan.meta.methods)||[]).map(str).filter(Boolean),
-    // The focus list as one string, the shape older readers of this file expect.
-    purpose:((plan.meta&&plan.meta.focus)||[]).map(str).filter(Boolean).join(', '),
-    program:liveBlocks(plan).flatMap((b,bi)=>b.rows.filter(liveSlot).map((r,i)=>({
-      block:b.name||`Block ${bi+1}`,
-      slot:i+1,
-      superset:str(r.superset),
-      pattern:str(r.pattern),
-      execution:str(r.plane),
-      template_exercise:r.base.name||'',
-      prescribed_exercise:str(r.name),
-      changed:!!r.changedName,
-      // Not in the source session at all — the coach added this one for this athlete.
-      added:!!r.added,
-      sets:num(r.sets),
-      reps:str(r.reps),
-      time:str(r.duration),
-      tempo:str(r.tempo),
-      rpe:str(r.rpe),
-      load:str(r.load),
-      rest:str(r.rest),
-      note:str(r.note),
-      link:safeURL(r.link)||'',
-    }))),
-  };
-}
-function downloadIndivJSON(plans,dateKey){
-  const one=plans.length===1;
-  const payload=one?planToIndivJSON(plans[0]):plans.map(planToIndivJSON);
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`individual_program_${one?(plans[0].ath.name||plans[0].ath.id||'athlete').replace(/\s+/g,'_'):'team'}_${dateKey}.json`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-}
 
 /* A written program's fingerprint: everything on it a coach can see, and nothing a
    rewrite invents anew. Row and block ids are regenerated on every build, so two
@@ -13207,9 +13163,9 @@ function indivHandEdited(ses){
   return !!sig&&indivSig(ses)!==sig;
 }
 
-/* Turn a built sheet into a session object for the athlete's own calendar. Which
-   exercise the template had asked for rides along on every changed slot so the
-   coach printout can still show it; the athlete's copy drops it (stripForAthlete). */
+/* Turn a built sheet into a session object for the athlete's own calendar. Which exercise
+   the source session had asked for rides along on every changed slot, so the card can still
+   say what was swapped; it prints nowhere. */
 function planToSession(plan,src,dateKey,srcKey){
   const t=v=>String(v==null?'':v).trim();
   const rows=b=>b.rows.filter(liveSlot).map(r=>{
@@ -13248,30 +13204,6 @@ function planToSession(plan,src,dateKey,srcKey){
   return ses;
 }
 
-/* ---- Program export ------------------------------------------------------
-   Two versions off the same session data, through the same branded document
-   builder the screening reports use:
-     coach   — carries the session notes and marks which exercises differ from the
-               template (plus, on sheets written before the reason box was removed,
-               whatever reason was recorded against a change back then)
-     athlete — exercise, sets × reps, load / RPE target and nothing else
-   Both work for one athlete or for everyone with a program that day, and for a
-   single day or a Mon-Sun week. */
-function stripForAthlete(ses){
-  /* Sheets written by an older version carried an auto-generated summary under a
-     "Bireyselleştirme:" heading in the plan note; it is still stripped so those
-     saved sessions print clean for the athlete. */
-  const clean={...ses,
-    planNote:String(ses.planNote||'').replace(/Bireyselleştirme:[\s\S]*$/,'').trim(),
-    notes:'',
-    /* Pattern and execution stay: they print as one short chip on the exercise's own
-       line, and knowing a lift is knee-dominant and pushed is as useful to the athlete
-       reading the sheet as it is to the coach. What is dropped is the coach's own
-       working-out — why a slot was changed and what the template had asked for. */
-    blocks:(ses.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>{
-      const{why,changed,flag,fromName,...rest}=e;return rest;})}))};
-  return clean;
-}
 function indivSessionsFor(ath,dateKey){
   return (((ath.days||{})[dateKey]||{}).sessions)||[];
 }
@@ -13285,33 +13217,30 @@ function indivWeekSessions(ath,dateKey){
   }
   return out;
 }
-function exportPrograms({athletes,dateKey,mode,range,teamName}){
-  const coach=mode==='coach';
-  /* The document title already names a single athlete, so repeating it on every
-     session header just reads as clutter. The badge carries only what the title
-     cannot: which athlete, when several are printed on one document, and which
-     day, over a week. */
-  const solo=(athletes||[]).length===1;
-  const items=[];
-  (athletes||[]).forEach(a=>{
-    const list=range==='week'?indivWeekSessions(a,dateKey):indivSessionsFor(a,dateKey).map(s=>({...s,_day:dateKey}));
-    list.forEach((s,i)=>{
-      const day=range==='week'?`${dnL((parseD(s._day).getDay()+6)%7)} ${fd(s._day)}`:'';
-      const label=[solo?'':(a.name||'—'),day].filter(Boolean).join(' · ');
-      const ses={...s,ownerName:label};
-      items.push(coach?ses:stripForAthlete(ses));
-    });
-  });
-  if(items.length===0){alert('Bu aralıkta sporcuların takvimine yazılmış bir program yok. Individualization sekmesinde günü ve kaynak programı seç — sheet açıldığında program takvimlere kendiliğinden yazılır.');return;}
-  const range_lbl=range==='week'
+/* Every athlete's program in one print job. Each athlete gets their own page, and that page
+   is the sheet a single athlete's printout has always been — the team's logo, their name, the
+   day, their sessions — rather than a run-on document with a badge over each session. An
+   athlete with nothing written for the range is left out entirely: a page saying "no exercises
+   planned" is worth nothing to hand anyone. */
+function printAllAthletePrograms({athletes,dateKey,range,teamName}){
+  const weekly=range==='week';
+  const rangeLbl=weekly
     ?`${fd(fmt(sow(parseD(dateKey))))} – ${fd(fmt(addD(sow(parseD(dateKey)),6)))}`
-    :fdL(dateKey);
-  const who=(athletes||[]).length===1?((athletes[0].name)||'Athlete'):`${(athletes||[]).length} athletes`;
-  /* Neither copy is labelled on the page. What separates them is what is printed —
-     the coach's carries the session notes and the marks against a changed exercise —
-     and the coach, who has both, knows which one he asked for. */
-  printDayA4(`${who}${teamName?` · ${teamName}`:''}`,range_lbl,
-    items,{withReasons:coach,pageBreaks:true});
+    :fdLong(dateKey);
+  const groups=[];
+  (athletes||[]).forEach(a=>{
+    const list=weekly?indivWeekSessions(a,dateKey):indivSessionsFor(a,dateKey).map(s=>({...s,_day:dateKey}));
+    // Written means written: a session with no exercise named on it is not a program.
+    const live=list.filter(s=>(s.blocks||[]).some(b=>(b.exercises||[]).some(e=>e.name)));
+    if(!live.length)return;
+    groups.push({title:a.name||'—',subtitle:rangeLbl,
+      // Over a week the day has to be said somewhere, and the session header is where the
+      // single-athlete printout already says that kind of thing. On one day it is in the
+      // header above and the badge would only repeat it.
+      sessions:live.map(s=>weekly?{...s,ownerName:`${dnL((parseD(s._day).getDay()+6)%7)} ${fd(s._day)}`}:s)});
+  });
+  if(!groups.length){alert('Bu aralıkta hiçbir sporcunun takvimine yazılmış bir program yok. Individualization sekmesinde günü ve kaynak programı seç — sheet açıldığında program takvimlere kendiliğinden yazılır.');return;}
+  printDayA4(`${groups.length} ${L('sporcu','athletes')}${teamName?` · ${teamName}`:''}`,rangeLbl,groups[0].sessions,{groups});
 }
 
 /* Generic chip multi-select used for constraint tags everywhere. */
@@ -13599,12 +13528,11 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     return()=>clearTimeout(t);
     // eslint-disable-next-line
   },[plans,written,src,date,activeKey]);
-  /* Export reads what is actually written on the athletes' calendars, so the sheet
-     matches the program they were given — and the same call serves one athlete or
-     everyone, a day or a week, in either version. */
-  const doExport=(mode,ids)=>{
-    const list=athletes.filter(a=>(ids||chosen).includes(a.id));
-    exportPrograms({athletes:list,dateKey:date,mode,range:expRange,teamName:team.setup.teamName});
+  /* Printing reads what is actually written on the athletes' calendars, so the paper
+     matches the program they were given. */
+  const printAll=()=>{
+    const list=athletes.filter(a=>chosen.includes(a.id));
+    printAllAthletePrograms({athletes:list,dateKey:date,range:expRange,teamName:team.setup.teamName});
   };
 
   return(<div className="iv-wrap">
@@ -13630,12 +13558,10 @@ function IndividualizationView({data,team,updateTeam,weeks}){
             <option value="day">Day</option>
             <option value="week">Week</option>
           </select>
-          <button className="btn sec sm" onClick={()=>doExport('coach')} disabled={!chosen.length}
-            title="Selected athletes' programs — with the session notes and what differs from the template">⭳ Coach PDF</button>
-          <button className="btn sec sm" onClick={()=>doExport('athlete')} disabled={!chosen.length}
-            title="Selected athletes' programs — the exercises and their numbers, nothing else">⭳ Athlete PDF</button>
-          <button className="btn sec sm" onClick={()=>downloadIndivJSON(plans,date)} disabled={!plans.length}
-            title="Selected athletes' programs — machine-readable JSON">⭳ JSON</button>
+          {/* One print job for the whole squad: a page each, each page the sheet a single
+              athlete's printout is. Athletes with nothing written are left out of it. */}
+          <button className="btn sec sm" onClick={()=>printAll()} disabled={!chosen.length}
+            title="Seçili sporcuların programı tek seferde yazdırılır — her sporcu kendi sayfasında, kendi adıyla. Antrenman yazılmamış sporcu çıktıya girmez.">⎙ Print All Athletes</button>
         </span>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
