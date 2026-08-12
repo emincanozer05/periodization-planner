@@ -3605,6 +3605,10 @@ function WellnessHeatmap({athletes,sync}){
         {sync&&sync.lastStats&&(sync.lastStats.legacyWorker
           ?' · son senkronda ESKİ sürüm cevap verdi'
           :(sync.lastStats.workerVersion!=null?` · v${sync.lastStats.workerVersion}`:''))}
+        {/* Why it could not be named, in the place the coach notices the symptom: which
+            source was asked for the form's rows and what it answered. */}
+        {sync&&sync.lastStats&&Array.isArray(sync.lastStats.labelSources)&&sync.lastStats.labelSources.length>0&&
+          <div>form tanımı: {sync.lastStats.labelSources.map(s=>`${String(s.path).replace(/^\/forms\/[^/?]+/,'…')||s.path}→${s.status}${s.added?`+${s.added}`:''}`).join(' · ')}</div>}
       </div>
     </div>}
     {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
@@ -10471,7 +10475,7 @@ const NORM=s=>(s||'').toString()
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=4;
+const TALLY_WORKER_VERSION=5;
 async function performTallySync(workerUrl,team,opts={}){
   const autoCreate=!!opts.autoCreate;
   const base=workerUrl.replace(/\/+$/,'');
