@@ -3395,7 +3395,14 @@ function painSevN(v){
    printed verbatim. Old check-ins already stored that way are normalised on read, so
    nothing has to be re-synced for the grid to make sense. */
 const PAIN_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PAIN_REGION_UNKNOWN='Bölge belirtilmemiş';
+/* The athlete DID tick a region — it is the sync that could not put a name to it, so the
+   label says that rather than blaming the check-in for being incomplete. When every
+   check-in shows this, the Worker on Cloudflare is the one to fix; the Tally Sync screen
+   says so after a sync. */
+const PAIN_REGION_UNKNOWN='Bölge adı gelmedi';
+/* What that bucket used to be called. Check-ins already stored under the old wording read
+   as the new one without waiting for a re-sync. */
+const PAIN_REGION_LEGACY='Bölge belirtilmemiş';
 /* JSON text is a grid the app must decode, never a sentence the athlete wrote. */
 const looksLikeJSON=v=>/^\s*[{[]/.test(String(v==null?'':v));
 /* "Boyun: Orta, Bel: Fazla" → {Boyun:2, Bel:3}. An object — or the JSON of one — is
@@ -3409,7 +3416,7 @@ function parsePainMap(raw){
     if(!n)return;
     // Braces and quotes survive on the keys when a JSON payload had to be split by hand.
     let r=String(region==null?'':region).replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
-    if(!r||PAIN_ID_RE.test(r))r=PAIN_REGION_UNKNOWN;
+    if(!r||PAIN_ID_RE.test(r)||r===PAIN_REGION_LEGACY)r=PAIN_REGION_UNKNOWN;
     out[r]=Math.max(out[r]||0,n);
   };
   let src=raw;
@@ -3429,6 +3436,22 @@ function painFreeText(raw){
   const t=String(raw==null?'':raw).trim();
   if(!t||looksLikeJSON(t))return'';
   return parsePainMap(t)?'':t;
+}
+/* A grid whose rows arrived as ids collapses into one nameless bucket. When the same
+   check-in also answered the free-text "Ağrın hangi bölgede?" question, that answer IS
+   the region the athlete meant, so it names the bucket instead of the placeholder — the
+   coach reads "bel: Orta" instead of nothing. Long answers are left alone: a sentence is
+   a note, not a region name, and it is already shown as one. */
+const PAIN_NOTE_AS_REGION_MAX=40;
+function namePainRegions(map,note){
+  const n=String(note==null?'':note).trim();
+  if(!map||!map[PAIN_REGION_UNKNOWN]||!n||n.length>PAIN_NOTE_AS_REGION_MAX)return map;
+  const out={};
+  Object.entries(map).forEach(([r,sev])=>{
+    const k=r===PAIN_REGION_UNKNOWN?n:r;
+    out[k]=Math.max(out[k]||0,sev);
+  });
+  return out;
 }
 /* The grid as a list to show — worst first, then alphabetical so equal severities
    keep a stable order instead of following object insertion. */
@@ -10394,6 +10417,11 @@ const NORM=s=>(s||'').toString()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .trim().replace(/\s+/g,' ').toUpperCase();
 
+/* The build of `tally-worker.js` this app expects to find on Cloudflare. The Worker
+   stamps its own build into `meta.worker.version`; anything older cannot name the pain
+   grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
+   of letting every check-in read as a nameless region. Bump both together. */
+const TALLY_WORKER_VERSION=3;
 async function performTallySync(workerUrl,team,opts={}){
   const autoCreate=!!opts.autoCreate;
   const base=workerUrl.replace(/\/+$/,'');
@@ -10410,7 +10438,7 @@ async function performTallySync(workerUrl,team,opts={}){
   const sRPE=[],wellness=[];
   let srpePage=1,wellnessPage=1,rounds=0,syncedAt=null,truncated=false;
   const totals={sRPE:null,wellness:null};
-  let legacyWorker=false;
+  let legacyWorker=false,workerVersion=null,unnamedGridIds=0;
   for(;;){
     const qs=rounds===0?'':`?srpePage=${srpePage}&wellnessPage=${wellnessPage}`;
     let r;
@@ -10432,6 +10460,8 @@ async function performTallySync(workerUrl,team,opts={}){
     sRPE.push(...(data.sRPE||[]));
     wellness.push(...(data.wellness||[]));
     if(m){
+      if(m.worker&&m.worker.version!=null)workerVersion=Number(m.worker.version);
+      if(m.wellness&&m.wellness.unnamedGridIds)unnamedGridIds+=Number(m.wellness.unnamedGridIds)||0;
       if(m.srpe&&m.srpe.total!=null)totals.sRPE=m.srpe.total;
       if(m.wellness&&m.wellness.total!=null)totals.wellness=m.wellness.total;
       srpePage=m.srpe?m.srpe.nextPage:srpePage;
@@ -10453,7 +10483,11 @@ async function performTallySync(workerUrl,team,opts={}){
     wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set(),
     // Fetch bookkeeping — lets the coach see at a glance whether every Tally
     // submission actually made it over, instead of silently losing half of them.
-    sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker};
+    sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker,
+    // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
+    // name, and (filled in below) how many check-ins ended up with a nameless region.
+    workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
+    unnamedGridIds,painUnnamed:0};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
   // Match an existing athlete by name. New names are auto-created ONLY if the coach
@@ -10525,10 +10559,20 @@ async function performTallySync(workerUrl,team,opts={}){
        under the old free-text key, so that is tried too — and whatever the athlete
        actually typed stays in `areaOfPain` either way. `pain` is the tag-keyed view
        the Individualization card reads. */
-    const _painMap=parsePainMap(row['Pain Map'])||parsePainMap(row['Area of Pain']);
+    let _painMap=parsePainMap(row['Pain Map'])||parsePainMap(row['Area of Pain']);
+    let _note=painFreeText(row['Area of Pain']);
+    /* Rows that reached us as ids get their name from the free-text answer when there is
+       one — and it is then not repeated underneath as a separate note. Whatever is still
+       nameless after that is counted, so the sync report can name the cause instead of
+       leaving every check-in reading "Bölge adı gelmedi". */
+    if(_painMap&&_painMap[PAIN_REGION_UNKNOWN]&&_note){
+      const named=namePainRegions(_painMap,_note);
+      if(named!==_painMap){_painMap=named;_note='';}
+    }
+    if(_painMap&&_painMap[PAIN_REGION_UNKNOWN])stats.painUnnamed++;
     const entry={id:i>=0?ath.wellness[i].id:uid(),srcId:nid,date,
       RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
-      areaOfPain:painFreeText(row['Area of Pain']),painMap:_painMap,pain:painTagsFromMap(_painMap),
+      areaOfPain:_note,painMap:_painMap,pain:painTagsFromMap(_painMap),
       readiness:_ready};
     if(i>=0){ath.wellness[i]=entry;stats.wellnessUpdated++;}
     else{ath.wellness.push(entry);stats.wellnessAdded++;}
@@ -10643,8 +10687,19 @@ function TallySync({data,setData,team}){
             <tr><td>Athletes matched to roster</td><td><strong>{stats.athletesMatched}</strong></td></tr>
             <tr><td>Athletes auto-created (new on roster)</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
             <tr><td>Eşleşmeyip atlanan gönderim</td><td><strong style={{color:stats.skipped>0?'var(--high-t)':'inherit'}}>{stats.skipped||0}</strong></td></tr>
+            <tr><td>Ağrı bölgesi isimsiz gelen check-in</td><td><strong style={{color:stats.painUnnamed>0?'var(--high-t)':'inherit'}}>{stats.painUnnamed||0}</strong></td></tr>
           </tbody>
         </table>
+        {/* The pain grid's rows arrive from Tally as ids; naming them is the Worker's job,
+            so a coach staring at "Bölge adı gelmedi" on every check-in is told exactly
+            which piece to fix rather than being left to guess at the form. */}
+        {(stats.workerOutdated||stats.painUnnamed>0)&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Ağrı matrisinin <strong>bölge adları çözülemedi</strong>
+          {stats.painUnnamed>0?` — ${stats.painUnnamed} check-in'de bölge "Bölge adı gelmedi" olarak görünüyor.`:'.'}
+          {stats.workerOutdated&&<> Cloudflare'deki Worker eski bir sürüm (gelen: <strong>{stats.workerVersion==null?'sürüm bilgisi yok':'v'+stats.workerVersion}</strong>, gereken: <strong>v{TALLY_WORKER_VERSION}</strong>).</>}
+          {' '}Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yapıştırıp <strong>yeniden Deploy et</strong>, sonra <strong>Sync Now</strong> de — güncel Worker satır/sütun kimliklerini form tanımından çözüp <code>Boyun: Orta</code> biçiminde yolluyor.
+          {!stats.workerOutdated&&stats.painUnnamed>0&&<> Worker güncel görünüyorsa, matris sorusunun satır başlıklarının Tally'de boş olmadığını ve <code>TALLY_API_KEY</code>'in form tanımını okuyabildiğini kontrol et.</>}
+        </div>}
         {stats.legacyWorker&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Worker eski sürüm — <strong>gönderimlerin sadece ilk sayfaları</strong> geliyor, gerisi sessizce düşüyor.
           Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yeniden deploy et; ondan sonra bütün sRPE geçmişi eksiksiz gelir.

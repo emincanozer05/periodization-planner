@@ -100,18 +100,38 @@ yayındaysa CoachOS → Tally Sync ekranı bunu uyarı olarak gösterir. Senkron
 "sRPE submissions from Tally" satırındaki sayı, formdaki toplam gönderim sayısına
 eşit olmalı.
 
-## Ağrı matrisini eklediysen: Worker'ı yeniden deploy et
-Matris sorusunu forma yeni eklediysen, Cloudflare'deki Worker kodunu bu repodaki
-güncel `tally-worker.js` ile değiştirip **yeniden Deploy et**. Eski sürüm matrisin
-satır/sütun kimliklerini çözemez: cevabı ya ham JSON olarak ya da yalnızca son
-satırın şiddeti olarak gönderir, bölge adı kaybolur. Güncel sürüm satır ve sütun
-etiketlerini geri çözüp `Bölge: Şiddet` çiftleri hâlinde yollar.
+## Her check-in'de "Bölge adı gelmedi" yazıyorsa: Worker'ı yeniden deploy et
+Tally, matris cevabını **satır kimlikleriyle** yollar
+(`{"eeb7ce0e-…":["Orta"]}`). Bu kimlikleri bölge adına çevirmek Worker'ın işi;
+çeviremezse CoachOS bölgeyi adlandıramaz ve bütün sporcularda **"Bölge adı gelmedi"**
+görünür.
+
+Güncel `tally-worker.js` bunu iki yerden çözüyor: gönderim yanıtındaki soru tanımından
+ve — orada satır/sütun listesi yoksa, ki Tally çoğu zaman göndermiyor — **form
+tanımından** (`GET /forms/<FORM_ID>`), her senkronda form başına bir kez okuyarak.
+Sonuç uygulamaya `Boyun: Orta, Bel: Fazla` biçiminde geliyor.
+
+Yapman gereken: Cloudflare'deki Worker kodunu bu repodaki güncel `tally-worker.js`
+ile değiştirip **yeniden Deploy et**, sonra CoachOS → Tally Sync → **Sync Now**.
+Worker artık kendi sürümünü `meta.worker.version` olarak bildiriyor; eski bir sürüm
+yayındaysa Tally Sync ekranı bunu uyarı olarak gösterir ve "Ağrı bölgesi isimsiz gelen
+check-in" satırında kaç check-in'in etkilendiğini yazar.
+
+Ek not: bölge hâlâ isimsiz geliyorsa Tally'de matris **satır başlıklarının boş
+olmadığını** ve `TALLY_API_KEY`'in o formu okuyabildiğini kontrol et. Formda serbest
+metin "Ağrın hangi bölgede?" sorusu da varsa, kimlik çözülemediği durumda CoachOS o
+kısa cevabı bölge adı olarak kullanır — yani hiç değilse bölge boş kalmaz.
 
 ## Hızlı test
 Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:
 - `{ "sRPE":[...], "wellness":[...] }` ve diziler doluysa → çalışıyor.
+- `meta.worker.version` yayındaki Worker sürümünü söyler; uygulamanın beklediğinden
+  küçükse (ya da hiç yoksa) Cloudflare'e eski kod deploy edilmiş demektir.
 - `meta.srpe.total` formdaki toplam gönderim sayısını gösterir; `meta.srpe.hasMore`
   true ise uygulama kalan sayfaları kendisi ister.
+- `meta.wellness.unnamedGridIds` > 0 ise ağrı matrisinin kimlikleri çözülememiş —
+  yukarıdaki bölüme bak. `wellness` satırlarında `"Pain Map": "Boyun: Orta"` görüyorsan
+  her şey yolunda.
 - `{ "error": "..." }` → mesaj sorunu söyler (API anahtarı yok / form ID yanlış).
 - Diziler boşsa → forma henüz cevap gelmemiş ya da form ID yanlış.
 
