@@ -876,6 +876,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .sess-card{margin-bottom:14px}
 .sess-card:last-child{margin-bottom:0}
 /* Color picker swatches inside SessEd */
+/* One strip under the session's own line: what the session trains on the left, the card
+   colour on the right. The colour picker keeps its natural width and the pattern summary
+   takes whatever is left; below 900px they stack, summary first. */
+.sess-strip{display:flex;align-items:flex-start;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+.sess-strip-l{flex:1 1 320px;min-width:0}
+.sess-strip-r{flex:0 0 auto;margin-left:auto}
+.sess-pat-row{display:flex;flex-wrap:wrap;gap:6px}
+.sess-pat{display:inline-flex;align-items:baseline;gap:6px;padding:5px 10px;border-radius:8px;
+  background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);font-size:11.5px;white-space:nowrap}
+.sess-pat b{font-weight:700;color:var(--text)}
+.sess-pat i{font-style:normal;color:var(--text2);font-size:11px}
+.sess-pat em{font-style:normal;color:var(--muted);font-size:10.5px;font-weight:700}
+.sess-pat-empty{font-size:11.5px;color:var(--dim);padding:5px 0}
 .color-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .color-swatch{width:26px;height:26px;border-radius:7px;border:2px solid var(--border);cursor:pointer;padding:0;transition:transform .12s,border-color .12s}
 .color-swatch:hover{transform:scale(1.1)}
@@ -5495,6 +5508,22 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Accessory':'Accessory'};
+/* The movement patterns a session actually contains, read off its own exercise rows:
+   each pattern once, with the executions tagged for it and how many rows carry it.
+   Ordered the way the session is written rather than alphabetically, so the summary
+   reads like the session does. Rows with no pattern tagged are simply not counted. */
+function sessionPatterns(session){
+  const out=[],by={};
+  ((session&&session.blocks)||[]).forEach(b=>((b&&b.exercises)||[]).forEach(e=>{
+    const p=String((e&&e.pattern)||'').trim();
+    if(!p)return;
+    if(!by[p]){by[p]={pattern:p,planes:[],count:0};out.push(by[p]);}
+    by[p].count++;
+    const st=String((e&&e.plane)||'').trim();
+    if(st&&by[p].planes.indexOf(st)<0)by[p].planes.push(st);
+  }));
+  return out;
+}
 const EX_COMBO=(p,st)=>`${EX_PAT_SHORT[p]||p} · ${st}`;
 // slug -> English label for the SELECTABLE muscles; every other slug is a non-interactive body part.
 const MM_MUSCLES={chest:'Chest',abs:'Abs',obliques:'Obliques',deltoids:'Shoulders',biceps:'Biceps',triceps:'Triceps',forearm:'Forearms',trapezius:'Trapezius',quadriceps:'Quadriceps',adductors:'Adductors',tibialis:'Tibialis',calves:'Calves',gluteal:'Glutes',hamstring:'Hamstrings','upper-back':'Upper Back','lower-back':'Lower Back'};
@@ -6879,13 +6908,33 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
         </div>
       </div>
-      {!isTemplate&&<div style={{marginBottom:14}}>
-        <label>Card color</label>
-        <div className="color-row">
-          {['#0094ff','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#22c55e','#a7f3d0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
-            <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
-          <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
-          <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
+      {!isTemplate&&<div className="sess-strip">
+        {/* What this session actually trains, read off its own exercises: every movement
+            pattern tagged on a row, with the executions used for it and how many rows
+            carry it. It sits where the coach is already looking while writing the
+            session, so the balance of the day is visible without opening every block. */}
+        <div className="sess-strip-l">
+          <label>Movements &amp; patterns</label>
+          {(()=>{
+            const pats=sessionPatterns(session);
+            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — egzersiz satırlarındaki <b>Pattern</b> alanını doldur.</div>;
+            return<div className="sess-pat-row">
+              {pats.map(p=><span key={p.pattern} className="sess-pat" title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — ${p.count} egzersiz`}>
+                <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
+                {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
+                {p.count>1&&<em>×{p.count}</em>}
+              </span>)}
+            </div>;
+          })()}
+        </div>
+        <div className="sess-strip-r">
+          <label>Card color</label>
+          <div className="color-row">
+            {['#0094ff','#5b8cff','#fcd34d','#ff6b5b','#46d6a0','#22c55e','#a7f3d0','#f97316','#a855f7','#22d3ee','#ec4899','#f1f5f9'].map(c=>
+              <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
+            <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
+            <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
+          </div>
         </div>
       </div>}
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
