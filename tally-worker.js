@@ -34,7 +34,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 4;
+const WORKER_VERSION = 5;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -143,9 +143,43 @@ function collectLabels(node, out, depth) {
 //   which endpoint refused and with what status instead of failing silently.
 const FORM_LABEL_PATHS = [
   id => `/forms/${id}`,
+  id => `/forms/${id}?includeBlocks=true`,
   id => `/forms/${id}/questions`,
   id => `/forms/${id}/blocks`,
 ];
+
+// The form's own public page. A Tally form renders from its definition, so the page
+// carries the blocks — every matrix row with its uuid and the words the athlete read —
+// and reading it needs NO API key: it is the same page the athletes fill in. This is the
+// source that survives everything the API can refuse: a key without the right scope, an
+// endpoint a plan does not serve, a workspace the token cannot see. Two ways in, in order
+// of trust: the JSON the page embeds for its own renderer, and failing that, pairing each
+// uuid in the markup with the first label that follows it.
+async function labelsFromPublicForm(formId, out) {
+  const res = await fetch(`https://tally.so/r/${formId}`, {
+    headers: { 'User-Agent': 'CoachOS-Tally-Sync', 'Accept': 'text/html' },
+  });
+  if (!res.ok) return res.status;
+  const html = await res.text();
+  const before = Object.keys(out).length;
+  for (const tag of (html.match(/<script[^>]*type="application\/json"[^>]*>[\s\S]*?<\/script>/gi) || [])) {
+    const body = tag.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '');
+    try { collectLabels(JSON.parse(body), out); } catch (e) { /* not the blob we want */ }
+  }
+  if (Object.keys(out).length === before) {
+    const re = /"(?:uuid|id)"\s*:\s*"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"[\s\S]{0,400}?"(?:text|title|label)"\s*:\s*"((?:[^"\\]|\\.){1,160})"/gi;
+    let m;
+    while ((m = re.exec(html))) {
+      if (out[m[1]]) continue;
+      let text = m[2];
+      try { text = JSON.parse(`"${text}"`); } catch (e) { /* leave the escapes in */ }
+      text = plainText(text);
+      if (text) out[m[1]] = text;
+    }
+  }
+  return res.status;
+}
+
 async function fetchFormLabels(formId, key) {
   const labels = {};
   const sources = [];
@@ -159,6 +193,20 @@ async function fetchFormLabels(formId, key) {
       sources.push({ path, status: res.status, added: Object.keys(labels).length - before });
     } catch (e) {
       sources.push({ path, status: 'error', error: String(e && e.message || e), added: 0 });
+    }
+  }
+  /* Always asked, never skipped. Deciding "the API already answered" is what broke this
+     twice: `GET /forms/{id}` returns the form's own name, so any test for "did we get a
+     label" passes while not one matrix row has been named. One extra request per form is
+     cheaper than another round of a coach staring at an unnamed region. Existing labels
+     win — collectLabels keeps the first it saw. */
+  {
+    const before = Object.keys(labels).length;
+    try {
+      const status = await labelsFromPublicForm(formId, labels);
+      sources.push({ path: `tally.so/r/${formId}`, status, added: Object.keys(labels).length - before });
+    } catch (e) {
+      sources.push({ path: `tally.so/r/${formId}`, status: 'error', error: String(e && e.message || e), added: 0 });
     }
   }
   return { labels, sources };
@@ -235,7 +283,7 @@ function answerToValue(resp, question, fallbackLabels) {
 const PAGE_LIMIT = 50;   // Tally's documented page size
 // Pages per form per invocation. Two forms plus the three form-definition reads each one
 // makes for its matrix labels stay under Cloudflare's 50-subrequest budget.
-const PAGE_BUDGET = 16;
+const PAGE_BUDGET = 15;
 
 // Fetch one page-run of a form's submissions.
 // → {rows, total, nextPage, hasMore, unnamedGridIds, formLabelCount, labelSources} —
