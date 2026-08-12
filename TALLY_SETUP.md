@@ -106,10 +106,16 @@ Tally, matris cevabını **satır kimlikleriyle** yollar
 çeviremezse CoachOS bölgeyi adlandıramaz ve bütün sporcularda **"Bölge adı gelmedi"**
 görünür.
 
-Güncel `tally-worker.js` bunu iki yerden çözüyor: gönderim yanıtındaki soru tanımından
-ve — orada satır/sütun listesi yoksa, ki Tally çoğu zaman göndermiyor — **form
-tanımından** (`GET /forms/<FORM_ID>`), her senkronda form başına bir kez okuyarak.
-Sonuç uygulamaya `Boyun: Orta, Bel: Fazla` biçiminde geliyor.
+Güncel `tally-worker.js` bunu bulabildiği **bütün** kaynaklardan çözüyor: gönderim
+yanıtındaki soru tanımı, sayfadaki diğer sorular ve form tanımının üç ucu
+(`GET /forms/<FORM_ID>`, `…/questions`, `…/blocks`). Hepsi okunup birleştiriliyor —
+biri boş dönse de diğerleri deneniyor. Sonuç uygulamaya `Boyun: Orta, Bel: Fazla`
+biçiminde geliyor.
+
+> v3'te bir hata vardı: ilk **etiket üreten** uca ulaşınca duruyordu. `GET /forms/<ID>`
+> her zaman en az bir etiket üretir (formun kendi adı), dolayısıyla satırların
+> bulunduğu uç hiç denenmiyordu ve bölgeler yine isimsiz kalıyordu. v4 hiçbir ucu
+> atlamıyor.
 
 Yapman gereken: Cloudflare'deki Worker kodunu bu repodaki güncel `tally-worker.js`
 ile değiştirip **yeniden Deploy et**, sonra CoachOS → Tally Sync → **Sync Now**.
@@ -121,6 +127,21 @@ Ek not: bölge hâlâ isimsiz geliyorsa Tally'de matris **satır başlıkların�
 olmadığını** ve `TALLY_API_KEY`'in o formu okuyabildiğini kontrol et. Formda serbest
 metin "Ağrın hangi bölgede?" sorusu da varsa, kimlik çözülemediği durumda CoachOS o
 kısa cevabı bölge adı olarak kullanır — yani hiç değilse bölge boş kalmaz.
+
+### Tanı: `/diag`
+Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/diag` adresini aç. Worker'ın
+Tally'den ne okuduğunu olduğu gibi gösterir:
+- `worker.version` → Cloudflare'de yayında olan sürüm.
+- `formLabels.sources` → üç uç noktanın her biri, HTTP kodu ve kaç etiket getirdiği.
+  Hepsi `added: 0` ise sorun etiket kaynağında: `401`/`403` API anahtarının o formu
+  okuyamadığını, `404` o ucun bu planda olmadığını söyler.
+- `submissionsPage.questions` → Tally'nin soruları nasıl tanımladığı (matrisin satır
+  listesini gönderip göndermediği burada görünür).
+- `gridAnswers[].rawAnswer` / `.decoded` → ham matris cevabı ve neye çözüldüğü.
+  `decoded` içinde hâlâ kimlik varsa çözüm yapılamamış demektir.
+- `hint` → yukarıdakilere bakıp ne yapılması gerektiğini bir cümleyle söyler.
+
+(`/diag` bir gönderimin cevaplarını içerir; çıktıyı forma davrandığın gibi paylaş.)
 
 ## Hızlı test
 Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:

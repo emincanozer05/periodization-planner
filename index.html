@@ -3558,6 +3558,11 @@ function WellnessHeatmap({athletes}){
     .sort((x,y)=>(x.avg==null)-(y.avg==null)||(x.avg==null?0:(M.hi?(y.avg-x.avg):(x.avg-y.avg))));
   const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
+  /* Days on screen whose region the sync could not name. The cause is never visible from
+     the check-in — it is a Worker that could not turn Tally's row ids into the regions the
+     form asks about — so the grid says it once, here, instead of leaving every bubble
+     reading "Bölge adı gelmedi" with no way to find out why. */
+  const unnamedDays=rows.reduce((n,r)=>n+r.pains.filter(p=>p&&p.list.some(x=>x.region===PAIN_REGION_UNKNOWN)).length,0);
   return(<div className="panel">
     <div className="wh-hm-head">
       <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>son 2 hafta · ortalamaya göre</span></h2></div>
@@ -3573,6 +3578,10 @@ function WellnessHeatmap({athletes}){
         <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
       </div>
     </div>
+    {unnamedDays>0&&<div style={{margin:'0 0 12px',padding:'10px 12px',background:'rgba(245,158,11,.10)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:12.5,lineHeight:1.5}}>
+      ⚠️ Bu aralıkta <strong>{unnamedDays} gün</strong> ağrı bölgesi isimsiz geldi. Sporcu bölgeyi Tally'de işaretledi; Tally cevabı satır kimlikleriyle yolluyor ve o kimlikleri bölge adına çeviren Cloudflare Worker'ı bunu yapamadı.
+      {' '}<strong>Tally Sync</strong> ekranına git: güncel <code>tally-worker.js</code> deploy edilmiş mi orada yazıyor. Deploy edip <strong>Sync Now</strong> dedikten sonra geçmiş check-in'ler de düzelir.
+    </div>}
     {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?'high':'low'}</span>
@@ -10425,7 +10434,7 @@ const NORM=s=>(s||'').toString()
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=3;
+const TALLY_WORKER_VERSION=4;
 async function performTallySync(workerUrl,team,opts={}){
   const autoCreate=!!opts.autoCreate;
   const base=workerUrl.replace(/\/+$/,'');
@@ -10442,7 +10451,7 @@ async function performTallySync(workerUrl,team,opts={}){
   const sRPE=[],wellness=[];
   let srpePage=1,wellnessPage=1,rounds=0,syncedAt=null,truncated=false;
   const totals={sRPE:null,wellness:null};
-  let legacyWorker=false,workerVersion=null,unnamedGridIds=0;
+  let legacyWorker=false,workerVersion=null,unnamedGridIds=0,labelSources=null;
   for(;;){
     const qs=rounds===0?'':`?srpePage=${srpePage}&wellnessPage=${wellnessPage}`;
     let r;
@@ -10466,6 +10475,7 @@ async function performTallySync(workerUrl,team,opts={}){
     if(m){
       if(m.worker&&m.worker.version!=null)workerVersion=Number(m.worker.version);
       if(m.wellness&&m.wellness.unnamedGridIds)unnamedGridIds+=Number(m.wellness.unnamedGridIds)||0;
+      if(m.wellness&&Array.isArray(m.wellness.labelSources))labelSources=m.wellness.labelSources;
       if(m.srpe&&m.srpe.total!=null)totals.sRPE=m.srpe.total;
       if(m.wellness&&m.wellness.total!=null)totals.wellness=m.wellness.total;
       srpePage=m.srpe?m.srpe.nextPage:srpePage;
@@ -10491,7 +10501,7 @@ async function performTallySync(workerUrl,team,opts={}){
     // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
     // name, and (filled in below) how many check-ins ended up with a nameless region.
     workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
-    unnamedGridIds,painUnnamed:0};
+    unnamedGridIds,labelSources,painUnnamed:0};
 
   const findIdx=n=>athletes.findIndex(a=>NORM(a.name)===NORM(n));
   // Match an existing athlete by name. New names are auto-created ONLY if the coach
@@ -10702,7 +10712,13 @@ function TallySync({data,setData,team}){
           {stats.painUnnamed>0?` — ${stats.painUnnamed} check-in'de bölge "Bölge adı gelmedi" olarak görünüyor.`:'.'}
           {stats.workerOutdated&&<> Cloudflare'deki Worker eski bir sürüm (gelen: <strong>{stats.workerVersion==null?'sürüm bilgisi yok':'v'+stats.workerVersion}</strong>, gereken: <strong>v{TALLY_WORKER_VERSION}</strong>).</>}
           {' '}Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yapıştırıp <strong>yeniden Deploy et</strong>, sonra <strong>Sync Now</strong> de — güncel Worker satır/sütun kimliklerini form tanımından çözüp <code>Boyun: Orta</code> biçiminde yolluyor.
-          {!stats.workerOutdated&&stats.painUnnamed>0&&<> Worker güncel görünüyorsa, matris sorusunun satır başlıklarının Tally'de boş olmadığını ve <code>TALLY_API_KEY</code>'in form tanımını okuyabildiğini kontrol et.</>}
+          {/* Which endpoint answered what: the difference between "the key cannot read the
+              form definition" (401/403) and "Tally does not serve it here" (404) decides
+              what the coach has to change, and only the Worker knows it. */}
+          {Array.isArray(stats.labelSources)&&stats.labelSources.length>0&&<div style={{marginTop:8,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
+            Form tanımı okuma denemeleri: {stats.labelSources.map(s=>`${s.path} → ${s.status}${s.added?` (+${s.added} etiket)`:''}`).join(' · ')}
+          </div>}
+          {!stats.workerOutdated&&stats.painUnnamed>0&&<> Worker güncel görünüyorsa, tarayıcıda <code>{(cfg.workerUrl||'…workers.dev').replace(/\/+$/,'')}/diag</code> adresini aç: Worker'ın Tally'den ne okuduğunu, hangi uç noktanın hangi HTTP koduyla cevap verdiğini ve matris cevabının neye çözüldüğünü satır satır gösterir.</>}
         </div>}
         {stats.legacyWorker&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Worker eski sürüm — <strong>gönderimlerin sadece ilk sayfaları</strong> geliyor, gerisi sessizce düşüyor.
