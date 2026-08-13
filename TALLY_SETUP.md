@@ -91,6 +91,24 @@ https://tally.so/forms/<FORM_ID>/edit
 3. **Auto-sync**'i AÇ (ON) ve **Sync Now**'a bas. Bundan sonra forma gelen her cevap
    birkaç dakikada bir otomatik düşer.
 
+## Önce adresi test et
+Tally Sync ekranında **Adresi test et** düğmesi var. Worker'a bir kez sorar ve ne
+döndüğünü olduğu gibi yazar: hangi adrese gittiğini, Worker'ın sürümünü ve ilk sayfada
+kaç satır geldiğini. Sorunun adreste mi, Worker ayarlarında mı, yoksa formda mı olduğunu
+tek basışta ayırır.
+
+**En sık yapılan hata: adresin sonuna `/sync` yapıştırmak.** Uygulama `/sync`'i kendisi
+ekliyor; sen de eklersen istek `…/sync/sync` adresine gidiyor, Worker oraya JSON değil düz
+metin döndürüyor ve senkron anlaşılmaz bir hatayla düşüyordu. Artık sondaki `/sync`
+(ve `/diag`, fazladan `/`, `?…` kısmı) otomatik atılıyor, `https://` eksikse tamamlanıyor.
+Yanlışlıkla Tally form linkini ya da Cloudflare **panel** adresini
+(`dash.cloudflare.com/…`) yapıştırırsan bunu adıyla söylüyor.
+
+Doğru adres şuna benzer — sonunda başka hiçbir şey olmadan:
+```
+https://tally-sync.KULLANICIADIN.workers.dev
+```
+
 ## "Sync Now'a basıyorum, veri gelmiyor" — v7'de düzeltilenler
 Senkron başarılı görünüp hiç veri düşmemesinin dört sebebi vardı; dördü de düzeltildi.
 Worker tarafındaki ikisi için **Cloudflare'deki kodu bu repodaki `tally-worker.js` ile
