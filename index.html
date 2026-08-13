@@ -3566,6 +3566,26 @@ const PAIN_REGION_WORDS=new Set([
    never alone. */
 const PAIN_SIDE_WORDS=new Set(['sag','sol','her','iki','ikisi','ve','ust','alt','on','arka',
   'bolgesi','bolge','tarafi','taraf','kismi','right','left','both','and','upper','lower','low','mid','area']);
+/* ---- "…şiddette? (opsiyonel) [Sırt]" → "Sırt" -------------------------------
+   Tally can send the pain matrix as one question PER ROW, and it titles each of those
+   questions "<the whole question> [<the row>]". The row id then resolves to that title,
+   so the heatmap bubble read the question back at the coach — four rows, four copies of
+   "💥 Ağrın hangi bölgede ve şiddette? (opsiyonel)" — with the body part buried at the
+   end of each. The region is the part in brackets; everything before it is the question
+   every row repeats. The leading emoji goes too, so "💥 Sırt" reads as "Sırt".
+   Applied wherever a region name is read rather than at sync time only, so check-ins
+   already stored under the long name come out right without re-syncing anything. */
+const REGION_ROW_RE=/\[([^\][]{1,40})\]\s*$/;
+function cleanRegionLabel(raw){
+  const s0=String(raw==null?'':raw).trim();
+  let s=s0;
+  const m=REGION_ROW_RE.exec(s);
+  if(m&&m[1].trim())s=m[1].trim();
+  s=s.replace(/^[^\p{L}\p{N}]+/u,'').replace(/[\s:;,.\-–—]+$/,'').trim();
+  // Never turn a name into nothing: a label made entirely of punctuation keeps whatever
+  // it had, so an odd form loses tidiness rather than the region.
+  return s||s0;
+}
 const normPainWord=s=>String(s==null?'':s).toLowerCase()
   .replace(/i̇/g,'i').replace(/ı/g,'i').replace(/İ/g,'i')
   .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -3593,12 +3613,13 @@ function parsePainRegionList(raw,dict,seen){
   if(!parts.length)return null;
   const out={};
   for(const part of parts){
-    const p=part.replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    let p=part.replace(/^[\s{"']+/,'').replace(/[\s{}"',]+$/,'').trim();
+    p=cleanRegionLabel(p).replace(/^[\s[\]]+/,'').replace(/[\s[\]]+$/,'').trim();
     if(!p)continue;
     if(PAIN_ID_RE.test(p)){
       // An option id the sync could not name — same escape hatch the grid has.
       const named=dict&&String(dict[p]||'').trim();
-      if(named){out[named]=out[named]||0;continue;}
+      if(named){const nc=cleanRegionLabel(named);out[nc]=out[nc]||0;continue;}
       if(seen&&seen.indexOf(p)<0)seen.push(p);
       out[PAIN_REGION_UNKNOWN]=out[PAIN_REGION_UNKNOWN]||0;
       continue;
@@ -3625,10 +3646,14 @@ function parsePainMap(raw,opts){
     const n=painSevN(sev);
     if(!n)return;
     // Braces and quotes survive on the keys when a JSON payload had to be split by hand.
-    let r=String(region==null?'':region).replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    let r=String(region==null?'':region).replace(/^[\s{"']+/,'').replace(/[\s{}"',]+$/,'').trim();
+    // A per-row question title carries the row in brackets, so the brackets are read
+    // before they are stripped — trimming them first would have thrown the region away
+    // and left the question behind.
+    r=cleanRegionLabel(r).replace(/^[\s[\]]+/,'').replace(/[\s[\]]+$/,'').trim();
     if(PAIN_ID_RE.test(r)){
       const named=dict&&String(dict[r]||'').trim();
-      if(named)r=named;
+      if(named)r=cleanRegionLabel(named);
       else{if(seen&&seen.indexOf(r)<0)seen.push(r);r=PAIN_REGION_UNKNOWN;}
     }
     if(!r||r===PAIN_REGION_LEGACY)r=PAIN_REGION_UNKNOWN;
@@ -10873,7 +10898,7 @@ const TALLY_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=7;
+const TALLY_WORKER_VERSION=9;
 
 /* A sync is two halves, and keeping them apart is what stops one from undoing the other.
    `fetchTallyRows` only talks to the Worker; `mergeTallyRows` is a pure function of a team
@@ -10931,6 +10956,9 @@ async function fetchTallyRows(workerUrl){
   let srpePage=1,wellnessPage=1,rounds=0,syncedAt=null,truncated=false;
   const totals={sRPE:null,wellness:null};
   let legacyWorker=false,workerVersion=null,unnamedGridIds=0,unnamedOptionIds=0,labelSources=null;
+  // The push half of the Worker: whether a webhook store is bound, whether deliveries are
+  // signed, and how many rows arrived that way rather than by polling Tally.
+  let webhook=null;
   // Which form the Worker could not read, if either. One unreadable form no longer fails
   // the whole sync (it used to), so the half that arrived is kept and the failure named.
   const formErrors={srpe:null,wellness:null};
@@ -10955,6 +10983,9 @@ async function fetchTallyRows(workerUrl){
     wellness.push(...(data.wellness||[]));
     if(m){
       if(m.worker&&m.worker.version!=null)workerVersion=Number(m.worker.version);
+      // Only the first round carries the stored deliveries, so the first round's report
+      // is the one that counts — later rounds say zero because they asked for pages.
+      if(m.webhook&&!webhook)webhook=m.webhook;
       if(m.wellness&&m.wellness.unnamedGridIds)unnamedGridIds+=Number(m.wellness.unnamedGridIds)||0;
       if(m.wellness&&Array.isArray(m.wellness.labelSources))labelSources=m.wellness.labelSources;
       unnamedOptionIds+=(Number(m.srpe&&m.srpe.unnamedOptionIds)||0)+(Number(m.wellness&&m.wellness.unnamedOptionIds)||0);
@@ -10976,7 +11007,7 @@ async function fetchTallyRows(workerUrl){
       // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
       // name, and (filled in by the merge) how many check-ins got a nameless region.
       workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
-      unnamedGridIds,unnamedOptionIds,labelSources,formErrors}};
+      unnamedGridIds,unnamedOptionIds,labelSources,formErrors,webhook}};
 }
 
 /* Merge half: pure, so it can run inside the state updater and be re-run safely.
@@ -11236,6 +11267,13 @@ function TallySync({data,setData,team}){
      the background timer syncs while this screen is closed, and the screen has to show
      what that run found — including a run that failed. */
   const stats=cfg.lastStats,lastAt=cfg.lastSyncedAt,error=cfg.lastError||null;
+  /* The address to paste into Tally's webhook box, built from whatever is in the URL field
+     right now — a half-typed address simply shows nothing rather than a wrong endpoint. */
+  const webhookUrl=useMemo(()=>{
+    const u=(url||'').trim();
+    if(!u)return null;
+    try{return tallyWorkerBase(u)+'/webhook';}catch(e){return null;}
+  },[url]);
 
   const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
   const saveCfg=patchTeam;
@@ -11303,6 +11341,24 @@ function TallySync({data,setData,team}){
           Denenen adres: {probe.base}/sync
         </div>}
       </div>}
+      {/* Tally'nin "Endpoint URL" kutusuna yazılacak adres. Koçun elinde Worker adresi
+          zaten var; eksik olan tek şey sonuna ne geleceğiydi — o yüzden burada hazır
+          yazıyor, tahmin ettirmiyoruz. */}
+      {webhookUrl&&<div style={{marginTop:10,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
+        background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.3)'}}>
+        <strong>Tally → Integrations → Webhooks → Endpoint URL</strong> kutusuna bunu yaz
+        (<em>iki forma da ayrı ayrı</em>; Worker hangisi olduğunu form ID'sinden anlıyor):
+        <code style={{display:'block',marginTop:6,padding:8,background:'rgba(0,0,0,.3)',borderRadius:6,
+          fontSize:12,wordBreak:'break-all',userSelect:'all'}}>{webhookUrl}</code>
+        <div className="help" style={{marginTop:6,color:'var(--muted)'}}>
+          Webhook, cevabı <strong>anında</strong> Worker'a yollar; Auto-sync'in birkaç dakikalık
+          gecikmesi kalmaz. Çalışması için Worker'a <code>TALLY_STORE</code> adında bir KV
+          namespace bağlaman gerekiyor (Cloudflare → Worker → Settings → Bindings). "Add a
+          signing secret" kullanacaksan aynı metni Worker'a <code>TALLY_SIGNING_SECRET</code>
+          değişkeni olarak da ekle. Adresin hazır olup olmadığını tarayıcıda{' '}
+          <code>{webhookUrl}</code> açarak görebilirsin.
+        </div>
+      </div>}
       <label className="ath-chip" style={{cursor:'pointer',marginTop:12,display:'inline-flex'}}>
         <input type="checkbox" checked={!!cfg.autoCreate} onChange={e=>saveCfg({autoCreate:e.target.checked})}/>
         <span>{cfg.autoCreate?'Eşleşmeyen isimler için yeni sporcu OLUŞTUR':'Yalnızca kadrodaki sporculara yaz (eşleşmeyen isimler atlanır)'}</span>
@@ -11353,8 +11409,24 @@ function TallySync({data,setData,team}){
             <tr><td>Athletes auto-created (new on roster)</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
             <tr><td>Eşleşmeyip atlanan gönderim</td><td><strong style={{color:stats.skipped>0?'var(--high-t)':'inherit'}}>{stats.skipped||0}</strong></td></tr>
             <tr><td>Ağrı bölgesi isimsiz gelen check-in</td><td><strong style={{color:stats.painUnnamed>0?'var(--high-t)':'inherit'}}>{stats.painUnnamed||0}</strong></td></tr>
+            {/* Webhook kuruluysa, kaç gönderimin çekilmek yerine anında düştüğünü söyler —
+                webhook'un gerçekten çalışıp çalışmadığının tek görünür kanıtı bu. */}
+            {stats.webhook&&stats.webhook.enabled&&<tr><td>Webhook ile anında düşen gönderim</td>
+              <td><strong style={{color:'var(--accent2)'}}>{(stats.webhook.srpe||0)+(stats.webhook.wellness||0)}</strong>
+                <span style={{color:'var(--muted)'}}> (sRPE {stats.webhook.srpe||0} · Wellness {stats.webhook.wellness||0}{stats.webhook.signed?' · imzalı':''})</span></td></tr>}
           </tbody>
         </table>
+        {/* Webhook adresi Tally'ye girilmiş ama Worker'da saklama yeri yoksa, Tally her
+            gönderimde hata alır ve bir süre sonra webhook'u kapatır. Sessiz kalmasın. */}
+        {stats.webhook&&!stats.webhook.enabled&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Worker'a <strong>KV namespace bağlı değil</strong>. Tally webhook'unu kurduysan gelen cevapların saklanacak yeri yok — Tally hata alır ve bir süre sonra webhook'u kapatır.
+          <div className="help" style={{marginTop:6}}>
+            Cloudflare → Workers &amp; Pages → Worker'ın → <strong>Settings → Bindings</strong> → KV namespace ekle, adı <code>TALLY_STORE</code> olsun. Yalnızca Auto-sync kullanacaksan bu uyarıyı yok sayabilirsin.
+          </div>
+        </div>}
+        {stats.webhook&&stats.webhook.error&&<div style={{marginTop:10,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Saklanan webhook gönderimleri okunamadı: <code>{stats.webhook.error}</code>
+        </div>}
         {/* One form the Worker could not read no longer fails the whole sync — the other
             form's rows still arrive — but the coach has to be told which one is missing,
             or half the data quietly stops updating and nothing says why. */}
