@@ -10882,15 +10882,46 @@ const TALLY_WORKER_VERSION=7;
    wrote the whole thing back after it, so every edit made while a sync was in flight (and,
    with Auto-sync on, everything done since the timer was started) was silently reverted a
    few minutes later. */
-async function fetchTallyRows(workerUrl){
-  const base=(workerUrl||'').trim().replace(/\/+$/,'');
-  // Guard against the most common mistakes before we even fetch.
+/* The address, cleaned up and checked before anything is fetched. Every wrong thing that
+   can be pasted here looks the same from the app's side — a fetch that fails or a body
+   that will not parse — so each is recognised by hand and answered in words the coach can
+   act on. The one that cost the most: pasting the address WITH `/sync` on the end. The app
+   appends its own, `…/sync/sync` misses both routes, the Worker answers its plain-text
+   "running" banner with HTTP 200, and `r.json()` then threw a bare SyntaxError. */
+function tallyWorkerBase(raw){
+  let base=(raw||'').trim().replace(/\s+/g,'');
   if(!base)
     throw new Error('Worker URL boş — önce Cloudflare Worker adresini (…workers.dev) yaz.');
   if(/tally\.so/i.test(base))
     throw new Error('Bu bir Tally linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Tally form linkini değil.');
-  if(!/^https?:\/\//i.test(base))
-    throw new Error('Worker URL "https://" ile başlamalı (ör. https://tally-sync.ADIN.workers.dev).');
+  if(/dash\.cloudflare\.com/i.test(base))
+    throw new Error('Bu Cloudflare panelinin adresi, Worker\'ın kendi adresi değil. Cloudflare → Workers & Pages → Worker\'ına gir → sağ üstteki "Visit"/"Preview" bağlantısı: https://tally-sync.ADIN.workers.dev');
+  // "tally-sync.adin.workers.dev" — şeması eksik ama adres doğru; tamamlayalım.
+  if(!/^https?:\/\//i.test(base)){
+    if(/^[\w.-]+\.workers\.dev(\/|$)/i.test(base))base='https://'+base;
+    else throw new Error('Worker URL "https://" ile başlamalı (ör. https://tally-sync.ADIN.workers.dev).');
+  }
+  base=base.replace(/[?#].*$/,'').replace(/\/+$/,'');
+  // Sonuna /sync ya da /diag yapıştırılmışsa at — uygulama onu kendi ekliyor.
+  base=base.replace(/\/(sync|diag)$/i,'').replace(/\/+$/,'');
+  return base;
+}
+
+/* One response body → parsed JSON, or an error that says what actually came back. */
+async function tallyReadJson(r,base){
+  const text=await r.text();
+  let data=null;
+  try{data=JSON.parse(text);}catch(e){/* named below */}
+  if(data&&typeof data==='object')return data;
+  if(/CoachOS Tally Worker is running/i.test(text))
+    throw new Error('Adres Worker\'a ulaşıyor ama /sync ucuna değil — büyük ihtimalle sonunda fazladan bir yol parçası var. Yalnızca kök adresi yapıştır: https://tally-sync.ADIN.workers.dev (sonuna /sync EKLEME).');
+  if(!r.ok)
+    throw new Error(`Worker HTTP ${r.status} döndürdü ve cevabı JSON değil. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
+  throw new Error(`Bu adres JSON yerine düz metin/HTML döndürdü, yani Cloudflare Worker\'ın /sync ucu değil. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
+}
+
+async function fetchTallyRows(workerUrl){
+  const base=tallyWorkerBase(workerUrl);
   // One Worker invocation can only page through so many Tally submissions before
   // it runs out of Cloudflare subrequests, so it hands back where it stopped and
   // we keep asking until both forms are exhausted. Without this loop a season's
@@ -10911,8 +10942,7 @@ async function fetchTallyRows(workerUrl){
     }catch(e){
       throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Olası sebepler: URL yanlış ya da Worker yayında değil · Worker CORS başlığı döndürmüyor (verdiğim tally-worker.js bunu içeriyor) · internet yok. Test: tarayıcıda '+base+'/sync adresini aç — JSON görmüyorsan sorun Worker tarafında.');
     }
-    if(!r.ok)throw new Error(`Worker HTTP ${r.status} döndürdü. Tarayıcıda ${base}/sync adresini açıp dönen mesaja bak.`);
-    const data=await r.json();
+    const data=await tallyReadJson(r,base);
     if(data.error)throw new Error('Worker hatası: '+data.error+' — genelde TALLY_API_KEY eksik ya da form ID (SRPE_FORM / WELLNESS_FORM) yanlış demektir.');
     if(!syncedAt)syncedAt=data.syncedAt;
     const m=data.meta||null;
@@ -11222,6 +11252,30 @@ function TallySync({data,setData,team}){
     finally{setSyncing(false);}
   };
 
+  /* "Adres doğru mu?" is the question a failed sync cannot answer on its own, because
+     every wrong address fails somewhere different. This asks the Worker once and reports
+     what came back verbatim — the address it actually called, the Worker's build, and the
+     first rows — so the coach can tell a wrong URL from a wrong form id without leaving
+     the app or reading a JSON blob in another tab. */
+  const[probe,setProbe]=useState(null);
+  const testUrl=async()=>{
+    setProbe({busy:true});
+    let base;
+    try{base=tallyWorkerBase(url);}
+    catch(e){setProbe({bad:true,msg:e.message});return;}
+    let r;
+    try{r=await fetch(base+'/sync');}
+    catch(e){setProbe({bad:true,base,msg:'Bu adrese hiç ulaşılamadı ("Failed to fetch"). Worker yayında değil, adres yanlış yazılmış ya da internet yok.'});return;}
+    let j;
+    try{j=await tallyReadJson(r,base);}
+    catch(e){setProbe({bad:true,base,msg:e.message});return;}
+    if(j.error){setProbe({bad:true,base,msg:'Adres doğru — Worker cevap verdi, ama Tally\'den okuyamadı: '+j.error+' (TALLY_API_KEY / SRPE_FORM / WELLNESS_FORM ayarlarına bak).'});return;}
+    const wv=j.meta&&j.meta.worker&&j.meta.worker.version;
+    const nS=(j.sRPE||[]).length,nW=(j.wellness||[]).length;
+    setProbe({bad:false,base,msg:`Bağlantı tamam. Worker sürümü: ${wv==null?'bildirmiyor (çok eski)':'v'+wv}${wv!=null&&wv<TALLY_WORKER_VERSION?` — gereken v${TALLY_WORKER_VERSION}, Cloudflare'e yeniden deploy et`:''} · ilk sayfada sRPE ${nS} satır, Wellness ${nW} satır.`
+      +(nS===0&&nW===0?' Adres doğru ama form BOŞ geldi: SRPE_FORM / WELLNESS_FORM ID\'leri yanlış olabilir.':'')});
+  };
+
   const lastLabel=lastAt?new Date(lastAt).toLocaleString('tr-TR'):'never';
 
   return(<div>
@@ -11236,8 +11290,19 @@ function TallySync({data,setData,team}){
           <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://tally-sync.YOURNAME.workers.dev"/></div>
         <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
           <button className="btn" onClick={()=>saveCfg({workerUrl:url.trim()})}>Save URL</button>
+          <button className="btn sec" onClick={testUrl} disabled={!(url||'').trim()||(probe&&probe.busy)}>
+            {probe&&probe.busy?'Deneniyor…':'Adresi test et'}
+          </button>
         </div>
       </div>
+      {probe&&!probe.busy&&<div style={{marginTop:10,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
+        background:probe.bad?'rgba(239,68,68,.1)':'rgba(45,212,167,.1)',
+        border:`1px solid ${probe.bad?'rgba(239,68,68,.35)':'rgba(45,212,167,.35)'}`}}>
+        {probe.bad?'❌ ':'✅ '}{probe.msg}
+        {probe.base&&<div style={{marginTop:6,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
+          Denenen adres: {probe.base}/sync
+        </div>}
+      </div>}
       <label className="ath-chip" style={{cursor:'pointer',marginTop:12,display:'inline-flex'}}>
         <input type="checkbox" checked={!!cfg.autoCreate} onChange={e=>saveCfg({autoCreate:e.target.checked})}/>
         <span>{cfg.autoCreate?'Eşleşmeyen isimler için yeni sporcu OLUŞTUR':'Yalnızca kadrodaki sporculara yaz (eşleşmeyen isimler atlanır)'}</span>
