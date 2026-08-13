@@ -54,6 +54,12 @@ Notlar:
   etiketi olmayan bölgeler (Boyun, Göğüs, Karın…) de görünür. Sütun başlıkları
   Türkçe (Hafif/Orta/Fazla), İngilizce (Mild/Moderate/Severe) ya da 1/2/3 olabilir.
   Serbest metin "Ağrın hangi bölgede?" sorusu kalabilir; ikisi birlikte çalışır.
+  Tally matrisi bazen **satır başına bir soru** olarak yollar ve her birini
+  `💥 Ağrın hangi bölgede ve şiddette? (opsiyonel) [Sırt]` gibi adlandırır — yani bölge
+  adı, sorunun sonundaki köşeli parantezin içindedir. Hem Worker hem uygulama köşeli
+  parantezdeki kısmı alıp gerisini atar, baştaki emojiyi de temizler; heatmap kutucuğunda
+  **yalnızca `Sırt`** yazar. Bu temizlik okurken de yapıldığı için uzun adla kaydedilmiş
+  eski check-in'ler yeniden senkron gerektirmeden düzelir.
 - Wellness formunda **Readiness sorusu yok**; Worker, Readiness'i `Sleep`, `Fatigue`,
   `Soreness` ortalamasından otomatik hesaplıyor (istemezsen `tally-worker.js` içindeki
   ilgili bloğu sil — söyle, ben kaldırayım).
@@ -117,7 +123,7 @@ https://tally-sync.KULLANICIADIN.workers.dev
 ## "Sync Now'a basıyorum, veri gelmiyor" — v7'de düzeltilenler
 Senkron başarılı görünüp hiç veri düşmemesinin dört sebebi vardı; dördü de düzeltildi.
 Worker tarafındaki ikisi için **Cloudflare'deki kodu bu repodaki `tally-worker.js` ile
-değiştirip yeniden Deploy etmen** gerekiyor (uygulama artık `v8` bekliyor).
+değiştirip yeniden Deploy etmen** gerekiyor (uygulama artık `v9` bekliyor).
 
 1. **Tek bozuk form bütün senkronu düşürüyordu.** İki formdan biri okunamıyorsa
    (ID yanlış, form silinmiş, API anahtarı o formu göremiyor) Worker hata döndürüyor ve

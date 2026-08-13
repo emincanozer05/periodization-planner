@@ -37,7 +37,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 8;
+const WORKER_VERSION = 9;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -232,6 +232,23 @@ const SCALAR_ANSWER_KEYS = ['value', 'text', 'url', 'name', 'title', 'label', 'i
 // other). An id the question does not explain is passed through as-is; the app knows to
 // report it as an unnamed region rather than print it at a coach. Returns null when this
 // is not a matrix, so the ordinary answer handling below takes over.
+// Tally can send a matrix as one question PER ROW, and it titles each of those questions
+// "<the whole question> [<the row>]". The row id then resolves to that whole title, so the
+// coach was handed "💥 Ağrın hangi bölgede ve şiddette? (opsiyonel) [Sırt]" where a body
+// part belongs — the same question repeated once per region, with the answer buried at the
+// end of it. The row is what is in brackets; everything before it is the question. Leading
+// emoji go too. An id no dictionary named passes through untouched, so it is still counted
+// as an unnamed region rather than quietly reshaped.
+const ROW_IN_BRACKETS = /\[([^\][]{1,40})\]\s*$/;
+function rowLabel(v) {
+  const original = plainText(v) || (typeof v === 'string' ? v : '');
+  let t = original;
+  const m = ROW_IN_BRACKETS.exec(t);
+  if (m && m[1].trim()) t = m[1].trim();
+  t = t.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[\s:;,.\-–—]+$/, '').trim();
+  return t || original;
+}
+
 function matrixToValue(a, question, fallbackLabels) {
   if (!a || typeof a !== 'object' || Array.isArray(a)) return null;
   const vals = Object.values(a);
@@ -244,7 +261,7 @@ function matrixToValue(a, question, fallbackLabels) {
   // the form definition wins there, because it is the one place a matrix row is always
   // spelled out (a per-row question only repeats the question's own title).
   const labels = Object.assign(collectLabels(question), fallbackLabels || {});
-  const label = id => (typeof id === 'string' && labels[id]) ? labels[id] : id;
+  const label = id => rowLabel((typeof id === 'string' && labels[id]) ? labels[id] : id);
   const out = [];
   for (const [rowId, val] of Object.entries(a)) {
     const picks = (Array.isArray(val) ? val : [val]).filter(v => v != null && v !== '' && v !== false);

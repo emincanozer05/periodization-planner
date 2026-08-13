@@ -3566,6 +3566,26 @@ const PAIN_REGION_WORDS=new Set([
    never alone. */
 const PAIN_SIDE_WORDS=new Set(['sag','sol','her','iki','ikisi','ve','ust','alt','on','arka',
   'bolgesi','bolge','tarafi','taraf','kismi','right','left','both','and','upper','lower','low','mid','area']);
+/* ---- "…şiddette? (opsiyonel) [Sırt]" → "Sırt" -------------------------------
+   Tally can send the pain matrix as one question PER ROW, and it titles each of those
+   questions "<the whole question> [<the row>]". The row id then resolves to that title,
+   so the heatmap bubble read the question back at the coach — four rows, four copies of
+   "💥 Ağrın hangi bölgede ve şiddette? (opsiyonel)" — with the body part buried at the
+   end of each. The region is the part in brackets; everything before it is the question
+   every row repeats. The leading emoji goes too, so "💥 Sırt" reads as "Sırt".
+   Applied wherever a region name is read rather than at sync time only, so check-ins
+   already stored under the long name come out right without re-syncing anything. */
+const REGION_ROW_RE=/\[([^\][]{1,40})\]\s*$/;
+function cleanRegionLabel(raw){
+  const s0=String(raw==null?'':raw).trim();
+  let s=s0;
+  const m=REGION_ROW_RE.exec(s);
+  if(m&&m[1].trim())s=m[1].trim();
+  s=s.replace(/^[^\p{L}\p{N}]+/u,'').replace(/[\s:;,.\-–—]+$/,'').trim();
+  // Never turn a name into nothing: a label made entirely of punctuation keeps whatever
+  // it had, so an odd form loses tidiness rather than the region.
+  return s||s0;
+}
 const normPainWord=s=>String(s==null?'':s).toLowerCase()
   .replace(/i̇/g,'i').replace(/ı/g,'i').replace(/İ/g,'i')
   .replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
@@ -3593,12 +3613,13 @@ function parsePainRegionList(raw,dict,seen){
   if(!parts.length)return null;
   const out={};
   for(const part of parts){
-    const p=part.replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    let p=part.replace(/^[\s{"']+/,'').replace(/[\s{}"',]+$/,'').trim();
+    p=cleanRegionLabel(p).replace(/^[\s[\]]+/,'').replace(/[\s[\]]+$/,'').trim();
     if(!p)continue;
     if(PAIN_ID_RE.test(p)){
       // An option id the sync could not name — same escape hatch the grid has.
       const named=dict&&String(dict[p]||'').trim();
-      if(named){out[named]=out[named]||0;continue;}
+      if(named){const nc=cleanRegionLabel(named);out[nc]=out[nc]||0;continue;}
       if(seen&&seen.indexOf(p)<0)seen.push(p);
       out[PAIN_REGION_UNKNOWN]=out[PAIN_REGION_UNKNOWN]||0;
       continue;
@@ -3625,10 +3646,14 @@ function parsePainMap(raw,opts){
     const n=painSevN(sev);
     if(!n)return;
     // Braces and quotes survive on the keys when a JSON payload had to be split by hand.
-    let r=String(region==null?'':region).replace(/^[\s{[\]"']+/,'').replace(/[\s{}[\]"',]+$/,'').trim();
+    let r=String(region==null?'':region).replace(/^[\s{"']+/,'').replace(/[\s{}"',]+$/,'').trim();
+    // A per-row question title carries the row in brackets, so the brackets are read
+    // before they are stripped — trimming them first would have thrown the region away
+    // and left the question behind.
+    r=cleanRegionLabel(r).replace(/^[\s[\]]+/,'').replace(/[\s[\]]+$/,'').trim();
     if(PAIN_ID_RE.test(r)){
       const named=dict&&String(dict[r]||'').trim();
-      if(named)r=named;
+      if(named)r=cleanRegionLabel(named);
       else{if(seen&&seen.indexOf(r)<0)seen.push(r);r=PAIN_REGION_UNKNOWN;}
     }
     if(!r||r===PAIN_REGION_LEGACY)r=PAIN_REGION_UNKNOWN;
@@ -10873,7 +10898,7 @@ const TALLY_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=8;
+const TALLY_WORKER_VERSION=9;
 
 /* A sync is two halves, and keeping them apart is what stops one from undoing the other.
    `fetchTallyRows` only talks to the Worker; `mergeTallyRows` is a pure function of a team
