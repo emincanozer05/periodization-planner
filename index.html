@@ -12422,40 +12422,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </select>
         </div>
       </div>
-      {/* Program tags — the pattern / execution pair every program screen fills its row
-          from. Tagging the exercise on a session writes back here, so this is both where
-          the pair can be set up front and the one place it can be cleared for good. */}
-      <div className="grid cols-2" style={{marginTop:14}}>
-        <div><label>Pattern (programda)</label>
-          <select value={ex.exPattern||''} onChange={e=>{const v=e.target.value;
-            onChange({exPattern:v,exPlane:exStylesFor(v).includes(ex.exPlane)?ex.exPlane:''});}}>
-            <option value="">—</option>
-            {EX_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
-          </select>
-          <div className="help" style={{marginTop:4}}>Bu egzersiz bir programa yazıldığında patern ve icra otomatik dolar.</div>
-        </div>
-        <div><label>Execution (icra)</label>
-          <select value={ex.exPlane||''} onChange={e=>set('exPlane',e.target.value)} disabled={!exStylesFor(ex.exPattern).length}>
-            <option value="">{exStylesFor(ex.exPattern).length?'—':'Önce patern seçin'}</option>
-            {exStylesFor(ex.exPattern).map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-      </div>
-      {/* Individualization tags — what the substitution engine reads. Optional:
-          an untagged exercise simply never triggers (or blocks) a substitution. */}
-      <div className="grid cols-2" style={{marginTop:14}}>
-        <div><label>Hareket Paterni (bireyselleştirme)</label>
-          <select value={ex.movePattern||''} onChange={e=>set('movePattern',e.target.value)}>
-            <option value="">{PATTERN_FROM_TYPE[ex.type]?`Otomatik — ${PATTERN_FROM_TYPE[ex.type]}`:'—'}</option>
-            {IV_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
-          </select>
-          <div className="help" style={{marginTop:4}}>Alternatif ararken bu paterne göre eşleştirilir.</div>
-        </div>
-        <div><label>Kontrendikasyon Uyarısı</label>
-          <TagChips value={ex.contra||[]} options={CONSTRAINT_TAGS} onChange={v=>set('contra',v)}/>
-          <div className="help" style={{marginTop:4}}>Bu kısıtı olan sporcuda alternatif önerilir — antrenör isterse yok sayabilir.</div>
-        </div>
-      </div>
       <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
         <div className="mus-pick">
           {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
