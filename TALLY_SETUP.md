@@ -91,6 +91,11 @@ https://tally.so/forms/<FORM_ID>/edit
 3. **Auto-sync**'i AÇ (ON) ve **Sync Now**'a bas. Bundan sonra forma gelen her cevap
    birkaç dakikada bir otomatik düşer.
 
+> Cevapların birkaç dakika beklemeden **anında** düşmesini istiyorsan aşağıdaki
+> [Webhook](#webhook-cevaplar-anında-düşsün-opsiyonel-ama-tavsiye-edilir) bölümüne bak —
+> Tally'nin **Integrations → Webhooks** ekranındaki *Endpoint URL* kutusuna ne
+> yazılacağını orada anlatıyor. Auto-sync ile birlikte çalışır, birini kapatman gerekmez.
+
 ## Önce adresi test et
 Tally Sync ekranında **Adresi test et** düğmesi var. Worker'a bir kez sorar ve ne
 döndüğünü olduğu gibi yazar: hangi adrese gittiğini, Worker'ın sürümünü ve ilk sayfada
@@ -112,7 +117,7 @@ https://tally-sync.KULLANICIADIN.workers.dev
 ## "Sync Now'a basıyorum, veri gelmiyor" — v7'de düzeltilenler
 Senkron başarılı görünüp hiç veri düşmemesinin dört sebebi vardı; dördü de düzeltildi.
 Worker tarafındaki ikisi için **Cloudflare'deki kodu bu repodaki `tally-worker.js` ile
-değiştirip yeniden Deploy etmen** gerekiyor (uygulama artık `v7` bekliyor).
+değiştirip yeniden Deploy etmen** gerekiyor (uygulama artık `v8` bekliyor).
 
 1. **Tek bozuk form bütün senkronu düşürüyordu.** İki formdan biri okunamıyorsa
    (ID yanlış, form silinmiş, API anahtarı o formu göremiyor) Worker hata döndürüyor ve
@@ -213,8 +218,83 @@ Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:
   her şey yolunda.
 - `{ "error": "..." }` → mesaj sorunu söyler (API anahtarı yok / form ID yanlış).
 - Diziler boşsa → forma henüz cevap gelmemiş ya da form ID yanlış.
+- `meta.webhook.enabled` webhook saklama alanının bağlı olup olmadığını,
+  `meta.webhook.srpe` / `.wellness` ise kaç gönderimin çekilmek yerine anında düştüğünü
+  söyler. `meta.webhook.mode` `api`, `webhook` ya da `api+webhook` olur.
 
-## Gerçek-zamanlı istersen (opsiyonel)
-Auto-sync birkaç dakikalık gecikmeyle çeker. Anında istersen Tally'de
-**Integrations → Webhooks** ile bu Worker'a POST kurabilirsin; bu durumda Worker'ı
-gelen cevabı saklayacak şekilde genişletmek gerekir — istersen o sürümü de hazırlarım.
+## Webhook: cevaplar anında düşsün (opsiyonel ama tavsiye edilir)
+
+Auto-sync formu **düzenli aralıklarla yoklar**; cevap birkaç dakika sonra düşer.
+Webhook bunun tersidir: sporcu formu gönderdiği **anda** Tally cevabı Worker'a yollar.
+Worker cevabı saklar, `/sync` de onu çektiği satırlarla birlikte uygulamaya verir —
+yani uygulamada değişen bir ayar yok, aynı Worker adresi çalışmaya devam eder.
+
+Üç faydası var:
+- **Gecikme kalmaz.** Antrenman çıkışı doldurulan sRPE, koç ekranı açtığında oradadır.
+- **İsimler kimlik olarak gelmez.** Webhook gönderisi seçenek/satır/sütun etiketlerini
+  *kendi içinde* taşır; yukarıdaki "sporcu adı `3f1a2b4c-…` olarak geldi" ve "bölge adı
+  gelmedi" arızalarının ikisi de bu yolda meydana gelemez.
+- **Tally API anahtarı şart değil.** API, Tally'nin ücretli planında; webhook değil.
+  `TALLY_API_KEY` hiç yoksa bile Worker kendisine gönderilen her şeyi sunar.
+
+### 1) Worker'a bir saklama alanı bağla (KV)
+Gelen cevabın bir yere yazılması gerekiyor.
+1. Cloudflare → **Storage & Databases → KV** → **Create instance** → ad: `tally-store` → oluştur.
+2. Worker'ına gir → **Settings → Bindings** → **Add → KV namespace**:
+   - **Variable name**: `TALLY_STORE`  ← *bu ad birebir böyle olmalı*
+   - **KV namespace**: az önce oluşturduğun `tally-store`
+3. **Deploy**.
+
+> KV bağlı değilse Worker gelen gönderiyi kabul etmez (`503` döner ve sebebini yazar).
+> Bu kasıtlı: sessizce yutup veriyi çöpe atmaktansa Tally'nin "başarısız" göstermesi
+> daha iyi — Tally başarısız gönderimleri bir süre yeniden dener.
+
+### 2) Adresi Tally'ye gir
+Tally → formu aç → **Integrations → Webhooks → Add a webhook endpoint**.
+**Endpoint URL** kutusuna Worker adresinin sonuna `/webhook` ekleyerek yaz:
+
+```
+https://tally-sync.KULLANICIADIN.workers.dev/webhook
+```
+
+**Bunu iki forma da ayrı ayrı yap** (İçsel Yük Takibi + Wellness Takibi). Worker hangi
+formdan geldiğini önce form ID'sinden, o yoksa form adından, o da yoksa soruların
+kendisinden anlar — yani `SRPE_FORM` / `WELLNESS_FORM` değişkenlerini girmemiş olsan
+bile doğru tarafa yazar.
+
+Adresi karıştırmak diye bir dert yok: Worker **hangi yola gelirse gelsin** POST'u
+webhook gönderisi olarak kabul eder. Kök adresi (`…workers.dev`) yapıştırsan da çalışır;
+`/webhook` yalnızca okununca ne olduğu belli olsun diye.
+
+### 3) İmzalama (Tally'deki "Add a signing secret")
+İstersen Tally'de **Add a signing secret**'a basıp bir metin gir. Aynı metni Worker'a da
+ekle: **Settings → Variables and Secrets** → `TALLY_SIGNING_SECRET` (**Encrypt / Secret**
+olarak). Bundan sonra Worker imzasız ya da imzası tutmayan istekleri `401` ile reddeder —
+yani Worker adresini bilen başka birinin sahte check-in yollaması engellenir.
+
+Sırası önemli: **önce Worker'a değişkeni ekleyip Deploy et, sonra Tally'de secret'ı gir.**
+Ters yaparsan aradaki gönderimler imzasız gelir ve reddedilir. Secret kullanmayacaksan
+`TALLY_SIGNING_SECRET`'i hiç ekleme; Worker o zaman imza aramaz.
+
+### 4) Kontrol et
+Tarayıcıda `https://tally-sync.KULLANICIADIN.workers.dev/webhook` adresini aç
+(POST değil, düz GET — durum raporu döner):
+- `ready: true` → saklama alanı bağlı, gönderi kabul edilebilir.
+- `ready: false` → `store` alanı ne yapman gerektiğini yazar (KV bağlanmamış).
+- `signed` → imza kontrolü açık mı.
+- `held` → şu an Worker'da duran gönderim sayısı, form form.
+
+Sonra formu **bir kez kendin doldur**: `held` sayısı 1 artmalı. CoachOS → Tally Sync →
+**Sync Now**: "Webhook ile anında düşen gönderim" satırı ekranda görünür.
+
+### Bilinmesi gerekenler
+- **Webhook geçmişi getirmez.** Yalnızca kurulduktan *sonraki* cevaplar gelir. Eski
+  sezonun tamamı için API yolu (Auto-sync) gerekir — ikisi birlikte çalışır, ikisi de
+  açıkken bir gönderim iki kere sayılmaz: aynı gönderim hem itilip hem çekildiyse
+  Worker gönderim kimliğinden anlayıp tek satır bırakır (itilen kopya kazanır, çünkü
+  etiketleri çözülmüş olan odur).
+- **Auto-sync'i kapatman gerekmez.** Webhook anlık akışı, Auto-sync ise arada bir
+  "acaba kaçan oldu mu" taramasını verir. İkisini birlikte açık bırakmak en sağlamı.
+- Worker'da saklanan gönderimler **yalnızca ilk sayfa isteğinde** gönderilir; uzun bir
+  çekim birden çok tura bölündüğünde her turda tekrar yollanıp aynı check-in defalarca
+  sayılmasın diye.
