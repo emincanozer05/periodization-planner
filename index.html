@@ -10866,15 +10866,27 @@ const NORM=s=>(s||'').toString()
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
   .trim().replace(/\s+/g,' ').toUpperCase();
 
+// A value that is still a Tally id rather than the words the athlete read on the form.
+const TALLY_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /* The build of `tally-worker.js` this app expects to find on Cloudflare. The Worker
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=6;
-async function performTallySync(workerUrl,team,opts={}){
-  const autoCreate=!!opts.autoCreate;
-  const base=workerUrl.replace(/\/+$/,'');
+const TALLY_WORKER_VERSION=7;
+
+/* A sync is two halves, and keeping them apart is what stops one from undoing the other.
+   `fetchTallyRows` only talks to the Worker; `mergeTallyRows` is a pure function of a team
+   and those rows. The merge then runs INSIDE the state updater, against whatever the team
+   looks like at that moment — the old code snapshotted the roster before the fetch and
+   wrote the whole thing back after it, so every edit made while a sync was in flight (and,
+   with Auto-sync on, everything done since the timer was started) was silently reverted a
+   few minutes later. */
+async function fetchTallyRows(workerUrl){
+  const base=(workerUrl||'').trim().replace(/\/+$/,'');
   // Guard against the most common mistakes before we even fetch.
+  if(!base)
+    throw new Error('Worker URL boş — önce Cloudflare Worker adresini (…workers.dev) yaz.');
   if(/tally\.so/i.test(base))
     throw new Error('Bu bir Tally linki — buraya Cloudflare Worker adresini (…workers.dev) yapıştırman gerekiyor, Tally form linkini değil.');
   if(!/^https?:\/\//i.test(base))
@@ -10887,7 +10899,10 @@ async function performTallySync(workerUrl,team,opts={}){
   const sRPE=[],wellness=[];
   let srpePage=1,wellnessPage=1,rounds=0,syncedAt=null,truncated=false;
   const totals={sRPE:null,wellness:null};
-  let legacyWorker=false,workerVersion=null,unnamedGridIds=0,labelSources=null;
+  let legacyWorker=false,workerVersion=null,unnamedGridIds=0,unnamedOptionIds=0,labelSources=null;
+  // Which form the Worker could not read, if either. One unreadable form no longer fails
+  // the whole sync (it used to), so the half that arrived is kept and the failure named.
+  const formErrors={srpe:null,wellness:null};
   for(;;){
     const qs=rounds===0?'':`?srpePage=${srpePage}&wellnessPage=${wellnessPage}`;
     let r;
@@ -10912,6 +10927,9 @@ async function performTallySync(workerUrl,team,opts={}){
       if(m.worker&&m.worker.version!=null)workerVersion=Number(m.worker.version);
       if(m.wellness&&m.wellness.unnamedGridIds)unnamedGridIds+=Number(m.wellness.unnamedGridIds)||0;
       if(m.wellness&&Array.isArray(m.wellness.labelSources))labelSources=m.wellness.labelSources;
+      unnamedOptionIds+=(Number(m.srpe&&m.srpe.unnamedOptionIds)||0)+(Number(m.wellness&&m.wellness.unnamedOptionIds)||0);
+      if(m.srpe&&m.srpe.error)formErrors.srpe=m.srpe.error;
+      if(m.wellness&&m.wellness.error)formErrors.wellness=m.wellness.error;
       if(m.srpe&&m.srpe.total!=null)totals.sRPE=m.srpe.total;
       if(m.wellness&&m.wellness.total!=null)totals.wellness=m.wellness.total;
       srpePage=m.srpe?m.srpe.nextPage:srpePage;
@@ -10921,6 +10939,21 @@ async function performTallySync(workerUrl,team,opts={}){
     if(!(m&&((m.srpe&&m.srpe.hasMore)||(m.wellness&&m.wellness.hasMore))))break;
     if(rounds>=MAX_ROUNDS){truncated=true;break;}
   }
+  return{sRPE,wellness,syncedAt:syncedAt||new Date().toISOString(),
+    // Fetch bookkeeping — lets the coach see at a glance whether every Tally
+    // submission actually made it over, instead of silently losing half of them.
+    fetch:{sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker,
+      // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
+      // name, and (filled in by the merge) how many check-ins got a nameless region.
+      workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
+      unnamedGridIds,unnamedOptionIds,labelSources,formErrors}};
+}
+
+/* Merge half: pure, so it can run inside the state updater and be re-run safely.
+   → {athletes, stats} */
+function mergeTallyRows(team,rows,opts={}){
+  const autoCreate=!!opts.autoCreate;
+  const sRPE=rows.sRPE||[],wellness=rows.wellness||[];
 
   let athletes=(team.athletes||[]).map(a=>({...a,
     days:JSON.parse(JSON.stringify(a.days||{})),
@@ -10929,15 +10962,12 @@ async function performTallySync(workerUrl,team,opts={}){
     injuries:[...(a.injuries||[])],
     srpeLog:[...(a.srpeLog||[])],
   }));
-  const stats={sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
+  const stats={...(rows.fetch||{}),
+    sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
     wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set(),
-    // Fetch bookkeeping — lets the coach see at a glance whether every Tally
-    // submission actually made it over, instead of silently losing half of them.
-    sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker,
-    // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
-    // name, and (filled in below) how many check-ins ended up with a nameless region.
-    workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
-    unnamedGridIds,labelSources,painUnnamed:0,unnamedIds:{}};
+    // Submissions whose athlete name arrived as a raw option id — they match nobody, so
+    // without this the sync reads as a success that quietly wrote nothing.
+    idNames:0,painUnnamed:0,unnamedIds:{}};
   // The coach's own id → region dictionary, applied while the check-ins are read.
   const regionMap=(team.tallySync&&team.tallySync.regionMap)||{};
 
@@ -10947,6 +10977,11 @@ async function performTallySync(workerUrl,team,opts={}){
   // never fills up with typos/test names.
   const getOrMatch=name=>{
     stats.namesSeen.add((name||'').trim());
+    /* The name came over as the dropdown's option id rather than the words on it — no
+       dictionary on the Worker could name it. It matches nobody on the roster, and
+       auto-creating a "sporcu" called `3f1a2b4c-…` would be worse than skipping, so it is
+       always skipped and counted for the report. */
+    if(TALLY_ID_RE.test((name||'').trim())){stats.idNames++;stats.skipped++;return null;}
     let i=findIdx(name);
     if(i===-1){
       if(!autoCreate){stats.skipped++;stats.skippedNames.add((name||'').trim());return null;}
@@ -11058,7 +11093,58 @@ async function performTallySync(workerUrl,team,opts={}){
   // Most-seen ids first: those are the regions worth naming.
   stats.unnamedIds=Object.values(stats.unnamedIds).sort((a,b)=>b.count-a.count);
   stats.skippedNames=[...stats.skippedNames].filter(Boolean);
-  return{athletes,stats,syncedAt:syncedAt||new Date().toISOString()};
+  return{athletes,stats};
+}
+
+/* One sync run, shared by the Sync Now button and the background timer. The rows are
+   fetched first and merged inside the state updater, so the merge always sees the team as
+   it is right now — a sync can no longer write back a roster from before it started.
+   → {stats, syncedAt}; the failure is recorded on the team before it is rethrown, so a
+   background sync that failed while the coach was elsewhere is still visible afterwards. */
+async function runTallySync(setData,teamId,cfg){
+  const patchCfg=upd=>setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>
+    t.id===teamId?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
+  let rows;
+  try{
+    rows=await fetchTallyRows(cfg.workerUrl);
+  }catch(e){
+    patchCfg({lastError:(e&&e.message)||String(e),lastErrorAt:new Date().toISOString()});
+    throw e;
+  }
+  let out=null;
+  setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>{
+    if(t.id!==teamId)return t;
+    const{athletes,stats}=mergeTallyRows(t,rows,{autoCreate:!!(t.tallySync&&t.tallySync.autoCreate)});
+    out={stats,syncedAt:rows.syncedAt};
+    return{...t,athletes,tallySync:{...(t.tallySync||cfg),
+      lastSyncedAt:rows.syncedAt,lastStats:stats,lastError:null,lastErrorAt:null}};
+  })}));
+  return out;
+}
+
+/* Auto-sync belongs to the app, not to the Tally screen. `<main>` is keyed by the active
+   view, so the Tally component — and the interval it used to own — was destroyed the
+   moment the coach navigated anywhere else: "Auto-sync ON" only ever ticked while someone
+   sat and watched it, which is why new form answers never turned up on their own. */
+function TallyAutoSync({team,setData}){
+  const cfg=(team&&team.tallySync)||{};
+  const busy=useRef(false);
+  const teamId=team&&team.id;
+  useEffect(()=>{
+    if(!cfg.autoSync||!cfg.workerUrl||!teamId)return;
+    const mins=Math.max(1,Number(cfg.intervalMin)||5);
+    let alive=true;
+    const tick=async()=>{
+      if(busy.current||!alive)return;   // a slow sync must not stack up on the next tick
+      busy.current=true;
+      try{await runTallySync(setData,teamId,cfg);}
+      catch(e){/* recorded on the team; the Tally Sync screen shows it */}
+      finally{busy.current=false;}
+    };
+    const id=setInterval(tick,mins*60000);
+    return()=>{alive=false;clearInterval(id);};
+  },[cfg.autoSync,cfg.workerUrl,cfg.intervalMin,teamId,setData]);
+  return null;
 }
 
 /* Naming the grid's rows by hand — the last resort, and the one that always works.
@@ -11114,35 +11200,27 @@ function PainRegionNamer({stats,cfg,saveCfg}){
 function TallySync({data,setData,team}){
   // Config lives on the TEAM, so each team connects its own Tally forms independently.
   const cfg=team.tallySync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
-  const[url,setUrl]=useState(cfg.workerUrl);
+  const[url,setUrl]=useState(cfg.workerUrl||'');
   const[syncing,setSyncing]=useState(false);
-  const[error,setError]=useState(null);
-  const[stats,setStats]=useState(cfg.lastStats);
-  const[lastAt,setLastAt]=useState(cfg.lastSyncedAt);
+  /* The report is read straight off the team rather than kept beside it in local state:
+     the background timer syncs while this screen is closed, and the screen has to show
+     what that run found — including a run that failed. */
+  const stats=cfg.lastStats,lastAt=cfg.lastSyncedAt,error=cfg.lastError||null;
 
   const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
   const saveCfg=patchTeam;
 
   const doSync=async()=>{
-    if(!cfg.workerUrl){alert('Enter the Worker URL and press Save first.');return;}
-    setSyncing(true);setError(null);
-    try{
-      const{athletes,stats:s,syncedAt}=await performTallySync(cfg.workerUrl,team,{autoCreate:!!cfg.autoCreate});
-      setData(prev=>({...prev,
-        teams:prev.teams.map(t=>t.id===team.id?{...t,athletes,tallySync:{...(t.tallySync||cfg),lastSyncedAt:syncedAt,lastStats:s}}:t)}));
-      setStats(s);setLastAt(syncedAt);
-    }catch(e){setError(e.message||String(e));}
+    // Sync with whatever is typed in the box. Requiring "Save URL" first meant a coach who
+    // pasted the address and pressed Sync Now got a dead button and no explanation.
+    const u=(url||'').trim();
+    if(!u){alert('Önce Worker adresini (…workers.dev) yaz.');return;}
+    setSyncing(true);
+    if(u!==cfg.workerUrl)saveCfg({workerUrl:u});
+    try{await runTallySync(setData,team.id,{...cfg,workerUrl:u});}
+    catch(e){/* recorded on the team by runTallySync and rendered below */}
     finally{setSyncing(false);}
   };
-
-  // Auto-sync timer
-  useEffect(()=>{
-    if(!cfg.autoSync||!cfg.workerUrl)return;
-    const mins=Math.max(1,Number(cfg.intervalMin)||5);
-    const id=setInterval(()=>{doSync();},mins*60000);
-    return()=>clearInterval(id);
-    // eslint-disable-next-line
-  },[cfg.autoSync,cfg.workerUrl,cfg.intervalMin]);
 
   const lastLabel=lastAt?new Date(lastAt).toLocaleString('tr-TR'):'never';
 
@@ -11176,7 +11254,7 @@ function TallySync({data,setData,team}){
           <input type="number" min="1" value={cfg.intervalMin||5}
             onChange={e=>saveCfg({intervalMin:Math.max(1,+e.target.value||5)})} disabled={!cfg.autoSync}/></div>
         <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
-          <button className="btn" onClick={doSync} disabled={syncing||!cfg.workerUrl}>
+          <button className="btn" onClick={doSync} disabled={syncing||!(url||'').trim()}>
             {syncing?'🔄 Syncing…':'🔄 Sync Now'}
           </button>
         </div>
@@ -11191,12 +11269,12 @@ function TallySync({data,setData,team}){
         <div className="metric"><div className="ml">Worker URL</div><div className="mv" style={{fontSize:11,wordBreak:'break-all'}}>{cfg.workerUrl||'—'}</div></div>
       </div>
       {error&&<div style={{marginTop:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'var(--high-t)',fontSize:13}}>
-        <strong>Error:</strong> {error}
+        <strong>Error{cfg.lastErrorAt?` (${new Date(cfg.lastErrorAt).toLocaleString('tr-TR')})`:''}:</strong> {error}
         <div className="help" style={{marginTop:6,color:'var(--text2)'}}>
           Common causes: wrong Worker URL · missing Worker token (TALLY_API_KEY) · wrong form IDs (SRPE_FORM / WELLNESS_FORM) · no internet connection.
         </div>
       </div>}
-      {stats&&!error&&<div style={{marginTop:14}}>
+      {stats&&<div style={{marginTop:14}}>
         <h3 style={{fontSize:13,marginBottom:8,color:'var(--accent2)'}}>Last sync summary</h3>
         <table style={{maxWidth:560}}>
           <tbody>
@@ -11212,6 +11290,28 @@ function TallySync({data,setData,team}){
             <tr><td>Ağrı bölgesi isimsiz gelen check-in</td><td><strong style={{color:stats.painUnnamed>0?'var(--high-t)':'inherit'}}>{stats.painUnnamed||0}</strong></td></tr>
           </tbody>
         </table>
+        {/* One form the Worker could not read no longer fails the whole sync — the other
+            form's rows still arrive — but the coach has to be told which one is missing,
+            or half the data quietly stops updating and nothing says why. */}
+        {stats.formErrors&&(stats.formErrors.srpe||stats.formErrors.wellness)&&<div style={{marginTop:10,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ Worker <strong>{stats.formErrors.srpe&&stats.formErrors.wellness?'iki formu da':(stats.formErrors.srpe?'sRPE formunu':'Wellness formunu')}</strong> okuyamadı — o formdan bu senkronda hiç veri gelmedi (diğeri geldi).
+          <div style={{marginTop:6,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
+            {stats.formErrors.srpe&&<div>sRPE: {stats.formErrors.srpe}</div>}
+            {stats.formErrors.wellness&&<div>Wellness: {stats.formErrors.wellness}</div>}
+          </div>
+          <div className="help" style={{marginTop:6}}>
+            Cloudflare → Worker → Settings → Variables'ta <code>SRPE_FORM</code> / <code>WELLNESS_FORM</code> ID'sinin doğru olduğunu ve <code>TALLY_API_KEY</code>'in o formu okuyabildiğini kontrol et (404 = form bulunamadı, 401/403 = anahtar bu formu göremiyor).
+          </div>
+        </div>}
+        {/* The athlete's name arrived as the dropdown's option id. It matches nobody, so
+            every one of those submissions is skipped — a sync that reports success and
+            writes nothing, which is the hardest failure of all to see. */}
+        {stats.idNames>0&&<div style={{marginTop:10,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ⚠️ <strong>{stats.idNames} gönderimde sporcu adı isim yerine kimlik olarak geldi</strong> (ör. <code>3f1a2b4c-…</code>), bu yüzden hiçbir sporcuya yazılamadı.
+          Tally, açılır listedeki seçenekleri kimlikle yolluyor ve Worker onları ada çeviremedi.
+          Depodaki güncel <code>tally-worker.js</code> dosyasını Cloudflare'e yeniden deploy et; düzelmezse formun <strong>yayında (published)</strong> olduğunu ve <code>TALLY_API_KEY</code>'in form tanımını okuyabildiğini kontrol et.
+          {' '}<code>{(cfg.workerUrl||'…workers.dev').replace(/\/+$/,'')}/diag</code> hangi ucun ne döndürdüğünü gösterir.
+        </div>}
         {/* The pain grid's rows arrive from Tally as ids; naming them is the Worker's job,
             so a coach staring at "Bölge adı gelmedi" on every check-in is told exactly
             which piece to fix rather than being left to guess at the form. */}
@@ -13992,6 +14092,8 @@ function App(){
     </main>
     </div>
     <AICoach data={data} setData={setData} team={team}/>
+    {/* Renders nothing — it just keeps Auto-sync ticking whatever screen the coach is on. */}
+    <TallyAutoSync team={team} setData={setData}/>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);

@@ -91,6 +91,35 @@ https://tally.so/forms/<FORM_ID>/edit
 3. **Auto-sync**'i AÇ (ON) ve **Sync Now**'a bas. Bundan sonra forma gelen her cevap
    birkaç dakikada bir otomatik düşer.
 
+## "Sync Now'a basıyorum, veri gelmiyor" — v7'de düzeltilenler
+Senkron başarılı görünüp hiç veri düşmemesinin dört sebebi vardı; dördü de düzeltildi.
+Worker tarafındaki ikisi için **Cloudflare'deki kodu bu repodaki `tally-worker.js` ile
+değiştirip yeniden Deploy etmen** gerekiyor (uygulama artık `v7` bekliyor).
+
+1. **Tek bozuk form bütün senkronu düşürüyordu.** İki formdan biri okunamıyorsa
+   (ID yanlış, form silinmiş, API anahtarı o formu göremiyor) Worker hata döndürüyor ve
+   **diğer formun bütün sezonu da çöpe gidiyordu** — ekranda kırmızı bir hata ve sıfır satır.
+   Artık okunabilen form geliyor, okunamayan form ise Tally Sync ekranında adıyla ve
+   Tally'nin döndürdüğü mesajla yazılıyor.
+2. **Sporcu adı isim yerine kimlik olarak geliyordu.** Tally açılır liste cevaplarını
+   seçenek kimliğiyle yolluyor; kimlik ada çevrilemezse ad `3f1a2b4c-…` oluyor, kadroda
+   kimseyle eşleşmiyor ve **her gönderim sessizce atlanıyordu**. Artık bu durum sayılıp
+   "sporcu adı kimlik olarak geldi" uyarısı olarak gösteriliyor (ve `autoCreate` açık olsa
+   bile kimlik adlı sporcu oluşturulmuyor).
+3. **"/ formda N" sayacı hiç çalışmıyordu.** Tally toplam sayıyı
+   `{"all":420,"completed":410}` biçiminde bir nesne olarak yolluyor; Worker bunu sayı
+   sanıp `null` yazıyordu, yani "hepsi geldi mi?" kontrolü ölüydü ve eksik senkron
+   tastamam görünüyordu.
+4. **Auto-sync yalnızca Tally Sync ekranındayken çalışıyordu.** Zamanlayıcı o ekrana
+   bağlıydı; koç başka bir sekmeye geçtiği anda duruyordu. Artık uygulama genelinde
+   çalışıyor — hangi ekranda olursan ol yeni cevaplar düşüyor.
+
+Ayrıca: senkron artık kadroyu **senkron başlamadan önceki haliyle geri yazmıyor.**
+Eskiden sporcu listesinin bir kopyası senkron başında alınıp sonunda olduğu gibi geri
+yazılıyordu; senkron sürerken eklenen sporcu ya da yazılan antrenman birkaç dakika sonra
+kendiliğinden kayboluyordu. Bir de **Sync Now** artık kutuya yazdığın adresle çalışıyor,
+önce **Save URL**'e basmak gerekmiyor.
+
 ## Zaten kurduysan: Worker'ı yeniden deploy et (veri eksikliği düzeltmesi)
 Worker'ın önceki sürümü her formdan yalnızca ilk **400** gönderimi çekiyordu:
 Tally sayfa başına en fazla 50 kayıt döndürüyor (istenen `limit=500` sessizce
@@ -157,6 +186,10 @@ Tarayıcıda `https://tally-sync.<KULLANICIADIN>.workers.dev/sync` adresini aç:
   küçükse (ya da hiç yoksa) Cloudflare'e eski kod deploy edilmiş demektir.
 - `meta.srpe.total` formdaki toplam gönderim sayısını gösterir; `meta.srpe.hasMore`
   true ise uygulama kalan sayfaları kendisi ister.
+- `meta.srpe.error` / `meta.wellness.error` doluysa o form okunamamış demektir (diğeri
+  yine gelir). İkisi birden okunamazsa yanıt tek bir `error` olur.
+- `meta.<form>.unnamedOptionIds` > 0 ise açılır liste cevapları ada çevrilememiş — sporcu
+  adları kimlik olarak geliyor ve hiçbir gönderim kadroya yazılamaz.
 - `meta.wellness.unnamedGridIds` > 0 ise ağrı matrisinin kimlikleri çözülememiş —
   yukarıdaki bölüme bak. `wellness` satırlarında `"Pain Map": "Boyun: Orta"` görüyorsan
   her şey yolunda.
