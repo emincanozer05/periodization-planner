@@ -8,8 +8,11 @@
  *
  *   { "sRPE":     [ {_id, "Athlete", "Date", "TP RPE", ...}, ... ],
  *     "wellness": [ {_id, "Athlete", "Date", "RHR", "Sleep", ...}, ... ],
- *     "meta":     { "srpe": {nextPage, hasMore, total, fetched}, "wellness": {...} },
+ *     "meta":     { "srpe": {nextPage, hasMore, total, fetched, error}, "wellness": {...} },
  *     "syncedAt": "<ISO timestamp>" }
+ *
+ * A form the API cannot serve reports `meta.<form>.error` and no rows; the other form's
+ * rows still come through. Only when BOTH forms fail does the response become {"error"}.
  *
  * Forms with more submissions than one Worker invocation can page through
  * report `meta.<form>.hasMore: true`; call
@@ -34,7 +37,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 6;
+const WORKER_VERSION = 7;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -296,16 +299,49 @@ const PAGE_LIMIT = 50;   // Tally's documented page size
 // makes for its matrix labels stay under Cloudflare's 50-subrequest budget.
 const PAGE_BUDGET = 15;
 
+// How many submissions the form holds. Tally reports it as an object keyed by filter
+// (`{"all":420,"completed":410,"partial":10}`); older API versions sent a bare number and
+// some send `total`. Reading it as a number only is why the app's "/ formda N" check never
+// appeared beside the row count — `Number({...})` is NaN, so the one signal that tells a
+// coach submissions went missing was dead, and a truncated sync looked like a clean one.
+function readTotal(j) {
+  const cand = j.totalNumberOfSubmissionsPerFilter ?? j.totalNumberOfSubmissions ?? j.total;
+  if (cand == null) return null;
+  if (typeof cand === 'object') {
+    const nums = Object.values(cand).map(Number).filter(n => !isNaN(n));
+    const n = Number(cand.all);
+    if (!isNaN(n)) return n;
+    return nums.length ? Math.max(...nums) : null;
+  }
+  const n = Number(cand);
+  return isNaN(n) ? null : n;
+}
+
 // Fetch one page-run of a form's submissions.
-// → {rows, total, nextPage, hasMore, unnamedGridIds, formLabelCount, labelSources} —
+// → {rows, total, nextPage, hasMore, unnamedGridIds, formLabelCount, labelSources, error} —
 //   `hasMore` true means Tally still has submissions after `nextPage - 1` and the caller
 //   should come back for them; `unnamedGridIds` counts grid answers whose row id no
 //   dictionary could name, which is what the app reports when a coach sees a nameless
 //   pain region, and the label fields say where the dictionary came from.
+//
+//   A form that cannot be read reports `error` and returns no rows instead of throwing.
+//   Throwing meant one wrong form id — a form renamed, deleted, or outside what the API
+//   key may read — failed the WHOLE sync, so the other form's whole season was thrown away
+//   with it and the coach saw an error and zero data. One broken form must cost one form.
 async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
+  try {
+    return await fetchFormPages(formId, key, startPage, budget);
+  } catch (e) {
+    return { rows: [], total: null, nextPage: Math.max(1, Number(startPage) || 1), hasMore: false,
+             unnamedGridIds: 0, formLabelCount: 0, labelSources: null,
+             error: String((e && e.message) || e) };
+  }
+}
+
+async function fetchFormPages(formId, key, startPage = 1, budget = PAGE_BUDGET) {
   const rows = [];
   let page = Math.max(1, Number(startPage) || 1);
-  let total = null, more = false, unnamedGridIds = 0;
+  let total = null, more = false, unnamedGridIds = 0, unnamedOptionIds = 0;
   // Read once per form, before the pages: the dictionary that names a matrix's rows and
   // columns when the submissions payload does not carry them.
   const { labels: formLabels, sources: labelSources } = await fetchFormLabels(formId, key);
@@ -318,10 +354,7 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
       throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
     }
     const j = await res.json();
-    if (total == null) {
-      const t = j.totalNumberOfSubmissionsPerFilter ?? j.total;
-      total = (t == null || isNaN(Number(t))) ? null : Number(t);
-    }
+    if (total == null) total = readTotal(j);
     const qById = {};
     (j.questions || []).forEach(q => { qById[q.id] = q; });
     // Everything this page's questions declare, with the form definition on top of it.
@@ -336,6 +369,11 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
         const { value: v, isGrid } = answerToValue(resp, q, labelBook);
         if (v == null || v === '') continue;
         if (isGrid) unnamedGridIds += (String(v).match(GRID_ID_RE) || []).length;
+        // A dropdown/multi-select answer is option ids too, and when no dictionary names
+        // them the athlete's NAME arrives as a uuid — it matches nobody on the roster, so
+        // every submission is skipped and the coach sees a sync that "worked" with nothing
+        // in it. Counted here so the app can name that cause instead of staying silent.
+        else if (typeof v === 'string') unnamedOptionIds += (v.match(GRID_ID_RE) || []).length;
         // A grid answer to the pain question is the pain map whatever the question is
         // called: a form that words it "Ağrın hangi bölgede?" (no severity axis in the
         // title) still asks it as a matrix, and reading that as free text is what put
@@ -354,8 +392,8 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
     more = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
     if (!more || subs.length === 0) { more = false; page++; break; }
   }
-  return { rows, total, nextPage: page, hasMore: more, unnamedGridIds,
-           formLabelCount: Object.keys(formLabels).length, labelSources };
+  return { rows, total, nextPage: page, hasMore: more, unnamedGridIds, unnamedOptionIds,
+           formLabelCount: Object.keys(formLabels).length, labelSources, error: null };
 }
 
 function json(body, status = 200) {
@@ -380,11 +418,16 @@ export default {
         // without ever exceeding one invocation's subrequest budget.
         const srpeFrom = Number(url.searchParams.get('srpePage')) || 1;
         const wellFrom = Number(url.searchParams.get('wellnessPage')) || 1;
-        const EMPTY = { rows: [], total: 0, nextPage: 1, hasMore: false, unnamedGridIds: 0 };
+        const unset = which => ({ rows: [], total: null, nextPage: 1, hasMore: false, unnamedGridIds: 0,
+                                  error: `${which} is not set on the Worker` });
         const [srpeRes, wellRes] = await Promise.all([
-          env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key, srpeFrom)     : Promise.resolve(EMPTY),
-          env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key, wellFrom) : Promise.resolve(EMPTY),
+          env.SRPE_FORM     ? fetchForm(env.SRPE_FORM, key, srpeFrom)     : Promise.resolve(unset('SRPE_FORM')),
+          env.WELLNESS_FORM ? fetchForm(env.WELLNESS_FORM, key, wellFrom) : Promise.resolve(unset('WELLNESS_FORM')),
         ]);
+        // Both forms unreadable is a Worker-level failure (a bad key, no forms configured);
+        // one of the two is not, and the half that answered still goes to the app.
+        if (srpeRes.error && wellRes.error)
+          throw new Error(`sRPE: ${srpeRes.error} · Wellness: ${wellRes.error}`);
         const sRPE = srpeRes.rows, wellness = wellRes.rows;
         // The Wellness form has no "Readiness" question, so derive it as the mean of the
         // 1-5 subscores present (Sleep, Fatigue, Soreness). Remove this block if unwanted.
@@ -396,10 +439,12 @@ export default {
         }
         const meta = {
           worker:   { version: WORKER_VERSION },
-          srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length },
+          srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length,
+                      unnamedOptionIds: srpeRes.unnamedOptionIds || 0, error: srpeRes.error || null },
           wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length,
-                      unnamedGridIds: wellRes.unnamedGridIds, formLabels: wellRes.formLabelCount,
-                      labelSources: wellRes.labelSources },
+                      unnamedGridIds: wellRes.unnamedGridIds, unnamedOptionIds: wellRes.unnamedOptionIds || 0,
+                      formLabels: wellRes.formLabelCount,
+                      labelSources: wellRes.labelSources, error: wellRes.error || null },
           pageLimit: PAGE_LIMIT,
         };
         return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
