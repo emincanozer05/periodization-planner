@@ -3735,7 +3735,12 @@ function WellnessHeatmap({athletes}){
     {id:'readiness',label:'Readiness',hi:true,scale:5},
     {id:'sleep',label:'Sleep',hi:true,scale:5},
     {id:'fatigue',label:'Fatigue',hi:true,scale:5},
-    {id:'soreness',label:'Soreness',hi:true,scale:5},
+    /* Soreness is not offered as a metric here. The day's pain is already ON this grid,
+       and better than a score could put it: the ring and the pip mark which days were
+       reported, and the bubble names the regions with a severity each. A 1-5 column
+       beside that said less about the same thing twice. The score itself is untouched —
+       it still averages into Readiness and still grades a region the athlete ticked
+       without a severity. */
     {id:'RHR',label:'RHR',hi:false,scale:null},
   ];
   const[metric,setMetric]=useState('readiness');
@@ -3778,9 +3783,9 @@ function WellnessHeatmap({athletes}){
   const mix=(a,b,t)=>a.map((x,i)=>Math.round(x+(b[i]-x)*t));
   const RED=[244,63,94],AMB=[245,158,11],GRN=[45,212,167];
   const scaleRGB=t=>t==null?null:(t<0.5?mix(RED,AMB,t/0.5):mix(AMB,GRN,(t-0.5)/0.5));
-  // Fatigue & Soreness use a discrete scale where 5 = great (no pain/fatigue) and
-  // 1 = very bad: 5 & 4 → green, 3 → yellow, 2 → orange, 1 → red.
-  const isDiscrete=M.id==='fatigue'||M.id==='soreness';
+  // Fatigue uses a discrete scale where 5 = great (no fatigue) and 1 = very bad:
+  // 5 & 4 → green, 3 → yellow, 2 → orange, 1 → red.
+  const isDiscrete=M.id==='fatigue';
   const lvlCol=v=>{if(v==null)return null;const n=Math.round(v);return n>=4?'#22c55e':n===3?'#eab308':n===2?'#f97316':'#ef4444';};
   const cellBg=v=>{if(isDiscrete)return lvlCol(v);const c=scaleRGB(goodT(v));return c?`rgb(${c[0]},${c[1]},${c[2]})`:null;};
   const dotCol=v=>{if(isDiscrete)return lvlCol(v)||'var(--dim)';const t=goodT(v);return t==null?'var(--dim)':t>=0.66?'#2dd4a7':t>=0.33?'#f59e0b':'#f43f5e';};
@@ -10495,7 +10500,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises}){
           {id:'readiness',label:'Readiness',color:'#10b981',dot:'#34d399',unit:'/5',hi:true},
           {id:'sleep',label:'Sleep',color:'#3b82f6',dot:'#60a5fa',unit:'/5',hi:true},
           {id:'fatigue',label:'Fatigue',color:'#f97316',dot:'#fb923c',unit:'/5',hi:true},
-          {id:'soreness',label:'Soreness',color:'#a855f7',dot:'#c084fc',unit:'/5',hi:true},
+          // No Soreness trend: the pain that matters is where it is, and that is reported
+          // region by region on the heatmap rather than as one number to draw a line
+          // through. The score stays on the record and keeps feeding Readiness.
           {id:'RHR',label:'Resting HR',color:'#22d3ee',dot:'#67e8f9',unit:'bpm',hi:false},
         ];
         const valColor='#2dd4a7';
@@ -10538,7 +10545,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises}){
             </div>
             {wellnessTableOpen&&(()=>{const rev=[...ath.wellness].reverse();const vis=rev.slice(0,wlLimit);const hasMore=rev.length>wlLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
-                <th>Date</th><th>RHR</th><th>Sleep</th><th>Fatigue</th><th>Soreness</th><th>Area of Pain</th><th>Readiness</th><th>Source</th><th style={{width:50}}></th>
+                <th>Date</th><th>RHR</th><th>Sleep</th><th>Fatigue</th><th>Area of Pain</th><th>Readiness</th><th>Source</th><th style={{width:50}}></th>
               </tr></thead><tbody>
                 {vis.map((w,idx)=>{const realIdx=ath.wellness.length-1-idx;
                   const uw=(k,v)=>{const a=[...ath.wellness];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{wellness:a});};
@@ -10547,7 +10554,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises}){
                     <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
                     <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw('sleep',e.target.value)} style={{width:55}}/></td>
                     <td><input type="number" step="0.5" value={w.fatigue??''} onChange={e=>uw('fatigue',e.target.value)} style={{width:55}}/></td>
-                    <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw('soreness',e.target.value)} style={{width:55}}/></td>
+                    {/* Soreness has no column: it is not shown on this tab any more. The
+                        value stays on the record — the sync writes it, Readiness averages
+                        it, and it grades an ungraded pain region — it is simply not
+                        something the coach reads or edits here. */}
                     <td><input value={w.areaOfPain||''} onChange={e=>uw('areaOfPain',e.target.value)} style={{width:140}} placeholder="—"/></td>
                     <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
                     <td>{(w.srcId||w.notionId)?<span className="team-badge">TALLY</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
