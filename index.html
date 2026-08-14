@@ -2653,7 +2653,7 @@ header{background:var(--bg2)!important}
 /* Depth marks: the top is the lockout, the bottom the deepest point of the rep. */
 .tt-track i{position:absolute;left:0;right:0;height:1px;background:var(--border);opacity:.75}
 .tt-track i.t{top:14%}.tt-track i.m{top:50%}.tt-track i.b{top:86%}
-.tt-puck{position:absolute;left:12px;right:12px;height:44px;border-radius:12px;
+.tt-puck{position:absolute;left:12px;right:12px;height:var(--tt-ph,44px);border-radius:12px;
   background:var(--tt-c,var(--accent));box-shadow:0 10px 26px -8px var(--tt-c,var(--accent));
   display:flex;align-items:center;justify-content:center;color:#06080c;font-weight:800;font-size:12px;
   letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Mono',ui-monospace,monospace;
@@ -2722,6 +2722,40 @@ header{background:var(--bg2)!important}
   .tt-seg{min-width:8px}
   .tt-seg em{display:none}
   .tt-seg.on em{display:block;font-size:9.5px}
+}
+/* Full screen — the player alone, sized to whatever it is shown on. It is the same
+   markup, so the set keeps running across the switch; only the room it is given
+   changes. Declared after the phone rules so it wins on a phone too, where the
+   fixed overlay stands in for the Fullscreen API Safari won't give a plain div. */
+.tt-wrap.fs{position:fixed;inset:0;z-index:2100;background:var(--bg);margin:0;
+  padding:clamp(16px,3vw,40px);display:flex;flex-direction:column;justify-content:center;
+  gap:clamp(14px,3vh,34px);overflow:hidden}
+.tt-wrap.fs .tt-stage{flex:1 1 auto;min-height:0;
+  grid-template-columns:clamp(110px,16vw,260px) minmax(0,1fr);gap:clamp(16px,4vw,52px)}
+.tt-wrap.fs .tt-track{min-height:0;--tt-ph:clamp(48px,8vh,92px);border-radius:22px}
+/* Centred on the big screen: read from across the gym, the phase and the count want to
+   sit in the middle of the room rather than hug the track. */
+.tt-wrap.fs .tt-read{gap:clamp(10px,2.4vh,26px);text-align:center}
+.tt-wrap.fs .tt-reps{justify-content:center}
+.tt-wrap.fs .tt-phase{font-size:clamp(28px,4.6vw,64px)}
+.tt-wrap.fs .tt-phase small{font-size:clamp(11px,1.3vw,17px);margin-bottom:8px}
+.tt-wrap.fs .tt-count{font-size:clamp(64px,12vw,170px)}
+.tt-wrap.fs .tt-count span{font-size:clamp(20px,3vw,44px)}
+.tt-wrap.fs .tt-bar{height:clamp(10px,1.6vh,18px)}
+.tt-wrap.fs .tt-reps strong{font-size:clamp(20px,2.4vw,34px)}
+.tt-wrap.fs .tt-reps u{font-size:clamp(10px,1.1vw,14px)}
+.tt-wrap.fs .tt-line{height:clamp(34px,7vh,64px)}
+.tt-wrap.fs .tt-seg em{display:block;font-size:clamp(10px,1.1vw,15px)}
+.tt-wrap.fs .tt-line{gap:5px}
+.tt-wrap.fs .row{justify-content:center}
+.tt-fsx{position:absolute;top:14px;right:16px;z-index:2;background:var(--elevated);
+  border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.tt-fsx:hover{border-color:var(--accent);color:var(--accent2)}
+@media(max-width:760px){
+  /* Portrait phone, propped against the rack: the numbers matter more than the strip. */
+  .tt-wrap.fs .tt-seg em{display:none}
+  .tt-wrap.fs .tt-seg.on em{display:block}
 }
 </style>
 </head>
@@ -7614,8 +7648,54 @@ function TempoPlayer({phases,reps,prep,sound}){
   const setSec=useMemo(()=>steps.reduce((a,p)=>a+p.sec,0),[steps]);
   const[run,setRun]=useState(false);
   const[t,setT]=useState(0);            // seconds since Start, the get-ready count included
+  const[fs,setFs]=useState(false);      // full screen — the player and nothing else
   const raf=useRef(0),last=useRef(0),ac=useRef(null),lock=useRef(null);
+  const wrap=useRef(null),native=useRef(false);
   const total=prep+setSec;
+
+  /* Full screen asks the browser first; where that is refused — Safari on iOS won't
+     give a plain <div> the Fullscreen API — the same class still covers the viewport,
+     so the button does what it says on every device. Either way it is the one element
+     re-parented, so the clock keeps running across the switch. */
+  const enterFs=()=>{
+    setFs(true);
+    const el=wrap.current;if(!el)return;
+    const req=el.requestFullscreen||el.webkitRequestFullscreen;
+    if(!req)return;
+    try{const r=req.call(el);native.current=true;if(r&&r.catch)r.catch(()=>{native.current=false;});}
+    catch(e){native.current=false;}
+  };
+  const exitFs=()=>{
+    setFs(false);
+    if(!native.current)return;
+    native.current=false;
+    try{
+      const ex=document.exitFullscreen||document.webkitExitFullscreen;
+      if(ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
+    }catch(e){}
+  };
+  // Leaving full screen by the browser's own route (Esc, the system gesture) must put
+  // the player back in the page rather than leave it stuck in the full-screen layout.
+  useEffect(()=>{
+    const onCh=()=>{if(native.current&&!(document.fullscreenElement||document.webkitFullscreenElement)){
+      native.current=false;setFs(false);}};
+    document.addEventListener('fullscreenchange',onCh);
+    document.addEventListener('webkitfullscreenchange',onCh);
+    return()=>{
+      document.removeEventListener('fullscreenchange',onCh);
+      document.removeEventListener('webkitfullscreenchange',onCh);
+      try{
+        const ex=document.exitFullscreen||document.webkitExitFullscreen;
+        if(native.current&&ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
+      }catch(e){}
+    };
+  },[]);
+  // The page behind the overlay shouldn't scroll under it.
+  useEffect(()=>{
+    if(!fs)return;
+    const prev=document.body.style.overflow;document.body.style.overflow='hidden';
+    return()=>{document.body.style.overflow=prev;};
+  },[fs]);
 
   /* Short tones instead of a spoken count: one per phase, pitched by kind, so the
      athlete can keep their eyes on the bar and still hear the change. */
@@ -7690,16 +7770,19 @@ function TempoPlayer({phases,reps,prep,sound}){
   const pause=()=>setRun(false);
   const reset=()=>{setRun(false);setT(0);marker.current=null;};
 
-  // Space starts and stops the set, so a coach can run it without aiming at a button.
-  // The handler is registered once and reads the current toggle through a ref — the set
-  // re-renders every frame while it runs, and re-binding the listener that often is waste.
-  const toggle=useRef(null);toggle.current=()=>run?pause():start();
+  // Space starts and stops the set, F fills the screen, Esc comes back — a coach can run
+  // the set without aiming at a button. The handler is registered once and reads the
+  // current actions through a ref: the set re-renders every frame while it runs, and
+  // re-binding the listener that often is waste.
+  const act=useRef(null);
+  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();}};
   useEffect(()=>{
     const onKey=e=>{
-      if(e.code!=='Space')return;
       const tag=(e.target&&e.target.tagName)||'';
       if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)||(e.target&&e.target.isContentEditable))return;
-      e.preventDefault();toggle.current&&toggle.current();
+      if(e.code==='Space'){e.preventDefault();act.current.space();}
+      else if(e.code==='KeyF'){e.preventDefault();act.current.f();}
+      else if(e.code==='Escape')act.current.esc();
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
   },[]);
@@ -7714,13 +7797,14 @@ function TempoPlayer({phases,reps,prep,sound}){
     Every phase is set to 0 seconds — give at least one phase a duration below and the player has something to run.
   </div>);
 
-  return(<div className="tt-wrap">
+  return(<div className={`tt-wrap${fs?' fs':''}`} ref={wrap}>
+    {fs&&<button className="tt-fsx" onClick={exitFs} title="Esc">✕ Exit full screen</button>}
     <div className="tt-stage" style={{'--tt-c':colour}}>
       <div className="tt-track">
         <i className="t"/><i className="m"/><i className="b"/>
         {/* Top of the track = lockout, bottom = the deepest point of the rep. */}
         <div className={`tt-puck${step&&k.to==null&&run?' hold':''}`}
-          style={{top:`calc((100% - 56px) * ${(1-pos).toFixed(4)} + 6px)`}}>
+          style={{top:`calc((100% - var(--tt-ph,44px) - 12px) * ${(1-pos).toFixed(4)} + 6px)`}}>
           {done?'DONE':(inPrep?'SET':(step?k.short:'—'))}
         </div>
       </div>
@@ -7749,7 +7833,10 @@ function TempoPlayer({phases,reps,prep,sound}){
       {run?<button className="btn" onClick={pause}>❚❚ Pause</button>
           :<button className="btn" onClick={start}>▶ {t>0&&!done?'Resume':'Start set'}</button>}
       <button className="btn sec" onClick={reset} disabled={!t}>↺ Reset</button>
-      <span className="help" style={{margin:0}}>Space starts &amp; stops · one tone per phase · the screen stays awake while a set runs</span>
+      {!fs&&<button className="btn sec" onClick={enterFs} title="F">⛶ Full screen</button>}
+      <span className="help" style={{margin:0}}>{fs
+        ?'Space starts & stops · Esc or F comes back'
+        :'Space starts & stops · F fills the screen · one tone per phase · the screen stays awake while a set runs'}</span>
     </div>
   </div>);
 }
