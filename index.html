@@ -1839,11 +1839,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dv-empty-s code{font-family:'IBM Plex Mono',monospace;color:var(--accent);background:rgba(255,255,255,.06);padding:1px 5px;border-radius:4px}
 .dv-cap{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-align:center;margin-top:11px;letter-spacing:.03em}
 /* ===== Athlete Test Reports tab ===== */
-.rep-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.rep-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:11px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13.5px;cursor:pointer;border:1px solid transparent;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}
-.rep-btn:active{transform:translateY(1px)}
-.rep-btn.go{background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;box-shadow:0 8px 20px -8px rgba(139,92,246,.7)}
-.rep-btn.go:hover{transform:translateY(-1px);box-shadow:0 11px 26px -8px rgba(139,92,246,.85)}
 .rep-sec-t{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 11px;display:flex;align-items:center;gap:8px}
 .rep-sec-t:first-child{margin-top:2px}
 .rep-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:10px}
@@ -9654,7 +9649,6 @@ function EvaluationView({team,updateTeam,data,setData}){
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
   const[addBatId,setAddBatId]=useState(null);   // test whose battery is being extended
-  const[showReports,setShowReports]=useState(false);
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
   const[period,setPeriod]=useState('pre');
@@ -9749,7 +9743,7 @@ function EvaluationView({team,updateTeam,data,setData}){
     {/* Player grid */}
     <div className="eval-grid">{athletes.map(a=>{
       const age=ageOf(a);const n=(a.tests||[]).length;const on=a.id===selId;
-      return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);setShowReports(false);}}>
+      return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);}}>
         {a.number&&<div className="evc-num">{a.number}</div>}
         {n>0&&<div className="evc-badge">{n} {Lx('test','tests')}</div>}
         <div className="evc-av">{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
@@ -9759,10 +9753,6 @@ function EvaluationView({team,updateTeam,data,setData}){
     })}</div>
 
     {ath&&<div style={{marginTop:18}}>
-      <div className="rep-actions">
-        <button className="rep-btn go" onClick={()=>setShowReports(s=>!s)}>{showReports?'← Back to Testing':'📋 Reports'}</button>
-      </div>
-      {showReports?<TestReportsTab ath={ath} setup={setup} ai={data&&data.ai} exercises={(data&&data.exercises)||[]}/>:<React.Fragment>
       {/* Alınacak Test — pick the battery */}
       <div className="panel">
         <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
@@ -9842,7 +9832,6 @@ function EvaluationView({team,updateTeam,data,setData}){
       </div>
 
       {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
-      </React.Fragment>}
     </div>}
   </div>);
 }
