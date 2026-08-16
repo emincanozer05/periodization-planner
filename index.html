@@ -1635,6 +1635,45 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .evc-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:3px}
 .evc-badge{position:absolute;top:9px;right:11px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-bg);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
 .evc-num{position:absolute;top:10px;left:12px;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--border2);line-height:1}
+/* ===== Compare Athletes =====
+   One row per athlete down the left, one metric per column across the top. The name
+   column is sticky so a roster stays readable however far right the metrics run, and
+   the header is sticky-top so the column a number belongs to is always named. */
+.cmp-bar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.cmp-fld{display:flex;flex-direction:column;gap:4px}
+.cmp-fld>label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.cmp-chips{display:flex;gap:6px;flex-wrap:wrap}
+.cmp-chip{font-size:12px;font-weight:600;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 11px;cursor:pointer;transition:border-color .12s,color .12s,background .12s}
+.cmp-chip:hover{border-color:var(--border2);color:var(--text)}
+.cmp-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.cmp-chip.ath{display:flex;align-items:center;gap:6px}
+.cmp-chip.ath .n{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+.cmp-chip.ath.on .n{color:var(--accent)}
+.cmp-scroll{overflow:auto;border:1px solid var(--border);border-radius:12px;max-height:70vh}
+.cmp-tbl{border-collapse:separate;border-spacing:0;width:100%;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px}
+.cmp-tbl th,.cmp-tbl td{padding:7px 9px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--border);background:var(--panel)}
+.cmp-tbl thead th{position:sticky;z-index:3;background:var(--elevated);border-bottom:1px solid var(--border2);
+  font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.03em;text-transform:uppercase;line-height:1.3;vertical-align:bottom}
+.cmp-tbl thead th .u{display:block;font-size:9px;font-weight:500;color:var(--dim);text-transform:none;letter-spacing:0}
+/* Two sticky header rows: the group band pins at the top, the metric names right under
+   it. The band's height is fixed so the second row knows where to stop. */
+.cmp-tbl thead tr.bnd th{top:0;height:24px;line-height:24px;padding:0 9px;font-size:9px;color:var(--accent);
+  letter-spacing:.1em;border-bottom:1px solid var(--border)}
+.cmp-tbl thead tr.hdr th{top:24px}
+.cmp-tbl .ath-c{position:sticky;left:0;z-index:2;text-align:left;min-width:184px;background:var(--elevated);border-right:1px solid var(--border2)}
+.cmp-tbl thead .ath-c{z-index:4}
+.cmp-tbl tbody tr:hover td{background:var(--bg2)}
+.cmp-tbl tbody tr:hover .ath-c{background:var(--bg2)}
+.cmp-nm{display:block;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
+.cmp-sub{display:block;font-size:9.5px;color:var(--dim);letter-spacing:.03em;margin-top:1px}
+.cmp-v{font-weight:600;color:var(--text)}
+.cmp-v.na{color:var(--dim);font-weight:400}
+.cmp-v.best{color:var(--accent)}
+.cmp-v.worst{color:#f0836c}
+.cmp-tbl tfoot td{background:var(--elevated);border-top:1px solid var(--border2);border-bottom:none;font-weight:700;color:var(--text2)}
+.cmp-tbl tfoot .ath-c{color:var(--dim);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.cmp-legend{margin-top:10px;font-size:11px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
+.cmp-legend b{font-weight:700}
 /* test-pick chips — uniform, equally sized tiles */
 .tpick{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
 .tpc{display:flex;align-items:center;justify-content:center;text-align:center;min-height:64px;background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:10px 26px;cursor:pointer;transition:border-color .12s,background .12s,transform .12s;position:relative}
@@ -2528,6 +2567,16 @@ header{background:var(--bg2)!important}
   padding:11px;box-shadow:0 18px 46px rgba(0,0,0,.6);text-transform:none;letter-spacing:0;
   white-space:normal;max-height:min(62vh,540px);overflow:auto}
 .ca-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--text)}
+/* Refresh sits between the name and the intent pill: it is the one control in the box's
+   header, and it changes the six exercises without changing what they were read off. */
+.ca-hd>b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ca-rf{flex:none;background:var(--panel);border:1px solid var(--border2);color:var(--text2);border-radius:7px;
+  padding:3px 9px;font-family:inherit;font-size:10.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:border-color .15s,color .15s}
+.ca-rf:hover{border-color:var(--accent);color:var(--accent)}
+.ca-rf:active{transform:translateY(1px)}
+.ca-alt{margin-top:5px;font-size:10px;line-height:1.4;color:var(--accent);
+  background:var(--accent-bg);border:1px solid var(--border);border-radius:7px;padding:4px 8px}
 .ca-intent{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;
   text-transform:uppercase;border-radius:20px;padding:2px 8px;border:1px solid;flex:none}
 .ca-intent.i-recovery{color:#f43f5e;border-color:rgba(244,63,94,.4);background:rgba(244,63,94,.1)}
@@ -3065,6 +3114,93 @@ function ybCalc(yb){
   const comp=s=>(limb!=null&&s.ant!=null&&s.pm!=null&&s.pl!=null)?+(((s.ant+s.pm+s.pl)/(3*limb))*100).toFixed(1):null;
   const diff=k=>(right[k]!=null&&left[k]!=null)?+Math.abs(right[k]-left[k]).toFixed(1):null;
   return{limb,right,left,compR:comp(right),compL:comp(left),dAnt:diff('ant'),dPm:diff('pm'),dPl:diff('pl')};
+}
+
+/* =========================================================
+   COMPARE ATHLETES — the metric model behind the comparison table.
+   One entry per column: where the number is read from on a test record, the unit it
+   is in, and which way is better (`dir`). A metric with no `dir` is descriptive —
+   height, a circumference — and is never marked best or worst, because taller is not
+   a score. Both the on-screen table and the printout are built from this one list, so
+   the paper is the screen.
+   ========================================================= */
+const cmpN=v=>{const n=Number(v);return(v===''||v==null||isNaN(n))?null:n;};
+const cmpGap=(a,b)=>{const x=cmpN(a),y=cmpN(b);return(x==null||y==null)?null:+Math.abs(x-y).toFixed(1);};
+const CMP_GROUPS=[
+  {id:'anthro',tr:'Antropometri',      en:'Anthropometry'},
+  {id:'circ',  tr:'Çevre Ölçümleri',   en:'Circumferences'},
+  {id:'mob',   tr:'Mobilite & Hareket',en:'Mobility & Movement'},
+  {id:'pow',   tr:'Güç & Sıçrama',     en:'Power & Jump'},
+  {id:'spd',   tr:'Sürat & Çeviklik',  en:'Speed & Agility'},
+  {id:'cust',  tr:'Özel Testler',      en:'Custom Tests'},
+];
+const CMP_METRICS=[
+  {id:'height',  g:'anthro',tr:'Boy',        en:'Height',      u:'cm',st:'Boy',se:'Ht',get:t=>cmpN(t.height)},
+  {id:'weight',  g:'anthro',tr:'Kilo',       en:'Weight',      u:'kg',st:'Kilo',se:'Wt',get:t=>cmpN(t.weight)},
+  {id:'bmi',     g:'anthro',tr:'BMI',        en:'BMI',         u:'',  st:'BMI',se:'BMI',get:t=>{const h=cmpN(t.height),w=cmpN(t.weight);return(h&&w)?+(w/((h/100)**2)).toFixed(1):null;}},
+  {id:'bodyFat', g:'anthro',tr:'Yağ Oranı',  en:'Body Fat',    u:'%', dir:'lo',st:'Yağ',se:'Fat',get:t=>cmpN(t.bodyFat)},
+  {id:'wingspan',g:'anthro',tr:'Kulaç',      en:'Wingspan',    u:'cm',st:'Kulaç',se:'Wing',get:t=>cmpN(t.wingspan)},
+  {id:'legLen',  g:'anthro',tr:'Bacak Uz.',  en:'Leg Length',  u:'cm',st:'Bacak',se:'Leg',get:t=>cmpN(t.legLength)},
+  {id:'sitHt',   g:'anthro',tr:'Oturma Yük.',en:'Sitting Ht.', u:'cm',st:'Oturma',se:'Sit Ht',get:t=>cmpN(t.sittingHeight)},
+  {id:'cShoulder',g:'circ',tr:'Omuz',    en:'Shoulder',u:'cm',st:'Omuz',se:'Shldr',get:t=>cmpN(t.circ&&t.circ.shoulder)},
+  {id:'cWaist',  g:'circ',tr:'Bel',      en:'Waist',   u:'cm',st:'Bel',se:'Waist',get:t=>cmpN(t.circ&&t.circ.waist)},
+  {id:'cHip',    g:'circ',tr:'Kalça',    en:'Hip',     u:'cm',st:'Kalça',se:'Hip',get:t=>cmpN(t.circ&&t.circ.hip)},
+  {id:'cThighR', g:'circ',tr:'Uyluk R',  en:'Thigh R', u:'cm',st:'Uyluk R',se:'Thigh R',get:t=>cmpN(t.circ&&t.circ.thighRight)},
+  {id:'cThighL', g:'circ',tr:'Uyluk L',  en:'Thigh L', u:'cm',st:'Uyluk L',se:'Thigh L',get:t=>cmpN(t.circ&&t.circ.thighLeft)},
+  {id:'cCalfR',  g:'circ',tr:'Baldır R', en:'Calf R',  u:'cm',st:'Baldır R',se:'Calf R',get:t=>cmpN(t.circ&&t.circ.calfRight)},
+  {id:'cCalfL',  g:'circ',tr:'Baldır L', en:'Calf L',  u:'cm',st:'Baldır L',se:'Calf L',get:t=>cmpN(t.circ&&t.circ.calfLeft)},
+  {id:'adfR', g:'mob',tr:'Ayak Bileği DF R',en:'Ankle DF R',u:'°',dir:'hi',st:'ADF R',se:'ADF R',get:t=>cmpN(t.ankleDF&&t.ankleDF.right)},
+  {id:'adfL', g:'mob',tr:'Ayak Bileği DF L',en:'Ankle DF L',u:'°',dir:'hi',st:'ADF L',se:'ADF L',get:t=>cmpN(t.ankleDF&&t.ankleDF.left)},
+  {id:'adfD', g:'mob',tr:'Ayak Bileği Fark',en:'Ankle DF Gap',u:'°',dir:'lo',st:'ADF Δ',se:'ADF Δ',get:t=>cmpGap(t.ankleDF&&t.ankleDF.right,t.ankleDF&&t.ankleDF.left)},
+  {id:'aslrR',g:'mob',tr:'ASLR R',en:'ASLR R',u:'/3',dir:'hi',st:'ASLR R',se:'ASLR R',get:t=>cmpN(t.aslr&&t.aslr.right)},
+  {id:'aslrL',g:'mob',tr:'ASLR L',en:'ASLR L',u:'/3',dir:'hi',st:'ASLR L',se:'ASLR L',get:t=>cmpN(t.aslr&&t.aslr.left)},
+  {id:'ohs',  g:'mob',tr:'Overhead Squat',en:'Overhead Squat',u:'/3',dir:'hi',st:'OHS',se:'OHS',get:t=>cmpN(t.ohs&&t.ohs.score)},
+  {id:'ybR',  g:'mob',tr:'Y Balance R',en:'Y Balance R',u:'%',dir:'hi',st:'YBT R',se:'YBT R',get:t=>ybCalc(t.yBalance).compR},
+  {id:'ybL',  g:'mob',tr:'Y Balance L',en:'Y Balance L',u:'%',dir:'hi',st:'YBT L',se:'YBT L',get:t=>ybCalc(t.yBalance).compL},
+  {id:'ybD',  g:'mob',tr:'Y Balance Fark',en:'Y Balance Gap',u:'%',dir:'lo',st:'YBT Δ',se:'YBT Δ',get:t=>{const y=ybCalc(t.yBalance);return cmpGap(y.compR,y.compL);}},
+  {id:'vj',   g:'pow',tr:'Dikey Sıçrama',  en:'Vertical Jump',  u:'cm',dir:'hi',st:'Dikey',se:'VJ',get:t=>cmpN(t.verticalJump)},
+  {id:'cmj',  g:'pow',tr:'CMJ',            en:'CMJ',            u:'cm',dir:'hi',st:'CMJ',se:'CMJ',get:t=>cmpN(t.cmj)},
+  {id:'sj',   g:'pow',tr:'Squat Jump',     en:'Squat Jump',     u:'cm',dir:'hi',st:'SJ',se:'SJ',get:t=>cmpN(t.squatJump)},
+  {id:'dj',   g:'pow',tr:'Drop Jump (RSI)',en:'Drop Jump (RSI)',u:'',  dir:'hi',st:'DJ RSI',se:'DJ RSI',get:t=>cmpN(t.dropJump)},
+  {id:'hj',   g:'pow',tr:'Yatay Sıçrama',  en:'Horizontal Jump',u:'cm',dir:'hi',st:'Yatay',se:'HJ',get:t=>cmpN(t.horizontalJump)},
+  {id:'lcjR', g:'pow',tr:'Lateral CMJ R',  en:'Lateral CMJ R',  u:'cm',dir:'hi',st:'LCMJ R',se:'LCMJ R',get:t=>cmpN(t.lateralCmj&&t.lateralCmj.right)},
+  {id:'lcjL', g:'pow',tr:'Lateral CMJ L',  en:'Lateral CMJ L',  u:'cm',dir:'hi',st:'LCMJ L',se:'LCMJ L',get:t=>cmpN(t.lateralCmj&&t.lateralCmj.left)},
+  {id:'lcjD', g:'pow',tr:'Lateral CMJ Fark',en:'Lateral CMJ Gap',u:'cm',dir:'lo',st:'LCMJ Δ',se:'LCMJ Δ',get:t=>cmpGap(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left)},
+  {id:'sp20', g:'spd',tr:'20m Sprint',en:'20m Sprint',u:'s',dir:'lo',st:'20m',se:'20m',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
+  {id:'tTest',g:'spd',tr:'T-Test',    en:'T-Test',    u:'s',dir:'lo',st:'T-Test',se:'T-Test',get:t=>cmpN(t.tTest)},
+  {id:'f505', g:'spd',tr:'5-0-5',     en:'5-0-5',     u:'s',dir:'lo',st:'5-0-5',se:'5-0-5',get:t=>cmpN(t.fiveZeroFive)},
+  {id:'shut', g:'spd',tr:'Shuttle Run',en:'Shuttle Run',u:'s',dir:'lo',st:'Shuttle',se:'Shuttle',get:t=>cmpN(t.shuttleRun)},
+];
+/* The coach's own tests join the table as columns too. Nothing says which way is
+   better for a test the app has never seen, so they carry no direction. */
+function cmpMetrics(customTests){
+  return[...CMP_METRICS,...(customTests||[]).map(c=>({id:'ct_'+c.id,g:'cust',tr:c.name,en:c.name,u:'',
+    get:t=>cmpN(t.custom&&t.custom[c.id])}))];
+}
+const cmpLabel=m=>L(m.tr,m.en);
+/* The header a crowded sheet gets. Thirty-five columns on one A4 leave a header about
+   eight characters wide, and "Overhead Squat" broken across three lines says less than
+   "OHS" does — so past a threshold the print switches to the short form. A coach's own
+   test has no short form and keeps its name. */
+const cmpShort=m=>L(m.st||m.tr,m.se||m.en);
+// One decimal at most, and no trailing ".0" — a 42 is a 42, not a 42.0.
+const cmpFmt=v=>v==null?'—':String(+(Math.round(v*10)/10));
+/* The test each athlete is compared on: their most recent one, or the most recent of a
+   given season period. Records without a date can't be ordered, so they sit this out. */
+function cmpTestOf(ath,scope){
+  const ts=[...(ath.tests||[])].filter(t=>t.date&&(scope==='latest'||t.period===scope))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  return ts[ts.length-1]||null;
+}
+/* Best and worst of a column, for the metrics where those words mean something. A
+   column where everybody scored the same has neither. */
+function cmpEdges(vals,dir){
+  if(!dir)return{best:null,worst:null};
+  const nums=vals.filter(v=>v!=null);
+  if(nums.length<2)return{best:null,worst:null};
+  const hi=Math.max(...nums),lo=Math.min(...nums);
+  if(hi===lo)return{best:null,worst:null};
+  return dir==='hi'?{best:hi,worst:lo}:{best:lo,worst:hi};
 }
 
 /* =========================================================
@@ -9730,6 +9866,220 @@ function TestProgressionCharts({tests}){
 }
 
 /* =========================================================
+   COMPARE ATHLETES — the printout. Landscape A4, and the same table the screen
+   shows: the metrics across the top, the athletes down the left, in the order and
+   the selection the coach left them in. Nothing is recomputed here — the values,
+   the best/worst marks and the averages all arrive already worked out, so the
+   paper cannot disagree with the screen.
+   ========================================================= */
+function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}){
+  const w=window.open('','_blank','width=1400,height=900');
+  if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // A wide battery has to fit the same sheet a narrow one does, so the type shrinks
+  // with the column count rather than the table running off the page.
+  const n=metrics.length;
+  const fs=n<=10?10.5:n<=15?9:n<=21?7.8:n<=28?6.9:6.1;
+  const nameW=n<=12?18:n<=20?14:11;
+  const logo=teamLogo();
+  const lbl=n>18?cmpShort:cmpLabel;
+  const head=metrics.map(m=>`<th><span class="l">${esc(lbl(m))}</span>${m.u?`<span class="u">${esc(m.u)}</span>`:''}</th>`).join('');
+  const band=bands.map(b=>`<th class="grp" colspan="${b.n}">${esc(L(b.tr,b.en))}</th>`).join('');
+  const body=rows.map(r=>`<tr>
+    <td class="ath">
+      <span class="nm">${esc(r.name)}</span>
+      <span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+    </td>
+    ${r.vals.map((v,i)=>{const e=edges[i];
+      const cls=v==null?'na':(e.best!=null&&v===e.best?'best':(e.worst!=null&&v===e.worst?'worst':''));
+      return`<td class="${cls}">${esc(cmpFmt(v))}</td>`;}).join('')}
+  </tr>`).join('');
+  const foot=`<tr><td class="ath avg">${esc(L('Takım ortalaması','Team average'))}</td>${avgs.map(v=>`<td>${esc(cmpFmt(v))}</td>`).join('')}</tr>`;
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(L('Sporcu Karşılaştırma','Athlete Comparison'))} — ${esc(teamName||'')}</title>
+<style>
+@page{size:A4 landscape;margin:8mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+:root{--accent:#0094ff;--border:#e5e7eb;--text:#0a0b0d;--muted:#5c626c;--dim:#8b9099}
+body{font-family:'Arimo',Arial,sans-serif;color:var(--text);background:#fff;font-size:${fs}px;line-height:1.35}
+.hdr{display:flex;align-items:center;gap:14px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:11px;margin-bottom:10px}
+.hdr img{height:34px;width:auto;object-fit:contain}
+.hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.hdr .meta{font-size:9.5px;color:rgba(255,255,255,.62);margin-top:3px;letter-spacing:.04em}
+.hdr .ttl{margin-left:auto;text-align:right;font-size:9.5px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:.14em;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+/* A column header wraps between its words first and only splits a word when that
+   word alone cannot fit — "Shoulder" over two lines reads as nothing at all. */
+th,td{border:1px solid var(--border);padding:${fs<8?'2px 2px':'4px 3px'};text-align:center;word-break:normal;overflow-wrap:break-word;hyphens:none}
+thead th{background:#f4f5f7;font-size:${(fs*.92).toFixed(1)}px;font-weight:700;line-height:1.2;vertical-align:bottom;text-transform:uppercase;letter-spacing:.02em}
+thead th .u{display:block;font-size:${(fs*.8).toFixed(1)}px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
+thead th.grp{background:#0a0b0d;color:#fff;font-size:${(fs*.82).toFixed(1)}px;letter-spacing:.1em;padding:3px}
+th.ath,td.ath{width:${nameW}%;text-align:left}
+td.ath .nm{display:block;font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.15}
+td.ath .sub{display:block;font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);margin-top:1px}
+tbody tr:nth-child(even) td{background:#fafbfc}
+td.best{color:#0f7a3d;font-weight:700;background:rgba(22,163,74,.10)!important}
+td.worst{color:#b3261e;font-weight:700;background:rgba(220,38,38,.08)!important}
+td.na{color:var(--dim)}
+tfoot td{background:#eef0f3;font-weight:700}
+tfoot td.avg{font-size:${(fs*.9).toFixed(1)}px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.legend{margin-top:7px;font-size:${(fs*.88).toFixed(1)}px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap}
+.legend i{font-style:normal;font-weight:700}
+.footer{margin-top:8px;padding-top:5px;border-top:1px solid var(--border);text-align:center;font-size:${(fs*.85).toFixed(1)}px;color:var(--dim);letter-spacing:.05em}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;font-weight:500;z-index:9999}
+.print-bar button{background:var(--accent);color:#fff;border:none;padding:8px 18px;border-radius:7px;font-weight:700;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+@media print{.print-bar,.scr-sp{display:none}thead{display:table-header-group}tr{page-break-inside:avoid}}
+</style></head><body>
+<div class="print-bar">📄 ${esc(L('Karşılaştırma tablosu hazır','Comparison table is ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button></div>
+<div class="scr-sp" style="height:50px"></div>
+<div class="hdr">
+  ${logo?`<img src="${logo}" alt=""/>`:''}
+  <div>
+    <h1>${esc(teamName||'')}</h1>
+    <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${n} ${esc(L('metrik','metrics'))}</div>
+  </div>
+  <div class="ttl">${L('SPORCU<br>KARŞILAŞTIRMA','ATHLETE<br>COMPARISON')}</div>
+</div>
+<table>
+  <thead>
+    <tr><th class="ath grp"></th>${band}</tr>
+    <tr><th class="ath">${esc(L('Sporcu','Athlete'))}</th>${head}</tr>
+  </thead>
+  <tbody>${body}</tbody>
+  <tfoot>${foot}</tfoot>
+</table>
+<div class="legend"><span><i style="color:#0f7a3d">■</i> ${esc(L('grubun en iyisi','best in group'))}</span><span><i style="color:#b3261e">■</i> ${esc(L('grubun en zayıfı','weakest in group'))}</span><span>${esc(L('İşaretsiz sütunlarda "iyi" diye bir yön yok (boy, çevre ölçümleri, özel testler).','Unmarked columns have no better direction (height, circumferences, custom tests).'))}</span></div>
+<div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
+</body></html>`;
+  w.document.write(html);w.document.close();
+  setTimeout(()=>{try{w.focus();}catch(e){}},400);
+}
+
+/* ---- Compare Athletes — the screen ---------------------------------------
+   Metrics across the top, athletes down the left. The coach chooses which test each
+   athlete is read from (their latest, or the latest of a season period), which metric
+   groups are columns, and who is a row. Columns nobody has a number for are dropped by
+   default, so a battery of six tests does not print thirty empty columns. */
+function CompareAthletes({athletes,setup,customTests,Lx}){
+  const[scope,setScope]=useState('latest');
+  const[groups,setGroups]=useState(()=>new Set(CMP_GROUPS.map(g=>g.id)));
+  const[hideEmpty,setHideEmpty]=useState(true);
+  const withTests=useMemo(()=>athletes.filter(a=>(a.tests||[]).some(t=>t.date)),[athletes]);
+  const[picked,setPicked]=useState(()=>new Set(withTests.map(a=>a.id)));
+  const allMetrics=useMemo(()=>cmpMetrics(customTests),[customTests]);
+  const toggleIn=(set,fn,id)=>{const n=new Set(set);n.has(id)?n.delete(id):n.add(id);fn(n);};
+  /* One row per athlete who is both ticked and has a test in the chosen scope. Everything
+     the table and the printout need is computed once, here. */
+  const view=useMemo(()=>{
+    const rows=withTests.filter(a=>picked.has(a.id))
+      .map(a=>({a,t:cmpTestOf(a,scope)})).filter(r=>r.t)
+      .sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||''));
+    let metrics=allMetrics.filter(m=>groups.has(m.g));
+    const val=(m,t)=>{try{return m.get(t);}catch(e){return null;}};
+    if(hideEmpty)metrics=metrics.filter(m=>rows.some(r=>val(m,r.t)!=null));
+    const data=rows.map(r=>({
+      id:r.a.id,name:r.a.name||'—',number:r.a.number||'',
+      pos:POS_FULL[r.a.position]||r.a.position||'',
+      date:r.t.date,period:(TEST_PERIODS.find(p=>p.id===r.t.period)||{}).label||'',
+      vals:metrics.map(m=>val(m,r.t)),
+    }));
+    const edges=metrics.map((m,i)=>cmpEdges(data.map(d=>d.vals[i]),m.dir));
+    const avgs=metrics.map((m,i)=>{const v=data.map(d=>d.vals[i]).filter(x=>x!=null);
+      return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;});
+    // Group band across the top: each run of columns from the same group, named once.
+    const bands=[];metrics.forEach(m=>{const last=bands[bands.length-1];
+      if(last&&last.id===m.g)last.n++;else{const g=CMP_GROUPS.find(x=>x.id===m.g);bands.push({id:m.g,tr:g.tr,en:g.en,n:1});}});
+    return{rows:data,metrics,edges,avgs,bands};
+  },[withTests,picked,scope,groups,hideEmpty,allMetrics]);
+  const scopeLabel=scope==='latest'?Lx('Son test','Latest test')
+    :Lx('Son ','Latest ')+((TEST_PERIODS.find(p=>p.id===scope)||{}).label||'');
+  const cellCls=(v,e)=>'cmp-v'+(v==null?' na':(e.best!=null&&v===e.best?' best':(e.worst!=null&&v===e.worst?' worst':'')));
+  const canPrint=view.rows.length>0&&view.metrics.length>0;
+  return(<div className="panel">
+    <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
+      <h2 style={{margin:0}}>{Lx('Sporcu Karşılaştırma','Compare Athletes')}</h2>
+      <button className="btn sm white" disabled={!canPrint}
+        onClick={()=>printAthleteCompare({rows:view.rows,metrics:view.metrics,bands:view.bands,
+          avgs:view.avgs,edges:view.edges,teamName:setup.teamName,scopeLabel})}>
+        🖨 {Lx('Çıktı Al (A4 yatay)','Print (A4 landscape)')}
+      </button>
+    </div>
+    <div className="help" style={{marginBottom:14}}>
+      {Lx('Metrikler üstte yan yana, sporcular solda alt alta. Her sporcunun seçilen dönemdeki son testi okunur — çıktı bu tabloyu aynen yatay A4\'e basar.',
+          'Metrics across the top, athletes down the left. Each athlete is read from their latest test in the chosen period — the printout puts this exact table on landscape A4.')}
+    </div>
+    <div className="cmp-bar">
+      <div className="cmp-fld">
+        <label>{Lx('Hangi test','Which test')}</label>
+        <select value={scope} onChange={e=>setScope(e.target.value)} style={{width:170}}>
+          <option value="latest">{Lx('Son test','Latest test')}</option>
+          {TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </div>
+      <div className="cmp-fld" style={{flex:'1 1 340px',minWidth:240}}>
+        <label>{Lx('Metrik grupları','Metric groups')}</label>
+        <div className="cmp-chips">
+          {CMP_GROUPS.map(g=>{const has=allMetrics.some(m=>m.g===g.id);if(!has)return null;
+            return(<button key={g.id} type="button" className={'cmp-chip'+(groups.has(g.id)?' on':'')}
+              onClick={()=>toggleIn(groups,setGroups,g.id)}>{Lx(g.tr,g.en)}</button>);})}
+          <button type="button" className={'cmp-chip'+(hideEmpty?' on':'')} onClick={()=>setHideEmpty(v=>!v)}
+            title={Lx('Kimsede verisi olmayan sütunları gizle','Hide columns nobody has data for')}>
+            {Lx('Boş sütunları gizle','Hide empty columns')}
+          </button>
+        </div>
+      </div>
+    </div>
+    <div className="cmp-bar">
+      <div className="cmp-fld" style={{flex:'1 1 100%'}}>
+        <label>{Lx('Sporcular','Athletes')} ({view.rows.length}/{withTests.length})</label>
+        <div className="cmp-chips">
+          <button type="button" className="cmp-chip" onClick={()=>setPicked(new Set(withTests.map(a=>a.id)))}>{Lx('Tümü','All')}</button>
+          <button type="button" className="cmp-chip" onClick={()=>setPicked(new Set())}>{Lx('Temizle','Clear')}</button>
+          {withTests.map(a=><button key={a.id} type="button" className={'cmp-chip ath'+(picked.has(a.id)?' on':'')}
+            onClick={()=>toggleIn(picked,setPicked,a.id)}>
+            {a.number&&<span className="n">#{a.number}</span>}{a.name}
+          </button>)}
+        </div>
+      </div>
+    </div>
+    {withTests.length===0&&<div className="empty-st">{Lx('Karşılaştırılacak test yok — önce bir sporcuya test uygula.','Nothing to compare yet — administer a test to an athlete first.')}</div>}
+    {withTests.length>0&&view.rows.length===0&&<div className="empty-st">{Lx('Seçilen sporcuların bu dönemde testi yok — başka bir dönem seç ya da sporcu ekle.','No test in this period for the athletes you picked — choose another period or tick more athletes.')}</div>}
+    {view.rows.length>0&&view.metrics.length===0&&<div className="empty-st">{Lx('Seçili gruplarda gösterilecek metrik yok.','No metric to show in the selected groups.')}</div>}
+    {canPrint&&<>
+      <div className="cmp-scroll">
+        <table className="cmp-tbl">
+          <thead>
+            <tr className="bnd"><th className="ath-c"></th>{view.bands.map((b,i)=><th key={b.id+i} colSpan={b.n}>{Lx(b.tr,b.en)}</th>)}</tr>
+            <tr className="hdr"><th className="ath-c">{Lx('Sporcu','Athlete')}</th>
+              {view.metrics.map(m=><th key={m.id}>{cmpLabel(m)}{m.u&&<span className="u">{m.u}</span>}</th>)}</tr>
+          </thead>
+          <tbody>
+            {view.rows.map(r=><tr key={r.id}>
+              <td className="ath-c">
+                <span className="cmp-nm">{r.name}</span>
+                <span className="cmp-sub">{[r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
+              </td>
+              {r.vals.map((v,i)=><td key={view.metrics[i].id}><span className={cellCls(v,view.edges[i])}>{cmpFmt(v)}</span></td>)}
+            </tr>)}
+          </tbody>
+          <tfoot>
+            <tr><td className="ath-c">{Lx('Takım ort.','Team avg.')}</td>
+              {view.avgs.map((v,i)=><td key={view.metrics[i].id}>{cmpFmt(v)}</td>)}</tr>
+          </tfoot>
+        </table>
+      </div>
+      <div className="cmp-legend">
+        <span><b style={{color:'var(--accent)'}}>■</b> {Lx('grubun en iyisi','best in group')}</span>
+        <span><b style={{color:'#f0836c'}}>■</b> {Lx('grubun en zayıfı','weakest in group')}</span>
+        <span>{Lx('Yönü olmayan sütunlar (boy, çevre ölçümleri, özel testler) işaretlenmez.','Columns with no better direction (height, circumferences, custom tests) are left unmarked.')}</span>
+      </div>
+    </>}
+  </div>);
+}
+
+/* =========================================================
    TESTING & ASSESSMENT — dedicated section
    Player grid → pick which tests to administer (any test, any age) →
    "Take Test" creates a battery-scoped record → designed session view.
@@ -9744,6 +10094,7 @@ function EvaluationView({team,updateTeam,data,setData}){
   const catName=id=>{const c=fullCatalog.find(x=>x.id===id);return c?c.name:id;};
   const[selId,setSelId]=useState(athletes[0]?.id||null);
   const[editingId,setEditingId]=useState(null);
+  const[compare,setCompare]=useState(false);    // the whole-roster comparison table
   const[addBatId,setAddBatId]=useState(null);   // test whose battery is being extended
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
@@ -9825,10 +10176,18 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="rh-t">Testing &amp; Assessment</div>
         <div className="rh-s">{athletes.length} {Lx('sporcu','athletes')} · {setup.teamName}</div>
       </div>
+      {/* Comparison is a mode, not a panel: it reads the whole roster at once, so it
+          takes the screen while it is open and gives it back when it is closed. */}
+      {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
+        {compare?`← ${Lx('Testlere dön','Back to tests')}`:`⇄ ${Lx('Sporcuları Karşılaştır','Compare Athletes')}`}
+      </button>}
     </div>
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Athletes sekmesinden ekle.','No athletes yet — add them in the Athletes tab.')}</div>}
 
+    {compare&&athletes.length>0&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
+
+    {!compare&&<>
     {/* Player grid */}
     <div className="eval-grid">{athletes.map(a=>{
       const age=ageOf(a);const n=(a.tests||[]).length;const on=a.id===selId;
@@ -9919,6 +10278,7 @@ function EvaluationView({team,updateTeam,data,setData}){
 
       {editing&&<TestSession test={editing} ath={ath} setup={setup} customTests={customTests} onUpdate={u=>updTest(editing.id,u)} onClose={()=>setEditingId(null)}/>}
     </div>}
+    </>}
   </div>);
 }
 
@@ -14200,8 +14560,15 @@ function caReadAthlete(ath,ref){
 }
 /* The pick itself: drop what the reported pain loads, then score what is left on the needs
    it answers and how well it fits the day. Deterministic — same athlete, same day, same
-   six exercises, so the coach can go back to the box and find it saying what it said. */
-function caPick(slotId,rx){
+   `round`, same six exercises, so the coach can go back to the box and find it saying what
+   it said.
+
+   `round` is what the refresh button turns. The candidates are ranked once and the round
+   walks down that ranking, so pressing refresh does not re-roll the pick at random — it
+   hands over the next best exercise for THIS athlete, still filtered by the pain that was
+   reported and still scored on the needs their tests showed. Past the end of the ranking
+   it wraps around to the first, so refresh never runs out. */
+function caPick(slotId,rx,round){
   const pool=CA_POOL[slotId]||[];
   const want=CA_INTENT[rx.intent].want;
   const safe=pool.filter(c=>!c.hits.some(h=>rx.flags.includes(h)));
@@ -14209,8 +14576,7 @@ function caPick(slotId,rx){
   // A need only counts for the slots it is about (see CA_NEED_SLOTS); one with no entry
   // there — technique, body weight, glute work — speaks everywhere.
   const asks=k=>{const sc=CA_NEED_SLOTS[k];return rx.needs[k]&&(!sc||sc.includes(slotId))?rx.needs[k]:null;};
-  let best=null,bestScore=-1e9,bestWhy=[];
-  list.forEach((c,i)=>{
+  const ranked=list.map((c,i)=>{
     let s=c.base?2.5:0;               // the slot's staple lift, when nothing else is asked for
     const why=[];
     c.fix.forEach(f=>{const w=asks(f);if(w){s+=3;why.push(w);}});
@@ -14218,9 +14584,13 @@ function caPick(slotId,rx){
     if(c.t.includes('uni')&&rx.asym&&(CA_NEED_SLOTS.asym.includes(slotId)))s+=2;
     s-=Math.abs(c.lv-rx.level)*(c.lv>rx.level?2:1);
     s-=i*0.01;                        // stable order, never a coin toss
-    if(s>bestScore){bestScore=s;best=c;bestWhy=why;}
-  });
-  if(!best)return null;
+    return{c,s,why};
+  }).sort((a,b)=>b.s-a.s);
+  if(!ranked.length)return null;
+  const n=ranked.length;
+  const at=((Number(round)||0)%n+n)%n;
+  const{c:best,why}=ranked[at];
+  const bestWhy=[...why];
   if(!bestWhy.length){
     bestWhy.push(safe.length<pool.length
       ?`${rx.flags.map(ctLabel).join(', ')} bölgesini yüklemiyor`
@@ -14232,11 +14602,11 @@ function caPick(slotId,rx){
   const d=c=>c.t.includes('iso')?dose.hold:c.t.includes('exp')?dose.exp:(slotId==='acc'||slotId==='core')?dose.acc:dose.main;
   return{slot:slotId,name:best.n,pattern:(CA_SLOTS.find(s=>s.id===slotId)||{}).pattern,plane:best.ex,
     ...{sets:'',reps:'',duration:'',rpe:'',rest:'',tempo:'',load:''},...d(best),...(best.tp?{tempo:best.tp}:{}),
-    why:[...new Set(bestWhy)].slice(0,2).join(' · ')};
+    why:[...new Set(bestWhy)].slice(0,2).join(' · '),alts:n};
 }
-function caSuggest(ath,ref){
+function caSuggest(ath,ref,round){
   const rx=caReadAthlete(ath,ref);
-  return{...rx,items:CA_SLOTS.map(s=>caPick(s.id,rx)).filter(Boolean)};
+  return{...rx,round:Number(round)||0,items:CA_SLOTS.map(s=>caPick(s.id,rx,round)).filter(Boolean)};
 }
 
 /* The button beside Training Method, and the box it opens. Nothing here writes to the
@@ -14245,6 +14615,11 @@ function caSuggest(ath,ref){
 function CoachAssistant({ath,date}){
   const[open,setOpen]=useState(false);
   const[copied,setCopied]=useState('');
+  /* Which round of suggestions is on screen. 0 is the assistant's first answer; every
+     press of the refresh button steps it on and every slot hands over its next-best
+     exercise for this athlete. A different athlete or a different day is a different
+     question, so the count starts over. */
+  const[round,setRound]=useState(0);
   const ref=useRef(null);
   useEffect(()=>{
     if(!open)return;
@@ -14253,7 +14628,8 @@ function CoachAssistant({ath,date}){
     return()=>document.removeEventListener('mousedown',h);
   },[open]);
   const day=date||fmt(today);
-  const s=useMemo(()=>open?caSuggest(ath,day):null,[open,ath,day]);
+  useEffect(()=>{setRound(0);},[ath&&ath.id,day]);
+  const s=useMemo(()=>open?caSuggest(ath,day,round):null,[open,ath,day,round]);
   const copy=it=>{copyExerciseToClipboard(it);setCopied(it.slot);setTimeout(()=>setCopied(''),1600);};
   const dose=it=>[it.sets&&it.duration?`${it.sets} × ${it.duration}`:(it.sets&&it.reps?`${it.sets} × ${it.reps}`:(it.duration||it.reps||'')),
     it.rpe?`RPE ${it.rpe}`:'',it.rest?`dinlenme ${it.rest}`:''].filter(Boolean).join(' · ');
@@ -14263,9 +14639,15 @@ function CoachAssistant({ath,date}){
     {open&&s&&<div className="ca-pop">
       <div className="ca-hd">
         <b>{ath.name||'Sporcu'} · {fd(day)}</b>
+        {/* Refresh: the same reading of the athlete, the next set of exercises off it.
+            The intent, the evidence and the pain filter do not move — only which
+            exercise each slot is answered with. */}
+        <button type="button" className="ca-rf" onClick={()=>setRound(r=>r+1)}
+          title="Yenile — aynı okumadan, bu sporcuya uygun yeni egzersizler">↻ Yenile</button>
         <span className={'ca-intent i-'+s.intent}>{CA_INTENT[s.intent].label}</span>
       </div>
       <div className="ca-why">{s.drivers.slice(0,4).join(' · ')}</div>
+      {s.round>0&&<div className="ca-alt">{s.round+1}. öneri seti — aynı gerekçeler, sıradaki uygun egzersizler.</div>}
       {s.note&&<div className="ca-pain">{s.note.quoted?`“${s.note.text}”`:s.note.text}</div>}
       <div className="ca-list">
         {s.items.map(it=><div key={it.slot} className="ca-it">
