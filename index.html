@@ -2506,6 +2506,57 @@ header{background:var(--bg2)!important}
 .iv-slotacts button:hover:not(:disabled){color:var(--accent2);background:var(--elevated)}
 .iv-slotacts button.del:hover{color:var(--red)}
 .iv-slotacts button:disabled{opacity:.3;cursor:default}
+/* Paste, in the slot's own header. It carries the accent only while there is something on
+   the clipboard, so the row itself says whether pressing it would do anything. */
+.iv-slotacts button.pst.on{color:var(--accent)}
+.iv-slotacts button.pst.on:hover{color:#fff;background:var(--accent)}
+
+/* ---- Assistant coach ------------------------------------------------------
+   A plain button at the end of the Training Method row and the box it drops. Sized so it
+   reads as a sixth field on the strip rather than a call to action, and pinned above the
+   slots below it — the box overlaps them by design. */
+.ca-wrap{position:relative;flex:0 0 auto}
+.ca-btn{height:34px;padding:0 14px;border-radius:9px;background:var(--bg2);border:1px solid var(--border2);
+  color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:border-color .15s,color .15s,background .15s}
+.ca-btn:hover{border-color:var(--accent);color:var(--text)}
+.ca-btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+/* white-space is reset here on purpose: the meta strip keeps its fields on one line, and
+   inheriting that turned every sentence in the box into a single clipped line. */
+.ca-pop{position:absolute;top:calc(100% + 6px);right:0;width:min(430px,86vw);z-index:90;
+  background:var(--elevated,var(--bg2));border:1px solid var(--border2);border-radius:12px;
+  padding:11px;box-shadow:0 18px 46px rgba(0,0,0,.6);text-transform:none;letter-spacing:0;
+  white-space:normal;max-height:min(62vh,540px);overflow:auto}
+.ca-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--text)}
+.ca-intent{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;border-radius:20px;padding:2px 8px;border:1px solid;flex:none}
+.ca-intent.i-recovery{color:#f43f5e;border-color:rgba(244,63,94,.4);background:rgba(244,63,94,.1)}
+.ca-intent.i-maintain{color:#f59e0b;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.1)}
+.ca-intent.i-develop{color:#2dd4a7;border-color:rgba(45,212,167,.4);background:rgba(45,212,167,.1)}
+.ca-intent.i-load{color:#38bdf8;border-color:rgba(56,189,248,.4);background:rgba(56,189,248,.1)}
+/* The evidence line: what the six picks were read off. Deliberately small — the coach
+   checks it when a pick surprises them, not every time. */
+.ca-why{margin-top:5px;font-size:10.5px;line-height:1.45;color:var(--muted)}
+.ca-pain{margin-top:5px;font-size:11px;line-height:1.4;color:#fca5a5;
+  background:rgba(239,68,68,.09);border:1px solid rgba(239,68,68,.25);border-radius:7px;padding:5px 8px}
+.ca-list{margin-top:8px;display:flex;flex-direction:column;gap:1px}
+.ca-it{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px}
+.ca-it:nth-child(odd){background:var(--bg2)}
+.ca-it-l{flex:1;min-width:0}
+.ca-slot{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim)}
+.ca-nm{display:block;font-size:13px;font-weight:700;color:var(--text);line-height:1.3}
+.ca-dose{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--accent2)}
+.ca-r{display:block;font-size:10px;color:var(--muted);line-height:1.4;margin-top:1px}
+.ca-cp{flex:none;align-self:center;background:var(--panel);border:1px solid var(--border2);color:var(--text2);
+  border-radius:7px;padding:5px 10px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer}
+.ca-cp:hover{border-color:var(--accent);color:var(--accent)}
+.ca-cp.ok{border-color:var(--green,#46d6a0);color:var(--green,#46d6a0)}
+.ca-ft{margin-top:8px;font-size:10px;line-height:1.45;color:var(--dim)}
+/* Training method and the assistant share the row: the picker takes what is left. */
+.iv-mrow{display:flex;align-items:center;gap:8px;width:100%;min-width:0}
+.iv-mrow .focus-sel{flex:1 1 auto;min-width:0}
+@media(max-width:640px){.ca-wrap{flex:1 1 100%}.ca-btn{width:100%}.ca-pop{right:auto;left:0}}
 /* The session's own line sits above the blocks, like the individualization card's. */
 .sess-tools{margin-bottom:12px}
 /* The bar's title is click-to-edit: it reads as text until it is clicked, then wears the
@@ -3082,6 +3133,30 @@ function sessionFromClipboard(src){
   delete s.indiv;
   return{...s,id:uid(),sRPE:'',au:'',auManual:false,srpeFromManual:false,notes:'',athletes:[],sourceId:null,
     blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))};
+}
+/* Exercise clipboard — one prescribed row (name, pattern/execution and the numbers),
+   copied off the assistant coach's suggestion and pasted into a slot. Subscribed like the
+   session clipboard: the ✕/paste button lives in a different component from the copy
+   button, and it has to light up the moment something is copied. */
+let _exClipboard=null;
+const _exClipSubs=new Set();
+function copyExerciseToClipboard(e){
+  _exClipboard=e?JSON.parse(JSON.stringify(e)):null;
+  _exClipSubs.forEach(f=>{try{f(_exClipboard);}catch{}});
+}
+function useExerciseClipboard(){
+  const[v,setV]=useState(_exClipboard);
+  useEffect(()=>{const f=x=>setV(x);_exClipSubs.add(f);setV(_exClipboard);return()=>{_exClipSubs.delete(f);};},[]);
+  return v;
+}
+/* What a paste writes onto a slot: the prescription and nothing else. The row's image,
+   reference link and the coach's own description stay as they are — the suggestion is an
+   exercise with a dose, not a whole row. Empty fields are written too, so pasting over a
+   filled slot leaves no number behind from the exercise that used to be there. */
+function slotFromExClipboard(ex,c){
+  return{...ex,name:c.name||'',pattern:c.pattern||'',plane:c.plane||'',
+    sets:c.sets||'',reps:c.reps||'',duration:c.duration||'',tempo:c.tempo||'',
+    rpe:c.rpe||'',load:c.load||'',rest:c.rest||''};
 }
 /* Set by <App/> so any session editor can save its session to Templates without
    prop-threading (mirrors the clipboard pattern above). Returns true on success. */
@@ -6068,7 +6143,10 @@ const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
 /* `inline` keeps the session view and the day editor inside the calendar itself instead
    of throwing them over the page as a modal — the Individualization card uses it, so a
    coach editing an athlete's session never leaves the athlete's card. */
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises,inline}){
+/* `coachAthlete` is the one athlete this calendar belongs to — passed only by the
+   individualization card, where a session is being written FOR somebody. It is what the
+   assistant coach reads; everywhere else it is absent and the button does not appear. */
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises,inline,coachAthlete}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -6656,7 +6734,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
-            athletes={teamMode?athletes:undefined}/>)}
+            athletes={teamMode?athletes:undefined}
+            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null}/>)}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>Bitti</button>
           </div>
@@ -6883,7 +6962,7 @@ function ExLinkCell({value,onChange}){
    of the exercise, then what it trains and how, then the seven prescription fields
    in one strip, then the reference link and the coaching cues. The two screens are
    the same editor now — a coach who has learned one has learned the other. */
-function CalSlotEd({ex,tag,onChange,onMove,onDup,onRemove,first,last}){
+function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
   const ss=(ex.superset||'').toUpperCase();
   const f=(k,v)=>onChange({...ex,[k]:v});
   const styles=exStylesFor(ex.pattern);
@@ -6900,6 +6979,11 @@ function CalSlotEd({ex,tag,onChange,onMove,onDup,onRemove,first,last}){
     onChange({...ex,pattern:v,plane});rememberExerciseTags(ex.name,v,plane);
   };
   const setPlane=v=>{onChange({...ex,plane:v});rememberExerciseTags(ex.name,ex.pattern,v);};
+  /* Pasting is tagging too: the exercise arrives with the pattern it trains, so the library
+     learns it here exactly as it would if the coach had picked the pair by hand. */
+  const exClip=useExerciseClipboard();
+  const pasteEx=()=>{if(!exClip)return;onChange(slotFromExClipboard(ex,exClip));
+    rememberExerciseTags(exClip.name,exClip.pattern||'',exClip.plane||'');};
   const empty=!String(ex.name||'').trim();
   return(<div className={'iv-slot'+(empty?' off':'')}>
     <div className="iv-slot-main">
@@ -6920,7 +7004,11 @@ function CalSlotEd({ex,tag,onChange,onMove,onDup,onRemove,first,last}){
       <span className="iv-slotacts">
         <button type="button" onClick={()=>onMove(-1)} disabled={first} title="Move up">↑</button>
         <button type="button" onClick={()=>onMove(1)} disabled={last} title="Move down">↓</button>
-        <button type="button" onClick={onDup} title="Duplicate this exercise">⎘</button>
+        {/* Paste whatever the assistant coach put on the clipboard into THIS slot. Disabled
+            until something is copied, so the button says whether there is anything to
+            paste before it is pressed. */}
+        <button type="button" className={'pst'+(exClip?' on':'')} disabled={!exClip} onClick={pasteEx}
+          title={exClip?`Yapıştır: ${exClip.name||'egzersiz'}`:'Panoda egzersiz yok — Ass. Coach kutusundan Copy\'ye bas'}>⇩</button>
         <button type="button" className="del" onClick={onRemove} title="Remove this exercise">✕</button>
       </span>
     </div>
@@ -6999,7 +7087,6 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
       <div className="iv-slotswrap"><div className="iv-slots">
         {exs.map((ex,i)=><CalSlotEd key={i} ex={ex} tag={labels[i]}
           onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
-          onDup={()=>{const a=[...exs];a.splice(i+1,0,{...ex});setExs(a);}}
           onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
       </div></div>
       {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>No exercises in this block — use “+ Add exercise” to write one.</div>}
@@ -7104,7 +7191,7 @@ function MethodSelect({value,onChange,placeholder,counts}){
   </div>);
 }
 
-function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes}){
+function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
   const[savedTpl,setSavedTpl]=useState(false);
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
@@ -7193,8 +7280,14 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
           </select>
         </div>
+        {/* Training method keeps the row; the assistant sits at the end of it, where the
+            coach is already looking when deciding what this session is made of. It only
+            appears where there is one athlete to read — the individualization card. */}
         <div className="iv-meta-f wide">training method
-          <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
+          <div className="iv-mrow">
+            <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
+            {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
+          </div>
         </div>
       </div>
       {!isTemplate&&<div className="sess-strip">
@@ -13923,6 +14016,274 @@ function SlotPick({value,options,onChange,title}){
   </select>);
 }
 
+/* ---- Assistant coach ------------------------------------------------------
+   What THIS athlete should train today, in six slots — one per movement pattern.
+   It is a reading of their own record, not a generic template and not a call to a
+   model: the check-in (readiness, soreness, fatigue, reported pain), yesterday's RPE,
+   the acute:chronic load, the latest test session (asymmetries, ankle dorsiflexion,
+   ASLR, overhead squat, Y balance, jumps), the anthropometrics, the position group and
+   the training level. Every pick names the number that produced it, so the coach can
+   disagree with it on the spot — nothing is written anywhere until Copy → Paste. */
+const CA_SLOTS=[
+  {id:'hip', pattern:'Hip Dominant',    label:'Hip Dominant'},
+  {id:'knee',pattern:'Knee Dominant',   label:'Knee Dominant'},
+  {id:'push',pattern:'Upper Body Push', label:'Upper Body Push'},
+  {id:'pull',pattern:'Upper Body Pull', label:'Upper Body Pull'},
+  {id:'core',pattern:'Core',            label:'Core'},
+  {id:'acc', pattern:'Accessory',       label:'Aksesuar'},
+];
+/* One candidate per line: the name, the execution it is filed under (must be one of the
+   pattern's own executions), the level it suits, the traits the day's intent selects on,
+   the pain regions it LOADS (reported ⇒ dropped), and the needs it answers. */
+const CA_POOL={
+  hip:[
+    {n:'Romanian Deadlift',           ex:'Pull',     lv:2, t:[], base:1,    hits:['back','hamstring'], fix:['ham']},
+    {n:'Trap Bar Deadlift',           ex:'Pull',     lv:2, t:[],            hits:['back'],             fix:['power']},
+    {n:'Barbell Hip Thrust',          ex:'Push',     lv:1, t:['sup'],       hits:[],                   fix:['glute']},
+    {n:'Single-Leg RDL',              ex:'Pull',     lv:2, t:['uni'],       hits:['hamstring'],        fix:['asym','balance']},
+    {n:'45° Back Extension',          ex:'Pull',     lv:1, t:['bw'],        hits:['back'],             fix:['ham']},
+    {n:'Nordic Hamstring Curl',       ex:'Eccentric',lv:3, t:['ecc'],tp:'4-0-1',hits:['hamstring'],    fix:['ham']},
+    {n:'Glute Bridge ISO Hold',       ex:'ISO',      lv:1, t:['iso','bw'],  hits:[],                   fix:['glute']},
+    {n:'Kettlebell Swing',            ex:'Pull',     lv:2, t:['exp'],       hits:['back'],             fix:['power']},
+  ],
+  knee:[
+    {n:'Back Squat',                  ex:'Push',     lv:3, t:[], base:1,    hits:['knee','back'],      fix:[]},
+    {n:'Goblet Squat',                ex:'Push',     lv:1, t:['sup'],       hits:['knee'],             fix:['tech']},
+    {n:'Front Squat',                 ex:'Push',     lv:3, t:[],            hits:['knee','back','wrist'],fix:['tech']},
+    {n:'Bulgarian Split Squat',       ex:'Push',     lv:2, t:['uni'],       hits:['knee'],             fix:['asym','balance']},
+    {n:'Split Squat ISO Hold',        ex:'ISO',      lv:1, t:['iso','uni'], hits:[],                   fix:['asym','tech']},
+    {n:'Leg Press',                   ex:'Push',     lv:1, t:['sup'],       hits:[],                   fix:[]},
+    {n:'Tempo Box Squat (3-1-1)',     ex:'Eccentric',lv:2, t:['ecc'],tp:'3-1-1',hits:['knee'],         fix:['tech']},
+    {n:'Step-Up',                     ex:'Push',     lv:1, t:['uni'],       hits:[],                   fix:['asym','balance']},
+    {n:'Wall Sit',                    ex:'ISO',      lv:1, t:['iso','bw'],  hits:[],                   fix:[]},
+  ],
+  push:[
+    {n:'Barbell Bench Press',         ex:'Horizontal',lv:2, t:[], base:1,   hits:['shoulder','wrist'], fix:[]},
+    {n:'Neutral-Grip DB Bench Press', ex:'Horizontal',lv:1, t:[],           hits:[],                   fix:['shoulder-health']},
+    {n:'Overhead Press',              ex:'Vertical',  lv:3, t:[],           hits:['shoulder','back'],  fix:[]},
+    {n:'Landmine Press',              ex:'Vertical',  lv:1, t:[],           hits:[],                   fix:['shoulder-health','tspine']},
+    {n:'Incline DB Press',            ex:'Horizontal',lv:2, t:[],           hits:['shoulder'],         fix:[]},
+    {n:'Half-Kneeling 1-Arm DB Press',ex:'Vertical',  lv:2, t:['uni'],      hits:['shoulder'],         fix:['asym','core-brace']},
+    {n:'Tempo Push-Up (3-1-1)',       ex:'Horizontal',lv:1, t:['bw','ecc'],tp:'3-1-1',hits:['wrist'],  fix:['tech']},
+    {n:'Med Ball Chest Pass',         ex:'Horizontal',lv:2, t:['exp'],      hits:[],                   fix:['power']},
+  ],
+  pull:[
+    {n:'Pull-Up',                     ex:'Vertical',  lv:3, t:['bw'],       hits:['shoulder','wrist'], fix:[]},
+    {n:'Lat Pulldown',                ex:'Vertical',  lv:1, t:['sup'],base:1,hits:[],                  fix:[]},
+    {n:'Barbell Row',                 ex:'Horizontal',lv:3, t:[],           hits:['back'],             fix:[]},
+    {n:'Chest-Supported DB Row',      ex:'Horizontal',lv:1, t:['sup'],      hits:[],                   fix:['posture']},
+    {n:'1-Arm DB Row',                ex:'Horizontal',lv:2, t:['uni','sup'],hits:[],                   fix:['asym']},
+    {n:'Inverted Row',                ex:'Horizontal',lv:1, t:['bw'],       hits:['wrist'],            fix:['tech']},
+    {n:'Face Pull',                   ex:'Horizontal',lv:1, t:[],           hits:[],                   fix:['shoulder-health','posture']},
+    {n:'Seated Cable Row (neutral)',  ex:'Horizontal',lv:1, t:['sup'],      hits:[],                   fix:['posture']},
+  ],
+  core:[
+    {n:'Front Plank',                 ex:'Anti-Extension',      lv:1, t:['iso','bw'], base:1, hits:[],fix:['core-brace']},
+    {n:'Dead Bug',                    ex:'Anti-Extension',      lv:1, t:['bw'],       hits:[],       fix:['core-brace','tech']},
+    {n:'Pallof Press',                ex:'Anti-Rotation',       lv:1, t:[],           hits:[],       fix:['core-brace','rot']},
+    {n:'Side Plank',                  ex:'Anti-Lateral Flexion',lv:1, t:['iso','bw'], hits:[],       fix:['asym']},
+    {n:'Suitcase Carry',              ex:'Anti-Lateral Flexion',lv:2, t:[],           hits:['back','wrist'], fix:['grip','asym']},
+    {n:'Cable Woodchop',              ex:'Rotation',            lv:2, t:[],           hits:['back'], fix:['rot']},
+    {n:'Hollow Body Hold',            ex:'Flexion',             lv:2, t:['iso','bw'], hits:[],       fix:['core-brace']},
+    {n:'Bird Dog',                    ex:'Anti-Rotation',       lv:1, t:['bw'],       hits:[],       fix:['core-brace','posture']},
+  ],
+  acc:[
+    {n:'Eccentric Calf Raise',        ex:'Eccentric',lv:1, t:['ecc'],tp:'4-0-1',hits:['ankle'], fix:['calf','ankle']},
+    {n:'Ankle Dorsiflexion Mobilisation',ex:'ISO',   lv:1, t:['iso'],      hits:[],        fix:['ankle']},
+    {n:'Tibialis Raise',              ex:'Pull',     lv:1, t:[],           hits:[],        fix:['ankle','calf']},
+    {n:'Copenhagen Adduction (ISO)',  ex:'ISO',      lv:2, t:['iso','uni'],hits:['hip'],   fix:['groin','asym']},
+    {n:'Hamstring Slider Curl',       ex:'Eccentric',lv:2, t:['ecc'],tp:'4-0-1',hits:['hamstring'], fix:['ham']},
+    {n:'Band External Rotation',      ex:'Pull',     lv:1, t:[], base:1,   hits:[],        fix:['shoulder-health']},
+    {n:'Y-T-W Scapular Series',       ex:'Pull',     lv:1, t:['bw'],       hits:[],        fix:['posture','shoulder-health','tspine']},
+    {n:"Farmer's Carry",              ex:'Pull',     lv:1, t:[],           hits:['back','wrist'], fix:['grip']},
+    {n:'Neck Isometrics',             ex:'ISO',      lv:1, t:['iso'],      hits:[],        fix:[]},
+  ],
+};
+/* Position bias — what that group's game asks for most often. It biases CONTENT only:
+   an asymmetry is something a test measures, never something a position implies. `other`
+   (any non-basketball roster) gets nothing, so a sport the app knows nothing about is not
+   second-guessed. */
+const CA_POS_BIAS={guard:['ankle','calf','rot'],wing:['ankle','shoulder-health'],post:['shoulder-health','posture','groin','tspine'],other:[]};
+/* Which slots a need is allowed to speak for. A leg asymmetry is a reason to press one arm
+   at a time in nobody's book, and that is exactly what an unscoped need would do — it fed
+   every slot the same +3 and turned all six picks unilateral. */
+const CA_NEED_SLOTS={asym:['hip','knee','core','acc'],ankle:['acc','knee'],calf:['acc'],ham:['hip','acc'],
+  groin:['acc','hip'],'shoulder-health':['push','pull','acc'],posture:['pull','acc','core'],tspine:['push','pull','acc'],
+  'core-brace':['core','push','knee'],rot:['core'],grip:['core','acc'],power:['hip','knee','push'],balance:['knee','hip']};
+/* The day's intent: how hard, and which kind of variation the pool should lean on. Only the
+   ends of the range state a preference — a normal training day has no business overriding
+   the staple lift of a slot with a variation nobody asked for. */
+const CA_INTENT={
+  recovery:{label:'Toparlanma',  want:['iso','sup','bw'],  dose:{main:{sets:'2',reps:'8', rpe:'5',  rest:'90sn'},hold:{sets:'2',duration:'30sn',rpe:'5',rest:'45sn'},exp:{sets:'2',reps:'3',rpe:'5',rest:'90sn'},acc:{sets:'2',reps:'12',rpe:'5',rest:'45sn'}}},
+  maintain:{label:'Koruma',      want:['sup'],             dose:{main:{sets:'3',reps:'6', rpe:'6.5',rest:'2dk'}, hold:{sets:'3',duration:'30sn',rpe:'6',rest:'45sn'},exp:{sets:'3',reps:'3',rpe:'6',rest:'2dk'},  acc:{sets:'2',reps:'12',rpe:'6',rest:'60sn'}}},
+  develop: {label:'Geliştirme',  want:[],                  dose:{main:{sets:'4',reps:'5', rpe:'7.5',rest:'2-3dk'},hold:{sets:'3',duration:'40sn',rpe:'7',rest:'60sn'},exp:{sets:'4',reps:'3',rpe:'7',rest:'2dk'},  acc:{sets:'3',reps:'12',rpe:'7',rest:'60sn'}}},
+  load:    {label:'Yüklenme',    want:['exp'],             dose:{main:{sets:'5',reps:'3', rpe:'8.5',rest:'3dk'}, hold:{sets:'3',duration:'40sn',rpe:'7',rest:'60sn'},exp:{sets:'5',reps:'3',rpe:'8',rest:'3dk'},  acc:{sets:'3',reps:'10',rpe:'7',rest:'60sn'}}},
+};
+const caNum=v=>{const n=Number(v);return (v===''||v==null||isNaN(n))?null:n;};
+/* Two sides of the same test as a percentage difference of the bigger one. Under 3% is
+   measurement noise on any of these, so it is not reported as anything. */
+function caAsym(r,l){
+  const a=caNum(r),b=caNum(l);
+  if(a==null||b==null||a<=0||b<=0)return null;
+  const d=Math.abs(a-b)/Math.max(a,b)*100;
+  return d<3?null:{pct:Math.round(d),strong:a>=b?'R':'L',weak:a>=b?'L':'R'};
+}
+/* Everything the six picks are made of, read once. Kept separate from the picking so the
+   box can show the coach the same evidence the choice was made on. */
+function caReadAthlete(ath,ref){
+  const rd=athReadiness(ath,ref),well=athWellnessSnap(ath,ref),prev=athPrevDay(ath,ref);
+  const pains=athPainReports(ath,ref).map(p=>p.tag);
+  const note=athPainNote(ath,ref);
+  const acwr=athACWR(ath,ref);
+  const tests=[...(ath.tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  const t=tests[tests.length-1]||null;
+  const needs={},drivers=[];
+  const need=(k,why)=>{if(!needs[k])needs[k]=why;};
+  /* Long-standing tags the coach ticked on the card count alongside what the athlete
+     reported this morning: a knee that is being managed is a knee to work around. */
+  const flags=[...new Set([...pains,...((ath.constraintTags||[]).filter(Boolean))])];
+  flags.forEach(f=>{
+    drivers.push(`${ctLabel(f)} ağrısı — bölgeyi yükleyen seçenekler elendi`);
+    if(f==='ankle')need('ankle','ayak bileği şikâyeti');
+    if(f==='hamstring')need('ham','hamstring şikâyeti');
+    if(f==='shoulder')need('shoulder-health','omuz şikâyeti');
+    if(f==='back')need('core-brace','bel şikâyeti');
+    if(f==='hip')need('groin','kalça/kasık şikâyeti');
+  });
+  let asym=null;
+  if(t){
+    const pairs=[
+      ['Lateral CMJ',caAsym(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left)],
+      ['Y Balance',  caAsym(ybCalc(t.yBalance).compR,ybCalc(t.yBalance).compL)],
+      ['Uyluk çevresi',caAsym(t.circ&&t.circ.thighRight,t.circ&&t.circ.thighLeft)],
+      ['Baldır çevresi',caAsym(t.circ&&t.circ.calfRight,t.circ&&t.circ.calfLeft)],
+    ].filter(([,v])=>v&&v.pct>=10);
+    if(pairs.length){
+      const[nm,v]=pairs.sort((a,b)=>b[1].pct-a[1].pct)[0];
+      asym={test:nm,...v};
+      need('asym',`${nm} sağ/sol farkı %${v.pct}`);
+      drivers.push(`${nm} sağ/sol farkı %${v.pct} (zayıf taraf: ${v.weak==='L'?'sol':'sağ'}) — tek taraflı çalışma`);
+    }
+    const df=[caNum(t.ankleDF&&t.ankleDF.right),caNum(t.ankleDF&&t.ankleDF.left)].filter(v=>v!=null);
+    if(df.length&&Math.min(...df)<35){need('ankle',`ayak bileği dorsifleksiyon ${Math.min(...df)}°`);
+      drivers.push(`Ayak bileği dorsifleksiyonu ${Math.min(...df)}° (<35°) — mobilite/baldır işi`);}
+    const as=[caNum(t.aslr&&t.aslr.right),caNum(t.aslr&&t.aslr.left)].filter(v=>v!=null);
+    if(as.length&&Math.min(...as)<=1){need('ham',`ASLR ${Math.min(...as)}/3`);
+      drivers.push(`ASLR ${Math.min(...as)}/3 — arka zincir uzunluğu/kontrolü`);}
+    const ohs=caNum(t.ohs&&t.ohs.score);
+    if(ohs!=null&&ohs<=1){need('core-brace',`overhead squat ${ohs}/3`);need('tspine',`overhead squat ${ohs}/3`);
+      need('tech',`overhead squat ${ohs}/3`);
+      drivers.push(`Overhead squat ${ohs}/3 — destekli/teknik varyasyon, gövde kontrolü`);}
+    const h=caNum(t.height),w=caNum(t.weight),bf=caNum(t.bodyFat);
+    if(bf!=null&&bf>=20){need('bw',`vücut yağı %${bf}`);drivers.push(`Vücut yağı %${bf} — eklem yükü düşük varyasyonlar`);}
+    if(h&&w){const bmi=w/((h/100)**2);if(bmi>=27)drivers.push(`BMI ${bmi.toFixed(1)} — sıçrama hacmi düşük tutuldu`);}
+  }else drivers.push('Test kaydı yok — seçim check-in, yük ve pozisyona göre yapıldı');
+  CA_POS_BIAS[posGroupOf(ath.position)].forEach(k=>need(k,`pozisyon: ${posGroupLabel(posGroupOf(ath.position))}`));
+  /* How hard today can be. Each signal that says "not today" adds to the same counter, so
+     one bad number nudges the day and three of them change it outright. */
+  let stress=0;
+  if(rd.score!=null&&rd.score<2.5)stress+=2;else if(rd.score!=null&&rd.score<3.2)stress+=1;
+  if(acwr>1.5)stress+=2;else if(acwr>1.3)stress+=1;
+  if(prev.rpe!=null&&prev.rpe>=8.5)stress+=1;
+  if(well.soreness!=null&&well.soreness<=2)stress+=1;
+  if(well.fatigue!=null&&well.fatigue<=2)stress+=1;
+  if(flags.length)stress+=1;
+  const intent=stress>=4?'recovery':stress>=2?'maintain':(acwr>0&&acwr<0.8&&rd.score!=null&&rd.score>=3.9)?'load':'develop';
+  if(rd.score!=null)drivers.unshift(`Hazırlık ${rd.score}/5${rd.src==='srpe'?' (sRPE tahmini)':''}`);
+  else drivers.unshift('Check-in yok — hazırlık okunamadı');
+  if(acwr>0)drivers.push(`ACWR ${acwr.toFixed(2)} — ${acwrZoneOf(acwr).t}`);
+  if(prev.rpe!=null)drivers.push(`Dün RPE ${prev.rpe}${prev.load>0?` · ${prev.load} AU`:''}`);
+  if(!needs.power&&intent==='load')need('power','ACWR düşük, hazırlık iyi');
+  const lv=Number(String(ath.levelTag||'').replace(/\D/g,''))||(caNum(ath.trainingAge)>=3?3:caNum(ath.trainingAge)>=1?2:2);
+  return{rd,well,prev,acwr,flags,note,needs,drivers,intent,asym,level:lv,test:t,
+    pos:posGroupOf(ath.position)};
+}
+/* The pick itself: drop what the reported pain loads, then score what is left on the needs
+   it answers and how well it fits the day. Deterministic — same athlete, same day, same
+   six exercises, so the coach can go back to the box and find it saying what it said. */
+function caPick(slotId,rx){
+  const pool=CA_POOL[slotId]||[];
+  const want=CA_INTENT[rx.intent].want;
+  const safe=pool.filter(c=>!c.hits.some(h=>rx.flags.includes(h)));
+  const list=safe.length?safe:pool;   // everything hurts: fall back rather than show nothing
+  // A need only counts for the slots it is about (see CA_NEED_SLOTS); one with no entry
+  // there — technique, body weight, glute work — speaks everywhere.
+  const asks=k=>{const sc=CA_NEED_SLOTS[k];return rx.needs[k]&&(!sc||sc.includes(slotId))?rx.needs[k]:null;};
+  let best=null,bestScore=-1e9,bestWhy=[];
+  list.forEach((c,i)=>{
+    let s=c.base?2.5:0;               // the slot's staple lift, when nothing else is asked for
+    const why=[];
+    c.fix.forEach(f=>{const w=asks(f);if(w){s+=3;why.push(w);}});
+    c.t.forEach(tr=>{if(want.includes(tr))s+=2;const w=asks(tr);if(w){s+=2;why.push(w);}});
+    if(c.t.includes('uni')&&rx.asym&&(CA_NEED_SLOTS.asym.includes(slotId)))s+=2;
+    s-=Math.abs(c.lv-rx.level)*(c.lv>rx.level?2:1);
+    s-=i*0.01;                        // stable order, never a coin toss
+    if(s>bestScore){bestScore=s;best=c;bestWhy=why;}
+  });
+  if(!best)return null;
+  if(!bestWhy.length){
+    bestWhy.push(safe.length<pool.length
+      ?`${rx.flags.map(ctLabel).join(', ')} bölgesini yüklemiyor`
+      :`${CA_INTENT[rx.intent].label} günü için uygun yüklenme`);
+  }
+  const dose=CA_INTENT[rx.intent].dose;
+  /* A hold is prescribed in seconds and a throw in a handful of crisp reps — neither is
+     the main lift's set×rep, so each gets its own line of the dose table. */
+  const d=c=>c.t.includes('iso')?dose.hold:c.t.includes('exp')?dose.exp:(slotId==='acc'||slotId==='core')?dose.acc:dose.main;
+  return{slot:slotId,name:best.n,pattern:(CA_SLOTS.find(s=>s.id===slotId)||{}).pattern,plane:best.ex,
+    ...{sets:'',reps:'',duration:'',rpe:'',rest:'',tempo:'',load:''},...d(best),...(best.tp?{tempo:best.tp}:{}),
+    why:[...new Set(bestWhy)].slice(0,2).join(' · ')};
+}
+function caSuggest(ath,ref){
+  const rx=caReadAthlete(ath,ref);
+  return{...rx,items:CA_SLOTS.map(s=>caPick(s.id,rx)).filter(Boolean)};
+}
+
+/* The button beside Training Method, and the box it opens. Nothing here writes to the
+   session: Copy puts one row on the clipboard and the slot's paste button is what puts it
+   into the program. */
+function CoachAssistant({ath,date}){
+  const[open,setOpen]=useState(false);
+  const[copied,setCopied]=useState('');
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open)return;
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',h);
+    return()=>document.removeEventListener('mousedown',h);
+  },[open]);
+  const day=date||fmt(today);
+  const s=useMemo(()=>open?caSuggest(ath,day):null,[open,ath,day]);
+  const copy=it=>{copyExerciseToClipboard(it);setCopied(it.slot);setTimeout(()=>setCopied(''),1600);};
+  const dose=it=>[it.sets&&it.duration?`${it.sets} × ${it.duration}`:(it.sets&&it.reps?`${it.sets} × ${it.reps}`:(it.duration||it.reps||'')),
+    it.rpe?`RPE ${it.rpe}`:'',it.rest?`dinlenme ${it.rest}`:''].filter(Boolean).join(' · ');
+  return(<div className="ca-wrap" ref={ref}>
+    <button type="button" className={'ca-btn'+(open?' on':'')} onClick={()=>setOpen(o=>!o)}
+      title={`${ath.name||'Sporcu'} bugün ne çalışmalı — test, antropometri, pozisyon, ağrı, wellness ve RPE verisinden`}>Ass. Coach</button>
+    {open&&s&&<div className="ca-pop">
+      <div className="ca-hd">
+        <b>{ath.name||'Sporcu'} · {fd(day)}</b>
+        <span className={'ca-intent i-'+s.intent}>{CA_INTENT[s.intent].label}</span>
+      </div>
+      <div className="ca-why">{s.drivers.slice(0,4).join(' · ')}</div>
+      {s.note&&<div className="ca-pain">{s.note.quoted?`“${s.note.text}”`:s.note.text}</div>}
+      <div className="ca-list">
+        {s.items.map(it=><div key={it.slot} className="ca-it">
+          <div className="ca-it-l">
+            <span className="ca-slot">{(CA_SLOTS.find(x=>x.id===it.slot)||{}).label}</span>
+            <span className="ca-nm">{it.name}</span>
+            <span className="ca-dose">{dose(it)}{it.plane?` · ${it.plane}`:''}</span>
+            <span className="ca-r">{it.why}</span>
+          </div>
+          <button type="button" className={'ca-cp'+(copied===it.slot?' ok':'')} onClick={()=>copy(it)}
+            title="Bu egzersizi kopyala — sonra bir slotun yapıştır düğmesine bas">{copied===it.slot?'Copied':'Copy'}</button>
+        </div>)}
+      </div>
+      <div className="ca-ft">Öneri — hiçbir şey programa kendiliğinden yazılmaz. Copy'ye bas, sonra egzersiz satırındaki yapıştır düğmesini kullan.</div>
+    </div>}
+  </div>);
+}
+
 /* ---- One athlete's card: their readiness at a glance, their calendar underneath -- */
 function IndivAthleteCard({plan,calendar,open,setOpen}){
   const a=plan.ath;
@@ -13990,7 +14351,8 @@ function IndivAthleteCalendar({ath,setup,weeks,exercises,saveDays,date}){
   const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
     return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
   return<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
-    weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline/>;
+    weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
+    coachAthlete={ath}/>;
 }
 
 function IndividualizationView({data,team,updateTeam,weeks}){
