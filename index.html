@@ -5581,12 +5581,16 @@ const PATTERN_PLANES={'Hip Dominant':['Push','Pull','ISO','Eccentric'],'Knee Dom
 const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
 /* The same taxonomy, one level down: a single exercise on an athlete's sheet is
-   tagged with the pattern it trains and HOW that pattern is executed. Accessory
-   is the sixth pattern — it exists per exercise (arm, calf, neck, grip work) but
-   is not something a whole session gets labelled with, so it is added here rather
-   than to MOVE_PATTERNS. */
-const EX_PATTERNS=[...MOVE_PATTERNS.map(([k])=>k),'Accessory'];
-const EX_PATTERN_STYLES={...PATTERN_PLANES,'Accessory':['Push','Pull','ISO','Eccentric']};
+   tagged with the pattern it trains and HOW that pattern is executed. Full Body and
+   Accessory are the two extra patterns — a clean, a jerk or a curl exists per exercise
+   but is not something a whole session gets labelled with, so they are added here
+   rather than to MOVE_PATTERNS. A Full Body lift is not executed in a plane or a
+   contraction; what varies is how fast the bar has to move, so its executions are the
+   three speeds a coach writes one for. */
+const EX_PATTERNS=[...MOVE_PATTERNS.map(([k])=>k),'Full Body','Accessory'];
+const EX_PATTERN_STYLES={...PATTERN_PLANES,
+  'Full Body':['Basic Strength','Explosive','Olympic Lift'],
+  'Accessory':['Push','Pull','ISO','Eccentric']};
 const exStylesFor=p=>EX_PATTERN_STYLES[p]||[];
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
@@ -5608,7 +5612,7 @@ function exTagsFromLib(it,row){
    in one label is what lets the pie show both at once; the pattern is abbreviated
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
-const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Accessory':'Accessory'};
+const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Full Body':'Full Body','Accessory':'Accessory'};
 /* What a session says it trains: the patterns the coach ticked on its own Movements &
    Patterns panel, and nothing else. It is a statement about the day, made and changed by
    hand — the exercises written into the session do not add to it or take from it, so the
@@ -5717,14 +5721,15 @@ function MuscleLoadFigure({slugLoad}){
    The library already knows what each exercise IS, though. Five of its Exercise
    Types ARE the movement patterns, and for those five the sub-type is exactly how
    the pattern is executed (Hip/Knee carry the contraction, Upper Body Push/Pull the
-   plane, Core the core quality). So an untagged row is looked up by name and takes
-   what the library says. The types that are not movement patterns — Warm-Up, Full
-   Body, Medicine Ball, Plyometric, Speed, Mobility — resolve to nothing on purpose:
-   filing them under a pattern they do not train would be a worse answer than none. */
+   plane, Core the core quality, Full Body the speed of the lift). So an untagged row is
+   looked up by name and takes what the library says. The types that are not movement
+   patterns — Warm-Up, Medicine Ball, Plyometric, Speed, Mobility — resolve to nothing on
+   purpose: filing them under a pattern they do not train would be a worse answer than none. */
 const LIB_TYPE_PATTERN={'Upper Body Push':'Upper Body Push','Upper Body Pull':'Upper Body Pull',
-  'Hip Dominant':'Hip Dominant','Knee Dominant':'Knee Dominant','Core':'Core'};
-// The library writes the contraction out in full where this taxonomy abbreviates it.
-const LIB_STYLE_ALIAS={'Isometric':'ISO'};
+  'Hip Dominant':'Hip Dominant','Knee Dominant':'Knee Dominant','Core':'Core','Full Body':'Full Body'};
+/* The library writes the contraction out in full where this taxonomy abbreviates it, and
+   files a Full Body lift under plain "Strength" where the execution names the speed. */
+const LIB_STYLE_ALIAS={'Isometric':'ISO','Strength':'Basic Strength'};
 function libPatternIndex(){
   const idx=new Map();
   (getLibItems()||[]).forEach(it=>{
@@ -5789,7 +5794,7 @@ function aggSessions(days){
 }
 /* Fixed per-pattern pie colors (CVD-validated against the dark panel surface).
    Keyed by movement pattern so each pattern keeps its color week to week. */
-const ML_PIE_COLS={'Hip Dominant':'#199e70','Knee Dominant':'#3987e5','Upper Body Push':'#d55181','Upper Body Pull':'#c98500','Core':'#8b5cf6','Accessory':'#5c8a99'};
+const ML_PIE_COLS={'Hip Dominant':'#199e70','Knee Dominant':'#3987e5','Upper Body Push':'#d55181','Upper Body Pull':'#c98500','Core':'#8b5cf6','Full Body':'#b85c38','Accessory':'#5c8a99'};
 /* Execution slices inherit their pattern's colour and separate by lightness, so a
    glance at the second pie still reads "this much hip work" before it reads which
    flavour of it. Styles are spread across a fixed lightness band rather than
