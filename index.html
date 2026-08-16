@@ -3128,7 +3128,10 @@ const cmpN=v=>{const n=Number(v);return(v===''||v==null||isNaN(n))?null:n;};
 const cmpGap=(a,b)=>{const x=cmpN(a),y=cmpN(b);return(x==null||y==null)?null:+Math.abs(x-y).toFixed(1);};
 const CMP_GROUPS=[
   {id:'anthro',tr:'Antropometri',      en:'Anthropometry'},
-  {id:'circ',  tr:'Çevre Ölçümleri',   en:'Circumferences'},
+  /* Circumferences are deliberately not a comparison group. A waist or a thigh is a
+     shape, not a score: laid out next to a team-mate's it invites a ranking that the
+     measurement does not support. They stay on the athlete's own test record, where a
+     coach reads them against that athlete's earlier numbers. */
   {id:'mob',   tr:'Mobilite & Hareket',en:'Mobility & Movement'},
   {id:'pow',   tr:'Güç & Sıçrama',     en:'Power & Jump'},
   {id:'spd',   tr:'Sürat & Çeviklik',  en:'Speed & Agility'},
@@ -3142,13 +3145,6 @@ const CMP_METRICS=[
   {id:'wingspan',g:'anthro',tr:'Kulaç',      en:'Wingspan',    u:'cm',st:'Kulaç',se:'Wing',get:t=>cmpN(t.wingspan)},
   {id:'legLen',  g:'anthro',tr:'Bacak Uz.',  en:'Leg Length',  u:'cm',st:'Bacak',se:'Leg',get:t=>cmpN(t.legLength)},
   {id:'sitHt',   g:'anthro',tr:'Oturma Yük.',en:'Sitting Ht.', u:'cm',st:'Oturma',se:'Sit Ht',get:t=>cmpN(t.sittingHeight)},
-  {id:'cShoulder',g:'circ',tr:'Omuz',    en:'Shoulder',u:'cm',st:'Omuz',se:'Shldr',get:t=>cmpN(t.circ&&t.circ.shoulder)},
-  {id:'cWaist',  g:'circ',tr:'Bel',      en:'Waist',   u:'cm',st:'Bel',se:'Waist',get:t=>cmpN(t.circ&&t.circ.waist)},
-  {id:'cHip',    g:'circ',tr:'Kalça',    en:'Hip',     u:'cm',st:'Kalça',se:'Hip',get:t=>cmpN(t.circ&&t.circ.hip)},
-  {id:'cThighR', g:'circ',tr:'Uyluk R',  en:'Thigh R', u:'cm',st:'Uyluk R',se:'Thigh R',get:t=>cmpN(t.circ&&t.circ.thighRight)},
-  {id:'cThighL', g:'circ',tr:'Uyluk L',  en:'Thigh L', u:'cm',st:'Uyluk L',se:'Thigh L',get:t=>cmpN(t.circ&&t.circ.thighLeft)},
-  {id:'cCalfR',  g:'circ',tr:'Baldır R', en:'Calf R',  u:'cm',st:'Baldır R',se:'Calf R',get:t=>cmpN(t.circ&&t.circ.calfRight)},
-  {id:'cCalfL',  g:'circ',tr:'Baldır L', en:'Calf L',  u:'cm',st:'Baldır L',se:'Calf L',get:t=>cmpN(t.circ&&t.circ.calfLeft)},
   {id:'adfR', g:'mob',tr:'Ayak Bileği DF R',en:'Ankle DF R',u:'°',dir:'hi',st:'ADF R',se:'ADF R',get:t=>cmpN(t.ankleDF&&t.ankleDF.right)},
   {id:'adfL', g:'mob',tr:'Ayak Bileği DF L',en:'Ankle DF L',u:'°',dir:'hi',st:'ADF L',se:'ADF L',get:t=>cmpN(t.ankleDF&&t.ankleDF.left)},
   {id:'adfD', g:'mob',tr:'Ayak Bileği Fark',en:'Ankle DF Gap',u:'°',dir:'lo',st:'ADF Δ',se:'ADF Δ',get:t=>cmpGap(t.ankleDF&&t.ankleDF.right,t.ankleDF&&t.ankleDF.left)},
@@ -9950,7 +9946,7 @@ tfoot td.avg{font-size:${(fs*.9).toFixed(1)}px;text-transform:uppercase;letter-s
   <tbody>${body}</tbody>
   <tfoot>${foot}</tfoot>
 </table>
-<div class="legend"><span><i style="color:#0f7a3d">■</i> ${esc(L('grubun en iyisi','best in group'))}</span><span><i style="color:#b3261e">■</i> ${esc(L('grubun en zayıfı','weakest in group'))}</span><span>${esc(L('İşaretsiz sütunlarda "iyi" diye bir yön yok (boy, çevre ölçümleri, özel testler).','Unmarked columns have no better direction (height, circumferences, custom tests).'))}</span></div>
+<div class="legend"><span><i style="color:#0f7a3d">■</i> ${esc(L('grubun en iyisi','best in group'))}</span><span><i style="color:#b3261e">■</i> ${esc(L('grubun en zayıfı','weakest in group'))}</span><span>${esc(L('İşaretsiz sütunlarda "iyi" diye bir yön yok (boy, kilo, özel testler).','Unmarked columns have no better direction (height, weight, custom tests).'))}</span></div>
 <div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
@@ -10073,7 +10069,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
       <div className="cmp-legend">
         <span><b style={{color:'var(--accent)'}}>■</b> {Lx('grubun en iyisi','best in group')}</span>
         <span><b style={{color:'#f0836c'}}>■</b> {Lx('grubun en zayıfı','weakest in group')}</span>
-        <span>{Lx('Yönü olmayan sütunlar (boy, çevre ölçümleri, özel testler) işaretlenmez.','Columns with no better direction (height, circumferences, custom tests) are left unmarked.')}</span>
+        <span>{Lx('Yönü olmayan sütunlar (boy, kilo, özel testler) işaretlenmez.','Columns with no better direction (height, weight, custom tests) are left unmarked.')}</span>
       </div>
     </>}
   </div>);
