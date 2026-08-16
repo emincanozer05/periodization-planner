@@ -3181,7 +3181,9 @@ function migrateTeam(t){
         if(exIdx>=0)measurements[exIdx]={...measurements[exIdx],...rec};else measurements.push(rec);
       }else if(exIdx>=0){measurements.splice(exIdx,1);}
     });
-    return{...a,phone:a.phone||'',days:a.days||{},injuries:a.injuries||[],measurements,wellness:a.wellness||[],srpeLog:a.srpeLog||[],tests};
+    /* `deletedSrpeSrcIds` are the Tally submissions the coach deleted from the Load tab.
+       They are kept as ids (not rows) so a later sync knows not to bring them back. */
+    return{...a,phone:a.phone||'',days:a.days||{},injuries:a.injuries||[],measurements,wellness:a.wellness||[],srpeLog:a.srpeLog||[],deletedSrpeSrcIds:a.deletedSrpeSrcIds||[],tests};
   });
   // One-time cleanup: remove sessions previously created by Notion sync.
   // (We now keep sRPE as srpeLog only, not as sessions on the calendar.)
@@ -11034,7 +11036,16 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises}){
                     <td style={{color:'var(--accent2)',fontWeight:600}}>{s.gameLoad||'—'}</td>
                     <td style={{color:'var(--accent)',fontWeight:700}}>{s.totalLoad||'—'}</td>
                     <td>{(s.srcId||s.notionId)?<span className="team-badge">TALLY</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
-                    <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{srpeLog:ath.srpeLog.filter((_,j)=>j!==realIdx)})}>✕</button></td>
+                    {/* Deleting a Tally-sourced row also tombstones its submission id.
+                        Without that the next Tally Sync finds no entry carrying the id and
+                        adds it straight back — the coach deletes the same day forever. */}
+                    <td><button className="btn xs danger" onClick={()=>{
+                      const row=ath.srpeLog[realIdx];
+                      const src=row&&(row.srcId||row.notionId);
+                      const upd={srpeLog:ath.srpeLog.filter((_,j)=>j!==realIdx)};
+                      if(src)upd.deletedSrpeSrcIds=[...new Set([...(ath.deletedSrpeSrcIds||[]),src])];
+                      updAth(ath.id,upd);
+                    }}>✕</button></td>
                   </tr>;})}
               </tbody></table>
               <div className="row" style={{justifyContent:'center',marginTop:10,gap:6}}>
@@ -11379,9 +11390,10 @@ function mergeTallyRows(team,rows,opts={}){
     measurements:[...(a.measurements||[])],
     injuries:[...(a.injuries||[])],
     srpeLog:[...(a.srpeLog||[])],
+    deletedSrpeSrcIds:[...(a.deletedSrpeSrcIds||[])],
   }));
   const stats={...(rows.fetch||{}),
-    sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,
+    sRPERows:sRPE.length,wellnessRows:wellness.length,srpeAdded:0,srpeUpdated:0,srpeDeleted:0,
     wellnessAdded:0,wellnessUpdated:0,athletesCreated:0,skipped:0,athletesMatched:new Set(),namesSeen:new Set(),skippedNames:new Set(),
     // Submissions whose athlete name arrived as a raw option id — they match nobody, so
     // without this the sync reads as a success that quietly wrote nothing.
@@ -11407,7 +11419,7 @@ function mergeTallyRows(team,rows,opts={}){
         position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
         dateOfBirth:'',height:'',weight:'',phone:'',photo:null,notes:'',
         trainingAge:'',somatotype:'',animalType:'',constraints:'',
-        injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}});
+        injuries:[],measurements:[],wellness:[],srpeLog:[],deletedSrpeSrcIds:[],tests:[],days:{}});
       i=athletes.length-1;stats.athletesCreated++;
     } else stats.athletesMatched.add(i);
     return athletes[i];
@@ -11424,6 +11436,10 @@ function mergeTallyRows(team,rows,opts={}){
     const ath=getOrMatch(name);
     if(!ath)continue;
     const nid=`tally-srpe-${row._id}`;
+    /* The coach deleted this check-in on the athlete's Load tab. Re-adding it is exactly
+       what the tombstone exists to prevent, so it is skipped — and counted, so the sync
+       report says why the submission is in Tally but not in the log. */
+    if((ath.deletedSrpeSrcIds||[]).includes(nid)){stats.srpeDeleted++;continue;}
     const tpRPE=num(row['TP RPE']),    tpDur=num(row['TP Duration']);
     const scRPE=num(row['S&C RPE']),   scDur=num(row['S&C Duration']);
     const gmRPE=num(row['Game RPE']),  gmDur=num(row['Game Duration']);
@@ -11760,6 +11776,9 @@ function TallySync({data,setData,team}){
             <tr><td>Wellness submissions from Tally</td><td><strong>{stats.wellnessRows}</strong>{stats.wellnessTotal!=null&&<span style={{color:stats.wellnessRows>=stats.wellnessTotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.wellnessTotal}</span>}</td></tr>
             <tr><td>sRPE entries added (to athlete log)</td><td><strong>{stats.srpeAdded||0}</strong></td></tr>
             <tr><td>sRPE entries updated</td><td><strong>{stats.srpeUpdated||0}</strong></td></tr>
+            {/* Silinmiş kayıtlar geri gelmiyor; sayısını göstermezsek "Tally'de var ama
+                listede yok" durumu sebepsiz görünür. */}
+            {stats.srpeDeleted>0&&<tr><td>Silindiği için atlanan sRPE gönderimi</td><td><strong style={{color:'var(--muted)'}}>{stats.srpeDeleted}</strong></td></tr>}
             <tr><td>Wellness entries added</td><td><strong>{stats.wellnessAdded}</strong></td></tr>
             <tr><td>Wellness entries updated</td><td><strong>{stats.wellnessUpdated}</strong></td></tr>
             <tr><td>Athletes matched to roster</td><td><strong>{stats.athletesMatched}</strong></td></tr>
@@ -11842,6 +11861,20 @@ function TallySync({data,setData,team}){
           {stats.athletesCreated>0&&' Bunlardan bazıları kadrodaki adlarla eşleşmediği için yeni sporcu olarak eklendi — adların Tally formu ve CoachOS\'ta birebir aynı olmasına dikkat et.'}
         </div>}
       </div>}
+      {/* Silinen kayıtlar kalıcı olarak atlanır; yanlışlıkla silen koçun tek çıkışı bu düğme. */}
+      {(()=>{
+        const tomb=(team.athletes||[]).reduce((n,a)=>n+((a.deletedSrpeSrcIds||[]).length),0);
+        if(!tomb)return null;
+        const restore=()=>{
+          if(!confirm(`Silinmiş ${tomb} sRPE kaydı yeniden getirilsin mi? Sonraki senkronda hepsi geri gelir.`))return;
+          setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>t.id===team.id
+            ?{...t,athletes:(t.athletes||[]).map(a=>({...a,deletedSrpeSrcIds:[]}))}:t)}));
+        };
+        return<div className="row" style={{marginTop:14,justifyContent:'space-between',gap:10,flexWrap:'wrap',padding:12,background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text2)'}}>
+          <span>🗑️ Load sekmesinden silinmiş <strong>{tomb}</strong> Tally kaydı var — senkron bunları geri getirmiyor.</span>
+          <button className="btn sec sm" onClick={restore}>Geri getir</button>
+        </div>;
+      })()}
     </div>
 
     <div className="panel">
@@ -11851,6 +11884,7 @@ function TallySync({data,setData,team}){
         <li><strong>Wellness</strong> rows (RHR, Sleep, Fatigue, Soreness, Readiness) are saved into each athlete's Wellness log (under Athletes → click athlete).</li>
         <li>Name matching is case-/space-insensitive. Athletes not found on the roster are <strong>auto-created</strong>.</li>
         <li>Re-syncing the same Tally submission <strong>updates</strong> the existing entry (no duplicates) — safe to run many times.</li>
+        <li>An sRPE row <strong>deleted</strong> on the athlete's Load tab stays deleted: the sync remembers that submission and never brings it back. Use <em>Geri getir</em> above to undo.</li>
         <li>Turn on <strong>Auto-sync</strong> so new form submissions land automatically every few minutes.</li>
       </ul>
     </div>
