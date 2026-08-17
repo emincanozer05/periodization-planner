@@ -46,7 +46,23 @@
     // long-polling'i ZORLUYORUZ: düz HTTP istek/yanıt, her ağda yazımları güvenilir biçimde
     // geçirir. Gerçek zamanlı dinleyici hâlâ anlık güncellenir (hanging-GET), gecikme çok küçük.
     // Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı.
-    try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+    //
+    // timeoutSeconds: long-polling'de sunucu, veri gelene KADAR açık tutulan bir GET'in
+    // içinden cevap yazar. Aradaki bir proxy/antivirüs bu cevabı tamponlarsa, veri
+    // uygulamaya ancak GET kapanınca ulaşır — varsayılan 30 sn'lik tavanla birlikte bu,
+    // başka cihazda yapılan bir değişikliğin dakikalarca görünmemesi demek. Tavanı 5 sn'ye
+    // çekmek GET'i sık sık kapatıp yeniden açar, yani tamponlanan cevap da en geç ~5 sn
+    // içinde boşalır. Bedeli birkaç ek HTTP isteği; kazancı gerçek zamanlı hissiyat.
+    try{
+      firebase.firestore().settings({
+        experimentalForceLongPolling:true,
+        experimentalLongPollingOptions:{timeoutSeconds:5}
+      });
+    }catch(e){
+      // Seçenek bu SDK sürümünde doğrulanmazsa settings() tümden düşer; long-polling
+      // zorlaması korunsun diye sade hâliyle tekrar dene.
+      try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e2){}
+    }
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
 <style>
@@ -12395,6 +12411,44 @@ const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length
 const CHUNK_SIZE=400000;   // karakter — her parça <1MB (base64 dahil güvenli)
 const splitChunks=s=>{const a=[];for(let i=0;i<s.length;i+=CHUNK_SIZE)a.push(s.slice(i,i+CHUNK_SIZE));return a.length?a:[''];};
 
+/* --- PARÇA İÇERİĞİNİN SIKIŞTIRILMASI -------------------------------------
+   Manifest+parça yapısı aynen korunur; değişen tek şey, parçaların içine giren
+   METNİN sıkıştırılmış olması. Uygulama durumu tekrar tekrar aynı anahtarları
+   içeren JSON olduğu için deflate tipik olarak 6-10 katı küçültür. Tek bir
+   düzenlemede bile durumun TAMAMI yeniden yazıldığından (parça bazlı fark
+   çıkarmak mümkün değil: JSON'un başına eklenen bir bayt sonraki tüm parçaları
+   kaydırır), yüke inen bu çarpan doğrudan senkron süresine yansır — hem yazan
+   cihazın yüklemesine, hem diğer cihazların indirmesine.
+
+   Yük kendini tanıtır: sıkıştırılmışsa Z_MAGIC ile başlar. Böylece eski (düz
+   JSON) kayıtlar okunmaya devam eder ve CompressionStream'i olmayan tarayıcı
+   düz yazmayı sürdürür — biçim geçişi için ayrı bir taşıma adımı gerekmez. */
+const Z_MAGIC='ZP1:';
+const CAN_UNZIP=(typeof DecompressionStream!=='undefined');
+// Okuyamayacağımız bir biçimi asla yazmayalım: sıkıştırma için ikisi de şart.
+const CAN_ZIP=(typeof CompressionStream!=='undefined')&&CAN_UNZIP;
+const ZIP_ERR='Bu tarayıcı buluttaki sıkıştırılmış veriyi açamıyor. Tarayıcını güncelle (iOS 16.4+ / güncel Chrome, Edge, Firefox) ya da verine güncel bir tarayıcıdan ulaş.';
+// btoa tek seferde çok uzun diziye dayanmaz → 32K'lık öbeklerle çevir.
+const bytesToB64=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);};
+const b64ToBytes=b=>{const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;};
+const encodePayload=async json=>{
+  if(!CAN_ZIP)return json;
+  try{
+    const cs=new CompressionStream('deflate-raw');
+    const w=cs.writable.getWriter();w.write(new TextEncoder().encode(json));w.close();
+    const buf=await new Response(cs.readable).arrayBuffer();
+    return Z_MAGIC+bytesToB64(new Uint8Array(buf));
+  }catch(e){console.warn('zip',e);return json;}   // sıkıştıramadıysak düz yaz — kayıt her hâlükârda gitsin
+};
+// Sıkıştırılmamış yükü olduğu gibi verir; sıkıştırılmışı açar. Açamazsa fırlatır.
+const decodePayload=async s=>{
+  if(typeof s!=='string'||s.slice(0,Z_MAGIC.length)!==Z_MAGIC)return s;
+  if(!CAN_UNZIP)throw new Error('zip-unsupported');
+  const ds=new DecompressionStream('deflate-raw');
+  const w=ds.writable.getWriter();w.write(b64ToBytes(s.slice(Z_MAGIC.length)));w.close();
+  return await new Response(ds.readable).text();
+};
+
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
   if(!d||!Array.isArray(d.teams))return false;
@@ -12440,7 +12494,20 @@ function useCloudSync(data,setData){
   const dirty=useRef(false);            // yerelde buluta yazılmamış değişiklik var mı → yeşil ancak bu false iken yanar
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
+  const lastWriteMs=useRef(0);          // son yazımın sürdüğü süre → bekleme buna göre ayarlanır
   const COL='kullanici_verileri';
+
+  // Durumun JSON'u tek düzenlemede birkaç kez gerekiyor (debounce karşılaştırması, yazım,
+  // yazım sonrası tazelik kontrolü). Çok MB'lık bir durumda her biri ana iş parçacığını
+  // meşgul ettiğinden, aynı nesne için bir kez üretip saklıyoruz.
+  const jsonCache=useRef({d:null,s:null});
+  const serialize=d=>{
+    const c=jsonCache.current;
+    if(c.d===d)return c.s;
+    const s=JSON.stringify(d);
+    jsonCache.current={d,s};
+    return s;
+  };
 
   // Eski {url} pointer'ından (Storage) veriyi kurtarmayı dene — sadece fetch, SDK gerekmez
   const tryDownload=async url=>{const r=await fetch(url);if(!r.ok)throw new Error('download '+r.status);return await r.text();};
@@ -12465,16 +12532,17 @@ function useCloudSync(data,setData){
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
     if(writing.current){queued.current=true;return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
-    const json=JSON.stringify(dataRef.current);
+    const json=serialize(dataRef.current);
     if(json===lastSynced.current){dirty.current=false;setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
     if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
     setStatus('syncing');
     writing.current=true;
+    const t0=Date.now();
     try{
       const col=fb.firestore().collection(COL);
-      const parts=splitChunks(json);const n=parts.length;const rev=Date.now();
+      const parts=splitChunks(await encodePayload(json));const n=parts.length;const rev=Date.now();
       const ops=[];
       parts.forEach((c,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c,rev}}));
       for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i});   // fazlalık eski parçaları sil
@@ -12485,16 +12553,17 @@ function useCloudSync(data,setData){
         ops.slice(i,i+450).forEach(o=>{if(o.set)b.set(col.doc(o.id),o.data);else b.delete(col.doc(o.id));});
         await b.commit();
       }
-      prevN.current=n;lastSynced.current=json;
+      prevN.current=n;lastSynced.current=json;lastWriteMs.current=Date.now()-t0;
     }catch(e){
       console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
+      lastWriteMs.current=Date.now()-t0;
       writing.current=false;
       const rerun=queued.current;queued.current=false;if(rerun)writeNow();   // yeni değişiklik beklemesin
       return;
     }
     writing.current=false;
     // Yazım sürerken yeni değişiklik geldiyse: yeşil YAKMADAN hemen onu da yaz.
-    if(queued.current||JSON.stringify(dataRef.current)!==json){queued.current=false;writeNow();return;}
+    if(queued.current||serialize(dataRef.current)!==json){queued.current=false;writeNow();return;}
     dirty.current=false;setStatus('synced');setSyncErr('');   // yeşil = bulut, ekrandaki halin birebir aynısı
   };
 
@@ -12508,7 +12577,7 @@ function useCloudSync(data,setData){
   // KURTARMA: manifest parçalarla tutuşmuyorsa (yarıda kalmış eski bir yazım), parçaların kendi
   // rev'lerinden en yeni tutarlı seti bul: 0'dan itibaren ardışık parçaları birleştir, JSON.parse
   // doğrularsa geçerli say. Böylece "sync sarıda takılı, veri boş" kilidi kendiliğinden açılır.
-  const assembleAny=chunks=>{
+  const assembleAny=async chunks=>{
     const byRev={};
     Object.values(chunks).forEach(ch=>{if(ch&&typeof ch.i==='number'&&typeof ch.c==='string')(byRev[ch.rev]=byRev[ch.rev]||{})[ch.i]=ch;});
     const revs=Object.keys(byRev).map(Number).sort((a,b)=>b-a);   // en yeni rev önce
@@ -12516,10 +12585,19 @@ function useCloudSync(data,setData){
       const g=byRev[rev];const parts=[];
       for(let i=0;g[i];i++)parts.push(g[i].c);
       if(!parts.length)continue;
-      const json=parts.join('');
-      try{JSON.parse(json);return{json,n:parts.length,rev};}catch(e){/* eksik/kesik set → sonraki rev */}
+      try{const json=await decodePayload(parts.join(''));JSON.parse(json);return{json,n:parts.length,rev};}
+      catch(e){/* eksik/kesik set (ya da açılamayan yük) → sonraki rev */}
     }
     return null;
+  };
+
+  // assemble()'ın verdiği ham yükü uygulanabilir JSON'a çevir. Açılamayan bir yük
+  // yarıda kalmış yazım olabileceği için null döner (yukarıdaki kurtarma devreye girsin);
+  // tarayıcı sıkıştırmayı hiç desteklemiyorsa bunu ayırt edip söylüyoruz.
+  const toJson=async raw=>{
+    if(raw==null)return null;
+    try{return await decodePayload(raw);}
+    catch(e){if(!CAN_UNZIP)throw e;return null;}
   };
 
   // Sunucudan elle çek
@@ -12533,9 +12611,9 @@ function useCloudSync(data,setData){
         if(d.id===u.uid&&typeof v.n==='number')manifest=v;
         else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v;});
       if(manifest){
-        let json=assemble(manifest,chunks);let n=manifest.n;
+        let json=await toJson(assemble(manifest,chunks));let n=manifest.n;
         if(json==null){
-          const rec=assembleAny(chunks);   // yarıda kalmış yazımdan kurtar
+          const rec=await assembleAny(chunks);   // yarıda kalmış yazımdan kurtar
           if(!rec){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
           json=rec.json;n=rec.n;
           try{await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
@@ -12544,7 +12622,7 @@ function useCloudSync(data,setData){
         dirty.current=false;   // sunucudan çekilen durum uygulandı → yerel bulutla aynı
       }
       ready.current=true;setStatus('synced');setSyncErr('');
-    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.message==='zip-unsupported'?ZIP_ERR:(e.code||e.message||'unknown'));}
   };
 
   // Auth durumu
@@ -12589,13 +12667,13 @@ function useCloudSync(data,setData){
             else if(typeof v.icerik==='string')icerik=v.icerik;           // eski: tek-doküman
             else oldDocs.push(v);});                                       // eski: per-entity
           if(manifest){
-            let json=assemble(manifest,chunks);
+            let json=await toJson(assemble(manifest,chunks));
             let healed=null;
             if(json==null){
               // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
               // Sunucu henüz tüm parçaları göndermediyse (fromCache) kurtarmaya kalkma, bekle.
               if(snap.metadata&&snap.metadata.fromCache)return;
-              healed=assembleAny(chunks);
+              healed=await assembleAny(chunks);
               if(!healed){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
               json=healed.json;
               try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:healed.n,rev:healed.rev});}catch(e){console.warn('manifest heal',e);}
@@ -12608,7 +12686,11 @@ function useCloudSync(data,setData){
             }
             lastSynced.current=json;
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
-            if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            const parsedJson=JSON.stringify(parsed);
+            if(parsedJson!==serialize(dataRef.current)){
+              dataRef.current=parsed;jsonCache.current={d:parsed,s:parsedJson};   // gelen durumu önbelleğe koy → debounce tekrar seri hâle getirmesin
+              setData(parsed);
+            }
             dirty.current=false;   // bulut durumu uygulandı → yerel artık bulutla aynı
             setStatus('synced');setSyncErr('');
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
@@ -12646,7 +12728,7 @@ function useCloudSync(data,setData){
             if(hasRealData(dataRef.current)){lastSynced.current=null;await writeNow();}
             else{lastSynced.current=JSON.stringify(dataRef.current);setStatus('synced');}
           }
-        }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+        }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.message==='zip-unsupported'?ZIP_ERR:(e.code||e.message||'unknown'));}
       },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return unsub;
   },[user]);
@@ -12665,16 +12747,23 @@ function useCloudSync(data,setData){
     return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',onBeforeUnload);};
   },[user]);
 
-  // Düzenlemeleri kısa debounce ile yaz
+  // Düzenlemeleri kısa debounce ile yaz.
+  // Her yazım durumun TAMAMINI gönderir; dolayısıyla art arda gelen küçük düzenlemelerin
+  // (bir metin kutusuna yazarken her tuş) ayrı ayrı tam yazıma dönüşmesi, hepsinin
+  // birbirini kuyrukta beklemesi demek. Bekleme süresini son yazımın gerçek süresine
+  // bağlıyoruz: yazım hızlıysa 120 ms'de kalır (davranış bugünküyle aynı), yavaşsa bir
+  // sonrakinden önce biraz daha bekleyip seriyi tek yazımda toplar. Tavan 1,2 sn —
+  // kullanıcı bir düzenlemeyi bitirip beklediğinde gecikme hep bunun altında.
   useEffect(()=>{
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    if(JSON.stringify(data)===lastSynced.current){
+    if(serialize(data)===lastSynced.current){
       if(!writing.current){dirty.current=false;setStatus('synced');}   // geri alınan değişiklik → zaten bulutla aynı
       return;
     }
     dirty.current=true;setStatus('syncing');
-    timer.current=setTimeout(()=>writeNow(),120);
+    const wait=Math.min(1200,Math.max(120,Math.round(lastWriteMs.current/3)));
+    timer.current=setTimeout(()=>writeNow(),wait);
   },[data,user]);
 
   return{user,status,authLoading,syncErr,authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
