@@ -124,6 +124,53 @@ shoulder, Kalça/Kasık → hip…) it also becomes a pain chip on the
 Individualization card, with the severity carried over.
 See TALLY_SETUP.md for the form side.
 
+PROGRAM WRITER (athlete profile → Program tab)
+Writes a week of training from scratch for ONE athlete. It reads
+five inputs and nothing else:
+  1. POSITION → which movement patterns get the emphasis, from the
+     position→pattern reference table (guard / wing / post, on the
+     same grouping the Individualization screen uses). The regions
+     each group is watched for are read straight off the assistant
+     coach's own position bias, so the two cannot drift apart.
+  2. BODY TYPE (Cheetah / Horse / Rhino / Rabbit) → where on the
+     speed-strength spectrum the emphasis sits. The rules are the
+     ones printed on the athlete profile's own animal cards.
+  3. SCREENING BATTERY + PERFORMANCE TESTS → the STRUCTURAL TIER,
+     by weakest link: overhead squat, ASLR, ankle dorsiflexion, the
+     Y Balance per-direction reach difference and the largest
+     bilateral difference are each scored passes / limited / fails
+     on the cut-offs the app already uses elsewhere (35°, ≤1 of 3,
+     4 cm, 10%), and the tier is the LOWEST of them — never the
+     average. One failed screen holds the whole program at Tier 1.
+     The tier is what sets the volume and complexity baseline:
+     sessions per week, exercises per session, sets, RPE / %1RM
+     range, which variations are allowed and how many plyometric
+     contacts the week may carry.
+  4. TODAY'S REPORTED PAIN → the patterns that region loads are cut
+     or dropped and work is redirected to the ones the pain →
+     pattern map prefers. Both the check-in's own report and the
+     constraint tags you are managing the athlete for count.
+  5. THE 7-14 DAY WELLNESS / RPE TREND → two seven-day windows side
+     by side (readiness, fatigue, soreness, sleep, RHR, weekly load,
+     ACWR, day-by-day RPE), plus the list of signals that crossed a
+     threshold the app already uses. High accumulated fatigue keeps
+     the starting volume conservative. It is a trend, never one
+     morning.
+No reference rule is invented: the position mapping, the body-type
+rules, the tier cut-offs and the pain → pattern map are all sent
+along with the athlete's data, and any input the athlete has no
+data for is NOT programmed around — it lands in "manuel inceleme"
+with the reason, so you can see exactly which decision was skipped.
+Exercises are not limited to your library.
+
+Press "◫ Program yaz" and the result is stored on the athlete: the
+tier and its rationale, the days with their exercises (set×rep,
+load/intensity, pattern tag, a short note), the patterns that were
+excluded, and a summary. "📄 Programda kullanılan veri" opens the
+exact JSON the answer was written from. Nothing is written to a
+calendar — putting it on a program sheet stays your action. Needs
+an API key, the same one the ✨ AI Coach Assistant uses.
+
 LOAD DISTRIBUTION (Calendar tab, team and per athlete)
 The "Load Distribution" panel under the calendar reads the week or
 the month and draws ONE treemap, not two pies:
