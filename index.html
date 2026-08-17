@@ -3350,6 +3350,28 @@ function abPct(v,pool,dir){
   return Math.round(((worse+0.5*same)/vals.length)*100);
 }
 const abMean=a=>{const v=a.filter(x=>x!=null);return v.length?Math.round(v.reduce((x,y)=>x+y,0)/v.length):null;};
+/* Inter-limb asymmetry as a percentage of the better limb — |R−L| / max × 100, the
+   standard formula in the asymmetry literature (Bishop, Read & Turner). A gap in
+   centimetres cannot be compared between athletes: 5 cm between two 140 cm lateral
+   jumps is a different athlete from 5 cm between two 40 cm ones, and ranking the raw
+   centimetres would put the bigger jumper in the worse box for the same imbalance. */
+const abAsym=(a,b)=>{const x=cmpN(a),y=cmpN(b),m=Math.max(x,y);
+  return(x==null||y==null||!(m>0))?null:+((Math.abs(x-y)/m)*100).toFixed(1);};
+/* Around this level jump asymmetry starts tracking with slower sprint and COD times
+   in youth athletes. It is a monitoring flag, not a cut-off and not a diagnosis. */
+const AB_ASYM_FLAG=10;
+/* Dynamic Strength Index bands: ≤0.60 the athlete expresses little of their maximal
+   force ballistically (ballistic emphasis), 0.60–0.80 combined, ≥0.80 the ballistic
+   output is already close to the isometric ceiling (maximal-strength emphasis). */
+const AB_DSI_LO=0.60,AB_DSI_HI=0.80;
+/* How far above the squad this athlete's body mass or stature sits, in SDs. Larger
+   athletes carry more inertia through a turn and over 20 m, so this is context for
+   the speed and horizontal boxes — never a reason to discount the reading. */
+const abZ=(v,pool)=>{const vals=pool.filter(x=>x!=null);
+  if(v==null||vals.length<AB_MIN_POOL)return null;
+  const m=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const sd=Math.sqrt(vals.reduce((a,b)=>a+(b-m)**2,0)/vals.length);
+  return sd>0?+((v-m)/sd).toFixed(2):null;};
 /* §4 — the four performance zones, and the deficit score the ranking runs on. */
 const abZone=p=>p==null?'na':p>=AB_Z_STRONG?'grn':p>=AB_Z_WATCH?'yel':p>=AB_Z_DEV?'org':'red';
 const abDeficit=p=>p==null?null:100-p;
@@ -3380,9 +3402,10 @@ function abRaw(t,strTests){
   return{
     cmj:cmpN(t.cmj),sj:cmpN(t.squatJump),vj:cmpN(t.verticalJump),
     rsi:cmpN(t.dropJump),hj:cmpN(t.horizontalJump),
-    lcjR:lr,lcjL:ll,lcjGap:cmpGap(lr,ll),
+    lcjR:lr,lcjL:ll,lcjGap:cmpGap(lr,ll),lcjAsym:abAsym(lr,ll),
     tt:cmpN(t.tTest),f505:cmpN(t.fiveZeroFive),sp20:cmpN(t.sprint20m&&t.sprint20m.time),
     str:strTests.map(c=>cmpN(t.custom&&t.custom[c.id])),
+    height:cmpN(t.height),weight:cmpN(t.weight),
   };
 }
 
@@ -3397,7 +3420,17 @@ function abBoard(athletes,scope,customTests){
   const col=k=>rows.map(r=>r.v[k]);
   const strCols=strTests.map((c,i)=>rows.map(r=>r.v.str[i]));
   const pools={cmj:col('cmj'),sj:col('sj'),vj:col('vj'),rsi:col('rsi'),hj:col('hj'),
-    lcjR:col('lcjR'),lcjL:col('lcjL'),lcjGap:col('lcjGap'),tt:col('tt'),f505:col('f505'),sp20:col('sp20')};
+    lcjR:col('lcjR'),lcjL:col('lcjL'),lcjAsym:col('lcjAsym'),tt:col('tt'),f505:col('f505'),sp20:col('sp20'),
+    height:col('height'),weight:col('weight')};
+  /* Ages of the squad this board ranks inside. Biological maturity is what actually
+     drives jump, sprint and agility numbers at this age and the app does not measure
+     it, but knowing an athlete is a year younger than the squad's middle still tells
+     a coach who they are being ranked against. */
+  const ageOfA=a=>{if(!a||!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth),n=new Date();
+    let y=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
+  const ages=rows.map(r=>ageOfA(r.a)).filter(x=>x!=null).sort((a,b)=>a-b);
+  const medAge=ages.length?ages[Math.floor(ages.length/2)]:null;
+  const youth=ages.length>0&&ages[0]<18;
 
   const profiles=rows.map(r=>{
     const v=r.v,p={},used={},notes={};
@@ -3423,19 +3456,26 @@ function abBoard(athletes,scope,customTests){
     /* D. YATAY POWER — horizontal jump. */
     const ph=abPct(v.hj,pools.hj,'hi');
     if(ph!=null){p.horiz=ph;used.horiz=[{k:L('Yatay Sıçrama','Horizontal Jump'),v:v.hj,u:' cm',p:ph}];}
-    /* E. LATERAL / TEK BACAK — the level of each side first, then the gap between
-       them. Both matter and neither is the whole answer, so the level carries 60%
-       and the gap 40%; whichever exists alone carries it all. A gap in the team's
-       widest fifth lands in the red zone through the ranking itself. */
+    /* E. LATERAL / TEK BACAK — the level of each side first, then the imbalance
+       between them, ranked as a percentage of the better limb rather than as raw
+       centimetres. Both matter and neither is the whole answer, so the level carries
+       60% and the asymmetry 40%; whichever exists alone carries it all. */
     const plr=abPct(v.lcjR,pools.lcjR,'hi'),pll=abPct(v.lcjL,pools.lcjL,'hi'),
-      pg=abPct(v.lcjGap,pools.lcjGap,'lo'),lvl=abMean([plr,pll]);
+      pg=abPct(v.lcjAsym,pools.lcjAsym,'lo'),lvl=abMean([plr,pll]);
     if(lvl!=null||pg!=null){
       p.lateral=(lvl!=null&&pg!=null)?Math.round(lvl*0.6+pg*0.4):(lvl!=null?lvl:pg);
       used.lateral=[plr!=null?{k:'Lateral CMJ R',v:v.lcjR,u:' cm',p:plr}:null,
                     pll!=null?{k:'Lateral CMJ L',v:v.lcjL,u:' cm',p:pll}:null,
-                    pg!=null?{k:L('Sağ-sol fark','R-L gap'),v:v.lcjGap,u:' cm',p:pg}:null].filter(Boolean);
-      if(pg!=null&&pg<AB_Z_DEV)
-        notes.lateral=L('Sağ-sol farkı takımın en geniş %20\'sinde.','The R-L gap sits in the team\'s widest 20%.');
+                    pg!=null?{k:L('Sağ-sol asimetri','R-L asymmetry'),v:v.lcjAsym,u:'%',p:pg}:null].filter(Boolean);
+      /* Two separate readings, because they answer different questions: the ranking
+         says how this imbalance compares with the squad's, the percentage says
+         whether it is large enough to be worth watching at all. */
+      if(v.lcjAsym!=null&&v.lcjAsym>=AB_ASYM_FLAG)
+        notes.lateral=L(`Sağ-sol asimetrisi %${abFmt(v.lcjAsym)} — izlem eşiğinin (%${AB_ASYM_FLAG}) üzerinde.`,
+                        `The left/right asymmetry is ${abFmt(v.lcjAsym)}% — above the ${AB_ASYM_FLAG}% monitoring level.`);
+      else if(pg!=null&&pg<AB_Z_DEV)
+        notes.lateral=L('Sağ-sol asimetrisi takımın en geniş %20\'sinde (mutlak değeri küçük olsa da).',
+                        'The left/right asymmetry sits in the team\'s widest 20%, small though it is in absolute terms.');
     }
     /* F. HIZ / YÖN DEĞİŞTİRME — T-test, inverted. With no T-test the 5-0-5 and
        then the 20 m sprint stand in, named each time: a 5-0-5 is one turn and a
@@ -3462,12 +3502,22 @@ function abBoard(athletes,scope,customTests){
       const a=cmpN(r.t.custom&&r.t.custom[dsiCmj.id]),b=cmpN(r.t.custom&&r.t.custom[dsiImtp.id]);
       if(a!=null&&b!=null&&b>0)dsi=+(a/b).toFixed(2);
     }
-    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,...abVerdict(p,dsi)};
+    /* Context the verdict is read against but never decided by: how this athlete's
+       straight-line speed compares (a slow turn is mostly a slow run-in), how far
+       their body mass and stature sit from the squad's, and how old they are inside
+       an age group where a year is a great deal of development. */
+    const ctx={
+      sprintPct:abPct(v.sp20,pools.sp20,'lo'),codSrc:pcod==null?null:ck,
+      zW:abZ(v.weight,pools.weight),zH:abZ(v.height,pools.height),
+      age:ageOfA(r.a),medAge,youth,
+      strengthAbs:strP.some(x=>!/relative|göreceli|\/\s*kg|per\s*kg|\bbw\b|vücut\s*ağırlığı/i.test(x.c.name||'')),
+    };
+    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,...abVerdict(p,dsi)};
   });
   /* An athlete with no test in this period is not an athlete with no needs —
      they stand in the VERİ YETERSİZ box, which is the honest answer. */
   const untested=all.filter(r=>!r.t).map(r=>({id:r.a.id,a:r.a,t:null,v:null,p:{},used:{},notes:{},dsi:null,
-    ...abVerdict({},null)}));
+    ctx:{age:ageOfA(r.a),medAge,youth},...abVerdict({},null)}));
   return{profiles:[...profiles,...untested],pool:rows.length,strengthNames:strTests.map(c=>c.name)};
 }
 
@@ -3494,16 +3544,22 @@ function abVerdict(p,dsi){
   let secondary=(primary.box!=='none'&&second&&second.pct<AB_Z_WATCH)?{box:second.id,pct:second.pct}:null;
   /* §8 — strength that is not coming out as fast force. An athlete who can
      produce force but is not turning it into a ballistic output has a different
-     problem from one who has no force, and it gets its own box. DSI says the
-     same thing from the force side when both peak forces have been logged. */
-  const transfer=(p.strength!=null&&p.vert!=null&&p.strength>=AB_Z_STRONG&&p.vert<50&&p.strength-p.vert>=25)
-    ||(dsi!=null&&dsi<0.60&&p.vert!=null&&p.vert<50);
+     problem from one who has no force, and it gets its own box. A DSI at or below
+     0.60 says the same thing from the force side: little of the isometric ceiling
+     is reaching the jump, which is the band the literature puts under ballistic
+     emphasis. A DSI at or above 0.80 points the other way — the jump is already
+     close to the ceiling, so the ceiling is what has to rise — and it must not
+     relabel a vertical-power deficit as a transfer problem. */
+  const dsiBallistic=dsi!=null&&dsi<=AB_DSI_LO,dsiStrength=dsi!=null&&dsi>=AB_DSI_HI;
+  const transfer=!dsiStrength&&(
+       (p.strength!=null&&p.vert!=null&&p.strength>=AB_Z_STRONG&&p.vert<50&&p.strength-p.vert>=25)
+    ||(dsiBallistic&&p.vert!=null&&p.vert<50));
   if(transfer){
     if(primary.box==='vert')primary={...primary,box:'conv'};
     else if(primary.box==='none'&&p.vert!=null&&p.vert<50)primary={box:'conv',pct:p.vert};
     else if(secondary&&secondary.box==='vert')secondary={...secondary,box:'conv'};
   }
-  return{primary,secondary,strong:rank[rank.length-1],conf,rank,unassessed,transfer};
+  return{primary,secondary,strong:rank[rank.length-1],conf,rank,unassessed,transfer,dsiBallistic,dsiStrength};
 }
 
 /* ---- The sentences under the verdict -------------------------------------
@@ -3521,7 +3577,9 @@ const AB_POS_CTX={
    of 1.05 are different jumps, and rounding both to "1" would hide the number the
    percentile was drawn from. Trailing zeros are still dropped. */
 const abFmt=v=>v==null?'—':String(+(Math.round(v*100)/100));
-const abUsedTxt=u=>(u||[]).map(x=>`${x.k} ${abFmt(x.v)}${x.u||''} · P${x.p}`).join(', ');
+/* Turkish puts the sign in front of the number, English behind it. */
+const abPctVal=v=>L(`%${abFmt(v)}`,`${abFmt(v)}%`);
+const abUsedTxt=u=>(u||[]).map(x=>`${x.k} ${x.u==='%'?abPctVal(x.v):abFmt(x.v)+(x.u||'')} · P${x.p}`).join(', ');
 /* `conv` is read off the vertical-power tests — the box is about what the jump
    numbers are not showing, so that is where its evidence comes from. */
 const abSrc=(pf,box)=>pf.used[box==='conv'?'vert':box]||[];
@@ -3625,9 +3683,9 @@ function abCaution(pf,board){
   if(pf.primary.box==='lateral'||(pf.secondary&&pf.secondary.box==='lateral')||pf.notes.lateral)
     c.push(L('Asimetri verisi sakatlık teşhisi değildir; sağ-sol farkı yalnızca antrenman önceliği olarak okunmalıdır.',
              'An asymmetry is not a diagnosis; the left/right gap is read as a training priority and nothing more.'));
-  if(board.pool<8)
-    c.push(L(`Takım içi karşılaştırma ${board.pool} sporcu üzerinden yapıldı — percentile değerleri kabadır.`,
-             `The within-team comparison is drawn from ${board.pool} athletes — the percentiles are coarse.`));
+  if(board.pool<10)
+    c.push(L(`Takım içi karşılaştırma ${board.pool} sporcu üzerinden yapıldı — percentile değerleri kabadır ve tek bir sporcunun eklenmesi sıralamayı belirgin biçimde değiştirebilir.`,
+             `The within-team comparison is drawn from ${board.pool} athletes — the percentiles are coarse, and one more athlete can move the ranking noticeably.`));
   if(pf.conf==='low')
     c.push(L('Yalnızca tek bir fiziksel özellik değerlendirilebildi; batarya genişletilmeden bu verdiğe göre program kurulmamalı.',
              'Only one quality could be assessed; do not build the programme on this verdict before widening the battery.'));
@@ -3640,6 +3698,48 @@ function abCaution(pf,board){
     c.push(L(`Kuvvet ile dikey power arasında dönüşüm açığı da görülüyor (${ev}) — ana veya ikincil ihtiyaç değil, ancak programda patlayıcı niyetle desteklenebilir.`,
              `There is also a strength-to-power transfer gap (${ev}) — not the main or the secondary need, but worth supporting with explosive intent in the programme.`));
   }
+  /* §9 — where both peak forces exist, the DSI band says which side of the
+     force-velocity problem the athlete is on, and the ratio only means that if the
+     two tests were measured on the same equipment in the same units. */
+  if(pf.dsi!=null)
+    c.push(pf.dsiStrength
+      ?L(`DSI ${pf.dsi} — balistik çıktı izometrik tavana yakın (≥${AB_DSI_HI}); vurgu maksimal kuvvet tarafındadır. Oran, iki testin aynı protokol ve birimlerle ölçülmüş olmasını gerektirir.`,
+         `DSI ${pf.dsi} — the ballistic output is already close to the isometric ceiling (≥${AB_DSI_HI}); the emphasis belongs on maximal strength. The ratio only holds if both tests were measured with the same protocol and units.`)
+      :pf.dsiBallistic
+      ?L(`DSI ${pf.dsi} — maksimal kuvvetin küçük bir kısmı sıçramaya aktarılıyor (≤${AB_DSI_LO}); vurgu balistik çalışmadadır. Oran, iki testin aynı protokol ve birimlerle ölçülmüş olmasını gerektirir.`,
+         `DSI ${pf.dsi} — only a small share of the maximal force is reaching the jump (≤${AB_DSI_LO}); the emphasis belongs on ballistic work. The ratio only holds if both tests were measured with the same protocol and units.`)
+      :L(`DSI ${pf.dsi} — ${AB_DSI_LO}–${AB_DSI_HI} aralığında: kuvvet ve balistik çalışma birlikte yürür.`,
+         `DSI ${pf.dsi} — inside the ${AB_DSI_LO}–${AB_DSI_HI} band: strength and ballistic work run together.`));
+  const x=pf.ctx||{};
+  /* A T-test or a 5-0-5 is mostly a run-in: only about a third of the time is the
+     turn itself, so a slow total time can be a slow athlete rather than a poor
+     direction change. Where the sprint says the same thing, the sentence says so
+     instead of letting the box claim more than the test can carry. */
+  if((pf.primary.box==='cod'||(pf.secondary&&pf.secondary.box==='cod'))&&x.sprintPct!=null&&x.codSrc!=='20m Sprint'){
+    c.push(x.sprintPct<AB_Z_WATCH
+      ?L(`Toplam ${x.codSrc} süresinin büyük kısmı düz koşudur ve 20m sprint de P${x.sprintPct} — sınırlayan öncelikle ivmelenme olabilir, yön değiştirme mekaniği tek başına değil.`,
+         `Most of the ${x.codSrc} time is straight-line running and the 20m sprint is also at P${x.sprintPct} — the limiter may be acceleration first, not the direction change on its own.`)
+      :L(`20m sprint P${x.sprintPct} olduğu için düşük ${x.codSrc} süresi düz hızdan değil, yön değiştirme/frenleme tarafından geliyor gibi görünüyor.`,
+         `With the 20m sprint at P${x.sprintPct}, the ${x.codSrc} time looks like it comes from the turn and the braking rather than from straight-line speed.`));
+  }
+  /* Larger athletes carry more inertia into a turn and over 20 m. That is context
+     for the reading, not a discount on it — the lever is relative strength. */
+  const big=Math.max(x.zW==null?-9:x.zW,x.zH==null?-9:x.zH);
+  if(big>=1&&['cod','horiz'].some(k=>k===pf.primary.box||(pf.secondary&&k===pf.secondary.box)))
+    c.push(L(`Vücut ölçüleri takım ortalamasının belirgin üzerinde (${[x.zH!=null?`boy z=${x.zH}`:null,x.zW!=null?`kilo z=${x.zW}`:null].filter(Boolean).join(', ')}) — bu testlerde daha büyük sporcular sistematik olarak dezavantajlıdır. Açığı geçersiz kılmaz; kaldıraç göreceli kuvvettir.`,
+             `Body size sits clearly above the squad mean (${[x.zH!=null?`height z=${x.zH}`:null,x.zW!=null?`mass z=${x.zW}`:null].filter(Boolean).join(', ')}) — larger athletes are systematically penalised on these tests. That does not void the gap; the lever is relative strength.`));
+  /* A squat ranked in kilograms ranks body mass with it. */
+  if(x.strengthAbs&&pf.p.strength!=null)
+    c.push(L('Kuvvet testi girildiği haliyle sıralandı; sıçrama ve yön değiştirmeyle ilişkili olan göreceli kuvvettir (1RM/vücut ağırlığı) — test mutlak yükse sıralama vücut ağırlığını da sıralar.',
+             'The strength test was ranked as entered; the measure that relates to jumping and change of direction is relative strength (1RM/body mass) — if the entry is an absolute load, the ranking ranks body mass with it.'));
+  /* Biological maturity, not birth date, is what drives these numbers at this age,
+     and the app does not measure it. Saying so is the honest limit of the board. */
+  if(x.youth)
+    c.push(x.age!=null&&x.medAge!=null&&x.age<=x.medAge-1
+      ?L(`Maturasyon durumu ölçülmedi ve bu yaşta sıçrama, sprint ve çeviklik sonuçlarını belirgin biçimde etkiler; bu sporcu ${x.age} yaşında, takım ortancası ${x.medAge} — kendisinden büyük takım arkadaşlarıyla sıralanıyor.`,
+         `Maturity status was not measured and it drives jump, sprint and agility results heavily at this age; this athlete is ${x.age} against a squad median of ${x.medAge}, so the ranking is against older team-mates.`)
+      :L('Maturasyon durumu ölçülmedi; genç yaş gruplarında biyolojik olgunluk bu testlerin sonucunu belirgin biçimde etkiler.',
+         'Maturity status was not measured; in youth age groups biological maturity has a marked effect on these tests.'));
   c.push(L('Antropometri ve pozisyon yalnızca bağlam olarak kullanıldı — kutu ataması test verisine dayanır.',
            'Anthropometry and position were used as context only — the box assignment rests on the test data.'));
   return c;
@@ -10619,8 +10719,8 @@ tbody tr:nth-child(even) td{background:#fafbfc}
   </tr></thead>
   <tbody>${body}</tbody>
 </table>
-<div class="note">${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol farkı) düşük değer iyi kabul edilerek ters çevrilmiştir. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir.',
-  'Percentiles are within-team rankings; on time-based tests (T-test, sprint, left/right gap) a lower value is the better one and the ranking is inverted. The "highest percentile" column is the quality to keep on a maintenance dose — P60 and above is the strong zone. Foundational strength is left unassessed when no strength test has been entered. An asymmetry is not a diagnosis.'))}</div>
+<div class="note">${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
+  'Percentiles are within-team rankings; on time-based tests (T-test, sprint, left/right asymmetry) a lower value is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb. The "highest percentile" column is the quality to keep on a maintenance dose — P60 and above is the strong zone. Foundational strength is left unassessed when no strength test has been entered. An asymmetry is not a diagnosis. In youth age groups maturity status has a marked effect on these tests and was not measured; the comparison assumes every athlete was tested on the same protocol.'))}</div>
 <div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
 </body></html>`;
   w.document.write(html);w.document.close();
@@ -10685,8 +10785,12 @@ function AthleteBoxes({athletes,setup,customTests,Lx}){
       </div>
     </div>
     <div className="help" style={{marginBottom:14}}>
-      {Lx('Her sporcu, gelişimini şu anda en çok sınırlayan özelliğe göre tek bir kutuya yerleşir. Okuma takım içi percentile ile yapılır — süre bazlı testlerde düşük değer iyidir ve sıralama ters çevrilir. Kuvvet testi girilmemişse temel kuvvet hakkında hüküm verilmez. Bir isme tıklayınca o yerleşimin gerekçesi açılır.',
-          'Each athlete lands in one box — the quality limiting their development the most right now. The reading is a within-team percentile; on time-based tests a lower number is the better one and the ranking is inverted. With no strength test entered, no judgement is made about strength. Click a name to open the reasoning behind the placement.')}
+      {Lx('Her sporcu, gelişimini şu anda en çok sınırlayan özelliğe göre tek bir kutuya yerleşir. Okuma takım içi percentile ile yapılır — süre bazlı testlerde düşük değer iyidir ve sıralama ters çevrilir. Sağ-sol farkı, sporcular arasında karşılaştırılabilsin diye mutlak cm değil iyi bacağın yüzdesi olarak hesaplanır. Kuvvet testi girilmemişse temel kuvvet hakkında hüküm verilmez. Bir isme tıklayınca o yerleşimin gerekçesi açılır.',
+          'Each athlete lands in one box — the quality limiting their development the most right now. The reading is a within-team percentile; on time-based tests a lower number is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb rather than raw centimetres, so it can be compared between athletes. With no strength test entered, no judgement is made about strength. Click a name to open the reasoning behind the placement.')}
+    </div>
+    <div className="help" style={{marginBottom:14,opacity:.8}}>
+      {Lx('Karşılaştırma, sporcuların aynı protokolle test edildiğini varsayar — özellikle drop jump RSI (düşüş yüksekliği, temas süresi ölçümü) ve sıçrama protokolleri takım genelinde aynı olmalıdır.',
+          'The comparison assumes every athlete was tested on the same protocol — drop-jump RSI in particular (drop height, how contact time is taken) and the jump protocols have to match across the squad.')}
     </div>
     <div className="cmp-bar">
       <div className="cmp-fld">
