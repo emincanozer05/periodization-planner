@@ -1706,7 +1706,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .abx-pool{font-size:12px;color:var(--text2);padding:6px 0}
 .abx-pool .warn{color:#f5a524}
 .abm-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:13px;background:var(--elevated)}
-.abm{border-collapse:separate;border-spacing:0;width:100%;min-width:940px}
+/* Fixed layout so every quality column is exactly as wide as every other one: under
+   `table-layout:fixed` the columns with no width of their own divide the space left
+   over by the name column equally, however many qualities there are. */
+.abm{table-layout:fixed;border-collapse:separate;border-spacing:0;width:100%;min-width:1060px}
 .abm th,.abm td{padding:0;border-bottom:1px solid var(--border)}
 .abm thead th{position:sticky;top:0;z-index:3;background:var(--elevated);border-bottom:1px solid var(--border2);
   padding:10px 8px;vertical-align:bottom;text-align:center;
@@ -1714,7 +1717,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   text-transform:uppercase;color:var(--mc,var(--text2));line-height:1.3;white-space:normal}
 .abm thead th.abm-ath{text-align:left;z-index:4}
 .abm .abm-ath{position:sticky;left:0;background:var(--elevated);z-index:2;
-  min-width:186px;max-width:186px;padding:8px 12px;text-align:left;
+  width:186px;min-width:186px;max-width:186px;padding:8px 12px;text-align:left;
   border-right:1px solid var(--border2)}
 .abm tbody tr:hover .abm-ath,.abm tbody tr:hover td{background:var(--bg2)}
 .abm tbody tr.on .abm-ath,.abm tbody tr.on td{background:var(--accent-bg)}
@@ -1776,7 +1779,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .abm-src-b p.warn{margin:9px 0 0;padding-top:9px;border-top:1px solid var(--border);color:var(--text2)}
 .abm-src-b ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px}
 .abm-src-b b{color:var(--text2);font-weight:700}
-@media(max-width:640px){.abm .abm-ath{min-width:140px;max-width:140px}}
+@media(max-width:640px){.abm .abm-ath{width:140px;min-width:140px;max-width:140px}}
 /* The four performance zones, used wherever a percentile is printed. */
 .pz-red{color:#f0836c}.pz-org{color:#f5a524}.pz-yel{color:#e3d24b}.pz-grn{color:#3ddc84}.pz-na{color:var(--dim)}
 .zf-red{background:#f0836c}.zf-org{background:#f5a524}.zf-yel{background:#e3d24b}.zf-grn{background:#3ddc84}
@@ -3507,41 +3510,51 @@ const abOvOf=(pf,metric)=>{
    quality is still good at P60+, average at P40-59, weak below P40. Only the
    comparison group changes.
 
-   WHAT THE REFERENCE IS, AND IS NOT. The tables are male youth basketball players
-   and trained youth athletes. There is no sex field in this app, so a girls' squad
-   is being read against boys' values and every reading will sit low — use the
-   within-team reference for those teams. Ages outside 12-18 clamp to the nearest
-   row, with the last row standing for senior. The values are assembled from the
-   sources named in AB_SOURCES below; where a study reports a median and percentiles
-   rather than a mean and an SD, the SD is the one implied by the reported spread.
+   THE COMPARISON GROUP IS ALWAYS OTHER ATHLETES. Every row below is drawn from a
+   trained population — youth basketball players wherever such a study exists, other
+   trained youth athletes where one does not. School-population fitness data is
+   deliberately not used, however tidy its percentile tables are: a squad measured
+   against schoolchildren reads good everywhere and the table stops saying anything.
+   Two qualities have no trained-population reference at all — horizontal power and
+   lateral power — and rather than borrow a schoolchildren curve for them, they stay
+   on the within-team reading in both modes and the cell says so.
 
-   Sources, quality by quality:
+   WHAT THE REFERENCE IS NOT. There is no sex field in this app, so a girls' squad is
+   being read against boys' values and every reading will sit low — use the
+   within-team reference for those teams. Ages outside 12-18 clamp to the nearest row,
+   with the last row standing for senior. Where a study reports a median and
+   percentiles rather than a mean and an SD, the SD is the one implied by the
+   reported spread; where a row runs past the ages a study covered, it is an
+   extrapolation and the source line says so.
+
+   Sources, quality by quality (all athlete populations):
    · Vertical power — Ramos et al. 2021 (Front. Sports Act. Living), Portuguese
-     regional players 12-16: CMJ median 30.1 cm at peak height velocity. Cross-checked
-     against U14 32.6 +/- 6.4 and U18 38.2 +/- 11.3 cm for male players.
-   · Reactive strength — drop-jump RSI practitioner bands (>2.5 excellent, ~2.0 good,
+     regional basketball players 12-16: CMJ median 30.1 cm at peak height velocity.
+     Cross-checked against U14 32.6 +/- 6.4 and U18 38.2 +/- 11.3 cm for male players.
+   · Reactive strength — drop-jump RSI bands for athletes (>2.5 excellent, ~2.0 good,
      <1.5 needs development) anchored at senior and scaled down through the youth
      years, because published youth RSI norms are thin.
-   · Horizontal power — standing broad jump percentiles for boys 11-18 across seven
-     European nations (50th percentile 147/162/175/186/195/202/207/210 cm), lifted to
-     a trained-athlete level.
    · Speed and change of direction — Ramos et al. 2021 (20 m 3.34 s, T-test 10.31 s at
-     PHV), the adult T-test bands (<9.5 excellent, 9.5-10.5 good, 10.5-11.5 average)
-     and the 5-0-5 bands (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average).
+     PHV) carried out to a senior basketball standard, and the 5-0-5 athlete bands
+     (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average).
    · Movement control — Y-Balance lower quarter: composite below 94% of limb length
      and an anterior left/right difference of 4 cm or more are the Plisky et al. 2006
-     high-school basketball injury-risk thresholds.
-   · Mobility — weight-bearing lunge; below roughly 34-35 degrees is the restricted
-     range reported for athletes.
-   · Work capacity — 20 m shuttle VO2max. Male basketball players sit around
-     50-60 ml/kg/min; the FITNESSGRAM healthy-fitness-zone floor for boys (41.1 at 13
-     rising to 44.2 at 17) is a health minimum, well under the playing standard.
+     thresholds, measured on 235 high-school basketball players.
+   · Mobility — Trinidad-Fernandez et al. 2022, 693 non-injured youth federated
+     basketball players U12-U17: weight-bearing lunge 10.68 +/- 2.44 cm, normal band
+     8.44-13.11 cm. Converted to degrees at the usual 3.6 deg/cm, because this app
+     records the lunge in degrees.
+   · Work capacity — 20 m shuttle VO2max in well-trained young basketball players:
+     48.9 +/- 4.1 ml/kg/min as the shuttle estimates it. The shuttle underestimates
+     directly measured VO2max in this population (48.9 against 55.5), so the reference
+     is the shuttle's own number, which is what this app records.
    · Relative strength — no youth 1RM/body-mass norm is established, and the NSCA
      youth resistance training position statement rejects the 1.5x body mass figure
-     that circulates as one. The row below is a practitioner reference scaled from
-     adult standards, and it is labelled as such wherever it is shown.
-   · Lateral power — nothing publishable exists for a lateral countermovement jump,
-     so this column stays on the within-team reading in both modes.
+     that circulates as one. The row is anchored on adolescent athletes rather than on
+     general lifter standards (1RM squat 102.5 +/- 30.1 kg at 15.2 +/- 1.3 years,
+     against 78.9 +/- 12.0 kg body mass in youth basketball at 15.5 years, so about
+     1.3 x body mass), and the surrounding ages are extrapolated from it.
+   · Horizontal power, lateral power — no trained-population reference, see above.
    ---------------------------------------------------------------------------- */
 const AB_REF_TEAM='team',AB_REF_NORM='norm';
 const AB_NORM_AGE0=12;   // first row; the last row stands for 19 and over
@@ -3552,7 +3565,9 @@ const AB_NORMS={
   sj:    {dir:'hi',m:[24.0,26.0,28.5,31.0,33.5,35.5,37.0,39.5],sd:[4.6,4.8,5.0,5.0,5.0,5.0,5.0,5.0]},
   vj:    {dir:'hi',m:[31.5,34.0,37.0,40.0,43.0,45.5,47.0,50.0],sd:[6.0,6.2,6.5,6.5,6.5,6.5,6.5,6.5]},
   rsi:   {dir:'hi',m:[1.10,1.20,1.30,1.42,1.55,1.65,1.72,1.85],sd:[0.28,0.28,0.30,0.30,0.30,0.30,0.30,0.30]},
-  hj:    {dir:'hi',m:[175,188,200,210,218,224,228,235],      sd:[19,19,20,20,20,20,20,20]},
+  /* No hj row on purpose: the standing broad jump percentiles that exist are school
+     populations, and lifting them to "about athlete level" would be a number this
+     app invented. Horizontal power is read within the squad instead. */
   /* The T-test row is anchored on the 10.31 s median Ramos et al. report at peak
      height velocity and carried out to a senior basketball standard. The adult
      "9.5-10.5 = good" bands that circulate are a general team-sport scale, not a
@@ -3561,11 +3576,19 @@ const AB_NORMS={
   tt:    {dir:'lo',m:[11.10,10.70,10.31,10.05,9.90,9.80,9.75,9.65],sd:[0.72,0.68,0.65,0.62,0.60,0.58,0.56,0.55]},
   f505:  {dir:'lo',m:[2.86,2.78,2.70,2.63,2.57,2.52,2.49,2.45],sd:[0.20,0.19,0.19,0.18,0.18,0.18,0.18,0.18]},
   sp20:  {dir:'lo',m:[3.85,3.62,3.42,3.28,3.18,3.10,3.04,2.95],sd:[0.28,0.25,0.22,0.20,0.19,0.18,0.17,0.16]},
-  relStr:{dir:'hi',m:[0.80,0.90,1.05,1.20,1.35,1.45,1.55,1.75],sd:[0.28,0.28,0.30,0.30,0.30,0.30,0.30,0.32]},
-  shut:  {dir:'hi',m:[45.0,46.5,48.0,49.5,51.0,52.0,52.5,53.5],sd:[4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5]},
+  /* Anchored at 1.30 x body mass around 15 years from adolescent-athlete squat data,
+     not from the general lifter standards that circulate as youth targets. */
+  relStr:{dir:'hi',m:[0.90,1.05,1.18,1.30,1.42,1.52,1.60,1.80],sd:[0.28,0.29,0.30,0.30,0.30,0.30,0.30,0.32]},
+  /* Anchored on the 48.9 +/- 4.1 ml/kg/min the 20 m shuttle estimates in well-trained
+     young basketball players; the youth years run below it and senior above. */
+  shut:  {dir:'hi',m:[44.5,46.0,47.5,48.9,50.0,51.0,51.5,52.5],sd:[4.1,4.1,4.1,4.1,4.2,4.2,4.2,4.2]},
+  /* High-school basketball players — the population Plisky's 94% cut-off came from. */
   ybComp:{dir:'hi',flat:{m:97.5,sd:6.5}},
   ybGap: {dir:'lo',flat:{m:2.6,sd:1.8}},
-  adf:   {dir:'hi',flat:{m:38.5,sd:6.0}},
+  /* 693 youth federated basketball players: 10.68 +/- 2.44 cm on the weight-bearing
+     lunge, converted at 3.6 deg/cm. The left/right gap has no equivalent study and is
+     a practitioner value, labelled as one on screen. */
+  adf:   {dir:'hi',flat:{m:38.4,sd:8.8}},
   adfGap:{dir:'lo',flat:{m:3.0,sd:2.5}},
 };
 /* An FMS-style 0-3 grade is a rating, not a measurement — there is no mean and SD to
@@ -3584,18 +3607,18 @@ const AB_POS_GRP={PG:'G',SG:'G',SF:'F',PF:'F',C:'C'};
    · guards and forwards out-sprint centres and beat them on the T-drill, and guards
      carry the higher VO2max — so speed/COD and work capacity are shifted;
    · centres and forwards are the stronger players in absolute terms, which is the
-     same thing as saying their strength relative to body mass runs lower;
-   · horizontal power follows the sprint, more weakly.
-   Vertical power, reactive strength, lateral power, movement control and mobility
-   carry NO shift: jump height differs only slightly between positions, and what
-   does separate them there is force-time shape rather than the height this app
-   records. The magnitudes are the small-to-moderate effects those studies report,
-   not published per-position norms. */
+     same thing as saying their strength relative to body mass runs lower.
+   Everything else carries NO shift. For vertical and reactive strength that is a
+   finding — jump height differs only slightly between positions, and what does
+   separate them there is force-time shape rather than the height this app records.
+   For horizontal and lateral power it is moot: neither has a trained-population
+   reference, so both are read within the squad and a position expectation would have
+   nothing to attach to. The magnitudes are the small-to-moderate effects those
+   studies report, not published per-position norms. */
 const AB_POS_SHIFT={
   cod:   {G:0.30,F:0,C:-0.35},
   work:  {G:0.25,F:0,C:-0.30},
   relstr:{G:0.20,F:0,C:-0.25},
-  horiz: {G:0.15,F:0,C:-0.25},
 };
 /* Standard normal CDF (Zelen & Severo / Abramowitz-Stegun 26.2.17), which is how a
    z becomes the percentile the level is read from. */
@@ -3609,32 +3632,32 @@ const abPhi=z=>{
    leaving the table. */
 const AB_SOURCES=[
   {tr:'Hareket Kontrolü',en:'Movement Control',
-   str:'Y-Balance alt ekstremite: kompozit skorun bacak uzunluğunun %94\'ünün altına inmesi ve anterior sağ-sol farkının 4 cm ve üzeri olması, Plisky ve ark. (2006) lise basketbolcularında yükselmiş sakatlık riski eşikleridir. Overhead squat 0-3 derecelendirmesi ölçüm değil değerlendirmedir, doğrudan percentile\'a eşlenir.',
-   sen:'Y-Balance lower quarter: a composite below 94% of limb length and an anterior left/right difference of 4 cm or more are the raised-injury-risk thresholds Plisky et al. (2006) reported in high-school basketball. The overhead squat 0-3 grade is a rating rather than a measurement, so it maps straight onto a percentile.'},
+   str:'Plisky ve ark. 2006, 235 lise basketbolcusu: Y-Balance kompozit skorunun bacak uzunluğunun %94\'ünün altına inmesi ve anterior sağ-sol farkının 4 cm ve üzeri olması yükselmiş sakatlık riski eşikleridir. Overhead squat 0-3 derecelendirmesi bir ölçüm değil değerlendirmedir; popülasyonla karşılaştırılmaz, doğrudan percentile\'a eşlenir.',
+   sen:'Plisky et al. 2006, 235 high-school basketball players: a Y-Balance composite below 94% of limb length and an anterior left/right difference of 4 cm or more are the raised-injury-risk thresholds. The overhead squat 0-3 grade is a rating rather than a measurement — it is not compared with a population at all, it maps straight onto a percentile.'},
   {tr:'Mobilite / ROM',en:'Mobility / ROM',
-   str:'Ağırlık taşıyan lunge testi; sporcularda yaklaşık 34-35 derecenin altı kısıtlı kabul edilir. ASLR 0-3 derecelendirmesi doğrudan percentile\'a eşlenir.',
-   sen:'Weight-bearing lunge test; below roughly 34-35 degrees is the restricted range reported for athletes. The ASLR 0-3 grade maps straight onto a percentile.'},
+   str:'Trinidad-Fernández ve ark. 2022, 693 sakatlıksız genç lisanslı basketbolcu (U12-U17): ağırlık taşıyan lunge 10.68 ± 2.44 cm, normal bant 8.44-13.11 cm. Uygulama dereceyle kaydettiği için 3.6°/cm oranıyla dereceye çevrildi. Sağ-sol farkının karşılığı bir çalışma yok; o satır uygulama değeridir. ASLR 0-3 derecelendirmesi doğrudan percentile\'a eşlenir.',
+   sen:'Trinidad-Fernández et al. 2022, 693 non-injured youth federated basketball players (U12-U17): weight-bearing lunge 10.68 ± 2.44 cm, normal band 8.44-13.11 cm. Converted at the usual 3.6°/cm because this app records the lunge in degrees. There is no equivalent study for the left/right gap, so that row is a practitioner value. The ASLR 0-3 grade maps straight onto a percentile.'},
   {tr:'Göreceli Kuvvet',en:'Relative Strength',
-   str:'Genç sporcular için yerleşmiş bir 1RM/vücut ağırlığı normu yoktur; NSCA genç direnç antrenmanı bildirisi, sıklıkla norm gibi kullanılan 1.5 × vücut ağırlığı ölçütünün kanıtla desteklenmediğini açıkça belirtir. Buradaki satır yetişkin standartlarından ölçeklenmiş bir uygulama referansıdır — yayınlanmış bir norm değildir.',
-   sen:'No 1RM/body-mass norm is established for youth athletes, and the NSCA youth resistance training position statement states plainly that the 1.5x body mass figure often used as one is not supported. The row here is a practitioner reference scaled down from adult standards — not a published norm.'},
+   str:'Genç sporcular için yerleşmiş bir 1RM/vücut ağırlığı normu yoktur; NSCA genç direnç antrenmanı bildirisi, norm gibi dolaşan 1.5 × vücut ağırlığı ölçütünün desteklenmediğini açıkça belirtir. Satır, genel antrenman standartlarından değil ergen sporculardan çıpalandı: 15.2 ± 1.3 yaşta 1RM squat 102.5 ± 30.1 kg, 15.5 yaşta genç basketbolcu vücut ağırlığı 78.9 ± 12.0 kg — yaklaşık 1.30 × vücut ağırlığı. Diğer yaşlar buradan uzatıldı.',
+   sen:'No 1RM/body-mass norm is established for youth athletes, and the NSCA youth resistance training position statement states plainly that the 1.5x body mass figure often used as one is not supported. The row is anchored on adolescent athletes rather than on general training standards: a 1RM squat of 102.5 ± 30.1 kg at 15.2 ± 1.3 years against a youth basketball body mass of 78.9 ± 12.0 kg at 15.5 years, so about 1.30 x body mass. The surrounding ages are extrapolated from that.'},
   {tr:'Dikey Power',en:'Vertical Power',
    str:'Ramos ve ark. 2021, 12-16 yaş Portekiz bölgesel basketbolcuları: peak height velocity\'de CMJ ortancası 30.1 cm. Erkek oyuncularda U14 32.6 ± 6.4 cm ve U18 38.2 ± 11.3 cm değerleriyle çapraz kontrol edildi.',
-   sen:'Ramos et al. 2021, Portuguese regional players aged 12-16: CMJ median 30.1 cm at peak height velocity. Cross-checked against 32.6 ± 6.4 cm at U14 and 38.2 ± 11.3 cm at U18 in male players.'},
+   sen:'Ramos et al. 2021, Portuguese regional basketball players aged 12-16: CMJ median 30.1 cm at peak height velocity. Cross-checked against 32.6 ± 6.4 cm at U14 and 38.2 ± 11.3 cm at U18 in male players.'},
   {tr:'Reaktif Kuvvet',en:'Reactive Strength',
-   str:'Drop jump RSI uygulama bantları: 2.5 üzeri çok iyi, 2.0 civarı iyi, 1.5 altı gelişim gerektirir. Yayınlanmış genç yaş RSI normları sınırlı olduğu için yetişkin bantları çıpa alınıp genç yıllara ölçeklendi.',
-   sen:'Drop-jump RSI practitioner bands: above 2.5 excellent, around 2.0 good, below 1.5 needs development. Published youth RSI norms are thin, so the adult bands are the anchor and the youth years are scaled from them.'},
+   str:'Sporcular için drop jump RSI bantları: 2.5 üzeri çok iyi, 2.0 civarı iyi, 1.5 altı gelişim gerektirir. Yayınlanmış genç yaş RSI normları sınırlı olduğu için yetişkin sporcu bantları çıpa alınıp genç yıllara uzatıldı.',
+   sen:'Drop-jump RSI bands for athletes: above 2.5 excellent, around 2.0 good, below 1.5 needs development. Published youth RSI norms are thin, so the adult athlete bands are the anchor and the youth years are extrapolated from them.'},
   {tr:'Yatay Power',en:'Horizontal Power',
-   str:'Yedi Avrupa ülkesinden 6-18 yaş durarak uzun atlama percentile\'ları; erkeklerde 11-18 yaş 50. percentile 147/162/175/186/195/202/207/210 cm. Antrenmanlı sporcu düzeyine yükseltildi.',
-   sen:'Standing broad jump percentiles for ages 6-18 across seven European nations; the 50th percentile for boys aged 11-18 runs 147/162/175/186/195/202/207/210 cm. Lifted to a trained-athlete level.'},
+   str:'Antrenmanlı popülasyon referansı YOK. Durarak uzun atlama için mevcut percentile tabloları okul popülasyonlarına aittir; sporcu olmayanlarla kıyaslamamak için bu sütun her iki modda da takım içi okunur.',
+   sen:'NO trained-population reference. The standing broad jump percentile tables that exist are school populations, so rather than compare athletes with non-athletes this column is read within the squad in both modes.'},
   {tr:'Lateral Power',en:'Lateral Power',
-   str:'Lateral countermovement jump için yayınlanmış referans değer yok — bu sütun her iki modda da takım içi okunur.',
-   sen:'There is no published reference for a lateral countermovement jump, so this column is read within the squad in both modes.'},
+   str:'Antrenmanlı popülasyon referansı YOK — lateral countermovement jump için yayınlanmış bir referans değer yok, bu sütun her iki modda da takım içi okunur.',
+   sen:'NO trained-population reference — nothing is published for a lateral countermovement jump, so this column is read within the squad in both modes.'},
   {tr:'Hız / Yön Değiştirme',en:'Speed / COD',
-   str:'Ramos ve ark. 2021 (peak height velocity\'de 20 m 3.34 s, T-test 10.31 s), üst yaşlarda basketbol standardına taşındı; 5-0-5 bantları (<2.30 elit, 2.30-2.50 iyi, 2.50-2.70 ortalama). Hangi test girildiyse referans satırı ona göre seçilir. Yaygın olarak alıntılanan yetişkin T-test bantları (<9.5 çok iyi, 9.5-10.5 iyi) basketbola değil genel takım sporlarına ait bir ölçektir; bu yüzden o "iyi" bandındaki bir süre burada yine de düşük okunur.',
-   sen:'Ramos et al. 2021 (20 m 3.34 s and T-test 10.31 s at peak height velocity), carried out to a senior basketball standard; the 5-0-5 bands (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average). The reference row follows whichever test was actually entered. The widely quoted adult T-test bands (<9.5 excellent, 9.5-10.5 good) are a general team-sport scale rather than a basketball one, so a time inside that "good" band still reads low here.'},
+   str:'Ramos ve ark. 2021 (peak height velocity\'de 20 m 3.34 s, T-test 10.31 s), üst yaşlarda basketbol standardına taşındı; sporcular için 5-0-5 bantları (<2.30 elit, 2.30-2.50 iyi, 2.50-2.70 ortalama). Hangi test girildiyse referans satırı ona göre seçilir. Yaygın olarak alıntılanan yetişkin T-test bantları (<9.5 çok iyi, 9.5-10.5 iyi) basketbola değil genel takım sporlarına ait bir ölçektir; bu yüzden o "iyi" bandındaki bir süre burada yine de düşük okunur.',
+   sen:'Ramos et al. 2021 (20 m 3.34 s and T-test 10.31 s at peak height velocity), carried out to a senior basketball standard; the 5-0-5 athlete bands (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average). The reference row follows whichever test was actually entered. The widely quoted adult T-test bands (<9.5 excellent, 9.5-10.5 good) are a general team-sport scale rather than a basketball one, so a time inside that "good" band still reads low here.'},
   {tr:'İş Kapasitesi',en:'Work Capacity',
-   str:'20 m shuttle run VO2max tahmini. Erkek basketbolcular yaklaşık 50-60 ml/kg/dk aralığındadır; FITNESSGRAM sağlıklı uygunluk bölgesi tabanı (13 yaş 41.1, 17 yaş 44.2) bir sağlık alt sınırıdır, oyun standardının belirgin altındadır.',
-   sen:'20 m shuttle run as a VO2max estimate. Male basketball players sit around 50-60 ml/kg/min; the FITNESSGRAM healthy-fitness-zone floor for boys (41.1 at 13 rising to 44.2 at 17) is a health minimum, well under the playing standard.'},
+   str:'İyi antrenmanlı genç basketbolcularda 20 m shuttle run\'ın tahmin ettiği VO2max: 48.9 ± 4.1 ml/kg/dk. Shuttle bu popülasyonda doğrudan ölçülen VO2max\'i olduğundan düşük gösterir (48.9\'a karşı 55.5); uygulama shuttle\'ın kendi sayısını kaydettiği için referans da o sayıdır. Okul popülasyonuna ait FITNESSGRAM sağlık bandı referans olarak kullanılmadı.',
+   sen:'VO2max as the 20 m shuttle run estimates it in well-trained young basketball players: 48.9 ± 4.1 ml/kg/min. The shuttle underestimates directly measured VO2max in this population (48.9 against 55.5), and since this app records the shuttle\'s own number that is what the reference is. The school-population FITNESSGRAM health band is not used as a reference.'},
 ];
 const abPosShift=(metric,pos)=>{
   const t=AB_POS_SHIFT[metric],g=AB_POS_GRP[pos];
@@ -11068,6 +11091,9 @@ body{font-family:'Arimo',Arial,sans-serif;color:var(--text);background:#fff;font
    three levels have to stay readable in greyscale too, so each carries its word. */
 table.mx{margin-bottom:12px}
 table.mx thead th{font-size:7.5px;line-height:1.2}
+/* Every quality column the same width on paper as well — table-layout:fixed is
+   already set on every table here, so only the name column needs a width. */
+table.mx th.ath,table.mx td.ath{width:17%}
 td.lv{padding:3px 2px;text-align:center}
 td.lv .lt{display:block;font-size:8.5px;font-weight:700;line-height:1.2}
 td.lv .lt i{font-style:normal;font-size:7.5px;opacity:.7}
@@ -11116,8 +11142,8 @@ tbody tr:nth-child(even) td{background:#fafbfc}
   <tbody>${body}</tbody>
 </table>
 <div class="note">${esc(L(`Seviye eşikleri: P${AB_Z_STRONG} ve üzeri İYİ, P${AB_Z_WATCH}-${AB_Z_STRONG-1} ORTALAMA, P${AB_Z_WATCH} altı ZAYIF. Testi girilmemiş bir özellik boş bırakılır, "ortalama" sayılmaz; ✎ işaretli hücreler antrenör tarafından elle ayarlanmıştır. `,
-  `Level cut-offs: P${AB_Z_STRONG} and above is GOOD, P${AB_Z_WATCH}-${AB_Z_STRONG-1} AVERAGE, below P${AB_Z_WATCH} WEAK. A quality with no test entered is left empty rather than counted as average; cells marked ✎ were set by hand by the coach. `))}${refNorm?esc(L('Seviyeler, sporcunun test günündeki yaşı ve pozisyonu için literatürden alınan referans değerlere göre okunmuştur; referans değerler erkek genç basketbolcular ve antrenmanlı genç sporculardan derlenmiştir. "· takım" ile işaretli hücrelerde yaş/pozisyon referansı bulunmadığı için takım içi sıralama kullanılmıştır. Pozisyon düzeltmesi yalnızca literatürün tutarlı fark bildirdiği özelliklere (hız/yön değiştirme, iş kapasitesi, göreceli kuvvet, yatay power) uygulanır. Göreceli kuvvet için yerleşmiş bir genç yaş normu yoktur; kullanılan satır yetişkin standartlarından ölçeklenmiş bir uygulama referansıdır. ',
-  'Levels were read against reference values from the literature for the athlete\'s age on the day of the test and their playing position; those references are drawn from male youth basketball players and trained youth athletes. Cells marked "· squad" had no age/position reference and fall back to the within-team ranking. A position adjustment is applied only to the qualities where the literature reports a consistent difference (speed/change of direction, work capacity, relative strength, horizontal power). No youth norm is established for relative strength; the row used there is a practitioner reference scaled from adult standards. ')):''}${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
+  `Level cut-offs: P${AB_Z_STRONG} and above is GOOD, P${AB_Z_WATCH}-${AB_Z_STRONG-1} AVERAGE, below P${AB_Z_WATCH} WEAK. A quality with no test entered is left empty rather than counted as average; cells marked ✎ were set by hand by the coach. `))}${refNorm?esc(L('Seviyeler, sporcunun test günündeki yaşı ve pozisyonu için literatürden alınan referans değerlere göre okunmuştur. Karşılaştırma grubu her zaman antrenmanlı bir popülasyondur — mümkün olan yerde genç basketbolcular; okul popülasyonu verisi kullanılmamıştır. "· takım" ile işaretli hücrelerde antrenmanlı popülasyon referansı bulunmadığı için (yatay power, lateral power, ya da doğum tarihi girilmemiş sporcu) takım içi sıralama kullanılmıştır. Pozisyon düzeltmesi yalnızca literatürün tutarlı fark bildirdiği özelliklere (hız/yön değiştirme, iş kapasitesi, göreceli kuvvet) uygulanır. Göreceli kuvvet için yerleşmiş bir genç yaş normu yoktur; kullanılan satır yetişkin standartlarından ölçeklenmiş bir uygulama referansıdır. ',
+  'Levels were read against reference values from the literature for the athlete\'s age on the day of the test and their playing position. The comparison group is always a trained population — youth basketball players where possible; school-population data is not used. Cells marked "· squad" had no trained-population reference (horizontal power, lateral power, or an athlete with no date of birth) and fall back to the within-team ranking. A position adjustment is applied only to the qualities where the literature reports a consistent difference (speed/change of direction, work capacity, relative strength). No youth norm is established for relative strength; the row used there is a practitioner reference scaled from adult standards. ')):''}${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
   'Percentiles are within-team rankings; on time-based tests (T-test, sprint, left/right asymmetry) a lower value is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb. The "highest percentile" column is the quality to keep on a maintenance dose — P60 and above is the strong zone. Foundational strength is left unassessed when no strength test has been entered. An asymmetry is not a diagnosis. In youth age groups maturity status has a marked effect on these tests and was not measured; the comparison assumes every athlete was tested on the same protocol.'))}</div>
 <div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
 </body></html>`;
@@ -11227,8 +11253,8 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
           'Every athlete gets a level in each of the nine qualities: green good, yellow average, red weak. The level is read against reference values from the literature for the athlete\'s age on the day of the test and their playing position — the value becomes a z score, the position\'s expected difference is taken off, and the result is read back as a percentile. P60 and above is good, P40-59 average, below P40 weak. A quality with no test behind it stays empty rather than counting as average. Click a cell to set the level by hand; a hand-set cell is marked with a dashed border and a ✎. Click a name to open that athlete\'s reasoned assessment.')}
     </div>
     <div className="help" style={{marginBottom:14,opacity:.8}}>
-      {Lx('Referans değerler erkek genç basketbolcular ve antrenmanlı genç sporculardan derlenmiştir; uygulamada cinsiyet alanı olmadığı için kız takımlarında bu mod sistematik olarak düşük okur — o takımlarda "takım içi" referansını kullan. Karşılaştırma ayrıca aynı protokolü varsayar: drop jump RSI (düşüş yüksekliği, temas süresi ölçümü), yatay sıçrama (çift ayak, durarak) ve shuttle run (VO2max tahmini) protokolleri referansla aynı olmalıdır.',
-          'The reference values are drawn from male youth basketball players and trained youth athletes; there is no sex field in this app, so on a girls\' squad this mode reads systematically low — use the within-team reference there. It also assumes the protocol matches: drop-jump RSI (drop height, how contact time is taken), horizontal jump (two-footed, from standing) and shuttle run (as a VO2max estimate) have to be the ones the reference was built on.')}
+      {Lx('Karşılaştırma grubu her zaman başka sporculardır: her satır antrenmanlı bir popülasyondan alınmıştır — mümkün olan yerde genç basketbolcular, olmayan yerde antrenmanlı genç sporcular. Okul popülasyonu fitness verisi bilerek kullanılmadı; sporcu olmayanlarla kıyaslanan bir takım her yerde "iyi" okur. Antrenmanlı referansı bulunmayan iki özellikte (yatay power ve lateral power) uydurma bir eğri kullanmak yerine takım içi okuma yapılır. Uygulamada cinsiyet alanı olmadığı için kız takımlarında bu mod sistematik olarak düşük okur — o takımlarda "takım içi" referansını seç. Protokol de referansla aynı olmalıdır: drop jump RSI (düşüş yüksekliği, temas süresi), shuttle run (VO2max tahmini) ve ayak bileği lunge testi.',
+          'The comparison group is always other athletes: every row is drawn from a trained population — youth basketball players where such a study exists, other trained youth athletes where it does not. School-population fitness data is deliberately not used; a squad measured against non-athletes reads good everywhere. The two qualities with no trained reference — horizontal power and lateral power — are read within the squad rather than against an invented curve. There is no sex field in this app, so on a girls\' squad this mode reads systematically low — pick the within-team reference there. The protocol has to match the reference too: drop-jump RSI (drop height, how contact time is taken), shuttle run (as a VO2max estimate) and the ankle lunge test.')}
     </div>
     <div className="cmp-bar">
       <div className="cmp-fld">
@@ -11341,8 +11367,8 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
           <ul>
             {AB_SOURCES.map((x,i)=><li key={i}><b>{Lx(x.tr,x.en)}</b> — {Lx(x.str,x.sen)}</li>)}
           </ul>
-          <p className="warn">{Lx('Pozisyon farkı yalnızca literatürün tutarlı bir fark bildirdiği özelliklere uygulanır: hız/yön değiştirme, iş kapasitesi, göreceli kuvvet ve (daha zayıf olarak) yatay power. Dikey power, reaktif kuvvet, lateral power, hareket kontrolü ve mobilitede pozisyon düzeltmesi yoktur — sıçrama yüksekliği pozisyonlar arasında yalnızca çok az değişir. Uygulanan farklar bu çalışmaların bildirdiği küçük-orta etki büyüklükleridir, yayınlanmış pozisyon normları değildir.',
-                     'A position difference is applied only to the qualities where the literature reports a consistent one: speed/change of direction, work capacity, relative strength, and — more weakly — horizontal power. Vertical power, reactive strength, lateral power, movement control and mobility carry no position adjustment, because jump height barely differs between positions. The magnitudes are the small-to-moderate effects those studies report, not published per-position norms.')}</p>
+          <p className="warn">{Lx('Pozisyon farkı yalnızca literatürün tutarlı bir fark bildirdiği özelliklere uygulanır: hız/yön değiştirme, iş kapasitesi ve göreceli kuvvet. Dikey power, reaktif kuvvet, hareket kontrolü ve mobilitede pozisyon düzeltmesi yoktur — sıçrama yüksekliği pozisyonlar arasında yalnızca çok az değişir. Yatay ve lateral power\'da zaten antrenmanlı popülasyon referansı olmadığı için pozisyon düzeltmesinin tutunacağı bir şey yoktur. Uygulanan farklar bu çalışmaların bildirdiği küçük-orta etki büyüklükleridir, yayınlanmış pozisyon normları değildir.',
+                     'A position difference is applied only to the qualities where the literature reports a consistent one: speed/change of direction, work capacity and relative strength. Vertical power, reactive strength, movement control and mobility carry no position adjustment, because jump height barely differs between positions. Horizontal and lateral power have no trained-population reference in the first place, so there is nothing for a position expectation to attach to. The magnitudes are the small-to-moderate effects those studies report, not published per-position norms.')}</p>
         </div>}
       </div>
     </>}
