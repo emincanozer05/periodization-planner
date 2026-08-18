@@ -1765,6 +1765,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .abm-legend .sw.l-yel{background:rgba(224,201,140,.72)}
 .abm-legend .sw.l-red{background:rgba(224,150,150,.72)}
 .abm-legend .sw.l-na{background:var(--bg2)}
+/* Where the numbers came from, folded away until a coach asks. */
+.abm-src{margin-top:12px}
+.abm-src-t{background:none;border:none;padding:0;cursor:pointer;font-size:11.5px;font-weight:600;
+  color:var(--text2);font-family:'IBM Plex Mono',monospace;letter-spacing:.03em}
+.abm-src-t:hover{color:var(--text)}
+.abm-src-b{margin-top:9px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;
+  padding:13px 15px;font-size:11.5px;line-height:1.65;color:var(--muted)}
+.abm-src-b p{margin:0 0 9px}
+.abm-src-b p.warn{margin:9px 0 0;padding-top:9px;border-top:1px solid var(--border);color:var(--text2)}
+.abm-src-b ul{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px}
+.abm-src-b b{color:var(--text2);font-weight:700}
 @media(max-width:640px){.abm .abm-ath{min-width:140px;max-width:140px}}
 /* The four performance zones, used wherever a percentile is printed. */
 .pz-red{color:#f0836c}.pz-org{color:#f5a524}.pz-yel{color:#e3d24b}.pz-grn{color:#3ddc84}.pz-na{color:var(--dim)}
@@ -3483,10 +3494,200 @@ const abOvOf=(pf,metric)=>{
 };
 /* What the cell actually shows: the coach's level where there is one, the computed
    level otherwise. Both are reported, so the screen can mark which is which. */
-const abCell=(pf,metric)=>{
-  const pct=pf.m?(pf.m[metric]==null?null:pf.m[metric]):null;
+/* ---- The age-and-position reference -----------------------------------------
+   A within-team percentile answers "who in this squad", which is the wrong question
+   when the squad is small, when it is uniformly under-trained, or when the athlete
+   is a 13-year-old being ranked against 17-year-olds. The reference below answers
+   "how does this compare with players of this age, in this position" instead.
+
+   Every quality is scored the same way: the athlete's value is turned into a z
+   against a reference mean and SD for their age, the direction is corrected for
+   tests where a lower number is the better one, the position expectation is taken
+   off, and the z is read back as a percentile. The level cut-offs do not move — a
+   quality is still good at P60+, average at P40-59, weak below P40. Only the
+   comparison group changes.
+
+   WHAT THE REFERENCE IS, AND IS NOT. The tables are male youth basketball players
+   and trained youth athletes. There is no sex field in this app, so a girls' squad
+   is being read against boys' values and every reading will sit low — use the
+   within-team reference for those teams. Ages outside 12-18 clamp to the nearest
+   row, with the last row standing for senior. The values are assembled from the
+   sources named in AB_SOURCES below; where a study reports a median and percentiles
+   rather than a mean and an SD, the SD is the one implied by the reported spread.
+
+   Sources, quality by quality:
+   · Vertical power — Ramos et al. 2021 (Front. Sports Act. Living), Portuguese
+     regional players 12-16: CMJ median 30.1 cm at peak height velocity. Cross-checked
+     against U14 32.6 +/- 6.4 and U18 38.2 +/- 11.3 cm for male players.
+   · Reactive strength — drop-jump RSI practitioner bands (>2.5 excellent, ~2.0 good,
+     <1.5 needs development) anchored at senior and scaled down through the youth
+     years, because published youth RSI norms are thin.
+   · Horizontal power — standing broad jump percentiles for boys 11-18 across seven
+     European nations (50th percentile 147/162/175/186/195/202/207/210 cm), lifted to
+     a trained-athlete level.
+   · Speed and change of direction — Ramos et al. 2021 (20 m 3.34 s, T-test 10.31 s at
+     PHV), the adult T-test bands (<9.5 excellent, 9.5-10.5 good, 10.5-11.5 average)
+     and the 5-0-5 bands (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average).
+   · Movement control — Y-Balance lower quarter: composite below 94% of limb length
+     and an anterior left/right difference of 4 cm or more are the Plisky et al. 2006
+     high-school basketball injury-risk thresholds.
+   · Mobility — weight-bearing lunge; below roughly 34-35 degrees is the restricted
+     range reported for athletes.
+   · Work capacity — 20 m shuttle VO2max. Male basketball players sit around
+     50-60 ml/kg/min; the FITNESSGRAM healthy-fitness-zone floor for boys (41.1 at 13
+     rising to 44.2 at 17) is a health minimum, well under the playing standard.
+   · Relative strength — no youth 1RM/body-mass norm is established, and the NSCA
+     youth resistance training position statement rejects the 1.5x body mass figure
+     that circulates as one. The row below is a practitioner reference scaled from
+     adult standards, and it is labelled as such wherever it is shown.
+   · Lateral power — nothing publishable exists for a lateral countermovement jump,
+     so this column stays on the within-team reading in both modes.
+   ---------------------------------------------------------------------------- */
+const AB_REF_TEAM='team',AB_REF_NORM='norm';
+const AB_NORM_AGE0=12;   // first row; the last row stands for 19 and over
+/* m = reference mean per age (12,13,14,15,16,17,18,19+), sd = its spread.
+   `flat` is for the screening tests that are not read against age. */
+const AB_NORMS={
+  cmj:   {dir:'hi',m:[26.5,28.5,31.0,33.5,36.0,38.0,39.5,42.0],sd:[5.0,5.2,5.5,5.5,5.5,5.5,5.5,5.5]},
+  sj:    {dir:'hi',m:[24.0,26.0,28.5,31.0,33.5,35.5,37.0,39.5],sd:[4.6,4.8,5.0,5.0,5.0,5.0,5.0,5.0]},
+  vj:    {dir:'hi',m:[31.5,34.0,37.0,40.0,43.0,45.5,47.0,50.0],sd:[6.0,6.2,6.5,6.5,6.5,6.5,6.5,6.5]},
+  rsi:   {dir:'hi',m:[1.10,1.20,1.30,1.42,1.55,1.65,1.72,1.85],sd:[0.28,0.28,0.30,0.30,0.30,0.30,0.30,0.30]},
+  hj:    {dir:'hi',m:[175,188,200,210,218,224,228,235],      sd:[19,19,20,20,20,20,20,20]},
+  /* The T-test row is anchored on the 10.31 s median Ramos et al. report at peak
+     height velocity and carried out to a senior basketball standard. The adult
+     "9.5-10.5 = good" bands that circulate are a general team-sport scale, not a
+     basketball one — against basketball players a 10.5 s senior is genuinely slow,
+     and the row reads it that way on purpose. */
+  tt:    {dir:'lo',m:[11.10,10.70,10.31,10.05,9.90,9.80,9.75,9.65],sd:[0.72,0.68,0.65,0.62,0.60,0.58,0.56,0.55]},
+  f505:  {dir:'lo',m:[2.86,2.78,2.70,2.63,2.57,2.52,2.49,2.45],sd:[0.20,0.19,0.19,0.18,0.18,0.18,0.18,0.18]},
+  sp20:  {dir:'lo',m:[3.85,3.62,3.42,3.28,3.18,3.10,3.04,2.95],sd:[0.28,0.25,0.22,0.20,0.19,0.18,0.17,0.16]},
+  relStr:{dir:'hi',m:[0.80,0.90,1.05,1.20,1.35,1.45,1.55,1.75],sd:[0.28,0.28,0.30,0.30,0.30,0.30,0.30,0.32]},
+  shut:  {dir:'hi',m:[45.0,46.5,48.0,49.5,51.0,52.0,52.5,53.5],sd:[4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5]},
+  ybComp:{dir:'hi',flat:{m:97.5,sd:6.5}},
+  ybGap: {dir:'lo',flat:{m:2.6,sd:1.8}},
+  adf:   {dir:'hi',flat:{m:38.5,sd:6.0}},
+  adfGap:{dir:'lo',flat:{m:3.0,sd:2.5}},
+};
+/* An FMS-style 0-3 grade is a rating, not a measurement — there is no mean and SD to
+   put it through, so the grade maps straight onto a percentile. A clean 3 is where
+   the screen stops asking questions; a 1 or a 0 is what it was designed to find. */
+const AB_ORD_PCT={0:3,1:18,2:50,3:85};
+const abOrdPct=v=>{const n=Math.round(Number(v));return(isFinite(n)&&AB_ORD_PCT[n]!=null)?AB_ORD_PCT[n]:null;};
+/* Positions group the way the literature compares them: guards, forwards, centres.
+   A team on another sport has position codes this map does not carry, and then no
+   position expectation is applied at all. */
+const AB_POS_GRP={PG:'G',SG:'G',SF:'F',PF:'F',C:'C'};
+/* How much better or worse a position is expected to be, in reference SDs, so a
+   centre is not marked weak for being a centre and a guard is not flattered for
+   being a guard. Only the qualities where the literature reports a consistent
+   positional difference carry one:
+   · guards and forwards out-sprint centres and beat them on the T-drill, and guards
+     carry the higher VO2max — so speed/COD and work capacity are shifted;
+   · centres and forwards are the stronger players in absolute terms, which is the
+     same thing as saying their strength relative to body mass runs lower;
+   · horizontal power follows the sprint, more weakly.
+   Vertical power, reactive strength, lateral power, movement control and mobility
+   carry NO shift: jump height differs only slightly between positions, and what
+   does separate them there is force-time shape rather than the height this app
+   records. The magnitudes are the small-to-moderate effects those studies report,
+   not published per-position norms. */
+const AB_POS_SHIFT={
+  cod:   {G:0.30,F:0,C:-0.35},
+  work:  {G:0.25,F:0,C:-0.30},
+  relstr:{G:0.20,F:0,C:-0.25},
+  horiz: {G:0.15,F:0,C:-0.25},
+};
+/* Standard normal CDF (Zelen & Severo / Abramowitz-Stegun 26.2.17), which is how a
+   z becomes the percentile the level is read from. */
+const abPhi=z=>{
+  const t=1/(1+0.2316419*Math.abs(z)),d=0.3989422804014327*Math.exp(-z*z/2);
+  const pr=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429))));
+  return z>0?1-pr:pr;
+};
+/* The same sources as the block comment above, in the form the screen shows them —
+   one line per quality, so a coach can see what a level was measured against without
+   leaving the table. */
+const AB_SOURCES=[
+  {tr:'Hareket Kontrolü',en:'Movement Control',
+   str:'Y-Balance alt ekstremite: kompozit skorun bacak uzunluğunun %94\'ünün altına inmesi ve anterior sağ-sol farkının 4 cm ve üzeri olması, Plisky ve ark. (2006) lise basketbolcularında yükselmiş sakatlık riski eşikleridir. Overhead squat 0-3 derecelendirmesi ölçüm değil değerlendirmedir, doğrudan percentile\'a eşlenir.',
+   sen:'Y-Balance lower quarter: a composite below 94% of limb length and an anterior left/right difference of 4 cm or more are the raised-injury-risk thresholds Plisky et al. (2006) reported in high-school basketball. The overhead squat 0-3 grade is a rating rather than a measurement, so it maps straight onto a percentile.'},
+  {tr:'Mobilite / ROM',en:'Mobility / ROM',
+   str:'Ağırlık taşıyan lunge testi; sporcularda yaklaşık 34-35 derecenin altı kısıtlı kabul edilir. ASLR 0-3 derecelendirmesi doğrudan percentile\'a eşlenir.',
+   sen:'Weight-bearing lunge test; below roughly 34-35 degrees is the restricted range reported for athletes. The ASLR 0-3 grade maps straight onto a percentile.'},
+  {tr:'Göreceli Kuvvet',en:'Relative Strength',
+   str:'Genç sporcular için yerleşmiş bir 1RM/vücut ağırlığı normu yoktur; NSCA genç direnç antrenmanı bildirisi, sıklıkla norm gibi kullanılan 1.5 × vücut ağırlığı ölçütünün kanıtla desteklenmediğini açıkça belirtir. Buradaki satır yetişkin standartlarından ölçeklenmiş bir uygulama referansıdır — yayınlanmış bir norm değildir.',
+   sen:'No 1RM/body-mass norm is established for youth athletes, and the NSCA youth resistance training position statement states plainly that the 1.5x body mass figure often used as one is not supported. The row here is a practitioner reference scaled down from adult standards — not a published norm.'},
+  {tr:'Dikey Power',en:'Vertical Power',
+   str:'Ramos ve ark. 2021, 12-16 yaş Portekiz bölgesel basketbolcuları: peak height velocity\'de CMJ ortancası 30.1 cm. Erkek oyuncularda U14 32.6 ± 6.4 cm ve U18 38.2 ± 11.3 cm değerleriyle çapraz kontrol edildi.',
+   sen:'Ramos et al. 2021, Portuguese regional players aged 12-16: CMJ median 30.1 cm at peak height velocity. Cross-checked against 32.6 ± 6.4 cm at U14 and 38.2 ± 11.3 cm at U18 in male players.'},
+  {tr:'Reaktif Kuvvet',en:'Reactive Strength',
+   str:'Drop jump RSI uygulama bantları: 2.5 üzeri çok iyi, 2.0 civarı iyi, 1.5 altı gelişim gerektirir. Yayınlanmış genç yaş RSI normları sınırlı olduğu için yetişkin bantları çıpa alınıp genç yıllara ölçeklendi.',
+   sen:'Drop-jump RSI practitioner bands: above 2.5 excellent, around 2.0 good, below 1.5 needs development. Published youth RSI norms are thin, so the adult bands are the anchor and the youth years are scaled from them.'},
+  {tr:'Yatay Power',en:'Horizontal Power',
+   str:'Yedi Avrupa ülkesinden 6-18 yaş durarak uzun atlama percentile\'ları; erkeklerde 11-18 yaş 50. percentile 147/162/175/186/195/202/207/210 cm. Antrenmanlı sporcu düzeyine yükseltildi.',
+   sen:'Standing broad jump percentiles for ages 6-18 across seven European nations; the 50th percentile for boys aged 11-18 runs 147/162/175/186/195/202/207/210 cm. Lifted to a trained-athlete level.'},
+  {tr:'Lateral Power',en:'Lateral Power',
+   str:'Lateral countermovement jump için yayınlanmış referans değer yok — bu sütun her iki modda da takım içi okunur.',
+   sen:'There is no published reference for a lateral countermovement jump, so this column is read within the squad in both modes.'},
+  {tr:'Hız / Yön Değiştirme',en:'Speed / COD',
+   str:'Ramos ve ark. 2021 (peak height velocity\'de 20 m 3.34 s, T-test 10.31 s), üst yaşlarda basketbol standardına taşındı; 5-0-5 bantları (<2.30 elit, 2.30-2.50 iyi, 2.50-2.70 ortalama). Hangi test girildiyse referans satırı ona göre seçilir. Yaygın olarak alıntılanan yetişkin T-test bantları (<9.5 çok iyi, 9.5-10.5 iyi) basketbola değil genel takım sporlarına ait bir ölçektir; bu yüzden o "iyi" bandındaki bir süre burada yine de düşük okunur.',
+   sen:'Ramos et al. 2021 (20 m 3.34 s and T-test 10.31 s at peak height velocity), carried out to a senior basketball standard; the 5-0-5 bands (<2.30 elite, 2.30-2.50 good, 2.50-2.70 average). The reference row follows whichever test was actually entered. The widely quoted adult T-test bands (<9.5 excellent, 9.5-10.5 good) are a general team-sport scale rather than a basketball one, so a time inside that "good" band still reads low here.'},
+  {tr:'İş Kapasitesi',en:'Work Capacity',
+   str:'20 m shuttle run VO2max tahmini. Erkek basketbolcular yaklaşık 50-60 ml/kg/dk aralığındadır; FITNESSGRAM sağlıklı uygunluk bölgesi tabanı (13 yaş 41.1, 17 yaş 44.2) bir sağlık alt sınırıdır, oyun standardının belirgin altındadır.',
+   sen:'20 m shuttle run as a VO2max estimate. Male basketball players sit around 50-60 ml/kg/min; the FITNESSGRAM healthy-fitness-zone floor for boys (41.1 at 13 rising to 44.2 at 17) is a health minimum, well under the playing standard.'},
+];
+const abPosShift=(metric,pos)=>{
+  const t=AB_POS_SHIFT[metric],g=AB_POS_GRP[pos];
+  return(t&&g&&t[g]!=null)?t[g]:0;
+};
+/* One value against the reference. Returns null — not a middling percentile —
+   whenever the reference cannot speak: no norm for this test, no age on the
+   athlete, or nothing entered. */
+function abNormPct(v,key,age,shift){
+  const n=AB_NORMS[key];
+  if(v==null||!n)return null;
+  let mean,sd;
+  if(n.flat){mean=n.flat.m;sd=n.flat.sd;}
+  else{
+    if(age==null)return null;
+    const i=Math.max(0,Math.min(n.m.length-1,Math.round(age)-AB_NORM_AGE0));
+    mean=n.m[i];sd=n.sd[i];
+  }
+  if(!(sd>0))return null;
+  let z=(v-mean)/sd;
+  if(n.dir==='lo')z=-z;
+  z-=(shift||0);
+  return Math.max(1,Math.min(99,Math.round(abPhi(z)*100)));
+}
+/* The reference reading of one quality, built from the same test entries the
+   within-team reading used — same values, same weighting, different yardstick. */
+function abNormMetric(entries,metric,age,pos){
+  const sh=abPosShift(metric,pos);
+  const out=(entries||[]).map(e=>{
+    const pct=e.n==='ord'?abOrdPct(e.v):abNormPct(e.v,e.n,age,sh);
+    return pct==null?null:{...e,p:pct};
+  }).filter(Boolean);
+  if(!out.length)return null;
+  return{pct:abMean(out.map(x=>x.p)),used:out};
+}
+
+/* What the cell shows. In reference mode the age-and-position reading is used where
+   it exists and the squad reading stands in where it does not — a lateral jump, an
+   athlete with no date of birth — and `src` says which one answered, so the screen
+   never passes off one reference as the other. */
+const abCell=(pf,metric,ref)=>{
+  const team=pf.m?(pf.m[metric]==null?null:pf.m[metric]):null;
+  const norm=pf.mn?(pf.mn[metric]==null?null:pf.mn[metric]):null;
+  const useNorm=ref!==AB_REF_TEAM&&norm!=null;
+  const pct=useNorm?norm:team;
+  const src=pct==null?null:(useNorm?'norm':'team');
   const auto=abLevel(pct),ov=abOvOf(pf,metric);
-  return{pct,auto,ov,level:ov||auto};
+  return{pct,auto,ov,src,level:ov||auto,team,norm};
+};
+/* The evidence line behind a cell, in whichever reference answered it. */
+const abCellUsed=(pf,metric,ref)=>{
+  const c=abCell(pf,metric,ref);
+  return(c.src==='norm'?pf.mnu&&pf.mnu[metric]:pf.mu&&pf.mu[metric])||[];
 };
 
 /* A coach's own test only counts as strength data when its name says it is a
@@ -3558,6 +3759,13 @@ function abBoard(athletes,scope,customTests){
      a coach who they are being ranked against. */
   const ageOfA=a=>{if(!a||!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth),n=new Date();
     let y=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
+  /* The age a reference row should be picked with is the age on the day of the test.
+     Reading a record taken two years ago against today's age would mark an athlete
+     down for having had a birthday. */
+  const ageAt=(a,d)=>{if(!a||!a.dateOfBirth)return null;if(!d)return ageOfA(a);
+    const b=parseD(a.dateOfBirth),n=parseD(d);if(!n||isNaN(n))return ageOfA(a);
+    let y=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))y--;
+    return(y>=0&&y<60)?y:null;};
   const ages=rows.map(r=>ageOfA(r.a)).filter(x=>x!=null).sort((a,b)=>a-b);
   const medAge=ages.length?ages[Math.floor(ages.length/2)]:null;
   const youth=ages.length>0&&ages[0]<18;
@@ -3570,22 +3778,22 @@ function abBoard(athletes,scope,customTests){
     const pc=abPct(v.cmj,pools.cmj,'hi'),ps=abPct(v.sj,pools.sj,'hi');
     if(pc!=null||ps!=null){
       p.vert=abMean([pc,ps]);
-      used.vert=[pc!=null?{k:'CMJ',v:v.cmj,u:' cm',p:pc}:null,
-                 ps!=null?{k:'SJ',v:v.sj,u:' cm',p:ps}:null].filter(Boolean);
+      used.vert=[pc!=null?{k:'CMJ',v:v.cmj,u:' cm',p:pc,n:'cmj'}:null,
+                 ps!=null?{k:'SJ',v:v.sj,u:' cm',p:ps,n:'sj'}:null].filter(Boolean);
     }else{
       const pv=abPct(v.vj,pools.vj,'hi');
       if(pv!=null){
-        p.vert=pv;used.vert=[{k:L('Dikey Sıçrama','Vertical Jump'),v:v.vj,u:' cm',p:pv}];
+        p.vert=pv;used.vert=[{k:L('Dikey Sıçrama','Vertical Jump'),v:v.vj,u:' cm',p:pv,n:'vj'}];
         notes.vert=L('CMJ/SJ yok — dikey sıçrama üzerinden okundu.','No CMJ/SJ — read from the plain vertical jump.');
       }
     }
     /* C. REAKTİF KUVVET / ELASTİKİYET — drop jump RSI, and nothing else. No RSI,
        no verdict: reactive strength is not inferred from a countermovement jump. */
     const pr=abPct(v.rsi,pools.rsi,'hi');
-    if(pr!=null){p.reactive=pr;used.reactive=[{k:'DJ RSI',v:v.rsi,u:'',p:pr}];}
+    if(pr!=null){p.reactive=pr;used.reactive=[{k:'DJ RSI',v:v.rsi,u:'',p:pr,n:'rsi'}];}
     /* D. YATAY POWER — horizontal jump. */
     const ph=abPct(v.hj,pools.hj,'hi');
-    if(ph!=null){p.horiz=ph;used.horiz=[{k:L('Yatay Sıçrama','Horizontal Jump'),v:v.hj,u:' cm',p:ph}];}
+    if(ph!=null){p.horiz=ph;used.horiz=[{k:L('Yatay Sıçrama','Horizontal Jump'),v:v.hj,u:' cm',p:ph,n:'hj'}];}
     /* E. LATERAL / TEK BACAK — the level of each side first, then the imbalance
        between them, ranked as a percentage of the better limb rather than as raw
        centimetres. Both matter and neither is the whole answer, so the level carries
@@ -3610,17 +3818,19 @@ function abBoard(athletes,scope,customTests){
     /* F. HIZ / YÖN DEĞİŞTİRME — T-test, inverted. With no T-test the 5-0-5 and
        then the 20 m sprint stand in, named each time: a 5-0-5 is one turn and a
        20 m is a straight line, and the sentence written about them says so. */
-    let pcod=abPct(v.tt,pools.tt,'lo'),cv=v.tt,ck='T-Test';
+    let pcod=abPct(v.tt,pools.tt,'lo'),cv=v.tt,ck='T-Test',cn='tt';
     if(pcod==null){
-      pcod=abPct(v.f505,pools.f505,'lo');cv=v.f505;ck='5-0-5';
+      pcod=abPct(v.f505,pools.f505,'lo');cv=v.f505;ck='5-0-5';cn='f505';
       if(pcod!=null)notes.cod=L('T-test yok — 5-0-5 üzerinden okundu.','No T-test — read from the 5-0-5.');
     }
     if(pcod==null){
-      pcod=abPct(v.sp20,pools.sp20,'lo');cv=v.sp20;ck='20m Sprint';
+      pcod=abPct(v.sp20,pools.sp20,'lo');cv=v.sp20;ck='20m Sprint';cn='sp20';
       if(pcod!=null)notes.cod=L('T-test/5-0-5 yok — 20m sprint üzerinden okundu; bu düz hızdır, yön değiştirme değil.',
                                 'No T-test/5-0-5 — read from the 20m sprint, which is straight-line speed, not change of direction.');
     }
-    if(pcod!=null){p.cod=pcod;used.cod=[{k:ck,v:cv,u:' s',p:pcod}];}
+    /* The reference row follows whichever test actually stood in — a 5-0-5 is not
+       read against a T-test's numbers. */
+    if(pcod!=null){p.cod=pcod;used.cod=[{k:ck,v:cv,u:' s',p:pcod,n:cn}];}
     /* A. TEMEL KUVVET — only ever from a real strength test. */
     const strP=strTests.map((c,i)=>({c,v:v.str[i],p:abPct(v.str[i],strCols[i],'hi')})).filter(x=>x.p!=null);
     if(strP.length){
@@ -3655,31 +3865,46 @@ function abBoard(athletes,scope,customTests){
           pYb=abPct(v.ybComp,pools.ybComp,'hi'),
           pYbG=abPct(v.ybGap,pools.ybGap,'lo');
     setM('movement',abMean([pOhs,pYb,pYbG]),[
-      pOhs!=null?{k:L('Overhead Squat','Overhead Squat'),v:v.ohs,u:'/3',p:pOhs}:null,
-      pYb!=null?{k:L('YBT kompozit','YBT composite'),v:v.ybComp,u:'%',p:pYb}:null,
-      pYbG!=null?{k:L('YBT sağ-sol farkı','YBT R-L gap'),v:v.ybGap,u:' cm',p:pYbG}:null]);
+      pOhs!=null?{k:L('Overhead Squat','Overhead Squat'),v:v.ohs,u:'/3',p:pOhs,n:'ord'}:null,
+      pYb!=null?{k:L('YBT kompozit','YBT composite'),v:v.ybComp,u:'%',p:pYb,n:'ybComp'}:null,
+      pYbG!=null?{k:L('YBT sağ-sol farkı','YBT R-L gap'),v:v.ybGap,u:' cm',p:pYbG,n:'ybGap'}:null]);
     const pAdf=abPct(v.adf,pools.adf,'hi'),
           pAdfG=abPct(v.adfGap,pools.adfGap,'lo'),
           pAslr=abPct(v.aslr,pools.aslr,'hi');
     setM('mobility',abMean([pAdf,pAdfG,pAslr]),[
-      pAdf!=null?{k:L('Ayak bileği DF','Ankle DF'),v:v.adf,u:'°',p:pAdf}:null,
-      pAdfG!=null?{k:L('Ayak bileği farkı','Ankle DF gap'),v:v.adfGap,u:'°',p:pAdfG}:null,
-      pAslr!=null?{k:'ASLR',v:v.aslr,u:'/3',p:pAslr}:null]);
+      pAdf!=null?{k:L('Ayak bileği DF','Ankle DF'),v:v.adf,u:'°',p:pAdf,n:'adf'}:null,
+      pAdfG!=null?{k:L('Ayak bileği farkı','Ankle DF gap'),v:v.adfGap,u:'°',p:pAdfG,n:'adfGap'}:null,
+      pAslr!=null?{k:'ASLR',v:v.aslr,u:'/3',p:pAslr,n:'ord'}:null]);
     const relP=strTests.map((c,i)=>({c,v:v.relStr[i],p:abPct(v.relStr[i],relCols[i],'hi')}))
       .filter(x=>x.p!=null);
     setM('relstr',abMean(relP.map(x=>x.p)),
-      relP.map(x=>({k:x.c.name,v:x.v,u:AB_REL_RE.test(x.c.name||'')?'':L(' × VA',' × BM'),p:x.p})));
+      relP.map(x=>({k:x.c.name,v:x.v,u:AB_REL_RE.test(x.c.name||'')?'':L(' × VA',' × BM'),p:x.p,n:'relStr'})));
     ['vert','reactive','horiz','lateral','cod'].forEach(k=>setM(k,p[k],used[k]));
     /* Shuttle Run is entered as a VO2max estimate, so a higher number is the
        better one — the same field read as a time would rank the squad backwards. */
     const pShut=abPct(v.shut,pools.shut,'hi');
-    setM('work',pShut,[pShut!=null?{k:'Shuttle Run',v:v.shut,u:'',p:pShut}:null]);
-    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,m,mu,...abVerdict(p,dsi)};
+    setM('work',pShut,[pShut!=null?{k:'Shuttle Run',v:v.shut,u:'',p:pShut,n:'shut'}:null]);
+    /* ---- the same nine qualities, read against age and position -----------
+       Same values and same weighting as above; only the yardstick changes. A
+       quality whose tests have no published reference — the lateral jump — and an
+       athlete with no date of birth simply produce nothing here, and the table
+       falls back to the squad reading for that cell. Age is taken at the date of
+       the test, not today, so an old record is not read against the age the
+       athlete has since grown into. */
+    const nAge=ageAt(r.a,r.t&&r.t.date),nPos=r.a.position;
+    const mn={},mnu={};
+    AB_METRICS.forEach(mt=>{
+      const nr=abNormMetric(mu[mt.id],mt.id,nAge,nPos);
+      if(nr&&nr.pct!=null){mn[mt.id]=nr.pct;mnu[mt.id]=nr.used;}
+    });
+    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,m,mu,mn,mnu,
+      normAge:nAge,normPos:AB_POS_GRP[nPos]||null,...abVerdict(p,dsi)};
   });
   /* An athlete with no test in this period is not an athlete with no needs —
      they stand in the VERİ YETERSİZ box, which is the honest answer. */
   const untested=all.filter(r=>!r.t).map(r=>({id:r.a.id,a:r.a,t:null,v:null,p:{},used:{},notes:{},dsi:null,
-    ctx:{age:ageOfA(r.a),medAge,youth},m:{},mu:{},...abVerdict({},null)}));
+    ctx:{age:ageOfA(r.a),medAge,youth},m:{},mu:{},mn:{},mnu:{},
+    normAge:ageOfA(r.a),normPos:AB_POS_GRP[r.a.position]||null,...abVerdict({},null)}));
   return{profiles:[...profiles,...untested],pool:rows.length,strengthNames:strTests.map(c=>c.name)};
 }
 
@@ -10810,7 +11035,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
    readings one row per athlete, so the sheet answers both "where does the squad
    stand on this quality" and "what did this athlete get". Nothing is recomputed
    here — the screen worked it out, hand-set levels included. */
-function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool}){
+function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool,refLabel,refNorm}){
   const w=window.open('','_blank','width=1100,height=900');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -10818,7 +11043,7 @@ function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool}){
   const mxHead=(matrix.cols||[]).map(c=>`<th>${esc(c)}</th>`).join('');
   const mxBody=(matrix.rows||[]).map(r=>`<tr>
     <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc(r.sub)}</span></td>
-    ${r.cells.map(c=>`<td class="lv l-${c.lvl||'na'}"><span class="lt">${esc(c.label)}${c.man?' <i>✎</i>':''}</span><span class="lp">${c.pct==null?(c.man?L('elle','by hand'):'—'):'P'+c.pct}</span></td>`).join('')}
+    ${r.cells.map(c=>`<td class="lv l-${c.lvl||'na'}"><span class="lt">${esc(c.label)}${c.man?' <i>✎</i>':''}</span><span class="lp">${c.pct==null?(c.man?L('elle','by hand'):'—'):'P'+c.pct+(c.sq?' '+L('· takım','· squad'):'')}</span></td>`).join('')}
   </tr>`).join('');
   const body=rows.map(r=>`<tr>
     <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></td>
@@ -10873,7 +11098,7 @@ tbody tr:nth-child(even) td{background:#fafbfc}
 <div class="hdr">
   ${logo?`<img src="${logo}" alt=""/>`:''}
   <div><h1>${esc(teamName||'')}</h1>
-    <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${esc(L('takım içi percentile','within-team percentile'))} n=${pool}</div></div>
+    <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${esc(refLabel||'')}${refNorm?'':` n=${pool}`}</div></div>
   <div class="ttl">${L('SPORCU<br>SEVİYE TABLOSU','ATHLETE<br>LEVEL TABLE')}</div>
 </div>
 <table class="mx">
@@ -10890,8 +11115,9 @@ tbody tr:nth-child(even) td{background:#fafbfc}
   </tr></thead>
   <tbody>${body}</tbody>
 </table>
-<div class="note">${esc(L(`Seviyeler takım içi percentile'den üretilir: P${AB_Z_STRONG} ve üzeri İYİ, P${AB_Z_WATCH}-${AB_Z_STRONG-1} ORTALAMA, P${AB_Z_WATCH} altı ZAYIF. Testi girilmemiş bir özellik boş bırakılır, "ortalama" sayılmaz; ✎ işaretli hücreler antrenör tarafından elle ayarlanmıştır. `,
-  `Levels come from the within-team percentile: P${AB_Z_STRONG} and above is GOOD, P${AB_Z_WATCH}-${AB_Z_STRONG-1} AVERAGE, below P${AB_Z_WATCH} WEAK. A quality with no test entered is left empty rather than counted as average; cells marked ✎ were set by hand by the coach. `))}${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
+<div class="note">${esc(L(`Seviye eşikleri: P${AB_Z_STRONG} ve üzeri İYİ, P${AB_Z_WATCH}-${AB_Z_STRONG-1} ORTALAMA, P${AB_Z_WATCH} altı ZAYIF. Testi girilmemiş bir özellik boş bırakılır, "ortalama" sayılmaz; ✎ işaretli hücreler antrenör tarafından elle ayarlanmıştır. `,
+  `Level cut-offs: P${AB_Z_STRONG} and above is GOOD, P${AB_Z_WATCH}-${AB_Z_STRONG-1} AVERAGE, below P${AB_Z_WATCH} WEAK. A quality with no test entered is left empty rather than counted as average; cells marked ✎ were set by hand by the coach. `))}${refNorm?esc(L('Seviyeler, sporcunun test günündeki yaşı ve pozisyonu için literatürden alınan referans değerlere göre okunmuştur; referans değerler erkek genç basketbolcular ve antrenmanlı genç sporculardan derlenmiştir. "· takım" ile işaretli hücrelerde yaş/pozisyon referansı bulunmadığı için takım içi sıralama kullanılmıştır. Pozisyon düzeltmesi yalnızca literatürün tutarlı fark bildirdiği özelliklere (hız/yön değiştirme, iş kapasitesi, göreceli kuvvet, yatay power) uygulanır. Göreceli kuvvet için yerleşmiş bir genç yaş normu yoktur; kullanılan satır yetişkin standartlarından ölçeklenmiş bir uygulama referansıdır. ',
+  'Levels were read against reference values from the literature for the athlete\'s age on the day of the test and their playing position; those references are drawn from male youth basketball players and trained youth athletes. Cells marked "· squad" had no age/position reference and fall back to the within-team ranking. A position adjustment is applied only to the qualities where the literature reports a consistent difference (speed/change of direction, work capacity, relative strength, horizontal power). No youth norm is established for relative strength; the row used there is a practitioner reference scaled from adult standards. ')):''}${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
   'Percentiles are within-team rankings; on time-based tests (T-test, sprint, left/right asymmetry) a lower value is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb. The "highest percentile" column is the quality to keep on a maintenance dose — P60 and above is the strong zone. Foundational strength is left unassessed when no strength test has been entered. An asymmetry is not a diagnosis. In youth age groups maturity status has a marked effect on these tests and was not measured; the comparison assumes every athlete was tested on the same protocol.'))}</div>
 <div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
 </body></html>`;
@@ -10926,6 +11152,8 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
   const[selId,setSelId]=useState(null);
   const[json,setJson]=useState(false);
   const[menu,setMenu]=useState(null);   // {athId,metric} — the cell whose level menu is open
+  const[ref,setRef]=useState(AB_REF_NORM); // which yardstick the levels are read against
+  const[srcOpen,setSrcOpen]=useState(false);
   const board=useMemo(()=>abBoard(athletes,scope,customTests),[athletes,scope,customTests]);
   /* The squad reads in shirt-number order, the way a coach knows it. A table sorted
      by one quality would quietly rank the athletes, which is what the levels are
@@ -10952,14 +11180,19 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
     if(Object.keys(cell).length)all[key]=cell;else delete all[key];
     updAth(pf.a.id,{needLevels:all});
   };
+  const refLabel=ref===AB_REF_NORM
+    ?Lx('Yaş + pozisyon normu (literatür)','Age + position reference (literature)')
+    :Lx('Takım içi percentile','Within-team percentile');
   const matrixOut=()=>rowsView.map(pf=>({
     name:pf.a.name||'—',
-    sub:[pf.a.number?'#'+pf.a.number:'',POS_FULL[pf.a.position]||pf.a.position||''].filter(Boolean).join(' · '),
-    cells:AB_METRICS.map(mt=>{const c=abCell(pf,mt.id);
-      return{lvl:c.level,label:c.level?abLevelName(c.level):'—',pct:c.pct,man:!!c.ov};}),
+    sub:[pf.a.number?'#'+pf.a.number:'',POS_FULL[pf.a.position]||pf.a.position||'',
+      pf.normAge!=null?pf.normAge+'y':''].filter(Boolean).join(' · '),
+    cells:AB_METRICS.map(mt=>{const c=abCell(pf,mt.id,ref);
+      return{lvl:c.level,label:c.level?abLevelName(c.level):'—',pct:c.pct,man:!!c.ov,
+        sq:ref===AB_REF_NORM&&c.src==='team'};}),
   }));
   const doPrint=()=>printAthleteBoxes({
-    pool:board.pool,teamName:setup.teamName,scopeLabel,
+    pool:board.pool,teamName:setup.teamName,scopeLabel,refLabel,refNorm:ref===AB_REF_NORM,
     matrix:{cols:AB_METRICS.map(m=>abMetricName(m.id)),rows:matrixOut()},
     rows:board.profiles.map(p=>({
       name:p.a.name||'—',number:p.a.number||'',pos:POS_FULL[p.a.position]||p.a.position||'',date:p.t?p.t.date:'',
@@ -10971,9 +11204,13 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
   /* The copied JSON carries the table as well as the verdict, and says of every
      level whether it was computed or set by hand. */
   const copyAll=()=>abCopy(JSON.stringify(board.profiles.map(p=>({...abJson(p,board),
-    levels:AB_METRICS.reduce((o,mt)=>{const c=abCell(p,mt.id);
+    reference:refLabel,age:p.normAge,position_group:p.normPos,
+    levels:AB_METRICS.reduce((o,mt)=>{const c=abCell(p,mt.id,ref);
       o[abMetricName(mt.id)]={level:c.level?abLevelName(c.level):null,percentile:c.pct,
-        source:c.ov?Lx('manuel','manual'):(c.auto?Lx('otomatik','automatic'):null)};
+        read_against:c.src==='norm'?Lx('yaş + pozisyon normu','age + position reference')
+                    :c.src==='team'?Lx('takım içi','within-team'):null,
+        set_by:c.ov?Lx('manuel','manual'):(c.auto?Lx('otomatik','automatic'):null),
+        evidence:abUsedTxt(abCellUsed(p,mt.id,ref))||null};
       return o;},{}),
   })),null,2),Lx('Tüm sporcuların JSON çıktısı kopyalandı.','The JSON for every athlete has been copied.'));
 
@@ -10986,12 +11223,12 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
       </div>
     </div>
     <div className="help" style={{marginBottom:14}}>
-      {Lx('Her sporcu dokuz fiziksel özelliğin her birinde bir seviyeye yerleşir: yeşil iyi, sarı ortalama, kırmızı zayıf. Seviye takım içi percentile\'den otomatik üretilir — P60 ve üzeri iyi, P40-59 ortalama, P40 altı zayıf; süre bazlı testlerde düşük değer iyidir ve sıralama ters çevrilir. Testi olmayan bir özellik boş kalır, "ortalama" sayılmaz. Bir hücreye tıklayarak seviyeyi elle değiştirebilirsin; elle verilen seviye kesik çerçeve ve ✎ ile işaretlenir, "Otomatik" seçeneği hücreyi test verisine geri bırakır. Bir isme tıklayınca o sporcunun gerekçeli değerlendirmesi açılır.',
-          'Every athlete gets a level in each of the nine qualities: green good, yellow average, red weak. The level comes from the within-team percentile — P60 and above is good, P40-59 average, below P40 weak; on time-based tests a lower number is the better one and the ranking is inverted. A quality with no test behind it stays empty rather than counting as average. Click a cell to set the level by hand; a hand-set cell is marked with a dashed border and a ✎, and "Auto" gives it back to the test data. Click a name to open that athlete\'s reasoned assessment.')}
+      {Lx('Her sporcu dokuz fiziksel özelliğin her birinde bir seviyeye yerleşir: yeşil iyi, sarı ortalama, kırmızı zayıf. Seviye, sporcunun test tarihindeki yaşı ve pozisyonu için literatürden alınan referans değerlere göre üretilir — değer bir z skoruna çevrilir, pozisyonun beklenen farkı düşülür ve percentile olarak okunur. P60 ve üzeri iyi, P40-59 ortalama, P40 altı zayıf. Testi olmayan bir özellik boş kalır, "ortalama" sayılmaz. Bir hücreye tıklayarak seviyeyi elle değiştirebilirsin; elle verilen seviye kesik çerçeve ve ✎ ile işaretlenir. Bir isme tıklayınca o sporcunun gerekçeli değerlendirmesi açılır.',
+          'Every athlete gets a level in each of the nine qualities: green good, yellow average, red weak. The level is read against reference values from the literature for the athlete\'s age on the day of the test and their playing position — the value becomes a z score, the position\'s expected difference is taken off, and the result is read back as a percentile. P60 and above is good, P40-59 average, below P40 weak. A quality with no test behind it stays empty rather than counting as average. Click a cell to set the level by hand; a hand-set cell is marked with a dashed border and a ✎. Click a name to open that athlete\'s reasoned assessment.')}
     </div>
     <div className="help" style={{marginBottom:14,opacity:.8}}>
-      {Lx('Karşılaştırma, sporcuların aynı protokolle test edildiğini varsayar — özellikle drop jump RSI (düşüş yüksekliği, temas süresi ölçümü) ve sıçrama protokolleri takım genelinde aynı olmalıdır.',
-          'The comparison assumes every athlete was tested on the same protocol — drop-jump RSI in particular (drop height, how contact time is taken) and the jump protocols have to match across the squad.')}
+      {Lx('Referans değerler erkek genç basketbolcular ve antrenmanlı genç sporculardan derlenmiştir; uygulamada cinsiyet alanı olmadığı için kız takımlarında bu mod sistematik olarak düşük okur — o takımlarda "takım içi" referansını kullan. Karşılaştırma ayrıca aynı protokolü varsayar: drop jump RSI (düşüş yüksekliği, temas süresi ölçümü), yatay sıçrama (çift ayak, durarak) ve shuttle run (VO2max tahmini) protokolleri referansla aynı olmalıdır.',
+          'The reference values are drawn from male youth basketball players and trained youth athletes; there is no sex field in this app, so on a girls\' squad this mode reads systematically low — use the within-team reference there. It also assumes the protocol matches: drop-jump RSI (drop height, how contact time is taken), horizontal jump (two-footed, from standing) and shuttle run (as a VO2max estimate) have to be the ones the reference was built on.')}
     </div>
     <div className="cmp-bar">
       <div className="cmp-fld">
@@ -10999,6 +11236,13 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
         <select value={scope} onChange={e=>{setScope(e.target.value);setSelId(null);}} style={{width:170}}>
           <option value="latest">{Lx('Son test','Latest test')}</option>
           {TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
+        </select>
+      </div>
+      <div className="cmp-fld">
+        <label>{Lx('Neye göre','Read against')}</label>
+        <select value={ref} onChange={e=>{setRef(e.target.value);setMenu(null);}} style={{width:250}}>
+          <option value={AB_REF_NORM}>{Lx('Yaş + pozisyon normu (literatür)','Age + position reference (literature)')}</option>
+          <option value={AB_REF_TEAM}>{Lx('Takım içi percentile','Within-team percentile')}</option>
         </select>
       </div>
       <div className="cmp-fld">
@@ -11034,12 +11278,23 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
                 </button>
               </th>
               {AB_METRICS.map(mt=>{
-                const c=abCell(pf,mt.id);
+                const c=abCell(pf,mt.id,ref);
+                const fell=ref===AB_REF_NORM&&c.src==='team';
                 const open=menu&&menu.athId===pf.id&&menu.metric===mt.id;
+                /* The tooltip names the yardstick as well as the numbers, because a
+                   cell that fell back to the squad means something different from
+                   one the reference could answer. */
+                const why=c.pct==null
+                  ?Lx('Bu özelliği ölçen test girilmemiş','No test on record measures this quality')
+                  :[abUsedTxt(abCellUsed(pf,mt.id,ref)),
+                    c.src==='norm'
+                      ?Lx(`referans: ${pf.normAge==null?'':pf.normAge+' yaş'}${pf.normPos?' · '+(POS_FULL[pf.a.position]||''):''}`,
+                          `reference: ${pf.normAge==null?'':pf.normAge+'y'}${pf.normPos?' · '+(POS_FULL[pf.a.position]||''):''}`)
+                      :Lx(`referans: takım içi (${board.pool} sporcu)`,`reference: within-team (${board.pool} athletes)`)
+                   ].filter(Boolean).join(' — ');
                 return(<td key={mt.id} className="abm-c">
                   <button type="button" className={'abm-lv l-'+(c.level||'na')+(c.ov?' man':'')}
-                    title={c.pct==null?Lx('Bu özelliği ölçen test girilmemiş','No test on record measures this quality')
-                                      :abUsedTxt(pf.mu[mt.id])}
+                    title={why}
                     onClick={e=>{
                       if(open){setMenu(null);return;}
                       const r=e.currentTarget.getBoundingClientRect();
@@ -11047,7 +11302,8 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
                       setMenu({athId:pf.id,metric:mt.id,x:r.left+r.width/2,y:up?r.top:r.bottom,up});
                     }}>
                     <span className="t">{c.level?abLevelName(c.level):'—'}</span>
-                    <span className="p">{c.pct==null?(c.ov?Lx('elle','by hand'):Lx('veri yok','no data')):'P'+c.pct}</span>
+                    <span className="p">{c.pct==null?(c.ov?Lx('elle','by hand'):Lx('veri yok','no data'))
+                      :'P'+c.pct+(fell?' · '+Lx('takım','squad'):'')}</span>
                   </button>
                   {open&&<div className="abm-menu" style={{left:menu.x,top:menu.y,
                     transform:`translateX(-50%)${menu.up?' translateY(-100%)':''}`}}>
@@ -11073,6 +11329,21 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
         <span className="it"><span className="sw l-red"/>{abLevelName('red')} · &lt;P{AB_Z_WATCH}</span>
         <span className="it"><span className="sw l-na"/>{Lx('Test yok — değerlendirilmedi','No test — not assessed')}</span>
         <span className="it">✎ {Lx('elle ayarlandı','set by hand')}</span>
+        {ref===AB_REF_NORM&&<span className="it">· {Lx('takım','squad')} — {Lx('bu hücrede yaş/pozisyon referansı yok, takım içi okundu','no age/position reference for this cell, read within the squad')}</span>}
+      </div>
+      <div className="abm-src">
+        <button type="button" className="abm-src-t" onClick={()=>setSrcOpen(v=>!v)}>
+          {srcOpen?'▾':'▸'} {Lx('Referans değerler nereden geliyor?','Where the reference values come from')}
+        </button>
+        {srcOpen&&<div className="abm-src-b">
+          <p>{Lx('Referans, sporcunun test günündeki yaşı için bir ortalama ve standart sapmadan oluşur. Değer z skoruna çevrilir, süre bazlı testlerde yön ters çevrilir, pozisyonun beklenen farkı referans SD cinsinden düşülür ve sonuç percentile olarak okunur. Seviye eşikleri değişmez: P60+ iyi, P40-59 ortalama, P40 altı zayıf — değişen tek şey kiminle karşılaştırıldığıdır.',
+                     'The reference is a mean and an SD for the athlete\'s age on the day of the test. The value becomes a z score, the direction is flipped on time-based tests, the position\'s expected difference is taken off in reference SDs, and the result is read back as a percentile. The level cut-offs do not move — P60+ good, P40-59 average, below P40 weak. The only thing that changes is who the athlete is being compared with.')}</p>
+          <ul>
+            {AB_SOURCES.map((x,i)=><li key={i}><b>{Lx(x.tr,x.en)}</b> — {Lx(x.str,x.sen)}</li>)}
+          </ul>
+          <p className="warn">{Lx('Pozisyon farkı yalnızca literatürün tutarlı bir fark bildirdiği özelliklere uygulanır: hız/yön değiştirme, iş kapasitesi, göreceli kuvvet ve (daha zayıf olarak) yatay power. Dikey power, reaktif kuvvet, lateral power, hareket kontrolü ve mobilitede pozisyon düzeltmesi yoktur — sıçrama yüksekliği pozisyonlar arasında yalnızca çok az değişir. Uygulanan farklar bu çalışmaların bildirdiği küçük-orta etki büyüklükleridir, yayınlanmış pozisyon normları değildir.',
+                     'A position difference is applied only to the qualities where the literature reports a consistent one: speed/change of direction, work capacity, relative strength, and — more weakly — horizontal power. Vertical power, reactive strength, lateral power, movement control and mobility carry no position adjustment, because jump height barely differs between positions. The magnitudes are the small-to-moderate effects those studies report, not published per-position norms.')}</p>
+        </div>}
       </div>
     </>}
 
