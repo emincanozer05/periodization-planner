@@ -1699,32 +1699,73 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cmp-tbl tfoot .ath-c{color:var(--dim);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
 .cmp-legend{margin-top:10px;font-size:11px;color:var(--dim);display:flex;gap:14px;flex-wrap:wrap}
 .cmp-legend b{font-weight:700}
-/* ===== Athletes Boxes =====
-   The board: one card per need box, the athletes standing in it listed under the
-   box's own colour. An empty box keeps its place at reduced weight — "nobody is
-   in this box" is a reading of the squad, not a gap in the screen. */
+/* ===== Athlete level table =====
+   Athletes down the left, the nine physical qualities across the top, one level in
+   every cell. The first column stays put while the qualities scroll sideways, so a
+   coach reading the far-right column still knows whose row they are on. */
 .abx-pool{font-size:12px;color:var(--text2);padding:6px 0}
 .abx-pool .warn{color:#f5a524}
-.abx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:12px}
-.abx-box{background:var(--elevated);border:1px solid var(--border);border-top:3px solid var(--bx,var(--border2));
-  border-radius:13px;padding:12px 13px 13px;display:flex;flex-direction:column;gap:9px}
-.abx-box.empty{opacity:.42}
-.abx-hd{display:flex;align-items:baseline;gap:7px}
-.abx-no{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--bx);flex:none}
-.abx-t{flex:1;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;letter-spacing:.02em;
-  color:var(--bx);line-height:1.25}
-.abx-n{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--text2);
-  background:var(--bg2);border-radius:6px;padding:1px 7px;flex:none}
-.abx-none{font-size:11px;color:var(--dim)}
-.abx-lst{display:flex;flex-direction:column;gap:5px}
-.abx-ch{display:flex;align-items:center;gap:7px;width:100%;text-align:left;cursor:pointer;
-  background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:6px 9px;
-  transition:border-color .12s,background .12s}
-.abx-ch:hover{border-color:var(--border2)}
-.abx-ch.on{border-color:var(--bx);background:var(--accent-bg)}
-.abx-ch .no{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);flex:none}
-.abx-ch .nm{flex:1;font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.abx-ch .pc{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;flex:none}
+.abm-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:13px;background:var(--elevated)}
+.abm{border-collapse:separate;border-spacing:0;width:100%;min-width:940px}
+.abm th,.abm td{padding:0;border-bottom:1px solid var(--border)}
+.abm thead th{position:sticky;top:0;z-index:3;background:var(--elevated);border-bottom:1px solid var(--border2);
+  padding:10px 8px;vertical-align:bottom;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--mc,var(--text2));line-height:1.3;white-space:normal}
+.abm thead th.abm-ath{text-align:left;z-index:4}
+.abm .abm-ath{position:sticky;left:0;background:var(--elevated);z-index:2;
+  min-width:186px;max-width:186px;padding:8px 12px;text-align:left;
+  border-right:1px solid var(--border2)}
+.abm tbody tr:hover .abm-ath,.abm tbody tr:hover td{background:var(--bg2)}
+.abm tbody tr.on .abm-ath,.abm tbody tr.on td{background:var(--accent-bg)}
+.abm-nmb{display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:0}
+.abm-nmb .nm{display:block;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;
+  color:var(--text);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abm-nmb .sub{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--dim);
+  letter-spacing:.03em;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.abm-c{position:relative;padding:5px 5px}
+/* The three levels, in muted tones — the cell is read for its level, not shouted at. */
+.abm-lv{position:relative;width:100%;min-height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  border:1px solid transparent;border-radius:9px;cursor:pointer;padding:5px 4px;
+  transition:filter .12s,border-color .12s}
+.abm-lv:hover{filter:brightness(1.18)}
+.abm-lv .t{font-family:'Space Grotesk',sans-serif;font-size:11.5px;font-weight:700;letter-spacing:.01em;line-height:1.1}
+.abm-lv .p{font-family:'IBM Plex Mono',monospace;font-size:9px;opacity:.72;line-height:1.1}
+.abm-lv.l-grn{background:rgba(150,201,166,.15);border-color:rgba(150,201,166,.34);color:#96c9a6}
+.abm-lv.l-yel{background:rgba(224,201,140,.15);border-color:rgba(224,201,140,.34);color:#e0c98c}
+.abm-lv.l-red{background:rgba(224,150,150,.15);border-color:rgba(224,150,150,.34);color:#e09696}
+.abm-lv.l-na{background:var(--bg2);border-color:var(--border);color:var(--dim)}
+.abm-lv.l-na .t{font-weight:500}
+/* A hand-set cell says so — the pencil is how a coach tells their own call apart
+   from the one the test data produced. */
+.abm-lv.man{border-style:dashed;border-width:1.5px}
+.abm-lv.man::after{content:'✎';position:absolute;top:7px;right:8px;font-size:9px;opacity:.7}
+/* Fixed rather than absolute: the table scrolls sideways inside .abm-wrap, and a
+   menu positioned inside that box would be clipped on the bottom rows. It is
+   anchored to the cell's own rectangle instead, and flips above the cell when
+   there is no room for it below. */
+.abm-menu{position:fixed;z-index:20;min-width:132px;background:var(--panel);
+  border:1px solid var(--border2);border-radius:10px;
+  padding:5px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.abm-menu button{display:flex;align-items:center;gap:7px;width:100%;text-align:left;cursor:pointer;
+  background:none;border:none;border-radius:7px;padding:6px 8px;font-size:12px;font-weight:600;color:var(--text2)}
+.abm-menu button:hover{background:var(--bg2)}
+.abm-menu button.on{color:var(--text)}
+.abm-menu .sw{width:11px;height:11px;border-radius:4px;flex:none;border:1px solid rgba(255,255,255,.14)}
+.abm-menu .sw.l-grn{background:rgba(150,201,166,.72)}
+.abm-menu .sw.l-yel{background:rgba(224,201,140,.72)}
+.abm-menu .sw.l-red{background:rgba(224,150,150,.72)}
+.abm-menu .sw.l-auto{background:var(--bg2)}
+.abm-menu .sep{height:1px;background:var(--border);margin:3px 2px}
+.abm-bd{position:fixed;inset:0;z-index:15}
+.abm-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:11px;font-size:11px;color:var(--dim)}
+.abm-legend .it{display:flex;align-items:center;gap:6px}
+.abm-legend .sw{width:11px;height:11px;border-radius:4px;border:1px solid rgba(255,255,255,.14)}
+.abm-legend .sw.l-grn{background:rgba(150,201,166,.72)}
+.abm-legend .sw.l-yel{background:rgba(224,201,140,.72)}
+.abm-legend .sw.l-red{background:rgba(224,150,150,.72)}
+.abm-legend .sw.l-na{background:var(--bg2)}
+@media(max-width:640px){.abm .abm-ath{min-width:140px;max-width:140px}}
 /* The four performance zones, used wherever a percentile is printed. */
 .pz-red{color:#f0836c}.pz-org{color:#f5a524}.pz-yel{color:#e3d24b}.pz-grn{color:#3ddc84}.pz-na{color:var(--dim)}
 .zf-red{background:#f0836c}.zf-org{background:#f5a524}.zf-yel{background:#e3d24b}.zf-grn{background:#3ddc84}
@@ -3357,6 +3398,16 @@ const abMean=a=>{const v=a.filter(x=>x!=null);return v.length?Math.round(v.reduc
    centimetres would put the bigger jumper in the worse box for the same imbalance. */
 const abAsym=(a,b)=>{const x=cmpN(a),y=cmpN(b),m=Math.max(x,y);
   return(x==null||y==null||!(m>0))?null:+((Math.abs(x-y)/m)*100).toFixed(1);};
+/* abMean averages percentiles, so it rounds. A composite reach score, a
+   dorsiflexion angle or an ASLR grade must not be rounded on the way in — those go
+   through abAvg, and abMax picks the widest of the three Y-Balance reach gaps. */
+const abAvg=a=>{const v=a.filter(x=>x!=null);return v.length?+(v.reduce((x,y)=>x+y,0)/v.length).toFixed(2):null;};
+const abMax=a=>{const v=a.filter(x=>x!=null);return v.length?Math.max(...v):null;};
+/* A strength entry is already relative when its name says so. Anything else is a
+   load, and a load only becomes relative strength once it is divided by body mass —
+   with no body mass on the record it is left unassessed rather than ranked as if
+   the kilograms were the athlete's own. */
+const AB_REL_RE=/relative|göreceli|\/\s*kg|per\s*kg|\bbw\b|vücut\s*ağırlığı/i;
 /* Around this level jump asymmetry starts tracking with slower sprint and COD times
    in youth athletes. It is a monitoring flag, not a cut-off and not a diagnosis. */
 const AB_ASYM_FLAG=10;
@@ -3382,6 +3433,62 @@ const AB_ZONE_LOC={grn:['güçlü bölgede','in the strong zone'],yel:['izlem b�
 const abZoneTxt=p=>{const z=AB_ZONE_TXT[abZone(p)];return z?L(z[0],z[1]):'—';};
 const abZoneLoc=p=>{const z=AB_ZONE_LOC[abZone(p)];return z?L(z[0],z[1]):'';};
 
+/* ---- The level table --------------------------------------------------------
+   Nine physical qualities, one row per athlete, one of three levels in every cell.
+   It answers a different question from the verdict underneath it: not "what is
+   limiting this athlete the most" but "where does the whole squad stand, quality by
+   quality", which is the view a coach reads across before writing a week.
+
+   The levels are the same within-team percentile the verdict runs on, collapsed
+   from four zones to three so a cell can be read at a glance:
+     Good     P60+   the strong zone
+     Average  P40-59 the watch zone
+     Weak     <P40   development is a priority here
+   A quality with no test behind it stays empty — it is never levelled as "average"
+   just to fill the cell. Every cell can be overruled by the coach, because a
+   percentile is a comparison and the person who ran the test saw the movement. */
+const AB_METRICS=[
+  {id:'movement',tr:'Hareket Kontrolü',      en:'Movement Control',   c:'#a78bfa'},
+  {id:'mobility',tr:'Mobilite / ROM',        en:'Mobility / ROM',     c:'#f59e0b'},
+  {id:'relstr',  tr:'Göreceli Kuvvet',       en:'Relative Strength',  c:'#00ff7f'},
+  {id:'vert',    tr:'Dikey Power',           en:'Vertical Power',     c:'#0094ff'},
+  {id:'reactive',tr:'Reaktif Kuvvet',        en:'Reactive Strength',  c:'#c000ff'},
+  {id:'horiz',   tr:'Yatay Power',           en:'Horizontal Power',   c:'#ff7c00'},
+  {id:'lateral', tr:'Lateral Power',         en:'Lateral Power',      c:'#00ffd5'},
+  {id:'cod',     tr:'Hız / Yön Değiştirme',  en:'Speed / COD',        c:'#ff0040'},
+  {id:'work',    tr:'İş Kapasitesi',         en:'Work Capacity',      c:'#22d3ee'},
+];
+const abMetric=id=>AB_METRICS.find(m=>m.id===id)||null;
+const abMetricName=id=>{const m=abMetric(id);return m?L(m.tr,m.en):'—';};
+/* Three levels, in the order they are offered in the cell menu. */
+const AB_LEVELS=[
+  {id:'grn',tr:'İyi',     en:'Good'},
+  {id:'yel',tr:'Ortalama',en:'Average'},
+  {id:'red',tr:'Zayıf',   en:'Weak'},
+];
+const abLevelName=id=>{const l=AB_LEVELS.find(x=>x.id===id);return l?L(l.tr,l.en):'—';};
+/* The same two cut-offs the zones use, so the table and the verdict never disagree
+   about where an athlete stands. */
+const abLevel=p=>p==null?null:p>=AB_Z_STRONG?'grn':p>=AB_Z_WATCH?'yel':'red';
+/* Roughly what the four-option menu measures — enough to decide whether it opens
+   below the cell or above it. */
+const AB_MENU_H=168;
+/* Overrides are stored against the test record they were made on, so a new test
+   re-reads the squad rather than inheriting last season's hand corrections. */
+const abOvKey=pf=>pf&&pf.t?pf.t.id:'_none';
+const abOvOf=(pf,metric)=>{
+  const all=pf&&pf.a&&pf.a.needLevels;const box=all&&all[abOvKey(pf)];
+  const v=box&&box[metric];
+  return(v==='grn'||v==='yel'||v==='red')?v:null;
+};
+/* What the cell actually shows: the coach's level where there is one, the computed
+   level otherwise. Both are reported, so the screen can mark which is which. */
+const abCell=(pf,metric)=>{
+  const pct=pf.m?(pf.m[metric]==null?null:pf.m[metric]):null;
+  const auto=abLevel(pct),ov=abOvOf(pf,metric);
+  return{pct,auto,ov,level:ov||auto};
+};
+
 /* A coach's own test only counts as strength data when its name says it is a
    strength test. "Squat Jump" is not a squat, so anything naming a jump, a hop
    or a throw is excluded even when the rest of the name matches. */
@@ -3399,13 +3506,33 @@ const abFindTest=(cts,re)=>(cts||[]).find(c=>re.test(c.name||''))||null;
    board. Values only — the ranking happens once the whole squad has been read. */
 function abRaw(t,strTests){
   const lr=cmpN(t.lateralCmj&&t.lateralCmj.right),ll=cmpN(t.lateralCmj&&t.lateralCmj.left);
+  /* Movement control and mobility read the screening side of the battery: the
+     overhead squat grade, the Y-Balance composite and its widest left/right reach
+     gap, ankle dorsiflexion and the active straight-leg raise. */
+  const yb=ybCalc(t.yBalance);
+  const adfR=cmpN(t.ankleDF&&t.ankleDF.right),adfL=cmpN(t.ankleDF&&t.ankleDF.left);
+  const aslrR=cmpN(t.aslr&&t.aslr.right),aslrL=cmpN(t.aslr&&t.aslr.left);
+  const w=cmpN(t.weight);
+  const str=strTests.map(c=>cmpN(t.custom&&t.custom[c.id]));
   return{
     cmj:cmpN(t.cmj),sj:cmpN(t.squatJump),vj:cmpN(t.verticalJump),
     rsi:cmpN(t.dropJump),hj:cmpN(t.horizontalJump),
     lcjR:lr,lcjL:ll,lcjGap:cmpGap(lr,ll),lcjAsym:abAsym(lr,ll),
     tt:cmpN(t.tTest),f505:cmpN(t.fiveZeroFive),sp20:cmpN(t.sprint20m&&t.sprint20m.time),
-    str:strTests.map(c=>cmpN(t.custom&&t.custom[c.id])),
-    height:cmpN(t.height),weight:cmpN(t.weight),
+    str,
+    /* Relative strength: a load already entered per kilogram stands as it is, a load
+       in kilograms is divided by body mass, and without body mass there is nothing
+       to divide by — so that athlete is simply not ranked on this quality. */
+    relStr:strTests.map((c,i)=>{const val=str[i];
+      if(val==null)return null;
+      if(AB_REL_RE.test(c.name||''))return val;
+      return(w!=null&&w>0)?+(val/w).toFixed(3):null;}),
+    ohs:cmpN(t.ohs&&t.ohs.score),
+    ybComp:abAvg([yb.compR,yb.compL]),ybGap:abMax([yb.dAnt,yb.dPm,yb.dPl]),
+    adfR,adfL,adf:abAvg([adfR,adfL]),adfGap:cmpGap(adfR,adfL),
+    aslrR,aslrL,aslr:abAvg([aslrR,aslrL]),
+    shut:cmpN(t.shuttleRun),
+    height:cmpN(t.height),weight:w,
   };
 }
 
@@ -3419,8 +3546,11 @@ function abBoard(athletes,scope,customTests){
   const rows=all.filter(r=>r.t).map(r=>({...r,v:abRaw(r.t,strTests)}));
   const col=k=>rows.map(r=>r.v[k]);
   const strCols=strTests.map((c,i)=>rows.map(r=>r.v.str[i]));
+  const relCols=strTests.map((c,i)=>rows.map(r=>r.v.relStr[i]));
   const pools={cmj:col('cmj'),sj:col('sj'),vj:col('vj'),rsi:col('rsi'),hj:col('hj'),
     lcjR:col('lcjR'),lcjL:col('lcjL'),lcjAsym:col('lcjAsym'),tt:col('tt'),f505:col('f505'),sp20:col('sp20'),
+    ohs:col('ohs'),ybComp:col('ybComp'),ybGap:col('ybGap'),
+    adf:col('adf'),adfGap:col('adfGap'),aslr:col('aslr'),shut:col('shut'),
     height:col('height'),weight:col('weight')};
   /* Ages of the squad this board ranks inside. Biological maturity is what actually
      drives jump, sprint and agility numbers at this age and the app does not measure
@@ -3512,12 +3642,44 @@ function abBoard(athletes,scope,customTests){
       age:ageOfA(r.a),medAge,youth,
       strengthAbs:strP.some(x=>!/relative|göreceli|\/\s*kg|per\s*kg|\bbw\b|vücut\s*ağırlığı/i.test(x.c.name||'')),
     };
-    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,...abVerdict(p,dsi)};
+    /* ---- the nine-column level table ------------------------------------
+       Five of the nine are the qualities the verdict already ranked, taken
+       across unchanged so the table and the box can never contradict each
+       other. The other four — movement control, mobility, relative strength
+       and work capacity — are read here, from the screening and conditioning
+       side of the battery that the deficit boxes do not cover. */
+    const m={},mu={};
+    const setM=(k,pct,used)=>{const u=(used||[]).filter(Boolean);
+      if(pct!=null&&u.length){m[k]=pct;mu[k]=u;}};
+    const pOhs=abPct(v.ohs,pools.ohs,'hi'),
+          pYb=abPct(v.ybComp,pools.ybComp,'hi'),
+          pYbG=abPct(v.ybGap,pools.ybGap,'lo');
+    setM('movement',abMean([pOhs,pYb,pYbG]),[
+      pOhs!=null?{k:L('Overhead Squat','Overhead Squat'),v:v.ohs,u:'/3',p:pOhs}:null,
+      pYb!=null?{k:L('YBT kompozit','YBT composite'),v:v.ybComp,u:'%',p:pYb}:null,
+      pYbG!=null?{k:L('YBT sağ-sol farkı','YBT R-L gap'),v:v.ybGap,u:' cm',p:pYbG}:null]);
+    const pAdf=abPct(v.adf,pools.adf,'hi'),
+          pAdfG=abPct(v.adfGap,pools.adfGap,'lo'),
+          pAslr=abPct(v.aslr,pools.aslr,'hi');
+    setM('mobility',abMean([pAdf,pAdfG,pAslr]),[
+      pAdf!=null?{k:L('Ayak bileği DF','Ankle DF'),v:v.adf,u:'°',p:pAdf}:null,
+      pAdfG!=null?{k:L('Ayak bileği farkı','Ankle DF gap'),v:v.adfGap,u:'°',p:pAdfG}:null,
+      pAslr!=null?{k:'ASLR',v:v.aslr,u:'/3',p:pAslr}:null]);
+    const relP=strTests.map((c,i)=>({c,v:v.relStr[i],p:abPct(v.relStr[i],relCols[i],'hi')}))
+      .filter(x=>x.p!=null);
+    setM('relstr',abMean(relP.map(x=>x.p)),
+      relP.map(x=>({k:x.c.name,v:x.v,u:AB_REL_RE.test(x.c.name||'')?'':L(' × VA',' × BM'),p:x.p})));
+    ['vert','reactive','horiz','lateral','cod'].forEach(k=>setM(k,p[k],used[k]));
+    /* Shuttle Run is entered as a VO2max estimate, so a higher number is the
+       better one — the same field read as a time would rank the squad backwards. */
+    const pShut=abPct(v.shut,pools.shut,'hi');
+    setM('work',pShut,[pShut!=null?{k:'Shuttle Run',v:v.shut,u:'',p:pShut}:null]);
+    return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,m,mu,...abVerdict(p,dsi)};
   });
   /* An athlete with no test in this period is not an athlete with no needs —
      they stand in the VERİ YETERSİZ box, which is the honest answer. */
   const untested=all.filter(r=>!r.t).map(r=>({id:r.a.id,a:r.a,t:null,v:null,p:{},used:{},notes:{},dsi:null,
-    ctx:{age:ageOfA(r.a),medAge,youth},...abVerdict({},null)}));
+    ctx:{age:ageOfA(r.a),medAge,youth},m:{},mu:{},...abVerdict({},null)}));
   return{profiles:[...profiles,...untested],pool:rows.length,strengthNames:strTests.map(c=>c.name)};
 }
 
@@ -10642,20 +10804,22 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
   </div>);
 }
 
-/* ---- Athletes Boxes — the printout ---------------------------------------
-   The board first, because that is what a coach pins up: every box with the
-   athletes standing in it. The table underneath carries the same verdicts one
-   row per athlete, so the sheet answers both "who is in this box" and "what did
-   this athlete get". Nothing is recomputed here — the screen worked it out. */
-function printAthleteBoxes({groups,rows,teamName,scopeLabel,pool}){
+/* ---- Athlete level table — the printout -----------------------------------
+   The level table first, because that is what a coach pins up: the whole squad in
+   one grid, quality by quality. The verdict table underneath carries the same
+   readings one row per athlete, so the sheet answers both "where does the squad
+   stand on this quality" and "what did this athlete get". Nothing is recomputed
+   here — the screen worked it out, hand-set levels included. */
+function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool}){
   const w=window.open('','_blank','width=1100,height=900');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const logo=teamLogo();
-  const boxes=groups.filter(g=>g.list.length).map(g=>`<div class="bx" style="border-top-color:${g.c}">
-    <div class="bx-h"><span class="bx-n" style="color:${g.c}">${g.n}</span><span class="bx-t" style="color:${g.c}">${esc(g.name)}</span><span class="bx-c">${g.list.length}</span></div>
-    <ol class="bx-l">${g.list.map(p=>`<li><span class="nm">${esc(p.name)}</span><span class="pc">${p.pct==null?'—':'P'+p.pct}</span></li>`).join('')}</ol>
-  </div>`).join('');
+  const mxHead=(matrix.cols||[]).map(c=>`<th>${esc(c)}</th>`).join('');
+  const mxBody=(matrix.rows||[]).map(r=>`<tr>
+    <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc(r.sub)}</span></td>
+    ${r.cells.map(c=>`<td class="lv l-${c.lvl||'na'}"><span class="lt">${esc(c.label)}${c.man?' <i>✎</i>':''}</span><span class="lp">${c.pct==null?(c.man?L('elle','by hand'):'—'):'P'+c.pct}</span></td>`).join('')}
+  </tr>`).join('');
   const body=rows.map(r=>`<tr>
     <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></td>
     <td class="need" style="color:${r.pc}">${esc(r.primary)}</td><td>${r.pPct==null?'—':'P'+r.pPct}</td>
@@ -10663,7 +10827,7 @@ function printAthleteBoxes({groups,rows,teamName,scopeLabel,pool}){
     <td class="need">${esc(r.strong||'—')}</td><td>${r.gPct==null?'—':'P'+r.gPct}</td>
     <td>${esc(r.conf)}</td></tr>`).join('');
   const html=`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>${esc(L('Sporcu Kutuları','Athletes Boxes'))} — ${esc(teamName||'')}</title>
+<html><head><meta charset="utf-8"><title>${esc(L('Sporcu Seviye Tablosu','Athlete Level Table'))} — ${esc(teamName||'')}</title>
 <style>
 @page{size:A4 portrait;margin:9mm}
 ${RPT_FONT}
@@ -10675,16 +10839,20 @@ body{font-family:'Arimo',Arial,sans-serif;color:var(--text);background:#fff;font
 .hdr h1{font-size:16px;font-weight:700;letter-spacing:-.01em}
 .hdr .meta{font-size:9.5px;color:rgba(255,255,255,.62);margin-top:3px;letter-spacing:.04em}
 .hdr .ttl{margin-left:auto;text-align:right;font-size:9.5px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:.14em;text-transform:uppercase}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.bx{border:1px solid var(--border);border-top:3px solid #999;border-radius:9px;padding:8px 10px;page-break-inside:avoid}
-.bx-h{display:flex;align-items:baseline;gap:6px;border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:5px}
-.bx-n{font-size:11px;font-weight:700}
-.bx-t{flex:1;font-size:9.5px;font-weight:700;letter-spacing:.03em;line-height:1.2}
-.bx-c{font-size:10px;font-weight:700;color:var(--muted)}
-.bx-l{list-style:none;display:flex;flex-direction:column;gap:2px}
-.bx-l li{display:flex;gap:6px;font-size:9.5px}
-.bx-l .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bx-l .pc{color:var(--muted);font-weight:700}
+/* The level grid, in the same muted tones the screen uses — printed on white the
+   three levels have to stay readable in greyscale too, so each carries its word. */
+table.mx{margin-bottom:12px}
+table.mx thead th{font-size:7.5px;line-height:1.2}
+td.lv{padding:3px 2px;text-align:center}
+td.lv .lt{display:block;font-size:8.5px;font-weight:700;line-height:1.2}
+td.lv .lt i{font-style:normal;font-size:7.5px;opacity:.7}
+td.lv .lp{display:block;font-size:7px;color:var(--muted);line-height:1.2}
+/* Written to out-specify the verdict table's zebra rule further down, which would
+   otherwise wash every second row of the level grid back to plain paper. */
+table.mx tbody td.l-grn{background:#e6f2ea;color:#2f6b45}
+table.mx tbody td.l-yel{background:#f7eeda;color:#7a6118}
+table.mx tbody td.l-red{background:#f7e3e3;color:#8c3d3d}
+table.mx tbody td.l-na{background:#f6f7f8;color:#9aa0a8}
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th,td{border:1px solid var(--border);padding:3px 4px;text-align:center;word-break:normal;overflow-wrap:break-word}
 thead th{background:#f4f5f7;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
@@ -10700,15 +10868,18 @@ tbody tr:nth-child(even) td{background:#fafbfc}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.scr-sp{display:none}thead{display:table-header-group}tr{page-break-inside:avoid}}
 </style></head><body>
-<div class="print-bar">📄 ${esc(L('Kutular hazır','The boxes are ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button></div>
+<div class="print-bar">📄 ${esc(L('Tablo hazır','The table is ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button></div>
 <div class="scr-sp" style="height:50px"></div>
 <div class="hdr">
   ${logo?`<img src="${logo}" alt=""/>`:''}
   <div><h1>${esc(teamName||'')}</h1>
     <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${esc(L('takım içi percentile','within-team percentile'))} n=${pool}</div></div>
-  <div class="ttl">${L('SPORCU<br>KUTULARI','ATHLETES<br>BOXES')}</div>
+  <div class="ttl">${L('SPORCU<br>SEVİYE TABLOSU','ATHLETE<br>LEVEL TABLE')}</div>
 </div>
-<div class="grid">${boxes}</div>
+<table class="mx">
+  <thead><tr><th class="ath">${esc(L('Sporcu','Athlete'))}</th>${mxHead}</tr></thead>
+  <tbody>${mxBody}</tbody>
+</table>
 <table>
   <thead><tr>
     <th class="ath">${esc(L('Sporcu','Athlete'))}</th>
@@ -10719,7 +10890,8 @@ tbody tr:nth-child(even) td{background:#fafbfc}
   </tr></thead>
   <tbody>${body}</tbody>
 </table>
-<div class="note">${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
+<div class="note">${esc(L(`Seviyeler takım içi percentile'den üretilir: P${AB_Z_STRONG} ve üzeri İYİ, P${AB_Z_WATCH}-${AB_Z_STRONG-1} ORTALAMA, P${AB_Z_WATCH} altı ZAYIF. Testi girilmemiş bir özellik boş bırakılır, "ortalama" sayılmaz; ✎ işaretli hücreler antrenör tarafından elle ayarlanmıştır. `,
+  `Levels come from the within-team percentile: P${AB_Z_STRONG} and above is GOOD, P${AB_Z_WATCH}-${AB_Z_STRONG-1} AVERAGE, below P${AB_Z_WATCH} WEAK. A quality with no test entered is left empty rather than counted as average; cells marked ✎ were set by hand by the coach. `))}${esc(L('Percentile takım içi sıralamadır; süre bazlı testlerde (T-test, sprint, sağ-sol asimetrisi) düşük değer iyi kabul edilerek ters çevrilmiştir. Sağ-sol farkı iyi bacağın yüzdesi olarak hesaplanır. "En yüksek percentile" sütunu, programda koruma dozuyla sürdürülecek özelliği gösterir — P60 ve üzeri güçlü bölgedir. Kuvvet testi girilmemişse temel kuvvet değerlendirilmemiştir. Asimetri verisi sakatlık teşhisi değildir. Genç yaş gruplarında maturasyon durumu bu testleri belirgin biçimde etkiler ve ölçülmemiştir; karşılaştırma tüm sporcuların aynı protokolle test edildiğini varsayar.',
   'Percentiles are within-team rankings; on time-based tests (T-test, sprint, left/right asymmetry) a lower value is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb. The "highest percentile" column is the quality to keep on a maintenance dose — P60 and above is the strong zone. Foundational strength is left unassessed when no strength test has been entered. An asymmetry is not a diagnosis. In youth age groups maturity status has a marked effect on these tests and was not measured; the comparison assumes every athlete was tested on the same protocol.'))}</div>
 <div class="footer">${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}</div>
 </body></html>`;
@@ -10743,29 +10915,52 @@ function abCopyFallback(txt,done){
   document.body.removeChild(ta);
 }
 
-/* ---- Athletes Boxes — the screen ------------------------------------------
-   The board is the point: seven need boxes plus the two outcomes that are not
-   deficits, and every athlete standing in exactly one of them. Clicking a name
-   opens the reasoning behind that placement — the tests, the percentiles, the
-   priorities for the week and the sentence that says what the verdict does not
-   claim. */
-function AthleteBoxes({athletes,setup,customTests,Lx}){
+/* ---- Athlete level table — the screen -------------------------------------
+   Athletes down the left, nine physical qualities across the top, and one of three
+   levels in every cell. Each level is worked out from the test data, and every one
+   of them can be overruled by hand: the percentile is a comparison, the coach saw
+   the movement. Clicking a name opens the same verdict panel as before — the tests,
+   the percentiles, the priorities for the week and what the reading does not claim. */
+function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
   const[scope,setScope]=useState('latest');
   const[selId,setSelId]=useState(null);
   const[json,setJson]=useState(false);
+  const[menu,setMenu]=useState(null);   // {athId,metric} — the cell whose level menu is open
   const board=useMemo(()=>abBoard(athletes,scope,customTests),[athletes,scope,customTests]);
-  /* Every box is drawn, empty ones included — an empty REACTIVE box is a real
-     answer about this squad, and hiding it would read as "nobody was checked". */
-  const groups=useMemo(()=>AB_BOXES.map(b=>({...b,
-    list:board.profiles.filter(p=>p.primary.box===b.id).sort((x,y)=>(x.primary.pct??999)-(y.primary.pct??999))})),[board]);
+  /* The squad reads in shirt-number order, the way a coach knows it. A table sorted
+     by one quality would quietly rank the athletes, which is what the levels are
+     there to avoid. */
+  const rowsView=useMemo(()=>[...board.profiles].sort((x,y)=>{
+    const nx=Number(x.a.number),ny=Number(y.a.number);
+    const ax=isFinite(nx)&&x.a.number!==''&&x.a.number!=null,ay=isFinite(ny)&&y.a.number!==''&&y.a.number!=null;
+    if(ax&&ay&&nx!==ny)return nx-ny;
+    if(ax!==ay)return ax?-1:1;
+    return String(x.a.name||'').localeCompare(String(y.a.name||''));
+  }),[board]);
   const sel=board.profiles.find(p=>p.id===selId)||null;
   const scopeLabel=scope==='latest'?Lx('Son test','Latest test')
     :Lx('Son ','Latest ')+((TEST_PERIODS.find(p=>p.id===scope)||{}).label||'');
   const canPrint=board.profiles.length>0;
+  /* A hand-set level is stored against the test record it was made on, so the next
+     test is read fresh rather than inheriting a correction made about older data.
+     Picking "Auto" removes the override and gives the cell back to the test data. */
+  const setLevel=(pf,metric,lvl)=>{
+    setMenu(null);
+    if(!updAth)return;
+    const key=abOvKey(pf),all={...(pf.a.needLevels||{})},cell={...(all[key]||{})};
+    if(lvl)cell[metric]=lvl;else delete cell[metric];
+    if(Object.keys(cell).length)all[key]=cell;else delete all[key];
+    updAth(pf.a.id,{needLevels:all});
+  };
+  const matrixOut=()=>rowsView.map(pf=>({
+    name:pf.a.name||'—',
+    sub:[pf.a.number?'#'+pf.a.number:'',POS_FULL[pf.a.position]||pf.a.position||''].filter(Boolean).join(' · '),
+    cells:AB_METRICS.map(mt=>{const c=abCell(pf,mt.id);
+      return{lvl:c.level,label:c.level?abLevelName(c.level):'—',pct:c.pct,man:!!c.ov};}),
+  }));
   const doPrint=()=>printAthleteBoxes({
     pool:board.pool,teamName:setup.teamName,scopeLabel,
-    groups:groups.map(g=>({n:g.n,name:Lx(g.tr,g.en),c:g.c,
-      list:g.list.map(p=>({name:p.a.name||'—',pct:p.primary.pct}))})),
+    matrix:{cols:AB_METRICS.map(m=>abMetricName(m.id)),rows:matrixOut()},
     rows:board.profiles.map(p=>({
       name:p.a.name||'—',number:p.a.number||'',pos:POS_FULL[p.a.position]||p.a.position||'',date:p.t?p.t.date:'',
       primary:abBoxName(p.primary.box),pPct:p.primary.pct,pc:abBoxColor(p.primary.box),
@@ -10773,20 +10968,26 @@ function AthleteBoxes({athletes,setup,customTests,Lx}){
       strong:p.strong?abBoxName(p.strong.id):null,gPct:p.strong?p.strong.pct:null,
       conf:abConfTxt(p.conf)})),
   });
-  const copyAll=()=>abCopy(JSON.stringify(board.profiles.map(p=>abJson(p,board)),null,2),
-    Lx('Tüm sporcuların JSON çıktısı kopyalandı.','The JSON for every athlete has been copied.'));
+  /* The copied JSON carries the table as well as the verdict, and says of every
+     level whether it was computed or set by hand. */
+  const copyAll=()=>abCopy(JSON.stringify(board.profiles.map(p=>({...abJson(p,board),
+    levels:AB_METRICS.reduce((o,mt)=>{const c=abCell(p,mt.id);
+      o[abMetricName(mt.id)]={level:c.level?abLevelName(c.level):null,percentile:c.pct,
+        source:c.ov?Lx('manuel','manual'):(c.auto?Lx('otomatik','automatic'):null)};
+      return o;},{}),
+  })),null,2),Lx('Tüm sporcuların JSON çıktısı kopyalandı.','The JSON for every athlete has been copied.'));
 
   return(<div className="panel">
     <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
-      <h2 style={{margin:0}}>{Lx('Sporcu Kutuları','Athletes Boxes')}</h2>
+      <h2 style={{margin:0}}>{Lx('Sporcu Seviye Tablosu','Athlete Level Table')}</h2>
       <div className="row" style={{gap:6}}>
         <button className="btn sm sec" disabled={!canPrint} onClick={copyAll}>⧉ {Lx('JSON kopyala','Copy JSON')}</button>
         <button className="btn sm white" disabled={!canPrint} onClick={doPrint}>🖨 {Lx('Çıktı Al (A4)','Print (A4)')}</button>
       </div>
     </div>
     <div className="help" style={{marginBottom:14}}>
-      {Lx('Her sporcu, gelişimini şu anda en çok sınırlayan özelliğe göre tek bir kutuya yerleşir. Okuma takım içi percentile ile yapılır — süre bazlı testlerde düşük değer iyidir ve sıralama ters çevrilir. Sağ-sol farkı, sporcular arasında karşılaştırılabilsin diye mutlak cm değil iyi bacağın yüzdesi olarak hesaplanır. Kuvvet testi girilmemişse temel kuvvet hakkında hüküm verilmez. Bir isme tıklayınca o yerleşimin gerekçesi açılır.',
-          'Each athlete lands in one box — the quality limiting their development the most right now. The reading is a within-team percentile; on time-based tests a lower number is the better one and the ranking is inverted. The left/right gap is a percentage of the better limb rather than raw centimetres, so it can be compared between athletes. With no strength test entered, no judgement is made about strength. Click a name to open the reasoning behind the placement.')}
+      {Lx('Her sporcu dokuz fiziksel özelliğin her birinde bir seviyeye yerleşir: yeşil iyi, sarı ortalama, kırmızı zayıf. Seviye takım içi percentile\'den otomatik üretilir — P60 ve üzeri iyi, P40-59 ortalama, P40 altı zayıf; süre bazlı testlerde düşük değer iyidir ve sıralama ters çevrilir. Testi olmayan bir özellik boş kalır, "ortalama" sayılmaz. Bir hücreye tıklayarak seviyeyi elle değiştirebilirsin; elle verilen seviye kesik çerçeve ve ✎ ile işaretlenir, "Otomatik" seçeneği hücreyi test verisine geri bırakır. Bir isme tıklayınca o sporcunun gerekçeli değerlendirmesi açılır.',
+          'Every athlete gets a level in each of the nine qualities: green good, yellow average, red weak. The level comes from the within-team percentile — P60 and above is good, P40-59 average, below P40 weak; on time-based tests a lower number is the better one and the ranking is inverted. A quality with no test behind it stays empty rather than counting as average. Click a cell to set the level by hand; a hand-set cell is marked with a dashed border and a ✎, and "Auto" gives it back to the test data. Click a name to open that athlete\'s reasoned assessment.')}
     </div>
     <div className="help" style={{marginBottom:14,opacity:.8}}>
       {Lx('Karşılaştırma, sporcuların aynı protokolle test edildiğini varsayar — özellikle drop jump RSI (düşüş yüksekliği, temas süresi ölçümü) ve sıçrama protokolleri takım genelinde aynı olmalıdır.',
@@ -10815,24 +11016,65 @@ function AthleteBoxes({athletes,setup,customTests,Lx}){
 
     {board.profiles.length===0&&<div className="empty-st">{Lx('Bu dönemde testi olan sporcu yok — başka bir dönem seç ya da test uygula.','No athlete has a test in this period — pick another period or administer a test.')}</div>}
 
-    {board.profiles.length>0&&<div className="abx-grid">
-      {groups.map(g=><div key={g.id} className={'abx-box'+(g.list.length?'':' empty')} style={{'--bx':g.c}}>
-        <div className="abx-hd">
-          <span className="abx-no">{g.n}</span>
-          <span className="abx-t">{Lx(g.tr,g.en)}</span>
-          <span className="abx-n">{g.list.length}</span>
-        </div>
-        {g.list.length===0&&<div className="abx-none">{Lx('bu kutuda sporcu yok','no athlete in this box')}</div>}
-        {g.list.length>0&&<div className="abx-lst">
-          {g.list.map(p=><button key={p.id} type="button" className={'abx-ch'+(p.id===selId?' on':'')}
-            onClick={()=>setSelId(p.id===selId?null:p.id)}>
-            {p.a.number&&<span className="no">#{p.a.number}</span>}
-            <span className="nm">{p.a.name||'—'}</span>
-            <span className={'pc pz-'+abZone(p.primary.pct)}>{p.primary.pct==null?'—':'P'+p.primary.pct}</span>
-          </button>)}
-        </div>}
-      </div>)}
-    </div>}
+    {board.profiles.length>0&&<>
+      {menu&&<div className="abm-bd" onClick={()=>setMenu(null)}/>}
+      <div className="abm-wrap">
+        <table className="abm">
+          <thead><tr>
+            <th className="abm-ath">{Lx('Sporcu','Athlete')}</th>
+            {AB_METRICS.map(mt=><th key={mt.id} style={{'--mc':mt.c}}>{abMetricName(mt.id)}</th>)}
+          </tr></thead>
+          <tbody>
+            {rowsView.map(pf=><tr key={pf.id} className={pf.id===selId?'on':''}>
+              <th className="abm-ath">
+                <button type="button" className="abm-nmb" onClick={()=>setSelId(pf.id===selId?null:pf.id)}>
+                  <span className="nm">{pf.a.name||'—'}</span>
+                  <span className="sub">{[pf.a.number?'#'+pf.a.number:'',POS_FULL[pf.a.position]||pf.a.position||'',
+                    pf.t?'':Lx('test yok','no test')].filter(Boolean).join(' · ')}</span>
+                </button>
+              </th>
+              {AB_METRICS.map(mt=>{
+                const c=abCell(pf,mt.id);
+                const open=menu&&menu.athId===pf.id&&menu.metric===mt.id;
+                return(<td key={mt.id} className="abm-c">
+                  <button type="button" className={'abm-lv l-'+(c.level||'na')+(c.ov?' man':'')}
+                    title={c.pct==null?Lx('Bu özelliği ölçen test girilmemiş','No test on record measures this quality')
+                                      :abUsedTxt(pf.mu[mt.id])}
+                    onClick={e=>{
+                      if(open){setMenu(null);return;}
+                      const r=e.currentTarget.getBoundingClientRect();
+                      const up=r.bottom+AB_MENU_H>window.innerHeight&&r.top>AB_MENU_H;
+                      setMenu({athId:pf.id,metric:mt.id,x:r.left+r.width/2,y:up?r.top:r.bottom,up});
+                    }}>
+                    <span className="t">{c.level?abLevelName(c.level):'—'}</span>
+                    <span className="p">{c.pct==null?(c.ov?Lx('elle','by hand'):Lx('veri yok','no data')):'P'+c.pct}</span>
+                  </button>
+                  {open&&<div className="abm-menu" style={{left:menu.x,top:menu.y,
+                    transform:`translateX(-50%)${menu.up?' translateY(-100%)':''}`}}>
+                    <button type="button" className={c.ov?'':'on'} onClick={()=>setLevel(pf,mt.id,null)}>
+                      <span className="sw l-auto"/>{Lx('Otomatik','Auto')}
+                      {c.auto?<span style={{marginLeft:'auto',opacity:.6,fontSize:10}}>{abLevelName(c.auto)}</span>:null}
+                    </button>
+                    <div className="sep"/>
+                    {AB_LEVELS.map(l=><button key={l.id} type="button" className={c.ov===l.id?'on':''}
+                      onClick={()=>setLevel(pf,mt.id,l.id)}>
+                      <span className={'sw l-'+l.id}/>{abLevelName(l.id)}
+                    </button>)}
+                  </div>}
+                </td>);
+              })}
+            </tr>)}
+          </tbody>
+        </table>
+      </div>
+      <div className="abm-legend">
+        <span className="it"><span className="sw l-grn"/>{abLevelName('grn')} · P{AB_Z_STRONG}+</span>
+        <span className="it"><span className="sw l-yel"/>{abLevelName('yel')} · P{AB_Z_WATCH}–{AB_Z_STRONG-1}</span>
+        <span className="it"><span className="sw l-red"/>{abLevelName('red')} · &lt;P{AB_Z_WATCH}</span>
+        <span className="it"><span className="sw l-na"/>{Lx('Test yok — değerlendirilmedi','No test — not assessed')}</span>
+        <span className="it">✎ {Lx('elle ayarlandı','set by hand')}</span>
+      </div>
+    </>}
 
     {sel&&<AthleteBoxDetail pf={sel} board={board} json={json} setJson={setJson} Lx={Lx}/>}
   </div>);
@@ -11014,7 +11256,7 @@ function EvaluationView({team,updateTeam,data,setData}){
           button left — the other way out of a mode is the way back to the tests. */}
       {athletes.length>0&&<div className="row" style={{gap:8,flexWrap:'wrap',justifyContent:'flex-end'}}>
         {!compare&&<button className={'btn sm'+(boxes?'':' white')} onClick={()=>setBoxes(v=>!v)}>
-          {boxes?`← ${Lx('Testlere dön','Back to tests')}`:`▦ ${Lx('Sporcu Kutuları','Athletes Boxes')}`}
+          {boxes?`← ${Lx('Testlere dön','Back to tests')}`:`▦ ${Lx('Seviye Tablosu','Level Table')}`}
         </button>}
         {!boxes&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
           {compare?`← ${Lx('Testlere dön','Back to tests')}`:`⇄ ${Lx('Sporcuları Karşılaştır','Compare Athletes')}`}
@@ -11024,7 +11266,7 @@ function EvaluationView({team,updateTeam,data,setData}){
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Athletes sekmesinden ekle.','No athletes yet — add them in the Athletes tab.')}</div>}
 
-    {boxes&&athletes.length>0&&<AthleteBoxes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
+    {boxes&&athletes.length>0&&<AthleteBoxes athletes={athletes} setup={setup} customTests={customTests} updAth={updAth} Lx={Lx}/>}
 
     {compare&&athletes.length>0&&<CompareAthletes athletes={athletes} setup={setup} customTests={customTests} Lx={Lx}/>}
 
