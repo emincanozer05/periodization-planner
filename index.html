@@ -6821,6 +6821,63 @@ const EX_PATTERN_STYLES={...PATTERN_PLANES,
   'Full Body':['Basic Strength','Explosive','Olympic Lift'],
   'Accessory':['Push','Pull','ISO','Eccentric']};
 const exStylesFor=p=>EX_PATTERN_STYLES[p]||[];
+/* How a pattern is USUALLY executed, per pattern: a hinge is pulled, a squat is pushed,
+   a press is horizontal far more often than not. Read only when nothing better is
+   known, so the box is filled with the likely answer instead of being left blank. */
+const EX_STYLE_DEFAULT={'Hip Dominant':'Pull','Knee Dominant':'Push','Upper Body Push':'Horizontal',
+  'Upper Body Pull':'Horizontal','Core':'Anti-Extension','Full Body':'Basic Strength','Accessory':'Push'};
+/* The words that name an execution inside an exercise's own name, per pattern, most
+   specific first — "Split Squat ISO Hold" is an ISO before it is a squat, and a
+   "Tempo Box Squat (3-1-1)" is eccentric work whatever it says after that. Every
+   rule is checked against the pattern's own executions, so a Core rule can never
+   put "Horizontal" on a plank. */
+const EX_STYLE_WORDS={
+  hinge:[[/eccentric|nordic|negative|\btempo\b|\d\s*-\s*\d\s*-\s*\d/,'Eccentric'],
+         [/\biso\b|isometric|\bhold\b|wall sit|\bplank\b/,'ISO'],
+         [/thrust|bridge|hip ext|abduct|adduct|\bkick\s*back/,'Push'],
+         [/deadlift|\brdl\b|hinge|good ?morning|\bswing\b|pull ?through|back ext|\bcurl\b|hamstring|glute ham|\bpull\b/,'Pull'],
+         [/squat|lunge|step[- ]?up|leg press|\bpress\b|split|\bpush\b|extension/,'Push']],
+  push:[[/rotational|\btwist\b|\bchop\b|\bscoop\b|shot ?put/,'Rotational'],
+        [/overhead|shoulder press|military|\bohp\b|landmine|push press|\bjerk\b|\bdip\b|\bz press\b|arnold/,'Vertical'],
+        [/bench|push[- ]?up|chest|\bfly\b|floor press|incline|decline|\bdb press\b/,'Horizontal']],
+  pull:[[/rotational|\btwist\b|\bchop\b/,'Rotational'],
+        [/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\blat\b|pullover|hang(ing)? ?pull/,'Vertical'],
+        [/\brow\b|face ?pull|rear delt|\bshrug\b|\bpulls?\b/,'Horizontal']],
+  core:[[/anti[- ]?rotation|pallof|bird ?dog|\bpress ?out\b/,'Anti-Rotation'],
+        [/anti[- ]?lateral|side ?plank|suitcase|farmer|\bcarry\b/,'Anti-Lateral Flexion'],
+        [/anti[- ]?extension|\bplank\b|dead ?bug|ab ?wheel|roll ?out|body ?saw|\bhollow\b|\bpush ?up plank\b/,'Anti-Extension'],
+        [/anti[- ]?flexion/,'Anti-Flexion'],
+        [/side ?bend|lateral flexion/,'Lateral Flexion'],
+        [/woodchop|\bchop\b|russian ?twist|\btwist\b|rotation|\blift\b|med ?ball (side|rotational)/,'Rotation'],
+        [/back ?extension|superman|reverse hyper|\bextension\b/,'Extension'],
+        [/crunch|sit[- ]?up|leg raise|knee raise|\bv[- ]?up\b|toes ?to ?bar|\bflexion\b/,'Flexion']],
+  full:[[/clean|snatch|\bjerk\b|olympic|high pull/,'Olympic Lift'],
+        [/jump|\bhop\b|bound|throw|\bslam\b|explosive|\bpower\b|med ?ball|ballistic|sprint/,'Explosive'],
+        [/squat|deadlift|press|\bstrength\b|complex|carry/,'Basic Strength']],
+};
+const EX_STYLE_RULES={'Hip Dominant':'hinge','Knee Dominant':'hinge','Accessory':'hinge',
+  'Upper Body Push':'push','Upper Body Pull':'pull','Core':'core','Full Body':'full'};
+/* The execution an exercise is most likely trained with, so the pair fills itself in
+   rather than being answered twice on every row. In order: what this exact exercise was
+   last tagged with anywhere (the library remembers it), then the assistant coach's pool
+   — which already files the common lifts under an execution — then the words in the name
+   itself, and only then the pattern's usual execution. Always one of the pattern's own
+   executions, and always overwritable: it is a first answer, not a verdict. */
+function exGuessStyle(name,pattern){
+  const styles=exStylesFor(pattern);
+  if(!styles.length)return'';
+  const nm=String(name||'').trim().toLowerCase();
+  if(nm){
+    const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
+    if(hit&&String(hit.exPattern||'')===pattern&&styles.includes(hit.exPlane))return hit.exPlane;
+    for(const k in CA_POOL)for(const c of CA_POOL[k])
+      if(c.n.toLowerCase()===nm&&styles.includes(c.ex))return c.ex;
+    for(const[re,st]of(EX_STYLE_WORDS[EX_STYLE_RULES[pattern]]||[]))
+      if(styles.includes(st)&&re.test(nm))return st;
+  }
+  const d=EX_STYLE_DEFAULT[pattern];
+  return styles.includes(d)?d:styles[0];
+}
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
    is being replaced, so the new exercise brings its own pattern with it. An untagged entry
@@ -6828,13 +6885,14 @@ const exStylesFor=p=>EX_PATTERN_STYLES[p]||[];
    row does not already have, so a hand-set pattern is never overwritten by a guess.
    Returns null when the entry has nothing to say. */
 function exTagsFromLib(it,row){
+  const nm=(it&&it.name)||'';
   const pat=String((it&&it.exPattern)||'').trim();
   if(pat&&EX_PATTERNS.includes(pat)){
     const st=String((it&&it.exPlane)||'').trim();
-    return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:''};
+    return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(nm,pat)};
   }
   const guess=EX_PATTERNS.includes(it&&it.type)?it.type:'';
-  if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:''};
+  if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:exGuessStyle(nm,guess)};
   return null;
 }
 /* "Hip · Eccentric" — the key the execution pie counts. Keeping pattern and style
@@ -7943,7 +8001,7 @@ const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
 // Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
 const exCatsOf=e=>{const t=exCatTags(e);
   return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
-function ExNameField({value,onChange,onPick,tags}){
+function ExNameField({value,onChange,onPick,tags,onNewName}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
   const[cats,setCats]=useState([]);   // selected category names (empty = no filter)
@@ -7972,10 +8030,15 @@ function ExNameField({value,onChange,onPick,tags}){
      works in. Typing the name first and tagging it after already wrote the pair; this
      covers the other order, and a rename, which otherwise left a bare stub behind. */
   const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'');};
+  /* A name the box has not filed before — freshly typed or renamed — is also the moment
+     the row can be read for how the exercise is executed. An unchanged name is not: the
+     coach may have cleared the execution on purpose, and re-entering the name field is
+     no reason to argue with them. */
+  const fresh=nm=>{if(nm&&onNewName)onNewName(nm);};
   const commit=v=>{const nm=(v||'').trim();const prev=committedRef.current;
-    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);return;}
+    if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
     if(nm===prev){withTags(nm);return;}
-    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);};
+    replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(value||'').trim().toLowerCase();
   const lib=focus?getLibItems():[];
   // Text query narrows the pool first; the category counts on the right are computed
@@ -8129,10 +8192,19 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
      that belonged to the old one — "Horizontal" under Hip Dominant would be a tag
      nothing can read. */
   const setPattern=v=>{
-    const plane=exStylesFor(v).includes(ex.plane)?ex.plane:'';
+    const keep=exStylesFor(v).includes(ex.plane)?ex.plane:'';
+    const plane=keep||exGuessStyle(ex.name,v);
     onChange({...ex,pattern:v,plane});rememberExerciseTags(ex.name,v,plane);
   };
   const setPlane=v=>{onChange({...ex,plane:v});rememberExerciseTags(ex.name,ex.pattern,v);};
+  /* Written the other way round — the pattern first, the exercise after — the execution
+     is worked out once the name is there to read. */
+  const nameTagged=nm=>{
+    if(!ex.pattern||ex.plane)return;
+    const plane=exGuessStyle(nm,ex.pattern);
+    if(!plane)return;
+    onChange({...ex,name:nm,plane});rememberExerciseTags(nm,ex.pattern,plane);
+  };
   /* Pasting is tagging too: the exercise arrives with the pattern it trains, so the library
      learns it here exactly as it would if the coach had picked the pair by hand. */
   const exClip=useExerciseClipboard();
@@ -8150,6 +8222,7 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
         {/* Picking a library exercise carries its cover image, video link, cues and —
             when the entry has been tagged — its pattern / execution across. */}
         <ExNameField value={ex.name} onChange={v=>f('name',v)} tags={{pattern:ex.pattern,plane:ex.plane}}
+          onNewName={nameTagged}
           onPick={it=>onChange({...ex,name:it.name,image:it.image||ex.image||'',
             link:it.link||ex.link||'',description:it.desc||ex.description||'',
             ...(exTagsFromLib(it,ex)||{})})}/>
