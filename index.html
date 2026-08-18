@@ -1714,7 +1714,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .abm thead th{position:sticky;top:0;z-index:3;background:var(--elevated);border-bottom:1px solid var(--border2);
   padding:10px 8px;vertical-align:bottom;text-align:center;
   font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--mc,var(--text2));line-height:1.3;white-space:normal}
+  text-transform:uppercase;color:#fff;line-height:1.3;white-space:normal}
 .abm thead th.abm-ath{text-align:left;z-index:4}
 .abm .abm-ath{position:sticky;left:0;background:var(--elevated);z-index:2;
   width:186px;min-width:186px;max-width:186px;padding:8px 12px;text-align:left;
@@ -1743,11 +1743,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
    from the one the test data produced. */
 .abm-lv.man{border-style:dashed;border-width:1.5px}
 .abm-lv.man::after{content:'✎';position:absolute;top:7px;right:8px;font-size:9px;opacity:.7}
-/* Fixed rather than absolute: the table scrolls sideways inside .abm-wrap, and a
-   menu positioned inside that box would be clipped on the bottom rows. It is
-   anchored to the cell's own rectangle instead, and flips above the cell when
-   there is no room for it below. */
-.abm-menu{position:fixed;z-index:20;min-width:132px;background:var(--panel);
+/* Fixed, and rendered through a portal on <body>: the table scrolls sideways inside
+   .abm-wrap, and a menu positioned inside that box would be clipped on the bottom
+   rows — while leaving it inside .panel put it under a transformed ancestor, which
+   makes position:fixed resolve against the panel rather than the viewport. On <body>
+   it is anchored to the cell's own rectangle, and flips above the cell when there is
+   no room for it below. */
+.abm-menu{position:fixed;z-index:20;width:172px;background:var(--panel);
   border:1px solid var(--border2);border-radius:10px;
   padding:5px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .abm-menu button{display:flex;align-items:center;gap:7px;width:100%;text-align:left;cursor:pointer;
@@ -1761,6 +1763,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .abm-menu .sw.l-auto{background:var(--bg2)}
 .abm-menu .sep{height:1px;background:var(--border);margin:3px 2px}
 .abm-bd{position:fixed;inset:0;z-index:15}
+/* The cell whose menu is open is ringed, so a menu sitting just under it is read as
+   belonging to that cell and not to its neighbour. */
+.abm-c.menu-on .abm-lv{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
 .abm-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:11px;font-size:11px;color:var(--dim)}
 .abm-legend .it{display:flex;align-items:center;gap:6px}
 .abm-legend .sw{width:11px;height:11px;border-radius:4px;border:1px solid rgba(255,255,255,.14)}
@@ -3489,6 +3494,9 @@ const abLevel=p=>p==null?null:p>=AB_Z_STRONG?'grn':p>=AB_Z_WATCH?'yel':'red';
 /* Roughly what the four-option menu measures — enough to decide whether it opens
    below the cell or above it. */
 const AB_MENU_H=168;
+/* The menu is given a width of its own so it can be clamped inside the viewport by
+   arithmetic rather than by hoping the browser wraps it somewhere sensible. */
+const AB_MENU_W=172;
 /* Overrides are stored against the test record they were made on, so a new test
    re-reads the squad rather than inheriting last season's hand corrections. */
 const abOvKey=pf=>pf&&pf.t?pf.t.id:'_none';
@@ -11121,7 +11129,7 @@ body{font-family:'Arimo',Arial,sans-serif;color:var(--text);background:#fff;font
 /* The level grid, in the same muted tones the screen uses — printed on white the
    three levels have to stay readable in greyscale too, so each carries its word. */
 table.mx{margin-bottom:12px}
-table.mx thead th{font-size:7.5px;line-height:1.2}
+table.mx thead th{font-size:7.5px;line-height:1.2;color:#000}
 /* Every quality column the same width on paper as well — table-layout:fixed is
    already set on every table here, so only the name column needs a width. */
 table.mx th.ath,table.mx td.ath{width:17%}
@@ -11288,6 +11296,32 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
       return o;},{}),
   })),null,2),Lx('Tüm sporcuların JSON çıktısı kopyalandı.','The JSON for every athlete has been copied.'));
 
+  /* The level menu is rendered on <body> rather than inside the cell it belongs to.
+     `.panel:hover` carries a transform, and a transformed ancestor makes a
+     position:fixed child resolve against the panel instead of the viewport — which
+     is what threw the menu across the screen, nowhere near the cell that opened it.
+     Portalled out of the panel, the viewport coordinates taken from the cell's own
+     rectangle mean what they say again. */
+  /* A fixed menu does not travel with the cell it was opened from, so a scroll or a
+     resize closes it instead of leaving it stranded over an unrelated row. */
+  useEffect(()=>{
+    if(!menu)return;
+    const close=()=>setMenu(null);
+    window.addEventListener('scroll',close,true);
+    window.addEventListener('resize',close);
+    return()=>{window.removeEventListener('scroll',close,true);window.removeEventListener('resize',close);};
+  },[menu]);
+  const menuPf=menu?board.profiles.find(p=>p.id===menu.athId)||null:null;
+  const menuCell=menuPf?abCell(menuPf,menu.metric,ref):null;
+  /* Centred on the cell, but never past the edge of the window: the right-hand
+     qualities sit close enough to the border that an unclamped menu would hang off
+     the screen. */
+  const menuPos=menu?(()=>{
+    const pad=8;
+    const left=Math.max(pad,Math.min(menu.cx-AB_MENU_W/2,window.innerWidth-AB_MENU_W-pad));
+    return{left,top:menu.up?menu.top-4:menu.bottom+4,up:menu.up};
+  })():null;
+
   return(<div className="panel">
     <div className="row" style={{justifyContent:'space-between',marginBottom:6,flexWrap:'wrap',gap:8}}>
       <h2 style={{margin:0}}>{Lx('Sporcu Seviye Tablosu','Athlete Level Table')}</h2>
@@ -11335,12 +11369,26 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
     {board.profiles.length===0&&<div className="empty-st">{Lx('Bu dönemde testi olan sporcu yok — başka bir dönem seç ya da test uygula.','No athlete has a test in this period — pick another period or administer a test.')}</div>}
 
     {board.profiles.length>0&&<>
-      {menu&&<div className="abm-bd" onClick={()=>setMenu(null)}/>}
+      {menu&&menuPf&&menuCell&&ReactDOM.createPortal(<>
+        <div className="abm-bd" onClick={()=>setMenu(null)}/>
+        <div className="abm-menu" style={{left:menuPos.left,top:menuPos.top,
+          transform:menuPos.up?'translateY(-100%)':'none'}}>
+          <button type="button" className={menuCell.ov?'':'on'} onClick={()=>setLevel(menuPf,menu.metric,null)}>
+            <span className="sw l-auto"/>{Lx('Otomatik','Auto')}
+            {menuCell.auto?<span style={{marginLeft:'auto',opacity:.6,fontSize:10}}>{abLevelName(menuCell.auto)}</span>:null}
+          </button>
+          <div className="sep"/>
+          {AB_LEVELS.map(l=><button key={l.id} type="button" className={menuCell.ov===l.id?'on':''}
+            onClick={()=>setLevel(menuPf,menu.metric,l.id)}>
+            <span className={'sw l-'+l.id}/>{abLevelName(l.id)}
+          </button>)}
+        </div>
+      </>,document.body)}
       <div className="abm-wrap">
         <table className="abm">
           <thead><tr>
             <th className="abm-ath">{Lx('Sporcu','Athlete')}</th>
-            {AB_METRICS.map(mt=><th key={mt.id} style={{'--mc':mt.c}}>{abMetricName(mt.id)}</th>)}
+            {AB_METRICS.map(mt=><th key={mt.id}>{abMetricName(mt.id)}</th>)}
           </tr></thead>
           <tbody>
             {rowsView.map(pf=><tr key={pf.id} className={pf.id===selId?'on':''}>
@@ -11366,31 +11414,20 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
                           `reference: ${pf.normAge==null?'':pf.normAge+'y'}${pf.normPos?' · '+(POS_FULL[pf.a.position]||''):''}`)
                       :Lx(`referans: takım içi (${board.pool} sporcu)`,`reference: within-team (${board.pool} athletes)`)
                    ].filter(Boolean).join(' — ');
-                return(<td key={mt.id} className="abm-c">
+                return(<td key={mt.id} className={'abm-c'+(open?' menu-on':'')}>
                   <button type="button" className={'abm-lv l-'+(c.level||'na')+(c.ov?' man':'')}
                     title={why}
                     onClick={e=>{
                       if(open){setMenu(null);return;}
                       const r=e.currentTarget.getBoundingClientRect();
                       const up=r.bottom+AB_MENU_H>window.innerHeight&&r.top>AB_MENU_H;
-                      setMenu({athId:pf.id,metric:mt.id,x:r.left+r.width/2,y:up?r.top:r.bottom,up});
+                      setMenu({athId:pf.id,metric:mt.id,
+                        cx:r.left+r.width/2,top:r.top,bottom:r.bottom,up});
                     }}>
                     <span className="t">{c.level?abLevelName(c.level):'—'}</span>
                     <span className="p">{c.pct==null?(c.ov?Lx('elle','by hand'):Lx('veri yok','no data'))
                       :'P'+c.pct+(fell?' · '+Lx('takım','squad'):'')}</span>
                   </button>
-                  {open&&<div className="abm-menu" style={{left:menu.x,top:menu.y,
-                    transform:`translateX(-50%)${menu.up?' translateY(-100%)':''}`}}>
-                    <button type="button" className={c.ov?'':'on'} onClick={()=>setLevel(pf,mt.id,null)}>
-                      <span className="sw l-auto"/>{Lx('Otomatik','Auto')}
-                      {c.auto?<span style={{marginLeft:'auto',opacity:.6,fontSize:10}}>{abLevelName(c.auto)}</span>:null}
-                    </button>
-                    <div className="sep"/>
-                    {AB_LEVELS.map(l=><button key={l.id} type="button" className={c.ov===l.id?'on':''}
-                      onClick={()=>setLevel(pf,mt.id,l.id)}>
-                      <span className={'sw l-'+l.id}/>{abLevelName(l.id)}
-                    </button>)}
-                  </div>}
                 </td>);
               })}
             </tr>)}
