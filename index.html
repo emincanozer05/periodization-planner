@@ -5972,21 +5972,28 @@ ${sessionsHTML(g.sessions)}
 </body></html>`;
 }
 
-function printDayA4(title,subtitle,sessions,opts){
-  const w=window.open('','_blank','width=900,height=1100');if(!w)return;
-  w.document.write(buildSessionHTMLDoc(title,subtitle,sessions,opts));
-  w.document.close();
-  let printed=false;const go=()=>{if(printed)return;printed=true;try{w.focus();w.print();}catch(e){}};
-  // Exercise images and the team logo can live in cloud storage — wait for whatever the
-  // document actually holds (with a safety timeout) so the printout never shows a broken
-  // image. A document with no images prints as soon as it has settled.
+/* Open the print dialog for a freshly written popup, but only once its images
+   have settled. Photos live in cloud storage (Firebase / Drive), so right after
+   document.close() they are still downloading — printing on a fixed delay leaves
+   blank boxes in the output. `settle` lets the document lay out first, `safety`
+   caps the wait so one stalled photo can never withhold the dialog. */
+function printWhenImagesReady(w,{settle=350,safety=5000}={}){
+  let printed=false;
+  const go=()=>{if(printed)return;printed=true;try{w.focus();w.print();}catch(e){console.warn('print failed',e);}};
   setTimeout(()=>{
     const pending=[...w.document.images].filter(i=>!i.complete);
     if(!pending.length){go();return;}
     let left=pending.length;const one=()=>{if(--left<=0)go();};
-    pending.forEach(i=>{i.onload=one;i.onerror=one;});
-    setTimeout(go,5000);
-  },350);
+    pending.forEach(i=>{i.addEventListener('load',one);i.addEventListener('error',one);});
+    setTimeout(go,safety);
+  },settle);
+}
+
+function printDayA4(title,subtitle,sessions,opts){
+  const w=window.open('','_blank','width=900,height=1100');if(!w)return;
+  w.document.write(buildSessionHTMLDoc(title,subtitle,sessions,opts));
+  w.document.close();
+  printWhenImagesReady(w);
 }
 
 function printWeekA4Land(title,weekStart,days,athletes){
@@ -9938,14 +9945,23 @@ function generateTestPDF(test,ath,setup,customTests){
   // Y Balance Test
   const yb=ybCalc(test.yBalance);
   const hasYB=yb.limb!=null||['ant','pm','pl'].some(k=>yb.right[k]!=null||yb.left[k]!=null);
+  // Photos are stored either as a plain URL / data-URI or tagged `drive:<fileId>`;
+  // the tagged form is not a real URL, so it has to be mapped to Drive's image
+  // endpoint the same way the on-screen cards do it.
+  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):p).replace(/&/g,'&amp;');
+  // A photo that cannot be downloaded (removed from storage, Drive link not
+  // shared) would collapse to a 1px line in the print-out — swap in the same
+  // placeholder the report uses for a missing photo so the gap is readable.
+  const phFail=(w,h)=>`onerror="this.outerHTML='&lt;div class=&quot;phx&quot; style=&quot;width:${w}px;height:${h}px&quot;&gt;—&lt;/div&gt;'"`;
   // photo helper — preserves original aspect ratio.
   // `w` = display width (px), `maxH` = max height before scaling kicks in.
   // Empty/missing photo shows a placeholder with the same target size.
   const ph=(photo,label,w=160,maxH=240)=>photo
-    ?`<div class="ph"><img src="${photo}" style="width:${w}px;height:auto;max-height:${maxH}px;object-fit:contain;background:#f8fafc"/><div class="phl">${label}</div></div>`
+    ?`<div class="ph"><img src="${psrc(photo)}" ${phFail(w,Math.round(w*1.2))} style="width:${w}px;height:auto;max-height:${maxH}px;object-fit:contain;background:#f8fafc"/><div class="phl">${label}</div></div>`
     :`<div class="ph"><div class="phx" style="width:${w}px;height:${Math.round(w*1.2)}px">—</div><div class="phl" style="color:#aaa">${label}</div></div>`;
+  const ohsBox=`&lt;div style=&quot;width:100%;height:170px;background:#eee;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:24px;border-radius:4px&quot;&gt;—&lt;/div&gt;`;
   const ohsPh=(photo)=>photo
-    ?`<img src="${photo}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px"/>`
+    ?`<img src="${psrc(photo)}" onerror="this.outerHTML='${ohsBox}'" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px"/>`
     :`<div style="width:100%;height:170px;background:#eee;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:24px;border-radius:4px">—</div>`;
 
   const html=`<!DOCTYPE html>
@@ -10019,7 +10035,7 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
 <div style="margin-top:50px"></div>
 
 <div class="athlete-header">
-  ${ath.photo?`<img class="athlete-photo" src="${ath.photo}"/>`:`<div class="athlete-photo-x">👤</div>`}
+  ${ath.photo?`<img class="athlete-photo" src="${psrc(ath.photo)}"/>`:`<div class="athlete-photo-x">👤</div>`}
   <div class="athlete-info">
     <h1>${ath.name}</h1>
     <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}</div>
@@ -10197,8 +10213,9 @@ ${test.notes?`
 
   w.document.write(html);
   w.document.close();
-  // Give images time to load before triggering print
-  setTimeout(()=>{try{w.focus();w.print();}catch(e){console.warn('print failed',e);}},800);
+  // Posture / OHS / sprint photos are full-size and remote, so give them a longer
+  // cap than the session sheets before the dialog opens regardless.
+  printWhenImagesReady(w,{safety:15000});
 }
 
 /* =========================================================
