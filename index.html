@@ -1922,6 +1922,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tc-obs-flex textarea{min-height:150px}
 .tc-obs textarea::placeholder{color:rgba(255,255,255,.25)}
 .tc-obs textarea:focus{border-color:var(--card-accent,#0094ff);box-shadow:0 0 0 3px rgba(0,148,255,.1)}
+/* Session-level observations & comments card (end of the test list) */
+.tcard-summary .tcard-badge{background:var(--accent);color:#fff}
+.tc-obs-summary{flex:1 1 auto}
+.tc-obs-summary textarea{min-height:120px}
 /* column layout: fields stacked, obs below */
 .tcard-col{display:flex;flex-direction:column;gap:13px;padding:0 16px 18px}
 .tcard-col .tc-obs{flex:1 1 auto}
@@ -10182,7 +10186,7 @@ ${customSel.length?`
 
 ${test.notes?`
 <div class="section">
-  <div class="section-h" >${L('GENEL NOTLAR','GENERAL NOTES')}</div>
+  <div class="section-h" >${L('GÖZLEMLER VE YORUMLAR','OBSERVATIONS &amp; COMMENTS')}</div>
   <div class="obs-box">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
 </div>`:''}
 
@@ -10555,8 +10559,9 @@ const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
-function MkObs({value,onChange,placeholder,className}){
-  return(<div className={"tc-obs"+(className?" "+className:"")}><div className="tc-obs-l">Observations</div>
+function MkObs({value,onChange,placeholder,className,label}){
+  const lbl=label===undefined?'Observations':label;
+  return(<div className={"tc-obs"+(className?" "+className:"")}>{lbl?<div className="tc-obs-l">{lbl}</div>:null}
     <textarea value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'—'}/></div>);
 }
 function MkSelectField({value,onChange,options}){
@@ -10876,6 +10881,17 @@ function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
     <div className="ts-wrap">
       {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu}/>;})}
       {valid.length===0&&<div className="empty-st">No tests in this battery.</div>}
+      <div className="tcard tcard-wide tcard-summary" style={{'--card-accent':'#0094ff'}}>
+        <div className="tcard-hd">
+          <div className="tcard-badge">✎</div>
+          <div className="tcard-title">Observations &amp; Comments</div>
+          <div className="tcard-tag">SUMMARY</div>
+        </div>
+        <div className="tcard-body-wide">
+          <MkObs value={test.notes} onChange={v=>u('notes',v)} label="" className="tc-obs-summary"
+            placeholder="Overall impressions, key findings, limitations and recommendations for this testing session…"/>
+        </div>
+      </div>
     </div>
   </div>);
 }
@@ -12808,7 +12824,7 @@ function TestReportsTab({ath,setup,ai,exercises}){
         {hasAny(circList)&&<><div className="rep-sec-t">Body Circumference (cm)</div><div className="rep-grid">{circList.map(([k,v])=><Tile key={k} k={k} v={v} u="cm"/>)}</div></>}
         {t.posture&&t.posture.observations&&<><div className="rep-sec-t">Posture Notes</div><div className="rep-note">{t.posture.observations}</div></>}
         {t.ohs&&t.ohs.observations&&<><div className="rep-sec-t">Overhead Squat Notes</div><div className="rep-note">{t.ohs.observations}</div></>}
-        {t.notes&&<><div className="rep-sec-t">General Notes</div><div className="rep-note">{t.notes}</div></>}
+        {t.notes&&<><div className="rep-sec-t">Observations &amp; Comments</div><div className="rep-note">{t.notes}</div></>}
       </div>
       <AskAICoachBox ath={ath} setup={setup} ai={ai} exercises={exercises}/>
     </div>
