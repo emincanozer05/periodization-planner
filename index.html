@@ -1925,7 +1925,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Session-level observations & comments card (end of the test list) */
 .tcard-summary .tcard-badge{background:var(--accent);color:#fff}
 .tc-obs-summary{flex:1 1 auto}
-.tc-obs-summary textarea{min-height:120px}
+/* auto-growing: JS sets the height, so no inner scrollbar and no flex stretch */
+.tc-obs-summary textarea{flex:none;min-height:160px;overflow:hidden;resize:none}
 /* column layout: fields stacked, obs below */
 .tcard-col{display:flex;flex-direction:column;gap:13px;padding:0 16px 18px}
 .tcard-col .tc-obs{flex:1 1 auto}
@@ -10559,10 +10560,20 @@ const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
-function MkObs({value,onChange,placeholder,className,label}){
+function MkObs({value,onChange,placeholder,className,label,autoGrow}){
   const lbl=label===undefined?'Observations':label;
+  const ta=useRef(null);
+  /* Grow the box downwards as the coach types so long notes stay fully visible
+     (min-height from CSS is the floor; deleting text shrinks it back). */
+  useEffect(()=>{
+    if(!autoGrow)return;
+    const el=ta.current;if(!el)return;
+    const borders=el.offsetHeight-el.clientHeight;
+    el.style.height='auto';
+    el.style.height=(el.scrollHeight+borders)+'px';
+  },[value,autoGrow]);
   return(<div className={"tc-obs"+(className?" "+className:"")}>{lbl?<div className="tc-obs-l">{lbl}</div>:null}
-    <textarea value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'—'}/></div>);
+    <textarea ref={ta} value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'—'}/></div>);
 }
 function MkSelectField({value,onChange,options}){
   return(<div className="mk-select"><select value={value} onChange={e=>onChange(e.target.value)}>{options.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select><span className="mk-select-arr">▾</span></div>);
@@ -10888,7 +10899,7 @@ function TestSession({test,ath,setup,customTests,onUpdate,onClose}){
           <div className="tcard-tag">SUMMARY</div>
         </div>
         <div className="tcard-body-wide">
-          <MkObs value={test.notes} onChange={v=>u('notes',v)} label="" className="tc-obs-summary"
+          <MkObs value={test.notes} onChange={v=>u('notes',v)} label="" className="tc-obs-summary" autoGrow
             placeholder="Overall impressions, key findings, limitations and recommendations for this testing session…"/>
         </div>
       </div>
