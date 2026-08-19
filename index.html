@@ -8721,8 +8721,12 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
    (data.templates, copy → paste into any team/athlete calendar)
    ========================================================= */
 /* Template categories — session-focus groups. A template's category comes from its
-   Session Focus (no separate category field); the first group below whose foci match
-   wins, so a mixed Strength + Mobility template lands in Strength & Power. */
+   Session Focus (no separate category field). The group a template lands in is the one
+   its focus actually leans on: the category claiming the MOST of the template's foci,
+   ties broken by whichever of those foci the coach picked first. A single secondary
+   focus can no longer drag a session out of its own training type — a Speed / Agility /
+   Deceleration session that also lists Plyometrics stays under Multi-Directional Speed —
+   while a mixed Strength + Mobility template still lands in Strength & Power. */
 const TPL_CATS=[
   {id:'strength',    label:'Strength & Power',        color:'strength', foci:['Strength','Hypertrophy','Power','Plyometrics']},
   {id:'mdspeed',     label:'Multi-Directional Speed', color:'speed',    foci:['Speed','Acceleration','Deceleration','Change of Direction','Agility']},
@@ -8730,7 +8734,17 @@ const TPL_CATS=[
   {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Mobility','Stability']},
   {id:'other',       label:'Other',                   color:'practice', foci:[]},   // Technical / Tactical / Competition / no focus
 ];
-const tplCatOf=focus=>TPL_CATS.find(c=>c.foci.some(f=>focus.includes(f)))||TPL_CATS[TPL_CATS.length-1];
+const tplCatOf=focus=>{
+  const fs=Array.isArray(focus)?focus:[];
+  let best=null;
+  for(const c of TPL_CATS){
+    if(!c.foci.length)continue;                                  // 'Other' is the fallback, never a match
+    let n=0,first=Infinity;
+    fs.forEach((f,i)=>{if(c.foci.includes(f)){n++;if(i<first)first=i;}});
+    if(n&&(!best||n>best.n||(n===best.n&&first<best.first)))best={c,n,first};
+  }
+  return best?best.c:TPL_CATS[TPL_CATS.length-1];
+};
 const tplCatColor=c=>SESSION_COLORS[c.color]||SESSION_COLORS.practice;
 function TemplatesView({data,setData}){
   const templates=data.templates||[];
