@@ -9917,11 +9917,11 @@ function generateTestPDF(test,ath,setup,customTests){
   const cList=Array.isArray(customTests)?customTests:[];
   const customSel=cList.filter(c=>Array.isArray(bat)?bat.includes(c.id):((test.custom||{})[c.id]||'')!=='');
   const esc=s=>String(s).replace(/</g,'&lt;');
-  const powerSel=[['verticalJump','Vertical Jump (cm)'],['cmj','CMJ (cm)'],['squatJump','Squat Jump (cm)'],['dropJump','Drop Jump (RSI)'],['horizontalJump','Horizontal Jump (cm)']].filter(([id])=>has(id));
+  const powerSel=[['verticalJump',L('Dikey Sıçrama (cm)','Vertical Jump (cm)')],['cmj','CMJ (cm)'],['squatJump',L('Skuat Sıçrama (cm)','Squat Jump (cm)')],['dropJump','Drop Jump (RSI)'],['horizontalJump',L('Yatay Sıçrama (cm)','Horizontal Jump (cm)')]].filter(([id])=>has(id));
   const soloBlocks=[];
-  if(has('tTest'))soloBlocks.push({h:L('ÇEVİKLİK — T-TEST','AGILITY — T-TEST'),th:'Agility T-Test (s)',v:test.tTest});
-  if(has('fiveZeroFive'))soloBlocks.push({h:L('ÇEVİKLİK — 5-0-5','AGILITY — 5-0-5'),th:'5-0-5 (s)',v:test.fiveZeroFive});
-  if(has('shuttleRun'))soloBlocks.push({h:L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING'),th:'Shuttle Run (s)',v:test.shuttleRun});
+  if(has('tTest'))soloBlocks.push({h:L('ÇEVİKLİK — T-TEST','AGILITY — T-TEST'),th:L('Çeviklik T-Testi (sn)','Agility T-Test (s)'),v:test.tTest});
+  if(has('fiveZeroFive'))soloBlocks.push({h:L('ÇEVİKLİK — 5-0-5','AGILITY — 5-0-5'),th:L('5-0-5 (sn)','5-0-5 (s)'),v:test.fiveZeroFive});
+  if(has('shuttleRun'))soloBlocks.push({h:L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING'),th:L('Mekik Koşusu (sn)','Shuttle Run (s)'),v:test.shuttleRun});
   // asymmetries
   const adR=Number(test.ankleDF?.right)||0,adL=Number(test.ankleDF?.left)||0;
   const adD=Math.abs(adR-adL),adMx=Math.max(adR,adL),adPct=adMx?(adD/adMx*100).toFixed(1):'0';
@@ -10037,7 +10037,7 @@ ${has('anthro')?`
 <div class="section">
   <div class="section-h" >${L('ANTROPOMETRİ','ANTHROPOMETRICS')}</div>
   <table class="kv">
-    <tr><th>Height (cm)</th><th>Weight (kg)</th><th>Wingspan (cm)</th><th>Body Fat (%)</th><th>${L('Bacak Uzunluğu (cm)','Leg Length (cm)')}</th><th>${L('Oturma Yüksekliği (cm)','Sitting Height (cm)')}</th></tr>
+    <tr><th>${L('Boy (cm)','Height (cm)')}</th><th>${L('Kilo (kg)','Weight (kg)')}</th><th>${L('Kulaç (cm)','Wingspan (cm)')}</th><th>${L('Yağ Oranı (%)','Body Fat (%)')}</th><th>${L('Bacak Uzunluğu (cm)','Leg Length (cm)')}</th><th>${L('Oturma Yüksekliği (cm)','Sitting Height (cm)')}</th></tr>
     <tr><td>${test.height||'—'}</td><td>${test.weight||'—'}</td><td>${test.wingspan||'—'}</td><td>${test.bodyFat||'—'}</td><td>${test.legLength||'—'}</td><td>${test.sittingHeight||'—'}</td></tr>
   </table>
 </div>`:''}
@@ -10047,13 +10047,13 @@ ${has('circ')?`
   <div class="section-h" >${L('ÇEVRE ÖLÇÜMLERİ (cm)','CIRCUMFERENCE MEASUREMENTS (cm)')}</div>
   <table class="kv">
     <tr>
-      <th>Shoulder</th>
-      <th>Waist</th>
-      <th>Hip</th>
-      <th>Thigh R</th>
-      <th>Thigh L</th>
-      <th>Calf R</th>
-      <th>Calf L</th>
+      <th>${L('Omuz','Shoulder')}</th>
+      <th>${L('Bel','Waist')}</th>
+      <th>${L('Kalça','Hip')}</th>
+      <th>${L('Uyluk Sağ','Thigh R')}</th>
+      <th>${L('Uyluk Sol','Thigh L')}</th>
+      <th>${L('Baldır Sağ','Calf R')}</th>
+      <th>${L('Baldır Sol','Calf L')}</th>
     </tr>
     <tr>
       <td>${test.circ?.shoulder||'—'}</td>
@@ -10071,9 +10071,9 @@ ${has('posture')&&(test.posture?.frontPhoto||test.posture?.sidePhoto||test.postu
 <div class="section">
   <div class="section-h" >${L('STATİK POSTÜR DEĞERLENDİRMESİ','STATIC POSTURE ASSESSMENT')}</div>
   <div class="posture-photos">
-    ${ph(test.posture.frontPhoto,'Front',180,300)}
-    ${ph(test.posture.sidePhoto,'Side',180,300)}
-    ${ph(test.posture.backPhoto,'Back',180,300)}
+    ${ph(test.posture.frontPhoto,L('Önden','Front'),180,300)}
+    ${ph(test.posture.sidePhoto,L('Yandan','Side'),180,300)}
+    ${ph(test.posture.backPhoto,L('Arkadan','Back'),180,300)}
   </div>
   ${test.posture.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.posture.observations.replace(/</g,'&lt;')}</div>`:''}
 </div>`:''}
@@ -10083,9 +10083,9 @@ ${(has('aslr')||has('ankleDF'))?`
   <div class="section-h" >${L('MOBİLİTE','MOBILITY')}</div>
   <table>
     <colgroup><col style="width:42%"/><col style="width:16%"/><col style="width:16%"/><col style="width:26%"/></colgroup>
-    <tr><th>Test</th><th>Right</th><th>Left</th><th>Asymmetry</th></tr>
-    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">Active Straight Leg Raise (FMS)<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Hamstring esnekliği ve lumbopelvik kontrol','Hamstring flexibility and lumbopelvic control')}</div></td><td${test.aslr?.right?` style="color:${fmsColor(test.aslr.right)};font-weight:600"`:''}>${test.aslr?.right||'—'}</td><td${test.aslr?.left?` style="color:${fmsColor(test.aslr.left)};font-weight:600"`:''}>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td></tr>`:''}
-    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">Ankle Dorsiflexion (°)<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Ayak bileği mobilitesi','Ankle mobility')}</div></td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td${adD?` style="color:${ankleAsymColor(adD)};font-weight:600"`:''}>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td></tr>`:''}
+    <tr><th>Test</th><th>${L('Sağ','Right')}</th><th>${L('Sol','Left')}</th><th>${L('Asimetri','Asymmetry')}</th></tr>
+    ${has('aslr')?`<tr><td style="text-align:left;font-weight:600">${L('Aktif Düz Bacak Kaldırma (FMS)','Active Straight Leg Raise (FMS)')}<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Hamstring esnekliği ve lumbopelvik kontrol','Hamstring flexibility and lumbopelvic control')}</div></td><td${test.aslr?.right?` style="color:${fmsColor(test.aslr.right)};font-weight:600"`:''}>${test.aslr?.right||'—'}</td><td${test.aslr?.left?` style="color:${fmsColor(test.aslr.left)};font-weight:600"`:''}>${test.aslr?.left||'—'}</td><td>${(slR||slL)?slAsym+' pt':'—'}</td></tr>`:''}
+    ${has('ankleDF')?`<tr><td style="text-align:left;font-weight:600">${L('Ayak Bileği Dorsifleksiyon (°)','Ankle Dorsiflexion (°)')}<div style="font-weight:400;font-size:9px;color:var(--muted);margin-top:2px">${L('Ayak bileği mobilitesi','Ankle mobility')}</div></td><td>${test.ankleDF?.right||'—'}</td><td>${test.ankleDF?.left||'—'}</td><td${adD?` style="color:${ankleAsymColor(adD)};font-weight:600"`:''}>${adD?`${adD.toFixed(1)}° (${adPct}%)`:'—'}</td></tr>`:''}
   </table>
 </div>`:''}
 
@@ -10094,7 +10094,7 @@ ${(Array.isArray(bat)?has('yBalance'):hasYB)?`
   <div class="section-h">${L('Y BALANCE TESTİ','Y BALANCE TEST')} — ${L('Bacak Uzunluğu','Leg Length')} (ASIS–${L('Medial Malleol','Medial Malleolus')}): ${yb.limb!=null?yb.limb+' cm':'—'}</div>
   <table>
     <colgroup><col style="width:34%"/><col style="width:17%"/><col style="width:17%"/><col style="width:32%"/></colgroup>
-    <tr><th>${L('Uzanma Yönü','Reach Direction')}</th><th>Right (cm)</th><th>Left (cm)</th><th>${L('Fark','Difference')}</th></tr>
+    <tr><th>${L('Uzanma Yönü','Reach Direction')}</th><th>${L('Sağ (cm)','Right (cm)')}</th><th>${L('Sol (cm)','Left (cm)')}</th><th>${L('Fark','Difference')}</th></tr>
     ${[['Anterior',yb.right.ant,yb.left.ant,yb.dAnt],['Posteromedial',yb.right.pm,yb.left.pm,yb.dPm],['Posterolateral',yb.right.pl,yb.left.pl,yb.dPl]].map(([lbl,r,l,d])=>`<tr><td style="text-align:left;font-weight:600">${lbl}</td><td>${r!=null?r:'—'}</td><td>${l!=null?l:'—'}</td><td${d!=null?` style="color:${d<4?'#16a34a':'#dc2626'};font-weight:600"`:''}>${d==null?'—':d.toFixed(1)+' cm '+(d<4?'✓':'⚠')}</td></tr>`).join('')}
   </table>
   <table class="kv" style="margin-top:8px">
@@ -10119,22 +10119,22 @@ ${has('ohs')?`
 
 ${has('sprint')?`
 <div class="section sprint-section">
-  <div class="section-h" >${L('20M SPRINT ANALİZİ','20M SPRINT ANALYSIS')}${test.sprint20m?.time?' — '+test.sprint20m.time+' s':''}</div>
+  <div class="section-h" >${L('20M SPRINT ANALİZİ','20M SPRINT ANALYSIS')}${test.sprint20m?.time?' — '+test.sprint20m.time+L(' sn',' s'):''}</div>
   <div class="sprint-panel">
     <div class="sprint-col" style="flex:3">
       <div class="sprint-col-h" >${L('YANDAN','SIDE VIEW')}</div>
       <div class="sprint-row">
-        ${ph(test.sprint20m?.sideStep1,'Step 1',105,150)}
-        ${ph(test.sprint20m?.sideStep2,'Step 2',105,150)}
-        ${ph(test.sprint20m?.sideStep3,'Step 3',105,150)}
+        ${ph(test.sprint20m?.sideStep1,L('1. Adım','Step 1'),105,150)}
+        ${ph(test.sprint20m?.sideStep2,L('2. Adım','Step 2'),105,150)}
+        ${ph(test.sprint20m?.sideStep3,L('3. Adım','Step 3'),105,150)}
       </div>
     </div>
     <div class="sprint-sep"></div>
     <div class="sprint-col" style="flex:2">
       <div class="sprint-col-h" >${L('ÖNDEN','FRONT VIEW')}</div>
       <div class="sprint-row">
-        ${ph(test.sprint20m?.frontRightFoot,'Right Foot',120,165)}
-        ${ph(test.sprint20m?.frontLeftFoot,'Left Foot',120,165)}
+        ${ph(test.sprint20m?.frontRightFoot,L('Sağ Ayak','Right Foot'),120,165)}
+        ${ph(test.sprint20m?.frontLeftFoot,L('Sol Ayak','Left Foot'),120,165)}
       </div>
     </div>
   </div>
