@@ -5214,9 +5214,6 @@ function WellnessHeatmap({athletes}){
   </div>);
 }
 
-// The screen the app lands on when it opens — where "Back" returns to.
-const HOME_VIEW='setup';
-
 /* =========================================================
    TEAM → ATHLETE SESSION SYNC
    Propagates team sessions to selected athletes' personal calendars.
@@ -7361,7 +7358,7 @@ const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
 /* `coachAthlete` is the one athlete this calendar belongs to — passed only by the
    individualization card, where a session is being written FOR somebody. It is what the
    assistant coach reads; everywhere else it is absent and the button does not appear. */
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises,inline,coachAthlete,goHome}){
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,saveAthletes,labelOwner,exercises,inline,coachAthlete}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -7372,6 +7369,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const[hovSes,setHovSes]=useState(null);
   const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
+  /* The session card the editor was opened from — what "Back" returns to. Only the id is
+     kept, so the panel that reopens reads the session as it stands after the edit. */
+  const[editFrom,setEditFrom]=useState(null);
   const[monthRef,setMonthRef]=useState(()=>parseD(selected.date));
   const[calMode,setCalMode]=useState('week');   // single calendar: 'week' (rich strip) | 'month' (grid)
   // What is on the training clipboard right now, so every day column here offers to paste it
@@ -7404,7 +7404,22 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edMv=(sid,dir)=>{const a=[...edDay.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];svDay(editDate,{sessions:a});};
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
     svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
-  const openEdit=k=>{if(canEdit){setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  const openEdit=k=>{if(canEdit){setEditFrom(drawerSes?{id:drawerSes.id,date:drawerDate||k}:null);setDrawerSes(null);setEditDate(k);}else goDayView(k);};
+  /* Back out of the plan and onto the session panel it was opened from — the one with the
+     movements, the meta tiles and the block list. Straight from the calendar's "+" (no panel
+     behind it), it opens the day's first session instead, and it is not offered at all on a
+     day with nothing on it yet. */
+  const editBackSes=()=>{
+    if(!editDate)return null;
+    const list=((days[(editFrom&&editFrom.date)||editDate]||{}).sessions)||[];
+    return (editFrom&&list.find(x=>x.id===editFrom.id))||((days[editDate]||{}).sessions||[])[0]||null;
+  };
+  const goBackFromEdit=()=>{
+    const dk=(editFrom&&editFrom.date)||editDate;
+    const ses=editBackSes();
+    setEditDate(null);setEditFrom(null);
+    if(ses){setDrawerSes(ses);setDrawerDate(dk);}
+  };
   /* Paste the copied training onto a day — here it lands on THIS calendar, which on an
      athlete's card is that athlete's own, so a program written for one player reaches
      another without being typed again. It is added to the day, never over what is there. */
@@ -7944,11 +7959,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <div className="ti">Training Plan</div>
             <div className="su">{fdLong(editDate)} · {Math.round(dLoad(edDay))} AU</div>
           </div>
-          {/* Closes the plan and drops the coach back on the screen the app opens on,
-              rather than leaving them on the calendar they came through. */}
-          {goHome&&<button className="btn sm white" style={{marginRight:8}}
-            onClick={()=>{setEditDate(null);goHome();}} title="Programın ilk sayfasına dön">Back</button>}
-          <button className="x" onClick={()=>setEditDate(null)}>×</button>
+          {/* Reverses ✎ Edit: closes the plan and reopens the session panel it came from. */}
+          {editBackSes()&&<button className="btn sm white" style={{marginRight:8}}
+            onClick={goBackFromEdit} title="Antrenman detayına dön">Back</button>}
+          <button className="x" onClick={()=>{setEditDate(null);setEditFrom(null);}}>×</button>
         </div>
         <div className="dw-layout">
         <div className="dw-b">
@@ -17243,7 +17257,7 @@ function App(){
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
     return true;
   };
-  const[view,setView]=useState(HOME_VIEW);
+  const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
@@ -17370,7 +17384,7 @@ function App(){
     <main key={view+team.id}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
-      {view==='calendar'&&<><CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks} goHome={()=>setView(HOME_VIEW)}
+      {view==='calendar'&&<><CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
         setup={team.setup} labelOwner={team.setup.teamName} athletes={team.athletes||[]} exercises={data.exercises||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>
