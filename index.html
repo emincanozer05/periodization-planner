@@ -11164,12 +11164,16 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
   const nameW=n<=12?18:n<=20?14:11;
   const logo=teamLogo();
   const lbl=n>18?cmpShort:cmpLabel;
+  /* When the sheet was measured. It comes off the tests the rows were read from, and
+     a squad rarely tests on a single day — so a spread prints as a span rather than as
+     one date that would be wrong for most of the rows. */
+  const dates=rows.map(r=>r.date).filter(Boolean).sort();
+  const dateLabel=dates.length?(dates[0]===dates[dates.length-1]?fd(dates[0]):fd(dates[0])+' – '+fd(dates[dates.length-1])):'';
   const head=metrics.map(m=>`<th><span class="l">${esc(lbl(m))}</span>${m.u?`<span class="u">${esc(m.u)}</span>`:''}</th>`).join('');
   const band=bands.map(b=>`<th class="grp" colspan="${b.n}">${esc(L(b.tr,b.en))}</th>`).join('');
   const body=rows.map(r=>`<tr>
     <td class="ath">
-      <span class="nm">${esc(r.name)}</span>
-      <span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+      <span class="nm">${esc(r.name)}</span>${r.pos?`<span class="pos">${esc(r.pos)}</span>`:''}
     </td>
     ${r.vals.map((v,i)=>{const e=edges[i];
       const cls=v==null?'na':(e.best!=null&&v===e.best?'best':(e.worst!=null&&v===e.worst?'worst':''));
@@ -11197,8 +11201,11 @@ thead th{background:#f4f5f7;font-size:${(fs*.92).toFixed(1)}px;font-weight:700;l
 thead th .u{display:block;font-size:${(fs*.8).toFixed(1)}px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
 thead th.grp{background:#0a0b0d;color:#fff;font-size:${(fs*.82).toFixed(1)}px;letter-spacing:.1em;padding:3px}
 th.ath,td.ath{width:${nameW}%;text-align:left}
-td.ath .nm{display:block;font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.15}
-td.ath .sub{display:block;font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);margin-top:1px}
+td.ath .nm{font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.25}
+/* The position rides alongside the name instead of under it. The shirt number and
+   the test date were a second line on every row for something the sheet does not turn
+   on — and the date now sits in the header, where it is said once. */
+td.ath .pos{font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);white-space:nowrap;margin-left:5px}
 tbody tr:nth-child(even) td{background:#fafbfc}
 tbody td{font-size:${vfs}px;font-weight:700;letter-spacing:-.01em}
 tbody td.ath{font-size:${fs}px;font-weight:400;letter-spacing:0}
@@ -11221,7 +11228,7 @@ tfoot td.avg{font-size:${(fs*.9).toFixed(1)}px;text-transform:uppercase;letter-s
   ${logo?`<img src="${logo}" alt=""/>`:''}
   <div>
     <h1>${esc(teamName||'')}</h1>
-    <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${n} ${esc(L('metrik','metrics'))}</div>
+    <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${n} ${esc(L('metrik','metrics'))}${dateLabel?' · '+esc(dateLabel):''}</div>
   </div>
   <div class="ttl">${L('SPORCU<br>KARŞILAŞTIRMA','ATHLETE<br>COMPARISON')}</div>
 </div>
