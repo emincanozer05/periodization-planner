@@ -10328,6 +10328,326 @@ ${test.notes?`
 }
 
 /* =========================================================
+   ATHLETE vs SQUAD — the comparison report
+   ---------------------------------------------------------
+   Print puts the athlete's own session on paper. This sheet answers the other
+   question asked in front of the same screen: where does every one of these
+   readings sit against the rest of the squad. One row per measurement — the
+   athlete's number, the squad average, and a bar that runs to either side of
+   that average, so the direction is read before the digits are.
+
+   Two things are deliberate. A measurement with no better side (height, a
+   circumference, a coach's own test) is drawn grey and kept out of the
+   strengths and priorities: taller is not a score. And the axis is set by the
+   data rather than fixed — the bulk of the sheet decides how far the bars
+   reach — so a squad that sits close together prints readable differences
+   instead of a page of flat lines.
+
+   The squad average is read the same way the test cards read it: every
+   team-mate's most recent record that actually carries that measurement, plus
+   this athlete's reading from the record on screen.
+   ========================================================= */
+const RPT_CMP_GROUPS=[
+  {id:'anthro',tr:'Antropometri',       en:'Anthropometry'},
+  {id:'circ',  tr:'Çevre Ölçümleri',    en:'Circumferences'},
+  {id:'mob',   tr:'Mobilite & Hareket', en:'Mobility & Movement'},
+  {id:'pow',   tr:'Güç & Sıçrama',      en:'Power & Jump'},
+  {id:'spd',   tr:'Sürat & Çeviklik',   en:'Speed & Agility'},
+  {id:'cust',  tr:'Özel Testler',       en:'Custom Tests'},
+];
+/* Circumferences sit out of the comparison table on purpose — a waist next to a
+   team-mate's invites a ranking the measurement does not support. On this sheet
+   they are printed all the same, because the coach asked for every reading, but
+   with no direction: squad average alongside, no better or worse. */
+const RPT_CIRC_METRICS=[
+  {id:'cSho',  g:'circ',tr:'Omuz',    en:'Shoulder',u:'cm',get:t=>cmpN(t.circ&&t.circ.shoulder)},
+  {id:'cWai',  g:'circ',tr:'Bel',     en:'Waist',   u:'cm',get:t=>cmpN(t.circ&&t.circ.waist)},
+  {id:'cHip',  g:'circ',tr:'Kalça',   en:'Hip',     u:'cm',get:t=>cmpN(t.circ&&t.circ.hip)},
+  {id:'cThR',  g:'circ',tr:'Uyluk R', en:'Thigh R', u:'cm',get:t=>cmpN(t.circ&&(t.circ.thighRight||t.circ.thigh))},
+  {id:'cThL',  g:'circ',tr:'Uyluk L', en:'Thigh L', u:'cm',get:t=>cmpN(t.circ&&(t.circ.thighLeft||t.circ.thigh))},
+  {id:'cCaR',  g:'circ',tr:'Baldır R',en:'Calf R',  u:'cm',get:t=>cmpN(t.circ&&(t.circ.calfRight||t.circ.calf))},
+  {id:'cCaL',  g:'circ',tr:'Baldır L',en:'Calf L',  u:'cm',get:t=>cmpN(t.circ&&(t.circ.calfLeft||t.circ.calf))},
+];
+const rptCmpMetrics=customTests=>[...cmpMetrics(customTests),...RPT_CIRC_METRICS];
+
+function printTestCompare(test,ath,setup,customTests,athletes){
+  const roster=Array.isArray(athletes)?athletes:[];
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  /* One row per measurement this record actually carries. A blank field is not a
+     zero, so it is simply not on the sheet. */
+  const rows=[];
+  rptCmpMetrics(customTests).forEach(m=>{
+    const v=m.get(test);
+    if(v==null)return;
+    const pool=[{id:ath.id,v}];
+    roster.forEach(a=>{
+      if(a.id===ath.id)return;
+      const ts=[...(a.tests||[])].filter(t=>t.date&&m.get(t)!=null)
+        .sort((x,y)=>String(x.date).localeCompare(String(y.date)));
+      const last=ts[ts.length-1];
+      if(last)pool.push({id:a.id,v:m.get(last)});
+    });
+    const vals=pool.map(p=>p.v);
+    const avg=vals.reduce((s,x)=>s+x,0)/vals.length;
+    const pct=avg?(v-avg)/Math.abs(avg)*100:0;
+    const d=m.dir?teamAvgDelta(v,avg,m.dir):null;
+    let rank=null;
+    if(m.dir&&pool.length>1){
+      const sorted=[...pool].sort((x,y)=>m.dir==='lo'?x.v-y.v:y.v-x.v);
+      rank=sorted.findIndex(p=>p.id===ath.id)+1;
+    }
+    rows.push({m,v,avg,pct,rank,n:pool.length,
+      lvl:!m.dir?'flat':(d?d.level:'same'),
+      min:Math.min(...vals),max:Math.max(...vals)});
+  });
+  if(!rows.length){
+    alert(L('Karşılaştırılacak veri yok — bu kayıtta henüz ölçüm girilmemiş.',
+            'Nothing to compare yet — this record carries no measurement.'));
+    return;
+  }
+  const w=window.open('','_blank','width=1000,height=1200');
+  if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
+
+  /* The axis. It is set by the body of the sheet rather than by its widest
+     reading: the asymmetry gaps are differences between two small numbers, so
+     one of them at +120% would push every other bar into a stub around the
+     centre line. Four readings in five fall inside the axis; the fifth runs off
+     the end and is marked with a caret, and the gap column still prints what it
+     really was. Never tighter than ±10%, so a squad that sits together does not
+     blow a 0.3% difference up into a full-width bar, and never wider than ±60%. */
+  const gaps=rows.filter(r=>r.n>1).map(r=>Math.abs(r.pct)).sort((a,b)=>a-b);
+  const q80=gaps.length?gaps[Math.min(gaps.length-1,Math.floor(gaps.length*0.8))]:10;
+  const scale=Math.min(60,Math.max(10,Math.ceil(q80*1.25/5)*5));
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  const pos=p=>50+clamp(p,-scale,scale)/scale*50;
+  const pctOf=(x,avg)=>avg?(x-avg)/Math.abs(avg)*100:0;
+  const sign=p=>(p>0?'+':'')+p.toFixed(1)+'%';
+  /* cmpFmt rounds to one decimal and drops a trailing zero, which is right for a
+     jump in centimetres and wrong for a sprint: 3.04 s printed as "3" throws away
+     the part of the number a coach is reading. Anything measured in seconds, and
+     the RSI, keep two decimals. */
+  const val=(v,m)=>v==null?'—':((m.u==='s'||m.id==='dj')?Number(v).toFixed(2):cmpFmt(v));
+
+  const scored=rows.filter(r=>r.m.dir&&r.n>1);
+  const above=scored.filter(r=>r.lvl==='good').length;
+  const below=scored.filter(r=>r.lvl==='poor').length;
+  const peers=Math.max(0,Math.max(...rows.map(r=>r.n))-1);
+  const strengths=scored.filter(r=>r.lvl==='good').sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,5);
+  const gapsList=scored.filter(r=>r.lvl==='poor').sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,5);
+
+  const bar=r=>{
+    if(r.n<2)return`<div class="bar"><div class="mid"></div><span class="solo">${esc(L('takımda kıyas yok','no squad reading'))}</span></div>`;
+    const p=pos(r.pct),lo=pos(pctOf(r.min,r.avg)),hi=pos(pctOf(r.max,r.avg));
+    const a=Math.min(50,p),b=Math.max(50,p);
+    const over=Math.abs(r.pct)>scale
+      ?`<span class="over" style="${r.pct>0?'right:2px':'left:2px'}">${r.pct>0?'▸':'◂'}</span>`:'';
+    return`<div class="bar">
+      <div class="rng" style="left:${lo.toFixed(2)}%;width:${Math.max(0.6,hi-lo).toFixed(2)}%"></div>
+      <div class="mid"></div>
+      <div class="fill ${r.lvl}" style="left:${a.toFixed(2)}%;width:${Math.max(0,b-a).toFixed(2)}%"></div>
+      <div class="dot ${r.lvl}" style="left:${p.toFixed(2)}%"></div>${over}
+    </div>`;
+  };
+  const line=r=>`<tr class="mrow">
+    <td class="lbl">${esc(cmpLabel(r.m))}${r.m.u?`<span class="u">${esc(r.m.u)}</span>`:''}</td>
+    <td class="mine ${r.lvl}">${esc(val(r.v,r.m))}</td>
+    <td class="barc">${bar(r)}</td>
+    <td class="delta ${r.lvl}">${r.n<2?'—':(r.lvl==='same'?esc(L('ort.','avg')):sign(r.pct))}</td>
+    <td class="avg">${esc(val(r.avg,r.m))}<span class="nn">n=${r.n}</span></td>
+    <td class="rank">${r.rank?`<b>${r.rank}</b>/${r.n}`:'—'}</td>
+  </tr>`;
+  const section=g=>{
+    const rs=rows.filter(r=>r.m.g===g.id);
+    if(!rs.length)return'';
+    return`<div class="grp">
+      <div class="grp-h"><span>${esc(L(g.tr,g.en))}</span><span class="cnt">${rs.length} ${esc(rs.length===1?L('ölçüm','reading'):L('ölçüm','readings'))}</span></div>
+      <table class="mt">
+        <colgroup><col style="width:25%"/><col style="width:11%"/><col style="width:33%"/><col style="width:11%"/><col style="width:11%"/><col style="width:9%"/></colgroup>
+        <thead><tr>
+          <th class="l">${esc(L('Ölçüm','Measurement'))}</th>
+          <th>${esc(L('Sporcu','Athlete'))}</th>
+          <th>${esc(L('Takım ortalamasına göre','Against the squad average'))}</th>
+          <th>${esc(L('Fark','Gap'))}</th>
+          <th>${esc(L('Takım ort.','Squad avg'))}</th>
+          <th>${esc(L('Sıra','Rank'))}</th>
+        </tr></thead>
+        <tbody>${rs.map(line).join('')}</tbody>
+      </table>
+    </div>`;
+  };
+  const pick=(list,cls,empty)=>list.length
+    ?list.map(r=>`<div class="pk ${cls}"><span class="pkn">${esc(cmpLabel(r.m))}</span><span class="pkv">${esc(sign(r.pct))}</span></div>`).join('')
+    :`<div class="pk none">${esc(empty)}</div>`;
+
+  const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period||'';
+  const posLabel=POS_FULL[ath.position]||ath.position||'';
+  const logo=teamLogo();
+  const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):p).replace(/&/g,'&amp;');
+
+  const html=`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${esc(L('Takım Karşılaştırma','Squad Comparison'))} — ${esc(ath.name||'')}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 portrait;margin:11mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+:root{--accent:#9aab3a;--good:#16a34a;--poor:#c2410c;--flat:#94a3b8;--border:#e5e7eb;--bg2:#f4f5f7;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
+body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10.5px;line-height:1.45;background:#fff}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* Header — the same dark card the test report opens with, so the two sheets
+   read as one pack when they are printed together. */
+.hdr{display:flex;gap:18px;align-items:center;padding:16px 20px;background:#0a0b0d;color:#fff;border-radius:14px;margin-bottom:12px}
+.hdr .photo{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);object-fit:cover;flex-shrink:0;background:#1c2030}
+.hdr .photo-x{width:74px;height:94px;border-radius:10px;border:1px solid rgba(154,171,58,.4);background:#1c2030;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;flex-shrink:0}
+.hdr .who{flex:1}
+.hdr h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.1;color:#fff}
+.hdr .meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:rgba(255,255,255,.7);margin-top:5px;letter-spacing:.02em}
+.hdr .date{display:inline-block;margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:4px 10px;border-radius:6px;letter-spacing:.05em}
+.hdr .rb{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.hdr .rb img{height:30px;width:auto;object-fit:contain}
+.hdr .ttl{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:rgba(255,255,255,.6);letter-spacing:.09em;text-transform:uppercase;line-height:1.35}
+
+/* At a glance — the counts first, then the five widest gaps either way. A coach
+   who reads nothing else on the sheet has read this. */
+.glance{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:11px}
+.tile{border:1px solid var(--border);border-radius:11px;padding:9px 11px;background:#fff}
+.tile .n{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.tile .t{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.tile.g .n{color:var(--good)} .tile.p .n{color:var(--poor)}
+/* The two counts are out of the readings that have a better side, not out of all
+   of them — a height is neither above nor below, so the denominator says so. */
+.tile .of{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0}
+.picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px;break-inside:avoid;page-break-inside:avoid}
+.pcol{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff}
+.pcol.g{border-left:3px solid var(--good)} .pcol.p{border-left:3px solid var(--poor)}
+.pcol h3{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:7px}
+.pk{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:3px 0;border-top:1px solid var(--border)}
+.pk:first-of-type{border-top:none}
+.pkn{font-size:10.5px;font-weight:600;color:var(--text)}
+.pkv{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600}
+.pk.g .pkv{color:var(--good)} .pk.p .pkv{color:var(--poor)}
+.pk.none{color:var(--dim);font-size:10px;border:none}
+
+/* One block per group. The block is kept whole where the page allows it, so a
+   heading never prints at the foot of a sheet with its rows overleaf. */
+.grp{margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
+.grp-h{display:flex;justify-content:space-between;align-items:baseline;position:relative;padding:0 0 6px 13px;margin-bottom:4px;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;page-break-after:avoid;break-after:avoid-page}
+.grp-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:14px;background:var(--accent);border-radius:2px}
+.grp-h .cnt{font-weight:400;font-size:8.5px;color:var(--muted);letter-spacing:.05em}
+table.mt{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed}
+table.mt th{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:500;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:3px 6px 5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+table.mt th.l{text-align:left}
+table.mt td{padding:5px 6px;border-top:1px solid var(--border);vertical-align:middle}
+.mrow:nth-child(even) td{background:#fafbfc}
+td.lbl{font-size:10.5px;font-weight:600;text-align:left;line-height:1.2}
+td.lbl .u{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:400;color:var(--muted);margin-left:4px}
+td.mine{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:center;letter-spacing:-.01em}
+td.mine.good{color:var(--good)} td.mine.poor{color:var(--poor)} td.mine.flat,td.mine.same{color:var(--text)}
+td.delta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;text-align:center}
+td.delta.good{color:var(--good)} td.delta.poor{color:var(--poor)} td.delta.flat,td.delta.same{color:var(--muted)}
+td.avg{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);text-align:center}
+td.avg .nn{display:block;font-size:7.5px;color:var(--dim);letter-spacing:.04em}
+td.rank{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);text-align:center}
+td.rank b{font-size:12px;color:var(--text)}
+td.barc{padding:5px 4px}
+
+/* The bar. The pale band is the squad's spread on the same axis, the hairline is
+   the average, the filled length is this athlete's distance from it. */
+.bar{position:relative;height:15px;border-radius:4px;background:var(--bg2);overflow:hidden}
+.bar .rng{position:absolute;top:0;bottom:0;background:#dbe1e8;border-radius:3px}
+.bar .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#0a0b0d;opacity:.55}
+.bar .fill{position:absolute;top:3px;bottom:3px;border-radius:3px;opacity:.9}
+.bar .fill.good{background:var(--good)} .bar .fill.poor{background:var(--poor)}
+.bar .fill.flat,.bar .fill.same{background:var(--flat)}
+.bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d}
+.bar .dot.good{background:#0f7a37} .bar .dot.poor{background:#8f3009}
+.bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em}
+/* A reading that runs past the end of the axis. The bar can only reach the edge,
+   so the caret says the real gap is wider than it is drawn — the Gap column has
+   the number. */
+.bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d}
+.axis{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.footer{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--dim);margin-top:14px;padding-top:9px;border-top:1px solid var(--border);letter-spacing:.05em;line-height:1.6}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;letter-spacing:.04em;z-index:9999;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+@media print{.print-bar,.spacer{display:none}}
+</style>
+</head><body>
+
+<div class="print-bar">
+  📊 ${esc(L('Takım Karşılaştırma Raporu hazır','Squad Comparison report is ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> · <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button>
+  <div style="font-size:11px;font-weight:400;margin-top:6px;opacity:.95">${L('İpucu: Yazdırma penceresinde tam renk için <strong>"Arka plan grafikleri"</strong> seçeneğini (Diğer ayarlar) açın.','Tip: In the print dialog, enable <strong>"Background graphics"</strong> (More settings) for full colours.')}</div>
+</div>
+<div class="spacer" style="height:78px"></div>
+
+<div class="hdr">
+  ${ath.photo?`<img class="photo" src="${psrc(ath.photo)}"/>`:`<div class="photo-x">${esc(initials)}</div>`}
+  <div class="who">
+    <h1>${esc(ath.name||'—')}</h1>
+    <div class="meta">${esc([posLabel,fdL(test.date)].filter(Boolean).join(' · '))}</div>
+    <div class="meta">${esc([setup&&setup.teamName,setup&&setup.sport].filter(Boolean).join(' · '))}</div>
+    <div class="date">${esc(periodLabel)} ${esc(test.year||'')}</div>
+  </div>
+  <div class="rb">
+    ${logo?`<img src="${esc(logo)}"/>`:''}
+    <div class="ttl">${esc(L('TAKIM','SQUAD'))}</div>
+    <div class="ttl">${esc(L('KARŞILAŞTIRMA','COMPARISON'))}</div>
+  </div>
+</div>
+
+<div class="glance">
+  <div class="tile"><div class="n">${rows.length}</div><div class="t">${esc(L('kıyaslanan ölçüm','readings compared'))}</div></div>
+  <div class="tile g"><div class="n">${above}<span class="of">/${scored.length}</span></div><div class="t">${esc(L('ortalamanın üstünde','above squad average'))}</div></div>
+  <div class="tile p"><div class="n">${below}<span class="of">/${scored.length}</span></div><div class="t">${esc(L('ortalamanın altında','below squad average'))}</div></div>
+  <div class="tile"><div class="n">${peers}</div><div class="t">${esc(L('kıyaslanan takım arkadaşı','team-mates compared'))}</div></div>
+</div>
+
+<div class="picks">
+  <div class="pcol g">
+    <h3>${esc(L('Öne çıkanlar','Standing out'))}</h3>
+    ${pick(strengths,'g',L('Ortalamanın belirgin üstünde bir ölçüm yok.','No reading stands clear of the average.'))}
+  </div>
+  <div class="pcol p">
+    <h3>${esc(L('Öncelikler','Priorities'))}</h3>
+    ${pick(gapsList,'p',L('Ortalamanın belirgin altında bir ölçüm yok.','No reading sits clear below the average.'))}
+  </div>
+</div>
+
+<div class="axis">
+  <span>− ${scale}%</span>
+  <span>${esc(L('TAKIM ORTALAMASI','SQUAD AVERAGE'))}</span>
+  <span>+ ${scale}%</span>
+</div>
+<div class="legend">
+  <span><i style="background:var(--good)"></i>${esc(L('ortalamadan iyi','better than average'))}</span>
+  <span><i style="background:var(--poor)"></i>${esc(L('ortalamadan zayıf','weaker than average'))}</span>
+  <span><i style="background:var(--flat)"></i>${esc(L('yönü olmayan ölçüm','no better side'))}</span>
+  <span><i style="background:#dbe1e8"></i>${esc(L('takımın en düşük–en yüksek aralığı','squad low–high range'))}</span>
+  <span>▸ ${esc(L('eksenin dışında — gerçek fark, Fark sütununda','past the end of the axis — the real gap is in the Gap column'))}</span>
+</div>
+
+${RPT_CMP_GROUPS.map(section).join('')}
+
+<div class="footer">
+  ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı, bu sporcunun ekrandaki kaydıyla birlikte. Yönü olmayan ölçümler (boy, çevre ölçüsü, özel testler) iyi/zayıf olarak işaretlenmez.',
+          'Squad average: every team-mate\'s most recent record carrying that measurement, together with this athlete\'s reading from the record on screen. Measurements with no better side (height, circumferences, custom tests) are never marked better or weaker.'))}
+  <br>${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}${setup&&setup.teamName?' · '+esc(setup.teamName):''}
+</div>
+
+</body></html>`;
+
+  w.document.write(html);
+  w.document.close();
+  printWhenImagesReady(w);
+}
+
+/* =========================================================
    GOOGLE DRIVE EMBED HELPERS
    Videos & images can be hosted on Google Drive (no server storage).
    ========================================================= */
@@ -11028,6 +11348,8 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
         <div><label style={{fontSize:11}}>Date</label><input type="date" value={test.date} onChange={e=>u('date',e.target.value)} style={{width:150}}/></div>
         <div><label style={{fontSize:11}}>Period</label><select value={test.period} onChange={e=>u('period',e.target.value)} style={{width:140}}>{TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select></div>
         <button className="btn sm sec" onClick={()=>{try{generateTestPDF(test,ath,setup,customTests,athletes);}catch(e){alert('PDF error: '+e.message);}}}>⎙ Print</button>
+        <button className="btn sm sec" onClick={()=>{try{printTestCompare(test,ath,setup,customTests,athletes);}catch(e){alert('Report error: '+e.message);}}}
+          title="Every reading on this record set against the squad average (A4 portrait)">▤ Report</button>
         <button className="btn sm sec" onClick={onClose}>Close ✕</button>
       </div>
     </div>
@@ -11169,7 +11491,7 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
   const body=rows.map(r=>`<tr>
     <td class="ath">
       <span class="nm">${esc(r.name)}</span>
-      <span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+      <span class="sub">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
     </td>
     ${r.vals.map((v,i)=>{const e=edges[i];
       const cls=v==null?'na':(e.best!=null&&v===e.best?'best':(e.worst!=null&&v===e.worst?'worst':''));
@@ -11263,7 +11585,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
     const val=(m,t)=>{try{return m.get(t);}catch(e){return null;}};
     if(hideEmpty)metrics=metrics.filter(m=>rows.some(r=>val(m,r.t)!=null));
     const data=rows.map(r=>({
-      id:r.a.id,name:r.a.name||'—',number:r.a.number||'',
+      id:r.a.id,name:r.a.name||'—',
       pos:POS_FULL[r.a.position]||r.a.position||'',
       date:r.t.date,period:(TEST_PERIODS.find(p=>p.id===r.t.period)||{}).label||'',
       vals:metrics.map(m=>val(m,r.t)),
@@ -11342,7 +11664,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
             {view.rows.map(r=><tr key={r.id}>
               <td className="ath-c">
                 <span className="cmp-nm">{r.name}</span>
-                <span className="cmp-sub">{[r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
+                <span className="cmp-sub">{[r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
               </td>
               {r.vals.map((v,i)=><td key={view.metrics[i].id}><span className={cellCls(v,view.edges[i])}>{cmpFmt(v)}</span></td>)}
             </tr>)}
@@ -11383,7 +11705,7 @@ function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool,refLabel,refNor
       :'P'+c.pct+(c.sq?' '+L('· takım','· squad'):'')}</span></td>`).join('')}
   </tr>`).join('');
   const body=rows.map(r=>`<tr>
-    <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.number?'#'+r.number:'',r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></td>
+    <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></td>
     <td class="need">${esc(r.primary)}</td><td>${r.pPct==null?'—':'P'+r.pPct}</td>
     <td class="need">${esc(r.secondary||'—')}</td><td>${r.sPct==null?'—':'P'+r.sPct}</td>
     <td class="need">${esc(r.strong||'—')}</td><td>${r.gPct==null?'—':'P'+r.gPct}</td>
@@ -11552,7 +11874,7 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
     matrix:{cols:AB_METRICS.map(m=>abMetricName(m.id)),rows:matrixOut(),
       key:AB_METRICS.map(m=>({name:abMetricName(m.id),text:abMeaning(m.id)}))},
     rows:board.profiles.map(p=>({
-      name:p.a.name||'—',number:p.a.number||'',pos:POS_FULL[p.a.position]||p.a.position||'',date:p.t?p.t.date:'',
+      name:p.a.name||'—',pos:POS_FULL[p.a.position]||p.a.position||'',date:p.t?p.t.date:'',
       primary:abBoxName(p.primary.box),pPct:p.primary.pct,
       secondary:p.secondary?abBoxName(p.secondary.box):null,sPct:p.secondary?p.secondary.pct:null,
       strong:p.strong?abBoxName(p.strong.id):null,gPct:p.strong?p.strong.pct:null,
