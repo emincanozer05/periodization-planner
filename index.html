@@ -1694,10 +1694,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cmp-tbl thead .ath-c{z-index:4}
 .cmp-tbl tbody tr:hover td{background:var(--bg2)}
 .cmp-tbl tbody tr:hover .ath-c{background:var(--bg2)}
-/* Who the row is, on one line: the name, then the position code and the date of
-   the test it is read from, set small and quiet to the right of it. */
-.cmp-nm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
-.cmp-meta{font-size:9.5px;color:var(--dim);letter-spacing:.03em;margin-left:6px;white-space:nowrap}
+/* Who the row is, on one line: the name, then the position and the date of the
+   test it is read from, set small and quiet to the right of it. A long name wraps
+   inside its own box and the reading holds the row beside it — it never drops
+   under the name, where it would read as a second athlete. */
+.cmp-who{display:flex;align-items:baseline;gap:6px}
+.cmp-nm{flex:0 1 auto;min-width:0;white-space:normal;overflow-wrap:break-word;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
+.cmp-meta{flex:0 0 auto;font-size:9.5px;color:var(--dim);letter-spacing:.03em;white-space:nowrap}
 .cmp-v{font-weight:600;color:var(--text)}
 .cmp-v.na{color:var(--dim);font-weight:400}
 .cmp-v.best{color:var(--accent)}
@@ -3089,7 +3092,13 @@ const FOCUS_LOAD={
   'Hi-intensity wave':{v:62,i:85},'Max-effort':{v:70,i:88},'Dynamic-effort':{v:70,i:78},
   'Deload':{v:45,i:50},'Peak':{v:50,i:92}};
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
-const POSITIONS={Basketball:['PG','SG','SF','PF','C'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
+const POSITIONS={Basketball:['Guard','Forward','Center'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
+/* Basketball rosters are kept on the three positions a coach actually programmes for.
+   Records written before that carry the five-code set, so every read of a position —
+   a label on a card, a group on a report, a filter on the roster — goes through
+   posOf() first and an old PG reads as a Guard everywhere. */
+const POS_ALIAS={PG:'Guard',SG:'Guard','SG/SF':'Forward',SF:'Forward','SF/PF':'Forward',PF:'Forward',C:'Center'};
+const posOf=p=>POS_ALIAS[p]||p||'';
 const SPRESETS=[
   {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power',focus:['Strength','Power'],duration:75,bl:[]}},
   {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Agility',focus:['Speed','Agility'],duration:45,bl:[]}},
@@ -3670,7 +3679,8 @@ const abOrdPct=v=>{const n=Math.round(Number(v));return(isFinite(n)&&AB_ORD_PCT[
 /* Positions group the way the literature compares them: guards, forwards, centres.
    A team on another sport has position codes this map does not carry, and then no
    position expectation is applied at all. */
-const AB_POS_GRP={PG:'G',SG:'G',SF:'F',PF:'F',C:'C'};
+const AB_POS_GRP={Guard:'G',Forward:'F',Center:'C'};
+const abPosGrp=p=>AB_POS_GRP[posOf(p)];
 /* How much better or worse a position is expected to be, in reference SDs, so a
    centre is not marked weak for being a centre and a guard is not flattered for
    being a guard. Only the qualities where the literature reports a consistent
@@ -3756,7 +3766,7 @@ const AB_MEANINGS={
 };
 const abMeaning=id=>{const m=AB_MEANINGS[id];return m?L(m[0],m[1]):'';};
 const abPosShift=(metric,pos)=>{
-  const t=AB_POS_SHIFT[metric],g=AB_POS_GRP[pos];
+  const t=AB_POS_SHIFT[metric],g=abPosGrp(pos);
   return(t&&g&&t[g]!=null)?t[g]:0;
 };
 /* One value against the reference. Returns null — not a middling percentile —
@@ -4017,13 +4027,13 @@ function abBoard(athletes,scope,customTests){
       if(nr&&nr.pct!=null){mn[mt.id]=nr.pct;mnu[mt.id]=nr.used;}
     });
     return{id:r.a.id,a:r.a,t:r.t,v,p,used,notes,dsi,ctx,m,mu,mn,mnu,
-      normAge:nAge,normPos:AB_POS_GRP[nPos]||null,...abVerdict(p,dsi)};
+      normAge:nAge,normPos:abPosGrp(nPos)||null,...abVerdict(p,dsi)};
   });
   /* An athlete with no test in this period is not an athlete with no needs —
      they stand in the VERİ YETERSİZ box, which is the honest answer. */
   const untested=all.filter(r=>!r.t).map(r=>({id:r.a.id,a:r.a,t:null,v:null,p:{},used:{},notes:{},dsi:null,
     ctx:{age:ageOfA(r.a),medAge,youth},m:{},mu:{},mn:{},mnu:{},
-    normAge:ageOfA(r.a),normPos:AB_POS_GRP[r.a.position]||null,...abVerdict({},null)}));
+    normAge:ageOfA(r.a),normPos:abPosGrp(r.a.position)||null,...abVerdict({},null)}));
   return{profiles:[...profiles,...untested],pool:rows.length,strengthNames:strTests.map(c=>c.name)};
 }
 
@@ -4073,11 +4083,9 @@ function abVerdict(p,dsi){
    percentile — so a coach can check the reasoning rather than take it. Never a
    label on the athlete, always a quality. */
 const AB_POS_CTX={
-  PG:['ilk adım ve ivmelenme','first step and acceleration'],
-  SG:['ilk adım ve ivmelenme','first step and acceleration'],
-  SF:['transition ve ileri yönlü uzun mesafe hareketleri','transition and long forward actions'],
-  PF:['transition ve ileri yönlü uzun mesafe hareketleri','transition and long forward actions'],
-  C: ['ilk adım ve pozisyon değişimi','first step and repositioning'],
+  Guard:  ['ilk adım ve ivmelenme','first step and acceleration'],
+  Forward:['transition ve ileri yönlü uzun mesafe hareketleri','transition and long forward actions'],
+  Center: ['ilk adım ve pozisyon değişimi','first step and repositioning'],
 };
 /* Two decimals rather than the comparison table's one: an RSI of 1.02 and an RSI
    of 1.05 are different jumps, and rounding both to "1" would hide the number the
@@ -4127,7 +4135,7 @@ function abWhy(pf){
       :L(`Hiçbir özellik güçlü bölgeye (P${AB_Z_STRONG}+) ulaşmıyor; en yüksek percentile ${abBoxName(pf.strong.id)} (P${pf.strong.pct}).`,
          `No quality reaches the strong zone (P${AB_Z_STRONG}+); the highest percentile is ${abBoxName(pf.strong.id)} (P${pf.strong.pct}).`));
   /* §11 — position colours what the gap costs on the floor; it never excuses it. */
-  const pos=AB_POS_CTX[pf.a.position];
+  const pos=AB_POS_CTX[posOf(pf.a.position)];
   if(pos&&(pf.primary.box==='horiz'||pf.primary.box==='cod'))
     out.push(L(`${POS_FULL[pf.a.position]} olarak bu açık en çok ${pos[0]} tarafında karşılık buluyor.`,
                `As a ${POS_FULL[pf.a.position]} this gap shows up mostly in ${pos[1]}.`));
@@ -4622,7 +4630,10 @@ function acwrFrom(loadAt,ref){const w=loadWindows(loadAt,ref);const c=w.ch/w.wee
 function calcACWR(days,ref){return acwrFrom(k=>dLoad(days[k]),ref);}
 
 /* ---- Per-athlete inner-load + wellness metrics (from srpeLog / wellness) ---- */
-const POS_FULL={PG:'Point Guard',SG:'Shooting Guard',SF:'Small Forward',PF:'Power Forward',C:'Center',GK:'Goalkeeper'};
+/* Written out per code rather than through posOf, because the legacy five carry a
+   label of their own here: a record saved as a PG is read back as the Guard it is. */
+const POS_FULL={Guard:'Guard',Forward:'Forward',Center:'Center',
+  PG:'Guard',SG:'Guard','SG/SF':'Forward',SF:'Forward','SF/PF':'Forward',PF:'Forward',C:'Center',GK:'Goalkeeper'};
 const PHASE_COL={gp:'#3b6ef5',sp:'#8b5cf6',comp:'#f43f5e',trans:'#2dd4a7'};
 const PHASE_NAME={gp:'General Preparation',sp:'Specific Preparation',comp:'Competition',trans:'Transition'};
 /* Inner load for one day. The sRPE log (Tally / manual entry) is the primary source;
@@ -4841,7 +4852,7 @@ function AthleteLoadBoard({athletes,refDate}){
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
-    return{a,name:a.name||'—',pos:a.position||'',l7,acwr:athACWR(a,ref),
+    return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),
       rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
@@ -5231,7 +5242,7 @@ function WellnessHeatmap({athletes}){
             <th className="wh-avg-h">AVG</th>
           </tr></thead>
           <tbody>{rows.map((r,ri)=><tr key={ri} className="wh-row" style={{animationDelay:(ri*45)+'ms'}}>
-            <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{r.a.position}</span>}</td>
+            <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</td>
             {r.cells.map((v,ci)=>{
               const note=r.notes[ci];
               const pain=r.pains[ci];
@@ -9864,7 +9875,7 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
   ${ath.photo?`<img class="av" src="${ath.photo}"/>`:`<div class="av">${initials}</div>`}
   <div class="info">
     <h1>${ath.name||'—'}</h1>
-    <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}${ath.height?' · '+ath.height+' cm':''}${ath.weight?' · '+ath.weight+' kg':''}</div>
+    <div class="meta">${ath.number?'#'+ath.number+' · ':''}${posOf(ath.position)}${ath.height?' · '+ath.height+' cm':''}${ath.weight?' · '+ath.weight+' kg':''}</div>
     <div class="date">📊 ${period}</div>
   </div>
   <div class="ttl">${L('VÜCUT<br>KOMPOZİSYONU','BODY<br>COMPOSITION')}</div>
@@ -10147,7 +10158,7 @@ table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
   ${ath.photo?`<img class="athlete-photo" src="${psrc(ath.photo)}"/>`:`<div class="athlete-photo-x">👤</div>`}
   <div class="athlete-info">
     <h1>${ath.name}</h1>
-    <div class="meta">${ath.number?'#'+ath.number+' · ':''}${ath.position||''}</div>
+    <div class="meta">${ath.number?'#'+ath.number+' · ':''}${posOf(ath.position)}</div>
     <div class="meta">${setup.teamName} · ${setup.sport}</div>
     <div class="date">${fdL(test.date)} · ${periodLabel} ${test.year}</div>
   </div>
@@ -10357,11 +10368,15 @@ ${test.notes?`
    ========================================================= */
 const RPT_CMP_GROUPS=[
   {id:'anthro',tr:'Antropometri',       en:'Anthropometry'},
-  {id:'mob',   tr:'Mobilite & Hareket', en:'Mobility & Movement'},
   {id:'pow',   tr:'Güç & Sıçrama',      en:'Power & Jump'},
   {id:'spd',   tr:'Sürat & Çeviklik',   en:'Speed & Agility'},
   {id:'cust',  tr:'Özel Testler',       en:'Custom Tests'},
 ];
+/* Mobility is off this sheet. An ankle angle and an ASLR grade are a screen — a pass
+   or a flag on the athlete's own joint — and a squad average of them ranks a clean
+   3 against a clean 3. They stay on the test record and on the comparison table,
+   where they are read as the screen they are rather than as a placing. */
+const RPT_CMP_SKIP=new Set(['mob']);
 
 function printTestCompare(test,ath,setup,customTests,athletes){
   const roster=Array.isArray(athletes)?athletes:[];
@@ -10370,6 +10385,7 @@ function printTestCompare(test,ath,setup,customTests,athletes){
      zero, so it is simply not on the sheet. */
   const rows=[];
   cmpMetrics(customTests).forEach(m=>{
+    if(RPT_CMP_SKIP.has(m.g))return;
     const v=m.get(test);
     if(v==null)return;
     const pool=[{id:ath.id,v}];
@@ -11483,8 +11499,10 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
   const band=bands.map(b=>`<th class="grp" colspan="${b.n}">${esc(L(b.tr,b.en))}</th>`).join('');
   const body=rows.map(r=>`<tr>
     <td class="ath">
-      <span class="nm">${esc(r.name)}</span>
-      <span class="meta">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+      <span class="who">
+        <span class="nm">${esc(r.name)}</span>
+        <span class="meta">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+      </span>
     </td>
     ${r.vals.map((v,i)=>{const e=edges[i];
       const cls=v==null?'na':(e.best!=null&&v===e.best?'best':(e.worst!=null&&v===e.worst?'worst':''));
@@ -11513,10 +11531,12 @@ thead th .u{display:block;font-size:${(fs*.8).toFixed(1)}px;font-weight:400;colo
 thead th.grp{background:#0a0b0d;color:#fff;font-size:${(fs*.82).toFixed(1)}px;letter-spacing:.1em;padding:3px}
 th.ath,td.ath{width:${nameW}%;text-align:left}
 /* The name and its reading run on together. A narrow battery leaves this column
-   about 30mm, so the line wraps — the position and the date follow the name
-   rather than sitting under it, and the date never breaks across the wrap. */
-td.ath .nm{font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.25}
-td.ath .meta{font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);margin-left:4px;white-space:nowrap}
+   about 30mm, so a long name has to wrap — and it wraps inside its own box, with the
+   position and the date held on the row beside it. They never drop under the name:
+   a reading that has moved to a line of its own reads as a second athlete. */
+td.ath .who{display:flex;align-items:baseline;gap:4px}
+td.ath .nm{flex:1 1 auto;min-width:0;overflow-wrap:break-word;font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.25}
+td.ath .meta{flex:0 0 auto;font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);white-space:nowrap}
 tbody tr:nth-child(even) td{background:#fafbfc}
 tbody td{font-size:${vfs}px;font-weight:700;letter-spacing:-.01em}
 tbody td.ath{font-size:${fs}px;font-weight:400;letter-spacing:0}
@@ -11582,9 +11602,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
     if(hideEmpty)metrics=metrics.filter(m=>rows.some(r=>val(m,r.t)!=null));
     const data=rows.map(r=>({
       id:r.a.id,name:r.a.name||'—',
-      /* The short code, not POS_FULL: it sits beside the name now rather than on a
-         line of its own, and "C · 17/08/2026" fits where "Center" would not. */
-      pos:r.a.position||'',
+      pos:posOf(r.a.position),
       date:r.t.date,period:(TEST_PERIODS.find(p=>p.id===r.t.period)||{}).label||'',
       vals:metrics.map(m=>val(m,r.t)),
     }));
@@ -11661,8 +11679,10 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
           <tbody>
             {view.rows.map(r=><tr key={r.id}>
               <td className="ath-c">
-                <span className="cmp-nm">{r.name}</span>
-                <span className="cmp-meta">{[r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
+                <span className="cmp-who">
+                  <span className="cmp-nm">{r.name}</span>
+                  <span className="cmp-meta">{[r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
+                </span>
               </td>
               {r.vals.map((v,i)=><td key={view.metrics[i].id}><span className={cellCls(v,view.edges[i])}>{cmpFmt(v)}</span></td>)}
             </tr>)}
@@ -11696,14 +11716,14 @@ function printAthleteBoxes({matrix,rows,teamName,scopeLabel,pool,refLabel,refNor
   const mxHead=(matrix.cols||[]).map(c=>`<th>${esc(c)}</th>`).join('');
   const keyRows=(matrix.key||[]).map(k=>`<div class="kr"><span class="kn">${esc(k.name)}</span><span class="kd">${esc(k.text)}</span></div>`).join('');
   const mxBody=(matrix.rows||[]).map(r=>`<tr>
-    <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc(r.sub)}</span></td>
+    <td class="ath"><span class="who"><span class="nm">${esc(r.name)}</span><span class="sub">${esc(r.sub)}</span></span></td>
     ${r.cells.map(c=>`<td class="lv l-${c.lvl||'na'}"><span class="lt">${esc(c.label)}</span><span class="lp">${
       c.man?L('elle','by hand')
       :c.pct==null?'—'
       :'P'+c.pct+(c.sq?' '+L('· takım','· squad'):'')}</span></td>`).join('')}
   </tr>`).join('');
   const body=rows.map(r=>`<tr>
-    <td class="ath"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></td>
+    <td class="ath"><span class="who"><span class="nm">${esc(r.name)}</span><span class="sub">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span></span></td>
     <td class="need">${esc(r.primary)}</td><td>${r.pPct==null?'—':'P'+r.pPct}</td>
     <td class="need">${esc(r.secondary||'—')}</td><td>${r.sPct==null?'—':'P'+r.sPct}</td>
     <td class="need">${esc(r.strong||'—')}</td><td>${r.gPct==null?'—':'P'+r.gPct}</td>
@@ -11753,8 +11773,11 @@ table{width:100%;border-collapse:collapse;table-layout:fixed}
 th,td{border:1px solid var(--border);padding:3px 4px;text-align:center;word-break:normal;overflow-wrap:break-word}
 thead th{background:#f4f5f7;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
 th.ath,td.ath{width:20%;text-align:left}
-td.ath .nm{display:block;font-size:10px;font-weight:700;line-height:1.15}
-td.ath .sub{display:block;font-size:8px;color:var(--muted)}
+/* The reading beside the name, never under it: a long name wraps inside its own
+   box and the position and date hold the row next to it. */
+td.ath .who{display:flex;align-items:baseline;gap:4px}
+td.ath .nm{flex:1 1 auto;min-width:0;overflow-wrap:break-word;font-size:10px;font-weight:700;line-height:1.15}
+td.ath .sub{flex:0 0 auto;font-size:8px;color:var(--muted);white-space:nowrap}
 td.need{text-align:left;font-weight:700;font-size:8.5px;color:#000}
 tbody tr:nth-child(even) td{background:#fafbfc}
 .note{margin-top:8px;font-size:8.5px;color:var(--muted);line-height:1.5}
@@ -11872,7 +11895,7 @@ function AthleteBoxes({athletes,setup,customTests,updAth,Lx}){
     matrix:{cols:AB_METRICS.map(m=>abMetricName(m.id)),rows:matrixOut(),
       key:AB_METRICS.map(m=>({name:abMetricName(m.id),text:abMeaning(m.id)}))},
     rows:board.profiles.map(p=>({
-      name:p.a.name||'—',pos:POS_FULL[p.a.position]||p.a.position||'',date:p.t?p.t.date:'',
+      name:p.a.name||'—',pos:POS_FULL[p.a.position]||posOf(p.a.position),date:p.t?p.t.date:'',
       primary:abBoxName(p.primary.box),pPct:p.primary.pct,
       secondary:p.secondary?abBoxName(p.secondary.box):null,sPct:p.secondary?p.secondary.pct:null,
       strong:p.strong?abBoxName(p.strong.id):null,gPct:p.strong?p.strong.pct:null,
@@ -12440,7 +12463,7 @@ Sana kullanıcı mesajında aşağıdaki formatta bir JSON objesi verilecek. Ala
   "sporcu_profili": {
     "isim": "string",
     "yas": "number",
-    "pozisyon": "string (PG/SG/SF/PF/C)",
+    "pozisyon": "string (Guard/Forward/Center)",
     "takim_seviyesi": "youth | A takım",
     "vucut_tipi": "Cheetah | Horse | Rhino | Rabbit | belirsiz",
     "sakatlik_gecmisi": ["string"]
@@ -12584,7 +12607,7 @@ function buildProgramDesignInput(ath,setup){
     sporcu_profili:{
       isim:ath.name||null,
       yas:age,
-      pozisyon:ath.position||null,
+      pozisyon:posOf(ath.position)||null,
       takim_seviyesi:age==null?null:(age<18?'youth':'A takım'),
       vucut_tipi:ANIMAL_LBL[ath.animalType]||'belirsiz',
       sakatlik_gecmisi:injuries,
@@ -13002,7 +13025,7 @@ function buildProgramWriterInput(ath,setup,exercises){
   // told to carry these into manuel_inceleme_nedeni rather than program around them.
   const missing=[];
   if(!ath.position)missing.push('Pozisyon girilmemiş — pozisyon-hareket vurgusu belirlenemez.');
-  else if(pg==='other')missing.push(`Pozisyon "${ath.position}" için pozisyon-hareket eşleştirme referansı yok (referans yalnızca basketbol pozisyon gruplarını kapsıyor) — vurgu belirlenemez.`);
+  else if(pg==='other')missing.push(`Pozisyon "${posOf(ath.position)}" için pozisyon-hareket eşleştirme referansı yok (referans yalnızca basketbol pozisyon gruplarını kapsıyor) — vurgu belirlenemez.`);
   if(!animal)missing.push('Vücut tipi (Cheetah/Horse/Rhino/Rabbit) seçilmemiş — hız-kuvvet spektrumundaki vurgu belirlenemez.');
   if(!t)missing.push('Kayıtlı test yok — yapısal kademe belirlenemez.');
   else{
@@ -13650,7 +13673,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
           <div className="grid cols-3">
             <div><label>Full name</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
             <div><label>Jersey #</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-            <div><label>Position</label><select value={ath.position} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+            <div><label>Position</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
             <div><label>Date of birth</label><input type="text" inputMode="numeric" placeholder="gg/aa/yyyy" value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">gün / ay / yıl</div></div>
@@ -14081,10 +14104,10 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
   const initials=name=>(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const positions=POSITIONS[team.setup.sport]||POSITIONS.default;
   const list=athletes.filter(a=>{
-    if(filter!=='all'&&(a.position||'')!==filter)return false;
+    if(filter!=='all'&&posOf(a.position)!==filter)return false;
     if(!q)return true;
     const s=q.toLowerCase();
-    return(a.name||'').toLowerCase().includes(s)||(a.position||'').toLowerCase().includes(s)||String(a.number||'').includes(s);
+    return(a.name||'').toLowerCase().includes(s)||posOf(a.position).toLowerCase().includes(s)||String(a.number||'').includes(s);
   });
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← Back</button><p>Athlete not found</p></div>;
@@ -16421,11 +16444,11 @@ const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Adva
 /* Position → grouping axis. Non-basketball rosters fall into `other`, which
    carries a neutral profile so nothing changes for them. */
 const POS_GROUPS=[
-  {id:'guard',label:'Guard (PG/SG)',pos:['PG','SG']},
-  {id:'wing', label:'Wing (SF)',    pos:['SF','SF/PF']},
-  {id:'post', label:'Post (PF/C)',  pos:['PF','C']},
+  {id:'guard',label:'Guard',  pos:['Guard']},
+  {id:'wing', label:'Forward',pos:['Forward']},
+  {id:'post', label:'Center', pos:['Center']},
 ];
-const posGroupOf=p=>((POS_GROUPS.find(g=>g.pos.includes(p))||{}).id)||'other';
+const posGroupOf=p=>((POS_GROUPS.find(g=>g.pos.includes(posOf(p)))||{}).id)||'other';
 const posGroupLabel=id=>((POS_GROUPS.find(g=>g.id===id)||{}).label)||'Other';
 
 /* Readiness band table — display only. It gives the score on the card a colour and
@@ -17173,7 +17196,7 @@ function IndivAthleteCard({plan,calendar,open,setOpen}){
       <div className="iv-id">
         <div className="iv-nm">{a.name||'—'}</div>
         <div className="iv-meta">
-          {a.position?<span>{a.position} · {posGroupLabel(plan.posGroup)}</span>:<span className="iv-dim">no position</span>}
+          {a.position?<span>{posOf(a.position)} · {posGroupLabel(plan.posGroup)}</span>:<span className="iv-dim">no position</span>}
           {(a.constraintTags||[]).map(t=><span key={t} className="iv-warnchip">{ctLabel(t)}</span>)}
         </div>
       </div>
@@ -17510,7 +17533,7 @@ function buildCoachContext(team,data){
       const log=a.srpeLog||[];const loadOn=dk=>log.filter(e=>e.date===dk).reduce((t,e)=>t+(Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0))),0);
       let a7=0;for(let i=0;i<7;i++)a7+=loadOn(fmt(addD(today,-i)));
       const acwr=athACWR(a,fmt(today));const zone=acwr===0?'veri yok':acwr>1.5?'YÜKSEK RİSK':(acwr>=0.8&&acwr<=1.3)?'optimal':acwr<0.8?'düşük yük':'dikkat';
-      out.push(`- ${a.name||'Sporcu'}${a.position?' ('+a.position+')':''}: ${wtxt}. Son 7g yük ${Math.round(a7)} AU, ACWR≈${acwr?acwr.toFixed(2):'—'} (${zone}).`);});
+      out.push(`- ${a.name||'Sporcu'}${a.position?' ('+posOf(a.position)+')':''}: ${wtxt}. Son 7g yük ${Math.round(a7)} AU, ACWR≈${acwr?acwr.toFixed(2):'—'} (${zone}).`);});
     if(aths.length>40)out.push(`… ve ${aths.length-40} sporcu daha (kısaltıldı).`);
   }catch(e){}
   try{const exs=data.exercises||[];if(exs.length){out.push(`\nEGZERSİZ KÜTÜPHANESİ (${exs.length} egzersiz):`);
