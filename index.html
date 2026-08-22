@@ -1694,8 +1694,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cmp-tbl thead .ath-c{z-index:4}
 .cmp-tbl tbody tr:hover td{background:var(--bg2)}
 .cmp-tbl tbody tr:hover .ath-c{background:var(--bg2)}
-.cmp-nm{display:block;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
-.cmp-sub{display:block;font-size:9.5px;color:var(--dim);letter-spacing:.03em;margin-top:1px}
+/* Who the row is, on one line: the name, then the position code and the date of
+   the test it is read from, set small and quiet to the right of it. */
+.cmp-nm{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
+.cmp-meta{font-size:9.5px;color:var(--dim);letter-spacing:.03em;margin-left:6px;white-space:nowrap}
 .cmp-v{font-weight:600;color:var(--text)}
 .cmp-v.na{color:var(--dim);font-weight:400}
 .cmp-v.best{color:var(--accent)}
@@ -11482,7 +11484,7 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
   const body=rows.map(r=>`<tr>
     <td class="ath">
       <span class="nm">${esc(r.name)}</span>
-      <span class="sub">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+      <span class="meta">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
     </td>
     ${r.vals.map((v,i)=>{const e=edges[i];
       const cls=v==null?'na':(e.best!=null&&v===e.best?'best':(e.worst!=null&&v===e.worst?'worst':''));
@@ -11510,8 +11512,11 @@ thead th{background:#f4f5f7;font-size:${(fs*.92).toFixed(1)}px;font-weight:700;l
 thead th .u{display:block;font-size:${(fs*.8).toFixed(1)}px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
 thead th.grp{background:#0a0b0d;color:#fff;font-size:${(fs*.82).toFixed(1)}px;letter-spacing:.1em;padding:3px}
 th.ath,td.ath{width:${nameW}%;text-align:left}
-td.ath .nm{display:block;font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.15}
-td.ath .sub{display:block;font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);margin-top:1px}
+/* The name and its reading run on together. A narrow battery leaves this column
+   about 30mm, so the line wraps — the position and the date follow the name
+   rather than sitting under it, and the date never breaks across the wrap. */
+td.ath .nm{font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.25}
+td.ath .meta{font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);margin-left:4px;white-space:nowrap}
 tbody tr:nth-child(even) td{background:#fafbfc}
 tbody td{font-size:${vfs}px;font-weight:700;letter-spacing:-.01em}
 tbody td.ath{font-size:${fs}px;font-weight:400;letter-spacing:0}
@@ -11577,7 +11582,9 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
     if(hideEmpty)metrics=metrics.filter(m=>rows.some(r=>val(m,r.t)!=null));
     const data=rows.map(r=>({
       id:r.a.id,name:r.a.name||'—',
-      pos:POS_FULL[r.a.position]||r.a.position||'',
+      /* The short code, not POS_FULL: it sits beside the name now rather than on a
+         line of its own, and "C · 17/08/2026" fits where "Center" would not. */
+      pos:r.a.position||'',
       date:r.t.date,period:(TEST_PERIODS.find(p=>p.id===r.t.period)||{}).label||'',
       vals:metrics.map(m=>val(m,r.t)),
     }));
@@ -11655,7 +11662,7 @@ function CompareAthletes({athletes,setup,customTests,Lx}){
             {view.rows.map(r=><tr key={r.id}>
               <td className="ath-c">
                 <span className="cmp-nm">{r.name}</span>
-                <span className="cmp-sub">{[r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
+                <span className="cmp-meta">{[r.pos,fd(r.date)].filter(Boolean).join(' · ')}</span>
               </td>
               {r.vals.map((v,i)=><td key={view.metrics[i].id}><span className={cellCls(v,view.edges[i])}>{cmpFmt(v)}</span></td>)}
             </tr>)}
