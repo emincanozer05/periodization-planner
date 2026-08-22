@@ -3292,6 +3292,138 @@ function ybCalc(yb){
 }
 
 /* =========================================================
+   TEST INFO — what each test is, and why it is taken
+   ---------------------------------------------------------
+   A test sheet leaves the club: it is read by the athlete, by a parent, by a
+   physio who was not on the court that day. "DJ 1.84" says nothing to any of
+   them. So every sheet carries, under the coach's own observations, one line
+   per test that was actually taken: what the athlete did, and what the number
+   is read for.
+
+   This lives in the print-out only. The editor keeps its notes field exactly as
+   it was — the coach types observations there, not a description of the test
+   they just ran.
+   ========================================================= */
+const TEST_INFO={
+  anthro:{n:'Anthropometric Measurement',
+    tr:{w:'Sporcunun boy, kilo, kulaç, bacak uzunluğu, oturma yüksekliği ve vücut yağ oranı gibi temel vücut ölçüleri alınır.',p:'Vücut yapısını, büyüme-gelişim seyrini ve vücut kompozisyonundaki değişimi takip etmek için kullanılır.'},
+    en:{w:'The athlete’s basic body measurements are taken: height, weight, wingspan, leg length, sitting height and body fat.',p:'Used to follow body structure, growth and maturation, and changes in body composition.'}},
+  circ:{n:'Body Circumference',
+    tr:{w:'Omuz, bel, kalça, uyluk ve baldır çevreleri mezura ile ölçülür.',p:'Kas kütlesi dağılımını, sağ-sol farklarını ve vücut kompozisyonundaki değişimi izlemek için kullanılır.'},
+    en:{w:'Shoulder, waist, hip, thigh and calf circumferences are measured with a tape.',p:'Used to follow the distribution of muscle mass, right–left differences and changes in body composition.'}},
+  posture:{n:'Static Posture',
+    tr:{w:'Sporcu rahat duruşta önden, yandan ve arkadan gözlemlenir ve fotoğraflanır.',p:'Duruş bozukluklarını, dizilim sorunlarını ve bunlara bağlı olası yüklenme risklerini belirlemek için kullanılır.'},
+    en:{w:'The athlete is observed and photographed at rest from the front, the side and the back.',p:'Used to spot postural deviations, alignment problems and the loading risks that follow from them.'}},
+  ankleDF:{n:'Ankle Dorsiflexion Degree',
+    tr:{w:'Diz öne doğru ilerlerken ayak bileğinin ne kadar dorsifleksiyon yapabildiği ölçülür.',p:'Ayak bileği hareket açıklığını ve özellikle squat, iniş, koşu ve yön değiştirme gibi hareketleri etkileyebilecek kısıtlılıkları belirlemek için kullanılır.'},
+    en:{w:'How far the ankle can dorsiflex while the knee travels forward is measured.',p:'Used to establish ankle range of motion and the restrictions that can affect squatting, landing, running and changing direction.'}},
+  aslr:{n:'Active Straight Leg Raise (ASLR)',
+    tr:{w:'Sporcu sırtüstü yatarken bir bacağını dizini bükmeden aktif olarak yukarı kaldırır.',p:'Hamstring esnekliği, kalça hareket açıklığı ve alt ekstremite hareketliliğini değerlendirmek için kullanılır.'},
+    en:{w:'Lying on their back, the athlete actively raises one leg without bending the knee.',p:'Used to assess hamstring flexibility, hip range of motion and lower-limb mobility.'}},
+  ohs:{n:'Overhead Squat',
+    tr:{w:'Sporcu kollarını baş üstünde tutarak squat hareketi yapar.',p:'Mobilite, stabilite, postüral kontrol ve temel hareket kalitesini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete squats while holding the arms overhead.',p:'Used to assess mobility, stability, postural control and basic movement quality.'}},
+  yBalance:{n:'Y Balance Test',
+    tr:{w:'Sporcu tek ayak üzerinde dururken diğer bacağıyla üç yönde (anterior, posteromedial, posterolateral) mümkün olduğunca uzağa uzanır.',p:'Dinamik dengeyi, tek bacak stabilitesini ve sağ-sol farkına bağlı yaralanma riskini değerlendirmek için kullanılır.'},
+    en:{w:'Standing on one leg, the athlete reaches as far as possible with the other leg in three directions (anterior, posteromedial, posterolateral).',p:'Used to assess dynamic balance, single-leg stability and the injury risk carried by a right–left difference.'}},
+  verticalJump:{n:'Vertical Jump',
+    tr:{w:'Sporcu yerinde, mümkün olduğunca yükseğe dikey sıçrama yapar.',p:'Alt ekstremite patlayıcı gücünü ve genel sıçrama kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete jumps vertically, as high as possible, from a standing position.',p:'Used to assess lower-limb explosive power and overall jumping capacity.'}},
+  cmj:{n:'CMJ (Countermovement Jump)',
+    tr:{w:'Sporcu hızlı bir çömelme hareketinin ardından mümkün olduğunca yukarı sıçrar.',p:'Patlayıcı kuvveti ve alt ekstremite güç üretme kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete jumps as high as possible immediately after a fast dip into a squat.',p:'Used to assess explosive strength and the lower limbs’ capacity to produce power.'}},
+  lateralCmj:{n:'Lateral CMJ',
+    tr:{w:'Sporcu yana doğru karşı hareketli bir sıçrama gerçekleştirir.',p:'Tek taraflı/lateral patlayıcı kuvveti ve sağ-sol taraflar arasındaki performans farkını değerlendirmek için kullanılır.'},
+    en:{w:'The athlete performs a countermovement jump to the side.',p:'Used to assess unilateral/lateral explosive strength and the performance difference between the right and left sides.'}},
+  squatJump:{n:'Squat Jump',
+    tr:{w:'Sporcu statik squat pozisyonundan, karşı hareket yapmadan yukarı sıçrar.',p:'Konsantrik kuvvet ve patlayıcı kuvvet kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'From a held squat position, the athlete jumps up without any countermovement.',p:'Used to assess concentric strength and explosive strength capacity.'}},
+  horizontalJump:{n:'Horizontal Jump',
+    tr:{w:'Sporcu mümkün olduğunca uzağa doğru yatay sıçrama yapar.',p:'Yatay kuvvet üretme ve patlayıcı güç kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete jumps horizontally, as far as possible.',p:'Used to assess horizontal force production and explosive power capacity.'}},
+  dropJump:{n:'Drop Jump (RSI)',
+    tr:{w:'Sporcu belirli bir yükseklikten düşer ve yere temas ettikten hemen sonra mümkün olduğunca hızlı ve yüksek sıçrar.',p:'Reaktif kuvveti, gerilme-kısalma döngüsünü ve yere temas sonrası hızlı kuvvet üretimini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete drops from a set height and, the moment the feet touch the ground, jumps again as fast and as high as possible.',p:'Used to assess reactive strength, the stretch-shortening cycle and how quickly force is produced after ground contact.'}},
+  sprint:{n:'20m Sprint',
+    tr:{w:'Sporcu 20 metrelik mesafeyi duruştan başlayarak mümkün olduğunca hızlı koşar.',p:'Hızlanma ve maksimum sürat kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'From a standing start, the athlete runs 20 metres as fast as possible.',p:'Used to assess acceleration and maximum speed capacity.'}},
+  tTest:{n:'T-Agility Test',
+    tr:{w:'Sporcu ileri sprint, lateral hareket ve geri koşudan oluşan T şeklindeki bir parkuru mümkün olduğunca hızlı tamamlar.',p:'Hızlanma, yavaşlama, yön değiştirme ve lateral hareket becerisini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete completes a T-shaped course of forward sprint, lateral shuffle and backpedal as fast as possible.',p:'Used to assess acceleration, deceleration, change of direction and lateral movement ability.'}},
+  fiveZeroFive:{n:'5-0-5',
+    tr:{w:'Sporcu hızlandıktan sonra 5 metrede 180° dönerek 5 metre geri sprint yapar.',p:'Yön değiştirme hızını, yavaşlama ve yeniden hızlanma becerisini değerlendirmek için kullanılır.'},
+    en:{w:'After a run-up, the athlete sprints 5 metres, turns 180° and sprints 5 metres back.',p:'Used to assess change-of-direction speed and the ability to decelerate and re-accelerate.'}},
+  shuttleRun:{n:'Shuttle Run',
+    tr:{w:'Sporcu belirlenen mesafeler arasında gidiş-dönüş koşuları yapar.',p:'Dayanıklılığı ve tekrarlı koşu kapasitesini değerlendirmek için kullanılır.'},
+    en:{w:'The athlete runs back and forth between set markers.',p:'Used to assess endurance and repeated-running capacity.'}},
+};
+/* Which tests a record actually covers. A record saved with a battery says so
+   itself; an older one without one is read from its own readings, so a sheet
+   never explains a test that was never taken. */
+const TI_HAS={
+  anthro:t=>['height','weight','wingspan','bodyFat','legLength','sittingHeight'].some(k=>tiNum(t[k])),
+  circ:t=>Object.keys(t.circ||{}).some(k=>tiNum(t.circ[k])),
+  posture:t=>!!(t.posture&&(t.posture.frontPhoto||t.posture.sidePhoto||t.posture.backPhoto||t.posture.observations)),
+  ankleDF:t=>tiNum(t.ankleDF&&t.ankleDF.right)||tiNum(t.ankleDF&&t.ankleDF.left),
+  aslr:t=>tiNum(t.aslr&&t.aslr.right)||tiNum(t.aslr&&t.aslr.left),
+  ohs:t=>!!(t.ohs&&(tiNum(t.ohs.score)||t.ohs.observations||t.ohs.frontPhoto||t.ohs.sidePhoto||t.ohs.backPhoto)),
+  yBalance:t=>{const y=ybCalc(t.yBalance);return y.limb!=null||['ant','pm','pl'].some(k=>y.right[k]!=null||y.left[k]!=null);},
+  verticalJump:t=>tiNum(t.verticalJump),
+  cmj:t=>tiNum(t.cmj),
+  lateralCmj:t=>tiNum(t.lateralCmj&&t.lateralCmj.right)||tiNum(t.lateralCmj&&t.lateralCmj.left),
+  squatJump:t=>tiNum(t.squatJump),
+  horizontalJump:t=>tiNum(t.horizontalJump),
+  dropJump:t=>tiNum(t.dropJump),
+  sprint:t=>!!(t.sprint20m&&(tiNum(t.sprint20m.time)||t.sprint20m.sideStep1||t.sprint20m.sideStep2||t.sprint20m.sideStep3||t.sprint20m.frontRightFoot||t.sprint20m.frontLeftFoot)),
+  tTest:t=>tiNum(t.tTest),
+  fiveZeroFive:t=>tiNum(t.fiveZeroFive),
+  shuttleRun:t=>tiNum(t.shuttleRun),
+};
+const tiNum=v=>v!==''&&v!=null&&!isNaN(Number(v));
+function testInfoIds(test){
+  const t=test||{};
+  const bat=expandBattery(t.battery);
+  const keep=Array.isArray(bat)?(id=>bat.includes(id)):(id=>{try{return!!(TI_HAS[id]&&TI_HAS[id](t));}catch(e){return false;}});
+  return TEST_CATALOG.filter(c=>TEST_INFO[c.id]&&keep(c.id)).map(c=>c.id);
+}
+/* Which test a comparison column is read from, so the squad sheet explains the
+   tests it actually printed rows for and no others. */
+const CMP_METRIC_TEST={height:'anthro',weight:'anthro',bodyFat:'anthro',wingspan:'anthro',legLen:'anthro',sitHt:'anthro',
+  adfR:'ankleDF',adfL:'ankleDF',adfD:'ankleDF',aslrR:'aslr',aslrL:'aslr',ohs:'ohs',ybR:'yBalance',ybL:'yBalance',ybD:'yBalance',
+  vj:'verticalJump',cmj:'cmj',sj:'squatJump',dj:'dropJump',hj:'horizontalJump',
+  lcjR:'lateralCmj',lcjL:'lateralCmj',lcjD:'lateralCmj',
+  sp20:'sprint',tTest:'tTest',f505:'fiveZeroFive',shut:'shuttleRun'};
+/* The block itself — one row per test, in catalog order, in the report language. */
+function testInfoTable(ids){
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows=(ids||[]).map(id=>{
+    const i=TEST_INFO[id];if(!i)return'';
+    const o=L(i.tr,i.en);
+    return`<tr><td class="tin">${esc(i.n)}</td><td>${esc(o.w)}</td><td>${esc(o.p)}</td></tr>`;
+  }).join('');
+  if(!rows)return'';
+  return`<table class="tinfo">
+    <colgroup><col style="width:24%"/><col style="width:38%"/><col style="width:38%"/></colgroup>
+    <tr><th>Test</th><th>${esc(L('Nedir?','What is it?'))}</th><th>${esc(L('Ne amaçla alınır?','Why is it taken?'))}</th></tr>
+    ${rows}
+  </table>`;
+}
+/* The CSS the block needs. Both sheets already set --border / --text2, so the
+   table lands in the sheet it is printed on rather than beside it. */
+const TINFO_CSS=`
+.tinfo{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:8px;page-break-inside:auto;break-inside:auto}
+.tinfo th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;text-align:left;padding:7px 9px;border:none;white-space:normal}
+.tinfo td{font-family:'Space Grotesk',Arial,sans-serif;font-size:9.5px;line-height:1.45;color:var(--text2);text-align:left;padding:8px 9px;border:none;border-top:1px solid var(--border);background:#fff;vertical-align:top;font-weight:400}
+.tinfo tr{page-break-inside:avoid;break-inside:avoid}
+.tinfo td.tin{font-weight:700;color:var(--text)}
+.tinfo-h{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:12px}
+/* Seventeen tests explained will not fit under the last table on a sheet, and a
+   block that refuses to break just pushes itself onto a page of its own with
+   everything above it left blank — so this one breaks between rows. */
+.tinfo-grp{break-inside:auto;page-break-inside:auto}
+`;
+
+/* =========================================================
    COMPARE ATHLETES — the metric model behind the comparison table.
    One entry per column: where the number is read from on a test record, the unit it
    is in, and which way is better (`dir`). A metric with no `dir` is descriptive —
@@ -10066,6 +10198,9 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
     ?`<div class="ph"><img src="${psrc(photo)}" ${phFail(w,Math.round(w*1.2))} style="width:${w}px;height:auto;max-height:${maxH}px;object-fit:contain;background:#f8fafc"/><div class="phl">${label}</div></div>`
     :`<div class="ph"><div class="phx" style="width:${w}px;height:${Math.round(w*1.2)}px">—</div><div class="phl" style="color:#aaa">${label}</div></div>`;
   const ohsBox=`&lt;div style=&quot;width:100%;height:170px;background:#eee;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:24px;border-radius:4px&quot;&gt;—&lt;/div&gt;`;
+  /* What each test on this sheet is and why it was taken — the sheet leaves the
+     club, so the number goes out with the test in plain words beside it. */
+  const infoTable=testInfoTable(testInfoIds(test));
   const ohsPh=(photo)=>photo
     ?`<img src="${psrc(photo)}" onerror="this.outerHTML='${ohsBox}'" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:4px"/>`
     :`<div style="width:100%;height:170px;background:#eee;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:24px;border-radius:4px">—</div>`;
@@ -10104,6 +10239,7 @@ td{padding:11px 7px;text-align:center;font-family:'IBM Plex Mono',monospace;font
 .section-h{position:relative;padding:0 0 9px 14px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);margin:0 0 6px 0;page-break-after:avoid;break-after:avoid-page}
 .section-h::before{content:'';position:absolute;left:0;top:1px;width:3px;height:16px;background:var(--accent);border-radius:2px}
 table,.athlete-header,.ph,.obs-box{page-break-inside:avoid;break-inside:avoid}
+${TINFO_CSS}
 .posture-photos,.ohs-wrap,.ohs-photos,.ohs-problems{break-inside:auto;page-break-inside:auto}
 .section{margin-top:18px;break-inside:auto;page-break-inside:auto}
 /* Agility and endurance are one number apiece, but at the full section spacing the
@@ -10323,10 +10459,11 @@ ${customSel.length?`
   </table>
 </div>`:''}
 
-${test.notes?`
+${(test.notes||infoTable)?`
 <div class="section">
   <div class="section-h" >${L('GÖZLEMLER VE YORUMLAR','OBSERVATIONS &amp; COMMENTS')}</div>
-  <div class="obs-box">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+  ${test.notes?`<div class="obs-box">${test.notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>`:''}
+  ${infoTable?`<div class="tinfo-h">${L('Bu kayıttaki testler hakkında','About the tests on this record')}</div>${infoTable}`:''}
 </div>`:''}
 
 <div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${setup.teamName}</div>
@@ -10488,6 +10625,13 @@ function printTestCompare(test,ath,setup,customTests,athletes){
     ?list.map(r=>`<div class="pk ${cls}"><span class="pkn">${esc(cmpLabel(r.m))}</span><span class="pkv">${esc(sign(r.pct))}</span></div>`).join('')
     :`<div class="pk none">${esc(empty)}</div>`;
 
+  /* The tests behind the rows above, in catalog order and each explained once —
+     a sheet that ranks an athlete against the squad is read by people who were
+     not at the testing, so it says what every reading on it came from. */
+  const infoIds=(()=>{const seen=new Set(rows.map(r=>CMP_METRIC_TEST[r.m.id]).filter(Boolean));
+    return TEST_CATALOG.filter(c=>seen.has(c.id)&&TEST_INFO[c.id]).map(c=>c.id);})();
+  const infoTable=testInfoTable(infoIds);
+
   const periodLabel=TEST_PERIODS.find(p=>p.id===test.period)?.label||test.period||'';
   const posLabel=POS_FULL[ath.position]||ath.position||'';
   const logo=teamLogo();
@@ -10586,6 +10730,7 @@ td.barc{padding:5px 4px}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:8px 18px;border-radius:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;cursor:pointer;margin:0 4px;font-size:13px}
 .print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
 @media print{.print-bar,.spacer{display:none}}
+${TINFO_CSS}
 </style>
 </head><body>
 
@@ -10642,6 +10787,12 @@ td.barc{padding:5px 4px}
 </div>
 
 ${RPT_CMP_GROUPS.map(section).join('')}
+
+${infoTable?`<div class="grp tinfo-grp">
+  <div class="grp-h"><span>${esc(L('GÖZLEMLER VE YORUMLAR','OBSERVATIONS & COMMENTS'))}</span><span class="cnt">${infoIds.length} ${esc(infoIds.length===1?'test':L('test','tests'))}</span></div>
+  <div class="tinfo-h">${esc(L('Bu sayfadaki testler hakkında','About the tests on this sheet'))}</div>
+  ${infoTable}
+</div>`:''}
 
 <div class="footer">
   ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı, bu sporcunun ekrandaki kaydıyla birlikte. Yönü olmayan ölçümler (boy, özel testler) iyi/zayıf olarak işaretlenmez. Çevre ölçümleri kıyaslanmaz — bel ya da uyluk bir puan değil, bir şekildir; sporcunun kendi kaydında kalır.',
