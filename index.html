@@ -10336,12 +10336,18 @@ ${test.notes?`
    athlete's number, the squad average, and a bar that runs to either side of
    that average, so the direction is read before the digits are.
 
-   Two things are deliberate. A measurement with no better side (height, a
-   circumference, a coach's own test) is drawn grey and kept out of the
-   strengths and priorities: taller is not a score. And the axis is set by the
-   data rather than fixed — the bulk of the sheet decides how far the bars
-   reach — so a squad that sits close together prints readable differences
-   instead of a page of flat lines.
+   Two things are deliberate. A measurement with no better side (a height, a
+   coach's own test) is drawn grey and kept out of the strengths and
+   priorities: taller is not a score. And the axis is set by the data rather
+   than fixed — the bulk of the sheet decides how far the bars reach — so a
+   squad that sits close together prints readable differences instead of a page
+   of flat lines.
+
+   The sheet compares what the comparison table compares, which leaves the
+   circumferences out: a waist or a thigh is a shape, not a score, and next to a
+   team-mate's it invites a ranking the measurement does not support. They stay
+   on the athlete's own record, where they are read against that athlete's
+   earlier numbers.
 
    The squad average is read the same way the test cards read it: every
    team-mate's most recent record that actually carries that measurement, plus
@@ -10349,26 +10355,11 @@ ${test.notes?`
    ========================================================= */
 const RPT_CMP_GROUPS=[
   {id:'anthro',tr:'Antropometri',       en:'Anthropometry'},
-  {id:'circ',  tr:'Çevre Ölçümleri',    en:'Circumferences'},
   {id:'mob',   tr:'Mobilite & Hareket', en:'Mobility & Movement'},
   {id:'pow',   tr:'Güç & Sıçrama',      en:'Power & Jump'},
   {id:'spd',   tr:'Sürat & Çeviklik',   en:'Speed & Agility'},
   {id:'cust',  tr:'Özel Testler',       en:'Custom Tests'},
 ];
-/* Circumferences sit out of the comparison table on purpose — a waist next to a
-   team-mate's invites a ranking the measurement does not support. On this sheet
-   they are printed all the same, because the coach asked for every reading, but
-   with no direction: squad average alongside, no better or worse. */
-const RPT_CIRC_METRICS=[
-  {id:'cSho',  g:'circ',tr:'Omuz',    en:'Shoulder',u:'cm',get:t=>cmpN(t.circ&&t.circ.shoulder)},
-  {id:'cWai',  g:'circ',tr:'Bel',     en:'Waist',   u:'cm',get:t=>cmpN(t.circ&&t.circ.waist)},
-  {id:'cHip',  g:'circ',tr:'Kalça',   en:'Hip',     u:'cm',get:t=>cmpN(t.circ&&t.circ.hip)},
-  {id:'cThR',  g:'circ',tr:'Uyluk R', en:'Thigh R', u:'cm',get:t=>cmpN(t.circ&&(t.circ.thighRight||t.circ.thigh))},
-  {id:'cThL',  g:'circ',tr:'Uyluk L', en:'Thigh L', u:'cm',get:t=>cmpN(t.circ&&(t.circ.thighLeft||t.circ.thigh))},
-  {id:'cCaR',  g:'circ',tr:'Baldır R',en:'Calf R',  u:'cm',get:t=>cmpN(t.circ&&(t.circ.calfRight||t.circ.calf))},
-  {id:'cCaL',  g:'circ',tr:'Baldır L',en:'Calf L',  u:'cm',get:t=>cmpN(t.circ&&(t.circ.calfLeft||t.circ.calf))},
-];
-const rptCmpMetrics=customTests=>[...cmpMetrics(customTests),...RPT_CIRC_METRICS];
 
 function printTestCompare(test,ath,setup,customTests,athletes){
   const roster=Array.isArray(athletes)?athletes:[];
@@ -10376,7 +10367,7 @@ function printTestCompare(test,ath,setup,customTests,athletes){
   /* One row per measurement this record actually carries. A blank field is not a
      zero, so it is simply not on the sheet. */
   const rows=[];
-  rptCmpMetrics(customTests).forEach(m=>{
+  cmpMetrics(customTests).forEach(m=>{
     const v=m.get(test);
     if(v==null)return;
     const pool=[{id:ath.id,v}];
@@ -10635,8 +10626,8 @@ td.barc{padding:5px 4px}
 ${RPT_CMP_GROUPS.map(section).join('')}
 
 <div class="footer">
-  ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı, bu sporcunun ekrandaki kaydıyla birlikte. Yönü olmayan ölçümler (boy, çevre ölçüsü, özel testler) iyi/zayıf olarak işaretlenmez.',
-          'Squad average: every team-mate\'s most recent record carrying that measurement, together with this athlete\'s reading from the record on screen. Measurements with no better side (height, circumferences, custom tests) are never marked better or weaker.'))}
+  ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı, bu sporcunun ekrandaki kaydıyla birlikte. Yönü olmayan ölçümler (boy, özel testler) iyi/zayıf olarak işaretlenmez. Çevre ölçümleri kıyaslanmaz — bel ya da uyluk bir puan değil, bir şekildir; sporcunun kendi kaydında kalır.',
+          'Squad average: every team-mate\'s most recent record carrying that measurement, together with this athlete\'s reading from the record on screen. Measurements with no better side (height, custom tests) are never marked better or weaker. Circumferences are not compared — a waist is a shape, not a score; they stay on the athlete\'s own record.'))}
   <br>${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}${setup&&setup.teamName?' · '+esc(setup.teamName):''}
 </div>
 
