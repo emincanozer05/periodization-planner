@@ -1694,12 +1694,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .cmp-tbl thead .ath-c{z-index:4}
 .cmp-tbl tbody tr:hover td{background:var(--bg2)}
 .cmp-tbl tbody tr:hover .ath-c{background:var(--bg2)}
-/* Who the row is, on one line: the name, then the position and the date of the
-   test it is read from, set small and quiet to the right of it. A long name wraps
-   inside its own box and the reading holds the row beside it — it never drops
-   under the name, where it would read as a second athlete. */
-.cmp-who{display:flex;align-items:baseline;gap:6px}
-.cmp-nm{flex:0 1 auto;min-width:0;white-space:normal;overflow-wrap:break-word;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
+/* Who the row is, on one line and only one: the name, then the position and the
+   date of the test it is read from, set small and quiet to the right of it. Nothing
+   in this column wraps — a name broken over two lines, or a reading dropped under
+   it, reads as a second athlete. The column widens to whatever the longest row
+   needs instead, and the metrics scroll sideways beside it. */
+.cmp-who{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.cmp-nm{flex:0 0 auto;white-space:nowrap;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:var(--text);line-height:1.25}
 .cmp-meta{flex:0 0 auto;font-size:9.5px;color:var(--dim);letter-spacing:.03em;white-space:nowrap}
 .cmp-v{font-weight:600;color:var(--text)}
 .cmp-v.na{color:var(--dim);font-weight:400}
@@ -11720,7 +11721,20 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
   // the headers around them — eased off as the columns multiply, so a wide battery
   // still fits the same page.
   const vfs=+(fs*(n<=15?1.32:n<=21?1.24:n<=28?1.16:1.1)).toFixed(1);
-  const nameW=n<=12?18:n<=20?14:11;
+  // The athlete column holds one line and only one — name, position and date run on
+  // together — so it is given the width that line needs rather than a fixed slice of
+  // the page. Under table-layout:fixed a cell cannot grow on its own, so the widest
+  // row is measured here (bold name at ~.62em a character, quiet meta at ~.55em) and
+  // the type in the column is eased down until the longest line fits its box.
+  const nameW=n<=12?24:n<=20?19:15;
+  const PAGE=1062;                              // A4 landscape less the 8mm margins, in px
+  const nmBase=+(fs*1.15).toFixed(1), mtBase=+(fs*.85).toFixed(1);
+  const metaOf=r=>[r.pos,fd(r.date)].filter(Boolean).join(' · ');
+  const widest=rows.reduce((mx,r)=>Math.max(mx,
+    String(r.name||'').length*nmBase*.62+(metaOf(r)?4+metaOf(r).length*mtBase*.55:0)),0);
+  const room=PAGE*nameW/100-8;                  // less the cell's own padding
+  const sc=widest>room?Math.max(.62,room/widest):1;
+  const nmFs=+(nmBase*sc).toFixed(1), mtFs=+(mtBase*sc).toFixed(1);
   const logo=teamLogo();
   const lbl=n>18?cmpShort:cmpLabel;
   const head=metrics.map(m=>`<th><span class="l">${esc(lbl(m))}</span>${m.u?`<span class="u">${esc(m.u)}</span>`:''}</th>`).join('');
@@ -11729,7 +11743,7 @@ function printAthleteCompare({rows,metrics,bands,teamName,scopeLabel,avgs,edges}
     <td class="ath">
       <span class="who">
         <span class="nm">${esc(r.name)}</span>
-        <span class="meta">${esc([r.pos,fd(r.date)].filter(Boolean).join(' · '))}</span>
+        <span class="meta">${esc(metaOf(r))}</span>
       </span>
     </td>
     ${r.vals.map((v,i)=>{const e=edges[i];
@@ -11757,14 +11771,14 @@ th,td{border:1px solid var(--border);padding:${fs<8?'2px 2px':'4px 3px'};text-al
 thead th{background:#f4f5f7;font-size:${(fs*.92).toFixed(1)}px;font-weight:700;line-height:1.2;vertical-align:bottom;text-transform:uppercase;letter-spacing:.02em}
 thead th .u{display:block;font-size:${(fs*.8).toFixed(1)}px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0}
 thead th.grp{background:#0a0b0d;color:#fff;font-size:${(fs*.82).toFixed(1)}px;letter-spacing:.1em;padding:3px}
-th.ath,td.ath{width:${nameW}%;text-align:left}
-/* The name and its reading run on together. A narrow battery leaves this column
-   about 30mm, so a long name has to wrap — and it wraps inside its own box, with the
-   position and the date held on the row beside it. They never drop under the name:
-   a reading that has moved to a line of its own reads as a second athlete. */
-td.ath .who{display:flex;align-items:baseline;gap:4px}
-td.ath .nm{flex:1 1 auto;min-width:0;overflow-wrap:break-word;font-size:${(fs*1.15).toFixed(1)}px;font-weight:700;line-height:1.25}
-td.ath .meta{flex:0 0 auto;font-size:${(fs*.85).toFixed(1)}px;color:var(--muted);white-space:nowrap}
+th.ath,td.ath{width:${nameW}%;text-align:left;overflow:hidden}
+/* The name and its reading run on together, on a single line: name, surname,
+   position and date. Nothing here wraps — a name broken over two lines, or a
+   reading dropped under it, reads as a second athlete — so the column is sized
+   and the type scaled above to hold the longest row on one line. */
+td.ath .who{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+td.ath .nm{flex:0 0 auto;white-space:nowrap;font-size:${nmFs}px;font-weight:700;line-height:1.25}
+td.ath .meta{flex:0 0 auto;font-size:${mtFs}px;color:var(--muted);white-space:nowrap}
 tbody tr:nth-child(even) td{background:#fafbfc}
 tbody td{font-size:${vfs}px;font-weight:700;letter-spacing:-.01em}
 tbody td.ath{font-size:${fs}px;font-weight:400;letter-spacing:0}
