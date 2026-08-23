@@ -3020,6 +3020,79 @@ header{background:var(--bg2)!important}
   .tt-wrap.fs .tt-seg em{display:none}
   .tt-wrap.fs .tt-seg.on em{display:block}
 }
+
+/* ===== Interval Timer =====
+   Same player idea as Tempo Training, read from further away: the athlete on the
+   sled doesn't look at a puck, they look at the colour of the screen. Work is green,
+   rest is red, the break between rounds/sets is blue, and in full screen that colour
+   IS the screen — visible from the other end of the gym. */
+.it-wrap{display:flex;flex-direction:column;gap:16px}
+.it-stage{position:relative;border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  background:color-mix(in srgb,var(--it-c,var(--accent)) 14%,var(--bg2));
+  padding:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:14px;align-items:center;
+  text-align:center;min-height:330px;justify-content:center;transition:background .25s ease}
+.it-phase{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--it-c,var(--text))}
+.it-phase small{display:block;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;margin-bottom:5px}
+.it-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:92px;font-weight:700;line-height:1;
+  color:var(--text);font-variant-numeric:tabular-nums}
+.it-count span{font-size:26px;color:var(--muted);margin-left:6px}
+.it-bar{width:100%;height:10px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);overflow:hidden}
+.it-bar b{display:block;height:100%;background:var(--it-c,var(--accent));border-radius:999px;
+  transform-origin:left center;will-change:transform}
+.it-nums{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;justify-content:center}
+.it-nums u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.it-nums strong{font-size:20px;font-weight:800;color:var(--text);margin-left:7px;font-variant-numeric:tabular-nums}
+/* The set drawn to scale — one block per interval, as wide as its seconds. */
+.it-line{display:flex;gap:3px;height:26px;width:100%}
+.it-seg{position:relative;border-radius:6px;background:var(--elevated);border:1px solid var(--border);
+  overflow:hidden;min-width:5px}
+.it-seg.on{border-color:var(--it-c)}
+.it-seg b{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--it-c);opacity:.3;
+  transform-origin:left center;will-change:transform}
+.it-seg.done b{transform:scaleX(1)}
+/* Editor + summary reuse the Tempo look so the tab reads as one page. */
+.it-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.it-grid>div{flex:0 0 128px}
+.it-grid label{margin-bottom:3px}
+.it-grid input{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;text-align:center}
+@media(max-width:760px){
+  .it-stage{min-height:260px}
+  .it-count{font-size:64px}
+  .it-phase{font-size:26px}
+  .it-grid>div{flex:1 1 110px}
+}
+/* Full screen — the phase colour fills the display. Declared after the phone rules so
+   it wins there too, where the fixed overlay stands in for the Fullscreen API. */
+.it-wrap.fs{position:fixed;inset:0;z-index:2100;margin:0;background:var(--it-c,var(--bg));
+  padding:clamp(16px,3vw,40px);display:flex;flex-direction:column;justify-content:center;
+  gap:clamp(14px,3vh,30px);overflow:hidden;transition:background .25s ease}
+.it-wrap.fs .it-stage{flex:1 1 auto;min-height:0;background:transparent;border:none;
+  gap:clamp(10px,2.4vh,26px);padding:0;color:#fff}
+.it-wrap.fs .it-phase,.it-wrap.fs .it-count{color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.28)}
+.it-wrap.fs .it-phase small,.it-wrap.fs .it-count span,.it-wrap.fs .it-nums u{color:rgba(255,255,255,.82)}
+.it-wrap.fs .it-nums strong{color:#fff}
+.it-wrap.fs .it-phase{font-size:clamp(30px,5.4vw,76px)}
+.it-wrap.fs .it-phase small{font-size:clamp(11px,1.4vw,18px);margin-bottom:8px}
+.it-wrap.fs .it-count{font-size:clamp(96px,24vw,260px)}
+.it-wrap.fs .it-count span{font-size:clamp(22px,3.4vw,52px)}
+.it-wrap.fs .it-nums strong{font-size:clamp(20px,2.6vw,36px)}
+.it-wrap.fs .it-nums u{font-size:clamp(10px,1.2vw,15px)}
+.it-wrap.fs .it-bar{height:clamp(10px,1.6vh,18px);background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.35)}
+.it-wrap.fs .it-bar b{background:#fff}
+.it-wrap.fs .it-line{height:clamp(20px,3.4vh,34px)}
+.it-wrap.fs .it-seg{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
+.it-wrap.fs .it-seg b{background:#fff;opacity:.55}
+.it-wrap.fs .it-seg.on{border-color:#fff}
+.it-wrap.fs .row{justify-content:center}
+.it-wrap.fs .help{color:rgba(255,255,255,.8)}
+.it-wrap.fs .btn,.it-wrap.fs .it-fsx{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);color:#fff}
+.it-wrap.fs .btn:hover:not(:disabled),.it-wrap.fs .it-fsx:hover{background:rgba(255,255,255,.28);color:#fff}
+.it-fsx{position:absolute;top:14px;right:16px;z-index:2;background:var(--elevated);
+  border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.it-fsx:hover{border-color:var(--accent);color:var(--accent2)}
 </style>
 </head>
 <body>
@@ -4664,6 +4737,8 @@ function migrate(data){
   // Tempo Training's rep, its saved tempos and the player's settings ride along with
   // the rest of the workspace, so a tempo written on the laptop is there on the phone.
   data.tempo=normTempo(data.tempo);
+  // The Interval Timer's work/rest block and its saved intervals travel the same way.
+  data.interval=normInterval(data.interval);
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
   data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
@@ -9460,7 +9535,348 @@ function TempoPlayer({phases,reps,prep,sound}){
   </div>);
 }
 
+/* =========================================================
+   INTERVAL TIMER
+   =========================================================
+   The other half of the Tempo tab: a tempo runs one rep at a time, an interval runs
+   the clock. Work, rest, round, set — and the answer to "what am I doing right now"
+   is the colour of the screen rather than a word: green while the work is on, red on
+   the rest, blue on the break between rounds/sets. Full screen makes that colour the
+   whole display, so it reads from the far end of the gym. */
+const IT_KINDS={
+  prep: {label:'Get ready',  short:'PREP',hint:'starting in',        color:'#f59e0b'},
+  work: {label:'Work',       short:'WORK',hint:'go',                 color:'#10b981'},
+  rest: {label:'Rest',       short:'REST',hint:'recover',            color:'#ef4444'},
+  brk:  {label:'Set break',  short:'SET', hint:'between rounds/sets',color:'#3b82f6'},
+  done: {label:'Finished',   short:'DONE',hint:'session complete',   color:'#8b5cf6'},
+};
+const itKind=k=>IT_KINDS[k]||IT_KINDS.work;
+/* Written the way a conditioning block is written on a whiteboard: work / rest ×
+   rounds, and how many times that block is repeated. */
+const IT_PRESETS=[
+  {name:'Tabata',      code:'20/10 ×8',  work:20,rest:10,rounds:8, sets:1,setRest:0},
+  {name:'HIIT 30/30',  code:'30/30 ×10', work:30,rest:30,rounds:10,sets:1,setRest:0},
+  {name:'40/20',       code:'40/20 ×8×2',work:40,rest:20,rounds:8, sets:2,setRest:120},
+  {name:'Sprint reps', code:'15/45 ×6×3',work:15,rest:45,rounds:6, sets:3,setRest:180},
+  {name:'RSA 6×30m',   code:'6/24 ×6×2', work:6, rest:24,rounds:6, sets:2,setRest:150},
+];
+const itNum=(v,d,lo,hi)=>{const n=Number(v);return Number.isFinite(n)?Math.max(lo,Math.min(hi,Math.round(n))):d;};
+function defaultInterval(){
+  return{name:'Interval',work:30,rest:30,rounds:8,sets:1,setRest:120,prep:10,sound:true,saved:[]};
+}
+function normIntervalOne(c,d){
+  d=d||defaultInterval();
+  if(!c||typeof c!=='object')return{...d,saved:undefined};
+  return{name:c.name||d.name,
+    work:itNum(c.work,d.work,1,3600),
+    rest:itNum(c.rest,d.rest,0,3600),
+    rounds:itNum(c.rounds,d.rounds,1,99),
+    sets:itNum(c.sets,d.sets,1,99),
+    setRest:itNum(c.setRest,d.setRest,0,3600),
+    prep:itNum(c.prep,d.prep,0,60)};
+}
+function normInterval(c){
+  const d=defaultInterval();const base=normIntervalOne(c,d);
+  return{...base,sound:!c||c.sound!==false,
+    saved:(c&&Array.isArray(c.saved)?c.saved:[]).map(s=>({id:s.id||uid(),...normIntervalOne(s,d)}))};
+}
+/* The whole session as a flat list of blocks. A round's rest is dropped after the last
+   round of a set — what follows there is the set break, not another rest — and blocks
+   set to zero seconds simply never appear. */
+function intervalSchedule(c){
+  const steps=[];const rounds=Math.max(1,c.rounds|0),sets=Math.max(1,c.sets|0);
+  for(let s=1;s<=sets;s++){
+    for(let r=1;r<=rounds;r++){
+      if(c.work>0)steps.push({kind:'work',sec:c.work,set:s,round:r});
+      if(r<rounds&&c.rest>0)steps.push({kind:'rest',sec:c.rest,set:s,round:r});
+    }
+    if(s<sets&&c.setRest>0)steps.push({kind:'brk',sec:c.setRest,set:s,round:rounds});
+  }
+  return steps;
+}
+const itClock=s=>{const v=Math.max(0,Math.round(s));return `${Math.floor(v/60)}:${pad(v%60)}`;};
+const itWorkSec=c=>Math.max(1,c.work)*Math.max(1,c.rounds|0)*Math.max(1,c.sets|0);
+
+function IntervalPlayer({cfg}){
+  const steps=useMemo(()=>intervalSchedule(cfg),[cfg]);
+  const totalSec=useMemo(()=>steps.reduce((a,p)=>a+p.sec,0),[steps]);
+  const prep=cfg.prep,sound=cfg.sound;
+  const[run,setRun]=useState(false);
+  const[t,setT]=useState(0);            // seconds since Start, the get-ready count included
+  const[fs,setFs]=useState(false);      // full screen — the colour and nothing else
+  const raf=useRef(0),last=useRef(0),ac=useRef(null),lock=useRef(null);
+  const wrap=useRef(null),native=useRef(false);
+  const total=prep+totalSec;
+
+  /* Full screen asks the browser first; where that is refused — Safari on iOS won't
+     give a plain <div> the Fullscreen API — the same class still covers the viewport,
+     so the button does what it says on every device. */
+  const enterFs=()=>{
+    setFs(true);
+    const el=wrap.current;if(!el)return;
+    const req=el.requestFullscreen||el.webkitRequestFullscreen;
+    if(!req)return;
+    try{const r=req.call(el);native.current=true;if(r&&r.catch)r.catch(()=>{native.current=false;});}
+    catch(e){native.current=false;}
+  };
+  const exitFs=()=>{
+    setFs(false);
+    if(!native.current)return;
+    native.current=false;
+    try{
+      const ex=document.exitFullscreen||document.webkitExitFullscreen;
+      if(ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
+    }catch(e){}
+  };
+  // Leaving full screen by the browser's own route (Esc, the system gesture) must put
+  // the player back in the page rather than leave it stuck in the full-screen layout.
+  useEffect(()=>{
+    const onCh=()=>{if(native.current&&!(document.fullscreenElement||document.webkitFullscreenElement)){
+      native.current=false;setFs(false);}};
+    document.addEventListener('fullscreenchange',onCh);
+    document.addEventListener('webkitfullscreenchange',onCh);
+    return()=>{
+      document.removeEventListener('fullscreenchange',onCh);
+      document.removeEventListener('webkitfullscreenchange',onCh);
+      try{
+        const ex=document.exitFullscreen||document.webkitExitFullscreen;
+        if(native.current&&ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
+      }catch(e){}
+    };
+  },[]);
+  // The page behind the overlay shouldn't scroll under it.
+  useEffect(()=>{
+    if(!fs)return;
+    const prev=document.body.style.overflow;document.body.style.overflow='hidden';
+    return()=>{document.body.style.overflow=prev;};
+  },[fs]);
+
+  const beep=(freq,dur,vol)=>{
+    if(!sound)return;
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+      if(!ac.current)ac.current=new AC();
+      const c=ac.current;if(c.state==='suspended')c.resume();
+      const o=c.createOscillator(),g=c.createGain(),now=c.currentTime;
+      o.type='sine';o.frequency.value=freq;o.connect(g);g.connect(c.destination);
+      g.gain.setValueAtTime(vol||.16,now);g.gain.exponentialRampToValueAtTime(.0001,now+(dur||.09));
+      o.start(now);o.stop(now+(dur||.09)+.02);
+    }catch(e){/* no audio device / blocked autoplay — the colour carries on */}
+  };
+
+  useEffect(()=>{
+    if(!run)return;
+    last.current=performance.now();
+    const loop=now=>{const d=(now-last.current)/1000;last.current=now;
+      setT(p=>p+d);raf.current=requestAnimationFrame(loop);};
+    raf.current=requestAnimationFrame(loop);
+    return()=>cancelAnimationFrame(raf.current);
+  },[run]);
+
+  // Keep the phone awake while the session is running; released as soon as it stops.
+  useEffect(()=>{
+    if(!run)return;
+    let released=false;
+    try{
+      if(navigator.wakeLock&&navigator.wakeLock.request)
+        navigator.wakeLock.request('screen').then(s=>{if(released)s.release();else lock.current=s;}).catch(()=>{});
+    }catch(e){}
+    return()=>{released=true;try{lock.current&&lock.current.release();}catch(e){}lock.current=null;};
+  },[run]);
+
+  const el=Math.min(t,total);
+  const inPrep=el<prep;
+  const done=totalSec>0&&t>=total;
+  // Which block the clock is in, and how far into it.
+  let idx=-1,phEl=0;
+  if(!inPrep&&steps.length){
+    let acc=prep;
+    for(let i=0;i<steps.length;i++){
+      if(el<acc+steps[i].sec||i===steps.length-1){idx=i;phEl=Math.min(el-acc,steps[i].sec);break;}
+      acc+=steps[i].sec;
+    }
+  }
+  const step=idx>=0?steps[idx]:null;
+  const kindKey=done?'done':(inPrep?'prep':(step?step.kind:'work'));
+  const k=itKind(kindKey);
+  const frac=step&&step.sec>0?Math.min(1,Math.max(0,phEl/step.sec)):0;
+  const remain=done?0:(inPrep?prep-el:(step?step.sec-phEl:0));
+
+  /* One tone per block change, pitched by kind, plus a tick on each of the last three
+     seconds so the athlete hears the change coming without looking up. */
+  const marker=useRef(null);
+  useEffect(()=>{
+    if(!run)return;
+    const key=done?'done':(inPrep?'prep':'s'+idx)+'|'+Math.ceil(Math.max(0,remain));
+    if(marker.current===key)return;
+    const prevKey=marker.current;marker.current=key;
+    if(prevKey===null)return;
+    const block=key.split('|')[0];
+    if(done){beep(880,.5,.2);return;}
+    if(prevKey.split('|')[0]!==block)beep(kindKey==='work'?880:kindKey==='rest'?440:620,.16,.18);
+    else if(remain<=3.05)beep(660,.06,.11);
+  });
+
+  useEffect(()=>{if(run&&done){setRun(false);setT(total);}},[run,done,total]);
+
+  const start=()=>{if(!steps.length)return;if(done||t>=total){setT(0);marker.current=null;}
+    beep(660,.08,.14);setRun(true);};
+  const pause=()=>setRun(false);
+  const reset=()=>{setRun(false);setT(0);marker.current=null;};
+
+  // Space starts and stops the session, F fills the screen, Esc comes back. Registered
+  // once and read through a ref: the clock re-renders every frame while it runs.
+  const act=useRef(null);
+  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();}};
+  useEffect(()=>{
+    const onKey=e=>{
+      const tag=(e.target&&e.target.tagName)||'';
+      if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)||(e.target&&e.target.isContentEditable))return;
+      if(e.code==='Space'){e.preventDefault();act.current.space();}
+      else if(e.code==='KeyF'){e.preventDefault();act.current.f();}
+      else if(e.code==='Escape')act.current.esc();
+    };
+    window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
+  },[]);
+
+  const roundNo=step?step.round:(done?cfg.rounds:1);
+  const setNo=step?step.set:(done?cfg.sets:1);
+  const title=done?'Finished':(inPrep?'Get ready':k.label);
+  const sub=done?`${cfg.rounds*cfg.sets} round${cfg.rounds*cfg.sets===1?'':'s'} · ${itClock(totalSec)}`
+    :(inPrep?'starting in':k.hint);
+  // The strip shows one set's worth of blocks — the shape the athlete repeats.
+  const setSteps=useMemo(()=>steps.filter(s=>s.set===setNo),[steps,setNo]);
+  const setBase=useMemo(()=>steps.findIndex(s=>s.set===setNo),[steps,setNo]);
+
+  if(!steps.length)return(<div className="empty-st">
+    Give the work interval a duration below and the timer has something to run.
+  </div>);
+
+  return(<div className={`it-wrap${fs?' fs':''}`} ref={wrap} style={{'--it-c':k.color}}>
+    {fs&&<button className="it-fsx" onClick={exitFs} title="Esc">✕ Exit full screen</button>}
+    <div className="it-stage">
+      <div className="it-phase"><small>{sub}</small>{title}</div>
+      <div className="it-count">{done?itClock(totalSec):<>{Math.ceil(remain-.0001)||0}<span>s</span></>}</div>
+      <div className="it-bar"><b style={{transform:`scaleX(${done?1:(inPrep?(prep?el/prep:1):frac).toFixed(4)})`}}/></div>
+      <div className="it-nums">
+        <span><u>Round</u><strong>{roundNo} / {cfg.rounds}</strong></span>
+        {cfg.sets>1&&<span><u>Set</u><strong>{setNo} / {cfg.sets}</strong></span>}
+        <span><u>Left</u><strong>{itClock(total-el)}</strong></span>
+      </div>
+      <div className="it-line">
+        {setSteps.map((p,i)=>{const gi=setBase+i;const cur=idx===gi;const past=idx>gi||done;
+          return(<div key={gi} className={`it-seg${cur?' on':''}${past?' done':''}`}
+            style={{flex:`${p.sec} 1 0`,'--it-c':itKind(p.kind).color}}
+            title={`${itKind(p.kind).label} · ${p.sec}s`}>
+            <b style={{transform:`scaleX(${cur?frac.toFixed(4):(past?1:0)})`}}/>
+          </div>);})}
+      </div>
+    </div>
+    <div className="row">
+      {run?<button className="btn" onClick={pause}>❚❚ Pause</button>
+          :<button className="btn" onClick={start}>▶ {t>0&&!done?'Resume':'Start'}</button>}
+      <button className="btn sec" onClick={reset} disabled={!t}>↺ Reset</button>
+      {!fs&&<button className="btn sec" onClick={enterFs}>⛶ Full screen</button>}
+      <span className="help" style={{margin:0}}>{fs
+        ?'Space starts & stops · Esc or F comes back'
+        :'Green is work, red is rest, blue is the break between rounds & sets — full screen paints the whole display'}</span>
+    </div>
+  </div>);
+}
+
+function IntervalTimerPanels({data,setData}){
+  const c=useMemo(()=>normInterval(data.interval),[data.interval]);
+  const patch=upd=>setData(prev=>({...prev,interval:{...normInterval(prev.interval),...upd}}));
+  const[saveName,setSaveName]=useState('');
+  const steps=useMemo(()=>intervalSchedule(c),[c]);
+  const totalSec=steps.reduce((a,p)=>a+p.sec,0);
+  const usePreset=p=>patch({name:p.name,work:p.work,rest:p.rest,rounds:p.rounds,sets:p.sets,setRest:p.setRest});
+  const saveCurrent=()=>{const nm=(saveName||c.name||'Interval').trim();
+    patch({name:nm,saved:[{id:uid(),name:nm,work:c.work,rest:c.rest,rounds:c.rounds,sets:c.sets,
+      setRest:c.setRest,prep:c.prep},...c.saved]});
+    setSaveName('');};
+  const loadSaved=s=>patch({name:s.name,work:s.work,rest:s.rest,rounds:s.rounds,sets:s.sets,
+    setRest:s.setRest,prep:s.prep});
+  const delSaved=id=>patch({saved:c.saved.filter(s=>s.id!==id)});
+  const numF=(key,label,lo,hi)=>(<div>
+    <label>{label}</label>
+    <input type="number" min={lo} max={hi} value={c[key]}
+      onChange={e=>patch({[key]:itNum(e.target.value,lo,lo,hi)})}/>
+  </div>);
+
+  return(<>
+    <div className="panel">
+      <h2>Interval Timer</h2>
+      <div className="help" style={{marginTop:-8,marginBottom:16}}>
+        Work / rest for as many rounds as the block asks for, repeated over sets. The screen carries the
+        state: green while the work is on, red on the rest, blue between rounds and sets — full screen
+        turns the whole display that colour so it reads from across the pitch.
+      </div>
+      <IntervalPlayer cfg={c}/>
+    </div>
+
+    <div className="panel">
+      <h2>Interval setup</h2>
+      <div className="row" style={{marginBottom:14}}>
+        {IT_PRESETS.map(p=><button key={p.name} className="tt-chip" onClick={()=>usePreset(p)}
+          title="Load this interval into the fields below">{p.name}<b>{p.code}</b></button>)}
+      </div>
+      <div className="it-grid">
+        {numF('work','Work (s)',1,3600)}
+        {numF('rest','Rest (s)',0,3600)}
+        {numF('rounds','Rounds',1,99)}
+        {numF('sets','Sets',1,99)}
+        {numF('setRest','Set break (s)',0,3600)}
+        {numF('prep','Get ready (s)',0,60)}
+        <button className={`btn sm ${c.sound?'':'sec'}`} onClick={()=>patch({sound:!c.sound})}
+          title="A tone on every change, plus a tick on the last three seconds">
+          {c.sound?'🔊 Sound on':'🔇 Sound off'}</button>
+      </div>
+      <div className="tt-sum">
+        <div><u>Per set</u><strong>{itClock(c.work*c.rounds+c.rest*Math.max(0,c.rounds-1))}</strong></div>
+        <div><u>Total work</u><strong>{itClock(itWorkSec(c))}</strong></div>
+        <div><u>Blocks</u><strong>{steps.length}</strong></div>
+        <div><u>Whole session</u><strong>{itClock(c.prep+totalSec)}</strong></div>
+        <div><u>Work : rest</u><strong>{c.rest>0?`1 : ${+(c.rest/c.work).toFixed(2)}`:'—'}</strong></div>
+      </div>
+    </div>
+
+    <div className="panel">
+      <h2>Saved intervals</h2>
+      <div className="row" style={{alignItems:'flex-end',gap:10,marginBottom:12}}>
+        <div style={{flex:'1 1 240px',minWidth:0}}>
+          <label>Name</label>
+          <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}}/>
+        </div>
+        <button className="btn sm" onClick={saveCurrent}>Save current interval</button>
+      </div>
+      {c.saved.length===0
+        ?<div className="empty-st">Nothing saved yet — set an interval above and save it to reuse on another day.</div>
+        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {c.saved.map(s=><div key={s.id} className="row" style={{justifyContent:'space-between',background:'var(--elevated)',
+            border:'1px solid var(--border)',borderRadius:10,padding:'9px 13px'}}>
+            <div className="row" style={{gap:8,minWidth:0}}>
+              <strong style={{fontSize:13}}>{s.name}</strong>
+              <span className="help" style={{margin:0}}>
+                {s.work}s work · {s.rest}s rest · {s.rounds} rounds{s.sets>1?` · ${s.sets} sets (${s.setRest}s break)`:''} · {itClock(intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}
+              </span>
+            </div>
+            <div className="row" style={{gap:6}}>
+              <button className="btn xs sec" onClick={()=>loadSaved(s)}>Load</button>
+              <button className="btn xs danger" onClick={()=>delSaved(s.id)}>Delete</button>
+            </div>
+          </div>)}
+        </div>}
+    </div>
+  </>);
+}
+
 function TempoView({data,setData}){
+  /* Two players share the tab, and only one of them runs at a time: a coach is either
+     counting a rep or counting a clock, and keeping both mounted would leave two sets
+     of keyboard shortcuts and two tones fighting for the same room. */
+  const[tab,setTab]=useState('tempo');
   const t=useMemo(()=>normTempo(data.tempo),[data.tempo]);
   const patch=upd=>setData(prev=>({...prev,tempo:{...normTempo(prev.tempo),...upd}}));
   const setPhases=arr=>patch({phases:arr});
@@ -9481,6 +9897,12 @@ function TempoView({data,setData}){
   const delTempo=id=>patch({saved:t.saved.filter(s=>s.id!==id)});
 
   return(<div>
+    <div className="ex-subtabs">
+      <button className={tab==='tempo'?'on':''} onClick={()=>setTab('tempo')}>Tempo Training</button>
+      <button className={tab==='interval'?'on':''} onClick={()=>setTab('interval')}>Interval Timer</button>
+    </div>
+    {tab==='interval'&&<IntervalTimerPanels data={data} setData={setData}/>}
+    {tab==='tempo'&&<>
     <div className="panel">
       <h2>Tempo Training</h2>
       <div className="help" style={{marginTop:-8,marginBottom:16}}>
@@ -9577,6 +9999,7 @@ function TempoView({data,setData}){
             </div>);})}
         </div>}
     </div>
+    </>}
   </div>);
 }
 
