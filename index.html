@@ -6176,9 +6176,15 @@ ${sessionsHTML(g.sessions)}
    document.close() they are still downloading — printing on a fixed delay leaves
    blank boxes in the output. `settle` lets the document lay out first, `safety`
    caps the wait so one stalled photo can never withhold the dialog. */
-function printWhenImagesReady(w,{settle=350,safety=5000}={}){
+/* `before` runs once, in the opened window, after its images have settled and
+   immediately before the print dialog — the only moment a sheet can measure
+   itself against the paper it is about to go onto. It must never stop the
+   print: a sheet that prints unfitted still prints. */
+function printWhenImagesReady(w,{settle=350,safety=5000,before}={}){
   let printed=false;
-  const go=()=>{if(printed)return;printed=true;try{w.focus();w.print();}catch(e){console.warn('print failed',e);}};
+  const go=()=>{if(printed)return;printed=true;
+    if(before){try{before(w);}catch(e){console.warn('fit failed',e);}}
+    try{w.focus();w.print();}catch(e){console.warn('print failed',e);}};
   setTimeout(()=>{
     const pending=[...w.document.images].filter(i=>!i.complete);
     if(!pending.length){go();return;}
@@ -10771,6 +10777,7 @@ ${TINFO_CSS}
 </div>
 <div class="spacer" style="height:78px"></div>
 
+<div class="fit">
 <div class="hdr">
   ${ath.photo?`<img class="photo" src="${psrc(ath.photo)}"/>`:`<div class="photo-x">${esc(initials)}</div>`}
   <div class="who">
@@ -10818,6 +10825,7 @@ ${TINFO_CSS}
 </div>
 
 ${RPT_CMP_GROUPS.map(section).join('')}
+</div>
 
 ${infoTable?`<div class="grp tinfo-grp">
   <div class="grp-h"><span>${esc(L('TEST İÇERİĞİ','TEST CONTENT'))}</span><span class="cnt">${infoIds.length} ${esc(infoIds.length===1?'test':L('test','tests'))}</span></div>
@@ -10835,7 +10843,45 @@ ${infoTable?`<div class="grp tinfo-grp">
 
   w.document.write(html);
   w.document.close();
-  printWhenImagesReady(w);
+  /* Everything above the test-content block is one page's worth of sheet, so the
+     block lands on page two. It only stays there if the measurements actually fit
+     a page: a record carrying every reading runs about a page and a fifth, and
+     the spill — often two or three lonely rows — pushed the block to page three
+     with a near-empty page in front of it.
+
+     So the sheet measures itself against the paper before printing and, only when
+     it is over, shrinks the measurement part just enough to fit. A record that
+     already fits is left alone. The floor is there because past it the sheet
+     stops being readable across a desk; a record big enough to hit it (every
+     built-in reading plus a pile of the coach's own tests) spills to page three
+     as before, which is honest — that sheet does not fit on one page.
+
+     Measuring has to happen at the paper's width, not the window's: the window is
+     opened at 1000px and the page is 188mm wide, and text that wraps differently
+     measures a different height. */
+  printWhenImagesReady(w,{before:fitCompareToPage});
+}
+/* A4 portrait at the 11mm margin the sheet sets in @page, in CSS px. */
+const RPT_CMP_PAGE_W='188mm';
+const RPT_CMP_PAGE_H=275/25.4*96;
+const RPT_CMP_FIT_MIN=0.74;
+function fitCompareToPage(w){
+  const doc=w.document,box=doc.querySelector('.fit');
+  if(!box)return;
+  const body=doc.body,prevW=body.style.width;
+  body.style.width=RPT_CMP_PAGE_W;
+  try{
+    let k=1;
+    /* Zoom reflows rather than just scaling pixels, so the height does not fall
+       exactly in step with it — a couple of passes settle it. */
+    for(let i=0;i<4;i++){
+      const h=box.getBoundingClientRect().height;
+      if(h<=RPT_CMP_PAGE_H)break;
+      k=Math.max(RPT_CMP_FIT_MIN,k*(RPT_CMP_PAGE_H/h));
+      box.style.zoom=k;
+      if(k<=RPT_CMP_FIT_MIN)break;
+    }
+  }finally{body.style.width=prevW;}
 }
 
 /* =========================================================
