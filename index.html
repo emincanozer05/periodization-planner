@@ -3522,6 +3522,13 @@ function cmpEdges(vals,dir){
    an athlete who has never done the test does not enter the average, and an old
    record is only used when it is the newest one that test has.
 
+   The athlete being read is left out of their own average (`excludeId`). With
+   them in it, a reading pulls the line it is being measured against towards
+   itself: test one athlete whose body fat is well above everyone else's and the
+   average rises to meet them, which is exactly the comparison a coach was trying
+   to make disappearing as it is made. The bar is the rest of the squad; the
+   athlete is what is being held up against it.
+
    The direction only colours the reading. Above is not better everywhere: on the
    T-test a higher number is a slower athlete, so the wording stays literal
    ("above" / "below") and green/amber follows dir instead.
@@ -3533,17 +3540,18 @@ const TEAM_AVG_TESTS={
   horizontalJump: {u:'cm',dir:'hi',dec:1},
   tTest:          {u:'s', dir:'lo',dec:2},
 };
-function teamAvgOf(athletes,id){
+function teamAvgOf(athletes,id,excludeId){
   if(!TEAM_AVG_TESTS[id])return null;
   const vals=[];
   (athletes||[]).forEach(a=>{
+    if(excludeId!=null&&a.id===excludeId)return;
     const ts=[...(a.tests||[])].filter(t=>t.date&&cmpN(t[id])!=null)
       .sort((x,y)=>String(x.date).localeCompare(String(y.date)));
     const last=ts[ts.length-1];
     if(last)vals.push(cmpN(last[id]));
   });
   if(!vals.length)return null;
-  return{avg:vals.reduce((s,v)=>s+v,0)/vals.length};
+  return{avg:vals.reduce((s,v)=>s+v,0)/vals.length,n:vals.length};
 }
 /* How far this reading sits from that average, in per cent of it. A gap under a
    tenth of a per cent is the same number twice over, so it reads as "on the
@@ -10153,11 +10161,12 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   if(has('fiveZeroFive'))soloBlocks.push({id:'fiveZeroFive',h:L('ÇEVİKLİK — 5-0-5','AGILITY — 5-0-5'),th:L('5-0-5 (sn)','5-0-5 (s)'),v:test.fiveZeroFive});
   if(has('shuttleRun'))soloBlocks.push({id:'shuttleRun',h:L('DAYANIKLILIK / KONDİSYON','ENDURANCE / CONDITIONING'),th:L('Mekik Koşusu (sn)','Shuttle Run (s)'),v:test.shuttleRun});
   /* The squad's current average printed under the score it belongs to, worked out
-     from the same records the on-screen card reads, so print and screen cannot
-     disagree. A test nobody else on the roster has taken prints nothing at all. */
+     from the same records the on-screen card reads — this athlete left out of it
+     on both, so print and screen cannot disagree. A test nobody else on the roster
+     has taken prints nothing at all. */
   const tavgCell=id=>{
     const m=TEAM_AVG_TESTS[id];if(!m)return'';
-    const ta=teamAvgOf(athletes,id);if(!ta)return'';
+    const ta=teamAvgOf(athletes,id,ath&&ath.id);if(!ta)return'';
     const d=teamAvgDelta(cmpN(test[id]),ta.avg,m.dir);
     /* The two halves each stay on one line — a narrow column may break between
        them, but never inside "31.2 cm" or "7.7% above". */
@@ -10503,8 +10512,14 @@ ${(test.notes||infoTable)?`
    earlier numbers.
 
    The squad average is read the same way the test cards read it: every
-   team-mate's most recent record that actually carries that measurement, plus
-   this athlete's reading from the record on screen.
+   team-mate's most recent record that actually carries that measurement. This
+   athlete is not in it. An athlete who is in their own average drags the line
+   they are being measured against towards themselves — bring in one athlete
+   whose body fat sits well above the rest and the average climbs to meet them,
+   so the gap the sheet exists to show shrinks by the very reading that caused
+   it. The average is the squad the athlete is being held against; the athlete
+   is the reading held against it. Rank is the exception and stays inclusive: a
+   placing is a placing among everyone who took the test.
    ========================================================= */
 const RPT_CMP_GROUPS=[
   {id:'anthro',tr:'Antropometri',       en:'Anthropometry'},
@@ -10528,26 +10543,32 @@ function printTestCompare(test,ath,setup,customTests,athletes){
     if(RPT_CMP_SKIP.has(m.g))return;
     const v=m.get(test);
     if(v==null)return;
-    const pool=[{id:ath.id,v}];
+    /* The team-mates, and only the team-mates. This athlete is the thing being
+       measured against the squad, so they are not part of what they are measured
+       against — see the note on the sheet's average above. */
+    const mates=[];
     roster.forEach(a=>{
       if(a.id===ath.id)return;
       const ts=[...(a.tests||[])].filter(t=>t.date&&m.get(t)!=null)
         .sort((x,y)=>String(x.date).localeCompare(String(y.date)));
       const last=ts[ts.length-1];
-      if(last)pool.push({id:a.id,v:m.get(last)});
+      if(last)mates.push({id:a.id,v:m.get(last)});
     });
-    const vals=pool.map(p=>p.v);
-    const avg=vals.reduce((s,x)=>s+x,0)/vals.length;
-    const pct=avg?(v-avg)/Math.abs(avg)*100:0;
-    const d=m.dir?teamAvgDelta(v,avg,m.dir):null;
+    const vals=mates.map(p=>p.v);
+    const n=vals.length;
+    const avg=n?vals.reduce((s,x)=>s+x,0)/n:null;
+    const pct=(avg!=null&&avg)?(v-avg)/Math.abs(avg)*100:0;
+    const d=(m.dir&&avg!=null)?teamAvgDelta(v,avg,m.dir):null;
+    /* Rank is the one column the athlete belongs in: a placing is a placing
+       among everyone who took the test, this athlete included. */
     let rank=null;
-    if(m.dir&&pool.length>1){
-      const sorted=[...pool].sort((x,y)=>m.dir==='lo'?x.v-y.v:y.v-x.v);
+    if(m.dir&&n){
+      const sorted=[...mates,{id:ath.id,v}].sort((x,y)=>m.dir==='lo'?x.v-y.v:y.v-x.v);
       rank=sorted.findIndex(p=>p.id===ath.id)+1;
     }
-    rows.push({m,v,avg,pct,rank,n:pool.length,
+    rows.push({m,v,avg,pct,rank,n,nAll:n+1,
       lvl:!m.dir?'flat':(d?d.level:'same'),
-      min:Math.min(...vals),max:Math.max(...vals)});
+      min:n?Math.min(...vals):null,max:n?Math.max(...vals):null});
   });
   if(!rows.length){
     alert(L('Karşılaştırılacak veri yok — bu kayıtta henüz ölçüm girilmemiş.',
@@ -10564,7 +10585,7 @@ function printTestCompare(test,ath,setup,customTests,athletes){
      the end and is marked with a caret, and the gap column still prints what it
      really was. Never tighter than ±10%, so a squad that sits together does not
      blow a 0.3% difference up into a full-width bar, and never wider than ±60%. */
-  const gaps=rows.filter(r=>r.n>1).map(r=>Math.abs(r.pct)).sort((a,b)=>a-b);
+  const gaps=rows.filter(r=>r.n>0).map(r=>Math.abs(r.pct)).sort((a,b)=>a-b);
   const q80=gaps.length?gaps[Math.min(gaps.length-1,Math.floor(gaps.length*0.8))]:10;
   const scale=Math.min(60,Math.max(10,Math.ceil(q80*1.25/5)*5));
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -10577,15 +10598,15 @@ function printTestCompare(test,ath,setup,customTests,athletes){
      the RSI, keep two decimals. */
   const val=(v,m)=>v==null?'—':((m.u==='s'||m.id==='dj')?Number(v).toFixed(2):cmpFmt(v));
 
-  const scored=rows.filter(r=>r.m.dir&&r.n>1);
+  const scored=rows.filter(r=>r.m.dir&&r.n>0);
   const above=scored.filter(r=>r.lvl==='good').length;
   const below=scored.filter(r=>r.lvl==='poor').length;
-  const peers=Math.max(0,Math.max(...rows.map(r=>r.n))-1);
+  const peers=Math.max(0,...rows.map(r=>r.n));
   const strengths=scored.filter(r=>r.lvl==='good').sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,5);
   const gapsList=scored.filter(r=>r.lvl==='poor').sort((a,b)=>Math.abs(b.pct)-Math.abs(a.pct)).slice(0,5);
 
   const bar=r=>{
-    if(r.n<2)return`<div class="bar"><div class="mid"></div><span class="solo">${esc(L('takımda kıyas yok','no squad reading'))}</span></div>`;
+    if(!r.n)return`<div class="bar"><div class="mid"></div><span class="solo">${esc(L('takımda kıyas yok','no squad reading'))}</span></div>`;
     const p=pos(r.pct),lo=pos(pctOf(r.min,r.avg)),hi=pos(pctOf(r.max,r.avg));
     const a=Math.min(50,p),b=Math.max(50,p);
     const over=Math.abs(r.pct)>scale
@@ -10601,9 +10622,9 @@ function printTestCompare(test,ath,setup,customTests,athletes){
     <td class="lbl">${esc(cmpLabel(r.m))}${r.m.u?`<span class="u">${esc(r.m.u)}</span>`:''}</td>
     <td class="mine ${r.lvl}">${esc(val(r.v,r.m))}</td>
     <td class="barc">${bar(r)}</td>
-    <td class="delta ${r.lvl}">${r.n<2?'—':(r.lvl==='same'?esc(L('ort.','avg')):sign(r.pct))}</td>
-    <td class="avg">${esc(val(r.avg,r.m))}<span class="nn">n=${r.n}</span></td>
-    <td class="rank">${r.rank?`<b>${r.rank}</b>/${r.n}`:'—'}</td>
+    <td class="delta ${r.lvl}">${!r.n?'—':(r.lvl==='same'?esc(L('ort.','avg')):sign(r.pct))}</td>
+    <td class="avg">${esc(val(r.avg,r.m))}${r.n?`<span class="nn">n=${r.n}</span>`:''}</td>
+    <td class="rank">${r.rank?`<b>${r.rank}</b>/${r.nAll}`:'—'}</td>
   </tr>`;
   const section=g=>{
     const rs=rows.filter(r=>r.m.g===g.id);
@@ -10704,27 +10725,34 @@ td.mine{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;tex
 td.mine.good{color:var(--good)} td.mine.poor{color:var(--poor)} td.mine.flat,td.mine.same{color:var(--text)}
 td.delta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;text-align:center}
 td.delta.good{color:var(--good)} td.delta.poor{color:var(--poor)} td.delta.flat,td.delta.same{color:var(--muted)}
-td.avg{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);text-align:center}
-td.avg .nn{display:block;font-size:7.5px;color:var(--dim);letter-spacing:.04em}
+td.avg{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:700;color:var(--text);text-align:center}
+td.avg .nn{display:block;font-size:7.5px;font-weight:400;color:var(--dim);letter-spacing:.04em}
 td.rank{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);text-align:center}
 td.rank b{font-size:12px;color:var(--text)}
 td.barc{padding:5px 4px}
 
-/* The bar. The pale band is the squad's spread on the same axis, the hairline is
-   the average, the filled length is this athlete's distance from it. */
+/* The bar. The pale band is the team-mates' spread on the same axis, the line is
+   the average, the filled length is this athlete's distance from it.
+
+   The average line is the thing every bar in the column is read against, so it
+   is drawn as a solid full-strength rule rather than a hairline — at 1px and 55%
+   opacity it was losing to the band behind it and to the athlete's own marker,
+   which left the eye with nothing fixed to measure from. It sits above the band
+   and the fill and below the athlete's marker, so a reading right on the average
+   still shows both. */
 .bar{position:relative;height:15px;border-radius:4px;background:var(--bg2);overflow:hidden}
-.bar .rng{position:absolute;top:0;bottom:0;background:#dbe1e8;border-radius:3px}
-.bar .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#0a0b0d;opacity:.55}
-.bar .fill{position:absolute;top:3px;bottom:3px;border-radius:3px;opacity:.9}
+.bar .rng{position:absolute;top:0;bottom:0;background:#dbe1e8;border-radius:3px;z-index:1}
+.bar .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:#0a0b0d;opacity:1;z-index:3}
+.bar .fill{position:absolute;top:3px;bottom:3px;border-radius:3px;opacity:.9;z-index:2}
 .bar .fill.good{background:var(--good)} .bar .fill.poor{background:var(--poor)}
 .bar .fill.flat,.bar .fill.same{background:var(--flat)}
-.bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d}
+.bar .dot{position:absolute;top:1px;width:3px;height:13px;margin-left:-1.5px;border-radius:2px;background:#0a0b0d;z-index:4;box-shadow:0 0 0 1px #fff}
 .bar .dot.good{background:#0f7a37} .bar .dot.poor{background:#8f3009}
 .bar .solo{position:absolute;left:0;right:0;top:0;line-height:15px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em}
 /* A reading that runs past the end of the axis. The bar can only reach the edge,
    so the caret says the real gap is wider than it is drawn — the Gap column has
    the number. */
-.bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d}
+.bar .over{position:absolute;top:0;line-height:15px;font-size:9px;color:#0a0b0d;z-index:4}
 .axis{display:flex;justify-content:space-between;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:.05em;margin:0 0 10px;padding:5px 9px;border:1px dashed var(--border);border-radius:8px}
 .legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);letter-spacing:.04em;margin-bottom:12px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
@@ -10785,7 +10813,7 @@ ${TINFO_CSS}
   <span><i style="background:var(--good)"></i>${esc(L('ortalamadan iyi','better than average'))}</span>
   <span><i style="background:var(--poor)"></i>${esc(L('ortalamadan zayıf','weaker than average'))}</span>
   <span><i style="background:var(--flat)"></i>${esc(L('yönü olmayan ölçüm','no better side'))}</span>
-  <span><i style="background:#dbe1e8"></i>${esc(L('takımın en düşük–en yüksek aralığı','squad low–high range'))}</span>
+  <span><i style="background:#dbe1e8"></i>${esc(L('takım arkadaşlarının en düşük–en yüksek aralığı','team-mates\' low–high range'))}</span>
   <span>▸ ${esc(L('eksenin dışında — gerçek fark, Fark sütununda','past the end of the axis — the real gap is in the Gap column'))}</span>
 </div>
 
@@ -10798,8 +10826,8 @@ ${infoTable?`<div class="grp tinfo-grp">
 </div>`:''}
 
 <div class="footer">
-  ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı, bu sporcunun ekrandaki kaydıyla birlikte. Yönü olmayan ölçümler (boy, özel testler) iyi/zayıf olarak işaretlenmez. Çevre ölçümleri kıyaslanmaz — bel ya da uyluk bir puan değil, bir şekildir; sporcunun kendi kaydında kalır.',
-          'Squad average: every team-mate\'s most recent record carrying that measurement, together with this athlete\'s reading from the record on screen. Measurements with no better side (height, custom tests) are never marked better or weaker. Circumferences are not compared — a waist is a shape, not a score; they stay on the athlete\'s own record.'))}
+  ${esc(L('Takım ortalaması: her takım arkadaşının o ölçümü taşıyan en güncel kaydı. Bu sporcu kendi ortalamasına dahil edilmez — n, kıyaslanan takım arkadaşı sayısıdır. Sıra ise testi alan herkes arasında, bu sporcu dahil. Yönü olmayan ölçümler (boy, özel testler) iyi/zayıf olarak işaretlenmez. Çevre ölçümleri kıyaslanmaz — bel ya da uyluk bir puan değil, bir şekildir; sporcunun kendi kaydında kalır.',
+          'Squad average: every team-mate\'s most recent record carrying that measurement. This athlete is left out of their own average — n is the number of team-mates compared. Rank does include them: it is a placing among everyone who took the test. Measurements with no better side (height, custom tests) are never marked better or weaker. Circumferences are not compared — a waist is a shape, not a score; they stay on the athlete\'s own record.'))}
   <br>${esc(L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today))))}${setup&&setup.teamName?' · '+esc(setup.teamName):''}
 </div>
 
@@ -11172,9 +11200,9 @@ function MkInput({value,onChange,unit,step}){
 /* One line under the score box: the squad's current average and how far this
    reading sits from it. Silent when the test has no team average to show — an
    empty roster, or nobody else has taken it yet. */
-function MkTeamAvg({id,value,athletes}){
+function MkTeamAvg({id,value,athletes,athId}){
   const meta=TEAM_AVG_TESTS[id];
-  const ta=useMemo(()=>teamAvgOf(athletes,id),[athletes,id]);
+  const ta=useMemo(()=>teamAvgOf(athletes,id,athId),[athletes,id,athId]);
   if(!meta||!ta)return null;
   const d=teamAvgDelta(cmpN(value),ta.avg,meta.dir);
   return(<div className="mk-tavg">
@@ -11269,7 +11297,7 @@ function YbDiag({flip}){
   </svg>);
 }
 
-function TestCard({id,index,test,onUpdate,custom,athletes}){
+function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
   const cat=TEST_CATALOG.find(c=>c.id===id);
@@ -11479,7 +11507,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes}){
       <Hd/>
       <div className="tcard-col">
         <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
-        <MkTeamAvg id={id} value={test[id]} athletes={athletes}/>
+        <MkTeamAvg id={id} value={test[id]} athletes={athletes} athId={athId}/>
         <MkObs value={obsVal} onChange={setObs}/>
       </div>
     </div>);
@@ -11517,7 +11545,7 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
       </div>
     </div>
     <div className="ts-wrap">
-      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu} athletes={athletes}/>;})}
+      {valid.map((id,i)=>{const cu=cTests.find(c=>c.id===id);return<TestCard key={id} id={id} index={i+1} test={test} onUpdate={onUpdate} custom={cu} athletes={athletes} athId={ath.id}/>;})}
       {valid.length===0&&<div className="empty-st">No tests in this battery.</div>}
       <div className="tcard tcard-wide tcard-summary" style={{'--card-accent':'#0094ff'}}>
         <div className="tcard-hd">
