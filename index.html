@@ -4739,6 +4739,28 @@ function migrateTeam(t){
       else if(filtered.length!==day.sessions.length)a.days[d]={...day,sessions:filtered};
     }
   });
+  /* A session on an athlete's calendar that carries `sourceId` is a mirror of a team
+     session on the same day — syncSessionsToAthletes writes it, and takes it away again
+     when the team session goes. But it only takes it away through the edit path that
+     holds both sides at once, so a team session that disappeared any other way (deleted
+     on another device against a stale roster, dropped by an older build) left mirrors
+     standing that no team plan backs any more: the team's day reads "rest" while the
+     athlete still has training on it.
+
+     Every load reconciles the two, dropping the mirrors whose source is no longer on the
+     team's day. A session the athlete's own calendar owns carries no `sourceId` at all
+     and is never touched — nor is an individualized copy, which keeps its link to the
+     team session precisely so it travels with it. */
+  t.athletes.forEach(a=>{
+    for(const k of Object.keys(a.days||{})){
+      const day=a.days[k];if(!day?.sessions?.length)continue;
+      const teamIds=new Set(((((t.days||{})[k])||{}).sessions||[]).map(s=>s.id));
+      const kept=day.sessions.filter(s=>!s.sourceId||teamIds.has(s.sourceId));
+      if(kept.length===day.sessions.length)continue;
+      if(kept.length===0&&!day.dailyNotes)delete a.days[k];
+      else a.days[k]={...day,sessions:kept};
+    }
+  });
   // Athlete days migration too
   t.athletes.forEach(a=>{
     for(const k of Object.keys(a.days||{})){
