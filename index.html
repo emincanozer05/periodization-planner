@@ -3302,6 +3302,23 @@ function rememberExerciseTags(name,pattern,plane){
   const nm=(name||'').trim();
   if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'');
 }
+/* The picture the coach puts on a program row, remembered against the exercise ITSELF
+   the same way its pattern / execution are — write the exercise into the next program
+   and the picture comes back, instead of being pasted again sheet after sheet.
+
+   It is deliberately NOT the library entry's `thumb`: that is the cover the library card
+   shows, chosen for the library, and a shot pasted onto a program row to remind an
+   athlete what the movement looks like is not a decision about how the exercise is
+   filed. So it rides along as `planImage`, and the card's cover is left alone.
+
+   Clearing the picture on a row clears the remembered one too — unlike a cleared tag,
+   removing a picture is a statement about the picture, not about one sheet's copy. */
+let _libImage=null;
+function registerLibImage(fn){_libImage=fn;}
+function rememberExerciseImage(name,url){
+  const nm=(name||'').trim();
+  if(nm&&_libImage)_libImage(nm,typeof url==='string'?url:'');
+}
 const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
@@ -4763,7 +4780,11 @@ function migrate(data){
   data.interval=normInterval(data.interval);
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
-  data.exercises=data.exercises.map(e=>({id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
+  /* Spread the entry first so the fields this normaliser does not name survive a reload —
+     the pattern / execution an exercise was tagged with and the plan picture put on a
+     program row are written onto the library entry, and rebuilding it from a whitelist
+     threw both away the next time the workspace was opened. */
+  data.exercises=data.exercises.map(e=>({...e,id:e.id||uid(),name:e.name||'',type:(_typeRemap[e.type]!=null?_typeRemap[e.type]:e.type)||'',subType:e.subType||(e.type==='COD'?'COD':e.type==='Sprint'?'Sprint Technique':e.type==='Olympic'?'Olympic Lift':''),pattern:e.pattern||'',difficulty:(_diffRemap[e.difficulty]||e.difficulty||''),muscle:Array.isArray(e.muscle)?e.muscle:(e.muscle?[e.muscle]:[]),
     videoUrl:e.videoUrl||'',videoData:e.videoData||'',thumb:e.thumb||'',purpose:e.purpose||''}));
   return data;
 }
@@ -8630,7 +8651,7 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
             link:it.link||ex.link||'',description:it.desc||ex.description||'',
             ...(exTagsFromLib(it,ex)||{})})}/>
       </div>
-      <ExImgBtn image={ex.image||''} onChange={url=>f('image',url||'')}/>
+      <ExImgBtn image={ex.image||''} onChange={url=>{f('image',url||'');rememberExerciseImage(ex.name,url||'');}}/>
       <span className="iv-slotacts">
         <button type="button" onClick={()=>onMove(-1)} disabled={first} title="Move up">↑</button>
         <button type="button" onClick={()=>onMove(1)} disabled={last} title="Move down">↓</button>
@@ -18454,7 +18475,24 @@ function App(){
     const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane};
     return{...prev,exercises:next};
   }));
-  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);};},[setData]);
+  /* Putting a picture on a program row writes it onto the library entry as its plan
+     image, so the next program that names this exercise fills it in by itself. A name the
+     library has never seen is added carrying the picture, exactly as typing it would. The
+     entry's `thumb` — the library card's cover — is never touched. */
+  registerLibImage((nm,url)=>setData(prev=>{
+    const exs=prev.exercises||[];
+    const lo=nm.trim().toLowerCase();
+    const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
+    if(i<0){
+      if(!url)return prev;
+      return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',planImage:url},...exs]};
+    }
+    const cur=exs[i];
+    if((cur.planImage||'')===url)return prev;
+    const next=[...exs];next[i]={...cur,planImage:url};
+    return{...prev,exercises:next};
+  }));
+  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);};},[setData]);
   // Keep the exercise editor's picker in sync with the library (names + categories), and
   // carry each entry's cover image and video link along: picking the exercise while writing
   // a program copies both onto the row, so the coach never hunts for the image again.
@@ -18469,7 +18507,10 @@ function App(){
          `sub` as a caption, while the load distribution reads the type/sub-type pair
          to work out what an untagged session row trains and how. */
       items.push({name:nm,type:e.type||'',subType:e.subType||'',sub:[e.subType,e.pattern].filter(Boolean),
-        image:e.thumb||videoThumb(e.videoData||e.videoUrl)||'',
+        /* The coach's own plan picture first: it was put on a program row for programs.
+           The library cover (or the video's auto-thumbnail) still stands in when the
+           exercise has never carried one. */
+        image:e.planImage||e.thumb||videoThumb(e.videoData||e.videoUrl)||'',
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
