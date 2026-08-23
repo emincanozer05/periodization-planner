@@ -1272,13 +1272,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .animal-card{position:relative;overflow:hidden;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:22px 12px 18px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-family:inherit;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .45s,filter .45s,border-color .45s,box-shadow .45s}
 .animal-card,.animal-card *{font-style:normal !important}
 .animal-card:hover{border-color:var(--text2);transform:translateY(-2px)}
-.animal-card .animal-ic{width:96px;height:82px;object-fit:contain;margin-bottom:8px;transition:filter .45s,opacity .45s}
+.animal-card .animal-ic{width:96px;height:82px;object-fit:contain;margin-bottom:8px;filter:brightness(0) invert(1);transition:filter .45s,opacity .45s}
 .animal-card .animal-name{font-size:14px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text2);transition:color .45s,text-shadow .45s}
 .animal-card .animal-trait{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.02em;text-align:center;transition:color .45s}
 .animal-card.sel{border-color:var(--accent);box-shadow:0 0 0 1px rgba(0,148,255,.4),0 0 34px rgba(0,148,255,.16),inset 0 0 30px rgba(0,148,255,.05);transform:translateY(-4px);animation:animalPop .5s cubic-bezier(.34,1.56,.64,1)}
 /* The chosen beast is lit, not blinking: a steady glow rather than the breathing
    loop that ran forever once a card was picked. */
-.animal-card.sel .animal-ic{filter:drop-shadow(0 0 10px rgba(0,148,255,.7))}
+.animal-card.sel .animal-ic{filter:brightness(0) invert(1) drop-shadow(0 0 10px rgba(0,148,255,.7))}
 .animal-card.sel .animal-name{color:var(--accent);text-shadow:0 0 14px rgba(0,148,255,.55)}
 .animal-card.sel .animal-trait{color:var(--accent2)}
 .animal-card.sel::after{content:'';position:absolute;top:-20%;bottom:-20%;left:0;width:45%;background:linear-gradient(105deg,transparent,rgba(0,148,255,.16),transparent);transform:translateX(-140%) skewX(-18deg);animation:animalSweep .9s ease .1s forwards}
@@ -6342,7 +6342,7 @@ function printWeekA4Land(title,weekStart,days,athletes){
   const mF=!monotony?{c:'#8b9099',t:'—'}:monotony>2?{c:'#ff6b5b',t:L('YÜKSEK','HIGH')}:monotony>=1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>=1?{c:'#9aab3a',t:L('NORMAL','NORMAL')}:{c:'#5b8cff',t:L('DÜŞÜK','LOW')};
   const monotonyBlock=rTotal>0?`<div class="mono-row">
     <div class="mono-chart">
-      <div class="mono-h">📊 ${L('Haftalık Yük Dağılımı','Weekly Load Distribution')} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· ${L('gerçekleşen yük','realized load')} (AU)</span></div>
+      <div class="mono-h">${L('Haftalık Yük Dağılımı','Weekly Load Distribution')} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· ${L('gerçekleşen yük','realized load')} (AU)</span></div>
       ${chartSvg}
     </div>
     <div class="mono-side">
@@ -14284,7 +14284,6 @@ function ProfileTab({ath,updAth,setup}){
       </div>
       <NotesPanel ath={ath} updAth={updAth}/>
     </div>
-    <IndivProfilePanel ath={ath} updAth={updAth}/>
   </div>);
 }
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
@@ -14601,7 +14600,11 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
                 <th>Date</th><th>RHR</th><th>Sleep</th><th>Fatigue</th><th>Area of Pain</th><th>Readiness</th><th>Source</th><th style={{width:50}}></th>
               </tr></thead><tbody>
                 {vis.map((w,idx)=>{const realIdx=ath.wellness.length-1-idx;
-                  const uw=(k,v)=>{const a=[...ath.wellness];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{wellness:a});};
+                  /* A value the coach types here is theirs: the field is stamped on the
+                     record so the next Tally sync writes around it instead of over it. */
+                  const uw=(k,v)=>{const a=[...ath.wellness];const cur=a[realIdx];
+                    a[realIdx]={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
+                    updAth(ath.id,{wellness:a});};
                   return<tr key={w.id||idx}>
                     <td><input type="date" value={w.date} onChange={e=>uw('date',e.target.value)} style={{width:130}}/><div className="help">{fd(w.date)}</div></td>
                     <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
@@ -15217,7 +15220,24 @@ function mergeTallyRows(team,rows,opts={}){
       RHR:_rhr,sleep:_sleep,fatigue:_fat,soreness:_sor,
       areaOfPain:_note,painMap:_painMap,pain:painTagsFromMap(_painMap),
       readiness:_ready};
-    if(i>=0){ath.wellness[i]=entry;stats.wellnessUpdated++;}
+    if(i>=0){
+      /* Fields the coach edited by hand on the Wellness tab survive the re-sync — the
+         submission still refreshes everything they did NOT touch. Readiness is derived,
+         so when the coach re-scored sleep/fatigue/soreness themselves and the form
+         carried no Readiness of its own, it is recomputed from what actually stands on
+         the record rather than from the submission's numbers. */
+      const prev=ath.wellness[i];
+      const kept=prev.manualEdits||[];
+      if(kept.length){
+        kept.forEach(k=>{entry[k]=prev[k];});
+        entry.manualEdits=kept;
+        if(!kept.includes('readiness')&&_toN(row['Readiness'])==null){
+          const sc=['sleep','fatigue','soreness'].map(k=>_toN(entry[k])).filter(v=>v!=null);
+          entry.readiness=sc.length?+(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):null;
+        }
+      }
+      ath.wellness[i]=entry;stats.wellnessUpdated++;
+    }
     else{ath.wellness.push(entry);stats.wellnessAdded++;}
   }
 
@@ -16689,9 +16709,11 @@ function ExercisesView({data,setData}){
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`Search ${activeType}…`}/></div>
       <button className="btn sm" onClick={()=>addExercise()}>＋ Add Exercise</button>
     </div>
-    {(()=>{const c=TYPE_COLORS[activeType]||'#22d3ee';
-      const onSty={background:c,borderColor:c,color:'#0f1526',boxShadow:`0 0 12px ${c}aa, inset 0 0 6px ${c}55`,fontWeight:800};
-      const offSty={background:'#0f1526',borderColor:c,color:'#ffffff',boxShadow:`0 0 6px ${c}66, inset 0 0 5px ${c}33`};
+    {(()=>{
+      /* Flat chips: no neon glow, no category tint on the label — every chip reads
+         white, and the picked one is marked by a filled pill rather than a colour. */
+      const onSty={background:'rgba(255,255,255,.16)',borderColor:'#ffffff',color:'#ffffff',boxShadow:'none',fontWeight:800};
+      const offSty={background:'transparent',borderColor:'rgba(255,255,255,.35)',color:'#ffffff',boxShadow:'none'};
       const ChipRow=({label,values,val,setVal})=>(<div className="chip-row">
         <span className="chip-row-lbl">{label}</span>
         <button className={`fchip${val===''?' on':''}`} style={val===''?onSty:offSty} onClick={()=>setVal('')}>All</button>
@@ -17547,57 +17569,6 @@ function TagChips({value,onChange,options,empty}){
     {options.map(o=><button key={o.id} type="button" className={'iv-chip'+(sel.includes(o.id)?' on':'')}
       onClick={()=>toggle(o.id)}>{o.label}</button>)}
     {options.length===0&&<span className="iv-dim">{empty||'—'}</span>}
-  </div>);
-}
-
-/* ---- Athlete profile panel (Athletes → Profile tab) ----------------------
-   Reference the coach fills in and reads. Nothing here changes a program by
-   itself — the Individualization screen prescribes exactly what the coach types
-   on it. */
-function IndivProfilePanel({ath,updAth}){
-  const[dismissed,setDismissed]=useState([]);
-  const sugg=noteTagSuggestions(ath).filter(id=>!dismissed.includes(id));
-  const set=p=>updAth(ath.id,p);
-  return(<div className="panel iv-profile">
-    <h2>Individualization<span className="pf-auto" style={{background:'rgba(0,148,255,.12)',color:'var(--accent)'}}>program</span></h2>
-    <div className="sub" style={{margin:'-8px 0 14px'}}>Reference for the coach when writing this athlete's program. All of it is the coach's own assessment — it is not an automatic medical diagnosis, and none of it adjusts a program on its own.</div>
-    <div className="iv-frow">
-      <div className="iv-f">
-        <label>Active pain / restriction</label>
-        <TagChips value={ath.constraintTags||[]} options={CONSTRAINT_TAGS} onChange={v=>set({constraintTags:v})}/>
-      </div>
-    </div>
-    {sugg.length>0&&<div className="iv-suggest">
-      <span className="h">Suggested from notes:</span>
-      {sugg.map(id=><span key={id} className="iv-sg">
-        <b>{ctLabel(id)}</b>
-        <button type="button" onClick={()=>set({constraintTags:[...(ath.constraintTags||[]),id]})}>+ Add</button>
-        <button type="button" className="no" onClick={()=>setDismissed(d=>[...d,id])}>Ignore</button>
-      </span>)}
-      <span className="iv-dim">Picked out of keywords in the note text — approving it is up to you.</span>
-    </div>}
-    <div className="iv-frow" style={{marginTop:12}}>
-      <div className="iv-f">
-        <label>Level</label>
-        <select value={ath.levelTag||''} onChange={e=>set({levelTag:e.target.value})}>
-          <option value="">— not set</option>
-          {DIFFICULTIES.map(d=><option key={d} value={d}>{LEVEL_LABEL[d]||d} ({d})</option>)}
-        </select>
-      </div>
-      <div className="iv-f">
-        <label>Training age (years)</label>
-        <input type="number" step="0.5" min="0" value={ath.trainingAge||''} onChange={e=>set({trainingAge:e.target.value})} placeholder="—"/>
-      </div>
-      <div className="iv-f">
-        <label>Position</label>
-        <div className="iv-static">{ath.position?`${POS_FULL[ath.position]||ath.position} · ${posGroupLabel(posGroupOf(ath.position))}`:'—'}</div>
-        <div className="help" style={{marginTop:4}}>Position is changed from ✎ Edit Profile.</div>
-      </div>
-      <div className="iv-f">
-        <label>Body type</label>
-        <div className="iv-static">{ath.animalType?((ANIMAL_TYPES.find(a=>a.id===ath.animalType)||{}).name||ath.animalType):'—'}</div>
-      </div>
-    </div>
   </div>);
 }
 
