@@ -15287,6 +15287,30 @@ const pushBytesToB64u=buf=>{
   return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 };
 
+/* Every push endpoint is new in Worker v10, so the failure a coach actually hits is an old
+   build still deployed on Cloudflare: a Worker that has never heard of /api/push answers
+   its plain-text "running" banner (or, from v9, a webhook error) and the app used to relay
+   tallyReadJson's advice about /sync — which has nothing to do with the button that was
+   pressed. This says the one thing that fixes it instead. */
+async function pushReadJson(r,base,path){
+  const text=await r.text();
+  let data=null;
+  try{data=JSON.parse(text);}catch(e){/* named below */}
+  const outdated=()=>new Error(`Cloudflare'deki Worker eski bir sürüm: ${path} ucu orada yok. Bildirimler Worker v${TALLY_WORKER_VERSION} ile geldi — projedeki tally-worker.js dosyasını Cloudflare'e yeniden deploy et, sonra bu düğmeyi tekrar dene. (Adres doğru; Worker cevap veriyor, sadece bu ucu tanımıyor.)`);
+  if(/CoachOS Tally Worker is running/i.test(text))throw outdated();
+  if(data&&typeof data==='object'){
+    // v9 routes every POST to the Tally webhook handler, whatever the path — so an old
+    // Worker answers a subscribe/send with a complaint about form ids. That is the same
+    // "not deployed yet" story, told in JSON.
+    if(data.ok===false&&/which of the two forms|not a Tally submission|Body is not JSON/i.test(String(data.error||'')))
+      throw outdated();
+    return data;
+  }
+  if(!r.ok)
+    throw new Error(`Worker HTTP ${r.status} döndürdü ve cevabı JSON değil. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
+  throw new Error(`Bu adres JSON yerine düz metin/HTML döndürdü. Büyük ihtimalle Worker eski sürüm (tally-worker.js'i yeniden deploy et) ya da Worker URL'sinin sonunda fazladan bir yol parçası var — yalnızca kök adresi kayıtlı olmalı. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
+}
+
 /* The service worker is registered from the site root so its scope covers the whole app.
    `ready` is awaited because a registration that has not activated yet has no pushManager
    worth subscribing through. */
@@ -15305,7 +15329,7 @@ async function pushWorkerKey(workerUrl){
   let r;
   try{r=await fetch(base+'/api/push/key');}
   catch(e){throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış ya da Worker yayında değil.');}
-  const j=await tallyReadJson(r,base);
+  const j=await pushReadJson(r,base,'/api/push/key');
   if(!j.key)
     throw new Error(j.hint||j.error||'Worker bir VAPID anahtarı döndürmedi. Cloudflare\'de VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY secret\'larını ayarla (anahtarları '+base+'/api/push/vapid-keys üretir).');
   if(!j.store)
@@ -15335,7 +15359,7 @@ async function pushEnable(workerUrl,athlete,teamId){
   const r=await fetch(base+'/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({subscription:json,athleteId:athlete?athlete.id:null,athleteName:athlete?athlete.name:null,
       teamId:teamId||null,ua:navigator.userAgent})});
-  const j=await tallyReadJson(r,base);
+  const j=await pushReadJson(r,base,'/api/push/subscribe');
   if(!j.ok)throw new Error(j.error||'Abonelik Worker\'a kaydedilemedi.');
   pushLocalSet(PUSH_DEVICE_KEY,{endpoint:json.endpoint,athleteId:athlete?athlete.id:null,
     athleteName:athlete?athlete.name:null,teamId:teamId||null,at:new Date().toISOString()});
@@ -15401,7 +15425,7 @@ async function pushSendReminder(workerUrl,opts){
   }catch(e){
     throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış ya da Worker yayında değil.');
   }
-  const j=await tallyReadJson(r,base);
+  const j=await pushReadJson(r,base,'/api/send-reminder');
   if(!j.ok)throw new Error(j.error||('Worker HTTP '+r.status+' döndürdü.'));
   return j;
 }
@@ -15812,8 +15836,8 @@ function PushSettings({team}){
       let r;
       try{r=await fetch(base+'/api/push');}
       catch(e){throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış, Worker yayında değil ya da internet yok — denenen adres: '+base+'/api/push');}
-      const j=await tallyReadJson(r,base);
-      if(!j.ok)throw new Error(j.error||'Worker cevap verdi ama abonelikleri okuyamadı. Bu uç Worker\'ın v'+TALLY_WORKER_VERSION+' sürümüyle geldi — Cloudflare\'e yeniden deploy etmen gerekebilir.');
+      const j=await pushReadJson(r,base,'/api/push');
+      if(!j.ok)throw new Error(j.error||'Worker cevap verdi ama abonelikleri okuyamadı.');
       setSt({bad:false,data:j});
     }catch(e){setSt({bad:true,msg:e.message});}
   };
