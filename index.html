@@ -4747,15 +4747,19 @@ function migrateTeam(t){
      standing that no team plan backs any more: the team's day reads "rest" while the
      athlete still has training on it.
 
-     Every load reconciles the two, dropping the mirrors whose source is no longer on the
-     team's day. A session the athlete's own calendar owns carries no `sourceId` at all
-     and is never touched — nor is an individualized copy, which keeps its link to the
-     team session precisely so it travels with it. */
+     Every load reconciles the two, dropping the mirrors the team plan no longer backs:
+     the ones whose source has gone from the team's day, and the ones sitting on an
+     athlete the source is not assigned to — a session written to the guards has no
+     business on a forward's calendar, however it got there (an older build that assigned
+     every session to the whole squad, the individualization sheet writing past the tick
+     list). A session the athlete's own calendar owns carries no `sourceId` at all and is
+     never touched — nor is an individualized copy, which keeps its link to the team
+     session precisely so it travels with it. */
   t.athletes.forEach(a=>{
     for(const k of Object.keys(a.days||{})){
       const day=a.days[k];if(!day?.sessions?.length)continue;
-      const teamIds=new Set(((((t.days||{})[k])||{}).sessions||[]).map(s=>s.id));
-      const kept=day.sessions.filter(s=>!s.sourceId||teamIds.has(s.sourceId));
+      const teamSes=new Map(((((t.days||{})[k])||{}).sessions||[]).map(s=>[s.id,s]));
+      const kept=day.sessions.filter(s=>!s.sourceId||teamSessionCovers(teamSes.get(s.sourceId),a.id));
       if(kept.length===day.sessions.length)continue;
       if(kept.length===0&&!day.dailyNotes)delete a.days[k];
       else a.days[k]={...day,sessions:kept};
@@ -5577,6 +5581,21 @@ function WellnessHeatmap({athletes}){
    - A copy the coach has individualized (it carries `indiv`) is left alone: it is
      rewritten from the Individualization sheet, never from the team session.
    ========================================================= */
+/* Whether a team session reaches a given athlete: the athletes ticked on it are the
+   assignment, and it reaches nobody else. A session with nobody ticked has no assignment
+   to contradict — it reads as the whole squad, which is what the drawer's "assign to the
+   team" button and the sRPE roster already take it to mean.
+
+   This is the rule the load-time reconcile above deletes by, so it deliberately answers
+   "yes" for the unassigned session: reconciling removes a coach's work, and does it only
+   where an explicit tick list says the athlete was never meant to have it. Writing is the
+   stricter side — syncSessionsToAthletes copies a session only to the athletes actually
+   ticked, never to the squad by default. */
+function teamSessionCovers(teamSes,athId){
+  if(!teamSes)return false;
+  const ids=Array.isArray(teamSes.athletes)?teamSes.athletes:[];
+  return ids.length===0||ids.includes(athId);
+}
 function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
   const newIds=new Set(newSessions.map(s=>s.id));
   const removedIds=oldSessions.filter(s=>!newIds.has(s.id)).map(s=>s.id);
@@ -18028,11 +18047,30 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const activeKey=src?src.key:'';
   const ovrAll=(store.ovr||{})[activeKey]||{};
 
-  const autoIds=useMemo(()=>{
-    if(src&&src.team&&(src.team.athletes||[]).length)return src.team.athletes;
-    return athletes.map(a=>a.id);
+  /* Who this source may be written to at all. A team session that names its athletes has
+     been assigned, and the sheet is bound by that assignment: the program it builds is
+     that session's program, so it goes to the athletes it was given to and to nobody
+     else — a block written for the guards must not land on a forward's calendar because
+     the sheet was left on "All". A session with nobody ticked, and a template (which
+     belongs to no day), carry no assignment to honour: there the whole roster stands, as
+     it always has. `null` means exactly that — no assignment. */
+  const srcRoster=useMemo(()=>{
+    const ids=(src&&src.team&&src.team.athletes)||[];
+    // Ticked names that have since left the squad drop out, but the assignment itself
+    // stands: a session given to five players who are all gone reaches nobody, it does
+    // not fall back to the whole roster.
+    return ids.length?ids.filter(id=>athletes.some(a=>a.id===id)):null;
   },[src,athletes]);
-  const chosen=sel||autoIds;
+  // The roster the sheet works over — the assigned athletes, or everyone when unassigned.
+  const roster=useMemo(()=>srcRoster?athletes.filter(a=>srcRoster.includes(a.id)):athletes,[srcRoster,athletes]);
+  const autoIds=useMemo(()=>roster.map(a=>a.id),[roster]);
+  /* A hand-picked selection is filtered through the assignment too, so un-assigning an
+     athlete on the team session takes them off this sheet as well instead of leaving the
+     old pick to write to them again. */
+  const chosen=useMemo(()=>{
+    const c=sel||autoIds;
+    return srcRoster?c.filter(id=>srcRoster.includes(id)):c;
+  },[sel,autoIds,srcRoster]);
   const toggleAth=id=>{const c=chosen.includes(id)?chosen.filter(x=>x!==id):[...chosen,id];setSel(c);};
 
   const plans=useMemo(()=>{
@@ -18163,7 +18201,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         </select>
       </div>
       <div className="iv-f"><label>Athletes</label>
-        <div className="iv-static">{chosen.length} / {athletes.length} selected</div>
+        <div className="iv-static">{chosen.length} / {roster.length} selected</div>
       </div>
       <div className="iv-actions">
         <span className="iv-expbar">
@@ -18180,14 +18218,18 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
         {src&&src.team?'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. ':''}
+        {srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
+                     `This session is assigned to ${srcRoster.length} athlete${srcRoster.length>1?'s':''} — the program is written to their calendars only. To reach anyone else, tick them on the session itself first. `):''}
         Seçtiğin kaynak program, seçili sporcuların takvimine <strong>kendiliğinden</strong> işlenir — yazma butonu yok. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Edit</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.
       </div>
     </div>
-    {athletes.length>0&&<div className="panel iv-athbar">
-      <button className="btn xs sec" onClick={()=>setSel(athletes.map(a=>a.id))}>All</button>
+    {/* Only the athletes this source may reach are offered: "All" over an assigned session
+        means all of the athletes it was assigned to, not the whole squad. */}
+    {roster.length>0&&<div className="panel iv-athbar">
+      <button className="btn xs sec" onClick={()=>setSel(roster.map(a=>a.id))}>All</button>
       <button className="btn xs sec" onClick={()=>setSel([])}>None</button>
       <button className="btn xs sec" onClick={()=>setSel(null)}>Auto</button>
-      {athletes.map(a=><button key={a.id} className={'iv-athchip'+(chosen.includes(a.id)?' on':'')} onClick={()=>toggleAth(a.id)}>
+      {roster.map(a=><button key={a.id} className={'iv-athchip'+(chosen.includes(a.id)?' on':'')} onClick={()=>toggleAth(a.id)}>
         {a.name||'—'}{a.levelTag?<i>{LEVEL_LABEL[a.levelTag]||a.levelTag}</i>:null}
       </button>)}
     </div>}
@@ -18197,7 +18239,10 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={data.exercises||[]} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>)}
-    {src&&plans.length===0&&<div className="ex-empty">No athlete selected — pick one above.</div>}
+    {src&&plans.length===0&&<div className="ex-empty">{srcRoster&&!srcRoster.length
+      ?L('Bu seans yalnızca kadroda olmayan sporculara atanmış — seansın katılımcı listesini takvimden güncelle.',
+         'This session is assigned only to athletes who have left the roster — update its participant list on the session itself.')
+      :'No athlete selected — pick one above.'}</div>}
   </div>);
 }
 
