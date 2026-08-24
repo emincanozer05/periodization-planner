@@ -8961,7 +8961,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const nmBefore=useRef('');
   const startEdNm=()=>{nmBefore.current=session.name||'';setEdNm(true);};
   const endEdNm=revert=>{if(revert)u({name:nmBefore.current});setEdNm(false);};
-  const load=sLoad(session);
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   const participantCount=(session.athletes||[]).length;
@@ -8986,7 +8985,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {fromTeam&&<span className="team-badge" title="This session was copied from a team plan. Edits to the team session will sync here.">⚡ FROM TEAM</span>}
       {showPicker&&participantCount>0&&<span className="tag" style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd'}}>👥 {participantCount} athlete{participantCount!==1?'s':''}</span>}
       <span className="grow"/>
-      {!isTemplate&&<span className="tag">{Math.round(load)} AU</span>}
       <div className="row" onClick={e=>e.stopPropagation()}>
         <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
         <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
@@ -8994,10 +8992,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         {!isTemplate&&<button className="btn xs sec" onClick={saveTpl} title="Save this session to the Templates tab" style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>{savedTpl?'✓ Saved':'Save to Templates'}</button>}
         <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session])}>Print</button>
         <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session],{withImages:true})} title="Print this session including the uploaded exercise images">Print with Image</button>
-        <button className="btn xs" style={{background:'var(--purple)',color:'#fff'}}
-          onClick={()=>shareTrainingPDF({title:printContext.title,subtitle:printContext.subtitle,sessions:[session],athleteName:printContext.title})}
-          title="Share as PDF via any installed app">
-          <ShareIcon size={11}/> Share</button>
         <button className="btn xs danger" onClick={()=>{if(confirm(fromTeam?'Delete this team-synced session from this athlete only? (The team plan is unchanged)':'Delete session? This will also remove it from any athletes it was assigned to.'))onRemove();}}>Delete</button>
       </div>
       <span style={{cursor:'pointer',color:'var(--muted)',fontSize:13}}>{open?'▼':'▶'}</span>
