@@ -1633,36 +1633,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rost-head .rh-t{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.1}
 .rost-head .rh-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);margin-top:4px}
 .rost-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-/* "Push the Form Notification" — sits between the search box and the position filter, and
-   reads as an action rather than a filter, so it carries the accent border the segmented
-   buttons deliberately do not. */
-.push-btn{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-.push-btn .bell{font-size:13px;line-height:1}
-.push-btn:disabled{opacity:.6;cursor:progress}
-/* The send report. A push is fire-and-forget, so this line is the only proof it happened. */
-.push-note{position:relative;display:block;margin:-6px 0 18px;padding:11px 38px 11px 14px;border-radius:10px;
-  font-size:13px;line-height:1.5;color:var(--text2);background:rgba(45,212,167,.1);border:1px solid rgba(45,212,167,.35)}
-.push-note.bad{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.35)}
-.push-note .d{margin-top:6px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);word-break:break-word}
-.push-note .x{position:absolute;top:8px;right:9px;background:none;border:0;color:var(--dim);cursor:pointer;font-size:13px;line-height:1;padding:2px 4px}
-.push-note .x:hover{color:var(--text)}
-/* The athlete's opt-in card. Bottom-right on a desktop, a full-width sheet on a phone —
-   which is where an athlete actually reads it. */
-.push-optin{position:fixed;right:20px;bottom:20px;z-index:900;width:min(360px,calc(100vw - 32px));
-  padding:16px 18px 15px;border-radius:14px;background:var(--elevated,#15181e);border:1px solid var(--border2);
-  box-shadow:0 18px 44px rgba(0,0,0,.55);animation:pushIn .28s ease-out}
-@keyframes pushIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.push-optin .t{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
-.push-optin .s{font-size:12.5px;line-height:1.55;color:var(--muted)}
-.push-optin .f{margin-top:12px}
-.push-optin .f label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
-.push-optin .f select{width:100%}
-.push-optin .e{margin-top:10px;padding:9px 11px;border-radius:8px;font-size:12px;line-height:1.5;color:var(--text2);
-  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35)}
-.push-optin .b{display:flex;gap:8px;margin-top:14px}
-.push-optin .x{position:absolute;top:9px;right:10px;background:none;border:0;color:var(--dim);cursor:pointer;font-size:13px;line-height:1;padding:2px 4px}
-.push-optin .x:hover{color:var(--text)}
-@media(max-width:640px){.push-optin{right:12px;left:12px;bottom:12px;width:auto}}
 .rost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
 .rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
 .rc:hover{transform:translateY(-3px);border-color:var(--border2)}
@@ -14541,9 +14511,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
             <div><label>Date of birth</label><input type="text" inputMode="numeric" placeholder="gg/aa/yyyy" value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">gün / ay / yıl</div></div>
-            {/* Cep telefonu: ülke kodu ayrı bir kutuda, numara ayrı. Bildirimi/anketi
-                yollarken numaranın uluslararası biçimde olması gerekiyor, ve bir koç
-                +90'ı numaranın içine yazmayı hep unutuyor — o yüzden seçtiriyoruz. */}
+            {/* Cep telefonu: ülke kodu ayrı bir kutuda, numara ayrı. Numaranın uluslararası
+                biçimde durması gerekiyor, ve bir koç +90'ı numaranın içine yazmayı hep
+                unutuyor — o yüzden seçtiriyoruz. */}
             <div style={{gridColumn:'span 2'}}><label>Cep telefonu</label>
               <div style={{display:'flex',gap:8}}>
                 <select style={{flex:'0 0 130px'}} value={ath.phoneCode||DEFAULT_DIAL} onChange={e=>updAth(ath.id,{phoneCode:e.target.value})}>
@@ -14966,125 +14936,12 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
 }
 
 /* =========================================================
-   PUSH OPT-IN — the first thing an athlete sees on their phone
-   ---------------------------------------------------------
-   Renders nothing at all unless there is something to ask: push has to be supported, the
-   team has to have a Worker configured, and the browser has to still be on "default" (a
-   yes or a no is already an answer). "Şimdi değil" is remembered so opening the app twice
-   in a day does not turn into two dialogs.
-
-   The athlete picker is what ties this device to a roster entry — the Worker stores the
-   subscription under whoever is chosen here. Skipping it still subscribes the device; it
-   just arrives as an unnamed one, which is better than not being reachable at all.
-   ========================================================= */
-function PushOptIn({team}){
-  const cfg=team.tallySync||{};
-  const athletes=team.athletes||[];
-  const[open,setOpen]=useState(false);
-  const[who,setWho]=useState('');
-  const[busy,setBusy]=useState(false);
-  const[err,setErr]=useState('');
-  const[done,setDone]=useState(null);
-
-  // A device that already said yes only needs its endpoint kept fresh — silently.
-  useEffect(()=>{
-    if(!(cfg.workerUrl||'').trim())return;
-    pushRefresh(cfg.workerUrl,athletes,team.id);
-  },[cfg.workerUrl,team.id]);
-
-  // The service worker re-subscribes on its own when Chrome expires the keys; it messages
-  // the page so the new endpoint reaches the Worker instead of the device going quiet.
-  useEffect(()=>{
-    if(!pushSupported())return;
-    const onMsg=e=>{
-      const d=e.data;
-      if(!d||d.type!=='coachos-push-resubscribe')return;
-      pushRefresh(cfg.workerUrl,athletes,team.id);
-    };
-    navigator.serviceWorker.addEventListener('message',onMsg);
-    return()=>navigator.serviceWorker.removeEventListener('message',onMsg);
-  },[cfg.workerUrl,team.id,athletes]);
-
-  useEffect(()=>{
-    if(!pushSupported())return;
-    if(!(cfg.workerUrl||'').trim())return;         // nowhere to send the subscription yet
-    if(pushPermission()!=='default')return;        // already answered, either way
-    if(pushLocalGet(PUSH_DISMISS_KEY))return;      // "Şimdi değil"
-    if(pushLocalGet(PUSH_DEVICE_KEY))return;
-    const t=setTimeout(()=>setOpen(true),1200);    // let the app paint first
-    return()=>clearTimeout(t);
-  },[cfg.workerUrl]);
-
-  if(!open)return null;
-
-  const allow=async()=>{
-    setBusy(true);setErr('');
-    try{
-      const ath=athletes.find(a=>a.id===who)||null;
-      await pushEnable(cfg.workerUrl,ath,team.id);
-      setDone(ath?ath.name:null);
-      setTimeout(()=>setOpen(false),2600);
-    }catch(e){setErr(e.message);}
-    finally{setBusy(false);}
-  };
-  const later=()=>{pushLocalSet(PUSH_DISMISS_KEY,{at:new Date().toISOString()});setOpen(false);};
-
-  return(<div className="push-optin">
-    <button className="x" onClick={later} aria-label="Kapat">✕</button>
-    {done!==null
-      ?<><div className="t">🔔 Bildirimler açık</div>
-         <div className="s">{done?`Bu cihaz ${done} olarak kaydedildi.`:'Bu cihaz kaydedildi.'} Koçun hatırlatma gönderdiğinde burada göreceksin.</div></>
-      :<><div className="t">🔔 Bildirimlere izin ver</div>
-         <div className="s">Koçun "bugünkü formunu doldurdun mu?" hatırlatmasını doğrudan bu cihaza yollayabilsin. İstediğin zaman kapatabilirsin.</div>
-         {athletes.length>0&&<div className="f">
-           <label>Bu cihaz kimin?</label>
-           <select value={who} onChange={e=>setWho(e.target.value)}>
-             <option value="">Seçme (isimsiz cihaz)</option>
-             {athletes.map(a=><option key={a.id} value={a.id}>{a.name}{a.number?` · #${a.number}`:''}</option>)}
-           </select>
-         </div>}
-         {err&&<div className="e">{err}</div>}
-         <div className="b">
-           <button className="btn sm" onClick={allow} disabled={busy}>{busy?'İzin isteniyor…':'İzin ver'}</button>
-           <button className="btn sec sm" onClick={later} disabled={busy}>Şimdi değil</button>
-         </div></>}
-  </div>);
-}
-
-/* =========================================================
    ATHLETES ROSTER
    ========================================================= */
 function Athletes({team,updateTeam,weeks,ai,exercises}){
   const[sel,setSel]=useState(null);const athletes=team.athletes||[];
   const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
   const save=a=>updateTeam(team.id,{athletes:a});
-  /* "Push the Form Notification" — one press, one push to every athlete who allowed
-     notifications. The summary below the header is the only feedback there is: a push
-     leaves the browser and never comes back, so how many devices the Worker reached (and
-     how many dead subscriptions it cleaned up) is what tells the coach it worked. */
-  const pushCfg=team.tallySync||{};
-  const[pushBusy,setPushBusy]=useState(false);
-  const[pushMsg,setPushMsg]=useState(null);
-  const sendFormPush=async()=>{
-    if(!(pushCfg.workerUrl||'').trim()){
-      setPushMsg({bad:true,text:'Önce Tally Sync ekranında Cloudflare Worker adresini kaydet — bildirimler de o Worker üzerinden gidiyor.'});
-      return;
-    }
-    setPushBusy(true);setPushMsg(null);
-    try{
-      const j=await pushSendReminder(pushCfg.workerUrl,{title:'Bugünkü formunu doldurdun mu?',
-        body:'sRPE ve Wellness formlarını doldurmayı unutma — koçun bekliyor.',url:location.origin+location.pathname});
-      const bits=[`${j.sent} cihaza gitti`];
-      if(j.failed)bits.push(`${j.failed} hata`);
-      if(j.removed)bits.push(`${j.removed} eski abonelik silindi`);
-      setPushMsg({bad:j.sent===0,
-        text:j.total===0
-          ?'Kayıtlı abonelik yok — henüz hiçbir sporcu bildirimlere izin vermemiş. Sporcular uygulamayı telefonlarında açıp çıkan "Bildirimlere izin ver" kutusunu onaylamalı.'
-          :bits.join(' · '),
-        detail:(j.errors||[]).join(' · ')||null});
-    }catch(e){setPushMsg({bad:true,text:e.message});}
-    finally{setPushBusy(false);}
-  };
   const addAth=()=>{const a={id:uid(),name:'New Athlete',number:'',position:(POSITIONS[team.setup.sport]||POSITIONS.default)[0],
     dateOfBirth:'',height:'',weight:'',phone:'',phoneCode:DEFAULT_DIAL,photo:null,notes:'',trainingAge:'',somatotype:'',animalType:'',constraints:'',
     constraintTags:[],levelTag:'',
@@ -15113,10 +14970,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       </div>
       <div className="rost-tools">
         <div className="ath-search"><span className="ic">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search athlete…"/></div>
-        <button className="btn sm push-btn" onClick={sendFormPush} disabled={pushBusy}
-          title="İzin vermiş TÜM sporculara &quot;Bugünkü formunu doldurdun mu?&quot; bildirimi gönderir">
-          <span className="bell">🔔</span>{pushBusy?'Gönderiliyor…':'Push the Form Notification'}
-        </button>
         <div className="ath-seg">
           <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>All</button>
           {positions.map(p=><button key={p} className={filter===p?'on':''} onClick={()=>setFilter(p)}>{p}</button>)}
@@ -15124,11 +14977,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
         <button className="btn sec sm" onClick={addAth}>+ Add</button>
       </div>
     </div>
-    {pushMsg&&<div className={`push-note${pushMsg.bad?' bad':''}`}>
-      <span>{pushMsg.bad?'⚠️':'✅'} {pushMsg.text}</span>
-      {pushMsg.detail&&<div className="d">{pushMsg.detail}</div>}
-      <button className="x" onClick={()=>setPushMsg(null)} aria-label="Kapat">✕</button>
-    </div>}
     {athletes.length===0&&<div className="empty-st">No athletes yet — click "+ Add" to start.</div>}
     {athletes.length>0&&list.length===0&&<div className="empty-st">No matches.</div>}
     <div className="rost-grid">{list.map(a=>{
@@ -15244,193 +15092,7 @@ const TALLY_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-/* =========================================================
-   WEB PUSH — athlete opt-in + the coach's manual reminder
-   ---------------------------------------------------------
-   Two halves that meet at the Cloudflare Worker (tally-worker.js):
-
-     athlete  — sw.js is registered, the browser is asked for permission, and the
-                PushSubscription it hands back is POSTed to <worker>/api/push/subscribe,
-                where it is kept in the SAME KV namespace (TALLY_STORE) the Tally webhook
-                deliveries live in, tagged with the athlete it belongs to.
-     coach    — "Push the Form Notification" on the Roster POSTs to <worker>/api/send-reminder,
-                which pushes to EVERY stored subscription. No filtering by whether the form
-                is already filled in: the coach decides who to nudge, not the app.
-
-   Everything hangs off the Worker URL the team already configured for Tally Sync, so there
-   is nothing new to paste in — but nothing here works until that address is set, which is
-   why each helper says so in words rather than failing quietly.  */
-const PUSH_DEVICE_KEY='coachos.push.device';     // this browser's link to a roster athlete
-const PUSH_DISMISS_KEY='coachos.push.dismissed'; // "Şimdi değil" — do not nag again
-
-function pushLocalGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function pushLocalSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v));}catch(e){/* private mode — the prompt just reappears */}}
-
-// Push needs a secure context; on an http:// LAN address the APIs are simply absent.
-function pushSupported(){
-  return typeof navigator!=='undefined'&&'serviceWorker' in navigator
-    &&typeof window!=='undefined'&&'PushManager' in window&&'Notification' in window
-    &&(window.isSecureContext||location.hostname==='localhost');
-}
-function pushPermission(){try{return Notification.permission;}catch(e){return 'default';}}
-
-const pushB64uToBytes=b64=>{
-  const t=String(b64||'').replace(/-/g,'+').replace(/_/g,'/');
-  const bin=atob(t+'='.repeat((4-(t.length%4))%4));
-  const out=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
-  return out;
-};
-const pushBytesToB64u=buf=>{
-  const a=new Uint8Array(buf);let s='';
-  for(let i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);
-  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-};
-
-/* Every push endpoint is new in Worker v10, so the failure a coach actually hits is an old
-   build still deployed on Cloudflare: a Worker that has never heard of /api/push answers
-   its plain-text "running" banner (or, from v9, a webhook error) and the app used to relay
-   tallyReadJson's advice about /sync — which has nothing to do with the button that was
-   pressed. This says the one thing that fixes it instead. */
-async function pushReadJson(r,base,path){
-  const text=await r.text();
-  let data=null;
-  try{data=JSON.parse(text);}catch(e){/* named below */}
-  const outdated=()=>new Error(`Cloudflare'deki Worker eski bir sürüm: ${path} ucu orada yok. Bildirimler Worker v${TALLY_WORKER_VERSION} ile geldi — projedeki tally-worker.js dosyasını Cloudflare'e yeniden deploy et, sonra bu düğmeyi tekrar dene. (Adres doğru; Worker cevap veriyor, sadece bu ucu tanımıyor.)`);
-  if(/CoachOS Tally Worker is running/i.test(text))throw outdated();
-  if(data&&typeof data==='object'){
-    // v9 routes every POST to the Tally webhook handler, whatever the path — so an old
-    // Worker answers a subscribe/send with a complaint about form ids. That is the same
-    // "not deployed yet" story, told in JSON.
-    if(data.ok===false&&/which of the two forms|not a Tally submission|Body is not JSON/i.test(String(data.error||'')))
-      throw outdated();
-    return data;
-  }
-  if(!r.ok)
-    throw new Error(`Worker HTTP ${r.status} döndürdü ve cevabı JSON değil. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
-  throw new Error(`Bu adres JSON yerine düz metin/HTML döndürdü. Büyük ihtimalle Worker eski sürüm (tally-worker.js'i yeniden deploy et) ya da Worker URL'sinin sonunda fazladan bir yol parçası var — yalnızca kök adresi kayıtlı olmalı. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
-}
-
-/* The service worker is registered from the site root so its scope covers the whole app.
-   `ready` is awaited because a registration that has not activated yet has no pushManager
-   worth subscribing through. */
-async function pushRegisterSW(){
-  if(!pushSupported())
-    throw new Error('Bu tarayıcı bildirim desteklemiyor (ya da sayfa https:// üzerinden açılmamış). iPhone\'da Safari → Paylaş → "Ana Ekrana Ekle" ile açman gerekiyor.');
-  await navigator.serviceWorker.register('sw.js',{scope:'./'});
-  return await navigator.serviceWorker.ready;
-}
-
-/* The Worker's VAPID public key — without it the browser has nothing to subscribe against.
-   The same call reports whether the Worker can actually send, so a coach who has not set
-   the secrets yet is told that instead of watching a button do nothing. */
-async function pushWorkerKey(workerUrl){
-  const base=tallyWorkerBase(workerUrl);
-  let r;
-  try{r=await fetch(base+'/api/push/key');}
-  catch(e){throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış ya da Worker yayında değil.');}
-  const j=await pushReadJson(r,base,'/api/push/key');
-  if(!j.key)
-    throw new Error(j.hint||j.error||'Worker bir VAPID anahtarı döndürmedi. Cloudflare\'de VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY secret\'larını ayarla (anahtarları '+base+'/api/push/vapid-keys üretir).');
-  if(!j.store)
-    throw new Error('Worker\'a KV namespace bağlı değil, aboneliği saklayacak yer yok. Cloudflare → Worker → Settings → Bindings → TALLY_STORE adında bir KV namespace ekle.');
-  return{base,key:j.key,info:j};
-}
-
-/* Ask the browser, then tell the Worker. Returns the Worker's answer so the caller can say
-   which athlete the device was filed under. */
-async function pushEnable(workerUrl,athlete,teamId){
-  const{base,key}=await pushWorkerKey(workerUrl);
-  const perm=await Notification.requestPermission();
-  if(perm!=='granted')
-    throw new Error(perm==='denied'
-      ?'Bildirim izni reddedilmiş. Tarayıcı adres çubuğundaki kilit simgesinden bu site için "Bildirimler"i izin verilir yapman gerekiyor.'
-      :'Bildirim izni verilmedi.');
-  const reg=await pushRegisterSW();
-  let sub=await reg.pushManager.getSubscription();
-  // A subscription made against an OLDER VAPID key is unusable — the push service rejects
-  // it — and it is the exact thing left behind when the coach regenerates the pair.
-  if(sub){
-    const cur=sub.options&&sub.options.applicationServerKey;
-    if(cur&&pushBytesToB64u(cur)!==key){try{await sub.unsubscribe();}catch(e){}sub=null;}
-  }
-  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushB64uToBytes(key)});
-  const json=sub.toJSON();
-  const r=await fetch(base+'/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({subscription:json,athleteId:athlete?athlete.id:null,athleteName:athlete?athlete.name:null,
-      teamId:teamId||null,ua:navigator.userAgent})});
-  const j=await pushReadJson(r,base,'/api/push/subscribe');
-  if(!j.ok)throw new Error(j.error||'Abonelik Worker\'a kaydedilemedi.');
-  pushLocalSet(PUSH_DEVICE_KEY,{endpoint:json.endpoint,athleteId:athlete?athlete.id:null,
-    athleteName:athlete?athlete.name:null,teamId:teamId||null,at:new Date().toISOString()});
-  pushLocalSet(PUSH_DISMISS_KEY,null);
-  return j;
-}
-
-/* Turning it off on THIS device: the Worker forgets the endpoint and the browser drops the
-   subscription, so no stale record is left for send-reminder to trip over. */
-async function pushDisable(workerUrl){
-  const link=pushLocalGet(PUSH_DEVICE_KEY);
-  let endpoint=link&&link.endpoint;
-  let reg=null;
-  try{reg=await navigator.serviceWorker.getRegistration();}catch(e){}
-  const sub=reg?await reg.pushManager.getSubscription():null;
-  if(sub)endpoint=sub.endpoint;
-  if(endpoint){
-    try{
-      const base=tallyWorkerBase(workerUrl);
-      await fetch(base+'/api/push/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({endpoint})});
-    }catch(e){/* the browser side below is what stops the notifications */}
-  }
-  if(sub){try{await sub.unsubscribe();}catch(e){}}
-  pushLocalSet(PUSH_DEVICE_KEY,null);
-}
-
-/* Chrome rotates an endpoint on its own schedule and the app is the only thing that can
-   tell the Worker about it. Runs quietly on every load of a device that already said yes;
-   a failure here is not worth a dialog — the next load tries again. */
-async function pushRefresh(workerUrl,athletes,teamId){
-  if(!pushSupported()||pushPermission()!=='granted')return;
-  const link=pushLocalGet(PUSH_DEVICE_KEY);
-  if(!link)return;
-  try{
-    const{base,key}=await pushWorkerKey(workerUrl);
-    const reg=await pushRegisterSW();
-    let sub=await reg.pushManager.getSubscription();
-    if(sub){
-      const cur=sub.options&&sub.options.applicationServerKey;
-      if(cur&&pushBytesToB64u(cur)!==key){try{await sub.unsubscribe();}catch(e){}sub=null;}
-    }
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushB64uToBytes(key)});
-    const json=sub.toJSON();
-    // The athlete may have been renamed since this device subscribed; the roster wins.
-    const ath=(athletes||[]).find(a=>a.id===link.athleteId)||null;
-    await fetch(base+'/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({subscription:json,athleteId:link.athleteId||null,
-        athleteName:ath?ath.name:(link.athleteName||null),teamId:teamId||link.teamId||null,ua:navigator.userAgent})});
-    if(json.endpoint!==link.endpoint)
-      pushLocalSet(PUSH_DEVICE_KEY,{...link,endpoint:json.endpoint,at:new Date().toISOString()});
-  }catch(e){/* quiet by design */}
-}
-
-/* The coach's button. Every subscribed device, no filtering — see the Worker's comment on
-   /api/send-reminder for why that is the point rather than an oversight. */
-async function pushSendReminder(workerUrl,opts){
-  const base=tallyWorkerBase(workerUrl);
-  let r;
-  try{
-    r=await fetch(base+'/api/send-reminder',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(opts||{})});
-  }catch(e){
-    throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış ya da Worker yayında değil.');
-  }
-  const j=await pushReadJson(r,base,'/api/send-reminder');
-  if(!j.ok)throw new Error(j.error||('Worker HTTP '+r.status+' döndürdü.'));
-  return j;
-}
-
-const TALLY_WORKER_VERSION=10;
+const TALLY_WORKER_VERSION=9;
 
 /* A sync is two halves, and keeping them apart is what stops one from undoing the other.
    `fetchTallyRows` only talks to the Worker; `mergeTallyRows` is a pure function of a team
@@ -15812,120 +15474,6 @@ function PainRegionNamer({stats,cfg,saveCfg}){
   </div>);
 }
 
-/* The push half of the same Worker, on the same screen as the Tally connection because it
-   is the same address and the same KV namespace. Everything here is diagnosis: whether the
-   Worker can send at all, how many devices are reachable, and — for the coach's own phone —
-   a way to subscribe or unsubscribe without waiting for the opt-in card to appear. */
-function PushSettings({team}){
-  const cfg=team.tallySync||{};
-  const athletes=team.athletes||[];
-  const[st,setSt]=useState(null);
-  const[busy,setBusy]=useState(false);
-  const[msg,setMsg]=useState(null);
-  const[who,setWho]=useState(()=>{const l=pushLocalGet(PUSH_DEVICE_KEY);return(l&&l.athleteId)||'';});
-  const base=useMemo(()=>{try{return tallyWorkerBase(cfg.workerUrl);}catch(e){return null;}},[cfg.workerUrl]);
-  const linked=pushLocalGet(PUSH_DEVICE_KEY);
-
-  // Every number on this panel comes from the Worker, so with no address there is nothing
-  // to show and the cells say so rather than sitting on a spinner that will never resolve.
-  const cell=v=>!base?'—':(!st||st.busy)?'…':st.bad?'—':v;
-  const load=async()=>{
-    if(!base){setSt({bad:true,msg:'Önce yukarıdaki Worker adresini kaydet — bildirimler de aynı Worker üzerinden gidiyor.'});return;}
-    setSt({busy:true});
-    try{
-      let r;
-      try{r=await fetch(base+'/api/push');}
-      catch(e){throw new Error('Worker\'a ulaşılamadı ("Failed to fetch"). Adres yanlış, Worker yayında değil ya da internet yok — denenen adres: '+base+'/api/push');}
-      const j=await pushReadJson(r,base,'/api/push');
-      if(!j.ok)throw new Error(j.error||'Worker cevap verdi ama abonelikleri okuyamadı.');
-      setSt({bad:false,data:j});
-    }catch(e){setSt({bad:true,msg:e.message});}
-  };
-  useEffect(()=>{load();},[base]);
-
-  const enable=async()=>{
-    setBusy(true);setMsg(null);
-    try{
-      const ath=athletes.find(a=>a.id===who)||null;
-      await pushEnable(cfg.workerUrl,ath,team.id);
-      setMsg({bad:false,text:ath?`Bu cihaz ${ath.name} olarak kaydedildi.`:'Bu cihaz isimsiz olarak kaydedildi.'});
-      load();
-    }catch(e){setMsg({bad:true,text:e.message});}
-    finally{setBusy(false);}
-  };
-  const disable=async()=>{
-    setBusy(true);setMsg(null);
-    try{await pushDisable(cfg.workerUrl);setMsg({bad:false,text:'Bu cihazın aboneliği silindi.'});load();}
-    catch(e){setMsg({bad:true,text:e.message});}
-    finally{setBusy(false);}
-  };
-  const test=async()=>{
-    setBusy(true);setMsg(null);
-    try{
-      const j=await pushSendReminder(cfg.workerUrl,{title:'CoachOS test bildirimi',
-        body:'Bu bir denemeydi — bildirimler çalışıyor.',url:location.origin+location.pathname});
-      setMsg({bad:j.sent===0,text:`${j.sent} cihaza gitti${j.failed?` · ${j.failed} hata`:''}${j.removed?` · ${j.removed} eski abonelik silindi`:''}${j.total===0?' — kayıtlı abonelik yok.':''}`});
-      load();
-    }catch(e){setMsg({bad:true,text:e.message});}
-    finally{setBusy(false);}
-  };
-
-  const d=st&&st.data;
-  return(<div className="panel">
-    <h2>Bildirimler — Web Push</h2>
-    <div className="help" style={{marginBottom:14}}>
-      Sporcular uygulamayı telefonlarında açıp bildirimlere izin verdiğinde abonelikleri aynı
-      Worker'ın KV alanında (<code>TALLY_STORE</code>) saklanır. Roster ekranındaki{' '}
-      <strong>Push the Form Notification</strong> düğmesi izin vermiş <em>bütün</em> sporculara
-      "Bugünkü formunu doldurdun mu?" bildirimi yollar — form durumuna göre eleme yapmaz.
-    </div>
-    <div className="metrics">
-      <div className={`metric ${d?(d.vapid?'ok':'danger'):''}`}><div className="ml">Worker anahtarları</div>
-        <div className="mv" style={{fontSize:14}}>{cell(d&&d.vapid?'✅ Hazır':'❌ Eksik')}</div>
-        <div className="mh">VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY</div></div>
-      <div className="metric"><div className="ml">Kayıtlı cihaz</div>
-        <div className="mv">{cell(d?d.subscriptions:'—')}</div>
-        <div className="mh">İzin vermiş sporcu cihazı</div></div>
-      <div className={`metric ${linked?'ok':''}`}><div className="ml">Bu cihaz</div>
-        <div className="mv" style={{fontSize:14}}>{linked?(linked.athleteName||'İsimsiz'):'Kayıtlı değil'}</div>
-        <div className="mh">{pushSupported()?`İzin: ${pushPermission()}`:'Bu tarayıcı desteklemiyor'}</div></div>
-    </div>
-    {st&&st.bad&&<div style={{marginTop:12,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
-      background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)'}}>❌ {st.msg}</div>}
-    {d&&!d.vapid&&<div style={{marginTop:12,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
-      background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)'}}>
-      Worker bildirim gönderemez: VAPID anahtar çifti ayarlı değil. Bir kere şunu yap —
-      <code style={{display:'block',marginTop:6,padding:8,background:'rgba(0,0,0,.3)',borderRadius:6,fontSize:12,wordBreak:'break-all',userSelect:'all'}}>
-        {base||'…workers.dev'}/api/push/vapid-keys
-      </code>
-      adresini tarayıcıda aç, dönen iki anahtarı{' '}
-      <code>npx wrangler secret put VAPID_PUBLIC_KEY</code>,{' '}
-      <code>npx wrangler secret put VAPID_PRIVATE_KEY</code> ve{' '}
-      <code>npx wrangler secret put VAPID_SUBJECT</code> (mailto:adresin) ile Worker'a yaz.
-      Anahtar çiftini sonradan değiştirirsen bütün abonelikler geçersiz olur.
-    </div>}
-    {d&&d.byAthlete&&Object.keys(d.byAthlete).length>0&&<div style={{marginTop:12,display:'flex',flexWrap:'wrap',gap:6}}>
-      {Object.entries(d.byAthlete).map(([n,c])=><span key={n} style={{fontSize:12,padding:'4px 10px',borderRadius:999,
-        background:'var(--bg2)',border:'1px solid var(--border2)',color:'var(--text2)'}}>{n}{c>1?` ×${c}`:''}</span>)}
-    </div>}
-    <div className="grid cols-3" style={{marginTop:14}}>
-      <div style={{gridColumn:'span 2'}}><label>Bu cihaz kimin?</label>
-        <select value={who} onChange={e=>setWho(e.target.value)}>
-          <option value="">Seçme (isimsiz cihaz)</option>
-          {athletes.map(a=><option key={a.id} value={a.id}>{a.name}{a.number?` · #${a.number}`:''}</option>)}
-        </select></div>
-      <div style={{display:'flex',alignItems:'flex-end',gap:6,flexWrap:'wrap'}}>
-        <button className="btn sm" onClick={enable} disabled={busy||!base}>{linked?'Yeniden kaydet':'Bu cihazı kaydet'}</button>
-        {linked&&<button className="btn sec sm" onClick={disable} disabled={busy}>Kaldır</button>}
-        <button className="btn sec sm" onClick={test} disabled={busy||!base}>Test bildirimi</button>
-      </div>
-    </div>
-    {msg&&<div style={{marginTop:12,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
-      background:msg.bad?'rgba(239,68,68,.1)':'rgba(45,212,167,.1)',
-      border:`1px solid ${msg.bad?'rgba(239,68,68,.35)':'rgba(45,212,167,.35)'}`}}>{msg.bad?'❌ ':'✅ '}{msg.text}</div>}
-  </div>);
-}
-
 function TallySync({data,setData,team}){
   // Config lives on the TEAM, so each team connects its own Tally forms independently.
   const cfg=team.tallySync||{workerUrl:'',autoSync:false,intervalMin:5,lastSyncedAt:null,lastStats:null};
@@ -16049,8 +15597,6 @@ function TallySync({data,setData,team}){
         </div>
       </div>
     </div>
-
-    <PushSettings team={team}/>
 
     <div className="panel">
       <h2>Sync Status</h2>
@@ -19173,9 +18719,6 @@ function App(){
     </div>
     {/* Renders nothing — it just keeps Auto-sync ticking whatever screen the coach is on. */}
     <TallyAutoSync team={team} setData={setData}/>
-    {/* Also renders nothing most of the time: only a device that has never answered the
-        notification question sees the opt-in card. */}
-    <PushOptIn team={team}/>
   </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
