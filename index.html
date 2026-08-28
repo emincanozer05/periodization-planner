@@ -6169,19 +6169,22 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
     return`<div class="ex-list">${(b.exercises||[]).map((e,i)=>{
       if(!e.name)return'';
       const lab=labs[i];const isSS=!!lab.letter;
-      // Volume display — "3 × 10" or "3 × 30s" or just one of them
-      let vol='';
-      const reps=e.reps||e.duration;
-      if(e.sets&&reps)vol=`${e.sets} × ${reps}`;
-      else if(e.sets)vol=`${e.sets} sets`;
-      else if(reps)vol=reps;
-      // Secondary meta — only show fields that are filled. Each label is
-      // bold + colored so it stands out from the value.
-      const meta=[];
-      if(e.rpe)meta.push(`<span class="m-p"><strong>RPE:</strong> ${e.rpe}</span>`);
-      if(e.load)meta.push(`<span class="m-l"><strong>Load:</strong> ${e.load}</span>`);
-      if(e.tempo)meta.push(`<span class="m-t"><strong>Tempo:</strong> ${e.tempo}</span>`);
-      if(e.rest)meta.push(`<span class="m-r"><strong>Resting:</strong> ${e.rest}</span>`);
+      /* Prescription grid — every exercise carries the same six columns
+         (Set & Reps · Time · Tempo · RPE · Load · Rest) plus a Notes row under
+         them, whether or not the coach filled them in. Printed blank they are
+         the boxes the session is written into by hand; filled in they read as
+         one aligned table down the sheet instead of a run-on meta line whose
+         fields moved with whatever happened to be set. */
+      let setReps='';
+      if(e.sets&&e.reps)setReps=`${e.sets} × ${e.reps}`;
+      else if(e.sets)setReps=`${e.sets} ${L('set','sets')}`;
+      else if(e.reps)setReps=e.reps;
+      const cells=[setReps,e.duration||'',e.tempo||'',e.rpe||'',e.load||'',e.rest||''];
+      const presHead=[L('Set & Tekrar','Set & Reps'),L('Süre','Time'),L('Tempo','Tempo'),
+                      L('RPE','RPE'),L('Yük','Load'),L('Dinlenme','Rest')];
+      const presTbl=`<table class="pres"><thead><tr>${presHead.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+            <tbody><tr>${cells.map(c=>`<td>${escHTML(c)}</td>`).join('')}</tr>
+            <tr class="pres-note"><th>${L('Notlar:','Notes:')}</th><td colspan="5">${e.description||''}</td></tr></tbody></table>`;
       // Reference link — clickable in the shared PDF, and short enough on paper to type out.
       const lnk=safeURL(e.link);
       /* What the exercise trains and how, on its own line directly under the name: the
@@ -6198,12 +6201,10 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <div class="ex-body">
           <div class="ex-row-top">
             <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
-            ${vol?`<span class="ex-vol">${vol}</span>`:''}
           </div>
           ${patTag?`<div class="ex-pat">${escHTML(patTag)}</div>`:''}
-          ${meta.length?`<div class="ex-meta">${meta.join(' · ')}</div>`:''}
+          ${presTbl}
           ${withReasons&&e.why?`<div class="ex-why"><strong>${L('Gerekçe','Reason')}:</strong> ${escHTML(e.why)}</div>`:''}
-          ${e.description?`<div class="ex-desc">${e.description}</div>`:''}
         </div>
       </div>`;
     }).join('')}</div>`;
@@ -6340,6 +6341,17 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-r{color:#6f7d29;font-weight:800}
 .ex-meta .m-p{color:#be123c;font-weight:800}
 .ex-meta strong{font-weight:800}
+/* Prescription grid under each exercise — the six columns a session is written in,
+   plus a Notes row. Hard 1px borders and a grey header band so it reads as a form to
+   fill in on paper, not as decoration; the value row is left tall enough to write in
+   by hand when the field was left empty. Fixed layout keeps the six columns the same
+   width on every exercise, so they line up down the whole page. */
+.pres{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:6px;break-inside:avoid;page-break-inside:avoid}
+.pres th,.pres td{border:1px solid #4b5563;padding:4px 6px;text-align:center;vertical-align:middle}
+.pres thead th{background:#c9c9c9;color:#0f172a;font-size:12px;font-weight:800;letter-spacing:.2px;line-height:1.2}
+.pres tbody td{height:22px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:#0f172a}
+.pres tr.pres-note th{background:#f1f1f1;color:#0f172a;font-size:12px;font-weight:800;width:16%}
+.pres tr.pres-note td{height:26px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
 /* Coaching cues sit under the exercise in grey: the note is where the coach writes what
    the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
    next to prescriptions that are not one. Body weight keeps it a note rather than a second
