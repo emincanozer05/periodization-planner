@@ -6182,9 +6182,11 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const cells=[setReps,e.duration||'',e.tempo||'',e.rpe||'',e.load||'',e.rest||''];
       const presHead=[L('Set & Tekrar','Set & Reps'),L('Süre','Time'),L('Tempo','Tempo'),
                       L('RPE','RPE'),L('Yük','Load'),L('Dinlenme','Rest')];
-      const presTbl=`<table class="pres"><thead><tr>${presHead.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      /* The rounded frame is the wrapper's, not the table's: border-collapse leaves a
+         table unable to clip its own corners, so the radius has to live on a box around it. */
+      const presTbl=`<div class="pres-wrap"><table class="pres"><thead><tr>${presHead.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
             <tbody><tr>${cells.map(c=>`<td>${escHTML(c)}</td>`).join('')}</tr>
-            <tr class="pres-note"><th>${L('Notlar:','Notes:')}</th><td colspan="5">${e.description||''}</td></tr></tbody></table>`;
+            <tr class="pres-note"><th>${L('Notlar:','Notes:')}</th><td colspan="5">${e.description||''}</td></tr></tbody></table></div>`;
       // Reference link — clickable in the shared PDF, and short enough on paper to type out.
       const lnk=safeURL(e.link);
       /* What the exercise trains and how, on its own line directly under the name: the
@@ -6303,7 +6305,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
 .meta-item .val{color:#0f172a;font-weight:600}
 
-.bs{padding:12px 16px 12px}
+.bs{padding:10px 16px}
 /* Blocks stack one under the other, in the order the coach arranged them, so the sheet
    is read straight down. Side-by-side columns only made sense on a landscape page; on
    portrait they squeezed exercise names into two-line wraps. */
@@ -6333,7 +6335,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    sheet is only useful if all six land on one page. The padding here and the cell padding
    on .pres are what buy that; the value row's own height is left alone, since that is the
    space a coach writes into. */
-.ex-card{display:flex;gap:9px;padding:6px 10px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
+.ex-card{display:flex;gap:9px;padding:5px 10px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
 .ex-card:last-child{border-bottom:none}
 .ex-card:nth-child(even){background:#fcfdfe}
 /* The tag centres itself against the whole exercise row — top-aligning it left it
@@ -6351,16 +6353,31 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-p{color:#be123c;font-weight:800}
 .ex-meta strong{font-weight:800}
 /* Prescription grid under each exercise — the six columns a session is written in,
-   plus a Notes row. Hairline rules in the sheet's own slate and a pale header band, so
-   the grid sits inside the document's design instead of stamping a heavy dark table over
-   it; the value row is still left tall enough to write in by hand when the field was
-   left empty. Fixed layout keeps the six columns the same
+   plus a Notes row. Built like the app's own panels — rounded frame, hairline interior
+   rules in the sheet's slate, labels on the black the session header uses — so it belongs
+   to the document rather than looking pasted into it; the value row is still left tall
+   enough to write in by hand when the field was left empty. Fixed layout keeps the six columns the same
    width on every exercise, so they line up down the whole page. */
-.pres{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;break-inside:avoid;page-break-inside:avoid}
-.pres th,.pres td{border:.5px solid #cbd5e1;padding:3px 6px;text-align:center;vertical-align:middle}
-.pres thead th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;line-height:1.2}
+/* Rounded on all four corners like every other panel in the app, and the radius lives
+   here because a border-collapse table cannot clip its own corners. */
+.pres-wrap{margin-top:4px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.pres{width:100%;table-layout:fixed;border-collapse:collapse}
+/* Interior rules only — the frame above draws the outside edge, so no doubled line
+   runs along it. */
+.pres th,.pres td{border-right:1px solid #e8edf3;border-bottom:1px solid #e8edf3;padding:3px 6px;text-align:center;vertical-align:middle}
+.pres th:last-child,.pres td:last-child{border-right:none}
+.pres tr:last-child th,.pres tr:last-child td{border-bottom:none}
+/* Field labels on the app's own black, the same ground the session header uses, with the
+   mono uppercase the sheet's other labels are set in. Smaller than the values they head:
+   they are the form's printing, and what a coach reads off the row is the value. */
+.pres th{background:#0a0b0d;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;
+  font-weight:600;text-transform:uppercase;letter-spacing:.6px;line-height:1.25;
+  border-right-color:rgba(255,255,255,.16);border-bottom-color:rgba(255,255,255,.16)}
 .pres tbody td{height:22px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:#0f172a}
-.pres tr.pres-note th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:16%}
+/* The widest label of the six ("Set & Reps") gets the widest column, so it sits on one
+   line instead of wrapping and making the whole header band two rows tall. The Notes
+   label rides in the same column. */
+.pres th:first-child,.pres td:first-child{width:20%}
 .pres tr.pres-note td{height:24px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
 /* Coaching cues sit under the exercise in grey: the note is where the coach writes what
    the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
@@ -6389,8 +6406,10 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    movement looks like, not to fill the page. Every thumbnail occupies the SAME box
    whatever the uploaded file's own proportions are, so the exercises line up down the
    sheet instead of stepping in and out; the picture is fitted inside that box rather
-   than cropped to it, so a portrait shot still shows the whole movement. */
-.ex-imgwrap{flex:none;line-height:0;width:46mm;height:30mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+   than cropped to it, so a portrait shot still shows the whole movement. Sized so that
+   six illustrated exercises still come in under one page — the thumbnail was the tallest
+   thing in the row and set the height of every card. */
+.ex-imgwrap{flex:none;line-height:0;width:40mm;height:24mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
