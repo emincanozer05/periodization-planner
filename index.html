@@ -6307,7 +6307,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    is read straight down. Side-by-side columns only made sense on a landscape page; on
    portrait they squeezed exercise names into two-line wraps. */
 .bs.blocks-grid{display:flex;flex-direction:column;gap:12px}
-.block{break-inside:avoid;page-break-inside:avoid;min-width:0}
+/* No break-inside:avoid here on purpose: a block with more exercises than fit in the
+   space left on the page was pushed whole onto the next one, leaving the first page
+   empty below the session header. The block flows instead, and .ex-card keeps each
+   individual exercise intact wherever the break lands. */
+.block{min-width:0}
 /* Smaller than .ex-name on purpose — uppercase, 800 weight, letter-spaced and sitting on a
    green rule is enough to read as the heading over its exercises, and matching the exercise
    names would make the block titles shout. */
@@ -6323,7 +6327,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    so no text gets clipped in narrow 3-column layout.
    Type sizes are a step up from the rest of the document: the exercise list is what an
    athlete actually reads off the sheet mid-session, often from arm's length. */
-.ex-list{display:flex;flex-direction:column;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;background:#fff}
+.ex-list{display:flex;flex-direction:column;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
 .ex-card{display:flex;gap:9px;padding:8px 11px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
 .ex-card:last-child{border-bottom:none}
 .ex-card:nth-child(even){background:#fcfdfe}
@@ -6342,15 +6346,16 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-meta .m-p{color:#be123c;font-weight:800}
 .ex-meta strong{font-weight:800}
 /* Prescription grid under each exercise — the six columns a session is written in,
-   plus a Notes row. Hard 1px borders and a grey header band so it reads as a form to
-   fill in on paper, not as decoration; the value row is left tall enough to write in
-   by hand when the field was left empty. Fixed layout keeps the six columns the same
+   plus a Notes row. Hairline rules in the sheet's own slate and a pale header band, so
+   the grid sits inside the document's design instead of stamping a heavy dark table over
+   it; the value row is still left tall enough to write in by hand when the field was
+   left empty. Fixed layout keeps the six columns the same
    width on every exercise, so they line up down the whole page. */
 .pres{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:6px;break-inside:avoid;page-break-inside:avoid}
-.pres th,.pres td{border:1px solid #4b5563;padding:4px 6px;text-align:center;vertical-align:middle}
-.pres thead th{background:#c9c9c9;color:#0f172a;font-size:12px;font-weight:800;letter-spacing:.2px;line-height:1.2}
+.pres th,.pres td{border:.5px solid #cbd5e1;padding:4px 6px;text-align:center;vertical-align:middle}
+.pres thead th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;line-height:1.2}
 .pres tbody td{height:22px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:#0f172a}
-.pres tr.pres-note th{background:#f1f1f1;color:#0f172a;font-size:12px;font-weight:800;width:16%}
+.pres tr.pres-note th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:16%}
 .pres tr.pres-note td{height:26px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
 /* Coaching cues sit under the exercise in grey: the note is where the coach writes what
    the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
