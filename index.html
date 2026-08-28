@@ -6190,8 +6190,10 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       /* What the exercise trains and how, on its own line directly under the name: the
          pattern abbreviated the way the execution pie abbreviates it ("Knee · Push").
          Plain text rather than a chip — it is reference for whoever runs the session,
-         and a bordered box next to the name read as another prescription field.
-         Absent entirely when the exercise carries no pattern. */
+         and a bordered box next to the name read as another prescription field. Rides on
+         the name's own line rather than under it: it is a two-word tag, and a line of its
+         own cost every exercise vertical space the sheet needs to fit six of them on a
+         page. Absent entirely when the exercise carries no pattern. */
       const patTag=[EX_PAT_SHORT[e.pattern]||e.pattern||'',e.plane||''].filter(Boolean).join(' · ');
       // The image is a sibling of .ex-body, not a child, so it forms its own column on
       // the left and the name / volume / meta read down the free space beside it.
@@ -6200,9 +6202,8 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
         <div class="ex-body">
           <div class="ex-row-top">
-            <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
+            <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${patTag?`<span class="ex-pat">${escHTML(patTag)}</span>`:''}${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
           </div>
-          ${patTag?`<div class="ex-pat">${escHTML(patTag)}</div>`:''}
           ${presTbl}
           ${withReasons&&e.why?`<div class="ex-why"><strong>${L('Gerekçe','Reason')}:</strong> ${escHTML(e.why)}</div>`:''}
         </div>
@@ -6328,7 +6329,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    Type sizes are a step up from the rest of the document: the exercise list is what an
    athlete actually reads off the sheet mid-session, often from arm's length. */
 .ex-list{display:flex;flex-direction:column;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
-.ex-card{display:flex;gap:9px;padding:8px 11px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
+/* Tight on purpose: six exercises is what a strength session usually runs to, and the
+   sheet is only useful if all six land on one page. The padding here and the cell padding
+   on .pres are what buy that; the value row's own height is left alone, since that is the
+   space a coach writes into. */
+.ex-card{display:flex;gap:9px;padding:6px 10px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
 .ex-card:last-child{border-bottom:none}
 .ex-card:nth-child(even){background:#fcfdfe}
 /* The tag centres itself against the whole exercise row — top-aligning it left it
@@ -6351,12 +6356,12 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    it; the value row is still left tall enough to write in by hand when the field was
    left empty. Fixed layout keeps the six columns the same
    width on every exercise, so they line up down the whole page. */
-.pres{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:6px;break-inside:avoid;page-break-inside:avoid}
-.pres th,.pres td{border:.5px solid #cbd5e1;padding:4px 6px;text-align:center;vertical-align:middle}
+.pres{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;break-inside:avoid;page-break-inside:avoid}
+.pres th,.pres td{border:.5px solid #cbd5e1;padding:3px 6px;text-align:center;vertical-align:middle}
 .pres thead th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;line-height:1.2}
 .pres tbody td{height:22px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600;color:#0f172a}
 .pres tr.pres-note th{background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;width:16%}
-.pres tr.pres-note td{height:26px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
+.pres tr.pres-note td{height:24px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
 /* Coaching cues sit under the exercise in grey: the note is where the coach writes what
    the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
    next to prescriptions that are not one. Body weight keeps it a note rather than a second
@@ -6371,11 +6376,13 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#6f7d29;text-decoration:none;
   background:rgba(154,171,58,.14);border:1px solid rgba(154,171,58,.45);border-radius:5px;
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Movement pattern · execution — a quiet line directly under the exercise name, in the
-   mono face the other reference numbers use. No box: it is reference for whoever runs
-   the session, and a bordered chip beside the name read as another prescription field. */
+/* Movement pattern · execution — a quiet tag beside the exercise name, in the mono face
+   the other reference numbers use. No box: it is reference for whoever runs the session,
+   and a bordered chip beside the name read as another prescription field. On the name's
+   line rather than under it, so a two-word tag does not cost every exercise a row of
+   height the sheet needs to fit six of them on one page. */
 .ex-pat{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#94a3b8;
-  letter-spacing:.04em;margin-top:2px;line-height:1.35}
+  letter-spacing:.04em;line-height:1.35;white-space:nowrap}
 /* Exercise image — only rendered by "Print with Image". Sits in its own column to the
    left of the text, so the name / volume / meta fill the width beside it instead of
    leaving a blank band. Kept to a thumbnail: it is there to remind the athlete what the
