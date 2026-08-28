@@ -2007,23 +2007,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mk-asym-pill{display:inline-flex;align-items:center;padding:5px 13px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);border-radius:999px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#fbbf24;margin-top:4px;width:fit-content}
 /* ===== FMS — Functional Movement Screen card ===== */
 .fms-hd-logo{flex:none;height:26px;width:auto;border-radius:4px;display:block}
-.fms-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:14px;width:100%;align-items:start}
-.fms-item{display:flex;flex-direction:column;gap:10px;padding:13px 14px 15px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px}
-.fms-item.zero{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.07)}
-.fms-item-h{display:flex;align-items:center;gap:9px}
-.fms-item-n{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;background:#ed1c24;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700}
-.fms-item-t{flex:1;font-size:12.5px;font-weight:700;color:var(--text);line-height:1.25}
-.fms-item-s{flex:none;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;line-height:1}
-.fms-item-s em{font-style:normal;font-size:11px;font-weight:500;color:var(--dim)}
-.fms-clear{margin-top:2px}
-.fms-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.fms-total{display:flex;align-items:baseline;gap:11px;padding:9px 16px;border:1px solid;border-radius:11px;background:rgba(255,255,255,.03)}
-.fms-total-l{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
-.fms-total-v{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;line-height:1}
-.fms-total-v em{font-style:normal;font-size:13px;font-weight:500;color:var(--dim)}
-.fms-total-n{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
-.fms-flag{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#f87171;padding:6px 12px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);border-radius:999px}
-.fms-flag.warn{color:#fbbf24;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.12)}
 /* the uploaded score sheet */
 .fms-pdf{display:flex;flex-direction:column;gap:9px}
 .fms-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:22px 18px;border:1.5px dashed rgba(238,17,34,.5);border-radius:12px;background:rgba(238,17,34,.06);color:#ff6b75;cursor:pointer;text-align:center;transition:border-color .16s ease,background .16s ease}
@@ -12133,8 +12116,7 @@ const MK_SHORT={anthro:'ANTHRO',circ:'CIRC',posture:'POSTURE',ankleDF:'ANKLE DF'
 const BADGE_COLS=['#0094ff','#a855f7','#7c3aed','#f97316','#06b6d4','#f97316','#0094ff','#f97316','#eab308','#10b981','#ec4899','#7c3aed','#0094ff','#a855f7','#f97316'];
 const OHS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Major comp.'},{v:'2',l:'2 — Minor comp.'},{v:'3',l:'3 — Functional'}];
 const FMS_OPTS=[{v:'',l:'—'},{v:'0',l:'0'},{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'}];
-const FMS_SCORES=[{v:'',l:'— Select'},{v:'0',l:'0 — Pain'},{v:'1',l:'1 — Unable'},{v:'2',l:'2 — With compensation'},{v:'3',l:'3 — Clean'}];
-const FMS_CLEAR_OPTS=[{v:'',l:'— Not tested'},{v:'neg',l:'Negative (no pain)'},{v:'pos',l:'Positive (pain) → 0'}];
+
 function MkInput({value,onChange,unit,step}){
   return(<div className="mk-input"><input type="number" step={step||'0.1'} inputMode="decimal" value={value||''} onChange={e=>onChange(e.target.value)}/>{unit&&<span className="mk-unit">{unit}</span>}</div>);
 }
@@ -12384,11 +12366,9 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 
   if(id==='fms'){
     const f=test.fms||{};
-    const c=fmsCalc(f);
     const setF=(k,v)=>onUpdate({fms:{...f,[k]:v}});
-    const setSide=(k,side,v)=>onUpdate({fms:{...f,[k]:{...(f[k]||{}),[side]:v}}});
-    const tot=c.total;
-    const totCol=tot==null?'#8b9099':tot>=17?'#34d399':tot>=14?'#fbbf24':'#f87171';
+    /* The screen is run on the official FMS sheet and comes back as a PDF, so
+       the sheet is the record — there is nothing to re-key here. */
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
       <div className="tcard-hd">
         <div className="tcard-badge">{index}</div>
@@ -12396,38 +12376,6 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
         <img className="fms-hd-logo" src="fms-logo.png" alt="FMS"/>
       </div>
       <div className="tcard-body-wide">
-        <div className="fms-grid">
-          {c.items.map((it,k)=>(<div key={it.id} className={'fms-item'+(it.score===0?' zero':'')}>
-            <div className="fms-item-h">
-              <span className="fms-item-n">{k+1}</span>
-              <span className="fms-item-t">{REPORT_LANG==='en'?it.en:it.tr}</span>
-              {it.score!=null&&<span className="fms-item-s" style={{color:it.score===3?'#34d399':it.score===2?'#fbbf24':'#f87171'}}>{it.score}<em>/3</em></span>}
-            </div>
-            {it.bi
-              ?<div className="mk-pair">
-                 <div className="mk-field"><div className="mk-flbl">Right</div>
-                   <MkSelectField value={(f[it.id]||{}).right??''} onChange={v=>setSide(it.id,'right',v)} options={FMS_OPTS}/></div>
-                 <div className="mk-field"><div className="mk-flbl">Left</div>
-                   <MkSelectField value={(f[it.id]||{}).left??''} onChange={v=>setSide(it.id,'left',v)} options={FMS_OPTS}/></div>
-               </div>
-              :<div className="mk-field"><div className="mk-flbl">Score (0-3)</div>
-                 <MkSelectField value={f[it.id]??''} onChange={v=>setF(it.id,v)} options={FMS_SCORES}/></div>}
-            {it.asym!=null&&<div className="mk-asym-pill">{L('Asimetri','Asymmetry')} {it.asym} pt</div>}
-            {it.clear&&<div className="mk-field fms-clear">
-              <div className="mk-flbl">{REPORT_LANG==='en'?it.clearEn:it.clearTr}</div>
-              <MkSelectField value={f[it.clear]||''} onChange={v=>setF(it.clear,v)} options={FMS_CLEAR_OPTS}/>
-            </div>}
-          </div>))}
-        </div>
-        <div className="fms-foot">
-          <div className="fms-total" style={{borderColor:totCol}}>
-            <span className="fms-total-l">{L('Toplam Skor','Total Score')}</span>
-            <span className="fms-total-v" style={{color:totCol}}>{tot==null?'—':tot}<em>/21</em></span>
-            {c.n>0&&c.n<7&&<span className="fms-total-n">{c.n}/7 {L('hareket puanlandı','movements scored')}</span>}
-          </div>
-          {c.zeros>0&&<div className="fms-flag">{c.zeros} {L('hareket 0 puan (ağrı / yapılamadı)','movement(s) scored 0 — pain or unable')}</div>}
-          {c.asym&&<div className="fms-flag warn">{L('Sağ-sol asimetri var','Right-left asymmetry present')}</div>}
-        </div>
         <FmsPdfPanel pdf={f.pdf||null} onChange={v=>setF('pdf',v)}/>
         <MkObs value={obsVal} onChange={setObs} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
