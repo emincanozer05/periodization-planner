@@ -29,6 +29,10 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- pdf.js — an uploaded FMS score sheet is a PDF, and a PDF does not print from
+     inside a report window. Its pages are rasterised on upload and it is the
+     pictures that go on the sheet. -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <!-- Firebase (cloud sync) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -2020,10 +2024,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .fms-total-n{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
 .fms-flag{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#f87171;padding:6px 12px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);border-radius:999px}
 .fms-flag.warn{color:#fbbf24;border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.12)}
+/* the uploaded score sheet */
+.fms-pdf{display:flex;flex-direction:column;gap:9px}
+.fms-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:22px 18px;border:1.5px dashed rgba(238,17,34,.5);border-radius:12px;background:rgba(238,17,34,.06);color:#ff6b75;cursor:pointer;text-align:center;transition:border-color .16s ease,background .16s ease}
+.fms-drop:hover{border-color:#ee1122;background:rgba(238,17,34,.12)}
+.fms-drop.busy{opacity:.6;cursor:progress}
+.fms-drop svg{width:24px;height:24px;opacity:.8}
+.fms-drop-t{font-size:13.5px;font-weight:700;color:#fff}
+.fms-drop-s{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+.fms-pdf-have{display:flex;flex-direction:column;gap:11px;padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.03)}
+.fms-pdf-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.fms-pdf-nm{font-size:12.5px;font-weight:700;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fms-pdf-sz{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+.fms-pdf-pages{display:flex;gap:10px;flex-wrap:wrap}
+.fms-pdf-pg{position:relative;padding:0;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:#fff;cursor:zoom-in;overflow:hidden;line-height:0}
+.fms-pdf-pg:hover{border-color:#ee1122}
+.fms-pdf-pg img{display:block;height:150px;width:auto;max-width:220px;object-fit:contain}
+.fms-pdf-pgn{position:absolute;left:5px;bottom:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.6);border-radius:4px;padding:1px 5px;line-height:1.5}
+.fms-pdf-err{font-size:12px;font-weight:600;color:#f87171}
+.fms-pdf-lb{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.86);display:grid;place-items:center;padding:36px;cursor:zoom-out}
+.fms-pdf-lb img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:6px;cursor:default}
+.fms-pdf-lbx{position:absolute;top:18px;right:22px;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1}
 /* The FMS tile in the battery picker carries the screen's own mark instead of
    its name — it is the one test on the list people look for by logo. */
-.tpc-logo{display:block;height:34px;width:auto;border-radius:5px;margin:0 auto}
-.tpc.tpc-brand{padding:10px 18px}
+.tpc.tpc-brand{padding:0;overflow:hidden;background:#ee1122;border-color:#ee1122}
+.tpc.tpc-brand:hover{border-color:#ff3b48;background:#f61c2c}
+.tpc.tpc-brand.on{border-color:#fff;background:#ee1122;box-shadow:0 0 0 2px rgba(238,17,34,.35)}
+/* The mark is drawn on the tile's own red, so the box reads as one solid field
+   whatever shape the grid gives it — no letterbox, no crop through the letters. */
+.tpc-brandfill{position:absolute;inset:0;background:#ee1122 center/78% auto no-repeat}
+.tpc.tpc-brand .tpc-chk{border-color:rgba(255,255,255,.85);color:#ee1122}
+.tpc.tpc-brand.on .tpc-chk{background:#fff;border-color:#fff;color:#ee1122}
 /* upload boxes */
 .mk-uploads{display:flex;gap:12px;flex-wrap:wrap}
 .mk-up{display:flex;flex-direction:column;align-items:center;gap:6px}
@@ -3430,6 +3461,10 @@ const makeTest=(period='pre')=>({
     aslr:{right:'',left:''},
     trunkPushup:'',pushupClear:'',
     rotary:{right:'',left:''},rotaryClear:'',
+    /* The screen is often run on the official FMS sheet and comes back as a PDF.
+       That PDF is attached here: {name,size,at,pages:[dataURL],data} — `pages`
+       are the rasterised pages the report prints, `data` the original file. */
+    pdf:null,
     observations:''},
   // Y Balance Test — leg length (ASIS–medial malleolus, cm) + 3 reach directions per foot (cm)
   yBalance:{limbLength:'',right:{ant:'',pm:'',pl:''},left:{ant:'',pm:'',pl:''}},
@@ -3549,7 +3584,49 @@ function fmsCalc(f){
     zeros:items.filter(i=>i.filled&&i.score===0).length,
     any:scored.length>0||items.some(i=>i.cleared)||!!o.observations};
 }
-const FMS_HAS=t=>fmsCalc(t&&t.fms).any;
+const FMS_HAS=t=>{const f=t&&t.fms;return fmsCalc(f).any||!!(f&&f.pdf);};
+
+/* Read an uploaded FMS score-sheet PDF into something a report can print.
+   A PDF cannot be printed from inside the report window — browsers will not
+   paginate an embedded one — so every page is rasterised here, once, at upload
+   time, and it is those pictures that go on the sheet. The original file is
+   kept alongside them so the coach can still open the PDF itself.
+   Returns {name,size,at,pages:[dataURL],data} or throws with a readable reason. */
+const FMS_PDF_MAX=12*1024*1024;     // refuse anything past this — it is synced, not just held
+const FMS_PDF_KEEP=6*1024*1024;     // above this only the pages are kept, not the original
+async function fmsReadPdf(file){
+  if(!file)throw new Error('No file.');
+  const isPdf=/\.pdf$/i.test(file.name||'')||file.type==='application/pdf';
+  if(!isPdf)throw new Error(L('Bu bir PDF değil.','That is not a PDF.'));
+  if(file.size>FMS_PDF_MAX)throw new Error(L('PDF çok büyük (en fazla 12 MB).','That PDF is too large (12 MB max).'));
+  const lib=window.pdfjsLib;
+  if(!lib)throw new Error(L('PDF okuyucu yüklenemedi — bağlantını kontrol et.','The PDF reader did not load — check your connection.'));
+  if(lib.GlobalWorkerOptions&&!lib.GlobalWorkerOptions.workerSrc)
+    lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const buf=await file.arrayBuffer();
+  // The buffer is handed to pdf.js, which takes ownership of it, so the copy
+  // kept for the data-URI is made first.
+  const dataUrl=file.size<=FMS_PDF_KEEP?await new Promise((res,rej)=>{
+    const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error('Could not read the file.'));
+    r.readAsDataURL(file);}):null;
+  const doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;
+  const pages=[];
+  for(let i=1;i<=Math.min(doc.numPages,6);i++){
+    const pg=await doc.getPage(i);
+    const base=pg.getViewport({scale:1});
+    // ~1500px on the long edge: sharp on an A4 print, small enough to sync.
+    const scale=Math.min(2.5,1500/Math.max(base.width,base.height));
+    const vp=pg.getViewport({scale});
+    const cv=document.createElement('canvas');
+    cv.width=Math.round(vp.width);cv.height=Math.round(vp.height);
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,cv.width,cv.height);   // a PDF page has no background of its own
+    await pg.render({canvasContext:ctx,viewport:vp}).promise;
+    pages.push(cv.toDataURL('image/jpeg',0.82));
+  }
+  if(!pages.length)throw new Error(L('PDF boş görünüyor.','That PDF appears to be empty.'));
+  return{name:file.name||'FMS.pdf',size:file.size,at:new Date().toISOString(),pages,data:dataUrl};
+}
 
 /* =========================================================
    TEST INFO — what each test is, and why it is taken
@@ -10959,6 +11036,17 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
      was run) go on the sheet; a movement left blank is left off entirely. */
   const fmsR=fmsCalc(test.fms);
   const fmsRows=fmsR.items.filter(i=>i.filled||i.cleared);
+  /* The uploaded FMS score sheet, rasterised on the way in. It shares its page
+     with the scores when both are on the record, so the pages are sized against
+     what is left of the page rather than a fixed box. */
+  const fmsPdf=test.fms&&test.fms.pdf;
+  const fmsPages=(fmsPdf&&Array.isArray(fmsPdf.pages))?fmsPdf.pages:[];
+  /* An attached sheet is the result — it already carries the seven movements and
+     their scores. Printing the hand-entered table beside it would put the same
+     rows on the page twice and cost the section its single page, so the sheet
+     replaces the table and only the total stays, on the section's own line. */
+  const fmsShowTable=fmsRows.length&&!fmsPages.length;
+  const fmsPageH=fmsPages.length>1?120:185;
   const fmsTotalColor=t=>t==null?'':t>=17?'#16a34a':t>=14?'#eab308':'#dc2626';
   // fmsColor leaves 0 uncoloured (it is the "not entered" case elsewhere); on the
   // FMS sheet a 0 is a real, and the worst, score — it prints red like a 1.
@@ -11040,6 +11128,18 @@ ${TINFO_CSS}
 .ph img{border-radius:8px;border:1px solid var(--border);display:block}
 .phx{background:var(--bg2);border:1px dashed var(--border);border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--dim);font-size:24px}
 .phl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;margin-top:6px;color:var(--muted);letter-spacing:.04em}
+/* The FMS sheet is read as one thing — the scores and the uploaded score sheet
+   together — so it is kept whole on a single page and its pages are sized
+   against what is left of that page, never split across two. */
+.fms-sheet{page-break-inside:avoid;break-inside:avoid}
+.fms-pages{display:flex;gap:6px;justify-content:center;align-items:flex-start;margin-top:8px}
+.fms-pg{flex:1 1 0;min-width:0;text-align:center}
+/* Height and width are both capped and neither is set: the page keeps its own
+   proportions and lands at its true size on the paper, rather than being
+   letterboxed inside a box the column width happened to make. */
+.fms-pg img{display:block;margin:0 auto;max-height:var(--fms-ph,195mm);max-width:100%;border:1px solid var(--border);border-radius:4px;background:#fff}
+.fms-pgn{font-size:9px;color:var(--muted);margin-top:3px}
+.fms-src{font-size:9px;color:var(--muted);margin-top:5px;text-align:right}
 .posture-photos{display:flex;justify-content:space-around;align-items:flex-start;gap:18px;padding:18px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin-top:4px}
 .obs-box{background:var(--bg2);padding:11px 14px;font-size:11px;border:1px solid var(--border);border-radius:9px;border-left:3px solid var(--accent);margin-top:8px;color:var(--text2);line-height:1.55}
 .obs-box strong{color:var(--text);font-weight:600}
@@ -11172,10 +11272,10 @@ ${has('ohs')?`
   </div>
 </div>`:''}
 
-${(Array.isArray(bat)?has('fms'):fmsR.any)&&fmsRows.length?`
-<div class="section">
+${(Array.isArray(bat)?has('fms'):fmsR.any)&&(fmsShowTable||fmsPages.length)?`
+<div class="section fms-sheet">
   <div class="section-h">${L('FMS — FONKSİYONEL HAREKET TARAMASI','FMS — FUNCTIONAL MOVEMENT SCREEN')}${fmsR.total!=null?` — ${L('Toplam','Total')}: <span style="color:${fmsTotalColor(fmsR.total)}">${fmsR.total} / 21</span>`:''}${fmsR.n>0&&fmsR.n<7?` <span style="font-weight:400">(${fmsR.n}/7 ${L('hareket','movements')})</span>`:''}</div>
-  <table>
+  ${fmsShowTable?`<table>
     <colgroup><col style="width:40%"/><col style="width:13%"/><col style="width:13%"/><col style="width:13%"/><col style="width:21%"/></colgroup>
     <tr><th>${L('Hareket','Movement')}</th><th>${L('Sağ','Right')}</th><th>${L('Sol','Left')}</th><th>${L('Skor','Score')}</th><th>${L('Not','Note')}</th></tr>
     ${fmsRows.map(i=>{
@@ -11192,7 +11292,11 @@ ${(Array.isArray(bat)?has('fms'):fmsR.any)&&fmsRows.length?`
         +`<td${noteCol?` style="color:${noteCol};font-weight:600"`:''}>${note}</td></tr>`;
     }).join('')}
   </table>
-  <div class="obs-box">${L('Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde düşük olan taraf geçerlidir. Temizleme testinin pozitif (ağrılı) çıkması ilgili hareketi 0 yapar. Toplam skor 21 üzerindendir; 14 ve altı yaralanma riski açısından dikkat gerektirir.','Each movement is scored 0-3; on the bilateral movements the lower side is the one that counts. A positive (painful) clearing test drops its movement to 0. The total is out of 21; 14 or below warrants attention on injury risk.')}</div>
+  <div class="obs-box">${L('Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde düşük olan taraf geçerlidir. Temizleme testinin pozitif (ağrılı) çıkması ilgili hareketi 0 yapar. Toplam skor 21 üzerindendir; 14 ve altı yaralanma riski açısından dikkat gerektirir.','Each movement is scored 0-3; on the bilateral movements the lower side is the one that counts. A positive (painful) clearing test drops its movement to 0. The total is out of 21; 14 or below warrants attention on injury risk.')}</div>`:''}
+  ${fmsPages.length?`<div class="fms-pages" style="--fms-ph:${fmsPageH}mm">
+    ${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(src).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}
+  </div>
+  <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div>`:''}
   ${test.fms?.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.fms.observations.replace(/</g,'&lt;')}</div>`:''}
 </div>`:''}
 
@@ -12134,6 +12238,68 @@ function YbDiag({flip}){
   </svg>);
 }
 
+/* The FMS score sheet, attached to the record.
+   The coach runs the screen on the official sheet and comes back with a PDF;
+   this is where it lands. Its pages are read on the way in so the report can
+   print them — see fmsReadPdf — and the original file is kept beside them. */
+function FmsPdfPanel({pdf,onChange}){
+  const ref=useRef(null);
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const[zoom,setZoom]=useState(-1);
+  useEffect(()=>{if(zoom<0)return;const h=e=>{if(e.key==='Escape')setZoom(-1);};
+    window.addEventListener('keydown',h);return()=>window.removeEventListener('keydown',h);},[zoom]);
+  const take=async f=>{
+    if(!f)return;
+    setErr('');setBusy(true);
+    try{onChange(await fmsReadPdf(f));}
+    catch(e){setErr(e.message||String(e));}
+    finally{setBusy(false);if(ref.current)ref.current.value='';}
+  };
+  const drop=e=>{e.preventDefault();take(e.dataTransfer?.files?.[0]);};
+  const openOriginal=()=>{
+    if(!pdf?.data){alert(L('Bu PDF kayda sığmayacak kadar büyüktü — yalnızca sayfaları tutuldu.','That PDF was too large to keep on the record — only its pages were kept.'));return;}
+    const w=window.open();
+    if(!w){alert(L('Pop-up engellendi.','Pop-up blocked.'));return;}
+    w.document.write(`<iframe src="${pdf.data}" style="position:fixed;inset:0;width:100%;height:100%;border:0"></iframe>`);
+    w.document.close();
+  };
+  const kb=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+  return(<div className="fms-pdf">
+    <div className="mk-flbl">{L('FMS TEST SONUÇ PDF’İ','FMS TEST RESULTS PDF')}</div>
+    {!pdf&&<div className={'fms-drop'+(busy?' busy':'')}
+        onClick={()=>!busy&&ref.current?.click()}
+        onDragOver={e=>e.preventDefault()} onDrop={drop}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 16V4"/><path d="M8 8l4-4 4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+      <div className="fms-drop-t">{busy?L('PDF okunuyor…','Reading the PDF…'):L('Test sonuçları PDF’ini yükle','Upload test results PDF')}</div>
+      <div className="fms-drop-s">{L('PDF sürükleyip bırak veya seçmek için tıkla · en fazla 12 MB','Drag a PDF here, or click to choose one · 12 MB max')}</div>
+    </div>}
+    {pdf&&<div className="fms-pdf-have">
+      <div className="fms-pdf-meta">
+        <span className="fms-pdf-nm" title={pdf.name}>{pdf.name}</span>
+        <span className="fms-pdf-sz">{pdf.pages.length} {L('sayfa','page'+(pdf.pages.length===1?'':'s'))}{pdf.size?' · '+kb(pdf.size):''}</span>
+        <div style={{flex:1}}/>
+        {pdf.data&&<button type="button" className="btn xs sec" onClick={openOriginal}>{L('PDF’i aç','Open PDF')}</button>}
+        <button type="button" className="btn xs sec" onClick={()=>ref.current?.click()}>{L('Değiştir','Replace')}</button>
+        <button type="button" className="btn xs sec" onClick={()=>{if(confirm(L('Yüklenen PDF kayıttan kaldırılsın mı?','Remove the uploaded PDF from this record?')))onChange(null);}}>{L('Kaldır','Remove')}</button>
+      </div>
+      <div className="fms-pdf-pages">
+        {pdf.pages.map((src,i)=>(<button type="button" key={i} className="fms-pdf-pg" onClick={()=>setZoom(i)} title={L('Büyüt','Enlarge')}>
+          <img src={src} alt={L('Sayfa','Page')+' '+(i+1)}/>
+          {pdf.pages.length>1&&<span className="fms-pdf-pgn">{i+1}</span>}
+        </button>))}
+      </div>
+    </div>}
+    {err&&<div className="fms-pdf-err">{err}</div>}
+    <input ref={ref} type="file" accept="application/pdf,.pdf" style={{display:'none'}} onChange={e=>take(e.target.files?.[0])}/>
+    {zoom>=0&&pdf&&<div className="fms-pdf-lb" onClick={()=>setZoom(-1)}>
+      <img src={pdf.pages[zoom]} alt="" onClick={e=>e.stopPropagation()}/>
+      <button type="button" className="fms-pdf-lbx" onClick={()=>setZoom(-1)}>✕</button>
+    </div>}
+  </div>);
+}
+
 function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const u=(k,v)=>onUpdate({[k]:v});
   const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
@@ -12262,6 +12428,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
           {c.zeros>0&&<div className="fms-flag">{c.zeros} {L('hareket 0 puan (ağrı / yapılamadı)','movement(s) scored 0 — pain or unable')}</div>}
           {c.asym&&<div className="fms-flag warn">{L('Sağ-sol asimetri var','Right-left asymmetry present')}</div>}
         </div>
+        <FmsPdfPanel pdf={f.pdf||null} onChange={v=>setF('pdf',v)}/>
         <MkObs value={obsVal} onChange={setObs} placeholder={L('Kompanzasyonlar, ağrı, hareket kalitesi notları…','Compensations, pain, movement-quality notes…')}/>
       </div>
     </div>);
@@ -13378,7 +13545,7 @@ function EvaluationView({team,updateTeam,data,setData}){
             return(<div key={c.id} className={'tpc'+(on?' on':'')+(c.id==='fms'?' tpc-brand':'')} onClick={()=>toggle(c.id)} title={c.id==='fms'?'FMS — Functional Movement Screen':undefined}>
               {c.custom&&<div className="tpc-tag">{Lx('özel','custom')}</div>}
               {c.id==='fms'
-                ?<img className="tpc-logo" src="fms-logo.png" alt="FMS"/>
+                ?<div className="tpc-brandfill" style={{backgroundImage:"url('fms-logo.png')"}} role="img" aria-label="FMS"/>
                 :<div className="tpc-t">{c.name}</div>}
               <div className="tpc-chk">{on?'✓':''}</div>
               {c.custom&&<button className="tpc-del" title={Lx('Sil','Remove')} onClick={e=>{e.stopPropagation();delCustom(c.id);}}>✕</button>}
