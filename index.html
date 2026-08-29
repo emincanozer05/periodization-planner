@@ -15504,7 +15504,7 @@ async function tallyReadJson(r,base){
   throw new Error(`Bu adres JSON yerine düz metin/HTML döndürdü, yani Cloudflare Worker\'ın /sync ucu değil. Dönen cevabın başı: ${text.slice(0,140)||'(boş)'}`);
 }
 
-async function fetchTallyRows(workerUrl){
+async function fetchTallyRows(workerUrl,opts={}){
   const base=tallyWorkerBase(workerUrl);
   // One Worker invocation can only page through so many Tally submissions before
   // it runs out of Cloudflare subrequests, so it hands back where it stopped and
@@ -15520,7 +15520,51 @@ async function fetchTallyRows(workerUrl){
   // already in hand. Set when the Worker says it hit the ceiling — the coach is told the
   // history came in pieces, and the next sync picks up where this one stopped.
   let rateLimited=false;
-  const ROUND_PAUSE_MS=1200;
+  // Set when the round-1 totals say Tally holds nothing this device has not already got.
+  let upToDate=false;
+
+  /* ── Holding the app itself under Tally's 100-a-minute ceiling ──
+     The Worker paces its own requests, but only the Worker deployed from THIS repo does,
+     and a coach cannot be asked to redeploy a Cloudflare Worker before their check-ins
+     come in again. So the app paces the rounds too, from the outside, using nothing but
+     what every Worker build already reports back.
+
+     Each round costs Tally: one page request per page it read, plus the form-definition
+     reads it makes for the matrix labels. A season is ~130 requests all told — over the
+     ceiling on its own — so the rounds are spread until the last minute's worth of
+     requests fits under the budget. A full pull then takes a couple of minutes in the
+     background instead of failing outright, which is the trade a coach would pick. */
+  /* Half the ceiling, not most of it: the limit is per ACCOUNT, so the budget has to
+     leave room for a second device pulling at the same moment. Two coaches both on Sync
+     Now then land on the ceiling rather than through it. */
+  const RATE_BUDGET=50;
+  const RATE_WINDOW_MS=60000;
+  const LABEL_COST=10;           // 5 form-definition reads per form, on Workers that don't cache them
+  const MAX_ROUND_PAUSE_MS=45000;
+  const spent=[];                // [{at, cost}] over the last minute
+  const spend=cost=>spent.push({at:Date.now(),cost:Math.max(1,cost)});
+  const spentInWindow=()=>{
+    const cut=Date.now()-RATE_WINDOW_MS;
+    while(spent.length&&spent[0].at<cut)spent.shift();
+    return spent.reduce((a,b)=>a+b.cost,0);
+  };
+  // What the round that just ran actually cost. A Worker that paces itself reports it
+  // outright; for every older build it is counted off the page numbers it moved through.
+  const roundCost=m=>{
+    if(m&&m.rate&&typeof m.rate.spent==='number')return m.rate.spent;
+    const pages=f=>(m&&m[f]&&m[f].nextPage>m[f].fromPage)?(m[f].nextPage-m[f].fromPage):1;
+    return LABEL_COST+pages('srpe')+pages('wellness');
+  };
+  // Wait until the next round of this size fits under the budget.
+  const paceFor=async next=>{
+    for(let guard=0;guard<20;guard++){
+      const used=spentInWindow();
+      if(used+next<=RATE_BUDGET)return;
+      const oldest=spent[0];
+      const wait=Math.min(MAX_ROUND_PAUSE_MS,Math.max(1000,RATE_WINDOW_MS-(Date.now()-oldest.at)+250));
+      await new Promise(r=>setTimeout(r,wait));
+    }
+  };
   // The push half of the Worker: whether a webhook store is bound, whether deliveries are
   // signed, and how many rows arrived that way rather than by polling Tally.
   let webhook=null;
@@ -15574,20 +15618,37 @@ async function fetchTallyRows(workerUrl){
       wellnessPage=m.wellness?m.wellness.nextPage:wellnessPage;
     }
     rounds++;
+    const cost=roundCost(m);
+    spend(cost);
     if(m&&m.rate&&m.rate.rateLimited)rateLimited=true;
+    /* Nothing new to fetch. Tally reports how many submissions each form holds, and the
+       team remembers the totals as of the last pull that ran to the end. When both still
+       match, every later page is history this device already has — so a routine auto-sync
+       stops after this round instead of paging through the whole season every five
+       minutes for nothing. Sync Now always runs to the end; that one is the coach asking,
+       and it is also the way back if these totals were ever wrong. */
+    if(opts.incremental&&rounds===1&&opts.knownTotals
+       &&totals.sRPE!=null&&totals.wellness!=null
+       &&opts.knownTotals.srpe===totals.sRPE&&opts.knownTotals.wellness===totals.wellness){
+      upToDate=true;break;
+    }
     if(!(m&&((m.srpe&&m.srpe.hasMore)||(m.wellness&&m.wellness.hasMore))))break;
     if(rounds>=MAX_ROUNDS){truncated=true;break;}
     // Hitting the ceiling and immediately asking again is what kept it hit. Stop here:
     // the rows are kept, the page numbers are on the team, the next sync resumes.
     if(rateLimited){truncated=true;break;}
-    // A season is dozens of pages; spacing the rounds keeps a single coach's own pull
-    // from using up the minute that the other devices need.
-    await new Promise(r=>setTimeout(r,ROUND_PAUSE_MS));
+    // The next round costs about what the last one did. Wait for room under the budget.
+    await paceFor(cost);
   }
   return{sRPE,wellness,syncedAt:syncedAt||new Date().toISOString(),
     // Fetch bookkeeping — lets the coach see at a glance whether every Tally
     // submission actually made it over, instead of silently losing half of them.
     fetch:{sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker,rateLimited,
+      upToDate,
+      // A pull that reached the end is the one whose totals may be remembered as complete;
+      // one that stopped early (rate limit, round cap, the shortcut above) must not be, or
+      // a half-read season would be recorded as fully in hand.
+      complete:!truncated&&!rateLimited&&!upToDate,
       // Pain-grid bookkeeping: which Worker build answered, how many row ids it could not
       // name, and (filled in by the merge) how many check-ins got a nameless region.
       workerVersion,workerOutdated:!legacyWorker&&(workerVersion==null||workerVersion<TALLY_WORKER_VERSION),
@@ -15768,12 +15829,18 @@ function mergeTallyRows(team,rows,opts={}){
    it is right now — a sync can no longer write back a roster from before it started.
    → {stats, syncedAt}; the failure is recorded on the team before it is rethrown, so a
    background sync that failed while the coach was elsewhere is still visible afterwards. */
-async function runTallySync(setData,teamId,cfg){
+async function runTallySync(setData,teamId,cfg,opts={}){
   const patchCfg=upd=>setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>
     t.id===teamId?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
   let rows;
   try{
-    rows=await fetchTallyRows(cfg.workerUrl);
+    // `lastFullTotals` is what Tally held when a pull last ran to the end. A background
+    // tick compares it against what Tally holds now and stops after one round when the two
+    // agree — that is the difference between one round every five minutes and five.
+    rows=await fetchTallyRows(cfg.workerUrl,{
+      incremental:!!opts.incremental,
+      knownTotals:cfg.lastFullTotals||null,
+    });
   }catch(e){
     patchCfg({lastError:(e&&e.message)||String(e),lastErrorAt:new Date().toISOString()});
     throw e;
@@ -15783,7 +15850,14 @@ async function runTallySync(setData,teamId,cfg){
     if(t.id!==teamId)return t;
     const{athletes,stats}=mergeTallyRows(t,rows,{autoCreate:!!(t.tallySync&&t.tallySync.autoCreate)});
     out={stats,syncedAt:rows.syncedAt};
-    return{...t,athletes,tallySync:{...(t.tallySync||cfg),
+    const prevCfg=t.tallySync||cfg;
+    // Only a pull that reached the end may update the "everything Tally holds is here"
+    // mark; a truncated or rate-limited one leaves the old mark standing so the next sync
+    // knows there is still history to come.
+    const fullTotals=(rows.fetch&&rows.fetch.complete&&rows.fetch.sRPETotal!=null&&rows.fetch.wellnessTotal!=null)
+      ?{srpe:rows.fetch.sRPETotal,wellness:rows.fetch.wellnessTotal}
+      :(prevCfg.lastFullTotals||null);
+    return{...t,athletes,tallySync:{...prevCfg,lastFullTotals:fullTotals,
       lastSyncedAt:rows.syncedAt,lastStats:stats,lastError:null,lastErrorAt:null}};
   })}));
   return out;
@@ -15819,7 +15893,7 @@ function TallyAutoSync({team,setData}){
       const last=Date.parse(now.lastSyncedAt||'');
       if(!isNaN(last)&&Date.now()-last<mins*60000*0.9)return;
       busy.current=true;
-      try{await runTallySync(setData,teamId,latest.current||cfg);}
+      try{await runTallySync(setData,teamId,latest.current||cfg,{incremental:true});}
       catch(e){/* recorded on the team; the Tally Sync screen shows it */}
       finally{busy.current=false;}
     };
@@ -16079,7 +16153,16 @@ function TallySync({data,setData,team}){
         {/* The pain grid's rows arrive from Tally as ids; naming them is the Worker's job,
             so a coach staring at "Bölge adı gelmedi" on every check-in is told exactly
             which piece to fix rather than being left to guess at the form. */}
-        {(stats.workerOutdated||stats.painUnnamed>0)&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+        {/* An out-of-date Worker on its own is no longer a fault to report: the app paces
+            itself under Tally's rate limit whatever build is deployed, so the sync works
+            either way. Saying "the pain regions could not be resolved" to a coach whose
+            regions resolve perfectly well would be plainly untrue — that box below is for
+            when they actually did not, and this one is the optional upgrade. */}
+        {stats.workerOutdated&&!(stats.painUnnamed>0)&&<div style={{marginTop:10,padding:12,background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.3)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+          ℹ️ Cloudflare'deki Worker eski bir sürüm (gelen: <strong>{stats.workerVersion==null?'sürüm bilgisi yok':'v'+stats.workerVersion}</strong>, güncel: <strong>v{TALLY_WORKER_VERSION}</strong>) — <strong>senkron böyle de çalışıyor</strong>, acil bir işlem gerekmiyor.
+          Güncel <code>tally-worker.js</code>'i deploy edersen senkron belirgin biçimde hızlanır: Worker form etiketlerini ve çekilen sayfaları kendi tarafında saklıyor, böylece ikinci cihaz Tally'ye hiç istek göndermiyor.
+        </div>}
+        {stats.painUnnamed>0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Ağrı matrisinin <strong>bölge adları çözülemedi</strong>
           {stats.painUnnamed>0?` — ${stats.painUnnamed} check-in'de bölge "Bölge adı gelmedi" olarak görünüyor.`:'.'}
           {stats.workerOutdated&&<> Cloudflare'deki Worker eski bir sürüm (gelen: <strong>{stats.workerVersion==null?'sürüm bilgisi yok':'v'+stats.workerVersion}</strong>, gereken: <strong>v{TALLY_WORKER_VERSION}</strong>).</>}
