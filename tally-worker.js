@@ -37,13 +37,92 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 9;
+const WORKER_VERSION = 10;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
   'Access-Control-Allow-Headers': '*',
 };
+
+/* ───────────────────────── Staying inside Tally's rate limit ─────────────────────────
+   Tally allows 100 requests a minute per key. A full pull of a season is far more than
+   that on its own: a form with 3000 submissions is 60+ pages at 50 a page, and each
+   invocation also reads the form definition for its matrix labels. Two coaches — or one
+   coach with the app open on a phone and a laptop — auto-syncing every five minutes then
+   ran the same pull twice over and Tally answered 429, which surfaced in the app as a
+   sync that simply failed. Three things keep it under the ceiling:
+
+   · A limiter paces this invocation's own requests, so the pull cannot outrun the ceiling
+     even when both forms page in parallel.
+   · Answers are cached in the same KV namespace the webhooks use, so a SECOND device
+     syncing right after the first is served from the cache and costs Tally nothing. This
+     is what makes several devices behave like one.
+   · A 429 is retried (honouring Retry-After) and, failing that, ends the page-run early
+     and hands back what was already read with `hasMore` still true — the app resumes from
+     there on its next round instead of throwing a whole season away. */
+
+const TALLY_RATE_LIMIT = 100;     // requests a minute, per Tally's documented ceiling
+const RATE_BUDGET = 80;           // what one invocation may spend — headroom for other devices
+const RATE_WINDOW_MS = 60000;
+const MAX_RETRY_WAIT_MS = 6000;   // longest we will sit on a Retry-After before giving up
+const PAGE_CACHE_TTL = 90;        // seconds; KV's own floor is 60
+const LABEL_CACHE_TTL = 21600;    // 6h — a form's matrix labels change when the form does
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Paces the Tally requests of ONE invocation. `take()` resolves when another request may
+// go out, waiting only as long as the oldest request in the window needs to age out.
+function makeLimiter(max = RATE_BUDGET, windowMs = RATE_WINDOW_MS) {
+  const stamps = [];
+  return {
+    spent: () => stamps.length,
+    async take() {
+      for (;;) {
+        const now = Date.now();
+        while (stamps.length && now - stamps[0] >= windowMs) stamps.shift();
+        if (stamps.length < max) { stamps.push(now); return; }
+        await sleep(Math.min(windowMs, windowMs - (now - stamps[0]) + 50));
+      }
+    },
+  };
+}
+
+function rateLimitError(msg) {
+  const e = new Error(msg);
+  e.rateLimited = true;
+  return e;
+}
+
+// One Tally API request, paced and 429-aware. A 429 is not a misconfiguration — it means
+// too much was asked at once — so it is retried on Tally's own Retry-After and, when that
+// does not clear it, reported as a rate-limit error the callers above can treat as
+// "come back for the rest" rather than as a failure.
+async function tallyFetch(path, key, ctx = {}, attempt = 0) {
+  if (ctx.limiter) await ctx.limiter.take();
+  const res = await fetch(`${TALLY_API}${path}`, { headers: { 'Authorization': `Bearer ${key}` } });
+  if (res.status !== 429) return res;
+  const retryAfter = Number(res.headers.get('retry-after'));
+  const wait = Math.min(MAX_RETRY_WAIT_MS, isNaN(retryAfter) ? 1500 * (attempt + 1) : retryAfter * 1000);
+  if (attempt >= 1 || wait > MAX_RETRY_WAIT_MS)
+    throw rateLimitError(`Tally rate limit (429) on ${path} — ${TALLY_RATE_LIMIT} requests/minute is shared by every device syncing this account. The rows already read are kept; the rest arrive on the next round.`);
+  await sleep(wait);
+  return tallyFetch(path, key, ctx, attempt + 1);
+}
+
+/* The KV cache. It rides in the namespace the webhook deliveries already use (TALLY_STORE)
+   under its own `c:` prefix, so nothing new has to be bound for it to work — and when no
+   namespace is bound at all, every call here is a no-op and the Worker behaves as before,
+   just without the sharing between devices. */
+async function cacheGet(store, key) {
+  if (!store) return null;
+  try { return await store.get(`c:${key}`, 'json'); } catch (e) { return null; }
+}
+async function cachePut(store, key, value, ttl) {
+  if (!store) return;
+  try { await store.put(`c:${key}`, JSON.stringify(value), { expirationTtl: Math.max(60, ttl) }); }
+  catch (e) { /* a cache that cannot be written must never fail the sync */ }
+}
 
 // Normalise a Turkish title: lowercase + strip Turkish diacritics so we can keyword-match.
 function norm(s) {
@@ -186,19 +265,37 @@ async function labelsFromPublicForm(formId, out) {
   return res.status;
 }
 
-async function fetchFormLabels(formId, key) {
+// The dictionary is read once per form and then held in KV for LABEL_CACHE_TTL. It used
+// to cost five requests per form on EVERY invocation — ten per sync round, fifty across a
+// season-length pull — which is half of Tally's minute budget spent on labels that change
+// only when the coach edits the form. `ctx.store` is the cache; without one the reads
+// happen as before.
+async function fetchFormLabels(formId, key, ctx = {}) {
+  const cached = await cacheGet(ctx.store, `labels:${formId}`);
+  if (cached && cached.labels) return { labels: cached.labels, sources: cached.sources || [], cached: true };
+  const fresh = await readFormLabels(formId, key, ctx);
+  // Only a dictionary that actually named something is worth keeping: caching an empty
+  // one would pin a transient failure in place for six hours.
+  if (Object.keys(fresh.labels).length)
+    await cachePut(ctx.store, `labels:${formId}`, { labels: fresh.labels, sources: fresh.sources }, LABEL_CACHE_TTL);
+  return fresh;
+}
+
+async function readFormLabels(formId, key, ctx = {}) {
   const labels = {};
   const sources = [];
   for (const build of FORM_LABEL_PATHS) {
     const path = build(formId);
     const before = Object.keys(labels).length;
     try {
-      const res = await fetch(`${TALLY_API}${path}`, { headers: { 'Authorization': `Bearer ${key}` } });
+      const res = await tallyFetch(path, key, ctx);
       if (!res.ok) { sources.push({ path, status: res.status, added: 0 }); continue; }
       collectLabels(await res.json(), labels);
       sources.push({ path, status: res.status, added: Object.keys(labels).length - before });
     } catch (e) {
-      sources.push({ path, status: 'error', error: String(e && e.message || e), added: 0 });
+      sources.push({ path, status: e && e.rateLimited ? 429 : 'error', error: String(e && e.message || e), added: 0 });
+      // Rate-limited: the remaining endpoints would only spend more of the same budget.
+      if (e && e.rateLimited) break;
     }
   }
   /* Always asked, never skipped. Deciding "the API already answered" is what broke this
@@ -345,32 +442,55 @@ function readTotal(j) {
 //   Throwing meant one wrong form id — a form renamed, deleted, or outside what the API
 //   key may read — failed the WHOLE sync, so the other form's whole season was thrown away
 //   with it and the coach saw an error and zero data. One broken form must cost one form.
-async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET) {
+async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET, ctx = {}) {
   try {
-    return await fetchFormPages(formId, key, startPage, budget);
+    return await fetchFormPages(formId, key, startPage, budget, ctx);
   } catch (e) {
-    return { rows: [], total: null, nextPage: Math.max(1, Number(startPage) || 1), hasMore: false,
-             unnamedGridIds: 0, formLabelCount: 0, labelSources: null,
+    // A rate limit is not a broken form: the pages are still there and the next round
+    // will read them. Say so with `hasMore` true and `rateLimited`, so the app resumes
+    // (and waits) rather than reporting a failed sync and dropping the season.
+    const limited = !!(e && e.rateLimited);
+    return { rows: [], total: null, nextPage: Math.max(1, Number(startPage) || 1), hasMore: limited,
+             unnamedGridIds: 0, formLabelCount: 0, labelSources: null, rateLimited: limited,
              error: String((e && e.message) || e) };
   }
 }
 
-async function fetchFormPages(formId, key, startPage = 1, budget = PAGE_BUDGET) {
+async function fetchFormPages(formId, key, startPage = 1, budget = PAGE_BUDGET, ctx = {}) {
   const rows = [];
   let page = Math.max(1, Number(startPage) || 1);
   let total = null, more = false, unnamedGridIds = 0, unnamedOptionIds = 0;
+  let rateLimited = false, cacheHits = 0;
   // Read once per form, before the pages: the dictionary that names a matrix's rows and
   // columns when the submissions payload does not carry them.
-  const { labels: formLabels, sources: labelSources } = await fetchFormLabels(formId, key);
+  const { labels: formLabels, sources: labelSources } = await fetchFormLabels(formId, key, ctx);
   for (let n = 0; n < budget; n++, page++) {
-    const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`, {
-      headers: { 'Authorization': `Bearer ${key}` },
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
+    const path = `/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`;
+    // A page another device pulled moments ago is served from KV. This is what lets a
+    // phone and a laptop sync the same season without paying for it twice.
+    let j = await cacheGet(ctx.store, `sub:${formId}:${page}:${PAGE_LIMIT}`);
+    if (j) cacheHits++;
+    else {
+      let res;
+      try {
+        res = await tallyFetch(path, key, ctx);
+      } catch (e) {
+        // Out of budget mid-run: keep the pages already read and let the caller come back
+        // for the rest. Throwing here is what turned a busy minute into a failed sync.
+        if (e && e.rateLimited && rows.length) { rateLimited = true; more = true; break; }
+        throw e;
+      }
+      if (!res.ok) {
+        const t = await res.text();
+        if (res.status === 429) {
+          if (rows.length) { rateLimited = true; more = true; break; }
+          throw rateLimitError(`Tally rate limit (429) for form ${formId} — ${TALLY_RATE_LIMIT} requests/minute is shared by every device syncing this account.`);
+        }
+        throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
+      }
+      j = await res.json();
+      await cachePut(ctx.store, `sub:${formId}:${page}:${PAGE_LIMIT}`, j, PAGE_CACHE_TTL);
     }
-    const j = await res.json();
     if (total == null) total = readTotal(j);
     const qById = {};
     (j.questions || []).forEach(q => { qById[q.id] = q; });
@@ -410,7 +530,11 @@ async function fetchFormPages(formId, key, startPage = 1, budget = PAGE_BUDGET) 
     if (!more || subs.length === 0) { more = false; page++; break; }
   }
   return { rows, total, nextPage: page, hasMore: more, unnamedGridIds, unnamedOptionIds,
-           formLabelCount: Object.keys(formLabels).length, labelSources, error: null };
+           formLabelCount: Object.keys(formLabels).length, labelSources, cacheHits,
+           rateLimited,
+           // Not an error: the rows in hand are good and `hasMore` says where to resume.
+           // It rides along so the app can tell the coach why a sync came in pieces.
+           error: null };
 }
 
 /* ─────────────────────────────── Webhook deliveries ───────────────────────────────
@@ -652,9 +776,13 @@ export default {
         // the Tally API is a paid feature and the push path does not need it.
         const idle = () => ({ rows: [], total: null, nextPage: 1, hasMore: false, unnamedGridIds: 0,
                               unnamedOptionIds: 0, error: null });
+        // One limiter and one cache for the whole invocation: both forms page in
+        // parallel, so they have to share the minute's budget rather than each assume
+        // it has the whole of it.
+        const ctx = { limiter: makeLimiter(), store };
         const pull = (formId, which, from) =>
           !key ? Promise.resolve(idle())
-               : formId ? fetchForm(formId, key, from) : Promise.resolve(unset(which));
+               : formId ? fetchForm(formId, key, from, PAGE_BUDGET, ctx) : Promise.resolve(unset(which));
         // Stored deliveries ride along with the FIRST page only. The app resumes a long
         // pull by asking for later pages, and re-sending every stored row each round would
         // count a check-in once per round-trip the pull happened to take.
@@ -671,7 +799,11 @@ export default {
         // one of the two is not, and the half that answered still goes to the app. Rows
         // already pushed to the Worker are an answer too — they are not thrown away
         // because the API half of the same Worker is misconfigured.
-        if (srpeRes.error && wellRes.error && !hookS.rows.length && !hookW.rows.length)
+        // Both forms rate-limited with nothing in hand is a "come back in a moment", not a
+        // Worker-level failure — reporting it as one is what put "TALLY_API_KEY is missing
+        // or the form IDs are wrong" in front of a coach whose key and ids were both fine.
+        if (srpeRes.error && wellRes.error && !hookS.rows.length && !hookW.rows.length
+            && !(srpeRes.rateLimited || wellRes.rateLimited))
           throw new Error(`sRPE: ${srpeRes.error} · Wellness: ${wellRes.error}`);
         const sRPE = mergeRows(hookS.rows, srpeRes.rows);
         const wellness = mergeRows(hookW.rows, wellRes.rows);
@@ -699,13 +831,15 @@ export default {
         const meta = {
           worker:   { version: WORKER_VERSION },
           srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length,
-                      pulled: srpeRes.rows.length, pushed: hookS.rows.length,
+                      pulled: srpeRes.rows.length, pushed: hookS.rows.length, cacheHits: srpeRes.cacheHits || 0,
+                      rateLimited: !!srpeRes.rateLimited,
                       unnamedOptionIds: (srpeRes.unnamedOptionIds || 0) + uS.opt, error: srpeRes.error || null },
           wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length,
                       pulled: wellRes.rows.length, pushed: hookW.rows.length,
                       unnamedGridIds: (wellRes.unnamedGridIds || 0) + uW.grid,
                       unnamedOptionIds: (wellRes.unnamedOptionIds || 0) + uW.opt,
-                      formLabels: wellRes.formLabelCount,
+                      formLabels: wellRes.formLabelCount, cacheHits: wellRes.cacheHits || 0,
+                      rateLimited: !!wellRes.rateLimited,
                       labelSources: wellRes.labelSources, error: wellRes.error || null },
           // The push half: whether a store is bound at all, whether deliveries are signed,
           // and how many rows came from it. `mode` is what the app reports to the coach —
@@ -716,6 +850,11 @@ export default {
                       truncated: !!(hookS.truncated || hookW.truncated),
                       error: hookS.error || hookW.error || null },
           pageLimit: PAGE_LIMIT,
+          // What this pull actually cost Tally, and whether the ceiling was reached. The
+          // app reads `rateLimited` to slow itself down instead of hammering on.
+          rate: { limit: TALLY_RATE_LIMIT, budget: RATE_BUDGET, spent: ctx.limiter.spent(),
+                  cached: !!store,
+                  rateLimited: !!(srpeRes.rateLimited || wellRes.rateLimited) },
         };
         return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
       } catch (e) {
@@ -737,10 +876,9 @@ export default {
         const which = (url.searchParams.get('form') || 'wellness').toLowerCase();
         const formId = which === 'srpe' ? env.SRPE_FORM : env.WELLNESS_FORM;
         if (!formId) throw new Error(`${which === 'srpe' ? 'SRPE_FORM' : 'WELLNESS_FORM'} is not set on the Worker`);
-        const { labels, sources } = await fetchFormLabels(formId, key);
-        const res = await fetch(`${TALLY_API}/forms/${formId}/submissions?page=1&limit=1`, {
-          headers: { 'Authorization': `Bearer ${key}` },
-        });
+        const diagCtx = { limiter: makeLimiter(), store: webhookStore(env) };
+        const { labels, sources } = await fetchFormLabels(formId, key, diagCtx);
+        const res = await tallyFetch(`/forms/${formId}/submissions?page=1&limit=1`, key, diagCtx);
         const page = res.ok ? await res.json() : null;
         const qById = {};
         ((page && page.questions) || []).forEach(q => { qById[q.id] = q; });

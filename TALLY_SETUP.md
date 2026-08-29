@@ -165,6 +165,34 @@ yayındaysa CoachOS → Tally Sync ekranı bunu uyarı olarak gösterir. Senkron
 "sRPE submissions from Tally" satırındaki sayı, formdaki toplam gönderim sayısına
 eşit olmalı.
 
+## "Tally API 429 · Too many requests" (farklı cihazlarda senkron)
+Tally, API anahtarı başına **dakikada 100 istek** kabul ediyor ve bu sınır o hesabı
+senkronlayan **bütün cihazlar arasında paylaşılıyor**. Bir sezonluk geçmiş tek başına
+bu sınırın üstünde: 3000 gönderim, sayfa başına 50 kayıttan 60+ istek demek, üstüne
+her turda matris etiketleri için form tanımı okunuyordu. Telefon ve dizüstünde auto-sync
+aynı anda açıkken sınır doluyor, Tally `429` dönüyor ve ekranda senkron *başarısız*
+görünüyordu — üstelik hata metni sebebi yanlış söylüyordu (`TALLY_API_KEY eksik` derken
+anahtar gayet yerindeydi).
+
+Güncel sürümde:
+- **Form etiketleri KV'de 6 saat saklanıyor** — her turda 10 istek harcayan bu okuma
+  sezon boyunca bir kereye düşüyor.
+- **Çekilen sayfalar KV'de ~90 saniye saklanıyor** — ilk cihaz çektikten hemen sonra
+  senkronlayan ikinci cihaz Tally'ye *hiç* istek göndermiyor. Birkaç cihaz tek cihaz
+  gibi davranıyor. (Bunun için `TALLY_STORE` bağlı olmalı — aşağıdaki webhook adımının
+  aynısı; bağlı değilse Worker eskisi gibi çalışır, sadece paylaşım olmaz.)
+- **429 alınırsa** Tally'nin `Retry-After` süresi kadar beklenip tekrar deneniyor;
+  yine olmuyorsa **o ana kadar okunan satırlar korunuyor** ve kalınan sayfa numarası
+  uygulamaya bildiriliyor — bir sonraki senkron kaldığı yerden devam ediyor. Sezon
+  artık çöpe gitmiyor.
+- **Auto-sync cihazlar arası konuşuyor**: başka bir cihaz aralık içinde zaten çektiyse
+  bu cihaz turu atlıyor, ayrıca cihaz başına birkaç saniyelik kayma ekleniyor ki
+  hepsi aynı anda ateşlemesin. **Sync Now** hiçbir zaman atlanmaz.
+
+Sık 429 alıyorsan iki kalıcı çare: auto-sync aralığını büyüt (ör. 15 dk) ya da
+**webhook'u kur** — webhook Tally API'sini hiç kullanmaz, dolayısıyla bu sınıra
+hiç girmez ve üstelik anında gelir.
+
 ## Her check-in'de "Bölge adı gelmedi" yazıyorsa: Worker'ı yeniden deploy et
 Tally, matris cevabını **satır kimlikleriyle** yollar
 (`{"eeb7ce0e-…":["Orta"]}`). Bu kimlikleri bölge adına çevirmek Worker'ın işi;
