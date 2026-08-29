@@ -174,7 +174,15 @@ aynı anda açıkken sınır doluyor, Tally `429` dönüyor ve ekranda senkron *
 görünüyordu — üstelik hata metni sebebi yanlış söylüyordu (`TALLY_API_KEY eksik` derken
 anahtar gayet yerindeydi).
 
-Güncel sürümde:
+**Bunun için Cloudflare'de bir şey yapman gerekmiyor.** Uygulama kendini Tally'nin
+sınırının altında tutuyor: her turun kaç istek harcadığını sayıyor ve bir sonraki turu
+sınıra yer açılana kadar bekletiyor. Hangi Worker sürümü yayında olursa olsun geçerli —
+sezonun tamamı arka planda birkaç dakikada, `429` almadan geliyor. Ayrıca bir tur her
+seferinde tüm sezonu taramıyor: Tally'deki toplam gönderim sayısı son tam çekimdekiyle
+aynıysa yeni bir şey yok demektir ve auto-sync ilk turdan sonra duruyor. **Sync Now** her
+zaman baştan sona çeker.
+
+Worker'ı yeniden deploy edersen (zorunlu değil, tavsiye edilir) üstüne şunlar gelir:
 - **Form etiketleri KV'de 6 saat saklanıyor** — her turda 10 istek harcayan bu okuma
   sezon boyunca bir kereye düşüyor.
 - **Çekilen sayfalar KV'de ~90 saniye saklanıyor** — ilk cihaz çektikten hemen sonra
