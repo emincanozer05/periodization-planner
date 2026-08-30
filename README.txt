@@ -341,16 +341,20 @@ short download URL in the state.
 
 If the upload fails nothing is said on screen — no popup, no notice.
 The failure is logged to the browser console and that is all.
-Nothing is lost and sync speed is NOT affected: the file is put
-in the browser's own store (IndexedDB) and the state carries a
-short "local:<id>" handle instead. The app retries — right after
-each load and every few minutes — and as soon as Storage accepts
-the write, the handle is replaced by a real URL and the picture
-appears on the coach's other devices too. Old base64 still sitting
-in the data from earlier versions is lifted out by the same pass.
 
-Until then the file exists only on the device that uploaded it,
-so it is worth fixing the cause. It is almost always the Storage
+The picture then stays in the synced data itself, as it always did
+before Storage existed: it reaches the coach's other devices, just
+slowly, because the whole state is re-sent on every edit. The app
+keeps retrying — right after each load, and every few minutes (a
+failed round stands down for half an hour; reloading clears that) —
+and the moment Storage accepts the write the picture becomes a short
+URL and sync is fast again.
+
+A photo is never left living in one browser's storage alone. Only a
+video is kept device-side under a "local:<id>" handle, because tens
+of megabytes in the state would make it undeliverable.
+
+So it is worth fixing the cause. It is almost always the Storage
 security rules:
 
   1. Firebase Console → Storage: make sure the bucket exists
