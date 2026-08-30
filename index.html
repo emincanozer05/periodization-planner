@@ -3402,10 +3402,10 @@ function rememberExerciseTags(name,pattern,plane){
    the same way its pattern / execution are — write the exercise into the next program
    and the picture comes back, instead of being pasted again sheet after sheet.
 
-   It is deliberately NOT the library entry's `thumb`: that is the cover the library card
-   shows, chosen for the library, and a shot pasted onto a program row to remind an
-   athlete what the movement looks like is not a decision about how the exercise is
-   filed. So it rides along as `planImage`, and the card's cover is left alone.
+   It rides along as `planImage`, beside the `thumb` the library page sets from its own
+   Program Image control: both are this same picture, `planImage` is the one a program row
+   wrote, and the picker reads it first. Neither is a cover — the library card is left to
+   the exercise's video.
 
    Clearing the picture on a row clears the remembered one too — unlike a cleared tag,
    removing a picture is a statement about the picture, not about one sheet's copy. */
@@ -9043,6 +9043,18 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
     if(!plane)return;
     onChange({...ex,name:nm,plane});rememberExerciseTags(nm,ex.pattern,plane);
   };
+  /* Typing a name the library already knows fills the row's image box from that entry,
+     the same picture picking it off the list would have brought. Only when the box is
+     empty and only on an exact name: a picture the coach put on THIS row is never
+     replaced, and clearing one does not make it come back on the next keystroke. */
+  const setName=v=>{
+    const cur=String(ex.image||'').trim();
+    if(cur){f('name',v);return;}
+    const lo=String(v||'').trim().toLowerCase();
+    const hit=lo?getLibItems().find(it=>(it.name||'').trim().toLowerCase()===lo):null;
+    if(hit&&hit.image)onChange({...ex,name:v,image:hit.image});
+    else f('name',v);
+  };
   /* Pasting is tagging too: the exercise arrives with the pattern it trains, so the library
      learns it here exactly as it would if the coach had picked the pair by hand. */
   const exClip=useExerciseClipboard();
@@ -9057,9 +9069,10 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
         {SLOT_SS.map(o=><option key={o} value={o}>{o}</option>)}
       </select>
       <div className="iv-slot-nm">
-        {/* Picking a library exercise carries its cover image, video link, cues and —
-            when the entry has been tagged — its pattern / execution across. */}
-        <ExNameField value={ex.name} onChange={v=>f('name',v)} tags={{pattern:ex.pattern,plane:ex.plane}}
+        {/* Picking a library exercise carries its program image, video link, cues and —
+            when the entry has been tagged — its pattern / execution across. Typing a known
+            name brings the image over on its own (setName above). */}
+        <ExNameField value={ex.name} onChange={setName} tags={{pattern:ex.pattern,plane:ex.plane}}
           onNewName={nameTagged}
           onPick={it=>onChange({...ex,name:it.name,image:it.image||ex.image||'',
             link:it.link||ex.link||'',description:it.desc||ex.description||'',
@@ -17164,11 +17177,10 @@ function InstagramVideo({url,embedSrc}){
 }
 function VideoPlayer({ex}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
-  // No video, but a cover photo → show the photo. An exercise can be documented with an
-  // image alone, and that image is what the program editor copies onto the exercise row.
-  if(!v)return ex.thumb
-    ?<img className="ex-video" src={mediaSrc(ex.thumb)} alt={ex.name||''}/>
-    :<div className="ex-novid">Henüz görsel yok — aşağıdan kapak fotoğrafı ya da video yükle, veya link yapıştır.</div>;
+  /* Only the video plays here. The picture on the entry belongs to the program row it is
+     copied onto, not to the library page, so it is shown next to its own control below
+     rather than standing in as the entry's cover. */
+  if(!v)return<div className="ex-novid">Henüz video yok — aşağıdan video yükle veya link yapıştır.</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
   if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
   return<iframe className="ex-video" src={v.src} title="exercise video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
@@ -17207,28 +17219,34 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
-  /* Cover image is an editing control, so it only shows in Edit mode — the view side
-     keeps to what the coach reads. Pasted, not uploaded: copy a picture anywhere, click
-     the slot (or press Ctrl/Cmd+V over it). What lands here is what the program editor
-     drops onto the exercise row. */
-  const setCover=d=>set('thumb',d);
+  /* The picture that goes ON THE PROGRAM ROW. It is an editing control, so it only shows
+     in Edit mode — the view side keeps to what the coach reads. Pasted, not uploaded: copy
+     a picture anywhere, click the slot (or press Ctrl/Cmd+V over it). Writing this exercise
+     into a session drops it into that row's image box by itself; the library card and this
+     page never show it as a cover. */
+  /* `planImage` is the same picture written from a program row, and it is what the picker
+     reads first. Setting it here writes both, so a picture chosen in the library is the one
+     the next program gets — it cannot be shadowed by an older one left on the entry. */
+  const setCover=d=>onChange({thumb:d,planImage:d});
+  const cover=ex.thumb||ex.planImage||'';
   const pasteCover=()=>pasteImageFromClipboard('covers',setCover);
   const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
   const coverBox=(
     <div style={{marginTop:14}}>
-      <span style={metaLbl}>Cover Image</span>
-      {ex.thumb
+      <span style={metaLbl}>Program Image</span>
+      <div className="help" style={{marginTop:-2,marginBottom:6}}>Antrenman programında bu egzersizin kutucuğuna otomatik konur. Kütüphane kapağı değildir.</div>
+      {cover
         ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
-          <img src={mediaSrc(ex.thumb)} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
+          <img src={mediaSrc(cover)} alt="program image" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
             borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
           <div className="row" style={{gap:8}}>
             <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
               title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 Paste new</button>
-            <button className="btn ghost xs" onClick={()=>set('thumb','')}>Remove</button>
+            <button className="btn ghost xs" onClick={()=>setCover('')}>Remove</button>
           </div>
         </div>
         :<button type="button" className="ex-cover-drop" onClick={pasteCover} onPaste={onCoverPaste}
-          title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 <span>Paste cover image</span></button>}
+          title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 <span>Paste program image</span></button>}
     </div>
   );
   const viewRight=(
@@ -17299,8 +17317,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div style={{marginTop:14}}>
         <label>Video Link (YouTube / Vimeo / mp4)</label>
-        <input value={ex.videoUrl} onChange={e=>{const val=e.target.value;const t=videoThumb(val);onChange(t?{videoUrl:val,thumb:t}:{videoUrl:val});}} placeholder="https://youtube.com/watch?v=…"/>
-        <div className="help" style={{marginTop:4}}>YouTube/Vimeo cover auto-detected.</div>
+        <input value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)} placeholder="https://youtube.com/watch?v=…"/>
+        <div className="help" style={{marginTop:4}}>Kart görseli YouTube/Vimeo'dan otomatik alınır; aşağıdaki program görselinin yerine yazılmaz.</div>
       </div>
       <div style={{marginTop:14}}>
         <label>Purpose / Description</label>
@@ -17345,14 +17363,17 @@ function ExerciseCard({ex,onOpen,used=0}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
   const[hov,setHov]=useState(false);
   const[igImg,setIgImg]=useState('');
-  // Static cover: manual cover → YouTube/Vimeo auto-thumb → fetched Instagram cover
-  const cover=ex.thumb||videoThumb(ex.videoData||ex.videoUrl)||igImg;
-  // Instagram reels have no auto thumbnail → fetch the og:image once, when no manual cover is set
+  /* The card's picture comes from the exercise's VIDEO only — its auto-thumbnail, or the
+     og:image of an Instagram reel. The picture the coach pastes on the entry (`thumb`) is
+     not a cover: it is the shot that drops into the exercise box while a program is being
+     written, so it is deliberately left out here and the card falls back to its placeholder. */
+  const cover=videoThumb(ex.videoData||ex.videoUrl)||igImg;
+  // Instagram reels have no auto thumbnail → fetch the og:image once
   useEffect(()=>{
-    if(ex.thumb||!v||!v.ig){setIgImg('');return;}
+    if(!v||!v.ig){setIgImg('');return;}
     let alive=true;(async()=>{const img=await fetchOgImage(ex.videoData||ex.videoUrl);if(alive&&img)setIgImg(img);})();
     return()=>{alive=false;};
-  },[ex.videoUrl,ex.videoData,ex.thumb]);
+  },[ex.videoUrl,ex.videoData]);
   // Add autoplay+mute params to YouTube/Vimeo URLs so the preview plays silently on hover
   const previewSrc=v&&v.kind==='iframe'?(v.src+(v.src.indexOf('?')>=0?'&':'?')+'autoplay=1&mute=1&muted=1&controls=0&playsinline=1&loop=1&modestbranding=1'):null;
   return(<div className="ex-card" onClick={onOpen} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}>
@@ -17389,8 +17410,6 @@ function ExercisesView({data,setData}){
   const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
   const addExercise=type=>{const t=type||activeType||'';const e={id:uid(),name:'',type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
-  // Pick a sample exercise per type for the category-tile preview
-  const typeSample=useMemo(()=>{const m={};EX_TYPES.forEach(t=>{m[t]=exercises.find(e=>e.type===t&&(e.thumb||e.videoUrl||e.videoData));});return m;},[exercises]);
   const open=exercises.find(e=>e.id===openId);
   const goBack=()=>{setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setQ('');};
   // How many times each exercise name is prescribed across the whole season program (all teams).
@@ -19233,8 +19252,7 @@ function App(){
   }));
   /* Putting a picture on a program row writes it onto the library entry as its plan
      image, so the next program that names this exercise fills it in by itself. A name the
-     library has never seen is added carrying the picture, exactly as typing it would. The
-     entry's `thumb` — the library card's cover — is never touched. */
+     library has never seen is added carrying the picture, exactly as typing it would. */
   registerLibImage((nm,url)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
@@ -19250,10 +19268,10 @@ function App(){
   }));
   return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);};},[setData]);
   // Keep the exercise editor's picker in sync with the library (names + categories), and
-  // carry each entry's cover image and video link along: picking the exercise while writing
-  // a program copies both onto the row, so the coach never hunts for the image again.
-  // The cover falls back to the auto-derived YouTube/Vimeo thumbnail, exactly like the
-  // library card does, so an entry with only a video link still hands over a picture.
+  // carry each entry's program image and video link along: picking the exercise while
+  // writing a program copies both onto the row, so the coach never hunts for the image
+  // again. An entry that carries no picture of its own still hands one over — the video's
+  // auto-derived YouTube/Vimeo thumbnail stands in.
   useEffect(()=>{
     const seen=new Set();const items=[];
     for(const e of (data.exercises||[])){
@@ -19266,7 +19284,7 @@ function App(){
         /* The coach's own plan picture first: it was put on a program row for programs.
            The library cover (or the video's auto-thumbnail) still stands in when the
            exercise has never carried one. */
-        image:e.planImage||e.thumb||videoThumb(e.videoData||e.videoUrl)||'',
+        image:e.planImage||e.thumb||videoThumb(e.videoData||e.videoUrl)||'',   // row picture → library's Program Image → video's own thumbnail
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
