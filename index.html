@@ -7150,28 +7150,14 @@ async function uploadMedia(blob,folder,onProgress,name){
   const ref=fb.storage().ref().child(path);
   const task=ref.put(blob);
   await new Promise((res,rej)=>task.on('state_changed',s=>{if(onProgress)onProgress(Math.round(s.bytesTransferred/Math.max(1,s.totalBytes)*100));},rej,res));
-  const url=await ref.getDownloadURL();
-  setMediaCloud(false,false);   // bucket accepted a write → the sidebar notice goes away
-  return url;
+  return await ref.getDownloadURL();
 }
-/* A failed upload interrupts nothing any more: the picture is on the device, the state
-   carries a handle, sync speed is untouched and the retry loop keeps trying. So there is
-   no popup — a coach pasting pictures into a session should not be stopped by a dialog
-   about a console setting they cannot change mid-session. What is still true is that the
-   file has not left this device, so the fact is published to the cloud status line in the
-   sidebar (quiet, permanent, and it clears itself the moment an upload gets through). */
-let _mediaCloud={down:false,perm:false};
-const _mediaCloudSubs=new Set();
-function mediaCloudState(){return _mediaCloud;}
-function onMediaCloud(fn){_mediaCloudSubs.add(fn);return()=>_mediaCloudSubs.delete(fn);}
-function setMediaCloud(down,perm){
-  if(_mediaCloud.down===down&&_mediaCloud.perm===!!perm)return;
-  _mediaCloud={down,perm:!!perm};
-  _mediaCloudSubs.forEach(fn=>{try{fn(_mediaCloud);}catch(e){}});
-}
+/* A failed upload says nothing on screen: the picture is on the device, the state carries
+   a handle, sync speed is untouched and the retry loop keeps uploading it in the
+   background. Neither a dialog nor a standing notice earns the coach's attention for a
+   console setting they cannot change from here — it goes to the console and no further. */
 function warnStorageFailure(e){
-  console.warn('media upload failed → kept on this device',e);
-  setMediaCloud(true,e&&(e.code==='storage/unauthorized'||/unauthorized|permission|rules/i.test(String(e&&e.message))));
+  console.warn('media upload failed → kept on this device, will retry',e);
 }
 function handleImageUpload(file,folder,done,onProgress){
   if(!file)return;
@@ -17040,10 +17026,6 @@ function AuthModal({sync,onClose}){
 
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr}=sync;
-  // Medya bulutu kapalıysa (Storage kuralları yayınlanmamış vb.) fotoğraflar cihazda kalıyor.
-  // Uyarı burada, sessizce durur; yükleme geçtiği anda kendiliğinden kaybolur.
-  const[media,setMedia]=useState(mediaCloudState());
-  useEffect(()=>onMediaCloud(setMedia),[]);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync error!'}[status];
   if(!FB())return null;
@@ -17057,13 +17039,6 @@ function CloudBar({sync,onOpen}){
     {/* The account-code line and the manual "⟳ Sync" button used to live here. They are
         intentionally hidden from the sidebar — syncing is automatic and the uid is still
         available from the status row's tooltip. */}
-    {media.down&&(
-      <div style={{marginTop:6,padding:'7px 9px',background:'var(--elevated)',border:'1px solid var(--border2)',borderRadius:6,
-        fontSize:10.5,color:'var(--muted)',lineHeight:1.5}}>
-        ☁ Fotoğraflar bu cihazda tutuluyor — senkron hızı etkilenmez, diğer cihazlarda görünmez.
-        {media.perm?' Açmak için Firebase Console → Storage → Rules (depodaki storage.rules).':' Bulut dönünce kendiliğinden yüklenir.'}
-      </div>
-    )}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
@@ -17117,8 +17092,9 @@ const SUB_TYPES={
   'Medicine Ball':{label:'Movement Pattern',values:['Horizontal','Vertical','Rotational']},
   'Mobility':{label:'Region',values:['Thoracic','Shoulder','Hip','Ankle']},
   /* Stability is filed by the joint it is holding, top to bottom — the order a coach
-     reads a body down, not alphabetical. */
-  'Stability':{label:'Region',values:['Shoulder','Scapula','Core','Pelvis','Knee','Ankle']},
+     reads a body down, not alphabetical. The shoulder and the scapula hold together and
+     are trained together, so they are one region rather than two. */
+  'Stability':{label:'Region',values:['Shoulder Girdle','Core','Pelvis','Knee','Ankle']},
 };
 
 function videoEmbed(src){
