@@ -1,0 +1,24 @@
+rules_version = '2';
+
+/* Firebase Storage security rules for the CoachOS bucket.
+   Publishing these is what makes photo/video upload work: with the default rules the
+   bucket rejects every write with storage/unauthorized, the app falls back to keeping the
+   picture on the device, and it never reaches the coach's other devices.
+
+   Publish with:  firebase deploy --only storage
+   or paste this file into Firebase Console → Storage → Rules → Publish.
+
+   Every file lives under users/<uid>/…, written by uploadMedia() in index.html. A coach
+   may only touch their own folder. Reads are open because the download URLs land in
+   printed sheets and shared PDFs, which are opened without signing in. */
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 200 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
