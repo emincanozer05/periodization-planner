@@ -7150,19 +7150,28 @@ async function uploadMedia(blob,folder,onProgress,name){
   const ref=fb.storage().ref().child(path);
   const task=ref.put(blob);
   await new Promise((res,rej)=>task.on('state_changed',s=>{if(onProgress)onProgress(Math.round(s.bytesTransferred/Math.max(1,s.totalBytes)*100));},rej,res));
-  return await ref.getDownloadURL();
+  const url=await ref.getDownloadURL();
+  setMediaCloud(false,false);   // bucket accepted a write → the sidebar notice goes away
+  return url;
 }
-let _storageWarned=false; // surface a misconfigured Storage (e.g. missing security rules) once per session
+/* A failed upload interrupts nothing any more: the picture is on the device, the state
+   carries a handle, sync speed is untouched and the retry loop keeps trying. So there is
+   no popup — a coach pasting pictures into a session should not be stopped by a dialog
+   about a console setting they cannot change mid-session. What is still true is that the
+   file has not left this device, so the fact is published to the cloud status line in the
+   sidebar (quiet, permanent, and it clears itself the moment an upload gets through). */
+let _mediaCloud={down:false,perm:false};
+const _mediaCloudSubs=new Set();
+function mediaCloudState(){return _mediaCloud;}
+function onMediaCloud(fn){_mediaCloudSubs.add(fn);return()=>_mediaCloudSubs.delete(fn);}
+function setMediaCloud(down,perm){
+  if(_mediaCloud.down===down&&_mediaCloud.perm===!!perm)return;
+  _mediaCloud={down,perm:!!perm};
+  _mediaCloudSubs.forEach(fn=>{try{fn(_mediaCloud);}catch(e){}});
+}
 function warnStorageFailure(e){
   console.warn('media upload failed → kept on this device',e);
-  if(_storageWarned)return;_storageWarned=true;
-  const perm=e&&(e.code==='storage/unauthorized'||/unauthorized|permission|rules/i.test(String(e&&e.message)));
-  // The picture no longer goes into the synced JSON, so sync speed is not at stake any more.
-  // What IS at stake is the other devices: until the bucket accepts writes, the file only
-  // exists here. Said once per session, and only that.
-  alert('Fotoğraf buluta yüklenemedi'+(perm?' (Storage güvenlik kuralları eksik görünüyor)':'')+
-    '; bu cihazda saklanıyor ve senkron hızını etkilemiyor. Bulut açılır açılmaz kendiliğinden yüklenecek; o ana kadar diğer cihazlarda görünmez. '+
-    'Açmak için: Firebase Console → Storage → Rules (depodaki storage.rules dosyasını yayınla).');
+  setMediaCloud(true,e&&(e.code==='storage/unauthorized'||/unauthorized|permission|rules/i.test(String(e&&e.message))));
 }
 function handleImageUpload(file,folder,done,onProgress){
   if(!file)return;
@@ -17031,6 +17040,10 @@ function AuthModal({sync,onClose}){
 
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr}=sync;
+  // Medya bulutu kapalıysa (Storage kuralları yayınlanmamış vb.) fotoğraflar cihazda kalıyor.
+  // Uyarı burada, sessizce durur; yükleme geçtiği anda kendiliğinden kaybolur.
+  const[media,setMedia]=useState(mediaCloudState());
+  useEffect(()=>onMediaCloud(setMedia),[]);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync error!'}[status];
   if(!FB())return null;
@@ -17044,6 +17057,13 @@ function CloudBar({sync,onOpen}){
     {/* The account-code line and the manual "⟳ Sync" button used to live here. They are
         intentionally hidden from the sidebar — syncing is automatic and the uid is still
         available from the status row's tooltip. */}
+    {media.down&&(
+      <div style={{marginTop:6,padding:'7px 9px',background:'var(--elevated)',border:'1px solid var(--border2)',borderRadius:6,
+        fontSize:10.5,color:'var(--muted)',lineHeight:1.5}}>
+        ☁ Fotoğraflar bu cihazda tutuluyor — senkron hızı etkilenmez, diğer cihazlarda görünmez.
+        {media.perm?' Açmak için Firebase Console → Storage → Rules (depodaki storage.rules).':' Bulut dönünce kendiliğinden yüklenir.'}
+      </div>
+    )}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(

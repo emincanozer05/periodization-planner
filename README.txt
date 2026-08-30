@@ -339,8 +339,10 @@ which is what makes sync crawl.
 The app therefore uploads media to Storage and keeps only the
 short download URL in the state.
 
-If the upload fails you see, once per session:
-  "Fotoğraf buluta yüklenemedi … bu cihazda saklanıyor"
+If the upload fails nothing interrupts you — there is no popup.
+The cloud status line in the sidebar carries a quiet note ("Fotoğraflar
+bu cihazda tutuluyor"), and it clears itself the moment an upload
+gets through.
 Nothing is lost and sync speed is NOT affected: the file is put
 in the browser's own store (IndexedDB) and the state carries a
 short "local:<id>" handle instead. The app retries — right after
