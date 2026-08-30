@@ -5377,7 +5377,7 @@ function AthleteLoadBoard({athletes,refDate}){
           <th>Zone</th><th className="r">Readiness</th><th className="r">RHR</th>
         </tr></thead>
         <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
-          <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
+          <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
           <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
@@ -5741,7 +5741,7 @@ function WellnessHeatmap({athletes}){
             <th className="wh-avg-h">AVG</th>
           </tr></thead>
           <tbody>{rows.map((r,ri)=><tr key={ri} className="wh-row" style={{animationDelay:(ri*45)+'ms'}}>
-            <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={r.a.photo} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</td>
+            <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</td>
             {r.cells.map((v,ci)=>{
               const note=r.notes[ci];
               const pain=r.pains[ci];
@@ -6353,7 +6353,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       // the left and the name / volume / meta read down the free space beside it.
       return`<div class="ex-card">
         <span class="ex-no${isSS?' ss':''}">${lab.tag}</span>
-        ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(e.image)}" alt="${escHTML(e.name)}"></div>`:''}
+        ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
         <div class="ex-body">
           <div class="ex-row-top">
             <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${patTag?`<span class="ex-pat">${escHTML(patTag)}</span>`:''}${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
@@ -6371,7 +6371,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
   const docHead=(t,sub)=>`<div class="doc-head">
   <div class="doc-l">
-    ${logo?`<img class="doc-logo" src="${escHTML(logo)}" alt="">`
+    ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`
           :`<span class="doc-brand"><img src="${COACHOS_LOGO}" alt="CoachOS"></span>`}
     <div>
       <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
@@ -7052,6 +7052,85 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
 /* =========================================================
    PHOTO RESIZE
    ========================================================= */
+/* =========================================================
+   LOCAL MEDIA STORE (device-only, IndexedDB)
+   The whole app state is ONE JSON document, split into Firestore chunks: a photo
+   written into it as base64 is re-sent in full on every single edit, which is what
+   made sync crawl. So a picture that cannot reach Firebase Storage is not embedded
+   any more — it is kept on the device and the state carries a `local:<id>` handle
+   (a few dozen characters) in its place. liftLocalMedia() below turns those handles
+   into real Storage URLs the moment the bucket accepts writes again, and the picture
+   then reaches the coach's other devices on its own.
+   ========================================================= */
+const LM_DB='coachos-media',LM_STORE='files',LM_REF='local:';
+// 1×1 transparent GIF — what a handle whose file lives on ANOTHER device resolves to,
+// so a missing picture renders as an empty slot rather than a broken-image icon.
+const LM_BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const _lmCache=new Map();          // id → data URL, filled by lmPreload() before the first render
+let _lmDBP=null;
+function lmDB(){
+  if(_lmDBP)return _lmDBP;
+  _lmDBP=new Promise((res,rej)=>{
+    if(!window.indexedDB){rej(new Error('IndexedDB yok'));return;}
+    const rq=indexedDB.open(LM_DB,1);
+    rq.onupgradeneeded=()=>{const db=rq.result;if(!db.objectStoreNames.contains(LM_STORE))db.createObjectStore(LM_STORE);};
+    rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);
+  });
+  return _lmDBP;
+}
+const lmTx=async(mode,fn)=>{const db=await lmDB();return new Promise((res,rej)=>{
+  const tx=db.transaction(LM_STORE,mode);const st=tx.objectStore(LM_STORE);let out;
+  try{out=fn(st);}catch(e){rej(e);return;}
+  tx.oncomplete=()=>res(out&&out.result!==undefined?out.result:out);tx.onerror=()=>rej(tx.error);});};
+const lmPut=(id,dataUrl)=>lmTx('readwrite',st=>st.put(dataUrl,id));
+const lmDel=id=>lmTx('readwrite',st=>st.delete(id));
+// Everything at once into memory: a handle has to resolve synchronously inside render,
+// and the store only ever holds the handful of pictures still waiting to be uploaded.
+async function lmPreload(){
+  try{
+    const db=await lmDB();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction(LM_STORE,'readonly');const st=tx.objectStore(LM_STORE);
+      const kq=st.getAllKeys(),vq=st.getAll();
+      tx.oncomplete=()=>{const ks=kq.result||[],vs=vq.result||[];ks.forEach((k,i)=>{if(typeof vs[i]==='string')_lmCache.set(String(k),vs[i]);});res();};
+      tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){console.warn('local media preload failed',e);}
+}
+const isLocalRef=v=>typeof v==='string'&&v.indexOf(LM_REF)===0;
+const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.indexOf('data:video')===0);
+/* Every <img src> that can carry coach-uploaded media goes through this: a plain URL or
+   data URL passes straight through, a `local:` handle resolves to the file kept on this
+   device. */
+function mediaSrc(v){
+  if(!isLocalRef(v))return v||'';
+  return _lmCache.get(v.slice(LM_REF.length))||LM_BLANK;
+}
+/* Backup dosyası için: cihazda duran görselleri tutamak yerine gerçek içerikleriyle yaz.
+   Yedek tek başına taşınabilir olmalı — tutamak başka bir cihazda hiçbir şeye karşılık gelmez.
+   (Geri yüklemede base64 yeniden duruma girer; liftLocalMedia birkaç saniye içinde onu
+   yine buluta/cihaz deposuna taşır, yani senkron yükü kalıcı olmaz.) */
+function inlineLocalMedia(node){
+  if(isLocalRef(node)){const d=_lmCache.get(node.slice(LM_REF.length));return d||node;}
+  if(Array.isArray(node))return node.map(inlineLocalMedia);
+  if(node&&typeof node==='object'){const o={};for(const k of Object.keys(node))o[k]=inlineLocalMedia(node[k]);return o;}
+  return node;
+}
+async function saveLocalMedia(dataUrl){
+  const id=Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
+  _lmCache.set(id,dataUrl);
+  await lmPut(id,dataUrl);   // memory first so the picture shows even if the disk write fails
+  return LM_REF+id;
+}
+// Anything in the state that is not a cloud URL yet: a device handle, or base64 left
+// embedded by an older version. Cheap enough to run before each retry round.
+function hasPendingMedia(node,seen){
+  seen=seen||new Set();
+  if(isLocalRef(node)||isInlineMedia(node))return true;
+  if(!node||typeof node!=='object'||seen.has(node))return false;
+  seen.add(node);
+  return Object.keys(node).some(k=>hasPendingMedia(node[k],seen));
+}
 /* ---- Firebase Storage media upload (keeps big files OUT of the synced JSON) ---- */
 function resizePhotoBlob(file,cb,mx=900,q=0.85){
   const img=new Image();const rd=new FileReader();
@@ -7075,11 +7154,15 @@ async function uploadMedia(blob,folder,onProgress,name){
 }
 let _storageWarned=false; // surface a misconfigured Storage (e.g. missing security rules) once per session
 function warnStorageFailure(e){
-  console.warn('image upload failed → base64 fallback',e);
+  console.warn('media upload failed → kept on this device',e);
   if(_storageWarned)return;_storageWarned=true;
   const perm=e&&(e.code==='storage/unauthorized'||/unauthorized|permission|rules/i.test(String(e&&e.message)));
-  alert('Fotoğraf buluta yüklenemedi'+(perm?' (Storage güvenlik kuralları eksik olabilir)':'')+
-    '; geçici olarak cihaza gömülü kaydedildi. Bu, senkronu yavaşlatır. Firebase Console → Storage → Rules kısmının yayınlandığından emin ol.');
+  // The picture no longer goes into the synced JSON, so sync speed is not at stake any more.
+  // What IS at stake is the other devices: until the bucket accepts writes, the file only
+  // exists here. Said once per session, and only that.
+  alert('Fotoğraf buluta yüklenemedi'+(perm?' (Storage güvenlik kuralları eksik görünüyor)':'')+
+    '; bu cihazda saklanıyor ve senkron hızını etkilemiyor. Bulut açılır açılmaz kendiliğinden yüklenecek; o ana kadar diğer cihazlarda görünmez. '+
+    'Açmak için: Firebase Console → Storage → Rules (depodaki storage.rules dosyasını yayınla).');
 }
 function handleImageUpload(file,folder,done,onProgress){
   if(!file)return;
@@ -7087,7 +7170,17 @@ function handleImageUpload(file,folder,done,onProgress){
   const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
   resizePhotoBlob(file,async blob=>{
     if(loggedIn){try{const url=await uploadMedia(blob,folder,onProgress);done(url);return;}catch(e){warnStorageFailure(e);}}
-    const r=new FileReader();r.onload=e=>done(e.target.result);r.readAsDataURL(blob);
+    const r=new FileReader();
+    r.onload=async e=>{
+      /* The upload did not go through (or nobody is signed in yet). The picture is kept in
+         the device's own store under a handle instead of being embedded in the state: the
+         synced document stays small, and liftLocalMedia() uploads it later. Only if the
+         device store itself is unavailable does the base64 go into the state — nothing is
+         ever dropped on the floor. */
+      try{done(await saveLocalMedia(e.target.result));}
+      catch(err){console.warn('local media store unavailable → inline fallback',err);done(e.target.result);}
+    };
+    r.readAsDataURL(blob);
   });
 }
 // Pull an image off the system clipboard (via the "paste" button) and run it
@@ -7138,33 +7231,49 @@ function resizePhoto(file,cb){
     ctx.drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.90));
   };img.src=e.target.result;};r.readAsDataURL(file);
 }
-// One-time data healer: walk the whole state and lift any base64 image still embedded in it
-// out to Firebase Storage, replacing it with a tiny download URL. Inline images are what made
-// the synced payload several MB (and sync crawl); afterwards the synced JSON stays small.
-// Mutates `obj` in place; returns true if anything was moved. Failed uploads keep the base64
-// (so nothing is ever lost) and get retried on the next load.
-async function migrateEmbeddedPhotos(obj,fb,uid){
+/* Data healer: walk the whole state and lift every picture that is not yet a cloud URL
+   out to Firebase Storage, leaving a short download URL in its place. Two kinds get lifted:
+     • base64 still embedded from before this store existed — those are what made the synced
+       payload several MB, and the payload is re-sent on every edit;
+     • `local:` handles left by an upload that failed earlier.
+   Mutates `obj` in place and returns true if anything moved. A picture that still cannot be
+   uploaded is never lost: embedded base64 is moved into the device store (which already
+   shrinks the synced JSON), and a handle simply stays a handle until the next attempt.
+   Runs after the first cloud load and, while anything is still pending, every few minutes. */
+async function liftLocalMedia(obj,fb,uid){
   if(!fb||!fb.storage||!uid)return false;
   let changed=false;
-  const up=async dataUrl=>{
-    try{
-      const blob=await (await fetch(dataUrl)).blob();
-      const url=await uploadMedia(blob,'migrated',null);
-      changed=true;return url;
-    }catch(e){console.warn('photo migrate failed',e);return dataUrl;}
+  const upBlob=async blob=>{const url=await uploadMedia(blob,'migrated',null);changed=true;return url;};
+  const fromInline=async dataUrl=>{
+    try{return await upBlob(await (await fetch(dataUrl)).blob());}
+    catch(e){
+      warnStorageFailure(e);
+      // Cloud still shut: at least get the base64 out of the synced document.
+      try{const ref=await saveLocalMedia(dataUrl);changed=true;return ref;}
+      catch(err){console.warn('local media store unavailable',err);return dataUrl;}
+    }
   };
-  const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.indexOf('data:video')===0);
+  const fromRef=async ref=>{
+    const data=_lmCache.get(ref.slice(LM_REF.length));
+    if(!data)return ref;                       // file belongs to another device — leave the handle alone
+    try{
+      const url=await upBlob(await (await fetch(data)).blob());
+      lmDel(ref.slice(LM_REF.length)).catch(()=>{});_lmCache.delete(ref.slice(LM_REF.length));
+      return url;
+    }catch(e){warnStorageFailure(e);return ref;}
+  };
+  const lift=v=>isInlineMedia(v)?fromInline(v):fromRef(v);
   const walk=async node=>{
     if(Array.isArray(node)){
       for(let i=0;i<node.length;i++){
         const v=node[i];
-        if(isInlineMedia(v))node[i]=await up(v);
+        if(isInlineMedia(v)||isLocalRef(v))node[i]=await lift(v);
         else if(v&&typeof v==='object')await walk(v);
       }
     }else if(node&&typeof node==='object'){
       for(const k of Object.keys(node)){
         const v=node[k];
-        if(isInlineMedia(v))node[k]=await up(v);
+        if(isInlineMedia(v)||isLocalRef(v))node[k]=await lift(v);
         else if(v&&typeof v==='object')await walk(v);
       }
     }
@@ -8587,7 +8696,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                    says so — the number is the athlete's, not something entered for them. */
                 const v=athRPEFor(a,drawerSes,dk);
                 return(<div key={a.id} className={'dw-rpe-row'+(v.fromAthlete?' own':'')}>
-                  <span className="dw-rpe-av">{a.photo?<img src={a.photo} alt=""/>:aInit(a.name)}</span>
+                  <span className="dw-rpe-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:aInit(a.name)}</span>
                   <span className="dw-rpe-nm">{a.name}</span>
                   {v.fromAthlete&&<span className="dw-rpe-src" title={`${a.name} bu günün formunda ${catLbl} için ${v.rpe} verdi — yük otomatik hesaplandı. Üzerine yazabilirsin.`}>athlete</span>}
                   <span className="dw-rpe-au">{v.load!==''&&v.load!=null?v.load+' AU':''}</span>
@@ -8878,7 +8987,7 @@ function ExImgBtn({image,onChange}){
       onClick={()=>pasteImageFromClipboard('exercises',onChange)}
       onPaste={e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}}
       onContextMenu={e=>{e.preventDefault();fileRef.current?.click();}}>
-      {image?<img src={image} alt="exercise"/>:<span className="eximg-ph">🖼</span>}
+      {image?<img src={mediaSrc(image)} alt="exercise"/>:<span className="eximg-ph">🖼</span>}
     </button>
     {image&&<button type="button" className="eximg-x" title="Remove image" onClick={()=>onChange('')}>×</button>}
     <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}}
@@ -10738,7 +10847,7 @@ function PhotoCell({photo,onChange,label,size=68}){
   return(<div style={{textAlign:'center',display:'inline-block'}}>
     <div onClick={()=>ref.current?.click()}
       style={{width:size,height:size,borderRadius:8,background:'var(--elevated)',border:photo?'1px solid var(--accent)':'1px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',transition:'border-color .15s'}}>
-      {photo?<img src={photo} alt={label} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{color:'var(--dim)',fontSize:22}}>📷</span>}
+      {photo?<img src={mediaSrc(photo)} alt={label} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{color:'var(--dim)',fontSize:22}}>📷</span>}
     </div>
     <div style={{fontSize:10,color:'var(--muted)',marginTop:4,fontWeight:500}}>{label}</div>
     {photo&&<button onClick={()=>onChange(null)} style={{marginTop:1,background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:10,padding:0}}>Remove</button>}
@@ -10840,7 +10949,7 @@ td{padding:6px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size
 <div class="print-bar">📄 ${L('Vücut Kompozisyonu raporu hazır','Body Composition report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
 <div class="hdr">
-  ${ath.photo?`<img class="av" src="${ath.photo}"/>`:`<div class="av">${initials}</div>`}
+  ${ath.photo?`<img class="av" src="${mediaSrc(ath.photo)}"/>`:`<div class="av">${initials}</div>`}
   <div class="info">
     <h1>${ath.name||'—'}</h1>
     <div class="meta">${ath.number?'#'+ath.number+' · ':''}${posOf(ath.position)}${ath.height?' · '+ath.height+' cm':''}${ath.weight?' · '+ath.weight+' kg':''}</div>
@@ -10898,7 +11007,7 @@ function printTeamBodyComp(athletes,setup){
     const dl=k=>{const c=n(m,k),p=n(prev,k);return(c!=null&&p!=null)?+(c-p).toFixed(1):null;};
     const dbf=dl('bodyFat'),dws=dl('wingspan');
     return`<tr class="${mi===0?'grp':''}">
-      <td class="l">${mi===0?`<span class="ath-cell">${g.a.photo?`<img class="av" src="${g.a.photo}"/>`:`<span class="av ph">${esc(initials(g.a.name))}</span>`}<span class="ath-nm">${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}</span></span>`:'<span class="subm">↳</span>'}</td>
+      <td class="l">${mi===0?`<span class="ath-cell">${g.a.photo?`<img class="av" src="${mediaSrc(g.a.photo)}"/>`:`<span class="av ph">${esc(initials(g.a.name))}</span>`}<span class="ath-nm">${g.a.number?`<span class="jn">#${esc(String(g.a.number))}</span>`:''}${esc(g.a.name||'—')}</span></span>`:'<span class="subm">↳</span>'}</td>
       <td class="mono">${fdL(m.date)}</td>
       <td class="b">${n(m,'height')!=null?n(m,'height'):'—'}</td>
       <td class="b">${n(m,'weight')!=null?n(m,'weight'):'—'}</td>
@@ -11042,7 +11151,7 @@ function generateTestPDF(test,ath,setup,customTests,athletes){
   // Photos are stored either as a plain URL / data-URI or tagged `drive:<fileId>`;
   // the tagged form is not a real URL, so it has to be mapped to Drive's image
   // endpoint the same way the on-screen cards do it.
-  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):p).replace(/&/g,'&amp;');
+  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p)).replace(/&/g,'&amp;');
   // A photo that cannot be downloaded (removed from storage, Drive link not
   // shared) would collapse to a 1px line in the print-out — swap in the same
   // placeholder the report uses for a missing photo so the gap is readable.
@@ -11279,7 +11388,7 @@ ${(Array.isArray(bat)?has('fms'):fmsR.any)&&(fmsShowTable||fmsPages.length)?`
   </table>
   <div class="obs-box">${L('Her hareket 0-3 arasında puanlanır; çift taraflı hareketlerde düşük olan taraf geçerlidir. Temizleme testinin pozitif (ağrılı) çıkması ilgili hareketi 0 yapar. Toplam skor 21 üzerindendir; 14 ve altı yaralanma riski açısından dikkat gerektirir.','Each movement is scored 0-3; on the bilateral movements the lower side is the one that counts. A positive (painful) clearing test drops its movement to 0. The total is out of 21; 14 or below warrants attention on injury risk.')}</div>`:''}
   ${fmsPages.length?`<div class="fms-pages" style="--fms-ph:${fmsPageH}mm">
-    ${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(src).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}
+    ${fmsPages.map((src,i)=>`<div class="fms-pg"><img src="${String(mediaSrc(src)).replace(/&/g,'&amp;')}" alt=""/>${fmsPages.length>1?`<div class="fms-pgn">${L('Sayfa','Page')} ${i+1}</div>`:''}</div>`).join('')}
   </div>
   <div class="fms-src">${L('Yüklenen FMS test sonucu','Uploaded FMS test result')}: ${esc(fmsPdf.name||'PDF')}</div>`:''}
   ${test.fms?.observations?`<div class="obs-box"><strong>${L('Gözlemler:','Observations:')}</strong> ${test.fms.observations.replace(/</g,'&lt;')}</div>`:''}
@@ -11544,7 +11653,7 @@ function printTestCompare(test,ath,setup,customTests,athletes){
   const posLabel=POS_FULL[ath.position]||ath.position||'';
   const logo=teamLogo();
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
-  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):p).replace(/&/g,'&amp;');
+  const psrc=p=>String((typeof p==='string'&&p.indexOf('drive:')===0)?driveImg(p.slice(6)):mediaSrc(p)).replace(/&/g,'&amp;');
 
   const html=`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(L('Takım Karşılaştırma','Squad Comparison'))} — ${esc(ath.name||'')}</title>
@@ -11665,7 +11774,7 @@ ${TINFO_CSS}
     <div class="date">${esc(periodLabel)} ${esc(test.year||'')}</div>
   </div>
   <div class="rb">
-    ${logo?`<img src="${esc(logo)}"/>`:''}
+    ${logo?`<img src="${esc(mediaSrc(logo))}"/>`:''}
     <div class="ttl">${esc(L('TAKIM','SQUAD'))}</div>
     <div class="ttl">${esc(L('KARŞILAŞTIRMA','COMPARISON'))}</div>
   </div>
@@ -12181,7 +12290,7 @@ function MkUpload({photo,onChange,label}){
         ?<React.Fragment>
             {isDrive&&imgErr
               ?<div className="mk-up-ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></div>
-              :<img src={thumbSrc} alt={label} onError={()=>setImgErr(true)}/>}
+              :<img src={mediaSrc(thumbSrc)} alt={label} onError={()=>setImgErr(true)}/>}
             {isDrive&&<span className="mk-up-gd" title="Google Drive media">▶</span>}
             <button className="mk-up-rm" onClick={e=>{e.stopPropagation();onChange(null);}}>✕</button>
           </React.Fragment>
@@ -12195,7 +12304,7 @@ function MkUpload({photo,onChange,label}){
         <div className="mk-lb-inner" onClick={e=>e.stopPropagation()}>
           {isDrive
             ?<iframe className="mk-lb-frame" src={`https://drive.google.com/file/d/${dId}/preview`} allow="autoplay; fullscreen" allowFullScreen title={label}/>
-            :<img className="mk-lb-img" src={photo} alt={label}/>}
+            :<img className="mk-lb-img" src={mediaSrc(photo)} alt={label}/>}
           <button className="mk-lb-close" onClick={()=>setOpen(false)}>✕</button>
           {!isDrive&&<button className="mk-lb-change" onClick={pick}>↻ Change photo</button>}
         </div>
@@ -12270,7 +12379,7 @@ function FmsPdfPanel({pdf,onChange}){
       </div>
       <div className="fms-pdf-pages">
         {pdf.pages.map((src,i)=>(<button type="button" key={i} className="fms-pdf-pg" onClick={()=>setZoom(i)} title={L('Büyüt','Enlarge')}>
-          <img src={src} alt={L('Sayfa','Page')+' '+(i+1)}/>
+          <img src={mediaSrc(src)} alt={L('Sayfa','Page')+' '+(i+1)}/>
           {pdf.pages.length>1&&<span className="fms-pdf-pgn">{i+1}</span>}
         </button>))}
       </div>
@@ -12278,7 +12387,7 @@ function FmsPdfPanel({pdf,onChange}){
     {err&&<div className="fms-pdf-err">{err}</div>}
     <input ref={ref} type="file" accept="application/pdf,.pdf" style={{display:'none'}} onChange={e=>take(e.target.files?.[0])}/>
     {zoom>=0&&pdf&&<div className="fms-pdf-lb" onClick={()=>setZoom(-1)}>
-      <img src={pdf.pages[zoom]} alt="" onClick={e=>e.stopPropagation()}/>
+      <img src={mediaSrc(pdf.pages[zoom])} alt="" onClick={e=>e.stopPropagation()}/>
       <button type="button" className="fms-pdf-lbx" onClick={()=>setZoom(-1)}>✕</button>
     </div>}
   </div>);
@@ -12537,7 +12646,7 @@ function TestSession({test,ath,setup,customTests,athletes,onUpdate,onClose}){
   return(<div className="panel" style={{borderColor:'var(--accent)',boxShadow:'0 0 0 1px rgba(0,148,255,.22)'}}>
     <div className="tsess-h">
       <div className="row" style={{gap:12,alignItems:'center'}}>
-        {ath.photo?<img className="tsess-av" src={ath.photo} alt=""/>:<div className="tsess-avph">{initials}</div>}
+        {ath.photo?<img className="tsess-av" src={mediaSrc(ath.photo)} alt=""/>:<div className="tsess-avph">{initials}</div>}
         <div><div className="tsess-nm">{ath.name}</div><div className="tsess-meta">{valid.length} test · {fd(test.date)}</div></div>
       </div>
       <div className="row" style={{gap:10,flexWrap:'wrap',alignItems:'flex-end'}}>
@@ -12756,7 +12865,7 @@ tfoot td.avg{font-size:${(fs*.9).toFixed(1)}px;text-transform:uppercase;letter-s
 <div class="print-bar">📄 ${esc(L('Karşılaştırma tablosu hazır','Comparison table is ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button></div>
 <div class="scr-sp" style="height:50px"></div>
 <div class="hdr">
-  ${logo?`<img src="${logo}" alt=""/>`:''}
+  ${logo?`<img src="${mediaSrc(logo)}" alt=""/>`:''}
   <div>
     <h1>${esc(teamName||'')}</h1>
     <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${n} ${esc(L('metrik','metrics'))}</div>
@@ -12990,7 +13099,7 @@ tbody tr:nth-child(even) td{background:#fafbfc}
 <div class="print-bar">📄 ${esc(L('Tablo hazır','The table is ready'))} · <button onclick="window.print()">${esc(L('Yazdır / PDF','Print / Save as PDF'))}</button> <button class="sec" onclick="window.close()">${esc(L('Kapat','Close'))}</button></div>
 <div class="scr-sp" style="height:50px"></div>
 <div class="hdr">
-  ${logo?`<img src="${logo}" alt=""/>`:''}
+  ${logo?`<img src="${mediaSrc(logo)}" alt=""/>`:''}
   <div><h1>${esc(teamName||'')}</h1>
     <div class="meta">${esc(scopeLabel)} · ${rows.length} ${esc(L('sporcu','athletes'))} · ${esc(refLabel||'')}${refNorm?'':` n=${pool}`}</div></div>
   <div class="ttl">${L('SPORCU<br>SEVİYE TABLOSU','ATHLETE<br>LEVEL TABLE')}</div>
@@ -13473,7 +13582,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       return(<div key={a.id} className={'evc'+(on?' on':'')} onClick={()=>{setSelId(on?null:a.id);setEditingId(null);}}>
         {a.number&&<div className="evc-num">{a.number}</div>}
         {n>0&&<div className="evc-badge">{n} {Lx('test','tests')}</div>}
-        <div className="evc-av">{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
+        <div className="evc-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
         <div className="evc-name">{a.name}</div>
         <div className="evc-meta">{(POS_FULL[a.position]||a.position||'—')}{age!=null?` · ${age}y`:''}</div>
       </div>);
@@ -14840,7 +14949,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
     <div className="ap-head">
       <div className="ap-av-wrap">
         <div className={`ap-av ${apRcls}`} onClick={()=>photoRef.current?.click()} title="Click to change photo">
-          {ath.photo?<img src={ath.photo} alt=""/>:initials}
+          {ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}
           <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
         </div>
         <button className="ap-paste" title="Paste copied photo" onClick={e=>{e.stopPropagation();pasteImageFromClipboard('athletes',d=>updAth(ath.id,{photo:d}));}}>
@@ -15357,7 +15466,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
         <button className="rc-del" title="Sporcuyu sil" onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
-          <div className={`rc-av ${rcls}`}>{a.photo?<img src={a.photo} alt=""/>:initials(a.name)}</div>
+          <div className={`rc-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
           <div className="rc-id">
             <div className="rc-name">{a.name}</div>
             <div className="rc-pos">{posFull}{age!=null?` · ${age} yrs`:''}</div>
@@ -15398,7 +15507,7 @@ function TeamsPanel({data,setData}){
         return(<div key={t.id} className={`tp-card${isActive?' tp-card-active':''}`}>
           <div className="tp-logo-wrap">
             {t.setup&&t.setup.logo
-              ?<img src={t.setup.logo} className="tp-logo-img" alt=""/>
+              ?<img src={mediaSrc(t.setup.logo)} className="tp-logo-img" alt=""/>
               :<div className="tp-logo-initials">{initials}</div>}
             <label className="tp-logo-upload" title="Upload team logo">
               <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
@@ -16240,7 +16349,7 @@ function TallySync({data,setData,team}){
    ========================================================= */
 function Backup({data,setData,sync}){
   const fRef=useRef(null);
-  const exp=()=>{const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
+  const exp=()=>{const b=new Blob([JSON.stringify(inlineLocalMedia(data),null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert('Invalid file');return;}if(confirm('Replace all data?'))setData(migrate(p));}catch{alert('Read error');}};
@@ -16537,6 +16646,31 @@ function useCloudSync(data,setData){
         }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
       },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return unsub;
+  },[user]);
+
+  /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
+     Storage kapalıyken çekilen fotoğraf cihazda `local:` tutamağıyla duruyor; bulut
+     açılınca (kurallar yayınlanınca / ağ dönünce) burada Storage'a yükleniyor ve
+     durumdaki tutamak gerçek URL ile değişiyor, böylece diğer cihazlarda da görünüyor.
+     Eski sürümlerden kalan gömülü base64 de aynı geçişte dışarı alınıyor. */
+  const lifting=useRef(false);
+  useEffect(()=>{
+    const fb=FB();if(!fb||!user)return;
+    const run=async()=>{
+      if(lifting.current||!ready.current||writing.current)return;
+      const before=dataRef.current;
+      if(!hasPendingMedia(before))return;
+      lifting.current=true;
+      try{
+        const clone=JSON.parse(JSON.stringify(before));
+        // Taşıma sırasında kullanıcı bir şey değiştirdiyse bu turu atla — düzenlemesi ezilmesin.
+        if(await liftLocalMedia(clone,fb,user.uid)&&dataRef.current===before){dataRef.current=clone;setData(clone);}
+      }catch(e){console.warn('media lift',e);}
+      lifting.current=false;
+    };
+    const first=setTimeout(run,4000);          // ilk bulut yüklemesi otursun
+    const iv=setInterval(run,5*60*1000);       // kalan varsa arada bir yeniden dene
+    return()=>{clearTimeout(first);clearInterval(iv);};
   },[user]);
 
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
@@ -16952,6 +17086,8 @@ const SUB_TYPES={
 
 function videoEmbed(src){
   if(!src)return null;
+  // Video kept on this device (cloud upload failed / henüz giriş yok) → yerel kopyayı oynat.
+  if(isLocalRef(src)){const d=mediaSrc(src);return d&&d!==LM_BLANK?{kind:'file',src:d}:null;}
   if(src.startsWith('data:'))return{kind:'file',src};
   let m;
   if((m=src.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/)))return{kind:'iframe',src:'https://www.youtube.com/embed/'+m[1]};
@@ -17031,7 +17167,7 @@ function VideoPlayer({ex}){
   // No video, but a cover photo → show the photo. An exercise can be documented with an
   // image alone, and that image is what the program editor copies onto the exercise row.
   if(!v)return ex.thumb
-    ?<img className="ex-video" src={ex.thumb} alt={ex.name||''}/>
+    ?<img className="ex-video" src={mediaSrc(ex.thumb)} alt={ex.name||''}/>
     :<div className="ex-novid">Henüz görsel yok — aşağıdan kapak fotoğrafı ya da video yükle, veya link yapıştır.</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
   if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
@@ -17057,7 +17193,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     }
     if(mb>25){alert('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB. Daha büyük videoda YouTube linki kullan.');return;}
     if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
-    const r=new FileReader();r.onload=e=>set('videoData',e.target.result);r.readAsDataURL(file);
+    /* Cihazda saklanır ve duruma sadece tutamağı yazılır — bir video base64 olarak
+       senkronlanan JSON'a girseydi her düzenlemede baştan gönderilirdi. */
+    const r=new FileReader();
+    r.onload=async e=>{
+      try{set('videoData',await saveLocalMedia(e.target.result));}
+      catch(err){console.warn('local media store unavailable → inline fallback',err);set('videoData',e.target.result);}
+    };
+    r.readAsDataURL(file);
   };
   const metaLbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4,display:'block'};
   const metaBox=(label,value,extra)=>value?(<div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 13px'}}>
@@ -17076,7 +17219,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       <span style={metaLbl}>Cover Image</span>
       {ex.thumb
         ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
-          <img src={ex.thumb} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
+          <img src={mediaSrc(ex.thumb)} alt="cover" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
             borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
           <div className="row" style={{gap:8}}>
             <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
@@ -17218,7 +17361,7 @@ function ExerciseCard({ex,onOpen,used=0}){
         ? <video className="ex-thumb-vid" src={v.src} autoPlay muted loop playsInline/>
         : <iframe className="ex-thumb-vid" src={previewSrc} title="preview" allow="autoplay; encrypted-media" frameBorder="0"/>
       ):(
-        cover ? <img src={cover} alt="" onError={e=>{e.target.style.display='none';}}/>
+        cover ? <img src={mediaSrc(cover)} alt="" onError={e=>{e.target.style.display='none';}}/>
         : (v&&v.kind==='file') ? <video className="ex-thumb-vid" src={v.src+'#t=0.1'} muted preload="metadata" playsInline/>
         : <div className="ex-thumb-ph">🏋</div>
       )}
@@ -18510,7 +18653,7 @@ function IndivAthleteCard({plan,calendar,open,setOpen}){
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
   return(<div className={'iv-card'+(open?' open':'')}>
     <div className="iv-card-hd" onClick={()=>setOpen(!open)}>
-      <div className="iv-av">{a.photo?<img src={a.photo} alt=""/>:initials}</div>
+      <div className="iv-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials}</div>
       <div className="iv-id">
         <div className="iv-nm">{a.name||'—'}</div>
         <div className="iv-meta">
@@ -19222,7 +19365,10 @@ function App(){
     <TallyAutoSync team={team} setData={setData}/>
   </div>);
 }
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+/* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a
+   `local:` handle synchronously inside render, and a store that is unreadable (private mode,
+   blocked storage) simply leaves those slots empty rather than holding up the app. */
+lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>));
 </script>
 </body>
 </html>

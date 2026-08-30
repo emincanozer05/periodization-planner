@@ -326,3 +326,45 @@ KEY METRICS (so the math is clear)
 - Tapering        = automatically applied to weeks within 14
                     days of a competition (volume cut, intensity
                     held high)
+
+
+PHOTOS, VIDEOS AND SYNC SPEED
+-----------------------------
+Every picture and video belongs in Firebase Storage, NOT in the
+synced data. The whole app state is one JSON document split into
+Firestore chunks, and that document is rewritten on every edit —
+a photo pasted into it as base64 is re-sent in full each time,
+which is what makes sync crawl.
+
+The app therefore uploads media to Storage and keeps only the
+short download URL in the state.
+
+If the upload fails you see, once per session:
+  "Fotoğraf buluta yüklenemedi … bu cihazda saklanıyor"
+Nothing is lost and sync speed is NOT affected: the file is put
+in the browser's own store (IndexedDB) and the state carries a
+short "local:<id>" handle instead. The app retries — right after
+each load and every few minutes — and as soon as Storage accepts
+the write, the handle is replaced by a real URL and the picture
+appears on the coach's other devices too. Old base64 still sitting
+in the data from earlier versions is lifted out by the same pass.
+
+Until then the file exists only on the device that uploaded it,
+so it is worth fixing the cause. It is almost always the Storage
+security rules:
+
+  1. Firebase Console → Storage: make sure the bucket exists
+     (periodization-planner.firebasestorage.app).
+  2. Publish the rules in storage.rules (repo root):
+       firebase deploy --only storage
+     or paste that file into Console → Storage → Rules → Publish.
+  3. Reload the app. Waiting photos upload on their own.
+
+storage.rules allows a signed-in coach to write only under
+users/<their uid>/ and leaves reads public, because download URLs
+end up in printed sheets and shared PDFs that are opened without
+signing in.
+
+A backup export always contains the pictures themselves, device-
+held ones included, so a backup is complete whatever the cloud is
+doing.
