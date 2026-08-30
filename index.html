@@ -7240,6 +7240,58 @@ function resizePhoto(file,cb){
    uploaded is never lost: embedded base64 is moved into the device store (which already
    shrinks the synced JSON), and a handle simply stays a handle until the next attempt.
    Runs after the first cloud load and, while anything is still pending, every few minutes. */
+/* Put every `local:` handle whose file is on THIS device back into the state, with no
+   network and nothing to wait for. An earlier version moved pictures out of the state into
+   the device store; while Storage refuses uploads those handles resolve to nothing anywhere
+   the store is not (another device, another browser, cleared site data), which is a photo
+   the coach cannot see. So they are inlined again the moment the state is loaded — the
+   picture syncs and shows everywhere, and liftLocalMedia() still moves it to Storage later.
+   Mutates `obj`; returns how many were restored and how many handles are left pointing at a
+   file this device does not have. */
+function restoreLocalMedia(obj){
+  let restored=0,missing=0;
+  /* The device copy is dropped only after the whole walk: the same handle can sit in two
+     places (a library entry carries its picture as both `thumb` and `planImage`), and
+     deleting it on the first hit would leave the second one resolving to nothing. */
+  const done=new Set();
+  const fix=v=>{
+    const id=v.slice(LM_REF.length);
+    const data=_lmCache.get(id);
+    if(!data){missing++;return v;}
+    restored++;done.add(id);
+    return data;
+  };
+  const walk=node=>{
+    if(Array.isArray(node)){
+      for(let i=0;i<node.length;i++){const v=node[i];
+        if(isLocalRef(v))node[i]=fix(v);else if(v&&typeof v==='object')walk(v);}
+    }else if(node&&typeof node==='object'){
+      for(const k of Object.keys(node)){const v=node[k];
+        if(isLocalRef(v))node[k]=fix(v);else if(v&&typeof v==='object')walk(v);}
+    }
+  };
+  walk(obj);
+  done.forEach(id=>{_lmCache.delete(id);lmDel(id).catch(()=>{});});
+  return{restored,missing};
+}
+// Handles whose file is on no device this browser can reach: the pictures a backup would
+// have to bring back. Shown in the Backup panel so a coach is not left guessing.
+function countMissingMedia(node,seen){
+  seen=seen||new Set();
+  if(isLocalRef(node))return _lmCache.has(node.slice(LM_REF.length))?0:1;
+  if(!node||typeof node!=='object'||seen.has(node))return 0;
+  seen.add(node);
+  return Object.keys(node).reduce((n,k)=>n+countMissingMedia(node[k],seen),0);
+}
+// Cheap enough to run on every edit — the recovery pass only clones the state when this
+// says there is something to recover.
+function hasLocalHandle(node,seen){
+  seen=seen||new Set();
+  if(isLocalRef(node))return true;
+  if(!node||typeof node!=='object'||seen.has(node))return false;
+  seen.add(node);
+  return Object.keys(node).some(k=>hasLocalHandle(node[k],seen));
+}
 /* While Storage refuses writes every picture in the state fails on every round, so a
    failed round stands the retry down for half an hour instead of re-running the whole
    walk every few minutes. Reloading the page clears it — a coach who has just published
@@ -7257,23 +7309,28 @@ async function liftLocalMedia(obj,fb,uid){
     try{return await upBlob(await (await fetch(dataUrl)).blob());}
     catch(e){failed=true;warnStorageFailure(e);return dataUrl;}
   };
+  /* One handle can appear in several places, so each is resolved once and the answer
+     reused — otherwise the same file is uploaded twice, and the second occurrence reads a
+     device store the first has already emptied. The local copies go at the very end. */
+  const seen=new Map(),drop=new Set();
   const fromRef=async ref=>{
+    if(seen.has(ref))return seen.get(ref);
     const id=ref.slice(LM_REF.length);
     const data=_lmCache.get(id);
     if(!data)return ref;                       // file is on another device — leave the handle alone
+    let out;
     try{
-      const url=await upBlob(await (await fetch(data)).blob());
-      lmDel(id).catch(()=>{});_lmCache.delete(id);
-      return url;
+      out=await upBlob(await (await fetch(data)).blob());
     }catch(e){
       failed=true;warnStorageFailure(e);
       /* Cloud still shut and the picture is here: write it back into the state. That is
          what puts a photo taken on this device back on all the others, and it undoes the
          handles an earlier version left behind — a picture is never left living in one
          browser's storage alone. */
-      changed=true;lmDel(id).catch(()=>{});_lmCache.delete(id);
-      return data;
+      changed=true;out=data;
     }
+    seen.set(ref,out);drop.add(id);
+    return out;
   };
   const lift=v=>isInlineMedia(v)?fromInline(v):fromRef(v);
   const walk=async node=>{
@@ -7292,6 +7349,7 @@ async function liftLocalMedia(obj,fb,uid){
     }
   };
   await walk(obj);
+  drop.forEach(id=>{_lmCache.delete(id);lmDel(id).catch(()=>{});});
   if(failed)_liftPausedUntil=Date.now()+30*60*1000;
   return changed;
 }
@@ -16376,6 +16434,7 @@ function TallySync({data,setData,team}){
    ========================================================= */
 function Backup({data,setData,sync}){
   const fRef=useRef(null);
+  const missingMedia=useMemo(()=>countMissingMedia(data),[data]);
   const exp=()=>{const b=new Blob([JSON.stringify(inlineLocalMedia(data),null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
@@ -16392,6 +16451,11 @@ function Backup({data,setData,sync}){
     </div>
     <div className="panel"><h2>Backup & Restore</h2>
       <div className="help" style={{marginBottom:12}}>Export saves ALL teams (one .json file). Import replaces everything currently stored — back up first!</div>
+      {missingMedia>0&&<div className="help" style={{marginBottom:12,color:'var(--yellow)'}}>
+        {missingMedia} görsel bu tarayıcıda bulunamıyor: bir önceki sürüm onları cihaza taşımıştı ve dosyalar
+        başka bir cihazda kalmış. O cihazda uygulamayı bir kez açmak onları geri yazar; ya da bu görselleri
+        içeren bir yedeği "Load Backup" ile içe aktar.
+      </div>}
       <div className="row">
         <button className="btn" onClick={exp}>📦 Download Full Backup</button>
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 Load Backup</button>
@@ -16681,6 +16745,17 @@ function useCloudSync(data,setData){
      durumdaki tutamak gerçek URL ile değişiyor, böylece diğer cihazlarda da görünüyor.
      Eski sürümlerden kalan gömülü base64 de aynı geçişte dışarı alınıyor. */
   const lifting=useRef(false);
+  /* Kurtarma: cihazda dosyası olan her `local:` tutamağı, buluta hiç dokunmadan durumun
+     içine geri yazılır. Yükleme turunu beklemez — fotoğraf, veri gelir gelmez görünür. */
+  useEffect(()=>{
+    if(!user)return;
+    const cur=dataRef.current;
+    if(!hasLocalHandle(cur))return;         // nothing to put back → no clone, no work
+    const clone=JSON.parse(JSON.stringify(cur));
+    const{restored,missing}=restoreLocalMedia(clone);
+    if(missing)console.warn('media: '+missing+' picture handle(s) point at a file this device does not have — open the app on the device that uploaded them, or restore a backup');
+    if(restored){dataRef.current=clone;setData(clone);}   // restored handles are gone → this cannot loop
+  },[user,data]);
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     const run=async()=>{
