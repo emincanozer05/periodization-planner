@@ -7274,15 +7274,6 @@ function restoreLocalMedia(obj){
   done.forEach(id=>{_lmCache.delete(id);lmDel(id).catch(()=>{});});
   return{restored,missing};
 }
-// Handles whose file is on no device this browser can reach: the pictures a backup would
-// have to bring back. Shown in the Backup panel so a coach is not left guessing.
-function countMissingMedia(node,seen){
-  seen=seen||new Set();
-  if(isLocalRef(node))return _lmCache.has(node.slice(LM_REF.length))?0:1;
-  if(!node||typeof node!=='object'||seen.has(node))return 0;
-  seen.add(node);
-  return Object.keys(node).reduce((n,k)=>n+countMissingMedia(node[k],seen),0);
-}
 // Cheap enough to run on every edit — the recovery pass only clones the state when this
 // says there is something to recover.
 function hasLocalHandle(node,seen){
@@ -7291,6 +7282,53 @@ function hasLocalHandle(node,seen){
   if(!node||typeof node!=='object'||seen.has(node))return false;
   seen.add(node);
   return Object.keys(node).some(k=>hasLocalHandle(node[k],seen));
+}
+/* What the state's pictures actually are, counted by kind. The Backup panel shows this,
+   and it is written to the console on every load: when a picture does not appear, the first
+   thing to know is whether the state still holds it (data:), points at the cloud (https),
+   points at this device (local:, resolvable) or points at a file no reachable device has. */
+function mediaReport(node,acc,seen){
+  acc=acc||{cloud:0,inline:0,device:0,lost:0,drive:0};
+  seen=seen||new Set();
+  if(typeof node==='string'){
+    if(isLocalRef(node))acc[_lmCache.has(node.slice(LM_REF.length))?'device':'lost']++;
+    else if(isInlineMedia(node))acc.inline++;
+    else if(node.indexOf('drive:')===0)acc.drive++;
+    else if(/^https?:\/\/[^ ]*(firebasestorage|googleusercontent|drive\.google)/.test(node))acc.cloud++;
+    return acc;
+  }
+  if(!node||typeof node!=='object'||seen.has(node))return acc;
+  seen.add(node);
+  Object.keys(node).forEach(k=>mediaReport(node[k],acc,seen));
+  return acc;
+}
+/* Pull pictures out of a backup file and into the state where the state has lost them.
+   Nothing else in the backup is touched — a coach who has any older export can get the
+   photos back without rolling the whole plan back to that day. Objects are matched by id
+   where they carry one, by position otherwise; a picture is copied only into a slot that
+   is empty or points at a file this device does not have. */
+function mergeMediaFrom(cur,bak){
+  let copied=0;
+  const missing=v=>v==null||v===''||(isLocalRef(v)&&!_lmCache.has(v.slice(LM_REF.length)));
+  const walk=(c,b)=>{
+    if(!c||!b||typeof c!=='object'||typeof b!=='object')return;
+    if(Array.isArray(c)&&Array.isArray(b)){
+      const byId={};b.forEach((x,i)=>{if(x&&typeof x==='object'&&x.id!=null)byId[x.id]=x;});
+      c.forEach((x,i)=>{
+        const m=(x&&typeof x==='object'&&x.id!=null&&byId[x.id])?byId[x.id]:b[i];
+        if(x&&typeof x==='object'&&m&&typeof m==='object')walk(x,m);
+      });
+      return;
+    }
+    if(Array.isArray(c)!==Array.isArray(b))return;
+    Object.keys(b).forEach(k=>{
+      const bv=b[k],cv=c[k];
+      if(isInlineMedia(bv)){if(missing(cv)){c[k]=bv;copied++;}return;}
+      if(bv&&typeof bv==='object'&&cv&&typeof cv==='object')walk(cv,bv);
+    });
+  };
+  walk(cur,bak);
+  return copied;
 }
 /* While Storage refuses writes every picture in the state fails on every round, so a
    failed round stands the retry down for half an hour instead of re-running the whole
@@ -16434,7 +16472,32 @@ function TallySync({data,setData,team}){
    ========================================================= */
 function Backup({data,setData,sync}){
   const fRef=useRef(null);
-  const missingMedia=useMemo(()=>countMissingMedia(data),[data]);
+  const mRef=useRef(null);
+  const[msg,setMsg]=useState('');
+  const rep=useMemo(()=>mediaReport(data),[data]);
+  const missingMedia=rep.lost;
+  // Cihazda duran görselleri elle durumun içine geri yaz (açılışta da otomatik yapılır).
+  const restoreNow=()=>{
+    const clone=JSON.parse(JSON.stringify(data));
+    const{restored,missing}=restoreLocalMedia(clone);
+    if(restored)setData(clone);
+    setMsg(restored?`${restored} görsel bu cihazdan geri alındı.`:`Bu cihazda geri alınacak görsel yok${missing?` (${missing} görsel başka bir cihazda kalmış)`:''}.`);
+  };
+  // Yedek dosyasından SADECE görselleri al — plan, program, testler olduğu gibi kalır.
+  const impMedia=e=>{
+    const f=e.target.files?.[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const bak=JSON.parse(ev.target.result);
+        const clone=JSON.parse(JSON.stringify(data));
+        const n=mergeMediaFrom(clone,bak);
+        if(n)setData(clone);
+        setMsg(n?`${n} görsel yedekten geri alındı.`:'Bu yedekte, şu an eksik olan görsellerden hiçbiri yok.');
+      }catch(err){setMsg('Yedek okunamadı: '+(err.message||err));}
+    };
+    r.readAsText(f);e.target.value='';
+  };
   const exp=()=>{const b=new Blob([JSON.stringify(inlineLocalMedia(data),null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
@@ -16451,15 +16514,33 @@ function Backup({data,setData,sync}){
     </div>
     <div className="panel"><h2>Backup & Restore</h2>
       <div className="help" style={{marginBottom:12}}>Export saves ALL teams (one .json file). Import replaces everything currently stored — back up first!</div>
-      {missingMedia>0&&<div className="help" style={{marginBottom:12,color:'var(--yellow)'}}>
-        {missingMedia} görsel bu tarayıcıda bulunamıyor: bir önceki sürüm onları cihaza taşımıştı ve dosyalar
-        başka bir cihazda kalmış. O cihazda uygulamayı bir kez açmak onları geri yazar; ya da bu görselleri
-        içeren bir yedeği "Load Backup" ile içe aktar.
-      </div>}
       <div className="row">
         <button className="btn" onClick={exp}>📦 Download Full Backup</button>
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 Load Backup</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
+      </div>
+    </div>
+    <div className="panel"><h2>Görseller</h2>
+      <div className="help" style={{marginBottom:10}}>
+        Durumdaki görseller: <b>{rep.inline}</b> verinin içinde · <b>{rep.cloud}</b> bulutta ·
+        <b> {rep.device}</b> bu cihazda · <b>{rep.drive}</b> Drive ·
+        <b style={{color:rep.lost?'var(--yellow)':'inherit'}}> {rep.lost}</b> bulunamıyor
+      </div>
+      {rep.lost>0&&<div className="help" style={{marginBottom:10,color:'var(--yellow)'}}>
+        {rep.lost} görselin dosyası bu tarayıcıda yok. Bir önceki sürüm onları cihaz deposuna taşımıştı:
+        o görselleri yükleyen tarayıcıda uygulamayı bir kez açmak yeterli — açılışta kendiliğinden veriye
+        geri yazılır ve tüm cihazlara gider. O tarayıcıya erişemiyorsan, görselleri içeren bir yedek
+        dosyasından aşağıdaki düğmeyle sadece görselleri geri alabilirsin.
+      </div>}
+      <div className="row" style={{gap:8}}>
+        <button className="btn sec" onClick={restoreNow}>🖼 Bu cihazdaki görselleri geri yükle</button>
+        <button className="btn sec" onClick={()=>mRef.current.click()}>📂 Yedekten sadece görselleri al</button>
+        <input type="file" accept=".json" ref={mRef} onChange={impMedia} className="hidden"/>
+      </div>
+      {msg&&<div className="help" style={{marginTop:10}}>{msg}</div>}
+      <div className="help" style={{marginTop:10}}>
+        "Yedekten sadece görselleri al" planı, programı ve test verilerini değiştirmez; yalnızca şu an
+        eksik olan görselleri yedekteki karşılıklarıyla doldurur.
       </div>
     </div>
   </div>);
@@ -16753,7 +16834,7 @@ function useCloudSync(data,setData){
     if(!hasLocalHandle(cur))return;         // nothing to put back → no clone, no work
     const clone=JSON.parse(JSON.stringify(cur));
     const{restored,missing}=restoreLocalMedia(clone);
-    if(missing)console.warn('media: '+missing+' picture handle(s) point at a file this device does not have — open the app on the device that uploaded them, or restore a backup');
+    console.log('media:',restored+' restored from this device,',missing+' still pointing at a file this device does not have',mediaReport(clone));
     if(restored){dataRef.current=clone;setData(clone);}   // restored handles are gone → this cannot loop
   },[user,data]);
   useEffect(()=>{
