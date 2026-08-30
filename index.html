@@ -7054,13 +7054,13 @@ async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pM
    ========================================================= */
 /* =========================================================
    LOCAL MEDIA STORE (device-only, IndexedDB)
-   The whole app state is ONE JSON document, split into Firestore chunks: a photo
-   written into it as base64 is re-sent in full on every single edit, which is what
-   made sync crawl. So a picture that cannot reach Firebase Storage is not embedded
-   any more — it is kept on the device and the state carries a `local:<id>` handle
-   (a few dozen characters) in its place. liftLocalMedia() below turns those handles
-   into real Storage URLs the moment the bucket accepts writes again, and the picture
-   then reaches the coach's other devices on its own.
+   Holds files that must NOT go into the synced state at any price — a video, which
+   at tens of megabytes would make the state undeliverable — under a `local:<id>`
+   handle the state carries in their place, plus the handles an earlier version left
+   on photos. liftLocalMedia() below empties it: each file goes to Firebase Storage
+   as soon as the bucket accepts writes, and a photo it cannot upload is written back
+   into the state so it still reaches the coach's other devices. Nothing a coach can
+   see is left living in one browser's storage alone.
    ========================================================= */
 const LM_DB='coachos-media',LM_STORE='files',LM_REF='local:';
 // 1×1 transparent GIF — what a handle whose file lives on ANOTHER device resolves to,
@@ -7103,7 +7103,14 @@ const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.inde
    data URL passes straight through, a `local:` handle resolves to the file kept on this
    device. */
 function mediaSrc(v){
+  // Drive-hosted picture: the id is stored, the viewable URL is derived (as the print
+  // builders' psrc has always done — screen renderers were showing the raw `drive:` string
+  // to the browser, which cannot load it).
+  if(typeof v==='string'&&v.indexOf('drive:')===0)return driveImg(v.slice(6));
   if(!isLocalRef(v))return v||'';
+  // A handle whose file is on another device resolves to a blank pixel rather than a broken
+  // image. It is only ever a handle while an upload is still pending — liftLocalMedia()
+  // either gets it into Storage or writes the picture back into the state.
   return _lmCache.get(v.slice(LM_REF.length))||LM_BLANK;
 }
 /* Backup dosyası için: cihazda duran görselleri tutamak yerine gerçek içerikleriyle yaz.
@@ -7165,16 +7172,14 @@ function handleImageUpload(file,folder,done,onProgress){
   const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
   resizePhotoBlob(file,async blob=>{
     if(loggedIn){try{const url=await uploadMedia(blob,folder,onProgress);done(url);return;}catch(e){warnStorageFailure(e);}}
+    /* The upload did not go through (or nobody is signed in yet), so the picture goes into
+       the state itself. It syncs to the coach's other devices from there — slowly, since
+       the state is re-sent whole on every edit, but visibly. liftLocalMedia() keeps trying
+       to move it to Storage; the moment the bucket accepts writes the state carries a short
+       URL again and sync is fast. A photo only the uploading browser can see is not a
+       trade worth making. */
     const r=new FileReader();
-    r.onload=async e=>{
-      /* The upload did not go through (or nobody is signed in yet). The picture is kept in
-         the device's own store under a handle instead of being embedded in the state: the
-         synced document stays small, and liftLocalMedia() uploads it later. Only if the
-         device store itself is unavailable does the base64 go into the state — nothing is
-         ever dropped on the floor. */
-      try{done(await saveLocalMedia(e.target.result));}
-      catch(err){console.warn('local media store unavailable → inline fallback',err);done(e.target.result);}
-    };
+    r.onload=e=>done(e.target.result);
     r.readAsDataURL(blob);
   });
 }
@@ -7235,27 +7240,40 @@ function resizePhoto(file,cb){
    uploaded is never lost: embedded base64 is moved into the device store (which already
    shrinks the synced JSON), and a handle simply stays a handle until the next attempt.
    Runs after the first cloud load and, while anything is still pending, every few minutes. */
+/* While Storage refuses writes every picture in the state fails on every round, so a
+   failed round stands the retry down for half an hour instead of re-running the whole
+   walk every few minutes. Reloading the page clears it — a coach who has just published
+   the rules should not have to wait one out. */
+let _liftPausedUntil=0;
+const liftPaused=()=>Date.now()<_liftPausedUntil;
 async function liftLocalMedia(obj,fb,uid){
   if(!fb||!fb.storage||!uid)return false;
-  let changed=false;
+  let changed=false,failed=false;
   const upBlob=async blob=>{const url=await uploadMedia(blob,'migrated',null);changed=true;return url;};
   const fromInline=async dataUrl=>{
+    // Storage shut → the picture stays exactly where it is. Moving it to the device store
+    // would shrink the synced document but make the picture device-only, and a photo that
+    // vanishes from the coach's other devices costs more than a slow sync ever did.
     try{return await upBlob(await (await fetch(dataUrl)).blob());}
-    catch(e){
-      warnStorageFailure(e);
-      // Cloud still shut: at least get the base64 out of the synced document.
-      try{const ref=await saveLocalMedia(dataUrl);changed=true;return ref;}
-      catch(err){console.warn('local media store unavailable',err);return dataUrl;}
-    }
+    catch(e){failed=true;warnStorageFailure(e);return dataUrl;}
   };
   const fromRef=async ref=>{
-    const data=_lmCache.get(ref.slice(LM_REF.length));
-    if(!data)return ref;                       // file belongs to another device — leave the handle alone
+    const id=ref.slice(LM_REF.length);
+    const data=_lmCache.get(id);
+    if(!data)return ref;                       // file is on another device — leave the handle alone
     try{
       const url=await upBlob(await (await fetch(data)).blob());
-      lmDel(ref.slice(LM_REF.length)).catch(()=>{});_lmCache.delete(ref.slice(LM_REF.length));
+      lmDel(id).catch(()=>{});_lmCache.delete(id);
       return url;
-    }catch(e){warnStorageFailure(e);return ref;}
+    }catch(e){
+      failed=true;warnStorageFailure(e);
+      /* Cloud still shut and the picture is here: write it back into the state. That is
+         what puts a photo taken on this device back on all the others, and it undoes the
+         handles an earlier version left behind — a picture is never left living in one
+         browser's storage alone. */
+      changed=true;lmDel(id).catch(()=>{});_lmCache.delete(id);
+      return data;
+    }
   };
   const lift=v=>isInlineMedia(v)?fromInline(v):fromRef(v);
   const walk=async node=>{
@@ -7274,6 +7292,7 @@ async function liftLocalMedia(obj,fb,uid){
     }
   };
   await walk(obj);
+  if(failed)_liftPausedUntil=Date.now()+30*60*1000;
   return changed;
 }
 
@@ -16665,7 +16684,7 @@ function useCloudSync(data,setData){
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
     const run=async()=>{
-      if(lifting.current||!ready.current||writing.current)return;
+      if(lifting.current||!ready.current||writing.current||liftPaused())return;
       const before=dataRef.current;
       if(!hasPendingMedia(before))return;
       lifting.current=true;
