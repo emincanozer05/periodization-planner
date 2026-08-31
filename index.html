@@ -16651,6 +16651,8 @@ function useCloudSync(data,setData){
   const lastSynced=useRef(null);        // bulutla eşit son içerik (JSON) — gereksiz yazım/yankı önler
   const prevN=useRef(0);                // önceki parça sayısı (fazlalıkları silmek için)
   const timer=useRef(null);
+  const settle=useRef(null);            // tutarsız ara durumu bekleme sayacı (hemen hata basma)
+  const healing=useRef(false);          // kurtarma turu uçuşta mı
   const dirty=useRef(false);            // yerelde buluta yazılmamış değişiklik var mı → yeşil ancak bu false iken yanar
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
@@ -16743,25 +16745,87 @@ function useCloudSync(data,setData){
     return null;
   };
 
+  /* Bir yazım BİRDEN ÇOK batch'e bölündüğünde (durum büyükse) commit'ler tek tek gider:
+     ilk batch geçtikten sonra, manifest'i taşıyan son batch gelmeden önce sunucudaki hâl
+     KISA SÜRELİĞİNE tutarsızdır (parçaların bir kısmı yeni rev'de, manifest hâlâ eski).
+     Dinleyici bu ara durumu kalıcı bozulma sanıp kırmızı "Buluttaki veri parçaları tutarsız"
+     uyarısını basıyordu — oysa saniyesinde kendiliğinden düzeliyor. Artık: ara durumda sarıda
+     bekle, kısa bir süre sonra sunucuya bak; hâlâ tutarsızsa ve elimizde gerçek veri varsa
+     durumu buluta yeniden yazarak bulutu ONAR. Hata ancak bunların hepsi başarısız olursa. */
+  const SETTLE_MS=8000;
+  const INCONSISTENT_MSG='Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.';
+  const clearSettle=()=>{if(settle.current){clearTimeout(settle.current);settle.current=null;}};
+
+  // Sunucudan taze oku: {json,n} ya da null (hâlâ tutarsız). Kurtarılan set için manifesti de tazeler.
+  const readServer=async(fb,uid)=>{
+    const snap=await fb.firestore().collection(COL).where('userId','==',uid).get({source:'server'});
+    let manifest=null;const chunks={};let maxIdx=-1;
+    snap.forEach(d=>{const v=d.data();if(!v)return;
+      if(d.id===uid&&typeof v.n==='number')manifest=v;
+      else if(typeof v.i==='number'&&typeof v.c==='string'){chunks[v.i]=v;if(v.i>maxIdx)maxIdx=v.i;}});
+    if(manifest){
+      const json=assemble(manifest,chunks);
+      if(json!=null)return{json,n:manifest.n,maxIdx};
+    }
+    const rec=assembleAny(chunks);
+    if(rec){
+      try{await fb.firestore().collection(COL).doc(uid).set({userId:uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
+      return{json:rec.json,n:rec.n,maxIdx};
+    }
+    return{json:null,n:0,maxIdx};
+  };
+
+  // Tutarsız ara durum: sunucuya tekrar bak → düzeldiyse uygula, düzelmediyse yerelden geri yaz.
+  const healInconsistent=async(fb,uid)=>{
+    if(healing.current)return;
+    if(writing.current||queued.current){waitThenHeal(fb,uid);return;}   // yazımımız sürüyor → ara durum bizim, tekrar bekle
+    healing.current=true;
+    try{
+      const{json,n,maxIdx}=await readServer(fb,uid);
+      if(json!=null){
+        let parsed=null;try{parsed=migrate(JSON.parse(json));}catch(e){}
+        if(parsed){
+          lastSynced.current=json;prevN.current=Math.max(n,maxIdx+1);
+          if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+          dirty.current=false;ready.current=true;setStatus('synced');setSyncErr('');
+          return;
+        }
+      }
+      // Sunucu gerçekten yarım kalmış (ör. yazım sırasında ağ koptu). Ekrandaki veri sağlamsa
+      // bulutu ondan yeniden kur: eski parçaların hepsi üzerine yazılsın/silinsin diye prevN'i
+      // sunucuda gördüğümüz en büyük parça numarasına göre ayarla.
+      if(hasRealData(dataRef.current)){
+        ready.current=true;lastSynced.current=null;prevN.current=Math.max(prevN.current,maxIdx+1);
+        await writeNow();
+        if(lastSynced.current!=null)return;   // yeniden yazım tuttu → writeNow zaten yeşili yaktı
+        return;                               // yazım da patladıysa hatayı writeNow yazdı
+      }
+      setStatus('error');setSyncErr(INCONSISTENT_MSG);
+    }catch(e){console.warn('heal',e);setStatus('error');setSyncErr(INCONSISTENT_MSG);}
+    finally{healing.current=false;}
+  };
+
+  // Ara durumu hemen hata sayma: sarıda bekle, SETTLE_MS sonra sunucuya bak.
+  const waitThenHeal=(fb,uid)=>{
+    if(settle.current)return;
+    setStatus('syncing');setSyncErr('');
+    settle.current=setTimeout(()=>{settle.current=null;healInconsistent(fb,uid);},SETTLE_MS);
+  };
+
   // Sunucudan elle çek
   const forcePull=async()=>{
     const fb=FB();const u=userRef.current;if(!fb||!u)return;
+    clearSettle();
     setStatus('syncing');
     try{
-      const snap=await fb.firestore().collection(COL).where('userId','==',u.uid).get({source:'server'});
-      let manifest=null;const chunks={};
-      snap.forEach(d=>{const v=d.data();if(!v)return;
-        if(d.id===u.uid&&typeof v.n==='number')manifest=v;
-        else if(typeof v.i==='number'&&typeof v.c==='string')chunks[v.i]=v;});
-      if(manifest){
-        let json=assemble(manifest,chunks);let n=manifest.n;
-        if(json==null){
-          const rec=assembleAny(chunks);   // yarıda kalmış yazımdan kurtar
-          if(!rec){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
-          json=rec.json;n=rec.n;
-          try{await fb.firestore().collection(COL).doc(u.uid).set({userId:u.uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
-        }
-        lastSynced.current=json;prevN.current=n;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
+      const{json,n,maxIdx}=await readServer(fb,u.uid);   // manifest bozuksa parçalardan kurtarır
+      if(json==null){
+        // Parçalar duruyor ama hiçbir tutarlı set çıkmıyor → onarım turu (asla üzerine yazma).
+        if(maxIdx>=0){await healInconsistent(fb,u.uid);return;}
+        // maxIdx<0 → bulutta gerçekten parça yok; yerel durum korunur.
+      }else{
+        lastSynced.current=json;prevN.current=Math.max(n,maxIdx+1);
+        const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
         dirty.current=false;   // sunucudan çekilen durum uygulandı → yerel bulutla aynı
       }
       ready.current=true;setStatus('synced');setSyncErr('');
@@ -16784,6 +16848,7 @@ function useCloudSync(data,setData){
       if(!u){
         ready.current=false;lastSynced.current=null;prevUid.current=null;prevN.current=0;
         if(timer.current){clearTimeout(timer.current);timer.current=null;}
+        clearSettle();
         setData(makeDefault());setStatus('offline');setSyncErr('');setUser(null);
         return;
       }
@@ -16798,6 +16863,7 @@ function useCloudSync(data,setData){
     const fb=FB();if(!fb||!user)return;
     setStatus('syncing');ready.current=false;lastSynced.current=null;prevN.current=0;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
+    clearSettle();
     const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
       .onSnapshot(async snap=>{
         try{
@@ -16816,11 +16882,14 @@ function useCloudSync(data,setData){
               // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
               // Sunucu henüz tüm parçaları göndermediyse (fromCache) kurtarmaya kalkma, bekle.
               if(snap.metadata&&snap.metadata.fromCache)return;
+              // Kendi çok-batch'li yazımımız hâlâ uçuşta → bu ara durumu biz üretiyoruz, bekle.
+              if(writing.current||queued.current)return;
               healed=assembleAny(chunks);
-              if(!healed){setStatus('error');setSyncErr('Buluttaki veri parçaları tutarsız. Sayfayı yenile; düzelmezse Backup dosyanı içe aktar — verin silinmedi.');return;}
+              if(!healed){waitThenHeal(fb,user.uid);return;}   // ara durum olabilir → sarıda bekle, sonra onar
               json=healed.json;
               try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:healed.n,rev:healed.rev});}catch(e){console.warn('manifest heal',e);}
             }
+            clearSettle();   // tutarlı hâl geldi → bekleyen onarım turuna gerek yok
             ready.current=true;prevN.current=healed?healed.n:manifest.n;
             if(json===lastSynced.current){
               // Kendi eski yazımımızın yankısı: yerelde henüz yazılmamış değişiklik varken YEŞİL YAKMA
@@ -16833,6 +16902,21 @@ function useCloudSync(data,setData){
             dirty.current=false;   // bulut durumu uygulandı → yerel artık bulutla aynı
             setStatus('synced');setSyncErr('');
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
+          }else if(Object.keys(chunks).length){
+            // Parçalar var ama manifest yok (ilk yazım yarıda kalmış ya da manifest silinmiş).
+            // "Bulut boş" sanıp üzerine yazmak veriyi uçururdu → parçalardan kurtar, manifesti tazele.
+            if(snap.metadata&&snap.metadata.fromCache)return;
+            if(writing.current||queued.current)return;
+            const rec=assembleAny(chunks);
+            if(!rec){waitThenHeal(fb,user.uid);return;}
+            clearSettle();ready.current=true;prevN.current=rec.n;
+            try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:rec.n,rev:rec.rev});}catch(e){console.warn('manifest heal',e);}
+            if(rec.json!==lastSynced.current){
+              lastSynced.current=rec.json;
+              let parsed;try{parsed=migrate(JSON.parse(rec.json));}catch(e){return;}
+              if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            }
+            dirty.current=false;setStatus('synced');setSyncErr('');
           }else if(oldDocs.length){
             // GEÇİŞ: eski per-entity → parçalı
             ready.current=true;const state=stateFromOldDocs(oldDocs);dataRef.current=state;setData(state);
@@ -16869,7 +16953,7 @@ function useCloudSync(data,setData){
           }
         }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
       },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
-    return unsub;
+    return ()=>{clearSettle();unsub();};
   },[user]);
 
   /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
