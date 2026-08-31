@@ -16562,64 +16562,132 @@ function Backup({data,setData,sync}){
    ROOT
    ========================================================= */
 /* =========================================================
-   CLOUD SYNC — Firestore parçalı (Storage YOK)
+   CLOUD SYNC — Firestore parçalı, İÇERİK ADRESLİ (Storage YOK)
    Firestore'un 1MB doküman sınırı olduğu için tüm uygulama
    durumu (JSON) birkaç küçük dokümana BÖLÜNÜR:
-       kullanici_verileri/<uid>_<rev>_<i> = { userId, i, c, rev }
+       kullanici_verileri/<uid>_<hash> = { userId, c, h, rev }
    Bir de manifest dokümanı:
-       kullanici_verileri/<uid>          = { userId, n, rev }
-   onSnapshot tüm parçaları+manifesti dinler; manifest.rev ile
-   eşleşen n parça birleştirilip uygulanır → anlık, cihazlar arası.
+       kullanici_verileri/<uid>        = { userId, v:2, n, rev, ids:[hash,…] }
+   onSnapshot tüm parçaları+manifesti dinler; manifest.ids sırasıyla
+   birleştirilip uygulanır → anlık, cihazlar arası.
    Storage, indirme URL'i, parça-dışı bağımlılık YOK.
 
-   PARÇA KİMLİĞİ rev İÇERİR ve bu kasıtlıdır. Parçalar <uid>_<i> gibi
-   sabit adlarla yazılırken her kayıt, okunabilir tek kopyanın ÜZERİNE
-   yazıyordu; büyük bir durum birden çok commit'e bölündüğü için ortadaki
-   bir commit düşerse (ağ koptu, sekme kapandı, kota doldu) bulutta ne yeni
-   set tamamlanmış ne de eski set sağlam kalıyordu — hiçbir rev'den geçerli
-   JSON çıkmadığı için "Buluttaki veri parçaları tutarsız" uyarısı KALICI
-   hâle geliyordu. Artık yeni kayıt eski parçalara hiç dokunmaz:
-     1) yeni rev'in parçaları yazılır (eski set el değmeden durur),
+   PARÇANIN ADI İÇERİĞİNİN HASH'İDİR ve bu kasıtlıdır. Adı <uid>_<rev>_<i>
+   olduğu sürece her kayıt, içerik değişmemiş olsa bile parçaların HEPSİNİ
+   yeni adlarla baştan yazıyordu; üstelik parçalar sabit bayt aralıklarında
+   kesildiği için ortaya eklenen tek bir harf sonraki tüm parçaları kaydırıp
+   gerçekten de değiştiriyordu. Tek bir not düzenlemek birkaç MB'ı yeniden
+   yüklüyor, diğer cihazlar da aynı MB'ları yeniden indiriyordu — "senkronizasyon
+   çok yavaş" şikâyetinin kaynağı buydu. Artık:
+     • kesim noktaları içerikten türetilir → değişmeyen parça bayt bayt aynı kalır,
+     • aynı kalan parçanın adı da aynı kalır → buluta yazılmaz, karşıya inmez.
+   Yarıda kalan kayda karşı korumalar aynen durur — yeni kayıt eski parçalara
+   hiç dokunmaz:
+     1) YENİ olan parçalar yazılır (eski set el değmeden durur),
      2) manifest TEK BAŞINA yazılır → durum tek bir yazımla çevrilir,
-     3) ancak bundan SONRA eski rev'lerin parçaları silinir.
+     3) ancak bundan SONRA artık hiçbir manifestin göstermediği parçalar silinir.
    Kayıt hangi adımda ölürse ölsün okuyucu daima eksiksiz bir set görür.
-   ========================================================= */
+
+   Eski (<uid>_<rev>_<i>) düzendeki bulutlar okunmaya devam eder; ilk yazımda
+   kendiliğinden yeni düzene geçerler. */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
-/* Firestore'un iki sert sınırı var ve İKİSİ DE UTF-8 BAYT cinsinden ölçülür, JS karakteri
-   cinsinden değil:
-     • bir doküman 1.048.576 baytı aşamaz;
-     • bir Commit isteği kaç yazım taşırsa taşısın 10 MiB'ı aşamaz.
-   Durumu karakter sayısına göre bölüp 450 parçayı tek bir batch'e koymak ikisini de deliyordu:
-   içinde gömülü bir FMS PDF'i ya da Storage'ın reddettiği fotoğraflar olan bir durum birkaç MB
-   olur, tek commit 10 MiB'ı aşar ve Firestore TÜM yazımı `invalid-argument` ile reddeder —
-   ekranda görülen "Senkronizasyon hatası: invalid-argument" tam olarak buydu.
-   Bu yüzden: bölme bayta göre yapılır, batch de işlem sayısı kadar bayt bütçesine göre kapanır. */
-const chunkId=(uid,rev,i)=>uid+'_'+rev+'_'+i;   // parça adı rev taşır → yeni kayıt eskisini EZMEZ
-const CHUNK_BYTES=250000;         // parça başına UTF-8 bayt — 1MB doküman sınırının çok altında
+/* PARÇALAMA SABİT ARALIKLA DEĞİL, İÇERİĞE GÖRE YAPILIR — ve parçanın ADI içeriğinin
+   hash'idir. Senkronizasyonun yavaş olmasının asıl sebebi buydu:
+     • parçalar sabit bayt aralıklarında kesildiği için durumun ortasına eklenen tek bir
+       harf kendinden sonraki TÜM parçaların içeriğini bir bayt kaydırıyordu;
+     • parça adı da rev taşıdığı için zaten her kayıtta hepsi yeni adlarla baştan yazılıyordu.
+   Sonuç: bir antrenman notuna dokunmak bile birkaç MB'lık durumun TAMAMINI yeniden
+   yüklüyor, diğer cihazlar da aynı MB'ları yeniden indiriyordu (gömülü fotoğraf/PDF'i olan
+   bir durumda her düzenleme onlarca doküman demekti).
+   Artık kesme noktaları içeriğin kendisinden türetiliyor (gezici/gear hash): bir düzenleme
+   yalnızca dokunduğu parçanın sınırını oynatır, ondan sonrası bayt bayt aynı kalır. Parça
+   adı içeriğin hash'i olduğundan değişmeyen parça buluta HİÇ yazılmaz ve karşı cihaza HİÇ
+   inmez — yalnızca gerçekten değişen 1-2 parça gider.
+   Firestore'un iki sert sınırı korunur (ikisi de UTF-8 BAYT cinsindendir):
+     • bir doküman 1.048.576 baytı aşamaz  → CHUNK_MAX çok altında tutar;
+     • bir Commit isteği 10 MiB'ı aşamaz   → batch bayt bütçesiyle kapanır. */
+const CHUNK_MIN=8*1024;           // en küçük parça (bu bayttan önce kesim aranmaz)
+const CHUNK_BITS=14;              // kesim koşulu: hash'in üst 14 biti sıfır → ~16KB ortalama parça
+const CHUNK_MAX=64*1024;          // en büyük parça — 1MB doküman sınırının çok altında
+const GEAR_WARM=64;               // kesim kararı yalnızca son ~32 bayta baksın diye ısınma payı
 const BATCH_BYTES=4*1024*1024;    // commit başına bayt — 10MiB istek sınırının güvenli altında
 const BATCH_OPS=450;              // bir batch en fazla 500 işlem alır
+const CHUNK_OVERHEAD=300;         // doküman adı + alan adları + h/rev/userId için kaba pay
+const chunkDocId=(uid,h)=>uid+'_'+h;
 const _enc=(typeof TextEncoder!=='undefined')?new TextEncoder():null;
 const _dec=(typeof TextDecoder!=='undefined')?new TextDecoder():null;
-// UTF-8 bayt sınırına göre böler; çok baytlı bir karakterin (Türkçe harf, emoji) ortasından
-// asla kesmez. {c:parça, b:bayt} döner — b, batch bütçesi için yeniden kodlamadan kullanılır.
+/* Gezici hash tablosu. Sabit bir tohumdan üretilir: parçalama TÜM cihazlarda birebir aynı
+   çıkmak zorunda, yoksa aynı içerik farklı parçalara bölünür ve hiçbir şey eşleşmez.
+   LCG'nin ham çıktısındaki düşük bitler düzenlidir; bir karıştırıcıdan geçirilir. */
+const GEAR=(()=>{const g=new Uint32Array(256);let s=0x9E3779B9>>>0;
+  for(let i=0;i<256;i++){
+    s=(Math.imul(s,1664525)+1013904223)>>>0;
+    let x=s;x=Math.imul(x^(x>>>16),0x85EBCA6B)>>>0;x=Math.imul(x^(x>>>13),0xC2B2AE35)>>>0;
+    g[i]=(x^(x>>>16))>>>0;}
+  return g;})();
+/* Parça içeriğinin kimliği: 96 bit hash + uzunluk. Çakışma sessizce veri bozar, bu yüzden
+   tek bir 32-bit hash yetmez; üç bağımsız birikim karıştırılır. */
+const hashBytes=(bytes,from,to)=>{
+  let a=0x811c9dc5>>>0,b=0x9e3779b1>>>0,c=0x85ebca6b>>>0;
+  for(let i=from;i<to;i++){const v=bytes[i];
+    a=Math.imul(a^v,16777619)>>>0;
+    b=(Math.imul(b+v,2654435761)^(b>>>15))>>>0;
+    c=(Math.imul(c^(v+0x9E37),2246822519)+((c<<7)>>>0))>>>0;}
+  const hex=x=>('0000000'+(x>>>0).toString(16)).slice(-8);
+  return hex(a)+hex(b)+hex(c)+(to-from).toString(36);
+};
+const hashString=s=>{   // TextEncoder yoksa (çok eski tarayıcı) karakter kodları üzerinden
+  let a=0x811c9dc5>>>0,b=0x9e3779b1>>>0,c=0x85ebca6b>>>0;
+  for(let i=0;i<s.length;i++){const v=s.charCodeAt(i);
+    a=Math.imul(a^v,16777619)>>>0;
+    b=(Math.imul(b+v,2654435761)^(b>>>15))>>>0;
+    c=(Math.imul(c^(v+0x9E37),2246822519)+((c<<7)>>>0))>>>0;}
+  const hex=x=>('0000000'+(x>>>0).toString(16)).slice(-8);
+  return hex(a)+hex(b)+hex(c)+s.length.toString(36);
+};
+/* İçeriğe göre böler; çok baytlı bir karakterin (Türkçe harf, emoji) ortasından asla kesmez
+   — kesim yalnızca bir karakterin İLK baytında yapılır. {c:parça, b:bayt, h:hash} döner;
+   b batch bütçesi, h de parça adı için yeniden kodlamadan kullanılır. */
 const splitChunks=s=>{
-  if(!_enc||!_dec){   // çok eski tarayıcı: karaktere göre böl, sınırı bayt sayarak koru
-    const a=[];const step=Math.floor(CHUNK_BYTES/4);
-    for(let i=0;i<s.length;i+=step){const c=s.slice(i,i+step);a.push({c,b:c.length*4});}
-    return a.length?a:[{c:'',b:0}];
+  if(!_enc||!_dec){   // çok eski tarayıcı: içerik hash'i yok, sabit adımla böl
+    const a=[];const step=Math.floor(CHUNK_MAX/4);
+    for(let i=0;i<s.length;i+=step){const c=s.slice(i,i+step);a.push({c,b:c.length*4,h:hashString(c)});}
+    return a.length?a:[{c:'',b:0,h:hashString('')}];
   }
   const bytes=_enc.encode(s);
-  if(!bytes.length)return[{c:'',b:0}];
-  const a=[];let i=0;
-  while(i<bytes.length){
-    let end=Math.min(i+CHUNK_BYTES,bytes.length);
-    // 10xxxxxx bir devam baytıdır: karakterin başına gelene kadar geri sar
-    while(end>i&&end<bytes.length&&(bytes[end]&0xC0)===0x80)end--;
-    if(end<=i)end=Math.min(i+CHUNK_BYTES,bytes.length);   // güvenlik ağı (olmaması gerekir)
-    a.push({c:_dec.decode(bytes.subarray(i,end)),b:end-i});
-    i=end;
+  if(!bytes.length)return[{c:'',b:0,h:hashBytes(bytes,0,0)}];
+  const out=[];let start=0;
+  while(start<bytes.length){
+    const hard=Math.min(start+CHUNK_MAX,bytes.length);
+    const from=Math.min(start+CHUNK_MIN,bytes.length);
+    let end=hard;
+    // Hash'i kesim aranan noktadan biraz ÖNCE ısıt: h<<1 sayesinde 32 baytlık kayan pencere
+    // gibi davranır, yani kesim kararı parçanın nerede başladığına değil yalnızca son
+    // baytlara bağlı kalır. Kaymaya dayanıklılığı sağlayan şey budur.
+    let h=0;
+    for(let i=Math.max(start,from-GEAR_WARM);i<from;i++)h=(((h<<1)>>>0)+GEAR[bytes[i]])>>>0;
+    for(let i=from;i<hard;i++){
+      h=(((h<<1)>>>0)+GEAR[bytes[i]])>>>0;
+      if((h>>>(32-CHUNK_BITS))===0&&(bytes[i+1]&0xC0)!==0x80){end=i+1;break;}
+    }
+    // zorunlu kesim: 10xxxxxx bir devam baytıdır → karakterin başına kadar geri sar
+    while(end>start&&end<bytes.length&&(bytes[end]&0xC0)===0x80)end--;
+    if(end<=start)end=hard;   // güvenlik ağı (olmaması gerekir)
+    out.push({c:_dec.decode(bytes.subarray(start,end)),b:end-start,h:hashBytes(bytes,start,end)});
+    start=end;
   }
-  return a;
+  return out;
+};
+/* Aynı nesne için JSON.stringify'ı bir kez yapıp saklar. Durumun tamamı her tuş vuruşunda
+   birkaç kez seri hâle getiriliyordu (debounce karşılaştırması + yazım + dinleyici
+   karşılaştırması); birkaç MB'lık bir durumda bu tek başına yazmayı tutuklaştırıyordu.
+   Kökteki durum nesnesi her değişiklikte yenilendiği (asla yerinde değiştirilmediği) için
+   nesne kimliğine göre önbelleklemek güvenlidir. */
+const _serCache=(typeof WeakMap!=='undefined')?new WeakMap():null;
+const ser=o=>{
+  if(!o||typeof o!=='object'||!_serCache)return JSON.stringify(o);
+  const hit=_serCache.get(o);if(hit!==undefined)return hit;
+  const s=JSON.stringify(o);_serCache.set(o,s);return s;
 };
 
 /* YEREL EMNİYET KOPYASI. Uygulamanın tek deposu buluttu: bulut okunamaz hâle gelirse
@@ -16679,6 +16747,7 @@ function useCloudSync(data,setData){
   const settle=useRef(null);            // tutarsız ara durumu bekleme sayacı (hemen hata basma)
   const healing=useRef(false);          // kurtarma turu uçuşta mı
   const dirty=useRef(false);            // yerelde buluta yazılmamış değişiklik var mı → yeşil ancak bu false iken yanar
+  const lastApplied=useRef(null);       // buluttan gelip ekrana uygulanan son durum nesnesi (boşuna yazım turu açmasın)
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
   const COL='kullanici_verileri';
@@ -16693,8 +16762,8 @@ function useCloudSync(data,setData){
       const snap=await col.where('userId','==',uid).get();
       const dels=[];
       snap.forEach(d=>{const v=d.data();if(!v)return;
-        const isManifest=(d.id===uid&&typeof v.n==='number');
-        const isChunk=(typeof v.i==='number'&&typeof v.c==='string');
+        const isManifest=(d.id===uid&&(Array.isArray(v.ids)||typeof v.n==='number'));
+        const isChunk=(typeof v.c==='string');   // yeni düzen: {c,h}; eski düzen: {i,c,rev}
         if(!isManifest&&!isChunk)dels.push(d.id);});
       for(let i=0;i<dels.length;i+=450){const b=fb.firestore().batch();dels.slice(i,i+450).forEach(id=>b.delete(col.doc(id)));await b.commit();}
     }catch(e){console.warn('cleanup',e);}
@@ -16717,36 +16786,38 @@ function useCloudSync(data,setData){
     }
   };
 
-  // Manifest yeni rev'e geçtikten SONRA eski rev'lerin parçalarını sil. Sıra kritik:
-  // önce silinseydi yarıda kalan bir kayıt, okunabilir tek seti yok ederdi.
-  // Başka bir cihazın DAHA YENİ yazımına (rev >= keepRev) asla dokunmaz.
-  const gcOldChunks=async(fb,uid,keepRev)=>{
+  // Manifest yeni rev'e geçtikten SONRA, artık hiçbir manifestin göstermediği parçaları sil.
+  // Sıra kritik: önce silinseydi yarıda kalan bir kayıt, okunabilir tek seti yok ederdi.
+  // keep: yeni manifestin gösterdiği doküman adları — İÇERİĞİ AYNI KALDIĞI İÇİN yeniden
+  // yazılmamış (dolayısıyla rev'i eski) parçalar da buradadır ve asla silinmez.
+  // Başka bir cihazın DAHA YENİ yazımına (rev >= keepRev) de asla dokunmaz.
+  const gcOldChunks=async(fb,uid,keepRev,keep,known)=>{
     try{
       const col=fb.firestore().collection(COL);
       let dels=[];
       // Canlı dinleyici zaten TÜM dokümanları görüyor; silinecekleri oradan bil → ekstra okuma yok.
-      chunkIds.current.forEach(c=>{if(c.rev<keepRev)dels.push(c.id);});
-      if(!dels.length){
+      known.forEach(c=>{if(c.rev<keepRev&&!keep.has(c.id))dels.push(c.id);});
+      if(!known.length){
         // Dinleyici henüz konuşmadıysa (ör. ilk kayıt) sunucuyu bir kez tara.
         const snap=await col.where('userId','==',uid).get();
         snap.forEach(d=>{const v=d.data();if(!v||d.id===uid)return;                  // manifest hariç
-          if(typeof v.i!=='number'||typeof v.c!=='string')return;                     // parça değil → cleanupLegacy'nin işi
+          if(typeof v.c!=='string')return;                                            // parça değil → cleanupLegacy'nin işi
+          if(keep.has(d.id))return;                                                   // yeni set bunu gösteriyor
           if(((typeof v.rev==='number')?v.rev:0)<keepRev)dels.push(d.id);});
       }
       dels=dels.filter((id,i)=>dels.indexOf(id)===i);
       for(let i=0;i<dels.length;i+=BATCH_OPS)
         await commitOps(fb,col,dels.slice(i,i+BATCH_OPS).map(id=>({del:1,id})));
-      chunkIds.current=chunkIds.current.filter(c=>c.rev>=keepRev);
     }catch(e){console.warn('gc',e);}
   };
 
-  // YAZIM: JSON'u parçalara böl → yeni rev'in parçaları (önce) + manifest (sonra) + eski rev'leri temizle
+  // YAZIM: JSON'u parçalara böl → SADECE bulutta olmayan parçalar + manifest + artık gösterilmeyenleri temizle
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
     if(writing.current){queued.current=true;return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
-    const json=JSON.stringify(dataRef.current);
+    const json=ser(dataRef.current);
     if(json===lastSynced.current){dirty.current=false;setStatus('synced');return;}
     // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
     let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
@@ -16757,22 +16828,39 @@ function useCloudSync(data,setData){
       const col=fb.firestore().collection(COL);
       const parts=splitChunks(json);const n=parts.length;
       let rev=Date.now();if(rev<=lastRev.current)rev=lastRev.current+1;   // rev daima artar (saat geri gitse bile)
-      const OVERHEAD=300;   // doküman adı + alan adları + rev/i/userId için kaba pay
-      // Parçalar yeni rev'in KENDİ dokümanlarına yazılır; eski set olduğu gibi kalır.
+      const ids=parts.map(p=>p.h);
+      const keep=new Set(ids.map(h=>chunkDocId(u.uid,h)));
+      const known=chunkIds.current;                     // silme adayları: yazımdan ÖNCEKİ bulut hâli
+      const have=new Set();known.forEach(c=>have.add(c.id));
+      /* SADECE YENİ OLAN PARÇALAR YAZILIR. Aynı içerik zaten bulutta duruyorsa (adı içeriğinin
+         hash'i olduğu için bunu okumadan biliyoruz) o dokümana hiç dokunulmaz — küçük bir
+         düzenlemede tek bir parça gider, birkaç MB değil. Aynı parça durumda iki kez geçiyorsa
+         (tekrar eden içerik) bir kez yazılır. */
+      const seen=new Set();const news=[];
+      parts.forEach(p=>{
+        const id=chunkDocId(u.uid,p.h);
+        if(seen.has(id)||have.has(id))return;
+        seen.add(id);
+        news.push({id,data:{userId:u.uid,c:p.c,h:p.h,rev},bytes:p.b+CHUNK_OVERHEAD});
+      });
       // Batch hem işlem sayısı hem de bayt bütçesi dolunca kapanır: tek bir commit asla
       // Firestore'un 10 MiB istek sınırına dayanmaz.
       const groups=[];let cur=[],bytes=0;
-      parts.forEach((p,i)=>{
-        const o={id:chunkId(u.uid,rev,i),data:{userId:u.uid,i,c:p.c,rev},bytes:p.b+OVERHEAD};
+      news.forEach(o=>{
         if(cur.length&&(cur.length>=BATCH_OPS||bytes+o.bytes>BATCH_BYTES)){groups.push(cur);cur=[];bytes=0;}
         cur.push(o);bytes+=o.bytes;
       });
       if(cur.length)groups.push(cur);
       for(const g of groups)await commitOps(fb,col,g);
       // Parçaların HEPSİ yerinde → manifest TEK BAŞINA yazılır: durumu çeviren tek atomik adım.
-      await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,n,rev}}]);
+      await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,v:2,n,rev,ids}}]);
       lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
-      gcOldChunks(fb,u.uid,rev);   // eski rev'leri arkada temizle (başarısız olsa da veri sağlam)
+      /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
+         nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
+         yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
+      chunkIds.current=ids.map(h=>({id:chunkDocId(u.uid,h),rev}))
+        .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
+      gcOldChunks(fb,u.uid,rev,keep,known);   // artık gösterilmeyenleri arkada temizle (başarısız olsa da veri sağlam)
     }catch(e){
       console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
       writing.current=false;
@@ -16781,7 +16869,7 @@ function useCloudSync(data,setData){
     }
     writing.current=false;
     // Yazım sürerken yeni değişiklik geldiyse: yeşil YAKMADAN hemen onu da yaz.
-    if(queued.current||JSON.stringify(dataRef.current)!==json){queued.current=false;writeNow();return;}
+    if(queued.current||ser(dataRef.current)!==json){queued.current=false;writeNow();return;}
     dirty.current=false;setStatus('synced');setSyncErr('');   // yeşil = bulut, ekrandaki halin birebir aynısı
   };
 
@@ -16802,6 +16890,21 @@ function useCloudSync(data,setData){
     for(let i=0;i<manifest.n;i++){const ch=g[i];if(!ch)return null;parts.push(ch.c);}
     return parts.join('');
   };
+
+  /* İçerik adresli parçalar: hash → içerik. Manifest'in ids listesi bu haritadan SIRAYLA
+     birleştirilir; biri eksikse null döner (yarıda kalmış yazım ya da henüz inmemiş parça
+     → tutarsız ara durum, beklenir). */
+  const indexByHash=docs=>{const m={};
+    docs.forEach(v=>{if(v&&typeof v.c==='string'&&typeof v.h==='string')m[v.h]=v.c;});return m;};
+  const assembleIds=(manifest,byHash)=>{
+    const ids=manifest.ids;if(!Array.isArray(ids))return null;
+    const parts=[];
+    for(let i=0;i<ids.length;i++){const c=byHash[ids[i]];if(c==null)return null;parts.push(c);}
+    return parts.join('');
+  };
+  // Manifest hangi düzendeyse ondan birleştir: ids varsa içerik adresli (yeni), yoksa rev+indeks (eski).
+  const assembleFrom=(manifest,byHash,byRev)=>
+    Array.isArray(manifest.ids)?assembleIds(manifest,byHash):assemble(manifest,byRev);
 
   // KURTARMA: manifest parçalarla tutuşmuyorsa (yarıda kalmış eski bir yazım), parçaların kendi
   // rev'lerinden en yeni tutarlı seti bul: 0'dan itibaren ardışık parçaları birleştir, JSON.parse
@@ -16857,11 +16960,12 @@ function useCloudSync(data,setData){
     const snap=await fb.firestore().collection(COL).where('userId','==',uid).get({source:'server'});
     let manifest=null;const docs=[];
     snap.forEach(d=>{const v=d.data();if(!v)return;
-      if(d.id===uid&&typeof v.n==='number')manifest=v;else docs.push(v);});
+      if(d.id===uid&&(Array.isArray(v.ids)||typeof v.n==='number'))manifest=v;else docs.push(v);});
     const byRev=groupChunks(docs);
-    const found=Object.keys(byRev).length>0;
+    const byHash=indexByHash(docs);
+    const found=docs.some(v=>v&&typeof v.c==='string');
     if(manifest){
-      const json=assemble(manifest,byRev);
+      const json=assembleFrom(manifest,byHash,byRev);
       if(json!=null)return{json,n:manifest.n,rev:manifest.rev,found,byRev};
     }
     const rec=assembleAny(byRev);
@@ -16883,7 +16987,7 @@ function useCloudSync(data,setData){
         let parsed=null;try{parsed=migrate(JSON.parse(json));}catch(e){}
         if(parsed){
           lastSynced.current=json;prevN.current=n;lastRev.current=Math.max(lastRev.current,rev||0);
-          if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+          if(ser(parsed)!==ser(dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
           lsSave(uid,json);
           dirty.current=false;ready.current=true;setStatus('synced');setSyncErr('');setSyncNote('');
           return;
@@ -16901,7 +17005,7 @@ function useCloudSync(data,setData){
       if(local){
         let lp=null;try{lp=migrate(JSON.parse(local));}catch(e){}
         if(lp&&hasRealData(lp)){
-          dataRef.current=lp;setData(lp);
+          dataRef.current=lp;lastApplied.current=lp;setData(lp);
           ready.current=true;lastSynced.current=null;
           await writeNow();                                   // bulutu bu kopyadan yeniden kur
           if(lastSynced.current!=null)setSyncNote('Buluttaki kayıt yarıda kalmıştı; bu cihazdaki son kopyadan geri yüklendi. Son değişikliklerini gözden geçir.');
@@ -16920,7 +17024,7 @@ function useCloudSync(data,setData){
       const spliced=byRev?spliceRecover(byRev):null;
       if(spliced){
         const sp=migrate(JSON.parse(spliced.json));
-        dataRef.current=sp;setData(sp);
+        dataRef.current=sp;lastApplied.current=sp;setData(sp);
         ready.current=true;lastSynced.current=null;
         await writeNow();
         if(lastSynced.current!=null)setSyncNote('Buluttaki kayıt yarıda kalmıştı; veri parçalardan kurtarıldı. En son yaptığın birkaç değişiklik eksik olabilir — kontrol edip Backup al.');
@@ -16952,7 +17056,7 @@ function useCloudSync(data,setData){
         // Bulutta gerçekten parça yok; yerel durum korunur.
       }else{
         lastSynced.current=json;prevN.current=n;lastRev.current=Math.max(lastRev.current,rev||0);
-        const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);lsSave(u.uid,json);
+        const parsed=migrate(JSON.parse(json));dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);lsSave(u.uid,json);
         dirty.current=false;   // sunucudan çekilen durum uygulandı → yerel bulutla aynı
       }
       ready.current=true;setStatus('synced');setSyncErr('');
@@ -16997,16 +17101,17 @@ function useCloudSync(data,setData){
           if(snap.metadata&&snap.metadata.hasPendingWrites)return;   // kendi yazımımızın yankısı
           let manifest=null,url=null,icerik=null;const chunkDocs=[];const ids=[];const oldDocs=[];
           snap.forEach(d=>{const v=d.data();if(!v)return;
-            if(d.id===user.uid&&typeof v.n==='number')manifest=v;          // yeni: manifest
-            else if(typeof v.i==='number'&&typeof v.c==='string'){chunkDocs.push(v);   // yeni: parça
+            if(d.id===user.uid&&(Array.isArray(v.ids)||typeof v.n==='number'))manifest=v;   // manifest
+            else if(typeof v.c==='string'){chunkDocs.push(v);              // parça (yeni: h, eski: i+rev)
               ids.push({id:d.id,rev:(typeof v.rev==='number')?v.rev:0});}
             else if(typeof v.url==='string')url=v.url;                     // eski: Storage pointer
             else if(typeof v.icerik==='string')icerik=v.icerik;           // eski: tek-doküman
             else oldDocs.push(v);});                                       // eski: per-entity
-          const chunks=groupChunks(chunkDocs);   // rev → {i: parça}
-          chunkIds.current=ids;                  // eski rev'leri sonra bedelsiz silebilmek için
+          const chunks=groupChunks(chunkDocs);       // eski düzen: rev → {i: parça}
+          const byHash=indexByHash(chunkDocs);       // yeni düzen: hash → içerik
+          chunkIds.current=ids;                      // artık gösterilmeyenleri sonra bedelsiz silebilmek için
           if(manifest){
-            let json=assemble(manifest,chunks);
+            let json=assembleFrom(manifest,byHash,chunks);
             let healed=null;
             if(json==null){
               // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
@@ -17030,11 +17135,11 @@ function useCloudSync(data,setData){
             lastSynced.current=json;
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
             lsSave(user.uid,json);   // cihazda emniyet kopyası: bulut bir daha okunamazsa buradan dönülür
-            if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+            if(ser(parsed)!==ser(dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
             dirty.current=false;   // bulut durumu uygulandı → yerel artık bulutla aynı
             setStatus('synced');setSyncErr('');
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
-          }else if(Object.keys(chunks).length){
+          }else if(chunkDocs.length){
             // Parçalar var ama manifest yok (ilk yazım yarıda kalmış ya da manifest silinmiş).
             // "Bulut boş" sanıp üzerine yazmak veriyi uçururdu → parçalardan kurtar, manifesti tazele.
             if(snap.metadata&&snap.metadata.fromCache)return;
@@ -17046,33 +17151,33 @@ function useCloudSync(data,setData){
             if(rec.json!==lastSynced.current){
               lastSynced.current=rec.json;
               let parsed;try{parsed=migrate(JSON.parse(rec.json));}catch(e){return;}
-              if(JSON.stringify(parsed)!==JSON.stringify(dataRef.current)){dataRef.current=parsed;setData(parsed);}
+              if(ser(parsed)!==ser(dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
             }
             dirty.current=false;setStatus('synced');setSyncErr('');
           }else if(oldDocs.length){
             // GEÇİŞ: eski per-entity → parçalı
-            ready.current=true;const state=stateFromOldDocs(oldDocs);dataRef.current=state;setData(state);
+            ready.current=true;const state=stateFromOldDocs(oldDocs);dataRef.current=state;lastApplied.current=state;setData(state);
             if(hasRealData(state)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);}
-            else lastSynced.current=JSON.stringify(state);
+            else lastSynced.current=ser(state);
             setStatus('synced');
           }else if(icerik!=null){
             // GEÇİŞ: ara {icerik} → parçalı
             ready.current=true;let parsed;try{parsed=migrate(JSON.parse(icerik));}catch(e){parsed=makeDefault();}
-            dataRef.current=parsed;setData(parsed);
+            dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);
             if(hasRealData(parsed)){lastSynced.current=null;await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);}
-            else lastSynced.current=JSON.stringify(parsed);
+            else lastSynced.current=ser(parsed);
             setStatus('synced');
           }else if(url){
             // GEÇİŞ: eski Storage pointer → veriyi indirip parçalıya taşımayı DENE
             ready.current=true;
             try{
               const json=await tryDownload(url);
-              lastSynced.current=null;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;setData(parsed);
+              lastSynced.current=null;const parsed=migrate(JSON.parse(json));dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);
               await writeNow();if(lastSynced.current!=null)await cleanupLegacy(fb,user.uid);
               setStatus('synced');
             }catch(e){
               // Storage'dan indirilemedi (403 vb.) → default'u YAZMA (pointer'ı ezme); kullanıcı backup import etsin
-              lastSynced.current=JSON.stringify(dataRef.current);
+              lastSynced.current=ser(dataRef.current);
               setStatus('error');
               setSyncErr('Eski verin önceki sürümde Firebase Storage\'a kaydedilmiş ve oradan indirilemiyor. Kurtarmak için: Firebase Console → Storage → Files → users/'+user.uid+'/state.json dosyasını indir, sonra bu uygulamada Backup → "Load Backup" ile o dosyayı içe aktar. İçe aktarınca veri otomatik olarak yeni (parçalı) sisteme kaydedilir.');
             }
@@ -17081,7 +17186,7 @@ function useCloudSync(data,setData){
             if(snap.metadata&&snap.metadata.fromCache)return;
             ready.current=true;
             if(hasRealData(dataRef.current)){lastSynced.current=null;await writeNow();}
-            else{lastSynced.current=JSON.stringify(dataRef.current);setStatus('synced');}
+            else{lastSynced.current=ser(dataRef.current);setStatus('synced');}
           }
         }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
       },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
@@ -17095,15 +17200,21 @@ function useCloudSync(data,setData){
      Eski sürümlerden kalan gömülü base64 de aynı geçişte dışarı alınıyor. */
   const lifting=useRef(false);
   /* Kurtarma: cihazda dosyası olan her `local:` tutamağı, buluta hiç dokunmadan durumun
-     içine geri yazılır. Yükleme turunu beklemez — fotoğraf, veri gelir gelmez görünür. */
+     içine geri yazılır. Yükleme turunu beklemez — fotoğraf, veri gelir gelmez görünür.
+     Tarama küçük bir gecikmeyle yapılır: `hasLocalHandle` durumun TAMAMINI dolaşır ve bu,
+     her tuş vuruşunda yeniden koşuyordu; yazarken hissedilen takılmanın bir parçası buydu.
+     Geri yazılacak bir şey varsa yarım saniye sonra da orada olacaktır. */
   useEffect(()=>{
     if(!user)return;
-    const cur=dataRef.current;
-    if(!hasLocalHandle(cur))return;         // nothing to put back → no clone, no work
-    const clone=JSON.parse(JSON.stringify(cur));
-    const{restored,missing}=restoreLocalMedia(clone);
-    console.log('media:',restored+' restored from this device,',missing+' still pointing at a file this device does not have',mediaReport(clone));
-    if(restored){dataRef.current=clone;setData(clone);}   // restored handles are gone → this cannot loop
+    const t=setTimeout(()=>{
+      const cur=dataRef.current;
+      if(!hasLocalHandle(cur))return;         // nothing to put back → no clone, no work
+      const clone=JSON.parse(JSON.stringify(cur));
+      const{restored,missing}=restoreLocalMedia(clone);
+      console.log('media:',restored+' restored from this device,',missing+' still pointing at a file this device does not have',mediaReport(clone));
+      if(restored){dataRef.current=clone;setData(clone);}   // restored handles are gone → this cannot loop
+    },500);
+    return()=>clearTimeout(t);
   },[user,data]);
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
@@ -17138,16 +17249,23 @@ function useCloudSync(data,setData){
     return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',onBeforeUnload);};
   },[user]);
 
-  // Düzenlemeleri kısa debounce ile yaz
+  /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:
+     her yazım, durumun tamamını seri hâle getirip parçalamayı gerektirir (birkaç MB'lık bir
+     durumda bu iş görmezden gelinecek kadar ucuz değildir), 120 ms'lik sabit bekleme ise
+     bunu neredeyse her tuş vuruşunda tetikliyordu. Küçük durumlar hâlâ anında gider.
+     Karşılaştırma da artık burada yapılmıyor: eskiden her render'da durumun TAMAMI
+     JSON'a çevrilip lastSynced ile karşılaştırılıyordu — yazacak bir şey olmasa bile.
+     Değişiklik olup olmadığına writeNow zaten (önbellekli seri hâlle) karar veriyor. */
+  const writeDelay=()=>{
+    const len=lastSynced.current?lastSynced.current.length:0;
+    return Math.min(1500,Math.max(150,Math.round(len/4000)));   // ~600KB → 150ms, 4MB → 1s, 6MB+ → 1.5s
+  };
   useEffect(()=>{
     const fb=FB();if(!fb||!user||!ready.current)return;
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
-    if(JSON.stringify(data)===lastSynced.current){
-      if(!writing.current){dirty.current=false;setStatus('synced');}   // geri alınan değişiklik → zaten bulutla aynı
-      return;
-    }
+    if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;setStatus('syncing');
-    timer.current=setTimeout(()=>writeNow(),120);
+    timer.current=setTimeout(()=>writeNow(),writeDelay());
   },[data,user]);
 
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
