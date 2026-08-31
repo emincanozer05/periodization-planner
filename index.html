@@ -8292,7 +8292,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // the moment it is copied — from this calendar or from another athlete's.
   const sesClip=useSessionClipboard();
   const[copied,setCopied]=useState(false);
-  useEffect(()=>{setCopied(false);},[drawerSes&&drawerSes.id]);
+  // "Save to Templates" confirms in place, the way the session editor's button does.
+  const[savedTpl,setSavedTpl]=useState(false);
+  useEffect(()=>{setCopied(false);setSavedTpl(false);},[drawerSes&&drawerSes.id]);
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
   const canEdit=typeof saveDays==='function';
@@ -8776,7 +8778,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         <div className="dw-layout"><div className="dw-left-panel"><MuscleModel session={drawerSes} onPatch={drwUpd} readOnly={!canEdit}/></div>
           <div className="dw-b">
           <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
-            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            {/* Five actions share this row now, so it wraps to a second line on a narrow
+                drawer instead of squashing each label onto two lines. */}
+            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',justifyContent:'flex-end'}}>
               {teamMode&&<button className={`btn sm ${rpeOpen?'':'sec'}`} onClick={()=>setRpeOpen(o=>!o)} title="Each athlete's RPE — the ratings they submitted themselves, and anything you enter here; both sync to their profile">RPE Values</button>}
               {/* Copy the whole training, to be pasted onto another day or another athlete's
                   calendar: the paste button appears on every day column while something is
@@ -8785,7 +8789,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 onClick={()=>{copySessionToClipboard(drawerSes);setCopied(true);}}
                 title={`“${drawerSes.name||'Antrenman'}” panoya kopyalanır — başka bir sporcunun (ya da günün) takviminde gün başlığındaki 📋 ile yapıştır`}>
                 {copied?'✓ Copied':'Copy the Training'}</button>
+              {/* The same two actions the session editor's header carries, so a session
+                  opened from the calendar does not have to be re-opened in the Program tab
+                  to be filed as a template or printed with its exercise images. */}
+              {canEdit&&<button className={'btn sm'+(savedTpl?' outline':' sec')}
+                onClick={()=>{if(saveSessionAsTemplate(drawerSes)){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}}}
+                title="Bu antrenmanı Templates sekmesine kaydet — oradan başka bir takımın ya da sporcunun takvimine yapıştırabilirsin">
+                {savedTpl?'✓ Saved':'Save to Templates'}</button>}
               <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes])} title="Print this session">⎙ Print</button>
+              <button className="btn sec sm" onClick={()=>printDayA4(labelOwner||setup?.teamName||'',fdLong(drawerDate||fmt(today)),[drawerSes],{withImages:true})} title="Print this session including the uploaded exercise images">⎙ Print with Image</button>
             </div>
           </div>
           {teamMode&&rpeOpen&&(()=>{
