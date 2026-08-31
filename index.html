@@ -16561,8 +16561,41 @@ function Backup({data,setData,sync}){
    Storage, indirme URL'i, parça-dışı bağımlılık YOK.
    ========================================================= */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
-const CHUNK_SIZE=400000;   // karakter — her parça <1MB (base64 dahil güvenli)
-const splitChunks=s=>{const a=[];for(let i=0;i<s.length;i+=CHUNK_SIZE)a.push(s.slice(i,i+CHUNK_SIZE));return a.length?a:[''];};
+/* Firestore'un iki sert sınırı var ve İKİSİ DE UTF-8 BAYT cinsinden ölçülür, JS karakteri
+   cinsinden değil:
+     • bir doküman 1.048.576 baytı aşamaz;
+     • bir Commit isteği kaç yazım taşırsa taşısın 10 MiB'ı aşamaz.
+   Durumu karakter sayısına göre bölüp 450 parçayı tek bir batch'e koymak ikisini de deliyordu:
+   içinde gömülü bir FMS PDF'i ya da Storage'ın reddettiği fotoğraflar olan bir durum birkaç MB
+   olur, tek commit 10 MiB'ı aşar ve Firestore TÜM yazımı `invalid-argument` ile reddeder —
+   ekranda görülen "Senkronizasyon hatası: invalid-argument" tam olarak buydu.
+   Bu yüzden: bölme bayta göre yapılır, batch de işlem sayısı kadar bayt bütçesine göre kapanır. */
+const CHUNK_BYTES=250000;         // parça başına UTF-8 bayt — 1MB doküman sınırının çok altında
+const BATCH_BYTES=4*1024*1024;    // commit başına bayt — 10MiB istek sınırının güvenli altında
+const BATCH_OPS=450;              // bir batch en fazla 500 işlem alır
+const _enc=(typeof TextEncoder!=='undefined')?new TextEncoder():null;
+const _dec=(typeof TextDecoder!=='undefined')?new TextDecoder():null;
+// UTF-8 bayt sınırına göre böler; çok baytlı bir karakterin (Türkçe harf, emoji) ortasından
+// asla kesmez. {c:parça, b:bayt} döner — b, batch bütçesi için yeniden kodlamadan kullanılır.
+const splitChunks=s=>{
+  if(!_enc||!_dec){   // çok eski tarayıcı: karaktere göre böl, sınırı bayt sayarak koru
+    const a=[];const step=Math.floor(CHUNK_BYTES/4);
+    for(let i=0;i<s.length;i+=step){const c=s.slice(i,i+step);a.push({c,b:c.length*4});}
+    return a.length?a:[{c:'',b:0}];
+  }
+  const bytes=_enc.encode(s);
+  if(!bytes.length)return[{c:'',b:0}];
+  const a=[];let i=0;
+  while(i<bytes.length){
+    let end=Math.min(i+CHUNK_BYTES,bytes.length);
+    // 10xxxxxx bir devam baytıdır: karakterin başına gelene kadar geri sar
+    while(end>i&&end<bytes.length&&(bytes[end]&0xC0)===0x80)end--;
+    if(end<=i)end=Math.min(i+CHUNK_BYTES,bytes.length);   // güvenlik ağı (olmaması gerekir)
+    a.push({c:_dec.decode(bytes.subarray(i,end)),b:end-i});
+    i=end;
+  }
+  return a;
+};
 
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
 function hasRealData(d){
@@ -16644,16 +16677,23 @@ function useCloudSync(data,setData){
     try{
       const col=fb.firestore().collection(COL);
       const parts=splitChunks(json);const n=parts.length;const rev=Date.now();
+      const OVERHEAD=300;   // doküman adı + alan adları + rev/i/userId için kaba pay
       const ops=[];
-      parts.forEach((c,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c,rev}}));
-      for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i});   // fazlalık eski parçaları sil
-      ops.push({set:1,id:u.uid,data:{userId:u.uid,n,rev}});   // manifest AYNI batch'in SON işlemi → yazım atomik,
-                                                              // yarıda kalan kayıt parça/manifest tutarsızlığı bırakamaz
-      for(let i=0;i<ops.length;i+=450){
-        const b=fb.firestore().batch();
-        ops.slice(i,i+450).forEach(o=>{if(o.set)b.set(col.doc(o.id),o.data);else b.delete(col.doc(o.id));});
-        await b.commit();
+      parts.forEach((p,i)=>ops.push({set:1,id:u.uid+'_'+i,data:{userId:u.uid,i,c:p.c,rev},bytes:p.b+OVERHEAD}));
+      for(let i=n;i<prevN.current;i++)ops.push({del:1,id:u.uid+'_'+i,bytes:OVERHEAD});   // fazlalık eski parçaları sil
+      ops.push({set:1,id:u.uid,data:{userId:u.uid,n,rev},bytes:OVERHEAD});   // manifest SIRADAKİ SON işlem → parçalar
+                                                              // hep manifestten önce yazılır, yarıda kalan kayıt
+                                                              // parça/manifest tutarsızlığı bırakamaz
+      // Batch hem işlem sayısı hem de bayt bütçesi dolunca kapanır: tek bir commit asla
+      // Firestore'un 10 MiB istek sınırına dayanmaz. Sıra korunduğu için manifest yine en son yazılır.
+      let batch=null,cnt=0,bytes=0;
+      for(const o of ops){
+        if(batch&&(cnt>=BATCH_OPS||bytes+o.bytes>BATCH_BYTES)){await batch.commit();batch=null;}
+        if(!batch){batch=fb.firestore().batch();cnt=0;bytes=0;}
+        if(o.set)batch.set(col.doc(o.id),o.data);else batch.delete(col.doc(o.id));
+        cnt++;bytes+=o.bytes;
       }
+      if(batch)await batch.commit();
       prevN.current=n;lastSynced.current=json;
     }catch(e){
       console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
@@ -17206,6 +17246,8 @@ function CloudBar({sync,onOpen}){
   if(!FB())return null;
   if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
   const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
+  // invalid-argument = Firestore yazımı reddetti; pratikte her zaman boyut kaynaklı olur
+  const isSize=syncErr&&(syncErr.includes('invalid-argument')||syncErr.includes('INVALID_ARGUMENT'));
   return(<div style={{width:'100%'}}>
     <div className="team-sw no-italic" style={{gap:8,paddingRight:8}} title={user.email+' · uid:'+user.uid}>
       <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
@@ -17220,6 +17262,10 @@ function CloudBar({sync,onOpen}){
           <>⚠ <b>Firestore izin hatası.</b> Firebase Console → Firestore → Kurallar sekmesine gidip aşağıdaki kuralları yapıştır ve yayınla:<br/>
           <code style={{display:'block',marginTop:4,padding:4,background:'rgba(0,0,0,.3)',borderRadius:4,fontSize:10,whiteSpace:'pre',userSelect:'all'}}>{'rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /kullanici_verileri/{docId} {\n      allow read: if request.auth != null && resource.data.userId == request.auth.uid;\n      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;\n      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;\n    }\n    match /users/{uid}/{doc=**} {\n      allow read, write: if request.auth.uid == uid;\n    }\n  }\n}'}</code>
           </>
+        ):isSize?(
+          <>⚠ <b>Veri paketi Firestore'un kabul ettiğinden büyük.</b> Genelde sebebi duruma gömülü
+          kalmış fotoğraf/PDF'lerdir. Sayfayı yenile — kayıt artık küçük parçalar hâlinde gönderilir.
+          Sürerse Backup sekmesindeki medya kurtarmayı çalıştır ya da çok büyük bir FMS PDF'ini kaldır.</>
         ):(
           <>⚠ Senkronizasyon hatası: <b>{syncErr}</b><br/>Sayfayı yenile veya tekrar giriş yap.</>
         )}
