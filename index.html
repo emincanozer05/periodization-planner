@@ -6437,10 +6437,10 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
      with (title, subtitle, sessions), there is exactly one group and the document is the one
      it has always been. */
   const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
-  const docHead=(t,sub)=>`<div class="doc-head">
+  const docHead=(t,sub)=>`<div class="doc-top"><span><img src="${COACHOS_LOGO}" alt="CoachOS"></span></div>
+<div class="doc-head">
   <div class="doc-l">
-    ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`
-          :`<span class="doc-brand"><img src="${COACHOS_LOGO}" alt="CoachOS"></span>`}
+    ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`:''}
     <div>
       <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
       <h1>${t}</h1>
@@ -6478,11 +6478,39 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
 <style>
 /* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
    (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
-   meant the two outputs never matched. */
-@page{size:A4 portrait;margin:10mm}
+   meant the two outputs never matched.
+
+   Zero page margin, and the 10mm the sheet is set in comes from the body's padding
+   instead. The browser draws its own header and footer — the print date, the document
+   title, the page number, the about:blank URL — inside the page margin, and a sheet a
+   coach hands an athlete should carry the program's branding, not the browser's; with
+   no margin there is nowhere for that strip to go. It also makes the two outputs match
+   for the first time: html2canvas never saw @page at all, so the shared PDF has always
+   run its content to the bare edge of the paper. Padding is honoured by both. */
+@page{size:A4 portrait;margin:0}
 ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em}
+body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
+/* The sides come from the body's padding above, but padding only ever falls at the two
+   ends of the whole document — a program that runs to three pages would start pages two
+   and three hard against the top of the paper, inside the strip most printers cannot
+   print on. A thead and a tfoot are repeated by the browser on every page it breaks
+   onto, so an empty row in each is the one thing that reserves the same band of white
+   at the top and foot of every sheet. */
+.pg-frame{width:100%;border-collapse:collapse}
+.pg-frame>thead{display:table-header-group}
+.pg-frame>tfoot{display:table-footer-group}
+.pg-frame>tbody>tr>td{padding:0;vertical-align:top}
+.pg-pad{height:10mm;padding:0;border:none}
+
+/* The sheet's own masthead, centred across the top where the browser used to print its
+   title strip. It carries the product mark and nothing else: what document this is and
+   whose it is are the two lines directly under it, and repeating either up here would
+   only crowd a header that has to earn its height back in exercises. The wordmark's lime
+   is unreadable straight on white paper, so it keeps the dark ground it was drawn for. */
+.doc-top{display:flex;justify-content:center;margin-bottom:12px}
+.doc-top span{display:inline-flex;align-items:center;background:#111318;border-radius:8px;padding:7px 15px}
+.doc-top img{height:19px;width:auto;display:block}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
 .doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
@@ -6492,10 +6520,6 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    Uploads are capped at 900px (resizePhotoBlob) and never upscaled here, so a low-res logo
    stays at its own size instead of being blown up into a blurry one. */
 .doc-logo{height:auto;width:auto;max-height:78px;max-width:170px;object-fit:contain;flex:none}
-/* Fallback brand chip: the wordmark's lime reads poorly straight on paper, so it sits on the
-   dark ground it was drawn for. */
-.doc-brand{display:inline-flex;align-items:center;background:#111318;border-radius:10px;padding:9px 14px;flex:none}
-.doc-brand img{height:24px;width:auto;display:block}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 .doc-r{text-align:right}
@@ -6580,22 +6604,28 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    width on every exercise, so they line up down the whole page. */
 /* Rounded on all four corners like every other panel in the app, and the radius lives
    here because a border-collapse table cannot clip its own corners. */
-.pres-wrap{margin-top:4px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.pres-wrap{margin-top:5px;border:1px solid #e8edf3;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .pres{width:100%;table-layout:fixed;border-collapse:collapse}
 /* Interior rules only — the frame above draws the outside edge, so no doubled line
-   runs along it. */
-.pres th,.pres td{border-right:1px solid #e8edf3;border-bottom:1px solid #e8edf3;padding:3px 6px;text-align:center;vertical-align:middle}
+   runs along it — and lighter than that frame, so the grid reads as one panel with
+   divisions rather than as six boxed cells. */
+.pres th,.pres td{border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;padding:3px 6px;text-align:center;vertical-align:middle}
 .pres th:last-child,.pres td:last-child{border-right:none}
 .pres tr:last-child th,.pres tr:last-child td{border-bottom:none}
-/* Field labels on a light grey band with black type, in the mono uppercase the sheet's
-   other labels are set in. Smaller than the values they head: they are the form's
-   printing, and what a coach reads off the row is the value. Grey rather than the app's
-   black keeps the label band quiet next to the session header, and saves the toner a
-   solid black strip under every exercise costs on a printed sheet. */
-.pres th{background:#e5e7eb;color:#0a0b0d;font-family:'IBM Plex Mono',monospace;font-size:9px;
-  font-weight:600;text-transform:uppercase;letter-spacing:.6px;line-height:1.25;
-  border-right-color:rgba(15,23,42,.14);border-bottom-color:rgba(15,23,42,.14)}
-.pres tbody td{height:22px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#0f172a}
+/* Field labels in the same mono grey caps every other label on the sheet is set in —
+   the purpose bar's, the document's own — so the grid belongs to the page instead of
+   looking like a spreadsheet pasted onto it. Smaller than the values they head: they
+   are the form's printing, and what a coach reads off the row is the value. */
+.pres th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.7px;line-height:1.3;color:#94a3b8}
+/* The label band is the purpose bar's grey, not a solid one: it sits under every
+   exercise on the page, and anything heavier stripes the whole sheet — and costs the
+   toner a dark strip per exercise on a printout. */
+.pres thead th{background:#f8fafc;border-right-color:#e8edf3;border-bottom-color:#e8edf3}
+.pres tbody td{height:21px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:#0f172a}
+/* Sets and reps carries the block rule's olive: it is the one field an exercise is
+   never written without, and the eye running down a page of these is looking for it. */
+.pres tbody tr:first-child td:first-child{color:#6f7d29;font-weight:700}
 /* Columns are sized to what goes in them rather than split six equal ways: table-layout
    is fixed, so the header row sets them for the whole table. "Set & Reps" needs the room
    to stay on one line (a wrapped label makes the whole band two rows tall), and Load
@@ -6608,6 +6638,10 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .pres thead th:nth-child(4){width:11%}
 .pres thead th:nth-child(5){width:24%}
 .pres thead th:nth-child(6){width:16%}
+/* The Notes label rides in the first column and stays off the band: a grey strip under
+   just one cell of an otherwise white row read as a broken header. Left-aligned, like
+   the note it heads. */
+.pres tr.pres-note th{text-align:left;color:#b0bcca}
 .pres tr.pres-note td{height:24px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
 /* Coaching cues sit under the exercise in grey: the note is where the coach writes what
    the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
@@ -6663,6 +6697,9 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 /* Page footer */
 .page-footer{font-family:'IBM Plex Mono',monospace;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;letter-spacing:.3px}
 </style></head><body>
+<table class="pg-frame"><thead><tr><td class="pg-pad"></td></tr></thead>
+<tfoot><tr><td class="pg-pad"></td></tr></tfoot>
+<tbody><tr><td>
 
 ${groups.map((g,gi)=>`<section class="ath-doc${gi>0?' brk':''}">
 ${docHead(g.title,g.subtitle)}
@@ -6671,6 +6708,7 @@ ${sessionsHTML(g.sessions)}
 
 <div class="page-footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · CoachOS</div>
 
+</td></tr></tbody></table>
 </body></html>`;
 }
 
