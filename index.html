@@ -20140,6 +20140,12 @@ function CheckinInbox({sync,setData}){
 function CheckinPanel({data,setData,team,sync}){
   const user=sync&&sync.user;
   const cfg=team.checkin||{};
+  /* Bulut verisi gelmeden yayımlamak, linkin arkasına BOŞ bir kadro yazmak demek:
+     uygulama açıldığı anda elinde örnek takım vardır, gerçek kadro saniyeler sonra
+     iner. Formu açan sporcu da isim listesi boş bir açılır kutu görür. Bu yüzden
+     yayım, durum bir kez "synced" olana kadar bekler. */
+  const[loaded,setLoaded]=useState(false);
+  useEffect(()=>{if(sync&&sync.status==='synced')setLoaded(true);},[sync&&sync.status]);
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState(null);
   const[copied,setCopied]=useState('');
@@ -20153,16 +20159,17 @@ function CheckinPanel({data,setData,team,sync}){
   /* Kadro değiştiyse linkin arkasındaki kaydı sessizce güncelle: koç bir sporcu
      ekleyip linki tekrar kopyalamayı unutsa bile formdaki liste doğru kalsın. */
   useEffect(()=>{
-    if(!user||!token||cfg.rev===rev)return;
+    if(!user||!loaded||!token||cfg.rev===rev)return;
     let alive=true;
     publishCheckinLink(user.uid,team,token)
       .then(()=>{if(alive)saveCfg({rev,publishedAt:new Date().toISOString()});})
       .catch(e=>{if(alive)setErr((e&&e.message)||String(e));});
     return()=>{alive=false;};
-  },[user,token,rev]);
+  },[user,loaded,token,rev]);
 
   const ensureLink=async()=>{
     if(!user)throw new Error('Önce giriş yap — linkler koç hesabına bağlanıyor.');
+    if(!loaded)throw new Error('Veriler buluttan henüz inmedi. Birkaç saniye bekleyip tekrar dene — yoksa linkin arkasına boş bir kadro yazılır.');
     const t=token||newCheckinToken();
     await publishCheckinLink(user.uid,team,t);
     if(t!==token||cfg.rev!==rev)saveCfg({token:t,rev,publishedAt:new Date().toISOString()});
@@ -20189,6 +20196,19 @@ function CheckinPanel({data,setData,team,sync}){
       const ok=await copyText(url);
       if(!ok)throw new Error('Panoya kopyalanamadı — aşağıdaki adresi elle kopyalayabilirsin.');
       setCopied(kind);setTimeout(()=>setCopied(c=>c===kind?'':c),2500);
+    }catch(e){setErr((e&&e.message)||String(e));}
+    finally{setBusy(false);}
+  };
+  /* Linkin arkasında ŞU AN ne yazdığı: koç bunu görmeden sporcuya link göndermesin.
+     Sayı, en son yayımlanan kadroya göre değil, yayımlanacak kadroya göre gösterilir —
+     ikisi ayrıldığında yukarıdaki etki zaten yeniden yayımlıyor. */
+  const published=(team.athletes||[]).filter(a=>(a.name||'').trim()).length;
+  const republish=async()=>{
+    setErr(null);setBusy(true);
+    try{
+      const t=await ensureLink();
+      saveCfg({token:t,rev,publishedAt:new Date().toISOString()});
+      setCopied('pub');setTimeout(()=>setCopied(c=>c==='pub'?'':c),2500);
     }catch(e){setErr((e&&e.message)||String(e));}
     finally{setBusy(false);}
   };
@@ -20250,8 +20270,8 @@ function CheckinPanel({data,setData,team,sync}){
         {LINK_BTN.map(b=><div key={b.kind} style={{padding:14,background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10}}>
           <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{b.icon} {b.label}</div>
           <div className="help" style={{marginBottom:10}}>{b.hint}</div>
-          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user} style={{width:'100%',justifyContent:'center'}}>
-            {copied===b.kind?'✅ Kopyalandı':(busy?'…':'🔗 Linki kopyala')}
+          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded} style={{width:'100%',justifyContent:'center'}}>
+            {copied===b.kind?'✅ Kopyalandı':(busy?'…':(loaded?'🔗 Linki kopyala':'Veriler yükleniyor…'))}
           </button>
           {token&&<div style={{marginTop:8,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
             <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer"
@@ -20260,7 +20280,21 @@ function CheckinPanel({data,setData,team,sync}){
           </div>}
         </div>)}
       </div>
+      {/* Sporcunun formda göreceği liste bu. Boşsa form işe yaramaz, o yüzden sayı
+          burada yazıyor — koç linki göndermeden önce görsün. */}
       {token&&<div className="row" style={{marginTop:12,gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <span className="help">
+          Linkteki kadro: <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{published} sporcu</b>
+          {cfg.publishedAt?` · son güncelleme ${new Date(cfg.publishedAt).toLocaleString('tr-TR')}`:''}
+          {cfg.rev!==rev?' · kadro değişti, yayımlanıyor…':''}
+        </span>
+        <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>Kadroyu yeniden yayımla</button>
+      </div>}
+      {token&&published===0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+        ⚠️ Linkin arkasındaki kadro <b>boş</b> — formu açan sporcu isim listesi göremez.
+        Bu takımda sporcu varsa <b>Kadroyu yeniden yayımla</b>'ya bas; yoksa önce <b>Athletes</b> ekranından kadroyu ekle.
+      </div>}
+      {token&&<div className="row" style={{marginTop:10,gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <button className="btn sec xs" onClick={resetToken} disabled={busy}>Linkleri yenile (eskileri iptal et)</button>
         <span className="help">Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.</span>
       </div>}
