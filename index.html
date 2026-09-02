@@ -735,6 +735,31 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .mau small{font-size:8px;color:var(--dim);font-weight:500;margin-left:2px}
 /* The per-athlete average, beside the plan's own total and quieter than it. */
 .calm-cell .mau i{font-style:normal;font-size:9.5px;color:var(--text2);font-weight:600}
+/* Season hero — the season picker, with the years it spans set large and faint behind
+   it so which season is on screen reads before anything else on the page. */
+.season-hero{
+  position:relative;overflow:hidden;margin-bottom:18px;padding:20px 24px;border-radius:16px;
+  background:var(--panel-glass),var(--panel);border:1px solid var(--border);
+  backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);
+  box-shadow:var(--glass-hi);
+}
+.season-hero-yr{
+  position:absolute;right:26px;top:50%;transform:translateY(-50%);
+  font-size:92px;font-weight:800;line-height:1;letter-spacing:-.045em;white-space:nowrap;
+  color:var(--text);opacity:.09;pointer-events:none;user-select:none;
+}
+.season-hero-in{position:relative;z-index:1;display:flex;flex-direction:column;gap:9px}
+.season-hero-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.season-pick{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.season-sel{
+  width:auto;min-width:190px;padding:8px 12px;font-size:24px;font-weight:700;letter-spacing:-.01em;
+  background:var(--bg2);border-color:var(--border2);
+}
+.season-hero-meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim)}
+@media(max-width:760px){
+  .season-hero-yr{font-size:52px;right:14px;opacity:.07}
+  .season-sel{font-size:19px;min-width:150px}
+}
 /* Season — top stat row, macrocycle bar, weekly bars, phase list */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 @media(max-width:760px){.stat-row{grid-template-columns:1fr 1fr}}
@@ -2637,7 +2662,8 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 :root{--panel-glass:linear-gradient(transparent,transparent);--glass-hi:0 0 transparent}
 .sidebar{background:var(--bg2)!important}
 header{background:var(--bg2)!important}
-.panel,.stat{background:var(--panel)!important}
+.panel,.stat,.season-hero{background:var(--panel)!important}
+.season-hero{border:1px solid var(--border)!important;box-shadow:none!important}
 .panel,.ap-head{border:1px solid var(--border)!important;box-shadow:none!important}
 /* Inner cards / chips — drop the translucent tint + inset highlight so they're flat & solid too */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{background:var(--panel)!important;border:1px solid var(--border)!important;box-shadow:none!important}
@@ -4855,21 +4881,53 @@ function sessionFromTemplate(t){const s=(t&&t.session)||{};
    DEFAULT DATA & MIGRATION
    ========================================================= */
 function makeDefaultTeam(){
+  const sid=uid();
   return{id:uid(),
     setup:{sport:'Basketball',teamName:'Example BC Senior Squad',athleteCount:14,
       seasonStart:'2026-08-03',seasonEnd:'2027-05-30',
       competitions:[{date:'2026-10-04',name:'Regular Season Opener'},{date:'2026-12-28',name:'Mid-Season Cup'},
         {date:'2027-04-12',name:'Playoffs R1'},{date:'2027-05-24',name:'Championship Final'}],
       model:'block',periods:null},
-    days:{},weekOverrides:{},athletes:[]};
+    days:{},weekOverrides:{},athletes:[],
+    /* One season to start with; the Season tab adds more. */
+    seasons:[{id:sid}],activeSeasonId:sid,seasonData:{}};
 }
 function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t],templates:[]};}
+
+/* =========================================================
+   SEASONS
+   A team plans more than one season, and each one carries its own dates,
+   phases, week plan and sessions. The season being worked on stays exactly
+   where it has always lived — team.setup / team.days / team.weekOverrides —
+   so every other view reads it without knowing seasons exist; the ones not
+   in view are parked in team.seasonData and swapped in when selected.
+   ========================================================= */
+function seasonYears(s){
+  if(!s||!s.seasonStart)return'';
+  const a=parseD(s.seasonStart).getFullYear();
+  const b=s.seasonEnd?parseD(s.seasonEnd).getFullYear():a;
+  return b>a?a+'-'+b:String(a);
+}
+/* The label a season shows: whatever it was renamed to, otherwise the years it spans. */
+function seasonName(team,sn){
+  if(!sn)return'';
+  if(sn.name)return sn.name;
+  const st=sn.id===team.activeSeasonId?team.setup:((team.seasonData||{})[sn.id]||{}).setup;
+  return seasonYears(st)||'Season';
+}
+/* Everything that belongs to one season, lifted out of the team. */
+function seasonSlice(team){return{setup:team.setup,days:team.days||{},weekOverrides:team.weekOverrides||{}};}
 
 function migrateTeam(t){
   if(!t.id)t.id=uid();
   if(!t.setup)t.setup=makeDefaultTeam().setup;
   if(!('periods'in t.setup))t.setup.periods=null;
   if(!t.days)t.days={};if(!t.weekOverrides)t.weekOverrides={};if(!t.athletes)t.athletes=[];
+  /* Teams saved before seasons existed hold exactly one season — the one in t.setup. */
+  if(!t.seasonData)t.seasonData={};
+  if(!Array.isArray(t.seasons)||!t.seasons.length)t.seasons=[{id:uid()}];
+  if(!t.seasons.some(sn=>sn.id===t.activeSeasonId))t.activeSeasonId=t.seasons[0].id;
+  delete t.seasonData[t.activeSeasonId];
   // Per-team form-sync config (each team connects its own Tally forms via a Worker).
   if(!t.tallySync){
     // migrate from the old Notion config if present, otherwise start fresh
@@ -7512,12 +7570,63 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const loadMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>(d.sessions||[]).forEach(ses=>{const k=ses.loadType||'—';t[k]=(t[k]||0)+1;}));
     const tot=Object.values(t).reduce((a,b)=>a+b,0);
     return{tot,rows:Object.entries(t).map(([k,v])=>({label:k,n:v,pct:tot?v/tot*100:0})).sort((a,b)=>b.n-a.n)};},[team.days]);
+  /* Season switching. The season on screen keeps living in team.setup/days/weekOverrides,
+     so moving to another one parks the current slice in seasonData and lifts the target's
+     slice into its place — one write, and every other view follows along. */
+  const seasons=team.seasons||[];
+  const activeId=team.activeSeasonId;
+  const switchSeason=id=>{
+    if(!id||id===activeId)return;
+    const store={...(team.seasonData||{})};
+    store[activeId]=seasonSlice(team);
+    const nx=store[id];if(!nx)return;
+    delete store[id];
+    updateTeam(team.id,{seasonData:store,activeSeasonId:id,setup:nx.setup,days:nx.days||{},weekOverrides:nx.weekOverrides||{}});
+  };
+  /* A new season starts as this one shifted a year on — same sport, same competition
+     rhythm, empty plan — which is the edit a coach would otherwise do by hand. */
+  const addSeason=()=>{
+    const sh=ds=>{if(!ds)return ds;const d=parseD(ds);return fmt(new Date(d.getFullYear()+1,d.getMonth(),d.getDate()));};
+    const ns={...s,seasonStart:sh(s.seasonStart),seasonEnd:sh(s.seasonEnd),
+      competitions:(s.competitions||[]).map(c=>({...c,date:sh(c.date)})),periods:null};
+    const id=uid();
+    const store={...(team.seasonData||{})};
+    store[activeId]=seasonSlice(team);
+    updateTeam(team.id,{seasons:[...seasons,{id}],seasonData:store,activeSeasonId:id,
+      setup:ns,days:{},weekOverrides:{}});
+  };
+  const renameSeason=()=>{
+    const cur=seasons.find(sn=>sn.id===activeId);if(!cur)return;
+    const n=prompt('Season name',seasonName(team,cur));if(n===null)return;
+    updateTeam(team.id,{seasons:seasons.map(sn=>sn.id===activeId?{...sn,name:n.trim()||undefined}:sn)});
+  };
+  const removeSeason=()=>{
+    if(seasons.length<2)return;
+    const cur=seasons.find(sn=>sn.id===activeId);
+    if(!confirm('Delete season "'+seasonName(team,cur)+'" with its whole plan? This cannot be undone.'))return;
+    const rest=seasons.filter(sn=>sn.id!==activeId);
+    const store={...(team.seasonData||{})};
+    const nid=rest[0].id;const nx=store[nid]||{};delete store[nid];
+    updateTeam(team.id,{seasons:rest,seasonData:store,activeSeasonId:nid,
+      setup:nx.setup||s,days:nx.days||{},weekOverrides:nx.weekOverrides||{}});
+  };
+  const activeSeason=seasons.find(sn=>sn.id===activeId);
+  const heroYears=seasonYears(s)||seasonName(team,activeSeason);
   return(<div>
-    <div className="stat-row">
-      <div className="stat"><div className="k">Season</div><div className="v">{weeks.length} wks</div></div>
-      <div className="stat"><div className="k">Model</div><div className="v">{(MODELS.find(m=>m.id===s.model)?.name)||s.model}</div></div>
-      <div className="stat"><div className="k">Phases</div><div className="v">{periods.length}</div></div>
-      <div className="stat"><div className="k">Athletes</div><div className="v">{athleteCount}</div></div>
+    <div className="season-hero">
+      <div className="season-hero-yr" aria-hidden="true">{heroYears}</div>
+      <div className="season-hero-in">
+        <div className="season-hero-k">Season</div>
+        <div className="season-pick">
+          <select className="season-sel" value={activeId||''} onChange={e=>switchSeason(e.target.value)} title="Switch season">
+            {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
+          </select>
+          <button className="btn sec sm" onClick={addSeason}>+ New season</button>
+          <button className="btn sec sm" onClick={renameSeason}>Rename</button>
+          {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>Delete</button>}
+        </div>
+        <div className="season-hero-meta">{weeks.length} wks · {(MODELS.find(m=>m.id===s.model)?.name)||s.model} · {periods.length} phases · {athleteCount} athletes</div>
+      </div>
     </div>
     {(()=>{
       /* The chart used to start at today, which chopped off whatever a phase had already
