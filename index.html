@@ -19705,6 +19705,7 @@ const NAV_ICONS={
   tally:<NIc><path d="M20 11a8 8 0 0 0-14-4.6L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14 4.6L20 16"/><path d="M20 20v-4h-4"/></NIc>,
   backup:<NIc><path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19.5h14"/></NIc>,
   tempo:<NIc><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></NIc>,
+  checkin:<NIc><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8.5 9.5h7"/><path d="M8.5 13.5h4.5"/><path d="M14.5 17.5l1.8 1.8 3.2-3.6"/></NIc>,
 };
 /* =========================================================
    AI COACH ASSISTANT — talks to the Claude Messages API directly
@@ -19921,6 +19922,499 @@ function AICoach({data,setData,team}){
   </>);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHECK-IN FORMLARI — uygulamanın kendi anketleri (Tally'siz yol)
+
+   Koç iki linki kopyalar ve sporculara yollar:
+     checkin.html#k=<token>&f=srpe       → antrenman sonrası içsel yük (sRPE)
+     checkin.html#k=<token>&f=wellness   → sabah wellness
+
+   Token TAKIM başınadır ve `checkin_links/<token>` dokümanına bakar; o doküman
+   takımın adını ve kadroyu taşır, sporcu listeden kendi adını seçer. Seçilen ad bir
+   sporcu KİMLİĞİ taşıdığı için Tally'deki "eşleşmeyen isim atlandı" derdi burada yok.
+
+   Sporcunun gönderimi `checkins` koleksiyonuna düşer; aşağıdaki CheckinInbox bunu
+   dinler, sporcunun günlüğüne işler ve — durum buluta yazıldıktan SONRA — dokümanı
+   siler. Sıra bu yüzden önemli: silmeyi yazımdan önce yapmak, tarayıcı o arada
+   kapandığında check-in'i hiçbir yerde bırakmaz.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const CHECKIN_LINKS='checkin_links', CHECKIN_COL='checkins';
+/* İşlenen gönderim hemen silinmez. Birleştirme aynı sonucu veren (idempotent) bir iş
+   olduğu için ikinci kez işlenmesi zararsız; buna karşılık gönderimi yazımdan önce
+   silmek, tarayıcı o arada kapandığında check-in'i hiçbir yerde bırakmaz. Bu yüzden
+   doküman birkaç dakika daha durur ve ancak durum buluta yazıldıktan sonra süpürülür.
+   Aynı pencere koçun ikinci cihazının da aynı gönderimi görmesine izin verir. */
+const CHECKIN_KEEP_MS=10*60*1000;
+
+// Tahmin edilemez adres: 128 bit rastgele, URL'de sorunsuz taşınan alfabeyle.
+function newCheckinToken(){
+  const abc='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  let out='';
+  try{
+    const buf=new Uint8Array(22);crypto.getRandomValues(buf);
+    for(const b of buf)out+=abc[b%abc.length];
+  }catch(e){
+    for(let i=0;i<22;i++)out+=abc[Math.floor(Math.random()*abc.length)];
+  }
+  return out;
+}
+// Sporcunun açacağı adres. Uygulama hangi klasörde duruyorsa checkin.html onun yanında.
+function checkinUrl(token,kind){
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  return `${base}checkin.html#k=${encodeURIComponent(token)}&f=${kind}`;
+}
+/* Linkin arkasındaki kaydın kadroyla aynı olup olmadığını söyleyen damga. Kadro
+   değişince (sporcu eklendi/çıktı/adı düzeltildi) doküman yeniden yayımlanır —
+   yoksa formdaki isim listesi eskide kalır. */
+function checkinRev(team){
+  const parts=[(team.setup&&team.setup.teamName)||''];
+  (team.athletes||[]).forEach(a=>parts.push(a.id+':'+(a.name||'').trim()));
+  const s=parts.join('|');
+  let h=5381;
+  for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;
+  return h.toString(36)+'.'+(team.athletes||[]).length;
+}
+async function publishCheckinLink(uid,team,token){
+  const fb=FB();
+  if(!fb)throw new Error('Bulut bağlantısı yok.');
+  if(!uid)throw new Error('Önce giriş yapmalısın — link koç hesabına bağlanıyor.');
+  await fb.firestore().collection(CHECKIN_LINKS).doc(token).set({
+    coachUid:uid,teamId:team.id,
+    teamName:(team.setup&&team.setup.teamName)||'',
+    athletes:(team.athletes||[]).map(a=>({id:a.id,name:(a.name||'').trim()})).filter(a=>a.name),
+    rev:checkinRev(team),updatedAt:new Date().toISOString(),
+  });
+}
+
+/* Bir gönderim → sporcunun günlüğündeki kayıt. srcId sporcu+tarih+tür'den türetilir:
+   aynı gün ikinci kez dolduran sporcunun cevabı ESKİSİNİN ÜZERİNE yazılır, yeni bir
+   satır açmaz — ve aynı doküman ikinci kez işlense de sonuç değişmez. */
+function checkinSrcId(kind,athleteId,date){
+  return `ci-${kind==='wellness'?'w':'srpe'}-${athleteId}-${date}`;
+}
+function mergeCheckins(team,docs){
+  if(!docs.length)return null;
+  const byId=new Map((team.athletes||[]).map((a,i)=>[a.id,i]));
+  const byName=new Map((team.athletes||[]).map((a,i)=>[NORM(a.name),i]));
+  let athletes=null,touched=0,unknown=0;
+  const clone=i=>{
+    if(!athletes)athletes=(team.athletes||[]).map(a=>({...a}));
+    const a=athletes[i];
+    if(!a._ciCloned){athletes[i]={...a,srpeLog:[...(a.srpeLog||[])],wellness:[...(a.wellness||[])],_ciCloned:1};}
+    return athletes[i];
+  };
+  /* Gönderimler açık bir uçtan geliyor: link'i bilen herkes yazabilir. Kurallar
+     dokümanın şeklini kontrol eder ama içindeki sayıların makul olduğunu kontrol edemez,
+     bu yüzden sınırlar burada uygulanır — koçun grafiklerine 10.000'lik bir RPE ya da
+     kilometrelerce uzunlukta bir bölge adı girmesin. */
+  const clamp=(v,lo,hi)=>{
+    if(v==null||v===''||isNaN(Number(v)))return null;
+    const n=Number(v);
+    return n<lo?lo:(n>hi?hi:n);
+  };
+  const num=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v);
+  for(const d of docs){
+    if(d.teamId!==team.id)continue;
+    /* Kimlik önce: sporcu formda kendi adını seçtiği için kimlik zaten elimizde.
+       Ad, yalnızca kadro kimliği değiştiyse (dışa/içe aktarma) devreye giren yedek yol. */
+    let i=byId.has(d.athleteId)?byId.get(d.athleteId):(byName.has(NORM(d.athleteName))?byName.get(NORM(d.athleteName)):-1);
+    if(i<0){unknown++;continue;}
+    const p=d.payload||{},date=d.date;
+    const at=d.at&&d.at.toDate?d.at.toDate().toISOString():(d.atIso||null);
+    if(d.kind==='srpe'){
+      const nid=checkinSrcId('srpe',d.athleteId,date);
+      const ath=clone(i);
+      // Koç bu check-in'i silmişse geri getirme — mezar taşı Tally yolundakiyle aynı.
+      if((ath.deletedSrpeSrcIds||[]).includes(nid))continue;
+      const tpRPE=clamp(p.tpRPE,0,10),tpDur=clamp(p.tpDuration,0,400);
+      const scRPE=clamp(p.scRPE,0,10),scDur=clamp(p.scDuration,0,400);
+      const gmRPE=clamp(p.gameRPE,0,10),gmDur=clamp(p.gameDuration,0,400);
+      const tpLoad=tpRPE&&tpDur?tpRPE*tpDur:null;
+      const scLoad=scRPE&&scDur?scRPE*scDur:null;
+      const gmLoad=gmRPE&&gmDur?gmRPE*gmDur:null;
+      const total=((tpLoad||0)+(scLoad||0)+(gmLoad||0))||null;
+      const entry={id:uid(),srcId:nid,date,submittedAt:at,
+        tpRPE,tpDuration:tpDur,tpLoad:tpLoad?Math.round(tpLoad):null,
+        scRPE,scDuration:scDur,scLoad:scLoad?Math.round(scLoad):null,
+        gameRPE:gmRPE,gameDuration:gmDur,gameLoad:gmLoad?Math.round(gmLoad):null,
+        totalLoad:total?Math.round(total):null};
+      const k=ath.srpeLog.findIndex(e=>(e.srcId||e.notionId)===nid);
+      if(k>=0){entry.id=ath.srpeLog[k].id;ath.srpeLog[k]=entry;}else ath.srpeLog.push(entry);
+      touched++;
+    }else if(d.kind==='wellness'){
+      const nid=checkinSrcId('wellness',d.athleteId,date);
+      const ath=clone(i);
+      const sleep=clamp(p.sleep,1,5),fat=clamp(p.fatigue,1,5),sor=clamp(p.soreness,1,5),rhr=clamp(p.RHR,20,250);
+      const sc=[sleep,fat,sor].filter(v=>v!=null);
+      const readiness=sc.length?+(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):null;
+      // Bölge → şiddet. Sporcu şiddeti kendi işaretlediği için tahmine gerek yok.
+      let painMap=null;
+      const pm=(p.painMap&&typeof p.painMap==='object')?p.painMap:{};
+      Object.keys(pm).slice(0,40).forEach(raw=>{
+        const rg=String(raw||'').trim().slice(0,40);
+        const sev=clamp(pm[raw],1,3);
+        if(!rg||!sev)return;
+        (painMap||(painMap={}))[rg]=Math.round(sev);
+      });
+      const entry={id:uid(),srcId:nid,date,submittedAt:at,
+        RHR:rhr,sleep,fatigue:fat,soreness:sor,
+        areaOfPain:'',painMap,pain:painTagsFromMap(painMap),readiness};
+      const k=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
+      if(k>=0){
+        /* Koçun elle düzelttiği alanlar yeniden gönderimde de korunur — Tally yolundaki
+           kuralın aynısı, yoksa koçun düzeltmesi sessizce geri alınırdı. */
+        const prev=ath.wellness[k],kept=prev.manualEdits||[];
+        if(kept.length){
+          kept.forEach(f=>{entry[f]=prev[f];});
+          entry.manualEdits=kept;
+          if(!kept.includes('readiness')){
+            const sc2=['sleep','fatigue','soreness'].map(f=>num(entry[f])).filter(v=>v!=null);
+            entry.readiness=sc2.length?+(sc2.reduce((a,b)=>a+b,0)/sc2.length).toFixed(1):null;
+          }
+        }
+        entry.id=prev.id;ath.wellness[k]=entry;
+      }else ath.wellness.push(entry);
+      touched++;
+    }
+  }
+  if(!athletes)return null;
+  athletes=athletes.map(a=>{const{_ciCloned,...rest}=a;return rest;});
+  return{athletes,touched,unknown};
+}
+
+/* Gelen kutusu. Hiçbir şey çizmez; koç uygulamayı açtığı sürece sporcuların
+   gönderimlerini dinler ve günlüğe işler. */
+function CheckinInbox({sync,setData}){
+  const user=sync&&sync.user,status=sync&&sync.status;
+  // Buluttan ilk yükleme bitmeden yazmaya kalkmak, boş bir duruma check-in yazıp onu
+  // geri göndermek demek olurdu. Bir kez "synced" görene kadar beklenir.
+  const[ready,setReady]=useState(false);
+  useEffect(()=>{if(status==='synced')setReady(true);},[status]);
+  useEffect(()=>{if(!user)setReady(false);},[user]);
+  // Süpürme, durum yeşilken (= ekrandaki hâl buluta yazılmışken) yapılır.
+  const statusRef=useRef(status);statusRef.current=status;
+  const seen=useRef([]);              // son anlık görüntüdeki dokümanlar
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb||!user||!ready)return;
+    let alive=true;
+    const col=fb.firestore().collection(CHECKIN_COL);
+    /* Yaşı geçmiş ve işlenmiş gönderimleri temizle. Sunucu damgası henüz gelmemiş
+       (yeni yazılmış) doküman bekletilir — yaşını bilmeden silmek, işlenmeden silmek
+       riskini taşır. */
+    const sweep=()=>{
+      if(statusRef.current!=='synced')return;
+      const now=Date.now();
+      seen.current.filter(d=>{
+        const t=d.at&&d.at.toDate?d.at.toDate().getTime():null;
+        return t!=null&&now-t>CHECKIN_KEEP_MS;
+      }).forEach(d=>col.doc(d._docId).delete().catch(()=>{}));
+    };
+    const unsub=col.where('coachUid','==',user.uid).onSnapshot(snap=>{
+      if(!alive)return;
+      const docs=[];
+      snap.forEach(d=>{const v=d.data();if(v)docs.push({...v,_docId:d.id});});
+      seen.current=docs;
+      if(docs.length)setData(prev=>{
+        let changed=false;
+        const teams=(prev.teams||[]).map(t=>{
+          const mine=docs.filter(d=>d.teamId===t.id);
+          if(!mine.length)return t;
+          const res=mergeCheckins(t,mine);
+          if(!res||!res.touched)return t;
+          changed=true;
+          return{...t,athletes:res.athletes};
+        });
+        return changed?{...prev,teams}:prev;
+      });
+      sweep();
+    },e=>console.warn('checkin inbox',e));
+    const iv=setInterval(sweep,5*60*1000);
+    return()=>{alive=false;clearInterval(iv);unsub();};
+  },[user,ready,setData]);
+  return null;
+}
+
+/* ── Check-in ekranı: iki link düğmesi + günün özeti ────────────────────── */
+function CheckinPanel({data,setData,team,sync}){
+  const user=sync&&sync.user;
+  const cfg=team.checkin||{};
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState(null);
+  const[copied,setCopied]=useState('');
+  const[date,setDate]=useState(()=>fmt(today));
+  const rev=checkinRev(team);
+  const token=cfg.token||null;
+
+  const saveCfg=upd=>setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>
+    t.id===team.id?{...t,checkin:{...(t.checkin||{}),...upd}}:t)}));
+
+  /* Kadro değiştiyse linkin arkasındaki kaydı sessizce güncelle: koç bir sporcu
+     ekleyip linki tekrar kopyalamayı unutsa bile formdaki liste doğru kalsın. */
+  useEffect(()=>{
+    if(!user||!token||cfg.rev===rev)return;
+    let alive=true;
+    publishCheckinLink(user.uid,team,token)
+      .then(()=>{if(alive)saveCfg({rev,publishedAt:new Date().toISOString()});})
+      .catch(e=>{if(alive)setErr((e&&e.message)||String(e));});
+    return()=>{alive=false;};
+  },[user,token,rev]);
+
+  const ensureLink=async()=>{
+    if(!user)throw new Error('Önce giriş yap — linkler koç hesabına bağlanıyor.');
+    const t=token||newCheckinToken();
+    await publishCheckinLink(user.uid,team,t);
+    if(t!==token||cfg.rev!==rev)saveCfg({token:t,rev,publishedAt:new Date().toISOString()});
+    return t;
+  };
+  const copyText=async txt=>{
+    try{await navigator.clipboard.writeText(txt);return true;}
+    catch(e){
+      // clipboard API'si yoksa (http, eski tarayıcı) klasik yol.
+      try{
+        const ta=document.createElement('textarea');
+        ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();
+        const ok=document.execCommand('copy');document.body.removeChild(ta);
+        return ok;
+      }catch(e2){return false;}
+    }
+  };
+  const copyLink=async kind=>{
+    setErr(null);setBusy(true);
+    try{
+      const t=await ensureLink();
+      const url=checkinUrl(t,kind);
+      const ok=await copyText(url);
+      if(!ok)throw new Error('Panoya kopyalanamadı — aşağıdaki adresi elle kopyalayabilirsin.');
+      setCopied(kind);setTimeout(()=>setCopied(c=>c===kind?'':c),2500);
+    }catch(e){setErr((e&&e.message)||String(e));}
+    finally{setBusy(false);}
+  };
+  const resetToken=async()=>{
+    if(!confirm('Eski linkler çalışmayı bırakacak ve sporculara yeni link göndermen gerekecek. Devam edilsin mi?'))return;
+    setErr(null);setBusy(true);
+    try{
+      const t=newCheckinToken();
+      await publishCheckinLink(user.uid,team,t);
+      const fb=FB();
+      if(fb&&token)await fb.firestore().collection(CHECKIN_LINKS).doc(token).delete().catch(()=>{});
+      saveCfg({token:t,rev,publishedAt:new Date().toISOString()});
+      setCopied('');
+    }catch(e){setErr((e&&e.message)||String(e));}
+    finally{setBusy(false);}
+  };
+
+  /* ── Özet: seçili gün kim doldurdu, kim doldurmadı ── */
+  const athletes=(team.athletes||[]).filter(a=>(a.name||'').trim());
+  const rows=useMemo(()=>athletes.map(a=>{
+    const s=(a.srpeLog||[]).filter(e=>e.date===date);
+    const w=(a.wellness||[]).filter(e=>e.date===date);
+    const last=arr=>arr.length?arr[arr.length-1]:null;
+    return{a,srpe:last(s),well:last(w)};
+  }),[athletes,date]);
+  const nS=rows.filter(r=>r.srpe).length,nW=rows.filter(r=>r.well).length;
+  const missing=kind=>rows.filter(r=>!(kind==='srpe'?r.srpe:r.well)).map(r=>r.a.name);
+  // Son 7 gün: kaç kişi doldurdu — katılımın düştüğü günü tek bakışta gösterir.
+  const week=useMemo(()=>Array.from({length:7},(_,i)=>{
+    const d=fmt(addD(parseD(date),-6+i));
+    return{d,s:athletes.filter(a=>(a.srpeLog||[]).some(e=>e.date===d)).length,
+             w:athletes.filter(a=>(a.wellness||[]).some(e=>e.date===d)).length};
+  }),[athletes,date]);
+  const hhmm=v=>{if(!v)return null;const t=new Date(v);return isNaN(t)?null:t.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});};
+  const shiftDay=n=>setDate(d=>fmt(addD(parseD(d),n)));
+
+  const LINK_BTN=[
+    {kind:'srpe',label:'Antrenman sonrası — İçsel Yük (RPE)',icon:'🏃',
+     hint:'Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.'},
+    {kind:'wellness',label:'Sabah — Wellness',icon:'🌅',
+     hint:'Sabah at. Dinlenik KAH, uyku, yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.'},
+  ];
+
+  return(<div>
+    <div className="panel">
+      <h2>Check-in Formları</h2>
+      <div className="help" style={{marginBottom:14}}>
+        Sporcularının dolduracağı iki form. Düğmeye bas → link panoya kopyalanır → WhatsApp
+        grubuna yapıştır. Sporcu formda kendi adını seçer, gönderir; cevap sen uygulamayı
+        açtığında <b>anında</b> sporcunun günlüğüne düşer — senkron beklemeden.
+      </div>
+      {!user&&<div style={{marginBottom:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+        ⚠️ Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.
+      </div>}
+      {err&&<div style={{marginBottom:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
+        ❌ {err}
+      </div>}
+      <div className="grid cols-2" style={{gap:12}}>
+        {LINK_BTN.map(b=><div key={b.kind} style={{padding:14,background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10}}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{b.icon} {b.label}</div>
+          <div className="help" style={{marginBottom:10}}>{b.hint}</div>
+          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user} style={{width:'100%',justifyContent:'center'}}>
+            {copied===b.kind?'✅ Kopyalandı':(busy?'…':'🔗 Linki kopyala')}
+          </button>
+          {token&&<div style={{marginTop:8,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer"
+               style={{fontSize:12,color:'var(--accent2)'}}>Formu aç / önizle</a>
+            <code style={{fontSize:10,color:'var(--muted)',wordBreak:'break-all',userSelect:'all'}}>{checkinUrl(token,b.kind)}</code>
+          </div>}
+        </div>)}
+      </div>
+      {token&&<div className="row" style={{marginTop:12,gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <button className="btn sec xs" onClick={resetToken} disabled={busy}>Linkleri yenile (eskileri iptal et)</button>
+        <span className="help">Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.</span>
+      </div>}
+    </div>
+
+    <div className="panel">
+      <h2>Günün Özeti</h2>
+      <div className="row" style={{gap:8,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
+        <button className="btn sec xs" onClick={()=>shiftDay(-1)}>‹</button>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value||fmt(today))} style={{maxWidth:170}}/>
+        <button className="btn sec xs" onClick={()=>shiftDay(1)}>›</button>
+        <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>Bugün</button>
+        <span className="help">{fd(date)}</span>
+      </div>
+      <div className="metrics">
+        <div className={`metric ${nS===0?'':(nS>=athletes.length?'ok':'')}`}>
+          <div className="ml">İçsel Yük (RPE)</div>
+          <div className="mv">{nS} / {athletes.length}</div>
+          <div className="mh">{athletes.length-nS} kişi doldurmadı</div>
+        </div>
+        <div className={`metric ${nW===0?'':(nW>=athletes.length?'ok':'')}`}>
+          <div className="ml">Wellness</div>
+          <div className="mv">{nW} / {athletes.length}</div>
+          <div className="mh">{athletes.length-nW} kişi doldurmadı</div>
+        </div>
+        <div className="metric">
+          <div className="ml">Kadro</div>
+          <div className="mv">{athletes.length}</div>
+          <div className="mh">Bu takımdaki sporcu</div>
+        </div>
+      </div>
+
+      {athletes.length>0&&<>
+        <div className="row" style={{marginTop:14,gap:8,flexWrap:'wrap'}}>
+          {['srpe','wellness'].map(k=>{
+            const names=missing(k);
+            if(!names.length)return null;
+            return<button key={k} className="btn sec xs" onClick={async()=>{
+              const ok=await copyText(names.join(', '));
+              if(ok){setCopied('miss-'+k);setTimeout(()=>setCopied(c=>c==='miss-'+k?'':c),2500);}
+            }}>
+              {copied==='miss-'+k?'✅ Kopyalandı':`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`}
+            </button>;
+          })}
+        </div>
+        <table style={{marginTop:12}}>
+          <thead><tr><th style={{textAlign:'left'}}>Sporcu</th><th>İçsel Yük</th><th>Wellness</th></tr></thead>
+          <tbody>
+            {rows.map(({a,srpe,well})=><tr key={a.id}>
+              <td style={{fontWeight:600}}>{a.name}</td>
+              <td style={{textAlign:'center'}}>
+                {srpe?<span style={{color:'var(--accent2)'}}>✅{srpe.totalLoad?<span style={{color:'var(--muted)',fontSize:11}}> {srpe.totalLoad} AU</span>:null}
+                  {hhmm(srpe.submittedAt)?<span style={{color:'var(--muted)',fontSize:11}}> · {hhmm(srpe.submittedAt)}</span>:null}</span>
+                  :<span style={{color:'var(--muted)'}}>—</span>}
+              </td>
+              <td style={{textAlign:'center'}}>
+                {well?<span style={{color:'var(--accent2)'}}>✅{well.readiness!=null?<span style={{color:'var(--muted)',fontSize:11}}> {well.readiness}</span>:null}
+                  {hhmm(well.submittedAt)?<span style={{color:'var(--muted)',fontSize:11}}> · {hhmm(well.submittedAt)}</span>:null}</span>
+                  :<span style={{color:'var(--muted)'}}>—</span>}
+              </td>
+            </tr>)}
+          </tbody>
+        </table>
+        <h3 style={{fontSize:13,margin:'18px 0 8px',color:'var(--accent2)'}}>Son 7 gün</h3>
+        <table style={{maxWidth:560}}>
+          <thead><tr><th style={{textAlign:'left'}}>Gün</th><th>İçsel Yük</th><th>Wellness</th></tr></thead>
+          <tbody>
+            {week.map(w=><tr key={w.d} style={w.d===date?{background:'var(--elevated)'}:null}>
+              <td>{fd(w.d)}</td>
+              <td style={{textAlign:'center'}}>{w.s} / {athletes.length}</td>
+              <td style={{textAlign:'center'}}>{w.w} / {athletes.length}</td>
+            </tr>)}
+          </tbody>
+        </table>
+      </>}
+      {!athletes.length&&<div className="help" style={{marginTop:10}}>
+        Bu takımda sporcu yok. <b>Athletes</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.
+      </div>}
+    </div>
+
+    <CheckinSetupHelp/>
+  </div>);
+}
+
+/* Kurulum, koçun Firebase panelinde bir kez yapacağı iki işten ibaret. Kuralları
+   ezberden yazdırmamak için metin burada hazır duruyor — Backup ekranındaki
+   kural kutusuyla aynı mantık. */
+function CheckinSetupHelp(){
+  const[open,setOpen]=useState(false);
+  const RULES=`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /kullanici_verileri/{docId} {
+      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    match /users/{uid}/{doc=**} {
+      allow read, write: if request.auth.uid == uid;
+    }
+
+    // Check-in linkleri: adresi (token) bilen okur, listeleyemez.
+    match /checkin_links/{token} {
+      allow get:    if true;
+      allow list:   if false;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    // Sporcu gönderimleri: yalnızca geçerli bir token ile YAZILIR, sonradan değiştirilemez.
+    match /checkins/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['coachUid','teamId','athleteId','token','kind','date','payload'])
+        && request.resource.data.keys().hasOnly(['coachUid','teamId','athleteId','athleteName','token','kind','date','payload','at','v'])
+        && request.resource.data.kind in ['srpe','wellness']
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.payload is map
+        && request.resource.data.payload.size() <= 24
+        && exists(/databases/$(database)/documents/checkin_links/$(request.resource.data.token))
+        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.coachUid == request.resource.data.coachUid
+        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.teamId == request.resource.data.teamId;
+      allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow update: if false;
+    }
+  }
+}`;
+  return(<div className="panel">
+    <div className="row" style={{justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+      <h2 style={{margin:0}}>Kurulum (bir kerelik)</h2>
+      <button className="btn sec xs" onClick={()=>setOpen(o=>!o)}>{open?'Gizle':'Göster'}</button>
+    </div>
+    {open&&<div style={{marginTop:12}}>
+      <div className="help" style={{marginBottom:10}}>
+        Formların çalışması için Firebase panelinde iki ayar gerekiyor. İkisi de bir kere yapılır.
+      </div>
+      <ol style={{margin:'0 0 12px 18px',padding:0,color:'var(--text2)',fontSize:13,lineHeight:1.7}}>
+        <li><b>Anonim giriş</b>: Firebase → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> → Enable.
+          Sporcu hesap açmaz; sayfa arka planda isimsiz oturum kullanır.</li>
+        <li><b>Firestore kuralları</b>: Firebase → <b>Firestore Database → Rules</b> → aşağıdaki metnin
+          tamamını yapıştır → <b>Publish</b>. (Mevcut kuralların da içinde — eksiltmiyor.)</li>
+      </ol>
+      <button className="btn sec xs" onClick={()=>{try{navigator.clipboard.writeText(RULES);}catch(e){}}}>Kuralları kopyala</button>
+      <pre style={{marginTop:10,padding:12,background:'rgba(0,0,0,.35)',border:'1px solid var(--border)',borderRadius:8,
+        fontSize:10.5,lineHeight:1.5,overflowX:'auto',color:'var(--text2)',userSelect:'all'}}>{RULES}</pre>
+      <div className="help">
+        Kurallar deponun içindeki <code>firestore.rules</code> dosyasında da duruyor.
+        Formu açtığında hata görürsen sayfa hangi adımın eksik olduğunu yazar.
+      </div>
+    </div>}
+  </div>);
+}
+
 function App(){
   const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   const sync=useCloudSync(data,setData);
@@ -20036,6 +20530,7 @@ function App(){
       {id:'templates',label:'Templates',icon:NAV_ICONS.templates,count:(data.templates||[]).length||null},
       {id:'individual',label:'Individualization',icon:NAV_ICONS.individual},
       {id:'tempo',label:'Tempo Training',icon:NAV_ICONS.tempo},
+      {id:'checkin',label:'Check-in Formları',icon:NAV_ICONS.checkin},
     ]},
     {label:'Account',items:[
       {id:'setup',label:'Setup',icon:NAV_ICONS.setup},
@@ -20099,11 +20594,15 @@ function App(){
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
+      {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
     {/* Renders nothing — it just keeps Auto-sync ticking whatever screen the coach is on. */}
     <TallyAutoSync team={team} setData={setData}/>
+    {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
+        olsun dinlenir ve günlüğe işlenir. */}
+    <CheckinInbox sync={sync} setData={setData}/>
   </div>);
 }
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a

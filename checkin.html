@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>CoachOS — Check-in</title>
+<link rel="icon" href="logo-mark.png"/>
+<!--
+  Sporcunun doldurduğu check-in formu. Koçun uygulamasından KOPYALANAN linkle açılır:
+
+      checkin.html#k=<token>&f=srpe        → antrenman sonrası İçsel Yük (sRPE) formu
+      checkin.html#k=<token>&f=wellness    → sabah Wellness formu
+
+  Token adresin # kısmında durur: tarayıcı orayı sunucuya göndermez, yani link
+  Vercel loglarına düşmez. Token, koçun uygulamasında takım başına üretilir ve
+  `checkin_links/<token>` dokümanına bakar; o doküman takımın adını ve kadrosunu
+  taşır — sporcu listeden kendi adını seçer, uygulama da kimliğinden eşleştirir.
+  (Tally'de isimler metin olarak eşleştiği için "eşleşmeyen isim atlandı" derdi
+  vardı; burada seçilen ad bir sporcu KİMLİĞİ taşıdığı için o dert yok.)
+
+  Gönderim `checkins` koleksiyonuna tek bir doküman yazar. Koçun uygulaması açıkken
+  bunları dinler, sporcunun günlüğüne işler ve dokümanı siler.
+-->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#0a0b0d; --panel:#121417; --panel2:#171a1f; --border:#262b33;
+    --text:#eef1f5; --text2:#b7bfcb; --muted:#7d8794;
+    --accent:#3b82f6; --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --orange:#fb923c; --red:#f87171; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;line-height:1.45}
+  .wrap{max-width:560px;margin:0 auto;padding:20px 16px 120px}
+  header{padding:6px 0 18px}
+  .team{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  h1{margin:6px 0 0;font-size:26px;font-weight:800;font-style:italic;letter-spacing:-.01em}
+  h1 .yr{font-style:normal;font-weight:700;color:var(--text2)}
+  .sub{margin-top:6px;color:var(--muted);font-size:13px}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px}
+  .q{font-size:16px;font-weight:700;font-style:italic;margin:0 0 4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .q .req{color:var(--accent);font-style:normal;font-size:11px}
+  .scale{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+  .scale b.lo{color:var(--bad)} .scale b.hi{color:var(--ok)}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{min-width:46px;padding:11px 12px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;
+    transition:transform .04s ease, background .12s ease, border-color .12s ease}
+  .chip:active{transform:scale(.96)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.sm{min-width:40px;padding:9px 10px;font-size:14px}
+
+  input[type=date],input[type=number],input[type=text]{
+    width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);font-size:16px;font-family:inherit}
+  select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);font-size:16px;font-family:inherit}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+  .sect-title{font-size:15px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:.02em;margin:0 0 10px}
+  .sect-title.tp{color:var(--orange)} .sect-title.sc{color:var(--red)} .sect-title.gm{color:var(--blue)}
+  .sect{padding:14px 0;border-top:1px solid var(--border)}
+  .sect:first-of-type{border-top:0;padding-top:0}
+  .lbl{font-size:14px;font-weight:700;font-style:italic;color:var(--text2);margin:14px 0 8px;display:flex;align-items:center;gap:6px}
+
+  table.grid{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.grid th{padding:8px 4px;font-size:12px;font-weight:700;color:var(--text2)}
+  table.grid th.s1{color:var(--ok)} table.grid th.s2{color:var(--warn)} table.grid th.s3{color:var(--bad)}
+  table.grid td{padding:0;border-top:1px solid var(--border);text-align:center}
+  table.grid td.rg{text-align:left;padding:2px 6px 2px 2px;font-weight:600;color:var(--text)}
+  .dot{width:34px;height:34px;border-radius:50%;border:1.5px solid #39404b;background:transparent;
+    cursor:pointer;display:inline-block;margin:5px 0;padding:0}
+  .dot:active{transform:scale(.9)}
+  .dot.on.s1{background:var(--ok);border-color:var(--ok)}
+  .dot.on.s2{background:var(--warn);border-color:var(--warn)}
+  .dot.on.s3{background:var(--bad);border-color:var(--bad)}
+
+  .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(10,11,13,0),var(--bg) 28%);}
+  .bar-in{max-width:560px;margin:0 auto}
+  button.send{width:100%;padding:16px;border-radius:12px;border:0;background:#fff;color:#101317;
+    font-size:17px;font-weight:800;cursor:pointer}
+  button.send[disabled]{opacity:.5;cursor:default}
+
+  .msg{padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:14px}
+  .msg.bad{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fecaca}
+  .msg.warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:#fde68a}
+  .msg.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.4);color:#bbf7d0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+    background:rgba(0,0,0,.35);padding:1px 5px;border-radius:5px}
+
+  .done{text-align:center;padding:60px 10px}
+  .done .tick{font-size:56px;line-height:1}
+  .done h2{margin:14px 0 6px;font-size:22px}
+  .done p{color:var(--muted);margin:0 0 22px}
+  .linkish{background:none;border:0;color:var(--accent);font-size:15px;cursor:pointer;
+    text-decoration:underline;font-family:inherit}
+  .foot{margin-top:26px;text-align:center;color:#4b535f;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="sub" id="boot">Yükleniyor…</div>
+</div>
+
+<script>
+/* ── Sabitler ────────────────────────────────────────────────────────────── */
+var FORMS={
+  srpe:{title:'İçsel Yük Takibi',dateLabel:'Antrenman / Maç tarihi'},
+  wellness:{title:'Wellness Takibi',dateLabel:'Tarih'}
+};
+// Ağrı matrisinin satırları. Koçun Tally formundaki liste ile birebir aynı: eski
+// check-in'ler de aynı bölge adlarıyla kayıtlı olduğu için ısı haritası bölünmüyor.
+var PAIN_REGIONS=['Boyun','Omuz','Sırt','Göğüs','Karın','Dirsek','Bilek / El','Bel','Kalça',
+  'Kasık','Hamstring','Quadriceps','Diz','Kalf','Aşil','Ayak Bileği','Ayak'];
+var RPE_VALUES=[1,2,3,4,5,6,7,8,9,10];
+var DUR_VALUES=[30,40,50,60,70,80,90,100,110,120];
+var GAME_MIN=[0,5,10,15,20,25,30,35,40];
+var SCORE_5=[1,2,3,4,5];
+
+/* ── Yardımcılar ─────────────────────────────────────────────────────────── */
+function $(sel,root){return (root||document).querySelector(sel);}
+function el(tag,attrs,kids){
+  var n=document.createElement(tag);
+  if(attrs)for(var k in attrs){
+    if(k==='class')n.className=attrs[k];
+    else if(k==='text')n.textContent=attrs[k];
+    else if(k==='html')n.innerHTML=attrs[k];
+    else if(k.slice(0,2)==='on')n.addEventListener(k.slice(2),attrs[k]);
+    else if(attrs[k]!=null)n.setAttribute(k,attrs[k]);
+  }
+  (kids||[]).forEach(function(c){if(c)n.appendChild(c);});
+  return n;
+}
+function todayStr(){
+  var d=new Date(),p=function(n){return(n<10?'0':'')+n;};
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+// Adresteki bilgiyi hem #k=… hem ?k=… biçiminde kabul et — koç linki nasıl kopyalarsa.
+function params(){
+  var h=(location.hash||'').replace(/^#/,''),q=(location.search||'').replace(/^\?/,'');
+  var p=new URLSearchParams(h||q);
+  if(!p.get('k')&&q)p=new URLSearchParams(q);
+  return p;
+}
+function fatal(title,detail,extra){
+  var r=$('#root');r.innerHTML='';
+  r.appendChild(el('header',null,[el('h1',{text:title})]));
+  r.appendChild(el('div',{class:'msg bad',html:detail}));
+  if(extra)r.appendChild(el('div',{class:'hint',html:extra}));
+}
+
+/* ── Firebase ────────────────────────────────────────────────────────────── */
+firebase.initializeApp({
+  apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
+  authDomain:"periodization-planner.firebaseapp.com",
+  projectId:"periodization-planner",
+  storageBucket:"periodization-planner.firebasestorage.app",
+  messagingSenderId:"225598184270",
+  appId:"1:225598184270:web:a2b812983e298441df1c1f"
+});
+// Uygulamanın kendisiyle aynı sebep: bazı operatör/proxy ağları Firestore'un akış
+// bağlantısını tamponluyor, yazım "gitti" görünüp asla onaylanmıyor. Düz HTTP zorlanıyor.
+try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+var db=firebase.firestore();
+// Sahada şebeke zayıf olabilir: gönderim IndexedDB'ye yazılır, bağlantı gelince gider.
+try{db.enablePersistence({synchronizeTabs:false}).catch(function(){});}catch(e){}
+
+/* ── Durum ───────────────────────────────────────────────────────────────── */
+var P=params();
+var TOKEN=(P.get('k')||'').trim();
+var KIND=(P.get('f')||'srpe').toLowerCase()==='wellness'?'wellness':'srpe';
+var LINK=null;                 // checkin_links dokümanı
+var A={};                      // formun cevapları
+var LS_KEY='coachos.checkin.athlete.';
+
+/* ── Alan üreticileri ────────────────────────────────────────────────────── */
+// Tek seçimli rozet dizisi. Aynı rozete tekrar basmak seçimi kaldırır — sporcu
+// yanlış bastığında formu baştan açmak zorunda kalmasın.
+function chipRow(field,values,opts){
+  opts=opts||{};
+  var row=el('div',{class:'chips'});
+  var custom=null;
+  values.forEach(function(v){
+    var b=el('button',{type:'button',class:'chip'+(opts.small?' sm':''),text:String(v),onclick:function(){
+      A[field]=(A[field]===v)?null:v;
+      if(custom)custom.value='';
+      paintRow();
+    }});
+    b.dataset.v=String(v);
+    row.appendChild(b);
+  });
+  if(opts.custom){
+    custom=el('input',{type:'number',inputmode:'numeric',min:'0',max:'400',placeholder:'Diğer',
+      style:'width:96px;padding:9px 10px;font-size:14px',oninput:function(){
+        var n=parseInt(custom.value,10);
+        A[field]=isNaN(n)?null:n;
+        paintRow();
+      }});
+    row.appendChild(custom);
+  }
+  function paintRow(){
+    Array.prototype.forEach.call(row.querySelectorAll('.chip'),function(b){
+      b.classList.toggle('on',A[field]!=null&&String(A[field])===b.dataset.v);
+    });
+    if(custom&&A[field]!=null&&values.indexOf(A[field])===-1&&custom.value===''){custom.value=A[field];}
+  }
+  paintRow();
+  return row;
+}
+function question(label,required,node,scaleHtml){
+  var kids=[el('div',{class:'q'},[el('span',{text:label}),required?el('span',{class:'req',text:'●'}):null])];
+  if(scaleHtml)kids.push(el('div',{class:'scale',html:scaleHtml}));
+  kids.push(node);
+  return el('div',{class:'card'},kids);
+}
+
+/* ── Ağrı matrisi ────────────────────────────────────────────────────────── */
+function painGrid(){
+  A.painMap={};
+  var tbl=el('table',{class:'grid'});
+  var head=el('tr',null,[el('th',null,[]),
+    el('th',{class:'s1',text:'Hafif'}),el('th',{class:'s2',text:'Orta'}),el('th',{class:'s3',text:'Yüksek'})]);
+  tbl.appendChild(el('thead',null,[head]));
+  var body=el('tbody');
+  PAIN_REGIONS.forEach(function(rg){
+    var tr=el('tr',null,[el('td',{class:'rg',text:rg})]);
+    [1,2,3].forEach(function(sev){
+      var b=el('button',{type:'button',class:'dot s'+sev,'aria-label':rg+' '+sev,onclick:function(){
+        if(A.painMap[rg]===sev)delete A.painMap[rg];else A.painMap[rg]=sev;
+        paint();
+      }});
+      b.dataset.rg=rg;b.dataset.sev=String(sev);
+      tr.appendChild(el('td',null,[b]));
+    });
+    body.appendChild(tr);
+  });
+  tbl.appendChild(body);
+  function paint(){
+    Array.prototype.forEach.call(tbl.querySelectorAll('.dot'),function(b){
+      b.classList.toggle('on',A.painMap[b.dataset.rg]===Number(b.dataset.sev));
+    });
+  }
+  return tbl;
+}
+
+/* ── Formlar ─────────────────────────────────────────────────────────────── */
+function buildHeader(){
+  var f=FORMS[KIND];
+  return el('header',null,[
+    el('div',{class:'team',text:LINK.teamName||'CoachOS'}),
+    el('h1',{html:f.title+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
+    el('div',{class:'sub',text:KIND==='srpe'
+      ? 'Antrenman/maç sonrası doldur. Yapmadığın bölümü boş bırak.'
+      : 'Günaydın! Sabah kalkınca doldur — bir dakikanı almaz.'})
+  ]);
+}
+function buildCommon(){
+  var f=FORMS[KIND];
+  var dateIn=el('input',{type:'date',value:A.date,onchange:function(){A.date=dateIn.value;}});
+  var sel=el('select',{onchange:function(){
+    A.athleteId=sel.value;
+    try{if(A.athleteId)localStorage.setItem(LS_KEY+LINK.teamId,A.athleteId);}catch(e){}
+  }},[el('option',{value:'',text:'— Seç —'})]);
+  (LINK.athletes||[]).forEach(function(a){
+    sel.appendChild(el('option',{value:a.id,text:a.name}));
+  });
+  if(A.athleteId)sel.value=A.athleteId;
+  return [question(f.dateLabel,true,dateIn),
+          question('Sporcu ismi',true,sel,
+            'Adını bir kere seçmen yeterli — bu telefonda bir dahaki sefere hazır gelir.')];
+}
+function buildSrpe(){
+  var box=el('div',{class:'card'},[
+    el('div',{class:'sect'},[
+      el('div',{class:'sect-title tp',text:'Top antrenmanı ne kadar yorucuydu?'}),
+      chipRow('tpRPE',RPE_VALUES),
+      el('div',{class:'lbl',text:'⏱ Top antrenmanı süresi (dk)'}),
+      chipRow('tpDuration',DUR_VALUES,{small:true,custom:true})
+    ]),
+    el('div',{class:'sect'},[
+      el('div',{class:'sect-title sc',text:'Kuvvet & Kondisyon ne kadar yorucuydu?'}),
+      chipRow('scRPE',RPE_VALUES),
+      el('div',{class:'lbl',text:'⏱ Kuvvet & Kondisyon süresi (dk)'}),
+      chipRow('scDuration',DUR_VALUES,{small:true,custom:true})
+    ]),
+    el('div',{class:'sect'},[
+      el('div',{class:'sect-title gm',text:'Müsabaka ne kadar yorucuydu?'}),
+      chipRow('gameRPE',RPE_VALUES),
+      el('div',{class:'lbl',text:'⏱ Kaç dakika süre aldın?'}),
+      chipRow('gameDuration',GAME_MIN,{small:true,custom:true})
+    ]),
+    el('div',{class:'hint',text:'O gün yapmadığın bölümü boş bırak — en az bir bölümü doldurman yeterli.'})
+  ]);
+  return [box];
+}
+function buildWellness(){
+  var rhr=el('input',{type:'number',inputmode:'numeric',min:'25',max:'150',placeholder:'örn. 58',
+    oninput:function(){var n=parseInt(rhr.value,10);A.RHR=isNaN(n)?null:n;}});
+  return [
+    question('Dinlenik KAH nedir? (atım/dk)',false,rhr,
+      'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.'),
+    question('Uyku kaliten nasıldı?',true,chipRow('sleep',SCORE_5),
+      '(<b class="lo">1: yetersiz</b>, <b class="hi">5: mükemmel</b>)'),
+    question('Yorgunluk düzeyin nedir?',true,chipRow('fatigue',SCORE_5),
+      '(<b class="lo">1: çok yorgun/bitkin</b>, <b class="hi">5: çok dinç</b>)'),
+    question('Kas ağrısı düzeyin nedir?',false,chipRow('soreness',SCORE_5),
+      '(<b class="lo">1: çok ağrılı</b>, <b class="hi">5: hiç ağrım yok</b>)'),
+    question('💥 Ağrın hangi bölgede ve ne şiddette (opsiyonel)',false,painGrid())
+  ];
+}
+
+/* ── Doğrulama ───────────────────────────────────────────────────────────── */
+function validate(){
+  if(!A.date)return 'Tarihi seç.';
+  if(!A.athleteId)return 'Sporcu ismini seç.';
+  if(KIND==='srpe'){
+    var any=['tpRPE','scRPE','gameRPE'].some(function(k){return A[k]!=null;});
+    if(!any)return 'En az bir bölüm için zorluk (RPE) seç.';
+    var pairs=[['tpRPE','tpDuration','Top antrenmanı'],['scRPE','scDuration','Kuvvet & Kondisyon'],['gameRPE','gameDuration','Müsabaka']];
+    for(var i=0;i<pairs.length;i++){
+      if(A[pairs[i][0]]!=null&&A[pairs[i][1]]==null)return pairs[i][2]+' için süreyi de seç.';
+    }
+  }else{
+    if(A.sleep==null)return 'Uyku kaliteni seç.';
+    if(A.fatigue==null)return 'Yorgunluk düzeyini seç.';
+  }
+  return null;
+}
+function payload(){
+  if(KIND==='srpe'){
+    return {tpRPE:A.tpRPE??null,tpDuration:A.tpDuration??null,
+            scRPE:A.scRPE??null,scDuration:A.scDuration??null,
+            gameRPE:A.gameRPE??null,gameDuration:A.gameDuration??null};
+  }
+  var pm={};Object.keys(A.painMap||{}).forEach(function(k){pm[k]=A.painMap[k];});
+  return {RHR:A.RHR??null,sleep:A.sleep??null,fatigue:A.fatigue??null,
+          soreness:A.soreness??null,painMap:pm};
+}
+
+/* ── Gönderim ────────────────────────────────────────────────────────────── */
+function submit(btn,errBox){
+  var problem=validate();
+  if(problem){
+    errBox.className='msg warn';errBox.textContent=problem;errBox.style.display='';
+    errBox.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  errBox.style.display='none';
+  btn.disabled=true;btn.textContent='Gönderiliyor…';
+  var ath=(LINK.athletes||[]).filter(function(a){return a.id===A.athleteId;})[0];
+  var doc={
+    coachUid:LINK.coachUid,teamId:LINK.teamId,token:TOKEN,
+    athleteId:A.athleteId,athleteName:(ath&&ath.name)||'',
+    kind:KIND,date:A.date,payload:payload(),
+    at:firebase.firestore.FieldValue.serverTimestamp(),v:1
+  };
+  var settled=false;
+  var write=db.collection('checkins').add(doc);
+  // Şebeke yavaşsa gönderim yerelde kuyruğa alınmıştır ve bağlantı gelince gider;
+  // sporcuyu dönen bir düğmenin başında bekletmenin anlamı yok.
+  var timer=setTimeout(function(){
+    if(settled)return;settled=true;
+    done(true);
+  },7000);
+  write.then(function(){
+    if(settled)return;settled=true;clearTimeout(timer);done(false);
+  }).catch(function(e){
+    if(settled)return;settled=true;clearTimeout(timer);
+    btn.disabled=false;btn.textContent='Gönder →';
+    errBox.className='msg bad';errBox.style.display='';
+    errBox.innerHTML=(e&&e.code==='permission-denied')
+      ? 'Gönderim reddedildi. Koçuna haber ver: Firestore kuralları henüz yüklenmemiş olabilir.'
+      : 'Gönderilemedi: '+((e&&e.message)||e)+'<br>İnternetini kontrol edip tekrar dene.';
+  });
+}
+function done(queued){
+  var r=$('#root');r.innerHTML='';
+  r.appendChild(el('div',{class:'done'},[
+    el('div',{class:'tick',text:queued?'📨':'✅'}),
+    el('h2',{text:queued?'Gönderimin yolda':'Teşekkürler!'}),
+    el('p',{text:queued
+      ? 'Bağlantı yavaş görünüyor ama cevabın kaydedildi; şebeke gelince kendiliğinden ulaşacak.'
+      : 'Cevabın koçuna ulaştı.'}),
+    el('button',{class:'linkish',text:'Yeni gönderim yap',onclick:function(){location.reload();}})
+  ]));
+}
+
+/* ── Kurulum ─────────────────────────────────────────────────────────────── */
+function render(){
+  var r=$('#root');r.innerHTML='';
+  r.appendChild(buildHeader());
+  var errBox=el('div',{class:'msg warn'});errBox.style.display='none';
+  r.appendChild(errBox);
+  buildCommon().forEach(function(n){r.appendChild(n);});
+  (KIND==='srpe'?buildSrpe():buildWellness()).forEach(function(n){r.appendChild(n);});
+  r.appendChild(el('div',{class:'foot',text:'CoachOS · '+(LINK.teamName||'')}));
+  var btn=el('button',{class:'send',text:'Gönder →',type:'button'});
+  btn.addEventListener('click',function(){submit(btn,errBox);});
+  document.body.appendChild(el('div',{class:'bar'},[el('div',{class:'bar-in'},[btn])]));
+}
+
+function start(){
+  if(!TOKEN){
+    fatal('Link eksik','Bu adreste form anahtarı yok.',
+      'Koçundan check-in linkini yeniden iste — link <code>#k=…</code> ile bitmeli.');
+    return;
+  }
+  A.date=todayStr();
+  firebase.auth().signInAnonymously().then(function(){
+    return db.collection('checkin_links').doc(TOKEN).get();
+  }).then(function(snap){
+    if(!snap.exists){
+      fatal('Form bulunamadı','Bu link artık geçerli değil.',
+        'Koçun linki yenilemiş olabilir; ondan güncel linki iste.');
+      return;
+    }
+    LINK=snap.data()||{};
+    if(!LINK.coachUid||!LINK.teamId){
+      fatal('Form eksik kurulmuş','Linkin arkasındaki kayıt eksik.','Koçun uygulamada linki bir kez daha kopyalaması yeterli.');
+      return;
+    }
+    try{
+      var saved=localStorage.getItem(LS_KEY+LINK.teamId);
+      if(saved&&(LINK.athletes||[]).some(function(a){return a.id===saved;}))A.athleteId=saved;
+    }catch(e){}
+    render();
+  }).catch(function(e){
+    var code=(e&&e.code)||'';
+    if(code==='auth/operation-not-allowed'){
+      fatal('Form henüz açılmamış','Giriş yöntemi kapalı olduğu için form yüklenemedi.',
+        'Koçuna ilet: Firebase → Authentication → Sign-in method → <b>Anonymous</b> açılmalı.');
+    }else if(code==='permission-denied'){
+      fatal('Form okunamadı','Bu forma erişim izni yok.',
+        'Koçuna ilet: Firestore kurallarında <code>checkin_links</code> ve <code>checkins</code> bölümleri eksik.');
+    }else{
+      fatal('Form yüklenemedi',((e&&e.message)||String(e)),'İnternetini kontrol edip sayfayı yenile.');
+    }
+  });
+}
+start();
+</script>
+</body>
+</html>
