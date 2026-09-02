@@ -61,6 +61,9 @@ h1,h2{font-weight:700;letter-spacing:-.01em}
 
 .wrap{max-width:620px;margin:0 auto;padding:26px 16px 130px}
 header{padding:2px 0 20px}
+/* Uygulamanın kendi başlığındaki wordmark (.lp-logo-img) ile aynı iş, bir tık
+   küçüğü: sporcu formu açtığında bunun hangi ürün olduğunu ilk satırdan görsün. */
+.brand{display:block;height:22px;width:auto;margin:0 0 16px;opacity:.92}
 .team{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--dim);font-weight:500}
 h1{margin:8px 0 0;font-size:27px;line-height:1.15}
@@ -104,6 +107,20 @@ h1 .yr{color:var(--muted);font-weight:500}
 .chip.on{background:var(--grad);border-color:transparent;color:#0a0b0d;
   box-shadow:0 4px 14px rgba(0,148,255,.20)}
 .chip.sm{min-width:40px;padding:9px 11px;font-size:13px}
+/* Skala satırı BÖLÜNMEMELİ: 1-10 telefonda alt alta iki sıraya düşünce skala
+   olmaktan çıkıp iki ayrı gruba benziyordu. Sabit genişlik yerine eşit paylı bir
+   ızgara — rozetler dar ekranda inceliyor ama sıra tek kalıyor. Süre rozetleri
+   (30, 40, …) skala değil, onlar sarmaya devam ediyor. */
+.chips.row1{display:grid;gap:6px}
+.chips.row1 .chip{min-width:0;padding-left:2px;padding-right:2px;text-align:center}
+@media (max-width:420px){
+  .chips.row1{gap:5px}
+  .chips.row1 .chip{padding-top:10px;padding-bottom:10px;font-size:13.5px}
+}
+@media (max-width:340px){
+  .chips.row1{gap:4px}
+  .chips.row1 .chip{font-size:12.5px}
+}
 /* Skalalı rozetler (RPE 1-10, wellness 1-5): her puan kendi rengini taşır, böylece
    sporcu rakamı okumadan da nerede olduğunu görür. Renk JS'ten --c olarak geliyor;
    seçilmemişken yalnız yazıda ve kenarda, seçilince dolgunun kendisinde. */
@@ -304,6 +321,11 @@ function chipRow(field,values,opts){
   opts=opts||{};
   var row=el('div',{class:'chips'});
   var custom=null;
+  // Renkli puanlama = skala; kaç değer varsa o kadar eşit sütun, hep tek sıra.
+  if(opts.palette){
+    row.classList.add('row1');
+    row.style.gridTemplateColumns='repeat('+values.length+',minmax(0,1fr))';
+  }
   values.forEach(function(v,i){
     var b=el('button',{type:'button',class:'chip'+(opts.small?' sm':''),text:String(v),onclick:function(){
       A[field]=(A[field]===v)?null:v;
@@ -395,6 +417,7 @@ function painGrid(){
 function buildHeader(){
   var f=FORMS[KIND];
   return el('header',null,[
+    el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
     el('div',{class:'team',text:LINK.teamName||'CoachOS'}),
     el('h1',{html:f.title+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
     el('div',{class:'sub',text:KIND==='srpe'
