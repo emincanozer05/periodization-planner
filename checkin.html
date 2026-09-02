@@ -435,9 +435,14 @@ function start(){
     render();
   }).catch(function(e){
     var code=(e&&e.code)||'';
-    if(code==='auth/operation-not-allowed'){
-      fatal('Form henüz açılmamış','Giriş yöntemi kapalı olduğu için form yüklenemedi.',
-        'Koçuna ilet: Firebase → Authentication → Sign-in method → <b>Anonymous</b> açılmalı.');
+    /* Firebase, kapalı bir giriş yöntemi için iki ayrı kod döndürüyor: hangisi gelirse
+       gelsin sebebi tektir ve söylenmesi gereken şey de tektir. `admin-restricted-operation`
+       kodunu atlamak, koça "internetini kontrol et" dedirtiyordu — sorun ağda değilken. */
+    if(code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation'){
+      fatal('Form henüz açılmamış','Anonim giriş kapalı olduğu için form yüklenemedi.',
+        'Koçuna ilet: Firebase Console → <b>Authentication → Sign-in method</b> → '
+        +'<b>Anonymous</b> satırı <b>Enabled</b> olmalı (kapalıysa: satıra tıkla → Enable → Save). '
+        +'Açtıktan sonra bu sayfayı yenile.');
     }else if(code==='permission-denied'){
       fatal('Form okunamadı','Bu forma erişim izni yok.',
         'Koçuna ilet: Firestore kurallarında <code>checkin_links</code> ve <code>checkins</code> bölümleri eksik.');
