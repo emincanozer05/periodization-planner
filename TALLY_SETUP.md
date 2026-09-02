@@ -66,7 +66,8 @@ Notlar:
 - `Sporcu ismi` açılır listesindeki adlar, CoachOS kadrosundaki adlarla aynı olsun.
   Eşleştirme büyük/küçük harf ve Türkçe karakter farklarını yok sayar — `İsmail`/`ismail`,
   `Bakırcı`/`Bakirci`, `Öztürk`/`Ozturk` aynı sporcu sayılır. Gerçekten farklı bir ad
-  ise ayarına göre **atlanır** ya da **yeni sporcu** olarak eklenir.
+  ise **atlanır** (Sync Status'ta "Kadroda bulunmadığı için atlanan isimler" satırında
+  listelenir) — kadroya ekleyip yeniden senkronlaman yeterli.
 
 ## 2) Tally API anahtarı al
 Tally → **Settings → API keys** (workspace ayarları) → **Create API key** → kopyala.
@@ -185,10 +186,20 @@ zaman baştan sona çeker.
 Worker'ı yeniden deploy edersen (zorunlu değil, tavsiye edilir) üstüne şunlar gelir:
 - **Form etiketleri KV'de 6 saat saklanıyor** — her turda 10 istek harcayan bu okuma
   sezon boyunca bir kereye düşüyor.
-- **Çekilen sayfalar KV'de ~90 saniye saklanıyor** — ilk cihaz çektikten hemen sonra
-  senkronlayan ikinci cihaz Tally'ye *hiç* istek göndermiyor. Birkaç cihaz tek cihaz
-  gibi davranıyor. (Bunun için `TALLY_STORE` bağlı olmalı — aşağıdaki webhook adımının
-  aynısı; bağlı değilse Worker eskisi gibi çalışır, sadece paylaşım olmaz.)
+- **Okunan sezonun tamamı KV'de saklanıyor (v11)** — senkronu asıl hızlandıran şey bu.
+  Worker her senkronda önce Tally'ye tek bir "kaç gönderim var?" sorusu soruyor:
+  - Sayı değişmemişse sezonun tamamı sakladığı kopyadan **tek turda** dönüyor. İkinci
+    cihazda **Sync Now**'a bastığında bir sezonu 60+ sayfa okumak yerine **1 istek**
+    harcanıyor — pratikte anında.
+  - Sayı artmışsa yalnızca **yeni gönderimler** okunuyor (formun başından, olmazsa
+    sonundan yoklanıyor): tipik olarak 2-3 istek. Kayıt silindiyse ya da iki uç da
+    farkı açıklamıyorsa Worker eskisi gibi sezonu baştan okuyup kopyayı yeniliyor.
+  - Kopya en fazla 1 saat yaşıyor; Tally'de **düzeltilmiş** (sayıyı değiştirmeyen) bir
+    gönderimi hemen görmek istersen `…workers.dev/sync?fresh=1` adresini bir kez aç.
+- **Çekilen sayfalar KV'de ~10 dakika saklanıyor** ve anahtarları gönderim sayısını
+  taşıyor: yeni bir cevap geldiği anda eski sayfalar kendiliğinden geçersiz oluyor.
+  (Bunun ve yukarıdakinin çalışması için `TALLY_STORE` bağlı olmalı — aşağıdaki webhook
+  adımının aynısı; bağlı değilse Worker eskisi gibi çalışır, sadece hızlanma olmaz.)
 - **429 alınırsa** Tally'nin `Retry-After` süresi kadar beklenip tekrar deneniyor;
   yine olmuyorsa **o ana kadar okunan satırlar korunuyor** ve kalınan sayfa numarası
   uygulamaya bildiriliyor — bir sonraki senkron kaldığı yerden devam ediyor. Sezon
