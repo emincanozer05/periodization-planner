@@ -17224,6 +17224,13 @@ function useCloudSync(data,setData){
     });
     return fb.auth().onAuthStateChanged(u=>{
       setAuthLoading(false);
+      /* Anonim oturum bu uygulamanın hesabı DEĞİL: burada giriş yalnızca e-posta ya da
+         Google ile yapılıyor, anonim girişi kullanan tek yer sporcunun check-in formu.
+         Form artık kendi Firebase uygulaması altında çalıştığı için koçun oturumunun
+         üstüne yazamıyor; ama bu düzeltmeden ÖNCE formu açmış bir tarayıcıda o anonim
+         oturum hâlâ duruyor olabilir. Onu hesap sanıp boş bir kadroyla açılmak yerine
+         atıyoruz — kullanıcı giriş ekranını görür, bir kere girer ve slot temizlenir. */
+      if(u&&u.isAnonymous){fb.auth().signOut().catch(()=>{});return;}
       if(!u){
         ready.current=false;lastSynced.current=null;prevUid.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];
         if(timer.current){clearTimeout(timer.current);timer.current=null;}

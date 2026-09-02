@@ -259,19 +259,34 @@ function fatal(title,detail,extra){
 }
 
 /* ── Firebase ────────────────────────────────────────────────────────────── */
-firebase.initializeApp({
+/* Bu sayfa KENDİ Firebase uygulaması altında çalışıyor; adı '[DEFAULT]' değil,
+   'checkin'. Sebebi doğrudan bir hata: form da koçun uygulaması da aynı adreste
+   duruyor ve Firebase, oturumu tarayıcıda `firebase:authUser:<apiKey>:<appAdı>`
+   anahtarıyla saklıyor. İkisi de varsayılan uygulamayı kurunca anahtar da ORTAK
+   oluyordu — form açılışta anonim giriş yaptığı anda koçun oturumunun üzerine
+   yazıyor, koç kendi uygulamasına döndüğünde hesabından düşmüş oluyordu.
+   Ayrı bir uygulama adı, ayrı bir anahtar demek: form kendi anonim oturumunu
+   kurarken koçunkine dokunmuyor. Aynı ayrım Firestore'un çevrimdışı deposu için
+   de geçerli (`firestore/<appAdı>/…`), yani iki taraf birbirinin önbelleğini de
+   paylaşmıyor. */
+var FB_CONF={
   apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
   authDomain:"periodization-planner.firebaseapp.com",
   projectId:"periodization-planner",
   storageBucket:"periodization-planner.firebasestorage.app",
   messagingSenderId:"225598184270",
   appId:"1:225598184270:web:a2b812983e298441df1c1f"
-});
+};
+var APP_NAME='checkin';
+var APP;
+try{APP=firebase.app(APP_NAME);}catch(e){APP=firebase.initializeApp(FB_CONF,APP_NAME);}
 // Uygulamanın kendisiyle aynı sebep: bazı operatör/proxy ağları Firestore'un akış
 // bağlantısını tamponluyor, yazım "gitti" görünüp asla onaylanmıyor. Düz HTTP zorlanıyor.
-try{firebase.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
-var db=firebase.firestore();
+try{APP.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+var db=APP.firestore();
 // Sahada şebeke zayıf olabilir: gönderim IndexedDB'ye yazılır, bağlantı gelince gider.
+// (Oturum da kalıcı kalmalı ki kuyruğa alınan gönderim, sayfa sonra açıldığında aynı
+// anonim kimlikle ulaşsın — o yüzden burada persistence NONE'a çekilmiyor.)
 try{db.enablePersistence({synchronizeTabs:false}).catch(function(){});}catch(e){}
 
 /* ── Durum ───────────────────────────────────────────────────────────────── */
@@ -599,7 +614,7 @@ function start(){
     return;
   }
   A.date=todayStr();
-  firebase.auth().signInAnonymously().then(function(){
+  APP.auth().signInAnonymously().then(function(){
     return db.collection('checkin_links').doc(TOKEN).get();
   }).then(function(snap){
     if(!snap.exists){
