@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /kullanici_verileri/{docId} {
+      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    match /users/{uid}/{doc=**} {
+      allow read, write: if request.auth.uid == uid;
+    }
+
+    // Check-in linkleri: adresi (token) bilen okur, listeleyemez.
+    match /checkin_links/{token} {
+      allow get:    if true;
+      allow list:   if false;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    // Sporcu gönderimleri: yalnızca geçerli bir token ile YAZILIR, sonradan değiştirilemez.
+    match /checkins/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['coachUid','teamId','athleteId','token','kind','date','payload'])
+        && request.resource.data.keys().hasOnly(['coachUid','teamId','athleteId','athleteName','token','kind','date','payload','at','v'])
+        && request.resource.data.kind in ['srpe','wellness']
+        && request.resource.data.date is string
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.payload is map
+        && request.resource.data.payload.size() <= 24
+        && exists(/databases/$(database)/documents/checkin_links/$(request.resource.data.token))
+        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.coachUid == request.resource.data.coachUid
+        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.teamId == request.resource.data.teamId;
+      allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow update: if false;
+    }
+  }
+}
