@@ -111,16 +111,24 @@ h1 .yr{color:var(--muted);font-weight:500}
    olmaktan çıkıp iki ayrı gruba benziyordu. Sabit genişlik yerine eşit paylı bir
    ızgara — rozetler dar ekranda inceliyor ama sıra tek kalıyor. Süre rozetleri
    (30, 40, …) skala değil, onlar sarmaya devam ediyor. */
-.chips.row1{display:grid;gap:6px}
+.chips.row1{display:grid;gap:6px;row-gap:6px}
 .chips.row1 .chip{min-width:0;padding-left:2px;padding-right:2px;text-align:center}
 @media (max-width:420px){
-  .chips.row1{gap:5px}
+  .chips.row1{gap:5px;row-gap:6px}
   .chips.row1 .chip{padding-top:10px;padding-bottom:10px;font-size:13.5px}
 }
 @media (max-width:340px){
-  .chips.row1{gap:4px}
+  .chips.row1{gap:4px;row-gap:5px}
   .chips.row1 .chip{font-size:12.5px}
 }
+/* Rakamın altındaki karşılığı. Renk skalanın YÖNÜNÜ söylüyor, bu da her basamağın
+   ne demek olduğunu — "3" ün orta mı iyi mi sayıldığını sporcunun tahmin etmesi
+   gerekmiyor artık. Izgaranın ikinci sırasına düşüyor, yani her etiket kendi
+   rozetinin tam altında. Seçilen basamağın etiketi rozetin rengine dönüyor. */
+.slbl{font-size:9.5px;line-height:1.25;text-align:center;color:var(--dim);
+  align-self:start;word-break:break-word;hyphens:auto;transition:color .15s}
+.slbl.on{color:var(--c);font-weight:600}
+@media (max-width:340px){.slbl{font-size:9px}}
 /* Skalalı rozetler (RPE 1-10, wellness 1-5): her puan kendi rengini taşır, böylece
    sporcu rakamı okumadan da nerede olduğunu görür. Renk JS'ten --c olarak geliyor;
    seçilmemişken yalnız yazıda ve kenarda, seçilince dolgunun kendisinde. */
@@ -234,6 +242,11 @@ var SCORE_5=[1,2,3,4,5];
 // Wellness skalası ters yönde okunuyor (1 kötü, 5 iyi): 1 kırmızı → 4 yeşil,
 // 5 ise skalanın tepesi olarak mavi.
 var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
+// Her basamağın sözle karşılığı — soruya göre değişiyor, çünkü "5" birinde
+// "mükemmel uyudum", ötekinde "hiç ağrım yok" demek.
+var SLEEP_LABELS   =['çok kötü','kötü','orta','iyi','çok iyi'];
+var FATIGUE_LABELS =['bitkin','yorgun','orta','dinç','çok dinç'];
+var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
 
 /* Formun canlı tarafı tek bir yerden yürür: her dokunuş REFRESH'leri çağırır,
    onlar da ilerleme şeridini, dolan kartların işaretini ve gönder düğmesinin
@@ -343,6 +356,16 @@ function chipRow(field,values,opts){
     }
     row.appendChild(b);
   });
+  // Etiketler ızgaranın ikinci sırası: rozetlerden sonra eklendikleri için her biri
+  // kendi sütununa, yani kendi rozetinin altına oturuyor.
+  var labels=[];
+  if(opts.labels){
+    opts.labels.forEach(function(t,i){
+      var n=el('span',{class:'slbl',text:t});
+      if(opts.palette&&opts.palette[i])n.style.setProperty('--c',opts.palette[i]);
+      labels.push(n);row.appendChild(n);
+    });
+  }
   if(opts.custom){
     custom=el('input',{type:'number',inputmode:'numeric',min:'0',max:'400',placeholder:'Diğer',
       style:'width:96px;padding:9px 10px;font-size:14px',oninput:function(){
@@ -356,6 +379,7 @@ function chipRow(field,values,opts){
     Array.prototype.forEach.call(row.querySelectorAll('.chip'),function(b){
       b.classList.toggle('on',A[field]!=null&&String(A[field])===b.dataset.v);
     });
+    labels.forEach(function(n,i){n.classList.toggle('on',A[field]===values[i]);});
     if(custom&&A[field]!=null&&values.indexOf(A[field])===-1&&custom.value===''){custom.value=A[field];}
   }
   paintRow();
@@ -490,15 +514,18 @@ function buildWellness(){
     question('Dinlenik KAH nedir? (atım/dk)',false,rhr,
       'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.',
       function(){return A.RHR!=null;}),
-    // Skalanın yönünü artık rozetlerin rengi anlatıyor (1 kırmızı → 5 mavi),
-    // o yüzden altlarındaki "1 … → 5 …" satırı kaldırıldı.
-    question('Uyku kaliten nasıldı?',true,chipRow('sleep',SCORE_5,{palette:SCORE_COLORS}),
+    // Skalanın yönünü rozetlerin rengi, her basamağın ne demek olduğunu da
+    // altındaki etiket anlatıyor; eski "1 … → 5 …" satırına gerek kalmıyor.
+    question('Uyku kaliten nasıldı?',true,
+      chipRow('sleep',SCORE_5,{palette:SCORE_COLORS,labels:SLEEP_LABELS}),
       null,
       function(){return A.sleep!=null;}),
-    question('Yorgunluk düzeyin nedir?',true,chipRow('fatigue',SCORE_5,{palette:SCORE_COLORS}),
+    question('Yorgunluk düzeyin nedir?',true,
+      chipRow('fatigue',SCORE_5,{palette:SCORE_COLORS,labels:FATIGUE_LABELS}),
       null,
       function(){return A.fatigue!=null;}),
-    question('Kas ağrısı düzeyin nedir?',false,chipRow('soreness',SCORE_5,{palette:SCORE_COLORS}),
+    question('Kas ağrısı düzeyin nedir?',false,
+      chipRow('soreness',SCORE_5,{palette:SCORE_COLORS,labels:SORENESS_LABELS}),
       null,
       function(){return A.soreness!=null;}),
     question('Ağrın hangi bölgede ve ne şiddette?',false,painGrid(),
