@@ -15862,7 +15862,7 @@ const TALLY_ID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
    stamps its own build into `meta.worker.version`; anything older cannot name the pain
    grid's rows (Tally sends them as ids), so the sync report asks for a redeploy instead
    of letting every check-in read as a nameless region. Bump both together. */
-const TALLY_WORKER_VERSION=10;
+const TALLY_WORKER_VERSION=11;
 
 /* A sync is two halves, and keeping them apart is what stops one from undoing the other.
    `fetchTallyRows` only talks to the Worker; `mergeTallyRows` is a pure function of a team
@@ -15925,6 +15925,11 @@ async function fetchTallyRows(workerUrl,opts={}){
   // already in hand. Set when the Worker says it hit the ceiling — the coach is told the
   // history came in pieces, and the next sync picks up where this one stopped.
   let rateLimited=false;
+  /* True when the Worker answered out of the season it keeps in KV rather than by reading
+     Tally page by page — the difference between a sync that takes a minute and one that is
+     over before the button stops spinning, and the only way a coach can see which they
+     just got. */
+  let servedFromCache=false;
   // Set when the round-1 totals say Tally holds nothing this device has not already got.
   let upToDate=false;
 
@@ -15942,10 +15947,14 @@ async function fetchTallyRows(workerUrl,opts={}){
   /* Half the ceiling, not most of it: the limit is per ACCOUNT, so the budget has to
      leave room for a second device pulling at the same moment. Two coaches both on Sync
      Now then land on the ceiling rather than through it. */
-  const RATE_BUDGET=50;
+  /* Raised from half the ceiling to three quarters: the Worker keeps the whole season in
+     KV now, so a second device costs Tally a single count request instead of a season of
+     pages — the headroom this budget used to hold back for it is no longer needed, and
+     holding it back was most of why one Sync Now took minutes. */
+  const RATE_BUDGET=75;
   const RATE_WINDOW_MS=60000;
-  const LABEL_COST=10;           // 5 form-definition reads per form, on Workers that don't cache them
-  const MAX_ROUND_PAUSE_MS=45000;
+  const LABEL_COST=4;            // form-definition reads, on Workers that don't cache them
+  const MAX_ROUND_PAUSE_MS=20000;
   const spent=[];                // [{at, cost}] over the last minute
   const spend=cost=>spent.push({at:Date.now(),cost:Math.max(1,cost)});
   const spentInWindow=()=>{
@@ -15956,6 +15965,9 @@ async function fetchTallyRows(workerUrl,opts={}){
   // What the round that just ran actually cost. A Worker that paces itself reports it
   // outright; for every older build it is counted off the page numbers it moved through.
   const roundCost=m=>{
+    // Served whole out of the Worker's KV copy: Tally was asked for a count and nothing
+    // else, so the next round may start at once.
+    if(m&&m.rate&&m.rate.snapshot)return 1;
     if(m&&m.rate&&typeof m.rate.spent==='number')return m.rate.spent;
     const pages=f=>(m&&m[f]&&m[f].nextPage>m[f].fromPage)?(m[f].nextPage-m[f].fromPage):1;
     return LABEL_COST+pages('srpe')+pages('wellness');
@@ -16026,6 +16038,7 @@ async function fetchTallyRows(workerUrl,opts={}){
     const cost=roundCost(m);
     spend(cost);
     if(m&&m.rate&&m.rate.rateLimited)rateLimited=true;
+    if(rounds===1)servedFromCache=!!(m&&m.rate&&m.rate.snapshot);
     /* Nothing new to fetch. Tally reports how many submissions each form holds, and the
        team remembers the totals as of the last pull that ran to the end. When both still
        match, every later page is history this device already has — so a routine auto-sync
@@ -16049,7 +16062,7 @@ async function fetchTallyRows(workerUrl,opts={}){
     // Fetch bookkeeping — lets the coach see at a glance whether every Tally
     // submission actually made it over, instead of silently losing half of them.
     fetch:{sRPETotal:totals.sRPE,wellnessTotal:totals.wellness,fetchRounds:rounds,truncated,legacyWorker,rateLimited,
-      upToDate,
+      upToDate,servedFromCache,
       // A pull that reached the end is the one whose totals may be remembered as complete;
       // one that stopped early (rate limit, round cap, the shortcut above) must not be, or
       // a half-read season would be recorded as fully in hand.
@@ -16370,14 +16383,6 @@ function TallySync({data,setData,team}){
      the background timer syncs while this screen is closed, and the screen has to show
      what that run found — including a run that failed. */
   const stats=cfg.lastStats,lastAt=cfg.lastSyncedAt,error=cfg.lastError||null;
-  /* The address to paste into Tally's webhook box, built from whatever is in the URL field
-     right now — a half-typed address simply shows nothing rather than a wrong endpoint. */
-  const webhookUrl=useMemo(()=>{
-    const u=(url||'').trim();
-    if(!u)return null;
-    try{return tallyWorkerBase(u)+'/webhook';}catch(e){return null;}
-  },[url]);
-
   const patchTeam=upd=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,tallySync:{...(t.tallySync||cfg),...upd}}:t)}));
   const saveCfg=patchTeam;
 
@@ -16444,28 +16449,9 @@ function TallySync({data,setData,team}){
           Denenen adres: {probe.base}/sync
         </div>}
       </div>}
-      {/* Tally'nin "Endpoint URL" kutusuna yazılacak adres. Koçun elinde Worker adresi
-          zaten var; eksik olan tek şey sonuna ne geleceğiydi — o yüzden burada hazır
-          yazıyor, tahmin ettirmiyoruz. */}
-      {webhookUrl&&<div style={{marginTop:10,padding:12,borderRadius:8,fontSize:13,color:'var(--text2)',
-        background:'rgba(99,102,241,.1)',border:'1px solid rgba(99,102,241,.3)'}}>
-        <strong>Tally → Integrations → Webhooks → Endpoint URL</strong> kutusuna bunu yaz
-        (<em>iki forma da ayrı ayrı</em>; Worker hangisi olduğunu form ID'sinden anlıyor):
-        <code style={{display:'block',marginTop:6,padding:8,background:'rgba(0,0,0,.3)',borderRadius:6,
-          fontSize:12,wordBreak:'break-all',userSelect:'all'}}>{webhookUrl}</code>
-        <div className="help" style={{marginTop:6,color:'var(--muted)'}}>
-          Webhook, cevabı <strong>anında</strong> Worker'a yollar; Auto-sync'in birkaç dakikalık
-          gecikmesi kalmaz. Çalışması için Worker'a <code>TALLY_STORE</code> adında bir KV
-          namespace bağlaman gerekiyor (Cloudflare → Worker → Settings → Bindings). "Add a
-          signing secret" kullanacaksan aynı metni Worker'a <code>TALLY_SIGNING_SECRET</code>
-          değişkeni olarak da ekle. Adresin hazır olup olmadığını tarayıcıda{' '}
-          <code>{webhookUrl}</code> açarak görebilirsin.
-        </div>
-      </div>}
-      <label className="ath-chip" style={{cursor:'pointer',marginTop:12,display:'inline-flex'}}>
-        <input type="checkbox" checked={!!cfg.autoCreate} onChange={e=>saveCfg({autoCreate:e.target.checked})}/>
-        <span>{cfg.autoCreate?'Eşleşmeyen isimler için yeni sporcu OLUŞTUR':'Yalnızca kadrodaki sporculara yaz (eşleşmeyen isimler atlanır)'}</span>
-      </label>
+      {/* The webhook address and the "write only to athletes on the roster" switch used to
+          sit here. The Worker still accepts webhook deliveries and the sync still honours
+          `tallySync.autoCreate` — only the two boxes are gone from this screen. */}
       <div className="grid cols-3" style={{marginTop:14}}>
         <div>
           <label>Auto-sync</label>
@@ -16517,6 +16503,9 @@ function TallySync({data,setData,team}){
             <tr><td>Ağrı bölgesi isimsiz gelen check-in</td><td><strong style={{color:stats.painUnnamed>0?'var(--high-t)':'inherit'}}>{stats.painUnnamed||0}</strong></td></tr>
             {/* Webhook kuruluysa, kaç gönderimin çekilmek yerine anında düştüğünü söyler —
                 webhook'un gerçekten çalışıp çalışmadığının tek görünür kanıtı bu. */}
+            {stats.servedFromCache&&<tr><td>Senkron kaynağı</td>
+              <td><strong style={{color:'var(--accent2)'}}>⚡ Worker'ın sakladığı sezon</strong>
+                <span style={{color:'var(--muted)'}}> — Tally sayfa sayfa okunmadı, tek turda geldi</span></td></tr>}
             {stats.webhook&&stats.webhook.enabled&&<tr><td>Webhook ile anında düşen gönderim</td>
               <td><strong style={{color:'var(--accent2)'}}>{(stats.webhook.srpe||0)+(stats.webhook.wellness||0)}</strong>
                 <span style={{color:'var(--muted)'}}> (sRPE {stats.webhook.srpe||0} · Wellness {stats.webhook.wellness||0}{stats.webhook.signed?' · imzalı':''})</span></td></tr>}
@@ -16525,9 +16514,9 @@ function TallySync({data,setData,team}){
         {/* Webhook adresi Tally'ye girilmiş ama Worker'da saklama yeri yoksa, Tally her
             gönderimde hata alır ve bir süre sonra webhook'u kapatır. Sessiz kalmasın. */}
         {stats.webhook&&!stats.webhook.enabled&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-          ⚠️ Worker'a <strong>KV namespace bağlı değil</strong>. Tally webhook'unu kurduysan gelen cevapların saklanacak yeri yok — Tally hata alır ve bir süre sonra webhook'u kapatır.
+          ⚠️ Worker'a <strong>KV namespace bağlı değil</strong> — bu yüzden senkron her cihazda sezonun tamamını Tally'den tek tek sayfalayarak okuyor, yani <strong>yavaş</strong>. Webhook kurduysan gelen cevapların saklanacak yeri de yok.
           <div className="help" style={{marginTop:6}}>
-            Cloudflare → Workers &amp; Pages → Worker'ın → <strong>Settings → Bindings</strong> → KV namespace ekle, adı <code>TALLY_STORE</code> olsun. Yalnızca Auto-sync kullanacaksan bu uyarıyı yok sayabilirsin.
+            Cloudflare → Workers &amp; Pages → Worker'ın → <strong>Settings → Bindings</strong> → KV namespace ekle, adı <code>TALLY_STORE</code> olsun. Bağladığın anda Worker okuduğu sezonu kendinde saklar: sonraki senkronlar ve diğer cihazlar tek istekte, anında gelir.
           </div>
         </div>}
         {stats.webhook&&stats.webhook.error&&<div style={{marginTop:10,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
@@ -16598,7 +16587,7 @@ function TallySync({data,setData,team}){
         </div>}
         {Array.isArray(stats.skippedNames)&&stats.skippedNames.length>0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⏭️ Kadroda bulunmadığı için atlanan isimler: <strong>{stats.skippedNames.join(', ')}</strong>.
-          Bunları almak istersen ya formdaki/kadrodaki adı birebir aynı yap, ya da yukarıdaki <em>"yeni sporcu oluştur"</em> kutusunu işaretle.
+          Bunları almak istersen formdaki adı kadrodaki adla birebir aynı yap (ya da sporcuyu kadroya ekle) — senkron yalnızca kadroda karşılığı olan isimlere yazar.
         </div>}
         {(stats.sRPERows===0&&stats.wellnessRows===0)&&<div style={{marginTop:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
           ⚠️ Worker'a ulaşıldı ama <strong>0 satır</strong> geldi. Olası sebepler: Worker'daki <code>SRPE_FORM</code>/<code>WELLNESS_FORM</code> ID'leri yanlış · formlara henüz cevap gelmemiş · soru başlıkları beklenen adlarla eşleşmiyor. Tarayıcıda <code>…workers.dev/sync</code> açıp <code>sRPE</code>/<code>wellness</code> dizilerinin dolu olup olmadığını gör.

@@ -37,7 +37,7 @@ const TALLY_API = 'https://api.tally.so';
 // whether Cloudflare is still running an older copy of this file. A stale Worker is the
 // usual reason a coach sees unnamed pain regions or a truncated history, and neither
 // symptom points at the Worker on its own — so the app names it outright.
-const WORKER_VERSION = 10;
+const WORKER_VERSION = 11;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -66,8 +66,14 @@ const TALLY_RATE_LIMIT = 100;     // requests a minute, per Tally's documented c
 const RATE_BUDGET = 80;           // what one invocation may spend — headroom for other devices
 const RATE_WINDOW_MS = 60000;
 const MAX_RETRY_WAIT_MS = 6000;   // longest we will sit on a Retry-After before giving up
-const PAGE_CACHE_TTL = 90;        // seconds; KV's own floor is 60
+const PAGE_CACHE_TTL = 600;       // seconds; the key carries the submission count, so a
+                                  // new check-in retires the page rather than the clock
 const LABEL_CACHE_TTL = 21600;    // 6h — a form's matrix labels change when the form does
+// The parsed season, kept whole. Keyed by the form's submission count, so it is only ever
+// served while it still describes the form; the clock is the last line of defence for a
+// submission EDITED in place, which leaves the count untouched.
+const SNAPSHOT_TTL = 3600;        // 1h
+const PARTIAL_SNAPSHOT_TTL = 900; // 15m — only useful while the pull it belongs to resumes
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -456,82 +462,209 @@ async function fetchForm(formId, key, startPage = 1, budget = PAGE_BUDGET, ctx =
   }
 }
 
+/* One page of Tally submissions → the rows CoachOS reads. Split out of the page loop so
+   the same parsing serves a fresh page, a cached page, and the delta probe below. */
+function parseSubmissions(j, formLabels) {
+  const rows = [];
+  let unnamedGridIds = 0, unnamedOptionIds = 0;
+  const qById = {};
+  (j.questions || []).forEach(q => { qById[q.id] = q; });
+  // Everything this page's questions declare, with the form definition on top of it.
+  const labelBook = Object.assign(collectLabels({ questions: j.questions || [] }), formLabels);
+  const subs = j.submissions || [];
+  for (const s of subs) {
+    const row = { _id: s.id };
+    if (s.submittedAt) row['Date'] = String(s.submittedAt).slice(0, 10); // default; a "Tarih" question overrides
+    for (const resp of (s.responses || [])) {
+      const q = qById[resp.questionId];
+      const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
+      const { value: v, isGrid } = answerToValue(resp, q, labelBook);
+      if (v == null || v === '') continue;
+      if (isGrid) unnamedGridIds += (String(v).match(GRID_ID_RE) || []).length;
+      // A dropdown/multi-select answer is option ids too, and when no dictionary names
+      // them the athlete's NAME arrives as a uuid — it matches nobody on the roster, so
+      // every submission is skipped and the coach sees a sync that "worked" with nothing
+      // in it. Counted here so the app can name that cause instead of staying silent.
+      else if (typeof v === 'string') unnamedOptionIds += (v.match(GRID_ID_RE) || []).length;
+      // A grid answer to the pain question is the pain map whatever the question is
+      // called: a form that words it "Ağrın hangi bölgede?" (no severity axis in the
+      // title) still asks it as a matrix, and reading that as free text is what put
+      // the raw answer object in front of the coach.
+      let key = canonicalKey(title);
+      if (isGrid && key === 'Area of Pain') key = 'Pain Map';
+      // Tally may hand a matrix over as one question or as one question PER ROW, in
+      // which case every row shares the same title and would otherwise overwrite the
+      // one before it. Merging keeps whichever shape the API sends.
+      row[key] = (key === 'Pain Map' && row[key]) ? `${row[key]}, ${v}` : v;
+    }
+    rows.push(row);
+  }
+  // `hasMore` is authoritative; a short/empty page is the fallback signal for
+  // API versions that omit it.
+  const hasMore = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
+  return { rows, unnamedGridIds, unnamedOptionIds, count: subs.length, hasMore };
+}
+
+/* How many submissions the form holds, in one request. It is the cheapest question the
+   Tally API answers, and everything below is keyed off it: a page cache that invalidates
+   itself the moment the count moves, and the snapshot that decides whether this sync has
+   to read the season at all. */
+async function fetchTotal(formId, key, ctx = {}) {
+  const res = await tallyFetch(`/forms/${formId}/submissions?page=1&limit=1`, key, ctx);
+  if (!res.ok) return null;   // the page-run below reports the real failure
+  try { return readTotal(await res.json()); } catch (e) { return null; }
+}
+
+/* One page of submissions, from KV when another device (or an earlier round) has already
+   paid for it. The key carries the form's submission COUNT, so a new check-in retires
+   every cached page by itself — the cache can never serve a season that has moved on. */
+async function getSubmissionPage(formId, key, page, total, ctx = {}) {
+  const ck = `sub:${formId}:${page}:${PAGE_LIMIT}:${total == null ? 'x' : total}`;
+  const hit = await cacheGet(ctx.store, ck);
+  if (hit) return { j: hit, cached: true };
+  const res = await tallyFetch(`/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`, key, ctx);
+  if (!res.ok) {
+    const t = await res.text();
+    if (res.status === 429)
+      throw rateLimitError(`Tally rate limit (429) for form ${formId} — ${TALLY_RATE_LIMIT} requests/minute is shared by every device syncing this account.`);
+    throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  await cachePut(ctx.store, ck, j, PAGE_CACHE_TTL);
+  return { j, cached: false };
+}
+
+/* ── The snapshot: why a second device syncs in one round ──
+   A season is 60+ pages, and every device used to page through all of them on its own
+   timer. So the whole parsed season is kept in KV beside its submission count. A sync
+   whose count still matches gets the season handed back in ONE round for ONE request —
+   which is what a coach opening the app on a second device (or pressing Sync Now again)
+   actually experiences as "instant". When the count has MOVED, only the new submissions
+   are read: they sit at one end of the form, so the pages are probed from the front and,
+   failing that, from the back, and a full re-page happens only when neither end explains
+   the difference. */
+const snapKey = formId => `snap:${formId}`;
+const DELTA_PROBE_PAGES = 6;   // pages read from one end before a full re-page is cheaper
+
+async function refreshSnapshot(formId, key, snap, total, formLabels, ctx) {
+  const need = total - snap.total;
+  if (need <= 0) return null;                       // submissions were deleted — re-read the form
+  const known = new Set(snap.rows.map(r => r._id));
+  const added = [];
+  let unnamedGridIds = 0, unnamedOptionIds = 0, reads = 0;
+  const probe = async page => {
+    const { j } = await getSubmissionPage(formId, key, page, total, ctx);
+    reads++;
+    const p = parseSubmissions(j, formLabels);
+    unnamedGridIds += p.unnamedGridIds; unnamedOptionIds += p.unnamedOptionIds;
+    const fresh = p.rows.filter(r => !known.has(r._id));
+    fresh.forEach(r => known.add(r._id));
+    added.push(...fresh);
+    return fresh.length;
+  };
+  // Newest first: the new submissions are on page 1 and the probe stops at the first
+  // page that holds nothing new.
+  for (let p = 1; p <= DELTA_PROBE_PAGES && added.length < need; p++)
+    if (!(await probe(p))) break;
+  // Oldest first: they are on the last page instead.
+  if (added.length < need) {
+    const last = Math.max(1, Math.ceil(total / PAGE_LIMIT));
+    for (let n = 0, p = last; n < DELTA_PROBE_PAGES && p >= 1 && added.length < need; n++, p--)
+      if (!(await probe(p))) break;
+  }
+  // Not both ends, not the count we were promised — the form moved in some way this
+  // shortcut cannot account for, so the caller reads it in full rather than guess.
+  if (added.length < need) return null;
+  return { rows: snap.rows.concat(added), unnamedGridIds, unnamedOptionIds, reads };
+}
+
 async function fetchFormPages(formId, key, startPage = 1, budget = PAGE_BUDGET, ctx = {}) {
   const rows = [];
   let page = Math.max(1, Number(startPage) || 1);
   let total = null, more = false, unnamedGridIds = 0, unnamedOptionIds = 0;
-  let rateLimited = false, cacheHits = 0;
+  let rateLimited = false, cacheHits = 0, snapshot = null;
   // Read once per form, before the pages: the dictionary that names a matrix's rows and
-  // columns when the submissions payload does not carry them.
+  // columns when the submissions payload does not carry them. Cached in KV, so it costs
+  // the second device nothing.
   const { labels: formLabels, sources: labelSources } = await fetchFormLabels(formId, key, ctx);
-  for (let n = 0; n < budget; n++, page++) {
-    const path = `/forms/${formId}/submissions?page=${page}&limit=${PAGE_LIMIT}`;
-    // A page another device pulled moments ago is served from KV. This is what lets a
-    // phone and a laptop sync the same season without paying for it twice.
-    let j = await cacheGet(ctx.store, `sub:${formId}:${page}:${PAGE_LIMIT}`);
-    if (j) cacheHits++;
-    else {
-      let res;
-      try {
-        res = await tallyFetch(path, key, ctx);
-      } catch (e) {
-        // Out of budget mid-run: keep the pages already read and let the caller come back
-        // for the rest. Throwing here is what turned a busy minute into a failed sync.
-        if (e && e.rateLimited && rows.length) { rateLimited = true; more = true; break; }
-        throw e;
-      }
-      if (!res.ok) {
-        const t = await res.text();
-        if (res.status === 429) {
-          if (rows.length) { rateLimited = true; more = true; break; }
-          throw rateLimitError(`Tally rate limit (429) for form ${formId} — ${TALLY_RATE_LIMIT} requests/minute is shared by every device syncing this account.`);
-        }
-        throw new Error(`Tally API ${res.status} for form ${formId}: ${t.slice(0, 300)}`);
-      }
-      j = await res.json();
-      await cachePut(ctx.store, `sub:${formId}:${page}:${PAGE_LIMIT}`, j, PAGE_CACHE_TTL);
+  // What Tally holds right now. One request, and it decides everything below.
+  try { total = await fetchTotal(formId, key, ctx); }
+  catch (e) { if (!(e && e.rateLimited)) throw e; rateLimited = true; }
+
+  const done = (allRows, extra) => ({ rows: allRows, total, nextPage: Math.max(1, Math.ceil((total || 0) / PAGE_LIMIT)) + 1,
+                                      hasMore: false, unnamedGridIds, unnamedOptionIds,
+                                      formLabelCount: Object.keys(formLabels).length, labelSources,
+                                      cacheHits, rateLimited: false, error: null, ...extra });
+
+  // The stored season, if there is one. Only a snapshot whose count still means something
+  // is worth consulting, so a form whose total could not be read pages the old way.
+  let snap = (!ctx.fresh && total != null) ? await cacheGet(ctx.store, snapKey(formId)) : null;
+  if (snap && !Array.isArray(snap.rows)) snap = null;
+  let carry = [];                     // rows from earlier rounds of THIS pull, kept for the snapshot
+  /* Only a run that starts at page 1, or one that resumes exactly where a partial
+     snapshot stopped, may write the snapshot. The app keeps echoing the page number of a
+     form that finished early while the OTHER form pages on, and those rounds read nothing
+     — letting them store their empty result is what wiped a season out of the cache. */
+  let canSnapshot = page <= 1;
+  if (snap && snap.complete && page <= 1) {
+    if (snap.total === total) {
+      // Nothing has moved: the whole season in one round, for the one count request.
+      unnamedGridIds = snap.unnamedGridIds || 0; unnamedOptionIds = snap.unnamedOptionIds || 0;
+      return done(snap.rows, { snapshot: 'hit' });
     }
-    if (total == null) total = readTotal(j);
-    const qById = {};
-    (j.questions || []).forEach(q => { qById[q.id] = q; });
-    // Everything this page's questions declare, with the form definition on top of it.
-    const labelBook = Object.assign(collectLabels({ questions: j.questions || [] }), formLabels);
-    const subs = j.submissions || [];
-    for (const s of subs) {
-      const row = { _id: s.id };
-      if (s.submittedAt) row['Date'] = String(s.submittedAt).slice(0, 10); // default; a "Tarih" question overrides
-      for (const resp of (s.responses || [])) {
-        const q = qById[resp.questionId];
-        const title = q ? (q.title || q.label || resp.questionId) : resp.questionId;
-        const { value: v, isGrid } = answerToValue(resp, q, labelBook);
-        if (v == null || v === '') continue;
-        if (isGrid) unnamedGridIds += (String(v).match(GRID_ID_RE) || []).length;
-        // A dropdown/multi-select answer is option ids too, and when no dictionary names
-        // them the athlete's NAME arrives as a uuid — it matches nobody on the roster, so
-        // every submission is skipped and the coach sees a sync that "worked" with nothing
-        // in it. Counted here so the app can name that cause instead of staying silent.
-        else if (typeof v === 'string') unnamedOptionIds += (v.match(GRID_ID_RE) || []).length;
-        // A grid answer to the pain question is the pain map whatever the question is
-        // called: a form that words it "Ağrın hangi bölgede?" (no severity axis in the
-        // title) still asks it as a matrix, and reading that as free text is what put
-        // the raw answer object in front of the coach.
-        let key = canonicalKey(title);
-        if (isGrid && key === 'Area of Pain') key = 'Pain Map';
-        // Tally may hand a matrix over as one question or as one question PER ROW, in
-        // which case every row shares the same title and would otherwise overwrite the
-        // one before it. Merging keeps whichever shape the API sends.
-        row[key] = (key === 'Pain Map' && row[key]) ? `${row[key]}, ${v}` : v;
-      }
-      rows.push(row);
+    let grown = null;
+    try { grown = await refreshSnapshot(formId, key, snap, total, formLabels, ctx); }
+    catch (e) { if (!(e && e.rateLimited)) throw e; }
+    if (grown) {
+      unnamedGridIds = (snap.unnamedGridIds || 0) + grown.unnamedGridIds;
+      unnamedOptionIds = (snap.unnamedOptionIds || 0) + grown.unnamedOptionIds;
+      await cachePut(ctx.store, snapKey(formId), { total, rows: grown.rows, complete: true,
+        unnamedGridIds, unnamedOptionIds, at: Date.now() }, SNAPSHOT_TTL);
+      return done(grown.rows, { snapshot: 'delta' });
     }
-    // `hasMore` is authoritative; a short/empty page is the fallback signal for
-    // API versions that omit it.
-    more = j.hasMore === true || (j.hasMore == null && subs.length >= PAGE_LIMIT);
-    if (!more || subs.length === 0) { more = false; page++; break; }
+    // Neither end explained the new count — fall through and read the form in full.
+  } else if (snap && !snap.complete && snap.total === total && snap.nextPage === page && page > 1) {
+    // A long first pull, resumed. The earlier rounds' rows are not sent again (the app
+    // already has them) but they are carried so the snapshot this pull builds is whole.
+    carry = snap.rows;
+    canSnapshot = true;
+    unnamedGridIds = snap.unnamedGridIds || 0; unnamedOptionIds = snap.unnamedOptionIds || 0;
   }
+
+  for (let n = 0; n < budget; n++, page++) {
+    let got;
+    try {
+      got = await getSubmissionPage(formId, key, page, total, ctx);
+    } catch (e) {
+      // Out of budget mid-run: keep the pages already read and let the caller come back
+      // for the rest. Throwing here is what turned a busy minute into a failed sync.
+      if (e && e.rateLimited && (rows.length || carry.length)) { rateLimited = true; more = true; break; }
+      throw e;
+    }
+    if (got.cached) cacheHits++;
+    const p = parseSubmissions(got.j, formLabels);
+    if (total == null) total = readTotal(got.j);
+    rows.push(...p.rows);
+    unnamedGridIds += p.unnamedGridIds;
+    unnamedOptionIds += p.unnamedOptionIds;
+    more = p.hasMore;
+    if (!more || p.count === 0) { more = false; page++; break; }
+  }
+
+  /* Keep what this pull has read. A complete snapshot is what every other device — and
+     every later sync from this one — is served from; a partial one lets a season-length
+     first pull resume without re-reading the pages it already paid for. */
+  if (canSnapshot && total != null && ctx.store && !rateLimited) {
+    const all = carry.concat(rows);
+    await cachePut(ctx.store, snapKey(formId), { total, rows: all, complete: !more, nextPage: page,
+      unnamedGridIds, unnamedOptionIds, at: Date.now() },
+      more ? PARTIAL_SNAPSHOT_TTL : SNAPSHOT_TTL);
+    snapshot = more ? 'building' : 'built';
+  }
+
   return { rows, total, nextPage: page, hasMore: more, unnamedGridIds, unnamedOptionIds,
            formLabelCount: Object.keys(formLabels).length, labelSources, cacheHits,
-           rateLimited,
+           rateLimited, snapshot,
            // Not an error: the rows in hand are good and `hasMore` says where to resume.
            // It rides along so the app can tell the coach why a sync came in pieces.
            error: null };
@@ -779,7 +912,10 @@ export default {
         // One limiter and one cache for the whole invocation: both forms page in
         // parallel, so they have to share the minute's budget rather than each assume
         // it has the whole of it.
-        const ctx = { limiter: makeLimiter(), store };
+        // `?fresh=1` bypasses the stored season — the way back when a submission was
+        // edited in Tally and the count could not tell.
+        const fresh = /^(1|true|yes)$/i.test(url.searchParams.get('fresh') || '');
+        const ctx = { limiter: makeLimiter(), store, fresh };
         const pull = (formId, which, from) =>
           !key ? Promise.resolve(idle())
                : formId ? fetchForm(formId, key, from, PAGE_BUDGET, ctx) : Promise.resolve(unset(which));
@@ -832,14 +968,14 @@ export default {
           worker:   { version: WORKER_VERSION },
           srpe:     { fromPage: srpeFrom, nextPage: srpeRes.nextPage, hasMore: srpeRes.hasMore, total: srpeRes.total, fetched: sRPE.length,
                       pulled: srpeRes.rows.length, pushed: hookS.rows.length, cacheHits: srpeRes.cacheHits || 0,
-                      rateLimited: !!srpeRes.rateLimited,
+                      rateLimited: !!srpeRes.rateLimited, snapshot: srpeRes.snapshot || null,
                       unnamedOptionIds: (srpeRes.unnamedOptionIds || 0) + uS.opt, error: srpeRes.error || null },
           wellness: { fromPage: wellFrom, nextPage: wellRes.nextPage, hasMore: wellRes.hasMore, total: wellRes.total, fetched: wellness.length,
                       pulled: wellRes.rows.length, pushed: hookW.rows.length,
                       unnamedGridIds: (wellRes.unnamedGridIds || 0) + uW.grid,
                       unnamedOptionIds: (wellRes.unnamedOptionIds || 0) + uW.opt,
                       formLabels: wellRes.formLabelCount, cacheHits: wellRes.cacheHits || 0,
-                      rateLimited: !!wellRes.rateLimited,
+                      rateLimited: !!wellRes.rateLimited, snapshot: wellRes.snapshot || null,
                       labelSources: wellRes.labelSources, error: wellRes.error || null },
           // The push half: whether a store is bound at all, whether deliveries are signed,
           // and how many rows came from it. `mode` is what the app reports to the coach —
@@ -854,6 +990,10 @@ export default {
           // app reads `rateLimited` to slow itself down instead of hammering on.
           rate: { limit: TALLY_RATE_LIMIT, budget: RATE_BUDGET, spent: ctx.limiter.spent(),
                   cached: !!store,
+                  // Served from the stored season rather than read out of Tally page by
+                  // page. The app reads it to know a sync cost nothing and needs no pacing.
+                  snapshot: (srpeRes.snapshot === 'hit' || srpeRes.snapshot === 'delta')
+                         && (wellRes.snapshot === 'hit' || wellRes.snapshot === 'delta'),
                   rateLimited: !!(srpeRes.rateLimited || wellRes.rateLimited) },
         };
         return json({ sRPE, wellness, meta, syncedAt: new Date().toISOString() });
