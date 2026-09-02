@@ -72,7 +72,7 @@ koçun sildiği bir sRPE check-in'i geri gelmez.
 
 | Sporcunun gördüğü | Sebep / çözüm |
 |---|---|
-| "Form henüz açılmamış" | Anonim giriş kapalı → 1. adım |
+| "Form henüz açılmamış" | Anonim giriş kapalı → 1. adım. Firebase bunu iki ayrı kodla bildirir: `auth/operation-not-allowed` ve `auth/admin-restricted-operation` — ikisi de aynı şey demek |
 | "Form okunamadı" | Kurallar yayınlanmamış → 2. adım |
 | "Bu link artık geçerli değil" | Link yenilenmiş; sporcuya güncel linki gönder |
 | "Gönderimin yolda" | Şebeke yavaş; cevap cihazda kuyruğa alındı, bağlantı gelince gider |
