@@ -72,8 +72,9 @@ h1 .yr{color:var(--muted);font-weight:500}
   padding:18px;margin-bottom:14px;box-shadow:var(--shadow);
   transition:border-color .22s ease,box-shadow .22s ease,transform .22s cubic-bezier(.2,.7,.3,1)}
 .card:focus-within{border-color:var(--border2);box-shadow:0 16px 38px -18px rgba(0,0,0,.65),var(--glass-hi)}
-/* Cevaplanmış kart: kenarında ince bir accent izi — dolanları taramak kolay olsun. */
-.card.filled{border-color:rgba(0,148,255,.28)}
+/* Cevaplanmış kart: tek işaret kenarın maviye dönmesi — dolanları taramak kolay
+   olsun diye yeterli, ayrıca bir onay tiki koymaya gerek yok. */
+.card.filled{border-color:rgba(0,148,255,.55)}
 /* Sayfa yüklenirken kartlar sırayla belirir; hareket kısa, dikkat dağıtmaz. */
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .card,.msg{animation:rise .34s cubic-bezier(.2,.7,.3,1) both}
@@ -86,8 +87,6 @@ h1 .yr{color:var(--muted);font-weight:500}
   display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 .q::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;flex:none}
 .q .req{color:var(--dim);font-size:11px;font-weight:500}
-.q .tick{margin-left:auto;color:var(--accent2);font-size:12px;opacity:0;transition:opacity .2s}
-.card.filled .q .tick{opacity:1}
 .scale{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);
   margin:0 0 12px;padding-left:12px;letter-spacing:.02em}
 .scale b{font-weight:500;color:var(--muted)}
@@ -105,6 +104,13 @@ h1 .yr{color:var(--muted);font-weight:500}
 .chip.on{background:var(--grad);border-color:transparent;color:#0a0b0d;
   box-shadow:0 4px 14px rgba(0,148,255,.20)}
 .chip.sm{min-width:40px;padding:9px 11px;font-size:13px}
+/* Skalalı rozetler (RPE 1-10, wellness 1-5): her puan kendi rengini taşır, böylece
+   sporcu rakamı okumadan da nerede olduğunu görür. Renk JS'ten --c olarak geliyor;
+   seçilmemişken yalnız yazıda ve kenarda, seçilince dolgunun kendisinde. */
+.chip.tone{color:var(--c);border-color:var(--c-soft)}
+.chip.tone:hover{background:var(--c-bg);border-color:var(--c)}
+.chip.tone.on{background:var(--c);border-color:var(--c);color:#0a0b0d;
+  box-shadow:0 4px 14px var(--c-bg)}
 
 input[type=date],input[type=number],input[type=text],select{
   width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);
@@ -119,10 +125,7 @@ input::placeholder{color:var(--dim)}
 .sect:first-of-type{border-top:0;padding-top:0}
 .eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:8px}
-.eyebrow .ok{color:var(--accent2);opacity:0;transition:opacity .2s}
-.sect.done .eyebrow .ok{opacity:1}
 .sect-title{font-size:15px;font-weight:600;color:var(--text);margin:6px 0 12px}
-.sect.done .sect-title{color:var(--text)}
 .lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
 
@@ -204,9 +207,16 @@ var FORMS={
 var PAIN_REGIONS=['Boyun','Omuz','Sırt','Göğüs','Karın','Dirsek','Bilek / El','Bel','Kalça',
   'Kasık','Hamstring','Quadriceps','Diz','Kalf','Aşil','Ayak Bileği','Ayak'];
 var RPE_VALUES=[1,2,3,4,5,6,7,8,9,10];
+// RPE skalasının rengi: 1 mavi (kolay) → 10 kırmızı (bitkin). Aradaki adımlar
+// maviden turkuaza, yeşile, sarıya, turuncuya geçiyor.
+var RPE_COLORS=['#0094ff','#22a5f5','#2ec4b6','#46d6a0','#9ed163',
+                '#fcd34d','#f7a832','#f97316','#f2542d','#ef4444'];
 var DUR_VALUES=[30,40,50,60,70,80,90,100,110,120];
 var GAME_MIN=[0,5,10,15,20,25,30,35,40];
 var SCORE_5=[1,2,3,4,5];
+// Wellness skalası ters yönde okunuyor (1 kötü, 5 iyi): 1 kırmızı → 4 yeşil,
+// 5 ise skalanın tepesi olarak mavi.
+var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
 
 /* Formun canlı tarafı tek bir yerden yürür: her dokunuş REFRESH'leri çağırır,
    onlar da ilerleme şeridini, dolan kartların işaretini ve gönder düğmesinin
@@ -279,13 +289,21 @@ function chipRow(field,values,opts){
   opts=opts||{};
   var row=el('div',{class:'chips'});
   var custom=null;
-  values.forEach(function(v){
+  values.forEach(function(v,i){
     var b=el('button',{type:'button',class:'chip'+(opts.small?' sm':''),text:String(v),onclick:function(){
       A[field]=(A[field]===v)?null:v;
       if(custom)custom.value='';
       paintRow();refreshAll();
     }});
     b.dataset.v=String(v);
+    // Skala rengi: rozetin kendi tonu, sönük kenarı ve gölgesi tek bir renkten türüyor.
+    var c=opts.palette&&opts.palette[i];
+    if(c){
+      b.classList.add('tone');
+      b.style.setProperty('--c',c);
+      b.style.setProperty('--c-soft',c+'66');
+      b.style.setProperty('--c-bg',c+'26');
+    }
     row.appendChild(b);
   });
   if(opts.custom){
@@ -308,8 +326,7 @@ function chipRow(field,values,opts){
 }
 function question(label,required,node,scaleHtml,filledFn){
   var kids=[el('div',{class:'q'},[el('span',{text:label}),
-    required?el('span',{class:'req',text:'zorunlu'}):null,
-    el('span',{class:'tick',text:'✓'})])];
+    required?el('span',{class:'req',text:'zorunlu'}):null])];
   if(scaleHtml)kids.push(el('div',{class:'scale',html:scaleHtml}));
   kids.push(node);
   var card=el('div',{class:'card'},kids);
@@ -401,8 +418,8 @@ function buildCommon(){
             function(){return !!A.athleteId;})];
 }
 function buildSrpe(){
-  // Üç bölüm, aynı kalıp: zorluk + süre. Bölüm tamamlandığında üstündeki sıra
-  // etiketi onaylanır, böylece uzun formda nerede kalındığı görünür.
+  // Üç bölüm, aynı kalıp: zorluk + süre. Doldurulduğu kartın mavi kenarından
+  // görünüyor; bölümün kendisine ayrıca bir onay satırı konmuyor.
   var SECTIONS=[
     {n:'01',t:'Top antrenmanı ne kadar yorucuydu?',rpe:'tpRPE',dur:'tpDuration',
      durLabel:'Top antrenmanı süresi (dk)',durVals:DUR_VALUES},
@@ -412,15 +429,13 @@ function buildSrpe(){
      durLabel:'Kaç dakika süre aldın?',durVals:GAME_MIN},
   ];
   var sects=SECTIONS.map(function(S){
-    var node=el('div',{class:'sect'},[
-      el('div',{class:'eyebrow'},[el('span',{text:S.n}),el('span',{class:'ok',text:'✓ tamam'})]),
+    return el('div',{class:'sect'},[
+      el('div',{class:'eyebrow'},[el('span',{text:S.n})]),
       el('div',{class:'sect-title',text:S.t}),
-      chipRow(S.rpe,RPE_VALUES),
+      chipRow(S.rpe,RPE_VALUES,{palette:RPE_COLORS}),
       el('div',{class:'lbl',text:S.durLabel}),
       chipRow(S.dur,S.durVals,{small:true,custom:true})
     ]);
-    REFRESH.push(function(){node.classList.toggle('done',A[S.rpe]!=null&&A[S.dur]!=null);});
-    return node;
   });
   var box=el('div',{class:'card'},sects.concat([
     el('div',{class:'hint',text:'O gün yapmadığın bölümü boş bırak — en az bir bölümü doldurman yeterli.'})
@@ -437,14 +452,16 @@ function buildWellness(){
     question('Dinlenik KAH nedir? (atım/dk)',false,rhr,
       'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.',
       function(){return A.RHR!=null;}),
-    question('Uyku kaliten nasıldı?',true,chipRow('sleep',SCORE_5),
-      '<b>1</b> yetersiz &nbsp;→&nbsp; <b>5</b> mükemmel',
+    // Skalanın yönünü artık rozetlerin rengi anlatıyor (1 kırmızı → 5 mavi),
+    // o yüzden altlarındaki "1 … → 5 …" satırı kaldırıldı.
+    question('Uyku kaliten nasıldı?',true,chipRow('sleep',SCORE_5,{palette:SCORE_COLORS}),
+      null,
       function(){return A.sleep!=null;}),
-    question('Yorgunluk düzeyin nedir?',true,chipRow('fatigue',SCORE_5),
-      '<b>1</b> çok yorgun / bitkin &nbsp;→&nbsp; <b>5</b> çok dinç',
+    question('Yorgunluk düzeyin nedir?',true,chipRow('fatigue',SCORE_5,{palette:SCORE_COLORS}),
+      null,
       function(){return A.fatigue!=null;}),
-    question('Kas ağrısı düzeyin nedir?',false,chipRow('soreness',SCORE_5),
-      '<b>1</b> çok ağrılı &nbsp;→&nbsp; <b>5</b> hiç ağrım yok',
+    question('Kas ağrısı düzeyin nedir?',false,chipRow('soreness',SCORE_5,{palette:SCORE_COLORS}),
+      null,
       function(){return A.soreness!=null;}),
     question('Ağrın hangi bölgede ve ne şiddette?',false,painGrid(),
       'Opsiyonel — bir bölgeye dokun, şiddetini seç.',
