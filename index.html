@@ -2906,6 +2906,24 @@ header{background:var(--bg2)!important}
 .iv-mrow{display:flex;align-items:center;gap:8px;width:100%;min-width:0}
 .iv-mrow .focus-sel{flex:1 1 auto;min-width:0}
 @media(max-width:640px){.ca-wrap{flex:1 1 100%}.ca-btn{width:100%}.ca-pop{right:auto;left:0}}
+
+/* ---- Target RPE gauge — draggable gradient bar, session editor ---------- */
+.rpe-gauge{display:flex;flex-direction:column;gap:6px;width:100%;text-transform:none;letter-spacing:0;white-space:normal}
+.rpe-gauge-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.rpe-gauge-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em}
+.rpe-gauge-val{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text)}
+.rpe-gauge-val-max{color:var(--dim);font-weight:600;font-size:11px}
+.rpe-gauge-track{position:relative;height:16px;border-radius:8px;
+  background:linear-gradient(to right,#6fbf3f 0%,#a9d43f 25%,#f4d548 45%,#f0a23c 65%,#ea6a3a 82%,#e0392f 100%);
+  cursor:pointer;touch-action:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.rpe-gauge-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;
+  height:26px;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
+.rpe-gauge-tri{width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent}
+.rpe-gauge-tri.l{border-left:8px solid #111318}
+.rpe-gauge-tri.r{border-right:8px solid #111318}
+.rpe-gauge-ticks{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.04em}
 /* The session's own line sits above the blocks, like the individualization card's. */
 .sess-tools{margin-bottom:12px}
 /* The bar's title is click-to-edit: it reads as text until it is clicked, then wears the
@@ -3286,6 +3304,18 @@ const LEGACY_REGION_MAP={'Upper Body Strength':'Upper Body Strength&Power','Uppe
   'Lower Body Strength':'Lower Body Strength&Power','Lower Body Power':'Lower Body Strength&Power',
   'Full Body Strength':'Full Body Strength&Power','Full Body Power':'Full Body Strength&Power'};
 const sesRegion=s=>{const r=(s?.region||'').trim();return SESSION_REGIONS.includes(r)?r:(LEGACY_REGION_MAP[r]||'');};
+/* The intensity target the coach is planning FOR the session — distinct from `sRPE`,
+   which is the actual/logged load used everywhere else for AU and monitoring. Stored as
+   one center value (1-10, half-steps); the scale always shows a two-point band around it
+   (center±1) since coaches speak of session intensity as a range ("RPE 6-8"), not a single
+   number. Defaults to 7 (⇒ 6-8) so the gauge — and the printed program — always has a
+   sensible target even before the coach has touched it. */
+const sesRpeTarget=s=>{const v=Number(s?.rpeTarget);return(v>=1&&v<=10)?v:7;};
+const sesRpeRange=s=>{const v=sesRpeTarget(s);return[Math.max(1,v-1),Math.min(10,v+1)];};
+/* Position along the 1-10 scale as a percentage, shared by the editor's draggable gauge
+   and the static one drawn onto the printed program, so a coach never sees two different
+   scales for the same number. */
+const rpePct=v=>((Math.max(1,Math.min(10,Number(v)||1))-1)/9)*100;
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 /* Every week focus carries its own load profile. Weekly Load Targets sets volume and
    intensity from this table when the focus changes, so the focus dropdown is the only
@@ -6406,6 +6436,22 @@ ${purposeSec}
    regardless of which path the user takes.
    ========================================================= */
 const escHTML=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Best-effort volume summary for the printed program's "Training Volume" panel — total
+   sets and reps are exact sums of what the coach typed; total load is a tonnage estimate
+   (sets × reps × the first number found in the load field) since load is free text
+   ("20-24 kg", "Bodyweight") rather than a guaranteed number. Shown with a leading "~" for
+   exactly that reason. */
+function sessionVolumeStats(s){
+  let sets=0,reps=0,tonnage=0,hasLoad=false;
+  (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
+    if(!e.name)return;
+    const st=Number(e.sets)||0,rp=Number(e.reps)||0;
+    sets+=st;reps+=rp;
+    const lm=String(e.load||'').match(/[\d.]+/);
+    if(lm){hasLoad=true;tonnage+=parseFloat(lm[0])*(st||1)*(rp||1);}
+  }));
+  return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
+}
 function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const withImages=!!(opts&&opts.withImages);
   /* Coach copy: prints the justification recorded against every changed exercise.
@@ -6413,66 +6459,69 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const withReasons=!!(opts&&opts.withReasons);
   // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
   const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
+  const dash=`<span class="dash">—</span>`;
   const computeLabels=exs=>{const cnt={};return exs.map(ex=>{
     const ss=(ex.superset||'').toString().toUpperCase().trim();
     if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:`${ss}${cnt[ss]}`,letter:ss};}
     cnt._=(cnt._||0)+1;return{tag:`${cnt._}.`,letter:''};});};
+  /* One exercise, one row: # (plain or a superset badge) · exercise (image + name +
+     movement tag) · Set x Reps · Load · Time · Tempo · Rest · Notes/coaching cues as
+     bullets. Replaces the old one-card-per-exercise layout (each with its own little
+     6-column sub-table) with a single continuous table per block, which is how a
+     printed program is actually read off mid-session. */
   const exTable=b=>{
     const namedExs=(b.exercises||[]).filter(e=>e.name);
     if(namedExs.length===0)return`<div class="empty-block">${L('Egzersiz yok','No exercises')}</div>`;
     const labs=computeLabels(b.exercises||[]);
-    return`<div class="ex-list">${(b.exercises||[]).map((e,i)=>{
+    const rows=(b.exercises||[]).map((e,i)=>{
       if(!e.name)return'';
       const lab=labs[i];const isSS=!!lab.letter;
-      /* Prescription grid — every exercise carries the same six columns
-         (Set & Reps · Time · Tempo · RPE · Load · Rest) plus a Notes row under
-         them, whether or not the coach filled them in. Printed blank they are
-         the boxes the session is written into by hand; filled in they read as
-         one aligned table down the sheet instead of a run-on meta line whose
-         fields moved with whatever happened to be set. */
       let setReps='';
       if(e.sets&&e.reps)setReps=`${e.sets} × ${e.reps}`;
       else if(e.sets)setReps=`${e.sets} ${L('set','sets')}`;
       else if(e.reps)setReps=e.reps;
-      const cells=[setReps,e.duration||'',e.tempo||'',e.rpe||'',e.load||'',e.rest||''];
-      const presHead=[L('Set & Tekrar','Set & Reps'),L('Süre','Time'),L('Tempo','Tempo'),
-                      L('RPE','RPE'),L('Yük','Load'),L('Dinlenme','Rest')];
-      /* The rounded frame is the wrapper's, not the table's: border-collapse leaves a
-         table unable to clip its own corners, so the radius has to live on a box around it. */
-      const presTbl=`<div class="pres-wrap"><table class="pres"><thead><tr>${presHead.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-            <tbody><tr>${cells.map(c=>`<td>${escHTML(c)}</td>`).join('')}</tr>
-            <tr class="pres-note"><th>${L('Notlar:','Notes:')}</th><td colspan="5">${e.description||''}</td></tr></tbody></table></div>`;
       // Reference link — clickable in the shared PDF, and short enough on paper to type out.
       const lnk=safeURL(e.link);
-      /* What the exercise trains and how, on its own line directly under the name: the
-         pattern abbreviated the way the execution pie abbreviates it ("Knee · Push").
-         Plain text rather than a chip — it is reference for whoever runs the session,
-         and a bordered box next to the name read as another prescription field. Rides on
-         the name's own line rather than under it: it is a two-word tag, and a line of its
-         own cost every exercise vertical space the sheet needs to fit six of them on a
-         page. Absent entirely when the exercise carries no pattern. */
+      // Movement pattern · execution, on its own line under the name — reference for
+      // whoever runs the session. Absent entirely when the exercise carries no pattern.
       const patTag=[EX_PAT_SHORT[e.pattern]||e.pattern||'',e.plane||''].filter(Boolean).join(' · ');
-      // The image is a sibling of .ex-body, not a child, so it forms its own column on
-      // the left and the name / volume / meta read down the free space beside it.
-      return`<div class="ex-card">
-        <span class="ex-no${isSS?' ss':''}">${lab.tag}</span>
-        ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
-        <div class="ex-body">
-          <div class="ex-row-top">
-            <span class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${patTag?`<span class="ex-pat">${escHTML(patTag)}</span>`:''}${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</span>
+      /* Notes column reads as bullets — one per line the coach wrote, plus the recorded
+         justification (coach copy only) as a last bullet, rather than a run-on paragraph. */
+      const notes=String(e.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
+      const notesHTML=notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:dash;
+      return`<tr class="ex-row">
+        <td class="c-no"><span class="ex-badge${isSS?' ss':''}">${lab.tag}</span></td>
+        <td class="c-ex">
+          <div class="ex-ex-wrap">
+            ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
+            <div class="ex-ex-txt">
+              <div class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
+              ${patTag?`<span class="ex-pat2">${escHTML(patTag)}</span>`:''}
+            </div>
           </div>
-          ${presTbl}
-          ${withReasons&&e.why?`<div class="ex-why"><strong>${L('Gerekçe','Reason')}:</strong> ${escHTML(e.why)}</div>`:''}
-        </div>
-      </div>`;
-    }).join('')}</div>`;
+        </td>
+        <td class="c-sr">${setReps?escHTML(setReps):dash}</td>
+        <td class="c-load">${e.load?escHTML(e.load):dash}</td>
+        <td class="c-dur">${e.duration?escHTML(e.duration):dash}</td>
+        <td class="c-tempo">${e.tempo?escHTML(e.tempo):dash}</td>
+        <td class="c-rest">${e.rest?('⏱ '+escHTML(e.rest)):dash}</td>
+        <td class="c-notes">${notesHTML}</td>
+      </tr>`;
+    }).join('');
+    const heads=[L('#','#'),L('Egzersiz','Exercise'),L('Set x Tekrar','Set x Reps'),L('Yük','Load'),
+      L('Süre','Time'),L('Tempo','Tempo'),L('Dinlenme','Rest'),L('Notlar / Koçluk İpuçları','Notes / Coaching Cues')];
+    return`<div class="ex-tbl-wrap"><table class="ex-tbl2"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
   };
   /* One document can carry several athletes: each is a group with its own header — the same
      header a single athlete's printout has — starting on a fresh page. Called the plain way,
      with (title, subtitle, sessions), there is exactly one group and the document is the one
      it has always been. */
   const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
-  const docHead=(t,sub)=>`<div class="doc-top"><span class="wm">COACH<b>OS</b></span></div>
+  // What this document is FOR, next to the title — every focus tag across its own sessions.
+  const focusFor=list=>{const set=new Set();(list||[]).forEach(s=>sesFocus(s).forEach(f=>f&&set.add(f)));return[...set].join(', ');};
+  const docHead=(t,sub,focusTxt)=>`<div class="doc-top"><span class="wm">COACH<b>OS</b></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
 <div class="doc-head">
   <div class="doc-l">
     ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`:''}
@@ -6481,24 +6530,54 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       <h1>${t}</h1>
     </div>
   </div>
-  <div class="doc-r">
-    <div class="day-name">${String(sub==null?'':sub).replace(/,/g,'·')}</div>
-  </div>
+  ${focusTxt?`<div class="doc-r">
+    <div class="doc-focus-ic">🎯</div>
+    <div><div class="lbl">${L('Odak','Focus')}</div><div class="doc-focus-val">${escHTML(focusTxt)}</div></div>
+  </div>`:''}
 </div>`;
+  const nf=v=>Number(v||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
+  /* Training Volume + Intensity Target, side by side under the session banner — the
+     coach's plan for the session at a glance, before the exercise-by-exercise detail. */
+  const statsRowHTML=s=>{
+    const vol=sessionVolumeStats(s);
+    const[rlo,rhi]=sesRpeRange(s);
+    return`<div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-box-lbl">${L('Antrenman Hacmi','Training Volume')}</div>
+        <div class="stat-box-cols">
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Set','Total Sets')}</span><span class="stat-col-val">${vol.sets||dash}</span></div>
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Tekrar','Total Reps')}</span><span class="stat-col-val">${vol.reps||dash}</span></div>
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Yük','Total Load')}</span><span class="stat-col-val">${vol.hasLoad?`~${nf(vol.tonnage)} kg`:dash}</span></div>
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-lbl">${L('Yoğunluk Hedefi','Intensity Target')}</div>
+        <div class="stat-int-row">
+          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span></span>
+          <div class="rpe-gauge-print"><div class="rpe-gauge-print-thumb" style="left:${rpePct(sesRpeTarget(s))}%"></div></div>
+        </div>
+      </div>
+    </div>`;
+  };
   const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
   <div class="sh">
     <div class="sh-l"><span class="sn">${i+1}</span>${s.ownerName?`<span class="sh-own">${escHTML(s.ownerName)}</span>`:''}${s.name}</div>
-    <div class="sh-r"><span class="sh-pill">${s.time}</span><span class="sh-pill">${s.duration} ${L('DK','MIN')}</span></div>
+    <div class="sh-r">
+      <div class="sh-stat"><span class="sh-stat-v">🕐 ${s.time}</span><span class="sh-stat-k">${L('BAŞLANGIÇ','START')}</span></div>
+      <div class="sh-stat-div"></div>
+      <div class="sh-stat"><span class="sh-stat-v">${s.duration} ${L('DK','MIN')}</span><span class="sh-stat-k">${L('TOPLAM SÜRE','TOTAL TIME')}</span></div>
+    </div>
   </div>
   <div class="meta-bar">
     <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${s.purpose}</span></div>
   </div>
+  ${statsRowHTML(s)}
   ${(()=>{
     // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
     // categorization, blocks stay in the order the user arranged them.
     const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
     if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
-    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block"><div class="bh">${b.name}</div>${exTable(b)}</div>`).join('')}</div>`;
+    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block">${b.name?`<div class="bh">${b.name}</div>`:''}${exTable(b)}</div>`).join('')}</div>`;
   })()}
   ${(s.planNote||s.notes)?`<div class="sf">
     <div class="sf-notes">
@@ -6544,10 +6623,11 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    only crowd a header that has to earn its height back in exercises. Set as plain text
    (not the app's own dark-background logo image) so it reads straight on white paper
    with no box behind it. */
-.doc-top{display:flex;justify-content:center;margin-bottom:10px}
+.doc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .doc-top .wm{display:inline-flex;align-items:center;background:#111318;border-radius:8px;padding:5px 12px;
   font-weight:800;font-size:13px;letter-spacing:-.01em;color:#fff}
 .doc-top .wm b{color:#0094ff;font-weight:800}
+.doc-top-date{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
 .doc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0f172a}
@@ -6559,9 +6639,13 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .doc-logo{height:auto;width:auto;max-height:78px;max-width:170px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
-.doc-r{text-align:right}
-.doc-r .day-name{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:800;color:#7e8b2e;letter-spacing:.4px}
-.doc-r .date{font-size:13px;color:#64748b;font-weight:500;margin-top:2px;letter-spacing:.3px}
+/* Focus badge — what this document is FOR, opposite the title. A round icon chip beside
+   two stacked lines, the same "label over value" pattern the rest of the sheet uses. */
+.doc-r{display:flex;align-items:center;gap:10px;text-align:right}
+.doc-r .lbl{margin-bottom:3px}
+.doc-focus-ic{flex:none;width:34px;height:34px;border-radius:50%;background:#eef4de;display:flex;align-items:center;
+  justify-content:center;font-size:16px}
+.doc-focus-val{font-size:14px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
 
 /* Session card — refined; allow page breaks INSIDE the session so a long
    session flows naturally across pages (no half-empty pages). The header /
@@ -6574,11 +6658,15 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .sess.brk{break-before:page;page-break-before:always}
 /* Each athlete on a document of several starts a fresh page, under their own header. */
 .ath-doc.brk{break-before:page;page-break-before:always}
-.ex-why{margin-top:3px;font-size:11px;color:#7c5e10;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 4px 4px 0;padding:3px 7px;line-height:1.35}
-.ex-why strong{color:#92400e}
 .sh-l .sn{display:inline-block;background:#e6ff55;color:#0a0b0d;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:800;margin-right:11px}
-.sh-r{display:flex;gap:5px;font-size:11px;align-items:center}
-.sh-pill{background:rgba(255,255,255,.14);color:#fff;padding:5px 12px;border-radius:14px;font-weight:700;letter-spacing:.3px;font-size:12px}
+/* Two small stat blocks (start time · total duration) in the dark banner, each a value
+   over an uppercase caption — replaces the plain pills so the numbers read as what they
+   are rather than as generic tags. */
+.sh-r{display:flex;gap:14px;align-items:center}
+.sh-stat{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.sh-stat-v{font-size:14px;font-weight:800;letter-spacing:.2px}
+.sh-stat-k{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.7px}
+.sh-stat-div{width:1px;align-self:stretch;background:rgba(255,255,255,.16)}
 
 /* Metadata bar — stays with following content */
 .meta-bar{padding:7px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:20px;align-items:center;flex-wrap:wrap;break-after:avoid;page-break-after:avoid}
@@ -6586,137 +6674,79 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
 .meta-item .val{color:#0f172a;font-weight:600}
 
+/* Training Volume + Intensity Target — the coach's plan for the session, at a glance,
+   before the exercise-by-exercise table. Two equal panels, same card language (rounded
+   frame, mono caption over a bold value) as the rest of the document. */
+.stat-row{display:flex;gap:10px;padding:10px 16px 0;break-inside:avoid;page-break-inside:avoid}
+.stat-box{flex:1 1 0;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;background:#fbfcfd}
+.stat-box-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#6f7d29;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.stat-box-cols{display:flex;gap:14px}
+.stat-col{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat-col-lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+.stat-col-val{font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+.stat-int-row{display:flex;flex-direction:column;gap:7px}
+.stat-int-val{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+.stat-int-max{font-size:11px;color:#94a3b8;font-weight:600}
+/* Static twin of the editor's draggable gauge — same gradient, same bowtie marker, just
+   fixed at the session's own target so the printed page shows exactly what was set. */
+.rpe-gauge-print{position:relative;height:10px;border-radius:5px;
+  background:linear-gradient(to right,#6fbf3f 0%,#a9d43f 25%,#f4d548 45%,#f0a23c 65%,#ea6a3a 82%,#e0392f 100%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+.rpe-gauge-print-thumb{position:absolute;top:50%;width:0;height:0;transform:translate(-50%,-50%);
+  border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:6px solid #111318;
+  border-right:6px solid #111318;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+
 .bs{padding:10px 16px}
 /* Blocks stack one under the other, in the order the coach arranged them, so the sheet
    is read straight down. Side-by-side columns only made sense on a landscape page; on
    portrait they squeezed exercise names into two-line wraps. */
 .bs.blocks-grid{display:flex;flex-direction:column;gap:12px}
-/* No break-inside:avoid here on purpose: a block with more exercises than fit in the
-   space left on the page was pushed whole onto the next one, leaving the first page
-   empty below the session header. The block flows instead, and .ex-card keeps each
-   individual exercise intact wherever the break lands. */
 .block{min-width:0}
 /* Smaller than .ex-name on purpose — uppercase, 800 weight, letter-spaced and sitting on a
    green rule is enough to read as the heading over its exercises, and matching the exercise
    names would make the block titles shout. */
 .bh{font-size:15px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin:2px 0 4px 0;padding-bottom:4px;border-bottom:2px solid #9aab3a;display:block;break-after:avoid;page-break-after:avoid}
 
-/* Exercise table — light modern style. Borders use border-collapse so
-   rounded corners come from explicit cell border-radius on the corners.
-   Allows internal breaks; rows themselves stay intact thanks to default
-   browser table-row break handling. */
-.ex-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px;border:1px solid #e2e8f0;border-radius:8px}
-.ex-tbl thead{display:table-header-group}
-/* Exercise card list — no fixed table columns, content flows naturally
-   so no text gets clipped in narrow 3-column layout.
-   Type sizes are a step up from the rest of the document: the exercise list is what an
-   athlete actually reads off the sheet mid-session, often from arm's length. */
-.ex-list{display:flex;flex-direction:column;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
-/* Tight on purpose: six exercises is what a strength session usually runs to, and the
-   sheet is only useful if all six land on one page. The padding here and the cell padding
-   on .pres are what buy that; the value row's own height is left alone, since that is the
-   space a coach writes into. */
-.ex-card{display:flex;gap:9px;padding:5px 10px;align-items:flex-start;border-bottom:1px solid #f1f5f9;break-inside:avoid;page-break-inside:avoid}
-.ex-card:last-child{border-bottom:none}
-.ex-card:nth-child(even){background:#fcfdfe}
-/* The tag centres itself against the whole exercise row — top-aligning it left it
-   floating above the name once the row grew a pattern line or a coaching cue. */
-.ex-no{font-size:12px;font-weight:700;color:#94a3b8;min-width:26px;text-align:center;flex-shrink:0;align-self:center}
-.ex-no.ss{background:rgba(154,171,58,.14);color:#6f7d29;border:1px solid rgba(154,171,58,.45);border-radius:4px;padding:1px 4px;min-width:28px}
-.ex-body{flex:1;min-width:0}
-.ex-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px;flex-wrap:wrap}
-.ex-name{font-weight:700;font-size:16px;color:#0f172a;line-height:1.25}
-.ex-vol{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;color:#6f7d29;white-space:nowrap;letter-spacing:.2px}
-.ex-meta{font-size:12.5px;color:#64748b;margin-top:3px;font-weight:700;line-height:1.4;display:flex;gap:8px;flex-wrap:wrap}
-.ex-meta .m-l{color:#ea580c;font-weight:800}
-.ex-meta .m-t{color:#7c3aed;font-weight:800}
-.ex-meta .m-r{color:#6f7d29;font-weight:800}
-.ex-meta .m-p{color:#be123c;font-weight:800}
-.ex-meta strong{font-weight:800}
-/* Prescription grid under each exercise — the six columns a session is written in,
-   plus a Notes row. Built like the app's own panels — rounded frame, hairline interior
-   rules in the sheet's slate, labels on the black the session header uses — so it belongs
-   to the document rather than looking pasted into it; the value row is still left tall
-   enough to write in by hand when the field was left empty. Fixed layout keeps the six columns the same
-   width on every exercise, so they line up down the whole page. */
-/* Rounded on all four corners like every other panel in the app, and the radius lives
-   here because a border-collapse table cannot clip its own corners. */
-.pres-wrap{margin-top:5px;border:1px solid #e8edf3;border-radius:6px;overflow:hidden;background:#fff;break-inside:avoid;page-break-inside:avoid}
-.pres{width:100%;table-layout:fixed;border-collapse:collapse}
-/* Interior rules only — the frame above draws the outside edge, so no doubled line
-   runs along it — and lighter than that frame, so the grid reads as one panel with
-   divisions rather than as six boxed cells. */
-.pres th,.pres td{border-right:1px solid #eef2f7;border-bottom:1px solid #eef2f7;padding:3px 6px;text-align:center;vertical-align:middle}
-.pres th:last-child,.pres td:last-child{border-right:none}
-.pres tr:last-child th,.pres tr:last-child td{border-bottom:none}
-/* Field labels in the same mono grey caps every other label on the sheet is set in —
-   the purpose bar's, the document's own — so the grid belongs to the page instead of
-   looking like a spreadsheet pasted onto it. Smaller than the values they head: they
-   are the form's printing, and what a coach reads off the row is the value. */
-.pres th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.7px;line-height:1.3;color:#94a3b8}
-/* The label band is the purpose bar's grey, not a solid one: it sits under every
-   exercise on the page, and anything heavier stripes the whole sheet — and costs the
-   toner a dark strip per exercise on a printout. */
-.pres thead th{background:#f8fafc;border-right-color:#e8edf3;border-bottom-color:#e8edf3}
-.pres tbody td{height:21px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:#0f172a}
-/* Sets and reps carries the block rule's olive: it is the one field an exercise is
-   never written without, and the eye running down a page of these is looking for it. */
-.pres tbody tr:first-child td:first-child{color:#6f7d29;font-weight:700}
-/* Columns are sized to what goes in them rather than split six equal ways: table-layout
-   is fixed, so the header row sets them for the whole table. "Set & Reps" needs the room
-   to stay on one line (a wrapped label makes the whole band two rows tall), and Load
-   carries the longest values a coach writes — "Bodyweight", "20kg Plate" — which wrapped
-   in an equal sixth. RPE and Tempo give it up; nothing longer than "8" or "3-1-1" goes
-   in them. The Notes label rides in the first column. */
-.pres thead th:nth-child(1){width:20%}
-.pres thead th:nth-child(2){width:15%}
-.pres thead th:nth-child(3){width:14%}
-.pres thead th:nth-child(4){width:11%}
-.pres thead th:nth-child(5){width:24%}
-.pres thead th:nth-child(6){width:16%}
-/* The Notes label rides in the first column and stays off the band: a grey strip under
-   just one cell of an otherwise white row read as a broken header. Left-aligned, like
-   the note it heads. */
-.pres tr.pres-note th{text-align:left;color:#b0bcca}
-.pres tr.pres-note td{height:24px;text-align:left;font-family:inherit;font-weight:400;font-size:11.5px;color:#334155;line-height:1.4}
-/* Coaching cues sit under the exercise in grey: the note is where the coach writes what
-   the prescription cannot say ("her bir taraftan 8, toplam 16"), and red read as a warning
-   next to prescriptions that are not one. Body weight keeps it a note rather than a second
-   exercise name. The !important is what beats the bold the sheet's own rules put on this
-   column, and the width is capped short of the sets/reps column so the cue never runs
-   under it. */
-.ex-desc{font-weight:400 !important;font-size:11.5px;color:#64748b;line-height:1.4;margin-top:3px;max-width:78%}
-/* Reference link — a clickable host name in the shared PDF, readable on paper. Rides next
-   to the exercise name as a tinted chip (same green as the superset tag) so it reads as a
-   badge on the exercise rather than another line of prose under the coaching cue. */
-.ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
+/* Exercise table — one row per exercise, read straight down like a worksheet. Header
+   repeats on every printed page it breaks across; each row keeps its image/name/prescription
+   together rather than splitting mid-row. */
+.ex-tbl-wrap{margin-top:6px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+.ex-tbl2{width:100%;border-collapse:collapse;font-size:12px}
+.ex-tbl2 thead{display:table-header-group}
+.ex-tbl2 th{background:#f8fafc;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
+  color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0}
+.ex-tbl2 th:first-child{width:34px;text-align:center}
+.ex-tbl2 td{padding:7px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#0f172a}
+.ex-tbl2 tr:last-child td{border-bottom:none}
+.ex-tbl2 tr:nth-child(even) td{background:#fcfdfe}
+.ex-row{break-inside:avoid;page-break-inside:avoid}
+.c-no{text-align:center;vertical-align:middle !important}
+/* Superset rows get the green badge; a plain sequence number otherwise gets the same
+   pill shape in neutral grey, so the column reads as one system either way. */
+.ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#94a3b8;background:#f1f5f9}
+.ex-badge.ss{background:rgba(154,171,58,.16);color:#5c6b1f;border:1px solid rgba(154,171,58,.5)}
+.ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
+.ex-ex-txt{min-width:0}
+.ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ex-name{font-weight:700;font-size:14px;color:#0f172a;line-height:1.25}
 .ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#6f7d29;text-decoration:none;
   background:rgba(154,171,58,.14);border:1px solid rgba(154,171,58,.45);border-radius:5px;
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Movement pattern · execution — a quiet tag beside the exercise name, in the mono face
-   the other reference numbers use. No box: it is reference for whoever runs the session,
-   and a bordered chip beside the name read as another prescription field. On the name's
-   line rather than under it, so a two-word tag does not cost every exercise a row of
-   height the sheet needs to fit six of them on one page. */
-.ex-pat{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#94a3b8;
-  letter-spacing:.04em;line-height:1.35;white-space:nowrap}
-/* Exercise image — only rendered by "Print with Image". Sits in its own column to the
-   left of the text, so the name / volume / meta fill the width beside it instead of
-   leaving a blank band. Kept to a thumbnail: it is there to remind the athlete what the
-   movement looks like, not to fill the page. Every thumbnail occupies the SAME box
-   whatever the uploaded file's own proportions are, so the exercises line up down the
-   sheet instead of stepping in and out; the picture is fitted inside that box rather
-   than cropped to it, so a portrait shot still shows the whole movement. Sized so that
-   six illustrated exercises still come in under one page — the thumbnail was the tallest
-   thing in the row and set the height of every card. */
-.ex-imgwrap{flex:none;line-height:0;width:40mm;height:24mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
+/* Movement pattern · execution, as a small tinted pill under the name rather than plain
+   text — reference for whoever runs the session. */
+.ex-pat2{display:inline-block;margin-top:3px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;
+  color:#1d4ed8;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:4px;
+  padding:1px 6px;letter-spacing:.02em}
+.c-sr,.c-load,.c-dur,.c-tempo,.c-rest{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;white-space:nowrap}
+.ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
+.ex-notes li{margin-bottom:1px}
+/* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
+   row lines up down the page whatever the uploaded photo's own proportions are; fitted
+   inside rather than cropped, so a portrait shot still shows the whole movement. */
+.ex-imgwrap{flex:none;line-height:0;width:26mm;height:18mm;border:1px solid #e2e8f0;border-radius:6px;background:#fff;overflow:hidden}
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
-
-/* Number/superset tags */
-.seq-tag{display:inline-block;color:#94a3b8;font-weight:600;font-size:12px;letter-spacing:.2px}
-.ss-tag{display:inline-block;background:rgba(154,171,58,.14);color:#6f7d29;padding:2px 7px;border-radius:4px;font-weight:800;font-size:11.5px;border:1px solid rgba(154,171,58,.45);min-width:28px;text-align:center;letter-spacing:.2px}
 
 .empty-block{padding:16px;text-align:center;color:#cbd5e1;font-size:12px;background:#fafbfc;border-radius:6px;border:1px dashed #e2e8f0}
 
@@ -6739,7 +6769,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 <tbody><tr><td>
 
 ${groups.map((g,gi)=>`<section class="ath-doc${gi>0?' brk':''}">
-${docHead(g.title,g.subtitle)}
+${docHead(g.title,g.subtitle,focusFor(g.sessions))}
 ${sessionsHTML(g.sessions)}
 </section>`).join('')}
 
@@ -9585,6 +9615,47 @@ function MethodSelect({value,onChange,placeholder,counts}){
   </div>);
 }
 
+/* Draggable RPE target gauge — a green→red gradient bar the coach drags a marker along to
+   set the session's planned intensity. One number in, one number out (the center), but the
+   scale is read (and printed) as the two-point band around it — RPE 6-8, not "RPE 7" — which
+   is how coaches actually talk about session intensity. Pointer events cover mouse, pen and
+   touch in one listener, so there's no separate touch path to keep in sync. */
+function RpeGauge({value,onChange}){
+  const trackRef=useRef(null);
+  const v=sesRpeTarget({rpeTarget:value});
+  const[lo,hi]=sesRpeRange({rpeTarget:value});
+  const setFromClientX=cx=>{
+    const el=trackRef.current;if(!el)return;
+    const r=el.getBoundingClientRect();
+    const p=Math.max(0,Math.min(1,(cx-r.left)/r.width));
+    const nv=Math.max(1,Math.min(10,Math.round((p*9+1)*2)/2));
+    if(nv!==v)onChange(nv);
+  };
+  const dragging=useRef(false);
+  const move=e=>{if(!dragging.current)return;setFromClientX(e.clientX);};
+  const stop=()=>{dragging.current=false;};
+  useEffect(()=>{
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',stop);
+    return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',stop);};
+  });
+  const down=e=>{dragging.current=true;e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);setFromClientX(e.clientX);};
+  return(<div className="rpe-gauge">
+    <div className="rpe-gauge-head">
+      <span className="rpe-gauge-lbl">{L('Hedeflenen RPE','Target RPE')}</span>
+      <span className="rpe-gauge-val">{`RPE ${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
+    </div>
+    <div className="rpe-gauge-track" ref={trackRef} onPointerDown={down}>
+      <div className="rpe-gauge-thumb" style={{left:rpePct(v)+'%'}}>
+        <span className="rpe-gauge-tri l"/><span className="rpe-gauge-tri r"/>
+      </div>
+    </div>
+    <div className="rpe-gauge-ticks">
+      <span>{L('Kolay','Easy')}</span><span>{L('Orta','Moderate')}</span><span>{L('Zor','Hard')}</span><span>{L('Maks','Max')}</span>
+    </div>
+  </div>);
+}
+
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
   const[savedTpl,setSavedTpl]=useState(false);
@@ -9667,6 +9738,12 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             <option value="">{L('Bölge seç…','Select region…')}</option>
             {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
           </select>
+        </div>
+        {/* Target intensity for the session — sits with focus & region because it is the
+            same kind of decision (what this session IS), not the actual/logged sRPE further
+            down, which only exists once the session has happened. */}
+        <div className="iv-meta-f wide">
+          <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
         </div>
         {/* Training method keeps the row; the assistant sits at the end of it, where the
             coach is already looking when deciding what this session is made of. It only
