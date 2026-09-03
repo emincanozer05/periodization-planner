@@ -576,6 +576,53 @@ function payload(){
           soreness:A.soreness??null,painMap:pm};
 }
 
+/* ── Anonim oturum ───────────────────────────────────────────────────────── */
+/* `signInAnonymously()` cihazda saklı bir anonim kullanıcı varsa onu SUNUCUYA
+   SORMADAN geri verir. Firebase ise kullanılmayan anonim hesapları bir süre sonra
+   siliyor: hesap sunucuda yokken kaydı telefonda kalmış oluyor. O kayıtla jeton
+   tazelenemediği an Firebase kullanıcıyı sessizce oturumdan düşürüyor ve Firestore
+   istekleri KİMLİKSİZ gitmeye başlıyor. Form yine de açılıyor — `checkin_links`
+   okuması kimlik istemiyor — ama gönderim kurallardaki `request.auth != null`
+   şartına takılıp "izin yok" ile dönüyor. Sahada görülen tam olarak buydu: formu ilk
+   kez açan sporcu gönderebiliyor, aylar önce bir kez açmış olan gönderemiyordu;
+   kurallar ikisi için de aynıyken.
+
+   Çaresi oturumu KULLANMADAN ÖNCE doğrulamak: jeton zorla tazelenir, tazelenemiyorsa
+   saklı kayıt atılıp yeni bir anonim hesap açılır. */
+function isAuthClosed(code){
+  return code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation';
+}
+// Bir oturum aç ve jetonu tazeleyerek gerçekten geçerli olduğunu doğrula.
+function openSession(){
+  var auth=APP.auth();
+  return auth.signInAnonymously().then(function(cred){
+    var u=auth.currentUser||(cred&&cred.user);
+    if(!u)throw new Error('Anonim oturum kurulamadı.');
+    return u.getIdToken(true).then(function(){return u;},function(e){
+      /* Jeton ağ yokken tazelenemez; bu, oturumun geçersiz olduğu anlamına gelmez.
+         Sahada şebeke zayıf olabildiği için elde olanla devam edilir — gönderim
+         zaten kuyruğa girer, gerçekten geçersizse aşağıdaki tazeleme yakalar. */
+      if((e&&e.code)==='auth/network-request-failed')return u;
+      throw e;
+    });
+  });
+}
+/* Geçerli bir anonim oturum. `force` verilirse saklı kayıt en baştan atılır —
+   gönderim "izin yok" ile döndüğünde bir kez böyle denenir. */
+function ensureSession(force){
+  var auth=APP.auth();
+  var first=force
+    ? auth.signOut().catch(function(){}).then(openSession)
+    : openSession();
+  return first.catch(function(e){
+    var code=(e&&e.code)||'';
+    // Anonim giriş kapalıysa ya da ağ yoksa yeniden denemenin faydası yok; sebebi
+    // olduğu gibi yukarı bırak ki doğru mesaj gösterilsin.
+    if(force||isAuthClosed(code)||code==='auth/network-request-failed')throw e;
+    return auth.signOut().catch(function(){}).then(openSession);
+  });
+}
+
 /* ── Gönderim ────────────────────────────────────────────────────────────── */
 function submit(btn,errBox){
   var problem=validate();
@@ -594,7 +641,15 @@ function submit(btn,errBox){
     at:firebase.firestore.FieldValue.serverTimestamp(),v:1
   };
   var settled=false;
-  var write=db.collection('checkins').add(doc);
+  /* "İzin yok" cevabının en sık sebebi, telefonda kalmış ve artık geçerli olmayan
+     anonim oturum. Sporcuya bir şey sormadan oturumu tazeleyip AYNI gönderimi bir kez
+     daha dene; ikinci kez de reddedilirse sebep gerçekten koç tarafındadır. */
+  var write=db.collection('checkins').add(doc).catch(function(e){
+    if((e&&e.code)!=='permission-denied')throw e;
+    return ensureSession(true).then(function(){
+      return db.collection('checkins').add(doc);
+    });
+  });
   // Şebeke yavaşsa gönderim yerelde kuyruğa alınmıştır ve bağlantı gelince gider;
   // sporcuyu dönen bir düğmenin başında bekletmenin anlamı yok.
   var timer=setTimeout(function(){
@@ -607,9 +662,16 @@ function submit(btn,errBox){
     if(settled)return;settled=true;clearTimeout(timer);
     btn.disabled=false;btn.textContent='Gönder →';
     errBox.className='msg bad';errBox.style.display='';
-    errBox.innerHTML=(e&&e.code==='permission-denied')
-      ? 'Gönderim reddedildi. Koçuna haber ver: Firestore kuralları henüz yüklenmemiş olabilir.'
-      : 'Gönderilemedi: '+((e&&e.message)||e)+'<br>İnternetini kontrol edip tekrar dene.';
+    var code=(e&&e.code)||'';
+    if(isAuthClosed(code)){
+      errBox.innerHTML='Gönderim reddedildi. Koçuna ilet: Firebase Console → '
+        +'<b>Authentication → Sign-in method</b> → <b>Anonymous</b> açık olmalı.';
+    }else if(code==='permission-denied'){
+      errBox.innerHTML='Gönderim reddedildi. Koçuna ilet: Firestore kuralları henüz '
+        +'yüklenmemiş olabilir (<code>checkins</code> bölümü).';
+    }else{
+      errBox.innerHTML='Gönderilemedi: '+((e&&e.message)||e)+'<br>İnternetini kontrol edip tekrar dene.';
+    }
   });
 }
 function done(queued){
@@ -664,7 +726,7 @@ function start(){
     return;
   }
   A.date=todayStr();
-  APP.auth().signInAnonymously().then(function(){
+  ensureSession().then(function(){
     return db.collection('checkin_links').doc(TOKEN).get();
   }).then(function(snap){
     if(!snap.exists){
