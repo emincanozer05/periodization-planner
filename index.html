@@ -10687,90 +10687,88 @@ function TempoView({data,setData}){
 
   return(<div>
     <div className="ex-subtabs">
-      <button className={tab==='tempo'?'on':''} onClick={()=>setTab('tempo')}>Tempo Training</button>
-      <button className={tab==='interval'?'on':''} onClick={()=>setTab('interval')}>Interval Timer</button>
+      <button className={tab==='tempo'?'on':''} onClick={()=>setTab('tempo')}>{L('Tempo Antrenmanı','Tempo Training')}</button>
+      <button className={tab==='interval'?'on':''} onClick={()=>setTab('interval')}>{L('Interval Zamanlayıcı','Interval Timer')}</button>
     </div>
     {tab==='interval'&&<IntervalTimerPanels data={data} setData={setData}/>}
     {tab==='tempo'&&<>
     <div className="panel">
-      <h2>Tempo Training</h2>
+      <h2>{L('Tempo Antrenmanı','Tempo Training')}</h2>
       <div className="help" style={{marginTop:-8,marginBottom:16}}>
-        Write the rep the way it should be lifted — a phase per line, seconds set by hand — then run the set.
-        The puck lowers on the eccentric, holds on the isometric and lifts on the concentric, so the athlete
-        follows the movement instead of counting.
+        {L('Tekrarı nasıl kaldırılması gerektiği gibi yaz — satır başına bir faz, saniyeleri elle ayarla — sonra seti çalıştır. Hedef eksantrikte alçalır, izometrikte bekler, konsantrikte yükselir; böylece sporcu saymak yerine hareketi takip eder.','Write the rep the way it should be lifted — a phase per line, seconds set by hand — then run the set. The puck lowers on the eccentric, holds on the isometric and lifts on the concentric, so the athlete follows the movement instead of counting.')}
       </div>
       <TempoPlayer phases={t.phases} reps={t.reps} prep={t.prep} sound={t.sound}/>
     </div>
 
     <div className="panel">
-      <h2>Rep tempo</h2>
+      <h2>{L('Tekrar tempo','Rep tempo')}</h2>
       <div className="row" style={{marginBottom:14}}>
         {TEMPO_PRESETS.map(p=><button key={p.name} className="tt-chip" onClick={()=>usePreset(p)}
-          title="Replace the phases below with this tempo">{p.name}<b>{p.code}</b></button>)}
+          title={L('Aşağıdaki fazları bu tempoyla değiştir','Replace the phases below with this tempo')}>{p.name}<b>{p.code}</b></button>)}
       </div>
       <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
         {t.phases.map((p,i)=><div key={p.id} className="tt-row" style={{'--tt-c':tKind(p.kind).color}}>
           <div className="k">
-            <label>Phase</label>
+            <label>{L('Faz','Phase')}</label>
             <select value={p.kind} onChange={e=>upPhase(p.id,{kind:e.target.value})}>
-              {TEMPO_KIND_LIST.map(k=><option key={k} value={k}>{TEMPO_KINDS[k].label}</option>)}
+              {TEMPO_KIND_LIST.map(k=><option key={k} value={k}>{exLabel(TEMPO_KINDS[k].label)}</option>)}
             </select>
           </div>
           <div className="s">
-            <label>Seconds</label>
+            <label>{L('Saniye','Seconds')}</label>
             <input type="number" min="0" max="120" step="0.5" value={p.sec}
               onChange={e=>upPhase(p.id,{sec:Math.max(0,Math.min(120,Number(e.target.value)||0))})}/>
           </div>
           <div className="n">
-            <label>Cue (optional)</label>
+            <label>{L('İpucu (opsiyonel)','Cue (optional)')}</label>
             <input value={p.note} placeholder={tKind(p.kind).hint}
               onChange={e=>upPhase(p.id,{note:e.target.value})}/>
           </div>
           <div className="tt-acts">
-            <button onClick={()=>movePhase(i,-1)} disabled={i===0} title="Move up">↑</button>
-            <button onClick={()=>movePhase(i,1)} disabled={i===t.phases.length-1} title="Move down">↓</button>
-            <button onClick={()=>dupPhase(p.id)} title="Duplicate">⧉</button>
-            <button className="del" onClick={()=>delPhase(p.id)} disabled={t.phases.length===1} title="Remove">✕</button>
+            <button onClick={()=>movePhase(i,-1)} disabled={i===0} title={L('Yukarı taşı','Move up')}>↑</button>
+            <button onClick={()=>movePhase(i,1)} disabled={i===t.phases.length-1} title={L('Aşağı taşı','Move down')}>↓</button>
+            <button onClick={()=>dupPhase(p.id)} title={L('Çoğalt','Duplicate')}>⧉</button>
+            <button className="del" onClick={()=>delPhase(p.id)} disabled={t.phases.length===1} title={L('Kaldır','Remove')}>✕</button>
           </div>
         </div>)}
       </div>
       <div className="row" style={{marginBottom:14}}>
-        {TEMPO_KIND_LIST.map(k=><button key={k} className="btn sec sm" onClick={()=>addPhase(k)}>+ {TEMPO_KINDS[k].label}</button>)}
+        {TEMPO_KIND_LIST.map(k=><button key={k} className="btn sec sm" onClick={()=>addPhase(k)}>+ {exLabel(TEMPO_KINDS[k].label)}</button>)}
       </div>
       <div className="row" style={{alignItems:'flex-end',gap:12,marginBottom:14}}>
         <div style={{flex:'0 0 110px'}}>
-          <label>Reps</label>
+          <label>{L('Tekrar','Reps')}</label>
           <input type="number" min="1" max="99" value={t.reps}
             onChange={e=>patch({reps:Math.max(1,Math.min(99,Number(e.target.value)||1))})}/>
         </div>
         <div style={{flex:'0 0 150px'}}>
-          <label>Get ready (s)</label>
+          <label>{L('Hazırlan (sn)','Get ready (s)')}</label>
           <input type="number" min="0" max="60" value={t.prep}
             onChange={e=>patch({prep:Math.max(0,Math.min(60,Number(e.target.value)||0))})}/>
         </div>
         <button className={`btn sm ${t.sound?'':'sec'}`} onClick={()=>patch({sound:!t.sound})}
-          title="A short tone on every phase change">{t.sound?'🔊 Sound on':'🔇 Sound off'}</button>
+          title={L('Her faz değişiminde kısa bir ton','A short tone on every phase change')}>{t.sound?L('🔊 Ses açık','🔊 Sound on'):L('🔇 Ses kapalı','🔇 Sound off')}</button>
       </div>
       <div className="tt-sum">
-        <div><u>Per rep</u><strong>{+repSec.toFixed(1)}s</strong></div>
-        <div><u>Per set</u><strong>{tempoClock(repSec*t.reps)}</strong></div>
-        <div><u>Phases</u><strong>{t.phases.filter(p=>Number(p.sec)>0).length}</strong></div>
-        <div><u>Time under tension</u><strong>{tempoClock(t.phases.filter(p=>p.kind!=='pause').reduce((a,p)=>a+(Number(p.sec)||0),0)*t.reps)}</strong></div>
+        <div><u>{L('Tekrar başına','Per rep')}</u><strong>{+repSec.toFixed(1)}s</strong></div>
+        <div><u>{L('Set başına','Per set')}</u><strong>{tempoClock(repSec*t.reps)}</strong></div>
+        <div><u>{L('Fazlar','Phases')}</u><strong>{t.phases.filter(p=>Number(p.sec)>0).length}</strong></div>
+        <div><u>{L('Gerilim altında geçen süre','Time under tension')}</u><strong>{tempoClock(t.phases.filter(p=>p.kind!=='pause').reduce((a,p)=>a+(Number(p.sec)||0),0)*t.reps)}</strong></div>
       </div>
     </div>
 
     <div className="panel">
-      <h2>Saved tempos</h2>
+      <h2>{L('Kayıtlı tempolar','Saved tempos')}</h2>
       <div className="row" style={{alignItems:'flex-end',gap:10,marginBottom:12}}>
         <div style={{flex:'1 1 240px',minWidth:0}}>
-          <label>Name</label>
+          <label>{L('Ad','Name')}</label>
           <input value={saveName} placeholder={t.name} onChange={e=>setSaveName(e.target.value)}
             onKeyDown={e=>{if(e.key==='Enter')saveTempo();}}/>
         </div>
-        <button className="btn sm" onClick={saveTempo}>Save current tempo</button>
+        <button className="btn sm" onClick={saveTempo}>{L('Mevcut tempoyu kaydet','Save current tempo')}</button>
       </div>
       {t.saved.length===0
-        ?<div className="empty-st">Nothing saved yet — write a tempo above and save it to reuse on another day.</div>
+        ?<div className="empty-st">{L('Henüz kayıt yok — yukarıda bir tempo yaz ve başka bir gün tekrar kullanmak için kaydet.','Nothing saved yet — write a tempo above and save it to reuse on another day.')}</div>
         :<div style={{display:'flex',flexDirection:'column',gap:8}}>
           {t.saved.map(s=>{const secs=s.phases.reduce((a,p)=>a+(Number(p.sec)||0),0);
             return(<div key={s.id} className="row" style={{justifyContent:'space-between',background:'var(--elevated)',
@@ -10778,12 +10776,12 @@ function TempoView({data,setData}){
               <div className="row" style={{gap:8,minWidth:0}}>
                 <strong style={{fontSize:13}}>{s.name}</strong>
                 <span className="help" style={{margin:0}}>
-                  {s.phases.filter(p=>Number(p.sec)>0).map(p=>`${tKind(p.kind).short} ${p.sec}s`).join(' · ')} · {s.reps} reps · {tempoClock(secs*s.reps)}
+                  {s.phases.filter(p=>Number(p.sec)>0).map(p=>`${tKind(p.kind).short} ${p.sec}s`).join(' · ')} · {L(`${s.reps} tekrar`,`${s.reps} reps`)} · {tempoClock(secs*s.reps)}
                 </span>
               </div>
               <div className="row" style={{gap:6}}>
-                <button className="btn xs sec" onClick={()=>loadTempo(s)}>Load</button>
-                <button className="btn xs danger" onClick={()=>delTempo(s.id)}>Delete</button>
+                <button className="btn xs sec" onClick={()=>loadTempo(s)}>{L('Yükle','Load')}</button>
+                <button className="btn xs danger" onClick={()=>delTempo(s.id)}>{L('Sil','Delete')}</button>
               </div>
             </div>);})}
         </div>}
@@ -10812,38 +10810,38 @@ function ReportsBody({days,weeks,selected,setSelected,ownerName,onExportPDF}){
 
   return(<div>
     <div className="metrics">
-      <div className={`metric ${acwrCls}`}><div className="ml">ACWR (today)</div><div className="mv">{acwrVal.toFixed(2)}</div><div className="mh">Safe 0.8-1.3 · Risk &gt;1.5</div></div>
-      <div className="metric"><div className="ml">Month total</div><div className="mv">{Math.round(mWeeks.reduce((a,b)=>a+b.total,0))}</div><div className="mh">AU = sRPE × min</div></div>
-      <div className="metric"><div className="ml">Mean monotony</div><div className="mv">{(mWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,mWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}</div><div className="mh">&gt;2 = excessive</div></div>
-      <div className="metric"><div className="ml">Sessions logged</div><div className="mv">{Object.values(days).filter(d=>d?.date>=ms&&d?.date<=me).reduce((a,d)=>a+(d.sessions||[]).length,0)}</div><div className="mh">in {MN[month-1]} {year}</div></div>
+      <div className={`metric ${acwrCls}`}><div className="ml">{L('ACWR (bugün)','ACWR (today)')}</div><div className="mv">{acwrVal.toFixed(2)}</div><div className="mh">{L('Güvenli 0.8-1.3 · Risk >1.5','Safe 0.8-1.3 · Risk >1.5')}</div></div>
+      <div className="metric"><div className="ml">{L('Ay toplamı','Month total')}</div><div className="mv">{Math.round(mWeeks.reduce((a,b)=>a+b.total,0))}</div><div className="mh">AU = sRPE × dk</div></div>
+      <div className="metric"><div className="ml">{L('Ortalama monotonluk','Mean monotony')}</div><div className="mv">{(mWeeks.filter(w=>w.monotony>0).reduce((a,b)=>a+b.monotony,0)/Math.max(1,mWeeks.filter(w=>w.monotony>0).length)).toFixed(2)}</div><div className="mh">{L('>2 = aşırı','>2 = excessive')}</div></div>
+      <div className="metric"><div className="ml">{L('Kaydedilen seanslar','Sessions logged')}</div><div className="mv">{Object.values(days).filter(d=>d?.date>=ms&&d?.date<=me).reduce((a,d)=>a+(d.sessions||[]).length,0)}</div><div className="mh">{L(`${exLabel(MN[month-1])} ${year} içinde`,`in ${MN[month-1]} ${year}`)}</div></div>
     </div>
 
     <div className="grid cols-2">
-      <div className="panel"><h2>Daily sRPE — {MN[month-1]} {year}</h2><div className="chart-box sm">
+      <div className="panel"><h2>{L('Günlük sRPE','Daily sRPE')} — {MN[month-1]} {year}</h2><div className="chart-box sm">
         <ChartC type="line" chartData={{labels:dailySRPE.map(d=>fd(d.date).slice(0,5)),datasets:[
           {label:'sRPE (0-10)',data:dailySRPE.map(d=>+d.sRPE.toFixed(1)),borderColor:'#22d3ee',backgroundColor:'rgba(34,211,238,.15)',tension:.25,fill:true,borderWidth:2,yAxisID:'y'},
-          {label:'Daily AU',data:dailySRPE.map(d=>d.au),borderColor:'#f97316',tension:.25,borderWidth:2,yAxisID:'y1'}]}}
+          {label:L('Günlük AU','Daily AU'),data:dailySRPE.map(d=>d.au),borderColor:'#f97316',tension:.25,borderWidth:2,yAxisID:'y1'}]}}
           options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,scales:{x:CHART_DARK.scales.x,y:{...CHART_DARK.scales.y,position:'left',max:10,title:{display:true,text:'sRPE',color:'#94a3b8'}},y1:{position:'right',ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},beginAtZero:true,title:{display:true,text:'AU',color:'#94a3b8'}}},plugins:{legend:{position:'bottom',labels:CHART_DARK.plugins.legend.labels}}}}/>
       </div></div>
-      <div className="panel"><h2>Weekly Monotony</h2><div className="chart-box sm">
-        <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:'Monotony',data:mWeeks.map(w=>+w.monotony.toFixed(2)),
+      <div className="panel"><h2>{L('Haftalık Monotonluk','Weekly Monotony')}</h2><div className="chart-box sm">
+        <ChartC type="bar" chartData={{labels:mWeeks.map(w=>fd(w.wkStart).slice(0,5)),datasets:[{label:L('Monotonluk','Monotony'),data:mWeeks.map(w=>+w.monotony.toFixed(2)),
           backgroundColor:mWeeks.map(w=>w.monotony>0?monoZoneOf(w.monotony).dot:'#2e333c')}]}}
           options={{responsive:true,maintainAspectRatio:false,...CHART_DARK,plugins:{legend:{display:false}}}}/>
       </div></div>
     </div>
 
     <div className="grid cols-2">
-      <div className="panel"><h2>Training Purpose Distribution</h2><div className="chart-box sm">
-        {pMix.length>0?<ChartC type="doughnut" chartData={{labels:pMix.map(p=>p.label),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),
+      <div className="panel"><h2>{L('Antrenman Amacı Dağılımı','Training Purpose Distribution')}</h2><div className="chart-box sm">
+        {pMix.length>0?<ChartC type="doughnut" chartData={{labels:pMix.map(p=>exLabel(p.label)),datasets:[{data:pMix.map(p=>+p.pct.toFixed(1)),
           backgroundColor:['#06b6d4','#8b5cf6','#f97316','#ec4899','#10b981','#f59e0b','#ef4444','#22d3ee','#a855f7','#84cc16','#f43f5e']}]}}
           options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#334155'}}}}}/>
-        :<div className="empty-st">No data for this month</div>}
+        :<div className="empty-st">{L('Bu ay için veri yok','No data for this month')}</div>}
       </div></div>
-      <div className="panel"><h2>Weekly Detail</h2>
-        <table><thead><tr><th>Week</th><th>Total</th><th>Mean</th><th>SD</th><th>Mono</th><th>Strain</th><th>Flag</th></tr></thead><tbody>
+      <div className="panel"><h2>{L('Haftalık Detay','Weekly Detail')}</h2>
+        <table><thead><tr><th>{L('Hafta','Week')}</th><th>{L('Toplam','Total')}</th><th>{L('Ort.','Mean')}</th><th>SD</th><th>{L('Mono','Mono')}</th><th>{L('Zorlanma','Strain')}</th><th>{L('İşaret','Flag')}</th></tr></thead><tbody>
           {mWeeks.map(w=><tr key={w.wkStart}><td>{fd(w.wkStart).slice(0,5)}</td><td>{Math.round(w.total)}</td><td>{w.mean.toFixed(0)}</td><td>{w.sd.toFixed(1)}</td>
             <td>{w.monotony.toFixed(2)}</td><td>{Math.round(w.strain)}</td>
-            <td>{w.monotony>0?<span className="pill" style={{color:monoZoneOf(w.monotony).c,borderColor:monoZoneOf(w.monotony).c+'55',background:monoZoneOf(w.monotony).c+'1f'}}>{monoZoneOf(w.monotony).t}</span>:'—'}</td></tr>)}</tbody></table>
+            <td>{w.monotony>0?<span className="pill" style={{color:monoZoneOf(w.monotony).c,borderColor:monoZoneOf(w.monotony).c+'55',background:monoZoneOf(w.monotony).c+'1f'}}>{exLabel(monoZoneOf(w.monotony).t)}</span>:'—'}</td></tr>)}</tbody></table>
       </div>
     </div>
   </div>);
@@ -15815,12 +15813,12 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
    ========================================================= */
 function TeamsPanel({data,setData}){
   const addTeam=()=>{const t=makeDefaultTeam();t.setup.teamName='New Team';setData({...data,teams:[...data.teams,t],activeTeamId:t.id});};
-  const delTeam=id=>{if(data.teams.length<=1){alert('Keep at least one team');return;}
-    if(!confirm('Delete this team and ALL its data permanently?'))return;
+  const delTeam=id=>{if(data.teams.length<=1){alert(L('En az bir takım kalmalı','Keep at least one team'));return;}
+    if(!confirm(L('Bu takım ve TÜM verileri kalıcı olarak silinsin mi?','Delete this team and ALL its data permanently?')))return;
     const teams=data.teams.filter(t=>t.id!==id);setData({...data,teams,activeTeamId:teams[0].id});};
   const renTeam=(id,n)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,setup:{...t.setup,teamName:n}}:t)});
-  return(<div className="panel"><h2>Team Profiles</h2>
-    <div className="help" style={{marginBottom:20}}>Switch between teams using the dropdown in the top header. Each team has its own season, athletes, and plans.</div>
+  return(<div className="panel"><h2>{L('Takım Profilleri','Team Profiles')}</h2>
+    <div className="help" style={{marginBottom:20}}>{L('Üst başlıktaki menüden takımlar arasında geçiş yap. Her takımın kendi sezonu, sporcuları ve planları vardır.','Switch between teams using the dropdown in the top header. Each team has its own season, athletes, and plans.')}</div>
     <div className="tp-cards">
       {data.teams.map(t=>{
         const isActive=t.id===data.activeTeamId;
@@ -15830,7 +15828,7 @@ function TeamsPanel({data,setData}){
             {t.setup&&t.setup.logo
               ?<img src={mediaSrc(t.setup.logo)} className="tp-logo-img" alt=""/>
               :<div className="tp-logo-initials">{initials}</div>}
-            <label className="tp-logo-upload" title="Upload team logo">
+            <label className="tp-logo-upload" title={L('Takım logosu yükle','Upload team logo')}>
               <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
                 const f=e.target.files[0];if(!f)return;
                 const r=new FileReader();r.onload=ev=>setData(prev=>({...prev,
@@ -15841,24 +15839,24 @@ function TeamsPanel({data,setData}){
             </label>
           </div>
           <div className="tp-info">
-            <input className="tp-name-input" value={t.setup.teamName} onChange={e=>renTeam(t.id,e.target.value)} placeholder="Team name"/>
+            <input className="tp-name-input" value={t.setup.teamName} onChange={e=>renTeam(t.id,e.target.value)} placeholder={L('Takım adı','Team name')}/>
             <div className="tp-meta">
               <span className="tp-sport">{t.setup.sport}</span>
               <span className="tp-dot">·</span>
               <span>{fd(t.setup.seasonStart)} → {fd(t.setup.seasonEnd)}</span>
               <span className="tp-dot">·</span>
-              <span>{(t.athletes||[]).length} athletes</span>
+              <span>{L(`${(t.athletes||[]).length} sporcu`,`${(t.athletes||[]).length} athletes`)}</span>
             </div>
           </div>
           <div className="tp-actions">
-            {isActive&&<span className="tp-active-badge">Active</span>}
-            {!isActive&&<button className="btn xs sec" onClick={()=>setData({...data,activeTeamId:t.id})}>Select</button>}
+            {isActive&&<span className="tp-active-badge">{L('Aktif','Active')}</span>}
+            {!isActive&&<button className="btn xs sec" onClick={()=>setData({...data,activeTeamId:t.id})}>{L('Seç','Select')}</button>}
             <button className="btn xs danger" onClick={()=>delTeam(t.id)}>✕</button>
           </div>
         </div>);
       })}
     </div>
-    <button className="btn" style={{marginTop:16}} onClick={addTeam}>+ Add Team Profile</button>
+    <button className="btn" style={{marginTop:16}} onClick={addTeam}>+ {L('Takım Profili Ekle','Add Team Profile')}</button>
   </div>);
 }
 
@@ -16453,18 +16451,18 @@ function TallySync({data,setData,team}){
 
   return(<div>
     <div className="panel">
-      <h2>Tally Sync — Connection</h2>
+      <h2>{L('Tally Senkronu — Bağlantı','Tally Sync — Connection')}</h2>
       <div className="help" style={{marginBottom:14}}>
-        Cloudflare Worker URL (the one ending in <code>.workers.dev</code>, without <code>/sync</code>).
-        The Worker reads your Tally sRPE + Wellness form submissions and pulls them into this app.
+        {L('Cloudflare Worker adresi (','Cloudflare Worker URL (the one ending in ')}<code>.workers.dev</code>{L(' ile biten, sonunda ',', without ')}<code>/sync</code>{L(' olmayan).','')}<br/>
+        {L('Worker, Tally sRPE + Wellness form gönderimlerini okuyup bu uygulamaya çeker.','The Worker reads your Tally sRPE + Wellness form submissions and pulls them into this app.')}
       </div>
       <div className="grid cols-3">
         <div style={{gridColumn:'span 2'}}><label>Worker URL</label>
           <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://tally-sync.YOURNAME.workers.dev"/></div>
         <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
-          <button className="btn" onClick={()=>saveCfg({workerUrl:url.trim()})}>Save URL</button>
+          <button className="btn" onClick={()=>saveCfg({workerUrl:url.trim()})}>{L('Adresi Kaydet','Save URL')}</button>
           <button className="btn sec" onClick={testUrl} disabled={!(url||'').trim()||(probe&&probe.busy)}>
-            {probe&&probe.busy?'Deneniyor…':'Adresi test et'}
+            {probe&&probe.busy?L('Deneniyor…','Testing…'):L('Adresi test et','Test address')}
           </button>
         </div>
       </div>
@@ -16473,7 +16471,7 @@ function TallySync({data,setData,team}){
         border:`1px solid ${probe.bad?'rgba(239,68,68,.35)':'rgba(45,212,167,.35)'}`}}>
         {probe.bad?'❌ ':'✅ '}{probe.msg}
         {probe.base&&<div style={{marginTop:6,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--muted)'}}>
-          Denenen adres: {probe.base}/sync
+          {L('Denenen adres:','Address tried:')} {probe.base}/sync
         </div>}
       </div>}
       {/* The webhook address and the "write only to athletes on the roster" switch used to
@@ -16481,51 +16479,51 @@ function TallySync({data,setData,team}){
           `tallySync.autoCreate` — only the two boxes are gone from this screen. */}
       <div className="grid cols-3" style={{marginTop:14}}>
         <div>
-          <label>Auto-sync</label>
+          <label>{L('Otomatik senkron','Auto-sync')}</label>
           <label className="ath-chip" style={{cursor:'pointer'}}>
             <input type="checkbox" checked={!!cfg.autoSync} onChange={e=>saveCfg({autoSync:e.target.checked})}/>
-            <span>{cfg.autoSync?'ON — pulls automatically':'OFF — manual only'}</span>
+            <span>{cfg.autoSync?L('AÇIK — otomatik çeker','ON — pulls automatically'):L('KAPALI — sadece elle','OFF — manual only')}</span>
           </label>
         </div>
-        <div><label>Interval (minutes)</label>
+        <div><label>{L('Aralık (dakika)','Interval (minutes)')}</label>
           <input type="number" min="1" value={cfg.intervalMin||5}
             onChange={e=>saveCfg({intervalMin:Math.max(1,+e.target.value||5)})} disabled={!cfg.autoSync}/></div>
         <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
           <button className="btn" onClick={doSync} disabled={syncing||!(url||'').trim()}>
-            {syncing?'🔄 Syncing…':'🔄 Sync Now'}
+            {syncing?L('🔄 Senkronize ediliyor…','🔄 Syncing…'):L('🔄 Şimdi Senkronize Et','🔄 Sync Now')}
           </button>
         </div>
       </div>
     </div>
 
     <div className="panel">
-      <h2>Sync Status</h2>
+      <h2>{L('Senkron Durumu','Sync Status')}</h2>
       <div className="metrics">
-        <div className="metric"><div className="ml">Active team</div><div className="mv" style={{fontSize:16}}>{team.setup.teamName}</div><div className="mh">Sync writes into this team</div></div>
-        <div className={`metric ${error?'danger':lastAt?'ok':''}`}><div className="ml">Last sync</div><div className="mv" style={{fontSize:14}}>{lastLabel}</div><div className="mh">{error?'❌ Failed':lastAt?'✅ Success':'Not synced yet'}</div></div>
+        <div className="metric"><div className="ml">{L('Aktif takım','Active team')}</div><div className="mv" style={{fontSize:16}}>{team.setup.teamName}</div><div className="mh">{L('Senkron bu takıma yazar','Sync writes into this team')}</div></div>
+        <div className={`metric ${error?'danger':lastAt?'ok':''}`}><div className="ml">{L('Son senkron','Last sync')}</div><div className="mv" style={{fontSize:14}}>{lastLabel}</div><div className="mh">{error?L('❌ Başarısız','❌ Failed'):lastAt?L('✅ Başarılı','✅ Success'):L('Henüz senkron yapılmadı','Not synced yet')}</div></div>
         <div className="metric"><div className="ml">Worker URL</div><div className="mv" style={{fontSize:11,wordBreak:'break-all'}}>{cfg.workerUrl||'—'}</div></div>
       </div>
       {error&&<div style={{marginTop:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:8,color:'var(--high-t)',fontSize:13}}>
-        <strong>Error{cfg.lastErrorAt?` (${new Date(cfg.lastErrorAt).toLocaleString('tr-TR')})`:''}:</strong> {error}
+        <strong>{L('Hata','Error')}{cfg.lastErrorAt?` (${new Date(cfg.lastErrorAt).toLocaleString('tr-TR')})`:''}:</strong> {error}
         <div className="help" style={{marginTop:6,color:'var(--text2)'}}>
-          Common causes: wrong Worker URL · missing Worker token (TALLY_API_KEY) · wrong form IDs (SRPE_FORM / WELLNESS_FORM) · no internet connection.
+          {L('Sık nedenler: yanlış Worker adresi · eksik Worker token\'ı (TALLY_API_KEY) · yanlış form ID\'leri (SRPE_FORM / WELLNESS_FORM) · internet bağlantısı yok.','Common causes: wrong Worker URL · missing Worker token (TALLY_API_KEY) · wrong form IDs (SRPE_FORM / WELLNESS_FORM) · no internet connection.')}
         </div>
       </div>}
       {stats&&<div style={{marginTop:14}}>
-        <h3 style={{fontSize:13,marginBottom:8,color:'var(--accent2)'}}>Last sync summary</h3>
+        <h3 style={{fontSize:13,marginBottom:8,color:'var(--accent2)'}}>{L('Son senkron özeti','Last sync summary')}</h3>
         <table style={{maxWidth:560}}>
           <tbody>
-            <tr><td>sRPE submissions from Tally</td><td><strong>{stats.sRPERows}</strong>{stats.sRPETotal!=null&&<span style={{color:stats.sRPERows>=stats.sRPETotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.sRPETotal}</span>}</td></tr>
-            <tr><td>Wellness submissions from Tally</td><td><strong>{stats.wellnessRows}</strong>{stats.wellnessTotal!=null&&<span style={{color:stats.wellnessRows>=stats.wellnessTotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.wellnessTotal}</span>}</td></tr>
-            <tr><td>sRPE entries added (to athlete log)</td><td><strong>{stats.srpeAdded||0}</strong></td></tr>
-            <tr><td>sRPE entries updated</td><td><strong>{stats.srpeUpdated||0}</strong></td></tr>
+            <tr><td>{L('Tally\'den gelen sRPE gönderimi','sRPE submissions from Tally')}</td><td><strong>{stats.sRPERows}</strong>{stats.sRPETotal!=null&&<span style={{color:stats.sRPERows>=stats.sRPETotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.sRPETotal}</span>}</td></tr>
+            <tr><td>{L('Tally\'den gelen Wellness gönderimi','Wellness submissions from Tally')}</td><td><strong>{stats.wellnessRows}</strong>{stats.wellnessTotal!=null&&<span style={{color:stats.wellnessRows>=stats.wellnessTotal?'var(--text2)':'var(--high-t)'}}> / formda {stats.wellnessTotal}</span>}</td></tr>
+            <tr><td>{L('Eklenen sRPE kaydı (sporcu günlüğüne)','sRPE entries added (to athlete log)')}</td><td><strong>{stats.srpeAdded||0}</strong></td></tr>
+            <tr><td>{L('Güncellenen sRPE kaydı','sRPE entries updated')}</td><td><strong>{stats.srpeUpdated||0}</strong></td></tr>
             {/* Silinmiş kayıtlar geri gelmiyor; sayısını göstermezsek "Tally'de var ama
                 listede yok" durumu sebepsiz görünür. */}
             {stats.srpeDeleted>0&&<tr><td>Silindiği için atlanan sRPE gönderimi</td><td><strong style={{color:'var(--muted)'}}>{stats.srpeDeleted}</strong></td></tr>}
-            <tr><td>Wellness entries added</td><td><strong>{stats.wellnessAdded}</strong></td></tr>
-            <tr><td>Wellness entries updated</td><td><strong>{stats.wellnessUpdated}</strong></td></tr>
-            <tr><td>Athletes matched to roster</td><td><strong>{stats.athletesMatched}</strong></td></tr>
-            <tr><td>Athletes auto-created (new on roster)</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
+            <tr><td>{L('Eklenen Wellness kaydı','Wellness entries added')}</td><td><strong>{stats.wellnessAdded}</strong></td></tr>
+            <tr><td>{L('Güncellenen Wellness kaydı','Wellness entries updated')}</td><td><strong>{stats.wellnessUpdated}</strong></td></tr>
+            <tr><td>{L('Kadroyla eşleşen sporcu','Athletes matched to roster')}</td><td><strong>{stats.athletesMatched}</strong></td></tr>
+            <tr><td>{L('Otomatik eklenen sporcu (kadroda yeni)','Athletes auto-created (new on roster)')}</td><td><strong style={{color:stats.athletesCreated>0?'var(--accent2)':'inherit'}}>{stats.athletesCreated}</strong></td></tr>
             <tr><td>Eşleşmeyip atlanan gönderim</td><td><strong style={{color:stats.skipped>0?'var(--high-t)':'inherit'}}>{stats.skipped||0}</strong></td></tr>
             <tr><td>Ağrı bölgesi isimsiz gelen check-in</td><td><strong style={{color:stats.painUnnamed>0?'var(--high-t)':'inherit'}}>{stats.painUnnamed||0}</strong></td></tr>
             {/* Webhook kuruluysa, kaç gönderimin çekilmek yerine anında düştüğünü söyler —
@@ -16641,14 +16639,18 @@ function TallySync({data,setData,team}){
     </div>
 
     <div className="panel">
-      <h2>How it works</h2>
+      <h2>{L('Nasıl çalışır','How it works')}</h2>
       <ul style={{paddingLeft:20,color:'var(--text2)',fontSize:13,lineHeight:1.8}}>
-        <li><strong>sRPE</strong> rows are saved to each athlete's <strong>sRPE Log</strong> (shown as a chart on the athlete profile). They are <em>not</em> auto-converted to calendar sessions — the coach plans team sessions manually and assigns athletes via the Program tab.</li>
-        <li><strong>Wellness</strong> rows (RHR, Sleep, Fatigue, Soreness, Readiness) are saved into each athlete's Wellness log (under Athletes → click athlete).</li>
-        <li>Name matching is case-/space-insensitive. Athletes not found on the roster are <strong>auto-created</strong>.</li>
-        <li>Re-syncing the same Tally submission <strong>updates</strong> the existing entry (no duplicates) — safe to run many times.</li>
-        <li>An sRPE row <strong>deleted</strong> on the athlete's Load tab stays deleted: the sync remembers that submission and never brings it back. Use <em>Geri getir</em> above to undo.</li>
-        <li>Turn on <strong>Auto-sync</strong> so new form submissions land automatically every few minutes.</li>
+        <li>{L(<><strong>sRPE</strong> satırları her sporcunun <strong>sRPE Günlüğü</strong>ne kaydedilir (sporcu profilinde grafik olarak gösterilir). Takvim seanslarına <em>otomatik</em> dönüştürülmezler — koç takım seanslarını elle planlar ve sporcuları Program sekmesinden atar.</>,
+          <><strong>sRPE</strong> rows are saved to each athlete's <strong>sRPE Log</strong> (shown as a chart on the athlete profile). They are <em>not</em> auto-converted to calendar sessions — the coach plans team sessions manually and assigns athletes via the Program tab.</>)}</li>
+        <li>{L(<><strong>Wellness</strong> satırları (RHR, Uyku, Yorgunluk, Kas Ağrısı, Hazır Oluş) her sporcunun Wellness günlüğüne kaydedilir (Sporcular → sporcuya tıkla).</>,
+          <><strong>Wellness</strong> rows (RHR, Sleep, Fatigue, Soreness, Readiness) are saved into each athlete's Wellness log (under Athletes → click athlete).</>)}</li>
+        <li>{L('İsim eşleştirme büyük/küçük harf ve boşluğa duyarsızdır. Kadroda bulunamayan sporcular otomatik eklenir.',<>Name matching is case-/space-insensitive. Athletes not found on the roster are <strong>auto-created</strong>.</>)}</li>
+        <li>{L('Aynı Tally gönderimini tekrar senkronlamak mevcut kaydı günceller (kopya oluşturmaz) — güvenle tekrar tekrar çalıştırılabilir.','Re-syncing the same Tally submission updates the existing entry (no duplicates) — safe to run many times.')}</li>
+        <li>{L(<>Sporcunun Yük sekmesinden <strong>silinen</strong> bir sRPE satırı silinmiş kalır: senkron o gönderimi hatırlar ve bir daha geri getirmez. Geri almak için yukarıdaki <em>Geri getir</em>'i kullan.</>,
+          <>An sRPE row <strong>deleted</strong> on the athlete's Load tab stays deleted: the sync remembers that submission and never brings it back. Use the <em>restore</em> button above to undo.</>)}</li>
+        <li>{L(<><strong>Otomatik senkron</strong>u aç, böylece yeni form gönderimleri birkaç dakikada bir kendiliğinden düşer.</>,
+          <>Turn on <strong>Auto-sync</strong> so new form submissions land automatically every few minutes.</>)}</li>
       </ul>
     </div>
   </div>);
@@ -17897,6 +17899,8 @@ const EX_TERM_TR={
   'Active recovery':'Aktif toparlanma','Accumulation':'Birikim','Transmutation':'Dönüşüm','Realization':'Gerçekleştirme',
   'Hi-volume wave':'Yüksek hacim dalgası','Hi-intensity wave':'Yüksek şiddet dalgası',
   'Max-effort':'Maksimal-efor','Dynamic-effort':'Dinamik-efor','Deload':'Yük azaltma','Peak':'Zirve',
+  'Eccentric':'Eksantrik','Isometric hold':'İzometrik bekleme','Concentric':'Konsantrik','Pause':'Duraklama',
+  'No data':'Veri yok','High':'Yüksek','Watch':'İzle','Normal':'Normal','Low':'Düşük',
 };
 const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
 /* Free text the coach types (exercise name, purpose/description) is assumed
