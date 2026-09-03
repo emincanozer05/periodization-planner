@@ -9229,7 +9229,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           :{position:'fixed',left,top:rect.bottom+2,width:w,right:'auto'};
   }
   return(<div className="en-wrap">
-    <textarea ref={taRef} className="en" rows={1} value={value} placeholder="Exercise name"
+    <textarea ref={taRef} className="en" rows={1} value={value} placeholder={L('Egzersiz adı','Exercise name')}
       onChange={e=>{onChange(e.target.value);fit(e.target);setHi(-1);setFocus(true);}}
       onFocus={()=>setFocus(true)}
       /* After a pick the box keeps DOM focus, so re-opening the picker needs an
@@ -9250,31 +9250,31 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
         onMouseDown={e=>e.preventDefault()}
         onMouseUp={()=>{if(taRef.current)taRef.current.focus();}}>
         <div className="en-pane en-pane-ex">
-          <div className="en-phd"><span>{shown.length} egzersiz gösteriliyor</span>
-            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>filtreyi temizle</button>}</div>
+          <div className="en-phd"><span>{L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
+            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
                 onMouseDown={ev=>{ev.preventDefault();pick(e);}}>
                 <span className="en-badge">{(e.name[0]||'?').toUpperCase()}</span>
                 <span className="en-nm">{e.name}</span>
-                <span className="en-tag">{e.type||e.sub[0]||UNCAT}</span>
+                <span className="en-tag">{exLabel(e.type)||e.sub[0]||UNCAT}</span>
               </div>)}
-            {shown.length===0&&<div className="en-none">Bu filtreyle eşleşen egzersiz yok</div>}
-            {shown.length>sugg.length&&<div className="en-none">+{shown.length-sugg.length} egzersiz daha — aramayı daraltın</div>}
+            {shown.length===0&&<div className="en-none">{L('Bu filtreyle eşleşen egzersiz yok','No exercises match this filter')}</div>}
+            {shown.length>sugg.length&&<div className="en-none">{L(`+${shown.length-sugg.length} egzersiz daha — aramayı daraltın`,`+${shown.length-sugg.length} more exercises — narrow your search`)}</div>}
           </div>
         </div>
         <div className="en-pane en-pane-cat">
-          <div className="en-phd"><span>Kategoriler</span></div>
+          <div className="en-phd"><span>{L('Kategoriler','Categories')}</span></div>
           <div className="en-plist">
             {catList.map(c=>
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
-                <span className="en-cnm">{c.name}</span>
+                <span className="en-cnm">{exLabel(c.name)}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
-            {catList.length===0&&<div className="en-none">Kategori yok</div>}
+            {catList.length===0&&<div className="en-none">{L('Kategori yok','No categories')}</div>}
           </div>
         </div>
       </div>,document.body)}
@@ -9289,13 +9289,13 @@ function ExImgBtn({image,onChange}){
   const save=f=>{if(f)handleImageUpload(f,'exercises',onChange);};
   return(<span className="eximg-wrap">
     <button type="button" className={'eximg-btn'+(image?' has':'')}
-      title={image?'Exercise image · Click: paste a new copied image · Right-click: choose file':'Add exercise image · Copy an image, then click to paste (or Ctrl/Cmd+V) · Right-click: choose file'}
+      title={image?L('Egzersiz görseli · Tıkla: yeni kopyalanan görseli yapıştır · Sağ tık: dosya seç','Exercise image · Click: paste a new copied image · Right-click: choose file'):L('Egzersiz görseli ekle · Bir görseli kopyala, sonra tıklayıp yapıştır (ya da Ctrl/Cmd+V) · Sağ tık: dosya seç','Add exercise image · Copy an image, then click to paste (or Ctrl/Cmd+V) · Right-click: choose file')}
       onClick={()=>pasteImageFromClipboard('exercises',onChange)}
       onPaste={e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}}
       onContextMenu={e=>{e.preventDefault();fileRef.current?.click();}}>
       {image?<img src={mediaSrc(image)} alt="exercise"/>:<span className="eximg-ph">🖼</span>}
     </button>
-    {image&&<button type="button" className="eximg-x" title="Remove image" onClick={()=>onChange('')}>×</button>}
+    {image&&<button type="button" className="eximg-x" title={L('Görseli kaldır','Remove image')} onClick={()=>onChange('')}>×</button>}
     <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}}
       onChange={e=>{const f=e.target.files?.[0];if(f)save(f);e.target.value='';}}/>
   </span>);
@@ -9308,13 +9308,13 @@ function ExLinkCell({value,onChange}){
   const link=value||'';
   const href=safeURL(link);
   if(!link&&!open)return<button type="button" className="lk-add" onClick={()=>setOpen(true)}
-    title="Attach a video / reference link to this exercise">🔗 Add link</button>;
+    title={L('Bu egzersize bir video / referans linki ekle','Attach a video / reference link to this exercise')}>🔗 {L('Link ekle','Add link')}</button>;
   return(<div className="lk-row">
     <span className="lk-ic">🔗</span>
-    <input value={link} autoFocus={!link} placeholder="https://…  (video / reference link)"
+    <input value={link} autoFocus={!link} placeholder={L('https://…  (video / referans linki)','https://…  (video / reference link)')}
       onChange={e=>onChange(e.target.value)}/>
-    {href&&<a className="lk-go" href={href} target="_blank" rel="noopener noreferrer" title="Open link">↗</a>}
-    <button type="button" className="lk-x" title="Remove link"
+    {href&&<a className="lk-go" href={href} target="_blank" rel="noopener noreferrer" title={L('Linki aç','Open link')}>↗</a>}
+    <button type="button" className="lk-x" title={L('Linki kaldır','Remove link')}
       onClick={()=>{onChange('');setOpen(false);}}>✕</button>
   </div>);
 }
@@ -9327,7 +9327,7 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
   const ss=(ex.superset||'').toUpperCase();
   const f=(k,v)=>onChange({...ex,[k]:v});
   const styles=exStylesFor(ex.pattern);
-  const num=(lbl,k,opts,title)=>(<label key={k}>{lbl}
+  const num=(lbl,k,opts,title,trLbl)=>(<label key={k}>{trLbl?L(trLbl,lbl):lbl}
     {opts?<SlotPick value={ex[k]} options={opts} onChange={v=>f(k,v)} title={title}/>
          :<input value={ex[k]||''} onChange={e=>f(k,e.target.value)} placeholder="—" title={title}/>}
   </label>);
@@ -9370,7 +9370,7 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
   return(<div className={'iv-slot'+(empty?' off':'')}>
     <div className="iv-slot-main">
       <span className={'iv-ss-tag'+(ss?' on':'')}>{tag}</span>
-      <select className="iv-ss-sel" value={ss} onChange={e=>f('superset',e.target.value)} title="Superset group">
+      <select className="iv-ss-sel" value={ss} onChange={e=>f('superset',e.target.value)} title={L('Süperset grubu','Superset group')}>
         <option value="">—</option>
         {SLOT_SS.map(o=><option key={o} value={o}>{o}</option>)}
       </select>
@@ -9386,47 +9386,47 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
       </div>
       <ExImgBtn image={ex.image||''} onChange={url=>{f('image',url||'');rememberExerciseImage(ex.name,url||'');}}/>
       <span className="iv-slotacts">
-        <button type="button" onClick={()=>onMove(-1)} disabled={first} title="Move up">↑</button>
-        <button type="button" onClick={()=>onMove(1)} disabled={last} title="Move down">↓</button>
+        <button type="button" onClick={()=>onMove(-1)} disabled={first} title={L('Yukarı taşı','Move up')}>↑</button>
+        <button type="button" onClick={()=>onMove(1)} disabled={last} title={L('Aşağı taşı','Move down')}>↓</button>
         {/* Paste whatever the assistant coach put on the clipboard into THIS slot. Disabled
             until something is copied, so the button says whether there is anything to
             paste before it is pressed. */}
         <button type="button" className={'pst'+(exClip?' on':'')} disabled={!exClip} onClick={pasteEx}
-          title={exClip?`Yapıştır: ${exClip.name||'egzersiz'}`:'Panoda egzersiz yok — Ass. Coach kutusundan Copy\'ye bas'}>⇩</button>
-        <button type="button" className="del" onClick={onRemove} title="Remove this exercise">✕</button>
+          title={exClip?L(`Yapıştır: ${exClip.name||'egzersiz'}`,`Paste: ${exClip.name||'exercise'}`):L('Panoda egzersiz yok — Ass. Coach kutusundan Copy\'ye bas','Nothing on the clipboard — click Copy in the Assistant Coach box')}>⇩</button>
+        <button type="button" className="del" onClick={onRemove} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>
       </span>
     </div>
     <div className="iv-slot-ed">
       {/* What this exercise trains and how it is executed — the pair the calendar's
           load distribution counts, and the one the printout now carries. */}
       <div className="iv-patrow" style={{'--pat-c':ML_PIE_COLS[ex.pattern]||'var(--border2)'}}>
-        <label>pattern
-          <select value={ex.pattern||''} onChange={e=>setPattern(e.target.value)} title="Movement pattern this exercise trains">
-            <option value="">— not set</option>
-            {EX_PATTERNS.map(o=><option key={o} value={o}>{o}</option>)}
+        <label>{L('örüntü','pattern')}
+          <select value={ex.pattern||''} onChange={e=>setPattern(e.target.value)} title={L('Bu egzersizin çalıştırdığı hareket örüntüsü','Movement pattern this exercise trains')}>
+            <option value="">{L('— seçilmedi','— not set')}</option>
+            {EX_PATTERNS.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
           </select>
         </label>
-        <label>execution
+        <label>{L('uygulama','execution')}
           <select value={ex.plane||''} onChange={e=>setPlane(e.target.value)}
-            disabled={!styles.length} title={styles.length?'How the pattern is executed':'Pick a movement pattern first'}>
-            <option value="">{styles.length?'— not set':'—'}</option>
-            {styles.map(o=><option key={o} value={o}>{o}</option>)}
+            disabled={!styles.length} title={styles.length?L('Örüntünün nasıl uygulandığı','How the pattern is executed'):L('Önce bir hareket örüntüsü seç','Pick a movement pattern first')}>
+            <option value="">{styles.length?L('— seçilmedi','— not set'):'—'}</option>
+            {styles.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
           </select>
         </label>
       </div>
       <div className="iv-numed">
-        {num('sets','sets',SLOT_SETS,'Number of sets')}
-        {num('reps','reps',SLOT_REPS,'Number of reps')}
-        {num('time','duration',null,'Work time (e.g. 30s)')}
-        {num('tempo','tempo',null,'Tempo (e.g. 3-1-1)')}
-        {num('rpe','rpe',SLOT_RPES,'Target RPE (4–10)')}
-        {num('load','load',null,'Load (kg, %1RM…)')}
-        {num('rest','rest',null,'Rest between sets')}
+        {num('sets','sets',SLOT_SETS,L('Set sayısı','Number of sets'),'set')}
+        {num('reps','reps',SLOT_REPS,L('Tekrar sayısı','Number of reps'),'tekrar')}
+        {num('time','duration',null,L('Çalışma süresi (ör. 30s)','Work time (e.g. 30s)'),'süre')}
+        {num('tempo','tempo',null,L('Tempo (ör. 3-1-1)','Tempo (e.g. 3-1-1)'),'tempo')}
+        {num('rpe','rpe',SLOT_RPES,L('Hedef RPE (4–10)','Target RPE (4–10)'),'rpe')}
+        {num('load','load',null,L('Yük (kg, %1RM…)','Load (kg, %1RM…)'),'yük')}
+        {num('rest','rest',null,L('Setler arası dinlenme','Rest between sets'),'dinlenme')}
       </div>
       <div className="iv-linkrow"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></div>
       <div className="iv-noterow">
-        <label>description<input value={ex.description||''} onChange={e=>f('description',e.target.value)}
-          placeholder="Description / coaching cues (optional)…"/></label>
+        <label>{L('açıklama','description')}<input value={ex.description||''} onChange={e=>f('description',e.target.value)}
+          placeholder={L('Açıklama / koçluk ipuçları (opsiyonel)…','Description / coaching cues (optional)…')}/></label>
       </div>
     </div>
   </div>);
@@ -9451,18 +9451,18 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     <div className="iv-block-hd">
       <span className="blk-grip" draggable={setDragB!=null}
         onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
-        onDragEnd={()=>setDragB&&setDragB(null)} title="Drag to reorder">⠿</span>
+        onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
       <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
-        title={open?'Collapse this block':'Expand this block'}>{open?'▼':'▶'}</button>
-      <input className="iv-block-nm" value={block.name} placeholder={`Block ${index+1}`}
-        onChange={e=>onUpdate({...block,name:e.target.value})} title="Block title"/>
-      <span className="iv-blockcnt">{exs.length} exercise{exs.length!==1?'s':''}{groups.length?` · supersets ${groups.join(', ')}`:''}</span>
+        title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
+      <input className="iv-block-nm" value={block.name} placeholder={L(`Blok ${index+1}`,`Block ${index+1}`)}
+        onChange={e=>onUpdate({...block,name:e.target.value})} title={L('Blok başlığı','Block title')}/>
+      <span className="iv-blockcnt">{L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
       <span className="iv-blockacts">
         <button type="button" className="btn xs iv-addb" onClick={()=>{setOpen(true);setExs([...exs,EX()]);}}
-          title={`Add an exercise to ${block.name||`Block ${index+1}`}`}>+ Add exercise</button>
-        <button type="button" className="btn xs sec" onClick={onDuplicate} title="Duplicate this block">⎘</button>
-        <button type="button" className="btn xs sec iv-rmb" onClick={()=>{if(confirm('Delete block?'))onRemove();}}
-          title="Delete this block">✕ Remove</button>
+          title={L(`${block.name||`Blok ${index+1}`}'a egzersiz ekle`,`Add an exercise to ${block.name||`Block ${index+1}`}`)}>+ {L('Egzersiz ekle','Add exercise')}</button>
+        <button type="button" className="btn xs sec" onClick={onDuplicate} title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘</button>
+        <button type="button" className="btn xs sec iv-rmb" onClick={()=>{if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
+          title={L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
       </span>
     </div>
     {open&&<>
@@ -9473,7 +9473,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
           onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
       </div></div>
-      {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>No exercises in this block — use “+ Add exercise” to write one.</div>}
+      {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>{L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
     </>}
   </div>);
 }
@@ -17899,7 +17899,7 @@ const EX_TERM_TR={
   'Eccentric':'Eksantrik','Isometric hold':'İzometrik bekleme','Concentric':'Konsantrik','Pause':'Duraklama',
   'No data':'Veri yok','High':'Yüksek','Watch':'İzle','Normal':'Normal','Low':'Düşük',
   'Upper Body Strength&Power':'Üst Vücut Kuvvet ve Güç','Lower Body Strength&Power':'Alt Vücut Kuvvet ve Güç',
-  'Full Body Strength&Power':'Tüm Vücut Kuvvet ve Güç','Corrective':'Düzeltici',
+  'Full Body Strength&Power':'Tüm Vücut Kuvvet ve Güç','Corrective':'Düzeltici','Accessory':'Yardımcı',
 };
 const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
 /* Free text the coach types (exercise name, purpose/description) is assumed
