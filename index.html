@@ -20301,8 +20301,8 @@ function CheckinPanel({data,setData,team,sync}){
   },[user,loaded,token,rev]);
 
   const ensureLink=async()=>{
-    if(!user)throw new Error('Önce giriş yap — linkler koç hesabına bağlanıyor.');
-    if(!loaded)throw new Error('Veriler buluttan henüz inmedi. Birkaç saniye bekleyip tekrar dene — yoksa linkin arkasına boş bir kadro yazılır.');
+    if(!user)throw new Error(L('Önce giriş yap — linkler koç hesabına bağlanıyor.','Sign in first — links are tied to the coach account.'));
+    if(!loaded)throw new Error(L('Veriler buluttan henüz inmedi. Birkaç saniye bekleyip tekrar dene — yoksa linkin arkasına boş bir kadro yazılır.','Data has not loaded from the cloud yet. Wait a few seconds and try again — otherwise the link will publish with an empty roster.'));
     const t=token||newCheckinToken();
     await publishCheckinLink(user.uid,team,t);
     if(t!==token||cfg.rev!==rev)saveCfg({token:t,rev,publishedAt:new Date().toISOString()});
@@ -20327,7 +20327,7 @@ function CheckinPanel({data,setData,team,sync}){
       const t=await ensureLink();
       const url=checkinUrl(t,kind);
       const ok=await copyText(url);
-      if(!ok)throw new Error('Panoya kopyalanamadı — aşağıdaki adresi elle kopyalayabilirsin.');
+      if(!ok)throw new Error(L('Panoya kopyalanamadı — aşağıdaki adresi elle kopyalayabilirsin.','Could not copy to clipboard — you can copy the address below by hand.'));
       setCopied(kind);setTimeout(()=>setCopied(c=>c===kind?'':c),2500);
     }catch(e){setErr((e&&e.message)||String(e));}
     finally{setBusy(false);}
@@ -20346,7 +20346,7 @@ function CheckinPanel({data,setData,team,sync}){
     finally{setBusy(false);}
   };
   const resetToken=async()=>{
-    if(!confirm('Eski linkler çalışmayı bırakacak ve sporculara yeni link göndermen gerekecek. Devam edilsin mi?'))return;
+    if(!confirm(L('Eski linkler çalışmayı bırakacak ve sporculara yeni link göndermen gerekecek. Devam edilsin mi?','Old links will stop working and you\'ll need to send athletes a new one. Continue?')))return;
     setErr(null);setBusy(true);
     try{
       const t=newCheckinToken();
@@ -20379,22 +20379,25 @@ function CheckinPanel({data,setData,team,sync}){
   const shiftDay=n=>setDate(d=>fmt(addD(parseD(d),n)));
 
   const LINK_BTN=[
-    {kind:'srpe',label:'Antrenman sonrası — İçsel Yük (RPE)',icon:'🏃',
-     hint:'Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.'},
-    {kind:'wellness',label:'Sabah — Wellness',icon:'🌅',
-     hint:'Sabah at. Dinlenik KAH, uyku, yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.'},
+    {kind:'srpe',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),icon:'🏃',
+     hint:L('Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.','Send after training/a match. Asks difficulty + duration for ball training, strength & conditioning, and competition.')},
+    {kind:'wellness',label:L('Sabah — Wellness','Morning — Wellness'),icon:'🌅',
+     hint:L('Sabah at. Dinlenik KAH, uyku, yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Send in the morning. Asks resting HR, sleep, fatigue, soreness, and the pain-region map.')},
   ];
 
   return(<div>
     <div className="panel">
-      <h2>Check-in Formları</h2>
+      <h2>{L('Check-in Formları','Check-in Forms')}</h2>
       <div className="help" style={{marginBottom:14}}>
-        Sporcularının dolduracağı iki form. Düğmeye bas → link panoya kopyalanır → WhatsApp
+        {L(<>Sporcularının dolduracağı iki form. Düğmeye bas → link panoya kopyalanır → WhatsApp
         grubuna yapıştır. Sporcu formda kendi adını seçer, gönderir; cevap sen uygulamayı
-        açtığında <b>anında</b> sporcunun günlüğüne düşer — senkron beklemeden.
+        açtığında <b>anında</b> sporcunun günlüğüne düşer — senkron beklemeden.</>,
+        <>Two forms for your athletes to fill in. Click the button → the link is copied to the clipboard → paste it into
+        the WhatsApp group. The athlete picks their own name on the form and submits; the answer lands <b>instantly</b>
+        in the athlete's log the moment you open the app — no sync wait.</>)}
       </div>
       {!user&&<div style={{marginBottom:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-        ⚠️ Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.
+        ⚠️ {L(<>Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.</>,<>Links are tied to the coach account, so you need to <b>sign in first</b>.</>)}
       </div>}
       {err&&<div style={{marginBottom:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
         ❌ {err}
@@ -20404,11 +20407,11 @@ function CheckinPanel({data,setData,team,sync}){
           <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{b.icon} {b.label}</div>
           <div className="help" style={{marginBottom:10}}>{b.hint}</div>
           <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded} style={{width:'100%',justifyContent:'center'}}>
-            {copied===b.kind?'✅ Kopyalandı':(busy?'…':(loaded?'🔗 Linki kopyala':'Veriler yükleniyor…'))}
+            {copied===b.kind?L('✅ Kopyalandı','✅ Copied'):(busy?'…':(loaded?L('🔗 Linki kopyala','🔗 Copy link'):L('Veriler yükleniyor…','Loading data…')))}
           </button>
           {token&&<div style={{marginTop:8,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
             <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer"
-               style={{fontSize:12,color:'var(--accent2)'}}>Formu aç / önizle</a>
+               style={{fontSize:12,color:'var(--accent2)'}}>{L('Formu aç / önizle','Open / preview form')}</a>
             <code style={{fontSize:10,color:'var(--muted)',wordBreak:'break-all',userSelect:'all'}}>{checkinUrl(token,b.kind)}</code>
           </div>}
         </div>)}
@@ -20417,46 +20420,48 @@ function CheckinPanel({data,setData,team,sync}){
           burada yazıyor — koç linki göndermeden önce görsün. */}
       {token&&<div className="row" style={{marginTop:12,gap:10,alignItems:'center',flexWrap:'wrap'}}>
         <span className="help">
-          Linkteki kadro: <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{published} sporcu</b>
-          {cfg.publishedAt?` · son güncelleme ${new Date(cfg.publishedAt).toLocaleString('tr-TR')}`:''}
-          {cfg.rev!==rev?' · kadro değişti, yayımlanıyor…':''}
+          {L('Linkteki kadro:','Roster on the link:')} <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{L(`${published} sporcu`,`${published} athletes`)}</b>
+          {cfg.publishedAt?L(` · son güncelleme ${new Date(cfg.publishedAt).toLocaleString('tr-TR')}`,` · last updated ${new Date(cfg.publishedAt).toLocaleString('en-GB')}`):''}
+          {cfg.rev!==rev?L(' · kadro değişti, yayımlanıyor…',' · roster changed, publishing…'):''}
         </span>
-        <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>Kadroyu yeniden yayımla</button>
+        <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>{L('Kadroyu yeniden yayımla','Republish roster')}</button>
       </div>}
       {token&&published===0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-        ⚠️ Linkin arkasındaki kadro <b>boş</b> — formu açan sporcu isim listesi göremez.
-        Bu takımda sporcu varsa <b>Kadroyu yeniden yayımla</b>'ya bas; yoksa önce <b>Athletes</b> ekranından kadroyu ekle.
+        ⚠️ {L(<>Linkin arkasındaki kadro <b>boş</b> — formu açan sporcu isim listesi göremez.
+        Bu takımda sporcu varsa <b>Kadroyu yeniden yayımla</b>'ya bas; yoksa önce <b>Athletes</b> ekranından kadroyu ekle.</>,
+        <>The roster behind the link is <b>empty</b> — an athlete opening the form won't see a name list.
+        If this team has athletes, click <b>Republish roster</b>; otherwise add the roster from the <b>Athletes</b> screen first.</>)}
       </div>}
       {token&&<div className="row" style={{marginTop:10,gap:10,alignItems:'center',flexWrap:'wrap'}}>
-        <button className="btn sec xs" onClick={resetToken} disabled={busy}>Linkleri yenile (eskileri iptal et)</button>
-        <span className="help">Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.</span>
+        <button className="btn sec xs" onClick={resetToken} disabled={busy}>{L('Linkleri yenile (eskileri iptal et)','Refresh links (invalidate old ones)')}</button>
+        <span className="help">{L('Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.','Use this if a link went to the wrong person, or is still in former athletes\' hands.')}</span>
       </div>}
     </div>
 
     <div className="panel">
-      <h2>Günün Özeti</h2>
+      <h2>{L('Günün Özeti','Today\'s Summary')}</h2>
       <div className="row" style={{gap:8,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
         <button className="btn sec xs" onClick={()=>shiftDay(-1)}>‹</button>
         <input type="date" value={date} onChange={e=>setDate(e.target.value||fmt(today))} style={{maxWidth:170}}/>
         <button className="btn sec xs" onClick={()=>shiftDay(1)}>›</button>
-        <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>Bugün</button>
+        <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>{L('Bugün','Today')}</button>
         <span className="help">{fd(date)}</span>
       </div>
       <div className="metrics">
         <div className={`metric ${nS===0?'':(nS>=athletes.length?'ok':'')}`}>
-          <div className="ml">İçsel Yük (RPE)</div>
+          <div className="ml">{L('İçsel Yük (RPE)','Internal Load (RPE)')}</div>
           <div className="mv">{nS} / {athletes.length}</div>
-          <div className="mh">{athletes.length-nS} kişi doldurmadı</div>
+          <div className="mh">{L(`${athletes.length-nS} kişi doldurmadı`,`${athletes.length-nS} not submitted`)}</div>
         </div>
         <div className={`metric ${nW===0?'':(nW>=athletes.length?'ok':'')}`}>
           <div className="ml">Wellness</div>
           <div className="mv">{nW} / {athletes.length}</div>
-          <div className="mh">{athletes.length-nW} kişi doldurmadı</div>
+          <div className="mh">{L(`${athletes.length-nW} kişi doldurmadı`,`${athletes.length-nW} not submitted`)}</div>
         </div>
         <div className="metric">
-          <div className="ml">Kadro</div>
+          <div className="ml">{L('Kadro','Roster')}</div>
           <div className="mv">{athletes.length}</div>
-          <div className="mh">Bu takımdaki sporcu</div>
+          <div className="mh">{L('Bu takımdaki sporcu','Athletes on this team')}</div>
         </div>
       </div>
 
@@ -20469,12 +20474,12 @@ function CheckinPanel({data,setData,team,sync}){
               const ok=await copyText(names.join(', '));
               if(ok){setCopied('miss-'+k);setTimeout(()=>setCopied(c=>c==='miss-'+k?'':c),2500);}
             }}>
-              {copied==='miss-'+k?'✅ Kopyalandı':`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`}
+              {copied==='miss-'+k?L('✅ Kopyalandı','✅ Copied'):L(`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`,`Copy who hasn't submitted ${k==='srpe'?'RPE':'Wellness'} (${names.length})`)}
             </button>;
           })}
         </div>
         <table style={{marginTop:12}}>
-          <thead><tr><th style={{textAlign:'left'}}>Sporcu</th><th>İçsel Yük</th><th>Wellness</th></tr></thead>
+          <thead><tr><th style={{textAlign:'left'}}>{L('Sporcu','Athlete')}</th><th>{L('İçsel Yük','Internal Load')}</th><th>Wellness</th></tr></thead>
           <tbody>
             {rows.map(({a,srpe,well})=><tr key={a.id}>
               <td style={{fontWeight:600}}>{a.name}</td>
@@ -20491,9 +20496,9 @@ function CheckinPanel({data,setData,team,sync}){
             </tr>)}
           </tbody>
         </table>
-        <h3 style={{fontSize:13,margin:'18px 0 8px',color:'var(--accent2)'}}>Son 7 gün</h3>
+        <h3 style={{fontSize:13,margin:'18px 0 8px',color:'var(--accent2)'}}>{L('Son 7 gün','Last 7 days')}</h3>
         <table style={{maxWidth:560}}>
-          <thead><tr><th style={{textAlign:'left'}}>Gün</th><th>İçsel Yük</th><th>Wellness</th></tr></thead>
+          <thead><tr><th style={{textAlign:'left'}}>{L('Gün','Day')}</th><th>{L('İçsel Yük','Internal Load')}</th><th>Wellness</th></tr></thead>
           <tbody>
             {week.map(w=><tr key={w.d} style={w.d===date?{background:'var(--elevated)'}:null}>
               <td>{fd(w.d)}</td>
@@ -20504,7 +20509,8 @@ function CheckinPanel({data,setData,team,sync}){
         </table>
       </>}
       {!athletes.length&&<div className="help" style={{marginTop:10}}>
-        Bu takımda sporcu yok. <b>Athletes</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.
+        {L(<>Bu takımda sporcu yok. <b>Athletes</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.</>,
+          <>This team has no athletes. Add the roster from the <b>Athletes</b> screen — the form's name list comes from there.</>)}
       </div>}
     </div>
 
