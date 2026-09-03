@@ -408,7 +408,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-ses.cog{border-left:3px solid var(--high-t)}
 .calw-ses .nm{font-size:13px;font-weight:600;line-height:1.25;color:var(--text)}
 .calw-ses .pr{font-size:11px;color:var(--muted);margin-top:3px}
-.calw-ses .mt{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);margin-top:7px;display:flex;gap:8px;flex-wrap:wrap}
+.calw-ses .mt{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);margin-top:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* The target sits at the far end of the line, away from the clock pair, and wears its own
+   band's colour — the one thing on the chip that is a judgement rather than a fact. Pushed
+   right rather than simply spaced, so it lands on the same edge on every chip whatever the
+   time and duration in front of it measure. */
+.calw-ses .mt .rpe{margin-left:auto;flex:none;font-size:9.5px;font-weight:700;letter-spacing:.02em;
+  padding:1px 6px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
 .calw-ses[draggable=true]{cursor:grab}
 .calw-ses.dragging{opacity:.45;cursor:grabbing}
 .calw-col.drop{border-color:var(--accent);background:rgba(0,148,255,.05)}
@@ -9048,7 +9054,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               </div>}
               <div className="nm">{s.name}</div>
               <div className="pr">{s.purpose}</div>
-              <div className="mt"><span>{s.time}</span><span>{s.duration}m</span></div>
+              {/* Clock, length, and the intensity the coach planned for the day — the third
+                  number belongs on this line because the first two only say when and how
+                  long, never how hard. It is the same target the session editor's scale
+                  sets and the printed program prints, in the same band colour, so the day
+                  column reads how hard the week is without opening a single session. */}
+              <div className="mt"><span>{s.time}</span><span>{s.duration}m</span>{(()=>{
+                const[rlo,rhi]=sesRpeRange(s);const rz=rpeZone(sesRpeTarget(s));
+                return<span className="rpe" style={{color:rz.c,background:rz.soft,borderColor:rz.ring}}
+                  title={L(`Hedeflenen RPE ${rlo}-${rhi} — ${rz.tr}`,`Target RPE ${rlo}-${rhi} — ${rz.en}`)}>RPE {rlo}-{rhi}</span>;
+              })()}</div>
             </div>);
           })}
           {/* The day's team load — the same value Load Monitoring's Team Load Trend plots. */}
