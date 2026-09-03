@@ -2788,13 +2788,14 @@ header{background:var(--bg2)!important}
    to several names. */
 .iv-meta-f.wide{flex:1 1 100%}
 /* Focus, region and the intensity target answer one question — what this session IS — so
-   they travel as one group: the two pickers side by side, the gauge directly beneath them
-   in exactly the width they occupy. It used to run the full width of the strip, starting
-   under the session's title, which read as a bar belonging to the whole row rather than to
-   the two fields it actually qualifies. Training method keeps its own row below the group. */
-.iv-meta-grp{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-start;flex:3 1 400px;min-width:0}
-.iv-meta-grp .iv-meta-f.pp{flex:1 1 160px}
-.iv-meta-f.rpe{flex:1 1 100%}
+   they travel as one group, on a row of their own: the two pickers, then the gauge, all
+   three reading as fields of the same strip. Above them the row is what the session is
+   CALLED and when it runs; below it, training method. The gauge used to run the full width
+   under the session title, which read as a bar belonging to the whole card rather than a
+   field belonging with the two pickers it answers alongside. */
+.iv-meta-grp{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-start;flex:1 1 100%;min-width:0}
+.iv-meta-grp .iv-meta-f.pp{flex:1 1 190px}
+.iv-meta-f.rpe{flex:1.5 1 300px}
 .iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{width:100%;min-width:0;height:34px;
   font-size:12.5px;padding:5px 9px;border-radius:9px;color:var(--text)}
 .iv-meta-f select,.iv-meta-f .focus-trig{text-transform:none;letter-spacing:0;font-weight:500}
@@ -2915,43 +2916,56 @@ header{background:var(--bg2)!important}
 .iv-mrow .focus-sel{flex:1 1 auto;min-width:0}
 @media(max-width:640px){.ca-wrap{flex:1 1 100%}.ca-btn{width:100%}.ca-pop{right:auto;left:0}}
 
-/* ---- Target RPE gauge — one rail, one marker, session editor -------------
-   The bar used to paint the whole 1-10 scale as a rainbow and hang a bowtie somewhere
-   on it: six colours competing while only one of them was the answer, and a static row
-   of EASY/MODERATE/HARD/MAX underneath repeating what the colours already said. Now the
-   rail is neutral and only the stretch up to the target is inked, in the colour of the
-   zone that target falls in — the control shows one thing, and it says it by CHANGING as
-   the marker is dragged (fill, thumb, number and zone word all take the same colour)
-   rather than by being busy while it sits still. The zone colours arrive from JS as
-   --rpe-c / --rpe-soft / --rpe-ring so one table drives the screen and the print sheet. */
-.rpe-gauge{display:flex;flex-direction:column;gap:7px;width:100%;text-transform:none;letter-spacing:0;white-space:normal}
-.rpe-gauge-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.rpe-gauge-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);
-  text-transform:uppercase;letter-spacing:.06em}
-/* Number and zone word share one chip in the zone's colour, so the reading is a single
-   object that recolours — not two labels that happen to update together. */
-.rpe-gauge-read{display:inline-flex;align-items:baseline;gap:7px;padding:2px 9px;border-radius:999px;
-  background:var(--rpe-soft);border:1px solid var(--rpe-ring);transition:background .18s,border-color .18s}
-.rpe-gauge-val{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;
+/* ---- Target RPE gauge — a lit band on a rail, session editor --------------
+   Two attempts sit behind this one. The first painted the whole 1-10 scale as a six-colour
+   rainbow with a bowtie hung somewhere on it — loud while saying nothing, since only one
+   point on it was the answer. The second stripped that back to a plain fill and went too
+   far the other way: a grey hairline that vanished among the fields around it.
+   What it draws now is what the number actually MEANS. The target is a range, RPE 7-9, so
+   the range is the lit part: the run-up to it is the same hue held back, the band itself is
+   solid and glowing, and the centre carries the marker. Nine hairlines put the 1-10 scale
+   under the ink instead of spelling it out in a label row beneath. The whole control — box
+   tint, border, band, marker, number, zone word — wears the colour of the band the target
+   falls in, so dragging it recolours the field itself, and a glance at the strip says how
+   hard the session is before a word of it is read. The zone colours arrive from JS as
+   --rpe-c / --rpe-soft / --rpe-ring, one table driving the screen and the print sheet. */
+.rpe-gauge{display:flex;align-items:center;gap:10px;width:100%;height:34px;padding:0 10px;
+  border-radius:9px;background:var(--rpe-soft);border:1px solid var(--rpe-ring);
+  text-transform:none;letter-spacing:0;white-space:nowrap;transition:background .18s,border-color .18s}
+/* The drag surface is the full height of the box, not the 10px rail inside it: a marker
+   this size is easy to miss by a few pixels vertically, and missing it should not mean
+   nothing happens. */
+.rpe-gauge-track{flex:1 1 auto;min-width:0;align-self:stretch;display:flex;align-items:center;
+  cursor:pointer;touch-action:none;border-radius:6px}
+.rpe-gauge-track:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.rpe-gauge-rail{position:relative;width:100%;height:10px;border-radius:999px;
+  background:rgba(0,0,0,.34);box-shadow:inset 0 1px 2px rgba(0,0,0,.45)}
+.rpe-gauge-lead{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--rpe-c);
+  opacity:.34;transition:width .13s ease-out,background .18s}
+.rpe-gauge-band{position:absolute;top:0;bottom:0;border-radius:999px;background:var(--rpe-c);
+  box-shadow:0 0 10px var(--rpe-ring),inset 0 1px 0 rgba(255,255,255,.38);
+  transition:left .13s ease-out,width .13s ease-out,background .18s,box-shadow .18s}
+.rpe-gauge-ticks{position:absolute;inset:0;border-radius:999px;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.17) 0 1px,transparent 1px 11.111%)}
+/* A white core, not a coloured one: the marker sits ON the lit band, and a marker in the
+   band's own colour is a dark ring around a hole. White reads against the band and against
+   the unlit rail alike, with the zone colour carried by the ring around it. */
+.rpe-gauge-thumb{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;
+  transform:translate(-50%,-50%);background:#fff;border:2px solid var(--rpe-c);
+  box-shadow:0 0 0 3px var(--rpe-ring),0 1px 3px rgba(0,0,0,.6);pointer-events:none;
+  transition:width .14s,height .14s,left .13s ease-out,border-color .18s,box-shadow .18s}
+.rpe-gauge-track:hover .rpe-gauge-thumb{width:16px;height:16px}
+/* While the coach is actually dragging, the marker throws a wider halo and nothing lags
+   behind the pointer — the position transitions are dropped for the duration. */
+.rpe-gauge-track.drag .rpe-gauge-thumb{width:18px;height:18px;box-shadow:0 0 0 6px var(--rpe-ring),0 1px 3px rgba(0,0,0,.6);
+  transition:width .14s,height .14s,border-color .18s,box-shadow .18s}
+.rpe-gauge-track.drag .rpe-gauge-band,.rpe-gauge-track.drag .rpe-gauge-lead{transition:background .18s,box-shadow .18s}
+.rpe-gauge-read{flex:none;display:flex;align-items:baseline;gap:6px}
+.rpe-gauge-val{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;font-weight:700;
   color:var(--rpe-c);transition:color .18s}
-.rpe-gauge-val-max{color:var(--dim);font-weight:600;font-size:10.5px}
-.rpe-gauge-zone{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.07em;color:var(--rpe-c);opacity:.85;transition:color .18s}
-.rpe-gauge-track{position:relative;height:8px;border-radius:999px;background:var(--bg2);
-  border:1px solid var(--border2);cursor:pointer;touch-action:none}
-.rpe-gauge-track:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.rpe-gauge-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--rpe-c);
-  transition:width .13s ease-out,background .18s}
-.rpe-gauge-thumb{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;
-  transform:translate(-50%,-50%);background:var(--rpe-c);border:2px solid var(--panel);
-  box-shadow:0 1px 4px rgba(0,0,0,.5);pointer-events:none;
-  transition:width .14s,height .14s,left .13s ease-out,background .18s,box-shadow .18s}
-.rpe-gauge-track:hover .rpe-gauge-thumb{width:18px;height:18px}
-/* While the coach is actually dragging, the marker grows a halo in its own colour — the
-   only moment the control draws attention to itself. */
-.rpe-gauge-track.drag .rpe-gauge-thumb{width:20px;height:20px;transition:width .14s,height .14s,background .18s,box-shadow .18s;
-  box-shadow:0 0 0 5px var(--rpe-ring),0 1px 4px rgba(0,0,0,.5)}
-.rpe-gauge-track.drag .rpe-gauge-fill{transition:background .18s}
+.rpe-gauge-val-max{color:var(--dim);font-weight:600;font-size:10px}
+.rpe-gauge-zone{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--rpe-c);opacity:.9;transition:color .18s}
 /* The session's own line sits above the blocks, like the individualization card's. */
 .sess-tools{margin-bottom:12px}
 /* The bar's title is click-to-edit: it reads as text until it is clicked, then wears the
@@ -6597,7 +6611,8 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <div class="stat-int-row">
           <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span><span class="stat-int-zone" style="color:${rz.pc}">${L(rz.tr,rz.en)}</span></span>
           <div class="rpe-gauge-print">
-            <div class="rpe-gauge-print-fill" style="width:${rp}%;background:${rz.pc}"></div>
+            <div class="rpe-gauge-print-lead" style="width:${rpePct(rlo)}%;background:${rz.pc}"></div>
+            <div class="rpe-gauge-print-band" style="left:${rpePct(rlo)}%;width:${rpePct(rhi)-rpePct(rlo)}%;background:${rz.pc}"></div>
             <div class="rpe-gauge-print-thumb" style="left:${rp}%;background:${rz.pc}"></div>
           </div>
         </div>
@@ -6734,11 +6749,12 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .stat-int-max{font-size:11px;color:#94a3b8;font-weight:600}
 .stat-int-zone{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;
   letter-spacing:.6px;margin-left:7px}
-/* Static twin of the editor's gauge — a neutral rail inked only as far as the session's
-   own target, in that target's zone colour, so the page shows what the editor showed. */
-.rpe-gauge-print{position:relative;height:8px;border-radius:999px;background:#e2e8f0;
+/* Static twin of the editor's gauge — the same run-up, lit band and centre marker, in the
+   same zone colour, so the page shows exactly what the editor showed. */
+.rpe-gauge-print{position:relative;height:9px;border-radius:999px;background:#e2e8f0;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
-.rpe-gauge-print-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#ea580c}
+.rpe-gauge-print-lead{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#ea580c;opacity:.34}
+.rpe-gauge-print-band{position:absolute;top:0;bottom:0;border-radius:999px;background:#ea580c}
 .rpe-gauge-print-thumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
   transform:translate(-50%,-50%);background:#ea580c;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
 
@@ -9664,10 +9680,11 @@ function MethodSelect({value,onChange,placeholder,counts}){
 /* Draggable RPE target gauge — a rail the coach drags a marker along to set the session's
    planned intensity. One number in, one number out (the center), but the scale is read (and
    printed) as the two-point band around it — RPE 6-8, not "RPE 7" — which is how coaches
-   actually talk about session intensity. Everything that carries colour here — fill, thumb,
-   the reading chip — takes it from the band the target lands in (rpeZone), so the gauge
-   answers by changing rather than by standing there fully painted; the zone's own word
-   ("HARD") does the work the old fixed EASY/MODERATE/HARD/MAX row under the bar did.
+   actually talk about session intensity. So the band is what the rail draws: `lead` is the
+   run-up to it, `band` is the lit stretch from lo to hi, and the marker sits on the centre
+   the coach is actually setting. Everything carrying colour takes it from the zone that
+   centre lands in (rpeZone), the box included, so the field recolours as it is dragged and
+   the zone's own word ("HARD") does the work the old fixed EASY/MODERATE/HARD/MAX row did.
    Pointer events cover mouse, pen and touch in one listener, so there's no separate touch
    path to keep in sync; arrow keys step the same half-points for anyone not using one. */
 function RpeGauge({value,onChange}){
@@ -9700,19 +9717,20 @@ function RpeGauge({value,onChange}){
     if(nv!==v)onChange(nv);
   };
   return(<div className="rpe-gauge" style={{'--rpe-c':z.c,'--rpe-soft':z.soft,'--rpe-ring':z.ring}}>
-    <div className="rpe-gauge-head">
-      <span className="rpe-gauge-lbl">{L('Hedeflenen RPE','Target RPE')}</span>
-      <span className="rpe-gauge-read">
-        <span className="rpe-gauge-val">{`${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
-        <span className="rpe-gauge-zone">{L(z.tr,z.en)}</span>
-      </span>
-    </div>
     <div className={`rpe-gauge-track${drag?' drag':''}`} ref={trackRef} onPointerDown={down} onKeyDown={key}
       tabIndex={0} role="slider" aria-label={L('Hedeflenen RPE','Target RPE')}
       aria-valuemin={1} aria-valuemax={10} aria-valuenow={v} aria-valuetext={`RPE ${lo}-${hi}`}>
-      <div className="rpe-gauge-fill" style={{width:rpePct(v)+'%'}}/>
-      <div className="rpe-gauge-thumb" style={{left:rpePct(v)+'%'}}/>
+      <div className="rpe-gauge-rail">
+        <div className="rpe-gauge-lead" style={{width:rpePct(lo)+'%'}}/>
+        <div className="rpe-gauge-band" style={{left:rpePct(lo)+'%',width:(rpePct(hi)-rpePct(lo))+'%'}}/>
+        <div className="rpe-gauge-ticks"/>
+        <div className="rpe-gauge-thumb" style={{left:rpePct(v)+'%'}}/>
+      </div>
     </div>
+    <span className="rpe-gauge-read">
+      <span className="rpe-gauge-val">{`${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
+      <span className="rpe-gauge-zone">{L(z.tr,z.en)}</span>
+    </span>
   </div>);
 }
 
@@ -9804,7 +9822,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
               {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
             </select>
           </div>
-          <div className="iv-meta-f rpe">
+          <div className="iv-meta-f rpe">{L('hedef rpe','target rpe')}
             <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
           </div>
         </div>
