@@ -15255,41 +15255,41 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
   const apCheckins=(ath.wellness||[]).length;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
-    {id:'profile',ic:'◈',l:'Profile'},
-    {id:'load',ic:'▤',l:'Load'},
-    {id:'calendar',ic:'▣',l:'Calendar'},
-    {id:'body',ic:'⌇',l:'Body Comp'},
-    {id:'injuries',ic:'⊘',l:'Injuries'},
+    {id:'profile',ic:'◈',l:L('Profil','Profile')},
+    {id:'load',ic:'▤',l:L('Yük','Load')},
+    {id:'calendar',ic:'▣',l:L('Takvim','Calendar')},
+    {id:'body',ic:'⌇',l:L('Vücut Komp.','Body Comp')},
+    {id:'injuries',ic:'⊘',l:L('Sakatlıklar','Injuries')},
     {id:'wellness',ic:'♡',l:'Wellness'},
-    {id:'program',ic:'◫',l:'Program'},
+    {id:'program',ic:'◫',l:L('Program','Program')},
   ];
   return(<div>
-    <button className="back" onClick={onBack} style={{marginBottom:14}}>‹ Athletes</button>
+    <button className="back" onClick={onBack} style={{marginBottom:14}}>‹ {L('Sporcular','Athletes')}</button>
     <div className="ap-head">
       <div className="ap-av-wrap">
-        <div className={`ap-av ${apRcls}`} onClick={()=>photoRef.current?.click()} title="Click to change photo">
+        <div className={`ap-av ${apRcls}`} onClick={()=>photoRef.current?.click()} title={L('Fotoğrafı değiştirmek için tıkla','Click to change photo')}>
           {ath.photo?<img src={mediaSrc(ath.photo)} alt=""/>:initials}
           <input type="file" accept="image/*" ref={photoRef} className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'athletes',d=>updAth(ath.id,{photo:d}));e.target.value='';}}/>
         </div>
-        <button className="ap-paste" title="Paste copied photo" onClick={e=>{e.stopPropagation();pasteImageFromClipboard('athletes',d=>updAth(ath.id,{photo:d}));}}>
+        <button className="ap-paste" title={L('Kopyalanan fotoğrafı yapıştır','Paste copied photo')} onClick={e=>{e.stopPropagation();pasteImageFromClipboard('athletes',d=>updAth(ath.id,{photo:d}));}}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
         </button>
       </div>
       <div className="ap-id">
-        <h1>{ath.name||'Unnamed Athlete'}{ath.number&&<span className="ap-num">#{ath.number}</span>}</h1>
+        <h1>{ath.name||L('Adsız Sporcu','Unnamed Athlete')}{ath.number&&<span className="ap-num">#{ath.number}</span>}</h1>
         <div className="ap-meta">
           {ath.position&&<span>◉ {POS_FULL[ath.position]||ath.position}</span>}
-          <span>〰 {apEntries} load entries</span>
-          <span>♡ {apCheckins} check-ins</span>
+          <span>〰 {L(`${apEntries} yük kaydı`,`${apEntries} load entries`)}</span>
+          <span>♡ {L(`${apCheckins} check-in`,`${apCheckins} check-ins`)}</span>
         </div>
       </div>
       <div className="ap-stats">
-        <div className="ap-stat"><div className="k">Readiness</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
+        <div className="ap-stat"><div className="k">{L('Hazır Oluş','Readiness')}</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
         <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
-        <div className="ap-stat"><div className="k">7d load</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
+        <div className="ap-stat"><div className="k">{L('7g yük','7d load')}</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
       </div>
-      <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title="Edit profile">✎</button>
+      <button className="ap-edit" onClick={()=>setEditProfileOpen(true)} title={L('Profili düzenle','Edit profile')}>✎</button>
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
@@ -15297,19 +15297,19 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
       <div className="modal" style={{maxWidth:680,width:'95vw',background:'#15181e',backdropFilter:'none',WebkitBackdropFilter:'none'}} onClick={e=>e.stopPropagation()}>
-        <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>Edit Profile</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
+        <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Profili Düzenle','Edit Profile')}</h2><button className="x-btn" onClick={()=>setEditProfileOpen(false)}>✕</button></div>
         <div style={{padding:'18px 22px'}}>
           <div className="grid cols-3">
-            <div><label>Full name</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
-            <div><label>Jersey #</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
-            <div><label>Position</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
+            <div><label>{L('Ad Soyad','Full name')}</label><input value={ath.name} onChange={e=>updAth(ath.id,{name:e.target.value})}/></div>
+            <div><label>{L('Forma No','Jersey #')}</label><input value={ath.number} onChange={e=>updAth(ath.id,{number:e.target.value})}/></div>
+            <div><label>{L('Mevki','Position')}</label><select value={posOf(ath.position)} onChange={e=>updAth(ath.id,{position:e.target.value})}>{positions.map(p=><option key={p}>{p}</option>)}</select></div>
           </div>
           <div className="grid cols-3" style={{marginTop:12}}>
-            <div><label>Date of birth</label><input type="text" inputMode="numeric" placeholder="gg/aa/yyyy" value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">gün / ay / yıl</div></div>
+            <div><label>{L('Doğum tarihi','Date of birth')}</label><input type="text" inputMode="numeric" placeholder="gg/aa/yyyy" value={dobText} onChange={e=>{const v=e.target.value;setDobText(v);const m=v.trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/);if(m){const d=+m[1],mo=+m[2];if(d>=1&&d<=31&&mo>=1&&mo<=12)updAth(ath.id,{dateOfBirth:`${m[3]}-${pad(mo)}-${pad(d)}`});}}}/><div className="help">{L('gün / ay / yıl','day / month / year')}</div></div>
             {/* Cep telefonu: ülke kodu ayrı bir kutuda, numara ayrı. Numaranın uluslararası
                 biçimde durması gerekiyor, ve bir koç +90'ı numaranın içine yazmayı hep
                 unutuyor — o yüzden seçtiriyoruz. */}
-            <div style={{gridColumn:'span 2'}}><label>Cep telefonu</label>
+            <div style={{gridColumn:'span 2'}}><label>{L('Cep telefonu','Mobile phone')}</label>
               <div style={{display:'flex',gap:8}}>
                 <select style={{flex:'0 0 130px'}} value={ath.phoneCode||DEFAULT_DIAL} onChange={e=>updAth(ath.id,{phoneCode:e.target.value})}>
                   {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}
@@ -15317,17 +15317,17 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
                 <input style={{flex:1}} type="tel" inputMode="tel" placeholder="532 123 45 67"
                   value={ath.phone||''} onChange={e=>updAth(ath.id,{phone:cleanPhone(e.target.value)})}/>
               </div>
-              <div className="help">{fullPhone(ath)||'Ülke kodunu seç, numarayı başındaki 0 olmadan yaz.'}</div></div>
+              <div className="help">{fullPhone(ath)||L('Ülke kodunu seç, numarayı başındaki 0 olmadan yaz.','Pick the country code, and write the number without a leading 0.')}</div></div>
           </div>
-          <div style={{marginTop:12}}><label>Notes</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder="Goals, special considerations…"/></div>
-          <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>Bitti</button></div>
+          <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Hedefler, özel durumlar…','Goals, special considerations…')}/></div>
+          <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>
         </div>
       </div>
     </div>}
     {tab==='injuries'&&<div>
       <div className="row" style={{justifyContent:'space-between',marginBottom:14}}>
-        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>Athlete Injury Record <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>({(ath.injuries||[]).length})</span></h2>
-        <button className="btn sm" onClick={()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};updAth(ath.id,{injuries:[...(ath.injuries||[]),inj]});}}>+ Add Injury</button>
+        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>{L('Sporcu Sakatlık Kaydı','Athlete Injury Record')} <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>({(ath.injuries||[]).length})</span></h2>
+        <button className="btn sm" onClick={()=>{const inj={id:uid(),date:fmt(today),context:'Training',mechanism:'',side:'',location:'',tissueType:'',type:'',grade:'1',firstInjuryDay:fmt(today),sidelinedDate:fmt(today),estimatedReturn:'',actualReturn:'',status:'Active',notes:''};updAth(ath.id,{injuries:[...(ath.injuries||[]),inj]});}}>+ {L('Sakatlık Ekle','Add Injury')}</button>
       </div>
       {(!ath.injuries||ath.injuries.length===0)&&<div className="empty-st">No injuries recorded</div>}
       {(ath.injuries||[]).map((inj,idx)=>{
