@@ -218,6 +218,16 @@ nav{
 .rlang-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
 .rlang-seg button{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer;transition:all .15s}
 .rlang-seg button.on{background:var(--accent);color:#0a0b0d}
+/* Site-wide language picker, fixed to the bottom-left corner of every screen
+   (login/marketing page, loading screen, and the app itself). */
+.lang-fixed{position:fixed;left:14px;bottom:14px;z-index:260;display:flex;align-items:center;gap:6px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.lang-fixed-ic{font-size:13px;line-height:1}
+.lang-fixed-sel{background:transparent;border:none;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.lang-fixed-sel:focus{outline:none}
+.lang-fixed-sel option{background:var(--elevated);color:var(--text)}
+@media(max-width:760px){.lang-fixed{left:8px;bottom:8px;padding:5px 8px}}
 .nav-item{
   background:transparent;border:1px solid transparent;padding:10px 12px;cursor:pointer;
   color:var(--text2);font-size:14px;font-weight:500;
@@ -3364,9 +3374,26 @@ const wk=d=>fmt(sow(d));
 const today=new Date();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
-/* ===== Report language (global TR/EN switch used by all print outputs) ===== */
-let REPORT_LANG='en';   // rapor dili (bellek-içi; kalıcılık yok)
-function setReportLang(l){REPORT_LANG=l;}
+/* ===== App language (global TR/EN switch — drives the whole UI and every print
+   output). Persisted to localStorage and reactive: any component that calls
+   useAppLang() re-renders the instant it changes, so switching language updates
+   the page immediately with no reload. ===== */
+const LANG_KEY='coachos_lang';
+let REPORT_LANG=(()=>{try{const s=localStorage.getItem(LANG_KEY);if(s==='tr'||s==='en')return s;}catch(e){}return'en';})();
+const _langSubs=new Set();
+function setReportLang(l){
+  if(l!=='tr'&&l!=='en')return;
+  if(l===REPORT_LANG)return;
+  REPORT_LANG=l;
+  try{localStorage.setItem(LANG_KEY,l);}catch(e){}
+  _langSubs.forEach(fn=>{try{fn();}catch(e){}});
+}
+// Subscribe a component to language changes so the whole tree re-renders live.
+function useAppLang(){
+  const[,force]=useState(0);
+  useEffect(()=>{const fn=()=>force(x=>x+1);_langSubs.add(fn);return()=>_langSubs.delete(fn);},[]);
+  return REPORT_LANG;
+}
 const MN_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MN_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const DN_EN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -7546,30 +7573,30 @@ function Setup({team,updateTeam}){
       (k==='seasonEnd'&&i===s.periods.length-1)?{...p,end:v}:p);
     updateTeam(team.id,{setup:{...s,[k]:v,periods:np}});};
   return(<div>
-    <div className="panel"><h2>Team / Athlete Information</h2>
+    <div className="panel"><h2>{L('Takım / Sporcu Bilgisi','Team / Athlete Information')}</h2>
       <div className="grid cols-3">
-        <div><label>Sport</label><select value={s.sport} onChange={e=>u('sport',e.target.value)}>{SPORTS.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><label>Team name</label><input value={s.teamName} onChange={e=>u('teamName',e.target.value)}/></div>
-        <div><label>Athletes</label><input type="number" min="1" value={s.athleteCount} onChange={e=>u('athleteCount',+e.target.value)}/></div>
+        <div><label>{L('Spor','Sport')}</label><select value={s.sport} onChange={e=>u('sport',e.target.value)}>{SPORTS.map(x=><option key={x}>{x}</option>)}</select></div>
+        <div><label>{L('Takım adı','Team name')}</label><input value={s.teamName} onChange={e=>u('teamName',e.target.value)}/></div>
+        <div><label>{L('Sporcular','Athletes')}</label><input type="number" min="1" value={s.athleteCount} onChange={e=>u('athleteCount',+e.target.value)}/></div>
       </div>
       <div className="grid cols-2" style={{marginTop:12}}>
-        <div><label>Season start (dd/mm/yyyy)</label><DateDMY value={s.seasonStart} onChange={v=>uSeason('seasonStart',v)}/><div className="help">General Preparation başlangıcı</div></div>
-        <div><label>Season end (dd/mm/yyyy)</label><DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/><div className="help">Transition sonu</div></div>
+        <div><label>{L('Sezon başlangıcı (gg/aa/yyyy)','Season start (dd/mm/yyyy)')}</label><DateDMY value={s.seasonStart} onChange={v=>uSeason('seasonStart',v)}/><div className="help">{L('Genel Hazırlık başlangıcı','General Preparation start')}</div></div>
+        <div><label>{L('Sezon sonu (gg/aa/yyyy)','Season end (dd/mm/yyyy)')}</label><DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/><div className="help">{L('Geçiş dönemi sonu','Transition end')}</div></div>
       </div>
     </div>
-    <div className="panel"><h2>Periodization Model</h2>
+    <div className="panel"><h2>{L('Periyotlama Modeli','Periodization Model')}</h2>
       <div className="grid cols-2">{MODELS.map(m=>(<label key={m.id} style={{border:'1px solid',borderRadius:8,padding:14,cursor:'pointer',transition:'all .15s',
         background:s.model===m.id?'var(--accent-bg)':'var(--elevated)',borderColor:s.model===m.id?'var(--accent)':'var(--border)'}}>
-        <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{m.name}</strong></div>
-        <div className="help" style={{marginLeft:24,marginTop:4}}>{m.desc}</div></label>))}</div>
+        <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
+        <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
     </div>
-    <div className="panel"><h2>Competition Dates</h2>
-      <table><thead><tr><th>Date (dd/mm/yyyy)</th><th>Event</th><th style={{width:90}}></th></tr></thead><tbody>
+    <div className="panel"><h2>{L('Müsabaka Tarihleri','Competition Dates')}</h2>
+      <table><thead><tr><th>{L('Tarih (gg/aa/yyyy)','Date (dd/mm/yyyy)')}</th><th>{L('Etkinlik','Event')}</th><th style={{width:90}}></th></tr></thead><tbody>
         {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
           <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
-          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>Remove</button></td></tr>)}
+          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button></td></tr>)}
       </tbody></table>
-      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ Add competition</button>
+      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ {L('Müsabaka ekle','Add competition')}</button>
     </div>
   </div>);
 }
@@ -7591,7 +7618,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const updPeriod=(id,field,val)=>{if(!val)return;
     const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);
     updateTeam(team.id,{setup:{...s,periods:np,seasonStart:np[0].start,seasonEnd:np[np.length-1].end}});};
-  const resetPeriods=()=>{if(confirm('Reset periods to auto-generated from season + competition dates?'))updateTeam(team.id,{setup:{...s,periods:null}});};
+  const resetPeriods=()=>{if(confirm(L('Fazlar sezon + müsabaka tarihlerinden otomatik oluşturulsun mu?','Reset periods to auto-generated from season + competition dates?')))updateTeam(team.id,{setup:{...s,periods:null}});};
   const usingCustom=!!s.periods;
   // Period long names + monthly tick labels for the macrocycle bar
   const periodLong={gp:'General',sp:'Specific Prep',comp:'Competition',trans:'Transition'};
@@ -7645,13 +7672,13 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   };
   const renameSeason=()=>{
     const cur=seasons.find(sn=>sn.id===activeId);if(!cur)return;
-    const n=prompt('Season name',seasonName(team,cur));if(n===null)return;
+    const n=prompt(L('Sezon adı','Season name'),seasonName(team,cur));if(n===null)return;
     updateTeam(team.id,{seasons:seasons.map(sn=>sn.id===activeId?{...sn,name:n.trim()||undefined}:sn)});
   };
   const removeSeason=()=>{
     if(seasons.length<2)return;
     const cur=seasons.find(sn=>sn.id===activeId);
-    if(!confirm('Delete season "'+seasonName(team,cur)+'" with its whole plan? This cannot be undone.'))return;
+    if(!confirm(L('"'+seasonName(team,cur)+'" sezonu tüm planıyla silinsin mi? Bu geri alınamaz.','Delete season "'+seasonName(team,cur)+'" with its whole plan? This cannot be undone.')))return;
     const rest=seasons.filter(sn=>sn.id!==activeId);
     const store={...(team.seasonData||{})};
     const nid=rest[0].id;const nx=store[nid]||{};delete store[nid];
@@ -7664,16 +7691,16 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     <div className="season-hero">
       <div className="season-hero-yr" aria-hidden="true">{heroYears}</div>
       <div className="season-hero-in">
-        <div className="season-hero-k">Season</div>
+        <div className="season-hero-k">{L('Sezon','Season')}</div>
         <div className="season-pick">
-          <select className="season-sel" value={activeId||''} onChange={e=>switchSeason(e.target.value)} title="Switch season">
+          <select className="season-sel" value={activeId||''} onChange={e=>switchSeason(e.target.value)} title={L('Sezon değiştir','Switch season')}>
             {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
           </select>
-          <button className="btn sec sm" onClick={addSeason}>+ New season</button>
-          <button className="btn sec sm" onClick={renameSeason}>Rename</button>
-          {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>Delete</button>}
+          <button className="btn sec sm" onClick={addSeason}>+ {L('Yeni sezon','New season')}</button>
+          <button className="btn sec sm" onClick={renameSeason}>{L('Yeniden adlandır','Rename')}</button>
+          {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>{L('Sil','Delete')}</button>}
         </div>
-        <div className="season-hero-meta">{weeks.length} wks · {(MODELS.find(m=>m.id===s.model)?.name)||s.model} · {periods.length} phases · {athleteCount} athletes</div>
+        <div className="season-hero-meta">{L(`${weeks.length} hf · ${exLabel((MODELS.find(m=>m.id===s.model)?.name)||s.model)} · ${periods.length} faz · ${athleteCount} sporcu`,`${weeks.length} wks · ${(MODELS.find(m=>m.id===s.model)?.name)||s.model} · ${periods.length} phases · ${athleteCount} athletes`)}</div>
       </div>
     </div>
     {(()=>{
@@ -7692,12 +7719,12 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       const ticks=[];let cur=new Date(parseD(winStart).getFullYear(),parseD(winStart).getMonth()+1,1);const endD=parseD(winEnd);
       while(cur<=endD){ticks.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
       return(<div className="panel mc-panel">
-        <div className="mc-head"><div className="mc-title">Season Macrocycle<span className="mc-sub">{modelName} · {periods.length} phases</span></div></div>
+        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${exLabel(modelName)} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div></div>
         <div className="mc-gantt">
           <div className="mc-axis">
             <div/>
             <div className="mc-axis-tr">
-              {todayPct!=null&&<div className="mc-today" style={{left:`${todayPct}%`}}><span>TODAY</span></div>}
+              {todayPct!=null&&<div className="mc-today" style={{left:`${todayPct}%`}}><span>{L('BUGÜN','TODAY')}</span></div>}
               {ticks.map((d,i)=><span key={i} className="mc-mtick" style={{left:`${pctOf(fmt(d))}%`}}>{MN[d.getMonth()]}</span>)}
             </div>
           </div>
@@ -7706,12 +7733,12 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             <div key={p.id} className="mc-row">
               <div className="mc-lbl" title={nm}>
                 <span className="mc-dot" style={{background:col}}/>
-                <div className="mc-lbl-tx"><b>{nm}</b><i>{wk} wk · {fmd(p.start)}–{fmd(p.end)}</i></div>
+                <div className="mc-lbl-tx"><b>{nm}</b><i>{L(`${wk} hf · ${fmd(p.start)}–${fmd(p.end)}`,`${wk} wk · ${fmd(p.start)}–${fmd(p.end)}`)}</i></div>
               </div>
               <div className="mc-track">
                 {ticks.map((d,i)=><div key={'g'+i} className="mc-grid" style={{left:`${pctOf(fmt(d))}%`}}/>)}
                 {todayPct!=null&&<div className="mc-todayline" style={{left:`${todayPct}%`}}/>}
-                <div className="mc-bar" title={`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`}
+                <div className="mc-bar" title={L(`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} hf`,`${nm} · ${fmd(p.start)} – ${fmd(p.end)} · ${wk} wk`)}
                   style={{left:`${l}%`,width:`${Math.max(.6,r-l)}%`,backgroundColor:col,animationDelay:(pi*80)+'ms'}}/>
               </div>
             </div>);})}
@@ -7721,12 +7748,12 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     <div className="mc-extra">
       <div className="panel" style={{margin:0}}>
         <div className="pm-head">
-          <h2 style={{margin:0,fontSize:16}}>Planned Microcycles</h2>
-          <span className="pm-sub">volume × intensity per week</span>
+          <h2 style={{margin:0,fontSize:16}}>{L('Planlı Mikrosikluslar','Planned Microcycles')}</h2>
+          <span className="pm-sub">{L('haftalık hacim × şiddet','volume × intensity per week')}</span>
           <span style={{flex:'1 1 auto'}}/>
           <div className="pm-seg">
-            <button className={mcView==='year'?'on':''} onClick={()=>setMcView('year')}>Yıllık</button>
-            <button className={mcView==='month'?'on':''} onClick={()=>setMcView('month')}>Aylık</button>
+            <button className={mcView==='year'?'on':''} onClick={()=>setMcView('year')}>{L('Yıllık','Yearly')}</button>
+            <button className={mcView==='month'?'on':''} onClick={()=>setMcView('month')}>{L('Aylık','Monthly')}</button>
           </div>
         </div>
         {mcView==='month'&&<div className="pm-months">
@@ -7736,10 +7763,10 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         </div>}
         <div className="chart-box" style={{height:340}}>
           {chartWeeks.length===0
-            ?<div className="ex-empty" style={{margin:0}}>Bu ayda planlı mikrosiklus yok.</div>
+            ?<div className="ex-empty" style={{margin:0}}>{L('Bu ayda planlı mikrosiklus yok.','No planned microcycle this month.')}</div>
             :<ChartC type="line" chartData={{labels:chartWeeks.map(w=>[fd(w.week).slice(0,5),w.focus||'']),datasets:[
-            {label:'Volume',data:chartWeeks.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#3b6ef5',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},
-            {label:'Intensity',data:chartWeeks.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#f59e0b',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#f59e0b',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}
+            {label:L('Hacim','Volume'),data:chartWeeks.map(w=>Number(w.volume)||0),borderColor:'#3b6ef5',backgroundColor:'rgba(59,110,245,.16)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#3b6ef5',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#3b6ef5',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2},
+            {label:L('Şiddet','Intensity'),data:chartWeeks.map(w=>Number(w.intensity)||0),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.14)',tension:.4,fill:true,borderWidth:2,pointRadius:mcView==='month'?4:0,pointBackgroundColor:'#f59e0b',pointBorderColor:'#0f1115',pointHoverRadius:5,pointHoverBackgroundColor:'#f59e0b',pointHoverBorderColor:'#fff',pointHoverBorderWidth:2}
           ]}} options={{responsive:true,maintainAspectRatio:false,
             interaction:{mode:'index',intersect:false},hover:{mode:'index',intersect:false},
             scales:{x:{...CHART_DARK.scales.x,ticks:{...CHART_DARK.scales.x.ticks,autoSkip:mcView!=='month',maxRotation:0,font:{size:10}}},y:{...CHART_DARK.scales.y,suggestedMax:110}},
@@ -7748,41 +7775,41 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         </div>
       </div>
     </div>
-    <div className="panel"><h2>Macrocycle Timeline</h2>
+    <div className="panel"><h2>{L('Makrosiklüs Zaman Çizelgesi','Macrocycle Timeline')}</h2>
       <div className="row" style={{justifyContent:'space-between',marginBottom:8}}>
-        <strong style={{fontSize:13}}>Period Dates {usingCustom?<span className="tag" style={{marginLeft:8}}>CUSTOM</span>:<span className="tag" style={{marginLeft:8,background:'rgba(245,158,11,.15)',color:'var(--yellow)'}}>AUTO</span>}</strong>
-        <button className="btn sec sm" onClick={resetPeriods}>Reset to auto</button>
+        <strong style={{fontSize:13}}>{L('Faz Tarihleri','Period Dates')} {usingCustom?<span className="tag" style={{marginLeft:8}}>{L('ÖZEL','CUSTOM')}</span>:<span className="tag" style={{marginLeft:8,background:'rgba(245,158,11,.15)',color:'var(--yellow)'}}>{L('OTOMATİK','AUTO')}</span>}</strong>
+        <button className="btn sec sm" onClick={resetPeriods}>{L('Otomatiğe sıfırla','Reset to auto')}</button>
       </div>
-      <table><thead><tr><th>Period</th><th>Start (dd/mm/yyyy)</th><th>End (dd/mm/yyyy)</th><th>Duration</th></tr></thead><tbody>
+      <table><thead><tr><th>{L('Faz','Period')}</th><th>{L('Başlangıç (gg/aa/yyyy)','Start (dd/mm/yyyy)')}</th><th>{L('Bitiş (gg/aa/yyyy)','End (dd/mm/yyyy)')}</th><th>{L('Süre','Duration')}</th></tr></thead><tbody>
         {periods.map(p=><tr key={p.id}>
-          <td><strong style={{color:'var(--text)'}}><span style={{display:'inline-block',width:9,height:9,borderRadius:'50%',marginRight:8,verticalAlign:'middle',background:PHASE_COL[p.id]||'#64748b'}}/>{p.name}</strong></td>
+          <td><strong style={{color:'var(--text)'}}><span style={{display:'inline-block',width:9,height:9,borderRadius:'50%',marginRight:8,verticalAlign:'middle',background:PHASE_COL[p.id]||'#64748b'}}/>{exLabel(p.name)}</strong></td>
           <td><DateDMY value={p.start} onChange={v=>updPeriod(p.id,'start',v)} style={{width:160}}/></td>
           <td><DateDMY value={p.end} onChange={v=>updPeriod(p.id,'end',v)} style={{width:160}}/></td>
-          <td><strong>{diffD(p.start,p.end)+1}</strong> days</td>
+          <td><strong>{diffD(p.start,p.end)+1}</strong> {L('gün','days')}</td>
         </tr>)}
       </tbody></table>
     </div>
 
-    <div className="panel"><h2>Weekly Load Targets</h2>
-      <div className="help" style={{marginBottom:14}}>Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.</div>
+    <div className="panel"><h2>{L('Haftalık Yük Hedefleri','Weekly Load Targets')}</h2>
+      <div className="help" style={{marginBottom:14}}>{L('Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.','Pick the week\'s focus — volume and intensity adjust automatically to match · taper weeks are flagged with an ⚠ badge.')}</div>
       <div className="wlt-grid">
         {weeks.map((w,i)=>{const cls=w.intensity>=85?'high':w.intensity>=70?'med':'low';
           const pcls=w.period==='gp'?'gp':w.period==='sp'?'sp':w.period==='comp'?'comp':'trans';
-          const pName={gp:'General',sp:'Specific',comp:'Competition',trans:'Transition'}[w.period]||w.period;
+          const pName=exLabel({gp:'General',sp:'Specific',comp:'Competition',trans:'Transition'}[w.period]||w.period);
           const vol=Math.max(0,Math.min(100,Number(w.volume)||0)),int=Math.max(0,Math.min(100,Number(w.intensity)||0));
           return(<div key={w.week} className={`wlt-card ${pcls}`}>
             <div className="wlt-top">
-              <div className="wlt-wk"><div className="wkn">W{i+1}</div><div className="wkd">{fd(w.week).slice(0,5)}</div></div>
-              {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
+              <div className="wlt-wk"><div className="wkn">{L('H','W')}{i+1}</div><div className="wkd">{fd(w.week).slice(0,5)}</div></div>
+              {w.taper&&<span className="wlt-taper">⚠ {L('TAPER','TAPER')}</span>}
             </div>
             <div className="wlt-phase"><span className={`wlt-dot ${pcls}`}/>{pName}</div>
             <select className={`wlt-focus-sel ${cls}`} value={w.focus} onChange={e=>setWeekFocus(w.week,e.target.value)}>
-              {!WEEK_FOCUS.includes(w.focus)&&<option value={w.focus}>{w.focus}</option>}
-              {WEEK_FOCUS.map(f=><option key={f} value={f}>{f}</option>)}
+              {!WEEK_FOCUS.includes(w.focus)&&<option value={w.focus}>{exLabel(w.focus)}</option>}
+              {WEEK_FOCUS.map(f=><option key={f} value={f}>{exLabel(f)}</option>)}
             </select>
             <div className="wlt-meters">
-              <div className="wlt-m vol"><span className="wlt-mk">Vol</span><div className="wlt-mt"><i style={{width:vol+'%'}}/></div><span className="wlt-mv">{vol}%</span></div>
-              <div className="wlt-m int"><span className="wlt-mk">Int</span><div className="wlt-mt"><i style={{width:int+'%'}}/></div><span className="wlt-mv">{int}%</span></div>
+              <div className="wlt-m vol"><span className="wlt-mk">{L('Hac','Vol')}</span><div className="wlt-mt"><i style={{width:vol+'%'}}/></div><span className="wlt-mv">{vol}%</span></div>
+              <div className="wlt-m int"><span className="wlt-mk">{L('Şid','Int')}</span><div className="wlt-mt"><i style={{width:int+'%'}}/></div><span className="wlt-mv">{int}%</span></div>
             </div>
           </div>);})}
       </div>
@@ -15717,7 +15744,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
     constraintTags:[],levelTag:'',
     injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
   const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
-  const delAth=id=>{if(!confirm('Delete this athlete and all their data?'))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
+  const delAth=id=>{if(!confirm(L('Bu sporcu ve tüm verileri silinsin mi?','Delete this athlete and all their data?')))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
   const ageOf=a=>{if(!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
   const totalAU=a=>Object.values(a.days||{}).reduce((s,d)=>s+(d.sessions||[]).reduce((x,ses)=>x+Number(ses.au||0),0),0);
   const isInjured=a=>(a.injuries||[]).some(i=>i.status!=='Recovered');
@@ -15730,25 +15757,25 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
     return(a.name||'').toLowerCase().includes(s)||posOf(a.position).toLowerCase().includes(s)||String(a.number||'').includes(s);
   });
   if(sel){const ath=athletes.find(a=>a.id===sel);
-    if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← Back</button><p>Athlete not found</p></div>;
+    if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
     return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai}/>;}
   return(<div>
     <div className="rost-head">
       <div>
-        <div className="rh-t">Roster</div>
-        <div className="rh-s">{athletes.length} athletes · {team.setup.teamName}</div>
+        <div className="rh-t">{L('Kadro','Roster')}</div>
+        <div className="rh-s">{L(`${athletes.length} sporcu · ${team.setup.teamName}`,`${athletes.length} athletes · ${team.setup.teamName}`)}</div>
       </div>
       <div className="rost-tools">
-        <div className="ath-search"><span className="ic">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search athlete…"/></div>
+        <div className="ath-search"><span className="ic">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Sporcu ara…','Search athlete…')}/></div>
         <div className="ath-seg">
-          <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>All</button>
+          <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>{L('Tümü','All')}</button>
           {positions.map(p=><button key={p} className={filter===p?'on':''} onClick={()=>setFilter(p)}>{p}</button>)}
         </div>
-        <button className="btn sec sm" onClick={addAth}>+ Add</button>
+        <button className="btn sec sm" onClick={addAth}>+ {L('Ekle','Add')}</button>
       </div>
     </div>
-    {athletes.length===0&&<div className="empty-st">No athletes yet — click "+ Add" to start.</div>}
-    {athletes.length>0&&list.length===0&&<div className="empty-st">No matches.</div>}
+    {athletes.length===0&&<div className="empty-st">{L('Henüz sporcu yok — başlamak için "+ Ekle"ye tıkla.','No athletes yet — click "+ Add" to start.')}</div>}
+    {athletes.length>0&&list.length===0&&<div className="empty-st">{L('Eşleşme yok.','No matches.')}</div>}
     <div className="rost-grid">{list.map(a=>{
       const age=ageOf(a);const ref=athLatestDate(a);
       const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
@@ -15757,21 +15784,21 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
-        <button className="rc-del" title="Sporcuyu sil" onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
+        <button className="rc-del" title={L('Sporcuyu sil','Delete athlete')} onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
           <div className={`rc-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
           <div className="rc-id">
             <div className="rc-name">{a.name}</div>
-            <div className="rc-pos">{posFull}{age!=null?` · ${age} yrs`:''}</div>
+            <div className="rc-pos">{posFull}{age!=null?L(` · ${age} yaş`,` · ${age} yrs`):''}</div>
           </div>
         </div>
         <div className="rc-stats">
-          <div className="rc-st"><span className="k">Readiness</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
-          <div className="rc-st"><span className="k">7d load</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
+          <div className="rc-st"><span className="k">{L('Hazır Oluş','Readiness')}</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
+          <div className="rc-st"><span className="k">{L('7g yük','7d load')}</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
           <div className="rc-st">
-            <span className="k">Training days</span>
-            <span className="v" title={`${td.attended} training days attended · ${td.missed} missed${td.from?` — macrocycle ${fd(td.from)} → ${fd(td.to)}`:''}`}>
+            <span className="k">{L('Antrenman günü','Training days')}</span>
+            <span className="v" title={L(`${td.attended} antrenman günü katıldı · ${td.missed} kaçırdı${td.from?` — mezosiklüs ${fd(td.from)} → ${fd(td.to)}`:''}`,`${td.attended} training days attended · ${td.missed} missed${td.from?` — macrocycle ${fd(td.from)} → ${fd(td.to)}`:''}`)}>
               <span style={{color:'var(--green)'}}>{td.attended}</span>
               <span style={{color:'var(--dim)',fontWeight:500,margin:'0 3px'}}>/</span>
               <span style={{color:td.missed>0?'#f43f5e':'var(--dim)'}}>{td.missed}</span>
@@ -17450,7 +17477,7 @@ function LoadingScreen(){
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
       <div style={{textAlign:'center'}}>
         <img src="logo.png" alt="CoachOS" style={{height:52,marginBottom:14,opacity:.7}}/>
-        <div style={{color:'var(--dim)',fontSize:14}}>Yükleniyor…</div>
+        <div style={{color:'var(--dim)',fontSize:14}}>{L('Yükleniyor…','Loading…')}</div>
       </div>
     </div>
   );
@@ -17460,7 +17487,7 @@ function GoogleBtn({onClick,busy}){
   return(
     <button onClick={onClick} disabled={busy} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'10px 16px',borderRadius:8,border:'1px solid var(--border)',background:'#fff',color:'#1f1f1f',fontSize:14,fontWeight:600,cursor:busy?'default':'pointer',boxShadow:'0 1px 3px rgba(0,0,0,.15)'}}>
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.707A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 000 9c0 1.452.348 2.826.957 4.039l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
-      {busy?'…':'Google ile Giriş Yap'}
+      {busy?'…':L('Google ile Giriş Yap','Sign in with Google')}
     </button>
   );
 }
@@ -17481,19 +17508,19 @@ function LoginPage({sync}){
     try{await sync.signInWithGoogle();}
     catch(e){
       const msgs={
-        'auth/operation-not-allowed':'Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.',
-        'auth/unauthorized-domain':'Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.',
-        'auth/network-request-failed':'İnternet bağlantısı hatası.',
-        'auth/popup-blocked':'Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.',
+        'auth/operation-not-allowed':L('Google girişi Firebase Console\'da etkinleştirilmemiş. Authentication → Sign-in method → Google → Enable.','Google sign-in is not enabled in the Firebase Console. Authentication → Sign-in method → Google → Enable.'),
+        'auth/unauthorized-domain':L('Bu domain Firebase\'de yetkili değil. Authentication → Settings → Authorized domains listesine bu sitenin adresini (ör. ...netlify.app) ekle.','This domain is not authorized in Firebase. Add this site\'s address (e.g. ...netlify.app) to Authentication → Settings → Authorized domains.'),
+        'auth/network-request-failed':L('İnternet bağlantısı hatası.','Network connection error.'),
+        'auth/popup-blocked':L('Tarayıcı popup\'ı engelledi. Adres çubuğundaki izin ikonuna tıkla.','The browser blocked the popup. Click the permission icon in the address bar.'),
       };
       setErr(msgs[e.code]||(e.code?e.code+': '+e.message:e.message));
     }finally{setBusy(false);}
   };
   const emailSubmit=async()=>{
     const mail=email.trim(), pass=pw;
-    if(!mail){setErr('E-posta girin.');return;}
-    if(!pass){setErr('Şifre girin.');return;}
-    if(isSignup&&pass.length<6){setErr('Şifre en az 6 karakter olmalı.');return;}
+    if(!mail){setErr(L('E-posta girin.','Enter your email.'));return;}
+    if(!pass){setErr(L('Şifre girin.','Enter your password.'));return;}
+    if(isSignup&&pass.length<6){setErr(L('Şifre en az 6 karakter olmalı.','Password must be at least 6 characters.'));return;}
     setErr('');setBusy(true);
     try{
       if(isSignup)await sync.signUp(mail,pass);
@@ -17505,18 +17532,18 @@ function LoginPage({sync}){
          e.code==='auth/user-not-found'||e.code==='auth/email-already-in-use'){
         const methods=await sync.methodsFor(mail);
         if(methods.includes('google.com')&&!methods.includes('password')){
-          setErr('Bu e-posta Google ile kayıtlı; şifresi yok. Yukarıdaki "Google ile Giriş" butonunu kullan.');
+          setErr(L('Bu e-posta Google ile kayıtlı; şifresi yok. Yukarıdaki "Google ile Giriş" butonunu kullan.','This email is registered with Google and has no password. Use the "Sign in with Google" button above.'));
           setBusy(false);return;
         }
-        if(isSignup&&methods.length){setErr('Bu e-posta zaten kayıtlı — giriş yap.');setBusy(false);return;}
+        if(isSignup&&methods.length){setErr(L('Bu e-posta zaten kayıtlı — giriş yap.','This email is already registered — sign in instead.'));setBusy(false);return;}
         if(!isSignup&&methods.length===0){
-          setErr('Bu e-postayla hesap yok (ya da şifresi yanlış). Önce "Kayıt ol".');setBusy(false);return;}
+          setErr(L('Bu e-postayla hesap yok (ya da şifresi yanlış). Önce "Kayıt ol".','There is no account with this email (or the password is wrong). Try "Sign up" first.'));setBusy(false);return;}
       }
-      const msgs={'auth/invalid-email':'Geçersiz e-posta.','auth/missing-password':'Şifre girin.',
-        'auth/weak-password':'Şifre en az 6 karakter olmalı.','auth/email-already-in-use':'Bu e-posta zaten kayıtlı — giriş yap.',
-        'auth/invalid-credential':'Yanlış e-posta veya şifre.','auth/user-not-found':'Hesap bulunamadı.',
-        'auth/wrong-password':'Yanlış şifre.','auth/network-request-failed':'Bağlantı hatası.',
-        'auth/too-many-requests':'Çok fazla deneme — biraz bekleyip tekrar dene.'};
+      const msgs={'auth/invalid-email':L('Geçersiz e-posta.','Invalid email.'),'auth/missing-password':L('Şifre girin.','Enter your password.'),
+        'auth/weak-password':L('Şifre en az 6 karakter olmalı.','Password must be at least 6 characters.'),'auth/email-already-in-use':L('Bu e-posta zaten kayıtlı — giriş yap.','This email is already registered — sign in instead.'),
+        'auth/invalid-credential':L('Yanlış e-posta veya şifre.','Wrong email or password.'),'auth/user-not-found':L('Hesap bulunamadı.','Account not found.'),
+        'auth/wrong-password':L('Yanlış şifre.','Wrong password.'),'auth/network-request-failed':L('Bağlantı hatası.','Connection error.'),
+        'auth/too-many-requests':L('Çok fazla deneme — biraz bekleyip tekrar dene.','Too many attempts — wait a moment and try again.')};
       setErr(msgs[e.code]||e.message);
     }finally{setBusy(false);}
   };
@@ -17525,36 +17552,36 @@ function LoginPage({sync}){
       <nav className="lp-nav">
         <div className="lp-logo"><img className="lp-logo-img" src="logo-wordmark.png" alt="CoachOS"/></div>
         <div className="lp-links">
-          <a onClick={()=>goPage('platform')} style={{color:lpPage==='platform'?'var(--accent)':''}}>Platform</a>
-          <a onClick={()=>goPage('workflow')} style={{color:lpPage==='workflow'?'var(--accent)':''}}>Workflow</a>
-          <a onClick={()=>goPage('analytics')} style={{color:lpPage==='analytics'?'var(--accent)':''}}>Analytics</a>
-          <a onClick={()=>goPage('pricing')} style={{color:lpPage==='pricing'?'var(--accent)':''}}>Pricing</a>
+          <a onClick={()=>goPage('platform')} style={{color:lpPage==='platform'?'var(--accent)':''}}>{L('Platform','Platform')}</a>
+          <a onClick={()=>goPage('workflow')} style={{color:lpPage==='workflow'?'var(--accent)':''}}>{L('İş Akışı','Workflow')}</a>
+          <a onClick={()=>goPage('analytics')} style={{color:lpPage==='analytics'?'var(--accent)':''}}>{L('Analitik','Analytics')}</a>
+          <a onClick={()=>goPage('pricing')} style={{color:lpPage==='pricing'?'var(--accent)':''}}>{L('Fiyatlandırma','Pricing')}</a>
         </div>
         <div className="lp-actions">
-          <button className="lp-btn ghost" onClick={openLogin}>Log in</button>
-          <button className="lp-btn accent" onClick={openLogin}>Book a demo</button>
+          <button className="lp-btn ghost" onClick={openLogin}>{L('Giriş yap','Log in')}</button>
+          <button className="lp-btn accent" onClick={openLogin}>{L('Demo talep et','Book a demo')}</button>
         </div>
       </nav>
       {lpPage==='home'&&(<div className="lp-hero">
         <div className="lp-hero-l">
-          <div className="auth-badge"><span className="dot"></span>Built for high-performance staff</div>
-          <h1 className="auth-h1">Performance OS for strength &amp; conditioning.</h1>
-          <p className="auth-sub">Program periodized training, deliver it to every athlete, and read load, velocity and readiness as the data lands — all in one system.</p>
+          <div className="auth-badge"><span className="dot"></span>{L('Yüksek performans ekipleri için tasarlandı','Built for high-performance staff')}</div>
+          <h1 className="auth-h1">{L('Kuvvet ve kondisyon için Performans İşletim Sistemi.','Performance OS for strength & conditioning.')}</h1>
+          <p className="auth-sub">{L('Periyotlanmış antrenmanı programla, her sporcuya ilet ve yük, hız ile hazır oluşu veri geldikçe oku — hepsi tek sistemde.','Program periodized training, deliver it to every athlete, and read load, velocity and readiness as the data lands — all in one system.')}</p>
           <div className="lp-cta">
-            <button className="lp-btn accent" onClick={openLogin}>Book a demo</button>
-            <button className="lp-btn ghost" onClick={()=>goPage('analytics')}>See the dashboard</button>
+            <button className="lp-btn accent" onClick={openLogin}>{L('Demo talep et','Book a demo')}</button>
+            <button className="lp-btn ghost" onClick={()=>goPage('analytics')}>{L('Panele göz at','See the dashboard')}</button>
           </div>
         </div>
         <div className="lp-hero-r">
           <div className="auth-mock">
             <div className="auth-mock-top">
               <div className="auth-mock-dots"><i></i><i></i><i></i></div>
-              <div className="auth-mock-tag">forge · readiness</div>
+              <div className="auth-mock-tag">{L('forge · hazır oluş','forge · readiness')}</div>
             </div>
             <div className="auth-mock-stats">
-              <div className="auth-stat"><div className="k">Acute Load</div><div className="v">847<small>▲4%</small></div></div>
-              <div className="auth-stat"><div className="k">A:C Ratio</div><div className="v">1.08</div></div>
-              <div className="auth-stat"><div className="k">Ready</div><div className="v">22/24</div></div>
+              <div className="auth-stat"><div className="k">{L('Akut Yük','Acute Load')}</div><div className="v">847<small>▲4%</small></div></div>
+              <div className="auth-stat"><div className="k">{L('A:K Oranı','A:C Ratio')}</div><div className="v">1.08</div></div>
+              <div className="auth-stat"><div className="k">{L('Hazır','Ready')}</div><div className="v">22/24</div></div>
             </div>
             <div className="auth-mock-bars">
               {[38,46,52,64,92,58,70,44,60,50].map((h,i)=><span key={i} className={i===4?'on':''} style={{height:h+'%'}}/>)}
@@ -17563,50 +17590,50 @@ function LoginPage({sync}){
         </div>
       </div>)}
       {lpPage==='platform'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">Platform</div>
-        <h2 className="lp-sec-h2">Everything your coaching staff needs</h2>
-        <p className="lp-sec-sub">CoachOS brings periodization, load management, and athlete communication into a single connected workflow.</p>
+        <div className="lp-sec-label">{L('Platform','Platform')}</div>
+        <h2 className="lp-sec-h2">{L('Antrenman kadronuzun ihtiyaç duyduğu her şey','Everything your coaching staff needs')}</h2>
+        <p className="lp-sec-sub">{L('CoachOS periyotlama, yük yönetimi ve sporcu iletişimini tek bir bağlı iş akışında birleştirir.','CoachOS brings periodization, load management, and athlete communication into a single connected workflow.')}</p>
         <div className="lp-features">
           {[
-            {icon:'📅',title:'Season Planner',desc:'Build multi-phase periodized programs. Define mesocycles, loading patterns, and training goals for the whole season.'},
-            {icon:'📊',title:'Load Monitoring',desc:'Track acute and chronic workload in real time. ACWR, monotony, and strain — all from athlete session data.'},
-            {icon:'👥',title:'Athlete Profiles',desc:'Manage your full roster. Track injuries, wellness trends, test results, and individual training history.'},
-            {icon:'🧪',title:'Testing & Assessment',desc:'Log and visualize testing protocols. Track progress over time with automatic comparisons.'},
-            {icon:'📚',title:'Exercise Library',desc:'Build your team\'s exercise database. Organize by type, muscle group, difficulty, and movement pattern.'},
-            {icon:'🤖',title:'AI Coach',desc:'Get instant support for planning decisions, training design, and athlete management from your built-in AI assistant.'},
+            {icon:'📅',title:L('Sezon Planlayıcı','Season Planner'),desc:L('Çok fazlı periyotlanmış programlar kur. Tüm sezon için mezosikluları, yükleme örüntülerini ve antrenman hedeflerini tanımla.','Build multi-phase periodized programs. Define mesocycles, loading patterns, and training goals for the whole season.')},
+            {icon:'📊',title:L('Yük Takibi','Load Monitoring'),desc:L('Akut ve kronik antrenman yükünü gerçek zamanlı izle. ACWR, monotonluk ve zorlanma — hepsi sporcu seans verisinden.','Track acute and chronic workload in real time. ACWR, monotony, and strain — all from athlete session data.')},
+            {icon:'👥',title:L('Sporcu Profilleri','Athlete Profiles'),desc:L('Tüm kadronuzu yönetin. Sakatlıkları, sağlık trendlerini, test sonuçlarını ve bireysel antrenman geçmişini takip edin.','Manage your full roster. Track injuries, wellness trends, test results, and individual training history.')},
+            {icon:'🧪',title:L('Test ve Değerlendirme','Testing & Assessment'),desc:L('Test protokollerini kaydedin ve görselleştirin. Otomatik karşılaştırmalarla zaman içindeki ilerlemeyi izleyin.','Log and visualize testing protocols. Track progress over time with automatic comparisons.')},
+            {icon:'📚',title:L('Egzersiz Kütüphanesi','Exercise Library'),desc:L('Takımınızın egzersiz veritabanını oluşturun. Tipe, kas grubuna, zorluğa ve hareket örüntüsüne göre düzenleyin.','Build your team\'s exercise database. Organize by type, muscle group, difficulty, and movement pattern.')},
+            {icon:'🤖',title:L('Yapay Zeka Koç','AI Coach'),desc:L('Planlama kararları, antrenman tasarımı ve sporcu yönetimi için yerleşik yapay zeka asistanınızdan anlık destek alın.','Get instant support for planning decisions, training design, and athlete management from your built-in AI assistant.')},
           ].map(f=><div key={f.title} className="lp-feat-card"><div className="lp-feat-icon">{f.icon}</div><div className="lp-feat-title">{f.title}</div><div className="lp-feat-desc">{f.desc}</div></div>)}
         </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>Get started</button><button className="lp-btn ghost" onClick={()=>goPage('pricing')}>See pricing</button></div>
+        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Başla','Get started')}</button><button className="lp-btn ghost" onClick={()=>goPage('pricing')}>{L('Fiyatlara bak','See pricing')}</button></div>
       </div></div>)}
       {lpPage==='workflow'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">Workflow</div>
-        <h2 className="lp-sec-h2">From plan to performance, in one system</h2>
-        <p className="lp-sec-sub">CoachOS connects every step of the coaching process — so nothing falls through the cracks.</p>
+        <div className="lp-sec-label">{L('İş Akışı','Workflow')}</div>
+        <h2 className="lp-sec-h2">{L('Plandan performansa, tek sistemde','From plan to performance, in one system')}</h2>
+        <p className="lp-sec-sub">{L('CoachOS koçluk sürecinin her adımını birbirine bağlar — hiçbir şey atlanmaz.','CoachOS connects every step of the coaching process — so nothing falls through the cracks.')}</p>
         <div className="lp-steps">
           {[
-            {n:'01',title:'Set up your team',desc:'Create your team profile, add your roster, and configure your season dates. Takes less than five minutes.'},
-            {n:'02',title:'Plan your season',desc:'Build a periodized program with phases, mesocycles, and weekly loading targets. CoachOS maps it across your calendar automatically.'},
-            {n:'03',title:'Program daily sessions',desc:'Assign workouts to days, track sets and loads, and log session RPE. Athletes receive their plan instantly.'},
-            {n:'04',title:'Monitor load & readiness',desc:'See ACWR, monotony, and wellness data update in real time as sessions come in. Spot risk before it becomes injury.'},
+            {n:'01',title:L('Takımını kur','Set up your team'),desc:L('Takım profilini oluştur, kadronu ekle ve sezon tarihlerini ayarla. Beş dakikadan kısa sürer.','Create your team profile, add your roster, and configure your season dates. Takes less than five minutes.')},
+            {n:'02',title:L('Sezonunu planla','Plan your season'),desc:L('Fazlar, mezosikluslar ve haftalık yükleme hedefleriyle periyotlanmış bir program kur. CoachOS bunu otomatik olarak takvimine işler.','Build a periodized program with phases, mesocycles, and weekly loading targets. CoachOS maps it across your calendar automatically.')},
+            {n:'03',title:L('Günlük seansları programla','Program daily sessions'),desc:L('Antrenmanları günlere ata, set ve yükleri takip et, seans RPE\'sini kaydet. Sporcular planlarını anında alır.','Assign workouts to days, track sets and loads, and log session RPE. Athletes receive their plan instantly.')},
+            {n:'04',title:L('Yükü ve hazır oluşu izle','Monitor load & readiness'),desc:L('Seanslar geldikçe ACWR, monotonluk ve sağlık verilerinin gerçek zamanlı güncellendiğini gör. Riski sakatlığa dönüşmeden fark et.','See ACWR, monotony, and wellness data update in real time as sessions come in. Spot risk before it becomes injury.')},
           ].map(s=><div key={s.n} className="lp-step"><div className="lp-step-n">{s.n}</div><div><div className="lp-step-title">{s.title}</div><div className="lp-step-desc">{s.desc}</div></div></div>)}
         </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>Start free</button></div>
+        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Ücretsiz başla','Start free')}</button></div>
       </div></div>)}
       {lpPage==='analytics'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">Analytics</div>
-        <h2 className="lp-sec-h2">Data that actually informs decisions</h2>
-        <p className="lp-sec-sub">Every metric your staff tracks, surfaced in real time. No spreadsheets, no exports — just answers.</p>
+        <div className="lp-sec-label">{L('Analitik','Analytics')}</div>
+        <h2 className="lp-sec-h2">{L('Karar aldıran veriler','Data that actually informs decisions')}</h2>
+        <p className="lp-sec-sub">{L('Kadronuzun takip ettiği her metrik, gerçek zamanlı görünür. Ne tablo ne dışa aktarma — sadece cevaplar.','Every metric your staff tracks, surfaced in real time. No spreadsheets, no exports — just answers.')}</p>
         <div className="lp-analytics-grid">
           <div className="lp-analytics-main">
             <div className="auth-mock" style={{maxWidth:'100%'}}>
-              <div className="auth-mock-top"><div className="auth-mock-dots"><i></i><i></i><i></i></div><div className="auth-mock-tag">load monitoring · week 24</div></div>
+              <div className="auth-mock-top"><div className="auth-mock-dots"><i></i><i></i><i></i></div><div className="auth-mock-tag">{L('yük takibi · 24. hafta','load monitoring · week 24')}</div></div>
               <div className="auth-mock-stats">
-                <div className="auth-stat"><div className="k">Acute Load</div><div className="v">847<small>▲4%</small></div></div>
-                <div className="auth-stat"><div className="k">Chronic Load</div><div className="v">783</div></div>
-                <div className="auth-stat"><div className="k">A:C Ratio</div><div className="v" style={{color:'#10b981'}}>1.08</div></div>
-                <div className="auth-stat"><div className="k">Monotony</div><div className="v">1.4</div></div>
-                <div className="auth-stat"><div className="k">Strain</div><div className="v">1185</div></div>
-                <div className="auth-stat"><div className="k">Ready</div><div className="v">22/24</div></div>
+                <div className="auth-stat"><div className="k">{L('Akut Yük','Acute Load')}</div><div className="v">847<small>▲4%</small></div></div>
+                <div className="auth-stat"><div className="k">{L('Kronik Yük','Chronic Load')}</div><div className="v">783</div></div>
+                <div className="auth-stat"><div className="k">{L('A:K Oranı','A:C Ratio')}</div><div className="v" style={{color:'#10b981'}}>1.08</div></div>
+                <div className="auth-stat"><div className="k">{L('Monotonluk','Monotony')}</div><div className="v">1.4</div></div>
+                <div className="auth-stat"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">1185</div></div>
+                <div className="auth-stat"><div className="k">{L('Hazır','Ready')}</div><div className="v">22/24</div></div>
               </div>
               <div className="auth-mock-bars" style={{height:100}}>
                 {[38,46,52,64,92,58,70,44,60,50,72,80,62,55].map((h,i)=><span key={i} className={i===4||i===10?'on':''} style={{height:h+'%'}}/>)}
@@ -17615,24 +17642,24 @@ function LoginPage({sync}){
           </div>
           <div className="lp-analytics-aside">
             {[
-              {label:'ACWR Monitoring',desc:'Know exactly when your team is overreached or underloaded.'},
-              {label:'Wellness Trends',desc:'Track sleep, fatigue, mood, and soreness across the roster.'},
-              {label:'Training Monotony',desc:'Identify weeks with too little variation before they cause stagnation.'},
-              {label:'Athlete Readiness',desc:'See who is ready to train hard and who needs a reduction.'},
+              {label:L('ACWR Takibi','ACWR Monitoring'),desc:L('Takımının ne zaman aşırı yüklendiğini ya da az yüklendiğini tam olarak bil.','Know exactly when your team is overreached or underloaded.')},
+              {label:L('Sağlık Trendleri','Wellness Trends'),desc:L('Kadro genelinde uyku, yorgunluk, ruh hali ve kas ağrısını takip et.','Track sleep, fatigue, mood, and soreness across the roster.')},
+              {label:L('Antrenman Monotonluğu','Training Monotony'),desc:L('Durağanlığa yol açmadan önce çok az çeşitliliğe sahip haftaları belirle.','Identify weeks with too little variation before they cause stagnation.')},
+              {label:L('Sporcu Hazır Oluşu','Athlete Readiness'),desc:L('Kimin sıkı antrenmana hazır, kimin yükünün azaltılması gerektiğini gör.','See who is ready to train hard and who needs a reduction.')},
             ].map(m=><div key={m.label} className="lp-metric-item"><div className="lp-metric-dot"></div><div><div className="lp-metric-title">{m.label}</div><div className="lp-metric-desc">{m.desc}</div></div></div>)}
           </div>
         </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>Access your dashboard</button></div>
+        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Paneline eriş','Access your dashboard')}</button></div>
       </div></div>)}
       {lpPage==='pricing'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">Pricing</div>
-        <h2 className="lp-sec-h2">Simple, transparent pricing</h2>
-        <p className="lp-sec-sub">Start free. Scale when you're ready. No hidden fees, no per-athlete seat costs.</p>
+        <div className="lp-sec-label">{L('Fiyatlandırma','Pricing')}</div>
+        <h2 className="lp-sec-h2">{L('Basit, şeffaf fiyatlandırma','Simple, transparent pricing')}</h2>
+        <p className="lp-sec-sub">{L('Ücretsiz başla. Hazır olduğunda büyüt. Gizli ücret yok, sporcu başına koltuk maliyeti yok.','Start free. Scale when you\'re ready. No hidden fees, no per-athlete seat costs.')}</p>
         <div className="lp-plans">
           {[
-            {name:'Starter',price:'Free',desc:'Perfect for individual coaches getting started.',features:['1 team','Up to 15 athletes','Season planner','Load monitoring','Exercise library'],cta:'Get started',accent:false},
-            {name:'Pro',price:'$49',period:'/mo',desc:'For coaching staff managing multiple teams.',features:['Unlimited teams','Unlimited athletes','Everything in Starter','Analytics dashboard','AI Coach','Priority support'],cta:'Start Pro trial',accent:true},
-            {name:'Enterprise',price:'Custom',desc:'For clubs and high-performance institutes.',features:['Everything in Pro','Custom integrations','Dedicated onboarding','SLA & uptime guarantee','White-label options'],cta:'Contact us',accent:false},
+            {name:L('Başlangıç','Starter'),price:L('Ücretsiz','Free'),desc:L('Yeni başlayan bireysel koçlar için mükemmel.','Perfect for individual coaches getting started.'),features:[L('1 takım','1 team'),L('15 sporcuya kadar','Up to 15 athletes'),L('Sezon planlayıcı','Season planner'),L('Yük takibi','Load monitoring'),L('Egzersiz kütüphanesi','Exercise library')],cta:L('Başla','Get started'),accent:false},
+            {name:L('Pro','Pro'),price:'$49',period:L('/ay','/mo'),desc:L('Birden fazla takımı yöneten antrenman kadroları için.','For coaching staff managing multiple teams.'),features:[L('Sınırsız takım','Unlimited teams'),L('Sınırsız sporcu','Unlimited athletes'),L('Başlangıç\'taki her şey','Everything in Starter'),L('Analitik paneli','Analytics dashboard'),L('Yapay Zeka Koç','AI Coach'),L('Öncelikli destek','Priority support')],cta:L('Pro denemesini başlat','Start Pro trial'),accent:true},
+            {name:L('Kurumsal','Enterprise'),price:L('Özel','Custom'),desc:L('Kulüpler ve yüksek performans enstitüleri için.','For clubs and high-performance institutes.'),features:[L('Pro\'daki her şey','Everything in Pro'),L('Özel entegrasyonlar','Custom integrations'),L('Özel katılım süreci','Dedicated onboarding'),L('SLA ve çalışma süresi garantisi','SLA & uptime guarantee'),L('Beyaz etiket seçenekleri','White-label options')],cta:L('Bize ulaşın','Contact us'),accent:false},
           ].map(p=><div key={p.name} className={`lp-plan-card${p.accent?' lp-plan-accent':''}`}>
             <div className="lp-plan-name">{p.name}</div>
             <div className="lp-plan-price">{p.price}{p.period&&<span className="lp-plan-period">{p.period}</span>}</div>
@@ -17647,38 +17674,38 @@ function LoginPage({sync}){
         <div className="panel" style={{width:400,maxWidth:'100%',margin:0}} onClick={e=>e.stopPropagation()}>
           <div style={{textAlign:'center',marginBottom:24}}>
             <img src="logo.png" alt="CoachOS" style={{height:52,marginBottom:10}}/>
-            <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>The Coaching Operating System</div>
-            <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>Verilerine erişmek için hesabınla giriş yap</div>
+            <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>{L('Koçluk İşletim Sistemi','The Coaching Operating System')}</div>
+            <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>{L('Verilerine erişmek için hesabınla giriş yap','Sign in to your account to access your data')}</div>
           </div>
           <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
           {(tab==='google'&&(err||sync.authErr))&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err||sync.authErr}</div>}
           <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
             <div style={{flex:1,height:1,background:'var(--border)'}}/>
-            <span>veya</span>
+            <span>{L('veya','or')}</span>
             <div style={{flex:1,height:1,background:'var(--border)'}}/>
           </div>
           {tab==='google'?(
-            <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>E-posta / Şifre ile Giriş</button>
+            <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>{L('E-posta / Şifre ile Giriş','Sign in with Email / Password')}</button>
           ):(
             <>
-              <label>E-posta</label>
+              <label>{L('E-posta','Email')}</label>
               <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
-              <label style={{marginTop:10}}>Şifre {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>(en az 6 karakter)</span>}</label>
+              <label style={{marginTop:10}}>{L('Şifre','Password')} {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>{L('(en az 6 karakter)','(at least 6 characters)')}</span>}</label>
               <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
                 autoComplete={isSignup?'new-password':'current-password'}
                 onKeyDown={e=>{if(e.key==='Enter')emailSubmit();}}
                 placeholder="••••••"/>
               {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:8}}>{err}</div>}
               <button className="btn" style={{width:'100%',marginTop:12}} disabled={busy} onClick={emailSubmit}>
-                {busy?'…':(isSignup?'Kayıt Ol':'Giriş Yap')}
+                {busy?'…':(isSignup?L('Kayıt Ol','Sign Up'):L('Giriş Yap','Sign In'))}
               </button>
               <div style={{textAlign:'center',marginTop:10,fontSize:12,color:'var(--dim)'}}>
-                {isSignup?'Zaten hesabın var mı? ':'Hesabın yok mu? '}
+                {isSignup?L('Zaten hesabın var mı? ','Already have an account? '):L('Hesabın yok mu? ','Don\'t have an account? ')}
                 <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setIsSignup(!isSignup);}}>
-                  {isSignup?'Giriş yap':'Kayıt ol'}
+                  {isSignup?L('Giriş yap','Sign in'):L('Kayıt ol','Sign up')}
                 </a>
               </div>
-              <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>← Geri</button>
+              <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>{L('← Geri','← Back')}</button>
             </>
           )}
         </div>
@@ -17743,9 +17770,9 @@ function AuthModal({sync,onClose}){
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr,syncNote,clearSyncNote}=sync;
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
-  const label={offline:'Offline',syncing:'Syncing…',synced:'Synced',error:'Sync error!'}[status];
+  const label={offline:L('Çevrimdışı','Offline'),syncing:L('Senkronize ediliyor…','Syncing…'),synced:L('Senkronize','Synced'),error:L('Senkron hatası!','Sync error!')}[status];
   if(!FB())return null;
-  if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ Sign in / Sync</button>;
+  if(!user)return<button className="btn sec sm" onClick={onOpen}>☁ {L('Giriş yap / Senkronize et','Sign in / Sync')}</button>;
   const isRules=syncErr&&(syncErr.includes('permission-denied')||syncErr.includes('PERMISSION_DENIED'));
   // invalid-argument = Firestore yazımı reddetti; pratikte her zaman boyut kaynaklı olur
   const isSize=syncErr&&(syncErr.includes('invalid-argument')||syncErr.includes('INVALID_ARGUMENT'));
@@ -17760,24 +17787,23 @@ function CloudBar({sync,onOpen}){
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
-          <>⚠ <b>Firestore izin hatası.</b> Firebase Console → Firestore → Kurallar sekmesine gidip aşağıdaki kuralları yapıştır ve yayınla:<br/>
+          <>⚠ <b>{L('Firestore izin hatası.','Firestore permission error.')}</b> {L('Firebase Console → Firestore → Kurallar sekmesine gidip aşağıdaki kuralları yapıştır ve yayınla:','Go to Firebase Console → Firestore → Rules and paste + publish the following rules:')}<br/>
           <code style={{display:'block',marginTop:4,padding:4,background:'rgba(0,0,0,.3)',borderRadius:4,fontSize:10,whiteSpace:'pre',userSelect:'all'}}>{'rules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /kullanici_verileri/{docId} {\n      allow read: if request.auth != null && resource.data.userId == request.auth.uid;\n      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;\n      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;\n    }\n    match /users/{uid}/{doc=**} {\n      allow read, write: if request.auth.uid == uid;\n    }\n  }\n}'}</code>
           </>
         ):isSize?(
-          <>⚠ <b>Veri paketi Firestore'un kabul ettiğinden büyük.</b> Genelde sebebi duruma gömülü
-          kalmış fotoğraf/PDF'lerdir. Sayfayı yenile — kayıt artık küçük parçalar hâlinde gönderilir.
-          Sürerse Backup sekmesindeki medya kurtarmayı çalıştır ya da çok büyük bir FMS PDF'ini kaldır.</>
+          <>⚠ <b>{L('Veri paketi Firestore\'un kabul ettiğinden büyük.','The data package is larger than Firestore accepts.')}</b> {L('Genelde sebebi duruma gömülü kalmış fotoğraf/PDF\'lerdir. Sayfayı yenile — kayıt artık küçük parçalar hâlinde gönderilir. Sürerse Backup sekmesindeki medya kurtarmayı çalıştır ya da çok büyük bir FMS PDF\'ini kaldır.',
+          'This is usually caused by a photo/PDF embedded in the record. Refresh the page — saves are now sent in smaller chunks. If it persists, run the media recovery on the Backup tab or remove a very large FMS PDF.')}</>
         ):(
-          <>⚠ Senkronizasyon hatası: <b>{syncErr}</b><br/>Sayfayı yenile veya tekrar giriş yap.</>
+          <>⚠ {L('Senkronizasyon hatası:','Sync error:')} <b>{syncErr}</b><br/>{L('Sayfayı yenile veya tekrar giriş yap.','Refresh the page or sign in again.')}</>
         )}
       </div>
     )}
     {!syncErr&&syncNote&&(
       <div style={{margin:'6px 0 0',padding:'8px 10px',border:'1px solid var(--yellow)',borderRadius:6,
                    background:'rgba(250,204,21,.08)',color:'var(--yellow)',fontSize:11,lineHeight:1.5}}>
-        <b>Veri geri yüklendi.</b> {syncNote}
+        <b>{L('Veri geri yüklendi.','Data was restored.')}</b> {syncNote}
         <a style={{display:'block',marginTop:6,color:'var(--accent2)',cursor:'pointer',fontWeight:600}}
-           onClick={clearSyncNote}>Tamam, anladım</a>
+           onClick={clearSyncNote}>{L('Tamam, anladım','Got it')}</a>
       </div>
     )}
   </div>);
@@ -17826,6 +17852,91 @@ const SUB_TYPES={
      are trained together, so they are one region rather than two. */
   'Stability':{label:'Region',values:['Shoulder Girdle','Core','Pelvis','Knee','Ankle']},
 };
+/* Every fixed taxonomy term across the app (exercise type/muscle/difficulty,
+   session focus, periodization model, load type, …) is stored in English as
+   the canonical value — filtering, saved data, and the report generator key
+   off these exact strings, so they never change. This map only supplies the
+   Turkish word shown on screen; exLabel() picks it (or falls back to the
+   English original) by the active app language — used well beyond the
+   exercise library despite the name. */
+const EX_TERM_TR={
+  'Warm-Up':'Isınma','Upper Body Push':'Üst Vücut İtme','Upper Body Pull':'Üst Vücut Çekme',
+  'Hip Dominant':'Kalça Baskın','Knee Dominant':'Diz Baskın','Core':'Core','Full Body':'Tüm Vücut',
+  'Multi Directional Speed':'Çok Yönlü Hız','Multidirectional Speed':'Çok Yönlü Hız','Plyometric':'Pliometrik',
+  'Medicine Ball':'Sağlık Topu','Mobility':'Hareketlilik','Stability':'Stabilite',
+  'Abs & Core':'Karın ve Core','Chest':'Göğüs','Upper Back':'Üst Sırt','Lats':'Lat','Shoulders':'Omuz',
+  'Biceps':'Biceps','Triceps':'Triceps','Quadriceps':'Kuadriseps','Hamstrings':'Hamstring','Glutes':'Kalça (Gluteus)',
+  'Calves':'Baldır','Forearms':'Önkol','Hip Flexors':'Kalça Fleksörleri','Adductors':'Adduktör','Abductors':'Abduktör',
+  'Cardio':'Kardiyo',
+  'Bilateral':'Bilateral','Unilateral':'Unilateral','Lunges':'Lunge','Step-up':'Step-up',
+  'Level 1':'Seviye 1','Level 2':'Seviye 2','Level 3':'Seviye 3',
+  'Category':'Kategori','Plane of Motion':'Hareket Düzlemi','Contraction Type':'Kasılma Tipi',
+  'Movement Pattern':'Hareket Örüntüsü','Skill':'Beceri','Direction':'Yön','Region':'Bölge',
+  'General':'Genel','Specific':'Özel','Activation':'Aktivasyon','Mobilisation':'Mobilizasyon',
+  'Dynamic Stretching':'Dinamik Germe','Neural Priming':'Nöral Hazırlık',
+  'Horizontal':'Yatay','Vertical':'Dikey',
+  'Push':'İtme','Pull':'Çekme','Eccentric':'Eksantrik','Isometric':'İzometrik',
+  'Anti-Flexion':'Anti-Fleksiyon','Anti-Extension':'Anti-Ekstansiyon','Anti-Rotation':'Anti-Rotasyon',
+  'Anti-Lateral Flexion':'Anti-Lateral Fleksiyon','Flexion':'Fleksiyon','Extension':'Ekstansiyon',
+  'Rotation':'Rotasyon','Lateral Flexion':'Lateral Fleksiyon',
+  'Strength':'Kuvvet','Explosive':'Patlayıcı','Olympic Lift':'Olimpik Halter',
+  'Non-Reactive Agility':'Reaktif Olmayan Çeviklik','Reactive Agility':'Reaktif Çeviklik',
+  'Acceleration':'İvmelenme','Deceleration':'Yavaşlama','COD':'Yön Değiştirme','Sprint Technique':'Sprint Tekniği',
+  'Lateral':'Lateral','Rotational':'Rotasyonel',
+  'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği',
+  'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
+  'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
+  'Linear':'Doğrusal','Block':'Blok','Undulating':'Dalgalı','Conjugate':'Konjuge',
+  'Volume decreases, intensity increases over time':'Hacim zamanla azalır, şiddet artar',
+  'Accumulation → Transmutation → Realization':'Birikim → Dönüşüm → Gerçekleştirme',
+  'Wave-like variation in volume / intensity':'Hacim / şiddette dalga biçimli değişim',
+  'Concurrent max-effort + dynamic-effort':'Eşzamanlı maksimal-efor + dinamik-efor',
+  'General':'Genel','Specific':'Özel','Competition':'Müsabaka','Transition':'Geçiş',
+  'General Preparation':'Genel Hazırlık','Specific Preparation':'Özel Hazırlık',
+  'Base + aerobic':'Temel + aerobik','Sport-specific':'Spora özgü','Maintain & peak':'Koruma ve zirve',
+  'Active recovery':'Aktif toparlanma','Accumulation':'Birikim','Transmutation':'Dönüşüm','Realization':'Gerçekleştirme',
+  'Hi-volume wave':'Yüksek hacim dalgası','Hi-intensity wave':'Yüksek şiddet dalgası',
+  'Max-effort':'Maksimal-efor','Dynamic-effort':'Dinamik-efor','Deload':'Yük azaltma','Peak':'Zirve',
+};
+const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
+/* Free text the coach types (exercise name, purpose/description) is assumed
+   Turkish — every piece of evidence in this codebase (comments, dialogs,
+   confirms) points that way, same assumption the research-feed translator
+   above already makes in the other direction. mtToEn() best-effort-machine-
+   translates it to English via the same free, key-less Google endpoint used
+   by rsTranslate, with the same in-memory cache and silent fallback to the
+   original text if the call fails or is slow. */
+let MT_CACHE={};
+async function mtToEn(text){
+  if(!text)return'';
+  if(MT_CACHE[text])return MT_CACHE[text];
+  try{
+    const ctrl=new AbortController(),to=setTimeout(()=>ctrl.abort(),6000);
+    const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=tr&tl=en&dt=t&q='+encodeURIComponent(text),{signal:ctrl.signal});
+    clearTimeout(to);if(!r.ok)return text;
+    const j=await r.json();
+    const out=(j&&Array.isArray(j[0]))?j[0].map(s=>s&&s[0]).filter(Boolean).join(''):'';
+    if(out)MT_CACHE[text]=out;
+    return out||text;
+  }catch(e){return text;}
+}
+// For read-only display only (never for an editable field — the coach must always
+// see/edit what is actually stored). Shows the original text immediately, then
+// swaps in the English machine translation once fetched, only while the app
+// language is English.
+function useExerciseText(text){
+  const lang=useAppLang();
+  const[out,setOut]=useState(text||'');
+  useEffect(()=>{
+    let alive=true;
+    if(lang!=='en'||!text||!text.trim()){setOut(text||'');return;}
+    if(MT_CACHE[text]){setOut(MT_CACHE[text]);return;}
+    setOut(text);
+    mtToEn(text).then(t=>{if(alive)setOut(t);});
+    return()=>{alive=false;};
+  },[text,lang]);
+  return out;
+}
 
 function videoEmbed(src){
   if(!src)return null;
@@ -17920,6 +18031,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
   const[upPct,setUpPct]=useState(null);
   const[editing,setEditing]=useState(!ex.name);
+  const shownName=useExerciseText(ex.name);
+  const shownPurpose=useExerciseText(ex.purpose);
   const _vEmbed=videoEmbed(ex.videoData||ex.videoUrl);
   const onVideoFile=async file=>{
     if(!file)return;
@@ -17927,14 +18040,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     const fb=(typeof FB==='function')?FB():null;
     const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
     if(loggedIn){
-      if(mb>200){alert('Video çok büyük ('+mb.toFixed(0)+' MB). 200 MB altı bir dosya seç ya da YouTube linki kullan.');return;}
+      if(mb>200){alert(L('Video çok büyük ('+mb.toFixed(0)+' MB). 200 MB altı bir dosya seç ya da YouTube linki kullan.','Video is too large ('+mb.toFixed(0)+' MB). Pick a file under 200 MB or use a YouTube link.'));return;}
       try{setUpPct(0);const url=await uploadMedia(file,'videos',p=>setUpPct(p),file.name);onChange({videoUrl:url,videoData:''});}
-      catch(e){alert('Video yüklenemedi: '+(e.message||e));}
+      catch(e){alert(L('Video yüklenemedi: ','Video upload failed: ')+(e.message||e));}
       finally{setUpPct(null);}
       return;
     }
-    if(mb>25){alert('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB. Daha büyük videoda YouTube linki kullan.');return;}
-    if(mb>5&&!window.confirm('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?'))return;
+    if(mb>25){alert(L('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB. Daha büyük videoda YouTube linki kullan.','Sign in for cloud upload. Offline limit: 25 MB. Use a YouTube link for a larger video.'));return;}
+    if(mb>5&&!window.confirm(L('Video ~'+mb.toFixed(1)+' MB. Giriş yapmadan yüklersen cihaz hafızasını zorlar; giriş yapıp buluta yüklemen önerilir. Yine de yüklensin mi?','Video is ~'+mb.toFixed(1)+' MB. Uploading without signing in strains device storage; signing in and uploading to the cloud is recommended. Upload anyway?')))return;
     /* Cihazda saklanır ve duruma sadece tutamağı yazılır — bir video base64 olarak
        senkronlanan JSON'a girseydi her düzenlemede baştan gönderilirdi. */
     const r=new FileReader();
@@ -17963,96 +18076,96 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
   const coverBox=(
     <div style={{marginTop:14}}>
-      <span style={metaLbl}>Program Image</span>
-      <div className="help" style={{marginTop:-2,marginBottom:6}}>Antrenman programında bu egzersizin kutucuğuna otomatik konur. Kütüphane kapağı değildir.</div>
+      <span style={metaLbl}>{L('Program Görseli','Program Image')}</span>
+      <div className="help" style={{marginTop:-2,marginBottom:6}}>{L('Antrenman programında bu egzersizin kutucuğuna otomatik konur. Kütüphane kapağı değildir.','Automatically placed in this exercise\'s box on the training program. It is not the library cover.')}</div>
       {cover
         ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
           <img src={mediaSrc(cover)} alt="program image" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
             borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
           <div className="row" style={{gap:8}}>
             <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
-              title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 Paste new</button>
-            <button className="btn ghost xs" onClick={()=>setCover('')}>Remove</button>
+              title={L('Bir görseli kopyala, sonra buraya tıkla (ya da Ctrl/Cmd+V)','Copy an image, then click here (or press Ctrl/Cmd+V)')}>📋 {L('Yenisini yapıştır','Paste new')}</button>
+            <button className="btn ghost xs" onClick={()=>setCover('')}>{L('Kaldır','Remove')}</button>
           </div>
         </div>
         :<button type="button" className="ex-cover-drop" onClick={pasteCover} onPaste={onCoverPaste}
-          title="Copy an image, then click here (or press Ctrl/Cmd+V)">📋 <span>Paste program image</span></button>}
+          title={L('Bir görseli kopyala, sonra buraya tıkla (ya da Ctrl/Cmd+V)','Copy an image, then click here (or press Ctrl/Cmd+V)')}>📋 <span>{L('Program görseli yapıştır','Paste program image')}</span></button>}
     </div>
   );
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-        {metaBox('Exercise Type',ex.type)}
-        {SUB_TYPES[ex.type]&&metaBox(SUB_TYPES[ex.type].label,ex.subType||'—')}
-        {PATTERNS_FOR[ex.type]&&metaBox('Movement Pattern',ex.pattern||'—')}
-        {metaBox('Difficulty',ex.difficulty,ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
+        {metaBox(L('Egzersiz Tipi','Exercise Type'),exLabel(ex.type))}
+        {SUB_TYPES[ex.type]&&metaBox(exLabel(SUB_TYPES[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
+        {PATTERNS_FOR[ex.type]&&metaBox(L('Hareket Örüntüsü','Movement Pattern'),ex.pattern?exLabel(ex.pattern):'—')}
+        {metaBox(L('Zorluk','Difficulty'),exLabel(ex.difficulty),ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
         {/* The pair every program fills in from here, and writes back to when it is
             tagged on a session. Shown together because one is meaningless alone. */}
-        {(ex.exPattern||ex.exPlane)&&metaBox('Pattern · Execution',[ex.exPattern,ex.exPlane].filter(Boolean).join(' · '))}
+        {(ex.exPattern||ex.exPlane)&&metaBox(L('Örüntü · Uygulama','Pattern · Execution'),[ex.exPattern,ex.exPlane].filter(Boolean).join(' · '))}
       </div>
       {exContraOf(ex).length>0&&<div style={{marginBottom:14}}>
-        <span style={metaLbl}>Kontrendikasyon Uyarısı</span>
+        <span style={metaLbl}>{L('Kontrendikasyon Uyarısı','Contraindication Warning')}</span>
         <div className="iv-chips">{exContraOf(ex).map(id=><span key={id} className="iv-chip on">{ctLabel(id)}</span>)}</div>
       </div>}
       {(ex.muscle||[]).length>0&&<div style={{marginBottom:14}}>
-        <span style={metaLbl}>Muscle Groups</span>
+        <span style={metaLbl}>{L('Kas Grupları','Muscle Groups')}</span>
         <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip">{m}</span>)}
+          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip">{exLabel(m)}</span>)}
         </div>
       </div>}
       {ex.purpose&&<div>
-        <span style={metaLbl}>Purpose / Description</span>
-        <div className="ex-purpose-view" style={{color:'var(--text2)',whiteSpace:'pre-wrap'}}>{ex.purpose}</div>
+        <span style={metaLbl}>{L('Amaç / Açıklama','Purpose / Description')}</span>
+        <div className="ex-purpose-view" style={{color:'var(--text2)',whiteSpace:'pre-wrap'}}>{shownPurpose}</div>
       </div>}
-      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>No details yet — click Edit to add exercise info.</div>}
+      {!ex.type&&!ex.purpose&&!(ex.muscle||[]).length&&<div className="empty-st" style={{padding:'24px 0'}}>{L('Henüz detay yok — egzersiz bilgisi eklemek için Düzenle\'ye tıkla.','No details yet — click Edit to add exercise info.')}</div>}
     </div>
   );
   const editRight=(
     <div className="ex-modal-right">
       <div className="grid cols-2">
-        <div><label>Exercise Type</label>
+        <div><label>{L('Egzersiz Tipi','Exercise Type')}</label>
           <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:''});}}>
             <option value="">—</option>
-            {EX_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+            {EX_TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
           </select>
         </div>
-        <div><label>{SUB_TYPES[ex.type]?.label||'Sub Type'}</label>
+        <div><label>{SUB_TYPES[ex.type]?exLabel(SUB_TYPES[ex.type].label):L('Alt Tip','Sub Type')}</label>
           <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUB_TYPES[ex.type]}>
-            <option value="">{SUB_TYPES[ex.type]?'—':'Select type first'}</option>
-            {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{v}</option>)}
+            <option value="">{SUB_TYPES[ex.type]?'—':L('Önce tip seç','Select type first')}</option>
+            {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
         </div>
       </div>
       <div className="grid cols-2" style={{marginTop:14}}>
-        {PATTERNS_FOR[ex.type]?<div><label>Movement Pattern</label>
+        {PATTERNS_FOR[ex.type]?<div><label>{L('Hareket Örüntüsü','Movement Pattern')}</label>
           <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
             <option value="">—</option>
-            {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{p}</option>)}
+            {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{exLabel(p)}</option>)}
           </select></div>:<div></div>}
-        <div><label>Difficulty</label>
+        <div><label>{L('Zorluk','Difficulty')}</label>
           <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
             <option value="">—</option>
-            {DIFFICULTIES.map(d=><option key={d} value={d}>{d}</option>)}
+            {DIFFICULTIES.map(d=><option key={d} value={d}>{exLabel(d)}</option>)}
           </select>
         </div>
       </div>
-      <div style={{marginTop:14}}><label>Muscle Groups (multi)</label>
+      <div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
         <div className="mus-pick">
-          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{m}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
+          {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{exLabel(m)}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
           <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
-            <option value="">+ Add muscle…</option>
-            {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{m}</option>)}
+            <option value="">{L('+ Kas ekle…','+ Add muscle…')}</option>
+            {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{exLabel(m)}</option>)}
           </select>
         </div>
       </div>
       <div style={{marginTop:14}}>
-        <label>Video Link (YouTube / Vimeo / mp4)</label>
+        <label>{L('Video Linki (YouTube / Vimeo / mp4)','Video Link (YouTube / Vimeo / mp4)')}</label>
         <input value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)} placeholder="https://youtube.com/watch?v=…"/>
-        <div className="help" style={{marginTop:4}}>Kart görseli YouTube/Vimeo'dan otomatik alınır; aşağıdaki program görselinin yerine yazılmaz.</div>
+        <div className="help" style={{marginTop:4}}>{L('Kart görseli YouTube/Vimeo\'dan otomatik alınır; aşağıdaki program görselinin yerine yazılmaz.','The card image is fetched automatically from YouTube/Vimeo; it does not replace the program image below.')}</div>
       </div>
       <div style={{marginTop:14}}>
-        <label>Purpose / Description</label>
-        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder="Which muscles, what goal? Cues, set/rep suggestions…" style={{minHeight:200}}/>
+        <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
+        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder={L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
       </div>
       {coverBox}
     </div>
@@ -18061,8 +18174,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     <div className="modal ex-modal ex-modal-wide" onClick={e=>e.stopPropagation()}>
       <div className="modal-head">
         {editing
-          ?<input className="ex-title-in" value={ex.name} placeholder="Exercise name…" onChange={e=>set('name',e.target.value)}/>
-          :<div style={{flex:1,fontWeight:700,fontSize:17,color:'var(--text)',padding:'6px 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ex.name||'—'}</div>
+          ?<input className="ex-title-in" value={ex.name} placeholder={L('Egzersiz adı…','Exercise name…')} onChange={e=>set('name',e.target.value)}/>
+          :<div style={{flex:1,fontWeight:700,fontSize:17,color:'var(--text)',padding:'6px 2px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{shownName||'—'}</div>
         }
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
@@ -18070,19 +18183,19 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
         <div className="ex-modal-left">
           <div className={`ex-player-wrap${_vEmbed&&_vEmbed.ig?' ig':''}`}><VideoPlayer ex={ex}/></div>
           {editing&&<div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 Upload Video
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 {L('Video Yükle','Upload Video')}
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
-            {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>Remove video</button>}
+            {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>{L('Videoyu kaldır','Remove video')}</button>}
           </div>}
-          {upPct!=null&&<div className="help" style={{marginTop:6}}>Uploading… {upPct}%</div>}
+          {upPct!=null&&<div className="help" style={{marginTop:6}}>{L('Yükleniyor… ','Uploading… ')}{upPct}%</div>}
         </div>
         {editing?editRight:viewRight}
       </div>
       <div className="modal-foot">
         {editing
-          ?<><button className="btn danger sm" onClick={onDelete}>Delete</button><button className="btn sm" onClick={()=>setEditing(false)}>Done</button></>
-          :<><button className="btn sec sm" onClick={()=>setEditing(true)}>✎ Edit</button><button className="btn sm" onClick={onClose}>Close</button></>
+          ?<><button className="btn danger sm" onClick={onDelete}>{L('Sil','Delete')}</button><button className="btn sm" onClick={()=>setEditing(false)}>{L('Bitti','Done')}</button></>
+          :<><button className="btn sec sm" onClick={()=>setEditing(true)}>✎ {L('Düzenle','Edit')}</button><button className="btn sm" onClick={onClose}>{L('Kapat','Close')}</button></>
         }
       </div>
     </div>
@@ -18091,6 +18204,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
 
 function ExerciseCard({ex,onOpen,used=0}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
+  const shownName=useExerciseText(ex.name);
   const[hov,setHov]=useState(false);
   const[igImg,setIgImg]=useState('');
   /* The card's picture comes from the exercise's VIDEO only — its auto-thumbnail, or the
@@ -18117,11 +18231,11 @@ function ExerciseCard({ex,onOpen,used=0}){
         : <div className="ex-thumb-ph">🏋</div>
       )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
-      {used>0&&<span className="ex-used" title={`Sezon programında ${used} kez kullanıldı`}>{used}× used</span>}
+      {used>0&&<span className="ex-used" title={L(`Sezon programında ${used} kez kullanıldı`,`Used ${used}× in the season program`)}>{L(`${used}× kullanıldı`,`${used}× used`)}</span>}
     </div>
     <div className="ex-cbody">
-      <div className="ex-cname">{ex.name||'(isimsiz egzersiz)'}</div>
-      {ex.difficulty&&<div className="diff-badge" style={{background:DIFF_COLOR[ex.difficulty],color:'#fff'}}>{ex.difficulty}</div>}
+      <div className="ex-cname">{shownName||L('(isimsiz egzersiz)','(unnamed exercise)')}</div>
+      {ex.difficulty&&<div className="diff-badge" style={{background:DIFF_COLOR[ex.difficulty],color:'#fff'}}>{exLabel(ex.difficulty)}</div>}
     </div>
   </div>);
 }
@@ -18137,7 +18251,7 @@ function ExercisesView({data,setData}){
   const[openId,setOpenId]=useState(null);
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
-  const remove=id=>{if(window.confirm('Bu egzersiz silinsin mi?')){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
+  const remove=id=>{if(window.confirm(L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
   const addExercise=type=>{const t=type||activeType||'';const e={id:uid(),name:'',type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
   const open=exercises.find(e=>e.id===openId);
@@ -18157,9 +18271,9 @@ function ExercisesView({data,setData}){
   // full each category is without opening it.
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setQ('');}}}>
-      <option value="">All categories ({exercises.length})</option>
-      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{lbl} ({typeCounts[val]||0})</option>)}
-      {uncatCount>0&&<option value="__uncat__">Kategorisiz ({uncatCount})</option>}
+      <option value="">{L('Tüm kategoriler','All categories')} ({exercises.length})</option>
+      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{exLabel(lbl)} ({typeCounts[val]||0})</option>)}
+      {uncatCount>0&&<option value="__uncat__">{L('Kategorisiz','Uncategorized')} ({uncatCount})</option>}
     </select>);
 
   // ----- Library landing — ALL exercises mixed across categories -----
@@ -18174,15 +18288,15 @@ function ExercisesView({data,setData}){
       <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <div className="ex-top">
-        <div><h1 className="ex-h1">Exercise Library</h1>
-          <div className="sub">{exercises.length} exercises · all categories</div></div>
+        <div><h1 className="ex-h1">{L('Egzersiz Kütüphanesi','Exercise Library')}</h1>
+          <div className="sub">{L(`${exercises.length} egzersiz · tüm kategoriler`,`${exercises.length} exercises · all categories`)}</div></div>
       </div>
       <div className="ex-toolbar">
         {catDropdown}
-        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search exercises…"/></div>
-        <button className="btn sm" onClick={()=>addExercise()}>＋ Add Exercise</button>
+        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercises…')}/></div>
+        <button className="btn sm" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
       </div>
-      {flat.length===0&&<div className="ex-empty">{exercises.length===0?'No exercises yet. Start with ＋ Add Exercise.':'No exercises match your search.'}</div>}
+      {flat.length===0&&<div className="ex-empty">{exercises.length===0?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.'):L('Aramanla eşleşen egzersiz yok.','No exercises match your search.')}</div>}
       <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
     </div>);
@@ -18210,16 +18324,16 @@ function ExercisesView({data,setData}){
     <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
     <div className="ex-top">
       <div>
-        <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← Kategoriler</button>
-        <h1 className="ex-h1">{isUncat?'Kategorisiz':activeType}</h1>
-        {isUncat&&<div className="sub">Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart'a tıklayıp kategori ata.</div>}
-        {sub&&<div className="sub">Filtre: <b>{sub.label}</b>{hasPatternFilter?' · Movement Pattern':''}</div>}
+        <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← {L('Kategoriler','Categories')}</button>
+        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):exLabel(activeType)}</h1>
+        {isUncat&&<div className="sub">{L('Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart\'a tıklayıp kategori ata.','Exercises added automatically from the program / not yet assigned a category. Click a card to assign one.')}</div>}
+        {sub&&<div className="sub">{L('Filtre:','Filter:')} <b>{exLabel(sub.label)}</b>{hasPatternFilter?' · '+L('Hareket Örüntüsü','Movement Pattern'):''}</div>}
       </div>
     </div>
     <div className="ex-toolbar">
       {catDropdown}
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={`Search ${activeType}…`}/></div>
-      <button className="btn sm" onClick={()=>addExercise()}>＋ Add Exercise</button>
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${activeType}…`)}/></div>
+      <button className="btn sm" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
     </div>
     {(()=>{
       /* Flat chips: no neon glow, no category tint on the label — every chip reads
@@ -18228,14 +18342,17 @@ function ExercisesView({data,setData}){
       const offSty={background:'transparent',borderColor:'rgba(255,255,255,.35)',color:'#ffffff',boxShadow:'none'};
       const ChipRow=({label,values,val,setVal})=>(<div className="chip-row">
         <span className="chip-row-lbl">{label}</span>
-        <button className={`fchip${val===''?' on':''}`} style={val===''?onSty:offSty} onClick={()=>setVal('')}>All</button>
-        {values.map(v=><button key={v} className={`fchip${val===v?' on':''}`} style={val===v?onSty:offSty} onClick={()=>setVal(val===v?'':v)}>{v}</button>)}
+        <button className={`fchip${val===''?' on':''}`} style={val===''?onSty:offSty} onClick={()=>setVal('')}>{L('Tümü','All')}</button>
+        {values.map(v=><button key={v} className={`fchip${val===v?' on':''}`} style={val===v?onSty:offSty} onClick={()=>setVal(val===v?'':v)}>{exLabel(v)}</button>)}
       </div>);
       return(<div className="chip-filters">
-        {sub&&<ChipRow label={sub.label} values={sub.values} val={fSub} setVal={setFSub}/>}
-        {hasPatternFilter&&<ChipRow label="Movement Pattern" values={patternVals} val={fPattern} setVal={setFPattern}/>}
+        {sub&&<ChipRow label={exLabel(sub.label)} values={sub.values} val={fSub} setVal={setFSub}/>}
+        {hasPatternFilter&&<ChipRow label={L('Hareket Örüntüsü','Movement Pattern')} values={patternVals} val={fPattern} setVal={setFPattern}/>}
       </div>);})()}
-    {list.length===0&&<div className="ex-empty">No exercises{(fSub||fMuscle||fPattern||q)?' matching your filters':''} in this category. Add one with <b>＋ Add Exercise</b>.</div>}
+    {list.length===0&&<div className="ex-empty">{(fSub||fMuscle||fPattern||q)
+      ?L('Bu kategoride filtrelerine uyan egzersiz yok. ','No exercises matching your filters in this category. ')
+      :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
+      {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
@@ -19684,15 +19801,20 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   </div>);
 }
 
-function ReportLangToggle(){
-  const[,force]=useState(0);
-  const set=l=>{setReportLang(l);force(x=>x+1);};
-  return(<div className="rlang">
-    <span className="rlang-lbl">{L('Çıktı dili','Report language')}</span>
-    <div className="rlang-seg">
-      <button className={REPORT_LANG==='tr'?'on':''} onClick={()=>set('tr')}>TR</button>
-      <button className={REPORT_LANG==='en'?'on':''} onClick={()=>set('en')}>EN</button>
-    </div>
+/* Global "Language" control — fixed to the bottom of every page (marketing/login,
+   the loading screen, and the whole app) so it is always reachable and switching
+   it takes effect instantly, everywhere: UI text and every generated report/PDF
+   share this one setting. Rendered once at the root, outside <App/>, so it survives
+   whichever screen is currently shown. */
+function LanguageSelector(){
+  useAppLang();
+  return(<div className="lang-fixed">
+    <span className="lang-fixed-ic" aria-hidden="true">🌐</span>
+    <select className="lang-fixed-sel" value={REPORT_LANG} onChange={e=>setReportLang(e.target.value)}
+      aria-label={L('Dil seçimi','Language selector')}>
+      <option value="en">English</option>
+      <option value="tr">Türkçe</option>
+    </select>
   </div>);
 }
 // Sidebar nav icons — simple stroke glyphs that inherit the lime accent via
@@ -20457,6 +20579,7 @@ service cloud.firestore {
 }
 
 function App(){
+  useAppLang();   // re-render the whole tree the instant the language changes
   const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
   const sync=useCloudSync(data,setData);
   // Wire the global "Save to Templates" helper so any session editor can add the
@@ -20561,39 +20684,39 @@ function App(){
 
   const exCount=(data.exercises||[]).length;
   const NAV_GROUPS=[
-    {label:'Workspace',items:[
-      {id:'season',label:'Season',icon:NAV_ICONS.season},
-      {id:'calendar',label:'Calendar',icon:NAV_ICONS.calendar},
-      {id:'athletes',label:'Athletes',icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
-      {id:'evaluation',label:'Testing & Assessment',icon:NAV_ICONS.evaluation},
-      {id:'reports',label:'Load Monitoring',icon:NAV_ICONS.reports},
-      {id:'exercises',label:'Exercise Library',icon:NAV_ICONS.exercises,count:exCount||null},
-      {id:'templates',label:'Templates',icon:NAV_ICONS.templates,count:(data.templates||[]).length||null},
-      {id:'individual',label:'Individualization',icon:NAV_ICONS.individual},
-      {id:'tempo',label:'Tempo Training',icon:NAV_ICONS.tempo},
-      {id:'checkin',label:'Check-in Formları',icon:NAV_ICONS.checkin},
+    {label:L('Çalışma Alanı','Workspace'),items:[
+      {id:'season',label:L('Sezon','Season'),icon:NAV_ICONS.season},
+      {id:'calendar',label:L('Takvim','Calendar'),icon:NAV_ICONS.calendar},
+      {id:'athletes',label:L('Sporcular','Athletes'),icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
+      {id:'evaluation',label:L('Test ve Değerlendirme','Testing & Assessment'),icon:NAV_ICONS.evaluation},
+      {id:'reports',label:L('Yük Takibi','Load Monitoring'),icon:NAV_ICONS.reports},
+      {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
+      {id:'templates',label:L('Şablonlar','Templates'),icon:NAV_ICONS.templates,count:(data.templates||[]).length||null},
+      {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
+      {id:'tempo',label:L('Tempo Antrenmanı','Tempo Training'),icon:NAV_ICONS.tempo},
+      {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
     ]},
-    {label:'Account',items:[
-      {id:'setup',label:'Setup',icon:NAV_ICONS.setup},
-      {id:'teams',label:'Teams',icon:NAV_ICONS.teams},
-      {id:'tally',label:'Tally Sync',icon:NAV_ICONS.tally},
-      {id:'backup',label:'Backup',icon:NAV_ICONS.backup},
+    {label:L('Hesap','Account'),items:[
+      {id:'setup',label:L('Kurulum','Setup'),icon:NAV_ICONS.setup},
+      {id:'teams',label:L('Takımlar','Teams'),icon:NAV_ICONS.teams},
+      {id:'tally',label:L('Tally Senkronu','Tally Sync'),icon:NAV_ICONS.tally},
+      {id:'backup',label:L('Yedekleme','Backup'),icon:NAV_ICONS.backup},
     ]},
   ];
 
   return(<div className={"app"+(menuOpen?' menu-open':'')}>
     <div className="mscrim" onClick={()=>setMenuOpen(false)}/>
     <aside className="sidebar">
-      <button className="mclose" onClick={()=>setMenuOpen(false)} aria-label="Kapat">✕</button>
+      <button className="mclose" onClick={()=>setMenuOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
       <div className="brand"><img className="brand-logo" src="logo.png" alt="CoachOS"/></div>
       <div className="brand-team">
         <div className="bt-row team-sel">
-          <span className="bt-label">Team</span>
+          <span className="bt-label">{L('Takım','Team')}</span>
           <select value={data.activeTeamId} onChange={e=>setData({...data,activeTeamId:e.target.value})}>
             {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
           </select>
         </div>
-        {sync.user&&<button className="btn sec xs" onClick={()=>sync.signOut()} style={{width:'100%',justifyContent:'center'}}>Sign Out</button>}
+        {sync.user&&<button className="btn sec xs" onClick={()=>sync.signOut()} style={{width:'100%',justifyContent:'center'}}>{L('Çıkış Yap','Sign Out')}</button>}
         <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>{}}/></div>
       </div>
       <nav>
@@ -20606,11 +20729,10 @@ function App(){
           </button>)}
         </div>)}
       </nav>
-      <ReportLangToggle/>
     </aside>
     <div className="content">
     <div className="mtopbar">
-      <button className="mham" onClick={()=>setMenuOpen(true)} aria-label="Menü">☰</button>
+      <button className="mham" onClick={()=>setMenuOpen(true)} aria-label={L('Menü','Menu')}>☰</button>
       <img className="mtb-logo" src="logo-wordmark.png" alt="CoachOS"/>
       <span className="mtb-team">{team.setup.teamName}</span>
     </div>
@@ -20649,7 +20771,7 @@ function App(){
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a
    `local:` handle synchronously inside render, and a store that is unreadable (private mode,
    blocked storage) simply leaves those slots empty rather than holding up the app. */
-lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>));
+lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<><App/><LanguageSelector/></>));
 </script>
 </body>
 </html>
