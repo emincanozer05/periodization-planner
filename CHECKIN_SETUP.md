@@ -22,6 +22,11 @@ Firebase Console → projeyi seç → **Authentication → Sign-in method** → 
 Sporcu hesap açmaz, şifre girmez; sayfa arka planda isimsiz bir oturum kullanır. Bu
 oturum olmadan Firestore yazımı reddedilir.
 
+Bu oturum sporcunun telefonunda saklı kalır. Firebase kullanılmayan anonim hesapları bir
+süre sonra silebildiği için saklı kayıt geçersizleşebilir; form her açılışta jetonu
+tazeleyerek bunu görür ve gerekirse yeni bir oturum açar. Bu yüzden **Anonymous** satırı
+açık kalmalı — sonradan kapatılırsa formu daha önce doldurmuş sporcular da gönderemez.
+
 ### 2) Firestore kurallarını yayınla
 Firebase Console → **Firestore Database → Rules** → depodaki [`firestore.rules`](firestore.rules)
 dosyasının tamamını yapıştır → **Publish**.
@@ -76,6 +81,7 @@ koçun sildiği bir sRPE check-in'i geri gelmez.
 | "Form okunamadı" | Kurallar yayınlanmamış → 2. adım |
 | "Bu link artık geçerli değil" | Link yenilenmiş; sporcuya güncel linki gönder |
 | "Gönderimin yolda" | Şebeke yavaş; cevap cihazda kuyruğa alındı, bağlantı gelince gider |
+| "Gönderim reddedildi" (form açılıyor ama gönderilmiyor) | Telefonda kalmış anonim oturum geçersizleşmiş. Form bunu kendi başına onarır: oturumu tazeleyip gönderimi bir kez daha dener. İkinci kez de reddediliyorsa sebep 1. veya 2. adımdır |
 
 Koç tarafında bir gönderim görünmüyorsa: gönderimler koç uygulamayı **açtığında** işlenir.
 Uygulama açıkken gelenler saniyeler içinde düşer.
