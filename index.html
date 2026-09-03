@@ -169,7 +169,7 @@ h1,h2,h3,h4,h5,h6,.ex-h1{font-family:'Space Grotesk','Inter',sans-serif;font-wei
 {font-weight:700 !important}
 .app{min-height:100vh;display:flex;flex-direction:row;isolation:isolate}
 .sidebar{
-  width:252px;flex:none;background:rgba(16,18,22,.72);
+  width:300px;flex:none;background:rgba(16,18,22,.72);
   backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
   box-shadow:var(--glass-hi);
   border-right:1px solid var(--border);
@@ -218,8 +218,8 @@ nav{
 .rlang-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
 .rlang-seg button{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer;transition:all .15s}
 .rlang-seg button.on{background:var(--accent);color:#0a0b0d}
-/* Site-wide language picker, fixed to the bottom-left corner of every screen
-   (login/marketing page, loading screen, and the app itself). */
+/* Site-wide language picker. On screens with no sidebar (login/marketing page,
+   loading screen) it floats fixed to the bottom-left corner. */
 .lang-fixed{position:fixed;left:14px;bottom:14px;z-index:260;display:flex;align-items:center;gap:6px;
   background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;
   box-shadow:0 6px 18px rgba(0,0,0,.35)}
@@ -228,6 +228,14 @@ nav{
 .lang-fixed-sel:focus{outline:none}
 .lang-fixed-sel option{background:var(--elevated);color:var(--text)}
 @media(max-width:760px){.lang-fixed{left:8px;bottom:8px;padding:5px 8px}}
+/* Inside the app, the same picker is docked in the sidebar instead — a normal
+   row between the team/account block and the nav groups, styled like the team
+   selector above it, so it never floats over other content. */
+.lang-inline{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
+  border-radius:9px;padding:6px 10px;margin:0 4px 10px}
+.lang-inline-sel{background:transparent;border:none;color:var(--text);font-weight:600;font-size:13px;padding:2px 0;cursor:pointer;width:100%;font-family:inherit}
+.lang-inline-sel:focus{outline:none}
+.lang-inline-sel option{background:var(--panel);color:var(--text)}
 .nav-item{
   background:transparent;border:1px solid transparent;padding:10px 12px;cursor:pointer;
   color:var(--text2);font-size:14px;font-weight:500;
@@ -17478,6 +17486,7 @@ function LoadingScreen(){
         <img src="logo.png" alt="CoachOS" style={{height:52,marginBottom:14,opacity:.7}}/>
         <div style={{color:'var(--dim)',fontSize:14}}>{L('Yükleniyor…','Loading…')}</div>
       </div>
+      <LanguageSelector/>
     </div>
   );
 }
@@ -17710,6 +17719,7 @@ function LoginPage({sync}){
         </div>
       </div>
       )}
+      <LanguageSelector/>
     </div>
   );
 }
@@ -19810,20 +19820,26 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   </div>);
 }
 
-/* Global "Language" control — fixed to the bottom of every page (marketing/login,
-   the loading screen, and the whole app) so it is always reachable and switching
-   it takes effect instantly, everywhere: UI text and every generated report/PDF
-   share this one setting. Rendered once at the root, outside <App/>, so it survives
-   whichever screen is currently shown. */
-function LanguageSelector(){
+/* Global "Language" control — switching it takes effect instantly, everywhere:
+   UI text and every generated report/PDF share this one setting. On the
+   marketing/login page and the loading screen (no sidebar to dock into) it
+   floats fixed to the bottom-left corner; inside the app it renders `inline`
+   instead — a normal, non-floating row docked in the sidebar, between the
+   team/account block and the nav groups, so it never overlaps other content. */
+function LanguageSelector({inline}){
   useAppLang();
-  return(<div className="lang-fixed">
-    <span className="lang-fixed-ic" aria-hidden="true">🌐</span>
-    <select className="lang-fixed-sel" value={REPORT_LANG} onChange={e=>setReportLang(e.target.value)}
+  const sel=(<select className={inline?'lang-inline-sel':'lang-fixed-sel'} value={REPORT_LANG} onChange={e=>setReportLang(e.target.value)}
       aria-label={L('Dil seçimi','Language selector')}>
       <option value="en">English</option>
       <option value="tr">Türkçe</option>
-    </select>
+    </select>);
+  if(inline)return(<div className="lang-inline">
+    <span className="bt-label">{L('Dil','Language')}</span>
+    {sel}
+  </div>);
+  return(<div className="lang-fixed">
+    <span className="lang-fixed-ic" aria-hidden="true">🌐</span>
+    {sel}
   </div>);
 }
 // Sidebar nav icons — simple stroke glyphs that inherit the lime accent via
@@ -20734,6 +20750,7 @@ function App(){
         {sync.user&&<button className="btn sec xs" onClick={()=>sync.signOut()} style={{width:'100%',justifyContent:'center'}}>{L('Çıkış Yap','Sign Out')}</button>}
         <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>{}}/></div>
       </div>
+      <LanguageSelector inline/>
       <nav>
         {NAV_GROUPS.map(g=><div key={g.label} className="nav-group">
           <div className="nav-glabel">{g.label}</div>
@@ -20786,7 +20803,7 @@ function App(){
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a
    `local:` handle synchronously inside render, and a store that is unreadable (private mode,
    blocked storage) simply leaves those slots empty rather than holding up the app. */
-lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<><App/><LanguageSelector/></>));
+lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>));
 </script>
 </body>
 </html>
