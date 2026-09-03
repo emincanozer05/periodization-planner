@@ -8797,31 +8797,31 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     return a;})();
   const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
   return(<>
-  <h2 style={{fontSize:22,fontWeight:800,letterSpacing:'-.02em',marginBottom:14,color:'var(--text)'}}>Calendar</h2>
+  <h2 style={{fontSize:22,fontWeight:800,letterSpacing:'-.02em',marginBottom:14,color:'var(--text)'}}>{L('Takvim','Calendar')}</h2>
   <div className="panel">
     <div className="calm-bar">
-      <div className="calm-ttl"><span>Program Block</span><em>{calMode==='week'?'weekly overview':'monthly overview'}</em></div>
+      <div className="calm-ttl"><span>{L('Program Bloğu','Program Block')}</span><em>{calMode==='week'?L('haftalık görünüm','weekly overview'):L('aylık görünüm','monthly overview')}</em></div>
       <div className="calm-ctrl">
         <div className="calm-seg">
-          <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>Week</button>
-          <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>Month</button>
+          <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>{L('Hafta','Week')}</button>
+          <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>{L('Ay','Month')}</button>
         </div>
-        {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title="Weekly plan export (A4 landscape)">⎙ Print week</button>}
+        {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title={L('Haftalık plan çıktısı (A4 yatay)','Weekly plan export (A4 landscape)')}>⎙ {L('Haftayı yazdır','Print week')}</button>}
         <div className="calm-nav">
-          <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title="Geri">‹</button>
-          <button className="td" onClick={goToday}>Today</button>
-          <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title="İleri">›</button>
+          <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title={L('Geri','Back')}>‹</button>
+          <button className="td" onClick={goToday}>{L('Bugün','Today')}</button>
+          <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title={L('İleri','Forward')}>›</button>
         </div>
       </div>
     </div>
     {calMode==='week'?<>
     <div className="calm-month">{fmtRange()}</div>
     <div className="calw-topline">
-      {canEdit?<div className="calw-hint">Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</div>:<span/>}
-      <div className="calw-mono" title="Team monotony for this week = each athlete's own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.&#10;<1.0 low — loads highly varied&#10;1.0–1.5 normal / acceptable&#10;1.5–2.0 rising monotony — watch it&#10;>2.0 high — overload and illness/injury risk climbs">
-        <span className="k">Team monotony</span>
+      {canEdit?<div className="calw-hint">{L(<>Bir seansı başka güne sürükle · bırakırken <strong>Ctrl/⌥</strong>'ye bas → kopyalar</>,<>Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</>)}</div>:<span/>}
+      <div className="calw-mono" title={L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
+        <span className="k">{L('Takım monotonluğu','Team monotony')}</span>
         <b style={{color:weekMonoZ.c}}>{weekMonoV?weekMonoV.toFixed(2):'—'}</b>
-        <span className="z" style={{color:weekMonoZ.dot}}><i style={{background:weekMonoZ.dot}}/>{weekMonoZ.t}</span>
+        <span className="z" style={{color:weekMonoZ.dot}}><i style={{background:weekMonoZ.dot}}/>{exLabel(weekMonoZ.t)}</span>
       </div>
     </div>
     <div className="calw-grid">
@@ -8849,20 +8849,20 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                   session view's "Copy the Training". */}
               {canEdit&&sesClip&&<button className="add paste" onClick={e=>{e.stopPropagation();pasteSession(k);}}
                 title={`Yapıştır: ${sesClip.name||'Antrenman'}`}>📋</button>}
-              <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title="Antrenman ekle / planla">+</button>
+              <button className="add" onClick={e=>{e.stopPropagation();openEdit(k);}} title={L('Antrenman ekle / planla','Add / plan training')}>+</button>
             </span>
           </div>
           {/* Team averages for the day, right under the date: session RPE (0–10) and
               wellness readiness (0–5), each tinted by its own severity scale. */}
           <div className="calw-avg">
-            <span className="cav" title="Team average session RPE for this day (0–10)">
+            <span className="cav" title={L('Bu gün için takım ortalaması seans RPE\'si (0–10)','Team average session RPE for this day (0–10)')}>
               <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
             </span>
-            <span className="cav" title="Team average readiness from this day's wellness check-ins (0–5)">
+            <span className="cav" title={L('Bu günün wellness check-in\'lerinden takım ortalama hazır oluşu (0–5)','Team average readiness from this day\'s wellness check-ins (0–5)')}>
               <em>RDN</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
             </span>
           </div>
-          {ss.length===0&&<div className="calw-empty">rest</div>}
+          {ss.length===0&&<div className="calw-empty">{L('dinlenme','rest')}</div>}
           {ss.map(s=>{
             const _hov=hovSes===s.id;
             const _pats=s.selPatterns||[];
@@ -8876,15 +8876,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
-                <div className="tip-h">Movements &amp; Patterns</div>
+                <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
                 {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
                     <div className="tip-pat-nm">{p}</div>
                     {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
                   </div>);})}
               </div>}
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
-                <button title="Duplicate" onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
-                <button title="Delete" className="del" onClick={e=>{e.stopPropagation();if(confirm('Delete this session?'))delSession(k,s.id);}}>✕</button>
+                <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
+                <button title={L('Sil','Delete')} className="del" onClick={e=>{e.stopPropagation();if(confirm(L('Bu seans silinsin mi?','Delete this session?')))delSession(k,s.id);}}>✕</button>
               </div>}
               <div className="nm">{s.name}</div>
               <div className="pr">{s.purpose}</div>
@@ -8893,7 +8893,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           })}
           {/* The day's team load — the same value Load Monitoring's Team Load Trend plots. */}
           {dayAU>0&&<div className="calw-daytot">
-            <div className="dtrow" title="Load Monitoring → Team Load Trend'deki günlük yük"><span>Daily</span><b>{dayAU} AU</b></div>
+            <div className="dtrow" title={L('Yük Takibi → Takım Yük Trendi\'ndeki günlük yük','The daily load from Load Monitoring → Team Load Trend')}><span>{L('Günlük','Daily')}</span><b>{dayAU} AU</b></div>
           </div>}
         </div>);
       })}
@@ -8907,15 +8907,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         const isToday=k===fmt(today);const isSel=k===selected.date;
         const au=ss.reduce((t,s)=>t+(Number(s.au)||(s.sRPE!==''&&s.sRPE!=null?Number(s.sRPE)*Number(s.duration||0):0)),0);
         const mAvg=teamMode?teamDayAvgAU(athletes,k):null;
-        return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>pickMonth(k)} title="Planla">
+        return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}`} onClick={()=>pickMonth(k)} title={L('Planla','Plan')}>
           <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
           {ss.length>0&&<div className="csess">
             {ss.slice(0,2).map((s,j)=>{
               const _hov=hovSes===s.id;const _pats=s.selPatterns||[];const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
               return(<div key={s.id||j} className="cs-item-wrap" onMouseEnter={e=>{e.stopPropagation();setHovSes(s.id);}} onMouseLeave={()=>setHovSes(null)}>
-                <div className="cs-item" style={{borderLeftColor:sesColor(s)}}>{s.name||'Session'}</div>
+                <div className="cs-item" style={{borderLeftColor:sesColor(s)}}>{s.name||L('Seans','Session')}</div>
                 {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
-                  <div className="tip-h">Movements &amp; Patterns</div>
+                  <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
                   {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
                       <div className="tip-pat-nm">{p}</div>
                       {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
@@ -8923,13 +8923,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 </div>}
               </div>);
             })}
-            {ss.length>2&&<div className="cs-more">+{ss.length-2} more</div>}
+            {ss.length>2&&<div className="cs-more">{L(`+${ss.length-2} daha`,`+${ss.length-2} more`)}</div>}
           </div>}
           {(au>0||mAvg)&&<div className="mau">
             {au>0&&<span>{Math.round(au)}<small>AU</small></span>}
             {/* The same per-athlete average the week strip carries, in the room a month
                 cell has for it: their own calendars, added up and averaged. */}
-            {mAvg&&<i title={`Sporcuların takvimlerindeki günlük AU ortalaması — ${mAvg.n} sporcu`}>ø {Math.round(mAvg.avg)}<small>AU</small></i>}
+            {mAvg&&<i title={L(`Sporcuların takvimlerindeki günlük AU ortalaması — ${mAvg.n} sporcu`,`Average daily AU across athletes' calendars — ${mAvg.n} athletes`)}>ø {Math.round(mAvg.avg)}<small>AU</small></i>}
           </div>}
         </div>);
       })}
