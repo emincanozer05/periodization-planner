@@ -9905,11 +9905,11 @@ function TemplatesView({data,setData}){
   const[editId,setEditId]=useState(null);
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
-  const addTpl=()=>{const s=SESS();const t={id:uid(),name:'New Template',
+  const addTpl=()=>{const s=SESS();const t={id:uid(),name:L('Yeni Şablon','New Template'),
     session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
-  const delTpl=id=>{if(confirm('Bu şablon silinsin mi?')){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
-  const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||'Template')+' (copy)',session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
+  const delTpl=id=>{if(confirm(L('Bu şablon silinsin mi?','Delete this template?'))){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
+  const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||L('Şablon','Template'))+L(' (kopya)',' (copy)'),session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
   const copyTpl=t=>{copyTemplateToClipboard(t);setCopiedId(t.id);setTimeout(()=>setCopiedId(c=>c===t.id?null:c),2000);};
   const blkCount=t=>((t.session&&t.session.blocks)||[]).length;
   const exCount=t=>((t.session&&t.session.blocks)||[]).reduce((n,b)=>n+((b.exercises||[]).filter(e=>(e.name||'').trim()).length),0);
@@ -9962,19 +9962,19 @@ function TemplatesView({data,setData}){
   const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
     <div className="ex-top">
-      <div><h1 className="ex-h1">Templates</h1>
-        <div className="sub">{templates.length} training templates · copy → paste into a team or athlete calendar</div></div>
-      <button className="btn sm" onClick={addTpl}>＋ New Template</button>
+      <div><h1 className="ex-h1">{L('Şablonlar','Templates')}</h1>
+        <div className="sub">{L(`${templates.length} antrenman şablonu · kopyala → bir takım ya da sporcu takvimine yapıştır`,`${templates.length} training templates · copy → paste into a team or athlete calendar`)}</div></div>
+      <button className="btn sm" onClick={addTpl}>＋ {L('Yeni Şablon','New Template')}</button>
     </div>
     {/* Stacked so the focus chips row lines up edge-to-edge with the search box above it. */}
     <div className="ex-toolbar tpl-toolbar">
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search templates…"/></div>
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Şablon ara…','Search templates…')}/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
-        <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>All</button>
-        {SESSION_FOCUS.filter(f=>!['Injury Prevention','Technical','Tactical','Competition','Assessment','Recovery'].includes(f)).map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{f}</button>)}
+        <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>{L('Tümü','All')}</button>
+        {SESSION_FOCUS.filter(f=>!['Injury Prevention','Technical','Tactical','Competition','Assessment','Recovery'].includes(f)).map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{exLabel(f)}</button>)}
       </div>
     </div>
-    {shown.length===0&&<div className="ex-empty">{templates.length===0?'No templates yet — start with ＋ New Template.':'No templates match the filter.'}</div>}
+    {shown.length===0&&<div className="ex-empty">{templates.length===0?L('Henüz şablon yok — ＋ Yeni Şablon ile başla.','No templates yet — start with ＋ New Template.'):L('Filtreyle eşleşen şablon yok.','No templates match the filter.')}</div>}
     {groups.map(g=>{const gc=tplCatColor(g.c),op=catOpen(g.c);
       const mc=METHOD_CATS.includes(g.c.id)?methodCountsFor(g.c):null;
       return(<div key={g.c.id} className={`tpl-cat-sec${op?' on':''}`}>
@@ -9983,26 +9983,26 @@ function TemplatesView({data,setData}){
         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCat(g.c);}}}>
         <span className="tpl-cat-ch">▶</span>
         <span className="tpl-cat-dot"/>
-        <h2 className="tpl-cat-l">{g.c.label}</h2>
+        <h2 className="tpl-cat-l">{exLabel(g.c.label)}</h2>
         <span className="tpl-cat-n">{g.items.length}</span>
         {/* The pickers ride along with the heading they filter — clicks stay inside them so
             picking one doesn't fold the group shut. */}
         {(regionOn(g.c)||METHOD_CATS.includes(g.c.id))&&<div className="tpl-region-bar" onClick={e=>e.stopPropagation()}>
           {regionOn(g.c)&&<select className="tpl-region-sel" value={selRegion} onChange={e=>setSelRegion(e.target.value)}>
-            <option value="">All regions</option>
-            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+            <option value="">{L('Tüm bölgeler','All regions')}</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
           </select>}
           {/* The session editor's checkbox picker, reused as a filter: several methods can be
               ticked at once, and each one that is actually in use carries a green count badge
               — neither is possible with a native <select>. */}
           {mc&&<div className="tpl-method-pick"><MethodSelect value={methodOf(g.c)} counts={mc.m}
-            onChange={arr=>setMethodFor(g.c,arr)} placeholder={`All training methods (${mc.n})`}/></div>}
-          {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,[]);}}>✕ Clear</button>}
+            onChange={arr=>setMethodFor(g.c,arr)} placeholder={L(`Tüm antrenman metotları (${mc.n})`,`All training methods (${mc.n})`)}/></div>}
+          {headFiltered(g.c)&&<button className="btn xs sec" onClick={()=>{if(regionOn(g.c))setSelRegion('');setMethodFor(g.c,[]);}}>✕ {L('Temizle','Clear')}</button>}
         </div>}
-        <span className="tpl-cat-hint">{op?'Gizle':'Göster'}</span>
+        <span className="tpl-cat-hint">{op?L('Gizle','Hide'):L('Göster','Show')}</span>
       </div>
       {/* Methods are OR-ed, so they read "A / B"; the Region narrows on top of them: "R + A / B". */}
-      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>No “{[regionOn(g.c)?selRegion:'',methodOf(g.c).join(' / ')].filter(Boolean).join(' + ')}” template yet.</div>}
+      {op&&g.items.length===0&&<div className="ex-empty" style={{marginBottom:0}}>{L(`"${[regionOn(g.c)?selRegion:'',methodOf(g.c).join(' / ')].filter(Boolean).join(' + ')}" şablonu henüz yok.`,`No "${[regionOn(g.c)?selRegion:'',methodOf(g.c).join(' / ')].filter(Boolean).join(' + ')}" template yet.`)}</div>}
       {op&&<div className="ath-grid">
         {g.items.map(t=>{const cat=tplCat(t),col=tplCatColor(cat);
           const region=tplRegion(t);
@@ -10022,14 +10022,14 @@ function TemplatesView({data,setData}){
             <div style={{fontSize:15,fontWeight:600,color:'var(--text)',flex:'1 1 120px',minWidth:0,overflowWrap:'break-word'}}>{t.name||'—'}</div>
             {region&&<span className="tag" style={{background:col.t,color:col.c,border:'1px solid '+col.g,flex:'0 0 auto',maxWidth:'100%'}}>{region}</span>}
           </div>
-          <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{(t.session&&t.session.duration)||0} min · {blkCount(t)} blok · {exCount(t)} egzersiz</div>
+          <div style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>{L(`${(t.session&&t.session.duration)||0} dk · ${blkCount(t)} blok · ${exCount(t)} egzersiz`,`${(t.session&&t.session.duration)||0} min · ${blkCount(t)} blocks · ${exCount(t)} exercises`)}</div>
           <div style={{display:'flex',gap:6,marginTop:'auto',paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}} onClick={e=>e.stopPropagation()}>
-            <button className="btn xs sec" style={copiedId===t.id?{color:'var(--green)',borderColor:'var(--green)'}:{}} onClick={()=>copyTpl(t)}>{copiedId===t.id?'✓ Kopyalandı':'⧉ Kopyala'}</button>
-            <button className="btn xs danger" onClick={()=>delTpl(t.id)}>🗑 Sil</button>
+            <button className="btn xs sec" style={copiedId===t.id?{color:'var(--green)',borderColor:'var(--green)'}:{}} onClick={()=>copyTpl(t)}>{copiedId===t.id?L('✓ Kopyalandı','✓ Copied'):L('⧉ Kopyala','⧉ Copy')}</button>
+            <button className="btn xs danger" onClick={()=>delTpl(t.id)}>🗑 {L('Sil','Delete')}</button>
           </div>
           {blocks.length>0&&<div className="tpl-tip">
             {blocks.map(b=><div key={b.id} className="tpl-tip-blk">
-              <div className="tpl-tip-bn">{b.name||'Block'}</div>
+              <div className="tpl-tip-bn">{b.name||L('Blok','Block')}</div>
               {/* Names only — sets/reps stay out so the exercise list reads at a glance. */}
               {b.exercises.map((e,i)=><div key={i} className="tpl-tip-ex"><span className="n">{e.name}</span></div>)}
             </div>)}
@@ -10041,7 +10041,7 @@ function TemplatesView({data,setData}){
       <div className="dw-scrim" onClick={()=>setEditId(null)}/>
       <aside className="dw edit">
         <div className="dw-h">
-          <div style={{flex:1,minWidth:0}}><div className="ti">Şablon Düzenle</div><div className="su">{editing.name||'—'} · panoya kopyalayıp takvime yapıştırabilirsin</div></div>
+          <div style={{flex:1,minWidth:0}}><div className="ti">{L('Şablon Düzenle','Edit Template')}</div><div className="su">{editing.name||'—'} · {L('panoya kopyalayıp takvime yapıştırabilirsin','copy to clipboard and paste onto a calendar')}</div></div>
           <button className="x" onClick={()=>setEditId(null)}>×</button>
         </div>
         <div className="dw-b">
@@ -10050,7 +10050,7 @@ function TemplatesView({data,setData}){
             onRemove={()=>{setTemplates(templates.filter(x=>x.id!==editing.id));setEditId(null);}}
             onDuplicate={()=>dupTpl(editing)} onMove={()=>{}}
             printContext={{title:'Template',subtitle:editing.name||''}}/>
-          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditId(null)}>Bitti</button></div>
+          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditId(null)}>{L('Bitti','Done')}</button></div>
         </div>
       </aside>
     </>),document.body)}
@@ -17900,6 +17900,12 @@ const EX_TERM_TR={
   'No data':'Veri yok','High':'Yüksek','Watch':'İzle','Normal':'Normal','Low':'Düşük',
   'Upper Body Strength&Power':'Üst Vücut Kuvvet ve Güç','Lower Body Strength&Power':'Alt Vücut Kuvvet ve Güç',
   'Full Body Strength&Power':'Tüm Vücut Kuvvet ve Güç','Corrective':'Düzeltici','Accessory':'Yardımcı',
+  'Strength & Power':'Kuvvet ve Güç','Multi-Directional Speed':'Çok Yönlü Hız','Conditioning':'Kondisyon',
+  'Movement Quality':'Hareket Kalitesi','Other':'Diğer',
+  'Hypertrophy':'Hipertrofi','Speed':'Hız','Acceleration':'İvmelenme','Deceleration':'Yavaşlama',
+  'Change of Direction':'Yön Değiştirme','Agility':'Çeviklik','Plyometrics':'Pliometrik','Mobility':'Hareketlilik',
+  'Stability':'Stabilite','Injury Prevention':'Sakatlık Önleme','Technical':'Teknik','Tactical':'Taktik',
+  'Competition':'Müsabaka','Assessment':'Değerlendirme','Recovery':'Toparlanma',
 };
 const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
 /* Free text the coach types (exercise name, purpose/description) is assumed
