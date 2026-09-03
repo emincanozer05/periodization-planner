@@ -9606,62 +9606,62 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           permanent field beside the one on the session's own line below — Enter or
           clicking away keeps the new name, Escape puts the old one back. */}
       {edNm
-        ?<input className="sbar-nmi" value={session.name||''} autoFocus placeholder="Session title…"
+        ?<input className="sbar-nmi" value={session.name||''} autoFocus placeholder={L('Seans başlığı…','Session title…')}
           onChange={e=>u({name:e.target.value})}
           onFocus={e=>e.target.select()}
           onClick={e=>e.stopPropagation()}
           onBlur={()=>endEdNm(false)}
           onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();endEdNm(false);}else if(e.key==='Escape'){e.preventDefault();endEdNm(true);}}}/>
-        :<span className={`sbar-nm${session.name?'':' ph'}`} title="Click to rename this session"
-          onClick={e=>{e.stopPropagation();startEdNm();}}>{session.name||'Untitled session'}</span>}
-      <span style={{color:'var(--text)',fontSize:12}}>{isTemplate?`${session.duration}min`:`${session.time} · ${session.duration}min`}</span>
-      {fromTeam&&<span className="team-badge" title="This session was copied from a team plan. Edits to the team session will sync here.">⚡ FROM TEAM</span>}
-      {showPicker&&participantCount>0&&<span className="tag" style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd'}}>{participantCount} athlete{participantCount!==1?'s':''}</span>}
+        :<span className={`sbar-nm${session.name?'':' ph'}`} title={L('Bu seansı yeniden adlandırmak için tıkla','Click to rename this session')}
+          onClick={e=>{e.stopPropagation();startEdNm();}}>{session.name||L('Adsız seans','Untitled session')}</span>}
+      <span style={{color:'var(--text)',fontSize:12}}>{isTemplate?L(`${session.duration}dk`,`${session.duration}min`):L(`${session.time} · ${session.duration}dk`,`${session.time} · ${session.duration}min`)}</span>
+      {fromTeam&&<span className="team-badge" title={L('Bu seans takım planından kopyalandı. Takım seansındaki düzenlemeler buraya senkronize olur.','This session was copied from a team plan. Edits to the team session will sync here.')}>⚡ {L('TAKIMDAN','FROM TEAM')}</span>}
+      {showPicker&&participantCount>0&&<span className="tag" style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd'}}>{L(`${participantCount} sporcu`,`${participantCount} athlete${participantCount!==1?'s':''}`)}</span>}
       <span className="grow"/>
       <div className="row" onClick={e=>e.stopPropagation()}>
         <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
         <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
-        <button className="btn xs sec" onClick={onDuplicate}>Clone</button>
-        {!isTemplate&&<button className="btn xs sec" onClick={saveTpl} title="Save this session to the Templates tab" style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>{savedTpl?'✓ Saved':'Save to Templates'}</button>}
-        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session])}>Print</button>
-        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session],{withImages:true})} title="Print this session including the uploaded exercise images">Print with Image</button>
-        <button className="btn xs danger" onClick={()=>{if(confirm(fromTeam?'Delete this team-synced session from this athlete only? (The team plan is unchanged)':'Delete session? This will also remove it from any athletes it was assigned to.'))onRemove();}}>Delete</button>
+        <button className="btn xs sec" onClick={onDuplicate}>{L('Çoğalt','Clone')}</button>
+        {!isTemplate&&<button className="btn xs sec" onClick={saveTpl} title={L('Bu seansı Templates sekmesine kaydet','Save this session to the Templates tab')} style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>{savedTpl?L('✓ Kaydedildi','✓ Saved'):L('Şablona Kaydet','Save to Templates')}</button>}
+        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session])}>{L('Yazdır','Print')}</button>
+        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session],{withImages:true})} title={L('Bu seansı yüklenen egzersiz görselleriyle birlikte yazdır','Print this session including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
+        <button className="btn xs danger" onClick={()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();}}>{L('Sil','Delete')}</button>
       </div>
       <span style={{cursor:'pointer',color:'var(--muted)',fontSize:13}}>{open?'▼':'▶'}</span>
     </div>
     {open&&<div className="sbody">
       {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
-      {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</div>}
+      {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>{L(<>Bu seans takım planından senkronize edilir. Antrenman içeriği (bloklar, egzersizler, saat, süre) takımdan yansıtılır. <strong>Kişisel sRPE, AU ve notların</strong> gizli kalır ve takım güncellemeleriyle üzerine yazılmaz.</>,<>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</>)}</div>}
       {/* The session's own line, laid out like the individualization sheet's: what it is
           called, when it runs and how long, then what it trains — focus, region and the
           methods used to deliver it. Templates only carry the workout itself, so they
           have no clock time (nor card color or post-session feedback below). */}
       <div className="iv-cardtools sess-tools">
-        <label className="iv-meta-f nm">session
-          <input value={session.name} onChange={e=>u({name:e.target.value})} placeholder="Session title…"/>
+        <label className="iv-meta-f nm">{L('seans','session')}
+          <input value={session.name} onChange={e=>u({name:e.target.value})} placeholder={L('Seans başlığı…','Session title…')}/>
         </label>
-        {!isTemplate&&<label className="iv-meta-f tm">time
+        {!isTemplate&&<label className="iv-meta-f tm">{L('saat','time')}
           <input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
         </label>}
-        <label className="iv-meta-f tm">duration
-          <input type="number" value={session.duration} title="Duration (min)"
+        <label className="iv-meta-f tm">{L('süre','duration')}
+          <input type="number" value={session.duration} title={L('Süre (dk)','Duration (min)')}
             onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/>
         </label>
         {/* The three pickers keep their own dropdowns and wear the meta box's border, so
             the row reads as one strip of fields rather than three different controls. */}
-        <div className="iv-meta-f pp">session focus
+        <div className="iv-meta-f pp">{L('seans odağı','session focus')}
           <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
         </div>
-        <div className="iv-meta-f pp">region
+        <div className="iv-meta-f pp">{L('bölge','region')}
           <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-            <option value="">Select region…</option>
-            {SESSION_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+            <option value="">{L('Bölge seç…','Select region…')}</option>
+            {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
           </select>
         </div>
         {/* Training method keeps the row; the assistant sits at the end of it, where the
             coach is already looking when deciding what this session is made of. It only
             appears where there is one athlete to read — the individualization card. */}
-        <div className="iv-meta-f wide">training method
+        <div className="iv-meta-f wide">{L('antrenman metodu','training method')}
           <div className="iv-mrow">
             <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
             {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
@@ -9674,13 +9674,13 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             writing it. The exercises below have no say in it: their own Pattern field
             tags the row, and this strip stays the session's. */}
         <div className="sess-strip-l">
-          <label>Movements &amp; patterns</label>
+          <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
           {(()=>{
             const pats=sessionPatterns(session);
-            if(!pats.length)return<div className="sess-pat-empty">Henüz patern seçilmedi — antrenmanı takvimden açıp <b>Movements &amp; Patterns</b> panelinden seç.</div>;
+            if(!pats.length)return<div className="sess-pat-empty">{L(<>Henüz patern seçilmedi — antrenmanı takvimden açıp <b>Hareketler ve Örüntüler</b> panelinden seç.</>,<>No pattern selected yet — open the training from the calendar and pick one from the <b>Movements &amp; Patterns</b> panel.</>)}</div>;
             return<div className="sess-pat-row">
               {pats.map(p=><span key={p.pattern} className="sess-pat"
-                title={`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — antrenman panelinden seçildi`}>
+                title={L(`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — antrenman panelinden seçildi`,`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — selected from the training panel`)}>
                 <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
                 {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
               </span>)}
@@ -9688,43 +9688,43 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           })()}
         </div>
         <div className="sess-strip-r">
-          <label>Card color</label>
+          <label>{L('Kart rengi','Card color')}</label>
           <div className="color-row">
             {['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'].map(c=>
               <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
-            <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title="Custom color"/>
-            <button type="button" className="color-clear" onClick={()=>u({color:''})} title="Otomatik (load type rengi)">Otomatik</button>
+            <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title={L('Özel renk','Custom color')}/>
+            <button type="button" className="color-clear" onClick={()=>u({color:''})} title={L('Otomatik (load type rengi)','Automatic (load type color)')}>{L('Otomatik','Automatic')}</button>
           </div>
         </div>
       </div>}
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
       <div className="add-blk">
-        <button onClick={()=>addBlk('')}>+ Add Block</button>
-        <button onClick={()=>setNoteOpen(o=>!o)} title="Add a free-text note to this session">{noteOpen?'− Hide Notes':'+ Add Notes'}</button>
+        <button onClick={()=>addBlk('')}>+ {L('Blok Ekle','Add Block')}</button>
+        <button onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
-        <textarea value={session.planNote||''} onChange={e=>u({planNote:e.target.value})} placeholder="Write a note for this session…"/>
+        <textarea value={session.planNote||''} onChange={e=>u({planNote:e.target.value})} placeholder={L('Bu seans için bir not yaz…','Write a note for this session…')}/>
       </div>}
       {!isTemplate&&<><div className="hr"/>
       <div className="grid cols-3">
         <div>
           <label>RPE (0-10)</label>
-          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder="Enter RPE (e.g. 7.5)"
+          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder={L('RPE gir (ör. 7.5)','Enter RPE (e.g. 7.5)')}
             onChange={e=>{const v=e.target.value;
               /* Typed here, this number is the coach's own — clearing srpeFromManual is what
                  stops the athletes' ratings being averaged over it again. */
               const upd={sRPE:v,srpeFromManual:false};
               if(!session.auManual&&v!=='')upd.au=Math.round(Number(v)*Number(session.duration||0));u(upd);}}
             style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          <div className="srpe-lbl">0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max</div>
+          <div className="srpe-lbl">{L('0 Dinlenme · 3-4 Kolay · 5-6 Orta · 7-8 Zor · 10 Maks','0 Rest · 3-4 Easy · 5-6 Moderate · 7-8 Hard · 10 Max')}</div>
         </div>
         <div>
-          <label>Session Load (AU)</label>
-          <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder="Type AU or use sRPE" style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          <div className="help">{session.auManual?'Manual AU — kept when sRPE/duration change':session.sRPE!==''?`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`:''}</div>
+          <label>{L('Seans Yükü (AU)','Session Load (AU)')}</label>
+          <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder={L('AU yaz ya da sRPE kullan','Type AU or use sRPE')} style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
+          <div className="help">{session.auManual?L('Elle girilen AU — sRPE/süre değişse de korunur','Manual AU — kept when sRPE/duration change'):session.sRPE!==''?L(`Otomatik: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`,`Auto: ${session.sRPE} × ${session.duration} = ${Math.round(Number(session.sRPE)*session.duration)} AU`):''}</div>
         </div>
-        <div><label>Notes</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder="Observations…"/></div>
+        <div><label>{L('Notlar','Notes')}</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder={L('Gözlemler…','Observations…')}/></div>
       </div></>}
     </div>}
   </div>);
@@ -17898,6 +17898,8 @@ const EX_TERM_TR={
   'Max-effort':'Maksimal-efor','Dynamic-effort':'Dinamik-efor','Deload':'Yük azaltma','Peak':'Zirve',
   'Eccentric':'Eksantrik','Isometric hold':'İzometrik bekleme','Concentric':'Konsantrik','Pause':'Duraklama',
   'No data':'Veri yok','High':'Yüksek','Watch':'İzle','Normal':'Normal','Low':'Düşük',
+  'Upper Body Strength&Power':'Üst Vücut Kuvvet ve Güç','Lower Body Strength&Power':'Alt Vücut Kuvvet ve Güç',
+  'Full Body Strength&Power':'Tüm Vücut Kuvvet ve Güç','Corrective':'Düzeltici',
 };
 const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
 /* Free text the coach types (exercise name, purpose/description) is assumed
