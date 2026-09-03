@@ -9761,7 +9761,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const dupS=sid=>{const o=day.sessions.find(s=>s.id===sid);sv({sessions:[...day.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:o.blocks.map(b=>({...b,id:uid(),exercises:b.exercises.map(e=>({...e}))}))}]});};
   const mvS=(sid,d)=>{const a=[...day.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];sv({sessions:a});};
   const addS=p=>sv({sessions:[...day.sessions,SESS(p)]});
-  const cpY=()=>{const yk=fmt(addD(parseD(selDay),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions yesterday');return;}
+  const cpY=()=>{const yk=fmt(addD(parseD(selDay),-1));const y=days[yk];if(!y?.sessions?.length){alert(L('Dün seans yok','No sessions yesterday'));return;}
     sv({sessions:y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:s.blocks.map(b=>({...b,id:uid(),exercises:b.exercises.map(e=>({...e}))}))}))});};
   // ---- Drag-drop & quick-duplicate across days ----
   const[dragInfo,setDragInfo]=useState(null);
@@ -9798,19 +9798,19 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const wn=useMemo(()=>{const s=parseD(setup.seasonStart||fmt(today));return Math.max(1,Math.floor(diffD(fmt(s),ws)/7)+1);},[ws,setup.seasonStart]);
   const tw=useMemo(()=>{if(!setup.seasonStart||!setup.seasonEnd)return'?';return Math.ceil(diffD(setup.seasonStart,setup.seasonEnd)/7);},[setup]);
   const dayLabel=fdLong(selDay);
-  const printDay=()=>{if(!day.sessions.length){alert('No sessions to print');return;}printDayA4(labelOwner||setup.teamName,dayLabel,day.sessions);};
+  const printDay=()=>{if(!day.sessions.length){alert(L('Yazdırılacak seans yok','No sessions to print'));return;}printDayA4(labelOwner||setup.teamName,dayLabel,day.sessions);};
   const printWeek=()=>{printWeekA4Land(labelOwner||setup.teamName,ws,days,athletes);};
 
   return(<div>
     <div className="panel" style={{paddingBottom:14}}>
       <div className="wv-bar">
-        <div className="row"><button className="btn sec sm" onClick={()=>goWeek(-1)}>‹ Week</button>
-          <strong style={{fontSize:16,fontFamily:'Space Grotesk'}}>Week {wn} of {tw}</strong>
-          <button className="btn sec sm" onClick={()=>goWeek(1)}>Week ›</button></div>
+        <div className="row"><button className="btn sec sm" onClick={()=>goWeek(-1)}>‹ {L('Hafta','Week')}</button>
+          <strong style={{fontSize:16,fontFamily:'Space Grotesk'}}>{L(`${tw} haftanın ${wn}.`,`Week ${wn} of ${tw}`)}</strong>
+          <button className="btn sec sm" onClick={()=>goWeek(1)}>{L('Hafta','Week')} ›</button></div>
         <div className="row"><span style={{color:'var(--muted)',fontSize:13}}>{fd(weekDays[0])} — {fd(weekDays[6])}</span>
-          <button className="btn sm" onClick={printWeek}>📄 Print Week (A4 Landscape)</button></div>
+          <button className="btn sm" onClick={printWeek}>📄 {L('Haftayı Yazdır (A4 Yatay)','Print Week (A4 Landscape)')}</button></div>
       </div>
-      <div className="help" style={{marginBottom:6,fontSize:11}}>💡 Tip: <strong>Drag</strong> a session to another day to <strong>move</strong> it · hold <strong>Ctrl/⌥</strong> while dropping to <strong>copy</strong> · click <strong>⎘</strong> on a session to duplicate it on the same day.</div>
+      <div className="help" style={{marginBottom:6,fontSize:11}}>💡 {L(<>İpucu: bir seansı başka güne <strong>sürükleyerek</strong> <strong>taşı</strong> · bırakırken <strong>Ctrl/⌥</strong>'ye bas → <strong>kopyala</strong> · aynı günde çoğaltmak için <strong>⎘</strong>'e tıkla.</>,<>Tip: <strong>Drag</strong> a session to another day to <strong>move</strong> it · hold <strong>Ctrl/⌥</strong> while dropping to <strong>copy</strong> · click <strong>⎘</strong> on a session to duplicate it on the same day.</>)}</div>
       <div className="wv-grid">{weekDays.map((dk,i)=>{const d=days[dk];const ss=d?.sessions||[];const isSel=dk===selDay;
         const isDropTarget=dragInfo&&dragOverDate===dk&&dragInfo.fromDate!==dk;
         return<div key={dk} className={`wv-day${isSel?' sel':''}${isDropTarget?' drop-target':''}`}
@@ -9822,15 +9822,15 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
           {ss.length>0?ss.map((s,j)=>{const col=sessionColor(s);return<div key={s.id}
             className={`ws${dragInfo?.sessionId===s.id?' dragging':''}`}
             draggable
-            title={`${sessionType(s).toUpperCase()} · Drag to move · hold Ctrl/⌥ to copy`}
+            title={L(`${sessionType(s).toUpperCase()} · Taşımak için sürükle · kopyalamak için Ctrl/⌥'ye bas`,`${sessionType(s).toUpperCase()} · Drag to move · hold Ctrl/⌥ to copy`)}
             style={{border:`1px solid ${col.c}`,borderLeft:`4px solid ${col.c}`,background:'transparent',boxShadow:`0 0 6px ${col.g}, inset 0 0 4px ${col.g}`}}
             onDragStart={e=>{e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:dk,sessionId:s.id});}}
             onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}>
             <div className="ws-actions" onClick={e=>e.stopPropagation()}>
-              <button onClick={e=>{e.stopPropagation();dupSessionInDay(dk,s.id);}} title="Duplicate in same day">⎘</button>
+              <button onClick={e=>{e.stopPropagation();dupSessionInDay(dk,s.id);}} title={L('Aynı günde çoğalt','Duplicate in same day')}>⎘</button>
             </div>
             <div className="wst" style={{color:col.c,textShadow:`0 0 8px ${col.g}`}}>{s.name}</div>
-            <div style={{color:'#ffffff',fontSize:11,fontWeight:600,marginTop:2}}>{s.duration}min{s.au?` · ${Math.round(Number(s.au))} AU`:''}</div>
+            <div style={{color:'#ffffff',fontSize:11,fontWeight:600,marginTop:2}}>{L(`${s.duration}dk`,`${s.duration}min`)}{s.au?` · ${Math.round(Number(s.au))} AU`:''}</div>
           </div>;}):<div className="wa">—</div>}
           {dLoad(d)>0&&<div className="wl">{Math.round(dLoad(d))} AU</div>}
         </div>;})}</div>
@@ -9841,25 +9841,25 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
           <strong style={{fontSize:16,fontFamily:'Space Grotesk'}}>{dayLabel}</strong>
           <button className="btn sec sm" onClick={()=>{const n=fmt(addD(parseD(selDay),1));setSelDay(n);setDateKey(n);}}>›</button></div>
         <div className="row"><span className="tag">{Math.round(dLoad(day))} AU</span>
-          <button className="btn sm" onClick={printDay}>📄 Print Day (A4)</button>
+          <button className="btn sm" onClick={printDay}>📄 {L('Günü Yazdır (A4)','Print Day (A4)')}</button>
           <button className="btn sm" style={{background:'var(--purple)',color:'#fff'}}
-            onClick={()=>{if(!day.sessions.length){alert('No sessions to send');return;}
+            onClick={()=>{if(!day.sessions.length){alert(L('Gönderilecek seans yok','No sessions to send'));return;}
               shareTrainingPDF({title:labelOwner||setup.teamName,subtitle:dayLabel,sessions:day.sessions,athleteName:labelOwner});}}
-            title="Share PDF via any installed app (WhatsApp, Mail, Telegram, etc.)">
-            <ShareIcon/> Share</button>
+            title={L('Herhangi bir yüklü uygulama üzerinden PDF paylaş (WhatsApp, Mail, Telegram vb.)','Share PDF via any installed app (WhatsApp, Mail, Telegram, etc.)')}>
+            <ShareIcon/> {L('Paylaş','Share')}</button>
         </div>
       </div>
-      <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>Quick Add</strong>
+      <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{L('Hızlı Ekle','Quick Add')}</strong>
         {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(p.d)}>+ {p.name}</button>)}
-        <button className="btn xs sec" onClick={cpY}>Copy yesterday</button>
-        {getTemplateClipboard()&&<button className="btn xs sec" title="Panodaki şablonu bu güne yapıştır" onClick={()=>sv({sessions:[...day.sessions,sessionFromTemplate(getTemplateClipboard())]})}>📋 Yapıştır: {getTemplateClipboard().name}</button>}</div>
-      {day.sessions.length===0&&<div className="empty-st">No sessions planned — use Quick Add above</div>}
+        <button className="btn xs sec" onClick={cpY}>{L('Dünü kopyala','Copy yesterday')}</button>
+        {getTemplateClipboard()&&<button className="btn xs sec" title={L('Panodaki şablonu bu güne yapıştır','Paste the clipboard template onto this day')} onClick={()=>sv({sessions:[...day.sessions,sessionFromTemplate(getTemplateClipboard())]})}>📋 {L('Yapıştır:','Paste:')} {getTemplateClipboard().name}</button>}</div>
+      {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdaki Hızlı Ekle\'yi kullan','No sessions planned — use Quick Add above')}</div>}
       {day.sessions.map((s,i)=><SessEd key={s.id} session={s} index={i} total={day.sessions.length}
         onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onDuplicate={()=>dupS(s.id)} onMove={d=>mvS(s.id,d)}
         printContext={{title:labelOwner||setup.teamName,subtitle:dayLabel}}
         athletes={teamMode?athletes:undefined}/>)}
-      <div className="hr"/><label>Daily notes</label>
-      <textarea value={day.dailyNotes||''} onChange={e=>sv({dailyNotes:e.target.value})} placeholder="Wellness, sleep, soreness…"/>
+      <div className="hr"/><label>{L('Günlük notlar','Daily notes')}</label>
+      <textarea value={day.dailyNotes||''} onChange={e=>sv({dailyNotes:e.target.value})} placeholder={L('Wellness, uyku, kas ağrısı…','Wellness, sleep, soreness…')}/>
     </div>
   </div>);
 }
