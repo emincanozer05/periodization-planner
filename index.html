@@ -2787,6 +2787,14 @@ header{background:var(--bg2)!important}
    it opens is the longest of the three, and its selection is the one most likely to run
    to several names. */
 .iv-meta-f.wide{flex:1 1 100%}
+/* Focus, region and the intensity target answer one question — what this session IS — so
+   they travel as one group: the two pickers side by side, the gauge directly beneath them
+   in exactly the width they occupy. It used to run the full width of the strip, starting
+   under the session's title, which read as a bar belonging to the whole row rather than to
+   the two fields it actually qualifies. Training method keeps its own row below the group. */
+.iv-meta-grp{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-start;flex:3 1 400px;min-width:0}
+.iv-meta-grp .iv-meta-f.pp{flex:1 1 160px}
+.iv-meta-f.rpe{flex:1 1 100%}
 .iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{width:100%;min-width:0;height:34px;
   font-size:12.5px;padding:5px 9px;border-radius:9px;color:var(--text)}
 .iv-meta-f select,.iv-meta-f .focus-trig{text-transform:none;letter-spacing:0;font-weight:500}
@@ -2907,23 +2915,43 @@ header{background:var(--bg2)!important}
 .iv-mrow .focus-sel{flex:1 1 auto;min-width:0}
 @media(max-width:640px){.ca-wrap{flex:1 1 100%}.ca-btn{width:100%}.ca-pop{right:auto;left:0}}
 
-/* ---- Target RPE gauge — draggable gradient bar, session editor ---------- */
-.rpe-gauge{display:flex;flex-direction:column;gap:6px;width:100%;text-transform:none;letter-spacing:0;white-space:normal}
-.rpe-gauge-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+/* ---- Target RPE gauge — one rail, one marker, session editor -------------
+   The bar used to paint the whole 1-10 scale as a rainbow and hang a bowtie somewhere
+   on it: six colours competing while only one of them was the answer, and a static row
+   of EASY/MODERATE/HARD/MAX underneath repeating what the colours already said. Now the
+   rail is neutral and only the stretch up to the target is inked, in the colour of the
+   zone that target falls in — the control shows one thing, and it says it by CHANGING as
+   the marker is dragged (fill, thumb, number and zone word all take the same colour)
+   rather than by being busy while it sits still. The zone colours arrive from JS as
+   --rpe-c / --rpe-soft / --rpe-ring so one table drives the screen and the print sheet. */
+.rpe-gauge{display:flex;flex-direction:column;gap:7px;width:100%;text-transform:none;letter-spacing:0;white-space:normal}
+.rpe-gauge-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .rpe-gauge-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);
   text-transform:uppercase;letter-spacing:.06em}
-.rpe-gauge-val{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text)}
-.rpe-gauge-val-max{color:var(--dim);font-weight:600;font-size:11px}
-.rpe-gauge-track{position:relative;height:16px;border-radius:8px;
-  background:linear-gradient(to right,#6fbf3f 0%,#a9d43f 25%,#f4d548 45%,#f0a23c 65%,#ea6a3a 82%,#e0392f 100%);
-  cursor:pointer;touch-action:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
-.rpe-gauge-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;
-  height:26px;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
-.rpe-gauge-tri{width:0;height:0;border-top:9px solid transparent;border-bottom:9px solid transparent}
-.rpe-gauge-tri.l{border-left:8px solid #111318}
-.rpe-gauge-tri.r{border-right:8px solid #111318}
-.rpe-gauge-ticks{display:flex;justify-content:space-between;font-size:9.5px;color:var(--dim);
-  font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.04em}
+/* Number and zone word share one chip in the zone's colour, so the reading is a single
+   object that recolours — not two labels that happen to update together. */
+.rpe-gauge-read{display:inline-flex;align-items:baseline;gap:7px;padding:2px 9px;border-radius:999px;
+  background:var(--rpe-soft);border:1px solid var(--rpe-ring);transition:background .18s,border-color .18s}
+.rpe-gauge-val{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;
+  color:var(--rpe-c);transition:color .18s}
+.rpe-gauge-val-max{color:var(--dim);font-weight:600;font-size:10.5px}
+.rpe-gauge-zone{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--rpe-c);opacity:.85;transition:color .18s}
+.rpe-gauge-track{position:relative;height:8px;border-radius:999px;background:var(--bg2);
+  border:1px solid var(--border2);cursor:pointer;touch-action:none}
+.rpe-gauge-track:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.rpe-gauge-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--rpe-c);
+  transition:width .13s ease-out,background .18s}
+.rpe-gauge-thumb{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;
+  transform:translate(-50%,-50%);background:var(--rpe-c);border:2px solid var(--panel);
+  box-shadow:0 1px 4px rgba(0,0,0,.5);pointer-events:none;
+  transition:width .14s,height .14s,left .13s ease-out,background .18s,box-shadow .18s}
+.rpe-gauge-track:hover .rpe-gauge-thumb{width:18px;height:18px}
+/* While the coach is actually dragging, the marker grows a halo in its own colour — the
+   only moment the control draws attention to itself. */
+.rpe-gauge-track.drag .rpe-gauge-thumb{width:20px;height:20px;transition:width .14s,height .14s,background .18s,box-shadow .18s;
+  box-shadow:0 0 0 5px var(--rpe-ring),0 1px 4px rgba(0,0,0,.5)}
+.rpe-gauge-track.drag .rpe-gauge-fill{transition:background .18s}
 /* The session's own line sits above the blocks, like the individualization card's. */
 .sess-tools{margin-bottom:12px}
 /* The bar's title is click-to-edit: it reads as text until it is clicked, then wears the
@@ -3316,6 +3344,19 @@ const sesRpeRange=s=>{const v=sesRpeTarget(s);return[Math.max(1,v-1),Math.min(10
    and the static one drawn onto the printed program, so a coach never sees two different
    scales for the same number. */
 const rpePct=v=>((Math.max(1,Math.min(10,Number(v)||1))-1)/9)*100;
+/* What a target FEELS like, in four bands, with the colour that stands for each. One
+   table drives the editor's gauge and the printed program, so a session that reads
+   "hard, orange" on screen reads hard and orange on the page. `soft`/`ring` are the same
+   hue at chip and halo strength, written out rather than mixed at runtime so the print
+   sheet — which gets plain inline styles — can use them too; `pc` is the print twin of
+   `c`, darkened because a colour picked to carry on a near-black panel goes weak on
+   white paper. */
+const RPE_ZONES=[
+  {max:3.5,c:'#4ade80',pc:'#16a34a',soft:'rgba(74,222,128,.13)',ring:'rgba(74,222,128,.30)',tr:'Kolay',en:'Easy'},
+  {max:5.5,c:'#eab308',pc:'#ca8a04',soft:'rgba(234,179,8,.13)', ring:'rgba(234,179,8,.30)', tr:'Orta', en:'Moderate'},
+  {max:8,  c:'#fb923c',pc:'#ea580c',soft:'rgba(251,146,60,.13)',ring:'rgba(251,146,60,.30)',tr:'Zor',  en:'Hard'},
+  {max:10, c:'#f05252',pc:'#dc2626',soft:'rgba(240,82,82,.13)', ring:'rgba(240,82,82,.30)', tr:'Maks', en:'Max'}];
+const rpeZone=v=>RPE_ZONES.find(z=>(Number(v)||0)<=z.max)||RPE_ZONES[RPE_ZONES.length-1];
 const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
 /* Every week focus carries its own load profile. Weekly Load Targets sets volume and
    intensity from this table when the focus changes, so the focus dropdown is the only
@@ -6541,6 +6582,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const statsRowHTML=s=>{
     const vol=sessionVolumeStats(s);
     const[rlo,rhi]=sesRpeRange(s);
+    const rz=rpeZone(sesRpeTarget(s));const rp=rpePct(sesRpeTarget(s));
     return`<div class="stat-row">
       <div class="stat-box">
         <div class="stat-box-lbl">${L('Antrenman Hacmi','Training Volume')}</div>
@@ -6553,8 +6595,11 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       <div class="stat-box">
         <div class="stat-box-lbl">${L('Yoğunluk Hedefi','Intensity Target')}</div>
         <div class="stat-int-row">
-          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span></span>
-          <div class="rpe-gauge-print"><div class="rpe-gauge-print-thumb" style="left:${rpePct(sesRpeTarget(s))}%"></div></div>
+          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span><span class="stat-int-zone" style="color:${rz.pc}">${L(rz.tr,rz.en)}</span></span>
+          <div class="rpe-gauge-print">
+            <div class="rpe-gauge-print-fill" style="width:${rp}%;background:${rz.pc}"></div>
+            <div class="rpe-gauge-print-thumb" style="left:${rp}%;background:${rz.pc}"></div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -6687,14 +6732,15 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .stat-int-row{display:flex;flex-direction:column;gap:7px}
 .stat-int-val{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
 .stat-int-max{font-size:11px;color:#94a3b8;font-weight:600}
-/* Static twin of the editor's draggable gauge — same gradient, same bowtie marker, just
-   fixed at the session's own target so the printed page shows exactly what was set. */
-.rpe-gauge-print{position:relative;height:10px;border-radius:5px;
-  background:linear-gradient(to right,#6fbf3f 0%,#a9d43f 25%,#f4d548 45%,#f0a23c 65%,#ea6a3a 82%,#e0392f 100%);
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
-.rpe-gauge-print-thumb{position:absolute;top:50%;width:0;height:0;transform:translate(-50%,-50%);
-  border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:6px solid #111318;
-  border-right:6px solid #111318;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.stat-int-zone{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;margin-left:7px}
+/* Static twin of the editor's gauge — a neutral rail inked only as far as the session's
+   own target, in that target's zone colour, so the page shows what the editor showed. */
+.rpe-gauge-print{position:relative;height:8px;border-radius:999px;background:#e2e8f0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.rpe-gauge-print-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#ea580c}
+.rpe-gauge-print-thumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
+  transform:translate(-50%,-50%);background:#ea580c;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
 
 .bs{padding:10px 16px}
 /* Blocks stack one under the other, in the order the coach arranged them, so the sheet
@@ -9615,15 +9661,21 @@ function MethodSelect({value,onChange,placeholder,counts}){
   </div>);
 }
 
-/* Draggable RPE target gauge — a green→red gradient bar the coach drags a marker along to
-   set the session's planned intensity. One number in, one number out (the center), but the
-   scale is read (and printed) as the two-point band around it — RPE 6-8, not "RPE 7" — which
-   is how coaches actually talk about session intensity. Pointer events cover mouse, pen and
-   touch in one listener, so there's no separate touch path to keep in sync. */
+/* Draggable RPE target gauge — a rail the coach drags a marker along to set the session's
+   planned intensity. One number in, one number out (the center), but the scale is read (and
+   printed) as the two-point band around it — RPE 6-8, not "RPE 7" — which is how coaches
+   actually talk about session intensity. Everything that carries colour here — fill, thumb,
+   the reading chip — takes it from the band the target lands in (rpeZone), so the gauge
+   answers by changing rather than by standing there fully painted; the zone's own word
+   ("HARD") does the work the old fixed EASY/MODERATE/HARD/MAX row under the bar did.
+   Pointer events cover mouse, pen and touch in one listener, so there's no separate touch
+   path to keep in sync; arrow keys step the same half-points for anyone not using one. */
 function RpeGauge({value,onChange}){
   const trackRef=useRef(null);
+  const[drag,setDrag]=useState(false);
   const v=sesRpeTarget({rpeTarget:value});
   const[lo,hi]=sesRpeRange({rpeTarget:value});
+  const z=rpeZone(v);
   const setFromClientX=cx=>{
     const el=trackRef.current;if(!el)return;
     const r=el.getBoundingClientRect();
@@ -9633,25 +9685,33 @@ function RpeGauge({value,onChange}){
   };
   const dragging=useRef(false);
   const move=e=>{if(!dragging.current)return;setFromClientX(e.clientX);};
-  const stop=()=>{dragging.current=false;};
+  const stop=()=>{if(dragging.current){dragging.current=false;setDrag(false);}};
   useEffect(()=>{
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',stop);
     return()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',stop);};
   });
-  const down=e=>{dragging.current=true;e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);setFromClientX(e.clientX);};
-  return(<div className="rpe-gauge">
+  const down=e=>{dragging.current=true;setDrag(true);e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);setFromClientX(e.clientX);};
+  const key=e=>{
+    const d=(e.key==='ArrowLeft'||e.key==='ArrowDown')?-.5:(e.key==='ArrowRight'||e.key==='ArrowUp')?.5:0;
+    if(!d)return;
+    e.preventDefault();
+    const nv=Math.max(1,Math.min(10,v+d));
+    if(nv!==v)onChange(nv);
+  };
+  return(<div className="rpe-gauge" style={{'--rpe-c':z.c,'--rpe-soft':z.soft,'--rpe-ring':z.ring}}>
     <div className="rpe-gauge-head">
       <span className="rpe-gauge-lbl">{L('Hedeflenen RPE','Target RPE')}</span>
-      <span className="rpe-gauge-val">{`RPE ${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
+      <span className="rpe-gauge-read">
+        <span className="rpe-gauge-val">{`${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
+        <span className="rpe-gauge-zone">{L(z.tr,z.en)}</span>
+      </span>
     </div>
-    <div className="rpe-gauge-track" ref={trackRef} onPointerDown={down}>
-      <div className="rpe-gauge-thumb" style={{left:rpePct(v)+'%'}}>
-        <span className="rpe-gauge-tri l"/><span className="rpe-gauge-tri r"/>
-      </div>
-    </div>
-    <div className="rpe-gauge-ticks">
-      <span>{L('Kolay','Easy')}</span><span>{L('Orta','Moderate')}</span><span>{L('Zor','Hard')}</span><span>{L('Maks','Max')}</span>
+    <div className={`rpe-gauge-track${drag?' drag':''}`} ref={trackRef} onPointerDown={down} onKeyDown={key}
+      tabIndex={0} role="slider" aria-label={L('Hedeflenen RPE','Target RPE')}
+      aria-valuemin={1} aria-valuemax={10} aria-valuenow={v} aria-valuetext={`RPE ${lo}-${hi}`}>
+      <div className="rpe-gauge-fill" style={{width:rpePct(v)+'%'}}/>
+      <div className="rpe-gauge-thumb" style={{left:rpePct(v)+'%'}}/>
     </div>
   </div>);
 }
@@ -9728,22 +9788,25 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           <input type="number" value={session.duration} title={L('Süre (dk)','Duration (min)')}
             onChange={e=>{const d=+e.target.value||0;const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*d);u(upd);}}/>
         </label>
-        {/* The three pickers keep their own dropdowns and wear the meta box's border, so
-            the row reads as one strip of fields rather than three different controls. */}
-        <div className="iv-meta-f pp">{L('seans odağı','session focus')}
-          <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
-        </div>
-        <div className="iv-meta-f pp">{L('bölge','region')}
-          <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-            <option value="">{L('Bölge seç…','Select region…')}</option>
-            {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
-          </select>
-        </div>
-        {/* Target intensity for the session — sits with focus & region because it is the
-            same kind of decision (what this session IS), not the actual/logged sRPE further
-            down, which only exists once the session has happened. */}
-        <div className="iv-meta-f wide">
-          <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
+        {/* Focus, region and the intensity target sit together as one group: all three say
+            what this session IS, so the gauge is drawn directly under the two pickers it
+            qualifies rather than across the whole strip. (The target is not the actual /
+            logged sRPE further down, which only exists once the session has happened.) The
+            pickers keep their own dropdowns and wear the meta box's border, so the row still
+            reads as one strip of fields rather than several different controls. */}
+        <div className="iv-meta-grp">
+          <div className="iv-meta-f pp">{L('seans odağı','session focus')}
+            <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
+          </div>
+          <div className="iv-meta-f pp">{L('bölge','region')}
+            <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+              <option value="">{L('Bölge seç…','Select region…')}</option>
+              {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
+            </select>
+          </div>
+          <div className="iv-meta-f rpe">
+            <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
+          </div>
         </div>
         {/* Training method keeps the row; the assistant sits at the end of it, where the
             coach is already looking when deciding what this session is made of. It only
