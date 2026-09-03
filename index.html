@@ -6619,7 +6619,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
   // What this document is FOR, next to the title — every focus tag across its own sessions.
   const focusFor=list=>{const set=new Set();(list||[]).forEach(s=>sesFocus(s).forEach(f=>f&&set.add(f)));return[...set].join(', ');};
-  const docHead=(t,sub,focusTxt)=>`<div class="doc-top"><span class="wm">COACH<b>OS</b></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
+  const docHead=(t,sub,focusTxt)=>`<div class="doc-top"><span class="doc-top-l"><span class="wm">COACH<b>OS</b></span><span class="wm-sub">Coaching Operating System</span></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
 <div class="doc-head">
   <div class="doc-l">
     ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`:''}
@@ -6726,10 +6726,15 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    only crowd a header that has to earn its height back in exercises. Set as plain text
    (not the app's own dark-background logo image) so it reads straight on white paper
    with no box behind it. */
-.doc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.doc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+/* The mark and what it stands for, read as one lockup on the left of the strip. */
+.doc-top-l{display:inline-flex;align-items:center;gap:9px;min-width:0}
 .doc-top .wm{display:inline-flex;align-items:center;background:#111318;border-radius:8px;padding:5px 12px;
-  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#fff}
+  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#fff;flex:none}
 .doc-top .wm b{color:#0094ff;font-weight:800}
+/* Deliberately quiet: it explains the mark for a parent or an athlete reading the sheet
+   for the first time, and should not compete with the team name below it. */
+.doc-top .wm-sub{font-size:10px;font-weight:600;color:#94a3b8;letter-spacing:.4px;white-space:nowrap}
 .doc-top-date{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;letter-spacing:.3px}
 
 /* Document header — clean editorial style, with the team's logo when one is uploaded */
@@ -6755,13 +6760,19 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    metadata / block headings glue themselves to the next content using
    break-after:avoid, so we never get orphaned section headers. */
 .sess{margin-bottom:10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04)}
-.sh{padding:11px 16px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
+/* A hairline of the product's blue around the black banner: on white paper the banner
+   otherwise reads as a solid slab dropped on the page, and the keyline gives it an edge
+   without spending any of the sheet's colour budget on a fill. */
+.sh{padding:11px 16px;background:#0a0b0d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #0094ff;border-radius:7px 7px 0 0;break-after:avoid;page-break-after:avoid}
 .sh-l{font-size:18px;font-weight:800;letter-spacing:.2px;flex:1}
 .sh-own{display:block;font-size:12px;font-weight:600;color:#e6ff55;letter-spacing:.6px;text-transform:uppercase;margin-left:39px}
 .sess.brk{break-before:page;page-break-before:always}
 /* Each athlete on a document of several starts a fresh page, under their own header. */
 .ath-doc.brk{break-before:page;page-break-before:always}
-.sh-l .sn{display:inline-block;background:#e6ff55;color:#0a0b0d;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:800;margin-right:11px}
+/* White, not the app's yellow: on the printed sheet the disc is the session's number and
+   nothing more, and white is the one fill that stays legible on the black banner through
+   a photocopier as well as a colour printer. */
+.sh-l .sn{display:inline-block;background:#fff;color:#0a0b0d;width:28px;height:28px;border-radius:50%;text-align:center;line-height:28px;font-size:13px;font-weight:800;margin-right:11px}
 /* Two small stat blocks (start time · total duration) in the dark banner, each a value
    over an uppercase caption — replaces the plain pills so the numbers read as what they
    are rather than as generic tags. */
@@ -6783,8 +6794,10 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .stat-row{display:flex;gap:10px;padding:10px 16px 0;break-inside:avoid;page-break-inside:avoid}
 .stat-box{flex:1 1 0;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;background:#fbfcfd}
 .stat-box-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#6f7d29;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+/* Three equal thirds, each figure centred in its own — the box reads as one balanced
+   row of numbers rather than three left-packed ones with dead space after the last. */
 .stat-box-cols{display:flex;gap:14px}
-.stat-col{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat-col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;min-width:0}
 .stat-col-lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
 .stat-col-val{font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
 .stat-int-row{display:flex;flex-direction:column;gap:7px}
