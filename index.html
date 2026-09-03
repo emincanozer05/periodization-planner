@@ -16670,7 +16670,7 @@ function Backup({data,setData,sync}){
     const clone=JSON.parse(JSON.stringify(data));
     const{restored,missing}=restoreLocalMedia(clone);
     if(restored)setData(clone);
-    setMsg(restored?`${restored} görsel bu cihazdan geri alındı.`:`Bu cihazda geri alınacak görsel yok${missing?` (${missing} görsel başka bir cihazda kalmış)`:''}.`);
+    setMsg(restored?L(`${restored} görsel bu cihazdan geri alındı.`,`${restored} image(s) restored from this device.`):L(`Bu cihazda geri alınacak görsel yok${missing?` (${missing} görsel başka bir cihazda kalmış)`:''}.`,`No images to restore on this device${missing?` (${missing} image(s) are on another device)`:''}.`));
   };
   // Yedek dosyasından SADECE görselleri al — plan, program, testler olduğu gibi kalır.
   const impMedia=e=>{
@@ -16682,54 +16682,51 @@ function Backup({data,setData,sync}){
         const clone=JSON.parse(JSON.stringify(data));
         const n=mergeMediaFrom(clone,bak);
         if(n)setData(clone);
-        setMsg(n?`${n} görsel yedekten geri alındı.`:'Bu yedekte, şu an eksik olan görsellerden hiçbiri yok.');
-      }catch(err){setMsg('Yedek okunamadı: '+(err.message||err));}
+        setMsg(n?L(`${n} görsel yedekten geri alındı.`,`${n} image(s) restored from the backup.`):L('Bu yedekte, şu an eksik olan görsellerden hiçbiri yok.','This backup contains none of the currently missing images.'));
+      }catch(err){setMsg(L('Yedek okunamadı: ','Could not read backup: ')+(err.message||err));}
     };
     r.readAsText(f);e.target.value='';
   };
   const exp=()=>{const b=new Blob([JSON.stringify(inlineLocalMedia(data),null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
-    r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert('Invalid file');return;}if(confirm('Replace all data?'))setData(migrate(p));}catch{alert('Read error');}};
+    r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert(L('Geçersiz dosya','Invalid file'));return;}if(confirm(L('Tüm veriler değiştirilsin mi?','Replace all data?')))setData(migrate(p));}catch{alert(L('Okuma hatası','Read error'));}};
     r.readAsText(f);e.target.value='';};
   return(<div>
-    <div className="panel"><h2>All Teams Summary</h2>
-      <table><thead><tr><th>Team</th><th>Sport</th><th>Season</th><th>Days planned</th><th>Athletes</th></tr></thead><tbody>
-        {data.teams.map(t=><tr key={t.id}><td><strong>{t.setup.teamName}</strong>{t.id===data.activeTeamId&&<span className="tag" style={{marginLeft:8}}>ACTIVE</span>}</td>
+    <div className="panel"><h2>{L('Tüm Takımlar Özeti','All Teams Summary')}</h2>
+      <table><thead><tr><th>{L('Takım','Team')}</th><th>{L('Spor','Sport')}</th><th>{L('Sezon','Season')}</th><th>{L('Planlanan gün','Days planned')}</th><th>{L('Sporcular','Athletes')}</th></tr></thead><tbody>
+        {data.teams.map(t=><tr key={t.id}><td><strong>{t.setup.teamName}</strong>{t.id===data.activeTeamId&&<span className="tag" style={{marginLeft:8}}>{L('AKTİF','ACTIVE')}</span>}</td>
           <td>{t.setup.sport}</td><td style={{fontSize:12}}>{fd(t.setup.seasonStart)} → {fd(t.setup.seasonEnd)}</td>
           <td>{Object.values(t.days||{}).filter(d=>d.sessions?.length).length}</td>
           <td>{(t.athletes||[]).length}</td></tr>)}
       </tbody></table>
     </div>
-    <div className="panel"><h2>Backup & Restore</h2>
-      <div className="help" style={{marginBottom:12}}>Export saves ALL teams (one .json file). Import replaces everything currently stored — back up first!</div>
+    <div className="panel"><h2>{L('Yedekleme ve Geri Yükleme','Backup & Restore')}</h2>
+      <div className="help" style={{marginBottom:12}}>{L('Dışa aktarma TÜM takımları kaydeder (tek .json dosyası). İçe aktarma şu an kayıtlı olan her şeyin yerine geçer — önce yedekle!','Export saves ALL teams (one .json file). Import replaces everything currently stored — back up first!')}</div>
       <div className="row">
-        <button className="btn" onClick={exp}>📦 Download Full Backup</button>
-        <button className="btn sec" onClick={()=>fRef.current.click()}>📂 Load Backup</button>
+        <button className="btn" onClick={exp}>📦 {L('Tam Yedeği İndir','Download Full Backup')}</button>
+        <button className="btn sec" onClick={()=>fRef.current.click()}>📂 {L('Yedek Yükle','Load Backup')}</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
       </div>
     </div>
-    <div className="panel"><h2>Görseller</h2>
+    <div className="panel"><h2>{L('Görseller','Images')}</h2>
       <div className="help" style={{marginBottom:10}}>
-        Durumdaki görseller: <b>{rep.inline}</b> verinin içinde · <b>{rep.cloud}</b> bulutta ·
-        <b> {rep.device}</b> bu cihazda · <b>{rep.drive}</b> Drive ·
-        <b style={{color:rep.lost?'var(--yellow)':'inherit'}}> {rep.lost}</b> bulunamıyor
+        {L('Durumdaki görseller:','Images in the data:')} <b>{rep.inline}</b> {L('verinin içinde','inline')} · <b>{rep.cloud}</b> {L('bulutta','in the cloud')} ·
+        <b> {rep.device}</b> {L('bu cihazda','on this device')} · <b>{rep.drive}</b> Drive ·
+        <b style={{color:rep.lost?'var(--yellow)':'inherit'}}> {rep.lost}</b> {L('bulunamıyor','not found')}
       </div>
       {rep.lost>0&&<div className="help" style={{marginBottom:10,color:'var(--yellow)'}}>
-        {rep.lost} görselin dosyası bu tarayıcıda yok. Bir önceki sürüm onları cihaz deposuna taşımıştı:
-        o görselleri yükleyen tarayıcıda uygulamayı bir kez açmak yeterli — açılışta kendiliğinden veriye
-        geri yazılır ve tüm cihazlara gider. O tarayıcıya erişemiyorsan, görselleri içeren bir yedek
-        dosyasından aşağıdaki düğmeyle sadece görselleri geri alabilirsin.
+        {L(`${rep.lost} görselin dosyası bu tarayıcıda yok. Bir önceki sürüm onları cihaz deposuna taşımıştı: o görselleri yükleyen tarayıcıda uygulamayı bir kez açmak yeterli — açılışta kendiliğinden veriye geri yazılır ve tüm cihazlara gider. O tarayıcıya erişemiyorsan, görselleri içeren bir yedek dosyasından aşağıdaki düğmeyle sadece görselleri geri alabilirsin.`,
+        `${rep.lost} image(s) have no file in this browser. An earlier version moved them into device storage: opening the app once in the browser that uploaded them is enough — they write themselves back into the data on load and reach every device. If you can't access that browser, you can restore just the images from a backup file that contains them using the button below.`)}
       </div>}
       <div className="row" style={{gap:8}}>
-        <button className="btn sec" onClick={restoreNow}>🖼 Bu cihazdaki görselleri geri yükle</button>
-        <button className="btn sec" onClick={()=>mRef.current.click()}>📂 Yedekten sadece görselleri al</button>
+        <button className="btn sec" onClick={restoreNow}>🖼 {L('Bu cihazdaki görselleri geri yükle','Restore images on this device')}</button>
+        <button className="btn sec" onClick={()=>mRef.current.click()}>📂 {L('Yedekten sadece görselleri al','Load images only from backup')}</button>
         <input type="file" accept=".json" ref={mRef} onChange={impMedia} className="hidden"/>
       </div>
       {msg&&<div className="help" style={{marginTop:10}}>{msg}</div>}
       <div className="help" style={{marginTop:10}}>
-        "Yedekten sadece görselleri al" planı, programı ve test verilerini değiştirmez; yalnızca şu an
-        eksik olan görselleri yedekteki karşılıklarıyla doldurur.
+        {L('"Yedekten sadece görselleri al" planı, programı ve test verilerini değiştirmez; yalnızca şu an eksik olan görselleri yedekteki karşılıklarıyla doldurur.','"Load images only from backup" does not change the plan, program, or test data; it only fills in currently missing images with their counterparts from the backup.')}
       </div>
     </div>
   </div>);
