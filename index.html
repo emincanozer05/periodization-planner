@@ -2949,6 +2949,9 @@ header{background:var(--bg2)!important}
    and the print sheet. */
 .rpe-gauge{display:flex;flex-direction:column;justify-content:center;gap:7px;width:100%;
   min-height:34px;flex:1 1 auto;padding:8px 13px 7px;
+  /* Nothing in here is text to be selected, and a selection sitting on the gauge is what
+     Chrome later tries to drag instead of the marker (see `down` in RpeGauge). */
+  user-select:none;-webkit-user-select:none;
   border-radius:11px;background:var(--rpe-soft);border:1px solid var(--rpe-ring);
   text-transform:none;letter-spacing:0;white-space:nowrap;
   transition:background .18s,border-color .18s}
@@ -2963,9 +2966,13 @@ header{background:var(--bg2)!important}
 .rpe-gauge-zone{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;
   text-transform:uppercase;letter-spacing:.09em;color:var(--rpe-c);opacity:.92;transition:color .18s}
 /* The drag surface is a band of the box, not the 8px rail inside it: a marker this size is
-   easy to miss by a few pixels vertically, and missing it should not mean nothing happens. */
+   easy to miss by a few pixels vertically, and missing it should not mean nothing happens.
+   The same goes for the ends — the marker at 1 and at 10 hangs half outside the rail, and a
+   press on that outer half used to land beside the control and do nothing. The padding and
+   the negative margin that cancels it widen the hit area past both ends without moving or
+   resizing the rail the position is measured off. */
 .rpe-gauge-track{display:flex;align-items:center;min-height:20px;flex:0 0 auto;
-  cursor:pointer;touch-action:none;border-radius:6px}
+  cursor:pointer;touch-action:none;border-radius:6px;padding:0 10px;margin:0 -10px}
 .rpe-gauge-track:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .rpe-gauge-rail{position:relative;width:100%;height:8px;border-radius:999px;overflow:visible;
   background:rgba(0,0,0,.42);box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
@@ -3407,7 +3414,7 @@ const rpePct=v=>((Math.max(1,Math.min(10,Number(v)||1))-1)/9)*100;
    white paper. */
 const RPE_ZONES=[
   {max:3, c:'#4ade80',pc:'#16a34a',soft:'rgba(74,222,128,.13)',ring:'rgba(74,222,128,.30)',tr:'Kolay',en:'Easy'},
-  {max:6, c:'#eab308',pc:'#ca8a04',soft:'rgba(234,179,8,.13)', ring:'rgba(234,179,8,.30)', tr:'Orta', en:'Moderate'},
+  {max:6, c:'#eab308',pc:'#e0a106',soft:'rgba(234,179,8,.13)', ring:'rgba(234,179,8,.30)', tr:'Orta', en:'Moderate'},
   {max:9, c:'#fb923c',pc:'#ea580c',soft:'rgba(251,146,60,.13)',ring:'rgba(251,146,60,.30)',tr:'Zor',  en:'Hard'},
   {max:10, c:'#f05252',pc:'#dc2626',soft:'rgba(240,82,82,.13)', ring:'rgba(240,82,82,.30)', tr:'Maks', en:'Max'}];
 const rpeZone=v=>RPE_ZONES.find(z=>(Number(v)||0)<=z.max)||RPE_ZONES[RPE_ZONES.length-1];
@@ -6735,8 +6742,8 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .doc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 /* The mark and what it stands for, read as one lockup on the left of the strip. */
 .doc-top-l{display:inline-flex;align-items:center;gap:9px;min-width:0}
-.doc-top .wm{display:inline-flex;align-items:center;background:#111318;border-radius:8px;padding:5px 12px;
-  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#fff;flex:none}
+.doc-top .wm{display:inline-flex;align-items:center;
+  font-weight:800;font-size:13px;letter-spacing:-.01em;color:#0f172a;flex:none}
 .doc-top .wm b{color:#0094ff;font-weight:800}
 /* Deliberately quiet: it explains the mark for a parent or an athlete reading the sheet
    for the first time, and should not compete with the team name below it. */
@@ -9800,13 +9807,25 @@ function RpeGauge({value,onChange}){
     const nv=Math.round(p);
     if(nv!==v)onChange(nv);
   };
+  /* The press must not also start a text selection or pick up the one already on the page.
+     Chrome answers a press on selected content with a native drag-and-drop, and the
+     dragstart CANCELS the pointer — capture is dropped mid-gesture and the marker stops
+     following the pointer until the coach lets go and starts the drag over. That is the
+     scale "sometimes not letting you slide". preventDefault on the press kills the
+     selection and the drag at their source, so the focus the browser would have given the
+     track is taken explicitly instead. */
   const down=e=>{
     if(e.button!=null&&e.button!==0)return;
+    e.preventDefault();
+    const el=e.currentTarget;
     dragging.current=true;
-    e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);
+    el.setPointerCapture&&el.setPointerCapture(e.pointerId);
+    el.focus&&el.focus({preventScroll:true});
     apply(e.clientX);
   };
   const move=e=>{if(dragging.current)apply(e.clientX);};
+  /* Ends the drag on release, on a cancelled pointer and on any other way the capture can
+     be lost — whatever happens, the gauge is never left believing a finger is still down. */
   const up=()=>{if(dragging.current){dragging.current=false;setRaw(null);}};
   const key=e=>{
     const d=(e.key==='ArrowLeft'||e.key==='ArrowDown')?-1:(e.key==='ArrowRight'||e.key==='ArrowUp')?1:0;
@@ -9828,6 +9847,7 @@ function RpeGauge({value,onChange}){
         marker this size is easy to miss by a few pixels vertically, and missing it should
         not mean nothing happens. */}
     <div className="rpe-gauge-track" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+      onLostPointerCapture={up} onDragStart={e=>e.preventDefault()} draggable={false}
       onKeyDown={key} tabIndex={0} role="slider" aria-label={L('Hedeflenen RPE','Target RPE')}
       aria-valuemin={1} aria-valuemax={10} aria-valuenow={v} aria-valuetext={`RPE ${lo}-${hi} — ${L(z.tr,z.en)}`}>
       <div className="rpe-gauge-rail" ref={railRef}>
