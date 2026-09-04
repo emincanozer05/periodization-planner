@@ -2585,7 +2585,10 @@ main .panel:nth-child(n+6){animation-delay:.33s}
   .app::before,.app::after,.brand-logo,.aic-fab,.rsf-card::before,.rec-card::before,
   .rost-grid>.rc,.ex-grid>.ex-card,.ath-stat-row>.ath-stat,.metric-grid>.metric-card,
   .ath-mmap-fill,.ml-fig-wrap .mm-fig,.rsf-save.on .rsf-heart,.rsf-card,.mc-bar,
+  .tib-card,.tib-al,.tib-al.high .dot,
   main .panel,main .ap-head,.stat .v{animation:none!important}
+  .tib-bar>i,.tib-mini i,.tib-tr .c .bar i{transition:none!important}
+  .tib-card:hover,.tib-al:hover{transform:none}
   .wlt-card:hover{transform:none}
   .stat .v{-webkit-text-fill-color:var(--text);color:var(--text);background:none}
   .rsf-card:hover{transform:none}
@@ -3328,6 +3331,158 @@ header{background:var(--bg2)!important}
   border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;
   font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
 .it-fsx:hover{border-color:var(--accent);color:var(--accent2)}
+/* ===== Team Insights board (Calendar tab) =====
+   A board of small, self-contained widgets under the week calendar. Every card is
+   built the same way — label, one figure, one hint — so seven of them read as one
+   surface. Motion is deliberately small: cards rise in once on a stagger, bars grow
+   from zero to their value, and the only thing that keeps moving afterwards is the
+   halo on a high-severity alert dot. */
+.tib{margin-bottom:2px}
+.tib-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.tib-h1{margin:0;font-size:18px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+.tib-h1 i{display:block;width:3px;height:16px;border-radius:2px;background:var(--grad);flex:none}
+.tib-period{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+/* Multi-column rather than a grid: the widgets are honestly different heights, and
+   a grid row is as tall as the tallest card in it — which left a short widget sitting
+   over a block of dead space the width of a whole column. Columns let each card take
+   the height it needs and pack the next one straight underneath, so the board has no
+   holes in it at any width, and the browser balances the columns itself. Cards are
+   kept whole with break-inside. */
+.tib-grid{columns:330px;column-gap:14px}
+.tib-card{position:relative;width:100%;min-width:0;overflow:hidden;margin-bottom:14px;
+  break-inside:avoid;-webkit-column-break-inside:avoid;
+  background:var(--panel);background-image:var(--panel-glass);
+  border:1px solid var(--border);border-radius:14px;padding:15px 16px 16px;box-shadow:var(--shadow);
+  animation:tibIn .52s cubic-bezier(.22,.61,.36,1) both;animation-delay:calc(var(--i,0)*60ms);
+  transition:border-color .22s ease,transform .22s cubic-bezier(.2,.7,.3,1),box-shadow .22s ease}
+.tib-card:hover{transform:translateY(-2px);border-color:var(--border2);
+  box-shadow:0 16px 38px -18px rgba(0,0,0,.7),0 0 0 1px rgba(0,148,255,.10),var(--glass-hi)}
+@keyframes tibIn{from{opacity:0;transform:translateY(14px)}}
+.tib-chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:13px}
+.tib-ct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--text2)}
+.tib-cs{font-size:11px;color:var(--dim);line-height:1.45;margin-top:3px}
+.tib-tot{display:flex;align-items:baseline;gap:5px;white-space:nowrap;flex:none;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:19px;font-weight:700;color:var(--text)}
+.tib-tot u{text-decoration:none;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.tib-count{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;
+  color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 10px}
+.tib-count.on{color:#ff9c93;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.34)}
+.tib-none{font-size:12px;color:var(--dim);line-height:1.6;padding:8px 0 2px}
+.tib-legend{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);margin-top:11px}
+/* One bar, one growth transition — every widget that draws a proportion uses it. */
+.tib-bar{display:block;height:6px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
+.tib-bar>i{display:block;height:100%;width:0;border-radius:4px;transition:width .8s cubic-bezier(.22,.61,.36,1)}
+.tib-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;white-space:nowrap}
+/* ---- Session Distribution ---- */
+.tib-sd{display:flex;flex-direction:column;gap:11px}
+.tib-sd-r{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-areas:"l m n" "bar bar bar";gap:5px 10px;align-items:baseline}
+.tib-sd-r .l{grid-area:l;display:flex;align-items:center;gap:7px;min-width:0;
+  font-size:12.5px;font-weight:600;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tib-sd-r .l i{width:7px;height:7px;border-radius:50%;flex:none}
+.tib-sd-r .m{grid-area:m;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+.tib-sd-r .n{grid-area:n;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--text)}
+.tib-sd-r .tib-bar{grid-area:bar}
+/* ---- Flagged Athletes ---- */
+.tib-fl{display:flex;flex-direction:column;gap:8px;max-height:292px;overflow:auto;margin:0 -3px;padding:0 3px}
+.tib-fl-r{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:11px;
+  background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.24)}
+.tib-fl-r.hot{background:rgba(244,63,94,.07);border-color:rgba(244,63,94,.26)}
+.tib-fl-r .av{flex:none;width:28px;height:28px;border-radius:50%;overflow:hidden;
+  background:var(--elevated);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--text2)}
+.tib-fl-r .av img{width:100%;height:100%;object-fit:cover}
+.tib-fl-r .tx{flex:1;min-width:0}
+.tib-fl-r .nm{display:flex;align-items:baseline;gap:7px;font-size:13px;font-weight:700;color:var(--text)}
+.tib-fl-r .nm u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.tib-fl-r .tg{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.tib-tag{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;
+  padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2)}
+.tib-tag.s2{color:#ff9c93;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.36)}
+.tib-tag.s1{color:#fbbf50;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.36)}
+/* ---- Planned vs Actual ---- */
+.tib-tbl{width:100%;border-collapse:collapse}
+.tib-tbl th{padding:0 0 7px;text-align:left;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.tib-tbl th.r,.tib-tbl td.r{text-align:right}
+.tib-tbl td{padding:7px 0;border-top:1px solid var(--border);vertical-align:middle;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--muted)}
+.tib-tbl td.d{font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text2)}
+.tib-tbl td.ac{color:var(--text);font-weight:700}
+.tib-tbl tfoot td{border-top:1px solid var(--border2);color:var(--text2);font-weight:700}
+/* Two hairlines under the planned figure — grey is the target, blue is what came
+   back — so the size of the miss reads without doing the subtraction. */
+.tib-mini{display:block;width:62px;margin:4px 0 0 auto}
+.tib-mini i{display:block;width:0;height:3px;border-radius:2px;transition:width .8s cubic-bezier(.22,.61,.36,1)}
+.tib-mini i.p{background:rgba(255,255,255,.24);margin-bottom:2px}
+.tib-mini i.a{background:var(--accent)}
+/* ---- Recovery Window ---- */
+.tib-rw-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:11px 0;border-top:1px solid var(--border)}
+.tib-rw-r:first-child{border-top:none;padding-top:0}
+.tib-rw-r .g{display:flex;align-items:baseline;gap:7px;font-size:13px;font-weight:700;color:var(--text)}
+.tib-rw-r .g u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;color:var(--dim)}
+.tib-rw-r .t{grid-column:1/-1;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;color:var(--text2)}
+.tib-rw-r .t b{font-weight:700}
+.tib-rw-r .t b.na{font-weight:500;color:var(--dim)}
+.tib-rw-r .t em{font-style:normal;font-size:11px;font-weight:700;color:var(--text);
+  background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 9px}
+.tib-pill{flex:none;white-space:nowrap;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 9px;border-radius:20px;color:var(--pc,var(--dim));border:1px solid currentColor}
+/* ---- Squad Load ---- */
+.tib-sq{display:flex;flex-direction:column;gap:13px}
+.tib-sq-r{display:grid;grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:"l v" "bar bar" "p p";gap:5px 10px;align-items:baseline}
+.tib-sq-r .l{grid-area:l;display:flex;align-items:baseline;gap:7px;font-size:13px;font-weight:700;color:var(--text)}
+.tib-sq-r .l u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;color:var(--dim)}
+.tib-sq-r .v{grid-area:v;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text)}
+.tib-sq-r .v em{font-style:normal;font-size:9px;letter-spacing:.06em;color:var(--dim);margin-left:4px}
+.tib-sq-r .tib-bar{grid-area:bar;height:8px}
+.tib-sq-r .p{grid-area:p;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+/* ---- Individual Load Deviation ---- */
+.tib-ind{display:flex;flex-direction:column;gap:10px;max-height:300px;overflow:auto;margin:0 -3px;padding:0 3px}
+.tib-ind-r{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-areas:"n v d" "bar bar bar";gap:4px 10px;align-items:baseline}
+.tib-ind-r .n{grid-area:n;min-width:0;font-size:12.5px;font-weight:600;color:var(--text2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tib-ind-r .v{grid-area:v;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text)}
+.tib-ind-r .tib-d{grid-area:d;min-width:54px;text-align:right}
+.tib-ind-r .tib-bar{grid-area:bar;height:5px}
+/* ---- Load Trend ---- */
+.tib-tr .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;height:120px}
+.tib-tr .c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
+.tib-tr .c .bar{display:flex;align-items:flex-end;width:100%;flex:1;min-height:0;
+  background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden}
+.tib-tr .c .bar i{display:block;width:100%;height:0;border-radius:6px;
+  background:linear-gradient(180deg,rgba(0,148,255,.5),rgba(0,148,255,.16));
+  transition:height .8s cubic-bezier(.22,.61,.36,1)}
+.tib-tr .c.on .bar i{background:var(--grad)}
+.tib-tr .c .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--muted)}
+.tib-tr .c.on .v{color:var(--text)}
+.tib-tr .c .l{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.tib-tr .c .dd{font-size:10px;min-height:12px}
+/* ---- Coach Alerts ---- */
+.tib-al-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(258px,100%),1fr));gap:10px}
+.tib-al{display:flex;gap:10px;padding:11px 13px;border-radius:12px;
+  background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--ac);
+  animation:tibIn .45s cubic-bezier(.22,.61,.36,1) both;animation-delay:calc(var(--i,0)*55ms + 130ms);
+  transition:border-color .2s ease,transform .2s cubic-bezier(.2,.7,.3,1)}
+.tib-al:hover{transform:translateY(-1px);border-color:var(--border2);border-left-color:var(--ac)}
+.tib-al.high{--ac:#f43f5e;--ag:rgba(244,63,94,.45)}
+.tib-al.mid{--ac:#f59e0b;--ag:rgba(245,158,11,.42)}
+.tib-al .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--ac);margin-top:5px}
+/* Only the red ones keep moving — a board where everything pulses says nothing. */
+.tib-al.high .dot{animation:tibPulse 2.6s ease-out infinite}
+@keyframes tibPulse{0%{box-shadow:0 0 0 0 var(--ag)}70%{box-shadow:0 0 0 8px rgba(244,63,94,0)}100%{box-shadow:0 0 0 0 rgba(244,63,94,0)}}
+.tib-al .tx{min-width:0}
+.tib-al .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ac)}
+.tib-al .w{font-size:12.5px;font-weight:700;color:var(--text);margin-top:2px}
+.tib-al .t{font-size:11.5px;line-height:1.5;color:var(--text2);margin-top:3px}
 </style>
 </head>
 <body>
@@ -8617,6 +8772,487 @@ function MuscleLoadDistribution({days,title,refDate}){
       <LoadTreemap entries={entries} zoom={zoom} setZoom={setZoom}/>
       </>}
   </div>);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEAM INSIGHTS — the widget board under the week calendar
+
+   What replaced the Load Distribution treemap here. The treemap answered "which
+   movement patterns did the week hit", which is a question about exercise
+   selection; under a calendar the coach is reading a week of TRAINING, and the
+   questions that actually come up are: what did we train, who needs attention,
+   did the week land on its targets, how much rest sits between sessions, and is
+   the load spread evenly across the squad.
+
+   Everything on the board reads the SELECTED WEEK (Mon–Sun of the calendar's
+   selected day) so the numbers under the calendar always belong to the week
+   drawn above it — there is no second period control to keep in sync.
+
+   Nothing here is a new source of truth: the load figures come from the same
+   helpers Load Monitoring and the Athlete Load Board read (teamDailyLoadMap,
+   athLoadSum, athACWR, athReadiness), so a number on this board and the same
+   number elsewhere in the app cannot drift apart.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* The six session categories the calendar already colours its cards by (see
+   sessionType/SESSION_COLORS), with the words a coach would use for them. The
+   board counts sessions into these buckets rather than inventing a taxonomy of
+   its own, so a bar on the board is the same classification as the coloured
+   keyline on the card above it. */
+const TIB_TYPES=[
+  {id:'strength', label:'Strength & Power'},
+  {id:'practice', label:'Ball Practice'},
+  {id:'speed',    label:'Speed & Agility'},
+  {id:'endurance',label:'Conditioning'},
+  {id:'match',    label:'Competition'},
+  {id:'recovery', label:'Recovery'},
+];
+/* PLANNED load — what the session was written to cost: the coach's target RPE
+   (the "RPE 6-8" chip on the card, stored as its centre) × the planned minutes.
+   Deliberately NOT the same thing as the app's `au`/`sRPE` figures, which are
+   what the session turned out to cost once it was rated; those are the ACTUAL
+   side of the comparison and come from teamDailyLoadMap. */
+const tibPlanSes=s=>sesRpeTarget(s)*(Number(s&&s.duration)||0);
+/* A day's planned load PER ATHLETE, because the actual it is compared against is
+   per athlete too (teamDailyLoadMap averages the squad's logs). Summing every
+   session on the day instead would count a morning that runs guards, forwards and
+   pivots through their own lift as three lifts, and then report the week as
+   massively under target against a number no single player was ever meant to do.
+   So: each athlete's own assigned sessions, averaged over the squad; a session
+   with nobody assigned belongs to everyone and counts for each of them. A plan
+   with no assignments anywhere has no per-athlete reading to give and falls back
+   to the day's team-plan total — the same branch teamDailyLoadMap falls back to. */
+function tibPlanDay(day,athletes){
+  const ss=((day&&day.sessions)||[]);
+  if(!ss.length)return 0;
+  const per={};let assigned=false,shared=0;
+  ss.forEach(s=>{
+    const ids=(s.athletes||[]).filter(Boolean);
+    if(ids.length){assigned=true;ids.forEach(id=>{per[id]=(per[id]||0)+tibPlanSes(s);});}
+    else shared+=tibPlanSes(s);
+  });
+  if(!assigned)return shared;
+  const ids=(athletes||[]).length?(athletes||[]).map(a=>a.id):Object.keys(per);
+  const vals=ids.map(id=>(per[id]||0)+shared).filter(v=>v>0);
+  return vals.length?vals.reduce((x,y)=>x+y,0)/vals.length:0;
+}
+// "17:00" → minutes past midnight. Anything unparseable is treated as no time at all.
+const tibMins=t=>{const m=/^(\d{1,2}):(\d{2})/.exec(String(t||''));if(!m)return null;
+  const h=+m[1],mm=+m[2];return (h>=0&&h<24&&mm>=0&&mm<60)?h*60+mm:null;};
+// A session's start as a real moment, so two sessions on different days can be subtracted.
+const tibStart=(dateK,s)=>{const d=parseD(dateK);const mm=tibMins(s&&s.time);if(mm!=null)d.setMinutes(mm);return d;};
+const tibEnd=(dateK,s)=>new Date(tibStart(dateK,s).getTime()+(Number(s&&s.duration)||0)*60000);
+const tibClock=d=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const tibDayName=d=>DN[(d.getDay()+6)%7];
+const tibNum=v=>Math.round(v||0).toLocaleString('en-US');
+// A gap in hours as the coach says it out loud: "23h 30m", "2d 4h".
+function tibGapText(h){
+  if(h==null)return '—';
+  const mins=Math.max(0,Math.round(h*60));
+  if(mins>=48*60)return `${Math.floor(mins/1440)}d ${Math.floor((mins%1440)/60)}h`;
+  return `${Math.floor(mins/60)}h ${pad(mins%60)}m`;
+}
+/* The three recovery bands the coach asked for, straight off the gap. */
+const TIB_BANDS=[{max:24,id:'short',label:'Short',c:'#f43f5e'},
+                 {max:48,id:'moderate',label:'Moderate',c:'#f59e0b'},
+                 {max:Infinity,id:'long',label:'Long',c:'#2dd4a7'}];
+const tibBand=h=>h==null?null:TIB_BANDS.find(b=>h<b.max)||TIB_BANDS[TIB_BANDS.length-1];
+/* Deviation colour: on target is green, over is amber (or red past 25%), under is
+   blue. Same reading in every widget that shows a Δ, so the colour means one thing
+   across the whole board. */
+function tibDevCol(pct,tol){
+  if(pct==null)return 'var(--dim)';
+  const t=tol==null?5:tol;
+  if(Math.abs(pct)<=t)return '#2dd4a7';
+  if(pct>25)return '#f43f5e';
+  return pct>0?'#f59e0b':'#5cb8ff';
+}
+const tibPct=v=>v==null?'—':`${v>0?'+':''}${v}%`;
+
+function TeamInsights({days,athletes,refDate}){
+  const ref=refDate||fmt(today);
+  const ws=sow(parseD(ref)),we=addD(ws,6);
+  const wsK=fmt(ws),weK=fmt(we);
+  const periodLabel=`${MN[ws.getMonth()]} ${ws.getDate()} – ${MN[we.getMonth()]} ${we.getDate()}`;
+  const dayKeys=useMemo(()=>Array.from({length:7},(_,i)=>fmt(addD(ws,i))),[wsK]);
+  const roster=useMemo(()=>(athletes||[]).filter(a=>(a.name||'').trim()),[athletes]);
+
+  /* Bars are drawn at zero and grown to their value one frame later, so the board
+     animates itself in instead of appearing already finished — and it does it again
+     whenever the week changes, which is the moment the numbers are new. Two frames:
+     the first paints the zero width, the second is what the transition runs from. */
+  const[lit,setLit]=useState(false);
+  useEffect(()=>{
+    setLit(false);
+    let r2=0;const r1=requestAnimationFrame(()=>{r2=requestAnimationFrame(()=>setLit(true));});
+    return()=>{cancelAnimationFrame(r1);cancelAnimationFrame(r2);};
+  },[wsK]);
+  const grow=pct=>({width:lit?`${Math.max(0,Math.min(100,pct))}%`:'0%'});
+
+  /* ---- What the week trained ------------------------------------------- */
+  const sesDist=useMemo(()=>{
+    const by={};
+    dayKeys.forEach(k=>(((days||{})[k]||{}).sessions||[]).forEach(s=>{
+      const t=sessionType(s),b=by[t]||(by[t]={n:0,min:0});
+      b.n++;b.min+=Number(s.duration)||0;
+    }));
+    const rows=TIB_TYPES.filter(t=>by[t.id]).map(t=>({...t,...by[t.id],c:SESSION_COLORS[t.id].c}))
+      .sort((a,b)=>b.n-a.n||b.min-a.min||a.label.localeCompare(b.label));
+    return{rows,total:rows.reduce((s,r)=>s+r.n,0),mins:rows.reduce((s,r)=>s+r.min,0),
+      max:Math.max(1,...rows.map(r=>r.n))};
+  },[days,wsK]);
+
+  /* ---- Who needs attention ---------------------------------------------
+     One row per athlete carrying at least one flag, worst first. The three the
+     coach asked for — readiness under 2.5, a pain report, a load tier that had to
+     be stepped down — plus the ACWR the Load Board already colours red, because an
+     athlete in the high-risk zone is exactly what "action required" means. */
+  const flagged=useMemo(()=>roster.map(a=>{
+    const t=athLoadTier(a,ref);
+    const pains=athPainReports(a,ref),note=athPainNote(a,ref);
+    const z=acwrZoneOf(t.acwr);
+    const tags=[];
+    if(t.rd.score!=null&&t.rd.score<2.5)
+      tags.push({k:'rd',sev:2,t:`Readiness ${t.rd.score.toFixed(1)}/5${t.rd.src==='srpe'?' (est.)':''}`});
+    if(pains.length)tags.push({k:'pain',sev:2,t:`Pain · ${pains.map(p=>ctLabel(p.tag)).join(', ')}`});
+    else if(note)tags.push({k:'pain',sev:2,t:`Pain · ${note.text}`});
+    if(t.intent==='recovery')tags.push({k:'tier',sev:2,t:'Tier ↓ Recovery'});
+    else if(t.intent==='maintain')tags.push({k:'tier',sev:1,t:'Tier ↓ Maintain'});
+    if(t.acwr>1.5)tags.push({k:'acwr',sev:2,t:`ACWR ${t.acwr.toFixed(2)} · ${z.t}`});
+    const sev=Math.max(0,...tags.map(x=>x.sev));
+    return{a,tags,sev,rd:t.rd.score};
+  }).filter(r=>r.tags.length)
+    .sort((x,y)=>y.sev-x.sev||y.tags.length-x.tags.length||(x.a.name||'').localeCompare(y.a.name||'')),
+  [roster,ref]);
+
+  /* ---- Did the week land on its targets ---------------------------------
+     Actual comes from the shared daily-load map (the athletes' own logs where they
+     have them, the rated team sessions otherwise) — the same number the calendar
+     prints under each day column, by construction. A day with nothing rated yet has
+     no actual, and shows a dash rather than a −100%. */
+  const teamDaily=useMemo(()=>teamDailyLoadMap(days,roster),[days,roster]);
+  const pva=useMemo(()=>{
+    const rows=dayKeys.map((k,i)=>{
+      const planned=Math.round(tibPlanDay((days||{})[k],roster)),actual=Math.round(teamDaily[k]||0);
+      return{k,label:DN[i],planned,actual,
+        d:(planned>0&&actual>0)?Math.round((actual-planned)/planned*100):null};
+    });
+    const live=rows.filter(r=>r.planned>0||r.actual>0);
+    const pT=live.reduce((s,r)=>s+r.planned,0),aT=live.reduce((s,r)=>s+r.actual,0);
+    return{rows,live,max:Math.max(1,...rows.map(r=>Math.max(r.planned,r.actual))),
+      pT,aT,d:(pT>0&&aT>0)?Math.round((aT-pT)/pT*100):null};
+  },[days,teamDaily,roster,wsK]);
+
+  /* ---- The squad, split the way it is coached --------------------------- */
+  const groups=useMemo(()=>{
+    const by={};
+    roster.forEach(a=>{const g=posGroupOf(a.position);(by[g]||(by[g]=[])).push(a.id);});
+    return[...POS_GROUPS,{id:'other',label:'Other'}]
+      .filter(g=>(by[g.id]||[]).length)
+      .map(g=>({id:g.id,label:g.label,ids:new Set(by[g.id]),n:by[g.id].length}));
+  },[roster]);
+
+  /* Every session on the plan, in time order — the whole calendar, not just this
+     week, because the session that ends a recovery window can sit in the next one. */
+  const allSes=useMemo(()=>{
+    const out=[];
+    Object.entries(days||{}).forEach(([k,d])=>((d&&d.sessions)||[]).forEach(s=>
+      out.push({s,date:k,st:tibStart(k,s),en:tibEnd(k,s)})));
+    return out.sort((a,b)=>a.st-b.st);
+  },[days]);
+
+  /* ---- How much rest each unit gets ------------------------------------
+     Measured end-of-session → start-of-next, which is the rest the players
+     actually get; both clock times are printed so the figure can be checked
+     against the calendar. A session with nobody assigned belongs to the whole
+     squad, so it counts for every group. */
+  const recovery=useMemo(()=>{
+    const anchor=parseD(ref);anchor.setHours(23,59,59,999);
+    return groups.map(g=>{
+      const mine=allSes.filter(x=>{const as=(x.s.athletes||[]);return !as.length||as.some(id=>g.ids.has(id));});
+      let last=null;mine.forEach(x=>{if(x.st<=anchor&&(!last||x.st>last.st))last=x;});
+      const from=last?last.st:anchor;
+      let next=null;mine.forEach(x=>{if(x.st>from&&(!next||x.st<next.st))next=x;});
+      const gap=(last&&next)?Math.max(0,(next.st-last.en)/3600000):null;
+      return{g,last,next,gap,band:tibBand(gap)};
+    });
+  },[groups,allSes,ref]);
+
+  /* ---- Where the week's load went --------------------------------------- */
+  const squad=useMemo(()=>{
+    const rows=groups.map(g=>{
+      const mine=roster.filter(a=>g.ids.has(a.id));
+      const au=mine.reduce((s,a)=>s+athLoadSum(a,wsK,weK),0);
+      return{g,au,per:mine.length?Math.round(au/mine.length):0};
+    });
+    return{rows,max:Math.max(1,...rows.map(r=>r.au))};
+  },[groups,roster,wsK]);
+
+  /* ---- Who is carrying more (or less) than the squad --------------------
+     The mean is taken over the athletes who actually have load in the week. An
+     athlete with none is almost always one who has not logged rather than one who
+     rested, and counting their zero would drag the mean down and then report
+     everybody else as overloaded against it — so they are listed as "no load"
+     instead of as −100%. */
+  const indiv=useMemo(()=>{
+    const rows=roster.map(a=>({a,load:athLoadSum(a,wsK,weK)}));
+    const live=rows.filter(r=>r.load>0);
+    const mean=live.length?live.reduce((s,r)=>s+r.load,0)/live.length:0;
+    return{mean:Math.round(mean),n:live.length,max:Math.max(1,...rows.map(r=>r.load)),
+      rows:rows.map(r=>({...r,d:(mean>0&&r.load>0)?Math.round((r.load-mean)/mean*100):null}))
+        .sort((x,y)=>y.load-x.load||(x.a.name||'').localeCompare(y.a.name||''))};
+  },[roster,wsK]);
+
+  /* ---- Four weeks of squad mean load ------------------------------------ */
+  const trend=useMemo(()=>{
+    const cols=[3,2,1,0].map(back=>{
+      const s=fmt(addD(ws,-7*back)),e=fmt(addD(ws,-7*back+6));
+      const vals=roster.map(a=>athLoadSum(a,s,e)).filter(v=>v>0);
+      return{label:back?`W-${back}`:'Current',
+        v:vals.length?Math.round(vals.reduce((x,y)=>x+y,0)/vals.length):0,n:vals.length};
+    });
+    cols.forEach((c,i)=>{const p=i?cols[i-1].v:0;
+      c.d=(i&&p>0&&c.v>0)?Math.round((c.v-p)/p*100):null;});
+    const prev=cols[2].v,cur=cols[3].v;
+    return{cols,max:Math.max(1,...cols.map(c=>c.v)),
+      change:(prev>0&&cur>0)?Math.round((cur-prev)/prev*1000)/10:null};
+  },[roster,wsK]);
+
+  /* ---- Coach alerts -----------------------------------------------------
+     Nothing here is a new measurement: every alert restates something already on
+     the board, in the words of the decision it asks for. Written worst-first so
+     the top of the list is the thing to deal with today. */
+  const alerts=useMemo(()=>{
+    const out=[];
+    const add=(sev,kind,where,text)=>out.push({sev,kind,where,text,id:`${kind}|${where}`});
+    // Two consecutive days both well above the week's own training-day average.
+    const trained=pva.rows.filter(r=>r.actual>0);
+    if(trained.length>=3){
+      const mean=trained.reduce((s,r)=>s+r.actual,0)/trained.length;
+      for(let i=0;i<pva.rows.length-1;i++){
+        const a=pva.rows[i],b=pva.rows[i+1];
+        if(a.actual>=mean*1.3&&b.actual>=mean*1.3)
+          add(2,'High load density',`${a.label} → ${b.label}`,
+            `Two consecutive days above ${tibNum(mean*1.3)} AU (week average ${tibNum(mean)} AU).`);
+      }
+    }
+    // A day that did not land where it was planned to.
+    pva.rows.forEach(r=>{if(r.d!=null&&Math.abs(r.d)>15)
+      add(r.d>0?2:1,'Load deviation',r.label,
+        `Actual ${tibNum(r.actual)} AU ${r.d>0?'exceeded':'fell short of'} the ${tibNum(r.planned)} AU target by ${Math.abs(r.d)}%.`);});
+    /* Units turning around in under a day. Groups that share a window share an
+       alert — three identical cards saying the same Thursday→Friday turnaround is
+       noise, and the point of the list is that each card is a different problem. */
+    const shortW={};
+    recovery.forEach(r=>{if(r.band&&r.band.id==='short'&&r.last&&r.next){
+      const k=`${+r.last.en}|${+r.next.st}`;
+      (shortW[k]||(shortW[k]={gap:r.gap,last:r.last,next:r.next,gs:[]})).gs.push(r.g.label);}});
+    Object.values(shortW).forEach(w=>add(2,'Recovery window',
+      `${w.gs.join(', ')} · ${tibDayName(w.last.st)} → ${tibDayName(w.next.st)}`,
+      `${tibGapText(w.gap)} between sessions — under the 24h short-recovery line.`));
+    // Athletes off the squad mean in either direction.
+    if(indiv.n>=3)indiv.rows.forEach(r=>{
+      if(r.d!=null&&r.d<=-25)add(1,'Low exposure',r.a.name||'—',
+        `7-day load is ${Math.abs(r.d)}% below the squad mean (${tibNum(r.load)} vs ${tibNum(indiv.mean)} AU).`);
+      if(r.d!=null&&r.d>=25)add(2,'High exposure',r.a.name||'—',
+        `7-day load is ${r.d}% above the squad mean (${tibNum(r.load)} vs ${tibNum(indiv.mean)} AU).`);});
+    // What the flag list found, as one line rather than one per athlete.
+    if(flagged.length)add(2,'Action required',`${flagged.length} athlete${flagged.length>1?'s':''}`,
+      `${flagged.map(f=>f.a.name||'—').slice(0,4).join(', ')}${flagged.length>4?` +${flagged.length-4}`:''} — see the flag list.`);
+    // Monotony: the same figure Load Monitoring reports for the week.
+    const mono=teamWeekMono(days,roster,wsK).monotony;
+    if(mono>2)add(mono>2.5?2:1,'Training monotony',periodLabel,
+      `Weekly monotony ${mono.toFixed(2)} — the week's days look too alike; add a genuinely easy day.`);
+    // The week as a whole against the one before it.
+    if(trend.change!=null&&Math.abs(trend.change)>=20)
+      add(trend.change>0?2:1,'Week-to-week jump',trend.change>0?'Ramp up':'Drop off',
+        `Squad mean load ${trend.change>0?'up':'down'} ${Math.abs(trend.change)}% on last week (${tibNum(trend.cols[2].v)} → ${tibNum(trend.cols[3].v)} AU).`);
+    return out.sort((a,b)=>b.sev-a.sev);
+  },[pva,recovery,indiv,flagged,trend,days,roster,wsK,periodLabel]);
+
+  const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const hasWeek=sesDist.total>0||pva.live.length>0;
+  let ci=0;const card=()=>({'--i':ci++});   // one stagger step per card, in render order
+
+  return(<section className="tib">
+    <div className="tib-head">
+      <h2 className="tib-h1"><i/>Team Insights</h2>
+      <span className="tib-period">{periodLabel} · {L('seçili hafta','selected week')}</span>
+    </div>
+
+    {/* ---- Coach alerts: the board's headline, so it sits above the grid ---- */}
+    <div className="tib-card" style={card()}>
+      <div className="tib-chead">
+        <div><div className="tib-ct">Coach Alerts</div>
+          <div className="tib-cs">Read straight off this week's numbers</div></div>
+        <span className={'tib-count'+(alerts.length?' on':'')}>{alerts.length}</span>
+      </div>
+      {alerts.length===0
+        ?<div className="tib-none">✓ Nothing to flag this week — load, recovery and check-ins are all inside their bands.</div>
+        :<div className="tib-al-grid">
+          {alerts.map((al,i)=><div key={al.id+i} className={'tib-al '+(al.sev>1?'high':'mid')} style={{'--i':i}}>
+            <span className="dot"/>
+            <div className="tx">
+              <div className="k">{al.kind}</div>
+              <div className="w">{al.where}</div>
+              <div className="t">{al.text}</div>
+            </div>
+          </div>)}
+        </div>}
+    </div>
+
+    <div className="tib-grid">
+      {/* ---- Session distribution ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Session Distribution</div>
+            <div className="tib-cs">What the week trained</div></div>
+          <span className="tib-tot">{sesDist.total}<u>sessions</u></span>
+        </div>
+        {sesDist.rows.length===0
+          ?<div className="tib-none">No sessions on this week's plan yet.</div>
+          :<div className="tib-sd">
+            {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
+              <span className="l"><i style={{background:r.c}}/>{r.label}</span>
+              <span className="n">{r.n}</span>
+              <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
+              <span className="m">{r.min} min</span>
+            </div>)}
+          </div>}
+      </div>
+
+      {/* ---- Flagged athletes ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Flagged Athletes</div>
+            <div className="tib-cs">Readiness &lt; 2.5 · pain reported · tier stepped down</div></div>
+          <span className={'tib-count'+(flagged.length?' on':'')}>{flagged.length}</span>
+        </div>
+        {roster.length===0
+          ?<div className="tib-none">No athletes on the roster yet.</div>
+          :flagged.length===0
+          ?<div className="tib-none">✓ Nobody flagged — every athlete is clear to train as planned.</div>
+          :<div className="tib-fl">
+            {flagged.map(f=><div key={f.a.id} className={'tib-fl-r'+(f.sev>1?' hot':'')}>
+              <span className="av">{f.a.photo?<img src={mediaSrc(f.a.photo)} alt=""/>:initials(f.a.name)}</span>
+              <div className="tx">
+                <div className="nm">{f.a.name||'—'}<u>{posOf(f.a.position)||'—'}</u></div>
+                <div className="tg">{f.tags.map((t,i)=><span key={i} className={'tib-tag s'+t.sev}>{t.t}</span>)}</div>
+              </div>
+            </div>)}
+          </div>}
+      </div>
+
+      {/* ---- Planned vs actual ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Planned vs Actual</div>
+            <div className="tib-cs">Target RPE × minutes, against the load that came back</div></div>
+          {pva.d!=null&&<span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span>}
+        </div>
+        {pva.live.length===0
+          ?<div className="tib-none">Nothing planned or logged on this week yet.</div>
+          :<table className="tib-tbl">
+            <thead><tr><th>Day</th><th className="r">Planned</th><th className="r">Actual</th><th className="r">Δ</th></tr></thead>
+            <tbody>{pva.rows.map(r=>(r.planned>0||r.actual>0)&&<tr key={r.k}>
+              <td className="d">{r.label}</td>
+              <td className="r"><span className="pl">{r.planned?tibNum(r.planned):'—'}</span>
+                <span className="tib-mini"><i className="p" style={grow(r.planned/pva.max*100)}/><i className="a" style={grow(r.actual/pva.max*100)}/></span></td>
+              <td className="r ac">{r.actual?tibNum(r.actual):'—'}</td>
+              <td className="r"><span className="tib-d" style={{color:tibDevCol(r.d)}}>{tibPct(r.d)}</span></td>
+            </tr>)}</tbody>
+            <tfoot><tr><td className="d">Week</td><td className="r">{tibNum(pva.pT)}</td>
+              <td className="r ac">{pva.aT?tibNum(pva.aT):'—'}</td>
+              <td className="r"><span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span></td></tr></tfoot>
+          </table>}
+      </div>
+
+      {/* ---- Recovery window ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Recovery Window</div>
+            <div className="tib-cs">End of the last session → start of the next</div></div>
+        </div>
+        {recovery.length===0
+          ?<div className="tib-none">No athletes on the roster — no units to read a window for.</div>
+          :<div className="tib-rw">
+            {recovery.map(r=><div key={r.g.id} className="tib-rw-r">
+              <span className="g">{r.g.label}<u>{r.g.n}</u></span>
+              <span className={'tib-pill '+(r.band?r.band.id:'na')} style={r.band?{'--pc':r.band.c}:null}>
+                {r.band?r.band.label:'—'}</span>
+              <span className="t">
+                {r.last?<b>{tibDayName(r.last.en)} {tibClock(r.last.en)}</b>:<b className="na">no session</b>}
+                <em>↓ {tibGapText(r.gap)}</em>
+                {r.next?<b>{tibDayName(r.next.st)} {tibClock(r.next.st)}</b>:<b className="na">nothing next</b>}
+              </span>
+            </div>)}
+            <div className="tib-legend">&lt;24h Short · 24–48h Moderate · &gt;48h Long</div>
+          </div>}
+      </div>
+
+      {/* ---- Squad load ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Squad Load</div>
+            <div className="tib-cs">This week's AU by position group</div></div>
+        </div>
+        {squad.rows.length===0||squad.rows.every(r=>!r.au)
+          ?<div className="tib-none">No load logged this week — rate the sessions, or let the check-ins come in.</div>
+          :<div className="tib-sq">
+            {squad.rows.map(r=><div key={r.g.id} className="tib-sq-r">
+              <span className="l">{r.g.label}<u>{r.g.n}</u></span>
+              <span className="v">{tibNum(r.au)}<em>AU</em></span>
+              <span className="tib-bar"><i style={{...grow(r.au/squad.max*100),background:'var(--grad)'}}/></span>
+              <span className="p">{tibNum(r.per)} AU / athlete</span>
+            </div>)}
+          </div>}
+      </div>
+
+      {/* ---- Individual load deviation ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Individual Load Deviation</div>
+            <div className="tib-cs">Against the squad mean of {indiv.mean?tibNum(indiv.mean)+' AU':'—'}</div></div>
+        </div>
+        {indiv.n===0
+          ?<div className="tib-none">No athlete load this week to compare against.</div>
+          :<div className="tib-ind">
+            {indiv.rows.map(r=><div key={r.a.id} className="tib-ind-r">
+              <span className="n">{r.a.name||'—'}</span>
+              <span className="v">{r.load?tibNum(r.load):'—'}</span>
+              <span className="tib-bar"><i style={{...grow(r.load/indiv.max*100),background:tibDevCol(r.d,15)}}/></span>
+              <span className="tib-d" style={{color:tibDevCol(r.d,15)}}>{r.load?tibPct(r.d):'no load'}</span>
+            </div>)}
+          </div>}
+      </div>
+
+      {/* ---- Week-to-week trend ---- */}
+      <div className="tib-card" style={card()}>
+        <div className="tib-chead">
+          <div><div className="tib-ct">Load Trend</div>
+            <div className="tib-cs">Squad mean 7-day load, four weeks</div></div>
+          {trend.change!=null&&<span className="tib-d" style={{color:tibDevCol(Math.round(trend.change),10)}}>
+            {trend.change>0?'+':''}{trend.change}%</span>}
+        </div>
+        {trend.cols.every(c=>!c.v)
+          ?<div className="tib-none">No load in the last four weeks.</div>
+          :<div className="tib-tr">
+            <div className="cols">
+              {trend.cols.map((c,i)=><div key={c.label} className={'c'+(i===3?' on':'')}>
+                <span className="bar"><i style={{height:lit?`${Math.max(3,c.v/trend.max*100)}%`:'0%',transitionDelay:`${i*70}ms`}}/></span>
+                <span className="v">{c.v?tibNum(c.v):'—'}</span>
+                <span className="l">{c.label}</span>
+                <span className="tib-d dd" style={{color:tibDevCol(c.d,10)}}>{c.d==null?'':tibPct(c.d)}</span>
+              </div>)}
+            </div>
+            <div className="tib-legend">{trend.change==null?'Not enough history to compare with last week.'
+              :`${trend.change>0?'Up':'Down'} ${Math.abs(trend.change)}% on last week.`}</div>
+          </div>}
+      </div>
+    </div>
+    {!hasWeek&&roster.length===0&&<div className="tib-none">
+      Add the roster and plan a week — the board fills itself from the calendar above.</div>}
+  </section>);
 }
 
 /* =========================================================
@@ -19666,6 +20302,34 @@ function caAsym(r,l){
   const d=Math.abs(a-b)/Math.max(a,b)*100;
   return d<3?null:{pct:Math.round(d),strong:a>=b?'R':'L',weak:a>=b?'L':'R'};
 }
+/* ---- How hard today can be, for one athlete --------------------------------
+   Each signal that says "not today" adds to the same counter, so one bad number
+   nudges the day and three of them change it outright. Four rungs, worst first:
+   recovery → maintain → develop → load — CA_INTENT carries their words and their
+   doses. Read both by the assistant coach's exercise picker and by the Team
+   Insights flag list, which is what makes "tier stepped down" mean the same thing
+   in the box that writes the session and in the board that flags the athlete.
+   `pre` lets a caller that has already read the athlete hand the inputs in rather
+   than paying for them a second time. */
+function athLoadTier(ath,ref,pre){
+  const p=pre||{};
+  const rd=p.rd||athReadiness(ath,ref);
+  const well=p.well||athWellnessSnap(ath,ref);
+  const prev=p.prev||athPrevDay(ath,ref);
+  const acwr=p.acwr!=null?p.acwr:athACWR(ath,ref);
+  const flags=p.flags||[...new Set([...athPainReports(ath,ref).map(x=>x.tag),
+    ...(((ath&&ath.constraintTags)||[]).filter(Boolean))])];
+  let stress=0;
+  if(rd.score!=null&&rd.score<2.5)stress+=2;else if(rd.score!=null&&rd.score<3.2)stress+=1;
+  if(acwr>1.5)stress+=2;else if(acwr>1.3)stress+=1;
+  if(prev.rpe!=null&&prev.rpe>=8.5)stress+=1;
+  if(well.soreness!=null&&well.soreness<=2)stress+=1;
+  if(well.fatigue!=null&&well.fatigue<=2)stress+=1;
+  if(flags.length)stress+=1;
+  const intent=stress>=4?'recovery':stress>=2?'maintain'
+    :(acwr>0&&acwr<0.8&&rd.score!=null&&rd.score>=3.9)?'load':'develop';
+  return{intent,stress,rd,well,prev,acwr,flags};
+}
 /* Everything the six picks are made of, read once. Kept separate from the picking so the
    box can show the coach the same evidence the choice was made on. */
 function caReadAthlete(ath,ref){
@@ -19717,16 +20381,9 @@ function caReadAthlete(ath,ref){
     if(h&&w){const bmi=w/((h/100)**2);if(bmi>=27)drivers.push(`BMI ${bmi.toFixed(1)} — sıçrama hacmi düşük tutuldu`);}
   }else drivers.push('Test kaydı yok — seçim check-in, yük ve pozisyona göre yapıldı');
   CA_POS_BIAS[posGroupOf(ath.position)].forEach(k=>need(k,`pozisyon: ${posGroupLabel(posGroupOf(ath.position))}`));
-  /* How hard today can be. Each signal that says "not today" adds to the same counter, so
-     one bad number nudges the day and three of them change it outright. */
-  let stress=0;
-  if(rd.score!=null&&rd.score<2.5)stress+=2;else if(rd.score!=null&&rd.score<3.2)stress+=1;
-  if(acwr>1.5)stress+=2;else if(acwr>1.3)stress+=1;
-  if(prev.rpe!=null&&prev.rpe>=8.5)stress+=1;
-  if(well.soreness!=null&&well.soreness<=2)stress+=1;
-  if(well.fatigue!=null&&well.fatigue<=2)stress+=1;
-  if(flags.length)stress+=1;
-  const intent=stress>=4?'recovery':stress>=2?'maintain':(acwr>0&&acwr<0.8&&rd.score!=null&&rd.score>=3.9)?'load':'develop';
+  // How hard today can be — the shared ladder, so this box and the Team Insights
+  // flag list step an athlete down for exactly the same reasons.
+  const{intent}=athLoadTier(ath,ref,{rd,well,prev,acwr,flags});
   if(rd.score!=null)drivers.unshift(`Hazırlık ${rd.score}/5${rd.src==='srpe'?' (sRPE tahmini)':''}`);
   else drivers.unshift('Check-in yok — hazırlık okunamadı');
   if(acwr>0)drivers.push(`ACWR ${acwr.toFixed(2)} — ${acwrZoneOf(acwr).t}`);
@@ -21100,7 +21757,7 @@ function App(){
         setup={team.setup} labelOwner={team.setup.teamName} athletes={team.athletes||[]} exercises={data.exercises||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>
-        <MuscleLoadDistribution days={team.days} refDate={selected.date}/></>}
+        <TeamInsights days={team.days} athletes={team.athletes||[]} refDate={selected.date}/></>}
       {view==='program'&&<Planner days={team.days} setup={team.setup} dateKey={dayKey} setDateKey={setDayKey} labelOwner={team.setup.teamName}
         athletes={team.athletes||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
