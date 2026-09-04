@@ -20396,8 +20396,11 @@ function AICoach({data,setData,team}){
    CHECK-IN FORMLARI — uygulamanın kendi anketleri (Tally'siz yol)
 
    Koç iki linki kopyalar ve sporculara yollar:
-     checkin.html#k=<token>&f=srpe       → antrenman sonrası içsel yük (sRPE)
-     checkin.html#k=<token>&f=wellness   → sabah wellness
+     rpe.html#k=<token>       → antrenman sonrası içsel yük (sRPE)
+     wellness.html#k=<token>  → sabah wellness
+
+   İkisi de checkin.html'i açan birer kapak sayfası; ayrı dosya olmalarının sebebi
+   WhatsApp/Telegram önizlemesinin form başına farklı bir başlık göstermesi.
 
    Token TAKIM başınadır ve `checkin_links/<token>` dokümanına bakar; o doküman
    takımın adını ve kadroyu taşır, sporcu listeden kendi adını seçer. Seçilen ad bir
@@ -20429,10 +20432,16 @@ function newCheckinToken(){
   }
   return out;
 }
-// Sporcunun açacağı adres. Uygulama hangi klasörde duruyorsa checkin.html onun yanında.
+/* Sporcunun açacağı adres. Uygulama hangi klasörde duruyorsa form dosyaları onun
+   yanında. Adres doğrudan checkin.html'e değil, form başına bir "kapak" sayfasına
+   bakıyor (rpe.html / wellness.html): WhatsApp önizlemesi sayfanın <title>/og:*
+   etiketlerini okuyor, adresin # kısmını ise hiç görmüyor — yani hangi formun linki
+   olduğu ancak dosya ayrıysa önizlemede yazıyor. Kapak sayfası açılır açılmaz
+   checkin.html'e geçiyor ve token'ı # kısmında taşımaya devam ediyor. */
 function checkinUrl(token,kind){
   const base=location.origin+location.pathname.replace(/[^/]*$/,'');
-  return `${base}checkin.html#k=${encodeURIComponent(token)}&f=${kind}`;
+  const page=kind==='wellness'?'wellness.html':'rpe.html';
+  return `${base}${page}#k=${encodeURIComponent(token)}`;
 }
 /* Linkin arkasındaki kaydın kadroyla aynı olup olmadığını söyleyen damga. Kadro
    değişince (sporcu eklendi/çıktı/adı düzeltildi) doküman yeniden yayımlanır —

@@ -42,10 +42,17 @@ Kuralları kopyala**.
 ## Linkler
 
 ```
-https://<siten>/checkin.html#k=<token>&f=srpe        → antrenman sonrası
-https://<siten>/checkin.html#k=<token>&f=wellness    → sabah
+https://<siten>/rpe.html#k=<token>        → antrenman sonrası
+https://<siten>/wellness.html#k=<token>   → sabah
 ```
 
+- İki adres de aynı formu (`checkin.html`) açar; ayrı dosya olmalarının sebebi
+  **WhatsApp önizlemesi**: paylaşınca linkin üstünde "Post-training — Internal Load (RPE)"
+  ya da "Morning — Wellness" yazar, sporcu neyi doldurduğunu açmadan görür. (Önizlemeyi
+  çeken uygulama JavaScript çalıştırmaz ve adresin `#` kısmını göremez; o yüzden başlık
+  dosyanın kendisinde duruyor.)
+- Eskiden gönderdiğin `checkin.html#k=<token>&f=…` linkleri **çalışmaya devam eder**,
+  yalnız önizlemede eski başlığı gösterir.
 - Token **takım başına** üretilir ve `#` işaretinden sonra durur — tarayıcı orayı sunucuya
   göndermez, yani link erişim loglarına düşmez.
 - Kadroyu değiştirdiğinde (sporcu ekleme/çıkarma, ad düzeltme) link kaydı kendiliğinden
