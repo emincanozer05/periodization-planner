@@ -2379,33 +2379,53 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-dk{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
 .wh-nav{display:flex;justify-content:flex-end;margin-bottom:8px}
 .wh-chart{height:270px;position:relative}
-/* Wellness Heatmap */
-.wh-hm-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+/* Wellness Heatmap — written in the same table language as the Athlete Load Board
+   directly above it in this tab: a banded header, hairline row separators, and a
+   frozen first column that reads as part of the table instead of a card floating
+   over it. The frozen cells have to be opaque, because the day columns scroll
+   underneath them, and the colour they repaint is --panel — exactly what the flat
+   theme paints .panel with, so the column is the same surface as the table around
+   it. A tint of its own is what made it a separate block: --elevated is a shade
+   lighter than the panel, and a translucent gradient restarts inside every cell. */
+.wh-hm-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .wh-legend{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .wh-leg-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.04em}
 .wh-leg-bar{width:120px;height:8px;border-radius:5px;background:linear-gradient(90deg,#f43f5e,#f59e0b,#2dd4a7)}
 .wh-leg-team{margin-left:auto;display:inline-flex;align-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 11px}
 .wh-leg-team b{color:var(--text);margin-left:5px}
-.wh-scroll{overflow-x:auto;border-radius:10px;padding-bottom:2px}
-.wh-hm{border-collapse:separate;border-spacing:5px 4px;min-width:560px}
-.wh-hm th{font-weight:500;vertical-align:bottom}
-.wh-hm .wh-ath-h{min-width:210px;position:sticky;left:0;z-index:3;background:linear-gradient(90deg,rgba(34,38,47,.55),rgba(24,27,34,.42));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);vertical-align:bottom;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 18px -10px rgba(0,0,0,.55)}
-.wh-corner{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.08em;padding:0 0 6px 4px}
-.wh-hm .wh-day{text-align:center;padding:0 1px}
-.wh-hm .wh-day .wh-mon{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--text2);font-weight:600;height:12px}
-.wh-hm .wh-day .wh-wd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim)}
-.wh-hm .wh-day .wh-dd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);font-weight:600}
-.wh-hm .wh-avg-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;text-align:center;padding:0 4px}
+.wh-scroll{overflow-x:auto;padding-bottom:2px}
+.wh-hm{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;min-width:940px}
+/* One declaration for both frozen cells: the body cell paints the surface, the
+   head cell layers the header band over it. */
+.wh-frozen{position:sticky;left:0;border-right:1px solid var(--border2);
+  background:var(--panel)}
+.wh-hm thead th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;
+  color:var(--text2);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;vertical-align:bottom;
+  padding:9px 4px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
+  border-bottom:1px solid rgba(255,255,255,.1)}
+.wh-hm thead th:first-child{border-radius:11px 0 0 11px}
+.wh-hm thead th:last-child{border-radius:0 11px 11px 0}
+.wh-hm .wh-ath-h{width:300px;z-index:3;text-align:left;padding-left:16px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)),var(--panel)}
+.wh-hm .wh-day{text-align:center;min-width:36px}
+.wh-hm .wh-day .wh-mon{font-size:9px;font-weight:700;color:var(--accent2);height:12px}
+.wh-hm .wh-day .wh-wd{font-size:9px;font-weight:500;color:var(--dim)}
+.wh-hm .wh-day .wh-dd{font-size:11px;font-weight:700;color:var(--text);letter-spacing:0}
+.wh-hm .wh-avg-h{width:96px;text-align:center;padding-right:14px}
+.wh-hm tbody td{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+.wh-hm tbody tr:last-child td{border-bottom:none}
+.wh-hm tbody tr:hover td{background:var(--panel)}
 .wh-row{animation:whRowIn .45s ease both}
 @keyframes whRowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.wh-hm .wh-ath{position:sticky;left:0;z-index:2;background:linear-gradient(90deg,rgba(34,38,47,.5),rgba(24,27,34,.38));-webkit-backdrop-filter:blur(14px) saturate(155%);backdrop-filter:blur(14px) saturate(155%);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px -10px rgba(0,0,0,.5);display:flex;align-items:center;gap:9px;white-space:nowrap;padding-left:11px;padding-right:10px;transition:background .18s ease,box-shadow .18s ease}
-.wh-row:hover .wh-ath{background:linear-gradient(90deg,rgba(46,52,63,.62),rgba(34,39,48,.5));box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 22px -10px rgba(0,0,0,.6)}
+.wh-hm .wh-ath{z-index:2;padding-left:16px;padding-right:12px}
+.wh-ath-in{display:flex;align-items:center;gap:10px;min-width:0;white-space:nowrap}
 .wh-rank{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);width:16px;text-align:right;flex:none}
 .wh-hm .wh-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
 .wh-hm .wh-av img{width:100%;height:100%;object-fit:cover}
-.wh-hm .wh-nm{font-size:13px;font-weight:600;color:var(--text)}
-.wh-hm .wh-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);margin-left:auto;padding-left:8px}
-.wh-hm .wh-cell{text-align:center;padding:0}
+.wh-hm .wh-nm{font-size:13.5px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.wh-hm .wh-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--text2);
+  background:var(--elevated);border:1px solid var(--border);border-radius:6px;padding:2px 7px;margin-left:auto;flex:none}
+.wh-hm .wh-cell{text-align:center}
 .wh-hm .wh-box{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:#0a0b0d;cursor:default;box-shadow:inset 0 1px 0 rgba(255,255,255,.20);transition:transform .12s ease,box-shadow .12s ease}
 .wh-hm .wh-box:hover{transform:scale(1.22);box-shadow:0 5px 16px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.28);position:relative;z-index:5}
 .wh-hm .wh-empty{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;line-height:1}
@@ -2702,7 +2722,6 @@ header{background:var(--bg2)!important}
 /* Inner cards / chips — drop the translucent tint + inset highlight so they're flat & solid too */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{background:var(--panel)!important;border:1px solid var(--border)!important;box-shadow:none!important}
 .lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search{background:var(--bg2)!important;border-color:var(--border)!important}
-.wh-hm .wh-ath-h,.wh-hm .wh-ath{background:var(--elevated)!important;box-shadow:none!important}
 .app::before,.app::after{display:none!important}   /* ambient colour orbs behind the old frosted glass */
 .calm-grid{align-items:stretch}
 .calm-cell{min-height:100px;overflow:hidden}
@@ -6092,22 +6111,23 @@ function WellnessHeatmap({athletes}){
     .sort((x,y)=>(x.avg==null)-(y.avg==null)||(x.avg==null?0:(M.hi?(y.avg-x.avg):(x.avg-y.avg))));
   const fmtV=v=>v==null?'':(M.id==='RHR'?Math.round(v):(+v.toFixed(1)));
   const teamAvg=rows.length?rows.reduce((s,r)=>s+r.avg,0)/rows.length:null;
-  return(<div className="panel">
-    <div className="wh-hm-head">
-      <div><h2 style={{margin:0,fontSize:18}}>Wellness Heatmap <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,fontWeight:400,color:'var(--dim)'}}>son 2 hafta · ortalamaya göre</span></h2></div>
-      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-        <div style={{display:'flex',alignItems:'center',gap:6}}>
-          {(()=>{const nb={width:30,height:30,borderRadius:8,background:'var(--panel)',border:'1px solid var(--border2)',color:'var(--text)',cursor:'pointer',fontSize:15,lineHeight:1,fontFamily:'inherit'};return<>
-            <button style={nb} onClick={()=>shiftWk(-1)} title="Önceki hafta">‹</button>
-            <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:12,color:'var(--text2)',minWidth:96,textAlign:'center'}}>{rangeLabel}</span>
-            <button style={nb} onClick={()=>shiftWk(1)} title="Sonraki hafta">›</button>
-            <button style={{...nb,width:'auto',padding:'0 10px',fontSize:12}} onClick={()=>setWinEnd(fmt(today))} title="Go to today">Today</button>
-          </>;})()}
+  return(<div className="panel lb-wrap">
+    {/* The board's own head and week selector are the ones this tab already uses —
+        the Athlete Load Board's title block above it, and the Load Monitoring
+        header's week stepper — so the three read as one page rather than three. */}
+    <div className="lb-head">
+      <div className="lb-title">Wellness Heatmap<span className="lb-sub">last 2 weeks · sorted by average</span></div>
+      <div className="wh-hm-tools">
+        <div className="lm-wksel">
+          <button onClick={()=>shiftWk(-1)} title="Previous week">‹</button>
+          <span className="lm-wklbl">{rangeLabel}</span>
+          <button onClick={()=>shiftWk(1)} title="Next week">›</button>
+          <button className="lm-wknow" onClick={()=>setWinEnd(fmt(today))} title="Jump to today">Today</button>
         </div>
         <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
       </div>
     </div>
-    {rows.length===0?<div className="empty-st">Bu 2 haftalık aralıkta wellness verisi yok.</div>:<>
+    {rows.length===0?<div className="empty-st">No wellness data in this 2-week range.</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?'high':'low'}</span>
         <span className="wh-leg-bar"/>
@@ -6117,18 +6137,18 @@ function WellnessHeatmap({athletes}){
       <div className="wh-scroll">
         <table className="wh-hm">
           <thead><tr>
-            <th className="wh-ath-h"><span className="wh-corner">Athlete</span></th>
+            <th className="wh-ath-h wh-frozen">Athlete</th>
             {dates.map((d,i)=>{const dt=parseD(d);const prev=i>0?parseD(dates[i-1]):null;const showMonth=!prev||prev.getMonth()!==dt.getMonth();
               return<th key={d} className="wh-day"><div className="wh-mon">{showMonth?MN[dt.getMonth()]:''}</div><div className="wh-wd">{DN[(dt.getDay()+6)%7][0]}</div><div className="wh-dd">{dt.getDate()}</div></th>;})}
-            <th className="wh-avg-h">AVG</th>
+            <th className="wh-avg-h">Avg</th>
           </tr></thead>
           <tbody>{rows.map((r,ri)=><tr key={ri} className="wh-row" style={{animationDelay:(ri*45)+'ms'}}>
-            <td className="wh-ath"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</td>
+            <td className="wh-ath wh-frozen"><div className="wh-ath-in"><span className="wh-rank">{ri+1}</span><div className="wh-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</div><span className="wh-nm">{r.a.name}</span>{r.a.position&&<span className="wh-pos">{posOf(r.a.position)}</span>}</div></td>
             {r.cells.map((v,ci)=>{
               const note=r.notes[ci];
               const pain=r.pains[ci];
               const dl=(()=>{const dt=parseD(dates[ci]);return MN[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();})();
-              const vl=v!=null?`${M.label}: ${fmtV(v)}${M.scale?'/5':''}`:'Veri yok';
+              const vl=v!=null?`${M.label}: ${fmtV(v)}${M.scale?'/5':''}`:'No data';
               /* A day carrying a complaint — a ticked region or a written one — gets a
                  ring in the worst reported severity's colour, and the regions themselves
                  ride in the hover bubble, so the native title tooltip is dropped there
@@ -6141,7 +6161,7 @@ function WellnessHeatmap({athletes}){
               const pip=pain?<i className="wh-pain" style={{background:PAIN_SEV_COL[pain.max]}}>{pain.list.length>1?pain.list.length:''}</i>:null;
               return<td key={ci} className="wh-cell">{v!=null
                 ?<span className={'wh-box'+(flag?' wh-alert':'')} style={{background:cellBg(v),'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\n${vl}`} {...hov}>{fmtV(v)}{pip}</span>
-                :<span className={'wh-empty'+(flag?' wh-alert':'')} style={{'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\nVeri yok`} {...hov}>{flag?(pain?'':'!'):'·'}{pip}</span>}</td>;})}
+                :<span className={'wh-empty'+(flag?' wh-alert':'')} style={{'--wh-ring':ringC}} title={flag?undefined:`${r.a.name}\n${dl}\nNo data`} {...hov}>{flag?(pain?'':'!'):'·'}{pip}</span>}</td>;})}
             <td className="wh-avg"><div className="wh-avg-in"><span className="wh-aval" style={{color:dotCol(r.avg)}}>{fmtV(r.avg)}</span><span className="wh-abar"><i style={{width:Math.round((goodT(r.avg)||0)*100)+'%',background:cellBg(r.avg)}}/></span></div></td>
           </tr>)}</tbody>
         </table>
