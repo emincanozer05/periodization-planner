@@ -69,15 +69,29 @@ h1,h2{font-weight:700;letter-spacing:-.01em}
 header{padding:2px 0 20px}
 /* Uygulamanın kendi başlığındaki wordmark (.lp-logo-img) ile aynı iş, bir tık
    küçüğü: sporcu formu açtığında bunun hangi ürün olduğunu ilk satırdan görsün. */
-.brand{display:block;height:22px;width:auto;margin:0 auto 16px;opacity:.92}
+.brand{display:block;height:22px;width:auto;margin:0 auto 7px;opacity:.92}
+/* Wordmark'ın altındaki açılım, küçük harflerle. Küçük ve sönük: ürünün adını okuyan
+   zaten görüyor, bu satır yalnızca adın ne anlama geldiğini söylüyor — başlığı ikiye
+   bölmemeli. */
+.tagline{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  letter-spacing:.16em;color:var(--dim);text-align:center;margin:0 0 18px}
+/* Logo + takım adı tek bir künye kutusunda: siyah zemin sayfanın kendi zemininden
+   (--bg) bir tık daha koyu, yani kutu sayfanın üstünde ayrı bir parça gibi duruyor.
+   inline-flex, kutunun satırın tamamına yayılmasını değil içeriği kadar olmasını
+   sağlıyor — uzun ve kısa takım adları aynı biçimde oturuyor. */
 .team{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--dim);font-weight:500;
-  display:flex;align-items:center;gap:8px}
+  display:inline-flex;align-items:center;gap:11px;max-width:100%;
+  background:#000;border:1px solid var(--border);border-radius:12px;padding:8px 15px 8px 8px}
+/* Logosuz takımda kutu ince bir şeride dönüşür; o zaman soldaki fazladan boşluk
+   gereksiz kalıyor, iki yan da eşitleniyor. */
+.team.nologo{padding:7px 14px}
+.team span{min-width:0;overflow-wrap:anywhere}
 /* Takımın kendi logosu, takım adının solunda. Koçun yüklediği logo linkin arkasındaki
    kayıtla birlikte geliyor; yoksa (ya da görsel açılmazsa) img tamamen kaldırılıyor ve
-   satır eskisi gibi yalnız addan ibaret kalıyor — boş bir kutu görünmesin. */
+   künye eskisi gibi yalnız addan ibaret kalıyor — boş bir kutu görünmesin. */
 .team-logo{height:50px;width:50px;flex:none;object-fit:contain;border-radius:8px}
-h1{margin:8px 0 0;font-size:27px;line-height:1.15}
+h1{margin:13px 0 0;font-size:27px;line-height:1.15}
 h1 .yr{color:var(--muted);font-weight:500}
 .sub{margin-top:8px;color:var(--muted);font-size:13px;max-width:46ch}
 
@@ -453,18 +467,27 @@ function painGrid(){
    uygulamada takıma bir logo yüklediyse yayım sırasında oraya küçültülmüş haliyle
    yazılıyor (bulutta duran bir logo ise adresiyle). Logo yoksa ya da adres açılmazsa
    img DOM'dan siliniyor — sporcunun karşısına kırık görsel ikonu çıkmasın. */
-function teamLogoImg(){
+function teamLogoImg(box){
   var src=LINK.teamLogo||'';
   if(!src||typeof src!=='string')return null;
   var img=el('img',{class:'team-logo',src:src,alt:''});
-  img.addEventListener('error',function(){if(img.parentNode)img.parentNode.removeChild(img);});
+  img.addEventListener('error',function(){
+    if(img.parentNode)img.parentNode.removeChild(img);
+    box.classList.add('nologo');
+  });
   return img;
 }
 function buildHeader(){
   var f=FORMS[KIND];
+  var team=el('div',{class:'team'});
+  var logo=teamLogoImg(team);
+  if(!logo)team.classList.add('nologo');
+  else team.appendChild(logo);
+  team.appendChild(el('span',{text:LINK.teamName||'CoachOS'}));
   return el('header',null,[
     el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
-    el('div',{class:'team'},[teamLogoImg(),el('span',{text:LINK.teamName||'CoachOS'})]),
+    el('div',{class:'tagline',text:'coaching operating system'}),
+    team,
     el('h1',{html:f.title+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
     el('div',{class:'sub',text:KIND==='srpe'
       ? 'Antrenman/maç sonrası doldur. Yapmadığın bölümü boş bırak.'
