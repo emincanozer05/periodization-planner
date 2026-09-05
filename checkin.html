@@ -23,8 +23,8 @@
 
   Token adresin # kısmında durur: tarayıcı orayı sunucuya göndermez, yani link
   Vercel loglarına düşmez. Token, koçun uygulamasında takım başına üretilir ve
-  `checkin_links/<token>` dokümanına bakar; o doküman takımın adını ve kadrosunu
-  taşır — sporcu listeden kendi adını seçer, uygulama da kimliğinden eşleştirir.
+  `checkin_links/<token>` dokümanına bakar; o doküman takımın adını, logosunu ve
+  kadrosunu taşır — sporcu listeden kendi adını seçer, uygulama da kimliğinden eşleştirir.
   (Tally'de isimler metin olarak eşleştiği için "eşleşmeyen isim atlandı" derdi
   vardı; burada seçilen ad bir sporcu KİMLİĞİ taşıdığı için o dert yok.)
 
@@ -71,7 +71,12 @@ header{padding:2px 0 20px}
    küçüğü: sporcu formu açtığında bunun hangi ürün olduğunu ilk satırdan görsün. */
 .brand{display:block;height:22px;width:auto;margin:0 auto 16px;opacity:.92}
 .team{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--dim);font-weight:500}
+  text-transform:uppercase;color:var(--dim);font-weight:500;
+  display:flex;align-items:center;gap:8px}
+/* Takımın kendi logosu, takım adının solunda. Koçun yüklediği logo linkin arkasındaki
+   kayıtla birlikte geliyor; yoksa (ya da görsel açılmazsa) img tamamen kaldırılıyor ve
+   satır eskisi gibi yalnız addan ibaret kalıyor — boş bir kutu görünmesin. */
+.team-logo{height:20px;width:20px;flex:none;object-fit:contain;border-radius:4px}
 h1{margin:8px 0 0;font-size:27px;line-height:1.15}
 h1 .yr{color:var(--muted);font-weight:500}
 .sub{margin-top:8px;color:var(--muted);font-size:13px;max-width:46ch}
@@ -444,11 +449,22 @@ function painGrid(){
 }
 
 /* ── Formlar ─────────────────────────────────────────────────────────────── */
+/* Takım adının solundaki logo. Kaynak linkin arkasındaki kayıttan geliyor: koç
+   uygulamada takıma bir logo yüklediyse yayım sırasında oraya küçültülmüş haliyle
+   yazılıyor (bulutta duran bir logo ise adresiyle). Logo yoksa ya da adres açılmazsa
+   img DOM'dan siliniyor — sporcunun karşısına kırık görsel ikonu çıkmasın. */
+function teamLogoImg(){
+  var src=LINK.teamLogo||'';
+  if(!src||typeof src!=='string')return null;
+  var img=el('img',{class:'team-logo',src:src,alt:''});
+  img.addEventListener('error',function(){if(img.parentNode)img.parentNode.removeChild(img);});
+  return img;
+}
 function buildHeader(){
   var f=FORMS[KIND];
   return el('header',null,[
     el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
-    el('div',{class:'team',text:LINK.teamName||'CoachOS'}),
+    el('div',{class:'team'},[teamLogoImg(),el('span',{text:LINK.teamName||'CoachOS'})]),
     el('h1',{html:f.title+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
     el('div',{class:'sub',text:KIND==='srpe'
       ? 'Antrenman/maç sonrası doldur. Yapmadığın bölümü boş bırak.'
