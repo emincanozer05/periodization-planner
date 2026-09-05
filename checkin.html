@@ -231,6 +231,18 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
   animation:pop .4s cubic-bezier(.2,.7,.3,1) both}
 .done h2{margin:18px 0 6px;font-size:21px}
 .done p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
+
+/* Wellness gönderiminden sonraki ödül karesi. Sporcu formu doldurup gönderince
+   readiness'ine göre bir gif ve altında bir satır çıkıyor — formu doldurmanın tek
+   karşılığı "Teşekkürler!" olmasın diye. Kutunun oranını gifin kendi ölçüleri
+   veriyor (img'in width/height'i): gif inerken yer boş kalıyor ama altındaki yazı
+   yükleme bitince aşağı zıplamıyor. */
+.done .gifwrap{margin:0 auto 18px;max-width:340px}
+.done .gifwrap img{display:block;width:100%;height:auto;border-radius:12px;
+  border:1px solid var(--border2);background:var(--bg2);box-shadow:var(--shadow)}
+.done .rdline{font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px}
+.done .rdline b{color:var(--accent2)}
+.done .rdsub{color:var(--muted);font-size:13.5px;margin:0 0 24px;line-height:1.55}
 .linkish{background:none;border:0;color:var(--accent2);font-size:14px;cursor:pointer;
   font-family:inherit;text-decoration:underline;text-underline-offset:3px}
 .foot{margin-top:30px;text-align:center;color:var(--dim);font-size:11px;
@@ -272,6 +284,61 @@ var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
 var SLEEP_LABELS   =['çok kötü','kötü','orta','iyi','çok iyi'];
 var FATIGUE_LABELS =['bitkin','yorgun','orta','dinç','çok dinç'];
 var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
+
+/* Wellness gönderiminin karşılığı ────────────────────────────────────────────
+   Readiness = uyku / yorgunluk / kas ağrısının ortalaması; koç tarafındaki
+   hesapla (index.html) birebir aynı formül, yoksa sporcunun ekranda gördüğü
+   sayı ile koçun gördüğü sayı tutmaz.
+
+   Bantlar `min`'e göre okunuyor (büyükten küçüğe): skoru karşılayan ilk bant
+   kazanır. Şimdilik yalnızca 4.00–5.00 bandı dolu; alt bantlar eklenene kadar
+   düşük skorlarda ekran eskisi gibi sade kalıyor. */
+var RD_BANDS=[
+  {id:'high',min:4,
+   /* Ölçüler dosyanın kendisinden: gif inerken kutu doğru boyda duruyor, yazı
+      gif yüklenince aşağı zıplamıyor. */
+   gifs:[{src:'gifs/readiness-high-1.gif',w:500,h:281},
+         {src:'gifs/readiness-high-2.gif',w:472,h:262},
+         {src:'gifs/readiness-high-3.gif',w:480,h:475}],
+   title:'Bugün hazırsın.',
+   lines:[
+     'Uyku, yorgunluk ve ağrı üçü de yerinde — antrenmanda gazı köke kadar bas.',
+     'Bu skorla sahaya çıkılır. Bugünü değerlendir, yarını da düşünerek topla.',
+     'Vücudun "hazırım" diyor. İyi ısın, iyi çalış, iyi topla.',
+     'Formda görünüyorsun — bu tabloyu bozma, uykuyu da böyle tüt.',
+     'Yüksek hazır oluş. Büyük işlerin çıktığı günler böyle başlar.'
+   ]}
+];
+function rdBand(score){
+  if(score==null)return null;
+  for(var i=0;i<RD_BANDS.length;i++)if(score>=RD_BANDS[i].min)return RD_BANDS[i];
+  return null;
+}
+/* Aynı gif üst üste çıkarsa sürpriz olmaktan çıkıyor: en son gösterilen sıra
+   telefonda tutuluyor ve bir sonraki sefer geri kalanların arasından seçiliyor.
+   localStorage kapalıysa (gizli sekme) tamamen rastgeleye düşüyor — çalışmayan
+   bir depo yüzünden ekranda hiçbir şey eksilmesin. */
+function pickRotating(list,key){
+  if(!list||!list.length)return null;
+  var last=-1;
+  try{var v=parseInt(localStorage.getItem(LS_SEEN+key),10);if(!isNaN(v))last=v;}catch(e){}
+  var pool=[];
+  for(var i=0;i<list.length;i++)if(i!==last)pool.push(i);
+  if(!pool.length)pool=[0];
+  var pick=pool[Math.floor(Math.random()*pool.length)];
+  try{localStorage.setItem(LS_SEEN+key,String(pick));}catch(e){}
+  return list[pick];
+}
+/* Koç tarafıyla aynı formül: doldurulan wellness skorlarının ortalaması, tek
+   ondalık. Zorunlu olan yalnızca uyku ve yorgunluk; kas ağrısı boş bırakılmışsa
+   ortalamaya girmiyor. */
+function readinessScore(){
+  if(KIND!=='wellness')return null;
+  var vals=[A.sleep,A.fatigue,A.soreness].filter(function(v){return v!=null&&!isNaN(Number(v));});
+  if(!vals.length)return null;
+  var sum=vals.reduce(function(a,b){return a+Number(b);},0);
+  return Math.round(sum/vals.length*10)/10;
+}
 
 /* Formun canlı tarafı tek bir yerden yürür: her dokunuş REFRESH'leri çağırır,
    onlar da ilerleme şeridini, dolan kartların işaretini ve gönder düğmesinin
@@ -351,6 +418,8 @@ var KIND=(P.get('f')||'srpe').toLowerCase()==='wellness'?'wellness':'srpe';
 var LINK=null;                 // checkin_links dokümanı
 var A={};                      // formun cevapları
 var LS_KEY='coachos.checkin.athlete.';
+// Gönderim sonrası gösterilen gif/satırın sırası — aynısı üst üste çıkmasın diye.
+var LS_SEEN='coachos.checkin.seen.';
 
 /* ── Alan üreticileri ────────────────────────────────────────────────────── */
 // Tek seçimli rozet dizisi. Aynı rozete tekrar basmak seçimi kaldırır — sporcu
@@ -719,18 +788,45 @@ function submit(btn,errBox){
     }
   });
 }
+/* Gönderim ekranının ödül kısmı: readiness'i olan bir wellness gönderiminde,
+   skorun bandına ait giflerden biri ve altında o banda ait bir satır. Bant
+   tanımlı değilse (şimdilik 4.00 altı) hiçbir şey dönmüyor ve ekran eskisi gibi
+   kalıyor. Gif ile satır ayrı ayrı dönüyor: aynı gif aynı yazıyla eşleşmesin,
+   her doldurma biraz farklı görünsün. */
+function rewardNodes(){
+  var score=readinessScore();
+  if(score==null)return[];
+  var band=rdBand(score);
+  if(!band)return[];
+  var src=pickRotating(band.gifs,band.id+'.gif');
+  var line=pickRotating(band.lines,band.id+'.line');
+  var out=[];
+  if(src){
+    out.push(el('div',{class:'gifwrap'},[
+      el('img',{src:src.src,width:src.w,height:src.h,alt:'',
+        // Gif inmezse (şebeke yok, dosya taşınmış) kutu tamamen kalkıyor: sporcu
+        // gönderim ekranında boş bir çerçeveye bakmasın.
+        onerror:function(){var w=this.parentNode;if(w&&w.parentNode)w.parentNode.removeChild(w);}})
+    ]));
+  }
+  out.push(el('div',{class:'rdline',html:band.title+' Readiness <b>'+score.toFixed(2)+'</b> / 5.00'}));
+  if(line)out.push(el('div',{class:'rdsub',text:line}));
+  return out;
+}
 function done(queued){
   var r=$('#root');r.innerHTML='';
   var bar=document.querySelector('.bar');if(bar)bar.remove();
   var pg=$('#progfill');if(pg)pg.style.width='100%';
+  var reward=rewardNodes();
   r.appendChild(el('div',{class:'done'},[
     el('div',{class:'tick',text:queued?'↗':'✓'}),
     el('h2',{text:queued?'Gönderimin yolda':'Teşekkürler!'}),
     el('p',{text:queued
       ? 'Bağlantı yavaş görünüyor ama cevabın kaydedildi; şebeke gelince kendiliğinden ulaşacak.'
-      : 'Cevabın koçuna ulaştı.'}),
+      : 'Cevabın koçuna ulaştı.'})
+  ].concat(reward,[
     el('button',{class:'linkish',text:'Yeni gönderim yap',onclick:function(){location.reload();}})
-  ]));
+  ])));
 }
 
 /* ── Kurulum ─────────────────────────────────────────────────────────────── */
