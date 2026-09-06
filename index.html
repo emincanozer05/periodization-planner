@@ -16642,7 +16642,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
             </div>
             {wellnessTableOpen&&(()=>{const rev=[...ath.wellness].reverse();const vis=rev.slice(0,wlLimit);const hasMore=rev.length>wlLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
-                <th>Date</th><th>RHR</th><th>Sleep</th><th>Fatigue</th><th>Area of Pain</th><th>Readiness</th><th>Source</th><th style={{width:50}}></th>
+                <th>Date</th><th>RHR</th><th>Sleep</th><th>Fatigue</th><th>Readiness</th><th style={{width:50}}></th>
               </tr></thead><tbody>
                 {vis.map((w,idx)=>{const realIdx=ath.wellness.length-1-idx;
                   /* A value the coach types here is theirs: the field is stamped on the
@@ -16655,13 +16655,15 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
                     <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
                     <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw('sleep',e.target.value)} style={{width:55}}/></td>
                     <td><input type="number" step="0.5" value={w.fatigue??''} onChange={e=>uw('fatigue',e.target.value)} style={{width:55}}/></td>
-                    {/* Soreness has no column: it is not shown on this tab any more. The
-                        value stays on the record — the sync writes it, Readiness averages
-                        it, and it grades an ungraded pain region — it is simply not
-                        something the coach reads or edits here. */}
-                    <td><input value={w.areaOfPain||''} onChange={e=>uw('areaOfPain',e.target.value)} style={{width:140}} placeholder="—"/></td>
+                    {/* Soreness, Area of Pain and Source have no column here. Every one of
+                        those values stays on the record and keeps doing its job — the sync
+                        writes them, Readiness averages soreness, the pain report and the
+                        wellness heatmap read areaOfPain, and srcId still decides what the
+                        next Tally sync is allowed to overwrite. They are simply not what
+                        the coach reads or edits on this table: pain is shown where it is
+                        acted on (the flag list, the heatmap, the athlete's day), and where
+                        a row came from is not a number to correct. */}
                     <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
-                    <td>{(w.srcId||w.notionId)?<span className="team-badge">TALLY</span>:<span className="tag" style={{background:'var(--elevated)',color:'var(--muted)'}}>MANUAL</span>}</td>
                     <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{wellness:ath.wellness.filter((_,j)=>j!==realIdx)})}>✕</button></td>
                   </tr>;})}
               </tbody></table>
