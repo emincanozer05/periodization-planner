@@ -3364,18 +3364,31 @@ header{background:var(--bg2)!important}
 /* Explicit columns rather than CSS multi-column: the browser balanced multi-column
    by height, which is exactly what a board of scrollable widgets must not do — it left
    Load Trend and the sRPE table ending wherever their own content happened to stop, well
-   short of the column beside them. Each column is a flex column instead, the columns
-   stretch to the tallest of them, and the LAST card in each takes the space that is left
-   (see .tib-col>.tib-card:last-child). So the board ends on one line at the bottom
-   whatever is in it, and the widgets that scroll — the flag list, the sRPE table — get
-   the extra height rather than leaving a hole under themselves.
-   The cap keeps a long roster from pushing the whole board past a screenful; past it the
-   scrollers inside the cards shrink and take over, which is what they are there for. */
+   short of the column beside them. Each column is a flex column instead, and the LAST
+   card in each takes the space that is left, so the board ends on one line at the bottom
+   and the widgets that scroll — the flag list, the trend, the sRPE table — get the extra
+   height rather than leaving a hole under themselves.
+   Both the column's height and the split inside it are SET rather than measured, which is
+   what keeps the board still: the same box in the same place on a full week and on an
+   empty one, so paging through weeks does not resize the board underneath the coach.
+   Widths hold the same way — the columns share one flex basis, so they are the same width
+   whatever is in them. Content that outgrows its box is handled by the scrollers inside
+   the cards, which is what they are there for. */
 .tib-grid{display:flex;flex-wrap:wrap;align-items:stretch;gap:14px}
 .tib-col{flex:1 1 330px;min-width:0;display:flex;flex-direction:column;gap:14px;
-  max-height:min(78vh,860px)}
-.tib-col>.tib-card{flex:0 0 auto;min-height:0}
+  height:clamp(620px,94vh,1120px)}
+/* A column is split by proportion, not by what happens to be in it: the upper card takes
+   46% of the column and the lower one the rest (7px is half the gap between them). So a
+   week with no plan on it lays the board out exactly like a full one. The larger share
+   goes to the lower card because that is where the lists that run long live — the flag
+   list and the trend — while the two upper widgets are short and bounded. */
+.tib-col>.tib-card{flex:0 0 calc(46% - 7px);min-height:0}
 .tib-col>.tib-card:last-child{flex:1 1 auto}
+/* Coach Alerts is the one card that sits outside the grid, so the column `gap` that
+   spaces every other card does not reach it — without a margin of its own it runs
+   straight into the board underneath. (It had this from .tib-card's margin-bottom
+   before the columns replaced margins with gap.) */
+.tib>.tib-card{margin-bottom:14px;min-height:120px}
 .tib-card{position:relative;width:100%;min-width:0;overflow:hidden;
   display:flex;flex-direction:column;
   background:var(--panel);background-image:var(--panel-glass);
@@ -3395,7 +3408,7 @@ header{background:var(--bg2)!important}
 .tib-count{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;
   color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 10px}
 .tib-count.on{color:#ff9c93;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.34)}
-.tib-none{font-size:12px;color:var(--dim);line-height:1.6;padding:8px 0 2px}
+.tib-none{flex:1 1 auto;font-size:12px;color:var(--dim);line-height:1.6;padding:8px 0 2px}
 .tib-legend{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);margin-top:11px}
 /* One bar, one growth transition — every widget that draws a proportion uses it. */
 .tib-bar{display:block;height:6px;border-radius:4px;background:rgba(255,255,255,.05);overflow:hidden}
@@ -3403,9 +3416,9 @@ header{background:var(--bg2)!important}
 .tib-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;white-space:nowrap}
 /* ---- Session Distribution ---- */
 /* A focus breakdown has many more rows than the six session types it replaced, so the
-   list scrolls inside the card instead of stretching the column it sits in. */
-.tib-sd{display:flex;flex-direction:column;gap:11px;min-height:0;overflow:auto;
-  max-height:270px;margin:0 -3px;padding:0 3px}
+   list scrolls inside the card it is given rather than stretching the column. */
+.tib-sd{display:flex;flex-direction:column;gap:11px;flex:1 1 auto;min-height:0;overflow:auto;
+  margin:0 -3px;padding:0 3px}
 .tib-sd-r{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
   grid-template-areas:"l m n" "bar bar bar";gap:5px 10px;align-items:baseline}
 .tib-sd-r .l{grid-area:l;display:flex;align-items:center;gap:7px;min-width:0;
@@ -3444,6 +3457,8 @@ header{background:var(--bg2)!important}
 .tib-tag .pd{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;
   background:currentColor;vertical-align:middle;transform:translateY(-1px)}
 /* ---- Planned vs Actual ---- */
+.tib-pv{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -3px;padding:0 3px}
+.tib-pv .tib-tbl th{position:sticky;top:0;z-index:1;background:var(--panel)}
 .tib-tbl{width:100%;border-collapse:collapse}
 .tib-tbl th{padding:0 0 7px;text-align:left;font-family:'IBM Plex Mono',ui-monospace,monospace;
   font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
@@ -3470,8 +3485,12 @@ header{background:var(--bg2)!important}
 .tib-sr .tib-tbl td.d{max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tib-sr .tib-mini{width:54px}
 /* ---- Load Trend ---- */
-.tib-tr{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
-.tib-tr .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1 1 auto;min-height:120px}
+/* The chart grows into the height the column hands it, but only so far: four bars drawn
+   700px tall is a skyscraper, not a trend. Past the cap the legend drops to the bottom of
+   the card instead, so the card is still full at its edges. */
+.tib-tr{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;justify-content:space-between}
+.tib-tr .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  flex:1 1 auto;min-height:120px;max-height:420px}
 .tib-tr .c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
 .tib-tr .c .bar{display:flex;align-items:flex-end;width:100%;flex:1;min-height:0;
   background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden}
@@ -9271,7 +9290,7 @@ function TeamInsights({days,athletes,refDate}){
         </div>
         {pva.live.length===0
           ?<div className="tib-none">{L('Bu hafta için henüz plan ya da kayıt yok.','Nothing planned or logged on this week yet.')}</div>
-          :<table className="tib-tbl">
+          :<div className="tib-pv"><table className="tib-tbl">
             <thead><tr><th>{L('Gün','Day')}</th><th className="r">{L('Planlanan','Planned')}</th><th className="r">{L('Gerçekleşen','Actual')}</th><th className="r">Δ</th></tr></thead>
             <tbody>{pva.rows.map(r=>(r.planned>0||r.actual>0)&&<tr key={r.k}>
               <td className="d">{r.label}</td>
@@ -9283,7 +9302,7 @@ function TeamInsights({days,athletes,refDate}){
             <tfoot><tr><td className="d">{L('Hafta','Week')}</td><td className="r">{tibNum(pva.pT)}</td>
               <td className="r ac">{pva.aT?tibNum(pva.aT):'—'}</td>
               <td className="r"><span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span></td></tr></tfoot>
-          </table>}
+          </table></div>}
       </div>
 
       {/* ---- Week-to-week trend ---- */}
