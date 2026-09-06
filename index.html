@@ -7603,8 +7603,63 @@ async function lmPreload(){
     });
   }catch(e){console.warn('local media preload failed',e);}
 }
+/* Script-writable storage is evictable by default: WebKit clears IndexedDB after seven
+   days without a visit, and Chromium clears it under disk pressure — which is exactly the
+   "the pictures I uploaded stop showing after a while" the coach sees, because the handle
+   in the state outlives the file it points at. Asking for persistence is the only thing
+   that takes the store out of that bucket. It is a request, not a guarantee (an installed
+   PWA or a bookmarked, frequently used site usually gets it), so it is best effort: no
+   dialog, no retry, and everything below still works if it is refused. */
+async function lmPersist(){
+  try{
+    if(!navigator.storage||!navigator.storage.persist)return false;
+    if(await navigator.storage.persisted())return true;
+    const ok=await navigator.storage.persist();
+    if(!ok)console.warn('local media store is evictable — the browser refused persistent storage');
+    return ok;
+  }catch(e){return false;}
+}
+/* When each file entered the store. A file written a moment ago is not collectable yet:
+   saveLocalMedia() puts it in the store before its handle reaches the state, and a write
+   landing inside that window would otherwise see a file nothing points at and delete the
+   picture on its way in. Files read back by lmPreload() carry no birth time and are
+   collectable at once, which is right — they predate this session. */
+const _lmBorn=new Map();
+const LM_GRACE=60*1000;
+/* Drop device files nothing points at any more. Called ONLY after a write the cloud has
+   accepted, and only for ids that appear in NONE of the serialised states handed to it —
+   the one that was just written and the one on screen — so a file is never deleted while
+   some version of the truth still needs it. Searched by looking each of the (few) held ids
+   up in the JSON rather than by parsing handles out of it: the store holds a handful of
+   files at most, and a substring search cannot disagree with the serialiser about what a
+   handle looks like.
+   This replaces deleting the file at the moment its picture was copied into the state.
+   That copy could still be thrown away afterwards — the sync listener applies a remote
+   snapshot that still carries the handle, a lift round is discarded because the coach typed
+   while it ran, a write never lands — and the file was already gone, which is how an
+   uploaded picture turned into a blank box that no reload could bring back. */
+function lmSweep(){
+  if(!_lmCache.size)return 0;
+  const states=[];
+  for(let i=0;i<arguments.length;i++)if(typeof arguments[i]==='string')states.push(arguments[i]);
+  const now=Date.now();
+  let n=0;
+  Array.from(_lmCache.keys()).forEach(id=>{
+    if(now-(_lmBorn.get(id)||0)<LM_GRACE)return;
+    const ref=LM_REF+id;
+    if(states.some(j=>j.indexOf(ref)>=0))return;
+    _lmCache.delete(id);_lmBorn.delete(id);lmDel(id).catch(()=>{});n++;
+  });
+  return n;
+}
 const isLocalRef=v=>typeof v==='string'&&v.indexOf(LM_REF)===0;
 const isInlineMedia=v=>typeof v==='string'&&(v.indexOf('data:image')===0||v.indexOf('data:video')===0);
+/* True when the slot holds something but the something cannot be shown — a handle whose
+   file is on another device or was evicted from this one. The upload surfaces test this
+   rather than plain truthiness, so a picture that cannot be drawn reads as an empty slot
+   asking to be filled instead of an invisible box the coach cannot explain. */
+const isLostMedia=v=>isLocalRef(v)&&!_lmCache.has(v.slice(LM_REF.length));
+const hasMedia=v=>!!v&&!isLostMedia(v);
 /* Every <img src> that can carry coach-uploaded media goes through this: a plain URL or
    data URL passes straight through, a `local:` handle resolves to the file kept on this
    device. */
@@ -7631,7 +7686,7 @@ function inlineLocalMedia(node){
 }
 async function saveLocalMedia(dataUrl){
   const id=Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
-  _lmCache.set(id,dataUrl);
+  _lmCache.set(id,dataUrl);_lmBorn.set(id,Date.now());   // off-limits to the sweep until its handle lands
   await lmPut(id,dataUrl);   // memory first so the picture shows even if the disk write fails
   return LM_REF+id;
 }
@@ -7756,15 +7811,15 @@ function resizePhoto(file,cb){
    file this device does not have. */
 function restoreLocalMedia(obj){
   let restored=0,missing=0;
-  /* The device copy is dropped only after the whole walk: the same handle can sit in two
-     places (a library entry carries its picture as both `thumb` and `planImage`), and
-     deleting it on the first hit would leave the second one resolving to nothing. */
-  const done=new Set();
+  /* The device copy is NOT dropped here. Writing the picture into `obj` is not the same as
+     that `obj` surviving: the sync listener can replace it with a remote snapshot that still
+     carries the handle, and then the only copy of the picture would be one this function had
+     already deleted. lmSweep() drops it later, once a write has actually landed. */
   const fix=v=>{
     const id=v.slice(LM_REF.length);
     const data=_lmCache.get(id);
     if(!data){missing++;return v;}
-    restored++;done.add(id);
+    restored++;
     return data;
   };
   const walk=node=>{
@@ -7777,7 +7832,6 @@ function restoreLocalMedia(obj){
     }
   };
   walk(obj);
-  done.forEach(id=>{_lmCache.delete(id);lmDel(id).catch(()=>{});});
   return{restored,missing};
 }
 // Cheap enough to run on every edit — the recovery pass only clones the state when this
@@ -7854,9 +7908,10 @@ async function liftLocalMedia(obj,fb,uid){
     catch(e){failed=true;warnStorageFailure(e);return dataUrl;}
   };
   /* One handle can appear in several places, so each is resolved once and the answer
-     reused — otherwise the same file is uploaded twice, and the second occurrence reads a
-     device store the first has already emptied. The local copies go at the very end. */
-  const seen=new Map(),drop=new Set();
+     reused — otherwise the same file is uploaded twice. The device copies are left alone:
+     this round's result is thrown away whenever the coach edits while it runs, and deleting
+     the file here would take the picture with it. lmSweep() collects them after a write. */
+  const seen=new Map();
   const fromRef=async ref=>{
     if(seen.has(ref))return seen.get(ref);
     const id=ref.slice(LM_REF.length);
@@ -7873,7 +7928,7 @@ async function liftLocalMedia(obj,fb,uid){
          browser's storage alone. */
       changed=true;out=data;
     }
-    seen.set(ref,out);drop.add(id);
+    seen.set(ref,out);
     return out;
   };
   const lift=v=>isInlineMedia(v)?fromInline(v):fromRef(v);
@@ -7893,7 +7948,6 @@ async function liftLocalMedia(obj,fb,uid){
     }
   };
   await walk(obj);
-  drop.forEach(id=>{_lmCache.delete(id);lmDel(id).catch(()=>{});});
   if(failed)_liftPausedUntil=Date.now()+30*60*1000;
   return changed;
 }
@@ -10223,14 +10277,14 @@ function ExImgBtn({image,onChange}){
   const fileRef=useRef(null);
   const save=f=>{if(f)handleImageUpload(f,'exercises',onChange);};
   return(<span className="eximg-wrap">
-    <button type="button" className={'eximg-btn'+(image?' has':'')}
+    <button type="button" className={'eximg-btn'+(hasMedia(image)?' has':'')}
       title={image?L('Egzersiz görseli · Tıkla: yeni kopyalanan görseli yapıştır · Sağ tık: dosya seç','Exercise image · Click: paste a new copied image · Right-click: choose file'):L('Egzersiz görseli ekle · Bir görseli kopyala, sonra tıklayıp yapıştır (ya da Ctrl/Cmd+V) · Sağ tık: dosya seç','Add exercise image · Copy an image, then click to paste (or Ctrl/Cmd+V) · Right-click: choose file')}
       onClick={()=>pasteImageFromClipboard('exercises',onChange)}
       onPaste={e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();save(f);}}}
       onContextMenu={e=>{e.preventDefault();fileRef.current?.click();}}>
-      {image?<img src={mediaSrc(image)} alt="exercise"/>:<span className="eximg-ph">🖼</span>}
+      {hasMedia(image)?<img src={mediaSrc(image)} alt="exercise"/>:<span className="eximg-ph">🖼</span>}
     </button>
-    {image&&<button type="button" className="eximg-x" title={L('Görseli kaldır','Remove image')} onClick={()=>onChange('')}>×</button>}
+    {hasMedia(image)&&<button type="button" className="eximg-x" title={L('Görseli kaldır','Remove image')} onClick={()=>onChange('')}>×</button>}
     <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}}
       onChange={e=>{const f=e.target.files?.[0];if(f)save(f);e.target.value='';}}/>
   </span>);
@@ -12240,11 +12294,11 @@ function PhotoCell({photo,onChange,label,size=68}){
   const ref=useRef(null);
   return(<div style={{textAlign:'center',display:'inline-block'}}>
     <div onClick={()=>ref.current?.click()}
-      style={{width:size,height:size,borderRadius:8,background:'var(--elevated)',border:photo?'1px solid var(--accent)':'1px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',transition:'border-color .15s'}}>
-      {photo?<img src={mediaSrc(photo)} alt={label} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{color:'var(--dim)',fontSize:22}}>📷</span>}
+      style={{width:size,height:size,borderRadius:8,background:'var(--elevated)',border:hasMedia(photo)?'1px solid var(--accent)':'1px dashed var(--border)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',overflow:'hidden',transition:'border-color .15s'}}>
+      {hasMedia(photo)?<img src={mediaSrc(photo)} alt={label} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{color:'var(--dim)',fontSize:22}}>📷</span>}
     </div>
     <div style={{fontSize:10,color:'var(--muted)',marginTop:4,fontWeight:500}}>{label}</div>
-    {photo&&<button onClick={()=>onChange(null)} style={{marginTop:1,background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:10,padding:0}}>Remove</button>}
+    {hasMedia(photo)&&<button onClick={()=>onChange(null)} style={{marginTop:1,background:'none',border:'none',color:'var(--red)',cursor:'pointer',fontSize:10,padding:0}}>Remove</button>}
     <input ref={ref} type="file" accept="image/*" style={{display:'none'}}
       onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'tests',d=>onChange(d));e.target.value='';}}/>
   </div>);
@@ -18106,6 +18160,10 @@ function useCloudSync(data,setData){
       // Parçaların HEPSİ yerinde → manifest TEK BAŞINA yazılır: durumu çeviren tek atomik adım.
       await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,v:2,n,rev,ids}}]);
       lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
+      /* The cloud has this state now, so any device file it no longer points at is safe to
+         let go — checked against the state on screen too, since the coach may have edited
+         while the write was in flight. This is the ONLY place device media is deleted. */
+      if(_lmCache.size)lmSweep(json,ser(dataRef.current));
       /* Kendi yazımımızın yankısı dinleyicide elenir (hasPendingWrites), o yüzden bulutta
          nelerin durduğunu burada kendimiz güncelleriz — yoksa bir sonraki yazım her şeyi
          yeniden yazardı. Başka bir cihazın daha yeni parçaları da korunur. */
@@ -21950,6 +22008,7 @@ function App(){
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a
    `local:` handle synchronously inside render, and a store that is unreadable (private mode,
    blocked storage) simply leaves those slots empty rather than holding up the app. */
+lmPersist();
 lmPreload().finally(()=>ReactDOM.createRoot(document.getElementById('root')).render(<App/>));
 </script>
 </body>
