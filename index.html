@@ -3361,15 +3361,23 @@ header{background:var(--bg2)!important}
 .tib-h1{margin:0;font-size:18px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
 .tib-h1 i{display:block;width:3px;height:16px;border-radius:2px;background:var(--grad);flex:none}
 .tib-period{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
-/* Multi-column rather than a grid: the widgets are honestly different heights, and
-   a grid row is as tall as the tallest card in it — which left a short widget sitting
-   over a block of dead space the width of a whole column. Columns let each card take
-   the height it needs and pack the next one straight underneath, so the board has no
-   holes in it at any width, and the browser balances the columns itself. Cards are
-   kept whole with break-inside. */
-.tib-grid{columns:330px;column-gap:14px}
-.tib-card{position:relative;width:100%;min-width:0;overflow:hidden;margin-bottom:14px;
-  break-inside:avoid;-webkit-column-break-inside:avoid;
+/* Explicit columns rather than CSS multi-column: the browser balanced multi-column
+   by height, which is exactly what a board of scrollable widgets must not do — it left
+   Load Trend and the sRPE table ending wherever their own content happened to stop, well
+   short of the column beside them. Each column is a flex column instead, the columns
+   stretch to the tallest of them, and the LAST card in each takes the space that is left
+   (see .tib-col>.tib-card:last-child). So the board ends on one line at the bottom
+   whatever is in it, and the widgets that scroll — the flag list, the sRPE table — get
+   the extra height rather than leaving a hole under themselves.
+   The cap keeps a long roster from pushing the whole board past a screenful; past it the
+   scrollers inside the cards shrink and take over, which is what they are there for. */
+.tib-grid{display:flex;flex-wrap:wrap;align-items:stretch;gap:14px}
+.tib-col{flex:1 1 330px;min-width:0;display:flex;flex-direction:column;gap:14px;
+  max-height:min(78vh,860px)}
+.tib-col>.tib-card{flex:0 0 auto;min-height:0}
+.tib-col>.tib-card:last-child{flex:1 1 auto}
+.tib-card{position:relative;width:100%;min-width:0;overflow:hidden;
+  display:flex;flex-direction:column;
   background:var(--panel);background-image:var(--panel-glass);
   border:1px solid var(--border);border-radius:14px;padding:15px 16px 16px;box-shadow:var(--shadow);
   animation:tibIn .52s cubic-bezier(.22,.61,.36,1) both;animation-delay:calc(var(--i,0)*60ms);
@@ -3377,7 +3385,7 @@ header{background:var(--bg2)!important}
 .tib-card:hover{transform:translateY(-2px);border-color:var(--border2);
   box-shadow:0 16px 38px -18px rgba(0,0,0,.7),0 0 0 1px rgba(0,148,255,.10),var(--glass-hi)}
 @keyframes tibIn{from{opacity:0;transform:translateY(14px)}}
-.tib-chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:13px}
+.tib-chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:13px;flex:none}
 .tib-ct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
   letter-spacing:.11em;text-transform:uppercase;color:var(--text2)}
 .tib-cs{font-size:11px;color:var(--dim);line-height:1.45;margin-top:3px}
@@ -3394,7 +3402,10 @@ header{background:var(--bg2)!important}
 .tib-bar>i{display:block;height:100%;width:0;border-radius:4px;transition:width .8s cubic-bezier(.22,.61,.36,1)}
 .tib-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;white-space:nowrap}
 /* ---- Session Distribution ---- */
-.tib-sd{display:flex;flex-direction:column;gap:11px}
+/* A focus breakdown has many more rows than the six session types it replaced, so the
+   list scrolls inside the card instead of stretching the column it sits in. */
+.tib-sd{display:flex;flex-direction:column;gap:11px;min-height:0;overflow:auto;
+  max-height:270px;margin:0 -3px;padding:0 3px}
 .tib-sd-r{display:grid;grid-template-columns:minmax(0,1fr) auto auto;
   grid-template-areas:"l m n" "bar bar bar";gap:5px 10px;align-items:baseline}
 .tib-sd-r .l{grid-area:l;display:flex;align-items:center;gap:7px;min-width:0;
@@ -3404,7 +3415,7 @@ header{background:var(--bg2)!important}
 .tib-sd-r .n{grid-area:n;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--text)}
 .tib-sd-r .tib-bar{grid-area:bar}
 /* ---- Flagged Athletes ---- */
-.tib-fl{display:flex;flex-direction:column;gap:8px;max-height:460px;overflow:auto;margin:0 -3px;padding:0 3px}
+.tib-fl{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:120px;overflow:auto;margin:0 -3px;padding:0 3px}
 .tib-fl-r{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:11px;
   background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.24)}
 .tib-fl-r.hot{background:rgba(244,63,94,.07);border-color:rgba(244,63,94,.26)}
@@ -3421,6 +3432,17 @@ header{background:var(--bg2)!important}
   padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text2)}
 .tib-tag.s2{color:#ff9c93;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.36)}
 .tib-tag.s1{color:#fbbf50;background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.36)}
+/* A painful region is coloured by how bad the athlete said it was, on the same
+   1-3 scale (Hafif / Orta / Fazla) and the same hues the check-in's pain grid uses —
+   so "Diz" reads red when the knee is severe and "Dirsek" amber when the elbow is
+   only moderate, without the coach opening the check-in. p0 is a region that was
+   ticked on a question that never asked how bad it is. */
+.tib-tag.p0{color:#ff9c93;background:rgba(244,63,94,.12);border-color:rgba(244,63,94,.36)}
+.tib-tag.p1{color:#fde047;background:rgba(234,179,8,.13);border-color:rgba(234,179,8,.42)}
+.tib-tag.p2{color:#fdba74;background:rgba(249,115,22,.13);border-color:rgba(249,115,22,.42)}
+.tib-tag.p3{color:#fca5a5;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.5)}
+.tib-tag .pd{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;
+  background:currentColor;vertical-align:middle;transform:translateY(-1px)}
 /* ---- Planned vs Actual ---- */
 .tib-tbl{width:100%;border-collapse:collapse}
 .tib-tbl th{padding:0 0 7px;text-align:left;font-family:'IBM Plex Mono',ui-monospace,monospace;
@@ -3441,14 +3463,15 @@ header{background:var(--bg2)!important}
 /* A plain ranked table — athlete, the week's total sRPE load, and how far that
    sits from the squad mean — scrolled inside the card with the header pinned so
    the columns stay readable however long the roster is. */
-.tib-sr{max-height:360px;overflow:auto;margin:0 -3px;padding:0 3px}
+.tib-sr{flex:1 1 auto;min-height:120px;overflow:auto;margin:0 -3px;padding:0 3px}
 .tib-sr .tib-tbl th{position:sticky;top:0;z-index:1;background:var(--panel)}
 .tib-tbl th.rk,.tib-tbl td.rk{width:26px;text-align:left}
 .tib-tbl td.rk{font-size:11px;color:var(--dim)}
 .tib-sr .tib-tbl td.d{max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tib-sr .tib-mini{width:54px}
 /* ---- Load Trend ---- */
-.tib-tr .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;height:120px}
+.tib-tr{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.tib-tr .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:1 1 auto;min-height:120px}
 .tib-tr .c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%}
 .tib-tr .c .bar{display:flex;align-items:flex-end;width:100%;flex:1;min-height:0;
   background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden}
@@ -8797,25 +8820,52 @@ function MuscleLoadDistribution({days,title,refDate}){
    number elsewhere in the app cannot drift apart.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* The six session categories the calendar already colours its cards by (see
-   sessionType/SESSION_COLORS), with the words a coach would use for them. The
-   board counts sessions into these buckets rather than inventing a taxonomy of
-   its own, so a bar on the board is the same classification as the coloured
-   keyline on the card above it. */
-const TIB_TYPES=[
-  {id:'strength', label:'Strength & Power', tr:'Kuvvet & Güç'},
-  {id:'practice', label:'Ball Practice',    tr:'Top Çalışması'},
-  {id:'speed',    label:'Speed & Agility',  tr:'Sürat & Çeviklik'},
-  {id:'endurance',label:'Conditioning',     tr:'Kondisyon'},
-  {id:'match',    label:'Competition',      tr:'Müsabaka'},
-  {id:'recovery', label:'Recovery',         tr:'Toparlanma'},
+/* Session Distribution counts the week by SESSION FOCUS — the value the coach picks in
+   the session editor's "Session Focus" box (SESSION_FOCUS, stored on the session as
+   `focus: []`) — rather than by the six colour categories above. The categories are
+   inferred; the focus is what the coach actually wrote down, and it is the finer answer
+   to "what did the week train": a lift and a plyometric block are both `strength` as a
+   category, but Strength and Plyometrics as a focus.
+   One row per focus value, in the SESSION_FOCUS order, each with the colour it is drawn
+   in. Hues follow the family the focus belongs to and the calendar's own category
+   colours, so a strength focus is green, speed/agility work is purple, conditioning is
+   turquoise, competition red and recovery blue — the same reading as the keyline on the
+   session card above. */
+const TIB_FOCI=[
+  {id:'Strength',            label:'Strength',            tr:'Kuvvet',            c:'#00ff7f'},
+  {id:'Hypertrophy',         label:'Hypertrophy',         tr:'Hipertrofi',        c:'#4ade80'},
+  {id:'Power',               label:'Power',               tr:'Güç',               c:'#a3e635'},
+  {id:'Speed',               label:'Speed',               tr:'Hız',               c:'#c000ff'},
+  {id:'Acceleration',        label:'Acceleration',        tr:'İvmelenme',         c:'#a855f7'},
+  {id:'Deceleration',        label:'Deceleration',        tr:'Yavaşlama',         c:'#8b5cf6'},
+  {id:'Change of Direction', label:'Change of Direction', tr:'Yön Değiştirme',    c:'#d946ef'},
+  {id:'Agility',             label:'Agility',             tr:'Çeviklik',          c:'#e879f9'},
+  {id:'Plyometrics',         label:'Plyometrics',         tr:'Pliometrik',        c:'#f472b6'},
+  {id:'Conditioning',        label:'Conditioning',        tr:'Kondisyon',         c:'#00ffd5'},
+  {id:'Mobility',            label:'Mobility',            tr:'Hareketlilik',      c:'#38bdf8'},
+  {id:'Stability',           label:'Stability',           tr:'Stabilite',         c:'#0ea5e9'},
+  {id:'Injury Prevention',   label:'Injury Prevention',   tr:'Sakatlık Önleme',   c:'#2dd4a7'},
+  {id:'Technical',           label:'Technical',           tr:'Teknik',            c:'#ff7c00'},
+  {id:'Tactical',            label:'Tactical',            tr:'Taktik',            c:'#fbbf24'},
+  {id:'Competition',         label:'Competition',         tr:'Müsabaka',          c:'#ff0040'},
+  {id:'Assessment',          label:'Assessment',          tr:'Değerlendirme',     c:'#94a3b8'},
+  {id:'Recovery',            label:'Recovery',            tr:'Toparlanma',        c:'#00bfff'},
 ];
+/* A session the coach has not given a focus to is still on the plan and still cost the
+   week its minutes, so it is reported as its own row instead of being dropped — a bar
+   the coach can see is a bar the coach can go and fill in. */
+const TIB_FOCUS_NONE={id:'__none',label:'No focus set',tr:'Odak girilmemiş',c:'#64748b'};
+const TIB_FOCUS_BY=TIB_FOCI.reduce((m,f)=>(m[f.id]=f,m),{});
+/* The check-in's 1-3 pain grading, in the coach's words. 0 is a region that was ticked
+   on a question with no severity axis at all — a report without a grade, not a mild one. */
+const TIB_PAIN_SEV={1:{tr:'Hafif',en:'Mild'},2:{tr:'Orta',en:'Moderate'},3:{tr:'Fazla',en:'Severe'}};
+const tibPainSevLabel=n=>{const z=TIB_PAIN_SEV[n];return z?L(z.tr,z.en):'';};
 /* Every word the board prints is written in both languages and picked with L() at
    render time, so the TR/EN switch changes the board in place — the component
    subscribes with useAppLang() and each memo that builds a sentence carries the
    language in its dependency list. */
 const MN_S_TR=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
-const TIB_TYPE_LABEL=t=>L(t.tr,t.label);
+const TIB_FOCUS_LABEL=f=>L(f.tr,f.label);
 const TIB_GROUP_TR={guard:'Gard',wing:'Forvet',post:'Pivot',other:'Diğer'};
 const tibGroupLabel=g=>L(TIB_GROUP_TR[g&&g.id]||(g&&g.label)||'',(g&&g.label)||'');
 const TIB_POS_TR={Guard:'Gard',Forward:'Forvet',Center:'Pivot'};
@@ -8914,15 +8964,26 @@ function TeamInsights({days,athletes,refDate}){
   const grow=pct=>({width:lit?`${Math.max(0,Math.min(100,pct))}%`:'0%'});
 
   /* ---- What the week trained ------------------------------------------- */
+  /* Counted by the session's own focus (sesFocus → the editor's "Session Focus" box),
+     not by the inferred colour category. Session focus is a multi-select, so a session
+     written as Strength + Power counts once under each — that is the honest answer to
+     "how much of the week touched power". Its MINUTES are split evenly between them
+     instead of being counted twice, so the minute column still adds up to the minutes
+     that were actually on the plan. `total` stays the number of sessions in the week,
+     which is why it is counted per session rather than summed off the rows. */
   const sesDist=useMemo(()=>{
-    const by={};
+    const by={};let total=0;
     dayKeys.forEach(k=>(((days||{})[k]||{}).sessions||[]).forEach(s=>{
-      const t=sessionType(s),b=by[t]||(by[t]={n:0,min:0});
-      b.n++;b.min+=Number(s.duration)||0;
+      total++;
+      const mins=Number(s.duration)||0;
+      const fs=sesFocus(s).filter(f=>TIB_FOCUS_BY[f]);
+      const keys=fs.length?fs:[TIB_FOCUS_NONE.id];
+      keys.forEach(f=>{const b=by[f]||(by[f]={n:0,min:0});b.n++;b.min+=mins/keys.length;});
     }));
-    const rows=TIB_TYPES.filter(t=>by[t.id]).map(t=>({...t,...by[t.id],c:SESSION_COLORS[t.id].c}))
+    const rows=Object.keys(by)
+      .map(f=>({...(TIB_FOCUS_BY[f]||TIB_FOCUS_NONE),n:by[f].n,min:Math.round(by[f].min)}))
       .sort((a,b)=>b.n-a.n||b.min-a.min||a.label.localeCompare(b.label));
-    return{rows,total:rows.reduce((s,r)=>s+r.n,0),mins:rows.reduce((s,r)=>s+r.min,0),
+    return{rows,total,mins:rows.reduce((x,r)=>x+r.min,0),
       max:Math.max(1,...rows.map(r=>r.n))};
   },[days,wsK]);
 
@@ -8938,8 +8999,21 @@ function TeamInsights({days,athletes,refDate}){
     const tags=[];
     if(t.rd.score!=null&&t.rd.score<2.5)
       tags.push({k:'rd',sev:2,t:`${L('Hazır oluş','Readiness')} ${t.rd.score.toFixed(1)}/5${t.rd.src==='srpe'?L(' (tahmini)',' (est.)'):''}`});
-    if(pains.length)tags.push({k:'pain',sev:2,t:`${L('Ağrı','Pain')} · ${pains.map(p=>tibCtLabel(p.tag)).join(', ')}`});
-    else if(note)tags.push({k:'pain',sev:2,t:`${L('Ağrı','Pain')} · ${note.text}`});
+    /* One chip PER painful region rather than one chip listing them all, because the
+       chip is what carries the grading: the region is coloured by how bad the athlete
+       said it was, so "Diz" reads red at Fazla and "Dirsek" amber at Orta. A region the
+       athlete ticked on a question with no severity axis takes the day's own "Ağrı
+       düzeyin nedir?" score — the same fallback the check-in sync applies — and shows
+       no word when there is nothing to grade it with either. */
+    if(pains.length){
+      const dsev=sevFromSoreness(athWellnessSnap(a,ref).soreness);
+      pains.forEach(p=>{
+        const ps=Math.max(0,Math.min(3,Number(p.sev)||dsev||0));
+        tags.push({k:'pain',pain:ps,sev:ps===1?1:2,
+          t:`${tibCtLabel(p.tag)}${ps?` · ${tibPainSevLabel(ps)}`:''}`});
+      });
+    }
+    else if(note)tags.push({k:'pain',pain:0,sev:2,t:`${L('Ağrı','Pain')} · ${note.text}`});
     if(t.intent==='recovery')tags.push({k:'tier',sev:2,t:L('Kademe ↓ Toparlanma','Tier ↓ Recovery')});
     else if(t.intent==='maintain')tags.push({k:'tier',sev:1,t:L('Kademe ↓ Koruma','Tier ↓ Maintain')});
     if(t.acwr>1.5)tags.push({k:'acwr',sev:2,t:`ACWR ${t.acwr.toFixed(2)} · ${tibZoneLabel(z.t)}`});
@@ -9133,19 +9207,26 @@ function TeamInsights({days,athletes,refDate}){
         </div>}
     </div>
 
+    {/* Three explicit columns, so Load Trend and the sRPE table can be told to fill the
+        height their column is given and the board ends on one line at the bottom. Which
+        card sits in which column is fixed rather than balanced: they are grouped by what
+        a coach reads together — the squad's shape on the left, the week's load in the
+        middle, the athlete-by-athlete ranking on its own. Below ~1000px the columns wrap
+        and the same grouping stacks. */}
     <div className="tib-grid">
+      <div className="tib-col">
       {/* ---- Session distribution ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
           <div><div className="tib-ct">{L('Antrenman Dağılımı','Session Distribution')}</div>
-            <div className="tib-cs">{L('Hafta ne çalıştı','What the week trained')}</div></div>
+            <div className="tib-cs">{L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained')}</div></div>
           <span className="tib-tot">{sesDist.total}<u>{L('antrenman','sessions')}</u></span>
         </div>
         {sesDist.rows.length===0
           ?<div className="tib-none">{L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>
           :<div className="tib-sd">
             {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
-              <span className="l"><i style={{background:r.c}}/>{TIB_TYPE_LABEL(r)}</span>
+              <span className="l"><i style={{background:r.c}}/>{TIB_FOCUS_LABEL(r)}</span>
               <span className="n">{r.n}</span>
               <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
               <span className="m">{r.min} {L('dk','min')}</span>
@@ -9169,12 +9250,18 @@ function TeamInsights({days,athletes,refDate}){
               <span className="av">{f.a.photo?<img src={mediaSrc(f.a.photo)} alt=""/>:initials(f.a.name)}</span>
               <div className="tx">
                 <div className="nm">{f.a.name||'—'}<u>{tibPosLabel(f.a.position)||'—'}</u></div>
-                <div className="tg">{f.tags.map((t,i)=><span key={i} className={'tib-tag s'+t.sev}>{t.t}</span>)}</div>
+                <div className="tg">{f.tags.map((t,i)=>
+                  <span key={i} className={'tib-tag '+(t.pain!=null?'p'+t.pain:'s'+t.sev)}
+                    title={t.pain?`${L('Ağrı','Pain')} · ${tibPainSevLabel(t.pain)}`:undefined}>
+                    {t.pain!=null&&<i className="pd"/>}{t.t}</span>)}</div>
               </div>
             </div>)}
           </div>}
       </div>
 
+      </div>
+
+      <div className="tib-col">
       {/* ---- Planned vs actual ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
@@ -9225,6 +9312,9 @@ function TeamInsights({days,athletes,refDate}){
           </div>}
       </div>
 
+      </div>
+
+      <div className="tib-col">
       {/* ---- Team sRPE table ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
@@ -9234,7 +9324,8 @@ function TeamInsights({days,athletes,refDate}){
         </div>
         {srpe.n===0
           ?<div className="tib-none">{L('Bu hafta sıralanacak sporcu yükü yok.','No athlete load this week to rank.')}</div>
-          :<div className="tib-sr">
+          :<>
+            <div className="tib-sr">
             <table className="tib-tbl">
               <thead><tr><th className="rk">#</th><th>{L('Sporcu','Athlete')}</th>
                 <th className="r">sRPE</th><th className="r">Δ</th></tr></thead>
@@ -9247,9 +9338,13 @@ function TeamInsights({days,athletes,refDate}){
                   {r.load?tibPct(r.d):L('yük yok','no load')}</span></td>
               </tr>)}</tbody>
             </table>
+            </div>
+            {/* Outside the scroller, so the reading of the table stays pinned to the
+                bottom of the card instead of scrolling away with the last athlete. */}
             <div className="tib-legend">{L(`Takım ortalaması ${tibNum(srpe.mean)} AU · ${srpe.n} sporcu · AU = sRPE × dakika`,
               `Squad mean ${tibNum(srpe.mean)} AU · ${srpe.n} athletes · AU = sRPE × minutes`)}</div>
-          </div>}
+          </>}
+      </div>
       </div>
     </div>
     {!hasWeek&&roster.length===0&&<div className="tib-none">
