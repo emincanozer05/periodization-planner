@@ -2848,7 +2848,7 @@ header{background:var(--bg2)!important}
    changed exercise is — the sheet says at a glance what no longer matches the source. */
 .iv-meta-f.edited input{border-color:rgba(245,158,11,.5)}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
-.iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 160px;min-width:0;max-width:340px;background:transparent;border:1px solid transparent;border-radius:6px;
@@ -2858,7 +2858,10 @@ header{background:var(--bg2)!important}
 .iv-block-nm.edited{color:var(--text);border-color:rgba(245,158,11,.45)}
 .iv-blocktag{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);border-radius:4px;padding:1px 6px}
-.iv-blockacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex:none}
+/* The block's actions — add, clone, save as a template, the two prints, remove. Six
+   buttons do not always fit beside the title on a narrow editor, so the row is allowed to
+   wrap rather than squeezing the block name out of readability. */
+.iv-blockacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .iv-blockacts .iv-rmb:hover{border-color:rgba(239,68,68,.55);color:#f87171}
 /* A removed template block keeps a slim bar on the card so it can be put back —
    the same bargain as an emptied slot, which stays dimmed rather than vanishing. */
@@ -10420,8 +10423,12 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
     </div>
   </div>);
 }
-function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk}){
+/* `session`, `printContext` and `isTemplate` are here for the block's own actions: printing
+   and saving a template both need a whole session to work with, and a block is handed to
+   them as one that carries this block alone. */
+function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
+  const[savedTpl,setSavedTpl]=useState(false);
   const setExs=a=>onUpdate({...block,exercises:a});
   const upEx=(i,ex)=>{const a=[...exs];a[i]=ex;setExs(a);};
   const mv=(i,d)=>{const j=i+d;if(j<0||j>=exs.length)return;const a=[...exs];[a[i],a[j]]=[a[j],a[i]];setExs(a);};
@@ -10434,6 +10441,15 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   });},[exs]);
   const groups=[...new Set(exs.map(e=>(e.superset||'').toUpperCase().trim()).filter(Boolean))].sort();
   const isDragging=dragB!=null&&dragB===index;
+  /* This block as a session of its own — what Print and Save to Templates are given. It is
+     the session it belongs to with every other block dropped, so the printed sheet keeps
+     the session's date, duration and focus; the name carries the block so the sheet (and
+     the saved template) says which one it is rather than repeating the session's title. */
+  const blkName=block.name||L(`Blok ${index+1}`,`Block ${index+1}`);
+  const blkSession=()=>({...(session||{}),
+    name:[((session||{}).name||'').trim(),blkName].filter(Boolean).join(' · '),
+    blocks:[block]});
+  const saveTpl=()=>{if(saveSessionAsTemplate(blkSession())){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
   return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
@@ -10449,7 +10465,18 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
       <span className="iv-blockacts">
         <button type="button" className="btn xs iv-addb" onClick={()=>{setOpen(true);setExs([...exs,EX()]);}}
           title={L(`${block.name||`Blok ${index+1}`}'a egzersiz ekle`,`Add an exercise to ${block.name||`Block ${index+1}`}`)}>+ {L('Egzersiz ekle','Add exercise')}</button>
-        <button type="button" className="btn xs sec" onClick={onDuplicate} title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘</button>
+        <button type="button" className="btn xs sec" onClick={onDuplicate}
+          title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘ {L('Çoğalt','Clone')}</button>
+        {!isTemplate&&<button type="button" className="btn xs sec" onClick={saveTpl}
+          title={L('Bu bloğu Templates sekmesine kaydet','Save this block to the Templates tab')}
+          style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>
+          {savedTpl?L('✓ Kaydedildi','✓ Saved'):L('Şablona Kaydet','Save to Templates')}</button>}
+        <button type="button" className="btn xs sec"
+          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[blkSession()])}
+          title={L('Yalnızca bu bloğu yazdır','Print this block only')}>{L('Yazdır','Print')}</button>
+        <button type="button" className="btn xs sec"
+          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[blkSession()],{withImages:true})}
+          title={L('Yalnızca bu bloğu, yüklenen egzersiz görselleriyle yazdır','Print this block only, including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
         <button type="button" className="btn xs sec iv-rmb" onClick={()=>{if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
           title={L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
       </span>
@@ -10680,9 +10707,7 @@ function RpeGauge({value,onChange}){
 
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
   const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
-  const[savedTpl,setSavedTpl]=useState(false);
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
-  const saveTpl=()=>{if(saveSessionAsTemplate(session)){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
   const[dragB,setDragB]=useState(null);
   const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
   const updBlk=(bid,nb)=>u({blocks:session.blocks.map(b=>b.id===bid?nb:b)});
@@ -10724,10 +10749,11 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <div className="row" onClick={e=>e.stopPropagation()}>
         <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
         <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
-        <button className="btn xs sec" onClick={onDuplicate}>{L('Çoğalt','Clone')}</button>
-        {!isTemplate&&<button className="btn xs sec" onClick={saveTpl} title={L('Bu seansı Templates sekmesine kaydet','Save this session to the Templates tab')} style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>{savedTpl?L('✓ Kaydedildi','✓ Saved'):L('Şablona Kaydet','Save to Templates')}</button>}
-        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session])}>{L('Yazdır','Print')}</button>
-        <button className="btn xs sec" onClick={()=>printDayA4(printContext.title,printContext.subtitle,[session],{withImages:true})} title={L('Bu seansı yüklenen egzersiz görselleriyle birlikte yazdır','Print this session including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
+        {/* Clone / Save to Templates / Print / Print with Image are not here any more: they
+            sit in each block's own header and act on that block, so a coach can hand a
+            single block to the athletes doing it instead of printing the whole session
+            every time. Only the two that move the session and the one that deletes it are
+            about the session as a whole, so only those stayed. */}
         <button className="btn xs danger" onClick={()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();}}>{L('Sil','Delete')}</button>
       </div>
       <span style={{cursor:'pointer',color:'var(--muted)',fontSize:13}}>{open?'▼':'▶'}</span>
@@ -10827,6 +10853,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         </div>
       </div>}
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
+        session={session} printContext={printContext} isTemplate={isTemplate}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
       <div className="add-blk">
         <button onClick={()=>addBlk('')}>+ {L('Blok Ekle','Add Block')}</button>
