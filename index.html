@@ -428,8 +428,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-mono .z{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
 .calw-mono .z i{width:7px;height:7px;border-radius:50%;display:inline-block}
 /* Per-day team averages (RPE / readiness) directly under the day's date */
-.calw-avg{display:flex;gap:6px;margin:-2px 0 2px}
-.calw-avg .cav{flex:1;display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px;border:1px solid var(--border);border-radius:7px;background:rgba(255,255,255,.02);font-family:'IBM Plex Mono',ui-monospace,monospace}
+/* One box per line, all the same size: the day is read down the column — what the squad
+   gave S&C, what they gave ball practice, and how ready they were — and a row of three
+   squeezed side by side in a day column left no room for the labels. */
+.calw-avg{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:-2px 0 4px}
+.calw-avg .cav{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px;min-height:20px;border:1px solid var(--border);border-radius:7px;background:rgba(255,255,255,.02);font-family:'IBM Plex Mono',ui-monospace,monospace}
 .calw-avg .cav em{font-style:normal;font-size:9px;letter-spacing:.06em;color:var(--dim)}
 .calw-avg .cav b{font-size:12px;font-weight:800;line-height:1}
 /* Athletes' weekly sRPE table (Calendar page) — between week strip and month grid */
@@ -5696,13 +5699,23 @@ function getAthleteRisks(team,ref=fmt(today)){
 /* Day-level session RPE for an athlete: duration-weighted average across all of that
    day's srpeLog rows and sources (TP / S&C / Game). Falls back to a plain average when
    durations are missing. null = no RPE logged that day. */
-function athDayRPE(a,dk){let rw=0,dw=0;const rs=[];
-  (a.srpeLog||[]).forEach(e=>{if(e.date!==dk)return;
-    [['tpRPE','tpDuration'],['scRPE','scDuration'],['gameRPE','gameDuration']].forEach(([rk,du])=>{
+/* The three things the post-training check-in asks about, in the athlete's own words:
+   ball practice, strength & conditioning, and the match. Split out here because the
+   calendar now reports a day per kind — one number for the whole day cannot say which
+   session the squad found hard. */
+const SRPE_KINDS={tp:['tpRPE','tpDuration'],sc:['scRPE','scDuration'],game:['gameRPE','gameDuration']};
+/* One athlete's RPE for a day over the given kinds — duration-weighted when they reported
+   minutes, a plain mean of the scores when they did not. `kinds` omitted = the whole day,
+   which is what this has always returned. */
+function athDayRPEOf(a,dk,kinds){let rw=0,dw=0;const rs=[];
+  const ks=(kinds&&kinds.length?kinds:Object.keys(SRPE_KINDS)).map(k=>SRPE_KINDS[k]).filter(Boolean);
+  (((a||{}).srpeLog)||[]).forEach(e=>{if(e.date!==dk)return;
+    ks.forEach(([rk,du])=>{
       const r=(e[rk]===''||e[rk]==null)?NaN:Number(e[rk]);if(isNaN(r))return;
       const d=Number(e[du])||0;rs.push(r);if(d>0){rw+=r*d;dw+=d;}});});
   if(dw>0)return rw/dw;
   return rs.length?rs.reduce((x,y)=>x+y,0)/rs.length:null;}
+function athDayRPE(a,dk){return athDayRPEOf(a,dk,null);}
 /* RPE traffic light: 3–4 blue · 5–6 green · 7–8 orange · 9–10 red. Half-points fall into
    the band below the next whole number (4.5 is still blue, 6.9 still green). */
 function rpeColor(v){return v==null?null:v<5?'#3b82f6':v<7?'#22c55e':v<9?'#f97316':'#ef4444';}
@@ -5710,8 +5723,8 @@ function rpeColor(v){return v==null?null:v<5?'#3b82f6':v<7?'#22c55e':v<9?'#f9731
    RPE     = mean of every athlete's duration-weighted day RPE (athDayRPE).
    Readiness = mean of the wellness check-ins actually dated on that day (not the
    "latest known value", so an empty day stays empty instead of echoing last week). */
-function teamDayRPE(athletes,dk){
-  const vs=(athletes||[]).map(a=>athDayRPE(a,dk)).filter(v=>v!=null&&!isNaN(v));
+function teamDayRPE(athletes,dk,kinds){
+  const vs=(athletes||[]).map(a=>athDayRPEOf(a,dk,kinds)).filter(v=>v!=null&&!isNaN(v));
   return vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null;}
 function teamDayReadiness(athletes,dk){
   const vs=[];
@@ -9894,8 +9907,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         // Team averages under the date. In team mode they come from the roster's logs;
         // on a personal calendar the "team" is the single athlete, so fall back to the
         // day's own session RPEs.
-        const dayRPE=teamMode?teamDayRPE(athletes,k)
+        const dayRPE=teamMode?null
           :(()=>{const v=ss.map(s=>Number(s.sRPE)).filter(x=>!isNaN(x)&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;})();
+        /* Split by what the athletes were actually asked about, so the day says which
+           session earned the score. Only a team calendar can split it: a personal one has
+           no check-ins to read and keeps the single figure. */
+        const dayRpeSC=teamMode?teamDayRPE(athletes,k,['sc']):null;
+        const dayRpeTP=teamMode?teamDayRPE(athletes,k,['tp']):null;
+        const dayRpeGM=teamMode?teamDayRPE(athletes,k,['game']):null;
         const dayRdy=teamMode?teamDayReadiness(athletes,k):null;
         const isDrop=canEdit&&dragInfo&&dragOverDate===k&&dragInfo.fromDate!==k;
         return(<div key={k} className={`calw-col${isDrop?' drop':''}`}
@@ -9913,11 +9932,24 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             </span>
           </div>
           {/* Team averages for the day, right under the date: session RPE (0–10) and
-              wellness readiness (0–5), each tinted by its own severity scale. */}
+              wellness readiness (0–5), each tinted by its own severity scale. The RPE is
+              given per kind of session — the check-in asks about S&C, ball practice and
+              the match separately, so the day can say which of them was hard. The match
+              line only appears on a day somebody reported one. */}
           <div className="calw-avg">
-            <span className="cav" title={L('Bu gün için takım ortalaması seans RPE\'si (0–10)','Team average session RPE for this day (0–10)')}>
+            {teamMode?<>
+              <span className="cav" title={L('Bu gün için takım ortalaması Kuvvet & Kondisyon RPE\'si (0–10)','Team average S&C RPE for this day (0–10)')}>
+                <em>{'S&C RPE'}</em><b style={{color:rpeColor(dayRpeSC)||'var(--dim)'}}>{dayRpeSC!=null?dayRpeSC.toFixed(1):'—'}</b>
+              </span>
+              <span className="cav" title={L('Bu gün için takım ortalaması top antrenmanı RPE\'si (0–10)','Team average ball practice RPE for this day (0–10)')}>
+                <em>{'BALL PRACTICE'}</em><b style={{color:rpeColor(dayRpeTP)||'var(--dim)'}}>{dayRpeTP!=null?dayRpeTP.toFixed(1):'—'}</b>
+              </span>
+              {dayRpeGM!=null&&<span className="cav" title={L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
+                <em>{'MATCH RPE'}</em><b style={{color:rpeColor(dayRpeGM)||'var(--dim)'}}>{dayRpeGM.toFixed(1)}</b>
+              </span>}
+            </>:<span className="cav" title={L('Bu gün için takım ortalaması seans RPE\'si (0–10)','Team average session RPE for this day (0–10)')}>
               <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
-            </span>
+            </span>}
             <span className="cav" title={L('Bu günün wellness check-in\'lerinden takım ortalama hazır oluşu (0–5)','Team average readiness from this day\'s wellness check-ins (0–5)')}>
               <em>RDN</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
             </span>
