@@ -545,6 +545,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-blk .bh{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--accent);margin-bottom:9px;letter-spacing:.05em;display:flex;align-items:center;gap:9px;font-weight:500}
 .dw-blk .bh::after{content:"";flex:1;height:1px;background:var(--border)}
 .dw-ex{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--panel);border:1px solid var(--border);border-radius:9px;margin-bottom:6px}
+/* A drill wraps so its diagram gets the full width under the name, rather than being
+   squeezed into the strip beside it. */
+.dw-drill{flex-wrap:wrap;border-color:rgba(255,159,67,.24)}
+.dw-court{flex:1 0 100%;max-height:170px;border-radius:8px;border:1px solid var(--border);background:#171a1f;margin-top:8px}
+.dw-kind{margin-left:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8px;letter-spacing:.1em;
+  color:#ff9f43;border:1px solid rgba(255,159,67,.4);border-radius:4px;padding:1px 5px}
 .dw-ex .ss{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:#0a0b0d;background:var(--accent);border-radius:4px;padding:3px 7px;flex:none;font-weight:600;line-height:1}
 .dw-ex .ss.empty{background:var(--border2);color:var(--dim)}
 .dw-ex .en{font-size:13.5px;font-weight:500;flex:1;color:var(--text)}
@@ -984,6 +990,144 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .add-blk{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}
 .add-blk button{background:var(--elevated);color:var(--muted);border:1px dashed var(--border);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s;font-weight:500}
 .add-blk button:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-bg)}
+/* The three are different kinds of work, so each one hovers to its own colour rather than
+   all three to the app accent — the court block especially, which is the one a coach is
+   scanning for. */
+.add-blk .ab-ball:hover{border-color:#ff9f43;color:#ff9f43;background:rgba(255,159,67,.09)}
+.add-blk .ab-note:hover{border-color:var(--muted);color:var(--text2);background:var(--bg2)}
+
+/* =========================================================
+   BALL PRACTICE — the court board and the drill row
+   ========================================================= */
+/* Which kind of work a block holds, said at its head. Small, monospaced, and coloured —
+   the coach reads the strip, not the word. */
+.blk-kind{flex:0 0 auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;
+  letter-spacing:.1em;padding:3px 6px;border-radius:5px;border:1px solid;line-height:1}
+.blk-kind.sc{color:#46d6a0;border-color:rgba(70,214,160,.4);background:rgba(70,214,160,.1)}
+.blk-kind.ball{color:#ff9f43;border-color:rgba(255,159,67,.42);background:rgba(255,159,67,.1)}
+.bp-block{border-color:rgba(255,159,67,.28)}
+/* A drill is a diagram plus a prescription; it needs the whole row, not half of one. */
+.bp-slots{grid-template-columns:1fr !important}
+.bp-slot{border-color:rgba(255,159,67,.22)}
+.bp-tag{background:rgba(255,159,67,.16) !important;color:#ff9f43 !important;border-color:rgba(255,159,67,.4) !important}
+.bp-nm{width:100%;background:var(--bg2);border:1px solid var(--border2,var(--border));border-radius:8px;
+  padding:7px 11px;color:var(--text);font-family:inherit;font-size:13.5px;font-weight:600}
+.bp-nm:focus{outline:none;border-color:#ff9f43}
+.bp-save{color:#ff9f43 !important}
+.bp-save.on{color:var(--accent) !important}
+/* The board on the left, the numbers on the right. Below ~1000px of block the two stack:
+   a court squeezed into a third of a narrow panel is not a court anybody can draw on. */
+/* Two selectors deep so it beats the flex-column .iv-slot-ed further down the sheet —
+   the drill row wears both classes, and the later rule would otherwise win. */
+.iv-slot-ed.bp-ed{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(280px,1fr);gap:14px;align-items:start}
+@container (max-width:980px){.iv-slot-ed.bp-ed{grid-template-columns:1fr}}
+@media (max-width:900px){.iv-slot-ed.bp-ed{grid-template-columns:1fr}}
+.bp-court{min-width:0}
+.bp-court-t{display:flex;align-items:center;gap:7px;width:100%;background:none;border:none;padding:0 0 7px;
+  color:var(--text2);font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;cursor:pointer}
+.bp-court-t i{font-style:normal;font-size:9px;color:var(--dim)}
+.bp-court-t b{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:#ff9f43;font-weight:700}
+.bp-court-mini{width:100%;max-height:190px;border-radius:9px;border:1px solid var(--border);background:#171a1f;display:block}
+.bp-side{min-width:0;display:flex;flex-direction:column;gap:11px}
+/* Two selectors deep for the same reason .bp-ed is — .iv-numed sets its own columns
+   further down the sheet. Auto-fit keeps three across in a narrow panel and six across in
+   a wide one, without a breakpoint for each. */
+.iv-numed.bp-numed{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:7px}
+.bp-notes{width:100%;min-height:66px;resize:vertical}
+
+/* ---- The board ---- */
+.ct-wrap{border:1px solid var(--border);border-radius:11px;background:var(--panel,var(--bg2));overflow:hidden}
+.ct-bar{display:flex;flex-wrap:wrap;gap:4px 10px;padding:7px 8px;background:var(--elevated,var(--bg2));
+  border-bottom:1px solid var(--border)}
+.ct-grp{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.ct-grp-end{margin-left:auto}
+.ct-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);padding-right:3px}
+/* Every tool is a chip with its mark and its name. The name is what teaches the notation —
+   a coach should not have to learn which glyph means "screen" from the drawing it makes. */
+.ct-tb{display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid transparent;
+  border-radius:7px;padding:4px 7px;color:var(--text2);font-family:inherit;font-size:10.5px;font-weight:600;
+  cursor:pointer;transition:background .13s,border-color .13s,color .13s;line-height:1.2}
+.ct-tb i{font-style:normal;font-size:12px;line-height:1}
+.ct-tb b{font-weight:600}
+.ct-tb:hover{background:var(--bg2);color:var(--text)}
+.ct-tb.on{background:rgba(255,159,67,.14);border-color:rgba(255,159,67,.5);color:#ff9f43}
+.ct-tb.danger:hover{border-color:#ff6b5b;color:#ff6b5b;background:rgba(255,107,91,.1)}
+.ct-tb.off{opacity:.4;pointer-events:none}
+.ct-marks .ct-tb.on{background:rgba(77,163,255,.14);border-color:rgba(77,163,255,.5);color:#4da3ff}
+.ct-sw{width:17px;height:17px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;
+  transition:transform .12s,border-color .12s}
+.ct-sw:hover{transform:scale(1.12)}
+.ct-sw.on{border-color:var(--text);transform:scale(1.16)}
+.ct-swc{background:none;-webkit-appearance:none;appearance:none}
+.ct-swc::-webkit-color-swatch-wrapper{padding:0}
+.ct-swc::-webkit-color-swatch{border:none;border-radius:50%}
+.ct-w{width:24px;height:20px;display:flex;align-items:center;justify-content:center;background:transparent;
+  border:1px solid transparent;border-radius:6px;cursor:pointer;padding:0}
+.ct-w span{display:block;width:15px;background:var(--text2);border-radius:3px}
+.ct-w:hover{background:var(--bg2)}
+.ct-w.on{border-color:rgba(255,159,67,.5);background:rgba(255,159,67,.12)}
+.ct-w.on span{background:#ff9f43}
+/* The floor itself. aspect-ratio comes off the view (half court is taller than it is wide),
+   so the board never letterboxes and the drawing never distorts. */
+/* Height-led, not width-led: a half court is taller than it is wide, so sizing it off the
+   panel's width gives a board the coach has to scroll past. The height is capped to what
+   fits on a screen and the width follows from the court's own proportions. */
+.ct-board{position:relative;background:#12151a;height:clamp(260px,52vh,540px);width:auto;max-width:100%;margin:0 auto}
+.ct-svg{display:block;width:100%;height:100%;user-select:none;-webkit-user-select:none}
+/* A selected item is lifted rather than recoloured — recolouring it would look like the
+   coach had changed its colour. */
+.ct-sel{filter:drop-shadow(0 0 9px rgba(255,255,255,.85))}
+.ct-hint{position:absolute;inset:auto 0 12px;text-align:center;pointer-events:none;
+  font-size:11px;color:rgba(255,255,255,.34);padding:0 18px;line-height:1.5}
+.ct-legend{display:flex;flex-wrap:wrap;align-items:center;gap:5px 13px;padding:6px 10px;
+  border-top:1px solid var(--border);background:var(--elevated,var(--bg2))}
+.ct-legend span{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--dim)}
+.ct-legend-t{margin-left:auto;color:var(--text2);font-weight:600}
+/* The notation, drawn rather than described: the legend marks are the same lines the
+   tools make, at chip size. */
+.ct-legend .lg{display:block;width:24px;height:0;border-top:2px solid var(--text2)}
+.ct-legend .lg-pass{border-top-style:dashed}
+.ct-legend .lg-shot{border-top-style:dotted}
+.ct-legend .lg-drib{height:6px;border:none;
+  background:radial-gradient(circle at 3px 6px,transparent 2.2px,var(--text2) 2.4px 3.4px,transparent 3.6px) 0 0/6px 6px repeat-x}
+.ct-legend .lg-scr{border-right:2px solid var(--text2);height:6px;margin-top:-3px}
+
+/* ---- The clip on a drill ---- */
+.dv-wrap{border:1px solid var(--border);border-radius:9px;padding:8px 9px;background:var(--bg2)}
+.dv-hd{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.dv-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);flex:1}
+.dv-tog,.dv-up,.dv-x{border:1px solid var(--border);background:var(--elevated,var(--bg2));color:var(--text2);
+  border-radius:6px;padding:3px 8px;font-family:inherit;font-size:10px;font-weight:600;cursor:pointer;
+  transition:border-color .13s,color .13s}
+.dv-tog:hover,.dv-up:hover{border-color:#ff9f43;color:#ff9f43}
+.dv-x:hover{border-color:#ff6b5b;color:#ff6b5b}
+.dv-up{position:relative;overflow:hidden;display:inline-block}
+.dv-up input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.dv-link{width:100%;background:var(--panel,var(--bg2));border:1px solid var(--border);border-radius:7px;
+  padding:6px 9px;color:var(--text);font-family:inherit;font-size:11.5px}
+.dv-link:focus{outline:none;border-color:#ff9f43}
+.dv-player{margin-top:8px;border-radius:8px;overflow:hidden;background:#000}
+.dv-player video,.dv-player iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
+
+/* ---- Ball practice in the library ---- */
+.lib-split{display:inline-flex;gap:3px;padding:3px;background:var(--elevated,var(--bg2));
+  border:1px solid var(--border);border-radius:9px}
+.lib-split button{background:transparent;border:none;border-radius:7px;padding:6px 14px;color:var(--muted);
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .14s,color .14s;
+  display:inline-flex;align-items:center;gap:7px}
+.lib-split button:hover{color:var(--text)}
+.lib-split button.on{background:var(--bg2);color:var(--text)}
+.lib-split button.on.ball{color:#ff9f43}
+.lib-split b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;
+  color:var(--dim);background:var(--panel,var(--bg2));border-radius:20px;padding:1px 6px}
+/* A drill's card shows the drill — the diagram is the thumbnail, because that is what a
+   coach recognises it by. */
+.ex-thumb .bp-card-court{width:100%;height:100%;object-fit:contain;display:block;background:#171a1f}
+.bp-modal-court{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:#171a1f}
+.bp-modal-court>svg{display:block;width:100%}
+
 /* Free-text session note opened by "+ Add Notes" next to "+ Add Block" — plain
    body weight, since the app face is a text face and reads fine at length. */
 .ses-note{margin-top:10px}
@@ -1603,7 +1747,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-trig span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .focus-trig span.ph{color:var(--dim)}
 .focus-trig i{font-style:normal;color:var(--dim);flex:0 0 auto;font-size:11px}
-.focus-dd{position:absolute;top:calc(100% + 4px);left:0;right:0;min-width:220px;z-index:80;background:var(--elevated,var(--bg2));border:1px solid var(--border);border-radius:11px;padding:6px;max-height:280px;overflow:auto;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+/* Rendered into a body portal at fixed coordinates (see useDDAnchor) — a block card's
+   overflow:hidden used to slice these panels off at its rounded edge. The z-index has to
+   clear every overlay the app paints, since the panel is now a sibling of the app root. */
+.focus-dd{position:fixed;min-width:220px;z-index:2200;background:var(--elevated,var(--bg2));border:1px solid var(--border);border-radius:11px;padding:6px;max-height:280px;overflow:auto;box-shadow:0 18px 52px rgba(0,0,0,.62);
+  animation:fx-pop .16s cubic-bezier(.22,.9,.3,1) both}
+@keyframes fx-pop{from{opacity:0;transform:translateY(-5px) scale(.985)}to{opacity:1;transform:none}}
 .focus-opt{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);text-transform:none;letter-spacing:0;font-weight:500;margin:0}
 .focus-opt:hover{background:var(--bg2)}
 .focus-opt.on{color:var(--text);font-weight:600}
@@ -1620,6 +1769,48 @@ tr:hover td{background:rgba(255,255,255,.02)}
   border-radius:20px;padding:1px 7px;flex:0 0 auto;line-height:1.5}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
+
+/* ---- Session focus, three stages ------------------------------------------
+   The panel is one form that grows a step at a time: stage 2 is mounted the moment a
+   focus is ticked, stage 3 when a sub-focus is. Each arriving stage expands from nothing
+   and fades up — a short, flat curve, because this happens on every tick and an
+   animation the coach has to wait out is worse than none. */
+.fx-dd{padding:0;display:flex;flex-direction:column}
+.fx-stage{padding:11px 12px 4px;border-top:1px solid var(--border);
+  animation:fx-stage-in .26s cubic-bezier(.22,.9,.3,1) both}
+.fx-stage:first-child{border-top:none}
+@keyframes fx-stage-in{
+  from{opacity:0;transform:translateY(-6px);clip-path:inset(0 0 100% 0)}
+  to{opacity:1;transform:none;clip-path:inset(0 0 0 0)}}
+@media (prefers-reduced-motion:reduce){
+  .fx-dd,.fx-stage{animation:none}}
+.fx-stage-hd{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.fx-stage-hd b{flex:0 0 auto;width:17px;height:17px;border-radius:50%;background:var(--bg2);border:1px solid var(--border2,var(--border));
+  color:var(--text2);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;align-self:center}
+.fx-stage-hd span{font-size:12px;font-weight:700;color:var(--text);letter-spacing:.01em}
+.fx-stage-hd i{font-style:normal;font-size:10.5px;color:var(--dim);margin-left:auto;text-align:right}
+/* Two columns of options — the lists are short enough to read whole, and a single tall
+   column pushed stage 3 off the bottom of the panel. */
+.fx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
+@media (max-width:520px){.fx-grid{grid-template-columns:1fr}}
+/* A ticked option is marked by the colour of the focus family it belongs to, so the
+   three stages read as one chain rather than three unrelated checklists. */
+.fx-grid .focus-opt{padding:5px 8px;font-size:12.5px;gap:7px;transition:background .12s,color .12s}
+.fx-grid .focus-opt input[type=checkbox]{accent-color:var(--fo-c,var(--green,#46d6a0))}
+.fx-grid .focus-opt.on{color:var(--fo-c,var(--text));background:color-mix(in srgb,var(--fo-c,#46d6a0) 11%,transparent)}
+.fx-fam{margin-bottom:7px}
+.fx-fam-hd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--fo-c,var(--dim));padding:3px 8px 4px;display:flex;align-items:center;gap:6px}
+.fx-fam-hd::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--fo-c,var(--dim));flex:0 0 auto}
+.fx-foot{position:sticky;bottom:0;display:flex;align-items:center;gap:9px;padding:8px 12px;
+  border-top:1px solid var(--border);background:var(--elevated,var(--bg2));border-radius:0 0 11px 11px}
+.fx-foot>span{flex:1;min-width:0;font-size:10.5px;color:var(--dim);line-height:1.35}
+.fx-clear,.fx-done{flex:0 0 auto;border-radius:7px;padding:5px 11px;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg2);color:var(--text2);transition:border-color .14s,color .14s}
+.fx-clear:hover{border-color:#ff6b5b;color:#ff6b5b}
+.fx-done{border-color:var(--accent);color:var(--accent)}
+.fx-done:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 /* Templates: collapsible category header. Folded by default — the cards only mount when
    the coach opens the group, so the page lands on a short list of training types. */
 .tpl-cat-sec{margin-bottom:10px}
@@ -3572,7 +3763,7 @@ header{background:var(--bg2)!important}
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const{useState,useEffect,useMemo,useRef}=React;
+const{useState,useEffect,useMemo,useRef,useCallback}=React;
 
 /* Report/print/PDF font — mirror the site's Archivo so exported outputs use
    the same typeface as the web app. Uses an absolute URL so the font resolves in
@@ -3595,17 +3786,105 @@ const MODELS=[
   {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
-const SESSION_FOCUS=['Strength','Hypertrophy','Power','Speed','Acceleration','Deceleration','Change of Direction','Agility','Plyometrics','Conditioning','Mobility','Stability','Injury Prevention','Technical','Tactical','Competition','Assessment','Recovery'];
+/* ---------------------------------------------------------------------------
+   SESSION FOCUS — three stages, asked in the order a coach actually decides.
+
+     1. Focus      what quality are we developing?      (Strength, Speed, …)
+     2. Sub-Focus  which capacity inside it?            (Max Strength, Acceleration, …)
+     3. Method     how are we going to train it?        (Barbell, Resisted Sprint, …)
+
+   Each stage is a multi-select, and each one only opens once the stage above it has an
+   answer — a sub-focus means nothing without the focus it belongs to, and the methods
+   worth offering depend on which focus is being trained. The options at stages 2 and 3
+   are the union of what the picked focuses offer, kept grouped under the focus they came
+   from so the list still reads as an answer to "which capacity, inside which quality".
+
+   The stage-1 values are the canonical ones — the load distribution, the template
+   categories and every saved session key off them, so they never change. `sub` and
+   `methods` widen a session's description without touching those keys. */
+const FOCUS_TREE=[
+  {id:'Strength', tr:'Kuvvet', c:'#00ff7f',
+   sub:['Maximal Strength','Hypertrophy','Strength Endurance','Eccentric Strength','Isometric Strength','Unilateral Strength','Core Strength'],
+   met:['Barbell','Dumbbell','Kettlebell','Machine','Bodyweight','Isometric','Eccentric / Tempo','Accommodating Resistance (Bands / Chains)','Flywheel','Blood Flow Restriction','Cluster Sets','Velocity-Based']},
+  {id:'Power', tr:'Güç', c:'#a3e635',
+   sub:['Strength-Speed','Speed-Strength','Explosive Strength','Reactive Strength','Rate of Force Development','Ballistic Power'],
+   met:['Olympic Lift','Olympic Derivative','Plyometric','Depth Jump / Shock','Medicine Ball','Ballistic (Jump / Throw)','Contrast','Complex','French Contrast','Band-Resisted Jump']},
+  {id:'Speed', tr:'Hız', c:'#c000ff',
+   sub:['Acceleration','Max Velocity','Deceleration','Change of Direction','Reactive Agility','Speed Endurance','Sprint Technique'],
+   met:['Sprint','Resisted Sprint (Sled)','Resisted Sprint (Band)','Assisted / Overspeed','Hill Sprint','Wicket / Technical Drill','Closed COD Drill','Open / Reactive Drill','Deceleration Drill']},
+  {id:'Conditioning', tr:'Kondisyon', c:'#00ffd5',
+   sub:['Aerobic Capacity','Aerobic Power','Anaerobic Capacity','Anaerobic Power','Repeated Sprint Ability','Lactate Tolerance','Tempo / Extensive'],
+   met:['Continuous Run','Interval Run','Shuttle Run','HIIT','Sprint Interval Training','Small-Sided Game','Bike / Assault Bike','Rower','Sled Push / Drag','Circuit','Tempo Run']},
+  {id:'Movement', tr:'Hareket', c:'#38bdf8',
+   sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception'],
+   met:['Dynamic Stretching','Static Stretching','PNF','Joint Mobility / CARs','Self-Myofascial Release','Band-Assisted','Isometric Hold','Unstable Surface','Nordic / Copenhagen','Corrective Drill']},
+  {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
+   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage','Competition'],
+   met:['Ball Handling Drill','Shooting Drill','Finishing Drill','Passing Drill','1v1','2v2 / 3v3','5v5','Shell Drill','Walkthrough','Live Scrimmage']},
+  {id:'Recovery', tr:'Toparlanma', c:'#00bfff',
+   sub:['Active Recovery','Regeneration','Soft Tissue','Breathing / Parasympathetic','Mobility Flow'],
+   met:['Active Recovery','Pool / Hydrotherapy','Contrast Therapy','Compression','Massage / Soft Tissue','Breathing','Stretching Flow','Sauna']},
+  {id:'Return to Play', tr:'Sahaya Dönüş', c:'#2dd4a7',
+   sub:['Reconditioning','Load Reintroduction','Return to Run','Return to Train','Return to Perform','Criteria-Based Progression'],
+   met:['Isolated Loading','Closed-Chain Progression','Linear Running Progression','COD Progression','On-Court Progression','Contact Progression','Criteria Testing']},
+  {id:'Testing', tr:'Test', c:'#94a3b8',
+   sub:['Anthropometry','Strength Testing','Power / Jump Testing','Speed Testing','Aerobic Testing','Movement Screen','Asymmetry Profiling'],
+   met:['Force Plate','Jump Mat','Timing Gates','Radar / GPS','1RM / Rep Max','Isokinetic Dynamometer','Yo-Yo / 30-15','FMS / Screen','Anthropometric']},
+];
+const SESSION_FOCUS=FOCUS_TREE.map(f=>f.id);
+const FOCUS_BY=FOCUS_TREE.reduce((m,f)=>(m[f.id]=f,m),{});
+/* Every sub-focus / method, mapped back to the focus it belongs to — so a session that
+   carries a sub-focus whose focus was later unticked can still be read, and so the
+   pickers can group a flat stored list back under its headings. */
+const SUBFOCUS_OWNER=FOCUS_TREE.reduce((m,f)=>{f.sub.forEach(s=>{if(!m[s])m[s]=f.id;});return m;},{});
+const FOCUS_METHOD_OWNER=FOCUS_TREE.reduce((m,f)=>{f.met.forEach(s=>{if(!m[s])m[s]=f.id;});return m;},{});
+/* The focus list used to be one flat set of eighteen values; the tree's stage 1 is nine.
+   Every retired value maps onto the focus that now owns it, plus — where the old value
+   said something finer — the sub-focus it became, so nothing a coach wrote is lost.
+   Read by sesFocus / sesSubFocus, never written: the editor only ever stores the new
+   values. */
+const FOCUS_L1_FROM_LEGACY={
+  'Strength':'Strength','Hypertrophy':'Strength','Power':'Power','Plyometrics':'Power',
+  'Speed':'Speed','Acceleration':'Speed','Deceleration':'Speed','Change of Direction':'Speed','Agility':'Speed',
+  'Conditioning':'Conditioning','Mobility':'Movement','Stability':'Movement','Injury Prevention':'Movement',
+  'Movement Quality':'Movement','COD / Agility':'Speed',
+  'Technical':'Technical / Tactical','Tactical':'Technical / Tactical','Competition':'Technical / Tactical',
+  'Recovery':'Recovery','Assessment':'Testing','Return to Play':'Return to Play','Testing':'Testing',
+};
+const FOCUS_SUB_FROM_LEGACY={
+  'Hypertrophy':'Hypertrophy','Plyometrics':'Reactive Strength','Acceleration':'Acceleration',
+  'Deceleration':'Deceleration','Change of Direction':'Change of Direction','Agility':'Reactive Agility',
+  'COD / Agility':'Change of Direction','Mobility':'Mobility','Stability':'Stability',
+  'Injury Prevention':'Injury Prevention','Movement Quality':'Movement Quality',
+  'Technical':'Individual Skill','Tactical':'Team Offense','Competition':'Competition',
+};
 /* Old single-value "purpose" values → new multi-select session focus values */
 const LEGACY_FOCUS_MAP={'Fundamental Strength':['Strength'],'Maximal Strength':['Strength'],'Hypertrophy':['Hypertrophy'],'Power':['Power'],'Speed & Agility':['Speed','Agility'],'Aerobic Endurance':['Conditioning'],'Anaerobic Capacity':['Conditioning'],'Technical':['Technical'],'Ball Practice':['Technical'],'Team Practice':['Technical'],'Game Day':['Competition'],'Recovery':['Recovery'],'Mobility':['Mobility']};
-/* Session focus list for a session (or template session): prefers the new
-   `focus` array, otherwise derives it from the legacy `purpose` string. */
-const sesFocus=s=>{
+const uniq=a=>[...new Set(a)];
+/* The raw focus list as it was stored — new values, retired values, or nothing at all
+   (in which case the legacy single-value `purpose` string stands in for it). */
+const sesFocusRaw=s=>{
   if(Array.isArray(s?.focus))return s.focus;
   const p=(s?.purpose||'').trim();if(!p)return[];
   if(LEGACY_FOCUS_MAP[p])return LEGACY_FOCUS_MAP[p];
-  return p.split(',').map(x=>x.trim()).filter(x=>SESSION_FOCUS.includes(x));
+  return p.split(',').map(x=>x.trim()).filter(Boolean);
 };
+/* Session focus (stage 1) for a session or template session — always canonical values,
+   whatever vocabulary the session was written in. */
+const sesFocus=s=>uniq(sesFocusRaw(s).map(f=>FOCUS_BY[f]?f:FOCUS_L1_FROM_LEGACY[f]).filter(Boolean));
+/* Sub-focus (stage 2). Stored on the session as `sub: []`; a session written before the
+   tree existed derives one from whichever retired focus values named a capacity. */
+const sesSubFocus=s=>{
+  if(Array.isArray(s?.sub))return s.sub.filter(x=>SUBFOCUS_OWNER[x]);
+  return uniq(sesFocusRaw(s).map(f=>FOCUS_SUB_FROM_LEGACY[f]).filter(Boolean));
+};
+/* Method (stage 3). Stored as `focusMethods: []` — kept apart from the older, separate
+   `methods` field (the Training Method box further down the panel), which is its own
+   long taxonomy and is neither read nor written here. */
+const sesFocusMethods=s=>Array.isArray(s?.focusMethods)?s.focusMethods.filter(x=>FOCUS_METHOD_OWNER[x]):[];
+/* What the whole three-stage answer reads as on one line — the trigger's summary, the
+   printed sheet's focus line, and anywhere else a session has to say what it trains. */
+const sesFocusLine=s=>[...sesFocus(s),...sesSubFocus(s),...sesFocusMethods(s)].join(', ');
 /* Training methods — the means used to deliver the session focus. Grouped the way the
    S&C literature does (Zatsiorsky/Verkhoshansky strength means, Buchheit/Laursen
    conditioning formats, sprint & mobility means) so a coach can tag *how* a session was
@@ -3718,12 +3997,15 @@ const POSITIONS={Basketball:['Guard','Forward','Center'],'Football (Soccer)':['G
    posOf() first and an old PG reads as a Guard everywhere. */
 const POS_ALIAS={PG:'Guard',SG:'Guard','SG/SF':'Forward',SF:'Forward','SF/PF':'Forward',PF:'Forward',C:'Center'};
 const posOf=p=>POS_ALIAS[p]||p||'';
+/* Written in the focus tree's own vocabulary — focus, then the capacity inside it — so a
+   preset drops into the session editor with stages 1 and 2 already answered and the
+   method question open, rather than as a value the editor has to translate on read. */
 const SPRESETS=[
-  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power',focus:['Strength','Power'],duration:75,bl:[]}},
-  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Agility',focus:['Speed','Agility'],duration:45,bl:[]}},
-  {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning',focus:['Conditioning'],duration:45,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition',focus:['Competition'],duration:90,bl:[]}},
-  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery',focus:['Recovery'],duration:30,bl:[]}},
+  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
+  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
+  {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Competition',focus:['Technical / Tactical'],sub:['Competition'],duration:90,bl:[]}},
+  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
@@ -3869,10 +4151,27 @@ function rememberExerciseImage(name,url){
   const nm=(name||'').trim();
   if(nm&&_libImage)_libImage(nm,typeof url==='string'?url:'');
 }
-const BLK=n=>({id:uid(),name:n,exercises:[EX()]});
+/* A block is either strength & conditioning work (`kind:'sc'` — the exercise grid this app
+   has always had) or ball practice (`kind:'ball'` — the same grid, but each row is a court
+   drill carrying a diagram and a clip instead of a barbell prescription). Both keep their
+   rows in `exercises`, so everything that already walks a session — the printout, the day
+   drawer, the volume stats, the library's usage counts, the template saver — reads a ball
+   block without knowing it is one. A block saved before ball practice existed has no
+   `kind` at all and is S&C, which is what it was. */
+const BLK=(n,kind)=>({id:uid(),name:n,kind:kind==='ball'?'ball':'sc',exercises:[kind==='ball'?BALL_EX():EX()]});
+const blkKind=b=>(b&&b.kind==='ball')?'ball':'sc';
+/* A ball-practice row. It is an exercise — same name / sets / reps / duration / rpe /
+   rest / description fields, so the sheet and the drawer print it unchanged — plus the
+   three things a court drill needs and a lift does not: the diagram the coach draws
+   (`court`, a scene object — see the court editor below), the clip that shows it
+   (`videoUrl` / `videoData`, the same pair the exercise library stores), and how many
+   players it is run with. */
+const BALL_EX=()=>({...EX(),ball:true,court:null,videoUrl:'',videoData:'',players:'',phase:'',intensity:''});
+const isBallEx=e=>!!(e&&(e.ball||e.court));
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
     purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),
+    sub:Array.isArray(p.sub)?p.sub:[],focusMethods:Array.isArray(p.focusMethods)?p.focusMethods:[],
     methods:Array.isArray(p.methods)?p.methods:[],region:p.region||'',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
@@ -5300,9 +5599,11 @@ function saveSessionAsTemplate(session){return _saveSessionAsTemplate?_saveSessi
    new session/block ids, sRPE/au/athletes/sourceId reset. */
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
-    purpose:s.purpose||'Technical',focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical'],
+    purpose:s.purpose||'',focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s),
     methods:sesMethods(s),region:sesRegion(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
-    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
+    /* `kind` rides along with the block, so a ball-practice block saved as a template
+       comes back as one instead of turning into an S&C grid on the way out. */
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),
     notes:s.notes||'',planNote:s.planNote||'',athletes:[],sourceId:null};}
 
 /* =========================================================
@@ -6911,6 +7212,38 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
     return`<div class="ex-tbl-wrap"><table class="ex-tbl2"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   };
+  /* A ball-practice block does not go in a table. What a coach needs off the sheet at the
+     side of a court is the picture — so each drill prints as a card: the diagram at the
+     size it can actually be read, the prescription beside it, and the coaching points
+     under both. The court is inline SVG built from the same descriptors the on-screen
+     board draws, in its print colours, so it prints crisply at any paper size. */
+  const drillCards=b=>{
+    const named=(b.exercises||[]).filter(e=>e.name);
+    if(!named.length)return`<div class="empty-block">${L('Dril yok','No drills')}</div>`;
+    return`<div class="drill-cards">${named.map((e,i)=>{
+      const bits=[];
+      if(e.sets&&e.reps)bits.push(`${e.sets} × ${e.reps}`);
+      else if(e.sets)bits.push(`${e.sets} ${L('set','sets')}`);
+      else if(e.reps)bits.push(String(e.reps));
+      if(e.duration)bits.push(escHTML(e.duration));
+      if(e.players)bits.push(escHTML(e.players));
+      if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
+      if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
+      const notes=String(e.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      const lnk=safeURL(e.videoUrl);
+      return`<div class="drill-card">
+        <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
+          ${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
+        <div class="dc-body">
+          <div class="dc-fig">${sceneIsEmpty(e.court)?`<div class="dc-nofig">${L('Çizim yok','No diagram')}</div>`:courtSVGString(e.court)}</div>
+          <div class="dc-txt">
+            ${bits.length?`<div class="dc-presc">${bits.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
+            ${notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  };
   /* One document can carry several athletes: each is a group with its own header — the same
      header a single athlete's printout has — starting on a fresh page. Called the plain way,
      with (title, subtitle, sessions), there is exactly one group and the document is the one
@@ -6971,7 +7304,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
     </div>
   </div>
   <div class="meta-bar">
-    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${s.purpose}</span></div>
+    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${escHTML(sesFocusLine(s)||s.purpose||'')}</span></div>
   </div>
   ${statsRowHTML(s)}
   ${(()=>{
@@ -6979,7 +7312,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
     // categorization, blocks stay in the order the user arranged them.
     const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
     if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
-    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block">${b.name?`<div class="bh">${b.name}</div>`:''}${exTable(b)}</div>`).join('')}</div>`;
+    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block${blkKind(b)==='ball'?' ball-block':''}">${b.name?`<div class="bh">${b.name}${blkKind(b)==='ball'?`<span class="bh-kind">${L('TOP','BALL')}</span>`:''}</div>`:''}${blkKind(b)==='ball'?drillCards(b):exTable(b)}</div>`).join('')}</div>`;
   })()}
   ${(s.planNote||s.notes)?`<div class="sf">
     <div class="sf-notes">
@@ -7125,6 +7458,25 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    green rule is enough to read as the heading over its exercises, and matching the exercise
    names would make the block titles shout. */
 .bh{font-size:15px;font-weight:800;color:#0f172a;text-transform:uppercase;letter-spacing:1px;margin:2px 0 4px 0;padding-bottom:4px;border-bottom:2px solid #9aab3a;display:block;break-after:avoid;page-break-after:avoid}
+/* Ball practice prints as cards, not rows: the diagram is the drill, so it gets real
+   width on the page and the numbers sit beside it. */
+.ball-block .bh{border-bottom-color:#ea8c2a}
+.bh-kind{float:right;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;
+  color:#ea8c2a;border:1px solid #f0c79a;border-radius:4px;padding:1px 5px;vertical-align:middle}
+.drill-cards{display:flex;flex-direction:column;gap:9px;margin-top:6px}
+.drill-card{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.dc-hd{display:flex;align-items:center;gap:8px;background:#fff7ef;border-bottom:1px solid #f0e0cf;padding:5px 9px}
+.dc-no{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#fff;background:#ea8c2a;
+  border-radius:4px;padding:1px 6px}
+.dc-nm{font-size:13px;font-weight:700;color:#0f172a;flex:1}
+.dc-body{display:flex;gap:11px;padding:9px}
+.dc-fig{flex:0 0 46%;max-width:46%}
+.court-fig{width:100%;height:auto;display:block;border:1px solid #e2e8f0;border-radius:6px}
+.dc-nofig{padding:22px 8px;text-align:center;color:#cbd5e1;font-size:11px;border:1px dashed #e2e8f0;border-radius:6px}
+.dc-txt{flex:1;min-width:0}
+.dc-presc{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.dc-presc span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;color:#334155;
+  background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:2px 8px}
 
 /* Exercise table — one row per exercise, read straight down like a worksheet. Header
    repeats on every printed page it breaks across; each row keeps its image/name/prescription
@@ -8990,26 +9342,10 @@ function MuscleLoadDistribution({days,title,refDate}){
    colours, so a strength focus is green, speed/agility work is purple, conditioning is
    turquoise, competition red and recovery blue — the same reading as the keyline on the
    session card above. */
-const TIB_FOCI=[
-  {id:'Strength',            label:'Strength',            tr:'Kuvvet',            c:'#00ff7f'},
-  {id:'Hypertrophy',         label:'Hypertrophy',         tr:'Hipertrofi',        c:'#4ade80'},
-  {id:'Power',               label:'Power',               tr:'Güç',               c:'#a3e635'},
-  {id:'Speed',               label:'Speed',               tr:'Hız',               c:'#c000ff'},
-  {id:'Acceleration',        label:'Acceleration',        tr:'İvmelenme',         c:'#a855f7'},
-  {id:'Deceleration',        label:'Deceleration',        tr:'Yavaşlama',         c:'#8b5cf6'},
-  {id:'Change of Direction', label:'Change of Direction', tr:'Yön Değiştirme',    c:'#d946ef'},
-  {id:'Agility',             label:'Agility',             tr:'Çeviklik',          c:'#e879f9'},
-  {id:'Plyometrics',         label:'Plyometrics',         tr:'Pliometrik',        c:'#f472b6'},
-  {id:'Conditioning',        label:'Conditioning',        tr:'Kondisyon',         c:'#00ffd5'},
-  {id:'Mobility',            label:'Mobility',            tr:'Hareketlilik',      c:'#38bdf8'},
-  {id:'Stability',           label:'Stability',           tr:'Stabilite',         c:'#0ea5e9'},
-  {id:'Injury Prevention',   label:'Injury Prevention',   tr:'Sakatlık Önleme',   c:'#2dd4a7'},
-  {id:'Technical',           label:'Technical',           tr:'Teknik',            c:'#ff7c00'},
-  {id:'Tactical',            label:'Tactical',            tr:'Taktik',            c:'#fbbf24'},
-  {id:'Competition',         label:'Competition',         tr:'Müsabaka',          c:'#ff0040'},
-  {id:'Assessment',          label:'Assessment',          tr:'Değerlendirme',     c:'#94a3b8'},
-  {id:'Recovery',            label:'Recovery',            tr:'Toparlanma',        c:'#00bfff'},
-];
+/* One row per stage-1 focus, in FOCUS_TREE order and drawn in the colour that focus
+   carries throughout the app. The finer answer — which capacity, trained how — lives in
+   the session's sub-focus and method, not in this count. */
+const TIB_FOCI=FOCUS_TREE.map(f=>({id:f.id,label:f.id,tr:f.tr,c:f.c}));
 /* A session the coach has not given a focus to is still on the plan and still cost the
    week its minutes, so it is reported as its own row instead of being dropped — a bar
    the coach can see is a bar the coach can go and fill in. */
@@ -10136,9 +10472,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {(drawerSes.blocks||[]).map(b=>{
             const exs=b.exercises||[];
             const cnt={};
-            return(<div key={b.id} className="dw-blk">
-              <div className="bh">{b.name}</div>
-              {exs.length===0&&<div className="dw-empty">{L('Egzersiz yok','No exercises')}</div>}
+            const isBall=blkKind(b)==='ball';
+            return(<div key={b.id} className={'dw-blk'+(isBall?' ball':'')}>
+              <div className="bh">{b.name}{isBall&&<span className="dw-kind">{L('TOP','BALL')}</span>}</div>
+              {exs.length===0&&<div className="dw-empty">{isBall?L('Dril yok','No drills'):L('Egzersiz yok','No exercises')}</div>}
               {exs.map((e,i)=>{
                 const ss=(e.superset||'').toString().toUpperCase().trim();
                 let tag;if(ss){cnt[ss]=(cnt[ss]||0)+1;tag=`${ss}${cnt[ss]}`;}
@@ -10146,11 +10483,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 // Show whatever was filled in — volume (sets×reps / sets×duration / reps / duration / sets), plus RPE, load, tempo and rest.
                 const _v=e.reps||e.duration;
                 const vol=e.sets&&_v?`${e.sets} × ${_v}`:(_v||(e.sets?L(`${e.sets} set`,`${e.sets} sets`):''));
-                const detail=[vol,e.rpe?`RPE ${e.rpe}`:'',e.load,e.tempo?`tempo ${e.tempo}`:'',e.rest?`rest ${e.rest}`:''].filter(Boolean).join(' · ');
-                return(<div key={i} className="dw-ex">
+                const detail=isBall
+                  ?[vol,e.players,e.rpe?`RPE ${e.rpe}`:'',e.rest?`rest ${e.rest}`:''].filter(Boolean).join(' · ')
+                  :[vol,e.rpe?`RPE ${e.rpe}`:'',e.load,e.tempo?`tempo ${e.tempo}`:'',e.rest?`rest ${e.rest}`:''].filter(Boolean).join(' · ');
+                return(<div key={i} className={'dw-ex'+(isBall?' dw-drill':'')}>
                   <span className={`ss${e.name?'':' empty'}`}>{tag}</span>
                   <span className="en">{e.name||'—'}</span>
                   <span className="ed">{detail}</span>
+                  {/* The diagram is how a coach recognises the drill, so the drawer shows
+                      it rather than only naming it. */}
+                  {isBall&&!sceneIsEmpty(e.court)&&<CourtView scene={e.court} className="dw-court"/>}
                 </div>);
               })}
             </div>);
@@ -10592,8 +10934,14 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
             dropdowns and wear the meta box's border, so the row still reads as one strip of
             fields rather than two different controls. */}
         <div className="iv-meta-grp">
+          {/* One field, three stages — focus, then the capacity inside it, then how it is
+              trained. `purpose` keeps carrying the whole answer as text: it is the legacy
+              single-value field the printout and older saved sessions still read. */}
           <div className="iv-meta-f pp">{L('seans odağı','session focus')}
-            <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
+            <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)} methods={sesFocusMethods(session)}
+              onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session),...sesFocusMethods(session)].join(', ')})}
+              onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr,...sesFocusMethods(session)].join(', ')})}
+              onMethodsChange={arr=>u({focusMethods:arr,purpose:[...sesFocus(session),...sesSubFocus(session),...arr].join(', ')})}/>
           </div>
           <div className="iv-meta-f pp">{L('bölge','region')}
             <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
@@ -10615,6 +10963,667 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
     </div>}
   </div>);
 }
+/* =========================================================
+   BALL PRACTICE — the court, and the drills drawn on it
+   =========================================================
+   A strength coach writes sets and reps; a basketball coach draws. So a ball-practice row
+   is a diagram first: a court the coach draws the drill on the way they would on a
+   clipboard, a clip of it being run, and the prescription (sets, reps, time, intensity,
+   rest) around the edges.
+
+   Everything here works in COURT COORDINATES — centimetres on a FIBA floor, 2800 × 1500,
+   origin at the left baseline corner. A drawing is stored in those numbers and nothing
+   else, which is what lets the same drill be shown half-court in the editor, full-court on
+   the next drill, thumbnail-sized on a library card and full width on the printed sheet
+   without any of them re-scaling the coach's lines. The half-court view is the same floor
+   seen turned a quarter turn (baseline at the bottom, the way a coach draws it), applied
+   as one transform on the group — never by storing different numbers. */
+const CRT={W:2800,H:1500,             // FIBA floor, cm
+  HOOP_X:157.5,HOOP_R:22.75,          // ring centre from the baseline, ring radius
+  BOARD_X:120,BOARD_HW:90,            // backboard face, half its width
+  KEY_L:580,KEY_HW:245,               // free-throw lane: 5.80 long, 4.90 wide
+  FT_R:180,                           // free-throw circle
+  R3:675,C3:90,                       // three-point arc, and the corner line's inset
+  RA:125,                             // restricted area under the ring
+  CC:180};                            // centre circle
+// Where the corner three meets the arc — the x at which a line drawn C3 from the sideline
+// is exactly R3 from the ring.
+CRT.ARC3_X=CRT.HOOP_X+Math.sqrt(CRT.R3*CRT.R3-Math.pow(CRT.H/2-CRT.C3,2));
+const CY=CRT.H/2;
+
+/* ---- Element descriptors --------------------------------------------------
+   Both renderers — React on screen, an HTML string on the printed sheet — are fed the
+   same list of {tag, attrs, kids, text} descriptors, so the court a coach draws on and
+   the court that comes out of the printer can never drift apart. Attribute names are
+   written the SVG way (`stroke-width`); the React side camel-cases them on the way in. */
+const el=(tag,attrs,kids,text)=>({tag,attrs:attrs||{},kids:kids||null,text:text==null?null:text});
+const camel=k=>k.replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+function elsToReact(list,keyPfx){
+  return (list||[]).map((e,i)=>{
+    const p={key:`${keyPfx||'e'}-${i}`};
+    for(const k in e.attrs)p[camel(k)]=e.attrs[k];
+    return React.createElement(e.tag,p,e.kids?elsToReact(e.kids,`${keyPfx||'e'}-${i}`):e.text);
+  });
+}
+function elsToSVGString(list){
+  return (list||[]).map(e=>{
+    const a=Object.keys(e.attrs).map(k=>`${k}="${escHTML(String(e.attrs[k]))}"`).join(' ');
+    const inner=e.kids?elsToSVGString(e.kids):(e.text==null?'':escHTML(String(e.text)));
+    return `<${e.tag}${a?' '+a:''}>${inner}</${e.tag}>`;
+  }).join('');
+}
+
+/* ---- The floor ------------------------------------------------------------
+   One end's markings, drawn against the baseline at x = 0; the far end is the same
+   drawing mirrored about the halfway line, which is what a court is. `ink` is the line
+   colour: light on the app's dark board, dark on the printed sheet. */
+function courtEndEls(ink,lw){
+  const s={fill:'none',stroke:ink,'stroke-width':lw};
+  const K=CRT;
+  return[
+    // Free-throw lane, and the free-throw line across the top of it
+    el('rect',{...s,x:0,y:CY-K.KEY_HW,width:K.KEY_L,height:K.KEY_HW*2}),
+    // Free-throw circle: solid outside the lane, dashed where it crosses it
+    el('path',{...s,d:`M ${K.KEY_L} ${CY-K.FT_R} A ${K.FT_R} ${K.FT_R} 0 0 1 ${K.KEY_L} ${CY+K.FT_R}`}),
+    el('path',{...s,'stroke-dasharray':`${lw*4} ${lw*4}`,d:`M ${K.KEY_L} ${CY-K.FT_R} A ${K.FT_R} ${K.FT_R} 0 0 0 ${K.KEY_L} ${CY+K.FT_R}`}),
+    // Three-point line: two corner straights into the arc around the ring
+    el('path',{...s,d:`M 0 ${K.C3} L ${K.ARC3_X.toFixed(1)} ${K.C3} A ${K.R3} ${K.R3} 0 0 1 ${K.ARC3_X.toFixed(1)} ${K.H-K.C3} L 0 ${K.H-K.C3}`}),
+    // No-charge semicircle under the ring
+    el('path',{...s,d:`M ${K.HOOP_X} ${CY-K.RA} A ${K.RA} ${K.RA} 0 0 1 ${K.HOOP_X} ${CY+K.RA}`}),
+    // Backboard, ring neck, ring
+    el('line',{stroke:ink,'stroke-width':lw*1.8,'stroke-linecap':'round',x1:K.BOARD_X,y1:CY-K.BOARD_HW,x2:K.BOARD_X,y2:CY+K.BOARD_HW}),
+    el('line',{stroke:ink,'stroke-width':lw,x1:K.BOARD_X,y1:CY,x2:K.HOOP_X-K.HOOP_R,y2:CY}),
+    el('circle',{...s,cx:K.HOOP_X,cy:CY,r:K.HOOP_R}),
+  ];
+}
+/* The whole floor. `half` keeps the drawing to the near end and turns it a quarter turn so
+   the baseline sits at the bottom — the orientation a coach draws a set play in. */
+function courtEls({half,ink,surface,line}){
+  const lw=line||5;
+  const body=[
+    el('rect',{x:0,y:0,width:CRT.W,height:CRT.H,fill:surface,stroke:ink,'stroke-width':lw*1.4}),
+    ...courtEndEls(ink,lw),
+    el('g',{transform:`translate(${CRT.W},0) scale(-1,1)`},courtEndEls(ink,lw)),
+    el('line',{stroke:ink,'stroke-width':lw,x1:CRT.W/2,y1:0,x2:CRT.W/2,y2:CRT.H}),
+    el('circle',{fill:'none',stroke:ink,'stroke-width':lw,cx:CRT.W/2,cy:CY,r:CRT.CC}),
+  ];
+  return half?[el('g',{transform:HALF_TF},body)]:body;
+}
+/* court (x,y) → half-court display (y, 1400−x): the quarter turn, as one matrix. */
+const HALF_TF=`matrix(0,-1,1,0,0,${CRT.W/2})`;
+const courtViewBox=half=>half?`0 0 ${CRT.H} ${CRT.W/2}`:`0 0 ${CRT.W} ${CRT.H}`;
+const courtRatio=half=>half?CRT.H/(CRT.W/2):CRT.W/CRT.H;
+
+/* ---- The coach's own lines ------------------------------------------------
+   Seven ways to mark a court, and they mean seven different things — a pass is not a cut
+   and a dribble is not a screen, so each carries the notation a coach already reads:
+   dashed for a pass, a wave for a dribble, a bar across the end for a screen. */
+const CT_TOOLS=[
+  {id:'select', tr:'Seç',       en:'Select',    ic:'⤧'},
+  {id:'free',   tr:'Kalem',     en:'Pen',       ic:'✎'},
+  {id:'cut',    tr:'Kesme',     en:'Cut',       ic:'→'},
+  {id:'dribble',tr:'Top sürme', en:'Dribble',   ic:'∿'},
+  {id:'pass',   tr:'Pas',       en:'Pass',      ic:'⇢'},
+  {id:'screen', tr:'Perde',     en:'Screen',    ic:'⊣'},
+  {id:'shot',   tr:'Şut',       en:'Shot',      ic:'⤳'},
+  {id:'zone',   tr:'Alan',      en:'Zone',      ic:'▱'},
+  {id:'erase',  tr:'Sil',       en:'Erase',     ic:'⌫'},
+];
+const CT_MARKS=[
+  {id:'off',   tr:'Hücum',     en:'Offense',  ic:'①'},
+  {id:'def',   tr:'Savunma',   en:'Defense',  ic:'✕'},
+  {id:'coach', tr:'Koç',       en:'Coach',    ic:'C'},
+  {id:'ball',  tr:'Top',       en:'Ball',     ic:'●'},
+  {id:'cone',  tr:'Koni',      en:'Cone',     ic:'▲'},
+  {id:'disc',  tr:'Tabak',     en:'Disc',     ic:'⬬'},
+  {id:'chair', tr:'Sandalye',  en:'Chair',    ic:'▣'},
+  {id:'ladder',tr:'Merdiven',  en:'Ladder',   ic:'☰'},
+  {id:'rack',  tr:'Top arabası',en:'Ball rack',ic:'⛁'},
+  {id:'text',  tr:'Yazı',      en:'Label',    ic:'T'},
+];
+const CT_COLORS=['#ffffff','#ff5b5b','#4da3ff','#ffd23f','#46d6a0','#c084fc','#ff9f43','#111111'];
+const CT_WIDTHS=[6,11,18,27];   // court centimetres, so a line keeps its weight at any zoom
+
+const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+/* Catmull-Rom through the captured points, emitted as cubic béziers — a hand-drawn line
+   that stays a hand-drawn line instead of the polygon the raw pointer samples make. */
+function smoothPath(p){
+  if(!p.length)return'';
+  if(p.length<3)return`M ${p[0][0]} ${p[0][1]}`+(p[1]?` L ${p[1][0]} ${p[1][1]}`:'');
+  let d=`M ${p[0][0]} ${p[0][1]}`;
+  for(let i=0;i<p.length-1;i++){
+    const p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p[i+1];
+    d+=` C ${p1[0]+(p2[0]-p0[0])/6} ${p1[1]+(p2[1]-p0[1])/6} ${p2[0]-(p3[0]-p1[0])/6} ${p2[1]-(p3[1]-p1[1])/6} ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+/* A dribble is drawn as a wave along the path. The line is resampled at a fixed arc
+   length and pushed alternately to either side of it, so the wave keeps one amplitude
+   whether the coach drew ten centimetres or the length of the floor. */
+function wavePts(p,amp){
+  const step=amp*1.15;const out=[];let carry=0;
+  for(let i=0;i<p.length-1;i++){
+    const a=p[i],b=p[i+1];const len=dist(a,b);if(len<.001)continue;
+    const ux=(b[0]-a[0])/len,uy=(b[1]-a[1])/len;
+    for(let t=carry;t<len;t+=step){
+      const k=out.length%2?1:-1;
+      out.push([a[0]+ux*t-uy*amp*k,a[1]+uy*t+ux*amp*k]);
+    }
+    carry=(carry-len)%step;if(carry<0)carry+=step;
+  }
+  out.push(p[p.length-1]);
+  return out.length>2?out:p;
+}
+/* The path with `d` of its length taken off the end — how the dribble's wave is kept clear
+   of its own arrowhead, which otherwise sits inside the last oscillation and stops reading
+   as an arrow at all. */
+function trimEnd(p,d){
+  const out=p.slice();let left=d;
+  while(out.length>2){
+    const b=out[out.length-1],a=out[out.length-2],L=dist(a,b);
+    if(L>left){const t=(L-left)/L;out[out.length-1]=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];return out;}
+    left-=L;out.pop();
+  }
+  return out;
+}
+// The head of an arrow, as a filled triangle on the path's last direction.
+function arrowEls(p,c,w){
+  if(p.length<2)return[];
+  const b=p[p.length-1];let a=p[p.length-2];
+  for(let i=p.length-2;i>=0&&dist(a,b)<w;i--)a=p[i];
+  const len=dist(a,b)||1,ux=(b[0]-a[0])/len,uy=(b[1]-a[1])/len;
+  const h=w*4,hw=w*1.9;
+  const bx=b[0]-ux*h,by=b[1]-uy*h;
+  return[el('polygon',{fill:c,points:`${b[0]},${b[1]} ${bx-uy*hw},${by+ux*hw} ${bx+uy*hw},${by-ux*hw}`})];
+}
+// A screen ends in a bar across the direction of travel — the blocker's shoulders.
+function teeEls(p,c,w){
+  if(p.length<2)return[];
+  const b=p[p.length-1],a=p[p.length-2];
+  const len=dist(a,b)||1,ux=(b[0]-a[0])/len,uy=(b[1]-a[1])/len,hw=w*2.4;
+  return[el('line',{stroke:c,'stroke-width':w,'stroke-linecap':'round',
+    x1:b[0]-uy*hw,y1:b[1]+ux*hw,x2:b[0]+uy*hw,y2:b[1]-ux*hw})];
+}
+/* One drawn item → the elements that draw it. Every tool shares the same stored shape
+   (a list of points, a colour, a width); only what is made of them differs. */
+function strokeEls(it){
+  const c=it.c||'#fff',w=it.w||11,p=it.pts||[];
+  if(p.length<1)return[];
+  const base={fill:'none',stroke:c,'stroke-width':w,'stroke-linecap':'round','stroke-linejoin':'round'};
+  if(it.tool==='zone'){
+    return[el('path',{...base,fill:c,'fill-opacity':.14,'stroke-dasharray':`${w*2.4} ${w*1.8}`,d:smoothPath(p)+' Z'})];
+  }
+  if(it.tool==='dribble'){
+    const wv=wavePts(trimEnd(p,w*4.4),w*1.9);
+    return[el('path',{...base,d:smoothPath(wv)}),...arrowEls(p,c,w)];
+  }
+  if(it.tool==='pass')return[el('path',{...base,'stroke-dasharray':`${w*2.6} ${w*2.2}`,d:smoothPath(p)}),...arrowEls(p,c,w)];
+  if(it.tool==='shot')return[el('path',{...base,'stroke-dasharray':`${w*.1} ${w*2.4}`,d:smoothPath(p)}),...arrowEls(p,c,w)];
+  if(it.tool==='screen')return[el('path',{...base,d:smoothPath(p)}),...teeEls(p,c,w)];
+  if(it.tool==='cut')return[el('path',{...base,d:smoothPath(p)}),...arrowEls(p,c,w)];
+  return[el('path',{...base,d:smoothPath(p)})];   // free pen
+}
+const MK_R=46;   // a player on the floor, in court centimetres
+/* Readable ink for a number written INSIDE a filled marker. The coach picks the colour of
+   their players, and the palette runs from white to near-black — a number written in one
+   fixed dark ink disappears the moment somebody picks black. Relative luminance decides,
+   so every colour on the palette (and any custom one) keeps its number legible. */
+function inkOn(hex){
+  const s=String(hex||'').replace('#','');
+  const h=s.length===3?s.split('').map(c=>c+c).join(''):s;
+  if(!/^[0-9a-f]{6}$/i.test(h))return'#0b0f14';
+  const v=i=>{const c=parseInt(h.slice(i,i+2),16)/255;return c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4);};
+  return(.2126*v(0)+.7152*v(2)+.0722*v(4))>.42?'#0b0f14':'#ffffff';
+}
+/* One placed object → the elements that draw it. Players are the two shapes every
+   basketball diagram uses — a numbered circle for the offence, an X for the defender —
+   and the equipment is drawn as itself so a coach reads the set-up without a legend. */
+function markEls(it){
+  const c=it.c||'#fff',x=it.x,y=it.y,r=MK_R;
+  /* Centred on the marker by `dominant-baseline`, not by nudging the baseline down a
+     fraction of the font size: the nudge is a direction, and a direction does not survive
+     the half-court quarter turn (the letters stay upright, so the nudge would tip over on
+     its side and push the number out of its circle). The anchor is the centre either way. */
+  const txt=(s,size,col)=>el('text',{x,y,'text-anchor':'middle','dominant-baseline':'central','font-size':size,
+    'font-family':"'IBM Plex Mono',ui-monospace,monospace",'font-weight':'700',fill:col||inkOn(c)},null,s);
+  switch(it.kind){
+    case'off':  return[el('circle',{cx:x,cy:y,r,fill:c,stroke:'#0b0f14','stroke-width':4}),txt(it.label||'',r*1.02)];
+    case'def':  return[el('line',{stroke:c,'stroke-width':13,'stroke-linecap':'round',x1:x-r*.8,y1:y-r*.8,x2:x+r*.8,y2:y+r*.8}),
+                       el('line',{stroke:c,'stroke-width':13,'stroke-linecap':'round',x1:x+r*.8,y1:y-r*.8,x2:x-r*.8,y2:y+r*.8}),
+                       el('text',{x:x+r*1.15,y:y-r*.5,'font-size':r*.95,'font-family':"'IBM Plex Mono',ui-monospace,monospace",'font-weight':'700',fill:c},null,it.label||'')];
+    case'coach':return[el('circle',{cx:x,cy:y,r:r*.95,fill:'none',stroke:c,'stroke-width':11}),txt('C',r*1.05,c)];
+    case'ball': return[el('circle',{cx:x,cy:y,r:r*.5,fill:'#ff9f43',stroke:'#0b0f14','stroke-width':4}),
+                       el('line',{stroke:'#0b0f14','stroke-width':3.5,x1:x-r*.5,y1:y,x2:x+r*.5,y2:y}),
+                       el('path',{fill:'none',stroke:'#0b0f14','stroke-width':3.5,d:`M ${x} ${y-r*.5} Q ${x+r*.28} ${y} ${x} ${y+r*.5}`})];
+    case'cone': return[el('polygon',{fill:c,stroke:'#0b0f14','stroke-width':3,points:`${x},${y-r*.85} ${x+r*.72},${y+r*.55} ${x-r*.72},${y+r*.55}`})];
+    case'disc': return[el('ellipse',{cx:x,cy:y,rx:r*.8,ry:r*.34,fill:c,stroke:'#0b0f14','stroke-width':3})];
+    case'chair':return[el('rect',{x:x-r*.62,y:y-r*.62,width:r*1.24,height:r*1.24,rx:r*.16,fill:'none',stroke:c,'stroke-width':10}),
+                       el('line',{stroke:c,'stroke-width':10,'stroke-linecap':'round',x1:x-r*.62,y1:y-r*.62,x2:x+r*.62,y2:y-r*.62})];
+    case'ladder':return[el('rect',{x:x-r*.45,y:y-r,width:r*.9,height:r*2,fill:'none',stroke:c,'stroke-width':7}),
+                       el('line',{stroke:c,'stroke-width':6,x1:x-r*.45,y1:y-r*.4,x2:x+r*.45,y2:y-r*.4}),
+                       el('line',{stroke:c,'stroke-width':6,x1:x-r*.45,y1:y+r*.2,x2:x+r*.45,y2:y+r*.2})];
+    case'rack': return[el('rect',{x:x-r*.9,y:y-r*.55,width:r*1.8,height:r*1.1,rx:r*.2,fill:'none',stroke:c,'stroke-width':8}),
+                       el('circle',{cx:x-r*.42,cy:y,r:r*.28,fill:c}),el('circle',{cx:x+r*.42,cy:y,r:r*.28,fill:c})];
+    case'text': return[el('text',{x,y,'text-anchor':'middle','font-size':r*1.25,'font-weight':'700',
+                       'font-family':"'Archivo',system-ui,sans-serif",fill:c},null,it.label||'')];
+    default:    return[];
+  }
+}
+/* Lines turn with the floor; objects on it do not. A pass drawn from the wing to the post
+   has to follow the court whichever way the court is being looked at — but a player's
+   number, a defender's X1, a cone and a ball rack are things seen from above, and they
+   read upside-down the moment the floor is turned. So a marker is turned back through the
+   half-court quarter turn about its own centre: the centre is exactly where the rotation
+   leaves it, so the marker does not move a millimetre — only which way up it is drawn. */
+function sceneItemEls(it,half){
+  if(it.t!=='mark')return strokeEls(it);
+  const body=markEls(it);
+  return half?[el('g',{transform:`rotate(90 ${it.x} ${it.y})`},body)]:body;
+}
+/* Players and equipment paint over the lines, whatever order they were drawn in. A pass
+   is drawn BETWEEN two players, so a line that runs across the face of one — hiding the
+   number that says who it is — is never what the coach meant, and the alternative (place
+   everybody before drawing anything) is not how a board gets used. Each item keeps its
+   own index so the editor's selection still points at the right thing. */
+const paintOrder=items=>(items||[]).map((it,i)=>[it,i])
+  .sort((a,b)=>(a[0].t==='mark'?1:0)-(b[0].t==='mark'?1:0));   // stable: order within each half is kept
+/* The whole scene. Half-court view wraps it in the same quarter turn the floor gets, so
+   the drawing and the floor it was drawn on can never come apart. */
+function sceneEls(items,half){
+  const body=paintOrder(items).reduce((a,[it])=>a.concat(sceneItemEls(it,half)),[]);
+  return half?[el('g',{transform:HALF_TF},body)]:body;
+}
+const emptyScene=()=>({v:1,half:true,items:[]});
+const normScene=s=>(s&&Array.isArray(s.items))?{v:1,half:s.half!==false,items:s.items}:emptyScene();
+const sceneIsEmpty=s=>!s||!Array.isArray(s.items)||s.items.length===0;
+
+/* ---- Read-only court ------------------------------------------------------
+   The same drawing at any size: a thumbnail on a library card, a strip in the day drawer,
+   a full-width figure on the printed sheet. */
+function CourtView({scene,className,style,print}){
+  const sc=normScene(scene);
+  const ink=print?'#334155':'rgba(255,255,255,.42)';
+  const surface=print?'#ffffff':'#171a1f';
+  return(<svg className={className} style={style} viewBox={courtViewBox(sc.half)} preserveAspectRatio="xMidYMid meet">
+    {elsToReact(courtEls({half:sc.half,ink,surface,line:print?4:5}),'c')}
+    {elsToReact(sceneEls(sc.items,sc.half),'s')}
+  </svg>);
+}
+// The printed sheet's copy of a diagram — same descriptors, emitted as markup.
+function courtSVGString(scene){
+  const sc=normScene(scene);
+  return`<svg class="court-fig" viewBox="${courtViewBox(sc.half)}" preserveAspectRatio="xMidYMid meet">`
+    +elsToSVGString(courtEls({half:sc.half,ink:'#334155',surface:'#ffffff',line:4}))
+    +elsToSVGString(sceneEls(sc.items,sc.half))+`</svg>`;
+}
+
+/* ---- The board -----------------------------------------------------------
+   Draw with the pointer, place objects with a click, drag them with Select, take one
+   back with Undo. Every line is stored as the points it was drawn through, so nothing is
+   flattened into a picture: a drawing made half-court can be reread full-court, an object
+   put down in the wrong place can be picked up again, and the whole thing still travels
+   as a few kilobytes of JSON rather than a PNG. */
+function CourtEditor({value,onChange}){
+  const sc=normScene(value);
+  const items=sc.items;
+  const[tool,setTool]=useState('free');
+  const[mark,setMark]=useState('');           // a placeable object, when one is armed
+  const[color,setColor]=useState('#ffffff');
+  const[wid,setWid]=useState(CT_WIDTHS[1]);
+  const[straight,setStraight]=useState(false);
+  const[draft,setDraft]=useState(null);
+  const[sel,setSel]=useState(null);
+  const[hist,setHist]=useState({undo:[],redo:[]});
+  const gRef=useRef(null),dragRef=useRef(null);
+
+  const write=(next,push=true)=>{
+    if(push)setHist(h=>({undo:[...h.undo.slice(-49),items],redo:[]}));
+    onChange({v:1,half:sc.half,items:next});
+  };
+  const undo=()=>setHist(h=>{
+    if(!h.undo.length)return h;
+    onChange({v:1,half:sc.half,items:h.undo[h.undo.length-1]});
+    return{undo:h.undo.slice(0,-1),redo:[...h.redo,items]};
+  });
+  const redo=()=>setHist(h=>{
+    if(!h.redo.length)return h;
+    onChange({v:1,half:sc.half,items:h.redo[h.redo.length-1]});
+    return{undo:[...h.undo,items],redo:h.redo.slice(0,-1)};
+  });
+  // Screen pixels → court centimetres, straight off the group's own matrix, so the half
+  // court's quarter turn is inverted with everything else instead of by hand.
+  const toCourt=e=>{
+    const g=gRef.current;if(!g||!g.getScreenCTM)return null;
+    const m=g.getScreenCTM();if(!m)return null;
+    const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(m.inverse());
+    return[Math.round(p.x),Math.round(p.y)];
+  };
+  /* What is under the pointer. Read in reverse paint order, so what the coach can SEE on
+     top is what gets picked: every marker first (they paint over the lines), latest-drawn
+     first within each, then the lines. A marker is caught within reach of its centre, a
+     line within a finger's width of any part of it. */
+  const hit=pt=>{
+    const order=paintOrder(items);
+    for(let k=order.length-1;k>=0;k--){
+      const[it,i]=order[k];
+      if(it.t==='mark'){if(dist(pt,[it.x,it.y])<MK_R*1.5)return i;continue;}
+      const tol=Math.max((it.w||11)*2.2,42);
+      const p=it.pts||[];
+      for(let j=0;j<p.length;j++){
+        if(dist(pt,p[j])<tol)return i;
+        if(j<p.length-1){
+          const a=p[j],b=p[j+1],L=dist(a,b);
+          if(L>0.001){
+            const t=Math.max(0,Math.min(1,((pt[0]-a[0])*(b[0]-a[0])+(pt[1]-a[1])*(b[1]-a[1]))/(L*L)));
+            if(dist(pt,[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])])<tol)return i;
+          }
+        }
+      }
+    }
+    return -1;
+  };
+  // Offence and defence number themselves 1-5 as they go down, so a five-man set is placed
+  // without stopping to label anybody.
+  const nextNum=kind=>{
+    const n=items.filter(i=>i.t==='mark'&&i.kind===kind).length;
+    return String((n%5)+1);
+  };
+  const placeMark=pt=>{
+    let label='';
+    if(mark==='off')label=nextNum('off');
+    else if(mark==='def')label='X'+nextNum('def');
+    else if(mark==='text'){
+      label=(window.prompt(L('Etiket yazısı','Label text'),'')||'').trim();
+      if(!label)return;
+    }
+    write([...items,{id:uid(),t:'mark',kind:mark,x:pt[0],y:pt[1],c:color,label}]);
+  };
+
+  const down=e=>{
+    if(e.button!==0&&e.pointerType==='mouse')return;
+    const pt=toCourt(e);if(!pt)return;
+    e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);
+    if(mark){placeMark(pt);return;}
+    if(tool==='erase'){const i=hit(pt);if(i>=0)write(items.filter((_,j)=>j!==i));setSel(null);return;}
+    if(tool==='select'){
+      const i=hit(pt);setSel(i>=0?i:null);
+      if(i>=0)dragRef.current={i,from:pt,item:items[i],moved:false};
+      return;
+    }
+    setSel(null);
+    setDraft({id:uid(),t:'path',tool,c:color,w:wid,pts:[pt]});
+  };
+  const move=e=>{
+    const d=dragRef.current;
+    if(d){
+      const pt=toCourt(e);if(!pt)return;
+      const dx=pt[0]-d.from[0],dy=pt[1]-d.from[1];
+      if(!d.moved&&Math.hypot(dx,dy)<8)return;
+      d.moved=true;
+      const it=d.item;
+      const moved=it.t==='mark'?{...it,x:it.x+dx,y:it.y+dy}
+                               :{...it,pts:(it.pts||[]).map(p=>[p[0]+dx,p[1]+dy])};
+      onChange({v:1,half:sc.half,items:items.map((x,j)=>j===d.i?moved:x)});
+      return;
+    }
+    if(!draft)return;
+    const pt=toCourt(e);if(!pt)return;
+    // Straight mode keeps two points — press and release; freehand keeps the trail, thinned
+    // so a slow drag does not store a thousand samples.
+    if(straight)setDraft(o=>({...o,pts:[o.pts[0],pt]}));
+    else setDraft(o=>(dist(o.pts[o.pts.length-1],pt)<9?o:{...o,pts:[...o.pts,pt]}));
+  };
+  const up=()=>{
+    const d=dragRef.current;
+    if(d){dragRef.current=null;if(d.moved)setHist(h=>({undo:[...h.undo.slice(-49),
+      items.map((x,j)=>j===d.i?d.item:x)],redo:[]}));return;}
+    if(!draft)return;
+    // A tap that never became a line is not a line — it is the coach missing.
+    if(draft.pts.length>1&&dist(draft.pts[0],draft.pts[draft.pts.length-1])>18)write([...items,draft]);
+    setDraft(null);
+  };
+
+  const drawing=!mark&&tool!=='select'&&tool!=='erase';
+  const cursor=mark?'copy':tool==='erase'?'not-allowed':tool==='select'?'grab':'crosshair';
+  const tbtn=(on,onClick,title,children,cls)=>
+    <button type="button" className={`ct-tb${on?' on':''}${cls?' '+cls:''}`} onClick={onClick} title={title}>{children}</button>;
+
+  return(<div className="ct-wrap">
+    <div className="ct-bar">
+      <div className="ct-grp">
+        {CT_TOOLS.map(t=>tbtn(!mark&&tool===t.id,()=>{setTool(t.id);setMark('');},L(t.tr,t.en),
+          <><i>{t.ic}</i><b>{L(t.tr,t.en)}</b></>))}
+      </div>
+      <div className="ct-grp ct-marks">
+        {CT_MARKS.map(m=>tbtn(mark===m.id,()=>setMark(mark===m.id?'':m.id),L(m.tr,m.en),
+          <><i>{m.ic}</i><b>{L(m.tr,m.en)}</b></>))}
+      </div>
+      <div className="ct-grp">
+        <span className="ct-lbl">{L('renk','colour')}</span>
+        {CT_COLORS.map(c=><button key={c} type="button" className={`ct-sw${color===c?' on':''}`}
+          style={{background:c}} onClick={()=>setColor(c)} title={c}/>)}
+        <input type="color" className="ct-sw ct-swc" value={color} onChange={e=>setColor(e.target.value)}
+          title={L('Özel renk','Custom colour')}/>
+      </div>
+      <div className="ct-grp">
+        <span className="ct-lbl">{L('kalınlık','width')}</span>
+        {CT_WIDTHS.map(w=><button key={w} type="button" className={`ct-w${wid===w?' on':''}`}
+          onClick={()=>setWid(w)} title={L(`Kalınlık ${w}`,`Width ${w}`)}>
+          <span style={{height:Math.max(2,w/3.2)}}/></button>)}
+      </div>
+      <div className="ct-grp ct-grp-end">
+        {tbtn(straight,()=>setStraight(s=>!s),L('Düz çizgi — basılı tut ve bırak','Straight line — press and release'),
+          <><i>╱</i><b>{L('Düz','Straight')}</b></>)}
+        {tbtn(!sc.half,()=>onChange({...sc,half:!sc.half}),L('Yarı saha / tam saha','Half court / full court'),
+          <><i>⛶</i><b>{sc.half?L('Yarı saha','Half court'):L('Tam saha','Full court')}</b></>)}
+        {tbtn(false,undo,L('Geri al','Undo'),<><i>↶</i></>,hist.undo.length?'':'off')}
+        {tbtn(false,redo,L('İleri al','Redo'),<><i>↷</i></>,hist.redo.length?'':'off')}
+        {sel!=null&&items[sel]&&tbtn(false,()=>{write(items.filter((_,j)=>j!==sel));setSel(null);},
+          L('Seçileni sil','Delete selected'),<><i>✕</i><b>{L('Sil','Delete')}</b></>,'danger')}
+        {tbtn(false,()=>{if(items.length&&window.confirm(L('Çizimin tamamı silinsin mi?','Clear the whole drawing?')))write([]);},
+          L('Tahtayı temizle','Clear the board'),<><i>🗑</i><b>{L('Temizle','Clear')}</b></>,items.length?'danger':'off')}
+      </div>
+    </div>
+    <div className="ct-board" style={{aspectRatio:String(courtRatio(sc.half))}}>
+      <svg className="ct-svg" viewBox={courtViewBox(sc.half)} preserveAspectRatio="xMidYMid meet"
+        style={{cursor,touchAction:'none'}}
+        onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}>
+        {elsToReact(courtEls({half:sc.half,ink:'rgba(255,255,255,.42)',surface:'#171a1f',line:5}),'c')}
+        {/* Everything the coach drew, plus the line currently under the pointer, inside the
+            group whose matrix the pointer maths is read off. */}
+        <g ref={gRef} transform={sc.half?HALF_TF:undefined}>
+          {paintOrder(items).map(([it,i])=><g key={it.id||i} className={sel===i?'ct-sel':undefined}>
+            {elsToReact(sceneItemEls(it,sc.half),`i${i}`)}
+          </g>)}
+          {draft&&elsToReact(sceneItemEls(draft,sc.half),'d')}
+        </g>
+      </svg>
+      {sceneIsEmpty(sc)&&!draft&&<div className="ct-hint">
+        {L('Sahaya çiz — kalem, pas, top sürme, perde; oyuncu ve ekipmanı tıklayarak yerleştir.',
+           'Draw on the court — pen, pass, dribble, screen; click to place players and equipment.')}
+      </div>}
+    </div>
+    <div className="ct-legend">
+      <span><i className="lg lg-cut"/>{L('Kesme','Cut')}</span>
+      <span><i className="lg lg-pass"/>{L('Pas','Pass')}</span>
+      <span><i className="lg lg-drib"/>{L('Top sürme','Dribble')}</span>
+      <span><i className="lg lg-scr"/>{L('Perde','Screen')}</span>
+      <span><i className="lg lg-shot"/>{L('Şut','Shot')}</span>
+      <span className="ct-legend-t">{drawing
+        ?L('Sürükleyerek çiz','Drag to draw')
+        :mark?L('Yerleştirmek için sahaya tıkla','Click the court to place')
+        :tool==='select'?L('Taşımak için sürükle','Drag to move')
+        :L('Silmek için üstüne tıkla','Click an item to erase')}</span>
+    </div>
+  </div>);
+}
+
+/* ---- Ball practice library ------------------------------------------------
+   Court work is filed the way court work is coached — by what the drill teaches, not by
+   which muscles it loads — so it gets its own categories rather than being forced into
+   the S&C ones. */
+const BALL_TYPES=['Ball Warm-Up','Ball Handling','Shooting','Finishing','Passing','Individual Defense',
+  'Team Offense Concepts','Team Defense Concepts','Transition / Fast Break','Rebounding',
+  'Set Plays','Small-Sided Games'];
+const BALL_TYPE_COLORS={
+  'Ball Warm-Up':'#fdba74','Ball Handling':'#22d3ee','Shooting':'#fcd34d','Finishing':'#fb923c',
+  'Passing':'#86efac','Individual Defense':'#fca5a5','Team Offense Concepts':'#f9a8d4',
+  'Team Defense Concepts':'#c4b5fd','Transition / Fast Break':'#5eead4','Rebounding':'#a78bfa',
+  'Set Plays':'#93c5fd','Small-Sided Games':'#a7f3d0'};
+const BALL_SUB_TYPES={
+  'Ball Warm-Up':{label:'Category',values:['General','Ball-Handling Prep','Shooting Prep','Reaction']},
+  'Ball Handling':{label:'Category',values:['Stationary','On the Move','Two-Ball','Pressure / Live']},
+  'Shooting':{label:'Category',values:['Spot-Up','Off the Catch','Off the Dribble','Off Screens','Free Throw','Game Speed']},
+  'Finishing':{label:'Category',values:['Layup Package','Floater','Contact Finish','Post Finish']},
+  'Passing':{label:'Category',values:['Stationary','On the Move','Post Entry','Skip / Kick-Out']},
+  'Individual Defense':{label:'Category',values:['Stance & Slides','On-Ball','Closeout','Post Defense','Screen Navigation']},
+  'Team Offense Concepts':{label:'Category',values:['Spacing','Ball Screen','Off-Ball Screen','Cutting','Post Play','Motion']},
+  'Team Defense Concepts':{label:'Category',values:['Shell','Help & Recover','Ball Screen Coverage','Zone','Press']},
+  'Transition / Fast Break':{label:'Category',values:['Primary Break','Secondary Break','Transition Defense','Conversion']},
+  'Rebounding':{label:'Category',values:['Box Out','Offensive Board','Outlet']},
+  'Set Plays':{label:'Category',values:['Quick Hitter','BLOB','SLOB','After Timeout','End of Clock']},
+  'Small-Sided Games':{label:'Category',values:['1v1','2v2','3v3','4v4','5v5','Advantage / Disadvantage']},
+};
+/* The ball-practice half of the library, mirrored out of the app state for the same
+   reason the S&C half is: the drill editor sits deep inside the session panel and should
+   not have the whole library threaded down to it as a prop. */
+let _ballLib=[];
+function setBallLibItems(a){_ballLib=Array.isArray(a)?a:[];}
+function getBallLibItems(){return _ballLib;}
+let _ballSave=null;
+function registerBallSave(fn){_ballSave=fn;}
+/* Save a drill written on a session into the Ball Practice library — the diagram, the
+   clip and the coaching notes, under the drill's own name. Returns false when there is
+   no name to file it under. */
+function saveBallDrillToLibrary(ex){
+  const nm=(ex&&ex.name||'').trim();
+  if(!nm||!_ballSave)return false;
+  _ballSave({name:nm,court:ex.court||null,videoUrl:ex.videoUrl||'',videoData:ex.videoData||'',
+    purpose:(ex.description||'').trim(),players:ex.players||''});
+  return true;
+}
+
+/* ---- The clip on a drill --------------------------------------------------
+   A diagram says where everybody goes; a clip says what it is supposed to look like. Same
+   two fields the exercise library stores — an uploaded file or a pasted link — so a drill
+   saved to the library arrives with its video already in the shape the library expects. */
+function DrillVideo({ex,onChange}){
+  const[up,setUp]=useState(null);
+  const[open,setOpen]=useState(false);
+  const has=!!(ex.videoData||ex.videoUrl);
+  const onFile=async file=>{
+    if(!file)return;
+    const mb=file.size/1048576;
+    const fb=(typeof FB==='function')?FB():null;
+    const loggedIn=fb&&fb.auth&&fb.auth().currentUser;
+    if(loggedIn){
+      if(mb>200){alert(L(`Video çok büyük (${mb.toFixed(0)} MB). 200 MB altı bir dosya seç ya da link kullan.`,`Video is too large (${mb.toFixed(0)} MB). Pick a file under 200 MB or use a link.`));return;}
+      try{setUp(0);const url=await uploadMedia(file,'videos',p=>setUp(p),file.name);onChange({videoUrl:url,videoData:''});}
+      catch(e){alert(L('Video yüklenemedi: ','Video upload failed: ')+(e.message||e));}
+      finally{setUp(null);}
+      return;
+    }
+    if(mb>25){alert(L('Bulut yüklemesi için giriş yap. Çevrimdışı sınır: 25 MB.','Sign in for cloud upload. Offline limit: 25 MB.'));return;}
+    const r=new FileReader();
+    r.onload=async e=>{
+      try{onChange({videoData:await saveLocalMedia(e.target.result),videoUrl:''});}
+      catch(err){onChange({videoData:e.target.result,videoUrl:''});}
+    };
+    r.readAsDataURL(file);
+  };
+  return(<div className="dv-wrap">
+    <div className="dv-hd">
+      <span className="dv-lbl">{L('video','video')}</span>
+      {has&&<button type="button" className="dv-tog" onClick={()=>setOpen(o=>!o)}>
+        {open?L('▾ Gizle','▾ Hide'):L('▸ Oynat','▸ Play')}</button>}
+      <label className="dv-up" title={L('Bu drilin videosunu yükle','Upload a clip of this drill')}>
+        {up!=null?`${up}%`:L('⤒ Yükle','⤒ Upload')}
+        <input type="file" accept="video/*" onChange={e=>{onFile(e.target.files&&e.target.files[0]);e.target.value='';}}/>
+      </label>
+      {has&&<button type="button" className="dv-x" title={L('Videoyu kaldır','Remove the video')}
+        onClick={()=>onChange({videoUrl:'',videoData:''})}>✕</button>}
+    </div>
+    <input className="dv-link" value={ex.videoUrl||''} placeholder={L('…ya da bir link yapıştır (YouTube / Vimeo / mp4)','…or paste a link (YouTube / Vimeo / mp4)')}
+      onChange={e=>onChange({videoUrl:e.target.value})}/>
+    {open&&has&&<div className="dv-player"><VideoPlayer ex={ex}/></div>}
+  </div>);
+}
+
+/* ---- One ball-practice drill ----------------------------------------------
+   The court row's answer to CalSlotEd. The prescription fields are the same ones a lift
+   carries — a drill is still sets, reps, time, intensity and rest — so the day drawer, the
+   volume figures and the printed sheet read it without knowing it came off a court. What
+   is different is what sits above them: the diagram, and the clip of it being run. */
+function BallDrillEd({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
+  const f=(k,v)=>onChange({...ex,[k]:v});
+  const[saved,setSaved]=useState(false);
+  const[openCourt,setOpenCourt]=useState(true);
+  const empty=!String(ex.name||'').trim();
+  const lib=getBallLibItems();
+  const save=()=>{
+    if(!String(ex.name||'').trim()){alert(L('Önce drile bir ad ver.','Give the drill a name first.'));return;}
+    if(saveBallDrillToLibrary(ex)){setSaved(true);setTimeout(()=>setSaved(false),1800);onSaved&&onSaved();}
+  };
+  // Picking a saved drill brings its diagram, clip and notes across — the whole point of
+  // having filed it in the first place.
+  const pick=nm=>{
+    const it=lib.find(x=>(x.name||'').trim().toLowerCase()===nm.trim().toLowerCase());
+    if(!it){f('name',nm);return;}
+    onChange({...ex,name:it.name,court:it.court||ex.court||null,
+      videoUrl:it.videoUrl||ex.videoUrl||'',videoData:it.videoData||ex.videoData||'',
+      description:ex.description||it.purpose||'',players:ex.players||it.players||''});
+  };
+  const num=(lbl,trLbl,k,opts,title)=>(<label key={k}>{L(trLbl,lbl)}
+    {opts?<SlotPick value={ex[k]} options={opts} onChange={v=>f(k,v)} title={title}/>
+         :<input value={ex[k]||''} onChange={e=>f(k,e.target.value)} placeholder="—" title={title}/>}
+  </label>);
+  return(<div className={'iv-slot bp-slot'+(empty?' off':'')}>
+    <div className="iv-slot-main">
+      <span className="iv-ss-tag on bp-tag">{tag}</span>
+      <div className="iv-slot-nm">
+        <input className="bp-nm" list="bp-lib-names" value={ex.name||''} placeholder={L('Dril adı — ör. 3\'lü Şut Dönüşü','Drill name — e.g. 3-Man Shooting Rotation')}
+          onChange={e=>pick(e.target.value)}/>
+      </div>
+      <span className="iv-slotacts">
+        <button type="button" onClick={()=>onMove(-1)} disabled={first} title={L('Yukarı taşı','Move up')}>↑</button>
+        <button type="button" onClick={()=>onMove(1)} disabled={last} title={L('Aşağı taşı','Move down')}>↓</button>
+        <button type="button" className={'bp-save'+(saved?' on':'')} onClick={save}
+          title={L('Bu drili Top Çalışması kütüphanesine kaydet','Save this drill to the Ball Practice library')}>
+          {saved?L('✓ Kaydedildi','✓ Saved'):L('⤓ Kütüphane','⤓ Library')}</button>
+        <button type="button" className="del" onClick={onRemove} title={L('Bu drili kaldır','Remove this drill')}>✕</button>
+      </span>
+    </div>
+    <div className="iv-slot-ed bp-ed">
+      <div className="bp-court">
+        <button type="button" className="bp-court-t" onClick={()=>setOpenCourt(o=>!o)}>
+          <i>{openCourt?'▼':'▶'}</i>{L('Saha Çizimi','Court Diagram')}
+          {!openCourt&&!sceneIsEmpty(ex.court)&&<b>{L(`${ex.court.items.length} öğe`,`${ex.court.items.length} items`)}</b>}
+        </button>
+        {openCourt
+          ?<CourtEditor value={ex.court} onChange={sc=>f('court',sc)}/>
+          :!sceneIsEmpty(ex.court)&&<CourtView scene={ex.court} className="bp-court-mini"/>}
+      </div>
+      <div className="bp-side">
+        <div className="iv-numed bp-numed">
+          {num('sets','set','sets',SLOT_SETS,L('Set sayısı','Number of sets'))}
+          {num('reps','tekrar','reps',SLOT_REPS,L('Tekrar sayısı','Number of reps'))}
+          {num('time','süre','duration',null,L('Çalışma süresi (ör. 4dk)','Work time (e.g. 4 min)'))}
+          {num('rpe','rpe','rpe',SLOT_RPES,L('Hedef RPE (4–10)','Target RPE (4–10)'))}
+          {num('rest','dinlenme','rest',null,L('Setler arası dinlenme','Rest between sets'))}
+          {num('players','oyuncu','players',null,L('Kaç oyuncuyla çalışılıyor (ör. 3v3)','How many players (e.g. 3v3)'))}
+        </div>
+        <DrillVideo ex={ex} onChange={p=>onChange({...ex,...p})}/>
+        <div className="iv-noterow">
+          <label>{L('koçluk noktaları','coaching points')}
+            <textarea className="bp-notes" value={ex.description||''} onChange={e=>f('description',e.target.value)}
+              placeholder={L('Kurallar, ilerlemeler, vurgulanacak detaylar…','Rules, progressions, what to emphasise…')}/>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+
 /* `session`, `printContext` and `isTemplate` are here for the block's own actions: printing
    and saving a template both need a whole session to work with, and a block is handed to
    them as one that carries this block alone.
@@ -10638,6 +11647,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   });},[exs]);
   const groups=[...new Set(exs.map(e=>(e.superset||'').toUpperCase().trim()).filter(Boolean))].sort();
   const isDragging=dragB!=null&&dragB===index;
+  const isBall=blkKind(block)==='ball';
   /* This block as a session of its own — what Print and Save to Templates are given. It is
      the session it belongs to with every other block dropped, so the printed sheet keeps
      the session's date, duration and focus; the name carries the block so the sheet (and
@@ -10647,18 +11657,23 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     name:[((session||{}).name||'').trim(),blkName].filter(Boolean).join(' · '),
     blocks:[block]});
   const saveTpl=()=>{if(saveSessionAsTemplate(blkSession())){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
-  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')}
+  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="iv-block-hd">
+      {/* Which of the two kinds of work this block is, said once at its head — the rows
+          inside it are different enough that the coach should never have to guess. */}
+      <span className={'blk-kind '+(isBall?'ball':'sc')}>{isBall?L('TOP','BALL'):L('K&K','S&C')}</span>
       <span className="blk-grip" draggable={setDragB!=null}
         onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
         onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
       <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
         title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
-      <input className="iv-block-nm" value={block.name} placeholder={L(`Blok ${index+1}`,`Block ${index+1}`)}
+      <input className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
         onChange={e=>onUpdate({...block,name:e.target.value})} title={L('Blok başlığı','Block title')}/>
-      <span className="iv-blockcnt">{L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
+      <span className="iv-blockcnt">{isBall
+        ?L(`${exs.length} dril`,`${exs.length} drill${exs.length!==1?'s':''}`)
+        :L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{!isBall&&groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
       <span className="iv-blockacts">
         {/* The assignment sits beside the block's title, at the head of the block that
             carries the athlete picker: whoever is ticked gets the session written onto
@@ -10687,17 +11702,27 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         showPicker={showPicker} isTemplate={isTemplate} coach={coach}/>}
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
-      <div className="iv-slotswrap"><div className="iv-slots">
-        {exs.map((ex,i)=><CalSlotEd key={i} ex={ex} tag={labels[i]}
-          onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
-          onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
+      {/* A ball-practice block runs its drills one to a row: each carries a court diagram
+          and a clip, and neither survives being squeezed into half a row. S&C keeps the
+          two-up grid it has always had. */}
+      <div className="iv-slotswrap"><div className={isBall?'iv-slots bp-slots':'iv-slots'}>
+        {exs.map((ex,i)=>isBall
+          ?<BallDrillEd key={ex.id||i} ex={ex} tag={labels[i]}
+            onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
+            onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>
+          :<CalSlotEd key={i} ex={ex} tag={labels[i]}
+            onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
+            onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
         {/* Adding lands where the next exercise goes: beside the last one when the row
             still has a free half, across the row when the last row is full. */}
-        <button type="button" className={'iv-addslot'+(exs.length%2?' beside':'')}
-          onClick={()=>{setOpen(true);setExs([...exs,EX()]);}}
-          title={L(`${block.name||`Blok ${index+1}`}'a egzersiz ekle`,`Add an exercise to ${block.name||`Block ${index+1}`}`)}>+ {L('Egzersiz ekle','Add exercise')}</button>
+        <button type="button" className={'iv-addslot'+(!isBall&&exs.length%2?' beside':'')}
+          onClick={()=>{setOpen(true);setExs([...exs,isBall?BALL_EX():EX()]);}}
+          title={isBall?L(`${blkName}'a dril ekle`,`Add a drill to ${blkName}`):L(`${blkName}'a egzersiz ekle`,`Add an exercise to ${blkName}`)}>
+          + {isBall?L('Dril ekle','Add drill'):L('Egzersiz ekle','Add exercise')}</button>
       </div></div>
-      {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>{L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
+      {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>{isBall
+        ?L('Bu blokta dril yok — bir tane çizmek için "+ Dril ekle"yi kullan.','No drills in this block — use "+ Add drill" to draw one.')
+        :L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
     </>}
   </div>);
 }
@@ -10710,37 +11735,168 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
    What is already selected is listed first so the coach can read the current choice at a
    glance. The order is snapshotted when the list opens (`pin`), not recomputed on every
    tick, so an option never jumps out from under the cursor mid-click. */
-function FocusSelect({value,onChange,placeholder}){
-  const[open,setOpen]=useState(false);
-  const[pin,setPin]=useState([]);
-  const ref=useRef(null);
+/* ---- Where a dropdown panel goes on screen --------------------------------
+   A block is a rounded card with `overflow:hidden`, which is what gives it its clipped
+   corners — and what used to cut every one of these panels off at the card's edge. So
+   the panel is not laid out inside the field any more: it is measured against the
+   trigger and rendered into a body portal at fixed coordinates, where no ancestor's
+   overflow can reach it. It flips above the field when the space below is too tight,
+   and never leaves the viewport sideways. Returns null while closed (nothing to
+   measure), so the caller can guard on it. */
+function useDDAnchor(ref,open,{width,minWidth=240,maxHeight=340,gap=5}={}){
+  const[,bump]=useState(0);
   useEffect(()=>{
     if(!open)return;
-    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
-    document.addEventListener('mousedown',h);
-    return()=>document.removeEventListener('mousedown',h);
+    const h=()=>bump(n=>n+1);
+    window.addEventListener('resize',h);window.addEventListener('scroll',h,true);
+    return()=>{window.removeEventListener('resize',h);window.removeEventListener('scroll',h,true);};
   },[open]);
+  if(!open||!ref.current)return null;
+  const r=ref.current.getBoundingClientRect();
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const w=Math.min(Math.max(width||r.width,minWidth),vw-24);
+  const left=Math.max(12,Math.min(r.left,vw-12-w));
+  const below=vh-r.bottom-gap-8,above=r.top-gap-8;
+  const up=below<Math.min(maxHeight,220)&&above>below;
+  return up
+    ?{position:'fixed',left,bottom:vh-r.top+gap,width:w,maxHeight:Math.min(maxHeight,above)}
+    :{position:'fixed',left,top:r.bottom+gap,width:w,maxHeight:Math.min(maxHeight,below)};
+}
+/* Close the panel when the pointer goes down anywhere that is neither the field nor the
+   portalled panel itself. Both have to be checked by hand: the panel is not a DOM
+   descendant of the field any more, so `field.contains(target)` alone would shut it on
+   its own options. */
+function useDDOutside(refs,open,close){
+  useEffect(()=>{
+    if(!open)return;
+    const h=e=>{if(!refs.some(r=>r.current&&r.current.contains(e.target)))close();};
+    const k=e=>{if(e.key==='Escape')close();};
+    document.addEventListener('mousedown',h);document.addEventListener('keydown',k);
+    return()=>{document.removeEventListener('mousedown',h);document.removeEventListener('keydown',k);};
+  },[open,close]);   // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/* ---- Session focus, in three stages ---------------------------------------
+   One control, three questions, asked in the order the answer is actually arrived at:
+
+     1  Focus      what quality are we developing?
+     2  Sub-Focus  which capacity inside it?
+     3  Method     how are we going to train it?
+
+   Nothing is asked before it can be answered. Stage 2 does not exist until a focus is
+   ticked, and stage 3 not until a sub-focus is — an empty panel of methods with no
+   capacity to attach them to is a question about nothing. Ticking the first focus slides
+   stage 2 in under it; the stages arrive and leave on a short height-and-fade transition
+   rather than snapping, so the panel reads as one form growing a step at a time.
+
+   Every stage is multi-select, and the options at stages 2 and 3 are the union of what
+   the ticked focuses offer, kept under the heading of the focus they belong to. Unticking
+   a focus takes its sub-focuses and methods with it: a method left behind by the focus
+   that justified it is not a record of anything. */
+function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,placeholder}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null),ddRef=useRef(null);
+  const close=useCallback(()=>setOpen(false),[]);
+  useDDOutside([ref,ddRef],open,close);
+  const box=useDDAnchor(ref,open,{width:420,minWidth:300,maxHeight:460});
+
   const sel=Array.isArray(value)?value:[];
-  const toggle=f=>onChange(sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
-  const trig=()=>{if(open){setOpen(false);}else{setPin(sel);setOpen(true);}};
-  // Stable sort keeps each half in the canonical SESSION_FOCUS order.
-  const opts=[...SESSION_FOCUS].sort((a,b)=>(pin.includes(b)?1:0)-(pin.includes(a)?1:0));
-  const pinnedN=opts.filter(f=>pin.includes(f)).length;
+  const subSel=Array.isArray(sub)?sub:[];
+  const metSel=Array.isArray(methods)?methods:[];
+  /* The focuses the panel is built from: what is ticked, in FOCUS_TREE order. A stored
+     value the tree no longer knows is dropped here rather than drawn as an empty group. */
+  const active=FOCUS_TREE.filter(f=>sel.includes(f.id));
+  const stage=active.length===0?1:(subSel.length===0?2:3);
+  /* A stage that opens below the fold of a panel this tall has not really opened. When a
+     new one arrives, the panel scrolls just far enough to show it — `nearest`, so a stage
+     already in view is left exactly where it is. */
+  const lastStage=useRef(1);
+  useEffect(()=>{
+    if(open&&stage>lastStage.current&&ddRef.current){
+      const st=ddRef.current.querySelectorAll('.fx-stage');
+      const last=st[st.length-1];
+      if(last)last.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    lastStage.current=open?stage:1;
+  },[stage,open]);
+
+  const toggleFocus=f=>{
+    if(!sel.includes(f)){onChange([...sel,f]);return;}
+    // Dropping a focus drops what hung off it — unless another ticked focus offers the
+    // same sub-focus or method, in which case it is still justified and stays.
+    const rest=sel.filter(x=>x!==f);
+    onChange(rest);
+    const keptSub=subSel.filter(s=>rest.includes(SUBFOCUS_OWNER[s]));
+    if(keptSub.length!==subSel.length)onSubChange(keptSub);
+    const keptMet=metSel.filter(m=>rest.includes(FOCUS_METHOD_OWNER[m]));
+    if(keptMet.length!==metSel.length)onMethodsChange(keptMet);
+  };
+  const toggleSub=s=>{
+    if(subSel.includes(s)){
+      const rest=subSel.filter(x=>x!==s);
+      onSubChange(rest);
+      // The last sub-focus going takes stage 3 with it, so its methods go too.
+      if(!rest.length&&metSel.length)onMethodsChange([]);
+    }else onSubChange([...subSel,s]);
+  };
+  const toggleMet=m=>onMethodsChange(metSel.includes(m)?metSel.filter(x=>x!==m):[...metSel,m]);
+
+  const summary=[...sel,...subSel,...metSel].map(exLabel);
+  const Opt=({v,on,tog,c})=>(
+    <label className={`focus-opt${on?' on':''}`} style={c?{'--fo-c':c}:undefined}>
+      <input type="checkbox" checked={on} onChange={()=>tog(v)}/>
+      <span>{exLabel(v)}</span>
+    </label>);
+  /* A stage, with the heading that says which question it is answering. `n` drives the
+     step badge and the stagger, so the three panels arrive in reading order. */
+  const Stage=({n,title,hint,children})=>(
+    <div className="fx-stage" style={{'--fx-i':n}}>
+      <div className="fx-stage-hd"><b>{n}</b><span>{title}</span><i>{hint}</i></div>
+      {children}
+    </div>);
+
   return(<div ref={ref} className="focus-sel">
-    <button type="button" className={`focus-trig${open?' open':''}`} onClick={trig}
-      title={sel.length?sel.join(', '):undefined}>
-      <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select focus…')}</span>
+    <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
+      title={summary.length?summary.join(' · '):undefined}>
+      <span className={summary.length?'':'ph'}>{summary.length?summary.join(', '):(placeholder||L('Odak seç…','Select focus…'))}</span>
       <i>▾</i>
     </button>
-    {open&&<div className="focus-dd">
-      {opts.map((f,i)=><React.Fragment key={f}>
-        {i===pinnedN&&pinnedN>0&&<div className="focus-sep"/>}
-        <label className={`focus-opt${sel.includes(f)?' on':''}`}>
-          <input type="checkbox" checked={sel.includes(f)} onChange={()=>toggle(f)}/>
-          <span>{f}</span>
-        </label>
-      </React.Fragment>)}
-    </div>}
+    {open&&box&&ReactDOM.createPortal(
+      <div ref={ddRef} className="focus-dd fx-dd" style={box}>
+        <Stage n={1} title={L('Seans Odağı','Session Focus')} hint={L('Neyi geliştiriyoruz?','What are we developing?')}>
+          <div className="fx-grid">
+            {FOCUS_TREE.map(f=><Opt key={f.id} v={f.id} c={f.c} on={sel.includes(f.id)} tog={toggleFocus}/>)}
+          </div>
+        </Stage>
+        {/* Stage 2 and 3 are mounted only once they have something to ask, and animate in
+            from nothing — the height transition is what makes the panel read as one form
+            unfolding rather than three that blink into place. */}
+        {stage>=2&&<Stage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
+          {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
+            <div className="fx-fam-hd">{exLabel(f.id)}</div>
+            <div className="fx-grid">
+              {f.sub.map(s=><Opt key={s} v={s} c={f.c} on={subSel.includes(s)} tog={toggleSub}/>)}
+            </div>
+          </div>)}
+        </Stage>}
+        {stage>=3&&<Stage n={3} title={L('Metot','Method')} hint={L('Nasıl çalışıyoruz?','How are we training it?')}>
+          {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
+            <div className="fx-fam-hd">{exLabel(f.id)}</div>
+            <div className="fx-grid">
+              {f.met.map(m=><Opt key={m} v={m} c={f.c} on={metSel.includes(m)} tog={toggleMet}/>)}
+            </div>
+          </div>)}
+        </Stage>}
+        <div className="fx-foot">
+          <span>{stage===1
+            ?L('Bir odak seç — alt odak sorusu altında açılır.','Pick a focus — the sub-focus question opens under it.')
+            :stage===2?L('Bir alt odak seç — metot sorusu altında açılır.','Pick a sub-focus — the method question opens under it.')
+            :L(`${sel.length} odak · ${subSel.length} alt odak · ${metSel.length} metot`,`${sel.length} focus · ${subSel.length} sub-focus · ${metSel.length} method`)}</span>
+          {summary.length>0&&<button type="button" className="fx-clear"
+            onClick={()=>{onChange([]);onSubChange([]);onMethodsChange([]);}}>{L('Temizle','Clear')}</button>}
+          <button type="button" className="fx-done" onClick={close}>{L('Bitti','Done')}</button>
+        </div>
+      </div>,document.body)}
   </div>);
 }
 
@@ -10752,13 +11908,11 @@ function MethodSelect({value,onChange,placeholder,counts}){
   const[open,setOpen]=useState(false);
   const[q,setQ]=useState('');
   const[pin,setPin]=useState([]);   // selection snapshot taken when the list opens
-  const ref=useRef(null);
-  useEffect(()=>{
-    if(!open){setQ('');return;}
-    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
-    document.addEventListener('mousedown',h);
-    return()=>document.removeEventListener('mousedown',h);
-  },[open]);
+  const ref=useRef(null),ddRef=useRef(null);
+  const close=useCallback(()=>setOpen(false),[]);
+  useDDOutside([ref,ddRef],open,close);
+  const box=useDDAnchor(ref,open,{width:340,minWidth:260,maxHeight:400});
+  useEffect(()=>{if(!open)setQ('');},[open]);
   const sel=Array.isArray(value)?value:[];
   const toggle=m=>onChange(sel.includes(m)?sel.filter(x=>x!==m):[...sel,m]);
   const trig=()=>{if(open){setOpen(false);}else{setPin(sel);setOpen(true);}};
@@ -10782,11 +11936,13 @@ function MethodSelect({value,onChange,placeholder,counts}){
       <span className={sel.length?'':'ph'}>{sel.length?sel.join(', '):(placeholder||'Select training method…')}</span>
       <i>▾</i>
     </button>
-    {open&&<div className="focus-dd">
-      <input className="focus-search" value={q} autoFocus placeholder="Search methods…"
+    {/* Portalled for the same reason the focus panel is: the block card it sits in clips
+        anything that overflows its rounded edge. */}
+    {open&&box&&ReactDOM.createPortal(<div ref={ddRef} className="focus-dd" style={box}>
+      <input className="focus-search" value={q} autoFocus placeholder={L('Metot ara…','Search methods…')}
         onChange={e=>setQ(e.target.value)} onClick={e=>e.stopPropagation()}/>
       {pinned.length>0&&<div>
-        <div className="focus-grp sel">✓ Seçilenler</div>
+        <div className="focus-grp sel">✓ {L('Seçilenler','Selected')}</div>
         {pinned.map(opt)}
         <div className="focus-sep"/>
       </div>}
@@ -10794,8 +11950,8 @@ function MethodSelect({value,onChange,placeholder,counts}){
         <div className="focus-grp">{g}</div>
         {items.map(opt)}
       </div>)}
-      {!groups.length&&!pinned.length&&<div className="focus-grp">No method matches “{q}”</div>}
-    </div>}
+      {!groups.length&&!pinned.length&&<div className="focus-grp">{L(`“${q}” ile eşleşen metot yok`,`No method matches “${q}”`)}</div>}
+    </div>,document.body)}
   </div>);
 }
 
@@ -10922,7 +12078,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const delBlk=bid=>u({blocks:session.blocks.filter(b=>b.id!==bid)});
   const dupBlk=bid=>{const o=session.blocks.find(b=>b.id===bid);const i=session.blocks.indexOf(o);
     const nb={...o,id:uid(),exercises:o.exercises.map(e=>({...e}))};const a=[...session.blocks];a.splice(i+1,0,nb);u({blocks:a});};
-  const addBlk=n=>u({blocks:[...session.blocks,BLK(n)]});
+  const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n,kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
   // Renaming from the bar: the name is written straight through as it is typed, and the
   // name it had when editing started is held so Escape can put it back.
@@ -11048,9 +12204,15 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         session={session} printContext={printContext} isTemplate={isTemplate}
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach} assign={assign}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
+      {/* Three things a coach adds to a session, and they are not the same thing: weight-room
+          work, court work, and something written down. Naming them apart here is what makes
+          the difference visible before the block is added rather than after. */}
       <div className="add-blk">
-        <button onClick={()=>addBlk('')}>+ {L('Blok Ekle','Add Block')}</button>
-        <button onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
+        <button className="ab-sc" onClick={()=>addBlk('','sc')}
+          title={L('Set / tekrar / yük ile yazılan bir kuvvet-kondisyon bloğu','A strength & conditioning block, written in sets, reps and load')}>+ {L('K&K Bloğu Ekle','Add S&C Block')}</button>
+        <button className="ab-ball" onClick={()=>addBlk('','ball')}
+          title={L('Saha çizimi ve videosuyla birlikte top çalışması bloğu','A ball-practice block, with a court diagram and a clip on every drill')}>+ {L('Top Çalışması Bloğu Ekle','Add Ball Practice Block')}</button>
+        <button className="ab-note" onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
         <textarea value={session.planNote||''} onChange={e=>u({planNote:e.target.value})} placeholder={L('Bu seans için bir not yaz…','Write a note for this session…')}/>
@@ -11227,11 +12389,14 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
    Deceleration session that also lists Plyometrics stays under Multi-Directional Speed —
    while a mixed Strength + Mobility template still lands in Strength & Power. */
 const TPL_CATS=[
-  {id:'strength',    label:'Strength & Power',        color:'strength', foci:['Strength','Hypertrophy','Power','Plyometrics']},
-  {id:'mdspeed',     label:'Multi-Directional Speed', color:'speed',    foci:['Speed','Acceleration','Deceleration','Change of Direction','Agility']},
+  {id:'strength',    label:'Strength & Power',        color:'strength', foci:['Strength','Power']},
+  {id:'mdspeed',     label:'Multi-Directional Speed', color:'speed',    foci:['Speed']},
   {id:'conditioning',label:'Conditioning',            color:'endurance',foci:['Conditioning']},
-  {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Mobility','Stability']},
-  {id:'other',       label:'Other',                   color:'practice', foci:[]},   // Technical / Tactical / Competition / no focus
+  {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Movement']},
+  {id:'court',       label:'Technical / Tactical',    color:'practice', foci:['Technical / Tactical']},
+  {id:'rtp',         label:'Recovery & Return to Play',color:'recovery',foci:['Recovery','Return to Play']},
+  {id:'testing',     label:'Testing',                 color:'practice', foci:['Testing']},
+  {id:'other',       label:'Other',                   color:'practice', foci:[]},   // no focus set
 ];
 const tplCatOf=focus=>{
   const fs=Array.isArray(focus)?focus:[];
@@ -11257,7 +12422,7 @@ function TemplatesView({data,setData}){
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
   const addTpl=()=>{const s=SESS();const t={id:uid(),name:L('Yeni Şablon','New Template'),
-    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,sub:s.sub,focusMethods:s.focusMethods,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm(L('Bu şablon silinsin mi?','Delete this template?'))){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
   const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||L('Şablon','Template'))+L(' (kopya)',' (copy)'),session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
@@ -11308,9 +12473,11 @@ function TemplatesView({data,setData}){
   const editing=templates.find(t=>t.id===editId);
   // SessEd expects a full session object — wrap the template's stored fields; name maps to the template name.
   const edSession=editing?(()=>{const s=editing.session||{};
-    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'Technical',duration:60,color:'',blocks:[],notes:'',planNote:'',methods:[],region:'',...s,name:editing.name||'',
-      focus:(Array.isArray(s.focus)||s.purpose)?sesFocus(s):['Technical']};})():null;
-  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
+    return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'',duration:60,color:'',blocks:[],notes:'',planNote:'',methods:[],region:'',...s,name:editing.name||'',
+      /* Read through the same three accessors the session editor writes with, so a
+         template stored in the old flat vocabulary opens in the new one. */
+      focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s)};})():null;
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),sub:sesSubFocus(ns),focusMethods:sesFocusMethods(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">{L('Şablonlar','Templates')}</h1>
@@ -11322,7 +12489,7 @@ function TemplatesView({data,setData}){
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Şablon ara…','Search templates…')}/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
         <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>{L('Tümü','All')}</button>
-        {SESSION_FOCUS.filter(f=>!['Injury Prevention','Technical','Tactical','Competition','Assessment','Recovery'].includes(f)).map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{exLabel(f)}</button>)}
+        {SESSION_FOCUS.map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{exLabel(f)}</button>)}
       </div>
     </div>
     {shown.length===0&&<div className="ex-empty">{templates.length===0?L('Henüz şablon yok — ＋ Yeni Şablon ile başla.','No templates yet — start with ＋ New Template.'):L('Filtreyle eşleşen şablon yok.','No templates match the filter.')}</div>}
@@ -19487,6 +20654,61 @@ const EX_TERM_TR={
   'Change of Direction':'Yön Değiştirme','Agility':'Çeviklik','Plyometrics':'Pliometrik','Mobility':'Hareketlilik',
   'Stability':'Stabilite','Injury Prevention':'Sakatlık Önleme','Technical':'Teknik','Tactical':'Taktik',
   'Competition':'Müsabaka','Assessment':'Değerlendirme','Recovery':'Toparlanma',
+  /* --- Session focus tree, stage 1 --- */
+  'Movement':'Hareket','Technical / Tactical':'Teknik / Taktik','Return to Play':'Sahaya Dönüş','Testing':'Test',
+  /* --- stage 2, sub-focus --- */
+  'Maximal Strength':'Maksimal Kuvvet','Strength Endurance':'Kuvvette Devamlılık','Eccentric Strength':'Eksantrik Kuvvet',
+  'Isometric Strength':'İzometrik Kuvvet','Unilateral Strength':'Tek Taraflı Kuvvet','Core Strength':'Core Kuvveti',
+  'Strength-Speed':'Kuvvet-Sürat','Speed-Strength':'Sürat-Kuvvet','Explosive Strength':'Patlayıcı Kuvvet',
+  'Reactive Strength':'Reaktif Kuvvet','Rate of Force Development':'Kuvvet Gelişim Hızı','Ballistic Power':'Balistik Güç',
+  'Max Velocity':'Maksimal Hız','Reactive Agility':'Reaktif Çeviklik','Speed Endurance':'Sürat Devamlılığı',
+  'Aerobic Capacity':'Aerobik Kapasite','Aerobic Power':'Aerobik Güç','Anaerobic Capacity':'Anaerobik Kapasite',
+  'Anaerobic Power':'Anaerobik Güç','Repeated Sprint Ability':'Tekrarlı Sprint Yeteneği','Lactate Tolerance':'Laktat Toleransı',
+  'Tempo / Extensive':'Tempo / Ekstensif','Motor Control':'Motor Kontrol','Landing Mechanics':'İniş Mekaniği',
+  'Tendon Health':'Tendon Sağlığı','Balance & Proprioception':'Denge ve Propriosepsiyon',
+  'Individual Skill':'Bireysel Beceri','Team Offense':'Takım Hücumu','Team Defense':'Takım Savunması',
+  'Set Plays':'Sistem Oyunları','Transition':'Geçiş','Small-Sided Game':'Küçük Alan Oyunu','Scrimmage':'Çift Kale',
+  'Active Recovery':'Aktif Toparlanma','Regeneration':'Rejenerasyon','Soft Tissue':'Yumuşak Doku',
+  'Breathing / Parasympathetic':'Nefes / Parasempatik','Mobility Flow':'Hareketlilik Akışı',
+  'Reconditioning':'Yeniden Kondisyon','Load Reintroduction':'Yükün Yeniden Verilmesi','Return to Run':'Koşuya Dönüş',
+  'Return to Train':'Antrenmana Dönüş','Return to Perform':'Performansa Dönüş','Criteria-Based Progression':'Kriter Temelli İlerleme',
+  'Anthropometry':'Antropometri','Strength Testing':'Kuvvet Testi','Power / Jump Testing':'Güç / Sıçrama Testi',
+  'Speed Testing':'Sürat Testi','Aerobic Testing':'Aerobik Test','Movement Screen':'Hareket Taraması',
+  'Asymmetry Profiling':'Asimetri Profillemesi',
+  /* --- stage 3, method --- */
+  'Barbell':'Barbell','Dumbbell':'Dambıl','Kettlebell':'Kettlebell','Machine':'Makine','Bodyweight':'Vücut Ağırlığı',
+  'Eccentric / Tempo':'Eksantrik / Tempo','Accommodating Resistance (Bands / Chains)':'Değişken Direnç (Lastik / Zincir)',
+  'Flywheel':'Flywheel','Blood Flow Restriction':'Kan Akımı Kısıtlama','Cluster Sets':'Küme Setler',
+  'Velocity-Based':'Hız Temelli','Olympic Lift':'Olimpik Halter','Olympic Derivative':'Olimpik Türev',
+  'Depth Jump / Shock':'Derinlik Sıçraması / Şok','Medicine Ball':'Sağlık Topu','Ballistic (Jump / Throw)':'Balistik (Sıçrama / Atış)',
+  'Contrast':'Kontrast','Complex':'Kompleks','French Contrast':'Fransız Kontrast','Band-Resisted Jump':'Lastik Dirençli Sıçrama',
+  'Sprint':'Sprint','Resisted Sprint (Sled)':'Dirençli Sprint (Kızak)','Resisted Sprint (Band)':'Dirençli Sprint (Lastik)',
+  'Assisted / Overspeed':'Destekli / Aşırı Hız','Hill Sprint':'Yokuş Sprinti','Wicket / Technical Drill':'Wicket / Teknik Drill',
+  'Closed COD Drill':'Kapalı Yön Değiştirme Drilli','Open / Reactive Drill':'Açık / Reaktif Drill','Deceleration Drill':'Yavaşlama Drilli',
+  'Continuous Run':'Sürekli Koşu','Interval Run':'İnterval Koşu','Shuttle Run':'Mekik Koşusu','HIIT':'HIIT',
+  'Sprint Interval Training':'Sprint İnterval Antrenmanı','Bike / Assault Bike':'Bisiklet / Assault Bike','Rower':'Kürek',
+  'Sled Push / Drag':'Kızak İtme / Çekme','Circuit':'Devre','Tempo Run':'Tempo Koşusu',
+  'Dynamic Stretching':'Dinamik Germe','Static Stretching':'Statik Germe','PNF':'PNF','Joint Mobility / CARs':'Eklem Hareketliliği / CARs',
+  'Self-Myofascial Release':'Kendi Kendine Miyofasyal Gevşetme','Band-Assisted':'Lastik Destekli','Isometric Hold':'İzometrik Bekleme',
+  'Unstable Surface':'Dengesiz Zemin','Nordic / Copenhagen':'Nordic / Copenhagen','Corrective Drill':'Düzeltici Drill',
+  'Ball Handling Drill':'Top Hakimiyeti Drilli','Shooting Drill':'Şut Drilli','Finishing Drill':'Bitiriş Drilli',
+  'Passing Drill':'Pas Drilli','1v1':'1v1','2v2 / 3v3':'2v2 / 3v3','5v5':'5v5','Shell Drill':'Shell Drill',
+  'Walkthrough':'Yürüyerek Anlatım','Live Scrimmage':'Canlı Çift Kale',
+  'Pool / Hydrotherapy':'Havuz / Hidroterapi','Contrast Therapy':'Kontrast Terapi','Compression':'Kompresyon',
+  'Massage / Soft Tissue':'Masaj / Yumuşak Doku','Breathing':'Nefes','Stretching Flow':'Germe Akışı','Sauna':'Sauna',
+  'Isolated Loading':'İzole Yükleme','Closed-Chain Progression':'Kapalı Zincir İlerlemesi',
+  'Linear Running Progression':'Düz Koşu İlerlemesi','COD Progression':'Yön Değiştirme İlerlemesi',
+  'On-Court Progression':'Sahada İlerleme','Contact Progression':'Temas İlerlemesi','Criteria Testing':'Kriter Testi',
+  'Force Plate':'Kuvvet Platformu','Jump Mat':'Sıçrama Matı','Timing Gates':'Fotosel','Radar / GPS':'Radar / GPS',
+  '1RM / Rep Max':'1TM / Tekrar Maks','Isokinetic Dynamometer':'İzokinetik Dinamometre','Yo-Yo / 30-15':'Yo-Yo / 30-15',
+  'FMS / Screen':'FMS / Tarama','Anthropometric':'Antropometrik',
+  /* --- Ball practice library --- */
+  'Ball Practice':'Top Çalışması','Strength & Conditioning':'Kuvvet ve Kondisyon',
+  'Ball Handling':'Top Hakimiyeti','Shooting':'Şut','Finishing':'Bitiriş','Passing':'Pas',
+  'Individual Defense':'Bireysel Savunma','Team Offense Concepts':'Takım Hücum Prensipleri',
+  'Team Defense Concepts':'Takım Savunma Prensipleri','Transition / Fast Break':'Geçiş / Hızlı Hücum',
+  'Rebounding':'Ribaund','Small-Sided Games':'Küçük Alan Oyunları','Ball Warm-Up':'Toplu Isınma',
+  'Half Court':'Yarı Saha','Full Court':'Tam Saha',
 };
 const exLabel=s=>(REPORT_LANG==='tr'?(EX_TERM_TR[s]||s):s);
 /* Free text the coach types (exercise name, purpose/description) is assumed
@@ -19619,6 +20841,12 @@ function VideoPlayer({ex}){
 
 function ExerciseModal({ex,onChange,onDelete,onClose}){
   const set=(k,v)=>onChange({[k]:v});
+  /* A court drill and a lift are catalogued by different things, so the card asks
+     different questions: the drill wants its diagram, how many players it is run with and
+     what it teaches; the lift wants its pattern, its muscles and its difficulty. */
+  const ball=exLib(ex)==='ball';
+  const TYPES=ball?BALL_TYPES:EX_TYPES;
+  const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
   const[upPct,setUpPct]=useState(null);
   const[editing,setEditing]=useState(!ex.name);
   const shownName=useExerciseText(ex.name);
@@ -19685,14 +20913,19 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-        {metaBox(L('Egzersiz Tipi','Exercise Type'),exLabel(ex.type))}
-        {SUB_TYPES[ex.type]&&metaBox(exLabel(SUB_TYPES[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
-        {PATTERNS_FOR[ex.type]&&metaBox(L('Hareket Örüntüsü','Movement Pattern'),ex.pattern?exLabel(ex.pattern):'—')}
+        {metaBox(ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type'),exLabel(ex.type))}
+        {SUBS[ex.type]&&metaBox(exLabel(SUBS[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
+        {ball&&metaBox(L('Oyuncu','Players'),ex.players)}
+        {!ball&&PATTERNS_FOR[ex.type]&&metaBox(L('Hareket Örüntüsü','Movement Pattern'),ex.pattern?exLabel(ex.pattern):'—')}
         {metaBox(L('Zorluk','Difficulty'),exLabel(ex.difficulty),ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
         {/* The pair every program fills in from here, and writes back to when it is
             tagged on a session. Shown together because one is meaningless alone. */}
         {(ex.exPattern||ex.exPlane)&&metaBox(L('Örüntü · Uygulama','Pattern · Execution'),[ex.exPattern,ex.exPlane].filter(Boolean).join(' · '))}
       </div>
+      {ball&&!sceneIsEmpty(ex.court)&&<div style={{marginBottom:14}}>
+        <span style={metaLbl}>{L('Saha Çizimi','Court Diagram')}</span>
+        <div className="bp-modal-court"><CourtView scene={ex.court}/></div>
+      </div>}
       {exContraOf(ex).length>0&&<div style={{marginBottom:14}}>
         <span style={metaLbl}>{L('Kontrendikasyon Uyarısı','Contraindication Warning')}</span>
         <div className="iv-chips">{exContraOf(ex).map(id=><span key={id} className="iv-chip on">{ctLabel(id)}</span>)}</div>
@@ -19713,25 +20946,28 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   const editRight=(
     <div className="ex-modal-right">
       <div className="grid cols-2">
-        <div><label>{L('Egzersiz Tipi','Exercise Type')}</label>
+        <div><label>{ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type')}</label>
           <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:''});}}>
             <option value="">—</option>
-            {EX_TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
+            {TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
           </select>
         </div>
-        <div><label>{SUB_TYPES[ex.type]?exLabel(SUB_TYPES[ex.type].label):L('Alt Tip','Sub Type')}</label>
-          <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUB_TYPES[ex.type]}>
-            <option value="">{SUB_TYPES[ex.type]?'—':L('Önce tip seç','Select type first')}</option>
-            {(SUB_TYPES[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+        <div><label>{SUBS[ex.type]?exLabel(SUBS[ex.type].label):L('Alt Tip','Sub Type')}</label>
+          <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUBS[ex.type]}>
+            <option value="">{SUBS[ex.type]?'—':L('Önce tip seç','Select type first')}</option>
+            {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
         </div>
       </div>
       <div className="grid cols-2" style={{marginTop:14}}>
-        {PATTERNS_FOR[ex.type]?<div><label>{L('Hareket Örüntüsü','Movement Pattern')}</label>
-          <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
-            <option value="">—</option>
-            {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{exLabel(p)}</option>)}
-          </select></div>:<div></div>}
+        {ball
+          ?<div><label>{L('Oyuncu Sayısı','Players')}</label>
+            <input value={ex.players||''} onChange={e=>set('players',e.target.value)} placeholder={L('ör. 3v3, 5 oyuncu','e.g. 3v3, 5 players')}/></div>
+          :PATTERNS_FOR[ex.type]?<div><label>{L('Hareket Örüntüsü','Movement Pattern')}</label>
+            <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
+              <option value="">—</option>
+              {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{exLabel(p)}</option>)}
+            </select></div>:<div></div>}
         <div><label>{L('Zorluk','Difficulty')}</label>
           <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
             <option value="">—</option>
@@ -19739,7 +20975,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </select>
         </div>
       </div>
-      <div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
+      {/* The drill's diagram is edited here on exactly the board it was drawn on in the
+          session, so a drill filed from a session and a drill written straight into the
+          library are the same object either way round. */}
+      {ball&&<div style={{marginTop:14}}>
+        <label>{L('Saha Çizimi','Court Diagram')}</label>
+        <CourtEditor value={ex.court} onChange={sc=>set('court',sc)}/>
+      </div>}
+      {!ball&&<div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
         <div className="mus-pick">
           {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{exLabel(m)}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
           <select value="" onChange={e=>{const v=e.target.value;if(!v)return;const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}} style={{width:'auto',minWidth:140}}>
@@ -19747,7 +20990,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
             {EX_MUSCLES.filter(m=>!(ex.muscle||[]).includes(m)).map(m=><option key={m} value={m}>{exLabel(m)}</option>)}
           </select>
         </div>
-      </div>
+      </div>}
       <div style={{marginTop:14}}>
         <label>{L('Video Linki (YouTube / Vimeo / mp4)','Video Link (YouTube / Vimeo / mp4)')}</label>
         <input value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)} placeholder="https://youtube.com/watch?v=…"/>
@@ -19755,7 +20998,9 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div style={{marginTop:14}}>
         <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
-        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)} placeholder={L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
+        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)}
+          placeholder={ball?L('Kurallar, ilerlemeler, koçluk noktaları, skorlama…','Rules, progressions, coaching points, scoring…')
+                           :L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
       </div>
       {coverBox}
     </div>
@@ -19818,7 +21063,10 @@ function ExerciseCard({ex,onOpen,used=0}){
       ):(
         cover ? <img src={mediaSrc(cover)} alt="" onError={e=>{e.target.style.display='none';}}/>
         : (v&&v.kind==='file') ? <video className="ex-thumb-vid" src={v.src+'#t=0.1'} muted preload="metadata" playsInline/>
-        : <div className="ex-thumb-ph">🏋</div>
+        /* A drill with no clip is recognised by its diagram, not by a placeholder — the
+           court IS the thumbnail, which is how a coach picks one off a shelf. */
+        : !sceneIsEmpty(ex.court) ? <CourtView scene={ex.court} className="bp-card-court"/>
+        : <div className="ex-thumb-ph">{exLib(ex)==='ball'?'🏀':'🏋'}</div>
       )}
       {v&&!hov&&<span className="ex-vbadge">▶</span>}
       {used>0&&<span className="ex-used" title={L(`Sezon programında ${used} kez kullanıldı`,`Used ${used}× in the season program`)}>{L(`${used}× kullanıldı`,`${used}× used`)}</span>}
@@ -19830,20 +21078,38 @@ function ExerciseCard({ex,onOpen,used=0}){
   </div>);
 }
 
+/* Which shelf an entry sits on. Court work and weight-room work are catalogued by
+   different things — a drill is filed by what it teaches, a lift by what it loads — so
+   they get two shelves rather than one list with a filter on it. An entry saved before
+   ball practice existed has no `lib` and is S&C, which is what it was. */
+const exLib=e=>(e&&e.lib==='ball')?'ball':'sc';
 function ExercisesView({data,setData}){
-  const exercises=data.exercises||[];
-  const setExercises=arr=>setData({...data,exercises:arr});
+  const[libTab,setLibTab]=useState('sc');       // 'sc' | 'ball' — which shelf is open
+  const ball=libTab==='ball';
+  const allEx=data.exercises||[];
+  const exercises=useMemo(()=>allEx.filter(e=>exLib(e)===libTab),[allEx,libTab]);
+  // Writes go back into the ONE list the app stores: the shelf is a view of it, never a
+  // second copy, so nothing on the other shelf can be dropped by a write to this one.
+  const setExercises=arr=>setData({...data,exercises:[...arr,...allEx.filter(e=>exLib(e)!==libTab)]});
   const[activeType,setActiveType]=useState(null);  // null => category grid; type name => exercises within
   const[q,setQ]=useState('');
   const[fSub,setFSub]=useState('');
   const[fMuscle,setFMuscle]=useState('');     // extra filter for Hip Dominant
   const[fPattern,setFPattern]=useState('');   // extra filter for Knee Dominant
   const[openId,setOpenId]=useState(null);
+  // The two shelves have different categories, so a filter set on one means nothing on
+  // the other — switching shelves lands on that shelf's own landing page.
+  const TYPES=ball?BALL_TYPES:EX_TYPES;
+  const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
+  const switchLib=t=>{if(t===libTab)return;setLibTab(t);setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setQ('');setOpenId(null);};
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
-  const remove=id=>{if(window.confirm(L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
-  const addExercise=type=>{const t=type||activeType||'';const e={id:uid(),name:'',type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};setExercises([e,...exercises]);setOpenId(e.id);};
-  const typeCounts=useMemo(()=>{const m={};EX_TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(EX_TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises]);
+  const remove=id=>{if(window.confirm(ball?L('Bu dril silinsin mi?','Delete this drill?'):L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
+  const addExercise=type=>{const t=type||activeType||'';
+    const e={id:uid(),name:'',lib:libTab,type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',
+      ...(ball?{court:emptyScene(),players:''}:{})};
+    setExercises([e,...exercises]);setOpenId(e.id);};
+  const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
   const goBack=()=>{setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setQ('');};
   // How many times each exercise name is prescribed across the whole season program (all teams).
@@ -19854,9 +21120,21 @@ function ExercisesView({data,setData}){
   const usedOf=e=>usageCounts[(e.name||'').trim().toLowerCase()]||0;
   // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
   // so the coach can find and categorise them later.
-  const uncatCount=exercises.filter(e=>!EX_TYPES.includes(e.type)).length;
-  // Top-right category dropdown (label → EX_TYPES value).
-  const CAT_OPTIONS=[['Warm-Up','Warm-Up'],['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability']];
+  const uncatCount=exercises.filter(e=>!TYPES.includes(e.type)).length;
+  const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
+  /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
+     both the coach's library, and which one is open should never be something to hunt
+     for in a dropdown. */
+  const libSplit=(
+    <div className="lib-split">
+      <button type="button" className={libTab==='sc'?'on':''} onClick={()=>switchLib('sc')}>
+        🏋 {L('Kuvvet ve Kondisyon','Strength & Conditioning')} <b>{scN}</b></button>
+      <button type="button" className={ball?'on ball':''} onClick={()=>switchLib('ball')}>
+        🏀 {L('Top Çalışması','Ball Practice')} <b>{ballN}</b></button>
+    </div>);
+  // Top-right category dropdown (label → the active shelf's own category values).
+  const CAT_OPTIONS=ball?BALL_TYPES.map(t=>[t,t])
+    :[['Warm-Up','Warm-Up'],['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability']];
   // Every option carries its exercise count in parentheses, so the coach sees how
   // full each category is without opening it.
   const catDropdown=(
@@ -19879,14 +21157,20 @@ function ExercisesView({data,setData}){
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <div className="ex-top">
         <div><h1 className="ex-h1">{L('Egzersiz Kütüphanesi','Exercise Library')}</h1>
-          <div className="sub">{L(`${exercises.length} egzersiz · tüm kategoriler`,`${exercises.length} exercises · all categories`)}</div></div>
+          <div className="sub">{ball
+            ?L(`${exercises.length} dril · tüm kategoriler`,`${exercises.length} drills · all categories`)
+            :L(`${exercises.length} egzersiz · tüm kategoriler`,`${exercises.length} exercises · all categories`)}</div></div>
       </div>
+      {libSplit}
       <div className="ex-toolbar">
         {catDropdown}
-        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercises…')}/></div>
-        <button className="btn sm" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
+        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
+        <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
       </div>
-      {flat.length===0&&<div className="ex-empty">{exercises.length===0?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.'):L('Aramanla eşleşen egzersiz yok.','No exercises match your search.')}</div>}
+      {flat.length===0&&<div className="ex-empty">{exercises.length===0
+        ?(ball?L('Henüz dril yok. ＋ Dril Ekle ile başla — ya da bir top çalışması bloğunda çizip oradan kaydet.','No drills yet. Start with ＋ Add Drill — or draw one in a ball practice block and save it from there.')
+              :L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.'))
+        :L('Aramanla eşleşen sonuç yok.','Nothing matches your search.')}</div>}
       <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
     </div>);
@@ -19894,13 +21178,13 @@ function ExercisesView({data,setData}){
 
   // ----- Inside a category -----
   const isUncat=activeType==='__uncat__';
-  const sub=isUncat?null:(SUB_TYPES[activeType]||null);
+  const sub=isUncat?null:(SUBS[activeType]||null);
   const hasMuscleFilter=false;   // muscle-group filter removed; Hip/Knee Dominant use Movement Pattern
-  const hasPatternFilter=!isUncat&&!!PATTERNS_FOR[activeType];
+  const hasPatternFilter=!ball&&!isUncat&&!!PATTERNS_FOR[activeType];
   const patternVals=PATTERNS_FOR[activeType]||KNEE_PATTERNS;
   const ql=q.toLowerCase();
   const list=exercises.filter(e=>{
-    if(isUncat){if(EX_TYPES.includes(e.type))return false;}
+    if(isUncat){if(TYPES.includes(e.type))return false;}
     else if(e.type!==activeType)return false;
     if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
     if(!isUncat&&fSub&&e.subType!==fSub)return false;
@@ -19920,10 +21204,11 @@ function ExercisesView({data,setData}){
         {sub&&<div className="sub">{L('Filtre:','Filter:')} <b>{exLabel(sub.label)}</b>{hasPatternFilter?' · '+L('Hareket Örüntüsü','Movement Pattern'):''}</div>}
       </div>
     </div>
+    {libSplit}
     <div className="ex-toolbar">
       {catDropdown}
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${activeType}…`)}/></div>
-      <button className="btn sm" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
+      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
+      <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
     </div>
     {(()=>{
       /* Flat chips: no neon glow, no category tint on the label — every chip reads
@@ -19940,9 +21225,9 @@ function ExercisesView({data,setData}){
         {hasPatternFilter&&<ChipRow label={L('Hareket Örüntüsü','Movement Pattern')} values={patternVals} val={fPattern} setVal={setFPattern}/>}
       </div>);})()}
     {list.length===0&&<div className="ex-empty">{(fSub||fMuscle||fPattern||q)
-      ?L('Bu kategoride filtrelerine uyan egzersiz yok. ','No exercises matching your filters in this category. ')
-      :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
-      {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
+      ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
+      :(ball?L('Bu kategoride dril yok. ','No drills in this category. '):L('Bu kategoride egzersiz yok. ','No exercises in this category. '))}
+      {L('Eklemek için','Add one with')} <b>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={()=>setOpenId(e.id)}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)}/>}
   </div>);
@@ -20721,7 +22006,12 @@ function planToSession(plan,src,dateKey,srcKey){
   const focus=Array.isArray(m.focus)?m.focus:sesFocus(src);
   const dur=Number(t(m.duration));
   const ses={id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
-    loadType:src.loadType||'Mechanical load',purpose:focus.join(', '),focus,
+    loadType:src.loadType||'Mechanical load',
+    /* The capacity and the method the source session named ride along with its focus:
+       an athlete's copy of a session should say what it trains in the same three stages
+       the team's does, not just the first of them. */
+    sub:sesSubFocus(src),focusMethods:sesFocusMethods(src),
+    purpose:[...focus,...sesSubFocus(src),...sesFocusMethods(src)].join(', '),focus,
     methods:Array.isArray(m.methods)?m.methods:sesMethods(src),
     region:m.region!=null?t(m.region):sesRegion(src),
     duration:(dur>0?dur:(src.duration||60)),
@@ -22267,9 +23557,11 @@ function App(){
   _saveSessionAsTemplate=session=>{
     const s=JSON.parse(JSON.stringify(session||{}));
     const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',
-      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',focus:sesFocus(s),methods:sesMethods(s),region:sesRegion(s),
+      session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',
+        focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s),methods:sesMethods(s),region:sesRegion(s),
         duration:s.duration||60,color:s.color||'',
-        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
+        // `kind` kept, so a ball-practice block saved as a template comes back as one.
+        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
     return true;
   };
@@ -22336,6 +23628,7 @@ function App(){
   useEffect(()=>{
     const seen=new Set();const items=[];
     for(const e of (data.exercises||[])){
+      if(exLib(e)==='ball')continue;   // court drills have their own picker, below
       const nm=(e.name||'').trim();if(!nm)continue;
       const k=nm.toLowerCase();if(seen.has(k))continue;seen.add(k);
       /* `subType` rides along on its own as well as inside `sub`: the picker shows
@@ -22354,6 +23647,40 @@ function App(){
     }
     setLibItems(items);
   },[data.exercises]);
+  /* The ball-practice half of the library, mirrored the same way — a drill written on a
+     session pulls its diagram, its clip and its coaching notes back off the shelf by
+     name, exactly as an exercise pulls its picture and its tags. */
+  useEffect(()=>{
+    const seen=new Set();const items=[];
+    for(const e of (data.exercises||[])){
+      if(exLib(e)!=='ball')continue;
+      const nm=(e.name||'').trim();if(!nm)continue;
+      const k=nm.toLowerCase();if(seen.has(k))continue;seen.add(k);
+      items.push({name:nm,type:e.type||'',subType:e.subType||'',court:e.court||null,
+        videoUrl:e.videoUrl||'',videoData:e.videoData||'',players:e.players||'',
+        purpose:(e.purpose||'').trim()});
+    }
+    setBallLibItems(items);
+  },[data.exercises]);
+  /* Filing a drill from a session: the diagram and the clip go onto the shelf under the
+     drill's name. A drill already on the shelf is UPDATED rather than duplicated — a coach
+     redrawing a drill mid-session means the drill has changed, not that there are now two
+     of it — but only with what the session actually carries, so a redraw with no clip
+     attached never wipes the clip the library already had. */
+  useEffect(()=>{registerBallSave(d=>setData(prev=>{
+    const exs=prev.exercises||[];
+    const lo=(d.name||'').trim().toLowerCase();
+    const i=exs.findIndex(e=>exLib(e)==='ball'&&(e.name||'').trim().toLowerCase()===lo);
+    if(i<0)return{...prev,exercises:[{id:uid(),name:d.name,lib:'ball',type:'',subType:'',movePattern:'',contra:[],muscle:[],
+      thumb:'',court:d.court||null,videoUrl:d.videoUrl||'',videoData:d.videoData||'',players:d.players||'',purpose:d.purpose||''},...exs]};
+    const cur=exs[i],next=[...exs];
+    next[i]={...cur,
+      court:sceneIsEmpty(d.court)?cur.court:d.court,
+      videoUrl:d.videoUrl||cur.videoUrl||'',videoData:d.videoData||cur.videoData||'',
+      players:d.players||cur.players||'',purpose:d.purpose||cur.purpose||''};
+    return{...prev,exercises:next};
+  }));
+  return()=>registerBallSave(null);},[setData]);
   // Brand every printout / shared PDF with the active team's logo.
   useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');},[team]);
   // All hooks must be called before any conditional return
@@ -22442,6 +23769,12 @@ function App(){
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
+    {/* Every drill the coach has filed, offered as completions on any ball-practice row.
+        One list for the whole app, so no two blocks can claim the same id. */}
+    <datalist id="bp-lib-names">
+      {(data.exercises||[]).filter(e=>exLib(e)==='ball'&&(e.name||'').trim())
+        .map(e=><option key={e.id} value={e.name}/>)}
+    </datalist>
     {/* Renders nothing — it just keeps Auto-sync ticking whatever screen the coach is on. */}
     <TallyAutoSync team={team} setData={setData}/>
     {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
