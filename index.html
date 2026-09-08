@@ -486,7 +486,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-h .x:hover{border-color:var(--text2);color:var(--text)}
 .dw-h .ti{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
 .dw-h .su{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
-.dw-b{overflow-y:auto;padding:22px;flex:1}
+.dw-b{overflow-y:auto;overscroll-behavior:contain;padding:22px;flex:1}
 .dw-meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 20px}
 .dw-dm{position:relative;background:transparent;border:1px solid var(--dm-ac,var(--accent));border-radius:12px;padding:11px 13px 13px}
 .dw-dm:focus-within{box-shadow:0 0 0 1px var(--dm-ac,var(--accent)) inset}
@@ -6294,10 +6294,31 @@ function teamSessionCovers(teamSes,athId){
   const ids=Array.isArray(teamSes.athletes)?teamSes.athletes:[];
   return ids.length===0||ids.includes(athId);
 }
+/* Structural comparison that stops at the first difference. The sync below runs on every
+   edit of a team session — every keystroke, every added exercise — and it is what tells
+   an athlete whose copy did not actually change from one whose did. */
+function sameData(a,b){
+  if(a===b)return true;
+  if(a===null||b===null||typeof a!=='object'||typeof b!=='object')return a===b;
+  if(Array.isArray(a)!==Array.isArray(b))return false;
+  const ka=Object.keys(a),kb=Object.keys(b);
+  if(ka.length!==kb.length)return false;
+  for(const k of ka){
+    if(!Object.prototype.hasOwnProperty.call(b,k))return false;
+    if(!sameData(a[k],b[k]))return false;
+  }
+  return true;
+}
+/* Returns the roster UNTOUCHED when the edit changed nothing on it, and keeps every
+   athlete whose day is unchanged as the very same object. Both matter well beyond
+   tidiness: the state is saved by content-defined chunking, so an athlete rebuilt into an
+   equal-but-new object still had to be re-serialised and re-uploaded, and React had to
+   re-render them. Editing one team session used to rewrite all of it on every keystroke. */
 function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
   const newIds=new Set(newSessions.map(s=>s.id));
   const removedIds=oldSessions.filter(s=>!newIds.has(s.id)).map(s=>s.id);
-  return athletes.map(ath=>{
+  let touched=false;
+  const out=athletes.map(ath=>{
     const days={...(ath.days||{})};
     const day=days[dateKey]||{date:dateKey,sessions:[],dailyNotes:''};
     let sessions=[...(day.sessions||[])];
@@ -6316,9 +6337,13 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
            deleting the session or un-assigning the athlete still removes it — but its
            content stays exactly as written until the coach writes it again. */
         if(existing&&existing.indiv){
-          sessions[eidx]={...existing,sourceId:ts.id};
+          if(existing.sourceId!==ts.id)sessions[eidx]={...existing,sourceId:ts.id};
           continue;
         }
+        /* The copy keeps the block ids it already had. Minting fresh ones on every sync
+           made an unchanged copy read as changed — which is what turned one keystroke on
+           a team session into a rewrite of the whole roster. */
+        const prevBlocks=(existing&&existing.blocks)||[];
         const copy={
           ...ts,
           id:existing?.id||uid(),
@@ -6327,18 +6352,23 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
           sRPE:(existing?.sRPE!==undefined&&existing.sRPE!=='')?existing.sRPE:'',
           au:(existing?.au!==undefined&&existing.au!=='')?existing.au:'',
           notes:existing?.notes||'',
-          blocks:(ts.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))})),
+          blocks:(ts.blocks||[]).map((b,bi)=>({...b,id:(prevBlocks[bi]&&prevBlocks[bi].id)||uid(),
+            exercises:(b.exercises||[]).map(e=>({...e}))})),
         };
         delete copy.athletes; // athlete-side copy doesn't need the participant list
-        if(eidx>=0)sessions[eidx]=copy;else sessions.push(copy);
+        if(eidx>=0)sessions[eidx]=sameData(existing,copy)?existing:copy;else sessions.push(copy);
       } else if(eidx>=0){
         sessions.splice(eidx,1);
       }
     }
     if(sessions.length===0&&!day.dailyNotes)delete days[dateKey];
     else days[dateKey]={...day,sessions};
+    const was=(ath.days||{})[dateKey],now=days[dateKey];
+    if(was===now||(was&&now&&sameData(was,now)))return ath;
+    touched=true;
     return{...ath,days};
   });
+  return touched?out:athletes;
 }
 
 /* =========================================================
@@ -9511,13 +9541,20 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
      number that day's bar shows in the trend chart, by construction. */
   const teamDaily=useMemo(()=>teamDailyLoadMap(days,teamMode?athletes:null),[days,athletes,teamMode]);
   const edDay=editDate?(days[editDate]||EDAY(editDate)):null;
+  /* One place to mirror a day's team sessions onto the athletes who carry them. The
+     roster is written back only when the mirror actually moved — an edit that leaves every
+     athlete's copy identical must not push a new roster through the app and the cloud. */
+  const syncAths=(dateK,oldS,newS)=>{
+    const next=syncSessionsToAthletes(athletes,dateK,oldS,newS);
+    if(next!==athletes)saveAthletes(next);
+  };
   const svDay=(dateK,upd)=>{
     const d0=days[dateK]||EDAY(dateK);
     const oldS=d0.sessions||[];
     const newDay={...d0,...upd,date:dateK};
     const newS=newDay.sessions||[];
     const nd={...days,[dateK]:newDay};
-    if(teamMode&&newS!==oldS){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}
+    if(teamMode&&newS!==oldS){saveDays(nd);syncAths(dateK,oldS,newS);}
     else saveDays(nd);
   };
   const edAdd=p=>svDay(editDate,{sessions:[...(edDay.sessions||[]),SESS(p)]});
@@ -9570,7 +9607,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const ns={...drawerSes,...patch};
     const d0=days[dateK]||EDAY(dateK);const oldS=d0.sessions||[];const newS=oldS.map(s=>s.id===drawerSes.id?ns:s);
     const nd={...days,[dateK]:{...d0,sessions:newS,date:dateK}};
-    if(teamMode){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}else saveDays(nd);
+    if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
     setDrawerSes(ns);
   };
   // ---- Per-athlete RPE for a team session ----
@@ -9790,7 +9827,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(!canEdit)return;const day=days[dateK];if(!day?.sessions)return;
     const oldS=day.sessions;const newS=oldS.filter(s=>s.id!==sid);
     const nd={...days,[dateK]:{...day,sessions:newS,date:dateK}};
-    if(teamMode){saveDays(nd);saveAthletes(syncSessionsToAthletes(athletes,dateK,oldS,newS));}
+    if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}
     else saveDays(nd);
   };
   const ltCls=lt=>{if(!lt)return'';const x=lt.toLowerCase();
@@ -18154,7 +18191,22 @@ const ser=o=>{
    yüklenip buluta yeniden yazılır. Kota dolarsa/gizli moddaysa sessizce atlanır. */
 const LS_KEY=uid=>'coachos_last_state_'+uid;
 const LS_MAX=3.5*1024*1024;   // localStorage ~5MB: gömülü fotoğraflı devasa durumları hiç denemeyelim
-const lsSave=(uid,json)=>{try{if(json.length>LS_MAX)return;localStorage.setItem(LS_KEY(uid),json);}catch(e){/* kota / gizli mod */}};
+/* Yazma anında DEĞİL, tarayıcı boşa düştüğünde kaydedilir. localStorage.setItem
+   senkron bir yazımdır; birkaç MB'lık durumda ana iş parçacığını yüzlerce ms tutuyordu ve
+   bu, bulut yazımının hemen ardına — yani düzenlemeden sonraki ilk kaydırmalara —
+   denk geliyordu. Kopya emniyet amaçlıdır; bir kare geç yazılması sorun değil, bu yüzden
+   sekme kapanırken lsFlush ile hemen yazılır. */
+let _lsPend=null,_lsSched=0;
+const _lsWrite=()=>{const p=_lsPend;_lsPend=null;_lsSched=0;if(!p)return;
+  try{if(p.json.length>LS_MAX)return;localStorage.setItem(LS_KEY(p.uid),p.json);}catch(e){/* kota / gizli mod */}};
+const lsSave=(uid,json)=>{
+  _lsPend={uid,json};
+  if(_lsSched)return;
+  _lsSched=(typeof requestIdleCallback==='function')
+    ?requestIdleCallback(_lsWrite,{timeout:3000})
+    :setTimeout(_lsWrite,300);
+};
+const lsFlush=()=>{if(_lsPend)_lsWrite();};
 const lsLoad=uid=>{try{return localStorage.getItem(LS_KEY(uid))||null;}catch(e){return null;}};
 
 // Gerçek veri var mı? (boş/varsayılan veri buluttaki dolu veriyi silmesin diye)
@@ -18707,7 +18759,7 @@ function useCloudSync(data,setData){
   // Sekme gizlenince/kapatılınca bekleyen yazmayı gönder
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
-    const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();};
+    const flush=()=>{if(timer.current){clearTimeout(timer.current);timer.current=null;}writeNow();lsFlush();};
     const onVis=()=>{if(document.visibilityState==='hidden')flush();};
     // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
     // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
@@ -18734,7 +18786,13 @@ function useCloudSync(data,setData){
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     if(data===lastApplied.current)return;   // buluttan gelen durumu uyguladık → geri yazacak bir şey yok
     dirty.current=true;setStatus('syncing');
-    timer.current=setTimeout(()=>writeNow(),writeDelay());
+    /* Bekleme dolduğunda yazımı hemen değil, tarayıcının ilk boş anında başlat. Yazım
+       durumun tamamını seri hâle getirip parçalara böler; kaydırmanın ortasına denk
+       geldiğinde kare düşüren iş budur. Boş an gelmezse zaman aşımı yine de yazdırır. */
+    timer.current=setTimeout(()=>{
+      if(typeof requestIdleCallback==='function')requestIdleCallback(()=>writeNow(),{timeout:2500});
+      else writeNow();
+    },writeDelay());
   },[data,user]);
 
   return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
