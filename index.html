@@ -2869,6 +2869,24 @@ header{background:var(--bg2)!important}
 .iv-block.gone .iv-block-hd{border-bottom:none}
 .iv-block.gone .iv-block-nm{text-decoration:line-through}
 .iv-block.newb{border-color:rgba(0,148,255,.35)}
+/* ---- The session's own details, as a block ------------------------------
+   Who the session is for and what it is made of used to stand loose under the
+   session heading, above the first block — two bordered boxes floating over a
+   column of block cards. They are a block now, with the same header the exercise
+   blocks wear: one title bar, and the assignment button at the end of it, so the
+   session reads as a stack of blocks from top to bottom. */
+.sess-detail-block{margin-bottom:9px}
+/* The title is a label here, not a rename box — the session's name is a field
+   inside the block, so the header only has to say what the block is. */
+.iv-block-lbl{flex:1 1 160px;min-width:0;padding:4px 0;font-size:12px;font-weight:700;
+  color:var(--text2);letter-spacing:.01em}
+.sess-detail-body{padding:12px 13px;display:flex;flex-direction:column;gap:12px}
+/* Both halves already sit inside the block card, so they drop their own frames
+   rather than drawing a box inside a box; a rule separates them instead. */
+.sess-detail-body>.ath-pick,.sess-detail-body>.iv-cardtools.sess-tools{
+  background:transparent;border:none;border-radius:0;padding:0;margin:0}
+.sess-detail-body>.ath-pick+.iv-cardtools.sess-tools{border-top:1px solid var(--border);padding-top:12px}
+.sess-detail-block .iv-blockacts .btn{white-space:nowrap}
 /* Adding sits in the block header, at the end of the block it adds to. */
 .iv-addb{flex:none}
 /* Adding a whole block sits under the last one, where a new block would land. */
@@ -10725,6 +10743,27 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   const participantCount=(session.athletes||[]).length;
+  // The details block collapses like every other block on the session.
+  const[detOpen,setDetOpen]=useState(true);
+  const roster=Array.isArray(athletes)?athletes:[];
+  /* The same assignment the calendar drawer's button makes, at the head of the block
+     that carries the picker: whoever is ticked gets the session written onto their own
+     calendar, and nobody ticked means the whole squad. Saving the session syncs it, so
+     the button only has to say who it is for. Pressable again once everyone is on it,
+     to pick up athletes added to the squad since. */
+  const assignSel=(session.athletes||[]).filter(id=>roster.some(a=>a.id===id));
+  const allAssigned=!!(showPicker&&roster.length&&assignSel.length===roster.length);
+  const assignAll=()=>{
+    if(!showPicker||!roster.length)return;
+    const ids=assignSel.length?assignSel:roster.map(a=>a.id);
+    const n=ids.length;
+    if(!window.confirm(assignSel.length
+      ?L(`"${session.name||'Bu antrenman'}" bu seans için işaretlediğin ${n} sporcunun takvimine işlenecek. Emin misiniz?`,
+         `“${session.name||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this session. Are you sure?`)
+      :L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
+         `This practice will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
+    setDetOpen(true);u({athletes:ids});
+  };
 
   return(<div className="sess-card">
     <div className="sbar" onClick={e=>{if(!['BUTTON','INPUT','SELECT'].includes(e.target.tagName))setOpen(!open);}}>
@@ -10759,69 +10798,92 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <span style={{cursor:'pointer',color:'var(--muted)',fontSize:13}}>{open?'▼':'▶'}</span>
     </div>
     {open&&<div className="sbody">
-      {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>{L(<>Bu seans takım planından senkronize edilir. Antrenman içeriği (bloklar, egzersizler, saat, süre) takımdan yansıtılır. <strong>Kişisel sRPE, AU ve notların</strong> gizli kalır ve takım güncellemeleriyle üzerine yazılmaz.</>,<>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</>)}</div>}
-      {/* The session's own line, laid out like the individualization sheet's: what it is
-          called, when it runs and how long, then what it trains — focus, region and the
-          methods used to deliver it. Templates only carry the workout itself, so they
-          have no clock time (nor card color or post-session feedback below). */}
-      <div className="iv-cardtools sess-tools">
-        {/* Top row, two halves. On the left, everything that identifies the session as an
-            entry in the diary — what it is called, when it runs, how long it lasts; those
-            three are one thought and were reading as three unrelated fields strung across
-            the strip. On the right, the intensity target, which now gets a half of the row
-            to itself: it is a scale to be dragged, not a box to be typed in, and squeezed
-            in beside the clock fields it had neither the width to be read nor the height to
-            show the 1-10 points under it. (The target is not the actual / logged sRPE
-            further down, which only exists once the session has happened.) */}
-        <div className="sess-idrow">
-          <div className="sess-idgrp">
-            <label className="iv-meta-f nm">{L('seans','session')}
-              <input value={session.name} onChange={e=>u({name:e.target.value})} placeholder={L('Seans başlığı…','Session title…')}/>
-            </label>
-            <div className="sess-idsub">
-              {!isTemplate&&<label className="iv-meta-f tm">{L('saat','time')}
-                <input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
-              </label>}
-              <label className="iv-meta-f tm">{L('süre','duration')}
-                {/* Emptying the box has to leave it empty. Coercing a blank field back to 0
-                    on every keystroke pinned a 0 in front of the caret that could not be
-                    deleted — you could only type to the right of it. So '' is kept as its
-                    own value (as the drawer's duration box already does) and only read as
-                    0 where a number is needed. */}
-                <input type="number" min="0" value={session.duration??''} title={L('Süre (dk)','Duration (min)')}
-                  onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');if(raw!==e.target.value)e.target.value=raw;const d=raw===''?'':Math.max(0,Number(raw));const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*(Number(d)||0));u(upd);}}/>
-              </label>
+      {/* Everything the session IS, in one block above the ones it is made of: who is on
+          it, what it is called, when it runs and how long, then what it trains — focus,
+          region and the methods used to deliver it. They used to stand loose under the
+          session heading as two separate boxes; as a block they wear the same header the
+          exercise blocks do, collapse the same way, and carry the assignment button at the
+          end of that header. Templates only carry the workout itself, so they have no clock
+          time, no athlete picker (nor card color or post-session feedback below). */}
+      <div className="iv-block sess-detail-block">
+        <div className="iv-block-hd">
+          <button type="button" className="iv-blockch" onClick={()=>setDetOpen(!detOpen)}
+            title={detOpen?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{detOpen?'▼':'▶'}</button>
+          <span className="iv-block-lbl">{L('Antrenman Özellikleri','Training Details')}</span>
+          {showPicker&&<span className="iv-blockcnt">{L(`${participantCount} / ${roster.length} sporcu`,`${participantCount} / ${roster.length} athlete${roster.length!==1?'s':''}`)}</span>}
+          {showPicker&&<span className="iv-blockacts">
+            <button type="button" className="btn xs sec" onClick={assignAll} disabled={!roster.length}
+              title={allAssigned
+                ?L('Kadrodaki herkes bu antrenmana atandı — sonradan eklenen sporcular için tekrar bas','Everyone on the roster is assigned to this practice — press again to pick up athletes added since')
+                :(assignSel.length
+                  ?L('Sadece bu seans için işaretlediğin sporcuların takvimine bu antrenmanı işle','Write this practice onto the calendar of the athletes ticked for this session only')
+                  :L('Bu antrenmanı kadrodaki bütün sporcuların takvimine ata','Assign this practice to the calendar of every athlete on the roster'))}>
+              {allAssigned?'Assigned to the Team'
+                :(assignSel.length?`Assign the Practice to ${assignSel.length} Athlete${assignSel.length>1?'s':''}`:'Assign the Practice to the Team')}</button>
+          </span>}
+        </div>
+        {detOpen&&<div className="sess-detail-body">
+          {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
+          <div className="iv-cardtools sess-tools">
+            {/* Top row, two halves. On the left, everything that identifies the session as an
+                entry in the diary — what it is called, when it runs, how long it lasts; those
+                three are one thought and were reading as three unrelated fields strung across
+                the strip. On the right, the intensity target, which now gets a half of the row
+                to itself: it is a scale to be dragged, not a box to be typed in, and squeezed
+                in beside the clock fields it had neither the width to be read nor the height to
+                show the 1-10 points under it. (The target is not the actual / logged sRPE
+                further down, which only exists once the session has happened.) */}
+            <div className="sess-idrow">
+              <div className="sess-idgrp">
+                <label className="iv-meta-f nm">{L('seans','session')}
+                  <input value={session.name} onChange={e=>u({name:e.target.value})} placeholder={L('Seans başlığı…','Session title…')}/>
+                </label>
+                <div className="sess-idsub">
+                  {!isTemplate&&<label className="iv-meta-f tm">{L('saat','time')}
+                    <input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
+                  </label>}
+                  <label className="iv-meta-f tm">{L('süre','duration')}
+                    {/* Emptying the box has to leave it empty. Coercing a blank field back to 0
+                        on every keystroke pinned a 0 in front of the caret that could not be
+                        deleted — you could only type to the right of it. So '' is kept as its
+                        own value (as the drawer's duration box already does) and only read as
+                        0 where a number is needed. */}
+                    <input type="number" min="0" value={session.duration??''} title={L('Süre (dk)','Duration (min)')}
+                      onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');if(raw!==e.target.value)e.target.value=raw;const d=raw===''?'':Math.max(0,Number(raw));const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*(Number(d)||0));u(upd);}}/>
+                  </label>
+                </div>
+              </div>
+              <div className="iv-meta-f rpe">{L('hedef rpe','target rpe')}
+                <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
+              </div>
+            </div>
+            {/* Focus and region answer the next question — what this session TRAINS — so they
+                travel as their own row under the identity one. The pickers keep their own
+                dropdowns and wear the meta box's border, so the row still reads as one strip of
+                fields rather than two different controls. */}
+            <div className="iv-meta-grp">
+              <div className="iv-meta-f pp">{L('seans odağı','session focus')}
+                <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
+              </div>
+              <div className="iv-meta-f pp">{L('bölge','region')}
+                <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+                  <option value="">{L('Bölge seç…','Select region…')}</option>
+                  {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* Training method keeps the row; the assistant sits at the end of it, where the
+                coach is already looking when deciding what this session is made of. It only
+                appears where there is one athlete to read — the individualization card. */}
+            <div className="iv-meta-f wide">{L('antrenman metodu','training method')}
+              <div className="iv-mrow">
+                <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
+                {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
+              </div>
             </div>
           </div>
-          <div className="iv-meta-f rpe">{L('hedef rpe','target rpe')}
-            <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
-          </div>
-        </div>
-        {/* Focus and region answer the next question — what this session TRAINS — so they
-            travel as their own row under the identity one. The pickers keep their own
-            dropdowns and wear the meta box's border, so the row still reads as one strip of
-            fields rather than two different controls. */}
-        <div className="iv-meta-grp">
-          <div className="iv-meta-f pp">{L('seans odağı','session focus')}
-            <FocusSelect value={sesFocus(session)} onChange={arr=>u({focus:arr,purpose:arr.join(', ')})}/>
-          </div>
-          <div className="iv-meta-f pp">{L('bölge','region')}
-            <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-              <option value="">{L('Bölge seç…','Select region…')}</option>
-              {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
-            </select>
-          </div>
-        </div>
-        {/* Training method keeps the row; the assistant sits at the end of it, where the
-            coach is already looking when deciding what this session is made of. It only
-            appears where there is one athlete to read — the individualization card. */}
-        <div className="iv-meta-f wide">{L('antrenman metodu','training method')}
-          <div className="iv-mrow">
-            <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
-            {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
-          </div>
-        </div>
+        </div>}
       </div>
       {!isTemplate&&<div className="sess-strip">
         {/* Exactly what was ticked on the session's own Movements & Patterns panel — the
