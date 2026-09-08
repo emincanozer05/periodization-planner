@@ -2894,8 +2894,12 @@ header{background:var(--bg2)!important}
 .iv-block-lbl{flex:1 1 160px;min-width:0;padding:4px 0;font-size:12px;font-weight:700;
   color:var(--text2);letter-spacing:.01em}
 .blk-assign{white-space:nowrap}
-/* Adding sits in the block header, at the end of the block it adds to. */
-.iv-addb{flex:none}
+/* Assignment reads at a glance: amber while the practice still has to be assigned,
+   green once the whole roster carries it. */
+.btn.blk-assign{border-color:#fcd34d;color:#fcd34d;background:rgba(252,211,77,.10)}
+.btn.blk-assign:hover:not(:disabled){border-color:#fcd34d;color:#fcd34d;background:rgba(252,211,77,.20)}
+.btn.blk-assign.on{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.12)}
+.btn.blk-assign.on:hover:not(:disabled){border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.22)}
 /* Adding a whole block sits under the last one, where a new block would land. */
 .iv-addblk{align-self:flex-start}
 
@@ -3085,6 +3089,15 @@ header{background:var(--bg2)!important}
    editor reads the same wherever it is put. */
 .iv-slotswrap{container-type:inline-size}
 .iv-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Adding sits where the next exercise will land — at the end of the grid, beside the
+   last exercise when the row has a free half, across the row when it does not. */
+.iv-addslot{grid-column:span 2;display:flex;align-items:center;justify-content:center;
+  margin:10px 13px;padding:9px 13px;min-height:38px;background:transparent;cursor:pointer;
+  border:1.5px dashed var(--accent);border-radius:8px;color:var(--accent);
+  font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.01em;
+  transition:background .12s ease,border-color .12s ease,color .12s ease}
+.iv-addslot.beside{grid-column:span 1}
+.iv-addslot:hover{background:var(--accent-bg);border-color:var(--accent2);color:var(--accent2)}
 /* Two to a row is how the block is read, so it holds down to the width where a slot can
    still carry its seven numbers side by side — the strip and the labels tighten first,
    and only under that does the grid fall back to one. */
@@ -3099,6 +3112,7 @@ header{background:var(--bg2)!important}
 }
 @container (max-width:640px){
   .iv-slots{grid-template-columns:minmax(0,1fr)}
+  .iv-addslot,.iv-addslot.beside{grid-column:span 1}
   .iv-slot{border-right:none}
   .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
   .iv-slot:last-child{border-bottom:none}
@@ -3112,6 +3126,7 @@ header{background:var(--bg2)!important}
 @supports not (container-type:inline-size){
   @media(max-width:820px){
     .iv-slots{grid-template-columns:minmax(0,1fr)}
+    .iv-addslot,.iv-addslot.beside{grid-column:span 1}
     .iv-slot{border-right:none}
     .iv-slot:nth-last-child(2):nth-child(2n+1){border-bottom:1px solid var(--border)}
     .iv-slot:last-child{border-bottom:none}
@@ -10579,10 +10594,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         {/* The assignment sits beside the block's title, at the head of the block that
             carries the athlete picker: whoever is ticked gets the session written onto
             their own calendar, and nobody ticked means the whole squad. */}
-        {assign&&assign.show&&<button type="button" className="btn xs sec blk-assign" onClick={assign.onClick}
+        {assign&&assign.show&&<button type="button" className={'btn xs sec blk-assign'+(assign.assigned?' on':'')} onClick={assign.onClick}
           disabled={assign.disabled} title={assign.title}>{assign.label}</button>}
-        <button type="button" className="btn xs iv-addb" onClick={()=>{setOpen(true);setExs([...exs,EX()]);}}
-          title={L(`${block.name||`Blok ${index+1}`}'a egzersiz ekle`,`Add an exercise to ${block.name||`Block ${index+1}`}`)}>+ {L('Egzersiz ekle','Add exercise')}</button>
         <button type="button" className="btn xs sec" onClick={onDuplicate}
           title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘ {L('Çoğalt','Clone')}</button>
         {!isTemplate&&<button type="button" className="btn xs sec" onClick={saveTpl}
@@ -10609,6 +10622,11 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         {exs.map((ex,i)=><CalSlotEd key={i} ex={ex} tag={labels[i]}
           onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
           onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
+        {/* Adding lands where the next exercise goes: beside the last one when the row
+            still has a free half, across the row when the last row is full. */}
+        <button type="button" className={'iv-addslot'+(exs.length%2?' beside':'')}
+          onClick={()=>{setOpen(true);setExs([...exs,EX()]);}}
+          title={L(`${block.name||`Blok ${index+1}`}'a egzersiz ekle`,`Add an exercise to ${block.name||`Block ${index+1}`}`)}>+ {L('Egzersiz ekle','Add exercise')}</button>
       </div></div>
       {exs.length===0&&<div className="iv-dim" style={{padding:'9px 13px'}}>{L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
     </>}
@@ -10868,6 +10886,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   /* Handed to every block, which draws it at the end of its own header row. */
   const assign={
     show:showPicker,
+    assigned:allAssigned,
     disabled:!roster.length,
     onClick:assignAll,
     title:allAssigned
@@ -10949,7 +10968,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         <div className="iv-block-hd">
           <span className="iv-block-lbl">{L('Antrenman Özellikleri','Training Details')}</span>
           {assign.show&&<span className="iv-blockacts">
-            <button type="button" className="btn xs sec blk-assign" onClick={assign.onClick}
+            <button type="button" className={'btn xs sec blk-assign'+(assign.assigned?' on':'')} onClick={assign.onClick}
               disabled={assign.disabled} title={assign.title}>{assign.label}</button>
           </span>}
         </div>
