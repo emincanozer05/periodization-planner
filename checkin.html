@@ -45,6 +45,9 @@
   --accent:#0094ff;--accent2:#5cb8ff;--accent-bg:rgba(0,148,255,.10);
   --grad:linear-gradient(135deg,#0094ff,#0080dc);
   --low-t:#46d6a0;--med-t:#fcd34d;--high-t:#ff6b5b;
+  /* Gönderim sonrası çıkan özlü söz: gövde metninden ayrılsın diye hafif
+     sarımtırak; sözün sahibi aynı sarının bir tık soluk tonunda. */
+  --quote:#f0e0ab;--quote2:#c9b880;
   --shadow:0 4px 18px rgba(0,0,0,.55);
   --glass-hi:inset 0 1px 0 rgba(255,255,255,.07);
 }
@@ -232,16 +235,15 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
 .done h2{margin:18px 0 6px;font-size:21px}
 .done p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
 
-/* Wellness gönderiminden sonraki ödül karesi. Sporcu formu doldurup gönderince
-   sıradaki sporcunun fotoğrafı ve altında o fotoğrafın özlü sözü çıkıyor — formu
-   doldurmanın tek karşılığı "Teşekkürler!" olmasın diye. Kutunun oranını görselin
-   kendi ölçüleri veriyor (img'in width/height'i): görsel inerken yer boş kalıyor
-   ama altındaki yazı yükleme bitince aşağı zıplamıyor. */
-.done .quotewrap{margin:0 auto 16px;max-width:340px}
-.done .quotewrap img{display:block;width:100%;height:auto;border-radius:12px;
-  border:1px solid var(--border2);background:var(--bg2);box-shadow:var(--shadow)}
-.done .quote{max-width:400px;margin:0 auto 16px;color:var(--text);font-size:14.5px;
-  line-height:1.6;font-style:italic}
+/* Wellness gönderiminden sonraki ödül. Sporcu formu doldurup gönderince sıradaki
+   özlü söz çıkıyor — formu doldurmanın tek karşılığı "Teşekkürler!" olmasın diye.
+   Ekranda görsel yok, yalnızca yazı: söz hafif sarımtırak, çünkü kutunun içinde
+   tek başına duran beyaz bir paragraf sayfanın geri kalanından ayrışmıyordu.
+   Sözün sahibi tırnağın sağ altında, bir tık soluk tonda. */
+.done .quote{max-width:400px;margin:0 auto 20px;text-align:left}
+.done .quote-text{color:var(--quote);font-size:15px;line-height:1.65;font-style:italic}
+.done .quote-by{margin-top:10px;text-align:right;color:var(--quote2);font-size:12.5px;
+  font-weight:600;letter-spacing:.02em}
 .done .rdline{font-size:15px;font-weight:700;color:var(--text);margin:0 0 24px}
 .done .rdline b{color:var(--accent2)}
 .linkish{background:none;border:0;color:var(--accent2);font-size:14px;cursor:pointer;
@@ -287,45 +289,28 @@ var FATIGUE_LABELS =['bitkin','yorgun','orta','dinç','çok dinç'];
 var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
 
 /* Wellness gönderiminin karşılığı ────────────────────────────────────────────
-   Formu gönderen sporcu, skoru kaç olursa olsun sıradaki fotoğrafı ve o fotoğrafa
-   ait özlü sözü görüyor. Ödül skora bağlanmıyor: kötü uyuyan gün de formu
-   dolduran sporcu bir şey görsün, dolduranı iyi skora göre ayıklamayalım.
+   Formu gönderen sporcu, skoru kaç olursa olsun sıradaki özlü sözü görüyor. Ödül
+   skora bağlanmıyor: kötü uyuyan gün de formu dolduran sporcu bir şey görsün,
+   dolduranı iyi skora göre ayıklamayalım.
 
    Sıra telefonda tutuluyor ve her gönderimde bir sonrakine geçiyor, liste bitince
    başa dönüyor — "sırasıyla" derken kastedilen bu: rastgele değil, listedeki
    sırayla.
 
-   Ölçüler dosyaların kendisinden geliyor: görsel inerken kutu doğru boyda duruyor,
-   yazı yüklenince aşağı zıplamıyor.
-
-   `n` görselin dosya adı: quotes/1 … quotes/5. Sıraya yeni bir isim eklemek için
-   listeye satır eklemek ve dosyayı aynı numarayla klasöre atmak yetiyor. */
+   Ekranda yalnızca yazı var: söz ve altında sözün sahibi. Sıraya yeni bir söz
+   eklemek için listeye `text` + `by` içeren bir satır eklemek yetiyor. */
 var MOTIVATION=[
-  {n:1,ext:'jpg', w:1080,h:608,
+  {by:'Roger Federer',
    text:'Çalışkanlığın önüne geçmenin bir yolu yok. Bunu benimseyin. Çok çalışmanız gerekiyor çünkü her zaman kendinizi geliştirebileceğiniz bir şeyler vardır.'},
-  {n:2,ext:'jpg', w:1280,h:720,
+  {by:'Muhammad Ali',
    text:'Şampiyonlar spor salonlarında yetişmez. Şampiyonlar içlerinde derinlerde taşıdıkları bir şeyden, bir arzudan, bir hayalden, bir vizyondan doğarlar.'},
-  {n:3,ext:'jpg', w:682,h:350,
+  {by:'Usain Bolt',
    text:'Hayaller bedava. Hedeflerin ise bir bedeli var. Hayal kurmak ücretsiz olsa da, hedefler bedelsiz gelmez. Zaman, çaba, fedakarlık ve ter. Hedeflerinizin bedelini nasıl ödeyeceksiniz?'},
-  {n:4,ext:'webp',w:912,h:513,
+  {by:'Kevin Durant',
    text:'Yetenekli kişi çok çalışmayı ihmal ettiğinde, çok çalışmak yeteneği yener.'},
-  {n:5,ext:'jpg', w:1320,h:743,
+  {by:'Michael Jordan',
    text:'Bazıları bunun olmasını ister, bazıları olmasını diler, bazıları ise olmasını sağlar.'}
 ];
-/* Görselin dosya adı yalnızca sıra numarası: quotes/1 … quotes/5. Uzantı olarak
-   önce listedeki `ext` deneniyor — klasördeki dosyanın gerçek uzantısı o, yani
-   normalde ilk istek tutuyor ve boşa 404 gitmiyor. Tutmazsa geri kalan uzantılar
-   sırayla deneniyor: koç dosyayı .png olarak değiştirirse `ext`'i güncellemeyi
-   unutsa bile görsel ekranda kalıyor. */
-var QUOTE_EXT=['jpg','png','jpeg','webp'];
-function quoteSrcs(item){
-  var out=['quotes/'+item.n+'.'+item.ext];
-  for(var i=0;i<QUOTE_EXT.length;i++){
-    var s='quotes/'+item.n+'.'+QUOTE_EXT[i];
-    if(s!==out[0])out.push(s);
-  }
-  return out;
-}
 /* Listenin sıradaki elemanı: en son gösterilen sıra telefonda tutuluyor, her
    gönderimde bir sonrakine geçiliyor, sonuncudan sonra başa dönülüyor.
    localStorage kapalıysa (gizli sekme) her seferinde ilk elemana düşüyor —
@@ -798,8 +783,8 @@ function submit(btn,errBox){
     }
   });
 }
-/* Gönderim ekranının ödül kısmı: wellness gönderiminde sıradaki fotoğraf ve
-   altında o fotoğrafın özlü sözü — skora bakılmıyor, gönderen herkes görüyor.
+/* Gönderim ekranının ödül kısmı: wellness gönderiminde sıradaki özlü söz ve
+   sağ altında sözün sahibi — skora bakılmıyor, gönderen herkes görüyor.
    Readiness satırı yalnızca skor hesaplanabildiğinde (üç sorudan en az biri
    cevaplandığında) ekleniyor; sözün altında bilgi olarak kalıyor. */
 function rewardNodes(){
@@ -807,18 +792,11 @@ function rewardNodes(){
   var item=pickNext(MOTIVATION,'quote');
   var out=[];
   if(item){
-    // Uzantılar sırayla deneniyor: her başarısız denemede onerror bir sonrakine
-    // geçiyor. Hepsi tükenince (dosya hiç konmamış, şebeke yok) kutu tamamen
-    // kalkıyor — sporcu boş bir çerçeveye bakmasın, söz yerinde kalsın.
-    var srcs=quoteSrcs(item),tried=0;
-    out.push(el('div',{class:'quotewrap'},[
-      el('img',{src:srcs[0],width:item.w,height:item.h,alt:'',
-        onerror:function(){
-          if(++tried<srcs.length){this.src=srcs[tried];return;}
-          var w=this.parentNode;if(w&&w.parentNode)w.parentNode.removeChild(w);
-        }})
-    ]));
-    out.push(el('div',{class:'quote',text:'\u201C'+item.text+'\u201D'}));
+    var block=[el('div',{class:'quote-text',text:'\u201C'+item.text+'\u201D'})];
+    // Sözün sahibi listede boş bırakılmışsa satır hiç çıkmıyor: tırnağın altında
+    // yalnız bir tire durmasın.
+    if(item.by)block.push(el('div',{class:'quote-by',text:'\u2014 '+item.by}));
+    out.push(el('div',{class:'quote'},block));
   }
   var score=readinessScore();
   if(score!=null)out.push(el('div',{class:'rdline',html:'Readiness <b>'+score.toFixed(2)+'</b> / 5.00'}));
