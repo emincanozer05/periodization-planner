@@ -19598,6 +19598,54 @@ const splitChunks=s=>{
   }
   return out;
 };
+/* Parçalama, ana iş parçacığında yapılan en pahalı iş: 2.6 MB'lık bir durumda kayan
+   gear-hash'i uçtan uca gezmek ~130 ms sürer. Bu iş her yazımda — yani koç yazmaya ara
+   verdiği anda — çalıştığı için ekran tam o anda donuyordu. Artık bir Worker'a veriliyor:
+   ana iş parçacığı yalnızca JSON'u üretir, bölme ve hash arka planda döner.
+   Worker'ın kaynağı fonksiyonların KENDİSİNDEN üretilir (toString), böylece arka plandaki
+   bölme ile buradaki bölme birbirinden ayrı düşemez — parça adları içerik hash'i olduğu
+   için ayrı düşmeleri, aynı içeriği bulutta iki kez saklamak demek olurdu.
+   Worker kurulamazsa (dosya:// protokolü, Blob engelli, eski tarayıcı) iş eskisi gibi
+   burada yapılır; yalnızca yavaş, asla yanlış değil. */
+const _chunkWorkerSrc=()=>`
+const CHUNK_MIN=${CHUNK_MIN},CHUNK_BITS=${CHUNK_BITS},CHUNK_MAX=${CHUNK_MAX},GEAR_WARM=${GEAR_WARM};
+const _enc=(typeof TextEncoder!=='undefined')?new TextEncoder():null;
+const _dec=(typeof TextDecoder!=='undefined')?new TextDecoder():null;
+const GEAR=new Uint32Array(${JSON.stringify(Array.from(GEAR))});
+const hashBytes=${hashBytes.toString()};
+const hashString=${hashString.toString()};
+const splitChunks=${splitChunks.toString()};
+self.onmessage=e=>{const d=e.data||{};
+  try{self.postMessage({id:d.id,ok:1,parts:splitChunks(d.json)});}
+  catch(err){self.postMessage({id:d.id,ok:0});}
+};`;
+let _cw=null,_cwOff=false,_cwSeq=0;
+const _chunkWorker=()=>{
+  if(_cw||_cwOff)return _cw;
+  try{
+    if(typeof Worker==='undefined'||typeof Blob==='undefined'||!URL.createObjectURL)throw 0;
+    const url=URL.createObjectURL(new Blob([_chunkWorkerSrc()],{type:'text/javascript'}));
+    _cw=new Worker(url);
+    URL.revokeObjectURL(url);
+  }catch(e){_cwOff=true;_cw=null;}
+  return _cw;
+};
+const splitChunksAsync=json=>new Promise(resolve=>{
+  const w=_chunkWorker();
+  if(!w)return resolve(splitChunks(json));
+  const id=++_cwSeq;
+  let done=false;
+  const off=()=>{if(done)return true;done=true;
+    w.removeEventListener('message',onMsg);w.removeEventListener('error',onErr);return false;};
+  const onMsg=e=>{const d=e.data||{};if(d.id!==id)return;if(off())return;
+    resolve(d.ok?d.parts:splitChunks(json));};
+  /* Worker düştü: bir daha denenmez, iş buradan sürdürülür. Yazım hiçbir hâlde yarıda
+     kalmaz — bu yüzden hata da bir sonuçtur, reject değil. */
+  const onErr=()=>{if(off())return;_cwOff=true;try{w.terminate();}catch(_){}_cw=null;
+    resolve(splitChunks(json));};
+  w.addEventListener('message',onMsg);w.addEventListener('error',onErr);
+  try{w.postMessage({id,json});}catch(e){onErr();}
+});
 /* Aynı nesne için JSON.stringify'ı bir kez yapıp saklar. Durumun tamamı her tuş vuruşunda
    birkaç kez seri hâle getiriliyordu (debounce karşılaştırması + yazım + dinleyici
    karşılaştırması); birkaç MB'lık bir durumda bu tek başına yazmayı tutuklaştırıyordu.
@@ -19901,14 +19949,19 @@ function useCloudSync(data,setData){
     }
     const json=ser(dataRef.current);
     if(json===lastSynced.current){dirty.current=false;setStatus('synced');return;}
-    // boş/varsayılan veri buluttaki dolu veriyi SİLMESİN
-    let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
-    if(!hasRealData(dataRef.current)&&prevReal){setStatus('synced');return;}
+    /* Boş/varsayılan veri buluttaki dolu veriyi SİLMESİN. Karşılaştırma yalnızca EKRAN
+       boş göründüğünde yapılır: eskiden en son yazılan JSON her yazımda baştan sona
+       parse ediliyordu (birkaç MB'lık bir durumda tek başına onlarca ms), oysa dolu bir
+       durumu dolu bir durumun üstüne yazarken sorulacak bir şey yok. */
+    if(!hasRealData(dataRef.current)){
+      let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
+      if(prevReal){setStatus('synced');return;}
+    }
     setStatus('syncing');
     writing.current=true;
     try{
       const col=fb.firestore().collection(COL);
-      const parts=splitChunks(json);const n=parts.length;
+      const parts=await splitChunksAsync(json);const n=parts.length;
       let rev=Date.now();if(rev<=lastRev.current)rev=lastRev.current+1;   // rev daima artar (saat geri gitse bile)
       const ids=parts.map(p=>p.h);
       const keep=new Set(ids.map(h=>chunkDocId(u.uid,h)));
