@@ -1092,6 +1092,29 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ct-legend .lg-drib{height:6px;border:none;
   background:radial-gradient(circle at 3px 6px,transparent 2.2px,var(--text2) 2.4px 3.4px,transparent 3.6px) 0 0/6px 6px repeat-x}
 .ct-legend .lg-scr{border-right:2px solid var(--text2);height:6px;margin-top:-3px}
+/* The rail when it is painted away from the board (see CourtEditor's `barSlot`): it is a
+   panel in its own right there, so it carries its own frame instead of the board's. */
+.ct-bar-slot{margin-top:12px}
+.ct-bar-slot .ct-bar{border:1px solid var(--border);border-radius:11px;
+  background:var(--panel,var(--bg2))}
+.ct-bar-slot-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);display:block;margin-bottom:5px}
+/* ---- The board, blown up ----
+   Only the floor and the tools, over a dimmed page. Meant for a tablet: the court gets the
+   whole screen height, which is the difference between drawing with a finger and poking at
+   a thumbnail. */
+.ct-zoom{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;
+  padding:14px;background:rgba(6,8,11,.88);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  animation:ct-zoom-bg .22s ease both}
+.ct-zoom-panel{display:flex;flex-direction:column;gap:0;width:100%;max-width:1200px;max-height:100%;
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--panel,var(--bg2));
+  box-shadow:0 34px 90px rgba(0,0,0,.7);
+  animation:ct-zoom-in .28s cubic-bezier(.22,.9,.3,1) both}
+/* Height-led here too, but the height on offer is the screen's rather than the card's. */
+.ct-zoom-panel .ct-board{height:calc(100vh - 190px);min-height:280px}
+@keyframes ct-zoom-bg{from{opacity:0}to{opacity:1}}
+@keyframes ct-zoom-in{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ct-zoom,.ct-zoom-panel{animation:none}}
 
 /* ---- The clip on a drill ---- */
 .dv-wrap{border:1px solid var(--border);border-radius:9px;padding:8px 9px;background:var(--bg2)}
@@ -1112,8 +1135,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dv-player video,.dv-player iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
 
 /* ---- Ball practice in the library ---- */
-.lib-split{display:inline-flex;gap:3px;padding:3px;background:var(--elevated,var(--bg2));
-  border:1px solid var(--border);border-radius:9px}
+/* One row with the rest of the toolbar, not a box stacked on top of one: as an
+   inline-flex block on its own line it sat in the line box's leading and read as a
+   second frame nested above the filters. */
+.lib-split{display:flex;flex:0 0 auto;gap:3px;padding:3px;background:var(--elevated,var(--bg2));
+  border:1px solid var(--border);border-radius:9px;align-self:stretch;align-items:center}
+@media(max-width:760px){.lib-split{flex:1 1 100%}}
 .lib-split button{background:transparent;border:none;border-radius:7px;padding:6px 14px;color:var(--muted);
   font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .14s,color .14s;
   display:inline-flex;align-items:center;gap:7px}
@@ -1288,7 +1315,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-subtabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:inherit;font-size:14px;font-weight:600;padding:8px 4px;margin-bottom:-1px;cursor:pointer;transition:color .15s,border-color .15s}
 .ex-subtabs button.on{color:var(--accent2);border-bottom-color:var(--accent2)}
 .ex-subtabs button:hover{color:var(--text)}
-.ex-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.ex-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 18px}
 .ex-search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:0 12px}
 .ex-search span{color:var(--muted);font-size:14px}
 .ex-search input{border:none;background:transparent;padding:11px 0}
@@ -1333,6 +1360,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .x-btn:hover{background:var(--hover);color:var(--text)}
 .ex-modal-body{padding:16px;overflow-y:auto}
 .ex-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+/* A still or a GIF standing in for a clip: fitted whole, never cropped — the frame is
+   16/9 and the picture usually is not. */
+.ex-still{object-fit:contain;background:#000}
 .ex-player-wrap.ig{aspect-ratio:auto;height:640px;background:#000}
 .ex-video{width:100%;height:100%;display:block;border:none;background:#000;object-fit:contain}
 .ex-novid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px}
@@ -11263,7 +11293,12 @@ function courtSVGString(scene){
    flattened into a picture: a drawing made half-court can be reread full-court, an object
    put down in the wrong place can be picked up again, and the whole thing still travels
    as a few kilobytes of JSON rather than a PNG. */
-function CourtEditor({value,onChange}){
+/* `barSlot` (an element, optional) takes the tool rail out of the board's own header and
+   paints it wherever the caller wants it — the exercise card puts it beside the clip, so
+   the tools are not stacked on top of the floor they draw on. `zoom` blows the board up to
+   the whole screen with nothing but the floor and the tools on it, which is the only way
+   a half court is big enough to draw on with a finger. */
+function CourtEditor({value,onChange,barSlot}){
   const sc=normScene(value);
   const items=sc.items;
   const[tool,setTool]=useState('free');
@@ -11273,8 +11308,16 @@ function CourtEditor({value,onChange}){
   const[straight,setStraight]=useState(false);
   const[draft,setDraft]=useState(null);
   const[sel,setSel]=useState(null);
+  const[zoom,setZoom]=useState(false);
   const[hist,setHist]=useState({undo:[],redo:[]});
   const gRef=useRef(null),dragRef=useRef(null);
+  // Escape leaves the blown-up board — the same key that closes everything else here.
+  useEffect(()=>{
+    if(!zoom)return;
+    const k=e=>{if(e.key==='Escape'){e.stopPropagation();setZoom(false);}};
+    window.addEventListener('keydown',k,true);
+    return()=>window.removeEventListener('keydown',k,true);
+  },[zoom]);
 
   const write=(next,push=true)=>{
     if(push)setHist(h=>({undo:[...h.undo.slice(-49),items],redo:[]}));
@@ -11388,7 +11431,7 @@ function CourtEditor({value,onChange}){
   const tbtn=(on,onClick,title,children,cls)=>
     <button type="button" className={`ct-tb${on?' on':''}${cls?' '+cls:''}`} onClick={onClick} title={title}>{children}</button>;
 
-  return(<div className="ct-wrap">
+  const bar=(
     <div className="ct-bar">
       <div className="ct-grp">
         {CT_TOOLS.map(t=>tbtn(!mark&&tool===t.id,()=>{setTool(t.id);setMark('');},L(t.tr,t.en),
@@ -11420,10 +11463,13 @@ function CourtEditor({value,onChange}){
         {tbtn(false,redo,L('İleri al','Redo'),<><i>↷</i></>,hist.redo.length?'':'off')}
         {sel!=null&&items[sel]&&tbtn(false,()=>{write(items.filter((_,j)=>j!==sel));setSel(null);},
           L('Seçileni sil','Delete selected'),<><i>✕</i><b>{L('Sil','Delete')}</b></>,'danger')}
+        {tbtn(zoom,()=>setZoom(z=>!z),zoom?L('Küçült (Esc)','Shrink (Esc)'):L('Büyüt — sadece saha','Zoom — court only'),
+          <><i>{zoom?'⤡':'⤢'}</i><b>{zoom?L('Küçült','Shrink'):L('Büyüt','Zoom')}</b></>)}
         {tbtn(false,()=>{if(items.length&&window.confirm(L('Çizimin tamamı silinsin mi?','Clear the whole drawing?')))write([]);},
           L('Tahtayı temizle','Clear the board'),<><i>🗑</i><b>{L('Temizle','Clear')}</b></>,items.length?'danger':'off')}
       </div>
-    </div>
+    </div>);
+  const board=(
     <div className="ct-board" style={{aspectRatio:String(courtRatio(sc.half))}}>
       <svg className="ct-svg" viewBox={courtViewBox(sc.half)} preserveAspectRatio="xMidYMid meet"
         style={{cursor,touchAction:'none'}}
@@ -11442,7 +11488,8 @@ function CourtEditor({value,onChange}){
         {L('Sahaya çiz — kalem, pas, top sürme, perde; oyuncu ve ekipmanı tıklayarak yerleştir.',
            'Draw on the court — pen, pass, dribble, screen; click to place players and equipment.')}
       </div>}
-    </div>
+    </div>);
+  const legend=(
     <div className="ct-legend">
       <span><i className="lg lg-cut"/>{L('Kesme','Cut')}</span>
       <span><i className="lg lg-pass"/>{L('Pas','Pass')}</span>
@@ -11454,7 +11501,25 @@ function CourtEditor({value,onChange}){
         :mark?L('Yerleştirmek için sahaya tıkla','Click the court to place')
         :tool==='select'?L('Taşımak için sürükle','Drag to move')
         :L('Silmek için üstüne tıkla','Click an item to erase')}</span>
-    </div>
+    </div>);
+
+  /* Blown up, the board is the whole screen and nothing else is: the tools, the floor and
+     the notation, with the page dimmed out behind them. Portalled to the body so the modal
+     it was opened from cannot clip it, and the panel eases up from the size it was rather
+     than appearing at full size. */
+  if(zoom)return ReactDOM.createPortal(
+    <div className="ct-zoom" onPointerDown={e=>{if(e.target===e.currentTarget)setZoom(false);}}>
+      <div className="ct-zoom-panel">
+        {bar}
+        {board}
+        {legend}
+      </div>
+    </div>,document.body);
+
+  return(<div className="ct-wrap">
+    {barSlot?ReactDOM.createPortal(bar,barSlot):bar}
+    {board}
+    {legend}
   </div>);
 }
 
@@ -11743,13 +11808,22 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
    overflow can reach it. It flips above the field when the space below is too tight,
    and never leaves the viewport sideways. Returns null while closed (nothing to
    measure), so the caller can guard on it. */
-function useDDAnchor(ref,open,{width,minWidth=240,maxHeight=340,gap=5}={}){
+/* `ignore` (refs, optional) are the scrollers whose scrolling must NOT re-anchor the
+   panel — the panel's own body, above all. The listener is capturing, so a wheel inside the
+   dropdown reached it too and re-rendered the whole panel on every scroll frame. */
+function useDDAnchor(ref,open,{width,minWidth=240,maxHeight=340,gap=5,ignore}={}){
   const[,bump]=useState(0);
+  const ig=useRef(ignore);ig.current=ignore;
   useEffect(()=>{
     if(!open)return;
     const h=()=>bump(n=>n+1);
-    window.addEventListener('resize',h);window.addEventListener('scroll',h,true);
-    return()=>{window.removeEventListener('resize',h);window.removeEventListener('scroll',h,true);};
+    const onScroll=e=>{
+      const list=ig.current;
+      if(list&&list.some(r=>r&&r.current&&(r.current===e.target||r.current.contains(e.target))))return;
+      h();
+    };
+    window.addEventListener('resize',h);window.addEventListener('scroll',onScroll,true);
+    return()=>{window.removeEventListener('resize',h);window.removeEventListener('scroll',onScroll,true);};
   },[open]);
   if(!open||!ref.current)return null;
   const r=ref.current.getBoundingClientRect();
@@ -11793,12 +11867,30 @@ function useDDOutside(refs,open,close){
    the ticked focuses offer, kept under the heading of the focus they belong to. Unticking
    a focus takes its sub-focuses and methods with it: a method left behind by the focus
    that justified it is not a record of anything. */
+/* Both of these are declared HERE rather than inside FocusSelect. Declared in the render
+   body they were a brand-new component type on every render, so React threw the whole
+   panel away and built it again — and `fx-stage-in` replayed from clip-path:inset(0 0 100%)
+   each time. Scrolling the panel re-anchors it, which renders it, which made the text blink
+   out and back on every wheel notch. */
+const FxOpt=({v,on,tog,c})=>(
+  <label className={`focus-opt${on?' on':''}`} style={c?{'--fo-c':c}:undefined}>
+    <input type="checkbox" checked={on} onChange={()=>tog(v)}/>
+    <span>{exLabel(v)}</span>
+  </label>);
+/* A stage, with the heading that says which question it is answering. `n` drives the
+   step badge and the stagger, so the three panels arrive in reading order. */
+const FxStage=({n,title,hint,children})=>(
+  <div className="fx-stage" style={{'--fx-i':n}}>
+    <div className="fx-stage-hd"><b>{n}</b><span>{title}</span><i>{hint}</i></div>
+    {children}
+  </div>);
+
 function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,placeholder}){
   const[open,setOpen]=useState(false);
   const ref=useRef(null),ddRef=useRef(null);
   const close=useCallback(()=>setOpen(false),[]);
   useDDOutside([ref,ddRef],open,close);
-  const box=useDDAnchor(ref,open,{width:420,minWidth:300,maxHeight:460});
+  const box=useDDAnchor(ref,open,{width:420,minWidth:300,maxHeight:460,ignore:[ddRef]});
 
   const sel=Array.isArray(value)?value:[];
   const subSel=Array.isArray(sub)?sub:[];
@@ -11842,18 +11934,6 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
   const toggleMet=m=>onMethodsChange(metSel.includes(m)?metSel.filter(x=>x!==m):[...metSel,m]);
 
   const summary=[...sel,...subSel,...metSel].map(exLabel);
-  const Opt=({v,on,tog,c})=>(
-    <label className={`focus-opt${on?' on':''}`} style={c?{'--fo-c':c}:undefined}>
-      <input type="checkbox" checked={on} onChange={()=>tog(v)}/>
-      <span>{exLabel(v)}</span>
-    </label>);
-  /* A stage, with the heading that says which question it is answering. `n` drives the
-     step badge and the stagger, so the three panels arrive in reading order. */
-  const Stage=({n,title,hint,children})=>(
-    <div className="fx-stage" style={{'--fx-i':n}}>
-      <div className="fx-stage-hd"><b>{n}</b><span>{title}</span><i>{hint}</i></div>
-      {children}
-    </div>);
 
   return(<div ref={ref} className="focus-sel">
     <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
@@ -11863,30 +11943,30 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
     </button>
     {open&&box&&ReactDOM.createPortal(
       <div ref={ddRef} className="focus-dd fx-dd" style={box}>
-        <Stage n={1} title={L('Seans Odağı','Session Focus')} hint={L('Neyi geliştiriyoruz?','What are we developing?')}>
+        <FxStage n={1} title={L('Seans Odağı','Session Focus')} hint={L('Neyi geliştiriyoruz?','What are we developing?')}>
           <div className="fx-grid">
-            {FOCUS_TREE.map(f=><Opt key={f.id} v={f.id} c={f.c} on={sel.includes(f.id)} tog={toggleFocus}/>)}
+            {FOCUS_TREE.map(f=><FxOpt key={f.id} v={f.id} c={f.c} on={sel.includes(f.id)} tog={toggleFocus}/>)}
           </div>
-        </Stage>
+        </FxStage>
         {/* Stage 2 and 3 are mounted only once they have something to ask, and animate in
             from nothing — the height transition is what makes the panel read as one form
             unfolding rather than three that blink into place. */}
-        {stage>=2&&<Stage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
+        {stage>=2&&<FxStage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
           {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
             <div className="fx-fam-hd">{exLabel(f.id)}</div>
             <div className="fx-grid">
-              {f.sub.map(s=><Opt key={s} v={s} c={f.c} on={subSel.includes(s)} tog={toggleSub}/>)}
+              {f.sub.map(s=><FxOpt key={s} v={s} c={f.c} on={subSel.includes(s)} tog={toggleSub}/>)}
             </div>
           </div>)}
-        </Stage>}
-        {stage>=3&&<Stage n={3} title={L('Metot','Method')} hint={L('Nasıl çalışıyoruz?','How are we training it?')}>
+        </FxStage>}
+        {stage>=3&&<FxStage n={3} title={L('Metot','Method')} hint={L('Nasıl çalışıyoruz?','How are we training it?')}>
           {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
             <div className="fx-fam-hd">{exLabel(f.id)}</div>
             <div className="fx-grid">
-              {f.met.map(m=><Opt key={m} v={m} c={f.c} on={metSel.includes(m)} tog={toggleMet}/>)}
+              {f.met.map(m=><FxOpt key={m} v={m} c={f.c} on={metSel.includes(m)} tog={toggleMet}/>)}
             </div>
           </div>)}
-        </Stage>}
+        </FxStage>}
         <div className="fx-foot">
           <span>{stage===1
             ?L('Bir odak seç — alt odak sorusu altında açılır.','Pick a focus — the sub-focus question opens under it.')
@@ -11911,7 +11991,7 @@ function MethodSelect({value,onChange,placeholder,counts}){
   const ref=useRef(null),ddRef=useRef(null);
   const close=useCallback(()=>setOpen(false),[]);
   useDDOutside([ref,ddRef],open,close);
-  const box=useDDAnchor(ref,open,{width:340,minWidth:260,maxHeight:400});
+  const box=useDDAnchor(ref,open,{width:340,minWidth:260,maxHeight:400,ignore:[ddRef]});
   useEffect(()=>{if(!open)setQ('');},[open]);
   const sel=Array.isArray(value)?value:[];
   const toggle=m=>onChange(sel.includes(m)?sel.filter(x=>x!==m):[...sel,m]);
@@ -20833,7 +20913,10 @@ function VideoPlayer({ex}){
   /* Only the video plays here. The picture on the entry belongs to the program row it is
      copied onto, not to the library page, so it is shown next to its own control below
      rather than standing in as the entry's cover. */
-  if(!v)return<div className="ex-novid">Henüz video yok — aşağıdan video yükle veya link yapıştır.</div>;
+  /* No clip, but a still or a GIF was added: that IS the demonstration, so it plays the
+     part of the video rather than sitting somewhere else on the card. */
+  if(!v&&ex.image)return<img className="ex-video ex-still" src={mediaSrc(ex.image)} alt=""/>;
+  if(!v)return<div className="ex-novid">{L('Henüz video yok — aşağıdan video ya da görsel/GIF ekle, veya link yapıştır.','No video yet — add a video or an image/GIF below, or paste a link.')}</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
   if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
   return<iframe className="ex-video" src={v.src} title="exercise video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
@@ -20849,6 +20932,10 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
   const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
   const[upPct,setUpPct]=useState(null);
   const[editing,setEditing]=useState(!ex.name);
+  /* The court's tool rail belongs beside the clip, not on top of the floor it draws on:
+     the left column holds the slot, the board keeps the right. State rather than a plain
+     ref, so mounting the slot re-renders the editor that paints into it. */
+  const[courtBar,setCourtBar]=useState(null);
   const shownName=useExerciseText(ex.name);
   const shownPurpose=useExerciseText(ex.purpose);
   const _vEmbed=videoEmbed(ex.videoData||ex.videoUrl);
@@ -20872,6 +20959,28 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     r.onload=async e=>{
       try{set('videoData',await saveLocalMedia(e.target.result));}
       catch(err){console.warn('local media store unavailable → inline fallback',err);set('videoData',e.target.result);}
+    };
+    r.readAsDataURL(file);
+  };
+  /* A still or a GIF, for the exercises that are demonstrated by a loop rather than a clip.
+     A GIF is uploaded byte for byte — the resize path draws it onto a canvas, which would
+     hand back a single frame and quietly kill the animation. */
+  const onImageFile=async file=>{
+    if(!file)return;
+    const isGif=/gif/i.test(file.type)||/\.gif$/i.test(file.name||'');
+    if(!isGif){handleImageUpload(file,'eximg',url=>set('image',url),p=>setUpPct(p));return;}
+    const mb=file.size/1048576;
+    if(mb>25){alert(L('GIF çok büyük ('+mb.toFixed(0)+' MB). 25 MB altı bir dosya seç.','GIF is too large ('+mb.toFixed(0)+' MB). Pick a file under 25 MB.'));return;}
+    const fb=(typeof FB==='function')?FB():null;
+    if(fb&&fb.auth&&fb.auth().currentUser){
+      try{setUpPct(0);const url=await uploadMedia(file,'eximg',pc=>setUpPct(pc),file.name);set('image',url);return;}
+      catch(e){warnStorageFailure(e);}
+      finally{setUpPct(null);}
+    }
+    const r=new FileReader();
+    r.onload=async e=>{
+      try{set('image',await saveLocalMedia(e.target.result));}
+      catch(err){console.warn('local media store unavailable → inline fallback',err);set('image',e.target.result);}
     };
     r.readAsDataURL(file);
   };
@@ -20980,7 +21089,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           library are the same object either way round. */}
       {ball&&<div style={{marginTop:14}}>
         <label>{L('Saha Çizimi','Court Diagram')}</label>
-        <CourtEditor value={ex.court} onChange={sc=>set('court',sc)}/>
+        <CourtEditor value={ex.court} onChange={sc=>set('court',sc)} barSlot={courtBar}/>
       </div>}
       {!ball&&<div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
         <div className="mus-pick">
@@ -21021,9 +21130,21 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
             <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 {L('Video Yükle','Upload Video')}
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
+            {/* Not every exercise has a clip; plenty are shown by a still or a looping GIF,
+                and this is where that goes — next to the clip it stands in for. */}
+            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 {L('Görsel / GIF Ekle','Add Image / GIF')}
+              <input type="file" accept="image/*,.gif" style={{display:'none'}} onChange={e=>onImageFile(e.target.files[0])}/>
+            </label>
             {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>{L('Videoyu kaldır','Remove video')}</button>}
+            {ex.image&&<button className="btn ghost xs" onClick={()=>set('image','')}>{L('Görseli kaldır','Remove image')}</button>}
           </div>}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>{L('Yükleniyor… ','Uploading… ')}{upPct}%</div>}
+          {/* The court's tools live under the clip, so the board on the right is nothing but
+              board. Only mounted while editing a drill — there is nothing to draw with otherwise. */}
+          {editing&&ball&&<div className="ct-bar-slot">
+            <span className="ct-bar-slot-lbl">{L('Çizim Araçları','Drawing Tools')}</span>
+            <div ref={setCourtBar}/>
+          </div>}
         </div>
         {editing?editRight:viewRight}
       </div>
@@ -21046,7 +21167,7 @@ function ExerciseCard({ex,onOpen,used=0}){
      og:image of an Instagram reel. The picture the coach pastes on the entry (`thumb`) is
      not a cover: it is the shot that drops into the exercise box while a program is being
      written, so it is deliberately left out here and the card falls back to its placeholder. */
-  const cover=videoThumb(ex.videoData||ex.videoUrl)||igImg;
+  const cover=videoThumb(ex.videoData||ex.videoUrl)||igImg||(ex.image?mediaSrc(ex.image):'');
   // Instagram reels have no auto thumbnail → fetch the og:image once
   useEffect(()=>{
     if(!v||!v.ig){setIgImg('');return;}
@@ -21161,8 +21282,8 @@ function ExercisesView({data,setData}){
             ?L(`${exercises.length} dril · tüm kategoriler`,`${exercises.length} drills · all categories`)
             :L(`${exercises.length} egzersiz · tüm kategoriler`,`${exercises.length} exercises · all categories`)}</div></div>
       </div>
-      {libSplit}
       <div className="ex-toolbar">
+        {libSplit}
         {catDropdown}
         <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
         <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
@@ -21204,8 +21325,8 @@ function ExercisesView({data,setData}){
         {sub&&<div className="sub">{L('Filtre:','Filter:')} <b>{exLabel(sub.label)}</b>{hasPatternFilter?' · '+L('Hareket Örüntüsü','Movement Pattern'):''}</div>}
       </div>
     </div>
-    {libSplit}
     <div className="ex-toolbar">
+      {libSplit}
       {catDropdown}
       <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
