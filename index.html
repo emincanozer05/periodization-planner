@@ -10670,8 +10670,12 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
   const taRef=useRef(null);
   const insideRef=useRef(false);   // pointer is over the panel → a blur must not close it
   const committedRef=useRef(null); // last value THIS box pushed to the library
+  /* The name box holds what is being typed itself: every keystroke here also filters the
+     library list behind it, and waiting for the whole app to rebuild before the letter
+     appeared is what made naming an exercise feel like typing through treacle. */
+  const[val,setVal]=useLiveValue(value||'',onChange);
   const fit=el=>{if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}};
-  useEffect(()=>{fit(taRef.current);},[value]);
+  useEffect(()=>{fit(taRef.current);},[val]);
   // While open, keep the portal dropdown glued to the input as the page scrolls.
   useEffect(()=>{if(!focus)return;const on=()=>setTick(t=>t+1);
     window.addEventListener('scroll',on,true);window.addEventListener('resize',on);
@@ -10700,7 +10704,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     if(prev===null){if(nm)addExerciseToLibrary(nm);committedRef.current=nm;withTags(nm);fresh(nm);return;}
     if(nm===prev){withTags(nm);return;}
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
-  const q=(value||'').trim().toLowerCase();
+  const q=(val||'').trim().toLowerCase();
   const lib=focus?getLibItems():[];
   // Text query narrows the pool first; the category counts on the right are computed
   // from that pool so they always say how many rows a category would actually show.
@@ -10746,13 +10750,13 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
           :{position:'fixed',left,top:rect.bottom+2,width:w,right:'auto'};
   }
   return(<div className="en-wrap">
-    <textarea ref={taRef} className="en" rows={1} value={value} placeholder={L('Egzersiz adı','Exercise name')}
-      onChange={e=>{onChange(e.target.value);fit(e.target);setHi(-1);setFocus(true);}}
+    <textarea ref={taRef} className="en" rows={1} value={val} placeholder={L('Egzersiz adı','Exercise name')}
+      onChange={e=>{setVal(e.target.value);fit(e.target);setHi(-1);setFocus(true);}}
       onFocus={()=>setFocus(true)}
       /* After a pick the box keeps DOM focus, so re-opening the picker needs an
          explicit click handler — onFocus alone would never fire again. */
       onClick={()=>setFocus(true)}
-      onBlur={()=>{setTimeout(()=>{if(!insideRef.current)setFocus(false);},120);commit(value);}}
+      onBlur={()=>{setTimeout(()=>{if(!insideRef.current)setFocus(false);},120);commit(val);}}
       onKeyDown={e=>{
         if(sugg.length&&e.key==='ArrowDown'){e.preventDefault();setHi(h=>Math.min(h+1,sugg.length-1));}
         else if(sugg.length&&e.key==='ArrowUp'){e.preventDefault();setHi(h=>Math.max(h-1,0));}
@@ -10797,6 +10801,40 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
       </div>,document.body)}
   </div>);
 }
+/* ---- Boxes that keep up with the keyboard ---------------------------------
+   A letter typed into an exercise row used to travel straight to the root state, and
+   everything hanging off it re-rendered BEFORE the letter reached the screen: the day
+   being written, the calendar around it, the copy of the session mirrored onto every
+   assigned athlete, the insight board and its charts. On a full week that is tens of
+   milliseconds per keystroke — which is what made writing sets, reps and rest feel
+   like the screen was seizing up.
+   Nothing about what is stored changes here, only WHEN the heavy work happens. The box
+   holds what was typed itself, so the letter is on screen on the very next frame, and
+   the same value is handed upward as a React transition: an interruptible render that
+   yields to the next keystroke instead of blocking it. Type through a whole rest field
+   and the app rebuilds once, when the typing stops, rather than once per character. */
+const _liveT=(React&&typeof React.startTransition==='function')?React.startTransition:fn=>fn();
+function useLiveValue(value,onChange){
+  const[local,setLocal]=useState(value);
+  const sent=useRef(value);            // the last value THIS box handed upward
+  const cb=useRef(onChange);cb.current=onChange;
+  /* A value that changed anywhere ELSE is taken: a row pasted over, an exercise picked
+     off the library, a drill that moved under this box. The value coming back from our
+     own edit is not — putting it back mid-word would drag the caret with it. */
+  useEffect(()=>{if(value!==sent.current){sent.current=value;setLocal(value);}},[value]);
+  const set=v=>{sent.current=v;setLocal(v);_liveT(()=>cb.current(v));};
+  return[local,set];
+}
+/* An <input> / <textarea> that types at the speed of the keyboard. Same props as the
+   plain box, except onChange is handed the value rather than the event. */
+function LiveInput({value,onChange,...rest}){
+  const[v,set]=useLiveValue(value==null?'':value,onChange);
+  return<input value={v} onChange={e=>set(e.target.value)} {...rest}/>;
+}
+function LiveTextarea({value,onChange,...rest}){
+  const[v,set]=useLiveValue(value==null?'':value,onChange);
+  return<textarea value={v} onChange={e=>set(e.target.value)} {...rest}/>;
+}
 /* Tiny per-exercise image button. Click = paste the copied image from the
    clipboard (Ctrl/Cmd+V while focused also works); right-click = pick a file.
    On screen it only shows a small thumbnail — the image renders full-size in
@@ -10828,8 +10866,8 @@ function ExLinkCell({value,onChange}){
     title={L('Bu egzersize bir video / referans linki ekle','Attach a video / reference link to this exercise')}>🔗 {L('Link ekle','Add link')}</button>;
   return(<div className="lk-row">
     <span className="lk-ic">🔗</span>
-    <input value={link} autoFocus={!link} placeholder={L('https://…  (video / referans linki)','https://…  (video / reference link)')}
-      onChange={e=>onChange(e.target.value)}/>
+    <LiveInput value={link} autoFocus={!link} placeholder={L('https://…  (video / referans linki)','https://…  (video / reference link)')}
+      onChange={onChange}/>
     {href&&<a className="lk-go" href={href} target="_blank" rel="noopener noreferrer" title={L('Linki aç','Open link')}>↗</a>}
     <button type="button" className="lk-x" title={L('Linki kaldır','Remove link')}
       onClick={()=>{onChange('');setOpen(false);}}>✕</button>
@@ -10846,7 +10884,7 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last}){
   const styles=exStylesFor(ex.pattern);
   const num=(lbl,k,opts,title,trLbl)=>(<label key={k}>{trLbl?L(trLbl,lbl):lbl}
     {opts?<SlotPick value={ex[k]} options={opts} onChange={v=>f(k,v)} title={title}/>
-         :<input value={ex[k]||''} onChange={e=>f(k,e.target.value)} placeholder="—" title={title}/>}
+         :<LiveInput value={ex[k]||''} onChange={v=>f(k,v)} placeholder="—" title={title}/>}
   </label>);
   /* Tagging the pair here also teaches the library: the exercise carries it into the
      next program instead of being re-tagged there. Changing the pattern clears a style
@@ -10942,7 +10980,7 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last}){
       </div>
       <div className="iv-linkrow"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></div>
       <div className="iv-noterow">
-        <label>{L('açıklama','description')}<input value={ex.description||''} onChange={e=>f('description',e.target.value)}
+        <label>{L('açıklama','description')}<LiveInput value={ex.description||''} onChange={v=>f('description',v)}
           placeholder={L('Açıklama / koçluk ipuçları (opsiyonel)…','Description / coaching cues (optional)…')}/></label>
       </div>
     </div>
@@ -11001,8 +11039,8 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
                 block says something different from the heading and from every other
                 block — which is the whole point of blocks that stand apart. */}
             <label className="iv-meta-f nm">{block?L('blok başlığı','block title'):L('seans','session')}
-              <input value={block?(block.sesName||''):session.name}
-                onChange={e=>{if(block&&blockUpd)blockUpd({sesName:e.target.value});else u({name:e.target.value});}}
+              <LiveInput value={block?(block.sesName||''):session.name}
+                onChange={v=>{if(block&&blockUpd)blockUpd({sesName:v});else u({name:v});}}
                 title={block?L('Bu bloğun kendi başlığı — boş bırakılırsa seans başlığı kullanılır','This block’s own title — left empty it uses the session heading'):L('Seans başlığı','Session title')}
                 placeholder={block?((session.name||'').trim()||L('Seans başlığı…','Session title…')):L('Seans başlığı…','Session title…')}/>
             </label>
@@ -11707,14 +11745,14 @@ function BallDrillEdRaw({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
   };
   const num=(lbl,trLbl,k,opts,title)=>(<label key={k}>{L(trLbl,lbl)}
     {opts?<SlotPick value={ex[k]} options={opts} onChange={v=>f(k,v)} title={title}/>
-         :<input value={ex[k]||''} onChange={e=>f(k,e.target.value)} placeholder="—" title={title}/>}
+         :<LiveInput value={ex[k]||''} onChange={v=>f(k,v)} placeholder="—" title={title}/>}
   </label>);
   return(<div className={'iv-slot bp-slot'+(empty?' off':'')}>
     <div className="iv-slot-main">
       <span className="iv-ss-tag on bp-tag">{tag}</span>
       <div className="iv-slot-nm">
-        <input className="bp-nm" list="bp-lib-names" value={ex.name||''} placeholder={L('Dril adı — ör. 3\'lü Şut Dönüşü','Drill name — e.g. 3-Man Shooting Rotation')}
-          onChange={e=>pick(e.target.value)}/>
+        <LiveInput className="bp-nm" list="bp-lib-names" value={ex.name||''} placeholder={L('Dril adı — ör. 3\'lü Şut Dönüşü','Drill name — e.g. 3-Man Shooting Rotation')}
+          onChange={pick}/>
       </div>
       <span className="iv-slotacts">
         <button type="button" onClick={()=>onMove(-1)} disabled={first} title={L('Yukarı taşı','Move up')}>↑</button>
@@ -11747,7 +11785,7 @@ function BallDrillEdRaw({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
         <DrillVideo ex={ex} onChange={p=>onChange({...ex,...p})}/>
         <div className="iv-noterow">
           <label>{L('koçluk noktaları','coaching points')}
-            <textarea className="bp-notes" value={ex.description||''} onChange={e=>f('description',e.target.value)}
+            <LiveTextarea className="bp-notes" value={ex.description||''} onChange={v=>f('description',v)}
               placeholder={L('Kurallar, ilerlemeler, vurgulanacak detaylar…','Rules, progressions, what to emphasise…')}/>
           </label>
         </div>
@@ -11847,8 +11885,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
       <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
         title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
-      <input className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
-        onChange={e=>onUpdate({...block,name:e.target.value})} title={L('Blok başlığı','Block title')}/>
+      <LiveInput className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
+        onChange={v=>onUpdate({...block,name:v})} title={L('Blok başlığı','Block title')}/>
       <span className="iv-blockcnt">{isBall
         ?L(`${exs.length} dril`,`${exs.length} drill${exs.length!==1?'s':''}`)
         :L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{!isBall&&groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
@@ -12164,6 +12202,7 @@ function RpeGauge({value,onChange}){
   /* Raw, unrounded position (1-10) while a drag is live; null the rest of the time, which
      is also what tells the rail to go back to animating between whole points. */
   const[raw,setRaw]=useState(null);
+  const sent=useRef(null);   // the last point handed upward, so a drag never sends one twice
   const v=sesRpeTarget({rpeTarget:value});
   const[lo,hi]=sesRpeRange({rpeTarget:value});
   const z=rpeZone(v);
@@ -12178,7 +12217,10 @@ function RpeGauge({value,onChange}){
     const p=posFrom(cx);if(p==null)return;
     setRaw(p);
     const nv=Math.round(p);
-    if(nv!==v)onChange(nv);
+    /* The marker follows the finger on its own state; writing the new point into the plan
+       is handed over as a transition, so a whole-app rebuild never lands between two
+       moves of the same drag. */
+    if(nv!==v&&nv!==sent.current){sent.current=nv;_liveT(()=>onChange(nv));}
   };
   /* The press must not also start a text selection or pick up the one already on the page.
      Chrome answers a press on selected content with a native drag-and-drop, and the
@@ -12199,7 +12241,7 @@ function RpeGauge({value,onChange}){
   const move=e=>{if(dragging.current)apply(e.clientX);};
   /* Ends the drag on release, on a cancelled pointer and on any other way the capture can
      be lost — whatever happens, the gauge is never left believing a finger is still down. */
-  const up=()=>{if(dragging.current){dragging.current=false;setRaw(null);}};
+  const up=()=>{if(dragging.current){dragging.current=false;setRaw(null);sent.current=null;}};
   const key=e=>{
     const d=(e.key==='ArrowLeft'||e.key==='ArrowDown')?-1:(e.key==='ArrowRight'||e.key==='ArrowUp')?1:0;
     if(!d)return;
@@ -12314,8 +12356,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           permanent field beside the one on the session's own line below — Enter or
           clicking away keeps the new name, Escape puts the old one back. */}
       {edNm
-        ?<input className="sbar-nmi" value={session.name||''} autoFocus placeholder={L('Seans başlığı…','Session title…')}
-          onChange={e=>u({name:e.target.value})}
+        ?<LiveInput className="sbar-nmi" value={session.name||''} autoFocus placeholder={L('Seans başlığı…','Session title…')}
+          onChange={v=>u({name:v})}
           onFocus={e=>e.target.select()}
           onClick={e=>e.stopPropagation()}
           onBlur={()=>endEdNm(false)}
@@ -22298,9 +22340,11 @@ const SLOT_REPS=['1','2','3','4','5','6','8','10','12','15','20'];
 const SLOT_RPES=['4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9','9.5','10'];
 const SLOT_SS=['A','B','C','D','E','F'];
 function SlotPick({value,options,onChange,title}){
-  const v=String(value==null?'':value);
+  /* Picked, not typed, but the same rule applies: the box shows the new number on the
+     next frame and the plan behind it is rebuilt as a transition. */
+  const[v,set]=useLiveValue(String(value==null?'':value),onChange);
   const opts=(v&&!options.includes(v))?[v,...options]:options;
-  return(<select value={v} onChange={e=>onChange(e.target.value)} title={title}>
+  return(<select value={v} onChange={e=>set(e.target.value)} title={title}>
     <option value="">—</option>
     {opts.map(o=><option key={o} value={o}>{o}</option>)}
   </select>);
