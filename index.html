@@ -1800,11 +1800,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .focus-search{width:100%;margin-bottom:4px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px}
 .focus-search:focus{outline:none;border-color:var(--muted)}
 
-/* ---- Session focus, three stages ------------------------------------------
+/* ---- Session focus, two stages --------------------------------------------
    The panel is one form that grows a step at a time: stage 2 is mounted the moment a
-   focus is ticked, stage 3 when a sub-focus is. Each arriving stage expands from nothing
-   and fades up — a short, flat curve, because this happens on every tick and an
-   animation the coach has to wait out is worse than none. */
+   focus is ticked. It expands from nothing and fades up — a short, flat curve, because
+   this happens on every tick and an animation the coach has to wait out is worse than
+   none. */
 .fx-dd{padding:0;display:flex;flex-direction:column}
 .fx-stage{padding:11px 12px 4px;border-top:1px solid var(--border);
   animation:fx-stage-in .26s cubic-bezier(.22,.9,.3,1) both}
@@ -1821,11 +1821,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .fx-stage-hd span{font-size:12px;font-weight:700;color:var(--text);letter-spacing:.01em}
 .fx-stage-hd i{font-style:normal;font-size:10.5px;color:var(--dim);margin-left:auto;text-align:right}
 /* Two columns of options — the lists are short enough to read whole, and a single tall
-   column pushed stage 3 off the bottom of the panel. */
+   column pushed stage 2 off the bottom of the panel. */
 .fx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 6px}
 @media (max-width:520px){.fx-grid{grid-template-columns:1fr}}
 /* A ticked option is marked by the colour of the focus family it belongs to, so the
-   three stages read as one chain rather than three unrelated checklists. */
+   two stages read as one chain rather than two unrelated checklists. */
 .fx-grid .focus-opt{padding:5px 8px;font-size:12.5px;gap:7px;transition:background .12s,color .12s}
 .fx-grid .focus-opt input[type=checkbox]{accent-color:var(--fo-c,var(--green,#46d6a0))}
 .fx-grid .focus-opt.on{color:var(--fo-c,var(--text));background:color-mix(in srgb,var(--fo-c,#46d6a0) 11%,transparent)}
@@ -3817,57 +3817,49 @@ const MODELS=[
 ];
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
 /* ---------------------------------------------------------------------------
-   SESSION FOCUS — three stages, asked in the order a coach actually decides.
+   SESSION FOCUS — two stages, asked in the order a coach actually decides.
 
      1. Focus      what quality are we developing?      (Strength, Speed, …)
      2. Sub-Focus  which capacity inside it?            (Max Strength, Acceleration, …)
-     3. Method     how are we going to train it?        (Barbell, Resisted Sprint, …)
 
-   Each stage is a multi-select, and each one only opens once the stage above it has an
-   answer — a sub-focus means nothing without the focus it belongs to, and the methods
-   worth offering depend on which focus is being trained. The options at stages 2 and 3
-   are the union of what the picked focuses offer, kept grouped under the focus they came
-   from so the list still reads as an answer to "which capacity, inside which quality".
+   How the session is trained is deliberately not a third stage here: the Training Method
+   field sits right below this one with its own, fuller taxonomy, and asking it twice in
+   two vocabularies only made the coach choose which answer counted.
+
+   Each stage is a multi-select, and stage 2 only opens once stage 1 has an answer — a
+   sub-focus means nothing without the focus it belongs to. Its options are the union of
+   what the picked focuses offer, kept grouped under the focus they came from so the list
+   still reads as an answer to "which capacity, inside which quality".
 
    The stage-1 values are the canonical ones — the load distribution, the template
-   categories and every saved session key off them, so they never change. `sub` and
-   `methods` widen a session's description without touching those keys. */
+   categories and every saved session key off them, so they never change. `sub` widens a
+   session's description without touching those keys. */
 const FOCUS_TREE=[
   {id:'Strength', tr:'Kuvvet', c:'#00ff7f',
-   sub:['Maximal Strength','Hypertrophy','Strength Endurance','Eccentric Strength','Isometric Strength','Unilateral Strength','Core Strength'],
-   met:['Barbell','Dumbbell','Kettlebell','Machine','Bodyweight','Isometric','Eccentric / Tempo','Accommodating Resistance (Bands / Chains)','Flywheel','Blood Flow Restriction','Cluster Sets','Velocity-Based']},
+   sub:['Maximal Strength','Hypertrophy','Strength Endurance','Eccentric Strength','Isometric Strength','Unilateral Strength','Core Strength']},
   {id:'Power', tr:'Güç', c:'#a3e635',
-   sub:['Strength-Speed','Speed-Strength','Explosive Strength','Reactive Strength','Rate of Force Development','Ballistic Power'],
-   met:['Olympic Lift','Olympic Derivative','Plyometric','Depth Jump / Shock','Medicine Ball','Ballistic (Jump / Throw)','Contrast','Complex','French Contrast','Band-Resisted Jump']},
+   sub:['Strength-Speed','Speed-Strength','Explosive Strength','Reactive Strength','Rate of Force Development','Ballistic Power']},
   {id:'Speed', tr:'Hız', c:'#c000ff',
-   sub:['Acceleration','Max Velocity','Deceleration','Change of Direction','Reactive Agility','Speed Endurance','Sprint Technique'],
-   met:['Sprint','Resisted Sprint (Sled)','Resisted Sprint (Band)','Assisted / Overspeed','Hill Sprint','Wicket / Technical Drill','Closed COD Drill','Open / Reactive Drill','Deceleration Drill']},
+   sub:['Acceleration','Max Velocity','Deceleration','Change of Direction','Reactive Agility','Speed Endurance','Sprint Technique']},
   {id:'Conditioning', tr:'Kondisyon', c:'#00ffd5',
-   sub:['Aerobic Capacity','Aerobic Power','Anaerobic Capacity','Anaerobic Power','Repeated Sprint Ability','Lactate Tolerance','Tempo / Extensive'],
-   met:['Continuous Run','Interval Run','Shuttle Run','HIIT','Sprint Interval Training','Small-Sided Game','Bike / Assault Bike','Rower','Sled Push / Drag','Circuit','Tempo Run']},
+   sub:['Aerobic Capacity','Aerobic Power','Anaerobic Capacity','Anaerobic Power','Repeated Sprint Ability','Lactate Tolerance','Tempo / Extensive']},
   {id:'Movement', tr:'Hareket', c:'#38bdf8',
-   sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception'],
-   met:['Dynamic Stretching','Static Stretching','PNF','Joint Mobility / CARs','Self-Myofascial Release','Band-Assisted','Isometric Hold','Unstable Surface','Nordic / Copenhagen','Corrective Drill']},
+   sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception']},
   {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
-   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage','Competition'],
-   met:['Ball Handling Drill','Shooting Drill','Finishing Drill','Passing Drill','1v1','2v2 / 3v3','5v5','Shell Drill','Walkthrough','Live Scrimmage']},
+   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage','Competition']},
   {id:'Recovery', tr:'Toparlanma', c:'#00bfff',
-   sub:['Active Recovery','Regeneration','Soft Tissue','Breathing / Parasympathetic','Mobility Flow'],
-   met:['Active Recovery','Pool / Hydrotherapy','Contrast Therapy','Compression','Massage / Soft Tissue','Breathing','Stretching Flow','Sauna']},
+   sub:['Active Recovery','Regeneration','Soft Tissue','Breathing / Parasympathetic','Mobility Flow']},
   {id:'Return to Play', tr:'Sahaya Dönüş', c:'#2dd4a7',
-   sub:['Reconditioning','Load Reintroduction','Return to Run','Return to Train','Return to Perform','Criteria-Based Progression'],
-   met:['Isolated Loading','Closed-Chain Progression','Linear Running Progression','COD Progression','On-Court Progression','Contact Progression','Criteria Testing']},
+   sub:['Reconditioning','Load Reintroduction','Return to Run','Return to Train','Return to Perform','Criteria-Based Progression']},
   {id:'Testing', tr:'Test', c:'#94a3b8',
-   sub:['Anthropometry','Strength Testing','Power / Jump Testing','Speed Testing','Aerobic Testing','Movement Screen','Asymmetry Profiling'],
-   met:['Force Plate','Jump Mat','Timing Gates','Radar / GPS','1RM / Rep Max','Isokinetic Dynamometer','Yo-Yo / 30-15','FMS / Screen','Anthropometric']},
+   sub:['Anthropometry','Strength Testing','Power / Jump Testing','Speed Testing','Aerobic Testing','Movement Screen','Asymmetry Profiling']},
 ];
 const SESSION_FOCUS=FOCUS_TREE.map(f=>f.id);
 const FOCUS_BY=FOCUS_TREE.reduce((m,f)=>(m[f.id]=f,m),{});
-/* Every sub-focus / method, mapped back to the focus it belongs to — so a session that
-   carries a sub-focus whose focus was later unticked can still be read, and so the
-   pickers can group a flat stored list back under its headings. */
+/* Every sub-focus, mapped back to the focus it belongs to — so a session that carries a
+   sub-focus whose focus was later unticked can still be read, and so the picker can group
+   a flat stored list back under its headings. */
 const SUBFOCUS_OWNER=FOCUS_TREE.reduce((m,f)=>{f.sub.forEach(s=>{if(!m[s])m[s]=f.id;});return m;},{});
-const FOCUS_METHOD_OWNER=FOCUS_TREE.reduce((m,f)=>{f.met.forEach(s=>{if(!m[s])m[s]=f.id;});return m;},{});
 /* The focus list used to be one flat set of eighteen values; the tree's stage 1 is nine.
    Every retired value maps onto the focus that now owns it, plus — where the old value
    said something finer — the sub-focus it became, so nothing a coach wrote is lost.
@@ -3908,13 +3900,11 @@ const sesSubFocus=s=>{
   if(Array.isArray(s?.sub))return s.sub.filter(x=>SUBFOCUS_OWNER[x]);
   return uniq(sesFocusRaw(s).map(f=>FOCUS_SUB_FROM_LEGACY[f]).filter(Boolean));
 };
-/* Method (stage 3). Stored as `focusMethods: []` — kept apart from the older, separate
-   `methods` field (the Training Method box further down the panel), which is its own
-   long taxonomy and is neither read nor written here. */
-const sesFocusMethods=s=>Array.isArray(s?.focusMethods)?s.focusMethods.filter(x=>FOCUS_METHOD_OWNER[x]):[];
-/* What the whole three-stage answer reads as on one line — the trigger's summary, the
-   printed sheet's focus line, and anywhere else a session has to say what it trains. */
-const sesFocusLine=s=>[...sesFocus(s),...sesSubFocus(s),...sesFocusMethods(s)].join(', ');
+/* What the whole answer reads as on one line — the trigger's summary, the printed sheet's
+   focus line, and anywhere else a session has to say what it trains. HOW it is trained is
+   not part of it: that is the Training Method box further down the panel, its own field
+   with its own taxonomy (`methods`). */
+const sesFocusLine=s=>[...sesFocus(s),...sesSubFocus(s)].join(', ');
 /* Training methods — the means used to deliver the session focus. Grouped the way the
    S&C literature does (Zatsiorsky/Verkhoshansky strength means, Buchheit/Laursen
    conditioning formats, sprint & mobility means) so a coach can tag *how* a session was
@@ -4201,7 +4191,7 @@ const isBallEx=e=>!!(e&&(e.ball||e.court));
 const SESS=(p={})=>{const bl=(p.bl||[]).map(n=>BLK(n));
   return{id:uid(),name:p.name||'New Workout',time:p.time||'17:00',loadType:p.loadType||'Mechanical load',
     purpose:p.purpose||'',focus:Array.isArray(p.focus)?p.focus:(p.purpose?sesFocus({purpose:p.purpose}):[]),
-    sub:Array.isArray(p.sub)?p.sub:[],focusMethods:Array.isArray(p.focusMethods)?p.focusMethods:[],
+    sub:Array.isArray(p.sub)?p.sub:[],
     methods:Array.isArray(p.methods)?p.methods:[],region:p.region||'',duration:p.duration||60,sRPE:'',au:'',color:'',blocks:bl,notes:'',planNote:'',athletes:[],sourceId:null};};
 const EDAY=date=>({date,sessions:[],dailyNotes:''});
 const makeTest=(period='pre')=>({
@@ -5629,7 +5619,7 @@ function saveSessionAsTemplate(session){return _saveSessionAsTemplate?_saveSessi
    new session/block ids, sRPE/au/athletes/sourceId reset. */
 function sessionFromTemplate(t){const s=(t&&t.session)||{};
   return{id:uid(),name:t.name||'Workout',time:s.time||'17:00',loadType:s.loadType||'Mechanical load',
-    purpose:s.purpose||'',focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s),
+    purpose:s.purpose||'',focus:sesFocus(s),sub:sesSubFocus(s),
     methods:sesMethods(s),region:sesRegion(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     /* `kind` rides along with the block, so a ball-practice block saved as a template
        comes back as one instead of turning into an S&C grid on the way out. */
@@ -10964,14 +10954,15 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
             dropdowns and wear the meta box's border, so the row still reads as one strip of
             fields rather than two different controls. */}
         <div className="iv-meta-grp">
-          {/* One field, three stages — focus, then the capacity inside it, then how it is
-              trained. `purpose` keeps carrying the whole answer as text: it is the legacy
-              single-value field the printout and older saved sessions still read. */}
+          {/* One field, two stages — the focus, then the capacity inside it. HOW the session
+              is trained is not asked here: that is the Training Method box at the foot of
+              this panel, which has asked it all along. `purpose` keeps carrying the answer
+              as text: it is the legacy single-value field the printout and older saved
+              sessions still read. */}
           <div className="iv-meta-f pp">{L('seans odağı','session focus')}
-            <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)} methods={sesFocusMethods(session)}
-              onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session),...sesFocusMethods(session)].join(', ')})}
-              onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr,...sesFocusMethods(session)].join(', ')})}
-              onMethodsChange={arr=>u({focusMethods:arr,purpose:[...sesFocus(session),...sesSubFocus(session),...arr].join(', ')})}/>
+            <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)}
+              onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
+              onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/>
           </div>
           <div className="iv-meta-f pp">{L('bölge','region')}
             <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
@@ -11850,23 +11841,26 @@ function useDDOutside(refs,open,close){
   },[open,close]);   // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/* ---- Session focus, in three stages ---------------------------------------
-   One control, three questions, asked in the order the answer is actually arrived at:
+/* ---- Session focus, in two stages -----------------------------------------
+   One control, two questions, asked in the order the answer is actually arrived at:
 
      1  Focus      what quality are we developing?
      2  Sub-Focus  which capacity inside it?
-     3  Method     how are we going to train it?
 
-   Nothing is asked before it can be answered. Stage 2 does not exist until a focus is
-   ticked, and stage 3 not until a sub-focus is — an empty panel of methods with no
-   capacity to attach them to is a question about nothing. Ticking the first focus slides
-   stage 2 in under it; the stages arrive and leave on a short height-and-fade transition
-   rather than snapping, so the panel reads as one form growing a step at a time.
+   It asked a third — how are we training it — and that was one question too many: the
+   panel already sits directly above a Training Method field with its own, longer taxonomy,
+   so the coach was being asked the same thing twice, in two vocabularies, and had to
+   scroll past a wall of methods to reach Done. This control answers WHAT the session
+   trains; the box below it answers HOW.
 
-   Every stage is multi-select, and the options at stages 2 and 3 are the union of what
-   the ticked focuses offer, kept under the heading of the focus they belong to. Unticking
-   a focus takes its sub-focuses and methods with it: a method left behind by the focus
-   that justified it is not a record of anything. */
+   Nothing is asked before it can be answered: stage 2 does not exist until a focus is
+   ticked. Ticking the first focus slides it in underneath on a short height-and-fade
+   transition rather than snapping, so the panel reads as one form growing a step at a time.
+
+   Both stages are multi-select, and stage 2's options are the union of what the ticked
+   focuses offer, kept under the heading of the focus they belong to. Unticking a focus
+   takes its sub-focuses with it: a capacity left behind by the quality that justified it
+   is not a record of anything. */
 /* Both of these are declared HERE rather than inside FocusSelect. Declared in the render
    body they were a brand-new component type on every render, so React threw the whole
    panel away and built it again — and `fx-stage-in` replayed from clip-path:inset(0 0 100%)
@@ -11878,14 +11872,14 @@ const FxOpt=({v,on,tog,c})=>(
     <span>{exLabel(v)}</span>
   </label>);
 /* A stage, with the heading that says which question it is answering. `n` drives the
-   step badge and the stagger, so the three panels arrive in reading order. */
+   step badge and the stagger, so the panels arrive in reading order. */
 const FxStage=({n,title,hint,children})=>(
   <div className="fx-stage" style={{'--fx-i':n}}>
     <div className="fx-stage-hd"><b>{n}</b><span>{title}</span><i>{hint}</i></div>
     {children}
   </div>);
 
-function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,placeholder}){
+function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
   const[open,setOpen]=useState(false);
   const ref=useRef(null),ddRef=useRef(null);
   const close=useCallback(()=>setOpen(false),[]);
@@ -11894,11 +11888,10 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
 
   const sel=Array.isArray(value)?value:[];
   const subSel=Array.isArray(sub)?sub:[];
-  const metSel=Array.isArray(methods)?methods:[];
   /* The focuses the panel is built from: what is ticked, in FOCUS_TREE order. A stored
      value the tree no longer knows is dropped here rather than drawn as an empty group. */
   const active=FOCUS_TREE.filter(f=>sel.includes(f.id));
-  const stage=active.length===0?1:(subSel.length===0?2:3);
+  const stage=active.length===0?1:2;
   /* A stage that opens below the fold of a panel this tall has not really opened. When a
      new one arrives, the panel scrolls just far enough to show it — `nearest`, so a stage
      already in view is left exactly where it is. */
@@ -11915,25 +11908,15 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
   const toggleFocus=f=>{
     if(!sel.includes(f)){onChange([...sel,f]);return;}
     // Dropping a focus drops what hung off it — unless another ticked focus offers the
-    // same sub-focus or method, in which case it is still justified and stays.
+    // same sub-focus, in which case it is still justified and stays.
     const rest=sel.filter(x=>x!==f);
     onChange(rest);
     const keptSub=subSel.filter(s=>rest.includes(SUBFOCUS_OWNER[s]));
     if(keptSub.length!==subSel.length)onSubChange(keptSub);
-    const keptMet=metSel.filter(m=>rest.includes(FOCUS_METHOD_OWNER[m]));
-    if(keptMet.length!==metSel.length)onMethodsChange(keptMet);
   };
-  const toggleSub=s=>{
-    if(subSel.includes(s)){
-      const rest=subSel.filter(x=>x!==s);
-      onSubChange(rest);
-      // The last sub-focus going takes stage 3 with it, so its methods go too.
-      if(!rest.length&&metSel.length)onMethodsChange([]);
-    }else onSubChange([...subSel,s]);
-  };
-  const toggleMet=m=>onMethodsChange(metSel.includes(m)?metSel.filter(x=>x!==m):[...metSel,m]);
+  const toggleSub=s=>onSubChange(subSel.includes(s)?subSel.filter(x=>x!==s):[...subSel,s]);
 
-  const summary=[...sel,...subSel,...metSel].map(exLabel);
+  const summary=[...sel,...subSel].map(exLabel);
 
   return(<div ref={ref} className="focus-sel">
     <button type="button" className={`focus-trig${open?' open':''}`} onClick={()=>setOpen(o=>!o)}
@@ -11948,9 +11931,9 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
             {FOCUS_TREE.map(f=><FxOpt key={f.id} v={f.id} c={f.c} on={sel.includes(f.id)} tog={toggleFocus}/>)}
           </div>
         </FxStage>
-        {/* Stage 2 and 3 are mounted only once they have something to ask, and animate in
-            from nothing — the height transition is what makes the panel read as one form
-            unfolding rather than three that blink into place. */}
+        {/* Stage 2 is mounted only once it has something to ask, and animates in from
+            nothing — the height transition is what makes the panel read as one form
+            unfolding rather than two that blink into place. */}
         {stage>=2&&<FxStage n={2} title={L('Alt Odak','Sub-Focus')} hint={L('Hangi kapasite?','Which capacity?')}>
           {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
             <div className="fx-fam-hd">{exLabel(f.id)}</div>
@@ -11959,21 +11942,12 @@ function FocusSelect({value,sub,methods,onChange,onSubChange,onMethodsChange,pla
             </div>
           </div>)}
         </FxStage>}
-        {stage>=3&&<FxStage n={3} title={L('Metot','Method')} hint={L('Nasıl çalışıyoruz?','How are we training it?')}>
-          {active.map(f=><div key={f.id} className="fx-fam" style={{'--fo-c':f.c}}>
-            <div className="fx-fam-hd">{exLabel(f.id)}</div>
-            <div className="fx-grid">
-              {f.met.map(m=><FxOpt key={m} v={m} c={f.c} on={metSel.includes(m)} tog={toggleMet}/>)}
-            </div>
-          </div>)}
-        </FxStage>}
         <div className="fx-foot">
           <span>{stage===1
             ?L('Bir odak seç — alt odak sorusu altında açılır.','Pick a focus — the sub-focus question opens under it.')
-            :stage===2?L('Bir alt odak seç — metot sorusu altında açılır.','Pick a sub-focus — the method question opens under it.')
-            :L(`${sel.length} odak · ${subSel.length} alt odak · ${metSel.length} metot`,`${sel.length} focus · ${subSel.length} sub-focus · ${metSel.length} method`)}</span>
+            :L(`${sel.length} odak · ${subSel.length} alt odak`,`${sel.length} focus · ${subSel.length} sub-focus`)}</span>
           {summary.length>0&&<button type="button" className="fx-clear"
-            onClick={()=>{onChange([]);onSubChange([]);onMethodsChange([]);}}>{L('Temizle','Clear')}</button>}
+            onClick={()=>{onChange([]);onSubChange([]);}}>{L('Temizle','Clear')}</button>}
           <button type="button" className="fx-done" onClick={close}>{L('Bitti','Done')}</button>
         </div>
       </div>,document.body)}
@@ -12502,7 +12476,7 @@ function TemplatesView({data,setData}){
   const[copiedId,setCopiedId]=useState(null);
   const patch=(id,p)=>setData(prev=>({...prev,templates:(prev.templates||[]).map(t=>t.id===id?{...t,...p}:t)}));
   const addTpl=()=>{const s=SESS();const t={id:uid(),name:L('Yeni Şablon','New Template'),
-    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,sub:s.sub,focusMethods:s.focusMethods,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
+    session:{time:s.time,loadType:s.loadType,purpose:s.purpose,focus:s.focus,sub:s.sub,methods:s.methods,region:s.region,duration:s.duration,color:'',blocks:s.blocks,notes:'',planNote:''}};
     setTemplates([t,...templates]);setEditId(t.id);};
   const delTpl=id=>{if(confirm(L('Bu şablon silinsin mi?','Delete this template?'))){setTemplates(templates.filter(t=>t.id!==id));if(editId===id)setEditId(null);}};
   const dupTpl=t=>{const c={...t,id:uid(),name:(t.name||L('Şablon','Template'))+L(' (kopya)',' (copy)'),session:JSON.parse(JSON.stringify(t.session||{}))};setTemplates([c,...templates]);setEditId(c.id);};
@@ -12556,8 +12530,8 @@ function TemplatesView({data,setData}){
     return{id:'tpl_'+editing.id,sRPE:'',au:'',athletes:[],sourceId:null,time:'17:00',loadType:'Mechanical load',purpose:'',duration:60,color:'',blocks:[],notes:'',planNote:'',methods:[],region:'',...s,name:editing.name||'',
       /* Read through the same three accessors the session editor writes with, so a
          template stored in the old flat vocabulary opens in the new one. */
-      focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s)};})():null;
-  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),sub:sesSubFocus(ns),focusMethods:sesFocusMethods(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
+      focus:sesFocus(s),sub:sesSubFocus(s)};})():null;
+  const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),sub:sesSubFocus(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
     <div className="ex-top">
       <div><h1 className="ex-h1">{L('Şablonlar','Templates')}</h1>
@@ -20755,33 +20729,15 @@ const EX_TERM_TR={
   'Anthropometry':'Antropometri','Strength Testing':'Kuvvet Testi','Power / Jump Testing':'Güç / Sıçrama Testi',
   'Speed Testing':'Sürat Testi','Aerobic Testing':'Aerobik Test','Movement Screen':'Hareket Taraması',
   'Asymmetry Profiling':'Asimetri Profillemesi',
-  /* --- stage 3, method --- */
-  'Barbell':'Barbell','Dumbbell':'Dambıl','Kettlebell':'Kettlebell','Machine':'Makine','Bodyweight':'Vücut Ağırlığı',
-  'Eccentric / Tempo':'Eksantrik / Tempo','Accommodating Resistance (Bands / Chains)':'Değişken Direnç (Lastik / Zincir)',
-  'Flywheel':'Flywheel','Blood Flow Restriction':'Kan Akımı Kısıtlama','Cluster Sets':'Küme Setler',
-  'Velocity-Based':'Hız Temelli','Olympic Lift':'Olimpik Halter','Olympic Derivative':'Olimpik Türev',
-  'Depth Jump / Shock':'Derinlik Sıçraması / Şok','Medicine Ball':'Sağlık Topu','Ballistic (Jump / Throw)':'Balistik (Sıçrama / Atış)',
-  'Contrast':'Kontrast','Complex':'Kompleks','French Contrast':'Fransız Kontrast','Band-Resisted Jump':'Lastik Dirençli Sıçrama',
-  'Sprint':'Sprint','Resisted Sprint (Sled)':'Dirençli Sprint (Kızak)','Resisted Sprint (Band)':'Dirençli Sprint (Lastik)',
-  'Assisted / Overspeed':'Destekli / Aşırı Hız','Hill Sprint':'Yokuş Sprinti','Wicket / Technical Drill':'Wicket / Teknik Drill',
-  'Closed COD Drill':'Kapalı Yön Değiştirme Drilli','Open / Reactive Drill':'Açık / Reaktif Drill','Deceleration Drill':'Yavaşlama Drilli',
-  'Continuous Run':'Sürekli Koşu','Interval Run':'İnterval Koşu','Shuttle Run':'Mekik Koşusu','HIIT':'HIIT',
-  'Sprint Interval Training':'Sprint İnterval Antrenmanı','Bike / Assault Bike':'Bisiklet / Assault Bike','Rower':'Kürek',
-  'Sled Push / Drag':'Kızak İtme / Çekme','Circuit':'Devre','Tempo Run':'Tempo Koşusu',
-  'Dynamic Stretching':'Dinamik Germe','Static Stretching':'Statik Germe','PNF':'PNF','Joint Mobility / CARs':'Eklem Hareketliliği / CARs',
-  'Self-Myofascial Release':'Kendi Kendine Miyofasyal Gevşetme','Band-Assisted':'Lastik Destekli','Isometric Hold':'İzometrik Bekleme',
-  'Unstable Surface':'Dengesiz Zemin','Nordic / Copenhagen':'Nordic / Copenhagen','Corrective Drill':'Düzeltici Drill',
-  'Ball Handling Drill':'Top Hakimiyeti Drilli','Shooting Drill':'Şut Drilli','Finishing Drill':'Bitiriş Drilli',
-  'Passing Drill':'Pas Drilli','1v1':'1v1','2v2 / 3v3':'2v2 / 3v3','5v5':'5v5','Shell Drill':'Shell Drill',
-  'Walkthrough':'Yürüyerek Anlatım','Live Scrimmage':'Canlı Çift Kale',
-  'Pool / Hydrotherapy':'Havuz / Hidroterapi','Contrast Therapy':'Kontrast Terapi','Compression':'Kompresyon',
-  'Massage / Soft Tissue':'Masaj / Yumuşak Doku','Breathing':'Nefes','Stretching Flow':'Germe Akışı','Sauna':'Sauna',
-  'Isolated Loading':'İzole Yükleme','Closed-Chain Progression':'Kapalı Zincir İlerlemesi',
-  'Linear Running Progression':'Düz Koşu İlerlemesi','COD Progression':'Yön Değiştirme İlerlemesi',
-  'On-Court Progression':'Sahada İlerleme','Contact Progression':'Temas İlerlemesi','Criteria Testing':'Kriter Testi',
-  'Force Plate':'Kuvvet Platformu','Jump Mat':'Sıçrama Matı','Timing Gates':'Fotosel','Radar / GPS':'Radar / GPS',
-  '1RM / Rep Max':'1TM / Tekrar Maks','Isokinetic Dynamometer':'İzokinetik Dinamometre','Yo-Yo / 30-15':'Yo-Yo / 30-15',
-  'FMS / Screen':'FMS / Tarama','Anthropometric':'Antropometrik',
+  /* Terms that arrived with the retired third stage of the focus picker and are still
+     spoken by other lists — exercise types, ball-practice categories, training means.
+     The rest of that vocabulary went with the stage. */
+  'Accommodating Resistance (Bands / Chains)':'Değişken Direnç (Lastik / Zincir)',
+  'Blood Flow Restriction':'Kan Akımı Kısıtlama','Cluster Sets':'Küme Setler','Olympic Lift':'Olimpik Halter',
+  'Medicine Ball':'Sağlık Topu','French Contrast':'Fransız Kontrast','Sprint':'Sprint',
+  'Shuttle Run':'Mekik Koşusu','Dynamic Stretching':'Dinamik Germe','Static Stretching':'Statik Germe',
+  'Joint Mobility / CARs':'Eklem Hareketliliği / CARs',
+  'Self-Myofascial Release':'Kendi Kendine Miyofasyal Gevşetme','1v1':'1v1','5v5':'5v5',
   /* --- Ball practice library --- */
   'Ball Practice':'Top Çalışması','Strength & Conditioning':'Kuvvet ve Kondisyon',
   'Ball Handling':'Top Hakimiyeti','Shooting':'Şut','Finishing':'Bitiriş','Passing':'Pas',
@@ -22128,11 +22084,11 @@ function planToSession(plan,src,dateKey,srcKey){
   const dur=Number(t(m.duration));
   const ses={id:uid(),name:t(m.name)||src.name||'Individual Program',time:t(m.time)||src.time||'17:00',
     loadType:src.loadType||'Mechanical load',
-    /* The capacity and the method the source session named ride along with its focus:
-       an athlete's copy of a session should say what it trains in the same three stages
-       the team's does, not just the first of them. */
-    sub:sesSubFocus(src),focusMethods:sesFocusMethods(src),
-    purpose:[...focus,...sesSubFocus(src),...sesFocusMethods(src)].join(', '),focus,
+    /* The capacity the source session named rides along with its focus: an athlete's copy
+       of a session should say what it trains in both stages the team's does, not just the
+       first of them. */
+    sub:sesSubFocus(src),
+    purpose:[...focus,...sesSubFocus(src)].join(', '),focus,
     methods:Array.isArray(m.methods)?m.methods:sesMethods(src),
     region:m.region!=null?t(m.region):sesRegion(src),
     duration:(dur>0?dur:(src.duration||60)),
@@ -23679,7 +23635,7 @@ function App(){
     const s=JSON.parse(JSON.stringify(session||{}));
     const tpl={id:uid(),name:(s.name||'').trim()||'Untitled Workout',
       session:{time:s.time||'17:00',loadType:s.loadType||'Mechanical load',purpose:s.purpose||'',
-        focus:sesFocus(s),sub:sesSubFocus(s),focusMethods:sesFocusMethods(s),methods:sesMethods(s),region:sesRegion(s),
+        focus:sesFocus(s),sub:sesSubFocus(s),methods:sesMethods(s),region:sesRegion(s),
         duration:s.duration||60,color:s.color||'',
         // `kind` kept, so a ball-practice block saved as a template comes back as one.
         blocks:(s.blocks||[]).map(b=>({...b,id:uid(),kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
