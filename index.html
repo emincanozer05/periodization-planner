@@ -586,23 +586,42 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw.inline.edit{width:auto}
 .dw.inline .dw-layout{overflow:visible;flex-wrap:wrap}
 .dw.inline .dw-b{overflow:visible;flex:1 1 420px;min-width:0}
-.dw.inline .dw-left-panel{width:100%;max-width:520px;overflow:visible;border-right:0;border-bottom:1px solid var(--border)}
-@media(min-width:1100px){.dw.inline .dw-left-panel{width:440px;max-width:440px;border-right:1px solid var(--border);border-bottom:0}}
-.dw-left-panel{width:520px;flex:none;border-right:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
+/* What the session trains, down the right of the drawer — read off the exercises on the
+   left rather than picked, so it is a summary and gets a summary's width. */
+.dw.inline .dw-right-panel{width:100%;max-width:100%;overflow:visible;border-left:0;border-top:1px solid var(--border)}
+@media(min-width:1100px){.dw.inline .dw-right-panel{width:340px;max-width:340px;border-left:1px solid var(--border);border-top:0}}
+.dw-right-panel{width:340px;flex:none;border-left:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
+/* Too narrow to stand two columns side by side: the summary drops under the exercises and
+   the layout itself becomes the scroller, so neither column is squeezed to a sliver. */
+@media(max-width:860px){
+  .dw-layout{flex-wrap:wrap;overflow-y:auto;overscroll-behavior:contain}
+  .dw-b{flex:1 1 100%;overflow:visible}
+  .dw-right-panel{width:100%;flex:1 1 100%;border-left:0;border-top:1px solid var(--border);overflow:visible}
+}
+.tc-wrap{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.tc-box{border:1px solid var(--border);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+  padding:10px 12px 12px;display:flex;flex-direction:column;min-height:0}
+.tc-sec{margin-top:10px}
+.tc-sec:first-of-type{margin-top:4px}
+.tc-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.tc-focus{display:flex;flex-wrap:wrap;gap:5px}
+.tc-chip{font-size:11px;font-weight:600;color:var(--text2);background:rgba(255,255,255,.04);
+  border:1px solid var(--border);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.tc-chip.on{color:var(--text);border-color:var(--border2)}
+.tc-pats{display:flex;flex-wrap:wrap;gap:5px}
+/* One group per block, so the box says WHICH block trains what rather than melting every
+   block of the session into one list. */
+.tc-blk{margin-top:8px}
+.tc-blk:first-child{margin-top:0}
+.tc-blk-nm{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.tc-empty{font-size:11px;color:var(--dim)}
 .dw-panel-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin:10px 0 6px}
 .dw-panel-lbl:first-child{margin-top:0}
 .dw-move-chip{display:flex;align-items:center;gap:7px;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--panel);font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;transition:border-color .15s}
 .dw-move-chip .mc-dot{width:7px;height:7px;border-radius:50%;flex:none;opacity:.9}
 .dw-move-chip .mc-count{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
 /* Interactive muscle / movement model (manual, session-scoped) */
-.mm-wrap{display:flex;flex-direction:column;flex:1;min-height:0}
-.mm-chips{display:flex;flex-wrap:wrap;gap:5px}
-.mm-chips-col{flex-direction:column;align-items:stretch}
-.mm-chips-col .mm-chip{text-align:center}
-.mm-chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;color:var(--text2);background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;transition:all .16s ease;letter-spacing:.03em;line-height:1.2}
-.mm-chip:hover{border-color:var(--border2);color:var(--text);transform:translateY(-1px);background:rgba(255,255,255,.06)}
-.mm-chip.on{background:transparent;border-color:#0094ff;color:#0094ff;font-weight:700;box-shadow:0 0 0 1px rgba(0,148,255,.35)}
-.mm-chip.on:hover{background:rgba(0,148,255,.08);color:#0094ff}
 .mm-bodies{display:flex;gap:6px;justify-content:center;margin-top:4px}
 .mm-fig{flex:1;min-width:0;text-align:center}
 .mm-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;color:var(--dim);letter-spacing:.08em;margin-bottom:2px}
@@ -614,21 +633,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mm-musc.on path{fill:#0094ff;stroke:#0080dc;filter:drop-shadow(0 0 4px rgba(0,148,255,.55))}
 .mm-musc.on:hover path{fill:#5cb8ff}
 .mm-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);padding:2px 0 4px}
-.mm-planes{display:flex;flex-direction:column;gap:6px}
-.mm-plane-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:linear-gradient(150deg,rgba(255,255,255,.035),rgba(255,255,255,.008));border:1px solid var(--border);border-radius:11px;padding:7px 12px 7px 14px;position:relative;overflow:hidden;transition:border-color .16s ease,background .16s ease}
-.mm-plane-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pat-c,var(--accent));opacity:.9}
-.mm-plane-row:hover{border-color:var(--border2)}
-.mm-plane-pat{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;font-weight:700;color:var(--text);min-width:126px;letter-spacing:.02em}
-.mm-chip.sm{font-size:10.5px;padding:4px 11px;border-radius:999px}
 .mm-notes{flex:1;width:100%;min-height:64px;box-sizing:border-box;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;line-height:1.5;resize:vertical;outline:none;transition:border-color .15s ease;font-weight:400 !important}
 .mm-notes::placeholder{color:rgba(255,255,255,.25);font-weight:400}
 .mm-notes:focus{border-color:var(--accent)}
-.mm-plane-row .mm-chip.on{background:rgba(255,255,255,.05);border-color:var(--pat-c,#0094ff);color:var(--pat-c,#0094ff);box-shadow:inset 0 0 0 1px var(--pat-c,#0094ff)}
-.mm-plane-row .mm-chip.on:hover{background:rgba(255,255,255,.09);color:var(--pat-c,#0094ff)}
-.mm-wrap.ro .mm-musc,.mm-wrap.ro .mm-chip{cursor:default}
-.mm-wrap.ro .mm-musc:hover path{fill:#3b424c;stroke:#5b6470}
-.mm-wrap.ro .mm-musc.on:hover path{fill:#0094ff;stroke:#0080dc}
-.mm-wrap.ro .mm-chip:hover{border-color:var(--border);color:var(--text2)}
 /* Calendar session hover tooltip */
 .ses-tooltip{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#0e1117;border:1px solid var(--border2);border-radius:9px;padding:8px 11px;z-index:500;min-width:170px;max-width:240px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.8);animation:tipIn .12s ease-out}
 @keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(3px)}}
@@ -1168,16 +1175,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .sess-card{margin-bottom:14px}
 .sess-card:last-child{margin-bottom:0}
 /* Color picker swatches inside SessEd */
-/* One strip under the session's own line: what the session trains on the left, the card
-   colour on the right. The colour picker keeps its natural width and the pattern summary
-   takes whatever is left; below 900px they stack, summary first. */
+/* One strip inside every block, directly above its exercises: what the block trains on the
+   left — read off those exercises, never ticked — and the session's card colour on the
+   right. The colour picker keeps its natural width and the pattern summary takes whatever
+   is left; below 900px they stack, summary first. */
 .sess-strip{display:flex;align-items:flex-start;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+/* Inside the details panel it is the full width of the row and the last thing in it, so
+   it needs no bottom margin of its own — the panel's padding is the gap to the slots. */
+.sess-strip.blk-strip{flex:1 1 100%;min-width:0;margin:2px 0 0;padding-top:9px;border-top:1px solid var(--border)}
 .sess-strip-l{flex:1 1 320px;min-width:0}
 .sess-strip-r{flex:0 0 auto;margin-left:auto}
 .sess-pat-row{display:flex;flex-wrap:wrap;gap:6px}
+/* Each chip wears its own pattern's colour — the same colour that pattern has in the
+   distribution pies — so a block is recognised by its shape before it is read. */
 .sess-pat{display:inline-flex;align-items:baseline;gap:6px;padding:5px 10px;border-radius:8px;
-  background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);font-size:11.5px;white-space:nowrap}
-.sess-pat b{font-weight:700;color:var(--text)}
+  background:rgba(255,255,255,.04);border:1px solid var(--pat-c,var(--border2));font-size:11.5px;white-space:nowrap}
+.sess-pat b{font-weight:700;color:var(--pat-c,var(--text))}
 .sess-pat i{font-style:normal;color:var(--text2);font-size:11px}
 .sess-pat-empty{font-size:11.5px;color:var(--dim);padding:5px 0}
 .color-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -3072,7 +3085,9 @@ header{background:var(--bg2)!important}
    changed exercise is — the sheet says at a glance what no longer matches the source. */
 .iv-meta-f.edited input{border-color:rgba(245,158,11,.5)}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
-.iv-block-hd{background:var(--elevated);padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Black, so the bar that carries a block's title reads as the divider between one block
+   and the next rather than as one more shade of panel. */
+.iv-block-hd{background:#000;padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 160px;min-width:0;max-width:340px;background:transparent;border:1px solid transparent;border-radius:6px;
@@ -8932,12 +8947,42 @@ function exTagsFromLib(it,row){
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
 const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Full Body':'Full Body','Accessory':'Accessory'};
-/* What a session says it trains: the patterns the coach ticked on its own Movements &
-   Patterns panel, and nothing else. It is a statement about the day, made and changed by
-   hand — the exercises written into the session do not add to it or take from it, so the
-   strip keeps saying exactly what was picked. Ordered as the panel lists them, each with
-   the executions ticked for it. */
+/* What a set of exercise rows trains, read off the rows themselves. Every row already
+   carries the pattern it trains and how that pattern is executed; a row nobody tagged is
+   looked up in the shared library by name, exactly the way the load distribution resolves
+   one. Ordered as the Movements & Patterns panel lists them, each with the executions its
+   own rows were written in — so a block that is all hinges and presses says so without
+   anybody ticking a box, and two blocks of one session can say two different things. */
+function exercisePatterns(list){
+  const rows=(list||[]).filter(e=>e&&(String(e.pattern||'').trim()||String(e.name||'').trim()));
+  if(!rows.length)return[];
+  const lib=libPatternIndex();
+  const found=new Map();
+  rows.forEach(e=>{
+    let pat=String(e.pattern||'').trim(),st=String(e.plane||'').trim();
+    /* A tag the coach set always wins; the library only fills in what is missing, and its
+       execution is only borrowed when the pattern agrees. */
+    const hit=(!pat||!st)?lib.get(String(e.name||'').trim().toLowerCase()):null;
+    if(hit){
+      if(!pat){pat=hit.pattern;st=st||hit.style;}
+      else if(pat===hit.pattern&&!st)st=hit.style;
+    }
+    if(!pat||EX_PATTERNS.indexOf(pat)<0)return;
+    const planes=found.get(pat)||[];
+    if(st&&planes.indexOf(st)<0)planes.push(st);
+    found.set(pat,planes);
+  });
+  return EX_PATTERNS.filter(p=>found.has(p)).map(p=>({pattern:p,planes:found.get(p)}));
+}
+/* One block's own patterns — what the exercises written into THIS block train. */
+const blockPatterns=block=>exercisePatterns((block&&block.exercises)||[]);
+/* What a session trains: its own exercises, gathered over every block. The patterns a
+   coach ticked by hand stay as the fallback, so a session written before the exercises
+   started answering the question still says what it was told to say. */
 function sessionPatterns(session){
+  const auto=exercisePatterns(((session&&session.blocks)||[])
+    .reduce((a,b)=>a.concat((b&&b.exercises)||[]),[]));
+  if(auto.length)return auto;
   const sel=(session&&session.selPatterns)||[];
   const pls=(session&&session.selPlanes&&!Array.isArray(session.selPlanes))?session.selPlanes:{};
   const out=[];
@@ -8971,29 +9016,59 @@ function MMFigure({label,data,front,sel,onToggle}){
     </svg>
   </div>);
 }
-function MuscleModel({session,onPatch,readOnly}){
-  const pats=session.selPatterns||[];
-  const pls=(session.selPlanes&&!Array.isArray(session.selPlanes))?session.selPlanes:{};
-  // Toggling a plane also keeps selPatterns in sync (a pattern is "on" while it
-  // has at least one plane selected) so the load distribution still works.
-  const togPlane=(pat,plane)=>{if(readOnly)return;
-    const cur=pls[pat]||[];
-    const next=cur.includes(plane)?cur.filter(x=>x!==plane):[...cur,plane];
-    const np={...pls,[pat]:next};
-    let nextPats;
-    if(next.length>0){nextPats=pats.includes(pat)?pats:[...pats,pat];}
-    else{nextPats=pats.filter(x=>x!==pat);delete np[pat];}
-    onPatch({selPlanes:np,selPatterns:nextPats});};
-  return(<div className={'mm-wrap'+(readOnly?' ro':'')}>
-    <div className="dw-panel-lbl">Movements &amp; Patterns</div>
-    <div className="mm-planes">{MOVE_PATTERNS.map(([p])=>(
-      <div key={p} className="mm-plane-row" style={{'--pat-c':ML_PIE_COLS[p]||'var(--accent)'}}>
-        <span className="mm-plane-pat">{p}</span>
-        <div className="mm-chips">{(PATTERN_PLANES[p]||ALL_PLANES).map(pl=><button key={pl} type="button" className={'mm-chip sm'+((pls[p]||[]).includes(pl)?' on':'')} onClick={()=>togPlane(p,pl)}>{pl}</button>)}</div>
-      </div>))}</div>
-    <div className="dw-panel-lbl" style={{marginTop:12}}>Notes</div>
-    <textarea className="mm-notes" value={session.notes||''} readOnly={readOnly}
-      onChange={e=>{if(!readOnly)onPatch({notes:e.target.value});}} placeholder="Session notes…"/>
+/* What a session is made of, beside the exercises that make it — the box down the right
+   of the drawer.
+
+   Nothing in it is picked: the patterns are read off the rows themselves, block by block,
+   so the box says what was actually written rather than what somebody once ticked. The
+   panel that used to stand here asked the same question by hand on the left of the drawer
+   and pushed the exercises into half the width; the exercises have the room now, and the
+   answer arrives on its own. */
+function TrainContent({session,onPatch,readOnly}){
+  const focus=sesFocus(session),sub=sesSubFocus(session);
+  /* Ball blocks are left out: a drill is drawn rather than tagged, so it has no pattern to
+     report and a row of "no pattern" would say nothing. */
+  const blocks=(session.blocks||[])
+    /* Numbered off the session, not off what survives the filter, so a block keeps the
+       number its own header shows in the editor. */
+    .map((b,i)=>({b,n:i+1,pats:blockPatterns(b)}))
+    .filter(x=>blkKind(x.b)!=='ball'&&(x.pats.length||((x.b.exercises||[]).length)));
+  /* A session written before the exercises started answering the question — nothing tagged
+     on any row — still has whatever its coach ticked, so that is shown instead. */
+  const fallback=blocks.every(x=>!x.pats.length)?sessionPatterns(session):[];
+  const chips=pats=>(<div className="tc-pats">
+    {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}>
+      <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
+      {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
+    </span>)}
+  </div>);
+  return(<div className="tc-wrap">
+    <div className="tc-box">
+      <div className="dw-panel-lbl">{L('Antrenman İçeriği','Training Content')}</div>
+      <div className="tc-sec">
+        <div className="tc-k">{L('Seans Odağı','Session Focus')}</div>
+        {focus.length||sub.length
+          ?<div className="tc-focus">
+            {focus.map(f=><span key={'f-'+f} className="tc-chip on">{exLabel(f)}</span>)}
+            {sub.map(f=><span key={'s-'+f} className="tc-chip">{exLabel(f)}</span>)}
+          </div>
+          :<div className="tc-empty">{L('Odak seçilmedi','No focus set')}</div>}
+      </div>
+      <div className="tc-sec">
+        <div className="tc-k">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
+        {fallback.length>0&&chips(fallback)}
+        {fallback.length===0&&blocks.length===0&&<div className="tc-empty">{L('Henüz egzersiz yok','No exercises yet')}</div>}
+        {fallback.length===0&&blocks.map(({b,n,pats})=><div key={b.id} className="tc-blk">
+          <div className="tc-blk-nm">{b.name||L(`Blok ${n}`,`Block ${n}`)}</div>
+          {pats.length?chips(pats):<div className="tc-empty">{L('Örüntü yok','No pattern')}</div>}
+        </div>)}
+      </div>
+    </div>
+    <div className="tc-box">
+      <div className="dw-panel-lbl">{L('Notlar','Notes')}</div>
+      <textarea className="mm-notes" value={session.notes||''} readOnly={readOnly}
+        onChange={e=>{if(!readOnly)onPatch({notes:e.target.value});}} placeholder={L('Seans notları…','Session notes…')}/>
+    </div>
   </div>);
 }
 
@@ -9049,9 +9124,16 @@ const LIB_TYPE_PATTERN={'Upper Body Push':'Upper Body Push','Upper Body Pull':'U
 /* The library writes the contraction out in full where this taxonomy abbreviates it, and
    files a Full Body lift under plain "Strength" where the execution names the speed. */
 const LIB_STYLE_ALIAS={'Isometric':'ISO','Strength':'Basic Strength'};
+/* Built once per library, not once per caller: the strip on every block asks this
+   question on every keystroke, and rebuilding the whole index for each of them is what
+   would make typing an exercise name feel slow. The library array is replaced wholesale
+   when it changes, so its identity is all the cache needs to watch. */
+let _libPatIdx=null,_libPatFor=null;
 function libPatternIndex(){
+  const items=getLibItems()||[];
+  if(_libPatIdx&&_libPatFor===items)return _libPatIdx;
   const idx=new Map();
-  (getLibItems()||[]).forEach(it=>{
+  items.forEach(it=>{
     const pat=LIB_TYPE_PATTERN[it.type];
     if(!pat)return;
     const raw=String(it.subType||'').trim();
@@ -9059,6 +9141,7 @@ function libPatternIndex(){
     idx.set(String(it.name||'').trim().toLowerCase(),
       {pattern:pat,style:exStylesFor(pat).includes(st)?st:''});
   });
+  _libPatIdx=idx;_libPatFor=items;
   return idx;
 }
 function aggSessions(days){
@@ -10367,8 +10450,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {ss.length===0&&<div className="calw-empty">{L('dinlenme','rest')}</div>}
           {ss.map(s=>{
             const _hov=hovSes===s.id;
-            const _pats=s.selPatterns||[];
-            const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
+            /* The same answer the session's own strip gives — read off its exercises, with
+               a hand-picked list as the fallback — so hovering a day cannot say one thing
+               while the session says another. */
+            const _pats=sessionPatterns(s);
             return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
               style={s.color?{borderLeft:`3px solid ${s.color}`}:undefined}
@@ -10379,10 +10464,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
                 <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
-                {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
-                    <div className="tip-pat-nm">{p}</div>
-                    {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
-                  </div>);})}
+                {_pats.map(({pattern,planes})=>(<div key={pattern} className="tip-pat on">
+                    <div className="tip-pat-nm">{pattern}</div>
+                    {planes.length>0&&<div className="tip-pat-pl">{planes.join(' · ')}</div>}
+                  </div>))}
               </div>}
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
@@ -10422,15 +10507,15 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="ch"><span className="d">{d.getDate()}</span><span className="bdot"/></div>
           {ss.length>0&&<div className="csess">
             {ss.slice(0,2).map((s,j)=>{
-              const _hov=hovSes===s.id;const _pats=s.selPatterns||[];const _planes=(s.selPlanes&&!Array.isArray(s.selPlanes))?s.selPlanes:{};
+              const _hov=hovSes===s.id;const _pats=sessionPatterns(s);
               return(<div key={s.id||j} className="cs-item-wrap" onMouseEnter={e=>{e.stopPropagation();setHovSes(s.id);}} onMouseLeave={()=>setHovSes(null)}>
                 <div className="cs-item" style={{borderLeftColor:sesColor(s)}}>{s.name||L('Seans','Session')}</div>
                 {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
                   <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
-                  {MOVE_PATTERNS.filter(([p])=>_pats.includes(p)).map(([p])=>{const pl=_planes[p]||[];return(<div key={p} className="tip-pat on">
-                      <div className="tip-pat-nm">{p}</div>
-                      {pl.length>0&&<div className="tip-pat-pl">{pl.join(' · ')}</div>}
-                    </div>);})}
+                  {_pats.map(({pattern,planes})=>(<div key={pattern} className="tip-pat on">
+                      <div className="tip-pat-nm">{pattern}</div>
+                      {planes.length>0&&<div className="tip-pat-pl">{planes.join(' · ')}</div>}
+                    </div>))}
                 </div>}
               </div>);
             })}
@@ -10470,7 +10555,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <button className="btn sm white" style={{marginRight:8}} onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ Edit</button>
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
-        <div className="dw-layout"><div className="dw-left-panel"><MuscleModel session={drawerSes} onPatch={drwUpd} readOnly={!canEdit}/></div>
+        {/* The exercises take the left of the drawer — they are what the session IS — and
+            what it trains is summarised down the right, where it can be read against
+            them. */}
+        <div className="dw-layout">
           <div className="dw-b">
           <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
             {/* Five actions share this row now, so it wraps to a second line on a narrow
@@ -10575,7 +10663,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>{L('Kapat','Close')}</button>
           </div>
-        </div></div>
+        </div>
+        <div className="dw-right-panel"><TrainContent session={drawerSes} onPatch={drwUpd} readOnly={!canEdit}/></div>
+        </div>
       </aside>
     </>))}
     {editDate&&layer((<>
@@ -11012,6 +11102,44 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
+/* What this block trains, and what colour its session's card is — one strip, sitting
+   directly above the exercises it describes.
+
+   The patterns are not ticked any more: they are READ OFF the rows below. Writing a hinge
+   into a block makes that block say Hip, and writing a press into the next one makes that
+   one say UB Push — which is what lets two blocks of the same session say two different
+   things without the coach maintaining a second, parallel answer by hand. The card colour
+   stays the session's: one session is one card on the calendar, whichever block it is
+   picked from. */
+function TrainStrip({block,session,u,isTemplate}){
+  const pats=block?blockPatterns(block):sessionPatterns(session);
+  /* A drill is drawn, not tagged: a ball block has no pattern field on its rows, so it is
+     given the colour picker and nothing to answer. */
+  const isBall=!!block&&blkKind(block)==='ball';
+  return(<div className="sess-strip blk-strip">
+    {!isBall&&<div className="sess-strip-l">
+      <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
+      {pats.length===0
+        ?<div className="sess-pat-empty">{L(<>Henüz egzersiz yok — bir egzersiz ekleyip <b>örüntü</b> alanını doldur, burası kendiliğinden dolar.</>,<>No exercise yet — add one and set its <b>pattern</b>; this fills itself in.</>)}</div>
+        :<div className="sess-pat-row">
+          {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}
+            title={L(`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — bu bloğun egzersizlerinden okundu`,`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — read from this block's exercises`)}>
+            <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
+            {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
+          </span>)}
+        </div>}
+    </div>}
+    {!isTemplate&&<div className="sess-strip-r">
+      <label>{L('Kart rengi','Card color')}</label>
+      <div className="color-row">
+        {['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'].map(c=>
+          <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
+        <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title={L('Özel renk','Custom color')}/>
+        <button type="button" className="color-clear" onClick={()=>u({color:''})} title={L('Otomatik (load type rengi)','Automatic (load type color)')}>{L('Otomatik','Automatic')}</button>
+      </div>
+    </div>}
+  </div>);
+}
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">
@@ -11094,6 +11222,8 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
             {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
           </div>
         </div>
+        {/* Last in the panel, so it sits directly on top of the exercises it is read from. */}
+        <TrainStrip block={block} session={session} u={u} isTemplate={isTemplate}/>
       </div>
     </div>}
   </div>);
@@ -12382,35 +12512,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     </div>
     {open&&<div className="sbody">
       {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>{L(<>Bu seans takım planından senkronize edilir. Antrenman içeriği (bloklar, egzersizler, saat, süre) takımdan yansıtılır. <strong>Kişisel sRPE, AU ve notların</strong> gizli kalır ve takım güncellemeleriyle üzerine yazılmaz.</>,<>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</>)}</div>}
-      {!isTemplate&&<div className="sess-strip">
-        {/* Exactly what was ticked on the session's own Movements & Patterns panel — the
-            coach's statement about the day, sitting where they are already looking while
-            writing it. The exercises below have no say in it: their own Pattern field
-            tags the row, and this strip stays the session's. */}
-        <div className="sess-strip-l">
-          <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
-          {(()=>{
-            const pats=sessionPatterns(session);
-            if(!pats.length)return<div className="sess-pat-empty">{L(<>Henüz patern seçilmedi — antrenmanı takvimden açıp <b>Hareketler ve Örüntüler</b> panelinden seç.</>,<>No pattern selected yet — open the training from the calendar and pick one from the <b>Movements &amp; Patterns</b> panel.</>)}</div>;
-            return<div className="sess-pat-row">
-              {pats.map(p=><span key={p.pattern} className="sess-pat"
-                title={L(`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — antrenman panelinden seçildi`,`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — selected from the training panel`)}>
-                <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
-                {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
-              </span>)}
-            </div>;
-          })()}
-        </div>
-        <div className="sess-strip-r">
-          <label>{L('Kart rengi','Card color')}</label>
-          <div className="color-row">
-            {['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'].map(c=>
-              <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
-            <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title={L('Özel renk','Custom color')}/>
-            <button type="button" className="color-clear" onClick={()=>u({color:''})} title={L('Otomatik (load type rengi)','Automatic (load type color)')}>{L('Otomatik','Automatic')}</button>
-          </div>
-        </div>
-      </div>}
+      {/* The strip that used to stand here — what the session trains, and the card colour —
+          rides inside each block now, directly above the exercises it is read from. */}
       {/* The details live in the blocks — so a session that has none yet still needs
           somewhere to be named, timed and assigned from. This card stands in until the
           first block is added and takes them over. */}
