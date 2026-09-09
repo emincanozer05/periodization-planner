@@ -5585,7 +5585,7 @@ function sessionFromClipboard(src){
   const s=JSON.parse(JSON.stringify(src||{}));
   delete s.indiv;
   return{...s,id:uid(),sRPE:'',au:'',auManual:false,srpeFromManual:false,notes:'',athletes:[],sourceId:null,
-    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))};
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))};
 }
 /* Exercise clipboard — one prescribed row (name, pattern/execution and the numbers),
    copied off the assistant coach's suggestion and pasted into a slot. Subscribed like the
@@ -5623,7 +5623,7 @@ function sessionFromTemplate(t){const s=(t&&t.session)||{};
     methods:sesMethods(s),region:sesRegion(s),duration:s.duration||60,sRPE:'',au:'',color:s.color||'',
     /* `kind` rides along with the block, so a ball-practice block saved as a template
        comes back as one instead of turning into an S&C grid on the way out. */
-    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),
+    blocks:(s.blocks||[]).map(b=>({...b,id:uid(),athletes:[],kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),
     notes:s.notes||'',planNote:s.planNote||'',athletes:[],sourceId:null};}
 
 /* =========================================================
@@ -6628,6 +6628,35 @@ function teamSessionCovers(teamSes,athId){
   const ids=Array.isArray(teamSes.athletes)?teamSes.athletes:[];
   return ids.length===0||ids.includes(athId);
 }
+/* A BLOCK IS ITS OWN PIECE OF WORK.
+   A session used to hold one title and one participant list, and every block of it showed
+   the same two — so naming the guards' block or ticking the forwards on it rewrote them
+   for the whole session. Both now live on the block:
+     · `block.sesName`  — this block's own title. Absent means "use the session's".
+     · `block.athletes` — who does THIS block. Absent means "whoever the session is for",
+                          which is what every session written before this carried.
+   `session.athletes` stays as the union of the blocks, because everything outside the
+   editor — the assignment badge, the sRPE roster, the reconcile at load — asks the session
+   who it is for, not the blocks. */
+function blkSesName(session,block){
+  const n=(block&&block.sesName!=null)?String(block.sesName).trim():'';
+  return n||((session&&session.name)||'');
+}
+function blkAthIds(session,block){
+  return Array.isArray(block&&block.athletes)?block.athletes:((session&&session.athletes)||[]);
+}
+/* Nobody ticked on a block reads as "everyone the session is for" — the same rule the
+   session itself uses, so an untouched block never quietly drops out of anyone's copy. */
+function blockCoversAthlete(session,block,athId){
+  const ids=blkAthIds(session,block);
+  return ids.length===0||ids.includes(athId);
+}
+/* The participants of a session, read off its blocks: what `session.athletes` is kept at. */
+function unionBlockAthletes(session,blocks){
+  const out=[],seen=new Set();
+  (blocks||[]).forEach(b=>blkAthIds(session,b).forEach(id=>{if(!seen.has(id)){seen.add(id);out.push(id);}}));
+  return out;
+}
 /* Structural comparison that stops at the first difference. The sync below runs on every
    edit of a team session — every keystroke, every added exercise — and it is what tells
    an athlete whose copy did not actually change from one whose did. */
@@ -6660,7 +6689,12 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
     if(removedIds.length)sessions=sessions.filter(s=>!s.sourceId||!removedIds.includes(s.sourceId));
     // upsert / remove per current team session
     for(const ts of newSessions){
-      const includes=(ts.athletes||[]).includes(ath.id);
+      /* Only the blocks this athlete is ticked on travel to them: a session whose guard
+         block and forward block carry different names reaches each of them as the block
+         they actually do, under that block's own title. A session with no block left for
+         them is not their session at all. */
+      const myBlocks=(ts.blocks||[]).filter(b=>blockCoversAthlete(ts,b,ath.id));
+      const includes=(ts.athletes||[]).includes(ath.id)&&(!(ts.blocks||[]).length||myBlocks.length>0);
       const eidx=sessions.findIndex(s=>s.sourceId===ts.id);
       const existing=eidx>=0?sessions[eidx]:null;
       if(includes){
@@ -6678,16 +6712,29 @@ function syncSessionsToAthletes(athletes,dateKey,oldSessions,newSessions){
            made an unchanged copy read as changed — which is what turned one keystroke on
            a team session into a rewrite of the whole roster. */
         const prevBlocks=(existing&&existing.blocks)||[];
+        /* The copy is titled by the blocks it actually carries: one title among them (the
+           usual case — one block, or several sharing the session's) is the athlete's title
+           for it; blocks that disagree fall back to the session's own name. */
+        const blkNames=[...new Set(myBlocks.map(b=>blkSesName(ts,b)).filter(Boolean))];
         const copy={
           ...ts,
           id:existing?.id||uid(),
+          name:blkNames.length===1?blkNames[0]:ts.name,
           sourceId:ts.id,
           // preserve athlete's personal post-session feedback
           sRPE:(existing?.sRPE!==undefined&&existing.sRPE!=='')?existing.sRPE:'',
           au:(existing?.au!==undefined&&existing.au!=='')?existing.au:'',
           notes:existing?.notes||'',
-          blocks:(ts.blocks||[]).map((b,bi)=>({...b,id:(prevBlocks[bi]&&prevBlocks[bi].id)||uid(),
-            exercises:(b.exercises||[]).map(e=>({...e}))})),
+          /* Matched by the block they came from rather than by position: the athlete's
+             copy holds only some of the session's blocks now, so an index no longer says
+             which block a previous copy was. `srcId` does, and keeping the id is what
+             stops an unchanged copy reading as changed. */
+          blocks:myBlocks.map(b=>{
+            const prev=prevBlocks.find(p=>p.srcId===b.id)||null;
+            const{athletes:_ba,...rest}=b;
+            return{...rest,id:(prev&&prev.id)||uid(),srcId:b.id,
+              exercises:(b.exercises||[]).map(e=>({...e}))};
+          }),
         };
         delete copy.athletes; // athlete-side copy doesn't need the participant list
         if(eidx>=0)sessions[eidx]=sameData(existing,copy)?existing:copy;else sessions.push(copy);
@@ -6730,7 +6777,7 @@ function AthletePicker({athletes,selected,onChange}){
         </label>
       ))}
     </div>
-    <div className="help" style={{marginTop:8}}>Checked athletes will get this session copied to their personal calendar automatically. Their personal sRPE & AU are preserved across edits.</div>
+    <div className="help" style={{marginTop:8}}>Checked athletes get this block copied to their personal calendar automatically — each block of a session is ticked on its own, so the guards and the forwards can be given different work on the same day. Their personal sRPE &amp; AU are preserved across edits.</div>
   </div>);
 }
 
@@ -9929,10 +9976,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const edAdd=p=>svDay(editDate,{sessions:[...(edDay.sessions||[]),SESS(p)]});
   const edUpd=(sid,ns)=>svDay(editDate,{sessions:edDay.sessions.map(s=>s.id===sid?ns:s)});
   const edDel=sid=>svDay(editDate,{sessions:edDay.sessions.filter(s=>s.id!==sid)});
-  const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
+  const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
   const edMv=(sid,dir)=>{const a=[...edDay.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+dir;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];svDay(editDate,{sessions:a});};
   const edCopyYesterday=()=>{const yk=fmt(addD(parseD(editDate),-1));const y=days[yk];if(!y?.sessions?.length){alert('No sessions on the previous day');return;}
-    svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
+    svDay(editDate,{sessions:[...(edDay.sessions||[]),...y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(s.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}))]});};
   const openEdit=k=>{if(canEdit){setEditFrom(drawerSes?{id:drawerSes.id,date:drawerDate||k}:null);setDrawerSes(null);setEditDate(k);}else goDayView(k);};
   /* Back out of the plan and onto the session panel it was opened from — the one with the
      movements, the meta tiles and the block list. Straight from the calendar's "+" (no panel
@@ -10105,7 +10152,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
          `“${drawerSes.name||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this session. Are you sure?`)
       :L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
          `This practice will be assigned to all ${n} athletes on the roster. Are you sure?`)))return;
-    drwUpd({athletes:ids});
+    /* This button is about the whole practice, so a block that had been narrowed to some
+       of the squad is opened back up to everyone being assigned here — the per-block
+       buttons in the editor are the way to keep a block for the guards or the forwards.
+       Blocks that never carried a list of their own already follow the session's. */
+    const split=(drawerSes.blocks||[]).some(b=>Array.isArray(b.athletes));
+    if(split&&!window.confirm(L(`Bu seansın blokları farklı sporculara ayrılmış. Devam edilirse her blok bu ${n} sporcuya açılacak. Emin misiniz?`,
+      `This session's blocks are split between different athletes. Continuing opens every block to all ${n} of them. Are you sure?`)))return;
+    drwUpd({athletes:ids,blocks:(drawerSes.blocks||[]).map(b=>Array.isArray(b.athletes)?{...b,athletes:ids}:b)});
   };
   /* The drawer reads from its own copy of the session, so it follows the load the pass above
      works out for it — otherwise the open panel would still be showing the AU the session
@@ -10177,7 +10231,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     let newDays={...days};
     if(!copy){newFrom=oldFrom.filter(s=>s.id!==sessionId);newDays[fromDate]={...fromDay,sessions:newFrom,date:fromDate};}
     const newSession=copy
-      ?{...session,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(session.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}
+      ?{...session,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(session.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}
       :session;
     const toDay=newDays[toDate]||{date:toDate,sessions:[],dailyNotes:''};
     const oldTo=toDay.sessions||[];const newTo=[...oldTo,newSession];
@@ -10786,7 +10840,7 @@ function ExLinkCell({value,onChange}){
    of the exercise, then what it trains and how, then the seven prescription fields
    in one strip, then the reference link and the coaching cues. The two screens are
    the same editor now — a coach who has learned one has learned the other. */
-function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
+function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last}){
   const ss=(ex.superset||'').toUpperCase();
   const f=(k,v)=>onChange({...ex,[k]:v});
   const styles=exStylesFor(ex.pattern);
@@ -10894,6 +10948,14 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
     </div>
   </div>);
 }
+/* Adding one exercise to a block used to re-render every OTHER exercise in it — a block of
+   twenty rows is several hundred inputs, selects and auto-sizing textareas, and rebuilding
+   all of them is the work that made the first seconds after "+ Add exercise" drop frames
+   while the page was being scrolled. A row only depends on its own exercise, so it is
+   memoised; BlockEd below hands it callbacks that keep their identity across renders,
+   which is what lets the memo actually hold. */
+const CalSlotEd=React.memo(CalSlotEdRaw);
+
 /* =========================================================
    SESSION DETAILS — carried by every block
    =========================================================
@@ -10903,11 +10965,16 @@ function CalSlotEd({ex,tag,onChange,onMove,onRemove,first,last}){
    because a block is where the coach is writing — adding one opens with the whole
    picture of the session it belongs to, rather than sending them back up the panel.
 
-   Every block edits the one session, so a change made in any of them shows in all of
-   them; there is one set of values, shown wherever the coach happens to be working.
+   The clock, the length, the intensity target and what the session trains belong to the
+   session, so a change made in any block shows in all of them. Two things do NOT: the
+   title and the participants. Those are the block's own — a session can run a guards'
+   block and a forwards' block at once, each named for what it is and ticked for the
+   players who do it — and they are handed in as `block` / `blockUpd` / `athUpd`. Without
+   a block (the card a session with no blocks yet stands on) they fall back to the
+   session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
-function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
+function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">
     <button type="button" className={'blk-details-t'+(open?' on':'')} onClick={()=>setOpen(o=>!o)}
@@ -10915,7 +10982,9 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
       <i>{open?'▼':'▶'}</i>{L('Antrenman Özellikleri','Training Details')}
     </button>
     {open&&<div className="blk-details-b">
-      {showPicker&&<AthletePicker athletes={athletes} selected={session.athletes||[]} onChange={ids=>u({athletes:ids})}/>}
+      {showPicker&&<AthletePicker athletes={athletes}
+        selected={block?blkAthIds(session,block):(session.athletes||[])}
+        onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
       <div className="iv-cardtools sess-tools">
         {/* Top row, two halves. On the left, everything that identifies the session as an
             entry in the diary — what it is called, when it runs, how long it lasts; those
@@ -10927,8 +10996,15 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach}){
             further down, which only exists once the session has happened.) */}
         <div className="sess-idrow">
           <div className="sess-idgrp">
-            <label className="iv-meta-f nm">{L('seans','session')}
-              <input value={session.name} onChange={e=>u({name:e.target.value})} placeholder={L('Seans başlığı…','Session title…')}/>
+            {/* The block's own title, not the session's. Left empty it shows the session
+                heading as its placeholder and the block carries that; typed into, this
+                block says something different from the heading and from every other
+                block — which is the whole point of blocks that stand apart. */}
+            <label className="iv-meta-f nm">{block?L('blok başlığı','block title'):L('seans','session')}
+              <input value={block?(block.sesName||''):session.name}
+                onChange={e=>{if(block&&blockUpd)blockUpd({sesName:e.target.value});else u({name:e.target.value});}}
+                title={block?L('Bu bloğun kendi başlığı — boş bırakılırsa seans başlığı kullanılır','This block’s own title — left empty it uses the session heading'):L('Seans başlığı','Session title')}
+                placeholder={block?((session.name||'').trim()||L('Seans başlığı…','Session title…')):L('Seans başlığı…','Session title…')}/>
             </label>
             <div className="sess-idsub">
               {!isTemplate&&<label className="iv-meta-f tm">{L('saat','time')}
@@ -11610,7 +11686,7 @@ function DrillVideo({ex,onChange}){
    carries — a drill is still sets, reps, time, intensity and rest — so the day drawer, the
    volume figures and the printed sheet read it without knowing it came off a court. What
    is different is what sits above them: the diagram, and the clip of it being run. */
-function BallDrillEd({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
+function BallDrillEdRaw({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
   const f=(k,v)=>onChange({...ex,[k]:v});
   const[saved,setSaved]=useState(false);
   const[openCourt,setOpenCourt]=useState(true);
@@ -11680,20 +11756,36 @@ function BallDrillEd({ex,tag,onChange,onMove,onRemove,first,last,onSaved}){
   </div>);
 }
 
+/* Memoised for the same reason as CalSlotEd above — a court diagram and a clip on every
+   row make a ball block the most expensive thing on the page to rebuild. */
+const BallDrillEd=React.memo(BallDrillEdRaw);
+
 /* `session`, `printContext` and `isTemplate` are here for the block's own actions: printing
    and saving a template both need a whole session to work with, and a block is handed to
    them as one that carries this block alone.
 
    `sessionUpd`, `athletes`, `showPicker` and `coach` are for the session details the block
-   carries at the top of its body, and `assign` for the assignment button in its header —
-   see SessionDetails above. */
+   carries at the top of its body, and `athUpd` writes THIS block's participant list —
+   see SessionDetails above. The assignment button in the header is the block's too: it
+   assigns the players ticked on this block, not on the session. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,assign}){
+                  sessionUpd,athletes,showPicker,coach,athUpd}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   const[savedTpl,setSavedTpl]=useState(false);
-  const setExs=a=>onUpdate({...block,exercises:a});
-  const upEx=(i,ex)=>{const a=[...exs];a[i]=ex;setExs(a);};
-  const mv=(i,d)=>{const j=i+d;if(j<0||j>=exs.length)return;const a=[...exs];[a[i],a[j]]=[a[j],a[i]];setExs(a);};
+  /* The rows below are memoised, so their callbacks have to survive a re-render or the
+     memo never holds. They read the block and its exercises out of refs — always the
+     current ones — instead of closing over them, which is what keeps their identity. */
+  const liveRef=useRef(null);
+  liveRef.current={exs,block,onUpdate};
+  const setExs=a=>{const{block:b,onUpdate:up}=liveRef.current;up({...b,exercises:a});};
+  const setExsRef=useRef(setExs);setExsRef.current=setExs;
+  /* One set of handlers per row, rebuilt only when the number of rows changes. */
+  const slotFns=useMemo(()=>exs.map((_,i)=>({
+    onChange:nx=>{const a=[...liveRef.current.exs];a[i]=nx;setExsRef.current(a);},
+    onMove:d=>{const a=[...liveRef.current.exs];const j=i+d;if(j<0||j>=a.length)return;
+      [a[i],a[j]]=[a[j],a[i]];setExsRef.current(a);},
+    onRemove:()=>setExsRef.current(liveRef.current.exs.filter((_,j)=>j!==i)),
+  })),[exs.length]);
   // Compute display labels — exercises with the same superset letter become A1, A2, A3…
   // exercises with empty superset are numbered 1., 2., 3. independently.
   const labels=useMemo(()=>{const cnt={};return exs.map(ex=>{
@@ -11710,8 +11802,38 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
      the saved template) says which one it is rather than repeating the session's title. */
   const blkName=block.name||L(`Blok ${index+1}`,`Block ${index+1}`);
   const blkSession=()=>({...(session||{}),
-    name:[((session||{}).name||'').trim(),blkName].filter(Boolean).join(' · '),
+    name:[blkSesName(session,block).trim(),blkName].filter(Boolean).join(' · '),
     blocks:[block]});
+  /* Who does THIS block, and the button that writes it onto their calendars. The list is
+     the block's own; a block nobody has been ticked on assigns the whole squad, exactly as
+     the session-level button did before the blocks came apart. */
+  const roster=Array.isArray(athletes)?athletes:[];
+  const blkSel=blkAthIds(session,block).filter(id=>roster.some(a=>a.id===id));
+  const allAssigned=!!(showPicker&&roster.length&&blkSel.length===roster.length);
+  const assignBlk=()=>{
+    if(!showPicker||!roster.length||!athUpd)return;
+    const ids=blkSel.length?blkSel:roster.map(a=>a.id);
+    const n=ids.length;
+    if(!window.confirm(blkSel.length
+      ?L(`"${blkSesName(session,block)||'Bu antrenman'}" bu blok için işaretlediğin ${n} sporcunun takvimine işlenecek. Emin misiniz?`,
+         `“${blkSesName(session,block)||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this block. Are you sure?`)
+      :L(`Bu blok kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
+         `This block will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
+    athUpd(ids);
+  };
+  const assign={
+    show:showPicker,
+    assigned:allAssigned,
+    disabled:!roster.length,
+    onClick:assignBlk,
+    title:allAssigned
+      ?L('Kadrodaki herkes bu bloğa atandı — sonradan eklenen sporcular için tekrar bas','Everyone on the roster is assigned to this block — press again to pick up athletes added since')
+      :(blkSel.length
+        ?L('Sadece bu blok için işaretlediğin sporcuların takvimine bu antrenmanı işle','Write this practice onto the calendar of the athletes ticked for this block only')
+        :L('Bu bloğu kadrodaki bütün sporcuların takvimine ata','Assign this block to the calendar of every athlete on the roster')),
+    label:allAssigned?'Assigned to the Team'
+      :(blkSel.length?`Assign the Practice to ${blkSel.length} Athlete${blkSel.length>1?'s':''}`:'Assign the Practice to the Team'),
+  };
   const saveTpl=()=>{if(saveSessionAsTemplate(blkSession())){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
   return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
@@ -11755,7 +11877,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     {open&&<>
       {/* What the session is, before what this block of it is made of. */}
       {sessionUpd&&<SessionDetails session={session} u={sessionUpd} athletes={athletes}
-        showPicker={showPicker} isTemplate={isTemplate} coach={coach}/>}
+        showPicker={showPicker} isTemplate={isTemplate} coach={coach}
+        block={block} blockUpd={p=>onUpdate({...block,...p})} athUpd={athUpd}/>}
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
       {/* A ball-practice block runs its drills one to a row: each carries a court diagram
@@ -11763,12 +11886,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           two-up grid it has always had. */}
       <div className="iv-slotswrap"><div className={isBall?'iv-slots bp-slots':'iv-slots'}>
         {exs.map((ex,i)=>isBall
-          ?<BallDrillEd key={ex.id||i} ex={ex} tag={labels[i]}
-            onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
-            onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>
-          :<CalSlotEd key={i} ex={ex} tag={labels[i]}
-            onChange={nx=>upEx(i,nx)} onMove={d=>mv(i,d)} first={i===0} last={i===exs.length-1}
-            onRemove={()=>setExs(exs.filter((_,j)=>j!==i))}/>)}
+          ?<BallDrillEd key={ex.id||i} ex={ex} tag={labels[i]} {...slotFns[i]}
+            first={i===0} last={i===exs.length-1}/>
+          :<CalSlotEd key={i} ex={ex} tag={labels[i]} {...slotFns[i]}
+            first={i===0} last={i===exs.length-1}/>)}
         {/* Adding lands where the next exercise goes: beside the last one when the row
             still has a free half, across the row when the last row is full. */}
         <button type="button" className={'iv-addslot'+(!isBall&&exs.length%2?' beside':'')}
@@ -12144,11 +12265,19 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   const participantCount=(session.athletes||[]).length;
   const roster=Array.isArray(athletes)?athletes:[];
-  /* The same assignment the calendar drawer's button makes, at the head of the block
-     that carries the picker: whoever is ticked gets the session written onto their own
-     calendar, and nobody ticked means the whole squad. Saving the session syncs it, so
-     the button only has to say who it is for. Pressable again once everyone is on it,
-     to pick up athletes added to the squad since. */
+  /* Writing THIS block's participant list. The other blocks keep whoever they had — a
+     block that never had a list of its own gets the session's, written out once here, so
+     ticking a player on one block cannot silently change who the rest are for. The
+     session's own list is then the union of the blocks: that is what the calendar, the
+     sRPE roster and the sync all read. */
+  const setBlkAthletes=(bid,ids)=>{
+    const blocks=(session.blocks||[]).map(b=>({...b,athletes:b.id===bid?ids:blkAthIds(session,b)}));
+    u({blocks,athletes:unionBlockAthletes(session,blocks)});
+  };
+  /* The same assignment the calendar drawer's button makes. Only the card that stands in
+     for a session with no blocks yet uses it — once there are blocks, each carries its own
+     (see BlockEd). Pressable again once everyone is on it, to pick up athletes added to
+     the squad since. */
   const assignSel=(session.athletes||[]).filter(id=>roster.some(a=>a.id===id));
   const allAssigned=!!(showPicker&&roster.length&&assignSel.length===roster.length);
   const assignAll=()=>{
@@ -12162,7 +12291,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
          `This practice will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
     u({athletes:ids});
   };
-  /* Handed to every block, which draws it at the end of its own header row. */
+  /* Only for the stand-in card below; every block draws its own. */
   const assign={
     show:showPicker,
     assigned:allAssigned,
@@ -12256,7 +12385,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       </div>}
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         session={session} printContext={printContext} isTemplate={isTemplate}
-        sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach} assign={assign}
+        sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
+        athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
       {/* Three things a coach adds to a session, and they are not the same thing: weight-room
           work, court work, and something written down. Naming them apart here is what makes
@@ -12325,11 +12455,11 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   };
   const updS=(sid,ns)=>sv({sessions:day.sessions.map(s=>s.id===sid?ns:s)});
   const delS=sid=>sv({sessions:day.sessions.filter(s=>s.id!==sid)});
-  const dupS=sid=>{const o=day.sessions.find(s=>s.id===sid);sv({sessions:[...day.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:o.blocks.map(b=>({...b,id:uid(),exercises:b.exercises.map(e=>({...e}))}))}]});};
+  const dupS=sid=>{const o=day.sessions.find(s=>s.id===sid);sv({sessions:[...day.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:o.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}]});};
   const mvS=(sid,d)=>{const a=[...day.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];sv({sessions:a});};
   const addS=p=>sv({sessions:[...day.sessions,SESS(p)]});
   const cpY=()=>{const yk=fmt(addD(parseD(selDay),-1));const y=days[yk];if(!y?.sessions?.length){alert(L('Dün seans yok','No sessions yesterday'));return;}
-    sv({sessions:y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:s.blocks.map(b=>({...b,id:uid(),exercises:b.exercises.map(e=>({...e}))}))}))});};
+    sv({sessions:y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:s.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}))});};
   // ---- Drag-drop & quick-duplicate across days ----
   const[dragInfo,setDragInfo]=useState(null);
   const[dragOverDate,setDragOverDate]=useState(null);
@@ -12347,7 +12477,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
     }
     const newSession=copy
       ?{...session,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,
-         blocks:(session.blocks||[]).map(b=>({...b,id:uid(),exercises:(b.exercises||[]).map(e=>({...e}))}))}
+         blocks:(session.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}
       :session;
     const toDay=newDays[toDate]||{date:toDate,sessions:[],dailyNotes:''};
     const oldToSessions=toDay.sessions||[];
@@ -23638,7 +23768,7 @@ function App(){
         focus:sesFocus(s),sub:sesSubFocus(s),methods:sesMethods(s),region:sesRegion(s),
         duration:s.duration||60,color:s.color||'',
         // `kind` kept, so a ball-practice block saved as a template comes back as one.
-        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
+        blocks:(s.blocks||[]).map(b=>({...b,id:uid(),athletes:[],kind:blkKind(b),exercises:(b.exercises||[]).map(e=>({...e}))})),notes:s.notes||'',planNote:s.planNote||''}};
     setData(prev=>({...prev,templates:[tpl,...(prev.templates||[])]}));
     return true;
   };
