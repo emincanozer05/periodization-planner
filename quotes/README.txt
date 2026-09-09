@@ -5,20 +5,26 @@ Sporcu wellness formunu gönderince, skoru kaç olursa olsun bu klasördeki
 sıradaki görsel ve altında ona ait özlü söz çıkıyor. Sıra telefonda tutuluyor:
 her gönderimde bir sonrakine geçiyor, beşinciden sonra başa dönüyor.
 
-Beklenen dosyalar (adları checkin.html içindeki MOTIVATION listesiyle birebir
-aynı olmalı, yoksa görsel yerine yalnızca söz çıkar):
+Dosyaların adı yalnızca sıra numarası. Uzantı .jpg, .png, .jpeg ya da .webp
+olabilir — sırayla deneniyor, ilk bulunan gösteriliyor:
 
-  1-federer.jpg   "Çalışkanlığın önüne geçmenin bir yolu yok..."
-  2-ali.jpg       "Şampiyonlar spor salonlarında yetişmez..."
-  3-bolt.jpg      "Hayaller bedava. Hedeflerin ise bir bedeli var..."
-  4-durant.jpg    "Yetenekli kişi çok çalışmayı ihmal ettiğinde..."
-  5-jordan.jpg    "Bazıları bunun olmasını ister..."
+  1   Federer   "Çalışkanlığın önüne geçmenin bir yolu yok..."
+  2   Ali       "Şampiyonlar spor salonlarında yetişmez..."
+  3   Bolt      "Hayaller bedava. Hedeflerin ise bir bedeli var..."
+  4   Durant    "Yetenekli kişi çok çalışmayı ihmal ettiğinde..."
+  5   Jordan    "Bazıları bunun olmasını ister..."
+
+Yani bu klasörde "1.jpg, 2.jpg, 3.jpg, 4.jpg, 5.jpg" (ya da .png hali) olması
+yeterli. Dosya yoksa görsel kutusu tamamen kalkıyor ve yalnızca söz çıkıyor —
+ekranda boş çerçeve durmuyor.
 
 Görsel eklerken / değiştirirken:
 
-- Sözü değiştirmek, sıraya yeni bir isim eklemek ya da dosya adını değiştirmek
-  için checkin.html içindeki MOTIVATION listesini güncelle. Liste kaç satırsa
-  sıra o kadar uzuyor; başka yerde değişiklik gerekmiyor.
+- GitHub'dan yüklerken: bu klasörü aç → "Add file" → "Upload files" → dosyaları
+  sürükle → "Commit changes". Dosyaların bu klasörün içinde olduğundan emin ol;
+  deponun kök dizinine düşerlerse çıkmazlar.
+- Sözü değiştirmek ya da sıraya yeni bir isim eklemek için checkin.html içindeki
+  MOTIVATION listesini güncelle. Liste kaç satırsa sıra o kadar uzuyor.
 - Listedeki w/h değerleri dosyanın gerçek piksel ölçüleri. Kutunun oranını
   bunlar veriyor: görsel inerken yer boş kalıyor, yüklenince altındaki yazı
   aşağı zıplamıyor. Farklı ölçüde bir dosya koyarsan w/h'yi de güncelle.
