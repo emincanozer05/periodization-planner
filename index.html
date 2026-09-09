@@ -480,7 +480,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-scrim{position:fixed;inset:0;background:rgba(5,6,8,.55);-webkit-backdrop-filter:blur(14px) saturate(120%);backdrop-filter:blur(14px) saturate(120%);z-index:80;animation:dwfade .2s ease}
 @keyframes dwfade{from{opacity:0}}
 /* Read-only session view: centred modal (like the research reader) */
-.dw{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:90vh;max-height:90vh;width:min(1100px,94vw);background:var(--bg2);border:1px solid var(--border);border-radius:16px;z-index:90;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px -12px rgba(0,0,0,.82);animation:dwpop .22s cubic-bezier(.2,.7,.3,1)}
+.dw{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);height:90vh;max-height:90vh;width:min(1560px,96vw);background:var(--bg2);border:1px solid var(--border);border-radius:16px;z-index:90;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 90px -12px rgba(0,0,0,.82);animation:dwpop .22s cubic-bezier(.2,.7,.3,1)}
 @keyframes dwpop{from{opacity:0;transform:translate(-50%,-48%) scale(.97)}}
 @keyframes dwslide{from{transform:translateX(100%)}}
 /* Editor variant uses the same centred modal, just wider (width set below) */
@@ -576,7 +576,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-rpe-in{width:66px;flex:none;padding:6px 8px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
 /* The editor is the same panel as the read-only view, at the same width — one window
    size for a session whether it is being read or written. */
-.dw.edit{width:min(1100px,94vw)}
+.dw.edit{width:min(1560px,96vw)}
 /* Session drawer — two-column view (read-only) */
 .dw-layout{display:flex;flex:1;overflow:hidden;min-height:0}
 /* In-place variant: the same panel, laid out as part of the page instead of over it,
@@ -3085,16 +3085,33 @@ header{background:var(--bg2)!important}
    changed exercise is — the sheet says at a glance what no longer matches the source. */
 .iv-meta-f.edited input{border-color:rgba(245,158,11,.5)}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
-/* Black, so the bar that carries a block's title reads as the divider between one block
-   and the next rather than as one more shade of panel. */
-.iv-block-hd{background:#000;padding:8px 13px;font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* A warm brass bar carries a block's title, so the seam between one block and the next is
+   a colour rather than one more shade of panel. It is a LIGHT surface — the only one in the
+   app — so everything standing on it is inked dark instead of light, and the few things
+   that have to keep their own colour (the kind badge, the assignment) are given a dark
+   backing to sit on. */
+:root{--blk-hd:#8c7d57;--blk-hd-ink:#191509;--blk-hd-ink2:rgba(25,21,9,.8);--blk-hd-ink3:rgba(25,21,9,.6)}
+.iv-block-hd{background:var(--blk-hd);padding:8px 13px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Everything that stood on the old dark bar in a dim grey now inks against the brass. */
+.iv-block-hd .blk-grip{color:var(--blk-hd-ink3)}
+.iv-block-hd .iv-blockch{color:var(--blk-hd-ink)}
+.iv-block-hd .iv-blockcnt{color:var(--blk-hd-ink2)}
+.iv-block-hd .iv-block-lbl{color:var(--blk-hd-ink)}
+/* The kind badge and the assignment keep the colours that MEAN something — S&C green,
+   ball orange, amber-to-green for the assignment — over a dark plate, because none of
+   them would read against the brass on their own. */
+.iv-block-hd .blk-kind,.iv-block-hd .btn.blk-assign{background:rgba(0,0,0,.55)}
+.iv-block-hd .btn.blk-assign:hover:not(:disabled){background:rgba(0,0,0,.72)}
+.iv-block-hd .btn.blk-assign.on,.iv-block-hd .btn.blk-assign.on:hover:not(:disabled){background:rgba(0,0,0,.55)}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 160px;min-width:0;max-width:340px;background:transparent;border:1px solid transparent;border-radius:6px;
-  padding:4px 7px;font-family:inherit;font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.01em}
-.iv-block-nm:hover{border-color:var(--border)}
+  padding:4px 7px;font-family:inherit;font-size:12px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em}
+.iv-block-nm::placeholder{color:var(--blk-hd-ink3)}
+.iv-block-nm:hover{border-color:rgba(25,21,9,.3)}
 .iv-block-nm:focus{background:var(--panel);border-color:var(--accent);color:var(--text);outline:none}
-.iv-block-nm.edited{color:var(--text);border-color:rgba(245,158,11,.45)}
+.iv-block-nm:focus::placeholder{color:var(--dim)}
+.iv-block-nm.edited{color:var(--blk-hd-ink);border-color:rgba(120,70,0,.6)}
 .iv-blocktag{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);border-radius:4px;padding:1px 6px}
 /* The block's actions — add, clone, save as a template, the two prints, remove. Six
@@ -3151,6 +3168,10 @@ header{background:var(--bg2)!important}
 .blk-grip{flex:none;cursor:grab;color:var(--dim);font-size:13px;line-height:1;padding:2px 1px;user-select:none}
 .blk-grip:active{cursor:grabbing}
 .iv-blockch{flex:none;background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;padding:2px 3px;line-height:1}
+/* A zero-height full-width item: it fills the line it is on, so everything after it wraps
+   onto the next one. That is what splits the block header into a title row and a row for
+   the count and the actions. */
+.blk-hdbreak{flex:1 0 100%;height:0;margin:-4px 0}
 .iv-blockcnt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-size:10.5px;font-weight:500;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace}
 /* Move / duplicate / remove, in the slot's own header where ✕ Remove sits on the
@@ -10219,31 +10240,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(changed)saveDays(nd);
     // eslint-disable-next-line
   },[teamMode,days,athletes]);
-  /* Assign THIS session — not the day it sits on — to the athletes ticked for it. The
-     athlete list is what syncSessionsToAthletes reads, so writing it copies just this
-     session onto each of their own calendars (their personal sRPE, AU and notes on an
-     existing copy survive it), and leaves the day's other sessions to their own picks.
-     Nobody ticked yet is the only case that means the whole squad. */
-  const assignSel=((drawerSes&&drawerSes.athletes)||[]).filter(id=>(athletes||[]).some(a=>a.id===id));
-  const allAssigned=!!(teamMode&&drawerSes&&(athletes||[]).length&&assignSel.length===athletes.length);
-  const assignToTeam=()=>{
-    if(!teamMode||!drawerSes||!(athletes||[]).length)return;
-    const ids=assignSel.length?assignSel:athletes.map(a=>a.id);
-    const n=ids.length;
-    if(!window.confirm(assignSel.length
-      ?L(`"${drawerSes.name||'Bu antrenman'}" bu seans için işaretlediğin ${n} sporcunun takvimine işlenecek. Emin misiniz?`,
-         `“${drawerSes.name||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this session. Are you sure?`)
-      :L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
-         `This practice will be assigned to all ${n} athletes on the roster. Are you sure?`)))return;
-    /* This button is about the whole practice, so a block that had been narrowed to some
-       of the squad is opened back up to everyone being assigned here — the per-block
-       buttons in the editor are the way to keep a block for the guards or the forwards.
-       Blocks that never carried a list of their own already follow the session's. */
-    const split=(drawerSes.blocks||[]).some(b=>Array.isArray(b.athletes));
-    if(split&&!window.confirm(L(`Bu seansın blokları farklı sporculara ayrılmış. Devam edilirse her blok bu ${n} sporcuya açılacak. Emin misiniz?`,
-      `This session's blocks are split between different athletes. Continuing opens every block to all ${n} of them. Are you sure?`)))return;
-    drwUpd({athletes:ids,blocks:(drawerSes.blocks||[]).map(b=>Array.isArray(b.athletes)?{...b,athletes:ids}:b)});
-  };
   /* The drawer reads from its own copy of the session, so it follows the load the pass above
      works out for it — otherwise the open panel would still be showing the AU the session
      had before its athletes' ratings were counted. */
@@ -10539,19 +10535,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <div className="ti">{drawerSes.name}</div>
             <div className="su">{drawerSes.purpose}</div>
           </div>
-          {/* One press puts the session on every athlete's calendar — the same assignment
-              the editor's athlete picker makes, without opening it and ticking seventeen
-              boxes. It says so once everyone is on it, and stays pressable to pick up
-              athletes added to the squad since. */}
-          {teamMode&&canEdit&&<button className="btn sm outline" style={{marginRight:8}}
-            onClick={assignToTeam} disabled={!(athletes||[]).length}
-            title={allAssigned
-              ?'Kadrodaki herkes bu antrenmana atandı — sonradan eklenen sporcular için tekrar bas'
-              :(assignSel.length
-                ?'Sadece bu seans için işaretlediğin sporcuların takvimine bu antrenmanı işle'
-                :'Bu antrenmanı kadrodaki bütün sporcuların takvimine ata')}>
-            {allAssigned?'Assigned to the Team'
-              :(assignSel.length?`Assign the Practice to ${assignSel.length} Athlete${assignSel.length>1?'s':''}`:'Assign the Practice to the Team')}</button>}
+          {/* No assignment button here any more. Assigning is a per-BLOCK decision — the
+              guards and the forwards get different work on the same day — and this one
+              could only speak for the whole session, so it fought the buttons in the
+              editor that do the real job. ✎ Edit is one press away from them. */}
           <button className="btn sm white" style={{marginRight:8}} onClick={()=>openEdit(drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id)))}>✎ Edit</button>
           <button className="x" onClick={()=>setDrawerSes(null)}>×</button>
         </div>
@@ -11977,16 +11964,24 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
      the session-level button did before the blocks came apart. */
   const roster=Array.isArray(athletes)?athletes:[];
   const blkSel=blkAthIds(session,block).filter(id=>roster.some(a=>a.id===id));
-  const allAssigned=!!(showPicker&&roster.length&&blkSel.length===roster.length);
+  /* Ticking a name IS the assignment: the tick rewrites the block's athlete list, and that
+     is exactly what writes the block onto their calendars. So the button says "assigned"
+     whenever somebody is ticked, rather than only once the whole roster is — which is why
+     it used to stay amber after a coach had picked five players and pressed it. Pressing it
+     with nobody ticked is the one thing left for it to do: tick everyone. */
+  const assignedN=showPicker&&roster.length?blkSel.length:0;
+  const allAssigned=assignedN>0;
+  const wholeTeam=assignedN>0&&assignedN===roster.length;
   const assignBlk=()=>{
     if(!showPicker||!roster.length||!athUpd)return;
-    const ids=blkSel.length?blkSel:roster.map(a=>a.id);
+    /* Already assigned: re-write the same list. It changes nobody, and re-runs the sync —
+       which is what puts the block back on the calendar of an athlete whose copy was
+       deleted. Nothing to confirm, because nothing is being decided. */
+    if(assignedN){athUpd(blkSel);return;}
+    const ids=roster.map(a=>a.id);
     const n=ids.length;
-    if(!window.confirm(blkSel.length
-      ?L(`"${blkSesName(session,block)||'Bu antrenman'}" bu blok için işaretlediğin ${n} sporcunun takvimine işlenecek. Emin misiniz?`,
-         `“${blkSesName(session,block)||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this block. Are you sure?`)
-      :L(`Bu blok kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
-         `This block will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
+    if(!window.confirm(L(`Bu blok kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
+      `This block will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
     athUpd(ids);
   };
   const assign={
@@ -11995,12 +11990,13 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     disabled:!roster.length,
     onClick:assignBlk,
     title:allAssigned
-      ?L('Kadrodaki herkes bu bloğa atandı — sonradan eklenen sporcular için tekrar bas','Everyone on the roster is assigned to this block — press again to pick up athletes added since')
-      :(blkSel.length
-        ?L('Sadece bu blok için işaretlediğin sporcuların takvimine bu antrenmanı işle','Write this practice onto the calendar of the athletes ticked for this block only')
-        :L('Bu bloğu kadrodaki bütün sporcuların takvimine ata','Assign this block to the calendar of every athlete on the roster')),
-    label:allAssigned?'Assigned to the Team'
-      :(blkSel.length?`Assign the Practice to ${blkSel.length} Athlete${blkSel.length>1?'s':''}`:'Assign the Practice to the Team'),
+      ?(wholeTeam
+        ?L('Kadrodaki herkes bu bloğa atandı — takvimlerine yeniden işlemek için tekrar bas','Everyone on the roster is assigned to this block — press again to write it onto their calendars afresh')
+        :L(`Bu blok işaretli ${assignedN} sporcunun takviminde. Kimin yapacağını değiştirmek için aşağıdaki listeden işaretle.`,`This block is on the calendar of the ${assignedN} ticked athlete${assignedN>1?'s':''}. Tick names in the list below to change who does it.`))
+      :L('Bu bloğu kadrodaki bütün sporcuların takvimine ata','Assign this block to the calendar of every athlete on the roster'),
+    label:allAssigned
+      ?(wholeTeam?'Assigned to the Team':`Assigned to ${assignedN} Athlete${assignedN>1?'s':''}`)
+      :'Assign the Practice to the Team',
   };
   const saveTpl=()=>{if(saveSessionAsTemplate(blkSession())){setSavedTpl(true);setTimeout(()=>setSavedTpl(false),1800);}};
   return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
@@ -12017,6 +12013,11 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
         title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
       <LiveInput className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
         onChange={v=>onUpdate({...block,name:v})} title={L('Blok başlığı','Block title')}/>
+      {/* Everything below this break is the block's SECOND header row: what it holds on the
+          left, what can be done to it on the right. The title had to share its line with a
+          count and six buttons, which left it neither the width to be read nor the room to
+          be renamed. */}
+      <span className="blk-hdbreak" aria-hidden="true"/>
       <span className="iv-blockcnt">{isBall
         ?L(`${exs.length} dril`,`${exs.length} drill${exs.length!==1?'s':''}`)
         :L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{!isBall&&groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
@@ -12451,16 +12452,18 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
      (see BlockEd). Pressable again once everyone is on it, to pick up athletes added to
      the squad since. */
   const assignSel=(session.athletes||[]).filter(id=>roster.some(a=>a.id===id));
-  const allAssigned=!!(showPicker&&roster.length&&assignSel.length===roster.length);
+  /* Same rule as a block's own button: a ticked name is an assigned name, so the button
+     goes green as soon as anybody is on the session rather than only once everybody is. */
+  const assignedN=showPicker&&roster.length?assignSel.length:0;
+  const allAssigned=assignedN>0;
+  const wholeTeam=assignedN>0&&assignedN===roster.length;
   const assignAll=()=>{
     if(!showPicker||!roster.length)return;
-    const ids=assignSel.length?assignSel:roster.map(a=>a.id);
+    if(assignedN){u({athletes:assignSel});return;}
+    const ids=roster.map(a=>a.id);
     const n=ids.length;
-    if(!window.confirm(assignSel.length
-      ?L(`"${session.name||'Bu antrenman'}" bu seans için işaretlediğin ${n} sporcunun takvimine işlenecek. Emin misiniz?`,
-         `“${session.name||'This practice'}” will be written to the calendar of ${n} athlete${n>1?'s':''} ticked for this session. Are you sure?`)
-      :L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
-         `This practice will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
+    if(!window.confirm(L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
+      `This practice will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
     u({athletes:ids});
   };
   /* Only for the stand-in card below; every block draws its own. */
@@ -12470,12 +12473,13 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     disabled:!roster.length,
     onClick:assignAll,
     title:allAssigned
-      ?L('Kadrodaki herkes bu antrenmana atandı — sonradan eklenen sporcular için tekrar bas','Everyone on the roster is assigned to this practice — press again to pick up athletes added since')
-      :(assignSel.length
-        ?L('Sadece bu seans için işaretlediğin sporcuların takvimine bu antrenmanı işle','Write this practice onto the calendar of the athletes ticked for this session only')
-        :L('Bu antrenmanı kadrodaki bütün sporcuların takvimine ata','Assign this practice to the calendar of every athlete on the roster')),
-    label:allAssigned?'Assigned to the Team'
-      :(assignSel.length?`Assign the Practice to ${assignSel.length} Athlete${assignSel.length>1?'s':''}`:'Assign the Practice to the Team'),
+      ?(wholeTeam
+        ?L('Kadrodaki herkes bu antrenmana atandı — takvimlerine yeniden işlemek için tekrar bas','Everyone on the roster is assigned to this practice — press again to write it onto their calendars afresh')
+        :L(`Bu antrenman işaretli ${assignedN} sporcunun takviminde. Kimin yapacağını değiştirmek için aşağıdaki listeden işaretle.`,`This practice is on the calendar of the ${assignedN} ticked athlete${assignedN>1?'s':''}. Tick names in the list below to change who does it.`))
+      :L('Bu antrenmanı kadrodaki bütün sporcuların takvimine ata','Assign this practice to the calendar of every athlete on the roster'),
+    label:allAssigned
+      ?(wholeTeam?'Assigned to the Team':`Assigned to ${assignedN} Athlete${assignedN>1?'s':''}`)
+      :'Assign the Practice to the Team',
   };
 
   return(<div className="sess-card">
