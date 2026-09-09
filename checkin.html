@@ -301,25 +301,29 @@ var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
    `n` görselin dosya adı: quotes/1 … quotes/5. Sıraya yeni bir isim eklemek için
    listeye satır eklemek ve dosyayı aynı numarayla klasöre atmak yetiyor. */
 var MOTIVATION=[
-  {n:1,w:1080,h:608,
+  {n:1,ext:'jpg', w:1080,h:608,
    text:'Çalışkanlığın önüne geçmenin bir yolu yok. Bunu benimseyin. Çok çalışmanız gerekiyor çünkü her zaman kendinizi geliştirebileceğiniz bir şeyler vardır.'},
-  {n:2,w:1280,h:720,
+  {n:2,ext:'jpg', w:1280,h:720,
    text:'Şampiyonlar spor salonlarında yetişmez. Şampiyonlar içlerinde derinlerde taşıdıkları bir şeyden, bir arzudan, bir hayalden, bir vizyondan doğarlar.'},
-  {n:3,w:683,h:342,
+  {n:3,ext:'jpg', w:682,h:350,
    text:'Hayaller bedava. Hedeflerin ise bir bedeli var. Hayal kurmak ücretsiz olsa da, hedefler bedelsiz gelmez. Zaman, çaba, fedakarlık ve ter. Hedeflerinizin bedelini nasıl ödeyeceksiniz?'},
-  {n:4,w:912,h:516,
+  {n:4,ext:'webp',w:912,h:513,
    text:'Yetenekli kişi çok çalışmayı ihmal ettiğinde, çok çalışmak yeteneği yener.'},
-  {n:5,w:1333,h:750,
+  {n:5,ext:'jpg', w:1320,h:743,
    text:'Bazıları bunun olmasını ister, bazıları olmasını diler, bazıları ise olmasını sağlar.'}
 ];
-/* Görselin dosya adı yalnızca sıra numarası: quotes/1 … quotes/5. Uzantıyı koçun
-   klasöre ne attığı belirliyor — aşağıdaki sıra denenip ilk inen gösteriliyor.
-   Telefondan çekilen fotoğraf .jpg, ekran görüntüsü .png geliyor; ikisi de
-   çalışsın diye adın uzantısını tutturmak zorunda kalmıyoruz. */
+/* Görselin dosya adı yalnızca sıra numarası: quotes/1 … quotes/5. Uzantı olarak
+   önce listedeki `ext` deneniyor — klasördeki dosyanın gerçek uzantısı o, yani
+   normalde ilk istek tutuyor ve boşa 404 gitmiyor. Tutmazsa geri kalan uzantılar
+   sırayla deneniyor: koç dosyayı .png olarak değiştirirse `ext`'i güncellemeyi
+   unutsa bile görsel ekranda kalıyor. */
 var QUOTE_EXT=['jpg','png','jpeg','webp'];
 function quoteSrcs(item){
-  var out=[];
-  for(var i=0;i<QUOTE_EXT.length;i++)out.push('quotes/'+item.n+'.'+QUOTE_EXT[i]);
+  var out=['quotes/'+item.n+'.'+item.ext];
+  for(var i=0;i<QUOTE_EXT.length;i++){
+    var s='quotes/'+item.n+'.'+QUOTE_EXT[i];
+    if(s!==out[0])out.push(s);
+  }
   return out;
 }
 /* Listenin sıradaki elemanı: en son gösterilen sıra telefonda tutuluyor, her
