@@ -233,16 +233,17 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
 .done p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
 
 /* Wellness gönderiminden sonraki ödül karesi. Sporcu formu doldurup gönderince
-   readiness'ine göre bir gif ve altında bir satır çıkıyor — formu doldurmanın tek
-   karşılığı "Teşekkürler!" olmasın diye. Kutunun oranını gifin kendi ölçüleri
-   veriyor (img'in width/height'i): gif inerken yer boş kalıyor ama altındaki yazı
-   yükleme bitince aşağı zıplamıyor. */
-.done .gifwrap{margin:0 auto 18px;max-width:340px}
-.done .gifwrap img{display:block;width:100%;height:auto;border-radius:12px;
+   sıradaki sporcunun fotoğrafı ve altında o fotoğrafın özlü sözü çıkıyor — formu
+   doldurmanın tek karşılığı "Teşekkürler!" olmasın diye. Kutunun oranını görselin
+   kendi ölçüleri veriyor (img'in width/height'i): görsel inerken yer boş kalıyor
+   ama altındaki yazı yükleme bitince aşağı zıplamıyor. */
+.done .quotewrap{margin:0 auto 16px;max-width:340px}
+.done .quotewrap img{display:block;width:100%;height:auto;border-radius:12px;
   border:1px solid var(--border2);background:var(--bg2);box-shadow:var(--shadow)}
-.done .rdline{font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px}
+.done .quote{max-width:400px;margin:0 auto 16px;color:var(--text);font-size:14.5px;
+  line-height:1.6;font-style:italic}
+.done .rdline{font-size:15px;font-weight:700;color:var(--text);margin:0 0 24px}
 .done .rdline b{color:var(--accent2)}
-.done .rdsub{color:var(--muted);font-size:13.5px;margin:0 0 24px;line-height:1.55}
 .linkish{background:none;border:0;color:var(--accent2);font-size:14px;cursor:pointer;
   font-family:inherit;text-decoration:underline;text-underline-offset:3px}
 .foot{margin-top:30px;text-align:center;color:var(--dim);font-size:11px;
@@ -286,48 +287,40 @@ var FATIGUE_LABELS =['bitkin','yorgun','orta','dinç','çok dinç'];
 var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
 
 /* Wellness gönderiminin karşılığı ────────────────────────────────────────────
-   Readiness = uyku / yorgunluk / kas ağrısının ortalaması; koç tarafındaki
-   hesapla (index.html) birebir aynı formül, yoksa sporcunun ekranda gördüğü
-   sayı ile koçun gördüğü sayı tutmaz.
+   Formu gönderen sporcu, skoru kaç olursa olsun sıradaki fotoğrafı ve o fotoğrafa
+   ait özlü sözü görüyor. Ödül skora bağlanmıyor: kötü uyuyan gün de formu
+   dolduran sporcu bir şey görsün, dolduranı iyi skora göre ayıklamayalım.
 
-   Bantlar `min`'e göre okunuyor (büyükten küçüğe): skoru karşılayan ilk bant
-   kazanır. Şimdilik yalnızca 4.00–5.00 bandı dolu; alt bantlar eklenene kadar
-   düşük skorlarda ekran eskisi gibi sade kalıyor. */
-var RD_BANDS=[
-  {id:'high',min:4,
-   /* Ölçüler dosyanın kendisinden: gif inerken kutu doğru boyda duruyor, yazı
-      gif yüklenince aşağı zıplamıyor. */
-   gifs:[{src:'gifs/readiness-high-1.gif',w:500,h:281},
-         {src:'gifs/readiness-high-2.gif',w:472,h:262},
-         {src:'gifs/readiness-high-3.gif',w:480,h:475}],
-   title:'Bugün hazırsın.',
-   lines:[
-     'Uyku, yorgunluk ve ağrı üçü de yerinde — antrenmanda gazı köke kadar bas.',
-     'Bu skorla sahaya çıkılır. Bugünü değerlendir, yarını da düşünerek topla.',
-     'Vücudun "hazırım" diyor. İyi ısın, iyi çalış, iyi topla.',
-     'Formda görünüyorsun — bu tabloyu bozma, uykuyu da böyle tüt.',
-     'Yüksek hazır oluş. Büyük işlerin çıktığı günler böyle başlar.'
-   ]}
+   Sıra telefonda tutuluyor ve her gönderimde bir sonrakine geçiyor, liste bitince
+   başa dönüyor — "sırasıyla" derken kastedilen bu: rastgele değil, listedeki
+   sırayla.
+
+   Ölçüler dosyaların kendisinden geliyor: görsel inerken kutu doğru boyda duruyor,
+   yazı yüklenince aşağı zıplamıyor. */
+var MOTIVATION=[
+  {src:'quotes/1-federer.jpg',w:1080,h:608,
+   text:'Çalışkanlığın önüne geçmenin bir yolu yok. Bunu benimseyin. Çok çalışmanız gerekiyor çünkü her zaman kendinizi geliştirebileceğiniz bir şeyler vardır.'},
+  {src:'quotes/2-ali.jpg',w:1280,h:720,
+   text:'Şampiyonlar spor salonlarında yetişmez. Şampiyonlar içlerinde derinlerde taşıdıkları bir şeyden, bir arzudan, bir hayalden, bir vizyondan doğarlar.'},
+  {src:'quotes/3-bolt.jpg',w:683,h:342,
+   text:'Hayaller bedava. Hedeflerin ise bir bedeli var. Hayal kurmak ücretsiz olsa da, hedefler bedelsiz gelmez. Zaman, çaba, fedakarlık ve ter. Hedeflerinizin bedelini nasıl ödeyeceksiniz?'},
+  {src:'quotes/4-durant.jpg',w:912,h:516,
+   text:'Yetenekli kişi çok çalışmayı ihmal ettiğinde, çok çalışmak yeteneği yener.'},
+  {src:'quotes/5-jordan.jpg',w:1333,h:750,
+   text:'Bazıları bunun olmasını ister, bazıları olmasını diler, bazıları ise olmasını sağlar.'}
 ];
-function rdBand(score){
-  if(score==null)return null;
-  for(var i=0;i<RD_BANDS.length;i++)if(score>=RD_BANDS[i].min)return RD_BANDS[i];
-  return null;
-}
-/* Aynı gif üst üste çıkarsa sürpriz olmaktan çıkıyor: en son gösterilen sıra
-   telefonda tutuluyor ve bir sonraki sefer geri kalanların arasından seçiliyor.
-   localStorage kapalıysa (gizli sekme) tamamen rastgeleye düşüyor — çalışmayan
-   bir depo yüzünden ekranda hiçbir şey eksilmesin. */
-function pickRotating(list,key){
+/* Listenin sıradaki elemanı: en son gösterilen sıra telefonda tutuluyor, her
+   gönderimde bir sonrakine geçiliyor, sonuncudan sonra başa dönülüyor.
+   localStorage kapalıysa (gizli sekme) her seferinde ilk elemana düşüyor —
+   çalışmayan bir depo yüzünden ekranda hiçbir şey eksilmesin. */
+function pickNext(list,key){
   if(!list||!list.length)return null;
   var last=-1;
   try{var v=parseInt(localStorage.getItem(LS_SEEN+key),10);if(!isNaN(v))last=v;}catch(e){}
-  var pool=[];
-  for(var i=0;i<list.length;i++)if(i!==last)pool.push(i);
-  if(!pool.length)pool=[0];
-  var pick=pool[Math.floor(Math.random()*pool.length)];
-  try{localStorage.setItem(LS_SEEN+key,String(pick));}catch(e){}
-  return list[pick];
+  if(last<0||last>=list.length)last=-1;
+  var next=(last+1)%list.length;
+  try{localStorage.setItem(LS_SEEN+key,String(next));}catch(e){}
+  return list[next];
 }
 /* Koç tarafıyla aynı formül: doldurulan wellness skorlarının ortalaması, tek
    ondalık. Zorunlu olan yalnızca uyku ve yorgunluk; kas ağrısı boş bırakılmışsa
@@ -418,7 +411,7 @@ var KIND=(P.get('f')||'srpe').toLowerCase()==='wellness'?'wellness':'srpe';
 var LINK=null;                 // checkin_links dokümanı
 var A={};                      // formun cevapları
 var LS_KEY='coachos.checkin.athlete.';
-// Gönderim sonrası gösterilen gif/satırın sırası — aynısı üst üste çıkmasın diye.
+// Gönderim sonrası gösterilen görsel/sözün sırası — her gönderimde bir sonrakine geçiyor.
 var LS_SEEN='coachos.checkin.seen.';
 
 /* ── Alan üreticileri ────────────────────────────────────────────────────── */
@@ -788,29 +781,25 @@ function submit(btn,errBox){
     }
   });
 }
-/* Gönderim ekranının ödül kısmı: readiness'i olan bir wellness gönderiminde,
-   skorun bandına ait giflerden biri ve altında o banda ait bir satır. Bant
-   tanımlı değilse (şimdilik 4.00 altı) hiçbir şey dönmüyor ve ekran eskisi gibi
-   kalıyor. Gif ile satır ayrı ayrı dönüyor: aynı gif aynı yazıyla eşleşmesin,
-   her doldurma biraz farklı görünsün. */
+/* Gönderim ekranının ödül kısmı: wellness gönderiminde sıradaki fotoğraf ve
+   altında o fotoğrafın özlü sözü — skora bakılmıyor, gönderen herkes görüyor.
+   Readiness satırı yalnızca skor hesaplanabildiğinde (üç sorudan en az biri
+   cevaplandığında) ekleniyor; sözün altında bilgi olarak kalıyor. */
 function rewardNodes(){
-  var score=readinessScore();
-  if(score==null)return[];
-  var band=rdBand(score);
-  if(!band)return[];
-  var src=pickRotating(band.gifs,band.id+'.gif');
-  var line=pickRotating(band.lines,band.id+'.line');
+  if(KIND!=='wellness')return[];
+  var item=pickNext(MOTIVATION,'quote');
   var out=[];
-  if(src){
-    out.push(el('div',{class:'gifwrap'},[
-      el('img',{src:src.src,width:src.w,height:src.h,alt:'',
-        // Gif inmezse (şebeke yok, dosya taşınmış) kutu tamamen kalkıyor: sporcu
-        // gönderim ekranında boş bir çerçeveye bakmasın.
+  if(item){
+    out.push(el('div',{class:'quotewrap'},[
+      el('img',{src:item.src,width:item.w,height:item.h,alt:'',
+        // Görsel inmezse (şebeke yok, dosya taşınmış) kutu tamamen kalkıyor: sporcu
+        // gönderim ekranında boş bir çerçeveye bakmasın, söz yerinde kalsın.
         onerror:function(){var w=this.parentNode;if(w&&w.parentNode)w.parentNode.removeChild(w);}})
     ]));
+    out.push(el('div',{class:'quote',text:'\u201C'+item.text+'\u201D'}));
   }
-  out.push(el('div',{class:'rdline',html:band.title+' Readiness <b>'+score.toFixed(2)+'</b> / 5.00'}));
-  if(line)out.push(el('div',{class:'rdsub',text:line}));
+  var score=readinessScore();
+  if(score!=null)out.push(el('div',{class:'rdline',html:'Readiness <b>'+score.toFixed(2)+'</b> / 5.00'}));
   return out;
 }
 function done(queued){
