@@ -187,7 +187,19 @@ h1,h2,h3,h4,h5,h6,.ex-h1{font-family:'Space Grotesk','Inter',sans-serif;font-wei
 .brand-team .bt-row.team-sel select{background:transparent;border:none;color:var(--text);font-weight:600;font-size:13px;padding:2px 0;cursor:pointer;width:100%;font-family:inherit}
 .brand-team .bt-row.team-sel select:focus{outline:none}
 .brand-team .bt-row.team-sel select option{background:var(--panel)}
+/* Small enough to sit inside the row without pushing the name around, square-cropped
+   so a wordmark and a round crest both come out the same size. */
+.brand-team .bt-teamlogo{flex:none;width:20px;height:20px;border-radius:5px;object-fit:contain;
+  background:rgba(255,255,255,.05);padding:1px;box-sizing:border-box}
 .brand-team .btn{padding:6px 10px;font-size:12px;border-radius:8px}
+/* Sync state on one line, the signed-in address under it — whole, wrapping at the box's
+   width rather than being clipped to a first half that identifies nobody. */
+.brand-team .team-sw.sync-chip{align-items:flex-start;gap:7px;padding:7px 10px}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:4px}
+.sync-txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.sync-txt b{font-size:11.5px;font-weight:600;color:var(--text2)}
+.sync-txt em{font-style:normal;font-size:10.5px;line-height:1.35;color:var(--dim);
+  overflow-wrap:anywhere;word-break:break-word}
 .brand-team .team-sw{flex:1;min-width:0;padding:6px 10px;border-radius:8px;font-size:11px;background:var(--panel);border-color:var(--border)}
 .brand-team .team-sw>div:first-child{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:500}
 .content{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -21164,9 +21176,16 @@ function CloudBar({sync,onOpen}){
   // invalid-argument = Firestore yazımı reddetti; pratikte her zaman boyut kaynaklı olur
   const isSize=syncErr&&(syncErr.includes('invalid-argument')||syncErr.includes('INVALID_ARGUMENT'));
   return(<div style={{width:'100%'}}>
-    <div className="team-sw no-italic" style={{gap:8,paddingRight:8}} title={user.email+' · uid:'+user.uid}>
-      <span style={{width:8,height:8,borderRadius:'50%',background:dot,boxShadow:`0 0 6px ${dot}`,flex:'none'}}></span>
-      <span className="no-italic" style={{fontSize:12,color:'var(--text2)',maxWidth:130,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{label} · {user.email}</span>
+    {/* The address is the answer to "whose data is this?", and half of one answers
+        nothing — two coaches on the same machine differ by the part that was being
+        clipped. So the state keeps its line and the address gets its own, wrapping
+        rather than being cut off. */}
+    <div className="team-sw no-italic sync-chip" title={user.email+' · uid:'+user.uid}>
+      <span className="sync-dot" style={{background:dot,boxShadow:`0 0 6px ${dot}`}}></span>
+      <span className="sync-txt no-italic">
+        <b>{label}</b>
+        <em>{user.email}</em>
+      </span>
     </div>
     {/* The account-code line and the manual "⟳ Sync" button used to live here. They are
         intentionally hidden from the sidebar — syncing is automatic and the uid is still
@@ -23377,8 +23396,8 @@ function LanguageSelector({inline}){
   useAppLang();
   const sel=(<select className={inline?'lang-inline-sel':'lang-fixed-sel'} value={REPORT_LANG} onChange={e=>setReportLang(e.target.value)}
       aria-label={L('Dil seçimi','Language selector')}>
-      <option value="en">English</option>
-      <option value="tr">Türkçe</option>
+      <option value="en">🇬🇧 English</option>
+      <option value="tr">🇹🇷 Türkçe</option>
     </select>);
   if(inline)return(<div className="lang-inline">
     <span className="bt-label">{L('Dil','Language')}</span>
@@ -24384,6 +24403,11 @@ function App(){
       <div className="brand-team">
         <div className="bt-row team-sel">
           <span className="bt-label">{L('Takım','Team')}</span>
+          {/* The crest, immediately left of the name it belongs to. A native select cannot
+              carry a picture, so it rides beside the box — which is enough: a coach working
+              across two squads recognises the badge before they have read the word. */}
+          {hasMedia(team.setup&&team.setup.logo)&&
+            <img className="bt-teamlogo" src={mediaSrc(team.setup.logo)} alt=""/>}
           <select value={data.activeTeamId} onChange={e=>setData({...data,activeTeamId:e.target.value})}>
             {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
           </select>
