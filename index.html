@@ -245,6 +245,11 @@ nav{
    selector above it, so it never floats over other content. */
 .lang-inline{display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
   border-radius:9px;padding:6px 10px;margin:0 4px 10px}
+/* A real flag, at passport-photo proportions, with a hairline so a white stripe never
+   bleeds into the panel behind it. */
+.lang-flag{flex:none;display:inline-flex;width:19px;height:13px;border-radius:2px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.22)}
+.lang-flag svg{display:block;width:100%;height:100%}
 .lang-inline-sel{background:transparent;border:none;color:var(--text);font-weight:600;font-size:13px;padding:2px 0;cursor:pointer;width:100%;font-family:inherit}
 .lang-inline-sel:focus{outline:none}
 .lang-inline-sel option{background:var(--panel);color:var(--text)}
@@ -23392,19 +23397,44 @@ function IndividualizationView({data,team,updateTeam,weeks}){
    floats fixed to the bottom-left corner; inside the app it renders `inline`
    instead — a normal, non-floating row docked in the sidebar, between the
    team/account block and the nav groups, so it never overlaps other content. */
+/* The flag beside the language is DRAWN, not typed. The 🇬🇧 / 🇹🇷 emoji are pairs of
+   regional-indicator letters that the font is asked to fuse into a flag, and Windows
+   ships no flag glyphs at all — it renders the letters, so the control said "GB English"
+   on exactly the machines most coaches use. Two small SVGs say it everywhere. */
+const LANG_FLAGS={
+  en:(<svg viewBox="0 0 60 40" aria-hidden="true">
+    <clipPath id="lf-uk"><path d="M30 20h30v20zv20H0zH0V0zV0h30z"/></clipPath>
+    <rect width="60" height="40" fill="#012169"/>
+    <path d="M0 0l60 40m0-40L0 40" stroke="#fff" strokeWidth="8"/>
+    <path d="M0 0l60 40m0-40L0 40" stroke="#c8102e" strokeWidth="5" clipPath="url(#lf-uk)"/>
+    <path d="M30 0v40M0 20h60" stroke="#fff" strokeWidth="13"/>
+    <path d="M30 0v40M0 20h60" stroke="#c8102e" strokeWidth="8"/>
+  </svg>),
+  tr:(<svg viewBox="0 0 60 40" aria-hidden="true">
+    <rect width="60" height="40" fill="#e30a17"/>
+    <circle cx="25" cy="20" r="10" fill="#fff"/>
+    <circle cx="28.5" cy="20" r="8" fill="#e30a17"/>
+    <polygon fill="#fff" points="40.50,14.80 41.70,18.34 45.45,18.39 42.45,20.63 43.56,24.21 40.50,22.05 37.44,24.21 38.55,20.63 35.55,18.39 39.30,18.34"/>
+  </svg>),
+};
 function LanguageSelector({inline}){
   useAppLang();
+  /* The flag shows the language that is SELECTED — an <option> cannot hold a picture,
+     so the row wears the current one rather than the list wearing all of them. */
+  const flag=<span className="lang-flag">{LANG_FLAGS[REPORT_LANG]||LANG_FLAGS.en}</span>;
   const sel=(<select className={inline?'lang-inline-sel':'lang-fixed-sel'} value={REPORT_LANG} onChange={e=>setReportLang(e.target.value)}
       aria-label={L('Dil seçimi','Language selector')}>
-      <option value="en">🇬🇧 English</option>
-      <option value="tr">🇹🇷 Türkçe</option>
+      <option value="en">English</option>
+      <option value="tr">Türkçe</option>
     </select>);
   if(inline)return(<div className="lang-inline">
     <span className="bt-label">{L('Dil','Language')}</span>
+    {flag}
     {sel}
   </div>);
   return(<div className="lang-fixed">
     <span className="lang-fixed-ic" aria-hidden="true">🌐</span>
+    {flag}
     {sel}
   </div>);
 }
