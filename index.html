@@ -508,8 +508,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-h .su{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
 .dw-b{overflow-y:auto;overscroll-behavior:contain;padding:22px;flex:1}
 .dw-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 20px}
-.dw-dm{position:relative;background:transparent;border:1px solid var(--dm-ac,var(--accent));border-radius:12px;padding:11px 13px 13px}
-.dw-dm:focus-within{box-shadow:0 0 0 1px var(--dm-ac,var(--accent)) inset}
+/* `--dm-ac` is the card's accent — its icon, its caret, its focus ring — and `--dm-bd` is
+   its frame. They were the same value, which made the meta bar a row of four differently
+   coloured outlines; the three planning boxes wear a plain white frame now (`.white`) and
+   let the accent live inside them, so the only colour that moves along the row is the one
+   the intensity card is actually reporting. */
+.dw-dm{position:relative;background:transparent;border:1px solid var(--dm-bd,var(--dm-ac,var(--accent)));border-radius:12px;padding:11px 13px 13px}
+.dw-dm.white{--dm-bd:#fff}
+.dw-dm:focus-within{box-shadow:0 0 0 1px var(--dm-bd,var(--dm-ac,var(--accent))) inset}
 .dw-dm .dm-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .dw-dm .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em}
 .dw-dm .dm-ic{color:var(--dm-ac,var(--accent));display:flex;opacity:.9}
@@ -526,11 +532,24 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background-position:calc(100% - 8px) calc(50% + 3px),calc(100% - 4px) calc(50% + 3px);
   background-size:4px 4px,4px 4px;background-repeat:no-repeat}
 .dw-sel option{background:#12151b;color:#fff;font-size:14px}
-/* The goal reads as a phrase ("Technical / Tactical", "Sahaya Dönüş"), not a number, so it
-   is set smaller than the clock and the duration and allowed to wrap rather than spill out
-   of its card. */
-.dw-sel.goal,.dw-dm .v.goal{font-size:15px;line-height:1.25}
-.dw-dm .v.goal{word-break:break-word}
+/* The goal card's trigger has to pass for the typed values beside it — same weight, same
+   baseline, no button chrome — while carrying a list that can run to several qualities,
+   each in its own colour, so it wraps instead of truncating and the caret keeps its
+   corner. */
+.dm-goal{margin-top:6px}
+.dm-goal-trig{display:flex;align-items:flex-start;gap:6px;width:100%;background:none;border:none;padding:0;cursor:pointer;
+  color:#fff;font-family:inherit;font-size:15px;font-weight:700;line-height:1.25;text-align:left;letter-spacing:-.01em}
+.dm-goal-txt{flex:1;min-width:0}
+.dm-goal-txt .ph{color:var(--dim);font-weight:600;font-style:normal}
+.dm-goal-car{flex:none;font-style:normal;font-size:10px;color:var(--dm-ac,var(--accent));line-height:1.6;transition:transform .15s}
+.dm-goal-trig.open .dm-goal-car{transform:rotate(180deg)}
+/* Several goals read as one sentence: the commas belong to the card, not to any one
+   quality, so they stay in the panel's own grey while each name keeps its colour. */
+.dm-goal-v+.dm-goal-v::before{content:', ';color:var(--dim)}
+/* The goal reads as a phrase ("Technical / Tactical", "Sahaya Dönüş") — several of them,
+   even — not a number, so it is set smaller than the clock and the duration and allowed to
+   wrap rather than spill out of its card. */
+.dw-dm .v.goal{font-size:15px;line-height:1.25;word-break:break-word}
 /* ---- AI Coach assistant ---- */
 /* Tucked against the right edge as a slim handle so it never covers page
    content; slides fully into view on hover/focus. Click opens the panel. */
@@ -4046,6 +4065,12 @@ const sesSubFocus=s=>{
    not part of it: that is the Training Method box further down the panel, its own field
    with its own taxonomy (`methods`). */
 const sesFocusLine=s=>[...sesFocus(s),...sesSubFocus(s)].join(', ');
+/* Just the goals, in the coach's language — what a calendar card has room to say. The
+   sub-focuses are the fine print of the answer and turned a card into five lines of text;
+   they stay in the panel and on the printed sheet, where there is room to read them. A
+   session with no goal the tree recognises falls back to whatever its `purpose` says, so
+   free text a coach typed is still shown rather than blanked. */
+const sesGoalLine=s=>sesFocus(s).map(focusLabel).join(', ')||(s?.purpose||'');
 /* Training methods — the means used to deliver the session focus. Grouped the way the
    S&C literature does (Zatsiorsky/Verkhoshansky strength means, Buchheit/Laursen
    conditioning formats, sprint & mobility means) so a coach can tag *how* a session was
@@ -10436,17 +10461,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
      the session is FOR (its stage-1 focus) and how hard it is planned to be (the RPE
      target, out of 10). Neither is a new field — both are the ones the session editor and
      the printed program already read, so a pick made here is the same pick made there. */
-  const drwGoal=drawerSes?(sesFocus(drawerSes)[0]||''):'';
+  const drwGoals=drawerSes?sesFocus(drawerSes):[];
   const drwRpeT=drawerSes?sesRpeTarget(drawerSes):7;
   const drwZone=rpeZone(drwRpeT);
-  /* The dropdown owns the first slot of the focus list and nothing else: picking a goal
-     swaps the primary quality and leaves any secondary focus — and every sub-focus — the
-     editor's multi-select put there exactly where it was. */
-  const setDrwGoal=v=>{
+  /* Picking goals here is the same act as picking them in the editor, so it follows the
+     same rule: a sub-focus whose quality is no longer ticked goes with it, because a
+     capacity left behind by the quality that justified it is not a record of anything. */
+  const setDrwGoals=arr=>{
     if(!drawerSes)return;
-    const rest=sesFocus(drawerSes).slice(1).filter(f=>f!==v);
-    const arr=v?[v,...rest]:rest;
-    drwUpd({focus:arr,purpose:[...arr,...sesSubFocus(drawerSes)].join(', ')});
+    const sub=sesSubFocus(drawerSes).filter(x=>arr.includes(SUBFOCUS_OWNER[x]));
+    drwUpd({focus:arr,sub,purpose:[...arr,...sub].join(', ')});
   };
   const setAthRPE=(athId,rpeRaw)=>{
     if(!teamMode||!drawerSes)return;
@@ -10667,7 +10691,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 <button title={L('Sil','Delete')} className="del" onClick={e=>{e.stopPropagation();if(confirm(L('Bu seans silinsin mi?','Delete this session?')))delSession(k,s.id);}}>✕</button>
               </div>}
               <div className="nm">{s.name}</div>
-              <div className="pr">{s.purpose}</div>
+              {/* Only the goals — Kuvvet, Güç, Hız — never the sub-focuses under them:
+                  five lines of capacities pushed the time, the length and the RPE badge
+                  off the bottom of the card. */}
+              <div className="pr">{sesGoalLine(s)}</div>
               {/* Clock, length, and the intensity the coach planned for the day — the third
                   number belongs on this line because the first two only say when and how
                   long, never how hard. It is the same target the session editor's scale
@@ -10795,29 +10822,24 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             </div>);
           })()}
           <div className="dw-meta">
-            <div className="dw-dm" style={{'--dm-ac':'#22d3ee'}}>
+            <div className="dw-dm white" style={{'--dm-ac':'#22d3ee'}}>
               <div className="dm-top"><span className="k">{L('Saat','Time')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/></svg></span></div>
               {canEdit
                 ?<input type="time" className="dw-inp" value={drawerSes.time||''} onChange={e=>drwUpd({time:e.target.value})}/>
                 :<div className="v">{drawerSes.time||'—'}</div>}
             </div>
-            <div className="dw-dm" style={{'--dm-ac':'#a78bfa'}}>
+            <div className="dw-dm white" style={{'--dm-ac':'#a78bfa'}}>
               <div className="dm-top"><span className="k">{L('Süre','Duration')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2.5h4"/><path d="M12 13l2.6-2.6"/><circle cx="12" cy="14" r="7.5"/></svg></span></div>
               {canEdit
                 ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'2.6em'}} value={drawerSes.duration??''} onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));const patch={duration:d};if(!drawerSes.auManual&&drawerSes.sRPE!==''&&drawerSes.sRPE!=null)patch.au=Math.round(Number(drawerSes.sRPE)*(Number(d)||0));drwUpd(patch);}}/><span className="dw-unit">{L('dk','min')}</span></div>
                 :<div className="v">{Number(drawerSes.duration)||0}<span className="dw-unit"> {L('dk','min')}</span></div>}
             </div>
-            {/* What the session is for. Picked by hand from the nine qualities the focus
-                tree names — Kuvvet, Güç, Hız and the rest — rather than read off the
-                exercises, so the bar states the coach's intent for the day. */}
-            <div className="dw-dm" style={{'--dm-ac':FOCUS_BY[drwGoal]?.c||'#22c55e'}}>
+            {/* What the session is for — one goal or several, picked by hand from the nine
+                qualities the focus tree names rather than read off the exercises, so the
+                bar states the coach's intent for the day. */}
+            <div className="dw-dm white" style={{'--dm-ac':FOCUS_BY[drwGoals[0]]?.c||'#22c55e'}}>
               <div className="dm-top"><span className="k">{L('Hedef','Goal')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span></div>
-              {canEdit
-                ?<select className="dw-inp dw-sel goal" value={drwGoal} onChange={e=>setDrwGoal(e.target.value)} title={L('Antrenman hedefi — seansın birincil odağı','Training goal — the session\'s primary focus')}>
-                  <option value="">{L('Seç…','Pick…')}</option>
-                  {SESSION_FOCUS.map(f=><option key={f} value={f}>{focusLabel(f)}</option>)}
-                </select>
-                :<div className="v goal">{drwGoal?focusLabel(drwGoal):'—'}</div>}
+              <GoalPicker value={drwGoals} onChange={setDrwGoals} readOnly={!canEdit}/>
             </div>
             {/* How hard the day is planned to be, on the 1-10 RPE scale the whole app
                 speaks — the same rpeTarget the session editor's gauge and the printed
@@ -12559,6 +12581,50 @@ function FocusSelect({value,sub,onChange,onSubChange,placeholder}){
             :L(`${sel.length} odak · ${subSel.length} alt odak`,`${sel.length} focus · ${subSel.length} sub-focus`)}</span>
           {summary.length>0&&<button type="button" className="fx-clear"
             onClick={()=>{onChange([]);onSubChange([]);}}>{L('Temizle','Clear')}</button>}
+          <button type="button" className="fx-done" onClick={close}>{L('Bitti','Done')}</button>
+        </div>
+      </div>,document.body)}
+  </div>);
+}
+
+/* The goal picker that sits in the session panel's meta bar. Stage 1 of the focus tree and
+   nothing else: which qualities is this session for. Multi-select, because a day is rarely
+   one thing — a strength session that also does speed work says so with two goals.
+
+   It shares FocusSelect's panel, options and dropdown mechanics rather than growing its
+   own, so the two controls answer the same question in the same words; what it does not
+   share is stage 2. The sub-focus question belongs in the editor, where the answer has
+   room to be read; the bar has room for the heading.
+
+   Each picked goal is drawn in its own quality's colour — the one the focus tree gives it
+   everywhere else — which is the only colour in the card that moves: the border stays
+   white so the bar reads as one row of boxes rather than a paint chart. */
+function GoalPicker({value,onChange,readOnly}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null),ddRef=useRef(null);
+  const close=useCallback(()=>setOpen(false),[]);
+  useDDOutside([ref,ddRef],open,close);
+  const box=useDDAnchor(ref,open,{width:320,minWidth:250,maxHeight:360,ignore:[ddRef]});
+  const sel=Array.isArray(value)?value:[];
+  const toggle=f=>onChange(sel.includes(f)?sel.filter(x=>x!==f):[...sel,f]);
+  const chips=sel.map(f=><span key={f} className="dm-goal-v" style={{color:FOCUS_BY[f]?.c}}>{focusLabel(f)}</span>);
+  const tip=sel.length?sel.map(focusLabel).join(' · '):L('Antrenman hedefi seç','Pick the training goal');
+  if(readOnly)return<div className="v goal">{sel.length?chips:'—'}</div>;
+  return(<div ref={ref} className="dm-goal">
+    <button type="button" className={'dm-goal-trig'+(open?' open':'')} onClick={()=>setOpen(o=>!o)} title={tip}>
+      <span className="dm-goal-txt">{sel.length?chips:<i className="ph">{L('Seç…','Pick…')}</i>}</span>
+      <i className="dm-goal-car">▾</i>
+    </button>
+    {open&&box&&ReactDOM.createPortal(
+      <div ref={ddRef} className="focus-dd fx-dd" style={box}>
+        <FxStage n={1} title={L('Antrenman Hedefi','Training Goal')} hint={L('Neyi geliştiriyoruz?','What are we developing?')}>
+          <div className="fx-grid">
+            {FOCUS_TREE.map(f=><FxOpt key={f.id} v={f.id} c={f.c} on={sel.includes(f.id)} tog={toggle}/>)}
+          </div>
+        </FxStage>
+        <div className="fx-foot">
+          <span>{L(`${sel.length} hedef`,`${sel.length} goal${sel.length===1?'':'s'}`)}</span>
+          {sel.length>0&&<button type="button" className="fx-clear" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>}
           <button type="button" className="fx-done" onClick={close}>{L('Bitti','Done')}</button>
         </div>
       </div>,document.body)}
