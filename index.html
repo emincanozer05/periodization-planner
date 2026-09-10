@@ -7379,13 +7379,19 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         const aPat=[EX_PAT_SHORT[alt.pattern]||alt.pattern||'',alt.plane||''].filter(Boolean).join(' · ');
         const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
         const aNotesHTML=aNotes.length?`<ul class="ex-notes">${aNotes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:'';
+        /* Whose alternative this is has to be unmissable, or the row reads as an eighth
+           exercise rather than a second way of doing the fourth. So it says so three
+           times over: the number column carries the parent's own badge behind a ↳, the
+           first line of the cell names the exercise it replaces, and the two rows are
+           tied together by dropping the rule between them. */
         altRow=`<tr class="ex-row alt-row">
-          <td class="c-no"><span class="alt-arrow" title="${L('Alternatif','Alternative')}">⇄</span></td>
+          <td class="c-no"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${isSS?' ss':''} ghost">${lab.tag}</span></span></td>
           <td class="c-ex">
             <div class="ex-ex-wrap">
               ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
               <div class="ex-ex-txt">
-                <div class="ex-nm-wrap"><span class="alt-lbl">${L('ALTERNATİF','ALTERNATIVE')}</span><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
+                <div class="alt-for">${L('⇄ ŞUNUN ALTERNATİFİ','⇄ ALTERNATIVE FOR')}<b>${escHTML(e.name)}</b></div>
+                <div class="ex-nm-wrap"><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
                 ${aPat?`<span class="ex-pat2">${escHTML(aPat)}</span>`:''}
               </div>
             </div>
@@ -7398,7 +7404,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
           <td class="c-notes">${aNotesHTML}${altWhy?`<div class="alt-why"><span class="alt-why-k">${L('Gerekçe','Reason')}</span>${escHTML(altWhy)}</div>`:''}</td>
         </tr>`;
       }
-      return`<tr class="ex-row">
+      return`<tr class="ex-row${altRow?' has-alt':''}">
         <td class="c-no"><span class="ex-badge${isSS?' ss':''}">${lab.tag}</span></td>
         <td class="c-ex">
           <div class="ex-ex-wrap">
@@ -7586,7 +7592,7 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    wordmark at max-width, and neither ends up letterboxed inside a box the wrong shape.
    Uploads are capped at 900px (resizePhotoBlob) and never upscaled here, so a low-res logo
    stays at its own size instead of being blown up into a blurry one. */
-.doc-logo{height:auto;width:auto;max-height:78px;max-width:170px;object-fit:contain;flex:none}
+.doc-logo{height:auto;width:auto;max-height:56px;max-width:124px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
 /* Focus badge — what this document is FOR, opposite the title. A round icon chip beside
@@ -7635,27 +7641,33 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 /* Training Volume + Intensity Target — the coach's plan for the session, at a glance,
    before the exercise-by-exercise table. Two equal panels, same card language (rounded
    frame, mono caption over a bold value) as the rest of the document. */
-.stat-row{display:flex;gap:10px;padding:10px 16px 0;break-inside:avoid;page-break-inside:avoid}
-.stat-box{flex:1 1 0;min-width:0;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;background:#fbfcfd}
-.stat-box-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#6f7d29;text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+/* These two panels are a summary, not the programme — every millimetre they take is a
+   millimetre of exercises pushed onto a second sheet. So the caption lies alongside the
+   figures instead of stacked above them, and the whole strip is drawn tight: it costs
+   roughly the height of one table row now rather than two. */
+.stat-row{display:flex;gap:8px;padding:8px 16px 0;break-inside:avoid;page-break-inside:avoid}
+.stat-box{flex:1 1 0;min-width:0;border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;background:#fbfcfd;
+  display:flex;align-items:center;gap:11px}
+.stat-box-lbl{flex:none;max-width:74px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;
+  color:#6f7d29;text-transform:uppercase;letter-spacing:.5px;line-height:1.3}
 /* Three equal thirds, each figure centred in its own — the box reads as one balanced
    row of numbers rather than three left-packed ones with dead space after the last. */
-.stat-box-cols{display:flex;gap:14px}
-.stat-col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;min-width:0}
-.stat-col-lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
-.stat-col-val{font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
-.stat-int-row{display:flex;flex-direction:column;gap:7px}
-.stat-int-val{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
-.stat-int-max{font-size:11px;color:#94a3b8;font-weight:600}
-.stat-int-zone{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.6px;margin-left:7px}
+.stat-box-cols{flex:1 1 0;min-width:0;display:flex;gap:10px}
+.stat-col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;min-width:0}
+.stat-col-lbl{font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px}
+.stat-col-val{font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:-.01em;line-height:1.2}
+.stat-int-row{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px}
+.stat-int-val{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:-.01em;line-height:1.2}
+.stat-int-max{font-size:9.5px;color:#94a3b8;font-weight:600}
+.stat-int-zone{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;margin-left:6px}
 /* Static twin of the editor's gauge — the same run-up, lit band and centre marker, in the
    same zone colour, so the page shows exactly what the editor showed. */
-.rpe-gauge-print{position:relative;height:9px;border-radius:999px;background:#e2e8f0;
+.rpe-gauge-print{position:relative;height:7px;border-radius:999px;background:#e2e8f0;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
 .rpe-gauge-print-lead{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#ea580c;opacity:.34}
 .rpe-gauge-print-band{position:absolute;top:0;bottom:0;border-radius:999px;background:#ea580c}
-.rpe-gauge-print-thumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;
+.rpe-gauge-print-thumb{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;
   transform:translate(-50%,-50%);background:#ea580c;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
 
 .bs{padding:10px 16px}
@@ -7722,16 +7734,32 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .c-sr,.c-load,.c-dur,.c-tempo,.c-rest{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
-/* The alternative rides directly under the exercise it replaces, tinted amber and tied
-   to it by an unbroken top border, so the pair reads as one prescription with two ways
-   of being done rather than as two exercises in a row. */
+/* The alternative rides directly under the exercise it replaces, tinted amber and bound
+   to it, so the pair reads as one prescription with two ways of being done rather than
+   as two exercises in a row. The binding is the whole point: the row above gives up its
+   bottom rule and refuses to break away from this one, the number column repeats that
+   row's own badge behind a hook, and the cell opens by naming what is being replaced. */
 .ex-tbl2 tr.alt-row td,.ex-tbl2 tr:nth-child(even) td.alt-c,.ex-tbl2 tr.alt-row:nth-child(even) td{background:rgba(245,158,11,.055)}
-.ex-tbl2 tr.alt-row td{border-top:0;padding-top:5px}
-.alt-arrow{display:inline-block;font-size:13px;font-weight:700;color:#b45309;line-height:1}
-.alt-lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.11em;
-  color:#b45309;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.45);
-  border-radius:4px;padding:1px 6px}
-.alt-name{font-weight:700;font-size:12.5px;color:#78350f;line-height:1.25}
+.ex-tbl2 tr.alt-row td{border-top:0;padding-top:4px}
+/* No rule between an exercise and its alternative, and no page break either. */
+.ex-tbl2 tr.ex-row.has-alt td{border-bottom:none;padding-bottom:3px;break-after:avoid;page-break-after:avoid}
+.ex-tbl2 tr.ex-row.has-alt td{background:rgba(245,158,11,.055)}
+/* The hook and the parent's own badge, greyed back: read down the # column and the
+   alternative points straight at the row it belongs to. */
+.alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
+.alt-hook{font-size:12px;font-weight:700;color:#b45309;line-height:1}
+.ex-badge.ghost{min-width:0;padding:1px 4px;font-size:9.5px;color:#b45309;background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.4)}
+/* The alternative's text hangs off an amber rule, indented from the exercise above it —
+   the shape of a sub-entry, read before a single word of it is. */
+.alt-row .ex-ex-txt{padding-left:8px;border-left:2px solid rgba(245,158,11,.6)}
+/* What it replaces, said before what it is — and said quietly, so the alternative's own
+   name is still the line the eye lands on. */
+.alt-for{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;letter-spacing:.09em;
+  color:#b45309;line-height:1.35;margin-bottom:1px}
+.alt-for b{font-family:'Archivo',system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:0;
+  color:#a16207;margin-left:5px}
+.alt-name{font-weight:700;font-size:13px;color:#78350f;line-height:1.25}
 .alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
 .alt-why-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;
   text-transform:uppercase;color:#b45309;margin-right:6px}
