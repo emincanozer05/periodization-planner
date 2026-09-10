@@ -3156,7 +3156,6 @@ header{background:var(--bg2)!important}
 .iv-block-hd .blk-grip{color:var(--blk-hd-ink3)}
 .iv-block-hd .iv-blockch{color:var(--blk-hd-ink)}
 .iv-block-hd .iv-blockcnt{color:var(--blk-hd-ink2)}
-.iv-block-hd .iv-block-lbl{color:var(--blk-hd-ink)}
 /* The kind badge and the assignment keep the colours that MEAN something — S&C green,
    ball orange, amber-to-green for the assignment — over a dark plate, because none of
    them would read against the brass on their own. */
@@ -3205,10 +3204,6 @@ header{background:var(--bg2)!important}
 .blk-details-b>.ath-pick,.blk-details-b>.iv-cardtools.sess-tools{
   background:transparent;border:none;border-radius:0;padding:0;margin:0}
 .blk-details-b>.ath-pick+.iv-cardtools.sess-tools{border-top:1px solid var(--border);padding-top:12px}
-/* A label, not a rename box: the session's name is a field inside the panel, so the
-   header of a block-less session only has to say what the card is. */
-.iv-block-lbl{flex:1 1 160px;min-width:0;padding:4px 0;font-size:20px;font-weight:700;
-  color:var(--text2);letter-spacing:.01em}
 .blk-assign{white-space:nowrap}
 /* Assignment reads at a glance: amber while the practice still has to be assigned,
    green once the whole roster carries it. */
@@ -12910,7 +12905,15 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           first block is added and takes them over. */}
       {session.blocks.length===0&&<div className="iv-block cal-block">
         <div className="iv-block-hd">
-          <span className="iv-block-lbl">{L('Antrenman Özellikleri','Training Details')}</span>
+          {/* The heading renames the session, exactly as a block's heading renames the
+              block. A session with no block yet had the one title it could be given
+              sitting inside the panel, so the card it stands on read as a fixed label;
+              typed into here it is the same name the bar above and the panel below
+              carry, and an unnamed session still reads "Training Details". */}
+          <LiveInput className="iv-block-nm" value={session.name||''}
+            placeholder={L('Antrenman Özellikleri','Training Details')}
+            title={L('Seans başlığı','Session title')}
+            onChange={v=>u({name:v})}/>
           {assign.show&&<span className="iv-blockacts">
             <button type="button" className={'btn xs sec blk-assign'+(assign.assigned?' on':'')} onClick={assign.onClick}
               disabled={assign.disabled} title={assign.title}>{assign.label}</button>
@@ -12937,28 +12940,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {noteOpen&&<div className="ses-note">
         <textarea value={session.planNote||''} onChange={e=>u({planNote:e.target.value})} placeholder={L('Bu seans için bir not yaz…','Write a note for this session…')}/>
       </div>}
-      {!isTemplate&&<><div className="hr"/>
-      <div className="grid cols-3">
-        <div>
-          <label>RPE (0-10)</label>
-          <input type="number" min="0" max="10" step="0.1" value={session.sRPE} placeholder={L('RPE gir (ör. 7.5)','Enter RPE (e.g. 7.5)')}
-            onChange={e=>{const v=e.target.value;
-              /* Typed here, this number is the coach's own — clearing srpeFromManual is what
-                 stops the athletes' ratings being averaged over it again. */
-              const upd={sRPE:v,srpeFromManual:false};
-              if(!session.auManual&&v!=='')upd.au=Math.round(Number(v)*Number(session.duration||0));u(upd);}}
-            style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          {/* The same four bands the Target RPE scale above is drawn in, so the logged
-              number and the planned one are read off one vocabulary. */}
-          <div className="srpe-lbl">{L('0 Dinlenme · 1-3 Kolay · 4-6 Orta · 7-9 Zor · 10 Maks','0 Rest · 1-3 Easy · 4-6 Moderate · 7-9 Hard · 10 Max')}</div>
-        </div>
-        <div>
-          <label>{L('Seans Yükü (AU)','Session Load (AU)')}</label>
-          <input type="number" value={session.au} onChange={e=>{const v=e.target.value;u({au:v,auManual:v!==''});}} placeholder={L('AU yaz ya da sRPE kullan','Type AU or use sRPE')} style={{fontSize:17,fontWeight:700,padding:11,color:'#ffffff'}}/>
-          <div className="help">{session.auManual?L('Elle girilen AU — sRPE/süre değişse de korunur','Manual AU — kept when sRPE/duration change'):session.sRPE!==''?(()=>{const dur=Number(session.duration)||0;return L(`Otomatik: ${session.sRPE} × ${dur} = ${Math.round(Number(session.sRPE)*dur)} AU`,`Auto: ${session.sRPE} × ${dur} = ${Math.round(Number(session.sRPE)*dur)} AU`);})():''}</div>
-        </div>
-        <div><label>{L('Notlar','Notes')}</label><textarea value={session.notes} onChange={e=>u({notes:e.target.value})} placeholder={L('Gözlemler…','Observations…')}/></div>
-      </div></>}
+      {/* The logged RPE, the session load and the observations box used to close the
+          card here. They are gone: the session is planned in the blocks above, and the
+          numbers that describe how it actually went are collected from the athletes
+          themselves rather than typed onto the plan. */}
     </div>}
   </div>);
 }
