@@ -589,8 +589,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* What the session trains, down the right of the drawer — read off the exercises on the
    left rather than picked, so it is a summary and gets a summary's width. */
 .dw.inline .dw-right-panel{width:100%;max-width:100%;overflow:visible;border-left:0;border-top:1px solid var(--border)}
-@media(min-width:1100px){.dw.inline .dw-right-panel{width:340px;max-width:340px;border-left:1px solid var(--border);border-top:0}}
-.dw-right-panel{width:340px;flex:none;border-left:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
+@media(min-width:1100px){.dw.inline .dw-right-panel{width:470px;max-width:470px;border-left:1px solid var(--border);border-top:0}}
+.dw-right-panel{width:470px;flex:none;border-left:1px solid var(--border);overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;background:rgba(0,0,0,.18)}
 /* Too narrow to stand two columns side by side: the summary drops under the exercises and
    the layout itself becomes the scroller, so neither column is squeezed to a sliver. */
 @media(max-width:860px){
@@ -598,9 +598,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .dw-b{flex:1 1 100%;overflow:visible}
   .dw-right-panel{width:100%;flex:1 1 100%;border-left:0;border-top:1px solid var(--border);overflow:visible}
 }
-.tc-wrap{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+/* The panel itself is the scroller, so the two boxes are laid out at the height their
+   OWN content needs and never shrink into each other. Letting them flex-shrink is what
+   made the last block of Movements & Patterns run underneath the Notes box. */
+.tc-wrap{display:flex;flex-direction:column;gap:12px;flex:1 0 auto;min-height:0}
 .tc-box{border:1px solid var(--border);border-radius:12px;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
-  padding:10px 12px 12px;display:flex;flex-direction:column;min-height:0}
+  padding:10px 12px 12px;display:flex;flex-direction:column;flex:0 0 auto;min-height:0}
+/* Notes takes whatever height is left over once the content box has what it needs. */
+.tc-box:last-child{flex:1 0 auto}
 .tc-sec{margin-top:10px}
 .tc-sec:first-of-type{margin-top:4px}
 .tc-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:.07em;
@@ -1008,8 +1013,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
    ========================================================= */
 /* Which kind of work a block holds, said at its head. Small, monospaced, and coloured —
    the coach reads the strip, not the word. */
-.blk-kind{flex:0 0 auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;
-  letter-spacing:.1em;padding:3px 6px;border-radius:5px;border:1px solid;line-height:1}
+.blk-kind{flex:0 0 auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;
+  letter-spacing:.1em;padding:4px 8px;border-radius:6px;border:1px solid;line-height:1}
 .blk-kind.sc{color:#46d6a0;border-color:rgba(70,214,160,.4);background:rgba(70,214,160,.1)}
 .blk-kind.ball{color:#ff9f43;border-color:rgba(255,159,67,.42);background:rgba(255,159,67,.1)}
 .bp-block{border-color:rgba(255,159,67,.28)}
@@ -3091,7 +3096,13 @@ header{background:var(--bg2)!important}
    that have to keep their own colour (the kind badge, the assignment) are given a dark
    backing to sit on. */
 :root{--blk-hd:#8c7d57;--blk-hd-ink:#191509;--blk-hd-ink2:rgba(25,21,9,.8);--blk-hd-ink3:rgba(25,21,9,.6)}
-.iv-block-hd{background:var(--blk-hd);padding:8px 13px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.iv-block-hd{background:var(--blk-hd);padding:10px 13px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* The head is two things side by side: what the block IS (its kind, its name, what it
+   holds — stacked on two lines) and what can be done to it. The actions used to ride on
+   the second of those lines, which left them hanging off the bottom of a header twice
+   their height; as their own column they sit centred against the whole block instead. */
+.iv-block-hdinfo{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.iv-block-hdtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
 /* Everything that stood on the old dark bar in a dim grey now inks against the brass. */
 .iv-block-hd .blk-grip{color:var(--blk-hd-ink3)}
 .iv-block-hd .iv-blockch{color:var(--blk-hd-ink)}
@@ -3105,8 +3116,8 @@ header{background:var(--bg2)!important}
 .iv-block-hd .btn.blk-assign.on,.iv-block-hd .btn.blk-assign.on:hover:not(:disabled){background:rgba(0,0,0,.55)}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
-.iv-block-nm{flex:1 1 160px;min-width:0;max-width:340px;background:transparent;border:1px solid transparent;border-radius:6px;
-  padding:4px 7px;font-family:inherit;font-size:12px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em}
+.iv-block-nm{flex:1 1 180px;min-width:0;max-width:420px;background:transparent;border:1px solid transparent;border-radius:6px;
+  padding:5px 8px;font-family:inherit;font-size:15px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em}
 .iv-block-nm::placeholder{color:var(--blk-hd-ink3)}
 .iv-block-nm:hover{border-color:rgba(25,21,9,.3)}
 .iv-block-nm:focus{background:var(--panel);border-color:var(--accent);color:var(--text);outline:none}
@@ -3117,7 +3128,7 @@ header{background:var(--bg2)!important}
 /* The block's actions — add, clone, save as a template, the two prints, remove. Six
    buttons do not always fit beside the title on a narrow editor, so the row is allowed to
    wrap rather than squeezing the block name out of readability. */
-.iv-blockacts{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.iv-blockacts{margin-left:auto;align-self:center;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .iv-blockacts .iv-rmb:hover{border-color:rgba(239,68,68,.55);color:#f87171}
 /* A removed template block keeps a slim bar on the card so it can be put back —
    the same bargain as an emptied slot, which stays dimmed rather than vanishing. */
@@ -3147,7 +3158,7 @@ header{background:var(--bg2)!important}
 .blk-details-b>.ath-pick+.iv-cardtools.sess-tools{border-top:1px solid var(--border);padding-top:12px}
 /* A label, not a rename box: the session's name is a field inside the panel, so the
    header of a block-less session only has to say what the card is. */
-.iv-block-lbl{flex:1 1 160px;min-width:0;padding:4px 0;font-size:12px;font-weight:700;
+.iv-block-lbl{flex:1 1 160px;min-width:0;padding:4px 0;font-size:15px;font-weight:700;
   color:var(--text2);letter-spacing:.01em}
 .blk-assign{white-space:nowrap}
 /* Assignment reads at a glance: amber while the practice still has to be assigned,
@@ -3168,10 +3179,6 @@ header{background:var(--bg2)!important}
 .blk-grip{flex:none;cursor:grab;color:var(--dim);font-size:13px;line-height:1;padding:2px 1px;user-select:none}
 .blk-grip:active{cursor:grabbing}
 .iv-blockch{flex:none;background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;padding:2px 3px;line-height:1}
-/* A zero-height full-width item: it fills the line it is on, so everything after it wraps
-   onto the next one. That is what splits the block header into a title row and a row for
-   the count and the actions. */
-.blk-hdbreak{flex:1 0 100%;height:0;margin:-4px 0}
 .iv-blockcnt{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-size:10.5px;font-weight:500;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace}
 /* Move / duplicate / remove, in the slot's own header where ✕ Remove sits on the
@@ -3454,6 +3461,70 @@ header{background:var(--bg2)!important}
 .iv-patrow select{width:100%;min-width:0;font-size:12px;padding:5px 8px}
 .iv-patrow select:disabled{opacity:.45;cursor:not-allowed}
 
+/* ---- The alternative exercise, on the back of the slot -------------------
+   Every prescription has a second answer: what this athlete does instead when the rack
+   is taken, the shoulder is sore, or the movement never suited them. It is written on
+   the BACK of the card rather than under it — one exercise stays one card, and the card
+   turns over to show the swap and, next to it, the coach's reason for it. */
+.exflip{transform-origin:50% 50%;will-change:transform}
+.exflip.out{animation:exFlipOut .22s ease-in forwards}
+.exflip.in{animation:exFlipIn .22s ease-out}
+@keyframes exFlipOut{
+  from{transform:perspective(900px) rotateY(0deg);opacity:1}
+  to{transform:perspective(900px) rotateY(-88deg);opacity:.2}
+}
+@keyframes exFlipIn{
+  from{transform:perspective(900px) rotateY(88deg);opacity:.2}
+  to{transform:perspective(900px) rotateY(0deg);opacity:1}
+}
+@media(prefers-reduced-motion:reduce){
+  .exflip.out,.exflip.in{animation-duration:.01s}
+}
+/* The button that turns the card. Dashed while there is no alternative yet — the same
+   language the empty slot and the "Add link" chip already speak — and solid amber once
+   the row carries one, with the alternative's own name on it. */
+.ex-altrow{display:flex;margin-top:2px}
+.ex-altbtn{display:inline-flex;align-items:center;gap:6px;max-width:100%;background:transparent;
+  border:1px dashed var(--border2);border-radius:7px;padding:5px 10px;cursor:pointer;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--muted);
+  transition:border-color .13s ease,color .13s ease,background .13s ease}
+.ex-altbtn:hover{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+.ex-altbtn.on{border-style:solid;border-color:rgba(245,158,11,.5);color:#f59e0b;background:rgba(245,158,11,.1)}
+.ex-altbtn i{font-style:normal;font-size:13px;line-height:1}
+.ex-altbtn b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+/* A row holding an alternative says so on its edge, the way a substituted row does. */
+.iv-slot.has-alt{border-left:3px solid rgba(245,158,11,.55)}
+/* The back face. Amber throughout, so there is never a doubt about which side is up. */
+.ex-alt-face{border-left:3px solid #f59e0b;border-radius:0 9px 9px 0;background:rgba(245,158,11,.05);
+  padding:9px 11px;display:flex;flex-direction:column;gap:8px}
+.ex-alt-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ex-alt-tag{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:#f59e0b;background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.42);border-radius:4px;padding:2px 7px}
+.ex-alt-for{flex:1 1 90px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:11px;color:var(--dim)}
+.ex-alt-for b{color:var(--text2);font-weight:600}
+.ex-alt-hd .ex-alt-acts{flex:none;display:flex;gap:6px;align-items:center}
+/* The name box is written to share a ROW with the superset tag on the front of the card,
+   where its 220px basis is a width. Stacked in the back face's column that basis becomes a
+   height, which left a hand's width of nothing under the name — so it is taken back here. */
+.ex-alt-face>.iv-slot-nm{flex:0 0 auto}
+.ex-alt-face>.iv-slot-ed{margin-top:0}
+.ex-alt-back{background:var(--elevated);border:1px solid var(--border2);color:var(--text2);border-radius:6px;
+  padding:4px 10px;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ex-alt-back:hover{border-color:var(--accent);color:var(--accent)}
+.ex-alt-clr{background:transparent;border:1px solid var(--border2);color:var(--dim);border-radius:6px;
+  padding:4px 9px;font-family:inherit;font-size:11.5px;cursor:pointer}
+.ex-alt-clr:hover{border-color:rgba(239,68,68,.55);color:#f87171}
+/* The reason is the point of the whole card — a prescription nobody can explain is one
+   the next coach will simply undo — so it gets a real box, not a one-line field, and it
+   is what the printed program carries under the swap. */
+.ex-alt-why{display:flex;flex-direction:column;gap:3px;font-size:9.5px;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace}
+.ex-alt-why textarea{width:100%;box-sizing:border-box;min-height:52px;resize:vertical;
+  font-family:inherit;font-size:12px;font-weight:400;line-height:1.45;padding:7px 9px;text-transform:none;
+  letter-spacing:0;color:var(--text)}
+.ex-alt-why textarea:focus{border-color:#f59e0b}
 .alt-use{flex:none;background:var(--elevated);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:5px 11px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .alt-use:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .alt-use:disabled{opacity:.4;cursor:default}
@@ -7291,6 +7362,42 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const notes=String(e.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
       if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
       const notesHTML=notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:dash;
+      /* The alternative, printed as its own row directly under the exercise it stands in
+         for: same seven columns, so it can be read straight across, with the coach's
+         reason spelled out in the notes column. A program that says "or do this instead"
+         without saying why is one the next coach simply ignores. */
+      const alt=(e.alt&&typeof e.alt==='object')?e.alt:null;
+      const altNm=String((alt&&alt.name)||'').trim();
+      const altWhy=String((alt&&alt.reason)||'').trim();
+      let altRow='';
+      if(altNm||altWhy){
+        let aSR='';
+        if(alt.sets&&alt.reps)aSR=`${alt.sets} × ${alt.reps}`;
+        else if(alt.sets)aSR=`${alt.sets} ${L('set','sets')}`;
+        else if(alt.reps)aSR=String(alt.reps);
+        const aLnk=safeURL(alt.link);
+        const aPat=[EX_PAT_SHORT[alt.pattern]||alt.pattern||'',alt.plane||''].filter(Boolean).join(' · ');
+        const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+        const aNotesHTML=aNotes.length?`<ul class="ex-notes">${aNotes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:'';
+        altRow=`<tr class="ex-row alt-row">
+          <td class="c-no"><span class="alt-arrow" title="${L('Alternatif','Alternative')}">⇄</span></td>
+          <td class="c-ex">
+            <div class="ex-ex-wrap">
+              ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
+              <div class="ex-ex-txt">
+                <div class="ex-nm-wrap"><span class="alt-lbl">${L('ALTERNATİF','ALTERNATIVE')}</span><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
+                ${aPat?`<span class="ex-pat2">${escHTML(aPat)}</span>`:''}
+              </div>
+            </div>
+          </td>
+          <td class="c-sr">${aSR?escHTML(aSR):dash}</td>
+          <td class="c-load">${alt.load?escHTML(alt.load):dash}</td>
+          <td class="c-dur">${alt.duration?escHTML(alt.duration):dash}</td>
+          <td class="c-tempo">${alt.tempo?escHTML(alt.tempo):dash}</td>
+          <td class="c-rest">${alt.rest?('⏱ '+escHTML(alt.rest)):dash}</td>
+          <td class="c-notes">${aNotesHTML}${altWhy?`<div class="alt-why"><span class="alt-why-k">${L('Gerekçe','Reason')}</span>${escHTML(altWhy)}</div>`:''}</td>
+        </tr>`;
+      }
       return`<tr class="ex-row">
         <td class="c-no"><span class="ex-badge${isSS?' ss':''}">${lab.tag}</span></td>
         <td class="c-ex">
@@ -7308,7 +7415,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <td class="c-tempo">${e.tempo?escHTML(e.tempo):dash}</td>
         <td class="c-rest">${e.rest?('⏱ '+escHTML(e.rest)):dash}</td>
         <td class="c-notes">${notesHTML}</td>
-      </tr>`;
+      </tr>${altRow}`;
     }).join('');
     const heads=[L('#','#'),L('Egzersiz','Exercise'),L('Set x Tekrar','Set x Reps'),L('Yük','Load'),
       L('Süre','Time'),L('Tempo','Tempo'),L('Dinlenme','Rest'),L('Notlar / Koçluk İpuçları','Notes / Coaching Cues')];
@@ -7615,6 +7722,19 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .c-sr,.c-load,.c-dur,.c-tempo,.c-rest{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
+/* The alternative rides directly under the exercise it replaces, tinted amber and tied
+   to it by an unbroken top border, so the pair reads as one prescription with two ways
+   of being done rather than as two exercises in a row. */
+.ex-tbl2 tr.alt-row td,.ex-tbl2 tr:nth-child(even) td.alt-c,.ex-tbl2 tr.alt-row:nth-child(even) td{background:rgba(245,158,11,.055)}
+.ex-tbl2 tr.alt-row td{border-top:0;padding-top:5px}
+.alt-arrow{display:inline-block;font-size:13px;font-weight:700;color:#b45309;line-height:1}
+.alt-lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.11em;
+  color:#b45309;background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.45);
+  border-radius:4px;padding:1px 6px}
+.alt-name{font-weight:700;font-size:12.5px;color:#78350f;line-height:1.25}
+.alt-why{margin-top:3px;font-size:11px;font-weight:400;color:#78350f;line-height:1.5}
+.alt-why-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:#b45309;margin-right:6px}
 /* Exercise image — only rendered by "Print with Image". Fixed thumbnail box so every
    row lines up down the page whatever the uploaded photo's own proportions are; fitted
    inside rather than cropped, so a portrait shot still shows the whole movement. */
@@ -10999,7 +11119,41 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last}){
   const pasteEx=()=>{if(!exClip)return;onChange(slotFromExClipboard(ex,exClip));
     rememberExerciseTags(exClip.name,exClip.pattern||'',exClip.plane||'');};
   const empty=!String(ex.name||'').trim();
-  return(<div className={'iv-slot'+(empty?' off':'')}>
+  /* ---- The alternative, on the back of this card ------------------------
+     Written exactly like the exercise itself — same pattern pair, same seven numbers —
+     plus the one thing the front has no room for: why the swap exists. Turning the card
+     is a real turn: the face rotates out, the other rotates in, and only one of the two
+     is ever mounted, so the card is always as tall as the side being read. */
+  const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
+  const altName=String((alt&&alt.name)||'').trim();
+  const hasAlt=!!(altName||String((alt&&alt.reason)||'').trim());
+  const[face,setFace]=useState('front');
+  const[anim,setAnim]=useState('');
+  const turnT=useRef(null);
+  useEffect(()=>()=>{if(turnT.current)clearTimeout(turnT.current);},[]);
+  const turnTo=next=>{
+    if(anim||next===face)return;
+    setAnim('out');
+    turnT.current=setTimeout(()=>{setFace(next);setAnim('in');
+      turnT.current=setTimeout(()=>setAnim(''),220);},220);
+  };
+  const af=(k,v)=>onChange({...ex,alt:{...(alt||{}),[k]:v}});
+  const altStyles=exStylesFor(alt&&alt.pattern);
+  const setAltPattern=v=>{
+    const keep=exStylesFor(v).includes(alt&&alt.plane)?alt.plane:'';
+    const plane=keep||exGuessStyle((alt&&alt.name)||'',v);
+    onChange({...ex,alt:{...(alt||{}),pattern:v,plane}});
+    if(altName)rememberExerciseTags(altName,v,plane);
+  };
+  const anum=(lbl,k,opts,title,trLbl)=>(<label key={'a-'+k}>{trLbl?L(trLbl,lbl):lbl}
+    {opts?<SlotPick value={alt&&alt[k]} options={opts} onChange={v=>af(k,v)} title={title}/>
+         :<LiveInput value={(alt&&alt[k])||''} onChange={v=>af(k,v)} placeholder="—" title={title}/>}
+  </label>);
+  const clearAlt=()=>{
+    if(hasAlt&&!confirm(L('Alternatif silinsin mi?','Delete this alternative?')))return;
+    const{alt:_drop,...rest}=ex;onChange(rest);turnTo('front');
+  };
+  const front=(<>
     <div className="iv-slot-main">
       <span className={'iv-ss-tag'+(ss?' on':'')}>{tag}</span>
       <select className="iv-ss-sel" value={ss} onChange={e=>f('superset',e.target.value)} title={L('Süperset grubu','Superset group')}>
@@ -11060,7 +11214,78 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last}){
         <label>{L('açıklama','description')}<LiveInput value={ex.description||''} onChange={v=>f('description',v)}
           placeholder={L('Açıklama / koçluk ipuçları (opsiyonel)…','Description / coaching cues (optional)…')}/></label>
       </div>
+      {/* The swap lives here, at the end of what is written about the exercise, because
+          that is the moment a coach knows there needs to be one. Once written, the
+          button says what the alternative is without turning the card over. */}
+      <div className="ex-altrow">
+        <button type="button" className={'ex-altbtn'+(hasAlt?' on':'')} onClick={()=>turnTo('back')}
+          title={hasAlt?L('Alternatifi ve gerekçesini aç','Open the alternative and its reason')
+                       :L('Bu egzersiz yapılamazsa yerine ne yapılacağını ve nedenini yaz','Write what is done instead of this exercise, and why')}>
+          <i>⇄</i>{hasAlt
+            ?<><span>{L('Alternatif:','Alternative:')}</span><b>{altName||L('(gerekçe yazıldı)','(reason only)')}</b></>
+            :<span>{L('Alternatif ekle','Add alternative')}</span>}
+        </button>
+      </div>
     </div>
+  </>);
+  /* The back of the card: the same editor, written for the exercise that stands in. */
+  const back=(<div className="ex-alt-face">
+    <div className="ex-alt-hd">
+      <span className="ex-alt-tag">⇄ {L('Alternatif','Alternative')}</span>
+      <span className="ex-alt-for">{L('şunun yerine:','instead of:')} <b>{String(ex.name||'').trim()||L('(isimsiz egzersiz)','(unnamed exercise)')}</b></span>
+      <span className="ex-alt-acts">
+        {(hasAlt||(alt&&Object.keys(alt).length>0))&&<button type="button" className="ex-alt-clr" onClick={clearAlt}
+          title={L('Alternatifi kaldır','Remove the alternative')}>✕ {L('Sil','Delete')}</button>}
+        <button type="button" className="ex-alt-back" onClick={()=>turnTo('front')}
+          title={L('Egzersize geri dön','Back to the exercise')}>↩ {L('Geri','Back')}</button>
+      </span>
+    </div>
+    <div className="iv-slot-nm">
+      <ExNameField value={(alt&&alt.name)||''} onChange={v=>af('name',v)}
+        tags={{pattern:alt&&alt.pattern,plane:alt&&alt.plane}}
+        onPick={it=>onChange({...ex,alt:{...(alt||{}),name:it.name,link:it.link||(alt&&alt.link)||'',
+          description:it.desc||(alt&&alt.description)||'',...(exTagsFromLib(it,alt||{})||{})}})}/>
+    </div>
+    <div className="iv-slot-ed">
+      <div className="iv-patrow" style={{'--pat-c':ML_PIE_COLS[alt&&alt.pattern]||'var(--border2)'}}>
+        <label>{L('örüntü','pattern')}
+          <select value={(alt&&alt.pattern)||''} onChange={e=>setAltPattern(e.target.value)}
+            title={L('Alternatifin çalıştırdığı hareket örüntüsü','Movement pattern the alternative trains')}>
+            <option value="">{L('— seçilmedi','— not set')}</option>
+            {EX_PATTERNS.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
+          </select>
+        </label>
+        <label>{L('uygulama','execution')}
+          <select value={(alt&&alt.plane)||''} onChange={e=>af('plane',e.target.value)}
+            disabled={!altStyles.length} title={altStyles.length?L('Örüntünün nasıl uygulandığı','How the pattern is executed'):L('Önce bir hareket örüntüsü seç','Pick a movement pattern first')}>
+            <option value="">{altStyles.length?L('— seçilmedi','— not set'):'—'}</option>
+            {altStyles.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="iv-numed">
+        {anum('sets','sets',SLOT_SETS,L('Set sayısı','Number of sets'),'set')}
+        {anum('reps','reps',SLOT_REPS,L('Tekrar sayısı','Number of reps'),'tekrar')}
+        {anum('time','duration',null,L('Çalışma süresi (ör. 30s)','Work time (e.g. 30s)'),'süre')}
+        {anum('tempo','tempo',null,L('Tempo (ör. 3-1-1)','Tempo (e.g. 3-1-1)'),'tempo')}
+        {anum('rpe','rpe',SLOT_RPES,L('Hedef RPE (4–10)','Target RPE (4–10)'),'rpe')}
+        {anum('load','load',null,L('Yük (kg, %1RM…)','Load (kg, %1RM…)'),'yük')}
+        {anum('rest','rest',null,L('Setler arası dinlenme','Rest between sets'),'dinlenme')}
+      </div>
+      <div className="iv-linkrow"><ExLinkCell value={(alt&&alt.link)||''} onChange={v=>af('link',v)}/></div>
+      <div className="iv-noterow">
+        <label>{L('açıklama','description')}<LiveInput value={(alt&&alt.description)||''} onChange={v=>af('description',v)}
+          placeholder={L('Açıklama / koçluk ipuçları (opsiyonel)…','Description / coaching cues (optional)…')}/></label>
+      </div>
+      <label className="ex-alt-why">{L('bu alternatif neden?','why this alternative?')}
+        <LiveTextarea value={(alt&&alt.reason)||''} onChange={v=>af('reason',v)}
+          placeholder={L('ör. Omuz ağrısı nedeniyle bar üstü baskı yerine nötr tutuş — aynı örüntü, ağrısız açı.','e.g. Shoulder pain, so a neutral-grip press instead of overhead — same pattern, pain-free angle.')}
+          title={L('Bu gerekçe çıktıda alternatifin altında yazılır','This reason is printed under the alternative on the program')}/>
+      </label>
+    </div>
+  </div>);
+  return(<div className={'iv-slot'+(empty?' off':'')+(hasAlt?' has-alt':'')}>
+    <div className={'exflip'+(anim?' '+anim:'')}>{face==='back'?back:front}</div>
   </div>);
 }
 /* Adding one exercise to a block used to re-render every OTHER exercise in it — a block of
@@ -12003,24 +12228,26 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="iv-block-hd">
-      {/* Which of the two kinds of work this block is, said once at its head — the rows
-          inside it are different enough that the coach should never have to guess. */}
-      <span className={'blk-kind '+(isBall?'ball':'sc')}>{isBall?L('TOP','BALL'):L('K&K','S&C')}</span>
-      <span className="blk-grip" draggable={setDragB!=null}
-        onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
-        onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
-      <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
-        title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
-      <LiveInput className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
-        onChange={v=>onUpdate({...block,name:v})} title={L('Blok başlığı','Block title')}/>
-      {/* Everything below this break is the block's SECOND header row: what it holds on the
-          left, what can be done to it on the right. The title had to share its line with a
-          count and six buttons, which left it neither the width to be read nor the room to
-          be renamed. */}
-      <span className="blk-hdbreak" aria-hidden="true"/>
-      <span className="iv-blockcnt">{isBall
-        ?L(`${exs.length} dril`,`${exs.length} drill${exs.length!==1?'s':''}`)
-        :L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{!isBall&&groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
+      {/* What the block IS, on two stacked lines: its kind and its name above, what it
+          holds below. The actions stand beside the pair as their own column, centred
+          against the whole header rather than riding on its lower line. */}
+      <div className="iv-block-hdinfo">
+        <div className="iv-block-hdtop">
+          {/* Which of the two kinds of work this block is, said once at its head — the rows
+              inside it are different enough that the coach should never have to guess. */}
+          <span className={'blk-kind '+(isBall?'ball':'sc')}>{isBall?L('TOP','BALL'):L('K&K','S&C')}</span>
+          <span className="blk-grip" draggable={setDragB!=null}
+            onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
+            onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
+          <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
+            title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
+          <LiveInput className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
+            onChange={v=>onUpdate({...block,name:v})} title={L('Blok başlığı','Block title')}/>
+        </div>
+        <span className="iv-blockcnt">{isBall
+          ?L(`${exs.length} dril`,`${exs.length} drill${exs.length!==1?'s':''}`)
+          :L(`${exs.length} egzersiz`,`${exs.length} exercise${exs.length!==1?'s':''}`)}{!isBall&&groups.length?L(` · süpersetler ${groups.join(', ')}`,` · supersets ${groups.join(', ')}`):''}</span>
+      </div>
       <span className="iv-blockacts">
         {/* The assignment sits beside the block's title, at the head of the block that
             carries the athlete picker: whoever is ticked gets the session written onto
