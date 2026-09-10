@@ -507,7 +507,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-h .ti{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
 .dw-h .su{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
 .dw-b{overflow-y:auto;overscroll-behavior:contain;padding:22px;flex:1}
-.dw-meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 20px}
+.dw-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 20px}
 .dw-dm{position:relative;background:transparent;border:1px solid var(--dm-ac,var(--accent));border-radius:12px;padding:11px 13px 13px}
 .dw-dm:focus-within{box-shadow:0 0 0 1px var(--dm-ac,var(--accent)) inset}
 .dw-dm .dm-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
@@ -518,6 +518,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-inrow{display:flex;align-items:baseline;gap:4px;margin-top:6px}
 .dw-inrow .dw-inp{margin-top:0}
 .dw-unit{font-size:11px;color:var(--dim);font-weight:600;font-family:'IBM Plex Mono',ui-monospace,monospace}
+/* The two picked values in the meta bar are dropdowns, so they wear the same clothes as
+   the typed ones: no browser chrome, the card's own accent for the caret, and a dark
+   option list, since a native menu would otherwise open white on a near-black panel. */
+.dw-sel{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:15px;text-overflow:ellipsis;
+  background-image:linear-gradient(45deg,transparent 50%,var(--dm-ac,var(--accent)) 50%),linear-gradient(135deg,var(--dm-ac,var(--accent)) 50%,transparent 50%);
+  background-position:calc(100% - 8px) calc(50% + 3px),calc(100% - 4px) calc(50% + 3px);
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+.dw-sel option{background:#12151b;color:#fff;font-size:14px}
+/* The goal reads as a phrase ("Technical / Tactical", "Sahaya Dönüş"), not a number, so it
+   is set smaller than the clock and the duration and allowed to wrap rather than spill out
+   of its card. */
+.dw-sel.goal,.dw-dm .v.goal{font-size:15px;line-height:1.25}
+.dw-dm .v.goal{word-break:break-word}
 /* ---- AI Coach assistant ---- */
 /* Tucked against the right edge as a slim handle so it never covers page
    content; slides fully into view on hover/focus. Click opens the panel. */
@@ -4018,6 +4031,10 @@ const sesFocusRaw=s=>{
 /* Session focus (stage 1) for a session or template session — always canonical values,
    whatever vocabulary the session was written in. */
 const sesFocus=s=>uniq(sesFocusRaw(s).map(f=>FOCUS_BY[f]?f:FOCUS_L1_FROM_LEGACY[f]).filter(Boolean));
+/* A focus value in the coach's own language — the tree carries the Turkish for every
+   stage-1 quality, so "Strength" reads "Kuvvet" on a Turkish screen and stays "Strength"
+   on an English one. The stored value never changes; only what is shown does. */
+const focusLabel=f=>L(FOCUS_BY[f]?.tr||f,f);
 /* Sub-focus (stage 2). Stored on the session as `sub: []`; a session written before the
    tree existed derives one from whichever retired focus values named a capacity. */
 const sesSubFocus=s=>{
@@ -10415,6 +10432,22 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(String(live.sRPE??'')===String(drawerSes.sRPE??'')&&String(live.au??'')===String(drawerSes.au??''))return;
     setDrawerSes(s=>s?{...s,sRPE:live.sRPE,au:live.au,srpeFromManual:live.srpeFromManual}:s);
   },[days,drwDateKey,drawerSes]);
+  /* The two picked answers the meta bar carries next to the clock and the duration: what
+     the session is FOR (its stage-1 focus) and how hard it is planned to be (the RPE
+     target, out of 10). Neither is a new field — both are the ones the session editor and
+     the printed program already read, so a pick made here is the same pick made there. */
+  const drwGoal=drawerSes?(sesFocus(drawerSes)[0]||''):'';
+  const drwRpeT=drawerSes?sesRpeTarget(drawerSes):7;
+  const drwZone=rpeZone(drwRpeT);
+  /* The dropdown owns the first slot of the focus list and nothing else: picking a goal
+     swaps the primary quality and leaves any secondary focus — and every sub-focus — the
+     editor's multi-select put there exactly where it was. */
+  const setDrwGoal=v=>{
+    if(!drawerSes)return;
+    const rest=sesFocus(drawerSes).slice(1).filter(f=>f!==v);
+    const arr=v?[v,...rest]:rest;
+    drwUpd({focus:arr,purpose:[...arr,...sesSubFocus(drawerSes)].join(', ')});
+  };
   const setAthRPE=(athId,rpeRaw)=>{
     if(!teamMode||!drawerSes)return;
     const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
@@ -10774,11 +10807,28 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'2.6em'}} value={drawerSes.duration??''} onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');const d=raw===''?'':Math.max(0,Number(raw));const patch={duration:d};if(!drawerSes.auManual&&drawerSes.sRPE!==''&&drawerSes.sRPE!=null)patch.au=Math.round(Number(drawerSes.sRPE)*(Number(d)||0));drwUpd(patch);}}/><span className="dw-unit">{L('dk','min')}</span></div>
                 :<div className="v">{Number(drawerSes.duration)||0}<span className="dw-unit"> {L('dk','min')}</span></div>}
             </div>
-            <div className="dw-dm" style={{'--dm-ac':'#facc15'}}>
-              <div className="dm-top"><span className="k">{L('Yük','Load')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.6 13.1c-.34.45-.02 1.1.55 1.1H10l-1.15 7.2c-.1.62.72.95 1.07.43L19.4 10.8c.33-.45.01-1.1-.56-1.1H14l1.07-7.3c.09-.62-.73-.94-1.07-.4z"/></svg></span></div>
+            {/* What the session is for. Picked by hand from the nine qualities the focus
+                tree names — Kuvvet, Güç, Hız and the rest — rather than read off the
+                exercises, so the bar states the coach's intent for the day. */}
+            <div className="dw-dm" style={{'--dm-ac':FOCUS_BY[drwGoal]?.c||'#22c55e'}}>
+              <div className="dm-top"><span className="k">{L('Hedef','Goal')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span></div>
               {canEdit
-                ?<div className="dw-inrow"><input type="number" min="0" className="dw-inp" style={{width:'3.4em'}} value={drawerSes.au??''} placeholder={String(drawerSes.sRPE!==''&&drawerSes.sRPE!=null?Math.round(Number(drawerSes.sRPE)*Number(drawerSes.duration||0)):0)} onChange={e=>{const v=e.target.value;drwUpd({au:v,auManual:v!==''});}}/><span className="dw-unit">AU</span></div>
-                :<div className="v">{(drawerSes.au||(drawerSes.sRPE!==''&&drawerSes.sRPE!=null?Math.round(Number(drawerSes.sRPE)*Number(drawerSes.duration||0)):0))}<span className="dw-unit"> AU</span></div>}
+                ?<select className="dw-inp dw-sel goal" value={drwGoal} onChange={e=>setDrwGoal(e.target.value)} title={L('Antrenman hedefi — seansın birincil odağı','Training goal — the session\'s primary focus')}>
+                  <option value="">{L('Seç…','Pick…')}</option>
+                  {SESSION_FOCUS.map(f=><option key={f} value={f}>{focusLabel(f)}</option>)}
+                </select>
+                :<div className="v goal">{drwGoal?focusLabel(drwGoal):'—'}</div>}
+            </div>
+            {/* How hard the day is planned to be, on the 1-10 RPE scale the whole app
+                speaks — the same rpeTarget the session editor's gauge and the printed
+                program show, so the three never disagree. */}
+            <div className="dw-dm" style={{'--dm-ac':drwZone.c}}>
+              <div className="dm-top"><span className="k">{L('Yoğunluk','Intensity')}</span><span className="dm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3.5 18a9 9 0 1 1 17 0"/><path d="M12 14.5 16 9.5"/></svg></span></div>
+              {canEdit
+                ?<div className="dw-inrow"><select className="dw-inp dw-sel" style={{width:'2.4em'}} value={drwRpeT} onChange={e=>drwUpd({rpeTarget:Number(e.target.value)})} title={L('Antrenman yoğunluğu — 10 üzerinden hedef RPE','Session intensity — target RPE out of 10')}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(v=><option key={v} value={v}>{v}</option>)}
+                  </select><span className="dw-unit">/10 · {L(drwZone.tr,drwZone.en)}</span></div>
+                :<div className="dw-inrow"><span className="v" style={{marginTop:0}}>{drwRpeT}</span><span className="dw-unit">/10 · {L(drwZone.tr,drwZone.en)}</span></div>}
             </div>
           </div>
           {(drawerSes.blocks||[]).length===0&&<div className="dw-empty">{L('Egzersiz bloğu yok','No exercise blocks')}</div>}
