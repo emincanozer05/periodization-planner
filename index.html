@@ -9858,6 +9858,10 @@ const tibPct=v=>v==null?'—':`${v>0?'+':''}${v}%`;
    which is what a printer is for. Every card is kept whole across a page break;
    the sheet runs onto a second page rather than cutting a card in half.
    ========================================================= */
+/* THE SHEET IS ONE PAGE. A4 landscape less the 8mm @page margins, in CSS px at the
+   96dpi Chrome prints at: 281mm × 194mm. The sheet is laid out at exactly that width
+   on screen too, so what is measured in the window is what the printer gets. */
+const TIR_PAGE_W=1062, TIR_PAGE_H=733;
 function printTeamInsights(R){
   const w=window.open('','_blank','width=1300,height=900');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
@@ -9872,8 +9876,13 @@ function printTeamInsights(R){
   const kpi=(v,u,k,sub)=>`<div class="kpi"><div class="kv">${esc(v)}${u?`<u>${esc(u)}</u>`:''}</div>
     <div class="kk">${esc(k)}</div>${sub?`<div class="ks">${esc(sub)}</div>`:''}</div>`;
 
+  /* How many alert cards go across is a function of how many there are: a quiet week
+     gets wide, readable cards, a loud one packs them tighter rather than pushing
+     everything below it down the page. Fitting the sheet by columns first is what
+     keeps the scale below from having to do the work. */
+  const alCols=R.alerts.length<=4?Math.max(2,R.alerts.length):(R.alerts.length>12?6:5);
   const alerts=R.alerts.length
-    ?`<div class="algrid">${R.alerts.map(a=>`<div class="al ${a.sev>1?'high':'mid'}">
+    ?`<div class="algrid" style="grid-template-columns:repeat(${alCols},1fr)">${R.alerts.map(a=>`<div class="al ${a.sev>1?'high':'mid'}">
         <div class="k">${esc(a.kind)}</div><div class="w">${esc(a.where)}</div><div class="t">${esc(a.text)}</div>
       </div>`).join('')}</div>`
     :`<div class="none">${L('✓ Bu hafta işaretlenecek bir şey yok — yük, toparlanma ve check-in’lerin hepsi kendi bandında.',
@@ -9918,13 +9927,22 @@ function printTeamInsights(R){
         :L(`Geçen haftaya göre %${Math.abs(R.trend.change)} ${R.trend.change>0?'arttı':'azaldı'}.`,
            `${R.trend.change>0?'Up':'Down'} ${Math.abs(R.trend.change)}% on last week.`)}</div>`;
 
+  /* One athlete per row down a single column is the tallest thing on the sheet, and it
+     grows with the squad. Past fourteen it runs in two columns side by side — the same
+     ranking read down the left and continued on the right, the way a team sheet is
+     read — so a 24-player squad costs the page the height of twelve. */
+  const srRow=(r,i)=>`<tr><td class="rk">${i+1}</td><td class="d">${esc(r.a.name||'—')}</td>
+    <td class="r ac">${r.load?tibNum(r.load):'—'}${bar(r.load/R.srpe.max*100,dev(r.d,15))}</td>
+    <td class="r" style="color:${dev(r.d,15)}">${r.load?tibPct(r.d):L('yük yok','no load')}</td></tr>`;
+  const srTable=rows=>`<table class="tbl"><thead><tr><th class="rk">#</th><th>${L('Sporcu','Athlete')}</th>
+      <th class="r">sRPE</th><th class="r">Δ</th></tr></thead>
+    <tbody>${rows.map(([r,i])=>srRow(r,i)).join('')}</tbody></table>`;
+  const srAll=R.srpe.rows.map((r,i)=>[r,i]);
+  const srSplit=srAll.length>14;
+  const srHalf=Math.ceil(srAll.length/2);
   const srpe=R.srpe.n===0
     ?`<div class="none">${L('Bu hafta sıralanacak sporcu yükü yok.','No athlete load this week to rank.')}</div>`
-    :`<table class="tbl"><thead><tr><th class="rk">#</th><th>${L('Sporcu','Athlete')}</th>
-        <th class="r">sRPE</th><th class="r">Δ</th></tr></thead>
-      <tbody>${R.srpe.rows.map((r,i)=>`<tr><td class="rk">${i+1}</td><td class="d">${esc(r.a.name||'—')}</td>
-        <td class="r ac">${r.load?tibNum(r.load):'—'}${bar(r.load/R.srpe.max*100,dev(r.d,15))}</td>
-        <td class="r" style="color:${dev(r.d,15)}">${r.load?tibPct(r.d):L('yük yok','no load')}</td></tr>`).join('')}</tbody></table>
+    :`${srSplit?`<div class="srcols">${srTable(srAll.slice(0,srHalf))}${srTable(srAll.slice(srHalf))}</div>`:srTable(srAll)}
       <div class="legend">${L(`Takım ortalaması ${tibNum(R.srpe.mean)} AU · ${R.srpe.n} sporcu · AU = sRPE × dakika`,
         `Squad mean ${tibNum(R.srpe.mean)} AU · ${R.srpe.n} athletes · AU = sRPE × minutes`)}</div>`;
 
@@ -9941,6 +9959,13 @@ ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f7f8fa}
 body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10px;line-height:1.4;background:#fff}
+/* The sheet is laid out at the printed page's own width, on screen as well, so the
+   height measured in the window is the height the printer will see. #fit is given that
+   measured height once the sheet has been scaled into it — the document is then exactly
+   one page tall and there is no second page for anything to spill onto. */
+#fit{width:${TIR_PAGE_W}px;margin:0 auto;overflow:hidden}
+#sheet{width:${TIR_PAGE_W}px;transform-origin:top left}
+@media print{#fit{margin:0}}
 .hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:12px;margin-bottom:8px}
 .hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
@@ -9953,7 +9978,16 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .kpi .kv u{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
 .kpi .kk{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
-.card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px;break-inside:avoid;page-break-inside:avoid}
+.card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px}
+.srcols{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+/* Half the width means the name column has to be bought back off the others: the rank
+   and the inline bar give up what they can spare, so a name still sits on one line and
+   a row stays one row high. */
+.srcols .tbl td{padding:2px 3px}
+.srcols .tbl th{padding:0 3px 4px}
+.srcols .tbl .d{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:98px}
+.srcols .tbl .rk{width:14px}
+.srcols .tbl .ac .mini{width:22px;margin-left:4px}
 .chead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:6px;margin-bottom:7px;border-bottom:1px solid var(--border)}
 .ct{font-size:12px;font-weight:700;letter-spacing:-.01em}
 .cs{font-size:9px;color:var(--dim);margin-top:2px}
@@ -9963,8 +9997,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .count.on{background:#fee2e2;color:#be123c}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;align-items:start}
 .none{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--muted);padding:11px 4px;text-align:center}
-.algrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;padding:6px 8px;background:#fffdf7;break-inside:avoid}
+.algrid{display:grid;gap:6px}
+.al{border:1px solid var(--border);border-left:3px solid #b45309;border-radius:8px;padding:6px 8px;background:#fffdf7}
 .al.high{border-left-color:#be123c;background:#fff7f8}
 .al .k{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#b45309}
 .al.high .k{color:#be123c}
@@ -10013,6 +10047,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 </style></head><body>
 <div class="print-bar">📄 ${L('Takım Analizi raporu hazır','Team Insights report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
+<div id="fit"><div id="sheet">
 <div class="hdr">
   ${hasMedia(R.logo)?`<div class="lg"><img src="${mediaSrc(R.logo)}"/></div>`:''}
   <div><h1>${esc(R.teamName)}</h1><div class="date">📊 ${esc(R.periodLabel)} · ${L('seçili hafta','selected week')}</div></div>
@@ -10046,6 +10081,34 @@ ${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakam
   </div>
 </div>
 <div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(R.teamName)} · CoachOS</div>
+</div></div>
+<script>
+/* The columns above fit the usual week on the page by themselves. This is the guarantee
+   for the week they do not: the sheet is measured and, if it is still too tall, scaled
+   down as a whole until it is not. Scaling keeps every alert and every athlete on the
+   page — the alternative, cutting the list off at the fold, would print a report that
+   quietly disagrees with the board it came from.
+   Re-measured when the fonts land and again just before the print dialog opens, because
+   a metric font arriving late changes every line's height and the number taken at load
+   would no longer be the one that matters. */
+(function(){
+  var PAGE_H=${TIR_PAGE_H};
+  function fit(){
+    var s=document.getElementById('sheet'),f=document.getElementById('fit');
+    if(!s||!f)return;
+    s.style.transform='none';f.style.height='auto';
+    var h=s.scrollHeight;if(!h)return;
+    var k=Math.min(1,(PAGE_H-2)/h);
+    s.style.transform='scale('+k+')';
+    f.style.height=Math.ceil(h*k)+'px';
+  }
+  window.addEventListener('load',fit);
+  window.addEventListener('beforeprint',fit);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+  setTimeout(fit,300);setTimeout(fit,1200);
+  fit();
+})();
+<\/script>
 </body></html>`;
   w.document.write(html);w.document.close();
   setTimeout(()=>{try{w.focus();}catch(e){}},400);
