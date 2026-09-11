@@ -5814,8 +5814,29 @@ function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:
    per browser instead: each device picks its own team and stays on it. A remembered id
    whose team has since been deleted is simply ignored. */
 const TEAM_KEY='coachos_active_team';
-const deviceTeam=()=>{try{return localStorage.getItem(TEAM_KEY)||null;}catch(e){return null;}};
-const setDeviceTeam=id=>{try{if(id)localStorage.setItem(TEAM_KEY,id);}catch(e){/* quota / private mode */}};
+/* localStorage remembers the choice across reloads, but it is not always there to be read:
+   a private window refuses it, an embedded frame can be denied it, and a browser that has
+   sat unopened for a while gets it cleared out from under it. So the tab also keeps the
+   team it is on in memory. Without that second hold a device that had simply never used
+   the picker resolved its team afresh out of every incoming snapshot — and because the
+   cloud copy carries no team at all, each edit made on the other device arrived here as a
+   jump back to the first team, which is the same "my team changed by itself" from the
+   coach's side as following the other device had been. */
+let liveTeam=null;
+const setDeviceTeam=id=>{if(!id)return;liveTeam=id;try{localStorage.setItem(TEAM_KEY,id);}catch(e){/* quota / private mode */}};
+/* The team this device shows, in order of what should win: the one the coach last picked
+   HERE, then the one this tab is already sitting on, then whatever the payload happened to
+   carry, then the first team — each of them only while the account still holds it. A stored
+   pick is never overwritten from here, only read: a browser signed into a second account
+   resolves through `liveTeam` for that session and still finds its own team waiting when it
+   goes back to the first account. */
+const resolveTeam=(teams,carried)=>{
+  const has=id=>!!id&&teams.some(t=>t.id===id);
+  let stored=null;try{stored=localStorage.getItem(TEAM_KEY);}catch(e){}
+  const id=has(stored)?stored:has(liveTeam)?liveTeam:has(carried)?carried:teams[0].id;
+  liveTeam=id;
+  return id;
+};
 /* The cloud copy carries no active team. Stripping it here rather than at each write
    keeps both sides of every comparison (lastSynced, ancestor, the merge base) free of
    it too, so a team switch never counts as a change worth writing — and never reaches
@@ -5992,11 +6013,12 @@ function migrate(data){
   }
   if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam()];
   data.teams=data.teams.map(migrateTeam);
-  /* The team on screen comes from this browser, not from the cloud — as long as it is
-     still one of the teams the account holds. */
-  const devTeam=deviceTeam();
-  if(devTeam&&data.teams.some(t=>t.id===devTeam))data.activeTeamId=devTeam;
-  else if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
+  /* The team on screen comes from this browser, not from the cloud. Every state that
+     reaches the screen passes through here — the first cloud read, the local safety copy,
+     each snapshot the other device writes and the merge base behind it — so resolving it in
+     this one place is what keeps an incoming write from moving the team out from under
+     whoever is reading it. */
+  data.activeTeamId=resolveTeam(data.teams,data.activeTeamId);
   delete data.notionSync;
   if(!Array.isArray(data.customTests))data.customTests=[];
   if(!Array.isArray(data.researches))data.researches=[];
