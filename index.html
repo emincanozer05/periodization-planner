@@ -9895,14 +9895,28 @@ function printTeamInsights(R){
         <span class="m">${r.min} ${L('dk','min')}</span></div>`).join('')}</div>`
     :`<div class="none">${L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>`;
 
+  /* THE FLAGGED LIST IS A SHEET OF ITS OWN once anybody is on it. It is the one card
+     with no ceiling — a name, and under it as many complaint chips as the athlete
+     reported — so on a bad week it is several times the height of everything beside it
+     and drags the whole page down to a typeface nobody can read across a desk. It is
+     also the card a coach actually acts on, name by name, so it is the last thing that
+     should be squeezed. It gets the second page, in as many columns as the count wants,
+     and page one keeps the shape of the week. A week with nobody flagged says so in one
+     line and stays on page one — a whole sheet for a tick mark helps no one. */
+  const flPage=R.flagged.length>0;
+  const flCols=R.flagged.length<=6?2:(R.flagged.length<=12?3:4);
+  const flRows=R.flagged.map(f=>`<div class="fl-r${f.sev>1?' hot':''}">
+      <div class="nm">${esc(f.a.name||'—')}<u>${esc(tibPosLabel(f.a.position)||'—')}</u></div>
+      <div class="tg">${f.tags.map(t=>`<span class="tag${t.pain!=null?' p':''}">${esc(t.t)}</span>`).join('')}</div>
+    </div>`).join('');
   const flagged=R.roster===0
     ?`<div class="none">${L('Kadroda henüz sporcu yok.','No athletes on the roster yet.')}</div>`
     :R.flagged.length===0
     ?`<div class="none">${L('✓ İşaretli sporcu yok — herkes planlandığı gibi çalışabilir.','✓ Nobody flagged — every athlete is clear to train as planned.')}</div>`
-    :`<div class="fl">${R.flagged.map(f=>`<div class="fl-r${f.sev>1?' hot':''}">
-        <div class="nm">${esc(f.a.name||'—')}<u>${esc(tibPosLabel(f.a.position)||'—')}</u></div>
-        <div class="tg">${f.tags.map(t=>`<span class="tag${t.pain!=null?' p':''}">${esc(t.t)}</span>`).join('')}</div>
-      </div>`).join('')}</div>`;
+    :`<div class="fl">${flRows}</div>`;
+  const flHead=`<span class="count on">${R.flagged.length}</span>`;
+  const flTitle=L('İşaretli Sporcular','Flagged Athletes');
+  const flSub=L('Hazır oluş < 2.5 · ağrı bildirimi · kademe düşürüldü','Readiness < 2.5 · pain reported · tier stepped down');
 
   const pva=R.pva.live.length===0
     ?`<div class="none">${L('Bu hafta için henüz plan ya da kayıt yok.','Nothing planned or logged on this week yet.')}</div>`
@@ -9963,9 +9977,14 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
    height measured in the window is the height the printer will see. #fit is given that
    measured height once the sheet has been scaled into it — the document is then exactly
    one page tall and there is no second page for anything to spill onto. */
-#fit{width:${TIR_PAGE_W}px;margin:0 auto;overflow:hidden}
-#sheet{width:${TIR_PAGE_W}px;transform-origin:top left}
-@media print{#fit{margin:0}}
+/* A page is a box the sheet inside it is scaled into. The box keeps the page's own
+   width, so the only gutters are the @page margins and they are equal by definition;
+   it is given the scaled height, so the document is exactly as many pages as there are
+   boxes and nothing can spill past one. */
+.pg{width:${TIR_PAGE_W}px;margin:0 auto;overflow:hidden}
+.pg-in{width:${TIR_PAGE_W}px;transform-origin:top left}
+.brk{break-before:page;page-break-before:always}
+@media print{.scr-sp2{display:none}}
 .hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:12px;margin-bottom:8px}
 .hdr .lg{width:44px;height:44px;border-radius:12px;background:#1c2030;border:2px solid rgba(154,171,58,.55);display:grid;place-items:center;flex:none;overflow:hidden;padding:3px}
 .hdr .lg img{width:100%;height:100%;object-fit:contain;display:block}
@@ -9980,6 +9999,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
 .card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px}
 .srcols{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fl.wide{display:grid;gap:0 16px;align-items:start}
+.fl.wide .fl-r{border-bottom:1px solid #f1f2f4;padding:6px 0}
 /* Half the width means the name column has to be bought back off the others: the rank
    and the inline bar give up what they can spare, so a name still sits on one line and
    a row stays one row high. */
@@ -10047,7 +10068,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 </style></head><body>
 <div class="print-bar">📄 ${L('Takım Analizi raporu hazır','Team Insights report is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="margin-top:50px"></div>
-<div id="fit"><div id="sheet">
+<div class="pg"><div class="pg-in">
 <div class="hdr">
   ${hasMedia(R.logo)?`<div class="lg"><img src="${mediaSrc(R.logo)}"/></div>`:''}
   <div><h1>${esc(R.teamName)}</h1><div class="date">📊 ${esc(R.periodLabel)} · ${L('seçili hafta','selected week')}</div></div>
@@ -10066,13 +10087,17 @@ ${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakam
   <div>
     ${card(L('Antrenman Dağılımı','Session Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
       `<span class="tot">${R.sesDist.total}<u>${L('antrenman','sessions')}</u></span>`,sesDist)}
-    ${card(L('İşaretli Sporcular','Flagged Athletes'),L('Hazır oluş < 2.5 · ağrı bildirimi · kademe düşürüldü','Readiness < 2.5 · pain reported · tier stepped down'),
-      `<span class="count${R.flagged.length?' on':''}">${R.flagged.length}</span>`,flagged)}
+    ${/* With the flagged list on its own page the left column would end short, so the
+          load trend moves across to it: what the week trained, then how the load moved. */''}
+    ${flPage
+      ?card(L('Yük Trendi','Load Trend'),L('Takım ortalaması 7 günlük yük, dört hafta','Squad mean 7-day load, four weeks'),
+        R.trend.change!=null?`<span class="tot" style="color:${dev(Math.round(R.trend.change),10)}">${R.trend.change>0?'+':''}${R.trend.change}%</span>`:'',trend)
+      :card(flTitle,flSub,`<span class="count">${R.flagged.length}</span>`,flagged)}
   </div>
   <div>
     ${card(L('Planlanan / Gerçekleşen','Planned vs Actual'),L('Hedef RPE × dakika, geri dönen yüke karşı','Target RPE × minutes, against the load that came back'),
       R.pva.d!=null?`<span class="tot" style="color:${dev(R.pva.d)}">${tibPct(R.pva.d)}</span>`:'',pva)}
-    ${card(L('Yük Trendi','Load Trend'),L('Takım ortalaması 7 günlük yük, dört hafta','Squad mean 7-day load, four weeks'),
+    ${flPage?'':card(L('Yük Trendi','Load Trend'),L('Takım ortalaması 7 günlük yük, dört hafta','Squad mean 7-day load, four weeks'),
       R.trend.change!=null?`<span class="tot" style="color:${dev(Math.round(R.trend.change),10)}">${R.trend.change>0?'+':''}${R.trend.change}%</span>`:'',trend)}
   </div>
   <div>
@@ -10082,6 +10107,17 @@ ${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakam
 </div>
 <div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(R.teamName)} · CoachOS</div>
 </div></div>
+${flPage?`
+<div class="scr-sp2" style="height:26px"></div>
+<div class="pg brk"><div class="pg-in">
+<div class="hdr">
+  ${hasMedia(R.logo)?`<div class="lg"><img src="${mediaSrc(R.logo)}"/></div>`:''}
+  <div><h1>${esc(R.teamName)}</h1><div class="date">📊 ${esc(R.periodLabel)} · ${L('seçili hafta','selected week')}</div></div>
+  <div class="ttl">${L('İŞARETLİ<br>SPORCULAR','FLAGGED<br>ATHLETES')}</div>
+</div>
+${card(flTitle,flSub,flHead,`<div class="fl wide" style="grid-template-columns:repeat(${flCols},1fr)">${flRows}</div>`)}
+<div class="footer">${L(fdL(fmt(today))+' tarihinde oluşturuldu','Generated '+fdL(fmt(today)))} · ${esc(R.teamName)} · CoachOS</div>
+</div></div>`:''}
 <script>
 /* The columns above fit the usual week on the page by themselves. This is the guarantee
    for the week they do not: the sheet is measured and, if it is still too tall, scaled
@@ -10092,15 +10128,36 @@ ${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakam
    a metric font arriving late changes every line's height and the number taken at load
    would no longer be the one that matters. */
 (function(){
-  var PAGE_H=${TIR_PAGE_H};
+  var PAGE_W=${TIR_PAGE_W},PAGE_H=${TIR_PAGE_H};
+  /* A page that has to shrink is laid out WIDER by the same factor it will be shrunk by,
+     so that once scaled it comes out exactly the width of the paper. Scaling a sheet
+     that was laid out at page width would take the width down with the height and leave
+     the sheet marooned in the middle of the page with a hand's width of nothing down
+     each side. Widening first also buys height back — cards and cells get wider, text
+     wraps less — so the scale ends up closer to 1 than it would otherwise be.
+     Width and scale each depend on the other, so it is solved by going round a few
+     times; it settles in two or three, and the last pass never leaves the page. */
   function fit(){
-    var s=document.getElementById('sheet'),f=document.getElementById('fit');
-    if(!s||!f)return;
-    s.style.transform='none';f.style.height='auto';
-    var h=s.scrollHeight;if(!h)return;
-    var k=Math.min(1,(PAGE_H-2)/h);
-    s.style.transform='scale('+k+')';
-    f.style.height=Math.ceil(h*k)+'px';
+    var pg=document.querySelectorAll('.pg');
+    for(var i=0;i<pg.length;i++){
+      var f=pg[i],s=f.firstElementChild;
+      if(!s)continue;
+      f.style.width=PAGE_W+'px';f.style.height='auto';s.style.transform='none';
+      var k=1,h=0;
+      for(var n=0;n<8;n++){
+        s.style.width=Math.round(PAGE_W/k)+'px';
+        h=s.scrollHeight;if(!h)break;
+        var want=Math.min(1,(PAGE_H-2)/h);
+        if(Math.abs(want-k)<0.004){k=want;break;}
+        k=want;
+      }
+      if(!h)continue;
+      s.style.width=Math.round(PAGE_W/k)+'px';
+      h=s.scrollHeight;
+      if(h*k>PAGE_H-2)k=(PAGE_H-2)/h;
+      s.style.transform='scale('+k+')';
+      f.style.height=Math.ceil(h*k)+'px';
+    }
   }
   window.addEventListener('load',fit);
   window.addEventListener('beforeprint',fit);
