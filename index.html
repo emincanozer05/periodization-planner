@@ -5804,6 +5804,32 @@ function makeDefaultTeam(){
 }
 function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t],templates:[]};}
 
+/* WHICH TEAM IS ON SCREEN BELONGS TO THE DEVICE, NOT TO THE ACCOUNT.
+   Everything else in the workspace is shared on purpose: one plan, the same on the
+   laptop in the office and on the phone by the court. The team being *looked at* is
+   not part of that plan. It rode along in the synced state, so two people working the
+   same account at once kept dragging each other onto the other's squad — an assistant
+   opening the U16s pulled the head coach off the senior team mid-session.
+   So activeTeamId is kept out of the cloud payload entirely (see `ser`) and remembered
+   per browser instead: each device picks its own team and stays on it. A remembered id
+   whose team has since been deleted is simply ignored. */
+const TEAM_KEY='coachos_active_team';
+const deviceTeam=()=>{try{return localStorage.getItem(TEAM_KEY)||null;}catch(e){return null;}};
+const setDeviceTeam=id=>{try{if(id)localStorage.setItem(TEAM_KEY,id);}catch(e){/* quota / private mode */}};
+/* The cloud copy carries no active team. Stripping it here rather than at each write
+   keeps both sides of every comparison (lastSynced, ancestor, the merge base) free of
+   it too, so a team switch never counts as a change worth writing — and never reaches
+   the other device as one. */
+const stripDeviceOnly=o=>{
+  if(!o||typeof o!=='object'||Array.isArray(o)||!('activeTeamId'in o))return o;
+  const{activeTeamId,...rest}=o;return rest;
+};
+/* Every switch goes through here, so the choice is written down exactly when the coach
+   makes one — never on the placeholder workspace the app holds while the cloud answers,
+   which would otherwise overwrite the remembered team on every reload. `rest` carries
+   the other fields a switch brings with it (the new team, the shortened list). */
+const withTeam=(data,id,rest)=>{setDeviceTeam(id);return{...data,...rest,activeTeamId:id};};
+
 /* =========================================================
    SEASONS
    A team plans more than one season, and each one carries its own dates,
@@ -5966,7 +5992,11 @@ function migrate(data){
   }
   if(!Array.isArray(data.teams)||data.teams.length===0)data.teams=[makeDefaultTeam()];
   data.teams=data.teams.map(migrateTeam);
-  if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
+  /* The team on screen comes from this browser, not from the cloud — as long as it is
+     still one of the teams the account holds. */
+  const devTeam=deviceTeam();
+  if(devTeam&&data.teams.some(t=>t.id===devTeam))data.activeTeamId=devTeam;
+  else if(!data.activeTeamId||!data.teams.find(t=>t.id===data.activeTeamId))data.activeTeamId=data.teams[0].id;
   delete data.notionSync;
   if(!Array.isArray(data.customTests))data.customTests=[];
   if(!Array.isArray(data.researches))data.researches=[];
@@ -19037,10 +19067,10 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
    TEAMS MANAGEMENT
    ========================================================= */
 function TeamsPanel({data,setData}){
-  const addTeam=()=>{const t=makeDefaultTeam();t.setup.teamName='New Team';setData({...data,teams:[...data.teams,t],activeTeamId:t.id});};
+  const addTeam=()=>{const t=makeDefaultTeam();t.setup.teamName='New Team';setData(withTeam(data,t.id,{teams:[...data.teams,t]}));};
   const delTeam=id=>{if(data.teams.length<=1){alert(L('En az bir takım kalmalı','Keep at least one team'));return;}
     if(!confirm(L('Bu takım ve TÜM verileri kalıcı olarak silinsin mi?','Delete this team and ALL its data permanently?')))return;
-    const teams=data.teams.filter(t=>t.id!==id);setData({...data,teams,activeTeamId:teams[0].id});};
+    const teams=data.teams.filter(t=>t.id!==id);setData(withTeam(data,teams[0].id,{teams}));};
   const renTeam=(id,n)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,setup:{...t.setup,teamName:n}}:t)});
   return(<div className="panel"><h2>{L('Takım Profilleri','Team Profiles')}</h2>
     <div className="help" style={{marginBottom:20}}>{L('Üst başlıktaki menüden takımlar arasında geçiş yap. Her takımın kendi sezonu, sporcuları ve planları vardır.','Switch between teams using the dropdown in the top header. Each team has its own season, athletes, and plans.')}</div>
@@ -19075,7 +19105,7 @@ function TeamsPanel({data,setData}){
           </div>
           <div className="tp-actions">
             {isActive&&<span className="tp-active-badge">{L('Aktif','Active')}</span>}
-            {!isActive&&<button className="btn xs sec" onClick={()=>setData({...data,activeTeamId:t.id})}>{L('Seç','Select')}</button>}
+            {!isActive&&<button className="btn xs sec" onClick={()=>setData(withTeam(data,t.id))}>{L('Seç','Select')}</button>}
             <button className="btn xs danger" onClick={()=>delTeam(t.id)}>✕</button>
           </div>
         </div>);
@@ -20132,9 +20162,9 @@ const splitChunksAsync=json=>new Promise(resolve=>{
    nesne kimliğine göre önbelleklemek güvenlidir. */
 const _serCache=(typeof WeakMap!=='undefined')?new WeakMap():null;
 const ser=o=>{
-  if(!o||typeof o!=='object'||!_serCache)return JSON.stringify(o);
+  if(!o||typeof o!=='object'||!_serCache)return JSON.stringify(stripDeviceOnly(o));
   const hit=_serCache.get(o);if(hit!==undefined)return hit;
-  const s=JSON.stringify(o);_serCache.set(o,s);return s;
+  const s=JSON.stringify(stripDeviceOnly(o));_serCache.set(o,s);return s;
 };
 
 /* YEREL EMNİYET KOPYASI. Uygulamanın tek deposu buluttu: bulut okunamaz hâle gelirse
@@ -24539,7 +24569,7 @@ function App(){
               across two squads recognises the badge before they have read the word. */}
           {hasMedia(team.setup&&team.setup.logo)&&
             <img className="bt-teamlogo" src={mediaSrc(team.setup.logo)} alt=""/>}
-          <select value={data.activeTeamId} onChange={e=>setData({...data,activeTeamId:e.target.value})}>
+          <select value={data.activeTeamId} onChange={e=>setData(withTeam(data,e.target.value))}>
             {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
           </select>
         </div>
