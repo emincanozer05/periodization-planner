@@ -19,16 +19,35 @@
    `onBackgroundMessage` yazmak aynı uyarıyı İKİ kez gösterirdi.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+/* Her importScripts AYRI AYRI korunuyor, ve bu önemli.
+
+   Bir service worker betiği en üst seviyede hata atarsa worker 'redundant' olup
+   HİÇ ETKİNLEŞMİYOR. Tarayıcı bunu sayfaya yalnızca dolaylı söylüyor:
+
+     Failed to execute 'subscribe' on 'PushManager':
+     Subscription failed - no active Service Worker
+
+   Yani yayına çıkmamış tek bir dosya (ya da bir anlık ağ hatası), teşhisi
+   imkânsıza yakın bir mesaja dönüşüyor. Korumalarla worker her hâlükârda
+   etkinleşiyor; eksik olan varsa bunu getToken aşamasında adıyla öğreniyoruz. */
+function load(src) {
+  try { importScripts(src); return true; }
+  catch (e) { return false; }
+}
+
+const SDK_OK =
+  load('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js') &&
+  load('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 // Kendi yanındaki dosya — kökten değil göreli, çünkü uygulama bir alt dizinde de
 // yayınlanabiliyor ve worker o durumda da kendi klasöründe duruyor.
-importScripts('push-config.js');
+const CFG_OK = load('push-config.js');
 
 try {
-  firebase.initializeApp(self.COACHOS_FCM.firebase);
-  // Çağrının kendisi worker'ı FCM'e bağlıyor; dönen nesneye burada ihtiyaç yok.
-  firebase.messaging();
+  if (SDK_OK && CFG_OK && self.COACHOS_FCM) {
+    firebase.initializeApp(self.COACHOS_FCM.firebase);
+    // Çağrının kendisi worker'ı FCM'e bağlıyor; dönen nesneye burada ihtiyaç yok.
+    firebase.messaging();
+  }
 } catch (e) {
   // Yapılandırma okunamadıysa worker sessizce boş kalır: bildirim gelmez ama
   // uygulamanın geri kalanı bundan hiç etkilenmez.
