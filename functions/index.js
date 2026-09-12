@@ -125,7 +125,11 @@ exports.wellnessTelegramAlert = functions
       return null;
     }
 
-    const token = process.env[TELEGRAM_BOT_TOKEN];
+    /* Secret'a yazılırken sona karışan görünmez bir satır sonu ya da boşluk,
+       istek adresini bozup Telegram'dan "404 Not Found" getiriyor — ve token
+       maskeli girildiği için bunu ne yazan görebiliyor ne log. Kırpmak, sahada
+       teşhisi en zor hatayı baştan siliyor. */
+    const token = (process.env[TELEGRAM_BOT_TOKEN] || '').trim();
     if (!token) {
       functions.logger.error('wellness: TELEGRAM_BOT_TOKEN tanımlı değil — mesaj gönderilemedi', { checkinId: id });
       return null;
