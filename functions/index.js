@@ -43,6 +43,7 @@ admin.initializeApp();
 const REGION = process.env.FUNCTION_REGION || 'us-central1';
 
 const ROSTER_COL = 'alert_roster';       // takım başına: ad + ekip kadrosu + uygulama adresi
+const LINKS_COL = 'staff_links';         // ekip üyesinin bildirim linki (doküman adı = token)
 const TOKENS_COL = 'push_tokens';        // eşleştirilmiş cihazlar
 const ALERTS_COL = 'wellness_alerts';    // uyarı kayıtları
 
@@ -170,14 +171,32 @@ exports.wellnessAlert = functions
        kalanını göremezdi — oysa bakmak istediği bütün kadro, ve bildirimi
        yollayan sporcu zaten listenin başında duruyor.
 
-       Token'ı olmayan ekip üyesine linksiz gidiyor: açacak bir sayfası yok, ve
-       yanlış yere açmaktansa hiç açmamak daha iyi. */
+       Adres LİNK KAYITLARINDAN okunuyor, kadro özetinden değil. Özet de taşıyor
+       ama onu yazan koçun tarayıcısı: uygulamanın yayınlanmış sürümü eskiyse alan
+       boş geliyor ve herkes linksiz bildirim alıyor — tıklanınca hiçbir şey
+       açılmayan bir bildirim, gelmemiş bildirimden daha kötü. Linkin aslı zaten
+       burada duruyor, dokümanın ADI token'ın kendisi; geçersiz kılınan link de
+       silindiği için kendiliğinden düşüyor. Özet yalnızca sorgu patlarsa devreye
+       giriyor. */
     const appUrl = roster.appUrl || process.env.APP_ORIGIN;
-    const staffById = new Map(staff.filter(m => m && m.id).map(m => [m.id, m]));
+    const tokenByStaff = new Map();
+    try {
+      const ls = await db().collection(LINKS_COL).where('coachUid', '==', sub.coachUid).get();
+      ls.docs.forEach(d => {
+        const l = d.data() || {};
+        // Takım filtresi kodda: iki eşitlikli sorgu bileşik indeks isteyebiliyor ve
+        // bu koleksiyon (takım başına birkaç kişi) zaten avuç içi kadar.
+        if (l.teamId === sub.teamId && l.staffId) tokenByStaff.set(l.staffId, d.id);
+      });
+    } catch (err) {
+      functions.logger.warn('wellness: bildirim linkleri okunamadı, kadro özetine düşülüyor',
+        { checkinId, error: String(err) });
+      staff.forEach(m => { if (m && m.id && m.alertToken) tokenByStaff.set(m.id, m.alertToken); });
+    }
     targets.forEach(t => {
       t.link = t.kind === 'coach'
         ? appAlertsLink(appUrl)
-        : staffFeedLink(appUrl, (staffById.get(t.staffId) || {}).alertToken);
+        : staffFeedLink(appUrl, tokenByStaff.get(t.staffId));
     });
 
     const data = {
