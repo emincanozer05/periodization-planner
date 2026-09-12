@@ -31,6 +31,13 @@ const SCORE_DOTS = { 1: '🔴', 2: '🟠', 3: '🟡', 4: '🟢', 5: '🔵' };
 const REASON_LOW_SCORE = 'low_score';
 const REASON_PAIN = 'pain';
 
+/* Bildirimin SEVİYESİ. Her gönderim bildiriliyor (koç, sporcu formu gönderdiği an
+   haberdar olmak istiyor); kriter artık "bildirilsin mi" sorusunu değil, "bu bir
+   uyarı mı yoksa rutin bir bildirim mi" sorusunu cevaplıyor. Telefonda ikisi
+   başlığından ayrılıyor, uyarı kaydı ise yalnızca 'alert' için açılıyor. */
+const LEVEL_ALERT = 'alert';
+const LEVEL_INFO = 'info';
+
 function num(v) {
   if (v === null || v === undefined || v === '' || isNaN(Number(v))) return null;
   return Number(v);
@@ -106,6 +113,11 @@ function shouldAlert(payload) {
   return isLowScore(overallWellnessExact(payload)) || hasReportablePain(payload);
 }
 
+/* Gönderimin seviyesi: kriter karşılanıyorsa uyarı, karşılanmıyorsa rutin. */
+function alertLevel(payload) {
+  return shouldAlert(payload) ? LEVEL_ALERT : LEVEL_INFO;
+}
+
 /* Uyarının hangi sebeple açıldığı. İkisi birden doğruysa ikisi birden dönüyor —
    koç ekranda "düşük skor + ağrı" ile "sadece ağrı"yı ayırt edebilsin diye. */
 function alertReasons(payload) {
@@ -140,6 +152,7 @@ function joinRegions(list, lang) {
 const TXT = {
   tr: {
     title: 'CoachOS Wellness Uyarısı',
+    titleInfo: 'CoachOS Wellness',
     wellness: 'Wellness',
     high: 'Yüksek ağrı',
     moderate: 'Orta ağrı',
@@ -147,6 +160,7 @@ const TXT = {
   },
   en: {
     title: 'CoachOS Wellness Alert',
+    titleInfo: 'CoachOS Wellness',
     wellness: 'Wellness',
     high: 'High pain',
     moderate: 'Moderate pain',
@@ -164,9 +178,13 @@ const TXT = {
 
    Takım adı gövdeye giriyor çünkü bir koç birden çok takıma bakıyor olabilir ve
    "Emir Papur" tek başına hangi kadronun sabahını anlatmıyor. */
-function buildNotification(sub, teamName, lang) {
+function buildNotification(sub, teamName, lang, level) {
   const t = TXT[lang === 'en' ? 'en' : 'tr'];
   const p = (sub && sub.payload) || {};
+  /* Başlık seviyeyi söylüyor: "Uyarı" kelimesi her sabah her sporcu için çıkarsa
+     hiçbir şey anlatmaz olur. Seviye verilmemişse payload'dan hesaplanıyor —
+     çağıranın ikisini ayrı ayrı hesaplamak zorunda kalmaması için. */
+  const lvl = level || alertLevel(p);
   const score = overallWellness(p);
   const pain = painBySeverity(p);
 
@@ -179,7 +197,7 @@ function buildNotification(sub, teamName, lang) {
   if (pain[3].length) parts.push(`${t.high}: ${joinRegions(pain[3], lang)}`);
   else if (pain[2].length) parts.push(`${t.moderate}: ${joinRegions(pain[2], lang)}`);
 
-  return { title: t.title, body: parts.join(' | ') };
+  return { title: lvl === LEVEL_ALERT ? t.title : t.titleInfo, body: parts.join(' | ') };
 }
 
 /* Uyarı kaydının gövdesi — alert dokümanına yazılan her şey (Madde 11).
@@ -205,11 +223,13 @@ function buildAlertRecord(sub, teamName) {
     painHigh: pain[3],
     painModerate: pain[2],
     reasons: alertReasons(p),
+    level: alertLevel(p),
   };
 }
 
 module.exports = {
   WELLNESS_THRESHOLD, PAIN_MIN_SEVERITY, REASON_LOW_SCORE, REASON_PAIN, SCORE_DOTS,
+  LEVEL_ALERT, LEVEL_INFO, alertLevel,
   overallWellness, overallWellnessExact, painBySeverity, hasReportablePain, isLowScore, shouldAlert, alertReasons,
   buildNotification, buildAlertRecord, dot,
 };

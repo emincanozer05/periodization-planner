@@ -26404,7 +26404,10 @@ function App(){
     setAthFocus({athleteId:a.athleteId,tab:'wellness',at:Date.now()});
     setView('athletes');
   };
-  /* Bildirime tıklanınca gelinen adres: index.html#alert=<id>.
+  /* Bildirime tıklanınca gelinen adres: index.html#alert=<id> (uyarı kaydı olan
+     bildirim) ya da index.html#athlete=<id>&team=<id> (kriteri karşılamayan rutin
+     gönderim — kaydı yok, sunucu sporcunun kendisini adrese yazıyor). İkisi de
+     aynı yere açılıyor: o sporcunun Wellness ekranı.
      Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
      yenilendiğinde koç aynı sporcunun ekranına geri düşerdi. Bulut yüklemesi
      bitmeden çalışmıyor, çünkü takım listesi o ana kadar boş.
@@ -26417,11 +26420,21 @@ function App(){
   const alertRouted=useRef(false);
   useEffect(()=>{
     if(alertRouted.current||sync.status!=='synced'||!sync.user)return;
-    const m=/[#&]alert=([^&]*)/.exec(location.hash||'');
-    if(!m)return;
+    const hash=location.hash||'';
+    const m=/[#&]alert=([^&]*)/.exec(hash);
+    const ma=/[#&]athlete=([^&]*)/.exec(hash);
+    if(!m&&!ma)return;
     alertRouted.current=true;
-    const id=decodeURIComponent(m[1]||'');
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+    if(ma){
+      /* Sporcu adresten geliyor, okunacak kayıt yok — bir Firestore turu
+         beklemeden doğrudan açılıyor. */
+      const mt=/[#&]team=([^&]*)/.exec(hash);
+      openAlert({athleteId:decodeURIComponent(ma[1]||''),
+                 teamId:mt?decodeURIComponent(mt[1]||''):''});
+      return;
+    }
+    const id=decodeURIComponent(m[1]||'');
     const fb=FB();
     if(!fb||!id)return;
     fb.firestore().collection(ALERTS_COL).doc(id).get()

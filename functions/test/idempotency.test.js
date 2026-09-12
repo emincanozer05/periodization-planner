@@ -9,7 +9,7 @@
 const assert = require('assert');
 const { section, t, ta } = require('./harness');
 const { claimForAlert } = require('../claim');
-const { alertDocId, rosterDocId, alertLink, safe } = require('../ids');
+const { alertDocId, rosterDocId, alertLink, athleteLink, safe } = require('../ids');
 
 /* ── Sahte Firestore ──────────────────────────────────────────────────────────
    Gerçek transaction semantiğinin test için gereken kadarı: tx.get okur,
@@ -155,4 +155,34 @@ t('adres yoksa link yok — yanlış yere açmaktansa hiç açma', () => {
 });
 t('link içindeki kimlik kaçırılıyor', () => {
   assert.ok(alertLink('https://e.com', 'a b').endsWith('#alert=a%20b'));
+});
+
+/* ── Kaydı olmayan bildirimin adresi ───────────────────────────────────────
+   Rutin gönderim uyarı kaydı açmıyor, dolayısıyla tıklanacak bir alertId de yok.
+   Bildirim yine sporcunun Wellness ekranında açılmalı. */
+section('Sporcu linki — kaydı olmayan bildirim');
+
+t('sporcu ve takım adrese giriyor', () => {
+  assert.strictEqual(
+    athleteLink('https://example.com/app/', 'a1', 't1'),
+    'https://example.com/app/index.html#athlete=a1&team=t1');
+});
+t('takım bilinmiyorsa yalnızca sporcu', () => {
+  assert.strictEqual(
+    athleteLink('https://example.com/', 'a1', ''),
+    'https://example.com/index.html#athlete=a1');
+});
+t('uyarı linkiyle aynı adres kurallarına uyuyor', () => {
+  assert.strictEqual(
+    athleteLink('https://example.com/app/index.html?x=1#alert=eski', 'a1', 't1'),
+    'https://example.com/app/index.html#athlete=a1&team=t1');
+});
+t('adres ya da sporcu yoksa link yok', () => {
+  assert.strictEqual(athleteLink('', 'a1', 't1'), '');
+  assert.strictEqual(athleteLink('https://example.com/', '', 't1'), '');
+});
+t('kimlikler adres için kaçırılıyor', () => {
+  assert.strictEqual(
+    athleteLink('https://example.com/', 'a 1&x=2', 't/1'),
+    'https://example.com/index.html#athlete=a%201%26x%3D2&team=t%2F1');
 });

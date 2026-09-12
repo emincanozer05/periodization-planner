@@ -41,7 +41,13 @@ const alertDocId = (coachUid, athleteId, date) =>
    biçiminde olabiliyor — tarayıcıda location.href neyse o. Sondaki dosya adı
    atılıp klasöre iniliyor, yoksa ".../index.html/index.html" gibi çalışmayan bir
    adres çıkıyordu. */
-function alertLink(appUrl, alertId) {
+/* Uygulamanın kök adresi — bildirimlerdeki her bağlantının ortak gövdesi.
+
+   Gelen adres hem klasör ("https://x.com/app/") hem dosya ("…/app/index.html")
+   biçiminde olabiliyor — tarayıcıda location.href neyse o. Sondaki dosya adı
+   atılıp klasöre iniliyor, yoksa ".../index.html/index.html" gibi çalışmayan bir
+   adres çıkıyordu. */
+function appBase(appUrl) {
   const raw = String(appUrl || '').trim();
   if (!/^https?:\/\//i.test(raw)) return '';
   let u;
@@ -52,7 +58,29 @@ function alertLink(appUrl, alertId) {
   const dir = u.pathname
     .replace(/[^/]*\.[^/]*$/, '')  // sondaki dosya adı (index.html vb.) → klasör
     .replace(/\/+$/, '');          // kapanış eğik çizgisi
-  return `${u.origin}${dir}/index.html#alert=${encodeURIComponent(alertId)}`;
+  return `${u.origin}${dir}/index.html`;
 }
 
-module.exports = { safe, rosterDocId, alertDocId, alertLink };
+/* Uyarı bildiriminin adresi. Uygulama `#alert=<id>` parçasını okuyup doğrudan
+   sporcunun Wellness ekranını açıyor. Adres bilinmiyorsa boş dönüyor ve bildirim
+   linksiz gidiyor; tıklanınca hiçbir şey açılmaması, yanlış yere açılmasından iyi. */
+function alertLink(appUrl, alertId) {
+  const base = appBase(appUrl);
+  return base ? `${base}#alert=${encodeURIComponent(alertId)}` : '';
+}
+
+/* Uyarı KAYDI OLMAYAN bildirimin adresi — sporcuyu doğrudan açar.
+
+   Kriteri karşılamayan rutin gönderimler bildiriliyor ama uyarı kaydı açmıyor
+   (sebebi index.js'te yazıyor), dolayısıyla tıklanacak bir `alertId` de yok.
+   Bildirime tıklayan yine olması gereken yerde açılsın diye adres sporcunun
+   kendisini taşıyor; takım da yanında, çünkü koç başka bir takıma bakıyor
+   olabilir. */
+function athleteLink(appUrl, athleteId, teamId) {
+  const base = appBase(appUrl);
+  if (!base || !athleteId) return '';
+  const link = `${base}#athlete=${encodeURIComponent(athleteId)}`;
+  return teamId ? `${link}&team=${encodeURIComponent(teamId)}` : link;
+}
+
+module.exports = { safe, rosterDocId, alertDocId, appBase, alertLink, athleteLink };

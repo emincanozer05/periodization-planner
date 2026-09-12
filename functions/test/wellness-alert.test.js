@@ -19,7 +19,7 @@ const assert = require('assert');
 const { section, t } = require('./harness');
 const {
   overallWellness, overallWellnessExact, isLowScore, shouldAlert, alertReasons,
-  painBySeverity, buildNotification, buildAlertRecord,
+  painBySeverity, buildNotification, buildAlertRecord, alertLevel, LEVEL_ALERT, LEVEL_INFO,
   REASON_LOW_SCORE, REASON_PAIN, WELLNESS_THRESHOLD,
 } = require('../wellness-alert');
 
@@ -209,4 +209,42 @@ t('bileşen skorları ve RHR kayda giriyor', () => {
 t('sebep kod olarak duruyor, cümle olarak değil', () => {
   const r = buildAlertRecord({ payload: P(2, 2, 2) }, '');
   assert.deepStrictEqual(r.reasons, ['low_score']);
+});
+
+/* ── Seviye: her gönderim bildiriliyor ─────────────────────────────────────
+   Kriter artık "bildirim gidecek mi" sorusunu cevaplamıyor — hepsi gidiyor —
+   yalnızca telefonda UYARI mı yoksa rutin bir bildirim mi olduğunu söylüyor.
+   Sahadaki karşılığı: kadro iyi olduğu sabahlarda telefonun hiç ötmemesi,
+   koça "bildirimler bozuldu" gibi görünüyordu. */
+section('Bildirim seviyesi');
+
+t('kriteri karşılayan gönderim uyarı seviyesinde', () => {
+  assert.strictEqual(alertLevel(atScore(3)), LEVEL_ALERT);
+  assert.strictEqual(alertLevel(P(5, 5, 5, { Diz: 2 })), LEVEL_ALERT);
+});
+t('kriteri karşılamayan gönderim de bildiriliyor — rutin seviyede', () => {
+  assert.strictEqual(alertLevel(atScore(5)), LEVEL_INFO);
+  assert.strictEqual(alertLevel(P(4, 4, 4, { Diz: 1 })), LEVEL_INFO);   // hafif ağrı uyarı değil
+  assert.strictEqual(alertLevel(atScore(3.5)), LEVEL_INFO);             // tam eşik: uyarı değil
+});
+t('başlık seviyeyi söylüyor', () => {
+  const iyi = { athleteName: 'Emir Papur', payload: atScore(5) };
+  const kotu = { athleteName: 'Emir Papur', payload: atScore(3) };
+  assert.strictEqual(buildNotification(iyi, 'U16', 'tr').title, 'CoachOS Wellness');
+  assert.strictEqual(buildNotification(kotu, 'U16', 'tr').title, 'CoachOS Wellness Uyarısı');
+  assert.strictEqual(buildNotification(iyi, 'U16', 'en').title, 'CoachOS Wellness');
+  assert.strictEqual(buildNotification(kotu, 'U16', 'en').title, 'CoachOS Wellness Alert');
+});
+t('rutin bildirim de sporcuyu, takımı ve skoru yazıyor', () => {
+  const n = buildNotification({ athleteName: 'Emir Papur', payload: atScore(5) }, 'U16', 'tr');
+  assert.strictEqual(n.body, 'Emir Papur — U16 | Wellness: 5/5');
+});
+t('seviye verilmezse payload\'dan hesaplanıyor', () => {
+  const kotu = { athleteName: 'E', payload: atScore(2) };
+  assert.strictEqual(buildNotification(kotu, '', 'tr').title,
+                     buildNotification(kotu, '', 'tr', LEVEL_ALERT).title);
+});
+t('kayıt seviyeyi taşıyor', () => {
+  assert.strictEqual(buildAlertRecord({ payload: atScore(2) }, '').level, LEVEL_ALERT);
+  assert.strictEqual(buildAlertRecord({ payload: atScore(5) }, '').level, LEVEL_INFO);
 });

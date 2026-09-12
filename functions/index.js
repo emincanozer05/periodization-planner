@@ -26,10 +26,10 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const { shouldAlert, buildNotification, buildAlertRecord } = require('./wellness-alert');
+const { alertLevel, LEVEL_ALERT, buildNotification, buildAlertRecord } = require('./wellness-alert');
 const { tokensFor, groupByLang } = require('./recipients');
 const { sendAlert } = require('./push');
-const { rosterDocId, alertDocId, alertLink } = require('./ids');
+const { rosterDocId, alertDocId, alertLink, athleteLink, safe } = require('./ids');
 const { claimForAlert } = require('./claim');
 
 admin.initializeApp();
@@ -69,10 +69,16 @@ exports.wellnessAlert = functions
       functions.logger.warn('wellness: eksik kimlik alanları, uyarı atlandı', { checkinId });
       return null;
     }
-    if (!shouldAlert(sub.payload || {})) {
-      functions.logger.info('wellness: kriter karşılanmadı, uyarı yok', { checkinId });
-      return null;
-    }
+    /* ── Her gönderim bildiriliyor ────────────────────────────────────────
+       Eskiden kriteri karşılamayan gönderim burada sessizce düşüyordu. Sahada
+       bunun görünümü "bildirimler bir gün geldi, sonra kesildi" oluyordu: kadro
+       iyi olduğu sabahlarda telefon hiç ötmüyor, koç da bildirimin bozulduğunu
+       sanıyordu. Koçun istediği, sporcu GÖNDER'e bastığı an haberdar olmak.
+
+       Kriter kaldırılmadı, yerini buldu: artık bildirimin SEVİYESİNİ söylüyor.
+       'alert' telefonda "Uyarı" başlığıyla çıkıyor ve uyarı kaydı açıyor; 'info'
+       rutin bir bildirim, kaydı yok. */
+    const level = alertLevel(sub.payload || {});
 
     /* ── Çift gönderim koruması (Madde 13, Test 14) ───────────────────────
        Gönderimden ÖNCE dokümanı bir işlem (transaction) içinde sahipleniyoruz.
@@ -102,24 +108,34 @@ exports.wellnessAlert = functions
     /* ── Uyarı kaydı — bildirimden ÖNCE (Madde 14) ────────────────────────
        Push patlasa bile uyarı ekranda duruyor. Sıra tersine olsaydı, bildirim
        gönderilemeyen bir sabahın uyarısı hiçbir yerde kalmazdı. */
-    const alertId = alertDocId(sub.coachUid, sub.athleteId, sub.date);
-    const alertRef = db().collection(ALERTS_COL).doc(alertId);
-    const record = buildAlertRecord(sub, roster.teamName);
+    /* Kayıt yalnızca UYARI seviyesinde açılıyor. Rutin gönderimler de kayıt
+       açsaydı "Wellness Uyarıları" ekranı her sabah bütün kadroyla dolardı ve son
+       200 kaydı gösteren liste birkaç gün içinde gerçek uyarıları ekrandan
+       düşürürdü — uyarı listesinin tek işi, bakılması gereken sporcuyu ilk
+       satırda tutmak. Rutin bildirim sporcunun kendi Wellness ekranına
+       bağlanıyor; veri zaten orada duruyor. */
+    let alertId = '';
+    let alertRef = null;
+    if (level === LEVEL_ALERT) {
+      alertId = alertDocId(sub.coachUid, sub.athleteId, sub.date);
+      alertRef = db().collection(ALERTS_COL).doc(alertId);
+      const record = buildAlertRecord(sub, roster.teamName);
 
-    const base = Object.assign({}, record, {
-      coachUid: sub.coachUid,
-      checkinId,
-      submittedAt: sub.at || null,
-      createdAt: now(),
-      notificationStatus: 'pending',
-      v: 1,
-    });
-    try {
-      await alertRef.set(base, { merge: true });
-    } catch (err) {
-      functions.logger.error('wellness: uyarı kaydı yazılamadı', { checkinId, alertId, error: String(err) });
-      // Kayıt yazılamasa da bildirim denenmeye devam ediyor: koçun sabah haberi
-      // olması, kaydın arşivlenmesinden daha acil.
+      const base = Object.assign({}, record, {
+        coachUid: sub.coachUid,
+        checkinId,
+        submittedAt: sub.at || null,
+        createdAt: now(),
+        notificationStatus: 'pending',
+        v: 1,
+      });
+      try {
+        await alertRef.set(base, { merge: true });
+      } catch (err) {
+        functions.logger.error('wellness: uyarı kaydı yazılamadı', { checkinId, alertId, error: String(err) });
+        // Kayıt yazılamasa da bildirim denenmeye devam ediyor: koçun sabah haberi
+        // olması, kaydın arşivlenmesinden daha acil.
+      }
     }
 
     /* ── Alıcılar ─────────────────────────────────────────────────────────
@@ -141,10 +157,12 @@ exports.wellnessAlert = functions
     });
 
     if (!targets.length) {
-      functions.logger.info('wellness: uyarı kaydedildi ama bildirilecek cihaz yok', {
-        checkinId, alertId, athleteId: sub.athleteId,
+      functions.logger.info('wellness: bildirilecek cihaz yok', {
+        checkinId, alertId, level, athleteId: sub.athleteId,
       });
-      await alertRef.set({ recipients: [], notificationStatus: 'no_recipients' }, { merge: true }).catch(() => {});
+      if (alertRef) {
+        await alertRef.set({ recipients: [], notificationStatus: 'no_recipients' }, { merge: true }).catch(() => {});
+      }
       await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
       return null;
     }
@@ -152,19 +170,29 @@ exports.wellnessAlert = functions
     /* ── Gönderim ─────────────────────────────────────────────────────────
        Bildirim metni kişinin diline göre kuruluyor, aynı dili konuşan cihazlar
        tek istekte gidiyor. */
-    const link = alertLink(roster.appUrl || process.env.APP_ORIGIN, alertId);
+    const appUrl = roster.appUrl || process.env.APP_ORIGIN;
+    const link = alertRef
+      ? alertLink(appUrl, alertId)
+      : athleteLink(appUrl, sub.athleteId, sub.teamId);
     const data = {
       alertId,
+      level,
       athleteId: String(sub.athleteId),
       teamId: String(sub.teamId),
       date: String(sub.date || ''),
+      /* Telefondaki satırın kimliği. Aynı sporcunun aynı günkü ikinci gönderimi
+         yeni bir satır açmak yerine mevcudunun üstüne yazıyor — uygulamanın da
+         günün son gönderimini geçerli sayması gibi. Bildirim yine haber veriyor
+         (renotify açık), sadece bildirim alanı aynı sabahın tekrarlarıyla
+         dolmuyor. Uyarı kaydı olmayan gönderimde ad sporcu+tarihten türüyor. */
+      tag: alertId || `${safe(sub.athleteId)}__${safe(sub.date)}`,
     };
 
     const byToken = new Map(targets.map(t => [t.token, t]));
     const results = [];
     const dead = [];
     for (const [lang, group] of groupByLang(targets)) {
-      const text = buildNotification(sub, roster.teamName, lang);
+      const text = buildNotification(sub, roster.teamName, lang, level);
       const r = await sendAlert(admin.messaging(), group.map(t => t.token), text, data, link);
       results.push(...r.results);
       dead.push(...r.dead);
@@ -196,20 +224,22 @@ exports.wellnessAlert = functions
     });
     const status = okCount === 0 ? 'failed' : (okCount === results.length ? 'sent' : 'partial');
 
-    await alertRef.set({
-      recipients,
-      notificationStatus: status,
-      notifiedAt: now(),
-    }, { merge: true }).catch(err =>
-      functions.logger.error('wellness: uyarı durumu yazılamadı', { alertId, error: String(err) }));
+    if (alertRef) {
+      await alertRef.set({
+        recipients,
+        notificationStatus: status,
+        notifiedAt: now(),
+      }, { merge: true }).catch(err =>
+        functions.logger.error('wellness: uyarı durumu yazılamadı', { alertId, error: String(err) }));
+    }
 
     /* Check-in kaydına ASLA dokunulmuyor, silinmiyor — sadece damga (Madde 14).
        Gönderim başarısız olsa bile sahiplenme damgası duruyor, aynı olay tekrar
        gelse ikinci bildirim atılmıyor. */
     await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
 
-    functions.logger.info('wellness: uyarı gönderildi', {
-      checkinId, alertId, athleteId: sub.athleteId, date: sub.date,
+    functions.logger.info('wellness: bildirim gönderildi', {
+      checkinId, alertId, level, athleteId: sub.athleteId, date: sub.date,
       sent: okCount, failed: results.length - okCount, dead: dead.length,
     });
     return null;

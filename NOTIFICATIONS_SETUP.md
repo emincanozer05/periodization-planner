@@ -1,17 +1,25 @@
 # Wellness Uyarıları ve Push Bildirimi — kurulum
 
-Bir sporcu sabah wellness formunu gönderdiğinde, gönderim uyarı kriterlerini
-karşılıyorsa sistem o sporcuya ait bir **Wellness Uyarısı** oluşturur ve o
-sporcuyla ilgili ekip üyelerinin telefonlarına **push bildirimi** gönderir.
+Bir sporcu wellness formunu gönderdiğinde, o sporcuyla ilgili ekip üyelerinin
+telefonlarına **push bildirimi** gider — **her gönderimde**, gönder'e basıldığı an.
 
-Kontrol günlük toplu değil, **gönderim başına** yapılır: sporcu formu gönderdiği
-anda, saniyeler içinde.
+Kriter bildirimi açıp kapatmıyor; bildirimin **seviyesini** söylüyor:
+
+| Seviye | Ne zaman | Telefonda başlık | Uyarı kaydı |
+|---|---|---|---|
+| **Uyarı** | aşağıdaki kriter karşılanıyorsa | *CoachOS Wellness Uyarısı* | açılır |
+| Rutin | diğer her gönderim | *CoachOS Wellness* | açılmaz |
+
+Aynı sporcu aynı gün ikinci kez gönderirse telefon yine haber verir; bildirim
+alanında yeni satır açmak yerine o sporcunun satırını günceller — uygulamanın
+günün son gönderimini geçerli sayması gibi.
 
 ---
 
-## Uyarı kuralı
+## Uyarı seviyesinin kuralı
 
-İki bağımsız sebep var; **biri yetiyor**, ikisinin bir arada olması gerekmiyor:
+Bildirimin "Uyarı" sayılması için iki bağımsız sebep var; **biri yetiyor**,
+ikisinin bir arada olması gerekmiyor:
 
 ```
 Overall Wellness < 3.5
@@ -21,7 +29,7 @@ en az bir bölgede orta ya da yüksek ağrı
 
 | Overall Wellness | Ağrı | Sonuç |
 |---|---|---|
-| 3.5 – 5.0 | yok | uyarı yok |
+| 3.5 – 5.0 | yok | rutin bildirim |
 | 3.5 – 5.0 | orta / yüksek | **uyarı** |
 | 3.5’in altı | yok | **uyarı** |
 | 3.5’in altı | orta / yüksek | **uyarı** |
@@ -204,15 +212,18 @@ dönüşmüyor, service worker'ın önbelleği yok.
 
 | Test | Girdi | Beklenen |
 |---|---|---|
-| 1 | Uyku 4 · Yorgunluk 4 · Kas ağrısı 4 · ağrı yok | bildirim **yok** (skor 4.0) |
-| 2 | Uyku 4 · Yorgunluk 3 · kas ağrısı **boş** · ağrı yok | bildirim **yok** (skor tam 3.5) |
-| 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | **bildirim** (ağrı tek başına yeter) |
-| 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | **bildirim** (skor 3.0) |
-| 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | **bildirim** (skor 5.0 ama ağrı var) |
-| 6 | bildirime tıkla | sporcunun Wellness ekranı açılır |
-| 7 | aynı sporcu aynı gün ikinci kez gönderir | telefonda **tek** satır (uyarı güncellenir) |
+| 1 | Uyku 4 · Yorgunluk 4 · Kas ağrısı 4 · ağrı yok | bildirim gelir, başlık **CoachOS Wellness** |
+| 2 | Uyku 4 · Yorgunluk 3 · kas ağrısı **boş** · ağrı yok | bildirim gelir, **rutin** (skor tam 3.5) |
+| 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | bildirim gelir, **Uyarı** (ağrı tek başına yeter) |
+| 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | bildirim gelir, **Uyarı** (skor 3.0) |
+| 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | bildirim gelir, **Uyarı** (skor 5.0 ama ağrı var) |
+| 6 | bildirime tıkla | sporcunun Wellness ekranı açılır (uyarı da rutin de) |
+| 7 | aynı sporcu aynı gün ikinci kez gönderir | telefon yine haber verir, satır **güncellenir** |
 
-2 numaralı test en kritiği: tam 3.5 uyarı **vermemeli**.
+2 numaralı test en kritiği: tam 3.5 **uyarı** değil — ama bildirim yine gelir.
+
+> Uygulama telefonda **açık ve önde** duruyorken tarayıcı bildirimi ekrana
+> basmaz (gönderim yine olur). Test ederken uygulamayı arka plana al.
 
 ---
 
@@ -237,11 +248,16 @@ Function logları: `firebase functions:log --only wellnessAlert`
 
 | Koleksiyon | Yazan | Okuyan |
 |---|---|---|
-| `wellness_alerts` | **yalnızca Cloud Function** | koç (tüm takımları) · ekip üyesi (yalnızca kendi takımı) |
+| `wellness_alerts` | **yalnızca Cloud Function** (yalnızca uyarı seviyesi) | koç (tüm takımları) · ekip üyesi (yalnızca kendi takımı) |
 | `push_tokens` | cihazın sahibi (kendi kaydı) | **yalnızca Cloud Function** |
 | `staff_links` | koç | adresi bilen |
 | `staff_members` | ekip üyesi (kendi kaydı, linkiyle doğrulanır) | kendisi |
 | `alert_roster` | koç | **yalnızca Cloud Function** |
+
+Rutin gönderimler kayıt açmaz — açsaydı uyarı listesi her sabah bütün kadroyla
+dolar, son 200 kaydı gösteren liste birkaç günde gerçek uyarıları ekrandan
+düşürürdü. Rutin bildirime tıklayan sporcunun Wellness ekranında açılır; veri
+zaten orada.
 
 **1 sporcu = 1 uyarı.** Aynı sabah beş sporcu kriterleri karşılarsa beş ayrı kayıt
 oluşur; birleştirilmezler. Uyarı kaydının adı sporcu + tarihten türediği için

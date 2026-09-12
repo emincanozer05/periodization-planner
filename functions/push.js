@@ -63,7 +63,11 @@ function buildMessage(tokens, text, data, link) {
         body: text.body,
         icon: '/logo-mark.png',
         badge: '/logo-mark.png',
-        tag: data.alertId,
+        /* Aynı sporcunun aynı günkü bildirimi tek satırda güncelleniyor; farklı
+           sporcular farklı tag taşıdığı için aynı sabah beş sporcu ayrı ayrı
+           duruyor. Uyarı kaydı olmayan rutin bildirimde ad sporcu+tarihten
+           türüyor — index.js `tag`'i her iki durumda da doldurup gönderiyor. */
+        tag: data.tag || data.alertId,
         renotify: true,
         requireInteraction: false,
       },
