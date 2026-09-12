@@ -10021,7 +10021,11 @@ function printTeamInsights(R){
      for a tick mark helps no one. */
   const pnChip=g=>`<span class="tag p${g.worst}">${esc(g.label)}${g.worst?` · ${esc(tibPainSevLabel(g.worst))}`:''}${g.days>1?`<b>${g.days}${L('g','d')}</b>`:''}</span>`;
   const pnPage=R.weekPain.length>8;
-  const pnCols=R.weekPain.length<=6?2:(R.weekPain.length<=12?3:4);
+  /* Columns are chosen to keep the list TALL rather than to get it over with in four
+     short rows: a sheet of its own is a sheet to fill, so a column takes about eight
+     athletes before the next one is opened. Four rows spread down a whole page read as
+     a mistake however evenly they are spaced. */
+  const pnCols=Math.min(4,Math.max(2,Math.ceil(R.weekPain.length/8)));
   const pnRows=R.weekPain.map(f=>`<div class="fl-r${f.worst>2?' hot':''}">
       <div class="nm">${esc(f.a.name||'—')}<u>${esc(tibPosLabel(f.a.position)||'—')}</u></div>
       <div class="tg">${f.regions.map(pnChip).join('')}</div>
@@ -10082,8 +10086,12 @@ function printTeamInsights(R){
       <div class="legend">${L(`Takım ortalaması ${tibNum(R.srpe.mean)} AU · ${R.srpe.n} sporcu · AU = sRPE × dakika`,
         `Squad mean ${tibNum(R.srpe.mean)} AU · ${R.srpe.n} athletes · AU = sRPE × minutes`)}</div>`;
 
+  /* A card's body is wrapped so it can be told to take the height the card was given:
+     a stretched frame with its content pinned to the top would only move the white
+     space from below the card to inside it. */
   const card=(t,sub,tag,body)=>`<div class="card"><div class="chead">
-      <div><div class="ct">${esc(t)}</div><div class="cs">${esc(sub)}</div></div>${tag||''}</div>${body}</div>`;
+      <div><div class="ct">${esc(t)}</div><div class="cs">${esc(sub)}</div></div>${tag||''}</div>
+    <div class="cbody">${body}</div></div>`;
 
   const html=`<!DOCTYPE html>
 <html lang="${REPORT_LANG}"><head><meta charset="utf-8"><title>${L('Takım Analizi','Team Insights')} — ${esc(R.teamName)}</title>
@@ -10105,6 +10113,11 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
    boxes and nothing can spill past one. */
 .pg{width:${TIR_PAGE_W}px;margin:0 auto;overflow:hidden}
 .pg-in{width:${TIR_PAGE_W}px;transform-origin:top left}
+/* A sheet whose one card is shorter than the paper: the card is given the page instead
+   of leaving half a sheet of nothing under it. The page's own height is untouched — the
+   card simply ends where the paper does. */
+.pg-in.fill{min-height:${TIR_PAGE_H-4}px;display:flex;flex-direction:column}
+.pg-in.fill>.card{flex:1 1 auto;margin-bottom:0}
 .brk{break-before:page;page-break-before:always}
 @media print{.scr-sp2{display:none}}
 .hdr{display:flex;align-items:center;gap:14px;padding:10px 18px;background:linear-gradient(120deg,#0a0b0d 0%,#15171c 100%);color:#fff;border-radius:12px;margin-bottom:8px}
@@ -10119,9 +10132,21 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .kpi .kv u{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;color:var(--dim);text-decoration:none;margin-left:4px;letter-spacing:.06em}
 .kpi .kk{font-family:'IBM Plex Mono',monospace;font-size:8.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-top:3px}
 .kpi .ks{font-size:9px;color:var(--dim);margin-top:2px}
-.card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px}
-.srcols{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-.fl.wide{display:grid;gap:0 16px;align-items:start}
+.card{border:1px solid var(--border);border-radius:11px;padding:10px 12px;background:#fff;margin-bottom:7px;display:flex;flex-direction:column}
+/* WHAT IS IN THE CARD FOLLOWS THE CARD. A frame stretched to the foot of the sheet with
+   its rows still bunched at the top has not filled anything — it has moved the white
+   space inside the border. So the body takes the height the frame was given and each
+   kind of body spends it the way that body should: table and list rows share it out
+   between them, the trend's bars grow taller into it, and a legend or a footnote stays
+   at the bottom edge where it belongs. Nothing is re-sized past what it needs on a busy
+   week — these all grow from the height the content already asked for. */
+.cbody{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+.cbody>.tbl,.cbody>.srcols,.cbody>.sd,.cbody>.fl,.cbody>.tr{flex:1 1 auto}
+.cbody>.none{flex:1 1 auto;display:grid;place-items:center}
+.cbody>.tr{height:auto;min-height:84px}
+.srcols{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:stretch}
+.srcols .tbl{height:100%}
+.fl.wide{display:grid;gap:0 16px;align-items:stretch;align-content:stretch}
 .fl.wide .fl-r{border-bottom:1px solid #f1f2f4;padding:6px 0}
 /* Half the width means the name column has to be bought back off the others: the rank
    and the inline bar give up what they can spare, so a name still sits on one line and
@@ -10155,7 +10180,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .al.high .k{color:#be123c}
 .al .w{font-size:10px;font-weight:700;margin:2px 0 2px;letter-spacing:-.01em}
 .al .t{font-size:8.5px;color:var(--text2);line-height:1.4}
-.sd-r{display:grid;grid-template-columns:1fr auto 62px auto;align-items:center;gap:7px;padding:3px 0;border-bottom:1px solid #f1f2f4}
+.sd{display:flex;flex-direction:column}
+.sd-r{display:grid;grid-template-columns:1fr auto 62px auto;align-items:center;gap:7px;padding:3px 0;border-bottom:1px solid #f1f2f4;flex:1 1 auto}
 .sd-r:last-child{border-bottom:none}
 .sd-r .l{font-size:10px;font-weight:500;display:flex;align-items:center;gap:6px;min-width:0}
 .sd-r .l i{width:7px;height:7px;border-radius:2px;flex:none}
@@ -10163,7 +10189,8 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .sd-r .m{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);white-space:nowrap}
 .mini{display:inline-block;width:100%;min-width:34px;height:5px;border-radius:3px;background:#eceef1;overflow:hidden;vertical-align:middle}
 .mini i{display:block;height:100%;border-radius:3px}
-.fl-r{padding:4px 0;border-bottom:1px solid #f1f2f4}
+.fl{display:flex;flex-direction:column}
+.fl-r{padding:4px 0;border-bottom:1px solid #f1f2f4;flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
 .fl-r:last-child{border-bottom:none}
 .fl-r.hot .nm{color:#be123c}
 .fl-r .nm{font-size:10.5px;font-weight:700;letter-spacing:-.01em}
@@ -10180,7 +10207,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 .tag b{font-weight:600;margin-left:5px;padding-left:5px;border-left:1px solid currentColor;opacity:.65}
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:8px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);text-align:left;padding:0 5px 5px;border-bottom:1px solid var(--border)}
-.tbl td{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4}
+.tbl td{font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:2.5px 5px;border-bottom:1px solid #f1f2f4;vertical-align:middle}
 .tbl tbody tr:last-child td{border-bottom:none}
 .tbl .r{text-align:right}
 .tbl .rk{width:20px;color:var(--dim)}
@@ -10246,7 +10273,7 @@ ${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakam
 </div></div>
 ${pnPage?`
 <div class="scr-sp2" style="height:26px"></div>
-<div class="pg brk"><div class="pg-in">
+<div class="pg brk"><div class="pg-in fill">
 <div class="hdr">
   ${hasMedia(R.logo)?`<div class="lg"><img src="${mediaSrc(R.logo)}"/></div>`:''}
   <div><h1>${esc(R.teamName)}</h1><div class="date">📊 ${esc(R.periodLabel)} · ${L('seçili hafta','selected week')}</div></div>
