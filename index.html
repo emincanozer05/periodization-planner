@@ -26074,11 +26074,6 @@ function App(){
   const ballNameOptions=useMemo(()=>(data.exercises||[])
     .filter(e=>exLib(e)==='ball'&&(e.name||'').trim())
     .map(e=><option key={e.id} value={e.name}/>),[data.exercises]);
-  // All hooks must be called before any conditional return
-  if(sync.authLoading)return<LoadingScreen/>;
-  if(!sync.user)return<LoginPage sync={sync}/>;
-  const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
-  const goDayView=k=>{setDayKey(k);setView('program');};
   /* Uyarı → sporcunun Wellness ekranı. Uyarı başka bir takımınsa önce o takıma
      geçiliyor: bildirime tıklayan koç hangi kadroya baktığını düşünmek zorunda
      kalmasın. */
@@ -26092,7 +26087,13 @@ function App(){
   /* Bildirime tıklanınca gelinen adres: index.html#alert=<id>.
      Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
      yenilendiğinde koç aynı sporcunun ekranına geri düşerdi. Bulut yüklemesi
-     bitmeden çalışmıyor, çünkü takım listesi o ana kadar boş. */
+     bitmeden çalışmıyor, çünkü takım listesi o ana kadar boş.
+
+     BU HOOK'LAR AŞAĞIDAKİ KOŞULLU RETURN'LERDEN ÖNCE DURMAK ZORUNDA. Aşağıda
+     dururken uygulama hiç açılmıyordu: ilk çizimde oturum daha yükleniyor,
+     App erken dönüyor ve bu iki hook hiç çağrılmıyor; oturum gelince ikinci
+     çizimde çağrılıyorlar ve React "önceki çizimden daha fazla hook" (#310)
+     deyip ağacı komple düşürüyor — ekran bembeyaz kalıyor. */
   const alertRouted=useRef(false);
   useEffect(()=>{
     if(alertRouted.current||sync.status!=='synced'||!sync.user)return;
@@ -26107,6 +26108,11 @@ function App(){
       .then(d=>{if(d.exists)openAlert(d.data());})
       .catch(e=>console.warn('alert deep link',e));
   },[sync.status,sync.user]);
+  // All hooks must be called before any conditional return
+  if(sync.authLoading)return<LoadingScreen/>;
+  if(!sync.user)return<LoginPage sync={sync}/>;
+  const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
+  const goDayView=k=>{setDayKey(k);setView('program');};
 
   const exCount=(data.exercises||[]).length;
   const NAV_GROUPS=[
