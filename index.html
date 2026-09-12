@@ -21015,6 +21015,27 @@ const withTimeout=(p,ms)=>new Promise((resolve,reject)=>{
 const SERVER_READ_MS=8000;      // yazım öncesi güvenlik okuması bu kadar bekler, sonra yazıma geçilir
 const WRITE_STUCK_MS=45000;     // bu kadar süredir uçuşta olan yazım takılmış sayılır ve bırakılır
 const isHidden=()=>typeof document!=='undefined'&&document.visibilityState==='hidden';
+/* SENKRON GÜNLÜĞÜ — telefonda konsol yoktur.
+   "Gösterge sarıda kalıyor" tek bir belirti, ama arkasında birbirine hiç benzemeyen
+   sebepler var: cihaz sunucuya hiç bağlanamıyor olabilir (o zaman her anlık görüntü
+   ÖNBELLEKTEN gelir ve dinleyici hiçbir zaman "hazır" diyemez), yazım turu takılmış
+   olabilir, ya da bir kayıt reddediliyor olabilir. Bunları ayırmanın yolu cihazın ne
+   yaşadığını görmek; konsolun olmadığı yerde de bunun tek yolu ekrana yazmak.
+   Burada tutulan son seksen olay, göstergeye dokununca açılan panelde okunuyor ve tek
+   düğmeyle kopyalanabiliyor. Yalnızca kayıt tutar — senkronun davranışına karışmaz. */
+const SYNC_LOG=[];const SYNC_LOG_MAX=80;let _slSubs=[];
+const slog=(msg,extra)=>{
+  SYNC_LOG.push({t:Date.now(),msg,extra:(extra==null||extra==='')?'':String(extra)});
+  if(SYNC_LOG.length>SYNC_LOG_MAX)SYNC_LOG.shift();
+  // Abone yalnızca panel açıkken var: kapalıyken kayıt tutmanın render'a bedeli olmasın.
+  for(let i=0;i<_slSubs.length;i++){try{_slSubs[i]();}catch(_){}}
+};
+const slogSub=f=>{_slSubs.push(f);return()=>{_slSubs=_slSubs.filter(x=>x!==f);};};
+const slogText=()=>SYNC_LOG.map(e=>{
+  const d=new Date(e.t);
+  const p=n=>String(n).padStart(2,'0');
+  return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' '+e.msg+(e.extra?' '+e.extra:'');
+}).join('\n');
 /* PARÇALAMA SABİT ARALIKLA DEĞİL, İÇERİĞE GÖRE YAPILIR — ve parçanın ADI içeriğinin
    hash'idir. Senkronizasyonun yavaş olmasının asıl sebebi buydu:
      • parçalar sabit bayt aralıklarında kesildiği için durumun ortasına eklenen tek bir
@@ -21366,6 +21387,7 @@ function useCloudSync(data,setData){
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
   const writeStarted=useRef(0);         // uçuştaki yazım ne zaman başladı (takılanı bırakabilmek için)
   const writeGen=useRef(0);             // yazım turu sıra no: bırakılan bir tur geri dönerse hiçbir şeye dokunamaz
+  const sawServer=useRef(false);        // bu oturumda SUNUCUDAN hiç anlık görüntü geldi mi (teşhisin ana ayracı)
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
   const COL='kullanici_verileri';
   const GC_GRACE_MS=5*60*1000;   // bu kadar yeni bir parça, kimse göstermiyor görünse bile silinmez
@@ -21450,8 +21472,8 @@ function useCloudSync(data,setData){
   const writeNow=async()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     const fb=FB();const u=userRef.current;
-    if(!fb||!u||!ready.current)return;
-    if(writing.current){queued.current=true;return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
+    if(!fb||!u||!ready.current){slog('write: atlandı','ready='+(ready.current?1:0)+' user='+(u?1:0));return;}
+    if(writing.current){queued.current=true;slog('write: kilitli, sıraya alındı');return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
     const gen=++writeGen.current;      // bu turun kimliği: bırakılmış bir tur dönerse artık hiçbir şeye dokunmaz
     const stale=()=>gen!==writeGen.current;
     /* Bağlantısız geçen bir aradan sonraki ilk yazım: önce sunucudaki hâli oku. Arada başka
@@ -21474,7 +21496,8 @@ function useCloudSync(data,setData){
           if(sp){lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;applyRemote(sv.json,sp);}
         }
         fromServer.current=true;   // sunucuyu şimdi okuduk; sıradaki yazımlar tekrar okumaz
-      }catch(e){/* okunamadı ya da zamanında gelmedi → yazımı yine de dene, dinleyici dönüşte birleştirir */}
+      }catch(e){/* okunamadı ya da zamanında gelmedi → yazımı yine de dene, dinleyici dönüşte birleştirir */
+        slog('write: ön-okuma başarısız',(e&&e.code)||(e&&e.message)||'?');}
       // Sıra önemli: bu tur bırakıldıysa kilit ARTIK BİZİM DEĞİL — yerine geçen tur onu
       // tutuyor olabilir, dokunmadan çekiliyoruz.
       if(stale())return;
@@ -21494,10 +21517,12 @@ function useCloudSync(data,setData){
     }
     setStatus('syncing');
     writing.current=true;writeStarted.current=Date.now();
+    slog('write: başladı','boyut='+json.length);
     try{
       const col=fb.firestore().collection(COL);
       const parts=await splitChunksAsync(json);const n=parts.length;
       if(stale())return;   // bu tur bırakıldı (bkz. takılan yazım gözcüsü) → yerini alan tur yazsın
+      slog('write: bölündü','parça='+n);
       let rev=Date.now();if(rev<=lastRev.current)rev=lastRev.current+1;   // rev daima artar (saat geri gitse bile)
       const ids=parts.map(p=>p.h);
       /* Bu hâlin kimliğini ŞİMDİ kaydet, commit'lerden SONRA değil. Parça adları içeriğin
@@ -21531,8 +21556,10 @@ function useCloudSync(data,setData){
         cur.push(o);bytes+=o.bytes;
       });
       if(cur.length)groups.push(cur);
+      slog('write: yeni parça gönderiliyor','adet='+news.length+' grup='+groups.length);
       for(const g of groups)await commitOps(fb,col,g);
       // Parçaların HEPSİ yerinde → manifest TEK BAŞINA yazılır: durumu çeviren tek atomik adım.
+      slog('write: parçalar onaylandı, manifest gidiyor');
       await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,v:2,n,rev,ids}}]);
       /* Bu tur bırakılmışsa (ağ takıldı sanıldı, yerine yenisi başladı) ve şimdi geç de olsa
          döndüyse: yazdığı hâl buluta gitti, ama ekrandaki hâl artık o değil. "Senkron" demek
@@ -21552,7 +21579,8 @@ function useCloudSync(data,setData){
       gcOldChunks(fb,u.uid,rev,keep,known);   // artık gösterilmeyenleri arkada temizle (başarısız olsa da veri sağlam)
     }catch(e){
       if(stale())return;   // bırakılmış turun hatası yeni turun durumunu bozmasın
-      console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
+      console.warn('write',e);slog('write: HATA',(e&&e.code)||(e&&e.message)||'?');
+      setStatus('error');setSyncErr(e.code||e.message||'unknown');
       writing.current=false;
       const rerun=queued.current;queued.current=false;if(rerun)writeNow();   // yeni değişiklik beklemesin
       return;
@@ -21561,6 +21589,7 @@ function useCloudSync(data,setData){
     // Yazım sürerken yeni değişiklik geldiyse: yeşil YAKMADAN hemen onu da yaz.
     if(queued.current||ser(dataRef.current)!==json){queued.current=false;writeNow();return;}
     dirty.current=false;setStatus('synced');setSyncErr('');   // yeşil = bulut, ekrandaki halin birebir aynısı
+    slog('write: bitti → YEŞİL');
   };
 
   /* BULUTTAN GELEN HÂLİ UYGULA — ama asla körlemesine üzerine yazma.
@@ -21827,6 +21856,7 @@ function useCloudSync(data,setData){
   // CANLI DİNLEYİCİ: manifest + parçalar (+ eski formatlardan tek seferlik geçiş)
   useEffect(()=>{
     const fb=FB();if(!fb||!user)return;
+    slog('dinleyici: kuruluyor','uid='+user.uid.slice(0,6));
     setStatus('syncing');ready.current=false;lastSynced.current=null;ancestor.current=null;prevN.current=0;lastRev.current=0;chunkIds.current=[];
     docCache.current=new Map();idsJson.current=[];
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
@@ -21835,6 +21865,12 @@ function useCloudSync(data,setData){
       .onSnapshot(async snap=>{
         try{
           // Sunucuyla temas var mı? (yazım öncesi güvenlik okumasının gerekip gerekmediğini bu söyler)
+          const _cache=!!(snap.metadata&&snap.metadata.fromCache),_pend=!!(snap.metadata&&snap.metadata.hasPendingWrites);
+          /* Bu satır teşhisin kilit taşı: kaynak SUNUCU mu ÖNBELLEK mi? Her anlık görüntü
+             sürekli önbellekten geliyorsa cihaz Firestore'a hiç bağlanamıyor demektir ve
+             sarıda kalmasının sebebi kodun mantığı değil, taşıma katmanıdır. */
+          if(!_cache)sawServer.current=true;
+          slog('snap',(_cache?'ÖNBELLEK':'SUNUCU')+' dok='+snap.size+(_pend?' bekleyen-yazım':''));
           if(!(snap.metadata&&snap.metadata.fromCache))fromServer.current=true;
           /* SADECE DEĞİŞEN DOKÜMAN AÇILIR. Anlık görüntü sorguya uyan TÜM dokümanları taşır
              ve her birinde d.data() çağırmak, dokümanı baştan çözmek demektir: birkaç MB'lık
@@ -21849,7 +21885,7 @@ function useCloudSync(data,setData){
             else cache.set(ch.doc.id,ch.doc.data());
           });
           if(cache.size!==snap.size){cache.clear();snap.forEach(d=>cache.set(d.id,d.data()));}
-          if(snap.metadata&&snap.metadata.hasPendingWrites)return;   // kendi yazımımızın yankısı
+          if(snap.metadata&&snap.metadata.hasPendingWrites){slog('snap: atlandı (kendi yankımız)');return;}   // kendi yazımımızın yankısı
           let manifest=null,url=null,icerik=null;const chunkDocs=[];const ids=[];const oldDocs=[];
           cache.forEach((v,docId)=>{if(!v)return;
             if(docId===user.uid&&(Array.isArray(v.ids)||typeof v.n==='number'))manifest=v;   // manifest
@@ -21883,15 +21919,17 @@ function useCloudSync(data,setData){
             if(json==null){
               // Manifest ile parçalar tutuşmuyor (yarıda kalmış eski yazım) → parçalardan kurtar.
               // Sunucu henüz tüm parçaları göndermediyse (fromCache) kurtarmaya kalkma, bekle.
-              if(snap.metadata&&snap.metadata.fromCache)return;
+              if(snap.metadata&&snap.metadata.fromCache){slog('snap: manifest/parça tutmuyor, önbellek → bekleniyor');return;}
               // Kendi çok-batch'li yazımımız hâlâ uçuşta → bu ara durumu biz üretiyoruz, bekle.
-              if(writing.current||queued.current)return;
+              if(writing.current||queued.current){slog('snap: ara durum, kendi yazımımız uçuşta → bekleniyor');return;}
+              slog('snap: manifest/parça tutmuyor → onarılıyor');
               healed=assembleAny(chunks);
               if(!healed){waitThenHeal(fb,user.uid);return;}   // ara durum olabilir → sarıda bekle, sonra onar
               json=healed.json;
               try{await fb.firestore().collection(COL).doc(user.uid).set({userId:user.uid,n:healed.n,rev:healed.rev});}catch(e){console.warn('manifest heal',e);}
             }
             clearSettle();   // tutarlı hâl geldi → bekleyen onarım turuna gerek yok
+            if(!ready.current)slog('snap: HAZIR (manifest okundu)');
             ready.current=true;prevN.current=healed?healed.n:manifest.n;
             lastRev.current=Math.max(lastRev.current,(healed?healed.rev:manifest.rev)||0);
             if(json===lastSynced.current){
@@ -21905,13 +21943,15 @@ function useCloudSync(data,setData){
             lsSave(user.uid,json);   // cihazda emniyet kopyası: bulut bir daha okunamazsa buradan dönülür
             const back=applyRemote(json,parsed);   // yerel düzenleme varsa birleştirir, ezmez
             setSyncErr('');
+            slog('snap: uzak hâl uygulandı',back?'geri yazılacak var':'→ YEŞİL');
             if(!back)setStatus('synced');          // geri yazılacak varsa yeşili yazım turu yakar
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
           }else if(chunkDocs.length){
             // Parçalar var ama manifest yok (ilk yazım yarıda kalmış ya da manifest silinmiş).
             // "Bulut boş" sanıp üzerine yazmak veriyi uçururdu → parçalardan kurtar, manifesti tazele.
-            if(snap.metadata&&snap.metadata.fromCache)return;
-            if(writing.current||queued.current)return;
+            if(snap.metadata&&snap.metadata.fromCache){slog('snap: manifest yok, önbellek → bekleniyor');return;}
+            if(writing.current||queued.current){slog('snap: manifest yok, kendi yazımımız uçuşta → bekleniyor');return;}
+            slog('snap: manifest yok → parçalardan kurtarılıyor');
             const rec=assembleAny(chunks);
             if(!rec){waitThenHeal(fb,user.uid);return;}
             clearSettle();ready.current=true;prevN.current=rec.n;lastRev.current=Math.max(lastRev.current,rec.rev||0);
@@ -21953,13 +21993,16 @@ function useCloudSync(data,setData){
             }
           }else{
             // Bulutta hiç veri yok
-            if(snap.metadata&&snap.metadata.fromCache)return;
+            if(snap.metadata&&snap.metadata.fromCache){slog('snap: bulut boş görünüyor, önbellek → sunucu bekleniyor');return;}
+            slog('snap: bulutta veri yok');
             ready.current=true;
             if(hasRealData(dataRef.current)){lastSynced.current=null;await writeNow();}
             else{lastSynced.current=ser(dataRef.current);setStatus('synced');}
           }
-        }catch(e){console.warn('sync',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
-      },err=>{console.warn('sync sub',err);setStatus('error');setSyncErr(err.code||err.message||'unknown');});
+        }catch(e){console.warn('sync',e);slog('snap: HATA',(e&&e.code)||(e&&e.message)||'?');
+          setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+      },err=>{console.warn('sync sub',err);slog('dinleyici: HATA',(err&&err.code)||(err&&err.message)||'?');
+        setStatus('error');setSyncErr(err.code||err.message||'unknown');});
     return ()=>{clearSettle();unsub();};
   },[user]);
 
@@ -22034,7 +22077,7 @@ function useCloudSync(data,setData){
     const unstick=()=>{
       if(!writing.current)return false;
       if(Date.now()-writeStarted.current<WRITE_STUCK_MS)return false;
-      console.warn('sync: write stuck, retrying');
+      console.warn('sync: write stuck, retrying');slog('gözcü: takılan yazım bırakıldı');
       writeGen.current++;writing.current=false;queued.current=false;
       return true;
     };
@@ -22043,12 +22086,13 @@ function useCloudSync(data,setData){
        uygulamayı açıyor, gösterge sarıda kalıyor ve ancak sayfayı yenileyince düzeliyordu.
        Artık dönüşte takılan tur bırakılıp bekleyen değişiklik yeniden gönderiliyor. */
     const resume=()=>{
+      slog('uygulamaya dönüldü');
       fromServer.current=false;                       // dönüşteki ilk yazım sunucuya bir kez baksın
       const freed=unstick();
       if(freed||dirty.current)writeNow();
       lsFlush();
     };
-    const onVis=()=>{if(document.visibilityState==='hidden'){offline();flush();}else resume();};
+    const onVis=()=>{if(document.visibilityState==='hidden'){slog('arka plana alındı');offline();flush();}else resume();};
     const watchdog=setInterval(()=>{if(unstick())writeNow();},15000);
     // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
     // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
@@ -22101,7 +22145,34 @@ function useCloudSync(data,setData){
     },writeDelay());
   },[data,user]);
 
-  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,
+  /* Panelin okuduğu canlı iç durum. Ref'ler render sırasında okunuyor — teşhis için
+     doğru olan da bu: gösterilen şey o anın gerçeği olsun, React'in bir tur gerisi değil. */
+  const diag=()=>({
+    sawServer:sawServer.current,ready:ready.current,dirty:dirty.current,writing:writing.current,
+    queued:queued.current,fromServer:fromServer.current,lastRev:lastRev.current,chunks:chunkIds.current.length,
+    size:lastSynced.current?lastSynced.current.length:0,
+    inflight:writing.current?Math.round((Date.now()-writeStarted.current)/1000):0,
+  });
+  /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
+     şeyden birini söyler — okundu (taşıma sağlam, sorun mantıkta), zaman aşımı (cihaz
+     Firestore'a ulaşamıyor), ya da bir hata kodu (ör. izin). Sarının sebebini ayıran soru
+     tam olarak budur ve başka hiçbir yerden okunamıyor. */
+  const probe=async()=>{
+    const fb=FB(),u=userRef.current;
+    if(!fb||!u)return'giriş yok';
+    const t0=Date.now();
+    try{
+      const d=await withTimeout(fb.firestore().collection(COL).doc(u.uid).get({source:'server'}),SERVER_READ_MS);
+      const ms=Date.now()-t0;
+      const r=(d.exists?('manifest var, rev='+(d.data()||{}).rev):'manifest yok')+' ('+ms+'ms)';
+      slog('sınav: SUNUCU OKUNDU',r);return'sunucu okundu — '+r;
+    }catch(e){
+      const c=(e&&e.code)||(e&&e.message)||'?';const ms=Date.now()-t0;
+      slog('sınav: BAŞARISIZ',c+' ('+ms+'ms)');
+      return(c==='timeout'?'sunucuya ULAŞILAMIYOR (zaman aşımı)':'hata: '+c)+' ('+ms+'ms)';
+    }
+  };
+  return{user,status,authLoading,syncErr,syncNote,clearSyncNote:()=>setSyncNote(''),authErr,clearAuthErr:()=>setAuthErr(''),forcePull,diag,probe,
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
@@ -22420,8 +22491,73 @@ function AuthModal({sync,onClose}){
   </div>);
 }
 
+/* TEŞHİS PANELİ — göstergeye dokununca açılır.
+   "Sarıda kalıyor" belirtisi tek, sebepleri ayrı: cihaz sunucuya hiç bağlanamıyor,
+   yazım turu takılmış, ya da bir kayıt reddediliyor olabilir. Telefonda konsol
+   olmadığı için bunları ayıran tek yol ekranda okumak. Panel kapalıyken hiçbir
+   maliyeti yok: günlüğe abone olmaz, render etmez. */
+function SyncDiag({sync,onClose}){
+  const[,bump]=useState(0);
+  const[probe,setProbe]=useState('');
+  const[probing,setProbing]=useState(false);
+  const[copied,setCopied]=useState(false);
+  useEffect(()=>slogSub(()=>bump(n=>n+1)),[]);
+  useEffect(()=>{const iv=setInterval(()=>bump(n=>n+1),1000);return()=>clearInterval(iv);},[]);
+  const d=sync.diag?sync.diag():{};
+  const yn=v=>v?L('evet','yes'):L('hayır','no');
+  const rows=[
+    [L('Sunucudan veri geldi mi','Server ever reached'),d.sawServer?L('EVET','YES'):L('HAYIR — hiç bağlanılamadı','NO — never connected')],
+    [L('Veri hazır (ready)','Ready'),yn(d.ready)],
+    [L('Yazılmamış değişiklik','Unwritten edits'),yn(d.dirty)],
+    [L('Yazım uçuşta','Write in flight'),d.writing?(d.inflight+L(' sn',' s')):L('hayır','no')],
+    [L('Sırada bekleyen','Queued'),yn(d.queued)],
+    [L('Bulut parça sayısı','Cloud chunks'),String(d.chunks||0)],
+    [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
+    [L('Durum','Status'),sync.status],
+  ];
+  const text=()=>rows.map(r=>r[0]+': '+r[1]).join('\n')+'\n\n'+slogText();
+  const copy=()=>{
+    const t=text();
+    const done=()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);};
+    if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,done);
+    else{try{const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();
+      document.execCommand('copy');document.body.removeChild(a);}catch(e){}done();}
+  };
+  return(<div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',backdropFilter:'blur(4px)',zIndex:220,display:'flex',alignItems:'center',justifyContent:'center',padding:12}}>
+    <div onClick={e=>e.stopPropagation()} className="panel" style={{width:420,maxWidth:'100%',maxHeight:'90vh',overflowY:'auto',margin:0}}>
+      <h2>{L('Senkron Teşhisi','Sync Diagnostics')}</h2>
+      <div className="help" style={{marginBottom:10}}>
+        {L('Gösterge sarıda kalıyorsa sebebi buradan okunur. En önemli satır ilki: sunucudan hiç veri gelmediyse sorun bağlantıdadır, uygulamanın mantığında değil.',
+           'If the dot stays yellow, the reason is here. The first row matters most: if the server was never reached, the problem is the connection, not the app logic.')}
+      </div>
+      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,marginBottom:12}}><tbody>
+        {rows.map(r=><tr key={r[0]}>
+          <td style={{padding:'4px 0',color:'var(--muted)'}}>{r[0]}</td>
+          <td style={{padding:'4px 0',textAlign:'right',fontWeight:600,color:'var(--text2)'}}>{r[1]}</td>
+        </tr>)}
+      </tbody></table>
+      <button className="btn sec sm" style={{width:'100%'}} disabled={probing}
+        onClick={async()=>{setProbing(true);setProbe(L('bakılıyor…','checking…'));
+          setProbe(sync.probe?await sync.probe():'—');setProbing(false);}}>
+        {L('Bağlantıyı sına','Test connection')}
+      </button>
+      {probe&&<div style={{marginTop:8,padding:'8px 10px',borderRadius:6,fontSize:11.5,lineHeight:1.5,
+        border:'1px solid var(--border)',background:'rgba(0,0,0,.25)',color:'var(--text2)'}}>{probe}</div>}
+      <div style={{marginTop:14,fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:.4}}>{L('Son olaylar','Recent events')}</div>
+      <pre style={{marginTop:6,maxHeight:220,overflow:'auto',padding:8,borderRadius:6,background:'rgba(0,0,0,.3)',
+        border:'1px solid var(--border)',fontSize:10.5,lineHeight:1.45,whiteSpace:'pre-wrap',wordBreak:'break-word',color:'var(--dim)'}}>
+        {slogText()||L('(henüz olay yok)','(no events yet)')}</pre>
+      <div style={{display:'flex',gap:8,marginTop:12}}>
+        <button className="btn sec sm" style={{flex:1}} onClick={copy}>{copied?L('Kopyalandı ✓','Copied ✓'):L('Kopyala','Copy')}</button>
+        <button className="btn sm" style={{flex:1}} onClick={onClose}>{L('Kapat','Close')}</button>
+      </div>
+    </div>
+  </div>);
+}
+
 function CloudBar({sync,onOpen}){
   const{user,status,syncErr,syncNote,clearSyncNote}=sync;
+  const[diagOpen,setDiagOpen]=useState(false);
   const dot={offline:'var(--dim)',syncing:'var(--yellow)',synced:'var(--green)',error:'var(--red)'}[status];
   const label={offline:L('Çevrimdışı','Offline'),syncing:L('Senkronize ediliyor…','Syncing…'),synced:L('Senkronize','Synced'),error:L('Senkron hatası!','Sync error!')}[status];
   if(!FB())return null;
@@ -22434,7 +22570,8 @@ function CloudBar({sync,onOpen}){
         nothing — two coaches on the same machine differ by the part that was being
         clipped. So the state keeps its line and the address gets its own, wrapping
         rather than being cut off. */}
-    <div className="team-sw no-italic sync-chip" title={user.email+' · uid:'+user.uid}>
+    <div className="team-sw no-italic sync-chip" title={user.email+' · uid:'+user.uid}
+         onClick={()=>setDiagOpen(true)} style={{cursor:'pointer'}}>
       <span className="sync-dot" style={{background:dot,boxShadow:`0 0 6px ${dot}`}}></span>
       <span className="sync-txt no-italic">
         <b>{label}</b>
@@ -22444,6 +22581,7 @@ function CloudBar({sync,onOpen}){
     {/* The account-code line and the manual "⟳ Sync" button used to live here. They are
         intentionally hidden from the sidebar — syncing is automatic and the uid is still
         available from the status row's tooltip. */}
+    {diagOpen&&<SyncDiag sync={sync} onClose={()=>setDiagOpen(false)}/>}
     {status==='error'&&syncErr&&(
       <div style={{marginTop:6,padding:'8px 10px',background:'rgba(239,68,68,.12)',border:'1px solid var(--red)',borderRadius:6,fontSize:11,color:'var(--red)',lineHeight:1.5}}>
         {isRules?(
