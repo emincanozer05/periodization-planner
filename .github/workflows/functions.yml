@@ -1,0 +1,74 @@
+# Cloud Function deploy'u — main'e giren her functions/ değişikliğinde.
+#
+# Testler HER ZAMAN çalışır; deploy adımı yalnızca FIREBASE_SERVICE_ACCOUNT
+# secret'ı tanımlıysa devreye girer. Secret yoksa iş kırmızıya düşmez, sadece
+# "deploy atlandı" notu bırakır — function'ı elle deploy etmeye devam edenin
+# yolunu bu workflow kapatmasın.
+#
+# TELEGRAM_BOT_TOKEN buraya GİRMİYOR: o Google Secret Manager'da duruyor ve
+# function çalışırken oradan okunuyor. GitHub'ın gördüğü tek sır, deploy yetkisi
+# olan servis hesabı.
+name: Deploy Cloud Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'functions/**'
+      - 'firebase.json'
+      - '.github/workflows/functions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functions-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # `secrets` bağlamı adım `if`'lerinde doğrudan okunamıyor; iş seviyesinde
+      # bir env'e çevirmek bunun bilinen yolu.
+      HAS_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install
+        working-directory: functions
+        run: npm ci
+
+      # Uyarı kuralı bozulmuşsa deploy'a hiç gitmesin: eşik ve ağrı şiddeti
+      # mantığı sahada sessizce yanlış çalışmaktansa burada yüksek sesle patlasın.
+      - name: Test
+        working-directory: functions
+        run: npm test
+
+      - name: Authenticate to Google Cloud
+        if: env.HAS_CREDENTIALS == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy
+        if: env.HAS_CREDENTIALS == 'true'
+        run: >
+          npx --yes firebase-tools@13 deploy
+          --only functions:wellnessTelegramAlert
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: Deploy atlandı
+        if: env.HAS_CREDENTIALS != 'true'
+        run: |
+          echo "::notice::FIREBASE_SERVICE_ACCOUNT secret'ı tanımlı değil — deploy atlandı."
+          echo "Kurulum: TELEGRAM_SETUP.md → 'GitHub Actions ile otomatik deploy'."

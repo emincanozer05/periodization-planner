@@ -54,6 +54,24 @@ satır güncellenir.
 Firestore kurallarında değişiklik **gerekmiyor**: function Admin SDK ile yazıyor,
 kurallar ona uygulanmıyor.
 
+### 3) (İsteğe bağlı) GitHub Actions ile otomatik deploy
+
+`.github/workflows/functions.yml`, `main`'e giren her `functions/` değişikliğinde
+testleri çalıştırıp function'ı deploy eder. Açmak için bir kere:
+
+1. Google Cloud Console → **IAM & Admin → Service Accounts** → yeni servis hesabı.
+   Roller: **Firebase Admin**, **Cloud Functions Admin**, **Service Account User**,
+   **Secret Manager Admin** (function'a secret'ı bağlayabilmesi için).
+2. Hesaba bir **JSON anahtarı** üret ve indir.
+3. GitHub → repo → **Settings → Secrets and variables → Actions → New repository
+   secret** → ad: `FIREBASE_SERVICE_ACCOUNT`, değer: JSON dosyasının tamamı.
+
+`TELEGRAM_BOT_TOKEN` **GitHub'a girmez** — o Secret Manager'da durur, function
+çalışırken oradan okunur. GitHub'ın gördüğü tek sır deploy yetkisi olan servis hesabı.
+
+Secret tanımlı değilse workflow kırmızıya düşmez: testleri çalıştırır, deploy adımını
+atlar ve bir not bırakır. Yani elle deploy etmeye devam etmek de mümkün.
+
 ---
 
 ## Mesaj
