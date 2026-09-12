@@ -151,7 +151,17 @@ listeyi büyük veride hızlı ve az okumalı tutuyor.
 ### 5. Cloud Function'ı deploy et
 
 `FIREBASE_SERVICE_ACCOUNT` secret'ı tanımlıysa `main`'e merge yeterli
-(`.github/workflows/functions.yml`). Elle:
+(`.github/workflows/functions.yml`). Secret hiç tanımlanmadıysa deploy olmaz ve
+iş kırmızıya düşer — tıklaya tıklaya kurulum: **`CANLIYA-AL.md`**.
+
+Eski Telegram sürümü (`wellnessTelegramAlert`) hâlâ yayındaysa **silinmeli**;
+yoksa her gönderimde iki uyarı çıkar, biri eski kuralla:
+
+```bash
+firebase functions:delete wellnessTelegramAlert --region us-central1 --project periodization-planner
+```
+
+Elle deploy:
 
 ```bash
 cd functions && npm ci && npm test

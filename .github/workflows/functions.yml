@@ -1,9 +1,9 @@
 # Cloud Function deploy'u — main'e giren her functions/ değişikliğinde.
 #
-# Testler HER ZAMAN çalışır; deploy adımı yalnızca FIREBASE_SERVICE_ACCOUNT
-# secret'ı tanımlıysa devreye girer. Secret yoksa iş kırmızıya düşmez, sadece
-# "deploy atlandı" notu bırakır — function'ı elle deploy etmeye devam edenin
-# yolunu bu workflow kapatmasın.
+# Testler HER ZAMAN çalışır. Secret yoksa deploy edilemez ve iş KIRMIZIYA DÜŞER.
+# Eskiden sessizce atlanıyordu: sekiz koşu üst üste yeşil göründü, function ise
+# hiç yayına çıkmamıştı ve bu aylarca fark edilmeyebilirdi. Yayına çıkmayan bir
+# deploy işi başarılı değildir; kurulumu CANLIYA-AL.md anlatıyor.
 #
 # Bildirim gönderimi için saklanacak bir sır YOK: function projenin varsayılan
 # servis hesabıyla çalışıyor ve FCM'e o kimlikle gidiyor. GitHub'ın gördüğü tek
@@ -68,8 +68,16 @@ jobs:
           --non-interactive
           --force
 
-      - name: Deploy atlandı
+      - name: Deploy edilemedi
         if: env.HAS_CREDENTIALS != 'true'
         run: |
-          echo "::notice::FIREBASE_SERVICE_ACCOUNT secret'ı tanımlı değil — deploy atlandı."
-          echo "Kurulum: NOTIFICATIONS_SETUP.md → 'GitHub Actions ile otomatik deploy'."
+          {
+            echo "## Function yayına ÇIKMADI"
+            echo ""
+            echo "\`FIREBASE_SERVICE_ACCOUNT\` secret'ı tanımlı değil, bu yüzden deploy adımı çalışamadı."
+            echo "Sunucuda hâlâ bir önceki sürüm duruyor."
+            echo ""
+            echo "Kurulum, adım adım: **CANLIYA-AL.md**"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::FIREBASE_SERVICE_ACCOUNT tanımlı değil — function yayına çıkmadı. Bkz. CANLIYA-AL.md"
+          exit 1
