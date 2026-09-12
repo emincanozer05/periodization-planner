@@ -11,15 +11,16 @@ Eklenen tek şey `checkins` dokümanının üstündeki `telegramAlert*` damgalar
 
 ## Alarm ölçütü
 
-İki koşul **birlikte** sağlanmalı:
+**En az bir bölgede orta ya da yüksek ağrı** — `payload.painMap` içinde değeri `2`
+veya `3` olan bir bölge. Başka koşul yok.
 
-| | Koşul | Veri |
-|---|---|---|
-| 1 | Overall Wellness `< 3.5` | `payload.sleep`, `payload.fatigue`, `payload.soreness` ortalaması — uygulamanın kendi formülü (`readiness`) |
-| 2 | En az bir bölgede **orta** ya da **yüksek** ağrı | `payload.painMap` içinde değeri `2` veya `3` olan bir bölge |
+Hafif ağrı (`1`) ne kararı etkiler ne de mesajda görünür: neredeyse her sabah
+birinde bir yerde hafif bir şey oluyor ve onları da bildirmek listeyi okunmaz
+hale getiriyor.
 
-Hafif ağrı (`1`) ne kararı etkiler ne de mesajda görünür. Tam `3.5` uyarı vermez
-(kural "kesin küçük"). Üç skorun üçü de boşsa ölçüt hesaplanamaz, uyarı çıkmaz.
+Wellness skoru **karara girmiyor**, mesajda bilgi olarak duruyor. İyi uyumuş,
+dinç ama dizinde orta şiddette ağrı olan sporcu ekibin sabah görmesi gereken tam
+o sporcu; ortalaması yüksek diye onu susturmak uyarının işini ters yapardı.
 
 ---
 
@@ -84,6 +85,7 @@ atlar ve bir not bırakır. Yani elle deploy etmeye devam etmek de mümkün.
 
 ```
 🔴 WELLNESS ALERT
+2026-09-12
 
 Emir Papur
 
@@ -99,11 +101,9 @@ Kas Ağrısı: 🟡 3/5
 Dinlenik KAH: 58 bpm
 
 Overall Wellness: 🟡 3.3/5
-Tarih: 2026-09-12
-
-⚠️ Wellness < 3.5 + Orta/Yüksek ağrı
 ```
 
+- Tarih başlığın hemen altında: mesaj listesinde hangi güne ait olduğu ilk bakışta görünsün.
 - Puan renkleri her 1-5 skorda aynı: `1 🔴 · 2 🟠 · 3 🟡 · 4 🟢 · 5 🔵`.
   Ondalıklı skor en yakın basamağa yuvarlanıp renklenir (3.3 → 🟡).
 - Formda boş bırakılan soru mesajda hiç görünmez.
@@ -144,10 +144,10 @@ form akışı yine etkilenmez.
 cd functions && npm test
 ```
 
-Ölçütün altı senaryosu (4.0/ağrı yok, 3.4/ağrı yok, 3.4/orta, 3.0/yüksek,
-4.0/yüksek, yalnız hafif ağrı) ve mesaj biçimi burada doğrulanıyor.
+Ölçütün senaryoları (ağrı yok / yalnız hafif / orta / yüksek, düşük ve yüksek
+skorla) ve mesaj biçimi burada doğrulanıyor.
 
-Uçtan uca denemek için: `wellness.html#k=<token>` formunu aç, uyku 4 · yorgunluk 3 ·
-kas ağrısı 3 seç (ortalama 3.3), ağrı tablosunda bir bölgeye **Orta** ya da
-**Yüksek** işaretle, gönder. Grupta mesaj birkaç saniye içinde görünür.
+Uçtan uca denemek için: `wellness.html#k=<token>` formunu aç, ağrı tablosunda bir
+bölgeye **Orta** ya da **Yüksek** işaretle, gönder. Grupta mesaj birkaç saniye
+içinde görünür. Ağrı tablosunu boş bırakıp gönderirsen mesaj gelmemeli.
 Log: `firebase functions:log --only wellnessTelegramAlert`.
