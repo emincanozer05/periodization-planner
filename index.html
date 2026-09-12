@@ -4352,10 +4352,27 @@ const capTR=x=>x?x.charAt(0).toLocaleUpperCase('tr-TR')+x.slice(1):x;
    `alertToken` is the address of this person's notification link, once the coach has
    made one. It is kept on the row rather than looked up, so the roster can show at a
    glance who has been sent a link and who hasn't. */
-const normStaff=m=>({id:(m&&m.id)||uid(),role:(m&&STAFF_ROLE_BY[m.role])?m.role:STAFF_ROLES[0].id,
-  name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL,photo:(m&&m.photo)||null,
-  athleteIds:Array.isArray(m&&m.athleteIds)?m.athleteIds.filter(x=>typeof x==='string'):[],
-  alertToken:(m&&m.alertToken)||''});
+const normStaff=m=>{
+  const out={id:(m&&m.id)||uid(),role:(m&&STAFF_ROLE_BY[m.role])?m.role:STAFF_ROLES[0].id,
+    name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL,
+    photo:(m&&m.photo)||null};
+  /* BOŞ OLAN HİÇ YAZILMIYOR — ve bu bir süsleme değil, senkronizasyonun şartı.
+
+     Bu iki alan kadroya sonradan eklendi. Her satıra boş birer varsayılan koyulduğunda
+     şu oluyor: henüz güncellenmemiş bir cihazdaki eski kod bu alanları TANIMIYOR ve
+     durumu yeniden kurarken atıyor, güncel cihaz ise her yüklemede geri ekliyor. İki
+     taraf da karşıdakinin yazdığını "değişmiş" görüp üstüne yazıyor; kayıt turu hiç
+     bitmiyor ve senkron göstergesi iki cihazda da sarıda kalıyor.
+
+     Alan yalnızca gerçekten bir değer taşıdığında yazılınca, dokunulmamış bir kadro
+     satırı eski ve yeni kodda BAYT BAYT aynı çıkıyor: yazılacak bir fark yok, tur
+     hiç başlamıyor. Okuyan her yer zaten yokluğa dayanıklı (`m.athleteIds||[]`). */
+  const ids=Array.isArray(m&&m.athleteIds)?m.athleteIds.filter(x=>typeof x==='string'):[];
+  if(ids.length)out.athleteIds=ids;
+  const tok=(m&&m.alertToken)||'';
+  if(tok)out.alertToken=tok;
+  return out;
+};
 /* The one role whose alerts are scoped athlete by athlete. Named here rather than
    compared inline, because the same rule has to hold in three places: the card that
    assigns athletes, the roster published for the server, and the server's own copy in
