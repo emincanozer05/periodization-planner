@@ -9,10 +9,9 @@
    koç uygulaması (index.html) tamamen istemci tarafında çalışan statik sayfalar;
    token'ın tek güvenli yeri Firebase Secret Manager ve onu okuyabilen bu function.
 
-   Neden 1. nesil (firebase-functions/v1): 2. nesil Firestore tetikleyicisinde
-   function bölgesi ile veritabanı konumunun eşleşmesi gerekiyor. 1. nesil bunu
-   dert etmiyor, secret desteği aynı — kurulumda bölge tahmin etmek zorunda
-   kalmamak için bilinçli tercih.
+   Neden 1. nesil (firebase-functions/v1): 2. nesil Firestore tetikleyicisi
+   Eventarc üzerinden kuruluyor ve kurulumu ağırlaştırıyor; 1. nesil aynı işi
+   daha az parça ile yapıyor, secret desteği de aynı.
 
    Mevcut akışa dokunmuyor: form aynı dokümanı aynı şekilde yazıyor, koçun
    tarayıcısı aynı dokümanı aynı şekilde işleyip siliyor. Buraya eklenen tek şey
@@ -32,6 +31,14 @@ const TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN';
 /* Grup kimliği gizli bir bilgi değil (mesaj atabilmek için token da gerekiyor),
    bu yüzden secret değil ortam değişkeni. Grup değişirse tek satır. */
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1004420460025';
+
+/* Function'ın çalışacağı bölge. Varsayılan `europe-west1`, çünkü bu projenin
+   Firestore'u eur3'te (Avrupa) duruyor: tetikleyiciyi veritabanının yanında
+   tutmak her gönderimde Atlantik'i geçen bir tur ağ gecikmesi eksiltiyor —
+   sporcu "Gönder"e bastıktan sonra mesajın ne kadar çabuk düştüğü tam olarak
+   buna bakıyor. Veritabanı başka bir konuma taşınırsa FUNCTION_REGION ile
+   değiştirilir. */
+const REGION = process.env.FUNCTION_REGION || 'europe-west1';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
@@ -79,6 +86,7 @@ async function sendTelegram(token, text) {
 
 /* ── Tetikleyici ─────────────────────────────────────────────────────────── */
 exports.wellnessTelegramAlert = functions
+  .region(REGION)
   .runWith({
     secrets: [TELEGRAM_BOT_TOKEN],
     timeoutSeconds: 60,

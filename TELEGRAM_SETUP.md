@@ -51,6 +51,11 @@ Grup kimliği kodda varsayılan olarak `-1004420460025`. Değiştirmek için fun
 `TELEGRAM_CHAT_ID` ortam değişkeni verilir ya da `functions/index.js` içindeki tek
 satır güncellenir.
 
+Function **`europe-west1`** bölgesine kuruluyor; bu projenin Firestore'u eur3'te
+(Avrupa) duruyor ve tetikleyiciyi veritabanının yanında tutmak gönderim ile Telegram
+mesajı arasındaki gecikmeyi kısaltıyor. Veritabanı başka bir konuma taşınırsa
+`FUNCTION_REGION` ortam değişkeniyle değiştirilir.
+
 Firestore kurallarında değişiklik **gerekmiyor**: function Admin SDK ile yazıyor,
 kurallar ona uygulanmıyor.
 
