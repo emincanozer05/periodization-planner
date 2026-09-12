@@ -11,10 +11,9 @@
      painMap                     → { 'Bölge': 1|2|3 }, 1 hafif · 2 orta · 3 yüksek
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Uyarı eşiği ve ağrı şiddeti eşiği tek yerde dursun — kural iki dosyada
-// tekrarlanmasın diye mesajın alt satırı da bu sabitlerden yazılıyor.
-const WELLNESS_THRESHOLD = 3.5;      // bunun ALTI uyarıya aday
-const PAIN_MIN_SEVERITY  = 2;        // orta (2) ve yüksek (3)
+// Uyarıyı açan şiddet. 1 (hafif) bilerek dışarıda: sporcuların çoğunda her sabah
+// bir yerde hafif bir şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
+const PAIN_MIN_SEVERITY = 2;         // orta (2) ve yüksek (3)
 
 // Puan → renkli daire. Uygulamanın kendi wellness skalasıyla aynı yön: 1 kötü,
 // 5 iyi. Ondalıklı skor (ör. 3.2) en yakın tam basamağa yuvarlanıp renklenir.
@@ -50,13 +49,13 @@ function painBySeverity(payload) {
   return out;
 }
 
-/* Uyarı kriteri — İKİSİ BİRDEN:
-     1) Overall Wellness < 3.5
-     2) en az bir bölgede orta (2) ya da yüksek (3) ağrı
-   Skor hesaplanamıyorsa (üç sorunun üçü de boş) uyarı yok: elde ölçüt yok. */
+/* Uyarı kriteri: en az bir bölgede orta (2) ya da yüksek (3) ağrı.
+
+   Wellness skoru karara girmiyor — bilerek. İyi uyumuş, dinç ama dizinde orta
+   şiddette ağrı olan sporcu, ekibin sabah görmesi gereken tam olarak o sporcu;
+   ortalaması yüksek diye onu susturmak uyarının işini ters yapardı. Skor
+   mesajda bilgi olarak duruyor, eşik olarak değil. */
 function shouldAlert(payload) {
-  const score = overallWellness(payload);
-  if (score == null || score >= WELLNESS_THRESHOLD) return false;
   const pain = painBySeverity(payload);
   return pain[3].length > 0 || pain[2].length > 0;
 }
@@ -87,6 +86,7 @@ function buildMessage(sub) {
   const lines = [];
 
   lines.push('🔴 <b>WELLNESS ALERT</b>');
+  if (sub && sub.date) lines.push(esc(sub.date));
   lines.push('');
   lines.push(`<b>${esc((sub && sub.athleteName) || 'İsimsiz sporcu')}</b>`);
   lines.push('');
@@ -108,14 +108,11 @@ function buildMessage(sub) {
 
   lines.push('');
   lines.push(`Overall Wellness: ${fmtScore(score)}`);
-  if (sub && sub.date) lines.push(`Tarih: ${esc(sub.date)}`);
-  lines.push('');
-  lines.push(`⚠️ Wellness &lt; ${WELLNESS_THRESHOLD} + Orta/Yüksek ağrı`);
 
   return lines.join('\n');
 }
 
 module.exports = {
-  WELLNESS_THRESHOLD, PAIN_MIN_SEVERITY,
+  PAIN_MIN_SEVERITY,
   overallWellness, painBySeverity, shouldAlert, buildMessage,
 };
