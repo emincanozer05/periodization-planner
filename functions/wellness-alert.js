@@ -1,44 +1,74 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WELLNESS UYARISI — karar ve mesaj kurma (saf mantık, Firebase'den bağımsız)
+   WELLNESS UYARISI — karar ve bildirim metni (saf mantık, Firebase'den bağımsız)
 
    Buradaki her şey girdi→çıktı: tek bir `checkins` dokümanının payload'ından
-   "Telegram'a gidecek mi, gidecekse metni ne" sorusunu cevaplıyor. Ağ, Firestore
-   ve secret işleri index.js'te; bu dosya testten doğrudan çağrılabilsin diye ayrı.
+   "uyarı çıkacak mı, çıkacaksa bildirimde ne yazacak" sorusunu cevaplıyor. Ağ,
+   Firestore ve FCM işleri index.js/push.js'te; bu dosya testten doğrudan
+   çağrılabilsin diye ayrı duruyor.
 
-   Alan isimleri checkin.html'deki forma birebir bağlı (payload() → satır 677):
+   Alan isimleri checkin.html'deki forma birebir bağlı (payload() → satır 749):
      sleep / fatigue / soreness  → 1-5, 1 kötü 5 iyi
      RHR                         → dinlenik nabız, opsiyonel
      painMap                     → { 'Bölge': 1|2|3 }, 1 hafif · 2 orta · 3 yüksek
+                                   (bölge haritada yoksa o bölgede ağrı yok —
+                                    formda "yok" diye bir değer yok, yokluk kendisi)
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Uyarıyı açan iki eşik. İkisi de tek başına yeterli; bir arada olmaları gerekmiyor.
-const WELLNESS_THRESHOLD = 3.5;      // bunun ALTI tek başına uyarı sebebi
+// Uyarıyı açan iki eşik. İkisi de TEK BAŞINA yeterli; bir arada olmaları gerekmiyor.
+const WELLNESS_THRESHOLD = 3.5;      // bunun ALTI tek başına uyarı sebebi (3.5 dahil DEĞİL)
 // 1 (hafif) bilerek dışarıda: sporcuların çoğunda her sabah bir yerde hafif bir
 // şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
 const PAIN_MIN_SEVERITY = 2;         // orta (2) ve yüksek (3)
 
 // Puan → renkli daire. Uygulamanın kendi wellness skalasıyla aynı yön: 1 kötü,
-// 5 iyi. Ondalıklı skor (ör. 3.2) en yakın tam basamağa yuvarlanıp renklenir.
+// 5 iyi; renkler de uygulamadaki SCORE_COLORS ile aynı sırada (kırmızı→mavi).
+// Ondalıklı skor (ör. 3.2) en yakın tam basamağa yuvarlanıp renklenir.
 const SCORE_DOTS = { 1: '🔴', 2: '🟠', 3: '🟡', 4: '🟢', 5: '🔵' };
 
-const SEV_LABEL = { 3: { dot: '🔴', word: 'Yüksek/Fazla' }, 2: { dot: '🟡', word: 'Orta' } };
+// Uyarı sebepleri KOD olarak taşınıyor, cümle olarak değil: alert kaydı bir kez
+// yazılıyor ama iki dilde okunuyor (uygulama TR/EN), ve ileride SMS/e-posta aynı
+// kaydı kendi diliyle okuyacak. Cümleyi kaydın içine gömmek bunu imkânsız kılardı.
+const REASON_LOW_SCORE = 'low_score';
+const REASON_PAIN = 'pain';
 
 function num(v) {
   if (v === null || v === undefined || v === '' || isNaN(Number(v))) return null;
   return Number(v);
 }
 
-/* Formdaki skorun ortalaması — checkin.html'deki readinessScore() ve index.html'deki
-   mergeCheckins() ile AYNI formül: doldurulan skorların ortalaması, tek ondalık.
-   Zorunlu olan uyku ve yorgunluk; kas ağrısı boş bırakılmışsa ortalamaya girmiyor. */
-function overallWellness(payload) {
+/* Formdaki skorun ortalaması — YUVARLANMAMIŞ hâli. Karar bu sayıya bakıyor.
+
+   Neden iki ayrı fonksiyon: eşik KESİN KÜÇÜK ve tam 3.5'in hemen altındaki bir
+   değer yuvarlanınca 3.5'e çıkıyor (3.49 → 3.5). Yuvarlanmış sayıyla karşılaştırmak
+   kuralı sessizce tersine çeviriyordu: uyarı olması gereken 3.49, uyarı olmayan
+   3.5 gibi okunuyordu. Ekranda gösterilen sayı yuvarlanmış olmalı (koç 3.3 görür),
+   ama kararı veren sayı ham olmalı.
+
+   Formdan gelen gerçek veride ikisi hiç ayrışmıyor — üç tam sayının ortalaması
+   yalnızca x.0/x.3/x.7, ikisininki x.0/x.5 olabiliyor ve bunların hiçbiri
+   [3.45, 3.5) aralığına düşmüyor. Yani bu ayrım bugünkü davranışı değiştirmiyor,
+   sadece kuralı ifade edildiği gibi doğru kılıyor. */
+function overallWellnessExact(payload) {
   const vals = ['sleep', 'fatigue', 'soreness'].map(k => num(payload && payload[k])).filter(v => v != null);
   if (!vals.length) return null;
-  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
-/* Şiddetine göre ayrılmış ağrı bölgeleri. Hafif (1) hiç dönmüyor: mesajda da,
-   kararda da yeri yok. */
+/* Gösterim için: checkin.html'deki readinessScore() ve index.html'deki
+   mergeCheckins() ile AYNI formül — doldurulan skorların ortalaması, tek ondalık.
+   Zorunlu olan uyku ve yorgunluk; kas ağrısı boş bırakılmışsa ortalamaya girmiyor.
+
+   Formül burada YENİDEN TANIMLANMIYOR, kopyalanıyor: uygulamanın ekranda gösterdiği
+   "Antrenmana Hazır Oluşluk" ile uyarıda yazan sayı aynı olmak zorunda, yoksa koç
+   ekranda 3.6 görüp neden uyarı geldiğini soruyor. */
+function overallWellness(payload) {
+  const raw = overallWellnessExact(payload);
+  if (raw == null) return null;
+  return Math.round(raw * 10) / 10;
+}
+
+/* Şiddetine göre ayrılmış ağrı bölgeleri. Hafif (1) hiç dönmüyor: ne kararda ne
+   bildirimde yeri var. */
 function painBySeverity(payload) {
   const pm = (payload && typeof payload.painMap === 'object' && payload.painMap) || {};
   const out = { 3: [], 2: [] };
@@ -51,6 +81,19 @@ function painBySeverity(payload) {
   return out;
 }
 
+/* Orta ya da yüksek şiddette en az bir ağrı var mı. */
+function hasReportablePain(payload) {
+  const pain = painBySeverity(payload);
+  return pain[3].length > 0 || pain[2].length > 0;
+}
+
+/* Skor tek başına uyarı sebebi mi. KESİN KÜÇÜK: 3.5 uyarı değil, 3.49 uyarı.
+   Ayrı bir fonksiyon olmasının sebebi testin eşiği gerçek forma ulaşılamayan
+   değerlerle de (3.49 gibi) sınayabilmesi — aşağıdaki nota bak. */
+function isLowScore(score) {
+  return score != null && score < WELLNESS_THRESHOLD;
+}
+
 /* Uyarı kriteri — İKİ BAĞIMSIZ SEBEP, biri yetiyor:
      1) Overall Wellness < 3.5
      2) en az bir bölgede orta (2) ya da yüksek (3) ağrı
@@ -60,10 +103,16 @@ function painBySeverity(payload) {
    da ekibin sabah görmesi gereken kişiler. Biri düşük skoru, öteki ağrıyı
    anlatıyor; ikisi ayrı bilgi, ayrı sebep. */
 function shouldAlert(payload) {
-  const score = overallWellness(payload);
-  if (score != null && score < WELLNESS_THRESHOLD) return true;
-  const pain = painBySeverity(payload);
-  return pain[3].length > 0 || pain[2].length > 0;
+  return isLowScore(overallWellnessExact(payload)) || hasReportablePain(payload);
+}
+
+/* Uyarının hangi sebeple açıldığı. İkisi birden doğruysa ikisi birden dönüyor —
+   koç ekranda "düşük skor + ağrı" ile "sadece ağrı"yı ayırt edebilsin diye. */
+function alertReasons(payload) {
+  const out = [];
+  if (isLowScore(overallWellnessExact(payload))) out.push(REASON_LOW_SCORE);
+  if (hasReportablePain(payload)) out.push(REASON_PAIN);
+  return out;
 }
 
 function dot(v) {
@@ -72,53 +121,95 @@ function dot(v) {
   const step = Math.min(5, Math.max(1, Math.round(n)));
   return SCORE_DOTS[step];
 }
-// 3 → "3/5", 3.2 → "3.2/5" — tam sayıda gereksiz ".0" durmasın.
-function fmtScore(v) {
+// 3 → "3", 3.2 → "3.2" — tam sayıda gereksiz ".0" durmasın.
+function fmtNum(v) {
   const n = num(v);
   if (n == null) return null;
-  return `${dot(n)} ${Number.isInteger(n) ? n : n.toFixed(1)}/5`;
-}
-// Telegram HTML modunda yalnız bu üçü kaçırılmak zorunda.
-function esc(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-/* Telefonda tek bakışta okunacak mesaj. Sadece formda gerçekten cevaplanmış
-   satırlar yazılıyor; boş bırakılan soru mesajda hiç görünmüyor. */
-function buildMessage(sub) {
+/* Bildirim gövdesinde ağrı bölgeleri. Telefonun bildirim satırı kısa: ikiden fazla
+   bölge varsa ilk ikisi yazılıp gerisi sayıyla toplanıyor, yoksa tek bir sporcunun
+   bildirimi ekranı kaplıyor. Tamamı alert kaydında zaten duruyor. */
+function joinRegions(list, lang) {
+  if (!list.length) return '';
+  if (list.length <= 2) return list.join(', ');
+  return `${list.slice(0, 2).join(', ')} +${list.length - 2}`;
+}
+
+const TXT = {
+  tr: {
+    title: 'CoachOS Wellness Uyarısı',
+    wellness: 'Wellness',
+    high: 'Yüksek ağrı',
+    moderate: 'Orta ağrı',
+    noName: 'İsimsiz sporcu',
+  },
+  en: {
+    title: 'CoachOS Wellness Alert',
+    wellness: 'Wellness',
+    high: 'High pain',
+    moderate: 'Moderate pain',
+    noName: 'Unnamed athlete',
+  },
+};
+
+/* Telefonda tek bakışta okunacak bildirim. Örnek:
+     CoachOS Wellness Uyarısı
+     Emir Papur — U16 | Wellness: 3.2/5 | Yüksek ağrı: Quadriceps
+
+   Renk YOK: bildirim metninde font rengi kullanılamıyor, o yüzden şiddet
+   kelimeyle ("Yüksek ağrı") anlatılıyor. Renkli daireler uygulamanın kendi
+   uyarı ekranında; orada gerçek renk zaten var.
+
+   Takım adı gövdeye giriyor çünkü bir koç birden çok takıma bakıyor olabilir ve
+   "Emir Papur" tek başına hangi kadronun sabahını anlatmıyor. */
+function buildNotification(sub, teamName, lang) {
+  const t = TXT[lang === 'en' ? 'en' : 'tr'];
   const p = (sub && sub.payload) || {};
   const score = overallWellness(p);
   const pain = painBySeverity(p);
-  const lines = [];
 
-  lines.push('🔴 <b>WELLNESS ALERT</b>');
-  if (sub && sub.date) lines.push(esc(sub.date));
-  lines.push('');
-  lines.push(`<b>${esc((sub && sub.athleteName) || 'İsimsiz sporcu')}</b>`);
-  lines.push('');
-  lines.push(`Antrenmana Hazır Oluşluk: ${fmtScore(score)}`);
+  const who = ((sub && sub.athleteName) || '').trim() || t.noName;
+  const team = String(teamName || '').trim();
 
-  if (pain[3].length || pain[2].length) {
-    lines.push('');
-    lines.push('Ağrı Durumu:');
-    for (const sev of [3, 2]) {
-      if (pain[sev].length) lines.push(`${SEV_LABEL[sev].dot} ${esc(pain[sev].join(', '))}`);
-    }
-  }
+  const parts = [team ? `${who} — ${team}` : who];
+  const s = fmtNum(score);
+  if (s) parts.push(`${t.wellness}: ${s}/5`);
+  if (pain[3].length) parts.push(`${t.high}: ${joinRegions(pain[3], lang)}`);
+  else if (pain[2].length) parts.push(`${t.moderate}: ${joinRegions(pain[2], lang)}`);
 
-  lines.push('');
-  const sleep = fmtScore(p.sleep);   if (sleep) lines.push(`Uyku Kalitesi: ${sleep}`);
-  const fat   = fmtScore(p.fatigue); if (fat)   lines.push(`Yorgunluk: ${fat}`);
-  const sore  = fmtScore(p.soreness);if (sore)  lines.push(`Kas Ağrısı: ${sore}`);
-  const rhr   = num(p.RHR);          if (rhr != null) lines.push(`Dinlenik KAH: ${Math.round(rhr)} bpm`);
+  return { title: t.title, body: parts.join(' | ') };
+}
 
-  lines.push('');
-  lines.push(`Overall Wellness: ${fmtScore(score)}`);
-
-  return lines.join('\n');
+/* Uyarı kaydının gövdesi — alert dokümanına yazılan her şey (Madde 11).
+   Bildirimin kendisi bundan türetiliyor ama kayıt çok daha fazlasını taşıyor:
+   bildirim silinince de koç uyarıyı ekranda bulabilmeli, ve Notification Center /
+   analitik / filtreleme gibi ileride gelecek şeylerin dayanacağı yer burası. */
+function buildAlertRecord(sub, teamName) {
+  const p = (sub && sub.payload) || {};
+  const pain = painBySeverity(p);
+  return {
+    athleteId: (sub && sub.athleteId) || '',
+    athleteName: ((sub && sub.athleteName) || '').trim(),
+    teamId: (sub && sub.teamId) || '',
+    teamName: String(teamName || '').trim(),
+    date: (sub && sub.date) || '',
+    overall: overallWellness(p),
+    scores: {
+      sleep: num(p.sleep),
+      fatigue: num(p.fatigue),
+      soreness: num(p.soreness),
+      RHR: num(p.RHR),
+    },
+    painHigh: pain[3],
+    painModerate: pain[2],
+    reasons: alertReasons(p),
+  };
 }
 
 module.exports = {
-  WELLNESS_THRESHOLD, PAIN_MIN_SEVERITY,
-  overallWellness, painBySeverity, shouldAlert, buildMessage,
+  WELLNESS_THRESHOLD, PAIN_MIN_SEVERITY, REASON_LOW_SCORE, REASON_PAIN, SCORE_DOTS,
+  overallWellness, overallWellnessExact, painBySeverity, hasReportablePain, isLowScore, shouldAlert, alertReasons,
+  buildNotification, buildAlertRecord, dot,
 };

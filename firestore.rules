@@ -35,5 +35,116 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
       allow update: if false;
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       WELLNESS UYARILARI VE BİLDİRİM
+
+       Dört koleksiyon. Ortak kural şu: uyarıyı YALNIZCA sunucu (Cloud Function)
+       yazıyor, istemciler yalnızca okuyor. Admin SDK kuralların dışında çalıştığı
+       için function'a ayrıca izin vermek gerekmiyor — aşağıdaki "write: if false"
+       satırları function'ı değil, TARAYICIYI kapatıyor.
+
+       Neden böyle: bir istemcinin uyarı üretebilmesi, o istemcinin başka
+       kullanıcıların telefonuna bildirim gönderebilmesi demek olurdu (Madde 16).
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* Bir ekip üyesinin eşleşme kaydı. Anonim oturum kendi kaydını bir kez
+       yazıyor; kim olduğunu SÖYLEMİYOR — hangi kadro satırına ait olduğunu
+       elindeki token'ın arkasındaki staff_links dokümanı söylüyor ve kayıt ona
+       birebir uymak zorunda. Yani "ben baş antrenörüm" diyerek başka bir takımın
+       uyarılarına geçilemiyor. */
+    match /staff_members/{authUid} {
+      function link() {
+        return get(/databases/$(database)/documents/staff_links/$(request.resource.data.token)).data;
+      }
+      allow get: if request.auth != null && request.auth.uid == authUid;
+      allow list: if false;
+      allow create, update: if request.auth != null
+        && request.auth.uid == authUid
+        && request.resource.data.keys().hasAll(['coachUid','teamId','staffId','token'])
+        && exists(/databases/$(database)/documents/staff_links/$(request.resource.data.token))
+        && link().coachUid == request.resource.data.coachUid
+        && link().teamId   == request.resource.data.teamId
+        && link().staffId  == request.resource.data.staffId;
+      allow delete: if request.auth != null && request.auth.uid == authUid;
+    }
+
+    /* Ekip üyesinin bildirim linki. Check-in linkleriyle aynı model: adresi bilen
+       okur, kimse listeleyemez. Linki üreten ve silen yalnızca hesabın sahibi. */
+    match /staff_links/{token} {
+      allow get:    if true;
+      allow list:   if false;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    /* Takımın kadro özeti — function'ın "bu sporcunun uyarısı kime gider"
+       sorusunu cevaplamak için okuduğu tek doküman. Koçun uygulaması yazıyor,
+       başka kimse okumuyor: ekip üyesinin sayfası buna ihtiyaç duymuyor. */
+    match /alert_roster/{docId} {
+      allow read: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    /* Cihaz kayıtları (bildirim token'ları).
+
+       Bir kullanıcı YALNIZCA kendi oturumuna ait kaydı yazabiliyor ve kaydın
+       kapsamı (hangi hesap, hangi takım, hangi kadro satırı) elindeki eşleşme
+       kaydından doğrulanıyor. Kendi kaydını başka bir takıma yazamıyor.
+
+       Okuma tamamen kapalı: token listesi kimsenin görmesi gereken bir şey değil,
+       onu yalnızca gönderimi yapan function (admin SDK) okuyor. */
+    match /push_tokens/{fcmToken} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
+      allow read, list: if false;
+      allow create, update: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ['coach','staff']
+        && (
+          // Hesap sahibinin kendi cihazı: coachUid kendi kimliği olmak zorunda.
+          (request.resource.data.kind == 'coach'
+            && request.resource.data.coachUid == request.auth.uid)
+          ||
+          // Ekip üyesinin cihazı: eşleşme kaydıyla birebir uymak zorunda.
+          (request.resource.data.kind == 'staff'
+            && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+            && member().coachUid == request.resource.data.coachUid
+            && member().teamId   == request.resource.data.teamId
+            && member().staffId  == request.resource.data.staffId)
+        );
+      // Kendi cihazını kaydından düşürebilmeli (bildirimi kapatmak).
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    /* Uyarı kayıtları.
+
+       Okuyabilenler yalnızca iki taraf:
+         • hesabın sahibi (koç) — kendi tüm takımlarını,
+         • eşleşmiş ekip üyesi — YALNIZCA kendi takımını.
+
+       İkinci satır, bir ekip üyesinin başka bir takımın ya da başka bir kulübün
+       uyarılarını görmesini kapatıyor: eşleşme kaydındaki teamId ile uyarının
+       teamId'si aynı olmak zorunda.
+
+       Yazma tamamen kapalı — uyarıyı yalnızca Cloud Function üretiyor. */
+    match /wellness_alerts/{alertId} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
+      function isOwner() {
+        return request.auth != null && resource.data.coachUid == request.auth.uid;
+      }
+      function isTeamStaff() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+          && member().coachUid == resource.data.coachUid
+          && member().teamId   == resource.data.teamId;
+      }
+      allow read: if isOwner() || isTeamStaff();
+      allow write: if false;
+    }
   }
 }

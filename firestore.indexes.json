@@ -1,0 +1,35 @@
+{
+  "comment": [
+    "Uyarı listelerinin sıralı gelmesi için gereken bileşik indeksler.",
+    "Firestore, 'bir eşitlik + başka bir alana göre sıralama' biçimindeki sorgular için",
+    "bileşik indeks istiyor. İkisi de tek bir koleksiyon (wellness_alerts) üzerinde:",
+    "  1) koçun kendi uyarı listesi        → coachUid + date",
+    "  2) ekip üyesinin takım listesi      → coachUid + teamId + date",
+    "",
+    "Deploy:  firebase deploy --only firestore:indexes --project periodization-planner",
+    "",
+    "İndeksler ZORUNLU DEĞİL: indeks yokken de listeler çalışıyor, çünkü hem uygulama",
+    "hem alerts.html sıralı sorgu reddedilirse sırasız sorguya düşüp sıralamayı kendi",
+    "yapıyor. İndeks yalnızca listeyi büyük veride hızlı ve az okumalı tutuyor."
+  ],
+  "indexes": [
+    {
+      "collectionGroup": "wellness_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "wellness_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "teamId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

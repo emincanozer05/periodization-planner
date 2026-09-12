@@ -79,10 +79,10 @@ Koçun elle düzelttiği wellness alanları (`manualEdits`) yeni gönderimde kor
 koçun sildiği bir sRPE check-in'i geri gelmez.
 
 Wellness gönderiminde skor 3.5'in altındaysa ya da orta/yüksek şiddette bir ağrı
-bölgesi işaretlenmişse, aynı anda antrenör Telegram grubuna o sporcuya ait bir
-uyarı gider — kurulumu
-[`TELEGRAM_SETUP.md`](TELEGRAM_SETUP.md)'de. Bu isteğe bağlı: Cloud Function
-kurulmazsa formlar bugünkü gibi çalışmaya devam eder.
+bölgesi işaretlenmişse, aynı anda o sporcuya ait bir **Wellness Uyarısı** oluşur
+ve sporcuyla ilgili ekip üyelerinin telefonlarına push bildirimi gider —
+kurulumu [`NOTIFICATIONS_SETUP.md`](NOTIFICATIONS_SETUP.md)'de. Bu isteğe bağlı:
+Cloud Function kurulmazsa formlar bugünkü gibi çalışmaya devam eder.
 
 ---
 
