@@ -21014,6 +21014,7 @@ const withTimeout=(p,ms)=>new Promise((resolve,reject)=>{
 });
 const SERVER_READ_MS=8000;      // yazım öncesi güvenlik okuması bu kadar bekler, sonra yazıma geçilir
 const WRITE_STUCK_MS=45000;     // bu kadar süredir uçuşta olan yazım takılmış sayılır ve bırakılır
+const PEND_STUCK_MS=12000;      // bekleyen yazım bu kadar oturmazsa dinleyici yine de açılır
 const isHidden=()=>typeof document!=='undefined'&&document.visibilityState==='hidden';
 /* SENKRON GÜNLÜĞÜ — telefonda konsol yoktur.
    "Gösterge sarıda kalıyor" tek bir belirti, ama arkasında birbirine hiç benzemeyen
@@ -21388,6 +21389,11 @@ function useCloudSync(data,setData){
   const writeStarted=useRef(0);         // uçuştaki yazım ne zaman başladı (takılanı bırakabilmek için)
   const writeGen=useRef(0);             // yazım turu sıra no: bırakılan bir tur geri dönerse hiçbir şeye dokunamaz
   const sawServer=useRef(false);        // bu oturumda SUNUCUDAN hiç anlık görüntü geldi mi (teşhisin ana ayracı)
+  const snapCount=useRef(0);            // dinleyici kaç kez uyandı (bir kez = kilitlenmiş demektir)
+  const lastDocs=useRef(0);             // son görüntüdeki doküman sayısı
+  const pendSince=useRef(0);            // hazır olmadan 'bekleyen yazım' görmeye ne zaman başladık
+  const pendTimer=useRef(null);         // o hâlden çıkış denemesi (dinleyici bir daha uyanmayabilir)
+  const fromPending=useRef(false);      // bu tur bekleyen yazım taşıyan bir görüntüden açıldı → yeşil yakma
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
   const COL='kullanici_verileri';
   const GC_GRACE_MS=5*60*1000;   // bu kadar yeni bir parça, kimse göstermiyor görünse bile silinmez
@@ -21803,7 +21809,7 @@ function useCloudSync(data,setData){
     setStatus('syncing');
     let pulled=false;
     try{
-      const{json,n,rev,found}=await readServer(fb,u.uid);   // manifest bozuksa parçalardan kurtarır
+      const{json,n,rev,found}=await withTimeout(readServer(fb,u.uid),SERVER_READ_MS);   // manifest bozuksa parçalardan kurtarır
       if(json==null){
         // Parçalar duruyor ama hiçbir tutarlı set çıkmıyor → onarım turu (asla üzerine yazma).
         if(found){await healInconsistent(fb,u.uid);return;}
@@ -21817,7 +21823,8 @@ function useCloudSync(data,setData){
       }
       ready.current=true;setSyncErr('');
       if(!pulled)setStatus('synced');
-    }catch(e){console.warn('forcePull',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');}
+    }catch(e){console.warn('forcePull',e);slog('kurtarma çekimi: HATA',(e&&e.code)||(e&&e.message)||'?');
+      setStatus('error');setSyncErr(e.code||e.message||'unknown');}
   };
 
   // Auth durumu
@@ -21861,8 +21868,36 @@ function useCloudSync(data,setData){
     docCache.current=new Map();idsJson.current=[];
     if(timer.current){clearTimeout(timer.current);timer.current=null;}
     clearSettle();
+    /* ÜST VERİ DEĞİŞİMLERİNİ DE İSTE. Varsayılan dinleyici yalnızca BELGE içeriği
+       değiştiğinde uyanır; "önbellekten geldi → sunucudan geldi" ve "bekleyen yazım var →
+       yazım oturdu" geçişleri ise yalnızca ÜST VERİ değişimidir. Bu yüzden istenmedikçe
+       haber verilmez — ve cihazın kilitlenmesinin sebebi tam olarak buydu:
+       bir anlık görüntü "bekleyen yazım var" diye atlanıyor, o yazımlar sonra oturuyor
+       ama içerik aynı kaldığı için dinleyici BİR DAHA HİÇ uyanmıyordu. ready hiçbir
+       zaman true olmuyor, ready false olduğu için writeNow ilk satırında dönüyor, hiçbir
+       şey yazılamıyor ve gösterge sonsuza kadar sarıda kalıyordu. Firestore'un bekleyen
+       yazım kuyruğu IndexedDB'de saklandığı için de sayfayı yenilemek kurtarmıyordu:
+       yenilenen sekme aynı kuyrukla açılıp aynı yere düşüyordu. */
+    /* KAÇIŞ TURU. Yukarıdaki açılma kontrolü yalnızca YENİ bir anlık görüntü geldiğinde
+       çalışır; dinleyicinin bir daha hiç uyanmadığı durum ise tam olarak kurtarmak
+       istediğimiz durumdur. O yüzden zamanlayıcıya bağlı: hâlâ hazır değilsek sunucudan
+       doğrudan çekmeyi dener. Başarırsa cihaz açılır ve yeşile döner; başaramazsa hata
+       kodunu gösterir — ikisi de sessiz sarıdan iyidir. Hazır olana kadar seyrekleşerek
+       tekrar dener. */
+    const armPendEscape=()=>{
+      if(pendTimer.current||ready.current)return;
+      const again=()=>{
+        pendTimer.current=null;
+        if(ready.current)return;
+        slog('kurtarma çekimi: deneniyor');
+        Promise.resolve(forcePull()).catch(()=>{}).then(()=>{
+          if(!ready.current&&!pendTimer.current)pendTimer.current=setTimeout(again,30000);
+        });
+      };
+      pendTimer.current=setTimeout(again,PEND_STUCK_MS+500);
+    };
     const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
-      .onSnapshot(async snap=>{
+      .onSnapshot({includeMetadataChanges:true},async snap=>{
         try{
           // Sunucuyla temas var mı? (yazım öncesi güvenlik okumasının gerekip gerekmediğini bu söyler)
           const _cache=!!(snap.metadata&&snap.metadata.fromCache),_pend=!!(snap.metadata&&snap.metadata.hasPendingWrites);
@@ -21870,6 +21905,7 @@ function useCloudSync(data,setData){
              sürekli önbellekten geliyorsa cihaz Firestore'a hiç bağlanamıyor demektir ve
              sarıda kalmasının sebebi kodun mantığı değil, taşıma katmanıdır. */
           if(!_cache)sawServer.current=true;
+          snapCount.current++;lastDocs.current=snap.size;
           slog('snap',(_cache?'ÖNBELLEK':'SUNUCU')+' dok='+snap.size+(_pend?' bekleyen-yazım':''));
           if(!(snap.metadata&&snap.metadata.fromCache))fromServer.current=true;
           /* SADECE DEĞİŞEN DOKÜMAN AÇILIR. Anlık görüntü sorguya uyan TÜM dokümanları taşır
@@ -21885,7 +21921,23 @@ function useCloudSync(data,setData){
             else cache.set(ch.doc.id,ch.doc.data());
           });
           if(cache.size!==snap.size){cache.clear();snap.forEach(d=>cache.set(d.id,d.data()));}
-          if(snap.metadata&&snap.metadata.hasPendingWrites){slog('snap: atlandı (kendi yankımız)');return;}   // kendi yazımımızın yankısı
+          /* Kendi yazımımızın yankısı atlanır — ama sonsuza kadar değil. Yukarıdaki
+             üst veri aboneliği normalde yazım oturur oturmaz bizi uyandırır. Uyandırmıyorsa
+             (kuyrukta oturmayan bir kayıt kalmışsa) cihazı ölü bırakmaktansa, bir süre sonra
+             bu görüntüden AÇILIR: veriyi okur, ready olur, uygulama yeniden yazabilir hâle
+             gelir. Yeşil yakılmaz — bu hâl henüz bulutta değil, ekranda. */
+          if(snap.metadata&&snap.metadata.hasPendingWrites){
+            if(ready.current){slog('snap: atlandı (kendi yankımız)');return;}
+            if(!pendSince.current)pendSince.current=Date.now();
+            if(Date.now()-pendSince.current<PEND_STUCK_MS){
+              slog('snap: atlandı (kendi yankımız, henüz hazır değiliz)');
+              armPendEscape();
+              return;
+            }
+            slog('snap: bekleyen yazım oturmuyor → yine de okunuyor');
+            fromPending.current=true;   // bu turda yeşil yakma, lastSynced'i buradan kurma
+          }else{pendSince.current=0;fromPending.current=false;
+            if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}}
           let manifest=null,url=null,icerik=null;const chunkDocs=[];const ids=[];const oldDocs=[];
           cache.forEach((v,docId)=>{if(!v)return;
             if(docId===user.uid&&(Array.isArray(v.ids)||typeof v.n==='number'))manifest=v;   // manifest
@@ -21936,15 +21988,15 @@ function useCloudSync(data,setData){
               // Kendi yazımımızın yankısı: bulut onu gösterdiğine göre artık ortak atadır.
               ancestor.current=json;
               // Yerelde henüz yazılmamış değişiklik varken YEŞİL YAKMA
-              if(!dirty.current&&!writing.current){setStatus('synced');setSyncErr('');}
+              if(!dirty.current&&!writing.current&&!fromPending.current){setStatus('synced');setSyncErr('');}
               return;
             }
             let parsed;try{parsed=migrate(JSON.parse(json));}catch(e){return;}  // tutarsız → bekle
             lsSave(user.uid,json);   // cihazda emniyet kopyası: bulut bir daha okunamazsa buradan dönülür
             const back=applyRemote(json,parsed);   // yerel düzenleme varsa birleştirir, ezmez
             setSyncErr('');
-            slog('snap: uzak hâl uygulandı',back?'geri yazılacak var':'→ YEŞİL');
-            if(!back)setStatus('synced');          // geri yazılacak varsa yeşili yazım turu yakar
+            slog('snap: uzak hâl uygulandı',back?'geri yazılacak var':(fromPending.current?'(bekleyen yazım var, sarı kalıyor)':'→ YEŞİL'));
+            if(!back&&!fromPending.current)setStatus('synced');   // geri yazılacak varsa yeşili yazım turu yakar
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
           }else if(chunkDocs.length){
             // Parçalar var ama manifest yok (ilk yazım yarıda kalmış ya da manifest silinmiş).
@@ -21963,7 +22015,7 @@ function useCloudSync(data,setData){
             }
             setSyncErr('');
             // Yerelde yazılmamış değişiklik varken yeşil yakma
-            if(!back&&!dirty.current&&!writing.current)setStatus('synced');
+            if(!back&&!dirty.current&&!writing.current&&!fromPending.current)setStatus('synced');
           }else if(oldDocs.length){
             // GEÇİŞ: eski per-entity → parçalı
             ready.current=true;const state=stateFromOldDocs(oldDocs);dataRef.current=state;lastApplied.current=state;setData(state);
@@ -22003,7 +22055,8 @@ function useCloudSync(data,setData){
           setStatus('error');setSyncErr(e.code||e.message||'unknown');}
       },err=>{console.warn('sync sub',err);slog('dinleyici: HATA',(err&&err.code)||(err&&err.message)||'?');
         setStatus('error');setSyncErr(err.code||err.message||'unknown');});
-    return ()=>{clearSettle();unsub();};
+    return ()=>{clearSettle();if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
+      pendSince.current=0;fromPending.current=false;unsub();};
   },[user]);
 
   /* Bekleyen görselleri buluta taşı — senkronlanan JSON küçük kalsın.
@@ -22151,6 +22204,7 @@ function useCloudSync(data,setData){
     sawServer:sawServer.current,ready:ready.current,dirty:dirty.current,writing:writing.current,
     queued:queued.current,fromServer:fromServer.current,lastRev:lastRev.current,chunks:chunkIds.current.length,
     size:lastSynced.current?lastSynced.current.length:0,
+    pending:!!pendSince.current,snaps:snapCount.current,docs:lastDocs.current,
     inflight:writing.current?Math.round((Date.now()-writeStarted.current)/1000):0,
   });
   /* Tek atışlık bağlantı sınavı: manifest dokümanını doğrudan SUNUCUDAN iste. Sonuç üç
@@ -22511,6 +22565,9 @@ function SyncDiag({sync,onClose}){
     [L('Yazılmamış değişiklik','Unwritten edits'),yn(d.dirty)],
     [L('Yazım uçuşta','Write in flight'),d.writing?(d.inflight+L(' sn',' s')):L('hayır','no')],
     [L('Sırada bekleyen','Queued'),yn(d.queued)],
+    [L('Bekleyen yazım','Pending writes'),yn(d.pending)],
+    [L('Dinleyici uyanma sayısı','Listener wakeups'),String(d.snaps||0)],
+    [L('Görülen doküman','Docs seen'),String(d.docs||0)],
     [L('Bulut parça sayısı','Cloud chunks'),String(d.chunks||0)],
     [L('Veri boyutu','State size'),d.size?(Math.round(d.size/1024)+' KB'):'—'],
     [L('Durum','Status'),sync.status],
