@@ -2038,7 +2038,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rost-tabs button.on{background:var(--bg2);color:var(--text);box-shadow:inset 0 0 0 1px var(--border)}
 .rost-tabs i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:700;color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1.5px 8px;min-width:26px;text-align:center;transition:color .15s,background .15s,border-color .15s}
 .rost-tabs button.on i{color:var(--accent2);background:var(--accent-bg);border-color:var(--border2)}
-.stf-wrap{display:flex;flex-direction:column;gap:16px}
+/* Two category boxes side by side, then the next pair below — Head Coach next to
+   Assistant Coaches, Performance Coaches next to Physiotherapists, Individual Coaches
+   alone on its own row since five doesn't split evenly. Below the breakpoint there is
+   no "side by side" left to have, so it drops to the one column a phone can read. */
+.stf-wrap{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;align-items:start}
+@media(max-width:760px){.stf-wrap{grid-template-columns:1fr}}
 /* No emoji, no icon glyph — the category reads by name and by a colour, carried the same
    way the app already marks a category elsewhere: a solid accent down the left edge of
    the card (the calendar's own session-type keyline is the same idea). The colour still
@@ -2050,84 +2055,42 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .stf-t{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
 .stf-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.02em}
 .stf-h .btn{margin-left:auto}
-/* Two to a row, always — a bench is short enough that a coach reads it as pairs rather
-   than scanning a long shelf, and two stay large enough for a photo worth looking at. */
-.stf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-@media(max-width:560px){.stf-grid{grid-template-columns:1fr}}
-
-/* ---- The card as two faces of one object ---------------------------------
-   A read view — a big photo with the name under it, the way a team sheet or a locker
-   nameplate reads — and the same "name + phone" form as before behind it. Editing
-   does not replace the card in place, it turns it: perspective lives on the outer
-   shell so the turn reads as one object rotating in space, and both faces share a
-   single grid cell so the card's height follows whichever face is taller instead of
-   a number guessed in advance. */
-.stf-c{perspective:1600px}
-.stf-c:hover{filter:brightness(1.03)}
-.stf-flip{position:relative;display:grid;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,.1,.2,1)}
-.stf-flip.on{transform:rotateY(180deg)}
-.stf-face{grid-area:1/1;min-height:0;background:var(--bg2);border:1px solid var(--border);border-radius:14px;
-  backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;
-  display:flex;flex-direction:column;transition:border-color .15s}
-.stf-c:hover .stf-face{border-color:var(--border2)}
-.stf-back{transform:rotateY(180deg)}
-.stf-bb{flex:1;display:flex;flex-direction:column;justify-content:center;padding-bottom:14px}
-
-/* ---- Front: the photo carries the card, the name sits under it ---- */
-.stf-photo{position:relative;width:100%;aspect-ratio:1;flex:none;cursor:pointer;
-  background:linear-gradient(135deg,#20242c,#14171c)}
-.stf-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.stf-photo .ini{position:absolute;inset:0;display:grid;place-items:center;font-size:44px;font-weight:700;letter-spacing:.02em}
-/* The camera hint only shows up once there's a reason to reach for it — on hover, or
-   until a photo actually exists, the same courtesy the old round avatar gave. */
-.stf-photo .cam{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
-  background:rgba(10,11,13,.6);color:#fff;opacity:0;transition:opacity .15s;text-align:center;padding:0 12px}
-.stf-photo .cam b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;letter-spacing:.04em}
-.stf-photo:hover .cam{opacity:1}
-.stf-photo.has .cam{opacity:0}
-.stf-photo.has:hover .cam{opacity:1}
-/* Edit and remove sit on the photo itself, on a scrim so they read over any picture. */
-.stf-edit,.stf-x{position:absolute;top:9px;width:27px;height:27px;border-radius:8px;
-  border:1px solid rgba(255,255,255,.2);background:rgba(10,11,13,.55);color:#fff;
-  display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s,background .15s;
-  font-family:inherit;font-size:12px;line-height:1;padding:0;z-index:2}
-.stf-edit{left:9px}
-.stf-x{right:9px}
-.stf-c:hover .stf-edit,.stf-c:hover .stf-x{opacity:1}
-.stf-edit:hover{border-color:var(--accent);background:rgba(0,148,255,.4)}
-.stf-x:hover{border-color:var(--red);background:rgba(239,68,68,.75)}
-/* On the back there is no photo to float over, so the same two actions sit in a plain
-   row instead of a scrim — Done closes the turn, back where "+ Add" opened it. */
-.stf-bh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 12px 0}
-.stf-done{display:inline-flex;align-items:center;gap:6px;background:var(--accent-bg);color:var(--accent2);
-  border:1px solid var(--border2);border-radius:8px;padding:6px 12px 6px 10px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s}
-.stf-done:hover{background:rgba(0,148,255,.22);border-color:var(--accent)}
-.stf-bh .stf-x{position:static;opacity:1;width:27px;height:27px;border-color:var(--border2);background:var(--panel);color:var(--muted)}
-.stf-bh .stf-x:hover{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.12)}
-
-.stf-id{padding:12px 14px 14px;text-align:center;cursor:pointer}
-.stf-name{font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--text);overflow-wrap:break-word}
-.stf-id .stf-tel{margin-top:7px}
-
-/* ---- Back: the same name + phone form the card always was ---- */
-.stf-back .stf-f{padding:0 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
-.stf-back .stf-f>label{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em}
+.stf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:14px}
+.stf-c{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:15px 16px 14px;transition:border-color .15s,transform .15s}
+.stf-c:hover{border-color:var(--border2);transform:translateY(-2px)}
+.stf-x{position:absolute;top:9px;right:9px;width:25px;height:25px;border-radius:7px;border:1px solid var(--border2);background:var(--panel);color:var(--muted);font-size:12px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s,background .15s;font-family:inherit;padding:0}
+.stf-c:hover .stf-x{opacity:1}
+.stf-x:hover{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.12)}
+.stf-top{display:flex;align-items:center;gap:12px;padding-right:28px}
+.stf-av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;flex:none;border:1.5px solid;letter-spacing:.02em;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
+.stf-av:hover{transform:scale(1.05)}
+.stf-av img{width:100%;height:100%;object-fit:cover;display:block}
+/* The camera glyph only shows up once there's a reason to click — on hover, or once a
+   photo is already there and might need changing. Before that the initials carry the
+   card, the same way an athlete card reads before its own photo is added. */
+.stf-av .cam{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,11,13,.55);color:#fff;opacity:0;transition:opacity .15s}
+.stf-av:hover .cam{opacity:1}
+.stf-av.has .cam{opacity:0}
+.stf-av.has:hover .cam{opacity:1}
+.stf-f{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.stf-f>label{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em}
 /* The fields read as the card's own text until they are touched: a name is a name, and
    only once the cursor is in it does it admit to being an input. */
-.stf-back input,.stf-back select{background:transparent;border:1px solid transparent;border-radius:9px;padding:6px 9px;font-size:14px;transition:border-color .15s,background .15s,box-shadow .15s}
-.stf-back input:hover,.stf-back select:hover{border-color:var(--border2);background:var(--panel)}
-.stf-back input:focus,.stf-back select:focus{border-color:var(--accent);background:var(--panel);box-shadow:0 0 0 3px rgba(0,148,255,.13)}
-.stf-back .stf-nm{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.stf-c input,.stf-c select{background:transparent;border:1px solid transparent;border-radius:9px;padding:6px 9px;font-size:14px;transition:border-color .15s,background .15s,box-shadow .15s}
+.stf-c input:hover,.stf-c select:hover{border-color:var(--border2);background:var(--panel)}
+.stf-c input:focus,.stf-c select:focus{border-color:var(--accent);background:var(--panel);box-shadow:0 0 0 3px rgba(0,148,255,.13)}
+.stf-c .stf-nm{font-size:15px;font-weight:700;letter-spacing:-.01em}
 .stf-ph{display:flex;gap:8px}
 /* The country code is a field of its own and it is never empty — a number stored without
    one is a number nobody abroad can dial, so it is picked rather than typed. */
 .stf-ph select{flex:0 0 118px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;color:var(--text2)}
 .stf-ph input{flex:1;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;letter-spacing:.04em}
-.stf-foot{margin:11px 14px 0;padding-top:11px;border-top:1px solid var(--border)}
+.stf-foot{margin-top:11px;padding-top:11px;border-top:1px solid var(--border);min-height:30px;display:flex;align-items:center}
 .stf-tel{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;color:var(--text2);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 11px;text-decoration:none;transition:color .15s,border-color .15s,background .15s}
 .stf-tel:hover{color:var(--accent2);border-color:var(--accent);background:var(--accent-bg)}
 .stf-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim);line-height:1.4}
 .stf-none{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);text-align:center;border:1px dashed var(--border2);border-radius:12px;padding:22px 16px}
+@media(max-width:560px){.stf-grid{grid-template-columns:1fr}.stf-h .btn{margin-left:0;width:100%;justify-content:center}}
 /* ===== Test & Evaluation ===== */
 .eval-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .evc{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;text-align:center;overflow:hidden}
@@ -19658,73 +19621,40 @@ function StaffCard({m,role,upd,del,fresh}){
   const initials=(m.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const joined=fullPhone(m);
   const photoRef=useRef(null);
-  /* A freshly added card has nothing to show on its front yet — no photo, no name — so
-     it opens straight on the back, cursor already in the name field. Everyone else's
-     card opens on the front and turns only once asked to. */
-  const[flip,setFlip]=useState(!!fresh);
   return(<div className="stf-c">
-    <div className={`stf-flip${flip?' on':''}`}>
-
-      {/* ---- Front: the photo carries the card, the name sits under it ---- */}
-      <div className="stf-face stf-front">
-        <div className={`stf-photo${m.photo?' has':''}`} style={{boxShadow:`inset 0 0 0 3px ${role.c}`}}
-          onClick={()=>photoRef.current?.click()} title={L('Fotoğrafı değiştirmek için tıkla','Click to change photo')}>
-          {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:<span className="ini" style={{color:role.c}}>{initials}</span>}
-          <span className="cam">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <b>{m.photo?L('Değiştir','Change'):L('Fotoğraf ekle','Add photo')}</b>
-          </span>
-          <input type="file" accept="image/*" ref={photoRef} className="hidden"
-            onClick={e=>e.stopPropagation()}
-            onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'staff',d=>upd({photo:d}));e.target.value='';}}/>
-          <button className="stf-edit" title={L('Düzenle','Edit')}
-            onClick={e=>{e.stopPropagation();setFlip(true);}}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-          </button>
-          <button className="stf-x" title={L('Ekipten çıkar','Remove from staff')}
-            onClick={e=>{e.stopPropagation();del();}}>✕</button>
-        </div>
-        <div className="stf-id" onClick={()=>setFlip(true)}>
-          <div className="stf-name">{m.name||L('İsimsiz','Unnamed')}</div>
-          {joined&&<a className="stf-tel" href={`tel:${joined.replace(/[^\d+]/g,'')}`} onClick={e=>e.stopPropagation()}>☏ {joined}</a>}
-        </div>
+    <button className="stf-x" title={L('Ekipten çıkar','Remove from staff')} onClick={del}>✕</button>
+    <div className="stf-top">
+      <div className={`stf-av${m.photo?' has':''}`} style={{color:role.c,borderColor:role.c,background:role.bg}}
+        onClick={()=>photoRef.current?.click()} title={L('Fotoğrafı değiştirmek için tıkla','Click to change photo')}>
+        {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:initials}
+        <span className="cam">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
+        <input type="file" accept="image/*" ref={photoRef} className="hidden"
+          onClick={e=>e.stopPropagation()}
+          onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'staff',d=>upd({photo:d}));e.target.value='';}}/>
       </div>
-
-      {/* ---- Back: the same name + phone form the card always was ---- */}
-      <div className="stf-face stf-back">
-        <div className="stf-bh">
-          <button className="stf-done" onClick={()=>setFlip(false)}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            {L('Bitti','Done')}
-          </button>
-          <button className="stf-x" title={L('Ekipten çıkar','Remove from staff')} onClick={del}>✕</button>
-        </div>
-        {/* The header stays pinned where it was reached from; the fields themselves centre
-            in whatever's left under it, so a back that is naturally shorter than the photo
-            it sits behind reads as a deliberately roomy form, not a form that ran out. */}
-        <div className="stf-bb">
-          <div className="stf-f">
-            <label>{L('Ad Soyad','Full name')}</label>
-            <input className="stf-nm" value={m.name||''} placeholder={L('Ad Soyad','Full name')}
-              autoFocus={fresh} onChange={e=>upd({name:e.target.value})}/>
-          </div>
-          <div className="stf-f" style={{marginTop:10}}>
-            <label>{L('Telefon','Phone')}</label>
-            <div className="stf-ph">
-              <select value={m.phoneCode||DEFAULT_DIAL} onChange={e=>upd({phoneCode:e.target.value})}
-                title={L('Ülke kodu','Country code')}>
-                {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}
-              </select>
-              <input type="tel" inputMode="tel" placeholder="532 123 45 67" value={m.phone||''}
-                onChange={e=>upd({phone:cleanPhone(e.target.value)})}/>
-            </div>
-          </div>
-          {!joined&&<div className="stf-foot">
-            <span className="stf-hint">{L('Numarayı başındaki 0 olmadan yaz.','Number without the leading 0.')}</span>
-          </div>}
-        </div>
+      <div className="stf-f">
+        <label>{L('Ad Soyad','Full name')}</label>
+        <input className="stf-nm" value={m.name||''} placeholder={L('Ad Soyad','Full name')}
+          autoFocus={fresh} onChange={e=>upd({name:e.target.value})}/>
       </div>
-
+    </div>
+    <div className="stf-f" style={{marginTop:12}}>
+      <label>{L('Telefon','Phone')}</label>
+      <div className="stf-ph">
+        <select value={m.phoneCode||DEFAULT_DIAL} onChange={e=>upd({phoneCode:e.target.value})}
+          title={L('Ülke kodu','Country code')}>
+          {DIAL_CODES.map(c=><option key={c.c} value={c.d}>{c.d} · {c.c}</option>)}
+        </select>
+        <input type="tel" inputMode="tel" placeholder="532 123 45 67" value={m.phone||''}
+          onChange={e=>upd({phone:cleanPhone(e.target.value)})}/>
+      </div>
+    </div>
+    <div className="stf-foot">
+      {joined
+        ?<a className="stf-tel" href={`tel:${joined.replace(/[^\d+]/g,'')}`}>☏ {joined}</a>
+        :<span className="stf-hint">{L('Numarayı başındaki 0 olmadan yaz.','Number without the leading 0.')}</span>}
     </div>
   </div>);
 }
