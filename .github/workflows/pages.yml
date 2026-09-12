@@ -26,11 +26,13 @@ jobs:
         with:
           enablement: true
       # The app is fully static and loads its libraries from CDNs;
-      # node_modules and git metadata are not needed on the site.
+      # node_modules and git metadata are not needed on the site. `functions/`
+      # is server-side code that Firebase deploys — it has no business being
+      # served from the site.
       - name: Assemble site
         run: |
           mkdir /tmp/site
-          rsync -a --exclude node_modules --exclude .git ./ /tmp/site/
+          rsync -a --exclude node_modules --exclude .git --exclude functions ./ /tmp/site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: /tmp/site
