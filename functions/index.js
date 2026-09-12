@@ -32,13 +32,13 @@ const TELEGRAM_BOT_TOKEN = 'TELEGRAM_BOT_TOKEN';
    bu yüzden secret değil ortam değişkeni. Grup değişirse tek satır. */
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID || '-1004420460025';
 
-/* Function'ın çalışacağı bölge. Varsayılan `europe-west1`, çünkü bu projenin
-   Firestore'u eur3'te (Avrupa) duruyor: tetikleyiciyi veritabanının yanında
-   tutmak her gönderimde Atlantik'i geçen bir tur ağ gecikmesi eksiltiyor —
-   sporcu "Gönder"e bastıktan sonra mesajın ne kadar çabuk düştüğü tam olarak
-   buna bakıyor. Veritabanı başka bir konuma taşınırsa FUNCTION_REGION ile
-   değiştirilir. */
-const REGION = process.env.FUNCTION_REGION || 'europe-west1';
+/* Function'ın çalışacağı bölge. Bu projenin Firestore'u eur3'te (Avrupa)
+   duruyor, function ise us-central1'de: deploy her seferinde bunu uyarı olarak
+   söylüyor ama tetikleme sahada sorunsuz çalışıyor, aradaki fark bir turluk ağ
+   gecikmesi. Veritabanının yanına taşımak isteyen FUNCTION_REGION'ı europe-west1
+   yapar — ama bu YENİ bir function yaratır, eskisinin us-central1'den elle
+   silinmesi gerekir. O yüzden varsayılan, halihazırda kurulu olan yer. */
+const REGION = process.env.FUNCTION_REGION || 'us-central1';
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
