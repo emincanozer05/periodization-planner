@@ -25089,6 +25089,46 @@ function pushState(){
   return 'ask';
 }
 
+/* ETKİN bir service worker döndürür.
+
+   `register()` kaydı BAŞLATIR başlatmaz dönüyor — worker o anda hâlâ 'installing'
+   olabiliyor. Push aboneliği ise etkin bir worker istiyor ve etkin olmayanla
+   çağrıldığında tarayıcı şunu diyor:
+
+     Failed to execute 'subscribe' on 'PushManager':
+     Subscription failed - no active Service Worker
+
+   Yani kayıt başarılı görünürken bildirim açılamıyor. Karşılığı, worker gerçekten
+   etkinleşene kadar beklemek.
+
+   'redundant' durumu ayrı bir şey: worker betiği hiç yüklenememiş ya da çalışırken
+   patlamış demek (sahada en sık sebebi, yanındaki push-config.js'in yayına
+   çıkmamış olması). Onu sessiz bir zaman aşımına bırakmak yerine adıyla söylüyoruz. */
+const SW_FILE='firebase-messaging-sw.js';
+async function readyServiceWorker(){
+  /* Worker'ın adresi sayfaya GÖRE kuruluyor, kökten değil: uygulama bir alt
+     dizinde de yayınlanabiliyor (check-in linkleri de aynı şekilde türüyor) ve
+     kökten verilen bir adres orada 404 dönerdi. */
+  const swPath=location.pathname.replace(/[^/]*$/,'')+SW_FILE;
+  const reg=await navigator.serviceWorker.register(swPath);
+  if(reg.active)return reg;
+  const w=reg.installing||reg.waiting;
+  if(w){
+    await new Promise((res,rej)=>{
+      const timer=setTimeout(()=>{cleanup();rej(new Error(L('Bildirim servisi zamanında başlamadı — sayfayı yenileyip tekrar dene.','The notification service did not start in time — reload and try again.')));},20000);
+      const cleanup=()=>{clearTimeout(timer);w.removeEventListener('statechange',onChange);};
+      function onChange(){
+        if(w.state==='activated'){cleanup();res();}
+        else if(w.state==='redundant'){cleanup();rej(new Error(L(`Bildirim servisi yüklenemedi. ${SW_FILE} ve push-config.js sitenin kök dizininde yayında olmalı.`,`The notification service failed to load. ${SW_FILE} and push-config.js must be published at the site root.`)));}
+      }
+      w.addEventListener('statechange',onChange);
+      onChange();                                   // durum zaten değişmiş olabilir
+    });
+  }
+  // Etkinleşme bitti ama kayıt nesnesi tazelenmemiş olabilir; kontrolü devralanı al.
+  return (await navigator.serviceWorker.ready)||reg;
+}
+
 /* Koçun bu cihazını uyarılara bağla. Token'ın KENDİSİ doküman adı: aynı cihaz
    ikinci kez kaydolursa yeni satır açmıyor, aynı satırı tazeliyor. */
 async function registerCoachPush(){
@@ -25096,11 +25136,7 @@ async function registerCoachPush(){
   if(!fb||!cfg||!cfg.vapidKey)throw new Error('Bildirim kurulumu tamamlanmamış.');
   const user=fb.auth().currentUser;
   if(!user)throw new Error('Önce hesabınla giriş yap.');
-  /* Worker'ın adresi sayfaya GÖRE kuruluyor, kökten değil: uygulama bir alt
-     dizinde de yayınlanabiliyor (check-in linkleri de aynı şekilde türüyor) ve
-     kökten verilen bir adres orada 404 dönerdi. */
-  const swPath=location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js';
-  const reg=await navigator.serviceWorker.register(swPath);
+  const reg=await readyServiceWorker();
   const token=await firebase.messaging().getToken({vapidKey:cfg.vapidKey,serviceWorkerRegistration:reg});
   if(!token)throw new Error('Cihaz kimliği alınamadı.');
   await fb.firestore().collection(PUSH_TOKENS).doc(token).set({

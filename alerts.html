@@ -328,12 +328,40 @@ function enable(btn,msg){
   });
 }
 
+/* ETKİN bir service worker döndürür.
+
+   `register()` kaydı BAŞLATIR başlatmaz dönüyor; worker o anda hâlâ 'installing'
+   olabiliyor ve push aboneliği etkin bir worker istiyor. Beklenmezse tarayıcı
+   "Subscription failed - no active Service Worker" diyor: kayıt başarılı
+   görünürken bildirim açılamıyor. 'redundant' ise worker betiğinin hiç
+   yüklenemediği anlamına geliyor — sebebi genelde push-config.js'in eksik olması. */
+var SW_FILE='firebase-messaging-sw.js';
+function readyServiceWorker(){
+  // Sayfaya göre — uygulama bir alt dizinde de yayınlanabiliyor.
+  var swPath=location.pathname.replace(/[^/]*$/,'')+SW_FILE;
+  return navigator.serviceWorker.register(swPath).then(function(reg){
+    if(reg.active)return reg;
+    var w=reg.installing||reg.waiting;
+    if(!w)return navigator.serviceWorker.ready.then(function(r){return r||reg;});
+    return new Promise(function(res,rej){
+      var timer=setTimeout(function(){cleanup();rej(new Error('Bildirim servisi zamanında başlamadı — sayfayı yenileyip tekrar dene.'));},20000);
+      function cleanup(){clearTimeout(timer);w.removeEventListener('statechange',onChange);}
+      function onChange(){
+        if(w.state==='activated'){cleanup();res();}
+        else if(w.state==='redundant'){cleanup();rej(new Error('Bildirim servisi yüklenemedi. Koçuna ilet: '+SW_FILE+' ve push-config.js sitenin kök dizininde yayında olmalı.'));}
+      }
+      w.addEventListener('statechange',onChange);
+      onChange();
+    }).then(function(){
+      return navigator.serviceWorker.ready.then(function(r){return r||reg;});
+    });
+  });
+}
+
 /* Cihazı kaydet. Token'ın KENDİSİ doküman adı: aynı cihaz ikinci kez kaydolursa
    yeni satır açmıyor, aynı satırı tazeliyor. */
 function register(){
-  // Sayfaya göre — uygulama bir alt dizinde de yayınlanabiliyor.
-  var swPath=location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js';
-  return navigator.serviceWorker.register(swPath)
+  return readyServiceWorker()
     .then(function(reg){
       return firebase.messaging(APP).getToken({vapidKey:CFG.vapidKey,serviceWorkerRegistration:reg});
     })
