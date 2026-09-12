@@ -13,6 +13,14 @@
 <meta name="twitter:image" content="logo-mark.png">
 <link rel="icon" type="image/png" href="logo-mark.png">
 <link rel="apple-touch-icon" href="logo-mark.png">
+<!-- Web push için. Uygulama bir PWA'ya dönüşmüyor: ne service worker önbelleği var
+     ne çevrimdışı kabuk — Firestore'un kendi IndexedDB kalıcılığı o işi zaten
+     yapıyor. Manifest burada tek bir sebeple duruyor: Apple, bildirimleri YALNIZCA
+     ana ekrana eklenmiş sayfalarda çalıştırıyor ve "ana ekrana ekle" bir manifest
+     olmadan standalone açılmıyor. Android ve masaüstünde bildirim bunsuz da çalışır. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CoachOS">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -39,6 +47,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<!-- Wellness uyarılarının koçun telefonuna düşmesi için. Yalnızca token kaydı ve izin
+     akışı burada; uyarının KİME gideceğine ve gönderimin kendisine sunucu karar veriyor. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<!-- VAPID anahtarı + aynı Firebase yapılandırması. Service worker bir <script> etiketi
+     okuyamadığı için değerler ayrı bir dosyada duruyor ve worker onu importScripts ile
+     alıyor; böylece anahtar tek bir yerde. Dosya yüklenemezse uygulama bugünkü gibi
+     çalışır, sadece bildirim açılamaz (aşağıdaki her kullanım varlığını kontrol ediyor). -->
+<script src="push-config.js"></script>
 <script>
   try{
     firebase.initializeApp({
@@ -2099,6 +2115,62 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .stf-tel{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:600;color:var(--text2);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:5px 11px;text-decoration:none;transition:color .15s,border-color .15s,background .15s}
 .stf-tel:hover{color:var(--accent2);border-color:var(--accent);background:var(--accent-bg)}
 .stf-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim);line-height:1.4}
+/* ---- Staff: athlete assignment + notification link ----------------------
+   Both only appear on an open card, so they cost the collapsed roster nothing.
+   The athlete chips are a plain wrap of toggles rather than a multi-select: an
+   individual coach usually has two or three athletes, and picking them out of a
+   native multi-select on a phone is the worst control for exactly that size. */
+.stf-ath{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.stf-ath button{font:inherit;font-size:11.5px;padding:4px 10px;border-radius:999px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);color:var(--text2);transition:all .14s}
+.stf-ath button:hover{border-color:var(--accent);color:var(--text)}
+.stf-ath button.on{background:var(--accent-bg);border-color:var(--accent);color:var(--text);font-weight:600}
+.stf-warn{margin-top:7px;font-size:11px;color:var(--yellow);line-height:1.45}
+.stf-lnk{margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+.stf-lnk .lbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.stf-lnk .url{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--text2);
+  background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:7px 9px;
+  word-break:break-all;user-select:all;line-height:1.5}
+.stf-lnk .row{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+.stf-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--border2);color:var(--dim);line-height:1.7}
+.stf-badge.on{color:var(--green);border-color:rgba(16,185,129,.45);background:rgba(16,185,129,.10)}
+/* ---- Wellness alerts --------------------------------------------------------
+   The list is the notification's home: a push can be swiped away, this cannot.
+   Each row is one athlete on one morning, coloured by the score it reports — the
+   app's own 1-5 scale, red through blue, the same one the check-in form shows the
+   athlete while they answer. */
+.alr-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.alr-t{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.alr-s{font-size:12.5px;color:var(--text2);margin-top:2px}
+.alr-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:2px}
+.alr-seg button{font:inherit;font-size:12px;padding:5px 12px;border:0;border-radius:6px;background:transparent;color:var(--text2);cursor:pointer}
+.alr-seg button.on{background:var(--panel);color:var(--text);font-weight:600}
+.alr-day{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin:18px 2px 8px;font-variant-numeric:tabular-nums}
+.alr-r{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);border-left-width:3px;border-radius:10px;
+  padding:12px 14px;margin-bottom:8px;transition:border-color .14s,background .14s}
+.alr-r:hover{border-color:var(--accent);background:var(--accent-bg)}
+.alr-sc{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;min-width:62px}
+.alr-sc i{width:10px;height:10px;border-radius:50%;flex:none}
+.alr-m{flex:1;min-width:0}
+.alr-nm{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alr-why{font-size:11.5px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alr-pn{display:flex;gap:4px;flex-wrap:wrap;flex:none;max-width:46%;justify-content:flex-end}
+.alr-tag{font-size:10.5px;padding:2px 8px;border-radius:999px;border:1px solid;line-height:1.6;white-space:nowrap}
+.alr-tag.h{color:var(--red);border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.10)}
+.alr-tag.m{color:var(--yellow);border-color:rgba(245,158,11,.40);background:rgba(245,158,11,.10)}
+.alr-dl{font-size:10.5px;color:var(--dim);flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.alr-dl.bad{color:var(--red)}
+.push-c{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:15px 16px;border-radius:11px;
+  border:1px solid var(--border);background:var(--panel);margin-bottom:18px}
+.push-c .ic{font-size:20px;line-height:1;flex:none;margin-top:1px}
+.push-c .bd{flex:1;min-width:220px}
+.push-c .h{font-weight:600;font-size:13.5px}
+.push-c .p{font-size:12.5px;color:var(--text2);margin-top:3px;line-height:1.55}
+.push-c ol{margin:7px 0 0;padding-left:19px;font-size:12.5px;color:var(--text2);line-height:1.6}
+.push-c.ok{border-color:rgba(16,185,129,.40);background:rgba(16,185,129,.07)}
+.push-c.warn{border-color:rgba(245,158,11,.40);background:rgba(245,158,11,.07)}
 .stf-none{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);text-align:center;border:1px dashed var(--border2);border-radius:12px;padding:22px 16px}
 @media(max-width:560px){.stf-grid{grid-template-columns:1fr}.stf-h .btn{margin-left:0;width:100%;justify-content:center}}
 /* ===== Test & Evaluation ===== */
@@ -4270,9 +4342,25 @@ const STAFF_ROLE_BY=STAFF_ROLES.reduce((m,r)=>(m[r.id]=r,m),{});
    ("fizyoterapist ekle" → "Fizyoterapist ekle") without turning an i into an I. */
 const capTR=x=>x?x.charAt(0).toLocaleUpperCase('tr-TR')+x.slice(1):x;
 /* A staff row, whatever shape it arrived in: an unknown role falls back to the first
-   category rather than disappearing off a page that only draws the five it knows. */
+   category rather than disappearing off a page that only draws the five it knows.
+
+   `athleteIds` only means anything for an individual coach — the other four roles work
+   across the whole squad, so who they cover is the roster itself and the field stays
+   empty for them. It decides one thing: which athletes' wellness alerts reach that
+   person's phone. Rows saved before alerts existed simply carry an empty list.
+
+   `alertToken` is the address of this person's notification link, once the coach has
+   made one. It is kept on the row rather than looked up, so the roster can show at a
+   glance who has been sent a link and who hasn't. */
 const normStaff=m=>({id:(m&&m.id)||uid(),role:(m&&STAFF_ROLE_BY[m.role])?m.role:STAFF_ROLES[0].id,
-  name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL,photo:(m&&m.photo)||null});
+  name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL,photo:(m&&m.photo)||null,
+  athleteIds:Array.isArray(m&&m.athleteIds)?m.athleteIds.filter(x=>typeof x==='string'):[],
+  alertToken:(m&&m.alertToken)||''});
+/* The one role whose alerts are scoped athlete by athlete. Named here rather than
+   compared inline, because the same rule has to hold in three places: the card that
+   assigns athletes, the roster published for the server, and the server's own copy in
+   functions/recipients.js. */
+const INDIVIDUAL_ROLE='individual';
 const POSITIONS={Basketball:['Guard','Forward','Center'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 /* Basketball rosters are kept on the three positions a coach actually programmes for.
    Records written before that carry the five-code set, so every read of a position —
@@ -19065,8 +19153,10 @@ function ProfileTab({ath,updAth,setup}){
     </div>
   </div>);
 }
-function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
-  const[tab,setTab]=useState('profile');
+function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,initialTab}){
+  /* Normally the profile, but a wellness notification opens straight onto the tab it
+     is about — the coach tapped a line about last night's sleep, not a biography. */
+  const[tab,setTab]=useState(initialTab||'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
   const[dobText,setDobText]=useState('');
   useEffect(()=>{setDobText(fd(ath.dateOfBirth));},[ath.dateOfBirth,editProfileOpen]);
@@ -19627,7 +19717,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
    never empty — a bench number without one cannot be dialled from an away trip,
    which is the one trip where it matters.
    ========================================================= */
-function StaffCard({m,role,upd,del,fresh}){
+function StaffCard({m,role,upd,del,fresh,athletes,team}){
   /* Closed by default — a face and a name is all the roster needs to show at a glance.
      A card that was just added opens straight into edit mode (fresh), same as before;
      everyone else opens only on click, and collapses again on request, not on blur —
@@ -19647,6 +19737,9 @@ function StaffCard({m,role,upd,del,fresh}){
         {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:initials}
       </div>
       <div className={`stf-mini-name${name?'':' empty'}`}>{name||L('İsimsiz','Unnamed')}</div>
+      {/* A quiet dot, not a label: the collapsed card is a face and a name, and the one
+          thing worth adding is whether this person has been sent their alert link. */}
+      {m.alertToken&&<span className="stf-badge on" title={L('Bildirim linki oluşturuldu','Notification link created')}>●</span>}
     </div>);
   }
   return(<div className="stf-c">
@@ -19682,6 +19775,24 @@ function StaffCard({m,role,upd,del,fresh}){
           onChange={e=>upd({phone:cleanPhone(e.target.value)})}/>
       </div>
     </div>
+    {role.id===INDIVIDUAL_ROLE&&<div className="stf-f" style={{marginTop:12}}>
+      <label>{L('Takip ettiği sporcular','Athletes they follow')}</label>
+      {/* An individual coach works athlete by athlete, so their alerts are scoped the
+          same way: only the squad members picked here reach this person's phone. The
+          other four roles cover the whole squad and have nothing to pick. */}
+      {(athletes||[]).length===0
+        ?<div className="stf-hint" style={{marginTop:6}}>{L('Kadroda henüz sporcu yok.','No athletes on the roster yet.')}</div>
+        :<div className="stf-ath">{(athletes||[]).map(a=>{
+          const on=(m.athleteIds||[]).includes(a.id);
+          return<button key={a.id} type="button" className={on?'on':''}
+            onClick={()=>upd({athleteIds:on?(m.athleteIds||[]).filter(x=>x!==a.id)
+                                           :[...(m.athleteIds||[]),a.id]})}>
+            {(a.name||'').trim()||L('İsimsiz','Unnamed')}</button>;})}</div>}
+      {(m.athleteIds||[]).length===0&&(athletes||[]).length>0&&
+        <div className="stf-warn">{L('Sporcu seçilmedi — bu kişiye hiçbir wellness uyarısı gitmez.',
+                                      'No athletes selected — this person receives no wellness alerts.')}</div>}
+    </div>}
+    <StaffAlertLink m={m} upd={upd} team={team}/>
     <div className="stf-foot">
       {joined
         ?<a className="stf-tel" href={`tel:${joined.replace(/[^\d+]/g,'')}`}>☏ {joined}</a>
@@ -19689,7 +19800,78 @@ function StaffCard({m,role,upd,del,fresh}){
     </div>
   </div>);
 }
-function StaffPanel({staff,save}){
+
+/* Bir ekip üyesinin bildirim linki.
+
+   CoachOS'ta ekip üyelerinin hesabı yok — kadroda birer kayıtlar. Telefonlarını
+   uyarılara bağlamanın yolu, uygulamanın check-in formlarında zaten kullandığı ve
+   sahada çalışan desen: kişiye özel, tahmin edilemez bir adres. Yeni bir kimlik
+   sistemi, şifre ya da davet e-postası gerekmiyor.
+
+   Linki bilen kişi o kaydın sahibi sayılıyor, bu yüzden grup sohbetine değil
+   kişiye gönderilmeli — kutunun altındaki uyarı bunu söylüyor. */
+function StaffAlertLink({m,upd,team}){
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+  const[copied,setCopied]=useState(false);
+  const url=m.alertToken?staffAlertUrl(m.alertToken):'';
+
+  const create=async(regenerate)=>{
+    setErr('');setBusy(true);
+    try{
+      const fb=FB();
+      const user=fb&&fb.auth&&fb.auth().currentUser;
+      if(!user)throw new Error(L('Önce hesabınla giriş yap.','Sign in with your account first.'));
+      if(regenerate&&m.alertToken)await revokeStaffLink(m.alertToken).catch(()=>{});
+      const token=newCheckinToken();
+      await publishStaffLink(user.uid,team,m,token);
+      upd({alertToken:token});
+    }catch(e){setErr((e&&e.message)||String(e));}
+    setBusy(false);
+  };
+  const revoke=async()=>{
+    if(!confirm(L('Bu link geçersiz kılınsın mı? Kişi yeni link alana kadar bildirim almaz.',
+                  'Revoke this link? They stop receiving alerts until you send a new one.')))return;
+    setErr('');setBusy(true);
+    try{await revokeStaffLink(m.alertToken);upd({alertToken:''});}
+    catch(e){setErr((e&&e.message)||String(e));}
+    setBusy(false);
+  };
+  const copy=()=>{
+    navigator.clipboard.writeText(url).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),1800);},
+      ()=>setErr(L('Kopyalanamadı — adresi elle seçip kopyala.','Could not copy — select the address and copy it.')));
+  };
+  // Telefonda yerel paylaşım sayfası (WhatsApp, Mesajlar…) — linki kişiye göndermenin en kısa yolu.
+  const share=()=>{
+    const name=(m.name||'').trim();
+    navigator.share({title:'CoachOS',text:L(`${name} — CoachOS wellness uyarı bildirimlerin:`,
+                                            `${name} — your CoachOS wellness alerts:`),url}).catch(()=>{});
+  };
+
+  return(<div className="stf-lnk">
+    <div className="lbl">{L('Bildirim linki','Notification link')}</div>
+    {!url&&<>
+      <div className="stf-hint">{L('Bu kişiye özel bir adres oluştur; açtığı telefon uyarıları almaya başlar.',
+                                   'Create a private address for this person; the phone that opens it starts receiving alerts.')}</div>
+      <button className="btn sec sm" style={{marginTop:7}} disabled={busy} onClick={()=>create(false)}>
+        {busy?L('Oluşturuluyor…','Creating…'):L('+ Bildirim linki oluştur','+ Create notification link')}</button>
+    </>}
+    {url&&<>
+      <div className="url">{url}</div>
+      <div className="row">
+        <button className="btn sec sm" onClick={copy}>{copied?L('Kopyalandı ✓','Copied ✓'):L('Kopyala','Copy')}</button>
+        {typeof navigator.share==='function'&&
+          <button className="btn sec sm" onClick={share}>{L('Gönder','Send')}</button>}
+        <button className="btn sec sm" disabled={busy} onClick={()=>create(true)}>{L('Yenile','Regenerate')}</button>
+        <button className="btn sec sm" disabled={busy} onClick={revoke}>{L('Geçersiz kıl','Revoke')}</button>
+      </div>
+      <div className="stf-warn">{L('Kişiye özel gönder — gruba atma. Linki açan herkes bu takımın uyarılarını görür.',
+                                   'Send it to this person only — not to a group. Anyone who opens it sees this team\'s alerts.')}</div>
+    </>}
+    {err&&<div className="stf-warn" style={{color:'var(--red)'}}>{err}</div>}
+  </div>);
+}
+function StaffPanel({staff,save,athletes,team}){
   /* The card that was just added opens with the cursor in its name field — the button
      was pressed to type a name, so nobody should have to click the box as well. */
   const[fresh,setFresh]=useState(null);
@@ -19699,6 +19881,10 @@ function StaffPanel({staff,save}){
     const m=staff.find(x=>x.id===id),who=((m&&m.name)||'').trim();
     if(!confirm(who?L(`${who} ekipten çıkarılsın mı?`,`Remove ${who} from the staff?`)
                    :L('Bu kayıt silinsin mi?','Delete this entry?')))return;
+    /* Kadrodan çıkan kişinin bildirim linki de geçersiz kılınıyor. Kayıt silinince
+       o kişi zaten kapsam dışı kalıp uyarı almayı kesiyor, ama adres arkada açık
+       kalırsa takımın uyarı listesi okunmaya devam ederdi. */
+    if(m&&m.alertToken)revokeStaffLink(m.alertToken).catch(()=>{});
     save(staff.filter(x=>x.id!==id));};
   return(<div className="stf-wrap">
     {STAFF_ROLES.map(r=>{
@@ -19717,7 +19903,7 @@ function StaffPanel({staff,save}){
           ?<div className="stf-none">{L(`Bu kategoride kimse yok — "+ ${capTR(r.str)} ekle" ile başla.`,
                                         `Nobody in this category yet — start with "+ Add ${r.sen}".`)}</div>
           :<div className="stf-grid">{list.map(m=>
-            <StaffCard key={m.id} m={m} role={r} fresh={m.id===fresh}
+            <StaffCard key={m.id} m={m} role={r} fresh={m.id===fresh} athletes={athletes} team={team}
               upd={u=>upd(m.id,u)} del={()=>del(m.id)}/>)}</div>}
       </section>);
     })}
@@ -19727,13 +19913,23 @@ function StaffPanel({staff,save}){
 /* =========================================================
    ATHLETES ROSTER
    ========================================================= */
-function Athletes({team,updateTeam,weeks,ai,exercises}){
+function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
   const[sel,setSel]=useState(null);const athletes=team.athletes||[];
   const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
   /* Which half of the roster is being read. The athletes' own tools — search, position
      filter, add — belong to their list alone, so they travel with the tab rather than
      sitting over a page of coaches they cannot filter. */
   const[tab,setTab]=useState('athletes');
+  /* A wellness notification lands here: it names an athlete and the screen it is about,
+     so the roster opens that athlete directly rather than leaving the coach to find the
+     name in a list they were not looking at. The tab is remembered separately so going
+     Back and opening the same athlete again behaves normally. */
+  const[focusTab,setFocusTab]=useState(null);
+  useEffect(()=>{
+    if(!focus||!focus.athleteId)return;
+    if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
+    setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||'wellness');
+  },[focus,team.id]);
   const staff=team.staff||[];
   const save=a=>updateTeam(team.id,{athletes:a});
   const saveStaff=st=>updateTeam(team.id,{staff:st});
@@ -19756,7 +19952,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
   });
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
-    return<AthleteDetail key={ath.id} ath={ath} onBack={()=>setSel(null)} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai}/>;}
+    return<AthleteDetail key={ath.id+':'+(focusTab||'')} ath={ath} onBack={()=>{setSel(null);setFocusTab(null);}} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai} initialTab={focusTab}/>;}
   return(<div>
     <div className="rost-head">
       <div>
@@ -19782,7 +19978,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises}){
       <button className={tab==='staff'?'on':''} onClick={()=>setTab('staff')}>
         {L('Teknik Ekip','Staff')}<i>{staff.length}</i></button>
     </div>
-    {tab==='staff'&&<StaffPanel staff={staff} save={saveStaff}/>}
+    {tab==='staff'&&<StaffPanel staff={staff} save={saveStaff} athletes={athletes} team={team}/>}
     {tab==='athletes'&&<>
     {athletes.length===0&&<div className="empty-st">{L('Henüz sporcu yok — başlamak için "+ Ekle"ye tıkla.','No athletes yet — click "+ Add" to start.')}</div>}
     {athletes.length>0&&list.length===0&&<div className="empty-st">{L('Eşleşme yok.','No matches.')}</div>}
@@ -24778,6 +24974,149 @@ async function publishCheckinLink(uid,team,token){
   });
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   WELLNESS UYARILARI — istemci tarafı
+
+   Uyarının kendisini sunucu üretiyor (functions/index.js). Burada üç iş var:
+
+     1) KADRO YAYINI — sunucu "bu sporcunun uyarısı kime gider" sorusunu tek bir
+        dokümandan cevaplıyor. O dokümanı burası yazıyor, çünkü kadro koçun kendi
+        verisinin içinde (parçalı, içerik adresli bir JSON blob) duruyor ve
+        sunucunun onu çözmesi hem pahalı hem kırılgan olurdu.
+
+     2) EKİP ÜYESİ LİNKLERİ — CoachOS'ta ekip üyelerinin hesabı yok; kadroda birer
+        kayıtlar. Telefonlarını uyarılara bağlamanın yolu, check-in formlarında
+        zaten kullanılan desen: kişiye özel, tahmin edilemez bir adres.
+
+     3) KOÇUN KENDİ CİHAZI — bildirim izni ve token kaydı.
+
+   Hiçbirinde kulüp/takım/kişi kimliği koda gömülü değil (Madde 7).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const STAFF_LINKS='staff_links', ALERT_ROSTER='alert_roster',
+      PUSH_TOKENS='push_tokens', ALERTS_COL='wellness_alerts';
+
+/* Sunucudaki rosterDocId() ile AYNI adı üretmek zorunda (functions/ids.js). İkisi
+   de alfanümerik kimliklerle çalışıyor — uid() base36 üretiyor, Firebase uid'leri
+   de alfanümerik — o yüzden burada ayrıca temizlemeye gerek kalmıyor. */
+const alertRosterId=(uid_,teamId)=>`${uid_}__${teamId}`;
+
+/* Yayımlanan kadronun kadroyla aynı olup olmadığını söyleyen damga — checkin
+   linklerindeki checkinRev() ile aynı fikir. Damga değişmediyse hiç yazılmıyor:
+   koç plan üzerinde çalışırken her tuşa basışta bir doküman yazmanın anlamı yok. */
+function alertRosterRev(team){
+  const parts=[(team.setup&&team.setup.teamName)||''];
+  (team.staff||[]).forEach(m=>parts.push(
+    [m.id,m.role,(m.name||'').trim(),(m.athleteIds||[]).slice().sort().join('+')].join(':')));
+  const s=parts.join('|');
+  let h=5381;
+  for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;
+  return h.toString(36)+'.'+(team.staff||[]).length;
+}
+
+/* Sunucunun okuyacağı kadro özeti. Yalnızca uyarı yönlendirmesi için gereken
+   alanlar gidiyor: telefon, fotoğraf ve kalan her şey koçun kendi verisinde
+   kalıyor — bir dokümanın taşımaya ihtiyacı olmayan veriyi taşıması, onu
+   sızdırabileceği tek yerdir. */
+async function publishAlertRoster(uid_,team){
+  const fb=FB();
+  if(!fb||!uid_||!team)return;
+  await fb.firestore().collection(ALERT_ROSTER).doc(alertRosterId(uid_,team.id)).set({
+    coachUid:uid_,teamId:team.id,
+    teamName:(team.setup&&team.setup.teamName)||'',
+    /* Bildirime tıklanınca açılacak adres. Uygulamanın nerede yayınlandığını
+       yalnızca tarayıcı biliyor; sunucuda sabit bir alan adı durmasın diye
+       buradan gidiyor (Madde 7). */
+    appUrl:location.origin+location.pathname,
+    staff:(team.staff||[]).map(m=>({
+      id:m.id,role:m.role,name:(m.name||'').trim(),
+      // Sporcu ataması yalnızca bireysel antrenör için anlamlı; diğer dört rol
+      // takımın tamamını kapsıyor ve listeyi taşımalarının bir anlamı yok.
+      athleteIds:m.role===INDIVIDUAL_ROLE?(m.athleteIds||[]):[],
+    })),
+    rev:alertRosterRev(team),updatedAt:new Date().toISOString(),
+  });
+}
+
+/* Ekip üyesinin açacağı adres — check-in linkleriyle aynı biçim, aynı güven
+   modeli: adresi bilen kişi o kaydın sahibidir. Token yine # kısmında, yani ne
+   sunucu loglarına düşüyor ne link önizlemesi çeken uygulamalara gidiyor. */
+function staffAlertUrl(token){
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  return `${base}alerts.html#k=${encodeURIComponent(token)}`;
+}
+async function publishStaffLink(uid_,team,member,token){
+  const fb=FB();
+  if(!fb)throw new Error('Bulut bağlantısı yok.');
+  if(!uid_)throw new Error('Önce giriş yapmalısın — link koç hesabına bağlanıyor.');
+  const role=STAFF_ROLE_BY[member.role]||STAFF_ROLES[0];
+  await fb.firestore().collection(STAFF_LINKS).doc(token).set({
+    coachUid:uid_,teamId:team.id,staffId:member.id,role:member.role,
+    staffName:(member.name||'').trim(),
+    roleLabel:L(role.tr,role.en),
+    teamName:(team.setup&&team.setup.teamName)||'',
+    updatedAt:new Date().toISOString(),
+  });
+}
+/* Linki geçersiz kılmak: kayıt siliniyor, o adresi açan telefon bir daha hiçbir
+   şey göremiyor. Kayıtlı cihazı da düşürmek gerekiyor ama onu istemci okuyamıyor
+   (push_tokens okumaya kapalı) — kadrodan çıkarılan kişinin cihazı zaten kapsam
+   dışı kaldığı için uyarı almıyor, sunucu da ilk hatada kaydı temizliyor. */
+async function revokeStaffLink(token){
+  const fb=FB();
+  if(!fb||!token)return;
+  await fb.firestore().collection(STAFF_LINKS).doc(token).delete();
+}
+
+/* ── Bildirim izni ve cihaz kaydı ──────────────────────────────────────────── */
+const PUSH_CFG=()=>(typeof COACHOS_FCM!=='undefined')?COACHOS_FCM:null;
+const IS_IOS=(()=>{const ua=navigator.userAgent||'';
+  return /iPad|iPhone|iPod/.test(ua)||(/Mac/.test(ua)&&navigator.maxTouchPoints>1);})();
+const IS_STANDALONE=(()=>{try{
+  return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+}catch(e){return false;}})();
+
+/* Bu tarayıcıda bildirim mümkün mü — ve değilse NEDEN. Sebep önemli: "desteklenmiyor"
+   ile "iPhone'da ana ekrana eklenmemiş" bambaşka iki durum ve ikincisinin çözümü var. */
+function pushState(){
+  if(!PUSH_CFG())return 'noconfig';
+  if(!('Notification' in window)||!('serviceWorker' in navigator)||!window.isSecureContext)return 'unsupported';
+  // Apple, web push'u yalnızca ana ekrana eklenmiş sayfalarda çalıştırıyor.
+  if(IS_IOS&&!IS_STANDALONE)return 'ios-needs-install';
+  if(!PUSH_CFG().vapidKey)return 'nokey';
+  if(Notification.permission==='denied')return 'denied';
+  if(Notification.permission==='granted')return 'granted';
+  return 'ask';
+}
+
+/* Koçun bu cihazını uyarılara bağla. Token'ın KENDİSİ doküman adı: aynı cihaz
+   ikinci kez kaydolursa yeni satır açmıyor, aynı satırı tazeliyor. */
+async function registerCoachPush(){
+  const fb=FB(),cfg=PUSH_CFG();
+  if(!fb||!cfg||!cfg.vapidKey)throw new Error('Bildirim kurulumu tamamlanmamış.');
+  const user=fb.auth().currentUser;
+  if(!user)throw new Error('Önce hesabınla giriş yap.');
+  /* Worker'ın adresi sayfaya GÖRE kuruluyor, kökten değil: uygulama bir alt
+     dizinde de yayınlanabiliyor (check-in linkleri de aynı şekilde türüyor) ve
+     kökten verilen bir adres orada 404 dönerdi. */
+  const swPath=location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js';
+  const reg=await navigator.serviceWorker.register(swPath);
+  const token=await firebase.messaging().getToken({vapidKey:cfg.vapidKey,serviceWorkerRegistration:reg});
+  if(!token)throw new Error('Cihaz kimliği alınamadı.');
+  await fb.firestore().collection(PUSH_TOKENS).doc(token).set({
+    uid:user.uid,kind:'coach',coachUid:user.uid,
+    /* teamId YOK — ve bu kasıtlı: hesabın sahibi baktığı TÜM takımların uyarısını
+       alıyor. Takım başına bir cihaz kaydı, iki takıma bakan koçun ikinci takımını
+       sessizce görünmez yapardı. */
+    name:(user.email||'').trim(),role:'coach',
+    lang:REPORT_LANG==='tr'?'tr':'en',
+    platform:IS_IOS?(IS_STANDALONE?'ios-pwa':'ios-safari'):(/Android/.test(navigator.userAgent||'')?'android':'desktop'),
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    lastSeenAt:firebase.firestore.FieldValue.serverTimestamp(),
+  },{merge:true});
+  return token;
+}
+
 /* Bir gönderim → sporcunun günlüğündeki kayıt. srcId sporcu+tarih+tür'den türetilir:
    aynı gün ikinci kez dolduran sporcunun cevabı ESKİSİNİN ÜZERİNE yazılır, yeni bir
    satır açmaz — ve aynı doküman ikinci kez işlense de sonuç değişmez. */
@@ -25218,6 +25557,117 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
       allow update: if false;
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       WELLNESS UYARILARI VE BİLDİRİM
+
+       Dört koleksiyon. Ortak kural şu: uyarıyı YALNIZCA sunucu (Cloud Function)
+       yazıyor, istemciler yalnızca okuyor. Admin SDK kuralların dışında çalıştığı
+       için function'a ayrıca izin vermek gerekmiyor — aşağıdaki "write: if false"
+       satırları function'ı değil, TARAYICIYI kapatıyor.
+
+       Neden böyle: bir istemcinin uyarı üretebilmesi, o istemcinin başka
+       kullanıcıların telefonuna bildirim gönderebilmesi demek olurdu (Madde 16).
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* Bir ekip üyesinin eşleşme kaydı. Anonim oturum kendi kaydını bir kez
+       yazıyor; kim olduğunu SÖYLEMİYOR — hangi kadro satırına ait olduğunu
+       elindeki token'ın arkasındaki staff_links dokümanı söylüyor ve kayıt ona
+       birebir uymak zorunda. Yani "ben baş antrenörüm" diyerek başka bir takımın
+       uyarılarına geçilemiyor. */
+    match /staff_members/{authUid} {
+      function link() {
+        return get(/databases/$(database)/documents/staff_links/$(request.resource.data.token)).data;
+      }
+      allow get: if request.auth != null && request.auth.uid == authUid;
+      allow list: if false;
+      allow create, update: if request.auth != null
+        && request.auth.uid == authUid
+        && request.resource.data.keys().hasAll(['coachUid','teamId','staffId','token'])
+        && exists(/databases/$(database)/documents/staff_links/$(request.resource.data.token))
+        && link().coachUid == request.resource.data.coachUid
+        && link().teamId   == request.resource.data.teamId
+        && link().staffId  == request.resource.data.staffId;
+      allow delete: if request.auth != null && request.auth.uid == authUid;
+    }
+
+    /* Ekip üyesinin bildirim linki. Check-in linkleriyle aynı model: adresi bilen
+       okur, kimse listeleyemez. Linki üreten ve silen yalnızca hesabın sahibi. */
+    match /staff_links/{token} {
+      allow get:    if true;
+      allow list:   if false;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    /* Takımın kadro özeti — function'ın "bu sporcunun uyarısı kime gider"
+       sorusunu cevaplamak için okuduğu tek doküman. Koçun uygulaması yazıyor,
+       başka kimse okumuyor: ekip üyesinin sayfası buna ihtiyaç duymuyor. */
+    match /alert_roster/{docId} {
+      allow read: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
+    }
+
+    /* Cihaz kayıtları (bildirim token'ları).
+
+       Bir kullanıcı YALNIZCA kendi oturumuna ait kaydı yazabiliyor ve kaydın
+       kapsamı (hangi hesap, hangi takım, hangi kadro satırı) elindeki eşleşme
+       kaydından doğrulanıyor. Kendi kaydını başka bir takıma yazamıyor.
+
+       Okuma tamamen kapalı: token listesi kimsenin görmesi gereken bir şey değil,
+       onu yalnızca gönderimi yapan function (admin SDK) okuyor. */
+    match /push_tokens/{fcmToken} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
+      allow read, list: if false;
+      allow create, update: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ['coach','staff']
+        && (
+          // Hesap sahibinin kendi cihazı: coachUid kendi kimliği olmak zorunda.
+          (request.resource.data.kind == 'coach'
+            && request.resource.data.coachUid == request.auth.uid)
+          ||
+          // Ekip üyesinin cihazı: eşleşme kaydıyla birebir uymak zorunda.
+          (request.resource.data.kind == 'staff'
+            && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+            && member().coachUid == request.resource.data.coachUid
+            && member().teamId   == request.resource.data.teamId
+            && member().staffId  == request.resource.data.staffId)
+        );
+      // Kendi cihazını kaydından düşürebilmeli (bildirimi kapatmak).
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+
+    /* Uyarı kayıtları.
+
+       Okuyabilenler yalnızca iki taraf:
+         • hesabın sahibi (koç) — kendi tüm takımlarını,
+         • eşleşmiş ekip üyesi — YALNIZCA kendi takımını.
+
+       İkinci satır, bir ekip üyesinin başka bir takımın ya da başka bir kulübün
+       uyarılarını görmesini kapatıyor: eşleşme kaydındaki teamId ile uyarının
+       teamId'si aynı olmak zorunda.
+
+       Yazma tamamen kapalı — uyarıyı yalnızca Cloud Function üretiyor. */
+    match /wellness_alerts/{alertId} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
+      function isOwner() {
+        return request.auth != null && resource.data.coachUid == request.auth.uid;
+      }
+      function isTeamStaff() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+          && member().coachUid == resource.data.coachUid
+          && member().teamId   == resource.data.teamId;
+      }
+      allow read: if isOwner() || isTeamStaff();
+      allow write: if false;
+    }
   }
 }`;
   return(<div className="panel">
@@ -25246,6 +25696,239 @@ service cloud.firestore {
   </div>);
 }
 
+/* =========================================================
+   WELLNESS ALERTS — the coach's side
+   ========================================================= */
+
+/* Bildirim izni kartı. Tek bir düğme değil, çünkü "açılamadı"nın birkaç farklı
+   sebebi var ve her birinin farklı bir çaresi: iPhone'da ana ekrana eklemek,
+   tarayıcı ayarından engeli kaldırmak, kurulumu tamamlamak. Hepsine "bildirimler
+   kapalı" demek, koçu çözümü olan bir sorunla baş başa bırakırdı. */
+function PushCard(){
+  const[state,setState]=useState(()=>pushState());
+  const[busy,setBusy]=useState(false);
+  const[err,setErr]=useState('');
+
+  // İzin verilmişse token'ı sessizce tazele — cihaz token'ları dönebiliyor ve
+  // dönmüş bir token'ın tek belirtisi bildirimlerin sessizce kesilmesi oluyor.
+  useEffect(()=>{
+    if(state!=='granted')return;
+    registerCoachPush().catch(e=>setErr((e&&e.message)||String(e)));
+  },[state]);
+
+  const enable=async()=>{
+    setErr('');setBusy(true);
+    try{
+      const p=await Notification.requestPermission();
+      if(p!=='granted'){setState(pushState());setBusy(false);return;}
+      await registerCoachPush();
+      setState('granted');
+    }catch(e){setErr((e&&e.message)||String(e));}
+    setBusy(false);
+  };
+
+  if(state==='granted'){
+    return(<div className="push-c ok">
+      <span className="ic">🔔</span>
+      <div className="bd">
+        <div className="h">{L('Bu cihazda bildirimler açık','Notifications are on for this device')}</div>
+        <div className="p">{L('Bir sporcunun sabah formu uyarı verdiğinde bildirim buraya düşer.',
+                              'When an athlete’s morning check-in triggers an alert, it arrives here.')}</div>
+        {err&&<div className="p" style={{color:'var(--yellow)'}}>{err}</div>}
+      </div>
+    </div>);
+  }
+  if(state==='ios-needs-install'){
+    return(<div className="push-c warn">
+      <span className="ic">📲</span>
+      <div className="bd">
+        <div className="h">{L('iPhone / iPad için bir adım daha','One more step on iPhone / iPad')}</div>
+        <div className="p">{L('Apple, bildirimleri yalnızca ana ekrana eklenmiş sayfalarda çalıştırıyor:',
+                              'Apple only runs notifications on pages added to the Home Screen:')}</div>
+        <ol>
+          <li>{L('Safari’de alttaki Paylaş düğmesine dokun.','Tap the Share button at the bottom of Safari.')}</li>
+          <li>{L('"Ana Ekrana Ekle"yi seç.','Choose "Add to Home Screen".')}</li>
+          <li>{L('CoachOS’u ana ekrandan aç ve bu kartı tekrar gör.','Open CoachOS from the Home Screen and come back to this card.')}</li>
+        </ol>
+      </div>
+    </div>);
+  }
+  if(state==='denied'){
+    return(<div className="push-c warn">
+      <span className="ic">🔕</span>
+      <div className="bd">
+        <div className="h">{L('Bildirimler bu tarayıcıda engellenmiş','Notifications are blocked in this browser')}</div>
+        <div className="p">{L('Adres çubuğundaki kilit simgesine tıkla → site ayarları → Bildirimler → izin ver, sonra sayfayı yenile. Uyarılar bu listede her hâlükârda duruyor.',
+                              'Click the lock icon in the address bar → site settings → Notifications → allow, then reload. The alerts stay in this list either way.')}</div>
+      </div>
+    </div>);
+  }
+  if(state==='nokey'||state==='noconfig'){
+    return(<div className="push-c warn">
+      <span className="ic">⚙</span>
+      <div className="bd">
+        <div className="h">{L('Bildirim kurulumu tamamlanmamış','Notification setup is unfinished')}</div>
+        <div className="p">{L('push-config.js içindeki vapidKey boş. Firebase Console → Project settings → Cloud Messaging → Web Push certificates → Generate key pair ile üretip dosyaya yapıştır. Uyarılar bu listede kurulumdan bağımsız görünüyor.',
+                              'vapidKey in push-config.js is empty. Generate one under Firebase Console → Project settings → Cloud Messaging → Web Push certificates, and paste it into the file. The alerts below work regardless.')}</div>
+      </div>
+    </div>);
+  }
+  if(state==='unsupported'){
+    return(<div className="push-c">
+      <span className="ic">🖥</span>
+      <div className="bd">
+        <div className="h">{L('Bu tarayıcı bildirim desteklemiyor','This browser cannot show notifications')}</div>
+        <div className="p">{L('Uyarıları aşağıdaki listeden takip edebilirsin.','You can follow the alerts in the list below.')}</div>
+      </div>
+    </div>);
+  }
+  return(<div className="push-c">
+    <span className="ic">🔔</span>
+    <div className="bd">
+      <div className="h">{L('Wellness uyarılarını bu cihaza al','Get wellness alerts on this device')}</div>
+      <div className="p">{L('Bir sporcunun Overall Wellness skoru 3.5’in altına düştüğünde ya da orta/yüksek bir ağrı bildirdiğinde anında haberin olur.',
+                            'You hear the moment an athlete’s Overall Wellness drops below 3.5 or they report moderate or high pain.')}</div>
+      <button className="btn sec sm" style={{marginTop:9}} disabled={busy} onClick={enable}>
+        {busy?L('Açılıyor…','Turning on…'):L('Bildirimleri aç','Turn on notifications')}</button>
+      {err&&<div className="p" style={{color:'var(--red)'}}>{err}</div>}
+    </div>
+  </div>);
+}
+
+/* Uyarı listesi. Sunucunun yazdığı kayıtlar canlı dinleniyor: uyarı, koç
+   uygulamayı açık tutsun tutmasın oluşuyor ve bu ekran onu olduğu gibi gösteriyor. */
+const ALERT_REASON=r=>r==='low_score'?L('Wellness 3.5 altında','Wellness below 3.5')
+  :r==='pain'?L('Orta/yüksek ağrı','Moderate/high pain'):r;
+/* Uygulamanın kendi 1-5 renk skalası: 1 kırmızı (kötü) … 5 mavi (iyi) —
+   check-in formundaki SCORE_COLORS ile aynı sıra, aynı yön. */
+const ALERT_SCALE=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
+const alertColor=v=>v==null?'var(--dim)':ALERT_SCALE[Math.min(5,Math.max(1,Math.round(Number(v))))-1];
+const alertScore=v=>v==null?'—':(Number.isInteger(Number(v))?String(Number(v)):Number(v).toFixed(1));
+
+function AlertsView({data,team,sync,openAlert}){
+  const[rows,setRows]=useState(null);      // null = henüz yüklenmedi
+  const[err,setErr]=useState('');
+  const[scope,setScope]=useState('team');  // team | all
+  const user=sync&&sync.user;
+
+  useEffect(()=>{
+    const fb=FB();
+    if(!fb||!user){setRows([]);return;}
+    let alive=true;
+    const col=fb.firestore().collection(ALERTS_COL).where('coachUid','==',user.uid);
+    const take=snap=>{
+      if(!alive)return;
+      const out=[];snap.forEach(d=>out.push({id:d.id,...(d.data()||{})}));
+      out.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+      setRows(out);setErr('');
+    };
+    const fail=e=>{
+      if(!alive)return;
+      setRows([]);
+      setErr((e&&e.code)==='permission-denied'
+        ?L('Uyarılar okunamadı — Firestore kuralları henüz yayınlanmamış olabilir.',
+           'Could not read alerts — the Firestore rules may not be published yet.')
+        :((e&&e.message)||String(e)));
+    };
+    /* Sıralı sorgu bileşik indeks istiyor. İndeks henüz yoksa Firestore
+       'failed-precondition' ile reddediyor; o durumda sırasız sorguya düşülüp
+       sıralama yukarıda yapılıyor. Böylece liste indekssiz bir projede de ilk
+       günden çalışıyor. */
+    let stop=col.orderBy('date','desc').limit(200).onSnapshot(take,e=>{
+      if((e&&e.code)!=='failed-precondition'){fail(e);return;}
+      stop=col.limit(400).onSnapshot(take,fail);
+    });
+    return()=>{alive=false;try{stop();}catch(e){}};
+  },[user]);
+
+  const list=(rows||[]).filter(a=>scope==='all'||a.teamId===team.id);
+  const byDay=[];
+  list.forEach(a=>{
+    const last=byDay[byDay.length-1];
+    if(last&&last.date===a.date)last.items.push(a);
+    else byDay.push({date:a.date,items:[a]});
+  });
+
+  return(<div>
+    <div className="alr-head">
+      <div>
+        <div className="alr-t">{L('Wellness Uyarıları','Wellness Alerts')}</div>
+        <div className="alr-s">{L('Skor 3.5’in altına düştüğünde ya da orta/yüksek ağrı bildirildiğinde otomatik oluşur.',
+                                  'Raised automatically when the score drops below 3.5 or moderate/high pain is reported.')}</div>
+      </div>
+      <div className="alr-seg">
+        <button className={scope==='team'?'on':''} onClick={()=>setScope('team')}>{team.setup.teamName}</button>
+        <button className={scope==='all'?'on':''} onClick={()=>setScope('all')}>{L('Tüm takımlar','All teams')}</button>
+      </div>
+    </div>
+
+    <PushCard/>
+
+    {err&&<div className="empty-st" style={{color:'var(--red)'}}>{err}</div>}
+    {!err&&rows===null&&<div className="empty-st">{L('Yükleniyor…','Loading…')}</div>}
+    {!err&&rows!==null&&list.length===0&&
+      <div className="empty-st">{L('Uyarı yok — sporcuların sabah formlarında kriterleri aşan bir durum görünmüyor.',
+                                   'No alerts — nothing in the morning check-ins has crossed the thresholds.')}</div>}
+
+    {byDay.map(g=><div key={g.date}>
+      <div className="alr-day">{g.date}</div>
+      {g.items.map(a=>{
+        const high=a.painHigh||[],mod=a.painModerate||[];
+        const sent=(a.recipients||[]).filter(r=>r.status==='sent').length;
+        const total=(a.recipients||[]).length;
+        return(<button key={a.id} className="alr-r" style={{borderLeftColor:alertColor(a.overall)}}
+          onClick={()=>openAlert(a)}>
+          <span className="alr-sc">
+            <i style={{background:alertColor(a.overall)}}/>
+            {alertScore(a.overall)}<span style={{color:'var(--dim)',fontWeight:400,fontSize:11}}>/5</span>
+          </span>
+          <span className="alr-m">
+            <span className="alr-nm">{(a.athleteName||'').trim()||L('İsimsiz sporcu','Unnamed athlete')}</span>
+            <span className="alr-why">
+              {(a.reasons||[]).map(ALERT_REASON).join(' + ')}
+              {scope==='all'&&a.teamName?` · ${a.teamName}`:''}
+            </span>
+          </span>
+          {(high.length||mod.length)?<span className="alr-pn">
+            {high.slice(0,2).map(r=><span key={'h'+r} className="alr-tag h">{r}</span>)}
+            {mod.slice(0,2).map(r=><span key={'m'+r} className="alr-tag m">{r}</span>)}
+            {(high.length+mod.length)>4&&<span className="alr-tag m">+{high.length+mod.length-4}</span>}
+          </span>:null}
+          {/* Bildirimin kime ulaştığı. Kimsenin ulaşmadığı bir uyarı, oluşmamış bir
+              uyarı kadar sessiz kalıyor — o yüzden bu sayı listede duruyor. */}
+          <span className={'alr-dl'+(total&&!sent?' bad':'')} title={L('Bildirim gönderilen cihaz sayısı','Devices notified')}>
+            {total?`${sent}/${total}`:'—'}
+          </span>
+        </button>);
+      })}
+    </div>)}
+  </div>);
+}
+
+/* Kadro özetini bulutta güncel tutar. Hiçbir şey çizmez.
+
+   Sunucu "bu sporcunun uyarısı kime gider" sorusunu tek bir dokümandan
+   cevaplıyor; o doküman koçun kadrosundan türüyor ve kadro değiştiğinde
+   tazelenmesi gerekiyor. Damga aynıysa hiç yazılmıyor, yani koç plan üzerinde
+   çalışırken bu bileşen sessiz duruyor. */
+function AlertRosterSync({team,sync}){
+  const user=sync&&sync.user,status=sync&&sync.status;
+  const lastRev=useRef('');
+  useEffect(()=>{
+    // Buluttan ilk yükleme bitmeden yazmak, boş bir kadroyu yayımlamak olurdu.
+    if(!user||status!=='synced'||!team)return;
+    const rev=alertRosterRev(team);
+    const key=team.id+':'+rev;
+    if(lastRev.current===key)return;
+    lastRev.current=key;
+    publishAlertRoster(user.uid,team).catch(e=>{
+      lastRev.current='';                       // başarısız olduysa bir dahaki turda yeniden dene
+      console.warn('alert roster publish',e);
+    });
+  },[user,status,team]);
+  return null;
+}
+
 function App(){
   useAppLang();   // re-render the whole tree the instant the language changes
   const[data,setData]=useState(()=>makeDefault());   // veri buluttan (kullanici_verileri) yüklenir
@@ -25265,6 +25948,10 @@ function App(){
   };
   const[view,setView]=useState('setup');
   const[menuOpen,setMenuOpen]=useState(false);
+  /* Bir wellness uyarısına tıklandığında açılacak sporcu. Kadro ekranı bunu görüp
+     o sporcuyu doğrudan açıyor; damga (at) aynı sporcuya ikinci kez tıklandığında
+     da ekranın yeniden açılmasını sağlıyor. */
+  const[athFocus,setAthFocus]=useState(null);
   const[selected,setSelected]=useState({year:today.getFullYear(),month:today.getMonth()+1,date:fmt(today)});
   const[dayKey,setDayKey]=useState(fmt(today));
   const team=useMemo(()=>data.teams.find(t=>t.id===data.activeTeamId)||data.teams[0],[data]);
@@ -25392,6 +26079,34 @@ function App(){
   if(!sync.user)return<LoginPage sync={sync}/>;
   const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
   const goDayView=k=>{setDayKey(k);setView('program');};
+  /* Uyarı → sporcunun Wellness ekranı. Uyarı başka bir takımınsa önce o takıma
+     geçiliyor: bildirime tıklayan koç hangi kadroya baktığını düşünmek zorunda
+     kalmasın. */
+  const openAlert=a=>{
+    if(!a||!a.athleteId)return;
+    if(a.teamId&&a.teamId!==data.activeTeamId&&data.teams.some(t=>t.id===a.teamId))
+      setData(prev=>withTeam(prev,a.teamId));
+    setAthFocus({athleteId:a.athleteId,tab:'wellness',at:Date.now()});
+    setView('athletes');
+  };
+  /* Bildirime tıklanınca gelinen adres: index.html#alert=<id>.
+     Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
+     yenilendiğinde koç aynı sporcunun ekranına geri düşerdi. Bulut yüklemesi
+     bitmeden çalışmıyor, çünkü takım listesi o ana kadar boş. */
+  const alertRouted=useRef(false);
+  useEffect(()=>{
+    if(alertRouted.current||sync.status!=='synced'||!sync.user)return;
+    const m=/[#&]alert=([^&]*)/.exec(location.hash||'');
+    if(!m)return;
+    alertRouted.current=true;
+    const id=decodeURIComponent(m[1]||'');
+    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+    const fb=FB();
+    if(!fb||!id)return;
+    fb.firestore().collection(ALERTS_COL).doc(id).get()
+      .then(d=>{if(d.exists)openAlert(d.data());})
+      .catch(e=>console.warn('alert deep link',e));
+  },[sync.status,sync.user]);
 
   const exCount=(data.exercises||[]).length;
   const NAV_GROUPS=[
@@ -25406,6 +26121,7 @@ function App(){
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
       {id:'tempo',label:L('Tempo Antrenmanı','Tempo Training'),icon:NAV_ICONS.tempo},
       {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
+      {id:'alerts',label:L('Wellness Uyarıları','Wellness Alerts'),icon:'🔔'},
     ]},
     {label:L('Hesap','Account'),items:[
       {id:'setup',label:L('Kurulum','Setup'),icon:NAV_ICONS.setup},
@@ -25465,7 +26181,7 @@ function App(){
         athletes={team.athletes||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>}
-      {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]}/>}
+      {view==='athletes'&&<Athletes team={team} updateTeam={updateTeam} weeks={weeks} ai={data.ai} exercises={data.exercises||[]} focus={athFocus}/>}
       {view==='evaluation'&&<EvaluationView team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='templates'&&<TemplatesView data={data} setData={setData}/>}
@@ -25475,6 +26191,7 @@ function App(){
       {view==='teams'&&<TeamsPanel data={data} setData={setData}/>}
       {view==='tally'&&<TallySync key={team.id} data={data} setData={setData} team={team}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
+      {view==='alerts'&&<AlertsView data={data} team={team} sync={sync} openAlert={openAlert}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
@@ -25486,6 +26203,9 @@ function App(){
     {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
         olsun dinlenir ve günlüğe işlenir. */}
     <CheckinInbox sync={sync} setData={setData}/>
+    {/* Aynı sebeple burada: sunucunun uyarıyı kime göndereceğini bildiği kadro
+        özeti, koç hangi ekranda olursa olsun güncel tutulur. */}
+    <AlertRosterSync team={team} sync={sync}/>
   </div>);
 }
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a

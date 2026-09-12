@@ -5,9 +5,9 @@
 # "deploy atlandı" notu bırakır — function'ı elle deploy etmeye devam edenin
 # yolunu bu workflow kapatmasın.
 #
-# TELEGRAM_BOT_TOKEN buraya GİRMİYOR: o Google Secret Manager'da duruyor ve
-# function çalışırken oradan okunuyor. GitHub'ın gördüğü tek sır, deploy yetkisi
-# olan servis hesabı.
+# Bildirim gönderimi için saklanacak bir sır YOK: function projenin varsayılan
+# servis hesabıyla çalışıyor ve FCM'e o kimlikle gidiyor. GitHub'ın gördüğü tek
+# sır, deploy yetkisi olan servis hesabı.
 name: Deploy Cloud Functions
 
 on:
@@ -46,8 +46,9 @@ jobs:
         working-directory: functions
         run: npm ci
 
-      # Uyarı kuralı bozulmuşsa deploy'a hiç gitmesin: eşik ve ağrı şiddeti
-      # mantığı sahada sessizce yanlış çalışmaktansa burada yüksek sesle patlasın.
+      # Uyarı kuralı bozulmuşsa deploy'a hiç gitmesin: eşik, ağrı şiddeti ve
+      # "uyarı kime gidiyor" mantığı sahada sessizce yanlış çalışmaktansa burada
+      # yüksek sesle patlasın.
       - name: Test
         working-directory: functions
         run: npm test
@@ -62,7 +63,7 @@ jobs:
         if: env.HAS_CREDENTIALS == 'true'
         run: >
           npx --yes firebase-tools@15 deploy
-          --only functions:wellnessTelegramAlert
+          --only functions:wellnessAlert
           --project periodization-planner
           --non-interactive
           --force
@@ -71,4 +72,4 @@ jobs:
         if: env.HAS_CREDENTIALS != 'true'
         run: |
           echo "::notice::FIREBASE_SERVICE_ACCOUNT secret'ı tanımlı değil — deploy atlandı."
-          echo "Kurulum: TELEGRAM_SETUP.md → 'GitHub Actions ile otomatik deploy'."
+          echo "Kurulum: NOTIFICATIONS_SETUP.md → 'GitHub Actions ile otomatik deploy'."

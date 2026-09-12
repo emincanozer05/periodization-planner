@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>CoachOS — Wellness Uyarıları</title>
+<meta property="og:site_name" content="CoachOS"/>
+<meta property="og:title" content="CoachOS — Wellness Uyarıları"/>
+<meta property="og:description" content="Takımının sabah wellness uyarıları ve bildirim ayarı."/>
+<meta name="description" content="Takımının sabah wellness uyarıları ve bildirim ayarı."/>
+<link rel="icon" href="logo-mark.png"/>
+<!--
+  Kendi manifesti — uygulamanınkini PAYLAŞMIYOR, ve bu önemli: ana ekrana eklenen
+  bir sayfa manifestteki start_url'den açılıyor. Ortak manifest, "Ana Ekrana Ekle"
+  diyen ekip üyesini koçun giriş ekranına düşürürdü; oysa onun gitmesi gereken yer
+  kendi uyarı sayfası. iOS'ta bu adım bildirim için ZORUNLU olduğundan, yanlış
+  yere açılan bir kısayol tek başına bütün akışı bitiriyordu.
+-->
+<link rel="manifest" href="alerts.webmanifest"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="CoachOS"/>
+<meta name="theme-color" content="#101010"/>
+<!--
+  EKİP ÜYESİNİN SAYFASI.
+
+  CoachOS'ta tek bir hesap var: koçunki. Ekip üyeleri (baş antrenör, yardımcı,
+  performans antrenörü, fizyoterapist, bireysel antrenör) kadroda birer KAYIT —
+  giriş yapabilecekleri bir hesapları yok ve olması da gerekmiyor. Bu sayfa,
+  onlara hesap açtırmadan telefonlarını uyarılara bağlamanın yolu.
+
+  Güven modeli, uygulamanın check-in formlarında zaten kullandığının aynısı:
+  adresi (token) bilen kişi o kaydın sahibidir. Koç kadro ekranından kişiye özel
+  bir link üretiyor, linki WhatsApp'tan gönderiyor; linki açan telefon o ekip
+  üyesinin cihazı olarak kaydediliyor. Yeni bir kimlik sistemi, şifre ya da davet
+  e-postası yok.
+
+  Sayfanın gördüğü veri, o linkin bağlı olduğu TAKIMLA sınırlı: Firestore
+  kuralları her okumada eşleşme kaydına bakıyor, başka bir takımın ya da başka bir
+  kulübün uyarısı bu sayfaya hiçbir şekilde gelmiyor.
+
+  Token yine adresin # kısmında duruyor: ne bu sayfanın sunucu loglarına düşüyor,
+  ne de link önizlemesi çeken uygulamalara gidiyor.
+-->
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#101010;color:#e8eaed;
+  font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.5}
+.wrap{max-width:620px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;gap:12px;padding:8px 0 18px}
+header img{height:30px}
+.who{flex:1;min-width:0}
+.who .n{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who .r{color:#8b9099;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card{background:#181818;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-bottom:14px}
+.card h2{margin:0 0 6px;font-size:14px;font-weight:600}
+.card p{margin:0;color:#8b9099;font-size:13px}
+.btn{display:block;width:100%;margin-top:12px;padding:13px 16px;border-radius:10px;border:1px solid #0094ff;
+  background:#0094ff;color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.sec{background:transparent;color:#e8eaed;border-color:#2a2a2a}
+.msg{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px}
+.msg.ok{background:rgba(70,214,160,.12);border:1px solid #46d6a0;color:#46d6a0}
+.msg.warn{background:rgba(252,211,77,.10);border:1px solid #fcd34d;color:#fcd34d}
+.msg.bad{background:rgba(239,68,68,.12);border:1px solid #ef4444;color:#ef4444}
+.sec-h{display:flex;align-items:baseline;gap:8px;margin:24px 2px 10px}
+.sec-h .t{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#8b9099}
+.sec-h .c{font-size:12px;color:#5f646d}
+.al{background:#181818;border:1px solid #2a2a2a;border-left-width:3px;border-radius:10px;padding:13px 14px;margin-bottom:10px}
+.al .top{display:flex;align-items:center;gap:10px}
+.al .nm{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al .dt{font-size:11px;color:#5f646d;font-variant-numeric:tabular-nums;flex:none}
+.sc{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.sc i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.al .why{margin-top:7px;font-size:12.5px;color:#b3b7bd}
+.al .pn{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid;line-height:1.6}
+.tag.h{color:#ef4444;border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.10)}
+.tag.m{color:#fcd34d;border-color:rgba(252,211,77,.40);background:rgba(252,211,77,.08)}
+.sub{margin-top:8px;font-size:12px;color:#5f646d;display:flex;gap:12px;flex-wrap:wrap}
+.none,.load{text-align:center;color:#5f646d;padding:28px 12px;font-size:13.5px}
+.foot{margin-top:26px;text-align:center;color:#3f434a;font-size:11px}
+code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px}
+ol{margin:8px 0 0;padding-left:20px;color:#b3b7bd;font-size:13px}
+ol li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo-wordmark.png" alt="CoachOS"/>
+    <div class="who"><div class="n" id="who-n">…</div><div class="r" id="who-r"></div></div>
+  </header>
+  <div id="setup"></div>
+  <div id="feed"></div>
+  <div class="foot">CoachOS</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<script src="push-config.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ── Küçük yardımcılar ───────────────────────────────────────────────────── */
+function el(tag,attrs,kids){
+  var n=document.createElement(tag);attrs=attrs||{};
+  Object.keys(attrs).forEach(function(k){
+    if(k==='text')n.textContent=attrs[k];
+    else if(k==='html')n.innerHTML=attrs[k];
+    else if(k.slice(0,2)==='on')n[k]=attrs[k];
+    else if(attrs[k]!=null)n.setAttribute(k,attrs[k]);
+  });
+  (kids||[]).forEach(function(c){if(c)n.appendChild(c);});
+  return n;
+}
+function params(){
+  var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  if(!p.get('k')){
+    var q=new URLSearchParams((location.search||'').replace(/^\?/,''));
+    if(q.get('k'))p=q;
+  }
+  return p;
+}
+function show(box,cls,text){
+  box.innerHTML='';
+  box.appendChild(el('div',{class:'msg '+cls,text:text}));
+}
+
+/* Uygulamanın kendi 1-5 renk skalası — checkin.html'deki SCORE_COLORS ile aynı
+   sıra ve aynı yön: 1 kırmızı (kötü) … 5 mavi (iyi). */
+var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
+function scoreColor(v){
+  if(v==null)return '#5f646d';
+  var step=Math.min(5,Math.max(1,Math.round(Number(v))));
+  return SCORE_COLORS[step-1];
+}
+function fmtScore(v){
+  if(v==null)return '—';
+  var n=Number(v);
+  return Number.isInteger(n)?String(n):n.toFixed(1);
+}
+
+/* ── Firebase ────────────────────────────────────────────────────────────────
+   Kendi uygulama adıyla kuruluyor. Sebebi checkin.html'dekiyle birebir aynı:
+   Firebase oturumu tarayıcıda `firebase:authUser:<apiKey>:<appAdı>` anahtarıyla
+   saklanıyor ve varsayılan adı paylaşan iki sayfa birbirinin oturumunu eziyor.
+   Bu sayfa anonim giriş yapıyor; koç aynı telefondan kendi hesabına da giriyorsa
+   ikisi birbirine dokunmuyor. */
+var CFG=(typeof COACHOS_FCM!=='undefined')?COACHOS_FCM:null;
+var APP_NAME='alerts',APP=null,db=null;
+if(CFG){
+  try{APP=firebase.app(APP_NAME);}catch(e){APP=firebase.initializeApp(CFG.firebase,APP_NAME);}
+  // Bazı operatör/proxy ağları Firestore'un akış bağlantısını tamponluyor; düz HTTP zorlanıyor.
+  try{APP.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+  db=APP.firestore();
+}
+
+/* Token, adresin # kısmında geliyor — ama ana ekrana eklenen kısayol manifestteki
+   start_url'den açılıyor ve o adreste # kısmı yok. iOS'ta bildirim ZORUNLU olarak
+   ana ekrandan geçtiği için, hatırlanmayan bir token bütün akışı bitiriyordu.
+   Bu yüzden token bir kez görüldüğünde cihaza yazılıyor ve # kısmı olmadan
+   açıldığında oradan okunuyor. Cihazda kalması bir risk getirmiyor: linkin
+   kendisi zaten o telefonda, tarayıcı geçmişinde duruyor. */
+var LS_TOKEN='coachos.alerts.token';
+var TOKEN=(params().get('k')||'').trim();
+if(TOKEN){try{localStorage.setItem(LS_TOKEN,TOKEN);}catch(e){}}
+else{try{TOKEN=(localStorage.getItem(LS_TOKEN)||'').trim();}catch(e){}}
+var LINK=null;        // staff_links dokümanı
+var USER=null;        // anonim kullanıcı
+var setupBox=document.getElementById('setup');
+var feedBox=document.getElementById('feed');
+
+/* ── Cihaz bilgisi ───────────────────────────────────────────────────────── */
+var UA=navigator.userAgent||'';
+var IS_IOS=/iPad|iPhone|iPod/.test(UA)||(/Mac/.test(UA)&&navigator.maxTouchPoints>1);
+// iOS'ta web push YALNIZCA ana ekrana eklenmiş sitede çalışıyor (Apple'ın kuralı).
+var IS_STANDALONE=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+function platform(){
+  if(IS_IOS)return IS_STANDALONE?'ios-pwa':'ios-safari';
+  if(/Android/.test(UA))return 'android';
+  return 'desktop';
+}
+// Bildirim metni kişinin diliyle kurulsun diye eşleşmede saklanıyor.
+function lang(){return (navigator.language||'tr').toLowerCase().indexOf('en')===0?'en':'tr';}
+
+/* ── Açılış ──────────────────────────────────────────────────────────────── */
+function boot(){
+  if(!CFG){
+    show(setupBox,'bad','Yapılandırma yüklenemedi. Koçuna ilet: push-config.js sunucuda eksik.');
+    return;
+  }
+  if(!TOKEN){
+    show(setupBox,'warn','Bu adres eksik. Koçundan sana özel bildirim linkini iste.');
+    return;
+  }
+  setupBox.appendChild(el('div',{class:'load',text:'Bağlanılıyor…'}));
+
+  openSession()
+    .then(function(u){USER=u;return db.collection('staff_links').doc(TOKEN).get();})
+    .then(function(snap){
+      if(!snap.exists)throw new Error('LINK_YOK');
+      LINK=snap.data()||{};
+      document.getElementById('who-n').textContent=(LINK.staffName||'').trim()||'Ekip üyesi';
+      document.getElementById('who-r').textContent=[LINK.roleLabel,LINK.teamName].filter(Boolean).join(' · ');
+      // Eşleşme kaydı: kuralların "bu kişi bu takımı görebilir" kontrolü buna bakıyor.
+      return db.collection('staff_members').doc(USER.uid).set({
+        coachUid:LINK.coachUid,teamId:LINK.teamId,staffId:LINK.staffId,
+        role:LINK.role||'',token:TOKEN,
+        pairedAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+    })
+    .then(function(){
+      drawSetup();
+      watchFeed();
+    })
+    .catch(function(e){
+      var code=(e&&e.code)||'';
+      if((e&&e.message)==='LINK_YOK'){
+        // Koç linki geçersiz kılmış: hatırlanan kopyayı da at, yoksa bu telefon
+        // her açılışta aynı ölü adresi denemeye devam eder.
+        try{localStorage.removeItem(LS_TOKEN);}catch(e2){}
+        show(setupBox,'warn','Bu link artık geçerli değil. Koçundan güncel linki iste.');
+      }else if(code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation'){
+        show(setupBox,'bad','Sayfa açılamadı. Koçuna ilet: Firebase → Authentication → Anonymous açık olmalı.');
+      }else if(code==='permission-denied'){
+        show(setupBox,'bad','Erişim reddedildi. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.');
+      }else{
+        show(setupBox,'bad','Bağlanılamadı: '+((e&&e.message)||e));
+      }
+    });
+}
+
+/* Geçerli bir anonim oturum. checkin.html'deki ile aynı dert: Firebase
+   kullanılmayan anonim hesapları bir süre sonra siliyor, kayıt telefonda kalmış
+   oluyor ve o kayıtla jeton tazelenemediği an istekler kimliksiz gidiyor. Çare
+   oturumu KULLANMADAN ÖNCE doğrulamak. */
+function openSession(){
+  var auth=APP.auth();
+  return auth.signInAnonymously().then(function(cred){
+    var u=auth.currentUser||(cred&&cred.user);
+    if(!u)throw new Error('Anonim oturum kurulamadı.');
+    return u.getIdToken(true).then(function(){return u;},function(e){
+      // Ağ yokken jeton tazelenemez; bu oturumun geçersiz olduğu anlamına gelmez.
+      if((e&&e.code)==='auth/network-request-failed')return u;
+      return auth.signOut().catch(function(){}).then(function(){
+        return auth.signInAnonymously().then(function(c2){return auth.currentUser||c2.user;});
+      });
+    });
+  });
+}
+
+/* ── Bildirim kurulumu ───────────────────────────────────────────────────── */
+function drawSetup(){
+  setupBox.innerHTML='';
+  var card=el('div',{class:'card'});
+  var body=el('div');
+  card.appendChild(body);
+  setupBox.appendChild(card);
+
+  var supported=('Notification' in window)&&('serviceWorker' in navigator)&&window.isSecureContext;
+
+  if(!supported){
+    body.appendChild(el('h2',{text:'Bu tarayıcı bildirim desteklemiyor'}));
+    body.appendChild(el('p',{text:'Uyarıları aşağıdaki listeden yine takip edebilirsin.'}));
+    return;
+  }
+  // iOS: ana ekrana eklenmeden bildirim izni hiç istenemiyor.
+  if(IS_IOS&&!IS_STANDALONE){
+    body.appendChild(el('h2',{text:'iPhone / iPad için bir adım daha'}));
+    body.appendChild(el('p',{text:'Apple, bildirimleri yalnızca ana ekrana eklenmiş sayfalarda çalıştırıyor:'}));
+    var ol=el('ol');
+    [ 'Safari\'de alttaki Paylaş düğmesine dokun (kutudan çıkan ok).',
+      '"Ana Ekrana Ekle"yi seç ve onayla.',
+      'Uygulamayı ANA EKRANDAN aç, bu sayfa yeniden açılacak.',
+      'Buradaki "Bildirimleri aç" düğmesine dokun.'
+    ].forEach(function(s){ol.appendChild(el('li',{text:s}));});
+    body.appendChild(ol);
+    return;
+  }
+  if(!CFG.vapidKey){
+    body.appendChild(el('h2',{text:'Bildirim kurulumu tamamlanmamış'}));
+    body.appendChild(el('p',{text:'Koçuna ilet: push-config.js içindeki vapidKey boş. Uyarıları aşağıdaki listeden takip edebilirsin.'}));
+    return;
+  }
+  if(Notification.permission==='denied'){
+    body.appendChild(el('h2',{text:'Bildirimler bu tarayıcıda engellenmiş'}));
+    body.appendChild(el('p',{text:'Adres çubuğundaki kilit simgesine dokunup site ayarlarından bildirimlere izin ver, sonra sayfayı yenile.'}));
+    return;
+  }
+
+  body.appendChild(el('h2',{text:'Wellness uyarılarını telefonuna al'}));
+  body.appendChild(el('p',{text:'Takımından bir sporcunun sabah formu uyarı verdiğinde bu cihaza bildirim gelir.'}));
+  var msg=el('div');
+  var btn=el('button',{class:'btn',text:'Bildirimleri aç',onclick:function(){enable(btn,msg);}});
+  body.appendChild(btn);
+  body.appendChild(msg);
+
+  // Zaten açıksa token'ı sessizce tazele — cihaz token'ları dönebiliyor.
+  if(Notification.permission==='granted'){
+    register().then(function(){
+      btn.remove();
+      show(msg,'ok','Bildirimler açık ✓');
+    }).catch(function(e){
+      show(msg,'warn','Bildirim kaydı yenilenemedi: '+((e&&e.message)||e));
+    });
+  }
+}
+
+function enable(btn,msg){
+  btn.disabled=true;btn.textContent='Açılıyor…';
+  Notification.requestPermission().then(function(p){
+    if(p!=='granted'){
+      btn.disabled=false;btn.textContent='Bildirimleri aç';
+      show(msg,'warn','İzin verilmedi. Uyarıları aşağıdaki listeden takip edebilirsin.');
+      return;
+    }
+    return register().then(function(){
+      btn.remove();
+      show(msg,'ok','Bildirimler açık ✓');
+    });
+  }).catch(function(e){
+    btn.disabled=false;btn.textContent='Bildirimleri aç';
+    show(msg,'bad','Açılamadı: '+((e&&e.message)||e));
+  });
+}
+
+/* Cihazı kaydet. Token'ın KENDİSİ doküman adı: aynı cihaz ikinci kez kaydolursa
+   yeni satır açmıyor, aynı satırı tazeliyor. */
+function register(){
+  // Sayfaya göre — uygulama bir alt dizinde de yayınlanabiliyor.
+  var swPath=location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js';
+  return navigator.serviceWorker.register(swPath)
+    .then(function(reg){
+      return firebase.messaging(APP).getToken({vapidKey:CFG.vapidKey,serviceWorkerRegistration:reg});
+    })
+    .then(function(tok){
+      if(!tok)throw new Error('Cihaz kimliği alınamadı.');
+      return db.collection('push_tokens').doc(tok).set({
+        uid:USER.uid,kind:'staff',
+        coachUid:LINK.coachUid,teamId:LINK.teamId,staffId:LINK.staffId,
+        role:LINK.role||'',name:(LINK.staffName||'').trim(),
+        lang:lang(),platform:platform(),
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        lastSeenAt:firebase.firestore.FieldValue.serverTimestamp()
+      },{merge:true});
+    });
+}
+
+/* ── Uyarı akışı ─────────────────────────────────────────────────────────── */
+var REASON_TXT={low_score:'Wellness 3.5 altında',pain:'Orta/yüksek ağrı'};
+
+function alertCard(a){
+  var color=scoreColor(a.overall);
+  var card=el('div',{class:'al'});
+  card.style.borderLeftColor=color;
+
+  var sc=el('span',{class:'sc'});
+  sc.appendChild(el('i',{style:'background:'+color}));
+  sc.appendChild(el('span',{text:fmtScore(a.overall)+'/5'}));
+
+  card.appendChild(el('div',{class:'top'},[
+    el('span',{class:'nm',text:(a.athleteName||'').trim()||'İsimsiz sporcu'}),
+    sc,
+    el('span',{class:'dt',text:a.date||''})
+  ]));
+
+  var reasons=(a.reasons||[]).map(function(r){return REASON_TXT[r]||r;});
+  if(reasons.length)card.appendChild(el('div',{class:'why',text:reasons.join(' + ')}));
+
+  var high=a.painHigh||[],mod=a.painModerate||[];
+  if(high.length||mod.length){
+    var pn=el('div',{class:'pn'});
+    high.forEach(function(r){pn.appendChild(el('span',{class:'tag h',text:r}));});
+    mod.forEach(function(r){pn.appendChild(el('span',{class:'tag m',text:r}));});
+    card.appendChild(pn);
+  }
+
+  var s=a.scores||{},bits=[];
+  if(s.sleep!=null)bits.push('Uyku '+fmtScore(s.sleep));
+  if(s.fatigue!=null)bits.push('Yorgunluk '+fmtScore(s.fatigue));
+  if(s.soreness!=null)bits.push('Kas ağrısı '+fmtScore(s.soreness));
+  if(s.RHR!=null)bits.push('KAH '+Math.round(s.RHR)+' bpm');
+  if(bits.length)card.appendChild(el('div',{class:'sub'},bits.map(function(b){return el('span',{text:b});})));
+
+  return card;
+}
+
+function watchFeed(){
+  feedBox.innerHTML='';
+  var head=el('div',{class:'sec-h'},[
+    el('span',{class:'t',text:'Son uyarılar'}),
+    el('span',{class:'c',id:'feed-c',text:''})
+  ]);
+  var list=el('div',{id:'feed-list'},[el('div',{class:'load',text:'Yükleniyor…'})]);
+  feedBox.appendChild(head);
+  feedBox.appendChild(list);
+
+  /* Yalnızca bu ekip üyesinin takımı. Kurallar da aynı sınırı sunucuda uyguluyor;
+     buradaki filtre onun istemci tarafındaki karşılığı, güvenliğin kendisi değil. */
+  var base=db.collection('wellness_alerts')
+    .where('coachUid','==',LINK.coachUid)
+    .where('teamId','==',LINK.teamId);
+
+  function paint(rows){
+    // Sıralama her hâlükârda burada da yapılıyor: sorgu sıralı gelse de gelmese de
+    // ekrandaki sıra aynı olsun.
+    rows.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+    document.getElementById('feed-c').textContent=rows.length?rows.length+' kayıt':'';
+    list.innerHTML='';
+    if(!rows.length){
+      list.appendChild(el('div',{class:'none',text:'Henüz uyarı yok — takımın iyi durumda.'}));
+      return;
+    }
+    rows.slice(0,50).forEach(function(a){list.appendChild(alertCard(a));});
+  }
+  function fail(err){
+    list.innerHTML='';
+    var why=(err&&err.code)==='permission-denied'
+      ?'Uyarılar okunamadı. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.'
+      :'Uyarılar yüklenemedi: '+((err&&err.message)||err);
+    list.appendChild(el('div',{class:'msg bad',text:why}));
+  }
+  function rowsOf(snap){var r=[];snap.forEach(function(d){r.push(d.data()||{});});return r;}
+
+  /* Sıralı sorgu bileşik indeks istiyor. İndeks henüz oluşturulmamışsa Firestore
+     'failed-precondition' ile reddediyor — bu durumda sırasız sorguya düşüp
+     sıralamayı yukarıda kendimiz yapıyoruz. Böylece liste, indeks kurulmamış bir
+     projede de ilk günden çalışıyor; indeks sonradan eklenince sorgu kendiliğinden
+     hızlanıyor. */
+  base.orderBy('date','desc').limit(50).onSnapshot(
+    function(snap){paint(rowsOf(snap));},
+    function(err){
+      if((err&&err.code)!=='failed-precondition'){fail(err);return;}
+      base.limit(300).onSnapshot(function(snap){paint(rowsOf(snap));},fail);
+    });
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

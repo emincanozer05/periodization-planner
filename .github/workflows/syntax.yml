@@ -1,0 +1,29 @@
+# Sayfaların sözdizimi denetimi — her değişiklikte.
+#
+# CoachOS'un derleme adımı yok: index.html içindeki JSX tarayıcıda, sayfa
+# açılırken derleniyor. Yani bir sözdizimi hatası derleme zamanında değil KOÇUN
+# EKRANINDA ortaya çıkıyor, üstelik beyaz bir sayfa olarak. Bu iş, o hatayı
+# yayına çıkmadan yakalıyor.
+#
+# Kurulum gerekmiyor: kullanılan derleyici (@babel/standalone) depoda duruyor ve
+# tarayıcının yüklediği sürümün eşi.
+name: Syntax
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node check-syntax.js
