@@ -20998,6 +20998,23 @@ function Backup({data,setData,sync}){
    Eski (<uid>_<rev>_<i>) düzendeki bulutlar okunmaya devam eder; ilk yazımda
    kendiliğinden yeni düzene geçerler. */
 const FB=()=>(typeof firebase!=='undefined'&&firebase.apps&&firebase.apps.length)?firebase:null;
+/* BİR OKUMA SONSUZA KADAR BEKLEYEMEZ. Firestore'un `get({source:'server'})` çağrısının
+   kendi zaman aşımı yoktur: ağ kopmuşsa değil, ağ "açık görünüp" veri geçirmiyorsa —
+   telefon kilitlenip sekme donduğunda, hücresel bağlantı el değiştirdiğinde, bir ara
+   sunucu bağlantıyı tutup bırakmadığında — dönen söz (promise) hiç sonuçlanmaz.
+   Bu, tek başına bir yavaşlık olurdu; asıl zarar, o okumayı bekleyen yazım kilidinin
+   bir daha hiç açılmaması ve o cihazın bir daha HİÇ yazamamasıydı (gösterge sonsuza
+   kadar sarı). Okumanın sonucu zaten "olsa iyi olur" cinsinden: gelmezse yazım yine
+   yapılır, dinleyici dönüşte birleştirir. O yüzden süreye bağlanır. */
+const withTimeout=(p,ms)=>new Promise((resolve,reject)=>{
+  let done=false;
+  const t=setTimeout(()=>{if(done)return;done=true;const e=new Error('timeout');e.code='timeout';reject(e);},ms);
+  p.then(v=>{if(done)return;done=true;clearTimeout(t);resolve(v);},
+         e=>{if(done)return;done=true;clearTimeout(t);reject(e);});
+});
+const SERVER_READ_MS=8000;      // yazım öncesi güvenlik okuması bu kadar bekler, sonra yazıma geçilir
+const WRITE_STUCK_MS=45000;     // bu kadar süredir uçuşta olan yazım takılmış sayılır ve bırakılır
+const isHidden=()=>typeof document!=='undefined'&&document.visibilityState==='hidden';
 /* PARÇALAMA SABİT ARALIKLA DEĞİL, İÇERİĞE GÖRE YAPILIR — ve parçanın ADI içeriğinin
    hash'idir. Senkronizasyonun yavaş olmasının asıl sebebi buydu:
      • parçalar sabit bayt aralıklarında kesildiği için durumun ortasına eklenen tek bir
@@ -21121,16 +21138,22 @@ const splitChunksAsync=json=>new Promise(resolve=>{
   const w=_chunkWorker();
   if(!w)return resolve(splitChunks(json));
   const id=++_cwSeq;
-  let done=false;
-  const off=()=>{if(done)return true;done=true;
+  let done=false,tmr=0;
+  const off=()=>{if(done)return true;done=true;if(tmr)clearTimeout(tmr);
     w.removeEventListener('message',onMsg);w.removeEventListener('error',onErr);return false;};
   const onMsg=e=>{const d=e.data||{};if(d.id!==id)return;if(off())return;
     resolve(d.ok?d.parts:splitChunks(json));};
   /* Worker düştü: bir daha denenmez, iş buradan sürdürülür. Yazım hiçbir hâlde yarıda
-     kalmaz — bu yüzden hata da bir sonuçtur, reject değil. */
+     kalmaz — bu yüzden hata da bir sonuçtur, reject değil.
+     SESSİZCE ÖLEN WORKER de aynı kapıya çıkmalı: telefonda, bellek darda kaldığında
+     tarayıcı worker'ı hiçbir olay üretmeden sonlandırabiliyor. O hâlde yanıt hiç gelmez,
+     yazım o satırda asılı kalır ve cihaz bir daha senkron olmaz. Onun için yanıt süreye
+     bağlı: gelmezse iş ana iş parçacığında yapılır (yalnızca yavaş, asla yanlış değil). */
   const onErr=()=>{if(off())return;_cwOff=true;try{w.terminate();}catch(_){}_cw=null;
     resolve(splitChunks(json));};
   w.addEventListener('message',onMsg);w.addEventListener('error',onErr);
+  // Süre, işin kendisiyle ölçeklenir: ~130 ms'lik bir bölme için 10 sn zaten fazlasıyla geniş.
+  tmr=setTimeout(()=>{if(!done)onErr();},10000+Math.ceil(json.length/50000));
   try{w.postMessage({id,json});}catch(e){onErr();}
 });
 /* Aynı nesne için JSON.stringify'ı bir kez yapıp saklar. Durumun tamamı her tuş vuruşunda
@@ -21341,6 +21364,8 @@ function useCloudSync(data,setData){
   const dirty=useRef(false);            // yerelde buluta yazılmamış değişiklik var mı → yeşil ancak bu false iken yanar
   const lastApplied=useRef(null);       // buluttan gelip ekrana uygulanan son durum nesnesi (boşuna yazım turu açmasın)
   const writing=useRef(false);          // writeNow uçuşta mı (eşzamanlı yazımların birbirini ezmesini önler)
+  const writeStarted=useRef(0);         // uçuştaki yazım ne zaman başladı (takılanı bırakabilmek için)
+  const writeGen=useRef(0);             // yazım turu sıra no: bırakılan bir tur geri dönerse hiçbir şeye dokunamaz
   const queued=useRef(false);           // uçuş sırasında yeni yazım istendi mi
   const COL='kullanici_verileri';
   const GC_GRACE_MS=5*60*1000;   // bu kadar yeni bir parça, kimse göstermiyor görünse bile silinmez
@@ -21427,23 +21452,32 @@ function useCloudSync(data,setData){
     const fb=FB();const u=userRef.current;
     if(!fb||!u||!ready.current)return;
     if(writing.current){queued.current=true;return;}   // uçuştaki yazım bitince tekrar denenir → eski yazım yeniyi ezemez
+    const gen=++writeGen.current;      // bu turun kimliği: bırakılmış bir tur dönerse artık hiçbir şeye dokunmaz
+    const stale=()=>gen!==writeGen.current;
     /* Bağlantısız geçen bir aradan sonraki ilk yazım: önce sunucudaki hâli oku. Arada başka
        bir cihaz yazdıysa körlemesine üzerine yazmak yerine birleştir — böylece "tablet
-       çevrimdışıyken çalıştı, dönünce laptopta yapılanları sildi" durumu olmaz. */
-    if(!fromServer.current&&ready.current){
-      writing.current=true;
+       çevrimdışıyken çalıştı, dönünce laptopta yapılanları sildi" durumu olmaz.
+       Sekme GİZLİYKEN bu okuma atlanır. Telefon cebe girerken yapılan son yazım tam da
+       burada takılıyordu: bağlantı kopmak üzereyken açılan okuma hiç sonuçlanmıyor, kilit
+       hiç açılmıyor ve o cihaz bir daha yazamıyordu. Kaçırılan bir şey de olmuyor —
+       dinleyici geri dönüşte uzak hâli zaten getirip birleştiriyor. */
+    if(!fromServer.current&&ready.current&&!isHidden()){
+      writing.current=true;writeStarted.current=Date.now();
       try{
         // Önce yalnızca manifest okunur (tek doküman): rev bizimkinden yeni değilse
         // arada kimse yazmamış demektir, parçaları çekmeye hiç gerek kalmaz.
-        const md=await fb.firestore().collection(COL).doc(u.uid).get({source:'server'});
+        const md=await withTimeout(fb.firestore().collection(COL).doc(u.uid).get({source:'server'}),SERVER_READ_MS);
         const mv=md.exists?md.data():null;
-        const sv=(mv&&typeof mv.rev==='number'&&mv.rev>lastRev.current)?await readServer(fb,u.uid):{json:null};
+        const sv=(mv&&typeof mv.rev==='number'&&mv.rev>lastRev.current)?await withTimeout(readServer(fb,u.uid),SERVER_READ_MS):{json:null};
         if(sv.json!=null&&sv.json!==lastSynced.current&&sv.json!==ancestor.current){
           let sp=null;try{sp=migrate(JSON.parse(sv.json));}catch(e){}
           if(sp){lastRev.current=Math.max(lastRev.current,sv.rev||0);prevN.current=sv.n;applyRemote(sv.json,sp);}
         }
         fromServer.current=true;   // sunucuyu şimdi okuduk; sıradaki yazımlar tekrar okumaz
-      }catch(e){/* okunamadı (hâlâ çevrimdışı) → yazımı yine de dene, dinleyici dönüşte birleştirir */}
+      }catch(e){/* okunamadı ya da zamanında gelmedi → yazımı yine de dene, dinleyici dönüşte birleştirir */}
+      // Sıra önemli: bu tur bırakıldıysa kilit ARTIK BİZİM DEĞİL — yerine geçen tur onu
+      // tutuyor olabilir, dokunmadan çekiliyoruz.
+      if(stale())return;
       writing.current=false;
     }
     const json=ser(dataRef.current);
@@ -21454,13 +21488,16 @@ function useCloudSync(data,setData){
        durumu dolu bir durumun üstüne yazarken sorulacak bir şey yok. */
     if(!hasRealData(dataRef.current)){
       let prevReal=false;try{prevReal=!!lastSynced.current&&hasRealData(JSON.parse(lastSynced.current));}catch(e){}
-      if(prevReal){setStatus('synced');return;}
+      // dirty da temizlenir: yazılacak bir şey olmadığına burada karar verildi. Kalsaydı
+      // dinleyici bir daha hiç yeşil yakamazdı ("yerelde yazılmamış değişiklik var" sanırdı).
+      if(prevReal){dirty.current=false;setStatus('synced');return;}
     }
     setStatus('syncing');
-    writing.current=true;
+    writing.current=true;writeStarted.current=Date.now();
     try{
       const col=fb.firestore().collection(COL);
       const parts=await splitChunksAsync(json);const n=parts.length;
+      if(stale())return;   // bu tur bırakıldı (bkz. takılan yazım gözcüsü) → yerini alan tur yazsın
       let rev=Date.now();if(rev<=lastRev.current)rev=lastRev.current+1;   // rev daima artar (saat geri gitse bile)
       const ids=parts.map(p=>p.h);
       /* Bu hâlin kimliğini ŞİMDİ kaydet, commit'lerden SONRA değil. Parça adları içeriğin
@@ -21497,6 +21534,11 @@ function useCloudSync(data,setData){
       for(const g of groups)await commitOps(fb,col,g);
       // Parçaların HEPSİ yerinde → manifest TEK BAŞINA yazılır: durumu çeviren tek atomik adım.
       await commitOps(fb,col,[{id:u.uid,data:{userId:u.uid,v:2,n,rev,ids}}]);
+      /* Bu tur bırakılmışsa (ağ takıldı sanıldı, yerine yenisi başladı) ve şimdi geç de olsa
+         döndüyse: yazdığı hâl buluta gitti, ama ekrandaki hâl artık o değil. "Senkron" demek
+         ya da lastSynced'i geriye çekmek, yeni turun yazacağını bastırıp cihazı yanlışlıkla
+         yeşile boyardı. Bulutu bozmadan çekiliyor; sonucu yeni tur belirler. */
+      if(stale())return;
       lastRev.current=rev;prevN.current=n;lastSynced.current=json;lsSave(u.uid,json);
       /* The cloud has this state now, so any device file it no longer points at is safe to
          let go — checked against the state on screen too, since the coach may have edited
@@ -21509,6 +21551,7 @@ function useCloudSync(data,setData){
         .concat(known.filter(c=>c.rev>=rev&&!keep.has(c.id)));
       gcOldChunks(fb,u.uid,rev,keep,known);   // artık gösterilmeyenleri arkada temizle (başarısız olsa da veri sağlam)
     }catch(e){
+      if(stale())return;   // bırakılmış turun hatası yeni turun durumunu bozmasın
       console.warn('write',e);setStatus('error');setSyncErr(e.code||e.message||'unknown');
       writing.current=false;
       const rerun=queued.current;queued.current=false;if(rerun)writeNow();   // yeni değişiklik beklemesin
@@ -21981,15 +22024,44 @@ function useCloudSync(data,setData){
        olabilir. İkisinde de "sunucuyla temasım var" güvencesi düşer: dönüşteki ilk yazım,
        arada başka cihaz yazmış mı diye önce sunucuya bakar. */
     const offline=()=>{fromServer.current=false;};
-    const onVis=()=>{if(document.visibilityState==='hidden'){offline();flush();}};
+    /* TAKILAN YAZIMI BIRAK. Bir yazım, ağ "açık görünüp" veri geçirmediğinde sonuçlanmadan
+       asılı kalabilir. Kilit (writing) o yazım bitene kadar başka yazıma izin vermediği için
+       tek bir asılı tur, cihazı kalıcı olarak sarıda bırakıyordu: yeni düzenlemeler yalnızca
+       sıraya giriyor, hiçbiri buluta çıkmıyordu. Belli bir süreden sonra o tur bırakılır —
+       sıra numarası ilerletildiği için geç de olsa dönerse hiçbir şeye dokunamaz — ve
+       yerine yenisi başlatılır. Bulut için bir riski yok: parça adları içerik hash'i,
+       manifest rev'i de daima artıyor, yani en son yazan tur kazanır. */
+    const unstick=()=>{
+      if(!writing.current)return false;
+      if(Date.now()-writeStarted.current<WRITE_STUCK_MS)return false;
+      console.warn('sync: write stuck, retrying');
+      writeGen.current++;writing.current=false;queued.current=false;
+      return true;
+    };
+    /* Telefon geri açıldığında: cepteyken bağlantı kopmuş, dinleyici uyutulmuş, bekleyen
+       yazım askıda kalmış olabilir. Eskiden dönüş için hiçbir şey yapılmıyordu — koç
+       uygulamayı açıyor, gösterge sarıda kalıyor ve ancak sayfayı yenileyince düzeliyordu.
+       Artık dönüşte takılan tur bırakılıp bekleyen değişiklik yeniden gönderiliyor. */
+    const resume=()=>{
+      fromServer.current=false;                       // dönüşteki ilk yazım sunucuya bir kez baksın
+      const freed=unstick();
+      if(freed||dirty.current)writeNow();
+      lsFlush();
+    };
+    const onVis=()=>{if(document.visibilityState==='hidden'){offline();flush();}else resume();};
+    const watchdog=setInterval(()=>{if(unstick())writeNow();},15000);
     // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
     // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
     const onBeforeUnload=e=>{flush();if(dirty.current||writing.current){e.preventDefault();e.returnValue='';}};
     document.addEventListener('visibilitychange',onVis);
     window.addEventListener('offline',offline);
+    window.addEventListener('online',resume);
+    window.addEventListener('pageshow',resume);
     window.addEventListener('pagehide',flush);
     window.addEventListener('beforeunload',onBeforeUnload);
-    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('offline',offline);window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',onBeforeUnload);};
+    return()=>{clearInterval(watchdog);document.removeEventListener('visibilitychange',onVis);window.removeEventListener('offline',offline);
+      window.removeEventListener('online',resume);window.removeEventListener('pageshow',resume);
+      window.removeEventListener('pagehide',flush);window.removeEventListener('beforeunload',onBeforeUnload);};
   },[user]);
 
   /* Düzenlemeleri debounce ile yaz. Bekleme süresi durumun büyüklüğüne göre ayarlanır:
