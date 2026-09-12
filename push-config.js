@@ -24,7 +24,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 var COACHOS_FCM = {
   // ⬇ Firebase Console'dan alınan Web Push sertifikası (açık anahtar).
-  vapidKey: '',
+  vapidKey: 'BHRivluup0lAp37k6WfP5hXgiu9Y6Zi130jzrqC4NihKDwiijWJsAleKiTKe_VzdZUWKHmqUrlMP0Peaorkz6Og',
 
   // index.html ve checkin.html'deki yapılandırmanın aynısı.
   firebase: {
