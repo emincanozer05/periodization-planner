@@ -78,8 +78,9 @@ Kayıt kimliği `ci-<tür>-<sporcuId>-<tarih>` biçiminde üretilir. Bunun iki s
 Koçun elle düzelttiği wellness alanları (`manualEdits`) yeni gönderimde korunur;
 koçun sildiği bir sRPE check-in'i geri gelmez.
 
-Wellness gönderiminde orta ya da yüksek şiddette bir ağrı bölgesi işaretlenmişse,
-aynı anda antrenör Telegram grubuna o sporcuya ait bir uyarı gider — kurulumu
+Wellness gönderiminde skor 3.5'in altındaysa ya da orta/yüksek şiddette bir ağrı
+bölgesi işaretlenmişse, aynı anda antrenör Telegram grubuna o sporcuya ait bir
+uyarı gider — kurulumu
 [`TELEGRAM_SETUP.md`](TELEGRAM_SETUP.md)'de. Bu isteğe bağlı: Cloud Function
 kurulmazsa formlar bugünkü gibi çalışmaya devam eder.
 

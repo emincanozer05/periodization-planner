@@ -11,8 +11,10 @@
      painMap                     → { 'Bölge': 1|2|3 }, 1 hafif · 2 orta · 3 yüksek
    ═══════════════════════════════════════════════════════════════════════════ */
 
-// Uyarıyı açan şiddet. 1 (hafif) bilerek dışarıda: sporcuların çoğunda her sabah
-// bir yerde hafif bir şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
+// Uyarıyı açan iki eşik. İkisi de tek başına yeterli; bir arada olmaları gerekmiyor.
+const WELLNESS_THRESHOLD = 3.5;      // bunun ALTI tek başına uyarı sebebi
+// 1 (hafif) bilerek dışarıda: sporcuların çoğunda her sabah bir yerde hafif bir
+// şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
 const PAIN_MIN_SEVERITY = 2;         // orta (2) ve yüksek (3)
 
 // Puan → renkli daire. Uygulamanın kendi wellness skalasıyla aynı yön: 1 kötü,
@@ -49,13 +51,17 @@ function painBySeverity(payload) {
   return out;
 }
 
-/* Uyarı kriteri: en az bir bölgede orta (2) ya da yüksek (3) ağrı.
+/* Uyarı kriteri — İKİ BAĞIMSIZ SEBEP, biri yetiyor:
+     1) Overall Wellness < 3.5
+     2) en az bir bölgede orta (2) ya da yüksek (3) ağrı
 
-   Wellness skoru karara girmiyor — bilerek. İyi uyumuş, dinç ama dizinde orta
-   şiddette ağrı olan sporcu, ekibin sabah görmesi gereken tam olarak o sporcu;
-   ortalaması yüksek diye onu susturmak uyarının işini ters yapardı. Skor
-   mesajda bilgi olarak duruyor, eşik olarak değil. */
+   İkisini birden şart koşmak her iki yönde de yanlış sporcuyu susturuyordu:
+   ağrısı olmadan berbat uyumuş sporcu da, iyi dinlenmiş ama dizi ağrıyan sporcu
+   da ekibin sabah görmesi gereken kişiler. Biri düşük skoru, öteki ağrıyı
+   anlatıyor; ikisi ayrı bilgi, ayrı sebep. */
 function shouldAlert(payload) {
+  const score = overallWellness(payload);
+  if (score != null && score < WELLNESS_THRESHOLD) return true;
   const pain = painBySeverity(payload);
   return pain[3].length > 0 || pain[2].length > 0;
 }
@@ -113,6 +119,6 @@ function buildMessage(sub) {
 }
 
 module.exports = {
-  PAIN_MIN_SEVERITY,
+  WELLNESS_THRESHOLD, PAIN_MIN_SEVERITY,
   overallWellness, painBySeverity, shouldAlert, buildMessage,
 };

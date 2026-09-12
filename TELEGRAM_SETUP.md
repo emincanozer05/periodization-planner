@@ -11,16 +11,23 @@ Eklenen tek şey `checkins` dokümanının üstündeki `telegramAlert*` damgalar
 
 ## Alarm ölçütü
 
-**En az bir bölgede orta ya da yüksek ağrı** — `payload.painMap` içinde değeri `2`
-veya `3` olan bir bölge. Başka koşul yok.
+İki **bağımsız** sebep — biri yetiyor, ikisi birden gerekmiyor:
 
-Hafif ağrı (`1`) ne kararı etkiler ne de mesajda görünür: neredeyse her sabah
-birinde bir yerde hafif bir şey oluyor ve onları da bildirmek listeyi okunmaz
-hale getiriyor.
+| | Sebep | Veri |
+|---|---|---|
+| 1 | Overall Wellness `< 3.5` | `payload.sleep`, `payload.fatigue`, `payload.soreness` ortalaması — uygulamanın kendi formülü (`readiness`) |
+| 2 | En az bir bölgede **orta** ya da **yüksek** ağrı | `payload.painMap` içinde değeri `2` veya `3` olan bir bölge |
 
-Wellness skoru **karara girmiyor**, mesajda bilgi olarak duruyor. İyi uyumuş,
-dinç ama dizinde orta şiddette ağrı olan sporcu ekibin sabah görmesi gereken tam
-o sporcu; ortalaması yüksek diye onu susturmak uyarının işini ters yapardı.
+İkisini birden şart koşmak her iki yönde de yanlış sporcuyu susturuyordu: ağrısı
+olmadan berbat uyumuş sporcu da, iyi dinlenmiş ama dizi ağrıyan sporcu da ekibin
+sabah görmesi gereken kişiler.
+
+Hafif ağrı (`1`) tek başına uyarı vermez ve mesajda hiç görünmez: neredeyse her
+sabah birinde bir yerde hafif bir şey oluyor ve onları da bildirmek listeyi
+okunmaz hale getiriyor.
+
+Tam `3.5` uyarı vermez (kural "kesin küçük"). Üç skorun üçü de boş bırakılmış ve
+ağrı da işaretlenmemişse elde ölçüt kalmaz, uyarı çıkmaz.
 
 ---
 
@@ -144,10 +151,15 @@ form akışı yine etkilenmez.
 cd functions && npm test
 ```
 
-Ölçütün senaryoları (ağrı yok / yalnız hafif / orta / yüksek, düşük ve yüksek
-skorla) ve mesaj biçimi burada doğrulanıyor.
+İki sebebin de her köşesi burada doğrulanıyor: ağrısız düşük skor, ağrısız yüksek
+skor, tam 3.5 eşiği, yüksek skorla orta/yüksek ağrı, yalnız hafif ağrı; ve mesaj
+biçimi.
 
-Uçtan uca denemek için: `wellness.html#k=<token>` formunu aç, ağrı tablosunda bir
-bölgeye **Orta** ya da **Yüksek** işaretle, gönder. Grupta mesaj birkaç saniye
-içinde görünür. Ağrı tablosunu boş bırakıp gönderirsen mesaj gelmemeli.
+Uçtan uca denemek için üç gönderim yeter:
+
+| Ne seçilecek | Beklenen |
+|---|---|
+| Uyku 3 · yorgunluk 3 · kas ağrısı 3, ağrı tablosu **boş** | mesaj **gelir** (skor 3.0) |
+| Uyku 5 · yorgunluk 5 · kas ağrısı 5, bir bölgeye **Orta** | mesaj **gelir** (ağrı) |
+| Uyku 5 · yorgunluk 5 · kas ağrısı 5, ağrı tablosu **boş** | mesaj **gelmez** |
 Log: `firebase functions:log --only wellnessTelegramAlert`.
