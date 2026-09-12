@@ -21,32 +21,39 @@ t('boş bırakılan kas ağrısı ortalamaya girmiyor', () => {
 });
 t('hiç skor yoksa null', () => assert.strictEqual(overallWellness({}), null));
 
-console.log('\nAlarm kriteri — orta ya da yüksek ağrı');
-t('ağrı yok · skor yüksek → mesaj YOK', () => {
+console.log('\nAlarm kriteri — iki bağımsız sebep');
+t('ağrı yok · skor 4.0 → mesaj YOK', () => {
   assert.strictEqual(shouldAlert(P(4, 4, 4)), false);
 });
-t('ağrı yok · skor düşük → mesaj YOK', () => {
+t('ağrı yok · skor 3.4 → mesaj VAR (skor tek başına yeter)', () => {
   assert.strictEqual(overallWellness(P(4, 3, 3.2)), 3.4);
-  assert.strictEqual(shouldAlert(P(4, 3, 3.2)), false);
+  assert.strictEqual(shouldAlert(P(4, 3, 3.2)), true);
 });
-t('düşük skor + orta ağrı → mesaj VAR', () => {
-  assert.strictEqual(shouldAlert(P(4, 3, 3.2, { 'Sırt': 2 })), true);
+t('ağrı yok · tam 3.5 → mesaj YOK (kural: kesin küçük)', () => {
+  assert.strictEqual(overallWellness({ sleep: 4, fatigue: 3 }), 3.5);
+  assert.strictEqual(shouldAlert({ sleep: 4, fatigue: 3 }), false);
 });
-t('düşük skor + yüksek ağrı → mesaj VAR', () => {
-  assert.strictEqual(shouldAlert(P(3, 3, 3, { 'Quadriceps': 3 })), true);
-});
-t('YÜKSEK skor + yüksek ağrı → mesaj VAR (skor artık karara girmiyor)', () => {
-  assert.strictEqual(shouldAlert(P(4, 4, 4, { 'Quadriceps': 3 })), true);
-});
-t('YÜKSEK skor + orta ağrı → mesaj VAR', () => {
+t('skor 5.0 · orta ağrı → mesaj VAR (ağrı tek başına yeter)', () => {
   assert.strictEqual(shouldAlert(P(5, 5, 5, { 'Omuz': 2 })), true);
 });
-t('SADECE hafif ağrı → mesaj YOK, skor ne olursa olsun', () => {
-  assert.strictEqual(shouldAlert(P(3, 3, 3, { 'Diz': 1 })), false);
-  assert.strictEqual(shouldAlert(P(5, 5, 5, { 'Diz': 1 })), false);
+t('skor 5.0 · yüksek ağrı → mesaj VAR', () => {
+  assert.strictEqual(shouldAlert(P(5, 5, 5, { 'Quadriceps': 3 })), true);
 });
-t('skor hiç cevaplanmamış ama ağrı var → mesaj VAR', () => {
+t('düşük skor + ağrı birlikte → mesaj VAR', () => {
+  assert.strictEqual(shouldAlert(P(3, 3, 3, { 'Bel': 3 })), true);
+});
+t('iyi skor + SADECE hafif ağrı → mesaj YOK', () => {
+  assert.strictEqual(shouldAlert(P(5, 5, 5, { 'Diz': 1 })), false);
+  assert.strictEqual(shouldAlert(P(4, 4, 4, { 'Diz': 1 })), false);
+});
+t('düşük skor + hafif ağrı → mesaj VAR (sebep skor)', () => {
+  assert.strictEqual(shouldAlert(P(3, 3, 3, { 'Diz': 1 })), true);
+});
+t('hiç skor yok · ağrı var → mesaj VAR', () => {
   assert.strictEqual(shouldAlert({ painMap: { 'Bel': 3 } }), true);
+});
+t('hiç skor yok · ağrı yok → mesaj YOK', () => {
+  assert.strictEqual(shouldAlert({}), false);
 });
 
 console.log('\nMesaj');
@@ -74,11 +81,16 @@ t('tarih en üstte, başlığın hemen altında', () => {
 });
 t('eşik açıklaması satırı yok', () => {
   assert.ok(!msg.includes('⚠️'));
-  assert.ok(!msg.includes('3.5'));
+  assert.ok(!msg.includes('< 3.5'));
 });
 t('son satır Overall Wellness', () => {
   const rows = msg.split('\n');
   assert.ok(rows[rows.length - 1].startsWith('Overall Wellness:'));
+});
+t('ağrı yoksa Ağrı Durumu bloğu hiç yazılmıyor', () => {
+  const m = buildMessage({ athleteName: 'A', date: '2026-09-12', payload: P(3, 3, 3) });
+  assert.ok(!m.includes('Ağrı Durumu'));
+  assert.ok(m.includes('Overall Wellness: 🟡 3/5'));
 });
 t('yalnız orta ağrı varsa sadece sarı satır çıkıyor', () => {
   const m = buildMessage({ athleteName: 'A', payload: P(3, 3, 3, { 'Sırt': 2, 'Omuz': 2 }) });
