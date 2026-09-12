@@ -2039,9 +2039,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rost-tabs i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:700;color:var(--dim);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1.5px 8px;min-width:26px;text-align:center;transition:color .15s,background .15s,border-color .15s}
 .rost-tabs button.on i{color:var(--accent2);background:var(--accent-bg);border-color:var(--border2)}
 .stf-wrap{display:flex;flex-direction:column;gap:16px}
-.stf-sec{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px 20px}
+/* No emoji, no icon glyph — the category reads by name and by a colour, carried the same
+   way the app already marks a category elsewhere: a solid accent down the left edge of
+   the card (the calendar's own session-type keyline is the same idea). The colour still
+   separates five sections at a glance; it just does it without standing in for a symbol
+   nobody agreed on the meaning of. */
+.stf-sec{background:var(--panel);border:1px solid var(--border);border-left-width:4px;border-radius:16px;padding:18px 20px 20px}
 .stf-h{display:flex;align-items:center;gap:13px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.stf-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:17px;line-height:1;flex:none;border:1px solid}
 .stf-hd{min-width:0}
 .stf-t{font-size:16px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
 .stf-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.02em}
@@ -2053,7 +2057,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .stf-c:hover .stf-x{opacity:1}
 .stf-x:hover{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.12)}
 .stf-top{display:flex;align-items:center;gap:12px;padding-right:28px}
-.stf-av{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:15px;font-weight:700;flex:none;border:1.5px solid;letter-spacing:.02em}
+.stf-av{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;flex:none;border:1.5px solid;letter-spacing:.02em;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
+.stf-av:hover{transform:scale(1.05)}
+.stf-av img{width:100%;height:100%;object-fit:cover;display:block}
+/* The camera glyph only shows up once there's a reason to click — on hover, or once a
+   photo is already there and might need changing. Before that the initials carry the
+   card, the same way an athlete card reads before its own photo is added. */
+.stf-av .cam{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,11,13,.55);color:#fff;opacity:0;transition:opacity .15s}
+.stf-av:hover .cam{opacity:1}
+.stf-av.has .cam{opacity:0}
+.stf-av.has:hover .cam{opacity:1}
 .stf-f{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 .stf-f>label{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em}
 /* The fields read as the card's own text until they are touched: a name is a name, and
@@ -4226,15 +4239,15 @@ const cleanPhone=v=>String(v||'').replace(/[^\d\s\-()]/g,'').replace(/\s{2,}/g,'
    glance. Nothing is capped: a club with two head coaches is a club that has two. */
 const STAFF_ROLES=[
   {id:'head',       tr:'Baş Antrenör',            en:'Head Coach',
-   str:'baş antrenör',      sen:'head coach',        icon:'★', c:'#f59e0b', bg:'rgba(245,158,11,.12)'},
+   str:'baş antrenör',      sen:'head coach',        c:'#f59e0b', bg:'rgba(245,158,11,.12)'},
   {id:'assistant',  tr:'Yardımcı Antrenörler',    en:'Assistant Coaches',
-   str:'yardımcı antrenör', sen:'assistant coach',   icon:'✦', c:'#0094ff', bg:'rgba(0,148,255,.12)'},
+   str:'yardımcı antrenör', sen:'assistant coach',   c:'#0094ff', bg:'rgba(0,148,255,.12)'},
   {id:'performance',tr:'Performans Antrenörleri', en:'Performance Coaches',
-   str:'performans antrenörü',sen:'performance coach',icon:'⚡', c:'#10b981', bg:'rgba(16,185,129,.12)'},
+   str:'performans antrenörü',sen:'performance coach',c:'#10b981', bg:'rgba(16,185,129,.12)'},
   {id:'physio',     tr:'Fizyoterapistler',        en:'Physiotherapists',
-   str:'fizyoterapist',     sen:'physiotherapist',   icon:'✚', c:'#ec4899', bg:'rgba(236,72,153,.12)'},
+   str:'fizyoterapist',     sen:'physiotherapist',   c:'#ec4899', bg:'rgba(236,72,153,.12)'},
   {id:'individual', tr:'Bireysel Antrenörler',    en:'Individual Coaches',
-   str:'bireysel antrenör', sen:'individual coach',  icon:'◎', c:'#8b5cf6', bg:'rgba(139,92,246,.12)'},
+   str:'bireysel antrenör', sen:'individual coach',  c:'#8b5cf6', bg:'rgba(139,92,246,.12)'},
 ];
 const STAFF_ROLE_BY=STAFF_ROLES.reduce((m,r)=>(m[r.id]=r,m),{});
 /* The singulars are stored lower-case because they read mid-sentence as often as they
@@ -4244,7 +4257,7 @@ const capTR=x=>x?x.charAt(0).toLocaleUpperCase('tr-TR')+x.slice(1):x;
 /* A staff row, whatever shape it arrived in: an unknown role falls back to the first
    category rather than disappearing off a page that only draws the five it knows. */
 const normStaff=m=>({id:(m&&m.id)||uid(),role:(m&&STAFF_ROLE_BY[m.role])?m.role:STAFF_ROLES[0].id,
-  name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL});
+  name:(m&&m.name)||'',phone:(m&&m.phone)||'',phoneCode:(m&&m.phoneCode)||DEFAULT_DIAL,photo:(m&&m.photo)||null});
 const POSITIONS={Basketball:['Guard','Forward','Center'],'Football (Soccer)':['GK','CB','LB','RB','CDM','CM','CAM','LW','RW','ST'],Volleyball:['Setter','Outside','Middle','Opposite','Libero'],default:['Player']};
 /* Basketball rosters are kept on the three positions a coach actually programmes for.
    Records written before that carry the five-code set, so every read of a position —
@@ -19600,12 +19613,22 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai}){
    which is the one trip where it matters.
    ========================================================= */
 function StaffCard({m,role,upd,del,fresh}){
-  const initials=(m.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase();
+  const initials=(m.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const joined=fullPhone(m);
+  const photoRef=useRef(null);
   return(<div className="stf-c">
     <button className="stf-x" title={L('Ekipten çıkar','Remove from staff')} onClick={del}>✕</button>
     <div className="stf-top">
-      <div className="stf-av" style={{color:role.c,borderColor:role.c,background:role.bg}}>{initials||role.icon}</div>
+      <div className={`stf-av${m.photo?' has':''}`} style={{color:role.c,borderColor:role.c,background:role.bg}}
+        onClick={()=>photoRef.current?.click()} title={L('Fotoğrafı değiştirmek için tıkla','Click to change photo')}>
+        {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:initials}
+        <span className="cam">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </span>
+        <input type="file" accept="image/*" ref={photoRef} className="hidden"
+          onClick={e=>e.stopPropagation()}
+          onChange={e=>{const f=e.target.files?.[0];if(f)handleImageUpload(f,'staff',d=>upd({photo:d}));e.target.value='';}}/>
+      </div>
       <div className="stf-f">
         <label>{L('Ad Soyad','Full name')}</label>
         <input className="stf-nm" value={m.name||''} placeholder={L('Ad Soyad','Full name')}
@@ -19644,9 +19667,8 @@ function StaffPanel({staff,save}){
   return(<div className="stf-wrap">
     {STAFF_ROLES.map(r=>{
       const list=staff.filter(m=>m.role===r.id);
-      return(<section key={r.id} className="stf-sec">
+      return(<section key={r.id} className="stf-sec" style={{borderLeftColor:r.c}}>
         <div className="stf-h">
-          <div className="stf-ic" style={{color:r.c,borderColor:r.c,background:r.bg}}>{r.icon}</div>
           <div className="stf-hd">
             <div className="stf-t">{L(r.tr,r.en)}</div>
             <div className="stf-s">{list.length
@@ -25340,7 +25362,7 @@ function App(){
     {label:L('Çalışma Alanı','Workspace'),items:[
       {id:'season',label:L('Sezon','Season'),icon:NAV_ICONS.season},
       {id:'calendar',label:L('Takvim','Calendar'),icon:NAV_ICONS.calendar},
-      {id:'athletes',label:L('Sporcular','Athletes'),icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
+      {id:'athletes',label:L('Kadro','Roster'),icon:NAV_ICONS.athletes,count:(team.athletes||[]).length},
       {id:'evaluation',label:L('Test ve Değerlendirme','Testing & Assessment'),icon:NAV_ICONS.evaluation},
       {id:'reports',label:L('Yük Takibi','Load Monitoring'),icon:NAV_ICONS.reports},
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
