@@ -9,7 +9,7 @@
 const assert = require('assert');
 const { section, t, ta } = require('./harness');
 const { claimForAlert } = require('../claim');
-const { alertDocId, rosterDocId, alertLink, athleteLink, safe } = require('../ids');
+const { alertDocId, rosterDocId, alertLink, staffFeedLink, appAlertsLink, safe } = require('../ids');
 
 /* ── Sahte Firestore ──────────────────────────────────────────────────────────
    Gerçek transaction semantiğinin test için gereken kadarı: tx.get okur,
@@ -157,32 +157,32 @@ t('link içindeki kimlik kaçırılıyor', () => {
   assert.ok(alertLink('https://e.com', 'a b').endsWith('#alert=a%20b'));
 });
 
-/* ── Kaydı olmayan bildirimin adresi ───────────────────────────────────────
-   Rutin gönderim uyarı kaydı açmıyor, dolayısıyla tıklanacak bir alertId de yok.
-   Bildirim yine sporcunun Wellness ekranında açılmalı. */
-section('Sporcu linki — kaydı olmayan bildirim');
+/* ── Bildirim kime, nereye açılıyor ───────────────────────────────────────
+   Bildirim tek bir sporcunun ekranını değil, açan kişinin KENDİ uyarı listesini
+   açıyor: telefonu eline alan antrenör sabahın tamamına bakmak istiyor. */
+section('Kişisel bildirim adresi');
 
-t('sporcu ve takım adrese giriyor', () => {
+t('ekip üyesi kendi uyarı sayfasına düşüyor', () => {
   assert.strictEqual(
-    athleteLink('https://example.com/app/', 'a1', 't1'),
-    'https://example.com/app/index.html#athlete=a1&team=t1');
+    staffFeedLink('https://periodization-planner-rust.vercel.app/', 'TOK123'),
+    'https://periodization-planner-rust.vercel.app/alerts.html#k=TOK123');
 });
-t('takım bilinmiyorsa yalnızca sporcu', () => {
+t('alt klasörde yayınlanmış kurulum da çalışıyor', () => {
   assert.strictEqual(
-    athleteLink('https://example.com/', 'a1', ''),
-    'https://example.com/index.html#athlete=a1');
+    staffFeedLink('https://example.com/app/index.html?x=1#k=eski', 'T1'),
+    'https://example.com/app/alerts.html#k=T1');
 });
-t('uyarı linkiyle aynı adres kurallarına uyuyor', () => {
+t('token adres için kaçırılıyor', () => {
   assert.strictEqual(
-    athleteLink('https://example.com/app/index.html?x=1#alert=eski', 'a1', 't1'),
-    'https://example.com/app/index.html#athlete=a1&team=t1');
+    staffFeedLink('https://example.com/', 'a b&c'),
+    'https://example.com/alerts.html#k=a%20b%26c');
 });
-t('adres ya da sporcu yoksa link yok', () => {
-  assert.strictEqual(athleteLink('', 'a1', 't1'), '');
-  assert.strictEqual(athleteLink('https://example.com/', '', 't1'), '');
+t('token ya da adres yoksa link yok — yanlış yere açmaktansa hiç açma', () => {
+  assert.strictEqual(staffFeedLink('https://example.com/', ''), '');
+  assert.strictEqual(staffFeedLink('https://example.com/', undefined), '');
+  assert.strictEqual(staffFeedLink('', 'T1'), '');
 });
-t('kimlikler adres için kaçırılıyor', () => {
-  assert.strictEqual(
-    athleteLink('https://example.com/', 'a 1&x=2', 't/1'),
-    'https://example.com/index.html#athlete=a%201%26x%3D2&team=t%2F1');
+t('koçun kendi cihazı uygulamanın uyarı ekranına düşüyor', () => {
+  assert.strictEqual(appAlertsLink('https://example.com/app/'), 'https://example.com/app/index.html#alerts');
+  assert.strictEqual(appAlertsLink(''), '');
 });

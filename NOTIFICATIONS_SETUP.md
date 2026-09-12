@@ -5,10 +5,16 @@ telefonlarına **push bildirimi** gider — **her gönderimde**, gönder'e bası
 
 Kriter bildirimi açıp kapatmıyor; bildirimin **seviyesini** söylüyor:
 
-| Seviye | Ne zaman | Telefonda başlık | Uyarı kaydı |
-|---|---|---|---|
-| **Uyarı** | aşağıdaki kriter karşılanıyorsa | *CoachOS Wellness Uyarısı* | açılır |
-| Rutin | diğer her gönderim | *CoachOS Wellness* | açılmaz |
+| Seviye | Ne zaman | Telefonda başlık |
+|---|---|---|
+| **Uyarı** | aşağıdaki kriter karşılanıyorsa | *CoachOS Wellness Uyarısı* |
+| Rutin | diğer her gönderim | *CoachOS Wellness* |
+
+**Bildirime tıklayınca** kişi kendi listesini açar — tek bir sporcunun ekranını
+değil: ekip üyesi kartındaki kendi bildirim linkini (`alerts.html#k=…`), koç ise
+uygulamanın **Wellness Uyarıları** ekranını. Bildirimi yollayan sporcu listenin
+başında durur, ama aynı ekranda kadronun tamamı görünür. Liste her gönderimi
+taşır; kriteri aşanlar sebebiyle (*Düşük skor* / *Ağrı*) işaretlidir.
 
 Aynı sporcu aynı gün ikinci kez gönderirse telefon yine haber verir; bildirim
 alanında yeni satır açmak yerine o sporcunun satırını günceller — uygulamanın
@@ -217,7 +223,7 @@ dönüşmüyor, service worker'ın önbelleği yok.
 | 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | bildirim gelir, **Uyarı** (ağrı tek başına yeter) |
 | 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | bildirim gelir, **Uyarı** (skor 3.0) |
 | 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | bildirim gelir, **Uyarı** (skor 5.0 ama ağrı var) |
-| 6 | bildirime tıkla | sporcunun Wellness ekranı açılır (uyarı da rutin de) |
+| 6 | bildirime tıkla | kişinin kendi uyarı listesi açılır, sporcu en üstte |
 | 7 | aynı sporcu aynı gün ikinci kez gönderir | telefon yine haber verir, satır **güncellenir** |
 
 2 numaralı test en kritiği: tam 3.5 **uyarı** değil — ama bildirim yine gelir.
@@ -248,16 +254,20 @@ Function logları: `firebase functions:log --only wellnessAlert`
 
 | Koleksiyon | Yazan | Okuyan |
 |---|---|---|
-| `wellness_alerts` | **yalnızca Cloud Function** (yalnızca uyarı seviyesi) | koç (tüm takımları) · ekip üyesi (yalnızca kendi takımı) |
+| `wellness_alerts` | **yalnızca Cloud Function** (her gönderim) | koç (tüm takımları) · ekip üyesi (yalnızca kendi takımı) |
 | `push_tokens` | cihazın sahibi (kendi kaydı) | **yalnızca Cloud Function** |
 | `staff_links` | koç | adresi bilen |
 | `staff_members` | ekip üyesi (kendi kaydı, linkiyle doğrulanır) | kendisi |
 | `alert_roster` | koç | **yalnızca Cloud Function** |
 
-Rutin gönderimler kayıt açmaz — açsaydı uyarı listesi her sabah bütün kadroyla
-dolar, son 200 kaydı gösteren liste birkaç günde gerçek uyarıları ekrandan
-düşürürdü. Rutin bildirime tıklayan sporcunun Wellness ekranında açılır; veri
-zaten orada.
+`alert_roster` her ekip üyesinin **bildirim linki adresini** de taşıyor — sunucu
+bildirimi kişinin kendi sayfasına açabilsin diye. Kadroda bir link oluşturulduğunda
+ya da geçersiz kılındığında özet kendiliğinden tazeleniyor.
+
+Kayıt her gönderim için açılıyor ve `level` alanı (`alert` / `info`) hangisinin
+uyarı olduğunu söylüyor. Sebebi: bildirime tıklayan kişi takımın listesine
+düşüyor; liste yalnızca uyarıları taşısaydı, rutin bir bildirimi açan kişi boş
+sayfa görürdü. Ekranlarda "Tümü / Uyarılar" süzgeci var.
 
 **1 sporcu = 1 uyarı.** Aynı sabah beş sporcu kriterleri karşılarsa beş ayrı kayıt
 oluşur; birleştirilmezler. Uyarı kaydının adı sporcu + tarihten türediği için

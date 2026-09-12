@@ -25291,7 +25291,9 @@ const alertRosterId=(uid_,teamId)=>`${uid_}__${teamId}`;
 function alertRosterRev(team){
   const parts=[(team.setup&&team.setup.teamName)||''];
   (team.staff||[]).forEach(m=>parts.push(
-    [m.id,m.role,(m.name||'').trim(),(m.athleteIds||[]).slice().sort().join('+')].join(':')));
+    /* alertToken damgada: link oluşturulduğunda ya da geçersiz kılındığında özetin
+       tazelenmesi gerekiyor — sunucu bildirimi o adrese açıyor. */
+    [m.id,m.role,(m.name||'').trim(),(m.athleteIds||[]).slice().sort().join('+'),m.alertToken||''].join(':')));
   const s=parts.join('|');
   let h=5381;
   for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;
@@ -25317,6 +25319,11 @@ async function publishAlertRoster(uid_,team){
       // Sporcu ataması yalnızca bireysel antrenör için anlamlı; diğer dört rol
       // takımın tamamını kapsıyor ve listeyi taşımalarının bir anlamı yok.
       athleteIds:m.role===INDIVIDUAL_ROLE?(m.athleteIds||[]):[],
+      /* Kişinin bildirim linkinin adresi. Sunucu bildirimi bu adrese açıyor:
+         telefonu eline alan antrenör tek bir sporcunun değil, kendi takımının
+         listesinin başında beliriyor. Linki olmayan kişiye bildirim linksiz
+         gidiyor — zaten açacak bir sayfası yok. */
+      alertToken:m.alertToken||'',
     })),
     rev:alertRosterRev(team),updatedAt:new Date().toISOString(),
   });
@@ -26129,6 +26136,10 @@ function AlertsView({data,team,sync,openAlert}){
   const[rows,setRows]=useState(null);      // null = henüz yüklenmedi
   const[err,setErr]=useState('');
   const[scope,setScope]=useState('team');  // team | all
+  /* Liste artık HER wellness gönderimini taşıyor — bildirim de her gönderimde
+     gidiyor ve tıklayan kişi burada sabahın tamamını görmek istiyor. Süzgeç,
+     kriteri aşanları tek başına görmek isteyen için duruyor. */
+  const[kind,setKind]=useState('all');     // all | alert
   const user=sync&&sync.user;
 
   useEffect(()=>{
@@ -26154,14 +26165,18 @@ function AlertsView({data,team,sync,openAlert}){
        'failed-precondition' ile reddediyor; o durumda sırasız sorguya düşülüp
        sıralama yukarıda yapılıyor. Böylece liste indekssiz bir projede de ilk
        günden çalışıyor. */
-    let stop=col.orderBy('date','desc').limit(200).onSnapshot(take,e=>{
+    /* Sınır 200'den yükseltildi: liste artık uyarıları değil bütün gönderimleri
+       taşıyor, ve 25 kişilik bir kadroda 200 satır bir haftayı bile götürmüyordu. */
+    let stop=col.orderBy('date','desc').limit(600).onSnapshot(take,e=>{
       if((e&&e.code)!=='failed-precondition'){fail(e);return;}
-      stop=col.limit(400).onSnapshot(take,fail);
+      stop=col.limit(800).onSnapshot(take,fail);
     });
     return()=>{alive=false;try{stop();}catch(e){}};
   },[user]);
 
-  const list=(rows||[]).filter(a=>scope==='all'||a.teamId===team.id);
+  /* Eski kayıtlarda `level` yok; hepsi uyarıydı, o yüzden yokluk uyarı sayılıyor. */
+  const list=(rows||[]).filter(a=>(scope==='all'||a.teamId===team.id)
+                                  &&(kind==='all'||a.level!=='info'));
   const byDay=[];
   list.forEach(a=>{
     const last=byDay[byDay.length-1];
@@ -26173,12 +26188,16 @@ function AlertsView({data,team,sync,openAlert}){
     <div className="alr-head">
       <div>
         <div className="alr-t">{L('Wellness Uyarıları','Wellness Alerts')}</div>
-        <div className="alr-s">{L('Skor 3.5’in altına düştüğünde ya da orta/yüksek ağrı bildirildiğinde otomatik oluşur.',
-                                  'Raised automatically when the score drops below 3.5 or moderate/high pain is reported.')}</div>
+        <div className="alr-s">{L('Her wellness gönderimi buraya düşer; skor 3.5’in altındaysa ya da orta/yüksek ağrı varsa Uyarı olarak işaretlenir.',
+                                  'Every wellness check-in lands here; it is marked as an Alert when the score is below 3.5 or moderate/high pain is reported.')}</div>
       </div>
       <div className="alr-seg">
         <button className={scope==='team'?'on':''} onClick={()=>setScope('team')}>{team.setup.teamName}</button>
         <button className={scope==='all'?'on':''} onClick={()=>setScope('all')}>{L('Tüm takımlar','All teams')}</button>
+      </div>
+      <div className="alr-seg">
+        <button className={kind==='all'?'on':''} onClick={()=>setKind('all')}>{L('Tümü','All')}</button>
+        <button className={kind==='alert'?'on':''} onClick={()=>setKind('alert')}>{L('Uyarılar','Alerts')}</button>
       </div>
     </div>
 
@@ -26187,8 +26206,10 @@ function AlertsView({data,team,sync,openAlert}){
     {err&&<div className="empty-st" style={{color:'var(--red)'}}>{err}</div>}
     {!err&&rows===null&&<div className="empty-st">{L('Yükleniyor…','Loading…')}</div>}
     {!err&&rows!==null&&list.length===0&&
-      <div className="empty-st">{L('Uyarı yok — sporcuların sabah formlarında kriterleri aşan bir durum görünmüyor.',
-                                   'No alerts — nothing in the morning check-ins has crossed the thresholds.')}</div>}
+      <div className="empty-st">{kind==='alert'
+        ?L('Uyarı yok — sporcuların formlarında kriterleri aşan bir durum görünmüyor.',
+           'No alerts — nothing in the check-ins has crossed the thresholds.')
+        :L('Henüz gönderim yok.','No check-ins yet.')}</div>}
 
     {byDay.map(g=><div key={g.date}>
       <div className="alr-day">{g.date}</div>
@@ -26205,7 +26226,9 @@ function AlertsView({data,team,sync,openAlert}){
           <span className="alr-m">
             <span className="alr-nm">{(a.athleteName||'').trim()||L('İsimsiz sporcu','Unnamed athlete')}</span>
             <span className="alr-why">
-              {(a.reasons||[]).map(ALERT_REASON).join(' + ')}
+              {(a.reasons||[]).length
+                ?(a.reasons||[]).map(ALERT_REASON).join(' + ')
+                :L('Rutin gönderim','Routine check-in')}
               {scope==='all'&&a.teamName?` · ${a.teamName}`:''}
             </span>
           </span>
@@ -26404,10 +26427,16 @@ function App(){
     setAthFocus({athleteId:a.athleteId,tab:'wellness',at:Date.now()});
     setView('athletes');
   };
-  /* Bildirime tıklanınca gelinen adres: index.html#alert=<id> (uyarı kaydı olan
-     bildirim) ya da index.html#athlete=<id>&team=<id> (kriteri karşılamayan rutin
-     gönderim — kaydı yok, sunucu sporcunun kendisini adrese yazıyor). İkisi de
-     aynı yere açılıyor: o sporcunun Wellness ekranı.
+  /* Bildirime tıklanınca gelinen adres.
+
+     index.html#alerts  → Wellness Uyarıları ekranı. Koçun kendi cihazına giden
+                          bildirimler buraya açılıyor: sabahın tamamı bir listede,
+                          bildirimi yollayan sporcu en üstte. (Ekip üyeleri kendi
+                          alerts.html sayfalarına düşüyor; oraya bu uygulama hiç
+                          karışmıyor.)
+     index.html#alert=<id> → tek bir uyarının sporcusu. Telefonlarda duran eski
+                          bildirimler bu adresi taşıyor, o yüzden okunmaya devam
+                          ediyor.
      Bir kez çalışıyor ve adres çubuğunu temizliyor — yoksa sayfa her
      yenilendiğinde koç aynı sporcunun ekranına geri düşerdi. Bulut yüklemesi
      bitmeden çalışmıyor, çünkü takım listesi o ana kadar boş.
@@ -26422,18 +26451,11 @@ function App(){
     if(alertRouted.current||sync.status!=='synced'||!sync.user)return;
     const hash=location.hash||'';
     const m=/[#&]alert=([^&]*)/.exec(hash);
-    const ma=/[#&]athlete=([^&]*)/.exec(hash);
-    if(!m&&!ma)return;
+    const toList=/(^|[#&])alerts($|[&])/.test(hash);
+    if(!m&&!toList)return;
     alertRouted.current=true;
     try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
-    if(ma){
-      /* Sporcu adresten geliyor, okunacak kayıt yok — bir Firestore turu
-         beklemeden doğrudan açılıyor. */
-      const mt=/[#&]team=([^&]*)/.exec(hash);
-      openAlert({athleteId:decodeURIComponent(ma[1]||''),
-                 teamId:mt?decodeURIComponent(mt[1]||''):''});
-      return;
-    }
+    if(toList){setView('alerts');return;}
     const id=decodeURIComponent(m[1]||'');
     const fb=FB();
     if(!fb||!id)return;

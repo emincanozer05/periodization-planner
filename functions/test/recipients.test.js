@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 const assert = require('assert');
 const { section, t } = require('./harness');
-const { eligibleStaff, staffCovers, tokensFor, groupByLang } = require('../recipients');
+const { eligibleStaff, staffCovers, tokensFor, groupByLang, groupByDelivery } = require('../recipients');
 
 const COACH = 'coach-uid-1';
 const TEAM = 'team-u16';
@@ -194,4 +194,43 @@ t('bilinmeyen dil Türkçeye düşüyor', () => {
   const g = groupByLang([TK('a', 's-head', { lang: 'de' }), TK('b', 's-asst', { lang: null })]);
   assert.deepStrictEqual(g.get('tr').map(x => x.token), ['a', 'b']);
   assert.strictEqual(g.has('en'), false);
+});
+
+/* ── Gönderim grupları ─────────────────────────────────────────────────────
+   Adres kişiye özel olduğu için dil tek başına grup anahtarı değil: aynı dili
+   konuşan iki kişi farklı sayfalara açılıyor ve aynı mesajla gidemezler. */
+section('Gönderim grupları');
+
+t('aynı dil + aynı adres tek istekte gidiyor', () => {
+  const g = [...groupByDelivery([
+    { token: 'a', lang: 'tr', link: 'L1' },
+    { token: 'b', lang: 'tr', link: 'L1' },
+  ]).values()];
+  assert.strictEqual(g.length, 1);
+  assert.deepStrictEqual(g[0].tokens.map(t => t.token), ['a', 'b']);
+  assert.strictEqual(g[0].link, 'L1');
+});
+t('aynı dil farklı adres ayrı gidiyor — kimse başkasının sayfasını açmıyor', () => {
+  const g = [...groupByDelivery([
+    { token: 'a', lang: 'tr', link: 'L1' },
+    { token: 'b', lang: 'tr', link: 'L2' },
+  ]).values()];
+  assert.strictEqual(g.length, 2);
+  assert.deepStrictEqual(g.map(x => x.link), ['L1', 'L2']);
+});
+t('dil de ayırıyor', () => {
+  const g = [...groupByDelivery([
+    { token: 'a', lang: 'tr', link: 'L1' },
+    { token: 'b', lang: 'en', link: 'L1' },
+  ]).values()];
+  assert.deepStrictEqual(g.map(x => x.lang), ['tr', 'en']);
+});
+t('linksiz cihaz da gönderimde — bildirim gider, tıklanınca bir şey açılmaz', () => {
+  const g = [...groupByDelivery([{ token: 'a', lang: 'tr' }]).values()];
+  assert.strictEqual(g.length, 1);
+  assert.strictEqual(g[0].link, '');
+});
+t('bilinmeyen dil Türkçeye düşüyor', () => {
+  const g = [...groupByDelivery([{ token: 'a', lang: 'de', link: 'L1' }]).values()];
+  assert.strictEqual(g[0].lang, 'tr');
 });

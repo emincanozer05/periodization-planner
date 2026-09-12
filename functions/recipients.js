@@ -91,7 +91,24 @@ function groupByLang(tokens) {
   return out;
 }
 
+/* Tek istekte gidebilecek cihazlar. Aynı dili konuşmak artık yetmiyor: bildirimin
+   açtığı adres KİŞİYE ÖZEL (herkes kendi uyarı sayfasına düşüyor), ve FCM'de adres
+   mesajın kendisinde duruyor. O yüzden grup anahtarı dil + adres.
+
+   Dönen: Map(anahtar → { lang, link, tokens }) */
+function groupByDelivery(tokens) {
+  const out = new Map();
+  for (const t of (Array.isArray(tokens) ? tokens : [])) {
+    const lang = t.lang === 'en' ? 'en' : 'tr';
+    const link = t.link || '';
+    const key = `${lang}\n${link}`;
+    if (!out.has(key)) out.set(key, { lang, link, tokens: [] });
+    out.get(key).tokens.push(t);
+  }
+  return out;
+}
+
 module.exports = {
   TEAM_WIDE_ROLES, INDIVIDUAL_ROLE, ALL_ROLES,
-  staffCovers, eligibleStaff, tokensFor, groupByLang,
+  staffCovers, eligibleStaff, tokensFor, groupByLang, groupByDelivery,
 };

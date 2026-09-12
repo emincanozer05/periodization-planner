@@ -396,8 +396,11 @@ function alertCard(a){
     el('span',{class:'dt',text:a.date||''})
   ]));
 
+  /* Liste artık takımın BÜTÜN gönderimlerini taşıyor: bildirime tıklayan kişi tek
+     bir sporcuya değil sabahın tamamına bakabilsin diye. Sebebi olan kayıt uyarı,
+     olmayan rutin — satır hangisi olduğunu söylüyor. */
   var reasons=(a.reasons||[]).map(function(r){return REASON_TXT[r]||r;});
-  if(reasons.length)card.appendChild(el('div',{class:'why',text:reasons.join(' + ')}));
+  card.appendChild(el('div',{class:'why',text:reasons.length?reasons.join(' + '):'Rutin gönderim'}));
 
   var high=a.painHigh||[],mod=a.painModerate||[];
   if(high.length||mod.length){
@@ -420,7 +423,7 @@ function alertCard(a){
 function watchFeed(){
   feedBox.innerHTML='';
   var head=el('div',{class:'sec-h'},[
-    el('span',{class:'t',text:'Son uyarılar'}),
+    el('span',{class:'t',text:'Son gönderimler'}),
     el('span',{class:'c',id:'feed-c',text:''})
   ]);
   var list=el('div',{id:'feed-list'},[el('div',{class:'load',text:'Yükleniyor…'})]);
@@ -440,10 +443,10 @@ function watchFeed(){
     document.getElementById('feed-c').textContent=rows.length?rows.length+' kayıt':'';
     list.innerHTML='';
     if(!rows.length){
-      list.appendChild(el('div',{class:'none',text:'Henüz uyarı yok — takımın iyi durumda.'}));
+      list.appendChild(el('div',{class:'none',text:'Henüz gönderim yok.'}));
       return;
     }
-    rows.slice(0,50).forEach(function(a){list.appendChild(alertCard(a));});
+    rows.slice(0,150).forEach(function(a){list.appendChild(alertCard(a));});
   }
   function fail(err){
     list.innerHTML='';
@@ -459,11 +462,11 @@ function watchFeed(){
      sıralamayı yukarıda kendimiz yapıyoruz. Böylece liste, indeks kurulmamış bir
      projede de ilk günden çalışıyor; indeks sonradan eklenince sorgu kendiliğinden
      hızlanıyor. */
-  base.orderBy('date','desc').limit(50).onSnapshot(
+  base.orderBy('date','desc').limit(150).onSnapshot(
     function(snap){paint(rowsOf(snap));},
     function(err){
       if((err&&err.code)!=='failed-precondition'){fail(err);return;}
-      base.limit(300).onSnapshot(function(snap){paint(rowsOf(snap));},fail);
+      base.limit(400).onSnapshot(function(snap){paint(rowsOf(snap));},fail);
     });
 }
 

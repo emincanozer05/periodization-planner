@@ -41,13 +41,13 @@ const alertDocId = (coachUid, athleteId, date) =>
    biçiminde olabiliyor — tarayıcıda location.href neyse o. Sondaki dosya adı
    atılıp klasöre iniliyor, yoksa ".../index.html/index.html" gibi çalışmayan bir
    adres çıkıyordu. */
-/* Uygulamanın kök adresi — bildirimlerdeki her bağlantının ortak gövdesi.
+/* Uygulamanın yayınlandığı KLASÖR — bildirimlerdeki her bağlantının gövdesi.
 
    Gelen adres hem klasör ("https://x.com/app/") hem dosya ("…/app/index.html")
    biçiminde olabiliyor — tarayıcıda location.href neyse o. Sondaki dosya adı
    atılıp klasöre iniliyor, yoksa ".../index.html/index.html" gibi çalışmayan bir
    adres çıkıyordu. */
-function appBase(appUrl) {
+function appDir(appUrl) {
   const raw = String(appUrl || '').trim();
   if (!/^https?:\/\//i.test(raw)) return '';
   let u;
@@ -58,8 +58,14 @@ function appBase(appUrl) {
   const dir = u.pathname
     .replace(/[^/]*\.[^/]*$/, '')  // sondaki dosya adı (index.html vb.) → klasör
     .replace(/\/+$/, '');          // kapanış eğik çizgisi
-  return `${u.origin}${dir}/index.html`;
+  return `${u.origin}${dir}`;
 }
+
+/* Koçun uygulaması. */
+const appBase = appUrl => {
+  const dir = appDir(appUrl);
+  return dir ? `${dir}/index.html` : '';
+};
 
 /* Uyarı bildiriminin adresi. Uygulama `#alert=<id>` parçasını okuyup doğrudan
    sporcunun Wellness ekranını açıyor. Adres bilinmiyorsa boş dönüyor ve bildirim
@@ -69,13 +75,29 @@ function alertLink(appUrl, alertId) {
   return base ? `${base}#alert=${encodeURIComponent(alertId)}` : '';
 }
 
-/* Uyarı KAYDI OLMAYAN bildirimin adresi — sporcuyu doğrudan açar.
+/* Ekip üyesinin kendi uyarı sayfası — kartındaki "bildirim linki"nin aynısı.
 
-   Kriteri karşılamayan rutin gönderimler bildiriliyor ama uyarı kaydı açmıyor
-   (sebebi index.js'te yazıyor), dolayısıyla tıklanacak bir `alertId` de yok.
-   Bildirime tıklayan yine olması gereken yerde açılsın diye adres sporcunun
-   kendisini taşıyor; takım da yanında, çünkü koç başka bir takıma bakıyor
-   olabilir. */
+   Bildirime tıklayan tek bir sporcunun ekranına değil, TAKIMIN listesine düşsün
+   diye: telefonu eline alan antrenör zaten o sabahın tamamına bakmak istiyor,
+   bildirimi yollayan sporcu da listenin en üstünde duruyor.
+
+   Adres kişiye özel (token kişinin kartından geliyor) ve `#` içinde duruyor:
+   ne sunucu loglarına düşüyor ne de link önizlemesi çeken uygulamalara gidiyor —
+   check-in linkleriyle aynı desen. */
+function staffFeedLink(appUrl, token) {
+  const dir = appDir(appUrl);
+  if (!dir || !token) return '';
+  return `${dir}/alerts.html#k=${encodeURIComponent(token)}`;
+}
+
+/* Koçun KENDİ cihazı için karşılığı: uygulamanın Wellness Uyarıları ekranı.
+   Koç zaten hesabıyla giriyor, ekip üyesinin salt okunur sayfasına düşmesinin
+   anlamı yok. */
+function appAlertsLink(appUrl) {
+  const base = appBase(appUrl);
+  return base ? `${base}#alerts` : '';
+}
+
 function athleteLink(appUrl, athleteId, teamId) {
   const base = appBase(appUrl);
   if (!base || !athleteId) return '';
@@ -83,4 +105,4 @@ function athleteLink(appUrl, athleteId, teamId) {
   return teamId ? `${link}&team=${encodeURIComponent(teamId)}` : link;
 }
 
-module.exports = { safe, rosterDocId, alertDocId, appBase, alertLink, athleteLink };
+module.exports = { safe, rosterDocId, alertDocId, appDir, appBase, alertLink, staffFeedLink, appAlertsLink };

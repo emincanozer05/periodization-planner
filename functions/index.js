@@ -26,10 +26,10 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
-const { alertLevel, LEVEL_ALERT, buildNotification, buildAlertRecord } = require('./wellness-alert');
-const { tokensFor, groupByLang } = require('./recipients');
+const { alertLevel, buildNotification, buildAlertRecord } = require('./wellness-alert');
+const { tokensFor, groupByDelivery } = require('./recipients');
 const { sendAlert } = require('./push');
-const { rosterDocId, alertDocId, alertLink, athleteLink, safe } = require('./ids');
+const { rosterDocId, alertDocId, staffFeedLink, appAlertsLink, safe } = require('./ids');
 const { claimForAlert } = require('./claim');
 
 admin.initializeApp();
@@ -108,34 +108,29 @@ exports.wellnessAlert = functions
     /* ── Uyarı kaydı — bildirimden ÖNCE (Madde 14) ────────────────────────
        Push patlasa bile uyarı ekranda duruyor. Sıra tersine olsaydı, bildirim
        gönderilemeyen bir sabahın uyarısı hiçbir yerde kalmazdı. */
-    /* Kayıt yalnızca UYARI seviyesinde açılıyor. Rutin gönderimler de kayıt
-       açsaydı "Wellness Uyarıları" ekranı her sabah bütün kadroyla dolardı ve son
-       200 kaydı gösteren liste birkaç gün içinde gerçek uyarıları ekrandan
-       düşürürdü — uyarı listesinin tek işi, bakılması gereken sporcuyu ilk
-       satırda tutmak. Rutin bildirim sporcunun kendi Wellness ekranına
-       bağlanıyor; veri zaten orada duruyor. */
-    let alertId = '';
-    let alertRef = null;
-    if (level === LEVEL_ALERT) {
-      alertId = alertDocId(sub.coachUid, sub.athleteId, sub.date);
-      alertRef = db().collection(ALERTS_COL).doc(alertId);
-      const record = buildAlertRecord(sub, roster.teamName);
+    /* Kayıt HER gönderim için açılıyor, seviyesi ne olursa olsun. Bildirime
+       tıklayan ekip üyesi tek bir sporcunun değil TAKIMIN listesine düşüyor; o
+       liste yalnızca uyarıları taşısaydı, rutin bir bildirimi açan kişi boş bir
+       sayfa görürdü. `level` alanı hangisinin uyarı olduğunu söylüyor, ekranlar
+       da ona göre ayırıyor. */
+    const alertId = alertDocId(sub.coachUid, sub.athleteId, sub.date);
+    const alertRef = db().collection(ALERTS_COL).doc(alertId);
+    const record = buildAlertRecord(sub, roster.teamName);
 
-      const base = Object.assign({}, record, {
-        coachUid: sub.coachUid,
-        checkinId,
-        submittedAt: sub.at || null,
-        createdAt: now(),
-        notificationStatus: 'pending',
-        v: 1,
-      });
-      try {
-        await alertRef.set(base, { merge: true });
-      } catch (err) {
-        functions.logger.error('wellness: uyarı kaydı yazılamadı', { checkinId, alertId, error: String(err) });
-        // Kayıt yazılamasa da bildirim denenmeye devam ediyor: koçun sabah haberi
-        // olması, kaydın arşivlenmesinden daha acil.
-      }
+    const base = Object.assign({}, record, {
+      coachUid: sub.coachUid,
+      checkinId,
+      submittedAt: sub.at || null,
+      createdAt: now(),
+      notificationStatus: 'pending',
+      v: 1,
+    });
+    try {
+      await alertRef.set(base, { merge: true });
+    } catch (err) {
+      functions.logger.error('wellness: kayıt yazılamadı', { checkinId, alertId, error: String(err) });
+      // Kayıt yazılamasa da bildirim denenmeye devam ediyor: koçun sabah haberi
+      // olması, kaydın arşivlenmesinden daha acil.
     }
 
     /* ── Alıcılar ─────────────────────────────────────────────────────────
@@ -160,9 +155,7 @@ exports.wellnessAlert = functions
       functions.logger.info('wellness: bildirilecek cihaz yok', {
         checkinId, alertId, level, athleteId: sub.athleteId,
       });
-      if (alertRef) {
-        await alertRef.set({ recipients: [], notificationStatus: 'no_recipients' }, { merge: true }).catch(() => {});
-      }
+      await alertRef.set({ recipients: [], notificationStatus: 'no_recipients' }, { merge: true }).catch(() => {});
       await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
       return null;
     }
@@ -170,10 +163,23 @@ exports.wellnessAlert = functions
     /* ── Gönderim ─────────────────────────────────────────────────────────
        Bildirim metni kişinin diline göre kuruluyor, aynı dili konuşan cihazlar
        tek istekte gidiyor. */
+    /* ── Bildirim nereye açılıyor ─────────────────────────────────────────
+       Herkes KENDİ uyarı sayfasına: ekip üyesi kartındaki kişisel linkine,
+       koç kendi uygulamasının Wellness Uyarıları ekranına. Bildirim tek bir
+       sporcunun ekranını açsaydı, telefonu eline alan antrenör sabahın geri
+       kalanını göremezdi — oysa bakmak istediği bütün kadro, ve bildirimi
+       yollayan sporcu zaten listenin başında duruyor.
+
+       Token'ı olmayan ekip üyesine linksiz gidiyor: açacak bir sayfası yok, ve
+       yanlış yere açmaktansa hiç açmamak daha iyi. */
     const appUrl = roster.appUrl || process.env.APP_ORIGIN;
-    const link = alertRef
-      ? alertLink(appUrl, alertId)
-      : athleteLink(appUrl, sub.athleteId, sub.teamId);
+    const staffById = new Map(staff.filter(m => m && m.id).map(m => [m.id, m]));
+    targets.forEach(t => {
+      t.link = t.kind === 'coach'
+        ? appAlertsLink(appUrl)
+        : staffFeedLink(appUrl, (staffById.get(t.staffId) || {}).alertToken);
+    });
+
     const data = {
       alertId,
       level,
@@ -191,9 +197,9 @@ exports.wellnessAlert = functions
     const byToken = new Map(targets.map(t => [t.token, t]));
     const results = [];
     const dead = [];
-    for (const [lang, group] of groupByLang(targets)) {
-      const text = buildNotification(sub, roster.teamName, lang, level);
-      const r = await sendAlert(admin.messaging(), group.map(t => t.token), text, data, link);
+    for (const group of groupByDelivery(targets).values()) {
+      const text = buildNotification(sub, roster.teamName, group.lang, level);
+      const r = await sendAlert(admin.messaging(), group.tokens.map(t => t.token), text, data, group.link);
       results.push(...r.results);
       dead.push(...r.dead);
     }
@@ -224,14 +230,12 @@ exports.wellnessAlert = functions
     });
     const status = okCount === 0 ? 'failed' : (okCount === results.length ? 'sent' : 'partial');
 
-    if (alertRef) {
-      await alertRef.set({
-        recipients,
-        notificationStatus: status,
-        notifiedAt: now(),
-      }, { merge: true }).catch(err =>
-        functions.logger.error('wellness: uyarı durumu yazılamadı', { alertId, error: String(err) }));
-    }
+    await alertRef.set({
+      recipients,
+      notificationStatus: status,
+      notifiedAt: now(),
+    }, { merge: true }).catch(err =>
+      functions.logger.error('wellness: bildirim durumu yazılamadı', { alertId, error: String(err) }));
 
     /* Check-in kaydına ASLA dokunulmuyor, silinmiyor — sadece damga (Madde 14).
        Gönderim başarısız olsa bile sahiplenme damgası duruyor, aynı olay tekrar
