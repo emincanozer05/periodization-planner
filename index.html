@@ -2728,21 +2728,86 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .brand-team .bt-club{font-size:12px;font-weight:600;color:var(--text2);letter-spacing:-.01em;
   padding:0 2px 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ===== Setup · club settings ===== */
-.su-sub{font-size:13px;font-weight:700;color:var(--text);margin:26px 0 4px;padding-top:18px;border-top:1px solid var(--border);
-  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
-.su-media{display:flex;flex-wrap:wrap;gap:22px;margin-top:18px}
-.su-img{width:200px}
+/* The screen opens with the club rather than with a form: crest, name, and the facts that
+   identify it, on the app's own accent wash. */
+.su-hero{display:flex;align-items:center;gap:20px;padding:22px 24px;margin-bottom:16px;border-radius:16px;
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  background:linear-gradient(120deg,rgba(0,148,255,.14),rgba(0,148,255,.03) 46%,var(--panel) 78%)}
+.su-hero-crest{flex:none;width:84px;height:84px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+  background:var(--elevated);border:1px solid var(--border2);transition:border-color .15s,transform .15s}
+.su-hero-crest:hover{border-color:var(--accent)}
+.su-hero-crest img{width:100%;height:100%;object-fit:contain}
+.su-hero-crest span{font-size:26px;font-weight:800;color:var(--text2);letter-spacing:-.02em}
+.su-hero-tx{min-width:0;flex:1}
+.su-hero-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.14em}
+.su-hero-tx h1{font-size:27px;font-weight:800;letter-spacing:-.025em;color:var(--text);line-height:1.1;margin:5px 0 11px;
+  overflow:hidden;text-overflow:ellipsis}
+.su-hero-meta{display:flex;flex-wrap:wrap;gap:7px}
+.su-chip{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);
+  background:var(--bg2);border:1px solid var(--border);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.su-chip.loc{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+/* Club information beside the facility: two boxes of equal weight, stacking on a narrow
+   screen. The panels stretch so the pair reads as one band rather than two ragged cards. */
+.su-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
+.su-cols>.panel{margin-bottom:0}
+@media(max-width:980px){.su-cols{grid-template-columns:1fr}}
+.su-panel{display:flex;flex-direction:column}
+.su-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.su-head h2{margin:0}
+.su-lead{margin-top:-4px;margin-bottom:16px;line-height:1.6}
+.su-rows{display:flex;flex-direction:column;gap:14px}
+.su-f label{margin-bottom:6px}
+
 .su-img label{display:block}
-/* A dashed, empty frame reads as a slot asking to be filled; a filled one shows the
-   picture whole (contain, not cover) because a crest cropped to a square is a crest with
-   its edges cut off. */
-.su-img-box{margin-top:6px;width:130px;height:130px;border-radius:12px;border:1px dashed var(--border2);background:var(--elevated);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:border-color .15s}
-.su-img-box:hover{border-color:var(--accent)}
+/* A dashed, empty frame reads as a slot asking to be filled. A filled one is solid and
+   shows a zoom cue on hover, because clicking it opens the picture rather than the file
+   picker. `contain` for the crest — a badge cropped square is a badge with its edges cut
+   off — `cover` for the 16:9 facility shot, which is a photograph and should fill its
+   frame. */
+.su-img-box{position:relative;margin-top:6px;width:130px;height:130px;border-radius:12px;
+  border:1px dashed var(--border2);background:var(--elevated);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;
+  transition:border-color .15s,box-shadow .15s}
+.su-img-box.has{border-style:solid}
+.su-img-box:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,148,255,.12)}
 .su-img-box.round{border-radius:50%}
 .su-img-box img{width:100%;height:100%;object-fit:contain}
+/* The facility photo, at the shape a room is photographed in. */
+.su-img.wide{width:100%}
+.su-img-box.wide{width:100%;height:auto;aspect-ratio:16/9;border-radius:12px}
+.su-img-box.wide img{object-fit:cover}
 .su-img-ph{font-size:26px;color:var(--dim);line-height:1}
-.su-img-act{display:flex;gap:6px;margin-top:8px}
+/* "This opens" — only on a filled slot, and only under the pointer. */
+.su-img-zo{position:absolute;right:8px;bottom:8px;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+  font-size:13px;color:#fff;background:rgba(10,11,13,.66);opacity:0;transition:opacity .15s;pointer-events:none}
+.su-img-box.has:hover .su-img-zo{opacity:1}
+.su-img-act{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap}
+.su-img-hint{margin-top:0;flex:1;min-width:140px}
+
+/* Delete is quiet until you reach for it. On a settings screen the red pill is the
+   loudest thing on the page and it sits beside every picture and every squad, which is
+   backwards: removing a team is the rarest thing done here and the one most regretted. */
+.su-img-act .btn.danger,.su-panel .tp-actions .btn.danger{
+  background:transparent;border:1px solid var(--border2);color:var(--dim);box-shadow:none}
+.su-img-act .btn.danger:hover,.su-panel .tp-actions .btn.danger:hover{
+  background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.55);color:#fca5a5}
+
+/* Narrow: the squad card keeps its crest on the left and reads down the page instead of
+   centring its name over a half-empty row. */
+@media(max-width:560px){
+  .su-panel .tp-card{flex-wrap:wrap;gap:12px}
+  .su-panel .tp-info{flex:1 1 60%;text-align:left}
+  .su-panel .tp-actions{flex:1 1 100%;justify-content:flex-end}
+}
+
+/* Full-size viewer. Click anywhere off the picture — or Esc — to close it. */
+.su-lb{position:fixed;inset:0;z-index:9000;background:rgba(6,7,9,.88);display:grid;place-items:center;padding:40px;
+  cursor:zoom-out;animation:fadeIn .15s ease-out}
+.su-lb img{max-width:100%;max-height:100%;object-fit:contain;border-radius:10px;cursor:default;
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.8)}
+.su-lbx{position:absolute;top:18px;right:22px;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1}
 /* ===== Load Monitoring (Training Load tab) ===== */
 .lm-head{margin-bottom:4px}
 .lm-title{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.1}
@@ -9072,9 +9137,15 @@ function DateDMY({value,onChange,style,title}){
 /* =========================================================
    SETUP
    ========================================================= */
+/* Two letters to stand in for a picture that has not been uploaded. Words that do not
+   START with a letter or a digit are skipped, or "Tofaş (2009)" initials to "T(" — the
+   year in brackets is what tells two squads apart, so it is the bracket that has to go,
+   not the year. Named apart from the dozen component-local `initials` helpers so it
+   shadows none of them. */
+const nameInitials=n=>(String(n||'').match(/[\p{L}\p{N}][\p{L}\p{N}]*/gu)||[])
+  .slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('tr')||'?';
 function Setup({team,updateTeam,data,setData}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
-  const uc=(i,k,v)=>{const c=[...s.competitions];c[i]={...c[i],[k]:v};u('competitions',c);};
   /* The season and the macrocycle are the same window: it opens with General Preparation
      and closes with Transition. Auto periods already follow the season dates; custom ones
      are moved by hand here so the two ends stay the same dates. */
@@ -9084,14 +9155,6 @@ function Setup({team,updateTeam,data,setData}){
       (k==='seasonStart'&&i===0)?{...p,start:v}:
       (k==='seasonEnd'&&i===s.periods.length-1)?{...p,end:v}:p);
     updateTeam(team.id,{setup:{...s,[k]:v,periods:np}});};
-  /* ---- Club settings: the season, the phase and the squad list --------------
-     The phase is date-driven — the Macrocycle Timeline is its source of truth — so what
-     this box offers is "follow the dates" (the default) or a phase the coach names by
-     hand when the plan on paper has moved ahead of the calendar. */
-  const phases=getPeriods(s);
-  const tk=fmt(today);
-  const autoPhase=phases.find(ph=>tk>=ph.start&&tk<=ph.end)||null;
-  const curPhase=phases.find(ph=>ph.id===s.currentPhase)||autoPhase;
   const seasons=team.seasons||[];
   /* Teams / age groups. Every squad the club runs, each with its own season, roster and
      plan; the one in bold is the one the rest of the app is looking at. */
@@ -9104,64 +9167,98 @@ function Setup({team,updateTeam,data,setData}){
     const teams=teamList.filter(t=>t.id!==id);setData(withTeam(data,teams[0].id,{teams}));};
   const patchTeamSetup=(id,upd)=>setData(prev=>({...prev,
     teams:prev.teams.map(t=>t.id===id?{...t,setup:{...t.setup,...upd}}:t)}));
-  return(<div>
-    <div className="panel"><h2>{L('Site Ayarları · Kulüp Bilgileri','Website Settings · Club Information')}</h2>
-      <div className="help" style={{marginBottom:16}}>{L('Sitenin her yerinde kulübü temsil eden bilgiler — başlıklarda, yazdırılan programlarda ve sporcuya giden formlarda bunlar görünür.',
-                                                        'What represents the club everywhere on the site — in headers, on printed programs and on the forms athletes fill in.')}</div>
-      <div className="grid cols-3">
-        <div><label>{L('Kulüp adı','Club name')}</label>
-          <input value={s.clubName||''} placeholder={s.teamName||''} onChange={e=>u('clubName',e.target.value)}/></div>
-        <div><label>{L('Spor','Sport')}</label>
-          <select value={s.sport} onChange={e=>u('sport',e.target.value)}>{SPORTS.map(x=><option key={x}>{x}</option>)}</select></div>
-        <div><label>{L('Mevcut faz','Current phase')}</label>
-          <select value={s.currentPhase||''} onChange={e=>u('currentPhase',e.target.value)}>
-            <option value="">{L(`Otomatik${autoPhase?` — ${exLabel(PHASE_NAME[autoPhase.id]||autoPhase.name)}`:''}`,
-                                `Automatic${autoPhase?` — ${PHASE_NAME[autoPhase.id]||autoPhase.name}`:''}`)}</option>
-            {phases.map(ph=><option key={ph.id} value={ph.id}>{exLabel(PHASE_NAME[ph.id]||ph.name)}</option>)}
-          </select>
-          <div className="help">{curPhase
-            ?<span><span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',marginRight:6,verticalAlign:'middle',background:PHASE_COL[curPhase.id]||'#64748b'}}/>
-               {fd(curPhase.start)} → {fd(curPhase.end)}</span>
-            :L('Sezon tarihleri girilince belirir.','Appears once the season dates are set.')}</div>
+  /* Any picture on this screen, opened full-size. One piece of state for the whole tab:
+     only one can be open at a time and Esc closes whichever it is. */
+  const[zoom,setZoom]=useState(null);
+  useEffect(()=>{
+    if(!zoom)return;
+    const esc=e=>{if(e.key==='Escape')setZoom(null);};
+    window.addEventListener('keydown',esc);
+    return()=>window.removeEventListener('keydown',esc);
+  },[zoom]);
+  const clubName=String(s.clubName||'').trim()||s.teamName||L('Kulüp','Club');
+  const crest=hasMedia(s.logo)?mediaSrc(s.logo):'';
+  const totalAthletes=teamList.reduce((n,t)=>n+((t.athletes||[]).length),0);
+  const activeSeason=seasons.find(sn=>sn.id===team.activeSeasonId);
+  return(<div className="su">
+    {/* The club as it reads everywhere else in the app — crest, name, and the three facts
+        that identify it — so the screen opens with what it is about rather than with a
+        form field. */}
+    <div className="su-hero">
+      <div className="su-hero-crest" onClick={()=>crest&&setZoom({src:crest,alt:clubName})}
+        title={crest?L('Büyüt','Enlarge'):''} style={{cursor:crest?'zoom-in':'default'}}>
+        {crest?<img src={crest} alt=""/>:<span>{nameInitials(clubName)}</span>}
+      </div>
+      <div className="su-hero-tx">
+        <div className="su-hero-k">{L('Kulüp','Club')}</div>
+        <h1>{clubName}</h1>
+        <div className="su-hero-meta">
+          <span className="su-chip">{s.sport}</span>
+          {activeSeason&&<span className="su-chip">{seasonName(team,activeSeason)}</span>}
+          <span className="su-chip">{L(`${teamList.length} takım`,`${teamList.length} teams`)}</span>
+          <span className="su-chip">{L(`${totalAthletes} sporcu`,`${totalAthletes} athletes`)}</span>
+          {String(s.trainingLocation||'').trim()&&<span className="su-chip loc">📍 {s.trainingLocation.trim()}</span>}
+        </div>
+      </div>
+    </div>
+
+    <div className="su-cols">
+      <div className="panel su-panel"><h2>{L('Kulüp Bilgileri','Club Information')}</h2>
+        <div className="help su-lead">{L('Sitenin her yerinde kulübü temsil eden bilgiler — başlıklarda, yazdırılan programlarda ve sporcuya giden formlarda bunlar görünür.',
+                                         'What represents the club everywhere on the site — in headers, on printed programs and on the forms athletes fill in.')}</div>
+        <div className="su-rows">
+          <div className="su-f"><label>{L('Kulüp adı','Club name')}</label>
+            <input value={s.clubName||''} placeholder={s.teamName||''} onChange={e=>u('clubName',e.target.value)}/></div>
+          <div className="grid cols-2">
+            <div className="su-f"><label>{L('Spor','Sport')}</label>
+              <select value={s.sport} onChange={e=>u('sport',e.target.value)}>{SPORTS.map(x=><option key={x}>{x}</option>)}</select></div>
+            <div className="su-f"><label>{L('Sezon','Season')}</label>
+              <select value={team.activeSeasonId||''} onChange={e=>switchTeamSeason(team,updateTeam,e.target.value)}>
+                {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
+              </select></div>
+          </div>
+          <div className="grid cols-2">
+            <div className="su-f"><label>{L('Sezon başlangıcı','Season start')}</label>
+              <DateDMY value={s.seasonStart} onChange={v=>uSeason('seasonStart',v)}/>
+              <div className="help">{L('Genel Hazırlık başlangıcı','General Preparation start')}</div></div>
+            <div className="su-f"><label>{L('Sezon sonu','Season end')}</label>
+              <DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/>
+              <div className="help">{L('Geçiş dönemi sonu','Transition end')}</div></div>
+          </div>
+          <SetupImage label={L('Kulüp logosu','Club logo')} value={s.logo} onChange={v=>u('logo',v)} folder="logos"
+            shape="round" onZoom={setZoom}
+            hint={L('Kenar çubuğunda ve yazdırılan programların başlığında görünür.','Shown in the sidebar and on the header of printed programs.')}/>
         </div>
       </div>
 
-      <div className="grid cols-2" style={{marginTop:16}}>
-        <div><label>{L('Sezon','Season')}</label>
-          <select value={team.activeSeasonId||''} onChange={e=>switchTeamSeason(team,updateTeam,e.target.value)}>
-            {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
-          </select>
-          <div className="help">{L('Sezonu eklemek, adlandırmak ve silmek Sezon sekmesinde.','Seasons are added, renamed and deleted on the Season tab.')}</div>
+      <div className="panel su-panel"><h2>{L('Antrenman Lokasyonu','Training Location')}</h2>
+        <div className="help su-lead">{L('Takımın çalıştığı tesis ve bir fotoğrafı.','The facility the team works in, and a photograph of it.')}</div>
+        <div className="su-rows">
+          <div className="su-f"><label>{L('Lokasyon','Location')}</label>
+            <input value={s.trainingLocation||''} placeholder={L('Tesis / salon adı, şehir','Facility / gym name, city')}
+              onChange={e=>u('trainingLocation',e.target.value)}/></div>
+          <SetupImage label={L('Tesis görseli','Facility photo')} value={s.facilityPhoto} onChange={v=>u('facilityPhoto',v)}
+            folder="facility" wide onZoom={setZoom}
+            hint={L('16:9 · tıklayınca tam boy açılır.','16:9 · click it to open full size.')}/>
         </div>
-        <div><label>{L('Antrenman lokasyonu','Training location')}</label>
-          <input value={s.trainingLocation||''} placeholder={L('Tesis / salon adı, şehir','Facility / gym name, city')}
-            onChange={e=>u('trainingLocation',e.target.value)}/></div>
       </div>
+    </div>
 
-      <div className="grid cols-2" style={{marginTop:12}}>
-        <div><label>{L('Sezon başlangıcı (gg/aa/yyyy)','Season start (dd/mm/yyyy)')}</label><DateDMY value={s.seasonStart} onChange={v=>uSeason('seasonStart',v)}/><div className="help">{L('Genel Hazırlık başlangıcı','General Preparation start')}</div></div>
-        <div><label>{L('Sezon sonu (gg/aa/yyyy)','Season end (dd/mm/yyyy)')}</label><DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/><div className="help">{L('Geçiş dönemi sonu','Transition end')}</div></div>
+    <div className="panel su-panel">
+      <div className="su-head">
+        <h2 style={{margin:0}}>{L('Takımlar / Yaş Grupları','Teams / Age Groups')}</h2>
+        <button className="btn sec sm" onClick={addTeam}>+ {L('Takım ekle','Add team')}</button>
       </div>
-
-      <div className="su-media">
-        <SetupImage label={L('Kulüp logosu','Club logo')} value={s.logo} onChange={v=>u('logo',v)} folder="logos" shape="round"
-          hint={L('Kenar çubuğunda ve yazdırılan programların başlığında görünür.','Shown in the sidebar and on the header of printed programs.')}/>
-        <SetupImage label={L('Tesis görseli','Facility photo')} value={s.facilityPhoto} onChange={v=>u('facilityPhoto',v)} folder="facility"
-          hint={L('Antrenman lokasyonunun fotoğrafı.','A photograph of the training location.')}/>
-      </div>
-
-      <h3 className="su-sub">{L('Takımlar / Yaş Grupları','Teams / Age Groups')}</h3>
-      <div className="help" style={{marginBottom:12}}>{L('Her takımın kendi sezonu, kadrosu ve planı vardır. Kenar çubuğundaki seçiciden de geçiş yapabilirsin.',
-                                                        'Each team has its own season, roster and plan. You can also switch between them from the sidebar picker.')}</div>
+      <div className="help su-lead">{L('Her takımın kendi sezonu, kadrosu ve planı vardır. Kenar çubuğundaki seçiciden de geçiş yapabilirsin.',
+                                       'Each team has its own season, roster and plan. You can also switch between them from the sidebar picker.')}</div>
       <div className="tp-cards">
         {teamList.map(t=>{
           const isActive=t.id===data.activeTeamId;
-          const ini=(t.setup.teamName||'T').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+          const logo=hasMedia(t.setup&&t.setup.logo)?mediaSrc(t.setup.logo):'';
           return(<div key={t.id} className={`tp-card${isActive?' tp-card-active':''}`}>
             <div className="tp-logo-wrap">
-              {hasMedia(t.setup&&t.setup.logo)
-                ?<img src={mediaSrc(t.setup.logo)} className="tp-logo-img" alt=""/>
-                :<div className="tp-logo-initials">{ini}</div>}
+              {logo?<img src={logo} className="tp-logo-img" alt=""/>
+                   :<div className="tp-logo-initials">{nameInitials(t.setup.teamName||'T')}</div>}
               <label className="tp-logo-upload" title={L('Takım logosu yükle','Upload team logo')}>
                 <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
                   const f=e.target.files&&e.target.files[0];e.target.value='';
@@ -9183,66 +9280,56 @@ function Setup({team,updateTeam,data,setData}){
             <div className="tp-actions">
               {isActive&&<span className="tp-active-badge">{L('Aktif','Active')}</span>}
               {!isActive&&<button className="btn xs sec" onClick={()=>setData(withTeam(data,t.id))}>{L('Seç','Select')}</button>}
-              <button className="btn xs danger" onClick={()=>delTeam(t.id)}>✕</button>
+              <button className="btn xs danger" onClick={()=>delTeam(t.id)} title={L('Takımı sil','Delete team')}>✕</button>
             </div>
           </div>);
         })}
       </div>
-      <button className="btn sec sm" style={{marginTop:12}} onClick={addTeam}>+ {L('Takım / yaş grubu ekle','Add team / age group')}</button>
     </div>
 
-    <div className="panel"><h2>{L('Takım / Sporcu Bilgisi','Team / Athlete Information')}</h2>
-      <div className="grid cols-2">
-        <div><label>{L('Takım adı','Team name')}</label><input value={s.teamName} onChange={e=>u('teamName',e.target.value)}/></div>
-        <div><label>{L('Sporcular','Athletes')}</label><input type="number" min="1" value={s.athleteCount} onChange={e=>u('athleteCount',+e.target.value)}/></div>
-      </div>
-    </div>
-    <div className="panel"><h2>{L('Periyotlama Modeli','Periodization Model')}</h2>
-      <div className="grid cols-2">{MODELS.map(m=>(<label key={m.id} style={{border:'1px solid',borderRadius:8,padding:14,cursor:'pointer',transition:'all .15s',
-        background:s.model===m.id?'var(--accent-bg)':'var(--elevated)',borderColor:s.model===m.id?'var(--accent)':'var(--border)'}}>
-        <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
-        <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
-    </div>
-    <div className="panel"><h2>{L('Müsabaka Tarihleri','Competition Dates')}</h2>
-      <table><thead><tr><th>{L('Tarih (gg/aa/yyyy)','Date (dd/mm/yyyy)')}</th><th>{L('Etkinlik','Event')}</th><th style={{width:90}}></th></tr></thead><tbody>
-        {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
-          <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
-          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button></td></tr>)}
-      </tbody></table>
-      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ {L('Müsabaka ekle','Add competition')}</button>
-    </div>
     {/* Wellness notifications. This used to live on a screen of its own, which meant the
         one control that decides whether a coach hears about a hurt athlete at all sat
         behind a tab most of them never opened. It belongs with the rest of the things
         you switch on once and forget. */}
-    <div className="panel"><h2>{L('Bildirimler','Notifications')}</h2>
+    <div className="panel su-panel"><h2>{L('Bildirimler','Notifications')}</h2>
       <PushCard/>
     </div>
+
+    {zoom&&<div className="su-lb" onClick={()=>setZoom(null)}>
+      <img src={zoom.src} alt={zoom.alt||''} onClick={e=>e.stopPropagation()}/>
+      <button type="button" className="su-lbx" onClick={()=>setZoom(null)} aria-label={L('Kapat','Close')}>✕</button>
+    </div>}
   </div>);
 }
 
-/* One picture on the Setup tab — the club crest, the facility — as a labelled drop of its
-   own. Uploads run through the same resize/Storage path as every other picture in the app,
-   so a 6 MB phone photo does not end up inside the synced JSON. */
-function SetupImage({label,value,onChange,folder,hint,shape}){
+/* One picture on the Setup tab — the club crest, the facility. An EMPTY slot is a drop
+   zone: clicking it opens the file picker. A FILLED one is the picture, and clicking it
+   opens it full size — replacing and removing move to the two buttons underneath, because
+   a coach looks at this photo far more often than they change it. Uploads run through the
+   same resize/Storage path as every other picture in the app, so a 6 MB phone photo does
+   not end up inside the synced JSON. */
+function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
   const ref=useRef(null);
   const has=hasMedia(value);
-  return(<div className="su-img">
+  const src=has?mediaSrc(value):'';
+  const pick=()=>ref.current&&ref.current.click();
+  return(<div className={'su-img'+(wide?' wide':'')}>
     <label>{label}</label>
-    <div className={'su-img-box'+(shape==='round'?' round':'')}
-      onClick={()=>ref.current&&ref.current.click()}
-      title={L('Görsel yükle','Upload image')}>
-      {has?<img src={mediaSrc(value)} alt=""/>:<span className="su-img-ph">＋</span>}
+    <div className={'su-img-box'+(shape==='round'?' round':'')+(wide?' wide':'')+(has?' has':'')}
+      onClick={()=>has?(onZoom&&onZoom({src,alt:label})):pick()}
+      title={has?L('Büyüt','Enlarge'):L('Görsel yükle','Upload image')}>
+      {has?<><img src={src} alt=""/><span className="su-img-zo">⤢</span></>
+          :<span className="su-img-ph">＋</span>}
     </div>
     <input type="file" accept="image/*" ref={ref} style={{display:'none'}} onChange={e=>{
       const f=e.target.files&&e.target.files[0];e.target.value='';
       if(f)handleImageUpload(f,folder,v=>onChange(v));
     }}/>
     <div className="su-img-act">
-      <button className="btn xs sec" onClick={()=>ref.current&&ref.current.click()}>{has?L('Değiştir','Replace'):L('Yükle','Upload')}</button>
+      <button className="btn xs sec" onClick={pick}>{has?L('Değiştir','Replace'):L('Yükle','Upload')}</button>
       {has&&<button className="btn xs danger" onClick={()=>onChange('')}>{L('Kaldır','Remove')}</button>}
+      {hint&&<span className="help su-img-hint">{hint}</span>}
     </div>
-    {hint&&<div className="help">{hint}</div>}
   </div>);
 }
 
@@ -9263,6 +9350,8 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const updPeriod=(id,field,val)=>{if(!val)return;
     const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);
     updateTeam(team.id,{setup:{...s,periods:np,seasonStart:np[0].start,seasonEnd:np[np.length-1].end}});};
+  const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
+  const uc=(i,k,v)=>{const c=[...s.competitions];c[i]={...c[i],[k]:v};u('competitions',c);};
   const resetPeriods=()=>{if(confirm(L('Fazlar sezon + müsabaka tarihlerinden otomatik oluşturulsun mu?','Reset periods to auto-generated from season + competition dates?')))updateTeam(team.id,{setup:{...s,periods:null}});};
   const usingCustom=!!s.periods;
   // Period long names + monthly tick labels for the macrocycle bar
@@ -9428,6 +9517,24 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       </tbody></table>
     </div>
 
+    {/* The model and the fixtures used to sit on Setup, two screens away from the
+        macrocycle they draw: the model writes every week's volume/intensity profile and
+        the fixture list is what the auto phases are cut around. They belong on the
+        screen that shows what they did. */}
+    <div className="panel"><h2>{L('Periyotlama Modeli','Periodization Model')}</h2>
+      <div className="grid cols-2">{MODELS.map(m=>(<label key={m.id} style={{border:'1px solid',borderRadius:8,padding:14,cursor:'pointer',transition:'all .15s',
+        background:s.model===m.id?'var(--accent-bg)':'var(--elevated)',borderColor:s.model===m.id?'var(--accent)':'var(--border)'}}>
+        <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
+        <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
+    </div>
+    <div className="panel"><h2>{L('Müsabaka Tarihleri','Competition Dates')}</h2>
+      <table><thead><tr><th>{L('Tarih (gg/aa/yyyy)','Date (dd/mm/yyyy)')}</th><th>{L('Etkinlik','Event')}</th><th style={{width:90}}></th></tr></thead><tbody>
+        {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
+          <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
+          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button></td></tr>)}
+      </tbody></table>
+      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ {L('Müsabaka ekle','Add competition')}</button>
+    </div>
     <div className="panel"><h2>{L('Haftalık Yük Hedefleri','Weekly Load Targets')}</h2>
       <div className="help" style={{marginBottom:14}}>{L('Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.','Pick the week\'s focus — volume and intensity adjust automatically to match · taper weeks are flagged with an ⚠ badge.')}</div>
       <div className="wlt-grid">
