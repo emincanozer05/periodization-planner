@@ -112,8 +112,13 @@ vermiyor. Bildirim **gönderme** yetkisi yalnızca Cloud Function'da.
 Bu bölümde "Cloud Messaging API (V1) disabled" uyarısı görürsen yanındaki linkten
 etkinleştir.
 
-> Anahtar doldurulmadığı sürece uygulama bugünkü gibi çalışır: uyarılar oluşur ve
-> ekranda listelenir, sadece telefona bildirim gitmez.
+> Anahtar doldurulmadığı sürece uygulama bugünkü gibi çalışır: uyarılar oluşur,
+> koç uyarı bildirimine tıklayınca sporcunun Wellness ekranına düşer — sadece
+> telefona bildirim gitmez.
+
+> **Koçun kendi cihazı.** Bildirimi bu cihazda açan düğme **Kurulum → Bildirimler**
+> bölümünde. (Eskiden ayrı bir "Wellness Uyarıları" sekmesindeydi; o sekme kaldırıldı,
+> uyarı listesi ekip üyelerinin `alerts.html` sayfasında durmaya devam ediyor.)
 
 ### 2. Anonim girişin açık olduğunu doğrula
 

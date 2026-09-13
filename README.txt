@@ -121,8 +121,14 @@ than dropped. A day with pain and no scores behind it still gets
 a row, at the bottom — there is no average to rank it by.
 Where the app DOES recognise a region (Bel/Sırt → back, Omuz →
 shoulder, Kalça/Kasık → hip…) it also becomes a pain chip on the
-Individualization card, with the severity carried over.
-See TALLY_SETUP.md for the form side.
+Individualization card. The chip names the region and nothing
+else: severity is the COLOUR it is drawn in (amber Hafif, orange
+Orta, red Fazla), with the word on its tooltip — spelling the
+grading out beside every region made the card a wall of text
+before the eye could find the body part. A region the grid already
+shows in the athlete's own words is not repeated as a second chip
+in the tag vocabulary.
+See CHECKIN_SETUP.md for the form side.
 
 PROGRAM WRITER (athlete profile → Program tab)
 Writes a week of training from scratch for ONE athlete. It reads
