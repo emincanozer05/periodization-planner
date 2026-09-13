@@ -53,6 +53,40 @@ try {
   // uygulamanın geri kalanı bundan hiç etkilenmez.
 }
 
+/* ── Sayfanın gösterdiği bildirime tıklanması ──────────────────────────────
+   Uygulama AÇIKKEN gelen bildirimi FCM'in worker'ı göstermiyor (görünür bir sekme
+   varsa payload'ı sayfaya yollayıp çıkıyor), o yüzden o bildirimi sayfa kendisi
+   gösteriyor. Sayfanın gösterdiği bildirim FCM'in kendi verisini taşımadığı için
+   SDK'nın tıklama dinleyicisi ona hiç dokunmuyor — tıklanınca hiçbir şey olmuyordu.
+   Karşılığı bu dinleyici.
+
+   SDK'nın kendi bildirimlerine burada asla karışılmıyor: onun dinleyicisi bu
+   dosyadan ÖNCE kuruluyor ve kendi bildirimlerinde stopImmediatePropagation()
+   çağırıyor, yani buraya yalnızca bizim gösterdiklerimiz geliyor. Ayrıca aşağıdaki
+   ilk satır da işareti olmayan her bildirimi elemesi için duruyor. */
+self.addEventListener('notificationclick', event => {
+  const data = (event.notification && event.notification.data) || {};
+  const mark = data.coachosAlert;
+  if (!mark) return;                       // FCM'in kendi bildirimi — onu SDK açıyor
+  event.notification.close();
+  const link = String(data.link || '');
+  event.waitUntil((async () => {
+    /* Açık bir sekme varsa YENİ pencere açılmıyor: koç bildirime bastığında elindeki
+       uygulamanın ikinci bir kopyasıyla kalmasın. Sekme öne alınıp uyarının kimliği
+       ona yollanıyor, gidilecek ekranı uygulama kendisi açıyor. */
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of list) {
+      let host = '';
+      try { host = new URL(c.url, self.location.href).host; } catch (e) { host = ''; }
+      if (host !== self.location.host) continue;
+      try { await c.focus(); } catch (e) { /* odaklanamadıysa mesaj yine gidiyor */ }
+      c.postMessage(Object.assign({ coachos: 'alert-click' }, mark));
+      return;
+    }
+    if (link) await self.clients.openWindow(link);
+  })());
+});
+
 /* Yeni worker'ın beklemeden devreye girmesi. Bildirim taşıyan bir worker'da
    "eski sürüm açık sekme kapanana kadar beklesin" davranışının bir faydası yok;
    aksine, uyarı biçimi değiştiğinde koçun telefonunda günlerce eski worker

@@ -7,7 +7,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 const assert = require('assert');
 const { section, t } = require('./harness');
-const { eligibleStaff, staffCovers, tokensFor, groupByLang } = require('../recipients');
+const { eligibleStaff, staffCovers, tokensFor, groupForSend } = require('../recipients');
 
 const COACH = 'coach-uid-1';
 const TEAM = 'team-u16';
@@ -180,18 +180,40 @@ t('boş token kaydı listeye girmiyor', () => {
   assert.deepStrictEqual(got.map(x => x.token), ['tok-ok']);
 });
 
-/* ── Dil grupları ─────────────────────────────────────────────────────────── */
-section('Dil — bildirim kişinin diliyle kuruluyor');
+/* ── Gönderim grupları ───────────────────────────────────────────────────── */
+section('Gruplama — bildirim kişinin diliyle, adres kişinin yeriyle');
+
+const toks = g => g.tokens.map(x => x.token);
 
 t('cihazlar diline göre gruplanıyor', () => {
-  const g = groupByLang([
+  const g = groupForSend([
     TK('a', 's-head'), TK('b', 's-asst', { lang: 'en' }), TK('c', 's-perf'),
   ]);
-  assert.deepStrictEqual(g.get('tr').map(x => x.token), ['a', 'c']);
-  assert.deepStrictEqual(g.get('en').map(x => x.token), ['b']);
+  assert.deepStrictEqual(toks(g.get('tr|staff')), ['a', 'c']);
+  assert.deepStrictEqual(toks(g.get('en|staff')), ['b']);
 });
 t('bilinmeyen dil Türkçeye düşüyor', () => {
-  const g = groupByLang([TK('a', 's-head', { lang: 'de' }), TK('b', 's-asst', { lang: null })]);
-  assert.deepStrictEqual(g.get('tr').map(x => x.token), ['a', 'b']);
-  assert.strictEqual(g.has('en'), false);
+  const g = groupForSend([TK('a', 's-head', { lang: 'de' }), TK('b', 's-asst', { lang: null })]);
+  assert.deepStrictEqual(toks(g.get('tr|staff')), ['a', 'b']);
+  assert.strictEqual(g.has('en|staff'), false);
+});
+/* Bu ayrım olmadan ekip üyesinin bildirimi koçun giriş ekranını açıyordu — elinde
+   hiç hesabı olmayan birine şifre kutusu. */
+t('koç cihazı ile ekip cihazı AYRI gruplarda — adresleri farklı', () => {
+  const g = groupForSend([
+    TK('a', 's-head'),
+    { token: 'b', kind: 'coach', coachUid: COACH, lang: 'tr' },
+  ]);
+  assert.deepStrictEqual(toks(g.get('tr|staff')), ['a']);
+  assert.deepStrictEqual(toks(g.get('tr|coach')), ['b']);
+});
+t('grup kendi dilini ve alıcısını taşıyor', () => {
+  const g = groupForSend([{ token: 'b', kind: 'coach', coachUid: COACH, lang: 'en' }]);
+  const one = g.get('en|coach');
+  assert.strictEqual(one.lang, 'en');
+  assert.strictEqual(one.audience, 'coach');
+});
+t('aynı dili konuşan iki ekip cihazı tek istekte gidiyor', () => {
+  const g = groupForSend([TK('a', 's-head'), TK('b', 's-physio')]);
+  assert.strictEqual(g.size, 1, 'aynı metin ve aynı adres tek istek olmalı');
 });

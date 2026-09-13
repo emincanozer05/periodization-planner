@@ -9,7 +9,7 @@
 const assert = require('assert');
 const { section, t, ta } = require('./harness');
 const { claimForAlert } = require('../claim');
-const { alertDocId, rosterDocId, alertLink, safe } = require('../ids');
+const { alertDocId, rosterDocId, alertLink, staffAlertLink, safe } = require('../ids');
 
 /* ── Sahte Firestore ──────────────────────────────────────────────────────────
    Gerçek transaction semantiğinin test için gereken kadarı: tx.get okur,
@@ -155,4 +155,20 @@ t('adres yoksa link yok — yanlış yere açmaktansa hiç açma', () => {
 });
 t('link içindeki kimlik kaçırılıyor', () => {
   assert.ok(alertLink('https://e.com', 'a b').endsWith('#alert=a%20b'));
+});
+
+/* Ekip üyesinin CoachOS hesabı yok: bildirimi koçun uygulamasına açmak onu
+   kullanamayacağı bir giriş ekranına düşürüyordu. Gideceği yer kendi sayfası. */
+t('ekip üyesinin bildirimi kendi uyarı sayfasını açıyor', () => {
+  assert.strictEqual(staffAlertLink('https://example.com/app/index.html'),
+    'https://example.com/app/alerts.html');
+  assert.strictEqual(staffAlertLink('https://example.com/'), 'https://example.com/alerts.html');
+});
+t('ekip linki kimlik TAŞIMIYOR — sayfa kendi kayıtlı adresini hatırlıyor', () => {
+  const url = staffAlertLink('https://example.com/app/');
+  assert.ok(url.indexOf('#') < 0 && url.indexOf('?') < 0, 'adreste kimlik durmamalı: ' + url);
+});
+t('adres yoksa ekip linki de yok', () => {
+  assert.strictEqual(staffAlertLink(''), '');
+  assert.strictEqual(staffAlertLink('example.com'), '');
 });

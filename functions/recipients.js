@@ -78,20 +78,33 @@ function tokensFor(tokens, opts) {
   return out;
 }
 
-/* Bildirim metni kişinin diline göre kuruluyor; aynı dili paylaşan cihazlar tek
-   bir FCM isteğinde gidebilsin diye burada gruplanıyor. Dil eşleştirme sırasında
-   kaydediliyor, bilinmiyorsa Türkçe — uygulamanın ve formun varsayılanı o. */
-function groupByLang(tokens) {
+/* ── Gönderim grupları ─────────────────────────────────────────────────────
+   Tek bir FCM isteğinde yalnızca AYNI mesajı alacak cihazlar gidebiliyor. İki şey
+   mesajı farklılaştırıyor:
+
+     dil      → bildirim metni kişinin diliyle kuruluyor. Dil eşleştirme sırasında
+                kaydediliyor, bilinmiyorsa Türkçe (uygulamanın ve formun varsayılanı).
+
+     alıcı    → bildirime tıklayınca açılacak adres. Koç kendi uygulamasına gidiyor;
+                ekip üyesinin CoachOS hesabı olmadığı için onun gideceği yer kendi
+                uyarı sayfası. İkisini aynı istekte göndermek, ekip üyesini
+                kullanamayacağı bir giriş ekranına düşürüyordu.
+
+   Anahtar "dil|alıcı"; değeri de ikisini adıyla taşıyor, çağıran tarafın anahtarı
+   ayrıştırması gerekmesin. */
+function groupForSend(tokens) {
   const out = new Map();
-  for (const t of tokens) {
+  for (const t of (Array.isArray(tokens) ? tokens : [])) {
     const lang = t.lang === 'en' ? 'en' : 'tr';
-    if (!out.has(lang)) out.set(lang, []);
-    out.get(lang).push(t);
+    const audience = t.kind === 'coach' ? 'coach' : 'staff';
+    const key = `${lang}|${audience}`;
+    if (!out.has(key)) out.set(key, { lang, audience, tokens: [] });
+    out.get(key).tokens.push(t);
   }
   return out;
 }
 
 module.exports = {
   TEAM_WIDE_ROLES, INDIVIDUAL_ROLE, ALL_ROLES,
-  staffCovers, eligibleStaff, tokensFor, groupByLang,
+  staffCovers, eligibleStaff, tokensFor, groupForSend,
 };

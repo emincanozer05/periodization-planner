@@ -2162,6 +2162,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .alr-tag.m{color:var(--yellow);border-color:rgba(245,158,11,.40);background:rgba(245,158,11,.10)}
 .alr-dl{font-size:10.5px;color:var(--dim);flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .alr-dl.bad{color:var(--red)}
+/* Teslim raporu — yalnızca ULAŞMAYAN biri varsa çıkıyor. Satırın ALTINDA ayrı bir
+   blok, içinde değil: uyarı satırı bir düğme ve düğmenin içine düğme konamıyor. */
+.alr-dbg{margin:-4px 2px 10px;padding:8px 11px;border-radius:8px;font-size:11.5px;line-height:1.6;
+  color:var(--text2);background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.28)}
+.alr-dbg b{color:var(--text);font-weight:600}
+.alr-dbg code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
 .push-c{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:15px 16px;border-radius:11px;
   border:1px solid var(--border);background:var(--panel);margin-bottom:18px}
 .push-c .ic{font-size:20px;line-height:1;flex:none;margin-top:1px}
@@ -25437,14 +25443,56 @@ async function registerCoachPush(){
   return token;
 }
 
+/* Kaydı taze tut — ama gereğinden sık yazmadan.
+
+   Bu iki yerden çağrılıyor (uygulama açılışı ve Uyarılar ekranı) ve ikisi aynı
+   oturumda üst üste gelebiliyor; aynı cihazın kaydını dakika içinde ikinci kez
+   yazmanın hiçbir faydası yok. `force`, koç düğmeye bastığında geçiliyor: orada
+   beklenen şey "şimdi kaydol" ve bir zaman aşımına takılmamalı. */
+let PUSH_LAST_REG=0;
+const PUSH_REG_MIN_GAP=6*60*60*1000;
+async function refreshCoachPush(force){
+  if(!force&&PUSH_LAST_REG&&Date.now()-PUSH_LAST_REG<PUSH_REG_MIN_GAP)return null;
+  const token=await registerCoachPush();
+  PUSH_LAST_REG=Date.now();
+  return token;
+}
+
 /* Bir gönderim → sporcunun günlüğündeki kayıt. srcId sporcu+tarih+tür'den türetilir:
    aynı gün ikinci kez dolduran sporcunun cevabı ESKİSİNİN ÜZERİNE yazılır, yeni bir
    satır açmaz — ve aynı doküman ikinci kez işlense de sonuç değişmez. */
 function checkinSrcId(kind,athleteId,date){
   return `ci-${kind==='wellness'?'w':'srpe'}-${athleteId}-${date}`;
 }
+/* Bir gönderimin ZAMANI. Sunucu damgası henüz inmemiş bir doküman (yeni yazılmış,
+   `at` boş) EN YENİ sayılıyor: damgasız tek sebep, dokümanın az önce yazılmış
+   olması. Süpürme de aynı varsayımla çalışıyor — damgasız dokümanı silmiyor. */
+function checkinAt(d){
+  const t=d&&d.at&&d.at.toDate?d.at.toDate().getTime():(d&&d.atIso?Date.parse(d.atIso):NaN);
+  return isNaN(t)?Infinity:t;
+}
+/* Gelen gönderim, günlükte duran kaydın üstüne yazılmalı mı?
+   Kural: AYNI GÜNÜN EN SON gönderimi geçerli olan. Sporcu sabah yanlış bir şey
+   girip öğleden sonra düzeltebiliyor ve düzeltmesi kazanmak zorunda.
+
+   Bunun kontrol edilmesi gerekiyor çünkü gönderimler sıraya girmiş gelmiyor:
+   gelen kutusu sorgusu sırasız ve Firestore sırasız sorguyu DOKÜMAN ADINA göre
+   döndürüyor; adlar da add() ile rastgele. Koç uygulamayı akşam açtığında o günün
+   üç gönderimi tek anlık görüntüde ve rastgele sırada geliyordu — hangisinin
+   ekranda kaldığı şansa bağlıydı. Zaman karşılaştırması sırayı önemsiz kılıyor.
+
+   Zamanı bilinmeyen bir taraf varsa gelen kazanıyor: bugünkü davranış bu ve
+   bilinmeyen bir zamanla eski kaydı korumak, düzeltmeyi sessizce yutabilirdi. */
+function checkinWins(incomingAt,prev){
+  const a=Date.parse(incomingAt||'');
+  const b=Date.parse((prev&&prev.submittedAt)||'');
+  if(isNaN(a)||isNaN(b))return true;
+  return a>=b;
+}
 function mergeCheckins(team,docs){
   if(!docs.length)return null;
+  // Eskiden yeniye: zamanı bilinmeyen (damgasız, yani yeni yazılmış) en sonda.
+  docs=docs.slice().sort((a,b)=>checkinAt(a)-checkinAt(b));
   const byId=new Map((team.athletes||[]).map((a,i)=>[a.id,i]));
   const byName=new Map((team.athletes||[]).map((a,i)=>[NORM(a.name),i]));
   let athletes=null,touched=0,unknown=0;
@@ -25490,7 +25538,11 @@ function mergeCheckins(team,docs){
         gameRPE:gmRPE,gameDuration:gmDur,gameLoad:gmLoad?Math.round(gmLoad):null,
         totalLoad:total?Math.round(total):null};
       const k=ath.srpeLog.findIndex(e=>(e.srcId||e.notionId)===nid);
-      if(k>=0){entry.id=ath.srpeLog[k].id;ath.srpeLog[k]=entry;}else ath.srpeLog.push(entry);
+      if(k>=0){
+        // Aynı günün daha ESKİ bir gönderimi, duran kaydın üstüne yazmıyor.
+        if(!checkinWins(at,ath.srpeLog[k]))continue;
+        entry.id=ath.srpeLog[k].id;ath.srpeLog[k]=entry;
+      }else ath.srpeLog.push(entry);
       touched++;
     }else if(d.kind==='wellness'){
       const nid=checkinSrcId('wellness',d.athleteId,date);
@@ -25512,6 +25564,9 @@ function mergeCheckins(team,docs){
         areaOfPain:'',painMap,pain:painTagsFromMap(painMap),readiness};
       const k=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
       if(k>=0){
+        /* AYNI GÜNÜN SON GÖNDERİMİ geçerli: daha eski bir gönderim (rastgele sırada
+           gelmiş olabilir) sporcunun sonradan yaptığı düzeltmeyi geri almıyor. */
+        if(!checkinWins(at,ath.wellness[k]))continue;
         /* Koçun elle düzelttiği alanlar yeniden gönderimde de korunur — Tally yolundaki
            kuralın aynısı, yoksa koçun düzeltmesi sessizce geri alınırdı. */
         const prev=ath.wellness[k],kept=prev.manualEdits||[];
@@ -26033,7 +26088,7 @@ function PushCard(){
   // dönmüş bir token'ın tek belirtisi bildirimlerin sessizce kesilmesi oluyor.
   useEffect(()=>{
     if(state!=='granted')return;
-    registerCoachPush().catch(e=>setErr((e&&e.message)||String(e)));
+    refreshCoachPush(false).catch(e=>setErr((e&&e.message)||String(e)));
   },[state]);
 
   const enable=async()=>{
@@ -26041,7 +26096,7 @@ function PushCard(){
     try{
       const p=await Notification.requestPermission();
       if(p!=='granted'){setState(pushState());setBusy(false);return;}
-      await registerCoachPush();
+      await refreshCoachPush(true);        // düğmeye basıldı: şimdi kaydol
       setState('granted');
     }catch(e){setErr((e&&e.message)||String(e));}
     setBusy(false);
@@ -26125,6 +26180,34 @@ const ALERT_SCALE=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
 const alertColor=v=>v==null?'var(--dim)':ALERT_SCALE[Math.min(5,Math.max(1,Math.round(Number(v))))-1];
 const alertScore=v=>v==null?'—':(Number.isInteger(Number(v))?String(Number(v)):Number(v).toFixed(1));
 
+/* "BU BİLDİRİM KİME ULAŞTI, KİME ULAŞMADI" — uyarının kendi kaydından (Madde 21).
+   Yalnızca ulaşmayan biri varsa çıkıyor; her şey yolundaysa liste sessiz kalıyor.
+
+   Bu blok olmadan "bildirim almadım" diyen bir ekip üyesinin sebebini görmenin
+   hiçbir yolu yoktu: cihaz kayıtlarını istemci okuyamıyor (okuması da doğru değil,
+   bir cihaz adresi kimsenin görmesi gereken bir şey değil) ve satırdaki tek işaret
+   "0/0" idi. Sunucu artık üç şeyi kayda yazıyor: kim aldı, kim alamadı ve hangi
+   hatayla, ve kapsamda olup TELEFONUNU HİÇ EŞLEŞTİRMEMİŞ kimler var. */
+function AlertDelivery({a}){
+  const recipients=a.recipients||[],unreachable=a.unreachable||[];
+  const failed=recipients.filter(r=>r.status!=='sent');
+  const sent=recipients.filter(r=>r.status==='sent');
+  const noRoster=a.rosterPublished===false;
+  if(!failed.length&&!unreachable.length&&!noRoster)return null;
+  const who=r=>((r.name||'').trim()||L('isimsiz','unnamed'))
+    +(r.kind==='coach'?L(' (sen)',' (you)'):'')
+    +(r.platform?` · ${r.platform}`:'');
+  return(<div className="alr-dbg">
+    {noRoster&&<div>⚠ {L('Bu takımın ekip listesi buluta yayımlanmamıştı — ekipten kimseye bildirim gönderilemedi. Uygulamayı açık tutman yeterli, liste kendiliğinden yayımlanıyor.',
+                         'This team\'s staff list had not been published to the cloud — nobody on the staff could be notified. Keeping the app open publishes it by itself.')}</div>}
+    {!!unreachable.length&&<div>📵 <b>{L('Cihazı eşleşmemiş','No paired device')}:</b>{' '}
+      {unreachable.map(u=>(u.name||'').trim()||u.staffId).join(', ')} — {L('kendilerine gönderdiğin bildirim linkini açıp izin vermeleri gerekiyor.',
+                                                                           'they need to open the notification link you sent them and allow notifications.')}</div>}
+    {failed.map((r,i)=><div key={'f'+i}>❌ <b>{who(r)}</b> — {L('ulaşmadı','not delivered')} <code>{r.error||''}</code></div>)}
+    {!!sent.length&&<div>✅ {L('Ulaşan','Delivered')}: {sent.map(who).join(', ')}</div>}
+  </div>);
+}
+
 function AlertsView({data,team,sync,openAlert}){
   const[rows,setRows]=useState(null);      // null = henüz yüklenmedi
   const[err,setErr]=useState('');
@@ -26196,7 +26279,8 @@ function AlertsView({data,team,sync,openAlert}){
         const high=a.painHigh||[],mod=a.painModerate||[];
         const sent=(a.recipients||[]).filter(r=>r.status==='sent').length;
         const total=(a.recipients||[]).length;
-        return(<button key={a.id} className="alr-r" style={{borderLeftColor:alertColor(a.overall)}}
+        return(<React.Fragment key={a.id}>
+        <button className="alr-r" style={{borderLeftColor:alertColor(a.overall)}}
           onClick={()=>openAlert(a)}>
           <span className="alr-sc">
             <i style={{background:alertColor(a.overall)}}/>
@@ -26219,7 +26303,9 @@ function AlertsView({data,team,sync,openAlert}){
           <span className={'alr-dl'+(total&&!sent?' bad':'')} title={L('Bildirim gönderilen cihaz sayısı','Devices notified')}>
             {total?`${sent}/${total}`:'—'}
           </span>
-        </button>);
+        </button>
+        <AlertDelivery a={a}/>
+        </React.Fragment>);
       })}
     </div>)}
   </div>);
@@ -26231,21 +26317,121 @@ function AlertsView({data,team,sync,openAlert}){
    cevaplıyor; o doküman koçun kadrosundan türüyor ve kadro değiştiğinde
    tazelenmesi gerekiyor. Damga aynıysa hiç yazılmıyor, yani koç plan üzerinde
    çalışırken bu bileşen sessiz duruyor. */
-function AlertRosterSync({team,sync}){
+function AlertRosterSync({teams,sync}){
   const user=sync&&sync.user,status=sync&&sync.status;
-  const lastRev=useRef('');
+  /* Takım başına, bu oturumda yayımlanmış damga. Hesap değişirse sıfırlanıyor:
+     başka bir hesabın kadrosu bu hesabın adına yayımlanmış sayılmamalı. */
+  const done=useRef({uid:null,rev:new Map()});
   useEffect(()=>{
     // Buluttan ilk yükleme bitmeden yazmak, boş bir kadroyu yayımlamak olurdu.
-    if(!user||status!=='synced'||!team)return;
-    const rev=alertRosterRev(team);
-    const key=team.id+':'+rev;
-    if(lastRev.current===key)return;
-    lastRev.current=key;
-    publishAlertRoster(user.uid,team).catch(e=>{
-      lastRev.current='';                       // başarısız olduysa bir dahaki turda yeniden dene
-      console.warn('alert roster publish',e);
+    if(!user||status!=='synced'||!Array.isArray(teams))return;
+    if(done.current.uid!==user.uid){done.current={uid:user.uid,rev:new Map()};}
+    const seen=done.current.rev;
+    let alive=true;
+    /* HER TAKIM yayımlanıyor, yalnızca ekranda açık olan değil.
+       Eskiden yalnızca aktif takım yayımlanıyordu ve sonucu şuydu: koç U12'ye
+       bakarken U14'ün kadro dokümanı hiç yazılmıyor, o takımın sporcusu uyarı
+       verdiğinde sunucu kadroyu bulamıyor ve ekipten KİMSEYE bildirim gitmiyor —
+       üstelik bildirimin linki de o dokümandan geldiği için uyarı linksiz kalıyor.
+       Koçun bütün takımlarını tek tek açmış olması şart olamaz. */
+    (teams||[]).forEach(team=>{
+      if(!team||!team.id)return;
+      const rev=alertRosterRev(team);
+      if(seen.get(team.id)===rev)return;         // bu kadro bu hâliyle zaten yayımlandı
+      seen.set(team.id,rev);
+      publishAlertRoster(user.uid,team).catch(e=>{
+        if(alive)seen.delete(team.id);           // başarısız olduysa bir dahaki turda yeniden dene
+        console.warn('alert roster publish',e);
+      });
     });
-  },[user,status,team]);
+    return()=>{alive=false;};
+  },[user,status,teams]);
+  return null;
+}
+
+/* ── Bildirim köprüsü ───────────────────────────────────────────────────────
+   Koç hangi ekranda olursa olsun çalışan üç şey. Hiçbiri çizim yapmıyor.
+
+   1) CİHAZ KAYDINI TAZE TUTMAK. Web FCM'de "token değişti" diye bir olay yok;
+      kaydın yaşadığından emin olmanın tek yolu arada bir getToken çağırmak. Bu
+      eskiden yalnızca Wellness Uyarıları EKRANI açıkken yapılıyordu: o ekrana
+      girmeyen koçun dönmüş ya da sunucudan silinmiş kaydı hiç fark edilmiyordu ve
+      kart "bildirimler açık" derken ortada kayıt kalmıyordu.
+
+   2) UYGULAMA AÇIKKEN GELEN BİLDİRİMİ GÖSTERMEK. Firebase'in service worker'ı,
+      sitenin GÖRÜNÜR bir sekmesi varsa bildirimi KENDİSİ göstermiyor; payload'ı
+      sayfaya yollayıp çıkıyor (SDK: hasVisibleClients → sendMessagePayload…).
+      Sayfada bunu karşılayan kimse olmadığı için uyarı sessizce düşüyordu —
+      "bazen geliyor bazen gelmiyor"un birinci sebebi buydu. Bildirimi burada
+      elle gösteriyoruz; worker göstermediği için ikinci bir kopya oluşmuyor.
+
+   3) BİLDİRİME TIKLAYINCA DOĞRU EKRANI AÇMAK. Zaten açık bir sekme varsa FCM'in
+      worker'ı yeni adrese GİTMİYOR, sekmeyi öne alıp bir mesaj yolluyor; o mesajı
+      dinleyen olmadığı için koç tıkladığında hiçbir şey olmuyordu. */
+function PushBridge({sync,openAlert}){
+  const user=sync&&sync.user;
+  const route=useRef(openAlert);route.current=openAlert;
+
+  // 1) Kayıt tazeleme — izin verilmişse, oturum başına bir kez.
+  useEffect(()=>{
+    if(!user||pushState()!=='granted')return;
+    refreshCoachPush(false).catch(e=>console.warn('push keep-alive',e));
+  },[user]);
+
+  /* 2) + 3) — dinleyiciler. İZİN ARANMIYOR ve bu kasıtlı: koç izni bu oturum
+     içinde (Uyarılar ekranındaki düğmeyle) veriyor olabiliyor ve o an bu etkinin
+     yeniden çalışması için bir sebep yok. İzinsiz bir dinleyici zararsız — hiç
+     mesaj gelmiyor; izin sonradan verildiğinde ise hazır duruyor. */
+  useEffect(()=>{
+    if(!('serviceWorker' in navigator)||!PUSH_CFG())return;
+    let alive=true;
+    /* Bildirimi sayfadan göstermek: SW kaydı üzerinden, çünkü `new Notification()`
+       mobil tarayıcılarda çalışmıyor. Etiket sunucudakiyle AYNI (alertId): aynı
+       sporcunun aynı günkü uyarısı üst üste yazıyor, yeni satır açmıyor.
+
+       Worker payload'ı AÇIK OLAN HER sekmeye yolluyor, yalnızca görünene değil:
+       iki sekmesi açık bir koçta bu fonksiyon iki kez çalışıyor. Ayrı bir "yalnızca
+       görünen sekme göstersin" kontrolü BİLEREK yok — aynı etiket ikinci bildirimi
+       ilkinin üstüne yazdığı için ekranda yine tek satır kalıyor, ve o kontrol
+       sekme tam o anda arkaya alınırsa bildirimi tamamen yutabiliyordu.
+       Kaçırılmış bir uyarı, ikinci kez titreyen bir telefondan kötüdür. */
+    const showLocal=async payload=>{
+      try{
+        const d=(payload&&payload.data)||{};
+        const n=(payload&&payload.notification)||{};
+        const reg=await navigator.serviceWorker.ready;
+        if(!reg||!alive)return;
+        await reg.showNotification(n.title||'CoachOS',{
+          body:n.body||'',
+          icon:'logo-mark.png',badge:'logo-mark.png',
+          tag:d.alertId||undefined,renotify:true,
+          /* Tıklanınca nereye gidileceği. `coachosAlert` bir işaret: service
+             worker'daki tıklama dinleyicisi YALNIZCA bu işareti taşıyan
+             bildirimlere bakıyor, FCM'in kendi gösterdikleri ona kalıyor. */
+          data:{coachosAlert:{alertId:d.alertId||'',athleteId:d.athleteId||'',teamId:d.teamId||''},
+                link:d.link||''},
+        });
+      }catch(e){console.warn('push foreground',e);}
+    };
+    let stop=null;
+    try{
+      stop=firebase.messaging().onMessage(p=>{if(alive)showLocal(p);});
+    }catch(e){console.warn('push onMessage',e);}
+
+    // Tıklama: hem FCM'in kendi mesajı hem bizim gösterdiğimiz bildirim.
+    const onMsg=ev=>{
+      const p=ev&&ev.data;
+      if(!p||typeof p!=='object')return;
+      const d=(p.isFirebaseMessaging&&p.messageType==='notification-clicked')?(p.data||null)
+             :(p.coachos==='alert-click'?p:null);
+      if(!d||!d.athleteId)return;
+      route.current&&route.current({athleteId:d.athleteId,teamId:d.teamId||''});
+    };
+    navigator.serviceWorker.addEventListener('message',onMsg);
+    return()=>{alive=false;
+      navigator.serviceWorker.removeEventListener('message',onMsg);
+      try{if(typeof stop==='function')stop();}catch(e){}};
+  },[user]);
   return null;
 }
 
@@ -26530,8 +26716,12 @@ function App(){
         olsun dinlenir ve günlüğe işlenir. */}
     <CheckinInbox sync={sync} setData={setData}/>
     {/* Aynı sebeple burada: sunucunun uyarıyı kime göndereceğini bildiği kadro
-        özeti, koç hangi ekranda olursa olsun güncel tutulur. */}
-    <AlertRosterSync team={team} sync={sync}/>
+        özeti, koç hangi ekranda olursa olsun — ve HANGİ TAKIMA bakıyor olursa
+        olsun — güncel tutulur. */}
+    <AlertRosterSync teams={data.teams} sync={sync}/>
+    {/* Cihaz kaydının tazeliği, uygulama açıkken gelen bildirim ve bildirime
+        tıklayınca açılacak ekran — üçü de ekrandan bağımsız. */}
+    <PushBridge sync={sync} openAlert={openAlert}/>
   </div>);
 }
 /* The device media store is read into memory BEFORE the first paint: mediaSrc() resolves a
