@@ -26477,6 +26477,32 @@ function AlertDelivery({a}){
   </div>);
 }
 
+/* Uyarı listesinin sırası: gün, sonra AĞIRLIK.
+
+   Gün en yenisi üstte kalıyor (liste günlere bölünerek çiziliyor), ama GÜNÜN
+   İÇİNDE sıra artık rastgele değil: önce yüksek ağrı bildirenler, sonra orta ağrı
+   bildirenler, sonra kalanlar; her grubun içinde en düşük wellness skoru üstte.
+   Sabah ekranı açıldığında ilk satır, ilk ilgilenilmesi gereken sporcu olsun diye.
+   alerts.html'deki sıralamanın aynısı — iki ekran aynı listeyi aynı sırada
+   gösteriyor. */
+function alertPainRank(a){
+  if((a.painHigh||[]).length)return 0;
+  if((a.painModerate||[]).length)return 1;
+  return 2;
+}
+function alertSeverity(a,b){
+  const d=String(b.date||'').localeCompare(String(a.date||''));
+  if(d)return d;
+  const r=alertPainRank(a)-alertPainRank(b);
+  if(r)return r;
+  const oa=(a.overall==null)?99:Number(a.overall),ob=(b.overall==null)?99:Number(b.overall);
+  if(oa!==ob)return oa-ob;
+  const pa=(a.painHigh||[]).length+(a.painModerate||[]).length,
+        pb=(b.painHigh||[]).length+(b.painModerate||[]).length;
+  if(pa!==pb)return pb-pa;
+  return String(a.athleteName||'').localeCompare(String(b.athleteName||''),'tr');
+}
+
 function AlertsView({data,team,sync,openAlert}){
   const[rows,setRows]=useState(null);      // null = henüz yüklenmedi
   const[err,setErr]=useState('');
@@ -26491,7 +26517,7 @@ function AlertsView({data,team,sync,openAlert}){
     const take=snap=>{
       if(!alive)return;
       const out=[];snap.forEach(d=>out.push({id:d.id,...(d.data()||{})}));
-      out.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+      out.sort(alertSeverity);
       setRows(out);setErr('');
     };
     const fail=e=>{
@@ -26672,7 +26698,9 @@ function PushBridge({sync,openAlert}){
         if(!reg||!alive)return;
         await reg.showNotification(n.title||'CoachOS',{
           body:n.body||'',
-          icon:'logo-mark.png',badge:'logo-mark.png',
+          /* `icon` BİLEREK yok: Android bu görseli bildirimin SAĞ kenarında ikinci
+             bir kutu olarak basıyor, solda zaten aynı logo (badge) duruyor. */
+          badge:'logo-mark.png',
           tag:d.alertId||undefined,renotify:true,
           /* Tıklanınca nereye gidileceği. `coachosAlert` bir işaret: service
              worker'daki tıklama dinleyicisi YALNIZCA bu işareti taşıyan

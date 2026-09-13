@@ -144,6 +144,39 @@ function fmtScore(v){
   return Number.isInteger(n)?String(n):n.toFixed(1);
 }
 
+/* ── Listenin sırası: gün, sonra AĞIRLIK ─────────────────────────────────────
+   Liste bugüne kadar yalnızca tarihe göre diziliyordu, yani aynı sabahın uyarıları
+   rastgele bir sırayla geliyordu: koç telefonu açtığında en üstte 4.3'lük bir
+   sporcuyu, aşağıda omzu ağrıyanı görüyordu. Oysa ekranın tek işi "bu sabah önce
+   kiminle ilgilenmeliyim" sorusunu cevaplamak.
+
+   Gün yine en yenisi üstte duruyor — eski bir uyarının bugünün listesini
+   bastırması, sıralamanın kendisinden daha kötü olurdu. Sıra GÜNÜN İÇİNDE
+   kuruluyor:
+     1) yüksek ağrı bildirenler,
+     2) orta ağrı bildirenler,
+     3) kalanlar,
+   her grubun içinde de en düşük wellness skoru üstte. Eşitlik kalırsa daha çok
+   bölgesi ağrıyan, o da eşitse isim sırası. */
+function painRank(a){
+  if((a.painHigh||[]).length)return 0;
+  if((a.painModerate||[]).length)return 1;
+  return 2;
+}
+function bySeverity(a,b){
+  var d=String(b.date||'').localeCompare(String(a.date||''));
+  if(d)return d;
+  var r=painRank(a)-painRank(b);
+  if(r)return r;
+  // Skoru olmayan uyarı (nadir) en alta: sıralayacak bir şey yok.
+  var oa=(a.overall==null)?99:Number(a.overall),ob=(b.overall==null)?99:Number(b.overall);
+  if(oa!==ob)return oa-ob;
+  var pa=(a.painHigh||[]).length+(a.painModerate||[]).length,
+      pb=(b.painHigh||[]).length+(b.painModerate||[]).length;
+  if(pa!==pb)return pb-pa;
+  return String(a.athleteName||'').localeCompare(String(b.athleteName||''),'tr');
+}
+
 /* ── Firebase ────────────────────────────────────────────────────────────────
    Kendi uygulama adıyla kuruluyor. Sebebi checkin.html'dekiyle birebir aynı:
    Firebase oturumu tarayıcıda `firebase:authUser:<apiKey>:<appAdı>` anahtarıyla
@@ -194,7 +227,12 @@ function boot(){
     return;
   }
   if(!TOKEN){
+    /* Bildirimler artık bu sayfaya açılıyor — koçun KENDİ cihazı da buraya
+       düşebiliyor. O cihaz kadroda bir ekip üyesi olarak eşleşmemişse elinde
+       hiçbir şey kalmasın istemiyoruz: uygulamanın kendisine bir çıkış duruyor. */
     show(setupBox,'warn','Bu adres eksik. Koçundan sana özel bildirim linkini iste.');
+    setupBox.appendChild(el('a',{class:'btn sec',href:'index.html',
+      style:'text-decoration:none;text-align:center',text:'CoachOS uygulamasını aç'}));
     return;
   }
   setupBox.appendChild(el('div',{class:'load',text:'Bağlanılıyor…'}));
@@ -377,8 +415,11 @@ function listenForeground(){
         if(!reg)return;
         // Etiket sunucudakiyle aynı (alertId): aynı sporcunun aynı günkü uyarısı
         // yeni bir satır açmıyor, öncekinin üstüne yazıyor.
+        /* `icon` BİLEREK yok: Android bu görseli bildirimin SAĞ kenarında büyük bir
+           kutu olarak basıyor ve solda zaten aynı logo (badge) duruyor — aynı işaret
+           iki kez. Kalan tek kopya soldaki. */
         return reg.showNotification(n.title||'CoachOS',{
-          body:n.body||'',icon:'logo-mark.png',badge:'logo-mark.png',
+          body:n.body||'',badge:'logo-mark.png',
           tag:d.alertId||undefined,renotify:true,
           // `coachosAlert`, worker'daki tıklama dinleyicisinin aradığı işaret.
           data:{coachosAlert:{alertId:d.alertId||'',athleteId:d.athleteId||'',teamId:d.teamId||''},
@@ -468,8 +509,9 @@ function watchFeed(){
 
   function paint(rows){
     // Sıralama her hâlükârda burada da yapılıyor: sorgu sıralı gelse de gelmese de
-    // ekrandaki sıra aynı olsun.
-    rows.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+    // ekrandaki sıra aynı olsun. Sorgu yalnızca tarihi sıralayabiliyor, günün
+    // içindeki ağırlık sırası ancak burada kuruluyor.
+    rows.sort(bySeverity);
     document.getElementById('feed-c').textContent=rows.length?rows.length+' kayıt':'';
     list.innerHTML='';
     if(!rows.length){

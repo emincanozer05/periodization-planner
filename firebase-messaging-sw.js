@@ -63,27 +63,43 @@ try {
    SDK'nın kendi bildirimlerine burada asla karışılmıyor: onun dinleyicisi bu
    dosyadan ÖNCE kuruluyor ve kendi bildirimlerinde stopImmediatePropagation()
    çağırıyor, yani buraya yalnızca bizim gösterdiklerimiz geliyor. Ayrıca aşağıdaki
-   ilk satır da işareti olmayan her bildirimi elemesi için duruyor. */
+   ilk satır da işareti olmayan her bildirimi elemesi için duruyor.
+
+   GİDİLECEK YER, AÇIK OLAN SEKME DEĞİL, ADRESİN KENDİSİ.
+
+   Burada eskiden aynı SUNUCUDAKİ ilk pencere öne alınıyordu, hangi sayfa olduğuna
+   bakılmadan. Koçun telefonunda çoğu zaman check-in (anket) formu da açık
+   duruyor ve uyarıya bastığında karşısına o çıkıyordu — "bildirime basınca beni
+   ankete atıyor". Artık yalnızca bildirimin AÇMASI GEREKEN sayfa öne alınıyor;
+   başka bir sayfa açıksa ona hiç dokunulmuyor (öylece gezinmek koçun uygulamada
+   yaptığı işi de silerdi), bildirim kendi penceresinde açılıyor. */
 self.addEventListener('notificationclick', event => {
   const data = (event.notification && event.notification.data) || {};
   const mark = data.coachosAlert;
   if (!mark) return;                       // FCM'in kendi bildirimi — onu SDK açıyor
   event.notification.close();
-  const link = String(data.link || '');
+  /* Adres gelmediyse (kadro dokümanında uygulama adresi yoksa sunucu linksiz
+     gönderiyor) bildirimin gitmesi gereken yer yine belli: worker'ın kendi
+     dizinindeki uyarı sayfası. Tıklayınca hiçbir şey olmaması, buraya düşmekten
+     kötü. */
+  let target;
+  try { target = new URL(String(data.link || '') || 'alerts.html', self.location.href); }
+  catch (e) { target = new URL('alerts.html', self.location.href); }
   event.waitUntil((async () => {
-    /* Açık bir sekme varsa YENİ pencere açılmıyor: koç bildirime bastığında elindeki
-       uygulamanın ikinci bir kopyasıyla kalmasın. Sekme öne alınıp uyarının kimliği
-       ona yollanıyor, gidilecek ekranı uygulama kendisi açıyor. */
+    /* O sayfa zaten açıksa ikinci bir kopyası açılmıyor: sekme öne alınıp uyarının
+       kimliği ona yollanıyor, gerisini sayfa kendisi yapıyor. Eşleşme YOL üzerinden
+       (#alert=… gibi parçalar ve sorgu dizesi dışarıda): aynı sayfanın farklı bir
+       uyarı için açılmış hâli de o sayfadır. */
     const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of list) {
-      let host = '';
-      try { host = new URL(c.url, self.location.href).host; } catch (e) { host = ''; }
-      if (host !== self.location.host) continue;
+      let u;
+      try { u = new URL(c.url, self.location.href); } catch (e) { continue; }
+      if (u.origin !== target.origin || u.pathname !== target.pathname) continue;
       try { await c.focus(); } catch (e) { /* odaklanamadıysa mesaj yine gidiyor */ }
       c.postMessage(Object.assign({ coachos: 'alert-click' }, mark));
       return;
     }
-    if (link) await self.clients.openWindow(link);
+    await self.clients.openWindow(target.href);
   })());
 });
 

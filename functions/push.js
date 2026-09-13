@@ -58,8 +58,8 @@ function chunk(list, size) {
    veri modeliyle aynı: 1 sporcu = 1 uyarı (Madde 8). Telefon bunları kendi
    isterse gruplar; birleştirmeyi biz yapmıyoruz.
 
-   `fcmOptions.link`: bildirime tıklayınca açılacak adres. Uygulama bu adresteki
-   `#alert=<id>` parçasını okuyup doğrudan sporcunun Wellness ekranını açıyor.
+   `fcmOptions.link`: bildirime tıklayınca açılacak adres — herkes için uyarı
+   sayfası (alerts.html). Kimin tıkladığına göre değişmiyor; bkz. ids.js.
 
    Adres YOKSA alan hiç konmuyor — boş bir string konmuyor. Sebebi: FCM bu alanı
    geçerli bir adres olmak üzere doğruluyor ve boş değeri reddedebiliyor; reddettiği
@@ -71,7 +71,10 @@ function buildMessage(tokens, text, data, link) {
     notification: {
       title: text.title,
       body: text.body,
-      icon: '/logo-mark.png',
+      /* `icon` BİLEREK yok, yalnızca `badge` duruyor. Android `icon`'u bildirimin
+         SAĞ kenarında büyük bir kutu olarak basıyor; solda zaten aynı logo
+         duruyor, yani aynı işaret iki kez görünüyordu. Metnin yerini alan ikinci
+         bir kopyaya gerek yok. */
       badge: '/logo-mark.png',
       tag: data.alertId,
       renotify: true,
