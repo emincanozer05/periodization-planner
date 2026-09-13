@@ -21062,7 +21062,12 @@ const SERVER_READ_MS=4000;      // yazım öncesi güvenlik okuması bu kadar be
 const COMMIT_MS=15000;          // bir commit'in SUNUCU ONAYINI bu kadar bekleriz (yazımın kendisi beklemez)
 const WRITE_STUCK_MS=45000;     // bu kadar süredir İLERLEMEYEN yazım takılmış sayılır ve bırakılır
 const PEND_STUCK_MS=12000;      // bekleyen yazım bu kadar oturmazsa dinleyici yine de açılır
-const STALL_MS=25000;           // sunucudan bu kadar süre tek bir yanıt gelmezse taşıma katmanından şüphelen
+/* Sunucudan bu kadar süre tek bir yanıt gelmezse taşıma katmanından şüphelenilir. Sağlam bir
+   ağda ilk anlık görüntü bir-iki saniyede gelir, kötü ama çalışan bir mobil bağlantıda bile
+   çok altında kalır; yani bu süre "yavaş" ile "hiç geçmiyor"u ayırmaya fazlasıyla yeter.
+   Yanlış tahminin bedeli de küçük: tek bir yenileme, ve seçim her sunucu yanıtında yeniden
+   yazıldığı için bir sonraki oturumda kendiliğinden düzelir. */
+const STALL_MS=25000;
 const isHidden=()=>typeof document!=='undefined'&&document.visibilityState==='hidden';
 /* SENKRON GÜNLÜĞÜ — telefonda konsol yoktur.
    "Gösterge sarıda kalıyor" tek bir belirti, ama arkasında birbirine hiç benzemeyen
@@ -22361,7 +22366,7 @@ function useCloudSync(data,setData){
             geçilip sayfa bir kez yenilenir. Oturum başına yalnızca bir kez (bkz. __fsSwitchTransport),
             yani bir ileri bir geri dönemez. Yenilemenin bedeli yok: yazımlar zaten IndexedDB'de
             kalıcı, ekrandaki hâl de yerel kopyaya yazılıyor. */
-      if(!sawServer.current&&startedAt.current&&now-startedAt.current>STALL_MS+15000
+      if(!sawServer.current&&startedAt.current&&now-startedAt.current>STALL_MS
          &&(typeof navigator==='undefined'||navigator.onLine!==false)
          &&typeof window!=='undefined'&&typeof window.__fsSwitchTransport==='function'
          &&window.__fsSwitchTransport()){

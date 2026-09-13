@@ -303,7 +303,7 @@ async function scenarioNeverReachesServer() {
   const { out, h } = mountApp();
   await sleep(1000);
   check('sunucuya ulaşılamadığı görülüyor', out.sync.diag().sawServer === false);
-  await sleep(43000);                       // STALL_MS + 15sn + gözcü turu
+  await sleep(28000);                       // STALL_MS + gözcü turu
   check('taşıma bir kez değiştirildi', w.win.switched === 1, 'switched=' + w.win.switched);
   check('sayfa bir kez yenilendi', w.win.reloaded === 1, 'reloaded=' + w.win.reloaded);
   endScene(); h.unmount();
