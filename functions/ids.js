@@ -38,8 +38,11 @@ const alertDocId = (coachUid, athleteId, date) =>
    Adres yoksa boş dönüyor ve bildirim linksiz gidiyor; tıklanınca hiçbir şey
    açılmaması, yanlış yere açılmasından iyi.
 
-   Aşağıdaki iki adres de bu ortak kökten kuruluyor; tek fark hangi SAYFAYA
-   gidildiği, ve o fark alıcının kim olduğuna bağlı.
+   Adres TEK: bildirime kim tıklarsa tıklasın uyarı sayfası (alerts.html) açılıyor
+   — aşağıda staffAlertLink(). Koçun kendi cihazı bir zamanlar uygulamanın içine,
+   sporcunun Wellness ekranına açılıyordu; koç bunu istemedi, çünkü o tıklama
+   telefonda açık duran başka bir sayfaya (çoğu zaman check-in formuna) düşüp
+   duruyordu. Uyarı sayfası ise uyarıların TAMAMINI, en ağırı üstte gösteriyor.
 
    Uygulamanın KLASÖRÜ. Gelen adres hem klasör ("https://x.com/app/") hem dosya
    ("…/app/index.html") biçiminde olabiliyor — tarayıcıda location.href neyse o.
@@ -59,15 +62,19 @@ function appDir(appUrl) {
   return `${u.origin}${dir}`;
 }
 
-/* KOÇUN bildirimi: kendi uygulaması, doğrudan o uyarının ekranı. */
+/* Uygulamanın içindeki derin link: doğrudan o uyarının sporcu ekranı.
+
+   Bildirimler ARTIK buraya açılmıyor (yukarıdaki nota bakın) — adres elde
+   duruyor çünkü index.html `#alert=` parçasını hâlâ okuyor: uygulamanın içinden
+   ya da elle paylaşılan bir adresten gelen tıklama yine doğru ekranı açıyor. */
 function alertLink(appUrl, alertId) {
   const base = appDir(appUrl);
   return base ? `${base}/index.html#alert=${encodeURIComponent(alertId)}` : '';
 }
 
-/* EKİP ÜYESİNİN bildirimi: kendi uyarı sayfası.
+/* BİLDİRİMİN adresi — ekip üyesi de koç da buraya geliyor.
 
-   Ayrı bir adres olmak ZORUNDA. Ekip üyesinin CoachOS hesabı yok; bildirimi
+   Ekip üyesi için ayrı bir adres olmak ZORUNDAYDI: onun CoachOS hesabı yok, bildirimi
    koçun uygulamasına açmak onu doğrudan bir giriş ekranına düşürüyordu — elinde
    hiç kullanamayacağı bir şifre kutusu. Gitmesi gereken yer, telefonunu uyarılara
    bağlarken açtığı sayfa; sayfa kendi kayıtlı adresini (token) hatırlıyor, o yüzden
@@ -75,7 +82,8 @@ function alertLink(appUrl, alertId) {
    adresi, tarayıcı geçmişine ve paylaşım menülerine giren bir yer.
 
    Uyarının hangisi olduğu adreste taşınmıyor çünkü gerek yok: sayfa takımın
-   uyarılarını zaten en yenisi üstte listeliyor. */
+   uyarılarını zaten listeliyor — en yeni gün üstte, günün içinde de en ağır
+   durumdaki sporcu ilk sırada. */
 function staffAlertLink(appUrl) {
   const base = appDir(appUrl);
   return base ? `${base}/alerts.html` : '';

@@ -29,7 +29,7 @@ const admin = require('firebase-admin');
 const { shouldAlert, buildNotification, buildAlertRecord } = require('./wellness-alert');
 const { tokensFor, groupForSend, eligibleStaff } = require('./recipients');
 const { sendAlert } = require('./push');
-const { rosterDocId, alertDocId, alertLink, staffAlertLink } = require('./ids');
+const { rosterDocId, alertDocId, staffAlertLink } = require('./ids');
 const { claimForAlert } = require('./claim');
 
 admin.initializeApp();
@@ -180,15 +180,19 @@ exports.wellnessAlert = functions
     }
 
     /* ── Gönderim ─────────────────────────────────────────────────────────
-       Bildirim metni kişinin diline, tıklama adresi kişinin uygulamadaki yerine
-       göre kuruluyor; ikisini de paylaşan cihazlar tek istekte gidiyor. */
+       Bildirim metni kişinin diline göre kuruluyor; aynı dili paylaşan cihazlar
+       tek istekte gidiyor. Tıklama adresi artık herkeste aynı. */
     const appUrl = roster.appUrl || process.env.APP_ORIGIN;
-    const coachLink = alertLink(appUrl, alertId);
-    const staffLink = staffAlertLink(appUrl);
+    /* TEK adres, herkes için: uyarı sayfası. Koçun bildirimi eskiden kendi
+       uygulamasına, sporcunun Wellness ekranına açılıyordu; telefonda başka bir
+       CoachOS sayfası (çoğu zaman check-in formu) açıkken o tıklama oraya
+       düşebiliyordu. Uyarı sayfası hem herkeste aynı yere gidiyor hem de uyarıların
+       tamamını, en ağırı üstte gösteriyor. */
+    const link = staffAlertLink(appUrl);
     /* Linksiz bildirim GÖNDERİLİYOR ama tıklanınca hiçbir yere gitmiyor. Sebebi
        neredeyse her zaman kadro dokümanının hiç yayımlanmamış olması; o yüzden
        burada sessiz kalmıyor. */
-    if (!coachLink) {
+    if (!link) {
       functions.logger.warn('wellness: uygulama adresi bilinmiyor — bildirim linksiz gidiyor', {
         checkinId, alertId, rosterPublished: rosterFound,
       });
@@ -205,7 +209,6 @@ exports.wellnessAlert = functions
     const dead = [];
     for (const [, group] of groupForSend(targets)) {
       const text = buildNotification(sub, roster.teamName, group.lang);
-      const link = group.audience === 'coach' ? coachLink : staffLink;
       const r = await sendAlert(admin.messaging(), group.tokens.map(t => t.token), text, data, link);
       results.push(...r.results);
       dead.push(...r.dead);
@@ -261,7 +264,7 @@ exports.wellnessAlert = functions
       checkinId, alertId, athleteId: sub.athleteId, date: sub.date,
       sent: okCount, failed: results.length - okCount, dead: dead.length,
       unreachableStaff: unreachable.length,
-      linked: !!coachLink,
+      linked: !!link,
       errors: Array.from(new Set(results.filter(r => !r.ok).map(r => String(r.error || '')))),
     });
     return null;
