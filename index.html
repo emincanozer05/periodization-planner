@@ -87,10 +87,13 @@
     try{firebase.firestore().settings(_tp==='long'
       ?{experimentalForceLongPolling:true}
       :{experimentalAutoDetectLongPolling:true});}catch(e){}
-    // Sunucuya gerçekten ulaşıldı: kullanılan taşıma bu cihazın seçimi olarak yazılır.
+    /* Sunucuya gerçekten ulaşıldı: kullanılan taşıma bu cihazın seçimi olarak yazılır.
+       Her sunucu yanıtında çağrılıyor, ama iş yalnızca ilkinde yapılıyor: localStorage
+       yazımı senkron bir iştir ve koç çalışırken saniyede birkaç yanıt gelebilir. */
+    var _tOk=false;
     window.__fsTransportWorks=function(){
-      try{if(localStorage.getItem(_TKEY)!==_tp)localStorage.setItem(_TKEY,_tp);
-          sessionStorage.removeItem(_TSW);}catch(e){}
+      if(_tOk)return; _tOk=true;
+      try{if(localStorage.getItem(_TKEY)!==_tp)localStorage.setItem(_TKEY,_tp);}catch(e){}
     };
     // Ötekine geç: true dönerse çağıran sayfayı yeniler. Oturum başına bir kez.
     window.__fsSwitchTransport=function(){
