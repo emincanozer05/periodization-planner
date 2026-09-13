@@ -1,5 +1,14 @@
 # Tally → CoachOS bağlantısı (adım adım)
 
+> ## ⚠ ARTIK KULLANILMIYOR
+>
+> **Tally Senkronu sekmesi uygulamadan kaldırıldı** ve onunla birlikte arka planda
+> çalışan Auto-sync zamanlayıcısı da kaldırıldı — Worker'a artık hiçbir istek gitmiyor.
+> Sporcu verisi bugün uygulamanın **kendi check-in formlarından** geliyor
+> (`Check-in Formları` sekmesi, `checkin.html`); kurulumu `CHECKIN_SETUP.md`'de.
+>
+> Bu dosya ve `tally-worker.js`, eski kurulumu olanlar için kayıt olarak duruyor.
+
 Sporcular **Tally formunu** doldurur → veriler otomatik olarak CoachOS'a düşer.
 Arada, Tally'den veriyi çekip uygulamaya temiz JSON veren küçük bir **Cloudflare Worker**
 vardır. Bir kez kurulur; sonra **Auto-sync** açıkken yeni cevaplar kendiliğinden gelir.
