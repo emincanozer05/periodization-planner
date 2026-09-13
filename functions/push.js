@@ -16,11 +16,18 @@ const BATCH = 500;
 /* Token'ın artık geçerli olmadığını söyleyen hatalar. Bunlar tekrar denemekle
    düzelmez — cihaz uygulamayı silmiş, bildirimi kapatmış ya da token dönmüştür.
    Karşılığı kaydı temizlemek: ölü token her sabah yeniden denenip her sabah
-   yeniden hata üretmesin. */
+   yeniden hata üretmesin.
+
+   `messaging/invalid-argument` BİLEREK dışarıda ve bu listenin en önemli satırı.
+   FCM o kodu iki bambaşka durum için dönüyor: token bozuksa DA, mesajın kendisi
+   bozuksa DA. Kodu "ölü token" saymak, payload'daki tek bir hatanın (ör. boş bir
+   link) o istekteki BÜTÜN cihaz kayıtlarını silmesi demekti — bir sabah bozuk
+   giden tek bir uyarı, koçun ve ekibinin tüm telefonlarını kayıttan düşürüyordu.
+   Belirtisi de teşhisi imkânsıza yakın: "dün çalışıyordu, bugün hiç gelmiyor".
+   Gerçekten dönmüş bir token zaten aşağıdaki iki kodu döndürüyor. */
 const DEAD_TOKEN_ERRORS = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
-  'messaging/invalid-argument',
 ]);
 
 /* Geçici hatalar — yalnızca bunlarda yeniden deneniyor. FCM bu durumlarda mesajı
@@ -52,28 +59,37 @@ function chunk(list, size) {
    isterse gruplar; birleştirmeyi biz yapmıyoruz.
 
    `fcmOptions.link`: bildirime tıklayınca açılacak adres. Uygulama bu adresteki
-   `#alert=<id>` parçasını okuyup doğrudan sporcunun Wellness ekranını açıyor. */
+   `#alert=<id>` parçasını okuyup doğrudan sporcunun Wellness ekranını açıyor.
+
+   Adres YOKSA alan hiç konmuyor — boş bir string konmuyor. Sebebi: FCM bu alanı
+   geçerli bir adres olmak üzere doğruluyor ve boş değeri reddedebiliyor; reddettiği
+   an bütün gönderim, linki olmayan bir uyarı yüzünden hiç kimseye ulaşmıyordu.
+   Linksiz bildirim tıklanınca hiçbir şey açmıyor ama en azından GÖRÜNÜYOR. */
 function buildMessage(tokens, text, data, link) {
+  const url = String(link || '').trim();
+  const webpush = {
+    notification: {
+      title: text.title,
+      body: text.body,
+      icon: '/logo-mark.png',
+      badge: '/logo-mark.png',
+      tag: data.alertId,
+      renotify: true,
+      requireInteraction: false,
+    },
+    headers: {
+      // Sabah uyarısı akşam ulaşmasın: cihaz bir gün kapalıysa bildirim düşer.
+      TTL: '86400',
+      Urgency: 'high',
+    },
+  };
+  if (url) webpush.fcmOptions = { link: url };
   return {
     tokens,
-    data: Object.assign({}, data, { link }),
-    webpush: {
-      notification: {
-        title: text.title,
-        body: text.body,
-        icon: '/logo-mark.png',
-        badge: '/logo-mark.png',
-        tag: data.alertId,
-        renotify: true,
-        requireInteraction: false,
-      },
-      fcmOptions: { link },
-      headers: {
-        // Sabah uyarısı akşam ulaşmasın: cihaz bir gün kapalıysa bildirim düşer.
-        TTL: '86400',
-        Urgency: 'high',
-      },
-    },
+    // `link` yalnızca gerçekten varsa gidiyor: FCM data alanının değerleri string
+    // olmak zorunda ve boş bir değerin uygulamada okunacak bir karşılığı yok.
+    data: url ? Object.assign({}, data, { link: url }) : Object.assign({}, data),
+    webpush,
   };
 }
 

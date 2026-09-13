@@ -199,10 +199,18 @@ dönüşmüyor, service worker'ın önbelleği yok.
 | 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | **bildirim** (ağrı tek başına yeter) |
 | 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | **bildirim** (skor 3.0) |
 | 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | **bildirim** (skor 5.0 ama ağrı var) |
-| 6 | bildirime tıkla | sporcunun Wellness ekranı açılır |
+| 6 | bildirime tıkla (uygulama kapalı) | sporcunun Wellness ekranı açılır |
 | 7 | aynı sporcu aynı gün ikinci kez gönderir | telefonda **tek** satır (uyarı güncellenir) |
+| 8 | bildirime tıkla (CoachOS **açık** bir sekmede) | o sekme öne gelir ve sporcunun Wellness ekranı açılır — yeni sekme açılmaz |
+| 9 | CoachOS **ekranda açıkken** uyarı oluşsun | bildirim yine görünür (sayfa kendisi gösteriyor), **iki kopya çıkmaz** |
+| 10 | ekip üyesi bildirime tıklar | **`alerts.html`** açılır — koçun giriş ekranı değil |
+| 11 | koç ikinci bir takıma hiç geçmemişken o takımdan uyarı | o takımın ekibi de bildirim alır |
+| 12 | aynı sporcu aynı gün 09:00 kötü, 14:00 iyi gönderir | Kadro ekranında **14:00** değerleri görünür |
 
 2 numaralı test en kritiği: tam 3.5 uyarı **vermemeli**.
+
+9 ve 12 numaralı testler yeni: ikisi de sahada "bildirim bazen gelmiyor" /
+"düzeltmem geri alındı" olarak görülen hatalardı.
 
 ---
 
@@ -215,11 +223,20 @@ dönüşmüyor, service worker'ın önbelleği yok.
 | Cihaz kaydedilemiyor | Kurallar yayınlanmamış, ya da ekip üyesinin linki geçersiz kılınmış |
 | iPhone'da izin düğmesi hiç çıkmıyor | Ana ekrana eklenmemiş → iOS bölümü |
 | "Bildirimler bu tarayıcıda engellenmiş" | Daha önce "Engelle" denmiş → adres çubuğundaki kilit → Bildirimler → izin ver → sayfayı yenile |
-| Uyarı oluşuyor ama kimseye gitmiyor | Listede `0/0` görünüyorsa kimse cihaz eşleştirmemiş; `0/3` görünüyorsa gönderim başarısız, function loglarına bak |
+| Uyarı oluşuyor ama kimseye gitmiyor | Uyarı satırının **altındaki teslim raporuna** bak: kimin cihazı eşleşmemiş, kimde hangi hata var, kadro yayımlanmış mı — hepsi orada yazıyor |
 | Bildirim geldi ama tıklayınca yanlış yere gidiyor | Kadro özeti eski bir adresle yayımlanmış; uygulamayı bir kez aç, kendini tazeler |
-| Bir telefon hem koç hem ekip üyesi olarak açıldı | Bir cihaz tek bir kimlik taşır; en son açılan geçerlidir. CoachOS'u yeniden açmak onu koç cihazına geri çevirir |
+| Bir telefon hem koç hem ekip üyesi olarak açıldı | İkisi birlikte yaşıyor: iki sayfa ayrı Firebase uygulaması adı kullandığı için ayrı birer cihaz kaydı oluşuyor. Aynı uyarı iki kez gönderilebilir ama telefon ikisini aynı etiketle tek bildirimde birleştiriyor |
+| Aynı telefonda **iki farklı ekip linki** açıldı | Bunlar çakışıyor: ekip üyesi sayfası tek bir eşleşme kaydı tutuyor, en son açılan link geçerli olur. İki takıma bakan kişiye iki ayrı cihaz gerekiyor |
+| Bir gün çalıştı, sonra herkeste tamamen kesildi | Eski bir hataydı: bozuk bir mesaj (`invalid-argument`) bütün cihaz kayıtlarını silebiliyordu. Düzeltildi — artık yalnızca gerçekten dönmüş token'lar siliniyor |
+| Uygulama açıkken bildirim gelmiyordu | Eski bir hataydı: Firebase'in worker'ı görünür bir sekme varsa bildirimi göstermiyor. Düzeltildi — sayfa artık bildirimi kendisi gösteriyor |
 
 Function logları: `firebase functions:log --only wellnessAlert`
+
+Log satırları boru hattının her adımını adıyla söylüyor: kriter karşılanmadı ·
+gönderim zaten işlenmiş · kadro dokümanı yok · bildirilecek cihaz yok · uygulama
+adresi bilinmiyor · uyarı gönderildi (kaç cihaz, hangi hatalar). Sporcunun
+skorları ve ağrı bölgeleri **loglara yazılmıyor**; bir bildirimin neden
+ulaşmadığını anlamak için gerekmiyorlar.
 
 ---
 
@@ -241,6 +258,19 @@ günceller.
 Uyarı kaydı şunları taşır: sporcu, takım, tarih, Overall Wellness, bileşen
 skorları (uyku / yorgunluk / kas ağrısı / dinlenik nabız), orta ve yüksek ağrı
 bölgeleri, uyarı sebepleri, bildirim gönderilen kişiler ve teslim durumu.
+
+Teslim tarafında üç alan daha var ve hepsi tek bir soruyu cevaplıyor — **"bu
+bildirim neden gelmedi?"**:
+
+| Alan | Anlamı |
+|---|---|
+| `recipients[]` | kime gitti: `staffId`, ad, rol, **cihaz türü** (`android` / `ios-pwa` / `desktop`), `sent` \| `failed` ve hata kodu |
+| `unreachable[]` | kapsamda olduğu hâlde **hiç cihaz eşleştirmemiş** ekip üyeleri |
+| `rosterPublished` | takımın kadro özeti o an bulutta var mıydı |
+
+Koçun uyarı listesi bu üçünü, ulaşmayan biri varsa satırın altında yazıyor.
+Cihaz token'ları buraya **girmiyor**: bir cihaz adresi, uyarı geçmişinde durmasına
+gerek olmayan bir sırdır; kim olduğu `staffId` ve isimle zaten belli.
 
 Uyarılar `checkins` koleksiyonundan **bağımsız** yaşıyor: koçun tarayıcısı
 check-in dokümanını işledikten ~10 dakika sonra siliyor, uyarı kaydı kalıcı.

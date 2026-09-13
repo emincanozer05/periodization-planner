@@ -32,16 +32,20 @@ const rosterDocId = (coachUid, teamId) => `${safe(coachUid)}__${safe(teamId)}`;
 const alertDocId = (coachUid, athleteId, date) =>
   `${safe(coachUid)}__${safe(athleteId)}__${safe(date)}`;
 
-/* Bildirime tıklanınca açılacak adres. Uygulamanın nerede yayınlandığını KOÇUN
-   UYGULAMASI biliyor ve kadro dokümanına yazıyor — burada sabit bir alan adı
-   durmuyor (Madde 7: kulüp/kurulum bağımsız). Adres yoksa boş dönüyor ve bildirim
-   linksiz gidiyor; tıklanınca hiçbir şey açılmaması, yanlış yere açılmasından iyi.
+/* ── Bildirime tıklanınca açılacak adres ───────────────────────────────────
+   Uygulamanın nerede yayınlandığını KOÇUN UYGULAMASI biliyor ve kadro dokümanına
+   yazıyor — burada sabit bir alan adı durmuyor (Madde 7: kulüp/kurulum bağımsız).
+   Adres yoksa boş dönüyor ve bildirim linksiz gidiyor; tıklanınca hiçbir şey
+   açılmaması, yanlış yere açılmasından iyi.
 
-   Gelen adres hem klasör ("https://x.com/app/") hem dosya ("…/app/index.html")
-   biçiminde olabiliyor — tarayıcıda location.href neyse o. Sondaki dosya adı
-   atılıp klasöre iniliyor, yoksa ".../index.html/index.html" gibi çalışmayan bir
-   adres çıkıyordu. */
-function alertLink(appUrl, alertId) {
+   Aşağıdaki iki adres de bu ortak kökten kuruluyor; tek fark hangi SAYFAYA
+   gidildiği, ve o fark alıcının kim olduğuna bağlı.
+
+   Uygulamanın KLASÖRÜ. Gelen adres hem klasör ("https://x.com/app/") hem dosya
+   ("…/app/index.html") biçiminde olabiliyor — tarayıcıda location.href neyse o.
+   Sondaki dosya adı atılıp klasöre iniliyor, yoksa ".../index.html/index.html"
+   gibi çalışmayan bir adres çıkıyordu. */
+function appDir(appUrl) {
   const raw = String(appUrl || '').trim();
   if (!/^https?:\/\//i.test(raw)) return '';
   let u;
@@ -52,7 +56,29 @@ function alertLink(appUrl, alertId) {
   const dir = u.pathname
     .replace(/[^/]*\.[^/]*$/, '')  // sondaki dosya adı (index.html vb.) → klasör
     .replace(/\/+$/, '');          // kapanış eğik çizgisi
-  return `${u.origin}${dir}/index.html#alert=${encodeURIComponent(alertId)}`;
+  return `${u.origin}${dir}`;
 }
 
-module.exports = { safe, rosterDocId, alertDocId, alertLink };
+/* KOÇUN bildirimi: kendi uygulaması, doğrudan o uyarının ekranı. */
+function alertLink(appUrl, alertId) {
+  const base = appDir(appUrl);
+  return base ? `${base}/index.html#alert=${encodeURIComponent(alertId)}` : '';
+}
+
+/* EKİP ÜYESİNİN bildirimi: kendi uyarı sayfası.
+
+   Ayrı bir adres olmak ZORUNDA. Ekip üyesinin CoachOS hesabı yok; bildirimi
+   koçun uygulamasına açmak onu doğrudan bir giriş ekranına düşürüyordu — elinde
+   hiç kullanamayacağı bir şifre kutusu. Gitmesi gereken yer, telefonunu uyarılara
+   bağlarken açtığı sayfa; sayfa kendi kayıtlı adresini (token) hatırlıyor, o yüzden
+   adresin içine bir kimlik koymak gerekmiyor ve bu bilinçli: bir bildirime tıklama
+   adresi, tarayıcı geçmişine ve paylaşım menülerine giren bir yer.
+
+   Uyarının hangisi olduğu adreste taşınmıyor çünkü gerek yok: sayfa takımın
+   uyarılarını zaten en yenisi üstte listeliyor. */
+function staffAlertLink(appUrl) {
+  const base = appDir(appUrl);
+  return base ? `${base}/alerts.html` : '';
+}
+
+module.exports = { safe, rosterDocId, alertDocId, alertLink, staffAlertLink, appDir };

@@ -358,6 +358,38 @@ function readyServiceWorker(){
   });
 }
 
+/* SAYFA AÇIKKEN gelen bildirimi göstermek.
+
+   Firebase'in service worker'ı, sitenin GÖRÜNÜR bir sekmesi varsa bildirimi
+   kendisi GÖSTERMİYOR: payload'ı sayfaya yollayıp çıkıyor. Bu sayfada onu
+   karşılayan kimse olmadığı için, uyarı tam da ekip üyesi sayfayı açık tuttuğu
+   anlarda sessizce düşüyordu — "bazen geliyor bazen gelmiyor"un bir sebebi buydu.
+   Bildirimi burada elle gösteriyoruz; worker göstermediği için ikinci kopya yok.
+
+   Bir kez kuruluyor: register() hem açılışta hem düğmeye basınca çağrılıyor. */
+var FOREGROUND_ON=false;
+function listenForeground(){
+  if(FOREGROUND_ON)return;
+  try{
+    firebase.messaging(APP).onMessage(function(payload){
+      var d=(payload&&payload.data)||{},n=(payload&&payload.notification)||{};
+      navigator.serviceWorker.ready.then(function(reg){
+        if(!reg)return;
+        // Etiket sunucudakiyle aynı (alertId): aynı sporcunun aynı günkü uyarısı
+        // yeni bir satır açmıyor, öncekinin üstüne yazıyor.
+        return reg.showNotification(n.title||'CoachOS',{
+          body:n.body||'',icon:'logo-mark.png',badge:'logo-mark.png',
+          tag:d.alertId||undefined,renotify:true,
+          // `coachosAlert`, worker'daki tıklama dinleyicisinin aradığı işaret.
+          data:{coachosAlert:{alertId:d.alertId||'',athleteId:d.athleteId||'',teamId:d.teamId||''},
+                link:d.link||''}
+        });
+      }).catch(function(){});
+    });
+    FOREGROUND_ON=true;
+  }catch(e){/* bildirim desteklenmiyorsa sayfanın geri kalanı çalışmaya devam ediyor */}
+}
+
 /* Cihazı kaydet. Token'ın KENDİSİ doküman adı: aynı cihaz ikinci kez kaydolursa
    yeni satır açmıyor, aynı satırı tazeliyor. */
 function register(){
@@ -375,7 +407,8 @@ function register(){
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         lastSeenAt:firebase.firestore.FieldValue.serverTimestamp()
       },{merge:true});
-    });
+    })
+    .then(function(){listenForeground();});
 }
 
 /* ── Uyarı akışı ─────────────────────────────────────────────────────────── */

@@ -58,6 +58,19 @@ t('etiket sporcu+tarihten geliyor — aynı sporcunun uyarısı üst üste yazı
   const m = buildMessage(['t1'], TEXT, DATA, LINK);
   assert.strictEqual(m.webpush.notification.tag, DATA.alertId);
 });
+/* Boş bir link, FCM'in mesajın TAMAMINI reddetmesine yol açıyordu: linki olmayan
+   bir uyarı yüzünden bildirim hiç kimseye ulaşmıyordu. Alan ya dolu ya da hiç yok. */
+t('adres yoksa link alanı hiç konmuyor', () => {
+  const m = buildMessage(['t1'], TEXT, DATA, '');
+  assert.strictEqual(m.webpush.fcmOptions, undefined, 'boş link alanı gönderilmemeli');
+  assert.strictEqual(m.data.link, undefined, 'boş link data alanında da durmamalı');
+  assert.strictEqual(m.webpush.notification.title, TEXT.title, 'bildirim yine gitmeli');
+  assert.strictEqual(m.data.alertId, DATA.alertId);
+});
+t('linkin başındaki/sonundaki boşluk link sayılmıyor', () => {
+  const m = buildMessage(['t1'], TEXT, DATA, '   ');
+  assert.strictEqual(m.webpush.fcmOptions, undefined);
+});
 t('farklı sporcular farklı etiket taşıyor — bildirimler birbirini ezmiyor', () => {
   const a = buildMessage(['t1'], TEXT, Object.assign({}, DATA, { alertId: 'x__ath-1__d' }), LINK);
   const b = buildMessage(['t1'], TEXT, Object.assign({}, DATA, { alertId: 'x__ath-2__d' }), LINK);
@@ -76,6 +89,13 @@ t('geçici sunucu hatası ölü değil', () => {
 });
 t('ölü token yeniden denenmiyor', () => {
   assert.strictEqual(isRetryable('messaging/registration-token-not-registered'), false);
+});
+/* Bu satır, bildirimlerin bir sabah tamamen kesilmesinin sebebiydi. FCM
+   'invalid-argument'ı hem bozuk token hem BOZUK MESAJ için dönüyor; kodu ölü token
+   saymak, payload'daki tek bir hatanın o istekteki bütün cihaz kayıtlarını
+   silmesi demekti — koç da ekibi de yeniden kaydolana kadar sessiz kalıyordu. */
+t('bozuk mesaj hatası cihaz kaydını ÖLÜ saymıyor', () => {
+  assert.strictEqual(isDead('messaging/invalid-argument'), false);
 });
 
 section('Gönderim sonucu');
@@ -99,6 +119,15 @@ ta('ölü olmayan hata token\'ı silmiyor', async () => {
   const r = await sendAlert(m, ['a'], TEXT, DATA, LINK);
   assert.strictEqual(r.results[0].ok, false);
   assert.deepStrictEqual(r.dead, [], 'geçici hata token kaydını silmemeli');
+});
+
+ta('bozuk mesaj bütün cihazları kayıttan düşürmüyor', async () => {
+  const m = fakeMessaging({
+    a: 'messaging/invalid-argument', b: 'messaging/invalid-argument', c: 'messaging/invalid-argument',
+  });
+  const r = await sendAlert(m, ['a', 'b', 'c'], TEXT, DATA, LINK);
+  assert.ok(r.results.every(x => !x.ok), 'gönderim başarısız olarak kayda geçmeli');
+  assert.deepStrictEqual(r.dead, [], 'payload hatası cihaz kayıtlarını silmemeli');
 });
 
 ta('geçici hatada bir kez yeniden deneniyor ve düzeliyor', async () => {

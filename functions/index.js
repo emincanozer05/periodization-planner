@@ -27,9 +27,9 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { shouldAlert, buildNotification, buildAlertRecord } = require('./wellness-alert');
-const { tokensFor, groupByLang } = require('./recipients');
+const { tokensFor, groupForSend, eligibleStaff } = require('./recipients');
 const { sendAlert } = require('./push');
-const { rosterDocId, alertDocId, alertLink } = require('./ids');
+const { rosterDocId, alertDocId, alertLink, staffAlertLink } = require('./ids');
 const { claimForAlert } = require('./claim');
 
 admin.initializeApp();
@@ -91,13 +91,23 @@ exports.wellnessAlert = functions
        sürümü açmamış) uyarı yine de KAYDEDİLİYOR — sadece alıcısı kalmıyor.
        Uyarının kaybolmaması, bildirimin gitmesinden önce gelir. */
     let roster = {};
+    let rosterFound = false;
     try {
       const rs = await db().collection(ROSTER_COL).doc(rosterDocId(sub.coachUid, sub.teamId)).get();
-      if (rs.exists) roster = rs.data() || {};
+      if (rs.exists) { roster = rs.data() || {}; rosterFound = true; }
     } catch (err) {
       functions.logger.error('wellness: kadro okunamadı', { checkinId, error: String(err) });
     }
     const staff = Array.isArray(roster.staff) ? roster.staff : [];
+    /* Kadro dokümanı yoksa uyarı yine çıkıyor ama ekipten kimse bildirilemiyor ve
+       bildirimin linki de kurulamıyor. Bu, bildirimin gelmemesinin sahada en sık
+       görülen sebebiydi ve hiçbir yerde YAZMIYORDU: koç ekranda "0/0" görüyor,
+       nedenini göremiyordu. Artık sebep uyarı kaydına giriyor (Madde 20). */
+    if (!rosterFound) {
+      functions.logger.warn('wellness: takımın kadro dokümanı yok — ekip bildirilemez', {
+        checkinId, teamId: sub.teamId, rosterDoc: rosterDocId(sub.coachUid, sub.teamId),
+      });
+    }
 
     /* ── Uyarı kaydı — bildirimden ÖNCE (Madde 14) ────────────────────────
        Push patlasa bile uyarı ekranda duruyor. Sıra tersine olsaydı, bildirim
@@ -112,6 +122,8 @@ exports.wellnessAlert = functions
       submittedAt: sub.at || null,
       createdAt: now(),
       notificationStatus: 'pending',
+      // "Bildirim neden gelmedi" sorusunun uygulamadan okunabilir cevabı (Madde 21).
+      rosterPublished: rosterFound,
       v: 1,
     });
     try {
@@ -140,19 +152,47 @@ exports.wellnessAlert = functions
       staff,
     });
 
+    /* Kapsamda olup CİHAZI OLMAYAN ekip üyeleri. Uyarının kime GİTMEDİĞİ, kime
+       gittiği kadar önemli: "bildirim almadım" diyen kişinin telefonunu hiç
+       eşleştirmemiş olması sahada en sık görülen sebep, ve koç bunu bugüne kadar
+       hiçbir ekrandan göremiyordu (Madde 21). Bu liste zaten elimizdeki iki
+       veriden çıkıyor — fazladan tek bir okuma yapmıyor. */
+    const withDevice = new Set(targets.filter(t => t.staffId).map(t => t.staffId));
+    const unreachable = eligibleStaff(staff, sub.athleteId)
+      .filter(m => !withDevice.has(m.id))
+      .map(m => ({
+        staffId: m.id,
+        name: ((m && m.name) || '').trim(),
+        role: m.role || '',
+        reason: 'no_device',
+      }));
+
     if (!targets.length) {
       functions.logger.info('wellness: uyarı kaydedildi ama bildirilecek cihaz yok', {
         checkinId, alertId, athleteId: sub.athleteId,
+        rosterPublished: rosterFound, eligible: unreachable.length,
       });
-      await alertRef.set({ recipients: [], notificationStatus: 'no_recipients' }, { merge: true }).catch(() => {});
+      await alertRef.set({
+        recipients: [], unreachable, notificationStatus: 'no_recipients',
+      }, { merge: true }).catch(() => {});
       await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
       return null;
     }
 
     /* ── Gönderim ─────────────────────────────────────────────────────────
-       Bildirim metni kişinin diline göre kuruluyor, aynı dili konuşan cihazlar
-       tek istekte gidiyor. */
-    const link = alertLink(roster.appUrl || process.env.APP_ORIGIN, alertId);
+       Bildirim metni kişinin diline, tıklama adresi kişinin uygulamadaki yerine
+       göre kuruluyor; ikisini de paylaşan cihazlar tek istekte gidiyor. */
+    const appUrl = roster.appUrl || process.env.APP_ORIGIN;
+    const coachLink = alertLink(appUrl, alertId);
+    const staffLink = staffAlertLink(appUrl);
+    /* Linksiz bildirim GÖNDERİLİYOR ama tıklanınca hiçbir yere gitmiyor. Sebebi
+       neredeyse her zaman kadro dokümanının hiç yayımlanmamış olması; o yüzden
+       burada sessiz kalmıyor. */
+    if (!coachLink) {
+      functions.logger.warn('wellness: uygulama adresi bilinmiyor — bildirim linksiz gidiyor', {
+        checkinId, alertId, rosterPublished: rosterFound,
+      });
+    }
     const data = {
       alertId,
       athleteId: String(sub.athleteId),
@@ -163,9 +203,10 @@ exports.wellnessAlert = functions
     const byToken = new Map(targets.map(t => [t.token, t]));
     const results = [];
     const dead = [];
-    for (const [lang, group] of groupByLang(targets)) {
-      const text = buildNotification(sub, roster.teamName, lang);
-      const r = await sendAlert(admin.messaging(), group.map(t => t.token), text, data, link);
+    for (const [, group] of groupForSend(targets)) {
+      const text = buildNotification(sub, roster.teamName, group.lang);
+      const link = group.audience === 'coach' ? coachLink : staffLink;
+      const r = await sendAlert(admin.messaging(), group.tokens.map(t => t.token), text, data, link);
       results.push(...r.results);
       dead.push(...r.dead);
     }
@@ -190,6 +231,9 @@ exports.wellnessAlert = functions
         name: t.name || '',
         role: t.role || (t.kind === 'coach' ? 'coach' : ''),
         kind: t.kind || 'staff',
+        // Hangi cihaz: "telefonuma gelmiyor ama bilgisayarda geliyor" ayrımı
+        // ancak bu alan kayıtta durursa yapılabiliyor (Madde 21).
+        platform: t.platform || '',
         status: r.ok ? 'sent' : 'failed',
         error: r.ok ? null : String(r.error || ''),
       };
@@ -198,6 +242,7 @@ exports.wellnessAlert = functions
 
     await alertRef.set({
       recipients,
+      unreachable,
       notificationStatus: status,
       notifiedAt: now(),
     }, { merge: true }).catch(err =>
@@ -208,9 +253,16 @@ exports.wellnessAlert = functions
        gelse ikinci bildirim atılmıyor. */
     await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
 
+    /* Boru hattının son satırı (Madde 20). Skor, ağrı bölgesi ve isim BURAYA
+       GİRMİYOR — bir uyarının neden ulaşmadığını anlamak için gerekmiyorlar ve
+       sporcunun sağlık verisi log arşivinde yaşamamalı. Kalanı teşhis için yeterli:
+       kaç cihaza gitti, kaç tanesi hangi hatayla döndü, linkli mi gitti. */
     functions.logger.info('wellness: uyarı gönderildi', {
       checkinId, alertId, athleteId: sub.athleteId, date: sub.date,
       sent: okCount, failed: results.length - okCount, dead: dead.length,
+      unreachableStaff: unreachable.length,
+      linked: !!coachLink,
+      errors: Array.from(new Set(results.filter(r => !r.ok).map(r => String(r.error || '')))),
     });
     return null;
   });
