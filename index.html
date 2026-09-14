@@ -20931,20 +20931,36 @@ function DevelopmentCharts({tests}){
   </div></div>);
 }
 
-/* THE ATHLETE'S PROGRESSION, ONE CARD PER MEASUREMENT.
-   Every number the Testing & Assessment screen collects — the built-in battery and the
-   coach's own tests alike — drawn against the dates it was taken on, in the same
-   rectangular card the body-composition charts use, so one tab reads as one page.
-   `cmpMetrics` is the single list the comparison table and the printouts already read,
-   so a test added there turns up here without a second list to keep in step. A metric
-   nobody has a number for is not drawn: an empty card says nothing.
+/* THE ATHLETE'S PROGRESSION, ONE CARD PER MEASUREMENT — AND ONE PANEL PER FAMILY.
+   Every number the Testing & Assessment screen collects, the built-in battery and the
+   coach's own tests alike, drawn against the dates it was taken on. The card is the very
+   card the body-composition charts are drawn in — same size, same two-up grid, same big
+   current value with the change beside it, same month labels along the foot — because
+   this tab now holds both and a tab made of two different-looking chart styles reads as
+   two screens stitched together.
+   The families are kept apart under their own headings (Antropometrik, Güç, Sürat…):
+   thirty cards in one wall is a list to search through, five panels of four or five is a
+   page to read. `cmpMetrics` is the single list the comparison table and the printouts
+   already read, so a test added there turns up here without a second list to keep in
+   step, and a coach's own test lands in the last panel. A metric nobody has a number for
+   is not drawn: an empty card says nothing.
    Direction matters and is not guessed: a sprint that drops by 0.2s IMPROVED, and the
    list says so per metric (`dir:'lo'`). A coach's own test carries no direction, so its
    change is shown without a verdict. */
+const PERF_GROUPS=[
+  {g:'anthro',tr:'Antropometrik',en:'Anthropometric'},
+  {g:'mob',   tr:'Mobilite ve Tarama',en:'Mobility & Screening'},
+  {g:'pow',   tr:'Güç',en:'Power'},
+  {g:'spd',   tr:'Sürat ve Çeviklik',en:'Speed & Agility'},
+  {g:'cust',  tr:'Kulüp Testleri',en:'Club Tests'},
+];
+/* One colour per card rather than one per family: four charts of the same purple side by
+   side stop being four charts. The cycle is the body-composition panel's own — purple,
+   blue, orange, green — so the two panels read as one set. */
+const PERF_COLS=[['#a855f7','#c084fc'],['#3b82f6','#60a5fa'],['#f97316','#fb923c'],['#10b981','#34d399'],
+  ['#22d3ee','#67e8f9'],['#ec4899','#f472b6'],['#eab308','#facc15'],['#8b5cf6','#a78bfa']];
 function PerfProgressCharts({tests,customTests}){
   const ts=useMemo(()=>[...(tests||[])].filter(t=>t.date).sort((a,b)=>a.date.localeCompare(b.date)),[tests]);
-  const GCOL={anthro:['#a855f7','#c084fc'],mob:['#22d3ee','#67e8f9'],pow:['#10b981','#34d399'],
-    spd:['#3b82f6','#60a5fa'],cust:['#f97316','#fb923c']};
   const series=useMemo(()=>cmpMetrics(customTests).map(m=>{
     const data=ts.map(t=>{const v=m.get(t);return(v==null||isNaN(v))?null:+Number(v).toFixed(2);});
     return{m,data,n:data.filter(v=>v!=null).length};
@@ -20954,41 +20970,60 @@ function PerfProgressCharts({tests,customTests}){
     <div className="empty-st">{L('Henüz test sonucu yok — Test ve Değerlendirme sekmesinden bir test al, sonuçlar buraya işlensin.',
       'No test results yet — take a test on the Testing & Assessment screen and the results are drawn here.')}</div>
   </div>);
-  const labels=ts.map(t=>fd(t.date).slice(0,5));
+  // The foot of every card, exactly as Body Composition writes it: the month the test
+  // was taken in. A date reads as a date on one card and as noise across twenty.
+  const labels=ts.map(t=>MN[parseD(t.date).getMonth()]);
   const dataLbl=color=>({display:'auto',align:'top',anchor:'end',color,backgroundColor:'transparent',
     font:{size:10,weight:'bold',family:"'Archivo','IBM Plex Mono',monospace"},clip:false,
     formatter:v=>v==null?'':(+Number(v).toFixed(1))});
-  return(<div className="panel">
-    <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:4,flexWrap:'wrap'}}>
-      <h2 style={{margin:0}}>{L('Performans Gelişimi','Performance Progression')}</h2>
-      <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>
-        {L(`${ts.length} test · ${series.length} ölçüm`,`${ts.length} test${ts.length>1?'s':''} · ${series.length} measurement${series.length>1?'s':''}`)}</span>
-    </div>
-    <div className="help" style={{marginBottom:14}}>{L('Her kutu bir ölçümün ilk testten bugüne seyri. Köşedeki fark ilk sonuçla sonuncusu arasındaki değişimdir — düşmesi iyi olan testlerde (sprint, çeviklik) düşüş yeşil okunur.',
-      'Each card is one measurement from the first test to today. The figure in the corner is the change between the first result and the latest — on a test where lower is better (sprints, agility) a drop reads as green.')}</div>
-    <div className="metric-grid" style={{gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))'}}>
-      {series.map(({m,data})=>{
-        const[col,dot]=GCOL[m.g]||GCOL.cust;
-        const valid=data.filter(v=>v!=null);
-        const cur=valid[valid.length-1],first=valid[0];
-        const diff=valid.length>1?+((cur-first).toFixed(2)):null;
-        const fav=(diff==null||diff===0||!m.dir)?null:(m.dir==='lo'?diff<0:diff>0);
-        return(<div key={m.id} className="metric-card">
-          <div className="mc-h"><div className="mc-t">{cmpLabel(m)}</div><div className="mc-u">{m.u||''}</div></div>
-          <div className="mc-val"><span className="mv" style={{color:dot}}>{cur}</span>
-            {diff!=null&&diff!==0&&<span className={`md ${fav==null?'':(fav?'pos':'neg')}`}>{diff>0?'+':''}{diff}</span>}</div>
-          <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
-            {label:cmpLabel(m),data,borderColor:col,backgroundColor:col+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,
-              pointRadius:4,pointHoverRadius:6,pointBackgroundColor:dot,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
-              datalabels:dataLbl(dot)}
-          ]}} options={{responsive:true,maintainAspectRatio:false,
-            layout:{padding:{top:24,bottom:6,left:8,right:8}},
-            scales:{x:{ticks:{color:'#74808f',font:{family:"'Archivo','IBM Plex Mono',monospace",size:10},autoSkip:true,maxRotation:0,maxTicksLimit:6},grid:{display:false},border:{display:false}},
-              y:{display:false,grid:{display:false},beginAtZero:false}},
-            plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
-        </div>);})}
-    </div>
-  </div>);
+  // A family the app does not know about (an older record, a hand-edited metric) still
+  // gets a panel of its own rather than dropping off the page.
+  const groups=[...PERF_GROUPS,...[...new Set(series.map(x=>x.m.g))]
+    .filter(g=>!PERF_GROUPS.some(p=>p.g===g)).map(g=>({g,tr:g,en:g}))];
+  const card=({m,data},i)=>{
+    const[col,dot]=PERF_COLS[i%PERF_COLS.length];
+    const valid=data.filter(v=>v!=null);
+    const cur=valid[valid.length-1],first=valid[0];
+    const diff=valid.length>1?+((cur-first).toFixed(2)):null;
+    const fav=(diff==null||diff===0||!m.dir)?null:(m.dir==='lo'?diff<0:diff>0);
+    return(<div key={m.id} className="metric-card">
+      <div className="mc-h"><div className="mc-t">{cmpLabel(m)}</div><div className="mc-u">{m.u||''}</div></div>
+      <div className="mc-val"><span className="mv" style={{color:dot}}>{cur}</span>
+        {diff!=null&&diff!==0&&<span className={`md ${fav==null?'':(fav?'pos':'neg')}`}>{diff>0?'+':''}{diff}</span>}</div>
+      <div className="mc-chart tall"><ChartC type="line" chartData={{labels,datasets:[
+        {label:cmpLabel(m),data,borderColor:col,backgroundColor:col+'22',fill:'origin',tension:.35,spanGaps:true,borderWidth:2.5,
+          pointRadius:4,pointHoverRadius:6,pointBackgroundColor:dot,pointBorderColor:'#0d0f13',pointBorderWidth:1.5,
+          datalabels:dataLbl(dot)}
+      ]}} options={{responsive:true,maintainAspectRatio:false,
+        layout:{padding:{top:24,bottom:6,left:8,right:8}},
+        scales:{x:{ticks:{color:'#74808f',font:{family:"'Archivo','IBM Plex Mono',monospace",size:10},autoSkip:true,maxRotation:0,maxTicksLimit:7},grid:{display:false},border:{display:false}},
+          y:{display:false,grid:{display:false},beginAtZero:false}},
+        plugins:{legend:{display:false},tooltip:{enabled:true}}}}/></div>
+    </div>);
+  };
+  let firstPanel=true;
+  return(<React.Fragment>
+    {groups.map(gr=>{
+      const rows=series.filter(x=>x.m.g===gr.g);
+      if(!rows.length)return null;
+      const lead=firstPanel;firstPanel=false;
+      return(<div className="panel" key={gr.g}>
+        <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+          <h2 style={{margin:0}}>{L(gr.tr,gr.en)}</h2>
+          <span style={{fontFamily:"'IBM Plex Mono',ui-monospace,monospace",fontSize:11,color:'var(--dim)'}}>
+            {L(`${rows.length} ölçüm · ${ts.length} test`,`${rows.length} measurement${rows.length>1?'s':''} · ${ts.length} test${ts.length>1?'s':''}`)}</span>
+        </div>
+        {lead&&<div className="help" style={{marginBottom:14}}>{L('Her kutu bir ölçümün ilk testten bugüne seyri. Köşedeki fark ilk sonuçla sonuncusu arasındaki değişimdir — düşmesi iyi olan testlerde (sprint, çeviklik) düşüş yeşil okunur.',
+          'Each card is one measurement from the first test to today. The figure in the corner is the change between the first result and the latest — on a test where lower is better (sprints, agility) a drop reads as green.')}</div>}
+        {/* Two up, two down — the same grid Body Composition uses, and for the same
+            reason: across a full-width panel four cards leave each chart too narrow to
+            read a trend off. */}
+        <div className="metric-grid" style={{gridTemplateColumns:'repeat(2,minmax(0,1fr))'}}>
+          {rows.map(card)}
+        </div>
+      </div>);
+    })}
+  </React.Fragment>);
 }
 
 /* Ask AI Coach — inline chatbox that evaluates THIS athlete's test results. */
