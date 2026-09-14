@@ -22500,6 +22500,7 @@ function useCloudSync(data,setData){
     }
     setStatus('syncing');
     writing.current=true;writeStarted.current=Date.now();
+    const wT0=Date.now();   // bu turun toplam süresi: bölme + parça commit'leri + manifest
     slog('write: başladı','boyut='+json.length);
     try{
       const col=fb.firestore().collection(COL);
@@ -22587,10 +22588,11 @@ function useCloudSync(data,setData){
       /* Onay zamanında gelmedi. Düzenleme kaybolmadı — diske işlendi ve Firestore onu
          kendisi gönderecek — ama daha BULUTTA DEĞİL, o yüzden yeşil yakmıyoruz. Yeşili,
          yazım oturduğunda dinleyicinin getireceği yankı yakar. */
-      setStatus('syncing');slog('write: yola çıktı, onay bekleniyor → SARI');return;
+      setStatus('syncing');slog('write: yola çıktı, onay bekleniyor → SARI',(Date.now()-wT0)+'ms');return;
     }
     setStatus('synced');setSyncErr('');   // yeşil = bulut, ekrandaki halin birebir aynısı
-    slog('write: bitti → YEŞİL');
+    // Bu süre, uzak cihazın beklemeye BAŞLAYACAĞI andır: düzenleme buradan sonra buluttadır.
+    slog('write: bitti → YEŞİL',(Date.now()-wT0)+'ms');
   };
 
   /* BULUTTAN GELEN HÂLİ UYGULA — ama asla körlemesine üzerine yazma.
@@ -22922,6 +22924,7 @@ function useCloudSync(data,setData){
     const unsub=fb.firestore().collection(COL).where('userId','==',user.uid)
       .onSnapshot({includeMetadataChanges:true},async snap=>{
         try{
+          const t0=Date.now();   // bu görüntünün İŞLENMESİ ne kadar sürdü (aşağıdaki ölçüm için)
           // Sunucuyla temas var mı? (yazım öncesi güvenlik okumasının gerekip gerekmediğini bu söyler)
           const _cache=!!(snap.metadata&&snap.metadata.fromCache),_pend=!!(snap.metadata&&snap.metadata.hasPendingWrites);
           /* Bu satır teşhisin kilit taşı: kaynak SUNUCU mu ÖNBELLEK mi? Her anlık görüntü
@@ -23029,7 +23032,20 @@ function useCloudSync(data,setData){
             lsSave(user.uid,json);   // cihazda emniyet kopyası: bulut bir daha okunamazsa buradan dönülür
             const back=applyRemote(json,parsed,mAt);   // yerel düzenleme varsa birleştirir, ezmez
             setSyncErr('');
-            slog('snap: uzak hâl uygulandı',back?'geri yazılacak var':(fromPending.current?'(bekleyen yazım var, sarı kalıyor)':'→ YEŞİL'));
+            /* ZİNCİRİN NEREDE GEÇTİĞİNİ ÖLÇ. "Telefonda geç görünüyor" tek bir belirti ama
+               arkasında iki ayrı süre var ve bunlar birbirinden ayrılmadan hiçbir düzeltme
+               doğrulanamaz:
+                 ağ     = uzak yazım SUNUCUYA işlendiği andan bu cihazın onu eline aldığı ana
+                          kadar geçen süre (taşıma/dinleyici katmanı),
+                 işleme = görüntüyü çözüp birleştirip ekrana koymak (bu cihazın CPU'su).
+               Ağ ölçümü ortak bir saat ister: uzak manifestin sunucu damgası, bu cihazın
+               saatiyle ancak ölçülmüş fark (skew) üzerinden kıyaslanabilir. Fark yalnızca
+               kendi yazımımızın yankısından öğrenilir, o yüzden hiç yazmamış bir cihazda ağ
+               süresi bilinmez ve basılmaz — uydurulmuş bir sayı basmaktansa boş bırakılır. */
+            const netMs=(mAt&&skew.current!=null)?Math.round(Date.now()+skew.current-mAt):-1;
+            slog('snap: uzak hâl uygulandı',
+              (netMs>=0?'ağ='+netMs+'ms ':'')+'işleme='+(Date.now()-t0)+'ms '+
+              (back?'geri yazılacak var':(fromPending.current?'(bekleyen yazım var, sarı kalıyor)':'→ YEŞİL')));
             if(!back&&!fromPending.current)setStatus('synced');   // geri yazılacak varsa yeşili yazım turu yakar
             if(url||icerik||oldDocs.length)cleanupLegacy(fb,user.uid);
           }else if(chunkDocs.length){
@@ -23185,11 +23201,51 @@ function useCloudSync(data,setData){
       writeGen.current++;writing.current=false;queued.current=false;
       return true;
     };
+    /* DÖNÜŞ SINAVI — "masaüstünde değiştirdim, telefonda geç göründü"ün asıl sebebi.
+       Yukarıdaki dönüş turu yalnızca BU cihazın gönderemediği yazımı kurtarıyordu; bu
+       cihazın ALAMADIĞI değişiklik için hiçbir şey yapmıyordu. Oysa telefon cepteyken
+       olan tam olarak şu: tarayıcı sekmeyi dondurur, Firestore'un akışı sessizce ölür ve
+       geri dönüldüğünde cihaz "hazır ve temiz" görünür — ready true, yazılacak bir şey yok.
+       Gözcünün dinleyiciyi tazeleyen dalı ise yalnızca BEKLERKEN (hazır değil / yazılmamış
+       değişiklik var / onay bekleniyor) çalışır; temiz ve senkron görünen bir cihaz o dalın
+       hiçbir şartını sağlamaz. Yani ölü akışı fark edecek kimse kalmıyordu: telefon, koç
+       kendisi bir şey yazana kadar masaüstündeki değişikliği HİÇ görmüyor, ekranda eski
+       hâli tutuyordu. Gecikmenin kaynağı ağ değil, sorulmayan soruydu.
+       Dönüşte tek bir doküman — manifest — doğrudan sunucudan okunur. Cevap üç şeyi birden
+       söyler: taşıma ayakta mı, bulutta bizden yeni bir hâl var mı, yok mu.
+         • rev bizimkinden yeniyse → dinleyici geride kalmış, hemen çekilir;
+         • rev aynıysa → gerçekten günceliz, hiçbir şey yapılmaz (boş yazım/okuma yok);
+         • okuma hiç dönmezse → akış ölü, dinleyici tazelenir.
+       Bedeli, yirmi saniyeden uzun bir aradan sonra TEK doküman okuması. Veri güvenliği
+       açısından da yeni bir yol açmaz: çekim, her zamanki gibi applyRemote üzerinden
+       birleştirir — yereldeki yazılmamış düzenlemeyi ezmez. */
+    let checking=false;
+    const checkLive=async()=>{
+      const fb2=FB(),u=userRef.current;
+      if(checking||!ready.current||!fb2||!u)return;
+      if(typeof navigator!=='undefined'&&navigator.onLine===false)return;
+      checking=true;
+      try{
+        const d=await withTimeout(fb2.firestore().collection(COL).doc(u.uid).get({source:'server'}),SERVER_READ_MS);
+        sawServer.current=true;lastServerAt.current=Date.now();
+        const v=d.exists?d.data():null;
+        const rev=(v&&typeof v.rev==='number')?v.rev:0;
+        if(rev>lastRev.current){slog('dönüş sınavı: bulutta daha yeni hâl → çekiliyor','rev='+rev);await forcePull();}
+        else slog('dönüş sınavı: güncel','rev='+rev);
+      }catch(e){
+        /* Sunucu yanıt vermedi: akış ölü ya da taşıma bu ağda geçmiyor. Dinleyiciyi
+           tazelemek hafızayı silmez (hesap değişmediği için "yeniden" kurulum), yani
+           gönderilmemiş bir düzenleme tabansız kalmaz. */
+        slog('dönüş sınavı: sunucuya ULAŞILAMADI → dinleyici tazeleniyor',(e&&e.code)||(e&&e.message)||'?');
+        setSubTick(n=>n+1);
+      }
+      checking=false;
+    };
     /* Telefon geri açıldığında: cepteyken bağlantı kopmuş, dinleyici uyutulmuş, bekleyen
        yazım askıda kalmış olabilir. Eskiden dönüş için hiçbir şey yapılmıyordu — koç
        uygulamayı açıyor, gösterge sarıda kalıyor ve ancak sayfayı yenileyince düzeliyordu.
        Artık dönüşte takılan tur bırakılıp bekleyen değişiklik yeniden gönderiliyor. */
-    const resume=()=>{
+    const resume=e=>{
       const gap=hidAt?Date.now()-hidAt:0;
       hidAt=0;
       slog('uygulamaya dönüldü',gap?('ara='+Math.round(gap/1000)+'sn'):'');
@@ -23198,6 +23254,11 @@ function useCloudSync(data,setData){
       const freed=unstick();
       if(freed||dirty.current)writeNow();
       lsFlush();
+      /* Ağ geri geldiğinde ve sayfa geri gösterildiğinde ara ölçülemez (sekme hiç
+         gizlenmemiş olabilir), ama akışın ölmüş olma ihtimali en yüksek olan an tam
+         olarak orasıdır — o yüzden sınav ara şartına bakılmadan yapılır. */
+      const forced=!!(e&&(e.type==='online'||e.type==='pageshow'));
+      if(gap>=HIDE_GAP_MS||forced)checkLive();
     };
     const onHide=()=>{hidAt=Date.now();flush();};
     const onVis=()=>{if(document.visibilityState==='hidden'){slog('arka plana alındı');onHide();}else resume();};

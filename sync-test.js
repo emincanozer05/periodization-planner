@@ -219,6 +219,17 @@ function mountApp() {
 const makeDefaultState = () => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Örnek' }, days: {}, athletes: [] }], templates: [] });
 const realState = n => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Takım' }, days: {}, athletes: [{ id: 'a1', name: 'Ali', note: 'n' + n }] }], templates: [] });
 
+/* BAŞKA BİR CİHAZIN YAZIMI. İkinci bir uygulama örneği kurmak yerine buluta doğrudan
+   yazıyoruz: sınanan şey "iki cihaz aynı anda ne yapar" değil, BU cihazın bulutta olan
+   bitenden haberdar olup olmadığı. Parçalar içerik adresli olduğu için birleştirme
+   dokümanın ADINA değil içindeki `h` alanına bakar; tek parçalık bir set bu yüzden elle
+   kurulabiliyor. emit YOK — bu, uyuyan/ölmüş bir dinleyicinin teslim etmediği yazım. */
+function remoteWrite(w, state, rev) {
+  const h = 'uzak' + rev;
+  w.fake.docs.set('coach1_' + h, { userId: 'coach1', c: JSON.stringify(state), h, rev });
+  w.fake.docs.set('coach1', { userId: 'coach1', v: 2, n: 1, rev, ids: [h], st: w.fake.now() });
+}
+
 let BAG = null;
 let pass = 0, fail = 0, failedHere = 0;
 const check = (name, ok, detail) => {
@@ -340,6 +351,60 @@ async function scenarioNoWriteStorm() {
   endScene(); h.unmount();
 }
 
+/* "Masaüstünde değiştirdim, telefonda geç göründü"ün senaryosu.
+   Telefon cebe girer, tarayıcı sekmeyi dondurur ve Firestore'un akışı sessizce ölür.
+   Masaüstü bu sırada yazar. Telefon geri açıldığında ÖNEMLİ OLAN ŞU: dinleyici hâlâ ölü,
+   yani ekrandaki hâli düzeltecek bir anlık görüntü GELMİYOR. Cihaz kendi başına sormazsa
+   koç eski hâle bakmaya devam eder — ve gözcü de sormaz, çünkü cihaz "hazır ve temiz"
+   görünür. Bu yüzden burada abonelik dönüşte geri konuluyor ama hiçbir şey teslim
+   etmiyor: sınanan tam olarak cihazın KENDİ sorusu. */
+async function scenarioPhoneWakesUp() {
+  scene('telefon cebe girip geri açılınca: masaüstünün değişikliğini görüyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('telefon senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  w.document.visibilityState = 'hidden';                  // telefon cebe girdi
+  (w.evts.visibilitychange || []).forEach(f => f());
+  const sleeping = w.fake.subs.splice(0);                 // akış öldü: artık hiçbir şey teslim edilmiyor
+  remoteWrite(w, realState(7), Date.now() + 5000);        // masaüstü yazdı
+  await sleep(21000);                                     // HIDE_GAP_MS'ten uzun bir ara
+  check('uyurken değişiklik gelmiyor (beklenen)', !JSON.stringify(out.data).includes('n7'));
+
+  w.fake.subs.push(...sleeping);                          // abonelik geri kondu — ama ölü, teslim etmiyor
+  w.document.visibilityState = 'visible';
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(3000);
+  check('dönüşte masaüstünün değişikliği ekrana geldi', JSON.stringify(out.data).includes('n7'),
+    'ekrandaki: ' + JSON.stringify(out.data).slice(0, 140));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
+/* Dönüş sınavı BOŞ YERE iş çıkarmamalı: bulutta yeni bir şey yoksa ne çekim olur ne yazım.
+   Aksi hâlde her cebe girip çıkışta koleksiyonun tamamı yeniden okunurdu. */
+async function scenarioWakeUpCostsNothing() {
+  scene('dönüşte bulut aynıysa: fazladan çekim de yazım da yok');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  const settled = w.fake.commits;
+  w.document.visibilityState = 'hidden';
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(21000);
+  w.document.visibilityState = 'visible';
+  (w.evts.visibilitychange || []).forEach(f => f());
+  await sleep(2500);
+  check('yeni commit açılmadı', w.fake.commits === settled, 'commit ' + settled + ' → ' + w.fake.commits);
+  check('gösterge yeşil kaldı', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -348,6 +413,8 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
   await scenarioListenerDies();
   await scenarioDroppedEdit();
   await scenarioNoWriteStorm();
+  await scenarioPhoneWakesUp();
+  await scenarioWakeUpCostsNothing();
   await scenarioNeverReachesServer();
   console.log('\n' + pass + ' geçti, ' + fail + ' kaldı');
   process.exit(fail ? 1 : 0);
