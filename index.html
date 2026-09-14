@@ -6966,6 +6966,29 @@ function migrateTeam(t){
       else if(filtered.length!==day.sessions.length)a.days[d]={...day,sessions:filtered};
     }
   });
+  /* ONE-TIME: take back the programs the Individualization page wrote on its own from a
+     TEMPLATE. That page picks a source by itself, and on a date with no team session the
+     source it picks is a template — which belongs to no day and to no assignment — so
+     simply opening the page put a full training session on every athlete's calendar for a
+     day the team plan reads as rest, and re-wrote it the moment the athlete deleted it.
+     The page no longer does that (a template now waits for the button), but the sessions
+     it already wrote are still standing, and no coach ever asked for them: until the fix
+     there was no button, so every template-sourced program in the data came from that
+     automatic pass. A program the coach has since edited by hand is their work and stays,
+     as does anything written from a team session. Runs once per team. */
+  if(!t.tplIndivAutoCleanup){
+    t.tplIndivAutoCleanup=true;
+    t.athletes.forEach(a=>{
+      for(const k of Object.keys(a.days||{})){
+        const day=a.days[k];if(!day?.sessions?.length)continue;
+        const kept=day.sessions.filter(s=>!(s.indiv&&String(s.indiv.srcKey||'').startsWith('tpl:')
+          &&!s.sourceId&&!indivHandEdited(s)));
+        if(kept.length===day.sessions.length)continue;
+        if(kept.length===0&&!day.dailyNotes)delete a.days[k];
+        else a.days[k]={...day,sessions:kept};
+      }
+    });
+  }
   /* A session on an athlete's calendar that carries `sourceId` is a mirror of a team
      session on the same day — syncSessionsToAthletes writes it, and takes it away again
      when the team session goes. But it only takes it away through the edit path that
@@ -26459,12 +26482,20 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`));
     setTimeout(()=>setToast(''),opts.auto?2000:3500);
   };
+  /* Who this page may write to unasked: the athletes the DATE'S OWN TEAM SESSION was
+     given to. That is the same list the team→athlete sync copies the session by, so the
+     sheet's individual version lands exactly where the plain copy would have, and nowhere
+     else. A template source has no day and no assignment, and a team session with nobody
+     ticked reaches nobody's calendar through the sync either — both write by hand only. */
+  const autoFirstWrite=useMemo(()=>new Set(
+    (src&&src.team&&Array.isArray(srcRoster))?srcRoster:[]),[src,srcRoster]);
+
   /* Once a program has been written for an athlete, the sheet keeps their calendar in
      step with it — the coach edits the sheet and the athlete's copy follows, instead of
-     the coach having to remember the button on every visit. Only athletes who were
-     written before are touched: pressing the button stays the one deliberate act that
-     puts a program on someone's calendar. A written program is rewritten only when its
-     fingerprint differs, so this settles after one pass instead of looping. */
+     the coach having to remember the button on every visit. A written program is
+     rewritten only when its fingerprint differs, so this settles after one pass instead
+     of looping; an athlete with nothing written yet is first written only where the day's
+     own team plan already puts them in that session (see `autoFirstWrite`). */
   useEffect(()=>{
     if(!src)return;
     const due=plans.filter(p=>{
@@ -26473,17 +26504,24 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       // on the sheet's own initiative — only when the coach asks for it from the card.
       if(w&&indivHandEdited(w))return false;
       const ses=planToSession(p,src.session,date,activeKey);
-      // A sheet with nothing written on it yet does not put an empty session on anyone's
-      // calendar: the first write happens when there is a program to write. An athlete
-      // who already has one keeps being updated, emptied rows included.
-      if(!w)return liveBlocks(p).some(b=>(b.rows||[]).some(liveSlot));
+      /* A FIRST WRITE FOLLOWS THE DAY'S PLAN, NEVER THE PAGE BEING OPEN.
+         The page picks a source by itself, and with no team session on the date that
+         source is a template — which belongs to no day and to no assignment. Writing it
+         on sight put training on every athlete's calendar for a day the team plan reads
+         as rest, and the athlete could not get rid of it: deleting the session took
+         `written` away, the sheet read that as "never written" and wrote it straight
+         back. So a program appears on somebody's calendar on its own only where the
+         day's own plan says they do it — a team session of that date with them ticked on
+         it. Everything else (a template, a session nobody is ticked on, an athlete the
+         session was not given to) waits for the button in the bar. */
+      if(!w)return autoFirstWrite.has(p.ath.id)&&liveBlocks(p).some(b=>(b.rows||[]).some(liveSlot));
       return (w.indiv&&w.indiv.sig)!==ses.indiv.sig;
     }).map(p=>p.ath.id);
     if(!due.length)return;
     const t=setTimeout(()=>applyTo(due,{auto:true}),600);
     return()=>clearTimeout(t);
     // eslint-disable-next-line
-  },[plans,written,src,date,activeKey]);
+  },[plans,written,src,date,activeKey,autoFirstWrite]);
   /* Printing reads what is actually written on the athletes' calendars, so the paper
      matches the program they were given. */
   const printAll=()=>{
@@ -26509,6 +26547,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         <div className="iv-static">{L(`${roster.length} sporcudan ${chosen.length} tanesi`,`${chosen.length} / ${roster.length} selected`)}</div>
       </div>
       <div className="iv-actions">
+        {/* The deliberate write. The sheet follows the day's plan on its own; anything
+            outside it — a template, a session nobody is ticked on — reaches a calendar
+            only when the coach asks here, and only the athletes selected above. */}
+        <button className="btn sm" onClick={()=>applyTo(chosen)} disabled={!src||!chosen.length}
+          title={L('Seçili sporcuların takvimine bu programı işler.','Writes this program onto the selected athletes\' calendars.')}>
+          ✎ {L('Seçili sporculara işle','Write to selected')}</button>
         <span className="iv-expbar">
           <select value={expRange} onChange={e=>setExpRange(e.target.value)} title={L('Çıktı aralığı','Export range')}>
             <option value="day">{L('Gün','Day')}</option>
@@ -26526,8 +26570,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
           'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. '):''}
         {srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
                      `This session is assigned to ${srcRoster.length} athlete${srcRoster.length>1?'s':''} — the program is written to their calendars only. To reach anyone else, tick them on the session itself first. `):''}
-        {L(<>Seçtiğin kaynak program, seçili sporcuların takvimine <strong>kendiliğinden</strong> işlenir — yazma butonu yok. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
-          <>The source program you pick is written onto the selected athletes' calendars <strong>by itself</strong> — there is no write button. Open an athlete's card, pick the session on their calendar and edit it in place with <em>✎ Edit</em>; a day you edit by hand is never overwritten from this page again.</>)}
+        {L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Şablon seçtiğinde ya da seansta kimse işaretli değilse takvime hiçbir şey yazılmaz — <em>✎ Seçili sporculara işle</em> butonunu kullan. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
+          <>This program is written by itself onto the calendars of the athletes <strong>ticked on that day's team session</strong>, and reaches nobody else. With a template selected, or a session nobody is ticked on, nothing is written on its own — use <em>✎ Write to selected</em>. Open an athlete's card, pick the session on their calendar and edit it in place with <em>✎ Edit</em>; a day you edit by hand is never overwritten from this page again.</>)}
       </div>
     </div>
     {/* Only the athletes this source may reach are offered: "All" over an assigned session
