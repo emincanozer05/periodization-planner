@@ -867,7 +867,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* The page's own head: what this screen is for on the left, everything that moves it on
    the right. The bar that used to sit under the title said "Program Bloğu · haftalık
    görünüm", which the week's first summary card now says properly. */
-.cal-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px 18px;flex-wrap:wrap;margin-bottom:16px}
+/* `.cal-head` is also the class on the month grid's weekday strip, which centres its text;
+   the page head sets its own alignment so the title cannot drift off the subtitle under it. */
+.cal-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px 18px;flex-wrap:wrap;margin-bottom:16px;text-align:left}
 .cal-head-t{min-width:0}
 .cal-head-t h2{font-size:30px;font-weight:800;letter-spacing:-.026em;line-height:1.05;color:var(--text);margin:0}
 .cal-head-t p{margin:6px 0 0;font-size:13px;color:var(--muted);line-height:1.4}
@@ -1237,8 +1239,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* A selected item is lifted rather than recoloured — recolouring it would look like the
    coach had changed its colour. */
 .ct-sel{filter:drop-shadow(0 0 9px rgba(255,255,255,.85))}
-.ct-hint{position:absolute;inset:auto 0 12px;text-align:center;pointer-events:none;
-  font-size:11px;color:rgba(255,255,255,.34);padding:0 18px;line-height:1.5}
+/* The prompt sits UNDER the floor rather than over it: laid on the court it read as part
+   of the diagram, crossing the key and the restricted-area arc. */
+.ct-hint{text-align:center;pointer-events:none;border-top:1px solid var(--border);
+  font-size:11px;color:rgba(255,255,255,.34);padding:7px 18px;line-height:1.5}
 .ct-legend{display:flex;flex-wrap:wrap;align-items:center;gap:5px 13px;padding:6px 10px;
   border-top:1px solid var(--border);background:var(--elevated,var(--bg2))}
 .ct-legend span{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--dim)}
@@ -1565,8 +1569,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* Research modal */
 .rs-modal{max-width:920px;width:95vw}
 .ex-modal-wide{max-width:1080px;width:96vw}
-.ex-modal-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
+.ex-modal-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}
+/* The court's own row, spanning both columns. */
+.ex-modal-court{grid-column:1/-1;min-width:0}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
+/* The link that stands beside Upload Video / Add Image: it takes the rest of the row, at
+   the height of the buttons it stands with. */
+.ex-vlink{flex:1 1 220px;width:auto;min-width:0;padding:6px 11px;font-size:12.5px;border-radius:8px}
 /* Purpose / Description in the exercise modal — long prose, so it reads at body
    weight rather than the semibold the surrounding fields use. Same treatment in the
    edit textarea and the read-only view so switching modes doesn't shift the text. */
@@ -13967,11 +13976,12 @@ function CourtEditor({value,onChange,barSlot}){
           {draft&&elsToReact(sceneItemEls(draft,sc.half),'d')}
         </g>
       </svg>
-      {sceneIsEmpty(sc)&&!draft&&<div className="ct-hint">
-        {L('Sahaya çiz — kalem, pas, top sürme, perde; oyuncu ve ekipmanı tıklayarak yerleştir.',
-           'Draw on the court — pen, pass, dribble, screen; click to place players and equipment.')}
-      </div>}
     </div>);
+  const hint=sceneIsEmpty(sc)&&!draft?(
+    <div className="ct-hint">
+      {L('Sahaya çiz — kalem, pas, top sürme, perde; oyuncu ve ekipmanı tıklayarak yerleştir.',
+         'Draw on the court — pen, pass, dribble, screen; click to place players and equipment.')}
+    </div>):null;
   const legend=(
     <div className="ct-legend">
       <span><i className="lg lg-cut"/>{L('Kesme','Cut')}</span>
@@ -13995,6 +14005,7 @@ function CourtEditor({value,onChange,barSlot}){
       <div className="ct-zoom-panel">
         {bar}
         {board}
+        {hint}
         {legend}
       </div>
     </div>,document.body);
@@ -14002,6 +14013,7 @@ function CourtEditor({value,onChange,barSlot}){
   return(<div className="ct-wrap">
     {barSlot?ReactDOM.createPortal(bar,barSlot):bar}
     {board}
+    {hint}
     {legend}
   </div>);
 }
@@ -24820,13 +24832,12 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </select>
         </div>
       </div>
-      {/* The drill's diagram is edited here on exactly the board it was drawn on in the
-          session, so a drill filed from a session and a drill written straight into the
-          library are the same object either way round. */}
-      {ball&&<div style={{marginTop:14}}>
-        <label>{L('Saha Çizimi','Court Diagram')}</label>
-        <CourtEditor value={ex.court} onChange={sc=>set('court',sc)} barSlot={courtBar}/>
-      </div>}
+      <div style={{marginTop:14}}>
+        <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
+        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)}
+          placeholder={ball?L('Kurallar, ilerlemeler, koçluk noktaları, skorlama…','Rules, progressions, coaching points, scoring…')
+                           :L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
+      </div>
       {!ball&&<div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
         <div className="mus-pick">
           {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{exLabel(m)}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
@@ -24836,17 +24847,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </select>
         </div>
       </div>}
-      <div style={{marginTop:14}}>
-        <label>{L('Video Linki (YouTube / Vimeo / mp4)','Video Link (YouTube / Vimeo / mp4)')}</label>
-        <input value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)} placeholder="https://youtube.com/watch?v=…"/>
-        <div className="help" style={{marginTop:4}}>{L('Kart görseli YouTube/Vimeo\'dan otomatik alınır; aşağıdaki program görselinin yerine yazılmaz.','The card image is fetched automatically from YouTube/Vimeo; it does not replace the program image below.')}</div>
-      </div>
-      <div style={{marginTop:14}}>
-        <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
-        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)}
-          placeholder={ball?L('Kurallar, ilerlemeler, koçluk noktaları, skorlama…','Rules, progressions, coaching points, scoring…')
-                           :L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
-      </div>
       {coverBox}
     </div>
   );
@@ -24871,18 +24871,31 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
             <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 {L('Görsel / GIF Ekle','Add Image / GIF')}
               <input type="file" accept="image/*,.gif" style={{display:'none'}} onChange={e=>onImageFile(e.target.files[0])}/>
             </label>
+            {/* The pasted link is a third way of filling the same frame, so it stands with the
+                two buttons that fill it rather than halfway down the other column. */}
+            <input className="ex-vlink" value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)}
+              placeholder={L('…ya da link yapıştır (YouTube / Vimeo / mp4)','…or paste a link (YouTube / Vimeo / mp4)')}/>
             {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>{L('Videoyu kaldır','Remove video')}</button>}
             {ex.image&&<button className="btn ghost xs" onClick={()=>set('image','')}>{L('Görseli kaldır','Remove image')}</button>}
           </div>}
+          {editing&&<div className="help" style={{marginTop:6}}>{L('Kart görseli YouTube/Vimeo\'dan otomatik alınır; program görselinin yerine yazılmaz.','The card image is fetched automatically from YouTube/Vimeo; it does not replace the program image.')}</div>}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>{L('Yükleniyor… ','Uploading… ')}{upPct}%</div>}
-          {/* The court's tools live under the clip, so the board on the right is nothing but
-              board. Only mounted while editing a drill — there is nothing to draw with otherwise. */}
+          {/* The court's tools live under the clip, so the board below is nothing but board.
+              Only mounted while editing a drill — there is nothing to draw with otherwise. */}
           {editing&&ball&&<div className="ct-bar-slot">
             <span className="ct-bar-slot-lbl">{L('Çizim Araçları','Drawing Tools')}</span>
             <div ref={setCourtBar}/>
           </div>}
         </div>
         {editing?editRight:viewRight}
+        {/* The floor gets the modal's whole width, under both columns. Sharing a column with
+            the fields made a full court widen that column, and the clip on the left shrank
+            to pay for it — the board is the one thing here whose width is not the coach's
+            choice. Its rail stays over on the left, so this row is nothing but board. */}
+        {editing&&ball&&<div className="ex-modal-court">
+          <label>{L('Saha Çizimi','Court Diagram')}</label>
+          <CourtEditor value={ex.court} onChange={sc=>set('court',sc)} barSlot={courtBar}/>
+        </div>}
       </div>
       <div className="modal-foot">
         {editing
