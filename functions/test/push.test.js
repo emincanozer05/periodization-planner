@@ -54,6 +54,14 @@ t('bildirim başlık/gövde ve derin link taşıyor', () => {
   assert.strictEqual(m.data.link, LINK);
   assert.strictEqual(m.data.alertId, DATA.alertId);
 });
+/* Android `icon`'u bildirimin SAĞ kenarında büyük bir kutu olarak basıyor ve
+   solda zaten aynı logo (badge) duruyor — koç bildirimde aynı işareti iki kez
+   görüyordu. Kalan tek kopya soldaki. */
+t('bildirimde sağdaki büyük logo yok, yalnızca soldaki işaret var', () => {
+  const n = buildMessage(['t1'], TEXT, DATA, LINK).webpush.notification;
+  assert.strictEqual(n.icon, undefined, 'sağdaki büyük logo konmamalı');
+  assert.strictEqual(n.badge, '/logo-mark.png');
+});
 t('etiket sporcu+tarihten geliyor — aynı sporcunun uyarısı üst üste yazıyor', () => {
   const m = buildMessage(['t1'], TEXT, DATA, LINK);
   assert.strictEqual(m.webpush.notification.tag, DATA.alertId);

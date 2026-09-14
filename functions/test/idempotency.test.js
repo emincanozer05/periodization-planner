@@ -157,9 +157,12 @@ t('link içindeki kimlik kaçırılıyor', () => {
   assert.ok(alertLink('https://e.com', 'a b').endsWith('#alert=a%20b'));
 });
 
-/* Ekip üyesinin CoachOS hesabı yok: bildirimi koçun uygulamasına açmak onu
-   kullanamayacağı bir giriş ekranına düşürüyordu. Gideceği yer kendi sayfası. */
-t('ekip üyesinin bildirimi kendi uyarı sayfasını açıyor', () => {
+/* BİLDİRİMİN adresi — koç da ekip üyesi de buraya geliyor (index.js tek link
+   gönderiyor). Ekip üyesinin CoachOS hesabı yok: bildirimi koçun uygulamasına
+   açmak onu kullanamayacağı bir giriş ekranına düşürüyordu. Koç için de aynı
+   sayfa tercih edildi: uygulamanın içine açılan tıklama telefonda açık duran
+   başka bir sayfaya (çoğu zaman check-in formuna) düşebiliyordu. */
+t('bildirim uyarı sayfasını açıyor', () => {
   assert.strictEqual(staffAlertLink('https://example.com/app/index.html'),
     'https://example.com/app/alerts.html');
   assert.strictEqual(staffAlertLink('https://example.com/'), 'https://example.com/alerts.html');

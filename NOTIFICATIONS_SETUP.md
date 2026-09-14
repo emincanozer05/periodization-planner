@@ -112,8 +112,13 @@ vermiyor. Bildirim **gönderme** yetkisi yalnızca Cloud Function'da.
 Bu bölümde "Cloud Messaging API (V1) disabled" uyarısı görürsen yanındaki linkten
 etkinleştir.
 
-> Anahtar doldurulmadığı sürece uygulama bugünkü gibi çalışır: uyarılar oluşur ve
-> ekranda listelenir, sadece telefona bildirim gitmez.
+> Anahtar doldurulmadığı sürece uygulama bugünkü gibi çalışır: uyarılar oluşur,
+> koç uyarı bildirimine tıklayınca sporcunun Wellness ekranına düşer — sadece
+> telefona bildirim gitmez.
+
+> **Koçun kendi cihazı.** Bildirimi bu cihazda açan düğme **Kurulum → Bildirimler**
+> bölümünde. (Eskiden ayrı bir "Wellness Uyarıları" sekmesindeydi; o sekme kaldırıldı,
+> uyarı listesi ekip üyelerinin `alerts.html` sayfasında durmaya devam ediyor.)
 
 ### 2. Anonim girişin açık olduğunu doğrula
 
@@ -199,11 +204,11 @@ dönüşmüyor, service worker'ın önbelleği yok.
 | 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | **bildirim** (ağrı tek başına yeter) |
 | 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | **bildirim** (skor 3.0) |
 | 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | **bildirim** (skor 5.0 ama ağrı var) |
-| 6 | bildirime tıkla (uygulama kapalı) | sporcunun Wellness ekranı açılır |
+| 6 | bildirime tıkla (uygulama kapalı) | **`alerts.html`** — uyarı listesi açılır |
 | 7 | aynı sporcu aynı gün ikinci kez gönderir | telefonda **tek** satır (uyarı güncellenir) |
-| 8 | bildirime tıkla (CoachOS **açık** bir sekmede) | o sekme öne gelir ve sporcunun Wellness ekranı açılır — yeni sekme açılmaz |
+| 8 | bildirime tıkla (uyarı sayfası **açık** bir sekmede) | o sekme öne gelir, yeni sekme açılmaz — **başka** bir CoachOS sayfası (ör. check-in formu) açıksa ona dokunulmaz |
 | 9 | CoachOS **ekranda açıkken** uyarı oluşsun | bildirim yine görünür (sayfa kendisi gösteriyor), **iki kopya çıkmaz** |
-| 10 | ekip üyesi bildirime tıklar | **`alerts.html`** açılır — koçun giriş ekranı değil |
+| 10 | koç ya da ekip üyesi bildirime tıklar | herkeste aynı yer: **`alerts.html`** — en ağır durumdaki sporcu en üstte |
 | 11 | koç ikinci bir takıma hiç geçmemişken o takımdan uyarı | o takımın ekibi de bildirim alır |
 | 12 | aynı sporcu aynı gün 09:00 kötü, 14:00 iyi gönderir | Kadro ekranında **14:00** değerleri görünür |
 
