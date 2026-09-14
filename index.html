@@ -1690,6 +1690,93 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pf-injrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);margin-bottom:8px}
 .pf-injrow .d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex:none}
 .pf-injrow .t{font-size:13px;color:var(--text2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ===== Athlete scouting sheet (Profile tab) =====
+   The development picture a coach carries in their head, written down: what the
+   athlete is now and what they project to, criterion by criterion.
+
+   Every rated criterion uses the same four-step scale, and the scale is the same
+   four colours everywhere on the page — 1 red, 2 amber, 3 green, 4 blue — so a
+   section can be read at arm's length without reading a single label. */
+.sc-wrap{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.sc-sec{background:var(--panel);border:1px solid var(--border);border-radius:16px}
+.sc-sec-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.sc-sec-n{flex:none;width:27px;height:27px;border-radius:9px;display:grid;place-items:center;
+  background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;font-style:normal}
+.sc-sec-tx{min-width:0;flex:1 1 240px}
+.sc-sec-t{font-size:13.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--text)}
+.sc-sec-d{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.55;font-style:normal}
+/* The section's own average — the one number a coach scans the sheet for. */
+.sc-avg{margin-left:auto;flex:none;display:flex;align-items:baseline;gap:6px;padding:6px 12px;border-radius:11px;
+  border:1px solid var(--border2);background:var(--elevated)}
+.sc-avg b{font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1}
+.sc-avg i{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-style:normal;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.sc-sec-b{padding:4px 18px 16px}
+/* ---- the criteria table ---- */
+.sc-hdr,.sc-row{display:grid;grid-template-columns:minmax(170px,1.1fr) 170px minmax(150px,1.5fr);
+  gap:16px;align-items:center}
+.sc-hdr{padding:12px 0 8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim);font-style:normal}
+.sc-row{padding:9px 0;border-top:1px solid var(--border)}
+.sc-crit{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text);min-width:0}
+.sc-note input{height:36px;border-radius:9px;font-size:12.5px}
+/* The ⓘ beside a criterion: what the coach is actually being asked to judge. */
+.sc-info{position:relative;flex:none;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--dim);cursor:help;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;font-style:normal;line-height:1}
+.sc-info:hover{border-color:var(--accent);color:var(--accent2)}
+.sc-info::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);
+  width:250px;max-width:64vw;padding:9px 11px;border-radius:10px;background:#0e1117;border:1px solid var(--border2);
+  color:var(--text2);font-family:inherit;font-size:11.5px;font-weight:400;font-style:normal;line-height:1.5;
+  text-align:left;white-space:normal;box-shadow:0 10px 28px rgba(0,0,0,.75);
+  opacity:0;pointer-events:none;transition:opacity .14s ease;z-index:60}
+.sc-info:hover::after{opacity:1}
+/* ---- the 1–4 scale ---- */
+.sc-scale{display:flex;gap:6px}
+.sc-dot{width:38px;height:34px;padding:0;border-radius:9px;border:1px solid var(--border2);background:var(--bg2);
+  color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:700;
+  font-style:normal;cursor:pointer;transition:background .14s ease,border-color .14s ease,color .14s ease}
+.sc-dot:hover{color:var(--text);border-color:var(--text2)}
+.sc-dot.on.s1{background:rgba(239,68,68,.18);border-color:#ef4444;color:#fca5a5}
+.sc-dot.on.s2{background:rgba(245,158,11,.18);border-color:#f59e0b;color:#fcd34d}
+.sc-dot.on.s3{background:rgba(16,185,129,.18);border-color:#10b981;color:#6ee7b7}
+.sc-dot.on.s4{background:rgba(59,130,246,.20);border-color:#3b82f6;color:#93c5fd}
+.sc-leg{display:flex;gap:7px 15px;flex-wrap:wrap;align-items:center;padding:10px 0 2px;
+  font-size:11.5px;color:var(--muted);font-style:normal}
+.sc-leg span{display:inline-flex;align-items:center;gap:6px}
+.sc-leg i{width:9px;height:9px;border-radius:3px;flex:none}
+@media(max-width:820px){
+  .sc-hdr{display:none}
+  .sc-row{grid-template-columns:minmax(0,1fr);gap:9px;align-items:stretch;padding:13px 0}
+  .sc-info::after{left:0;transform:none}
+}
+/* ---- modern position: what they are, and what they project to ---- */
+.sc-pos2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:760px){.sc-pos2{grid-template-columns:minmax(0,1fr)}}
+.sc-pos{border:1px solid var(--border);border-radius:14px;background:var(--bg2);padding:14px 16px 15px}
+.sc-pos.now{border-color:rgba(0,148,255,.3);background:linear-gradient(160deg,rgba(0,148,255,.08),transparent 68%),var(--bg2)}
+.sc-pos.pot{border-color:rgba(139,92,246,.32);background:linear-gradient(160deg,rgba(139,92,246,.10),transparent 68%),var(--bg2)}
+.sc-pos-k{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);font-style:normal}
+.sc-pos-code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;
+  letter-spacing:.08em;padding:3px 9px;border-radius:6px;font-style:normal}
+.sc-pos.now .sc-pos-code{background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2)}
+.sc-pos.pot .sc-pos-code{background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.36);color:#c4b5fd}
+.sc-pos select{margin-top:10px;height:40px;border-radius:10px;font-size:13px;font-weight:600}
+.sc-pos-d{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:10px;min-height:36px;font-style:normal}
+/* ---- free-text blocks: projection and the coach's verdict ---- */
+/* Two even columns, so a pair of short fields never ends up squeezed into a sixth of
+   the row the way auto-fit leaves them on a wide screen. */
+.sc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+@media(max-width:700px){.sc-grid{grid-template-columns:minmax(0,1fr)}}
+.sc-f.wide{grid-column:1/-1}
+.sc-f label{margin-bottom:6px}
+.sc-f input,.sc-f select{height:40px;border-radius:10px;font-size:13px}
+.sc-f textarea{min-height:84px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55}
+.sc-f .help{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;font-style:normal}
+.sc-f.tall textarea{min-height:118px}
 /* Dated notes panel — arrow-navigated, light (non-italic) body text */
 .notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .notes-add{width:auto;flex:none;padding:6px 12px;font-size:12px;background:var(--elevated);border:1px solid var(--border2);border-radius:8px;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
@@ -20758,6 +20845,154 @@ function NotesPanel({ath,updAth}){
       </React.Fragment>}
   </div>);
 }
+/* ═══ SCOUTING SHEET — the development picture that lives on the Profile tab ═══
+   Anthropometry is measured; everything below is judged. A coach rates each
+   criterion 1–4, leaves a note beside it, names the archetype the athlete plays
+   now and the one they project to, and signs off. All of it is stored under
+   `ath.scout`, so nothing here touches the measured/tested records above. */
+const SC_SCALE=[
+  {n:1,tr:'Geliştirilmeli',en:'Needs work',c:'#ef4444'},
+  {n:2,tr:'Yeterli',en:'Adequate',c:'#f59e0b'},
+  {n:3,tr:'İyi',en:'Good',c:'#10b981'},
+  {n:4,tr:'Üst Düzey',en:'Elite',c:'#3b82f6'},
+];
+const scColor=v=>(SC_SCALE.find(s=>s.n===v)||{}).c||'var(--text)';
+/* Modern position classification — the role an athlete actually plays, rather than
+   the 1–5 the jersey says. A coach fills two of these: where the athlete is today,
+   and where their development is pointed. */
+const SC_POS=[
+  {k:'FLG',tr:'Oyun Kurucu',en:'Floor General',
+   dTr:'Oyunu yöneten, tempoyu belirleyen, pas öncelikli kurucu.',
+   dEn:'Runs the offence, sets the tempo, pass-first lead guard.'},
+  {k:'HUG',tr:'Yüksek Kullanımlı Guard',en:'High Usage Guard',
+   dTr:'Topu çok elinde tutan, kendi şutunu yaratan skorer guard.',
+   dEn:'High-volume ball handler who creates their own shot.'},
+  {k:'ESW',tr:'Elit Şutör Kanat',en:'Elite Shooting Wing',
+   dTr:'Topsuz hareket ve dış şutla sahayı açan kanat.',
+   dEn:'Wing who spaces the floor off the ball with elite shooting.'},
+  {k:'VRP',tr:'Çok Yönlü Rol Oyuncusu',en:'Versatile Role Player',
+   dTr:'Birden fazla pozisyonu savunan, düşük kullanımla verimli katkı veren oyuncu.',
+   dEn:'Defends several positions, contributes efficiently at low usage.'},
+  {k:'SKF',tr:'Yetenekli Forvet',en:'Skilled Forward',
+   dTr:'Top sürebilen, pas verebilen ve şut atabilen çok yönlü forvet.',
+   dEn:'Forward who can handle, pass and shoot.'},
+  {k:'MC',tr:'Modern Pivot',en:'Modern Center',
+   dTr:'Pick&roll, değişebilen savunma ve dış şut/pas menzili olan çağdaş uzun.',
+   dEn:'Modern big: pick-and-roll, switchable defence, shooting or passing range.'},
+  {k:'TC',tr:'Geleneksel Pivot',en:'Traditional Center',
+   dTr:'Potaya yakın oynayan, ribaund ve çember koruması ağırlıklı uzun.',
+   dEn:'Plays near the rim — rebounding and rim protection first.'},
+  {k:'OE',tr:'Hücum Motoru',en:'Offensive Engine',
+   dTr:'Takımın hücumunu taşıyan birincil skorer ve yaratıcı.',
+   dEn:'Carries the offence — primary scorer and creator.'},
+];
+const scPos=k=>SC_POS.find(p=>p.k===k)||null;
+const SC_TECH=[
+  {k:'handling',tr:'Top Hakimiyeti & Dribling',en:'Ball Handling & Dribbling',
+   tTr:'Baskı altında topu koruma, iki eli de kullanabilme, dribbling ile avantaj yaratma.',
+   tEn:'Protecting the ball under pressure, using both hands, creating an advantage off the dribble.'},
+  {k:'shooting',tr:'Şut & Bitiricilik',en:'Shooting & Finishing',
+   tTr:'Şut mekaniği ve tutarlılığı, menzil, çember çevresinde temas altında bitirme.',
+   tEn:'Shooting mechanics and consistency, range, finishing through contact at the rim.'},
+  {k:'passing',tr:'Pas Becerisi & Vizyon',en:'Passing & Vision',
+   tTr:'Pas isabeti ve zamanlaması, savunmayı okuma, boştaki oyuncuyu bulma.',
+   tEn:'Passing accuracy and timing, reading the defence, finding the open player.'},
+  {k:'defOn',tr:'Bireysel Savunma',en:'On-Ball Defence',
+   tTr:'Savunma duruşu, ayak hareketi, topu taşıyan oyuncuyu önünde tutabilme.',
+   tEn:'Stance, footwork, keeping the ball handler in front.'},
+  {k:'defTeam',tr:'Takım Savunması & Taktik IQ',en:'Team Defence & Basketball IQ',
+   tTr:'Rotasyonlar, yardım ve geri dönüş, sistemin kurallarını sahada uygulama.',
+   tEn:'Rotations, help and recover, applying the system on the floor.'},
+  {k:'rebound',tr:'Ribaund (Hücum / Savunma)',en:'Rebounding (Off. / Def.)',
+   tTr:'Blok-out, pozisyon alma, ikinci şans toplarına ulaşma isteği.',
+   tEn:'Boxing out, positioning, the will to chase second-chance balls.'},
+];
+const SC_PHYS=[
+  {k:'jump',tr:'Dikey Sıçrama / Patlayıcılık',en:'Vertical Jump / Explosiveness',
+   tTr:'Tek ve çift ayak sıçrama gücü, ilk adımdaki patlayıcılık.',
+   tEn:'One- and two-foot jumping power, explosiveness out of the first step.'},
+  {k:'agility',tr:'Çeviklik ve Hız',en:'Agility & Speed',
+   tTr:'Yön değiştirme, ivmelenme ve yavaşlama kalitesi, sahadaki düz hız.',
+   tEn:'Change of direction, acceleration and deceleration quality, straight-line speed.'},
+  {k:'endurance',tr:'Kondisyon / Dayanıklılık',en:'Conditioning / Endurance',
+   tTr:'Maç temposunu koruyabilme, tekrarlı sprintler arası toparlanma.',
+   tEn:'Holding game tempo, recovery between repeated sprints.'},
+  {k:'strength',tr:'Güç / Kuvvet (Strength)',en:'Strength',
+   tTr:'Temas dayanımı, gövde kuvveti, pozisyon alma ve koruma gücü.',
+   tEn:'Absorbing contact, trunk strength, winning and holding position.'},
+  {k:'mobility',tr:'Mobilite & Hareket Kalitesi',en:'Mobility & Movement Quality',
+   tTr:'Eklem hareket açıklığı, hareket paternlerinin temizliği, asimetri ve kısıtlar.',
+   tEn:'Range of motion, cleanliness of movement patterns, asymmetries and restrictions.'},
+];
+const SC_MIND=[
+  {k:'discipline',tr:'Antrenman Disiplini & İş Ahlakı',en:'Training Discipline & Work Ethic',
+   tTr:'Devamlılık, antrenmana hazır gelme, izlenmediğinde de aynı standartta çalışma.',
+   tEn:'Attendance, arriving ready, working to the same standard unsupervised.'},
+  {k:'coachability',tr:'Koç Edilebilirlik (Coachability)',en:'Coachability',
+   tTr:'Geri bildirimi kabul etme, düzeltmeyi sahaya yansıtma hızı.',
+   tEn:'Taking feedback, and how quickly a correction shows up on the floor.'},
+  {k:'leadership',tr:'Liderlik & İletişim',en:'Leadership & Communication',
+   tTr:'Sahada sesli iletişim, takım arkadaşlarını yönlendirme, örnek olma.',
+   tEn:'Talking on the floor, directing teammates, setting the example.'},
+  {k:'resilience',tr:'Duygusal Dayanıklılık',en:'Emotional Resilience',
+   tTr:'Hata, faul ya da skor baskısı sonrası toparlanma; sakinliğini koruma.',
+   tEn:'Bouncing back from a mistake, a foul or scoreboard pressure; staying composed.'},
+  {k:'competitive',tr:'Rekabetçilik & Kazanma Arzusu',en:'Competitiveness & Will to Win',
+   tTr:'Her top için mücadele, antrenmanda bile kazanma isteği.',
+   tEn:'Competing for every ball, wanting to win even in practice.'},
+];
+function ScInfo({tip}){return <span className="sc-info" data-tip={tip}>i</span>;}
+/* One rated section: a numbered header, its running average, and the criteria table. */
+function ScSection({n,title,desc,items,vals,onSet,children}){
+  const scored=items.map(it=>Number((vals[it.k]||{}).s)).filter(v=>v>=1&&v<=4);
+  const avg=scored.length?scored.reduce((a,b)=>a+b,0)/scored.length:null;
+  return(<div className="sc-sec">
+    <div className="sc-sec-h">
+      <div className="sc-sec-n">{n}</div>
+      <div className="sc-sec-tx">
+        <div className="sc-sec-t">{title}</div>
+        {desc&&<div className="sc-sec-d">{desc}</div>}
+      </div>
+      <div className="sc-avg" title={L('Doldurulmuş kriterlerin ortalaması','Average of the criteria you have scored')}>
+        <b style={{color:avg==null?'var(--dim)':scColor(Math.round(avg))}}>{avg==null?'—':avg.toFixed(1)}</b>
+        <i>{L(`ort · ${scored.length}/${items.length}`,`avg · ${scored.length}/${items.length}`)}</i>
+      </div>
+    </div>
+    <div className="sc-sec-b">
+      {children}
+      <div className="sc-hdr"><div>{L('Kriter','Criterion')}</div><div>{L('Puan','Score')}</div><div>{L('Not / Gözlem','Note / Observation')}</div></div>
+      {items.map(it=>{
+        const cur=vals[it.k]||{};
+        return(<div key={it.k} className="sc-row">
+          <div className="sc-crit">{L(it.tr,it.en)}<ScInfo tip={L(it.tTr,it.tEn)}/></div>
+          <div className="sc-scale">
+            {SC_SCALE.map(s=><button key={s.n} type="button" className={`sc-dot s${s.n} ${Number(cur.s)===s.n?'on':''}`}
+              title={L(`${s.n} — ${s.tr}`,`${s.n} — ${s.en}`)}
+              onClick={()=>onSet(it.k,{s:Number(cur.s)===s.n?'':s.n})}>{s.n}</button>)}
+          </div>
+          <div className="sc-note"><input value={cur.n||''} onChange={e=>onSet(it.k,{n:e.target.value})}
+            placeholder={L('Not / gözlem…','Note / observation…')}/></div>
+        </div>);
+      })}
+      <div className="sc-leg">
+        {SC_SCALE.map(s=><span key={s.n}><i style={{background:s.c}}/>{s.n} {L(s.tr,s.en)}</span>)}
+        <span style={{color:'var(--dim)'}}>{L('Kriterin yanındaki ⓘ işaretine gelerek açıklamayı görebilirsiniz.','Hover the ⓘ beside a criterion for what it means.')}</span>
+      </div>
+    </div>
+  </div>);
+}
+/* The two archetype boxes: what the athlete plays now, and what they project to. */
+function ScPosBox({kind,label,value,onChange}){
+  const p=scPos(value);
+  return(<div className={`sc-pos ${kind}`}>
+    <div className="sc-pos-k"><span>{label}</span>{p&&<span className="sc-pos-code">{p.k}</span>}</div>
+    <select value={value||''} onChange={e=>onChange(e.target.value)}>
+      <option value="">{L('— seçilmedi —','— not set —')}</option>
+      {SC_POS.map(o=><option key={o.k} value={o.k}>{L(`${o.tr} (${o.en} — ${o.k})`,`${o.en} (${o.k})`)}</option>)}
+    </select>
+    <div className="sc-pos-d">{p?L(p.dTr,p.dEn):L('Modern pozisyon sınıflandırmasından bir rol seç.','Pick a role from the modern position classification.')}</div>
+  </div>);
+}
 function ProfileTab({ath,updAth,setup}){
   const age=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
   // Anthropometrics auto-pulled from the most recent dated measurement/test record,
@@ -20774,12 +21009,114 @@ function ProfileTab({ath,updAth,setup}){
   const ws=pull('wingspan');
   const inj=(ath.injuries||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const srcLbl=x=>x?(x.date?L(`son ölçüm ${fd(x.date)}`,`last measured ${fd(x.date)}`):L('profilden','from profile')):L('henüz veri yok','no data yet');
+  /* The scouting sheet. One object on the athlete, patched field by field — the
+     ratings above never overwrite each other because each group is merged in. */
+  const sc=ath.scout||{};
+  const setSc=patch=>updAth(ath.id,{scout:{...sc,...patch}});
+  const grp=g=>sc[g]||{};
+  const setCrit=g=>(k,patch)=>setSc({[g]:{...grp(g),[k]:{...(grp(g)[k]||{}),...patch}}});
+  const setField=(g,k)=>v=>setSc({[g]:{...grp(g),[k]:v}});
+  const proj=grp('projection'),verdict=grp('verdict');
   return(<div>
     <div className="ath-stat-row" style={{gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))'}}>
       <div className="ath-stat"><div className="k">{L('Yaş','Age')}</div><div className="v">{age!=null?age:'—'}<span className="u">{L('yıl','yrs')}</span></div><div className="sub">{ath.dateOfBirth?L(`d. ${fd(ath.dateOfBirth)}`,`b. ${fd(ath.dateOfBirth)}`):L('doğum tarihini ✎ ile gir','set date of birth via ✎')}</div></div>
       <div className="ath-stat"><div className="k">{L('Boy','Height')}</div><div className="v">{h?h.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(h)}</div></div>
       <div className="ath-stat"><div className="k">{L('Kilo','Weight')}</div><div className="v">{w?w.v:'—'}<span className="u">kg</span></div><div className="sub">{srcLbl(w)}</div></div>
       <div className="ath-stat"><div className="k">{L('Kulaç','Wingspan')}</div><div className="v">{ws?ws.v:'—'}<span className="u">cm</span></div><div className="sub">{srcLbl(ws)}</div></div>
+    </div>
+    <div className="sc-wrap">
+      {/* ── 1 · modern position, now and projected ── */}
+      <div className="sc-sec">
+        <div className="sc-sec-h">
+          <div className="sc-sec-n">1</div>
+          <div className="sc-sec-tx">
+            <div className="sc-sec-t">{L('Modern Pozisyon','Modern Position')}</div>
+            <div className="sc-sec-d">{L('Formadaki numara değil, sahada oynanan rol — bugünkü hali ve gelişimin işaret ettiği hedef.','Not the number on the jersey but the role played on court — where they are today, and where development points.')}</div>
+          </div>
+        </div>
+        <div className="sc-sec-b" style={{paddingTop:16}}>
+          <div className="sc-pos2">
+            <ScPosBox kind="now" label={L('Mevcut','Current')} value={sc.posNow} onChange={v=>setSc({posNow:v})}/>
+            <ScPosBox kind="pot" label={L('Potansiyel','Potential')} value={sc.posPot} onChange={v=>setSc({posPot:v})}/>
+          </div>
+        </div>
+      </div>
+      {/* ── 2 · technical & tactical ── */}
+      <ScSection n={2} title={L('Teknik ve Taktik Değerlendirme','Technical & Tactical Assessment')}
+        desc={L('Topla ve topsuz oyunun sahadaki karşılığı.','What the game looks like on the floor, with the ball and without it.')}
+        items={SC_TECH} vals={grp('tech')} onSet={setCrit('tech')}/>
+      {/* ── 3 · physical development ── */}
+      <ScSection n={3} title={L('Fiziksel Gelişim & Atletik Performans','Physical Development & Athletic Performance')}
+        desc={L('Boy, kilo ve kulaç yukarıdaki ölçüm kartlarından okunur — burası atletik niteliklerin değerlendirmesi.','Height, weight and wingspan are read from the measurement cards above — this section rates athletic qualities.')}
+        items={SC_PHYS} vals={grp('phys')} onSet={setCrit('phys')}/>
+      {/* ── 4 · mental, character & social ── */}
+      <ScSection n={4} title={L('Zihinsel, Karakter ve Sosyal Beceriler','Mental, Character & Social Skills')}
+        desc={L('Yeteneğin ne kadarının sahaya çıkacağını belirleyen taraf.','The side of an athlete that decides how much of the talent reaches the floor.')}
+        items={SC_MIND} vals={grp('mind')} onSet={setCrit('mind')}/>
+      {/* ── 5 · scouting projection ── */}
+      <div className="sc-sec">
+        <div className="sc-sec-h">
+          <div className="sc-sec-n">5</div>
+          <div className="sc-sec-tx">
+            <div className="sc-sec-t">{L('Scout Projeksiyonu','Scouting Projection')}</div>
+            <div className="sc-sec-d">{L('Modern pozisyon sınıflandırmasına dayalı, geleceğe dönük değerlendirme.','A forward-looking read, built on the modern position classification.')}</div>
+          </div>
+        </div>
+        <div className="sc-sec-b" style={{paddingTop:16}}>
+          <div className="sc-grid">
+            <div className="sc-f wide">
+              <label>{L('Potansiyel Tavan (Ceiling)','Ceiling')}</label>
+              <textarea value={proj.ceiling||''} onChange={e=>setField('projection','ceiling')(e.target.value)}
+                placeholder={L('Örn: BSL rotasyon oyuncusu / EuroLeague seviyesi / NBA potansiyeli','e.g. domestic-league rotation player / EuroLeague level / NBA potential')}/>
+              <div className="help">{L('Sporcu gelişimini tamamlarsa ulaşabileceği en yüksek seviyeyi yaz ve bu seviyeye neden inandığını kısaca açıkla.','Name the highest level this athlete could reach if development goes well, and say briefly why you believe it.')}</div>
+            </div>
+            <div className="sc-f">
+              <label>{L('Üst Yapıya Hazır Olma Yaşı','Age Ready for the Senior Level')}</label>
+              <input value={proj.readyAge||''} onChange={e=>setField('projection','readyAge')(e.target.value)}
+                placeholder={L('Örn: 19–20 yaş','e.g. 19–20')}/>
+            </div>
+            <div className="sc-f">
+              <label>{L('Risk Faktörü (Gelişim / Performans)','Risk Factor (Development / Performance)')}</label>
+              <input value={proj.risk||''} onChange={e=>setField('projection','risk')(e.target.value)}
+                placeholder={L('Örn: fiziksel gelişim geride, karakter/motivasyon soru işaretli','e.g. physically behind, questions over character / motivation')}/>
+            </div>
+            <div className="sc-f wide">
+              <label>{L('Sağlık / Sakatlık Geçmişi','Health / Injury History')}</label>
+              <input value={proj.health||''} onChange={e=>setField('projection','health')(e.target.value)}
+                placeholder={L('Örn: geçmiş sakatlık, tekrarlayan sakatlık riski, dayanıklılık endişesi','e.g. past injury, recurring injury risk, durability concern')}/>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* ── 6 · the coach's verdict ── */}
+      <div className="sc-sec">
+        <div className="sc-sec-h">
+          <div className="sc-sec-n">6</div>
+          <div className="sc-sec-tx">
+            <div className="sc-sec-t">{L('Antrenör Genel Değerlendirmesi','Coach’s Overall Assessment')}</div>
+            <div className="sc-sec-d">{L('Güçlü yönler, öncelikli gelişim alanları ve gelecek dönem hedefleri.','Strengths, the development priorities, and the targets for the coming period.')}</div>
+          </div>
+        </div>
+        <div className="sc-sec-b" style={{paddingTop:16}}>
+          <div className="sc-grid">
+            <div className="sc-f wide tall">
+              <label>{L('Genel değerlendirme','Overall assessment')}</label>
+              <textarea value={verdict.summary||''} onChange={e=>setField('verdict','summary')(e.target.value)}
+                placeholder={L('Güçlü yönler, öncelikli gelişim alanları ve gelecek dönem hedefleri…','Strengths, development priorities and targets for the coming period…')}/>
+            </div>
+            <div className="sc-f">
+              <label>{L('Antrenör','Coach')}</label>
+              <input value={verdict.coach||''} onChange={e=>setField('verdict','coach')(e.target.value)}
+                placeholder={L('Ad soyad','Full name')}/>
+            </div>
+            <div className="sc-f">
+              <label>{L('Tarih','Date')}</label>
+              <input value={verdict.date||''} onChange={e=>setField('verdict','date')(e.target.value)}
+                placeholder={L('gg/aa/yyyy','dd/mm/yyyy')}/>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div className="pf-cols">
       <div className="panel">
