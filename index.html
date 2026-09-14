@@ -3329,8 +3329,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .su-hero{display:flex;align-items:center;gap:20px;padding:22px 24px;margin-bottom:16px;border-radius:16px;
   border:1px solid var(--border);box-shadow:var(--shadow);
   background:linear-gradient(120deg,rgba(0,148,255,.14),rgba(0,148,255,.03) 46%,var(--panel) 78%)}
-.su-hero-crest{flex:none;width:84px;height:84px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+.su-hero-crest{position:relative;flex:none;width:84px;height:84px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
   background:var(--elevated);border:1px solid var(--border2);transition:border-color .15s,transform .15s}
+/* The club logo is edited where it is shown. The strip only appears under the pointer, so
+   the hero stays a heading rather than a toolbar, and the rest of the crest still zooms. */
+.su-crest-edit{position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;
+  gap:10px;background:rgba(10,11,13,.72);opacity:0;transition:opacity .15s}
+.su-hero-crest:hover .su-crest-edit{opacity:1}
+.su-crest-edit button{background:none;border:0;padding:0;line-height:1;font-size:13px;color:#fff;cursor:pointer}
+.su-crest-edit button:hover{transform:scale(1.12)}
 .su-hero-crest:hover{border-color:var(--accent)}
 .su-hero-crest img{width:100%;height:100%;object-fit:contain}
 .su-hero-crest span{font-size:26px;font-weight:800;color:var(--text2);letter-spacing:-.02em}
@@ -3372,7 +3379,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .su-img-box img{width:100%;height:100%;object-fit:contain}
 /* The facility photo, at the shape a room is photographed in. */
 .su-img.wide{width:100%}
-.su-img-box.wide{width:100%;height:auto;aspect-ratio:16/9;border-radius:12px}
+.su-img-box.wide{width:100%;max-width:360px;height:auto;aspect-ratio:16/9;border-radius:12px}
 .su-img-box.wide img{object-fit:cover}
 .su-img-ph{font-size:26px;color:var(--dim);line-height:1}
 /* "This opens" — only on a filled slot, and only under the pointer. */
@@ -9918,6 +9925,7 @@ function Setup({team,updateTeam,data,setData}){
     window.addEventListener('keydown',esc);
     return()=>window.removeEventListener('keydown',esc);
   },[zoom]);
+  const crestRef=useRef(null);
   const clubName=String(s.clubName||'').trim()||s.teamName||L('Kulüp','Club');
   const crest=hasMedia(s.logo)?mediaSrc(s.logo):'';
   const totalAthletes=teamList.reduce((n,t)=>n+((t.athletes||[]).length),0);
@@ -9930,6 +9938,16 @@ function Setup({team,updateTeam,data,setData}){
       <div className="su-hero-crest" onClick={()=>crest&&setZoom({src:crest,alt:clubName})}
         title={crest?L('Büyüt','Enlarge'):''} style={{cursor:crest?'zoom-in':'default'}}>
         {crest?<img src={crest} alt=""/>:<span>{nameInitials(clubName)}</span>}
+        {/* The crest is also where it is changed: no second copy of it further down the
+            form, so there is one logo on this screen and it is the one being edited. */}
+        <div className="su-crest-edit" onClick={e=>e.stopPropagation()}>
+          <button type="button" title={L('Logoyu değiştir','Replace logo')} onClick={()=>crestRef.current&&crestRef.current.click()}>📷</button>
+          {crest&&<button type="button" title={L('Logoyu kaldır','Remove logo')} onClick={()=>u('logo','')}>✕</button>}
+        </div>
+        <input type="file" accept="image/*" ref={crestRef} style={{display:'none'}} onChange={e=>{
+          const f=e.target.files&&e.target.files[0];e.target.value='';
+          if(f)handleImageUpload(f,'logos',v=>u('logo',v));
+        }}/>
       </div>
       <div className="su-hero-tx">
         <div className="su-hero-k">{L('Kulüp','Club')}</div>
@@ -9967,9 +9985,6 @@ function Setup({team,updateTeam,data,setData}){
               <DateDMY value={s.seasonEnd} onChange={v=>uSeason('seasonEnd',v)}/>
               <div className="help">{L('Geçiş dönemi sonu','Transition end')}</div></div>
           </div>
-          <SetupImage label={L('Kulüp logosu','Club logo')} value={s.logo} onChange={v=>u('logo',v)} folder="logos"
-            shape="round" onZoom={setZoom}
-            hint={L('Kenar çubuğunda ve yazdırılan programların başlığında görünür.','Shown in the sidebar and on the header of printed programs.')}/>
         </div>
       </div>
 
