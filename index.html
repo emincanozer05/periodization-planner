@@ -3608,26 +3608,46 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-abar i{display:block;height:100%;border-radius:3px;transition:width .5s ease}
 .wh-adot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
 /* Weekly Monotony */
-/* --- Share the week --- */
-.modal.shw{max-width:640px;width:95vw;background:#15181e;backdrop-filter:none;-webkit-backdrop-filter:none}
+/* --- Share the week ---
+   Two panes: the sheet being sent, and everything decided about it. The sheet is the
+   wider of the two and comes first — it is what the message IS — and the panel takes
+   nearly the whole window because an A4 landscape grid shrunk into a 640px column is
+   not a preview of anything. Under 900px the two stack, sheet still first. */
+.modal.shw{max-width:1240px;width:96vw;background:#15181e;backdrop-filter:none;-webkit-backdrop-filter:none}
 .shw-sub{font-size:11px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;margin-top:3px}
-.shw-b{padding:16px 20px 20px}
+.shw-b{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(340px,.95fr);gap:22px;padding:16px 22px 22px;
+  max-height:78vh;overflow:auto}
+.shw-prev,.shw-side{min-width:0;display:flex;flex-direction:column}
+.shw-side{border-left:1px solid var(--border);padding-left:22px}
+@media(max-width:900px){.shw-b{grid-template-columns:minmax(0,1fr)}
+  .shw-side{border-left:none;padding-left:0;border-top:1px solid var(--border);padding-top:16px}}
 .shw-lbl{font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:2px 0 8px}
+/* The sheet sits on white because it IS white: a paper page shown on the panel's own
+   dark ground would read as a hole in the screen. */
+.shw-shot{background:#fff;border:1px solid var(--border2);border-radius:12px;overflow:hidden;
+  min-height:230px;display:flex;align-items:center;justify-content:center;flex:1}
+.shw-shot img{width:100%;height:auto;display:block}
+.shw-shot-st{display:flex;align-items:center;gap:10px;color:#5c626c;font-size:12px;padding:40px 20px;text-align:center}
+.shw-shot-st.err{color:#b91c1c}
+.shw-spin{width:16px;height:16px;border-radius:50%;border:2px solid #d8dce2;border-top-color:#0a0b0d;animation:recSpin .8s linear infinite;flex:none}
 .shw-none{font-size:12px;color:var(--dim);border:1px dashed var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px}
-.shw-staff{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:16px}
-.shw-card{display:flex;align-items:center;gap:10px;text-align:left;padding:8px 10px;border:1px solid var(--border);
-  border-radius:11px;background:var(--bg2);color:var(--text);cursor:pointer;transition:border-color .14s ease,transform .14s ease}
+.shw-staff{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.shw-card{display:flex;align-items:center;gap:12px;text-align:left;padding:10px 12px;border:1px solid var(--border);
+  border-radius:12px;background:var(--bg2);color:var(--text);cursor:pointer;transition:border-color .14s ease,transform .14s ease}
 .shw-card:hover:not(.off){border-color:#25d366;transform:translateY(-1px)}
 .shw-card.off{opacity:.5;cursor:not-allowed}
-.shw-av{width:34px;height:34px;border-radius:50%;border:1.5px solid;display:grid;place-items:center;flex:none;
-  font-size:11px;font-weight:700;overflow:hidden}
+.shw-av{width:46px;height:46px;border-radius:50%;border:2px solid;display:grid;place-items:center;flex:none;
+  font-size:14px;font-weight:700;overflow:hidden}
 .shw-av img{width:100%;height:100%;object-fit:cover}
-.shw-who{display:flex;flex-direction:column;min-width:0;flex:1}
-.shw-who b{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shw-who i{font-size:10px;font-style:normal}
-.shw-go{font-size:10px;color:var(--dim);flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.shw-who{display:flex;flex-direction:column;min-width:0;flex:1;gap:2px}
+.shw-who b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shw-who i{font-size:11.5px;font-style:normal}
+.shw-go{font-size:10.5px;color:var(--dim);flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .shw-txt{width:100%;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;line-height:1.65;resize:vertical}
 .shw-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.shw-foot{margin-top:auto;padding-top:14px;display:flex;justify-content:flex-end}
+.calm-share{background:#fff;color:#0a0b0d;border:1px solid #fff;font-weight:600}
+.calm-share:hover{background:#e8eaee;border-color:#e8eaee;color:#0a0b0d}
 .mono-sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 /* The four Foster bands, named once under the chart that paints them. A colour a reader
    has to hover a bar to decode is not a scale. */
@@ -9115,8 +9135,10 @@ function weekShareText(title,weekStart,days,athletes){
     +(wk&&wk.monotony?` · ${L('monotonluk','monotony')} ${wk.monotony.toFixed(2)}`:''));
   return out.join('\n');
 }
-function printWeekA4Land(title,weekStart,days,athletes){
-  const w=window.open('','_blank','width=1300,height=900');if(!w)return;
+/* The weekly sheet as a document, apart from the window it is printed in. The printout
+   and the image the Share panel shows are the SAME page by construction: one builder,
+   one layout, and nothing to drift out of step the next time the sheet is edited. */
+function buildWeekHTMLDoc(title,weekStart,days,athletes){
   const dates=Array.from({length:7},(_,i)=>fmt(addD(parseD(weekStart),i)));
   /* Per-day AU loads (Mon..Sun) — through teamDailyLoadMap, the same helper the
      calendar and Load Monitoring read. A day whose sessions carry no session-level
@@ -9339,8 +9361,44 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 ${monotonyBlock}
 </div>
 </body></html>`;
-  w.document.write(html);w.document.close();
+  return html;
+}
+function printWeekA4Land(title,weekStart,days,athletes){
+  const w=window.open('','_blank','width=1300,height=900');if(!w)return;
+  w.document.write(buildWeekHTMLDoc(title,weekStart,days,athletes));w.document.close();
   printWhenImagesReady(w,{before:fitWeekToPage});
+}
+
+/* THE WEEK AS A PICTURE. A plan sent as a paragraph of text is read; a plan sent as the
+   sheet itself is recognised — the coach's staff already know that grid. The same HTML
+   the printout uses is laid out in an offscreen iframe at A4-landscape width and
+   captured with html2canvas, so what lands in WhatsApp is the sheet, not a screenshot of
+   part of a screen. It is rendered once at `scale` 2 and that one picture serves both
+   the preview on the panel and the file that is downloaded, copied or shared — a second
+   pass at preview quality would be a second html2canvas run for the same image. */
+async function buildWeekImageBlob(title,weekStart,days,athletes,scale=2){
+  const html=buildWeekHTMLDoc(title,weekStart,days,athletes);
+  const W=1123;   // 297mm at 96dpi — A4 landscape
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText=`position:fixed;left:-9999px;top:0;width:${W}px;height:1px;border:none;visibility:hidden`;
+  document.body.appendChild(iframe);
+  try{
+    const idoc=iframe.contentDocument||iframe.contentWindow.document;
+    idoc.open();idoc.write(html);idoc.close();
+    await new Promise(r=>setTimeout(r,50));
+    try{if(idoc.fonts&&idoc.fonts.ready)await idoc.fonts.ready;}catch(e){}
+    const imgs=Array.from(idoc.images||[]);
+    await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(rs=>{im.onload=rs;im.onerror=rs;})));
+    const contentH=Math.max(idoc.body.scrollHeight,idoc.documentElement.scrollHeight,320);
+    iframe.style.height=contentH+'px';
+    await new Promise(r=>setTimeout(r,80));
+    const canvas=await window.html2canvas(idoc.body,{
+      scale,useCORS:true,backgroundColor:'#ffffff',logging:false,
+      windowWidth:W,width:W,height:contentH});
+    return await new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }
 
 /* The weekly sheet is one A4 landscape page by design: the week grid and the load
@@ -12165,9 +12223,28 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   const base=useMemo(()=>weekShareText(title,weekStart,days,athletes),[title,weekStart,days,athletes]);
   const[text,setText]=useState(base);
   const[copied,setCopied]=useState(false);
+  const[imgCopied,setImgCopied]=useState(false);
+  /* The sheet itself, rendered once when the panel opens and held for every button that
+     wants it: the preview on the left, the file that is downloaded, the image put on the
+     clipboard, the file handed to the share sheet. Rendering it four times would be four
+     html2canvas passes for one identical picture. */
+  const[img,setImg]=useState({state:'loading',url:'',blob:null});
+  const[busy,setBusy]=useState('');
+  useEffect(()=>{
+    let dead=false,url='';
+    setImg({state:'loading',url:'',blob:null});
+    buildWeekImageBlob(title,weekStart,days,athletes,2).then(blob=>{
+      if(dead||!blob){return;}
+      url=URL.createObjectURL(blob);
+      setImg({state:'ok',url,blob});
+    }).catch(e=>{if(!dead)setImg({state:'err',url:'',blob:null,msg:e&&e.message});});
+    return()=>{dead=true;if(url)URL.revokeObjectURL(url);};
+    // eslint-disable-next-line
+  },[title,weekStart,days,athletes]);
   const list=(Array.isArray(staff)?staff:[]).map(normStaff);
   const range=`${fd(weekStart)} – ${fd(fmt(addD(parseD(weekStart),6)))}`;
   const subject=L(`${title} · Haftalık plan ${range}`,`${title} · Weekly plan ${range}`);
+  const fileName=`${String(title||'week').replace(/[^a-zA-Z0-9_-]/g,'_')}_${weekStart}.png`;
   // wa.me wants the number as digits alone — no +, no spaces, no dashes.
   const waNum=m=>String(`${m.phoneCode||''}${m.phone||''}`).replace(/\D/g,'');
   const open=url=>window.open(url,'_blank','noopener');
@@ -12185,8 +12262,39 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
     for(let i=0;i<7;i++){const k=fmt(addD(parseD(weekStart),i));
       ((days[k]||{}).sessions||[]).forEach(x=>sessions.push(x));}
     if(!sessions.length){alert(L('Bu haftada gönderilecek antrenman yok.','No sessions in this week to send.'));return;}
+    setBusy('pdf');
     try{await shareTrainingPDF({title,subtitle:range,sessions,athleteName:title});}
     catch(e){alert(L('PDF hatası: ','PDF error: ')+(e.message||e));}
+    finally{setBusy('');}
+  };
+  const pngDownload=()=>{
+    if(!img.blob)return;
+    const a=document.createElement('a');a.href=img.url;a.download=fileName;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  };
+  /* An image on the clipboard is the one that goes straight into a WhatsApp box with
+     ⌘V. Only Chromium browsers carry ClipboardItem; where they do not, the file is
+     downloaded instead so the coach still ends up holding the picture. */
+  const pngCopy=async()=>{
+    if(!img.blob)return;
+    try{
+      if(typeof ClipboardItem==='undefined'||!navigator.clipboard||!navigator.clipboard.write)throw new Error('no-clipboard');
+      await navigator.clipboard.write([new ClipboardItem({'image/png':img.blob})]);
+      setImgCopied(true);setTimeout(()=>setImgCopied(false),1800);
+    }catch(e){
+      pngDownload();
+      alert(L('Tarayıcı görsel kopyalamayı desteklemiyor — dosya indirildi.',
+              'This browser cannot copy images — the file was downloaded instead.'));
+    }
+  };
+  const pngShare=async()=>{
+    if(!img.blob)return;
+    const file=new File([img.blob],fileName,{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{await navigator.share({files:[file],title:subject,text});return;}
+      catch(e){if(e&&e.name==='AbortError')return;}
+    }
+    pngDownload();
   };
   return(<div className="modal-bg" onClick={onClose}>
     <div className="modal shw" onClick={e=>e.stopPropagation()}>
@@ -12195,37 +12303,54 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
           <div className="shw-sub">{title} · {range}</div></div>
         <button className="x-btn" onClick={onClose}>✕</button>
       </div>
+      {/* THE SHEET ON THE LEFT, WHO AND WHAT ON THE RIGHT. What is being sent is the
+          bigger half and is looked at first; the staff, the message and the buttons are
+          the decision made about it. On a narrow screen the two stack, sheet first. */}
       <div className="shw-b">
-        <div className="shw-lbl">{L('Teknik ekip','The staff')}</div>
-        {list.length===0
-          ?<div className="shw-none">{L('Kadroda teknik ekip yok — Kadro → Teknik Ekip sekmesinden ekleyebilirsin.',
-              'No staff on this squad yet — add them on Roster → Staff.')}</div>
-          :<div className="shw-staff">
-            {list.map(m=>{const r=STAFF_ROLE_BY[m.role]||STAFF_ROLES[0];const num=waNum(m);
-              return(<button key={m.id} className={'shw-card'+(num?'':' off')} disabled={!num}
-                onClick={()=>toWhatsApp(num)}
-                title={num?L(`${m.name||'—'} · WhatsApp ile gönder`,`${m.name||'—'} · send on WhatsApp`)
-                  :L('Bu kişinin telefonu kayıtlı değil','No phone number saved for this person')}>
-                <span className="shw-av" style={{borderColor:r.c,background:r.bg,color:r.c}}>
-                  {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:((m.name||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'?')}
-                </span>
-                <span className="shw-who"><b>{m.name||L('(isimsiz)','(unnamed)')}</b>
-                  <i style={{color:r.c}}>{L(capTR(r.str),r.sen)}</i></span>
-                <span className="shw-go">{num?'WhatsApp ›':L('telefon yok','no phone')}</span>
-              </button>);})}
-          </div>}
-        <div className="shw-lbl">{L('Mesaj','Message')}</div>
-        <textarea className="shw-txt" value={text} onChange={e=>setText(e.target.value)} rows={12}/>
-        <div className="shw-acts">
-          <button className="btn sm" onClick={()=>toWhatsApp('')}>{L('WhatsApp ile gönder','Send on WhatsApp')}</button>
-          <button className="btn sm sec" onClick={toMail}>{L('E-posta','Email')}</button>
-          <button className="btn sm sec" onClick={copy}>{copied?L('✓ Kopyalandı','✓ Copied'):L('Metni kopyala','Copy text')}</button>
-          <button className="btn sm sec" onClick={sendPdf}>{L('PDF olarak paylaş','Share as PDF')}</button>
-          {typeof navigator!=='undefined'&&navigator.share&&
-            <button className="btn sm sec" onClick={native}><ShareIcon/> {L('Diğer','More')}</button>}
-          <span className="grow"/>
-          <button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button>
-        </div>
+        <section className="shw-prev">
+          <div className="shw-lbl">{L('Haftalık antrenman çıktısı','The weekly plan sheet')}</div>
+          <div className="shw-shot">
+            {img.state==='loading'&&<div className="shw-shot-st"><span className="shw-spin"/>{L('Çıktı hazırlanıyor…','Rendering the sheet…')}</div>}
+            {img.state==='err'&&<div className="shw-shot-st err">{L('Görsel oluşturulamadı','The image could not be rendered')}{img.msg?` — ${img.msg}`:''}</div>}
+            {img.state==='ok'&&<img src={img.url} alt={subject}/>}
+          </div>
+          <div className="shw-acts">
+            <button className="btn sm" disabled={img.state!=='ok'} onClick={pngDownload}>{L('PNG indir','Download PNG')}</button>
+            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngShare}><ShareIcon/> {L('Görseli paylaş','Share image')}</button>
+            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngCopy}>{imgCopied?L('✓ Kopyalandı','✓ Copied'):L('Görseli kopyala','Copy image')}</button>
+          </div>
+        </section>
+        <section className="shw-side">
+          <div className="shw-lbl">{L('Teknik ekip','The staff')}</div>
+          {list.length===0
+            ?<div className="shw-none">{L('Kadroda teknik ekip yok — Kadro → Teknik Ekip sekmesinden ekleyebilirsin.',
+                'No staff on this squad yet — add them on Roster → Staff.')}</div>
+            :<div className="shw-staff">
+              {list.map(m=>{const r=STAFF_ROLE_BY[m.role]||STAFF_ROLES[0];const num=waNum(m);
+                return(<button key={m.id} className={'shw-card'+(num?'':' off')} disabled={!num}
+                  onClick={()=>toWhatsApp(num)}
+                  title={num?L(`${m.name||'—'} · WhatsApp ile gönder`,`${m.name||'—'} · send on WhatsApp`)
+                    :L('Bu kişinin telefonu kayıtlı değil','No phone number saved for this person')}>
+                  <span className="shw-av" style={{borderColor:r.c,background:r.bg,color:r.c}}>
+                    {m.photo?<img src={mediaSrc(m.photo)} alt=""/>:((m.name||'?').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'?')}
+                  </span>
+                  <span className="shw-who"><b>{m.name||L('(isimsiz)','(unnamed)')}</b>
+                    <i style={{color:r.c}}>{L(capTR(r.str),r.sen)}</i></span>
+                  <span className="shw-go">{num?'WhatsApp ›':L('telefon yok','no phone')}</span>
+                </button>);})}
+            </div>}
+          <div className="shw-lbl">{L('Mesaj','Message')}</div>
+          <textarea className="shw-txt" value={text} onChange={e=>setText(e.target.value)} rows={10}/>
+          <div className="shw-acts">
+            <button className="btn sm" onClick={()=>toWhatsApp('')}>{L('WhatsApp ile gönder','Send on WhatsApp')}</button>
+            <button className="btn sm sec" onClick={toMail}>{L('E-posta','Email')}</button>
+            <button className="btn sm sec" onClick={copy}>{copied?L('✓ Kopyalandı','✓ Copied'):L('Metni kopyala','Copy text')}</button>
+            <button className="btn sm sec" onClick={sendPdf} disabled={busy==='pdf'}>{busy==='pdf'?L('Hazırlanıyor…','Working…'):L('PDF olarak paylaş','Share as PDF')}</button>
+            {typeof navigator!=='undefined'&&navigator.share&&
+              <button className="btn sm sec" onClick={native}><ShareIcon/> {L('Diğer','More')}</button>}
+          </div>
+          <div className="shw-foot"><button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button></div>
+        </section>
       </div>
     </div>
   </div>);
@@ -12620,7 +12745,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>{L('Ay','Month')}</button>
       </div>
       {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title={L('Haftalık plan çıktısı (A4 yatay)','Weekly plan export (A4 landscape)')}>⎙ {L('Haftayı yazdır','Print week')}</button>}
-      {calMode==='week'&&<button className="btn sec sm" onClick={()=>setShareOpen(true)}
+      {/* White, because it is the one button on this bar that sends the week out of the
+          app — "print" and the week arrows move around inside it. */}
+      {calMode==='week'&&<button className="btn sm calm-share" onClick={()=>setShareOpen(true)}
         title={L('Haftayı WhatsApp ya da e-posta ile gönder','Send the week by WhatsApp or email')}>↗ {L('Paylaş','Share')}</button>}
       <div className="calm-nav">
         <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title={L('Geri','Back')}>‹</button>
@@ -20037,7 +20164,10 @@ function EvaluationView({team,updateTeam,data,setData}){
                     onClick={e=>{e.stopPropagation();setAddBatId(isAdding?null:t.id);}}
                     title={Lx('Bu kayda yeni test ekle','Add more tests to this record')}>＋ {Lx('Test Ekle','Add Tests')}</button>
                   <button className="btn xs sec" onClick={e=>{e.stopPropagation();setEditingId(t.id);}}>👁 {Lx('Görüntüle','Open')}</button>
-                  <button className="ev2-res-more" onClick={e=>{e.stopPropagation();delTest(t.id);}} title={Lx('Sil','Delete')}>✕</button>
+                  {/* A bare ✕ beside "Open" reads as "close", not "delete for good". It
+                      says what it does, and it is the only red thing on the row. */}
+                  <button className="btn xs danger" onClick={e=>{e.stopPropagation();delTest(t.id);}}
+                    title={Lx('Bu test kaydını sil','Delete this test record')}>{Lx('Testi Sil','Delete Test')}</button>
                 </div>
                 {isAdding&&<div className="bat-add ev2-res-bat" onClick={e=>e.stopPropagation()}>
                   <div className="help" style={{marginBottom:10}}>{Lx('Bu teste eklemek istediğin ölçümleri seç — seçtiklerin hemen kaydın bataryasına girer.','Pick the measurements to add to this record — they join its battery right away.')}</div>
@@ -20931,7 +21061,12 @@ function DevelopmentCharts({tests}){
   </div></div>);
 }
 
-/* THE ATHLETE'S PROGRESSION, ONE CARD PER MEASUREMENT — AND ONE PANEL PER FAMILY.
+/* NOT MOUNTED ANYWHERE AT THE MOMENT — the athlete's tab bar carries Anthropometric
+   (the tape measure) again, and test results are read on the Testing & Assessment
+   screen beside the battery they were taken in. Kept whole, the way RecommendsTab and
+   ProgramWriterTab are, so it can be put back on a tab without rebuilding it.
+
+   THE ATHLETE'S PROGRESSION, ONE CARD PER MEASUREMENT — AND ONE PANEL PER FAMILY.
    Every number the Testing & Assessment screen collects, the built-in battery and the
    coach's own tests alike, drawn against the dates it was taken on. The card is the very
    card the body-composition charts are drawn in — same size, same two-up grid, same big
@@ -21737,11 +21872,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     {id:'profile',ic:'◈',l:L('Profil','Profile')},
     {id:'load',ic:'▤',l:L('Yük','Load')},
     {id:'calendar',ic:'▣',l:L('Takvim','Calendar')},
-    /* One tab for everything measured on the athlete: what the tests say about how they
-       move and how fast they are, and what the tape says about their body. They were
-       read together anyway — a jump that is up on a body that is 4 kg heavier is a
-       different result from the same jump on the same body. */
-    {id:'body',ic:'⌇',l:L('Performans Verileri','Performance Data')},
+    /* The tape measure, and only the tape measure. Test results are read on the Testing
+       & Assessment screen, next to the battery they were taken in; putting them here as
+       well made one tab answer two questions. */
+    {id:'body',ic:'⌇',l:L('Antropometrik Ölçüm','Anthropometric')},
     {id:'injuries',ic:'⊘',l:L('Sakatlıklar','Injuries')},
     {id:'wellness',ic:'♡',l:'Wellness'},
   ];
@@ -21852,7 +21986,6 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
       })}
     </div>}
     {tab==='body'&&<div>
-      <PerfProgressCharts tests={ath.tests} customTests={customTests}/>
       {(()=>{const m=(ath.measurements||[]).filter(x=>x.date).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));const cur=m[m.length-1];const prev=m[m.length-2];
         const d=(a,b,k,dp=1)=>{const v1=Number(a?.[k]),v2=Number(b?.[k]);if(!a||!b||isNaN(v1)||isNaN(v2))return null;return+(v1-v2).toFixed(dp);};
         const w=cur?Number(cur.weight)||null:null,bf=cur?Number(cur.bodyFat)||null:null,ws=cur?Number(cur.wingspan)||null:null;
