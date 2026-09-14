@@ -12222,14 +12222,12 @@ const SESS_COLORS=['#67e8f9','#fcd34d','#86efac','#f9a8d4'];
 function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   const base=useMemo(()=>weekShareText(title,weekStart,days,athletes),[title,weekStart,days,athletes]);
   const[text,setText]=useState(base);
-  const[copied,setCopied]=useState(false);
   const[imgCopied,setImgCopied]=useState(false);
   /* The sheet itself, rendered once when the panel opens and held for every button that
      wants it: the preview on the left, the file that is downloaded, the image put on the
      clipboard, the file handed to the share sheet. Rendering it four times would be four
      html2canvas passes for one identical picture. */
   const[img,setImg]=useState({state:'loading',url:'',blob:null});
-  const[busy,setBusy]=useState('');
   useEffect(()=>{
     let dead=false,url='';
     setImg({state:'loading',url:'',blob:null});
@@ -12251,22 +12249,12 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   // wa.me with a number opens that person's chat; without one, WhatsApp asks who to send to.
   const toWhatsApp=num=>open(`https://wa.me/${num||''}?text=${encodeURIComponent(text)}`);
   const toMail=()=>{window.location.href=`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;};
-  const copy=async()=>{try{await navigator.clipboard.writeText(text);setCopied(true);setTimeout(()=>setCopied(false),1800);}
-    catch(e){alert(L('Kopyalanamadı — metni seçip elle kopyalayabilirsin.','Could not copy — select the text and copy it by hand.'));}};
-  const native=async()=>{try{await navigator.share({title:subject,text});}catch(e){}};
-  /* The same week as the printed sheet, for when a page is what is wanted rather than a
-     message: the device's own share sheet takes the PDF into whichever app is installed,
-     and falls back to downloading it so it can be attached by hand. */
-  const sendPdf=async()=>{
-    const sessions=[];
-    for(let i=0;i<7;i++){const k=fmt(addD(parseD(weekStart),i));
-      ((days[k]||{}).sessions||[]).forEach(x=>sessions.push(x));}
-    if(!sessions.length){alert(L('Bu haftada gönderilecek antrenman yok.','No sessions in this week to send.'));return;}
-    setBusy('pdf');
-    try{await shareTrainingPDF({title,subtitle:range,sessions,athleteName:title});}
-    catch(e){alert(L('PDF hatası: ','PDF error: ')+(e.message||e));}
-    finally{setBusy('');}
-  };
+  /* FIVE WAYS OUT WAS FOUR TOO MANY. What is left is one row: send it, mail it, keep the
+     file, put the picture on the clipboard — and the device's own share sheet where
+     there is one. The three that went were each a second way to do one of these:
+     "share as PDF" made a second copy of the very sheet the PNG already is, "copy text"
+     duplicated the message box a coach can select from, and the text-only share was the
+     share sheet without the picture. */
   const pngDownload=()=>{
     if(!img.blob)return;
     const a=document.createElement('a');a.href=img.url;a.download=fileName;
@@ -12314,11 +12302,6 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
             {img.state==='err'&&<div className="shw-shot-st err">{L('Görsel oluşturulamadı','The image could not be rendered')}{img.msg?` — ${img.msg}`:''}</div>}
             {img.state==='ok'&&<img src={img.url} alt={subject}/>}
           </div>
-          <div className="shw-acts">
-            <button className="btn sm" disabled={img.state!=='ok'} onClick={pngDownload}>{L('PNG indir','Download PNG')}</button>
-            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngShare}><ShareIcon/> {L('Görseli paylaş','Share image')}</button>
-            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngCopy}>{imgCopied?L('✓ Kopyalandı','✓ Copied'):L('Görseli kopyala','Copy image')}</button>
-          </div>
         </section>
         <section className="shw-side">
           <div className="shw-lbl">{L('Teknik ekip','The staff')}</div>
@@ -12341,13 +12324,16 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
             </div>}
           <div className="shw-lbl">{L('Mesaj','Message')}</div>
           <textarea className="shw-txt" value={text} onChange={e=>setText(e.target.value)} rows={10}/>
+          {/* Every way out of here in one row, beside the message they all carry. The two
+              that act on the sheet — keep the file, put the picture on the clipboard —
+              wait for it to finish rendering; the two that act on the text do not. */}
           <div className="shw-acts">
             <button className="btn sm" onClick={()=>toWhatsApp('')}>{L('WhatsApp ile gönder','Send on WhatsApp')}</button>
             <button className="btn sm sec" onClick={toMail}>{L('E-posta','Email')}</button>
-            <button className="btn sm sec" onClick={copy}>{copied?L('✓ Kopyalandı','✓ Copied'):L('Metni kopyala','Copy text')}</button>
-            <button className="btn sm sec" onClick={sendPdf} disabled={busy==='pdf'}>{busy==='pdf'?L('Hazırlanıyor…','Working…'):L('PDF olarak paylaş','Share as PDF')}</button>
+            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngDownload}>{L('PNG indir','Download PNG')}</button>
+            <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngCopy}>{imgCopied?L('✓ Kopyalandı','✓ Copied'):L('Görseli kopyala','Copy image')}</button>
             {typeof navigator!=='undefined'&&navigator.share&&
-              <button className="btn sm sec" onClick={native}><ShareIcon/> {L('Diğer','More')}</button>}
+              <button className="btn sm sec" disabled={img.state!=='ok'} onClick={pngShare}><ShareIcon/> {L('Paylaş','Share')}</button>}
           </div>
           <div className="shw-foot"><button className="btn sm sec" onClick={onClose}>{L('Kapat','Close')}</button></div>
         </section>
