@@ -1,8 +1,16 @@
 # Wellness Uyarıları ve Push Bildirimi — kurulum
 
-Bir sporcu sabah wellness formunu gönderdiğinde, gönderim uyarı kriterlerini
-karşılıyorsa sistem o sporcuya ait bir **Wellness Uyarısı** oluşturur ve o
-sporcuyla ilgili ekip üyelerinin telefonlarına **push bildirimi** gönderir.
+Bir sporcu sabah wellness formunu gönderdiğinde sistem o gönderim için bir kayıt
+oluşturur; gönderim uyarı kriterlerini karşılıyorsa kaydı **uyarı** olarak
+işaretler ve o sporcuyla ilgili ekip üyelerinin telefonlarına **push bildirimi**
+gönderir.
+
+**Kayıt her gönderim için yazılıyor, bildirim yalnızca uyarı için gidiyor.**
+Kayıt önceden yalnızca kriteri aşan gönderimler için yazılıyordu: 17 sporcunun
+formu doldurduğu bir sabah uyarı ekranında 6 kişi duruyordu ve kalan 11'in forma
+dokunup dokunmadığı hiçbir ekrandan okunamıyordu. Artık uyarı sayfası günün
+tamamını gösteriyor — uyarı verenler renkli şeritleriyle en üstte, kalanlar
+"uyarı yok" satırıyla altında — telefon ise yalnızca uyarı verenler için çalıyor.
 
 Kontrol günlük toplu değil, **gönderim başına** yapılır: sporcu formu gönderdiği
 anda, saniyeler içinde.
@@ -27,6 +35,11 @@ en az bir bölgede orta ya da yüksek ağrı
 | 3.5’in altı | orta / yüksek | **uyarı** |
 
 **3.5 uyarı değildir.** Eşik kesin küçük: 3.5 geçer, 3.49 uyarı verir.
+
+Kriteri karşılamayan gönderim de kaydediliyor; kaydında `flagged: false` duruyor,
+`reasons` boş kalıyor ve `notificationStatus` alanı `not_flagged` oluyor. Tablodaki
+"uyarı yok" satırları artık "kayıt yok" demek değil: ekranda görünüyorlar,
+telefonu çaldırmıyorlar.
 
 Hafif (1) ağrı uyarı sebebi sayılmaz — sporcuların çoğunda her sabah bir yerde
 hafif bir şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
@@ -167,8 +180,10 @@ firebase deploy --only functions --project periodization-planner
 
 ### 6. Statik dosyaları yayınla
 
-`index.html`, `alerts.html`, `push-config.js`, `firebase-messaging-sw.js` ve
-`manifest.webmanifest` sitenin **kök dizininde** olmalı. Service worker yalnızca
+`index.html`, `alerts.html`, `push-config.js`, `firebase-messaging-sw.js`,
+`manifest.webmanifest`, `alerts.webmanifest` ve simgeler (`icon-192.png`,
+`icon-512.png`, `icon-maskable-512.png`) sitenin **kök dizininde** olmalı.
+Simgeler eksikse sayfa açılır ama "uygulama olarak yükle" seçeneği hiç çıkmaz. Service worker yalnızca
 kendi dizininin kapsamını alabildiği için `firebase-messaging-sw.js` kökte
 duruyor; adı da sabit — Firebase SDK tam olarak o adresi arıyor.
 
@@ -190,8 +205,31 @@ kullanan herkesin (koç dahil) bir kerelik yapması gereken:
 Uygulama bunu algılayıp adımları ekranda gösteriyor. Android ve masaüstünde bu
 adım gerekmiyor.
 
-Manifest (`manifest.webmanifest`) yalnızca bu yüzden var — CoachOS bir PWA'ya
-dönüşmüyor, service worker'ın önbelleği yok.
+Her iki sayfanın da kendi manifesti var: uygulama `manifest.webmanifest`, ekip
+üyesinin uyarı sayfası `alerts.webmanifest`. Ayrı olmaları zorunlu — ana ekrana
+eklenen sayfa manifestteki `start_url`'den açılıyor ve ortak bir manifest, "Ana
+Ekrana Ekle" diyen ekip üyesini koçun giriş ekranına düşürürdü.
+
+### Android / masaüstünde "uygulama olarak yükle"
+
+Uyarı sayfası artık Chrome'un kurulabilir saydığı bir sayfa: `beforeinstallprompt`
+olayı yakalanıp sayfadaki **"Ana ekrana ekle"** düğmesine bağlanıyor (tarayıcının
+kendi ipucu adres çubuğunun içinde kalıyor ve sahada kimse görmüyordu).
+
+Bunun çalışması için iki şey düzeltildi; ikisi de kurulumun ön koşuluydu:
+
+- **Simge ölçüleri.** Manifestler `logo-mark.png`'yi 192×192, `logo.png`'yi
+  512×512 diye bildiriyordu; dosyalar gerçekte 512×512 ve 2400×603'tü. Tarayıcı
+  bildirilen ölçüyü indirdiği görselle karşılaştırıyor ve tutmayanı hiç saymıyor —
+  yani manifestin geçerli tek bir simgesi yoktu ve sayfa kurulabilir sayılmıyordu.
+  Yerlerini `icon-192.png`, `icon-512.png` ve maskeli `icon-maskable-512.png`
+  aldı.
+- **`fetch` dinleyicisi.** Tarayıcı, kapsamda `fetch` olayını dinleyen etkin bir
+  service worker arıyor. `firebase-messaging-sw.js` yalnızca bildirim
+  dinliyordu; artık bir `fetch` dinleyicisi de var. Kapsamı bilerek dar:
+  `index.html` dâhil her istek dokunulmadan ağa gidiyor, yalnızca uyarı sayfası ve
+  süsleri **önce ağ** kuralıyla bir kopya bırakıyor (ağ yokken uygulama bembeyaz
+  açılmasın diye). Uygulamanın güncellenmesi bundan etkilenmiyor.
 
 ---
 
@@ -255,8 +293,8 @@ ulaşmadığını anlamak için gerekmiyorlar.
 | `staff_members` | ekip üyesi (kendi kaydı, linkiyle doğrulanır) | kendisi |
 | `alert_roster` | koç | **yalnızca Cloud Function** |
 
-**1 sporcu = 1 uyarı.** Aynı sabah beş sporcu kriterleri karşılarsa beş ayrı kayıt
-oluşur; birleştirilmezler. Uyarı kaydının adı sporcu + tarihten türediği için
+**1 sporcu = 1 kayıt.** Aynı sabah on yedi sporcu form doldurursa on yedi ayrı
+kayıt oluşur; birleştirilmezler. Bunların kriteri aşanları `flagged: true`. Uyarı kaydının adı sporcu + tarihten türediği için
 aynı sporcunun aynı günkü ikinci gönderimi yeni kayıt açmaz, mevcut kaydı
 günceller.
 
@@ -272,10 +310,16 @@ bildirim neden gelmedi?"**:
 | `recipients[]` | kime gitti: `staffId`, ad, rol, **cihaz türü** (`android` / `ios-pwa` / `desktop`), `sent` \| `failed` ve hata kodu |
 | `unreachable[]` | kapsamda olduğu hâlde **hiç cihaz eşleştirmemiş** ekip üyeleri |
 | `rosterPublished` | takımın kadro özeti o an bulutta var mıydı |
+| `flagged` | gönderim uyarı kriterini aştı mı — `false` ise bildirim hiç denenmedi |
 
 Koçun uyarı listesi bu üçünü, ulaşmayan biri varsa satırın altında yazıyor.
 Cihaz token'ları buraya **girmiyor**: bir cihaz adresi, uyarı geçmişinde durmasına
 gerek olmayan bir sırdır; kim olduğu `staffId` ve isimle zaten belli.
+
+Ekip üyesinin uyarı sayfası (`alerts.html`) **yalnızca bugünü** gösteriyor: sorgu
+`date == <cihazın yerel günü>` ile sınırlı ve sayfa her öne geldiğinde gün yeniden
+kontrol ediliyor (gece yarısını geçen açık sekme ertesi sabah dünü dinliyor
+kalmasın). Geçmiş günler uygulamanın kendi sporcu ekranında duruyor.
 
 Uyarılar `checkins` koleksiyonundan **bağımsız** yaşıyor: koçun tarayıcısı
 check-in dokümanını işledikten ~10 dakika sonra siliyor, uyarı kaydı kalıcı.

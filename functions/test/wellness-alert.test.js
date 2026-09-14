@@ -210,3 +210,26 @@ t('sebep kod olarak duruyor, cümle olarak değil', () => {
   const r = buildAlertRecord({ payload: P(2, 2, 2) }, '');
   assert.deepStrictEqual(r.reasons, ['low_score']);
 });
+
+/* Kayıt artık HER gönderim için yazılıyor; kriteri taşıyan tek şey `flagged`.
+   Bu üç test, "17 sporcu doldurdu, ekranda 6 kişi var" hatasının geri gelmesini
+   engelliyor: kriteri aşmayan gönderimin de bir kaydı olmak zorunda, ve o kaydın
+   bildirim göndermeyecek biçimde işaretlenmesi gerekiyor. */
+t('kriteri aşan gönderim flagged', () => {
+  assert.strictEqual(buildAlertRecord({ payload: P(2, 2, 2) }, '').flagged, true);
+  assert.strictEqual(buildAlertRecord({ payload: P(5, 5, 5, MOD) }, '').flagged, true);
+});
+t('kriteri aşMAYAN gönderimin de kaydı çıkıyor — yalnızca flagged değil', () => {
+  const r = buildAlertRecord({ athleteId: 'a9', athleteName: 'İyi Uyuyan', payload: P(5, 4, 4, LOW_ONLY) }, 'U16');
+  assert.strictEqual(r.flagged, false);
+  assert.deepStrictEqual(r.reasons, []);
+  // Kaydın geri kalanı eksiksiz: ekran bu satırı flagged olanlarla aynı biçimde çiziyor.
+  assert.strictEqual(r.athleteName, 'İyi Uyuyan');
+  assert.strictEqual(r.overall, 4.3);
+  assert.deepStrictEqual(r.scores, { sleep: 5, fatigue: 4, soreness: 4, RHR: null });
+});
+t('tam eşikteki 3.5 kayda giriyor ama flagged değil', () => {
+  const r = buildAlertRecord({ payload: atScore(3.5) }, '');
+  assert.strictEqual(r.overall, 3.5);
+  assert.strictEqual(r.flagged, false);
+});
