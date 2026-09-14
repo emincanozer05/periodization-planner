@@ -1582,11 +1582,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-purpose,.ex-purpose-view{letter-spacing:0;line-height:1.65;font-size:14.5px;
   font-weight:400 !important}
 .ex-purpose::placeholder{font-weight:400 !important}
-/* Cover-image slot in the exercise details column — dashed until a picture is set */
-.ex-cover-drop{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:13px 15px;
-  border:1px dashed var(--border2);border-radius:10px;background:var(--elevated);color:var(--muted);
-  font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}
-.ex-cover-drop:hover{border-color:var(--accent);color:var(--accent)}
 .rt-tools{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-bottom:7px}
 .rt-b{background:var(--elevated);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;font-family:inherit;line-height:1.1}
 .rt-b:hover{border-color:var(--accent);color:var(--accent)}
@@ -4807,7 +4802,7 @@ header{background:var(--bg2)!important}
 <body>
 <div id="root"></div>
 <script type="text/babel" data-presets="react">
-const{useState,useEffect,useMemo,useRef,useCallback}=React;
+const{useState,useEffect,useLayoutEffect,useMemo,useRef,useCallback}=React;
 
 /* Report/print/PDF font — mirror the site's Archivo so exported outputs use
    the same typeface as the web app. Uses an absolute URL so the font resolves in
@@ -24684,6 +24679,32 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
      the left column holds the slot, the board keeps the right. State rather than a plain
      ref, so mounting the slot re-renders the editor that paints into it. */
   const[courtBar,setCourtBar]=useState(null);
+  /* The notes box ends level with the bottom of the clip beside it. Measured rather than
+     guessed: the clip is 16:9 of a column whose width is the modal's, so no fixed height
+     lines the two up at every width. Falls back to its own minimum if nothing is there
+     to measure against. */
+  const playerRef=useRef(null);
+  const notesRef=useRef(null);
+  const[notesH,setNotesH]=useState(0);
+  useLayoutEffect(()=>{
+    const measure=()=>{
+      const pl=playerRef.current,ta=notesRef.current;
+      if(!pl||!ta){setNotesH(0);return;}
+      const h=Math.round(pl.getBoundingClientRect().bottom-ta.getBoundingClientRect().top);
+      // Stacked into one column (narrow screens), the clip ends above the notes start and
+      // there is nothing to line up with: the box keeps its own height there.
+      if(h<160){setNotesH(0);return;}
+      // Same height back means nothing to do — writing it again would have the observer
+      // wake this up for ever.
+      setNotesH(o=>Math.abs(o-h)<=1?o:h);
+    };
+    measure();
+    const pl=playerRef.current;
+    const ro=(typeof ResizeObserver==='function'&&pl)?new ResizeObserver(measure):null;
+    if(ro)ro.observe(pl);
+    window.addEventListener('resize',measure);
+    return()=>{ro&&ro.disconnect();window.removeEventListener('resize',measure);};
+  },[editing,ball,ex.type,ex.image,ex.videoData,ex.videoUrl]);
   const shownName=useExerciseText(ex.name);
   const shownPurpose=useExerciseText(ex.purpose);
   const _vEmbed=videoEmbed(ex.videoData||ex.videoUrl);
@@ -24737,36 +24758,10 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
     <span style={metaLbl}>{label}</span>
     <div style={{fontSize:13,fontWeight:600,color:'var(--text)',display:'flex',alignItems:'center',gap:6}}>{value}{extra}</div>
   </div>):null;
-  /* The picture that goes ON THE PROGRAM ROW. It is an editing control, so it only shows
-     in Edit mode — the view side keeps to what the coach reads. Pasted, not uploaded: copy
-     a picture anywhere, click the slot (or press Ctrl/Cmd+V over it). Writing this exercise
-     into a session drops it into that row's image box by itself; the library card and this
-     page never show it as a cover. */
-  /* `planImage` is the same picture written from a program row, and it is what the picker
-     reads first. Setting it here writes both, so a picture chosen in the library is the one
-     the next program gets — it cannot be shadowed by an older one left on the entry. */
-  const setCover=d=>onChange({thumb:d,planImage:d});
-  const cover=ex.thumb||ex.planImage||'';
-  const pasteCover=()=>pasteImageFromClipboard('covers',setCover);
-  const onCoverPaste=e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();handleImageUpload(f,'covers',setCover);}};
-  const coverBox=(
-    <div style={{marginTop:14}}>
-      <span style={metaLbl}>{L('Program Görseli','Program Image')}</span>
-      <div className="help" style={{marginTop:-2,marginBottom:6}}>{L('Antrenman programında bu egzersizin kutucuğuna otomatik konur. Kütüphane kapağı değildir.','Automatically placed in this exercise\'s box on the training program. It is not the library cover.')}</div>
-      {cover
-        ?<div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'flex-start'}}>
-          <img src={mediaSrc(cover)} alt="program image" style={{maxWidth:'100%',maxHeight:150,display:'block',objectFit:'contain',
-            borderRadius:10,border:'1px solid var(--border)',background:'var(--elevated)'}}/>
-          <div className="row" style={{gap:8}}>
-            <button className="btn sec xs" onClick={pasteCover} onPaste={onCoverPaste}
-              title={L('Bir görseli kopyala, sonra buraya tıkla (ya da Ctrl/Cmd+V)','Copy an image, then click here (or press Ctrl/Cmd+V)')}>📋 {L('Yenisini yapıştır','Paste new')}</button>
-            <button className="btn ghost xs" onClick={()=>setCover('')}>{L('Kaldır','Remove')}</button>
-          </div>
-        </div>
-        :<button type="button" className="ex-cover-drop" onClick={pasteCover} onPaste={onCoverPaste}
-          title={L('Bir görseli kopyala, sonra buraya tıkla (ya da Ctrl/Cmd+V)','Copy an image, then click here (or press Ctrl/Cmd+V)')}>📋 <span>{L('Program görseli yapıştır','Paste program image')}</span></button>}
-    </div>
-  );
+  /* The program-row picture had a paste slot here. A picture written onto a program row
+     is chosen on the row, where the coach can see the box it lands in, so the slot on this
+     page was a second place to set the same thing — `thumb`/`planImage` are still read
+     when the exercise is written into a session. */
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
@@ -24834,9 +24829,10 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div style={{marginTop:14}}>
         <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
-        <textarea className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)}
+        <textarea ref={notesRef} className="ex-purpose" value={ex.purpose} onChange={e=>set('purpose',e.target.value)}
           placeholder={ball?L('Kurallar, ilerlemeler, koçluk noktaları, skorlama…','Rules, progressions, coaching points, scoring…')
-                           :L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')} style={{minHeight:200}}/>
+                           :L('Hangi kaslar, hangi amaç? İpuçları, set/tekrar önerileri…','Which muscles, what goal? Cues, set/rep suggestions…')}
+          style={notesH?{height:notesH,minHeight:120}:{minHeight:200}}/>
       </div>
       {!ball&&<div style={{marginTop:14}}><label>{L('Kas Grupları (çoklu)','Muscle Groups (multi)')}</label>
         <div className="mus-pick">
@@ -24847,7 +24843,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </select>
         </div>
       </div>}
-      {coverBox}
     </div>
   );
   return(<div className="modal-bg" onClick={onClose}>
@@ -24861,7 +24856,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
       </div>
       <div className="ex-modal-body ex-modal-grid">
         <div className="ex-modal-left">
-          <div className={`ex-player-wrap${_vEmbed&&_vEmbed.ig?' ig':''}`}><VideoPlayer ex={ex}/></div>
+          <div ref={playerRef} className={`ex-player-wrap${_vEmbed&&_vEmbed.ig?' ig':''}`}><VideoPlayer ex={ex}/></div>
           {editing&&<div className="row" style={{marginTop:12,gap:10,flexWrap:'wrap'}}>
             <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 {L('Video Yükle','Upload Video')}
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
