@@ -2042,31 +2042,112 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ===== Roster (Athletes) ===== */
 .rost-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
+/* The title block carries a mark of its own so the page announces itself the way the
+   rest of the workspace does — an icon tile, the name, and the one line of arithmetic
+   (how many, on which squad) a coach checks before reading any card. */
+.rost-title{display:flex;align-items:center;gap:14px;min-width:0}
+.rost-title-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(140deg,rgba(0,148,255,.22),rgba(0,148,255,.06));
+  border:1px solid rgba(0,148,255,.30);color:var(--accent2)}
 .rost-head .rh-t{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.1}
 .rost-head .rh-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);margin-top:4px}
 .rost-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.rost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
-.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
+/* The search box says which key opens it, because a roster of thirty is scrolled far
+   more often than it is read top to bottom. */
+.ath-search .kbd{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;
+  color:var(--dim);border:1px solid var(--border2);border-radius:6px;padding:2px 6px;background:rgba(255,255,255,.04);white-space:nowrap}
+.rost-add{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:none;
+  background:var(--grad);color:#fff;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  box-shadow:0 10px 24px -12px rgba(0,148,255,.9);transition:transform .15s ease,box-shadow .15s ease}
+.rost-add:hover{transform:translateY(-1px);box-shadow:0 14px 30px -12px rgba(0,148,255,1)}
+/* The row under the tabs: how the cards are ordered, and whether they are cards at all. */
+.rost-subbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.rost-subbar .sp{flex:1 1 20px}
+.rost-sort{display:inline-flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--border2);
+  border-radius:10px;padding:0 12px;height:40px;color:var(--muted)}
+.rost-sort select{background:none;border:none;outline:none;color:var(--text2);font-family:inherit;
+  font-size:13px;height:38px;padding:0 2px;cursor:pointer;width:auto;min-width:0}
+.rost-view{display:inline-flex;background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:3px;gap:3px}
+.rost-view button{width:34px;height:32px;border:none;border-radius:8px;background:none;color:var(--muted);
+  cursor:pointer;display:grid;place-items:center;transition:background .15s,color .15s}
+.rost-view button:hover{color:var(--text)}
+.rost-view button.on{background:var(--accent);color:#fff}
+.rost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:16px}
+.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px 16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
 .rc:hover{transform:translateY(-3px);border-color:var(--border2)}
-.rc-num{position:absolute;top:14px;right:18px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
-.rc-del{position:absolute;top:10px;right:10px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid var(--border2);background:rgba(20,22,28,.85);color:var(--muted);font-size:13px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
+.rc-num{position:absolute;top:40px;right:20px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
+.rc-del{position:absolute;top:14px;right:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
 .rc:hover .rc-del{opacity:1}
 .rc-del:hover{border-color:var(--high-t);color:var(--high-t);background:rgba(239,68,68,.12)}
+/* The load verdict, read off ACWR: the one word a coach wants before the numbers. */
+.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:11px;font-weight:700;
+  letter-spacing:.01em;padding:4px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.rc-badge.ok{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.34);color:#34d399}
+.rc-badge.mid{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.34);color:#fbbf24}
+.rc-badge.hi{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.45);color:#fbbf24}
+.rc-badge.na{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.26);color:#cbd5e1}
+.rc-badge.inj{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.34);color:#f87171}
+.rc-badgerow{display:flex;align-items:center;gap:8px;min-height:26px;padding-right:40px;margin-bottom:12px}
 .rc-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.rc-av{width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:26px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
+.rc-av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:23px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
 .rc-av.warn{border-color:#f59e0b}.rc-av.bad{border-color:#f43f5e}.rc-av.na{border-color:var(--border2)}
 .rc-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
-.rc-id{min-width:0;padding-right:46px}
-.rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word}
+.rc-id{min-width:0;padding-right:52px}
+.rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word;text-transform:uppercase}
 .rc-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
 /* Three centred metrics on one row. Each .rc-st dissolves into the grid so all
-   labels share row 1 and all values share row 2 — a label that wraps to two
-   lines then can't knock its own value out of line with the others. */
-.rc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 6px;border-top:1px solid var(--border);padding-top:14px;text-align:center;align-items:end}
+   labels share row 1, all values share row 2 and all bars share row 3 — a label that
+   wraps to two lines then can't knock its own value out of line with the others. */
+.rc-stats{display:grid;grid-template-columns:repeat(3,1fr) auto;gap:5px 10px;border-top:1px solid var(--border);padding-top:14px;align-items:end}
 .rc-st{display:contents}
 .rc-st .k{grid-row:1;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;line-height:1.25}
-.rc-st .v{grid-row:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:700;color:var(--text);white-space:nowrap}
+.rc-st .v{grid-row:2;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:16px;font-weight:700;color:var(--text);white-space:nowrap}
 .rc-st .v small{font-size:10px;font-weight:500;color:var(--dim)}
+/* A metric is easier to place against its ceiling than against memory: the bar under
+   each number is that ceiling drawn — readiness out of 5, the week's load against the
+   heaviest week on the card, days attended against days planned. */
+.rc-st .bar{grid-row:3;height:4px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:2px}
+.rc-st .bar i{display:block;height:100%;border-radius:3px}
+/* The split bar: attended in green, missed in red, drawn in proportion. */
+.rc-st .bar.split{display:flex;gap:1.5px}
+.rc-st .bar.split i:first-child{background:var(--green)}
+.rc-st .bar.split i:last-child{background:#f43f5e}
+.rc-go{grid-row:1/4;grid-column:4;align-self:center;width:30px;height:30px;border-radius:9px;flex:none;
+  border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--muted);
+  display:grid;place-items:center;cursor:pointer;transition:background .15s,color .15s,border-color .15s;padding:0}
+.rc:hover .rc-go{background:var(--accent);border-color:var(--accent);color:#fff}
+/* ---- list mode: the same roster as rows, for a squad read by number ---- */
+.rost-rows{display:flex;flex-direction:column;gap:8px}
+.rr{display:grid;grid-template-columns:38px 44px minmax(0,1fr) repeat(3,minmax(74px,104px)) 92px 30px;
+  align-items:center;gap:14px;padding:11px 16px;border-radius:13px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);transition:border-color .15s,background .15s}
+.rr:hover{border-color:var(--border2);background:var(--hover)}
+.rr-num{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--dim);text-align:center}
+.rr-av{width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#2a2f37,#171a1f);
+  display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--text2);border:2px solid var(--green);padding:1.5px}
+.rr-av.warn{border-color:#f59e0b}.rr-av.bad{border-color:#f43f5e}.rr-av.na{border-color:var(--border2)}
+.rr-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.rr-n{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr-p{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--muted);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr-m{text-align:right}
+.rr-m .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.rr-m .v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--text);margin-top:2px;white-space:nowrap}
+.rr-m .v small{font-size:9.5px;font-weight:500;color:var(--dim)}
+@media(max-width:860px){
+  .rr{grid-template-columns:34px 40px minmax(0,1fr) 30px;gap:11px}
+  .rr-m,.rr .rc-badge{display:none}
+}
+/* ---- the floor of the list: what is being shown, and how to reach the rest ---- */
+.rost-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:22px}
+.rost-foot-c{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;color:var(--dim)}
+.rost-pager{display:flex;align-items:center;gap:6px;margin-left:auto}
+.rost-pager button{min-width:34px;height:34px;padding:0 9px;border-radius:9px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--text2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+  display:grid;place-items:center;transition:background .15s,color .15s,border-color .15s}
+.rost-pager button:hover:not(:disabled){border-color:var(--text2);color:var(--text)}
+.rost-pager button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.rost-pager button:disabled{opacity:.35;cursor:default}
 /* ===== Roster → Staff ====================================================
    The roster is two lists that happen to share a page: the athletes a season is
    written FOR, and the people who write it. A segmented switch under the title says
@@ -2426,14 +2507,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);cursor:pointer;height:auto}
 .ev2-stat select:focus{box-shadow:none;border:none}
 .ev2-hero-btns{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-/* Tryouts: the one action here that leaves the squad behind, so it is drawn apart from
-   the roster tools rather than beside them. */
-.ev2-tryo-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;
-  border:1px solid rgba(139,92,246,.45);background:linear-gradient(135deg,rgba(139,92,246,.22),rgba(236,72,153,.16));
-  color:#c9b6ff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;
-  transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
-.ev2-tryo-btn:hover{transform:translateY(-1px);border-color:rgba(139,92,246,.8);color:#e5dbff;
-  box-shadow:0 10px 24px -12px rgba(139,92,246,.85)}
 /* --- filter bar --- */
 .ev2-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .ev2-tabs{display:flex;gap:8px;flex-wrap:wrap}
@@ -2582,25 +2655,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
    Candidates are not roster athletes: they have no season, no load, no wellness. They
    get their own window so nothing here can be mistaken for a signed player, and one
    button — "Kadroya Aktar" — is the only door between the two. */
-.tryo-ov{position:fixed;inset:0;z-index:4200;display:flex;padding:22px;
-  background:rgba(7,8,11,.72);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
-  animation:tryoIn .16s ease}
-@keyframes tryoIn{from{opacity:0}to{opacity:1}}
-.tryo-win{display:flex;flex-direction:column;width:min(1340px,100%);margin:0 auto;min-height:0;
-  background:var(--bg2);border:1px solid var(--border2);border-radius:22px;overflow:hidden;
-  box-shadow:0 44px 100px -34px #000,var(--glass-hi)}
-.tryo-hd{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--border);
-  background:linear-gradient(140deg,rgba(139,92,246,.16),rgba(255,255,255,.012))}
-.tryo-hd-ic{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
-  background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;box-shadow:0 10px 24px -12px rgba(139,92,246,.9)}
-.tryo-hd-t{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
-.tryo-hd-s{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.04em}
-.tryo-hd-a{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
-.tryo-x{width:36px;height:36px;border-radius:11px;border:1px solid var(--border2);background:var(--panel);
-  color:var(--muted);font-size:16px;cursor:pointer;display:grid;place-items:center;line-height:1}
-.tryo-x:hover{border-color:var(--red);color:var(--red)}
-.tryo-body{flex:1;min-height:0;display:grid;grid-template-columns:322px minmax(0,1fr)}
-.tryo-side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--border);background:var(--panel)}
+.tryo-page{display:flex;flex-direction:column}
+/* The tab's own mark, in the pool's colour rather than the roster's blue — the two
+   screens look alike on purpose, and this is what says which one is open. */
+.rost-title-ic.tryo{background:linear-gradient(140deg,rgba(139,92,246,.24),rgba(236,72,153,.08));
+  border-color:rgba(139,92,246,.36);color:#c9b6ff}
+/* A page, not a modal: the list and the sheet share the screen's height instead of a
+   window's, and the sheet scrolls on its own so the list stays put beside it. */
+.tryo-body{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;
+  min-height:0;height:calc(100dvh - 190px);min-height:560px}
+.tryo-side{display:flex;flex-direction:column;min-height:0;background:var(--panel);
+  border:1px solid var(--border);border-radius:16px;overflow:hidden}
 .tryo-side-top{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
 .tryo-side-top input{height:38px;border-radius:11px;font-size:13px}
 .tryo-filters{display:flex;gap:6px;flex-wrap:wrap}
@@ -2626,7 +2691,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tryo-st.watch{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.34);color:#fbbf24}
 .tryo-st.in{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.34);color:#34d399}
 .tryo-st.out{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.32);color:#f87171}
-.tryo-detail{min-height:0;overflow-y:auto;padding:20px 22px 28px}
+.tryo-detail{min-height:0;overflow-y:auto;padding:20px 22px 28px;
+  background:var(--panel);border:1px solid var(--border);border-radius:16px}
 .tryo-empty{display:grid;place-items:center;gap:12px;height:100%;text-align:center;color:var(--dim);padding:40px}
 .tryo-empty-ic{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;
   background:var(--elevated);border:1px solid var(--border);color:var(--muted)}
@@ -2678,9 +2744,74 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tryo-sum-l{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
 .tryo-sum-v{font-size:19px;font-weight:700;margin-top:5px;letter-spacing:-.01em}
 .tryo-sum-v small{font-size:11px;font-weight:600;color:var(--muted);margin-left:3px}
-@media(max-width:980px){.tryo-body{grid-template-columns:1fr}
-  .tryo-side{border-right:none;border-bottom:1px solid var(--border);max-height:38vh}}
-@media(max-width:640px){.tryo-ov{padding:0}.tryo-win{border-radius:0;border:none}}
+
+/* ---- the age filter: the one cut a mixed-age pool is actually read by ---- */
+.tryo-agerow{display:flex;align-items:center;gap:7px}
+.tryo-agel{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--dim);flex:none}
+.tryo-agerow input{flex:1;min-width:0;height:34px;border-radius:9px;font-size:12.5px;padding:0 9px;text-align:center}
+/* The spinners steal width these boxes do not have. */
+.tryo-agerow input::-webkit-outer-spin-button,.tryo-agerow input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tryo-agerow input[type=number]{-moz-appearance:textfield}
+.tryo-agedash{color:var(--dim);font-size:12px;flex:none}
+.tryo-agex{flex:none;width:26px;height:26px;border-radius:8px;border:1px solid var(--border2);background:var(--elevated);
+  color:var(--muted);font-size:11px;line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit;padding:0}
+.tryo-agex:hover{border-color:var(--red);color:var(--red)}
+.tryo-hits{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.03em}
+/* Which squad a candidate is being moved onto — the pool belongs to none of them. */
+.tryo-move{display:flex;align-items:center;gap:7px}
+.tryo-move select{height:34px;width:auto;min-width:132px;max-width:190px;border-radius:9px;font-size:12.5px;padding:0 8px}
+/* ---- the test picker ---- */
+.tryo-pickbtn{margin-left:auto;padding:5px 12px;border-radius:9px;border:1px solid rgba(139,92,246,.4);
+  background:rgba(139,92,246,.12);color:#c9b6ff;font-family:inherit;font-size:11.5px;font-weight:700;cursor:pointer;
+  transition:background .14s ease,border-color .14s ease,color .14s ease}
+.tryo-pickbtn:hover{background:rgba(139,92,246,.22);color:#e5dbff}
+.tryo-pickbtn.on{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
+.tryo-sec-h .cnt+.tryo-pickbtn{margin-left:12px}
+.tryo-picker{padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(139,92,246,.05)}
+.tryo-picker-h{font-size:12px;color:var(--muted);margin-bottom:11px}
+.tryo-picker-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:7px;margin-bottom:13px}
+.tryo-pick{position:relative;display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;
+  border:1px solid var(--border2);background:var(--elevated);color:var(--text2);
+  font-family:inherit;font-size:12px;text-align:left;cursor:pointer;transition:all .13s ease}
+.tryo-pick:hover{border-color:#8b5cf6;color:var(--text)}
+.tryo-pick.on{background:rgba(139,92,246,.16);border-color:#8b5cf6;color:#e5dbff}
+.tryo-pick .bx{flex:none;width:17px;height:17px;border-radius:5px;display:grid;place-items:center;font-size:10px;
+  border:1px solid var(--border2);color:var(--dim);background:var(--panel)}
+.tryo-pick.on .bx{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
+.tryo-pick .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tryo-pick .u{flex:none;font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--dim)}
+.tryo-pick .x{flex:none;font-size:10px;color:var(--dim);padding:0 2px;border-radius:4px}
+.tryo-pick .x:hover{color:var(--red)}
+.tryo-picker-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tryo-picker-add input{flex:1 1 200px;height:36px;border-radius:9px;font-size:12.5px}
+.tryo-picker-add input.u{flex:0 0 92px}
+/* ---- evaluation: the decision, drawn as a decision ---- */
+.tryo-statcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:9px;margin-bottom:18px}
+.tryo-statcard{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px;border-radius:13px;
+  border:1px solid var(--border2);background:var(--elevated);cursor:pointer;text-align:left;
+  font-family:inherit;transition:all .14s ease}
+.tryo-statcard:hover{border-color:var(--text2);transform:translateY(-1px)}
+.tryo-statcard .dot{width:9px;height:9px;border-radius:50%;background:var(--border2);transition:background .14s ease}
+.tryo-statcard .t{font-size:13px;font-weight:700;color:var(--text2)}
+.tryo-statcard .d{font-size:10.5px;line-height:1.4;color:var(--dim)}
+.tryo-statcard.on .t{color:var(--text)}
+.tryo-statcard.on.new{background:rgba(148,163,184,.16);border-color:#94a3b8}
+.tryo-statcard.on.new .dot{background:#94a3b8}
+.tryo-statcard.on.watch{background:rgba(245,158,11,.16);border-color:#f59e0b}
+.tryo-statcard.on.watch .dot{background:#f59e0b}
+.tryo-statcard.on.in{background:rgba(16,185,129,.16);border-color:#10b981}
+.tryo-statcard.on.in .dot{background:#10b981}
+.tryo-statcard.on.out{background:rgba(239,68,68,.14);border-color:#ef4444}
+.tryo-statcard.on.out .dot{background:#ef4444}
+/* Strengths and gaps read faster with the verdict's colour on the label itself. */
+.tryo-lbl.good{color:#34d399}
+.tryo-lbl.work{color:#fbbf24}
+.tryo-eval .tryo-sec-h .tryo-st{margin-left:auto}
+@media(max-width:640px){.tryo-move{width:100%}.tryo-move select{flex:1;max-width:none}}
+@media(max-width:980px){.tryo-body{grid-template-columns:1fr;height:auto;min-height:0}
+  .tryo-side{max-height:46vh}
+  .tryo-detail{overflow:visible}}
 /* ===== Testing & Assessment — card design v2 ===== */
 .tcard{position:relative;display:flex;flex-direction:column;background:linear-gradient(165deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;transition:border-color .18s ease,box-shadow .18s ease;box-shadow:0 6px 22px -14px rgba(0,0,0,.7)}
 /* Score cards (the jumps, the agility runs, a coach's own test) all carry the same
@@ -3259,7 +3390,7 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 }
 /* Grid cards can be numerous → NO backdrop blur (kills scroll jank). A
    translucent gradient over the ambient background keeps the glassy look cheaply. */
-.rc,.rsf-card,.rec-card{
+.rc,.rr,.rsf-card,.rec-card{
   background:linear-gradient(160deg,rgba(36,40,48,.74),rgba(22,25,30,.74));
   border:1px solid rgba(255,255,255,.09);
   box-shadow:0 10px 30px -14px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.07);
@@ -3272,7 +3403,7 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
   box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
 }
 /* Segmented controls, search & inputs — translucent tint, no blur (perf) */
-.lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search{
+.lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search,.rost-sort,.rost-view{
   background:rgba(255,255,255,.045);border-color:rgba(255,255,255,.09);
 }
 /* Tables — translucent header & hairline rows for a glassy grid */
@@ -3486,7 +3617,7 @@ header{background:var(--bg2)!important}
 .panel,.ap-head{border:1px solid var(--border)!important;box-shadow:none!important}
 /* Inner cards / chips — drop the translucent tint + inset highlight so they're flat & solid too */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{background:var(--panel)!important;border:1px solid var(--border)!important;box-shadow:none!important}
-.lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search{background:var(--bg2)!important;border-color:var(--border)!important}
+.lb-seg,.rlang-seg,.ath-seg,.ath-search,.team-sw,.ex-search,.rost-sort,.rost-view{background:var(--bg2)!important;border-color:var(--border)!important}
 .app::before,.app::after{display:none!important}   /* ambient colour orbs behind the old frosted glass */
 .calm-grid{align-items:stretch}
 .calm-cell{min-height:100px;overflow:hidden}
@@ -4719,6 +4850,9 @@ const POSITIONS={Basketball:['Guard','Forward','Center'],'Football (Soccer)':['G
    posOf() first and an old PG reads as a Guard everywhere. */
 const POS_ALIAS={PG:'Guard',SG:'Guard','SG/SF':'Forward',SF:'Forward','SF/PF':'Forward',PF:'Forward',C:'Center'};
 const posOf=p=>POS_ALIAS[p]||p||'';
+/* Which modifier the shortcut hint should name. Read once: it cannot change under a
+   running tab, and a browser that hides the platform simply gets the Ctrl spelling. */
+const IS_MAC=(()=>{try{return /Mac|iPhone|iPad|iPod/.test((navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||navigator.userAgent||'');}catch(e){return false;}})();
 /* Written in the focus tree's own vocabulary — focus, then the capacity inside it — so a
    preset drops into the session editor with stages 1 and 2 already answered and the
    method question open, rather than as a value the editor has to translate on read. */
@@ -6650,6 +6784,29 @@ function migrate(data){
   /* Tryout candidates and saved test batteries ride in the workspace like everything
      else, so a sheet filled in at the gym is on the coach's laptop that evening. */
   if(!Array.isArray(data.tryouts))data.tryouts=[];
+  /* Candidate sheets predate the picked-test list, the parents' details and the switch
+     from standing reach to shoe size, so each one is brought up to the current shape on
+     read. A sheet written before the picker keeps exactly the tests it already answered
+     (falling back to the default four when it answered none), so nothing a coach typed
+     at a trial disappears behind a picker it never knew about. */
+  data.tryouts=data.tryouts.map(t=>{
+    const tests={...(t.tests||{})};
+    let picked=Array.isArray(t.picked)?t.picked:null;
+    if(!picked){
+      const filled=Object.keys(tests).filter(k=>String(tests[k]||'').trim()!=='');
+      picked=filled.length?filled:[...TRYOUT_TESTS_DEFAULT];
+    }
+    /* `reach` (standing reach, replaced by shoe size) and `camp` (the group/camp box)
+       are no longer drawn anywhere, but they are left on the record rather than deleted:
+       a number a coach measured at a trial is not ours to throw away on an upgrade, and
+       an unread key costs nothing. */
+    return{...t,motherName:t.motherName||'',motherHeight:t.motherHeight||'',
+      fatherName:t.fatherName||'',fatherHeight:t.fatherHeight||'',
+      shoeSize:t.shoeSize||'',tests,picked};
+  });
+  /* A club's own tryout test lives beside the candidates rather than on any one of
+     them, so it is offered on every sheet in the pool. */
+  if(!Array.isArray(data.tryoutTests))data.tryoutTests=[];
   if(!Array.isArray(data.testTemplates))data.testTemplates=[];
   if(!Array.isArray(data.researches))data.researches=[];
   data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
@@ -18395,11 +18552,15 @@ function AthleteBoxDetail({pf,board,json,setJson,Lx}){
    roster yet. A club that runs open tryouts collects the same
    sheet on every candidate — who they are, how to reach their
    family, what they measured, what the coach thought — and
-   loses it in a notebook the week after. It lives here instead,
-   beside the testing tab it feeds, and the only way out of it
+   loses it in a notebook the week after. It lives here instead.
+   The pool belongs to the workspace, not to any one squad: an
+   11-year-old and an 18-year-old who turn up to different
+   sessions are on the same screen, and the age filter is what
+   cuts it down rather than a team boundary. The only way out
    is "Kadroya Aktar": the candidate becomes a real athlete on
-   the active team, carrying their details across, and nothing
-   in the squad's own data is touched until someone presses it.
+   whichever team the coach picks there, carrying their details
+   across, and nothing in that squad's own data is touched
+   until someone presses it.
    ========================================================= */
 const TRYOUT_STATUS=[
   {id:'new',  tr:'Aday',      en:'Candidate'},
@@ -18414,33 +18575,81 @@ const TRYOUT_BODY=[
   {k:'height',    u:'cm', tr:'Boy',            en:'Height'},
   {k:'weight',    u:'kg', tr:'Kilo',           en:'Weight'},
   {k:'wingspan',  u:'cm', tr:'Kulaç',          en:'Wingspan'},
-  {k:'reach',     u:'cm', tr:'Ayakta Erişim',  en:'Standing Reach'},
+  /* Shoe size rather than standing reach: at a trial nobody is carrying a Vertec, but
+     every candidate is wearing shoes — and in a youth squad the foot is the growth
+     signal a coach can actually read on the day. */
+  {k:'shoeSize',  u:'',   tr:'Ayakkabı No',    en:'Shoe Size'},
   {k:'bodyFat',   u:'%',  tr:'Vücut Yağı',     en:'Body Fat'},
 ];
+/* The parents' own heights: the cheapest predictor of how tall a 12-year-old ends up,
+   and the question a scout asks at every trial anyway. */
+const TRYOUT_FAMILY=[
+  {kName:'motherName',kH:'motherHeight',tr:'Anne',en:'Mother'},
+  {kName:'fatherName',kH:'fatherHeight',tr:'Baba',en:'Father'},
+];
+/* The catalog a tryout sheet can draw tests from. A candidate's sheet carries only the
+   tests someone picked for them (`picked`), so a jump-only trial is not a page of empty
+   sprint boxes — and a club with a test of its own can add it to the catalog. */
 const TRYOUT_TESTS=[
   {k:'verticalJump',  u:'cm',  tr:'Dikey Sıçrama',   en:'Vertical Jump'},
   {k:'cmj',           u:'cm',  tr:'CMJ',             en:'CMJ'},
+  {k:'squatJump',     u:'cm',  tr:'Skuat Sıçrama',   en:'Squat Jump'},
   {k:'horizontalJump',u:'cm',  tr:'Yatay Sıçrama',   en:'Horizontal Jump'},
   {k:'sprint10m',     u:'sec', tr:'10m Sprint',      en:'10m Sprint'},
   {k:'sprint20m',     u:'sec', tr:'20m Sprint',      en:'20m Sprint'},
+  {k:'sprint30m',     u:'sec', tr:'30m Sprint',      en:'30m Sprint'},
   {k:'tTest',         u:'sec', tr:'T-Test',          en:'T-Test'},
   {k:'fiveZeroFive',  u:'sec', tr:'5-0-5',           en:'5-0-5'},
+  {k:'illinois',      u:'sec', tr:'Illinois Çeviklik',en:'Illinois Agility'},
   {k:'shuttleRun',    u:'sec', tr:'Shuttle Run',     en:'Shuttle Run'},
+  {k:'yoyo',          u:'',    tr:'Yo-Yo (seviye)',  en:'Yo-Yo (level)'},
+  {k:'plank',         u:'sec', tr:'Plank',           en:'Plank'},
+  {k:'sitAndReach',   u:'cm',  tr:'Otur-Uzan',       en:'Sit & Reach'},
+  {k:'medBallThrow',  u:'m',   tr:'Sağlık Topu Atışı',en:'Med Ball Throw'},
 ];
+/* The tests a brand-new candidate starts with — the four a basketball trial runs by
+   default. Everything else is one click away in the picker. */
+const TRYOUT_TESTS_DEFAULT=['verticalJump','sprint20m','tTest','shuttleRun'];
+/* Built-in tests plus whatever the club added, in one list. A custom test is stored on
+   the workspace so every candidate's sheet can offer it. */
+const tryoutTestCatalog=custom=>[...TRYOUT_TESTS,
+  ...(Array.isArray(custom)?custom:[]).map(c=>({k:c.k,u:c.u||'',tr:c.name,en:c.name,custom:true}))];
+const tryoutTestDef=(k,custom)=>tryoutTestCatalog(custom).find(t=>t.k===k)||{k,u:'',tr:k,en:k};
+/* Which tests a sheet shows: the ones picked for it, plus any that already carry a
+   result — a test whose pick was later removed must not take its number with it. */
+const tryoutPicked=t=>{
+  const picked=Array.isArray(t&&t.picked)?t.picked:TRYOUT_TESTS_DEFAULT;
+  const filled=Object.keys((t&&t.tests)||{}).filter(k=>String((t.tests||{})[k]||'').trim()!=='');
+  return[...picked,...filled.filter(k=>!picked.includes(k))];
+};
 // 'sec' is a placeholder, not a label: seconds are written sn in Turkish and s in English.
 const tryoutUnit=u=>u==='sec'?(REPORT_LANG==='tr'?'sn':'s'):u;
 function makeTryout(){
   return{id:uid(),name:'',photo:null,dateOfBirth:'',position:'',dominantHand:'',
     phone:'',email:'',city:'',school:'',prevClub:'',guardian:'',guardianPhone:'',
-    date:fmt(today),camp:'',scout:'',status:'new',rating:0,
-    strengths:'',weaknesses:'',notes:'',tests:{},createdAt:Date.now()};
+    motherName:'',motherHeight:'',fatherName:'',fatherHeight:'',
+    date:fmt(today),scout:'',status:'new',rating:0,
+    strengths:'',weaknesses:'',notes:'',tests:{},picked:[...TRYOUT_TESTS_DEFAULT],createdAt:Date.now()};
 }
-function TryoutsView({data,setData,team,onClose}){
+/* The pool is not a squad, so it does not belong to one: candidates are held on the
+   workspace and this screen reads all of them at once, whatever age they turn up at and
+   whichever team a coach eventually moves them to. */
+function TryoutsView({data,setData,teams,activeTeamId}){
   const Lx=(tr,en)=>REPORT_LANG==='tr'?tr:en;
   const list=Array.isArray(data.tryouts)?data.tryouts:[];
+  const customTests=Array.isArray(data.tryoutTests)?data.tryoutTests:[];
+  const catalog=tryoutTestCatalog(customTests);
   const[sel,setSel]=useState(list[0]?.id||null);
   const[q,setQ]=useState('');
   const[flt,setFlt]=useState('all');
+  /* Age is the filter a tryout pool is actually read by: a club running a U14 session
+     wants the 13s and 14s out of a list that also holds every 11-year-old who ever
+     turned up. Blank ends mean "no bound", so one box alone still works. */
+  const[ageMin,setAgeMin]=useState('');
+  const[ageMax,setAgeMax]=useState('');
+  const[picker,setPicker]=useState(false);      // the test-catalog drawer
+  const[newTest,setNewTest]=useState({name:'',u:''});
+  const[moveTo,setMoveTo]=useState(activeTeamId);
   const photoRef=useRef(null);
   const save=next=>setData({...data,tryouts:next});
   const upd=(id,patch)=>save(list.map(t=>t.id===id?{...t,...patch}:t));
@@ -18454,17 +18663,60 @@ function TryoutsView({data,setData,team,onClose}){
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const ageOf=t=>{if(!t.dateOfBirth)return null;const b=parseD(t.dateOfBirth);const n=new Date();
     let y=n.getFullYear()-b.getFullYear();if(n<new Date(n.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
-  const positions=POSITIONS[team.setup.sport]||POSITIONS.default;
-  /* The one door into the squad. Everything the roster knows how to hold is carried
-     over; the tryout record stays where it is, marked accepted, so the club keeps its
-     own history of who was looked at and when. */
+  /* A candidate has no team, so the position list cannot come from one. The squad the
+     coach is looking at names it, and a pool holding footballers and basketballers
+     alike still accepts a typed position. */
+  const moveTeam=teams.find(t=>t.id===moveTo)||teams[0];
+  const positions=(moveTeam&&POSITIONS[moveTeam.setup.sport])||POSITIONS.default;
+  const shown=tryoutPicked(cur);
+
+  /* --- the test catalog on this sheet --- */
+  const togglePick=k=>{
+    if(!cur)return;
+    const picked=Array.isArray(cur.picked)?cur.picked:[...TRYOUT_TESTS_DEFAULT];
+    if(picked.includes(k)){
+      // Dropping a test that already holds a number would throw the number away.
+      if(String((cur.tests||{})[k]||'').trim()!==''&&
+         !confirm(Lx('Bu testin girilmiş sonucu var — kaldırılsın mı?','This test already has a result — remove it anyway?')))return;
+      const tests={...(cur.tests||{})};delete tests[k];
+      updT({picked:picked.filter(x=>x!==k),tests});
+    }else updT({picked:[...picked,k]});
+  };
+  const addCustomTest=()=>{
+    const name=(newTest.name||'').trim();
+    if(!name)return;
+    const k='ct_'+uid();
+    setData({...data,tryoutTests:[...customTests,{k,name,u:(newTest.u||'').trim()}],
+      tryouts:list.map(t=>t.id===(cur&&cur.id)
+        ?{...t,picked:[...(Array.isArray(t.picked)?t.picked:[...TRYOUT_TESTS_DEFAULT]),k]}:t)});
+    setNewTest({name:'',u:''});
+  };
+  const delCustomTest=k=>{
+    if(!confirm(Lx('Bu test katalogdan ve tüm adaylardan silinsin mi?','Delete this test from the catalog and every candidate?')))return;
+    setData({...data,tryoutTests:customTests.filter(c=>c.k!==k),
+      tryouts:list.map(t=>{const tests={...(t.tests||{})};delete tests[k];
+        return{...t,tests,picked:(Array.isArray(t.picked)?t.picked:[]).filter(x=>x!==k)};})});
+  };
+
+  /* The one door into a squad. Everything the roster knows how to hold is carried over;
+     the tryout record stays where it is, marked accepted, so the club keeps its own
+     history of who was looked at and when. Which squad is the coach's to choose — the
+     pool is not tied to one, and a 13-year-old rarely goes into the team whose page
+     they were found from. */
   const promote=()=>{
     if(!cur)return;
     const nm=(cur.name||'').trim();
     if(!nm){alert(Lx('Önce adayın adını yaz.','Give the candidate a name first.'));return;}
-    if(!confirm(Lx(`${nm} "${team.setup.teamName}" kadrosuna eklensin mi?`,`Add ${nm} to the "${team.setup.teamName}" roster?`)))return;
+    const dest=teams.find(t=>t.id===moveTo);
+    if(!dest){alert(Lx('Önce bir takım seç.','Pick a team first.'));return;}
+    if(!confirm(Lx(`${nm} "${dest.setup.teamName}" kadrosuna eklensin mi?`,`Add ${nm} to the "${dest.setup.teamName}" roster?`)))return;
+    const parents=TRYOUT_FAMILY.map(f=>{
+      const n=(cur[f.kName]||'').trim(),h=(cur[f.kH]||'').trim();
+      if(!n&&!h)return'';
+      return Lx(f.tr,f.en)+': '+[n,h?h+' cm':''].filter(Boolean).join(' · ');
+    }).filter(Boolean).join('\n');
     const notes=[cur.notes,cur.strengths&&Lx('Güçlü yönler: ','Strengths: ')+cur.strengths,
-      cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses].filter(Boolean).join('\n');
+      cur.weaknesses&&Lx('Gelişim alanları: ','To develop: ')+cur.weaknesses,parents].filter(Boolean).join('\n');
     const a={id:uid(),name:nm,number:'',position:cur.position||positions[0],
       dateOfBirth:cur.dateOfBirth||'',height:cur.height||'',weight:cur.weight||'',
       phone:cur.phone||'',phoneCode:DEFAULT_DIAL,photo:cur.photo||null,
@@ -18475,8 +18727,8 @@ function TryoutsView({data,setData,team,onClose}){
        through ONE setData — two calls would each start from the same stale `data` and the
        second would throw the first away, which is exactly how the athlete went missing. */
     setData({...data,
-      teams:data.teams.map(t=>t.id===team.id?{...t,athletes:[...(t.athletes||[]),a]}:t),
-      tryouts:list.map(t=>t.id===cur.id?{...t,status:'in',movedTo:team.id}:t)});
+      teams:data.teams.map(t=>t.id===dest.id?{...t,athletes:[...(t.athletes||[]),a]}:t),
+      tryouts:list.map(t=>t.id===cur.id?{...t,status:'in',movedTo:dest.id}:t)});
     alert(Lx(`${nm} kadroya eklendi.`,`${nm} was added to the roster.`));
   };
   // One sheet per candidate, one row per sheet — the file a club actually passes around.
@@ -18485,192 +18737,286 @@ function TryoutsView({data,setData,team,onClose}){
       ['position',Lx('Pozisyon','Position')],['phone',Lx('Telefon','Phone')],['email','E-mail'],
       ['city',Lx('Şehir','City')],['school',Lx('Okul','School')],['prevClub',Lx('Önceki Kulüp','Previous Club')],
       ['guardian',Lx('Veli','Guardian')],['guardianPhone',Lx('Veli Telefonu','Guardian Phone')],
-      ['date',Lx('Seçme Tarihi','Tryout Date')],['camp',Lx('Grup','Group')],['scout',Lx('Değerlendiren','Evaluator')]];
-    const head=[...cols.map(c=>c[1]),...TRYOUT_BODY.map(f=>Lx(f.tr,f.en)+` (${f.u})`),
-      ...TRYOUT_TESTS.map(f=>Lx(f.tr,f.en)+` (${tryoutUnit(f.u)})`),Lx('Puan','Rating'),Lx('Durum','Status'),
+      ['motherName',Lx('Anne Adı','Mother')],['motherHeight',Lx('Anne Boyu (cm)','Mother Height (cm)')],
+      ['fatherName',Lx('Baba Adı','Father')],['fatherHeight',Lx('Baba Boyu (cm)','Father Height (cm)')],
+      ['date',Lx('Seçme Tarihi','Tryout Date')],['scout',Lx('Değerlendiren','Evaluator')]];
+    // Every test anyone has been given a box for, so no column is lost to a sheet that
+    // simply did not run it.
+    const testCols=catalog.filter(f=>list.some(t=>tryoutPicked(t).includes(f.k)));
+    const head=[...cols.map(c=>c[1]),...TRYOUT_BODY.map(f=>Lx(f.tr,f.en)+(f.u?` (${f.u})`:'')),
+      ...testCols.map(f=>Lx(f.tr,f.en)+(f.u?` (${tryoutUnit(f.u)})`:'')),Lx('Puan','Rating'),Lx('Durum','Status'),
       Lx('Güçlü Yönler','Strengths'),Lx('Gelişim Alanları','To Develop'),Lx('Notlar','Notes')];
     const esc=v=>{const s=String(v==null?'':v);return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
     const rows=list.map(t=>[...cols.map(c=>t[c[0]]||''),...TRYOUT_BODY.map(f=>t[f.k]||''),
-      ...TRYOUT_TESTS.map(f=>(t.tests||{})[f.k]||''),t.rating||'',Lx(tryoutStatus(t.status).tr,tryoutStatus(t.status).en),
+      ...testCols.map(f=>(t.tests||{})[f.k]||''),t.rating||'',Lx(tryoutStatus(t.status).tr,tryoutStatus(t.status).en),
       t.strengths||'',t.weaknesses||'',t.notes||''].map(esc).join(';'));
     const blob=new Blob(['﻿'+[head.map(esc).join(';'),...rows].join('\r\n')],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
     a.download=`tryouts_${fmt(today)}.csv`;document.body.appendChild(a);a.click();
     document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),2000);
   };
-  const shown=list.filter(t=>{
+  const filtered=list.filter(t=>{
     if(flt!=='all'&&(t.status||'new')!==flt)return false;
+    const age=ageOf(t);
+    // A candidate with no birthday has no age to judge, so an age filter hides them
+    // rather than guessing one for them.
+    if(ageMin!==''&&(age==null||age<Number(ageMin)))return false;
+    if(ageMax!==''&&(age==null||age>Number(ageMax)))return false;
     if(!q.trim())return true;
     const s=q.trim().toLowerCase();
-    return[t.name,t.position,t.school,t.prevClub,t.city,t.camp].some(v=>String(v||'').toLowerCase().includes(s));
-  }).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0));
+    return[t.name,t.position,t.school,t.prevClub,t.city,t.motherName,t.fatherName]
+      .some(v=>String(v||'').toLowerCase().includes(s));
+  /* Newest trial first. The id breaks the remaining ties: two candidates entered on the
+     same day within the same millisecond would otherwise have no order at all, and the
+     list would reshuffle itself under the coach on every keystroke. */
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||0)-(a.createdAt||0)
+    ||String(a.id).localeCompare(String(b.id)));
   const counts=TRYOUT_STATUS.reduce((m,s)=>{m[s.id]=list.filter(t=>(t.status||'new')===s.id).length;return m;},{});
+  const ages=list.map(ageOf).filter(a=>a!=null);
   const field=(label,val,on,extra)=>(<div className="tryo-f" {...(extra||{})}>
     <label>{label}</label><input value={val||''} onChange={e=>on(e.target.value)}/></div>);
+  const filterOn=ageMin!==''||ageMax!==''||flt!=='all'||q.trim()!=='';
 
-  return(<div className="tryo-ov" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div className="tryo-win">
-      <div className="tryo-hd">
-        <div className="tryo-hd-ic"><TIc k="users" size={22}/></div>
+  return(<div className="tryo-page">
+    <div className="rost-head">
+      <div className="rost-title">
+        <div className="rost-title-ic tryo">{NAV_ICONS.tryouts}</div>
         <div>
-          <div className="tryo-hd-t">{Lx('Seçmeler','Tryouts')}</div>
-          <div className="tryo-hd-s">{list.length} {Lx('aday','candidates')} · {counts.watch||0} {Lx('izleniyor','watching')} · {counts.in||0} {Lx('kabul','accepted')}</div>
-        </div>
-        <div className="tryo-hd-a">
-          <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>⤓ CSV</button>
-          <button className="btn sm" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
-          <button className="tryo-x" onClick={onClose} aria-label={Lx('Kapat','Close')}>✕</button>
+          <div className="rh-t">{Lx('Seçmeler','Tryouts')}</div>
+          <div className="rh-s">{list.length} {Lx('aday','candidates')} · {counts.watch||0} {Lx('izleniyor','watching')} · {counts.in||0} {Lx('kabul','accepted')}
+            {ages.length?` · ${Math.min(...ages)}–${Math.max(...ages)} ${Lx('yaş','yrs')}`:''}</div>
         </div>
       </div>
-      <div className="tryo-body">
-        <div className="tryo-side">
-          <div className="tryo-side-top">
-            <input placeholder={Lx('Aday ara…','Search candidates…')} value={q} onChange={e=>setQ(e.target.value)}/>
-            <div className="tryo-filters">
-              <button className={'tryo-fl'+(flt==='all'?' on':'')} onClick={()=>setFlt('all')}>{Lx('Tümü','All')} {list.length}</button>
-              {TRYOUT_STATUS.map(s=><button key={s.id} className={'tryo-fl'+(flt===s.id?' on':'')} onClick={()=>setFlt(s.id)}>
-                {Lx(s.tr,s.en)} {counts[s.id]||0}</button>)}
-            </div>
+      <div className="rost-tools">
+        <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>⤓ CSV</button>
+        <button className="rost-add" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
+      </div>
+    </div>
+    <div className="tryo-body">
+      <div className="tryo-side">
+        <div className="tryo-side-top">
+          <input placeholder={Lx('Aday ara…','Search candidates…')} value={q} onChange={e=>setQ(e.target.value)}/>
+          <div className="tryo-agerow">
+            <span className="tryo-agel">{Lx('Yaş','Age')}</span>
+            <input type="number" min="4" max="60" inputMode="numeric" placeholder={Lx('en az','min')}
+              value={ageMin} onChange={e=>setAgeMin(e.target.value)} aria-label={Lx('En küçük yaş','Minimum age')}/>
+            <span className="tryo-agedash">–</span>
+            <input type="number" min="4" max="60" inputMode="numeric" placeholder={Lx('en çok','max')}
+              value={ageMax} onChange={e=>setAgeMax(e.target.value)} aria-label={Lx('En büyük yaş','Maximum age')}/>
+            {(ageMin!==''||ageMax!=='')&&
+              <button className="tryo-agex" onClick={()=>{setAgeMin('');setAgeMax('');}} title={Lx('Yaş filtresini temizle','Clear age filter')}>✕</button>}
           </div>
-          <div className="tryo-list">
-            {shown.length===0&&<div className="empty-st" style={{padding:'26px 12px'}}>
-              {list.length?Lx('Bu filtreye uyan aday yok.','No candidate matches this filter.')
-                          :Lx('Henüz aday yok — "Aday Ekle" ile başla.','No candidates yet — start with "Add Candidate".')}
-            </div>}
-            {shown.map(t=>{const st=tryoutStatus(t.status);const age=ageOf(t);
-              return(<div key={t.id} className={'tryo-item'+(t.id===sel?' on':'')} onClick={()=>setSel(t.id)}>
-                <div className="tryo-av">{t.photo?<img src={mediaSrc(t.photo)} alt=""/>:initials(t.name)}</div>
-                <div className="tryo-item-tx">
-                  <div className="tryo-item-n">{t.name||Lx('İsimsiz aday','Unnamed candidate')}</div>
-                  <div className="tryo-item-m">{[t.position,age!=null?age+Lx(' yaş',' y'):null,t.date?fd(t.date):null].filter(Boolean).join(' · ')||'—'}</div>
-                </div>
-                <span className={'tryo-st '+st.id}>{Lx(st.tr,st.en)}</span>
-              </div>);})}
+          <div className="tryo-filters">
+            <button className={'tryo-fl'+(flt==='all'?' on':'')} onClick={()=>setFlt('all')}>{Lx('Tümü','All')} {list.length}</button>
+            {TRYOUT_STATUS.map(s=><button key={s.id} className={'tryo-fl'+(flt===s.id?' on':'')} onClick={()=>setFlt(s.id)}>
+              {Lx(s.tr,s.en)} {counts[s.id]||0}</button>)}
           </div>
+          {filterOn&&<div className="tryo-hits">{filtered.length} / {list.length} {Lx('aday gösteriliyor','candidates shown')}</div>}
         </div>
-        <div className="tryo-detail">
-          {!cur&&<div className="tryo-empty">
-            <div className="tryo-empty-ic"><TIc k="card" size={26}/></div>
-            <div style={{fontSize:14,fontWeight:700,color:'var(--text2)'}}>{Lx('Bir aday seç','Pick a candidate')}</div>
-            <div style={{fontSize:12.5,maxWidth:340,lineHeight:1.6}}>
-              {Lx('Denemeye gelen sporcuların kişisel bilgilerini, ölçümlerini ve test sonuçlarını burada tutarsın. Beğendiğin adayı tek tuşla kadroya aktarabilirsin.',
-                  'Keep every trialling athlete’s details, measurements and test results here. One button moves the ones you want onto the roster.')}
-            </div>
-            <button className="btn sm" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
+        <div className="tryo-list">
+          {filtered.length===0&&<div className="empty-st" style={{padding:'26px 12px'}}>
+            {list.length?Lx('Bu filtreye uyan aday yok.','No candidate matches this filter.')
+                        :Lx('Henüz aday yok — "Aday Ekle" ile başla.','No candidates yet — start with "Add Candidate".')}
           </div>}
-          {cur&&<>
-            <div className="tryo-dhd">
-              <div className="tryo-photo" onClick={()=>photoRef.current&&photoRef.current.click()}>
-                {cur.photo?<img src={mediaSrc(cur.photo)} alt=""/>:initials(cur.name)}
-                <div className="tryo-photo-h">{Lx('Fotoğraf','Photo')}</div>
+          {filtered.map(t=>{const st=tryoutStatus(t.status);const age=ageOf(t);
+            return(<div key={t.id} className={'tryo-item'+(t.id===sel?' on':'')} onClick={()=>setSel(t.id)}>
+              <div className="tryo-av">{t.photo?<img src={mediaSrc(t.photo)} alt=""/>:initials(t.name)}</div>
+              <div className="tryo-item-tx">
+                <div className="tryo-item-n">{t.name||Lx('İsimsiz aday','Unnamed candidate')}</div>
+                <div className="tryo-item-m">{[t.position,age!=null?age+Lx(' yaş',' y'):null,t.date?fd(t.date):null].filter(Boolean).join(' · ')||'—'}</div>
               </div>
-              <input type="file" accept="image/*" ref={photoRef} style={{display:'none'}}
-                onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)handleImageUpload(f,'tryouts',d=>updT({photo:d}));e.target.value='';}}/>
-              <div className="tryo-dhd-tx">
-                <input className="tryo-name" placeholder={Lx('Ad Soyad','Full name')} value={cur.name||''} onChange={e=>updT({name:e.target.value})}/>
-                <div className="tryo-rate">
-                  {[1,2,3,4,5].map(n=><button key={n} className={n<=(cur.rating||0)?'on':''}
-                    onClick={()=>updT({rating:cur.rating===n?0:n})} title={Lx(n+' yıldız',n+' stars')}>★</button>)}
-                  <span className="tryo-rate-c">{cur.rating?`${cur.rating}/5`:Lx('puanlanmadı','not rated')}</span>
-                </div>
-              </div>
-              <div className="tryo-dhd-a">
-                <button className="btn sm sec" onClick={promote}>{Lx('Kadroya Aktar','Move to Roster')} →</button>
-                <button className="btn sm danger" onClick={()=>del(cur.id)}>✕</button>
-              </div>
-            </div>
-
-            <div className="tryo-sum">
-              <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Yaş','Age')}</div>
-                <div className="tryo-sum-v">{ageOf(cur)??'—'}</div></div>
-              <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Boy','Height')}</div>
-                <div className="tryo-sum-v">{cur.height||'—'}{cur.height&&<small>cm</small>}</div></div>
-              <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Kilo','Weight')}</div>
-                <div className="tryo-sum-v">{cur.weight||'—'}{cur.weight&&<small>kg</small>}</div></div>
-              <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Pozisyon','Position')}</div>
-                <div className="tryo-sum-v" style={{fontSize:15}}>{cur.position||'—'}</div></div>
-              <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Seçme','Tryout')}</div>
-                <div className="tryo-sum-v" style={{fontSize:15}}>{cur.date?fd(cur.date):'—'}</div></div>
-            </div>
-
-            <div className="tryo-sec">
-              <div className="tryo-sec-h"><span className="ic"><TIc k="user" size={17}/></span>{Lx('Kişisel Bilgiler','Personal Details')}</div>
-              <div className="tryo-sec-b"><div className="tryo-fields">
-                <div className="tryo-f"><label>{Lx('Doğum Tarihi','Date of Birth')}</label>
-                  <input type="date" value={cur.dateOfBirth||''} onChange={e=>updT({dateOfBirth:e.target.value})}/></div>
-                <div className="tryo-f"><label>{Lx('Pozisyon','Position')}</label>
-                  <select value={cur.position||''} onChange={e=>updT({position:e.target.value})}>
-                    <option value="">—</option>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]||p}</option>)}
-                  </select></div>
-                <div className="tryo-f"><label>{Lx('Kullandığı El / Ayak','Dominant Side')}</label>
-                  <select value={cur.dominantHand||''} onChange={e=>updT({dominantHand:e.target.value})}>
-                    <option value="">—</option>
-                    <option value="R">{Lx('Sağ','Right')}</option>
-                    <option value="L">{Lx('Sol','Left')}</option>
-                    <option value="B">{Lx('Çift yönlü','Both')}</option>
-                  </select></div>
-                {field(Lx('Telefon','Phone'),cur.phone,v=>updT({phone:v}))}
-                {field('E-mail',cur.email,v=>updT({email:v}))}
-                {field(Lx('Şehir','City'),cur.city,v=>updT({city:v}))}
-                {field(Lx('Okul','School'),cur.school,v=>updT({school:v}))}
-                {field(Lx('Önceki Kulüp','Previous Club'),cur.prevClub,v=>updT({prevClub:v}))}
-                {field(Lx('Veli Adı','Guardian'),cur.guardian,v=>updT({guardian:v}))}
-                {field(Lx('Veli Telefonu','Guardian Phone'),cur.guardianPhone,v=>updT({guardianPhone:v}))}
-              </div></div>
-            </div>
-
-            <div className="tryo-sec">
-              <div className="tryo-sec-h"><span className="ic"><TIc k="ruler" size={17}/></span>{Lx('Fiziksel Ölçümler','Body Measurements')}</div>
-              <div className="tryo-sec-b"><div className="tryo-fields">
-                {TRYOUT_BODY.map(f=><div key={f.k} className="tryo-f tryo-t">
-                  <label>{Lx(f.tr,f.en)}</label>
-                  <input inputMode="decimal" placeholder="—" value={cur[f.k]||''} onChange={e=>updT({[f.k]:e.target.value})}/>
-                  <span className="tryo-t-u">{f.u}</span>
-                </div>)}
-              </div></div>
-            </div>
-
-            <div className="tryo-sec">
-              <div className="tryo-sec-h"><span className="ic"><TIc k="chart" size={17}/></span>{Lx('Test Sonuçları','Test Results')}
-                <span className="cnt">{TRYOUT_TESTS.filter(f=>String((cur.tests||{})[f.k]||'').trim()!=='').length}/{TRYOUT_TESTS.length}</span></div>
-              <div className="tryo-sec-b"><div className="tryo-fields">
-                {TRYOUT_TESTS.map(f=><div key={f.k} className="tryo-f tryo-t">
-                  <label>{Lx(f.tr,f.en)}</label>
-                  <input inputMode="decimal" placeholder="—" value={(cur.tests||{})[f.k]||''} onChange={e=>updTest(f.k,e.target.value)}/>
-                  <span className="tryo-t-u">{tryoutUnit(f.u)}</span>
-                </div>)}
-              </div></div>
-            </div>
-
-            <div className="tryo-sec">
-              <div className="tryo-sec-h"><span className="ic"><TIc k="star" size={17}/></span>{Lx('Değerlendirme','Evaluation')}</div>
-              <div className="tryo-sec-b">
-                <div className="tryo-fields" style={{marginBottom:14}}>
-                  <div className="tryo-f"><label>{Lx('Seçme Tarihi','Tryout Date')}</label>
-                    <input type="date" value={cur.date||''} onChange={e=>updT({date:e.target.value})}/></div>
-                  {field(Lx('Grup / Kamp','Group / Camp'),cur.camp,v=>updT({camp:v}))}
-                  {field(Lx('Değerlendiren','Evaluated By'),cur.scout,v=>updT({scout:v}))}
-                </div>
-                <label>{Lx('Durum','Status')}</label>
-                <div className="tryo-statrow" style={{marginBottom:14}}>
-                  {TRYOUT_STATUS.map(s=><button key={s.id} className={'tryo-statpick '+s.id+((cur.status||'new')===s.id?' on':'')}
-                    onClick={()=>updT({status:s.id})}>{Lx(s.tr,s.en)}</button>)}
-                </div>
-                <div className="tryo-fields">
-                  <div className="tryo-f"><label>{Lx('Güçlü Yönler','Strengths')}</label>
-                    <textarea value={cur.strengths||''} onChange={e=>updT({strengths:e.target.value})}
-                      placeholder={Lx('Örn. patlayıcı ilk adım, oyun okuması iyi…','e.g. explosive first step, reads the game well…')}/></div>
-                  <div className="tryo-f"><label>{Lx('Gelişim Alanları','To Develop')}</label>
-                    <textarea value={cur.weaknesses||''} onChange={e=>updT({weaknesses:e.target.value})}
-                      placeholder={Lx('Örn. sol el bitiriciliği, gövde stabilitesi…','e.g. left-hand finishing, trunk stability…')}/></div>
-                  <div className="tryo-f wide"><label>{Lx('Notlar','Notes')}</label>
-                    <textarea value={cur.notes||''} onChange={e=>updT({notes:e.target.value})}
-                      placeholder={Lx('Antrenör gözlemleri, sakatlık geçmişi, aile görüşmesi…','Coach observations, injury history, family conversation…')}/></div>
-                </div>
-              </div>
-            </div>
-          </>}
+              <span className={'tryo-st '+st.id}>{Lx(st.tr,st.en)}</span>
+            </div>);})}
         </div>
+      </div>
+      <div className="tryo-detail">
+        {!cur&&<div className="tryo-empty">
+          <div className="tryo-empty-ic"><TIc k="card" size={26}/></div>
+          <div style={{fontSize:14,fontWeight:700,color:'var(--text2)'}}>{Lx('Bir aday seç','Pick a candidate')}</div>
+          <div style={{fontSize:12.5,maxWidth:340,lineHeight:1.6}}>
+            {Lx('Denemeye gelen sporcuların kişisel bilgilerini, ölçümlerini ve test sonuçlarını burada tutarsın. Her yaştan aday aynı havuzda durur; beğendiğini tek tuşla istediğin takımın kadrosuna aktarabilirsin.',
+                'Keep every trialling athlete’s details, measurements and test results here. Candidates of every age share one pool, and one button moves the ones you want onto any squad’s roster.')}
+          </div>
+          <button className="btn sm" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
+        </div>}
+        {cur&&<>
+          <div className="tryo-dhd">
+            <div className="tryo-photo" onClick={()=>photoRef.current&&photoRef.current.click()}>
+              {cur.photo?<img src={mediaSrc(cur.photo)} alt=""/>:initials(cur.name)}
+              <div className="tryo-photo-h">{Lx('Fotoğraf','Photo')}</div>
+            </div>
+            <input type="file" accept="image/*" ref={photoRef} style={{display:'none'}}
+              onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)handleImageUpload(f,'tryouts',d=>updT({photo:d}));e.target.value='';}}/>
+            <div className="tryo-dhd-tx">
+              <input className="tryo-name" placeholder={Lx('Ad Soyad','Full name')} value={cur.name||''} onChange={e=>updT({name:e.target.value})}/>
+              <div className="tryo-rate">
+                {[1,2,3,4,5].map(n=><button key={n} className={n<=(cur.rating||0)?'on':''}
+                  onClick={()=>updT({rating:cur.rating===n?0:n})} title={Lx(n+' yıldız',n+' stars')}>★</button>)}
+                <span className="tryo-rate-c">{cur.rating?`${cur.rating}/5`:Lx('puanlanmadı','not rated')}</span>
+              </div>
+            </div>
+            {/* The pool belongs to no squad, so moving a candidate out of it asks which one. */}
+            <div className="tryo-dhd-a">
+              <div className="tryo-move">
+                <select value={moveTo} onChange={e=>setMoveTo(e.target.value)} aria-label={Lx('Hedef takım','Destination team')}>
+                  {teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
+                </select>
+                <button className="btn sm" onClick={promote}>{Lx('Kadroya Aktar','Move to Roster')} →</button>
+              </div>
+              <button className="btn sm danger" onClick={()=>del(cur.id)}>✕</button>
+            </div>
+          </div>
+
+          <div className="tryo-sum">
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Yaş','Age')}</div>
+              <div className="tryo-sum-v">{ageOf(cur)??'—'}</div></div>
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Boy','Height')}</div>
+              <div className="tryo-sum-v">{cur.height||'—'}{cur.height&&<small>cm</small>}</div></div>
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Kilo','Weight')}</div>
+              <div className="tryo-sum-v">{cur.weight||'—'}{cur.weight&&<small>kg</small>}</div></div>
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Ayakkabı No','Shoe Size')}</div>
+              <div className="tryo-sum-v">{cur.shoeSize||'—'}</div></div>
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Pozisyon','Position')}</div>
+              <div className="tryo-sum-v" style={{fontSize:15}}>{cur.position||'—'}</div></div>
+            <div className="tryo-sum-c"><div className="tryo-sum-l">{Lx('Seçme','Tryout')}</div>
+              <div className="tryo-sum-v" style={{fontSize:15}}>{cur.date?fd(cur.date):'—'}</div></div>
+          </div>
+
+          <div className="tryo-sec">
+            <div className="tryo-sec-h"><span className="ic"><TIc k="user" size={17}/></span>{Lx('Kişisel Bilgiler','Personal Details')}</div>
+            <div className="tryo-sec-b"><div className="tryo-fields">
+              <div className="tryo-f"><label>{Lx('Doğum Tarihi','Date of Birth')}</label>
+                <input type="date" value={cur.dateOfBirth||''} onChange={e=>updT({dateOfBirth:e.target.value})}/></div>
+              <div className="tryo-f"><label>{Lx('Pozisyon','Position')}</label>
+                <select value={cur.position||''} onChange={e=>updT({position:e.target.value})}>
+                  <option value="">—</option>{positions.map(p=><option key={p} value={p}>{POS_FULL[p]||p}</option>)}
+                </select></div>
+              <div className="tryo-f"><label>{Lx('Kullandığı El / Ayak','Dominant Side')}</label>
+                <select value={cur.dominantHand||''} onChange={e=>updT({dominantHand:e.target.value})}>
+                  <option value="">—</option>
+                  <option value="R">{Lx('Sağ','Right')}</option>
+                  <option value="L">{Lx('Sol','Left')}</option>
+                  <option value="B">{Lx('Çift yönlü','Both')}</option>
+                </select></div>
+              {field(Lx('Telefon','Phone'),cur.phone,v=>updT({phone:v}))}
+              {field('E-mail',cur.email,v=>updT({email:v}))}
+              {field(Lx('Şehir','City'),cur.city,v=>updT({city:v}))}
+              {field(Lx('Okul','School'),cur.school,v=>updT({school:v}))}
+              {field(Lx('Önceki Kulüp','Previous Club'),cur.prevClub,v=>updT({prevClub:v}))}
+              {field(Lx('Veli Adı','Guardian'),cur.guardian,v=>updT({guardian:v}))}
+              {field(Lx('Veli Telefonu','Guardian Phone'),cur.guardianPhone,v=>updT({guardianPhone:v}))}
+            </div></div>
+          </div>
+
+          {/* Parents: the name, and the height that predicts where the child ends up. */}
+          <div className="tryo-sec">
+            <div className="tryo-sec-h"><span className="ic"><TIc k="users" size={17}/></span>{Lx('Aile Bilgileri','Family')}
+              <span className="cnt">{(()=>{const h=TRYOUT_FAMILY.map(f=>Number(cur[f.kH])).filter(n=>n>0);
+                return h.length===2?Lx(`orta ebeveyn boyu ${Math.round((h[0]+h[1])/2)} cm`,`mid-parent height ${Math.round((h[0]+h[1])/2)} cm`):'';})()}</span></div>
+            <div className="tryo-sec-b"><div className="tryo-fields">
+              {TRYOUT_FAMILY.map(f=><React.Fragment key={f.kName}>
+                {field(Lx(f.tr+' Adı',f.en+'’s Name'),cur[f.kName],v=>updT({[f.kName]:v}))}
+                <div className="tryo-f tryo-t">
+                  <label>{Lx(f.tr+' Boyu',f.en+'’s Height')}</label>
+                  <input inputMode="decimal" placeholder="—" value={cur[f.kH]||''} onChange={e=>updT({[f.kH]:e.target.value})}/>
+                  <span className="tryo-t-u">cm</span>
+                </div>
+              </React.Fragment>)}
+            </div></div>
+          </div>
+
+          <div className="tryo-sec">
+            <div className="tryo-sec-h"><span className="ic"><TIc k="ruler" size={17}/></span>{Lx('Fiziksel Ölçümler','Body Measurements')}</div>
+            <div className="tryo-sec-b"><div className="tryo-fields">
+              {TRYOUT_BODY.map(f=><div key={f.k} className={'tryo-f'+(f.u?' tryo-t':'')}>
+                <label>{Lx(f.tr,f.en)}</label>
+                <input inputMode="decimal" placeholder="—" value={cur[f.k]||''} onChange={e=>updT({[f.k]:e.target.value})}/>
+                {f.u&&<span className="tryo-t-u">{f.u}</span>}
+              </div>)}
+            </div></div>
+          </div>
+
+          {/* Only the tests this trial actually ran. The drawer holds the rest. */}
+          <div className="tryo-sec">
+            <div className="tryo-sec-h"><span className="ic"><TIc k="chart" size={17}/></span>{Lx('Test Sonuçları','Test Results')}
+              <span className="cnt">{shown.filter(k=>String((cur.tests||{})[k]||'').trim()!=='').length}/{shown.length}</span>
+              <button className={'tryo-pickbtn'+(picker?' on':'')} onClick={()=>setPicker(!picker)}>
+                {picker?Lx('Bitti','Done'):Lx('Test Seç / Ekle','Choose / Add Tests')}</button>
+            </div>
+            {picker&&<div className="tryo-picker">
+              <div className="tryo-picker-h">{Lx('Bu adayın sayfasında hangi testler dursun?','Which tests should this candidate’s sheet carry?')}</div>
+              <div className="tryo-picker-g">
+                {catalog.map(f=>{const on=shown.includes(f.k);
+                  return(<button key={f.k} className={'tryo-pick'+(on?' on':'')} onClick={()=>togglePick(f.k)}>
+                    <span className="bx">{on?'✓':'＋'}</span>
+                    <span className="nm">{Lx(f.tr,f.en)}</span>
+                    {f.u&&<span className="u">{tryoutUnit(f.u)}</span>}
+                    {f.custom&&<span className="x" title={Lx('Testi katalogdan sil','Delete test from catalog')}
+                      onClick={e=>{e.stopPropagation();delCustomTest(f.k);}}>✕</span>}
+                  </button>);})}
+              </div>
+              <div className="tryo-picker-add">
+                <input placeholder={Lx('Kendi testin (ör. Serbest Atış %)','Your own test (e.g. Free-throw %)')}
+                  value={newTest.name} onChange={e=>setNewTest({...newTest,name:e.target.value})}
+                  onKeyDown={e=>{if(e.key==='Enter')addCustomTest();}}/>
+                <input className="u" placeholder={Lx('birim','unit')} value={newTest.u}
+                  onChange={e=>setNewTest({...newTest,u:e.target.value})}
+                  onKeyDown={e=>{if(e.key==='Enter')addCustomTest();}}/>
+                <button className="btn sm sec" onClick={addCustomTest} disabled={!newTest.name.trim()}>＋ {Lx('Ekle','Add')}</button>
+              </div>
+            </div>}
+            <div className="tryo-sec-b">
+              {shown.length===0&&<div className="empty-st" style={{padding:'18px 10px',margin:0}}>
+                {Lx('Bu adaya henüz test seçilmedi — "Test Seç / Ekle" ile başla.','No tests chosen for this candidate yet — start with "Choose / Add Tests".')}</div>}
+              {shown.length>0&&<div className="tryo-fields">
+                {shown.map(k=>{const f=tryoutTestDef(k,customTests);
+                  return(<div key={k} className={'tryo-f'+(f.u?' tryo-t':'')}>
+                    <label>{Lx(f.tr,f.en)}</label>
+                    <input inputMode="decimal" placeholder="—" value={(cur.tests||{})[k]||''} onChange={e=>updTest(k,e.target.value)}/>
+                    {f.u&&<span className="tryo-t-u">{tryoutUnit(f.u)}</span>}
+                  </div>);})}
+              </div>}
+            </div>
+          </div>
+
+          {/* The verdict. Status is the decision, so it is drawn as the decision: four
+              cards across the top of the section rather than a row of small buttons
+              under two date boxes. */}
+          <div className="tryo-sec tryo-eval">
+            <div className="tryo-sec-h"><span className="ic"><TIc k="star" size={17}/></span>{Lx('Değerlendirme','Evaluation')}
+              <span className={'tryo-st '+(cur.status||'new')} style={{marginLeft:'auto'}}>
+                {Lx(tryoutStatus(cur.status).tr,tryoutStatus(cur.status).en)}</span></div>
+            <div className="tryo-sec-b">
+              <div className="tryo-statcards">
+                {TRYOUT_STATUS.map(s=><button key={s.id}
+                  className={'tryo-statcard '+s.id+((cur.status||'new')===s.id?' on':'')}
+                  onClick={()=>updT({status:s.id})}>
+                  <span className="dot"/>
+                  <span className="t">{Lx(s.tr,s.en)}</span>
+                  <span className="d">{Lx(
+                    {new:'Yeni geldi, henüz karar yok',watch:'Bir daha bakılacak',in:'Kadroya alınıyor',out:'Bu sezon değil'}[s.id],
+                    {new:'Just arrived, no call yet',watch:'Worth another look',in:'Taking them on',out:'Not this season'}[s.id])}</span>
+                </button>)}
+              </div>
+              <div className="tryo-fields" style={{marginBottom:14}}>
+                <div className="tryo-f"><label>{Lx('Seçme Tarihi','Tryout Date')}</label>
+                  <input type="date" value={cur.date||''} onChange={e=>updT({date:e.target.value})}/></div>
+                {field(Lx('Değerlendiren','Evaluated By'),cur.scout,v=>updT({scout:v}))}
+              </div>
+              <div className="tryo-fields">
+                <div className="tryo-f"><label className="tryo-lbl good">{Lx('Güçlü Yönler','Strengths')}</label>
+                  <textarea value={cur.strengths||''} onChange={e=>updT({strengths:e.target.value})}
+                    placeholder={Lx('Örn. patlayıcı ilk adım, oyun okuması iyi…','e.g. explosive first step, reads the game well…')}/></div>
+                <div className="tryo-f"><label className="tryo-lbl work">{Lx('Gelişim Alanları','To Develop')}</label>
+                  <textarea value={cur.weaknesses||''} onChange={e=>updT({weaknesses:e.target.value})}
+                    placeholder={Lx('Örn. sol el bitiriciliği, gövde stabilitesi…','e.g. left-hand finishing, trunk stability…')}/></div>
+                <div className="tryo-f wide"><label>{Lx('Notlar','Notes')}</label>
+                  <textarea value={cur.notes||''} onChange={e=>updT({notes:e.target.value})}
+                    placeholder={Lx('Antrenör gözlemleri, sakatlık geçmişi, aile görüşmesi…','Coach observations, injury history, family conversation…')}/></div>
+              </div>
+            </div>
+          </div>
+        </>}
       </div>
     </div>
   </div>);
@@ -18771,14 +19117,13 @@ function EvaluationView({team,updateTeam,data,setData}){
   };
   const delTest=id=>{if(!confirm(Lx('Bu testi sil?','Delete this test?')))return;updAth(ath.id,{tests:tests.filter(t=>t.id!==id),measurements:(ath.measurements||[]).filter(m=>m.srcTest!==id)});if(editingId===id)setEditingId(null);};
 
-  /* ---- the console's own state: how the roster is filtered/sorted on screen,
-     which drawer of the test catalog is open, and whether Tryouts has the screen ---- */
+  /* ---- the console's own state: how the roster is filtered/sorted on screen and
+     which drawer of the test catalog is open ---- */
   const[posFilter,setPosFilter]=useState('all');
   const[q,setQ]=useState('');
   const[sortBy,setSortBy]=useState('num');
   const[listView,setListView]=useState(false);
   const[cat,setCat]=useState('all');
-  const[tryouts,setTryouts]=useState(false);
   const templates=Array.isArray(data?.testTemplates)?data.testTemplates:[];
   /* A battery a coach builds twice is a battery they build every week. Saving it keeps
      the picker's selection under a name; applying one replaces the selection wholesale. */
@@ -18843,14 +19188,9 @@ function EvaluationView({team,updateTeam,data,setData}){
           {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
             {compare?`← ${Lx('Testlere dön','Back to tests')}`:`⇄ ${Lx('Sporcuları Karşılaştır','Compare Athletes')}`}
           </button>}
-          <button className="ev2-tryo-btn" onClick={()=>setTryouts(true)}>
-            <TIc k="users" size={16}/>{Lx('Seçmeler','Tryouts')}
-          </button>
         </div>
       </div>
     </div>
-
-    {tryouts&&<TryoutsView data={data} setData={setData} team={team} onClose={()=>setTryouts(false)}/>}
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Kadro sekmesinden ekle.','No athletes yet — add them in the Roster tab.')}</div>}
 
@@ -20975,6 +21315,13 @@ function StaffPanel({staff,save,athletes,team}){
 function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
   const[sel,setSel]=useState(null);const athletes=team.athletes||[];
   const[q,setQ]=useState('');const[filter,setFilter]=useState('all');
+  /* How the squad is ordered and how it is drawn. A coach reading the board before a
+     session wants shirt numbers; one chasing a wellness dip wants the worst readiness
+     at the top — so the order is a control rather than a decision made for them. */
+  const[sort,setSort]=useState('number');
+  const[mode,setMode]=useState('grid');
+  const[page,setPage]=useState(1);
+  const searchRef=useRef(null);
   /* Which half of the roster is being read. The athletes' own tools — search, position
      filter, add — belong to their list alone, so they travel with the tab rather than
      sitting over a page of coaches they cannot filter. */
@@ -20989,6 +21336,20 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
     if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
     setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||'wellness');
   },[focus,team.id]);
+  // A filter that shortens the list must not leave the coach stranded on page 3.
+  useEffect(()=>{setPage(1);},[q,filter,sort,tab]);
+  /* ⌘K / Ctrl-K jumps to the search box — the roster is the one screen in the app
+     long enough that finding a name by scrolling is the slow way. */
+  useEffect(()=>{
+    const onKey=e=>{
+      if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){
+        e.preventDefault();setTab('athletes');
+        if(searchRef.current)searchRef.current.focus();
+      }
+    };
+    window.addEventListener('keydown',onKey);
+    return()=>window.removeEventListener('keydown',onKey);
+  },[]);
   const staff=team.staff||[];
   const save=a=>updateTeam(team.id,{athletes:a});
   const saveStaff=st=>updateTeam(team.id,{staff:st});
@@ -21003,75 +21364,197 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
   const isInjured=a=>(a.injuries||[]).some(i=>i.status!=='Recovered');
   const initials=name=>(name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const positions=POSITIONS[team.setup.sport]||POSITIONS.default;
-  const list=athletes.filter(a=>{
+  const filtered=athletes.filter(a=>{
     if(filter!=='all'&&posOf(a.position)!==filter)return false;
     if(!q)return true;
     const s=q.toLowerCase();
     return(a.name||'').toLowerCase().includes(s)||posOf(a.position).toLowerCase().includes(s)||String(a.number||'').includes(s);
   });
+  /* Everything a card shows, worked out once per athlete: the cards, the rows, the sort
+     and the bars all read the same numbers, so an athlete cannot appear ninth by
+     readiness and show a different readiness in their own card. */
+  const rows=filtered.map(a=>{
+    const ref=athLatestDate(a);
+    const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
+    return{a,age:ageOf(a),l7,rd:athWellnessVal(a,'readiness',ref),
+      acwr:athACWR(a,ref),td:athTrainingDays(team.days,a.id,team.setup),inj:isInjured(a)};
+  });
+  const SORTS=[
+    {id:'number',label:L('Forma No (Küçükten Büyüğe)','Shirt No (low to high)')},
+    {id:'name',  label:L('İsim (A → Z)','Name (A → Z)')},
+    {id:'ready', label:L('Hazır Oluş (Düşükten Yükseğe)','Readiness (low to high)')},
+    {id:'load',  label:L('7 Günlük Yük (Yüksekten Düşüğe)','7-day load (high to low)')},
+    {id:'pos',   label:L('Pozisyon','Position')},
+  ];
+  // A missing shirt number sorts last rather than as zero — an unnumbered trialist is
+  // not the squad's number one.
+  const numOf=a=>{const n=parseInt(a.number,10);return isNaN(n)?1e9:n;};
+  const byName=(x,y)=>(x.a.name||'').localeCompare(y.a.name||'',REPORT_LANG==='tr'?'tr':'en');
+  const sorted=[...rows].sort((x,y)=>{
+    if(sort==='name')return byName(x,y);
+    if(sort==='pos')return (posOf(x.a.position)||'').localeCompare(posOf(y.a.position)||'')||byName(x,y);
+    if(sort==='ready')return (x.rd==null?99:x.rd)-(y.rd==null?99:y.rd)||byName(x,y);
+    if(sort==='load')return (y.l7||0)-(x.l7||0)||byName(x,y);
+    return numOf(x.a)-numOf(y.a)||byName(x,y);
+  });
+  // The 7-day bar has no natural ceiling, so the squad's own heaviest week is the one
+  // it is drawn against: the bars then compare athletes to each other, which is the
+  // only comparison that means anything here.
+  const maxL7=Math.max(1,...rows.map(r=>r.l7||0));
+  const PER_PAGE=12;
+  const pages=Math.max(1,Math.ceil(sorted.length/PER_PAGE));
+  const pg=Math.min(page,pages);
+  const list=sorted.slice((pg-1)*PER_PAGE,pg*PER_PAGE);
+  /* The one word on the card. An injured athlete is called injured whatever their load
+     says; otherwise the verdict is read off ACWR, where >1.5 is the ratio the load
+     alerts already treat as risk and 1.3 is the top of the optimal band. */
+  const statusOf=r=>{
+    if(r.inj)return{cls:'inj',t:L('Sakat','Injured')};
+    if(!r.acwr)return{cls:'na',t:L('Veri Yok','No Data')};
+    if(r.acwr>1.5)return{cls:'hi',t:L('Yüksek Yük','High Load')};
+    if(r.acwr>1.3)return{cls:'mid',t:L('Orta Yük','Moderate Load')};
+    return{cls:'ok',t:L('Hazır','Ready')};
+  };
+  const fmtLoad=v=>v?v.toLocaleString('en-US').replace(/,/g,'.'):'—';
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
     return<AthleteDetail key={ath.id+':'+(focusTab||'')} ath={ath} onBack={()=>{setSel(null);setFocusTab(null);}} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai} initialTab={focusTab}/>;}
   return(<div>
     <div className="rost-head">
-      <div>
-        <div className="rh-t">{L('Kadro','Roster')}</div>
-        <div className="rh-s">{tab==='staff'
-          ?L(`${staff.length} kişilik teknik ekip · ${team.setup.teamName}`,
-             `${staff.length} on the staff · ${team.setup.teamName}`)
-          :L(`${athletes.length} sporcu · ${team.setup.teamName}`,
-             `${athletes.length} athletes · ${team.setup.teamName}`)}</div>
+      <div className="rost-title">
+        <div className="rost-title-ic">{NAV_ICONS.athletes}</div>
+        <div>
+          <div className="rh-t">{L('Kadro','Roster')}</div>
+          <div className="rh-s">{tab==='staff'
+            ?L(`${staff.length} kişilik teknik ekip · ${team.setup.teamName}`,
+               `${staff.length} on the staff · ${team.setup.teamName}`)
+            :L(`${athletes.length} sporcu · ${team.setup.teamName}`,
+               `${athletes.length} athletes · ${team.setup.teamName}`)}</div>
+        </div>
       </div>
       {tab==='athletes'&&<div className="rost-tools">
-        <div className="ath-search"><span className="ic">⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Sporcu ara…','Search athlete…')}/></div>
+        <div className="ath-search"><span className="ic">⌕</span>
+          <input ref={searchRef} value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Sporcu ara…','Search athlete…')}/>
+          <span className="kbd">{IS_MAC?'⌘K':'Ctrl K'}</span></div>
         <div className="ath-seg">
           <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>{L('Tümü','All')}</button>
           {positions.map(p=><button key={p} className={filter===p?'on':''} onClick={()=>setFilter(p)}>{p}</button>)}
         </div>
-        <button className="btn sec sm" onClick={addAth}>+ {L('Ekle','Add')}</button>
+        <button className="rost-add" onClick={addAth}>＋ {L('Sporcu Ekle','Add Athlete')}</button>
       </div>}
     </div>
-    <div className="rost-tabs">
-      <button className={tab==='athletes'?'on':''} onClick={()=>setTab('athletes')}>
-        {L('Sporcular','Athletes')}<i>{athletes.length}</i></button>
-      <button className={tab==='staff'?'on':''} onClick={()=>setTab('staff')}>
-        {L('Teknik Ekip','Staff')}<i>{staff.length}</i></button>
+    <div className="rost-subbar">
+      <div className="rost-tabs" style={{marginBottom:0}}>
+        <button className={tab==='athletes'?'on':''} onClick={()=>setTab('athletes')}>
+          {L('Sporcular','Athletes')}<i>{athletes.length}</i></button>
+        <button className={tab==='staff'?'on':''} onClick={()=>setTab('staff')}>
+          {L('Teknik Ekip','Staff')}<i>{staff.length}</i></button>
+      </div>
+      {tab==='athletes'&&<>
+        <div className="sp"/>
+        <div className="rost-sort">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <path d="M7 4v16"/><path d="M4 16.5l3 3.5 3-3.5"/><path d="M17 20V4"/><path d="M14 7.5L17 4l3 3.5"/></svg>
+          <select value={sort} onChange={e=>setSort(e.target.value)} aria-label={L('Sıralama','Sort')}>
+            {SORTS.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="rost-view">
+          <button className={mode==='grid'?'on':''} onClick={()=>setMode('grid')} title={L('Kart görünümü','Card view')} aria-label={L('Kart görünümü','Card view')}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/>
+              <rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>
+          </button>
+          <button className={mode==='list'?'on':''} onClick={()=>setMode('list')} title={L('Liste görünümü','List view')} aria-label={L('Liste görünümü','List view')}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M4 6.5h16"/><path d="M4 12h16"/><path d="M4 17.5h16"/></svg>
+          </button>
+        </div>
+      </>}
     </div>
     {tab==='staff'&&<StaffPanel staff={staff} save={saveStaff} athletes={athletes} team={team}/>}
     {tab==='athletes'&&<>
-    {athletes.length===0&&<div className="empty-st">{L('Henüz sporcu yok — başlamak için "+ Ekle"ye tıkla.','No athletes yet — click "+ Add" to start.')}</div>}
-    {athletes.length>0&&list.length===0&&<div className="empty-st">{L('Eşleşme yok.','No matches.')}</div>}
-    <div className="rost-grid">{list.map(a=>{
-      const age=ageOf(a);const ref=athLatestDate(a);
-      const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
-      const rd=athWellnessVal(a,'readiness',ref);
-      const td=athTrainingDays(team.days,a.id,team.setup);
-      const rcls=rd==null?'na':rd>=4?'':rd>=3?'warn':'bad';
+    {athletes.length===0&&<div className="empty-st">{L('Henüz sporcu yok — başlamak için "Sporcu Ekle"ye tıkla.','No athletes yet — click "Add Athlete" to start.')}</div>}
+    {athletes.length>0&&sorted.length===0&&<div className="empty-st">{L('Eşleşme yok.','No matches.')}</div>}
+    {mode==='grid'&&<div className="rost-grid">{list.map(r=>{
+      const a=r.a;const st=statusOf(r);
+      const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
+      const tdTot=r.td.attended+r.td.missed;
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
         <button className="rc-del" title={L('Sporcuyu sil','Delete athlete')} onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
+        <div className="rc-badgerow"><span className={'rc-badge '+st.cls}>{st.t}</span></div>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
           <div className={`rc-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
           <div className="rc-id">
             <div className="rc-name">{a.name}</div>
-            <div className="rc-pos">{posFull}{age!=null?L(` · ${age} yaş`,` · ${age} yrs`):''}</div>
+            <div className="rc-pos">{posFull}{r.age!=null?L(` · ${r.age} yaş`,` · ${r.age} yrs`):''}</div>
           </div>
         </div>
         <div className="rc-stats">
-          <div className="rc-st"><span className="k">{L('Hazır Oluş','Readiness')}</span><span className="v" style={{color:readyColor(rd)}}>{rd!=null?rd.toFixed(1):'—'}<small>/5</small></span></div>
-          <div className="rc-st"><span className="k">{L('7g yük','7d load')}</span><span className="v" style={{color:'#3b6ef5'}}>{l7?l7.toLocaleString('en-US').replace(/,/g,'.'):'—'}</span></div>
+          <div className="rc-st">
+            <span className="k">{L('Hazır Oluş','Readiness')}</span>
+            <span className="v" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1):'—'}<small>/5</small></span>
+            <span className="bar"><i style={{width:`${r.rd!=null?Math.min(100,r.rd/5*100):0}%`,background:readyColor(r.rd)}}/></span>
+          </div>
+          <div className="rc-st">
+            <span className="k">{L('7g yük','7d load')}</span>
+            <span className="v" style={{color:'#3b6ef5'}}>{fmtLoad(r.l7)}</span>
+            <span className="bar"><i style={{width:`${Math.min(100,(r.l7||0)/maxL7*100)}%`,background:'#3b6ef5'}}/></span>
+          </div>
           <div className="rc-st">
             <span className="k">{L('Antrenman günü','Training days')}</span>
-            <span className="v" title={L(`${td.attended} antrenman günü katıldı · ${td.missed} kaçırdı${td.from?` — mezosiklüs ${fd(td.from)} → ${fd(td.to)}`:''}`,`${td.attended} training days attended · ${td.missed} missed${td.from?` — macrocycle ${fd(td.from)} → ${fd(td.to)}`:''}`)}>
-              <span style={{color:'var(--green)'}}>{td.attended}</span>
+            <span className="v" title={L(`${r.td.attended} antrenman günü katıldı · ${r.td.missed} kaçırdı${r.td.from?` — mezosiklüs ${fd(r.td.from)} → ${fd(r.td.to)}`:''}`,`${r.td.attended} training days attended · ${r.td.missed} missed${r.td.from?` — macrocycle ${fd(r.td.from)} → ${fd(r.td.to)}`:''}`)}>
+              <span style={{color:'var(--green)'}}>{r.td.attended}</span>
               <span style={{color:'var(--dim)',fontWeight:500,margin:'0 3px'}}>/</span>
-              <span style={{color:td.missed>0?'#f43f5e':'var(--dim)'}}>{td.missed}</span>
+              <span style={{color:r.td.missed>0?'#f43f5e':'var(--dim)'}}>{r.td.missed}</span>
+            </span>
+            <span className="bar split">
+              <i style={{width:`${tdTot?r.td.attended/tdTot*100:0}%`}}/>
+              <i style={{width:`${tdTot?r.td.missed/tdTot*100:0}%`}}/>
             </span>
           </div>
+          <button className="rc-go" aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();setSel(a.id);}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
         </div>
       </div>);
-    })}</div>
+    })}</div>}
+    {mode==='list'&&<div className="rost-rows">{list.map(r=>{
+      const a=r.a;const st=statusOf(r);
+      const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
+      const posFull=POS_FULL[a.position]||a.position||'—';
+      return(<div key={a.id} className="rr" onClick={()=>setSel(a.id)}>
+        <div className="rr-num">{a.number||'—'}</div>
+        <div className={`rr-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
+        <div style={{minWidth:0}}>
+          <div className="rr-n">{a.name}</div>
+          <div className="rr-p">{posFull}{r.age!=null?L(` · ${r.age} yaş`,` · ${r.age} yrs`):''}</div>
+        </div>
+        <div className="rr-m"><div className="k">{L('Hazır Oluş','Readiness')}</div>
+          <div className="v" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1):'—'}<small>/5</small></div></div>
+        <div className="rr-m"><div className="k">{L('7g yük','7d load')}</div>
+          <div className="v" style={{color:'#3b6ef5'}}>{fmtLoad(r.l7)}</div></div>
+        <div className="rr-m"><div className="k">{L('Antrenman günü','Training days')}</div>
+          <div className="v"><span style={{color:'var(--green)'}}>{r.td.attended}</span>
+            <span style={{color:'var(--dim)',fontWeight:500,margin:'0 2px'}}>/</span>
+            <span style={{color:r.td.missed>0?'#f43f5e':'var(--dim)'}}>{r.td.missed}</span></div></div>
+        <span className={'rc-badge '+st.cls} style={{justifySelf:'end'}}>{st.t}</span>
+        <button className="rc-go" style={{gridRow:'auto',gridColumn:'auto'}} aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();setSel(a.id);}}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>);
+    })}</div>}
+    {sorted.length>0&&<div className="rost-foot">
+      <div className="rost-foot-c">{L(`${sorted.length} sporcu listeleniyor`,`Showing ${sorted.length} athletes`)}</div>
+      {pages>1&&<div className="rost-pager">
+        <button onClick={()=>setPage(pg-1)} disabled={pg<=1} aria-label={L('Önceki','Previous')}>‹</button>
+        {Array.from({length:pages},(_,n)=>n+1).map(n=>
+          <button key={n} className={n===pg?'on':''} onClick={()=>setPage(n)}>{n}</button>)}
+        <button onClick={()=>setPage(pg+1)} disabled={pg>=pages} aria-label={L('Sonraki','Next')}>›</button>
+      </div>}
+    </div>}
     </>}
   </div>);
 }
@@ -25376,6 +25859,7 @@ const NAV_ICONS={
   backup:<NIc><path d="M12 4v10"/><path d="M8 10.5l4 4 4-4"/><path d="M5 19.5h14"/></NIc>,
   tempo:<NIc><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></NIc>,
   checkin:<NIc><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M8.5 9.5h7"/><path d="M8.5 13.5h4.5"/><path d="M14.5 17.5l1.8 1.8 3.2-3.6"/></NIc>,
+  tryouts:<NIc><circle cx="10.5" cy="8" r="3.2"/><path d="M4.5 19.6c.7-3.2 3-5 6-5s5.3 1.8 6 5"/><path d="M17.5 4.5v6"/><path d="M14.5 7.5h6"/></NIc>,
 };
 /* =========================================================
    AI COACH ASSISTANT — talks to the Claude Messages API directly
@@ -26954,6 +27438,13 @@ function App(){
       {id:'tempo',label:L('Tempo Antrenmanı','Tempo Training'),icon:NAV_ICONS.tempo},
       {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
     ]},
+    /* Tryouts is deliberately its own group rather than another Workspace row: every
+       other tab on this sidebar is a view of the team in the picker above, and this one
+       is not — it holds every candidate the club has ever looked at, of any age, whoever
+       is selected. Its own heading is what says so without a sentence of explanation. */
+    {label:L('Kulüp','Club'),items:[
+      {id:'tryouts',label:L('Seçmeler','Tryouts'),icon:NAV_ICONS.tryouts,count:(data.tryouts||[]).length||null},
+    ]},
     {label:L('Hesap','Account'),items:[
       {id:'setup',label:L('Kurulum','Setup'),icon:NAV_ICONS.setup},
       {id:'backup',label:L('Yedekleme','Backup'),icon:NAV_ICONS.backup},
@@ -27003,7 +27494,10 @@ function App(){
       <img className="mtb-logo" src="logo-wordmark.png" alt="CoachOS"/>
       <span className="mtb-team">{team.setup.teamName}</span>
     </div>
-    <main key={view+team.id}>
+    {/* The remount key carries the team so a tab redraws when the squad changes — except
+        Tryouts, which is not a view of any squad and would only lose its selected
+        candidate and filters to a team switch it has nothing to do with. */}
+    <main key={view+(view==='tryouts'?'':team.id)}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
       {view==='calendar'&&<><CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
@@ -27023,6 +27517,9 @@ function App(){
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
       {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
+      {/* No `team` prop and no `key` off the team: the pool is the same list whichever
+          squad is selected, so switching teams must not remount or refilter it. */}
+      {view==='tryouts'&&<TryoutsView data={data} setData={setData} teams={data.teams} activeTeamId={data.activeTeamId}/>}
       {view==='backup'&&<Backup data={data} setData={setData} sync={sync}/>}
     </main>
     </div>
