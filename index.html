@@ -461,8 +461,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-toolbar .nav-arrows button{width:34px;height:34px;border-radius:8px;background:var(--panel);border:1px solid var(--border2);color:var(--text);display:grid;place-items:center;cursor:pointer;font-size:16px;line-height:1;transition:border-color .2s;font-family:inherit}
 .calw-toolbar .nav-arrows button:hover{border-color:var(--text2)}
 .calw-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
-.calw-col{background:var(--panel);border:1px solid var(--border);border-radius:12px;min-height:340px;padding:12px 10px;display:flex;flex-direction:column;gap:8px}
-.calw-col .dh{display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);padding-bottom:4px;letter-spacing:.05em;text-transform:uppercase}
+.calw-col{background:var(--panel);border:1px solid var(--border);border-radius:14px;min-height:340px;padding:13px 12px;display:flex;flex-direction:column;gap:9px}
+.calw-col .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
+  padding-bottom:9px;border-bottom:1px solid var(--border)}
+/* Weekday over date: the column is found by day name, and read by date once found. */
+.calw-col .dh-d{display:flex;flex-direction:column;gap:3px;min-width:0}
+.calw-col .dh-d b{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text)}
+.calw-col .dh-d i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 .calw-col .dh .add{width:20px;height:20px;border-radius:6px;border:1px solid var(--border2);background:none;color:var(--dim);display:grid;place-items:center;font-size:13px;line-height:1;cursor:pointer;transition:all .15s;font-family:inherit;padding:0}
 .calw-col .dh .add:hover{color:var(--accent);border-color:var(--accent)}
 /* The day's own buttons — paste (only while a training is on the clipboard) and add. */
@@ -494,21 +499,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-col.drop{border-color:var(--accent);background:rgba(0,148,255,.05)}
 .calw-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
 .calw-hint strong{color:var(--text2);font-weight:600}
-/* Row under the week date: drag hint on the left, team monotony chip on the right */
-.calw-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
-.calw-mono{display:inline-flex;align-items:center;gap:9px;padding:6px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel);font-family:'IBM Plex Mono',ui-monospace,monospace}
-.calw-mono .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-.calw-mono b{font-size:16px;font-weight:800;line-height:1}
-.calw-mono .z{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
-.calw-mono .z i{width:7px;height:7px;border-radius:50%;display:inline-block}
+/* The drag hint sits on its own line under the week's summary cards now — the monotony
+   chip that used to share the row with it has become one of those cards. */
+.calw-hint{margin-bottom:11px}
 /* Per-day team averages (RPE / readiness) directly under the day's date */
 /* One box per line, all the same size: the day is read down the column — what the squad
    gave S&C, what they gave ball practice, and how ready they were — and a row of three
    squeezed side by side in a day column left no room for the labels. */
-.calw-avg{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:-2px 0 4px}
-.calw-avg .cav{display:flex;align-items:baseline;justify-content:space-between;gap:4px;padding:3px 7px;min-height:20px;border:1px solid var(--border);border-radius:7px;background:rgba(255,255,255,.02);font-family:'IBM Plex Mono',ui-monospace,monospace}
-.calw-avg .cav em{font-style:normal;font-size:9px;letter-spacing:.06em;color:var(--dim)}
-.calw-avg .cav b{font-size:12px;font-weight:800;line-height:1}
+.calw-avg{display:flex;flex-direction:column;gap:0;margin:0 0 4px;border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;background:rgba(255,255,255,.018)}
+.calw-avg .cav{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 9px;min-height:26px}
+.calw-avg .cav+.cav{border-top:1px solid var(--border)}
+.calw-avg .cav em{font-style:normal;font-size:10.5px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.calw-avg .cav b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:700;line-height:1;flex:none}
 /* Athletes' weekly sRPE table (Calendar page) — between week strip and month grid */
 .srpe-wk-wrap{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
 .srpe-wk{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:9px;overflow:hidden;min-width:560px}
@@ -537,11 +541,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rpe-leg b.tp{background:#fb923c}
 .rpe-leg b.sc{background:#22d3ee}
 .rpe-leg b.gm{background:#f472b6}
-.calw-empty{flex:1;display:grid;place-items:center;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;opacity:.5}
-.calw-daytot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:8px;border-top:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace}
+/* A day with nothing on it is a decision, not a gap — so it is drawn as a card that says
+   so rather than a grey word floating in the column. */
+.calw-empty{flex:1;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:9px;color:var(--dim);border:1px dashed var(--border2);border-radius:11px;padding:18px 10px}
+.calw-empty span{font-size:12.5px;font-weight:600;color:var(--muted)}
+.calw-daytot{margin-top:auto;display:flex;flex-direction:column;gap:3px;padding-top:9px;border-top:1px solid var(--border)}
 .calw-daytot .dtrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.calw-daytot span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
-.calw-daytot b{font-size:13px;font-weight:700;color:var(--accent)}
+.calw-daytot span{font-size:11px;color:var(--dim)}
+.calw-daytot b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13.5px;font-weight:700;color:var(--accent)}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
 .calw-legend i b{width:9px;height:9px;border-radius:2px;display:inline-block}
@@ -856,11 +864,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-quickadd button.copy:hover{border-color:var(--text2);color:var(--text);background:var(--panel)}
 /* Month calendar — "Program Block" overview card */
 .calm-wrap{margin-top:26px;padding-top:22px;border-top:1px solid var(--border)}
-.calm-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
-.calm-ttl{display:flex;align-items:baseline;gap:10px}
-.calm-ttl span{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em}
-.calm-ttl em{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+/* The page's own head: what this screen is for on the left, everything that moves it on
+   the right. The bar that used to sit under the title said "Program Bloğu · haftalık
+   görünüm", which the week's first summary card now says properly. */
+.cal-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px 18px;flex-wrap:wrap;margin-bottom:16px}
+.cal-head-t{min-width:0}
+.cal-head-t h2{font-size:30px;font-weight:800;letter-spacing:-.026em;line-height:1.05;color:var(--text);margin:0}
+.cal-head-t p{margin:6px 0 0;font-size:13px;color:var(--muted);line-height:1.4}
 .calm-ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:640px){.cal-head-t h2{font-size:23px}}
 .calm-seg{display:inline-flex;background:rgba(255,255,255,.045);border:1px solid var(--border2);border-radius:9px;padding:3px}
 .calm-seg button{border:none;background:none;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .15s}
 .calm-seg button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -869,6 +881,35 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-nav button:hover{border-color:var(--text2)}
 .calm-nav button.td{font-size:12px;font-weight:600;padding:0 13px}
 .calm-month{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text);margin-bottom:11px}
+/* ---- the week, summed up above the grid that makes it ----
+   Five cards: which week is on screen, what it loads, how many sessions carry that load,
+   how hard they were felt to be, and how alike they were. Every one is read off the same
+   numbers as the columns below, so nothing here can contradict the grid. */
+.calw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:11px;margin-bottom:16px}
+.cws{display:flex;align-items:flex-start;gap:12px;padding:14px 15px;border-radius:15px;
+  border:1px solid var(--border);background:var(--elevated);min-width:0}
+.cws-ic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center}
+.cws-ic.blue{background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);color:var(--accent2)}
+.cws-ic.violet{background:rgba(139,92,246,.13);border:1px solid rgba(139,92,246,.34);color:#c4b5fd}
+.cws-ic.green{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.32);color:#4ade80}
+.cws-ic.amber{background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.32);color:#facc15}
+.cws-tx{min-width:0}
+.cws-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--dim)}
+.cws-v{display:flex;align-items:baseline;flex-wrap:wrap;gap:7px;margin-top:5px;
+  font-size:20px;font-weight:700;letter-spacing:-.018em;color:var(--text);line-height:1.15}
+.cws-v small{font-size:12px;font-weight:600;color:var(--muted);margin-left:-3px}
+/* The week's dates are a phrase, not a figure — at 20px they wrapped in a 196px card. */
+.cws-v.range{font-size:16.5px;letter-spacing:-.01em}
+/* The week-on-week move, and the band a number falls in — the two things that turn a
+   figure into a judgement. */
+.cws-v em{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;
+  font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid transparent;letter-spacing:.03em}
+.cws-v em.up{color:#4ade80;background:rgba(34,197,94,.13);border-color:rgba(34,197,94,.3)}
+.cws-v em.down{color:#60a5fa;background:rgba(59,130,246,.13);border-color:rgba(59,130,246,.3)}
+.cws-v em.band{background:rgba(255,255,255,.04)}
+.cws-s{font-size:11px;color:var(--dim);margin-top:5px;line-height:1.35}
+@media(max-width:560px){.calw-stats{grid-template-columns:minmax(0,1fr)}}
 .calm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .calm-dow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;padding-bottom:2px}
 .calm-cell{min-height:98px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:8px 9px;cursor:pointer;display:flex;flex-direction:column;gap:5px;transition:transform .12s,border-color .15s,box-shadow .15s}
@@ -1381,14 +1422,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ath-card-v .ac-pill.ok{color:var(--dim);border:1px solid var(--border2)}
 /* Athlete picker (in session editor) */
 .ath-pick{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px}
-.ath-pick-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.ath-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:5px;max-height:170px;overflow-y:auto}
+.ath-pick-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.ath-pick-t{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+/* How many of the squad are ticked, in the accent — it is the number the coach checks
+   before leaving the panel. */
+.ath-pick-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;
+  color:var(--accent2);background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);
+  border-radius:7px;padding:3px 9px;letter-spacing:.04em}
+.ath-pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:6px;max-height:190px;overflow-y:auto}
 .ath-chip{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:11px;transition:all .15s;user-select:none;font-weight:700;letter-spacing:.03em;white-space:nowrap;overflow:hidden;min-width:0}
 .ath-chip:hover{border-color:var(--accent);background:var(--hover)}
 /* A ticked athlete keeps the blue box — tint and border — but the name itself stays in
    the ordinary text colour: a roster of fifteen names reads faster in white than in
    accent-on-accent, and the tick plus the box already carry "selected". */
-.ath-chip.on{background:rgba(0,148,255,.08);border-color:var(--accent);color:var(--text)}
+.ath-chip.on{background:rgba(0,148,255,.12);border-color:var(--accent);color:var(--text);
+  box-shadow:0 0 0 1px rgba(0,148,255,.28)}
 .ath-chip input{width:12px;height:12px;margin:0;accent-color:var(--accent);flex-shrink:0}
 .ath-chip .num{color:var(--muted);font-size:9.5px;font-weight:700;margin-left:auto;flex-shrink:0}
 .team-badge{background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(236,72,153,.2));color:#c4b5fd;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.4px;border:1px solid rgba(139,92,246,.3)}
@@ -2138,16 +2187,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .rr{grid-template-columns:34px 40px minmax(0,1fr) 30px;gap:11px}
   .rr-m,.rr .rc-badge{display:none}
 }
-/* ---- the floor of the list: what is being shown, and how to reach the rest ---- */
+/* ---- the floor of the list: how many athletes it is showing. There is no pager any
+   more — the whole squad stands on one page — so the count is all this row carries. ---- */
 .rost-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:22px}
 .rost-foot-c{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;color:var(--dim)}
-.rost-pager{display:flex;align-items:center;gap:6px;margin-left:auto}
-.rost-pager button{min-width:34px;height:34px;padding:0 9px;border-radius:9px;border:1px solid var(--border2);
-  background:var(--panel);color:var(--text2);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
-  display:grid;place-items:center;transition:background .15s,color .15s,border-color .15s}
-.rost-pager button:hover:not(:disabled){border-color:var(--text2);color:var(--text)}
-.rost-pager button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-.rost-pager button:disabled{opacity:.35;cursor:default}
 /* ===== Roster → Staff ====================================================
    The roster is two lists that happen to share a page: the athletes a season is
    written FOR, and the people who write it. A segmented switch under the title says
@@ -2491,8 +2534,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(255,255,255,.012)),var(--panel);
   box-shadow:var(--shadow),var(--glass-hi)}
 .ev2-hero-l{display:flex;align-items:center;gap:15px;min-width:0}
+/* One flat white tile with the mark cut out of it. No gradient: the hero already carries
+   a sheen, and a second one on a 48px square only muddied the icon inside it. */
 .ev2-logo{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
-  background:var(--grad);color:#06121d;box-shadow:0 10px 24px -12px rgba(0,148,255,.9)}
+  background:#fff;color:#0a0b0d;border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 10px 26px -14px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.9)}
+.ev2-logo svg{stroke-width:2.4}
 .ev2-ttl{font-size:27px;font-weight:700;letter-spacing:-.022em;line-height:1.06;color:var(--text)}
 .ev2-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.05em}
 .ev2-hero-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
@@ -2535,7 +2582,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ev2-card-n{position:absolute;top:11px;left:13px;font-size:21px;font-weight:700;line-height:1;color:var(--border2)}
 .ev2-card.on .ev2-card-n{color:var(--accent2)}
 .ev2-card-b{position:absolute;top:12px;right:12px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;
-  font-weight:700;color:var(--text2);background:var(--elevated);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
+  font-weight:700;color:var(--accent2);background:var(--accent-bg);border:1px solid var(--accent);border-radius:6px;padding:2px 7px}
 .ev2-card-chk{position:absolute;bottom:11px;right:12px;width:17px;height:17px;border-radius:5px;
   border:1.5px solid var(--border2);display:grid;place-items:center;font-size:11px;color:#06121d;background:transparent}
 .ev2-card.on .ev2-card-chk{background:var(--accent);border-color:var(--accent)}
@@ -2654,16 +2701,51 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* ===== Tryouts (Seçmeler) — the pool outside the squad =====
    Candidates are not roster athletes: they have no season, no load, no wellness. They
    get their own window so nothing here can be mistaken for a signed player, and one
-   button — "Kadroya Aktar" — is the only door between the two. */
-.tryo-page{display:flex;flex-direction:column}
-/* The tab's own mark, in the pool's colour rather than the roster's blue — the two
-   screens look alike on purpose, and this is what says which one is open. */
-.rost-title-ic.tryo{background:linear-gradient(140deg,rgba(139,92,246,.24),rgba(236,72,153,.08));
-  border-color:rgba(139,92,246,.36);color:#c9b6ff}
+   button — "Kadroya Aktar" — is the only door between the two.
+
+   The screen is built on its own colour rather than the app's blue: violet is the pool,
+   and everything on this page that can be tinted is tinted from the one token below, so
+   a coach can tell at a glance that they are outside the squad. */
+.tryo-page{display:flex;flex-direction:column;
+  --tryo:#8b5cf6;--tryo-lt:#c9b6ff;--tryo-soft:rgba(139,92,246,.12);--tryo-ring:rgba(139,92,246,.38)}
+/* ---- the masthead: what this page is, and the funnel across it ---- */
+.tryo-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px 20px;
+  padding:18px 20px;margin-bottom:18px;border-radius:20px;border:1px solid var(--border);
+  background:linear-gradient(140deg,rgba(139,92,246,.14),rgba(236,72,153,.05) 46%,transparent 72%),var(--panel);
+  box-shadow:var(--shadow)}
+.tryo-head-l{display:flex;align-items:center;gap:15px;min-width:0}
+.tryo-mark{flex:none;width:48px;height:48px;border-radius:15px;display:grid;place-items:center;
+  background:var(--tryo-soft);border:1px solid var(--tryo-ring);color:var(--tryo-lt)}
+.tryo-h1{font-size:27px;font-weight:700;letter-spacing:-.022em;line-height:1.06;color:var(--text)}
+.tryo-h2{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5;max-width:64ch}
+.tryo-head-r{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.tryo-kpis{display:flex;gap:8px;flex-wrap:wrap}
+/* Four counts, one shape: the number leads, the word under it says which number it is. */
+.tryo-kpi{min-width:76px;padding:8px 13px;border-radius:13px;background:var(--elevated);
+  border:1px solid var(--border);text-align:center}
+.tryo-kpi b{display:block;font-size:19px;font-weight:700;line-height:1.1;letter-spacing:-.01em;color:var(--text)}
+.tryo-kpi i{display:block;font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:9.5px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.tryo-kpi.watch b{color:#fbbf24}
+.tryo-kpi.in b{color:#34d399}
+.tryo-head-btns{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* Adding a candidate is this page's own primary action, so it wears this page's colour
+   rather than the roster's blue gradient. */
+.tryo-add{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;
+  border:1px solid var(--tryo);background:var(--tryo);color:#fff;font-family:inherit;font-size:13px;
+  font-weight:700;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
+.tryo-add:hover{transform:translateY(-1px);background:#7c46f3;box-shadow:0 14px 30px -14px rgba(139,92,246,1)}
+@media(max-width:760px){
+  .tryo-head{padding:15px 15px}
+  .tryo-h1{font-size:22px}
+  .tryo-head-r{width:100%;justify-content:flex-start}
+}
 /* A page, not a modal: the list and the sheet share the screen's height instead of a
    window's, and the sheet scrolls on its own so the list stays put beside it. */
 .tryo-body{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;
-  min-height:0;height:calc(100dvh - 190px);min-height:560px}
+  min-height:0;height:calc(100dvh - 214px);min-height:560px}
+@media(max-width:900px){.tryo-body{grid-template-columns:minmax(0,1fr);height:auto}
+  .tryo-side{max-height:420px}.tryo-detail{overflow:visible}}
 .tryo-side{display:flex;flex-direction:column;min-height:0;background:var(--panel);
   border:1px solid var(--border);border-radius:16px;overflow:hidden}
 .tryo-side-top{padding:13px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
@@ -2708,7 +2790,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tryo-dhd-tx input.tryo-name{height:42px;font-size:20px;font-weight:700;font-family:inherit;letter-spacing:-.01em;
   background:none;border:1px solid transparent;border-radius:11px;padding:0 10px;margin-left:-10px}
 .tryo-dhd-tx input.tryo-name:hover{border-color:var(--border)}
-.tryo-dhd-tx input.tryo-name:focus{background:var(--bg2);border-color:var(--accent)}
+.tryo-dhd-tx input.tryo-name:focus{background:var(--bg2);border-color:var(--tryo)}
+.tryo-f input:focus,.tryo-f select:focus,.tryo-f textarea:focus,.tryo-side-top input:focus{
+  border-color:var(--tryo);box-shadow:0 0 0 3px var(--tryo-soft)}
+.tryo-fl.on{background:var(--tryo);border-color:var(--tryo);color:#fff}
 .tryo-dhd-a{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
 /* the star rating a coach leaves on a candidate */
 .tryo-rate{display:flex;align-items:center;gap:3px;margin-top:7px}
@@ -2727,6 +2812,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tryo-f input,.tryo-f select,.tryo-f textarea{height:40px;border-radius:10px;font-size:13px}
 .tryo-f textarea{height:auto;min-height:78px;padding:10px 12px;line-height:1.5}
 .tryo-f.wide{grid-column:1/-1}
+/* Strengths and To-Develop are the two halves of one judgement, so they get one half of
+   the row each — never a third of it, which is where auto-fit had left them once the
+   notes box claimed the full width below. */
+.tryo-verdict{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tryo-verdict .tryo-f.half{grid-column:span 1}
+.tryo-verdict .tryo-f textarea{min-height:118px}
+@media(max-width:700px){.tryo-verdict{grid-template-columns:minmax(0,1fr)}}
 /* a test field carries its unit inside the box */
 .tryo-t{position:relative}
 .tryo-t input{padding-right:42px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px}
@@ -2739,8 +2831,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tryo-statpick.on.watch{background:rgba(245,158,11,.18);border-color:#f59e0b;color:#fbbf24}
 .tryo-statpick.on.in{background:rgba(16,185,129,.18);border-color:#10b981;color:#34d399}
 .tryo-statpick.on.out{background:rgba(239,68,68,.16);border-color:#ef4444;color:#f87171}
-.tryo-sum{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}
-.tryo-sum-c{flex:1 1 128px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--panel)}
+.tryo-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:9px;margin-bottom:16px}
+.tryo-sum-c{padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--elevated)}
 .tryo-sum-l{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
 .tryo-sum-v{font-size:19px;font-weight:700;margin-top:5px;letter-spacing:-.01em}
 .tryo-sum-v small{font-size:11px;font-weight:600;color:var(--muted);margin-left:3px}
@@ -3691,91 +3783,49 @@ header{background:var(--bg2)!important}
 .iv-notes .h{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;flex:none}
 .iv-notes .t{font-size:12px;color:var(--text2);flex:1 1 240px;white-space:pre-wrap}
 .iv-card-body{border-top:1px solid var(--border);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.iv-cardtools{display:flex;gap:12px 14px;flex-wrap:wrap;align-items:flex-start;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:9px 12px}
-/* What the session IS — its title, when it runs, how long, and what it trains. Every
-   field is one label over one box, and the row aligns from the TOP: a native select, a
-   text input and the custom dropdown trigger are not naturally the same height, so
-   bottom-aligning them staggered the labels. Aligning to the top and then forcing one
-   shared control height lines both edges up. */
-.iv-meta-f{display:flex;flex-direction:column;gap:4px;font-size:9.5px;color:var(--dim);
-  text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace;
-  min-width:0;line-height:1.25;white-space:nowrap}
-/* The caption is a bare text node inside the label, so nowrap is set on the field and
-   taken back on the control: every label is one line, whatever its length, and no box
-   starts lower than its neighbour's because the caption above it wrapped. */
-.iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{white-space:normal}
-.iv-meta-f.nm{flex:2 1 260px}
-.iv-meta-f.tm{flex:0 0 110px}
-.iv-meta-f.pp{flex:1 1 190px}
-/* Training method stays on its own full-width row at the bottom of the strip: the list
-   it opens is the longest of the three, and its selection is the one most likely to run
-   to several names. */
-.iv-meta-f.wide{flex:1 1 100%}
-/* Focus and region answer one question — what this session TRAINS — so they travel as one
-   group, on a row of their own. Above them the row is what the session is CALLED, when it
-   runs and how hard it is meant to be; below it, training method. */
-.iv-meta-grp{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-start;flex:1 1 100%;min-width:0}
-.iv-meta-grp .iv-meta-f.pp{flex:1 1 190px}
-/* The identity row: the session's name, clock and length on the left, the Target RPE scale
-   on the right. `stretch` is what makes the two halves the same height — the left half is
-   two field-rows tall by construction, and the scale grows to match it, which is the height
-   it needs anyway to fit the readout, the rail and the 1-10 points. Below ~720px of card
-   the two halves stack and the scale keeps its own minimum. */
-.sess-idrow{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:stretch;flex:1 1 100%;min-width:0}
-.sess-idgrp{flex:1.1 1 330px;min-width:0;display:flex;flex-direction:column;gap:10px}
-.sess-idgrp .iv-meta-f.nm{flex:0 0 auto}
-.sess-idsub{display:flex;gap:12px 14px;flex-wrap:wrap;min-width:0}
-/* The clock and the length share the line under the title, one half each, rather than
-   sitting at a fixed 110px with dead space beside them. */
-.sess-idsub .iv-meta-f.tm{flex:1 1 120px}
-.iv-meta-f.rpe{flex:1 1 320px;min-width:0}
-.iv-meta-f input,.iv-meta-f select,.iv-meta-f .focus-trig{width:100%;min-width:0;height:34px;
-  font-size:12.5px;padding:5px 9px;border-radius:9px;color:var(--text)}
-.iv-meta-f select,.iv-meta-f .focus-trig{text-transform:none;letter-spacing:0;font-weight:500}
-.iv-meta-f.nm input{font-size:13.5px;font-weight:700}
-.iv-meta-f.tm input{font-family:'IBM Plex Mono',ui-monospace,monospace;text-align:center}
-/* The two custom dropdowns wear the same box as the fields beside them, so the strip
-   reads as one row of fields instead of three unrelated controls. The panels they open
-   keep their own styling. */
-.iv-meta-f .focus-trig{background:var(--bg2);border:1px solid var(--border2)}
-.iv-meta-f .focus-trig:hover,.iv-meta-f .focus-trig.open{border-color:var(--accent)}
-.iv-meta-f .focus-sel{width:100%;min-width:0}
-/* A meta box the coach has rewritten for this athlete is marked the same way a
-   changed exercise is — the sheet says at a glance what no longer matches the source. */
-.iv-meta-f.edited input{border-color:rgba(245,158,11,.5)}
 .iv-block{border:1px solid var(--border);border-radius:11px;overflow:hidden}
-/* A warm brass bar carries a block's title, so the seam between one block and the next is
-   a colour rather than one more shade of panel. It is a LIGHT surface — the only one in the
-   app — so everything standing on it is inked dark instead of light, and the few things
-   that have to keep their own colour (the kind badge, the assignment) are given a dark
-   backing to sit on. */
-:root{--blk-hd:#8c7d57;--blk-hd-ink:#191509;--blk-hd-ink2:rgba(25,21,9,.8);--blk-hd-ink3:rgba(25,21,9,.6)}
-.iv-block-hd{background:var(--blk-hd);padding:10px 13px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* A deep blue bar carries a block's title, so the seam between one block and the next is
+   a colour rather than one more shade of panel — and the block's name is the largest thing
+   on the editor, which is what a coach scans for when a session runs to four of them. */
+:root{--blk-hd:linear-gradient(102deg,#13395c 0%,#102a45 46%,#0d1c2d 100%);
+  --blk-hd-ink:#eef6ff;--blk-hd-ink2:rgba(226,239,255,.72);--blk-hd-ink3:rgba(226,239,255,.46);
+  --blk-hd-line:rgba(120,180,255,.22)}
+.iv-block-hd{background:var(--blk-hd);padding:12px 14px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--blk-hd-line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* The head is two things side by side: what the block IS (its kind, its name, what it
    holds — stacked on two lines) and what can be done to it. The actions used to ride on
    the second of those lines, which left them hanging off the bottom of a header twice
    their height; as their own column they sit centred against the whole block instead. */
 .iv-block-hdinfo{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px}
 .iv-block-hdtop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
-/* Everything that stood on the old dark bar in a dim grey now inks against the brass. */
+/* Everything on the bar inks against the deep blue it now carries. */
 .iv-block-hd .blk-grip{color:var(--blk-hd-ink3)}
 .iv-block-hd .iv-blockch{color:var(--blk-hd-ink)}
 .iv-block-hd .iv-blockcnt{color:var(--blk-hd-ink2)}
-/* The kind badge and the assignment keep the colours that MEAN something — S&C green,
-   ball orange, amber-to-green for the assignment — over a dark plate, because none of
-   them would read against the brass on their own. */
-.iv-block-hd .blk-kind,.iv-block-hd .btn.blk-assign{background:rgba(0,0,0,.55)}
-.iv-block-hd .btn.blk-assign:hover:not(:disabled){background:rgba(0,0,0,.72)}
-.iv-block-hd .btn.blk-assign.on,.iv-block-hd .btn.blk-assign.on:hover:not(:disabled){background:rgba(0,0,0,.55)}
+/* The kind badge and the action buttons sit on a bar dark enough to carry their own
+   colours now, so the black plate they used to need against the brass is gone. The kind
+   badge reads as the one solid chip on the row — it is what the block IS. */
+.iv-block-hd .blk-kind{font-size:10.5px;letter-spacing:.14em;padding:4px 9px;border-radius:7px}
+.iv-block-hd .blk-kind.sc{background:rgba(70,214,160,.18);border-color:rgba(70,214,160,.5)}
+.iv-block-hd .blk-kind.ball{background:rgba(255,159,67,.18);border-color:rgba(255,159,67,.5)}
+.iv-block-hd .btn.xs.sec{background:rgba(9,18,30,.5);border-color:rgba(150,196,255,.26);color:var(--blk-hd-ink2)}
+.iv-block-hd .btn.xs.sec:hover:not(:disabled){background:rgba(9,18,30,.75);border-color:rgba(150,196,255,.5);color:var(--blk-hd-ink)}
+/* Two of those buttons say something with their colour and must keep it: the assignment
+   (amber until the whole roster carries the block, green once it does) and Remove (red on
+   hover). They sit on the same dark plate as the rest, but the plate never recolours them. */
+.iv-block-hd .btn.xs.sec.blk-assign,.iv-block-hd .btn.xs.sec.blk-assign:hover:not(:disabled){
+  background:rgba(9,18,30,.55);border-color:#fcd34d;color:#fcd34d}
+.iv-block-hd .btn.xs.sec.blk-assign.on,.iv-block-hd .btn.xs.sec.blk-assign.on:hover:not(:disabled){
+  background:rgba(9,18,30,.55);border-color:#22c55e;color:#22c55e}
+.iv-block-hd .btn.xs.sec.iv-rmb:hover:not(:disabled){border-color:rgba(239,68,68,.55);color:#f87171}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:480px;background:transparent;border:1px solid transparent;border-radius:6px;
   padding:5px 9px;font-family:inherit;font-size:20px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em}
 .iv-block-nm::placeholder{color:var(--blk-hd-ink3)}
-.iv-block-nm:hover{border-color:rgba(25,21,9,.3)}
+.iv-block-nm:hover{border-color:rgba(160,205,255,.34)}
 .iv-block-nm:focus{background:var(--panel);border-color:var(--accent);color:var(--text);outline:none}
 .iv-block-nm:focus::placeholder{color:var(--dim)}
-.iv-block-nm.edited{color:var(--blk-hd-ink);border-color:rgba(120,70,0,.6)}
+.iv-block-nm.edited{color:var(--blk-hd-ink);border-color:rgba(252,211,77,.65)}
 .iv-blocktag{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--accent);background:var(--accent-bg);border:1px solid rgba(0,148,255,.3);border-radius:4px;padding:1px 6px}
 /* The block's actions — add, clone, save as a template, the two prints, remove. Six
@@ -3806,9 +3856,9 @@ header{background:var(--bg2)!important}
 .blk-details-b{padding:0 13px 13px;display:flex;flex-direction:column;gap:12px}
 /* Both halves already sit inside the block card, so they drop their own frames
    rather than drawing a box inside a box; a rule separates them instead. */
-.blk-details-b>.ath-pick,.blk-details-b>.iv-cardtools.sess-tools{
-  background:transparent;border:none;border-radius:0;padding:0;margin:0}
-.blk-details-b>.ath-pick+.iv-cardtools.sess-tools{border-top:1px solid var(--border);padding-top:12px}
+.blk-details-b>.ath-pick{background:transparent;border:none;border-radius:0;padding:0;margin:0}
+.blk-details-b>.sess-cards{margin:0}
+.blk-details-b>.ath-pick+.sess-cards{border-top:1px solid var(--border);padding-top:13px}
 .blk-assign{white-space:nowrap}
 /* Assignment reads at a glance: amber while the practice still has to be assigned,
    green once the whole roster carries it. */
@@ -3981,8 +4031,69 @@ header{background:var(--bg2)!important}
 .rpe-gauge-scale span{position:absolute;top:0;transform:translateX(-50%);line-height:1;
   transition:color .18s,opacity .18s;opacity:.75}
 .rpe-gauge-scale span.on{color:var(--rpe-c);opacity:1;font-weight:700}
-/* The session's own line sits above the blocks, like the individualization card's. */
-.sess-tools{margin-bottom:12px}
+/* Inside the card the gauge is the card's whole subject, so it drops the tinted plate it
+   wears when it is one field among several and stands on the card's own surface. */
+.sess-card .rpe-gauge{padding:0;background:none;border:none;gap:12px}
+.sess-card .rpe-gauge-val{font-size:32px;letter-spacing:-.02em}
+.sess-card .rpe-gauge-val-max{font-size:13px;margin-left:4px}
+.sess-card .rpe-gauge-rail{height:10px}
+.sess-card .rpe-gauge-thumb{width:17px;height:17px}
+.sess-card .rpe-gauge-scale{height:13px;font-size:10.5px}
+
+/* ---- The training details, as two cards -----------------------------------
+   Everything a coach FILLS IN on the left, the one thing they SET on the right. The two
+   are different acts — typing a name and a clock against dragging a scale — and they had
+   been reading as one undifferentiated strip of boxes. Each card names itself and says in
+   a line what it is for, so the panel explains itself to a coach opening it for the first
+   time. Below ~900px of card they stack, which is the width at which the form's own two
+   columns collapse anyway. */
+.sess-cards{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:14px;margin-bottom:12px}
+@media(max-width:900px){.sess-cards{grid-template-columns:minmax(0,1fr)}}
+.sess-card{border:1px solid var(--border);border-radius:14px;background:var(--panel);
+  display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.sess-card-h{display:flex;align-items:center;gap:12px;padding:13px 15px;
+  border-bottom:1px solid var(--border);background:var(--elevated)}
+.sess-card-ic{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center}
+.sess-card-ic.basics{background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2)}
+.sess-card-ic.rpe{background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.34);color:#eab308}
+.sess-card-ht{min-width:0;display:flex;flex-direction:column;gap:3px}
+.sess-card-ht b{font-size:14.5px;font-weight:700;letter-spacing:-.008em;color:var(--text);line-height:1.15}
+.sess-card-ht span{font-size:11.5px;color:var(--dim);line-height:1.35}
+/* The band the target sits in, at the head of the intensity card. */
+.sess-zone{margin-left:auto;flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 11px;border-radius:8px;
+  border:1px solid transparent;transition:color .18s,background .18s,border-color .18s}
+.sess-card-b{padding:15px;display:flex;flex-direction:column;gap:14px;flex:1;min-width:0}
+/* The form: two fields to a row, each one its caption beside its box. A caption over a
+   box would have made this card twice as tall as the one next to it for no gain — these
+   are short, known labels, not questions. */
+.sess-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 16px;align-content:start}
+@media(max-width:640px){.sess-form{grid-template-columns:minmax(0,1fr)}}
+.sf-row{display:grid;grid-template-columns:104px minmax(0,1fr);align-items:center;gap:12px;min-width:0;margin:0}
+.sf-row.wide{grid-column:1/-1}
+.sf-l{font-size:12px;font-weight:600;color:var(--muted);line-height:1.25}
+.sf-in,.sf-row select{width:100%;min-width:0;height:40px;font-size:13px;padding:0 11px;border-radius:10px;
+  color:var(--text)}
+.sf-in.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.sf-row.wide .sf-in{font-weight:600}
+.sf-in-wrap{min-width:0}
+/* The two custom dropdowns wear the same box as the native fields beside them, so the
+   card reads as one form rather than three unrelated controls. */
+.sf-in-wrap .focus-trig{width:100%;min-width:0;height:40px;font-size:13px;padding:0 11px;border-radius:10px;
+  background:var(--bg2);border:1px solid var(--border2);color:var(--text);font-weight:500}
+.sf-in-wrap .focus-trig:hover,.sf-in-wrap .focus-trig.open{border-color:var(--accent)}
+.sf-in-wrap .focus-sel{width:100%;min-width:0}
+/* A length carries its unit inside the box, the way the test fields do. */
+.sf-unit{position:relative;min-width:0}
+.sf-unit input{padding-right:38px}
+.sf-unit i{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;
+  font-size:11px;color:var(--dim);pointer-events:none}
+/* What the number above actually means, for the coach meeting it for the first time. */
+.sess-note-i{display:flex;gap:11px;padding:12px 13px;border-radius:11px;margin-top:auto;
+  background:var(--accent-bg);border:1px solid rgba(0,148,255,.22)}
+.sess-note-i .ic{flex:none;color:var(--accent2);display:grid;place-items:center;padding-top:1px}
+.sess-note-i b{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:3px}
+.sess-note-i p{margin:0;font-size:11.5px;line-height:1.5;color:var(--dim)}
 /* The bar's title is click-to-edit: it reads as text until it is clicked, then wears the
    same type in an input so the name never appears to move or change size. */
 .sbar-nm{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;color:var(--text);
@@ -5135,6 +5246,8 @@ const TEST_ICONS={
   card:['M3 6.4h18v11.2H3z','M3 10.4h18','M7 14.4h4'],
   search:['M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z','M20.4 20.4l-4.4-4.4'],
   arrow:['M5 12h13','M13.4 6.4L19 12l-5.6 5.6'],
+  target:['M12 20.8a8.8 8.8 0 1 0 0-17.6 8.8 8.8 0 0 0 0 17.6z','M12 16.4a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8z','M12 13.4a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8z'],
+  info:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M12 11v5.4','M12 7.6h.01'],
 };
 const TIc=({k,size})=>{const p=TEST_ICONS[k]||TEST_ICONS.beaker;const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{p.map((d,i)=><path key={i} d={d}/>)}</svg>);};
@@ -7781,8 +7894,8 @@ function AthletePicker({athletes,selected,onChange}){
   const toggle=id=>{const a=sel.has(id)?(selected||[]).filter(x=>x!==id):[...(selected||[]),id];onChange(a);};
   return(<div className="ath-pick">
     <div className="ath-pick-head">
-      <strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{L('Katılan Sporcular','Participating Athletes')}</strong>
-      <span className="tag">{(selected||[]).length} / {athletes.length}</span>
+      <strong className="ath-pick-t">{L('Katılan Sporcular','Participating Athletes')}</strong>
+      <span className="ath-pick-n">{(selected||[]).length} / {athletes.length}</span>
       <span style={{flex:1}}/>
       <button className="btn xs sec" onClick={()=>onChange(athletes.map(a=>a.id))}>{L('Tümünü seç','Select all')}</button>
       <button className="btn xs sec" onClick={()=>onChange([])}>{L('Temizle','Clear')}</button>
@@ -7795,7 +7908,9 @@ function AthletePicker({athletes,selected,onChange}){
         </label>
       ))}
     </div>
-    <div className="help" style={{marginTop:8}}>Checked athletes get this block copied to their personal calendar automatically — each block of a session is ticked on its own, so the guards and the forwards can be given different work on the same day. Their personal sRPE &amp; AU are preserved across edits.</div>
+    <div className="help" style={{marginTop:8}}>{L(
+      'Seçilen sporcular bu bloğun kişisel takvimlerine otomatik olarak eklenir. Her blok bağımsız olarak işaretlenir, bu sayede gardlar ve forvetlere aynı gün farklı çalışmalar verilebilir. Sporcuların kişisel sRPE ve AU değerleri düzenlemeler boyunca korunur.',
+      'Checked athletes get this block copied to their personal calendar automatically — each block of a session is ticked on its own, so the guards and the forwards can be given different work on the same day. Their personal sRPE & AU are preserved across edits.')}</div>
   </div>);
 }
 
@@ -12089,6 +12204,36 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // card uses, so the two screens can never show different numbers for the same week. ----
   const weekMonoV=useMemo(()=>teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart]);
   const weekMonoZ=monoZoneOf(weekMonoV);
+  /* ---- What the week ADDS UP TO, read once at the top of it -------------------
+     Seven columns say what happens on each day; none of them says what the week is.
+     These five do, and every one of them is read off the same numbers the columns and
+     Load Monitoring already draw, so no card here can disagree with the grid under it. */
+  const weekSum=useMemo(()=>{
+    const at=d=>Math.round(teamDaily[fmt(d)]||0);
+    let load=0,prev=0;
+    for(let i=0;i<7;i++){load+=at(addD(weekStart,i));prev+=at(addD(weekStart,i-7));}
+    // How many sessions, and which kind: a session carrying a ball block is court work.
+    let court=0,floor=0;
+    const rpes=[];
+    for(let i=0;i<7;i++){
+      const k=fmt(addD(weekStart,i));
+      ((days[k]||{}).sessions||[]).forEach(ss=>{
+        if((ss.blocks||[]).some(b=>blkKind(b)==='ball'))court++;else floor++;
+      });
+      const r=teamMode?teamDayRPE(athletes,k):null;
+      if(r!=null)rpes.push(r);
+    }
+    const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
+    return{load,prev,
+      delta:prev>0?Math.round((load-prev)/prev*100):null,
+      court,floor,sessions:court+floor,rpe};
+  },[days,athletes,teamDaily,weekStart,teamMode]);
+  /* The planned band is 5-7: under it the week is too easy to adapt to, over it the squad
+     is being asked for more than a week of training should ask. */
+  const rpeBand=weekSum.rpe==null?{t:L('Veri yok','No data'),c:'var(--dim)'}
+    :weekSum.rpe<5?{t:L('Düşük','Low'),c:'#3b82f6'}
+    :weekSum.rpe<=7?{t:L('Normal','Normal'),c:'#22c55e'}
+    :{t:L('Yüksek','High'),c:'#f97316'};
   // ---- Month view (grid) — same single card, toggled from the header ----
   const yr=monthRef.getFullYear(),mo=monthRef.getMonth();
   const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
@@ -12103,33 +12248,78 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     return a;})();
   const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
   return(<>
-  <h2 style={{fontSize:22,fontWeight:800,letterSpacing:'-.02em',marginBottom:14,color:'var(--text)'}}>{L('Takvim','Calendar')}</h2>
+  {/* The page says what it is for, and carries the controls that move it, on one line —
+      the title used to stand alone above a bar that repeated it. */}
+  <div className="cal-head">
+    <div className="cal-head-t">
+      <h2>{L('Takvim','Calendar')}</h2>
+      <p>{L('Antrenmanlarını planla, takip et, gelişimi gör.','Plan the training, follow it, watch it develop.')}</p>
+    </div>
+    <div className="calm-ctrl">
+      <div className="calm-seg">
+        <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>{L('Hafta','Week')}</button>
+        <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>{L('Ay','Month')}</button>
+      </div>
+      {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title={L('Haftalık plan çıktısı (A4 yatay)','Weekly plan export (A4 landscape)')}>⎙ {L('Haftayı yazdır','Print week')}</button>}
+      <div className="calm-nav">
+        <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title={L('Geri','Back')}>‹</button>
+        <button className="td" onClick={goToday}>{L('Bugün','Today')}</button>
+        <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title={L('İleri','Forward')}>›</button>
+      </div>
+    </div>
+  </div>
   <div className="panel">
-    <div className="calm-bar">
-      <div className="calm-ttl"><span>{L('Program Bloğu','Program Block')}</span><em>{calMode==='week'?L('haftalık görünüm','weekly overview'):L('aylık görünüm','monthly overview')}</em></div>
-      <div className="calm-ctrl">
-        <div className="calm-seg">
-          <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>{L('Hafta','Week')}</button>
-          <button className={calMode==='month'?'on':''} onClick={()=>setCalMode('month')}>{L('Ay','Month')}</button>
-        </div>
-        {canEdit&&calMode==='week'&&<button className="btn sec sm" onClick={printWeek} title={L('Haftalık plan çıktısı (A4 yatay)','Weekly plan export (A4 landscape)')}>⎙ {L('Haftayı yazdır','Print week')}</button>}
-        <div className="calm-nav">
-          <button onClick={()=>calMode==='week'?setWeek(-1):setMo(-1)} title={L('Geri','Back')}>‹</button>
-          <button className="td" onClick={goToday}>{L('Bugün','Today')}</button>
-          <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title={L('İleri','Forward')}>›</button>
-        </div>
-      </div>
-    </div>
     {calMode==='week'?<>
-    <div className="calm-month">{fmtRange()}</div>
-    <div className="calw-topline">
-      {canEdit?<div className="calw-hint">{L(<>Bir seansı başka güne sürükle · bırakırken <strong>Ctrl/⌥</strong>'ye bas → kopyalar</>,<>Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</>)}</div>:<span/>}
-      <div className="calw-mono" title={L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
-        <span className="k">{L('Takım monotonluğu','Team monotony')}</span>
-        <b style={{color:weekMonoZ.c}}>{weekMonoV?weekMonoV.toFixed(2):'—'}</b>
-        <span className="z" style={{color:weekMonoZ.dot}}><i style={{background:weekMonoZ.dot}}/>{exLabel(weekMonoZ.t)}</span>
+    {/* The week in five numbers, before the seven columns that make them up. */}
+    <div className="calw-stats">
+      <div className="cws">
+        <span className="cws-ic blue"><TIc k="cal" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Program Bloğu','Program Block')}</div>
+          <div className="cws-v range">{fmtRange()}</div>
+          <div className="cws-s">{L('Haftalık görünüm','Weekly overview')}</div>
+        </div>
+      </div>
+      <div className="cws">
+        <span className="cws-ic blue"><TIc k="chart" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Toplam Yük','Total Load')}</div>
+          <div className="cws-v">{weekSum.load}<small>AU</small>
+            {weekSum.delta!=null&&<em className={weekSum.delta>=0?'up':'down'}
+              title={L('Önceki haftanın toplam takım yüküne göre değişim','Change against the previous week\'s total team load')}>
+              {weekSum.delta>=0?'↑':'↓'} %{Math.abs(weekSum.delta)}</em>}
+          </div>
+          <div className="cws-s">{L('Önceki haftaya göre','Against the previous week')}</div>
+        </div>
+      </div>
+      <div className="cws">
+        <span className="cws-ic violet"><TIc k="list" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Toplam Seans','Total Sessions')}</div>
+          <div className="cws-v">{weekSum.sessions}</div>
+          <div className="cws-s">{L(`${weekSum.floor} antrenman + ${weekSum.court} saha`,`${weekSum.floor} training + ${weekSum.court} court`)}</div>
+        </div>
+      </div>
+      <div className="cws">
+        <span className="cws-ic green"><TIc k="up" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Ortalama RPE','Average RPE')}</div>
+          <div className="cws-v">{weekSum.rpe!=null?weekSum.rpe.toFixed(1):'—'}
+            <em className="band" style={{color:rpeBand.c,borderColor:rpeBand.c}}>{rpeBand.t}</em></div>
+          <div className="cws-s">{L('Hedef aralık: 5–7','Target band: 5–7')}</div>
+        </div>
+      </div>
+      <div className="cws" title={L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
+        <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
+        <div className="cws-tx">
+          <div className="cws-k">{L('Takım Monotonluğu','Team Monotony')}</div>
+          <div className="cws-v">{weekMonoV?weekMonoV.toFixed(2):'—'}
+            <em className="band" style={{color:weekMonoZ.dot,borderColor:weekMonoZ.dot}}>{exLabel(weekMonoZ.t)}</em></div>
+          <div className="cws-s">{L('Hedef aralık: < 1.50','Target band: < 1.50')}</div>
+        </div>
       </div>
     </div>
+    {canEdit&&<div className="calw-hint">{L(<>Bir seansı başka güne sürükle · bırakırken <strong>Ctrl/⌥</strong>'ye bas → kopyalar</>,<>Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</>)}</div>}
     <div className="calw-grid">
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
@@ -12155,7 +12345,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           onDragLeave={()=>{if(dragOverDate===k)setDragOverDate(null);}}
           onDrop={e=>{e.preventDefault();if(canEdit&&dragInfo){moveOrCopy(dragInfo.fromDate,dragInfo.sessionId,k,e.ctrlKey||e.metaKey||e.altKey);}setDragInfo(null);setDragOverDate(null);}}>
           <div className="dh">
-            <span>{DN[i]} {d.getDate()}</span>
+            {/* The weekday leads and the date sits under it: the column is scanned by day
+                name first, and a date squeezed onto the same line made both harder to
+                read at seven columns wide. */}
+            <span className="dh-d"><b>{DN[i]}</b><i>{d.getDate()} {MN[d.getMonth()]}</i></span>
             <span className="dh-acts">
               {/* Only while a training is on the clipboard — it is the paste half of the
                   session view's "Copy the Training". */}
@@ -12175,7 +12368,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                 <em>{'S&C RPE'}</em><b style={{color:rpeColor(dayRpeSC)||'var(--dim)'}}>{dayRpeSC!=null?dayRpeSC.toFixed(1):'—'}</b>
               </span>
               <span className="cav" title={L('Bu gün için takım ortalaması top antrenmanı RPE\'si (0–10)','Team average ball practice RPE for this day (0–10)')}>
-                <em>{'BALL PRACTICE'}</em><b style={{color:rpeColor(dayRpeTP)||'var(--dim)'}}>{dayRpeTP!=null?dayRpeTP.toFixed(1):'—'}</b>
+                <em>{L('Top Antrenmanı','Ball Practice')}</em><b style={{color:rpeColor(dayRpeTP)||'var(--dim)'}}>{dayRpeTP!=null?dayRpeTP.toFixed(1):'—'}</b>
               </span>
               {dayRpeGM!=null&&<span className="cav" title={L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
                 <em>{L('MAÇ RPE','MATCH RPE')}</em><b style={{color:rpeColor(dayRpeGM)||'var(--dim)'}}>{dayRpeGM.toFixed(1)}</b>
@@ -12184,10 +12377,17 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
             </span>}
             <span className="cav" title={L('Bu günün wellness check-in\'lerinden takım ortalama hazır oluşu (0–5)','Team average readiness from this day\'s wellness check-ins (0–5)')}>
-              <em>RDN</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
+              <em>{L('Hazır Oluş','Readiness')}</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
             </span>
           </div>
-          {ss.length===0&&<div className="calw-empty">{L('dinlenme','rest')}</div>}
+          {ss.length===0&&<div className="calw-empty">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 18V8"/><path d="M3 12h18v6"/><path d="M21 18v-4a3 3 0 0 0-3-3h-7"/>
+              <path d="M6.8 8.6a1.9 1.9 0 1 0 0 3.4"/>
+            </svg>
+            <span>{L('Dinlenme','Rest')}</span>
+          </div>}
           {ss.map(s=>{
             const _hov=hovSes===s.id;
             /* The same answer the session's own strip gives — read off its exercises, with
@@ -12232,7 +12432,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           })}
           {/* The day's team load — the same value Load Monitoring's Team Load Trend plots. */}
           {dayAU>0&&<div className="calw-daytot">
-            <div className="dtrow" title={L('Yük Takibi → Takım Yük Trendi\'ndeki günlük yük','The daily load from Load Monitoring → Team Load Trend')}><span>{L('Günlük','Daily')}</span><b>{dayAU} AU</b></div>
+            <div className="dtrow" title={L('Yük Takibi → Takım Yük Trendi\'ndeki günlük yük','The daily load from Load Monitoring → Team Load Trend')}><span>{L('Günlük Yük','Daily Load')}</span><b>{dayAU} AU</b></div>
           </div>}
         </div>);
       })}
@@ -13002,80 +13202,111 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
       {showPicker&&<AthletePicker athletes={athletes}
         selected={block?blkAthIds(session,block):(session.athletes||[])}
         onChange={ids=>{if(block&&athUpd)athUpd(ids);else u({athletes:ids});}}/>}
-      <div className="iv-cardtools sess-tools">
-        {/* Top row, two halves. On the left, everything that identifies the session as an
-            entry in the diary — what it is called, when it runs, how long it lasts; those
-            three are one thought and were reading as three unrelated fields strung across
-            the strip. On the right, the intensity target, which now gets a half of the row
-            to itself: it is a scale to be dragged, not a box to be typed in, and squeezed
-            in beside the clock fields it had neither the width to be read nor the height to
-            show the 1-10 points under it. (The target is not the actual / logged sRPE
-            further down, which only exists once the session has happened.) */}
-        <div className="sess-idrow">
-          <div className="sess-idgrp">
+      {/* What the block IS, written as two cards rather than one strip of loose boxes.
+          The left card is everything a coach fills in — the block's name, when it runs,
+          how long, what it trains and how it is trained; each field wears its caption
+          beside it, so the card reads as a form instead of a row of unlabelled boxes.
+          The right card is the one thing that is not filled in but SET: the intensity
+          the session is planned at, which is a scale to be dragged and needs the room
+          to be one. (The target is not the actual / logged sRPE further down, which only
+          exists once the session has happened.) */}
+      <div className="sess-cards">
+        <section className="sess-card">
+          <header className="sess-card-h">
+            <span className="sess-card-ic basics"><TIc k="grid" size={19}/></span>
+            <div className="sess-card-ht">
+              <b>{L('Temel Bilgiler','Basic Details')}</b>
+              <span>{L('Antrenman bloğunun temel ayarlarını yapın.','Set this training block up.')}</span>
+            </div>
+          </header>
+          <div className="sess-card-b sess-form">
             {/* The block's own title, not the session's. Left empty it shows the session
                 heading as its placeholder and the block carries that; typed into, this
                 block says something different from the heading and from every other
                 block — which is the whole point of blocks that stand apart. */}
-            <label className="iv-meta-f nm">{block?L('blok başlığı','block title'):L('seans','session')}
-              <LiveInput value={block?(block.sesName||''):session.name}
+            <label className="sf-row wide">
+              <span className="sf-l">{block?L('Blok Başlığı','Block Title'):L('Seans Başlığı','Session Title')}</span>
+              <LiveInput className="sf-in" value={block?(block.sesName||''):session.name}
                 onChange={v=>{if(block&&blockUpd)blockUpd({sesName:v});else u({name:v});}}
                 title={block?L('Bu bloğun kendi başlığı — boş bırakılırsa seans başlığı kullanılır','This block’s own title — left empty it uses the session heading'):L('Seans başlığı','Session title')}
                 placeholder={block?((session.name||'').trim()||L('Seans başlığı…','Session title…')):L('Seans başlığı…','Session title…')}/>
             </label>
-            <div className="sess-idsub">
-              {!isTemplate&&<label className="iv-meta-f tm">{L('saat','time')}
-                <input type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
-              </label>}
-              <label className="iv-meta-f tm">{L('süre','duration')}
-                {/* Emptying the box has to leave it empty. Coercing a blank field back to 0
-                    on every keystroke pinned a 0 in front of the caret that could not be
-                    deleted — you could only type to the right of it. So '' is kept as its
-                    own value (as the drawer's duration box already does) and only read as
-                    0 where a number is needed. */}
-                <input type="number" min="0" value={session.duration??''} title={L('Süre (dk)','Duration (min)')}
+            {!isTemplate&&<label className="sf-row">
+              <span className="sf-l">{L('Saat','Time')}</span>
+              <input className="sf-in mono" type="time" value={session.time} onChange={e=>u({time:e.target.value})}/>
+            </label>}
+            <label className="sf-row">
+              <span className="sf-l">{L('Süre','Duration')}</span>
+              {/* Emptying the box has to leave it empty. Coercing a blank field back to 0
+                  on every keystroke pinned a 0 in front of the caret that could not be
+                  deleted — you could only type to the right of it. So '' is kept as its
+                  own value (as the drawer's duration box already does) and only read as
+                  0 where a number is needed. */}
+              <span className="sf-unit">
+                <input className="sf-in mono" type="number" min="0" value={session.duration??''} title={L('Süre (dk)','Duration (min)')}
                   onChange={e=>{const raw=e.target.value.replace(/^0+(?=\d)/,'');if(raw!==e.target.value)e.target.value=raw;const d=raw===''?'':Math.max(0,Number(raw));const upd={duration:d};if(!session.auManual&&session.sRPE!=='')upd.au=Math.round(Number(session.sRPE)*(Number(d)||0));u(upd);}}/>
-              </label>
+                <i>{L('dk','min')}</i>
+              </span>
+            </label>
+            {/* One field, two stages — the focus, then the capacity inside it. HOW the
+                session is trained is not asked here: that is Training Method below,
+                which has asked it all along. `purpose` keeps carrying the answer as
+                text: it is the legacy single-value field the printout and older saved
+                sessions still read. */}
+            <div className="sf-row">
+              <span className="sf-l">{L('Seans Odağı','Session Focus')}</span>
+              <div className="sf-in-wrap">
+                <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)}
+                  onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
+                  onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/>
+              </div>
+            </div>
+            <div className="sf-row">
+              <span className="sf-l">{L('Hedef Bölge','Target Region')}</span>
+              <select className="sf-in" value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
+                <option value="">{L('Bölge seç…','Select region…')}</option>
+                {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
+              </select>
+            </div>
+            {/* Training method keeps a row of its own — the list it opens is the longest
+                of the three. The assistant sits at the end of it, where the coach is
+                already looking when deciding what this session is made of; it only
+                appears where there is one athlete to read. */}
+            <div className="sf-row wide">
+              <span className="sf-l">{L('Antrenman Metodu','Training Method')}</span>
+              <div className="sf-in-wrap iv-mrow">
+                <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
+                {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
+              </div>
             </div>
           </div>
-          <div className="iv-meta-f rpe">{L('hedef rpe','target rpe')}
-            <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})}/>
+        </section>
+        <section className="sess-card">
+          <header className="sess-card-h">
+            <span className="sess-card-ic rpe"><TIc k="target" size={19}/></span>
+            <div className="sess-card-ht">
+              <b>{L('Hedef Yoğunluk (RPE)','Target Intensity (RPE)')}</b>
+              <span>{L('Bu blok için hedef RPE aralığını belirleyin.','Set the target RPE band for this block.')}</span>
+            </div>
+            {/* The band the target lands in, named at the head of the card rather than
+                beside the number — the card IS the intensity, so its heading can say
+                how hard it is. */}
+            {(()=>{const z=rpeZone(sesRpeTarget(session));
+              return<span className="sess-zone" style={{color:z.c,background:z.soft,borderColor:z.ring}}>{L(z.tr,z.en)}</span>;})()}
+          </header>
+          <div className="sess-card-b">
+            <RpeGauge value={session.rpeTarget} onChange={v=>u({rpeTarget:v})} hideZone/>
+            <div className="sess-note-i">
+              <span className="ic"><TIc k="info" size={16}/></span>
+              <div><b>{L('Bilgi','What this is')}</b>
+                <p>{L('Hedef RPE aralığı, antrenmanın beklenen yoğunluk seviyesini belirtir. Sporcuların antrenman sonrası vereceği sRPE değerleriyle karşılaştırılır.',
+                  'The target RPE band states the intensity this training is planned at. It is read against the sRPE the athletes give after the session.')}</p></div>
+            </div>
           </div>
-        </div>
-        {/* Focus and region answer the next question — what this session TRAINS — so they
-            travel as their own row under the identity one. The pickers keep their own
-            dropdowns and wear the meta box's border, so the row still reads as one strip of
-            fields rather than two different controls. */}
-        <div className="iv-meta-grp">
-          {/* One field, two stages — the focus, then the capacity inside it. HOW the session
-              is trained is not asked here: that is the Training Method box at the foot of
-              this panel, which has asked it all along. `purpose` keeps carrying the answer
-              as text: it is the legacy single-value field the printout and older saved
-              sessions still read. */}
-          <div className="iv-meta-f pp">{L('seans odağı','session focus')}
-            <FocusSelect value={sesFocus(session)} sub={sesSubFocus(session)}
-              onChange={arr=>u({focus:arr,purpose:[...arr,...sesSubFocus(session)].join(', ')})}
-              onSubChange={arr=>u({sub:arr,purpose:[...sesFocus(session),...arr].join(', ')})}/>
-          </div>
-          <div className="iv-meta-f pp">{L('bölge','region')}
-            <select value={sesRegion(session)} onChange={e=>u({region:e.target.value})}>
-              <option value="">{L('Bölge seç…','Select region…')}</option>
-              {SESSION_REGIONS.map(r=><option key={r} value={r}>{exLabel(r)}</option>)}
-            </select>
-          </div>
-        </div>
-        {/* Training method keeps the row; the assistant sits at the end of it, where the
-            coach is already looking when deciding what this session is made of. It only
-            appears where there is one athlete to read — the individualization card. */}
-        <div className="iv-meta-f wide">{L('antrenman metodu','training method')}
-          <div className="iv-mrow">
-            <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
-            {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
-          </div>
-        </div>
-        {/* Last in the panel, so it sits directly on top of the exercises it is read from. */}
-        <TrainStrip block={block} session={session} u={u} isTemplate={isTemplate}/>
+        </section>
       </div>
+      {/* Last in the panel, so it sits directly on top of the exercises it is read from. */}
+      <TrainStrip block={block} session={session} u={u} isTemplate={isTemplate}/>
     </div>}
   </div>);
 }
@@ -14237,7 +14468,7 @@ function MethodSelect({value,onChange,placeholder,counts}){
    in colours the box, the band, the marker and the words. Pointer events cover mouse, pen
    and touch in one path — capture is taken on pointerdown, so the drag survives the pointer
    leaving the box — and arrow keys step whole points for anyone not using one. */
-function RpeGauge({value,onChange}){
+function RpeGauge({value,onChange,hideZone}){
   const railRef=useRef(null);
   const dragging=useRef(false);
   /* Raw, unrounded position (1-10) while a drag is live; null the rest of the time, which
@@ -14296,8 +14527,10 @@ function RpeGauge({value,onChange}){
   const bLo=Math.max(1,at-1),bHi=Math.min(10,at+1);
   return(<div className={`rpe-gauge${raw==null?'':' drag'}`} style={{'--rpe-c':z.c,'--rpe-soft':z.soft,'--rpe-ring':z.ring}}>
     <div className="rpe-gauge-read">
-      <span className="rpe-gauge-val">{`${lo}-${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
-      <span className="rpe-gauge-zone">{L(z.tr,z.en)}</span>
+      <span className="rpe-gauge-val">{`${lo} - ${hi}`}<span className="rpe-gauge-val-max">/10</span></span>
+      {/* The band's name is dropped here when the card around the gauge already carries
+          it in its heading — saying it twice, a centimetre apart, said it neither time. */}
+      {!hideZone&&<span className="rpe-gauge-zone">{L(z.tr,z.en)}</span>}
     </div>
     {/* The drag surface is the full height of this strip, not the 8px rail inside it: a
         marker this size is easy to miss by a few pixels vertically, and missing it should
@@ -18778,18 +19011,30 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const filterOn=ageMin!==''||ageMax!==''||flt!=='all'||q.trim()!=='';
 
   return(<div className="tryo-page">
-    <div className="rost-head">
-      <div className="rost-title">
-        <div className="rost-title-ic tryo">{NAV_ICONS.tryouts}</div>
-        <div>
-          <div className="rh-t">{Lx('Seçmeler','Tryouts')}</div>
-          <div className="rh-s">{list.length} {Lx('aday','candidates')} · {counts.watch||0} {Lx('izleniyor','watching')} · {counts.in||0} {Lx('kabul','accepted')}
-            {ages.length?` · ${Math.min(...ages)}–${Math.max(...ages)} ${Lx('yaş','yrs')}`:''}</div>
+    {/* The pool's own masthead — not the roster's. The squad screen counts athletes a
+        season is written for; this one counts decisions still open, so the four numbers
+        across the top are the funnel itself: who came, who is being watched, who is in,
+        and the age band the whole pool spans. */}
+    <div className="tryo-head">
+      <div className="tryo-head-l">
+        <div className="tryo-mark">{NAV_ICONS.tryouts}</div>
+        <div style={{minWidth:0}}>
+          <div className="tryo-h1">{Lx('Seçmeler','Tryouts')}</div>
+          <div className="tryo-h2">{Lx('Kadronun dışındaki havuz — denemeye gelen her sporcu, kararı verilene kadar burada durur.',
+            'The pool outside the squad — every trialling athlete stays here until the call is made.')}</div>
         </div>
       </div>
-      <div className="rost-tools">
-        <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>⤓ CSV</button>
-        <button className="rost-add" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
+      <div className="tryo-head-r">
+        <div className="tryo-kpis">
+          <div className="tryo-kpi"><b>{list.length}</b><i>{Lx('aday','candidates')}</i></div>
+          <div className="tryo-kpi watch"><b>{counts.watch||0}</b><i>{Lx('izleniyor','watching')}</i></div>
+          <div className="tryo-kpi in"><b>{counts.in||0}</b><i>{Lx('kabul','accepted')}</i></div>
+          <div className="tryo-kpi"><b>{ages.length?`${Math.min(...ages)}–${Math.max(...ages)}`:'—'}</b><i>{Lx('yaş','yrs')}</i></div>
+        </div>
+        <div className="tryo-head-btns">
+          <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>⤓ CSV</button>
+          <button className="tryo-add" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
+        </div>
       </div>
     </div>
     <div className="tryo-body">
@@ -18861,7 +19106,7 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                 <select value={moveTo} onChange={e=>setMoveTo(e.target.value)} aria-label={Lx('Hedef takım','Destination team')}>
                   {teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
                 </select>
-                <button className="btn sm" onClick={promote}>{Lx('Kadroya Aktar','Move to Roster')} →</button>
+                <button className="btn sm white" onClick={promote}>{Lx('Kadroya Aktar','Move to Roster')} →</button>
               </div>
               <button className="btn sm danger" onClick={()=>del(cur.id)}>✕</button>
             </div>
@@ -18903,8 +19148,6 @@ function TryoutsView({data,setData,teams,activeTeamId}){
               {field(Lx('Şehir','City'),cur.city,v=>updT({city:v}))}
               {field(Lx('Okul','School'),cur.school,v=>updT({school:v}))}
               {field(Lx('Önceki Kulüp','Previous Club'),cur.prevClub,v=>updT({prevClub:v}))}
-              {field(Lx('Veli Adı','Guardian'),cur.guardian,v=>updT({guardian:v}))}
-              {field(Lx('Veli Telefonu','Guardian Phone'),cur.guardianPhone,v=>updT({guardianPhone:v}))}
             </div></div>
           </div>
 
@@ -18922,6 +19165,9 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                   <span className="tryo-t-u">cm</span>
                 </div>
               </React.Fragment>)}
+              {/* The one number that gets the family on the phone, beside the family it
+                  belongs to rather than stranded at the foot of the personal details. */}
+              {field(Lx('Veli Telefonu','Guardian Phone'),cur.guardianPhone,v=>updT({guardianPhone:v}))}
             </div></div>
           </div>
 
@@ -19003,11 +19249,11 @@ function TryoutsView({data,setData,teams,activeTeamId}){
                   <input type="date" value={cur.date||''} onChange={e=>updT({date:e.target.value})}/></div>
                 {field(Lx('Değerlendiren','Evaluated By'),cur.scout,v=>updT({scout:v}))}
               </div>
-              <div className="tryo-fields">
-                <div className="tryo-f"><label className="tryo-lbl good">{Lx('Güçlü Yönler','Strengths')}</label>
+              <div className="tryo-fields tryo-verdict">
+                <div className="tryo-f half"><label className="tryo-lbl good">{Lx('Güçlü Yönler','Strengths')}</label>
                   <textarea value={cur.strengths||''} onChange={e=>updT({strengths:e.target.value})}
                     placeholder={Lx('Örn. patlayıcı ilk adım, oyun okuması iyi…','e.g. explosive first step, reads the game well…')}/></div>
-                <div className="tryo-f"><label className="tryo-lbl work">{Lx('Gelişim Alanları','To Develop')}</label>
+                <div className="tryo-f half"><label className="tryo-lbl work">{Lx('Gelişim Alanları','To Develop')}</label>
                   <textarea value={cur.weaknesses||''} onChange={e=>updT({weaknesses:e.target.value})}
                     placeholder={Lx('Örn. sol el bitiriciliği, gövde stabilitesi…','e.g. left-hand finishing, trunk stability…')}/></div>
                 <div className="tryo-f wide"><label>{Lx('Notlar','Notes')}</label>
@@ -19170,9 +19416,7 @@ function EvaluationView({team,updateTeam,data,setData}){
         <div className="ev2-stat">
           <span className="ev2-stat-ic"><TIc k="cal" size={17}/></span>
           <div><div className="ev2-stat-v">{seasonLabel}</div>
-            <select value={period} onChange={e=>setPeriod(e.target.value)}>
-              {TEST_PERIODS.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}
-            </select></div>
+            <div className="ev2-stat-l">{Lx('Sezon','Season')}</div></div>
         </div>
         <div className="ev2-stat">
           <span className="ev2-stat-ic"><TIc k="users" size={17}/></span>
@@ -21320,7 +21564,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
      at the top — so the order is a control rather than a decision made for them. */
   const[sort,setSort]=useState('number');
   const[mode,setMode]=useState('grid');
-  const[page,setPage]=useState(1);
   const searchRef=useRef(null);
   /* Which half of the roster is being read. The athletes' own tools — search, position
      filter, add — belong to their list alone, so they travel with the tab rather than
@@ -21336,8 +21579,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
     if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
     setTab('athletes');setSel(focus.athleteId);setFocusTab(focus.tab||'wellness');
   },[focus,team.id]);
-  // A filter that shortens the list must not leave the coach stranded on page 3.
-  useEffect(()=>{setPage(1);},[q,filter,sort,tab]);
   /* ⌘K / Ctrl-K jumps to the search box — the roster is the one screen in the app
      long enough that finding a name by scrolling is the slow way. */
   useEffect(()=>{
@@ -21401,10 +21642,10 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
   // it is drawn against: the bars then compare athletes to each other, which is the
   // only comparison that means anything here.
   const maxL7=Math.max(1,...rows.map(r=>r.l7||0));
-  const PER_PAGE=12;
-  const pages=Math.max(1,Math.ceil(sorted.length/PER_PAGE));
-  const pg=Math.min(page,pages);
-  const list=sorted.slice((pg-1)*PER_PAGE,pg*PER_PAGE);
+  /* The whole squad on one screen. A roster is read as a group — who is fit, who is
+     loaded, who has not checked in — and a page break through the middle of it hid half
+     the answer behind a button. */
+  const list=sorted;
   /* The one word on the card. An injured athlete is called injured whatever their load
      says; otherwise the verdict is read off ACWR, where >1.5 is the ratio the load
      alerts already treat as risk and 1.3 is the top of the optimal band. */
@@ -21548,12 +21789,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,focus}){
     })}</div>}
     {sorted.length>0&&<div className="rost-foot">
       <div className="rost-foot-c">{L(`${sorted.length} sporcu listeleniyor`,`Showing ${sorted.length} athletes`)}</div>
-      {pages>1&&<div className="rost-pager">
-        <button onClick={()=>setPage(pg-1)} disabled={pg<=1} aria-label={L('Önceki','Previous')}>‹</button>
-        {Array.from({length:pages},(_,n)=>n+1).map(n=>
-          <button key={n} className={n===pg?'on':''} onClick={()=>setPage(n)}>{n}</button>)}
-        <button onClick={()=>setPage(pg+1)} disabled={pg>=pages} aria-label={L('Sonraki','Next')}>›</button>
-      </div>}
     </div>}
     </>}
   </div>);
@@ -25521,11 +25756,11 @@ function IndivAthleteCard({plan,calendar,open,setOpen}){
         {plan.painNote&&!plan.painNote.quoted&&(plan.painNote.regions||[]).map(g=>
           <span key={'g'+g.region} className="iv-painchip" style={painChipStyle(g.sev)}
             title={L(`Ağrı bildirimi · ${fd(plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`,
-                     `Pain report · ${fd(plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`)}>🩹 {g.region}</span>)}
+                     `Pain report · ${fd(plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`)}>{g.region}</span>)}
         {(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>
           <span key={'p'+p.tag} className="iv-painchip" style={painChipStyle(p.sev)}
             title={L(`Günlük check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`,
-                     `Daily check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`)}>🩹 {ctLabel(p.tag)}</span>)}
+                     `Daily check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`)}>{ctLabel(p.tag)}</span>)}
         <span className="iv-dchip" title={L(`Dünkü seans RPE'si (${fd(plan.prev.date)}) — sporcunun kendi puanı`,`Yesterday's session RPE (${fd(plan.prev.date)}) — the athlete's own rating`)}>
           <i>{L('dün rpe','yest. rpe')}</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
         </span>
