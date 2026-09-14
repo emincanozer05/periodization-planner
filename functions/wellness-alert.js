@@ -182,10 +182,20 @@ function buildNotification(sub, teamName, lang) {
   return { title: t.title, body: parts.join(' | ') };
 }
 
-/* Uyarı kaydının gövdesi — alert dokümanına yazılan her şey (Madde 11).
+/* Gönderim kaydının gövdesi — `wellness_alerts` dokümanına yazılan her şey (Madde 11).
    Bildirimin kendisi bundan türetiliyor ama kayıt çok daha fazlasını taşıyor:
    bildirim silinince de koç uyarıyı ekranda bulabilmeli, ve Notification Center /
-   analitik / filtreleme gibi ileride gelecek şeylerin dayanacağı yer burası. */
+   analitik / filtreleme gibi ileride gelecek şeylerin dayanacağı yer burası.
+
+   KAYIT ARTIK HER GÖNDERİM İÇİN YAZILIYOR — yalnızca eşiği aşanlar için değil.
+   Sebebi sahadan geldi: 17 sporcu formu doldurduğu sabah koç ekranda 6 kişi
+   görüyordu, çünkü kalan 11'i kriteri aşmadığı için hiçbir yere yazılmıyordu.
+   "Bugün kim doldurdu, kim doldurmadı" sorusunun cevabı hiçbir ekranda yoktu ve
+   eksik kayıt "bildirim gelmedi" gibi okunuyordu.
+
+   Kriter kalktı demek değil: `flagged` alanı hâlâ o kriteri taşıyor ve PUSH
+   bildirimi yalnızca flagged kayıtlar için gidiyor (functions/index.js). Ekran
+   günün tamamını gösteriyor, telefon yalnızca ilgilenilmesi gerekenleri çalıyor. */
 function buildAlertRecord(sub, teamName) {
   const p = (sub && sub.payload) || {};
   const pain = painBySeverity(p);
@@ -205,6 +215,11 @@ function buildAlertRecord(sub, teamName) {
     painHigh: pain[3],
     painModerate: pain[2],
     reasons: alertReasons(p),
+    /* Bu gönderim uyarı kriterini karşılıyor mu. Ekran bunu renk ve sıralama için,
+       sunucu da "push atılacak mı" kararı için okuyor. Kriteri KARŞILAMAYAN kayıtta
+       `reasons` boş kalıyor — ikisi aynı şeyi söylüyor ama alan ayrı duruyor, çünkü
+       ileride bir sebep eklendiğinde ekranın mantığı değişmesin. */
+    flagged: shouldAlert(p),
   };
 }
 

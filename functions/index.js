@@ -2,10 +2,11 @@
    CoachOS — sunucu tarafı
 
    Tek iş var: sporcu wellness formunu gönderip `checkins` koleksiyonuna doküman
-   düştüğünde, gönderim uyarı kriterlerini karşılıyorsa
-     1) o sporcuya ait BİR uyarı kaydı oluşturmak,
-     2) kaydı, o sporcuyla ilgili ekip üyelerinin telefonlarına push bildirimi
-        olarak göndermek.
+   düştüğünde,
+     1) o gönderim için BİR kayıt oluşturmak — kriteri aşsın aşmasın, çünkü koçun
+        ekranı "bugün kim doldurdu" sorusunu da cevaplamak zorunda,
+     2) kayıt uyarı kriterini aşıyorsa (`flagged`), o sporcuyla ilgili ekip
+        üyelerinin telefonlarına push bildirimi göndermek.
 
    Neden burada, istemcide değil: uyarının kime gideceği kararı ve gönderimin
    kendisi koçun tarayıcısına bırakılamaz. Koç uygulamayı kapatmışsa uyarı hiç
@@ -69,16 +70,27 @@ exports.wellnessAlert = functions
       functions.logger.warn('wellness: eksik kimlik alanları, uyarı atlandı', { checkinId });
       return null;
     }
-    if (!shouldAlert(sub.payload || {})) {
-      functions.logger.info('wellness: kriter karşılanmadı, uyarı yok', { checkinId });
-      return null;
-    }
+
+    /* ── Kriter: KAYDI DEĞİL, BİLDİRİMİ belirliyor ────────────────────────
+       Burada eskiden kriteri karşılamayan gönderim hemen dönüyordu: ne kayıt
+       yazılıyordu ne de bir iz kalıyordu. Sahadaki karşılığı şuydu — 17 sporcunun
+       formu doldurduğu bir sabah koç ekranda 6 kişi görüyor, kalan 11'in forma hiç
+       dokunup dokunmadığını hiçbir yerden bilemiyordu. Eksik kayıt "bildirim
+       gelmedi" gibi okunuyordu, oysa gönderim gelmişti.
+
+       Artık HER wellness gönderimi kaydediliyor; `flagged` alanı kriteri taşıyor.
+       PUSH yalnızca flagged gönderimler için gidiyor: ekran günün tamamını
+       gösteriyor, telefon yalnızca ilgilenilmesi gerekeni çalıyor. */
+    const flagged = shouldAlert(sub.payload || {});
 
     /* ── Çift gönderim koruması (Madde 13, Test 14) ───────────────────────
        Gönderimden ÖNCE dokümanı bir işlem (transaction) içinde sahipleniyoruz.
        Aynı olay ikinci kez işlenirse damga zaten duruyor olacağı için ikinci
        çalışma hiç bildirim atmadan çıkar. Damgayı gönderimden sonra atmak, iki
-       çalışmanın aynı anda gönderim yapmasına kapı bırakırdı. */
+       çalışmanın aynı anda gönderim yapmasına kapı bırakırdı.
+
+       Damga artık kriteri karşılamayan gönderimlere de basılıyor: onlar da bir
+       doküman yazıyor ve o yazımın da tek olması gerekiyor. */
     const ref = snap.ref;
     const claimed = await claimForAlert(db(), ref, now);
     if (!claimed) {
@@ -121,7 +133,14 @@ exports.wellnessAlert = functions
       checkinId,
       submittedAt: sub.at || null,
       createdAt: now(),
-      notificationStatus: 'pending',
+      // Kriteri karşılamayan gönderimde gönderilecek bir bildirim yok; durum bunu
+      // 'failed' ile karıştırılmayacak biçimde söylüyor.
+      notificationStatus: flagged ? 'pending' : 'not_flagged',
+      /* Aynı sporcunun aynı günkü İKİNCİ gönderimi bu dokümanın üstüne yazıyor
+         (ad sporcu+tarihten türüyor). Sabah kriteri aşan bir gönderim yapıp
+         öğleden sonra düzelten sporcunun kaydında, artık gönderilmeyen bir
+         bildirimin alıcı listesi kalmasın: kriter düştüyse liste de düşüyor. */
+      ...(flagged ? {} : { recipients: [], unreachable: [] }),
       // "Bildirim neden gelmedi" sorusunun uygulamadan okunabilir cevabı (Madde 21).
       rosterPublished: rosterFound,
       v: 1,
@@ -132,6 +151,17 @@ exports.wellnessAlert = functions
       functions.logger.error('wellness: uyarı kaydı yazılamadı', { checkinId, alertId, error: String(err) });
       // Kayıt yazılamasa da bildirim denenmeye devam ediyor: koçun sabah haberi
       // olması, kaydın arşivlenmesinden daha acil.
+    }
+
+    /* Kriteri karşılamayan gönderim burada bitiyor: kaydı yazıldı, ekranda görünecek,
+       ama kimsenin telefonu çalmayacak. Cihaz listesi bile okunmuyor — okunacak bir
+       sebep yok ve her sabah 17 gereksiz sorgu demek olurdu. */
+    if (!flagged) {
+      await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
+      functions.logger.info('wellness: gönderim kaydedildi, kriter karşılanmadı — bildirim yok', {
+        checkinId, alertId, athleteId: sub.athleteId, date: sub.date,
+      });
+      return null;
     }
 
     /* ── Alıcılar ─────────────────────────────────────────────────────────

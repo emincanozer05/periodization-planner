@@ -2,11 +2,15 @@
    CoachOS — arka plan bildirimleri (service worker)
 
    Sekme kapalıyken gelen wellness uyarısını telefonun bildirim alanına düşüren
-   parça. Uygulamanın geri kalanını hiç ilgilendirmiyor: burada ne önbellek var ne
-   çevrimdışı mantığı — CoachOS'un kendi çevrimdışı çalışması Firestore'un
-   IndexedDB kalıcılığıyla zaten hallediliyor ve bir "cache-first" worker, tek
-   dosyalık 1.9 MB'lık uygulamanın güncellenmesini bozardı. Bu worker YALNIZCA
-   bildirim taşıyor.
+   parça. Uygulamanın kendisi (index.html) bu worker'dan hiç etkilenmiyor: aşağıdaki
+   `fetch` dinleyicisi ona dokunmuyor ve hiçbir isteğini önbelleğe almıyor —
+   CoachOS'un çevrimdışı çalışması Firestore'un IndexedDB kalıcılığıyla zaten
+   hallediliyor ve bir "cache-first" worker, tek dosyalık 1.9 MB'lık uygulamanın
+   güncellenmesini bozardı.
+
+   İki iş yapıyor: (1) bildirim taşımak, (2) uyarı sayfasının (alerts.html) ana
+   ekrana kurulabilmesini sağlamak — tarayıcı bunun için kapsamda `fetch` dinleyen
+   bir worker arıyor. İkincisinin kapsamı bilerek o sayfayla sınırlı.
 
    Dosyanın KÖK dizinde durması zorunlu: bir service worker yalnızca kendi
    dizininin ve altının kapsamını alabiliyor, bildirimin ise sitenin tamamına
@@ -103,9 +107,68 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
+/* ── Kurulabilirlik: bir `fetch` dinleyicisi ───────────────────────────────
+   Tarayıcı bir sayfayı ancak kapsamında `fetch` olayını dinleyen ETKİN bir
+   service worker varken "yüklenebilir uygulama" sayıyor. Bu worker bugüne kadar
+   yalnızca bildirim dinliyordu; alerts.html'in ana ekrana eklenememesinin —
+   Chrome'un "Uygulamayı yükle" seçeneğini hiç göstermemesinin — iki sebebinden
+   biri buydu (öteki manifestteki yanlış simge ölçüleri).
+
+   Dinleyici KASITLI OLARAK neredeyse hiçbir şey yapmıyor. Uygulama tek dosyalık
+   ~1.9 MB'lık bir index.html ve onu önbelleğe almak, koçun eline günlerce eski bir
+   sürüm bırakırdı; o yüzden burada `respondWith` ÇAĞRILMIYOR — çağrılmayan istek
+   tarayıcının kendi yoluna, yani ağa gidiyor ve hiçbir şey değişmiyor.
+
+   Tek istisna, uyarı sayfasının çevrimdışı açılışı: ana ekrandan açılan bir
+   uygulamanın ağ yokken bembeyaz bir hata sayfası göstermesi, kurulumun kendisini
+   anlamsız kılıyor. Onun için ÖNCE AĞ denenip yanıt bir kopya olarak saklanıyor;
+   yalnızca ağ tamamen yoksa saklanan kopya veriliyor. Yani sayfa her zaman
+   sunucudaki sürüm, kopya da sadece bir emniyet kemeri. */
+const SHELL = 'coachos-alerts-v1';
+const SHELL_FILES = ['alerts.html', 'alerts.webmanifest', 'logo-wordmark.png',
+                     'logo-mark.png', 'icon-192.png', 'icon-512.png'];
+
+function isShell(url) {
+  // Yalnızca worker'ın KENDİ dizinindeki uyarı sayfası ve süsleri. index.html
+  // ve check-in formları bu listeye asla girmiyor.
+  if (url.origin !== self.location.origin) return false;
+  const dir = self.location.pathname.replace(/[^/]*$/, '');
+  if (!url.pathname.startsWith(dir)) return false;
+  return SHELL_FILES.indexOf(url.pathname.slice(dir.length)) >= 0;
+}
+
+self.addEventListener('fetch', event => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  let url;
+  try { url = new URL(req.url); } catch (e) { return; }
+  if (!isShell(url)) return;                 // geri kalan her istek ağa, dokunulmadan
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req);
+      // Kopya sessizce tazeleniyor; başarısız olması isteği etkilemiyor.
+      try { const c = await caches.open(SHELL); await c.put(req, fresh.clone()); } catch (e) {}
+      return fresh;
+    } catch (e) {
+      const hit = await caches.match(req, { cacheName: SHELL, ignoreSearch: true });
+      if (hit) return hit;
+      throw e;
+    }
+  })());
+});
+
 /* Yeni worker'ın beklemeden devreye girmesi. Bildirim taşıyan bir worker'da
    "eski sürüm açık sekme kapanana kadar beklesin" davranışının bir faydası yok;
    aksine, uyarı biçimi değiştiğinde koçun telefonunda günlerce eski worker
    kalabiliyor. */
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil((async () => {
+  // Eski sürümlerden kalan kabuk kopyaları temizleniyor; adları sürümle birlikte
+  // değiştiği için bu, "eski bir uyarı sayfası geri geldi" ihtimalini kapatıyor.
+  try {
+    const names = await caches.keys();
+    await Promise.all(names.filter(n => n.startsWith('coachos-alerts-') && n !== SHELL)
+      .map(n => caches.delete(n)));
+  } catch (e) {}
+  await self.clients.claim();
+})()));
