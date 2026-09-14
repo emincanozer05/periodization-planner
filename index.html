@@ -354,7 +354,6 @@ nav{
   /* Wide tables scroll horizontally instead of breaking the layout */
   main table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* Slightly tighter headings & cards */
-  .rost-head .rh-t{font-size:21px}
   .ex-h1{font-size:22px}
   .ap-head{padding:15px;gap:14px}
   .ap-stats{width:100%}
@@ -2238,15 +2237,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* ===== Roster (Athletes) ===== */
 .rost-head{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px}
 .rost-head:empty{display:none;margin:0}
-/* The title block carries a mark of its own so the page announces itself the way the
-   rest of the workspace does — an icon tile, the name, and the one line of arithmetic
-   (how many, on which squad) a coach checks before reading any card. */
-.rost-title{display:flex;align-items:center;gap:14px;min-width:0}
-.rost-title-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
-  background:linear-gradient(140deg,rgba(0,148,255,.22),rgba(0,148,255,.06));
-  border:1px solid rgba(0,148,255,.30);color:var(--accent2)}
-.rost-head .rh-t{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.1}
-.rost-head .rh-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);margin-top:4px}
 .rost-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 /* The search box says which key opens it, because a roster of thirty is scrolled far
    more often than it is read top to bottom. */
@@ -2269,30 +2259,34 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rost-view button:hover{color:var(--text)}
 .rost-view button.on{background:var(--accent);color:#fff}
 .rost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:16px}
-.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px 16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
+.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:44px 20px 16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
 .rc:hover{transform:translateY(-3px);border-color:var(--border2)}
-.rc-num{position:absolute;top:40px;right:20px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
-.rc-del{position:absolute;top:14px;right:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
+/* The shirt number is a watermark, so it sits BESIDE the name rather than above it —
+   the top-right corner belongs to the verdict now. */
+.rc-num{position:absolute;top:52px;right:20px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
+.rc-del{position:absolute;top:13px;left:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
 .rc:hover .rc-del{opacity:1}
 .rc-del:hover{border-color:var(--high-t);color:var(--high-t);background:rgba(239,68,68,.12)}
 /* The load verdict, read off ACWR: the one word a coach wants before the numbers. */
-.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:11px;font-weight:700;
-  letter-spacing:.01em;padding:4px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:9.5px;font-weight:700;
+  letter-spacing:.02em;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
 .rc-badge.ok{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.34);color:#34d399}
 .rc-badge.mid{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.34);color:#fbbf24}
 .rc-badge.hi{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.45);color:#fbbf24}
 .rc-badge.na{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.26);color:#cbd5e1}
 .rc-badge.inj{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.34);color:#f87171}
-.rc-badgerow{display:flex;align-items:center;gap:8px;min-height:26px;padding-right:40px;margin-bottom:12px}
+/* The verdict, top right — the first thing read on the card and out of the way of
+   everything else on it. The card's own top padding is the room it sits in. */
+.rc-badgerow{position:absolute;top:13px;right:16px;z-index:2;display:flex;align-items:center;gap:8px;margin:0;padding:0}
 .rc-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 /* A squad photo is a PORTRAIT, and a portrait is a rectangle: a circle crops the
    shoulders off every player and leaves seventeen heads floating in a grid. Square
    (softened just enough not to fight the cards' own corners) keeps the frame the
    camera took. Only the ATHLETE's photo changes — staff avatars stay round, which is
    what keeps the two apart at a glance. */
-.rc-av{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:23px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
+.rc-av{width:92px;height:92px;border-radius:16px;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:28px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
 .rc-av.warn{border-color:#f59e0b}.rc-av.bad{border-color:#f43f5e}.rc-av.na{border-color:var(--border2)}
-.rc-av img{width:100%;height:100%;object-fit:cover;border-radius:11px}
+.rc-av img{width:100%;height:100%;object-fit:cover;border-radius:13px}
 .rc-id{min-width:0;padding-right:52px}
 .rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word;text-transform:uppercase}
 .rc-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
@@ -4547,6 +4541,40 @@ header{background:var(--bg2)!important}
   font-family:'IBM Plex Mono',ui-monospace,monospace}
 .tt-sum strong{font-size:16px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
 
+/* ===== Competition Dates =====
+   A folded panel with a count on its head, opening onto one row per fixture: the date
+   and the event on the left, where and what it counted for in the middle, the score at
+   the end. A row the calendar wrote says so instead of offering a Remove button that
+   would be undone on the next sync. */
+.cmp-panel{padding-bottom:16px}
+.cmp-h{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:none;background:none;
+  color:var(--text);font-family:inherit;cursor:pointer;text-align:left}
+.cmp-h i{font-style:normal;font-size:10px;color:var(--dim);width:12px;flex:none}
+.cmp-h b{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.cmp-h:hover b{color:var(--accent2)}
+.cmp-count{margin-left:auto;display:flex;align-items:baseline;gap:9px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:11px;color:var(--text2)}
+.cmp-count em{font-style:normal;color:var(--dim)}
+.cmp-b{margin-top:14px}
+.cmp-list{display:flex;flex-direction:column;gap:8px}
+.cmp-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:11px 13px;border-radius:12px;
+  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
+.cmp-row:hover{border-color:var(--border2)}
+.cmp-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cmp-f label{margin:0;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.cmp-f.date{flex:0 0 150px}
+.cmp-f.grow{flex:1 1 150px}
+.cmp-f.score{flex:0 0 118px}
+.cmp-f.act{flex:0 0 auto;margin-left:auto}
+.cmp-f input,.cmp-f select{height:34px;padding:0 10px;font-size:12.5px;border-radius:9px}
+.cmp-score{display:flex;align-items:center;gap:6px}
+.cmp-score input{width:44px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
+.cmp-score span{color:var(--dim)}
+.cmp-auto{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border:1px solid var(--border2);
+  border-radius:7px;padding:5px 9px;white-space:nowrap}
+@media(max-width:620px){.cmp-f.date,.cmp-f.score{flex:1 1 100%}.cmp-f.act{margin-left:0}}
+
 /* ===== Check-in Forms =====
    Two links to hand out and one day's answers. Nothing here is decorated: a form is a
    link and an answer is a number, and both read better as words than as a pictogram. */
@@ -4903,13 +4931,20 @@ const FOCUS_TREE=[
   {id:'Movement', tr:'Hareket', c:'#38bdf8',
    sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception']},
   {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
-   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage','Competition']},
+   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage']},
   {id:'Recovery', tr:'Toparlanma', c:'#00bfff',
    sub:['Active Recovery','Regeneration','Soft Tissue','Breathing / Parasympathetic','Mobility Flow']},
   {id:'Return to Play', tr:'Sahaya Dönüş', c:'#2dd4a7',
    sub:['Reconditioning','Load Reintroduction','Return to Run','Return to Train','Return to Perform','Criteria-Based Progression']},
   {id:'Testing', tr:'Test', c:'#94a3b8',
    sub:['Anthropometry','Strength Testing','Power / Jump Testing','Speed Testing','Aerobic Testing','Movement Screen','Asymmetry Profiling']},
+  /* A match is not a capacity trained inside a practice — it is what the practices are
+     for, it is the day the season is cut around, and it is the one session type the
+     Season screen keeps a list of. So it is a focus of its own rather than a sub-focus
+     buried under Technical / Tactical, and ticking it writes the day into the season's
+     Competition Dates. */
+  {id:'Competition', tr:'Müsabaka', c:'#ef4444',
+   sub:['League Match','Cup Match','Tournament','Friendly','Practice Game']},
 ];
 const SESSION_FOCUS=FOCUS_TREE.map(f=>f.id);
 const FOCUS_BY=FOCUS_TREE.reduce((m,f)=>(m[f.id]=f,m),{});
@@ -4927,7 +4962,7 @@ const FOCUS_L1_FROM_LEGACY={
   'Speed':'Speed','Acceleration':'Speed','Deceleration':'Speed','Change of Direction':'Speed','Agility':'Speed',
   'Conditioning':'Conditioning','Mobility':'Movement','Stability':'Movement','Injury Prevention':'Movement',
   'Movement Quality':'Movement','COD / Agility':'Speed',
-  'Technical':'Technical / Tactical','Tactical':'Technical / Tactical','Competition':'Technical / Tactical',
+  'Technical':'Technical / Tactical','Tactical':'Technical / Tactical','Competition':'Competition',
   'Recovery':'Recovery','Assessment':'Testing','Return to Play':'Return to Play','Testing':'Testing',
 };
 const FOCUS_SUB_FROM_LEGACY={
@@ -4935,7 +4970,43 @@ const FOCUS_SUB_FROM_LEGACY={
   'Deceleration':'Deceleration','Change of Direction':'Change of Direction','Agility':'Reactive Agility',
   'COD / Agility':'Change of Direction','Mobility':'Mobility','Stability':'Stability',
   'Injury Prevention':'Injury Prevention','Movement Quality':'Movement Quality',
-  'Technical':'Individual Skill','Tactical':'Team Offense','Competition':'Competition',
+  'Technical':'Individual Skill','Tactical':'Team Offense',
+};
+/* A match ticked in the session editor IS a fixture. The Season screen's Competition
+   Dates list used to be typed a second time by hand, next to a calendar that already knew
+   which days were matches; it is written from the calendar now. Every session whose focus
+   is Competition owns one row, keyed by the session's id, so a match that is moved moves
+   its row and a session that is deleted or re-focused takes its row with it. What the
+   coach types INTO the row — venue, competition, score, a renamed event — survives every
+   resync; only the date follows the session. */
+const compRowsFromDays=days=>{
+  const out=[];
+  Object.values(days||{}).forEach(d=>{
+    if(!d||!d.date)return;
+    (d.sessions||[]).forEach(ses=>{
+      if(!ses||!sesFocus(ses).includes('Competition'))return;
+      out.push({srcId:String(ses.id||''),date:d.date,name:(ses.name||'').trim()||'Competition'});
+    });
+  });
+  return out;
+};
+const syncCompetitions=(list,days)=>{
+  const prev=Array.isArray(list)?list:[];
+  const byId={};prev.forEach(c=>{if(c&&c.srcId)byId[c.srcId]=c;});
+  const auto=compRowsFromDays(days).filter(a=>a.srcId).map(a=>{
+    const ex=byId[a.srcId];
+    return ex?{...ex,date:a.date}:{...a};
+  });
+  return[...prev.filter(c=>c&&!c.srcId),...auto]
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+};
+/* Matches already played: a fixture whose day has passed, or one a score was written on.
+   A season's fixture list holds what is still to come as well, and "how many did we play"
+   is not the length of that list. */
+const compPlayedCount=list=>{
+  const tk=fmt(today);
+  return(Array.isArray(list)?list:[]).filter(c=>c&&((c.date&&c.date<=tk)
+    ||String(c.scoreFor||'').trim()!==''||String(c.scoreAgainst||'').trim()!=='')).length;
 };
 /* Old single-value "purpose" values → new multi-select session focus values */
 const LEGACY_FOCUS_MAP={'Fundamental Strength':['Strength'],'Maximal Strength':['Strength'],'Hypertrophy':['Hypertrophy'],'Power':['Power'],'Speed & Agility':['Speed','Agility'],'Aerobic Endurance':['Conditioning'],'Anaerobic Capacity':['Conditioning'],'Technical':['Technical'],'Ball Practice':['Technical'],'Team Practice':['Technical'],'Game Day':['Competition'],'Recovery':['Recovery'],'Mobility':['Mobility']};
@@ -5158,7 +5229,7 @@ const SPRESETS=[
   {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
   {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
   {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Competition',focus:['Technical / Tactical'],sub:['Competition'],duration:90,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
   {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -10270,6 +10341,8 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
+  // The fixture list is a long read-only-most-of-the-time list, so it opens folded.
+  const[compOpen,setCompOpen]=useState(false);
   /* Picking a week focus also writes that focus's volume/intensity profile, so the two
      numbers stay in step with the choice without the coach touching them. */
   const setWeekFocus=(k,f)=>{const w=team.weekOverrides[k]||{},fl=FOCUS_LOAD[f];
@@ -10345,6 +10418,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   };
   const activeSeason=seasons.find(sn=>sn.id===activeId);
   const heroYears=seasonYears(s)||seasonName(team,activeSeason);
+  const compPlayed=compPlayedCount(s.competitions);
   return(<div>
     <PageHero title={L('Sezon','Season')}
       sub={L(`Makrosiklüsü kur ve sezonu haftalara böl · ${team.setup.teamName}`,
@@ -10457,13 +10531,55 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
         <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
     </div>
-    <div className="panel"><h2>{L('Müsabaka Tarihleri','Competition Dates')}</h2>
-      <table><thead><tr><th>{L('Tarih (gg/aa/yyyy)','Date (dd/mm/yyyy)')}</th><th>{L('Etkinlik','Event')}</th><th style={{width:90}}></th></tr></thead><tbody>
-        {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
-          <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
-          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button></td></tr>)}
-      </tbody></table>
-      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ {L('Müsabaka ekle','Add competition')}</button>
+    {/* The fixture list. Most of it writes itself — a session ticked Competition in the
+        session editor lands here on its own — so the panel opens folded: it is a long
+        list a coach checks rather than a form they fill in. What is typed here is what
+        the calendar cannot know: where it was played, which league or cup it counted
+        for, and how it ended. */}
+    <div className="panel cmp-panel">
+      <button type="button" className={'cmp-h'+(compOpen?' on':'')} onClick={()=>setCompOpen(o=>!o)}>
+        <i>{compOpen?'▼':'▶'}</i>
+        <b>{L('Müsabaka Tarihleri','Competition Dates')}</b>
+        <span className="cmp-count">{L(`${compPlayed} oynandı`,`${compPlayed} played`)}
+          <em>{L(`${s.competitions.length} maç`,`${s.competitions.length} fixtures`)}</em></span>
+      </button>
+      {compOpen&&<div className="cmp-b">
+        {s.competitions.length===0
+          ?<div className="empty-st">{L('Henüz müsabaka yok — takvimde bir seansın odağını Müsabaka yap, gün buraya kendiliğinden düşsün; ya da aşağıdan elle ekle.',
+              'No fixtures yet — set a session\'s focus to Competition on the calendar and the day lands here by itself, or add one by hand below.')}</div>
+          :<div className="cmp-list">
+            {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
+              <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
+                <DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></div>
+              <div className="cmp-f grow"><label>{L('Etkinlik / rakip','Event / opponent')}</label>
+                <input value={c.name||''} onChange={e=>uc(i,'name',e.target.value)}/></div>
+              <div className="cmp-f grow"><label>{L('Lig / turnuva','League / tournament')}</label>
+                <input value={c.comp||''} placeholder={L('ör. U16 Bölgesel Lig','e.g. U16 Regional League')}
+                  onChange={e=>uc(i,'comp',e.target.value)}/></div>
+              <div className="cmp-f grow"><label>{L('Konum','Location')}</label>
+                <input value={c.location||''} placeholder={L('salon / şehir','venue / city')}
+                  onChange={e=>uc(i,'location',e.target.value)}/></div>
+              <div className="cmp-f score"><label>{L('Skor','Score')}</label>
+                <div className="cmp-score">
+                  <input inputMode="numeric" value={c.scoreFor??''} aria-label={L('Bizim skorumuz','Our score')}
+                    onChange={e=>uc(i,'scoreFor',e.target.value)}/>
+                  <span>–</span>
+                  <input inputMode="numeric" value={c.scoreAgainst??''} aria-label={L('Rakip skoru','Opponent score')}
+                    onChange={e=>uc(i,'scoreAgainst',e.target.value)}/>
+                </div>
+              </div>
+              <div className="cmp-f act">
+                {c.srcId
+                  ?<span className="cmp-auto" title={L('Bu satır takvimdeki müsabaka seansından geliyor — seansı sil ya da odağını değiştir, satır da gitsin.',
+                      'This row comes from a Competition session on the calendar — delete that session or change its focus and the row goes with it.')}>{L('Takvimden','From calendar')}</span>
+                  :<button className="btn xs danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button>}
+              </div>
+            </div>)}
+          </div>}
+        <button className="btn sec sm" style={{marginTop:12}}
+          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
+          {L('Müsabaka ekle','Add competition')}</button>
+      </div>}
     </div>
     <div className="panel"><h2>{L('Haftalık Yük Hedefleri','Weekly Load Targets')}</h2>
       <div className="help" style={{marginBottom:14}}>{L('Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.','Pick the week\'s focus — volume and intensity adjust automatically to match · taper weeks are flagged with an ⚠ badge.')}</div>
@@ -15340,6 +15456,7 @@ const TPL_CATS=[
   {id:'conditioning',label:'Conditioning',            color:'endurance',foci:['Conditioning']},
   {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Movement']},
   {id:'court',       label:'Technical / Tactical',    color:'practice', foci:['Technical / Tactical']},
+  {id:'competition', label:'Competition',             color:'match',    foci:['Competition']},
   {id:'rtp',         label:'Recovery & Return to Play',color:'recovery',foci:['Recovery','Return to Play']},
   {id:'testing',     label:'Testing',                 color:'practice', foci:['Testing']},
   {id:'other',       label:'Other',                   color:'practice', foci:[]},   // no focus set
@@ -24581,6 +24698,8 @@ const EX_TERM_TR={
   'Tendon Health':'Tendon Sağlığı','Balance & Proprioception':'Denge ve Propriosepsiyon',
   'Individual Skill':'Bireysel Beceri','Team Offense':'Takım Hücumu','Team Defense':'Takım Savunması',
   'Set Plays':'Sistem Oyunları','Transition':'Geçiş','Small-Sided Game':'Küçük Alan Oyunu','Scrimmage':'Çift Kale',
+  'League Match':'Lig Maçı','Cup Match':'Kupa Maçı','Tournament':'Turnuva','Friendly':'Hazırlık Maçı',
+  'Practice Game':'Antrenman Maçı',
   'Active Recovery':'Aktif Toparlanma','Regeneration':'Rejenerasyon','Soft Tissue':'Yumuşak Doku',
   'Breathing / Parasympathetic':'Nefes / Parasempatik','Mobility Flow':'Hareketlilik Akışı',
   'Reconditioning':'Yeniden Kondisyon','Load Reintroduction':'Yükün Yeniden Verilmesi','Return to Run':'Koşuya Dönüş',
@@ -28104,6 +28223,18 @@ function App(){
   return()=>registerBallSave(null);},[setData]);
   // Brand every printout / shared PDF with the active team's logo.
   useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');},[team]);
+  /* Competition Dates, written from the calendar. This sits at the top of the app rather
+     than on the Season screen so a match ticked on Tuesday is already in the season's
+     fixture list on Wednesday — without the coach having opened Season at all. It writes
+     only when the list actually changes, so it cannot loop. */
+  useEffect(()=>{
+    if(!team||!team.setup)return;
+    const cur=team.setup.competitions||[];
+    const next=syncCompetitions(cur,team.days);
+    if(JSON.stringify(next)===JSON.stringify(cur))return;
+    setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>t.id===team.id
+      ?{...t,setup:{...t.setup,competitions:next}}:t)}));
+  },[team&&team.id,team&&team.days,team&&team.setup&&team.setup.competitions]);
   /* The completions offered on every ball-practice row. Built once per library change
      rather than on every render: it was being filtered and rebuilt on each edit, and the
      shelf holds hundreds of drills. */
