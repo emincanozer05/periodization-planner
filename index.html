@@ -1764,8 +1764,49 @@ tr:hover td{background:rgba(255,255,255,.02)}
   letter-spacing:.08em;padding:3px 9px;border-radius:6px;font-style:normal}
 .sc-pos.now .sc-pos-code{background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2)}
 .sc-pos.pot .sc-pos-code{background:rgba(139,92,246,.14);border:1px solid rgba(139,92,246,.36);color:#c4b5fd}
-.sc-pos select{margin-top:10px;height:40px;border-radius:10px;font-size:13px;font-weight:600}
-.sc-pos-d{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:10px;min-height:36px;font-style:normal}
+.sc-pos-d{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:10px;font-style:normal}
+.sc-pos-sel{margin-top:10px;padding-top:11px;border-top:1px solid var(--border)}
+.sc-pos-sel .sc-pos-d{margin-top:0}
+/* ---- the role picker: a hand-built list, because an <option> cannot explain itself ---- */
+.sc-posdd{position:relative;margin-top:10px}
+.sc-posdd-btn{display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 12px;border-radius:10px;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:13px;
+  font-weight:600;font-style:normal;text-align:left;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease}
+.sc-posdd-btn:hover{border-color:var(--text2)}
+.sc-posdd-btn.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.sc-posdd-cur{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-posdd-car{flex:none;color:var(--dim);font-size:11px;line-height:1}
+.sc-posdd-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:70;border-radius:13px;
+  border:1px solid var(--border2);background:#0e1117;box-shadow:0 18px 44px rgba(0,0,0,.8);overflow:hidden}
+.sc-posdd-list{max-height:344px;overflow-y:auto;padding:6px}
+.sc-posdd-it{display:flex;align-items:center;gap:10px;width:100%;padding:7px 9px;border:1px solid transparent;
+  border-radius:9px;background:none;color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;
+  font-style:normal;text-align:left;cursor:pointer;transition:background .12s ease,color .12s ease}
+.sc-posdd-it i{flex:none;width:42px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;
+  letter-spacing:.06em;font-style:normal;color:var(--dim);text-align:center;padding:3px 0;border-radius:5px;
+  border:1px solid var(--border);background:var(--panel)}
+.sc-posdd-it span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-posdd-it:hover,.sc-posdd-it.hv{background:var(--hover);color:var(--text)}
+.sc-posdd-it.on{color:var(--accent2)}
+.sc-posdd-it.on i{border-color:rgba(0,148,255,.34);background:var(--accent-bg);color:var(--accent2)}
+/* On a phone the role name plus its English gloss does not fit on one line, and a
+   truncated label is the one thing this picker exists to avoid. */
+@media(max-width:560px){.sc-posdd-it{align-items:flex-start}.sc-posdd-it i{margin-top:1px}
+  .sc-posdd-it span{white-space:normal;line-height:1.4}}
+/* The card under the list — what the hovered role means, and the two players it is
+   normally illustrated with. Its height is held steady so the list does not jump
+   as the pointer moves down the rows. */
+.sc-poscard{border-top:1px solid var(--border);background:var(--panel);padding:12px 14px 13px;min-height:128px}
+.sc-poscard-h{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700;color:var(--text)}
+.sc-poscard-h b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.07em;
+  padding:3px 7px;border-radius:5px;background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2)}
+.sc-poscard-d{font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:8px;font-style:normal}
+.sc-poscard-l{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--dim);margin-top:11px;font-style:normal}
+.sc-poscard-p{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+.sc-poscard-p span{padding:4px 10px;border-radius:999px;border:1px solid var(--border2);background:var(--elevated);
+  font-size:11.5px;font-weight:600;color:var(--text2);font-style:normal}
+.sc-poscard-e{font-size:11.5px;color:var(--dim);line-height:1.6;font-style:normal}
 /* ---- free-text blocks: projection and the coach's verdict ---- */
 /* Two even columns, so a pair of short fields never ends up squeezed into a sixth of
    the row the way auto-fit leaves them on a wide screen. */
@@ -20859,32 +20900,62 @@ const SC_SCALE=[
 const scColor=v=>(SC_SCALE.find(s=>s.n===v)||{}).c||'var(--text)';
 /* Modern position classification — the role an athlete actually plays, rather than
    the 1–5 the jersey says. A coach fills two of these: where the athlete is today,
-   and where their development is pointed. */
+   and where their development is pointed.
+
+   Each role carries three things: the one-liner shown under the picker, the longer
+   definition the analytics literature actually uses for it (usage rate, assist
+   percentage, attempt rate, switchability, rim protection — the measurable markers,
+   not adjectives), and two players the role is normally illustrated with, so a coach
+   can anchor an unfamiliar label to somebody they have watched. */
 const SC_POS=[
   {k:'FLG',tr:'Oyun Kurucu',en:'Floor General',
    dTr:'Oyunu yöneten, tempoyu belirleyen, pas öncelikli kurucu.',
-   dEn:'Runs the offence, sets the tempo, pass-first lead guard.'},
+   dEn:'Runs the offence, sets the tempo, pass-first lead guard.',
+   defTr:'Hücumu yöneten, tempoyu belirleyen pas öncelikli kurucu. Yüksek asist yüzdesi (AST%) ve düşük top kaybı oranıyla tanımlanır: kendi şutundan çok takım arkadaşının şutunu üretir, yarı sahada sistemi kurar ve savunmayı okur.',
+   defEn:'The pass-first lead guard who runs the offence and sets the tempo. Defined by a high assist percentage and a low turnover rate: produces teammates\u2019 shots rather than their own, organises the half court and reads the defence.',
+   ex:['Chris Paul','Ricky Rubio']},
   {k:'HUG',tr:'Yüksek Kullanımlı Guard',en:'High Usage Guard',
    dTr:'Topu çok elinde tutan, kendi şutunu yaratan skorer guard.',
-   dEn:'High-volume ball handler who creates their own shot.'},
+   dEn:'High-volume ball handler who creates their own shot.',
+   defTr:'Topun büyük bölümünü elinde tutan skorer guard. Yüksek kullanım oranıyla (USG% kabaca %28 ve üzeri) ayrılır; pick&roll ve izolasyonda kendi şutunu yaratır. Verimliliği her zaman hacimle birlikte okunur.',
+   defEn:'The scoring guard who holds the ball. Marked by a high usage rate (roughly 28% and above) and the ability to create their own shot out of pick-and-roll and isolation. Efficiency for this role is always read next to volume.',
+   ex:['Damian Lillard','James Harden']},
   {k:'ESW',tr:'Elit Şutör Kanat',en:'Elite Shooting Wing',
    dTr:'Topsuz hareket ve dış şutla sahayı açan kanat.',
-   dEn:'Wing who spaces the floor off the ball with elite shooting.'},
+   dEn:'Wing who spaces the floor off the ball with elite shooting.',
+   defTr:'Topsuz hareketle sahayı açan, yüksek hacimli dış şutör kanat. Literatürde \u201cgravity\u201d (savunmayı kendine çekme) kavramıyla anılır: yüksek üçlük deneme oranı ve blok arkasından gelen şutlardaki isabet, savunmayı dışarı çekerek pota altını takımın geri kalanına açar.',
+   defEn:'The high-volume shooting wing who spaces the floor off the ball. The literature describes this role through \u201cgravity\u201d: a high three-point attempt rate and accuracy coming off screens pull defenders out and open the paint for everyone else.',
+   ex:['Klay Thompson','JJ Redick']},
   {k:'VRP',tr:'Çok Yönlü Rol Oyuncusu',en:'Versatile Role Player',
    dTr:'Birden fazla pozisyonu savunan, düşük kullanımla verimli katkı veren oyuncu.',
-   dEn:'Defends several positions, contributes efficiently at low usage.'},
+   dEn:'Defends several positions, contributes efficiently at low usage.',
+   defTr:'Düşük kullanımla verimli katkı veren, birden fazla pozisyonu savunabilen oyuncu. \u201c3&D\u201d tanımının genişlemiş hali: köşe üçlüğündeki isabet, doğru rotasyonlar ve savunmada eşleşme değiştirebilme (switchability) temel ölçütleridir.',
+   defEn:'The low-usage, efficient contributor who can guard several positions. A broadened version of the \u201c3&D\u201d definition: corner-three accuracy, correct rotations and defensive switchability are the markers.',
+   ex:['Mikal Bridges','Andre Iguodala']},
   {k:'SKF',tr:'Yetenekli Forvet',en:'Skilled Forward',
    dTr:'Top sürebilen, pas verebilen ve şut atabilen çok yönlü forvet.',
-   dEn:'Forward who can handle, pass and shoot.'},
+   dEn:'Forward who can handle, pass and shoot.',
+   defTr:'Top sürebilen, pas verebilen ve şut atabilen forvet; takımın ikincil oyun kurucusu. \u201cPoint forward\u201d tanımına yakındır: boy avantajını oyun kurma becerisiyle birleştirdiği için savunmada eşleşme sorunları yaratır.',
+   defEn:'The forward who can handle, pass and shoot — the team\u2019s secondary creator. Close to the \u201cpoint forward\u201d definition: size combined with playmaking, which forces mismatches on the other end.',
+   ex:['Paul George','Franz Wagner']},
   {k:'MC',tr:'Modern Pivot',en:'Modern Center',
    dTr:'Pick&roll, değişebilen savunma ve dış şut/pas menzili olan çağdaş uzun.',
-   dEn:'Modern big: pick-and-roll, switchable defence, shooting or passing range.'},
+   dEn:'Modern big: pick-and-roll, switchable defence, shooting or passing range.',
+   defTr:'Pick&roll\u2019de hem potaya dalabilen hem dışarı açılabilen, savunmada eşleşme değiştirebilen çağdaş uzun. Ölçütleri: üçlük menzili ya da uzun için yüksek asist yüzdesi, perimetreye çıkacak ayak hareketi ve çember koruması.',
+   defEn:'The contemporary big who can both roll and pop, and switch on defence. The markers: three-point range or a high assist percentage for a big, feet quick enough to hold up on the perimeter, and rim protection.',
+   ex:['Nikola Jokić','Bam Adebayo']},
   {k:'TC',tr:'Geleneksel Pivot',en:'Traditional Center',
    dTr:'Potaya yakın oynayan, ribaund ve çember koruması ağırlıklı uzun.',
-   dEn:'Plays near the rim — rebounding and rim protection first.'},
+   dEn:'Plays near the rim — rebounding and rim protection first.',
+   defTr:'Potaya yakın oynayan klasik uzun. Değeri ribaund yüzdesi, pota altı bitiricilik ve çember koruması (drop savunmada şut engelleme) üzerinden okunur; dış şut menzili bu rolün beklentisi değildir.',
+   defEn:'The classic big who plays near the rim. Value is read through rebound percentage, finishing at the rim and rim protection in drop coverage; outside range is not part of the job.',
+   ex:['Rudy Gobert','Steven Adams']},
   {k:'OE',tr:'Hücum Motoru',en:'Offensive Engine',
    dTr:'Takımın hücumunu taşıyan birincil skorer ve yaratıcı.',
-   dEn:'Carries the offence — primary scorer and creator.'},
+   dEn:'Carries the offence — primary scorer and creator.',
+   defTr:'Takımın hücumunu taşıyan birincil skorer ve yaratıcı. Takımın en yüksek kullanım oranına sahiptir; sahadayken hücum verimi belirgin biçimde yükselir (on/off farkı) ve rakip savunmalar oyun planını ona göre kurar.',
+   defEn:'The primary scorer and creator who carries the offence. Carries the team\u2019s highest usage rate; offensive rating rises noticeably with them on the floor (the on/off split), and opposing game plans are built around them.',
+   ex:['Luka Dončić','Giannis Antetokounmpo']},
 ];
 const scPos=k=>SC_POS.find(p=>p.k===k)||null;
 const SC_TECH=[
@@ -20981,16 +21052,69 @@ function ScSection({n,title,desc,items,vals,onSet,children}){
     </div>
   </div>);
 }
-/* The two archetype boxes: what the athlete plays now, and what they project to. */
+/* The two archetype boxes: what the athlete plays now, and what they project to.
+
+   A native <select> cannot explain itself — an option is a string and nothing more —
+   and these eight labels are exactly the kind a coach meets for the first time here.
+   So the picker is built by hand: hovering a role holds its definition and the two
+   players it is usually illustrated with in a card below the list, and the same card
+   stays under the closed control for whatever is selected. */
 function ScPosBox({kind,label,value,onChange}){
   const p=scPos(value);
+  const[open,setOpen]=useState(false);
+  const[hov,setHov]=useState(null);
+  const boxRef=useRef(null);
+  // Clicking anywhere else, or Escape, closes the list — a coach should not have to
+  // find the button again to get rid of it.
+  useEffect(()=>{
+    if(!open)return;
+    const onDown=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setOpen(false);};
+    const onKey=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',onDown);
+    document.addEventListener('keydown',onKey);
+    return()=>{document.removeEventListener('mousedown',onDown);document.removeEventListener('keydown',onKey);};
+  },[open]);
+  // The card follows the pointer while the list is open, and falls back to whatever is
+  // selected, so it never blinks empty between two rows.
+  const card=scPos(hov)||p;
   return(<div className={`sc-pos ${kind}`}>
     <div className="sc-pos-k"><span>{label}</span>{p&&<span className="sc-pos-code">{p.k}</span>}</div>
-    <select value={value||''} onChange={e=>onChange(e.target.value)}>
-      <option value="">{L('— seçilmedi —','— not set —')}</option>
-      {SC_POS.map(o=><option key={o.k} value={o.k}>{L(`${o.tr} (${o.en} — ${o.k})`,`${o.en} (${o.k})`)}</option>)}
-    </select>
-    <div className="sc-pos-d">{p?L(p.dTr,p.dEn):L('Modern pozisyon sınıflandırmasından bir rol seç.','Pick a role from the modern position classification.')}</div>
+    <div className="sc-posdd" ref={boxRef}>
+      <button type="button" className={`sc-posdd-btn ${open?'on':''}`} onClick={()=>setOpen(o=>!o)}>
+        <span className="sc-posdd-cur">{p?L(`${p.tr} (${p.en} — ${p.k})`,`${p.en} (${p.k})`):L('— seçilmedi —','— not set —')}</span>
+        <span className="sc-posdd-car">▾</span>
+      </button>
+      {open&&<div className="sc-posdd-menu">
+        <div className="sc-posdd-list" onMouseLeave={()=>setHov(null)}>
+          <button type="button" className={`sc-posdd-it ${value?'':'on'}`}
+            onMouseEnter={()=>setHov(null)}
+            onClick={()=>{onChange('');setOpen(false);setHov(null);}}>
+            <i>—</i><span>{L('seçilmedi','not set')}</span>
+          </button>
+          {SC_POS.map(o=><button key={o.k} type="button"
+            className={`sc-posdd-it ${value===o.k?'on':''} ${hov===o.k?'hv':''}`}
+            onMouseEnter={()=>setHov(o.k)} onFocus={()=>setHov(o.k)}
+            onClick={()=>{onChange(o.k);setOpen(false);setHov(null);}}>
+            <i>{o.k}</i><span>{L(`${o.tr} (${o.en})`,o.en)}</span>
+          </button>)}
+        </div>
+        <div className="sc-poscard">
+          {card?<React.Fragment>
+            <div className="sc-poscard-h"><b>{card.k}</b>{L(card.tr,card.en)}</div>
+            <div className="sc-poscard-d">{L(card.defTr,card.defEn)}</div>
+            <div className="sc-poscard-l">{L('Örnek oyuncular','Example players')}</div>
+            <div className="sc-poscard-p">{card.ex.map(x=><span key={x}>{x}</span>)}</div>
+          </React.Fragment>:
+          <div className="sc-poscard-e">{L('Bir rolün üzerine gelince ne anlama geldiği ve örnek oyuncuları burada görünür.','Hover a role to see what it means and the players it is illustrated with.')}</div>}
+        </div>
+      </div>}
+    </div>
+    {p?<div className="sc-pos-sel">
+      <div className="sc-pos-d">{L(p.defTr,p.defEn)}</div>
+      <div className="sc-poscard-l">{L('Örnek oyuncular','Example players')}</div>
+      <div className="sc-poscard-p">{p.ex.map(x=><span key={x}>{x}</span>)}</div>
+    </div>:
+    <div className="sc-pos-d">{L('Modern pozisyon sınıflandırmasından bir rol seç.','Pick a role from the modern position classification.')}</div>}
   </div>);
 }
 function ProfileTab({ath,updAth,setup}){
