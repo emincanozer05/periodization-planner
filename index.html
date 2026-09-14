@@ -1198,35 +1198,42 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ---- The board ---- */
 .ct-wrap{border:1px solid var(--border);border-radius:11px;background:var(--panel,var(--bg2));overflow:hidden}
-.ct-bar{display:flex;flex-wrap:wrap;gap:4px 10px;padding:7px 8px;background:var(--elevated,var(--bg2));
-  border-bottom:1px solid var(--border)}
-.ct-grp{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
-.ct-grp-end{margin-left:auto}
-.ct-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--dim);padding-right:3px}
+/* The rail is five clusters, each labelled with what it does, laid out across whatever
+   width it is given: one row on a wide panel, folding cluster by cluster as it narrows.
+   A cluster never splits — the chips inside it wrap together. */
+.ct-bar{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;padding:9px 9px;
+  background:var(--elevated,var(--bg2));border-bottom:1px solid var(--border)}
+.ct-grp{display:flex;flex-direction:column;gap:5px;min-width:0;padding:6px 9px 7px;
+  border-radius:10px;background:rgba(255,255,255,.026)}
+.ct-row{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.ct-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);line-height:1}
 /* Every tool is a chip with its mark and its name. The name is what teaches the notation —
    a coach should not have to learn which glyph means "screen" from the drawing it makes. */
-.ct-tb{display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid transparent;
-  border-radius:7px;padding:4px 7px;color:var(--text2);font-family:inherit;font-size:10.5px;font-weight:600;
-  cursor:pointer;transition:background .13s,border-color .13s,color .13s;line-height:1.2}
-.ct-tb i{font-style:normal;font-size:12px;line-height:1}
+.ct-tb{display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:5px 9px;color:var(--text2);font-family:inherit;font-size:11px;font-weight:600;
+  cursor:pointer;transition:background .13s,border-color .13s,color .13s;line-height:1.2;white-space:nowrap}
+.ct-tb i{font-style:normal;font-size:12px;line-height:1;opacity:.85}
 .ct-tb b{font-weight:600}
-.ct-tb:hover{background:var(--bg2);color:var(--text)}
-.ct-tb.on{background:rgba(255,159,67,.14);border-color:rgba(255,159,67,.5);color:#ff9f43}
-.ct-tb.danger:hover{border-color:#ff6b5b;color:#ff6b5b;background:rgba(255,107,91,.1)}
-.ct-tb.off{opacity:.4;pointer-events:none}
-.ct-marks .ct-tb.on{background:rgba(77,163,255,.14);border-color:rgba(77,163,255,.5);color:#4da3ff}
-.ct-sw{width:17px;height:17px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;
-  transition:transform .12s,border-color .12s}
+.ct-tb:hover{border-color:var(--border2);color:var(--text)}
+/* The chip in hand is filled rather than outlined: at a glance across a full-width rail an
+   outline is easy to miss, and only one chip in a cluster can be in hand. */
+.ct-tb.on{background:rgba(255,159,67,.17);border-color:rgba(255,159,67,.62);color:#ff9f43}
+.ct-tb.on i{opacity:1}
+.ct-tb.danger:hover{border-color:#ff6b5b;color:#ff6b5b;background:rgba(255,107,91,.12)}
+.ct-tb.off{opacity:.38;pointer-events:none}
+.ct-marks .ct-tb.on{background:rgba(77,163,255,.17);border-color:rgba(77,163,255,.62);color:#4da3ff}
+.ct-sw{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0;
+  transition:transform .12s,border-color .12s,box-shadow .12s}
 .ct-sw:hover{transform:scale(1.12)}
-.ct-sw.on{border-color:var(--text);transform:scale(1.16)}
+.ct-sw.on{border-color:var(--text);transform:scale(1.16);box-shadow:0 0 0 2px rgba(255,255,255,.12)}
 .ct-swc{background:none;-webkit-appearance:none;appearance:none}
 .ct-swc::-webkit-color-swatch-wrapper{padding:0}
 .ct-swc::-webkit-color-swatch{border:none;border-radius:50%}
-.ct-w{width:24px;height:20px;display:flex;align-items:center;justify-content:center;background:transparent;
-  border:1px solid transparent;border-radius:6px;cursor:pointer;padding:0}
-.ct-w span{display:block;width:15px;background:var(--text2);border-radius:3px}
-.ct-w:hover{background:var(--bg2)}
+.ct-w{width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--bg2);
+  border:1px solid var(--border);border-radius:7px;cursor:pointer;padding:0}
+.ct-w span{display:block;width:16px;background:var(--text2);border-radius:3px}
+.ct-w:hover{border-color:var(--border2)}
 .ct-w.on{border-color:rgba(255,159,67,.5);background:rgba(255,159,67,.12)}
 .ct-w.on span{background:#ff9f43}
 /* The floor itself. aspect-ratio comes off the view (half court is taller than it is wide),
@@ -1256,12 +1263,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:radial-gradient(circle at 3px 6px,transparent 2.2px,var(--text2) 2.4px 3.4px,transparent 3.6px) 0 0/6px 6px repeat-x}
 .ct-legend .lg-scr{border-right:2px solid var(--text2);height:6px;margin-top:-3px}
 /* The rail when it is painted away from the board (see CourtEditor's `barSlot`): it is a
-   panel in its own right there, so it carries its own frame instead of the board's. */
-.ct-bar-slot{margin-top:12px}
-.ct-bar-slot .ct-bar{border:1px solid var(--border);border-radius:11px;
-  background:var(--panel,var(--bg2))}
+   panel in its own right there, so it carries its own frame instead of the board's, and it
+   takes the modal's whole width — the clusters then read as one row of controls rather
+   than a column of leftovers squeezed beside the clip. */
+.ct-bar-slot{margin-top:14px;min-width:0}
+.ct-bar-slot .ct-bar{border:1px solid var(--border);border-radius:12px;padding:10px;
+  background:var(--panel,var(--bg2));box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+.ct-bar-slot .ct-grp{background:var(--elevated,var(--bg2));border:1px solid var(--border)}
 .ct-bar-slot-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--dim);display:block;margin-bottom:5px}
+  text-transform:uppercase;color:var(--dim);display:block;margin-bottom:6px}
 /* ---- The board, blown up ----
    Only the floor and the tools, over a dimmed page. Meant for a tablet: the court gets the
    whole screen height, which is the difference between drawing with a finger and poking at
@@ -1572,6 +1582,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-modal-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px;align-items:start}
 /* The court's own row, spanning both columns. */
 .ex-modal-court{grid-column:1/-1;min-width:0}
+/* The drawing rail sits on the same full-width row, directly above the floor it draws on;
+   the grid's own gap spaces it, so it drops the margin it carries elsewhere. */
+.ex-modal-grid>.ct-bar-slot{grid-column:1/-1;margin-top:0}
+.ex-modal-court>label{display:block;margin-bottom:6px}
 @media(max-width:820px){.ex-modal-grid{grid-template-columns:1fr}}
 /* The link that stands beside Upload Video / Add Image: it takes the rest of the row, at
    the height of the buttons it stands with. */
@@ -13918,43 +13932,46 @@ function CourtEditor({value,onChange,barSlot}){
   const tbtn=(on,onClick,title,children,cls)=>
     <button type="button" className={`ct-tb${on?' on':''}${cls?' '+cls:''}`} onClick={onClick} title={title}>{children}</button>;
 
+  /* Every cluster says what it is for above the chips it holds — the rail carries five
+     different kinds of control and a coach reading it should not have to work out which
+     row places a cone and which row picks a colour. */
+  const grp=(label,children,cls)=>(
+    <div className={`ct-grp${cls?' '+cls:''}`}>
+      <span className="ct-lbl">{label}</span>
+      <div className="ct-row">{children}</div>
+    </div>);
+
   const bar=(
     <div className="ct-bar">
-      <div className="ct-grp">
-        {CT_TOOLS.map(t=>tbtn(!mark&&tool===t.id,()=>{setTool(t.id);setMark('');},L(t.tr,t.en),
-          <><i>{t.ic}</i><b>{L(t.tr,t.en)}</b></>))}
-      </div>
-      <div className="ct-grp ct-marks">
-        {CT_MARKS.map(m=>tbtn(mark===m.id,()=>setMark(mark===m.id?'':m.id),L(m.tr,m.en),
-          <><i>{m.ic}</i><b>{L(m.tr,m.en)}</b></>))}
-      </div>
-      <div className="ct-grp">
-        <span className="ct-lbl">{L('renk','colour')}</span>
+      {grp(L('çizim','draw'),CT_TOOLS.map(t=>tbtn(!mark&&tool===t.id,()=>{setTool(t.id);setMark('');},L(t.tr,t.en),
+        <><i>{t.ic}</i><b>{L(t.tr,t.en)}</b></>)))}
+      {grp(L('renk','colour'),<>
         {CT_COLORS.map(c=><button key={c} type="button" className={`ct-sw${color===c?' on':''}`}
           style={{background:c}} onClick={()=>setColor(c)} title={c}/>)}
         <input type="color" className="ct-sw ct-swc" value={color} onChange={e=>setColor(e.target.value)}
           title={L('Özel renk','Custom colour')}/>
-      </div>
-      <div className="ct-grp">
-        <span className="ct-lbl">{L('kalınlık','width')}</span>
-        {CT_WIDTHS.map(w=><button key={w} type="button" className={`ct-w${wid===w?' on':''}`}
-          onClick={()=>setWid(w)} title={L(`Kalınlık ${w}`,`Width ${w}`)}>
-          <span style={{height:Math.max(2,w/3.2)}}/></button>)}
-      </div>
-      <div className="ct-grp ct-grp-end">
+      </>)}
+      {grp(L('kalınlık','width'),CT_WIDTHS.map(w=><button key={w} type="button" className={`ct-w${wid===w?' on':''}`}
+        onClick={()=>setWid(w)} title={L(`Kalınlık ${w}`,`Width ${w}`)}>
+        <span style={{height:Math.max(2,w/3.2)}}/></button>))}
+      {grp(L('yerleştir','place'),CT_MARKS.map(m=>tbtn(mark===m.id,()=>setMark(mark===m.id?'':m.id),L(m.tr,m.en),
+        <><i>{m.ic}</i><b>{L(m.tr,m.en)}</b></>)),'ct-marks')}
+      {grp(L('saha','board'),<>
         {tbtn(straight,()=>setStraight(s=>!s),L('Düz çizgi — basılı tut ve bırak','Straight line — press and release'),
           <><i>╱</i><b>{L('Düz','Straight')}</b></>)}
         {tbtn(!sc.half,()=>onChange({...sc,half:!sc.half}),L('Yarı saha / tam saha','Half court / full court'),
           <><i>⛶</i><b>{sc.half?L('Yarı saha','Half court'):L('Tam saha','Full court')}</b></>)}
+        {tbtn(zoom,()=>setZoom(z=>!z),zoom?L('Küçült (Esc)','Shrink (Esc)'):L('Büyüt — sadece saha','Zoom — court only'),
+          <><i>{zoom?'⤡':'⤢'}</i><b>{zoom?L('Küçült','Shrink'):L('Büyüt','Zoom')}</b></>)}
+      </>)}
+      {grp(L('geri / sil','undo / delete'),<>
         {tbtn(false,undo,L('Geri al','Undo'),<><i>↶</i></>,hist.undo.length?'':'off')}
         {tbtn(false,redo,L('İleri al','Redo'),<><i>↷</i></>,hist.redo.length?'':'off')}
         {sel!=null&&items[sel]&&tbtn(false,()=>{write(items.filter((_,j)=>j!==sel));setSel(null);},
           L('Seçileni sil','Delete selected'),<><i>✕</i><b>{L('Sil','Delete')}</b></>,'danger')}
-        {tbtn(zoom,()=>setZoom(z=>!z),zoom?L('Küçült (Esc)','Shrink (Esc)'):L('Büyüt — sadece saha','Zoom — court only'),
-          <><i>{zoom?'⤡':'⤢'}</i><b>{zoom?L('Küçült','Shrink'):L('Büyüt','Zoom')}</b></>)}
         {tbtn(false,()=>{if(items.length&&window.confirm(L('Çizimin tamamı silinsin mi?','Clear the whole drawing?')))write([]);},
           L('Tahtayı temizle','Clear the board'),<><i>🗑</i><b>{L('Temizle','Clear')}</b></>,items.length?'danger':'off')}
-      </div>
+      </>)}
     </div>);
   const board=(
     <div className="ct-board" style={{aspectRatio:String(courtRatio(sc.half))}}>
@@ -24875,14 +24892,16 @@ function ExerciseModal({ex,onChange,onDelete,onClose}){
           </div>}
           {editing&&<div className="help" style={{marginTop:6}}>{L('Kart görseli YouTube/Vimeo\'dan otomatik alınır; program görselinin yerine yazılmaz.','The card image is fetched automatically from YouTube/Vimeo; it does not replace the program image.')}</div>}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>{L('Yükleniyor… ','Uploading… ')}{upPct}%</div>}
-          {/* The court's tools live under the clip, so the board below is nothing but board.
-              Only mounted while editing a drill — there is nothing to draw with otherwise. */}
-          {editing&&ball&&<div className="ct-bar-slot">
-            <span className="ct-bar-slot-lbl">{L('Çizim Araçları','Drawing Tools')}</span>
-            <div ref={setCourtBar}/>
-          </div>}
         </div>
         {editing?editRight:viewRight}
+        {/* The court's tools get their own full-width row above the floor, so the board
+            below is nothing but board and the rail is read left to right instead of being
+            folded into a column beside the clip. Only mounted while editing a drill —
+            there is nothing to draw with otherwise. */}
+        {editing&&ball&&<div className="ct-bar-slot">
+          <span className="ct-bar-slot-lbl">{L('Çizim Araçları','Drawing Tools')}</span>
+          <div ref={setCourtBar}/>
+        </div>}
         {/* The floor gets the modal's whole width, under both columns. Sharing a column with
             the fields made a full court widen that column, and the clip on the left shrank
             to pay for it — the board is the one thing here whose width is not the coach's
