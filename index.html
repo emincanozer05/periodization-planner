@@ -354,7 +354,6 @@ nav{
   /* Wide tables scroll horizontally instead of breaking the layout */
   main table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
   /* Slightly tighter headings & cards */
-  .rost-head .rh-t{font-size:21px}
   .ex-h1{font-size:22px}
   .ap-head{padding:15px;gap:14px}
   .ap-stats{width:100%}
@@ -931,36 +930,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-cell .mau small{font-size:8px;color:var(--dim);font-weight:500;margin-left:2px}
 /* The per-athlete average, beside the plan's own total and quieter than it. */
 .calm-cell .mau i{font-style:normal;font-size:9.5px;color:var(--text2);font-weight:600}
-/* Season hero — the season picker, with the years it spans set large and faint behind
-   it so which season is on screen reads before anything else on the page. */
-.season-hero{
-  position:relative;overflow:hidden;margin-bottom:18px;padding:20px 24px;border-radius:16px;
-  background:var(--panel-glass),var(--panel);border:1px solid var(--border);
-  backdrop-filter:blur(10px) saturate(160%);-webkit-backdrop-filter:blur(10px) saturate(160%);
-  box-shadow:var(--glass-hi);
-}
-.season-hero-yr{
-  position:absolute;right:32px;top:50%;transform:translateY(-50%);
-  /* Italic — the slant leans the years into the page, and the extra right offset keeps
-     the last digit off the panel edge it would otherwise overhang. The page-wide `*`
-     rule forces upright text with !important, so the one exception has to outrank it;
-     Archivo ships no italic cut, and the browser obliques the Bold face for this. */
-  font-style:italic!important;
-  font-size:92px;font-weight:800;line-height:1;letter-spacing:-.045em;white-space:nowrap;
-  color:var(--text);opacity:.09;pointer-events:none;user-select:none;
-}
-.season-hero-in{position:relative;z-index:1;display:flex;flex-direction:column;gap:9px}
-.season-hero-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
-.season-pick{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* The season picker, which now rides in the page hero's button row — so it wears the
+   same height and radius as the buttons beside it rather than the 24px display type it
+   wore when it was a hero of its own. */
 .season-sel{
-  width:auto;min-width:190px;padding:8px 12px;font-size:24px;font-weight:700;letter-spacing:-.01em;
-  background:var(--bg2);border-color:var(--border2);
+  width:auto;min-width:150px;max-width:230px;height:34px;padding:0 11px;font-size:13px;font-weight:600;
+  letter-spacing:-.005em;background:var(--bg2);border-color:var(--border2);border-radius:10px;
 }
-.season-hero-meta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim)}
-@media(max-width:760px){
-  .season-hero-yr{font-size:52px;right:18px;opacity:.07}
-  .season-sel{font-size:19px;min-width:150px}
-}
+@media(max-width:760px){.season-sel{min-width:130px}}
 /* Season — top stat row, macrocycle bar, weekly bars, phase list */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
 @media(max-width:760px){.stat-row{grid-template-columns:1fr 1fr}}
@@ -1504,7 +1481,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ex-subtabs button:hover{color:var(--text)}
 .ex-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 18px}
 .ex-search{flex:1;min-width:220px;display:flex;align-items:center;gap:8px;background:var(--elevated);border:1px solid var(--border);border-radius:10px;padding:0 12px}
-.ex-search span{color:var(--muted);font-size:14px}
+.ex-search span{color:var(--muted);display:grid;place-items:center;flex:none}
 .ex-search input{border:none;background:transparent;padding:11px 0}
 .ex-search input:focus{outline:none;box-shadow:none}
 .ex-filter{width:auto;min-width:150px}
@@ -2236,16 +2213,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-rpe-tip .none{font-size:11px;color:var(--dim);white-space:nowrap}
 
 /* ===== Roster (Athletes) ===== */
-.rost-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
-/* The title block carries a mark of its own so the page announces itself the way the
-   rest of the workspace does — an icon tile, the name, and the one line of arithmetic
-   (how many, on which squad) a coach checks before reading any card. */
-.rost-title{display:flex;align-items:center;gap:14px;min-width:0}
-.rost-title-ic{flex:none;width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
-  background:linear-gradient(140deg,rgba(0,148,255,.22),rgba(0,148,255,.06));
-  border:1px solid rgba(0,148,255,.30);color:var(--accent2)}
-.rost-head .rh-t{font-size:26px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.1}
-.rost-head .rh-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--dim);margin-top:4px}
+.rost-head{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.rost-head:empty{display:none;margin:0}
 .rost-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 /* The search box says which key opens it, because a roster of thirty is scrolled far
    more often than it is read top to bottom. */
@@ -2268,31 +2237,35 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rost-view button:hover{color:var(--text)}
 .rost-view button.on{background:var(--accent);color:#fff}
 .rost-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:16px}
-.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px 20px 16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
+.rc{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:44px 20px 16px;cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden}
 .rc:hover{transform:translateY(-3px);border-color:var(--border2)}
-.rc-num{position:absolute;top:40px;right:20px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
-.rc-del{position:absolute;top:14px;right:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
+/* The shirt number is a watermark, so it sits BESIDE the name rather than above it —
+   the top-right corner belongs to the verdict now. */
+.rc-num{position:absolute;top:52px;right:20px;font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:700;color:var(--border2);line-height:1;opacity:.7}
+.rc-del{position:absolute;top:13px;left:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
 .rc:hover .rc-del{opacity:1}
 .rc-del:hover{border-color:var(--high-t);color:var(--high-t);background:rgba(239,68,68,.12)}
 /* The load verdict, read off ACWR: the one word a coach wants before the numbers. */
-.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:11px;font-weight:700;
-  letter-spacing:.01em;padding:4px 11px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:9.5px;font-weight:700;
+  letter-spacing:.02em;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
 .rc-badge.ok{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.34);color:#34d399}
 .rc-badge.mid{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.34);color:#fbbf24}
 .rc-badge.hi{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.45);color:#fbbf24}
 .rc-badge.na{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.26);color:#cbd5e1}
 .rc-badge.inj{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.34);color:#f87171}
-.rc-badgerow{display:flex;align-items:center;gap:8px;min-height:26px;padding-right:40px;margin-bottom:12px}
+/* The verdict, top right — the first thing read on the card and out of the way of
+   everything else on it. The card's own top padding is the room it sits in. */
+.rc-badgerow{position:absolute;top:13px;right:16px;z-index:2;display:flex;align-items:center;gap:8px;margin:0;padding:0}
 .rc-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 /* A squad photo is a PORTRAIT, and a portrait is a rectangle: a circle crops the
    shoulders off every player and leaves seventeen heads floating in a grid. Square
    (softened just enough not to fight the cards' own corners) keeps the frame the
    camera took. Only the ATHLETE's photo changes — staff avatars stay round, which is
    what keeps the two apart at a glance. */
-.rc-av{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:23px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
+.rc-av{width:92px;height:92px;border-radius:16px;background:linear-gradient(135deg,#2a2f37,#171a1f);display:grid;place-items:center;font-size:28px;font-weight:700;color:var(--text2);overflow:hidden;flex:none;border:2.5px solid var(--green);padding:2px}
 .rc-av.warn{border-color:#f59e0b}.rc-av.bad{border-color:#f43f5e}.rc-av.na{border-color:var(--border2)}
-.rc-av img{width:100%;height:100%;object-fit:cover;border-radius:11px}
-.rc-id{min-width:0;padding-right:52px}
+.rc-av img{width:100%;height:100%;object-fit:cover;border-radius:13px}
+.rc-id{min-width:0;padding-right:64px}
 .rc-name{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;line-height:1.25;overflow-wrap:break-word;word-break:break-word;text-transform:uppercase}
 .rc-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:3px}
 /* Three centred metrics on one row. Each .rc-st dissolves into the grid so all
@@ -2705,6 +2678,31 @@ tr:hover td{background:rgba(255,255,255,.02)}
   font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);cursor:pointer;height:auto}
 .ev2-stat select:focus{box-shadow:none;border:none}
 .ev2-hero-btns{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* ===== Page hero — one masthead, every tab =====
+   Every screen opens the same way: what the tab is, one line saying what it is for, the
+   few numbers describing what it already holds, and the buttons that belong to it. No
+   icon tile, no emoji — a heading is read, not decorated, and thirteen different little
+   pictures across thirteen tabs said nothing the words did not. */
+.ph-hero{display:flex;align-items:center;justify-content:space-between;gap:16px 18px;flex-wrap:wrap;
+  padding:18px 22px;margin-bottom:16px;border-radius:20px;border:1px solid var(--border);
+  background:linear-gradient(150deg,rgba(255,255,255,.05),rgba(255,255,255,.012)),var(--panel);
+  box-shadow:var(--shadow),var(--glass-hi)}
+.ph-hero-l{min-width:0}
+.ph-ttl{font-size:27px;font-weight:700;letter-spacing:-.022em;line-height:1.06;color:var(--text)}
+.ph-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:5px;
+  letter-spacing:.05em;line-height:1.5}
+.ph-hero-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.ph-stat{padding:8px 16px;border-radius:13px;background:var(--elevated);border:1px solid var(--border);
+  text-align:center;transition:border-color .15s ease}
+.ph-stat:hover{border-color:var(--border2)}
+.ph-stat-v{font-size:14.5px;font-weight:700;line-height:1.15;color:var(--text);white-space:nowrap}
+.ph-stat-l{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-top:2px;white-space:nowrap}
+.ph-stat select,.ph-stat input{width:auto;min-width:0;height:auto;padding:0;border:none;background:none;
+  box-shadow:none;color:var(--text);font-family:inherit;font-size:14.5px;font-weight:700;text-align:center}
+.ph-stat select:focus,.ph-stat input:focus{box-shadow:none;border:none}
+.ph-acts{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+@media(max-width:700px){.ph-hero{padding:15px 16px}.ph-ttl{font-size:21px}
+  .ph-hero-r{justify-content:flex-start;width:100%}}
 /* --- filter bar --- */
 .ev2-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .ev2-tabs{display:flex;gap:8px;flex-wrap:wrap}
@@ -2859,38 +2857,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
    a coach can tell at a glance that they are outside the squad. */
 .tryo-page{display:flex;flex-direction:column;
   --tryo:#8b5cf6;--tryo-lt:#c9b6ff;--tryo-soft:rgba(139,92,246,.12);--tryo-ring:rgba(139,92,246,.38)}
-/* ---- the masthead: what this page is, and the funnel across it ---- */
-.tryo-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px 20px;
-  padding:18px 20px;margin-bottom:18px;border-radius:20px;border:1px solid var(--border);
-  background:linear-gradient(140deg,rgba(139,92,246,.14),rgba(236,72,153,.05) 46%,transparent 72%),var(--panel);
-  box-shadow:var(--shadow)}
-.tryo-head-l{display:flex;align-items:center;gap:15px;min-width:0}
-.tryo-mark{flex:none;width:48px;height:48px;border-radius:15px;display:grid;place-items:center;
-  background:var(--tryo-soft);border:1px solid var(--tryo-ring);color:var(--tryo-lt)}
-.tryo-h1{font-size:27px;font-weight:700;letter-spacing:-.022em;line-height:1.06;color:var(--text)}
-.tryo-h2{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.5;max-width:64ch}
-.tryo-head-r{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
-.tryo-kpis{display:flex;gap:8px;flex-wrap:wrap}
-/* Four counts, one shape: the number leads, the word under it says which number it is. */
-.tryo-kpi{min-width:76px;padding:8px 13px;border-radius:13px;background:var(--elevated);
-  border:1px solid var(--border);text-align:center}
-.tryo-kpi b{display:block;font-size:19px;font-weight:700;line-height:1.1;letter-spacing:-.01em;color:var(--text)}
-.tryo-kpi i{display:block;font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:9.5px;
-  letter-spacing:.07em;text-transform:uppercase;color:var(--dim);margin-top:3px}
-.tryo-kpi.watch b{color:#fbbf24}
-.tryo-kpi.in b{color:#34d399}
-.tryo-head-btns{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
 /* Adding a candidate is this page's own primary action, so it wears this page's colour
    rather than the roster's blue gradient. */
 .tryo-add{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;
   border:1px solid var(--tryo);background:var(--tryo);color:#fff;font-family:inherit;font-size:13px;
   font-weight:700;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
 .tryo-add:hover{transform:translateY(-1px);background:#7c46f3;box-shadow:0 14px 30px -14px rgba(139,92,246,1)}
-@media(max-width:760px){
-  .tryo-head{padding:15px 15px}
-  .tryo-h1{font-size:22px}
-  .tryo-head-r{width:100%;justify-content:flex-start}
-}
 /* A page, not a modal: the list and the sheet share the screen's height instead of a
    window's, and the sheet scrolls on its own so the list stays put beside it. */
 .tryo-body{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;
@@ -3359,7 +3331,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .su-crest-edit{position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:center;justify-content:center;
   gap:10px;background:rgba(10,11,13,.72);opacity:0;transition:opacity .15s}
 .su-hero-crest:hover .su-crest-edit{opacity:1}
-.su-crest-edit button{background:none;border:0;padding:0;line-height:1;font-size:13px;color:#fff;cursor:pointer}
+.su-crest-edit button{background:none;border:0;padding:0;line-height:1;font-size:10.5px;font-family:inherit;font-weight:600;letter-spacing:.04em;color:#fff;cursor:pointer}
 .su-crest-edit button:hover{transform:scale(1.12)}
 .su-hero-crest:hover{border-color:var(--accent)}
 .su-hero-crest img{width:100%;height:100%;object-fit:contain}
@@ -3909,8 +3881,7 @@ main .panel:nth-child(n+6){animation-delay:.33s}
 :root{--panel-glass:linear-gradient(transparent,transparent);--glass-hi:0 0 transparent}
 .sidebar{background:var(--bg2)!important}
 header{background:var(--bg2)!important}
-.panel,.stat,.season-hero{background:var(--panel)!important}
-.season-hero{border:1px solid var(--border)!important;box-shadow:none!important}
+.panel,.stat{background:var(--panel)!important}
 .panel,.ap-head{border:1px solid var(--border)!important;box-shadow:none!important}
 /* Inner cards / chips — drop the translucent tint + inset highlight so they're flat & solid too */
 .ath-stat,.metric-card,.mono-chip,.wh-avg-in,.rec-bar,.lmix-row,.ath-bar .back,.ath-bar-edit{background:var(--panel)!important;border:1px solid var(--border)!important;box-shadow:none!important}
@@ -4252,11 +4223,20 @@ header{background:var(--bg2)!important}
    a line what it is for, so the panel explains itself to a coach opening it for the first
    time. Below ~900px of card they stack, which is the width at which the form's own two
    columns collapse anyway. */
-.sess-cards{display:grid;grid-template-columns:minmax(0,1.32fr) minmax(0,1fr);gap:14px;margin-bottom:12px}
+/* Two cards of the SAME size. They are read as a pair — what the block is on the left,
+   how hard it is on the right — and a pair that is 1.32 : 1 wide reads as a main card
+   with an afterthought beside it. `align-items:stretch` (the grid default, spelled out
+   so it survives the next edit) keeps their heights equal too. */
+.sess-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;
+  gap:14px;margin-bottom:12px}
 @media(max-width:900px){.sess-cards{grid-template-columns:minmax(0,1fr)}}
 .sess-card{border:1px solid var(--border);border-radius:14px;background:var(--panel);
   display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.sess-card-h{display:flex;align-items:center;gap:12px;padding:13px 15px;
+/* The page-wide `header` rule is a sticky, space-between bar — which is what pushed this
+   card's title away from its own icon and out to the right edge. A card header is none of
+   those things, so each of them is said again here. */
+.sess-card-h{display:flex;align-items:center;justify-content:flex-start;gap:12px;padding:13px 15px;
+  position:static;flex-wrap:nowrap;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
   border-bottom:1px solid var(--border);background:var(--elevated)}
 .sess-card-ic{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center}
 .sess-card-ic.basics{background:var(--accent-bg);border:1px solid rgba(0,148,255,.32);color:var(--accent2)}
@@ -4499,65 +4479,7 @@ header{background:var(--bg2)!important}
   .iv-numed label{min-width:34px}
 }
 
-/* ===== Tempo Training =====
-   The player is a stage: the bar on the left IS the movement — the puck rides down on
-   the eccentric, stops on a hold, rides back up on the concentric — and everything
-   else on the card reads the same clock. Each phase kind owns one colour (--tt-c),
-   set on the row/segment/stage so the timeline, the editor and the puck all say the
-   same thing without a legend. */
-.tt-wrap{display:flex;flex-direction:column;gap:16px}
-.tt-stage{display:grid;grid-template-columns:132px minmax(0,1fr);gap:22px;align-items:stretch}
-.tt-track{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:16px;
-  min-height:330px;overflow:hidden}
-/* Depth marks: the top is the lockout, the bottom the deepest point of the rep. */
-.tt-track i{position:absolute;left:0;right:0;height:1px;background:var(--border);opacity:.75}
-.tt-track i.t{top:14%}.tt-track i.m{top:50%}.tt-track i.b{top:86%}
-.tt-puck{position:absolute;left:12px;right:12px;height:var(--tt-ph,44px);border-radius:12px;
-  background:var(--tt-c,var(--accent));box-shadow:0 10px 26px -8px var(--tt-c,var(--accent));
-  display:flex;align-items:center;justify-content:center;color:#06080c;font-weight:800;font-size:12px;
-  letter-spacing:.06em;text-transform:uppercase;font-family:'IBM Plex Mono',ui-monospace,monospace;
-  will-change:transform}
-.tt-puck.hold{animation:ttpulse 1s ease-in-out infinite}
-@keyframes ttpulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.45)}}
-.tt-read{display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0}
-.tt-phase{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--tt-c,var(--text))}
-.tt-phase small{display:block;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;margin-bottom:5px}
-.tt-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:74px;font-weight:700;line-height:1;
-  color:var(--text);font-variant-numeric:tabular-nums}
-.tt-count span{font-size:24px;color:var(--muted);margin-left:6px}
-.tt-bar{height:10px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);overflow:hidden}
-.tt-bar b{display:block;height:100%;background:var(--tt-c,var(--accent));border-radius:999px;transform-origin:left center;will-change:transform}
-.tt-reps{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline}
-.tt-reps u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
-  text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.tt-reps strong{font-size:20px;font-weight:800;color:var(--text);margin-left:7px;font-variant-numeric:tabular-nums}
-/* One rep, drawn to scale: each phase as wide as its seconds. */
-.tt-line{display:flex;gap:3px;height:34px;margin-top:2px}
-.tt-seg{position:relative;border-radius:7px;background:var(--elevated);border:1px solid var(--border);
-  overflow:hidden;min-width:14px;display:flex;align-items:center;justify-content:center}
-.tt-seg em{position:relative;z-index:1;font-style:normal;font-size:10.5px;font-weight:700;color:var(--muted);
-  font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
-.tt-seg.on{border-color:var(--tt-c);background:color-mix(in srgb,var(--tt-c) 16%,transparent)}
-.tt-seg.on em{color:var(--text)}
-.tt-seg.done{border-color:var(--border2)}
-.tt-seg b{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--tt-c);opacity:.28;
-  transform-origin:left center;will-change:transform}
-/* Editor */
-.tt-row{display:flex;gap:9px;align-items:center;background:var(--elevated);border:1px solid var(--border);
-  border-left:3px solid var(--tt-c,var(--border2));border-radius:0 10px 10px 0;padding:8px 10px}
-.tt-row .k{flex:0 0 168px}
-.tt-row .s{flex:0 0 108px}
-.tt-row .n{flex:1 1 150px;min-width:0}
-.tt-row label{margin-bottom:3px;font-size:9.5px}
-.tt-row input,.tt-row select{padding:6px 9px;font-size:12.5px}
-.tt-row .s input{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;text-align:center}
-.tt-acts{display:flex;gap:2px;margin-left:auto;align-self:flex-end;padding-bottom:1px}
-.tt-acts button{background:none;border:none;color:var(--dim);cursor:pointer;padding:4px 6px;font-size:12px;
-  line-height:1;border-radius:5px}
-.tt-acts button:hover:not(:disabled){color:var(--accent2);background:var(--hover)}
-.tt-acts button.del:hover{color:var(--red)}
-.tt-acts button:disabled{opacity:.3;cursor:default}
+/* Preset chips and the summary strip, shared by the interval setup panel. */
 .tt-chip{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:999px;
   padding:6px 13px;font-size:12px;cursor:pointer;white-space:nowrap}
 .tt-chip:hover{border-color:var(--accent);color:var(--accent2)}
@@ -4569,57 +4491,75 @@ header{background:var(--bg2)!important}
 .tt-sum u{text-decoration:none;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace}
 .tt-sum strong{font-size:16px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
-@media(max-width:760px){
-  .tt-stage{grid-template-columns:96px minmax(0,1fr);gap:14px}
-  .tt-track{min-height:260px}
-  .tt-count{font-size:56px}
-  .tt-phase{font-size:26px}
-  .tt-row{flex-wrap:wrap}
-  .tt-row .k,.tt-row .s{flex:1 1 120px}
-  /* A short phase has no room for its label on a phone, and half a word is worse than
-     none: the strip keeps the phase it is on labelled and lets the rest read as colour. */
-  .tt-seg{min-width:8px}
-  .tt-seg em{display:none}
-  .tt-seg.on em{display:block;font-size:9.5px}
-}
-/* Full screen — the player alone, sized to whatever it is shown on. It is the same
-   markup, so the set keeps running across the switch; only the room it is given
-   changes. Declared after the phone rules so it wins on a phone too, where the
-   fixed overlay stands in for the Fullscreen API Safari won't give a plain div. */
-.tt-wrap.fs{position:fixed;inset:0;z-index:2100;background:var(--bg);margin:0;
-  padding:clamp(16px,3vw,40px);display:flex;flex-direction:column;justify-content:center;
-  gap:clamp(14px,3vh,34px);overflow:hidden}
-.tt-wrap.fs .tt-stage{flex:1 1 auto;min-height:0;
-  grid-template-columns:clamp(110px,16vw,260px) minmax(0,1fr);gap:clamp(16px,4vw,52px)}
-.tt-wrap.fs .tt-track{min-height:0;--tt-ph:clamp(48px,8vh,92px);border-radius:22px}
-/* Centred on the big screen: read from across the gym, the phase and the count want to
-   sit in the middle of the room rather than hug the track. */
-.tt-wrap.fs .tt-read{gap:clamp(10px,2.4vh,26px);text-align:center}
-.tt-wrap.fs .tt-reps{justify-content:center}
-.tt-wrap.fs .tt-phase{font-size:clamp(28px,4.6vw,64px)}
-.tt-wrap.fs .tt-phase small{font-size:clamp(11px,1.3vw,17px);margin-bottom:8px}
-.tt-wrap.fs .tt-count{font-size:clamp(64px,12vw,170px)}
-.tt-wrap.fs .tt-count span{font-size:clamp(20px,3vw,44px)}
-.tt-wrap.fs .tt-bar{height:clamp(10px,1.6vh,18px)}
-.tt-wrap.fs .tt-reps strong{font-size:clamp(20px,2.4vw,34px)}
-.tt-wrap.fs .tt-reps u{font-size:clamp(10px,1.1vw,14px)}
-.tt-wrap.fs .tt-line{height:clamp(34px,7vh,64px)}
-.tt-wrap.fs .tt-seg em{display:block;font-size:clamp(10px,1.1vw,15px)}
-.tt-wrap.fs .tt-line{gap:5px}
-.tt-wrap.fs .row{justify-content:center}
-.tt-fsx{position:absolute;top:14px;right:16px;z-index:2;background:var(--elevated);
-  border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;
-  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-.tt-fsx:hover{border-color:var(--accent);color:var(--accent2)}
-@media(max-width:760px){
-  /* Portrait phone, propped against the rack: the numbers matter more than the strip. */
-  .tt-wrap.fs .tt-seg em{display:none}
-  .tt-wrap.fs .tt-seg.on em{display:block}
-}
+
+/* ===== Competition Dates =====
+   A folded panel with a count on its head, opening onto one row per fixture: the date
+   and the event on the left, where and what it counted for in the middle, the score at
+   the end. A row the calendar wrote says so instead of offering a Remove button that
+   would be undone on the next sync. */
+.cmp-panel{padding-bottom:16px}
+.cmp-h{display:flex;align-items:center;gap:10px;width:100%;padding:0;border:none;background:none;
+  color:var(--text);font-family:inherit;cursor:pointer;text-align:left}
+.cmp-h i{font-style:normal;font-size:10px;color:var(--dim);width:12px;flex:none}
+.cmp-h b{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.cmp-h:hover b{color:var(--accent2)}
+.cmp-count{margin-left:auto;display:flex;align-items:baseline;gap:9px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:11px;color:var(--text2)}
+.cmp-count em{font-style:normal;color:var(--dim)}
+.cmp-b{margin-top:14px}
+.cmp-list{display:flex;flex-direction:column;gap:8px}
+.cmp-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:11px 13px;border-radius:12px;
+  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
+.cmp-row:hover{border-color:var(--border2)}
+.cmp-f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.cmp-f label{margin:0;font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.cmp-f.date{flex:0 0 150px}
+.cmp-f.grow{flex:1 1 150px}
+.cmp-f.score{flex:0 0 118px}
+.cmp-f.act{flex:0 0 auto;margin-left:auto}
+.cmp-f input,.cmp-f select{height:34px;padding:0 10px;font-size:12.5px;border-radius:9px}
+.cmp-score{display:flex;align-items:center;gap:6px}
+.cmp-score input{width:44px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700}
+.cmp-score span{color:var(--dim)}
+.cmp-auto{display:inline-block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border:1px solid var(--border2);
+  border-radius:7px;padding:5px 9px;white-space:nowrap}
+@media(max-width:620px){.cmp-f.date,.cmp-f.score{flex:1 1 100%}.cmp-f.act{margin-left:0}}
+
+/* ===== Check-in Forms =====
+   Two links to hand out and one day's answers. Nothing here is decorated: a form is a
+   link and an answer is a number, and both read better as words than as a pictogram. */
+.ck-note{margin-bottom:14px;padding:12px 14px;border-radius:11px;font-size:13px;line-height:1.5;color:var(--text2)}
+.ck-note.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35)}
+.ck-note.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35)}
+.ck-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.ck-head-t{min-width:0;flex:1 1 320px}
+.ck-head-t b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.008em;color:var(--text);line-height:1.2}
+.ck-head-t span{display:block;font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:4px}
+.ck-daynav{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ck-daynav input{width:auto;min-width:150px;height:30px;padding:0 9px;font-size:12px;border-radius:8px}
+.ck-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.ck-link{display:flex;flex-direction:column;gap:8px;padding:15px 16px;border-radius:13px;
+  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
+.ck-link:hover{border-color:var(--border2)}
+.ck-link-t{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3}
+.ck-link-h{font-size:11.5px;color:var(--dim);line-height:1.55;flex:1}
+.ck-link .btn{width:100%;justify-content:center}
+.ck-link-u{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ck-link-u a{font-size:12px;color:var(--accent2)}
+.ck-link-u code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--muted);
+  word-break:break-all;user-select:all}
+.ck-state{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-top:12px;padding:10px 14px;border-radius:11px;background:var(--bg2);border:1px solid var(--border);
+  font-size:12px;color:var(--dim)}
+.ck-state-a{display:flex;gap:7px;flex-wrap:wrap}
+.ck-in{color:var(--accent2);font-weight:600;font-size:12.5px}
+.ck-in i{font-style:normal;color:var(--muted);font-size:11px;font-weight:400}
+.ck-out{color:var(--muted)}
 
 /* ===== Interval Timer =====
-   Same player idea as Tempo Training, read from further away: the athlete on the
-   sled doesn't look at a puck, they look at the colour of the screen. Work is green,
+   The clock as a colour rather than a number to read: the athlete on the sled does not
+   look at a digit, they look at the colour of the screen. Work is green,
    rest is red, the break between rounds/sets is blue, and in full screen that colour
    IS the screen — visible from the other end of the gym. */
 .it-wrap{display:flex;flex-direction:column;gap:16px}
@@ -4649,10 +4589,31 @@ header{background:var(--bg2)!important}
   transform-origin:left center;will-change:transform}
 .it-seg.done b{transform:scaleX(1)}
 /* Editor + summary reuse the Tempo look so the tab reads as one page. */
-.it-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
-.it-grid>div{flex:0 0 128px}
-.it-grid label{margin-bottom:3px}
-.it-grid input{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:700;text-align:center}
+/* --- interval setup: one card per number --- */
+.it-panel{padding-top:18px}
+.it-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.it-head-t{min-width:0}
+.it-head-t b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.008em;color:var(--text);line-height:1.2}
+.it-head-t span{display:block;font-size:11.5px;color:var(--dim);line-height:1.45;margin-top:4px}
+.it-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.it-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-bottom:14px}
+.itf{display:flex;flex-direction:column;gap:5px;margin:0;padding:11px 12px;border-radius:12px;
+  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
+.itf:focus-within{border-color:var(--accent)}
+.itf-l{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.itf input{height:36px;padding:0 8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:19px;
+  font-weight:700;text-align:center;background:var(--bg2);border-radius:9px}
+.itf-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-align:center}
+.it-save{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.it-save input{flex:1 1 220px;min-width:0;height:38px;border-radius:10px}
+.it-saved{display:flex;flex-direction:column;gap:8px}
+.it-sv{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:10px 14px}
+.it-sv-t{min-width:0}
+.it-sv-t b{font-size:13px;font-weight:700;color:var(--text)}
+.it-sv-t i{display:block;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:10.5px;color:var(--dim);margin-top:3px}
+.it-sv-a{display:flex;gap:6px;flex:none}
 @media(max-width:760px){
   .it-stage{min-height:260px}
   .it-count{font-size:64px}
@@ -4921,13 +4882,20 @@ const FOCUS_TREE=[
   {id:'Movement', tr:'Hareket', c:'#38bdf8',
    sub:['Mobility','Stability','Motor Control','Movement Quality','Landing Mechanics','Injury Prevention','Tendon Health','Balance & Proprioception']},
   {id:'Technical / Tactical', tr:'Teknik / Taktik', c:'#ff7c00',
-   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage','Competition']},
+   sub:['Individual Skill','Team Offense','Team Defense','Set Plays','Transition','Small-Sided Game','Scrimmage']},
   {id:'Recovery', tr:'Toparlanma', c:'#00bfff',
    sub:['Active Recovery','Regeneration','Soft Tissue','Breathing / Parasympathetic','Mobility Flow']},
   {id:'Return to Play', tr:'Sahaya Dönüş', c:'#2dd4a7',
    sub:['Reconditioning','Load Reintroduction','Return to Run','Return to Train','Return to Perform','Criteria-Based Progression']},
   {id:'Testing', tr:'Test', c:'#94a3b8',
    sub:['Anthropometry','Strength Testing','Power / Jump Testing','Speed Testing','Aerobic Testing','Movement Screen','Asymmetry Profiling']},
+  /* A match is not a capacity trained inside a practice — it is what the practices are
+     for, it is the day the season is cut around, and it is the one session type the
+     Season screen keeps a list of. So it is a focus of its own rather than a sub-focus
+     buried under Technical / Tactical, and ticking it writes the day into the season's
+     Competition Dates. */
+  {id:'Competition', tr:'Müsabaka', c:'#ef4444',
+   sub:['League Match','Cup Match','Tournament','Friendly','Practice Game']},
 ];
 const SESSION_FOCUS=FOCUS_TREE.map(f=>f.id);
 const FOCUS_BY=FOCUS_TREE.reduce((m,f)=>(m[f.id]=f,m),{});
@@ -4945,7 +4913,7 @@ const FOCUS_L1_FROM_LEGACY={
   'Speed':'Speed','Acceleration':'Speed','Deceleration':'Speed','Change of Direction':'Speed','Agility':'Speed',
   'Conditioning':'Conditioning','Mobility':'Movement','Stability':'Movement','Injury Prevention':'Movement',
   'Movement Quality':'Movement','COD / Agility':'Speed',
-  'Technical':'Technical / Tactical','Tactical':'Technical / Tactical','Competition':'Technical / Tactical',
+  'Technical':'Technical / Tactical','Tactical':'Technical / Tactical','Competition':'Competition',
   'Recovery':'Recovery','Assessment':'Testing','Return to Play':'Return to Play','Testing':'Testing',
 };
 const FOCUS_SUB_FROM_LEGACY={
@@ -4953,7 +4921,43 @@ const FOCUS_SUB_FROM_LEGACY={
   'Deceleration':'Deceleration','Change of Direction':'Change of Direction','Agility':'Reactive Agility',
   'COD / Agility':'Change of Direction','Mobility':'Mobility','Stability':'Stability',
   'Injury Prevention':'Injury Prevention','Movement Quality':'Movement Quality',
-  'Technical':'Individual Skill','Tactical':'Team Offense','Competition':'Competition',
+  'Technical':'Individual Skill','Tactical':'Team Offense',
+};
+/* A match ticked in the session editor IS a fixture. The Season screen's Competition
+   Dates list used to be typed a second time by hand, next to a calendar that already knew
+   which days were matches; it is written from the calendar now. Every session whose focus
+   is Competition owns one row, keyed by the session's id, so a match that is moved moves
+   its row and a session that is deleted or re-focused takes its row with it. What the
+   coach types INTO the row — venue, competition, score, a renamed event — survives every
+   resync; only the date follows the session. */
+const compRowsFromDays=days=>{
+  const out=[];
+  Object.values(days||{}).forEach(d=>{
+    if(!d||!d.date)return;
+    (d.sessions||[]).forEach(ses=>{
+      if(!ses||!sesFocus(ses).includes('Competition'))return;
+      out.push({srcId:String(ses.id||''),date:d.date,name:(ses.name||'').trim()||'Competition'});
+    });
+  });
+  return out;
+};
+const syncCompetitions=(list,days)=>{
+  const prev=Array.isArray(list)?list:[];
+  const byId={};prev.forEach(c=>{if(c&&c.srcId)byId[c.srcId]=c;});
+  const auto=compRowsFromDays(days).filter(a=>a.srcId).map(a=>{
+    const ex=byId[a.srcId];
+    return ex?{...ex,date:a.date}:{...a};
+  });
+  return[...prev.filter(c=>c&&!c.srcId),...auto]
+    .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+};
+/* Matches already played: a fixture whose day has passed, or one a score was written on.
+   A season's fixture list holds what is still to come as well, and "how many did we play"
+   is not the length of that list. */
+const compPlayedCount=list=>{
+  const tk=fmt(today);
+  return(Array.isArray(list)?list:[]).filter(c=>c&&((c.date&&c.date<=tk)
+    ||String(c.scoreFor||'').trim()!==''||String(c.scoreAgainst||'').trim()!=='')).length;
 };
 /* Old single-value "purpose" values → new multi-select session focus values */
 const LEGACY_FOCUS_MAP={'Fundamental Strength':['Strength'],'Maximal Strength':['Strength'],'Hypertrophy':['Hypertrophy'],'Power':['Power'],'Speed & Agility':['Speed','Agility'],'Aerobic Endurance':['Conditioning'],'Anaerobic Capacity':['Conditioning'],'Technical':['Technical'],'Ball Practice':['Technical'],'Team Practice':['Technical'],'Game Day':['Competition'],'Recovery':['Recovery'],'Mobility':['Mobility']};
@@ -5176,7 +5180,7 @@ const SPRESETS=[
   {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
   {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
   {name:'Endurance',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Competition',focus:['Technical / Tactical'],sub:['Competition'],duration:90,bl:[]}},
+  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
   {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
 ];
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -5277,8 +5281,13 @@ const COACHOS_LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAggAAABKCAMAAA
    carry the team down as a prop. Empty string when the team has no logo — the header then
    renders exactly as before. */
 let _teamLogo='';
+let _clubName='';
 function registerTeamLogo(src){_teamLogo=typeof src==='string'?src:'';}
 function teamLogo(){return _teamLogo;}
+/* The club the crest belongs to, so a printed or shared sheet can sign itself the way
+   the sidebar does rather than with a picture and no name. */
+function registerClubName(n){_clubName=typeof n==='string'?n.trim():'';}
+function clubNameNow(){return _clubName;}
 /* Shared library entries (name + type + movement pattern + cover image + video link),
    mirrored here so the deeply-nested exercise editor can drive its picker without
    prop-threading: the left pane lists exercises, the right pane the categories they belong
@@ -7158,10 +7167,9 @@ function migrate(data){
   data.templates=data.templates.map(t=>{const s=t.session||{};
     return{...t,session:{...s,focus:Array.isArray(s.focus)?s.focus:sesFocus(s)}};});
   if(!Array.isArray(data.exercises))data.exercises=[];
-  // Tempo Training's rep, its saved tempos and the player's settings ride along with
-  // the rest of the workspace, so a tempo written on the laptop is there on the phone.
-  data.tempo=normTempo(data.tempo);
-  // The Interval Timer's work/rest block and its saved intervals travel the same way.
+  // The Interval Timer's work/rest block, its saved intervals and the player's settings
+  // ride along with the rest of the workspace, so an interval set up on the laptop is
+  // there on the phone.
   data.interval=normInterval(data.interval);
   const _typeRemap={'Agility':'Multi Directional Speed','COD':'Multi Directional Speed','Sprint':'Multi Directional Speed','Isolation':'','Compound':'','Olympic':'Full Body','Cardio':'','Stretching':'','Üst Vücut İtiş':'Upper Body Push','Üst Vücut Çekiş':'Upper Body Pull','Kalça Dominant':'Hip Dominant','Diz Dominant':'Knee Dominant','Power':'Medicine Ball'};
   const _diffRemap={Easy:'Level 1',Moderate:'Level 2',Hard:'Level 3'};
@@ -9166,19 +9174,37 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
   const chartMean=rTotal/7;
   const maxLoad=Math.max(...rDay,1);
   // Build SVG bar chart
-  const cBarW=58,cGap=10,cPad=28,cBottomLbl=18;
-  const cUsableH=160-cPad-cBottomLbl;
-  const cTotalW=7*cBarW+6*cGap;
+  /* The chart reads like a chart rather than seven floating blocks: a left gutter with a
+     scale on it, gridlines the bars are measured against, and the squad mean as a labelled
+     line across them. The scale tops out at a round number above the heaviest day, so the
+     ticks are numbers a coach recognises (300, 600, 900) rather than the day's own total. */
+  const cBarW=58,cGap=10,cPad=26,cBottomLbl=20,cGut=40,cH=178;
+  const cUsableH=cH-cPad-cBottomLbl;
+  const cPlotW=7*cBarW+6*cGap;
+  const cTotalW=cGut+cPlotW;
+  const niceStep=v=>{const raw=v/4;const p10=Math.pow(10,Math.floor(Math.log10(Math.max(1,raw))));
+    const n=raw/p10;return(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p10;};
+  const step=niceStep(maxLoad);
+  const axMax=Math.max(step,Math.ceil(maxLoad/step)*step);
+  const yOf=v=>cPad+cUsableH-(axMax>0?(v/axMax)*cUsableH:0);
+  const ticks=[];for(let v=0;v<=axMax+.001;v+=step)ticks.push(v);
+  const grid=ticks.map(v=>`<line x1="${cGut}" y1="${yOf(v)}" x2="${cTotalW}" y2="${yOf(v)}" stroke="#e5e7eb" stroke-width="1"/><text x="${cGut-8}" y="${yOf(v)+3.5}" text-anchor="end" font-size="9" fill="#8b9099" font-family="'IBM Plex Mono',monospace">${Math.round(v)}</text>`).join('');
   const bars=rDay.map((load,i)=>{
-    const h=maxLoad>0?Math.max((load/maxLoad)*cUsableH,0):0;
-    const x=i*(cBarW+cGap);const y=cPad+cUsableH-h;
-    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/>${load>0?`<text x="${x+cBarW/2}" y="${y-5}" text-anchor="middle" font-size="10" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text>`:''}<text x="${x+cBarW/2}" y="${160-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${dnL(i)}</text>`;
+    const h=Math.max(yOf(0)-yOf(load),0);
+    const x=cGut+i*(cBarW+cGap);const y=yOf(load);
+    return`<rect x="${x}" y="${y}" width="${cBarW}" height="${h||0}" fill="#9aab3a" rx="4" ry="4"/><text x="${x+cBarW/2}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0a0b0d">${Math.round(load)}</text><text x="${x+cBarW/2}" y="${cH-4}" text-anchor="middle" font-size="10" font-weight="600" fill="#5c626c" font-family="'IBM Plex Mono',monospace">${dnL(i)}</text>`;
   }).join('');
-  const meanY=chartMean>0?cPad+cUsableH-(chartMean/maxLoad)*cUsableH:0;
-  const meanLine=chartMean>0?`<line x1="0" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#0a0b0d" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.55"/><text x="${cTotalW-4}" y="${meanY-4}" text-anchor="end" font-size="9" fill="#0a0b0d" font-weight="700" font-family="'IBM Plex Mono',monospace">Mean ${Math.round(chartMean)}</text>`:'';
-  const chartSvg=`<svg viewBox="0 0 ${cTotalW} 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:170px">${meanLine}${bars}</svg>`;
+  const meanY=chartMean>0?yOf(chartMean):0;
+  const meanTx=`${L('Ort.','Mean')} ${Math.round(chartMean)} AU`;
+  const meanW=meanTx.length*5.6+14;
+  const meanLine=chartMean>0?`<line x1="${cGut}" y1="${meanY}" x2="${cTotalW}" y2="${meanY}" stroke="#334155" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.8"/><rect x="${cTotalW-meanW}" y="${meanY-9.5}" width="${meanW}" height="17" rx="5" fill="#f4f5f7" stroke="#cbd5e1" stroke-width="1"/><text x="${cTotalW-meanW/2}" y="${meanY+2.5}" text-anchor="middle" font-size="9" fill="#3b4252" font-weight="700" font-family="'IBM Plex Mono',monospace">${meanTx}</text>`:'';
+  const chartSvg=`<svg viewBox="0 0 ${cTotalW} ${cH}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;max-height:190px">${grid}${bars}${meanLine}</svg>`;
   // Monotony flag
   const mF=!monotony?{c:'#8b9099',t:'—'}:monotony>2?{c:'#ff6b5b',t:L('YÜKSEK','HIGH')}:monotony>=1.5?{c:'#f59e0b',t:L('İZLE','WATCH')}:monotony>=1?{c:'#9aab3a',t:L('NORMAL','NORMAL')}:{c:'#5b8cff',t:L('DÜŞÜK','LOW')};
+  const monoSay=!monotony?L('Bu hafta için yük verisi yok.','No load recorded for this week.')
+    :monotony>2?L('Günler birbirine fazla benziyor — aşırı yüklenme riski.','The days look too alike — overtraining risk.')
+    :monotony>=1.5?L('Varyasyon daralıyor — haftayı yakından izle.','Variation is narrowing — watch the week closely.')
+    :L('Antrenman yükü bu hafta sağlıklı varyasyon gösteriyor.','Training load shows healthy variation this week.');
   const monotonyBlock=rTotal>0?`<div class="mono-row">
     <div class="mono-chart">
       <div class="mono-h">${L('Haftalık Yük Dağılımı','Weekly Load Distribution')} <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)">· ${L('gerçekleşen yük','realized load')} (AU)</span></div>
@@ -9186,15 +9212,17 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
     </div>
     <div class="mono-side">
       <div class="mono-stats">
-        <div class="stat"><div class="stat-l">${L('Toplam','Total')}</div><div class="stat-v">${Math.round(rTotal)}<span class="stat-u">AU</span></div></div>
+        <div class="stat"><div class="stat-l">${L('Toplam Yük','Total Load')}</div><div class="stat-v">${Math.round(rTotal)}<span class="stat-u">AU</span></div></div>
         <div class="stat"><div class="stat-l">${L('Ort./sporcu','Mean/ath.')}</div><div class="stat-v">${Math.round(meanLoad)}<span class="stat-u">AU</span></div></div>
         <div class="stat"><div class="stat-l">${L('SS/sporcu','SD/ath.')}</div><div class="stat-v">${sd.toFixed(1)}</div></div>
       </div>
-      <div class="mono-big" style="border-color:${mF.c}">
-        <div class="mono-big-l">${L('MONOTONİ','MONOTONY')}</div>
-        <div class="mono-big-v" style="color:${mF.c}">${monotony.toFixed(2)}</div>
-        <span class="mono-big-t" style="background:${mF.c}">${mF.t}</span>
-        <div class="mono-big-s">${L('Zorlanma','Strain')}: <strong>${Math.round(strain)}</strong></div>
+      <div class="mono-big" style="border-color:${mF.c}55;background:${mF.c}12">
+        <div class="mono-big-in">
+          <div class="mono-big-l">${L('MONOTONİ','MONOTONY')}</div>
+          <div class="mono-big-v" style="color:${mF.c}">${monotony.toFixed(2)}</div>
+          <span class="mono-big-t" style="background:${mF.c}">${mF.t}</span>
+        </div>
+        <div class="mono-big-s">${monoSay}<br><span>${L('Zorlanma','Strain')}: <strong>${Math.round(strain)}</strong></span></div>
       </div>
       <div class="mono-help">
         <div class="mono-help-h">${L('Foster Monotonisi = Ortalama / SS','Foster Monotony = Mean / SD')}</div>
@@ -9225,7 +9253,7 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
     if(rows.length>0){
       const maxAthLoad=Math.max(...rows.map(r=>r.total),1);
       athleteBlock=`<div class="ath-tbl-wrap">
-        <div class="ath-tbl-h">👥 Athlete Weekly sRPE & Load Totals</div>
+        <div class="ath-tbl-h">${L('Sporcu Bazında Haftalık sRPE ve Yük','Athlete Weekly sRPE & Load Totals')}</div>
         <table class="ath-tbl"><thead><tr><th style="text-align:left;padding-left:10px">Athlete</th><th>#</th><th>Sessions</th><th>Mean sRPE</th><th>Total Load (AU)</th><th style="width:25%">Distribution</th></tr></thead><tbody>
           ${rows.map(r=>`<tr>
             <td style="text-align:left;font-weight:700;padding-left:10px">${r.name}</td>
@@ -9261,14 +9289,22 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
         <div class="day-name">${dnL(i)}</div>
         <div class="day-date">${fd(date).slice(0,5)}</div>
       </div>
-      ${ss.length===0?`<div class="rest-tag">${L('DİNLENME','REST')}</div>`:
+      ${ss.length===0?`<div class="rest-box">
+          <div class="rest-tag">${L('DİNLENME','REST')}</div>
+          <div class="rest-rule"></div>
+          <div class="rest-say">${L('Toparlanma yarının<br>performansını kurar.','Recovery builds tomorrow\'s<br>performance.')}</div>
+        </div>`:
         ss.map(s=>{const c=colorOf(s);return`<div class="sess" style="border-left:4px solid ${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span>${s.sRPE!==''?`<span class="srpe-pill">sRPE ${s.sRPE}</span>`:''}</div>
-          <div class="sess-meta"><span class="sess-time">⏱ ${s.time}</span><span class="sess-dur">${Number(s.duration)||0}min</span></div>
+          <div class="sess-meta"><span class="sess-time">${s.time}</span><span class="sess-dur">${Number(s.duration)||0} ${L('dk','min')}</span></div>
         </div>`;}).join('')}
-      ${ss.length>0?`<div class="day-total">${L('Toplam','Total')}: ${Math.round(dayLoad)} AU</div>`:''}
+      ${ss.length>0?`<div class="day-total"><u>${L('Toplam Yük','Total Load')}</u><b>${Math.round(dayLoad)} AU</b></div>`:''}
       ${day?.dailyNotes?`<div class="day-notes"><em>${day.dailyNotes}</em></div>`:''}
     </td>`;};
+  /* The club signs the sheet: a plan that leaves the app on WhatsApp is read next to
+     four other clubs' plans, and a crest is how it is told apart at a glance. */
+  const crest=hasMedia(teamLogo())?escHTML(mediaSrc(teamLogo())):'';
+  const club=escHTML(clubNameNow());
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Haftalık Plan','Weekly Plan')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style>
@@ -9277,22 +9313,35 @@ ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 html,body{height:100%}
 :root{--accent:#9aab3a;--bg:#ffffff;--bg2:#f4f5f7;--panel:#ffffff;--border:#e5e7eb;--border2:#cbd5e1;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099}
-body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column}
+/* The sheet is a picture as often as it is a page, and a picture that runs edge to edge
+   reads as a screenshot of something cut off. The page padding is the white frame around
+   it — the same on all four sides — and it is what the shared PNG is captured with. */
+body{font-family:'Space Grotesk',Arial,sans-serif;font-size:10px;color:var(--text);line-height:1.4;background:#fff;display:flex;flex-direction:column;padding:16px 18px}
 .fit{display:flex;flex-direction:column}
 .mono{font-family:'IBM Plex Mono',monospace}
-.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;padding:11px 16px;background:#0a0b0d;color:#fff;border-radius:12px;flex:none}
-.hdr h1{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
-.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.7;margin-top:3px;letter-spacing:.02em}
-.hdr-r{text-align:right;font-size:11px;line-height:1.4}
-.hdr-r .label{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.6);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
-.hdr-r .pill{display:inline-block;background:var(--accent);color:#0a0b0d;padding:3px 11px;border-radius:6px;margin-left:6px;font-weight:600;font-size:11px}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:11px;padding:13px 18px;background:#0a0b0d;color:#fff;border-radius:14px;flex:none}
+.hdr-l{min-width:0}
+.hdr h1{font-size:20px;font-weight:700;letter-spacing:-.015em;line-height:1.1}
+.hdr .sub{font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.66;margin-top:4px;letter-spacing:.02em}
+.hdr-r{display:flex;align-items:center;gap:10px;flex:none}
+.hstat{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:7px 12px}
+.hstat-l{font-family:'IBM Plex Mono',monospace;color:rgba(255,255,255,.62);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.hstat-v{background:var(--accent);color:#0a0b0d;padding:3px 10px;border-radius:7px;font-weight:700;font-size:11.5px;white-space:nowrap}
+.hdr-div{width:1px;align-self:stretch;background:rgba(255,255,255,.18);margin:0 2px}
+.hdr-club{display:flex;align-items:center;gap:10px;max-width:190px}
+.hdr-club img{height:34px;width:auto;max-width:56px;object-fit:contain}
+.hdr-club span{font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1.2;text-transform:uppercase}
 table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
-.day-cell{vertical-align:top;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:0;width:14.28%;overflow:hidden}
-.day-head{padding:7px 10px;display:flex;justify-content:space-between;align-items:baseline}
-.day-name{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.day-cell{vertical-align:top;background:#fff;border:1px solid var(--border);border-radius:12px;padding:0;width:14.28%;overflow:hidden}
+.day-head{padding:9px 11px 5px;display:flex;justify-content:space-between;align-items:baseline}
+.day-name{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
 .day-date{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);font-weight:500}
-.rest-tag{text-align:center;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:18px 6px;letter-spacing:.1em;opacity:.6}
-.sess{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:5px;overflow:hidden}
+/* A rest day is not an empty cell: it says what it is, and why it is there. */
+.rest-box{padding:26px 10px 30px;text-align:center}
+.rest-tag{color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.24em}
+.rest-rule{height:1px;background:var(--border);margin:14px 16px}
+.rest-say{font-size:9.5px;font-style:italic;color:var(--dim);line-height:1.5}
+.sess{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;margin:5px;overflow:hidden}
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
 .srpe-pill{background:#0a0b0d;color:#fff;padding:1px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap}
@@ -9312,23 +9361,28 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .ext{margin-left:4px;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
 .exrr{margin-left:4px;color:var(--dim);font-family:'IBM Plex Mono',monospace;font-size:8.5px}
 .exdesc{font-size:8.5px;color:var(--dim);line-height:1.35;margin-top:2px;padding-left:4px}
-.day-total{margin:5px;padding:4px 9px;background:#0a0b0d;color:var(--accent);font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:9.5px;text-align:center;border-radius:6px;letter-spacing:.04em}
+.day-total{margin:5px;padding:7px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;text-align:left}
+.day-total u{display:block;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.day-total b{display:block;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;margin-top:2px}
 .day-notes{margin:0 4px 4px;padding:4px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;font-size:7px;color:var(--text2);line-height:1.3}
 /* Monotony block */
-.mono-row{display:flex;gap:10px;margin-top:14px;padding:14px;background:#fff;border:1px solid var(--border);border-radius:12px;page-break-inside:avoid;break-inside:avoid}
+.mono-row{display:flex;gap:12px;margin-top:11px;padding:15px;background:#fff;border:1px solid var(--border);border-radius:14px;page-break-inside:avoid;break-inside:avoid}
 .mono-chart{flex:2.2;min-width:0}
 .mono-h{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .mono-side{flex:1.6;display:flex;flex-direction:column;gap:8px;min-width:0}
 .mono-stats{display:flex;gap:7px}
-.stat{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;text-align:center}
-.stat-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;font-weight:500}
-.stat-v{font-size:15px;font-weight:700;color:var(--text);margin-top:2px;line-height:1;letter-spacing:-.01em}
-.stat-u{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;margin-left:2px}
-.mono-big{background:#fff;border:1px solid var(--border2);border-radius:9px;padding:8px 10px;text-align:center}
-.mono-big-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
-.mono-big-v{font-size:22px;font-weight:700;line-height:1;margin:2px 0;color:var(--text);letter-spacing:-.01em}
-.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 9px;border-radius:6px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
-.mono-big-s{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);margin-top:4px}
+.stat{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 11px;text-align:left}
+.stat-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;font-weight:500}
+.stat-v{font-size:19px;font-weight:700;color:var(--text);margin-top:3px;line-height:1;letter-spacing:-.015em}
+.stat-u{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;margin-left:3px}
+/* The verdict beside the number that produced it, tinted by the zone it lands in. */
+.mono-big{display:flex;align-items:center;gap:14px;border:1px solid var(--border2);border-radius:11px;padding:11px 13px}
+.mono-big-in{flex:none;text-align:center;min-width:76px}
+.mono-big-l{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);font-weight:500;letter-spacing:.09em;text-transform:uppercase}
+.mono-big-v{font-size:30px;font-weight:700;line-height:1;margin:2px 0 4px;color:var(--text);letter-spacing:-.02em}
+.mono-big-t{display:inline-block;color:#0a0b0d;font-family:'IBM Plex Mono',monospace;font-size:8px;padding:3px 10px;border-radius:7px;font-weight:600;letter-spacing:.06em;background:var(--accent)}
+.mono-big-s{font-size:10px;color:var(--text2);line-height:1.5}
+.mono-big-s span{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
 .mono-help{background:var(--bg2);border:1px solid var(--border);padding:8px 10px;border-radius:8px;font-size:9px;line-height:1.6;color:var(--text2)}
 .mono-help-h{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--text);margin-bottom:4px;font-size:9px;letter-spacing:.04em}
 .mono-help-line{display:flex;align-items:center;gap:6px;margin-bottom:2px;flex-wrap:wrap}
@@ -9349,12 +9403,15 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 </style></head><body>
 <div class="fit">
 <div class="hdr">
-  <div>
+  <div class="hdr-l">
     <h1>${title}</h1>
-    <div class="sub">📅 ${L('Hafta','Week of')} ${fdL(weekStart)} — ${fdL(dates[6])}</div>
+    <div class="sub">${L('Hafta','Week of')} ${fdL(weekStart)} — ${fdL(dates[6])}</div>
   </div>
   <div class="hdr-r">
-    <div><span class="label">${L('Seans','Sessions')}</span> <span class="pill">${totalSessions}</span> <span class="label" style="margin-left:10px">${L('Toplam Yük','Total Load')}</span> <span class="pill">${Math.round(rTotal)} AU</span></div>
+    <div class="hstat"><span class="hstat-l">${L('Seans','Sessions')}</span><span class="hstat-v">${totalSessions}</span></div>
+    <div class="hstat"><span class="hstat-l">${L('Toplam Yük','Total Load')}</span><span class="hstat-v">${Math.round(rTotal)} AU</span></div>
+    ${club?`<span class="hdr-div"></span><div class="hdr-club">${crest?`<img src="${crest}" alt="">`:''}<span>${club}</span></div>`
+      :(crest?`<span class="hdr-div"></span><div class="hdr-club"><img src="${crest}" alt=""></div>`:'')}
   </div>
 </div>
 <table>${dates.map(renderDay).join('')}</table>
@@ -10063,6 +10120,24 @@ function DateDMY({value,onChange,style,title}){
    shadows none of them. */
 const nameInitials=n=>(String(n||'').match(/[\p{L}\p{N}][\p{L}\p{N}]*/gu)||[])
   .slice(0,2).map(w=>w[0]).join('').toLocaleUpperCase('tr')||'?';
+/* The masthead every tab opens with. Words only — the title, the line under it, the
+   numbers that describe the screen, and whatever buttons the screen owns. */
+function PageHero({title,sub,stats,children}){
+  const list=(stats||[]).filter(Boolean);
+  return(<div className="ph-hero">
+    <div className="ph-hero-l">
+      <div className="ph-ttl">{title}</div>
+      {sub?<div className="ph-sub">{sub}</div>:null}
+    </div>
+    {(list.length>0||children)&&<div className="ph-hero-r">
+      {list.map((st,i)=><div className="ph-stat" key={i}>
+        <div className="ph-stat-v">{st.v}</div>
+        <div className="ph-stat-l">{st.l}</div>
+      </div>)}
+      {children?<div className="ph-acts">{children}</div>:null}
+    </div>}
+  </div>);
+}
 function Setup({team,updateTeam,data,setData}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
   /* The season and the macrocycle are the same window: it opens with General Preparation
@@ -10101,6 +10176,11 @@ function Setup({team,updateTeam,data,setData}){
   const totalAthletes=teamList.reduce((n,t)=>n+((t.athletes||[]).length),0);
   const activeSeason=seasons.find(sn=>sn.id===team.activeSeasonId);
   return(<div className="su">
+    <PageHero title={L('Kurulum','Setup')}
+      sub={L('Kulüp, takımlar ve sezon penceresi — uygulamanın geri kalanı bunları okur.',
+             'The club, the teams and the season window — the rest of the app reads these.')}
+      stats={[{v:teamList.length,l:L('Takım','Teams')},
+              {v:totalAthletes,l:L('Sporcu','Athletes')}]}/>
     {/* The club as it reads everywhere else in the app — crest, name, and the three facts
         that identify it — so the screen opens with what it is about rather than with a
         form field. */}
@@ -10111,7 +10191,7 @@ function Setup({team,updateTeam,data,setData}){
         {/* The crest is also where it is changed: no second copy of it further down the
             form, so there is one logo on this screen and it is the one being edited. */}
         <div className="su-crest-edit" onClick={e=>e.stopPropagation()}>
-          <button type="button" title={L('Logoyu değiştir','Replace logo')} onClick={()=>crestRef.current&&crestRef.current.click()}>📷</button>
+          <button type="button" title={L('Logoyu değiştir','Replace logo')} onClick={()=>crestRef.current&&crestRef.current.click()}>{L('Değiştir','Replace')}</button>
           {crest&&<button type="button" title={L('Logoyu kaldır','Remove logo')} onClick={()=>u('logo','')}>✕</button>}
         </div>
         <input type="file" accept="image/*" ref={crestRef} style={{display:'none'}} onChange={e=>{
@@ -10127,7 +10207,7 @@ function Setup({team,updateTeam,data,setData}){
           {activeSeason&&<span className="su-chip">{seasonName(team,activeSeason)}</span>}
           <span className="su-chip">{L(`${teamList.length} takım`,`${teamList.length} teams`)}</span>
           <span className="su-chip">{L(`${totalAthletes} sporcu`,`${totalAthletes} athletes`)}</span>
-          {String(s.trainingLocation||'').trim()&&<span className="su-chip loc">📍 {s.trainingLocation.trim()}</span>}
+          {String(s.trainingLocation||'').trim()&&<span className="su-chip loc">{s.trainingLocation.trim()}</span>}
         </div>
       </div>
     </div>
@@ -10266,6 +10346,8 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
+  // The fixture list is a long read-only-most-of-the-time list, so it opens folded.
+  const[compOpen,setCompOpen]=useState(false);
   /* Picking a week focus also writes that focus's volume/intensity profile, so the two
      numbers stay in step with the choice without the coach touching them. */
   const setWeekFocus=(k,f)=>{const w=team.weekOverrides[k]||{},fl=FOCUS_LOAD[f];
@@ -10341,22 +10423,22 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   };
   const activeSeason=seasons.find(sn=>sn.id===activeId);
   const heroYears=seasonYears(s)||seasonName(team,activeSeason);
+  const compPlayed=compPlayedCount(s.competitions);
   return(<div>
-    <div className="season-hero">
-      <div className="season-hero-yr" aria-hidden="true">{heroYears}</div>
-      <div className="season-hero-in">
-        <div className="season-hero-k">{L('Sezon','Season')}</div>
-        <div className="season-pick">
-          <select className="season-sel" value={activeId||''} onChange={e=>switchSeason(e.target.value)} title={L('Sezon değiştir','Switch season')}>
-            {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
-          </select>
-          <button className="btn sec sm" onClick={addSeason}>+ {L('Yeni sezon','New season')}</button>
-          <button className="btn sec sm" onClick={renameSeason}>{L('Yeniden adlandır','Rename')}</button>
-          {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>{L('Sil','Delete')}</button>}
-        </div>
-        <div className="season-hero-meta">{L(`${weeks.length} hf · ${exLabel((MODELS.find(m=>m.id===s.model)?.name)||s.model)} · ${periods.length} faz · ${athleteCount} sporcu`,`${weeks.length} wks · ${(MODELS.find(m=>m.id===s.model)?.name)||s.model} · ${periods.length} phases · ${athleteCount} athletes`)}</div>
-      </div>
-    </div>
+    <PageHero title={L('Sezon','Season')}
+      sub={L(`Makrosiklüsü kur ve sezonu haftalara böl · ${team.setup.teamName}`,
+             `Set the macrocycle up and cut the season into weeks · ${team.setup.teamName}`)}
+      stats={[{v:heroYears,l:L('Sezon','Season')},
+              {v:weeks.length,l:L('Hafta','Weeks')},
+              {v:periods.length,l:L('Faz','Phases')},
+              {v:athleteCount,l:L('Sporcu','Athletes')}]}>
+      <select className="season-sel" value={activeId||''} onChange={e=>switchSeason(e.target.value)} title={L('Sezon değiştir','Switch season')}>
+        {seasons.map(sn=><option key={sn.id} value={sn.id}>{seasonName(team,sn)}</option>)}
+      </select>
+      <button className="btn sec sm" onClick={addSeason}>{L('Yeni sezon','New season')}</button>
+      <button className="btn sec sm" onClick={renameSeason}>{L('Yeniden adlandır','Rename')}</button>
+      {seasons.length>1&&<button className="btn sm danger" onClick={removeSeason}>{L('Sil','Delete')}</button>}
+    </PageHero>
     {(()=>{
       /* The chart used to start at today, which chopped off whatever a phase had already
          spent — a General Preparation running Jul 20–Aug 16 drew as a stub on Aug 3. The
@@ -10454,13 +10536,55 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
         <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
     </div>
-    <div className="panel"><h2>{L('Müsabaka Tarihleri','Competition Dates')}</h2>
-      <table><thead><tr><th>{L('Tarih (gg/aa/yyyy)','Date (dd/mm/yyyy)')}</th><th>{L('Etkinlik','Event')}</th><th style={{width:90}}></th></tr></thead><tbody>
-        {s.competitions.map((c,i)=><tr key={i}><td style={{width:180}}><DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></td>
-          <td><input value={c.name} onChange={e=>uc(i,'name',e.target.value)}/></td>
-          <td><button className="btn sm danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button></td></tr>)}
-      </tbody></table>
-      <button className="btn sec sm" style={{marginTop:10}} onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:'New event'}])}>+ {L('Müsabaka ekle','Add competition')}</button>
+    {/* The fixture list. Most of it writes itself — a session ticked Competition in the
+        session editor lands here on its own — so the panel opens folded: it is a long
+        list a coach checks rather than a form they fill in. What is typed here is what
+        the calendar cannot know: where it was played, which league or cup it counted
+        for, and how it ended. */}
+    <div className="panel cmp-panel">
+      <button type="button" className={'cmp-h'+(compOpen?' on':'')} onClick={()=>setCompOpen(o=>!o)}>
+        <i>{compOpen?'▼':'▶'}</i>
+        <b>{L('Müsabaka Tarihleri','Competition Dates')}</b>
+        <span className="cmp-count">{L(`${compPlayed} oynandı`,`${compPlayed} played`)}
+          <em>{L(`${s.competitions.length} maç`,`${s.competitions.length} fixtures`)}</em></span>
+      </button>
+      {compOpen&&<div className="cmp-b">
+        {s.competitions.length===0
+          ?<div className="empty-st">{L('Henüz müsabaka yok — takvimde bir seansın odağını Müsabaka yap, gün buraya kendiliğinden düşsün; ya da aşağıdan elle ekle.',
+              'No fixtures yet — set a session\'s focus to Competition on the calendar and the day lands here by itself, or add one by hand below.')}</div>
+          :<div className="cmp-list">
+            {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
+              <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
+                <DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></div>
+              <div className="cmp-f grow"><label>{L('Etkinlik / rakip','Event / opponent')}</label>
+                <input value={c.name||''} onChange={e=>uc(i,'name',e.target.value)}/></div>
+              <div className="cmp-f grow"><label>{L('Lig / turnuva','League / tournament')}</label>
+                <input value={c.comp||''} placeholder={L('ör. U16 Bölgesel Lig','e.g. U16 Regional League')}
+                  onChange={e=>uc(i,'comp',e.target.value)}/></div>
+              <div className="cmp-f grow"><label>{L('Konum','Location')}</label>
+                <input value={c.location||''} placeholder={L('salon / şehir','venue / city')}
+                  onChange={e=>uc(i,'location',e.target.value)}/></div>
+              <div className="cmp-f score"><label>{L('Skor','Score')}</label>
+                <div className="cmp-score">
+                  <input inputMode="numeric" value={c.scoreFor??''} aria-label={L('Bizim skorumuz','Our score')}
+                    onChange={e=>uc(i,'scoreFor',e.target.value)}/>
+                  <span>–</span>
+                  <input inputMode="numeric" value={c.scoreAgainst??''} aria-label={L('Rakip skoru','Opponent score')}
+                    onChange={e=>uc(i,'scoreAgainst',e.target.value)}/>
+                </div>
+              </div>
+              <div className="cmp-f act">
+                {c.srcId
+                  ?<span className="cmp-auto" title={L('Bu satır takvimdeki müsabaka seansından geliyor — seansı sil ya da odağını değiştir, satır da gitsin.',
+                      'This row comes from a Competition session on the calendar — delete that session or change its focus and the row goes with it.')}>{L('Takvimden','From calendar')}</span>
+                  :<button className="btn xs danger" onClick={()=>u('competitions',s.competitions.filter((_,j)=>j!==i))}>{L('Kaldır','Remove')}</button>}
+              </div>
+            </div>)}
+          </div>}
+        <button className="btn sec sm" style={{marginTop:12}}
+          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
+          {L('Müsabaka ekle','Add competition')}</button>
+      </div>}
     </div>
     <div className="panel"><h2>{L('Haftalık Yük Hedefleri','Weekly Load Targets')}</h2>
       <div className="help" style={{marginBottom:14}}>{L('Haftanın odağını seç — hacim ve yoğunluk o odağa göre otomatik ayarlanır · taper haftaları ⚠ rozetle işaretlenir.','Pick the week\'s focus — volume and intensity adjust automatically to match · taper weeks are flagged with an ⚠ badge.')}</div>
@@ -15337,6 +15461,7 @@ const TPL_CATS=[
   {id:'conditioning',label:'Conditioning',            color:'endurance',foci:['Conditioning']},
   {id:'movement',    label:'Movement Quality',        color:'recovery', foci:['Movement']},
   {id:'court',       label:'Technical / Tactical',    color:'practice', foci:['Technical / Tactical']},
+  {id:'competition', label:'Competition',             color:'match',    foci:['Competition']},
   {id:'rtp',         label:'Recovery & Return to Play',color:'recovery',foci:['Recovery','Return to Play']},
   {id:'testing',     label:'Testing',                 color:'practice', foci:['Testing']},
   {id:'other',       label:'Other',                   color:'practice', foci:[]},   // no focus set
@@ -15422,14 +15547,15 @@ function TemplatesView({data,setData}){
       focus:sesFocus(s),sub:sesSubFocus(s)};})():null;
   const edUpdate=ns=>patch(editing.id,{name:ns.name,session:{time:ns.time,loadType:ns.loadType,purpose:ns.purpose,focus:sesFocus(ns),sub:sesSubFocus(ns),methods:sesMethods(ns),region:sesRegion(ns),duration:ns.duration,color:ns.color||'',blocks:ns.blocks,notes:ns.notes,planNote:ns.planNote||''}});
   return(<div className="ex-wrap">
-    <div className="ex-top">
-      <div><h1 className="ex-h1">{L('Şablonlar','Templates')}</h1>
-        <div className="sub">{L(`${templates.length} antrenman şablonu · kopyala → bir takım ya da sporcu takvimine yapıştır`,`${templates.length} training templates · copy → paste into a team or athlete calendar`)}</div></div>
-      <button className="btn sm" onClick={addTpl}>＋ {L('Yeni Şablon','New Template')}</button>
-    </div>
+    <PageHero title={L('Şablonlar','Templates')}
+      sub={L('Kopyala → bir takım ya da sporcu takvimine yapıştır','Copy → paste into a team or athlete calendar')}
+      stats={[{v:templates.length,l:L('Şablon','Templates')},
+              {v:shown.length,l:L('Listelenen','Listed')}]}>
+      <button className="btn sm" onClick={addTpl}>{L('Yeni Şablon','New Template')}</button>
+    </PageHero>
     {/* Stacked so the focus chips row lines up edge-to-edge with the search box above it. */}
     <div className="ex-toolbar tpl-toolbar">
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Şablon ara…','Search templates…')}/></div>
+      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Şablon ara…','Search templates…')}/></div>
       <div className="lb-seg" style={{flexWrap:'wrap'}}>
         <button className={selFocus.length===0?'on':''} onClick={()=>setSelFocus([])}>{L('Tümü','All')}</button>
         {SESSION_FOCUS.map(f=><button key={f} className={selFocus.includes(f)?'on':''} onClick={()=>toggleFocus(f)}>{exLabel(f)}</button>)}
@@ -15515,278 +15641,6 @@ function TemplatesView({data,setData}){
         </div>
       </aside>
     </>),document.body)}
-  </div>);
-}
-
-/* =========================================================
-   TEMPO TRAINING
-   =========================================================
-   A rep is written as a list of phases — how the weight is lowered, where it is held,
-   how it comes back up — each one carrying its own seconds. The player runs that list
-   for as many reps as the coach asks for and animates it: the puck rides down the
-   track on the eccentric, stops on a hold, rides back up on the concentric, so the
-   athlete watches the movement rather than reading a stopwatch. */
-const TEMPO_KINDS={
-  /* `to` is where the bar ends up: the bottom (0) for a lowering phase, the top (1)
-     for a lifting one, and wherever the last move left it (null) for a hold. */
-  ecc:  {label:'Eccentric',      tr:'Eksantrik',    short:'ECC',hint:'lowering',          hintTr:'indirme',           color:'#5cb8ff',to:0},
-  iso:  {label:'Isometric hold', tr:'İzometrik tut',short:'ISO',hint:'hold under load',   hintTr:'yük altında tutma', color:'#f59e0b',to:null},
-  con:  {label:'Concentric',     tr:'Konsantrik',   short:'CON',hint:'lifting',           hintTr:'kaldırma',          color:'#10b981',to:1},
-  pause:{label:'Pause',          tr:'Duraklama',    short:'PAU',hint:'rest between reps', hintTr:'tekrarlar arası',   color:'#8b5cf6',to:null},
-};
-const TEMPO_KIND_LIST=['ecc','iso','con','pause'];
-/* Reading a phase resolves its words into the app's language, so the player, the
-   editor and the saved list all name it the same way and all four change together
-   when the TR/EN switch flips. */
-const tKind=k=>{const z=TEMPO_KINDS[k]||TEMPO_KINDS.ecc;return{...z,label:L(z.tr,z.label),hint:L(z.hintTr,z.hint)};};
-const tPhase=(kind,sec,note)=>({id:uid(),kind,sec,note:note||''});
-/* Tempos every coach writes, in the 4-digit notation they are written in on a program
-   (eccentric · pause at the bottom · concentric · pause at the top). A zero slot is
-   simply left out of the phase list. */
-const TEMPO_PRESETS=[
-  {name:'Hypertrophy',   code:'3-0-1-0',phases:[['ecc',3],['con',1]]},
-  {name:'Pause rep',     code:'3-2-1-0',phases:[['ecc',3],['iso',2],['con',1]]},
-  {name:'Eccentric focus',code:'5-1-1-0',phases:[['ecc',5],['iso',1],['con',1]]},
-  {name:'Isometric hold',code:'2-5-2-0',phases:[['ecc',2],['iso',5],['con',2]]},
-  {name:'Explosive',     code:'2-0-X-1',phases:[['ecc',2],['con',.5],['pause',1]]},
-];
-function normTempoPhases(arr){
-  const out=(Array.isArray(arr)?arr:[]).filter(p=>p&&TEMPO_KINDS[p.kind])
-    .map(p=>({id:p.id||uid(),kind:p.kind,sec:Math.max(0,Math.min(120,Number(p.sec)||0)),note:p.note||''}));
-  return out.length?out:defaultTempo().phases;
-}
-function defaultTempo(){
-  return{name:'Tempo work',reps:8,prep:5,sound:true,
-    phases:[tPhase('ecc',3),tPhase('iso',1),tPhase('con',1),tPhase('pause',1)],saved:[]};
-}
-function normTempo(t){
-  const d=defaultTempo();if(!t||typeof t!=='object')return d;
-  return{name:t.name||d.name,
-    reps:Math.max(1,Math.min(99,Number(t.reps)||d.reps)),
-    prep:Math.max(0,Math.min(60,Number(t.prep)==null?d.prep:Number(t.prep))),
-    sound:t.sound!==false,
-    phases:normTempoPhases(t.phases),
-    saved:(Array.isArray(t.saved)?t.saved:[]).map(s=>({id:s.id||uid(),name:s.name||'Tempo',
-      reps:Math.max(1,Math.min(99,Number(s.reps)||8)),phases:normTempoPhases(s.phases)}))};
-}
-/* One rep as the player runs it: phases set to zero seconds are dropped, and every
-   phase learns the bar position it starts and ends at. A rep that begins with an
-   eccentric starts at the top; one that begins with a concentric starts at the bottom. */
-function tempoRepPlan(phases){
-  const live=(phases||[]).filter(p=>Number(p.sec)>0);
-  const firstMove=live.find(p=>tKind(p.kind).to!=null);
-  let pos=firstMove&&firstMove.kind==='ecc'?1:0;
-  return live.map(p=>{const to=tKind(p.kind).to;const from=pos;const end=to==null?pos:to;pos=end;
-    return{...p,sec:Number(p.sec),from,to:end};});
-}
-/* The whole set, rep after rep. Each rep picks up where the last one left the bar, so
-   the puck never jumps between reps. */
-function tempoSchedule(phases,reps){
-  const rep=tempoRepPlan(phases);const steps=[];
-  for(let r=1;r<=Math.max(1,reps|0);r++)rep.forEach((p,i)=>steps.push({...p,rep:r,i}));
-  return steps;
-}
-const tempoClock=s=>{const v=Math.max(0,Math.round(s));return `${Math.floor(v/60)}:${pad(v%60)}`;};
-
-function TempoPlayer({phases,reps,prep,sound}){
-  const repPlan=useMemo(()=>tempoRepPlan(phases),[phases]);
-  const steps=useMemo(()=>tempoSchedule(phases,reps),[phases,reps]);
-  const repSec=useMemo(()=>repPlan.reduce((a,p)=>a+p.sec,0),[repPlan]);
-  const setSec=useMemo(()=>steps.reduce((a,p)=>a+p.sec,0),[steps]);
-  const[run,setRun]=useState(false);
-  const[t,setT]=useState(0);            // seconds since Start, the get-ready count included
-  const[fs,setFs]=useState(false);      // full screen — the player and nothing else
-  const raf=useRef(0),last=useRef(0),ac=useRef(null),lock=useRef(null);
-  const wrap=useRef(null),native=useRef(false);
-  const total=prep+setSec;
-
-  /* Full screen asks the browser first; where that is refused — Safari on iOS won't
-     give a plain <div> the Fullscreen API — the same class still covers the viewport,
-     so the button does what it says on every device. Either way it is the one element
-     re-parented, so the clock keeps running across the switch. */
-  const enterFs=()=>{
-    setFs(true);
-    const el=wrap.current;if(!el)return;
-    const req=el.requestFullscreen||el.webkitRequestFullscreen;
-    if(!req)return;
-    try{const r=req.call(el);native.current=true;if(r&&r.catch)r.catch(()=>{native.current=false;});}
-    catch(e){native.current=false;}
-  };
-  const exitFs=()=>{
-    setFs(false);
-    if(!native.current)return;
-    native.current=false;
-    try{
-      const ex=document.exitFullscreen||document.webkitExitFullscreen;
-      if(ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
-    }catch(e){}
-  };
-  // Leaving full screen by the browser's own route (Esc, the system gesture) must put
-  // the player back in the page rather than leave it stuck in the full-screen layout.
-  useEffect(()=>{
-    const onCh=()=>{if(native.current&&!(document.fullscreenElement||document.webkitFullscreenElement)){
-      native.current=false;setFs(false);}};
-    document.addEventListener('fullscreenchange',onCh);
-    document.addEventListener('webkitfullscreenchange',onCh);
-    return()=>{
-      document.removeEventListener('fullscreenchange',onCh);
-      document.removeEventListener('webkitfullscreenchange',onCh);
-      try{
-        const ex=document.exitFullscreen||document.webkitExitFullscreen;
-        if(native.current&&ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
-      }catch(e){}
-    };
-  },[]);
-  // The page behind the overlay shouldn't scroll under it.
-  useEffect(()=>{
-    if(!fs)return;
-    const prev=document.body.style.overflow;document.body.style.overflow='hidden';
-    return()=>{document.body.style.overflow=prev;};
-  },[fs]);
-
-  /* Short tones instead of a spoken count: one per phase, pitched by kind, so the
-     athlete can keep their eyes on the bar and still hear the change. */
-  const beep=(freq,dur,vol)=>{
-    if(!sound)return;
-    try{
-      const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-      if(!ac.current)ac.current=new AC();
-      const c=ac.current;if(c.state==='suspended')c.resume();
-      const o=c.createOscillator(),g=c.createGain(),now=c.currentTime;
-      o.type='sine';o.frequency.value=freq;o.connect(g);g.connect(c.destination);
-      g.gain.setValueAtTime(vol||.16,now);g.gain.exponentialRampToValueAtTime(.0001,now+(dur||.09));
-      o.start(now);o.stop(now+(dur||.09)+.02);
-    }catch(e){/* no audio device / blocked autoplay — the animation carries on */}
-  };
-
-  useEffect(()=>{
-    if(!run)return;
-    last.current=performance.now();
-    const loop=now=>{const d=(now-last.current)/1000;last.current=now;
-      setT(p=>p+d);raf.current=requestAnimationFrame(loop);};
-    raf.current=requestAnimationFrame(loop);
-    return()=>cancelAnimationFrame(raf.current);
-  },[run]);
-
-  // Keep the phone awake while a set is running; released as soon as it stops.
-  useEffect(()=>{
-    if(!run)return;
-    let released=false;
-    try{
-      if(navigator.wakeLock&&navigator.wakeLock.request)
-        navigator.wakeLock.request('screen').then(s=>{if(released)s.release();else lock.current=s;}).catch(()=>{});
-    }catch(e){}
-    return()=>{released=true;try{lock.current&&lock.current.release();}catch(e){}lock.current=null;};
-  },[run]);
-
-  const el=Math.min(t,total);
-  const inPrep=el<prep;
-  const done=setSec>0&&t>=total;
-  // Which phase the clock is in, and how far into it.
-  let idx=-1,phEl=0;
-  if(!inPrep&&steps.length){
-    let acc=prep;
-    for(let i=0;i<steps.length;i++){
-      if(el<acc+steps[i].sec||i===steps.length-1){idx=i;phEl=Math.min(el-acc,steps[i].sec);break;}
-      acc+=steps[i].sec;
-    }
-  }
-  const step=idx>=0?steps[idx]:null;
-  const k=step?tKind(step.kind):null;
-  const frac=step&&step.sec>0?Math.min(1,Math.max(0,phEl/step.sec)):0;
-  const pos=step?step.from+(step.to-step.from)*frac:(repPlan[0]?repPlan[0].from:1);
-  const colour=done?'var(--green)':(step?k.color:'var(--accent)');
-
-  // A tone on every phase change, and a ticking count-in before the first rep.
-  const marker=useRef(null);
-  useEffect(()=>{
-    if(!run)return;
-    const key=done?'done':(inPrep?'prep'+Math.ceil(Math.max(0,prep-el)):'s'+idx);
-    if(marker.current===key)return;
-    const first=marker.current===null;marker.current=key;
-    if(first)return;
-    if(done)beep(880,.5,.2);
-    else if(inPrep)beep(520,.06,.1);
-    else if(step)beep(step.kind==='con'?760:step.kind==='ecc'?440:600,.1,.16);
-  });
-
-  useEffect(()=>{if(run&&done){setRun(false);setT(total);}},[run,done,total]);
-
-  const start=()=>{if(!steps.length)return;if(done||t>=total){setT(0);marker.current=null;}
-    beep(660,.08,.14);setRun(true);};
-  const pause=()=>setRun(false);
-  const reset=()=>{setRun(false);setT(0);marker.current=null;};
-
-  // Space starts and stops the set, F fills the screen, Esc comes back — a coach can run
-  // the set without aiming at a button. The handler is registered once and reads the
-  // current actions through a ref: the set re-renders every frame while it runs, and
-  // re-binding the listener that often is waste.
-  const act=useRef(null);
-  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();}};
-  useEffect(()=>{
-    const onKey=e=>{
-      const tag=(e.target&&e.target.tagName)||'';
-      if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)||(e.target&&e.target.isContentEditable))return;
-      if(e.code==='Space'){e.preventDefault();act.current.space();}
-      else if(e.code==='KeyF'){e.preventDefault();act.current.f();}
-      else if(e.code==='Escape')act.current.esc();
-    };
-    window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
-  },[]);
-
-  const repNo=step?step.rep:(done?reps:1);
-  const remain=done?0:(inPrep?prep-el:(step?step.sec-phEl:0));
-  const title=done?'Set complete':(inPrep?'Get ready':(step?k.label:'Ready'));
-  const sub=done?`${reps} rep${reps===1?'':'s'} · ${tempoClock(setSec)}`
-    :(inPrep?'starting in':(step?(step.note||k.hint):'press start'));
-
-  if(!steps.length)return(<div className="empty-st">
-    {L('Her faz 0 saniye — aşağıda en az bir faza süre ver ki oynatıcının çalıştıracak bir şeyi olsun.',
-       'Every phase is set to 0 seconds — give at least one phase a duration below and the player has something to run.')}
-  </div>);
-
-  return(<div className={`tt-wrap${fs?' fs':''}`} ref={wrap}>
-    {fs&&<button className="tt-fsx" onClick={exitFs} title="Esc">✕ {L('Tam ekrandan çık','Exit full screen')}</button>}
-    <div className="tt-stage" style={{'--tt-c':colour}}>
-      <div className="tt-track">
-        <i className="t"/><i className="m"/><i className="b"/>
-        {/* Top of the track = lockout, bottom = the deepest point of the rep. */}
-        <div className={`tt-puck${step&&k.to==null&&run?' hold':''}`}
-          style={{top:`calc((100% - var(--tt-ph,44px) - 12px) * ${(1-pos).toFixed(4)} + 6px)`}}>
-          {done?L('BİTTİ','DONE'):(inPrep?L('HAZIR','SET'):(step?k.short:'—'))}
-        </div>
-      </div>
-      <div className="tt-read">
-        <div className="tt-phase"><small>{sub}</small>{title}</div>
-        <div className="tt-count">{done?tempoClock(setSec):<>{remain.toFixed(1)}<span>s</span></>}</div>
-        <div className="tt-bar"><b style={{transform:`scaleX(${done?1:(inPrep?(prep?el/prep:1):frac).toFixed(4)})`}}/></div>
-        <div className="tt-reps">
-          <span><u>{L('Tekrar','Rep')}</u><strong>{repNo} / {reps}</strong></span>
-          <span><u>{L('Faz','Phase')}</u><strong>{step?`${step.i+1} / ${repPlan.length}`:`— / ${repPlan.length}`}</strong></span>
-          <span><u>{L('Kalan','Left')}</u><strong>{tempoClock(total-el)}</strong></span>
-        </div>
-        {/* The rep drawn to scale — each phase as wide as its seconds. */}
-        <div className="tt-line">
-          {repPlan.map((p,i)=>{const cur=step&&step.i===i;const past=step&&i<step.i;
-            return(<div key={p.id} className={`tt-seg${cur?' on':''}${past?' done':''}`}
-              style={{flex:`${p.sec} 1 0`,'--tt-c':tKind(p.kind).color}}
-              title={`${tKind(p.kind).label} · ${p.sec}s`}>
-              <b style={{transform:`scaleX(${cur?frac.toFixed(4):(past?1:0)})`}}/>
-              <em>{tKind(p.kind).short} {p.sec}s</em>
-            </div>);})}
-        </div>
-      </div>
-    </div>
-    <div className="row">
-      {run?<button className="btn" onClick={pause}>❚❚ {L('Duraklat','Pause')}</button>
-          :<button className="btn" onClick={start}>▶ {t>0&&!done?L('Devam et','Resume'):L('Seti başlat','Start set')}</button>}
-      <button className="btn sec" onClick={reset} disabled={!t}>↺ {L('Sıfırla','Reset')}</button>
-      {!fs&&<button className="btn sec" onClick={enterFs} title="F">⛶ {L('Tam ekran','Full screen')}</button>}
-      <span className="help" style={{margin:0}}>{fs
-        ?L('Boşluk başlatır ve durdurur · Esc ya da F geri döner','Space starts & stops · Esc or F comes back')
-        :L('Boşluk başlatır ve durdurur · F ekranı kaplar · her fazda bir ton · set çalışırken ekran uyumaz',
-           'Space starts & stops · F fills the screen · one tone per phase · the screen stays awake while a set runs')}</span>
-    </div>
   </div>);
 }
 
@@ -16055,70 +15909,83 @@ function IntervalTimerPanels({data,setData}){
   const loadSaved=s=>patch({name:s.name,work:s.work,rest:s.rest,rounds:s.rounds,sets:s.sets,
     setRest:s.setRest,prep:s.prep});
   const delSaved=id=>patch({saved:c.saved.filter(s=>s.id!==id)});
-  const numF=(key,label,lo,hi)=>(<div>
-    <label>{label}</label>
+  /* One field, one card: the caption over the number rather than beside it, so the six
+     boxes read as one control panel and every number sits on the same baseline whatever
+     the length of the words above it. */
+  const numF=(key,label,hint,lo,hi)=>(<label className="itf" key={key}>
+    <span className="itf-l">{label}</span>
     <input type="number" min={lo} max={hi} value={c[key]}
       onChange={e=>patch({[key]:itNum(e.target.value,lo,lo,hi)})}/>
-  </div>);
+    <span className="itf-h">{hint}</span>
+  </label>);
+  const ratio=c.rest>0?`1 : ${+(c.rest/c.work).toFixed(2)}`:L('aralıksız','no rest');
 
   return(<>
-    <div className="panel">
-      <h2>{L('Aralık Sayacı','Interval Timer')}</h2>
-      <div className="help" style={{marginTop:-8,marginBottom:16}}>
-        {L('Bloğun istediği kadar tur boyunca çalışma / dinlenme, setler boyunca tekrarlanır. Durumu ekran taşır: çalışma sürerken yeşil, dinlenmede kırmızı, tur ve set aralarında mavi — tam ekran bütün ekranı o renge boyar, sahanın öbür ucundan okunur.',
-           'Work / rest for as many rounds as the block asks for, repeated over sets. The screen carries the state: green while the work is on, red on the rest, blue between rounds and sets — full screen turns the whole display that colour so it reads from across the pitch.')}
-      </div>
+    <PageHero title={L('Interval Zamanlayıcı','Interval Timer')}
+      sub={L('Çalışma / dinlenme, turlar ve setler — durumu ekranın rengi taşır.',
+             'Work / rest over rounds and sets — the screen\'s colour carries the state.')}
+      stats={[{v:`${c.work}/${c.rest}`,l:L('Çalışma / dinlenme (sn)','Work / rest (s)')},
+              {v:`${c.rounds}×${c.sets}`,l:L('Tur × set','Rounds × sets')},
+              {v:itClock(c.prep+totalSec),l:L('Tüm seans','Whole session')}]}/>
+
+    <div className="panel it-panel">
       <IntervalPlayer cfg={c}/>
     </div>
 
     <div className="panel">
-      <h2>{L('Aralık ayarı','Interval setup')}</h2>
-      <div className="row" style={{marginBottom:14}}>
+      <div className="it-head">
+        <div className="it-head-t">
+          <b>{L('Aralık ayarı','Interval setup')}</b>
+          <span>{L('Blok kaç tur sürüyorsa çalışma / dinlenme o kadar tekrarlanır, setler boyunca.',
+                   'Work / rest for as many rounds as the block asks for, repeated over sets.')}</span>
+        </div>
+        <button className={`btn xs ${c.sound?'':'sec'}`} onClick={()=>patch({sound:!c.sound})}
+          title={L('Her geçişte bir ton, son üç saniyede tik sesi','A tone on every change, plus a tick on the last three seconds')}>
+          {c.sound?L('Ses açık','Sound on'):L('Ses kapalı','Sound off')}</button>
+      </div>
+      <div className="it-presets">
         {IT_PRESETS.map(p=><button key={p.name} className="tt-chip" onClick={()=>usePreset(p)}
           title={L('Bu aralığı aşağıdaki alanlara yükle','Load this interval into the fields below')}>{p.name}<b>{p.code}</b></button>)}
       </div>
       <div className="it-grid">
-        {numF('work',L('Çalışma (sn)','Work (s)'),1,3600)}
-        {numF('rest',L('Dinlenme (sn)','Rest (s)'),0,3600)}
-        {numF('rounds',L('Tur','Rounds'),1,99)}
-        {numF('sets',L('Set','Sets'),1,99)}
-        {numF('setRest',L('Set arası (sn)','Set break (s)'),0,3600)}
-        {numF('prep',L('Hazırlık (sn)','Get ready (s)'),0,60)}
-        <button className={`btn sm ${c.sound?'':'sec'}`} onClick={()=>patch({sound:!c.sound})}
-          title={L('Her geçişte bir ton, son üç saniyede tik sesi','A tone on every change, plus a tick on the last three seconds')}>
-          {c.sound?L('🔊 Ses açık','🔊 Sound on'):L('🔇 Ses kapalı','🔇 Sound off')}</button>
+        {numF('work',L('Çalışma','Work'),L('saniye','seconds'),1,3600)}
+        {numF('rest',L('Dinlenme','Rest'),L('saniye','seconds'),0,3600)}
+        {numF('rounds',L('Tur','Rounds'),L('set başına','per set'),1,99)}
+        {numF('sets',L('Set','Sets'),L('tekrar','repeats'),1,99)}
+        {numF('setRest',L('Set arası','Set break'),L('saniye','seconds'),0,3600)}
+        {numF('prep',L('Hazırlık','Get ready'),L('saniye','seconds'),0,60)}
       </div>
       <div className="tt-sum">
         <div><u>{L('Set başına','Per set')}</u><strong>{itClock(c.work*c.rounds+c.rest*Math.max(0,c.rounds-1))}</strong></div>
         <div><u>{L('Toplam çalışma','Total work')}</u><strong>{itClock(itWorkSec(c))}</strong></div>
         <div><u>{L('Blok','Blocks')}</u><strong>{steps.length}</strong></div>
         <div><u>{L('Tüm seans','Whole session')}</u><strong>{itClock(c.prep+totalSec)}</strong></div>
-        <div><u>{L('Çalışma : dinlenme','Work : rest')}</u><strong>{c.rest>0?`1 : ${+(c.rest/c.work).toFixed(2)}`:'—'}</strong></div>
+        <div><u>{L('Çalışma : dinlenme','Work : rest')}</u><strong>{ratio}</strong></div>
       </div>
     </div>
 
     <div className="panel">
-      <h2>{L('Kayıtlı aralıklar','Saved intervals')}</h2>
-      <div className="row" style={{alignItems:'flex-end',gap:10,marginBottom:12}}>
-        <div style={{flex:'1 1 240px',minWidth:0}}>
-          <label>{L('Ad','Name')}</label>
-          <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}}/>
+      <div className="it-head">
+        <div className="it-head-t">
+          <b>{L('Kayıtlı aralıklar','Saved intervals')}</b>
+          <span>{L('Yukarıdaki aralığı adlandır ve başka bir günde tek tıkla geri yükle.',
+                   'Name the interval above and load it back with one click on another day.')}</span>
         </div>
+      </div>
+      <div className="it-save">
+        <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}} aria-label={L('Ad','Name')}/>
         <button className="btn sm" onClick={saveCurrent}>{L('Bu aralığı kaydet','Save current interval')}</button>
       </div>
       {c.saved.length===0
         ?<div className="empty-st">{L('Henüz kayıt yok — yukarıda bir aralık kur ve başka bir günde kullanmak üzere kaydet.','Nothing saved yet — set an interval above and save it to reuse on another day.')}</div>
-        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {c.saved.map(s=><div key={s.id} className="row" style={{justifyContent:'space-between',background:'var(--elevated)',
-            border:'1px solid var(--border)',borderRadius:10,padding:'9px 13px'}}>
-            <div className="row" style={{gap:8,minWidth:0}}>
-              <strong style={{fontSize:13}}>{s.name}</strong>
-              <span className="help" style={{margin:0}}>
-                {L(`${s.work}sn çalışma · ${s.rest}sn dinlenme · ${s.rounds} tur`,`${s.work}s work · ${s.rest}s rest · ${s.rounds} rounds`)}{s.sets>1?L(` · ${s.sets} set (${s.setRest}sn ara)`,` · ${s.sets} sets (${s.setRest}s break)`):''} · {itClock(intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}
-              </span>
+        :<div className="it-saved">
+          {c.saved.map(s=><div key={s.id} className="it-sv">
+            <div className="it-sv-t">
+              <b>{s.name}</b>
+              <i>{L(`${s.work}sn çalışma · ${s.rest}sn dinlenme · ${s.rounds} tur`,`${s.work}s work · ${s.rest}s rest · ${s.rounds} rounds`)}{s.sets>1?L(` · ${s.sets} set (${s.setRest}sn ara)`,` · ${s.sets} sets (${s.setRest}s break)`):''} · {itClock(intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}</i>
             </div>
-            <div className="row" style={{gap:6}}>
+            <div className="it-sv-a">
               <button className="btn xs sec" onClick={()=>loadSaved(s)}>{L('Yükle','Load')}</button>
               <button className="btn xs danger" onClick={()=>delSaved(s.id)}>{L('Sil','Delete')}</button>
             </div>
@@ -16128,133 +15995,11 @@ function IntervalTimerPanels({data,setData}){
   </>);
 }
 
+/* The tab is the interval timer and nothing else. The tempo player that used to share
+   it was a second clock with its own keyboard shortcuts and its own tone, and a coach
+   standing on the floor only ever ran one of them. */
 function TempoView({data,setData}){
-  /* Two players share the tab, and only one of them runs at a time: a coach is either
-     counting a rep or counting a clock, and keeping both mounted would leave two sets
-     of keyboard shortcuts and two tones fighting for the same room. */
-  const[tab,setTab]=useState('tempo');
-  const t=useMemo(()=>normTempo(data.tempo),[data.tempo]);
-  const patch=upd=>setData(prev=>({...prev,tempo:{...normTempo(prev.tempo),...upd}}));
-  const setPhases=arr=>patch({phases:arr});
-  const[saveName,setSaveName]=useState('');
-  const repSec=t.phases.reduce((a,p)=>a+(Number(p.sec)||0),0);
-  const addPhase=kind=>setPhases([...t.phases,tPhase(kind,kind==='pause'?1:2)]);
-  const upPhase=(id,upd)=>setPhases(t.phases.map(p=>p.id===id?{...p,...upd}:p));
-  const delPhase=id=>setPhases(t.phases.filter(p=>p.id!==id));
-  const dupPhase=id=>{const i=t.phases.findIndex(p=>p.id===id);const a=[...t.phases];
-    a.splice(i+1,0,{...t.phases[i],id:uid()});setPhases(a);};
-  const movePhase=(i,d)=>{const j=i+d;if(j<0||j>=t.phases.length)return;
-    const a=[...t.phases];const[m]=a.splice(i,1);a.splice(j,0,m);setPhases(a);};
-  const usePreset=p=>setPhases(p.phases.map(([k,s])=>tPhase(k,s)));
-  const saveTempo=()=>{const nm=(saveName||t.name||'Tempo').trim();
-    patch({name:nm,saved:[{id:uid(),name:nm,reps:t.reps,phases:t.phases.map(p=>({...p,id:uid()}))},...t.saved]});
-    setSaveName('');};
-  const loadTempo=s=>patch({name:s.name,reps:s.reps,phases:s.phases.map(p=>({...p,id:uid()}))});
-  const delTempo=id=>patch({saved:t.saved.filter(s=>s.id!==id)});
-
-  return(<div>
-    <div className="ex-subtabs">
-      <button className={tab==='tempo'?'on':''} onClick={()=>setTab('tempo')}>{L('Tempo Antrenmanı','Tempo Training')}</button>
-      <button className={tab==='interval'?'on':''} onClick={()=>setTab('interval')}>{L('Interval Zamanlayıcı','Interval Timer')}</button>
-    </div>
-    {tab==='interval'&&<IntervalTimerPanels data={data} setData={setData}/>}
-    {tab==='tempo'&&<>
-    <div className="panel">
-      <h2>{L('Tempo Antrenmanı','Tempo Training')}</h2>
-      <div className="help" style={{marginTop:-8,marginBottom:16}}>
-        {L('Tekrarı nasıl kaldırılması gerektiği gibi yaz — satır başına bir faz, saniyeleri elle ayarla — sonra seti çalıştır. Hedef eksantrikte alçalır, izometrikte bekler, konsantrikte yükselir; böylece sporcu saymak yerine hareketi takip eder.','Write the rep the way it should be lifted — a phase per line, seconds set by hand — then run the set. The puck lowers on the eccentric, holds on the isometric and lifts on the concentric, so the athlete follows the movement instead of counting.')}
-      </div>
-      <TempoPlayer phases={t.phases} reps={t.reps} prep={t.prep} sound={t.sound}/>
-    </div>
-
-    <div className="panel">
-      <h2>{L('Tekrar tempo','Rep tempo')}</h2>
-      <div className="row" style={{marginBottom:14}}>
-        {TEMPO_PRESETS.map(p=><button key={p.name} className="tt-chip" onClick={()=>usePreset(p)}
-          title={L('Aşağıdaki fazları bu tempoyla değiştir','Replace the phases below with this tempo')}>{p.name}<b>{p.code}</b></button>)}
-      </div>
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:12}}>
-        {t.phases.map((p,i)=><div key={p.id} className="tt-row" style={{'--tt-c':tKind(p.kind).color}}>
-          <div className="k">
-            <label>{L('Faz','Phase')}</label>
-            <select value={p.kind} onChange={e=>upPhase(p.id,{kind:e.target.value})}>
-              {TEMPO_KIND_LIST.map(k=><option key={k} value={k}>{tKind(k).label}</option>)}
-            </select>
-          </div>
-          <div className="s">
-            <label>{L('Saniye','Seconds')}</label>
-            <input type="number" min="0" max="120" step="0.5" value={p.sec}
-              onChange={e=>upPhase(p.id,{sec:Math.max(0,Math.min(120,Number(e.target.value)||0))})}/>
-          </div>
-          <div className="n">
-            <label>{L('İpucu (opsiyonel)','Cue (optional)')}</label>
-            <input value={p.note} placeholder={tKind(p.kind).hint}
-              onChange={e=>upPhase(p.id,{note:e.target.value})}/>
-          </div>
-          <div className="tt-acts">
-            <button onClick={()=>movePhase(i,-1)} disabled={i===0} title={L('Yukarı taşı','Move up')}>↑</button>
-            <button onClick={()=>movePhase(i,1)} disabled={i===t.phases.length-1} title={L('Aşağı taşı','Move down')}>↓</button>
-            <button onClick={()=>dupPhase(p.id)} title={L('Çoğalt','Duplicate')}>⧉</button>
-            <button className="del" onClick={()=>delPhase(p.id)} disabled={t.phases.length===1} title={L('Kaldır','Remove')}>✕</button>
-          </div>
-        </div>)}
-      </div>
-      <div className="row" style={{marginBottom:14}}>
-        {TEMPO_KIND_LIST.map(k=><button key={k} className="btn sec sm" onClick={()=>addPhase(k)}>+ {tKind(k).label}</button>)}
-      </div>
-      <div className="row" style={{alignItems:'flex-end',gap:12,marginBottom:14}}>
-        <div style={{flex:'0 0 110px'}}>
-          <label>{L('Tekrar','Reps')}</label>
-          <input type="number" min="1" max="99" value={t.reps}
-            onChange={e=>patch({reps:Math.max(1,Math.min(99,Number(e.target.value)||1))})}/>
-        </div>
-        <div style={{flex:'0 0 150px'}}>
-          <label>{L('Hazırlan (sn)','Get ready (s)')}</label>
-          <input type="number" min="0" max="60" value={t.prep}
-            onChange={e=>patch({prep:Math.max(0,Math.min(60,Number(e.target.value)||0))})}/>
-        </div>
-        <button className={`btn sm ${t.sound?'':'sec'}`} onClick={()=>patch({sound:!t.sound})}
-          title={L('Her faz değişiminde kısa bir ton','A short tone on every phase change')}>{t.sound?L('🔊 Ses açık','🔊 Sound on'):L('🔇 Ses kapalı','🔇 Sound off')}</button>
-      </div>
-      <div className="tt-sum">
-        <div><u>{L('Tekrar başına','Per rep')}</u><strong>{+repSec.toFixed(1)}s</strong></div>
-        <div><u>{L('Set başına','Per set')}</u><strong>{tempoClock(repSec*t.reps)}</strong></div>
-        <div><u>{L('Fazlar','Phases')}</u><strong>{t.phases.filter(p=>Number(p.sec)>0).length}</strong></div>
-        <div><u>{L('Gerilim altında geçen süre','Time under tension')}</u><strong>{tempoClock(t.phases.filter(p=>p.kind!=='pause').reduce((a,p)=>a+(Number(p.sec)||0),0)*t.reps)}</strong></div>
-      </div>
-    </div>
-
-    <div className="panel">
-      <h2>{L('Kayıtlı tempolar','Saved tempos')}</h2>
-      <div className="row" style={{alignItems:'flex-end',gap:10,marginBottom:12}}>
-        <div style={{flex:'1 1 240px',minWidth:0}}>
-          <label>{L('Ad','Name')}</label>
-          <input value={saveName} placeholder={t.name} onChange={e=>setSaveName(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter')saveTempo();}}/>
-        </div>
-        <button className="btn sm" onClick={saveTempo}>{L('Mevcut tempoyu kaydet','Save current tempo')}</button>
-      </div>
-      {t.saved.length===0
-        ?<div className="empty-st">{L('Henüz kayıt yok — yukarıda bir tempo yaz ve başka bir gün tekrar kullanmak için kaydet.','Nothing saved yet — write a tempo above and save it to reuse on another day.')}</div>
-        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {t.saved.map(s=>{const secs=s.phases.reduce((a,p)=>a+(Number(p.sec)||0),0);
-            return(<div key={s.id} className="row" style={{justifyContent:'space-between',background:'var(--elevated)',
-              border:'1px solid var(--border)',borderRadius:10,padding:'9px 13px'}}>
-              <div className="row" style={{gap:8,minWidth:0}}>
-                <strong style={{fontSize:13}}>{s.name}</strong>
-                <span className="help" style={{margin:0}}>
-                  {s.phases.filter(p=>Number(p.sec)>0).map(p=>`${tKind(p.kind).short} ${p.sec}s`).join(' · ')} · {L(`${s.reps} tekrar`,`${s.reps} reps`)} · {tempoClock(secs*s.reps)}
-                </span>
-              </div>
-              <div className="row" style={{gap:6}}>
-                <button className="btn xs sec" onClick={()=>loadTempo(s)}>{L('Yükle','Load')}</button>
-                <button className="btn xs danger" onClick={()=>delTempo(s.id)}>{L('Sil','Delete')}</button>
-              </div>
-            </div>);})}
-        </div>}
-    </div>
-    </>}
-  </div>);
+  return<IntervalTimerPanels data={data} setData={setData}/>;
 }
 
 /* =========================================================
@@ -16488,16 +16233,20 @@ function TeamReports({team,weeks,selected,setSelected}){
   const fwd=ds=>{const d=parseD(ds);return d.getDate()+' '+MN[d.getMonth()];};
 
   return(<div>
+    <PageHero title={L('Yük Takibi','Load Monitoring')}
+      sub={L(`Haftalık ve aylık yük, monotoni ve ACWR · ${team.setup.teamName}`,
+             `Weekly and monthly load, monotony and ACWR · ${team.setup.teamName}`)}
+      stats={[{v:monthLabel,l:L('Rapor ayı','Report month')},
+              {v:(team.athletes||[]).length,l:L('Sporcu','Athletes')}]}>
+      <button className="btn sec sm" onClick={printWeekly}>{L('Haftalık Rapor','Weekly Report')}</button>
+      <button className="btn sm" onClick={printMonthly}>{L('Aylık Rapor','Monthly Report')}</button>
+    </PageHero>
     <div className="panel">
       <div className="row" style={{justifyContent:'space-between',flexWrap:'wrap',gap:10,alignItems:'flex-end'}}>
         <div className="row" style={{gap:12,alignItems:'flex-end',flexWrap:'wrap'}}>
           <div><label>{L('Yıl','Year')}</label><input type="number" value={year} onChange={e=>setYear(+e.target.value)} style={{width:90}}/></div>
           <div><label>{L('Ay','Month')}</label><select value={month} onChange={e=>setMonth(+e.target.value)} style={{width:140}}>{Array.from({length:12},(_,i)=><option key={i+1} value={i+1}>{MN[i]}</option>)}</select></div>
           <div style={{fontSize:12,color:'var(--muted)'}}>{L('Rapor ayı:','Report month:')} <strong style={{color:'var(--text)'}}>{monthLabel}</strong></div>
-        </div>
-        <div className="row" style={{gap:8}}>
-          <button className="btn sec" onClick={printWeekly}>🖨 {L('Haftalık Rapor (TR · A4)','Weekly Report (TR · A4)')}</button>
-          <button className="btn" onClick={printMonthly}>🖨 {L('Aylık Rapor (TR · A4)','Monthly Report (TR · A4)')}</button>
         </div>
       </div>
       <div className="help" style={{marginTop:8}}>{L(<>Yukarıdan bir ay seç. <b>Aylık Rapor</b> aşağıdaki her bölümü Türkçe basar; <b>Haftalık Rapor</b> yük kaydı olan en son hafta için tek sayfalık Türkçe bir rapor basar.</>,
@@ -19560,32 +19309,16 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const filterOn=ageMin!==''||ageMax!==''||flt!=='all'||q.trim()!=='';
 
   return(<div className="tryo-page">
-    {/* The pool's own masthead — not the roster's. The squad screen counts athletes a
-        season is written for; this one counts decisions still open, so the four numbers
-        across the top are the funnel itself: who came, who is being watched, who is in,
-        and the age band the whole pool spans. */}
-    <div className="tryo-head">
-      <div className="tryo-head-l">
-        <div className="tryo-mark">{NAV_ICONS.tryouts}</div>
-        <div style={{minWidth:0}}>
-          <div className="tryo-h1">{Lx('Seçmeler','Tryouts')}</div>
-          <div className="tryo-h2">{Lx('Kadronun dışındaki havuz — denemeye gelen her sporcu, kararı verilene kadar burada durur.',
-            'The pool outside the squad — every trialling athlete stays here until the call is made.')}</div>
-        </div>
-      </div>
-      <div className="tryo-head-r">
-        <div className="tryo-kpis">
-          <div className="tryo-kpi"><b>{list.length}</b><i>{Lx('aday','candidates')}</i></div>
-          <div className="tryo-kpi watch"><b>{counts.watch||0}</b><i>{Lx('izleniyor','watching')}</i></div>
-          <div className="tryo-kpi in"><b>{counts.in||0}</b><i>{Lx('kabul','accepted')}</i></div>
-          <div className="tryo-kpi"><b>{ages.length?`${Math.min(...ages)}–${Math.max(...ages)}`:'—'}</b><i>{Lx('yaş','yrs')}</i></div>
-        </div>
-        <div className="tryo-head-btns">
-          <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>⤓ CSV</button>
-          <button className="tryo-add" onClick={add}>＋ {Lx('Aday Ekle','Add Candidate')}</button>
-        </div>
-      </div>
-    </div>
+    <PageHero title={Lx('Seçmeler','Tryouts')}
+      sub={Lx('Kadronun dışındaki havuz — denemeye gelen her sporcu, kararı verilene kadar burada durur.',
+              'The pool outside the squad — every trialling athlete stays here until the call is made.')}
+      stats={[{v:list.length,l:Lx('Aday','Candidates')},
+              {v:counts.watch||0,l:Lx('İzleniyor','Watching')},
+              {v:counts.in||0,l:Lx('Kabul','Accepted')},
+              {v:ages.length?`${Math.min(...ages)}–${Math.max(...ages)}`:'—',l:Lx('Yaş','Age')}]}>
+      <button className="btn sm sec" onClick={exportCsv} disabled={!list.length}>CSV</button>
+      <button className="tryo-add" onClick={add}>{Lx('Aday Ekle','Add Candidate')}</button>
+    </PageHero>
     <div className="tryo-body">
       <div className="tryo-side">
         <div className="tryo-side-top">
@@ -19953,38 +19686,15 @@ function EvaluationView({team,updateTeam,data,setData}){
   const seasonLabel=seasonYears(setup)||String(new Date().getFullYear());
 
   return(<div>
-    {/* ---- hero: who this tab is for, what it already holds, where else it can go ---- */}
-    <div className="ev2-hero">
-      <div className="ev2-hero-l">
-        <div className="ev2-logo"><TIc k="chart" size={24}/></div>
-        <div style={{minWidth:0}}>
-          <div className="ev2-ttl">{Lx('Test ve Değerlendirme','Testing & Assessment')}</div>
-          <div className="ev2-sub">{Lx('İzle. Değerlendir. Geliştir.','Monitor. Assess. Develop.')} · {setup.teamName}</div>
-        </div>
-      </div>
-      <div className="ev2-hero-r">
-        <div className="ev2-stat">
-          <span className="ev2-stat-ic"><TIc k="cal" size={17}/></span>
-          <div><div className="ev2-stat-v">{seasonLabel}</div>
-            <div className="ev2-stat-l">{Lx('Sezon','Season')}</div></div>
-        </div>
-        <div className="ev2-stat">
-          <span className="ev2-stat-ic"><TIc k="users" size={17}/></span>
-          <div><div className="ev2-stat-v">{athletes.length}</div>
-            <div className="ev2-stat-l">{Lx('Sporcu','Athletes')}</div></div>
-        </div>
-        <div className="ev2-stat">
-          <span className="ev2-stat-ic"><TIc k="check" size={17}/></span>
-          <div><div className="ev2-stat-v">{totalTests}</div>
-            <div className="ev2-stat-l">{Lx('Tamamlanan Test','Tests Recorded')}</div></div>
-        </div>
-        <div className="ev2-hero-btns">
-          {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
-            {compare?`← ${Lx('Testlere dön','Back to tests')}`:`⇄ ${Lx('Sporcuları Karşılaştır','Compare Athletes')}`}
-          </button>}
-        </div>
-      </div>
-    </div>
+    <PageHero title={Lx('Test ve Değerlendirme','Testing & Assessment')}
+      sub={`${Lx('İzle. Değerlendir. Geliştir.','Monitor. Assess. Develop.')} · ${setup.teamName}`}
+      stats={[{v:seasonLabel,l:Lx('Sezon','Season')},
+              {v:athletes.length,l:Lx('Sporcu','Athletes')},
+              {v:totalTests,l:Lx('Tamamlanan Test','Tests Recorded')}]}>
+      {athletes.length>0&&<button className={'btn sm'+(compare?'':' white')} onClick={()=>setCompare(v=>!v)}>
+        {compare?Lx('Testlere dön','Back to tests'):Lx('Sporcuları Karşılaştır','Compare Athletes')}
+      </button>}
+    </PageHero>
 
     {athletes.length===0&&<div className="empty-st">{Lx('Henüz sporcu yok — Kadro sekmesinden ekle.','No athletes yet — add them in the Roster tab.')}</div>}
 
@@ -22651,18 +22361,14 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
     return<AthleteDetail key={ath.id+':'+(focusTab||'')} ath={ath} onBack={()=>{setSel(null);setFocusTab(null);}} updAth={updAth} setup={team.setup} weeks={weeks} exercises={exercises} ai={ai} customTests={customTests} initialTab={focusTab}/>;}
   return(<div>
+    <PageHero title={L('Kadro','Roster')}
+      sub={L(`Sezonun yazıldığı kadro · ${team.setup.teamName}`,`The squad the season is written for · ${team.setup.teamName}`)}
+      stats={[{v:athletes.length,l:L('Sporcu','Athletes')},
+              {v:staff.length,l:L('Teknik Ekip','Staff')},
+              {v:sorted.length,l:L('Listelenen','Listed')}]}>
+      {tab==='athletes'&&<button className="rost-add" onClick={addAth}>{L('Sporcu Ekle','Add Athlete')}</button>}
+    </PageHero>
     <div className="rost-head">
-      <div className="rost-title">
-        <div className="rost-title-ic">{NAV_ICONS.athletes}</div>
-        <div>
-          <div className="rh-t">{L('Kadro','Roster')}</div>
-          <div className="rh-s">{tab==='staff'
-            ?L(`${staff.length} kişilik teknik ekip · ${team.setup.teamName}`,
-               `${staff.length} on the staff · ${team.setup.teamName}`)
-            :L(`${athletes.length} sporcu · ${team.setup.teamName}`,
-               `${athletes.length} athletes · ${team.setup.teamName}`)}</div>
-        </div>
-      </div>
       {tab==='athletes'&&<div className="rost-tools">
         <div className="ath-search"><span className="ic">⌕</span>
           <input ref={searchRef} value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Sporcu ara…','Search athlete…')}/>
@@ -22671,7 +22377,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
           <button className={filter==='all'?'on':''} onClick={()=>setFilter('all')}>{L('Tümü','All')}</button>
           {positions.map(p=><button key={p} className={filter===p?'on':''} onClick={()=>setFilter(p)}>{p}</button>)}
         </div>
-        <button className="rost-add" onClick={addAth}>＋ {L('Sporcu Ekle','Add Athlete')}</button>
       </div>}
     </div>
     <div className="rost-subbar">
@@ -22841,6 +22546,11 @@ function Backup({data,setData,sync}){
     r.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(!p.teams&&!p.setup){alert(L('Geçersiz dosya','Invalid file'));return;}if(confirm(L('Tüm veriler değiştirilsin mi?','Replace all data?')))setData(migrate(p));}catch{alert(L('Okuma hatası','Read error'));}};
     r.readAsText(f);e.target.value='';};
   return(<div>
+    <PageHero title={L('Yedekleme','Backup')}
+      sub={L('Her takımı tek dosyada dışa aktar, geri yükle ve medyayı denetle.',
+             'Export every team as one file, restore it, and audit the media.')}
+      stats={[{v:(data.teams||[]).length,l:L('Takım','Teams')},
+              {v:(data.teams||[]).reduce((n,t)=>n+((t.athletes||[]).length),0),l:L('Sporcu','Athletes')}]}/>
     <div className="panel"><h2>{L('Tüm Takımlar Özeti','All Teams Summary')}</h2>
       <table><thead><tr><th>{L('Takım','Team')}</th><th>{L('Spor','Sport')}</th><th>{L('Sezon','Season')}</th><th>{L('Planlanan gün','Days planned')}</th><th>{L('Sporcular','Athletes')}</th></tr></thead><tbody>
         {data.teams.map(t=><tr key={t.id}><td><strong>{t.setup.teamName}</strong>{t.id===data.activeTeamId&&<span className="tag" style={{marginLeft:8}}>{L('AKTİF','ACTIVE')}</span>}</td>
@@ -24993,6 +24703,8 @@ const EX_TERM_TR={
   'Tendon Health':'Tendon Sağlığı','Balance & Proprioception':'Denge ve Propriosepsiyon',
   'Individual Skill':'Bireysel Beceri','Team Offense':'Takım Hücumu','Team Defense':'Takım Savunması',
   'Set Plays':'Sistem Oyunları','Transition':'Geçiş','Small-Sided Game':'Küçük Alan Oyunu','Scrimmage':'Çift Kale',
+  'League Match':'Lig Maçı','Cup Match':'Kupa Maçı','Tournament':'Turnuva','Friendly':'Hazırlık Maçı',
+  'Practice Game':'Antrenman Maçı',
   'Active Recovery':'Aktif Toparlanma','Regeneration':'Rejenerasyon','Soft Tissue':'Yumuşak Doku',
   'Breathing / Parasympathetic':'Nefes / Parasempatik','Mobility Flow':'Hareketlilik Akışı',
   'Reconditioning':'Yeniden Kondisyon','Load Reintroduction':'Yükün Yeniden Verilmesi','Return to Run':'Koşuya Dönüş',
@@ -25514,16 +25226,15 @@ function ExercisesView({data,setData}){
     return(<div className="ex-wrap">
       <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
-      <div className="ex-top">
-        <div><h1 className="ex-h1">{L('Egzersiz Kütüphanesi','Exercise Library')}</h1>
-          <div className="sub">{ball
-            ?L(`${exercises.length} dril · tüm kategoriler`,`${exercises.length} drills · all categories`)
-            :L(`${exercises.length} egzersiz · tüm kategoriler`,`${exercises.length} exercises · all categories`)}</div></div>
-      </div>
+      <PageHero title={L('Egzersiz Kütüphanesi','Exercise Library')}
+        sub={ball?L('Top antrenmanı drilleri · tüm kategoriler','Ball-practice drills · all categories')
+                 :L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
+        stats={[{v:exercises.length,l:ball?L('Dril','Drills'):L('Egzersiz','Exercises')},
+                {v:allEx.length,l:L('Kütüphane toplamı','Library total')}]}/>
       <div className="ex-toolbar">
         {libSplit}
         {catDropdown}
-        <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
+        <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
         <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
       </div>
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
@@ -25566,7 +25277,7 @@ function ExercisesView({data,setData}){
     <div className="ex-toolbar">
       {libSplit}
       {catDropdown}
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
+      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
     </div>
     {(()=>{
@@ -25968,7 +25679,7 @@ function ResearchNotes({data,setData}){
   const open=items.find(r=>r.id===openId);
   return(<div>
     <div className="ex-toolbar">
-      <div className="ex-search"><span>🔍</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Makale ara…','Search articles…')}/></div>
+      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Makale ara…','Search articles…')}/></div>
       <button className="btn sm" onClick={add}>＋ Makale Ekle</button>
     </div>
     {list.length===0&&<div className="ex-empty">Henüz makale yok. <b>＋ Makale Ekle</b> ile ilk özeti oluştur — DOI linkini yapıştırınca yazar/tarih/APA otomatik yazılır.</div>}
@@ -27061,10 +26772,10 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   };
 
   return(<div className="iv-wrap">
-    <div className="ex-top">
-      <div><h1 className="ex-h1">{L('Program Bireyselleştirme','Program Individualization')}</h1>
-        <div className="sub">{L('Her sporcuya tek bir kaynak seans, kendi takvimine yazılır — kartı aç ve programı orada, antrenmanın yapılacağı günün üstünde düzenle.','One source session per athlete, written onto their own calendar — open a card and edit the program there, on the day it is trained.')}</div></div>
-    </div>
+    <PageHero title={L('Bireyselleştirme','Individualization')}
+      sub={L('Her sporcuya tek bir kaynak seans, kendi takvimine yazılır.','One source session per athlete, written onto their own calendar.')}
+      stats={[{v:athletes.length,l:L('Sporcu','Athletes')},
+              {v:fd(date),l:L('Tarih','Date')}]}/>
     <div className="panel iv-bar">
       <div className="iv-f"><label>{L('Tarih','Date')}</label><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSel(null);}}/></div>
       <div className="iv-f grow"><label>{L('Kaynak program','Source program')}</label>
@@ -28014,83 +27725,84 @@ function CheckinPanel({data,setData,team,sync}){
   }),[athletes,date]);
   const nS=rows.filter(r=>r.srpe).length,nW=rows.filter(r=>r.well).length;
   const missing=kind=>rows.filter(r=>!(kind==='srpe'?r.srpe:r.well)).map(r=>r.a.name);
-  // Son 7 gün: kaç kişi doldurdu — katılımın düştüğü günü tek bakışta gösterir.
-  const week=useMemo(()=>Array.from({length:7},(_,i)=>{
-    const d=fmt(addD(parseD(date),-6+i));
-    return{d,s:athletes.filter(a=>(a.srpeLog||[]).some(e=>e.date===d)).length,
-             w:athletes.filter(a=>(a.wellness||[]).some(e=>e.date===d)).length};
-  }),[athletes,date]);
   const hhmm=v=>{if(!v)return null;const t=new Date(v);return isNaN(t)?null:t.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});};
   const shiftDay=n=>setDate(d=>fmt(addD(parseD(d),n)));
 
   const LINK_BTN=[
-    {kind:'srpe',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),icon:'🏃',
+    {kind:'srpe',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),
      hint:L('Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.','Send after training/a match. Asks difficulty + duration for ball training, strength & conditioning, and competition.')},
-    {kind:'wellness',label:L('Sabah — Wellness','Morning — Wellness'),icon:'🌅',
+    {kind:'wellness',label:L('Sabah — Wellness','Morning — Wellness'),
      hint:L('Sabah at. Dinlenik KAH, uyku, yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Send in the morning. Asks resting HR, sleep, fatigue, soreness, and the pain-region map.')},
   ];
 
   return(<div>
+    <PageHero title={L('Check-in Formları','Check-in Forms')}
+      sub={L(`Sporcunun kendi doldurduğu iki form · ${team.setup.teamName}`,
+             `The two forms the athletes fill in themselves · ${team.setup.teamName}`)}
+      stats={[{v:`${nS} / ${athletes.length}`,l:L('İçsel Yük','Internal Load')},
+              {v:`${nW} / ${athletes.length}`,l:'Wellness'},
+              {v:published,l:L('Linkteki kadro','Roster on the link')}]}/>
+
+    {!user&&<div className="ck-note warn">
+      {L(<>Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.</>,
+         <>Links are tied to the coach account, so you need to <b>sign in first</b>.</>)}
+    </div>}
+    {err&&<div className="ck-note err">{err}</div>}
+
     <div className="panel">
-      <h2>{L('Check-in Formları','Check-in Forms')}</h2>
-      <div className="help" style={{marginBottom:14}}>
-        {L(<>Sporcularının dolduracağı iki form. Düğmeye bas → link panoya kopyalanır → WhatsApp
-        grubuna yapıştır. Sporcu formda kendi adını seçer, gönderir; cevap sen uygulamayı
-        açtığında <b>anında</b> sporcunun günlüğüne düşer — senkron beklemeden.</>,
-        <>Two forms for your athletes to fill in. Click the button → the link is copied to the clipboard → paste it into
-        the WhatsApp group. The athlete picks their own name on the form and submits; the answer lands <b>instantly</b>
-        in the athlete's log the moment you open the app — no sync wait.</>)}
+      <div className="ck-head">
+        <div className="ck-head-t">
+          <b>{L('Formların linkleri','The form links')}</b>
+          <span>{L('Düğmeye bas → link panoya kopyalanır → WhatsApp grubuna yapıştır. Sporcu formda kendi adını seçip gönderir; cevap uygulamayı açtığın anda sporcunun günlüğüne düşer.',
+                   'Click the button → the link is copied to the clipboard → paste it into the WhatsApp group. The athlete picks their own name and submits; the answer lands in their log the moment you open the app.')}</span>
+        </div>
       </div>
-      {!user&&<div style={{marginBottom:12,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-        ⚠️ {L(<>Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.</>,<>Links are tied to the coach account, so you need to <b>sign in first</b>.</>)}
-      </div>}
-      {err&&<div style={{marginBottom:12,padding:12,background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-        ❌ {err}
-      </div>}
-      <div className="grid cols-2" style={{gap:12}}>
-        {LINK_BTN.map(b=><div key={b.kind} style={{padding:14,background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>{b.icon} {b.label}</div>
-          <div className="help" style={{marginBottom:10}}>{b.hint}</div>
-          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded} style={{width:'100%',justifyContent:'center'}}>
-            {copied===b.kind?L('✅ Kopyalandı','✅ Copied'):(busy?'…':(loaded?L('🔗 Linki kopyala','🔗 Copy link'):L('Veriler yükleniyor…','Loading data…')))}
+      <div className="ck-links">
+        {LINK_BTN.map(b=><div key={b.kind} className="ck-link">
+          <div className="ck-link-t">{b.label}</div>
+          <div className="ck-link-h">{b.hint}</div>
+          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded}>
+            {copied===b.kind?L('Kopyalandı','Copied'):(busy?'…':(loaded?L('Linki kopyala','Copy link'):L('Veriler yükleniyor…','Loading data…')))}
           </button>
-          {token&&<div style={{marginTop:8,display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
-            <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer"
-               style={{fontSize:12,color:'var(--accent2)'}}>{L('Formu aç / önizle','Open / preview form')}</a>
-            <code style={{fontSize:10,color:'var(--muted)',wordBreak:'break-all',userSelect:'all'}}>{checkinUrl(token,b.kind)}</code>
+          {token&&<div className="ck-link-u">
+            <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer">{L('Formu aç / önizle','Open / preview form')}</a>
+            <code>{checkinUrl(token,b.kind)}</code>
           </div>}
         </div>)}
       </div>
       {/* Sporcunun formda göreceği liste bu. Boşsa form işe yaramaz, o yüzden sayı
           burada yazıyor — koç linki göndermeden önce görsün. */}
-      {token&&<div className="row" style={{marginTop:12,gap:10,alignItems:'center',flexWrap:'wrap'}}>
-        <span className="help">
-          {L('Linkteki kadro:','Roster on the link:')} <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{L(`${published} sporcu`,`${published} athletes`)}</b>
+      {token&&<div className="ck-state">
+        <span>{L('Linkteki kadro:','Roster on the link:')} <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{L(`${published} sporcu`,`${published} athletes`)}</b>
           {cfg.publishedAt?L(` · son güncelleme ${new Date(cfg.publishedAt).toLocaleString('tr-TR')}`,` · last updated ${new Date(cfg.publishedAt).toLocaleString('en-GB')}`):''}
-          {cfg.rev!==rev?L(' · kadro değişti, yayımlanıyor…',' · roster changed, publishing…'):''}
-        </span>
-        <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>{L('Kadroyu yeniden yayımla','Republish roster')}</button>
+          {cfg.rev!==rev?L(' · kadro değişti, yayımlanıyor…',' · roster changed, publishing…'):''}</span>
+        <div className="ck-state-a">
+          <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>{L('Kadroyu yeniden yayımla','Republish roster')}</button>
+          <button className="btn sec xs" onClick={resetToken} disabled={busy}
+            title={L('Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.','Use this if a link went to the wrong person, or is still in former athletes\' hands.')}>
+            {L('Linkleri yenile','Refresh links')}</button>
+        </div>
       </div>}
-      {token&&published===0&&<div style={{marginTop:10,padding:12,background:'rgba(245,158,11,.1)',border:'1px solid rgba(245,158,11,.35)',borderRadius:8,color:'var(--text2)',fontSize:13}}>
-        ⚠️ {L(<>Linkin arkasındaki kadro <b>boş</b> — formu açan sporcu isim listesi göremez.
-        Bu takımda sporcu varsa <b>Kadroyu yeniden yayımla</b>'ya bas; yoksa önce <b>Athletes</b> ekranından kadroyu ekle.</>,
+      {token&&published===0&&<div className="ck-note warn" style={{marginTop:10,marginBottom:0}}>
+        {L(<>Linkin arkasındaki kadro <b>boş</b> — formu açan sporcu isim listesi göremez.
+        Bu takımda sporcu varsa <b>Kadroyu yeniden yayımla</b>'ya bas; yoksa önce <b>Kadro</b> ekranından kadroyu ekle.</>,
         <>The roster behind the link is <b>empty</b> — an athlete opening the form won't see a name list.
-        If this team has athletes, click <b>Republish roster</b>; otherwise add the roster from the <b>Athletes</b> screen first.</>)}
-      </div>}
-      {token&&<div className="row" style={{marginTop:10,gap:10,alignItems:'center',flexWrap:'wrap'}}>
-        <button className="btn sec xs" onClick={resetToken} disabled={busy}>{L('Linkleri yenile (eskileri iptal et)','Refresh links (invalidate old ones)')}</button>
-        <span className="help">{L('Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.','Use this if a link went to the wrong person, or is still in former athletes\' hands.')}</span>
+        If this team has athletes, click <b>Republish roster</b>; otherwise add the roster from the <b>Roster</b> screen first.</>)}
       </div>}
     </div>
 
     <div className="panel">
-      <h2>{L('Günün Özeti','Today\'s Summary')}</h2>
-      <div className="row" style={{gap:8,alignItems:'center',marginBottom:14,flexWrap:'wrap'}}>
-        <button className="btn sec xs" onClick={()=>shiftDay(-1)}>‹</button>
-        <input type="date" value={date} onChange={e=>setDate(e.target.value||fmt(today))} style={{maxWidth:170}}/>
-        <button className="btn sec xs" onClick={()=>shiftDay(1)}>›</button>
-        <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>{L('Bugün','Today')}</button>
-        <span className="help">{fd(date)}</span>
+      <div className="ck-head">
+        <div className="ck-head-t">
+          <b>{L('Günün Özeti','Today\'s Summary')}</b>
+          <span>{fd(date)}</span>
+        </div>
+        <div className="ck-daynav">
+          <button className="btn sec xs" onClick={()=>shiftDay(-1)} aria-label={L('Önceki gün','Previous day')}>‹</button>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value||fmt(today))}/>
+          <button className="btn sec xs" onClick={()=>shiftDay(1)} aria-label={L('Sonraki gün','Next day')}>›</button>
+          <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>{L('Bugün','Today')}</button>
+        </div>
       </div>
       <div className="metrics">
         <div className={`metric ${nS===0?'':(nS>=athletes.length?'ok':'')}`}>
@@ -28119,7 +27831,7 @@ function CheckinPanel({data,setData,team,sync}){
               const ok=await copyText(names.join(', '));
               if(ok){setCopied('miss-'+k);setTimeout(()=>setCopied(c=>c==='miss-'+k?'':c),2500);}
             }}>
-              {copied==='miss-'+k?L('✅ Kopyalandı','✅ Copied'):L(`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`,`Copy who hasn't submitted ${k==='srpe'?'RPE':'Wellness'} (${names.length})`)}
+              {copied==='miss-'+k?L('Kopyalandı','Copied'):L(`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`,`Copy who hasn't submitted ${k==='srpe'?'RPE':'Wellness'} (${names.length})`)}
             </button>;
           })}
         </div>
@@ -28129,218 +27841,24 @@ function CheckinPanel({data,setData,team,sync}){
             {rows.map(({a,srpe,well})=><tr key={a.id}>
               <td style={{fontWeight:600}}>{a.name}</td>
               <td style={{textAlign:'center'}}>
-                {srpe?<span style={{color:'var(--accent2)'}}>✅{srpe.totalLoad?<span style={{color:'var(--muted)',fontSize:11}}> {srpe.totalLoad} AU</span>:null}
-                  {hhmm(srpe.submittedAt)?<span style={{color:'var(--muted)',fontSize:11}}> · {hhmm(srpe.submittedAt)}</span>:null}</span>
-                  :<span style={{color:'var(--muted)'}}>—</span>}
+                {srpe?<span className="ck-in">{srpe.totalLoad?`${srpe.totalLoad} AU`:L('geldi','in')}
+                  {hhmm(srpe.submittedAt)?<i> · {hhmm(srpe.submittedAt)}</i>:null}</span>
+                  :<span className="ck-out">—</span>}
               </td>
               <td style={{textAlign:'center'}}>
-                {well?<span style={{color:'var(--accent2)'}}>✅{well.readiness!=null?<span style={{color:'var(--muted)',fontSize:11}}> {well.readiness}</span>:null}
-                  {hhmm(well.submittedAt)?<span style={{color:'var(--muted)',fontSize:11}}> · {hhmm(well.submittedAt)}</span>:null}</span>
-                  :<span style={{color:'var(--muted)'}}>—</span>}
+                {well?<span className="ck-in">{well.readiness!=null?well.readiness:L('geldi','in')}
+                  {hhmm(well.submittedAt)?<i> · {hhmm(well.submittedAt)}</i>:null}</span>
+                  :<span className="ck-out">—</span>}
               </td>
-            </tr>)}
-          </tbody>
-        </table>
-        <h3 style={{fontSize:13,margin:'18px 0 8px',color:'var(--accent2)'}}>{L('Son 7 gün','Last 7 days')}</h3>
-        <table style={{maxWidth:560}}>
-          <thead><tr><th style={{textAlign:'left'}}>{L('Gün','Day')}</th><th>{L('İçsel Yük','Internal Load')}</th><th>Wellness</th></tr></thead>
-          <tbody>
-            {week.map(w=><tr key={w.d} style={w.d===date?{background:'var(--elevated)'}:null}>
-              <td>{fd(w.d)}</td>
-              <td style={{textAlign:'center'}}>{w.s} / {athletes.length}</td>
-              <td style={{textAlign:'center'}}>{w.w} / {athletes.length}</td>
             </tr>)}
           </tbody>
         </table>
       </>}
       {!athletes.length&&<div className="help" style={{marginTop:10}}>
-        {L(<>Bu takımda sporcu yok. <b>Athletes</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.</>,
-          <>This team has no athletes. Add the roster from the <b>Athletes</b> screen — the form's name list comes from there.</>)}
+        {L(<>Bu takımda sporcu yok. <b>Kadro</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.</>,
+          <>This team has no athletes. Add the roster from the <b>Roster</b> screen — the form's name list comes from there.</>)}
       </div>}
     </div>
-
-    <CheckinSetupHelp/>
-  </div>);
-}
-
-/* Kurulum, koçun Firebase panelinde bir kez yapacağı iki işten ibaret. Kuralları
-   ezberden yazdırmamak için metin burada hazır duruyor — Backup ekranındaki
-   kural kutusuyla aynı mantık. */
-function CheckinSetupHelp(){
-  const[open,setOpen]=useState(false);
-  const RULES=`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    match /kullanici_verileri/{docId} {
-      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
-    }
-    match /users/{uid}/{doc=**} {
-      allow read, write: if request.auth.uid == uid;
-    }
-
-    // Check-in linkleri: adresi (token) bilen okur, listeleyemez.
-    match /checkin_links/{token} {
-      allow get:    if true;
-      allow list:   if false;
-      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
-    }
-
-    // Sporcu gönderimleri: yalnızca geçerli bir token ile YAZILIR, sonradan değiştirilemez.
-    match /checkins/{id} {
-      allow create: if request.auth != null
-        && request.resource.data.keys().hasAll(['coachUid','teamId','athleteId','token','kind','date','payload'])
-        && request.resource.data.keys().hasOnly(['coachUid','teamId','athleteId','athleteName','token','kind','date','payload','at','v'])
-        && request.resource.data.kind in ['srpe','wellness']
-        && request.resource.data.date is string
-        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-        && request.resource.data.payload is map
-        && request.resource.data.payload.size() <= 24
-        && exists(/databases/$(database)/documents/checkin_links/$(request.resource.data.token))
-        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.coachUid == request.resource.data.coachUid
-        && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.teamId == request.resource.data.teamId;
-      allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
-      allow update: if false;
-    }
-
-    /* ═══════════════════════════════════════════════════════════════════════
-       WELLNESS UYARILARI VE BİLDİRİM
-
-       Dört koleksiyon. Ortak kural şu: uyarıyı YALNIZCA sunucu (Cloud Function)
-       yazıyor, istemciler yalnızca okuyor. Admin SDK kuralların dışında çalıştığı
-       için function'a ayrıca izin vermek gerekmiyor — aşağıdaki "write: if false"
-       satırları function'ı değil, TARAYICIYI kapatıyor.
-
-       Neden böyle: bir istemcinin uyarı üretebilmesi, o istemcinin başka
-       kullanıcıların telefonuna bildirim gönderebilmesi demek olurdu (Madde 16).
-       ═══════════════════════════════════════════════════════════════════════ */
-
-    /* Bir ekip üyesinin eşleşme kaydı. Anonim oturum kendi kaydını bir kez
-       yazıyor; kim olduğunu SÖYLEMİYOR — hangi kadro satırına ait olduğunu
-       elindeki token'ın arkasındaki staff_links dokümanı söylüyor ve kayıt ona
-       birebir uymak zorunda. Yani "ben baş antrenörüm" diyerek başka bir takımın
-       uyarılarına geçilemiyor. */
-    match /staff_members/{authUid} {
-      function link() {
-        return get(/databases/$(database)/documents/staff_links/$(request.resource.data.token)).data;
-      }
-      allow get: if request.auth != null && request.auth.uid == authUid;
-      allow list: if false;
-      allow create, update: if request.auth != null
-        && request.auth.uid == authUid
-        && request.resource.data.keys().hasAll(['coachUid','teamId','staffId','token'])
-        && exists(/databases/$(database)/documents/staff_links/$(request.resource.data.token))
-        && link().coachUid == request.resource.data.coachUid
-        && link().teamId   == request.resource.data.teamId
-        && link().staffId  == request.resource.data.staffId;
-      allow delete: if request.auth != null && request.auth.uid == authUid;
-    }
-
-    /* Ekip üyesinin bildirim linki. Check-in linkleriyle aynı model: adresi bilen
-       okur, kimse listeleyemez. Linki üreten ve silen yalnızca hesabın sahibi. */
-    match /staff_links/{token} {
-      allow get:    if true;
-      allow list:   if false;
-      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
-    }
-
-    /* Takımın kadro özeti — function'ın "bu sporcunun uyarısı kime gider"
-       sorusunu cevaplamak için okuduğu tek doküman. Koçun uygulaması yazıyor,
-       başka kimse okumuyor: ekip üyesinin sayfası buna ihtiyaç duymuyor. */
-    match /alert_roster/{docId} {
-      allow read: if request.auth != null && resource.data.coachUid == request.auth.uid;
-      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
-    }
-
-    /* Cihaz kayıtları (bildirim token'ları).
-
-       Bir kullanıcı YALNIZCA kendi oturumuna ait kaydı yazabiliyor ve kaydın
-       kapsamı (hangi hesap, hangi takım, hangi kadro satırı) elindeki eşleşme
-       kaydından doğrulanıyor. Kendi kaydını başka bir takıma yazamıyor.
-
-       Okuma tamamen kapalı: token listesi kimsenin görmesi gereken bir şey değil,
-       onu yalnızca gönderimi yapan function (admin SDK) okuyor. */
-    match /push_tokens/{fcmToken} {
-      function member() {
-        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
-      }
-      allow read, list: if false;
-      allow create, update: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.kind in ['coach','staff']
-        && (
-          // Hesap sahibinin kendi cihazı: coachUid kendi kimliği olmak zorunda.
-          (request.resource.data.kind == 'coach'
-            && request.resource.data.coachUid == request.auth.uid)
-          ||
-          // Ekip üyesinin cihazı: eşleşme kaydıyla birebir uymak zorunda.
-          (request.resource.data.kind == 'staff'
-            && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
-            && member().coachUid == request.resource.data.coachUid
-            && member().teamId   == request.resource.data.teamId
-            && member().staffId  == request.resource.data.staffId)
-        );
-      // Kendi cihazını kaydından düşürebilmeli (bildirimi kapatmak).
-      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
-    }
-
-    /* Uyarı kayıtları.
-
-       Okuyabilenler yalnızca iki taraf:
-         • hesabın sahibi (koç) — kendi tüm takımlarını,
-         • eşleşmiş ekip üyesi — YALNIZCA kendi takımını.
-
-       İkinci satır, bir ekip üyesinin başka bir takımın ya da başka bir kulübün
-       uyarılarını görmesini kapatıyor: eşleşme kaydındaki teamId ile uyarının
-       teamId'si aynı olmak zorunda.
-
-       Yazma tamamen kapalı — uyarıyı yalnızca Cloud Function üretiyor. */
-    match /wellness_alerts/{alertId} {
-      function member() {
-        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
-      }
-      function isOwner() {
-        return request.auth != null && resource.data.coachUid == request.auth.uid;
-      }
-      function isTeamStaff() {
-        return request.auth != null
-          && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
-          && member().coachUid == resource.data.coachUid
-          && member().teamId   == resource.data.teamId;
-      }
-      allow read: if isOwner() || isTeamStaff();
-      allow write: if false;
-    }
-  }
-}`;
-  return(<div className="panel">
-    <div className="row" style={{justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-      <h2 style={{margin:0}}>Kurulum (bir kerelik)</h2>
-      <button className="btn sec xs" onClick={()=>setOpen(o=>!o)}>{open?'Gizle':'Göster'}</button>
-    </div>
-    {open&&<div style={{marginTop:12}}>
-      <div className="help" style={{marginBottom:10}}>
-        Formların çalışması için Firebase panelinde iki ayar gerekiyor. İkisi de bir kere yapılır.
-      </div>
-      <ol style={{margin:'0 0 12px 18px',padding:0,color:'var(--text2)',fontSize:13,lineHeight:1.7}}>
-        <li><b>Anonim giriş</b>: Firebase → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> → Enable.
-          Sporcu hesap açmaz; sayfa arka planda isimsiz oturum kullanır.</li>
-        <li><b>Firestore kuralları</b>: Firebase → <b>Firestore Database → Rules</b> → aşağıdaki metnin
-          tamamını yapıştır → <b>Publish</b>. (Mevcut kuralların da içinde — eksiltmiyor.)</li>
-      </ol>
-      <button className="btn sec xs" onClick={()=>{try{navigator.clipboard.writeText(RULES);}catch(e){}}}>Kuralları kopyala</button>
-      <pre style={{marginTop:10,padding:12,background:'rgba(0,0,0,.35)',border:'1px solid var(--border)',borderRadius:8,
-        fontSize:10.5,lineHeight:1.5,overflowX:'auto',color:'var(--text2)',userSelect:'all'}}>{RULES}</pre>
-      <div className="help">
-        Kurallar deponun içindeki <code>firestore.rules</code> dosyasında da duruyor.
-        Formu açtığında hata görürsen sayfa hangi adımın eksik olduğunu yazar.
-      </div>
-    </div>}
   </div>);
 }
 
@@ -28709,7 +28227,20 @@ function App(){
   }));
   return()=>registerBallSave(null);},[setData]);
   // Brand every printout / shared PDF with the active team's logo.
-  useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');},[team]);
+  useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');
+    registerClubName((team&&team.setup&&(team.setup.clubName||team.setup.teamName))||'');},[team]);
+  /* Competition Dates, written from the calendar. This sits at the top of the app rather
+     than on the Season screen so a match ticked on Tuesday is already in the season's
+     fixture list on Wednesday — without the coach having opened Season at all. It writes
+     only when the list actually changes, so it cannot loop. */
+  useEffect(()=>{
+    if(!team||!team.setup)return;
+    const cur=team.setup.competitions||[];
+    const next=syncCompetitions(cur,team.days);
+    if(JSON.stringify(next)===JSON.stringify(cur))return;
+    setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>t.id===team.id
+      ?{...t,setup:{...t.setup,competitions:next}}:t)}));
+  },[team&&team.id,team&&team.days,team&&team.setup&&team.setup.competitions]);
   /* The completions offered on every ball-practice row. Built once per library change
      rather than on every render: it was being filtered and rebuilt on each edit, and the
      shelf holds hundreds of drills. */
@@ -28767,7 +28298,7 @@ function App(){
       {id:'exercises',label:L('Egzersiz Kütüphanesi','Exercise Library'),icon:NAV_ICONS.exercises,count:exCount||null},
       {id:'templates',label:L('Şablonlar','Templates'),icon:NAV_ICONS.templates,count:(data.templates||[]).length||null},
       {id:'individual',label:L('Bireyselleştirme','Individualization'),icon:NAV_ICONS.individual},
-      {id:'tempo',label:L('Tempo Antrenmanı','Tempo Training'),icon:NAV_ICONS.tempo},
+      {id:'tempo',label:L('Interval Zamanlayıcı','Interval Timer'),icon:NAV_ICONS.tempo},
       {id:'checkin',label:L('Check-in Formları','Check-in Forms'),icon:NAV_ICONS.checkin},
     ]},
     /* Tryouts is deliberately its own group rather than another Workspace row: every
@@ -28832,7 +28363,12 @@ function App(){
     <main key={view+(view==='tryouts'?'':team.id)}>
       {view==='setup'&&<Setup team={team} updateTeam={updateTeam} data={data} setData={setData}/>}
       {view==='season'&&<SeasonPlan team={team} updateTeam={updateTeam} periods={periods} weeks={weeks}/>}
-      {view==='calendar'&&<><CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
+      {view==='calendar'&&<><PageHero title={L('Takvim','Calendar')}
+        sub={L(`Sezonun günleri · ${team.setup.teamName}`,`The season, day by day · ${team.setup.teamName}`)}
+        stats={[{v:Object.values(team.days||{}).filter(d=>(d&&d.sessions||[]).length).length,l:L('Planlanan gün','Days planned')},
+                {v:Object.values(team.days||{}).reduce((n,d)=>n+((d&&d.sessions||[]).length),0),l:L('Seans','Sessions')},
+                {v:(team.athletes||[]).length,l:L('Sporcu','Athletes')}]}/>
+        <CalendarView days={team.days} selected={selected} setSelected={setSelected} goDayView={goDayView} weeks={weeks}
         setup={team.setup} labelOwner={team.setup.teamName} athletes={team.athletes||[]} staff={team.staff||[]} exercises={data.exercises||[]}
         saveDays={d=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,days:d}:t)}))}
         saveAthletes={a=>setData(prev=>({...prev,teams:prev.teams.map(t=>t.id===team.id?{...t,athletes:a}:t)}))}/>
