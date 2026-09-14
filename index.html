@@ -25816,8 +25816,24 @@ function buildIndivPlan(src,ath,ctx){
         ...addedAll.filter(a=>String(a.bi)===key).map(a=>mkRow(`add:${a.id}`,{},a.id)),
       ]};
   };
+  /* ONLY THE BLOCKS THIS ATHLETE ACTUALLY DOES. One strength session is routinely split
+     into a guards' block, a forwards' block and a pivots' block, each ticked to the
+     players who do it — the team→athlete sync has always copied a session that way, and
+     the sheet must read it the same. Without this the sheet built every block for every
+     athlete, so all three landed on all three groups' calendars.
+     A block that names nobody is the session's own work and belongs to everyone, exactly
+     as `blockCoversAthlete` reads it; the block's list is what narrows it, never the
+     session's roster, so writing to an athlete the session was never given to (the button
+     in the bar, over a template) still builds them a full sheet. If the split leaves this
+     athlete with nothing — stale data, ticks that no longer name anyone here — the whole
+     session stands rather than an empty program. Blocks keep their SOURCE index as their
+     key so every override the coach typed stays on the row it was typed on. */
+  const srcBlocks=(src.blocks||[]).map((b,bi)=>({b,bi}));
+  const ownIds=b=>(Array.isArray(b&&b.athletes)?b.athletes:[]);
+  const myBlocks=srcBlocks.filter(({b})=>{const ids=ownIds(b);return !ids.length||ids.includes(ath.id);});
+  const useBlocks=myBlocks.length?myBlocks:srcBlocks;
   const blocks=[
-    ...(src.blocks||[]).map((b,bi)=>mkBlock(String(bi),b.name||'',b.exercises||[],null)),
+    ...useBlocks.map(({b,bi})=>mkBlock(String(bi),b.name||'',b.exercises||[],null)),
     // Added blocks sit after the source session's own, in the order they were added.
     ...addedBlocks.map(b=>mkBlock(`add:${b.id}`,'',[],b.id)),
   ];
@@ -25834,11 +25850,17 @@ function buildIndivPlan(src,ath,ctx){
   const mPick=(k,fallback)=>has(k)?String(mOvr[k]):String(fallback||'');
   const mList=(k,fallback)=>Array.isArray(mOvr[k])?mOvr[k]:(fallback||[]);
   const baseFocus=sesFocus(src),baseMethods=sesMethods(src),baseRegion=sesRegion(src);
+  /* The title the athlete sees is the title of the block they do: a session split by
+     position gives each group its own heading, and the plain copy the sync writes is
+     already named that way. One title among their blocks is theirs; blocks that disagree
+     fall back to the session's own name — the same rule `syncSessionsToAthletes` uses. */
+  const myTitles=[...new Set(useBlocks.map(({b})=>blkSesName(src,b)).filter(Boolean))];
+  const baseSesName=myTitles.length===1?myTitles[0]:(src.name||'');
   const meta={
-    name:mPick('name',src.name||''),time:mPick('time',src.time||''),
+    name:mPick('name',baseSesName),time:mPick('time',src.time||''),
     duration:mPick('duration',src.duration==null?'':src.duration),
     focus:mList('focus',baseFocus),region:mPick('region',baseRegion),methods:mList('methods',baseMethods),
-    baseName:src.name||'',baseTime:src.time||'',baseDuration:src.duration==null?'':String(src.duration),
+    baseName:baseSesName,baseTime:src.time||'',baseDuration:src.duration==null?'':String(src.duration),
     baseFocus,baseRegion,baseMethods,
     edited:{name:has('name'),time:has('time'),duration:has('duration'),
       focus:Array.isArray(mOvr.focus),region:has('region'),methods:Array.isArray(mOvr.methods)},
