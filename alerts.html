@@ -371,6 +371,7 @@ function lang(){return (navigator.language||'tr').toLowerCase().indexOf('en')===
    Olayın sayfa açılır açılmaz gelebildiğine dikkat: dinleyici her şeyden ÖNCE
    kuruluyor, yoksa Firestore'u beklerken olay kaçıyor ve düğme hiç çıkmıyor. */
 var INSTALL_EVENT=null;
+var INSTALL_WAITED=false;
 window.addEventListener('beforeinstallprompt',function(e){
   e.preventDefault();               // tarayıcının kendi mini çubuğu yerine bizim düğmemiz
   INSTALL_EVENT=e;
@@ -417,6 +418,32 @@ function drawInstall(){
     return;
   }
 
+  /* Olay hiç gelmediyse — ve gelmesi için birkaç saniye beklendiyse — elle kurulum.
+     Android'de bunun iki sebebi oluyor: tarayıcı sayfayı henüz değerlendirmemiştir
+     (bekleme bunun için), ya da WhatsApp/Instagram gibi bir uygulamanın KENDİ
+     tarayıcısındasındır — orada kurulum diye bir şey yok, çıkış "tarayıcıda aç".
+
+     Üçüncü bir sebep daha var ve teşhisi zor: tarayıcı, KURULU bir uygulamanın
+     kapsamına düşen sayfa için ikinci kurulum teklif etmiyor, "zaten yüklü" diyor.
+     CoachOS'un kapsamı bir zamanlar bütün siteyi kaplıyordu ve bu sayfa da onun
+     içinde kalıyordu. Kapsam daraltıldı; ama KURULU uygulamanın kaydı telefonda
+     eski kapsamla durmaya devam ediyor, o yüzden çare aşağıdaki son madde. */
+  if(!IS_IOS&&INSTALL_WAITED){
+    var c3=el('div',{class:'card plain nophone'});
+    var b3=el('div',{class:'body'});
+    b3.appendChild(el('h2',{text:'Uygulama olarak yükle'}));
+    b3.appendChild(el('p',{text:'Bu tarayıcı kurulum düğmesini burada göstermedi. Sırayla dene:'}));
+    var ol3=el('ol');
+    ['Sayfayı WhatsApp/Instagram içinden açtıysan menüden "Tarayıcıda aç" de — uygulama olarak yükleme yalnızca gerçek tarayıcıda çalışıyor.',
+     'Chrome menüsü (⋮) → "Uygulamayı yükle" ya da "Ana ekrana ekle".',
+     '"Bu uygulama zaten yüklü" diyorsa: kurulu CoachOS uygulamasını kaldırıp bu sayfayı yeniden yükle, sonra ikisini de kur — eski CoachOS kaydı bu sayfayı da kendi içinde sayıyor.'
+    ].forEach(function(x){ol3.appendChild(el('li',{text:x}));});
+    b3.appendChild(ol3);
+    c3.appendChild(b3);
+    installBox.appendChild(c3);
+    return;
+  }
+
   /* iOS: `beforeinstallprompt` hiç gelmiyor, tek yol elle. Bu kart bildirim
      kartından AYRI duruyor çünkü bildirim izni verilmiş olsa bile (masaüstünde
      verilmiş olabilir) telefonun ana ekranında uygulamanın olması ayrı bir iş. */
@@ -451,6 +478,14 @@ function warmServiceWorker(){
 /* ── Açılış ──────────────────────────────────────────────────────────────── */
 function boot(){
   drawInstall();
+  /* Tarayıcı kurulabilirliği hemen değerlendirmiyor; olay çoğu zaman sayfa
+     yüklendikten bir-iki saniye sonra geliyor. Elle kurulum yönergesini hemen
+     basmak, düğme az sonra çıkacakken kullanıcıyı menüye yollamak olurdu. */
+  setTimeout(function(){
+    if(INSTALL_EVENT)return;
+    INSTALL_WAITED=true;
+    drawInstall();
+  },3500);
   warmServiceWorker();
   if(!CFG){
     show(setupBox,'bad','Yapılandırma yüklenemedi. Koçuna ilet: push-config.js sunucuda eksik.');
