@@ -14997,6 +14997,12 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   const blkSession=()=>({...(session||{}),
     name:[blkSesName(session,block).trim(),blkName].filter(Boolean).join(' · '),
     blocks:[block]});
+  /* The printed sheet is headed by the session's OWN title — the one at the head of the
+     session card ("Takım Kuvvet") — and not by the block's, which the block heading on the
+     sheet already carries a few lines below. A session left untitled falls back to the
+     block's name so the sheet is never headed by nothing. */
+  const printSession=()=>({...blkSession(),
+    name:String((session&&session.name)||'').trim()||blkName});
   /* Who does THIS block, and the button that writes it onto their calendars. The list is
      the block's own; a block nobody has been ticked on assigns the whole squad, exactly as
      the session-level button did before the blocks came apart. */
@@ -15074,10 +15080,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           style={savedTpl?{borderColor:'var(--accent)',color:'var(--accent)'}:undefined}>
           {savedTpl?L('✓ Kaydedildi','✓ Saved'):L('Şablona Kaydet','Save to Templates')}</button>}
         <button type="button" className="btn xs sec"
-          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[blkSession()])}
+          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()])}
           title={L('Yalnızca bu bloğu yazdır','Print this block only')}>{L('Yazdır','Print')}</button>
         <button type="button" className="btn xs sec"
-          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[blkSession()],{withImages:true})}
+          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()],{withImages:true})}
           title={L('Yalnızca bu bloğu, yüklenen egzersiz görselleriyle yazdır','Print this block only, including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
         <button type="button" className="btn xs sec iv-rmb" onClick={()=>{if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
           title={L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
