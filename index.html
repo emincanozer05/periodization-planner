@@ -2041,6 +2041,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-seg{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:3px;gap:2px}
 .lb-seg button{background:none;border:none;color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;padding:6px 13px;border-radius:7px;cursor:pointer;transition:all .15s}
 .lb-seg button.on{background:var(--elevated);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* Divider inside a segment, for a button that switches the view rather than the
+   metric beside it (the heatmap's RHR Monitor). */
+.lb-seg-sep{width:1px;align-self:stretch;margin:2px 4px;background:var(--border2);flex:none}
 /* Session focus multi-select dropdown */
 .focus-sel{position:relative}
 .focus-trig{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;text-align:left;transition:border-color .15s}
@@ -3574,6 +3577,91 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-abar{width:100%;height:4px;border-radius:3px;background:var(--border);overflow:hidden}
 .wh-abar i{display:block;height:100%;border-radius:3px;transition:width .5s ease}
 .wh-adot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle}
+/* RHR Monitor — the weekly resting-heart-rate trend that sits behind the last button
+   of the heatmap's own segment. The chart is drawn in SVG (months across the top,
+   weeks along the bottom) and the table under it is written in the grid's language:
+   the same banded header, hairline rows and frozen, opaque first column, so the two
+   views read as one board rather than two widgets stacked. Series colours are set
+   per row through --rm-c, so a slot is chosen in one place (RHR_LINE) and nothing
+   here repeats a hex. */
+.rm-wrap{display:flex;flex-direction:column;gap:14px}
+.rm-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:26px}
+.rm-lg{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--muted);letter-spacing:.03em}
+.rm-lg i{width:14px;height:0;border-top:2px dashed var(--rm-c,var(--dim));flex:none}
+.rm-chip{display:inline-flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--rm-c,var(--border));
+  border-radius:99px;padding:4px 9px 4px 9px;font-family:inherit;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;
+  transition:transform .12s ease,box-shadow .12s ease}
+.rm-chip:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.rm-chip i{width:9px;height:9px;border-radius:50%;background:var(--rm-c,var(--dim));flex:none}
+.rm-chip b{font-size:13px;font-weight:600;color:var(--dim);margin-left:1px}
+.rm-chip:hover b{color:var(--text2)}
+.rm-hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim);margin-left:auto;letter-spacing:.03em}
+/* The plot itself. Position is relative because the hover card is an HTML element
+   laid over the SVG in the same pixel space — the svg is sized in px, so a chart
+   coordinate IS a wrapper coordinate. */
+.rm-chart{position:relative;width:100%;animation:rmIn .4s ease both}
+@keyframes rmIn{from{opacity:0}to{opacity:1}}
+.rm-chart svg{display:block;width:100%}
+.rm-hit{fill:transparent;cursor:crosshair}
+.rm-tip{position:absolute;z-index:30;pointer-events:none;transform:translate(-50%,0);min-width:158px;
+  background:var(--elevated,var(--bg2));border:1px solid var(--border2);border-radius:10px;padding:9px 11px;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.rm-tip-h{display:flex;flex-direction:column;gap:2px;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.rm-tip-h b{font-size:12px;color:var(--text);font-weight:700}
+.rm-tip-h span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim)}
+.rm-tip-r{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2);padding:2px 0}
+.rm-tip-r i{width:8px;height:8px;border-radius:50%;flex:none}
+.rm-tip-n{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:118px}
+.rm-tip-r strong{margin-left:auto;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text)}
+.rm-tip-r em{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-style:normal;color:var(--dim);width:30px;text-align:right}
+/* ---- the numbers under the chart ---- */
+.rm-tb{width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;min-width:1040px}
+.rm-tb thead th{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;padding:8px 4px;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-bottom:1px solid rgba(255,255,255,.1)}
+.rm-tb thead tr:first-child th:first-child{border-radius:11px 0 0 0}
+.rm-tb thead tr:first-child th:last-child{border-radius:0 11px 0 0}
+.rm-tb .rm-ath-h{width:300px;z-index:3;text-align:left;padding-left:16px;vertical-align:bottom;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02)),var(--panel)}
+.rm-tb .rm-mon-h{color:var(--accent2);font-weight:700;font-size:9.5px;border-left:1px solid var(--border2);padding-bottom:5px}
+.rm-tb .rm-wk-h{min-width:62px;text-align:center;padding-top:5px}
+.rm-wk-n{font-size:9.5px;font-weight:600;color:var(--text2);letter-spacing:.02em}
+.rm-wk-d{font-size:9px;color:var(--dim);margin-top:2px;letter-spacing:0}
+.rm-tb .rm-avg-h{width:84px;text-align:center;padding-right:14px;vertical-align:bottom;border-left:1px solid var(--border2)}
+.rm-tb tbody td{padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+.rm-tb tbody tr:last-child td{border-bottom:none}
+.rm-tb tbody tr:hover td{background:var(--hover)}
+.rm-row{cursor:pointer;animation:whRowIn .45s ease both}
+.rm-tb .rm-ath{z-index:2;padding-left:16px;padding-right:12px;position:sticky;left:0;border-right:1px solid var(--border2);background:var(--panel)}
+.rm-tb tbody tr:hover .rm-ath{background:var(--hover)}
+.rm-ath-in{display:flex;align-items:center;gap:10px;min-width:0;white-space:nowrap}
+/* The swatch is the row's switch as well as its key: hollow while the athlete is off
+   the chart, filled in the athlete's own colour once a line is theirs. */
+.rm-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--border2);flex:none;transition:background .15s ease,border-color .15s ease}
+.rm-row.on .rm-dot{background:var(--rm-c);border-color:var(--rm-c);box-shadow:0 0 0 3px color-mix(in srgb,var(--rm-c) 25%,transparent)}
+.rm-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#2a2f37,#171a1f);border:1px solid var(--border2);
+  display:grid;place-items:center;font-size:9.5px;font-weight:700;color:var(--text2);overflow:hidden;flex:none}
+.rm-av img{width:100%;height:100%;object-fit:cover}
+.rm-nm{font-size:13.5px;font-weight:600;color:var(--text2);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.rm-row.on .rm-nm{color:var(--text)}
+.rm-pos{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--text2);
+  background:var(--elevated);border:1px solid var(--border);border-radius:6px;padding:2px 7px;margin-left:auto;flex:none}
+.rm-cel{text-align:center}
+.rm-cel.hv{background:rgba(255,255,255,.05)}
+/* A week's number with the count of days behind it — the average of three mornings
+   and the average of one are not the same claim, and the pip says which is which. */
+.rm-v{display:inline-flex;align-items:flex-start;gap:2px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;font-weight:700;color:var(--text)}
+.rm-v i{font-style:normal;font-size:8.5px;font-weight:600;color:var(--dim);line-height:1.1}
+.rm-na{color:var(--dim);font-size:12px}
+.rm-avg{text-align:center;border-left:1px solid var(--border2)}
+.rm-avg-in{display:inline-flex;align-items:baseline;gap:5px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 9px}
+.rm-avg-v{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text)}
+/* Resting HR reads the other way round from the rest of the board: a week that came
+   down is the good one, so the arrow is green going down and rose going up. */
+.rm-trd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700}
+.rm-trd.up{color:#f43f5e}
+.rm-trd.dn{color:#2dd4a7}
+.rm-trd.fl{color:var(--dim)}
+@media(max-width:700px){.rm-tb .rm-ath-h,.rm-tb .rm-ath{width:200px}.rm-hint{margin-left:0;width:100%}}
 /* Weekly Monotony */
 /* --- Share the week ---
    Two panes: the sheet being sent, and everything decided about it. The sheet is the
@@ -7818,6 +7906,251 @@ function painTagsFromMap(map){
   return Object.keys(out).length?out:null;
 }
 
+/* =========================================================
+   RHR MONITOR — resting heart rate, week over week
+   The heatmap next door answers "what did this morning look like"; this answers
+   "which way is it going". One point per week, Monday to Sunday, and the point is
+   the mean of the days that were actually measured: the week's readings added up
+   and divided by the number of days carrying one, never by seven. An athlete who
+   checked in twice that week has an average of two mornings — dividing that by the
+   calendar would read as a resting pulse in the teens and put a cliff in the line
+   where there is only a quiet week.
+
+   A week nobody reported has no point at all. The line breaks across it and a
+   dashed connector spans the gap, so the chart never walks through a value that
+   was never taken.
+   ========================================================= */
+/* Eight categorical series steps, in this order, on this panel's surface: the
+   adjacent CVD separation and the normal-vision floor were both checked against
+   #14171c before they were written down. The order is the safety mechanism, so
+   slots are handed out from the front and a ninth line is refused rather than
+   given a colour already on the chart. */
+const RHR_LINE=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+const RHR_TEAM='#8b9099';   /* the squad reference — grey, so it never reads as an athlete */
+const RHR_WEEKS=12;         /* three months of weeks on screen at a time */
+
+/* One athlete's week → {avg,days}, or null when the week carries no reading.
+   Two check-ins on the same day count as one day, the later one winning, exactly
+   as the heatmap's cell resolves them — a double entry can't weigh a week twice. */
+function rhrWeekAvg(ath,wkStart,wkEnd){
+  const byDay=new Map();
+  (ath.wellness||[]).forEach(e=>{
+    if(!e||!e.date||e.date<wkStart||e.date>wkEnd)return;
+    if(e.RHR===''||e.RHR==null)return;
+    const v=Number(e.RHR);
+    if(!isFinite(v)||v<=0)return;
+    byDay.set(e.date,v);
+  });
+  const vals=[...byDay.values()];
+  if(!vals.length)return null;
+  return{avg:vals.reduce((a,b)=>a+b,0)/vals.length,days:vals.length};
+}
+
+/* The n weeks ending with the one that contains `endKey`, oldest first. A week is
+   filed under the month its Thursday falls in — the ISO rule — so a week straddling
+   two months belongs to exactly one of them, and "Week 1…5" under a month header
+   counts the calendar's weeks rather than the window's. */
+function rhrWeeks(endKey,n){
+  const endMon=sow(parseD(endKey));
+  return Array.from({length:n},(_,i)=>{
+    const s=addD(endMon,(i-(n-1))*7),thu=addD(s,3);
+    return{start:fmt(s),end:fmt(addD(s,6)),m:thu.getMonth(),y:thu.getFullYear(),
+      wom:Math.floor((thu.getDate()-1)/7)+1};
+  });
+}
+
+function RHRMonitor({athletes,weeks}){
+  const wrapRef=useRef(null);
+  const[w,setW]=useState(900);
+  useEffect(()=>{const el=wrapRef.current;if(!el)return;
+    const m=()=>setW(Math.max(420,el.clientWidth));m();
+    let ro;if(window.ResizeObserver){ro=new ResizeObserver(m);try{ro.observe(el);}catch{}}
+    window.addEventListener('resize',m);
+    return()=>{window.removeEventListener('resize',m);try{ro&&ro.disconnect();}catch{}};
+  },[]);
+  const[hov,setHov]=useState(null);      // hovered week index → crosshair + card
+  const[sel,setSel]=useState([]);        // [{id,slot}] — the slot IS the colour
+  const rows=useMemo(()=>(athletes||[]).map(a=>{
+    const pts=weeks.map(wk=>rhrWeekAvg(a,wk.start,wk.end));
+    const got=pts.filter(Boolean);
+    return{a,pts,n:got.length,
+      avg:got.length?got.reduce((s,p)=>s+p.avg,0)/got.length:null,
+      last:got.length?got[got.length-1].avg:null,
+      prev:got.length>1?got[got.length-2].avg:null};
+  }).filter(r=>r.n>0).sort((x,y)=>(x.a.name||'').localeCompare(y.a.name||'','tr')),[athletes,weeks]);
+  /* The chart opens on the first few athletes rather than empty or on all of them —
+     twenty lines through one 300px band is not a trend anyone can read. After that
+     the selection is the coach's: navigating weeks only drops athletes who left the
+     board, and a chart deliberately emptied stays empty. */
+  const seeded=useRef(false);
+  useEffect(()=>{
+    if(!rows.length)return;
+    if(seeded.current){setSel(s=>{const keep=s.filter(x=>rows.some(r=>r.a.id===x.id));return keep.length===s.length?s:keep;});return;}
+    seeded.current=true;
+    setSel(rows.slice(0,3).map((r,i)=>({id:r.a.id,slot:i})));
+  },[rows]);
+  /* Colour follows the athlete, not their rank: a slot is held for as long as the
+     line is on the chart, so removing one line never repaints the others. */
+  const toggle=id=>setSel(s=>{
+    if(s.some(x=>x.id===id))return s.filter(x=>x.id!==id);
+    const used=new Set(s.map(x=>x.slot));
+    let slot=0;while(used.has(slot))slot++;
+    if(slot>=RHR_LINE.length)return s;
+    return[...s,{id,slot}];
+  });
+  const colOf=id=>{const e=sel.find(x=>x.id===id);return e?RHR_LINE[e.slot]:null;};
+  const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
+  const first=n=>{const p=(n||'').trim().split(/\s+/)[0]||'';return p.length>9?p.slice(0,8)+'…':p;};
+  /* Months across the top: consecutive weeks filed under the same month, banded. */
+  const groups=[];weeks.forEach((wk,i)=>{const g=groups[groups.length-1];
+    if(g&&g.m===wk.m&&g.y===wk.y)g.to=i;else groups.push({m:wk.m,y:wk.y,from:i,to:i});});
+  /* "JUL 26" reads as a date; the year is only worth printing where it changes anyway. */
+  const gLbl=(g,gi)=>MN[g.m].toUpperCase()+((gi===0||groups[gi-1].y!==g.y)?' '+g.y:'');
+  /* The squad's week, drawn behind the athletes as a dashed reference. It averages
+     the athletes' weekly averages, so a squad of one heavy reporter and nine quiet
+     ones is still ten athletes' worth of line. */
+  const team=weeks.map((_,i)=>{const vs=rows.map(r=>r.pts[i]).filter(Boolean).map(p=>p.avg);
+    return vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;});
+  const shown=rows.filter(r=>sel.some(x=>x.id===r.a.id));
+  const named=shown.length>0&&shown.length<=4;   /* ≤4 lines are also labelled where they end */
+  const H=312,padL=48,padT=44,padB=50,padR=named?108:24;
+  const plotW=Math.max(300,w-padL-padR),bw=plotW/Math.max(1,weeks.length);
+  const xOf=i=>padL+(i+0.5)*bw;
+  const vals=[];
+  shown.forEach(r=>r.pts.forEach(p=>{if(p)vals.push(p.avg);}));
+  team.forEach(v=>{if(v!=null)vals.push(v);});
+  const rawLo=vals.length?Math.min(...vals):50,rawHi=vals.length?Math.max(...vals):60;
+  const step=Math.max(2,Math.ceil(((rawHi-rawLo)||4)/8)*2);
+  const lo=Math.floor((rawLo-step*0.4)/step)*step,hi=Math.ceil((rawHi+step*0.4)/step)*step;
+  const ticks=[];for(let v=lo;v<=hi+1e-6;v+=step)ticks.push(v);
+  const yOf=v=>padT+(1-(v-lo)/((hi-lo)||1))*(H-padT-padB);
+  /* A series as the runs of weeks it was actually measured in. */
+  const segsOf=pts=>{const out=[];let cur=[];
+    pts.forEach((p,i)=>{if(p)cur.push({x:xOf(i),y:yOf(p.avg),i});else if(cur.length){out.push(cur);cur=[];}});
+    if(cur.length)out.push(cur);return out;};
+  /* End-of-line labels, pushed apart so two athletes finishing on the same pulse
+     don't print over each other. */
+  const endLabels=(()=>{
+    if(!named)return[];
+    const ls=shown.map(r=>{const got=r.pts.map((p,i)=>({p,i})).filter(x=>x.p);
+      if(!got.length)return null;const e=got[got.length-1];
+      return{id:r.a.id,c:colOf(r.a.id),y:yOf(e.p.avg),px:xOf(e.i),py:yOf(e.p.avg),t:first(r.a.name)+' '+Math.round(e.p.avg)};})
+      .filter(Boolean).sort((a,b)=>a.y-b.y);
+    for(let i=1;i<ls.length;i++)if(ls[i].y-ls[i-1].y<14)ls[i].y=ls[i-1].y+14;
+    const over=ls.length?ls[ls.length-1].y-(H-padB):0;
+    if(over>0)ls.forEach(l=>{l.y-=over;});
+    return ls;
+  })();
+  const trend=r=>{if(r.last==null||r.prev==null)return null;const d=r.last-r.prev;
+    return{d,cls:Math.abs(d)<0.5?'fl':(d>0?'up':'dn'),s:(Math.abs(d)<0.5?'→ ':(d>0?'↑ ':'↓ '))+Math.abs(d).toFixed(1)};};
+  if(!rows.length)return<div className="empty-st">{L('Bu aralıkta dinlenik nabız ölçümü yok.','No resting-HR readings in this range.')}</div>;
+  return(<div className="rm-wrap">
+    <div className="rm-legend">
+      <span className="rm-lg" style={{'--rm-c':RHR_TEAM}}><i/>{L('takım ort.','team avg')}</span>
+      {shown.map(r=><button key={r.a.id} className="rm-chip" style={{'--rm-c':colOf(r.a.id)}} onClick={()=>toggle(r.a.id)}
+        title={L('Grafikten çıkar','Remove from chart')}><i/>{r.a.name}<b>×</b></button>)}
+      <span className="rm-hint">{!shown.length?L('grafiğe eklemek için tablodan bir sporcuya tıkla','click an athlete below to plot them')
+        :sel.length>=RHR_LINE.length?L('en fazla 8 çizgi','8 lines max')
+        :L('sporcu eklemek/çıkarmak için tabloya tıkla','click the table to add or remove athletes')}</span>
+    </div>
+    <div className="rm-chart" ref={wrapRef}>
+      <svg width={w} height={H} onMouseLeave={()=>setHov(null)}>
+        {/* Alternating month bands — the calendar behind the line, quiet enough to
+            stay behind it. The month's name rides on top of its own band. */}
+        {groups.map((g,gi)=><g key={'g'+gi}>
+          {gi%2===1&&<rect x={padL+g.from*bw} y={padT-18} width={(g.to-g.from+1)*bw} height={H-padT-padB+18} fill="rgba(255,255,255,.022)"/>}
+          {gi>0&&<line x1={padL+g.from*bw} y1={padT-18} x2={padL+g.from*bw} y2={H-padB} style={{stroke:'var(--border2)'}} strokeWidth="1"/>}
+          <text x={padL+g.from*bw+((g.to-g.from+1)*bw)/2} y={padT-26} textAnchor="middle" style={{fill:'var(--accent2)'}}
+            fontFamily="IBM Plex Mono" fontSize="10" fontWeight="700" letterSpacing="1.2">{gLbl(g,gi)}</text>
+        </g>)}
+        {/* Scale: gridlines and the bpm the chart is counting in. */}
+        {ticks.map(t=><g key={'t'+t}>
+          <line x1={padL} y1={yOf(t)} x2={padL+plotW} y2={yOf(t)} stroke="rgba(255,255,255,.055)" strokeWidth="1"/>
+          <text x={padL-9} y={yOf(t)+3.5} textAnchor="end" style={{fill:'var(--dim)'}} fontFamily="IBM Plex Mono" fontSize="9.5">{t}</text>
+        </g>)}
+        <text x={padL-9} y={padT-26} textAnchor="end" style={{fill:'var(--dim)'}} fontFamily="IBM Plex Mono" fontSize="9" letterSpacing=".5">bpm</text>
+        {hov!=null&&<line x1={xOf(hov)} y1={padT-18} x2={xOf(hov)} y2={H-padB} stroke="rgba(255,255,255,.18)" strokeWidth="1" strokeDasharray="3 3"/>}
+        {/* The squad line first, so the athletes' own lines sit over it. */}
+        {(()=>{const segs=segsOf(team.map(v=>v==null?null:{avg:v}));
+          return segs.map((sg,k)=>sg.length>1?<path key={'tm'+k} d={sg.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')}
+            fill="none" stroke={RHR_TEAM} strokeWidth="1.5" strokeOpacity=".75" strokeDasharray="5 4" strokeLinecap="round"/>:null);})()}
+        {shown.map(r=>{const c=colOf(r.a.id),segs=segsOf(r.pts);
+          return<g key={r.a.id}>
+            {segs.slice(1).map((sg,k)=>{const a=segs[k][segs[k].length-1],b=sg[0];
+              return<line key={'gap'+k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={c} strokeOpacity=".3" strokeWidth="1.5" strokeDasharray="2 4"/>;})}
+            {segs.map((sg,k)=>sg.length>1?<path key={'s'+k} d={sg.map((p,j)=>(j?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ')}
+              fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>:null)}
+            {segs.map(sg=>sg.map(p=><circle key={'p'+p.i} cx={p.x} cy={p.y} r={hov===p.i?5:3.6} fill={c} strokeWidth="2" style={{stroke:'var(--panel)'}}/>))}
+          </g>;})}
+        {/* Whose line is whose, said twice: a swatch out at the end of each line, and
+            the legend above. Never colour alone, and never a number on every point. */}
+        {endLabels.map(l=><g key={'l'+l.id}>
+          {/* A line that stopped weeks ago still gets its name at the edge — the leader
+              says which point out there the name belongs to. */}
+          {(Math.abs(l.y-l.py)>2||l.px<padL+plotW-bw*0.6)&&
+            <line x1={l.px+5} y1={l.py} x2={padL+plotW+6} y2={l.y} stroke={l.c} strokeOpacity=".3" strokeWidth="1" strokeDasharray="2 3"/>}
+          <rect x={padL+plotW+7} y={l.y-1.5} width={9} height={3} rx={1.5} fill={l.c}/>
+          <text x={padL+plotW+21} y={l.y+3.5} style={{fill:'var(--text2)'}} fontFamily="IBM Plex Mono" fontSize="10.5" fontWeight="600">{l.t}</text>
+        </g>)}
+        {/* Weeks along the bottom, under the month they belong to. On a narrow screen
+            the column is too tight for the word and the date, so the label drops to
+            "W3" before two of them can print over each other. */}
+        {weeks.map((wk,i)=><g key={'x'+wk.start}>
+          <text x={xOf(i)} y={H-padB+19} textAnchor="middle" style={{fill:hov===i?'var(--text)':'var(--text2)'}}
+            fontFamily="IBM Plex Mono" fontSize="10" fontWeight="600">{bw<52?L('H','W')+wk.wom:L('Hafta','Week')+' '+wk.wom}</text>
+          {bw>=38&&<text x={xOf(i)} y={H-padB+32} textAnchor="middle" style={{fill:'var(--dim)'}} fontFamily="IBM Plex Mono" fontSize="9">{fd(wk.start).slice(0,5)}</text>}
+          <rect className="rm-hit" x={padL+i*bw} y={padT-18} width={bw} height={H-padT-padB+18} onMouseEnter={()=>setHov(i)}/>
+        </g>)}
+      </svg>
+      {hov!=null&&(()=>{const wk=weeks[hov];
+        const right=xOf(hov)<w*0.6;   /* beside the crosshair, flipping before it runs off the edge */
+        return<div className="rm-tip" style={{left:xOf(hov)+(right?14:-14),top:padT+4,transform:right?'none':'translate(-100%,0)'}}>
+          <div className="rm-tip-h"><b>{L('Hafta','Week')} {wk.wom} · {MN[wk.m]}</b><span>{fd(wk.start).slice(0,5)} – {fd(wk.end).slice(0,5)}</span></div>
+          {shown.map(r=>{const p=r.pts[hov];
+            return<div key={r.a.id} className="rm-tip-r"><i style={{background:colOf(r.a.id)}}/>
+              <span className="rm-tip-n">{r.a.name}</span><strong>{p?Math.round(p.avg):'—'}</strong>
+              <em>{p?p.days+L(' gün',' d'):''}</em></div>;})}
+          {!shown.length&&<div className="rm-tip-r"><span className="rm-tip-n">{L('sporcu seçili değil','no athlete plotted')}</span></div>}
+          {team[hov]!=null&&<div className="rm-tip-r"><i style={{background:RHR_TEAM}}/>
+            <span className="rm-tip-n">{L('takım ort.','team avg')}</span><strong>{Math.round(team[hov])}</strong><em/></div>}
+        </div>;})()}
+    </div>
+    {/* The same weeks as numbers, for every athlete on the board — the chart shows the
+        shape, this says what it was. A row is also the chart's switch. */}
+    <div className="wh-scroll">
+      <table className="rm-tb">
+        <thead>
+          <tr>
+            <th className="rm-ath-h wh-frozen" rowSpan="2">{L('Sporcu','Athlete')}</th>
+            {groups.map((g,gi)=><th key={'h'+gi} className="rm-mon-h" colSpan={g.to-g.from+1}>{gLbl(g,gi)}</th>)}
+            <th className="rm-avg-h" rowSpan="2">{L('Ort.','Avg')}</th>
+          </tr>
+          <tr>{weeks.map(wk=><th key={wk.start} className="rm-wk-h">
+            <div className="rm-wk-n">{L('Hafta','Week')} {wk.wom}</div><div className="rm-wk-d">{fd(wk.start).slice(0,5)}</div></th>)}</tr>
+        </thead>
+        <tbody>{rows.map((r,ri)=>{const c=colOf(r.a.id),tr=trend(r);
+          return<tr key={r.a.id} className={'rm-row'+(c?' on':'')} style={{animationDelay:(ri*40)+'ms',...(c?{'--rm-c':c}:{})}}
+            onClick={()=>toggle(r.a.id)}
+            title={c?L('Grafikten çıkar','Remove from chart'):L('Grafiğe ekle','Add to chart')}>
+            <td className="rm-ath wh-frozen"><div className="rm-ath-in">
+              <span className="rm-dot"/>
+              <div className="rm-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.a.name)}</div>
+              <span className="rm-nm">{r.a.name}</span>
+              {r.a.position&&<span className="rm-pos">{posOf(r.a.position)}</span>}
+            </div></td>
+            {r.pts.map((p,i)=><td key={i} className={'rm-cel'+(hov===i?' hv':'')}
+              title={p?`${r.a.name}\n${fd(weeks[i].start).slice(0,5)} – ${fd(weeks[i].end).slice(0,5)}\n${L('Ortalama','Average')}: ${p.avg.toFixed(1)} bpm · ${p.days} ${L('ölçüm günü','measured days')}`:undefined}>
+              {p?<span className="rm-v">{Math.round(p.avg)}<i>{p.days}</i></span>:<span className="rm-na">·</span>}</td>)}
+            <td className="rm-avg"><span className="rm-avg-in">
+              <span className="rm-avg-v">{r.avg!=null?Math.round(r.avg):'—'}</span>
+              {tr&&<span className={'rm-trd '+tr.cls} title={L('son iki ölçülen haftanın farkı','change across the last two measured weeks')}>{tr.s}</span>}
+            </span></td>
+          </tr>;})}</tbody>
+      </table>
+    </div>
+  </div>);
+}
+
 /* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
 function WellnessHeatmap({athletes}){
   const METRICS=[
@@ -7832,14 +8165,26 @@ function WellnessHeatmap({athletes}){
        without a severity. */
     {id:'RHR',label:'RHR',hi:false,scale:null},
   ];
+  /* The segment's last button is not a fifth metric — it swaps the grid for the RHR
+     Monitor: the same athletes, but week by week instead of day by day. It rides here
+     rather than in a panel of its own because it answers the question the RHR column
+     raises ("is this morning's 54 a drift or a day?") and the coach should not have to
+     go looking for the answer somewhere else. */
   const[metric,setMetric]=useState('readiness');
+  const mon=metric==='mon';
   const M=METRICS.find(m=>m.id===metric)||METRICS[0];
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   // Two-week (14-day) window ending at `winEnd`; navigate by week from the header.
   const[winEnd,setWinEnd]=useState(()=>fmt(today));
   const dates=useMemo(()=>Array.from({length:14},(_,i)=>fmt(addD(parseD(winEnd),-13+i))),[winEnd]);
   const shiftWk=d=>setWinEnd(w=>fmt(addD(parseD(w),d*7)));
-  const rangeLabel=fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
+  /* The monitor spans twelve weeks, so its stepper moves a month at a time — a
+     one-week nudge across a quarter-long chart is a lot of clicking for one point. */
+  const monWeeks=useMemo(()=>rhrWeeks(winEnd,RHR_WEEKS),[winEnd]);
+  const step=mon?4:1;
+  const rangeLabel=mon
+    ?fd(monWeeks[0].start).slice(0,5)+' – '+fd(monWeeks[monWeeks.length-1].end).slice(0,5)
+    :fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
   const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
   // Free-text the athlete typed into the check-in's "Area of Pain" box ("dizlerim ağrıyor"…).
   // Independent of the selected metric — it flags the day, whichever metric is on screen.
@@ -7897,18 +8242,25 @@ function WellnessHeatmap({athletes}){
         the Athlete Load Board's title block above it, and the Load Monitoring
         header's week stepper — so the three read as one page rather than three. */}
     <div className="lb-head">
-      <div className="lb-title">{L('Wellness Isı Haritası','Wellness Heatmap')}<span className="lb-sub">{L('son 2 hafta · ortalamaya göre sıralı','last 2 weeks · sorted by average')}</span></div>
+      <div className="lb-title">{mon?L('RHR Takibi','RHR Monitor'):L('Wellness Isı Haritası','Wellness Heatmap')}<span className="lb-sub">{mon?L('haftalık ortalama dinlenik nabız · Pzt–Paz','weekly average resting HR · Mon–Sun'):L('son 2 hafta · ortalamaya göre sıralı','last 2 weeks · sorted by average')}</span></div>
       <div className="wh-hm-tools">
         <div className="lm-wksel">
-          <button onClick={()=>shiftWk(-1)} title={L('Önceki hafta','Previous week')}>‹</button>
+          <button onClick={()=>shiftWk(-step)} title={mon?L('Önceki 4 hafta','Back 4 weeks'):L('Önceki hafta','Previous week')}>‹</button>
           <span className="lm-wklbl">{rangeLabel}</span>
-          <button onClick={()=>shiftWk(1)} title={L('Sonraki hafta','Next week')}>›</button>
+          <button onClick={()=>shiftWk(step)} title={mon?L('Sonraki 4 hafta','Forward 4 weeks'):L('Sonraki hafta','Next week')}>›</button>
           <button className="lm-wknow" onClick={()=>setWinEnd(fmt(today))} title={L('Bugüne git','Jump to today')}>{L('Bugün','Today')}</button>
         </div>
-        <div className="lb-seg">{METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}</div>
+        <div className="lb-seg">
+          {METRICS.map(m=><button key={m.id} className={metric===m.id?'on':''} onClick={()=>setMetric(m.id)}>{m.label}</button>)}
+          {/* Hairline before the last button: it changes the view, not the metric. */}
+          <span className="lb-seg-sep"/>
+          <button className={mon?'on':''} onClick={()=>setMetric('mon')}
+            title={L('Haftalık dinlenik nabız trendi','Weekly resting-HR trend')}>RHR Monitor</button>
+        </div>
       </div>
     </div>
-    {rows.length===0?<div className="empty-st">{L('Bu 2 haftalık aralıkta wellness verisi yok.','No wellness data in this 2-week range.')}</div>:<>
+    {mon?<RHRMonitor athletes={athletes} weeks={monWeeks}/>
+    :rows.length===0?<div className="empty-st">{L('Bu 2 haftalık aralıkta wellness verisi yok.','No wellness data in this 2-week range.')}</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?L('yüksek','high'):L('düşük','low')}</span>
         <span className="wh-leg-bar"/>
