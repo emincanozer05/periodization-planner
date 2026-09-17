@@ -218,6 +218,10 @@ function mountApp() {
 }
 const makeDefaultState = () => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Örnek' }, days: {}, athletes: [] }], templates: [] });
 const realState = n => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Takım' }, days: {}, athletes: [{ id: 'a1', name: 'Ali', note: 'n' + n }] }], templates: [] });
+/* Masaüstünün yazdığı hâl: BAŞKA bir sporcu ekliyor ve Ali'ye dokunmuyor. Böylece
+   birleştirmenin iki tarafı da sınanıyor — uzak ekleme geliyor mu, buradaki düzenleme
+   duruyor mu — ve sonuç bir çakışma kuralına değil, gerçekten kayıpsız birleşmeye bağlı. */
+const withSecond = (n, m) => ({ activeTeamId: 't0', teams: [{ id: 't0', setup: { teamName: 'Takım' }, days: {}, athletes: [{ id: 'a1', name: 'Ali', note: 'n' + n }, { id: 'a2', name: 'Veli', note: 'm' + m }] }], templates: [] });
 
 /* BAŞKA BİR CİHAZIN YAZIMI. İkinci bir uygulama örneği kurmak yerine buluta doğrudan
    yazıyoruz: sınanan şey "iki cihaz aynı anda ne yapar" değil, BU cihazın bulutta olan
@@ -405,6 +409,77 @@ async function scenarioWakeUpCostsNothing() {
   endScene(); h.unmount();
 }
 
+/* "PC ile telefon senkron değil"in birinci hâli: telefonun KENDİ yazımı oturmamış.
+   Firestore'un "bekleyen yazım var" damgası GÖRÜNTÜNÜN TAMAMI için konur — tek bir
+   oturmamış doküman, içinde masaüstünün yepyeni manifesti duran görüntüyü de damgalar.
+   Cihaz o damgayı "kendi yankım" diye okuyup görüntüyü atarsa, cebe girerken yarıda kalan
+   tek bir yazım onu uzak değişikliklere sağır bırakır: masaüstünde yazılan antrenman
+   telefonda HİÇ görünmez ve görüntüler gelmeye devam ettiği için kimse durumu fark etmez. */
+async function scenarioPendingWriteBlindness() {
+  scene('kendi yazımı oturmamışken: masaüstünün değişikliğini yine de görüyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('telefon senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  w.fake.ack = false;                                  // bundan sonra hiçbir onay gelmiyor
+  out.setData(realState(2));                           // yazım kuyrukta kalıyor → bekleyen yazım
+  await sleep(1200);
+  check('telefonun yazımı yolda', out.sync.status === 'syncing', 'status=' + out.sync.status);
+
+  remoteWrite(w, withSecond(1, 5), Date.now() + 5000); // masaüstü yazdı
+  w.fake.emit({ pending: true });                      // dinleyici teslim etti — içinde bizim bekleyenimiz de var
+  await sleep(1500);
+  check('masaüstünün eklediği sporcu ekrana geldi', JSON.stringify(out.data).includes('m5'),
+    'ekrandaki: ' + JSON.stringify(out.data).slice(0, 160));
+  check('telefonun kendi düzenlemesi duruyor', JSON.stringify(out.data).includes('n2'),
+    'ekrandaki: ' + JSON.stringify(out.data).slice(0, 160));
+  check('gösterge sarı — yazımımız hâlâ yolda', out.sync.status === 'syncing', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
+/* "PC ile telefon senkron değil"in ikinci hâli: telefon EKRANDA AÇIK duruyor ve akışı
+   sessizce ölüyor. Dönüş sınavı yalnızca uygulamaya dönüldüğünde sorar; gözcünün dinleyiciyi
+   tazeleyen dalı yalnızca cihaz bir şey beklerken çalışır. Açık, temiz ve "hazır" görünen
+   bir telefon ikisine de girmez — masaüstündeki antrenman oraya hiç düşmez. */
+async function scenarioSilentStream() {
+  scene('telefon açıkken akış ölürse: sessizlik sınavı bulutu soruyor');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  check('telefon senkron', out.sync.status === 'synced', 'status=' + out.sync.status);
+
+  w.fake.subs.splice(0);                                // akış öldü: artık hiçbir görüntü teslim edilmiyor
+  remoteWrite(w, withSecond(1, 8), Date.now() + 5000);  // masaüstü yazdı
+  await sleep(12000);
+  check('ölü akış tek başına bir şey getirmiyor (beklenen)', !JSON.stringify(out.data).includes('m8'));
+  await sleep(45000);                                   // sessizlik eşiği (30sn) + gözcü turu
+  check('sessizlik sınavı uzak hâli getirdi', JSON.stringify(out.data).includes('m8'),
+    'ekrandaki: ' + JSON.stringify(out.data).slice(0, 160));
+  check('gösterge yeşil', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
+/* Sessizlik sınavının bedeli sınırlı kalmalı: bulutta yeni bir şey yoksa ne yazım açılır
+   ne de ekrandaki hâl değişir. Aksi hâlde açık duran her cihaz boşuna tur atardı. */
+async function scenarioSilenceCostsNothing() {
+  scene('akış sağlamken sessizlik: fazladan yazım yok');
+  const w = makeWorld(); BAG = loadSyncModule(w);
+  const { out, h } = mountApp();
+  await sleep(400);
+  out.setData(realState(1));
+  await sleep(1500);
+  const settled = w.fake.commits;
+  await sleep(45000);                                   // sessizlik eşiğinin ötesi
+  check('yeni commit açılmadı', w.fake.commits === settled, 'commit ' + settled + ' → ' + w.fake.commits);
+  check('gösterge yeşil kaldı', out.sync.status === 'synced', 'status=' + out.sync.status);
+  endScene(); h.unmount();
+}
+
 const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
 
 (async () => {
@@ -415,6 +490,9 @@ const COMMIT_WAIT = 17000;   // COMMIT_MS (15sn) + gözcü payı
   await scenarioNoWriteStorm();
   await scenarioPhoneWakesUp();
   await scenarioWakeUpCostsNothing();
+  await scenarioPendingWriteBlindness();
+  await scenarioSilentStream();
+  await scenarioSilenceCostsNothing();
   await scenarioNeverReachesServer();
   console.log('\n' + pass + ' geçti, ' + fail + ' kaldı');
   process.exit(fail ? 1 : 0);
