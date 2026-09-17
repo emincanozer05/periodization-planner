@@ -23196,9 +23196,14 @@ const LS_MAX=3.5*1024*1024;   // localStorage ~5MB: gömülü fotoğraflı devas
    bu, bulut yazımının hemen ardına — yani düzenlemeden sonraki ilk kaydırmalara —
    denk geliyordu. Kopya emniyet amaçlıdır; bir kare geç yazılması sorun değil, bu yüzden
    sekme kapanırken lsFlush ile hemen yazılır. */
-let _lsPend=null,_lsSched=0;
+let _lsPend=null,_lsSched=0,_lsLast=null;
+/* Aynı hâli iki kez yazma. setItem birkaç MB'ı ana iş parçacığında diske geçirir ve bu
+   kopya buluttan gelen HER tutarlı hâl için isteniyor — elle çekim, onarım turu, dönüş
+   sınavının getirdiği hâl, hepsi. Çoğu zaman getirdikleri şey cihazda zaten duran hâldir;
+   o zaman yazmanın karşılığı yok, yalnızca telefonun takıldığı bir kare var. */
 const _lsWrite=()=>{const p=_lsPend;_lsPend=null;_lsSched=0;if(!p)return;
-  try{if(p.json.length>LS_MAX)return;localStorage.setItem(LS_KEY(p.uid),p.json);}catch(e){/* kota / gizli mod */}};
+  if(_lsLast&&_lsLast.uid===p.uid&&_lsLast.json===p.json)return;
+  try{if(p.json.length>LS_MAX)return;localStorage.setItem(LS_KEY(p.uid),p.json);_lsLast={uid:p.uid,json:p.json};}catch(e){/* kota / gizli mod */}};
 const lsSave=(uid,json)=>{
   _lsPend={uid,json};
   if(_lsSched)return;
@@ -23691,7 +23696,12 @@ function useCloudSync(data,setData){
       if(!deq(state,dataRef.current)){dataRef.current=state;lastApplied.current=state;setData(state);}
       dirty.current=false;return false;
     }
-    if(ser(parsed)!==ser(dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
+    /* Gelen hâl ekrandakinin aynısı mı? Bu soru eskiden İKİ tam serileştirmeyle
+       yanıtlanıyordu: uzak durum baştan sona JSON'a çevriliyor, ekrandaki de öyle, sonra
+       dizgiler karşılaştırılıyordu. Birkaç MB'lık bir durumda tek bir uzak görüntü için
+       telefonun ana iş parçacığında yüzlerce ms — hem de yanıtı çoğu zaman ilk alanda
+       belli olan bir soru için. `deq` ilk farkta duruyor ve hiçbir şey ayırmıyor. */
+    if(!deq(parsed,dataRef.current)){dataRef.current=parsed;lastApplied.current=parsed;setData(parsed);}
     dirty.current=false;return false;
   };
 
@@ -24002,16 +24012,39 @@ function useCloudSync(data,setData){
              üst veri aboneliği normalde yazım oturur oturmaz bizi uyandırır. Uyandırmıyorsa
              (kuyrukta oturmayan bir kayıt kalmışsa) cihazı ölü bırakmaktansa, bir süre sonra
              bu görüntüden AÇILIR: veriyi okur, ready olur, uygulama yeniden yazabilir hâle
-             gelir. Yeşil yakılmaz — bu hâl henüz bulutta değil, ekranda. */
+             gelir. Yeşil yakılmaz — bu hâl henüz bulutta değil, ekranda.
+
+             AMA "BEKLEYEN YAZIM VAR" GÖRÜNTÜNÜN TAMAMI İÇİN SÖYLENİR, MANİFEST İÇİN DEĞİL.
+             `snap.metadata.hasPendingWrites`, sorguya uyan dokümanlardan HERHANGİ BİRİNDE
+             oturmamış bir yerel yazım varsa doğrudur: yarıda kalmış bir turun parçası, çöp
+             toplayıcının sildiği bir doküman, cebe girerken kesilen bir commit… Oysa durumu
+             çeviren tek şey manifesttir. Eskiden bu ayrım yoktu: bu cihazın tek bir oturmamış
+             yazımı varken gelen HER görüntü — içinde masaüstünün yepyeni manifesti dursa
+             bile — "kendi yankımız" sayılıp atlanıyordu. Telefonun, bilgisayarda yazılan
+             antrenmanı ekranda hiç göstermemesinin sebebi buydu; üstelik görüntüler gelmeye
+             devam ettiği için gözcünün "sunucudan ses yok" dalı da hiç açılmıyordu, yani
+             cihazı bu körlükten çıkaracak kimse yoktu.
+             Ayrım manifestin KİMİN olduğuna bakılarak yapılır: rev'i bu cihazın yazdığı
+             rev'lerden biriyse görüntü gerçekten kendi yankımızdır ve eskisi gibi atlanır;
+             değilse bulutta BAŞKA bir cihazın hâli duruyor demektir ve okunmalıdır. Yeşil
+             yine yakılmaz (fromPending) — kendi yazımımız hâlâ yolda. */
           if(snap.metadata&&snap.metadata.hasPendingWrites){
-            if(ready.current){slog('snap: atlandı (kendi yankımız)');return;}
-            if(!pendSince.current)pendSince.current=Date.now();
-            if(Date.now()-pendSince.current<PEND_STUCK_MS){
-              slog('snap: atlandı (kendi yankımız, henüz hazır değiliz)');
-              armPendEscape();
-              return;
+            const mf=cache.get(user.uid);
+            const mfMine=!mf||typeof mf.rev!=='number'||myRevs.current.has(mf.rev);
+            if(mfMine){
+              if(ready.current){slog('snap: atlandı (kendi yankımız)');return;}
+              if(!pendSince.current)pendSince.current=Date.now();
+              if(Date.now()-pendSince.current<PEND_STUCK_MS){
+                slog('snap: atlandı (kendi yankımız, henüz hazır değiliz)');
+                armPendEscape();
+                return;
+              }
+              slog('snap: bekleyen yazım oturmuyor → yine de okunuyor');
+            }else{
+              slog('snap: bekleyen yazımımız var, ama manifest başka cihazın → okunuyor','rev='+mf.rev);
+              pendSince.current=0;
+              if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}
             }
-            slog('snap: bekleyen yazım oturmuyor → yine de okunuyor');
             fromPending.current=true;   // bu turda yeşil yakma, lastSynced'i buradan kurma
           }else{pendSince.current=0;fromPending.current=false;
             if(pendTimer.current){clearTimeout(pendTimer.current);pendTimer.current=null;}}
@@ -24180,12 +24213,18 @@ function useCloudSync(data,setData){
      konsola basılıyordu; başka bir cihazda çekilmiş tek bir fotoğraf bile bunu kalıcı
      hâle getiriyordu (o tutamak hiçbir zaman çözülmez), yani her düzenlemeden yarım
      saniye sonra ekran bir kez donuyordu.
-     Tarayıcının boş anına bırakılır: kurtarılacak bir şey varsa bir kare sonra da orada. */
+     Tarayıcının boş anına bırakılır: kurtarılacak bir şey varsa bir kare sonra da orada.
+     Cihazın deposunda tek bir dosya bile yoksa tarama hiç başlamaz: geri konacak bir şey
+     olmadığı zaten biliniyor, dolayısıyla durumun tamamını dolaşmanın karşılığı yok. Depo
+     ilk render'dan ÖNCE belleğe alınıyor (lmPreload) ve sonradan eklenen her fotoğraf oraya
+     da yazılıyor, yani boş olması "henüz okunmadı" değil, "yok" demektir. Fotoğraf çekmemiş
+     bir telefonda her düzenleme ve her uzak görüntü başına bir tam ağaç gezintisi eksilir. */
   useEffect(()=>{
     if(!user)return;
     const HAS_IDLE=typeof requestIdleCallback==='function'&&typeof cancelIdleCallback==='function';
     let idle=0;
     const run=()=>{
+      if(!_lmCache.size)return;               // this device holds no file → nothing to put back
       const cur=dataRef.current;
       const out={restored:0,missing:0};
       const next=restoredLocalMedia(cur,out);
@@ -24311,7 +24350,28 @@ function useCloudSync(data,setData){
     };
     const onHide=()=>{hidAt=Date.now();flush();};
     const onVis=()=>{if(document.visibilityState==='hidden'){slog('arka plana alındı');onHide();}else resume();};
-    const watchdog=setInterval(()=>{if(unstick())writeNow();},15000);
+    /* SESSİZLİK SINAVI — açık duran bir cihazın akışı ölünce onu fark edecek kimse yoktu.
+       Yukarıdaki dönüş sınavı yalnızca uygulamaya DÖNÜLDÜĞÜNDE soruyor; gözcünün dinleyiciyi
+       tazeleyen dalı ise yalnızca cihaz bir şey BEKLERKEN (hazır değil / yazılmamış değişiklik
+       var / onay bekleniyor) çalışıyor. Telefon ekranda açık durup hiçbir şey yazmıyorsa
+       ikisi de olmaz: akış sessizce ölmüştür, cihaz "hazır ve temiz" görünür ve masaüstünde
+       yazılan antrenman oraya HİÇ düşmez. Koç telefonu kapatıp açana kadar eski hâle bakar —
+       "pc ile telefon senkron değil"in kendisi budur.
+       Sağlam bir akışta sessizlik normaldir (dinleyici yalnızca bir şey değişince uyanır),
+       bu yüzden sınav ucuz tutuldu: yarım dakikadır sunucudan tek bir yanıt gelmemişse ve
+       sekme GÖRÜNÜRSE, TEK bir doküman — manifest — okunur. Cevap üç şeyi birden söyler:
+       taşıma ayakta mı, bulutta bizden yeni bir hâl var mı, yok mu. Yoksa hiçbir şey yapılmaz
+       (boş yazım da çekim de yok); varsa hemen çekilir; okuma hiç dönmezse dinleyici tazelenir.
+       Arka plandaki sekme hiç yoklanmaz — orada zaten okunacak bir ekran yok. */
+    const LISTEN_SILENT_MS=30000;
+    const watchdog=setInterval(()=>{
+      if(unstick())writeNow();
+      if(isHidden()||!sawServer.current||!lastServerAt.current)return;
+      if(Date.now()-lastServerAt.current<LISTEN_SILENT_MS)return;
+      slog('sessizlik sınavı: dinleyiciden ses yok → buluta soruluyor',
+        Math.round((Date.now()-lastServerAt.current)/1000)+'sn');
+      checkLive();
+    },15000);
     // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
     // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
     const onBeforeUnload=e=>{flush();if(dirty.current||writing.current){e.preventDefault();e.returnValue='';}};
