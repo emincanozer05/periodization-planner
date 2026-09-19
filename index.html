@@ -4108,6 +4108,45 @@ header{background:var(--bg2)!important}
 .di-dec.reject:hover{border-color:#f43f5e;color:#f43f5e;background:rgba(244,63,94,.1)}
 .di-decided{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;font-size:12px;color:var(--text2)}
 .di-decided b{font-size:13px}
+/* The review sheet — the programme about to be written, one editable row each. */
+.di-sheethd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.di-sheet{display:flex;flex-direction:column;gap:7px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 11px}
+.di-sblk{font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
+.di-sblk:first-child{margin-top:0}
+.di-srow{display:flex;flex-direction:column;gap:5px;padding:6px 0;border-top:1px solid var(--border)}
+.di-sheet>.di-srow:first-child,.di-sblk+.di-srow{border-top:0}
+/* A dropped row stays on the sheet so it can be put back; it just stops looking like
+   something the athlete is going to do. */
+.di-srow.out{opacity:.5}
+.di-srow.out textarea{text-decoration:line-through;color:var(--dim)}
+.di-outtag{color:#fda4af;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.3);border-radius:6px;padding:2px 8px;font-size:10px;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-srow.ed{box-shadow:inset 2px 0 0 var(--accent)}
+.di-srow-main{display:flex;gap:9px;align-items:flex-start}
+.di-srow-nm{flex:1 1 220px;min-width:0}
+/* ExNameField brings its own auto-growing textarea; it only needs the width here. */
+.di-srow-nm textarea,.di-srow-altnm textarea{width:100%;font-size:13px}
+.di-srow-dose{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text2);white-space:nowrap;padding-top:7px}
+.di-srow-dose s{color:var(--dim);margin-right:4px}
+.di-srow-dose b{color:var(--text)}
+.di-drop,.di-altbtn{flex:none;background:var(--elevated);border:1px solid var(--border);color:var(--dim);border-radius:7px;padding:5px 9px;font-size:11px;cursor:pointer;transition:all .12s;margin-top:3px}
+.di-drop:hover{border-color:#f43f5e;color:#f43f5e}
+.di-drop.on{border-color:#2dd4a7;color:#2dd4a7}
+.di-altbtn:hover{border-color:var(--text2);color:var(--text2)}
+.di-altbtn.on{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.45);color:#fcd34d}
+.di-srow-ai{font-size:11px;color:var(--text2);padding-left:2px;border-left:2px solid var(--accent);padding-inline-start:9px}
+.di-srow-ai.cikar{border-left-color:#f43f5e}
+.di-srow-ai.ed{border-left-color:var(--dim)}
+.di-srow-was{color:var(--dim)}
+.di-srow-was i{font-style:normal;margin-left:7px;font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em}
+.di-srow-ai p{margin:3px 0 0;line-height:1.55}
+.di-srow-alt{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.22);border-radius:8px;padding:7px 10px}
+.di-srow-alt>.di-k{padding-top:8px;color:#fcd34d}
+.di-srow-altnm{flex:1 1 180px;min-width:0}
+.di-srow-altwhy{flex:1 1 200px;min-width:0;font-size:12px}
+/* The hold notice — why the athlete's calendar is still empty. */
+.di-hold{border:1px solid rgba(96,165,250,.35);background:rgba(96,165,250,.1);color:#93c5fd;border-radius:8px;padding:8px 12px;font-size:12px}
+.di-review .di-dec.accept{border-color:rgba(45,212,167,.4);color:#2dd4a7}
+.di-review .di-dec.reject{border-color:var(--border)}
 .di-coach{display:flex;flex-direction:column;gap:11px}
 .di-crow{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
 /* The calendar is a full view dropped inside a card: it brings its own panels, so the
@@ -26585,6 +26624,11 @@ function planToSession(plan,src,dateKey,srcKey){
       description:[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':''),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       pattern:t(r.pattern),plane:t(r.plane),
+      /* The alternative rides across with the exercise it stands in for. Without this
+         an alternative written on a template was dropped the moment the session was
+         individualized, and an approved substitution had nowhere to record the option
+         the coach kept beside it. */
+      ...(r.alt&&typeof r.alt==='object'?{alt:r.alt}:{}),
       changed:!!r.changedName,fromName:r.base.name||''};});
   /* The session's own line comes off the athlete's sheet — the coach may have rewritten
      any of the six fields for this athlete — and falls back to the source session's
@@ -28018,6 +28062,95 @@ function diWriteReview(team,updateTeam,srcKey,athId,dateKey,patch){
   return next;
 }
 
+
+/* ---- The review sheet (§30) ----------------------------------------------
+   What will actually be written, one row per prescribed exercise, with three layers
+   laid over each other in this order: the source session's row, the deterministic
+   adjustment, the model's decision about it, and — last and winning — whatever the
+   coach typed. The coach's layer is the presence of the key, not its value, exactly
+   the way the individualization sheet already treats an override: a name cleared on
+   purpose has to stay cleared.
+
+   `ai` is kept beside the row rather than folded into it, so the card can still show
+   what was proposed after the coach has overwritten it — that difference is the whole
+   record §30 asks to be kept. */
+function diSheetRows(plan,bundle,review){
+  const pct=(bundle&&bundle.adjustment&&bundle.adjustment.pct)||0;
+  const ai={};
+  (((review||{}).draft||{}).egzersiz_kararlari||[]).forEach(d=>{if(d&&d.slot)ai[d.slot]=d;});
+  const edits=(review||{}).sheet||{};
+  const out=[];
+  liveBlocks(plan).forEach(b=>b.rows.filter(liveSlot).forEach(r=>{
+    const adj=diAdjustRow(r,pct);
+    const d=ai[r.key]||null;
+    const e=edits[r.key]||{};
+    // What the coach is offered before touching anything: the model's substitution where
+    // it made one, the row's own exercise where it did not.
+    const proposed=(d&&d.karar==='degistir'&&d.onerilen)?d.onerilen:(r.name||'');
+    const name=e.name!==undefined&&e.name!==null?String(e.name):proposed;
+    const drop=e.drop!==undefined?!!e.drop:!!(d&&d.karar==='cikar');
+    /* The alternative starts from whatever the source row already carried — a template
+       written with one should not lose it here — and the coach's own takes over from
+       there. Same shape the calendar's exercise card uses, so the two are one thing. */
+    const baseAlt=(r.base&&r.base.alt&&typeof r.base.alt==='object')?r.base.alt:null;
+    const alt=e.alt!==undefined?e.alt:baseAlt;
+    out.push({slot:r.key,block:b.name,original:r.name||'',
+      ai:d?{decision:d.karar,name:d.onerilen||null,reason:d.gerekce||null,quality:d.hedef_kalite||null}:null,
+      name,drop,alt:alt||null,proposed,
+      pattern:r.pattern||'',plane:r.plane||'',
+      prescribed:{sets:r.sets,reps:r.reps,duration:r.duration},
+      adjusted:{sets:adj.sets,reps:adj.reps,duration:adj.duration},
+      adjustedChanged:adj.changed,
+      edited:(e.name!==undefined&&String(e.name).trim()!==String(proposed).trim())
+        ||(e.drop!==undefined&&!!e.drop!==!!(d&&d.karar==='cikar'))
+        ||e.alt!==undefined});
+  }));
+  return out;
+}
+const diSheetEdited=rows=>rows.some(r=>r.edited);
+/* A one-line summary of what the coach did to the draft, stored with the decision so a
+   later feedback loop (§36) can read it without re-deriving anything. */
+function diSheetDiff(rows){
+  return rows.filter(r=>r.edited).map(r=>({slot:r.slot,proposed:r.proposed,
+    final:r.drop?null:r.name,dropped:r.drop,
+    alternative:(r.alt&&String(r.alt.name||'').trim())||null}));
+}
+/* The approved sheet, laid back onto the plan so the existing write path can take it
+   from here unchanged. A dropped row has its name cleared, which is how this screen has
+   always deleted an exercise from one athlete's sheet (`liveSlot`). */
+function diApplyReview(plan,bundle,review){
+  const by={};
+  diSheetRows(plan,bundle,review).forEach(r=>{by[r.slot]=r;});
+  return{...plan,blocks:(plan.blocks||[]).map(b=>({...b,
+    rows:(b.rows||[]).map(r=>{
+      const s=by[r.key];
+      if(!s)return r;
+      if(s.drop)return{...r,name:''};
+      const altName=String((s.alt&&s.alt.name)||'').trim();
+      const altWhy=String((s.alt&&s.alt.reason)||'').trim();
+      const next={...r,name:s.name,
+        sets:s.adjusted.sets,reps:s.adjusted.reps,duration:s.adjusted.duration};
+      if(altName||altWhy)next.alt={...(s.alt||{}),name:altName,reason:altWhy};
+      return next;
+    })}))};
+}
+
+/* ---- What the sheet may write, per athlete ------------------------------
+   A draft that exists and has not been decided HOLDS the athlete's calendar: nothing is
+   written, not by the automatic pass and not by the button, until the coach has looked
+   at it. That is the point of the review — a programme the coach has not seen must not
+   reach the athlete's phone first.
+
+   The three other cases are all writes: no draft in play at all (the page works exactly
+   as it did before this module existed), a rejected draft (the coach said no, so the
+   original plan stands), and an approved one (the approved sheet is what goes). */
+function diWriteGate(review){
+  if(!review||!review.draft)return{write:true,approved:false,waiting:false};
+  if(!review.decision)return{write:false,approved:false,waiting:true};
+  if(review.decision==='reject')return{write:true,approved:false,waiting:false};
+  return{write:true,approved:true,waiting:false};
+}
+
 /* ---- The card panel -------------------------------------------------------
    Reads top to bottom the way §40's flow does: what the athlete's day looks like,
    what the engine did about it, what the model makes of it, and the coach's
@@ -28043,12 +28176,96 @@ function DiGoalPicker({ath,save}){
   </div>);
 }
 
-function DailyIndivPanel({plan,bundle,adjusted,team,updateTeam,srcKey,date,ai,exercises,saveAth}){
+
+/* One editable row of the review sheet. The exercise box is the calendar's own
+   (`ExNameField`) — same library, same autocomplete, same category rail — so a name
+   typed here is filed exactly as one typed on the calendar, and the coach is not
+   learning a second box that does nearly the same thing. The alternative underneath is
+   the calendar's `alt` too, so it prints under the exercise on the programme sheet the
+   way any other alternative does. */
+function DiSheetRow({row,onEdit}){
+  const[openAlt,setOpenAlt]=useState(!!(row.alt&&(String(row.alt.name||'').trim()||String(row.alt.reason||'').trim())));
+  const ai=row.ai;
+  const dose=d=>d.sets?`${d.sets}×${d.reps||d.duration||''}`:(d.duration||d.reps||'—');
+  return(<div className={'di-srow'+(row.drop?' out':'')+(row.edited?' ed':'')}>
+    <div className="di-srow-main">
+      <button type="button" className={'di-drop'+(row.drop?' on':'')} onClick={()=>onEdit({drop:!row.drop})}
+        title={row.drop?L('Programa geri al','Put it back in the programme'):L('Bugün bu egzersizi çıkar','Drop this exercise for today')}>
+        {row.drop?'＋':'✕'}</button>
+      <div className="di-srow-nm">
+        <ExNameField value={row.name} onChange={v=>onEdit({name:v})}
+          tags={{pattern:row.pattern,plane:row.plane}}/>
+      </div>
+      <div className="di-srow-dose" title={L('Set/tekrar deterministik katmandan gelir — model bu sayıları üretmez','Sets and reps come from the deterministic layer — the model does not produce these numbers')}>
+        {/* A dropped row has no dose to show: it is not being done today. Striking the
+            name through would have said it, but the name lives in a textarea and a
+            strike on its container never reaches the text inside. */}
+        {row.drop
+          ?<span className="di-outtag">{L('bugün çıkarıldı','dropped today')}</span>
+          :(row.adjustedChanged
+            ?<><s>{dose(row.prescribed)}</s> <b>{dose(row.adjusted)}</b></>
+            :<b>{dose(row.adjusted)}</b>)}
+      </div>
+      <button type="button" className={'di-altbtn'+(openAlt?' on':'')} onClick={()=>setOpenAlt(o=>!o)}
+        title={L('Bu egzersizin alternatifini yaz','Write an alternative for this exercise')}>
+        ⇄ {L('Alternatif','Alternative')}</button>
+    </div>
+
+    {/* What the model proposed, kept visible even after the coach has typed over it —
+        the difference between the two IS the record §30 asks to be kept. */}
+    {ai&&<div className={'di-srow-ai '+ai.decision}>
+      <span className="di-srow-was">
+        {ai.decision==='cikar'
+          ?L('AI: çıkarılmasını önerdi','AI: proposed removing it')
+          :L(`AI: ${row.original} → ${ai.name}`,`AI: ${row.original} → ${ai.name}`)}
+        {ai.quality?<i>{ai.quality}</i>:null}
+      </span>
+      {ai.reason&&<p>{ai.reason}</p>}
+    </div>}
+    {!ai&&row.edited&&<div className="di-srow-ai ed">
+      <span className="di-srow-was">{L(`Antrenör değiştirdi — özgün: ${row.proposed||'—'}`,`Changed by the coach — originally: ${row.proposed||'—'}`)}</span>
+    </div>}
+
+    {openAlt&&<div className="di-srow-alt">
+      <span className="di-k">⇄ {L('Alternatif','Alternative')}</span>
+      <div className="di-srow-altnm">
+        <ExNameField value={(row.alt&&row.alt.name)||''}
+          onChange={v=>onEdit({alt:{...(row.alt||{}),name:v}})}/>
+      </div>
+      <LiveInput className="di-srow-altwhy" value={(row.alt&&row.alt.reason)||''}
+        onChange={v=>onEdit({alt:{...(row.alt||{}),reason:v}})}
+        placeholder={L('Neden bu alternatif? (opsiyonel)','Why this alternative? (optional)')}/>
+    </div>}
+  </div>);
+}
+
+/* The sheet the coach signs off. Every prescribed row is here, not only the ones the
+   model touched: the coach has to be able to change any of them, and a sheet that
+   showed only the swaps would be a list of the model's opinions rather than the
+   programme that is about to be written. */
+function DiReviewSheet({rows,onEdit}){
+  if(!rows.length)return<div className="di-dim">{L('Bu seansta yazılı egzersiz yok.','No exercises written on this session.')}</div>;
+  let block=null;
+  const out=[];
+  rows.forEach(r=>{
+    if(r.block!==block){block=r.block;if(block)out.push(<div key={'b'+r.slot} className="di-sblk">{block}</div>);}
+    out.push(<DiSheetRow key={r.slot} row={r} onEdit={p=>onEdit(r.slot,p)}/>);
+  });
+  return<div className="di-sheet">{out}</div>;
+}
+
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,saveAth}){
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const[note,setNote]=useState('');
   const review=diReadReview(team,srcKey,plan.ath.id,date);
   const draft=review&&review.draft||null;
+  /* The sheet the coach signs off: the source rows, the deterministic adjustment, the
+     model's decisions and the coach's own edits, resolved in that order. */
+  const sheet=useMemo(()=>diSheetRows(plan,bundle,review),[plan,bundle,review]);
+  const gate=diWriteGate(review);
+  const editRow=(slot,patch)=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
+    {sheet:{...((review||{}).sheet||{}),[slot]:{...(((review||{}).sheet||{})[slot]||{}),...patch}}});
   const provider=(ai&&ai.provider)||'gemini';
   const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
   const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
@@ -28075,15 +28292,23 @@ function DailyIndivPanel({plan,bundle,adjusted,team,updateTeam,srcKey,date,ai,ex
     }catch(e){setErr(e.message||String(e));}
     setBusy(false);
   };
+  /* Accept and Modify are not two buttons the coach picks between — §30 wants to know
+     WHETHER the recommendation was changed, and the sheet already knows. Asking the coach
+     to classify their own edit invites the wrong label on half the records, and the
+     record is the only thing a later feedback loop has to learn from. */
   const decide=id=>{
     if(!review)return;
-    diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
-      {decision:id,reason:String(note||'').trim()||null,decided_at:new Date().toISOString()});
+    const changed=diSheetEdited(sheet);
+    diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{
+      decision:id==='approve'?(changed?'modify':'accept'):id,
+      reason:String(note||'').trim()||null,
+      modifications:id==='approve'&&changed?diSheetDiff(sheet):null,
+      decided_at:new Date().toISOString()});
     setNote('');
   };
 
   const rd=bundle.readiness,adj=bundle.adjustment,flag=bundle.flag;
-  const moved=adjusted.filter(r=>r.changed);
+  const moved=sheet.filter(r=>r.adjustedChanged);
   const exposed=bundle.exposure.categories.filter(c=>c.sets>0);
   const decided=review&&review.decision?diDecisionRow(review.decision):null;
 
@@ -28144,14 +28369,11 @@ function DailyIndivPanel({plan,bundle,adjusted,team,updateTeam,srcKey,date,ai,ex
         {adj.floored&&<span className="di-dim">{L(`taban sınır %${Math.abs(adj.floor)}`,`floored at ${Math.abs(adj.floor)}%`)}</span>}
       </div>
       {adj.reasons.length>0&&<DiSignals items={adj.reasons.map(r=>`${r.label} → ${r.pct}%`)}/>}
-      {moved.length>0&&<table className="di-tbl"><tbody>
-        {moved.map(r=><tr key={r.slot}>
-          <td>{r.name}</td>
-          <td className="r di-dim">{r.prescribed.sets?`${r.prescribed.sets}×${r.prescribed.reps||r.prescribed.duration||''}`:(r.prescribed.duration||r.prescribed.reps||'')}</td>
-          <td className="r">→</td>
-          <td className="r"><b>{r.adjusted.sets?`${r.adjusted.sets}×${r.adjusted.reps||r.adjusted.duration||''}`:(r.adjusted.duration||r.adjusted.reps||'')}</b></td>
-        </tr>)}
-      </tbody></table>}
+      {/* The rows it moved are not listed twice: they carry their own before→after on the
+          review sheet below, beside the exercise the coach is deciding about. */}
+      {moved.length>0&&<div className="di-dim">
+        {L(`${moved.length} satırın set/tekrarı aşağıdaki sayfada düşürüldü.`,
+           `${moved.length} row${moved.length>1?'s':''} had sets/reps cut on the sheet below.`)}</div>}
       {!moved.length&&adj.pct!==0&&<div className="di-dim">
         {L('Sayfadaki satırlarda set/tekrar yazılı değil — ayar uygulanacak bir sayı yok.',
            'No set/rep counts on the sheet — there is no number for the adjustment to land on.')}</div>}
@@ -28196,20 +28418,14 @@ function DailyIndivPanel({plan,bundle,adjusted,team,updateTeam,srcKey,date,ai,ex
           <ul className="di-sig">{draft.antrenman_onceligi.map((p,i)=>
             <li key={i}><b>{p.oncelik}</b>{p.gerekce?` — ${p.gerekce}`:''}</li>)}</ul>
         </div>}
-        {draft.egzersiz_kararlari.length>0&&<div className="di-row">
-          <span className="di-k">{L('Egzersiz değişiklikleri','Exercise changes')}</span>
-          <div className="di-subs">
-            {draft.egzersiz_kararlari.map((d,i)=><div key={i} className={'di-sub-'+d.karar}>
-              <div className="di-subhd">
-                <s>{d.mevcut}</s>
-                <span className="di-arrow">→</span>
-                <b>{d.karar==='cikar'?L('çıkarıldı','removed'):d.onerilen}</b>
-                {d.hedef_kalite&&<i>{d.hedef_kalite}</i>}
-              </div>
-              {d.gerekce&&<p>{d.gerekce}</p>}
-            </div>)}
-          </div>
-        </div>}
+        {/* The programme itself, editable. Every row is here — the model only proposed
+            changes to some of them, and the coach must be able to reach any of them. */}
+        <div className="di-sheethd">
+          <span className="di-k">{L('Yazılacak program','The programme to be written')}</span>
+          <span className="di-dim">{L('egzersizi değiştir, alternatif yaz veya bugün için çıkar — set/tekrar deterministik katmandan gelir',
+            'change an exercise, write an alternative, or drop it for today — sets and reps come from the deterministic layer')}</span>
+        </div>
+        <DiReviewSheet rows={sheet} onEdit={editRow}/>
         {draft.genel_gerekce&&<div className="di-row">
           <span className="di-k">{L('Gerekçe','Rationale')}</span>
           <p className="di-why">{draft.genel_gerekce}</p>
@@ -28217,27 +28433,37 @@ function DailyIndivPanel({plan,bundle,adjusted,team,updateTeam,srcKey,date,ai,ex
         {draft.koc_uyarisi&&<div className="di-warn">⚠ {draft.koc_uyarisi}</div>}
         {draft.kesildi&&<div className="di-dim">{L('Yanıt token sınırında kesildi — kurtarılabilen kısım gösteriliyor.','The reply hit the token cap — the salvageable part is shown.')}</div>}
 
-        {/* AI Draft → Coach Review → Final Program (§30). The decision and its reason are
-            kept with the draft; nothing is written to a calendar from here — the programme
-            is still written and edited below, by the coach. */}
+        {/* AI Draft → Coach Review → Final Program (§30). Until the coach decides, this
+            athlete's calendar is HELD — the sheet writes nothing for them, automatically or
+            otherwise. Approving writes what is on the sheet above; rejecting writes the
+            original plan instead. */}
         <div className="di-review">
           <span className="di-k">{L('Antrenör kararı','Coach review')}</span>
           {decided
             ?<div className="di-decided">
               <b style={{color:decided.color}}>{L(decided.label[0],decided.label[1])}</b>
               {review.reason&&<span className="di-dim">— {review.reason}</span>}
-              <button className="btn xs sec" onClick={()=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{decision:null,reason:null})}>
+              <span className="di-dim">{review.decision==='reject'
+                ?L('· özgün program takvime yazıldı','· the original programme was written')
+                :L('· sporcunun takvimine yazıldı','· written to the athlete\'s calendar')}</span>
+              <button className="btn xs sec" onClick={()=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{decision:null,reason:null,modifications:null})}>
                 {L('geri al','undo')}</button>
             </div>
             :<>
               <input className="di-reason" value={note} onChange={e=>setNote(e.target.value)}
-                placeholder={L('Değiştirme / reddetme nedeni (opsiyonel)','Reason for modifying or rejecting (optional)')}/>
+                placeholder={L('Karar nedeni (opsiyonel)','Reason for the decision (optional)')}/>
               <div className="di-btns">
-                {DI_DECISIONS.map(d=><button key={d.id} type="button" className={'di-dec '+d.id}
-                  onClick={()=>decide(d.id)}>{L(d.label[0],d.label[1])}</button>)}
+                <button type="button" className="di-dec accept" onClick={()=>decide('approve')}>
+                  {diSheetEdited(sheet)?L('✓ Değiştirerek onayla ve yaz','✓ Approve with changes and write')
+                    :L('✓ Onayla ve takvime yaz','✓ Approve and write to the calendar')}</button>
+                <button type="button" className="di-dec reject" onClick={()=>decide('reject')}>
+                  {L('Reddet — özgün program kalsın','Reject — keep the original')}</button>
               </div>
             </>}
         </div>
+        {gate.waiting&&<div className="di-hold">
+          ⏸ {L('Onay bekliyor — bu program henüz sporcunun takvimine yazılmadı.',
+                'Waiting on you — nothing has been written to the athlete\'s calendar yet.')}</div>}
       </div>}
     </div>
   </div>);
@@ -28455,6 +28681,20 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     return out;
   },[plans,team.setup,date,libMap,coach,src]);
 
+  /* The review standing against each athlete on this source and day, and — from it —
+     the plan the sheet is allowed to write for them. A draft still waiting on the coach
+     returns no plan at all: that athlete's calendar is held until they decide. Both the
+     automatic pass and the button go through here, so there is exactly one answer to
+     "what reaches the athlete", and it is the coach's. */
+  const reviewOf=p=>diReadReview(team,activeKey,p.ath.id,date);
+  const planToWrite=p=>{
+    const r=reviewOf(p);
+    const gate=diWriteGate(r);
+    if(!gate.write)return null;
+    const b=bundles[p.ath.id];
+    return(gate.approved&&b)?diApplyReview(p,b,r):p;
+  };
+
   /* What is already on each athlete's own calendar for this source and date, keyed by
      athlete. This is what makes the button a one-time action: the sheet can see that a
      program was written, when, and whether it still matches what the sheet says. */
@@ -28473,6 +28713,18 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const applyTo=(ids,opts={})=>{
     if(!src)return;
     let targets=plans.filter(p=>ids.includes(p.ath.id));
+    /* An athlete with an undecided draft is not written to, however the write was asked
+       for. Pressing the button does not overrule the review — it is the review that says
+       what this athlete does today, and it is not finished. They are named in the toast
+       rather than silently dropped, so the button never looks broken. */
+    const held=targets.filter(p=>diWriteGate(reviewOf(p)).waiting);
+    if(held.length){
+      const skip=new Set(held.map(p=>p.ath.id));
+      targets=targets.filter(p=>!skip.has(p.ath.id));
+      if(!opts.auto)setTimeout(()=>setToast(L(
+        `${held.length} sporcu AI taslağı onayı bekliyor — kartı açıp onayla`,
+        `${held.length} athlete${held.length>1?'s':''} waiting on draft approval — open the card and approve`)),0);
+    }
     if(targets.length===0)return;
     /* A program the coach has since written by hand on the athlete's own calendar — from
        the calendar this card opens, or from the Athletes tab — is not the sheet's to
@@ -28500,7 +28752,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       const days={...(a.days||{})};
       const day=days[date]||{date,sessions:[],dailyNotes:''};
       let sessions=[...(day.sessions||[])];
-      const ses=planToSession(plan,src.session,date,activeKey);
+      // An approved draft is written as the coach signed it off; everything else writes
+      // the plan as the sheet built it, exactly as before.
+      const ses=planToSession(planToWrite(plan)||plan,src.session,date,activeKey);
       // When it reached the athlete, so the card can say so instead of the coach having
       // to press the button again to find out. Deliberately outside the fingerprint.
       ses.indiv.writtenAt=new Date().toISOString();
@@ -28551,7 +28805,13 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       // Hand-edited on the athlete's calendar: theirs, not the sheet's. Never overwritten
       // on the sheet's own initiative — only when the coach asks for it from the card.
       if(w&&indivHandEdited(w))return false;
-      const ses=planToSession(p,src.session,date,activeKey);
+      /* A draft waiting on the coach holds this athlete's calendar. Nothing is written —
+         not the AI's version, and not the plain plan underneath it either: the coach is
+         mid-decision about what today should be, and the athlete's phone must not be
+         shown an answer before they have given one. */
+      const toWrite=planToWrite(p);
+      if(!toWrite)return false;
+      const ses=planToSession(toWrite,src.session,date,activeKey);
       /* A FIRST WRITE FOLLOWS THE DAY'S PLAN, NEVER THE PAGE BEING OPEN.
          The page picks a source by itself, and with no team session on the date that
          source is a template — which belongs to no day and to no assignment. Writing it
@@ -28562,14 +28822,14 @@ function IndividualizationView({data,team,updateTeam,weeks}){
          day's own plan says they do it — a team session of that date with them ticked on
          it. Everything else (a template, a session nobody is ticked on, an athlete the
          session was not given to) waits for the button in the bar. */
-      if(!w)return autoFirstWrite.has(p.ath.id)&&liveBlocks(p).some(b=>(b.rows||[]).some(liveSlot));
+      if(!w)return autoFirstWrite.has(p.ath.id)&&liveBlocks(toWrite).some(b=>(b.rows||[]).some(liveSlot));
       return (w.indiv&&w.indiv.sig)!==ses.indiv.sig;
     }).map(p=>p.ath.id);
     if(!due.length)return;
     const t=setTimeout(()=>applyTo(due,{auto:true}),600);
     return()=>clearTimeout(t);
     // eslint-disable-next-line
-  },[plans,written,src,date,activeKey,autoFirstWrite]);
+  },[plans,written,src,date,activeKey,autoFirstWrite,team.indiv,bundles]);
   /* Printing reads what is actually written on the athletes' calendars, so the paper
      matches the program they were given. */
   const printAll=()=>{
@@ -28637,7 +28897,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     {src&&plans.map(p=>{const b=bundles[p.ath.id];return(<IndivAthleteCard key={p.ath.id} plan={p}
       flag={b?b.flag:null}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
-      panel={b?<DailyIndivPanel plan={p} bundle={b} adjusted={diAdjustPlan(p,b.adjustment.pct)}
+      panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         ai={data.ai} exercises={exercises}
         saveAth={patch=>saveAthPatch(p.ath.id,patch)}/>:null}
