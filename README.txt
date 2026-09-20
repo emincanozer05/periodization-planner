@@ -234,6 +234,92 @@ while building; keyword matches in them are offered as tag
 suggestions that need your approval.
 
 
+WEEKLY PROGRAMMING (Weekly Programming tab)
+-------------------------------------------
+Where the Individualization tab answers "given today's plan, which
+version of it does THIS athlete do?", this tab writes the plan that
+question starts from — and it writes it in the order a coach decides,
+never backwards from a list of exercises:
+
+    stimulus -> timing -> who -> dose -> exercise
+
+Two stages, and each one is a single call:
+
+  Stage A — once a week. The team's week: what each day is FOR, the
+    stimuli it carries (one primary a day, the rest secondary or at
+    maintenance level), whether it is a high, moderate, low or off day,
+    and the position differences. No athlete and no exercise is named
+    here.
+  Stage B — once for each programmed day. EVERY athlete of that day in
+    one call, not one call per athlete: a squad of fifteen over a week
+    is about eight calls, not a hundred and five. Each athlete gets a
+    prescription type (full / reduced / emphasis / modified / RTP /
+    no S&C), the stimuli it serves, the exercises, the dose and the
+    reason it looks the way it does.
+
+WHAT THE APP DECIDES AND WHAT THE MODEL DECIDES
+The split is enforced in code, not asked for in a prompt:
+  - the MD-relative day (MD, MD-1, MD+1 …) is computed from your
+    fixture list and handed over; the model never works it out
+  - the EFFECTIVE TIER is computed from the screening battery by the
+    weakest-link rule the Program Writer already uses, and then held
+    down — never up — by two things: a pain region reported on three
+    of the last seven check-ins (or one report at 5/10 or worse), and
+    an open return-to-play stage (rehabilitation and individual
+    physical preparation cap it at Tier 1, modified training at
+    Tier 2). Every hold is listed with its reason
+  - every TOTAL — sets, reps, tonnage (kilos only; a percentage has no
+    1RM behind it here), plyometric ground contacts and sprint metres —
+    is counted by the app, per athlete, per day and per week
+  - medical restrictions and RTP stages are never changed by an answer
+The model chooses the stimulus for a day, who does what, the dose and
+the exercise, and says why.
+
+VALIDATION, AND THE ONE REPAIR PASS
+Each generated day is checked against the same reference tables the
+request carried: the tier's ceilings (sets per exercise, exercises per
+session, weekly contacts), the ceilings a day beside a fixture carries
+(no contacts on a game day, 40 contacts / 120 m on MD-1 and MD+1),
+the gym's ticked equipment, the pain-to-movement-pattern table, the
+RTP stage, and whether anyone on the day's list was left without a
+prescription. Findings name the athlete they belong to. A day that
+comes back over a HARD ceiling is sent back once with the findings
+attached and asked for the minimum change that clears them; whatever is
+left after that is put in front of you rather than re-asked in a loop
+you are paying for. "Resolve findings" sends the day back by hand.
+
+An answer cannot invent its way around any of this: a prescription for
+an athlete the day does not hold is dropped, an exercise claimed as
+"library" that the library does not have is recorded as custom, and a
+custom exercise missing its substitution tag (body region, movement
+pattern, primary stimulus) is reported — that tag is what lets the
+daily substitution system offer an alternative for it later.
+
+PARTIAL REGENERATION
+A day is regenerated on its own; the rest of the week is left alone.
+Re-running Stage A does not throw the days away either — a day whose
+structure changed is simply marked "Stage A changed — regenerate this
+day", and you decide.
+
+WRITING IT OUT
+"Write to calendars" puts each athlete's prescription on their own
+calendar as a session marked with the day plan it came from, and
+fingerprinted: re-running the day replaces it in place, but an athlete
+whose copy you have since edited by hand is SKIPPED and named in the
+toast rather than losing the edit. That session sits beside anything
+the Individualization tab wrote — the two are different programs, not
+two copies of one.
+
+The readiness / wellness / morning-pain cut is deliberately NOT here.
+This tab writes the planned prescription; the Individualization tab
+moves it on the morning it is done, through the thresholds that screen
+already owns.
+
+Stage A and Stage B use the same AI key, provider and model the
+Assistant Coach panel is set up with (bottom right). Nothing on this
+tab runs on its own — a plan that costs a call is asked for.
+
+
 WHAT CHANGED IN THIS VERSION
 ----------------------------
 1. sRPE fixed
