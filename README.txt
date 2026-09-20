@@ -10,11 +10,15 @@ writing 15 separate programs by hand. Pick a date, pick a source
 athletes, and every selected athlete gets that session copied
 onto their own card.
 
-There is NO rule engine and no automatic adjustment of any kind.
-Nothing is substituted, scaled, floored or flagged behind your
-back — every number on an athlete's sheet is either the one the
-template carries or the one you typed on that card. Block count
-and block order are never changed.
+The copy itself is still verbatim. Nothing on the sheet is
+substituted, scaled, floored or flagged behind your back — every
+number on it is either the one the template carries or the one you
+typed on that card, and block count and block order are never
+changed.
+
+The AI session described further down is a separate, opt-in thing:
+it is written per athlete, only when you ask for it, and it reaches
+nobody until you press Write.
 
 Every box is yours, empty included: clearing one clears it, it
 does not spring back to the template's value. ↺ Reset is the only
@@ -234,90 +238,83 @@ while building; keyword matches in them are offered as tag
 suggestions that need your approval.
 
 
-WEEKLY PROGRAMMING (Weekly Programming tab)
+DAILY INDIVIDUALIZATION — THE COACH'S BRIEF
 -------------------------------------------
-Where the Individualization tab answers "given today's plan, which
-version of it does THIS athlete do?", this tab writes the plan that
-question starts from — and it writes it in the order a coach decides,
-never backwards from a list of exercises:
+Open an athlete's card on the Individualization tab and the panel
+under their name has two halves. The top half is COMPUTED and is
+there whether or not you have an AI key: readiness, the competition
+day (MD-1, MD+1 …), the season phase, the 7-day internal load with
+ACWR, and the minutes they played in the last game. Under it, the
+volume adjustment the readiness table calls for, with the reasons
+it is made of.
 
-    stimulus -> timing -> who -> dose -> exercise
+The bottom half is the brief. Seven fields, none of them required —
+an empty field is not a constraint, it is simply ignored:
 
-Two stages, and each one is a single call:
+  1. Today's priority — a dropdown of twenty qualities grouped the
+     way a coach thinks about them (Strength, Speed & movement,
+     Movement quality, Energy systems, Maintenance / rehab). Add a
+     second and a third with "+ Add another priority".
+  2. Must be in — exercises, content or targets the session has to
+     carry. Type and press Enter; each one becomes a chip.
+  3. Keep out — the same, for what must not appear today.
+  4. Constraints — a multi-select dropdown of twelve limit types
+     (load, volume, time, intensity, impact/jumps, speed, range of
+     motion, direction, region, no contact, unilateral, other).
+     Hover one and a box opens with what it means, how a coach says
+     it, and the programming behaviour it asks for. That last line
+     is the exact sentence shipped to the model with your request —
+     what you read and what it is told are the same sentence. A
+     free-text box under the dropdown takes anything finer.
+  5. Session length — minutes, with 30 / 45 / 60 / 75 / 90 to hand.
+  6. Exercise ceiling — how many exercises at most (4 / 6 / 8 / 10).
+  7. Notes — anything else that matters today.
 
-  Stage A — once a week. The team's week: what each day is FOR, the
-    stimuli it carries (one primary a day, the rest secondary or at
-    maintenance level), whether it is a high, moderate, low or off day,
-    and the position differences. No athlete and no exercise is named
-    here.
-  Stage B — once for each programmed day. EVERY athlete of that day in
-    one call, not one call per athlete: a squad of fifteen over a week
-    is about eight calls, not a hundred and five. Each athlete gets a
-    prescription type (full / reduced / emphasis / modified / RTP /
-    no S&C), the stimuli it serves, the exercises, the dose and the
-    reason it looks the way it does.
+"Build the session" hands all of it — the brief, the computed
+picture, the athlete's goals, pain, injury and RTP status, recent
+exposure, the team session planned for the day, your exercise
+library and the gym's equipment inventory — to the model, and it
+writes a session in blocks, with sets, reps, load, rest and a
+reason for every exercise.
 
-WHAT THE APP DECIDES AND WHAT THE MODEL DECIDES
-The split is enforced in code, not asked for in a prompt:
-  - the MD-relative day (MD, MD-1, MD+1 …) is computed from your
-    fixture list and handed over; the model never works it out
-  - the EFFECTIVE TIER is computed from the screening battery by the
-    weakest-link rule the Program Writer already uses, and then held
-    down — never up — by two things: a pain region reported on three
-    of the last seven check-ins (or one report at 5/10 or worse), and
-    an open return-to-play stage (rehabilitation and individual
-    physical preparation cap it at Tier 1, modified training at
-    Tier 2). Every hold is listed with its reason
-  - every TOTAL — sets, reps, tonnage (kilos only; a percentage has no
-    1RM behind it here), plyometric ground contacts and sprint metres —
-    is counted by the app, per athlete, per day and per week
-  - medical restrictions and RTP stages are never changed by an answer
-The model chooses the stimulus for a day, who does what, the dose and
-the exercise, and says why.
+WHAT STAYS IN CODE
+The model does not touch the arithmetic. Readiness, the volume
+adjustment, the days to the next game, the exposure counts and the
+baseline deviations are all computed here and handed over finished,
+and the readiness cut is applied BY CODE after the answer arrives:
+the model writes the session a normal day would carry, and the app
+takes the percentage off it. Where that moves a row, the card shows
+"4×6 → 3×6" and the bold number is the one that gets written.
 
-VALIDATION, AND THE ONE REPAIR PASS
-Each generated day is checked against the same reference tables the
-request carried: the tier's ceilings (sets per exercise, exercises per
-session, weekly contacts), the ceilings a day beside a fixture carries
-(no contacts on a game day, 40 contacts / 120 m on MD-1 and MD+1),
-the gym's ticked equipment, the pain-to-movement-pattern table, the
-RTP stage, and whether anyone on the day's list was left without a
-prescription. Findings name the athlete they belong to. A day that
-comes back over a HARD ceiling is sent back once with the findings
-attached and asked for the minimum change that clears them; whatever is
-left after that is put in front of you rather than re-asked in a loop
-you are paying for. "Resolve findings" sends the day back by hand.
+The app also checks the answer against things it can count: your
+exercise ceiling, the gym's inventory, the pain-to-movement-pattern
+table and your own "keep out" list. Anything that does not line up
+is listed under Checks, on screen, before you write anything.
 
-An answer cannot invent its way around any of this: a prescription for
-an athlete the day does not hold is dropped, an exercise claimed as
-"library" that the library does not have is recorded as custom, and a
-custom exercise missing its substitution tag (body region, movement
-pattern, primary stimulus) is reported — that tag is what lets the
-daily substitution system offer an alternative for it later.
+NOTHING IS WRITTEN UNTIL YOU WRITE IT
+While a session is sitting there unapproved, that athlete's
+calendar is HELD: neither the AI session nor the plain copy of the
+team session is written for them. "Write to the calendar" approves
+it and puts it on their own calendar in one press, replacing their
+copy of that day's session rather than adding a second one. A day
+you have since edited by hand is never overwritten without asking.
+"Rewrite" asks for another session against the same brief;
+"Discard" throws the session away and keeps the brief.
 
-PARTIAL REGENERATION
-A day is regenerated on its own; the rest of the week is left alone.
-Re-running Stage A does not throw the days away either — a day whose
-structure changed is simply marked "Stage A changed — regenerate this
-day", and you decide.
+EQUIPMENT INVENTORY (Setup tab)
+-------------------------------
+The gym, written down once, with a COUNT beside each item: six
+barbells and one trap bar is a different session from one barbell
+and six trap bars, and a programme written for a squad has to know
+which it is. Type a number to put something in the inventory; 0
+means you do not have it; "+ Add equipment" takes anything the
+standard list does not cover.
 
-WRITING IT OUT
-"Write to calendars" puts each athlete's prescription on their own
-calendar as a session marked with the day plan it came from, and
-fingerprinted: re-running the day replaces it in place, but an athlete
-whose copy you have since edited by hand is SKIPPED and named in the
-toast rather than losing the edit. That session sits beside anything
-the Individualization tab wrote — the two are different programs, not
-two copies of one.
-
-The readiness / wellness / morning-pain cut is deliberately NOT here.
-This tab writes the planned prescription; the Individualization tab
-moves it on the morning it is done, through the thresholds that screen
-already owns.
-
-Stage A and Stage B use the same AI key, provider and model the
-Assistant Coach panel is set up with (bottom right). Nothing on this
-tab runs on its own — a plan that costs a call is asked for.
+Sessions written on the Individualization tab use only what is in
+here — an exercise needing a trap bar is not offered to a gym with
+none — and the count tells the model how many athletes can be on
+one piece at the same time. An empty inventory applies no
+equipment constraint at all, which is what it has always meant.
 
 
 WHAT CHANGED IN THIS VERSION
