@@ -28616,7 +28616,18 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     ...daySessions.map(s=>({key:`team:${date}:${s.id}`,group:'Team plan',label:`${s.name||'Session'} · ${s.time||''}`,session:s,team:s})),
     ...templates.map(t=>({key:`tpl:${t.id}`,group:'Template',label:t.name||'Template',session:{...(t.session||{}),name:t.name||'Template'}})),
   ],[daySessions,templates,date]);
-  const src=sources.find(s=>s.key===srcKey)||sources[0]||null;
+  /* THE SOURCE THE SHEET OPENS ON IS THE DAY'S OWN PLAN — NEVER A TEMPLATE.
+     The pick used to fall through to `sources[0]`, and on a date with no team session
+     that first source is whatever template happens to sit at the top of the library. The
+     box then read like the day's program while holding something that belongs to no day
+     at all, and one press of "Write to selected" put that template onto every athlete's
+     calendar for a day the team plan reads as rest — a session the coach could not find
+     anywhere on the team calendar, written again on every press. So the fall-back is the
+     date's own team session and nothing else: with none, no source is selected, the write
+     button is dead, and a template reaches a calendar only once the coach has picked it
+     here by name. */
+  const teamSrc=sources.find(s=>s.group==='Team plan')||null;
+  const src=sources.find(s=>s.key===srcKey)||teamSrc;
   const activeKey=src?src.key:'';
   const ovrAll=(store.ovr||{})[activeKey]||{};
 
@@ -28784,6 +28795,33 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`));
     setTimeout(()=>setToast(''),opts.auto?2000:3500);
   };
+  /* The counterpart to the write: what this sheet put on a calendar, it can take back
+     off it. Without it a program written onto the wrong day had to be deleted athlete by
+     athlete, seventeen times over. Only what this sheet wrote for THIS source and THIS
+     date goes — a session the coach built by hand carries no `indiv` stamp of this source
+     and is never touched. Offered for a template only: an athlete's copy of a TEAM
+     session belongs to the day's plan, and the sheet would simply write it back on the
+     next pass (see `autoFirstWrite`) — that one is removed by removing the team session. */
+  const removable=useMemo(()=>(src&&!src.team)
+    ?athletes.filter(a=>chosen.includes(a.id)&&written[a.id]):[],[src,athletes,chosen,written]);
+  const removeFrom=()=>{
+    const ids=new Set(removable.map(a=>a.id));
+    if(!ids.size)return;
+    if(!confirm(L(`${ids.size} sporcunun ${fd(date)} takviminden bu program silinsin mi?\n\n(Yalnızca bu sayfanın yazdığı antrenman kaldırılır; elle eklediklerin yerinde kalır.)`,
+      `Remove this program from ${ids.size} athlete${ids.size>1?'s':''}' ${fd(date)} calendar?\n\n(Only the session this page wrote is removed; anything added by hand stays.)`)))return;
+    const next=athletes.map(a=>{
+      if(!ids.has(a.id))return a;
+      const day=(a.days||{})[date];
+      if(!day)return a;
+      const days={...(a.days||{})};
+      days[date]={...day,sessions:(day.sessions||[]).filter(s=>!(s.indiv&&s.indiv.srcKey===activeKey))};
+      return{...a,days};
+    });
+    updateTeam(team.id,{athletes:next});
+    setToast(L(`${ids.size} sporcunun takviminden kaldırıldı ✓`,
+      `Removed from ${ids.size} athlete${ids.size>1?'s':''}' calendars ✓`));
+    setTimeout(()=>setToast(''),3500);
+  };
   /* Who this page may write to unasked: the athletes the DATE'S OWN TEAM SESSION was
      given to. That is the same list the team→athlete sync copies the session by, so the
      sheet's individual version lands exactly where the plain copy would have, and nowhere
@@ -28843,10 +28881,18 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       stats={[{v:athletes.length,l:L('Sporcu','Athletes')},
               {v:fd(date),l:L('Tarih','Date')}]}/>
     <div className="panel iv-bar">
-      <div className="iv-f"><label>{L('Tarih','Date')}</label><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSel(null);}}/></div>
+      {/* Moving to another day drops the source pick with it: the program belongs to the
+          day, and a template chosen for Monday must not still be sitting in the box —
+          ready for the button — when the coach steps onto a Tuesday that has no plan. */}
+      <div className="iv-f"><label>{L('Tarih','Date')}</label><input type="date" value={date} onChange={e=>{setDate(e.target.value);setSrcKey('');setSel(null);}}/></div>
       <div className="iv-f grow"><label>{L('Kaynak program','Source program')}</label>
         <select value={activeKey} onChange={e=>{setSrcKey(e.target.value);setSel(null);}}>
-          {sources.length===0&&<option value="">{L('— bu tarihte takım seansı ve şablon yok','— no team session on this date and no template')}</option>}
+          {/* With a team session on the date the box holds it and needs no placeholder.
+              Without one it stays empty and says so, rather than showing the name of a
+              template the coach never chose. */}
+          {!teamSrc&&<option value="">{sources.length===0
+            ?L('— bu tarihte takım seansı ve şablon yok','— no team session on this date and no template')
+            :L('— bu tarihte takım seansı yok — şablon seç','— no team session on this date — pick a template')}</option>}
           {['Team plan','Template'].map(g=>{const items=sources.filter(s=>s.group===g);
             return items.length?<optgroup key={g} label={g==='Template'?L('Şablon','Template'):L('Takım planı','Team plan')}>{items.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</optgroup>:null;})}
         </select>
@@ -28861,6 +28907,11 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         <button className="btn sm" onClick={()=>applyTo(chosen)} disabled={!src||!chosen.length}
           title={L('Seçili sporcuların takvimine bu programı işler.','Writes this program onto the selected athletes\' calendars.')}>
           ✎ {L('Seçili sporculara işle','Write to selected')}</button>
+        {/* Only where there is something of this sheet's to take back, so the bar does not
+            carry a dead button on a day nothing was written. */}
+        {removable.length>0&&<button className="btn sec sm" onClick={removeFrom}
+          title={L('Bu programı seçili sporcuların takviminden kaldırır.','Removes this program from the selected athletes\' calendars.')}>
+          ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
         <span className="iv-expbar">
           <select value={expRange} onChange={e=>setExpRange(e.target.value)} title={L('Çıktı aralığı','Export range')}>
             <option value="day">{L('Gün','Day')}</option>
@@ -28876,6 +28927,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       <div className="help" style={{width:'100%',margin:0}}>
         {src&&src.team?L('Bu bir takım seansı: bireysel program sporcunun o seanstaki kopyasının yerini alır (ikinci bir satır oluşmaz) ve takım seansını sonradan düzenlemek artık onun üzerine yazmaz. ',
           'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. '):''}
+        {src&&!src.team?L('Bu bir şablon: o günün takım planında yer almıyor. Kendiliğinden hiçbir takvime işlenmez — yalnızca ✎ Seçili sporculara işle dediğinde, seçtiğin sporculara yazılır. ',
+          'This is a template: it is not on that day\'s team plan. It is written to nobody on its own — it reaches the athletes selected above only when you press ✎ Write to selected. '):''}
         {srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
                      `This session is assigned to ${srcRoster.length} athlete${srcRoster.length>1?'s':''} — the program is written to their calendars only. To reach anyone else, tick them on the session itself first. `):''}
         {L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Şablon seçtiğinde ya da seansta kimse işaretli değilse takvime hiçbir şey yazılmaz — <em>✎ Seçili sporculara işle</em> butonunu kullan. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
@@ -28893,7 +28946,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       </button>)}
     </div>}
     {src&&<DiCoachBar coach={coach} save={saveCoach}/>}
-    {!src&&<div className="ex-empty">{L('Bu tarihte takım seansı yok ve henüz bir şablon oluşturulmamış. Şablonlar sekmesinden bir şablon oluştur ya da takvime bir antrenman planla.','There is no team session on this date and no template has been created yet. Create a template from the Templates tab, or plan a session on the calendar.')}</div>}
+    {!src&&<div className="ex-empty">{sources.length===0
+      ?L('Bu tarihte takım seansı yok ve henüz bir şablon oluşturulmamış. Şablonlar sekmesinden bir şablon oluştur ya da takvime bir antrenman planla.','There is no team session on this date and no template has been created yet. Create a template from the Templates tab, or plan a session on the calendar.')
+      :L('Bu tarihte takım seansı yok — bu gün kimsenin takvimine bir şey yazılmaz. Yine de bir program vermek istiyorsan yukarıdan bir şablon seç.','There is no team session on this date — nothing is written to anyone for this day. Pick a template above if you want to give one anyway.')}</div>}
     {src&&plans.map(p=>{const b=bundles[p.ath.id];return(<IndivAthleteCard key={p.ath.id} plan={p}
       flag={b?b.flag:null}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
