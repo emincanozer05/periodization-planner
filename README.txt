@@ -241,15 +241,19 @@ suggestions that need your approval.
 DAILY INDIVIDUALIZATION — THE COACH'S BRIEF
 -------------------------------------------
 Open an athlete's card on the Individualization tab and the panel
-under their name has two halves. The top half is COMPUTED and is
-there whether or not you have an AI key: readiness, the competition
-day (MD-1, MD+1 …), the season phase, the 7-day internal load with
-ACWR, and the minutes they played in the last game. Under it, the
-volume adjustment the readiness table calls for, with the reasons
-it is made of.
+under their name reads in three acts, each with its own heading.
 
-The bottom half is the brief. Seven fields, none of them required —
-an empty field is not a constraint, it is simply ignored:
+Act 1 is COMPUTED and is there whether or not you have an AI key: a
+row of tiles for readiness, the competition day (MD-1, MD+1 …), the
+season phase, the 7-day internal load with ACWR, the minutes played
+in the last game, and the volume adjustment the readiness table
+calls for. A tile carries a meter where its number is a ratio
+against a known limit (readiness out of 5, the cut against its
+floor) and a coloured edge for its state — always beside the word
+for that state, so nothing is left to colour alone.
+
+Act 2 is the brief. Seven fields, each its own small card, none of
+them required — an empty field is not a constraint, it is ignored:
 
   1. Today's priority — a dropdown of twenty qualities grouped the
      way a coach thinks about them (Strength, Speed & movement,
@@ -270,7 +274,7 @@ an empty field is not a constraint, it is simply ignored:
   6. Exercise ceiling — how many exercises at most (4 / 6 / 8 / 10).
   7. Notes — anything else that matters today.
 
-"Build the session" hands all of it — the brief, the computed
+Act 3 is the session that comes back. "Build the session" hands all of it — the brief, the computed
 picture, the athlete's goals, pain, injury and RTP status, recent
 exposure, the team session planned for the day, your exercise
 library and the gym's equipment inventory — to the model, and it
