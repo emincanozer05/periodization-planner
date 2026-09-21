@@ -288,8 +288,10 @@ of it — the brief, the computed picture, pain, injury and RTP
 status, recent exposure, the findings read off the test battery,
 the patterns pain has ruled out and the ones still open, the sport
 the squad plays and what its game asks for, the team session
-planned for the day, your exercise library and the gym's equipment
-inventory — to the model, and it writes a session in PHASES
+planned for the day, your exercise library, the gym's equipment
+inventory with its counts and weights, and the club's thirty
+knowledge-database rules as they read at that moment — to the
+model, and it writes a session in PHASES
 (preparation · main work · complementary), with sets, reps, load,
 rest and a reason for every exercise.
 
@@ -311,7 +313,7 @@ write anything.
 
 THE SESSION IS WRITTEN FOR THE GAME, THE ROLE AND THE ATHLETE
 A session that would suit anybody suits nobody. The sport set on
-the Setup tab now goes to the model with what its game actually
+the Settings tab now goes to the model with what its game actually
 does to the people who play it — how long the efforts last and how
 much recovery sits between them, how far the sprints really are,
 how take-offs and landings happen, which planes the work lives in
@@ -440,20 +442,73 @@ you have since edited by hand is never overwritten without asking.
 "Rewrite" asks for another session against the same brief;
 "Discard" throws the session away and keeps the brief.
 
-EQUIPMENT INVENTORY (Setup tab)
--------------------------------
-The gym, written down once, with a COUNT beside each item: six
-barbells and one trap bar is a different session from one barbell
-and six trap bars, and a programme written for a squad has to know
-which it is. Type a number to put something in the inventory; 0
-means you do not have it; "+ Add equipment" takes anything the
-standard list does not cover.
+EQUIPMENT INVENTORY (Settings tab)
+----------------------------------
+The gym, written down once, with a WEIGHT and a COUNT beside each
+item.
+
+The count is what makes the list useful for a squad rather than
+one athlete: six barbells and one trap bar is a different session
+from one barbell and six trap bars, and a programme written for a
+squad has to know which it is.
+
+The weight is what makes it useful for a PRESCRIPTION. A rack
+whose heaviest dumbbell is 12 kg cannot hold a senior's heavy day,
+and "3 x 6 @ 40 kg" written into it is not a session. So a line is
+an item AT a weight, and a gym holds as many lines of one item as
+it has weights worth naming: 6 x 10 kg dumbbells and 4 x 22.5 kg
+dumbbells are two lines of the same kit.
+
+Type a number to put something in the inventory; 0 means you do
+not have it; leave the weight blank and no weight limit is applied
+to that line. "+ Add equipment" opens a small form — pick the item
+type (or "Other" and type a name), give it a weight and a count,
+and it is added as its own line underneath the standard ten, with
+an x to remove it again.
 
 Sessions written on the Individualization tab use only what is in
-here — an exercise needing a trap bar is not offered to a gym with
-none — and the count tells the model how many athletes can be on
-one piece at the same time. An empty inventory applies no
-equipment constraint at all, which is what it has always meant.
+here. An exercise needing a trap bar is not offered to a gym with
+none; the count tells the model how many athletes can be on one
+piece at the same time; and the weight tells it how far a line can
+be loaded, so it does not prescribe past what the gym owns. Where
+the load IS the implement — a dumbbell, a medicine ball — a
+prescription heavier than the heaviest one in the inventory is
+also reported under Checks before you write anything. A barbell or
+a machine is not checked that way: its plates and its stack are
+not on this list, so its own weight says nothing about the ceiling.
+
+An empty inventory applies no equipment constraint at all, which
+is what it has always meant.
+
+
+COACHOS AI ASSISTANT KNOWLEDGE DATABASE (Settings tab)
+------------------------------------------------------
+The thirty rules the AI-assisted programme writer works to, on a
+screen where they can be read, edited and argued with. They cover
+the club's whole programming logic: the decision order, the inputs
+read before anything is written, movement-pattern taxonomy, speed
+and deceleration, plyometric dosing, strength by age group,
+biological maturation, position, sex, the menstrual cycle, season
+phases, the match week, load monitoring, ACWR, readiness
+thresholds, pain, sequencing, equipment, time, constraints,
+team-to-individual work, the decision tree, the mistakes to avoid
+and the underlying philosophy.
+
+They open as titles only, two to a row — thirty opened rules is
+not a page anyone reads. Click a title and the rule opens full
+width: title, rule text, and a REFERENCES box underneath for the
+studies it rests on. Everything saves as you type. A rule you have
+changed is marked, and "Reset to default" puts the seeded text
+back. "+ Add rule" adds one of your own, and only your own can be
+deleted.
+
+THE RULES ARE LIVE. They are not compiled into the assistant; they
+are read at the moment a session is generated. Correct a rule this
+afternoon and the programme written a minute later follows the new
+wording — nothing to reload, redeploy or re-install. Every
+generated session is written against them, the references go over
+with them, and the model is asked to cite the rules that decided
+the session by number in its rationale.
 
 
 WHAT CHANGED IN THIS VERSION
@@ -528,7 +583,7 @@ End of season:
 
 Start of next season:
   - Open the app → tab 6 → "Start new season" (clears data).
-  - Tab 1 (Setup): set new dates, competitions, model.
+  - Settings tab: set new dates, competitions, model.
   - Plan away. The basketball example is just a starting point
     — you can keep editing or wipe it any time.
 

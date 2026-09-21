@@ -5172,19 +5172,65 @@ header{background:var(--bg2)!important}
   .di-lead{padding-right:0}
   .di-resacts{position:static;justify-content:flex-end}
 }
-/* Setup — the equipment inventory */
-.su-eq{display:flex;flex-direction:column;gap:12px}
-.su-eq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px}
-.su-eq-row{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;
-  background:var(--bg2);padding:7px 11px}
+/* Settings — the equipment inventory */
+.su-eq{display:flex;flex-direction:column;gap:10px}
+.su-eq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px}
+.su-eq-row{display:flex;align-items:center;gap:7px;
+  border:1px solid var(--border);border-radius:9px;background:var(--bg2);padding:7px 11px}
+.su-eq-row.added{border-style:dashed}
 .su-eq-row.on{border-color:rgba(45,212,167,.45);background:rgba(45,212,167,.07)}
-.su-eq-nm{flex:1;min-width:0;font-size:12.5px;color:var(--text2)}
+.su-eq-nm{flex:1;min-width:0;font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .su-eq-row.on .su-eq-nm{color:var(--text)}
-.su-eq-row input{width:62px;text-align:center}
-.su-eq-u{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace}
-.su-eq-x{background:none;border:0;color:var(--dim);cursor:pointer;font-size:11px}
+.su-eq-fld{flex:0 0 auto;display:flex;align-items:center;gap:4px}
+.su-eq-row input{width:70px;text-align:center;padding-left:6px;padding-right:6px}
+.su-eq-row input::-webkit-outer-spin-button,.su-eq-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.su-eq-row input[type=number]{-moz-appearance:textfield}
+.su-eq-u{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-style:normal}
+.su-eq-x{flex:0 0 auto;width:16px;background:none;border:0;color:var(--dim);cursor:pointer;font-size:11px;padding:0}
+.su-eq-x.ghost{pointer-events:none}
 .su-eq-x:hover{color:#f43f5e}
+.su-eq-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px dashed var(--border);
+  border-radius:10px;background:var(--bg2);padding:10px 11px}
+.su-eq-add select{flex:0 1 190px;width:auto;min-width:150px}
+.su-eq-add input{flex:0 1 180px;width:auto}
+.su-eq-add input[type=number]{flex:0 0 auto;width:82px;text-align:center}
 .su-eq-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+/* Settings — the AI assistant knowledge database.
+   Titles only until one is opened, two to a row: thirty rules read as a contents page
+   that way, and as thirty walls of text any other way. An opened card takes the full
+   width of the grid, because a rule is edited as prose and prose in a half-column is
+   edited badly. */
+.kb{display:flex;flex-direction:column;gap:12px}
+.kb-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.kb-top input.kb-find{flex:1;min-width:170px;max-width:280px}
+.kb-count{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.kb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.kb-card{border:1px solid var(--border);border-radius:11px;background:var(--bg2);overflow:hidden;
+  transition:border-color .12s ease}
+.kb-card:hover{border-color:var(--border2)}
+.kb-card.open{grid-column:1/-1;border-color:rgba(0,148,255,.45);background:var(--elevated)}
+.kb-h{width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;cursor:pointer;
+  text-align:left;padding:11px 13px;color:inherit;font:inherit}
+.kb-no{flex:0 0 auto;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  border-radius:7px;background:var(--accent-bg);color:var(--accent2);font-size:11px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.kb-card.open .kb-no{background:rgba(0,148,255,.22)}
+.kb-t{flex:1;min-width:0;font-size:12.5px;line-height:1.35;color:var(--text)}
+.kb-caret{flex:0 0 auto;color:var(--dim);font-size:10px;transition:transform .15s ease}
+.kb-card.open .kb-caret{transform:rotate(180deg)}
+.kb-body{border-top:1px solid var(--border);padding:12px 13px;display:flex;flex-direction:column;gap:12px}
+.kb-f{display:flex;flex-direction:column;gap:5px}
+.kb-f>label{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.kb-f textarea{width:100%;resize:vertical;line-height:1.55;font-size:12.5px}
+.kb-f textarea.kb-rule{min-height:260px}
+.kb-f textarea.kb-src{min-height:84px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px}
+.kb-src-wrap{border-top:1px dashed var(--border);padding-top:12px}
+.kb-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kb-acts .help{margin:0}
+.kb-empty{grid-column:1/-1}
+@media(max-width:760px){.kb-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -7237,6 +7283,574 @@ function makeDefaultTeam(){
 }
 function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t],templates:[]};}
 
+/* =========================================================
+   AI ASSISTANT KNOWLEDGE DATABASE
+   The thirty rules every generated session is written against. They are DATA, not
+   prompt: the seed below is what the club starts with, the Settings tab is where the
+   text is edited, and the individualization assistant reads whatever is stored at the
+   moment it writes. So a rule corrected on a Tuesday afternoon binds the session
+   generated a minute later — nothing here has to be redeployed for the model to obey
+   the new wording.
+
+   Each rule carries its own KAYNAKÇA (references). A rule that was rewritten can then
+   be argued with on the evidence it rests on, instead of on who typed it last. The
+   text is kept in the language it was authored in rather than translated into the L()
+   pairs the rest of the interface uses: this is a document the coach owns and edits,
+   not interface chrome.
+   ========================================================= */
+const KB_DEFAULT=[
+{no:1,title:'Asistan Yapay Zekâ İçin Temel Programlama Mantığı',
+body:`CoachOS'un amacı yalnızca egzersiz listesi üretmek değildir. Amaç, oyuncunun mevcut kapasitesini, basketbolun fiziksel gereksinimlerini ve takvimi birleştirerek uygulanabilir bireysel antrenman yükü oluşturmaktır.
+
+Basketbol; hızlanma, yavaşlama, yön değiştirme, sıçrama, lateral hareket ve kısa süreli yüksek şiddetli eforların düşük ve orta şiddetli hareketlerle sürekli değiştiği aralıklı bir takım sporudur. Bu nedenle basketbol programı yalnızca düz koşu veya genel kondisyon üzerine kurulamaz; kuvvet, güç, hız, ivmelenme, yavaşlama, yön değiştirme, sıçrama-iniş, aerobik kapasite ve doku kapasitesi birlikte geliştirilmelidir.
+
+CoachOS hiçbir zaman yalnızca "guard programı", "pivot programı" veya "U16 programı" üretmez. Program şu girdilerin birlikte değerlendirilmesiyle oluşturulur:
+oyuncu profili + biyolojik gelişim + pozisyon/oyun rolü + sezon fazı + maç takvimi + maç dakikası + son yük + readiness + bireysel eksiklik + takım antrenmanı + ekipman + zaman + kısıtlamalar.
+
+KARAR ÖNCELİĞİ
+1. Ağrı, sakatlık ve tıbbi değerlendirme ihtiyacı
+2. Biyolojik olgunlaşma ve büyüme durumu
+3. Maç takvimi ve maça kalan süre
+4. Son maç yükü ve maç dakikası
+5. Son 7-14 günlük yük
+6. Readiness/wellness
+7. Cinsiyete özgü ihtiyaçlar
+8. Pozisyon ve gerçek oyun rolü
+9. Bireysel fiziksel eksiklik
+10. Ekipman ve süre
+
+Ekipman ve süre karar önceliği değildir; programın her zaman bu operasyonel sınırlar içinde kalmasını sağlayan zorunlu kısıtlardır.`,
+sources:`Petway ve ark., 2020
+Salazar ve ark., 2020
+Harper ve ark., 2022`},
+
+{no:2,title:'Programlama Girdileri',
+body:`CoachOS program oluşturmadan önce aşağıdaki bilgileri okur:
+
+• Yaş/doğum tarihi
+• Cinsiyet
+• Antrenman yaşı
+• Rekabet seviyesi
+• Boy
+• Kilo
+• Oturma ve bacak boyu
+• Son 3-6 aylık boy değişimi
+• Biyolojik olgunlaşma göstergeleri
+• Pozisyon
+• Gerçek oyun rolü
+• Sezon fazı
+• Maç tarihleri
+• Maçlar arasındaki süre
+• Seyahat
+• Son maç dakikası
+• Son maç sRPE
+• Varsa dış yük
+• Son 7-14 günlük yük
+• Wellness/readiness
+• Ağrı
+• Sakatlık/kısıtlama
+• CMJ/SJ/DJ-RSI gibi performans testleri
+• Kuvvet testleri
+• Hız ve COD testleri
+• Mobilite/stabilite bulguları
+• Takım antrenmanı süresi
+• Takım antrenmanı yoğunluğu
+• Mevcut ekipman
+• Ekipman adedi
+• Kullanılabilir S&C süresi
+
+Eksik veri varsa sistem veri uydurmaz; ilgili alanı "veri yok" olarak kabul etmeli ve daha muhafazakâr programlama yapmalıdır.`,
+sources:``},
+
+{no:3,title:'Basketbolun Fiziksel Doğası',
+body:`Basketbolda yüksek şiddetli hareketler arasında özellikle yön değiştirme, yavaşlama, ivmelenme ve sıçrama bulunur.
+
+Elite basketbol maçlarında pozisyonlara göre dış yük profilleri farklıdır; guard, forvet ve pivotların hareket talepleri aynı değildir.
+
+Profesyonel basketbolcuların maçtaki en yüksek talep dönemleri genellikle antrenmanlardaki en yüksek talep dönemlerinden daha yüksektir; bu nedenle takım antrenmanı otomatik olarak maçın fiziksel taleplerini tamamen karşılıyor kabul edilmemelidir.
+
+Basketbolun fiziksel gereksinimleri şu ana fiziksel kaliteler üzerinden ele alınmalıdır:
+• Göreli (relatif) kuvvet
+• Maksimal kuvvet
+• Güç
+• RFD
+• Reaktif kuvvet
+• İvmelenme
+• Maksimal hız
+• Yavaşlama
+• Yön değiştirme
+• Lateral hız
+• Sıçrama
+• İniş
+• Tekrarlı yüksek şiddetli efor
+• Aerobik kapasite
+• Doku kapasitesi
+• Mobilite
+• Stabilite
+• Gövde kontrolü
+
+Bu fiziksel kalitelerin tamamı uzun vadeli gelişim planında bulunabilir; ancak hiçbir kalite her gün yüksek dozda çalıştırılmamalıdır.`,
+sources:`Salazar ve ark., 2020
+García ve ark., 2022`},
+
+{no:4,title:'Hareket Paternleri',
+body:`CoachOS egzersizleri yalnızca kas grubuna göre sınıflandırmaz. Her egzersiz en az bir hareket paterni ve bir fiziksel kalite etiketi taşımalıdır.
+
+A. TEMEL KUVVET HAREKET PATERNLERİ
+Squat · Hinge · Lunge · Push · Pull · Carry
+
+B. STABİLİZASYON / CORE PATERNLERİ
+Anti-Extension · Anti-Rotation · Anti-Lateral Flexion · Rotation
+
+C. ATLETİK HAREKET PATERNLERİ
+Acceleration · Deceleration · Change of Direction · Lateral Movement · Jump · Landing
+
+D. UYGULAMA / POZİSYON ÖZELLİKLERİ
+Bilateral · Unilateral · Split Stance · Single-Leg · Half-Kneeling · Tall-Kneeling
+
+Örnek:
+2DB Bulgarian Split Squat — Movement Pattern: Lunge / Stance: Unilateral, Split Stance / Physical Quality: Strength
+Barbell Back Squat — Movement Pattern: Squat / Stance: Bilateral / Physical Quality: Strength
+
+Temel direnç antrenmanında squat, hinge, unilateral alt ekstremite, itme, çekme, taşıma ve gövde kontrolü gibi temel paternler oyuncunun gelişim düzeyine uygun biçimde kullanılmalıdır.
+
+CoachOS egzersiz seçerken şu sırayı izler:
+Oyuncu profili → Günün amacı → Fiziksel kalite → Hareket paterni → Egzersiz seviyesi → Ekipman → Kısıtlama → Yük → Set/tekrar → Dinlenme.`,
+sources:`Stricker ve ark., 2020`},
+
+{no:5,title:'Hız, İvmelenme, Yavaşlama ve Yön Değiştirme',
+body:`Basketbol programında hız yalnızca sprint olarak düşünülmez.
+
+İVMELENME: 5 m · 10 m · 15 m · 20 m · basketbola özgü kısa ivmelenmeler
+MAKSİMAL HIZ: build-up sprint · flying sprint · flying 10-20 m
+LATERAL HIZ: shuffle · crossover · lateral acceleration · defensive movement
+YAVAŞLAMA: lineer frenleme · lateral frenleme · tek bacak frenleme · planlı frenleme · reaktif frenleme
+YÖN DEĞİŞTİRME: 45° · 90° · 135° · 180°
+
+Yavaşlama basketbol programında bağımsız bir fiziksel kalite olarak ele alınmalıdır; yüksek hızlı yatay yavaşlama yüksek mekanik ve eksantrik talepler oluşturur.
+
+Yavaşlama kapasitesinin geliştirilmesinde yalnızca kuvvet değil, frenleme tekniği ve hareket koordinasyonu da dikkate alınmalıdır.
+
+Yön değiştirme açısı ve hız arttıkça mekanik talepler değişir; bu nedenle COD eğitimi düşük karmaşıklık ve düşük hızdan daha yüksek hız ve reaktiviteye doğru ilerletilmelidir.
+
+CoachOS özellikle yeni başlayan veya teknik yeterliliği düşük oyuncularda yüksek hızlı 90° COD çalışmalarına doğrudan geçmez.`,
+sources:`Harper ve ark., 2022
+Dos'Santos ve ark., 2021`},
+
+{no:6,title:'Pliometrik Programlama',
+body:`Pliometrik antrenman basketbolcularda sıçrama, sprint, yön değiştirme, denge ve kuvvet gibi fiziksel özelliklerde gelişim sağlayabilir.
+
+Pliometrik yük yalnızca toplam sıçrama sayısıyla takip edilmez. Ayrı kategoriler:
+• Çift bacak
+• Tek bacak
+• Dikey
+• Yatay
+• Lateral
+• Drop jump
+• Hop
+• Bound
+• Reaktif sıçrama
+• İniş maruziyeti
+
+Pliometrik yoğunluk genel olarak Düşük → Orta → Yüksek → Çok yüksek şeklinde sınıflandırılabilir. Tek bacaklı, yüksek genlikli ve reaktif/drop-jump çalışmalar çift bacaklı düşük genlikli çalışmalardan daha yüksek nöromekanik talep oluşturacak şekilde sınıflandırılmalıdır.
+
+İLERLEME: iniş/kontrol → çift bacak → tek bacak → reaktif → lateral → reaktif yön değiştirmeli.
+
+Pliometrik çalışma oyuncunun mevcut kapasitesine, yaşına, maturasyonuna, maç yüküne ve takım antrenmanındaki sıçrama miktarına göre ayarlanmalıdır.
+
+Aynı gün içinde yüksek hacimli sprint + COD + yavaşlama + pliometrik yükün üst üste bindirilmesi gereksiz mekanik yorgunluk oluşturabilir; bu nedenle CoachOS toplam nöromekanik yükü değerlendirir.`,
+sources:`Ramirez-Campillo ve ark., 2022
+Harper ve ark., 2022`},
+
+{no:7,title:'Kuvvet ve Güç',
+body:`Genç sporcularda direnç antrenmanı uygun teknik, progresif yüklenme ve gözetim altında güvenli ve etkili biçimde uygulanabilir. Çocuklarda kuvvet gelişimi yalnızca kas hipertrofisine bağlı değildir; nöromüsküler gelişim önemli bir bileşendir.
+
+U9-U12 — Hareket öğrenimi, vücut ağırlığı kuvveti, temel squat, hinge, lunge, itme, çekme, taşıma, gövde kontrolü, tek bacak kontrolü.
+
+U13-U14 — Göreli kuvvet, tek bacak kuvveti, arka zincir, gövde, temel kuvvet egzersizleri, iniş, yavaşlama, temel güç.
+
+U15-U18 — Göreli kuvvet, maksimal kuvvet, tek bacak kuvveti, arka zincir, üst vücut kuvveti, güç, RFD, sprint, COD.
+
+A TAKIM — Kuvvetin korunması, güç-kuvvet dengesi, bireysel eksiklikler, doku kapasitesi, performans.
+
+Sezon içinde özellikle yoğun maç dönemlerinde kuvvet antrenmanının hacmi azaltılabilirken, uygun yoğunlukta uyaranın korunması fiziksel kapasitenin sürdürülmesine yardımcı olabilir.
+
+Yük reçetesi yalnızca sabit %1RM üzerinden yapılmak zorunda değildir; RPE/RIR ve uygun ekipman mevcutsa VBT günlük performans değişimlerine göre yükün ayarlanmasına yardımcı olabilir. VBT kullanılabiliyorsa hız kaybı ve hedef hız, set hacmini yönetmek için kullanılabilir.`,
+sources:`Stricker ve ark., 2020
+Spiering ve ark., 2021
+Clemente ve ark., 2025
+Suchomel ve ark., 2021
+Weakley ve ark., 2021`},
+
+{no:8,title:'Yaş, Antrenman Yaşı ve Biyolojik Olgunlaşma',
+body:`Kronolojik yaş tek başına programlama kriteri değildir. Aynı yaş grubundaki iki oyuncunun biyolojik olgunlaşması, antrenman geçmişi, kuvveti ve yük toleransı farklı olabilir.
+
+CoachOS altyapı oyuncularını değerlendirirken kronolojik yaş, antrenman yaşı, boy, kilo, boy değişim hızı, biyolojik olgunlaşma, ağrı, hareket kalitesi, kuvvet ve yük geçmişini birlikte değerlendirmelidir.
+
+Büyüme atağı dönemlerinde koordinasyon, hareket kontrolü ve yük yanıtı değişebilir; bu nedenle oyuncunun performans ve semptomları daha yakından izlenmelidir. Boy ve kilo mümkün olduğunda düzenli aralıklarla takip edilmeli ve özellikle hızlı değişim gösteren oyuncuların programları yeniden değerlendirilmelidir.
+
+CoachOS büyüme atağındaki oyuncuyu otomatik olarak "yüksek riskli" kabul etmez; ancak hızlı büyüme, ağrı, hareket kalitesinde değişiklik veya yük toleransında düşüş varsa yük yeniden değerlendirilir.
+
+YAŞ GRUBU ÖNCELİKLERİ
+U9-U10 — Fiziksel okuryazarlık
+U11-U12 — Hareket yetkinliği + temel kuvvet + hız
+U13-U14 — Kuvvet + yavaşlama + iniş + koordinasyon
+U15-U16 — Sistematik kuvvet + güç + hız + COD
+U17-U18 — Senior seviyeye fiziksel geçiş
+A takım — Performans + koruma + toparlanma
+
+Bu yaş grupları kesin biyolojik sınırlar değildir; bireysel olgunlaşma programı değiştirebilir.`,
+sources:`Jayanthi ve ark., 2022`},
+
+{no:9,title:'Pozisyona Özgü Programlama',
+body:`Pozisyon yalnızca başlangıç profilidir; gerçek oyun rolü ve bireysel maç verileri pozisyon etiketinden daha önemlidir. Pozisyon farklılıkları profesyonel basketbolda dış yük profillerinde gösterilmiştir; ancak mevcut çalışmaların örneklemleri sınırlı olduğundan pozisyon ortalamaları oyuncuya doğrudan kopyalanmamalıdır.
+
+GUARD — Yüksek ivmelenme, yön değiştirme ve yüksek yoğunluklu hareket talepleri öne çıkabilir. Öncelikli kaliteler: ivmelenme, yavaşlama, COD, lateral hız, tek bacak kuvveti, reaktif kuvvet, ayak/ayak bileği kapasitesi, hamstring, gövde kontrolü, tekrarlı yüksek şiddet.
+
+FORVET — Guard ve pivot özelliklerini birleştiren daha değişken bir profil. Öncelikler: COD, yavaşlama, lateral hareket, tek bacak kuvveti, dikey güç, yatay güç, reaktif kuvvet, arka zincir, temas kapasitesi. Gerçek rolü perimeter ağırlıklıysa guard profilinin, post/iç rol ağırlıklıysa pivot profilinin bazı özellikleri artırılabilir.
+
+PİVOT — Sıçrama, kısa mesafe ivmelenme, kuvvet ve temas gereksinimleri önemlidir. Öncelikler: göreli kuvvet, mutlak kuvvet, alt vücut kuvveti, gövde kuvveti, izometrik kuvvet, kısa mesafe ivmelenme, yavaşlama, sıçrama, iniş, temas kapasitesi. Pivot yalnızca "yavaş oyuncu" olarak değerlendirilmemelidir; modern basketbolda kısa ivmelenme, closeout, transition ve lateral hareket kapasitesi de geliştirilmelidir.`,
+sources:`Salazar ve ark., 2020`},
+
+{no:10,title:'Cinsiyete Göre Programlama',
+body:`Kadın ve erkek oyuncular için tamamen farklı egzersiz listeleri oluşturulmamalıdır. Temel hareket ve fiziksel kalite prensipleri aynıdır; farklılıklar oyuncunun antropometrisi, fiziksel kapasitesi, sakatlık geçmişi, biyolojik gelişimi ve bireysel yük yanıtı üzerinden ele alınmalıdır.
+
+Kadın basketbolunda yük verilerinin ölçüm yöntemleri ve raporlanan değerleri çalışmalar arasında heterojendir; bu nedenle erkek oyuncuların yük profilleri doğrudan kadın oyunculara kopyalanmamalıdır.
+
+DİZ VE ÖÇB
+Egzersiz temelli nöromüsküler yaralanma önleme programları diz ve ÖÇB yaralanmalarının azaltılmasına yardımcı olur ve özellikle kadın sporcularda çok bileşenli kuvvet + pliometrik + hareket kontrolü içeriği kullanılmalıdır. Bu programlar hazırlık döneminde başlatılıp sezon boyunca düzenli uygulanmalıdır.
+
+Genç basketbolcularda nöromüsküler ısınma programının ayak bileği ve diz yaralanmalarını yaklaşık %36 azalttığı bildirilmiştir. CoachOS altyapı programlarında düzenli nöromüsküler hazırlık içeriğini korur.`,
+sources:`Power ve ark., 2022
+Arundale ve ark., 2023
+Emery ve ark., 2022`},
+
+{no:11,title:'Menstrüel Döngü',
+body:`Menstrüel döngünün egzersiz performansı üzerindeki ortalama etkisinin küçük olduğu, çalışmalar arasında yüksek değişkenlik bulunduğu ve bu nedenle takım çapında sabit faz-temelli programlama için yeterli kanıt bulunmadığı bildirilmiştir.
+
+CoachOS menstrüel döngü bilgisi yoksa varsayım yapmaz.
+
+Oyuncu semptom bildirirse — ağrı, kramp, yorgunluk, uyku bozukluğu, readiness düşüşü — bu bilgiler diğer wellness girdileri gibi günlük bireyselleştirmede kullanılabilir.
+
+Menstrüel döngü tek başına otomatik olarak yük azaltma veya artırma nedeni olmaz.`,
+sources:`McNulty ve ark., 2020`},
+
+{no:12,title:'Sezon Fazları',
+body:`OFF-SEASON — GELİŞİM
+Ana amaç fiziksel kapasite geliştirmektir. Öncelikler: kuvvet, gerekiyorsa hipertrofi, güç, sprint, ivmelenme, yavaşlama, COD, aerobik kapasite, pliometrik kapasite, mobilite, doku kapasitesi, bireysel eksiklikler. Maç yoğunluğu düşük olduğundan fiziksel gelişim için daha fazla hacim kullanılabilir.
+
+PRE-SEASON — YARIŞMAYA HAZIRLIK
+Genel fiziksel kapasite basketbolun spesifik taleplerine aktarılmalıdır. Başlangıçta gelişim için daha yüksek hacim kullanılabilir; takım antrenmanı ve hazırlık maçlarının yükü arttıkça S&C hacmi azaltılmalıdır. Sezona yaklaştıkça: hacim ↓, özgüllük ↑, yoğunluk korunur veya ↑, toparlanma ↑. Ani yük artışlarından kaçınılmalıdır; gençlerde özellikle kademeli yük ilerlemesi önemlidir.
+
+IN-SEASON — KORU + PERFORMANS + TOPARLAN
+Temel amaç performansı korumak + gerekli fiziksel uyaranı sürdürmek + gereksiz yorgunluğu azaltmaktır. Öncelikler: kuvvet bakımı, güç bakımı, hız maruziyeti, ivmelenme, yavaşlama, mobilite, doku kapasitesi, bireysel eksiklikler. Maç yoğunluğu arttıkça S&C hacmi azaltılabilir; daha düşük hacimli antrenmanın birçok fiziksel adaptasyonu koruyabildiğine dair kanıt vardır, ancak optimum doz oyuncuya ve bağlama göre değişir.
+
+PLAYOFF / TAPER
+Amaç yeni fiziksel kapasite yaratmaktan çok yüksek performans + tazelik + mevcut kapasitenin korunmasıdır. Taper dönemlerinde hacmin azaltılması ve yoğunluğun büyük ölçüde korunması takım sporlarında güç, COD, tekrarlı sprint ve bazı metabolik performans ölçütlerinde olumlu sonuçlar sağlayabilir. Playoff döneminde: hacim ↓, gereksiz yorgunluk ↓, yoğunluk/hız/güç/kuvvet korunur, toparlanma ↑. Yeni ve alışılmadık egzersizler eklenmez.
+
+TRANSITION / POST-SEASON
+İlk bölüm: toparlanma, düşük şiddetli aerobik aktivite, mobilite, rekreasyonel hareket. Daha sonra kuvvet, hipertrofi, hareket kalitesi ve bireysel eksiklikler üzerinden yeni off-season dönemine geçilir.`,
+sources:`Clemente ve ark., 2025
+Jayanthi ve ark., 2022
+Vachon ve ark., 2021`},
+
+{no:13,title:'Maç Haftası Programlaması',
+body:`CoachOS haftayı takvim günü olarak değil, maça göre relatif günler üzerinden değerlendirmelidir: MD+1, MD+2, MD-4, MD-3, MD-2, MD-1, MD.
+
+Profesyonel basketbolda antrenmanların en yüksek talep dönemleri çoğunlukla maç taleplerinin altında kalmaktadır; özellikle maçtan 1-2 gün önce fiziksel yük genellikle azaltılır.
+
+GENEL MİKRO-DÖNGÜ
+MD+1 — Yüksek dakikalı: toparlanma, mobilite, düşük şiddetli aerobik. Düşük dakikalı/DNP: uygun telafi.
+MD+2 — Uygunsa haftanın ana fiziksel gelişim günü.
+MD-4 — Genellikle yüksek kaliteli hız, kuvvet ve/veya güç yükü için uygun pencere.
+MD-3 — Orta-yüksek özgüllük; hız/güç korunabilir.
+MD-2 — Düşük hacimli yüksek kaliteli güç/hız; gereksiz eksantrik hacimden kaçın.
+MD-1 — Priming, mobilite, aktivasyon, kısa hız ve düşük hacimli patlayıcı çalışma.
+MD — Yalnızca ihtiyaç varsa aktivasyon/priming.
+
+Bu günler kesin reçete değildir; sonraki ve önceki maçın zamanı, takım antrenmanı ve oyuncunun yükü her zaman önceliklidir.
+
+İKİ MAÇLI HAFTA
+İki maçlı haftalarda maç yükünün artması nedeniyle antrenman yükünün azaltılması gerekebilir. İki maç arasında 72 saatten az süre varsa varsayılan olarak S&C hacmi ↓, eksantrik hacim ↓, kondisyon hacmi ↓, pliometrik hacim ↓, toparlanma ↑ olmalıdır. Hız ve güç tamamen kaldırılmamalı; gerekliyse düşük hacimli maruziyetlerle korunmalıdır.`,
+sources:`García ve ark., 2022
+Sansone ve ark., 2025`},
+
+{no:14,title:'Yük İzleme',
+body:`CoachOS mümkün olduğunda üç yük boyutunu birlikte değerlendirir:
+
+INTERNAL LOAD — RPE, sRPE, nabız, wellness, readiness.
+EXTERNAL LOAD — mesafe, yüksek hızlı koşu, sprint, ivmelenme, yavaşlama, COD, sıçrama, PlayerLoad.
+COGNITIVE / CONTEXTUAL LOAD — antrenman özgüllüğü, karar verme talebi, oyuncu sayısı, alan, savunma, taktik karmaşıklık.
+
+Basketbolda sRPE düşük maliyetli ve uygulanabilir bir iç yük ölçümüdür.
+
+CoachOS tek bir yük metriğini program kararının tek belirleyicisi yapmaz.`,
+sources:`Petway ve ark., 2020`},
+
+{no:15,title:'ACWR',
+body:`ACWR CoachOS'ta yalnızca tanımlayıcı bir veri olarak gösterilebilir.
+
+ACWR tek başına sakatlık riski veya program değişikliği için otomatik karar mekanizması olarak kullanılmamalıdır; metodolojik ve istatistiksel sorunlar nedeniyle bu yaklaşım eleştirilmiştir.
+
+CoachOS bunun yerine mevcut yük + geçmiş yük + maç takvimi + wellness + readiness + ağrı + performansı birlikte değerlendirmelidir.`,
+sources:`Impellizzeri ve ark., 2021`},
+
+{no:16,title:'Readiness',
+body:`Readiness tek bir günlük skor olarak programın tamamını belirlememelidir.
+
+CoachOS readiness düşüşünü şu verilerle birlikte değerlendirmelidir: uyku, yorgunluk, kas ağrısı, stres, ruh hali, önceki yük, maç dakikası, son maç yükü, ağrı, performans trendi.
+
+Readiness düşükse ilk olarak gereksiz hacim ve yorgunluk azaltılabilir; ancak yoğunluk otomatik olarak tamamen kaldırılmamalıdır. Yoğunluğun korunması, özellikle fiziksel kapasiteyi koruma dönemlerinde önemlidir.
+
+CoachOS readiness düşüşünün tek günlük mü yoksa birkaç günlük bir trend mi olduğunu ayırt eder.`,
+sources:`Spiering ve ark., 2021`},
+
+{no:17,title:'Ağrı ve Sakatlık',
+body:`Ağrı bildirimi programlama sisteminde normal bir "readiness" girdisi gibi ele alınmaz.
+
+ACİL DEĞERLENDİRME GEREKTİREBİLECEK DURUMLAR
+• Kemik üzerinde lokal ağrı
+• İstirahatte/gece artan ağrı
+• Belirgin şişlik
+• Topallama
+• Travma sonrası ciddi fonksiyon kaybı
+• Performansı belirgin şekilde sınırlayan akut ağrı
+
+Bu durumlarda CoachOS otomatik program üretmek yerine "Tıbbi değerlendirme gerekli" uyarısı verir.
+
+Daha düşük riskli durumlarda egzersiz modifikasyonu ve yük yönetimi düşünülebilir; ancak CoachOS tanı koymamalıdır.`,
+sources:``},
+
+{no:18,title:"Takım Antrenmanı ile S&C'nin Birlikte Programlanması",
+body:`CoachOS yalnızca S&C yükünü değil, aynı gün yapılacak basketbol antrenmanının yükünü de dikkate alır.
+
+Basketbol antrenmanı yüksek sprint, COD, yavaşlama, sıçrama, temas ve small-sided game içeriyorsa S&C'nin aynı fiziksel özellikleri yüksek hacimde tekrar etmesi gerekmeyebilir. Örneğin takım antrenmanı yüksek sıçrama ve COD içeriyorsa S&C kuvvet + üst vücut + posterior chain + trunk gibi tamamlayıcı içeriğe kaydırılabilir.
+
+Buna karşılık takım antrenmanı fiziksel olarak düşükse S&C gerekli hız, güç veya kuvvet uyaranını sağlayabilir.
+
+Bu nedenle CoachOS basketbol yükü + S&C yükü = toplam günlük yük mantığıyla çalışmalıdır.`,
+sources:``},
+
+{no:19,title:'Antrenman Sıralaması',
+body:`Yüksek nöromekanik kalite gerektiren çalışmalar genellikle yorgunluk düşükken yapılmalıdır.
+
+GENEL SIRA
+1. Hareket hazırlığı
+2. Mobilite/aktivasyon
+3. Hız
+4. İvmelenme
+5. Pliometrik
+6. Güç
+7. Kuvvet
+8. Yardımcı kuvvet
+9. Kondisyon
+10. Toparlanma
+
+HIZ/GÜÇ GÜNÜ — Hız → Pliometrik → Güç → Kuvvet
+KUVVET GÜNÜ — Güç → Kuvvet → Yardımcı
+RECOVERY GÜNÜ — Mobilite → düşük şiddetli aerobik → restorasyon
+
+Takım antrenmanından hemen önce yorucu S&C bloğu planlanmamalıdır.`,
+sources:`Harper ve ark., 2022`},
+
+{no:20,title:'Ekipman Programlaması',
+body:`CoachOS mevcut ekipmanın türünü, miktarını, ağırlığını ve kullanılabilirliğini bilmelidir.
+
+Örneğin 2 barbell + 6 çift dumbbell + 4 kettlebell + 1 cable + 6 box varsa sistem 12 oyuncunun aynı anda 12 barbell kullanmasını gerektiren program oluşturamaz. Aynı şekilde envanterdeki en ağır dumbbell 20 kg ise, 40 kg dumbbell gerektiren bir yükleme yazılamaz: yük reçetesi envanterdeki ağırlıklarla uygulanabilir olmalıdır.
+
+Ekipman kapasitesi yetersizse otomatik olarak şu çözümler oluşturulmalıdır:
+• A1/A2 eşli sistem
+• İstasyon
+• Vücut ağırlığı alternatifi
+• Dumbbell alternatifi
+• Bant alternatifi
+• Tek taraflı varyasyon
+
+Egzersiz değişikliğinin nedeni program çıktısında belirtilmelidir.`,
+sources:``},
+
+{no:21,title:'Süre Sınırı',
+body:`Program gerçek antrenman süresine sığmalıdır.
+
+CoachOS şu hesabı yapar: toplam süre = egzersiz süresi + set süresi + dinlenme + geçiş süresi.
+
+Süre azaldığında önce gereksiz yardımcı egzersizler çıkarılmalı, ana fiziksel hedef korunmalıdır.`,
+sources:``},
+
+{no:22,title:'Kısıtlamalar',
+body:`Kısıtlamalar programın sonunda eklenmemeli; egzersiz seçiminin ilk aşamasında dikkate alınmalıdır.
+
+KISITLAMA → COACHOS DAVRANIŞI
+Yük sınırı → External load azalt
+Hacim sınırı → Set/rep/jump/sprint azalt
+Zaman sınırı → Egzersiz sayısını azalt
+Yoğunluk sınırı → RPE/RIR/hız hedefini azalt
+Darbe/sıçrama sınırı → Yüksek impact egzersizi değiştir
+Hız sınırı → Submaksimal hız kullan
+Temas yok → Temaslı drilleri kaldır
+Tek taraflı → Unilateral varyasyon seç
+Eksantrik sınırı → Yüksek eksantrik egzersizleri azalt
+COD sınırı → Lineer veya daha düşük açılı varyasyona geç
+Sprint sınırı → Düşük hızda teknik/ivmelenme çalışması kullan`,
+sources:``},
+
+{no:23,title:'Programın Otomatik Olarak Değişmesi',
+body:`Program statik olmamalıdır. Yeni veri geldiğinde CoachOS programı yeniden değerlendirmelidir:
+
+• Maç dakikası
+• Maç sRPE
+• Dış yük
+• Wellness
+• Readiness
+• Ağrı
+• Önceki antrenman
+• Son 7-14 günlük yük
+• Sonraki maç
+• Takım antrenmanı
+• Seyahat
+• Boy/kilo değişimi
+• Sakatlık/kısıtlama
+
+Örneğin oyuncu önceki gün çok yüksek maç yükü aldıysa ertesi gün planlanan ağır alt vücut hacmi azaltılabilir.`,
+sources:``},
+
+{no:24,title:'Takım Programı → Bireysel Program',
+body:`CoachOS önce takımın ana fiziksel hedefini belirler, daha sonra oyuncuları bireyselleştirir.
+
+Örneğin takım hedefi güç ise:
+• Oyuncu A → alt vücut kuvvet
+• Oyuncu B → üst vücut kuvvet
+• Oyuncu C → unilateral kuvvet
+• Oyuncu D → düşük dakika telafi
+• Oyuncu E → toparlanma
+
+aynı seans yapısı içerisinde uygulanabilir.
+
+Bireyselleştirme takım programının tamamen farklılaştırılması anlamına gelmez; aynı ana hedefin oyuncuya uygun doz ve egzersizle uygulanmasıdır.`,
+sources:``},
+
+{no:25,title:'Program Üretim Karar Ağacı',
+body:`CoachOS her programda aşağıdaki sırayı izler:
+
+1. OYUNCU KİM? Yaş + cinsiyet + pozisyon + oyun rolü + antrenman yaşı + seviye.
+2. OYUNCU HANGİ GELİŞİM DÖNEMİNDE? Biyolojik olgunlaşma + boy/kilo değişimi + büyüme atağı göstergeleri.
+3. OYUNCUNUN BUGÜNKÜ DURUMU NEDİR? Readiness + wellness + ağrı + sakatlık/kısıtlama.
+4. TAKVİM NE SÖYLÜYOR? Sezon fazı + maça kalan gün + haftadaki maç sayısı + seyahat.
+5. OYUNCU SON MAÇTA NE YAPTI? Dakika + sRPE + dış yük.
+6. TAKIM ANTRENMANI NE KADAR YÜK OLUŞTURACAK? Süre + yoğunluk + sprint + COD + sıçrama + temas.
+7. BUGÜNÜN FİZİKSEL AMACI NEDİR? Kuvvet / güç / hız / kondisyon / recovery.
+8. OYUNCUNUN BİREYSEL EKSİKLİĞİ NEDİR? Testler + performans trendi + koç notu.
+9. HANGİ HAREKET PATERNLERİ GEREKLİ? Squat + hinge + unilateral + push + pull + trunk + sprint + COD vb.
+10. HANGİ EKİPMAN KULLANILABİLİR? Ekipman türü + adet + ağırlık.
+11. HANGİ KISITLAMALAR VAR? Yük + hacim + zaman + darbe + hız + temas vb.
+12. PROGRAMI OLUŞTUR. Egzersiz + set + tekrar + yük + RPE/RIR/VBT + tempo + dinlenme + niyet.
+13. PROGRAMI DOĞRULA. Program süreye sığıyor mu? Ekipmana uyuyor mu? Maç takvimine uygun mu? Toplam yük aşırı mı? Oyuncunun kısıtlamalarına uyuyor mu? Günün fiziksel amacını karşılıyor mu? Gereksiz tekrar içeriyor mu?`,
+sources:``},
+
+{no:26,title:'Kaçınılacak Programlama Hataları',
+body:`CoachOS:
+• Pozisyona bakıp otomatik program üretmez.
+• Kronolojik yaşı biyolojik gelişimin yerine koymaz.
+• Altyapıya A takım programını küçültüp vermez.
+• Tüm oyunculara aynı yükü vermez.
+• Maç yükünü yok saymaz.
+• Düşük dakika oyuncusuna otomatik olarak yüksek telafi yükü vermez.
+• Bir sonraki maça çok az süre kaldığında telafi yükü oluşturmaz.
+• Readiness düşük diye otomatik olarak tüm yoğunluğu kaldırmaz.
+• Her gün maksimal kuvvet yazmaz.
+• Her gün yüksek hacimli pliometrik yazmaz.
+• Her gün yüksek hacimli sprint/COD/yavaşlama kombinasyonu kullanmaz.
+• Takım antrenmanının yükünü görmezden gelmez.
+• Ekipman kapasitesini aşmaz.
+• Antrenman süresini aşmaz.
+• ACWR'yi tek karar mekanizması yapmaz.
+• Tek bir yük metriğine bağımlı olmaz.
+• Kadın oyuncular için menstrüel döngüye göre otomatik takım programı değiştirmez.
+• RED-S şüphesinde tıbbi tanı koymaz.
+• Ağrı veya ciddi semptomlarda otomatik agresif program üretmez.
+• Maçtan hemen önce gereksiz yüksek eksantrik ve yüksek hacimli yük oluşturmaz.
+• Playoff döneminde gereksiz yeni egzersizler eklemez.`,
+sources:``},
+
+{no:27,title:'Pliometrik — Oturum Başına Temas Sayısı',
+body:`Düşük-orta yoğunlukta, oturum başına temas sayısı:
+
+U9-U12 — 20-40
+U13-U14 — 40-60
+U15-U18 — 60-100 (yoğunluk arttıkça alt sınıra yaklaşılır)
+A takım, off-season — 60-100
+A takım, in-season — 30-60`,
+sources:``},
+
+{no:28,title:'Readiness Eşik Değerleri',
+body:`CoachOS'ta readiness bazlı otomatik yük ayarı aşağıdaki eşiklerle çalışır:
+
+• Readiness ≥ 3.5 — Program varsayılan değerleriyle uygulanır, otomatik azaltma tetiklenmez.
+• Readiness < 3.5 — Set/tekrar/yoğunluk azaltımı devreye girer.
+• Readiness < 2.5 — Otomatik azaltmaya ek olarak koç için manuel inceleme flag'i tetiklenir; sistem tek başına nihai karar vermez.
+• Taban sınır — Hiçbir otomatik azaltma toplam seti 1'in, tekrarı 4-5'in altına düşüremez.
+
+Bu eşikler, ayrı bir kademe (tier) sistemiyle birlikte ve kümülatif (bağımsız değil) olarak işler:
+• Yapısal kademe: periyodik tarama bataryası (OHS, ASLR, ayak bileği dorsifleksiyon) sonuçlarına göre belirlenir; en zayıf halka kuralı uygulanır, ortalama alınmaz.
+• Geçici kademe düşüşü: tek günlük değil, çok günlük anket/ağrı trendine göre tetiklenir.
+
+Yapay zekâ, readiness/kademe ile ilgili gerekçe üretirken bu eşik değerlerini referans almalıdır; ürettiği açıklama, sistemin mekanik olarak uyguladığı davranışla çelişmemelidir.`,
+sources:``},
+
+{no:29,title:'Serbest Metin / Özel Egzersiz Etiketleme',
+body:`CoachOS'ta egzersiz seçimi yalnızca kütüphaneyle sınırlı değildir; koç serbest metin olarak özel bir egzersiz girebilir. Bu durumda:
+
+• Yapay zekâ, girilen egzersiz adı/açıklamasından hareket paterni, stance ve fiziksel kalite etiketlerini 4. kuraldaki taksonomiye göre çıkarsamalıdır.
+• Etiket çıkarımı düşük güvenle yapılıyorsa (belirsiz/yetersiz bilgi içeren isim), sistem etiketi varsayımla doldurmamalı; koçtan onay/düzeltme istemelidir — bu, 2. kuraldaki "veri yoksa uydurma" ilkesinin doğal uzantısıdır.
+• Özel egzersiz, kütüphanedeki egzersizlerle aynı kısıtlama filtrelerinden (ekipman, temas, eksantrik, hız sınırı vb.) geçirilmelidir; kütüphane dışı olması onu kısıtlama denetiminden muaf tutmaz.
+• Koç tarafından onaylanan etiketler, aynı egzersiz tekrar kullanıldığında yeniden sorulmaması için kütüphaneye ileriye dönük eklenebilir.`,
+sources:``},
+
+{no:30,title:'Ana Programlama Felsefesi',
+body:`Altyapıda amaç uzun vadeli fiziksel gelişimdir. A takımda amaç performansı sürdürülebilir şekilde yüksek tutmaktır.
+
+Off-season kapasite geliştirme dönemidir. Pre-season kapasitenin basketbola aktarılma dönemidir. In-season performansı koruma ve yorgunluk yönetimi dönemidir. Playoff döneminde tazelik ve performans öncelik kazanır.
+
+Yüksek dakikalı oyuncunun gereksiz yükü azaltılır. Düşük dakikalı oyuncunun eksik fiziksel yükü uygun zamanda tamamlanır.
+
+Pozisyon yalnızca başlangıç noktasıdır; bireysel veri daha değerlidir. Kronolojik yaş yalnızca başlangıç noktasıdır; biyolojik gelişim ve antrenman yaşı yük dozunu değiştirir.
+
+Basketbol antrenmanı ile S&C birlikte değerlendirilir. Her fiziksel kalite uzun vadede geliştirilir veya korunur; ancak her kalite her gün yüksek dozda çalıştırılmaz.
+
+Program mümkün olan en yüksek performans uyaranını, mümkün olan en düşük gereksiz yorgunlukla üretmelidir.`,
+sources:``},
+];
+const kbSeed=()=>KB_DEFAULT.map(r=>({id:'kb'+r.no,no:r.no,title:r.title,body:r.body,sources:r.sources,custom:false}));
+/* The rules as the app reads them: whatever is stored, normalised. An entry the coach
+   rewrote keeps its own text; one the seed added and nobody touched is still the seed's.
+   Returned as stored even when empty — a coach who deleted a rule should not find it
+   back on the next render. */
+function kbRules(data){
+  const raw=Array.isArray(data&&data.knowledge)?data.knowledge:null;
+  if(!raw)return kbSeed();
+  return raw.filter(r=>r&&typeof r==='object').map((r,i)=>({
+    id:String(r.id||'').trim()||('kb'+(r.no||i+1)),
+    no:recNum(r.no)!=null?recNum(r.no):i+1,
+    title:String(r.title||'').trim(),
+    body:String(r.body||''),
+    sources:String(r.sources||''),
+    custom:!!r.custom,
+  }));
+}
+/* What the assistant is handed. Titles and bodies go over verbatim so the model reads
+   the coach's wording, not a summary of it, and the reference list rides along so a
+   rule can be cited the way the club wrote it. */
+function kbForAI(rules){
+  const rows=(rules||[]).filter(r=>String(r.title||'').trim()||String(r.body||'').trim());
+  if(!rows.length)return null;
+  return rows.map((r,i)=>({
+    kural_no:r.no!=null?r.no:i+1,
+    baslik:r.title||('Kural '+(i+1)),
+    kural:r.body||'',
+    kaynakca:String(r.sources||'').trim()||null,
+  }));
+}
+
 /* WHICH TEAM IS ON SCREEN BELONGS TO THE DEVICE, NOT TO THE ACCOUNT.
    Everything else in the workspace is shared on purpose: one plan, the same on the
    laptop in the office and on the phone by the court. The team being *looked at* is
@@ -7519,6 +8133,11 @@ function migrate(data){
      them, so it is offered on every sheet in the pool. */
   if(!Array.isArray(data.tryoutTests))data.tryoutTests=[];
   if(!Array.isArray(data.testTemplates))data.testTemplates=[];
+  /* The knowledge database the individualization assistant writes against. Seeded once,
+     on the first read of a workspace that has never had one, and then left alone: the
+     thirty rules are the club's document from that moment on, and re-seeding would
+     quietly undo whatever a coach corrected. */
+  if(!Array.isArray(data.knowledge))data.knowledge=kbSeed();
   if(!Array.isArray(data.researches))data.researches=[];
   data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
@@ -10801,9 +11420,9 @@ function Setup({team,updateTeam,data,setData}){
   const totalAthletes=teamList.reduce((n,t)=>n+((t.athletes||[]).length),0);
   const activeSeason=seasons.find(sn=>sn.id===team.activeSeasonId);
   return(<div className="su">
-    <PageHero title={L('Kurulum','Setup')}
-      sub={L('Kulüp, takımlar ve sezon penceresi — uygulamanın geri kalanı bunları okur.',
-             'The club, the teams and the season window — the rest of the app reads these.')}
+    <PageHero title={L('Ayarlar','Settings')}
+      sub={L('Kulüp, takımlar, sezon penceresi, salonun ekipmanı ve asistanın bilgi tabanı — uygulamanın geri kalanı bunları okur.',
+             'The club, the teams, the season window, the gym\'s kit and the assistant\'s knowledge database — the rest of the app reads these.')}
       stats={[{v:teamList.length,l:L('Takım','Teams')},
               {v:totalAthletes,l:L('Sporcu','Athletes')}]}/>
     {/* The club as it reads everywhere else in the app — crest, name, and the three facts
@@ -10926,6 +11545,13 @@ function Setup({team,updateTeam,data,setData}){
       <SetupEquipment setup={s} save={u}/>
     </div>
 
+    {/* The rules the programme writer works to. They sit on this screen rather than on
+        the individualization one for the same reason the equipment does: they are the
+        club's standing answer, not today's, and the assistant reads them live. */}
+    <div className="panel su-panel"><h2>CoachOS AI Assistant Knowledge Database</h2>
+      <KnowledgePanel data={data} setData={setData}/>
+    </div>
+
     {/* Wellness notifications. This used to live on a screen of its own, which meant the
         one control that decides whether a coach hears about a hurt athlete at all sat
         behind a tab most of them never opened. It belongs with the rest of the things
@@ -10974,65 +11600,243 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
 
 /* The gym, written down once. Every programme this app writes — the individualization
    card's session above all — is checked against this list, so an exercise that needs a
-   trap bar is not prescribed in a gym that has none. The COUNT is what makes it useful
-   for a squad rather than one athlete: six barbells and one trap bar is a different
-   session from one barbell and six trap bars.
+   trap bar is not prescribed in a gym that has none.
+
+   A line is an item AT a weight, and both halves earn their place. The COUNT is what
+   makes the list useful for a squad rather than one athlete: six barbells and one trap
+   bar is a different session from one barbell and six trap bars. The WEIGHT is what
+   makes it useful for a PRESCRIPTION: a rack whose heaviest dumbbell is 12 kg cannot
+   hold a senior's heavy day, and "3 × 6 @ 40 kg" written into it is not a session, it
+   is a wish. So the assistant is told both, and it is told them per line — a gym with
+   10 kg and 22.5 kg dumbbells lists two lines of dumbbells, not one.
+
+   The ten items below are always on screen because they are the vocabulary everything
+   else is written in; anything else — a second weight of the same item, a piece of kit
+   this list has never heard of — is added underneath and can be removed again.
 
    Empty means unconstrained, which is what it has always meant here: with nothing on
    the list the model is free to pick whatever the exercise library suggests. */
 function SetupEquipment({setup,save}){
   const rows=eqRows(setup);
-  const byId={};rows.forEach(r=>{byId[r.id]=r;});
-  const custom=rows.filter(r=>r.custom);
-  const write=next=>save('equipment',next
-    .filter(r=>r&&(r.qty!=null||r.custom))
-    .map(r=>({id:r.id,label:r.custom?r.label:'',qty:r.qty==null?null:r.qty})));
-  const setQty=(id,label,custom,v)=>{
-    const qty=v===''?null:Math.max(0,Math.round(Number(v)||0));
-    const next=rows.some(r=>r.id===id)
-      ?rows.map(r=>r.id===id?{...r,qty}:r)
-      :[...rows,{id,label,custom,qty}];
-    write(next);
+  /* The default ten, each shown whether or not the gym has answered for it yet. */
+  const base=DI_EQUIPMENT.map(x=>rows.find(r=>!r.extra&&r.id===x.id)
+    ||{rid:x.id,extra:false,blank:true,id:x.id,custom:false,label:L(x.label[0],x.label[1]),qty:null,kg:null});
+  const extra=rows.filter(r=>r.extra);
+  /* A base line is only worth storing once it says something; an added line is stored
+     whatever it says, because the coach put it there on purpose. */
+  const write=(nb,nx)=>save('equipment',[
+    ...nb.filter(r=>r.qty!=null||r.kg!=null).map(r=>({id:r.id,label:'',qty:r.qty,kg:r.kg})),
+    ...nx.map(r=>({rid:r.rid,id:r.id,label:r.custom?r.label:'',qty:r.qty,kg:r.kg})),
+  ]);
+  const num=(v,dec)=>{
+    if(String(v).trim()==='')return null;
+    const n=Number(v);
+    if(!isFinite(n)||n<0)return null;
+    return dec?Math.round(n*10)/10:Math.round(n);
   };
-  const addCustom=()=>{
-    const name=(prompt(L('Ekipman adı','Equipment name'))||'').trim();
-    if(!name)return;
-    const id=`${EQ_CUSTOM}${diExName(name)}`;
-    if(rows.some(r=>r.id===id))return;
-    write([...rows,{id,label:name,custom:true,qty:1}]);
+  const patch=(rid,upd)=>write(
+    base.map(r=>r.rid===rid?{...r,...upd}:r),
+    extra.map(r=>r.rid===rid?{...r,...upd}:r));
+  const removeExtra=rid=>write(base,extra.filter(r=>r.rid!==rid));
+
+  /* Adding a line. The type is picked from the same ten the list is written in, so a
+     second weight of an item the model already understands stays understood; "Diğer"
+     is the escape hatch for kit this vocabulary has no word for. */
+  const[adding,setAdding]=useState(false);
+  const[nType,setNType]=useState(DI_EQUIPMENT[0].id);
+  const[nName,setNName]=useState('');
+  const[nKg,setNKg]=useState('');
+  const[nQty,setNQty]=useState('');
+  const resetAdd=()=>{setAdding(false);setNType(DI_EQUIPMENT[0].id);setNName('');setNKg('');setNQty('');};
+  const other=nType==='other';
+  const canAdd=other?!!nName.trim():true;
+  const submitAdd=()=>{
+    if(!canAdd)return;
+    const name=nName.trim();
+    const id=other?`${EQ_CUSTOM}${diExName(name)}`:nType;
+    const known=DI_EQUIPMENT.find(x=>x.id===id);
+    write(base,[...extra,{rid:uid(),extra:true,id,custom:!known,
+      label:known?L(known.label[0],known.label[1]):name,
+      kg:num(nKg,true),qty:num(nQty,false)}]);
+    resetAdd();
   };
-  const remove=id=>write(rows.filter(r=>r.id!==id));
-  const have=rows.filter(r=>r.qty==null||r.qty>0).length;
-  return(<div className="su-eq">
-    <div className="su-eq-grid">
-      {DI_EQUIPMENT.map(x=>{
-        const r=byId[x.id];
-        return(<label key={x.id} className={'su-eq-row'+(r&&(r.qty==null||r.qty>0)?' on':'')}>
-          <span className="su-eq-nm">{L(x.label[0],x.label[1])}</span>
-          <input type="number" min="0" max="99" value={r&&r.qty!=null?r.qty:''}
-            onChange={e=>setQty(x.id,'',false,e.target.value)}
-            placeholder={L('yok','none')}/>
-          <span className="su-eq-u">{L('adet','pcs')}</span>
-        </label>);
-      })}
-      {custom.map(r=>(<label key={r.id} className={'su-eq-row custom'+(r.qty==null||r.qty>0?' on':'')}>
-        <span className="su-eq-nm">{r.label}</span>
+
+  const avail=rows.filter(r=>r.qty==null||r.qty>0);
+  const have=avail.length;
+  /* How much of it there is, in kilos, for the lines that named both numbers. It is the
+     one figure a coach can sanity-check the list against at a glance. */
+  const totalKg=avail.reduce((t,r)=>t+((r.kg!=null&&r.qty!=null)?r.kg*r.qty:0),0);
+  /* Lit only once the gym has answered for the item. A default line nobody has typed
+     into is not "available with an unstated number" — it is unanswered, and showing all
+     ten as available is exactly the wrong thing to tell a coach at a glance. */
+  const line=(r,removable)=>(
+    <div key={r.rid} className={'su-eq-row'+(!r.blank&&r.qty!==0?' on':'')+(r.extra?' added':'')}>
+      <span className="su-eq-nm" title={r.label}>{r.label}</span>
+      <span className="su-eq-fld">
+        <input type="number" min="0" max="500" step="0.5" value={r.kg!=null?r.kg:''}
+          onChange={e=>patch(r.rid,{kg:num(e.target.value,true)})}
+          aria-label={L(`${r.label} ağırlık`,`${r.label} weight`)} placeholder="—"/>
+        <i className="su-eq-u">kg</i>
+      </span>
+      <span className="su-eq-fld">
         <input type="number" min="0" max="99" value={r.qty!=null?r.qty:''}
-          onChange={e=>setQty(r.id,r.label,true,e.target.value)} placeholder={L('yok','none')}/>
-        <span className="su-eq-u">{L('adet','pcs')}</span>
-        <button type="button" className="su-eq-x" onClick={()=>remove(r.id)}
-          aria-label={L('Kaldır','Remove')}>✕</button>
-      </label>))}
+          onChange={e=>patch(r.rid,{qty:num(e.target.value,false)})}
+          aria-label={L(`${r.label} adet`,`${r.label} count`)} placeholder={L('yok','none')}/>
+        <i className="su-eq-u">{L('adet','pcs')}</i>
+      </span>
+      {removable
+        ?<button type="button" className="su-eq-x" onClick={()=>removeExtra(r.rid)}
+           title={L('Bu satırı kaldır','Remove this line')} aria-label={L('Kaldır','Remove')}>✕</button>
+        :<span className="su-eq-x ghost" aria-hidden="true"/>}
+    </div>);
+
+  return(<div className="su-eq">
+    <div className="help su-lead">{L('Salonda ne var, kaç tane ve kaç kilo. Program asistanı bu listeyi okur: envanterde olmayan bir alet yazılmaz, envanterdeki en ağır yükün üstüne reçete yazılmaz ve aynı anda adetten fazlasını gerektiren bir kurgu kurulmaz.',
+                                     'What the gym has, how many of it, and at what weight. The programme assistant reads this list: it will not prescribe a piece of kit that is not here, will not load past the heaviest weight on it, and will not build a set-up that needs more of one item at once than there are.')}</div>
+    {/* One grid, added lines last: an extra weight of an item is the same kind of thing
+        as the item, so it belongs in the same column flow rather than in a full-width
+        strip of its own. Its dashed edge is what says it can be removed. */}
+    <div className="su-eq-grid">
+      {base.map(r=>line(r,false))}
+      {extra.map(r=>line(r,true))}
     </div>
+
+    {adding&&<div className="su-eq-add">
+      <select value={nType} onChange={e=>setNType(e.target.value)} aria-label={L('Ekipman türü','Equipment type')}>
+        {DI_EQUIPMENT.map(x=><option key={x.id} value={x.id}>{L(x.label[0],x.label[1])}</option>)}
+        <option value="other">{L('Diğer (kendi adını yaz)','Other (type a name)')}</option>
+      </select>
+      {other&&<input value={nName} onChange={e=>setNName(e.target.value)}
+        placeholder={L('Ekipman adı','Equipment name')} autoFocus/>}
+      <input type="number" min="0" max="500" step="0.5" value={nKg} onChange={e=>setNKg(e.target.value)}
+        placeholder={L('kg','kg')} aria-label={L('Ağırlık (kg)','Weight (kg)')}/>
+      <input type="number" min="0" max="99" value={nQty} onChange={e=>setNQty(e.target.value)}
+        placeholder={L('adet','pcs')} aria-label={L('Adet','Count')}/>
+      <button className="btn xs" onClick={submitAdd} disabled={!canAdd}>{L('Ekle','Add')}</button>
+      <button className="btn xs sec" onClick={resetAdd}>{L('Vazgeç','Cancel')}</button>
+      <span className="help" style={{margin:0,flexBasis:'100%'}}>
+        {L('Aynı ekipmanın farklı ağırlıkları ayrı satır olur — 6 × 10 kg dumbbell ve 4 × 22,5 kg dumbbell iki satırdır.',
+           'Different weights of the same item are separate lines — 6 × 10 kg dumbbells and 4 × 22.5 kg dumbbells are two lines.')}
+      </span>
+    </div>}
+
     <div className="su-eq-foot">
-      <button className="btn xs sec" onClick={addCustom}>＋ {L('Ekipman ekle','Add equipment')}</button>
+      {!adding&&<button className="btn xs sec" onClick={()=>setAdding(true)}>＋ {L('Ekipman ekle','Add equipment')}</button>}
       <span className="help" style={{margin:0}}>
         {have
-          ?L(`${have} ekipman envanterde. Bireyselleştirme ekranında yazılan programlar yalnızca bu ekipmanla yapılabilecek egzersizleri içerir; adet, aynı anda kaç sporcunun o işi yapabileceğini söyler.`,
-             `${have} items in the inventory. Sessions written on the Individualization screen use only what is here, and the count says how many athletes can be on one piece at once.`)
+          ?L(`${have} ekipman envanterde${totalKg>0?`, toplam ${Math.round(totalKg*10)/10} kg`:''}. Bireyselleştirme ekranında yazılan programlar yalnızca bu ekipmanla yapılabilecek egzersizleri içerir; adet aynı anda kaç sporcunun o işi yapabileceğini, kilo ise ne kadar yüklenebileceğini söyler.`,
+             `${have} items in the inventory${totalKg>0?`, ${Math.round(totalKg*10)/10} kg in total`:''}. Sessions written on the Individualization screen use only what is here: the count says how many athletes can be on one piece at once, and the weight says how far it can be loaded.`)
           :L('Envanter boş — ekipman kısıtı uygulanmaz. Bir sayı girdiğin ekipman envantere girer; 0 girersen yok sayılır.',
              'The inventory is empty, so no equipment constraint is applied. Type a number to add an item; 0 means you do not have it.')}
       </span>
+    </div>
+  </div>);
+}
+
+
+/* CoachOS AI Assistant Knowledge Database — the thirty rules the individualization
+   assistant writes against, on the screen where they can be argued with.
+
+   They are shown as titles, two to a row, because thirty opened rules is not a page
+   anyone reads: the closed grid is a contents page, and the one rule being worked on
+   is the one that is open. An opened card takes the full width, since a rule is edited
+   as prose.
+
+   Every card carries its own KAYNAKÇA. A rule the club rewrites stops being the
+   document's claim and becomes the club's, and the reference line is what makes that
+   difference inspectable — the next coach can see what the rule rests on rather than
+   who typed it last.
+
+   Nothing here is compiled into the assistant. The text is read at the moment a
+   session is generated (see kbForAI / diBuildProgramInput), so a rule corrected this
+   afternoon binds the programme written a minute later. */
+function KnowledgePanel({data,setData}){
+  const rules=kbRules(data);
+  const[open,setOpen]=useState(()=>({}));
+  const[find,setFind]=useState('');
+  const write=next=>setData(prev=>({...prev,knowledge:next.map(r=>
+    ({id:r.id,no:r.no,title:r.title,body:r.body,sources:r.sources,custom:!!r.custom}))}));
+  const patch=(id,upd)=>write(rules.map(r=>r.id===id?{...r,...upd}:r));
+  const toggle=id=>setOpen(o=>({...o,[id]:!o[id]}));
+  const seedOf=r=>KB_DEFAULT.find(d=>('kb'+d.no)===r.id)||null;
+  const reset=r=>{const d=seedOf(r);if(!d)return;
+    if(!confirm(L(`"${r.title||d.title}" kuralı varsayılan metnine dönsün mü? Yazdığın değişiklikler kaybolur.`,
+                  `Reset "${r.title||d.title}" to its default text? Your edits to it are lost.`)))return;
+    patch(r.id,{title:d.title,body:d.body,sources:d.sources});};
+  const dirty=r=>{const d=seedOf(r);return!!d&&(d.title!==r.title||d.body!==r.body||d.sources!==r.sources);};
+  const addRule=()=>{
+    const no=rules.reduce((m,r)=>Math.max(m,r.no||0),0)+1;
+    const id='kb'+uid();
+    write([...rules,{id,no,title:L(`Kural ${no}`,`Rule ${no}`),body:'',sources:'',custom:true}]);
+    setOpen(o=>({...o,[id]:true}));
+  };
+  const del=r=>{
+    if(!r.custom)return;
+    if(!confirm(L(`"${r.title}" kuralı silinsin mi?`,`Delete the rule "${r.title}"?`)))return;
+    write(rules.filter(x=>x.id!==r.id));
+  };
+  const q=diExName(find);
+  const shown=q?rules.filter(r=>diExName(`${r.no} ${r.title} ${r.body} ${r.sources}`).includes(q)):rules;
+  const edited=rules.filter(dirty).length;
+
+  return(<div className="kb">
+    <div className="help su-lead">{L('Bireyselleştirme ekranındaki yapay zekâ destekli program yazma asistanı her programı bu kurallara göre yazar. Kurallar canlıdır: buradaki bir metni değiştirdiğinde, bundan sonra üretilen her program yeni hâline göre çıkar — yeniden yükleme ya da kurulum gerekmez. Başlığa bas, kuralı düzenle, altındaki kaynakça alanına dayandığı çalışmaları yaz.',
+                                     'The AI-assisted programme writer on the Individualization screen writes every session against these rules. They are live: change a text here and every programme generated from that moment on follows the new wording — nothing to reload or re-install. Click a title to edit the rule, and write the studies it rests on into the references box underneath.')}</div>
+    <div className="kb-top">
+      <input className="kb-find" value={find} onChange={e=>setFind(e.target.value)}
+        placeholder={L('Kurallarda ara…','Search the rules…')} aria-label={L('Kurallarda ara','Search the rules')}/>
+      <span className="kb-count">
+        {q?L(`${shown.length} / ${rules.length} kural`,`${shown.length} / ${rules.length} rules`)
+          :L(`${rules.length} kural`,`${rules.length} rules`)}
+        {edited>0?L(` · ${edited} düzenlendi`,` · ${edited} edited`):''}
+      </span>
+      <button className="btn xs sec" onClick={()=>setOpen({})}
+        disabled={!Object.values(open).some(Boolean)}>{L('Hepsini kapat','Collapse all')}</button>
+      <button className="btn xs sec" onClick={addRule}>＋ {L('Kural ekle','Add rule')}</button>
+    </div>
+    <div className="kb-grid">
+      {shown.map(r=>{
+        const isOpen=!!open[r.id];
+        return(<div key={r.id} className={'kb-card'+(isOpen?' open':'')}>
+          <button type="button" className="kb-h" onClick={()=>toggle(r.id)}
+            aria-expanded={isOpen}>
+            <span className="kb-no">{r.no}</span>
+            <span className="kb-t">{r.title||L('(başlıksız)','(untitled)')}</span>
+            <span className="kb-caret">▼</span>
+          </button>
+          {isOpen&&<div className="kb-body">
+            <div className="kb-f">
+              <label>{L('Başlık','Title')}</label>
+              <input value={r.title} onChange={e=>patch(r.id,{title:e.target.value})}
+                placeholder={L('Kural başlığı','Rule title')}/>
+            </div>
+            <div className="kb-f">
+              <label>{L('Kural','Rule')}</label>
+              <textarea className="kb-rule" value={r.body} onChange={e=>patch(r.id,{body:e.target.value})}
+                placeholder={L('Asistanın bu kuralı nasıl uygulayacağını yaz.','Write how the assistant should apply this rule.')}/>
+            </div>
+            {/* The evidence the rule stands on, under the rule and not beside it: read
+                second, because it answers a question the rule has to raise first. */}
+            <div className="kb-f kb-src-wrap">
+              <label>{L('Kaynakça','References')}</label>
+              <textarea className="kb-src" value={r.sources} onChange={e=>patch(r.id,{sources:e.target.value})}
+                placeholder={L('Yazar, yıl — her kaynak bir satır. Ör. Harper ve ark., 2022','Author, year — one reference per line. E.g. Harper et al., 2022')}/>
+              <div className="help" style={{margin:0}}>{L('Kaynakça da asistana gider: bir kuralın gerekçesini yazarken dayandığı çalışmayı görebilir.',
+                                                          'The references go to the assistant as well, so it can see what a rule rests on when it explains a decision.')}</div>
+            </div>
+            <div className="kb-acts">
+              <button className="btn xs sec" onClick={()=>toggle(r.id)}>{L('Kapat','Close')}</button>
+              {dirty(r)&&<button className="btn xs sec" onClick={()=>reset(r)}>{L('Varsayılana döndür','Reset to default')}</button>}
+              {r.custom&&<button className="btn xs danger" onClick={()=>del(r)}>{L('Kuralı sil','Delete rule')}</button>}
+              <span className="help">{dirty(r)
+                ?L('Bu kural düzenlendi — asistan bundan sonra senin yazdığın hâli okur.',
+                   'This rule has been edited — the assistant reads your wording from now on.')
+                :L('Değişiklikler anında kaydedilir.','Changes are saved as you type.')}</span>
+            </div>
+          </div>}
+        </div>);
+      })}
+      {shown.length===0&&<div className="ex-empty kb-empty">{L('Aramayla eşleşen kural yok.','No rule matches that search.')}</div>}
     </div>
   </div>);
 }
@@ -27912,12 +28716,20 @@ const DI_EQUIPMENT=[
   {id:'bodyweight',label:['Vücut ağırlığı','Bodyweight']},
 ];
 const diEqLabel=id=>{const e=DI_EQUIPMENT.find(x=>x.id===id);return e?e.label:[id,id];};
-/* ---- The gym's kit, with counts (Setup tab) -------------------------------
+/* ---- The gym's kit, with counts and weights (Settings tab) -----------------
    Equipment used to be ticked per session on the individualization screen, which asked
    the same question every day about a gym that does not change. It is set once on the
-   Setup tab now, and it carries a COUNT: six barbells and one trap bar is a different
+   Settings tab now, and it carries a COUNT: six barbells and one trap bar is a different
    session from one barbell and six trap bars, and a programme written for a squad has
    to know which it is.
+
+   It carries a WEIGHT too, because a count on its own does not say what can be loaded:
+   a rack of six dumbbells that top out at 12 kg cannot hold a senior's heavy day, and a
+   session that prescribes 40 kg into it is unwritable however many of them there are.
+   So a line is an item AT a weight, and a gym holds as many lines of one item as it has
+   weights worth naming — 6 × 10 kg dumbbells and 4 × 22.5 kg dumbbells are two lines of
+   the same kit. `rid` is what lets the second line exist: a line the coach added has
+   one, the ten default items do not, and that is the only difference between them.
 
    An item with no count is available with an unstated number; an item at zero is not
    available at all. An empty inventory means no equipment constraint — the same thing
@@ -27929,12 +28741,18 @@ function eqRows(setup){
     const id=String(r.id||'').trim()||`${EQ_CUSTOM}${diExName(r.label)}`;
     const known=DI_EQUIPMENT.find(x=>x.id===id);
     const qty=recNum(r.qty);
-    return{id,custom:!known,
+    const kg=recNum(r.kg);
+    const rid=String(r.rid||'').trim();
+    return{rid:rid||id,extra:!!rid||!known,id,custom:!known,
       label:String(r.label||'').trim()||(known?L(known.label[0],known.label[1]):id),
-      qty:qty==null?null:Math.max(0,Math.round(qty))};
+      qty:qty==null?null:Math.max(0,Math.round(qty)),
+      kg:kg==null?null:Math.max(0,Math.round(kg*10)/10)};
   });
 }
 const eqAvailable=setup=>eqRows(setup).filter(r=>r.qty==null||r.qty>0);
+/* One line of the inventory as a coach would say it out loud — "Dumbbell 22.5 kg × 4".
+   Used wherever the kit is shown back rather than edited. */
+const eqLine=r=>`${r.label}${r.kg!=null?` ${r.kg} kg`:''}${r.qty!=null?` × ${r.qty}`:''}`;
 /* What a piece of work NEEDS, read off the exercise's own tags when the library has
    them and off its name when it does not. Deliberately narrow: it exists to catch a
    barbell lift written for a gym with no barbell, not to classify exercises. */
@@ -28661,7 +29479,26 @@ Kullanıcı mesajında tek bir JSON: sporcunun profili (sporcu), HESAPLANMIŞ ha
 bağlamı (musabaka_baglami — MD-3, MD+1 gibi), oynama süresi, sezon fazı, sporcu hedefleri,
 test baseline sapmaları, OYUNUN KENDİSİ (spor_baglami), ANTRENÖRÜN BUGÜNKÜ TALİMATI
 (antrenor_talimati), salonun ekipman envanteri (salon_ekipmani), takımın o günkü seansı
-(takim_seansi), hareket aileleri sözlüğü (hareket_aileleri) ve egzersiz kütüphanesi.
+(takim_seansi), hareket aileleri sözlüğü (hareket_aileleri), egzersiz kütüphanesi ve
+KULÜBÜN BİLGİ TABANI (bilgi_tabani).
+
+BİLGİ TABANI — PROGRAMIN YAZILDIĞI ZEMİN
+bilgi_tabani alanı, kulübün programlama kurallarının tamamını taşır. Her kuralın bir
+numarası (kural_no), bir başlığı (baslik), metni (kural) ve varsa kaynakçası (kaynakca)
+vardır. Bu kurallar koç tarafından yazılır ve değiştirilebilir; sana HER ZAMAN o anki
+güncel hâlleriyle gelir. Ezberden veya genel literatür bilginden değil, SANA GELEN
+METİNDEN çalış.
+
+- Yazdığın program bilgi tabanındaki hiçbir kuralla çelişemez. Çelişiyorsa program yanlıştır.
+- Bir kural, senin genel bilginle çelişiyorsa kural kazanır. Kulübün yazdığı metin bağlayıcıdır.
+- İki kural birbiriyle çelişiyorsa daha kısıtlayıcı ve daha güvenli olanı uygula, çelişkiyi
+  koc_uyarisi alanında tek cümleyle bildir.
+- Egzersiz seçimi, doz, sıralama, hacim, faz mantığı, yaş/pozisyon/cinsiyet yaklaşımı ve
+  kaçınılacak hatalar bu kurallardan okunur.
+- genel_gerekce ve uyulan_kisitlar alanlarında, kararı belirleyen kuralları numarasıyla
+  ("Kural 13", "Kural 27" gibi) an. En az iki kurala atıf yap; uydurma numara yazma —
+  yalnızca sana gelen kural_no değerlerini kullan.
+- bilgi_tabani boş gelirse bu bölümü yok say ve aşağıdaki mutlak kurallarla çalış.
 
 MUTLAK KURALLAR
 1. HESAPLANMIŞ DEĞERLERİ YENİDEN ÜRETME. Hazır oluş skoru, sRPE, ACWR, maça kalan gün,
@@ -28683,7 +29520,15 @@ MUTLAK KURALLAR
 4. YALNIZCA ENVANTERDEKİ EKİPMANI KULLAN. salon_ekipmani listesi doluysa, yazdığın her
    egzersiz o listedeki ekipmanla (veya vücut ağırlığıyla) yapılabilmeli. Her satırın
    "ekipman" alanına ne gerektiğini yaz. Adet bilgisi verilmişse, bir seansta aynı anda
-   o adetten fazlasını gerektiren kurgu yazma. Liste boşsa ekipman kısıtı yok demektir.
+   o adetten fazlasını gerektiren kurgu yazma.
+   AĞIRLIK DA BİR KISITTIR. Her satırın agirlik_kg alanı o ekipmanın birim ağırlığını,
+   adet alanı kaç tane olduğunu söyler; envanter_ozeti alanı aynı bilgiyi tek satırda
+   tekrarlar. Yazdığın yük envanterde GERÇEKTEN VAR OLAN ağırlıkla uygulanabilir olmalı:
+   en ağır dumbbell 20 kg ise 30 kg dumbbell isteyen bir yükleme yazamazsın; gereken yük
+   envanterin üstündeyse ya ağırlığı envanterdeki bir değere indir, ya tempo/tekrar/duraklama
+   ile uyaranı koru, ya da aynı kaliteyi veren başka bir egzersize geç — ve nedenini
+   uyulan_kisitlar alanında yaz. Ağırlığı "belirtilmemiş" olan satırda ağırlık kısıtı yoktur.
+   Liste boşsa ekipman kısıtı yok demektir.
 5. AĞRI VE SAKATLIK. agri_pattern_kurallari, ağrı bildirilen bölgeyi hangi hareket
    paternlerinin yüklediğini söyler: hafif ağrıda o paternleri azalt, yönlendirilen
    paternlere kay.
@@ -28829,7 +29674,7 @@ Antrenör diline uygun, teknik ama gösterişsiz; her yargı bu sporcunun verisi
 
 /* The request. Everything computed is already decided; the brief is the coach's; the
    equipment is the gym's. The answer's only job is the session itself. */
-function diBuildProgramInput(bundle,plan,exercises,instr,setup){
+function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
   const eq=eqAvailable(setup);
   const eqIds=new Set(eq.map(e=>e.id));
   /* The library by movement pattern, so a pick comes from the coach's own exercises.
@@ -28917,7 +29762,19 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
       ana_faz_maks_egzersiz:i.maxExercises,
       ek_notlar:i.notes||null,
     },
-    salon_ekipmani:eq.length?eq.map(e=>({ekipman:e.label,adet:e.qty==null?'belirtilmemiş':e.qty})):null,
+    /* The rules the club is working to, exactly as they read on the Settings tab at
+       this moment — not a copy compiled into the prompt. A rule corrected an hour ago
+       binds this session. */
+    bilgi_tabani:kbForAI(knowledge),
+    /* The kit, with what it weighs as well as how many there are: a count says how many
+       athletes can be on one piece at once, a weight says how far it can be loaded, and
+       a prescription that ignores either is unwritable in this gym. */
+    salon_ekipmani:eq.length?eq.map(e=>({
+      ekipman:e.label,
+      adet:e.qty==null?'belirtilmemiş':e.qty,
+      agirlik_kg:e.kg==null?'belirtilmemiş':e.kg,
+      envanter_ozeti:eqLine(e),
+    })):null,
     takim_seansi:src,
     egzersiz_kutuphanesi:Object.keys(lib).length?lib:null,
     hareket_pattern_sozlugu:IV_PATTERNS,
@@ -29045,11 +29902,33 @@ function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
   const eq=eqAvailable(setup);
   if(eq.length){
     const ids=new Set(eq.map(e=>e.id));
+    /* The heaviest of each item the gym actually owns. Only consulted for kit where the
+       prescribed load IS the implement — a dumbbell or a medicine ball. A barbell, trap
+       bar, cable or machine is loaded with plates or a stack this inventory does not
+       count, so its own weight says nothing about the ceiling and checking it would
+       report a 100 kg squat in a gym with a 20 kg bar. */
+    const EQ_SELF_LOADED=['dumbbell','medball'];
+    const maxKg={};
+    eq.forEach(e=>{if(e.kg!=null&&(maxKg[e.id]==null||e.kg>maxKg[e.id]))maxKg[e.id]=e.kg;});
     rows.forEach(r=>{
       const need=eqNeedOf(libMap?libMap[String(r.name||'').toLowerCase()]:null,`${r.name} ${r.equipment||''}`);
-      if(need&&!ids.has(need))
+      if(need&&!ids.has(need)){
         out.push(L(`"${r.name}" ${L(diEqLabel(need)[0],diEqLabel(need)[1])} gerektiriyor — salon envanterinde yok.`,
           `"${r.name}" needs ${L(diEqLabel(need)[0],diEqLabel(need)[1])}, which is not in the gym inventory.`));
+        return;
+      }
+      if(!need||!EQ_SELF_LOADED.includes(need)||maxKg[need]==null)return;
+      /* A load line reads "24 kg", "2×22.5 kg", "%75 1RM"; only an absolute kilo figure
+         can be compared with a rack, so a percentage or an RPE is left alone. */
+      const txt=String(r.load||'');
+      if(/%|1rm|rpe|rir/i.test(txt))return;
+      const asked=(txt.match(/(\d+(?:[.,]\d+)?)\s*kg/gi)||[])
+        .map(x=>Number(String(x).replace(/\s*kg/i,'').replace(',','.')))
+        .filter(n=>isFinite(n));
+      const top=asked.length?Math.max(...asked):null;
+      if(top!=null&&top>maxKg[need])
+        out.push(L(`"${r.name}" ${top} kg istiyor — envanterdeki en ağır ${L(diEqLabel(need)[0],diEqLabel(need)[1])} ${maxKg[need]} kg.`,
+          `"${r.name}" asks for ${top} kg — the heaviest ${L(diEqLabel(need)[0],diEqLabel(need)[1])} in the inventory is ${maxKg[need]} kg.`));
     });
   }
   /* Pain below the blocking threshold is still worth a look where the session loads it. */
@@ -29454,7 +30333,7 @@ function DiSection({n,title,meta,children,className}){
   </section>);
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne,knowledge}){
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const review=diReadReview(team,srcKey,plan.ath.id,date);
@@ -29474,7 +30353,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     if(busy||!apiKey)return;
     setErr('');setBusy(true);
     try{
-      const input=diBuildProgramInput(bundle,plan,exercises,instr,setup);
+      const input=diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge);
       const msgs=[{role:'user',content:JSON.stringify(input,null,1)}];
       const ask=()=>provider==='anthropic'
         ?askCoach(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000})
@@ -29747,6 +30626,10 @@ function IndivAthleteCalendar({ath,setup,weeks,exercises,saveDays,date}){
 function IndividualizationView({data,team,updateTeam,weeks}){
   const athletes=team.athletes||[];
   const templates=data.templates||[];
+  /* The knowledge database, read fresh on every render rather than captured once: the
+     coach can be editing a rule on the Settings tab in another tab of the same browser,
+     and the next session generated here has to be written against what it says now. */
+  const knowledge=useMemo(()=>kbRules(data),[data.knowledge]);
   const store=team.indiv||{};
   const[date,setDate]=useState(fmt(today));
   const[srcKey,setSrcKey]=useState('');
@@ -30100,6 +30983,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         ai={data.ai} exercises={exercises} setup={team.setup||{}} libMap={libMap}
+        knowledge={knowledge}
         writeOne={(id,program)=>applyTo([id],{force:{id,program}})}/>:null}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
@@ -31581,7 +32465,7 @@ function App(){
       {id:'tryouts',label:L('Seçmeler','Tryouts'),icon:NAV_ICONS.tryouts,count:(data.tryouts||[]).length||null},
     ]},
     {label:L('Hesap','Account'),items:[
-      {id:'setup',label:L('Kurulum','Setup'),icon:NAV_ICONS.setup},
+      {id:'setup',label:L('Ayarlar','Settings'),icon:NAV_ICONS.setup},
       {id:'backup',label:L('Yedekleme','Backup'),icon:NAV_ICONS.backup},
     ]},
   ];
