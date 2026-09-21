@@ -252,8 +252,14 @@ against a known limit (readiness out of 5, the cut against its
 floor) and a coloured edge for its state — always beside the word
 for that state, so nothing is left to colour alone.
 
-Act 2 is the brief. Seven fields, each its own small card, none of
-them required — an empty field is not a constraint, it is ignored:
+Act 2 is the brief. Seven fields, each its own small card, laid out
+three across — 1-2-3, the constraints row, 5-6-7 — so no row ends
+in an empty cell, folding to two columns and then to one on a
+narrow screen. The number on each card is a badge in ONE colour:
+seven colours read as seven categories, and these are not
+categories, they are the order you fill the brief in. None of the
+fields is required — an empty field is not a constraint, it is
+ignored:
 
   1. Today's priority — a dropdown of twenty qualities grouped the
      way a coach thinks about them (Strength, Speed & movement,
@@ -280,11 +286,12 @@ them required — an empty field is not a constraint, it is ignored:
 Act 3 is the session that comes back. "Build the session" hands all
 of it — the brief, the computed picture, pain, injury and RTP
 status, recent exposure, the findings read off the test battery,
-the patterns pain has ruled out, the team session planned for the
-day, your exercise library and the gym's equipment inventory — to
-the model, and it writes a session in PHASES (preparation ·
-main work · complementary), with sets, reps, load, rest and a
-reason for every exercise.
+the patterns pain has ruled out and the ones still open, the sport
+the squad plays and what its game asks for, the team session
+planned for the day, your exercise library and the gym's equipment
+inventory — to the model, and it writes a session in PHASES
+(preparation · main work · complementary), with sets, reps, load,
+rest and a reason for every exercise.
 
 The exercise does not have to come from your library. Anything the
 model writes that is not in there is marked "custom" and carries a
@@ -301,6 +308,63 @@ the stimulus kept through the patterns the pain table redirects to.
 The rule is computed from the check-in and shipped as a ban list;
 an exercise that breaks it is reported under Checks before you
 write anything.
+
+THE SESSION IS WRITTEN FOR THE GAME, THE ROLE AND THE ATHLETE
+A session that would suit anybody suits nobody. The sport set on
+the Setup tab now goes to the model with what its game actually
+does to the people who play it — how long the efforts last and how
+much recovery sits between them, how far the sprints really are,
+how take-offs and landings happen, which planes the work lives in
+— and the qualities that decide it. Basketball is written out in
+full: 10-25 second possessions with partial recovery, sprints
+mostly under 10 m so the first step outweighs top speed, jumps off
+one leg from a single step, landings that are contested and
+unplanned, hard stops in every position, and a defensive stance
+that lives in the frontal plane. The other sports carry the two or
+three lines that change an exercise choice; a sport with no entry
+passes its name through and nothing else.
+
+Beside it sits what the POSITION does inside that game, which the
+app already kept, and the athlete's own numbers. The prompt is
+explicit about the order: the three are meant to point the same
+way, the athlete's own data wins when they do not, and position
+decides only between two options that are otherwise equally good.
+An exercise with no transfer is not allowed to be written — every
+movement has to answer either a demand of the game or a measured
+gap, and "general strength" is not an answer.
+
+ONE MOVEMENT FAMILY, ONE SLOT IN THE MAIN PHASE
+Squat and Lunge are two movement patterns and one FAMILY: both are
+knee-dominant, both spend the same tissue on the same quality. A
+main phase carrying a Goblet Squat and a Goblet Split Squat has
+used two of its slots once — and a check written pattern by
+pattern waves that straight through, because the two patterns
+really are different. So the rule is written against families:
+
+  knee-dominant      Squat · Lunge / Unilateral
+  hip-dominant       Hinge
+  upper-body push    Push
+  upper-body pull    Pull
+  loaded carry       Carry
+  trunk / rotation   Rotation · Core / Brace
+  jump / plyometric  Jump / Plyo
+  sprint             Sprint / Locomotion
+  mobility           Mobility
+
+AT MOST ONE EXERCISE PER FAMILY IN THE MAIN PHASE. A four-exercise
+main phase comes from four different families — a lower-body
+loading (knee OR hip), a push, a pull, and whatever the day's
+priority calls for. Where pain has closed a family, the freed slot
+goes to another family that is still open rather than to a second
+exercise from the same one; the patterns left on the table are
+shipped with the request so the model can see what it has to work
+with. If the open families genuinely run out before the exercises
+do, the answer has to say in one line which family repeats and
+why. Preparation and complementary work sit outside the rule:
+repeating there is fine when it closes a measured gap.
+
+A main phase that carries two of one family anyway is listed under
+Checks by family and by exercise name, before you write anything.
 
 THE COACH'S NOTES ON THE TEST SHEET ARE READ TOO
 The battery is not only numbers. What you wrote in the posture box,
@@ -359,9 +423,10 @@ takes the percentage off it. Where that moves a row, the card shows
 "4×6 → 3×6" and the bold number is the one that gets written.
 
 The app also checks the answer against things it can count: the
-main-phase exercise ceiling, the gym's inventory, the patterns pain
-has closed, the pain-to-movement-pattern table, your own "keep out"
-list and the high-priority findings from the battery. Anything that
+main-phase exercise ceiling, a movement family used twice in the
+main phase, the gym's inventory, the patterns pain has closed, the
+pain-to-movement-pattern table, your own "keep out" list and the
+high-priority findings from the battery. Anything that
 does not line up is listed under Checks, on screen, before you
 write anything.
 

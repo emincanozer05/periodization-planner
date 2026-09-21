@@ -5009,7 +5009,18 @@ header{background:var(--bg2)!important}
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
 .di-brief-hint{margin:0;font-size:11.5px;color:var(--dim);line-height:1.5;max-width:80ch}
-.di-fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:10px;align-items:start}
+/* Three across, and three exactly. auto-fit used to open a fourth column on a wide
+   screen that nothing ever filled: seven fields with the constraints row spanning the
+   lot left one hole beside "Keep out" and another beside "Notes". The form is three
+   columns wide — 1-2-3, the constraints row, 5-6-7 — so it is asked for as three.
+   Narrower, it folds to two and the fields that would end a row short take the whole
+   row instead, and then to one. Cards stretch to their row so no card ends early. */
+.di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+@media(max-width:1040px){
+  .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .di-fgrid>.di-field:nth-child(3),.di-fgrid>.di-field:nth-child(7){grid-column:1/-1}
+}
+@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr)}}
 .di-field{display:flex;flex-direction:column;gap:6px;min-width:0;
   border:1px solid var(--border);border-radius:11px;background:var(--bg2);padding:11px 12px 12px}
 .di-field.wide{grid-column:1/-1}
@@ -5017,12 +5028,11 @@ header{background:var(--bg2)!important}
 .di-fhd label{font-size:12.5px;font-weight:700;color:var(--text);margin:0}
 .di-fhint{font-size:10.5px;color:var(--dim);line-height:1.45}
 .di-fctl{margin-top:2px}
+/* One badge, one colour. Seven colours read as seven categories, and the fields are
+   not categories — they are the order a coach fills the brief in. */
 .di-num{font-style:normal;width:18px;height:18px;border-radius:6px;display:inline-flex;align-items:center;
-  justify-content:center;font-size:10px;font-weight:800;color:#06131f;flex:none;
+  justify-content:center;font-size:10px;font-weight:800;color:#06131f;flex:none;background:#fff;
   font-family:'IBM Plex Mono',ui-monospace,monospace}
-.di-num.n1{background:#38bdf8}.di-num.n2{background:#2dd4a7}.di-num.n3{background:#f43f5e}
-.di-num.n4{background:#c084fc}.di-num.n5{background:#f59e0b}.di-num.n6{background:#22d3ee}
-.di-num.n7{background:#f472b6}
 .di-field input,.di-field select,.di-field textarea{background:var(--panel);border-color:var(--border2)}
 .di-prio{display:flex;flex-direction:column;gap:6px}
 .di-prio-row{display:flex;gap:6px;align-items:center}
@@ -27742,6 +27752,147 @@ const DI_POS_QUALITIES={
   other:[],
 };
 
+/* ---- What the game itself asks for (§4.3, beside position) ----------------
+   DI_POS_QUALITIES above says what a ROLE does inside the game. This says what the
+   GAME does to everyone who plays it: the distances, how often the efforts repeat,
+   how take-offs and landings happen, which planes the work lives in. Like the
+   position emphasis it is CONTEXT handed over beside the athlete's own numbers, never
+   a prescription on its own — but a session written without it is a gym programme
+   that happens to be handed to a basketball player, and the point of this module is
+   the opposite of that.
+
+   Basketball is written out in full because it is the game this app is built around.
+   The other sports carry the two or three lines that actually change an exercise
+   choice; a sport with no entry passes its name through and nothing else. */
+const DI_SPORT_DEMANDS={
+  'Basketball':{label:['Basketbol','Basketball'],
+    game:[
+      ['Oyun 10-25 saniyelik hücum/savunma tekrarlarından oluşur; tekrarlar arası toparlanma kısmidir, tam değildir.',
+       'The game is a string of 10-25 s possessions, with partial and never full recovery between them.'],
+      ['Sprintlerin büyük kısmı 10 metrenin altındadır: belirleyici olan maksimum hız değil, ilk adım ve ivmelenmedir.',
+       'Most sprints are under 10 m, so the first step and acceleration decide more than top speed does.'],
+      ['Sıçramaların çoğu tek adımlı ve tek bacak kalkışlıdır; inişler dengesiz, temaslı ve önceden planlanmamıştır.',
+       'Most jumps go up off a single step and one leg, and landings are unbalanced, contested and unplanned.'],
+      ['Ani duruş ve yön değiştirme her pozisyonda tekrarlanır; eksantrik yavaşlama kapasitesi ivmelenme kadar belirleyicidir.',
+       'Hard stops and direction changes repeat in every position, so eccentric deceleration matters as much as acceleration.'],
+      ['Savunma duruşu ve kayma frontal düzlemde çalışır; ribaund, perdeleme ve post mücadelesi temas altında gövde stabilitesi ister.',
+       'Defensive stance and sliding live in the frontal plane, and rebounds, screens and post play ask for trunk stability under contact.'],
+    ],
+    qualities:[['Yatay güç ve ivmelenme','Horizontal power and acceleration'],
+      ['Dikey sıçrama ve tek bacak kalkış','Vertical jump and single-leg take-off'],
+      ['Eksantrik yavaşlama ve iniş kontrolü','Eccentric deceleration and landing control'],
+      ['Yön değiştirme ve reaktif çeviklik','Change of direction and reactive agility'],
+      ['Tekrarlı sprint yeteneği','Repeated sprint ability'],
+      ['Tek bacak kuvveti ve sağ-sol simetrisi','Single-leg strength and left/right symmetry'],
+      ['Ayak bileği dorsifleksiyonu ve kalça mobilitesi','Ankle dorsiflexion and hip mobility'],
+      ['Temas altında gövde stabilitesi','Trunk stability under contact']]},
+  'Football (Soccer)':{label:['Futbol','Football (soccer)'],
+    game:[
+      ['Yüksek toplam lokomosyon hacmi içinde tekrarlı sprintler; sprint mesafeleri basketboldan uzundur, maksimum hız belirleyicidir.',
+       'Repeated sprints inside a high total locomotion volume, over longer distances than basketball, where top speed does decide.'],
+      ['Şut, ikili mücadele ve yön değiştirme tek bacak üzerinde gerçekleşir; hamstring eksantrik talebi yüksektir.',
+       'Striking, duels and direction changes happen on one leg, and the eccentric hamstring demand is high.'],
+    ],
+    qualities:[['Maksimum hız','Maximum velocity'],['Tekrarlı sprint yeteneği','Repeated sprint ability'],
+      ['Eksantrik hamstring kuvveti','Eccentric hamstring strength'],['Yön değiştirme','Change of direction'],
+      ['Aerobik kapasite','Aerobic capacity']]},
+  'Volleyball':{label:['Voleybol','Volleyball'],
+    game:[
+      ['Bir maç boyunca tekrarlanan maksimal sıçrama ve iniş; toplam sıçrama sayısı yüklemenin kendisidir.',
+       'Maximal jumps and landings repeated across a match, where the jump count is itself the load.'],
+      ['Smaç ve servis omuzu baş üstü, yüksek hızlı rotasyona sokar; hareket kısa mesafeli ve yanaldır.',
+       'Spiking and serving take the shoulder overhead into high-speed rotation, and movement is short and lateral.'],
+    ],
+    qualities:[['Tekrarlı sıçrama kapasitesi','Repeated jump capacity'],['İniş / kuvvet absorpsiyonu','Landing and force absorption'],
+      ['Omuz kuşağı kuvveti ve kontrolü','Shoulder-girdle strength and control'],['Yanal hareket','Lateral movement'],
+      ['Reaktif kuvvet','Reactive strength']]},
+  'Handball':{label:['Hentbol','Handball'],
+    game:[
+      ['Kısa sprintler, temas altında sıçrama ve iniş, sık yön değiştirme.',
+       'Short sprints, jumps and landings under contact, and frequent direction changes.'],
+      ['Baş üstü atış omuzu tekrarlı yüksek hızlı rotasyona sokar.',
+       'Overhead throwing takes the shoulder into repeated high-speed rotation.'],
+    ],
+    qualities:[['İvmelenme','Acceleration'],['Temas altında sıçrama','Jumping under contact'],
+      ['Omuz kuşağı kontrolü','Shoulder-girdle control'],['Gövde rotasyon kuvveti','Rotational trunk strength'],
+      ['Tekrarlı sprint yeteneği','Repeated sprint ability']]},
+  'Tennis':{label:['Tenis','Tennis'],
+    game:[
+      ['Açık beceri: yanal çıkış, ani duruş ve toparlanma adımları saatlerce tekrarlanır.',
+       'An open skill: lateral pushes, hard stops and recovery steps repeated for hours.'],
+      ['Servis ve vuruşlar alt gövdeden omuza uzanan bir rotasyon zinciri üzerinden üretilir.',
+       'The serve and groundstrokes are produced through a rotational chain running from the legs to the shoulder.'],
+    ],
+    qualities:[['Yanal ivmelenme ve yavaşlama','Lateral acceleration and deceleration'],
+      ['Gövde rotasyon gücü','Rotational trunk power'],['Omuz kuşağı dayanıklılığı','Shoulder-girdle endurance'],
+      ['Tekrarlı efor kapasitesi','Repeated-effort capacity']]},
+  'Rugby':{label:['Ragbi','Rugby'],
+    game:[
+      ['Tekrarlı ivmelenmeler, çarpışma ve yerdeki mücadele; yüklenmenin büyük kısmı temas altındadır.',
+       'Repeated accelerations, collisions and ground contests, with much of the load taken under contact.'],
+      ['Mutlak kuvvet ve kütle, oyunun kendisi tarafından talep edilir.',
+       'Absolute strength and mass are asked for by the game itself.'],
+    ],
+    qualities:[['Maksimal kuvvet','Maximal strength'],['İvmelenme','Acceleration'],
+      ['Temas dayanıklılığı ve gövde stabilitesi','Contact robustness and trunk stability'],
+      ['Boyun ve omuz kuşağı kuvveti','Neck and shoulder-girdle strength'],
+      ['Tekrarlı sprint yeteneği','Repeated sprint ability']]},
+  'Track & Field':{label:['Atletizm','Track & field'],
+    game:[
+      ['Talep branşa göre değişir: sprint ve atlamalarda tek bir maksimal efor, dayanıklılık branşlarında sürdürülen efor belirleyicidir.',
+       'The demand follows the event: one maximal effort in the sprints and jumps, sustained output in the endurance events.'],
+    ],
+    qualities:[['Branşa özgü kuvvet-hız profili','Event-specific force-velocity profile'],
+      ['Reaktif kuvvet','Reactive strength'],['Teknik tekrarlanabilirlik','Technical repeatability']]},
+  'Swimming':{label:['Yüzme','Swimming'],
+    game:[
+      ['Yer tepki kuvveti yoktur; itki suda, baş üstü omuz hareketi ve gövde üzerinden üretilir.',
+       'There is no ground reaction force: propulsion comes through overhead shoulder action and the trunk.'],
+      ['Çıkış ve dönüşler, karadaki tek maksimal güç ifadeleridir.',
+       'Starts and turns are the only maximal power expressions taken on dry land.'],
+    ],
+    qualities:[['Omuz kuşağı kuvveti ve kontrolü','Shoulder-girdle strength and control'],
+      ['Gövde stabilitesi','Trunk stability'],['Çıkış ve dönüş gücü','Start and turn power'],
+      ['Skapular mobilite','Scapular mobility']]},
+};
+function diSportContext(setup){
+  const sport=String((setup&&setup.sport)||'').trim();
+  if(!sport)return null;
+  const d=DI_SPORT_DEMANDS[sport];
+  if(!d)return{spor:sport};
+  return{spor:L(d.label[0],d.label[1]),
+    oyunun_dogasi:d.game.map(g=>L(g[0],g[1])),
+    belirleyici_kaliteler:d.qualities.map(q=>L(q[0],q[1]))};
+}
+
+/* ---- Movement families (the variety rule) ---------------------------------
+   The pattern vocabulary the library is tagged in is finer than the question a coach
+   asks when they look at a session and say "this is twice the same thing". Squat and
+   Lunge / Unilateral are two different patterns and one FAMILY: both are knee-
+   dominant, both spend the same tissue on the same quality, and a main phase carrying
+   one of each has used two of its slots once. A pattern-by-pattern check waves exactly
+   that case through, which is why the variety rule is written against families.
+   Patterns are untouched everywhere else. */
+const DI_PATTERN_FAMILY={
+  'Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip',
+  'Push':'push','Pull':'pull','Carry':'carry',
+  'Rotation':'trunk','Core / Brace':'trunk',
+  'Jump / Plyo':'plyo','Sprint / Locomotion':'locomotion','Mobility':'mobility',
+};
+const DI_FAMILY_LABEL={
+  knee:['diz dominant (Squat / Lunge)','knee-dominant (squat / lunge)'],
+  hip:['kalça dominant (Hinge)','hip-dominant (hinge)'],
+  push:['üst vücut itiş','upper-body push'],
+  pull:['üst vücut çekiş','upper-body pull'],
+  carry:['taşıma','loaded carry'],
+  trunk:['gövde / rotasyon','trunk / rotation'],
+  plyo:['sıçrama / pliometri','jump / plyometric'],
+  locomotion:['sprint / lokomosyon','sprint / locomotion'],
+  mobility:['mobilite','mobility'],
+};
+const diFamilyOf=p=>DI_PATTERN_FAMILY[p]||null;
+const diFamilyLabel=f=>{const x=DI_FAMILY_LABEL[f];return x?L(x[0],x[1]):String(f||'');};
+
 /* ---- The gym's kit, and what one exercise costs in minutes ---------------
    The equipment list is the vocabulary the Setup tab's inventory is written in; the
    minutes-per-exercise figure is what turns a session length into an exercise ceiling
@@ -28508,8 +28659,9 @@ Kullanıcı mesajında tek bir JSON: sporcunun profili (sporcu), HESAPLANMIŞ ha
 (hazir_olus, wellness), iç yük (ic_yuk — RPE / sRPE / ACWR), ağrı (agri), sakatlık ve RTP
 (sakatlik), son günlerin maruziyeti (son_3_gun_maruziyet, son_7_gun_maruziyet), müsabaka
 bağlamı (musabaka_baglami — MD-3, MD+1 gibi), oynama süresi, sezon fazı, sporcu hedefleri,
-test baseline sapmaları, ANTRENÖRÜN BUGÜNKÜ TALİMATI (antrenor_talimati), salonun ekipman
-envanteri (salon_ekipmani), takımın o günkü seansı (takim_seansi) ve egzersiz kütüphanesi.
+test baseline sapmaları, OYUNUN KENDİSİ (spor_baglami), ANTRENÖRÜN BUGÜNKÜ TALİMATI
+(antrenor_talimati), salonun ekipman envanteri (salon_ekipmani), takımın o günkü seansı
+(takim_seansi), hareket aileleri sözlüğü (hareket_aileleri) ve egzersiz kütüphanesi.
 
 MUTLAK KURALLAR
 1. HESAPLANMIŞ DEĞERLERİ YENİDEN ÜRETME. Hazır oluş skoru, sRPE, ACWR, maça kalan gün,
@@ -28585,6 +28737,42 @@ PROGRAMI NASIL YAZ
   hareket paterni sözlüğünden doldur.
 - Takımın o günkü seansı (takim_seansi) varsa onunla çakışan ikinci bir yüklenme yazma;
   tamamlayıcı ol.
+
+OYUNA, POZİSYONA VE SPORCUYA ÖZGÜ OL — BU BİRİNCİ ÖNCELİKTİR
+- Bu bir salon programı değil, bu sporcunun KENDİ SPORUNDA daha iyi oynaması için
+  yazılmış bir seanstır. spor_baglami alanı oyunun doğasını (mesafeler, efor ve
+  toparlanma aralıkları, kalkış ve iniş biçimleri, çalışılan düzlemler) ve o sporun
+  belirleyici kalitelerini taşır; sporcu.position ve sporcu.position_qualities bu
+  rolün o oyunun içinde ne yaptığını söyler.
+- Egzersiz seçimi ve dozu üç şeyle aynı yöne bakmalı: OYUNUN TALEBİ, POZİSYONUN VURGUSU
+  ve SPORCUNUN KENDİ VERİSİ (testler, yük, ağrı, hedefler). Üçü çelişirse sporcunun
+  verisi önde gelir; pozisyon, eşit derecede iyi iki seçenek arasında karar verdirir ve
+  tek başına programı yazmaz.
+- Transferi olmayan egzersiz yazma. Seçtiğin her hareket ya oyundaki somut bir talebe
+  (ör. tek bacak kalkış, ani duruş, frontal düzlemde kayma, temas altında gövde
+  stabilitesi) ya da ölçülmüş bir eksiğe karşılık gelmeli. "Genel kuvvet" bir karşılık
+  değildir.
+- Her egzersizin gerekçesinde, o hareketin oyundaki hangi talebe ya da hangi bulguya
+  karşılık geldiğini açıkça söyle.
+
+HAREKET ÇEŞİTLİLİĞİ — ANA FAZDA AYNI İŞİ İKİ KEZ YAPMA
+- hareket_aileleri sözlüğü her hareket paternini bir AİLEYE bağlar. Squat ile
+  Lunge / Unilateral aynı ailededir (diz dominant); Hinge ayrı bir ailedir (kalça
+  dominant); Push, Pull, Carry, gövde, sıçrama, sprint ve mobilite ayrı ailelerdir.
+- ANA FAZDA BİR AİLEDEN EN FAZLA BİR EGZERSİZ olur. İki farklı patern seçmiş olman
+  yetmez: "Goblet Squat + Goblet Split Squat" iki patern ama tek ailedir ve ana fazın
+  iki slotunu aynı işe harcar. Aynı hareketin varyasyonunu ikinci kez yazmak da öyle.
+- Ana fazı birbirini tamamlayan ailelerden kur: bir alt vücut yüklenmesi (diz VEYA
+  kalça dominant), bir üst vücut itiş, bir üst vücut çekiş, ve günün önceliği neyi
+  gerektiriyorsa (sıçrama, sprint, taşıma, gövde). Dört egzersizlik bir ana faz dört
+  farklı aileden gelir.
+- Bir aile yasak paternler yüzünden kapalıysa, boşalan slotu aynı aileden ikinci bir
+  egzersizle DEĞİL, açık olan başka bir aileyle doldur. kullanilabilir_paternler alanı
+  bugün elinde kalan paternleri verir; oradan seç.
+- Aile sayısı egzersiz sayısından azsa ve tekrar gerçekten kaçınılmazsa, hangi ailenin
+  neden iki kez geçtiğini uyulan_kisitlar alanında tek cümleyle yaz.
+- Hazırlık ve tamamlayıcı fazlar bu kuralın dışındadır: orada tekrar, ölçülmüş bir
+  eksiği kapatıyorsa meşrudur.
 
 EGZERSİZ SEÇİMİ LİTERATÜRE UYGUN OLSUN
 - Seçtiğin egzersiz, hedeflediğin kaliteyi gerçekten geliştiren bir egzersiz olmalı:
@@ -28669,6 +28857,8 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
         hareket_paterni:r.pattern||null}))).slice(0,30),
   }:null;
   const i=instr||diInstr(null,null);
+  const blocked=diBlockedPatterns(bundle);
+  const blockedSet=diBlockedSet(blocked);
   return{
     tarih:bundle.date,
     sporcu:bundle.athlete,
@@ -28700,8 +28890,19 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
       const o=diObservations(t);
       return o.sources.length?{test_tarihi:t.date,notlar:o.sources}:null;
     })(),
-    /* Patterns a painful region takes off the table entirely, not just reduces. */
-    yasak_paternler:diBlockedPatterns(bundle),
+    /* Patterns a painful region takes off the table entirely, not just reduces, and —
+       because a closed pattern is only half the answer — the ones still open, so the
+       slot it empties is filled from a different family rather than from the same one
+       a second time. */
+    yasak_paternler:blocked,
+    kullanilabilir_paternler:IV_PATTERNS.filter(p=>!blockedSet.has(p)),
+    /* The families the variety rule is written against: Squat and Lunge are two
+       patterns and one family, which is the case the rule exists for. */
+    hareket_aileleri:IV_PATTERNS.map(p=>{const f=diFamilyOf(p);
+      return{patern:p,aile:f,aile_adi:f?diFamilyLabel(f):null};}),
+    /* The game the session is for. Position says what a role does inside it; this says
+       what the game does to everyone who plays it. */
+    spor_baglami:diSportContext(setup),
     antrenor_talimati:{
       oncelikler:i.priorities.map(diPrioLabel),
       mutlaka_olsun:i.must,
@@ -28815,6 +29016,21 @@ function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
   if(i.maxExercises&&main.length>i.maxExercises)
     out.push(L(`Ana fazda ${main.length} egzersiz var, sınır ${i.maxExercises}. (Hazırlık ve tamamlayıcı fazlar bu sayıya dahil değil.)`,
       `The main phase has ${main.length} exercises against a ceiling of ${i.maxExercises}. (Preparation and complementary work does not count.)`));
+  /* Two exercises of one movement family in the MAIN phase: the session spent two of
+     its slots on the same quality. Checked on families rather than on patterns
+     because that is the case a coach actually objects to — Goblet Squat beside Goblet
+     Split Squat is two patterns, one family, and twice the same knee-dominant work. */
+  const fams=new Map();
+  main.forEach(r=>{
+    const f=diFamilyOf(patOf(r));
+    if(!f)return;
+    fams.set(f,(fams.get(f)||[]).concat(String(r.name||'').trim()));
+  });
+  fams.forEach((names,f)=>{
+    if(names.length<2)return;
+    out.push(L(`Ana fazda ${names.length} ${diFamilyLabel(f)} egzersizi var (${names.join(', ')}) — aynı iş iki kez yapılmış. Hareket ailesi çeşitlendirilmeli.`,
+      `The main phase carries ${names.length} ${diFamilyLabel(f)} exercises (${names.join(', ')}) — the same work twice. The movement families should be varied.`));
+  });
   /* A pattern a painful region rules out is an error, not a note. */
   const blocked=diBlockedPatterns(bundle);
   const blockedSet=diBlockedSet(blocked);
@@ -29080,7 +29296,7 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
   const set=(k,v)=>save({...instr,[k]:v});
   const field=(n,title,hint,control,wide)=>(
     <div className={'di-field'+(wide?' wide':'')}>
-      <div className="di-fhd"><i className={'di-num n'+n}>{n}</i>
+      <div className="di-fhd"><i className="di-num">{n}</i>
         <label>{title}</label></div>
       <span className="di-fhint">{hint}</span>
       <div className="di-fctl">{control}</div>
