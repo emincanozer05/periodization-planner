@@ -4037,18 +4037,11 @@ header{background:var(--bg2)!important}
 /* Daily individualization panel — the engine's reading and the model's draft, in the
    athlete's own card. Everything above .di-ai is computed; everything inside it is
    written by the model and waits on the coach. */
-.di-panel{border:1px solid var(--border);border-radius:12px;background:var(--elevated);padding:12px 14px;display:flex;flex-direction:column;gap:12px}
-.di-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .di-title{font-size:12px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .di-flag{border:1px solid var(--border);border-radius:999px;padding:2px 11px;font-size:11px;font-weight:800;letter-spacing:.04em}
 .di-dim{color:var(--dim);font-size:11px}
 .di-k{font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;flex:none}
-.di-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
-.di-box{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:8px 11px;min-width:0}
-.di-box .di-v{font-size:19px;font-weight:800;color:var(--text);line-height:1.15;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .di-box .di-v.sm{font-size:14px}
-.di-box .di-v small{font-size:10px;color:var(--dim);font-weight:600;margin-left:2px}
-.di-box .di-sub{font-size:10.5px;color:var(--text2);margin-top:2px;overflow-wrap:anywhere}
 .di-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 /* The basis belongs to the ROW, not to the classes in it. As `flex:1 1 260px` on
    .di-sig it followed the list into the column-flex adjustment box, where a flex
@@ -4061,7 +4054,6 @@ header{background:var(--bg2)!important}
 .di-chip{background:var(--panel);border:1px solid var(--border);color:var(--text2);border-radius:999px;padding:4px 11px;font-size:11.5px;cursor:pointer;transition:all .12s}
 .di-chip:hover{border-color:var(--dim)}
 .di-chip.on{background:rgba(0,148,255,.16);border-color:var(--accent);color:var(--text);font-weight:700}
-.di-goals{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;border-top:1px dashed var(--border);padding-top:10px}
 /* Exposure reads as a level, not a number: the coach wants "jumping — low", and the set
    count behind it is on the tooltip-free side of the decision. */
 .di-adj{border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:9px 12px;display:flex;flex-direction:column;gap:7px}
@@ -4079,7 +4071,6 @@ header{background:var(--bg2)!important}
 .di-ai{border-top:1px solid var(--border);padding-top:11px;display:flex;flex-direction:column;gap:10px}
 .di-aibar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .di-err{color:#fda4af;background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);border-radius:8px;padding:7px 11px;font-size:11.5px}
-.di-lead{margin:0;font-size:13px;color:var(--text);line-height:1.6}
 .di-why{margin:0;font-size:12px;color:var(--text2);line-height:1.65}
 .di-subs{display:flex;flex-direction:column;gap:8px}
 .di-sub-degistir,.di-sub-cikar{border-left:2px solid var(--accent);background:var(--panel);border-radius:0 8px 8px 0;padding:7px 11px}
@@ -4972,109 +4963,202 @@ header{background:var(--bg2)!important}
   letter-spacing:.09em;text-transform:uppercase;color:var(--ac)}
 .tib-al .w{font-size:12.5px;font-weight:700;color:var(--text);margin-top:2px}
 .tib-al .t{font-size:11.5px;line-height:1.5;color:var(--text2);margin-top:3px}
-/* ===== Daily individualization — the coach's brief and the session it writes ===== */
-.di-adjline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11.5px}
-.di-adjpill{border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.1);color:#fcd34d;border-radius:999px;padding:2px 11px;font-weight:700}
-.di-adjpill b{font-family:'IBM Plex Mono',ui-monospace,monospace}
-/* The brief. Seven numbered fields on one card — the numbers are what make it read as
-   a form to fill in rather than a wall of inputs. */
-.di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);padding:13px 15px;display:flex;flex-direction:column;gap:13px}
-.di-brief-hd{display:flex;gap:11px;align-items:flex-start;flex-wrap:wrap}
-.di-brief-ic{font-size:18px;line-height:1.2}
-.di-brief-note{margin-left:auto;max-width:330px;font-size:11px;line-height:1.5;color:var(--text2);border:1px solid rgba(56,189,248,.28);background:rgba(56,189,248,.08);border-radius:9px;padding:7px 11px}
-.di-fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px}
-.di-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+/* ===== Daily individualization — the coach's brief and the session it writes =====
+   Three acts, each with its own header and its own card: what today looks like, what
+   the coach is asking for, and what came back. The status colours are roles, never
+   decoration, and every one of them has the word for the state beside it — a tile is
+   readable with the hue removed. */
+.di-panel{border:1px solid var(--border);border-radius:14px;background:var(--elevated);
+  padding:14px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.di-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.di-sec{display:flex;flex-direction:column;gap:11px}
+.di-sech{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);padding-bottom:7px}
+.di-sech h4{margin:0;font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em;
+  flex:1 1 auto;min-width:0;text-align:left}
+.di-secn{width:19px;height:19px;border-radius:6px;background:var(--panel);border:1px solid var(--border2);
+  color:var(--dim);font:700 10px/19px 'IBM Plex Mono',ui-monospace,monospace;text-align:center;flex:none}
+.di-secmeta{margin-left:auto;font-size:10.5px;color:var(--dim);text-align:right;flex:0 1 auto}
+/* ---- Act 1: the computed tiles ---- */
+.di-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:9px}
+.di-box{position:relative;border:1px solid var(--border);border-radius:11px;background:var(--panel);
+  padding:10px 12px 11px;min-width:0;display:flex;flex-direction:column;gap:5px;overflow:hidden;--tone:var(--dim)}
+/* The status rail: a 2px edge in the role's colour. It repeats what the sub-line
+   already says in words, so nothing is carried by hue alone. */
+.di-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent}
+.di-box.t-good{--tone:#2dd4a7}.di-box.t-warn{--tone:#f59e0b}.di-box.t-bad{--tone:#f43f5e}
+.di-box.t-good::before,.di-box.t-warn::before,.di-box.t-bad::before{background:var(--tone)}
+.di-box .di-v{font-size:21px;font-weight:700;color:var(--text);line-height:1.1;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;overflow-wrap:anywhere}
+.di-box .di-v.txt{font-family:inherit;font-size:15.5px;font-weight:700;letter-spacing:0}
+.di-box .di-v small{font-size:10.5px;color:var(--dim);font-weight:600;margin-left:3px;letter-spacing:0}
+.di-box .di-sub{display:flex;align-items:baseline;gap:6px;font-size:10.5px;color:var(--text2);
+  line-height:1.45;overflow-wrap:anywhere;margin-top:auto}
+.di-dot{width:6px;height:6px;border-radius:50%;background:var(--tone);flex:none;transform:translateY(-1px)}
+/* Meter: the fill carries the state, the track is the same ramp two steps down, so the
+   bar reads as one scale rather than as a coloured bar on a grey one. */
+.di-meter{height:3px;border-radius:2px;background:color-mix(in srgb,var(--tone) 22%,transparent);overflow:hidden}
+.di-meter>span{display:block;height:100%;border-radius:2px;background:var(--tone)}
+.di-sigrow{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+.di-sigchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
+  border-radius:7px;padding:3px 9px}
+.di-goals{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding-top:2px;border-top:0}
+/* ---- Act 2: the brief ---- */
+.di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
+.di-brief-hint{margin:0;font-size:11.5px;color:var(--dim);line-height:1.5;max-width:80ch}
+.di-fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:10px;align-items:start}
+.di-field{display:flex;flex-direction:column;gap:6px;min-width:0;
+  border:1px solid var(--border);border-radius:11px;background:var(--bg2);padding:11px 12px 12px}
 .di-field.wide{grid-column:1/-1}
-.di-field>label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--text)}
+.di-fhd{display:flex;align-items:center;gap:8px}
+.di-fhd label{font-size:12.5px;font-weight:700;color:var(--text);margin:0}
 .di-fhint{font-size:10.5px;color:var(--dim);line-height:1.45}
-.di-num{font-style:normal;width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#04121f;font-family:'IBM Plex Mono',ui-monospace,monospace;flex:none}
+.di-fctl{margin-top:2px}
+.di-num{font-style:normal;width:18px;height:18px;border-radius:6px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;color:#06131f;flex:none;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
 .di-num.n1{background:#38bdf8}.di-num.n2{background:#2dd4a7}.di-num.n3{background:#f43f5e}
 .di-num.n4{background:#c084fc}.di-num.n5{background:#f59e0b}.di-num.n6{background:#22d3ee}
 .di-num.n7{background:#f472b6}
+.di-field input,.di-field select,.di-field textarea{background:var(--panel);border-color:var(--border2)}
 .di-prio{display:flex;flex-direction:column;gap:6px}
 .di-prio-row{display:flex;gap:6px;align-items:center}
-.di-prio-row select{flex:1;min-width:0}
-.di-chiplist{display:flex;flex-direction:column;gap:6px}
+.di-prio-row select{flex:1;min-width:0;height:34px;padding:0 10px}
+.di-x{width:30px;height:30px;flex:none;border:1px solid var(--border);border-radius:8px;background:var(--elevated);
+  color:var(--dim);font-size:12px;cursor:pointer;line-height:1}
+.di-x:hover{border-color:#f43f5e;color:#fda4af}
+.di-chiplist{display:flex;flex-direction:column;gap:7px}
 .di-chipin{display:flex;gap:6px}
-.di-chipin input{flex:1;min-width:0}
-.di-tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--elevated);border-radius:999px;padding:3px 6px 3px 11px;font-size:11.5px;color:var(--text2)}
-.di-tag button{background:none;border:0;color:var(--dim);cursor:pointer;font-size:11px;line-height:1;padding:0 2px}
-.di-tag button:hover{color:#f43f5e}
+.di-chipin input{flex:1;min-width:0;height:34px;text-overflow:ellipsis}
+.di-chipadd{width:34px;flex:none;height:34px;border:1px solid var(--border2);border-radius:8px;
+  background:var(--elevated);color:var(--text2);cursor:pointer;font-size:14px;line-height:1}
+.di-chipadd:hover:not(:disabled){border-color:var(--accent);color:var(--accent2)}
+.di-chipadd:disabled{opacity:.4;cursor:not-allowed}
+.di-tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--elevated);
+  border-radius:999px;padding:3px 7px 3px 11px;font-size:11.5px;color:var(--text2);max-width:100%}
+.di-tag span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.di-tag button{background:none;border:0;color:currentColor;opacity:.55;cursor:pointer;font-size:11px;line-height:1;padding:0 2px}
+.di-tag button:hover{opacity:1}
 .di-tag.must{border-color:rgba(45,212,167,.45);color:#7ee7c7;background:rgba(45,212,167,.1)}
 .di-tag.avoid{border-color:rgba(244,63,94,.45);color:#fda4af;background:rgba(244,63,94,.1)}
 .di-tag.con{border-color:rgba(192,132,252,.45);color:#d8b4fe;background:rgba(192,132,252,.1)}
 /* The constraint dropdown. It stays open while several are ticked, and each row carries
    its own explanation box — the same sentence the request ships to the model. */
-.di-conwrap{display:flex;flex-direction:column;gap:7px;position:relative}
-.di-condrop{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-size:12.5px;cursor:pointer}
-.di-condrop:hover,.di-condrop.on{border-color:var(--accent)}
+.di-conwrap{display:flex;flex-direction:column;gap:8px;position:relative}
+.di-condrop{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+  background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:0 12px;height:36px;
+  color:var(--text);font-size:12.5px;cursor:pointer}
+.di-condrop:hover,.di-condrop.on{border-color:var(--accent);color:var(--text)}
 .di-condrop i{font-style:normal;font-size:9px;color:var(--dim)}
-.di-conmenu{position:absolute;z-index:40;top:44px;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--panel);border:1px solid var(--dim);border-radius:11px;box-shadow:0 12px 30px rgba(0,0,0,.45);padding:5px}
-.di-conitem{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;position:relative;font-size:12.5px;color:var(--text2)}
-.di-conitem:hover,.di-conitem:focus-visible{background:var(--elevated);color:var(--text);outline:none}
+.di-conmenu{position:absolute;z-index:40;top:42px;left:0;right:0;max-height:292px;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--border2);border-radius:11px;
+  box-shadow:0 16px 38px rgba(0,0,0,.55);padding:5px}
+.di-conitem{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:8px;cursor:pointer;
+  position:relative;font-size:12.5px;color:var(--text2)}
+.di-conitem:hover,.di-conitem:focus-visible{background:var(--hover);color:var(--text);outline:none}
 .di-conitem.on{color:var(--text)}
-.di-conbox{width:15px;height:15px;border:1px solid var(--border);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#2dd4a7;flex:none}
+.di-conbox{width:15px;height:15px;border:1px solid var(--border2);border-radius:4px;display:inline-flex;
+  align-items:center;justify-content:center;font-size:10px;color:#2dd4a7;flex:none}
 .di-conitem.on .di-conbox{border-color:#2dd4a7;background:rgba(45,212,167,.14)}
 .di-conic{font-size:13px;flex:none;width:18px;text-align:center}
 .di-connm{flex:1;min-width:0}
-/* The explanation, in a box beside the row it belongs to. Hidden until the row is
-   hovered or focused, so the menu still reads as a list of twelve choices. */
-.di-contip{display:none;position:absolute;left:100%;top:-4px;margin-left:10px;width:290px;background:var(--bg2);border:1px solid var(--dim);border-radius:10px;padding:10px 12px;box-shadow:0 12px 30px rgba(0,0,0,.5);z-index:60}
+.di-contip{display:none;position:absolute;left:100%;top:-4px;margin-left:10px;width:296px;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:10px;padding:10px 12px;box-shadow:0 16px 38px rgba(0,0,0,.6);z-index:60}
 .di-conitem:hover .di-contip,.di-conitem:focus-visible .di-contip{display:block}
 .di-contip b{display:block;font-size:12px;color:var(--text);margin-bottom:4px}
 .di-contip p{margin:0 0 5px;font-size:11px;line-height:1.5;color:var(--text2)}
 .di-contip p.ex{color:var(--dim);font-style:italic}
 .di-contip p.ai{color:#a7f3d0;margin-bottom:0}
-.di-contip p.ai i{font-style:normal;color:var(--dim);text-transform:uppercase;font-size:9.5px;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-contip p.ai i{font-style:normal;color:var(--dim);text-transform:uppercase;font-size:9.5px;letter-spacing:.06em;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
 @media(max-width:900px){
   .di-contip{position:static;width:auto;margin:6px 0 0;box-shadow:none}
   .di-conitem{flex-wrap:wrap}
 }
-.di-connote,.di-notes{width:100%;min-height:58px;resize:vertical}
-.di-numc{display:flex;flex-direction:column;gap:6px}
-.di-numin{display:flex;align-items:center;gap:7px}
-.di-numin input{width:110px}
-.di-numin span{font-size:11px;color:var(--dim)}
-.di-numbtns{display:flex;gap:5px;flex-wrap:wrap}
-.di-numb{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',ui-monospace,monospace}
-.di-numb:hover{border-color:var(--dim)}
-.di-numb.on{border-color:#f59e0b;color:#fcd34d;background:rgba(245,158,11,.12);font-weight:700}
-.di-genbar{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
-.di-genbar .di-dim{flex:1;min-width:200px}
-.di-gen{display:flex;flex-direction:column;gap:2px;align-items:center;border:0;border-radius:11px;cursor:pointer;padding:11px 22px;
-  background:linear-gradient(135deg,#1d4ed8,#0284c7);color:#fff;box-shadow:0 6px 18px rgba(2,132,199,.28)}
+.di-connote{width:100%;min-height:44px;resize:vertical;font-size:12px}
+.di-notes{width:100%;min-height:62px;resize:vertical;font-size:12px}
+.di-numc{display:flex;flex-direction:column;gap:7px}
+.di-numin{position:relative;width:118px}
+.di-numin input{width:100%;height:34px;padding-right:38px}
+.di-numin span{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;pointer-events:none}
+.di-numbtns{display:inline-flex;gap:0;flex-wrap:wrap;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:max-content}
+.di-numb{background:var(--elevated);border:0;border-right:1px solid var(--border);color:var(--text2);
+  padding:5px 12px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-numb:last-child{border-right:0}
+.di-numb:hover{background:var(--hover);color:var(--text)}
+.di-numb.on{background:rgba(245,158,11,.16);color:#fcd34d;font-weight:700}
+.di-genbar{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;
+  border-top:1px solid var(--border);padding-top:12px}
+.di-genbar .di-dim{flex:1;min-width:220px;line-height:1.5}
+.di-gen{display:flex;flex-direction:column;gap:1px;align-items:center;border:0;border-radius:11px;cursor:pointer;
+  padding:10px 24px;background:var(--grad);color:#06131f;box-shadow:0 6px 18px rgba(0,148,255,.24)}
 .di-gen:hover:not(:disabled){filter:brightness(1.08)}
-.di-gen:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
-.di-gen-t{font-size:13.5px;font-weight:800;letter-spacing:.02em}
-.di-gen-s{font-size:10.5px;opacity:.85}
-/* The session that came back. */
-.di-result{border:1px solid var(--border);border-radius:12px;background:var(--elevated);padding:12px 14px;display:flex;flex-direction:column;gap:11px}
-.di-reshd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.di-resacts{margin-left:auto;display:flex;gap:6px}
-.di-prog{display:flex;flex-direction:column;gap:9px}
-.di-progblk{display:flex;flex-direction:column;gap:5px}
-.di-prow{display:grid;grid-template-columns:minmax(0,1.7fr) auto minmax(0,1fr);gap:8px 12px;align-items:baseline;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:8px 11px}
+.di-gen:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.di-gen-t{font-size:13.5px;font-weight:800;letter-spacing:.01em}
+.di-gen-s{font-size:10.5px;opacity:.78}
+/* ---- Act 3: the session that came back ---- */
+.di-sec-prog .di-sech h4{color:var(--text)}
+.di-result{border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  padding:13px 14px 14px;display:flex;flex-direction:column;gap:12px;position:relative}
+.di-resacts{position:absolute;top:11px;right:12px;display:flex;gap:6px}
+.di-lead{margin:0;font-size:12.5px;line-height:1.6;color:var(--text2);max-width:78ch;padding-right:150px}
+.di-prog{display:flex;flex-direction:column;gap:12px}
+.di-progblk{display:flex;flex-direction:column;gap:6px}
+.di-blkh{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:700;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.07em;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-blkh::after{content:'';flex:1;height:1px;background:var(--border)}
+/* One exercise: number, name and tags on the left, the dose pill and its meta on the
+   right, the reason underneath on the same column as the name. */
+.di-prow{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:4px 11px;align-items:start;
+  border:1px solid var(--border);border-radius:10px;background:var(--bg2);padding:9px 12px}
+.di-pnum{font:700 11px/20px 'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-align:center}
+.di-prow-main{min-width:0;display:flex;flex-direction:column;gap:4px}
 .di-prow-nm{display:flex;gap:7px;align-items:baseline;flex-wrap:wrap;min-width:0}
-.di-prow-nm b{font-size:13px;color:var(--text)}
-.di-src,.di-pat,.di-eqt{font-style:normal;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--border);border-radius:5px;padding:0 6px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-prow-nm b{font-size:13.5px;color:var(--text);line-height:1.35}
+.di-src,.di-pat,.di-eqt{font-style:normal;font-size:9px;text-transform:uppercase;letter-spacing:.05em;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
 .di-src.library{color:#2dd4a7;border-color:rgba(45,212,167,.4)}
-.di-prow-dose{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12.5px;color:var(--text2);white-space:nowrap}
-.di-prow-dose s{color:var(--dim);margin-right:5px}
-.di-prow-dose b{color:var(--text)}
-.di-prow-load{font-size:11.5px;color:var(--text2);text-align:right}
-.di-prow-why{grid-column:1/-1;font-size:11.5px;color:var(--text2);line-height:1.5;border-top:1px dashed var(--border);padding-top:6px}
-.di-progadj{padding-top:2px}
-.di-checks{display:flex;flex-direction:column;gap:5px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.07);border-radius:9px;padding:8px 11px}
-.di-writebar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:11px}
-.di-write{border:0;border-radius:10px;cursor:pointer;padding:10px 20px;font-size:13px;font-weight:800;
-  background:linear-gradient(135deg,#0f766e,#2dd4a7);color:#04211b;box-shadow:0 6px 16px rgba(45,212,167,.25)}
+.di-prow-why{font-size:11.5px;color:var(--text2);line-height:1.5;max-width:74ch}
+.di-prow-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:0}
+.di-dose{display:inline-flex;align-items:baseline;gap:5px;border:1px solid var(--border2);border-radius:8px;
+  background:var(--elevated);padding:3px 10px;font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
+.di-dose b{font-size:13.5px;color:var(--text);font-weight:700}
+.di-dose s{font-size:11px;color:var(--dim)}
+.di-dose em{font-style:normal;font-size:11px;color:var(--text2);padding:0 1px}
+.di-dose.cut{border-color:rgba(245,158,11,.38);background:rgba(245,158,11,.08)}
+.di-dose.cut b{color:#fcd34d}
+.di-pmeta{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.di-pmeta span{font-size:10.5px;color:var(--text2);background:var(--elevated);border:1px solid var(--border);
+  border-radius:6px;padding:1px 7px;white-space:nowrap}
+.di-progadj{font-size:10.5px;color:var(--dim);line-height:1.5;max-width:82ch}
+.di-checks{display:flex;flex-direction:column;gap:6px;border:1px solid rgba(245,158,11,.35);
+  background:rgba(245,158,11,.07);border-radius:10px;padding:9px 12px}
+.di-checkh{font-size:11px;font-weight:700;color:#fcd34d;text-transform:uppercase;letter-spacing:.07em;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-writebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:13px}
+.di-write{border:0;border-radius:10px;cursor:pointer;padding:11px 22px;font-size:13.5px;font-weight:800;
+  background:linear-gradient(135deg,#0f766e,#2dd4a7);color:#04211b;box-shadow:0 6px 18px rgba(45,212,167,.22)}
 .di-write:hover{filter:brightness(1.07)}
-.di-wrote{color:#2dd4a7;font-weight:700;font-size:12.5px}
+.di-writebar .di-dim{flex:1;min-width:180px}
+.di-wrote{display:inline-flex;align-items:center;gap:6px;color:#2dd4a7;font-weight:700;font-size:12.5px;
+  border:1px solid rgba(45,212,167,.4);background:rgba(45,212,167,.1);border-radius:8px;padding:5px 12px}
 .di-hold.sm{font-size:11.5px;line-height:1.55}
+@media(max-width:720px){
+  .di-panel{padding:12px}
+  .di-prow{grid-template-columns:20px minmax(0,1fr);row-gap:8px}
+  .di-prow-right{grid-column:2;align-items:flex-start}
+  .di-pmeta{justify-content:flex-start}
+  .di-lead{padding-right:0}
+  .di-resacts{position:static;justify-content:flex-end}
+}
 /* Setup — the equipment inventory */
 .su-eq{display:flex;flex-direction:column;gap:12px}
 .su-eq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:8px}
-.su-eq-row{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;background:var(--bg2);padding:7px 11px}
+.su-eq-row{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:9px;
+  background:var(--bg2);padding:7px 11px}
 .su-eq-row.on{border-color:rgba(45,212,167,.45);background:rgba(45,212,167,.07)}
 .su-eq-nm{flex:1;min-width:0;font-size:12.5px;color:var(--text2)}
 .su-eq-row.on .su-eq-nm{color:var(--text)}
@@ -28527,10 +28611,11 @@ function DiChipList({value,onChange,placeholder,tone}){
     <div className="di-chipin">
       <input value={txt} onChange={e=>setTxt(e.target.value)} placeholder={placeholder}
         onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}}/>
-      <button type="button" className="btn xs sec" onClick={add} disabled={!txt.trim()}>＋</button>
+      <button type="button" className="di-chipadd" onClick={add} disabled={!txt.trim()}
+        aria-label={L('Ekle','Add')}>＋</button>
     </div>
     {list.length>0&&<div className="di-chips">
-      {list.map((x,i)=><span key={i} className={'di-tag '+(tone||'')}>{x}
+      {list.map((x,i)=><span key={i} className={'di-tag '+(tone||'')} title={x}><span>{x}</span>
         <button type="button" onClick={()=>onChange(list.filter((_,k)=>k!==i))} aria-label={L('Kaldır','Remove')}>✕</button></span>)}
     </div>}
   </div>);
@@ -28569,7 +28654,7 @@ function DiPriorityPicker({value,onChange}){
         <option value="">{L('— öncelik seç','— pick a priority')}</option>
         {options(v)}
       </select>
-      {(rows.length>1||i>=list.length)&&<button type="button" className="btn xs sec"
+      {(rows.length>1||i>=list.length)&&<button type="button" className="di-x"
         onClick={()=>{if(i>=list.length)setAdding(false);else setAt(i,'');}}
         aria-label={L('Kaldır','Remove')}>✕</button>}
     </div>)}
@@ -28612,7 +28697,7 @@ function DiConstraintPicker({value,onChange,note,onNote}){
     </div>}
     {list.length>0&&<div className="di-chips">
       {list.map(id=>{const c=diConRow(id);return<span key={id} className="di-tag con">
-        {c.icon} {L(c.label[0],c.label[1])}
+        <span>{c.icon} {L(c.label[0],c.label[1])}</span>
         <button type="button" onClick={()=>toggle(id)} aria-label={L('Kaldır','Remove')}>✕</button></span>;})}
     </div>}
     <LiveInput className="di-connote" value={note||''} onChange={onNote}
@@ -28637,79 +28722,63 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
   </div>);
 }
 
-/* The brief. Seven fields, none of them required, and the note under them says what an
-   empty one means. It is stored per athlete PER DAY, beside the programme it produced,
-   so yesterday's instruction never silently drives today's session. */
+/* The brief. Seven fields, none of them required, and the line under the heading says
+   what an empty one means. Each field is its own small card: the columns of a
+   three-across grid have very different heights (a priority list against a number),
+   and without a card edge they read as one ragged block of controls. It is stored per
+   athlete PER DAY, beside the session it produced, so yesterday's instruction never
+   silently drives today's. */
 function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
   const set=(k,v)=>save({...instr,[k]:v});
+  const field=(n,title,hint,control,wide)=>(
+    <div className={'di-field'+(wide?' wide':'')}>
+      <div className="di-fhd"><i className={'di-num n'+n}>{n}</i>
+        <label>{title}</label></div>
+      <span className="di-fhint">{hint}</span>
+      <div className="di-fctl">{control}</div>
+    </div>);
   return(<div className="di-brief">
-    <div className="di-brief-hd">
-      <span className="di-brief-ic" aria-hidden="true">📋</span>
-      <div>
-        <div className="di-title">{L('Antrenör talimatı','Coach brief')}</div>
-        <div className="di-dim">{L('Bu sporcunun bugünkü programını bireyselleştirmek için talimatlarını gir.',
-          'Tell the model how to individualise this athlete\'s session today.')}</div>
-      </div>
-      <div className="di-brief-note">{L('Bu alanlar isteğe bağlıdır. Boş bırakılanlar yok sayılır; AI mevcut verilerle en uygun programı yazar.',
-        'Every field is optional. An empty one is ignored — the model writes the best session it can from the data it already has.')}</div>
-    </div>
+    <p className="di-brief-hint">{L('Bu sporcunun bugünkü programını bireyselleştirmek için talimatlarını gir. Boş bıraktığın alan kısıt değildir, yok sayılır.',
+      'Tell the model how to individualise this athlete today. A field left empty is not a constraint — it is ignored.')}</p>
 
     <div className="di-fgrid">
-      <div className="di-field">
-        <label><i className="di-num n1">1</i>{L('Bugünün önceliği','Today\'s priority')}</label>
-        <span className="di-fhint">{L('Bugün bu sporcuda en çok hangi fiziksel kaliteye odaklanılsın?',
-          'Which physical quality should today build?')}</span>
-        <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>
-      </div>
-      <div className="di-field">
-        <label><i className="di-num n2">2</i>{L('Mutlaka olsun','Must be in')}</label>
-        <span className="di-fhint">{L('Programda mutlaka yer almasını istediğin egzersiz, içerik veya hedef.',
-          'An exercise, a quality or a target the session has to carry.')}</span>
+      {field(1,L('Bugünün önceliği','Today\'s priority'),
+        L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
+        <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>)}
+      {field(2,L('Mutlaka olsun','Must be in'),
+        L('Programda mutlaka yer alsın.','What the session has to carry.'),
         <DiChipList value={instr.must} onChange={v=>set('must',v)} tone="must"
-          placeholder={L('ör. Trap Bar Jump, core çalışması, adduktör','e.g. trap bar jump, core work, adductors')}/>
-      </div>
-      <div className="di-field">
-        <label><i className="di-num n3">3</i>{L('Kaçınılacak','Keep out')}</label>
-        <span className="di-fhint">{L('Bugün yapılmasını istemediğin egzersiz, hareket paterni veya yükleme.',
-          'An exercise, a pattern or a loading you do not want today.')}</span>
+          placeholder={L('ör. Trap Bar Jump','e.g. trap bar jump')}/>)}
+      {field(3,L('Kaçınılacak','Keep out'),
+        L('Bugün yapılmasın.','What must not appear today.'),
         <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
-          placeholder={L('ör. yüksek hacimli eksantrik iş, derin squat','e.g. high-volume eccentrics, deep squat')}/>
-      </div>
-      <div className="di-field wide">
-        <label><i className="di-num n4">4</i>{L('Ek kısıtlar','Constraints')}</label>
-        <span className="di-fhint">{L('Bugüne özel ek bir kısıtlama var mı? Üstüne gelince ne anlama geldiğini yazar.',
-          'Any limit that applies today. Hover one to read what it means.')}</span>
+          placeholder={L('ör. derin squat','e.g. deep squat')}/>)}
+      {field(4,L('Ek kısıtlar','Constraints'),
+        L('Bugüne özel bir sınır var mı? Bir kısıtın üstüne gelince ne anlama geldiği açılır.',
+          'Any limit that applies today. Hover one to read what it means.'),
         <DiConstraintPicker value={instr.constraints} onChange={v=>set('constraints',v)}
-          note={instr.constraintNote} onNote={v=>set('constraintNote',v)}/>
-      </div>
-      <div className="di-field">
-        <label><i className="di-num n5">5</i>{L('Seans süresi','Session length')}</label>
-        <span className="di-fhint">{L('Bu sporcunun bugünkü S&C seansı için hedef süre.','Target length for today\'s S&C session.')}</span>
+          note={instr.constraintNote} onNote={v=>set('constraintNote',v)}/>,true)}
+      {field(5,L('Seans süresi','Session length'),
+        L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration} onChange={v=>set('duration',v)} choices={DI_DUR_CHOICES}
-          unit={L('dk','min')} placeholder={L('seanstan','from session')} min={10} max={240}/>
-      </div>
-      <div className="di-field">
-        <label><i className="di-num n6">6</i>{L('Maks. egzersiz','Exercise ceiling')}</label>
-        <span className="di-fhint">{L('Programda en fazla kaç egzersiz olsun?','How many exercises at most?')}</span>
+          unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>)}
+      {field(6,L('Maks. egzersiz','Exercise ceiling'),
+        L('Programda en fazla kaç egzersiz olsun?','How many exercises at most?'),
         <DiNumberChoice value={instr.maxExercises} onChange={v=>set('maxExercises',v)} choices={DI_EX_CHOICES}
-          unit={L('adet','items')} placeholder={L('süreden','from duration')} min={1} max={14}/>
-      </div>
-      <div className="di-field wide">
-        <label><i className="di-num n7">7</i>{L('Ek notlar','Notes')}</label>
-        <span className="di-fhint">{L('Bu sporcu için ek not veya talimat var mı?','Anything else the model should know?')}</span>
+          unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>)}
+      {field(7,L('Ek notlar','Notes'),
+        L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
-          placeholder={L('ör. bugün daha çok hız odaklı olsun, müsabakaya hazırlık, yorgun hissediyor',
-            'e.g. keep it speed-focused today, pre-game, says they feel flat')}/>
-      </div>
+          placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
+            'e.g. game today, keep it to priming')}/>)}
     </div>
 
     <div className="di-genbar">
       {!hasKey&&<span className="di-dim">{L('Program üretmek için Yrd. Antrenör panelinden bir API anahtarı gir. Yukarıdaki hesaplamalar anahtar olmadan da çalışır.',
         'Add an API key from the Assistant Coach panel to generate. Everything above is computed without one.')}</span>}
       <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={onGenerate}>
-        <span className="di-gen-t">✦ {busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
-        <span className="di-gen-s">{L('Talimatlara göre kişiselleştirilmiş antrenman programı oluşturur',
-          'Writes a session against the brief above')}</span>
+        <span className="di-gen-t">{busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
+        <span className="di-gen-s">{L('Talimatlara göre kişiselleştirilmiş program','A session written against the brief')}</span>
       </button>
     </div>
   </div>);
@@ -28717,7 +28786,12 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
 
 /* The session that came back. Read-only on purpose: what is on screen is exactly what
    Write puts on the athlete's calendar, and it is edited there — on the athlete's own
-   card, where every other programme in this app is edited. */
+   card, where every other programme in this app is edited.
+
+   Each exercise is numbered inside its block, because a coach reads a session out
+   loud ("üçüncü hareket"), and the dose sits in one pill beside the name rather than
+   at the far end of a wide card. Where the readiness cut moved a row, the pill carries
+   both numbers with an arrow between them. */
 function DiProgramView({program,rows,adj}){
   const blocks=[];
   rows.forEach(r=>{
@@ -28725,34 +28799,68 @@ function DiProgramView({program,rows,adj}){
     if(last&&last.name===r.block)last.rows.push(r);else blocks.push({name:r.block,rows:[r]});
   });
   const dose=d=>{
-    const main=d.sets?`${d.sets}×${d.reps||d.duration||''}`:(d.reps||d.duration||'—');
-    return String(main).replace(/×$/,'');
+    const reps=d.reps||d.duration||'';
+    return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
   };
   return(<div className="di-prog">
     {blocks.map((b,i)=><div key={i} className="di-progblk">
-      {b.name&&<div className="di-sblk">{b.name}</div>}
-      {b.rows.map(r=><div key={r.key} className="di-prow">
-        <div className="di-prow-nm">
-          <b>{r.name}</b>
-          <i className={'di-src '+r.source}>{r.source==='library'?L('kütüphane','library'):'custom'}</i>
-          {r.pattern?<i className="di-pat">{r.pattern}</i>:null}
-          {r.equipment?<i className="di-eqt">{r.equipment}</i>:null}
+      {b.name&&<div className="di-blkh"><span>{b.name}</span></div>}
+      {b.rows.map((r,k)=><div key={r.key} className="di-prow">
+        <span className="di-pnum">{k+1}</span>
+        <div className="di-prow-main">
+          <div className="di-prow-nm">
+            <b>{r.name}</b>
+            <i className={'di-src '+r.source}>{r.source==='library'?L('kütüphane','library'):'custom'}</i>
+            {r.pattern?<i className="di-pat">{r.pattern}</i>:null}
+            {r.equipment?<i className="di-eqt">{r.equipment}</i>:null}
+          </div>
+          {r.why&&<div className="di-prow-why">{r.why}</div>}
         </div>
-        <div className="di-prow-dose">
-          {r.changed
-            ?<><s>{dose(r.prescribed)}</s> <b>{dose(r.adjusted)}</b></>
-            :<b>{dose(r.adjusted)}</b>}
-          {r.distance?<span className="di-dim"> · {r.distance}</span>:null}
+        <div className="di-prow-right">
+          <span className={'di-dose'+(r.changed?' cut':'')}>
+            {r.changed
+              ?<><s>{dose(r.prescribed)}</s><em>→</em><b>{dose(r.adjusted)}</b></>
+              :<b>{dose(r.adjusted)}</b>}
+          </span>
+          <div className="di-pmeta">
+            {r.distance?<span>{r.distance}</span>:null}
+            {r.load?<span>{r.load}</span>:null}
+            {r.tempo?<span>{r.tempo}</span>:null}
+            {r.rest?<span>{L('dinlenme','rest')} {r.rest}</span>:null}
+          </div>
         </div>
-        <div className="di-prow-load">{[r.load,r.tempo,r.rest?L(`dinlenme ${r.rest}`,`rest ${r.rest}`):''].filter(Boolean).join(' · ')||'—'}</div>
-        {r.why&&<div className="di-prow-why">{r.why}</div>}
       </div>)}
     </div>)}
-    {adj&&adj.pct?<div className="di-dim di-progadj">
-      {L(`Hazır oluşa göre hacim ayarı %${Math.abs(adj.pct)} uygulandı — üstü çizili değerler modelin yazdığı, kalınlar takvime yazılacak olan.`,
-        `The readiness adjustment of ${Math.abs(adj.pct)}% has been applied — struck values are what the model wrote, bold ones are what gets written.`)}
+    {adj&&adj.pct?<div className="di-progadj">
+      {L(`Hazır oluşa göre hacim ayarı %${Math.abs(adj.pct)} uygulandı — üstü çizili değer modelin yazdığı, kalın olan takvime yazılacak olan.`,
+        `The readiness adjustment of ${Math.abs(adj.pct)}% has been applied — the struck value is what the model wrote, the bold one is what gets written.`)}
     </div>:null}
   </div>);
+}
+
+/* One computed tile. Label, value, an optional meter where the number is a ratio
+   against a known limit, and a sub-line that carries the word for the state — a tile
+   never leaves its meaning to colour alone, so the band, the zone and the reason are
+   spelled out beside the dot. `tone` is the status role, not a hue chosen per tile. */
+function DiTile({label,value,unit,sub,tone,fill,title,text}){
+  return(<div className={'di-box'+(tone?' t-'+tone:'')} title={title||undefined}>
+    <div className="di-k">{label}</div>
+    <div className={'di-v'+(text?' txt':'')}>{value}{unit?<small>{unit}</small>:null}</div>
+    {fill!=null&&<div className="di-meter"><span style={{width:`${Math.max(0,Math.min(100,fill))}%`}}/></div>}
+    {sub?<div className="di-sub">{tone?<i className="di-dot"/>:null}{sub}</div>:null}
+  </div>);
+}
+/* A section of the card: the three acts a coach reads in order — what today looks
+   like, what they are asking for, and what came back. */
+function DiSection({n,title,meta,children,className}){
+  return(<section className={'di-sec'+(className?' '+className:'')}>
+    <header className="di-sech">
+      <span className="di-secn">{n}</span>
+      <h4>{title}</h4>
+      {meta?<span className="di-secmeta">{meta}</span>:null}
+    </header>
+    {children}
+  </section>);
 }
 
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,saveAth,setup,libMap,writeOne}){
@@ -28811,111 +28919,114 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
 
   const rd=bundle.readiness,flag=bundle.flag;
   const written=!!(review&&review.decision==='accept');
+  /* Status roles, each one paired with the word beside it on the tile: readiness by the
+     app's own band colours, ACWR by its own zone table, the game day by how close it is.
+     Nothing here invents a threshold — they are the ones the rest of the app reads. */
+  const rdTone=rd.score==null?null:(rd.score>=4?'good':rd.score>=3?'warn':'bad');
+  const md=bundle.competition.md;
+  const mdTone=md==='MD'?'bad':(md==='MD-1'||md==='MD+1')?'warn':null;
+  const acwr=bundle.load.acwr;
+  const zone=acwr?acwrZoneOf(acwr):null;
+  const acwrTone=acwr==null?null:(acwr>1.5?'bad':(acwr>=0.8&&acwr<=1.3)?'good':'warn');
+  const adjTone=adj.pct<=-25?'bad':adj.pct<0?'warn':'good';
 
   return(<div className="di-panel">
     <div className="di-hd">
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
       <span className="di-flag" style={{borderColor:flag.color,color:flag.color}}>{flag.label}</span>
-      <span className="di-dim">{L('hesaplanan değerler — model bunları üretmez','computed values — the model does not produce these')}</span>
     </div>
 
-    {/* Readiness, competition day, season phase, internal load and the last game's
-        minutes: what today can be, each one arithmetic rather than judgement. */}
-    <div className="di-grid">
-      <div className="di-box">
-        <div className="di-k">{L('Hazır oluş','Readiness')}</div>
-        <div className="di-v" style={{color:(rd.score==null?'var(--dim)':readyColor(rd.score))}}>
-          {rd.score!=null?rd.score:'—'}<small>/5</small></div>
-        <div className="di-sub">{rd.status||'—'}{rd.source==='estimated from sRPE trend'?L(' · tahmini',' · estimated'):''}</div>
+    <DiSection n="1" title={L('Bugünün tablosu','Today at a glance')}
+      meta={L('hesaplanan değerler — model bunları üretmez','computed — the model does not produce these')}>
+      <div className="di-grid">
+        <DiTile label={L('Hazır oluş','Readiness')}
+          value={rd.score!=null?rd.score:'—'} unit="/5"
+          fill={rd.score!=null?rd.score/5*100:null} tone={rdTone}
+          sub={`${rd.status||'—'}${rd.source==='estimated from sRPE trend'?L(' · tahmini',' · estimated'):''}`}/>
+        <DiTile label={L('Müsabaka günü','Competition day')} value={md||'—'} tone={mdTone}
+          sub={bundle.competition.next
+            ?L(`${bundle.competition.next.days_until} gün sonra: ${bundle.competition.next.name||'maç'}`,
+               `in ${bundle.competition.next.days_until} days: ${bundle.competition.next.name||'game'}`)
+            :L('planlı maç yok','no fixture scheduled')}/>
+        <DiTile label={L('Sezon fazı','Season phase')} value={bundle.season_phase.label||'—'} text
+          sub={bundle.season_phase.focus.slice(0,3).join(' · ')||'—'}/>
+        <DiTile label={L('İç yük','Internal load')} value={bundle.load.srpe7||0}
+          unit={L(' AU / 7 gün',' AU / 7 days')} tone={acwrTone}
+          sub={`ACWR ${acwr??'—'}${zone?` · ${zone.t}`:''}${bundle.load.rpe7!=null?` · RPE ${bundle.load.rpe7}`:''}`}/>
+        {bundle.playing_time.last&&
+          <DiTile label={L('Son maç süresi','Last game minutes')} value={bundle.playing_time.last.minutes}
+            unit={L(' dk',' min')}
+            sub={`${fd(bundle.playing_time.last.date)}${bundle.competition.back_to_back?L(' · arka arkaya',' · back-to-back'):''}`}/>}
+        {/* The one number the model is not allowed to move, on the same row as the rest:
+            whatever the session comes back as, this percentage comes off it. */}
+        <DiTile label={L('Hacim ayarı','Volume adjustment')} text={!adj.pct}
+          value={adj.pct?`${adj.pct}%`:L('yok','none')}
+          fill={adj.pct?Math.abs(adj.pct)/Math.abs(adj.floor)*100:0} tone={adjTone}
+          title={adj.reasons.map(r=>`${r.label} → ${r.pct}%`).join('\n')}
+          sub={adj.reasons.length
+            ?adj.reasons.map(r=>r.label).join(' · ')
+            :L('hazır oluş normal','readiness normal')}/>
       </div>
-      <div className="di-box">
-        <div className="di-k">{L('Müsabaka günü','Competition day')}</div>
-        <div className="di-v">{bundle.competition.md||'—'}</div>
-        <div className="di-sub">{bundle.competition.next
-          ?L(`${bundle.competition.next.days_until} gün sonra: ${bundle.competition.next.name||'maç'}`,
-             `in ${bundle.competition.next.days_until} days: ${bundle.competition.next.name||'game'}`)
-          :L('planlı maç yok','no fixture scheduled')}</div>
-      </div>
-      <div className="di-box">
-        <div className="di-k">{L('Sezon fazı','Season phase')}</div>
-        <div className="di-v sm">{bundle.season_phase.label||'—'}</div>
-        <div className="di-sub">{bundle.season_phase.focus.slice(0,3).join(' · ')||'—'}</div>
-      </div>
-      <div className="di-box">
-        <div className="di-k">{L('İç yük','Internal load')}</div>
-        <div className="di-v sm">{bundle.load.srpe7||0}<small>{L(' AU / 7 gün',' AU / 7 days')}</small></div>
-        <div className="di-sub">ACWR {bundle.load.acwr??'—'}
-          {bundle.load.rpe7!=null?` · RPE ${bundle.load.rpe7}`:''}</div>
-      </div>
-      {bundle.playing_time.last&&<div className="di-box">
-        <div className="di-k">{L('Son maç süresi','Last game minutes')}</div>
-        <div className="di-v sm">{bundle.playing_time.last.minutes}<small>{L(' dk',' min')}</small></div>
-        <div className="di-sub">{fd(bundle.playing_time.last.date)}
-          {bundle.competition.back_to_back?L(' · arka arkaya',' · back-to-back'):''}</div>
+      {rd.signals.length>0&&<div className="di-sigrow">
+        <span className="di-k">{L('Sinyaller','Signals')}</span>
+        <div className="di-chips">{rd.signals.slice(0,4).map((s,i)=><span key={i} className="di-sigchip">{s}</span>)}</div>
       </div>}
-    </div>
+      <DiGoalPicker ath={plan.ath} save={saveAth}/>
+    </DiSection>
 
-    {/* The one number the model is not allowed to move, said out loud before the brief:
-        whatever the session comes back as, this percentage comes off it. */}
-    {(adj.pct!==0||rd.signals.length>0)&&<div className="di-adjline">
-      {adj.pct!==0&&<span className="di-adjpill">{L('Hacim ayarı','Volume adjustment')} <b>{adj.pct}%</b></span>}
-      {adj.reasons.length>0&&<span className="di-dim">{adj.reasons.map(r=>`${r.label} → ${r.pct}%`).join(' · ')}</span>}
-      {adj.pct===0&&rd.signals.length>0&&<span className="di-dim">{rd.signals.slice(0,3).join(' · ')}</span>}
-    </div>}
+    <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
+      meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
+      <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} hasKey={!!apiKey}/>
+      {err&&<div className="di-err">{err}</div>}
+    </DiSection>
 
-    <DiGoalPicker ath={plan.ath} save={saveAth}/>
-
-    <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} hasKey={!!apiKey}/>
-
-    {err&&<div className="di-err">{err}</div>}
-
-    {program&&<div className="di-result">
-      <div className="di-reshd">
-        <span className="di-title">{program.session_name||L('Önerilen program','Proposed session')}</span>
-        <span className="di-dim">{L('AI taslağı — takvime yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}</span>
-        <span className="di-resacts">
+    {program&&<DiSection n="3" title={program.session_name||L('Önerilen program','Proposed session')}
+      className="di-sec-prog"
+      meta={written?L('takvime yazıldı','on the calendar'):L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
+      <div className="di-result">
+        <div className="di-resacts">
           <button type="button" className="btn xs sec" onClick={gen} disabled={busy}>
             {L('↻ Yeniden yaz','↻ Rewrite')}</button>
           <button type="button" className="btn xs sec" onClick={discard} disabled={busy}>
             {L('✕ Sil','✕ Discard')}</button>
-        </span>
+        </div>
+        {program.summary&&<p className="di-lead">{program.summary}</p>}
+        {program.priorities.length>0&&<div className="di-row">
+          <span className="di-k">{L('Antrenman önceliği','Training priority')}</span>
+          <ul className="di-sig">{program.priorities.map((p,i)=>
+            <li key={i}><b>{p.oncelik}</b>{p.gerekce?` — ${p.gerekce}`:''}</li>)}</ul>
+        </div>}
+
+        <DiProgramView program={program} rows={rows} adj={adj}/>
+
+        {program.respected.length>0&&<div className="di-row">
+          <span className="di-k">{L('Talimatlara uyum','Against the brief')}</span>
+          <DiSignals items={program.respected}/>
+        </div>}
+        {checks.length>0&&<div className="di-checks">
+          <div className="di-checkh">⚑ {L('Kontrol','Checks')}</div>
+          <DiSignals items={checks}/>
+        </div>}
+        {program.rationale&&<div className="di-row">
+          <span className="di-k">{L('Gerekçe','Rationale')}</span>
+          <p className="di-why">{program.rationale}</p>
+        </div>}
+        {program.warning&&<div className="di-warn">⚠ {program.warning}</div>}
+        {program.truncated&&<div className="di-dim">{L('Yanıt token sınırında kesildi — kurtarılabilen kısım gösteriliyor.','The reply hit the token cap — the salvageable part is shown.')}</div>}
+
+        {/* AI draft → coach review → final programme. Until this button is pressed the
+            athlete's calendar is HELD: neither this session nor the plain copy of the
+            team session is written for them. */}
+        <div className="di-writebar">
+          {written
+            ?<><span className="di-wrote">✓ {L('Sporcunun takvimine yazıldı','Written to the athlete\'s calendar')}</span>
+              <button type="button" className="btn xs sec" onClick={undo}>{L('geri al','undo')}</button></>
+            :<><button type="button" className="di-write" onClick={write}>
+                ✎ {L('Takvime yaz','Write to the calendar')}</button>
+              <span className="di-dim">{L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
+        </div>
       </div>
-      {program.summary&&<p className="di-lead">{program.summary}</p>}
-      {program.priorities.length>0&&<div className="di-row">
-        <span className="di-k">{L('Antrenman önceliği','Training priority')}</span>
-        <ul className="di-sig">{program.priorities.map((p,i)=>
-          <li key={i}><b>{p.oncelik}</b>{p.gerekce?` — ${p.gerekce}`:''}</li>)}</ul>
-      </div>}
-
-      <DiProgramView program={program} rows={rows} adj={adj}/>
-
-      {program.respected.length>0&&<div className="di-row">
-        <span className="di-k">{L('Talimatlara uyum','Against the brief')}</span>
-        <DiSignals items={program.respected}/>
-      </div>}
-      {checks.length>0&&<div className="di-checks">
-        <span className="di-k">{L('Kontrol','Checks')}</span>
-        <DiSignals items={checks}/>
-      </div>}
-      {program.rationale&&<div className="di-row">
-        <span className="di-k">{L('Gerekçe','Rationale')}</span>
-        <p className="di-why">{program.rationale}</p>
-      </div>}
-      {program.warning&&<div className="di-warn">⚠ {program.warning}</div>}
-      {program.truncated&&<div className="di-dim">{L('Yanıt token sınırında kesildi — kurtarılabilen kısım gösteriliyor.','The reply hit the token cap — the salvageable part is shown.')}</div>}
-
-      {/* AI draft → coach review → final programme. Until this button is pressed the
-          athlete's calendar is HELD: neither this programme nor the plain copy of the
-          team session is written for them. */}
-      <div className="di-writebar">
-        {written
-          ?<><span className="di-wrote">✓ {L('Sporcunun takvimine yazıldı','Written to the athlete\'s calendar')}</span>
-            <button type="button" className="btn xs sec" onClick={undo}>{L('geri al','undo')}</button></>
-          :<><button type="button" className="di-write" onClick={write}>
-              ✎ {L('Takvime yaz','Write to the calendar')}</button>
-            <span className="di-dim">{L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
-      </div>
-    </div>}
+    </DiSection>}
 
     {!program&&<div className="di-hold sm">
       {L('Bu sporcu için henüz bir program yazılmadı — talimatları doldur ve "Antrenmanı oluştur"a bas. Program yazılana ve takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
