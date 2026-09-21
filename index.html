@@ -5206,6 +5206,18 @@ header{background:var(--bg2)!important}
 .kb-top input.kb-find{flex:1;min-width:170px;max-width:280px}
 .kb-count{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace}
+/* Which language this panel writes. Two buttons, not a select: the choice has two
+   values and it rewrites every box on the screen. */
+.kb-lang{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.kb-lang button{background:var(--bg2);border:0;color:var(--dim);cursor:pointer;padding:5px 11px;
+  font-size:10.5px;letter-spacing:.07em;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.kb-lang button+button{border-left:1px solid var(--border)}
+.kb-lang button:hover{color:var(--text2)}
+.kb-lang button.on{background:var(--accent-bg);color:var(--accent2)}
+.kb-note{margin:0}
+/* A rule reading through the fallback: legible, but not written on this side yet. */
+.kb-tag{flex:0 0 auto;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  border:1px dashed var(--border2);border-radius:6px;padding:2px 6px;white-space:nowrap}
 .kb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
 .kb-card{border:1px solid var(--border);border-radius:11px;background:var(--bg2);overflow:hidden;
   transition:border-color .12s ease}
@@ -7283,6 +7295,7 @@ function makeDefaultTeam(){
 }
 function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:[t],templates:[]};}
 
+
 /* =========================================================
    AI ASSISTANT KNOWLEDGE DATABASE
    The thirty rules every generated session is written against. They are DATA, not
@@ -7293,14 +7306,19 @@ function makeDefault(){const t=makeDefaultTeam();return{activeTeamId:t.id,teams:
    the new wording.
 
    Each rule carries its own KAYNAKÇA (references). A rule that was rewritten can then
-   be argued with on the evidence it rests on, instead of on who typed it last. The
-   text is kept in the language it was authored in rather than translated into the L()
-   pairs the rest of the interface uses: this is a document the coach owns and edits,
-   not interface chrome.
+   be argued with on the evidence it rests on, instead of on who typed it last.
+
+   EVERY FIELD IS A {tr,en} PAIR, like the rest of the interface. A rule is a document
+   the coach owns, and a club that works in English should be able to read and edit it
+   in English rather than through the Turkish it happened to be seeded in. The two
+   sides are independent text: translating one does not touch the other, and a side
+   nobody has written yet FALLS BACK to the one that exists, so an untranslated rule
+   still reads — and still binds the assistant — in the language it was written in.
    ========================================================= */
 const KB_DEFAULT=[
-{no:1,title:'Asistan Yapay Zekâ İçin Temel Programlama Mantığı',
-body:`CoachOS'un amacı yalnızca egzersiz listesi üretmek değildir. Amaç, oyuncunun mevcut kapasitesini, basketbolun fiziksel gereksinimlerini ve takvimi birleştirerek uygulanabilir bireysel antrenman yükü oluşturmaktır.
+{no:1,
+ title:["Asistan Yapay Zekâ İçin Temel Programlama Mantığı","Core Programming Logic for the AI Assistant"],
+ body:[`CoachOS'un amacı yalnızca egzersiz listesi üretmek değildir. Amaç, oyuncunun mevcut kapasitesini, basketbolun fiziksel gereksinimlerini ve takvimi birleştirerek uygulanabilir bireysel antrenman yükü oluşturmaktır.
 
 Basketbol; hızlanma, yavaşlama, yön değiştirme, sıçrama, lateral hareket ve kısa süreli yüksek şiddetli eforların düşük ve orta şiddetli hareketlerle sürekli değiştiği aralıklı bir takım sporudur. Bu nedenle basketbol programı yalnızca düz koşu veya genel kondisyon üzerine kurulamaz; kuvvet, güç, hız, ivmelenme, yavaşlama, yön değiştirme, sıçrama-iniş, aerobik kapasite ve doku kapasitesi birlikte geliştirilmelidir.
 
@@ -7320,12 +7338,35 @@ KARAR ÖNCELİĞİ
 10. Ekipman ve süre
 
 Ekipman ve süre karar önceliği değildir; programın her zaman bu operasyonel sınırlar içinde kalmasını sağlayan zorunlu kısıtlardır.`,
-sources:`Petway ve ark., 2020
-Salazar ve ark., 2020
-Harper ve ark., 2022`},
+`CoachOS does not exist to produce a list of exercises. It exists to combine the player's current capacity, the physical demands of basketball and the calendar into an individual training load that can actually be carried out.
 
-{no:2,title:'Programlama Girdileri',
-body:`CoachOS program oluşturmadan önce aşağıdaki bilgileri okur:
+Basketball is an intermittent team sport in which acceleration, deceleration, change of direction, jumping, lateral movement and short high-intensity efforts alternate continuously with low- and moderate-intensity movement. A basketball programme therefore cannot be built on straight-line running or general conditioning alone; strength, power, speed, acceleration, deceleration, change of direction, jump-landing, aerobic capacity and tissue capacity must be developed together.
+
+CoachOS never writes merely a "guard programme", a "centre programme" or a "U16 programme". A programme is built by weighing all of these together:
+player profile + biological development + position/playing role + season phase + match calendar + minutes played + recent load + readiness + individual deficit + team practice + equipment + time + constraints.
+
+DECISION PRIORITY
+1. Pain, injury and the need for medical assessment
+2. Biological maturation and growth status
+3. Match calendar and time to the next game
+4. Last match load and minutes played
+5. Load over the last 7-14 days
+6. Readiness/wellness
+7. Sex-specific needs
+8. Position and actual playing role
+9. Individual physical deficit
+10. Equipment and time
+
+Equipment and time are not decision priorities; they are hard constraints that keep the programme inside its operational limits at all times.`],
+ sources:[`Petway ve ark., 2020
+Salazar ve ark., 2020
+Harper ve ark., 2022`,`Petway et al., 2020
+Salazar et al., 2020
+Harper et al., 2022`]},
+
+{no:2,
+ title:["Programlama Girdileri","Programming Inputs"],
+ body:[`CoachOS program oluşturmadan önce aşağıdaki bilgileri okur:
 
 • Yaş/doğum tarihi
 • Cinsiyet
@@ -7360,10 +7401,46 @@ body:`CoachOS program oluşturmadan önce aşağıdaki bilgileri okur:
 • Kullanılabilir S&C süresi
 
 Eksik veri varsa sistem veri uydurmaz; ilgili alanı "veri yok" olarak kabul etmeli ve daha muhafazakâr programlama yapmalıdır.`,
-sources:``},
+`Before building a programme CoachOS reads the following:
 
-{no:3,title:'Basketbolun Fiziksel Doğası',
-body:`Basketbolda yüksek şiddetli hareketler arasında özellikle yön değiştirme, yavaşlama, ivmelenme ve sıçrama bulunur.
+• Age/date of birth
+• Sex
+• Training age
+• Competitive level
+• Height
+• Body mass
+• Sitting and leg height
+• Height change over the last 3-6 months
+• Biological maturation indicators
+• Position
+• Actual playing role
+• Season phase
+• Match dates
+• Time between matches
+• Travel
+• Minutes in the last match
+• sRPE of the last match
+• External load, where available
+• Load over the last 7-14 days
+• Wellness/readiness
+• Pain
+• Injury/restriction
+• Performance tests such as CMJ/SJ/DJ-RSI
+• Strength tests
+• Speed and COD tests
+• Mobility/stability findings
+• Team practice duration
+• Team practice intensity
+• Available equipment
+• Equipment quantity
+• Available S&C time
+
+Where data is missing the system does not invent it; it treats the field as "no data" and programmes more conservatively.`],
+ sources:[``,``]},
+
+{no:3,
+ title:["Basketbolun Fiziksel Doğası","The Physical Nature of Basketball"],
+ body:[`Basketbolda yüksek şiddetli hareketler arasında özellikle yön değiştirme, yavaşlama, ivmelenme ve sıçrama bulunur.
 
 Elite basketbol maçlarında pozisyonlara göre dış yük profilleri farklıdır; guard, forvet ve pivotların hareket talepleri aynı değildir.
 
@@ -7390,11 +7467,40 @@ Basketbolun fiziksel gereksinimleri şu ana fiziksel kaliteler üzerinden ele al
 • Gövde kontrolü
 
 Bu fiziksel kalitelerin tamamı uzun vadeli gelişim planında bulunabilir; ancak hiçbir kalite her gün yüksek dozda çalıştırılmamalıdır.`,
-sources:`Salazar ve ark., 2020
-García ve ark., 2022`},
+`The high-intensity actions in basketball are above all change of direction, deceleration, acceleration and jumping.
 
-{no:4,title:'Hareket Paternleri',
-body:`CoachOS egzersizleri yalnızca kas grubuna göre sınıflandırmaz. Her egzersiz en az bir hareket paterni ve bir fiziksel kalite etiketi taşımalıdır.
+In elite basketball games external load profiles differ by position; guards, forwards and centres do not have the same movement demands.
+
+The peak demand periods of a professional player's game are usually higher than the peak demand periods of their training; team practice must therefore not be assumed to cover the physical demands of the game on its own.
+
+The physical requirements of basketball are handled through these main physical qualities:
+• Relative strength
+• Maximal strength
+• Power
+• RFD
+• Reactive strength
+• Acceleration
+• Maximal speed
+• Deceleration
+• Change of direction
+• Lateral speed
+• Jumping
+• Landing
+• Repeated high-intensity effort
+• Aerobic capacity
+• Tissue capacity
+• Mobility
+• Stability
+• Trunk control
+
+All of these qualities may appear in a long-term development plan; but no quality is trained at a high dose every day.`],
+ sources:[`Salazar ve ark., 2020
+García ve ark., 2022`,`Salazar et al., 2020
+García et al., 2022`]},
+
+{no:4,
+ title:["Hareket Paternleri","Movement Patterns"],
+ body:[`CoachOS egzersizleri yalnızca kas grubuna göre sınıflandırmaz. Her egzersiz en az bir hareket paterni ve bir fiziksel kalite etiketi taşımalıdır.
 
 A. TEMEL KUVVET HAREKET PATERNLERİ
 Squat · Hinge · Lunge · Push · Pull · Carry
@@ -7416,10 +7522,33 @@ Temel direnç antrenmanında squat, hinge, unilateral alt ekstremite, itme, çek
 
 CoachOS egzersiz seçerken şu sırayı izler:
 Oyuncu profili → Günün amacı → Fiziksel kalite → Hareket paterni → Egzersiz seviyesi → Ekipman → Kısıtlama → Yük → Set/tekrar → Dinlenme.`,
-sources:`Stricker ve ark., 2020`},
+`CoachOS does not classify exercises by muscle group alone. Every exercise carries at least one movement pattern and one physical quality tag.
 
-{no:5,title:'Hız, İvmelenme, Yavaşlama ve Yön Değiştirme',
-body:`Basketbol programında hız yalnızca sprint olarak düşünülmez.
+A. PRIMARY STRENGTH MOVEMENT PATTERNS
+Squat · Hinge · Lunge · Push · Pull · Carry
+
+B. STABILISATION / CORE PATTERNS
+Anti-Extension · Anti-Rotation · Anti-Lateral Flexion · Rotation
+
+C. ATHLETIC MOVEMENT PATTERNS
+Acceleration · Deceleration · Change of Direction · Lateral Movement · Jump · Landing
+
+D. EXECUTION / POSITION ATTRIBUTES
+Bilateral · Unilateral · Split Stance · Single-Leg · Half-Kneeling · Tall-Kneeling
+
+Example:
+2DB Bulgarian Split Squat — Movement Pattern: Lunge / Stance: Unilateral, Split Stance / Physical Quality: Strength
+Barbell Back Squat — Movement Pattern: Squat / Stance: Bilateral / Physical Quality: Strength
+
+In basic resistance training the fundamental patterns — squat, hinge, unilateral lower body, push, pull, carry and trunk control — should be used at a level appropriate to the player's stage of development.
+
+CoachOS selects exercises in this order:
+Player profile → aim of the day → physical quality → movement pattern → exercise level → equipment → constraint → load → sets/reps → rest.`],
+ sources:[`Stricker ve ark., 2020`,`Stricker et al., 2020`]},
+
+{no:5,
+ title:["Hız, İvmelenme, Yavaşlama ve Yön Değiştirme","Speed, Acceleration, Deceleration and Change of Direction"],
+ body:[`Basketbol programında hız yalnızca sprint olarak düşünülmez.
 
 İVMELENME: 5 m · 10 m · 15 m · 20 m · basketbola özgü kısa ivmelenmeler
 MAKSİMAL HIZ: build-up sprint · flying sprint · flying 10-20 m
@@ -7434,11 +7563,28 @@ Yavaşlama kapasitesinin geliştirilmesinde yalnızca kuvvet değil, frenleme te
 Yön değiştirme açısı ve hız arttıkça mekanik talepler değişir; bu nedenle COD eğitimi düşük karmaşıklık ve düşük hızdan daha yüksek hız ve reaktiviteye doğru ilerletilmelidir.
 
 CoachOS özellikle yeni başlayan veya teknik yeterliliği düşük oyuncularda yüksek hızlı 90° COD çalışmalarına doğrudan geçmez.`,
-sources:`Harper ve ark., 2022
-Dos'Santos ve ark., 2021`},
+`Speed in a basketball programme is not thought of as sprinting alone.
 
-{no:6,title:'Pliometrik Programlama',
-body:`Pliometrik antrenman basketbolcularda sıçrama, sprint, yön değiştirme, denge ve kuvvet gibi fiziksel özelliklerde gelişim sağlayabilir.
+ACCELERATION: 5 m · 10 m · 15 m · 20 m · short basketball-specific accelerations
+MAXIMAL SPEED: build-up sprint · flying sprint · flying 10-20 m
+LATERAL SPEED: shuffle · crossover · lateral acceleration · defensive movement
+DECELERATION: linear braking · lateral braking · single-leg braking · planned braking · reactive braking
+CHANGE OF DIRECTION: 45° · 90° · 135° · 180°
+
+Deceleration should be treated as a physical quality in its own right in a basketball programme; high-speed horizontal deceleration creates high mechanical and eccentric demands.
+
+Developing deceleration capacity requires attention not only to strength but also to braking technique and movement coordination.
+
+Mechanical demands change as the angle and the speed of a direction change increase; COD training should therefore progress from low complexity and low speed towards higher speed and reactivity.
+
+CoachOS does not move straight to high-speed 90° COD work with beginners or with players whose technical competence is low.`],
+ sources:[`Harper ve ark., 2022
+Dos'Santos ve ark., 2021`,`Harper et al., 2022
+Dos'Santos et al., 2021`]},
+
+{no:6,
+ title:["Pliometrik Programlama","Plyometric Programming"],
+ body:[`Pliometrik antrenman basketbolcularda sıçrama, sprint, yön değiştirme, denge ve kuvvet gibi fiziksel özelliklerde gelişim sağlayabilir.
 
 Pliometrik yük yalnızca toplam sıçrama sayısıyla takip edilmez. Ayrı kategoriler:
 • Çift bacak
@@ -7459,11 +7605,34 @@ Pliometrik yoğunluk genel olarak Düşük → Orta → Yüksek → Çok yüksek
 Pliometrik çalışma oyuncunun mevcut kapasitesine, yaşına, maturasyonuna, maç yüküne ve takım antrenmanındaki sıçrama miktarına göre ayarlanmalıdır.
 
 Aynı gün içinde yüksek hacimli sprint + COD + yavaşlama + pliometrik yükün üst üste bindirilmesi gereksiz mekanik yorgunluk oluşturabilir; bu nedenle CoachOS toplam nöromekanik yükü değerlendirir.`,
-sources:`Ramirez-Campillo ve ark., 2022
-Harper ve ark., 2022`},
+`Plyometric training can improve jumping, sprinting, change of direction, balance and strength in basketball players.
 
-{no:7,title:'Kuvvet ve Güç',
-body:`Genç sporcularda direnç antrenmanı uygun teknik, progresif yüklenme ve gözetim altında güvenli ve etkili biçimde uygulanabilir. Çocuklarda kuvvet gelişimi yalnızca kas hipertrofisine bağlı değildir; nöromüsküler gelişim önemli bir bileşendir.
+Plyometric load is not tracked by total jump count alone. Separate categories:
+• Double leg
+• Single leg
+• Vertical
+• Horizontal
+• Lateral
+• Drop jump
+• Hop
+• Bound
+• Reactive jump
+• Landing exposure
+
+Plyometric intensity can broadly be classified Low → Moderate → High → Very high. Single-leg, high-amplitude and reactive/drop-jump work should be classified as creating a higher neuromechanical demand than double-leg, low-amplitude work.
+
+PROGRESSION: landing/control → double leg → single leg → reactive → lateral → reactive with direction change.
+
+Plyometric work is set against the player's current capacity, age, maturation, match load and the amount of jumping already in team practice.
+
+Stacking high-volume sprint + COD + deceleration + plyometric load in the same day can create unnecessary mechanical fatigue; CoachOS therefore evaluates total neuromechanical load.`],
+ sources:[`Ramirez-Campillo ve ark., 2022
+Harper ve ark., 2022`,`Ramirez-Campillo et al., 2022
+Harper et al., 2022`]},
+
+{no:7,
+ title:["Kuvvet ve Güç","Strength and Power"],
+ body:[`Genç sporcularda direnç antrenmanı uygun teknik, progresif yüklenme ve gözetim altında güvenli ve etkili biçimde uygulanabilir. Çocuklarda kuvvet gelişimi yalnızca kas hipertrofisine bağlı değildir; nöromüsküler gelişim önemli bir bileşendir.
 
 U9-U12 — Hareket öğrenimi, vücut ağırlığı kuvveti, temel squat, hinge, lunge, itme, çekme, taşıma, gövde kontrolü, tek bacak kontrolü.
 
@@ -7476,14 +7645,32 @@ A TAKIM — Kuvvetin korunması, güç-kuvvet dengesi, bireysel eksiklikler, dok
 Sezon içinde özellikle yoğun maç dönemlerinde kuvvet antrenmanının hacmi azaltılabilirken, uygun yoğunlukta uyaranın korunması fiziksel kapasitenin sürdürülmesine yardımcı olabilir.
 
 Yük reçetesi yalnızca sabit %1RM üzerinden yapılmak zorunda değildir; RPE/RIR ve uygun ekipman mevcutsa VBT günlük performans değişimlerine göre yükün ayarlanmasına yardımcı olabilir. VBT kullanılabiliyorsa hız kaybı ve hedef hız, set hacmini yönetmek için kullanılabilir.`,
-sources:`Stricker ve ark., 2020
+`Resistance training in young athletes can be applied safely and effectively with appropriate technique, progressive loading and supervision. Strength development in children is not driven by muscle hypertrophy alone; neuromuscular development is a major component.
+
+U9-U12 — Movement learning, bodyweight strength, basic squat, hinge, lunge, push, pull, carry, trunk control, single-leg control.
+
+U13-U14 — Relative strength, single-leg strength, posterior chain, trunk, basic strength exercises, landing, deceleration, basic power.
+
+U15-U18 — Relative strength, maximal strength, single-leg strength, posterior chain, upper-body strength, power, RFD, sprinting, COD.
+
+SENIOR TEAM — Maintaining strength, the power-strength balance, individual deficits, tissue capacity, performance.
+
+In-season, and particularly through congested fixture periods, the volume of strength training can be reduced while keeping a stimulus of appropriate intensity, which helps sustain physical capacity.
+
+Load does not have to be prescribed off a fixed %1RM; RPE/RIR, and VBT where the equipment exists, can help adjust load to day-to-day changes in performance. Where VBT is available, velocity loss and target velocity can be used to manage set volume.`],
+ sources:[`Stricker ve ark., 2020
 Spiering ve ark., 2021
 Clemente ve ark., 2025
 Suchomel ve ark., 2021
-Weakley ve ark., 2021`},
+Weakley ve ark., 2021`,`Stricker et al., 2020
+Spiering et al., 2021
+Clemente et al., 2025
+Suchomel et al., 2021
+Weakley et al., 2021`]},
 
-{no:8,title:'Yaş, Antrenman Yaşı ve Biyolojik Olgunlaşma',
-body:`Kronolojik yaş tek başına programlama kriteri değildir. Aynı yaş grubundaki iki oyuncunun biyolojik olgunlaşması, antrenman geçmişi, kuvveti ve yük toleransı farklı olabilir.
+{no:8,
+ title:["Yaş, Antrenman Yaşı ve Biyolojik Olgunlaşma","Age, Training Age and Biological Maturation"],
+ body:[`Kronolojik yaş tek başına programlama kriteri değildir. Aynı yaş grubundaki iki oyuncunun biyolojik olgunlaşması, antrenman geçmişi, kuvveti ve yük toleransı farklı olabilir.
 
 CoachOS altyapı oyuncularını değerlendirirken kronolojik yaş, antrenman yaşı, boy, kilo, boy değişim hızı, biyolojik olgunlaşma, ağrı, hareket kalitesi, kuvvet ve yük geçmişini birlikte değerlendirmelidir.
 
@@ -7500,20 +7687,46 @@ U17-U18 — Senior seviyeye fiziksel geçiş
 A takım — Performans + koruma + toparlanma
 
 Bu yaş grupları kesin biyolojik sınırlar değildir; bireysel olgunlaşma programı değiştirebilir.`,
-sources:`Jayanthi ve ark., 2022`},
+`Chronological age is not a programming criterion on its own. Two players of the same age can differ in biological maturation, training history, strength and load tolerance.
 
-{no:9,title:'Pozisyona Özgü Programlama',
-body:`Pozisyon yalnızca başlangıç profilidir; gerçek oyun rolü ve bireysel maç verileri pozisyon etiketinden daha önemlidir. Pozisyon farklılıkları profesyonel basketbolda dış yük profillerinde gösterilmiştir; ancak mevcut çalışmaların örneklemleri sınırlı olduğundan pozisyon ortalamaları oyuncuya doğrudan kopyalanmamalıdır.
+When assessing academy players CoachOS weighs chronological age, training age, height, body mass, rate of height change, biological maturation, pain, movement quality, strength and load history together.
+
+Through growth spurts coordination, movement control and the response to load can change; the player's performance and symptoms should therefore be monitored more closely. Height and body mass should be tracked at regular intervals where possible, and the programmes of players changing quickly should be reassessed.
+
+CoachOS does not automatically treat a player in a growth spurt as "high risk"; but where there is rapid growth, pain, a change in movement quality or a drop in load tolerance, load is reassessed.
+
+AGE-GROUP PRIORITIES
+U9-U10 — Physical literacy
+U11-U12 — Movement competence + basic strength + speed
+U13-U14 — Strength + deceleration + landing + coordination
+U15-U16 — Systematic strength + power + speed + COD
+U17-U18 — Physical transition to the senior level
+Senior team — Performance + protection + recovery
+
+These age groups are not firm biological boundaries; individual maturation can change the programme.`],
+ sources:[`Jayanthi ve ark., 2022`,`Jayanthi et al., 2022`]},
+
+{no:9,
+ title:["Pozisyona Özgü Programlama","Position-Specific Programming"],
+ body:[`Pozisyon yalnızca başlangıç profilidir; gerçek oyun rolü ve bireysel maç verileri pozisyon etiketinden daha önemlidir. Pozisyon farklılıkları profesyonel basketbolda dış yük profillerinde gösterilmiştir; ancak mevcut çalışmaların örneklemleri sınırlı olduğundan pozisyon ortalamaları oyuncuya doğrudan kopyalanmamalıdır.
 
 GUARD — Yüksek ivmelenme, yön değiştirme ve yüksek yoğunluklu hareket talepleri öne çıkabilir. Öncelikli kaliteler: ivmelenme, yavaşlama, COD, lateral hız, tek bacak kuvveti, reaktif kuvvet, ayak/ayak bileği kapasitesi, hamstring, gövde kontrolü, tekrarlı yüksek şiddet.
 
 FORVET — Guard ve pivot özelliklerini birleştiren daha değişken bir profil. Öncelikler: COD, yavaşlama, lateral hareket, tek bacak kuvveti, dikey güç, yatay güç, reaktif kuvvet, arka zincir, temas kapasitesi. Gerçek rolü perimeter ağırlıklıysa guard profilinin, post/iç rol ağırlıklıysa pivot profilinin bazı özellikleri artırılabilir.
 
 PİVOT — Sıçrama, kısa mesafe ivmelenme, kuvvet ve temas gereksinimleri önemlidir. Öncelikler: göreli kuvvet, mutlak kuvvet, alt vücut kuvveti, gövde kuvveti, izometrik kuvvet, kısa mesafe ivmelenme, yavaşlama, sıçrama, iniş, temas kapasitesi. Pivot yalnızca "yavaş oyuncu" olarak değerlendirilmemelidir; modern basketbolda kısa ivmelenme, closeout, transition ve lateral hareket kapasitesi de geliştirilmelidir.`,
-sources:`Salazar ve ark., 2020`},
+`Position is only a starting profile; the actual playing role and the player's own match data matter more than the positional label. Positional differences in external load profiles have been shown in professional basketball; but because the samples in the available studies are limited, positional averages must not be copied straight onto a player.
 
-{no:10,title:'Cinsiyete Göre Programlama',
-body:`Kadın ve erkek oyuncular için tamamen farklı egzersiz listeleri oluşturulmamalıdır. Temel hareket ve fiziksel kalite prensipleri aynıdır; farklılıklar oyuncunun antropometrisi, fiziksel kapasitesi, sakatlık geçmişi, biyolojik gelişimi ve bireysel yük yanıtı üzerinden ele alınmalıdır.
+GUARD — High acceleration, change of direction and high-intensity movement demands can stand out. Priority qualities: acceleration, deceleration, COD, lateral speed, single-leg strength, reactive strength, foot/ankle capacity, hamstrings, trunk control, repeated high intensity.
+
+FORWARD — A more variable profile that combines guard and centre characteristics. Priorities: COD, deceleration, lateral movement, single-leg strength, vertical power, horizontal power, reactive strength, posterior chain, contact capacity. Where the actual role is perimeter-weighted, elements of the guard profile can be increased; where it is post/interior-weighted, elements of the centre profile can be.
+
+CENTRE — Jumping, short-distance acceleration, strength and contact requirements matter. Priorities: relative strength, absolute strength, lower-body strength, trunk strength, isometric strength, short-distance acceleration, deceleration, jumping, landing, contact capacity. A centre must not be treated simply as "the slow player"; in modern basketball short acceleration, closeout, transition and lateral movement capacity are developed as well.`],
+ sources:[`Salazar ve ark., 2020`,`Salazar et al., 2020`]},
+
+{no:10,
+ title:["Cinsiyete Göre Programlama","Programming by Sex"],
+ body:[`Kadın ve erkek oyuncular için tamamen farklı egzersiz listeleri oluşturulmamalıdır. Temel hareket ve fiziksel kalite prensipleri aynıdır; farklılıklar oyuncunun antropometrisi, fiziksel kapasitesi, sakatlık geçmişi, biyolojik gelişimi ve bireysel yük yanıtı üzerinden ele alınmalıdır.
 
 Kadın basketbolunda yük verilerinin ölçüm yöntemleri ve raporlanan değerleri çalışmalar arasında heterojendir; bu nedenle erkek oyuncuların yük profilleri doğrudan kadın oyunculara kopyalanmamalıdır.
 
@@ -7521,22 +7734,41 @@ DİZ VE ÖÇB
 Egzersiz temelli nöromüsküler yaralanma önleme programları diz ve ÖÇB yaralanmalarının azaltılmasına yardımcı olur ve özellikle kadın sporcularda çok bileşenli kuvvet + pliometrik + hareket kontrolü içeriği kullanılmalıdır. Bu programlar hazırlık döneminde başlatılıp sezon boyunca düzenli uygulanmalıdır.
 
 Genç basketbolcularda nöromüsküler ısınma programının ayak bileği ve diz yaralanmalarını yaklaşık %36 azalttığı bildirilmiştir. CoachOS altyapı programlarında düzenli nöromüsküler hazırlık içeriğini korur.`,
-sources:`Power ve ark., 2022
-Arundale ve ark., 2023
-Emery ve ark., 2022`},
+`Entirely separate exercise lists must not be built for female and male players. The fundamental movement and physical-quality principles are the same; differences are handled through the player's anthropometry, physical capacity, injury history, biological development and individual response to load.
 
-{no:11,title:'Menstrüel Döngü',
-body:`Menstrüel döngünün egzersiz performansı üzerindeki ortalama etkisinin küçük olduğu, çalışmalar arasında yüksek değişkenlik bulunduğu ve bu nedenle takım çapında sabit faz-temelli programlama için yeterli kanıt bulunmadığı bildirilmiştir.
+In women's basketball, load measurement methods and reported values are heterogeneous across studies; male players' load profiles must therefore not be copied directly onto female players.
+
+KNEE AND ACL
+Exercise-based neuromuscular injury-prevention programmes help reduce knee and ACL injuries, and in female athletes in particular a multi-component strength + plyometric + movement-control content should be used. These programmes should start in the preparation period and be applied consistently through the season.
+
+A neuromuscular warm-up programme has been reported to reduce ankle and knee injuries in young basketball players by roughly 36%. CoachOS keeps regular neuromuscular preparation content in academy programmes.`],
+ sources:[`Power ve ark., 2022
+Arundale ve ark., 2023
+Emery ve ark., 2022`,`Power et al., 2022
+Arundale et al., 2023
+Emery et al., 2022`]},
+
+{no:11,
+ title:["Menstrüel Döngü","The Menstrual Cycle"],
+ body:[`Menstrüel döngünün egzersiz performansı üzerindeki ortalama etkisinin küçük olduğu, çalışmalar arasında yüksek değişkenlik bulunduğu ve bu nedenle takım çapında sabit faz-temelli programlama için yeterli kanıt bulunmadığı bildirilmiştir.
 
 CoachOS menstrüel döngü bilgisi yoksa varsayım yapmaz.
 
 Oyuncu semptom bildirirse — ağrı, kramp, yorgunluk, uyku bozukluğu, readiness düşüşü — bu bilgiler diğer wellness girdileri gibi günlük bireyselleştirmede kullanılabilir.
 
 Menstrüel döngü tek başına otomatik olarak yük azaltma veya artırma nedeni olmaz.`,
-sources:`McNulty ve ark., 2020`},
+`The average effect of the menstrual cycle on exercise performance has been reported to be small, with high variability between studies, and therefore insufficient evidence exists for fixed phase-based programming across a squad.
 
-{no:12,title:'Sezon Fazları',
-body:`OFF-SEASON — GELİŞİM
+Where there is no menstrual-cycle information, CoachOS makes no assumption.
+
+If a player reports symptoms — pain, cramp, fatigue, disturbed sleep, a drop in readiness — that information can be used in daily individualization like any other wellness input.
+
+The menstrual cycle on its own is never an automatic reason to reduce or increase load.`],
+ sources:[`McNulty ve ark., 2020`,`McNulty et al., 2020`]},
+
+{no:12,
+ title:["Sezon Fazları","Season Phases"],
+ body:[`OFF-SEASON — GELİŞİM
 Ana amaç fiziksel kapasite geliştirmektir. Öncelikler: kuvvet, gerekiyorsa hipertrofi, güç, sprint, ivmelenme, yavaşlama, COD, aerobik kapasite, pliometrik kapasite, mobilite, doku kapasitesi, bireysel eksiklikler. Maç yoğunluğu düşük olduğundan fiziksel gelişim için daha fazla hacim kullanılabilir.
 
 PRE-SEASON — YARIŞMAYA HAZIRLIK
@@ -7550,12 +7782,29 @@ Amaç yeni fiziksel kapasite yaratmaktan çok yüksek performans + tazelik + mev
 
 TRANSITION / POST-SEASON
 İlk bölüm: toparlanma, düşük şiddetli aerobik aktivite, mobilite, rekreasyonel hareket. Daha sonra kuvvet, hipertrofi, hareket kalitesi ve bireysel eksiklikler üzerinden yeni off-season dönemine geçilir.`,
-sources:`Clemente ve ark., 2025
-Jayanthi ve ark., 2022
-Vachon ve ark., 2021`},
+`OFF-SEASON — DEVELOPMENT
+The main aim is to develop physical capacity. Priorities: strength, hypertrophy where required, power, sprinting, acceleration, deceleration, COD, aerobic capacity, plyometric capacity, mobility, tissue capacity, individual deficits. With match density low, more volume can be used for physical development.
 
-{no:13,title:'Maç Haftası Programlaması',
-body:`CoachOS haftayı takvim günü olarak değil, maça göre relatif günler üzerinden değerlendirmelidir: MD+1, MD+2, MD-4, MD-3, MD-2, MD-1, MD.
+PRE-SEASON — PREPARING TO COMPETE
+General physical capacity must be transferred to the specific demands of basketball. Higher volume can be used for development at the start; as the load of team practice and friendlies rises, S&C volume should come down. Approaching the season: volume ↓, specificity ↑, intensity held or ↑, recovery ↑. Sudden increases in load should be avoided; graded load progression matters especially in youth.
+
+IN-SEASON — PROTECT + PERFORM + RECOVER
+The main aim is to maintain performance + sustain the necessary physical stimulus + reduce unnecessary fatigue. Priorities: strength maintenance, power maintenance, speed exposure, acceleration, deceleration, mobility, tissue capacity, individual deficits. As match density rises S&C volume can be reduced; there is evidence that lower-volume training can maintain many physical adaptations in team-sport athletes, but the optimum dose varies by player and context.
+
+PLAYOFF / TAPER
+The aim is less to create new physical capacity than high performance + freshness + protection of existing capacity. In taper periods, reducing volume while largely maintaining intensity can produce favourable results in team sports for power, COD, repeated sprint and some metabolic performance measures. Through the playoffs: volume ↓, unnecessary fatigue ↓, intensity/speed/power/strength held, recovery ↑. New and unfamiliar exercises are not added.
+
+TRANSITION / POST-SEASON
+First part: recovery, low-intensity aerobic activity, mobility, recreational movement. Then a new off-season opens through strength, hypertrophy, movement quality and individual deficits.`],
+ sources:[`Clemente ve ark., 2025
+Jayanthi ve ark., 2022
+Vachon ve ark., 2021`,`Clemente et al., 2025
+Jayanthi et al., 2022
+Vachon et al., 2021`]},
+
+{no:13,
+ title:["Maç Haftası Programlaması","Match-Week Programming"],
+ body:[`CoachOS haftayı takvim günü olarak değil, maça göre relatif günler üzerinden değerlendirmelidir: MD+1, MD+2, MD-4, MD-3, MD-2, MD-1, MD.
 
 Profesyonel basketbolda antrenmanların en yüksek talep dönemleri çoğunlukla maç taleplerinin altında kalmaktadır; özellikle maçtan 1-2 gün önce fiziksel yük genellikle azaltılır.
 
@@ -7572,11 +7821,30 @@ Bu günler kesin reçete değildir; sonraki ve önceki maçın zamanı, takım a
 
 İKİ MAÇLI HAFTA
 İki maçlı haftalarda maç yükünün artması nedeniyle antrenman yükünün azaltılması gerekebilir. İki maç arasında 72 saatten az süre varsa varsayılan olarak S&C hacmi ↓, eksantrik hacim ↓, kondisyon hacmi ↓, pliometrik hacim ↓, toparlanma ↑ olmalıdır. Hız ve güç tamamen kaldırılmamalı; gerekliyse düşük hacimli maruziyetlerle korunmalıdır.`,
-sources:`García ve ark., 2022
-Sansone ve ark., 2025`},
+`CoachOS should read the week not as calendar days but as days relative to the match: MD+1, MD+2, MD-4, MD-3, MD-2, MD-1, MD.
 
-{no:14,title:'Yük İzleme',
-body:`CoachOS mümkün olduğunda üç yük boyutunu birlikte değerlendirir:
+In professional basketball the peak demand periods of training mostly stay below match demands; physical load is usually reduced in the one to two days before a game in particular.
+
+GENERAL MICROCYCLE
+MD+1 — High minutes: recovery, mobility, low-intensity aerobic. Low minutes/DNP: appropriate top-up.
+MD+2 — Where it fits, the main physical development day of the week.
+MD-4 — Usually a suitable window for high-quality speed, strength and/or power load.
+MD-3 — Moderate-to-high specificity; speed/power can be maintained.
+MD-2 — Low-volume, high-quality power/speed; avoid unnecessary eccentric volume.
+MD-1 — Priming, mobility, activation, short speed and low-volume explosive work.
+MD — Activation/priming only where needed.
+
+These days are not a fixed prescription; the timing of the previous and next match, team practice and the player's own load always come first.
+
+TWO-GAME WEEK
+In two-game weeks, training load may need to come down because match load has gone up. Where there are fewer than 72 hours between two matches, the default should be: S&C volume ↓, eccentric volume ↓, conditioning volume ↓, plyometric volume ↓, recovery ↑. Speed and power must not be removed altogether; where required they are maintained through low-volume exposures.`],
+ sources:[`García ve ark., 2022
+Sansone ve ark., 2025`,`García et al., 2022
+Sansone et al., 2025`]},
+
+{no:14,
+ title:["Yük İzleme","Load Monitoring"],
+ body:[`CoachOS mümkün olduğunda üç yük boyutunu birlikte değerlendirir:
 
 INTERNAL LOAD — RPE, sRPE, nabız, wellness, readiness.
 EXTERNAL LOAD — mesafe, yüksek hızlı koşu, sprint, ivmelenme, yavaşlama, COD, sıçrama, PlayerLoad.
@@ -7585,28 +7853,52 @@ COGNITIVE / CONTEXTUAL LOAD — antrenman özgüllüğü, karar verme talebi, oy
 Basketbolda sRPE düşük maliyetli ve uygulanabilir bir iç yük ölçümüdür.
 
 CoachOS tek bir yük metriğini program kararının tek belirleyicisi yapmaz.`,
-sources:`Petway ve ark., 2020`},
+`Where possible CoachOS evaluates three dimensions of load together:
 
-{no:15,title:'ACWR',
-body:`ACWR CoachOS'ta yalnızca tanımlayıcı bir veri olarak gösterilebilir.
+INTERNAL LOAD — RPE, sRPE, heart rate, wellness, readiness.
+EXTERNAL LOAD — distance, high-speed running, sprints, accelerations, decelerations, COD, jumps, PlayerLoad.
+COGNITIVE / CONTEXTUAL LOAD — training specificity, decision-making demand, player numbers, area, defence, tactical complexity.
+
+In basketball, sRPE is a low-cost and practical measure of internal load.
+
+CoachOS does not make a single load metric the sole determinant of a programming decision.`],
+ sources:[`Petway ve ark., 2020`,`Petway et al., 2020`]},
+
+{no:15,
+ title:["ACWR","ACWR"],
+ body:[`ACWR CoachOS'ta yalnızca tanımlayıcı bir veri olarak gösterilebilir.
 
 ACWR tek başına sakatlık riski veya program değişikliği için otomatik karar mekanizması olarak kullanılmamalıdır; metodolojik ve istatistiksel sorunlar nedeniyle bu yaklaşım eleştirilmiştir.
 
 CoachOS bunun yerine mevcut yük + geçmiş yük + maç takvimi + wellness + readiness + ağrı + performansı birlikte değerlendirmelidir.`,
-sources:`Impellizzeri ve ark., 2021`},
+`In CoachOS, ACWR may be shown as descriptive data only.
 
-{no:16,title:'Readiness',
-body:`Readiness tek bir günlük skor olarak programın tamamını belirlememelidir.
+ACWR must not be used on its own as an automatic decision mechanism for injury risk or for changing a programme; the approach has been criticised on methodological and statistical grounds.
+
+CoachOS instead weighs current load + past load + match calendar + wellness + readiness + pain + performance together.`],
+ sources:[`Impellizzeri ve ark., 2021`,`Impellizzeri et al., 2021`]},
+
+{no:16,
+ title:["Readiness","Readiness"],
+ body:[`Readiness tek bir günlük skor olarak programın tamamını belirlememelidir.
 
 CoachOS readiness düşüşünü şu verilerle birlikte değerlendirmelidir: uyku, yorgunluk, kas ağrısı, stres, ruh hali, önceki yük, maç dakikası, son maç yükü, ağrı, performans trendi.
 
 Readiness düşükse ilk olarak gereksiz hacim ve yorgunluk azaltılabilir; ancak yoğunluk otomatik olarak tamamen kaldırılmamalıdır. Yoğunluğun korunması, özellikle fiziksel kapasiteyi koruma dönemlerinde önemlidir.
 
 CoachOS readiness düşüşünün tek günlük mü yoksa birkaç günlük bir trend mi olduğunu ayırt eder.`,
-sources:`Spiering ve ark., 2021`},
+`Readiness as a single daily score must not determine the whole programme.
 
-{no:17,title:'Ağrı ve Sakatlık',
-body:`Ağrı bildirimi programlama sisteminde normal bir "readiness" girdisi gibi ele alınmaz.
+CoachOS should evaluate a drop in readiness alongside sleep, fatigue, muscle soreness, stress, mood, previous load, minutes played, last match load, pain and the performance trend.
+
+Where readiness is low, unnecessary volume and fatigue can be reduced first; but intensity must not automatically be removed altogether. Maintaining intensity matters in particular through periods of protecting physical capacity.
+
+CoachOS distinguishes a one-day drop in readiness from a trend running over several days.`],
+ sources:[`Spiering ve ark., 2021`,`Spiering et al., 2021`]},
+
+{no:17,
+ title:["Ağrı ve Sakatlık","Pain and Injury"],
+ body:[`Ağrı bildirimi programlama sisteminde normal bir "readiness" girdisi gibi ele alınmaz.
 
 ACİL DEĞERLENDİRME GEREKTİREBİLECEK DURUMLAR
 • Kemik üzerinde lokal ağrı
@@ -7619,20 +7911,42 @@ ACİL DEĞERLENDİRME GEREKTİREBİLECEK DURUMLAR
 Bu durumlarda CoachOS otomatik program üretmek yerine "Tıbbi değerlendirme gerekli" uyarısı verir.
 
 Daha düşük riskli durumlarda egzersiz modifikasyonu ve yük yönetimi düşünülebilir; ancak CoachOS tanı koymamalıdır.`,
-sources:``},
+`A report of pain is not handled like an ordinary "readiness" input in the programming system.
 
-{no:18,title:"Takım Antrenmanı ile S&C'nin Birlikte Programlanması",
-body:`CoachOS yalnızca S&C yükünü değil, aynı gün yapılacak basketbol antrenmanının yükünü de dikkate alır.
+SITUATIONS THAT MAY REQUIRE URGENT ASSESSMENT
+• Localised pain over bone
+• Pain at rest or increasing at night
+• Marked swelling
+• Limping
+• Significant loss of function after trauma
+• Acute pain clearly limiting performance
+
+In these situations CoachOS does not generate a programme automatically; it raises a "medical assessment required" warning.
+
+In lower-risk situations exercise modification and load management can be considered; but CoachOS must not diagnose.`],
+ sources:[``,``]},
+
+{no:18,
+ title:["Takım Antrenmanı ile S&C'nin Birlikte Programlanması","Programming Team Practice and S&C Together"],
+ body:[`CoachOS yalnızca S&C yükünü değil, aynı gün yapılacak basketbol antrenmanının yükünü de dikkate alır.
 
 Basketbol antrenmanı yüksek sprint, COD, yavaşlama, sıçrama, temas ve small-sided game içeriyorsa S&C'nin aynı fiziksel özellikleri yüksek hacimde tekrar etmesi gerekmeyebilir. Örneğin takım antrenmanı yüksek sıçrama ve COD içeriyorsa S&C kuvvet + üst vücut + posterior chain + trunk gibi tamamlayıcı içeriğe kaydırılabilir.
 
 Buna karşılık takım antrenmanı fiziksel olarak düşükse S&C gerekli hız, güç veya kuvvet uyaranını sağlayabilir.
 
 Bu nedenle CoachOS basketbol yükü + S&C yükü = toplam günlük yük mantığıyla çalışmalıdır.`,
-sources:``},
+`CoachOS takes account not only of S&C load but also of the load of the basketball practice happening the same day.
 
-{no:19,title:'Antrenman Sıralaması',
-body:`Yüksek nöromekanik kalite gerektiren çalışmalar genellikle yorgunluk düşükken yapılmalıdır.
+Where basketball practice carries high sprint, COD, deceleration, jumping, contact and small-sided game content, S&C may not need to repeat the same physical qualities at high volume. If team practice carries high jumping and COD, for example, S&C can shift towards complementary content: strength + upper body + posterior chain + trunk.
+
+Conversely, where team practice is physically light, S&C can supply the necessary speed, power or strength stimulus.
+
+CoachOS therefore works on the logic: basketball load + S&C load = total daily load.`],
+ sources:[``,``]},
+
+{no:19,
+ title:["Antrenman Sıralaması","Session Sequencing"],
+ body:[`Yüksek nöromekanik kalite gerektiren çalışmalar genellikle yorgunluk düşükken yapılmalıdır.
 
 GENEL SIRA
 1. Hareket hazırlığı
@@ -7651,10 +7965,30 @@ KUVVET GÜNÜ — Güç → Kuvvet → Yardımcı
 RECOVERY GÜNÜ — Mobilite → düşük şiddetli aerobik → restorasyon
 
 Takım antrenmanından hemen önce yorucu S&C bloğu planlanmamalıdır.`,
-sources:`Harper ve ark., 2022`},
+`Work requiring high neuromechanical quality should generally be done while fatigue is low.
 
-{no:20,title:'Ekipman Programlaması',
-body:`CoachOS mevcut ekipmanın türünü, miktarını, ağırlığını ve kullanılabilirliğini bilmelidir.
+GENERAL ORDER
+1. Movement preparation
+2. Mobility/activation
+3. Speed
+4. Acceleration
+5. Plyometrics
+6. Power
+7. Strength
+8. Accessory strength
+9. Conditioning
+10. Recovery
+
+SPEED/POWER DAY — Speed → Plyometrics → Power → Strength
+STRENGTH DAY — Power → Strength → Accessory
+RECOVERY DAY — Mobility → low-intensity aerobic → restoration
+
+A fatiguing S&C block must not be planned immediately before team practice.`],
+ sources:[`Harper ve ark., 2022`,`Harper et al., 2022`]},
+
+{no:20,
+ title:["Ekipman Programlaması","Equipment Programming"],
+ body:[`CoachOS mevcut ekipmanın türünü, miktarını, ağırlığını ve kullanılabilirliğini bilmelidir.
 
 Örneğin 2 barbell + 6 çift dumbbell + 4 kettlebell + 1 cable + 6 box varsa sistem 12 oyuncunun aynı anda 12 barbell kullanmasını gerektiren program oluşturamaz. Aynı şekilde envanterdeki en ağır dumbbell 20 kg ise, 40 kg dumbbell gerektiren bir yükleme yazılamaz: yük reçetesi envanterdeki ağırlıklarla uygulanabilir olmalıdır.
 
@@ -7667,18 +8001,38 @@ Ekipman kapasitesi yetersizse otomatik olarak şu çözümler oluşturulmalıdı
 • Tek taraflı varyasyon
 
 Egzersiz değişikliğinin nedeni program çıktısında belirtilmelidir.`,
-sources:``},
+`CoachOS must know the type, the quantity, the weight and the availability of the equipment on hand.
 
-{no:21,title:'Süre Sınırı',
-body:`Program gerçek antrenman süresine sığmalıdır.
+With 2 barbells + 6 pairs of dumbbells + 4 kettlebells + 1 cable + 6 boxes, for instance, the system cannot build a programme that requires 12 players to use 12 barbells at once. Equally, if the heaviest dumbbell in the inventory is 20 kg, a loading that calls for a 40 kg dumbbell cannot be written: a load prescription has to be executable with the weights in the inventory.
+
+Where equipment capacity is insufficient, these solutions should be generated automatically:
+• A1/A2 paired system
+• Stations
+• Bodyweight alternative
+• Dumbbell alternative
+• Band alternative
+• Unilateral variation
+
+The reason for an exercise substitution must be stated in the programme output.`],
+ sources:[``,``]},
+
+{no:21,
+ title:["Süre Sınırı","Time Limit"],
+ body:[`Program gerçek antrenman süresine sığmalıdır.
 
 CoachOS şu hesabı yapar: toplam süre = egzersiz süresi + set süresi + dinlenme + geçiş süresi.
 
 Süre azaldığında önce gereksiz yardımcı egzersizler çıkarılmalı, ana fiziksel hedef korunmalıdır.`,
-sources:``},
+`A programme has to fit the real session length.
 
-{no:22,title:'Kısıtlamalar',
-body:`Kısıtlamalar programın sonunda eklenmemeli; egzersiz seçiminin ilk aşamasında dikkate alınmalıdır.
+CoachOS computes: total time = exercise time + set time + rest + transition time.
+
+When time is short, unnecessary accessory exercises should come out first while the main physical target is protected.`],
+ sources:[``,``]},
+
+{no:22,
+ title:["Kısıtlamalar","Constraints"],
+ body:[`Kısıtlamalar programın sonunda eklenmemeli; egzersiz seçiminin ilk aşamasında dikkate alınmalıdır.
 
 KISITLAMA → COACHOS DAVRANIŞI
 Yük sınırı → External load azalt
@@ -7692,10 +8046,25 @@ Tek taraflı → Unilateral varyasyon seç
 Eksantrik sınırı → Yüksek eksantrik egzersizleri azalt
 COD sınırı → Lineer veya daha düşük açılı varyasyona geç
 Sprint sınırı → Düşük hızda teknik/ivmelenme çalışması kullan`,
-sources:``},
+`Constraints must not be added at the end of a programme; they are taken into account at the first stage of exercise selection.
 
-{no:23,title:'Programın Otomatik Olarak Değişmesi',
-body:`Program statik olmamalıdır. Yeni veri geldiğinde CoachOS programı yeniden değerlendirmelidir:
+CONSTRAINT → COACHOS BEHAVIOUR
+Load limit → Reduce external load
+Volume limit → Reduce sets/reps/jumps/sprints
+Time limit → Reduce the number of exercises
+Intensity limit → Lower the RPE/RIR/velocity target
+Impact/jump limit → Substitute high-impact exercises
+Speed limit → Use submaximal speeds
+No contact → Remove contact drills
+Unilateral only → Choose a unilateral variation
+Eccentric limit → Reduce high-eccentric exercises
+COD limit → Move to a linear or lower-angle variation
+Sprint limit → Use low-speed technique/acceleration work`],
+ sources:[``,``]},
+
+{no:23,
+ title:["Programın Otomatik Olarak Değişmesi","The Programme Changes By Itself"],
+ body:[`Program statik olmamalıdır. Yeni veri geldiğinde CoachOS programı yeniden değerlendirmelidir:
 
 • Maç dakikası
 • Maç sRPE
@@ -7712,10 +8081,28 @@ body:`Program statik olmamalıdır. Yeni veri geldiğinde CoachOS programı yeni
 • Sakatlık/kısıtlama
 
 Örneğin oyuncu önceki gün çok yüksek maç yükü aldıysa ertesi gün planlanan ağır alt vücut hacmi azaltılabilir.`,
-sources:``},
+`A programme must not be static. When new data arrives CoachOS should reassess it:
 
-{no:24,title:'Takım Programı → Bireysel Program',
-body:`CoachOS önce takımın ana fiziksel hedefini belirler, daha sonra oyuncuları bireyselleştirir.
+• Minutes played
+• Match sRPE
+• External load
+• Wellness
+• Readiness
+• Pain
+• The previous session
+• Load over the last 7-14 days
+• The next match
+• Team practice
+• Travel
+• Change in height/body mass
+• Injury/restriction
+
+If a player took a very high match load the day before, for instance, the heavy lower-body volume planned for the next day can be reduced.`],
+ sources:[``,``]},
+
+{no:24,
+ title:["Takım Programı → Bireysel Program","Team Programme → Individual Programme"],
+ body:[`CoachOS önce takımın ana fiziksel hedefini belirler, daha sonra oyuncuları bireyselleştirir.
 
 Örneğin takım hedefi güç ise:
 • Oyuncu A → alt vücut kuvvet
@@ -7727,10 +8114,23 @@ body:`CoachOS önce takımın ana fiziksel hedefini belirler, daha sonra oyuncul
 aynı seans yapısı içerisinde uygulanabilir.
 
 Bireyselleştirme takım programının tamamen farklılaştırılması anlamına gelmez; aynı ana hedefin oyuncuya uygun doz ve egzersizle uygulanmasıdır.`,
-sources:``},
+`CoachOS first sets the team's main physical target, then individualises the players.
 
-{no:25,title:'Program Üretim Karar Ağacı',
-body:`CoachOS her programda aşağıdaki sırayı izler:
+Where the team target is power, for example:
+• Player A → lower-body strength
+• Player B → upper-body strength
+• Player C → unilateral strength
+• Player D → low-minutes top-up
+• Player E → recovery
+
+can all be run inside the same session structure.
+
+Individualization does not mean differentiating the team programme completely; it means applying the same main target with the dose and the exercise that suit the player.`],
+ sources:[``,``]},
+
+{no:25,
+ title:["Program Üretim Karar Ağacı","Programme Decision Tree"],
+ body:[`CoachOS her programda aşağıdaki sırayı izler:
 
 1. OYUNCU KİM? Yaş + cinsiyet + pozisyon + oyun rolü + antrenman yaşı + seviye.
 2. OYUNCU HANGİ GELİŞİM DÖNEMİNDE? Biyolojik olgunlaşma + boy/kilo değişimi + büyüme atağı göstergeleri.
@@ -7745,10 +8145,26 @@ body:`CoachOS her programda aşağıdaki sırayı izler:
 11. HANGİ KISITLAMALAR VAR? Yük + hacim + zaman + darbe + hız + temas vb.
 12. PROGRAMI OLUŞTUR. Egzersiz + set + tekrar + yük + RPE/RIR/VBT + tempo + dinlenme + niyet.
 13. PROGRAMI DOĞRULA. Program süreye sığıyor mu? Ekipmana uyuyor mu? Maç takvimine uygun mu? Toplam yük aşırı mı? Oyuncunun kısıtlamalarına uyuyor mu? Günün fiziksel amacını karşılıyor mu? Gereksiz tekrar içeriyor mu?`,
-sources:``},
+`CoachOS follows this order for every programme:
 
-{no:26,title:'Kaçınılacak Programlama Hataları',
-body:`CoachOS:
+1. WHO IS THE PLAYER? Age + sex + position + playing role + training age + level.
+2. WHAT STAGE OF DEVELOPMENT IS THE PLAYER IN? Biological maturation + change in height/body mass + growth-spurt indicators.
+3. WHAT IS THE PLAYER'S STATE TODAY? Readiness + wellness + pain + injury/restriction.
+4. WHAT DOES THE CALENDAR SAY? Season phase + days to the match + matches in the week + travel.
+5. WHAT DID THE PLAYER DO IN THE LAST MATCH? Minutes + sRPE + external load.
+6. HOW MUCH LOAD WILL TEAM PRACTICE CREATE? Duration + intensity + sprints + COD + jumps + contact.
+7. WHAT IS TODAY'S PHYSICAL AIM? Strength / power / speed / conditioning / recovery.
+8. WHAT IS THE PLAYER'S INDIVIDUAL DEFICIT? Tests + performance trend + coach's notes.
+9. WHICH MOVEMENT PATTERNS ARE NEEDED? Squat + hinge + unilateral + push + pull + trunk + sprint + COD, etc.
+10. WHICH EQUIPMENT IS AVAILABLE? Equipment type + quantity + weight.
+11. WHICH CONSTRAINTS APPLY? Load + volume + time + impact + speed + contact, etc.
+12. BUILD THE PROGRAMME. Exercise + sets + reps + load + RPE/RIR/VBT + tempo + rest + intent.
+13. VALIDATE THE PROGRAMME. Does it fit the time? Does it fit the equipment? Does it suit the match calendar? Is total load excessive? Does it respect the player's constraints? Does it meet the physical aim of the day? Does it contain unnecessary repetition?`],
+ sources:[``,``]},
+
+{no:26,
+ title:["Kaçınılacak Programlama Hataları","Programming Mistakes to Avoid"],
+ body:[`CoachOS:
 • Pozisyona bakıp otomatik program üretmez.
 • Kronolojik yaşı biyolojik gelişimin yerine koymaz.
 • Altyapıya A takım programını küçültüp vermez.
@@ -7770,20 +8186,51 @@ body:`CoachOS:
 • Ağrı veya ciddi semptomlarda otomatik agresif program üretmez.
 • Maçtan hemen önce gereksiz yüksek eksantrik ve yüksek hacimli yük oluşturmaz.
 • Playoff döneminde gereksiz yeni egzersizler eklemez.`,
-sources:``},
+`CoachOS:
+• Does not generate a programme automatically off the position.
+• Does not substitute chronological age for biological development.
+• Does not hand the academy a shrunken senior programme.
+• Does not give every player the same load.
+• Does not ignore match load.
+• Does not automatically give a low-minutes player a high top-up load.
+• Does not create a top-up load when there is very little time to the next match.
+• Does not automatically remove all intensity because readiness is low.
+• Does not write maximal strength every day.
+• Does not write high-volume plyometrics every day.
+• Does not use a high-volume sprint/COD/deceleration combination every day.
+• Does not disregard the load of team practice.
+• Does not exceed equipment capacity.
+• Does not exceed session length.
+• Does not make ACWR the sole decision mechanism.
+• Does not depend on a single load metric.
+• Does not change a squad programme automatically by menstrual cycle for female players.
+• Does not make a medical diagnosis where RED-S is suspected.
+• Does not generate an aggressive programme automatically where there is pain or serious symptoms.
+• Does not create unnecessary high-eccentric, high-volume load immediately before a match.
+• Does not add unnecessary new exercises through the playoffs.`],
+ sources:[``,``]},
 
-{no:27,title:'Pliometrik — Oturum Başına Temas Sayısı',
-body:`Düşük-orta yoğunlukta, oturum başına temas sayısı:
+{no:27,
+ title:["Pliometrik — Oturum Başına Temas Sayısı","Plyometrics — Contacts per Session"],
+ body:[`Düşük-orta yoğunlukta, oturum başına temas sayısı:
 
 U9-U12 — 20-40
 U13-U14 — 40-60
 U15-U18 — 60-100 (yoğunluk arttıkça alt sınıra yaklaşılır)
 A takım, off-season — 60-100
 A takım, in-season — 30-60`,
-sources:``},
+`At low-to-moderate intensity, contacts per session:
 
-{no:28,title:'Readiness Eşik Değerleri',
-body:`CoachOS'ta readiness bazlı otomatik yük ayarı aşağıdaki eşiklerle çalışır:
+U9-U12 — 20-40
+U13-U14 — 40-60
+U15-U18 — 60-100 (the higher the intensity, the closer to the lower bound)
+Senior team, off-season — 60-100
+Senior team, in-season — 30-60`],
+ sources:[``,``]},
+
+{no:28,
+ title:["Readiness Eşik Değerleri","Readiness Thresholds"],
+ body:[`CoachOS'ta readiness bazlı otomatik yük ayarı aşağıdaki eşiklerle çalışır:
 
 • Readiness ≥ 3.5 — Program varsayılan değerleriyle uygulanır, otomatik azaltma tetiklenmez.
 • Readiness < 3.5 — Set/tekrar/yoğunluk azaltımı devreye girer.
@@ -7795,19 +8242,39 @@ Bu eşikler, ayrı bir kademe (tier) sistemiyle birlikte ve kümülatif (bağım
 • Geçici kademe düşüşü: tek günlük değil, çok günlük anket/ağrı trendine göre tetiklenir.
 
 Yapay zekâ, readiness/kademe ile ilgili gerekçe üretirken bu eşik değerlerini referans almalıdır; ürettiği açıklama, sistemin mekanik olarak uyguladığı davranışla çelişmemelidir.`,
-sources:``},
+`In CoachOS, readiness-based automatic load adjustment works to these thresholds:
 
-{no:29,title:'Serbest Metin / Özel Egzersiz Etiketleme',
-body:`CoachOS'ta egzersiz seçimi yalnızca kütüphaneyle sınırlı değildir; koç serbest metin olarak özel bir egzersiz girebilir. Bu durumda:
+• Readiness ≥ 3.5 — The programme runs at its default values; no automatic reduction is triggered.
+• Readiness < 3.5 — Set/rep/intensity reduction comes into play.
+• Readiness < 2.5 — In addition to the automatic reduction, a manual-review flag is raised for the coach; the system does not make the final call on its own.
+• Floor — No automatic reduction may take total sets below 1 or reps below 4-5.
+
+These thresholds work together with a separate tier system, and cumulatively rather than independently:
+• Structural tier: set from the results of the periodic screening battery (OHS, ASLR, ankle dorsiflexion); the weakest-link rule applies, not an average.
+• Temporary tier drop: triggered by a multi-day questionnaire/pain trend, not by a single day.
+
+When producing a rationale about readiness or tier, the AI should reference these threshold values; the explanation it produces must not contradict the behaviour the system mechanically applies.`],
+ sources:[``,``]},
+
+{no:29,
+ title:["Serbest Metin / Özel Egzersiz Etiketleme","Free-Text / Custom Exercise Tagging"],
+ body:[`CoachOS'ta egzersiz seçimi yalnızca kütüphaneyle sınırlı değildir; koç serbest metin olarak özel bir egzersiz girebilir. Bu durumda:
 
 • Yapay zekâ, girilen egzersiz adı/açıklamasından hareket paterni, stance ve fiziksel kalite etiketlerini 4. kuraldaki taksonomiye göre çıkarsamalıdır.
 • Etiket çıkarımı düşük güvenle yapılıyorsa (belirsiz/yetersiz bilgi içeren isim), sistem etiketi varsayımla doldurmamalı; koçtan onay/düzeltme istemelidir — bu, 2. kuraldaki "veri yoksa uydurma" ilkesinin doğal uzantısıdır.
 • Özel egzersiz, kütüphanedeki egzersizlerle aynı kısıtlama filtrelerinden (ekipman, temas, eksantrik, hız sınırı vb.) geçirilmelidir; kütüphane dışı olması onu kısıtlama denetiminden muaf tutmaz.
 • Koç tarafından onaylanan etiketler, aynı egzersiz tekrar kullanıldığında yeniden sorulmaması için kütüphaneye ileriye dönük eklenebilir.`,
-sources:``},
+`In CoachOS exercise selection is not limited to the library; a coach can enter a custom exercise as free text. In that case:
 
-{no:30,title:'Ana Programlama Felsefesi',
-body:`Altyapıda amaç uzun vadeli fiziksel gelişimdir. A takımda amaç performansı sürdürülebilir şekilde yüksek tutmaktır.
+• The AI should infer the movement pattern, stance and physical quality tags from the entered exercise name/description, using the taxonomy in rule 4.
+• Where the tag inference is low-confidence (an ambiguous name carrying insufficient information), the system must not fill the tag by assumption; it should ask the coach to confirm or correct it — the natural extension of the "do not invent data where there is none" principle in rule 2.
+• A custom exercise must pass through the same constraint filters as library exercises (equipment, contact, eccentric, speed limit, etc.); being outside the library does not exempt it from constraint checking.
+• Tags confirmed by the coach can be added to the library going forward so the same exercise is not asked about again.`],
+ sources:[``,``]},
+
+{no:30,
+ title:["Ana Programlama Felsefesi","Core Programming Philosophy"],
+ body:[`Altyapıda amaç uzun vadeli fiziksel gelişimdir. A takımda amaç performansı sürdürülebilir şekilde yüksek tutmaktır.
 
 Off-season kapasite geliştirme dönemidir. Pre-season kapasitenin basketbola aktarılma dönemidir. In-season performansı koruma ve yorgunluk yönetimi dönemidir. Playoff döneminde tazelik ve performans öncelik kazanır.
 
@@ -7818,36 +8285,89 @@ Pozisyon yalnızca başlangıç noktasıdır; bireysel veri daha değerlidir. Kr
 Basketbol antrenmanı ile S&C birlikte değerlendirilir. Her fiziksel kalite uzun vadede geliştirilir veya korunur; ancak her kalite her gün yüksek dozda çalıştırılmaz.
 
 Program mümkün olan en yüksek performans uyaranını, mümkün olan en düşük gereksiz yorgunlukla üretmelidir.`,
-sources:``},
+`In the academy the aim is long-term physical development. In the senior team the aim is to keep performance high sustainably.
+
+Off-season is the period for developing capacity. Pre-season is the period for transferring capacity to basketball. In-season is the period for protecting performance and managing fatigue. Through the playoffs, freshness and performance take priority.
+
+Unnecessary load is reduced for a high-minutes player. The missing physical load of a low-minutes player is made up at an appropriate time.
+
+Position is only a starting point; individual data is worth more. Chronological age is only a starting point; biological development and training age change the dose.
+
+Basketball practice and S&C are evaluated together. Every physical quality is developed or maintained over the long term; but no quality is trained at a high dose every day.
+
+A programme should produce the highest possible performance stimulus with the lowest possible unnecessary fatigue.`],
+ sources:[``,``]},
+
 ];
-const kbSeed=()=>KB_DEFAULT.map(r=>({id:'kb'+r.no,no:r.no,title:r.title,body:r.body,sources:r.sources,custom:false}));
-/* The rules as the app reads them: whatever is stored, normalised. An entry the coach
-   rewrote keeps its own text; one the seed added and nobody touched is still the seed's.
-   Returned as stored even when empty — a coach who deleted a rule should not find it
-   back on the next render. */
+/* A field of a rule, in both languages. Tolerates every shape the field has ever had:
+   the [tr,en] pair the seed is written as, the {tr,en} object it is stored as, and the
+   single string rules were stored as before they could be translated. */
+const kbPair=v=>{
+  if(Array.isArray(v))return{tr:String(v[0]==null?'':v[0]),en:String(v[1]==null?'':v[1])};
+  if(v&&typeof v==='object')return{tr:String(v.tr==null?'':v.tr),en:String(v.en==null?'':v.en)};
+  return{tr:String(v==null?'':v),en:''};
+};
+/* One side of a pair, FALLING BACK to the other when it is blank. A rule nobody has
+   translated yet still reads — and still binds the assistant — in the language it was
+   written in, rather than turning into an empty box on the other language's screen. */
+const kbSide=(v,lang)=>{
+  const p=kbPair(v),a=lang==='en'?p.en:p.tr,b=lang==='en'?p.tr:p.en;
+  return String(a||'').trim()?a:b;
+};
+const kbNow=v=>kbSide(v,REPORT_LANG);
+/* Whether that side has actually been written, as opposed to borrowed from the other. */
+const kbWritten=(v,lang)=>String(kbPair(v)[lang]||'').trim()!=='';
+const kbSeed=()=>KB_DEFAULT.map(r=>({id:'kb'+r.no,no:r.no,
+  title:kbPair(r.title),body:kbPair(r.body),sources:kbPair(r.sources),custom:false}));
+/* Rules stored before they could be translated hold one string per field — the Turkish
+   they were seeded in. A field still identical to its seed adopts the seed's pair
+   outright, so a club that never touched a rule gets the English side rather than a
+   blank one; a field the coach edited keeps that text as the Turkish side and leaves the
+   translation to be written. Runs on read, so it also repairs a snapshot that arrives
+   from a device still on the old shape. */
+function kbUpgrade(list){
+  const seed={};KB_DEFAULT.forEach(d=>{seed['kb'+d.no]=d;});
+  return (list||[]).map(r=>{
+    if(!r||typeof r!=='object')return r;
+    const flat=k=>typeof r[k]==='string';
+    if(!flat('title')&&!flat('body')&&!flat('sources'))return r;
+    const d=seed[String(r.id||'')];
+    const up=k=>{
+      if(!flat(k))return kbPair(r[k]);
+      const s=d?kbPair(d[k]):{tr:'',en:''};
+      return (d&&String(r[k]).trim()===String(s.tr).trim())?s:{tr:String(r[k]),en:''};
+    };
+    return{...r,title:up('title'),body:up('body'),sources:up('sources')};
+  });
+}
+/* The rules as the app reads them: whatever is stored, normalised, both languages kept.
+   An entry the coach rewrote keeps its own text; one the seed added and nobody touched
+   is still the seed's. Returned as stored even when empty — a coach who deleted a rule
+   should not find it back on the next render. */
 function kbRules(data){
   const raw=Array.isArray(data&&data.knowledge)?data.knowledge:null;
   if(!raw)return kbSeed();
-  return raw.filter(r=>r&&typeof r==='object').map((r,i)=>({
+  return kbUpgrade(raw).filter(r=>r&&typeof r==='object').map((r,i)=>({
     id:String(r.id||'').trim()||('kb'+(r.no||i+1)),
     no:recNum(r.no)!=null?recNum(r.no):i+1,
-    title:String(r.title||'').trim(),
-    body:String(r.body||''),
-    sources:String(r.sources||''),
+    title:kbPair(r.title),body:kbPair(r.body),sources:kbPair(r.sources),
     custom:!!r.custom,
   }));
 }
-/* What the assistant is handed. Titles and bodies go over verbatim so the model reads
-   the coach's wording, not a summary of it, and the reference list rides along so a
-   rule can be cited the way the club wrote it. */
-function kbForAI(rules){
-  const rows=(rules||[]).filter(r=>String(r.title||'').trim()||String(r.body||'').trim());
+/* What the assistant is handed, in ONE language: the screen's, so a club working in
+   English gets its rules in English, with the other side standing in wherever a
+   translation has not been written. Titles and bodies go over verbatim — the model
+   reads the coach's wording, not a summary of it — and the reference list rides along
+   so a rule can be cited the way the club wrote it. */
+function kbForAI(rules,lang){
+  const l=(lang==='tr'||lang==='en')?lang:REPORT_LANG;
+  const rows=(rules||[]).filter(r=>kbSide(r.title,l).trim()||kbSide(r.body,l).trim());
   if(!rows.length)return null;
   return rows.map((r,i)=>({
     kural_no:r.no!=null?r.no:i+1,
-    baslik:r.title||('Kural '+(i+1)),
-    kural:r.body||'',
-    kaynakca:String(r.sources||'').trim()||null,
+    baslik:kbSide(r.title,l)||('Kural '+(i+1)),
+    kural:kbSide(r.body,l)||'',
+    kaynakca:kbSide(r.sources,l).trim()||null,
   }));
 }
 
@@ -8136,8 +8656,10 @@ function migrate(data){
   /* The knowledge database the individualization assistant writes against. Seeded once,
      on the first read of a workspace that has never had one, and then left alone: the
      thirty rules are the club's document from that moment on, and re-seeding would
-     quietly undo whatever a coach corrected. */
+     quietly undo whatever a coach corrected. A workspace written before the rules could
+     be translated is brought up to the two-language shape here (see kbUpgrade). */
   if(!Array.isArray(data.knowledge))data.knowledge=kbSeed();
+  else data.knowledge=kbUpgrade(data.knowledge);
   if(!Array.isArray(data.researches))data.researches=[];
   data.researches=data.researches.map(r=>({id:r.id||uid(),title:r.title||'',url:r.url||'',doi:r.doi||'',
     authors:Array.isArray(r.authors)?r.authors:[],authorsText:r.authorsText||'',year:r.year||'',date:r.date||'',
@@ -11747,37 +12269,82 @@ function SetupEquipment({setup,save}){
    difference inspectable — the next coach can see what the rule rests on rather than
    who typed it last.
 
+   EACH RULE HAS A TURKISH AND AN ENGLISH SIDE, and this panel edits ONE of them at a
+   time. The toggle at the top says which, and it opens on the language the rest of the
+   app is in. The two sides are independent text rather than a translation memory:
+   editing one never touches the other, so a club can say something different in each
+   without the app deciding which one was meant. What it does do is fall back — a side
+   nobody has written yet reads, and is sent to the assistant, in the language that has
+   been written, so an untranslated rule is never a blank rule.
+
    Nothing here is compiled into the assistant. The text is read at the moment a
    session is generated (see kbForAI / diBuildProgramInput), so a rule corrected this
    afternoon binds the programme written a minute later. */
 function KnowledgePanel({data,setData}){
+  const appLang=useAppLang();
   const rules=kbRules(data);
   const[open,setOpen]=useState(()=>({}));
   const[find,setFind]=useState('');
+  /* Which side is being edited. It follows the app language until the coach picks a
+     side here, because the common case is writing in the language you are working in
+     and the second common case is sitting down to translate. */
+  const[pickedLang,setPickedLang]=useState(null);
+  const lang=pickedLang||appLang;
+  const other=lang==='tr'?'en':'tr';
+  const LANG_NAME={tr:['Türkçe','Turkish'],en:['İngilizce','English']};
+  const langName=l=>L(LANG_NAME[l][0],LANG_NAME[l][1]);
+
   const write=next=>setData(prev=>({...prev,knowledge:next.map(r=>
-    ({id:r.id,no:r.no,title:r.title,body:r.body,sources:r.sources,custom:!!r.custom}))}));
-  const patch=(id,upd)=>write(rules.map(r=>r.id===id?{...r,...upd}:r));
+    ({id:r.id,no:r.no,title:kbPair(r.title),body:kbPair(r.body),sources:kbPair(r.sources),
+      custom:!!r.custom}))}));
+  /* A field edit only ever writes the side on screen; the other is carried through
+     untouched. */
+  const patch=(id,field,value)=>write(rules.map(r=>r.id===id
+    ?{...r,[field]:{...kbPair(r[field]),[lang]:value}}:r));
   const toggle=id=>setOpen(o=>({...o,[id]:!o[id]}));
   const seedOf=r=>KB_DEFAULT.find(d=>('kb'+d.no)===r.id)||null;
+  /* Reset restores BOTH sides: the seed is one document in two languages, and putting
+     half of it back would leave the rule saying two different things. */
   const reset=r=>{const d=seedOf(r);if(!d)return;
-    if(!confirm(L(`"${r.title||d.title}" kuralı varsayılan metnine dönsün mü? Yazdığın değişiklikler kaybolur.`,
-                  `Reset "${r.title||d.title}" to its default text? Your edits to it are lost.`)))return;
-    patch(r.id,{title:d.title,body:d.body,sources:d.sources});};
-  const dirty=r=>{const d=seedOf(r);return!!d&&(d.title!==r.title||d.body!==r.body||d.sources!==r.sources);};
+    if(!confirm(L(`"${kbSide(r.title,lang)||kbPair(d.title).tr}" kuralı varsayılan metnine dönsün mü? Her iki dildeki değişikliklerin de kaybolur.`,
+                  `Reset "${kbSide(r.title,lang)||kbPair(d.title).en}" to its default text? Your edits in BOTH languages are lost.`)))return;
+    write(rules.map(x=>x.id===r.id
+      ?{...x,title:kbPair(d.title),body:kbPair(d.body),sources:kbPair(d.sources)}:x));};
+  const dirty=r=>{const d=seedOf(r);if(!d)return false;
+    return['title','body','sources'].some(k=>{
+      const a=kbPair(r[k]),b=kbPair(d[k]);return a.tr!==b.tr||a.en!==b.en;});};
+  /* Has this rule been written on the side now on screen? A rule reading through the
+     fallback is legible but not translated, and that is worth saying out loud. */
+  const translated=r=>kbWritten(r.title,lang)&&kbWritten(r.body,lang);
+  /* Starting a translation from the text that exists, rather than from an empty box. */
+  const copyOver=r=>{
+    if(!confirm(L(`${langName(other)} metni ${langName(lang)} alanlarının üzerine kopyalansın mı? Buradaki mevcut metin değişir, öteki dil olduğu gibi kalır.`,
+                  `Copy the ${langName(other)} text over the ${langName(lang)} fields? What is here is replaced; the other language is untouched.`)))return;
+    write(rules.map(x=>x.id===r.id?['title','body','sources'].reduce((acc,k)=>{
+      const pr=kbPair(x[k]);return{...acc,[k]:{...pr,[lang]:pr[other]}};},{...x}):x));
+  };
   const addRule=()=>{
     const no=rules.reduce((m,r)=>Math.max(m,r.no||0),0)+1;
     const id='kb'+uid();
-    write([...rules,{id,no,title:L(`Kural ${no}`,`Rule ${no}`),body:'',sources:'',custom:true}]);
+    const blank={tr:'',en:''};
+    write([...rules,{id,no,
+      title:{...blank,[lang]:L(`Kural ${no}`,`Rule ${no}`)},
+      body:blank,sources:blank,custom:true}]);
     setOpen(o=>({...o,[id]:true}));
   };
   const del=r=>{
     if(!r.custom)return;
-    if(!confirm(L(`"${r.title}" kuralı silinsin mi?`,`Delete the rule "${r.title}"?`)))return;
+    if(!confirm(L(`"${kbSide(r.title,lang)}" kuralı silinsin mi?`,`Delete the rule "${kbSide(r.title,lang)}"?`)))return;
     write(rules.filter(x=>x.id!==r.id));
   };
+  /* The search reads BOTH languages: looking for a rule you remember in Turkish while
+     editing the English side is exactly the case this panel creates. */
   const q=diExName(find);
-  const shown=q?rules.filter(r=>diExName(`${r.no} ${r.title} ${r.body} ${r.sources}`).includes(q)):rules;
+  const hay=r=>diExName([r.no,kbPair(r.title).tr,kbPair(r.title).en,kbPair(r.body).tr,
+    kbPair(r.body).en,kbPair(r.sources).tr,kbPair(r.sources).en].join(' '));
+  const shown=q?rules.filter(r=>hay(r).includes(q)):rules;
   const edited=rules.filter(dirty).length;
+  const untranslated=rules.filter(r=>!translated(r)).length;
 
   return(<div className="kb">
     <div className="help su-lead">{L('Bireyselleştirme ekranındaki yapay zekâ destekli program yazma asistanı her programı bu kurallara göre yazar. Kurallar canlıdır: buradaki bir metni değiştirdiğinde, bundan sonra üretilen her program yeni hâline göre çıkar — yeniden yükleme ya da kurulum gerekmez. Başlığa bas, kuralı düzenle, altındaki kaynakça alanına dayandığı çalışmaları yaz.',
@@ -11785,6 +12352,13 @@ function KnowledgePanel({data,setData}){
     <div className="kb-top">
       <input className="kb-find" value={find} onChange={e=>setFind(e.target.value)}
         placeholder={L('Kurallarda ara…','Search the rules…')} aria-label={L('Kurallarda ara','Search the rules')}/>
+      {/* Which language this panel is writing. Two buttons rather than a select: the
+          choice has two values and it changes every box on the screen. */}
+      <div className="kb-lang" role="group" aria-label={L('Düzenlenen dil','Editing language')}>
+        {['tr','en'].map(l=><button key={l} type="button" className={lang===l?'on':''}
+          onClick={()=>setPickedLang(l)} title={L(`${langName(l)} metnini düzenle`,`Edit the ${langName(l)} text`)}>
+          {l==='tr'?'TR':'EN'}</button>)}
+      </div>
       <span className="kb-count">
         {q?L(`${shown.length} / ${rules.length} kural`,`${shown.length} / ${rules.length} rules`)
           :L(`${rules.length} kural`,`${rules.length} rules`)}
@@ -11794,41 +12368,57 @@ function KnowledgePanel({data,setData}){
         disabled={!Object.values(open).some(Boolean)}>{L('Hepsini kapat','Collapse all')}</button>
       <button className="btn xs sec" onClick={addRule}>＋ {L('Kural ekle','Add rule')}</button>
     </div>
+    <div className="help kb-note">
+      {untranslated>0
+        ?L(`${langName(lang)} metnini düzenliyorsun. ${untranslated} kuralın ${langName(lang)} karşılığı henüz yazılmadı; o kurallar bu ekranda ve asistanda ${langName(other)} metniyle görünür — üzerine yazdığın an ${langName(lang)} olur.`,
+           `You are editing the ${langName(lang)} text. ${untranslated===1?'One rule has':`${untranslated} rules have`} no ${langName(lang)} text yet; ${untranslated===1?'it reads':'those read'} here, and reaches the assistant, in ${langName(other)} until you write one.`)
+        :L(`${langName(lang)} metnini düzenliyorsun. ${rules.length} kuralın da ${langName(lang)} karşılığı yazılmış durumda.`,
+           `You are editing the ${langName(lang)} text. Every rule has ${langName(lang)} text written.`)}
+    </div>
     <div className="kb-grid">
       {shown.map(r=>{
         const isOpen=!!open[r.id];
+        const has=translated(r);
         return(<div key={r.id} className={'kb-card'+(isOpen?' open':'')}>
           <button type="button" className="kb-h" onClick={()=>toggle(r.id)}
             aria-expanded={isOpen}>
             <span className="kb-no">{r.no}</span>
-            <span className="kb-t">{r.title||L('(başlıksız)','(untitled)')}</span>
+            <span className="kb-t">{kbSide(r.title,lang)||L('(başlıksız)','(untitled)')}</span>
+            {!has&&<span className="kb-tag" title={L(`${langName(lang)} karşılığı yazılmamış — ${langName(other)} metniyle okunuyor.`,
+                                                     `No ${langName(lang)} version yet — reading in ${langName(other)}.`)}>
+              {L('çeviri yok','not translated')}</span>}
             <span className="kb-caret">▼</span>
           </button>
           {isOpen&&<div className="kb-body">
             <div className="kb-f">
-              <label>{L('Başlık','Title')}</label>
-              <input value={r.title} onChange={e=>patch(r.id,{title:e.target.value})}
-                placeholder={L('Kural başlığı','Rule title')}/>
+              <label>{L(`Başlık · ${langName(lang)}`,`Title · ${langName(lang)}`)}</label>
+              <input value={kbPair(r.title)[lang]} onChange={e=>patch(r.id,'title',e.target.value)}
+                placeholder={kbPair(r.title)[other]||L('Kural başlığı','Rule title')}/>
             </div>
             <div className="kb-f">
-              <label>{L('Kural','Rule')}</label>
-              <textarea className="kb-rule" value={r.body} onChange={e=>patch(r.id,{body:e.target.value})}
-                placeholder={L('Asistanın bu kuralı nasıl uygulayacağını yaz.','Write how the assistant should apply this rule.')}/>
+              <label>{L(`Kural · ${langName(lang)}`,`Rule · ${langName(lang)}`)}</label>
+              <textarea className="kb-rule" value={kbPair(r.body)[lang]} onChange={e=>patch(r.id,'body',e.target.value)}
+                placeholder={kbPair(r.body)[other]||L('Asistanın bu kuralı nasıl uygulayacağını yaz.','Write how the assistant should apply this rule.')}/>
             </div>
             {/* The evidence the rule stands on, under the rule and not beside it: read
                 second, because it answers a question the rule has to raise first. */}
             <div className="kb-f kb-src-wrap">
-              <label>{L('Kaynakça','References')}</label>
-              <textarea className="kb-src" value={r.sources} onChange={e=>patch(r.id,{sources:e.target.value})}
-                placeholder={L('Yazar, yıl — her kaynak bir satır. Ör. Harper ve ark., 2022','Author, year — one reference per line. E.g. Harper et al., 2022')}/>
+              <label>{L(`Kaynakça · ${langName(lang)}`,`References · ${langName(lang)}`)}</label>
+              <textarea className="kb-src" value={kbPair(r.sources)[lang]} onChange={e=>patch(r.id,'sources',e.target.value)}
+                placeholder={kbPair(r.sources)[other]||L('Yazar, yıl — her kaynak bir satır. Ör. Harper ve ark., 2022','Author, year — one reference per line. E.g. Harper et al., 2022')}/>
               <div className="help" style={{margin:0}}>{L('Kaynakça da asistana gider: bir kuralın gerekçesini yazarken dayandığı çalışmayı görebilir.',
                                                           'The references go to the assistant as well, so it can see what a rule rests on when it explains a decision.')}</div>
             </div>
             <div className="kb-acts">
               <button className="btn xs sec" onClick={()=>toggle(r.id)}>{L('Kapat','Close')}</button>
+              {kbWritten(r.body,other)&&<button className="btn xs sec" onClick={()=>copyOver(r)}>
+                {L(`${langName(other)} metnini kopyala`,`Copy the ${langName(other)} text`)}</button>}
               {dirty(r)&&<button className="btn xs sec" onClick={()=>reset(r)}>{L('Varsayılana döndür','Reset to default')}</button>}
               {r.custom&&<button className="btn xs danger" onClick={()=>del(r)}>{L('Kuralı sil','Delete rule')}</button>}
-              <span className="help">{dirty(r)
+              <span className="help">{!has
+                ?L(`Bu kuralın ${langName(lang)} karşılığı boş — şimdilik ${langName(other)} metni kullanılıyor.`,
+                   `This rule has no ${langName(lang)} text — the ${langName(other)} version stands in for now.`)
+                :dirty(r)
                 ?L('Bu kural düzenlendi — asistan bundan sonra senin yazdığın hâli okur.',
                    'This rule has been edited — the assistant reads your wording from now on.')
                 :L('Değişiklikler anında kaydedilir.','Changes are saved as you type.')}</span>
@@ -29487,7 +30077,8 @@ bilgi_tabani alanı, kulübün programlama kurallarının tamamını taşır. He
 numarası (kural_no), bir başlığı (baslik), metni (kural) ve varsa kaynakçası (kaynakca)
 vardır. Bu kurallar koç tarafından yazılır ve değiştirilebilir; sana HER ZAMAN o anki
 güncel hâlleriyle gelir. Ezberden veya genel literatür bilginden değil, SANA GELEN
-METİNDEN çalış.
+METİNDEN çalış. Kurallar kulübün çalıştığı dilde (Türkçe ya da İngilizce) gelebilir;
+hangi dilde geldiğinden bağımsız olarak bağlayıcıdır ve yanıtını yine Türkçe yazarsın.
 
 - Yazdığın program bilgi tabanındaki hiçbir kuralla çelişemez. Çelişiyorsa program yanlıştır.
 - Bir kural, senin genel bilginle çelişiyorsa kural kazanır. Kulübün yazdığı metin bağlayıcıdır.
