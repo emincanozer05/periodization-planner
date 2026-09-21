@@ -502,6 +502,27 @@ changed is marked, and "Reset to default" puts the seeded text
 back. "+ Add rule" adds one of your own, and only your own can be
 deleted.
 
+EVERY RULE HAS A TURKISH AND AN ENGLISH SIDE, and all thirty ship
+written in both. The TR / EN toggle at the top of the panel says
+which side you are editing; it opens on whatever language the rest
+of the app is in, and switching it rewrites every title and box on
+the screen. The two sides are independent text, not a translation
+memory: editing one never touches the other, so a club can say
+something different in each without the app deciding which was
+meant. "Copy the Turkish text" (or the English) fills the side you
+are on from the side you are not, as a starting point.
+
+A side nobody has written yet FALLS BACK to the one that has been.
+A rule with no English text reads in Turkish, is marked "not
+translated" on its card, and is counted in the line under the
+toolbar — and it still reaches the assistant, in Turkish, so an
+untranslated rule is never a silent gap in what the model is told.
+The search box reads both languages at once, so looking for a rule
+you remember in Turkish works while you are editing the English.
+
+The assistant is handed ONE language: the one the app is in, with
+the other standing in where a translation has not been written.
+
 THE RULES ARE LIVE. They are not compiled into the assistant; they
 are read at the moment a session is generated. Correct a rule this
 afternoon and the programme written a minute later follows the new
