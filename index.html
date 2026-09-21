@@ -5172,29 +5172,109 @@ header{background:var(--bg2)!important}
   .di-lead{padding-right:0}
   .di-resacts{position:static;justify-content:flex-end}
 }
-/* Settings — the equipment inventory */
-.su-eq{display:flex;flex-direction:column;gap:10px}
-.su-eq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px}
-.su-eq-row{display:flex;align-items:center;gap:7px;
-  border:1px solid var(--border);border-radius:9px;background:var(--bg2);padding:7px 11px}
-.su-eq-row.added{border-style:dashed}
-.su-eq-row.on{border-color:rgba(45,212,167,.45);background:rgba(45,212,167,.07)}
-.su-eq-nm{flex:1;min-width:0;font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.su-eq-row.on .su-eq-nm{color:var(--text)}
-.su-eq-fld{flex:0 0 auto;display:flex;align-items:center;gap:4px}
-.su-eq-row input{width:70px;text-align:center;padding-left:6px;padding-right:6px}
-.su-eq-row input::-webkit-outer-spin-button,.su-eq-row input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.su-eq-row input[type=number]{-moz-appearance:textfield}
-.su-eq-u{font-size:10px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-style:normal}
-.su-eq-x{flex:0 0 auto;width:16px;background:none;border:0;color:var(--dim);cursor:pointer;font-size:11px;padding:0}
-.su-eq-x.ghost{pointer-events:none}
-.su-eq-x:hover{color:#f43f5e}
-.su-eq-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px dashed var(--border);
-  border-radius:10px;background:var(--bg2);padding:10px 11px}
-.su-eq-add select{flex:0 1 190px;width:auto;min-width:150px}
-.su-eq-add input{flex:0 1 180px;width:auto}
-.su-eq-add input[type=number]{flex:0 0 auto;width:82px;text-align:center}
-.su-eq-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+/* Settings — the equipment inventory.
+   A shelf, not a list: one card per piece of kit, its picture on the left, what the gym
+   holds of it in the table underneath. The card is what makes a second weight of the
+   same item obvious — it is another line on the same card rather than another row in a
+   column of thirty. */
+.su-eq{display:flex;flex-direction:column;gap:14px}
+.su-eq-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.su-eq-hd-l{min-width:0;border-left:3px solid var(--accent);padding-left:12px}
+.su-eq-hd-l h2{font-size:20px;line-height:1.2}
+.su-eq-hd-l .help{margin:4px 0 0}
+.su-eq-hd-r{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.su-eq-stat{display:flex;align-items:center;gap:10px;padding:8px 15px;border-radius:13px;
+  background:var(--elevated);border:1px solid var(--border)}
+.su-eq-stat-ic{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;flex:0 0 auto;
+  background:var(--accent-bg);color:var(--accent2)}
+.su-eq-stat-l{display:block;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  color:var(--dim);white-space:nowrap}
+.su-eq-stat-v{display:block;font-size:17px;font-weight:700;line-height:1.15;color:var(--text)}
+.su-eq-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.su-eq-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.su-eq-bar-r{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;margin-left:auto;justify-content:flex-end}
+.su-eq-foot{margin:0}
+
+/* --- one piece of kit --- */
+.su-eq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(296px,1fr));gap:14px;align-items:start}
+.eqc{display:flex;flex-direction:column;gap:11px;padding:13px;border-radius:16px;
+  border:1px solid var(--border);background:var(--panel);
+  transition:border-color .16s ease,box-shadow .16s ease}
+.eqc:hover{border-color:var(--border2);box-shadow:0 14px 30px -20px rgba(0,0,0,.9)}
+.eqc.off{background:linear-gradient(var(--bg2),var(--bg2))}
+.eqc.off .eqc-nm{color:var(--text2)}
+.eqc.editing{border-color:var(--accent);box-shadow:0 0 0 1px rgba(0,148,255,.35)}
+.eqc-hd{display:flex;align-items:flex-start;gap:11px}
+.eqc-ph{position:relative;flex:0 0 auto;width:76px;height:76px;border-radius:13px;overflow:hidden;
+  border:1px solid var(--border2);background:linear-gradient(140deg,#22262d,#14171c);
+  display:grid;place-items:center;color:var(--dim)}
+.eqc-ph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.eqc-ph-e{display:grid;place-items:center}
+.eqc-ph-up{position:absolute;right:4px;bottom:4px;width:21px;height:21px;border-radius:7px;
+  display:grid;place-items:center;cursor:pointer;color:var(--text2);
+  background:rgba(8,10,13,.72);border:1px solid var(--border2)}
+.eqc-ph-up:hover{color:var(--text);border-color:var(--accent)}
+.eqc-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding-top:2px}
+.eqc-nm{font-size:14.5px;font-weight:700;line-height:1.25;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eqc-sub{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eqc-cat{align-self:flex-start;margin-top:4px;padding:2px 9px;border-radius:7px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.03em;
+  background:var(--accent-bg);color:var(--accent2);border:1px solid rgba(0,148,255,.32)}
+.eqc-cat.c-machine{background:rgba(139,92,246,.12);color:#c4b5fd;border-color:rgba(139,92,246,.34)}
+.eqc-cat.c-access{background:rgba(16,185,129,.12);color:#6ee7b7;border-color:rgba(16,185,129,.34)}
+.eqc-cat.c-func{background:rgba(245,158,11,.12);color:#fcd34d;border-color:rgba(245,158,11,.34)}
+.eqc-cat.c-other{background:var(--elevated);color:var(--text2);border-color:var(--border2)}
+.eqc-acts{display:flex;gap:5px;flex:0 0 auto}
+.eqc-ic{width:27px;height:27px;padding:0;border-radius:8px;cursor:pointer;display:grid;place-items:center;
+  border:1px solid var(--border);background:var(--elevated);color:var(--dim);
+  transition:color .14s ease,border-color .14s ease}
+.eqc-ic:hover,.eqc-ic.on{color:var(--accent2);border-color:var(--accent)}
+.eqc-ic.danger:hover{color:#f87171;border-color:rgba(248,113,113,.6)}
+
+/* --- what the gym holds of it --- */
+.eqc-tbl{border:1px solid var(--border);border-radius:11px;overflow:hidden;background:var(--bg2)}
+.eqc-tr{display:grid;grid-template-columns:minmax(0,1fr) 76px 22px;align-items:center;gap:6px;
+  padding:3px 8px;border-top:1px solid var(--border)}
+.eqc-tr.hd{border-top:0;padding:6px 9px;background:var(--elevated);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.04em}
+.eqc-tr.hd span:nth-child(2){text-align:right}
+.eqc-tr input{width:100%;height:27px;padding:0 7px;font-size:12.5px;border-radius:7px;
+  border:1px solid transparent;background:transparent;color:var(--text)}
+.eqc-tr input:hover{border-color:var(--border2)}
+.eqc-tr input:focus{border-color:var(--accent);background:var(--panel);box-shadow:none}
+.eqc-tr input.qty{text-align:right;font-family:'IBM Plex Mono',ui-monospace,monospace}
+.eqc-tr input::-webkit-outer-spin-button,.eqc-tr input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.eqc-tr input[type=number]{-moz-appearance:textfield}
+.eqc-lv{display:flex;align-items:center;gap:7px;min-width:0}
+.eqc-dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-left:4px}
+.eqc-x{width:22px;height:22px;padding:0;border:0;background:none;color:var(--dim);cursor:pointer;
+  font-size:11px;border-radius:6px}
+.eqc-x:hover{color:#f87171;background:rgba(248,113,113,.12)}
+.eqc-empty{padding:11px 9px;text-align:center;font-size:11.5px;color:var(--dim)}
+.eqc-add{width:100%;justify-content:center}
+
+/* --- describing a card, and the tile that starts a new one --- */
+.eqc-form{display:flex;flex-direction:column;gap:9px}
+.eqc-form label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.03em}
+.eqc-form input,.eqc-form select{width:100%;font-size:12.5px;font-family:'Space Grotesk','Inter',sans-serif}
+.eqc-form-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.eqc-form-act{display:flex;gap:7px;flex-wrap:wrap;margin-top:2px}
+.eqc.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+  min-height:210px;border-style:dashed;cursor:pointer;text-align:center;color:var(--dim);
+  font-family:inherit;background:var(--bg2)}
+.eqc.add:hover{border-color:var(--accent);color:var(--text2)}
+.eqc-add-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;
+  border:1px solid var(--border2);background:var(--elevated);font-size:19px;color:var(--accent2)}
+.eqc-add-t{font-size:13.5px;font-weight:700;color:var(--text)}
+.eqc-add-s{font-size:11.5px;color:var(--dim);max-width:26ch;line-height:1.5}
+@media(max-width:560px){
+  .su-eq-grid{grid-template-columns:1fr}
+  .su-eq-hd-r{width:100%}
+  .su-eq-bar-r{flex-wrap:wrap;width:100%}
+  .eqc-form-2{grid-template-columns:1fr}
+}
 
 /* Settings — the AI assistant knowledge database.
    Titles only until one is opened, two to a row: thirty rules read as a contents page
@@ -5881,6 +5961,10 @@ const TEST_ICONS={
   arrow:['M5 12h13','M13.4 6.4L19 12l-5.6 5.6'],
   target:['M12 20.8a8.8 8.8 0 1 0 0-17.6 8.8 8.8 0 0 0 0 17.6z','M12 16.4a4.4 4.4 0 1 0 0-8.8 4.4 4.4 0 0 0 0 8.8z','M12 13.4a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8z'],
   info:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M12 11v5.4','M12 7.6h.01'],
+  pencil:['M4 20h4.2L19 9.2a2.1 2.1 0 0 0-3-3L5.2 17V20z','M14.6 6.6l2.8 2.8'],
+  trash:['M4.6 6.6h14.8','M9.4 6.6V4.4h5.2v2.2','M6.6 6.6l.9 13.2a1.6 1.6 0 0 0 1.6 1.4h5.8a1.6 1.6 0 0 0 1.6-1.4l.9-13.2','M10.4 10.6v6.6','M13.6 10.6v6.6'],
+  box:['M12 2.8l8.2 4.4v9.6L12 21.2 3.8 16.8V7.2z','M3.8 7.2L12 11.6l8.2-4.4','M12 11.6v9.6'],
+  camera:['M4.6 7.6h3l1.4-2.2h6l1.4 2.2h3a1.6 1.6 0 0 1 1.6 1.6v8.2a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 17.4V9.2a1.6 1.6 0 0 1 1.6-1.6z','M12 16.6a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z'],
 };
 const TIc=({k,size})=>{const p=TEST_ICONS[k]||TEST_ICONS.beaker;const s=size||18;
   return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{p.map((d,i)=><path key={i} d={d}/>)}</svg>);};
@@ -11906,6 +11990,10 @@ function PageHero({title,sub,stats,children}){
 }
 function Setup({team,updateTeam,data,setData}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
+  /* Several setup keys in ONE write. Two `u` calls in a row would each build their
+     patch from the same `s`, so the second would drop the first — and the equipment
+     inventory writes two keys at once (the shelf and the flat list read from it). */
+  const uAll=patch=>updateTeam(team.id,{setup:{...s,...patch}});
   /* The season and the macrocycle are the same window: it opens with General Preparation
      and closes with Transition. Auto periods already follow the season dates; custom ones
      are moved by hand here so the two ends stay the same dates. */
@@ -12063,8 +12151,8 @@ function Setup({team,updateTeam,data,setData}){
     {/* The gym's kit. Asked once here instead of per session on the programme screen:
         a gym does not change between Tuesday and Wednesday, and the answer is needed by
         every session this app writes. */}
-    <div className="panel su-panel"><h2>{L('Ekipman Envanteri','Equipment inventory')}</h2>
-      <SetupEquipment setup={s} save={u}/>
+    <div className="panel su-panel">
+      <SetupEquipment setup={s} save={uAll} onZoom={setZoom}/>
     </div>
 
     {/* The rules the programme writer works to. They sit on this screen rather than on
@@ -12124,133 +12212,298 @@ function SetupImage({label,value,onChange,folder,hint,shape,wide,onZoom}){
    card's session above all — is checked against this list, so an exercise that needs a
    trap bar is not prescribed in a gym that has none.
 
-   A line is an item AT a weight, and both halves earn their place. The COUNT is what
-   makes the list useful for a squad rather than one athlete: six barbells and one trap
-   bar is a different session from one barbell and six trap bars. The WEIGHT is what
-   makes it useful for a PRESCRIPTION: a rack whose heaviest dumbbell is 12 kg cannot
-   hold a senior's heavy day, and "3 × 6 @ 40 kg" written into it is not a session, it
-   is a wish. So the assistant is told both, and it is told them per line — a gym with
-   10 kg and 22.5 kg dumbbells lists two lines of dumbbells, not one.
+   IT IS READ AS A SHELF, NOT AS A LIST OF LINES. One card per piece of kit, carrying
+   what a coach recognises it by — a photograph of the actual bar in the actual room,
+   the name, the line that says which barbell this is — and under it the weights the
+   gym holds of it, each with a count.
 
-   The ten items below are always on screen because they are the vocabulary everything
-   else is written in; anything else — a second weight of the same item, a piece of kit
-   this list has never heard of — is added underneath and can be removed again.
+   Both halves of a line earn their place. The COUNT is what makes the list useful for
+   a squad rather than one athlete: six barbells and one trap bar is a different session
+   from one barbell and six trap bars. The WEIGHT is what makes it useful for a
+   PRESCRIPTION: a rack whose heaviest dumbbell is 12 kg cannot hold a senior's heavy
+   day, and "3 × 6 @ 40 kg" written into it is not a session, it is a wish. So a gym
+   holds as many lines of one item as it has weights worth naming — 6 × 10 kg dumbbells
+   and 4 × 22.5 kg dumbbells are two lines of one card.
+
+   NOT EVERY ITEM IS COUNTED IN KILOS. A plyo box is a height, a band is a level, a rack
+   is a name; the card says which of the four its lines measure and the table's heading
+   follows. Only a kilo line is sent on as a weight.
+
+   ANY CARD CAN GO, the ten it opens with included. The vocabulary is what the assistant
+   understands, not a list of what a gym must own, so a club with no sled deletes the
+   sled — and adds whatever this list has never heard of in its place.
 
    Empty means unconstrained, which is what it has always meant here: with nothing on
-   the list the model is free to pick whatever the exercise library suggests. */
-function SetupEquipment({setup,save}){
-  const rows=eqRows(setup);
-  /* The default ten, each shown whether or not the gym has answered for it yet. */
-  const base=DI_EQUIPMENT.map(x=>rows.find(r=>!r.extra&&r.id===x.id)
-    ||{rid:x.id,extra:false,blank:true,id:x.id,custom:false,label:L(x.label[0],x.label[1]),qty:null,kg:null});
-  const extra=rows.filter(r=>r.extra);
-  /* A base line is only worth storing once it says something; an added line is stored
-     whatever it says, because the coach put it there on purpose. */
-  const write=(nb,nx)=>save('equipment',[
-    ...nb.filter(r=>r.qty!=null||r.kg!=null).map(r=>({id:r.id,label:'',qty:r.qty,kg:r.kg})),
-    ...nx.map(r=>({rid:r.rid,id:r.id,label:r.custom?r.label:'',qty:r.qty,kg:r.kg})),
-  ]);
+   the list the model is free to pick whatever the exercise library suggests. A card
+   with no lines is exactly that — a name waiting for an answer, not an answer. */
+function SetupEquipment({setup,save,onZoom}){
+  const cards=eqCards(setup);
+  const[q,setQ]=useState('');
+  const[cat,setCat]=useState('all');
+  const[sort,setSort]=useState('az');
+  /* The one card being described — a new one when cid is null. Only ever one: a form
+     open on every card is a screenful of forms and no inventory. */
+  const[draft,setDraft]=useState(null);
+
+  /* Every edit writes both: the shelf, which is what this screen reads, and the flat
+     list, which is what everything else does. One call, so the two cannot drift. */
+  const write=next=>save({equipmentCards:next.map(eqStoreCard),equipment:eqMirror(next)});
+  const patch=(cid,upd)=>write(cards.map(c=>c.cid===cid?{...c,...upd}:c));
   const num=(v,dec)=>{
-    if(String(v).trim()==='')return null;
-    const n=Number(v);
+    const s=String(v==null?'':v).trim();
+    if(s==='')return null;
+    const n=Number(s.replace(',','.'));
     if(!isFinite(n)||n<0)return null;
     return dec?Math.round(n*10)/10:Math.round(n);
   };
-  const patch=(rid,upd)=>write(
-    base.map(r=>r.rid===rid?{...r,...upd}:r),
-    extra.map(r=>r.rid===rid?{...r,...upd}:r));
-  const removeExtra=rid=>write(base,extra.filter(r=>r.rid!==rid));
-
-  /* Adding a line. The type is picked from the same ten the list is written in, so a
-     second weight of an item the model already understands stays understood; "Diğer"
-     is the escape hatch for kit this vocabulary has no word for. */
-  const[adding,setAdding]=useState(false);
-  const[nType,setNType]=useState(DI_EQUIPMENT[0].id);
-  const[nName,setNName]=useState('');
-  const[nKg,setNKg]=useState('');
-  const[nQty,setNQty]=useState('');
-  const resetAdd=()=>{setAdding(false);setNType(DI_EQUIPMENT[0].id);setNName('');setNKg('');setNQty('');};
-  const other=nType==='other';
-  const canAdd=other?!!nName.trim():true;
-  const submitAdd=()=>{
-    if(!canAdd)return;
-    const name=nName.trim();
-    const id=other?`${EQ_CUSTOM}${diExName(name)}`:nType;
-    const known=DI_EQUIPMENT.find(x=>x.id===id);
-    write(base,[...extra,{rid:uid(),extra:true,id,custom:!known,
-      label:known?L(known.label[0],known.label[1]):name,
-      kg:num(nKg,true),qty:num(nQty,false)}]);
-    resetAdd();
+  const setRow=(c,rid,upd)=>patch(c.cid,{rows:c.rows.map(r=>r.rid===rid?{...r,...upd}:r)});
+  const addRow=c=>patch(c.cid,{rows:[...c.rows,{rid:uid(),v:null,label:'',qty:null}]});
+  const delRow=(c,rid)=>patch(c.cid,{rows:c.rows.filter(r=>r.rid!==rid)});
+  /* Deleting takes the lines with it, so it asks first — and says how many. */
+  const delCard=c=>{
+    const n=c.rows.length;
+    if(!confirm(n
+      ?L(`"${c.name}" envanterden silinsin mi? Altındaki ${n} satır da gider.`,
+         `Delete "${c.name}" from the inventory? Its ${n} line${n===1?'':'s'} go with it.`)
+      :L(`"${c.name}" envanterden silinsin mi?`,`Delete "${c.name}" from the inventory?`)))return;
+    if(draft&&draft.cid===c.cid)setDraft(null);
+    write(cards.filter(x=>x.cid!==c.cid));
+  };
+  /* A picture goes in the moment it is picked — unless the card is open in the form,
+     where everything waits for Kaydet and the photo waits with it. */
+  const setPhoto=(c,v)=>{
+    if(draft&&draft.cid===c.cid){setDraft(d=>({...d,photo:v}));return;}
+    patch(c.cid,{photo:v});
+  };
+  const dset=upd=>setDraft(d=>({...d,...upd}));
+  const dType=v=>setDraft(d=>{
+    const fill=v==='other'?{name:'',desc:'',cat:'other',unit:'kg'}:eqTypeFill(v);
+    return d.auto?{...d,...fill,type:v}:{...d,type:v};
+  });
+  const editCard=c=>setDraft({cid:c.cid,type:DI_EQUIPMENT.some(x=>x.id===c.id)?c.id:'other',
+    name:c.name,desc:c.desc,cat:c.cat,unit:c.unit,photo:c.photo,auto:false});
+  const newCard=()=>setDraft({cid:null,type:DI_EQUIPMENT[0].id,...eqTypeFill(DI_EQUIPMENT[0].id),
+    photo:'',auto:true});
+  const draftName=draft?String(draft.name||'').trim():'';
+  const saveDraft=()=>{
+    if(!draft||!draftName)return;
+    const id=draft.type==='other'?`${EQ_CUSTOM}${diExName(draftName)}`:draft.type;
+    const fields={id,name:draftName,desc:String(draft.desc||'').trim(),cat:draft.cat,
+      unit:draft.unit,photo:draft.photo||''};
+    write(draft.cid
+      ?cards.map(c=>c.cid===draft.cid?{...c,...fields}:c)
+      :[...cards,{...fields,cid:`eq_${uid()}`,rows:[]}]);
+    setDraft(null);
   };
 
-  const avail=rows.filter(r=>r.qty==null||r.qty>0);
-  const have=avail.length;
-  /* How much of it there is, in kilos, for the lines that named both numbers. It is the
-     one figure a coach can sanity-check the list against at a glance. */
-  const totalKg=avail.reduce((t,r)=>t+((r.kg!=null&&r.qty!=null)?r.kg*r.qty:0),0);
-  /* Lit only once the gym has answered for the item. A default line nobody has typed
-     into is not "available with an unstated number" — it is unanswered, and showing all
-     ten as available is exactly the wrong thing to tell a coach at a glance. */
-  const line=(r,removable)=>(
-    <div key={r.rid} className={'su-eq-row'+(!r.blank&&r.qty!==0?' on':'')+(r.extra?' added':'')}>
-      <span className="su-eq-nm" title={r.label}>{r.label}</span>
-      <span className="su-eq-fld">
-        <input type="number" min="0" max="500" step="0.5" value={r.kg!=null?r.kg:''}
-          onChange={e=>patch(r.rid,{kg:num(e.target.value,true)})}
-          aria-label={L(`${r.label} ağırlık`,`${r.label} weight`)} placeholder="—"/>
-        <i className="su-eq-u">kg</i>
-      </span>
-      <span className="su-eq-fld">
-        <input type="number" min="0" max="99" value={r.qty!=null?r.qty:''}
-          onChange={e=>patch(r.rid,{qty:num(e.target.value,false)})}
-          aria-label={L(`${r.label} adet`,`${r.label} count`)} placeholder={L('yok','none')}/>
-        <i className="su-eq-u">{L('adet','pcs')}</i>
-      </span>
-      {removable
-        ?<button type="button" className="su-eq-x" onClick={()=>removeExtra(r.rid)}
-           title={L('Bu satırı kaldır','Remove this line')} aria-label={L('Kaldır','Remove')}>✕</button>
-        :<span className="su-eq-x ghost" aria-hidden="true"/>}
+  /* What is on screen. The chips narrow by drawer, the box by anything written on a
+     card — its name, what it is, or a line inside it. */
+  const needle=q.trim().toLowerCase();
+  const shown=cards.filter(c=>(cat==='all'||c.cat===cat)&&(!needle||
+    [c.name,c.desc,eqCatLabel(c.cat),...c.rows.map(r=>`${r.label} ${r.v==null?'':r.v}`)]
+      .join(' ').toLowerCase().includes(needle)));
+  const byName=(a,b)=>String(a.name).localeCompare(String(b.name),'tr');
+  const sorted=shown.slice().sort((a,b)=>
+    sort==='za'?byName(b,a)
+    :sort==='qty'?(eqCardQty(b)-eqCardQty(a))||byName(a,b)
+    :sort==='cat'?(EQ_CATS.findIndex(x=>x.id===a.cat)-EQ_CATS.findIndex(x=>x.id===b.cat))||byName(a,b)
+    :byName(a,b));
+
+  /* The two figures a coach can check the shelf against at a glance. A card with no
+     lines is not counted as a type: it is not in the inventory. */
+  const inInv=cards.filter(c=>c.rows.length);
+  const pieces=cards.reduce((t,c)=>t+eqCardQty(c),0);
+  const totalKg=cards.reduce((t,c)=>t+(c.unit==='kg'
+    ?c.rows.reduce((s,r)=>s+((r.v!=null&&r.qty!=null)?r.v*r.qty:0),0):0),0);
+
+  const photoBox=(v,onPick,alt)=>{
+    const has=hasMedia(v);
+    const src=has?mediaSrc(v):'';
+    return(<div className="eqc-ph">
+      {has?<img src={src} alt="" title={L('Büyüt','Enlarge')}
+             onClick={()=>onZoom&&onZoom({src,alt:alt||''})}/>
+          :<span className="eqc-ph-e" aria-hidden="true"><TIc k="box" size={22}/></span>}
+      <label className="eqc-ph-up" title={has?L('Görseli değiştir','Replace photo'):L('Görsel yükle','Upload photo')}>
+        <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{
+          const f=e.target.files&&e.target.files[0];e.target.value='';
+          if(f)handleImageUpload(f,'equipment',url=>onPick(url));
+        }}/>
+        <TIc k="camera" size={12}/>
+      </label>
     </div>);
+  };
+
+  /* The form, shared by the card being edited and the one being added: the same five
+     answers either way, so a card reads the same however it got here. */
+  const form=()=>(<div className="eqc-form">
+    <label>{L('Ad','Name')}
+      <input value={draft.name} autoFocus placeholder={L('Ekipman adı','Equipment name')}
+        onChange={e=>dset({name:e.target.value,auto:false})}
+        onKeyDown={e=>{if(e.key==='Enter')saveDraft();if(e.key==='Escape')setDraft(null);}}/></label>
+    <label>{L('Tür — asistanın tanıdığı alet','Type — the implement the assistant knows')}
+      <select value={draft.type} onChange={e=>dType(e.target.value)}>
+        {DI_EQUIPMENT.map(x=><option key={x.id} value={x.id}>{L(x.label[0],x.label[1])}</option>)}
+        <option value="other">{L('Diğer (kendi adıyla)','Other (by its own name)')}</option>
+      </select></label>
+    <label>{L('Açıklama','Description')}
+      <input value={draft.desc} placeholder={L('örn. olimpik bar','e.g. Olympic bar')}
+        onChange={e=>dset({desc:e.target.value})}/></label>
+    <div className="eqc-form-2">
+      <label>{L('Kategori','Category')}
+        <select value={draft.cat} onChange={e=>dset({cat:e.target.value})}>
+          {EQ_CATS.map(c=><option key={c.id} value={c.id}>{L(c.label[0],c.label[1])}</option>)}
+        </select></label>
+      <label>{L('Satırlar neyi ölçer','What its lines measure')}
+        <select value={draft.unit} onChange={e=>dset({unit:e.target.value})}>
+          {EQ_UNITS.map(u=><option key={u.id} value={u.id}>{L(u.head[0],u.head[1])}</option>)}
+        </select></label>
+    </div>
+    <div className="eqc-form-act">
+      <button className="btn sm" onClick={saveDraft} disabled={!draftName}>
+        {draft.cid?L('Kaydet','Save'):L('Ekle','Add')}</button>
+      <button className="btn sm sec" onClick={()=>setDraft(null)}>{L('Vazgeç','Cancel')}</button>
+      {hasMedia(draft.photo)&&<button className="btn sm sec" onClick={()=>dset({photo:''})}>
+        {L('Görseli kaldır','Remove photo')}</button>}
+    </div>
+  </div>);
+
+  const rowCell=(c,r,i)=>(c.unit==='kg'||c.unit==='cm')
+    ?<input type="number" min="0" max={c.unit==='kg'?'500':'300'} step={c.unit==='kg'?'0.5':'1'}
+       value={r.v!=null?r.v:''} placeholder="—"
+       aria-label={`${c.name} ${L(eqUnit(c.unit).head[0],eqUnit(c.unit).head[1])}`}
+       onChange={e=>setRow(c,r.rid,{v:num(e.target.value,c.unit==='kg')})}/>
+    :<span className="eqc-lv">
+       {c.unit==='level'&&<i className="eqc-dot" style={{background:eqDot(r.label,i)}} aria-hidden="true"/>}
+       <input value={r.label} list={c.unit==='level'?'su-eq-levels':undefined}
+         placeholder={c.unit==='level'?L('seviye','level'):L('açıklama','description')}
+         aria-label={`${c.name} ${L(eqUnit(c.unit).head[0],eqUnit(c.unit).head[1])}`}
+         onChange={e=>setRow(c,r.rid,{label:e.target.value})}/>
+     </span>;
+
+  const card=c=>{
+    const editing=!!draft&&draft.cid===c.cid;
+    const u=eqUnit(c.unit);
+    return(<div key={c.cid} className={'eqc'+(c.rows.length?'':' off')+(editing?' editing':'')}>
+      <div className="eqc-hd">
+        {photoBox(editing?draft.photo:c.photo,v=>setPhoto(c,v),c.name)}
+        <div className="eqc-id">
+          <div className="eqc-nm" title={c.name}>{c.name}</div>
+          {c.desc&&<div className="eqc-sub" title={c.desc}>{c.desc}</div>}
+          <span className={'eqc-cat c-'+c.cat}>{eqCatLabel(c.cat)}</span>
+        </div>
+        <div className="eqc-acts">
+          <button type="button" className={'eqc-ic'+(editing?' on':'')}
+            onClick={()=>editing?setDraft(null):editCard(c)}
+            title={L('Ekipmanı düzenle','Edit equipment')} aria-label={L('Düzenle','Edit')}>
+            <TIc k="pencil" size={13}/></button>
+          <button type="button" className="eqc-ic danger" onClick={()=>delCard(c)}
+            title={L('Ekipmanı sil','Delete equipment')} aria-label={L('Sil','Delete')}>
+            <TIc k="trash" size={13}/></button>
+        </div>
+      </div>
+      {editing?form():<>
+        <div className="eqc-tbl">
+          <div className="eqc-tr hd"><span>{L(u.head[0],u.head[1])}</span><span>{L('Adet','Count')}</span><span/></div>
+          {c.rows.map((r,i)=><div key={r.rid} className="eqc-tr">
+            {rowCell(c,r,i)}
+            <input className="qty" type="number" min="0" max="999" value={r.qty!=null?r.qty:''}
+              placeholder="—" aria-label={`${c.name} ${L('adet','count')}`}
+              onChange={e=>setRow(c,r.rid,{qty:num(e.target.value,false)})}/>
+            <button type="button" className="eqc-x" onClick={()=>delRow(c,r.rid)}
+              title={L('Bu satırı sil','Delete this line')} aria-label={L('Satırı sil','Delete line')}>✕</button>
+          </div>)}
+          {!c.rows.length&&<div className="eqc-empty">
+            {L('Satır yok — envanterde sayılmaz.','No lines — not in the inventory.')}</div>}
+        </div>
+        <button className="btn sm eqc-add" onClick={()=>addRow(c)}>＋ {L(u.add[0],u.add[1])}</button>
+      </>}
+    </div>);
+  };
 
   return(<div className="su-eq">
-    <div className="help su-lead">{L('Salonda ne var, kaç tane ve kaç kilo. Program asistanı bu listeyi okur: envanterde olmayan bir alet yazılmaz, envanterdeki en ağır yükün üstüne reçete yazılmaz ve aynı anda adetten fazlasını gerektiren bir kurgu kurulmaz.',
-                                     'What the gym has, how many of it, and at what weight. The programme assistant reads this list: it will not prescribe a piece of kit that is not here, will not load past the heaviest weight on it, and will not build a set-up that needs more of one item at once than there are.')}</div>
-    {/* One grid, added lines last: an extra weight of an item is the same kind of thing
-        as the item, so it belongs in the same column flow rather than in a full-width
-        strip of its own. Its dashed edge is what says it can be removed. */}
-    <div className="su-eq-grid">
-      {base.map(r=>line(r,false))}
-      {extra.map(r=>line(r,true))}
+    {/* Levels a band is usually sold in. A suggestion, not a list: the box takes
+        whatever the club calls them. */}
+    <datalist id="su-eq-levels">
+      {[['Hafif','Light'],['Orta','Medium'],['Sert','Heavy'],['Ekstra Sert','Extra heavy']]
+        .map(p=><option key={p[0]} value={L(p[0],p[1])}/>)}
+    </datalist>
+
+    <div className="su-eq-hd">
+      <div className="su-eq-hd-l">
+        <h2>{L('Ekipman Envanteri','Equipment Inventory')}</h2>
+        <div className="help">{L('Salonda bulunan tüm ekipmanları, ağırlıklarını ve adetlerini yönetin.',
+                                 'Manage everything the gym holds, what it weighs and how many there are.')}</div>
+      </div>
+      <div className="su-eq-hd-r">
+        <div className="su-eq-stat">
+          <span className="su-eq-stat-ic"><TIc k="box" size={16}/></span>
+          <span><span className="su-eq-stat-l">{L('Envanterdeki Tür','Item types')}</span>
+            <span className="su-eq-stat-v">{inInv.length}</span></span>
+        </div>
+        <div className="su-eq-stat">
+          <span className="su-eq-stat-ic"><TIc k="ruler" size={16}/></span>
+          <span><span className="su-eq-stat-l">{L('Toplam Ekipman Adedi','Total pieces')}</span>
+            <span className="su-eq-stat-v">{pieces}</span></span>
+        </div>
+        <button className="btn" onClick={newCard} disabled={!!draft&&draft.cid===null}>
+          ＋ {L('Ekipman Ekle','Add equipment')}</button>
+      </div>
     </div>
 
-    {adding&&<div className="su-eq-add">
-      <select value={nType} onChange={e=>setNType(e.target.value)} aria-label={L('Ekipman türü','Equipment type')}>
-        {DI_EQUIPMENT.map(x=><option key={x.id} value={x.id}>{L(x.label[0],x.label[1])}</option>)}
-        <option value="other">{L('Diğer (kendi adını yaz)','Other (type a name)')}</option>
-      </select>
-      {other&&<input value={nName} onChange={e=>setNName(e.target.value)}
-        placeholder={L('Ekipman adı','Equipment name')} autoFocus/>}
-      <input type="number" min="0" max="500" step="0.5" value={nKg} onChange={e=>setNKg(e.target.value)}
-        placeholder={L('kg','kg')} aria-label={L('Ağırlık (kg)','Weight (kg)')}/>
-      <input type="number" min="0" max="99" value={nQty} onChange={e=>setNQty(e.target.value)}
-        placeholder={L('adet','pcs')} aria-label={L('Adet','Count')}/>
-      <button className="btn xs" onClick={submitAdd} disabled={!canAdd}>{L('Ekle','Add')}</button>
-      <button className="btn xs sec" onClick={resetAdd}>{L('Vazgeç','Cancel')}</button>
-      <span className="help" style={{margin:0,flexBasis:'100%'}}>
-        {L('Aynı ekipmanın farklı ağırlıkları ayrı satır olur — 6 × 10 kg dumbbell ve 4 × 22,5 kg dumbbell iki satırdır.',
-           'Different weights of the same item are separate lines — 6 × 10 kg dumbbells and 4 × 22.5 kg dumbbells are two lines.')}
-      </span>
-    </div>}
+    <div className="help su-lead">{L('Program asistanı bu listeyi okur: envanterde olmayan bir alet yazılmaz, envanterdeki en ağır yükün üstüne reçete yazılmaz ve aynı anda adetten fazlasını gerektiren bir kurgu kurulmaz. Satırı olmayan kart envantere girmez.',
+                                     'The programme assistant reads this shelf: it will not prescribe a piece of kit that is not here, will not load past the heaviest weight on it, and will not build a set-up that needs more of one item at once than there are. A card with no lines is not in the inventory.')}</div>
 
-    <div className="su-eq-foot">
-      {!adding&&<button className="btn xs sec" onClick={()=>setAdding(true)}>＋ {L('Ekipman ekle','Add equipment')}</button>}
-      <span className="help" style={{margin:0}}>
-        {have
-          ?L(`${have} ekipman envanterde${totalKg>0?`, toplam ${Math.round(totalKg*10)/10} kg`:''}. Bireyselleştirme ekranında yazılan programlar yalnızca bu ekipmanla yapılabilecek egzersizleri içerir; adet aynı anda kaç sporcunun o işi yapabileceğini, kilo ise ne kadar yüklenebileceğini söyler.`,
-             `${have} items in the inventory${totalKg>0?`, ${Math.round(totalKg*10)/10} kg in total`:''}. Sessions written on the Individualization screen use only what is here: the count says how many athletes can be on one piece at once, and the weight says how far it can be loaded.`)
-          :L('Envanter boş — ekipman kısıtı uygulanmaz. Bir sayı girdiğin ekipman envantere girer; 0 girersen yok sayılır.',
-             'The inventory is empty, so no equipment constraint is applied. Type a number to add an item; 0 means you do not have it.')}
-      </span>
+    <div className="su-eq-bar">
+      <div className="su-eq-tabs">
+        <button className={'ev2-tab'+(cat==='all'?' on':'')} onClick={()=>setCat('all')}>
+          {L('Tümü','All')}<span className="ev2-tab-n">({cards.length})</span></button>
+        {EQ_CATS.map(c=><button key={c.id} className={'ev2-tab'+(cat===c.id?' on':'')} onClick={()=>setCat(c.id)}>
+          {L(c.label[0],c.label[1])}<span className="ev2-tab-n">({cards.filter(x=>x.cat===c.id).length})</span></button>)}
+      </div>
+      <div className="su-eq-bar-r">
+        <div className="ev2-search">
+          <span className="ev2-search-ic"><TIc k="search" size={15}/></span>
+          <input placeholder={L('Ekipman ara… (örn. barbell, kutu, lastik)','Search equipment… (e.g. barbell, box, band)')}
+            value={q} onChange={e=>setQ(e.target.value)}/>
+        </div>
+        <select className="ev2-sort" value={sort} onChange={e=>setSort(e.target.value)}
+          aria-label={L('Sıralama','Order')}>
+          <option value="az">{L('A → Z','A → Z')}</option>
+          <option value="za">{L('Z → A','Z → A')}</option>
+          <option value="qty">{L('Adet (çoktan aza)','Count (most first)')}</option>
+          <option value="cat">{L('Kategoriye göre','By category')}</option>
+        </select>
+      </div>
+    </div>
+
+    <div className="su-eq-grid">
+      {sorted.map(card)}
+      {draft&&draft.cid===null&&<div className="eqc editing" key="eq-new">
+        <div className="eqc-hd">
+          {photoBox(draft.photo,v=>dset({photo:v}),draftName)}
+          <div className="eqc-id">
+            <div className="eqc-nm">{L('Yeni ekipman','New equipment')}</div>
+            <div className="eqc-sub">{L('Salonda olan, listede olmayan her şey.','Whatever the gym has that this list does not.')}</div>
+          </div>
+        </div>
+        {form()}
+      </div>}
+      {!(draft&&draft.cid===null)&&<button type="button" className="eqc add" onClick={newCard}>
+        <span className="eqc-add-ic">＋</span>
+        <span className="eqc-add-t">{L('Yeni Ekipman Ekle','Add New Equipment')}</span>
+        <span className="eqc-add-s">{L('Salondaki yeni bir ekipmanı envantere ekleyin.','Put another piece of the gym on the shelf.')}</span>
+      </button>}
+    </div>
+
+    {!sorted.length&&!!cards.length&&<div className="empty-st">
+      {L('Bu filtreye uyan ekipman yok.','No equipment matches this filter.')}</div>}
+
+    <div className="su-eq-foot help">
+      {inInv.length
+        ?L(`${inInv.length} tür ekipman envanterde, toplam ${pieces} adet${totalKg>0?`, ${Math.round(totalKg*10)/10} kg`:''}. Bireyselleştirme ekranında yazılan programlar yalnızca bu ekipmanla yapılabilecek egzersizleri içerir; adet aynı anda kaç sporcunun o işi yapabileceğini, kilo ise ne kadar yüklenebileceğini söyler.`,
+           `${inInv.length} item type${inInv.length===1?'':'s'} in the inventory, ${pieces} piece${pieces===1?'':'s'} in all${totalKg>0?`, ${Math.round(totalKg*10)/10} kg`:''}. Sessions written on the Individualization screen use only what is here: the count says how many athletes can be on one piece at once, and the weight says how far it can be loaded.`)
+        :L('Envanter boş — ekipman kısıtı uygulanmaz. Bir kartın altına satır ekle; adede 0 yazarsan o satır yok sayılır.',
+           'The inventory is empty, so no equipment constraint is applied. Add a line under a card; a count of 0 means you do not have it.')}
     </div>
   </div>);
 }
@@ -29343,6 +29596,143 @@ const eqAvailable=setup=>eqRows(setup).filter(r=>r.qty==null||r.qty>0);
 /* One line of the inventory as a coach would say it out loud — "Dumbbell 22.5 kg × 4".
    Used wherever the kit is shown back rather than edited. */
 const eqLine=r=>`${r.label}${r.kg!=null?` ${r.kg} kg`:''}${r.qty!=null?` × ${r.qty}`:''}`;
+/* ---- The inventory as a shelf: one CARD per piece of kit ------------------
+   The flat list above is what the assistant reads, and it stays exactly that. What the
+   coach edits is a card per item — the picture they recognise it by, the name, the one
+   line that says which barbell this is, and underneath it the weights the gym actually
+   holds of it. The cards are stored in `setup.equipmentCards`; `setup.equipment` is
+   written from them on every edit and remains the single thing every reader downstream
+   (the prompt, the checks, the exercise filter) looks at, so nothing outside this screen
+   has to know the shelf exists.
+
+   NOT EVERYTHING IS COUNTED IN KILOS. A plyo box is a height, a band is a level, a rack
+   is a name — a card says which of the four its lines are measured in and its table's
+   heading follows. Only a kilo line reaches the flat list as a weight, which is what
+   keeps "the heaviest dumbbell in this gym" an honest answer.
+
+   A card with no lines is NOT in the inventory: it is the item's name waiting for an
+   answer, and the assistant is told nothing about it. That is the same rule the blank
+   lines of the old list followed, and it is what keeps an untouched inventory
+   unconstrained. */
+const EQ_CATS=[
+  {id:'free',   label:['Serbest Ağırlık','Free weight']},
+  {id:'machine',label:['Makine','Machine']},
+  {id:'access', label:['Aksesuar','Accessory']},
+  {id:'func',   label:['Fonksiyonel','Functional']},
+  {id:'other',  label:['Diğer','Other']},
+];
+const eqCatLabel=id=>{const c=EQ_CATS.find(x=>x.id===id);return c?L(c.label[0],c.label[1]):L('Diğer','Other');};
+/* What one line of a card measures. The heading is the table's left column; `add` is
+   what the button under the table offers to put there. */
+const EQ_UNITS=[
+  {id:'kg',   head:['Ağırlık (kg)','Weight (kg)'],  add:['Ağırlık Ekle','Add weight']},
+  {id:'cm',   head:['Yükseklik (cm)','Height (cm)'],add:['Yükseklik Ekle','Add height']},
+  {id:'level',head:['Seviye','Level'],              add:['Seviye Ekle','Add level']},
+  {id:'text', head:['Açıklama','Description'],      add:['Kalem Ekle','Add item']},
+];
+const eqUnit=id=>EQ_UNITS.find(u=>u.id===id)||EQ_UNITS[0];
+/* The dots down the left of a level table. A band the coach names in the usual words
+   gets the colour those words already mean — light is green, heavy is red — and
+   anything else is coloured by its place in the list, so a fifth band nobody has a
+   word for is still drawn. */
+const EQ_DOTS=['#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899'];
+const EQ_LEVEL_DOTS=[
+  {kw:['ekstra','extra','x-heavy'],c:'#8b5cf6'},
+  {kw:['sert','heavy','ağır','agir'],c:'#ef4444'},
+  {kw:['orta','medium','med'],       c:'#f59e0b'},
+  {kw:['hafif','light'],             c:'#10b981'},
+];
+function eqDot(label,i){
+  const s=String(label||'').trim().toLowerCase();
+  const hit=s?EQ_LEVEL_DOTS.find(d=>d.kw.some(k=>s.includes(k))):null;
+  return hit?hit.c:EQ_DOTS[i%EQ_DOTS.length];
+}
+/* How the ten items of the vocabulary arrive on the shelf when nobody has said
+   otherwise: what they are, which drawer they are filed in, and what their lines
+   measure. Everything here is editable on the card afterwards. */
+const EQ_SEED={
+  barbell:   {desc:['Olimpik bar','Olympic bar'],                  cat:'free',   unit:'kg'},
+  dumbbell:  {desc:['Dambıl seti','Dumbbell set'],                 cat:'free',   unit:'kg'},
+  cable:     {desc:['Kablo istasyonu','Cable station'],            cat:'machine',unit:'kg'},
+  trapbar:   {desc:['Hex bar','Hex bar'],                          cat:'free',   unit:'kg'},
+  medball:   {desc:['Med ball','Med ball'],                        cat:'access', unit:'kg'},
+  plyobox:   {desc:['Plyo box','Plyo box'],                        cat:'func',   unit:'cm'},
+  bands:     {desc:['Direnç lastiği','Resistance band'],           cat:'access', unit:'level'},
+  sled:      {desc:['Kızak / prowler','Sled / prowler'],           cat:'func',   unit:'kg'},
+  machine:   {desc:['Smith / Rack / Diğer','Smith / rack / other'],cat:'machine',unit:'text'},
+  bodyweight:{desc:['Alet gerektirmez','No implement needed'],     cat:'func',   unit:'text'},
+};
+/* What picking a type fills the form in with. A coach who picks "Dumbbell" and types
+   nothing else gets a card that is already right. */
+function eqTypeFill(id){
+  const known=DI_EQUIPMENT.find(x=>x.id===id);
+  const seed=EQ_SEED[id]||null;
+  return{name:known?L(known.label[0],known.label[1]):'',
+    desc:seed?L(seed.desc[0],seed.desc[1]):'',
+    cat:seed?seed.cat:'other',unit:seed?seed.unit:'kg'};
+}
+function eqCard(raw,i){
+  if(!raw)return null;
+  const id=String(raw.id||'').trim()||`${EQ_CUSTOM}${diExName(raw.name)}`;
+  const known=DI_EQUIPMENT.find(x=>x.id===id);
+  const seed=EQ_SEED[id]||null;
+  const name=String(raw.name||'').trim()
+    ||(known?L(known.label[0],known.label[1]):String(id).replace(EQ_CUSTOM,'').trim());
+  if(!name)return null;
+  const n=(v,dec)=>{const x=recNum(v);return x==null?null:Math.max(0,dec?Math.round(x*10)/10:Math.round(x));};
+  return{
+    cid:String(raw.cid||'').trim()||`eq_${id}_${i}`,
+    id,name,
+    desc:raw.desc==null?(seed?L(seed.desc[0],seed.desc[1]):''):String(raw.desc).trim(),
+    cat:EQ_CATS.some(c=>c.id===raw.cat)?raw.cat:(seed?seed.cat:'other'),
+    unit:EQ_UNITS.some(u=>u.id===raw.unit)?raw.unit:(seed?seed.unit:'kg'),
+    photo:typeof raw.photo==='string'?raw.photo:'',
+    rows:(Array.isArray(raw.rows)?raw.rows:[]).map((r,j)=>({
+      rid:String((r&&r.rid)||'').trim()||`${i}_${j}_${uid()}`,
+      v:n(r&&r.v,true),
+      label:String((r&&r.label)||'').trim(),
+      qty:n(r&&r.qty,false),
+    })),
+  };
+}
+/* The shelf a gym that has never seen this screen starts from: the ten items of the
+   vocabulary, each holding whatever the old flat list already said about it. A card
+   whose lines carry kilos is measured in kilos whatever its seed says — a height that
+   was typed as a weight is not silently re-read as centimetres. */
+function eqSeedCards(setup){
+  const byId={};
+  eqRows(setup).forEach(r=>{(byId[r.id]=byId[r.id]||[]).push(r);});
+  const ids=DI_EQUIPMENT.map(x=>x.id)
+    .concat(Object.keys(byId).filter(id=>!DI_EQUIPMENT.some(x=>x.id===id)));
+  return ids.map((id,i)=>{
+    const old=byId[id]||[];
+    const known=DI_EQUIPMENT.find(x=>x.id===id);
+    const seed=EQ_SEED[id]||null;
+    const unit=seed?seed.unit:'kg';
+    return eqCard({cid:`eq_${id}`,id,
+      name:known?L(known.label[0],known.label[1]):(old[0]&&old[0].label)||String(id).replace(EQ_CUSTOM,''),
+      cat:seed?seed.cat:'other',
+      unit:(unit!=='kg'&&old.some(r=>r.kg!=null))?'kg':unit,
+      rows:old.map(r=>({rid:r.rid,v:r.kg,label:'',qty:r.qty}))},i);
+  }).filter(Boolean);
+}
+const eqCards=setup=>Array.isArray(setup&&setup.equipmentCards)
+  ?setup.equipmentCards.map(eqCard).filter(Boolean)
+  :eqSeedCards(setup);
+/* What a card puts back into storage — the normalized shape, nothing else. */
+const eqStoreCard=c=>({cid:c.cid,id:c.id,name:c.name,desc:c.desc,cat:c.cat,unit:c.unit,
+  photo:c.photo||'',rows:(c.rows||[]).map(r=>({rid:r.rid,v:r.v,label:r.label,qty:r.qty}))});
+/* How a line reads once it is off the card: "45 cm" for a box, "Sert" for a band, the
+   card's own name for a kilo line, which already carries its weight in the kg field. */
+const eqRowText=(c,r)=>c.unit==='cm'?(r.v!=null?`${r.v} cm`:''):(c.unit==='kg'?'':String(r.label||'').trim());
+/* The flat list every reader downstream sees, written from the shelf. A card with no
+   lines contributes nothing, which is what keeps it out of the inventory. */
+const eqMirror=cards=>cards.reduce((out,c)=>out.concat((c.rows||[]).map(r=>{
+  const tail=eqRowText(c,r);
+  return{rid:r.rid,id:c.id,label:(c.name+(tail?` — ${tail}`:'')).trim(),
+    qty:r.qty,kg:c.unit==='kg'?r.v:null};
+})),[]);
+const eqCardQty=c=>(c.rows||[]).reduce((t,r)=>t+(r.qty==null?0:r.qty),0);
 /* What a piece of work NEEDS, read off the exercise's own tags when the library has
    them and off its name when it does not. Deliberately narrow: it exists to catch a
    barbell lift written for a gym with no barbell, not to classify exercises. */
