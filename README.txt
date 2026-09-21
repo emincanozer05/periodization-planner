@@ -444,8 +444,11 @@ you have since edited by hand is never overwritten without asking.
 
 EQUIPMENT INVENTORY (Settings tab)
 ----------------------------------
-The gym, written down once, with a WEIGHT and a COUNT beside each
-item.
+The gym, written down once, and read as a shelf: ONE CARD PER
+PIECE OF KIT, carrying a photograph of the actual bar in the
+actual room, its name, the one line that says which barbell this
+is, the drawer it is filed in, and under all of that the weights
+the gym holds of it, each with a count.
 
 The count is what makes the list useful for a squad rather than
 one athlete: six barbells and one trap bar is a different session
@@ -455,23 +458,52 @@ squad has to know which it is.
 The weight is what makes it useful for a PRESCRIPTION. A rack
 whose heaviest dumbbell is 12 kg cannot hold a senior's heavy day,
 and "3 x 6 @ 40 kg" written into it is not a session. So a line is
-an item AT a weight, and a gym holds as many lines of one item as
-it has weights worth naming: 6 x 10 kg dumbbells and 4 x 22.5 kg
-dumbbells are two lines of the same kit.
+an item AT a weight, and a card holds as many lines as the gym has
+weights worth naming: 6 x 10 kg dumbbells and 4 x 22.5 kg
+dumbbells are two lines of one card.
 
-Type a number to put something in the inventory; 0 means you do
-not have it; leave the weight blank and no weight limit is applied
-to that line. "+ Add equipment" opens a small form — pick the item
-type (or "Other" and type a name), give it a weight and a count,
-and it is added as its own line underneath the standard ten, with
-an x to remove it again.
+NOT EVERYTHING IS COUNTED IN KILOS. A card says what its lines
+measure and its table's heading follows:
+  Weight (kg)      a barbell, a dumbbell, a medicine ball
+  Height (cm)      a plyo box
+  Level            a band - Light / Medium / Heavy / Extra heavy,
+                   each drawn with the colour its name already
+                   means, anything else coloured by its place
+  Description      a rack, a Smith machine, anything named rather
+                   than measured
+Only a kilo line is sent on as a weight, which is what keeps "the
+heaviest dumbbell in this gym" an honest answer.
+
+A PICTURE ON EVERY CARD. Click the camera on the thumbnail to
+upload one, click the picture to open it full size, and Edit ->
+"Remove photo" takes it off again. It goes through the same
+resize/Storage path as every other image in the app, so a phone
+photo does not end up inside the synced JSON.
+
+ANY CARD CAN GO, the ten it opens with included. The trash icon
+asks first - and says how many lines go with it - and the pencil
+opens the card's own form: name, the implement the assistant
+knows it as, description, category, and what its lines measure.
+"+ Add equipment" (or the dashed tile at the end of the shelf)
+opens the same form empty, so a club with no sled deletes the
+sled and puts whatever this list has never heard of in its place.
+
+Above the shelf: how many item types are in the inventory and how
+many pieces in all, a search box, the category chips, and the
+order the cards are drawn in (A-Z, Z-A, count, category).
+
+"+ Add weight" under a card puts a line in it; the x at the end of
+a line takes that line out; 0 in a count means you do not have it.
+A CARD WITH NO LINES IS NOT IN THE INVENTORY - it is the item's
+name waiting for an answer, and the assistant is told nothing
+about it.
 
 Sessions written on the Individualization tab use only what is in
 here. An exercise needing a trap bar is not offered to a gym with
 none; the count tells the model how many athletes can be on one
 piece at the same time; and the weight tells it how far a line can
 be loaded, so it does not prescribe past what the gym owns. Where
-the load IS the implement — a dumbbell, a medicine ball — a
+the load IS the implement - a dumbbell, a medicine ball - a
 prescription heavier than the heaviest one in the inventory is
 also reported under Checks before you write anything. A barbell or
 a machine is not checked that way: its plates and its stack are
