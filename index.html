@@ -5002,6 +5002,9 @@ header{background:var(--bg2)!important}
 .di-sigrow{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .di-sigchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
   border-radius:7px;padding:3px 9px}
+.di-defchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
+  border-radius:7px;padding:3px 9px;cursor:help}
+.di-defchip.hi{border-color:rgba(245,158,11,.45);color:#fcd34d;background:rgba(245,158,11,.08)}
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
@@ -28210,6 +28213,132 @@ function diInstr(raw,src){
 const diInstrFilled=i=>!!(i&&(i.priorities.length||i.must.length||i.avoid.length
   ||i.constraints.length||i.constraintNote||i.notes));
 
+/* ---- The coach's own words on the test sheet ------------------------------
+   The battery is not only numbers. The posture box, the overhead-squat box and the
+   five compensation slots beside it are where the coach writes what they SAW, and a
+   session that ignores them is a session written with its eyes shut. Two things
+   happen with that text:
+
+   · it is shipped verbatim to the model (`test_gozlemleri` in the request), because a
+     note reads better whole than as a keyword, and
+   · the compensations a coach writes most often are matched here, so each one becomes
+     a finding with the kind of work it calls for — the same shape the measured
+     findings have, checked the same way.
+
+   The table is a floor, not a ceiling: a note that matches nothing still reaches the
+   model whole, and the prompt asks for it to be answered. */
+const DI_OBS_RULES=[
+  {id:'obs_thoracic',oncelik:'yüksek',
+   kw:['torakal','thoracic','kifoz','kyphos','yuvarlak omuz','round shoulder','rounded shoulder','üst sırt','ust sirt','t spine','tspine'],
+   area:['Torakal omurga','Thoracic spine'],
+   work:['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
+         'Thoracic extension and rotation mobility, scapular control'],
+   cover:['torakal','thoracic','t spine','tspine','ekstansiyon mobilite','foam roll','skapula','scapula','open book','kedi deve','cat cow']},
+  {id:'obs_valgus',oncelik:'yüksek',
+   kw:['valgus','diz içe','diz ice','dizler içe','knee cave','knees in','medial kollaps','medial collapse'],
+   area:['Diz / kalça kontrolü','Knee / hip control'],
+   work:['Kalça abdüktör ve dış rotatör kuvveti, iniş mekaniği, tek bacak kontrol',
+         'Hip abductor and external-rotator strength, landing mechanics, single-leg control'],
+   cover:['abdüktör','abduktor','abduct','gluteus','glute med','dış rotat','dis rotat','external rotat','band walk','monster walk','iniş','inis','landing','tek bacak','single leg','lateral band']},
+  {id:'obs_heel',oncelik:'yüksek',
+   kw:['topuk kalk','topuk yüksel','topuk yuksel','heel rise','heels lift','heel lift','topukları kalk'],
+   area:['Ayak bileği','Ankle'],
+   work:['Ayak bileği dorsifleksiyon mobilitesi ve yüklü mobilizasyon',
+         'Ankle dorsiflexion mobility and loaded mobilisation'],
+   cover:['ayak bile','ankle','dorsifleks','dorsiflex','soleus','gastro','calf']},
+  {id:'obs_lean',oncelik:'orta',
+   kw:['öne eğil','one egil','gövde öne','govde one','forward lean','torso lean','excessive lean','öne yaslan'],
+   area:['Gövde / kalça','Torso / hip'],
+   work:['Kalça ve ayak bileği mobilitesi + gövde diklik kontrolü (karşı ağırlıklı çömelme progresyonu)',
+         'Hip and ankle mobility plus upright-torso control (a counterbalanced squat progression)'],
+   cover:['goblet','counterbalance','karşı ağırlık','karsi agirlik','kalça mobilite','hip mobility','ayak bile','ankle','gövde diklik','govde diklik','front rack']},
+  {id:'obs_apt',oncelik:'yüksek',
+   kw:['lordoz','lordosis','anterior pelvik','anterior pelvic','apt','bel çukur','bel cukur','pelvis öne','pelvis one'],
+   area:['Lumbopelvik kontrol','Lumbopelvic control'],
+   work:['Anterior core kontrolü, kalça fleksör esnekliği, posterior tilt kontrolü',
+         'Anterior core control, hip-flexor length, posterior-tilt control'],
+   cover:['core','dead bug','deadbug','anti ekstansiyon','anti-ekstansiyon','anti extension','kalça fleksör','kalca fleksor','hip flexor','posterior tilt','plank','glute bridge','kalça köprü','kalca kopru']},
+  {id:'obs_buttwink',oncelik:'yüksek',
+   kw:['butt wink','bel yuvarlan','lomber fleksiyon','lumbar flexion','posterior tilt','kuyruk sokumu'],
+   area:['Kalça / lomber','Hip / lumbar'],
+   work:['Kalça fleksiyon mobilitesi ve lomber nötr kontrol; derinlik kademeli artırılır',
+         'Hip flexion mobility and neutral-lumbar control; depth progressed gradually'],
+   cover:['kalça mobilite','kalca mobilite','hip mobility','90 90','nötr omurga','notr omurga','neutral spine','core','kutu squat','box squat','derinlik']},
+  {id:'obs_shift',oncelik:'yüksek',
+   kw:['kayma','shift','ağırlık kay','agirlik kay','ağırlık aktar','agirlik aktar','weight shift',
+     'asimetrik çömel','asimetrik comel','tek tarafa yükle'],
+   area:['Asimetri','Asymmetry'],
+   work:['Tek taraflı kuvvet ve kontrol, zayıf tarafa öncelik ve ek set',
+         'Unilateral strength and control, the weaker side first and with an extra set'],
+   cover:['tek taraflı','tek tarafli','unilateral','tek bacak','single leg','split squat','step up','bulgarian','zayıf taraf','zayif taraf']},
+  {id:'obs_scap',oncelik:'orta',
+   kw:['skapula','scapula','kanatlan','winging','kürek kemiği','kurek kemigi','serratus'],
+   area:['Skapula / omuz','Scapula / shoulder'],
+   work:['Skapular kontrol; serratus ve alt trapez kuvveti',
+         'Scapular control; serratus and lower-trapezius strength'],
+   cover:['skapula','scapula','serratus','trapez','trapezius','y raise','face pull','wall slide','duvar kaydırma','duvar kaydirma','protraksiyon']},
+  {id:'obs_arms',oncelik:'orta',
+   kw:['kol öne','kol one','kollar öne','kollar one','arms fall','arm fall','bar öne','bar one','overhead pozisyon'],
+   area:['Latissimus / torakal','Lat / thoracic'],
+   work:['Latissimus ve torakal mobilite, overhead pozisyon kontrolü',
+         'Latissimus and thoracic mobility, overhead position control'],
+   cover:['lat','latissimus','overhead','torakal','thoracic','wall slide','duvar kaydırma','duvar kaydirma','omuz mobilite','shoulder mobility']},
+  {id:'obs_foot',oncelik:'orta',
+   kw:['pronasyon','pronation','düz taban','duz taban','pes planus','ayak içe','ayak ice','flat foot','çökük ayak'],
+   area:['Ayak','Foot'],
+   work:['Ayak içi kas kontrolü ve ayak bileği stabilitesi (short foot, tek bacak denge)',
+         'Intrinsic foot control and ankle stability (short foot, single-leg balance)'],
+   cover:['short foot','ayak içi','ayak ici','intrinsic','tek bacak denge','single leg balance','ayak bileği stabil','ankle stability','kavis']},
+  {id:'obs_asym_shoulder',oncelik:'orta',
+   kw:['omuz asimetri','omuz yüksek','omuz yuksek','omuz düşük','omuz dusuk','shoulder drop',
+     'shoulder asymmetry','omuz seviye','shoulder height','yan eğim','lateral tilt','kalça yüksek','kalca yuksek'],
+   area:['Postür asimetrisi','Postural asymmetry'],
+   work:['Asimetriye yönelik tek taraflı mobilite ve kuvvet çalışması',
+         'Unilateral mobility and strength work aimed at the asymmetry'],
+   cover:['tek taraflı','tek tarafli','unilateral','asimetri','asymmetry','yan','lateral','side plank','yan plank','carry']},
+  {id:'obs_head',oncelik:'düşük',
+   kw:['baş öne','bas one','forward head','boyun öne','boyun one','neck forward'],
+   area:['Servikal / üst sırt','Cervical / upper back'],
+   work:['Derin boyun fleksör kontrolü ve torakal ekstansiyon',
+         'Deep neck-flexor control and thoracic extension'],
+   cover:['boyun','neck','chin tuck','torakal','thoracic','derin fleksör','derin fleksor']},
+];
+/* Every free-text box on the test sheet, as one blob and as named sources. The blob is
+   what the rules are matched against; the sources are what the model is shown, so a
+   note is read the way the coach wrote it rather than as a list of matched words. */
+function diObservations(t){
+  if(!t)return{sources:[],blob:''};
+  const pick=(label,value)=>{
+    const v=String(value==null?'':value).trim();
+    return v?{alan:L(label[0],label[1]),metin:v}:null;
+  };
+  const problems=((t.ohs&&t.ohs.problems)||[]).filter(x=>String(x||'').trim());
+  const sources=[
+    pick(['Postür gözlemi','Posture observation'],t.posture&&t.posture.observations),
+    pick(['Overhead squat gözlemi','Overhead squat observation'],t.ohs&&t.ohs.observations),
+    problems.length?{alan:L('Overhead squat kompensasyonları','Overhead squat compensations'),
+      metin:problems.join(' · ')}:null,
+    pick(['FMS gözlemi','FMS observation'],t.fms&&t.fms.observations),
+    pick(['Test notu','Test note'],t.notes),
+  ].filter(Boolean);
+  return{sources,blob:sources.map(s=>s.metin).join(' · ')};
+}
+/* The rules, matched against what the coach wrote. A rule fires once however many of
+   its words appear, and carries its own coverage keywords so "this observation was
+   answered" is checked on the work it asks for, not on the words of the note. */
+const diObsHit=(hay,kw)=>diExName(kw).split(' ').filter(Boolean).every(w=>hay.includes(w));
+function diObsFindings(blob){
+  const hay=diExName(blob||'');
+  if(!hay)return[];
+  return DI_OBS_RULES.filter(r=>r.kw.some(k=>diObsHit(hay,k))).map(r=>({
+    id:r.id,bolge:L(r.area[0],r.area[1]),
+    bulgu:L(`Gözlem notu: ${r.kw.find(k=>diObsHit(hay,k))}`,
+      `Observation: ${r.kw.find(k=>diObsHit(hay,k))}`),
+    gereken_calisma:L(r.work[0],r.work[1]),
+    oncelik:r.oncelik,olcum:null,kaynak:'gözlem',kw:r.cover,
+  }));
+}
+
 /* ---- What the screen says is missing (the test battery, read by code) -------
    "Look at the test results" cannot be left to a sentence in a prompt: a model that
    is handed twenty raw numbers will quote the two it likes. So the battery is READ
@@ -28241,7 +28370,7 @@ function diDeficits(ath,ref){
     note:L('Kayıtlı test yok — eksik analizi yapılamadı.','No test on record — nothing to read.')};
   const n=recNum;
   const out=[];
-  const add=(id,area,finding,work,priority,value)=>out.push({id,
+  const add=(id,area,finding,work,priority,value)=>out.push({id,kaynak:'ölçüm',
     bolge:L(area[0],area[1]),bulgu:L(finding[0],finding[1]),
     gereken_calisma:L(work[0],work[1]),oncelik:priority,olcum:value==null?null:value,
     /* What an exercise has to SAY for this finding to count as answered. Kept per
@@ -28289,19 +28418,13 @@ function diDeficits(ath,ref){
      a posture note naming the thoracic spine counts for the same finding. */
   const sm=[n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.right),
     n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.left)].filter(x=>x!=null);
-  const postureTxt=`${(t.posture&&t.posture.observations)||''} ${(t.ohs&&t.ohs.observations)||''} ${ohsProblems.join(' ')}`.toLowerCase();
-  const thoracicNote=/torakal|thoracic|kifoz|kyphos|yuvarlak omuz|round(ed)? shoulder|üst sırt|upper back/.test(postureTxt);
-  if((sm.length&&Math.min(...sm)<=1)||thoracicNote)
+
+  if(sm.length&&Math.min(...sm)<=1)
     add('thoracic',['Torakal omurga / omuz','Thoracic spine / shoulder'],
-      [sm.length&&Math.min(...sm)<=1
-        ?`Omuz mobilitesi ${Math.min(...sm)}/3${thoracicNote?' · postür notu torakal kısıtı işaret ediyor':''}`
-        :'Postür notu torakal kısıtı işaret ediyor',
-       sm.length&&Math.min(...sm)<=1
-        ?`Shoulder mobility ${Math.min(...sm)}/3${thoracicNote?' · the posture note points at the thoracic spine':''}`
-        :'The posture note points at the thoracic spine'],
+      [`Omuz mobilitesi ${Math.min(...sm)}/3`,`Shoulder mobility ${Math.min(...sm)}/3`],
       ['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
        'Thoracic extension and rotation mobility, scapular control'],
-      'yüksek',sm.length?Math.min(...sm):null);
+      'yüksek',Math.min(...sm));
   /* Y Balance: the per-direction reach difference the test sheet flags at 4 cm. */
   const yb=ybCalc(t.yBalance)||{};
   const ybd=[yb.dAnt,yb.dPm,yb.dPl].filter(x=>x!=null);
@@ -28329,9 +28452,22 @@ function diDeficits(ath,ref){
     ['Kısa temas süreli pliometrik ve iniş mekaniği (ağrı/RTP izin veriyorsa)',
      'Short-contact plyometrics and landing mechanics (where pain and RTP allow)'],
     'düşük',rsi);
+  /* What the coach wrote on the sheet, read the same way. Where a note says what a
+     number already said (a thoracic note beside a 1/3 shoulder-mobility score), the
+     measured finding stands and the note is not listed twice. */
+  const obs=diObservations(t);
+  const seen=new Set(out.map(f=>f.id));
+  const fromNotes=diObsFindings(obs.blob).filter(f=>{
+    if(f.id==='obs_thoracic'&&seen.has('thoracic'))return false;
+    if(f.id==='obs_heel'&&seen.has('ankle_df'))return false;
+    if(f.id==='obs_shift'&&seen.has('asym'))return false;
+    return !seen.has(f.id);
+  });
+  const all=[...out,...fromNotes];
   const order={'yüksek':0,'orta':1,'düşük':2};
-  out.sort((a,b)=>order[a.oncelik]-order[b.oncelik]);
-  return{test_date:t.date,measured:out.length,findings:out};
+  all.sort((a,b)=>order[a.oncelik]-order[b.oncelik]);
+  return{test_date:t.date,measured:out.length,from_notes:fromNotes.length,
+    findings:all,observations:obs.sources};
 }
 
 /* ---- Patterns today's pain takes off the table ----------------------------
@@ -28426,11 +28562,20 @@ PROGRAMI NASIL YAZ
   sayıdan bağımsızdır ve ATLANMAZ: sporcunun ölçülmüş eksiklerini bu fazlar kapatır.
 - TEST SONUÇLARINI OKU. tespit_edilen_eksikler, sporcunun test bataryasından kod
   tarafından çıkarılmış bulguların listesidir; her birinin "gereken_calisma" alanı ne tür
-  bir çalışma istediğini söyler. Önceliği "yüksek" olan her bulgu için programda —
+  bir çalışma istediğini, "kaynak" alanı bulgunun ölçümden mi yoksa antrenörün gözlem
+  notundan mı geldiğini söyler. Önceliği "yüksek" olan her bulgu için programda —
   hazırlık veya tamamlayıcı fazda — o bulguyu hedefleyen bir egzersiz BULUNMALI ve o
   egzersizin gerekçesinde hangi bulguyu hedeflediği yazmalı. Ör. ayak bileği
   dorsifleksiyonu 30° ise yüklü ayak bileği mobilizasyonu; torakal ekstansiyon kısıtı
   varsa torakal ekstansiyon/rotasyon çalışması. Bulgu yoksa uydurma.
+- ANTRENÖRÜN GÖZLEM NOTLARINI OKU. test_gozlemleri alanı, test sayfasındaki postür
+  gözlemi, overhead squat gözlemi ve kompensasyon satırları ile FMS/test notlarını
+  antrenörün YAZDIĞI GİBİ taşır. Bunlar sayılar kadar bağlayıcıdır: bir notta tarif
+  edilen kompensasyon veya postüral bulgu (ör. "çömelirken dizler içe geliyor",
+  "topuklar kalkıyor", "kollar öne düşüyor", "sol omuz düşük") programı doğrudan
+  etkilemeli — ya o bulguyu hedefleyen bir egzersiz yaz, ya da neden bugün ele
+  alınmadığını koc_uyarisi alanında söyle. Notta geçmeyen bir bulguyu uydurma; notu
+  yeniden yorumlarken sporcunun ölçümleriyle çeliş­me.
 - Eksik kapatmayan, "olsun diye" egzersiz yazma. Her egzersizin ya günün uyarıcısına ya
   da ölçülmüş bir eksiğe hizmet etmesi gerekir.
 - Her egzersiz için set, tekrar (veya süre/mesafe), yük/şiddet, dinlenme ve kısa bir
@@ -28546,6 +28691,15 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
     /* Read from the battery by code, so the answer cannot pick the two findings it
        likes out of twenty raw numbers (and cannot miss the one that matters). */
     tespit_edilen_eksikler:diDeficits(plan.ath,bundle.date),
+    /* The coach's own words from the test sheet, verbatim: a note reads better whole
+       than as a list of matched keywords, and what the table missed is still here. */
+    test_gozlemleri:(()=>{
+      const ts=[...(plan.ath.tests||[])].filter(x=>x.date&&x.date<=bundle.date)
+        .sort((a,b)=>a.date.localeCompare(b.date));
+      const t=ts[ts.length-1]||null;
+      const o=diObservations(t);
+      return o.sources.length?{test_tarihi:t.date,notlar:o.sources}:null;
+    })(),
     /* Patterns a painful region takes off the table entirely, not just reduces. */
     yasak_paternler:diBlockedPatterns(bundle),
     antrenor_talimati:{
@@ -29201,6 +29355,32 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
       {rd.signals.length>0&&<div className="di-sigrow">
         <span className="di-k">{L('Sinyaller','Signals')}</span>
         <div className="di-chips">{rd.signals.slice(0,4).map((s,i)=><span key={i} className="di-sigchip">{s}</span>)}</div>
+      </div>}
+      {deficits.findings.length>0&&<div className="di-sigrow">
+        <span className="di-k">{L('Bataryadan okunanlar','Read off the battery')}</span>
+        <div className="di-chips">
+          {/* One chip per AREA: two findings on the same ankle are one thing to look at,
+              and the tooltip carries both. */}
+          {(()=>{
+            const byArea=[];
+            deficits.findings.forEach(f=>{
+              const row=byArea.find(x=>x.bolge===f.bolge);
+              if(row){row.items.push(f);if(f.oncelik==='yüksek')row.hi=true;
+                if(f.kaynak==='gözlem')row.note=true;}
+              else byArea.push({bolge:f.bolge,hi:f.oncelik==='yüksek',
+                note:f.kaynak==='gözlem',items:[f]});
+            });
+            return[...byArea.slice(0,7).map((a,i)=><span key={i}
+              className={'di-defchip'+(a.hi?' hi':'')}
+              title={a.items.map(f=>`${f.bulgu} → ${f.gereken_calisma}`).join('\n')}>
+              {a.bolge}{a.items.length>1?` ×${a.items.length}`:''}
+              {a.note?L(' · not',' · note'):''}</span>),
+              byArea.length>7?<span key="more" className="di-dim">+{byArea.length-7}</span>:null];
+          })()}
+        </div>
+        <span className="di-dim">{deficits.test_date?fd(deficits.test_date):''}
+          {deficits.from_notes?L(` · ${deficits.from_notes} tanesi gözlem notundan`,
+            ` · ${deficits.from_notes} from the coach's notes`):''}</span>
       </div>}
       </DiSection>
 

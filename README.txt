@@ -302,6 +302,40 @@ The rule is computed from the check-in and shipped as a ban list;
 an exercise that breaks it is reported under Checks before you
 write anything.
 
+THE COACH'S NOTES ON THE TEST SHEET ARE READ TOO
+The battery is not only numbers. What you wrote in the posture box,
+the overhead-squat box, the five compensation slots beside it, the
+FMS box and the test note goes to the model VERBATIM — a note reads
+better whole than as a list of matched words. On top of that, the
+compensations coaches write most often are matched here and become
+findings with the work they call for, the same as a measured one:
+
+  "dizler içe geliyor" / knee cave -> hip abductor and external-
+      rotator strength, landing mechanics, single-leg control
+  "topuklar kalkıyor" / heels lift -> ankle dorsiflexion mobility
+  "kollar öne düşüyor" / arms fall  -> lat and thoracic mobility
+  "ağırlık sağa kayıyor" / shift    -> unilateral work, weaker side first
+  "bel çukuru / lordoz"             -> anterior core, hip-flexor length
+  "butt wink / bel yuvarlanıyor"    -> hip flexion mobility, neutral control
+  "skapula kanatlanması / winging"  -> scapular control, serratus & lower traps
+  "sağ omuz düşük"                  -> unilateral work aimed at the asymmetry
+  "pronasyon / düz taban"           -> intrinsic foot control, ankle stability
+  "torakal kifoz / yuvarlak omuz"   -> thoracic extension and rotation
+  "öne eğilme"                      -> hip & ankle mobility, upright-torso control
+  "baş öne"                         -> deep neck-flexor control, thoracic extension
+
+Matching survives Turkish inflection ("topuk kalk" finds "topuklar
+kalkıyor"), and where a note says what a measurement already said,
+the finding is listed once. What the table misses still reaches the
+model in the note itself, and the prompt asks for every observation
+that names a problem to be either answered by an exercise or
+explained in the coach warning.
+
+The card shows what was read: a "Read off the battery" row of chips
+under the tiles, one per body area, the high-priority ones
+highlighted, each chip's tooltip carrying the finding and the work
+it asks for, and the ones that came from your notes marked "note".
+
 THE TEST BATTERY IS READ BY CODE
 "Look at the test results" is not left to the model. The latest
 test is read here against the thresholds the app already uses —
