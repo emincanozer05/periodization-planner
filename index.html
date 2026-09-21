@@ -5002,7 +5002,6 @@ header{background:var(--bg2)!important}
 .di-sigrow{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .di-sigchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
   border-radius:7px;padding:3px 9px}
-.di-goals{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding-top:2px;border-top:0}
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
@@ -5061,7 +5060,6 @@ header{background:var(--bg2)!important}
 .di-conbox{width:15px;height:15px;border:1px solid var(--border2);border-radius:4px;display:inline-flex;
   align-items:center;justify-content:center;font-size:10px;color:#2dd4a7;flex:none}
 .di-conitem.on .di-conbox{border-color:#2dd4a7;background:rgba(45,212,167,.14)}
-.di-conic{font-size:13px;flex:none;width:18px;text-align:center}
 .di-connm{flex:1;min-width:0}
 .di-contip{display:none;position:absolute;left:100%;top:-4px;margin-left:10px;width:296px;background:var(--bg2);
   border:1px solid var(--border2);border-radius:10px;padding:10px 12px;box-shadow:0 16px 38px rgba(0,0,0,.6);z-index:60}
@@ -5121,6 +5119,13 @@ header{background:var(--bg2)!important}
   border:1px solid var(--border2);border-radius:5px;padding:1px 6px;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
 .di-src.library{color:#2dd4a7;border-color:rgba(45,212,167,.4)}
+.di-addlib{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border:1px dashed var(--border2);
+  border-radius:5px;padding:1px 7px;color:var(--dim);background:none;cursor:pointer;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
+.di-addlib:hover{border-color:var(--accent);border-style:solid;color:var(--accent2)}
+.di-phase{font-style:normal;font-size:9px;letter-spacing:.05em;border:1px solid var(--border2);
+  border-radius:5px;padding:0 6px;color:var(--dim);font-weight:600}
+.di-phase.ana{color:#7dd3fc;border-color:rgba(56,189,248,.4)}
 .di-prow-why{font-size:11.5px;color:var(--text2);line-height:1.5;max-width:74ch}
 .di-prow-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:0}
 .di-dose{display:inline-flex;align-items:baseline;gap:5px;border:1px solid var(--border2);border-radius:8px;
@@ -27720,27 +27725,6 @@ function diTolerance(ath,name,ref,days){
         :L('sonraki gün belirgin değişiklik yok','no clear next-day change'))};
 }
 
-/* ---- Athlete goals (§21) --------------------------------------------------
-   A short, fixed vocabulary so a goal can be read by the priority logic as well as
-   displayed; anything else the coach wants to say goes in the free-text secondary
-   goal beside it. */
-const DI_GOALS=[
-  {id:'accel',    label:['İvmelenme','Acceleration'],          qualities:['sprint','decel']},
-  {id:'cod',      label:['Yön değiştirme','Change of direction'],qualities:['cod','decel','uni']},
-  {id:'jump',     label:['Dikey sıçrama','Vertical jump'],     qualities:['jump','lower']},
-  {id:'relstr',   label:['Rölatif kuvvet','Relative strength'],qualities:['lower','push','pull']},
-  {id:'mobility', label:['Mobilite','Mobility'],               qualities:[]},
-  {id:'rtp',      label:['Oyuna dönüş','Return to play'],      qualities:[]},
-  {id:'maintain', label:['Kuvvet koruma','Strength maintenance'],qualities:['lower','push','pull']},
-  {id:'robust',   label:['Dayanıklılık / robustness','Robustness'],qualities:['uni','decel']},
-];
-const diGoalRow=id=>DI_GOALS.find(g=>g.id===id)||null;
-function diGoals(ath){
-  const ids=(Array.isArray(ath.goals)?ath.goals:[]).filter(Boolean);
-  return{primary:ids.map(id=>{const g=diGoalRow(id);return g?{id,label:g.label,qualities:g.qualities}:null;}).filter(Boolean),
-    secondary:String(ath.goalNote||'').trim()||null};
-}
-
 /* ---- Position emphasis (§4.3) --------------------------------------------
    What a role's game asks for most often. It is CONTEXT, never the programme: the
    spec is explicit that position alone must not decide anything, so this is handed
@@ -28062,8 +28046,6 @@ function diBundle(ath,setup,ref,opts){
     season_phase:(()=>{const p=diSeasonPhase(setup,ref);
       return{id:p.id,label:p.label?L(p.label[0],p.label[1]):null,
         focus:p.focus.map(f=>L(f[0],f[1])),period:p.period};})(),
-    goals:(()=>{const g=diGoals(ath);
-      return{primary:g.primary.map(x=>L(x.label[0],x.label[1])),secondary:g.secondary};})(),
     test_baselines:DI_TEST_METRICS.map(m=>diTestBaseline(ath,m,ref)).filter(Boolean)
       .map(x=>({metric:L(x.label[0],x.label[1]),current:x.current,baseline:x.baseline,
         deviation_pct:x.deviation,unit:x.unit.trim()||null,date:x.date,readings:x.n})),
@@ -28137,62 +28119,62 @@ const diPrioLabel=id=>{const p=diPrioRow(id);return p?L(p.label[0],p.label[1]):S
    line, so the instruction the model is given is the same sentence the coach read when
    they ticked it — there is no second, hidden reading of a constraint. */
 const DI_CONSTRAINT_TYPES=[
-  {id:'load',icon:'🏋',label:['Yük Sınırı','Load limit'],
+  {id:'load',label:['Yük Sınırı','Load limit'],
    what:['Kullanılabilecek dış yükü (kg, %1RM, RPE) sınırlar.','Caps the external load (kg, %1RM, RPE) that may be used.'],
    ex:['"Maksimum %60 1RM" · "RPE 7\'yi geçme" · "En fazla 40 kg"','"Max 60% 1RM" · "Stay under RPE 7" · "No more than 40 kg"'],
    ai:['Önerilen egzersizlerdeki yük belirtilen sınırı aşmamalı; daha düşük yükle benzer uyarıcıyı veren varyasyonlar tercih edilmeli.',
        'No exercise may exceed the stated load; prefer variations that give a similar stimulus at a lower load.']},
-  {id:'volume',icon:'📊',label:['Hacim Sınırı','Volume limit'],
+  {id:'volume',label:['Hacim Sınırı','Volume limit'],
    what:['Set, tekrar, mesafe, süre veya toplam çalışma miktarını sınırlar.','Caps sets, reps, distance, time or total work.'],
    ex:['"Toplam set sayısını azalt" · "En fazla 60 tekrar" · "Metrajı düşük tut"','"Fewer total sets" · "60 reps at most" · "Keep the metreage low"'],
    ai:['Toplam hacim sınır içinde tutulmalı; gerekirse daha düşük set/tekrar/mesafe ile benzer uyarıcı sağlanmalı.',
        'Keep total volume inside the limit; deliver a similar stimulus with fewer sets, reps or metres if needed.']},
-  {id:'time',icon:'⏱',label:['Zaman Sınırı','Time limit'],
+  {id:'time',label:['Zaman Sınırı','Time limit'],
    what:['Seansın toplam süresini sınırlar.','Caps the total length of the session.'],
    ex:['"En fazla 45 dakika" · "30 dakikada bitsin"','"45 minutes at most" · "Done inside 30 minutes"'],
    ai:['Egzersiz seçimi ve set/tekrar yapısı seansı verilen sürede bitirecek şekilde kurulmalı; uzun hazırlık ve kompleks yapılardan kaçınılmalı.',
        'Pick exercises and a set structure that finish inside the time; avoid long build-ups and complex set structures.']},
-  {id:'intensity',icon:'⚡',label:['Yoğunluk Sınırı','Intensity limit'],
+  {id:'intensity',label:['Yoğunluk Sınırı','Intensity limit'],
    what:['Çalışma yoğunluğunu (hız, RPE, %1RM, velocity) sınırlar.','Caps working intensity (speed, RPE, %1RM, velocity).'],
    ex:['"RPE 6\'yı geçme" · "%70 1RM üstü yok" · "Maksimum sub-maksimal"','"Stay under RPE 6" · "Nothing above 70% 1RM" · "Sub-maximal only"'],
    ai:['Belirtilen yoğunluk seviyesi aşılmamalı; daha düşük yoğunlukta uygun egzersiz varyasyonları seçilmeli.',
        'Do not exceed the stated intensity; choose variations that work at a lower one.']},
-  {id:'impact',icon:'🤸',label:['Darbe / Sıçrama Sınırı','Impact / jump limit'],
+  {id:'impact',label:['Darbe / Sıçrama Sınırı','Impact / jump limit'],
    what:['Pliometrik sıçrama, iniş ve toplam zemin teması miktarını sınırlar.','Caps jumps, landings and total ground contacts.'],
    ex:['"En fazla 30 sıçrama" · "Pliometrik hacmi düşük tut" · "Drop jump yok"','"30 jumps at most" · "Keep plyo volume low" · "No drop jumps"'],
    ai:['Zemin teması, sıçrama ve pliometrik hacim sınırlandırılmalı; gerekirse izometrik veya med ball gibi alternatif güç uyarıcıları önerilmeli.',
        'Limit contacts, jumps and plyometric volume; offer isometric or med-ball power work instead where needed.']},
-  {id:'speed',icon:'🏃',label:['Hız Sınırı','Speed limit'],
+  {id:'speed',label:['Hız Sınırı','Speed limit'],
    what:['Sprint, yüksek hızlı koşu veya hareket hızını sınırlar.','Caps sprinting, high-speed running or movement velocity.'],
    ex:['"%70 hızın üzerinde yok" · "Max velocity yok" · "Yüksek hızlı koşuyu sınırla"','"Nothing above 70% speed" · "No max velocity" · "Limit high-speed running"'],
    ai:['Yüksek hızlı sprint ve maksimum hız maruziyeti sınırlandırılmalı; daha düşük hızda teknik ve kapasite odaklı çalışmalar önerilmeli.',
        'Limit high-speed sprinting and max-velocity exposure; work on technique and capacity at lower speeds instead.']},
-  {id:'rom',icon:'📐',label:['Hareket Açıklığı Sınırı','Range-of-motion limit'],
+  {id:'rom',label:['Hareket Açıklığı Sınırı','Range-of-motion limit'],
    what:['Belirli eklemlerde kullanılabilecek hareket açıklığını (ROM) sınırlar.','Caps the range of motion available at a joint.'],
    ex:['"Derin squat yok" · "90° diz fleksiyonu ile sınırla" · "Ağrısız ROM kullan"','"No deep squat" · "Stop at 90° knee flexion" · "Pain-free range only"'],
    ai:['Belirtilen ROM sınırına uygun egzersiz ve varyasyonlar seçilmeli; hareket açıklığı ağrı oluşturmayacak şekilde kontrollü tutulmalı.',
        'Choose exercises that fit the stated range; keep the range controlled and pain-free.']},
-  {id:'direction',icon:'↔',label:['Yön / Hareket Kısıtı','Direction / pattern limit'],
+  {id:'direction',label:['Yön / Hareket Kısıtı','Direction / pattern limit'],
    what:['Belirli hareket yönlerini veya paternleri kısıtlar.','Rules out certain directions or movement patterns.'],
    ex:['"Lateral hareket yok" · "Rotasyon yok" · "COD yok" · "Sadece sagittal düzlem"','"No lateral work" · "No rotation" · "No COD" · "Sagittal plane only"'],
    ai:['Belirtilen hareket yönlerini içeren egzersizlerden kaçınılmalı; izin verilen düzlemde benzer uyarıcı sağlayan alternatifler önerilmeli.',
        'Avoid exercises in the named directions; find the same stimulus in a plane that is allowed.']},
-  {id:'region',icon:'🧍',label:['Bölgesel Kısıt','Regional limit'],
+  {id:'region',label:['Bölgesel Kısıt','Regional limit'],
    what:['Belirli bir vücut bölgesine yüklemeyi sınırlar.','Limits loading of one body region.'],
    ex:['"Sadece üst vücut" · "Bel/dize yük bindirme" · "Sağ bacak hacmini azalt"','"Upper body only" · "Nothing loading the low back or knee" · "Less volume on the right leg"'],
    ai:['Belirtilen bölgeye yük bindiren egzersizler sınırlandırılmalı veya tamamen çıkarılmalı; çalışma alternatif bölgelere kaydırılmalı.',
        'Cut back or drop the exercises that load that region and move the work elsewhere.']},
-  {id:'contact',icon:'👥',label:['Temas Yok','No contact'],
+  {id:'contact',label:['Temas Yok','No contact'],
    what:['Fiziksel temas içeren aktiviteler kullanılmamalıdır.','No activity involving physical contact.'],
    ex:['"Temas içeren egzersiz yok" · "İkili mücadele yok" · "Takım teması yok"','"No contact drills" · "No one-on-one duels" · "No team contact"'],
    ai:['Temas riski taşıyan bütün egzersizlerden kaçınılmalı; bireysel ve temassız alternatifler önerilmeli.',
        'Avoid every exercise carrying contact risk; prescribe individual, non-contact alternatives.']},
-  {id:'unilateral',icon:'🦵',label:['Tek Taraflı Çalışma','Unilateral work'],
+  {id:'unilateral',label:['Tek Taraflı Çalışma','Unilateral work'],
    what:['Egzersizler tek taraflı (unilateral) olmalıdır.','The work should be unilateral.'],
    ex:['"Sadece unilateral egzersizler" · "Tek bacak odaklı çalış"','"Unilateral only" · "Single-leg focus"'],
    ai:['Bilateral varyasyonlar yerine unilateral olanlar seçilmeli; gerekirse denge ve stabilite çalışmaları eklenmeli.',
        'Choose unilateral variations over bilateral ones, adding balance and stability work where it fits.']},
-  {id:'other',icon:'…',label:['Diğer','Other'],
+  {id:'other',label:['Diğer','Other'],
    what:['Yukarıdakiler dışında özel bir kısıt.','Any constraint the list above does not cover.'],
    ex:['"Spesifik teknik kısıt" · "Belirli bir egzersiz varyasyonu" · "Koç talimatı"','"A specific technical limit" · "One particular variation" · "A coaching instruction"'],
    ai:['Girilen talimat bağlama uygun şekilde yorumlanmalı ve programa işlenmeli; talimat belirsizse program bu belirsizliği koç uyarısında söylemeli.',
@@ -28228,6 +28210,155 @@ function diInstr(raw,src){
 const diInstrFilled=i=>!!(i&&(i.priorities.length||i.must.length||i.avoid.length
   ||i.constraints.length||i.constraintNote||i.notes));
 
+/* ---- What the screen says is missing (the test battery, read by code) -------
+   "Look at the test results" cannot be left to a sentence in a prompt: a model that
+   is handed twenty raw numbers will quote the two it likes. So the battery is READ
+   here, against the thresholds the app already uses elsewhere (the Program Writer's
+   screening cut-offs, the test sheet's return-to-sport note, the comparison table's
+   10% bilateral rule), and what comes out is a list of findings with the KIND of work
+   each one calls for. The session is then checked against that list.
+
+   `work` is deliberately a quality, never an exercise: which exercise serves it is the
+   answer's job and depends on the equipment, the athlete and the day. */
+const DI_DEFICIT_KW={
+  ankle_df:['ayak bile','ankle','dorsifleks','dorsiflex','soleus','gastro'],
+  ankle_asym:['ayak bile','ankle','dorsifleks','dorsiflex'],
+  aslr:['aslr','düz bacak','duz bacak','straight leg','hamstring','kalça fleks','hip flex'],
+  ohs:['overhead','ohs','squat pattern','çömelme paterni'],
+  ohs_comp:['overhead','ohs','valgus','kompensasyon','compensation'],
+  thoracic:['torakal','thoracic','t-spine','tspine','skapula','scapula','üst sırt','ust sirt'],
+  ybalance:['tek bacak','single leg','single-leg','denge','balance','y balance'],
+  asym:['tek taraflı','tek tarafli','unilateral','tek bacak','single leg','single-leg'],
+  rsi:['pliometr','plyo','sıçrama','sicrama','jump','iniş','inis','landing','hop'],
+};
+const DI_ASYM_PCT=10;        // bilateral difference the comparison table already flags
+const DI_YB_DIFF=4;          // cm per-direction Y Balance difference, from the test sheet
+function diDeficits(ath,ref){
+  const tests=[...(ath.tests||[])].filter(t=>t.date&&(!ref||t.date<=ref))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const t=tests[tests.length-1]||null;
+  if(!t)return{test_date:null,measured:0,findings:[],
+    note:L('Kayıtlı test yok — eksik analizi yapılamadı.','No test on record — nothing to read.')};
+  const n=recNum;
+  const out=[];
+  const add=(id,area,finding,work,priority,value)=>out.push({id,
+    bolge:L(area[0],area[1]),bulgu:L(finding[0],finding[1]),
+    gereken_calisma:L(work[0],work[1]),oncelik:priority,olcum:value==null?null:value,
+    /* What an exercise has to SAY for this finding to count as answered. Kept per
+       finding rather than derived from its wording: the words of a description are
+       too easy to hit by accident. */
+    kw:DI_DEFICIT_KW[id]||[]});
+  /* Ankle dorsiflexion: the app reads 35° as the pass mark and 30° as a failure. */
+  const dfR=n(t.ankleDF&&t.ankleDF.right),dfL=n(t.ankleDF&&t.ankleDF.left);
+  const df=[dfR,dfL].filter(x=>x!=null);
+  if(df.length){
+    const low=Math.min(...df);
+    const side=dfR!=null&&dfL!=null?(dfR<dfL?L('sağ','right'):L('sol','left')):null;
+    if(low<35)add('ankle_df',['Ayak bileği','Ankle'],
+      [`Dorsifleksiyon ${low}°${side?` (${side} taraf)`:''} — eşik 35°`,
+       `Dorsiflexion ${low}°${side?` (${side} side)`:''} against a 35° threshold`],
+      ['Ayak bileği dorsifleksiyon mobilitesi (yüklü mobilizasyon, soleus/gastroknemius)',
+       'Ankle dorsiflexion mobility (loaded mobilisation, soleus/gastrocnemius)'],
+      low<30?'yüksek':'orta',low);
+    if(dfR!=null&&dfL!=null&&Math.abs(dfR-dfL)>=5)add('ankle_asym',['Ayak bileği','Ankle'],
+      [`Sağ/sol dorsifleksiyon farkı ${Math.abs(dfR-dfL)}°`,`${Math.abs(dfR-dfL)}° side-to-side dorsiflexion difference`],
+      ['Zayıf tarafa ek mobilite ve tek taraflı yüklenme','Extra mobility and unilateral loading on the limited side'],
+      'orta',Math.abs(dfR-dfL));
+  }
+  /* ASLR and the overhead squat: the FMS 0-3 scores the app already stores. */
+  const aslr=[n(t.aslr&&t.aslr.right),n(t.aslr&&t.aslr.left)].filter(x=>x!=null);
+  if(aslr.length&&Math.min(...aslr)<=1)add('aslr',['Kalça / hamstring','Hip / hamstring'],
+    [`ASLR ${Math.min(...aslr)}/3`,`ASLR ${Math.min(...aslr)}/3`],
+    ['Kalça fleksiyon açıklığı ve posterior zincir esnekliği, aktif düz bacak kaldırma progresyonu',
+     'Hip flexion range and posterior-chain flexibility, an active straight-leg-raise progression'],
+    'yüksek',Math.min(...aslr));
+  const ohs=n(t.ohs&&t.ohs.score);
+  const ohsProblems=((t.ohs&&t.ohs.problems)||[]).filter(Boolean);
+  if(ohs!=null&&ohs<=1)add('ohs',['Bütünsel hareket','Whole-body movement'],
+    [`Overhead squat ${ohs}/3${ohsProblems.length?` — ${ohsProblems.join('; ')}`:''}`,
+     `Overhead squat ${ohs}/3${ohsProblems.length?` — ${ohsProblems.join('; ')}`:''}`],
+    ['Kompensasyon paternine göre mobilite + motor kontrol; yük eklemeden önce teknik',
+     'Mobility plus motor control for the compensation seen; technique before load'],
+    'yüksek',ohs);
+  else if(ohsProblems.length)add('ohs_comp',['Bütünsel hareket','Whole-body movement'],
+    [`Overhead squat kompensasyonları: ${ohsProblems.join('; ')}`,
+     `Overhead squat compensations: ${ohsProblems.join('; ')}`],
+    ['Gözlenen kompensasyona yönelik düzeltici çalışma','Corrective work for the compensation seen'],
+    'orta',null);
+  /* Shoulder mobility on the FMS is the app's closest reading of thoracic extension;
+     a posture note naming the thoracic spine counts for the same finding. */
+  const sm=[n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.right),
+    n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.left)].filter(x=>x!=null);
+  const postureTxt=`${(t.posture&&t.posture.observations)||''} ${(t.ohs&&t.ohs.observations)||''} ${ohsProblems.join(' ')}`.toLowerCase();
+  const thoracicNote=/torakal|thoracic|kifoz|kyphos|yuvarlak omuz|round(ed)? shoulder|üst sırt|upper back/.test(postureTxt);
+  if((sm.length&&Math.min(...sm)<=1)||thoracicNote)
+    add('thoracic',['Torakal omurga / omuz','Thoracic spine / shoulder'],
+      [sm.length&&Math.min(...sm)<=1
+        ?`Omuz mobilitesi ${Math.min(...sm)}/3${thoracicNote?' · postür notu torakal kısıtı işaret ediyor':''}`
+        :'Postür notu torakal kısıtı işaret ediyor',
+       sm.length&&Math.min(...sm)<=1
+        ?`Shoulder mobility ${Math.min(...sm)}/3${thoracicNote?' · the posture note points at the thoracic spine':''}`
+        :'The posture note points at the thoracic spine'],
+      ['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
+       'Thoracic extension and rotation mobility, scapular control'],
+      'yüksek',sm.length?Math.min(...sm):null);
+  /* Y Balance: the per-direction reach difference the test sheet flags at 4 cm. */
+  const yb=ybCalc(t.yBalance)||{};
+  const ybd=[yb.dAnt,yb.dPm,yb.dPl].filter(x=>x!=null);
+  if(ybd.length&&Math.max(...ybd)>=DI_YB_DIFF)add('ybalance',['Tek bacak kontrol','Single-leg control'],
+    [`Y Balance yön farkı ${Math.max(...ybd)} cm (eşik ${DI_YB_DIFF} cm)`,
+     `${Math.max(...ybd)} cm Y Balance reach difference (threshold ${DI_YB_DIFF} cm)`],
+    ['Tek bacak denge ve kalça/diz stabilitesi, zayıf tarafa ek set',
+     'Single-leg balance and hip/knee stability, an extra set on the weaker side'],
+    'orta',Math.max(...ybd));
+  /* Bilateral difference across the measures the comparison table already reads. */
+  const pairs=[caAsym(t.lateralCmj&&t.lateralCmj.right,t.lateralCmj&&t.lateralCmj.left),
+    caAsym(t.circ&&t.circ.thighRight,t.circ&&t.circ.thighLeft),
+    caAsym(t.circ&&t.circ.calfRight,t.circ&&t.circ.calfLeft)].filter(Boolean);
+  const asym=pairs.length?Math.max(...pairs.map(p=>p.pct)):null;
+  if(asym!=null&&asym>=DI_ASYM_PCT)add('asym',['Bilateral fark','Bilateral difference'],
+    [`Sağ/sol fark %${asym.toFixed?asym.toFixed(0):asym} (eşik %${DI_ASYM_PCT})`,
+     `${asym.toFixed?asym.toFixed(0):asym}% side-to-side difference (threshold ${DI_ASYM_PCT}%)`],
+    ['Tek taraflı kuvvet çalışması, zayıf tarafa öncelik','Unilateral strength work, the weaker side first'],
+    'orta',asym);
+  /* Reactive strength: a drop-jump RSI under 1.5 is the usual floor for reactive work
+     in a jumping sport; reported as a finding, not as a verdict on the athlete. */
+  const rsi=n(t.dropJump);
+  if(rsi!=null&&rsi<1.5)add('rsi',['Reaktif kuvvet','Reactive strength'],
+    [`Drop jump RSI ${rsi}`,`Drop jump RSI ${rsi}`],
+    ['Kısa temas süreli pliometrik ve iniş mekaniği (ağrı/RTP izin veriyorsa)',
+     'Short-contact plyometrics and landing mechanics (where pain and RTP allow)'],
+    'düşük',rsi);
+  const order={'yüksek':0,'orta':1,'düşük':2};
+  out.sort((a,b)=>order[a.oncelik]-order[b.oncelik]);
+  return{test_date:t.date,measured:out.length,findings:out};
+}
+
+/* ---- Patterns today's pain takes off the table ----------------------------
+   The daily layer has always REDUCED work on a painful region. A region reported at
+   moderate severity or worse is different: the movement patterns that load it are out
+   of the session entirely, and the check below treats a breach as an error rather than
+   a note. The regions and their patterns come from PAIN_RULES — the same table the
+   rest of the app reads — so "knee at 7/10 means no knee-dominant work" is one rule
+   here, not a special case. */
+const DI_PAIN_BLOCK=4;   // severity 0-10; the check-in's 0-3 grid maps 2/3 to 7
+function diBlockedPatterns(bundle){
+  const out=[];
+  ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(r=>{
+    const sev=r.severity_0_10;
+    if(sev==null||sev<DI_PAIN_BLOCK)return;
+    out.push({bolge:r.label,siddet_0_10:sev,
+      yasak_paternler:r.loads_patterns||[],
+      yonlendirilecek_paternler:r.redirect_patterns||[]});
+  });
+  return out;
+}
+const diBlockedSet=blocked=>{
+  const s=new Set();
+  (blocked||[]).forEach(b=>(b.yasak_paternler||[]).forEach(p=>s.add(p)));
+  return s;
+};
+
 const DI_PROGRAM_SYSTEM=`CoachOS — Günlük Bireyselleştirme · Antrenman Yazıcı
 
 ROL
@@ -28256,7 +28387,9 @@ MUTLAK KURALLAR
    - kacinilacak: bu egzersiz/patern/yükleme programda YER ALMAMALI.
    - kisitlar: her kısıtın "programlama_davranisi" alanı, o kısıtın senden ne beklediğini
      birebir söyler. Hepsine uy.
-   - seans_suresi_dk ve maks_egzersiz: aşma.
+   - seans_suresi_dk: aşma.
+   - ana_faz_maks_egzersiz: bu sayı YALNIZCA ana faz için geçerlidir. Hazırlık/düzeltici
+     ve tamamlayıcı fazlar bu sayıya dahil DEĞİLDİR ve bu sayı yüzünden kısılmaz.
    - ek_notlar: bağlam olarak oku ve uygula.
    Boş bırakılan alan kısıt değildir; yok say.
 4. YALNIZCA ENVANTERDEKİ EKİPMANI KULLAN. salon_ekipmani listesi doluysa, yazdığın her
@@ -28264,9 +28397,15 @@ MUTLAK KURALLAR
    "ekipman" alanına ne gerektiğini yaz. Adet bilgisi verilmişse, bir seansta aynı anda
    o adetten fazlasını gerektiren kurgu yazma. Liste boşsa ekipman kısıtı yok demektir.
 5. AĞRI VE SAKATLIK. agri_pattern_kurallari, ağrı bildirilen bölgeyi hangi hareket
-   paternlerinin yüklediğini söyler: o paternleri azalt veya çıkar, yönlendirilen
-   paternlere kay. Aktif sakatlık ve RTP aşaması HARD CONSTRAINT'tir; protokolü
-   değiştiremez, sporcuyu kendiliğinden tam katılıma döndüremezsin.
+   paternlerinin yüklediğini söyler: hafif ağrıda o paternleri azalt, yönlendirilen
+   paternlere kay.
+   YASAK PATERNLER: yasak_paternler alanı doluysa, orada listelenen hareket paternleri
+   o gün PROGRAMDA YER ALAMAZ — azaltılmaz, tamamen çıkarılır. Bu liste, orta veya
+   yüksek şiddette ağrı bildirilen bölgeyi yükleyen paternlerden oluşur. Örnek: dizde
+   orta/yüksek ağrı varsa Squat (diz dominant), Lunge / Unilateral ve Jump / Plyo o gün
+   yazılamaz; uyarıcı, yönlendirilecek paternler üzerinden korunur.
+   Aktif sakatlık ve RTP aşaması HARD CONSTRAINT'tir; protokolü değiştiremez, sporcuyu
+   kendiliğinden tam katılıma döndüremezsin.
 6. TANI KOYMA. Sakatlık teşhisi yazma, yüzdesel yaralanma riski verme, tedavi önerme.
    Ağrı 4/10 ve üzerindeyse ya da aktif sakatlık varsa, koç ve sağlık ekibinin
    değerlendirmesi gerektiğini koc_uyarisi alanında tek cümleyle söyle.
@@ -28279,8 +28418,21 @@ MUTLAK KURALLAR
 PROGRAMI NASIL YAZ
 - Önce günün uyarıcısına karar ver (antrenörün öncelikleri + sporcunun durumu), sonra
   egzersizi seç. Egzersizden geriye doğru program yazma.
-- Programı bloklar hâlinde kur (ör. Hazırlık, Ana İş, Tamamlayıcı). Blok sayısını
-  seansın amacı belirler; süre ve maks_egzersiz sınırına sığdır.
+- Programı FAZLARA böl. Her bloğun "faz" alanı şunlardan biri olmalı:
+  · "hazirlik"    — ısınma, aktivasyon, düzeltici/mobilite işi
+  · "ana"         — günün ana uyarıcısı (antrenörün önceliği burada karşılanır)
+  · "tamamlayici" — tamamlayıcı kuvvet, stabilite, denge, core, esneklik
+- ana_faz_maks_egzersiz yalnızca "ana" fazı bağlar. Hazırlık ve tamamlayıcı fazlar bu
+  sayıdan bağımsızdır ve ATLANMAZ: sporcunun ölçülmüş eksiklerini bu fazlar kapatır.
+- TEST SONUÇLARINI OKU. tespit_edilen_eksikler, sporcunun test bataryasından kod
+  tarafından çıkarılmış bulguların listesidir; her birinin "gereken_calisma" alanı ne tür
+  bir çalışma istediğini söyler. Önceliği "yüksek" olan her bulgu için programda —
+  hazırlık veya tamamlayıcı fazda — o bulguyu hedefleyen bir egzersiz BULUNMALI ve o
+  egzersizin gerekçesinde hangi bulguyu hedeflediği yazmalı. Ör. ayak bileği
+  dorsifleksiyonu 30° ise yüklü ayak bileği mobilizasyonu; torakal ekstansiyon kısıtı
+  varsa torakal ekstansiyon/rotasyon çalışması. Bulgu yoksa uydurma.
+- Eksik kapatmayan, "olsun diye" egzersiz yazma. Her egzersizin ya günün uyarıcısına ya
+  da ölçülmüş bir eksiğe hizmet etmesi gerekir.
 - Her egzersiz için set, tekrar (veya süre/mesafe), yük/şiddet, dinlenme ve kısa bir
   gerekçe yaz. Gerekçe bu sporcunun verisinden türemiş olsun, genel geçer cümle olmasın.
 - Egzersiz kütüphanesinde varsa oradan seç ve kaynak alanına "library" yaz; kütüphanede
@@ -28288,6 +28440,18 @@ PROGRAMI NASIL YAZ
   hareket paterni sözlüğünden doldur.
 - Takımın o günkü seansı (takim_seansi) varsa onunla çakışan ikinci bir yüklenme yazma;
   tamamlayıcı ol.
+
+EGZERSİZ SEÇİMİ LİTERATÜRE UYGUN OLSUN
+- Seçtiğin egzersiz, hedeflediğin kaliteyi gerçekten geliştiren bir egzersiz olmalı:
+  kuvvet-hız eğrisinin doğru yerinde, doğru kasılma tipinde, doğru hareket açıklığında.
+  Güncel kuvvet & kondisyon literatürüyle tutarlı seç.
+- Doz da uyarıcıya uysun: maksimal kuvvet için düşük tekrar ve yüksek yük; güç/RFD için
+  düşük tekrar, yüksek hız niyeti ve tam dinlenme; hipertrofi için orta tekrar ve kısa
+  dinlenme; mobilite için yeterli süre/tekrar. Uyarıcıyla çelişen doz yazma.
+- Düzeltici çalışmada kanıtı olan yaklaşımı seç (ör. dorsifleksiyon için yüklü ayak
+  bileği mobilizasyonu, ASLR kısıtında aktif düz bacak kaldırma progresyonu).
+- Her egzersizin "gerekce" alanı MEKANİZMAYI söylesin: hangi veri/bulgu, hangi kalite,
+  neden bu hareket. "Genel kuvvet için" gibi doldurma gerekçe yazma.
 
 ÇIKTI
 Sadece aşağıdaki JSON'u döndür, başka metin yok, markdown kod bloğu yok:
@@ -28302,6 +28466,7 @@ Sadece aşağıdaki JSON'u döndür, başka metin yok, markdown kod bloğu yok:
     "bloklar": [
       {
         "ad": "blok adı",
+        "faz": "hazirlik | ana | tamamlayici",
         "egzersizler": [
           {
             "ad": "egzersiz adı",
@@ -28372,13 +28537,17 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
     musabaka_baglami:bundle.competition,
     oynama_suresi:bundle.playing_time,
     sezon_fazi:bundle.season_phase,
-    sporcu_hedefleri:bundle.goals,
     test_baseline_sapmalari:bundle.test_baselines,
     izleme_bayragi:bundle.flag,
     /* Reported as a finished decision the code will apply afterwards (§8, rule 2). */
     hacim_ayari:{yuzde:bundle.adjustment.pct,taban_sinir_uygulandi:bundle.adjustment.floored,
       gerekceler:bundle.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`),
       not:'Bu yüzde yanıtından SONRA kod tarafından uygulanacak — sen normal günün programını yaz.'},
+    /* Read from the battery by code, so the answer cannot pick the two findings it
+       likes out of twenty raw numbers (and cannot miss the one that matters). */
+    tespit_edilen_eksikler:diDeficits(plan.ath,bundle.date),
+    /* Patterns a painful region takes off the table entirely, not just reduces. */
+    yasak_paternler:diBlockedPatterns(bundle),
     antrenor_talimati:{
       oncelikler:i.priorities.map(diPrioLabel),
       mutlaka_olsun:i.must,
@@ -28388,7 +28557,9 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup){
           programlama_davranisi:L(c.ai[0],c.ai[1])};}),
       kisit_detayi:i.constraintNote||null,
       seans_suresi_dk:i.duration,
-      maks_egzersiz:i.maxExercises,
+      /* The ceiling binds the MAIN phase only: preparation and complementary work is
+         what closes the athlete's measured gaps, and capping it would cap the fix. */
+      ana_faz_maks_egzersiz:i.maxExercises,
       ek_notlar:i.notes||null,
     },
     salon_ekipmani:eq.length?eq.map(e=>({ekipman:e.label,adet:e.qty==null?'belirtilmemiş':e.qty})):null,
@@ -28421,10 +28592,14 @@ function diParseProgram(text){
     .map((bl,bi)=>({
       key:`ai:${bi}`,
       name:t(bl.ad)||'',
+      phase:(()=>{const p=String(bl.faz||'').trim().toLowerCase();
+        return ['hazirlik','ana','tamamlayici'].includes(p)?p:null;})(),
       exercises:(Array.isArray(bl.egzersizler)?bl.egzersizler:[])
         .filter(e=>e&&typeof e==='object'&&t(e.ad))
         .map((e,ei)=>({
           key:`ai:${bi}:${ei}`,
+          phase:(()=>{const p=String(bl.faz||'').trim().toLowerCase();
+            return ['hazirlik','ana','tamamlayici'].includes(p)?p:null;})(),
           name:t(e.ad),
           source:String(e.kaynak||'').toLowerCase()==='library'?'library':'custom',
           sets:t(e.set),reps:t(e.tekrar),duration:t(e.sure),distance:t(e.mesafe),
@@ -28470,15 +28645,33 @@ function diProgramRows(program,pct){
   return out;
 }
 /* What the app can check about a written programme without asking anybody: the
-   coach's own ceilings, the gym's kit, and the pain table. Each finding names what is
-   over and by how much, so the coach can regenerate with it in front of them. */
-function diProgramChecks(program,bundle,instr,setup,libMap){
+   coach's ceiling (on the phase it actually binds), the gym's kit, the patterns a
+   painful region has taken off the table, the coach's own "keep out" list, and the
+   findings the battery produced. Each finding names what is wrong and why, so the
+   coach can regenerate with it in front of them rather than re-reading the session. */
+function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
   const out=[];
   const rows=diProgramRows(program,0);
   const i=instr||diInstr(null,null);
-  if(i.maxExercises&&rows.length>i.maxExercises)
-    out.push(L(`Program ${rows.length} egzersiz içeriyor, sınır ${i.maxExercises}.`,
-      `The programme has ${rows.length} exercises against a ceiling of ${i.maxExercises}.`));
+  const patOf=r=>r.pattern||((libMap&&libMap[String(r.name||'').toLowerCase()])
+    ?exPatternOf(libMap[String(r.name||'').toLowerCase()]):'');
+  /* The ceiling is a MAIN-phase rule. Rows from a block with no phase on it are counted
+     as main work: an answer that skipped the field does not get a free pass. */
+  const main=rows.filter(r=>(r.phase||'ana')==='ana');
+  if(i.maxExercises&&main.length>i.maxExercises)
+    out.push(L(`Ana fazda ${main.length} egzersiz var, sınır ${i.maxExercises}. (Hazırlık ve tamamlayıcı fazlar bu sayıya dahil değil.)`,
+      `The main phase has ${main.length} exercises against a ceiling of ${i.maxExercises}. (Preparation and complementary work does not count.)`));
+  /* A pattern a painful region rules out is an error, not a note. */
+  const blocked=diBlockedPatterns(bundle);
+  const blockedSet=diBlockedSet(blocked);
+  if(blockedSet.size)rows.forEach(r=>{
+    const pat=patOf(r);
+    if(pat&&blockedSet.has(pat)){
+      const src=blocked.find(b=>(b.yasak_paternler||[]).includes(pat));
+      out.push(L(`"${r.name}" ${pat} paterninde ve ${src?src.bolge:''} ağrısı (${src?src.siddet_0_10:'?'}/10) bu paterni bugün kapatıyor — programdan çıkmalı.`,
+        `"${r.name}" is a ${pat} movement, and ${src?src.bolge:''} pain at ${src?src.siddet_0_10:'?'}/10 rules that pattern out today — it should not be in the session.`));
+    }
+  });
   const eq=eqAvailable(setup);
   if(eq.length){
     const ids=new Set(eq.map(e=>e.id));
@@ -28489,9 +28682,11 @@ function diProgramChecks(program,bundle,instr,setup,libMap){
           `"${r.name}" needs ${L(diEqLabel(need)[0],diEqLabel(need)[1])}, which is not in the gym inventory.`));
     });
   }
+  /* Pain below the blocking threshold is still worth a look where the session loads it. */
   ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(p=>{
+    if(p.severity_0_10!=null&&p.severity_0_10>=DI_PAIN_BLOCK)return;   // already reported above
     rows.forEach(r=>{
-      const pat=r.pattern||(libMap&&libMap[String(r.name||'').toLowerCase()]?exPatternOf(libMap[String(r.name||'').toLowerCase()]):'');
+      const pat=patOf(r);
       if(pat&&(p.loads_patterns||[]).includes(pat))
         out.push(L(`${p.label} bildirilmiş ve "${r.name}" bu bölgeyi yükleyen ${pat} paterninde.`,
           `${p.label} was reported and "${r.name}" is a ${pat} movement, which loads it.`));
@@ -28506,6 +28701,18 @@ function diProgramChecks(program,bundle,instr,setup,libMap){
         out.push(L(`Antrenör "${av}" istemiyordu ama programda "${r.name}" var.`,
           `The coach ruled out "${av}", and the programme carries "${r.name}".`));
     });
+  });
+  /* A high-priority finding from the battery with nothing in the session that names it.
+     Matched on the words of the finding, which is as far as a string can honestly go —
+     it is a prompt to look, not a verdict. */
+  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').forEach(f=>{
+    const words=(f.kw||[]).map(diExName).filter(Boolean);
+    const hit=!words.length||rows.some(r=>{
+      const hay=diExName(`${r.name} ${r.why||''}`);
+      return words.some(w=>hay.includes(w));
+    });
+    if(!hit)out.push(L(`Yüksek öncelikli bulgu programda karşılanmamış görünüyor: ${f.bolge} — ${f.bulgu}.`,
+      `A high-priority finding looks unanswered in the session: ${f.bolge} — ${f.bulgu}.`));
   });
   return [...new Set(out)];
 }
@@ -28583,18 +28790,6 @@ function DiSignals({items,limit}){
   const show=limit?items.slice(0,limit):items;
   return(<ul className="di-sig">{show.map((s,i)=><li key={i}>{s}</li>)}
     {limit&&items.length>limit?<li className="di-dim">+{items.length-limit}</li>:null}</ul>);
-}
-
-function DiGoalPicker({ath,save}){
-  const cur=(Array.isArray(ath.goals)?ath.goals:[]).filter(Boolean);
-  const toggle=id=>save({goals:cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]});
-  return(<div className="di-goals">
-    <span className="di-k">{L('Sporcu hedefleri','Athlete goals')}</span>
-    <div className="di-chips">
-      {DI_GOALS.map(g=><button key={g.id} type="button"
-        className={'di-chip'+(cur.includes(g.id)?' on':'')} onClick={()=>toggle(g.id)}>{L(g.label[0],g.label[1])}</button>)}
-    </div>
-  </div>);
 }
 
 /* A list the coach builds by typing — "must be in", "keep out". Enter or the +
@@ -28685,7 +28880,6 @@ function DiConstraintPicker({value,onChange,note,onNote}){
         tabIndex={0} onClick={()=>toggle(c.id)}
         onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(c.id);}}}>
         <span className="di-conbox">{list.includes(c.id)?'✓':''}</span>
-        <span className="di-conic" aria-hidden="true">{c.icon}</span>
         <span className="di-connm">{L(c.label[0],c.label[1])}</span>
         <div className="di-contip" role="tooltip">
           <b>{L(c.label[0],c.label[1])}</b>
@@ -28697,7 +28891,7 @@ function DiConstraintPicker({value,onChange,note,onNote}){
     </div>}
     {list.length>0&&<div className="di-chips">
       {list.map(id=>{const c=diConRow(id);return<span key={id} className="di-tag con">
-        <span>{c.icon} {L(c.label[0],c.label[1])}</span>
+        <span>{L(c.label[0],c.label[1])}</span>
         <button type="button" onClick={()=>toggle(id)} aria-label={L('Kaldır','Remove')}>✕</button></span>;})}
     </div>}
     <LiveInput className="di-connote" value={note||''} onChange={onNote}
@@ -28792,11 +28986,14 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
    loud ("üçüncü hareket"), and the dose sits in one pill beside the name rather than
    at the far end of a wide card. Where the readiness cut moved a row, the pill carries
    both numbers with an arrow between them. */
-function DiProgramView({program,rows,adj}){
+const DI_PHASES_LBL={hazirlik:['Hazırlık','Preparation'],ana:['Ana iş','Main work'],
+  tamamlayici:['Tamamlayıcı','Complementary']};
+function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
   const blocks=[];
   rows.forEach(r=>{
     const last=blocks[blocks.length-1];
-    if(last&&last.name===r.block)last.rows.push(r);else blocks.push({name:r.block,rows:[r]});
+    if(last&&last.name===r.block&&last.phase===r.phase)last.rows.push(r);
+    else blocks.push({name:r.block,phase:r.phase,rows:[r]});
   });
   const dose=d=>{
     const reps=d.reps||d.duration||'';
@@ -28804,13 +29001,37 @@ function DiProgramView({program,rows,adj}){
   };
   return(<div className="di-prog">
     {blocks.map((b,i)=><div key={i} className="di-progblk">
-      {b.name&&<div className="di-blkh"><span>{b.name}</span></div>}
+      {(b.name||b.phase)&&<div className="di-blkh">
+        <span>{b.name||L(DI_PHASES_LBL[b.phase][0],DI_PHASES_LBL[b.phase][1])}</span>
+        {(()=>{
+          if(!b.phase||!b.name)return null;
+          const lbl=L(DI_PHASES_LBL[b.phase][0],DI_PHASES_LBL[b.phase][1]);
+          /* "Ana İş" under a block already called Ana İş is a label twice, not a label.
+             Spaces come out of the key as well: lowercasing a Turkish İ leaves a
+             combining dot behind, which the normaliser turns into a space. */
+          const key=x=>diExName(x).replace(/\s+/g,'');
+          return key(lbl)===key(b.name)?null
+            :<i className={'di-phase '+b.phase}>{lbl}</i>;
+        })()}
+      </div>}
       {b.rows.map((r,k)=><div key={r.key} className="di-prow">
         <span className="di-pnum">{k+1}</span>
         <div className="di-prow-main">
           <div className="di-prow-nm">
             <b>{r.name}</b>
-            <i className={'di-src '+r.source}>{r.source==='library'?L('kütüphane','library'):'custom'}</i>
+            {(() => {
+              /* "In the library" is read off the library as it is NOW, not off what the
+                 answer claimed: an exercise filed from this row a second ago is in it. */
+              const inLib=!!(libMap&&libMap[String(r.name||'').trim().toLowerCase()]);
+              return inLib
+                ?<i className="di-src library">{L('kütüphane','library')}</i>
+                :<><i className="di-src custom">custom</i>
+                  {onAddToLibrary&&<button type="button" className="di-addlib"
+                    onClick={()=>onAddToLibrary(r)}
+                    title={L('Bu egzersizi egzersiz kütüphanesine ekler; hareket paterni de kaydedilir.',
+                      'Files this exercise in the library, with its movement pattern.')}>
+                    ＋ {L('kütüphaneye ekle','add to library')}</button>}</>;
+            })()}
             {r.pattern?<i className="di-pat">{r.pattern}</i>:null}
             {r.equipment?<i className="di-eqt">{r.equipment}</i>:null}
           </div>
@@ -28863,7 +29084,7 @@ function DiSection({n,title,meta,children,className}){
   </section>);
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,saveAth,setup,libMap,writeOne}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne}){
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const review=diReadReview(team,srcKey,plan.ath.id,date);
@@ -28875,8 +29096,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
   const adj=bundle.adjustment;
   const rows=useMemo(()=>program?diProgramRows(program,adj.pct):[],[program,adj.pct]);
-  const checks=useMemo(()=>program?diProgramChecks(program,bundle,instr,setup,libMap):[],
-    [program,bundle,instr,setup,libMap]);
+  const deficits=useMemo(()=>diDeficits(plan.ath,date),[plan.ath,date]);
+  const checks=useMemo(()=>program?diProgramChecks(program,bundle,instr,setup,libMap,deficits):[],
+    [program,bundle,instr,setup,libMap,deficits]);
 
   const gen=async()=>{
     if(busy||!apiKey)return;
@@ -28910,6 +29132,15 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
       {decision:'accept',decided_at:new Date().toISOString()});
     if(writeOne)writeOne(plan.ath.id,program);
+  };
+  /* Filing a written exercise into the shared library, through the same bridge the
+     calendar's own exercise box uses — so a name filed here is filed exactly as one
+     typed on a programme, and its movement pattern rides along. */
+  const addLib=row=>{
+    const nm=String(row&&row.name||'').trim();
+    if(!nm)return;
+    addExerciseToLibrary(nm);
+    if(row.pattern)rememberExerciseTags(nm,row.pattern,'');
   };
   const undo=()=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{decision:null,decided_at:null});
   const discard=()=>{
@@ -28971,8 +29202,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
         <span className="di-k">{L('Sinyaller','Signals')}</span>
         <div className="di-chips">{rd.signals.slice(0,4).map((s,i)=><span key={i} className="di-sigchip">{s}</span>)}</div>
       </div>}
-      <DiGoalPicker ath={plan.ath} save={saveAth}/>
-    </DiSection>
+      </DiSection>
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
@@ -28997,7 +29227,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             <li key={i}><b>{p.oncelik}</b>{p.gerekce?` — ${p.gerekce}`:''}</li>)}</ul>
         </div>}
 
-        <DiProgramView program={program} rows={rows} adj={adj}/>
+        <DiProgramView program={program} rows={rows} adj={adj} libMap={libMap}
+          onAddToLibrary={addLib}/>
 
         {program.respected.length>0&&<div className="di-row">
           <span className="di-k">{L('Talimatlara uyum','Against the brief')}</span>
@@ -29193,8 +29424,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const libMap=useMemo(()=>{const m={};
     exercises.forEach(e=>{const n=String(e.name||'').trim().toLowerCase();if(n&&!m[n])m[n]=e;});
     return m;},[exercises]);
-  const saveAthPatch=(athId,patch)=>updateTeam(team.id,
-    {athletes:athletes.map(a=>a.id===athId?{...a,...patch}:a)});
   const bundles=useMemo(()=>{
     const out={};
     plans.forEach(p=>{
@@ -29475,8 +29704,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         ai={data.ai} exercises={exercises} setup={team.setup||{}} libMap={libMap}
-        writeOne={(id,program)=>applyTo([id],{force:{id,program}})}
-        saveAth={patch=>saveAthPatch(p.ath.id,patch)}/>:null}
+        writeOne={(id,program)=>applyTo([id],{force:{id,program}})}/>:null}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}

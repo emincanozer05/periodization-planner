@@ -272,14 +272,48 @@ them required — an empty field is not a constraint, it is ignored:
      free-text box under the dropdown takes anything finer.
   5. Session length — minutes, with 30 / 45 / 60 / 75 / 90 to hand.
   6. Exercise ceiling — how many exercises at most (4 / 6 / 8 / 10).
+     It binds the MAIN phase only. The preparation and complementary
+     phases sit outside it and are never skipped: they are where the
+     athlete's measured gaps get closed.
   7. Notes — anything else that matters today.
 
-Act 3 is the session that comes back. "Build the session" hands all of it — the brief, the computed
-picture, the athlete's goals, pain, injury and RTP status, recent
-exposure, the team session planned for the day, your exercise
-library and the gym's equipment inventory — to the model, and it
-writes a session in blocks, with sets, reps, load, rest and a
+Act 3 is the session that comes back. "Build the session" hands all
+of it — the brief, the computed picture, pain, injury and RTP
+status, recent exposure, the findings read off the test battery,
+the patterns pain has ruled out, the team session planned for the
+day, your exercise library and the gym's equipment inventory — to
+the model, and it writes a session in PHASES (preparation ·
+main work · complementary), with sets, reps, load, rest and a
 reason for every exercise.
+
+The exercise does not have to come from your library. Anything the
+model writes that is not in there is marked "custom" and carries a
+"+ add to library" button on its row: press it and the exercise is
+filed exactly as one typed on a programme, with its movement
+pattern, so the next session can pick it from the library.
+
+PAIN CLOSES A PATTERN, IT DOES NOT JUST TRIM IT
+A region reported at moderate severity or worse (2 or 3 on the
+check-in's grid) takes the movement patterns that load it OUT of
+the session — not reduced, gone. Knee pain at that level means no
+knee-dominant work: no squat pattern, no lunge, no jumping, with
+the stimulus kept through the patterns the pain table redirects to.
+The rule is computed from the check-in and shipped as a ban list;
+an exercise that breaks it is reported under Checks before you
+write anything.
+
+THE TEST BATTERY IS READ BY CODE
+"Look at the test results" is not left to the model. The latest
+test is read here against the thresholds the app already uses —
+ankle dorsiflexion under 35°, ASLR or overhead squat at 1/3, FMS
+shoulder mobility at 1/3 or a posture note naming the thoracic
+spine, a Y-Balance reach difference of 4 cm, a 10% bilateral
+difference, a drop-jump RSI under 1.5 — and each finding goes to
+the model with the KIND of work it calls for. Every high-priority
+finding has to be answered somewhere in the session, and one that
+is not is listed under Checks by name. Exercise choice is asked to
+be the one the literature supports for that quality, with the dose
+that matches it, and to say which finding or stimulus it serves.
 
 WHAT STAYS IN CODE
 The model does not touch the arithmetic. Readiness, the volume
@@ -290,10 +324,12 @@ the model writes the session a normal day would carry, and the app
 takes the percentage off it. Where that moves a row, the card shows
 "4×6 → 3×6" and the bold number is the one that gets written.
 
-The app also checks the answer against things it can count: your
-exercise ceiling, the gym's inventory, the pain-to-movement-pattern
-table and your own "keep out" list. Anything that does not line up
-is listed under Checks, on screen, before you write anything.
+The app also checks the answer against things it can count: the
+main-phase exercise ceiling, the gym's inventory, the patterns pain
+has closed, the pain-to-movement-pattern table, your own "keep out"
+list and the high-priority findings from the battery. Anything that
+does not line up is listed under Checks, on screen, before you
+write anything.
 
 NOTHING IS WRITTEN UNTIL YOU WRITE IT
 While a session is sitting there unapproved, that athlete's
