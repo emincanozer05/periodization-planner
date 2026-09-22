@@ -425,12 +425,40 @@ takes the percentage off it. Where that moves a row, the card shows
 "4×6 → 3×6" and the bold number is the one that gets written.
 
 The app also checks the answer against things it can count: the
-main-phase exercise ceiling, a movement family used twice in the
-main phase, the gym's inventory, the patterns pain has closed, the
-pain-to-movement-pattern table, your own "keep out" list and the
-high-priority findings from the battery. Anything that
-does not line up is listed under Checks, on screen, before you
-write anything.
+main-phase exercise ceiling, the session length you asked for, a
+movement family used twice in the main phase, the gym's inventory,
+the patterns pain has closed, the pain-to-movement-pattern table,
+your own "must be in" and "keep out" lists, and the high-priority
+findings from the battery. Anything that does not line up is
+listed under Checks, on screen, before you write anything.
+
+THE THREE SOURCES, AND WHICH ONE WINS
+A session is written from three things, and when they disagree the
+order is fixed:
+
+  1. The knowledge database (your 30 rules) is a hard constraint.
+     Nothing overrides it — not the test results, and not today's
+     brief.
+  2. The athlete's latest test results and your written
+     observations are the structure the session is built on.
+     Every high-priority finding has to be answered somewhere.
+  3. Today's brief is a layer ON TOP of those two, not a
+     replacement for them: it decides the quality of the day, what
+     must be in, what stays out, the length and the ceiling. A
+     field you leave empty is not a constraint and is ignored. A
+     field you fill in is never ignored.
+
+CONFLICTING INSTRUCTIONS ARE SAID OUT LOUD
+If something you put under "Must be in" would break one of the
+rules — a movement that loads a region reported at moderate pain,
+say — the session does NOT quietly include it, and does not
+quietly drop it either. It leaves the movement out, and the reason
+appears under "Conflicting instructions" on the card: which
+instruction, which rule stopped it, what was done, and an
+alternative that gives the same quality where one exists. An
+instruction that goes missing WITHOUT being declared there is
+reported under Checks instead, so neither the rules nor your brief
+can be lost without you seeing it.
 
 NOTHING IS WRITTEN UNTIL YOU WRITE IT
 While a session is sitting there unapproved, that athlete's

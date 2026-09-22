@@ -4082,6 +4082,15 @@ header{background:var(--bg2)!important}
 .di-arrow{color:var(--dim)}
 .di-sub-degistir p,.di-sub-cikar p{margin:4px 0 0;font-size:11.5px;color:var(--text2);line-height:1.6}
 .di-warn{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.1);color:#fcd34d;border-radius:8px;padding:8px 12px;font-size:12px}
+/* Instructions the knowledge base would not allow. Warmer than a check and cooler than
+   an error: nothing here is broken, the session simply could not do everything it was
+   asked and is saying which part and why. */
+.di-conflicts{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);border-radius:8px;padding:8px 12px;margin-top:8px}
+.di-conflicts .di-checkh{color:#fcd34d}
+.di-conflicts .di-sig li{color:var(--text2)}
+.di-conflicts .di-sig li b{color:#fcd34d}
+.di-cfld{font-style:normal;font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+.di-calt{color:var(--text)}
 /* The review sheet — the programme about to be written, one editable row each. */
 .di-sblk{font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:5px}
 .di-sblk:first-child{margin-top:0}
@@ -30481,23 +30490,55 @@ hangi dilde geldiğinden bağımsız olarak bağlayıcıdır ve yanıtını yine
   yalnızca sana gelen kural_no değerlerini kullan.
 - bilgi_tabani boş gelirse bu bölümü yok say ve aşağıdaki mutlak kurallarla çalış.
 
+GİRDİ SIRASI — ÜÇ KAYNAK VE ARALARINDAKİ HİYERARŞİ
+Programı üç kaynak birlikte yazar. Çatıştıklarında sıra kesindir ve tersine çevrilemez:
+
+1. BİLGİ TABANI (bilgi_tabani — kulübün kural veritabanı) — SERT KISIT.
+   Hiçbir koşulda ihlal edilemez. Antrenörün bugünkü talimatı bile bunu geçersiz
+   kılamaz; ağrı/sakatlık kuralları ve yasak paternler de bu katmandadır.
+2. SPORCUNUN EN GÜNCEL TEST SONUÇLARI VE YORUMLARI (tespit_edilen_eksikler,
+   test_gozlemleri, test_baseline_sapmalari) — PROGRAMIN TEMEL YAPI TAŞI.
+   Önceliği "yüksek" olan her bulgu programda karşılık bulmalı.
+3. BUGÜNKÜ ANTRENÖR TALİMATI (antrenor_talimati) — 1 ve 2'ye EK olarak günlük ince
+   ayar. 1 ve 2'nin yerine geçmez, onların üstüne yazar: hangi kaliteye yükleneceğini,
+   neyin mutlaka gireceğini, neyin çıkacağını, süreyi ve egzersiz sayısını o belirler.
+   Boş bırakılan alan yok sayılır; DOLDURULAN bir alan asla görmezden gelinemez.
+
+ÇATIŞMA KURALI — SESSİZCE HİÇBİR ŞEYİ YOK SAYMA
+Antrenörün "mutlaka_olsun" dediği bir hareket, bilgi tabanındaki bir kurala (ör. ağrı/
+sakatlık kuralına) ya da yasak paternlere aykırıysa:
+  · hareketi PROGRAMA EKLEME (kural kazanır, madde 1),
+  · nedenini "flagged_conflicts" alanına yaz: hangi talimat, hangi kural, ne yaptın,
+  · mümkünse aynı kaliteyi veren, kurala uyan bir alternatif öner ve onu programa yaz.
+Aynı şey kaçınılacak/kısıtlar/süre için de geçerlidir. Ne kuralı ne de antrenörün
+talimatını SESSİZCE yok say: uygulayamadığın her talimat flagged_conflicts'te görünür.
+Çatışma yoksa flagged_conflicts boş dizi ([]) olur — oraya uydurma çatışma yazma.
+
 MUTLAK KURALLAR
 1. HESAPLANMIŞ DEĞERLERİ YENİDEN ÜRETME. Hazır oluş skoru, sRPE, ACWR, maça kalan gün,
    maruziyet ve baseline sapmaları sana hazır geliyor; yalnızca ATIF yapabilirsin.
 2. HACİM AYARINI SEN UYGULAMA. hacim_ayari alanındaki yüzde, sen yanıt verdikten SONRA
    kod tarafından set/tekrar üzerine uygulanacak. Sen NORMAL bir günün programını yaz;
    yüzdeyi kendin düşürme, aynı kesintiyi ikinci kez uygulamış olursun.
-3. ANTRENÖRÜN TALİMATI SENİN ÜZERİNDE BİR KISIT KATMANIDIR.
+3. ANTRENÖRÜN TALİMATI — GÜNLÜK İNCE AYAR KATMANI (bkz. GİRDİ SIRASI).
    - oncelikler: günün ana fiziksel hedefi. Program bu önceliklere hizmet etmeli.
-   - mutlaka_olsun: bu egzersiz/içerik programda YER ALMALI.
-   - kacinilacak: bu egzersiz/patern/yükleme programda YER ALMAMALI.
+   - mutlaka_olsun: bu egzersiz/içerik programda BİREBİR YER ALMALI — yazıldığı adla.
+     Tek istisna: bilgi tabanındaki bir kuralı ya da yasak paternleri ihlal etmesi.
+     O zaman EKLEME ve nedenini flagged_conflicts alanına yaz (bkz. ÇATIŞMA KURALI).
+   - kacinilacak: bu egzersiz/patern/yükleme programda YER ALMAMALI. Varyasyonu da
+     yazılmaz: "derin squat" kaçınılacaksa Goblet Squat da, Front Squat da yazılmaz.
    - kisitlar: her kısıtın "programlama_davranisi" alanı, o kısıtın senden ne beklediğini
      birebir söyler. Hepsine uy.
-   - seans_suresi_dk: aşma.
+   - seans_suresi_dk: AŞMA. Bu süre bütün fazları kapsar. Bir egzersiz ortalama
+     ${DI_MIN_PER_EX} dakika tutar; toplam egzersiz sayın bu süreye sığmalı
+     (ör. 60 dk ≈ en fazla ${Math.round(60/DI_MIN_PER_EX)} egzersiz, bütün fazlar dahil).
    - ana_faz_maks_egzersiz: bu sayı YALNIZCA ana faz için geçerlidir. Hazırlık/düzeltici
-     ve tamamlayıcı fazlar bu sayıya dahil DEĞİLDİR ve bu sayı yüzünden kısılmaz.
+     ve tamamlayıcı fazlar bu sayıya dahil DEĞİLDİR ve bu sayı yüzünden kısılmaz —
+     ama yukarıdaki seans süresi hepsini birden bağlar.
    - ek_notlar: bağlam olarak oku ve uygula.
-   Boş bırakılan alan kısıt değildir; yok say.
+   Boş bırakılan alan kısıt değildir; yok say. DOLDURULAN HİÇBİR ALAN GÖRMEZDEN
+   GELİNEMEZ: uyduysan uyulan_kisitlar alanında, uyamadıysan flagged_conflicts
+   alanında her doldurulmuş alanın hesabını ver.
 4. YALNIZCA ENVANTERDEKİ EKİPMANI KULLAN. salon_ekipmani listesi doluysa, yazdığın her
    egzersiz o listedeki ekipmanla (veya vücut ağırlığıyla) yapılabilmeli. Her satırın
    "ekipman" alanına ne gerektiğini yaz. Adet bilgisi verilmişse, bir seansta aynı anda
@@ -30646,9 +30687,21 @@ Sadece aşağıdaki JSON'u döndür, başka metin yok, markdown kod bloğu yok:
     ]
   },
   "uyulan_kisitlar": ["antrenörün hangi talimatına nasıl uyduğunu tek tek yaz"],
+  "flagged_conflicts": [
+    {
+      "talimat": "antrenörün uygulanamayan talimatı, yazdığı gibi (ör. 'Mutlaka olsun: Derin Squat')",
+      "alan": "mutlaka_olsun | kacinilacak | oncelikler | kisitlar | seans_suresi_dk | ana_faz_maks_egzersiz | ek_notlar",
+      "cakisan_kural": "hangi kural engelledi — bilgi tabanı kuralıysa numarasıyla (ör. 'Kural 14'), ağrı/yasak paternse hangi bölge ve patern",
+      "karar": "ne yapıldı (ör. 'programa eklenmedi')",
+      "alternatif": "aynı kaliteyi veren, kurala uyan alternatif — yoksa null"
+    }
+  ],
   "genel_gerekce": "Antrenörün kararı anlaması için kısa paragraf: mevcut durum, belirleyici değişkenler, günün önceliği ve egzersiz seçiminin gerekçesi",
   "koc_uyarisi": "koçun ve gerekirse sağlık ekibinin bakması gereken bir durum varsa tek cümle, yoksa null"
 }
+
+flagged_conflicts: çatışma yoksa BOŞ DİZİ ([]) yaz. Uygulayabildiğin bir talimatı buraya
+yazma — uyduğun talimat uyulan_kisitlar'a, uyamadığın talimat flagged_conflicts'e gider.
 
 TON
 Antrenör diline uygun, teknik ama gösterişsiz; her yargı bu sporcunun verisinden türemiş olsun.`;
@@ -30812,6 +30865,19 @@ function diParseProgram(text){
       .map(x=>({oncelik:t(x.oncelik),gerekce:t(x.gerekce)})),
     respected:(Array.isArray(obj.uyulan_kisitlar)?obj.uyulan_kisitlar:[])
       .map(x=>t(x)).filter(Boolean),
+    /* What the brief asked for and the rules would not allow. Kept as its own field
+       rather than folded into the warning: a coach needs to see WHICH instruction did
+       not survive and WHICH rule stopped it, and the check below reads it to tell a
+       declared conflict from an instruction that was simply dropped. */
+    conflicts:(Array.isArray(obj.flagged_conflicts)?obj.flagged_conflicts:[])
+      .map(x=>{
+        if(!x)return null;
+        if(typeof x==='string')return{talimat:t(x),alan:null,rule:null,decision:null,alt:null};
+        if(typeof x!=='object')return null;
+        const o={talimat:t(x.talimat),alan:t(x.alan),rule:t(x.cakisan_kural),
+          decision:t(x.karar),alt:t(x.alternatif)};
+        return(o.talimat||o.rule)?o:null;
+      }).filter(Boolean),
     rationale:t(obj.genel_gerekce),
     warning:t(obj.koc_uyarisi),
     truncated:cut,
@@ -30932,6 +30998,38 @@ function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
           `The coach ruled out "${av}", and the programme carries "${r.name}".`));
     });
   });
+  /* The other half of the brief, which nothing used to check. "Must be in" is the one
+     instruction a coach can verify at a glance, so a session that quietly dropped it
+     was the module's most visible way of looking like it had ignored them. A dropped
+     item is only acceptable when the answer SAID so in flagged_conflicts — a declared
+     conflict is reported as a conflict, not as a silent omission. */
+  const declared=((program&&program.conflicts)||[]).map(c=>diExName(
+    `${c.talimat||''} ${c.alt||''}`)).filter(Boolean);
+  (i.must||[]).forEach(mu=>{
+    const needle=diExName(mu);
+    if(!needle)return;
+    const inSession=rows.some(r=>{
+      const n=diExName(r.name);
+      return n&&(n.includes(needle)||needle.includes(n));
+    });
+    if(inSession)return;
+    const flagged=declared.some(d=>d.includes(needle)||needle.includes(d));
+    out.push(flagged
+      ?L(`Antrenör "${mu}" istemişti; program bunu bir kurala aykırı bulup çıkarmış ve gerekçesini çatışma olarak bildirmiş — gerekçeyi oku.`,
+         `The coach asked for "${mu}"; the session ruled it out against a rule and declared the reason as a conflict — read it.`)
+      :L(`Antrenör "${mu}" istemişti ama programda yok ve bir çatışma da bildirilmemiş.`,
+         `The coach asked for "${mu}", and it is neither in the session nor declared as a conflict.`));
+  });
+  /* The session length, which binds every phase rather than the main one. Read through
+     the same minutes-per-exercise rule the brief uses in the other direction (a 60 min
+     slot is offered a ceiling of 60/6 exercises), so the number a coach is held to here
+     is the number the form derived theirs from. */
+  if(i.duration){
+    const est=rows.length*DI_MIN_PER_EX;
+    if(est>i.duration)
+      out.push(L(`Program ${rows.length} egzersiz taşıyor — yaklaşık ${est} dk, antrenörün verdiği süre ${i.duration} dk. (Egzersiz başına ~${DI_MIN_PER_EX} dk, bütün fazlar dahil.)`,
+        `The session carries ${rows.length} exercises — roughly ${est} min against the coach's ${i.duration} min. (About ${DI_MIN_PER_EX} min per exercise, all phases included.)`));
+  }
   /* A high-priority finding from the battery with nothing in the session that names it.
      Matched on the words of the finding, which is as far as a string can honestly go —
      it is a prompt to look, not a verdict. */
@@ -31022,19 +31120,36 @@ function DiSignals({items,limit}){
     {limit&&items.length>limit?<li className="di-dim">+{items.length-limit}</li>:null}</ul>);
 }
 
-/* A list the coach builds by typing — "must be in", "keep out". Enter or the +
-   button files what is in the box; each entry is a chip with its own ✕. Free text on
-   purpose: it is read by the model, not matched against the library, so "adduktör
-   çalışması" is as valid an answer as a named exercise. */
-function DiChipList({value,onChange,placeholder,tone}){
+/* A list the coach builds by typing — "must be in", "keep out". Enter, the ＋ button
+   or leaving the box files what is in it; each entry is a chip with its own ✕. Free
+   text on purpose: it is read by the model, not matched against the library, so
+   "adduktör çalışması" is as valid an answer as a named exercise.
+
+   The text is this component's own state until it becomes a chip, and that is where the
+   module used to lose half of every brief: only Enter and ＋ committed, so a coach who
+   typed "Trap Bar Jump" and went straight to "Antrenmanı oluştur" sent an EMPTY
+   mutlaka_olsun with the request — the instruction never reached the prompt at all, and
+   the session came back looking as though the model had ignored it. Three things close
+   that hole: the text commits when the box loses focus (a click on any button blurs it
+   first), `pending` hands whatever is still uncommitted to the parent so the generate
+   press can fold it in before the request is built, and the box clears itself once its
+   text has become a chip by any of those routes. */
+function DiChipList({value,onChange,placeholder,tone,pending}){
   const[txt,setTxt]=useState('');
   const list=Array.isArray(value)?value:[];
+  useEffect(()=>{if(pending)pending.current=txt;},[txt,pending]);
+  useEffect(()=>()=>{if(pending)pending.current='';},[pending]);
+  useEffect(()=>{const v=txt.trim();
+    if(v&&list.some(x=>x.toLowerCase()===v.toLowerCase()))setTxt('');
+    // eslint-disable-next-line
+  },[value]);
   const add=()=>{const v=txt.trim();if(!v)return;
     if(!list.some(x=>x.toLowerCase()===v.toLowerCase()))onChange([...list,v]);
     setTxt('');};
   return(<div className="di-chiplist">
     <div className="di-chipin">
       <input value={txt} onChange={e=>setTxt(e.target.value)} placeholder={placeholder}
+        onBlur={add}
         onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}}/>
       <button type="button" className="di-chipadd" onClick={add} disabled={!txt.trim()}
         aria-label={L('Ekle','Add')}>＋</button>
@@ -31154,6 +31269,27 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
    silently drives today's. */
 function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
   const set=(k,v)=>save({...instr,[k]:v});
+  /* Whatever is typed in the two chip boxes but not yet turned into a chip. Blur commits
+     it on its own, but blur and click land in the same tick and the generate handler
+     reads the brief from THIS render — so the pending text is folded in here as well,
+     and the request is built from the merged brief rather than from whichever of the two
+     updates happened to win. */
+  const mustPend=useRef('');
+  const avoidPend=useRef('');
+  const withPending=()=>{
+    const add=(arr,ref)=>{
+      const v=String((ref&&ref.current)||'').trim();
+      const l=Array.isArray(arr)?arr:[];
+      if(!v||l.some(x=>x.toLowerCase()===v.toLowerCase()))return l;
+      return[...l,v];
+    };
+    return{...instr,must:add(instr.must,mustPend),avoid:add(instr.avoid,avoidPend)};
+  };
+  const generate=()=>{
+    const merged=withPending();
+    if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
+    onGenerate(merged);
+  };
   const field=(n,title,hint,control,wide)=>(
     <div className={'di-field'+(wide?' wide':'')}>
       <div className="di-fhd"><i className="di-num">{n}</i>
@@ -31172,10 +31308,12 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
       {field(2,L('Mutlaka olsun','Must be in'),
         L('Programda mutlaka yer alsın.','What the session has to carry.'),
         <DiChipList value={instr.must} onChange={v=>set('must',v)} tone="must"
+          pending={mustPend}
           placeholder={L('ör. Trap Bar Jump','e.g. trap bar jump')}/>)}
       {field(3,L('Kaçınılacak','Keep out'),
         L('Bugün yapılmasın.','What must not appear today.'),
         <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
+          pending={avoidPend}
           placeholder={L('ör. derin squat','e.g. deep squat')}/>)}
       {field(4,L('Ek kısıtlar','Constraints'),
         L('Bugüne özel bir sınır var mı? Bir kısıtın üstüne gelince ne anlama geldiği açılır.',
@@ -31200,7 +31338,7 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
     <div className="di-genbar">
       {!hasKey&&<span className="di-dim">{L('Program üretmek için Yrd. Antrenör panelinden bir API anahtarı gir. Yukarıdaki hesaplamalar anahtar olmadan da çalışır.',
         'Add an API key from the Assistant Coach panel to generate. Everything above is computed without one.')}</span>}
-      <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={onGenerate}>
+      <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={generate}>
         <span className="di-gen-t">{busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
         <span className="di-gen-s">{L('Talimatlara göre kişiselleştirilmiş program','A session written against the brief')}</span>
       </button>
@@ -31330,15 +31468,26 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const checks=useMemo(()=>program?diProgramChecks(program,bundle,instr,setup,libMap,deficits):[],
     [program,bundle,instr,setup,libMap,deficits]);
 
-  const gen=async()=>{
+  /* `brief` is the form's own merged copy — the stored instruction plus anything still
+     sitting uncommitted in a chip box at the moment of the press. Taken as an argument
+     rather than read from the store so one press needs one render: the save that folds
+     the pending text in and this call happen in the same tick. */
+  const gen=async(brief)=>{
     if(busy||!apiKey)return;
+    const useInstr=diInstr(brief||instr,plan.meta);
     setErr('');setBusy(true);
     try{
-      const input=diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge);
+      const input=diBuildProgramInput(bundle,plan,exercises,useInstr,setup,knowledge);
       const msgs=[{role:'user',content:JSON.stringify(input,null,1)}];
       const ask=()=>provider==='anthropic'
         ?askCoach(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000})
-        :askGemini(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000,json:true,thinkingBudget:0,temperature:0.3});
+        /* Temperature 0.3 was part of why every athlete came back with the same two
+           movements: at that setting the answer settles on the highest-frequency names
+           in the literature (a trap-bar deadlift, a row) whatever the brief said, and
+           two athletes who differ only in their findings read as one. The hard limits
+           no longer rest on sampling — the brief, the ceiling and the rules are checked
+           in code after the answer — so the writing itself is allowed to vary. */
+        :askGemini(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000,json:true,thinkingBudget:0,temperature:0.7});
       let obj;
       // A formatting slip is retried once; an API error (401/429) propagates as it is.
       try{obj=diParseProgram(await ask());}
@@ -31347,7 +31496,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
          session only means anything next to the numbers it was written against, and
          those move as soon as tomorrow's check-in lands. */
       diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{
-        athlete:plan.ath.id,date,src:srcKey,program:obj,instr,
+        athlete:plan.ath.id,date,src:srcKey,program:obj,instr:useInstr,
         engine:{readiness:bundle.readiness,adjustment:bundle.adjustment,flag:bundle.flag,
           competition:bundle.competition,season_phase:bundle.season_phase},
         model:`${provider}:${model}`,created_at:new Date().toISOString(),
@@ -31471,7 +31620,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
       meta={written?L('takvime yazıldı','on the calendar'):L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
       <div className="di-result">
         <div className="di-resacts">
-          <button type="button" className="btn xs sec" onClick={gen} disabled={busy}>
+          <button type="button" className="btn xs sec" onClick={()=>gen()} disabled={busy}>
             {L('↻ Yeniden yaz','↻ Rewrite')}</button>
           <button type="button" className="btn xs sec" onClick={discard} disabled={busy}>
             {L('✕ Sil','✕ Discard')}</button>
@@ -31489,6 +31638,20 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
         {program.respected.length>0&&<div className="di-row">
           <span className="di-k">{L('Talimatlara uyum','Against the brief')}</span>
           <DiSignals items={program.respected}/>
+        </div>}
+        {/* The instructions the rules would not allow. Shown beside the ones that were
+            honoured, because a brief is only readable as both halves: an instruction
+            that quietly vanished is what made the module look as though it ignored the
+            coach, and a rule that quietly lost is worse. */}
+        {program.conflicts&&program.conflicts.length>0&&<div className="di-conflicts">
+          <div className="di-checkh">⚠ {L('Çatışan talimatlar','Conflicting instructions')}</div>
+          <ul className="di-sig">{program.conflicts.map((c,i)=><li key={i}>
+            {c.talimat?<b>{c.talimat}</b>:null}
+            {c.alan?<i className="di-cfld">{c.alan}</i>:null}
+            {c.rule?<span> — {c.rule}</span>:null}
+            {c.decision?<span> · {c.decision}</span>:null}
+            {c.alt?<span className="di-calt"> {L('yerine','instead')}: {c.alt}</span>:null}
+          </li>)}</ul>
         </div>}
         {checks.length>0&&<div className="di-checks">
           <div className="di-checkh">⚑ {L('Kontrol','Checks')}</div>
