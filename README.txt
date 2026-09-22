@@ -239,6 +239,69 @@ while building; keyword matches in them are offered as tag
 suggestions that need your approval.
 
 
+SESSION PHASES INSIDE ONE BLOCK (Calendar tab, Templates tab)
+-------------------------------------------------------------
+A practice is written in phases: the warm-up that prepares it, the
+work it exists for, and the cool-down that closes it. Saying so
+used to cost three separate blocks — three cards, three copies of
+the same session details, three assignments to keep in step.
+
+A block now carries the phases itself. Between the "Movements &
+Patterns / Card Color" strip and the exercises there is a SESSION
+PHASES bar with three chips:
+
+      ＋ Preparation      ＋ Main Phase      ＋ Cool Down
+
+Press one and that section opens inside the block, with its own
+heading, its own exercises and its own "+ Add exercise" — which
+adds straight into that section. "Add all three" opens all of
+them at once. Each section shows how much it holds and what
+belongs in it (warm-up · activation · mobility / the work the
+session exists for / recovery · stretching · breathing), and folds
+away with the ▼ beside its name, so a long session does not bury
+the part being written.
+
+WHAT MOVES AND WHAT DOES NOT
+Opening a section never moves work, with one deliberate exception:
+opening MAIN PHASE sweeps whatever the block already holds into
+it. Give phases to a block you have already written and the whole
+thing lands in the main section — then lift the warm-up rows out
+of it, instead of placing twenty rows by hand. Sections opened
+after that sweep nothing.
+
+Every exercise row grows a small phase picker next to its superset
+letter, so a row moves between sections in one click. ↑ and ↓ move
+a row within its OWN section; they never nudge it into the next
+one.
+
+CLOSING A PHASE IS NOT DELETING IT
+The ✕ on a chip (or on a section heading) closes the section: its
+exercises stay in the block and go back to being unplaced. They
+collect in an "Unplaced" tray at the foot of the block with a
+button per open section — "→ Main Phase", "→ Cool Down" — to put
+them all somewhere in one press. The tray is also where rows that
+were written before the phases were land.
+
+A BLOCK WITH NO PHASE OPEN IS EXACTLY WHAT IT ALWAYS WAS
+Nothing written before this reads or prints any differently, and
+nothing forces a block to have phases at all. Ball practice blocks
+take them too — a ball session is warmed up, played and cooled
+down like any other.
+
+WHERE THE PHASES GO FROM THERE
+The running order lives in the data, not just on screen: the block
+keeps its exercises sorted into their sections, so everything that
+reads a block reads it in the order it is run.
+  - The printed program (Print / Print with Image) rules the
+    section's name across the exercise table where the work changes
+    character — and across the drill cards on a ball block — so
+    nobody reading the sheet has to guess where the warm-up ended.
+  - Individualization copies the phases across with the session:
+    an athlete's own program keeps the sections the coach wrote.
+  - The block header says what it holds per phase
+    ("8 exercises · Preparation 2 · Main Phase 5 · Cool Down 1"),
+    which a collapsed block still shows.
+
 DAILY INDIVIDUALIZATION — THE COACH'S BRIEF
 -------------------------------------------
 Open an athlete's card on the Individualization tab and the panel
