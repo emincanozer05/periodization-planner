@@ -77,7 +77,7 @@ function loadApp() {
     'athReadiness', 'athPainReports', 'diPainDays', 'diRestrictionHits',
     'DI_ADJ_BANDS', 'DI_SET_FLOOR', 'DI_REP_FLOOR', 'DI_RD_REDUCE', 'DI_RD_REVIEW',
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
-    'DI_PROGRAM_SYSTEM', 'IV_PATTERNS'];
+    'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -88,6 +88,15 @@ function loadApp() {
     f => setTimeout(f, 0), undefined, undefined);
   return bag;
 }
+
+process.on('unhandledRejection', e => {
+  console.error('\n  KALDI  yakalanmamış hata:', (e && e.stack) || e);
+  process.exit(1);
+});
+process.on('uncaughtException', e => {
+  console.error('\n  KALDI  yakalanmamış istisna:', (e && e.stack) || e);
+  process.exit(1);
+});
 
 const A = loadApp();
 
@@ -103,11 +112,10 @@ function group(t) { console.log('\n── ' + t); }
 
 /* ─── kurgu ─────────────────────────────────────────────────────────────── */
 const TODAY = '2026-09-22';
-const back = n => {
-  const d = new Date(TODAY + 'T00:00:00');
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-};
+/* Tarihler uygulamanın KENDİ yardımcılarıyla üretiliyor. Node'un Date'i yerel
+   saate göre okur, uygulamanınki kendi kuralına göre; ikisini ayrı tutmak, testin
+   CI kutusunda (UTC) geliştirme makinesinden farklı bir gün hesaplaması demekti. */
+const back = n => A.fmt(A.addD(A.parseD(TODAY), -n));
 /* Bataryası tertemiz bir sporcu: tarama maddelerinin hepsi geçer → Kademe 3.
    Böylece kademe tavanı testleri, tavanın KENDİSİNİ sınadığında araya başka bir
    kısıt girmiyor. */
@@ -607,6 +615,14 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
+  /* Yarıda kesilmiş bir koşu YEŞİL GÖRÜNMEMELİ. Senaryoların bir kısmı async bir
+     blokta; oradaki bir istisna sessizce sona atlamış olsaydı, koşan üç testin
+     hepsi geçmiş olur ve iş yeşil biterdi. Beklenen alt sınır burada. */
+  const MIN_CHECKS = 90;
+  if (results.length < MIN_CHECKS) {
+    fail++;
+    results.push({ ok: false, name: `koşu yarıda kesilmiş: ${results.length} kontrol çalıştı, en az ${MIN_CHECKS} bekleniyordu`, detail: '' });
+  }
   console.log('\n' + '─'.repeat(64));
   console.log(`  ${pass} geçti, ${fail} kaldı`);
   if (fail) {

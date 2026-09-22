@@ -1,0 +1,36 @@
+# Program denetleyicisinin denetimi — her değişiklikte.
+#
+# CoachOS'ta yapay zekâ öneriyor, KOD karar veriyor: bir program sporcunun
+# takvimine ancak validateProgram()'dan geçerse yazılıyor. O yüzden buradaki
+# bir gerileme sessiz olmuyor — sert bir kural çalışmayı bırakırsa, ağrının
+# kapattığı bir paterni ya da sakatlık kısıtlamasını taşıyan program kaydedilir
+# ve bunu kimse fark etmez. Bu iş, o kapının hâlâ kapandığını her değişiklikte
+# kanıtlıyor.
+#
+# validator-test.js index.html'deki betiği KOPYALAMADAN alıp tarayıcının
+# kullandığı derleyicinin aynısıyla derliyor ve sahte bir tarayıcı yüzeyinde
+# çalıştırıyor. Yani burada geçen test, koçun ekranındaki kodun geçtiği test.
+#
+# Kurulum gerekmiyor: kullanılan derleyici (@babel/standalone) depoda duruyor,
+# tıpkı check-syntax.js'te olduğu gibi.
+name: Validator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node validator-test.js
