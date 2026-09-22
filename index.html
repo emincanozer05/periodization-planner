@@ -5133,6 +5133,14 @@ header{background:var(--bg2)!important}
 .di-defchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
   border-radius:7px;padding:3px 9px;cursor:help}
 .di-defchip.hi{border-color:rgba(245,158,11,.45);color:#fcd34d;background:rgba(245,158,11,.08)}
+/* A differentiator wears its id, because the id is what the session cites back. The
+   coach reading "D2" beside an exercise's rationale can find D2 here without being
+   told what the convention is. */
+.di-diffchip{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#bae6fd;
+  background:rgba(0,148,255,.09);border:1px solid rgba(0,148,255,.4);border-radius:7px;padding:3px 9px}
+.di-diffchip i{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.06em;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;color:#7dd3fc;
+  background:rgba(0,148,255,.18);border-radius:4px;padding:1px 5px}
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
@@ -5183,6 +5191,14 @@ header{background:var(--bg2)!important}
 .di-tag.must{border-color:rgba(45,212,167,.45);color:#7ee7c7;background:rgba(45,212,167,.1)}
 .di-tag.avoid{border-color:rgba(244,63,94,.45);color:#fda4af;background:rgba(244,63,94,.1)}
 .di-tag.con{border-color:rgba(192,132,252,.45);color:#d8b4fe;background:rgba(192,132,252,.1)}
+/* The limit itself, inside the chip that names it — so a constraint reads as one
+   thing ("Load limit · 60%") rather than as a tag and a distant box. Sized to the
+   short answers it takes; an empty one is a constraint the coach chose not to bound. */
+.di-conval{width:112px;min-width:0;background:rgba(0,0,0,.22);border:1px solid rgba(192,132,252,.35);
+  border-radius:6px;color:#f3e8ff;font-size:11px;padding:2px 6px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-conval::placeholder{color:rgba(216,180,254,.5)}
+.di-conval:focus{outline:none;border-color:rgba(192,132,252,.75);background:rgba(0,0,0,.34)}
 /* The constraint dropdown. It stays open while several are ticked, and each row carries
    its own explanation box — the same sentence the request ships to the model. */
 .di-conwrap{display:flex;flex-direction:column;gap:8px;position:relative}
@@ -5268,6 +5284,10 @@ header{background:var(--bg2)!important}
   border-radius:5px;padding:0 6px;color:var(--dim);font-weight:600}
 .di-phase.ana{color:#7dd3fc;border-color:rgba(56,189,248,.4)}
 .di-prow-why{font-size:11.5px;color:var(--text2);line-height:1.5;max-width:74ch}
+.di-basis{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.06em;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;color:#7dd3fc;
+  background:rgba(0,148,255,.16);border-radius:4px;padding:1px 5px;margin-right:6px;
+  vertical-align:1px}
 .di-prow-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:0}
 .di-dose{display:inline-flex;align-items:baseline;gap:5px;border:1px solid var(--border2);border-radius:8px;
   background:var(--elevated);padding:3px 10px;font-family:'IBM Plex Mono',ui-monospace,monospace;white-space:nowrap}
@@ -5288,6 +5308,18 @@ header{background:var(--bg2)!important}
 .di-write{border:0;border-radius:10px;cursor:pointer;padding:11px 22px;font-size:13.5px;font-weight:800;
   background:linear-gradient(135deg,#0f766e,#2dd4a7);color:#04211b;box-shadow:0 6px 18px rgba(45,212,167,.22)}
 .di-write:hover{filter:brightness(1.07)}
+/* A blocked write reads as blocked. Not hidden — the coach needs to see that the
+   button exists and why it will not go, otherwise a session that cannot be written
+   looks like a session the page forgot to offer. */
+.di-write:disabled{background:var(--bg2);color:var(--dim);box-shadow:none;cursor:not-allowed;
+  border:1px solid var(--border2)}
+.di-write:disabled:hover{filter:none}
+/* The hard box. Red rather than amber, and it carries the one thing the amber box
+   never does: this session is not going to the athlete until it changes. */
+.di-hardv{display:flex;flex-direction:column;gap:6px;border:1px solid rgba(244,63,94,.5);
+  background:rgba(244,63,94,.09);border-radius:10px;padding:9px 12px}
+.di-hardv .di-checkh{color:#fda4af}
+.di-hardv .di-cfld{border-color:rgba(244,63,94,.45);color:#fda4af}
 .di-writebar .di-dim{flex:1;min-width:180px}
 .di-wrote{display:inline-flex;align-items:center;gap:6px;color:#2dd4a7;font-weight:700;font-size:12.5px;
   border:1px solid rgba(45,212,167,.4);background:rgba(45,212,167,.1);border-radius:8px;padding:5px 12px}
@@ -30177,8 +30209,14 @@ function diPain(ath,ref){
   const regions=[
     ...reports.map(p=>mk(p.tag,{severity_0_3:p.sev==null?null:p.sev,severity_0_10:diPain10(p.sev),
       date:p.date,source:p.src==='text'?'check-in free text':'check-in region grid'})),
+    /* A STANDING CONSTRAINT TAG IS A RESTRICTION, NOT A MISSING PAIN SCORE.
+       These rode along with a null severity, and every reader downstream that asked
+       "is this severe enough to close the pattern?" answered no — so a knee the coach
+       had ticked as managed all season closed nothing, and the one thing a coach can
+       state outright about an athlete was the one thing the session could ignore. It
+       carries no number because nobody reported one this morning; it still binds. */
     ...tags.filter(t=>!reported.has(t)).map(t=>mk(t,{severity_0_3:null,severity_0_10:null,date:null,
-      source:'coach constraint tag'})),
+      standing:true,source:'coach constraint tag'})),
   ];
   const peak=regions.reduce((m,r)=>Math.max(m,r.severity_0_10==null?0:r.severity_0_10),0);
   /* Yesterday's report beside today's, so a region can be read as settling or building
@@ -30234,17 +30272,28 @@ function diInjury(ath,ref){
    floored so no combination of bad mornings can cut a session to nothing. None of
    these numbers are negotiable by the model — it is handed the result and asked to
    explain it, which is the division of labour the whole module is built on. */
+/* THE THRESHOLDS ARE THE KNOWLEDGE BASE'S, NOT THIS TABLE'S. Rule 28 states them —
+   "readiness ≥ 3.5 runs at default values", "< 3.5 reduction comes into play",
+   "< 2.5 also raises a manual-review flag", "no automatic reduction takes sets below
+   1 or reps below 4-5" — and ends by saying the AI's explanation must not contradict
+   what the system mechanically applies. It was the other way round: this table cut
+   from 3.9 and floored sets at 2, so the model read 3.5 off the rule, wrote a
+   rationale against it, and the code quietly cut a band the rule says is untouched.
+   The rule is the coach's document and wins; the numbers below are read from it. */
+const DI_RD_REDUCE=3.5;   // rule 28 — at or above this, nothing is cut
+const DI_RD_REVIEW=2.5;   // rule 28 — below this, the coach is asked to look
 const DI_ADJ_BANDS=[
-  {max:2.5,       pct:-40,label:['Hazır oluş çok düşük','Readiness very low']},
-  {max:3.2,       pct:-25,label:['Hazır oluş düşük','Readiness low']},
-  {max:3.9,       pct:-10,label:['Hazır oluş sınırda','Readiness borderline']},
-  {max:Infinity,  pct:0,  label:['Hazır oluş normal','Readiness normal']},
+  {max:DI_RD_REVIEW,pct:-40,label:['Hazır oluş çok düşük','Readiness very low']},
+  {max:3.2,         pct:-25,label:['Hazır oluş düşük','Readiness low']},
+  {max:DI_RD_REDUCE,pct:-10,label:['Hazır oluş sınırda','Readiness borderline']},
+  {max:Infinity,    pct:0,  label:['Hazır oluş normal','Readiness normal']},
 ];
-/* Volume is never cut past half, and a set count never past DI_SET_FLOOR — below
-   that the session stops being the session and becomes a different decision, which
-   is the coach's to make and not a percentage's. */
+/* Volume is never cut past half, and never past the floors rule 28 names: one set,
+   four reps. Below that the session stops being the session and becomes a different
+   decision, which is the coach's to make and not a percentage's. */
 const DI_ADJ_FLOOR=-50;
-const DI_SET_FLOOR=2;
+const DI_SET_FLOOR=1;
+const DI_REP_FLOOR=4;
 function diLoadAdjust(b){
   const reasons=[];
   const score=b.readiness?b.readiness.score:null;
@@ -30297,7 +30346,11 @@ function diAdjustRow(row,pct){
   }
   const reps=recNum(row.reps);
   if(reps!=null&&reps>0){
-    const next=Math.max(1,Math.round(reps*f));
+    /* Rule 28's other floor. Read the same way the set floor is: a prescription that
+       was ALREADY under four reps (a heavy triple, a two-rep jump) is not raised to
+       four by an adjustment whose only job is to take work away. */
+    const floor=Math.min(reps,DI_REP_FLOOR);
+    const next=Math.max(floor,Math.min(reps,Math.round(reps*f)));
     if(next!==reps){out.reps=String(next);out.changed=true;out.from={reps:String(reps)};}
     return out;
   }
@@ -30330,7 +30383,7 @@ function diFlag(b){
   if(peak!=null&&peak>=4)reasons.push({level:'review',text:L(`Ağrı ${peak}/10 bildirildi`,`Pain reported at ${peak}/10`)});
   if(b.injury&&b.injury.any_active)reasons.push({level:'review',text:L('Aktif sakatlık kaydı var','An injury is recorded as active')});
   const sc=b.readiness?b.readiness.score:null;
-  if(sc!=null&&sc<2.5)reasons.push({level:'review',text:L(`Hazır oluş ${sc}/5 — olağandışı düşük`,`Readiness ${sc}/5 — unusually low`)});
+  if(sc!=null&&sc<DI_RD_REVIEW)reasons.push({level:'review',text:L(`Hazır oluş ${sc}/5 — olağandışı düşük`,`Readiness ${sc}/5 — unusually low`)});
   if(b.adjustment&&b.adjustment.pct)reasons.push({level:'modify',
     text:L(`Hacim %${Math.abs(b.adjustment.pct)} azaltılıyor`,`Volume reduced by ${Math.abs(b.adjustment.pct)}%`)});
   (b.readiness&&b.readiness.signals||[]).forEach(s=>reasons.push({level:'attention',text:s}));
@@ -30342,6 +30395,79 @@ function diFlag(b){
     reasons:reasons.filter(r=>r.level===id).map(r=>r.text),
     all_reasons:reasons};
 }
+
+/* ---- Tier (rule 28) -------------------------------------------------------
+   Rule 28 names two tiers and the daily engine read neither. The structural one was
+   already written — `pwTier`, the weakest-link read of the screening battery — but it
+   hung off a tab nothing mounts, so the session that actually reaches an athlete was
+   written without it. The temporary one did not exist at all: `athLoadTier` is a
+   single-day stress read, and rule 28 is explicit that a temporary drop comes from a
+   MULTI-DAY trend, "not a single bad day".
+
+   A temporary drop lowers the tier the session is HELD TO. It does not touch the
+   structural tier, and it does not add a second percentage on top of the readiness
+   cut — that cut already carries today's fatigue, and taking it twice would be the
+   "cumulative" clause of rule 28 read as "counted twice". */
+const DI_TMP_WIN=4;   // days of history the trend is read over
+const DI_TMP_MIN=2;   // days that must carry the signal before it is a trend
+function diTempDowngrade(ath,ref){
+  const days=[];
+  for(let i=0;i<DI_TMP_WIN;i++){
+    const d=fmt(addD(parseD(ref),-i));
+    let score=null;
+    try{score=athReadiness(ath,d).score;}catch(e){}
+    const hurt=athPainReports(ath,d).some(p=>{const s=diPain10(p.sev);return s!=null&&s>=DI_PAIN_BLOCK;});
+    days.push({date:d,readiness:score,low:score!=null&&score<DI_RD_REDUCE,pain:hurt});
+  }
+  const lowDays=days.filter(d=>d.low);
+  const painDays=days.filter(d=>d.pain);
+  const reasons=[];
+  if(lowDays.length>=DI_TMP_MIN)
+    reasons.push(L(`${DI_TMP_WIN} günün ${lowDays.length}'inde hazır oluş ${DI_RD_REDUCE} altında`,
+      `Readiness under ${DI_RD_REDUCE} on ${lowDays.length} of the last ${DI_TMP_WIN} days`));
+  if(painDays.length>=DI_TMP_MIN)
+    reasons.push(L(`${DI_TMP_WIN} günün ${painDays.length}'inde ${DI_PAIN_BLOCK}/10 ve üzeri ağrı bildirildi`,
+      `Pain at ${DI_PAIN_BLOCK}/10 or more on ${painDays.length} of the last ${DI_TMP_WIN} days`));
+  return{active:reasons.length>0,reasons,window_days:DI_TMP_WIN,min_days:DI_TMP_MIN,days};
+}
+/* The two tiers together, in the shape the prompt and the validator both read. The
+   structural tier is null when the battery has nothing in it — the tier decision is
+   then skipped rather than assumed, exactly like every other missing input. */
+function diTier(ath,ref){
+  const tests=[...(ath.tests||[])].filter(t=>t.date&&t.date<=ref).sort((a,b)=>a.date.localeCompare(b.date));
+  const last=tests[tests.length-1]||null;
+  const st=last?pwTier(last):{kademe:null,items:[],zayif_halka:null,olculen:0};
+  const tmp=diTempDowngrade(ath,ref);
+  const structural=st.kademe;
+  const effective=(structural!=null&&tmp.active)?Math.max(1,structural-1):structural;
+  const row=k=>{const r=pwTierRow(k);return r?{kademe:k,etiket:r.label,hacim:r.hacim,siddet:r.siddet,
+    karmasiklik:r.karmasiklik,pliometrik_sok:r.sok}:null;};
+  return{
+    yapisal:structural,
+    yapisal_detay:row(structural),
+    zayif_halka:st.zayif_halka,
+    olculen_madde:st.olculen,
+    test_tarihi:last?last.date:null,
+    tarama_maddeleri:st.items,
+    gecici_dusus:tmp.active,
+    gecici_dusus_gerekcesi:tmp.reasons,
+    gecerli:effective,
+    gecerli_detay:row(effective),
+    yontem:'Zayıf halka: yapısal kademe, ölçülen tarama maddelerinin EN DÜŞÜĞÜDÜR; ortalama alınmaz. Geçici düşüş çok günlük trendden gelir ve yapısal kademeyi değiştirmez.',
+  };
+}
+/* What the effective tier CAPS, as numbers a check can be run against. Read straight
+   off PW_TIERS' own wording so this adds no threshold CoachOS had not already stated:
+   tier 1 is "2-3 set", tier 2 "3-4", tier 3 "4-5", and the per-session exercise counts
+   sit in the same sentence. Plyometric volume is stated per WEEK in that table, so it
+   is not turned into a per-session contact ceiling here — rule 27 states that one, and
+   that is the one `diPlyoCeiling` reads. */
+const DI_TIER_CAPS={
+  1:{max_sets:3,max_main:5,plyo_note:'düşük yükseklik, iniş kontrolü'},
+  2:{max_sets:4,max_main:6,plyo_note:'çift → tek bacak geçişi kontrollü'},
+  3:{max_sets:5,max_main:6,plyo_note:'reaktif ve tek bacak temaslar dahil'},
+};
+const diTierCaps=k=>DI_TIER_CAPS[k]||null;
 
 /* ---- The bundle -----------------------------------------------------------
    Everything the decision rests on, computed once, in the order §40 sets out:
@@ -30367,6 +30493,10 @@ function diBundle(ath,setup,ref,opts){
       /* Context for the role, not a prescription from it (§4.3). */
       position_qualities:(DI_POS_QUALITIES[pg]||[]).map(q=>L(q[0],q[1])),
       training_age_years:recNum(ath.trainingAge),
+      /* The body type the coach recorded on the athlete's card. It was on the athlete
+         and reached nothing — rule 30 reads position as a starting point and the
+         individual's own make-up as worth more, and this is half of that. */
+      vucut_tipi:String(ath.somatotype||'').trim()||null,
       level:ath.levelTag?(LEVEL_LABEL[ath.levelTag]||ath.levelTag):null,
       height_cm:recNum(lastTest&&lastTest.height)??recNum(ath.height),
       weight_kg:recNum(lastTest&&lastTest.weight)??recNum(ath.weight),
@@ -30384,6 +30514,8 @@ function diBundle(ath,setup,ref,opts){
         return{field:f.id,label:L(f.label[0],f.label[1]),current:x.current,baseline:x.baseline,
           deviation_pct:x.deviation,readings:x.n};}).filter(x=>x.current!=null||x.baseline!=null)},
     load,
+    /* Rule 28's tier system, read here rather than on the tab nobody mounts. */
+    tier:diTier(ath,ref),
     pain:diPain(ath,ref),
     injury:diInjury(ath,ref),
     exposure:diExposure(ath,ref,{days:3,libMap:o.libMap}),
@@ -30401,6 +30533,190 @@ function diBundle(ath,setup,ref,opts){
   b.flag=(()=>{const f=diFlag(b);return{id:f.id,label:L(f.label[0],f.label[1]),color:f.color,
     reasons:f.reasons,all_reasons:f.all_reasons.map(r=>r.text)};})();
   return b;
+}
+
+/* ---- What makes THIS athlete's session different, computed -----------------
+   The module's oldest complaint is that every athlete came back with roughly the
+   same session. The reflex fix is to tell the model to read the rules harder, and it
+   does not work: thirty general rules are satisfied generically, and a long list is
+   the easiest thing in a prompt to answer in the abstract. Nothing downstream can
+   repair that either — a validator can say a session broke a limit, it cannot say a
+   session failed to be about this particular athlete.
+
+   So the differentiation is computed here, before the call, and handed over as a
+   short numbered list the answer is REQUIRED to cite per exercise. Four specific
+   sentences about one athlete are harder to write around than thirty general rules,
+   and because each one carries an id, whether the answer actually used them is a
+   thing code can check rather than a thing a reader has to judge.
+
+   Deliberately short and deliberately concrete. Nothing generic goes in — "is a
+   basketball player" differentiates nobody — and nothing is invented: every line
+   below is a reading the app already holds. */
+const DI_DIFF_MAX=6;
+const DI_DIFF_PAIN_WIN=14;      // how far back a pain region's day count is read
+const DI_DIFF_TEST_DEV=8;       // % below the athlete's own baseline worth naming
+/* How many of the last N days this region was reported on. A region reported once is
+   today's news; a region reported five days running is a different athlete. */
+function diPainDays(ath,region,ref){
+  let n=0;
+  for(let i=0;i<DI_DIFF_PAIN_WIN;i++){
+    const d=fmt(addD(parseD(ref),-i));
+    if(athPainReports(ath,d).some(p=>p.tag===region))n++;
+  }
+  return n;
+}
+function diDifferentiators(ath,bundle,deficits,ref){
+  const out=[];
+  const add=(kind,tr,en)=>{if(out.length<DI_DIFF_MAX)out.push({kind,text:L(tr,en)});};
+
+  // 1. An active injury — the hardest fact about this athlete today.
+  ((bundle.injury&&bundle.injury.active)||[]).slice(0,2).forEach(inj=>{
+    const bits=[inj.region,inj.side,inj.rtp_stage?L(inj.rtp_stage[0],inj.rtp_stage[1]):null]
+      .filter(Boolean).join(' · ');
+    add('injury',`aktif sakatlık: ${bits||inj.type||'kayıtlı'}`,`active injury: ${bits||inj.type||'on record'}`);
+  });
+
+  // 2. Pain, with how long it has been going on — a three-day knee is not a bad morning.
+  ((bundle.pain&&bundle.pain.regions)||[])
+    .filter(r=>r.standing||(r.severity_0_10!=null&&r.severity_0_10>=DI_PAIN_BLOCK))
+    .slice(0,2).forEach(r=>{
+      if(r.standing)
+        return add('pain',`${r.label} — koçun kalıcı kısıt etiketi`,`${r.label} — standing coach restriction`);
+      const n=diPainDays(ath,r.region,ref);
+      add('pain',`${r.label} ağrısı ${r.severity_0_10}/10, ${n} gündür bildiriliyor`,
+        `${r.label} pain at ${r.severity_0_10}/10, reported ${n} day${n>1?'s':''} running`);
+    });
+
+  // 3. The structural tier and the screen that set it (weakest link, rule 28).
+  const t=bundle.tier||{};
+  if(t.yapisal!=null){
+    const weak=(t.zayif_halka||[])[0]||null;
+    add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
+      `structural tier ${t.yapisal}${weak?` (weakest link: ${weak})`:''}`);
+    if(t.gecici_dusus)
+      add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
+        `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
+  }
+
+  // 4. The battery's own high-priority findings, as the code read them.
+  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').slice(0,2)
+    .forEach(f=>add('finding',`bulgu: ${f.bolge} — ${f.bulgu}`,`finding: ${f.bolge} — ${f.bulgu}`));
+
+  // 5. A performance test that has moved against the athlete's OWN baseline. Stated as
+  //    that and nothing more — the app holds no squad percentiles to rank them in.
+  (bundle.test_baselines||[])
+    .filter(x=>x.deviation_pct!=null&&x.deviation_pct<=-DI_DIFF_TEST_DEV)
+    .sort((a,b)=>a.deviation_pct-b.deviation_pct).slice(0,1)
+    .forEach(x=>add('test',`${x.metric} kendi baseline'ının %${Math.abs(x.deviation_pct)} altında`,
+      `${x.metric} is ${Math.abs(x.deviation_pct)}% below their own baseline`));
+
+  // 6. Today's readiness, only where it is actually low enough to change anything.
+  const rd=bundle.readiness||{};
+  if(rd.score!=null&&rd.score<DI_RD_REDUCE)
+    add('readiness',`hazır oluş ${rd.score}/5 (${rd.status||'—'})`,`readiness ${rd.score}/5 (${rd.status||'—'})`);
+
+  // 7. Acute load standing clearly outside its zone.
+  const acwr=bundle.load&&bundle.load.acwr;
+  if(acwr!=null&&(acwr>1.5||acwr<0.8))
+    add('load',`ACWR ${acwr} — ${acwr>1.5?'yüksek':'düşük'}`,`ACWR ${acwr} — ${acwr>1.5?'high':'low'}`);
+
+  // 8. The role, last: it is a starting point (rule 9), not the athlete.
+  const pos=bundle.athlete&&bundle.athlete.position;
+  if(pos)add('position',`${pos}${bundle.athlete.position_group?` (${bundle.athlete.position_group})`:''}`,
+    `${pos}${bundle.athlete.position_group?` (${bundle.athlete.position_group})`:''}`);
+
+  return out.map((d,i)=>({id:`D${i+1}`,...d}));
+}
+
+/* ---- What this athlete was given before ----------------------------------
+   The repetition the module is judged on is repetition OVER TIME for one athlete, and
+   sameness ACROSS athletes whose situations differ. Both are read from the review
+   store, which has been keeping every draft beside the reading that produced it since
+   the module shipped — so this needs no new storage, only a reader. */
+function diReviewEntries(team){
+  const store=(team&&team.indiv&&team.indiv.ai)||{};
+  return Object.keys(store).map(k=>{
+    const bits=k.split('|');
+    return{key:k,date:bits[0]||'',srcKey:bits[1]||'',athId:bits.slice(2).join('|'),rec:store[k]};
+  }).filter(e=>e.rec&&e.rec.program);
+}
+const diProgramNames=p=>[...new Set(((p&&p.blocks)||[])
+  .flatMap(b=>(b.exercises||[]).map(e=>diExName(e.name))).filter(Boolean))];
+/* Overlap of two exercise lists, 0 to 1. Jaccard rather than a raw count so a short
+   session and a long one are compared on what they share, not on how long they are. */
+function diJaccard(a,b){
+  const A=new Set(a||[]),B=new Set(b||[]);
+  if(!A.size||!B.size)return 0;
+  let inter=0;A.forEach(x=>{if(B.has(x))inter++;});
+  return +(inter/(A.size+B.size-inter)).toFixed(2);
+}
+const DI_RECENT_N=3;
+function diRecentPrograms(team,athId,date,n){
+  return diReviewEntries(team).filter(e=>e.athId===athId&&e.date<date)
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,n||DI_RECENT_N)
+    .map(e=>({tarih:e.date,egzersizler:diProgramNames(e.rec.program),
+      ayirt_ediciler:((e.rec.differentiators)||[]).map(d=>d.text)}));
+}
+/* The other athletes written on the same day. Used for one comparison only: two
+   athletes whose differentiator lists DIFFER should not come back with the same
+   session. Two athletes who genuinely read alike are allowed to — rule 24 says
+   individualization is not total differentiation, and forcing variety on similar
+   inputs would be inventing a difference the data does not carry. */
+function diPeerPrograms(team,date,athId){
+  return diReviewEntries(team).filter(e=>e.date===date&&e.athId!==athId)
+    .map(e=>({athId:e.athId,names:diProgramNames(e.rec.program),
+      diff:((e.rec.differentiators)||[]).map(d=>d.text)}));
+}
+/* NOT A COACHOS NUMBER. CoachOS defines no similarity threshold — these two are this
+   module's own, they drive WARNINGS ONLY and never block a save, and they are named
+   here so they can be argued with in one place. */
+const DI_SIM_SELF=0.7;
+const DI_SIM_PEER=0.8;
+
+/* ---- Rule 27: plyometric contacts per session -----------------------------
+   The rule states a band per age group and, for the senior team, per season half.
+   Read verbatim; the UPPER bound is the ceiling a session is held to, and the lower
+   bound is carried so the prompt can aim inside the band rather than at its edge. */
+const DI_PLYO_BANDS=[
+  {under:13,min:20,max:40, label:['U9-U12','U9-U12']},
+  {under:15,min:40,max:60, label:['U13-U14','U13-U14']},
+  {under:19,min:60,max:100,label:['U15-U18','U15-U18']},
+];
+function diPlyoCeiling(bundle){
+  const age=bundle&&bundle.athlete&&bundle.athlete.age;
+  if(age==null)return null;               // no birth date → no band, and nothing is assumed
+  const band=DI_PLYO_BANDS.find(b=>age<b.under);
+  if(band)return{min:band.min,max:band.max,grup:L(band.label[0],band.label[1])};
+  /* Senior. The rule splits by season half rather than by age: in-season 30-60,
+     off-season 60-100. A phase the app cannot read leaves this unset rather than
+     guessed — an unbounded check is better than a bound nobody stated. */
+  const ph=(bundle.season_phase&&bundle.season_phase.id)||null;
+  if(ph==='in'||ph==='playoff')return{min:30,max:60,grup:L('A takım, sezon içi','Senior, in-season')};
+  if(ph==='off'||ph==='pre'||ph==='trans')return{min:60,max:100,grup:L('A takım, sezon dışı','Senior, off-season')};
+  return null;
+}
+/* Ground contacts a written row asks for. Only a row that is plyometric by pattern
+   counts, and only where both numbers are readable — a "3 × max" row contributes
+   what can be counted and says so by contributing nothing rather than a guess. */
+function diRowContacts(row,patOf){
+  const pat=patOf?patOf(row):(row.pattern||'');
+  if(pat!=='Jump / Plyo')return null;
+  const sets=recNum(row.sets),reps=recNum(row.reps);
+  if(sets==null||reps==null)return null;
+  return Math.round(sets*reps);
+}
+
+/* ---- Rule 20: how many of a piece of kit one row asks for -----------------
+   "2DB Bulgarian Split Squat" needs two dumbbells; a barbell row needs one bar. The
+   count is read off the name the way a coach writes it, and anything unreadable
+   counts as one — the check exists to catch a prescription the gym cannot lay out,
+   not to argue about grammar. */
+const DI_PAIR_RE=/(^|\s)(2\s*db|2db|çift|cift|double|pair|a\s*pair\s*of|iki\s+adet)(\s|$)/i;
+function diRowUnits(row){
+  const txt=`${row.name||''} ${row.equipment||''}`;
+  const m=txt.match(/(^|[^\d])(\d{1,2})\s*(x|×|adet|pcs)\s/i);
+  if(m){const n=Number(m[2]);if(n>=1&&n<=12)return n;}
+  return DI_PAIR_RE.test(txt)?2:1;
 }
 
 /* =========================================================
@@ -30470,27 +30786,32 @@ const DI_CONSTRAINT_TYPES=[
    what:['Kullanılabilecek dış yükü (kg, %1RM, RPE) sınırlar.','Caps the external load (kg, %1RM, RPE) that may be used.'],
    ex:['"Maksimum %60 1RM" · "RPE 7\'yi geçme" · "En fazla 40 kg"','"Max 60% 1RM" · "Stay under RPE 7" · "No more than 40 kg"'],
    ai:['Önerilen egzersizlerdeki yük belirtilen sınırı aşmamalı; daha düşük yükle benzer uyarıcıyı veren varyasyonlar tercih edilmeli.',
-       'No exercise may exceed the stated load; prefer variations that give a similar stimulus at a lower load.']},
+       'No exercise may exceed the stated load; prefer variations that give a similar stimulus at a lower load.'],
+   deger:{kind:'load',ph:['ör. %60 · 40 kg · RPE 7','e.g. 60% · 40 kg · RPE 7']}},
   {id:'volume',label:['Hacim Sınırı','Volume limit'],
    what:['Set, tekrar, mesafe, süre veya toplam çalışma miktarını sınırlar.','Caps sets, reps, distance, time or total work.'],
    ex:['"Toplam set sayısını azalt" · "En fazla 60 tekrar" · "Metrajı düşük tut"','"Fewer total sets" · "60 reps at most" · "Keep the metreage low"'],
    ai:['Toplam hacim sınır içinde tutulmalı; gerekirse daha düşük set/tekrar/mesafe ile benzer uyarıcı sağlanmalı.',
-       'Keep total volume inside the limit; deliver a similar stimulus with fewer sets, reps or metres if needed.']},
+       'Keep total volume inside the limit; deliver a similar stimulus with fewer sets, reps or metres if needed.'],
+   deger:{kind:'sets',ph:['toplam set, ör. 12','total sets, e.g. 12']}},
   {id:'time',label:['Zaman Sınırı','Time limit'],
    what:['Seansın toplam süresini sınırlar.','Caps the total length of the session.'],
    ex:['"En fazla 45 dakika" · "30 dakikada bitsin"','"45 minutes at most" · "Done inside 30 minutes"'],
    ai:['Egzersiz seçimi ve set/tekrar yapısı seansı verilen sürede bitirecek şekilde kurulmalı; uzun hazırlık ve kompleks yapılardan kaçınılmalı.',
-       'Pick exercises and a set structure that finish inside the time; avoid long build-ups and complex set structures.']},
+       'Pick exercises and a set structure that finish inside the time; avoid long build-ups and complex set structures.'],
+   deger:{kind:'min',ph:['dakika, ör. 45','minutes, e.g. 45']}},
   {id:'intensity',label:['Yoğunluk Sınırı','Intensity limit'],
    what:['Çalışma yoğunluğunu (hız, RPE, %1RM, velocity) sınırlar.','Caps working intensity (speed, RPE, %1RM, velocity).'],
    ex:['"RPE 6\'yı geçme" · "%70 1RM üstü yok" · "Maksimum sub-maksimal"','"Stay under RPE 6" · "Nothing above 70% 1RM" · "Sub-maximal only"'],
    ai:['Belirtilen yoğunluk seviyesi aşılmamalı; daha düşük yoğunlukta uygun egzersiz varyasyonları seçilmeli.',
-       'Do not exceed the stated intensity; choose variations that work at a lower one.']},
+       'Do not exceed the stated intensity; choose variations that work at a lower one.'],
+   deger:{kind:'load',ph:['ör. RPE 6 · %70','e.g. RPE 6 · 70%']}},
   {id:'impact',label:['Darbe / Sıçrama Sınırı','Impact / jump limit'],
    what:['Pliometrik sıçrama, iniş ve toplam zemin teması miktarını sınırlar.','Caps jumps, landings and total ground contacts.'],
    ex:['"En fazla 30 sıçrama" · "Pliometrik hacmi düşük tut" · "Drop jump yok"','"30 jumps at most" · "Keep plyo volume low" · "No drop jumps"'],
    ai:['Zemin teması, sıçrama ve pliometrik hacim sınırlandırılmalı; gerekirse izometrik veya med ball gibi alternatif güç uyarıcıları önerilmeli.',
-       'Limit contacts, jumps and plyometric volume; offer isometric or med-ball power work instead where needed.']},
+       'Limit contacts, jumps and plyometric volume; offer isometric or med-ball power work instead where needed.'],
+   deger:{kind:'contacts',ph:['toplam temas, ör. 30','total contacts, e.g. 30']}},
   {id:'speed',label:['Hız Sınırı','Speed limit'],
    what:['Sprint, yüksek hızlı koşu veya hareket hızını sınırlar.','Caps sprinting, high-speed running or movement velocity.'],
    ex:['"%70 hızın üzerinde yok" · "Max velocity yok" · "Yüksek hızlı koşuyu sınırla"','"Nothing above 70% speed" · "No max velocity" · "Limit high-speed running"'],
@@ -30543,14 +30864,69 @@ function diInstr(raw,src){
   const dur=recNum(r.duration)!=null?recNum(r.duration):recNum(src&&src.duration);
   const max=recNum(r.maxExercises)!=null?recNum(r.maxExercises)
     :(dur?Math.max(3,Math.min(10,Math.round(dur/DI_MIN_PER_EX))):null);
+  /* WHO PUT THE NUMBER THERE MATTERS, and it was not knowable from the number.
+     The two boxes above fall back to the source session's own length when the coach
+     leaves them blank, and the form then SAVES the normalised brief — so a derived
+     60 came back on the next read looking exactly like a 60 somebody typed. That is
+     fine while both are advice; it is not fine now that a coach-set ceiling fails
+     the session outright. A blunt heuristic ("about six minutes an exercise") must
+     never block a save, and an instruction must.
+
+     So the form states it, and a brief that predates this field is read as NOT
+     coach-set: the ceiling stays a warning until the coach next touches the box,
+     which is the safe direction to be wrong in. */
+  const durSet=r.durationSet!=null?!!r.durationSet:false;
+  const maxSet=r.maxExercisesSet!=null?!!r.maxExercisesSet:false;
+  const cons=list(r.constraints).filter(id=>diConRow(id));
+  /* A constraint used to be a TYPE and nothing else: "load limit" with no limit in it.
+     That is why rule 22 sat in the prompt-only pile — "no exercise may exceed the
+     stated load" cannot be checked when nothing states the load. The value is
+     optional and a blank one changes nothing: the constraint still goes to the model
+     as prose, exactly as it always did. A filled one becomes a number code can hold
+     the session to. Old stored briefs have no `constraintValues` at all and read
+     exactly as they did before. */
+  const cv={};
+  const rawVals=(r.constraintValues&&typeof r.constraintValues==='object')?r.constraintValues:{};
+  cons.forEach(id=>{
+    const row=diConRow(id);
+    if(!row||!row.deger)return;
+    const v=String(rawVals[id]==null?'':rawVals[id]).trim();
+    if(v)cv[id]=v;
+  });
   return{
     priorities:list(r.priorities).filter(id=>diPrioRow(id)),
     must:list(r.must),avoid:list(r.avoid),
-    constraints:list(r.constraints).filter(id=>diConRow(id)),
+    constraints:cons,
+    constraintValues:cv,
     constraintNote:String(r.constraintNote||'').trim(),
     duration:dur,maxExercises:max,
+    /* Carried through normalisation so a re-read of a stored brief still knows which
+       of the two numbers is an instruction and which is a fallback. */
+    durationSet:durSet,maxExercisesSet:maxSet,
     notes:String(r.notes||'').trim(),
   };
+}
+/* A constraint value the coach typed, as a number a check can use. Deliberately
+   forgiving about how it is written ("%60", "60 %", "RPE 7", "40kg", "12") and
+   deliberately unforgiving about what it means: a figure whose unit cannot be told
+   apart is returned as unreadable rather than assumed to be whichever unit would
+   make the check pass. */
+function diConValue(kind,txt){
+  const s=String(txt||'').trim();
+  if(!s)return null;
+  const num=v=>{const m=String(v).match(/-?\d+(?:[.,]\d+)?/);return m?Number(m[0].replace(',','.')):null;};
+  const n=num(s);
+  if(n==null)return{unit:null,value:null,raw:s,readable:false};
+  if(kind==='load'){
+    if(/rpe/i.test(s))return{unit:'rpe',value:n,raw:s,readable:true};
+    if(/rir/i.test(s))return{unit:'rir',value:n,raw:s,readable:true};
+    if(/%|1rm|yuzde|yüzde/i.test(s))return{unit:'pct1rm',value:n,raw:s,readable:true};
+    if(/kg/i.test(s))return{unit:'kg',value:n,raw:s,readable:true};
+    /* A bare number in a load box is ambiguous — 7 could be RPE and 70 could be a
+       percentage. The app does not guess; the prompt still carries the coach's words. */
+    return{unit:null,value:n,raw:s,readable:false};
+  }
+  return{unit:kind,value:n,raw:s,readable:true};
 }
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
@@ -30826,12 +31202,64 @@ function diBlockedPatterns(bundle){
   const out=[];
   ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(r=>{
     const sev=r.severity_0_10;
-    if(sev==null||sev<DI_PAIN_BLOCK)return;
+    /* Two ways a region closes its patterns: pain reported at or over the threshold
+       this morning, or a standing constraint the coach ticked on the athlete's card.
+       The second one has no severity to compare — it is a statement, not a reading. */
+    if(!r.standing&&(sev==null||sev<DI_PAIN_BLOCK))return;
     out.push({bolge:r.label,siddet_0_10:sev,
+      kaynak:r.standing?'koç kısıt etiketi':'check-in ağrı bildirimi',
+      kalici:!!r.standing,
       yasak_paternler:r.loads_patterns||[],
       yonlendirilecek_paternler:r.redirect_patterns||[]});
   });
   return out;
+}
+/* The explicit avoid-list: what the coach wrote on the injury record, plus what they
+   ruled out in today's brief. Both are restrictions in the spec's sense — they block
+   an exercise outright, whatever the readiness, the tier or the model's reasoning. */
+function diRestrictions(bundle,instr){
+  const out=[];
+  ((bundle&&bundle.injury&&bundle.injury.active)||[]).forEach(inj=>{
+    const txt=String(inj.restrictions||'').trim();
+    if(!txt)return;
+    out.push({kaynak:'sakatlık kaydı',
+      bolge:inj.region||null,rtp:inj.rtp_stage?L(inj.rtp_stage[0],inj.rtp_stage[1]):null,
+      metin:txt,terimler:diRestrictionTerms(txt)});
+  });
+  ((instr&&instr.avoid)||[]).forEach(av=>{
+    const t=String(av||'').trim();
+    if(!t)return;
+    out.push({kaynak:'antrenör talimatı',bolge:null,rtp:null,metin:t,terimler:diRestrictionTerms(t)});
+  });
+  return out;
+}
+/* A restriction is prose ("derin squat yok", "nothing loaded overhead"). What can be
+   matched honestly is its content words. Two rules keep this from firing on nothing:
+   a term must be at least four letters, and it must appear in the exercise name as a
+   WHOLE word. So "squat" catches "Goblet Squat" (which is the case the prompt itself
+   names) and "bar" catches nothing at all — a three-letter fragment shared by half a
+   gym is not evidence, and this list is a hard block, so a false positive costs the
+   coach a session they cannot save. */
+const DI_STOP=new Set(['ve','ile','veya','için','yok','yapma','yapmasın','olmasın','yapılmasın',
+  'kullanma','kullanılmasın','not','avoid','any','the','and','or','with','without','from','only',
+  'sadece','ama','bir','bu','şu','çok','daha','ise','gibi','olan','hiç','asla','never','should',
+  'must','exercise','egzersiz','hareket','movement']);
+const DI_TERM_MIN=4;
+function diRestrictionTerms(txt){
+  return[...new Set(diExName(txt).split(' ')
+    .filter(w=>w.length>=DI_TERM_MIN&&!DI_STOP.has(w)))];
+}
+/* Which of a restriction's terms an exercise name carries, plus the whole-phrase read
+   the module has always done (either string containing the other). Returns what
+   matched, so the violation says WHY rather than only that it fired. */
+function diRestrictionHits(name,restriction){
+  const hay=diExName(name);
+  if(!hay)return[];
+  const words=new Set(hay.split(' '));
+  const hits=(restriction.terimler||[]).filter(t=>words.has(t));
+  const whole=diExName(restriction.metin||'');
+  if(whole&&(hay.includes(whole)||whole.includes(hay))&&!hits.includes(whole))hits.push(whole);
+  return hits;
 }
 const diBlockedSet=blocked=>{
   const s=new Set();
@@ -30846,6 +31274,46 @@ Sen CoachOS içinde çalışan bir kuvvet & kondisyon asistanısın. Tek bir spo
 gün için, antrenörün talimatları doğrultusunda uygulanabilir bir antrenman programı
 yazıyorsun. Nihai kararı antrenör verir: yazdığın program onaylanmadan hiçbir sporcunun
 takvimine geçmez.
+
+AYIRT EDİCİLER — ÖNCE BUNU OKU, PROGRAMI BUNUN ÜZERİNE KUR
+JSON'un en başındaki "ayirt_ediciler" alanı, BU SPORCUYU bugün diğerlerinden ayıran
+şeylerin kod tarafından hesaplanmış kısa listesidir. Her maddenin bir id'si vardır
+(D1, D2, …). Bu liste 30 kuralın yerine geçmez; kuralların bu sporcuda NEYE
+uygulanacağını söyler.
+
+- Yazdığın her egzersizin "dayanak" alanına, o egzersizin hangi ayırt edici(ler)e
+  cevap verdiğini id olarak yaz (ör. ["D2","D4"]). Hiçbirine cevap vermiyorsa boş
+  dizi ([]) bırak — uydurma id yazma, listede olmayan id yazma.
+- Program bir bütün olarak ayırt edicilerin ÇOĞUNA karşılık vermeli. Bir madde bugün
+  karşılanamıyorsa (ör. ağrı o çalışmayı kapatıyorsa) bunu koc_uyarisi'nda tek
+  cümleyle söyle; sessizce atlama.
+- "Genel kuvvet", "sporcunun ihtiyacına göre" gibi her sporcuya yazılabilecek
+  gerekçeler bu alanın cevabı değildir. Gerekçe bu listedeki bir maddeyi adıyla
+  kullanmalı.
+- gecmis_programlar alanı bu sporcuya SON günlerde yazdığın programları taşır. Aynı
+  egzersiz listesini tekrar yazma; aynı uyaranı vermen gerekiyorsa varyasyonu veya
+  dozu değiştir ve nedenini genel_gerekce'de söyle.
+
+KODLA DENETLENEN TAVANLAR — AŞARSAN PROGRAM REDDEDİLİR
+Aşağıdakiler yanıtından sonra kod tarafından ölçülür. İhlal eden program sporcunun
+takvimine YAZILMAZ; antrenör onaylasa bile yazılmaz.
+- sert_kisitlar: sakatlık kaydındaki kısıtlamalar ve antrenörün "kaçınılacak" listesi.
+  Bu metinlerdeki terimlerden birini adında taşıyan egzersiz reddedilir.
+- yasak_paternler: ağrı ya da koçun kalıcı kısıt etiketi yüzünden bugün kapalı olan
+  hareket paternleri.
+- kademe_tavani: geçerli kademenin izin verdiği en yüksek set sayısı ve ana faz
+  egzersiz sayısı (Kural 28).
+- pliometrik_temas_siniri: yaş bandının oturum başına temas üst sınırı (Kural 27).
+  Temas = Jump / Plyo paternindeki satırların set × tekrar toplamı.
+- salon_ekipmani: envanterde olmayan ekipman, envanterdeki en ağır ağırlığı aşan yük
+  ve adetten fazlasını isteyen satır (Kural 20).
+- antrenor_talimati'nda DOLDURULMUŞ seans_suresi_dk ve ana_faz_maks_egzersiz.
+- kisitlar içinde "sinir_kodla_denetleniyor": true olan her kısıtın sınırı (Kural 22).
+
+EKSİK VERİ
+"eksik_veriler" alanı, CoachOS'un bu sporcu için TUTMADIĞI bilgileri sayar. Orada
+listelenen hiçbir konuda karar verme, tahmin yürütme ya da genel literatürden
+doldurma. O konuya değinmen gerekiyorsa "veri yok" de ve geç.
 
 SANA NE VERİLİYOR
 Kullanıcı mesajında tek bir JSON: sporcunun profili (sporcu), HESAPLANMIŞ hazır oluş
@@ -31066,7 +31534,8 @@ Sadece aşağıdaki JSON'u döndür, başka metin yok, markdown kod bloğu yok:
             "dinlenme": "ör. 90 sn — yoksa null",
             "ekipman": "gereken ekipman veya 'vücut ağırlığı'",
             "hareket_paterni": "hareket pattern sözlüğünden",
-            "gerekce": "bu sporcu için neden bu egzersiz"
+            "gerekce": "bu sporcu için neden bu egzersiz — ayirt_ediciler'deki maddeye adıyla değin",
+            "dayanak": ["D1","D3"]
           }
         ]
       }
@@ -31094,7 +31563,8 @@ Antrenör diline uygun, teknik ama gösterişsiz; her yargı bu sporcunun verisi
 
 /* The request. Everything computed is already decided; the brief is the coach's; the
    equipment is the gym's. The answer's only job is the session itself. */
-function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
+function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge,extra){
+  const x=extra||{};
   const eq=eqAvailable(setup);
   const eqIds=new Set(eq.map(e=>e.id));
   /* The library by movement pattern, so a pick comes from the coach's own exercises.
@@ -31124,9 +31594,34 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
   const i=instr||diInstr(null,null);
   const blocked=diBlockedPatterns(bundle);
   const blockedSet=diBlockedSet(blocked);
+  const deficits=x.deficits||diDeficits(plan.ath,bundle.date);
+  const diffs=x.differentiators||diDifferentiators(plan.ath,bundle,deficits,bundle.date);
+  const restrictions=diRestrictions(bundle,i);
+  const plyo=diPlyoCeiling(bundle);
+  const tierCaps=diTierCaps(bundle.tier&&bundle.tier.gecerli);
   return{
     tarih:bundle.date,
     sporcu:bundle.athlete,
+    /* THE FIRST THING IN THE REQUEST, BECAUSE IT IS THE FIRST THING THE ANSWER HAS TO
+       DO. Everything below is context this athlete shares with the other fourteen;
+       this is what they do not. Each line carries an id, and the schema asks every
+       exercise to name the ids it answers — so "did the session use this?" is a
+       question with a yes-or-no answer rather than an impression. */
+    ayirt_ediciler:diffs.map(d=>({id:d.id,tur:d.kind,aciklama:d.text})),
+    /* Rule 28's tier system: the structural tier the battery sets by weakest link,
+       and the temporary drop a multi-day trend triggers. The effective tier is the
+       one the session is held to; the structural one does not move with it. */
+    kademe:bundle.tier,
+    kademe_tavani:tierCaps?{
+      gecerli_kademe:bundle.tier.gecerli,
+      maks_set:tierCaps.max_sets,maks_ana_faz_egzersiz:tierCaps.max_main,
+      pliometrik_not:tierCaps.plyo_note,
+      not:'Bu tavanlar koda bağlıdır ve aşılırsa program reddedilir.'}:null,
+    /* Rule 27, read for this athlete's age band (or, for a senior, this season half).
+       A session over the ceiling is rejected; the band's lower bound is here so the
+       answer can aim inside it rather than at its edge. */
+    pliometrik_temas_siniri:plyo?{...plyo,
+      not:'Toplam zemin teması (set × tekrar, yalnızca Jump / Plyo paternindeki satırlar) bu üst sınırı aşamaz.'}:null,
     hazir_olus:bundle.readiness,
     wellness:bundle.wellness,
     ic_yuk:bundle.load,
@@ -31145,7 +31640,7 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
       not:'Bu yüzde yanıtından SONRA kod tarafından uygulanacak — sen normal günün programını yaz.'},
     /* Read from the battery by code, so the answer cannot pick the two findings it
        likes out of twenty raw numbers (and cannot miss the one that matters). */
-    tespit_edilen_eksikler:diDeficits(plan.ath,bundle.date),
+    tespit_edilen_eksikler:deficits,
     /* The coach's own words from the test sheet, verbatim: a note reads better whole
        than as a list of matched keywords, and what the table missed is still here. */
     test_gozlemleri:(()=>{
@@ -31161,6 +31656,22 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
        a second time. */
     yasak_paternler:blocked,
     kullanilabilir_paternler:IV_PATTERNS.filter(p=>!blockedSet.has(p)),
+    /* The explicit avoid-list. Separate from the pattern block because it is not a
+       pattern: it is what the coach wrote on the injury record and what they ruled
+       out this morning, held against exercise NAMES. An exercise matching one of
+       these is rejected by code — readiness, tier and the model's reasoning have no
+       say in it. */
+    sert_kisitlar:restrictions.length?restrictions.map(r=>({
+      kaynak:r.kaynak,bolge:r.bolge,rtp_asamasi:r.rtp,metin:r.metin,
+      eslesen_terimler:r.terimler})):null,
+    /* What this athlete was given on the last few days this module wrote for them.
+       Here for one reason: so the answer can avoid handing them the same session
+       again. Their own history — not anybody else's. */
+    gecmis_programlar:(x.recent&&x.recent.length)?x.recent:null,
+    /* WHAT COACHOS DOES NOT HOLD. Listed so the answer does not fill the gap from
+       general literature and call it this athlete's data (absolute rule 8). A field
+       named here is a field to say "veri yok" about, not one to reason around. */
+    eksik_veriler:diMissingData(bundle,plan.ath),
     /* The families the variety rule is written against: Squat and Lunge are two
        patterns and one family, which is the case the rule exists for. */
     hareket_aileleri:IV_PATTERNS.map(p=>{const f=diFamilyOf(p);
@@ -31173,8 +31684,17 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
       mutlaka_olsun:i.must,
       kacinilacak:i.avoid,
       kisitlar:i.constraints.map(id=>{const c=diConRow(id);
+        const raw=(i.constraintValues||{})[id]||null;
+        const v=c.deger?diConValue(c.deger.kind,raw):null;
         return{kisit:L(c.label[0],c.label[1]),nedir:L(c.what[0],c.what[1]),
-          programlama_davranisi:L(c.ai[0],c.ai[1])};}),
+          programlama_davranisi:L(c.ai[0],c.ai[1]),
+          /* A bounded constraint says its bound. Where the coach filled the box AND
+             the unit is unambiguous, it is also a hard check — the answer is told so
+             here, because a limit that will reject the session is a limit worth
+             writing to rather than discovering afterwards. */
+          sinir:raw,
+          sinir_kodla_denetleniyor:!!(v&&v.readable),
+          sinir_birimi:v&&v.readable?v.unit:null};}),
       kisit_detayi:i.constraintNote||null,
       seans_suresi_dk:i.duration,
       /* The ceiling binds the MAIN phase only: preparation and complementary work is
@@ -31201,6 +31721,35 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge){
     agri_pattern_kurallari:Object.keys(PAIN_RULES).map(k=>({bolge:ctLabel(k),
       yukleyen_paternler:PAIN_RULES[k].hit,yonlendirilen_paternler:PAIN_RULES[k].prefer})),
   };
+}
+
+/* ---- What the app does not know about this athlete ------------------------
+   Two kinds of gap, and they are not the same. Some fields exist and are empty for
+   this athlete (no test on record, no check-in this morning) — those are theirs to
+   fill. Others CoachOS has no field for at all: there is no sex on an athlete, so
+   rules 10 and 11 cannot be applied to anybody, and no amount of prompting makes
+   that data appear. Both are stated, because the failure mode they share is the
+   model quietly supplying the missing half from general literature and presenting
+   it as this athlete's. */
+function diMissingData(bundle,ath){
+  const out=[];
+  const add=(alan,neden)=>out.push({alan,neden});
+  // Fields the app has no home for. Named as such so nobody looks for them.
+  add('cinsiyet','Uygulamada cinsiyet alanı yok — Kural 10 ve Kural 11 bu sporcu için uygulanamaz, bu konularda karar verme.');
+  add('biyolojik olgunlaşma / büyüme atağı','Uygulama bu göstergeleri toplamıyor — Kural 8 yalnızca kronolojik yaş ve antrenman yaşı üzerinden okunabilir.');
+  add('dış yük (GPS / PlayerLoad)','Uygulama dış yük toplamıyor — Kural 14 yalnızca iç yük üzerinden okunabilir.');
+  add('seyahat','Uygulama seyahat kaydı tutmuyor.');
+  // Fields that exist and happen to be empty for this athlete.
+  const a=bundle.athlete||{};
+  if(a.age==null)add('yaş','Sporcunun doğum tarihi girilmemiş — yaşa bağlı hiçbir bant uygulanamaz.');
+  if(a.training_age_years==null)add('antrenman yaşı','Sporcu kartında girilmemiş.');
+  if(!a.position)add('pozisyon','Sporcu kartında girilmemiş.');
+  if(bundle.tier&&bundle.tier.yapisal==null)
+    add('yapısal kademe','Tarama bataryasında ölçüm yok — kademe kararı atlandı, varsayılmadı.');
+  if(bundle.readiness&&bundle.readiness.score==null)
+    add('hazır oluş','Check-in yok ve sRPE trendinden de tahmin edilemedi.');
+  if(!((ath&&ath.tests)||[]).length)add('test bataryası','Sporcunun hiç test kaydı yok.');
+  return out;
 }
 
 /* Extraction and validation. Rebuilt field by field rather than handed back as it
@@ -31239,6 +31788,16 @@ function diParseProgram(text){
           equipment:t(e.ekipman),
           pattern:(()=>{const p=t(e.hareket_paterni);return p&&IV_PATTERNS.includes(p)?p:(p||'');})(),
           why:t(e.gerekce),
+          /* Which of the injected differentiators this exercise answers, by id. Kept
+             as ids rather than as prose precisely so it can be checked: a sentence
+             about "individual needs" reads like an answer and proves nothing, an id
+             either matches a line the code computed or it does not. Ids the request
+             never carried are dropped here rather than trusted. */
+          basis:(()=>{
+            const raw=Array.isArray(e.dayanak)?e.dayanak:(e.dayanak?[e.dayanak]:[]);
+            return[...new Set(raw.map(v=>String(v==null?'':v).trim().toUpperCase())
+              .filter(v=>/^D\d+$/.test(v)))];
+          })(),
         })),
     }))
     .filter(bl=>bl.exercises.length);
@@ -31289,70 +31848,122 @@ function diProgramRows(program,pct){
   }));
   return out;
 }
-/* What the app can check about a written programme without asking anybody: the
-   coach's ceiling (on the phase it actually binds), the gym's kit, the patterns a
-   painful region has taken off the table, the coach's own "keep out" list, and the
-   findings the battery produced. Each finding names what is wrong and why, so the
-   coach can regenerate with it in front of them rather than re-reading the session. */
-function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
-  const out=[];
+/* ---- The deterministic validator -----------------------------------------
+   AI proposes, code decides. This is the only place that decides, it runs on the
+   normalised schema rather than on whatever a provider returned, and it never asks a
+   model whether a limit was respected — every answer below is arithmetic over the
+   session and the athlete's own record.
+
+   TWO TIERS, AND THEY DO NOT LEAK INTO EACH OTHER.
+
+   A HARD VIOLATION BLOCKS THE SAVE. It is reserved for the things a coach would call
+   a mistake rather than a preference: an exercise the athlete is explicitly restricted
+   from, a pattern today's pain has closed, kit the gym does not own, a ceiling the
+   coach wrote down, and the two numeric limits the knowledge base states outright
+   (rule 27's contacts, rule 28's tier caps). There is no override. A session that
+   trips one of these is not written, and the way past it is to fix the session —
+   which is a regenerate, or the coach writing it by hand on the athlete's own
+   calendar, where every other programme in this app is written.
+
+   A SOFT WARNING NEVER BLOCKS ANYTHING. It is a prompt to look: the session repeats
+   what this athlete did last week, or reads like the one next to it, or never cites
+   what made this athlete different. These are judgements about quality, and a
+   judgement about quality is the coach's. They are never escalated to hard — a
+   warning that can fail a save is a hard rule wearing a disguise.
+
+   Every finding names the knowledge-base rule it comes from, so a coach who disagrees
+   knows which rule to go and edit. */
+function validateProgram(program,ctx){
+  const c=ctx||{};
+  const bundle=c.bundle||{};
+  const i=c.instr||diInstr(null,null);
+  const setup=c.setup||{};
+  const libMap=c.libMap||{};
+  const deficits=c.deficits||null;
+  const diffs=c.differentiators||[];
+  const hard=[],soft=[];
+  const H=(rule,tr,en)=>hard.push({rule,text:L(tr,en)});
+  const S=(rule,tr,en)=>soft.push({rule,text:L(tr,en)});
+  /* Checked before anything is read off the programme: a session addressed to
+     somebody else is not this athlete's session, whatever it contains. */
+  if(c.athleteId&&c.expectedAthleteId&&c.athleteId!==c.expectedAthleteId)
+    H(null,`Program başka bir sporcuya ait (${c.athleteId}).`,
+      `This programme belongs to a different athlete (${c.athleteId}).`);
+  if(!program||!((program.blocks)||[]).length){
+    H(null,'Program boş — yazılacak egzersiz yok.','The programme is empty — there is nothing to write.');
+    return{status:'fail',hardViolations:hard,softWarnings:soft,checked_at:new Date().toISOString()};
+  }
   const rows=diProgramRows(program,0);
-  const i=instr||diInstr(null,null);
   const patOf=r=>r.pattern||((libMap&&libMap[String(r.name||'').toLowerCase()])
     ?exPatternOf(libMap[String(r.name||'').toLowerCase()]):'');
-  /* The ceiling is a MAIN-phase rule. Rows from a block with no phase on it are counted
-     as main work: an answer that skipped the field does not get a free pass. */
   const main=rows.filter(r=>(r.phase||'ana')==='ana');
-  if(i.maxExercises&&main.length>i.maxExercises)
-    out.push(L(`Ana fazda ${main.length} egzersiz var, sınır ${i.maxExercises}. (Hazırlık ve tamamlayıcı fazlar bu sayıya dahil değil.)`,
-      `The main phase has ${main.length} exercises against a ceiling of ${i.maxExercises}. (Preparation and complementary work does not count.)`));
-  /* Two exercises of one movement family in the MAIN phase: the session spent two of
-     its slots on the same quality. Checked on families rather than on patterns
-     because that is the case a coach actually objects to — Goblet Squat beside Goblet
-     Split Squat is two patterns, one family, and twice the same knee-dominant work. */
-  const fams=new Map();
-  main.forEach(r=>{
-    const f=diFamilyOf(patOf(r));
-    if(!f)return;
-    fams.set(f,(fams.get(f)||[]).concat(String(r.name||'').trim()));
+
+  /* ---- HARD 1 (rule 17, 22): the explicit avoid-list ---------------------
+     What the coach wrote on the injury record, and what they ruled out this morning.
+     Held against exercise names. Nothing downstream may soften this — the spec calls
+     it out by name and it is the one check that has to hold when everything else
+     about the day argues for training. */
+  const restrictions=diRestrictions(bundle,i);
+  restrictions.forEach(r=>{
+    rows.forEach(row=>{
+      const hits=diRestrictionHits(row.name,r);
+      if(!hits.length)return;
+      H(r.kaynak==='sakatlık kaydı'?17:22,
+        `"${row.name}" ${r.kaynak==='sakatlık kaydı'?'sakatlık kısıtlamasına':'antrenörün kaçınılacak listesine'} takılıyor ("${r.metin}" — eşleşen: ${hits.join(', ')}). Programdan çıkmalı.`,
+        `"${row.name}" hits ${r.kaynak==='sakatlık kaydı'?'an injury restriction':"the coach's keep-out list"} ("${r.metin}" — matched: ${hits.join(', ')}). It cannot be in the session.`);
+    });
   });
-  fams.forEach((names,f)=>{
-    if(names.length<2)return;
-    out.push(L(`Ana fazda ${names.length} ${diFamilyLabel(f)} egzersizi var (${names.join(', ')}) — aynı iş iki kez yapılmış. Hareket ailesi çeşitlendirilmeli.`,
-      `The main phase carries ${names.length} ${diFamilyLabel(f)} exercises (${names.join(', ')}) — the same work twice. The movement families should be varied.`));
-  });
-  /* A pattern a painful region rules out is an error, not a note. */
+
+  /* ---- HARD 2 (rule 17): patterns today's pain has closed ---------------- */
   const blocked=diBlockedPatterns(bundle);
   const blockedSet=diBlockedSet(blocked);
   if(blockedSet.size)rows.forEach(r=>{
     const pat=patOf(r);
-    if(pat&&blockedSet.has(pat)){
-      const src=blocked.find(b=>(b.yasak_paternler||[]).includes(pat));
-      out.push(L(`"${r.name}" ${pat} paterninde ve ${src?src.bolge:''} ağrısı (${src?src.siddet_0_10:'?'}/10) bu paterni bugün kapatıyor — programdan çıkmalı.`,
-        `"${r.name}" is a ${pat} movement, and ${src?src.bolge:''} pain at ${src?src.siddet_0_10:'?'}/10 rules that pattern out today — it should not be in the session.`));
-    }
+    if(!pat||!blockedSet.has(pat))return;
+    const src=blocked.find(b=>(b.yasak_paternler||[]).includes(pat));
+    const why=src?(src.kalici
+      ?L(`${src.bolge} için koçun kalıcı kısıt etiketi`,`a standing coach restriction on ${src.bolge}`)
+      :L(`${src.bolge} ağrısı (${src.siddet_0_10}/10)`,`${src.bolge} pain at ${src.siddet_0_10}/10`)):'';
+    H(17,`"${r.name}" ${pat} paterninde ve ${why} bu paterni bugün kapatıyor — programdan çıkmalı.`,
+      `"${r.name}" is a ${pat} movement, and ${why} rules that pattern out today — it cannot be in the session.`);
   });
+
+  /* ---- HARD 3-5 (rule 20): the gym's kit -------------------------------- */
   const eq=eqAvailable(setup);
   if(eq.length){
     const ids=new Set(eq.map(e=>e.id));
-    /* The heaviest of each item the gym actually owns. Only consulted for kit where the
-       prescribed load IS the implement — a dumbbell or a medicine ball. A barbell, trap
-       bar, cable or machine is loaded with plates or a stack this inventory does not
-       count, so its own weight says nothing about the ceiling and checking it would
-       report a 100 kg squat in a gym with a 20 kg bar. */
+    /* The heaviest of each item the gym actually owns. Only consulted for kit where
+       the prescribed load IS the implement — a dumbbell or a medicine ball. A barbell,
+       trap bar, cable or machine is loaded with plates or a stack this inventory does
+       not count, so its own weight says nothing about the ceiling. */
     const EQ_SELF_LOADED=['dumbbell','medball'];
-    const maxKg={};
-    eq.forEach(e=>{if(e.kg!=null&&(maxKg[e.id]==null||e.kg>maxKg[e.id]))maxKg[e.id]=e.kg;});
+    const maxKg={},qty={};
+    eq.forEach(e=>{
+      if(e.kg!=null&&(maxKg[e.id]==null||e.kg>maxKg[e.id]))maxKg[e.id]=e.kg;
+      /* One unknown count makes the whole item uncountable: a shelf that says "some
+         dumbbells" cannot be short of anything a check could name. */
+      if(qty[e.id]===false)return;
+      qty[e.id]=e.qty==null?false:(qty[e.id]||0)+e.qty;
+    });
     rows.forEach(r=>{
       const need=eqNeedOf(libMap?libMap[String(r.name||'').toLowerCase()]:null,`${r.name} ${r.equipment||''}`);
       if(need&&!ids.has(need)){
-        out.push(L(`"${r.name}" ${L(diEqLabel(need)[0],diEqLabel(need)[1])} gerektiriyor — salon envanterinde yok.`,
-          `"${r.name}" needs ${L(diEqLabel(need)[0],diEqLabel(need)[1])}, which is not in the gym inventory.`));
+        H(20,`"${r.name}" ${L(diEqLabel(need)[0],diEqLabel(need)[1])} gerektiriyor — salon envanterinde yok.`,
+          `"${r.name}" needs ${L(diEqLabel(need)[0],diEqLabel(need)[1])}, which is not in the gym inventory.`);
         return;
       }
-      if(!need||!EQ_SELF_LOADED.includes(need)||maxKg[need]==null)return;
-      /* A load line reads "24 kg", "2×22.5 kg", "%75 1RM"; only an absolute kilo figure
-         can be compared with a rack, so a percentage or an RPE is left alone. */
+      if(!need)return;
+      // Quantity, with the shortage said out loud (rule 20's own example, read for one athlete).
+      const have=qty[need];
+      if(have!==false&&have!=null){
+        const want=diRowUnits(r);
+        if(want>have)
+          H(20,`"${r.name}" ${want} adet ${L(diEqLabel(need)[0],diEqLabel(need)[1])} gerektiriyor; envanterde ${have} var — ${want-have} eksik.`,
+            `"${r.name}" needs ${want} × ${L(diEqLabel(need)[0],diEqLabel(need)[1])} and the inventory holds ${have} — ${want-have} short.`);
+      }
+      if(!EQ_SELF_LOADED.includes(need)||maxKg[need]==null)return;
+      /* A load line reads "24 kg", "2×22.5 kg", "%75 1RM"; only an absolute kilo
+         figure can be compared with a rack, so a percentage or an RPE is left alone. */
       const txt=String(r.load||'');
       if(/%|1rm|rpe|rir/i.test(txt))return;
       const asked=(txt.match(/(\d+(?:[.,]\d+)?)\s*kg/gi)||[])
@@ -31360,76 +31971,231 @@ function diProgramChecks(program,bundle,instr,setup,libMap,deficits){
         .filter(n=>isFinite(n));
       const top=asked.length?Math.max(...asked):null;
       if(top!=null&&top>maxKg[need])
-        out.push(L(`"${r.name}" ${top} kg istiyor — envanterdeki en ağır ${L(diEqLabel(need)[0],diEqLabel(need)[1])} ${maxKg[need]} kg.`,
-          `"${r.name}" asks for ${top} kg — the heaviest ${L(diEqLabel(need)[0],diEqLabel(need)[1])} in the inventory is ${maxKg[need]} kg.`));
+        H(20,`"${r.name}" ${top} kg istiyor — envanterdeki en ağır ${L(diEqLabel(need)[0],diEqLabel(need)[1])} ${maxKg[need]} kg.`,
+          `"${r.name}" asks for ${top} kg — the heaviest ${L(diEqLabel(need)[0],diEqLabel(need)[1])} in the inventory is ${maxKg[need]} kg.`);
     });
   }
+
+  /* ---- HARD 6-7 (rule 21, 22): what the coach wrote down ----------------
+     Only where the coach actually filled the field in. The module derives a ceiling
+     from the session length when they did not, and a derived number is a hint, not an
+     instruction — it never fails a session. */
+  /* `diInstr` marks which of the two numbers the coach actually typed; one it derived
+     from the session length is a hint and never fails anything. */
+  const setByCoach=k=>!!i[k+'Set'];
+  if(i.maxExercises&&setByCoach('maxExercises')&&main.length>i.maxExercises)
+    H(22,`Ana fazda ${main.length} egzersiz var, antrenörün sınırı ${i.maxExercises}. (Hazırlık ve tamamlayıcı fazlar bu sayıya dahil değil.)`,
+      `The main phase has ${main.length} exercises against the coach's ceiling of ${i.maxExercises}. (Preparation and complementary work does not count.)`);
+  else if(i.maxExercises&&main.length>i.maxExercises)
+    S(22,`Ana fazda ${main.length} egzersiz var; seans süresinden türetilen tavan ${i.maxExercises}. (Antrenör bir sayı girmedi.)`,
+      `The main phase has ${main.length} exercises against a ceiling of ${i.maxExercises} derived from the session length. (The coach set no number.)`);
+  const est=rows.length*DI_MIN_PER_EX;
+  if(i.duration&&setByCoach('duration')&&est>i.duration)
+    H(21,`Program ${rows.length} egzersiz taşıyor — yaklaşık ${est} dk, antrenörün verdiği süre ${i.duration} dk. (Egzersiz başına ~${DI_MIN_PER_EX} dk, bütün fazlar dahil.)`,
+      `The session carries ${rows.length} exercises — roughly ${est} min against the coach's ${i.duration} min. (About ${DI_MIN_PER_EX} min per exercise, all phases included.)`);
+  else if(i.duration&&est>i.duration)
+    S(21,`Program yaklaşık ${est} dk sürer; kaynak seansın süresi ${i.duration} dk. (Antrenör bir süre girmedi.)`,
+      `The session runs to roughly ${est} min against the source session's ${i.duration} min. (The coach set no length.)`);
+
+  /* ---- HARD 8 (rule 28): the tier the session is held to ----------------- */
+  const tier=bundle.tier||{};
+  const caps=diTierCaps(tier.gecerli);
+  if(caps){
+    const worst=rows.reduce((m,r)=>{const n=recNum(r.sets);return n!=null&&n>m?n:m;},0);
+    if(worst>caps.max_sets)
+      H(28,`Kademe ${tier.gecerli}${tier.gecici_dusus?' (geçici düşüş uygulandı)':''} en fazla ${caps.max_sets} set taşır; programda ${worst} setlik bir satır var.`,
+        `Tier ${tier.gecerli}${tier.gecici_dusus?' (temporary downgrade applied)':''} carries at most ${caps.max_sets} sets; the session has a row of ${worst}.`);
+    if(main.length>caps.max_main)
+      H(28,`Kademe ${tier.gecerli} ana fazda en fazla ${caps.max_main} egzersiz taşır; programda ${main.length} var.`,
+        `Tier ${tier.gecerli} carries at most ${caps.max_main} main-phase exercises; the session has ${main.length}.`);
+  }
+
+  /* ---- HARD 9 (rule 27): ground contacts -------------------------------- */
+  const plyo=diPlyoCeiling(bundle);
+  const contacts=rows.reduce((t,r)=>{const n=diRowContacts(r,patOf);return n==null?t:t+n;},0);
+  if(plyo&&contacts>plyo.max)
+    H(27,`Pliometrik temas sayısı ${contacts}; ${plyo.grup} için oturum başına üst sınır ${plyo.max}.`,
+      `The session asks for ${contacts} ground contacts; the ceiling for ${plyo.grup} is ${plyo.max} per session.`);
+
+  /* ---- HARD 10 (rule 22): a constraint the coach put a number on --------- */
+  (i.constraints||[]).forEach(id=>{
+    const row=diConRow(id);
+    if(!row||!row.deger)return;
+    const v=diConValue(row.deger.kind,(i.constraintValues||{})[id]);
+    if(!v||!v.readable||v.value==null){
+      if(v&&!v.readable)
+        S(22,`"${L(row.label[0],row.label[1])}" için girilen sınır ("${v.raw}") birimi okunamadığı için kodla denetlenemedi — modele metin olarak gitti.`,
+          `The limit typed for "${L(row.label[0],row.label[1])}" ("${v.raw}") carries no readable unit, so it could not be checked in code — it went to the model as prose.`);
+      return;
+    }
+    const lbl=L(row.label[0],row.label[1]);
+    if(v.unit==='sets'){
+      const total=rows.reduce((t,r)=>{const n=recNum(r.sets);return n==null?t:t+n;},0);
+      if(total>v.value)H(22,`${lbl}: toplam ${total} set, sınır ${v.value}.`,`${lbl}: ${total} sets in total against a limit of ${v.value}.`);
+    }else if(v.unit==='min'){
+      if(est>v.value)H(22,`${lbl}: program yaklaşık ${est} dk, sınır ${v.value} dk.`,`${lbl}: the session runs to roughly ${est} min against a limit of ${v.value}.`);
+    }else if(v.unit==='contacts'){
+      if(contacts>v.value)H(22,`${lbl}: ${contacts} temas, sınır ${v.value}.`,`${lbl}: ${contacts} contacts against a limit of ${v.value}.`);
+    }else{
+      rows.forEach(r=>{
+        const got=diReadLoad(r.load,v.unit);
+        if(got!=null&&got>v.value)
+          H(22,`${lbl}: "${r.name}" ${diLoadLabel(v.unit,got)} istiyor, sınır ${diLoadLabel(v.unit,v.value)}.`,
+            `${lbl}: "${r.name}" asks for ${diLoadLabel(v.unit,got)} against a limit of ${diLoadLabel(v.unit,v.value)}.`);
+      });
+    }
+  });
+
+  /* ================= SOFT — none of these stops a save ==================== */
+
+  /* Free text is always allowed (rule 29, and the spec says so twice). Recorded so
+     the coach can see what was written outside their library and file it if they
+     want to; never counted against the session. */
+  const custom=rows.filter(r=>!libMap[String(r.name||'').toLowerCase()]);
+  if(custom.length)
+    S(29,`${custom.length} egzersiz kütüphane dışından yazıldı (${custom.map(r=>r.name).join(', ')}) — kabul edildi, istersen kütüphaneye ekle.`,
+      `${custom.length} exercise${custom.length>1?'s were':' was'} written outside the library (${custom.map(r=>r.name).join(', ')}) — accepted; file them if you want them.`);
+
+  /* Did the session actually use what made this athlete different? */
+  if(diffs.length){
+    const cited=new Set(rows.flatMap(r=>r.basis||[]));
+    const known=new Set(diffs.map(d=>d.id));
+    const used=[...cited].filter(x=>known.has(x));
+    if(!used.length)
+      S(null,`Bu sporcunun ${diffs.length} ayırt edici özelliği hesaplandı ama hiçbir egzersizin gerekçesi bunlardan birine dayanmıyor — program bu sporcuya özel yazılmamış olabilir.`,
+        `${diffs.length} differentiators were computed for this athlete and no exercise's rationale rests on any of them — the session may not be about this athlete at all.`);
+    else if(used.length<Math.min(2,diffs.length))
+      S(null,`Hesaplanan ${diffs.length} ayırt ediciden yalnızca ${used.length} tanesi programda karşılık buldu.`,
+        `Only ${used.length} of the ${diffs.length} computed differentiators is answered anywhere in the session.`);
+  }
+  const noWhy=rows.filter(r=>!String(r.why||'').trim());
+  if(noWhy.length)
+    S(null,`${noWhy.length} egzersizde gerekçe yok (${noWhy.map(r=>r.name).join(', ')}).`,
+      `${noWhy.length} exercise${noWhy.length>1?'s carry':' carries'} no rationale (${noWhy.map(r=>r.name).join(', ')}).`);
+
+  /* Repetition over time — the athlete against their own recent sessions. */
+  const names=diProgramNames(program);
+  (c.recent||[]).forEach(p=>{
+    const sim=diJaccard(names,p.egzersizler);
+    if(sim>=DI_SIM_SELF)
+      S(23,`${p.tarih} tarihli programla %${Math.round(sim*100)} aynı egzersizler — bu sporcu aynı seansı tekrar alıyor.`,
+        `${Math.round(sim*100)}% of the exercises are the same as the session on ${p.tarih} — this athlete is getting the same work again.`);
+  });
+  /* Sameness across athletes, but only where the athletes themselves read differently.
+     Two players with the same findings are allowed the same session (rule 24); this
+     fires where the inputs differ and the output did not. */
+  const myDiff=new Set(diffs.map(d=>d.text));
+  (c.peers||[]).forEach(p=>{
+    const sim=diJaccard(names,p.names);
+    if(sim<DI_SIM_PEER)return;
+    const theirs=new Set(p.diff||[]);
+    const same=myDiff.size===theirs.size&&[...myDiff].every(x=>theirs.has(x));
+    if(same)return;   // genuinely alike athletes — not a finding
+    S(26,`Ayırt edicileri farklı olan başka bir sporcuyla %${Math.round(sim*100)} aynı program yazılmış.`,
+      `${Math.round(sim*100)}% of this session matches another athlete whose differentiators are different.`);
+  });
+
+  /* Today's stated priority, and whether anything in the session serves it. */
+  (i.priorities||[]).forEach(id=>{
+    const lbl=diPrioLabel(id);
+    const words=diExName(lbl).split(' ').filter(w=>w.length>=DI_TERM_MIN);
+    if(!words.length)return;
+    const hit=rows.some(r=>{const hay=diExName(`${r.name} ${r.why||''}`);return words.some(w=>hay.includes(w));});
+    if(!hit)S(22,`Günün önceliği "${lbl}" programda adıyla karşılık bulmuyor — gerekçeleri kontrol et.`,
+      `Today's priority "${lbl}" is not named anywhere in the session — check the rationales.`);
+  });
+
+  /* Two exercises of one movement family in the MAIN phase. A quality point, not a
+     safety one: the coach decides whether a session that hits the same family twice
+     is wrong for this athlete today. */
+  const fams=new Map();
+  main.forEach(r=>{
+    const f=diFamilyOf(patOf(r));
+    if(!f)return;
+    fams.set(f,(fams.get(f)||[]).concat(String(r.name||'').trim()));
+  });
+  fams.forEach((nm,f)=>{
+    if(nm.length<2)return;
+    S(26,`Ana fazda ${nm.length} ${diFamilyLabel(f)} egzersizi var (${nm.join(', ')}) — aynı iş iki kez yapılmış.`,
+      `The main phase carries ${nm.length} ${diFamilyLabel(f)} exercises (${nm.join(', ')}) — the same work twice.`);
+  });
+
   /* Pain below the blocking threshold is still worth a look where the session loads it. */
-  ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(p=>{
-    if(p.severity_0_10!=null&&p.severity_0_10>=DI_PAIN_BLOCK)return;   // already reported above
+  ((bundle.pain&&bundle.pain.regions)||[]).forEach(p=>{
+    if(p.standing)return;                                        // already hard above
+    if(p.severity_0_10!=null&&p.severity_0_10>=DI_PAIN_BLOCK)return;   // already hard above
     rows.forEach(r=>{
       const pat=patOf(r);
       if(pat&&(p.loads_patterns||[]).includes(pat))
-        out.push(L(`${p.label} bildirilmiş ve "${r.name}" bu bölgeyi yükleyen ${pat} paterninde.`,
-          `${p.label} was reported and "${r.name}" is a ${pat} movement, which loads it.`));
+        S(17,`${p.label} bildirilmiş ve "${r.name}" bu bölgeyi yükleyen ${pat} paterninde.`,
+          `${p.label} was reported and "${r.name}" is a ${pat} movement, which loads it.`);
     });
   });
-  (i.avoid||[]).forEach(av=>{
-    const needle=diExName(av);
-    if(!needle)return;
-    rows.forEach(r=>{
-      const n=diExName(r.name);
-      if(n&&(n.includes(needle)||needle.includes(n)))
-        out.push(L(`Antrenör "${av}" istemiyordu ama programda "${r.name}" var.`,
-          `The coach ruled out "${av}", and the programme carries "${r.name}".`));
-    });
-  });
-  /* The other half of the brief, which nothing used to check. "Must be in" is the one
-     instruction a coach can verify at a glance, so a session that quietly dropped it
-     was the module's most visible way of looking like it had ignored them. A dropped
-     item is only acceptable when the answer SAID so in flagged_conflicts — a declared
-     conflict is reported as a conflict, not as a silent omission. */
-  const declared=((program&&program.conflicts)||[]).map(c=>diExName(
-    `${c.talimat||''} ${c.alt||''}`)).filter(Boolean);
+
+  /* The other half of the brief. "Must be in" cannot be enforced — a rule may
+     legitimately have stopped it — so it is reported, with the answer's own account
+     of why beside it where there is one. */
+  const declared=((program.conflicts)||[]).map(x=>diExName(`${x.talimat||''} ${x.alt||''}`)).filter(Boolean);
   (i.must||[]).forEach(mu=>{
     const needle=diExName(mu);
     if(!needle)return;
-    const inSession=rows.some(r=>{
-      const n=diExName(r.name);
-      return n&&(n.includes(needle)||needle.includes(n));
-    });
+    const inSession=rows.some(r=>{const n=diExName(r.name);return n&&(n.includes(needle)||needle.includes(n));});
     if(inSession)return;
     const flagged=declared.some(d=>d.includes(needle)||needle.includes(d));
-    out.push(flagged
-      ?L(`Antrenör "${mu}" istemişti; program bunu bir kurala aykırı bulup çıkarmış ve gerekçesini çatışma olarak bildirmiş — gerekçeyi oku.`,
-         `The coach asked for "${mu}"; the session ruled it out against a rule and declared the reason as a conflict — read it.`)
-      :L(`Antrenör "${mu}" istemişti ama programda yok ve bir çatışma da bildirilmemiş.`,
-         `The coach asked for "${mu}", and it is neither in the session nor declared as a conflict.`));
+    S(22,flagged
+      ?`Antrenör "${mu}" istemişti; program bunu bir kurala aykırı bulup çıkarmış ve gerekçesini çatışma olarak bildirmiş — gerekçeyi oku.`
+      :`Antrenör "${mu}" istemişti ama programda yok ve bir çatışma da bildirilmemiş.`,
+      flagged
+      ?`The coach asked for "${mu}"; the session ruled it out against a rule and declared the reason as a conflict — read it.`
+      :`The coach asked for "${mu}", and it is neither in the session nor declared as a conflict.`);
   });
-  /* The session length, which binds every phase rather than the main one. Read through
-     the same minutes-per-exercise rule the brief uses in the other direction (a 60 min
-     slot is offered a ceiling of 60/6 exercises), so the number a coach is held to here
-     is the number the form derived theirs from. */
-  if(i.duration){
-    const est=rows.length*DI_MIN_PER_EX;
-    if(est>i.duration)
-      out.push(L(`Program ${rows.length} egzersiz taşıyor — yaklaşık ${est} dk, antrenörün verdiği süre ${i.duration} dk. (Egzersiz başına ~${DI_MIN_PER_EX} dk, bütün fazlar dahil.)`,
-        `The session carries ${rows.length} exercises — roughly ${est} min against the coach's ${i.duration} min. (About ${DI_MIN_PER_EX} min per exercise, all phases included.)`));
-  }
-  /* A high-priority finding from the battery with nothing in the session that names it.
-     Matched on the words of the finding, which is as far as a string can honestly go —
-     it is a prompt to look, not a verdict. */
+
+  /* A high-priority finding from the battery with nothing in the session that names
+     it. Matched on the words of the finding, which is as far as a string can honestly
+     go — it is a prompt to look, not a verdict. */
   ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').forEach(f=>{
     const words=(f.kw||[]).map(diExName).filter(Boolean);
     const hit=!words.length||rows.some(r=>{
       const hay=diExName(`${r.name} ${r.why||''}`);
       return words.some(w=>hay.includes(w));
     });
-    if(!hit)out.push(L(`Yüksek öncelikli bulgu programda karşılanmamış görünüyor: ${f.bolge} — ${f.bulgu}.`,
-      `A high-priority finding looks unanswered in the session: ${f.bolge} — ${f.bulgu}.`));
+    if(!hit)S(25,`Yüksek öncelikli bulgu programda karşılanmamış görünüyor: ${f.bolge} — ${f.bulgu}.`,
+      `A high-priority finding looks unanswered in the session: ${f.bolge} — ${f.bulgu}.`);
   });
-  return [...new Set(out)];
+
+  /* Rule 17's other half: a reading the system must not decide on by itself. */
+  if(bundle.readiness&&bundle.readiness.score!=null&&bundle.readiness.score<DI_RD_REVIEW)
+    S(28,`Hazır oluş ${bundle.readiness.score}/5 — ${DI_RD_REVIEW} altında. Otomatik azaltma uygulandı ama son karar antrenörün: bu programı yazmadan önce gözden geçir.`,
+      `Readiness is ${bundle.readiness.score}/5, under ${DI_RD_REVIEW}. The automatic reduction was applied, but the call is the coach's — review this before writing it.`);
+
+  const uniq=list=>{const seen=new Set();return list.filter(v=>{const k=v.rule+'|'+v.text;
+    if(seen.has(k))return false;seen.add(k);return true;});};
+  const H2=uniq(hard),S2=uniq(soft);
+  return{status:H2.length?'fail':'pass',hardViolations:H2,softWarnings:S2,
+    checked_at:new Date().toISOString()};
 }
+/* Reading a prescribed load line for one unit. Returns null where the line says
+   nothing about that unit — "RPE 7" carries no kilos and must not be read as seven of
+   them. */
+function diReadLoad(txt,unit){
+  const s=String(txt||'');
+  if(!s.trim())return null;
+  const pick=re=>{const m=s.match(re);return m?Number(String(m[1]).replace(',','.')):null;};
+  if(unit==='rpe')return pick(/rpe\s*(\d+(?:[.,]\d+)?)/i);
+  if(unit==='rir')return pick(/rir\s*(\d+(?:[.,]\d+)?)/i);
+  if(unit==='pct1rm'){
+    const a=pick(/%\s*(\d+(?:[.,]\d+)?)/);
+    return a!=null?a:pick(/(\d+(?:[.,]\d+)?)\s*%/);
+  }
+  if(unit==='kg'){
+    if(/%|1rm|rpe|rir/i.test(s))return null;
+    const all=(s.match(/(\d+(?:[.,]\d+)?)\s*kg/gi)||[])
+      .map(x=>Number(String(x).replace(/\s*kg/i,'').replace(',','.'))).filter(n=>isFinite(n));
+    return all.length?Math.max(...all):null;
+  }
+  return null;
+}
+const diLoadLabel=(unit,v)=>unit==='pct1rm'?`%${v} 1RM`:(unit==='kg'?`${v} kg`:`${String(unit).toUpperCase()} ${v}`);
 
 /* A generated programme, laid onto the plan so the existing write path takes it from
    here unchanged: `planToSession` turns a plan into the athlete's session, and this is
@@ -31595,7 +32361,7 @@ function DiPriorityPicker({value,onChange}){
    means, how a coach says it, and what the model is required to do about it — the last
    line being exactly the sentence that is shipped with the request, so what the coach
    reads and what the model is told are the same sentence. */
-function DiConstraintPicker({value,onChange,note,onNote}){
+function DiConstraintPicker({value,onChange,note,onNote,values,onValue}){
   const[open,setOpen]=useState(false);
   const list=(Array.isArray(value)?value:[]).filter(diConRow);
   const toggle=id=>onChange(list.includes(id)?list.filter(x=>x!==id):[...list,id]);
@@ -31620,9 +32386,20 @@ function DiConstraintPicker({value,onChange,note,onNote}){
         </div>
       </div>)}
     </div>}
+    {/* A CONSTRAINT WITH NO NUMBER IN IT IS NOT A CONSTRAINT CODE CAN HOLD ANYTHING TO.
+        "Load limit" told the model to keep the load down and told the app nothing at
+        all, so rule 22 could only ever be advice. The box beside the chip is where the
+        limit itself goes, and it is optional: leave it empty and the constraint behaves
+        exactly as it did before — prose for the model, nothing for the checks. Fill it
+        and the session is held to it. */}
     {list.length>0&&<div className="di-chips">
       {list.map(id=>{const c=diConRow(id);return<span key={id} className="di-tag con">
         <span>{L(c.label[0],c.label[1])}</span>
+        {c.deger&&<LiveInput className="di-conval" value={(values&&values[id])||''}
+          onChange={v=>onValue&&onValue(id,v)}
+          placeholder={L(c.deger.ph[0],c.deger.ph[1])}
+          title={L('Boş bırakırsan bu kısıt yalnızca modele metin olarak gider; doldurursan koda da bağlar.',
+                   'Leave it empty and this constraint is prose for the model only; fill it in and it binds the checks too.')}/>}
         <button type="button" onClick={()=>toggle(id)} aria-label={L('Kaldır','Remove')}>✕</button></span>;})}
     </div>}
     <LiveInput className="di-connote" value={note||''} onChange={onNote}
@@ -31705,14 +32482,18 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
         L('Bugüne özel bir sınır var mı? Bir kısıtın üstüne gelince ne anlama geldiği açılır.',
           'Any limit that applies today. Hover one to read what it means.'),
         <DiConstraintPicker value={instr.constraints} onChange={v=>set('constraints',v)}
-          note={instr.constraintNote} onNote={v=>set('constraintNote',v)}/>,true)}
+          note={instr.constraintNote} onNote={v=>set('constraintNote',v)}
+          values={instr.constraintValues}
+          onValue={(id,v)=>set('constraintValues',{...(instr.constraintValues||{}),[id]:v})}/>,true)}
       {field(5,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
-        <DiNumberChoice value={instr.duration} onChange={v=>set('duration',v)} choices={DI_DUR_CHOICES}
+        <DiNumberChoice value={instr.duration}
+          onChange={v=>save({...instr,duration:v,durationSet:v!=null})} choices={DI_DUR_CHOICES}
           unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>)}
       {field(6,L('Maks. egzersiz','Exercise ceiling'),
         L('Programda en fazla kaç egzersiz olsun?','How many exercises at most?'),
-        <DiNumberChoice value={instr.maxExercises} onChange={v=>set('maxExercises',v)} choices={DI_EX_CHOICES}
+        <DiNumberChoice value={instr.maxExercises}
+          onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
           unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>)}
       {field(7,L('Ek notlar','Notes'),
         L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
@@ -31789,7 +32570,13 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
             {r.pattern?<i className="di-pat">{r.pattern}</i>:null}
             {r.equipment?<i className="di-eqt">{r.equipment}</i>:null}
           </div>
-          {r.why&&<div className="di-prow-why">{r.why}</div>}
+          {/* The ids this exercise says it answers, beside the reason it gives. Two
+              lines that disagree are the useful case: a rationale about ankle mobility
+              citing the differentiator about a painful knee is visible here and
+              nowhere else. */}
+          {(r.why||(r.basis||[]).length>0)&&<div className="di-prow-why">
+            {(r.basis||[]).map(b=><i key={b} className="di-basis">{b}</i>)}
+            {r.why||''}</div>}
         </div>
         <div className="di-prow-right">
           <span className={'di-dose'+(r.changed?' cut':'')}>
@@ -31851,8 +32638,18 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const adj=bundle.adjustment;
   const rows=useMemo(()=>program?diProgramRows(program,adj.pct):[],[program,adj.pct]);
   const deficits=useMemo(()=>diDeficits(plan.ath,date),[plan.ath,date]);
-  const checks=useMemo(()=>program?diProgramChecks(program,bundle,instr,setup,libMap,deficits):[],
-    [program,bundle,instr,setup,libMap,deficits]);
+  /* Recomputed on every render rather than read back off the stored draft. The draft
+     was validated when it was written, but the athlete's day moves under it: a check-in
+     landing at noon can close a pattern the morning's session used. What the coach is
+     looking at has to be judged against what is true now, not against what was true
+     when the model answered. */
+  const differentiators=useMemo(()=>diDifferentiators(plan.ath,bundle,deficits,date),
+    [plan.ath,bundle,deficits,date]);
+  const recent=useMemo(()=>diRecentPrograms(team,plan.ath.id,date),[team,plan.ath.id,date]);
+  const peers=useMemo(()=>diPeerPrograms(team,date,plan.ath.id),[team,date,plan.ath.id]);
+  const vr=useMemo(()=>program?validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers}):null,
+    [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
+  const blocked=!!(vr&&vr.status==='fail');
 
   /* `brief` is the form's own merged copy — the stored instruction plus anything still
      sitting uncommitted in a chip box at the moment of the press. Taken as an argument
@@ -31863,7 +32660,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     const useInstr=diInstr(brief||instr,plan.meta);
     setErr('');setBusy(true);
     try{
-      const input=diBuildProgramInput(bundle,plan,exercises,useInstr,setup,knowledge);
+      const useDiffs=diDifferentiators(plan.ath,bundle,deficits,date);
+      const input=diBuildProgramInput(bundle,plan,exercises,useInstr,setup,knowledge,
+        {deficits,differentiators:useDiffs,recent});
       const msgs=[{role:'user',content:JSON.stringify(input,null,1)}];
       const ask=()=>provider==='anthropic'
         ?askCoach(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000})
@@ -31874,28 +32673,61 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
            no longer rest on sampling — the brief, the ceiling and the rules are checked
            in code after the answer — so the writing itself is allowed to vary. */
         :askGemini(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000,json:true,thinkingBudget:0,temperature:0.7});
-      let obj;
-      // A formatting slip is retried once; an API error (401/429) propagates as it is.
-      try{obj=diParseProgram(await ask());}
-      catch(e){obj=diParseProgram(await ask());}
+      /* ONE CALL. ONE ATHLETE. NO AUTOMATIC SECOND ATTEMPT.
+         The old shape parsed one attempt inside a try and parsed a SECOND attempt
+         inside its catch, under a comment claiming an API error propagated — it did
+         not. The first attempt sat inside the try, so a 401 or a 429 bought a second
+         call as readily as a stray backtick did, and a squad of fifteen could quietly
+         cost thirty. Daily
+         individualization runs once per athlete per day, so the budget is one call per
+         athlete and a failure is a failure: the athlete's existing session is left
+         exactly as it is and the coach is told, which is the right outcome anyway —
+         nobody wants yesterday's plan silently replaced by a retry that guessed. */
+      const obj=diParseProgram(await ask());
+      /* Validated before it is stored, so the draft carries the verdict it was written
+         under. It is validated AGAIN on the way to the calendar (see `applyTo`),
+         because by then the athlete's day may have moved. */
+      const vNow=validateProgram(obj,{bundle,instr:useInstr,setup,libMap,deficits,differentiators:useDiffs,recent,peers});
       /* The engine reading is stored WITH the programme, not looked up again later: a
          session only means anything next to the numbers it was written against, and
          those move as soon as tomorrow's check-in lands. */
       diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{
         athlete:plan.ath.id,date,src:srcKey,program:obj,instr:useInstr,
+        differentiators:useDiffs,
+        validation:vNow,
         engine:{readiness:bundle.readiness,adjustment:bundle.adjustment,flag:bundle.flag,
-          competition:bundle.competition,season_phase:bundle.season_phase},
+          competition:bundle.competition,season_phase:bundle.season_phase,
+          tier:bundle.tier},
         model:`${provider}:${model}`,created_at:new Date().toISOString(),
         decision:null,decided_at:null});
-    }catch(e){setErr(e.message||String(e));}
+    }catch(e){
+      /* No retry, so the failure has to say what happens next rather than just what
+         broke: nothing was written, the athlete keeps whatever is on their calendar,
+         and the coach decides whether to press again. */
+      setErr((e.message||String(e))+' — '+L('program yazılmadı, sporcunun takvimi olduğu gibi kaldı. Tekrar denemek için "Antrenmanı oluştur"a bas.',
+        'nothing was written and the athlete\'s calendar is unchanged. Press "Build the session" to try again.'));
+    }
     setBusy(false);
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
   const write=()=>{
     if(!program)return;
+    /* THE APPROVAL IS NOT THE GATE. The coach saying yes is necessary and it is not
+       sufficient: a session that breaks a hard rule is not written, and there is no
+       button here that writes it anyway. That is the whole point of the split — the
+       coach decides what is GOOD, the code decides what is ALLOWED, and neither
+       overrules the other. Re-checked at the press rather than trusted from the
+       stored verdict, because the athlete's day moves under a draft. */
+    const v=validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers});
+    if(v.status==='fail'){
+      diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{validation:v});
+      setErr(L(`Bu program ${v.hardViolations.length} sert kuralı ihlal ediyor ve takvime yazılamaz. Aşağıdaki maddeleri gider ya da "Yeniden yaz"a bas.`,
+        `This session breaks ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} and cannot be written to the calendar. Clear the items below, or press "Rewrite".`));
+      return;
+    }
     diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
-      {decision:'accept',decided_at:new Date().toISOString()});
+      {decision:'accept',decided_at:new Date().toISOString(),validation:v});
     if(writeOne)writeOne(plan.ath.id,program);
   };
   /* Filing a written exercise into the shared library, through the same bridge the
@@ -31963,6 +32795,18 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             ?adj.reasons.map(r=>r.label).join(' · ')
             :L('hazır oluş normal','readiness normal')}/>
       </div>
+      {/* WHAT MAKES THIS ATHLETE'S SESSION DIFFERENT, on the screen as well as in the
+          request. It is here for the coach's benefit rather than the model's: if these
+          four lines do not describe the player standing in front of them, the session
+          written from them will not either, and that is a thing to catch before the
+          programme is read rather than after it is written. */}
+      {differentiators.length>0&&<div className="di-sigrow">
+        <span className="di-k">{L('Bu sporcuyu ayıran','What sets this athlete apart')}</span>
+        <div className="di-chips">{differentiators.map(d=><span key={d.id} className="di-diffchip">
+          <i>{d.id}</i>{d.text}</span>)}</div>
+        <span className="di-dim">{L('Model her egzersizi bu maddelere dayandırmak zorunda.',
+          'Every exercise the model writes has to name which of these it answers.')}</span>
+      </div>}
       {rd.signals.length>0&&<div className="di-sigrow">
         <span className="di-k">{L('Sinyaller','Signals')}</span>
         <div className="di-chips">{rd.signals.slice(0,4).map((s,i)=><span key={i} className="di-sigchip">{s}</span>)}</div>
@@ -32039,9 +32883,19 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             {c.alt?<span className="di-calt"> {L('yerine','instead')}: {c.alt}</span>:null}
           </li>)}</ul>
         </div>}
-        {checks.length>0&&<div className="di-checks">
-          <div className="di-checkh">⚑ {L('Kontrol','Checks')}</div>
-          <DiSignals items={checks}/>
+        {/* The verdict, in two boxes that never turn into each other. The red one
+            stops the write and says exactly which rule stopped it; the amber one is
+            a reading, and a reading has never blocked anything. */}
+        {vr&&vr.hardViolations.length>0&&<div className="di-hardv">
+          <div className="di-checkh">⛔ {L(`Sert kural ihlali — bu program takvime yazılamaz (${vr.hardViolations.length})`,
+            `Hard rule violation — this session cannot be written (${vr.hardViolations.length})`)}</div>
+          <ul className="di-sig">{vr.hardViolations.map((v,i)=><li key={i}>
+            {v.rule?<i className="di-cfld">{L('Kural','Rule')} {v.rule}</i>:null} {v.text}</li>)}</ul>
+        </div>}
+        {vr&&vr.softWarnings.length>0&&<div className="di-checks">
+          <div className="di-checkh">⚑ {L('Kontrol — bilgi amaçlı, yazımı engellemez','Checks — informational, they do not block the write')}</div>
+          <ul className="di-sig">{vr.softWarnings.map((v,i)=><li key={i}>
+            {v.rule?<i className="di-cfld">{L('Kural','Rule')} {v.rule}</i>:null} {v.text}</li>)}</ul>
         </div>}
         {program.rationale&&<div className="di-row">
           <span className="di-k">{L('Gerekçe','Rationale')}</span>
@@ -32057,9 +32911,14 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
           {written
             ?<><span className="di-wrote">✓ {L('Sporcunun takvimine yazıldı','Written to the athlete\'s calendar')}</span>
               <button type="button" className="btn xs sec" onClick={undo}>{L('geri al','undo')}</button></>
-            :<><button type="button" className="di-write" onClick={write}>
+            :<><button type="button" className="di-write" onClick={write} disabled={blocked}
+                title={blocked?L('Sert kural ihlali var — önce yukarıdaki maddeleri gider.',
+                  'There is a hard rule violation — clear the items above first.'):''}>
                 ✎ {L('Takvime yaz','Write to the calendar')}</button>
-              <span className="di-dim">{L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
+              <span className="di-dim">{blocked
+                ?L('Sert kural ihlali giderilmeden yazılamaz. "Yeniden yaz"a basabilir ya da sporcunun kendi takviminden elle yazabilirsin.',
+                   'It cannot be written until the hard violation is cleared. Press "Rewrite", or write it by hand on the athlete\'s own calendar.')
+                :L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
         </div>
       </div>
     </DiSection>}
@@ -32251,6 +33110,27 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      "what reaches the athlete", and it is the coach's. */
   const reviewOf=p=>diReadReview(team,activeKey,p.ath.id,date);
   const pctFor=p=>{const b=bundles[p.ath.id];return(b&&b.adjustment&&b.adjustment.pct)||0;};
+  /* THE LAST GATE, AND THE ONE THAT ACTUALLY GUARDS THE DATABASE.
+     Everything above it is a screen the coach reads; this is the check that runs on
+     the exact programme about to be written, with the athlete's data as it stands at
+     the moment of the write. It matters that it is here and not only on the card: the
+     automatic pass writes without anybody pressing anything, a draft approved this
+     morning can be carried into an afternoon where a check-in has closed a pattern,
+     and a programme that reaches this function by any other route still has to get
+     past it. A programme with nothing to validate (no AI draft — the plain copy of the
+     team session) passes: it is the coach's own plan, not a generated one. */
+  const validateFor=(p,prog)=>{
+    const b=bundles[p.ath.id];
+    if(!prog||!b)return null;
+    const r=diReadReview(team,activeKey,p.ath.id,date);
+    const deficits=diDeficits(p.ath,date);
+    return validateProgram(prog,{
+      bundle:b,instr:diInstr(r&&r.instr,p.meta),
+      setup:team.setup||{},libMap,deficits,
+      differentiators:diDifferentiators(p.ath,b,deficits,date),
+      recent:diRecentPrograms(team,p.ath.id,date),
+      peers:diPeerPrograms(team,date,p.ath.id)});
+  };
   /* `force` is the programme the coach has just pressed Write on. Its approval is in
      the same React tick as this call, so the store still reads "waiting" — passing the
      programme itself is what keeps one press from needing two. */
@@ -32292,6 +33172,46 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       if(!opts.auto)setTimeout(()=>setToast(L(
         `${held.length} sporcu AI taslağı onayı bekliyor — kartı açıp onayla`,
         `${held.length} athlete${held.length>1?'s':''} waiting on draft approval — open the card and approve`)),0);
+    }
+    if(targets.length===0)return;
+    /* Final validation, on the exact programme each athlete is about to be given. A
+       failure takes that athlete out of the write — not the whole pass, because one
+       athlete whose knee closed a pattern at lunchtime must not hold up the fourteen
+       whose sessions are fine. The verdict is stored on their review so the card shows
+       the same reason the toast names. */
+    const failed=[];
+    targets=targets.filter(p=>{
+      const prog=(forceId===p.ath.id&&opts.force)?opts.force.program
+        :(()=>{const r=reviewOf(p);const g=diWriteGate(r);return(g.approved&&r)?r.program:null;})();
+      if(!prog)return true;                       // no generated session — the coach's own plan
+      const v=validateFor(p,prog);
+      if(!v||v.status!=='fail')return true;
+      failed.push({p,v});
+      return false;
+    });
+    if(failed.length){
+      /* THE VERDICT IS ONLY WRITTEN WHEN IT CHANGED, and this is not tidiness — it is
+         what keeps the automatic pass from chasing its own tail. That pass re-runs on
+         `team.indiv`, `diWriteReview` stamps a fresh `updated_at` on every call, and an
+         athlete whose session fails stays due on the next round: storing the same
+         verdict again would move `team.indiv`, wake the effect, store it again, for as
+         long as the page is open. */
+      const sameVerdict=(a,b)=>!!a&&!!b&&a.status===b.status
+        &&JSON.stringify((a.hardViolations||[]).map(x=>x.text))
+         ===JSON.stringify((b.hardViolations||[]).map(x=>x.text));
+      failed.forEach(({p,v})=>{
+        const prev=diReadReview(team,activeKey,p.ath.id,date);
+        if(sameVerdict(prev&&prev.validation,v))return;
+        diWriteReview(team,updateTeam,activeKey,p.ath.id,date,{validation:v});
+      });
+      /* The card already carries the red box, recomputed live. A toast on the automatic
+         pass would repeat it on every render of a page nobody pressed anything on. */
+      if(!opts.auto){
+        const names=failed.map(f=>f.p.ath.name||'—').join(', ');
+        setTimeout(()=>setToast(L(
+          `${names} — program sert kural ihlali taşıyor, takvime yazılmadı. Kartı açıp gerekçeyi oku.`,
+          `${names} — the session breaks a hard rule and was not written. Open the card to read why.`)),0);
+      }
     }
     if(targets.length===0)return;
     /* A program the coach has since written by hand on the athlete's own calendar — from
@@ -32696,21 +33616,28 @@ const aiModelLabel=m=>(m&&m.note)?`${m.label} — ${L(m.note[0],m.note[1])}`:((m
 const aiProviderOf=ai=>((ai&&ai.provider)||'gemini');
 const aiCfgOf=ai=>AIC_PROVIDERS[aiProviderOf(ai)]||AIC_PROVIDERS.gemini;
 const aiKeyOf=ai=>(aiProviderOf(ai)==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||''));
-const aiModelOf=ai=>{
+/* Which model this request will actually be addressed to, and — when that is not the
+   one saved — the fact that it is not.
+
+   The fallback itself is right: on a CLOSED list (Claude) an id that has left the list
+   would go on the wire as a retired model and come back a 404, so falling back to a
+   live one is better than failing. What was wrong is that it happened in SILENCE. The
+   settings card went on showing the saved model, the request carried a different one,
+   and the only way to find out was to open a console on localhost. A swap the coach
+   cannot see is a swap they cannot consent to, so the swap is now reported: same
+   behaviour, stated out loud. Where the catalogue is the provider's to state (Gemini,
+   which is asked directly) the coach's pick always stands — a model newer than this
+   file is the normal case, and second-guessing it would put back the original bug. */
+function aiModelResolve(ai){
   const p=aiProviderOf(ai);
   const picked=p==='anthropic'?(ai&&ai.amodel):(ai&&ai.gmodel);
   const cfg=AIC_PROVIDERS[p]||AIC_PROVIDERS.gemini;
   const list=cfg.models;
-  if(!picked)return list[0].id;
-  /* On a CLOSED list (Claude), a model that has left the list falls back rather than
-     going on the wire as a retired id. Where the catalogue is the provider's to state
-     (Gemini, which is asked directly), the coach's pick stands even though this seed
-     has never heard of it — that is the normal case for a model newer than this file,
-     and silently swapping it would put back exactly the bug being fixed. An id the
-     API really will not serve is reported as itself by askGemini. */
-  if(cfg.closedList&&!list.some(m=>m.id===picked))return list[0].id;
-  return picked;
-};
+  if(!picked)return{id:list[0].id,fellBackFrom:null,defaulted:true};
+  if(cfg.closedList&&!list.some(m=>m.id===picked))return{id:list[0].id,fellBackFrom:picked,defaulted:false};
+  return{id:picked,fellBackFrom:null,defaulted:false};
+}
+const aiModelOf=ai=>aiModelResolve(ai).id;
 /* ---- The AI configuration, in one component ------------------------------
    Provider, key and model. It is rendered in two places — the assistant's own ⚙ panel
    and the card on the Settings tab — so it is written once here: two copies of a form
@@ -32724,7 +33651,8 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
   const provider=aiProviderOf(ai);
   const cfg=aiCfgOf(ai);
   const apiKey=aiKeyOf(ai);
-  const model=aiModelOf(ai);
+  const resolved=aiModelResolve(ai);
+  const model=resolved.id;
   const setApiKey=v=>setAi(provider==='anthropic'?{akey:v}:{gkey:v});
   const setModel=v=>setAi(provider==='anthropic'?{amodel:v}:{gmodel:v});
   const[show,setShow]=useState(false);
@@ -32823,6 +33751,13 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
     <select value={model} onChange={e=>setModel(e.target.value)}>
       {models.map(m=><option key={m.id} value={m.id}>{aiModelLabel(m)}</option>)}
     </select>
+    {/* A swap the coach cannot see is a swap they cannot consent to. The saved model
+        having left the closed list is a real situation and falling back is the right
+        answer; doing it without saying so is not. */}
+    {resolved.fellBackFrom&&<div className="help aiset-help aiset-mwarn">
+      {L(`Kayıtlı model "${resolved.fellBackFrom}" bu listede yok — istekler "${resolved.id}" ile gönderiliyor. Yukarıdan bir model seçip kaydet.`,
+         `The saved model "${resolved.fellBackFrom}" is not on this list — requests are being sent as "${resolved.id}". Pick a model above and save it.`)}
+    </div>}
     <div className="help aiset-help">
       {modelsErr
         ?<span className="aiset-mwarn">{L('Model listesi alınamadı: ','Could not read the model list: ')}{modelsErr}{' '}
