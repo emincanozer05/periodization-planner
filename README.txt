@@ -491,7 +491,21 @@ working regardless.
   - API key: stored in your synced data, so it reaches your phone
     without being typed again. Each provider keeps its own key —
     switching provider does not overwrite the other one.
-  - Model: each provider offers three, cheapest to most capable.
+  - Model: the display name and the API id are separate things — you
+    read "Gemini 2.5 Flash", the request carries
+    "gemini-2.5-flash". The id actually being sent is printed under
+    the dropdown, so the two can never quietly disagree.
+  - For Gemini the list is READ FROM THE API, not typed into the
+    app: as soon as a key is present CoachOS asks the key which
+    models it can call and offers those, filtered to the ones that
+    can generate text (embedding, image, video and speech models
+    are left out). "↻ Modelleri yenile" asks again. A model Google
+    ships tomorrow is selectable tomorrow, with no release here.
+    The built-in list is only the fallback for "no key yet" or a
+    failed lookup. Claude has no such lookup, so there its list is
+    the catalogue.
+  - If a model cannot be served, the error names that model id and
+    tells you to refresh the list — not a bare "Gemini 404".
   - "Bağlantıyı test et" makes one real, minimal call and tells
     you what came back. It is the only thing that proves the key,
     the credit and the model are all actually good — a key that is
@@ -500,6 +514,18 @@ working regardless.
 Your team and athlete data is sent to the provider you pick in
 order to answer. The same card is behind the ⚙ in the floating
 assistant; it is one form over one setting, not two.
+
+The key is YOUR key and is never written into the app's source.
+CoachOS is a static page with no server of its own to hold one, so
+the key lives in your synced data and goes straight from your
+browser to the provider. (The AIza… string you can see in the page
+source is the Firebase WEB CONFIG key, which is public by design
+and guards nothing — access is controlled by the Firestore rules.)
+
+To check what is actually being sent, open the app on localhost or
+add ?aidebug=1 to the URL: every model call then prints its
+provider and model id to the browser console. It prints no key, no
+prompt and no athlete data, and stays silent in normal use.
 
 EQUIPMENT INVENTORY (Settings tab)
 ----------------------------------

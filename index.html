@@ -3370,11 +3370,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .aiset{display:flex;flex-direction:column}
 .aiset label{margin-bottom:6px}
 .aiset label:not(:first-child){margin-top:14px}
+.aiset-mhd label:not(:first-child){margin-top:0}
 .aiset select{width:100%}
 .aiset-seg{align-self:flex-start;flex-wrap:wrap}
 .aiset-key{display:flex;gap:6px;align-items:center}
 .aiset-key input{flex:1;min-width:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px}
 .aiset-help{margin:6px 0 0;line-height:1.55}
+/* The Model label and its refresh button share a line, so the button reads as belonging
+   to the list rather than to the form. */
+.aiset-mhd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.aiset-mhd label{margin:0}
+/* The id actually going on the wire, beside the list that chose it — the one thing that
+   tells a coach the dropdown and the request agree. */
+.aiset-mid{display:block;margin-top:4px;color:var(--dim)}
+.aiset-mid code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2);
+  background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+.aiset-mwarn{color:#fcd34d}
 .aiset-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
 /* The verdict of a real call: the only thing that tells a coach the key, the credit and
    the model are all actually good. */
@@ -32289,16 +32300,99 @@ const NAV_ICONS={
    It is given a live, compact snapshot of the active team so it can
    advise on programming, load management and exercise content.
    ========================================================= */
+/* ---- Gemini models -------------------------------------------------------
+   The display name and the API id are two different things and are kept apart: `label`
+   is what the coach reads in the dropdown, `id` is the exact string that goes into the
+   request URL. Nothing derives one from the other.
+
+   This list is a FALLBACK. The dropdown prefers the models the key itself reports
+   (geminiListModels below), so a model Google shipped this morning is selectable this
+   afternoon without a release here. The seed exists for the two cases the live call
+   cannot cover: no key entered yet, and the call failing.
+
+   `note` is the parenthetical a coach uses to choose (cost, speed); it is not part of
+   the id and never reaches the API. */
+const GEMINI_SEED_MODELS=[
+  {id:'gemini-3.8-flash',     label:'Gemini 3.8 Flash',      note:['en yetenekli Flash','the most capable Flash']},
+  {id:'gemini-3.7-flash',     label:'Gemini 3.7 Flash',      note:['hızlı ve güncel','fast and current']},
+  {id:'gemini-3.6-flash',     label:'Gemini 3.6 Flash',      note:['kararlı sürüm','a stable release']},
+  {id:'gemini-3.5-flash',     label:'Gemini 3.5 Flash',      note:['kararlı sürüm','a stable release']},
+  {id:'gemini-3.5-flash-lite',label:'Gemini 3.5 Flash-Lite', note:['en hızlı / en ucuz','the fastest and cheapest']},
+  {id:'gemini-2.5-flash',     label:'Gemini 2.5 Flash',      note:['önceki nesil','previous generation']},
+  {id:'gemini-2.5-pro',       label:'Gemini 2.5 Pro',        note:['önceki nesil, sıkı ücretsiz kota','previous generation, tight free quota']},
+];
+/* Models the Gemini API will not write a training session with, whatever else they do:
+   embeddings, image/video/audio generation, speech and the live/realtime endpoints. The
+   list below is matched against the model id, and `generateContent` support is checked
+   separately from the API's own answer — a model has to pass both to be offered. */
+const GEMINI_NON_TEXT=/embedding|embed-|aqa|imagen|image-generation|-image$|veo|tts|audio|live-|realtime|learnlm-vision/i;
+/* The models this key can actually call, asked of the API rather than remembered.
+   Filtered to the ones that can do text generation, because the dropdown's whole job
+   is picking the model that writes a session — offering an embedding model would be
+   offering a guaranteed failure. */
+async function geminiListModels(apiKey){
+  const out=[];
+  let pageToken='';
+  /* Paginated, and bounded: a runaway pageToken must not spin forever in a browser. */
+  for(let page=0;page<10;page++){
+    const url='https://generativelanguage.googleapis.com/v1beta/models?pageSize=200'
+      +(pageToken?'&pageToken='+encodeURIComponent(pageToken):'');
+    let r;
+    try{r=await fetch(url,{headers:{'x-goog-api-key':apiKey}});}
+    catch(e){throw new Error(L('Ağ hatası — model listesi alınamadı.','Network error — the model list could not be read.'));}
+    if(!r.ok){
+      let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
+      if(r.status===400||r.status===403)throw new Error(L('Gemini API anahtarı geçersiz ya da Gemini API erişimi kapalı.','The Gemini API key is invalid, or Gemini API access is off.'));
+      throw new Error('Gemini '+r.status+(msg?': '+msg:''));
+    }
+    const j=await r.json();
+    (j.models||[]).forEach(m=>{
+      const id=String(m.name||'').replace(/^models\//,'');
+      if(!id||GEMINI_NON_TEXT.test(id))return;
+      // The API's own word on what the model can do; without generateContent it cannot
+      // answer a prompt at all.
+      const methods=m.supportedGenerationMethods||m.supportedActions||[];
+      if(methods.length&&!methods.includes('generateContent'))return;
+      out.push({id,label:String(m.displayName||id).trim()||id,live:true});
+    });
+    pageToken=j.nextPageToken||'';
+    if(!pageToken)break;
+  }
+  /* Newest first, as the API tends to list oldest first. A plain reverse would be a
+     guess; sorting on the version number in the id is what a coach means by "newest". */
+  const ver=id=>{const m=String(id).match(/(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):0;};
+  out.sort((a,b)=>ver(b.id)-ver(a.id)||a.id.localeCompare(b.id));
+  return out;
+}
+
 const AIC_PROVIDERS={
   gemini:{label:'Gemini',short:'Gemini · ücretsiz',keyPlaceholder:'AIza…',
     keyHelp:()=>L(<>Ücretsiz anahtarı <b>aistudio.google.com/apikey</b> adresinden, Google hesabınla, <b>kart gerekmeden</b> alabilirsin.</>,
       <>Get a free key at <b>aistudio.google.com/apikey</b> with your Google account, <b>no card needed</b>.</>),
-    models:[{id:'gemini-2.5-flash',label:'Gemini 2.5 Flash — önerilen (ücretsiz)'},{id:'gemini-2.0-flash',label:'Gemini 2.0 Flash — daha hızlı (ücretsiz)'},{id:'gemini-2.5-pro',label:'Gemini 2.5 Pro — en yetenekli (sıkı ücretsiz kota)'}]},
+    /* A SEED, not the catalogue. The live list comes from the Gemini API itself
+       (geminiListModels) as soon as a key is present, because a list typed into the
+       source is out of date the moment Google ships anything — which is exactly how
+       this dropdown came to be offering 2.0 Flash and nothing newer. These are the
+       fallback for a coach who has not entered a key yet, or whose network refused
+       the call. `id` is what goes on the wire; `label` is only ever shown. */
+    models:GEMINI_SEED_MODELS,
+    /* The live catalogue is the Gemini API's to state, so a model saved here is not
+       second-guessed against the seed above. */
+    live:geminiListModels},
   anthropic:{label:'Claude',short:'Claude · ücretli',keyPlaceholder:'sk-ant-…',
     keyHelp:()=>L(<>Anahtarı <b>console.anthropic.com</b> → API Keys'ten alırsın (kullandıkça öde, ~5$ bakiye gerekir).</>,
       <>Get the key from <b>console.anthropic.com</b> → API Keys (pay as you go, needs about $5 of credit).</>),
-    models:[{id:'claude-opus-5',label:'Opus 5 — en yetenekli'},{id:'claude-sonnet-5',label:'Sonnet 5 — hızlı/uygun'},{id:'claude-haiku-4-5',label:'Haiku 4.5 — en ucuz'}]},
+    /* Anthropic has no discovery call here, so this list IS the catalogue: a model
+       outside it is one this app does not offer, and a saved id that has left the
+       list falls back rather than going on the wire (see aiModelOf). */
+    closedList:true,
+    models:[{id:'claude-opus-5',label:'Opus 5',note:['en yetenekli','the most capable']},
+            {id:'claude-sonnet-5',label:'Sonnet 5',note:['hızlı / uygun','fast and affordable']},
+            {id:'claude-haiku-4-5',label:'Haiku 4.5',note:['en ucuz','the cheapest']}]},
 };
+/* What the dropdown shows: the model's own name, with the buying note beside it. The
+   id is never built from this and never shown as the label. */
+const aiModelLabel=m=>(m&&m.note)?`${m.label} — ${L(m.note[0],m.note[1])}`:((m&&m.label)||'');
 /* The default model of each provider is the FIRST one it lists, so the list stays the
    single place a model is named. It used to be typed out again at every call site —
    five copies of 'claude-opus-4-8' — and a list updated in one place left the others
@@ -32309,11 +32403,17 @@ const aiKeyOf=ai=>(aiProviderOf(ai)==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.g
 const aiModelOf=ai=>{
   const p=aiProviderOf(ai);
   const picked=p==='anthropic'?(ai&&ai.amodel):(ai&&ai.gmodel);
-  const list=(AIC_PROVIDERS[p]||AIC_PROVIDERS.gemini).models;
-  /* A model the coach picked before the list moved on is kept only if it is still
-     offered; otherwise it falls back to the provider's current first choice rather
-     than sending a retired id the API will reject. */
-  return(picked&&list.some(m=>m.id===picked))?picked:list[0].id;
+  const cfg=AIC_PROVIDERS[p]||AIC_PROVIDERS.gemini;
+  const list=cfg.models;
+  if(!picked)return list[0].id;
+  /* On a CLOSED list (Claude), a model that has left the list falls back rather than
+     going on the wire as a retired id. Where the catalogue is the provider's to state
+     (Gemini, which is asked directly), the coach's pick stands even though this seed
+     has never heard of it — that is the normal case for a model newer than this file,
+     and silently swapping it would put back exactly the bug being fixed. An id the
+     API really will not serve is reported as itself by askGemini. */
+  if(cfg.closedList&&!list.some(m=>m.id===picked))return list[0].id;
+  return picked;
 };
 /* ---- The AI configuration, in one component ------------------------------
    Provider, key and model. It is rendered in two places — the assistant's own ⚙ panel
@@ -32334,8 +32434,58 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
   const[show,setShow]=useState(false);
   const[testing,setTesting]=useState(false);
   const[result,setResult]=useState(null);
+  /* The models this key reports, once they have been asked for. Held in component state
+     rather than written into the synced data: it is a cache of somebody else's list, not
+     a setting of the club's, and the stored shape stays exactly as it was. */
+  const[live,setLive]=useState(null);
+  const[loadingModels,setLoadingModels]=useState(false);
+  const[modelsErr,setModelsErr]=useState('');
   /* Switching provider or model invalidates whatever the last test proved. */
   useEffect(()=>{setResult(null);},[provider,model,apiKey]);
+  /* A list fetched for one provider and key means nothing for another. */
+  useEffect(()=>{setLive(null);setModelsErr('');},[provider,apiKey]);
+  /* Whether the coach has actually chosen a model, as opposed to running on the seed's
+     first entry. The two are treated differently the moment a live list arrives. */
+  const picked=provider==='anthropic'?((ai&&ai.amodel)||''):((ai&&ai.gmodel)||'');
+  /* The dropdown prefers what the key itself reports and falls back to the seed. A model
+     the coach DID choose is kept in the list even when the live catalogue has no such id,
+     so an explicit pick never silently vanishes from the box meant to show it. */
+  const models=useMemo(()=>{
+    const base=(live&&live.length)?live:cfg.models;
+    if(base.some(m=>m.id===model))return base;
+    return picked
+      ?[{id:model,label:model,note:['kayıtlı seçim','saved choice']},...base]
+      :base;
+  },[live,cfg,model,picked]);
+  /* A default that the key cannot actually call is worse than no default: the box would
+     show nothing selected while the request still carried the seed's id straight into a
+     404. So when a live catalogue arrives and nothing was ever chosen here, the first
+     model the key really offers becomes the choice. An explicit pick is never overwritten. */
+  useEffect(()=>{
+    if(!live||!live.length||picked)return;
+    if(live.some(m=>m.id===model))return;
+    setModel(live[0].id);
+    // eslint-disable-next-line
+  },[live]);
+  const refreshModels=async()=>{
+    if(!cfg.live||!apiKey||loadingModels)return;
+    setLoadingModels(true);setModelsErr('');
+    try{
+      const list=await cfg.live(apiKey);
+      if(!list.length)throw new Error(L('API metin üretebilen bir model bildirmedi.','The API reported no text-generation model.'));
+      setLive(list);
+    }catch(e){setModelsErr(e.message||String(e));setLive(null);}
+    setLoadingModels(false);
+  };
+  /* Asked once, as soon as there is a key to ask with, so the box is current without the
+     coach having to know there is a button. The button is for asking again. */
+  useEffect(()=>{
+    if(!cfg.live||!apiKey||live||loadingModels||modelsErr)return;
+    let gone=false;
+    cfg.live(apiKey).then(list=>{if(!gone&&list.length)setLive(list);}).catch(()=>{});
+    return()=>{gone=true;};
+    // eslint-disable-next-line
+  },[provider,apiKey]);
   /* A real call, because nothing short of one tells the coach whether the key works,
      whether it has credit and whether this model is one their account may call. Kept
      as small as the API allows: a one-word answer at the lowest effort. */
@@ -32366,10 +32516,30 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
         title={show?L('Gizle','Hide'):L('Göster','Show')}>{show?'🙈':'👁'}</button>
     </div>
     <div className="help aiset-help">{cfg.keyHelp()}</div>
-    <label>Model</label>
+    <div className="aiset-mhd">
+      <label>Model</label>
+      {cfg.live&&<button type="button" className="btn sec xs" disabled={!apiKey||loadingModels}
+        onClick={refreshModels}
+        title={L('Model listesini Gemini API\'den yeniden oku','Read the model list from the Gemini API again')}>
+        {loadingModels?L('Okunuyor…','Reading…'):L('↻ Modelleri yenile','↻ Refresh models')}</button>}
+    </div>
+    {/* The VALUE is the API id; the text is only what the coach reads. */}
     <select value={model} onChange={e=>setModel(e.target.value)}>
-      {cfg.models.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+      {models.map(m=><option key={m.id} value={m.id}>{aiModelLabel(m)}</option>)}
     </select>
+    <div className="help aiset-help">
+      {modelsErr
+        ?<span className="aiset-mwarn">{L('Model listesi alınamadı: ','Could not read the model list: ')}{modelsErr}{' '}
+          {L('Aşağıdaki yerleşik liste gösteriliyor.','The built-in list is shown instead.')}</span>
+        :(live&&live.length)
+          ?L(`Liste Gemini API'den okundu — bu anahtarın kullanabildiği ${live.length} metin modeli.`,
+             `Read from the Gemini API — the ${live.length} text models this key can call.`)
+          :(cfg.live
+            ?L('Yerleşik liste gösteriliyor. Anahtarı girip "Modelleri yenile" dediğinde API\'nin güncel listesi okunur.',
+               'Showing the built-in list. Enter a key and press "Refresh models" to read the API\'s current list.')
+            :'')}
+      <span className="aiset-mid"> {L('Gönderilen model ID','Model ID sent')}: <code>{model}</code></span>
+    </div>
     <div className="aiset-actions">
       <button type="button" className="btn sec sm" disabled={!apiKey||testing} onClick={test}>
         {testing?L('Deneniyor…','Testing…'):L('Bağlantıyı test et','Test the connection')}</button>
@@ -32443,6 +32613,7 @@ async function askCoach(apiKey,model,system,messages,opts){
     /* Haiku 4.5 predates adaptive thinking and takes a token budget instead, so it is
        sent without the block rather than with one it would reject. */
     if(model!=='claude-haiku-4-5'){body.thinking={type:'adaptive'};body.output_config={effort:o.effort||'medium'};}
+    aiDebugLog('anthropic',model,'https://api.anthropic.com/v1/messages');
     r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
       headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify(body)});
@@ -32458,18 +32629,37 @@ async function askCoach(apiKey,model,system,messages,opts){
   return txt;
 }
 
+/* Development only: which model id actually went on the wire. A dropdown that shows
+   one model while the request carries another is invisible from the outside, so the
+   answer is printed where it can be checked — on localhost, or on any page opened with
+   ?aidebug=1. Silent everywhere else; no key, prompt or athlete data is ever logged. */
+function aiDebugOn(){
+  try{
+    const h=location.hostname||'';
+    return h==='localhost'||h==='127.0.0.1'||h==='[::1]'||h.endsWith('.local')
+      ||/[?&]aidebug=1\b/.test(location.search||'');
+  }catch(e){return false;}
+}
+function aiDebugLog(provider,model,url){
+  if(!aiDebugOn())return;
+  try{console.info(`[CoachOS AI] provider=${provider} model=${model}`+(url?` → ${url}`:''));}catch(e){}
+}
 async function askGemini(apiKey,model,system,messages,opts){
   const o=opts||{};
-  let r;
-  try{
+  let r,url;
+  /* Gemini thinks by default and those tokens come out of maxOutputTokens — uncapped, a
+     long JSON answer is truncated before the model writes a closing brace. The cap used
+     to be applied only to ids matching /2.5/, so every model newer than 2.5 silently
+     lost it: the dropdown could offer a 3.x model and the programme writer would come
+     back cut in half. The budget is now sent for every model, and because the accepted
+     range differs between families (2.5 Pro refuses anything under 128), a rejection of
+     the field itself is retried once without it rather than surfaced as a failure. */
+  const attempt=async(withThinking)=>{
     const gc={maxOutputTokens:o.maxTokens||6000,temperature:o.temperature!=null?o.temperature:0.6};
     // Force a raw JSON reply when the caller parses the answer (no ``` fences / prose).
     if(o.json)gc.responseMimeType='application/json';
-    // Gemini 2.5 thinks by default and those tokens are billed against
-    // maxOutputTokens — uncapped, a long JSON answer gets truncated before the
-    // model ever writes a closing brace. 2.5 Pro cannot disable thinking (min 128).
-    if(o.thinkingBudget!=null&&/2\.5/.test(model))
-      gc.thinkingConfig={thinkingBudget:(/pro/.test(model)&&o.thinkingBudget<128)?128:o.thinkingBudget};
+    if(withThinking&&o.thinkingBudget!=null)
+      gc.thinkingConfig={thinkingBudget:(/pro/i.test(model)&&o.thinkingBudget<128)?128:o.thinkingBudget};
     const body={
       systemInstruction:{parts:[{text:system}]},
       // `content` is normally a plain string; callers that attach media pass a
@@ -32477,12 +32667,29 @@ async function askGemini(apiKey,model,system,messages,opts){
       contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:Array.isArray(m.content)?m.content:[{text:m.content}]})),
       generationConfig:gc,
     };
-    r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
-      method:'POST',
+    // The selected id, exactly as chosen, is what addresses the endpoint.
+    url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
+    aiDebugLog('gemini',model,url);
+    return fetch(url,{method:'POST',
       headers:{'content-type':'application/json','x-goog-api-key':apiKey},
       body:JSON.stringify(body)});
+  };
+  try{
+    r=await attempt(true);
+    if(r.status===400&&o.thinkingBudget!=null){
+      /* Only a complaint about the thinking config earns the retry; a 400 about the key
+         or the prompt is a real answer and is reported below. */
+      let m400='';try{m400=JSON.stringify(await r.clone().json());}catch(e){}
+      if(/thinking|thought/i.test(m400))r=await attempt(false);
+    }
   }catch(e){throw new Error('Ağ hatası — internet bağlantını kontrol et.');}
   if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
+    /* A model this key cannot call is the one failure a coach can fix from the settings
+       card, so it says which id failed and what to do instead of "Gemini 404". */
+    if(r.status===404||/not found|not supported|does not exist|is not supported/i.test(msg))
+      throw new Error(L(
+        `"${model}" modeli bu API anahtarıyla kullanılamıyor (API bu modeli tanımıyor ya da desteklemiyor). Ayarlar → Yapay Zekâ Asistanı'ndan "Modelleri yenile" deyip listeden geçerli bir model seç.`,
+        `The model "${model}" is not available with this API key (the API does not know or support it). Open Settings → AI Assistant, press "Refresh models" and pick one from the list.`));
     if(r.status===400&&/API key|api_key|invalid/i.test(msg))throw new Error('Gemini API anahtarı geçersiz. Ayarlardan kontrol et.');
     if(r.status===429)throw new Error('Gemini ücretsiz kota sınırı doldu (429). Biraz bekleyip tekrar dene.');
     if(r.status===403)throw new Error('Erişim reddedildi (403). Anahtarı ve Gemini API erişimini kontrol et.');
