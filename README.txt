@@ -179,7 +179,8 @@ load/intensity, pattern tag, a short note), the patterns that were
 excluded, and a summary. "📄 Programda kullanılan veri" opens the
 exact JSON the answer was written from. Nothing is written to a
 calendar — putting it on a program sheet stays your action. Needs
-an API key, the same one the ✨ AI Coach Assistant uses.
+an API key, the same one the ✨ AI Coach Assistant uses — set it
+under Settings → AI Assistant.
 
 LOAD DISTRIBUTION (Calendar tab, team and per athlete)
 The "Load Distribution" panel under the calendar reads the week or
@@ -469,6 +470,36 @@ copy of that day's session rather than adding a second one. A day
 you have since edited by hand is never overwritten without asking.
 "Rewrite" asks for another session against the same brief;
 "Discard" throws the session away and keeps the brief.
+
+AI ASSISTANT (Settings tab)
+---------------------------
+One card holds the API key and the model that EVERYTHING in this
+app which asks a model something runs on: the ✨ assistant in the
+corner and, more importantly, the daily programme writer on the
+Individualization tab. It used to be reachable only through the ⚙
+inside the floating assistant, which is an odd place to keep the
+one setting that decides whether the programme writer works at
+all.
+
+The card says at a glance whether a key is in place. Without one,
+no individual programme can be written — readiness, load, pain and
+the test readings are all computed by the app itself and keep
+working regardless.
+
+  - Provider: Gemini is free (a Google key, no card needed);
+    Claude is stronger but paid.
+  - API key: stored in your synced data, so it reaches your phone
+    without being typed again. Each provider keeps its own key —
+    switching provider does not overwrite the other one.
+  - Model: each provider offers three, cheapest to most capable.
+  - "Bağlantıyı test et" makes one real, minimal call and tells
+    you what came back. It is the only thing that proves the key,
+    the credit and the model are all actually good — a key that is
+    merely typed proves nothing.
+
+Your team and athlete data is sent to the provider you pick in
+order to answer. The same card is behind the ⚙ in the floating
+assistant; it is one form over one setting, not two.
 
 EQUIPMENT INVENTORY (Settings tab)
 ----------------------------------

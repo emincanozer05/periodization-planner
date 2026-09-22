@@ -3350,6 +3350,38 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .su-cols>.panel{margin-bottom:0}
 @media(max-width:980px){.su-cols{grid-template-columns:1fr}}
 .su-panel{display:flex;flex-direction:column}
+/* ---- The AI assistant card (Settings tab) --------------------------------
+   The form is shared with the floating assistant's ⚙ panel, so the widths and spacing
+   live on .aiset and the card only supplies what sits around it. */
+.aicard{display:flex;flex-direction:column;gap:14px}
+.aicard-lead{margin:0;font-size:12.5px;line-height:1.65;color:var(--text2)}
+/* Whether a key is in place at all, said before anything else: without one the
+   programme writer does nothing, and that is worth a line a coach cannot miss. */
+.aicard-state{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);
+  border-radius:10px;padding:10px 13px;background:var(--bg2)}
+.aicard-state b{display:block;font-size:13px;color:var(--text)}
+.aicard-state p{margin:3px 0 0;font-size:11.5px;line-height:1.55;color:var(--dim)}
+.aicard-dot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:5px}
+.aicard-state.on{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.07)}
+.aicard-state.on .aicard-dot{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.aicard-state.off{border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.07)}
+.aicard-state.off .aicard-dot{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}
+/* The shared provider/key/model form. */
+.aiset{display:flex;flex-direction:column}
+.aiset label{margin-bottom:6px}
+.aiset label:not(:first-child){margin-top:14px}
+.aiset select{width:100%}
+.aiset-seg{align-self:flex-start;flex-wrap:wrap}
+.aiset-key{display:flex;gap:6px;align-items:center}
+.aiset-key input{flex:1;min-width:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px}
+.aiset-help{margin:6px 0 0;line-height:1.55}
+.aiset-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+/* The verdict of a real call: the only thing that tells a coach the key, the credit and
+   the model are all actually good. */
+.aiset-res{margin-top:10px;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.55}
+.aiset-res.ok{border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.1);color:#86efac}
+.aiset-res.bad{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.1);color:#fca5a5}
+@media(max-width:560px){.aiset-actions{justify-content:stretch}.aiset-actions .btn{flex:1}}
 .su-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .su-head h2{margin:0}
 .su-lead{margin-top:-4px;margin-bottom:16px;line-height:1.6}
@@ -12164,6 +12196,16 @@ function Setup({team,updateTeam,data,setData}){
       <SetupEquipment setup={s} save={uAll} onZoom={setZoom}/>
     </div>
 
+    {/* The key and the model everything in this app that calls a model runs on — the
+        assistant in the corner and, above all, the individual programme writer. It used
+        to be reachable only through the ⚙ inside the floating assistant, which is a
+        strange place to keep the one setting that decides whether the programme writer
+        works at all; it belongs on the screen with the rest of the club's standing
+        answers, next to the rules that writer reads. */}
+    <div className="panel su-panel"><h2>{L('Yapay Zekâ Asistanı','AI Assistant')}</h2>
+      <AiSettingsCard data={data} setData={setData}/>
+    </div>
+
     {/* The rules the programme writer works to. They sit on this screen rather than on
         the individualization one for the same reason the equipment does: they are the
         club's standing answer, not today's, and the assistant reads them live. */}
@@ -12183,6 +12225,43 @@ function Setup({team,updateTeam,data,setData}){
       <img src={zoom.src} alt={zoom.alt||''} onClick={e=>e.stopPropagation()}/>
       <button type="button" className="su-lbx" onClick={()=>setZoom(null)} aria-label={L('Kapat','Close')}>✕</button>
     </div>}
+  </div>);
+}
+
+/* ---- The AI card on the Settings tab -------------------------------------
+   Reads and writes the same `data.ai` the floating assistant does, through the same
+   form. What it adds around that form is the part a coach actually needs on this
+   screen: what the setting DRIVES (the daily individual programme writer, which is
+   dead in the water without a key), and whether it is currently set up at all.
+
+   The key is stored in the synced data like the rest of the club's settings, which is
+   what makes it work on the coach's phone as well as the laptop — and is also why the
+   line about it saying so is here rather than buried in a tooltip. */
+function AiSettingsCard({data,setData}){
+  const ai=data.ai||{provider:'gemini'};
+  const setAi=patch=>setData(prev=>({...prev,ai:{...(prev.ai||{provider:'gemini'}),...patch}}));
+  const cfg=aiCfgOf(ai);
+  const model=aiModelOf(ai);
+  const ready=!!aiKeyOf(ai);
+  const modelLabel=(cfg.models.find(m=>m.id===model)||{}).label||model;
+  return(<div className="aicard">
+    <div className={'aicard-state '+(ready?'on':'off')}>
+      <span className="aicard-dot"/>
+      <div>
+        <b>{ready
+          ?L(`${cfg.label} · ${modelLabel}`,`${cfg.label} · ${modelLabel}`)
+          :L('Henüz API anahtarı girilmedi','No API key yet')}</b>
+        <p>{ready
+          ?L('Bireysel program yazıcı ve asistan bu sağlayıcı ve modelle çalışıyor.',
+             'The individual programme writer and the assistant run on this provider and model.')
+          :L('Anahtar girilene kadar bireysel program üretilemez. Hazır oluş, yük ve test okumaları anahtarsız da çalışır.',
+             'Until a key is entered no individual programme can be written. Readiness, load and the test readings work without one.')}</p>
+      </div>
+    </div>
+    <p className="aicard-lead">{L(
+      <>Bu ayar, uygulamanın modele soru soran her yerinde geçerlidir: köşedeki <b>AI Antrenör Asistanı</b> ve <b>Bireyselleştirme</b> sekmesindeki günlük program yazıcı. Anahtar <b>hesabınla senkronlanır</b>; telefonunda tekrar girmen gerekmez. Soruyu yanıtlamak için takım ve sporcu verisi seçtiğin sağlayıcıya gönderilir.</>,
+      <>This setting applies everywhere the app asks a model something: the <b>AI Coach Assistant</b> in the corner and the daily programme writer on the <b>Individualization</b> tab. The key <b>syncs with your account</b>, so you do not enter it again on your phone. Your team and athlete data is sent to the provider you pick in order to answer.</>)}</p>
+    <AiProviderSettings ai={ai} setAi={setAi}/>
   </div>);
 }
 
@@ -22992,9 +23071,9 @@ function ProgramWriterTab({ath,updAth,setup,ai,exercises}){
   const[busy,setBusy]=useState(false);
   const[err,setErr]=useState('');
   const pw=ath.programWriter||null;
-  const provider=(ai&&ai.provider)||'gemini';
-  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
-  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const provider=aiProviderOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
   const write=async()=>{
     if(busy||!apiKey)return;setErr('');setBusy(true);
     try{
@@ -23214,9 +23293,9 @@ function PerfProgressCharts({tests,customTests}){
 
 /* Ask AI Coach — inline chatbox that evaluates THIS athlete's test results. */
 function AskAICoachBox({ath,setup,ai,exercises}){
-  const provider=(ai&&ai.provider)||'gemini';
-  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
-  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const provider=aiProviderOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
   const[msgs,setMsgs]=useState([]);
   const[input,setInput]=useState('');
   const[busy,setBusy]=useState(false);
@@ -23316,9 +23395,9 @@ function RecommendsTab({ath,updAth,setup,ai,exercises,autoGen,onAutoDone}){
   const[pdBusy,setPdBusy]=useState(false);
   const[pdErr,setPdErr]=useState('');
   const pd=ath.programDesign||null;
-  const provider=(ai&&ai.provider)||'gemini';
-  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
-  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const provider=aiProviderOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
   const genPD=async()=>{
     if(pdBusy||!apiKey)return;setPdErr('');setPdBusy(true);
     try{
@@ -31459,9 +31538,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const program=(review&&review.program)||null;
   const instr=useMemo(()=>diInstr(review&&review.instr,plan.meta),[review,plan.meta]);
   const saveInstr=next=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{instr:next});
-  const provider=(ai&&ai.provider)||'gemini';
-  const apiKey=provider==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||'');
-  const model=provider==='anthropic'?((ai&&ai.amodel)||'claude-opus-4-8'):((ai&&ai.gmodel)||'gemini-2.5-flash');
+  const provider=aiProviderOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
   const adj=bundle.adjustment;
   const rows=useMemo(()=>program?diProgramRows(program,adj.pct):[],[program,adj.pct]);
   const deficits=useMemo(()=>diDeficits(plan.ath,date),[plan.ath,date]);
@@ -32218,8 +32297,90 @@ const AIC_PROVIDERS={
   anthropic:{label:'Claude',short:'Claude · ücretli',keyPlaceholder:'sk-ant-…',
     keyHelp:()=>L(<>Anahtarı <b>console.anthropic.com</b> → API Keys'ten alırsın (kullandıkça öde, ~5$ bakiye gerekir).</>,
       <>Get the key from <b>console.anthropic.com</b> → API Keys (pay as you go, needs about $5 of credit).</>),
-    models:[{id:'claude-opus-4-8',label:'Opus 4.8 — en yetenekli'},{id:'claude-sonnet-4-6',label:'Sonnet 4.6 — hızlı/uygun'},{id:'claude-haiku-4-5',label:'Haiku 4.5 — en ucuz'}]},
+    models:[{id:'claude-opus-5',label:'Opus 5 — en yetenekli'},{id:'claude-sonnet-5',label:'Sonnet 5 — hızlı/uygun'},{id:'claude-haiku-4-5',label:'Haiku 4.5 — en ucuz'}]},
 };
+/* The default model of each provider is the FIRST one it lists, so the list stays the
+   single place a model is named. It used to be typed out again at every call site —
+   five copies of 'claude-opus-4-8' — and a list updated in one place left the others
+   pointing at a model the dropdown no longer offered. */
+const aiProviderOf=ai=>((ai&&ai.provider)||'gemini');
+const aiCfgOf=ai=>AIC_PROVIDERS[aiProviderOf(ai)]||AIC_PROVIDERS.gemini;
+const aiKeyOf=ai=>(aiProviderOf(ai)==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||''));
+const aiModelOf=ai=>{
+  const p=aiProviderOf(ai);
+  const picked=p==='anthropic'?(ai&&ai.amodel):(ai&&ai.gmodel);
+  const list=(AIC_PROVIDERS[p]||AIC_PROVIDERS.gemini).models;
+  /* A model the coach picked before the list moved on is kept only if it is still
+     offered; otherwise it falls back to the provider's current first choice rather
+     than sending a retired id the API will reject. */
+  return(picked&&list.some(m=>m.id===picked))?picked:list[0].id;
+};
+/* ---- The AI configuration, in one component ------------------------------
+   Provider, key and model. It is rendered in two places — the assistant's own ⚙ panel
+   and the card on the Settings tab — so it is written once here: two copies of a form
+   over one piece of state drift, and the key that drives the individual programme
+   writer is not a thing to have two half-right versions of.
+
+   `data.ai` is one setting shared by everything in the app that calls a model: the chat
+   assistant and the daily individualization writer both read it, so a key entered in
+   either place works in both. */
+function AiProviderSettings({ai,setAi,onDone,compact}){
+  const provider=aiProviderOf(ai);
+  const cfg=aiCfgOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
+  const setApiKey=v=>setAi(provider==='anthropic'?{akey:v}:{gkey:v});
+  const setModel=v=>setAi(provider==='anthropic'?{amodel:v}:{gmodel:v});
+  const[show,setShow]=useState(false);
+  const[testing,setTesting]=useState(false);
+  const[result,setResult]=useState(null);
+  /* Switching provider or model invalidates whatever the last test proved. */
+  useEffect(()=>{setResult(null);},[provider,model,apiKey]);
+  /* A real call, because nothing short of one tells the coach whether the key works,
+     whether it has credit and whether this model is one their account may call. Kept
+     as small as the API allows: a one-word answer at the lowest effort. */
+  const test=async()=>{
+    if(!apiKey||testing)return;
+    setTesting(true);setResult(null);
+    const sys=L('Yalnızca "OK" yaz, başka hiçbir şey yazma.','Reply with "OK" and nothing else.');
+    try{
+      const txt=provider==='anthropic'
+        ?await askCoach(apiKey,model,sys,[{role:'user',content:'OK'}],{maxTokens:1024,effort:'low'})
+        :await askGemini(apiKey,model,sys,[{role:'user',content:'OK'}],{maxTokens:256,thinkingBudget:0});
+      setResult({ok:true,msg:L(`Bağlantı çalışıyor — ${cfg.label} yanıt verdi.`,
+        `Connection works — ${cfg.label} answered.`)});
+    }catch(e){setResult({ok:false,msg:e.message||String(e)});}
+    setTesting(false);
+  };
+  return(<div className={'aiset'+(compact?' compact':'')}>
+    <label>{L('Sağlayıcı','Provider')}</label>
+    <div className="lb-seg aiset-seg">
+      {Object.entries(AIC_PROVIDERS).map(([k,pr])=><button key={k} type="button"
+        className={provider===k?'on':''} onClick={()=>setAi({provider:k})}>{pr.short}</button>)}
+    </div>
+    <label>{cfg.label} {L('API anahtarı','API key')}</label>
+    <div className="aiset-key">
+      <input type={show?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)}
+        placeholder={cfg.keyPlaceholder} autoComplete="off" spellCheck={false}/>
+      <button type="button" className="btn sec xs" onClick={()=>setShow(v=>!v)}
+        title={show?L('Gizle','Hide'):L('Göster','Show')}>{show?'🙈':'👁'}</button>
+    </div>
+    <div className="help aiset-help">{cfg.keyHelp()}</div>
+    <label>Model</label>
+    <select value={model} onChange={e=>setModel(e.target.value)}>
+      {cfg.models.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
+    </select>
+    <div className="aiset-actions">
+      <button type="button" className="btn sec sm" disabled={!apiKey||testing} onClick={test}>
+        {testing?L('Deneniyor…','Testing…'):L('Bağlantıyı test et','Test the connection')}</button>
+      {onDone&&<button type="button" className="btn sm" disabled={!apiKey} onClick={onDone}>
+        {L('Kaydet','Save')}</button>}
+    </div>
+    {result&&<div className={'aiset-res '+(result.ok?'ok':'bad')}>
+      {result.ok?'✓ ':'⚠ '}{result.msg}</div>}
+  </div>);
+}
+
 /* Asked in whichever language the app is in, because the answer comes back in the
    language the question was put in. */
 const AIC_SUGGESTIONS=()=>[
@@ -32279,7 +32440,9 @@ async function askCoach(apiKey,model,system,messages,opts){
   let r;
   try{
     const body={model,max_tokens:o.maxTokens||6000,system,messages};
-    if(model!=='claude-haiku-4-5'){body.thinking={type:'adaptive'};body.output_config={effort:'medium'};}
+    /* Haiku 4.5 predates adaptive thinking and takes a token budget instead, so it is
+       sent without the block rather than with one it would reject. */
+    if(model!=='claude-haiku-4-5'){body.thinking={type:'adaptive'};body.output_config={effort:o.effort||'medium'};}
     r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
       headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify(body)});
@@ -32345,13 +32508,11 @@ function AICoach({data,setData,team}){
   // device is available on every device — you never re-enter it.
   const ai=data.ai||{provider:'gemini'};
   const setAi=patch=>setData(prev=>({...prev,ai:{...(prev.ai||{provider:'gemini'}),...patch}}));
-  const provider=ai.provider||'gemini';
-  const setProvider=p=>setAi({provider:p});
-  const cfg=AIC_PROVIDERS[provider]||AIC_PROVIDERS.gemini;
-  const apiKey=provider==='anthropic'?(ai.akey||''):(ai.gkey||'');
-  const setApiKey=v=>setAi(provider==='anthropic'?{akey:v}:{gkey:v});
-  const model=provider==='anthropic'?(ai.amodel||'claude-opus-4-8'):(ai.gmodel||'gemini-2.5-flash');
-  const setModel=v=>setAi(provider==='anthropic'?{amodel:v}:{gmodel:v});
+  /* Provider, key and model are read through the shared helpers; the form that CHANGES
+     them is AiProviderSettings, rendered below and on the Settings tab. */
+  const provider=aiProviderOf(ai);
+  const apiKey=aiKeyOf(ai);
+  const model=aiModelOf(ai);
   const[msgs,setMsgs]=useState([]);
   const[input,setInput]=useState('');
   const[busy,setBusy]=useState(false);
@@ -32389,19 +32550,11 @@ function AICoach({data,setData,team}){
           <div className="help" style={{marginBottom:12,lineHeight:1.55}}>{L(
             <>Bu asistan senin kendi API anahtarınla çalışır; anahtar <b>hesabınla senkronlanır</b>, böylece tüm cihazlarında tekrar girmene gerek kalmaz. <b>Gemini ücretsizdir</b> (Google, kart istemez); <b>Claude</b> daha güçlüdür ama ücretlidir. Soruları yanıtlamak için takım verisi seçtiğin sağlayıcıya gönderilir.</>,
             <>This assistant runs on your own API key; the key <b>syncs with your account</b>, so you never enter it twice on another device. <b>Gemini is free</b> (Google, no card); <b>Claude</b> is stronger but paid. Your team data is sent to the provider you pick in order to answer.</>)}</div>
-          <label>{L('Sağlayıcı','Provider')}</label>
-          <div className="lb-seg" style={{marginBottom:14}}>
-            {Object.entries(AIC_PROVIDERS).map(([k,p])=><button key={k} className={provider===k?'on':''} onClick={()=>setProvider(k)}>{p.short}</button>)}
-          </div>
-          <label>{cfg.label} {L('API anahtarı','API key')}</label>
-          <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder={cfg.keyPlaceholder} style={{width:'100%'}}/>
-          <div className="help" style={{margin:'6px 0 14px'}}>{cfg.keyHelp()}</div>
-          <label>Model</label>
-          <select value={model} onChange={e=>setModel(e.target.value)} style={{width:'100%'}}>{cfg.models.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}</select>
-          <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
-            {!needKey&&<button className="btn sec sm" onClick={()=>setSetupOpen(false)}>{L('Kapat','Close')}</button>}
-            <button className="btn sm" disabled={!apiKey} onClick={()=>setSetupOpen(false)}>{L('Kaydet','Save')}</button>
-          </div>
+          {/* The same form the Settings tab shows, over the same `data.ai`. */}
+          <AiProviderSettings ai={ai} setAi={setAi} onDone={()=>setSetupOpen(false)}/>
+          <div className="help" style={{marginTop:12}}>{L(
+            <>Buradaki anahtar ve model <b>Ayarlar → Yapay Zekâ Asistanı</b> ile aynıdır; bireysel program yazıcı da bunu kullanır.</>,
+            <>This key and model are the same ones under <b>Settings → AI Assistant</b>; the individual programme writer uses them too.</>)}</div>
         </div>
       ):(<>
         <div className="aic-body" ref={bodyRef}>
