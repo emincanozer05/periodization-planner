@@ -62,6 +62,13 @@ function loadApp() {
     setTimeout, clearTimeout, setInterval, clearInterval,
   };
   const bag = {};
+  /* Oturum açmış bir koç: Gemini çağrıları artık sunucu proxy'sinden, koçun kimlik
+     belirteciyle gidiyor. Yalnızca o yolun gerektirdiği kadar Firebase. */
+  const fakeFirebase = {
+    apps: [{}],
+    auth: () => ({ currentUser: { uid: 'coach1', getIdToken: async () => 'ID_TOKEN' } }),
+    firestore: Object.assign(() => ({}), { FieldValue: { serverTimestamp: () => 'TS' } }),
+  };
   const names = ['bag', 'React', 'ReactDOM', 'document', 'window', 'navigator', 'location',
     'localStorage', 'sessionStorage', 'firebase', 'fetch', 'alert', 'confirm', 'prompt',
     'IntersectionObserver', 'ResizeObserver', 'matchMedia', 'Worker', 'Blob', 'indexedDB',
@@ -77,11 +84,13 @@ function loadApp() {
     'athReadiness', 'athPainReports', 'diPainDays', 'diRestrictionHits',
     'DI_ADJ_BANDS', 'DI_SET_FLOOR', 'DI_REP_FLOOR', 'DI_RD_REDUCE', 'DI_RD_REVIEW',
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
-    'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum'];
+    'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
+    'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
+    'geminiListModels'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
-    storage, storage, undefined, (...a) => global.fetch(...a), noop, () => true, () => null,
+    storage, storage, fakeFirebase, (...a) => global.fetch(...a), noop, () => true, () => null,
     function () { return { observe: noop, disconnect: noop, unobserve: noop }; },
     function () { return { observe: noop, disconnect: noop, unobserve: noop }; },
     win.matchMedia, undefined, undefined, undefined,
@@ -430,26 +439,66 @@ group('12 — Bozuk / geçersiz model yanıtı');
   check('boş program doğrulamada SERT ihlal', vEmpty.status === 'fail', hardText(vEmpty));
 }
 
-group('13 / 19 — Çağrı bütçesi: günlük akışta otomatik tekrar YOK');
+group('13 / 19 — Çağrı bütçesi: tarayıcı modeli hiç çağırmıyor, tek iş başlatıyor');
 {
   /* Kaynak üzerinden okunuyor çünkü sınanan şey bir fonksiyonun dönüşü değil, akışın
-     KAÇ KEZ çağırdığı. Eski kod `try{parse(await ask())}catch{parse(await ask())}`
-     yazıyordu ve bu, 401/429'da bile ikinci bir çağrı demekti. */
+     KAÇ KEZ ve NEREDEN çağırdığı. Program üretimi artık sunucudaki arka plan işi:
+     retry, fallback ve 6 çağrılık tavan functions/ai/router.js'te (functions testleri
+     orada sınıyor). Burada kanıtlanan: panel modeli doğrudan hiç çağırmıyor ve bir
+     basış tek bir iş dokümanı açıyor. */
   const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
-  const a = html.indexOf('const DI_PROGRAM_SYSTEM=');
   const panel = html.indexOf('function DailyIndivPanel');
   const end = html.indexOf('function IndivAthleteCard');
   const genSrc = html.slice(panel, end);
-  const asks = (genSrc.match(/await ask\(\)/g) || []).length;
-  check('13 — günlük bireyselleştirmede tam olarak 1 çağrı noktası var', asks === 1, `await ask() sayısı=${asks}`);
-  check('13b — eski çift-çağrı kalıbı kodda yok',
-    !/catch\s*\(\s*e\s*\)\s*\{\s*obj\s*=\s*diParseProgram\(await ask\(\)\)/.test(genSrc));
-  check('13c — hata mesajı "yazılmadı" diyor', /program yazılmadı|nothing was written/.test(genSrc));
-  check('19 — 15 sporcu ≤ 15 çağrı (sporcu başına 1 el hareketi, otomatik toplu üretim yok)',
-    asks === 1 && !/plans\.forEach\([^)]*gen\(/.test(html) && !/autoGenerate/.test(genSrc),
-    `sporcu başına ${asks} çağrı × 15 = ${asks * 15}`);
+  check('13 — günlük bireyselleştirme modeli doğrudan çağırmıyor',
+    !/askGemini\(|askCoach\(|await ask\(\)/.test(genSrc));
+  const starts = (genSrc.match(/await ref\.set\(\{/g) || []).length;
+  check('13a — tek bir iş başlatma noktası var (iş dokümanı bir yerde yazılıyor)', starts === 1, `iş yazımı=${starts}`);
+  check('13b — basış kilidi ve meşgulken düğme kapalı', /pressLock\.current\)return/.test(genSrc) && /if\(busy\|\|pressLock\.current\)return;/.test(genSrc));
+  check('13c — hata mesajı "yazılmadı" / "değiştirilmedi" diyor', /program yazılmadı|nothing was written/.test(genSrc));
+  check('19 — toplu otomatik üretim yok (15 sporcu = 15 el hareketi)',
+    !/plans\.forEach\([^)]*gen\(/.test(html) && !/autoGenerate/.test(genSrc));
   check('13d — sistem promptu ayırt edicileri zorunlu kılıyor',
     /dayanak/.test(A.DI_PROGRAM_SYSTEM) && /AYIRT EDİCİLER/.test(A.DI_PROGRAM_SYSTEM));
+}
+
+group('AI güvenliği — Gemini anahtarı tarayıcıda yok');
+{
+  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+  const script = html.slice(html.indexOf('<script type="text/babel"'));
+  check('uygulama Gemini API\'sine doğrudan istek atmıyor', !/generativelanguage\.googleapis\.com/.test(script));
+  check('x-goog-api-key başlığı istemcide yok', !/x-goog-api-key/.test(script));
+  check('Gemini için anahtar okuması senkron veriden değil', A.aiKeyOf({ provider: 'gemini', gkey: 'AIzaSECRET' }) !== 'AIzaSECRET');
+  const m = A.migrate({ teams: [], exercises: [], templates: [], ai: { provider: 'gemini', gkey: 'AIzaSECRET', gmodel: 'gemini-3.5-flash' } });
+  check('eski gkey senkron veriden siliniyor, sağlayıcı ve model kalıyor',
+    !('gkey' in (m.ai || {})) && m.ai.provider === 'gemini' && m.ai.gmodel === 'gemini-3.5-flash', JSON.stringify(m.ai));
+}
+
+group('AI işi — takvime yazım kapısı (Madde 19, Test 12/13)');
+{
+  const T0 = Date.now() - 30000;
+  const ok = { id: 'job_1', status: 'COMPLETED', validationStatus: 'pass', calendarWriteStatus: 'pending',
+    athleteId: 'a1', date: '2026-09-22', srcKey: 'team:s1', startedAt: T0, completedAt: T0 + 20000,
+    result: { text: '{"program":{}}', model: 'gemini-3.8-flash' } };
+  const exp = { athleteId: 'a1', date: '2026-09-22', srcKey: 'team:s1', activeJobId: 'job_1', appliedJobId: null };
+  const g = (j, e) => A.diJobWriteGate(Object.assign({}, ok, j || {}), Object.assign({}, exp, e || {}));
+  check('tüm koşullar sağlanınca yazılır', g().ok === true, JSON.stringify(g()));
+  check('TEST 12 — FAILED iş yazılmaz', !g({ status: 'FAILED' }).ok && g({ status: 'FAILED' }).why.includes('NOT_COMPLETED'));
+  check('TEST 13 — doğrulama PASS değilse yazılmaz', g({ validationStatus: 'fail' }).why.includes('NOT_VALIDATED'));
+  check('başka sporcunun işi yazılmaz', g({ athleteId: 'a2' }).why.includes('WRONG_TARGET'));
+  check('başka günün / seansın işi yazılmaz', g({ date: '2026-09-23' }).why.includes('WRONG_TARGET') && g({ srcKey: 'x' }).why.includes('WRONG_TARGET'));
+  check('bu panelin başlatmadığı (eski) iş yazılmaz', g({}, { activeJobId: 'job_2' }).why.includes('STALE_JOB'));
+  check('aynı iş ikinci kez yazılmaz', g({}, { appliedJobId: 'job_1' }).why.includes('ALREADY_WRITTEN')
+    && g({ calendarWriteStatus: 'written' }).why.includes('ALREADY_WRITTEN') && g({ calendarWriteStatus: 'claimed' }).why.includes('ALREADY_WRITTEN'));
+  check('120 sn aşılmışsa yazılmaz', g({ completedAt: T0 + A.AI_JOB_MAX_MS + 1 }).why.includes('DEADLINE'));
+  check('sonuç metni yoksa yazılmaz', g({ result: null }).why.includes('NO_RESULT'));
+  check('kullanıcı mesajı teknik iz taşımıyor ve takvimin değişmediğini söylüyor',
+    /değiştirilmedi|not changed/.test(A.aiJobErrorText({ status: 'FAILED', errorCode: 'VALIDATION_FAILED', failure: { errors: ['x'] } })));
+  check('durum metinleri: yeniden deneme / yedek model / doğrulama',
+    /Tekrar deneniyor|Trying again/.test(A.aiJobStatusText({ status: 'RETRYING' }))
+    && /Alternatif|alternative/.test(A.aiJobStatusText({ status: 'FALLBACK' }))
+    && /doğrulanıyor|Checking/.test(A.aiJobStatusText({ status: 'VALIDATING' })));
+  check('istemcideki tavan göstergesi sunucuyla aynı (6)', A.AI_JOB_MAX_CALLS === 6);
 }
 
 group('16 — Seçilen model gerçekten tele gidiyor');
@@ -457,7 +506,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   const seen = [];
   global.fetch = async (url, opt) => {
     const body = JSON.parse(opt.body);
-    seen.push({ url: String(url), model: body.model || String(url).match(/models\/([^:]+):/)?.[1] });
+    seen.push({ url: String(url), model: body.model || (body.data && body.data.model), headers: opt.headers || {} });
+    if (String(url).includes('geminiProxy')) return { ok: true, status: 200, json: async () => ({ result: { text: 'OK' } }) };
     return {
       ok: true, status: 200,
       json: async () => (String(url).includes('anthropic')
@@ -472,8 +522,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   } catch (e) { check('16a — Claude çağrısı', false, e.message); }
   try {
     await A.askGemini('k', 'gemini-3.5-flash', 'sys', [{ role: 'user', content: 'x' }], { maxTokens: 16 });
-    check('16b — Gemini: seçilen model id URL\'e gitti',
-      seen[1] && seen[1].url.includes('gemini-3.5-flash'), JSON.stringify(seen[1] && seen[1].url));
+    check('16b — Gemini: seçilen model id sunucu proxy\'sine gitti',
+      seen[1] && seen[1].url.includes('geminiProxy') && seen[1].model === 'gemini-3.5-flash', JSON.stringify(seen[1] && seen[1].url));
+    check('16b2 — istekte API anahtarı yok, yalnızca oturum belirteci var',
+      seen[1] && !('x-goog-api-key' in seen[1].headers) && seen[1].headers.authorization === 'Bearer ID_TOKEN', JSON.stringify(seen[1] && seen[1].headers));
   } catch (e) { check('16b — Gemini çağrısı', false, e.message); }
   // sessiz değişim
   const r1 = A.aiModelResolve({ provider: 'anthropic', amodel: 'claude-sonnet-5' });

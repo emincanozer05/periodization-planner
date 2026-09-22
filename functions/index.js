@@ -299,3 +299,65 @@ exports.wellnessAlert = functions
     });
     return null;
   });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   YAPAY ZEKÂ — program üretim işi ve Gemini proxy'si
+
+   Gemini API anahtarı yalnızca burada, Secret Manager'dan gelir:
+       firebase functions:secrets:set GEMINI_API_KEY
+   Tarayıcıda, depoda, localStorage'da ya da senkronlanan veride durmaz.
+   Ayrıntı: functions/ai/*.js ve AI_RELIABILITY.md.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const aiJob = require('./ai/job');
+const aiProxy = require('./ai/proxy');
+const gemini = require('./ai/gemini');
+const AI_SECRET = 'GEMINI_API_KEY';
+
+/* Yapılandırılmış log satırı. Anahtar ve sporcunun sağlık verisi buraya girmez;
+   iş kimliği, sporcu/seans kimliği, model, deneme, hata türü, HTTP durumu,
+   geçen süre, fallback ve doğrulama sonucu girer (Madde 20). */
+const aiLog = (level, event, fields) => {
+  const fn = functions.logger[level] || functions.logger.info;
+  fn('ai: ' + event, Object.assign({ event }, fields || {}));
+};
+
+exports.aiGenerationJob = functions
+  .region(REGION)
+  .runWith({
+    secrets: [AI_SECRET],
+    // İşin kendisi 120 sn'de biter; kalan pay kilit bırakma ve son yazım için.
+    timeoutSeconds: 180,
+    memory: '512MB',
+    // Otomatik yeniden deneme YOK: aynı iş ikinci kez çalışırsa sahiplenme onu
+    // zaten durduruyor, ama platformun kendi retry'ı 6 çağrılık bütçeyi aşmanın
+    // ikinci bir yolu olurdu.
+    failurePolicy: false,
+  })
+  .firestore.document(aiJob.COL_JOBS + '/{jobId}')
+  .onCreate(async snap => {
+    await aiJob.processJob({
+      db: db(),
+      ref: snap.ref,
+      gemini,
+      apiKey: process.env[AI_SECRET] || '',
+      log: aiLog,
+    });
+    return null;
+  });
+
+exports.geminiProxy = functions
+  .region(REGION)
+  .runWith({ secrets: [AI_SECRET], timeoutSeconds: 120, memory: '256MB' })
+  .https.onCall(async (data, context) => {
+    try {
+      return await aiProxy.handle(data, context.auth, {
+        db: db(), gemini, apiKey: process.env[AI_SECRET] || '', log: aiLog,
+      });
+    } catch (e) {
+      if (e instanceof aiProxy.ProxyError) {
+        throw new functions.https.HttpsError(e.httpsCode, e.message, { code: e.code });
+      }
+      aiLog('error', 'ai_proxy_internal', { error: String((e && e.message) || e).slice(0, 300) });
+      throw new functions.https.HttpsError('internal', aiProxy.USER_MSG.DEFAULT, { code: 'INTERNAL' });
+    }
+  });

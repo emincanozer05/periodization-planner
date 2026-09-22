@@ -1,0 +1,35 @@
+# Sunucu testleri — her PR'da, deploy OLMADAN.
+#
+# functions.yml testleri yalnızca main'e girişte, deploy'dan hemen önce koşuyor.
+# Yapay zekâ router'ı (6 çağrı tavanı, retry, fallback, 120 sn son tarih, çift
+# üretim koruması) bir PR'da bozulursa bunu merge'den ÖNCE görmek gerekiyor. Bu iş
+# yalnızca `npm test` koşar; hiçbir sır okumaz, hiçbir şey deploy etmez.
+name: Functions tests
+
+on:
+  pull_request:
+    paths:
+      - 'functions/**'
+      - '.github/workflows/functions-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Install
+        working-directory: functions
+        run: npm ci
+      - name: Test
+        working-directory: functions
+        run: npm test
