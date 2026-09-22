@@ -130,6 +130,61 @@ service cloud.firestore {
        teamId'si aynı olmak zorunda.
 
        Yazma tamamen kapalı — uyarıyı yalnızca Cloud Function üretiyor. */
+    /* ═══════════════════════════════════════════════════════════════════════
+       YAPAY ZEKÂ PROGRAM ÜRETİM İŞLERİ (AI_RELIABILITY.md)
+
+       Uygulama işi BAŞLATIR ve İZLER; yürüten Cloud Function'dır. Gemini anahtarı
+       yalnızca function'ın ortamında durur — bu koleksiyonların hiçbirinde yok.
+
+       Koçun yapabildiği üç şey var:
+         • kendi adına, QUEUED durumunda, yalnızca istek alanlarıyla bir iş açmak
+           (aynı kimlikle ikinci bir oluşturma "create" olmadığı için reddedilir),
+         • CoachOS Kural Denetleyicisinin sonucunu (ruleCheck) yalnızca sunucunun
+           sorduğu tur için yazmak,
+         • tamamlanmış bir işin sonucunun takvime yazımını BİR KEZ sahiplenmek
+           (pending → claimed → written) ya da işi iptal istemek.
+       Durum, bütçe, model, sonuç ve hata alanlarını yalnızca function yazar. */
+    match /ai_generation_jobs/{jobId} {
+      function mine() { return request.auth != null && resource.data.uid == request.auth.uid; }
+      function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      allow read: if mine();
+      allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'QUEUED'
+        && request.resource.data.keys().hasOnly(['uid','teamId','athleteId','srcKey','date','status',
+             'createdAt','request','libraryIndex','clientNonce','v'])
+        && request.resource.data.keys().hasAll(['uid','athleteId','srcKey','date','status','request'])
+        && request.resource.data.request is map
+        && request.resource.data.request.system is string
+        && request.resource.data.request.user is string
+        && request.resource.data.request.system.size() <= 80000
+        && request.resource.data.request.user.size() <= 700000;
+      allow update: if mine() && (
+        // Kural denetleyicisinin sonucu — yalnızca sorulan tur için, doğrulama sürerken.
+        (changed().hasOnly(['ruleCheck'])
+          && resource.data.status == 'VALIDATING'
+          && request.resource.data.ruleCheck.round == resource.data.ruleCheckRound
+          && request.resource.data.ruleCheck.status in ['pass','fail'])
+        ||
+        // Takvime yazımın tek seferlik sahiplenilmesi.
+        (changed().hasOnly(['calendarWriteStatus','calendarWrittenAt'])
+          && resource.data.status == 'COMPLETED'
+          && resource.data.validationStatus == 'pass'
+          && ((resource.data.calendarWriteStatus == 'pending' && request.resource.data.calendarWriteStatus == 'claimed')
+           || (resource.data.calendarWriteStatus == 'claimed' && request.resource.data.calendarWriteStatus in ['written','pending'])))
+        ||
+        // İptal isteği.
+        (changed().hasOnly(['cancelRequested']) && request.resource.data.cancelRequested == true)
+      );
+      allow delete: if false;
+    }
+    /* Aktif üretim kilidi, kullanım sayacı ve bağlam önbelleği kaydı: yalnızca
+       function (admin SDK) okur/yazar. */
+    match /ai_generation_locks/{id} { allow read, write: if false; }
+    match /ai_usage/{uid}          { allow read, write: if false; }
+    match /ai_context_cache/{id}   { allow read, write: if false; }
+
     match /wellness_alerts/{alertId} {
       function member() {
         return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;

@@ -7,5 +7,7 @@ require('./wellness-alert.test.js');   // Test 1-10 · eşik, formül, bildirim 
 require('./recipients.test.js');       // Test 11-13 · kim alıyor, kim almıyor
 require('./idempotency.test.js');      // Test 14-15 · çift gönderim, ayrı kayıtlar
 require('./push.test.js');             // Madde 14-15 · gönderim ve teslim durumu
+require('./ai-router.test.js');        // AI · model zinciri, bütçe, retry, fallback, doğrulama
+require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, kilit, takvim güvenliği
 
 run();

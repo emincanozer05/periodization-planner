@@ -1584,6 +1584,18 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mus-pick select{flex:1;min-width:140px;border:none;background:transparent;color:var(--text);padding:6px 4px;font-size:13px;cursor:pointer}
 .mus-pick select:focus{outline:none}
 .mus-add{flex:1;min-width:180px;position:relative}
+.di-job{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--border2);background:var(--elevated);font-size:12.5px;color:var(--text)}
+.di-job-t{flex:1 1 220px;min-width:0;font-weight:600}
+.di-job-m{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
+.di-job-spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(56,189,248,.25);border-top-color:#38bdf8;
+  animation:diJobSpin .8s linear infinite;flex:none}
+@keyframes diJobSpin{to{transform:rotate(360deg)}}
+.di-job.s-retrying,.di-job.s-fallback{border-color:rgba(250,204,21,.45);background:rgba(250,204,21,.07)}
+.di-job.s-validating{border-color:rgba(56,189,248,.45)}
+.di-job.s-completed{border-color:rgba(45,212,167,.45);background:rgba(45,212,167,.08);color:#a7f3d0}
+.aiset-srvkey{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;border:1px solid rgba(45,212,167,.4);
+  background:rgba(45,212,167,.08);color:#a7f3d0;font-size:12.5px;font-weight:600}
 .mus-add input{width:100%;border:none;background:transparent;color:var(--text);padding:6px 4px;font-size:13px}
 .mus-add input:focus{outline:none}
 .mus-menu{margin-top:6px;max-height:240px;overflow-y:auto;background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:4px}
@@ -9035,6 +9047,12 @@ function migrate(data){
        lost — an entry filed "Pull" reads Action: Pull, Contraction Focus: not set. */
     .map(e=>(ACTIONS_FOR[e.type]&&EX_ACTIONS.includes(e.subType))
       ?{...e,action:e.action||e.subType,subType:''}:e);
+  /* The Gemini key used to ride in the synced workspace (and so in this browser's
+     cache of it). It lives on the server now, so an old copy is dropped here rather
+     than left sitting in the browser. The Gemini-vs-Claude choice and the model stay. */
+  if(data.ai&&typeof data.ai==='object'&&Object.prototype.hasOwnProperty.call(data.ai,'gkey')){
+    const{gkey,...rest}=data.ai;data.ai=rest;
+  }
   return data;
 }
 
@@ -12591,9 +12609,9 @@ function Setup({team,updateTeam,data,setData}){
    screen: what the setting DRIVES (the daily individual programme writer, which is
    dead in the water without a key), and whether it is currently set up at all.
 
-   The key is stored in the synced data like the rest of the club's settings, which is
-   what makes it work on the coach's phone as well as the laptop — and is also why the
-   line about it saying so is here rather than buried in a tooltip. */
+   The Gemini key is not stored here any more: it lives on the server (Secret Manager)
+   and every Gemini call goes through a Cloud Function. A Claude key, for the coach who
+   picks Claude for the assistant, is still the coach's own and syncs with the account. */
 function AiSettingsCard({data,setData}){
   const ai=data.ai||{provider:'gemini'};
   const setAi=patch=>setData(prev=>({...prev,ai:{...(prev.ai||{provider:'gemini'}),...patch}}));
@@ -12609,15 +12627,15 @@ function AiSettingsCard({data,setData}){
           ?L(`${cfg.label} · ${modelLabel}`,`${cfg.label} · ${modelLabel}`)
           :L('Henüz API anahtarı girilmedi','No API key yet')}</b>
         <p>{ready
-          ?L('Bireysel program yazıcı ve asistan bu sağlayıcı ve modelle çalışıyor.',
-             'The individual programme writer and the assistant run on this provider and model.')
+          ?L('Asistan bu sağlayıcı ve modelle çalışıyor. Bireysel program yazıcı, sunucudaki sabit model hiyerarşisiyle (Gemini 3.8 Flash → 3.7 → 3.6 → 3.5 → 3.5 Flash-Lite) çalışır.',
+             'The assistant runs on this provider and model. The individual programme writer runs on the server\'s fixed model chain (Gemini 3.8 Flash → 3.7 → 3.6 → 3.5 → 3.5 Flash-Lite).')
           :L('Anahtar girilene kadar bireysel program üretilemez. Hazır oluş, yük ve test okumaları anahtarsız da çalışır.',
              'Until a key is entered no individual programme can be written. Readiness, load and the test readings work without one.')}</p>
       </div>
     </div>
     <p className="aicard-lead">{L(
-      <>Bu ayar, uygulamanın modele soru soran her yerinde geçerlidir: köşedeki <b>AI Antrenör Asistanı</b> ve <b>Bireyselleştirme</b> sekmesindeki günlük program yazıcı. Anahtar <b>hesabınla senkronlanır</b>; telefonunda tekrar girmen gerekmez. Soruyu yanıtlamak için takım ve sporcu verisi seçtiğin sağlayıcıya gönderilir.</>,
-      <>This setting applies everywhere the app asks a model something: the <b>AI Coach Assistant</b> in the corner and the daily programme writer on the <b>Individualization</b> tab. The key <b>syncs with your account</b>, so you do not enter it again on your phone. Your team and athlete data is sent to the provider you pick in order to answer.</>)}</p>
+      <>Bu ayar köşedeki <b>AI Antrenör Asistanı</b> için geçerlidir. <b>Bireyselleştirme</b> sekmesindeki günlük program yazıcı her zaman sunucuda, arka plan işi olarak çalışır: hata olursa yeniden dener, gerekirse yedek modele geçer ve CoachOS kurallarından geçmeyen bir programı kaydetmez. <b>Gemini anahtarı sunucuda</b> durur, tarayıcıya gelmez. Soruyu yanıtlamak için takım ve sporcu verisi seçtiğin sağlayıcıya gönderilir.</>,
+      <>This setting applies to the <b>AI Coach Assistant</b> in the corner. The daily programme writer on the <b>Individualization</b> tab always runs on the server as a background job: it retries on errors, falls back to another model when needed, and never saves a session that fails the CoachOS rules. <b>The Gemini key stays on the server</b> and never reaches the browser. Your team and athlete data is sent to the provider you pick in order to answer.</>)}</p>
     <AiProviderSettings ai={ai} setAi={setAi}/>
   </div>);
 }
@@ -32785,8 +32803,8 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
     </div>
 
     <div className="di-genbar">
-      {!hasKey&&<span className="di-dim">{L('Program üretmek için Yrd. Antrenör panelinden bir API anahtarı gir. Yukarıdaki hesaplamalar anahtar olmadan da çalışır.',
-        'Add an API key from the Assistant Coach panel to generate. Everything above is computed without one.')}</span>}
+      {!hasKey&&<span className="di-dim">{L('Program üretmek için oturum açman gerekiyor. Yukarıdaki hesaplamalar oturum olmadan da çalışır.',
+        'Sign in to generate. Everything above is computed without it.')}</span>}
       <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={generate}>
         <span className="di-gen-t">{busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
         <span className="di-gen-s">{L('Talimatlara göre kişiselleştirilmiş program','A session written against the brief')}</span>
@@ -32907,9 +32925,94 @@ function DiSection({n,title,meta,children,className}){
   </section>);
 }
 
+/* =========================================================================
+   PROGRAMME WRITER — the background job, seen from the app
+   The session is no longer written inside this page. Pressing "Build the session"
+   writes ONE job document (ai_generation_jobs/{id}) and the Cloud Function takes it
+   from there: the model chain (Gemini 3.8 Flash, then 3.7 / 3.6 / 3.5 / 3.5 Flash-Lite),
+   the retries, the 6-call budget and the 120-second deadline all live on the server
+   (functions/ai). This page does three things and nothing else:
+     1. starts the job — once per press, never while one is running;
+     2. answers the job's one question it cannot answer itself: does this candidate
+        pass the CoachOS Rule Validator (validateProgram — the ONLY copy of the rules)?
+     3. when the job is COMPLETED and every write condition holds, saves the session —
+        once, claimed on the job document so no second tab or device saves it again.
+   A failed job changes nothing: the athlete's calendar and the existing draft stay as
+   they were. The numbers below mirror functions/ai/config.js for display only; the
+   server enforces them. */
+const AI_JOB_COL='ai_generation_jobs';
+const AI_JOB_MAX_MS=120000;
+const AI_JOB_MAX_CALLS=6;
+const AI_JOB_TERMINAL=['COMPLETED','FAILED','CANCELLED'];
+const aiNewJobId=()=>{
+  try{if(typeof crypto!=='undefined'&&crypto.randomUUID)return'job_'+crypto.randomUUID().replace(/-/g,'');}catch(e){}
+  return'job_'+Date.now().toString(36)+Math.random().toString(36).slice(2,12)+Math.random().toString(36).slice(2,8);
+};
+const aiTs=v=>{if(v==null)return null;if(typeof v==='number')return v;
+  if(typeof v.toMillis==='function')return v.toMillis();const n=Date.parse(v);return isFinite(n)?n:null;};
+/* What the coach reads while the job runs — one sentence per state, no stack traces. */
+function aiJobStatusText(j){
+  if(!j)return'';
+  const regen=(j.regenerationUsed||0)>0&&j.lastValidation;
+  switch(j.status){
+    case'QUEUED':return L('Program sıraya alındı…','The session is queued…');
+    case'GENERATING':return regen
+      ?L('Oluşturulan program CoachOS kurallarından geçmedi. Yeniden oluşturuluyor…','The session did not pass the CoachOS rules. Writing it again…')
+      :(j.fallbackUsed
+        ?L('Alternatif AI modeli ile program oluşturuluyor…','Writing the session on an alternative AI model…')
+        :L('Program oluşturuluyor…','Writing the session…'));
+    case'RETRYING':return j.lastErrorCode==='RATE_LIMITED'
+      ?L('AI servisi geçici olarak yoğun. Tekrar deneniyor…','The AI service is busy. Trying again…')
+      :L('Geçici bağlantı problemi. Tekrar deneniyor…','A temporary connection problem. Trying again…');
+    case'FALLBACK':return L('Ana AI modeli kullanılamıyor. Alternatif model ile devam ediliyor…','The main AI model is unavailable. Continuing on an alternative model…');
+    case'VALIDATING':return L('Program doğrulanıyor…','Checking the session…');
+    case'COMPLETED':return L('Program hazır.','The session is ready.');
+    case'CANCELLED':return L('Program oluşturma iptal edildi. Mevcut takvim verileri değiştirilmedi.','Cancelled. The existing calendar was not changed.');
+    default:return L('Program şu anda oluşturulamadı. Mevcut takvim verileri değiştirilmedi.','The session could not be written right now. The existing calendar was not changed.');
+  }
+}
+const AI_JOB_REASON={
+  DUPLICATE_ACTIVE_GENERATION:['Bu sporcu ve bu seans için zaten bir program oluşturuluyor.','A session is already being written for this athlete and this source.'],
+  RATE_LIMITED_USER:['Bu saat için AI kullanım sınırına ulaşıldı.','The AI usage limit for this hour has been reached.'],
+  SERVER_NOT_CONFIGURED:['AI servisi sunucuda henüz yapılandırılmamış (GEMINI_API_KEY) — yöneticiye bildir.','The AI service is not configured on the server yet (GEMINI_API_KEY) — tell the administrator.'],
+  JOB_DEADLINE:['120 saniyelik süre doldu.','The 120-second limit was reached.'],
+  RULE_CHECK_TIMEOUT:['Kural denetimi tamamlanamadı (sayfa kapanmış ya da bağlantı kopmuş olabilir).','The rule check could not be completed (the page may have closed or lost its connection).'],
+  VALIDATION_FAILED:['Üretilen programlar CoachOS kurallarından geçmedi.','The sessions written did not pass the CoachOS rules.'],
+  CALL_BUDGET_EXHAUSTED:['AI servisi yanıt veremedi (deneme sınırı doldu).','The AI service could not answer (the attempt limit was reached).'],
+  RATE_LIMITED:['AI servisi geçici olarak yoğun.','The AI service is busy.'],
+  REQUEST_TOO_LARGE:['İstek çok büyük.','The request is too large.'],
+  BAD_REQUEST:['İstek eksik ya da hatalı.','The request is incomplete or malformed.'],
+  CLIENT_TIMEOUT:['Sunucudan zamanında yanıt gelmedi.','No answer from the server in time.'],
+};
+function aiJobErrorText(j){
+  const base=aiJobStatusText(Object.assign({},j,{status:j&&j.status==='CANCELLED'?'CANCELLED':'FAILED'}));
+  const r=AI_JOB_REASON[j&&j.errorCode];
+  const why=r?L(r[0],r[1]):L('AI servisi şu anda yanıt veremiyor.','The AI service cannot answer right now.');
+  const items=((j&&j.failure&&j.failure.errors)||[]).slice(0,4);
+  return base+' '+why+(items.length?' — '+items.join(' · '):'');
+}
+/* Every condition the save waits on, in one pure function (Madde 19). A single failed
+   condition means nothing is written. */
+function diJobWriteGate(job,expect){
+  const e=expect||{};
+  const why=[];
+  if(!job){return{ok:false,why:['NO_JOB']};}
+  if(job.status!=='COMPLETED')why.push('NOT_COMPLETED');
+  if(job.validationStatus!=='pass')why.push('NOT_VALIDATED');
+  if(!job.result||!String(job.result.text||'').trim())why.push('NO_RESULT');
+  if(job.athleteId!==e.athleteId||job.date!==e.date||job.srcKey!==e.srcKey)why.push('WRONG_TARGET');
+  if(!e.activeJobId||job.id!==e.activeJobId)why.push('STALE_JOB');
+  if((e.appliedJobId&&e.appliedJobId===job.id)||(job.calendarWriteStatus&&job.calendarWriteStatus!=='pending'))why.push('ALREADY_WRITTEN');
+  const st=aiTs(job.startedAt),ct=aiTs(job.completedAt);
+  if(st==null||ct==null||ct-st>AI_JOB_MAX_MS)why.push('DEADLINE');
+  return{ok:!why.length,why};
+}
+
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne,knowledge}){
-  const[busy,setBusy]=useState(false);
+  const[starting,setStarting]=useState(false);
+  const[job,setJob]=useState(null);           // the live job document, as the server writes it
   const[err,setErr]=useState('');
+  const busy=starting||!!(job&&!AI_JOB_TERMINAL.includes(job.status));
   const review=diReadReview(team,srcKey,plan.ath.id,date);
   const program=(review&&review.program)||null;
   const instr=useMemo(()=>diInstr(review&&review.instr,plan.meta),[review,plan.meta]);
@@ -32933,63 +33036,175 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
   const blocked=!!(vr&&vr.status==='fail');
 
+  /* The callbacks below run on Firestore's schedule, not React's, so they read the
+     panel's CURRENT props through this ref rather than the ones captured when the job
+     started — a draft saved against a stale copy of the team would drop whatever else
+     was written in between. */
+  const live=useRef({});
+  live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
+  const jobCtx=useRef(null);     // {id, instr, diffs} of the job THIS panel started
+  const unsub=useRef(null);
+  const pressLock=useRef(false); // a second press in the same tick is not a second job
+  const answered=useRef(new Set());
+  const watchdog=useRef(null);
+  const stopWatching=()=>{
+    if(unsub.current){try{unsub.current();}catch(e){}unsub.current=null;}
+    if(watchdog.current){clearTimeout(watchdog.current);watchdog.current=null;}
+  };
+  useEffect(()=>stopWatching,[]);
+  const jobRefOf=id=>{const fb=FB();return fb?fb.firestore().collection(AI_JOB_COL).doc(id):null;};
+  const ctxFor=(L0,ctx,d)=>({bundle:L0.bundle,instr:(ctx&&ctx.instr)||instr,setup:L0.setup,libMap:L0.libMap,
+    deficits:L0.deficits,differentiators:(ctx&&ctx.diffs)||L0.differentiators,recent:L0.recent,peers:L0.peers,
+    athleteId:d&&d.athleteId,expectedAthleteId:L0.plan.ath.id});
+  /* The job's question to this page: does the candidate pass the CoachOS Rule Validator?
+     Answered once per round, with the hard violations as the model will read them. */
+  const answerRuleCheck=async(d,ref)=>{
+    const round=d.candidate&&d.candidate.round;
+    if(!round||answered.current.has(ref.id+':'+round))return;
+    answered.current.add(ref.id+':'+round);
+    let status='fail',hard=[];
+    try{
+      const obj=diParseProgram(d.candidate.text);
+      const v=validateProgram(obj,ctxFor(live.current,jobCtx.current,d));
+      status=v.status==='pass'?'pass':'fail';
+      hard=(v.hardViolations||[]).map(h=>(h.rule?`Kural ${h.rule}: `:'')+h.text);
+    }catch(e){hard=[e.message||String(e)];}
+    await ref.update({ruleCheck:{round,status,hard:hard.slice(0,20),at:Date.now()}}).catch(()=>{});
+  };
+  /* COMPLETED → save, if and only if every write condition holds. */
+  const applyJob=async(d,ref)=>{
+    const L0=live.current,ctx=jobCtx.current;
+    const gate=diJobWriteGate(Object.assign({},d,{id:ref.id}),{athleteId:L0.plan.ath.id,date:L0.date,srcKey:L0.srcKey,
+      activeJobId:ctx&&ctx.id,appliedJobId:(L0.review&&L0.review.jobId)||null});
+    if(!gate.ok){
+      if(!gate.why.includes('ALREADY_WRITTEN'))
+        setErr(L('Program hazırlandı ama kaydetme koşulları sağlanmadı ('+gate.why.join(', ')+'). Mevcut takvim verileri değiştirilmedi.',
+          'The session came back but the save conditions did not hold ('+gate.why.join(', ')+'). The existing calendar was not changed.'));
+      return;
+    }
+    let obj,v;
+    try{obj=diParseProgram(d.result.text);v=validateProgram(obj,ctxFor(L0,ctx,d));}
+    catch(e){setErr((e.message||String(e))+' — '+L('program yazılmadı, sporcunun takvimi olduğu gibi kaldı.','nothing was written and the athlete\'s calendar is unchanged.'));return;}
+    /* Judged against what is true NOW: a check-in that landed while the job ran can close
+       a pattern the candidate used. */
+    if(v.status!=='pass'){
+      setErr(L(`Program son denetimde ${v.hardViolations.length} sert kurala takıldı ve kaydedilmedi; sporcunun takvimi olduğu gibi kaldı.`,
+        `The session failed ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} on the final check and was not saved; the athlete's calendar is unchanged.`));
+      return;
+    }
+    const fb=FB();
+    let claimed=false;
+    try{
+      claimed=await fb.firestore().runTransaction(async tx=>{
+        const s2=await tx.get(ref);const cur=s2.data()||{};
+        if(cur.calendarWriteStatus!=='pending')return false;
+        tx.update(ref,{calendarWriteStatus:'claimed'});
+        return true;
+      });
+    }catch(e){claimed=false;}
+    if(!claimed)return;   // another tab or device already saved this job
+    try{
+      diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
+        athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:obj,instr:(ctx&&ctx.instr)||instr,
+        differentiators:(ctx&&ctx.diffs)||L0.differentiators,
+        validation:v,
+        engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
+          competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
+        model:`gemini:${d.result.model}`,created_at:new Date().toISOString(),
+        decision:null,decided_at:null,
+        jobId:ref.id,pendingJob:null,
+        generation:{jobId:ref.id,model:d.result.model,totalAiCalls:d.totalAiCalls||0,
+          fallbackUsed:!!d.fallbackUsed,regenerationUsed:d.regenerationUsed||0}});
+      await ref.update({calendarWriteStatus:'written',calendarWrittenAt:Date.now()}).catch(()=>{});
+    }catch(e){
+      await ref.update({calendarWriteStatus:'pending'}).catch(()=>{});
+      setErr((e.message||String(e))+' — '+L('program kaydedilemedi, takvim değişmedi.','the session could not be saved; the calendar is unchanged.'));
+    }
+  };
+  const onJob=(d,ref)=>{
+    if(!d)return;
+    setJob(Object.assign({},d,{id:ref.id}));
+    if(d.status==='VALIDATING'&&d.candidate&&!(d.ruleCheck&&d.ruleCheck.round===d.candidate.round))answerRuleCheck(d,ref);
+    if(d.status==='COMPLETED'){stopWatching();applyJob(d,ref);}
+    else if(d.status==='FAILED'||d.status==='CANCELLED'){
+      stopWatching();
+      setErr(aiJobErrorText(d));
+      const L0=live.current;
+      if(L0.review&&L0.review.pendingJob&&L0.review.pendingJob.id===ref.id)
+        diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{pendingJob:null});
+    }
+  };
+  const watchJob=(id,startedAt)=>{
+    const ref=jobRefOf(id);
+    if(!ref)return;
+    stopWatching();
+    unsub.current=ref.onSnapshot(s=>onJob(s.exists?s.data():null,ref),()=>{});
+    /* The server ends every job inside 120 s. If nothing terminal has arrived well after
+       that, this page stops waiting rather than spinning for ever. */
+    const left=Math.max(5000,(startedAt||Date.now())+AI_JOB_MAX_MS+45000-Date.now());
+    watchdog.current=setTimeout(()=>{
+      stopWatching();
+      setJob(j=>j&&!AI_JOB_TERMINAL.includes(j.status)?Object.assign({},j,{status:'FAILED',errorCode:'CLIENT_TIMEOUT'}):j);
+      setErr(aiJobErrorText({status:'FAILED',errorCode:'CLIENT_TIMEOUT'}));
+    },left);
+  };
+  /* A job this panel started before a reload is picked up again, so its rule check is
+     still answered and its result still saved. */
+  useEffect(()=>{
+    const pj=review&&review.pendingJob;
+    if(!pj||!pj.id||unsub.current||(jobCtx.current&&jobCtx.current.id===pj.id))return;
+    if(Date.now()-(pj.at||0)>AI_JOB_MAX_MS+45000)return;
+    jobCtx.current={id:pj.id,instr:diInstr(pj.instr||(review&&review.instr),plan.meta),diffs:null};
+    watchJob(pj.id,pj.at);
+    // eslint-disable-next-line
+  },[review&&review.pendingJob&&review.pendingJob.id]);
+
   /* `brief` is the form's own merged copy — the stored instruction plus anything still
      sitting uncommitted in a chip box at the moment of the press. Taken as an argument
      rather than read from the store so one press needs one render: the save that folds
-     the pending text in and this call happen in the same tick. */
+     the pending text in and this call happen in the same tick.
+
+     ONE PRESS, ONE JOB. The button is disabled while a job runs, a synchronous lock
+     swallows a second press in the same tick, and the server refuses a second active
+     job for the same athlete, day and source (DUPLICATE_ACTIVE_GENERATION). */
   const gen=async(brief)=>{
-    if(busy||!apiKey)return;
+    if(busy||pressLock.current)return;
+    const fb=FB();
+    const u=fb&&fb.auth&&fb.auth().currentUser;
+    if(!u){setErr(L('Program oluşturmak için oturum açman gerekiyor.','Sign in to build a session.'));return;}
+    pressLock.current=true;
     const useInstr=diInstr(brief||instr,plan.meta);
-    setErr('');setBusy(true);
+    setErr('');setStarting(true);
     try{
       const useDiffs=diDifferentiators(plan.ath,bundle,deficits,date);
+      /* The same context the model has always been given — the whole CoachOS decision
+         context goes into the job once, and every model in the chain reads that copy. */
       const input=diBuildProgramInput(bundle,plan,exercises,useInstr,setup,knowledge,
         {deficits,differentiators:useDiffs,recent});
-      const msgs=[{role:'user',content:JSON.stringify(input,null,1)}];
-      const ask=()=>provider==='anthropic'
-        ?askCoach(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000})
-        /* Temperature 0.3 was part of why every athlete came back with the same two
-           movements: at that setting the answer settles on the highest-frequency names
-           in the literature (a trap-bar deadlift, a row) whatever the brief said, and
-           two athletes who differ only in their findings read as one. The hard limits
-           no longer rest on sampling — the brief, the ceiling and the rules are checked
-           in code after the answer — so the writing itself is allowed to vary. */
-        :askGemini(apiKey,model,DI_PROGRAM_SYSTEM,msgs,{maxTokens:10000,json:true,thinkingBudget:0,temperature:0.7});
-      /* ONE CALL. ONE ATHLETE. NO AUTOMATIC SECOND ATTEMPT.
-         The old shape parsed one attempt inside a try and parsed a SECOND attempt
-         inside its catch, under a comment claiming an API error propagated — it did
-         not. The first attempt sat inside the try, so a 401 or a 429 bought a second
-         call as readily as a stray backtick did, and a squad of fifteen could quietly
-         cost thirty. Daily
-         individualization runs once per athlete per day, so the budget is one call per
-         athlete and a failure is a failure: the athlete's existing session is left
-         exactly as it is and the coach is told, which is the right outcome anyway —
-         nobody wants yesterday's plan silently replaced by a retry that guessed. */
-      const obj=diParseProgram(await ask());
-      /* Validated before it is stored, so the draft carries the verdict it was written
-         under. It is validated AGAIN on the way to the calendar (see `applyTo`),
-         because by then the athlete's day may have moved. */
-      const vNow=validateProgram(obj,{bundle,instr:useInstr,setup,libMap,deficits,differentiators:useDiffs,recent,peers});
-      /* The engine reading is stored WITH the programme, not looked up again later: a
-         session only means anything next to the numbers it was written against, and
-         those move as soon as tomorrow's check-in lands. */
-      diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{
-        athlete:plan.ath.id,date,src:srcKey,program:obj,instr:useInstr,
-        differentiators:useDiffs,
-        validation:vNow,
-        engine:{readiness:bundle.readiness,adjustment:bundle.adjustment,flag:bundle.flag,
-          competition:bundle.competition,season_phase:bundle.season_phase,
-          tier:bundle.tier},
-        model:`${provider}:${model}`,created_at:new Date().toISOString(),
-        decision:null,decided_at:null});
+      const libraryIndex=[...new Set((exercises||[]).map(e=>String(e.name||'').trim()).filter(Boolean))];
+      const id=aiNewJobId();
+      jobCtx.current={id,instr:useInstr,diffs:useDiffs};
+      answered.current=new Set();
+      const ref=jobRefOf(id);
+      await ref.set({
+        uid:u.uid,teamId:team.id,athleteId:plan.ath.id,srcKey,date,status:'QUEUED',createdAt:Date.now(),
+        request:{system:DI_PROGRAM_SYSTEM,user:JSON.stringify(input,null,1),
+          generation:{json:true,temperature:0.7,maxOutputTokens:10000,thinkingBudget:0}},
+        libraryIndex,v:1});
+      diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{pendingJob:{id,at:Date.now()}});
+      setJob({id,status:'QUEUED',athleteId:plan.ath.id,srcKey,date});
+      watchJob(id,Date.now());
     }catch(e){
-      /* No retry, so the failure has to say what happens next rather than just what
-         broke: nothing was written, the athlete keeps whatever is on their calendar,
-         and the coach decides whether to press again. */
+      jobCtx.current=null;
       setErr((e.message||String(e))+' — '+L('program yazılmadı, sporcunun takvimi olduğu gibi kaldı. Tekrar denemek için "Antrenmanı oluştur"a bas.',
         'nothing was written and the athlete\'s calendar is unchanged. Press "Build the session" to try again.'));
     }
-    setBusy(false);
+    setStarting(false);
+    pressLock.current=false;
+  };
+  const cancelJob=()=>{
+    const id=job&&job.id;const ref=id&&jobRefOf(id);
+    if(ref&&!AI_JOB_TERMINAL.includes(job.status))ref.update({cancelRequested:true}).catch(()=>{});
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
@@ -33123,7 +33338,19 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} hasKey={!!apiKey}/>
+      <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} hasKey={!!(FB()&&FB().auth().currentUser)}/>
+      {job&&!AI_JOB_TERMINAL.includes(job.status)&&<div className={'di-job s-'+String(job.status).toLowerCase()} role="status" aria-live="polite">
+        <span className="di-job-spin"/>
+        <span className="di-job-t">{aiJobStatusText(job)}</span>
+        <span className="di-job-m">{job.currentModel?job.currentModel:''}
+          {job.totalAiCalls?` · ${L('çağrı','call')} ${job.totalAiCalls}/${AI_JOB_MAX_CALLS}`:''}</span>
+        <button type="button" className="btn xs sec" onClick={cancelJob}>{L('İptal','Cancel')}</button>
+      </div>}
+      {job&&job.status==='COMPLETED'&&!err&&<div className="di-job s-completed" role="status">
+        <span className="di-job-t">✓ {aiJobStatusText(job)}</span>
+        <span className="di-job-m">{job.result&&job.result.model}{job.fallbackUsed?L(' · yedek model',' · fallback model'):''}
+          {` · ${L('çağrı','call')} ${job.totalAiCalls||0}/${AI_JOB_MAX_CALLS}`}</span>
+      </div>}
       {err&&<div className="di-err">{err}</div>}
     </DiSection>
 
@@ -33829,45 +34056,60 @@ const GEMINI_NON_TEXT=/embedding|embed-|aqa|imagen|image-generation|-image$|veo|
    Filtered to the ones that can do text generation, because the dropdown's whole job
    is picking the model that writes a session — offering an embedding model would be
    offering a guaranteed failure. */
-async function geminiListModels(apiKey){
-  const out=[];
-  let pageToken='';
-  /* Paginated, and bounded: a runaway pageToken must not spin forever in a browser. */
-  for(let page=0;page<10;page++){
-    const url='https://generativelanguage.googleapis.com/v1beta/models?pageSize=200'
-      +(pageToken?'&pageToken='+encodeURIComponent(pageToken):'');
-    let r;
-    try{r=await fetch(url,{headers:{'x-goog-api-key':apiKey}});}
-    catch(e){throw new Error(L('Ağ hatası — model listesi alınamadı.','Network error — the model list could not be read.'));}
-    if(!r.ok){
-      let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
-      if(r.status===400||r.status===403)throw new Error(L('Gemini API anahtarı geçersiz ya da Gemini API erişimi kapalı.','The Gemini API key is invalid, or Gemini API access is off.'));
-      throw new Error('Gemini '+r.status+(msg?': '+msg:''));
-    }
-    const j=await r.json();
-    (j.models||[]).forEach(m=>{
-      const id=String(m.name||'').replace(/^models\//,'');
-      if(!id||GEMINI_NON_TEXT.test(id))return;
-      // The API's own word on what the model can do; without generateContent it cannot
-      // answer a prompt at all.
-      const methods=m.supportedGenerationMethods||m.supportedActions||[];
-      if(methods.length&&!methods.includes('generateContent'))return;
-      out.push({id,label:String(m.displayName||id).trim()||id,live:true});
-    });
-    pageToken=j.nextPageToken||'';
-    if(!pageToken)break;
+/* ---- The server side of every Gemini call ---------------------------------
+   The Gemini key is not in this page any more — not in the source, not in the synced
+   workspace, not in localStorage. It lives in the Cloud Functions environment (Secret
+   Manager, GEMINI_API_KEY) and every Gemini call goes through a function signed with
+   the coach's own Firebase session:
+     • the programme writer → a background job (ai_generation_jobs, see below),
+     • everything else (the assistant, the connection test, the model list) → the
+       `geminiProxy` callable, one call per question, exactly as before.
+   The callable protocol is plain HTTPS: POST {data} with the ID token, answer {result}
+   or {error}. No extra SDK is loaded for it. */
+const AI_FN_REGION='us-central1';
+const AI_FN_BASE=`https://${AI_FN_REGION}-periodization-planner.cloudfunctions.net`;
+/* What the key field holds for Gemini now: a marker that the key is the server's. The
+   gates that used to read "is there a key?" read it as "yes", because there is one. */
+const AI_SERVER_KEY='server-managed';
+async function aiProxyCall(data){
+  const fb=FB();
+  const u=fb&&fb.auth&&fb.auth().currentUser;
+  if(!u)throw new Error(L('AI için oturum açman gerekiyor.','Sign in to use the AI.'));
+  let tok='';
+  try{tok=await u.getIdToken();}catch(e){throw new Error(L('Oturum doğrulanamadı — sayfayı yenile.','The session could not be verified — reload the page.'));}
+  let r;
+  try{
+    r=await fetch(AI_FN_BASE+'/geminiProxy',{method:'POST',
+      headers:{'content-type':'application/json',authorization:'Bearer '+tok},
+      body:JSON.stringify({data})});
+  }catch(e){throw new Error(L('Ağ hatası — internet bağlantını kontrol et.','Network error — check your connection.'));}
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok||!j||j.error){
+    /* The function words its own errors for a coach; a stack trace never reaches here. */
+    const m=(j&&j.error&&j.error.message)||L(`AI servisine ulaşılamadı (${r.status}).`,`The AI service could not be reached (${r.status}).`);
+    throw new Error(m);
   }
+  return j.result;
+}
+async function geminiListModels(){
+  const res=await aiProxyCall({op:'listModels'});
+  const out=[];
+  ((res&&res.models)||[]).forEach(m=>{
+    const id=String((m&&m.id)||'').trim();
+    if(!id||GEMINI_NON_TEXT.test(id))return;
+    out.push({id,label:String((m&&m.displayName)||id).trim()||id,live:true});
+  });
   /* Newest first, as the API tends to list oldest first. A plain reverse would be a
      guess; sorting on the version number in the id is what a coach means by "newest". */
-  const ver=id=>{const m=String(id).match(/(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):0;};
+  const ver=id=>{const mm=String(id).match(/(\d+(?:\.\d+)?)/);return mm?parseFloat(mm[1]):0;};
   out.sort((a,b)=>ver(b.id)-ver(a.id)||a.id.localeCompare(b.id));
   return out;
 }
 
 const AIC_PROVIDERS={
-  gemini:{label:'Gemini',short:'Gemini · ücretsiz',keyPlaceholder:'AIza…',
-    keyHelp:()=>L(<>Ücretsiz anahtarı <b>aistudio.google.com/apikey</b> adresinden, Google hesabınla, <b>kart gerekmeden</b> alabilirsin.</>,
-      <>Get a free key at <b>aistudio.google.com/apikey</b> with your Google account, <b>no card needed</b>.</>),
+  gemini:{label:'Gemini',short:'Gemini · sunucu',keyPlaceholder:'',serverKey:true,
+    keyHelp:()=>L(<>Gemini anahtarı <b>sunucuda</b> (Cloud Functions · Secret Manager) tutulur; tarayıcıya, senkronlanan veriye ya da bu cihaza hiç gelmez. Yönetici: <code>firebase functions:secrets:set GEMINI_API_KEY</code>.</>,
+      <>The Gemini key is kept <b>on the server</b> (Cloud Functions · Secret Manager); it never reaches the browser, the synced data or this device. Admin: <code>firebase functions:secrets:set GEMINI_API_KEY</code>.</>),
     /* A SEED, not the catalogue. The live list comes from the Gemini API itself
        (geminiListModels) as soon as a key is present, because a list typed into the
        source is out of date the moment Google ships anything — which is exactly how
@@ -33898,7 +34140,7 @@ const aiModelLabel=m=>(m&&m.note)?`${m.label} — ${L(m.note[0],m.note[1])}`:((m
    pointing at a model the dropdown no longer offered. */
 const aiProviderOf=ai=>((ai&&ai.provider)||'gemini');
 const aiCfgOf=ai=>AIC_PROVIDERS[aiProviderOf(ai)]||AIC_PROVIDERS.gemini;
-const aiKeyOf=ai=>(aiProviderOf(ai)==='anthropic'?((ai&&ai.akey)||''):((ai&&ai.gkey)||''));
+const aiKeyOf=ai=>(aiProviderOf(ai)==='anthropic'?((ai&&ai.akey)||''):AI_SERVER_KEY);
 /* Which model this request will actually be addressed to, and — when that is not the
    one saved — the fact that it is not.
 
@@ -34016,12 +34258,15 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
         className={provider===k?'on':''} onClick={()=>setAi({provider:k})}>{pr.short}</button>)}
     </div>
     <label>{cfg.label} {L('API anahtarı','API key')}</label>
-    <div className="aiset-key">
-      <input type={show?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)}
-        placeholder={cfg.keyPlaceholder} autoComplete="off" spellCheck={false}/>
-      <button type="button" className="btn sec xs" onClick={()=>setShow(v=>!v)}
-        title={show?L('Gizle','Hide'):L('Göster','Show')}>{show?'🙈':'👁'}</button>
-    </div>
+    {cfg.serverKey
+      /* No box to type into: a key typed here would be a key in the browser. */
+      ?<div className="aiset-srvkey">🔒 {L('Sunucuda yönetiliyor','Managed on the server')}</div>
+      :<div className="aiset-key">
+        <input type={show?'text':'password'} value={apiKey} onChange={e=>setApiKey(e.target.value)}
+          placeholder={cfg.keyPlaceholder} autoComplete="off" spellCheck={false}/>
+        <button type="button" className="btn sec xs" onClick={()=>setShow(v=>!v)}
+          title={show?L('Gizle','Hide'):L('Göster','Show')}>{show?'🙈':'👁'}</button>
+      </div>}
     <div className="help aiset-help">{cfg.keyHelp()}</div>
     <div className="aiset-mhd">
       <label>Model</label>
@@ -34158,64 +34403,19 @@ function aiDebugLog(provider,model,url){
   if(!aiDebugOn())return;
   try{console.info(`[CoachOS AI] provider=${provider} model=${model}`+(url?` → ${url}`:''));}catch(e){}
 }
+/* One Gemini call, through the server. `apiKey` is kept in the signature so no caller
+   has to change, and is ignored: the key is the server's (see aiProxyCall). One call,
+   no retry — the same contract the direct call had. The programme writer does NOT come
+   through here; it runs as a background job with its own retry / fallback budget. */
 async function askGemini(apiKey,model,system,messages,opts){
   const o=opts||{};
-  let r,url;
-  /* Gemini thinks by default and those tokens come out of maxOutputTokens — uncapped, a
-     long JSON answer is truncated before the model writes a closing brace. The cap used
-     to be applied only to ids matching /2.5/, so every model newer than 2.5 silently
-     lost it: the dropdown could offer a 3.x model and the programme writer would come
-     back cut in half. The budget is now sent for every model, and because the accepted
-     range differs between families (2.5 Pro refuses anything under 128), a rejection of
-     the field itself is retried once without it rather than surfaced as a failure. */
-  const attempt=async(withThinking)=>{
-    const gc={maxOutputTokens:o.maxTokens||6000,temperature:o.temperature!=null?o.temperature:0.6};
-    // Force a raw JSON reply when the caller parses the answer (no ``` fences / prose).
-    if(o.json)gc.responseMimeType='application/json';
-    if(withThinking&&o.thinkingBudget!=null)
-      gc.thinkingConfig={thinkingBudget:(/pro/i.test(model)&&o.thinkingBudget<128)?128:o.thinkingBudget};
-    const body={
-      systemInstruction:{parts:[{text:system}]},
-      // `content` is normally a plain string; callers that attach media pass a
-      // ready-made parts array instead.
-      contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:Array.isArray(m.content)?m.content:[{text:m.content}]})),
-      generationConfig:gc,
-    };
-    // The selected id, exactly as chosen, is what addresses the endpoint.
-    url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
-    aiDebugLog('gemini',model,url);
-    return fetch(url,{method:'POST',
-      headers:{'content-type':'application/json','x-goog-api-key':apiKey},
-      body:JSON.stringify(body)});
-  };
-  try{
-    r=await attempt(true);
-    if(r.status===400&&o.thinkingBudget!=null){
-      /* Only a complaint about the thinking config earns the retry; a 400 about the key
-         or the prompt is a real answer and is reported below. */
-      let m400='';try{m400=JSON.stringify(await r.clone().json());}catch(e){}
-      if(/thinking|thought/i.test(m400))r=await attempt(false);
-    }
-  }catch(e){throw new Error('Ağ hatası — internet bağlantını kontrol et.');}
-  if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||'';}catch(e){}
-    /* A model this key cannot call is the one failure a coach can fix from the settings
-       card, so it says which id failed and what to do instead of "Gemini 404". */
-    if(r.status===404||/not found|not supported|does not exist|is not supported/i.test(msg))
-      throw new Error(L(
-        `"${model}" modeli bu API anahtarıyla kullanılamıyor (API bu modeli tanımıyor ya da desteklemiyor). Ayarlar → Yapay Zekâ Asistanı'ndan "Modelleri yenile" deyip listeden geçerli bir model seç.`,
-        `The model "${model}" is not available with this API key (the API does not know or support it). Open Settings → AI Assistant, press "Refresh models" and pick one from the list.`));
-    if(r.status===400&&/API key|api_key|invalid/i.test(msg))throw new Error('Gemini API anahtarı geçersiz. Ayarlardan kontrol et.');
-    if(r.status===429)throw new Error('Gemini ücretsiz kota sınırı doldu (429). Biraz bekleyip tekrar dene.');
-    if(r.status===403)throw new Error('Erişim reddedildi (403). Anahtarı ve Gemini API erişimini kontrol et.');
-    throw new Error('Gemini '+r.status+(msg?': '+msg:''));}
-  const j=await r.json();
-  const cand=(j.candidates||[])[0];
-  if(!cand){const br=j.promptFeedback&&j.promptFeedback.blockReason;throw new Error(br?('İçerik güvenlik nedeniyle engellendi: '+br):'Gemini boş yanıt döndürdü.');}
-  const text=(((cand.content||{}).parts)||[]).filter(p=>!p.thought).map(p=>p.text||'').join('').trim();
-  if(!text){
-    if(cand.finishReason==='MAX_TOKENS')throw new Error('Model tüm token bütçesini düşünme adımında harcadı ve yanıt üretemedi — tekrar dene.');
-    throw new Error('Yanıt tamamlanamadı'+(cand.finishReason?(' ('+cand.finishReason+')'):'')+'.');
-  }
+  aiDebugLog('gemini',model,AI_FN_BASE+'/geminiProxy');
+  const res=await aiProxyCall({op:'generate',model,system,
+    messages:(messages||[]).map(m=>({role:m.role==='assistant'?'assistant':'user',content:m.content})),
+    generation:{maxOutputTokens:o.maxTokens||6000,temperature:o.temperature!=null?o.temperature:0.6,
+      json:!!o.json,thinkingBudget:o.thinkingBudget!=null?o.thinkingBudget:null}});
+  const text=String((res&&res.text)||'').trim();
+  if(!text)throw new Error(L('Model boş yanıt döndürdü — tekrar dene.','The model returned an empty reply — try again.'));
   return text;
 }
 

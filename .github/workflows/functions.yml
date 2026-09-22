@@ -16,6 +16,7 @@ on:
     paths:
       - 'functions/**'
       - 'firebase.json'
+      - 'firestore.rules'
       - '.github/workflows/functions.yml'
   workflow_dispatch:
 
@@ -67,6 +68,25 @@ jobs:
           --project periodization-planner
           --non-interactive
           --force
+
+      # Yapay zekâ işleri ayrı adımda: GEMINI_API_KEY Secret Manager'da henüz
+      # tanımlı değilse bu adım düşer ama wellness uyarısının deploy'unu
+      # sürüklemez. Kurulum: AI_RELIABILITY.md → "Kurulum".
+      - name: Deploy AI functions
+        id: deploy_ai
+        if: env.HAS_CREDENTIALS == 'true'
+        continue-on-error: true
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only functions:aiGenerationJob,functions:geminiProxy,firestore:rules
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: AI deploy uyarısı
+        if: env.HAS_CREDENTIALS == 'true' && steps.deploy_ai.outcome == 'failure'
+        run: |
+          echo "::warning::AI functions / Firestore kuralları deploy edilemedi. GEMINI_API_KEY secret'ı tanımlı mı? (firebase functions:secrets:set GEMINI_API_KEY) — AI_RELIABILITY.md → Kurulum."
 
       - name: Deploy atlandı
         if: env.HAS_CREDENTIALS != 'true'
