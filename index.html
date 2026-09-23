@@ -4120,7 +4120,7 @@ header{background:var(--bg2)!important}
 .iv-dchip i{font-size:8.5px;font-style:normal;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-dchip b{font-size:12.5px;font-weight:700;color:var(--text2);font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-expbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-.iv-expbar select{font-size:12px;padding:7px 8px}
+.iv-expbar select{font-size:12px;padding:7px 8px;width:auto}
 .iv-expbar .btn{white-space:nowrap}
 .iv-expg{display:inline-flex;gap:6px;align-items:center}
 .iv-expg .h{font-size:9.5px;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em}
@@ -32208,6 +32208,42 @@ const DI_EXT_TASK=[
   'Test sonuçlarını ve test yorumlarını oku; ölçülmüş eksikleri hazırlık veya tamamlayıcı fazda karşıla. Ağrı ve aktif sakatlık varsa o bölgeyi yükleme.',
   'Veri uydurma; eksik_veriler altındaki konularda karar verme, tanı koyma, yaralanma riski yüzdesi yazma.',
 ];
+/* The same task for a whole squad in one request: one session per athlete, returned
+   together, each tagged with the athlete it is for — so the one answer can be pasted
+   into every athlete's "AI Programını Yükle" box and each box takes its own. */
+const DI_EXT_TASK_SQUAD=[
+  'sporcular listesindeki HER sporcu için, programlanacak_gun tarihinde uygulanacak AYRI bir antrenman seansı yaz. Sporcuları birbirine kopyalama: her program o sporcunun kendi verisine, ayırt edicilerine ve antrenör talimatına dayanmalı.',
+  'Yanıt olarak YALNIZCA cikti_formati alanındaki yapıda geçerli bir JSON döndür: programlar dizisinde her sporcu için bir öğe; her öğede sporcu_id ve sporcu_adi, sporcular listesindeki değerlerle birebir aynı olsun. Açıklama metni ekleme; anahtar adlarını değiştirme.',
+  ...DI_EXT_TASK.slice(2).map(x=>x.replace(/kodla_denetlenen_sinirlar/g,'her sporcunun kendi kodla_denetlenen_sinirlar alanı')
+    .replace(/ayirt_ediciler maddelerinin/g,'o sporcunun ayirt_ediciler maddelerinin')),
+];
+/* Every athlete on the sheet, built at the press like the single one is. The parts that
+   are the same for everyone — the task, the answer's shape, the pattern dictionary and
+   the gym's kit — are said once at the top instead of once per athlete. */
+function diSquadSnapshot({items,setup,date,customTests,now}){
+  const shared=['gorev','cikti_formati','hareket_paterni_sozlugu','ekipman'];
+  const list=(items||[]).map(it=>{
+    const one=diAthleteSnapshot({ath:it.ath,setup,date,bundle:it.bundle,instr:it.instr,customTests,now,session:it.session});
+    const out={};
+    Object.keys(one).forEach(k=>{if(!shared.includes(k))out[k]=one[k];});
+    return out;
+  });
+  const first=list[0]||{};
+  const eq=eqAvailable(setup||{});
+  return snapClean({
+    programlanacak_gun:first.programlanacak_gun?{tarih:first.programlanacak_gun.tarih,gun:first.programlanacak_gun.gun,
+      bugunden_farki:first.programlanacak_gun.bugunden_farki,mac_gunu_etiketi:first.programlanacak_gun.mac_gunu_etiketi,
+      sonraki_mac:first.programlanacak_gun.sonraki_mac,sezon_fazi:first.programlanacak_gun.sezon_fazi}:{tarih:date},
+    gorev:DI_EXT_TASK_SQUAD,
+    olusturulma_zamani:new Date(now||Date.now()).toISOString(),
+    sporcu_sayisi:list.length,
+    ekipman:{tur_sayisi:new Set(eq.map(e=>e.id)).size,
+      liste:eq.map(e=>({ekipman:e.label,adet:e.qty==null?L('belirtilmemiş','not given'):e.qty,agirlik_kg:e.kg}))},
+    hareket_paterni_sozlugu:IV_PATTERNS,
+    sporcular:list,
+    cikti_formati:{programlar:[{sporcu_id:'sporcular[].sporcu.id',sporcu_adi:'sporcular[].sporcu.ad',...DI_EXT_SCHEMA}]},
+  })||{};
+}
 function diExtPhase(v){
   const s=diExName(v||'').replace(/\s+/g,'').replace(/[çğıöşü]/g,c=>({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'})[c]);
   if(!s)return null;
@@ -32275,7 +32311,30 @@ function diExtNormalize(obj){
     koc_uyarisi:str(pick(root,['koc_uyarisi','uyari','uyarı','warning','coach_warning'])),
   };
 }
-function diParseExternalProgram(text,libMap){
+/* A squad answer carries one programme per athlete. The one for this athlete is found
+   by id first and by name second; an answer that has nobody by either is refused rather
+   than handing this athlete somebody else's session. */
+function diExtPickAthlete(obj,who){
+  const listOf=o=>{
+    if(Array.isArray(o)&&o.some(x=>x&&typeof x==='object'&&(x.sporcu_id||x.athlete_id||x.sporcu_adi||x.athlete)))return o;
+    if(o&&typeof o==='object'){
+      for(const k of['programlar','programs','sporcular','athletes'])if(Array.isArray(o[k]))return o[k];
+    }
+    return null;
+  };
+  const list=listOf(obj);
+  if(!list)return obj;
+  const w=who||{};
+  const idOf=x=>String((x&&(x.sporcu_id||x.athlete_id||x.id||(x.sporcu&&x.sporcu.id)))||'').trim();
+  const nameOf=x=>diExName((x&&(x.sporcu_adi||x.athlete||x.athlete_name||x.ad_soyad||(x.sporcu&&(x.sporcu.ad||x.sporcu.name))))||'');
+  let hit=w.id?list.find(x=>idOf(x)===String(w.id)):null;
+  if(!hit&&w.name)hit=list.find(x=>nameOf(x)&&nameOf(x)===diExName(w.name));
+  if(!hit&&list.length===1)hit=list[0];
+  if(!hit)throw new Error(L(`Yapıştırılan yanıtta ${w.name||'bu sporcu'} için bir program yok (${list.length} programdan hiçbiri bu sporcuya ait değil).`,
+    `The pasted answer has no programme for ${w.name||'this athlete'} (none of its ${list.length} programmes is theirs).`));
+  return hit;
+}
+function diParseExternalProgram(text,libMap,who){
   let s=String(text||'').trim();
   if(!s)throw new Error(L('Yapıştırılan metin boş.','Nothing was pasted.'));
   const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)s=fence[1].trim();
@@ -32288,7 +32347,7 @@ function diParseExternalProgram(text,libMap){
   if(b>0){try{obj=JSON.parse(body.slice(0,b+1));}catch(e){}}
   if(!obj){const rep=pdaRepair(body);if(rep){try{obj=JSON.parse(rep);}catch(e){}}}
   if(!obj)throw new Error(L('JSON okunamadı — metnin tamamını kopyaladığından emin ol.','The JSON could not be read — make sure the whole reply was copied.'));
-  const norm=diExtNormalize(obj);
+  const norm=diExtNormalize(diExtPickAthlete(obj,who));
   if(!norm.program.bloklar.some(bl=>bl.egzersizler.some(e=>e&&String(e.ad||'').trim())))
     throw new Error(L('JSON\'da egzersiz içeren bir program bulunamadı — yapay zekâdan cikti_formati\'ndaki yapıda yanıt istediğinden emin ol.',
       'No programme with exercises in the JSON — make sure the model answered in the cikti_formati shape.'));
@@ -33249,6 +33308,37 @@ function snapClean(v){
   if(typeof v==='number'&&!isFinite(v))return undefined;
   return v;
 }
+/* Saves a JSON text as a file named after what it holds. */
+function snapDownloadText(text,base,date){
+  const safe=String(base||'sporcu').trim().replace(/[^\p{L}\p{N}]+/gu,'_').replace(/^_+|_+$/g,'')||'sporcu';
+  const blob=new Blob([text],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${safe}_${date}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+/* The JSON on screen: one athlete's from the brief, or the whole sheet's from the bar. */
+function DiJsonModal({title,date,snap,setSnap,fileBase}){
+  if(!snap)return null;
+  return ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setSnap(null)}>
+    <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="modal-head">
+        <h2 style={{margin:0,fontSize:16,flex:1}}>{title}
+          <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
+        <button className="x-btn" onClick={()=>setSnap(null)} aria-label={L('Kapat','Close')}>✕</button>
+      </div>
+      <div className="di-snap-bar">
+        <span className="di-dim">{snap.copied===true?L('Panoya kopyalandı. ','Copied to the clipboard. ')
+          :snap.copied===false?L('Otomatik kopyalanamadı — Kopyala\'ya bas. ','Could not copy automatically — press Copy. '):''}
+          {snap.note?snap.note+' ':''}
+          {L('Butona her bastığında o anki güncel verilerden yeniden oluşturulur.','Rebuilt from the current data on every press.')}</span>
+        <button type="button" className="btn xs" onClick={()=>snapCopy(snap.text).then(ok=>setSnap(x=>x?{...x,copied:ok}:x))}>
+          {L('Kopyala','Copy')}</button>
+        <button type="button" className="btn xs sec" onClick={()=>snapDownloadText(snap.text,fileBase,date)}>{L('İndir (.json)','Download (.json)')}</button>
+      </div>
+      <pre className="di-snap-pre">{snap.text}</pre>
+    </div>
+  </div>,document.body);
+}
 /* Resolves true when the text reached the clipboard. The async API first; the old
    textarea route where it is missing or refused (plain http, an in-app browser). */
 function snapCopy(text){
@@ -33433,7 +33523,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
     olusturulma_zamani:nowD.toISOString(),
     tarih:ref,
     sporcu:{
-      ad:a.name,forma_no:a.number,
+      id:a.id,ad:a.name,forma_no:a.number,
       yas:age,dogum_tarihi:a.dateOfBirth,
       cinsiyet:snapSexLabel(a.sex),
       boy_cm:boy,vucut_agirligi_kg:kilo,vucut_yagi_yuzde:yag,
@@ -33740,14 +33830,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
   };
-  const snapDownload=()=>{
-    if(!snap)return;
-    const safe=String(plan.ath.name||'sporcu').trim().replace(/[^\p{L}\p{N}]+/gu,'_').replace(/^_+|_+$/g,'')||'sporcu';
-    const blob=new Blob([snap.text],{type:'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${safe}_${date}.json`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  };
   /* An outside model's answer, pasted in. Read into the same draft the in-app writer
      produces and checked by the same validator — so it shows in section 3 exactly as a
      generated session does, and reaches the calendar only through "Onayla ve takvime
@@ -33757,7 +33839,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     const L0=live.current;
     let obj,v;
     try{
-      obj=diParseExternalProgram(imp.text,L0.libMap);
+      obj=diParseExternalProgram(imp.text,L0.libMap,{id:L0.plan.ath.id,name:L0.plan.ath.name});
       v=validateProgram(obj,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
         differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
     }catch(e){setImp(x=>x&&{...x,err:e.message||String(e)});return;}
@@ -33916,24 +33998,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
       <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} onSnapshot={takeSnapshot}
         onImport={()=>setImp({text:'',err:''})}
         hasKey={!!(FB()&&FB().auth().currentUser)}/>
-      {snap&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setSnap(null)}>
-        <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
-          <div className="modal-head">
-            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Sporcu Bilgileri','Athlete data')} — {plan.ath.name||'—'}
-              <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
-            <button className="x-btn" onClick={()=>setSnap(null)} aria-label={L('Kapat','Close')}>✕</button>
-          </div>
-          <div className="di-snap-bar">
-            <span className="di-dim">{snap.copied===true?L('Panoya kopyalandı. ','Copied to the clipboard. ')
-              :snap.copied===false?L('Otomatik kopyalanamadı — Kopyala\'ya bas. ','Could not copy automatically — press Copy. '):''}
-              {L('Butona her bastığında o anki güncel verilerden yeniden oluşturulur.','Rebuilt from the current data on every press.')}</span>
-            <button type="button" className="btn xs" onClick={()=>snapCopy(snap.text).then(ok=>setSnap(x=>x?{...x,copied:ok}:x))}>
-              {L('Kopyala','Copy')}</button>
-            <button type="button" className="btn xs sec" onClick={snapDownload}>{L('İndir (.json)','Download (.json)')}</button>
-          </div>
-          <pre className="di-snap-pre">{snap.text}</pre>
-        </div>
-      </div>,document.body)}
+      <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
+        snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>
       {imp&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setImp(null)}>
         <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="modal-head">
@@ -33942,8 +34008,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             <button className="x-btn" onClick={()=>setImp(null)} aria-label={L('Kapat','Close')}>✕</button>
           </div>
           <div className="di-snap-bar">
-            <span className="di-dim">{L('Yapay zekânın verdiği JSON\'u olduğu gibi yapıştır. Program okunur ve kurallarla denetlenir; takvime ancak sen "Onayla ve takvime yaz"a bastığında işlenir.',
-              'Paste the model\'s JSON as it came. It is read and checked against the rules; it reaches the calendar only when you press "Approve and write".')}</span>
+            <span className="di-dim">{L('Yapay zekânın verdiği JSON\'u olduğu gibi yapıştır. Tüm sporcular için tek yanıt aldıysan onu da yapıştırabilirsin — bu sporcunun programı içinden seçilir. Program kurallarla denetlenir; takvime ancak sen "Onayla ve takvime yaz"a bastığında işlenir.',
+              'Paste the model\'s JSON as it came. A single answer for the whole squad works too — this athlete\'s programme is picked out of it. It is checked against the rules and reaches the calendar only when you press "Approve and write".')}</span>
           </div>
           <textarea className="di-imp-ta" autoFocus value={imp.text} spellCheck={false}
             onChange={e=>setImp({text:e.target.value,err:''})}
@@ -34231,6 +34297,30 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     });
     return out;
   },[plans,team.setup,date,libMap]);
+  /* "Tüm Sporcuların Bilgilerini Al": every selected athlete, from the team as it stands
+     at the press. Each carries their own brief for this day and source; an athlete whose
+     record the engine cannot read is named rather than silently left out. */
+  const[squadSnap,setSquadSnap]=useState(null);
+  const takeSquadSnapshot=()=>{
+    const setup=team.setup||{};
+    const items=[],skipped=[];
+    athletes.filter(a=>chosen.includes(a.id)).forEach(a=>{
+      const p=plans.find(x=>x.ath.id===a.id)||null;
+      try{
+        const review=activeKey?diReadReview(team,activeKey,a.id,date):null;
+        items.push({ath:a,bundle:diBundle(a,setup,date,{libMap}),
+          instr:diInstr(review&&review.instr,p?p.meta:null),session:p?p.meta:null});
+      }catch(e){skipped.push(a.name||a.id);}
+    });
+    if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
+    let text;
+    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests}),null,2);}
+    catch(e){setToast((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
+    const note=L(`${items.length} sporcu.`,`${items.length} athletes.`)+(skipped.length
+      ?' '+L(`Verisi okunamayan: ${skipped.join(', ')}.`,`Could not read: ${skipped.join(', ')}.`):'');
+    setSquadSnap({text,copied:null,note});
+    snapCopy(text).then(ok=>setSquadSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
+  };
 
   /* The review standing against each athlete on this source and day, and — from it —
      the plan the sheet is allowed to write for them. A draft still waiting on the coach
@@ -34520,6 +34610,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         {removable.length>0&&<button className="btn sec sm" onClick={removeFrom}
           title={L('Bu programı seçili sporcuların takviminden kaldırır.','Removes this program from the selected athletes\' calendars.')}>
           ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
+        {/* Everyone selected above, in one JSON, rebuilt at the press — for one request to
+            an outside model instead of one per athlete. */}
+        <button className="btn sec sm" onClick={takeSquadSnapshot} disabled={!chosen.length}
+          title={L('Seçili sporcuların o anki bütün güncel verisini ve talimatlarını tek bir JSON olarak verir.',
+            'The current data and brief of every selected athlete, as one JSON document.')}>
+          {'{ }'} {L(`Tüm Sporcuların Bilgilerini Al (${chosen.length})`,`Get all athletes' data (${chosen.length})`)}</button>
         <span className="iv-expbar">
           <select value={expRange} onChange={e=>setExpRange(e.target.value)} title={L('Çıktı aralığı','Export range')}>
             <option value="day">{L('Gün','Day')}</option>
@@ -34567,6 +34663,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
+    <DiJsonModal title={L('Tüm Sporcuların Bilgileri','All athletes\' data')} date={date}
+      snap={squadSnap} setSnap={setSquadSnap} fileBase={L('tum_sporcular','all_athletes')}/>
     {src&&plans.length===0&&<div className="ex-empty">{srcRoster&&!srcRoster.length
       ?L('Bu seans yalnızca kadroda olmayan sporculara atanmış — seansın katılımcı listesini takvimden güncelle.',
          'This session is assigned only to athletes who have left the roster — update its participant list on the session itself.')
