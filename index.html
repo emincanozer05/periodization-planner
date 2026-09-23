@@ -5322,6 +5322,15 @@ header{background:var(--bg2)!important}
   padding:10px 24px;background:var(--grad);color:#06131f;box-shadow:0 6px 18px rgba(0,148,255,.24)}
 .di-gen:hover:not(:disabled){filter:brightness(1.08)}
 .di-gen:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.di-snapbtn{display:flex;flex-direction:column;gap:1px;align-items:center;border-radius:11px;cursor:pointer;
+  padding:9px 22px;background:var(--elevated);color:var(--text);border:1px solid var(--border2)}
+.di-snapbtn:hover{background:var(--hover);border-color:rgba(0,148,255,.55)}
+.di-snapbtn .di-gen-s{color:var(--muted);opacity:1}
+.modal.di-snap{max-width:860px;width:95vw;background:#15181e}
+.di-snap-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border)}
+.di-snap-bar .di-dim{flex:1;min-width:200px;line-height:1.5}
+.di-snap-pre{margin:0;padding:14px 16px;overflow:auto;flex:1;min-height:0;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:11.5px;line-height:1.55;color:var(--text2);white-space:pre;user-select:text}
 .di-gen-t{font-size:13.5px;font-weight:800;letter-spacing:.01em}
 .di-gen-s{font-size:10.5px;opacity:.78}
 /* ---- Act 3: the session that came back ---- */
@@ -24582,6 +24591,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
               </div>
               <div className="help">{fullPhone(ath)||L('Ülke kodunu seç, numarayı başındaki 0 olmadan yaz.','Pick the country code, and write the number without a leading 0.')}</div></div>
           </div>
+          <div className="grid cols-3" style={{marginTop:12}}>
+            <div><label>{L('Cinsiyet','Sex')}</label><select value={ath.sex||''} onChange={e=>updAth(ath.id,{sex:e.target.value})}>
+              <option value="">{L('— girilmemiş','— not set')}</option>
+              <option value="M">{L('Erkek','Male')}</option>
+              <option value="F">{L('Kadın','Female')}</option>
+            </select></div>
+          </div>
           <div style={{marginTop:12}}><label>{L('Notlar','Notes')}</label><textarea value={ath.notes} onChange={e=>updAth(ath.id,{notes:e.target.value})} placeholder={L('Hedefler, özel durumlar…','Goals, special considerations…')}/></div>
           <div style={{marginTop:16,display:'flex',justifyContent:'flex-end'}}><button className="btn sm" onClick={()=>setEditProfileOpen(false)}>{L('Bitti','Done')}</button></div>
         </div>
@@ -30783,6 +30799,9 @@ function diBundle(ath,setup,ref,opts){
     date:ref,
     athlete:{
       id:ath.id,name:ath.name||null,age,
+      /* Set on the athlete's profile. Absent on every athlete entered before the field
+         existed, and then listed as missing rather than guessed. */
+      sex:ath.sex==='M'?'male':ath.sex==='F'?'female':null,
       position:ath.position?(POS_FULL[ath.position]||ath.position):null,
       position_group:ath.position?posGroupLabel(pg):null,
       /* Context for the role, not a prescription from it (§4.3). */
@@ -31858,6 +31877,34 @@ Antrenör diline uygun, teknik ama gösterişsiz; her yargı bu sporcunun verisi
 
 /* The request. Everything computed is already decided; the brief is the coach's; the
    equipment is the gym's. The answer's only job is the session itself. */
+/* The coach's brief as the model reads it — one shape, used by the request the job
+   sends and by the "Sporcu Bilgilerini Al" export, so what the coach copies out is
+   exactly what the programme writer would have been told. */
+function diBriefForAI(i){
+  return{
+    oncelikler:i.priorities.map(diPrioLabel),
+    mutlaka_olsun:i.must,
+    kacinilacak:i.avoid,
+    kisitlar:i.constraints.map(id=>{const c=diConRow(id);
+      const raw=(i.constraintValues||{})[id]||null;
+      const v=c.deger?diConValue(c.deger.kind,raw):null;
+      return{kisit:L(c.label[0],c.label[1]),nedir:L(c.what[0],c.what[1]),
+        programlama_davranisi:L(c.ai[0],c.ai[1]),
+        /* A bounded constraint says its bound. Where the coach filled the box AND
+           the unit is unambiguous, it is also a hard check — the answer is told so
+           here, because a limit that will reject the session is a limit worth
+           writing to rather than discovering afterwards. */
+        sinir:raw,
+        sinir_kodla_denetleniyor:!!(v&&v.readable),
+        sinir_birimi:v&&v.readable?v.unit:null};}),
+    kisit_detayi:i.constraintNote||null,
+    seans_suresi_dk:i.duration,
+    /* The ceiling binds the MAIN phase only: preparation and complementary work is
+       what closes the athlete's measured gaps, and capping it would cap the fix. */
+    ana_faz_maks_egzersiz:i.maxExercises,
+    ek_notlar:i.notes||null,
+  };
+}
 function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge,extra){
   const x=extra||{};
   const eq=eqAvailable(setup);
@@ -31974,29 +32021,7 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge,extra){
     /* The game the session is for. Position says what a role does inside it; this says
        what the game does to everyone who plays it. */
     spor_baglami:diSportContext(setup),
-    antrenor_talimati:{
-      oncelikler:i.priorities.map(diPrioLabel),
-      mutlaka_olsun:i.must,
-      kacinilacak:i.avoid,
-      kisitlar:i.constraints.map(id=>{const c=diConRow(id);
-        const raw=(i.constraintValues||{})[id]||null;
-        const v=c.deger?diConValue(c.deger.kind,raw):null;
-        return{kisit:L(c.label[0],c.label[1]),nedir:L(c.what[0],c.what[1]),
-          programlama_davranisi:L(c.ai[0],c.ai[1]),
-          /* A bounded constraint says its bound. Where the coach filled the box AND
-             the unit is unambiguous, it is also a hard check — the answer is told so
-             here, because a limit that will reject the session is a limit worth
-             writing to rather than discovering afterwards. */
-          sinir:raw,
-          sinir_kodla_denetleniyor:!!(v&&v.readable),
-          sinir_birimi:v&&v.readable?v.unit:null};}),
-      kisit_detayi:i.constraintNote||null,
-      seans_suresi_dk:i.duration,
-      /* The ceiling binds the MAIN phase only: preparation and complementary work is
-         what closes the athlete's measured gaps, and capping it would cap the fix. */
-      ana_faz_maks_egzersiz:i.maxExercises,
-      ek_notlar:i.notes||null,
-    },
+    antrenor_talimati:diBriefForAI(i),
     /* The rules the club is working to, exactly as they read on the Settings tab at
        this moment — not a copy compiled into the prompt. A rule corrected an hour ago
        binds this session. */
@@ -32021,21 +32046,22 @@ function diBuildProgramInput(bundle,plan,exercises,instr,setup,knowledge,extra){
 /* ---- What the app does not know about this athlete ------------------------
    Two kinds of gap, and they are not the same. Some fields exist and are empty for
    this athlete (no test on record, no check-in this morning) — those are theirs to
-   fill. Others CoachOS has no field for at all: there is no sex on an athlete, so
-   rules 10 and 11 cannot be applied to anybody, and no amount of prompting makes
-   that data appear. Both are stated, because the failure mode they share is the
+   fill (sex, too, is on the profile now — but blank on every athlete entered before
+   it was, and rules 10 and 11 cannot be applied to them until it is set). Others
+   CoachOS has no field for at all, and no amount of prompting makes that data
+   appear. Both are stated, because the failure mode they share is the
    model quietly supplying the missing half from general literature and presenting
    it as this athlete's. */
 function diMissingData(bundle,ath){
   const out=[];
   const add=(alan,neden)=>out.push({alan,neden});
   // Fields the app has no home for. Named as such so nobody looks for them.
-  add('cinsiyet','Uygulamada cinsiyet alanı yok — Kural 10 ve Kural 11 bu sporcu için uygulanamaz, bu konularda karar verme.');
   add('biyolojik olgunlaşma / büyüme atağı','Uygulama bu göstergeleri toplamıyor — Kural 8 yalnızca kronolojik yaş ve antrenman yaşı üzerinden okunabilir.');
   add('dış yük (GPS / PlayerLoad)','Uygulama dış yük toplamıyor — Kural 14 yalnızca iç yük üzerinden okunabilir.');
   add('seyahat','Uygulama seyahat kaydı tutmuyor.');
   // Fields that exist and happen to be empty for this athlete.
   const a=bundle.athlete||{};
+  if(!a.sex)add('cinsiyet','Sporcu profilinde girilmemiş — Kural 10 ve Kural 11 bu sporcu için uygulanamaz, bu konularda karar verme.');
   if(a.age==null)add('yaş','Sporcunun doğum tarihi girilmemiş — yaşa bağlı hiçbir bant uygulanamaz.');
   if(a.training_age_years==null)add('antrenman yaşı','Sporcu kartında girilmemiş.');
   if(!a.position)add('pozisyon','Sporcu kartında girilmemiş.');
@@ -32730,7 +32756,7 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
    and without a card edge they read as one ragged block of controls. It is stored per
    athlete PER DAY, beside the session it produced, so yesterday's instruction never
    silently drives today's. */
-function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
+function DiInstructionForm({instr,save,busy,onGenerate,onSnapshot,hasKey}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the two chip boxes but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -32752,6 +32778,13 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
     const merged=withPending();
     if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
     onGenerate(merged);
+  };
+  /* The same merged brief the generate press would send, so a chip still being typed
+     is in the copy too. Read-only: it writes nothing but that fold-in. */
+  const snapshot=()=>{
+    const merged=withPending();
+    if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
+    if(onSnapshot)onSnapshot(merged);
   };
   const field=(n,title,hint,control,wide)=>(
     <div className={'di-field'+(wide?' wide':'')}>
@@ -32805,6 +32838,12 @@ function DiInstructionForm({instr,save,busy,onGenerate,hasKey}){
     <div className="di-genbar">
       {!hasKey&&<span className="di-dim">{L('Program üretmek için oturum açman gerekiyor. Yukarıdaki hesaplamalar oturum olmadan da çalışır.',
         'Sign in to generate. Everything above is computed without it.')}</span>}
+      {onSnapshot&&<button type="button" className="di-snapbtn" onClick={snapshot}
+        title={L('Sporcunun o anki bütün güncel verisini ve bu talimatı tek bir JSON olarak verir.',
+          'The athlete\'s current data and this brief, as one JSON document.')}>
+        <span className="di-gen-t">{L('Sporcu Bilgilerini Al','Get athlete data')}</span>
+        <span className="di-gen-s">{L('Güncel veriler + talimat · JSON','Current data + brief · JSON')}</span>
+      </button>}
       <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={generate}>
         <span className="di-gen-t">{busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
         <span className="di-gen-s">{L('Talimatlara göre kişiselleştirilmiş program','A session written against the brief')}</span>
@@ -33024,8 +33063,261 @@ function diJobWriteGate(job,expect){
   return{ok:!why.length,why};
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne,knowledge}){
+/* ---- "Sporcu Bilgilerini Al" — the athlete as one JSON document ------------
+   Everything a coach would paste into an outside model to have a session written for
+   this athlete: the profile, this morning's check-in, the RPE log, every current test
+   result with the coach's own comments on it, pain and injury, the gym's kit, this
+   week's calendar and today's brief.
+
+   BUILT AT THE PRESS, NEVER CACHED. The caller hands in the athlete record as it
+   stands on this render and the brief with whatever is still sitting in a chip box,
+   and nothing here is memoised — so a check-in that landed a minute ago, a test typed
+   in another tab or a chip added just now is in the next copy.
+
+   "Current" means current per field, not per record: the latest test may carry only a
+   weigh-in while the FMS was screened a month earlier, and both are this athlete's
+   current numbers. So every value is the most recent one on record up to the day,
+   with the date it was taken beside it. Empty fields are dropped rather than sent as
+   blanks; what the app holds nothing for is listed under `eksik_veriler`. */
+const SNAP_DAYS=['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+const SNAP_SEX={M:['Erkek','Male'],F:['Kadın','Female']};
+const snapSexLabel=v=>SNAP_SEX[v]?L(SNAP_SEX[v][0],SNAP_SEX[v][1]):null;
+/* Drops '', null, undefined, empty arrays and empty objects, all the way down. */
+function snapClean(v){
+  if(Array.isArray(v)){const a=v.map(snapClean).filter(x=>x!==undefined);return a.length?a:undefined;}
+  if(v&&typeof v==='object'){
+    const o={};
+    Object.keys(v).forEach(k=>{const x=snapClean(v[k]);if(x!==undefined)o[k]=x;});
+    return Object.keys(o).length?o:undefined;
+  }
+  if(v==null)return undefined;
+  if(typeof v==='string'){const t=v.trim();return t?t:undefined;}
+  if(typeof v==='number'&&!isFinite(v))return undefined;
+  return v;
+}
+/* Resolves true when the text reached the clipboard. The async API first; the old
+   textarea route where it is missing or refused (plain http, an in-app browser). */
+function snapCopy(text){
+  const fallback=()=>{
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      const ok=document.execCommand('copy');document.body.removeChild(ta);return!!ok;
+    }catch(e){return false;}
+  };
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      return navigator.clipboard.writeText(text).then(()=>true,()=>fallback());
+  }catch(e){}
+  return Promise.resolve(fallback());
+}
+function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now}){
+  const a=ath||{},s=setup||{};
+  const ref=date||fmt(today);
+  const byDate=(x,y)=>String(x.date).localeCompare(String(y.date));
+  const upTo=list=>[...(list||[])].filter(r=>r&&r.date&&r.date<=ref).sort(byDate);
+  const b=bundle||diBundle(a,s,ref,{});
+  const age=b.athlete&&b.athlete.age!=null?b.athlete.age:null;
+
+  /* Body: the latest reading of each measure across the body-composition log and the
+     test sheets (a weigh-in is often only on one of them), falling back to the card. */
+  const bodyRows=upTo([...(a.measurements||[]),...(a.tests||[])]);
+  const latestBody=(k,card)=>{
+    for(let i=bodyRows.length-1;i>=0;i--){const v=recNum(bodyRows[i][k]);if(v!=null)return{deger:v,tarih:bodyRows[i].date};}
+    const c=recNum(card);return c!=null?{deger:c,tarih:null,kaynak:'sporcu kartı'}:null;
+  };
+  const boy=latestBody('height',a.height),kilo=latestBody('weight',a.weight),yag=latestBody('bodyFat',null);
+
+  /* The check-in. The latest one on record, however old, with how old it is — a
+     four-day-old morning is still information, as long as it says it is four days old. */
+  const ws=upTo(a.wellness);
+  const lastW=ws[ws.length-1]||null;
+  const wAge=lastW?diffD(lastW.date,ref):null;
+  const wFrom=fmt(addD(parseD(ref),-6));
+  const week=ws.filter(w=>w.date>=wFrom);
+  const base=id=>((b.wellness&&b.wellness.baselines)||[]).find(x=>x.field===id)||null;
+  const scale=L('1-5 (5 = en iyi durum)','1-5 (5 = best)');
+  const wField=(id,tr,en)=>{
+    const last=[...ws].reverse().find(w=>recNum(w[id])!=null)||null;
+    const bl=base(id);
+    return{
+      ad:L(tr,en),
+      son_deger:last?recNum(last[id]):null,
+      tarih:last?last.date:null,
+      kac_gun_once:last?diffD(last.date,ref):null,
+      olcek:id==='RHR'?'bpm':scale,
+      kisisel_ortalama:bl?bl.baseline:null,
+      ortalamadan_sapma_yuzde:bl?bl.deviation_pct:null,
+      son_7_gun:week.filter(w=>recNum(w[id])!=null).map(w=>({tarih:w.date,deger:recNum(w[id])})),
+    };
+  };
+  const painRegions=((b.pain&&b.pain.regions)||[]);
+
+  /* RPE: the athlete's own log, per slot, for the last seven days — plus the load
+     figures the rest of the app reads off it. */
+  const srpe=upTo(a.srpeLog).filter(e=>e.date>=wFrom);
+  const slot=(e,k,tr)=>{
+    const r=recNum(e[k+'RPE']),d=recNum(e[k+'Duration']);
+    return(r==null&&d==null)?null:{tur:tr,rpe:r,sure_dk:d,yuk_au:(r!=null&&d!=null)?Math.round(r*d):null};
+  };
+  const ld=b.load||{};
+
+  /* Tests: every metric the comparison table knows (the coach's own tests included),
+     each at its most recent value. */
+  const tests=upTo(a.tests);
+  const newest=(get)=>{for(let i=tests.length-1;i>=0;i--){let v=null;try{v=get(tests[i]);}catch(e){}if(v!=null)return{v,t:tests[i]};}return null;};
+  const groups={};
+  cmpMetrics(customTests||[]).forEach(m=>{
+    const hit=newest(m.get);
+    if(!hit)return;
+    const g=CMP_GROUPS.find(x=>x.id===m.g);
+    const gk=g?L(g.tr,g.en):m.g;
+    (groups[gk]=groups[gk]||[]).push({test:cmpLabel(m),deger:hit.v,birim:m.u||null,tarih:hit.t.date});
+  });
+  const fmsHit=newest(t=>{const r=fmsCalc(t.fms);return r.n?r:null;});
+  const fms=fmsHit?{
+    tarih:fmsHit.t.date,toplam:fmsHit.v.total,olculen_hareket:fmsHit.v.n,maks:21,
+    hareketler:fmsHit.v.items.filter(i=>i.filled).map(i=>({hareket:L(i.tr,i.en),skor:i.score,
+      sag:i.right,sol:i.left,asimetri:i.asym,
+      temizleme_testi:(i.clear&&i.cleared)?(i.cleared==='pos'?L('pozitif (ağrılı)','positive (painful)'):L('negatif','negative')):null}))}:null;
+  const circHit=newest(t=>{const c=t.circ||{};return Object.keys(c).some(k=>recNum(c[k])!=null)?c:null;});
+  const CIRC=[['shoulder','Omuz','Shoulder'],['waist','Bel','Waist'],['hip','Kalça','Hip'],['thighRight','Uyluk sağ','Thigh R'],
+    ['thighLeft','Uyluk sol','Thigh L'],['calfRight','Baldır sağ','Calf R'],['calfLeft','Baldır sol','Calf L']];
+  /* The coach's comments: each comment box at its most recent non-empty entry, word
+     for word, with the date of the sheet it was written on. */
+  const notes=[],seenNote=new Set();
+  for(let i=tests.length-1;i>=0;i--){
+    diObservations(tests[i]).sources.forEach(o=>{
+      if(seenNote.has(o.alan))return;
+      seenNote.add(o.alan);notes.push({alan:o.alan,yorum:o.metin,tarih:tests[i].date});
+    });
+  }
+  const lastTest=tests[tests.length-1]||null;
+
+  /* Injury records, whole — the coach's notes on them included. */
+  const injRow=i=>({tur:i.type,bolge:i.location||i.area,taraf:i.side,doku:i.tissueType||i.diagnosis,derece:i.grade,
+    mekanizma:i.mechanism,baglam:i.context,tarih:i.date||i.firstInjuryDay,durum:i.status,
+    rtp_asamasi:i.rtpStage?L(...((diRtpRow(i.rtpStage)||{label:[i.rtpStage,i.rtpStage]}).label)):null,
+    kisitlamalar:i.restrictions,tahmini_donus:i.estimatedReturn||i.expectedReturn,donus:i.actualReturn,notlar:i.notes});
+  const allInj=[...(a.injuries||[])];
+  const activeInj=allInj.filter(i=>!i.actualReturn&&(!i.status||i.status!=='Recovered'));
+  const pastInj=allInj.filter(i=>!activeInj.includes(i));
+
+  /* The week the day sits in, Monday to Sunday, as the athlete's own calendar holds it
+     (team sessions are mirrored onto it, so this is what the athlete actually has). */
+  const mon=sow(parseD(ref));
+  const comps=(s.competitions||[]).filter(c=>c&&c.date);
+  const exRow=e=>({ad:e.name,faz:e.phase?blkPhaseLbl(e.phase):null,set:e.sets,tekrar:e.reps,sure:e.duration,
+    tempo:e.tempo,rpe:e.rpe,yuk:e.load,dinlenme:e.rest,not:e.notes});
+  const takvim=[];
+  for(let k=0;k<7;k++){
+    const dk=fmt(addD(mon,k));
+    const day=(a.days||{})[dk]||{};
+    const comp=comps.filter(c=>c.date===dk).map(c=>c.name||L('Maç','Game'));
+    takvim.push({tarih:dk,gun:L(SNAP_DAYS[k],DN[k]),bugun:dk===ref||null,
+      mac:comp.length?comp:null,
+      seanslar:(day.sessions||[]).map(x=>({ad:x.name,saat:x.time,sure_dk:recNum(x.duration),yuk_tipi:x.loadType,
+        amac:x.purpose,odak:x.focus,alt_odak:x.sub,bolge:x.region,takim_seansi:x.sourceId?true:null,
+        srpe:recNum(x.sRPE),notlar:x.notes,plan_notu:x.planNote,
+        bloklar:(x.blocks||[]).filter(bl=>bl&&!bl.removed).map(bl=>({ad:bl.name,
+          egzersizler:(bl.exercises||[]).filter(e=>String(e.name||'').trim()).map(exRow)}))})),
+      gunluk_not:day.dailyNotes});
+  }
+  const eq=eqAvailable(s);
+
+  const out={
+    olusturulma_zamani:new Date(now||Date.now()).toISOString(),
+    tarih:ref,
+    sporcu:{
+      ad:a.name,forma_no:a.number,
+      yas:age,dogum_tarihi:a.dateOfBirth,
+      cinsiyet:snapSexLabel(a.sex),
+      boy_cm:boy,vucut_agirligi_kg:kilo,vucut_yagi_yuzde:yag,
+      pozisyon:b.athlete&&b.athlete.position,pozisyon_grubu:b.athlete&&b.athlete.position_group,
+      antrenman_yasi:b.athlete&&b.athlete.training_age_years,
+      seviye:b.athlete&&b.athlete.level,vucut_tipi:b.athlete&&b.athlete.vucut_tipi,
+      spor:s.sport,
+    },
+    wellness:{
+      son_checkin:lastW?{tarih:lastW.date,kac_gun_once:wAge,
+        hazir_olus:recNum(lastW.readiness),uyku:recNum(lastW.sleep),yorgunluk:recNum(lastW.fatigue),
+        kas_agrisi:recNum(lastW.soreness),stres:recNum(lastW.stress),ruh_hali:recNum(lastW.mood),
+        dinlenik_nabiz_bpm:recNum(lastW.RHR),agri_bolgesi_notu:painFreeText(lastW.areaOfPain)}:null,
+      olcek:scale,
+      hazir_olus:b.readiness?{skor:b.readiness.score,durum:b.readiness.status,kaynak:b.readiness.source,
+        tarih:b.readiness.checkin_date,sinyaller:b.readiness.signals}:null,
+      son_7_gun:week.map(w=>({tarih:w.date,hazir_olus:recNum(w.readiness),uyku:recNum(w.sleep),
+        yorgunluk:recNum(w.fatigue),kas_agrisi:recNum(w.soreness),dinlenik_nabiz_bpm:recNum(w.RHR)})),
+    },
+    rpe:{
+      son_kayit:ld.last?{tarih:ld.last.date,tur:ld.last.kind,rpe:ld.last.rpe,sure_dk:ld.last.duration,srpe_au:ld.last.srpe}:null,
+      ort_rpe_3_gun:ld.rpe3,ort_rpe_7_gun:ld.rpe7,ort_rpe_onceki_7_gun:ld.rpe_prev7,trend:ld.trend,
+      srpe_7_gun_au:ld.srpe7,srpe_onceki_7_gun_au:ld.srpe_prev7,yuk_degisimi_yuzde:ld.load_change_pct,
+      acwr:ld.acwr,acwr_bolgesi:ld.acwr_zone,monotoni:ld.monotony,zor_gun_sayisi_7:ld.hard_days_7,
+      son_7_gun:srpe.map(e=>({tarih:e.date,
+        seanslar:[slot(e,'tp',L('Takım antrenmanı','Team practice')),slot(e,'sc',L('Kuvvet & kondisyon','S&C')),
+          slot(e,'game',L('Maç','Game'))].filter(Boolean),
+        toplam_yuk_au:recNum(e.totalLoad)})),
+    },
+    uyku:wField('sleep','Uyku','Sleep'),
+    yorgunluk:wField('fatigue','Yorgunluk','Fatigue'),
+    kas_agrisi:wField('soreness','Kas ağrısı','Muscle soreness'),
+    testler:{
+      son_test_tarihi:lastTest?lastTest.date:null,
+      test_kaydi_sayisi:tests.length,
+      sonuclar:groups,
+      fms:fms,
+      cevre_olcumleri_cm:circHit?{tarih:circHit.t.date,
+        olcumler:CIRC.map(([k,tr,en])=>recNum(circHit.v[k])!=null?{olcu:L(tr,en),deger:recNum(circHit.v[k])}:null).filter(Boolean)}:null,
+      overhead_squat_kompensasyonlari:(()=>{const h=newest(t=>((t.ohs&&t.ohs.problems)||[]).filter(x=>String(x||'').trim()).length
+        ?t.ohs.problems.filter(x=>String(x||'').trim()):null);return h?{tarih:h.t.date,liste:h.v}:null;})(),
+      yorumlar:notes,
+      kisisel_ortalamadan_sapmalar:b.test_baselines,
+    },
+    agri_ve_sakatlik:{
+      bugunku_agri:painRegions.map(r=>({bolge:r.label,siddet_0_10:r.severity_0_10,siddet_0_3:r.severity_0_3,
+        tarih:r.date,kaynak:r.source,kalici_kisit:r.standing||null,durum:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status})),
+      en_yuksek_agri_0_10:b.pain&&b.pain.peak_severity_0_10,
+      sporcunun_ifadesi:b.pain&&b.pain.athlete_words,
+      yuk_alinmasi_gereken_paternler:b.pain&&b.pain.patterns_to_unload,
+      tercih_edilecek_paternler:b.pain&&b.pain.patterns_preferred,
+      kalici_kisit_notu:a.constraints,
+      aktif_sakatliklar:activeInj.map(injRow),
+      gecmis_sakatliklar:pastInj.slice(-6).map(injRow),
+      tekrarlayan_bolgeler:b.injury&&b.injury.recurrence,
+    },
+    ekipman:{
+      tur_sayisi:new Set(eq.map(e=>e.id)).size,
+      liste:eq.map(e=>({ekipman:e.label,adet:e.qty==null?L('belirtilmemiş','not given'):e.qty,agirlik_kg:e.kg})),
+    },
+    haftalik_takvim:{
+      hafta:`${fmt(mon)} – ${fmt(addD(mon,6))}`,
+      sezon_fazi:b.season_phase&&b.season_phase.label,
+      sonraki_mac:b.competition&&b.competition.next,
+      gunler:takvim,
+    },
+    antrenor_talimati:diBriefForAI(instr||diInstr(null,null)),
+  };
+  const missing=[];
+  if(age==null)missing.push(L('yaş (doğum tarihi girilmemiş)','age (no date of birth)'));
+  if(!snapSexLabel(a.sex))missing.push(L('cinsiyet (sporcu kartında girilmemiş)','sex (not set on the athlete card)'));
+  if(!boy)missing.push(L('boy','height'));
+  if(!kilo)missing.push(L('vücut ağırlığı','body weight'));
+  if(!yag)missing.push(L('vücut yağı','body fat'));
+  if(!out.sporcu.pozisyon)missing.push(L('pozisyon','position'));
+  if(!lastW)missing.push(L('wellness check-in','wellness check-in'));
+  if(!srpe.length)missing.push(L('son 7 günde RPE kaydı','RPE in the last 7 days'));
+  if(!tests.length)missing.push(L('test kaydı','test record'));
+  if(!eq.length)missing.push(L('ekipman envanteri','equipment inventory'));
+  const res=snapClean(out)||{};
+  if(missing.length)res.eksik_veriler=missing;
+  return res;
+}
+
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne,knowledge,customTests}){
   const[starting,setStarting]=useState(false);
+  const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
   const[job,setJob]=useState(null);           // the live job document, as the server writes it
   const[err,setErr]=useState('');
   const busy=starting||!!(job&&!AI_JOB_TERMINAL.includes(job.status));
@@ -33222,6 +33514,29 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     setStarting(false);
     pressLock.current=false;
   };
+  /* "Sporcu Bilgilerini Al": rebuilt from the live state on every press — the athlete
+     as the team holds them right now, not the copy this card was drawn from — and put
+     on the clipboard in the same press, so one click is enough to paste it anywhere. */
+  const takeSnapshot=brief=>{
+    const L0=live.current;
+    const ath=((L0.team&&L0.team.athletes)||[]).find(x=>x.id===L0.plan.ath.id)||L0.plan.ath;
+    let text;
+    try{
+      const b=diBundle(ath,L0.setup||{},L0.date,{libMap:L0.libMap});
+      text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,bundle:b,
+        instr:diInstr(brief||instr,L0.plan.meta),customTests}),null,2);
+    }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
+    setSnap({text,copied:null});
+    snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
+  };
+  const snapDownload=()=>{
+    if(!snap)return;
+    const safe=String(plan.ath.name||'sporcu').trim().replace(/[^\p{L}\p{N}]+/gu,'_').replace(/^_+|_+$/g,'')||'sporcu';
+    const blob=new Blob([snap.text],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${safe}_${date}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
   const cancelJob=()=>{
     const id=job&&job.id;const ref=id&&jobRefOf(id);
     if(ref&&!AI_JOB_TERMINAL.includes(job.status))ref.update({cancelRequested:true}).catch(()=>{});
@@ -33358,7 +33673,25 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} hasKey={!!(FB()&&FB().auth().currentUser)}/>
+      <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} onSnapshot={takeSnapshot}
+        hasKey={!!(FB()&&FB().auth().currentUser)}/>
+      {snap&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setSnap(null)}>
+        <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-head">
+            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Sporcu Bilgileri','Athlete data')} — {plan.ath.name||'—'}</h2>
+            <button className="x-btn" onClick={()=>setSnap(null)} aria-label={L('Kapat','Close')}>✕</button>
+          </div>
+          <div className="di-snap-bar">
+            <span className="di-dim">{snap.copied===true?L('Panoya kopyalandı. ','Copied to the clipboard. ')
+              :snap.copied===false?L('Otomatik kopyalanamadı — Kopyala\'ya bas. ','Could not copy automatically — press Copy. '):''}
+              {L('Butona her bastığında o anki güncel verilerden yeniden oluşturulur.','Rebuilt from the current data on every press.')}</span>
+            <button type="button" className="btn xs" onClick={()=>snapCopy(snap.text).then(ok=>setSnap(x=>x?{...x,copied:ok}:x))}>
+              {L('Kopyala','Copy')}</button>
+            <button type="button" className="btn xs sec" onClick={snapDownload}>{L('İndir (.json)','Download (.json)')}</button>
+          </div>
+          <pre className="di-snap-pre">{snap.text}</pre>
+        </div>
+      </div>,document.body)}
       {job&&!AI_JOB_TERMINAL.includes(job.status)&&<div className={'di-job s-'+String(job.status).toLowerCase()} role="status" aria-live="polite">
         <span className="di-job-spin"/>
         <span className="di-job-t">{aiJobStatusText(job)}</span>
@@ -33963,7 +34296,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         ai={data.ai} exercises={exercises} setup={team.setup||{}} libMap={libMap}
-        knowledge={knowledge}
+        knowledge={knowledge} customTests={data.customTests}
         writeOne={(id,program)=>applyTo([id],{force:{id,program}})}/>:null}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}

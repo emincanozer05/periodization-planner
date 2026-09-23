@@ -86,7 +86,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
-    'geminiListModels'];
+    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -667,6 +667,80 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('kademe istekte taşınıyor', !!input.kademe && input.kademe.yapisal === 3, JSON.stringify(input.kademe && input.kademe.yapisal));
     check('30 kural istekte tam hâliyle', Array.isArray(input.bilgi_tabani) && input.bilgi_tabani.length === 30,
       `kural sayısı=${(input.bilgi_tabani || []).length}`);
+  }
+
+  group('Ek — "Sporcu Bilgilerini Al" JSON çıktısı');
+  {
+    const test0 = Object.assign(cleanTest(back(40)), {
+      fms: { deepSquat: 2, hurdleStep: { right: 2, left: 3 }, observations: 'Sol dizde valgus' },
+      posture: { observations: 'Hafif anterior pelvik tilt' }, notes: 'Eski not', bodyFat: 11,
+    });
+    const test1 = Object.assign(cleanTest(back(5)), { cmj: 41, notes: 'CMJ iyi, iniş kontrolsüz' });
+    const ath = athlete({
+      sex: 'M', height: 190, number: '7',
+      tests: [test0, test1],
+      wellness: [wellness(back(1), 3.5, { sleep: 3, fatigue: 3, soreness: 2 }), wellness(TODAY, 4, { sleep: 5, RHR: 52 })],
+      srpeLog: [{ date: back(1), tpRPE: 7, tpDuration: 90 }],
+      injuries: [{ type: 'Burkulma', location: 'Ayak bileği', side: 'Sol', status: 'Active', notes: 'Bantla oynuyor' }],
+      days: { [TODAY]: { date: TODAY, sessions: [{ name: 'Kuvvet', time: '17:00', duration: 60,
+        blocks: [{ name: 'Ana', exercises: [{ name: 'Goblet Squat', sets: '3', reps: '6' }, { name: '' }] }] }] } },
+    });
+    const instr = A.diInstr({ must: ['Calf Raise'], avoid: ['derin squat'], notes: 'Yarın maç var', maxExercises: 8 }, { duration: 60 });
+    const b = A.diBundle(ath, SETUP, TODAY, { libMap });
+    const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, bundle: b, instr, customTests: [] });
+    const round = JSON.parse(JSON.stringify(snap));
+    check('çıktı geçerli JSON ve bütün bölümleri taşıyor',
+      ['sporcu', 'wellness', 'rpe', 'uyku', 'yorgunluk', 'kas_agrisi', 'testler', 'agri_ve_sakatlik', 'ekipman',
+        'haftalik_takvim', 'antrenor_talimati'].every(k => k in round), Object.keys(round).join(','));
+    check('profil: yaş, cinsiyet, boy, kilo, yağ, pozisyon',
+      snap.sporcu.yas === 26 && /^(Erkek|Male)$/.test(snap.sporcu.cinsiyet) && snap.sporcu.boy_cm.deger === 195 &&
+      snap.sporcu.vucut_agirligi_kg.deger === 90 && snap.sporcu.vucut_yagi_yuzde.deger === 11 && !!snap.sporcu.pozisyon,
+      JSON.stringify(snap.sporcu));
+    check('wellness en son check-in\'den (bugün)', snap.wellness.son_checkin.tarih === TODAY &&
+      snap.uyku.son_deger === 5 && snap.kas_agrisi.son_deger === 4 && snap.wellness.son_checkin.dinlenik_nabiz_bpm === 52,
+      JSON.stringify(snap.wellness.son_checkin));
+    check('RPE günlüğü taşınıyor', snap.rpe.son_7_gun.length === 1 && snap.rpe.son_7_gun[0].seanslar[0].rpe === 7,
+      JSON.stringify(snap.rpe.son_7_gun));
+    const cmj = Object.values(snap.testler.sonuclar).flat().find(x => x.test === 'CMJ');
+    check('test sonucu en güncel kayıttan, tarihiyle', cmj && cmj.deger === 41 && cmj.tarih === back(5), JSON.stringify(cmj));
+    check('FMS eski kayıttan da olsa güncel olarak geliyor', snap.testler.fms && snap.testler.fms.toplam === 4,
+      JSON.stringify(snap.testler.fms));
+    const notes = snap.testler.yorumlar.map(x => x.yorum);
+    check('test yorumları: her alanın en son notu, kelimesi kelimesine',
+      notes.includes('CMJ iyi, iniş kontrolsüz') && !notes.includes('Eski not') &&
+      notes.includes('Sol dizde valgus') && notes.includes('Hafif anterior pelvik tilt'), JSON.stringify(notes));
+    check('sakatlık notuyla birlikte', snap.agri_ve_sakatlik.aktif_sakatliklar[0].notlar === 'Bantla oynuyor',
+      JSON.stringify(snap.agri_ve_sakatlik.aktif_sakatliklar));
+    /* İki dumbbell satırı (20 ve 30 kg) tek tür, iki kalem. */
+    check('ekipman türü ve adedi', snap.ekipman.tur_sayisi === 4 && snap.ekipman.liste.length === 5 &&
+      snap.ekipman.liste[0].adet === 6, JSON.stringify(snap.ekipman));
+    const todayRow = snap.haftalik_takvim.gunler.find(d => d.tarih === TODAY);
+    check('haftalık takvim 7 gün, bugünün seansı egzersizleriyle', snap.haftalik_takvim.gunler.length === 7 &&
+      todayRow && todayRow.bugun === true && todayRow.seanslar[0].bloklar[0].egzersizler.length === 1,
+      JSON.stringify(todayRow));
+    const brief = A.diBriefForAI(instr);
+    check('antrenör talimatı istekteki biçimle aynı (boş alanlar hariç)',
+      Object.keys(snap.antrenor_talimati).every(k => JSON.stringify(snap.antrenor_talimati[k]) === JSON.stringify(brief[k])) &&
+      snap.antrenor_talimati.mutlaka_olsun[0] === 'Calf Raise' && snap.antrenor_talimati.kacinilacak[0] === 'derin squat' &&
+      snap.antrenor_talimati.ana_faz_maks_egzersiz === 8 && snap.antrenor_talimati.ek_notlar === 'Yarın maç var',
+      JSON.stringify(snap.antrenor_talimati));
+    const plan = { ath, meta: { name: 'Takım seansı', duration: 60, focus: [] }, blocks: [] };
+    const input = A.diBuildProgramInput(b, plan, LIB, instr, SETUP, A.kbRules({}), {});
+    check('program isteğindeki talimat bölümü değişmedi',
+      JSON.stringify(input.antrenor_talimati) === JSON.stringify(A.diBriefForAI(instr)));
+    check('boş alanlar çıktıya girmiyor', !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
+    /* Her basış o anki veriden: yeni bir check-in ve yeni bir not bir sonraki çıktıda. */
+    const ath2 = Object.assign({}, ath, {
+      wellness: [...ath.wellness.slice(0, 1), wellness(TODAY, 2.5, { sleep: 2, fatigue: 2, soreness: 1 })],
+      tests: [...ath.tests, Object.assign(cleanTest(TODAY), { notes: 'Bugünkü not' })],
+    });
+    const snap2 = A.diAthleteSnapshot({ ath: ath2, setup: SETUP, date: TODAY,
+      bundle: A.diBundle(ath2, SETUP, TODAY, { libMap }), instr, customTests: [] });
+    check('ikinci basış güncel veriyi okuyor', snap2.uyku.son_deger === 2 && snap2.kas_agrisi.son_deger === 1 &&
+      snap2.testler.yorumlar.some(x => x.yorum === 'Bugünkü not'), JSON.stringify(snap2.uyku));
+    const anon = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr, customTests: [] });
+    check('girilmemiş cinsiyet uydurulmuyor, eksik olarak bildiriliyor',
+      !('cinsiyet' in anon.sporcu) && (anon.eksik_veriler || []).some(x => /cinsiyet|sex/.test(x)), JSON.stringify(anon.eksik_veriler));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
