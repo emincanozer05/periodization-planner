@@ -32329,7 +32329,9 @@ function diExtPickAthlete(obj,who){
   const nameOf=x=>diExName((x&&(x.sporcu_adi||x.athlete||x.athlete_name||x.ad_soyad||(x.sporcu&&(x.sporcu.ad||x.sporcu.name))))||'');
   let hit=w.id?list.find(x=>idOf(x)===String(w.id)):null;
   if(!hit&&w.name)hit=list.find(x=>nameOf(x)&&nameOf(x)===diExName(w.name));
-  if(!hit&&list.length===1)hit=list[0];
+  /* A lone programme is taken only when it names nobody: one tagged with another
+     athlete's id or name is that athlete's, not a fallback for this one. */
+  if(!hit&&list.length===1&&!idOf(list[0])&&!nameOf(list[0]))hit=list[0];
   if(!hit)throw new Error(L(`Yapıştırılan yanıtta ${w.name||'bu sporcu'} için bir program yok (${list.length} programdan hiçbiri bu sporcuya ait değil).`,
     `The pasted answer has no programme for ${w.name||'this athlete'} (none of its ${list.length} programmes is theirs).`));
   return hit;
@@ -32781,6 +32783,18 @@ const diReviewKey=(srcKey,athId,dateKey)=>`${dateKey}|${srcKey}|${athId}`;
    place; `team.indiv.ai` is a plain map keyed by day + source + athlete. */
 function diReadReview(team,srcKey,athId,dateKey){
   return(((team&&team.indiv&&team.indiv.ai)||{})[diReviewKey(srcKey,athId,dateKey)])||null;
+}
+/* Several athletes' reviews in ONE write: each diWriteReview rebuilds the store from the
+   team it was handed, so a loop of them in one tick keeps only the last athlete's. */
+function diWriteReviews(team,updateTeam,srcKey,dateKey,patches){
+  const store=(team.indiv&&team.indiv.ai)||{};
+  const ai={...store};
+  const now=new Date().toISOString();
+  Object.keys(patches||{}).forEach(athId=>{
+    const key=diReviewKey(srcKey,athId,dateKey);
+    ai[key]={...(store[key]||{}),...patches[athId],updated_at:now};
+  });
+  updateTeam(team.id,{indiv:{...(team.indiv||{}),ai}});
 }
 function diWriteReview(team,updateTeam,srcKey,athId,dateKey,patch){
   const store=(team.indiv&&team.indiv.ai)||{};
@@ -34325,6 +34339,52 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      at the press. Each carries their own brief for this day and source; an athlete whose
      record the engine cannot read is named rather than silently left out. */
   const[squadSnap,setSquadSnap]=useState(null);
+  /* "Seçili sporculara işle" with the model's squad answer: one paste, and every selected
+     athlete gets THEIR programme out of it, written straight to their calendar — the
+     press is the approval. The box opens already filled when the clipboard holds JSON
+     (the browser may ask once for permission to read it). Left empty, the button does
+     what it always did. */
+  const[bulk,setBulk]=useState(null);           // {text, err}
+  const openBulk=()=>{
+    setBulk({text:'',err:''});
+    try{
+      if(navigator.clipboard&&navigator.clipboard.readText)
+        navigator.clipboard.readText().then(t=>{
+          const v=String(t||'').trim();
+          if(v&&/[{[]/.test(v))setBulk(b=>b&&!b.text?{...b,text:v}:b);
+        }).catch(()=>{});
+    }catch(e){}
+  };
+  const runBulk=()=>{
+    if(!bulk)return;
+    const text=bulk.text.trim();
+    if(!text){setBulk(null);applyTo(chosen);return;}
+    const now=new Date().toISOString();
+    const forceMap={},patches={},missing=[];
+    let firstErr='';
+    plans.filter(p=>chosen.includes(p.ath.id)).forEach(p=>{
+      try{
+        const prog=diParseExternalProgram(text,libMap,{id:p.ath.id,name:p.ath.name});
+        const r=reviewOf(p);
+        forceMap[p.ath.id]=prog;
+        patches[p.ath.id]={athlete:p.ath.id,date,src:activeKey,program:prog,
+          instr:diInstr(r&&r.instr,p.meta),model:'external',created_at:now,
+          decision:'accept',decided_at:now,jobId:null,pendingJob:null,
+          generation:{source:'external-json-bulk'}};
+      }catch(e){missing.push(p.ath.name||p.ath.id);if(!firstErr)firstErr=e.message||String(e);}
+    });
+    const ids=Object.keys(forceMap);
+    if(!ids.length){setBulk(b=>b&&{...b,err:firstErr||L('JSON\'da seçili sporculara ait program bulunamadı.','No programme for the selected athletes in the JSON.')});return;}
+    setBulk(null);
+    diWriteReviews(team,updateTeam,activeKey,date,patches);
+    applyTo(ids,{forceMap});
+    if(missing.length)setTimeout(()=>{
+      const msg=L(`${ids.length} sporcuya AI programı işlendi. JSON'da programı olmayan, takvimi değişmeyen: ${missing.join(', ')}`,
+        `AI programme written for ${ids.length} athletes. No programme in the JSON, calendar unchanged: ${missing.join(', ')}`);
+      setToast(msg);
+      setTimeout(()=>setToast(t=>t===msg?'':t),8000);
+    },0);
+  };
   const takeSquadSnapshot=()=>{
     const setup=team.setup||{};
     const items=[],skipped=[];
@@ -34408,7 +34468,11 @@ function IndividualizationView({data,team,updateTeam,weeks}){
        what this athlete does today, and it is not finished. They are named in the toast
        rather than silently dropped, so the button never looks broken. */
     const forceId=(opts.force&&opts.force.id)||null;
-    const held=targets.filter(p=>p.ath.id!==forceId&&diWriteGate(reviewOf(p)).waiting);
+    /* One programme per athlete, handed in by the press itself (a squad JSON pasted into
+       the bar): these athletes are written with it, whatever their stored draft says. */
+    const forceMap=opts.forceMap||{};
+    const forcedOf=id=>forceMap[id]||(forceId===id&&opts.force?opts.force.program:null);
+    const held=targets.filter(p=>!forcedOf(p.ath.id)&&diWriteGate(reviewOf(p)).waiting);
     if(held.length){
       const skip=new Set(held.map(p=>p.ath.id));
       targets=targets.filter(p=>!skip.has(p.ath.id));
@@ -34424,8 +34488,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
        the same reason the toast names. */
     const failed=[];
     targets=targets.filter(p=>{
-      const prog=(forceId===p.ath.id&&opts.force)?opts.force.program
-        :(()=>{const r=reviewOf(p);const g=diWriteGate(r);return(g.approved&&r)?diReviewProgram(r):null;})();
+      const prog=forcedOf(p.ath.id)
+        ||(()=>{const r=reviewOf(p);const g=diWriteGate(r);return(g.approved&&r)?diReviewProgram(r):null;})();
       if(!prog)return true;                       // no generated session — the coach's own plan
       const v=validateFor(p,prog);
       if(!v||v.status!=='fail')return true;
@@ -34486,7 +34550,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       // An approved draft is written as the coach signed it off; everything else writes
       // the plan as the sheet built it, exactly as before.
       const ses=planToSession(
-        planToWrite(plan,(forceId===a.id?opts.force.program:null))||plan,
+        planToWrite(plan,forcedOf(a.id))||plan,
         src.session,date,activeKey);
       // When it reached the athlete, so the card can say so instead of the coach having
       // to press the button again to find out. Deliberately outside the fingerprint.
@@ -34508,14 +34572,16 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       return{...a,days};
     });
     updateTeam(team.id,{athletes:next});
-    setToast(opts.auto
+    const doneMsg=opts.auto
       ?(targets.length===1
         ?`${targets[0].ath.name||'Athlete'} · takvimine işlendi ✓`
         :`${targets.length} sporcunun takvimine işlendi ✓`)
       :(targets.length===1
         ?`${targets[0].ath.name||'Athlete'} · written to the ${fd(date)} calendar ✓`
-        :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`));
-    setTimeout(()=>setToast(''),opts.auto?2000:3500);
+        :`Written to ${targets.length} athletes' ${fd(date)} calendars ✓`);
+    setToast(doneMsg);
+    // Clears its own message only — a later press's message is not cut short by this one.
+    setTimeout(()=>setToast(t=>t===doneMsg?'':t),opts.auto?2000:3500);
   };
   /* The counterpart to the write: what this sheet put on a calendar, it can take back
      off it. Without it a program written onto the wrong day had to be deleted athlete by
@@ -34626,8 +34692,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         {/* The deliberate write. The sheet follows the day's plan on its own; anything
             outside it — a template, a session nobody is ticked on — reaches a calendar
             only when the coach asks here, and only the athletes selected above. */}
-        <button className="btn sm" onClick={()=>applyTo(chosen)} disabled={!src||!chosen.length}
-          title={L('Seçili sporcuların takvimine bu programı işler.','Writes this program onto the selected athletes\' calendars.')}>
+        <button className="btn sm" onClick={openBulk} disabled={!src||!chosen.length}
+          title={L('Yapay zekâdan aldığın toplu JSON\'u yapıştırırsan her sporcunun kendi programı takvimine işlenir; boş bırakırsan bu program işlenir.',
+            'Paste the squad JSON from the model and each athlete gets their own programme; leave it empty and this program is written.')}>
           ✎ {L('Seçili sporculara işle','Write to selected')}</button>
         {/* Only where there is something of this sheet's to take back, so the bar does not
             carry a dead button on a day nothing was written. */}
@@ -34689,6 +34756,28 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
     <DiJsonModal title={L('Tüm Sporcuların Bilgileri','All athletes\' data')} date={date}
       snap={squadSnap} setSnap={setSquadSnap} fileBase={L('tum_sporcular','all_athletes')}/>
+    {bulk&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setBulk(null)}>
+      <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="modal-head">
+          <h2 style={{margin:0,fontSize:16,flex:1}}>{L(`Seçili sporculara işle (${chosen.length})`,`Write to selected (${chosen.length})`)}
+            <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
+          <button className="x-btn" onClick={()=>setBulk(null)} aria-label={L('Kapat','Close')}>✕</button>
+        </div>
+        <div className="di-snap-bar">
+          <span className="di-dim">{L('Yapay zekâdan aldığın JSON\'u yapıştır: her sporcunun kendi programı, JSON\'da ne yazıyorsa o şekilde takvimine işlenir. JSON\'da programı olmayan sporcunun takvimi değişmez. Kutuyu boş bırakırsan seçili kaynak program işlenir.',
+            'Paste the JSON from the model: each athlete\'s own programme is written to their calendar exactly as it reads. An athlete with no programme in the JSON is left unchanged. Leave the box empty to write the selected source program.')}</span>
+        </div>
+        <textarea className="di-imp-ta" autoFocus value={bulk.text} spellCheck={false}
+          onChange={e=>setBulk({text:e.target.value,err:''})}
+          placeholder={'{\n  "programlar": [\n    { "sporcu_id": "…", "sporcu_adi": "…", "program": { … } }\n  ]\n}'}/>
+        {bulk.err&&<div className="di-imp-err" role="alert">⛔ {bulk.err}</div>}
+        <div className="di-snap-bar" style={{justifyContent:'flex-end',borderBottom:0,borderTop:'1px solid var(--border)'}}>
+          <button type="button" className="btn xs sec" onClick={()=>setBulk(null)}>{L('Vazgeç','Cancel')}</button>
+          <button type="button" className="btn xs" onClick={runBulk}>
+            {bulk.text.trim()?L('✎ AI programlarını takvime işle','✎ Write the AI programmes'):L('✎ Kaynak programı işle','✎ Write the source program')}</button>
+        </div>
+      </div>
+    </div>,document.body)}
     {src&&plans.length===0&&<div className="ex-empty">{srcRoster&&!srcRoster.length
       ?L('Bu seans yalnızca kadroda olmayan sporculara atanmış — seansın katılımcı listesini takvimden güncelle.',
          'This session is assigned only to athletes who have left the roster — update its participant list on the session itself.')
@@ -36403,7 +36492,10 @@ function App(){
   // All hooks must be called before any conditional return
   if(sync.authLoading)return<LoadingScreen/>;
   if(!sync.user)return<LoginPage sync={sync}/>;
-  const updateTeam=(id,upd)=>setData({...data,teams:data.teams.map(t=>t.id===id?{...t,...upd}:t)});
+  /* Applied to the LATEST state, not to the `data` this render closed over: a press that
+     updates two parts of the team in one tick (the review, then the athletes' calendars)
+     used to lose the first update to the second. */
+  const updateTeam=(id,upd)=>setData(d=>({...d,teams:d.teams.map(t=>t.id===id?{...t,...upd}:t)}));
   const goDayView=k=>{setDayKey(k);setView('program');};
 
   const exCount=(data.exercises||[]).length;

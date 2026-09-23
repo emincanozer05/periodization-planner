@@ -86,7 +86,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
-    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot'];
+    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -834,6 +834,23 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     let miss = '';
     try { A.diParseExternalProgram(answer, libMap, { id: 'a9', name: 'Başka Biri' }); } catch (e) { miss = e.message; }
     check('yanıtta olmayan sporcuya başkasının programı verilmiyor', /Başka Biri/.test(miss), miss);
+    const single = JSON.stringify({ programlar: [Object.assign(JSON.parse(aiReply([ex()])), { sporcu_id: 'a1', sporcu_adi: 'Ali Kaya' })] });
+    let miss2 = '';
+    try { A.diParseExternalProgram(single, libMap, { id: 'a2', name: 'Veli Can' }); } catch (e) { miss2 = e.message; }
+    const untagged = A.diParseExternalProgram(JSON.stringify({ programlar: [JSON.parse(aiReply([ex()]))] }), libMap, { id: 'a2', name: 'Veli Can' });
+    check('tek programlık yanıt başka bir sporcuya aitse bu sporcuya yazılmıyor; etiketsizse alınıyor',
+      /Veli Can/.test(miss2) && untagged.blocks.length === 1, miss2);
+  }
+
+  group('Ek — Toplu yazım: bütün sporcuların onayı tek yazımda');
+  {
+    let team = { id: 't1', indiv: { ai: { [`${TODAY}|src|a0`]: { program: { blocks: [] }, decision: null } } } };
+    const updateTeam = (id, upd) => { team = Object.assign({}, team, upd); };
+    A.diWriteReviews(team, updateTeam, 'src', TODAY, {
+      a1: { program: { blocks: [1] }, decision: 'accept' }, a2: { program: { blocks: [2] }, decision: 'accept' } });
+    const r1 = A.diReadReview(team, 'src', 'a1', TODAY), r2 = A.diReadReview(team, 'src', 'a2', TODAY), r0 = A.diReadReview(team, 'src', 'a0', TODAY);
+    check('iki sporcunun onayı da kayıtlı, mevcut kayıt korunuyor',
+      r1 && r1.decision === 'accept' && r2 && r2.decision === 'accept' && r0 && r0.decision === null);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
