@@ -787,7 +787,19 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     // 3) Kaçınılacak egzersiz yazılmışsa: okunur ama sert ihlal olarak durur.
     const bad = A.diParseExternalProgram(aiReply([ex({ ad: 'Derin Squat' })]), libMap);
     const vb = A.validateProgram(bad, ctxFor(ath, { rawInstr: { avoid: ['derin squat'] } }));
-    check('kaçınılacak egzersizi taşıyan program yazılamaz (sert ihlal)', vb.status === 'fail', hardText(vb));
+    check('yüklenen programda sert kural yazımı engellemiyor, uyarı olarak görünüyor',
+      vb.status === 'pass' && vb.hardViolations.length === 0 &&
+      vb.softWarnings.some(w => w.was_hard && /Derin Squat/.test(w.text)), JSON.stringify(vb.softWarnings.map(w => w.text)));
+    const inApp = Object.assign({}, bad, { external: false });
+    check('uygulama içi AI taslağında aynı kural hâlâ sert ihlal',
+      A.validateProgram(inApp, ctxFor(ath, { rawInstr: { avoid: ['derin squat'] } })).status === 'fail');
+    const plan0 = { ath, meta: { name: 'Takım', duration: 60, focus: [] }, blocks: [] };
+    const heavy = A.diParseExternalProgram(aiReply([ex({ set: '4', tekrar: '10' })]), libMap);
+    const w1 = A.diProgramPlan(plan0, heavy, -25).blocks[0].rows[0];
+    const w2 = A.diProgramPlan(plan0, Object.assign({}, heavy, { external: false }), -25).blocks[0].rows[0];
+    check('yüklenen programın set-tekrarı takvime aynen yazılıyor (hacim kesintisi yok)',
+      w1.sets === '4' && w1.reps === '10' && (w2.sets !== '4' || w2.reps !== '10'),
+      `yüklenen ${w1.sets}×${w1.reps} · uygulama içi ${w2.sets}×${w2.reps}`);
     // 4) Bozuk ya da boş girdi reddediliyor.
     let e1 = '', e2 = '', e3 = '';
     try { A.diParseExternalProgram('', libMap); } catch (e) { e1 = e.message; }
