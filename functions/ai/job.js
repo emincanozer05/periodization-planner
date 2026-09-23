@@ -271,6 +271,8 @@ async function processJob(deps) {
       completedAt: t, updatedAt: t, errorCode: result.errorCode || 'UNKNOWN',
       validationStatus: result.lastValidation ? result.lastValidation.status : 'not_run',
       failure: failureDetail(result.lastValidation),
+      lastError: (result.history || []).filter(h => h.outcome === 'error').slice(-1)
+        .map(h => ({ code: h.code, status: h.status, model: h.model }))[0] || null,
       calendarWriteStatus: 'not_written',
     })).catch(() => {});
   }

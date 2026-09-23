@@ -12,7 +12,8 @@ const C = require('./config');
 const cache = require('./context-cache');
 
 const USER_MSG = {
-  RATE_LIMITED: 'AI servisi geçici olarak yoğun. Biraz sonra tekrar dene.',
+  RATE_LIMITED: 'AI servisi geçici olarak yoğun ya da bu modelin kotası doldu. Biraz sonra tekrar dene.',
+  QUOTA_EXHAUSTED_DAILY: 'Bu modelin günlük kotası doldu. Ayarlardan başka bir model seç ya da yarın tekrar dene.',
   RATE_LIMITED_USER: 'Bu saat için AI kullanım sınırına ulaşıldı. Biraz sonra tekrar dene.',
   MODEL_UNAVAILABLE: 'Seçili model şu anda kullanılamıyor. Ayarlar → Yapay Zekâ Asistanı\'ndan başka bir model seç.',
   AUTH_ERROR: 'Sunucudaki AI yapılandırması geçersiz. Yöneticiye bildir.',
@@ -86,11 +87,13 @@ async function handle(data, auth, deps) {
     return { text: r.text, finishReason: r.finishReason || null };
   } catch (e) {
     if (e instanceof ProxyError) throw e;
-    log('warn', 'ai_proxy_error', { uid: auth.uid, model, kind: e && e.kind, code: e && e.code, status: e && e.status, elapsedMs: now() - t0 });
+    log('warn', 'ai_proxy_error', { uid: auth.uid, model, kind: e && e.kind, code: e && e.code, status: e && e.status,
+      detail: (e && e.detail) || null, elapsedMs: now() - t0 });
     const code = (e && e.code) || 'DEFAULT';
-    const map = { RATE_LIMITED: 'resource-exhausted', MODEL_UNAVAILABLE: 'not-found', AUTH_ERROR: 'failed-precondition',
+    const map = { RATE_LIMITED: 'resource-exhausted', QUOTA_EXHAUSTED_DAILY: 'resource-exhausted', MODEL_UNAVAILABLE: 'not-found', AUTH_ERROR: 'failed-precondition',
       PERMISSION_DENIED: 'permission-denied', INVALID_REQUEST: 'invalid-argument' };
-    throw new ProxyError(map[code] || 'unavailable', code, USER_MSG[code] || USER_MSG.DEFAULT);
+    const why = e && e.status ? ` (${model} · HTTP ${e.status})` : (code !== 'DEFAULT' ? ` (${model} · ${code})` : '');
+    throw new ProxyError(map[code] || 'unavailable', code, (USER_MSG[code] || USER_MSG.DEFAULT) + why);
   } finally {
     clearTimeout(tm);
   }

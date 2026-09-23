@@ -32961,9 +32961,12 @@ function aiJobStatusText(j){
       :(j.fallbackUsed
         ?L('Alternatif AI modeli ile program oluşturuluyor…','Writing the session on an alternative AI model…')
         :L('Program oluşturuluyor…','Writing the session…'));
-    case'RETRYING':return j.lastErrorCode==='RATE_LIMITED'
-      ?L('AI servisi geçici olarak yoğun. Tekrar deneniyor…','The AI service is busy. Trying again…')
-      :L('Geçici bağlantı problemi. Tekrar deneniyor…','A temporary connection problem. Trying again…');
+    case'RETRYING':{
+      const left=aiTs(j.retryAt)!=null?Math.max(0,Math.ceil((aiTs(j.retryAt)-Date.now())/1000)):null;
+      const inS=left?L(` (${left} sn)`,` (${left} s)`):'';
+      return j.lastErrorCode==='RATE_LIMITED'
+        ?L('AI servisi geçici olarak yoğun. Tekrar deneniyor','The AI service is busy. Trying again')+inS+'…'
+        :L('Geçici bağlantı problemi. Tekrar deneniyor','A temporary connection problem. Trying again')+inS+'…';}
     case'FALLBACK':return L('Ana AI modeli kullanılamıyor. Alternatif model ile devam ediliyor…','The main AI model is unavailable. Continuing on an alternative model…');
     case'VALIDATING':return L('Program doğrulanıyor…','Checking the session…');
     case'COMPLETED':return L('Program hazır.','The session is ready.');
@@ -32984,12 +32987,25 @@ const AI_JOB_REASON={
   BAD_REQUEST:['İstek eksik ya da hatalı.','The request is incomplete or malformed.'],
   CLIENT_TIMEOUT:['Sunucudan zamanında yanıt gelmedi.','No answer from the server in time.'],
 };
+/* The last thing the model service said, in a few words — so "the time ran out" also
+   says WHY it ran out (a quota, an overloaded model, a refused key). */
+const AI_CALL_REASON={
+  RATE_LIMITED:['kota / yoğunluk','quota / busy'],QUOTA_EXHAUSTED_DAILY:['günlük kota doldu','daily quota used up'],
+  MODEL_UNAVAILABLE:['model bu anahtarla kullanılamıyor','model not available to this key'],
+  AUTH_ERROR:['anahtar reddedildi','key refused'],PERMISSION_DENIED:['erişim reddedildi','access denied'],
+  INVALID_REQUEST:['istek reddedildi','request refused'],CALL_TIMEOUT:['yanıt zaman aşımına uğradı','the reply timed out'],
+  NETWORK_ERROR:['ağ hatası','network error'],
+};
 function aiJobErrorText(j){
   const base=aiJobStatusText(Object.assign({},j,{status:j&&j.status==='CANCELLED'?'CANCELLED':'FAILED'}));
   const r=AI_JOB_REASON[j&&j.errorCode];
   const why=r?L(r[0],r[1]):L('AI servisi şu anda yanıt veremiyor.','The AI service cannot answer right now.');
   const items=((j&&j.failure&&j.failure.errors)||[]).slice(0,4);
-  return base+' '+why+(items.length?' — '+items.join(' · '):'');
+  const le=j&&j.lastError;
+  const lr=le&&(AI_CALL_REASON[le.code]||(/^HTTP_5/.test(String(le.code))?['servis yoğun ya da geçici hata','service busy or temporary error']:null));
+  const last=(le&&le.code&&j.errorCode!=='VALIDATION_FAILED')
+    ?' '+L('Son hata','Last error')+`: ${le.model||''} — ${lr?L(lr[0],lr[1]):le.code}${le.status?` (${le.status})`:''}.`:'';
+  return base+' '+why+last+(items.length?' — '+items.join(' · '):'');
 }
 /* Every condition the save waits on, in one pure function (Madde 19). A single failed
    condition means nothing is written. */
@@ -33013,6 +33029,10 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const[job,setJob]=useState(null);           // the live job document, as the server writes it
   const[err,setErr]=useState('');
   const busy=starting||!!(job&&!AI_JOB_TERMINAL.includes(job.status));
+  /* A second hand while the job runs, so the coach sees time passing (and a retry
+     wait counting down) instead of a line that looks frozen. */
+  const[,setTick]=useState(0);
+  useEffect(()=>{if(!busy)return;const t=setInterval(()=>setTick(x=>x+1),1000);return()=>clearInterval(t);},[busy]);
   const review=diReadReview(team,srcKey,plan.ath.id,date);
   const program=(review&&review.program)||null;
   const instr=useMemo(()=>diInstr(review&&review.instr,plan.meta),[review,plan.meta]);
@@ -33343,7 +33363,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
         <span className="di-job-spin"/>
         <span className="di-job-t">{aiJobStatusText(job)}</span>
         <span className="di-job-m">{job.currentModel?job.currentModel:''}
-          {job.totalAiCalls?` · ${L('çağrı','call')} ${job.totalAiCalls}/${AI_JOB_MAX_CALLS}`:''}</span>
+          {job.totalAiCalls?` · ${L('çağrı','call')} ${job.totalAiCalls}/${AI_JOB_MAX_CALLS}`:''}
+          {aiTs(job.startedAt)!=null?` · ${Math.min(AI_JOB_MAX_MS/1000,Math.max(0,Math.round((Date.now()-aiTs(job.startedAt))/1000)))} / ${AI_JOB_MAX_MS/1000} ${L('sn','s')}`:''}</span>
         <button type="button" className="btn xs sec" onClick={cancelJob}>{L('İptal','Cancel')}</button>
       </div>}
       {job&&job.status==='COMPLETED'&&!err&&<div className="di-job s-completed" role="status">
@@ -34294,8 +34315,11 @@ function AiProviderSettings({ai,setAi,onDone,compact}){
           ?L(`Liste Gemini API'den okundu — bu anahtarın kullanabildiği ${live.length} metin modeli.`,
              `Read from the Gemini API — the ${live.length} text models this key can call.`)
           :(cfg.live
-            ?L('Yerleşik liste gösteriliyor. Anahtarı girip "Modelleri yenile" dediğinde API\'nin güncel listesi okunur.',
-               'Showing the built-in list. Enter a key and press "Refresh models" to read the API\'s current list.')
+            ?(cfg.serverKey
+              ?L('Yerleşik liste gösteriliyor. "Modelleri yenile" ile API\'nin güncel listesi sunucu üzerinden okunur.',
+                 'Showing the built-in list. "Refresh models" reads the API\'s current list through the server.')
+              :L('Yerleşik liste gösteriliyor. Anahtarı girip "Modelleri yenile" dediğinde API\'nin güncel listesi okunur.',
+                 'Showing the built-in list. Enter a key and press "Refresh models" to read the API\'s current list.'))
             :'')}
       <span className="aiset-mid"> {L('Gönderilen model ID','Model ID sent')}: <code>{model}</code></span>
     </div>

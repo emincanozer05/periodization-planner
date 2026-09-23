@@ -51,6 +51,14 @@ function parseRetryAfterHeader(v, nowMs) {
   return Math.max(0, at - (nowMs != null ? nowMs : Date.now()));
 }
 
+/* google.rpc.QuotaFailure — hangi kotanın dolduğu. "…PerDay…" bir günlük kota:
+   dakikalar içinde açılmaz, aynı modeli yeniden denemek boşa çağrıdır. */
+function dailyQuotaHit(body) {
+  const details = body && body.error && Array.isArray(body.error.details) ? body.error.details : [];
+  return details.some(d => d && /google\.rpc\.QuotaFailure$/.test(String(d['@type'] || ''))
+    && (d.violations || []).some(v => /PerDay/i.test(String((v && (v.quotaId || v.quotaMetric)) || ''))));
+}
+
 function retryInfoFromBody(body) {
   const details = body && body.error && Array.isArray(body.error.details) ? body.error.details : [];
   for (const d of details) {
@@ -77,6 +85,9 @@ function classifyHttp(status, body, headers, nowMs) {
 
   if (status === 404 || /not found|is not supported|does not exist|unsupported model/i.test(msg)) {
     return new AiCallError('unavailable', 'MODEL_UNAVAILABLE', Object.assign({ code: 'MODEL_UNAVAILABLE' }, base));
+  }
+  if (status === 429 && dailyQuotaHit(body)) {
+    return new AiCallError('unavailable', 'QUOTA_EXHAUSTED_DAILY', Object.assign({ code: 'QUOTA_EXHAUSTED_DAILY' }, base));
   }
   if (TRANSIENT_STATUS.has(status)) {
     return new AiCallError('transient', 'HTTP_' + status, Object.assign({ code: status === 429 ? 'RATE_LIMITED' : 'HTTP_' + status }, base));
@@ -117,5 +128,6 @@ module.exports = {
   parseDuration,
   parseRetryAfterHeader,
   retryInfoFromBody,
+  dailyQuotaHit,
   TRANSIENT_STATUS,
 };

@@ -499,6 +499,9 @@ group('AI işi — takvime yazım kapısı (Madde 19, Test 12/13)');
     && /Alternatif|alternative/.test(A.aiJobStatusText({ status: 'FALLBACK' }))
     && /doğrulanıyor|Checking/.test(A.aiJobStatusText({ status: 'VALIDATING' })));
   check('istemcideki tavan göstergesi sunucuyla aynı (6)', A.AI_JOB_MAX_CALLS === 6);
+  const tx = A.aiJobErrorText({ status: 'FAILED', errorCode: 'JOB_DEADLINE', lastError: { code: 'RATE_LIMITED', status: 429, model: 'gemini-3.8-flash' } });
+  check('süre dolduğunda son hatanın nedeni de söyleniyor (model, kota, 429)',
+    /gemini-3\.8-flash/.test(tx) && /kota|quota/.test(tx) && /429/.test(tx), tx);
 }
 
 group('16 — Seçilen model gerçekten tele gidiyor');

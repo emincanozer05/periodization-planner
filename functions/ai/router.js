@@ -169,8 +169,13 @@ async function runGeneration(opts) {
       const code = (err && err.code) || 'UNKNOWN';
       const kind = (err && err.kind) || 'permanent';
       st.lastError = { code, kind, status: err && err.status, model, after: callNo };
-      st.history.push({ callNo, model, attempt, outcome: 'error', kind, code, status: (err && err.status) || null, regeneration: isRegen, ms: now() - t0 });
-      log({ event: 'ai_call_error', model, attempt, callNo, kind, code, status: (err && err.status) || null, elapsedMs: now() - startedAt, fallback: idx > 0 });
+      st.history.push({ callNo, model, attempt, outcome: 'error', kind, code, status: (err && err.status) || null,
+        retryAfterMs: (err && err.retryAfterMs != null) ? err.retryAfterMs : null, regeneration: isRegen, ms: now() - t0 });
+      /* Google'ın kendi ret cümlesi loga girer (anahtar ya da sporcu verisi taşımaz):
+         "neden olmadı" sorusunun cevabı çoğu zaman tam olarak orada yazıyor. */
+      log({ event: 'ai_call_error', model, attempt, callNo, kind, code, status: (err && err.status) || null,
+        retryAfterMs: (err && err.retryAfterMs != null) ? err.retryAfterMs : null,
+        detail: (err && err.detail) || null, elapsedMs: now() - startedAt, fallback: idx > 0 });
 
       if (code === 'JOB_DEADLINE' || now() >= deadline) return fail('JOB_DEADLINE');
 
@@ -178,19 +183,27 @@ async function runGeneration(opts) {
       if (kind === 'transient' && st.modelAttempts[model] < limit) {
         const n = st.transientRetries[model] || 0;
         const planned = (err && err.retryAfterMs != null) ? err.retryAfterMs : cfg.RETRY_BACKOFF_MS[Math.min(n, cfg.RETRY_BACKOFF_MS.length - 1)];
-        // Bekleme + bir çağrı penceresi son tarihe sığmıyorsa aynı modeli bekleme; sıradakine geç.
-        if (now() + planned + cfg.MIN_CALL_WINDOW_MS > deadline) {
+        // İstenen bekleme çok uzunsa (kota) ya da bekleme + gerçekçi bir çağrı son tarihe
+        // sığmıyorsa aynı modeli bekleme; sıradakine geç. Retry-After'dan ÖNCE yeniden
+        // denenmez — ya süresi beklenir ya da o model bırakılır.
+        if (planned > cfg.MAX_RETRY_WAIT_MS) {
+          log({ event: 'retry_skipped_long_wait', model, waitMs: planned });
+          idx++;
+          continue;
+        }
+        if (now() + planned + cfg.EXPECTED_CALL_MS > deadline) {
           log({ event: 'retry_skipped_deadline', model, waitMs: planned });
           idx++;
           continue;
         }
         st.transientRetries[model] = n + 1;
-        await onState(Object.assign({ status: STATUS.RETRYING, retryInMs: planned, lastErrorCode: code }, snapshot()));
+        await onState(Object.assign({ status: STATUS.RETRYING, retryInMs: planned, retryAt: now() + planned, lastErrorCode: code }, snapshot()));
         log({ event: 'retry_scheduled', model, waitMs: planned, source: err && err.retryAfterMs != null ? 'retry-after' : 'backoff' });
         await sleep(planned);
         continue;
       }
       // Kalıcı hata, model yok ya da bu modelin bütçesi bitti → sıradaki model.
+      await onState(Object.assign({ lastErrorCode: code }, snapshot()));
       idx++;
       continue;
     } finally {

@@ -134,6 +134,47 @@ ta('Retry-After son tarihe sığmıyorsa beklenmez, yedeğe geçilir', async () 
   assert.strictEqual(r.ok, true);
 });
 
+section('Sahadaki durum — 3.8 kotası dolu, uzun Retry-After');
+ta('429 + 40 sn Retry-After: 3.8 beklenmez, hemen 3.7\'ye geçilir ve iş süre dolmadan biter', async () => {
+  const q = transient(429, { retryAfterMs: 40000 });
+  const { r, calls, sleeps, clock } = await harness([q, { text: GOOD, ms: 35000 }]);
+  assert.strictEqual(r.ok, true);
+  assert.deepStrictEqual(calls.map(c => c.model), [P, F1]);
+  assert.deepStrictEqual(sleeps, []);
+  assert.ok(clock.t - 1000000 < C.MAX_JOB_DURATION_MS);
+});
+ta('kısa Retry-After (≤15 sn) hâlâ beklenir ve 3.8 yeniden denenir', async () => {
+  const { sleeps, calls } = await harness([transient(429, { retryAfterMs: 12000 }), { text: GOOD }]);
+  assert.deepStrictEqual(sleeps, [12000]);
+  assert.deepStrictEqual(calls.map(c => c.model), [P, P]);
+});
+ta('yavaş çağrılar: beklemeden sonra gerçekçi bir çağrı sığmıyorsa beklenmez', async () => {
+  const slow = transient(503); slow.ms = 90000;          // 90 sn süren ve 503 dönen çağrı
+  const { calls, sleeps, r } = await harness([slow, { text: GOOD, ms: 20000 }]);
+  assert.deepStrictEqual(sleeps, []);                    // 90 + 2 + 30 > 120 → bekleme yok
+  assert.deepStrictEqual(calls.map(c => c.model), [P, F1]);
+  assert.strictEqual(r.ok, true);
+});
+t('günlük kota (QuotaFailure …PerDay…) yeniden denenmez: model bırakılır', () => {
+  const body = { error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'You exceeded your current quota',
+    details: [{ '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+      violations: [{ quotaMetric: 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+        quotaId: 'GenerateRequestsPerDayPerProjectPerModel-FreeTier' }] },
+      { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '20s' }] } };
+  const e = classifyHttp(429, body, {});
+  assert.strictEqual(e.kind, 'unavailable');
+  assert.strictEqual(e.code, 'QUOTA_EXHAUSTED_DAILY');
+  const perMin = JSON.parse(JSON.stringify(body));
+  perMin.error.details[0].violations[0].quotaId = 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier';
+  assert.strictEqual(classifyHttp(429, perMin, {}).kind, 'transient');
+});
+ta('günlük kota dolu 3.8 → retry yok, 3.7', async () => {
+  const d = new AiCallError('unavailable', 'QUOTA_EXHAUSTED_DAILY', { status: 429, code: 'QUOTA_EXHAUSTED_DAILY' });
+  const { calls, sleeps } = await harness([d, { text: GOOD }]);
+  assert.deepStrictEqual(calls.map(c => c.model), [P, F1]);
+  assert.deepStrictEqual(sleeps, []);
+});
+
 section('Hata sınıflandırma (Madde 4)');
 t('geçici: 408 429 500 502 503 504; kalıcı: 400 401 403; model yok: 404', () => {
   [408, 429, 500, 502, 503, 504].forEach(s => assert.strictEqual(classifyHttp(s, null, {}).kind, 'transient', s));
