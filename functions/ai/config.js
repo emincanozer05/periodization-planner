@@ -51,7 +51,18 @@ const RETRY_BACKOFF_MS = Object.freeze([2000, 4000]);
 /* Bir çağrının son tarihten önce anlamlı bir yanıt üretebilmesi için kalması
    gereken en kısa süre. Bundan az kaldıysa çağrı hiç başlatılmaz — başlatılsa
    ya kesilecek ya da tavanı boşuna tüketecekti. */
-const MIN_CALL_WINDOW_MS = 8000;
+const MIN_CALL_WINDOW_MS = 15000;
+
+/* Bir program yazımının gerçekçi süresi. Retry beklemesine karar verilirken
+   "bekledikten sonra bir çağrı daha sığar mı" sorusu bununla sorulur. Eskiden
+   burada 8 sn varsayılıyordu; program yazımı 30 sn'yi rahatça bulduğu için
+   429'un istediği 30-60 sn beklendikten sonra yedek modellere süre kalmıyordu. */
+const EXPECTED_CALL_MS = 30000;
+
+/* Ana modelde bir retry için beklenecek en uzun süre. Retry-After / RetryInfo
+   bundan uzunsa o süre beklenmez (erken de denenmez): doğrudan sıradaki modele
+   geçilir — her modelin kotası ayrı, yedek büyük ihtimalle hemen yanıt verir. */
+const MAX_RETRY_WAIT_MS = 15000;
 
 /* Tek çağrı için üst süre; kalan iş süresi bundan kısaysa o kullanılır. */
 const PER_CALL_TIMEOUT_MS = 90 * 1000;
@@ -99,6 +110,8 @@ module.exports = {
   MAX_JOB_DURATION_MS,
   RETRY_BACKOFF_MS,
   MIN_CALL_WINDOW_MS,
+  EXPECTED_CALL_MS,
+  MAX_RETRY_WAIT_MS,
   PER_CALL_TIMEOUT_MS,
   RULE_CHECK_WAIT_MS,
   LOCK_TTL_MS,
