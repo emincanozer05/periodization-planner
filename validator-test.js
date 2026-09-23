@@ -86,7 +86,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
-    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA'];
+    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -787,13 +787,53 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     // 3) Kaçınılacak egzersiz yazılmışsa: okunur ama sert ihlal olarak durur.
     const bad = A.diParseExternalProgram(aiReply([ex({ ad: 'Derin Squat' })]), libMap);
     const vb = A.validateProgram(bad, ctxFor(ath, { rawInstr: { avoid: ['derin squat'] } }));
-    check('kaçınılacak egzersizi taşıyan program yazılamaz (sert ihlal)', vb.status === 'fail', hardText(vb));
+    check('yüklenen programda sert kural yazımı engellemiyor, uyarı olarak görünüyor',
+      vb.status === 'pass' && vb.hardViolations.length === 0 &&
+      vb.softWarnings.some(w => w.was_hard && /Derin Squat/.test(w.text)), JSON.stringify(vb.softWarnings.map(w => w.text)));
+    const inApp = Object.assign({}, bad, { external: false });
+    check('uygulama içi AI taslağında aynı kural hâlâ sert ihlal',
+      A.validateProgram(inApp, ctxFor(ath, { rawInstr: { avoid: ['derin squat'] } })).status === 'fail');
+    const plan0 = { ath, meta: { name: 'Takım', duration: 60, focus: [] }, blocks: [] };
+    const heavy = A.diParseExternalProgram(aiReply([ex({ set: '4', tekrar: '10' })]), libMap);
+    const w1 = A.diProgramPlan(plan0, heavy, -25).blocks[0].rows[0];
+    const w2 = A.diProgramPlan(plan0, Object.assign({}, heavy, { external: false }), -25).blocks[0].rows[0];
+    check('yüklenen programın set-tekrarı takvime aynen yazılıyor (hacim kesintisi yok)',
+      w1.sets === '4' && w1.reps === '10' && (w2.sets !== '4' || w2.reps !== '10'),
+      `yüklenen ${w1.sets}×${w1.reps} · uygulama içi ${w2.sets}×${w2.reps}`);
     // 4) Bozuk ya da boş girdi reddediliyor.
     let e1 = '', e2 = '', e3 = '';
     try { A.diParseExternalProgram('', libMap); } catch (e) { e1 = e.message; }
     try { A.diParseExternalProgram('program yok', libMap); } catch (e) { e2 = e.message; }
     try { A.diParseExternalProgram('{"program":{"bloklar":[]}}', libMap); } catch (e) { e3 = e.message; }
     check('boş / JSON olmayan / egzersizsiz girdi reddediliyor', !!e1 && !!e2 && !!e3, [e1, e2, e3].join(' | '));
+  }
+
+  group('Ek — Tüm sporcular tek JSON\'da; tek yanıttan her sporcuya kendi programı');
+  {
+    const a1 = athlete({ id: 'a1', name: 'Ali Kaya', wellness: [wellness(TODAY, 4)] });
+    const a2 = athlete({ id: 'a2', name: 'Veli Can', wellness: [wellness(TODAY, 2.5, { sleep: 2 })] });
+    const items = [a1, a2].map(a => ({ ath: a, bundle: A.diBundle(a, SETUP, TODAY, { libMap }),
+      instr: A.diInstr(a.id === 'a2' ? { notes: 'Yalnız üst vücut' } : null, { duration: 60 }), session: { name: 'Takım', duration: 60 } }));
+    const sq = A.diSquadSnapshot({ items, setup: SETUP, date: TODAY, customTests: [] });
+    JSON.parse(JSON.stringify(sq));
+    check('toplu JSON: her sporcu kendi verisi ve talimatıyla, ortak kısımlar bir kez',
+      sq.sporcu_sayisi === 2 && sq.sporcular.length === 2 && sq.sporcular[0].sporcu.id === 'a1' &&
+      sq.sporcular[1].uyku.son_deger === 2 && sq.sporcular[1].antrenor_talimati.ek_notlar === 'Yalnız üst vücut' &&
+      !('gorev' in sq.sporcular[0]) && !('cikti_formati' in sq.sporcular[0]) && !('ekipman' in sq.sporcular[0]) &&
+      Array.isArray(sq.gorev) && Array.isArray(sq.cikti_formati.programlar) && !!sq.ekipman && sq.programlanacak_gun.tarih === TODAY,
+      Object.keys(sq).join(','));
+    const answer = JSON.stringify({ programlar: [
+      Object.assign(JSON.parse(aiReply([ex()])), { sporcu_id: 'a1', sporcu_adi: 'Ali Kaya' }),
+      Object.assign(JSON.parse(aiReply([ex({ ad: 'DB Bench Press', hareket_paterni: 'Push' })])), { sporcu_id: 'a2', sporcu_adi: 'Veli Can' }),
+    ] });
+    const pa = A.diParseExternalProgram(answer, libMap, { id: 'a2', name: 'Veli Can' });
+    const pb = A.diParseExternalProgram(answer, libMap, { id: 'zz', name: 'ali kaya' });
+    check('çok sporculu yanıttan id\'ye (yoksa ada) göre doğru program seçiliyor',
+      pa.blocks[0].exercises[0].name === 'DB Bench Press' && pb.blocks[0].exercises[0].name === 'Goblet Squat',
+      [pa.blocks[0].exercises[0].name, pb.blocks[0].exercises[0].name].join(' / '));
+    let miss = '';
+    try { A.diParseExternalProgram(answer, libMap, { id: 'a9', name: 'Başka Biri' }); } catch (e) { miss = e.message; }
+    check('yanıtta olmayan sporcuya başkasının programı verilmiyor', /Başka Biri/.test(miss), miss);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
