@@ -33112,7 +33112,7 @@ function snapCopy(text){
   }catch(e){}
   return Promise.resolve(fallback());
 }
-function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now}){
+function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}){
   const a=ath||{},s=setup||{};
   const ref=date||fmt(today);
   const byDate=(x,y)=>String(x.date).localeCompare(String(y.date));
@@ -33225,9 +33225,31 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now}){
       gunluk_not:day.dailyNotes});
   }
   const eq=eqAvailable(s);
+  /* THE DAY THE SESSION IS FOR — first, because every number below is read against
+     it. It is the date picked on the page, which need not be today: a coach writing
+     Thursday's session on Tuesday gets Thursday here, and how far off it is. */
+  const nowD=new Date(now||Date.now());
+  const todayKey=fmt(new Date(nowD.getFullYear(),nowD.getMonth(),nowD.getDate()));
+  const offset=diffD(todayKey,ref);
+  const wd=(parseD(ref).getDay()+6)%7;
+  const cp=b.competition||{};
+  const ses=session||null;
+  const hedef={
+    tarih:ref,
+    gun:L(SNAP_DAYS[wd],DN[wd]),
+    bugunden_farki:offset===0?L('bugün','today'):offset===1?L('yarın','tomorrow'):offset===-1?L('dün','yesterday')
+      :offset>0?L(`${offset} gün sonra`,`in ${offset} days`):L(`${-offset} gün önce`,`${-offset} days ago`),
+    mac_gunu_etiketi:cp.md,
+    o_gun_mac:cp.today?(cp.today.name||L('Maç','Game')):null,
+    sonraki_mac:cp.next?{tarih:cp.next.date,ad:cp.next.name,kac_gun_sonra:cp.next.days_until}:null,
+    onceki_mac:cp.previous?{tarih:cp.previous.date,ad:cp.previous.name,kac_gun_once:cp.previous.days_since}:null,
+    sezon_fazi:b.season_phase&&b.season_phase.label,
+    kaynak_seans:ses?{ad:ses.name,saat:ses.time,sure_dk:recNum(ses.duration),odak:ses.focus,bolge:ses.region}:null,
+  };
 
   const out={
-    olusturulma_zamani:new Date(now||Date.now()).toISOString(),
+    programlanacak_gun:hedef,
+    olusturulma_zamani:nowD.toISOString(),
     tarih:ref,
     sporcu:{
       ad:a.name,forma_no:a.number,
@@ -33524,7 +33546,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     try{
       const b=diBundle(ath,L0.setup||{},L0.date,{libMap:L0.libMap});
       text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,bundle:b,
-        instr:diInstr(brief||instr,L0.plan.meta),customTests}),null,2);
+        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta}),null,2);
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -33678,7 +33700,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
       {snap&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setSnap(null)}>
         <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
           <div className="modal-head">
-            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Sporcu Bilgileri','Athlete data')} — {plan.ath.name||'—'}</h2>
+            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Sporcu Bilgileri','Athlete data')} — {plan.ath.name||'—'}
+              <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
             <button className="x-btn" onClick={()=>setSnap(null)} aria-label={L('Kapat','Close')}>✕</button>
           </div>
           <div className="di-snap-bar">

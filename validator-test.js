@@ -689,8 +689,16 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const b = A.diBundle(ath, SETUP, TODAY, { libMap });
     const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, bundle: b, instr, customTests: [] });
     const round = JSON.parse(JSON.stringify(snap));
+    check('programlanacak gün en başta, tarihi ve günüyle',
+      Object.keys(snap)[0] === 'programlanacak_gun' && snap.programlanacak_gun.tarih === TODAY && !!snap.programlanacak_gun.gun,
+      JSON.stringify(snap.programlanacak_gun));
+    const later = A.diAthleteSnapshot({ ath, setup: SETUP, date: A.fmt(A.addD(A.parseD(TODAY), 2)), instr, customTests: [],
+      now: A.parseD(TODAY).getTime(), session: { name: 'Takım Kuvvet', time: '17:00', duration: 60 } });
+    check('ileri bir gün için: tarih, fark ve kaynak seans', later.programlanacak_gun.tarih === A.fmt(A.addD(A.parseD(TODAY), 2)) &&
+      /2/.test(later.programlanacak_gun.bugunden_farki) && later.programlanacak_gun.kaynak_seans.ad === 'Takım Kuvvet',
+      JSON.stringify(later.programlanacak_gun));
     check('çıktı geçerli JSON ve bütün bölümleri taşıyor',
-      ['sporcu', 'wellness', 'rpe', 'uyku', 'yorgunluk', 'kas_agrisi', 'testler', 'agri_ve_sakatlik', 'ekipman',
+      ['programlanacak_gun', 'sporcu', 'wellness', 'rpe', 'uyku', 'yorgunluk', 'kas_agrisi', 'testler', 'agri_ve_sakatlik', 'ekipman',
         'haftalik_takvim', 'antrenor_talimati'].every(k => k in round), Object.keys(round).join(','));
     check('profil: yaş, cinsiyet, boy, kilo, yağ, pozisyon',
       snap.sporcu.yas === 26 && /^(Erkek|Male)$/.test(snap.sporcu.cinsiyet) && snap.sporcu.boy_cm.deger === 195 &&
