@@ -5329,6 +5329,12 @@ header{background:var(--bg2)!important}
 .modal.di-snap{max-width:860px;width:95vw;background:#15181e}
 .di-snap-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border)}
 .di-snap-bar .di-dim{flex:1;min-width:200px;line-height:1.5}
+.di-snapbtn:disabled{opacity:.45;cursor:not-allowed}
+.di-imp-ta{margin:0;border:0;border-radius:0;min-height:320px;flex:1;resize:vertical;padding:14px 16px;background:transparent;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11.5px;line-height:1.55;color:var(--text)}
+.di-imp-ta:focus{outline:none;box-shadow:none}
+.di-imp-err{margin:0 16px 10px;padding:9px 12px;border-radius:9px;border:1px solid rgba(244,63,94,.45);
+  background:rgba(244,63,94,.10);color:#fda4af;font-size:12px;line-height:1.5}
 .di-snap-pre{margin:0;padding:14px 16px;overflow:auto;flex:1;min-height:0;font-family:'IBM Plex Mono',ui-monospace,monospace;
   font-size:11.5px;line-height:1.55;color:var(--text2);white-space:pre;user-select:text}
 .di-gen-t{font-size:13.5px;font-weight:800;letter-spacing:.01em}
@@ -32155,6 +32161,148 @@ function diParseProgram(text){
   return out;
 }
 
+/* ---- A programme written by an outside model, read back in ------------------
+   The coach copies "Sporcu Bilgilerini Al" into a model of their choice and pastes
+   the answer here. That answer is asked for in the shape below (the export carries
+   it as `cikti_formati`), which is the shape the in-app writer answers in — so it
+   lands in the same parser, the same validator and the same review card, and reaches
+   the calendar the same way: only when the coach approves it.
+
+   A model given a schema still drifts from it — English keys, the blocks at the top
+   level instead of under `program`, "Warm-up" for a phase, a number where a string was
+   asked for. So the answer is first mapped onto the schema, key by key, and only then
+   handed to diParseProgram. Nothing is invented on the way: a field the answer did not
+   give stays empty, and an answer with no exercise in it is refused. */
+const DI_EXT_SCHEMA={
+  durum_ozeti:'1-2 cümle: sporcunun bugünkü durumu',
+  antrenman_onceligi:[{oncelik:'bugünün ana hedefi',gerekce:'hangi veriye / hangi talimata dayandığı'}],
+  program:{
+    seans_adi:'kısa başlık',
+    bloklar:[{
+      ad:'blok adı',
+      faz:'hazirlik | ana | tamamlayici',
+      egzersizler:[{
+        ad:'egzersiz adı',set:'3',tekrar:"6 (veya '4-6')",sure:'süre gerekiyorsa (ör. 30 sn), yoksa boş bırak',
+        mesafe:'mesafe gerekiyorsa, yoksa boş bırak',yuk:'ör. %70 1RM, 60 kg, RPE 7',tempo:'tempo gerekiyorsa',
+        dinlenme:'ör. 90 sn',ekipman:"salon ekipmanından biri veya 'vücut ağırlığı'",
+        hareket_paterni:'hareket_paterni_sozlugu içinden biri',
+        gerekce:'bu sporcu için neden bu egzersiz — hangi veri / bulgu / talimat',
+        dayanak:['D1'],
+      }],
+    }],
+  },
+  uyulan_kisitlar:['antrenörün hangi talimatına nasıl uyulduğu'],
+  flagged_conflicts:[{talimat:'uygulanamayan talimat',alan:'mutlaka_olsun | kacinilacak | kisitlar | seans_suresi_dk | ana_faz_maks_egzersiz',
+    cakisan_kural:'hangi kural / ağrı / sınır engelledi',karar:'ne yapıldı',alternatif:'yerine ne yazıldı'}],
+  genel_gerekce:'kısa paragraf: günün önceliği ve egzersiz seçiminin gerekçesi',
+  koc_uyarisi:'koçun bakması gereken bir durum varsa tek cümle',
+};
+const DI_EXT_TASK=[
+  'Bu JSON\'daki sporcu için programlanacak_gun alanındaki tarihte uygulanacak TEK bir antrenman seansı yaz.',
+  'Yanıt olarak YALNIZCA cikti_formati alanındaki yapıda geçerli bir JSON döndür. Açıklama metni ekleme; anahtar adlarını değiştirme.',
+  'antrenor_talimati bağlayıcıdır: mutlaka_olsun programda yer alır, kacinilacak yer almaz (varyasyonu da), seans_suresi_dk ve ana_faz_maks_egzersiz aşılmaz. Uygulayamadığın talimatı flagged_conflicts alanında nedeniyle yaz.',
+  'kodla_denetlenen_sinirlar alanındaki her sınır, program CoachOS\'a yüklendiğinde kod tarafından ölçülür. Aşan program sporcunun takvimine yazılamaz.',
+  'Programı fazlara böl: her bloğun faz alanı hazirlik, ana ya da tamamlayici olsun. Her egzersizin hareket_paterni değerini hareket_paterni_sozlugu içinden seç ve ekipman alanını doldur.',
+  'Her egzersizin dayanak alanına, cevap verdiği ayirt_ediciler maddelerinin id\'lerini yaz (ör. ["D1","D3"]). Listede olmayan id yazma.',
+  'Hacim ayarını sen uygulama: normal bir günün dozunu yaz, kodla_denetlenen_sinirlar.hacim_ayari_yuzde yüklemeden sonra kodla uygulanır.',
+  'Test sonuçlarını ve test yorumlarını oku; ölçülmüş eksikleri hazırlık veya tamamlayıcı fazda karşıla. Ağrı ve aktif sakatlık varsa o bölgeyi yükleme.',
+  'Veri uydurma; eksik_veriler altındaki konularda karar verme, tanı koyma, yaralanma riski yüzdesi yazma.',
+];
+function diExtPhase(v){
+  const s=diExName(v||'').replace(/\s+/g,'').replace(/[çğıöşü]/g,c=>({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'})[c]);
+  if(!s)return null;
+  if(/^(hazirlik|isinma|warmup|warm|prep|preparation|activation|aktivasyon|mobilite|mobility|duzeltici|corrective)/.test(s))return'hazirlik';
+  if(/^(tamamlayici|accessory|complementary|supplementary|yardimci|cooldown|soguma|finisher|bitiris)/.test(s))return'tamamlayici';
+  if(/^(ana|main|primary|strength|kuvvet|power|guc)/.test(s))return'ana';
+  return null;
+}
+function diExtNormalize(obj){
+  const pick=(o,keys)=>{if(!o||typeof o!=='object')return undefined;
+    for(const k of keys)if(o[k]!==undefined&&o[k]!==null&&o[k]!=='')return o[k];return undefined;};
+  const str=v=>v==null?v:(typeof v==='object'?v:String(v));
+  const arr=v=>Array.isArray(v)?v:(v&&typeof v==='object'?Object.values(v):[]);
+  const root=Array.isArray(obj)?{bloklar:obj}:(obj||{});
+  let prog=pick(root,['program','session','seans','antrenman','workout','plan']);
+  if(Array.isArray(prog))prog={bloklar:prog};
+  if(!prog||typeof prog!='object')prog=root;
+  const rawBlocks=arr(pick(prog,['bloklar','blocks','fazlar','phases','sections','bolumler']));
+  const exOf=e=>{
+    if(typeof e==='string')return{ad:e};
+    if(!e||typeof e!=='object')return null;
+    const basis=pick(e,['dayanak','basis','references','refs','ayirt_ediciler']);
+    return{
+      ad:str(pick(e,['ad','name','egzersiz','exercise','hareket','title'])),
+      kaynak:str(pick(e,['kaynak','source'])),
+      set:str(pick(e,['set','sets','seri'])),
+      tekrar:str(pick(e,['tekrar','reps','repetitions','rep'])),
+      sure:str(pick(e,['sure','süre','duration','time'])),
+      mesafe:str(pick(e,['mesafe','distance'])),
+      yuk:str(pick(e,['yuk','yük','load','weight','intensity','siddet','şiddet','agirlik','ağırlık'])),
+      tempo:str(pick(e,['tempo'])),
+      dinlenme:str(pick(e,['dinlenme','rest','recovery'])),
+      ekipman:str(pick(e,['ekipman','equipment'])),
+      hareket_paterni:str(pick(e,['hareket_paterni','pattern','movement_pattern','patern','movementPattern'])),
+      gerekce:str(pick(e,['gerekce','gerekçe','rationale','reason','why','notlar','notes','not','aciklama','açıklama'])),
+      dayanak:basis==null?[]:(Array.isArray(basis)?basis:String(basis).split(/[\s,;]+/)),
+    };
+  };
+  /* A reply with no blocks but a flat exercise list is one block, of no phase. */
+  const flat=rawBlocks.length?null:arr(pick(prog,['egzersizler','exercises']));
+  const blocks=(flat&&flat.length?[{egzersizler:flat}]:rawBlocks).map(bl=>{
+    if(!bl||typeof bl!=='object')return null;
+    const name=str(pick(bl,['ad','name','title','baslik','başlık','blok']));
+    const phaseRaw=pick(bl,['faz','phase','type','tur','tür']);
+    return{ad:name||'',faz:diExtPhase(phaseRaw)||diExtPhase(name)||'',
+      egzersizler:arr(pick(bl,['egzersizler','exercises','items','hareketler','rows'])).map(exOf).filter(Boolean)};
+  }).filter(Boolean);
+  const conflicts=arr(pick(root,['flagged_conflicts','catismalar','çatışmalar','conflicts'])).map(c=>{
+    if(!c||typeof c!=='object')return c;
+    return{talimat:str(pick(c,['talimat','instruction'])),alan:str(pick(c,['alan','field'])),
+      cakisan_kural:str(pick(c,['cakisan_kural','rule','kural'])),karar:str(pick(c,['karar','decision'])),
+      alternatif:str(pick(c,['alternatif','alternative']))};
+  });
+  const prios=arr(pick(root,['antrenman_onceligi','oncelikler','priorities','priority'])).map(p=>
+    typeof p==='string'?{oncelik:p}:{oncelik:str(pick(p,['oncelik','öncelik','priority','hedef','goal'])),
+      gerekce:str(pick(p,['gerekce','gerekçe','rationale','reason']))});
+  const resp=pick(root,['uyulan_kisitlar','respected','constraints_respected']);
+  return{
+    durum_ozeti:str(pick(root,['durum_ozeti','ozet','özet','summary'])),
+    antrenman_onceligi:prios,
+    program:{seans_adi:str(pick(prog,['seans_adi','session_name','name','ad','title'])||pick(root,['seans_adi','session_name'])),bloklar:blocks},
+    uyulan_kisitlar:resp==null?[]:(Array.isArray(resp)?resp:[resp]).map(str),
+    flagged_conflicts:conflicts,
+    genel_gerekce:str(pick(root,['genel_gerekce','gerekce','rationale'])),
+    koc_uyarisi:str(pick(root,['koc_uyarisi','uyari','uyarı','warning','coach_warning'])),
+  };
+}
+function diParseExternalProgram(text,libMap){
+  let s=String(text||'').trim();
+  if(!s)throw new Error(L('Yapıştırılan metin boş.','Nothing was pasted.'));
+  const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)s=fence[1].trim();
+  const a=s.search(/[\[{]/);
+  if(a===-1)throw new Error(L('Metinde JSON bulunamadı.','No JSON found in the text.'));
+  const body=s.slice(a);
+  const close=body[0]==='['?']':'}';
+  const b=body.lastIndexOf(close);
+  let obj=null;
+  if(b>0){try{obj=JSON.parse(body.slice(0,b+1));}catch(e){}}
+  if(!obj){const rep=pdaRepair(body);if(rep){try{obj=JSON.parse(rep);}catch(e){}}}
+  if(!obj)throw new Error(L('JSON okunamadı — metnin tamamını kopyaladığından emin ol.','The JSON could not be read — make sure the whole reply was copied.'));
+  const norm=diExtNormalize(obj);
+  if(!norm.program.bloklar.some(bl=>bl.egzersizler.some(e=>e&&String(e.ad||'').trim())))
+    throw new Error(L('JSON\'da egzersiz içeren bir program bulunamadı — yapay zekâdan cikti_formati\'ndaki yapıda yanıt istediğinden emin ol.',
+      'No programme with exercises in the JSON — make sure the model answered in the cikti_formati shape.'));
+  /* An exercise the coach's library already knows is marked as such, so the card
+     links it and its movement pattern is read off the entry. */
+  const lm=libMap||{};
+  norm.program.bloklar.forEach(bl=>bl.egzersizler.forEach(e=>{
+    if(!e.kaynak&&e.ad&&lm[String(e.ad).trim().toLowerCase()])e.kaynak='library';
+  }));
+  const prog=diParseProgram(JSON.stringify(norm));
+  prog.truncated=false;
+  return prog;
+}
+
 /* Every exercise of a generated programme, with the readiness cut applied by code
    (rule 2 of the prompt). `prescribed` is what the model wrote, `adjusted` is what
    will be written to the calendar — the card shows both wherever they differ. */
@@ -32756,7 +32904,7 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
    and without a card edge they read as one ragged block of controls. It is stored per
    athlete PER DAY, beside the session it produced, so yesterday's instruction never
    silently drives today's. */
-function DiInstructionForm({instr,save,busy,onGenerate,onSnapshot,hasKey}){
+function DiInstructionForm({instr,save,busy,onGenerate,onSnapshot,onImport,hasKey}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the two chip boxes but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -32843,6 +32991,12 @@ function DiInstructionForm({instr,save,busy,onGenerate,onSnapshot,hasKey}){
           'The athlete\'s current data and this brief, as one JSON document.')}>
         <span className="di-gen-t">{L('Sporcu Bilgilerini Al','Get athlete data')}</span>
         <span className="di-gen-s">{L('Güncel veriler + talimat · JSON','Current data + brief · JSON')}</span>
+      </button>}
+      {onImport&&<button type="button" className="di-snapbtn" onClick={onImport} disabled={busy}
+        title={L('Başka bir yapay zekânın yazdığı program JSON\'unu yapıştır; program olarak okunur, onayından sonra takvime yazılır.',
+          'Paste a programme JSON written by another model; it is read as a session and written to the calendar once you approve it.')}>
+        <span className="di-gen-t">{L('AI Programını Yükle','Load AI programme')}</span>
+        <span className="di-gen-s">{L('JSON yapıştır · onayla · takvime yaz','Paste JSON · approve · write')}</span>
       </button>}
       <button type="button" className="di-gen" disabled={busy||!hasKey} onClick={generate}>
         <span className="di-gen-t">{busy?L('Program yazılıyor…','Writing the session…'):L('Antrenmanı oluştur','Build the session')}</span>
@@ -33247,8 +33401,35 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
     kaynak_seans:ses?{ad:ses.name,saat:ses.time,sure_dk:recNum(ses.duration),odak:ses.focus,bolge:ses.region}:null,
   };
 
+  /* What an outside model needs in order to write a session CoachOS will accept: the
+     same differentiators and code-checked limits the in-app writer is given, and the
+     answer's shape. The validator reads the answer against exactly these on import. */
+  const brief=instr||diInstr(null,null);
+  const deficitsX=diDeficits(a,ref);
+  const diffsX=diDifferentiators(a,b,deficitsX,ref);
+  const blockedX=diBlockedPatterns(b);
+  const blockedSetX=diBlockedSet(blockedX);
+  const restrX=diRestrictions(b,brief);
+  const plyoX=diPlyoCeiling(b);
+  const capsX=diTierCaps(b.tier&&b.tier.gecerli);
+  const limits={
+    yasak_paternler:blockedX,
+    kullanilabilir_paternler:IV_PATTERNS.filter(p=>!blockedSetX.has(p)),
+    sert_kisitlar:restrX.map(r=>({kaynak:r.kaynak,bolge:r.bolge,metin:r.metin,eslesen_terimler:r.terimler})),
+    kademe_tavani:capsX?{gecerli_kademe:b.tier.gecerli,maks_set:capsX.max_sets,maks_ana_faz_egzersiz:capsX.max_main,
+      pliometrik_not:capsX.plyo_note}:null,
+    pliometrik_temas_siniri:plyoX?{...plyoX,
+      not:'Toplam zemin teması (set × tekrar, yalnızca Jump / Plyo paternindeki satırlar) bu üst sınırı aşamaz.'}:null,
+    seans_suresi_dk:brief.duration,
+    egzersiz_basi_dk:DI_MIN_PER_EX,
+    ana_faz_maks_egzersiz:brief.maxExercises,
+    hacim_ayari_yuzde:b.adjustment?b.adjustment.pct:null,
+    hacim_ayari_gerekceleri:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+  };
+
   const out={
     programlanacak_gun:hedef,
+    gorev:DI_EXT_TASK,
     olusturulma_zamani:nowD.toISOString(),
     tarih:ref,
     sporcu:{
@@ -33319,7 +33500,13 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
       sonraki_mac:b.competition&&b.competition.next,
       gunler:takvim,
     },
-    antrenor_talimati:diBriefForAI(instr||diInstr(null,null)),
+    antrenor_talimati:diBriefForAI(brief),
+    ayirt_ediciler:diffsX.map(d=>({id:d.id,tur:d.kind,aciklama:d.text})),
+    tespit_edilen_eksikler:((deficitsX&&deficitsX.findings)||[]).map(f=>({bolge:f.bolge,bulgu:f.bulgu,
+      gereken_calisma:f.gereken_calisma,oncelik:f.oncelik,olcum:f.olcum,kaynak:f.kaynak})),
+    kodla_denetlenen_sinirlar:limits,
+    hareket_paterni_sozlugu:IV_PATTERNS,
+    cikti_formati:DI_EXT_SCHEMA,
   };
   const missing=[];
   if(age==null)missing.push(L('yaş (doğum tarihi girilmemiş)','age (no date of birth)'));
@@ -33340,6 +33527,8 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,setup,libMap,writeOne,knowledge,customTests}){
   const[starting,setStarting]=useState(false);
   const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
+  const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
+  const panelRef=useRef(null);
   const[job,setJob]=useState(null);           // the live job document, as the server writes it
   const[err,setErr]=useState('');
   const busy=starting||!!(job&&!AI_JOB_TERMINAL.includes(job.status));
@@ -33559,6 +33748,34 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
+  /* An outside model's answer, pasted in. Read into the same draft the in-app writer
+     produces and checked by the same validator — so it shows in section 3 exactly as a
+     generated session does, and reaches the calendar only through "Onayla ve takvime
+     yaz", which re-checks it against the athlete's day as it stands at that moment. */
+  const importProgram=()=>{
+    if(!imp)return;
+    const L0=live.current;
+    let obj,v;
+    try{
+      obj=diParseExternalProgram(imp.text,L0.libMap);
+      v=validateProgram(obj,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
+        differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
+    }catch(e){setImp(x=>x&&{...x,err:e.message||String(e)});return;}
+    const cur=L0.review&&L0.review.program;
+    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program taslağı zaten var. Yapıştırdığın programla değiştirilsin mi?',
+      'There is already a draft for this athlete on this day. Replace it with the pasted programme?')))return;
+    diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
+      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:obj,instr,
+      differentiators:L0.differentiators,validation:v,
+      engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
+        competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
+      model:'external',created_at:new Date().toISOString(),
+      decision:null,decided_at:null,jobId:null,pendingJob:null,
+      generation:{source:'external-json'}});
+    setImp(null);setErr('');
+    setTimeout(()=>{try{const el=panelRef.current&&panelRef.current.querySelector('.di-sec-prog');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+  };
   const cancelJob=()=>{
     const id=job&&job.id;const ref=id&&jobRefOf(id);
     if(ref&&!AI_JOB_TERMINAL.includes(job.status))ref.update({cancelRequested:true}).catch(()=>{});
@@ -33612,7 +33829,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
   const acwrTone=acwr==null?null:(acwr>1.5?'bad':(acwr>=0.8&&acwr<=1.3)?'good':'warn');
   const adjTone=adj.pct<=-25?'bad':adj.pct<0?'warn':'good';
 
-  return(<div className="di-panel">
+  const external=!!(review&&review.model==='external');
+  return(<div className="di-panel" ref={panelRef}>
     <div className="di-hd">
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
       <span className="di-flag" style={{borderColor:flag.color,color:flag.color}}>{flag.label}</span>
@@ -33696,6 +33914,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} busy={busy} onGenerate={gen} onSnapshot={takeSnapshot}
+        onImport={()=>setImp({text:'',err:''})}
         hasKey={!!(FB()&&FB().auth().currentUser)}/>
       {snap&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setSnap(null)}>
         <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
@@ -33713,6 +33932,28 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             <button type="button" className="btn xs sec" onClick={snapDownload}>{L('İndir (.json)','Download (.json)')}</button>
           </div>
           <pre className="di-snap-pre">{snap.text}</pre>
+        </div>
+      </div>,document.body)}
+      {imp&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setImp(null)}>
+        <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-head">
+            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('AI Programını Yükle','Load AI programme')} — {plan.ath.name||'—'}
+              <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
+            <button className="x-btn" onClick={()=>setImp(null)} aria-label={L('Kapat','Close')}>✕</button>
+          </div>
+          <div className="di-snap-bar">
+            <span className="di-dim">{L('Yapay zekânın verdiği JSON\'u olduğu gibi yapıştır. Program okunur ve kurallarla denetlenir; takvime ancak sen "Onayla ve takvime yaz"a bastığında işlenir.',
+              'Paste the model\'s JSON as it came. It is read and checked against the rules; it reaches the calendar only when you press "Approve and write".')}</span>
+          </div>
+          <textarea className="di-imp-ta" autoFocus value={imp.text} spellCheck={false}
+            onChange={e=>setImp({text:e.target.value,err:''})}
+            placeholder={'{\n  "program": {\n    "seans_adi": "…",\n    "bloklar": [ … ]\n  }\n}'}/>
+          {imp.err&&<div className="di-imp-err" role="alert">⛔ {imp.err}</div>}
+          <div className="di-snap-bar" style={{justifyContent:'flex-end',borderBottom:0,borderTop:'1px solid var(--border)'}}>
+            <button type="button" className="btn xs sec" onClick={()=>setImp(null)}>{L('Vazgeç','Cancel')}</button>
+            <button type="button" className="btn xs" onClick={importProgram} disabled={!imp.text.trim()}>
+              {L('Programa dönüştür','Read as programme')}</button>
+          </div>
         </div>
       </div>,document.body)}
       {job&&!AI_JOB_TERMINAL.includes(job.status)&&<div className={'di-job s-'+String(job.status).toLowerCase()} role="status" aria-live="polite">
@@ -33733,7 +33974,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
 
     {program&&<DiSection n="3" title={program.session_name||L('Önerilen program','Proposed session')}
       className="di-sec-prog"
-      meta={written?L('takvime yazıldı','on the calendar'):L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
+      meta={written?L('takvime yazıldı','on the calendar')
+        :external?L('yüklenen AI programı — onaylanmadan sporcuya ulaşmaz','loaded AI programme — it reaches nobody until you approve it')
+        :L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
       <div className="di-result">
         <div className="di-resacts">
           <button type="button" className="btn xs sec" onClick={()=>gen()} disabled={busy}>
@@ -33800,7 +34043,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,ai,exercises,s
             :<><button type="button" className="di-write" onClick={write} disabled={blocked}
                 title={blocked?L('Sert kural ihlali var — önce yukarıdaki maddeleri gider.',
                   'There is a hard rule violation — clear the items above first.'):''}>
-                ✎ {L('Takvime yaz','Write to the calendar')}</button>
+                ✓ {L('Onayla ve takvime yaz','Approve and write to the calendar')}</button>
               <span className="di-dim">{blocked
                 ?L('Sert kural ihlali giderilmeden yazılamaz. "Yeniden yaz"a basabilir ya da sporcunun kendi takviminden elle yazabilirsin.',
                    'It cannot be written until the hard violation is cleared. Press "Rewrite", or write it by hand on the athlete\'s own calendar.')

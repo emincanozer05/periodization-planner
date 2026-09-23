@@ -86,7 +86,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
-    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI'];
+    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -749,6 +749,51 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const anon = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr, customTests: [] });
     check('girilmemiş cinsiyet uydurulmuyor, eksik olarak bildiriliyor',
       !('cinsiyet' in anon.sporcu) && (anon.eksik_veriler || []).some(x => /cinsiyet|sex/.test(x)), JSON.stringify(anon.eksik_veriler));
+  }
+
+  group('Ek — Harici AI programı: JSON yapıştır → program → denetim');
+  {
+    const ath = athlete({ wellness: [wellness(TODAY, 4)] });
+    const b = A.diBundle(ath, SETUP, TODAY, { libMap });
+    const instr = A.diInstr({ avoid: ['derin squat'] }, { duration: null });
+    const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, bundle: b, instr, customTests: [] });
+    check('sporcu JSON\'u görevi, çıktı formatını ve kod sınırlarını taşıyor',
+      Array.isArray(snap.gorev) && snap.gorev.length > 3 && !!snap.cikti_formati.program.bloklar &&
+      !!snap.kodla_denetlenen_sinirlar && Array.isArray(snap.hareket_paterni_sozlugu) &&
+      snap.kodla_denetlenen_sinirlar.sert_kisitlar.some(r => /derin squat/.test(r.metin)),
+      JSON.stringify(snap.kodla_denetlenen_sinirlar).slice(0, 300));
+    const ctx = ctxFor(ath);
+    // 1) Şemadaki biçim, markdown kod bloğu ve açıklama metniyle sarılmış.
+    const canonical = 'İşte program:\n```json\n' + aiReply([ex(), ex({ ad: 'Barbell Row', hareket_paterni: 'Pull', ekipman: 'barbell', yuk: '20 kg' })]) + '\n```\nİyi antrenmanlar!';
+    const p1 = A.diParseExternalProgram(canonical, libMap);
+    check('şema biçimi (kod bloğu + açıklama metni arasında) okunuyor',
+      p1.blocks.length === 1 && p1.blocks[0].exercises.length === 2 && p1.blocks[0].phase === 'ana' && p1.session_name === 'Alt vücut kuvvet',
+      JSON.stringify(p1.blocks.map(x => [x.name, x.phase, x.exercises.map(e => e.name)])));
+    check('okunan program denetimden geçiyor', A.validateProgram(p1, ctx).status === 'pass', hardText(A.validateProgram(p1, ctx)));
+    // 2) İngilizce anahtarlar, bloklar en üstte, sayılar sayı olarak.
+    const english = JSON.stringify({ session_name: 'Lower', summary: 'OK',
+      blocks: [
+        { name: 'Warm-up', phase: 'Warm-up', exercises: [{ name: 'Ankle Mobilization', sets: 2, reps: 10, pattern: 'Mobility' }] },
+        { name: 'Ana Faz', exercises: [{ name: 'Goblet Squat', sets: 3, reps: 6, load: '20 kg', rest: '90 sn', equipment: 'dumbbell', pattern: 'Squat', rationale: 'Kuvvet' }] },
+        { title: 'Accessory', type: 'accessory', items: [{ exercise: 'Pallof Press', sets: '2', reps: '10', movement_pattern: 'Core / Brace' }] },
+      ] });
+    const p2 = A.diParseExternalProgram(english, libMap);
+    check('İngilizce anahtarlar ve faz adları eşleniyor',
+      p2.blocks.map(x => x.phase).join(',') === 'hazirlik,ana,tamamlayici' && p2.blocks[1].exercises[0].sets === '3' &&
+      p2.blocks[1].exercises[0].load === '20 kg' && p2.blocks[1].exercises[0].source === 'library' && p2.summary === 'OK',
+      JSON.stringify(p2.blocks.map(x => [x.phase, x.exercises.map(e => [e.name, e.sets, e.reps, e.source])])));
+    check('Türkçe faz adları (Hazırlık / Soğuma)', A.diExtPhase('Hazırlık') === 'hazirlik' && A.diExtPhase('Soğuma') === 'tamamlayici' &&
+      A.diExtPhase('ANA İŞ') === 'ana');
+    // 3) Kaçınılacak egzersiz yazılmışsa: okunur ama sert ihlal olarak durur.
+    const bad = A.diParseExternalProgram(aiReply([ex({ ad: 'Derin Squat' })]), libMap);
+    const vb = A.validateProgram(bad, ctxFor(ath, { rawInstr: { avoid: ['derin squat'] } }));
+    check('kaçınılacak egzersizi taşıyan program yazılamaz (sert ihlal)', vb.status === 'fail', hardText(vb));
+    // 4) Bozuk ya da boş girdi reddediliyor.
+    let e1 = '', e2 = '', e3 = '';
+    try { A.diParseExternalProgram('', libMap); } catch (e) { e1 = e.message; }
+    try { A.diParseExternalProgram('program yok', libMap); } catch (e) { e2 = e.message; }
+    try { A.diParseExternalProgram('{"program":{"bloklar":[]}}', libMap); } catch (e) { e3 = e.message; }
+    check('boş / JSON olmayan / egzersizsiz girdi reddediliyor', !!e1 && !!e2 && !!e3, [e1, e2, e3].join(' | '));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
