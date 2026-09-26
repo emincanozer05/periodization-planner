@@ -34,6 +34,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<!-- Ağrı haritasının bölge kataloğu ve 3D modeli. Three.js'i kendisi, yalnızca
+     Wellness formu açılınca yüklüyor; RPE formu bu dosyadan hiçbir şey indirmiyor. -->
+<script src="pain-body.js?v=1"></script>
 <style>
 /* Uygulamanın kendi değişkenleri (index.html :root). Form, sitenin devamı gibi
    görünsün diye renk, yazı tipi ve panel dili birebir oradan alınıyor — sporcunun
@@ -197,26 +200,123 @@ input::placeholder{color:var(--dim)}
 .lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);margin:16px 0 8px}
 
-/* Ağrı matrisi. Şiddet renkleri uygulamanın kendi ağrı ölçeğinden geliyor, üstelik
-   yalnızca SEÇİLİYKEN görünüyor — boş tablo gri kalıyor. */
-table.grid{width:100%;border-collapse:collapse;font-size:13px}
-table.grid th{padding:0 4px 10px;font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--dim)}
-table.grid td{padding:0;border-top:1px solid var(--border);text-align:center}
-table.grid tr{transition:background .15s}
-table.grid tr.on{background:var(--elevated)}
-table.grid td.rg{text-align:left;padding:3px 8px 3px 2px;font-weight:500;color:var(--text2)}
-table.grid tr.on td.rg{color:var(--text)}
-.dot{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border2);background:transparent;
-  cursor:pointer;display:inline-block;margin:7px 0;padding:0;transition:transform .12s,background .15s,border-color .15s}
-.dot:hover{border-color:var(--muted)}
-.dot:active{transform:scale(.86)}
-.dot.on{transform:scale(1.06)}
-.dot.on.s1{background:var(--low-t);border-color:var(--low-t)}
-.dot.on.s2{background:var(--med-t);border-color:var(--med-t)}
-.dot.on.s3{background:var(--high-t);border-color:var(--high-t)}
-.painsum{margin-top:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
-  color:var(--muted);letter-spacing:.02em;min-height:16px}
+/* ── Ağrı haritası: 3D model ────────────────────────────────────────────────
+   Sahne (model + üstündeki düğmeler) ve hemen altındaki seçim paneli tek bir
+   kutu. Şiddet renkleri uygulamanın kendi ağrı ölçeğinden (--low-t/--med-t/
+   --high-t) ve yalnızca işaretlenen bölgede görünüyor — boş model gri kalıyor. */
+.pb-stage{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg2);margin-top:2px}
+.pb-view{position:relative;height:clamp(400px,62vh,540px);overflow:hidden;
+  background:radial-gradient(115% 72% at 50% 36%,#1b2230 0%,#12161d 56%,#0c0e12 100%);
+  user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+/* Satır içinde dikey kaydırma sayfanın: parmak modelin üstüne denk gelse de form
+   aşağı kayabiliyor. Yatay kaydırma modeli çeviriyor. Tam ekranda hepsi modelin. */
+.pb-view canvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:pan-y}
+.pb-hint{position:absolute;left:12px;top:54px;right:58px;z-index:2;pointer-events:none;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.03em;line-height:1.5;
+  color:var(--muted);transition:opacity .5s}
+.pb-hint.gone{opacity:0}
+.pb-tools{position:absolute;right:10px;top:10px;z-index:2;display:flex;flex-direction:column;gap:6px}
+.pb-tool{width:36px;height:36px;padding:0;border-radius:10px;border:1px solid var(--border2);cursor:pointer;
+  background:rgba(20,23,28,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--text2);
+  display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s,transform .12s}
+.pb-tool:hover{color:var(--text);border-color:var(--muted)}
+.pb-tool:active{transform:scale(.9)}
+.pb-tool svg{width:17px;height:17px;display:block}
+.pb-tool.sep{margin-top:6px}
+/* Hangi yüzden bakıldığı: sporcu modeli çevirdikçe ilgili düğme yanıyor. Sol üstte;
+   altta dursaydı modelin ayaklarındaki SAĞ / SOL yazılarını örterdi. */
+.pb-views{position:absolute;left:10px;top:10px;z-index:2;display:flex;gap:2px;padding:3px;
+  border-radius:999px;background:rgba(20,23,28,.8);border:1px solid var(--border);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.pb-views button{border:0;background:none;color:var(--muted);cursor:pointer;border-radius:999px;padding:6px 12px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;transition:background .15s,color .15s}
+.pb-views button:hover{color:var(--text)}
+.pb-views button.on{background:var(--accent-bg);color:var(--accent2)}
+@media (max-width:360px){.pb-views button{padding:6px 9px;font-size:10px}}
+.pb-tip{position:absolute;left:0;top:0;z-index:3;pointer-events:none;padding:5px 9px;border-radius:7px;
+  background:rgba(10,12,16,.92);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:600;
+  white-space:nowrap;opacity:0;transition:opacity .12s}
+.pb-tip.on{opacity:1}
+.pb-tip i{font-style:normal;font-weight:500;color:var(--c,var(--muted));margin-left:6px}
+.pb-status{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:28px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.55}
+.pb-spin{width:26px;height:26px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);
+  animation:pbspin .8s linear infinite}
+@keyframes pbspin{to{transform:rotate(360deg)}}
+/* 3D açılamadıysa sahne tamamen kalkıyor, panel listeden seçtiriyor. */
+.pb-stage.nogl .pb-view{display:none}
+.pb-stage.nogl .pb-panel{border-top:0}
+
+/* Seçim paneli: dokunulan bölge ve şiddeti. Boşken "dokun ya da listeden seç". */
+.pb-panel{border-top:1px solid var(--border);background:var(--panel);padding:12px 14px 14px;min-height:96px}
+.pb-empty-t{display:flex;align-items:center;gap:9px;color:var(--text2);font-size:13.5px;font-weight:500;margin:2px 0 10px}
+.pb-empty-t svg{width:18px;height:18px;flex:none;color:var(--accent2)}
+.pb-nogl{font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.5}
+.pb-panel select{font-size:15px;padding:10px 11px}
+.pb-act-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pb-act-g{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim)}
+.pb-act-n{font-size:17px;font-weight:700;color:var(--text);line-height:1.25;margin-top:2px}
+.pb-x{flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--bg2);
+  color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0;transition:color .15s,border-color .15s}
+.pb-x:hover{color:var(--text);border-color:var(--border2)}
+.pb-sev{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:11px}
+.pb-sevb{padding:11px 6px;border-radius:9px;border:1px solid var(--c-soft);background:var(--bg2);color:var(--c);
+  font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:background .15s,border-color .15s,color .15s,transform .12s,box-shadow .15s}
+.pb-sevb::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.pb-sevb:hover{background:var(--c-bg);border-color:var(--c)}
+.pb-sevb:active{transform:scale(.95)}
+.pb-sevb.on{background:var(--c);border-color:var(--c);color:#0a0b0d;box-shadow:0 4px 14px var(--c-bg)}
+.pb-sevb.on::before{background:#0a0b0d}
+.pb-act-f{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:11px;min-height:20px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);letter-spacing:.02em}
+.pb-link{background:none;border:0;padding:0;color:var(--muted);font-family:inherit;font-size:11px;cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px}
+.pb-link:hover{color:var(--text)}
+.pb-done{display:none;width:100%;margin-top:12px;padding:12px;border-radius:10px;border:0;background:var(--grad);
+  color:#0a0b0d;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer}
+
+/* İşaretlenen bölgeler: çip başına bir bölge; rengi şiddeti. Çipe dokunmak modeli
+   o bölgeye çeviriyor, × kaldırıyor. */
+.pb-list{margin-top:12px}
+.pb-list-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.pb-none{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);letter-spacing:.02em}
+.pb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pb-chip{display:inline-flex;align-items:stretch;border-radius:999px;border:1px solid var(--c-soft);background:var(--c-bg);
+  max-width:100%;transition:border-color .15s,box-shadow .15s}
+.pb-chip.on{border-color:var(--c);box-shadow:0 0 0 2px var(--c-bg)}
+.pb-chip-b{display:inline-flex;align-items:center;gap:7px;min-width:0;background:none;border:0;cursor:pointer;
+  padding:6px 4px 6px 10px;color:var(--text);font-family:inherit;font-size:12.5px;font-weight:600}
+.pb-chip-b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-chip-b i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.pb-chip-b em{font-style:normal;font-weight:500;color:var(--c);font-size:11.5px;white-space:nowrap}
+.pb-chip-x{background:none;border:0;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 10px 0 6px}
+.pb-chip-x:hover{color:var(--text)}
+
+/* "Diğer": modelde olmayan bir yer için sporcunun kendi yazdığı bölge. */
+.pb-other{margin-top:12px}
+.pb-other-btn{background:none;border:1px dashed var(--border2);border-radius:9px;color:var(--text2);cursor:pointer;
+  padding:8px 12px;font-family:inherit;font-size:13px;font-weight:600;transition:border-color .15s,color .15s}
+.pb-other-btn:hover{border-color:var(--muted);color:var(--text)}
+.pb-other-row{margin-top:9px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}
+.pb-other-row .pb-sev{margin-top:9px}
+.pb-other-row input.bad{border-color:var(--high-t);box-shadow:0 0 0 3px rgba(255,107,91,.14)}
+
+/* Tam ekran: sahne sayfanın üstüne çıkıyor, bütün hareketler (iki eksende
+   çevirme, iki parmakla yakınlaştırma/kaydırma) modele geçiyor. */
+html.pb-lock,html.pb-lock body{overflow:hidden}
+.pb-stage.pb-full{position:fixed;inset:0;z-index:60;margin:0;border:0;border-radius:0;display:flex;flex-direction:column;
+  background:var(--bg)}
+.pb-full .pb-view{flex:1;height:auto;min-height:0}
+.pb-full .pb-view canvas{touch-action:none}
+.pb-full .pb-hint{top:calc(56px + env(safe-area-inset-top));font-size:11px}
+.pb-full .pb-tools,.pb-full .pb-views{top:calc(10px + env(safe-area-inset-top))}
+.pb-full .pb-panel{padding-bottom:calc(14px + env(safe-area-inset-bottom));box-shadow:0 -12px 30px -18px rgba(0,0,0,.8)}
+.pb-full .pb-panel-in{max-width:620px;margin:0 auto}
+.pb-full .pb-done{display:block}
 
 /* Gönder çubuğu: sayfanın altına yapışır, arkası bulanık — uzun formda düğme aramaya
    gerek kalmasın. */
@@ -314,13 +414,24 @@ var I18N={
     mental_q:'Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun?',mental_s:'Zihinsel Yorgunluk',
     physical_q:'Fiziksel olarak ne kadar yorgun hissediyorsun?',physical_s:'Fiziksel Yorgunluk',
     soreness_q:'Kaslarında ne düzeyde ağrı/sertlik hissediyorsun?',soreness_s:'Kas Ağrısı',
-    pain_q:'Ağrın hangi bölgede ve ne şiddette?',pain_hint:'Opsiyonel — bir bölgeye dokun, şiddetini seç.',
+    pain_q:'Ağrın hangi bölgede ve ne şiddette?',pain_hint:'Opsiyonel — modeli çevir, ağrıyan bölgeye dokun, şiddetini seç.',
     sleep_l:['çok kötü','kötü','orta','iyi','çok iyi'],
     mental_l:['çok yüksek','yüksek','orta','düşük','çok düşük'],
     physical_l:['bitkin','yorgun','orta','dinç','çok dinç'],
     soreness_l:['çok ağrılı','ağrılı','orta','hafif','ağrım yok'],
     sev:['Hafif','Orta','Yüksek'],sev_w:['hafif','orta','yüksek'],
-    selected:'Seçili: ',no_pain:'Ağrın yoksa bu tabloyu boş bırak.',
+    no_pain:'Ağrın yoksa bu bölümü boş bırak.',
+    pb_loading:'3D model yükleniyor…',pb_drag:'Çevirmek için sağa-sola kaydır · bölgeye dokun',
+    pb_drag_full:'Çevir · iki parmakla yakınlaştır · bölgeye dokun',
+    pb_drag_mouse:'Sürükleyerek çevir · bölgeye tıkla · Ctrl + tekerlek yakınlaştırır',
+    pb_front:'Ön',pb_back:'Arka',pb_right:'Sağ',pb_left:'Sol',pb_R:'SAĞ',pb_L:'SOL',
+    pb_zin:'Yakınlaştır',pb_zout:'Uzaklaştır',pb_reset:'Baştan göster',pb_full:'Tam ekran',pb_exit:'Tam ekrandan çık',
+    pb_tap:'Ağrıyan bölgeye dokun ya da listeden seç',pb_list_ph:'— Listeden bölge seç —',
+    pb_pick_sev:'Ağrının şiddetini seç',pb_clear:'Kaldır',pb_close:'Kapat',
+    pb_next:'✓ İşaretlendi — başka bir bölgeye de dokunabilirsin',pb_saved:'✓ İşaretlendi',
+    pb_selected:'İşaretlenen bölgeler',pb_other:'Diğer bölge (yaz)',pb_other_ph:'Bölgeyi yaz — örn. sol kulak',
+    pb_other_hint:'Sonra şiddetini seç.',pb_other_g:'Diğer',pb_done:'Tamam',
+    pb_nogl:'3D model bu cihazda açılamadı; bölgeyi aşağıdaki listeden seçebilirsin.',
     v_date:'Tarihi seç.',v_athlete:'Sporcu ismini seç.',
     v_rpe:'En az bir bölüm için zorluk (RPE) seç.',v_dur:'{s} için süreyi de seç.',
     s_tp:'Top antrenmanı',s_sc:'Kuvvet & Kondisyon',s_game:'Müsabaka',
@@ -364,13 +475,24 @@ var I18N={
     mental_q:'How would you rate your mental stress/fatigue?',mental_s:'Mental Fatigue',
     physical_q:'How physically tired do you feel?',physical_s:'Physical Fatigue',
     soreness_q:'How much muscle soreness/stiffness do you feel?',soreness_s:'Muscle Soreness',
-    pain_q:'Where does it hurt, and how much?',pain_hint:'Optional — tap a region and pick the severity.',
+    pain_q:'Where does it hurt, and how much?',pain_hint:'Optional — turn the model, tap where it hurts, pick the severity.',
     sleep_l:['very poor','poor','average','good','very good'],
     mental_l:['very high','high','moderate','low','very low'],
     physical_l:['exhausted','tired','moderate','fresh','very fresh'],
     soreness_l:['very sore','sore','moderate','mild','no soreness'],
     sev:['Mild','Moderate','High'],sev_w:['mild','moderate','high'],
-    selected:'Selected: ',no_pain:'Leave this table empty if nothing hurts.',
+    no_pain:'Leave this part empty if nothing hurts.',
+    pb_loading:'Loading the 3D model…',pb_drag:'Swipe sideways to turn · tap a region',
+    pb_drag_full:'Turn · pinch to zoom · tap a region',
+    pb_drag_mouse:'Drag to turn · click a region · Ctrl + wheel zooms',
+    pb_front:'Front',pb_back:'Back',pb_right:'Right',pb_left:'Left',pb_R:'RIGHT',pb_L:'LEFT',
+    pb_zin:'Zoom in',pb_zout:'Zoom out',pb_reset:'Reset view',pb_full:'Full screen',pb_exit:'Exit full screen',
+    pb_tap:'Tap where it hurts, or pick from the list',pb_list_ph:'— Pick a region from the list —',
+    pb_pick_sev:'Pick how bad it is',pb_clear:'Remove',pb_close:'Close',
+    pb_next:'✓ Marked — you can tap another region too',pb_saved:'✓ Marked',
+    pb_selected:'Marked regions',pb_other:'Other region (type it)',pb_other_ph:'Type the region — e.g. left ear',
+    pb_other_hint:'Then pick the severity.',pb_other_g:'Other',pb_done:'Done',
+    pb_nogl:'The 3D model could not open on this device; pick the region from the list below.',
     v_date:'Pick the date.',v_athlete:'Pick your name.',
     v_rpe:'Pick a difficulty (RPE) for at least one part.',v_dur:'Pick the duration for {s} too.',
     s_tp:'team training',s_sc:'Strength & Conditioning',s_game:'the competition',
@@ -397,16 +519,31 @@ var I18N={
 function T(k){var d=I18N[LANG]||I18N.tr;return d[k]!=null?d[k]:(I18N.tr[k]!=null?I18N.tr[k]:k);}
 document.documentElement.lang=LANG;
 
-// Ağrı matrisinin satırları. Koçun Tally formundaki liste ile birebir aynı: eski
-// check-in'ler de aynı bölge adlarıyla kayıtlı olduğu için ısı haritası bölünmüyor.
-// Bu adlar VERİ — gönderime hep Türkçe gidiyor; İngilizce yalnızca ekrandaki karşılığı.
-var PAIN_REGIONS=['Boyun','Omuz','Sırt','Göğüs','Karın','Dirsek','Bilek / El','Bel','Kalça',
-  'Kasık','Hamstring','Quadriceps','Diz','Kalf','Aşil','Ayak Bileği','Ayak'];
-var PAIN_REGIONS_EN={'Boyun':'Neck','Omuz':'Shoulder','Sırt':'Upper back','Göğüs':'Chest',
-  'Karın':'Abdomen','Dirsek':'Elbow','Bilek / El':'Wrist / Hand','Bel':'Lower back','Kalça':'Hip',
-  'Kasık':'Groin','Hamstring':'Hamstring','Quadriceps':'Quadriceps','Diz':'Knee','Kalf':'Calf',
-  'Aşil':'Achilles','Ayak Bileği':'Ankle','Ayak':'Foot'};
-function regionLabel(rg){return LANG==='en'?(PAIN_REGIONS_EN[rg]||rg):rg;}
+/* Ağrı bölgeleri pain-body.js'teki katalogdan geliyor (72 bölge, sağ/sol ayrı). Bölge
+   adı VERİ — gönderime hep Türkçe gidiyor ('Sağ diz önü'); İngilizce yalnızca ekrandaki
+   karşılığı. Modelde olmayan bir yer "Diğer: <sporcunun yazdığı>" olarak gidiyor. */
+var PAIN_OTHER='Diğer: ';
+var PAIN_OTHER_MAX=32;   // koçun uygulaması bölge adını 40 karakterde kesiyor
+function painCatalog(){return window.PainBody||null;}
+function isOtherPain(k){return String(k).indexOf(PAIN_OTHER)===0;}
+function regionLabel(k){
+  if(isOtherPain(k))return (LANG==='en'?'Other: ':PAIN_OTHER)+k.slice(PAIN_OTHER.length);
+  var PB0=painCatalog(),r=PB0&&PB0.byKey[k];
+  return r?(LANG==='en'?r.en:r.k):k;
+}
+function regionGroupLabel(k){
+  if(isOtherPain(k))return T('pb_other_g');
+  var PB0=painCatalog(),r=PB0&&PB0.byKey[k];
+  if(!r)return '';
+  var g=PB0.GROUPS.filter(function(x){return x.id===r.g;})[0];
+  return g?(LANG==='en'?g.en:g.tr):'';
+}
+// Gönderilebilir bir anahtar mı: katalogdaki bir bölge ya da "Diğer: …".
+function validPainKey(k){
+  if(isOtherPain(k))return k.length>PAIN_OTHER.length;
+  var PB0=painCatalog();
+  return !!(PB0&&PB0.byKey[k]);
+}
 var RPE_VALUES=[1,2,3,4,5,6,7,8,9,10];
 // RPE skalasının rengi: 1 mavi (kolay) → 10 kırmızı (bitkin). Aradaki adımlar
 // maviden turkuaza, yeşile, sarıya, turuncuya geçiyor.
@@ -632,47 +769,332 @@ function question(label,required,node,scaleHtml,filledFn){
   return card;
 }
 
-/* ── Ağrı matrisi ────────────────────────────────────────────────────────── */
-function painGrid(){
-  // Dil değişince form yeniden çiziliyor; işaretlenmiş bölgeler kaybolmasın.
+/* ── Ağrı haritası (3D model) ────────────────────────────────────────────────
+   Sporcu modeli çevirip ağrıyan bölgeye dokunuyor; altındaki panel o bölgeyi
+   yazıyor ve şiddetini (Hafif / Orta / Yüksek) soruyor. İşaretlenen bölgeler modelde
+   şiddetin renginde boyanıyor ve altta çip olarak listeleniyor.
+
+   Model tek bir kez kuruluyor (PB.viewer) ve dil değişip form yeniden çizildiğinde
+   yeni DOM'a taşınıyor — her çizimde yeni bir WebGL bağlamı açmak telefonda bağlam
+   sınırına takılıyordu. 3D açılamazsa (WebGL yok, Three.js inmedi) panel bölgeyi
+   listeden seçtiriyor; veri iki yolda da aynı. */
+var PB={viewer:null,state:'idle',active:null,full:false,pushed:false,ui:null,hinted:false,view:'front'};
+var PB_SEV_COL={1:'#46d6a0',2:'#fcd34d',3:'#ff6b5b'};
+var PB_ICONS={
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  minus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
+  expand:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
+  shrink:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>',
+  tap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V9a1.5 1.5 0 0 1 3 0v2"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.8-2.4L4.3 15.2a1.6 1.6 0 0 1 2.4-2.1L9 15V11"/></svg>'
+};
+function pbColorVars(node,c){
+  node.style.setProperty('--c',c);node.style.setProperty('--c-soft',c+'66');node.style.setProperty('--c-bg',c+'26');
+}
+function pbSevWord(n){var w=T('sev');return w[n-1]||'';}
+// Fareyle kullanana "sürükle / tıkla", dokunmatikte "kaydır / dokun".
+function pbHintKey(){
+  var fine=false;
+  try{fine=window.matchMedia('(hover: hover) and (pointer: fine)').matches;}catch(e){}
+  return fine?'pb_drag_mouse':(PB.full?'pb_drag_full':'pb_drag');
+}
+function pbToolBtn(icon,label,fn){
+  var b=el('button',{type:'button',class:'pb-tool','aria-label':label,title:label,onclick:fn});
+  b.innerHTML=PB_ICONS[icon];
+  return b;
+}
+
+function painBody(){
   A.painMap=A.painMap||{};
-  var tbl=el('table',{class:'grid'});
-  var SEV=T('sev');
-  var head=el('tr',null,[el('th',null,[]),
-    el('th',{class:'s1',text:SEV[0]}),el('th',{class:'s2',text:SEV[1]}),el('th',{class:'s3',text:SEV[2]})]);
-  tbl.appendChild(el('thead',null,[head]));
-  var body=el('tbody');
-  PAIN_REGIONS.forEach(function(rg){
-    // Satırın anahtarı Türkçe bölge adı (veri), ekranda yazan seçilen dildeki karşılığı.
-    var tr=el('tr',{'data-rg':rg},[el('td',{class:'rg',text:regionLabel(rg)})]);
-    [1,2,3].forEach(function(sev){
-      var b=el('button',{type:'button',class:'dot s'+sev,'aria-label':regionLabel(rg)+' '+sev,onclick:function(){
-        if(A.painMap[rg]===sev)delete A.painMap[rg];else A.painMap[rg]=sev;
-        paint();refreshAll();
-      }});
-      b.dataset.rg=rg;b.dataset.sev=String(sev);
-      tr.appendChild(el('td',null,[b]));
-    });
-    body.appendChild(tr);
+  // Form yeniden çizilirken tam ekran açıksa önce kapanıyor: yeni sahne satır içinde kuruluyor.
+  if(PB.full)pbSetFull(false);
+  var ui={};
+  ui.view=el('div',{class:'pb-view'});
+  ui.status=el('div',{class:'pb-status'});
+  ui.hint=el('div',{class:'pb-hint'+(PB.hinted?' gone':''),text:T(pbHintKey())});
+  ui.tip=el('div',{class:'pb-tip'});
+  ui.views=el('div',{class:'pb-views',role:'group'});
+  ui.viewBtns={};
+  [['front','pb_front'],['back','pb_back'],['right','pb_right'],['left','pb_left']].forEach(function(v){
+    var b=el('button',{type:'button',text:T(v[1]),onclick:function(){if(PB.viewer)PB.viewer.view(v[0]);}});
+    ui.viewBtns[v[0]]=b;ui.views.appendChild(b);
   });
-  tbl.appendChild(body);
-  var sum=el('div',{class:'painsum'});
-  var SEV_W=T('sev_w'),SEV_WORD={1:SEV_W[0],2:SEV_W[1],3:SEV_W[2]};
-  function paint(){
-    Array.prototype.forEach.call(tbl.querySelectorAll('.dot'),function(b){
-      b.classList.toggle('on',A.painMap[b.dataset.rg]===Number(b.dataset.sev));
-    });
-    Array.prototype.forEach.call(body.querySelectorAll('tr'),function(tr){
-      var rg=tr.getAttribute('data-rg');
-      tr.classList.toggle('on',!!(rg&&A.painMap[rg]));
-    });
-    var picked=Object.keys(A.painMap);
-    sum.textContent=picked.length
-      ? T('selected')+picked.map(function(r){return regionLabel(r)+' ('+SEV_WORD[A.painMap[r]]+')';}).join(' · ')
-      : T('no_pain');
+  ui.fullBtn=pbToolBtn('expand',T('pb_full'),function(){pbSetFull(!PB.full);});
+  ui.fullBtn.classList.add('sep');
+  ui.tools=el('div',{class:'pb-tools'},[
+    pbToolBtn('plus',T('pb_zin'),function(){if(PB.viewer)PB.viewer.zoom(0.7);}),
+    pbToolBtn('minus',T('pb_zout'),function(){if(PB.viewer)PB.viewer.zoom(1.43);}),
+    pbToolBtn('reset',T('pb_reset'),function(){if(PB.viewer)PB.viewer.reset();}),
+    ui.fullBtn
+  ]);
+  [ui.status,ui.hint,ui.tools,ui.views,ui.tip].forEach(function(n){ui.view.appendChild(n);});
+  // İlk dokunuşta ipucu kayboluyor: işini gördü.
+  ui.view.addEventListener('pointerdown',function(e){
+    if(e.target&&e.target.tagName==='CANVAS'&&!PB.hinted){PB.hinted=true;ui.hint.classList.add('gone');}
+  });
+  ui.panel=el('div',{class:'pb-panel'});
+  ui.stage=el('div',{class:'pb-stage'},[ui.view,ui.panel]);
+  ui.list=el('div',{class:'pb-list'});
+  ui.other=pbOther();
+  PB.ui=ui;
+  pbPaint();
+  pbPaintViews();
+  pbStart();
+  return el('div',{class:'pb'},[ui.stage,ui.list,ui.other]);
+}
+
+/* Modeli yükle ya da (dil değişiminden sonra) hazır olanı yeni sahneye taşı. */
+function pbStart(){
+  var ui=PB.ui;if(!ui)return;
+  var PB0=painCatalog();
+  if(!PB0){PB.state='failed';}
+  if(PB.state==='ready'&&PB.viewer){
+    PB.viewer.attach(ui.view);
+    PB.viewer.setLabels(T('pb_R'),T('pb_L'));
+    PB.viewer.setExpanded(PB.full);
+    PB.viewer.update({map:A.painMap,active:PB.active});
+    pbStatus(null);
+    return;
   }
-  paint();
-  return el('div',null,[tbl,sum]);
+  if(PB.state==='failed'){pbStatus('failed');return;}
+  pbStatus('loading');
+  if(PB.state==='loading')return;
+  PB.state='loading';
+  PB0.load().then(function(THREE){
+    PB.viewer=PB0.create(THREE,{
+      right:T('pb_R'),left:T('pb_L'),
+      onPick:function(k){
+        if(!PB.hinted&&PB.ui){PB.hinted=true;PB.ui.hint.classList.add('gone');}
+        pbSetActive(k);
+      },
+      onHover:pbHover,
+      onView:function(v){PB.view=v;pbPaintViews();}
+    });
+    PB.state='ready';
+    if(PB.ui)pbStart();
+  }).catch(function(){
+    PB.state='failed';
+    if(PB.ui)pbStart();
+  });
+}
+function pbStatus(kind){
+  var ui=PB.ui;if(!ui)return;
+  ui.status.innerHTML='';
+  ui.stage.classList.toggle('nogl',kind==='failed');
+  ui.status.style.display=kind==='loading'?'':'none';
+  [ui.hint,ui.tools,ui.views].forEach(function(n){n.style.visibility=kind?'hidden':'';});
+  if(kind==='loading'){
+    ui.status.appendChild(el('div',{class:'pb-spin'}));
+    ui.status.appendChild(el('div',{text:T('pb_loading')}));
+  }
+  if(kind==='failed')pbPaintPanel();   // panel "listeden seç" metnine geçsin
+}
+function pbPaintViews(){
+  var ui=PB.ui;if(!ui)return;
+  Object.keys(ui.viewBtns).forEach(function(k){
+    var on=k===PB.view;
+    ui.viewBtns[k].classList.toggle('on',on);
+    ui.viewBtns[k].setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+// Fareyle üzerine gelinen bölgenin adı, imlecin yanında.
+function pbHover(k,x,y){
+  var ui=PB.ui;if(!ui)return;
+  var tip=ui.tip;
+  if(!k){tip.classList.remove('on');return;}
+  tip.innerHTML='';
+  tip.appendChild(document.createTextNode(regionLabel(k)));
+  var sev=A.painMap[k];
+  if(sev){var i=el('i',{text:pbSevWord(sev)});i.style.setProperty('--c',PB_SEV_COL[sev]);tip.appendChild(i);}
+  var r=ui.view.getBoundingClientRect();
+  var left=Math.min(r.width-tip.offsetWidth-8,Math.max(8,x-r.left+14)),top=Math.max(8,y-r.top-34);
+  tip.style.transform='translate('+left+'px,'+top+'px)';
+  tip.classList.add('on');
+}
+
+function pbSetActive(k){
+  PB.active=k||null;
+  pbPaint();
+}
+function pbSetSev(k,sev){
+  if(!k)return;
+  if(A.painMap[k]===sev)delete A.painMap[k];else A.painMap[k]=sev;
+  pbPaint();refreshAll();
+}
+function pbRemove(k){
+  delete A.painMap[k];
+  if(PB.active===k)PB.active=null;
+  pbPaint();refreshAll();
+}
+function pbPaint(){
+  pbPaintPanel();pbPaintList();
+  if(PB.viewer)PB.viewer.update({map:A.painMap,active:PB.active});
+}
+
+/* Panel: seçili bölge + şiddet düğmeleri; seçili bölge yoksa "dokun" ve liste. */
+function pbPaintPanel(){
+  var ui=PB.ui;if(!ui)return;
+  var p=ui.panel,k=PB.active;
+  p.innerHTML='';
+  var inner=el('div',{class:'pb-panel-in'});
+  p.appendChild(inner);
+  if(!k){
+    if(PB.state==='failed')inner.appendChild(el('div',{class:'pb-nogl',text:T('pb_nogl')}));
+    else{
+      var t=el('div',{class:'pb-empty-t'});
+      t.innerHTML=PB_ICONS.tap;
+      t.appendChild(el('span',{text:T('pb_tap')}));
+      inner.appendChild(t);
+    }
+    inner.appendChild(pbSelect());
+  }else{
+    var head=el('div',{class:'pb-act-h'},[
+      el('div',null,[el('div',{class:'pb-act-g',text:regionGroupLabel(k)}),
+                     el('div',{class:'pb-act-n',text:regionLabel(k)})]),
+      el('button',{type:'button',class:'pb-x','aria-label':T('pb_close'),text:'×',onclick:function(){pbSetActive(null);}})
+    ]);
+    var sevRow=el('div',{class:'pb-sev',role:'group','aria-label':T('pb_pick_sev')});
+    [1,2,3].forEach(function(s){
+      var on=A.painMap[k]===s;
+      var b=el('button',{type:'button',class:'pb-sevb'+(on?' on':''),text:pbSevWord(s),
+        'aria-pressed':on?'true':'false',onclick:function(){pbSetSev(k,s);}});
+      pbColorVars(b,PB_SEV_COL[s]);
+      sevRow.appendChild(b);
+    });
+    var foot=el('div',{class:'pb-act-f'});
+    if(A.painMap[k]){
+      foot.appendChild(el('span',{text:T(isOtherPain(k)||PB.state==='failed'?'pb_saved':'pb_next')}));
+      foot.appendChild(el('button',{type:'button',class:'pb-link',text:T('pb_clear'),onclick:function(){pbRemove(k);}}));
+    }else foot.appendChild(el('span',{text:T('pb_pick_sev')}));
+    inner.appendChild(head);inner.appendChild(sevRow);inner.appendChild(foot);
+  }
+  // Tam ekranda panelin altında formu geri getiren düğme.
+  var n=Object.keys(A.painMap).length;
+  inner.appendChild(el('button',{type:'button',class:'pb-done',text:T('pb_done')+(n?' · '+n:''),
+    onclick:function(){pbSetFull(false);}}));
+}
+/* Bütün bölgeler, gruplarıyla. Hem 3D'nin yedeği hem de modelde bulmakta zorlanan
+   için kestirme; seçince model o bölgeye dönüyor. */
+function pbSelect(){
+  var PB0=painCatalog();
+  var sel=el('select',{'aria-label':T('pb_list_ph'),onchange:function(){
+    var k=sel.value;if(!k)return;
+    pbSetActive(k);
+    if(PB.viewer)PB.viewer.focus(k);
+  }},[el('option',{value:'',text:T('pb_list_ph')})]);
+  if(!PB0)return sel;
+  PB0.GROUPS.forEach(function(g){
+    var og=el('optgroup',{label:LANG==='en'?g.en:g.tr});
+    PB0.REGIONS.forEach(function(r){
+      if(r.g!==g.id)return;
+      var sev=A.painMap[r.k];
+      og.appendChild(el('option',{value:r.k,text:regionLabel(r.k)+(sev?' — '+pbSevWord(sev):'')}));
+    });
+    sel.appendChild(og);
+  });
+  return sel;
+}
+/* İşaretlenen bölgeler, vücut sırasıyla (katalog sırası); "Diğer"ler en sonda. */
+function pbPaintList(){
+  var ui=PB.ui;if(!ui)return;
+  var box=ui.list,PB0=painCatalog();
+  box.innerHTML='';
+  var keys=Object.keys(A.painMap);
+  if(!keys.length){box.appendChild(el('div',{class:'pb-none',text:T('no_pain')}));return;}
+  var order={};(PB0?PB0.REGIONS:[]).forEach(function(r,i){order[r.k]=i;});
+  keys.sort(function(a,b){return (order[a]!=null?order[a]:999)-(order[b]!=null?order[b]:999)||a.localeCompare(b);});
+  box.appendChild(el('div',{class:'pb-list-h',text:T('pb_selected')+' · '+keys.length}));
+  var wrap=el('div',{class:'pb-chips'});
+  keys.forEach(function(k){
+    var sev=A.painMap[k];
+    var chip=el('span',{class:'pb-chip'+(k===PB.active?' on':'')},[
+      el('button',{type:'button',class:'pb-chip-b',onclick:function(){
+        pbSetActive(k);
+        if(PB.viewer&&!isOtherPain(k))PB.viewer.focus(k);
+        try{ui.stage.scrollIntoView({behavior:'smooth',block:'nearest'});}catch(e){}
+      }},[el('i'),el('span',{text:regionLabel(k)}),el('em',{text:pbSevWord(sev)})]),
+      el('button',{type:'button',class:'pb-chip-x','aria-label':T('pb_clear')+': '+regionLabel(k),text:'×',
+        onclick:function(){pbRemove(k);}})
+    ]);
+    pbColorVars(chip,PB_SEV_COL[sev]||'#8b9099');
+    wrap.appendChild(chip);
+  });
+  box.appendChild(wrap);
+}
+/* "Diğer": modelde karşılığı olmayan bir yer. Sporcu yazıyor, şiddeti seçiyor; bölge
+   "Diğer: <yazdığı>" adıyla çip olarak ekleniyor. */
+function pbOther(){
+  var open=false;
+  var box=el('div',{class:'pb-other'});
+  var btn=el('button',{type:'button',class:'pb-other-btn',text:'+ '+T('pb_other'),onclick:function(){
+    open=!open;draw();if(open)input.focus();
+  }});
+  var input=el('input',{type:'text',maxlength:String(PAIN_OTHER_MAX),placeholder:T('pb_other_ph'),
+    autocomplete:'off',enterkeyhint:'done',oninput:function(){input.classList.remove('bad');}});
+  var sevRow=el('div',{class:'pb-sev'});
+  [1,2,3].forEach(function(s){
+    var b=el('button',{type:'button',class:'pb-sevb',text:pbSevWord(s),onclick:function(){
+      var t=input.value.replace(/\s+/g,' ').trim().slice(0,PAIN_OTHER_MAX);
+      if(!t){input.classList.add('bad');input.focus();return;}
+      A.painMap[PAIN_OTHER+t]=s;
+      input.value='';open=false;draw();
+      pbPaint();refreshAll();
+    }});
+    pbColorVars(b,PB_SEV_COL[s]);
+    sevRow.appendChild(b);
+  });
+  function draw(){
+    box.innerHTML='';box.appendChild(btn);
+    if(open)box.appendChild(el('div',{class:'pb-other-row'},[input,
+      el('div',{class:'hint',style:'margin-top:7px',text:T('pb_other_hint')}),sevRow]));
+  }
+  draw();
+  return box;
+}
+
+/* Tam ekran. Telefonun geri tuşu formdan çıkmasın, tam ekranı kapatsın diye tarih
+   geçmişine bir adım ekleniyor; kapatınca o adım geri alınıyor.
+   Sahne tam ekranda <body>'nin doğrudan çocuğu oluyor: kartın giriş animasyonu
+   (transform) `position:fixed`i kartın içine hapsedebiliyordu. Yerinde aynı
+   yükseklikte bir tutucu kalıyor ki form zıplamasın; çıkınca sahne geri dönüyor. */
+function pbSetFull(on,fromHistory){
+  on=!!on;
+  if(PB.full===on)return;
+  PB.full=on;
+  var ui=PB.ui;
+  document.documentElement.classList.toggle('pb-lock',on);
+  if(ui){
+    if(on&&ui.stage.parentNode){
+      ui.holder=el('div');ui.holder.style.height=ui.stage.offsetHeight+'px';
+      ui.stage.parentNode.replaceChild(ui.holder,ui.stage);
+      document.body.appendChild(ui.stage);
+    }else if(!on&&ui.holder&&ui.holder.parentNode){
+      ui.holder.parentNode.replaceChild(ui.stage,ui.holder);ui.holder=null;
+    }else if(!on&&ui.stage.parentNode===document.body){
+      document.body.removeChild(ui.stage);
+    }
+    ui.stage.classList.toggle('pb-full',on);
+    ui.hint.textContent=T(pbHintKey());
+    var nb=pbToolBtn(on?'shrink':'expand',T(on?'pb_exit':'pb_full'),function(){pbSetFull(!PB.full);});
+    nb.classList.add('sep');
+    ui.fullBtn.parentNode.replaceChild(nb,ui.fullBtn);ui.fullBtn=nb;
+  }
+  if(PB.viewer)PB.viewer.setExpanded(on);
+  if(on){
+    try{history.pushState({pbFull:1},'');PB.pushed=true;}catch(e){PB.pushed=false;}
+  }else if(PB.pushed){
+    PB.pushed=false;
+    if(!fromHistory){try{history.back();}catch(e){}}
+  }
+  if(!on&&ui){try{ui.stage.scrollIntoView({block:'nearest'});}catch(e){}}
+}
+window.addEventListener('popstate',function(){if(PB.full)pbSetFull(false,true);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&PB.full)pbSetFull(false);});
+// Gönderimden sonra model artık gerekmiyor: GPU belleği ve bağlam serbest kalsın.
+function pbTeardown(){
+  if(PB.full)pbSetFull(false);
+  if(PB.viewer){try{PB.viewer.dispose();}catch(e){}}
+  PB.viewer=null;PB.ui=null;PB.state='idle';
 }
 
 /* ── Formlar ─────────────────────────────────────────────────────────────── */
@@ -779,7 +1201,7 @@ function buildWellness(){
       chipRow('soreness',SCORE_5,{palette:SCORE_COLORS,labels:T('soreness_l')}),
       T('soreness_s'),
       function(){return A.soreness!=null;}),
-    question(T('pain_q'),false,painGrid(),T('pain_hint'),
+    question(T('pain_q'),false,painBody(),T('pain_hint'),
       function(){return Object.keys(A.painMap||{}).length>0;})
   ];
 }
@@ -823,7 +1245,10 @@ function payload(){
             scRPE:A.scRPE??null,scDuration:A.scDuration??null,
             gameRPE:A.gameRPE??null,gameDuration:A.gameDuration??null};
   }
-  var pm={};Object.keys(A.painMap||{}).forEach(function(k){pm[k]=A.painMap[k];});
+  var pm={};Object.keys(A.painMap||{}).forEach(function(k){
+    var v=A.painMap[k];
+    if(validPainKey(k)&&(v===1||v===2||v===3))pm[k]=v;
+  });
   return {RHR:A.RHR??null,sleep:A.sleep??null,
           mentalFatigue:A.mentalFatigue??null,physicalFatigue:A.physicalFatigue??null,
           soreness:A.soreness??null,painMap:pm};
@@ -949,6 +1374,7 @@ function rewardNodes(){
 }
 function done(queued){
   VIEW=function(){done(queued);};
+  pbTeardown();
   var r=$('#root');r.innerHTML='';
   var bar=document.querySelector('.bar');if(bar)bar.remove();
   var pg=$('#progfill');if(pg)pg.style.width='100%';

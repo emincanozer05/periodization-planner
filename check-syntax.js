@@ -21,7 +21,7 @@ const babel = require('@babel/standalone');
 const PAGES = ['index.html', 'checkin.html', 'alerts.html', 'wellness.html', 'rpe.html'];
 // Tarayıcıya klasik script olarak inen bağımsız dosyalar.
 // (tally-worker.js bilerek dışarıda: o bir ES modülü ve Cloudflare Worker'da çalışıyor.)
-const SCRIPTS = ['push-config.js', 'firebase-messaging-sw.js'];
+const SCRIPTS = ['push-config.js', 'firebase-messaging-sw.js', 'pain-body.js'];
 
 let failed = 0;
 
