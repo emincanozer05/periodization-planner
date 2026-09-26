@@ -79,13 +79,13 @@ function loadApp() {
     'diBundle', 'diInstr', 'diDifferentiators', 'diDeficits', 'diTier', 'diTempDowngrade',
     'diBlockedPatterns', 'diRestrictions', 'diPlyoCeiling', 'diRowUnits', 'diRowContacts',
     'diFlag', 'diReadiness', 'diConValue', 'diJaccard', 'diProgramNames', 'diRecentPrograms',
-    'diPeerPrograms', 'diBuildProgramInput', 'diWriteGate', 'diProgramPlan', 'askCoach', 'askGemini',
-    'aiModelResolve', 'aiModelOf', 'kbRules', 'kbForAI', 'eqAvailable', 'eqNeedOf', 'pwTier',
+    'diPeerPrograms', 'diWriteGate', 'diProgramPlan', 'askCoach', 'askGemini',
+    'aiModelResolve', 'aiModelOf', 'eqAvailable', 'eqNeedOf', 'pwTier',
     'athReadiness', 'athPainReports', 'diPainDays', 'diRestrictionHits',
     'DI_ADJ_BANDS', 'DI_SET_FLOOR', 'DI_REP_FLOOR', 'DI_RD_REDUCE', 'DI_RD_REVIEW',
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
-    'DI_PROGRAM_SYSTEM', 'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
-    'diJobWriteGate', 'aiJobStatusText', 'aiJobErrorText', 'aiKeyOf', 'migrate', 'AI_JOB_MAX_MS', 'AI_JOB_MAX_CALLS',
+    'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
+    'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
@@ -439,27 +439,20 @@ group('12 — Bozuk / geçersiz model yanıtı');
   check('boş program doğrulamada SERT ihlal', vEmpty.status === 'fail', hardText(vEmpty));
 }
 
-group('13 / 19 — Çağrı bütçesi: tarayıcı modeli hiç çağırmıyor, tek iş başlatıyor');
+group('13 / 19 — Site içinde otomatik program üretimi yok');
 {
-  /* Kaynak üzerinden okunuyor çünkü sınanan şey bir fonksiyonun dönüşü değil, akışın
-     KAÇ KEZ ve NEREDEN çağırdığı. Program üretimi artık sunucudaki arka plan işi:
-     retry, fallback ve 6 çağrılık tavan functions/ai/router.js'te (functions testleri
-     orada sınıyor). Burada kanıtlanan: panel modeli doğrudan hiç çağırmıyor ve bir
-     basış tek bir iş dokümanı açıyor. */
+  /* Program artık yalnızca dışarıdan yükleniyor: "Sporcu Bilgilerini Al" → harici
+     yapay zekâ → "AI Programını Yükle". Panel hiçbir modeli çağırmıyor ve sunucuya
+     üretim işi açmıyor. */
   const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
   const panel = html.indexOf('function DailyIndivPanel');
   const end = html.indexOf('function IndivAthleteCard');
   const genSrc = html.slice(panel, end);
   check('13 — günlük bireyselleştirme modeli doğrudan çağırmıyor',
     !/askGemini\(|askCoach\(|await ask\(\)/.test(genSrc));
-  const starts = (genSrc.match(/await ref\.set\(\{/g) || []).length;
-  check('13a — tek bir iş başlatma noktası var (iş dokümanı bir yerde yazılıyor)', starts === 1, `iş yazımı=${starts}`);
-  check('13b — basış kilidi ve meşgulken düğme kapalı', /pressLock\.current\)return/.test(genSrc) && /if\(busy\|\|pressLock\.current\)return;/.test(genSrc));
-  check('13c — hata mesajı "yazılmadı" / "değiştirilmedi" diyor', /program yazılmadı|nothing was written/.test(genSrc));
-  check('19 — toplu otomatik üretim yok (15 sporcu = 15 el hareketi)',
-    !/plans\.forEach\([^)]*gen\(/.test(html) && !/autoGenerate/.test(genSrc));
-  check('13d — sistem promptu ayırt edicileri zorunlu kılıyor',
-    /dayanak/.test(A.DI_PROGRAM_SYSTEM) && /AYIRT EDİCİLER/.test(A.DI_PROGRAM_SYSTEM));
+  check('13a — üretim işi (ai_generation_jobs) açılmıyor', !/ai_generation_jobs/.test(html) && !/await ref\.set\(\{/.test(genSrc));
+  check('13b — "Antrenmanı oluştur" düğmesi yok', !/Antrenmanı oluştur/.test(html));
+  check('13c — harici program yükleme yolu duruyor', /AI Programını Yükle/.test(genSrc) && /Sporcu Bilgilerini Al/.test(html));
 }
 
 group('AI güvenliği — Gemini anahtarı tarayıcıda yok');
@@ -472,36 +465,6 @@ group('AI güvenliği — Gemini anahtarı tarayıcıda yok');
   const m = A.migrate({ teams: [], exercises: [], templates: [], ai: { provider: 'gemini', gkey: 'AIzaSECRET', gmodel: 'gemini-3.5-flash' } });
   check('eski gkey senkron veriden siliniyor, sağlayıcı ve model kalıyor',
     !('gkey' in (m.ai || {})) && m.ai.provider === 'gemini' && m.ai.gmodel === 'gemini-3.5-flash', JSON.stringify(m.ai));
-}
-
-group('AI işi — takvime yazım kapısı (Madde 19, Test 12/13)');
-{
-  const T0 = Date.now() - 30000;
-  const ok = { id: 'job_1', status: 'COMPLETED', validationStatus: 'pass', calendarWriteStatus: 'pending',
-    athleteId: 'a1', date: '2026-09-22', srcKey: 'team:s1', startedAt: T0, completedAt: T0 + 20000,
-    result: { text: '{"program":{}}', model: 'gemini-3.8-flash' } };
-  const exp = { athleteId: 'a1', date: '2026-09-22', srcKey: 'team:s1', activeJobId: 'job_1', appliedJobId: null };
-  const g = (j, e) => A.diJobWriteGate(Object.assign({}, ok, j || {}), Object.assign({}, exp, e || {}));
-  check('tüm koşullar sağlanınca yazılır', g().ok === true, JSON.stringify(g()));
-  check('TEST 12 — FAILED iş yazılmaz', !g({ status: 'FAILED' }).ok && g({ status: 'FAILED' }).why.includes('NOT_COMPLETED'));
-  check('TEST 13 — doğrulama PASS değilse yazılmaz', g({ validationStatus: 'fail' }).why.includes('NOT_VALIDATED'));
-  check('başka sporcunun işi yazılmaz', g({ athleteId: 'a2' }).why.includes('WRONG_TARGET'));
-  check('başka günün / seansın işi yazılmaz', g({ date: '2026-09-23' }).why.includes('WRONG_TARGET') && g({ srcKey: 'x' }).why.includes('WRONG_TARGET'));
-  check('bu panelin başlatmadığı (eski) iş yazılmaz', g({}, { activeJobId: 'job_2' }).why.includes('STALE_JOB'));
-  check('aynı iş ikinci kez yazılmaz', g({}, { appliedJobId: 'job_1' }).why.includes('ALREADY_WRITTEN')
-    && g({ calendarWriteStatus: 'written' }).why.includes('ALREADY_WRITTEN') && g({ calendarWriteStatus: 'claimed' }).why.includes('ALREADY_WRITTEN'));
-  check('120 sn aşılmışsa yazılmaz', g({ completedAt: T0 + A.AI_JOB_MAX_MS + 1 }).why.includes('DEADLINE'));
-  check('sonuç metni yoksa yazılmaz', g({ result: null }).why.includes('NO_RESULT'));
-  check('kullanıcı mesajı teknik iz taşımıyor ve takvimin değişmediğini söylüyor',
-    /değiştirilmedi|not changed/.test(A.aiJobErrorText({ status: 'FAILED', errorCode: 'VALIDATION_FAILED', failure: { errors: ['x'] } })));
-  check('durum metinleri: yeniden deneme / yedek model / doğrulama',
-    /Tekrar deneniyor|Trying again/.test(A.aiJobStatusText({ status: 'RETRYING' }))
-    && /Alternatif|alternative/.test(A.aiJobStatusText({ status: 'FALLBACK' }))
-    && /doğrulanıyor|Checking/.test(A.aiJobStatusText({ status: 'VALIDATING' })));
-  check('istemcideki tavan göstergesi sunucuyla aynı (6)', A.AI_JOB_MAX_CALLS === 6);
-  const tx = A.aiJobErrorText({ status: 'FAILED', errorCode: 'JOB_DEADLINE', lastError: { code: 'RATE_LIMITED', status: 429, model: 'gemini-3.8-flash' } });
-  check('süre dolduğunda son hatanın nedeni de söyleniyor (model, kota, 429)',
-    /gemini-3\.8-flash/.test(tx) && /kota|quota/.test(tx) && /429/.test(tx), tx);
 }
 
 group('16 — Seçilen model gerçekten tele gidiyor');
@@ -653,22 +616,6 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('gerekçe "kalıcı kısıt" dediğini söylüyor', /kalıcı|standing/i.test(hardText(v)), hardText(v));
   }
 
-  group('Ek — Eksik veri uydurulmuyor');
-  {
-    const ath = athlete({ wellness: [wellness(TODAY, 4)] });
-    const b = A.diBundle(ath, SETUP, TODAY, { libMap });
-    const plan = { ath, meta: { name: 'Takım seansı', duration: 60, focus: [] }, blocks: [] };
-    const input = A.diBuildProgramInput(b, plan, LIB, A.diInstr(null, null), SETUP, A.kbRules({}), {});
-    check('istek "eksik_veriler" taşıyor', Array.isArray(input.eksik_veriler) && input.eksik_veriler.length > 0,
-      JSON.stringify((input.eksik_veriler || []).map(x => x.alan)));
-    check('cinsiyet alanının olmadığı açıkça bildiriliyor (Kural 10/11 uygulanamaz)',
-      (input.eksik_veriler || []).some(x => /cinsiyet/.test(x.alan)));
-    check('ayırt ediciler istekte en başta', Object.keys(input)[2] === 'ayirt_ediciler', Object.keys(input).slice(0, 4).join(','));
-    check('kademe istekte taşınıyor', !!input.kademe && input.kademe.yapisal === 3, JSON.stringify(input.kademe && input.kademe.yapisal));
-    check('30 kural istekte tam hâliyle', Array.isArray(input.bilgi_tabani) && input.bilgi_tabani.length === 30,
-      `kural sayısı=${(input.bilgi_tabani || []).length}`);
-  }
-
   group('Ek — "Sporcu Bilgilerini Al" JSON çıktısı');
   {
     const test0 = Object.assign(cleanTest(back(40)), {
@@ -732,10 +679,6 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       snap.antrenor_talimati.mutlaka_olsun[0] === 'Calf Raise' && snap.antrenor_talimati.kacinilacak[0] === 'derin squat' &&
       snap.antrenor_talimati.ana_faz_maks_egzersiz === 8 && snap.antrenor_talimati.ek_notlar === 'Yarın maç var',
       JSON.stringify(snap.antrenor_talimati));
-    const plan = { ath, meta: { name: 'Takım seansı', duration: 60, focus: [] }, blocks: [] };
-    const input = A.diBuildProgramInput(b, plan, LIB, instr, SETUP, A.kbRules({}), {});
-    check('program isteğindeki talimat bölümü değişmedi',
-      JSON.stringify(input.antrenor_talimati) === JSON.stringify(A.diBriefForAI(instr)));
     check('boş alanlar çıktıya girmiyor', !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
     /* Her basış o anki veriden: yeni bir check-in ve yeni bir not bir sonraki çıktıda. */
     const ath2 = Object.assign({}, ath, {
@@ -806,6 +749,48 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     try { A.diParseExternalProgram('program yok', libMap); } catch (e) { e2 = e.message; }
     try { A.diParseExternalProgram('{"program":{"bloklar":[]}}', libMap); } catch (e) { e3 = e.message; }
     check('boş / JSON olmayan / egzersizsiz girdi reddediliyor', !!e1 && !!e2 && !!e3, [e1, e2, e3].join(' | '));
+  }
+
+  group('Ek — Yüklenen programın blokları tek bloğun fazları olur');
+  {
+    const ath = athlete({ wellness: [wellness(TODAY, 4)] });
+    const plan0 = { ath, meta: { name: 'Takım', duration: 60, focus: [] }, blocks: [] };
+    const multi = A.diParseExternalProgram(JSON.stringify({ program: { seans_adi: 'Kuvvet Koruma', bloklar: [
+      { ad: 'Hazırlık — Mobilite', faz: 'hazirlik', egzersizler: [{ ad: 'Thoracic Extension', set: '2', tekrar: '8' }, { ad: 'Wall Slides', set: '2', tekrar: '8' }] },
+      { ad: 'Ana — Kuvvet koruma (itiş-çekiş)', faz: 'ana', egzersizler: [{ ad: 'DB Bench Press', set: '3', tekrar: '8' }] },
+      { ad: 'Soğuma', faz: 'soguma', egzersizler: [{ ad: 'Nefes', sure: '3 dk' }] },
+    ] } }), libMap);
+    const pl = A.diProgramPlan(plan0, multi, 0);
+    const blk = pl.blocks[0];
+    check('üç bölüm tek blok olarak yazılıyor', pl.blocks.length === 1, `blok=${pl.blocks.length}`);
+    check('bölümler fazlar, adlarıyla', blk.phases.length === 3 &&
+      blk.phases.map(p => blk.phaseNames[p]).join('|') === 'Hazırlık — Mobilite|Ana — Kuvvet koruma (itiş-çekiş)|Soğuma',
+      JSON.stringify(blk.phaseNames));
+    check('her egzersiz kendi bölümünün fazında', blk.rows.map(r => blk.phases.indexOf(r.phase)).join(',') === '0,0,1,2',
+      JSON.stringify(blk.rows.map(r => r.phase)));
+    const src = { id: 's1', name: 'Takım', time: '09:00', duration: 60, blocks: [{ id: 'k1', name: 'Ana', exercises: [{ name: 'Goblet Squat', sets: '3', reps: '8' }] }] };
+    const real = A.buildIndivPlan(src, ath, { ref: TODAY, ovr: {} });
+    const ses = A.planToSession(A.diProgramPlan(real, multi, 0), src, TODAY, 'team:x');
+    const sb = ses.blocks[0];
+    check('takvime yazılan seansta da tek blok, fazlar ve adları korunuyor', ses.blocks.length === 1 && sb.phases.length === 3 &&
+      sb.phaseNames[sb.phases[1]] === 'Ana — Kuvvet koruma (itiş-çekiş)' && sb.exercises.map(e => sb.phases.indexOf(e.phase)).join(',') === '0,0,1,2',
+      JSON.stringify({ n: ses.blocks.length, ph: sb.phases, names: sb.phaseNames }));
+    const one = A.diProgramPlan(plan0, A.diParseExternalProgram(aiReply([ex()]), libMap), 0);
+    check('tek bölümlük program fazsız düz blok', one.blocks.length === 1 && !(one.blocks[0].phases || []).length);
+    const legacy = { phases: ['hazirlik', 'ana'], exercises: [] };
+    check('eski üç sabit faz okunmaya devam ediyor', A.blkPhases(legacy).join(',') === 'hazirlik,ana' &&
+      A.exPhase({ phase: 'Ana' }) === 'ana' && A.blkPhaseLbl('ph_x', { phaseNames: { ph_x: 'Pliometri' } }) === 'Pliometri');
+  }
+
+  group('Ek — Ağrı 5 üzerinden');
+  {
+    const ath = athlete({ wellness: [wellness(TODAY, 4, { pain: { knee: 3 } })] });
+    const p = A.diPain(ath, TODAY);
+    check('en yüksek ağrı 0-5 ölçeğinde', p.peak_severity_0_5 === 5 && !('peak_severity_0_10' in p), JSON.stringify(p.peak_severity_0_5));
+    const f = A.diFlag(A.diBundle(ath, SETUP, TODAY, { libMap }));
+    check('bayrak gerekçesi /5 yazıyor, /10 değil', f.all_reasons.some(r => /\/5/.test(r.text)) && !f.all_reasons.some(r => /\/10/.test(r.text)),
+      JSON.stringify(f.all_reasons.map(r => r.text)));
+    check('kapanma eşiği 0-5 ölçeğinde (orta = 3)', A.DI_PAIN_BLOCK === 3);
   }
 
   group('Ek — Tüm sporcular tek JSON\'da; tek yanıttan her sporcuya kendi programı');
