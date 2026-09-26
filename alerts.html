@@ -160,30 +160,34 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 .tag.m{color:#fcd34d;border-color:rgba(252,211,77,.55);background:rgba(252,211,77,.07)}
 .tag.l{color:#7d8894;border-color:#2c3237;background:transparent}
 
-/* Ölçüm şeridi — formun her sorusu için bir kutu, formdaki sırayla.
+/* Ölçüm şeridi — sabah formunun dört sorusu, HER ZAMAN aynı 2×2 ızgarada:
 
-   Kutunun içi İKİ SATIR: üstte etiket, altta ikon + rakam. İlk hâlinde ikon
-   solda, etiket ve rakam sağında duruyordu — ama 400 piksellik bir telefonda sütun
-   başına ~80 piksel düşüyor ve etiketle ikonun yan yana sığdığı genişlik bu değil.
-   İki satır, etikete sütunun tamamını veriyor.
+       Uyku               │ Kas ağrısı
+       ───────────────────┼───────────────────
+       Zihinsel yorgunluk │ Fiziksel yorgunluk
+       ───────────────────┴───────────────────
+       ♡ KAH 65 bpm          (yalnızca ölçüldüyse, tam genişlik)
 
-   Kutular arasındaki 1 piksellik boşluk kabın rengini gösteriyor ve ayraç çizgisi
-   o. Sarma olduğunda (dar ekranda) satır arası da aynı çizgiyle ayrılıyor, son
-   satırdaki kutular da satırı dolduracak kadar genişliyor — boş bir hücre kalmıyor. */
-.sub{margin-top:13px;display:flex;flex-wrap:wrap;gap:1px;
+   İki yorgunluk aynı satırda yan yana: ayrımın kendisi ekranın okunacak şeyi.
+   Kutu sayısı kayda göre değişmiyor — eskiden eski formdan gelen kayıtta tek bir
+   "Yorgunluk" kutusu çıkıyor ve ızgara 2+2 yerine düzensiz diziliyordu.
+
+   Kutular arasındaki 1 piksellik boşluk kabın rengini gösteriyor ve ayraç çizgisi o. */
+.sub{margin-top:13px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
   background:#242a30;border-radius:11px;overflow:hidden}
-.mt{flex:1 1 0;min-width:0;padding:10px 9px;background:#181c20}
+.mt{min-width:0;padding:10px 12px;background:#181c20}
 .mt svg{flex:none;color:#93a7b6}
-.mt .k{font-size:11.5px;color:#7d8894;line-height:1.2;white-space:nowrap;
+.mt .k{font-size:12px;color:#7d8894;line-height:1.2;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
-.mt .row{display:flex;align-items:center;gap:6px;margin-top:3px}
-.mt .v{font-size:18px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mt .row{display:flex;align-items:center;gap:7px;margin-top:4px}
+.mt .v{font-size:19px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mt .v small{font-size:11px;font-weight:600;color:#7d8894;margin-left:2px}
-/* Dört-beş kutu dar ekranda yan yana okunmuyor; orada üçerli, en darda ikişerli
-   sarıyor. Küçülterek hepsini tek satırda tutmak, sabah telefona bakan gözün
-   seçemeyeceği bir rakam bırakıyordu. */
-@media (max-width:459px){.sub .mt{flex-basis:40%}.sub.n5 .mt{flex-basis:30%}}
-@media (max-width:359px){.sub .mt,.sub.n5 .mt{flex-basis:40%}}
+.mt .v.na{color:#5f646d}
+/* Tam genişlikteki alt satırlar (KAH, eski form notu): etiket ve değer tek satırda. */
+.mt.wide{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:9px 12px}
+.mt.wide .k{flex:1}
+.mt.wide .row{margin-top:0}
+.mt.note{font-size:12px;color:#7d8894;line-height:1.35}
 @media (max-width:379px){
   /* Dar ekranda satırdaki tarih kalkıyor: liste zaten tek bir günü gösteriyor ve
      o gün bölüm başlığında yazıyor. Yerini isme bırakıyor — "KERE…" diye kesilen
@@ -301,9 +305,10 @@ var I18N={
     st_pending:'Bildirim gönderiliyor…',st_no_recipients:'Bildirilecek cihaz yok',
     st_not_flagged:'Uyarı eşiği aşılmadı — bildirim gönderilmedi',
     details:'Ayrıntılar',unnamed:'İsimsiz sporcu',no_alert:'Form dolduruldu — uyarı yok',
-    m_sleep:'Uyku',m_mental:'Zihinsel yorg.',m_physical:'Fiziksel yorg.',m_fatigue:'Yorgunluk',
+    m_sleep:'Uyku',
     m_soreness:'Kas ağrısı',m_hr:'KAH',
     f_mental:'Zihinsel yorgunluk',f_physical:'Fiziksel yorgunluk',
+    legacy_fatigue:'Eski formla gönderildi — tek yorgunluk puanı: {v}/5',
     notif:'Bildirim: ',reached:'Ulaşan: ',device:'cihaz',unreached:'Cihazı bağlı olmayan: ',team_l:'Takım: ',
     tab_wellness:'Wellness',tab_rpe:'RPE',
     wellness_h:'Wellness',rpe_h:'Algılanan Zorluk (RPE)',
@@ -364,9 +369,10 @@ var I18N={
     st_pending:'Sending notification…',st_no_recipients:'No device to notify',
     st_not_flagged:'Alert threshold not reached — no notification sent',
     details:'Details',unnamed:'Unnamed athlete',no_alert:'Check-in filled — no alert',
-    m_sleep:'Sleep',m_mental:'Mental fat.',m_physical:'Physical fat.',m_fatigue:'Fatigue',
+    m_sleep:'Sleep',
     m_soreness:'Soreness',m_hr:'RHR',
     f_mental:'Mental fatigue',f_physical:'Physical fatigue',
+    legacy_fatigue:'Sent with the old form — single fatigue score: {v}/5',
     notif:'Notification: ',reached:'Delivered to: ',device:'device',unreached:'No device paired: ',team_l:'Team: ',
     tab_wellness:'Wellness',tab_rpe:'RPE',
     wellness_h:'Wellness',rpe_h:'Perceived Exertion (RPE)',
@@ -972,7 +978,7 @@ function statusText(st){var k='st_'+st;var v=T(k);return v===k?String(st||'—')
 function reasonText(r){var k='reason_'+r;var v=T(k);return v===k?r:v;}
 
 function metric(ic,label,value,unit,title){
-  var v=el('div',{class:'v',text:value});
+  var v=el('div',{class:'v'+(value==='—'?' na':''),text:value});
   if(unit)v.appendChild(el('small',{text:' '+unit}));
   return el('div',{class:'mt',title:title||label},[
     el('div',{class:'k',text:label}),
@@ -1020,23 +1026,28 @@ function alertCard(a){
     card.appendChild(pn);
   }
 
-  /* Ölçüm şeridi — sabah formunun soruları, formdaki sırayla: uyku, zihinsel
-     yorgunluk, fiziksel yorgunluk, kas ağrısı; dinlenik nabız doluysa sonda.
-     Yorgunluk ikiye ayrılmadan önce doldurulmuş bir formun kaydında iki yarım yok,
-     tek bir yorgunluk skoru var — o zaman tek kutu. */
+  /* Ölçüm şeridi — her kayıtta aynı 2×2: uyku · kas ağrısı / zihinsel · fiziksel
+     yorgunluk (CSS'teki nota bak). Dinlenik nabız ölçüldüyse altında tam genişlikte.
+
+     Yorgunluk ikiye ayrılmadan ÖNCEKİ formdan gelen kayıtta iki yarım yok, tek bir
+     yorgunluk puanı var. O puan iki kutudan birine yazılmıyor — hangisi olduğunu
+     bilmiyoruz; kutular "—" kalıyor ve eski puan altta ayrı bir satırda söyleniyor. */
   var s=a.scores||{};
-  var split=s.mentalFatigue!=null||s.physicalFatigue!=null||s.fatigue==null;
-  var boxes=[metric(ICON.sleep,T('m_sleep'),fmtScore(s.sleep))];
-  if(split){
-    boxes.push(metric(ICON.mental,T('m_mental'),fmtScore(s.mentalFatigue),'',T('f_mental')));
-    boxes.push(metric(ICON.fatigue,T('m_physical'),fmtScore(s.physicalFatigue),'',T('f_physical')));
-  }else{
-    boxes.push(metric(ICON.fatigue,T('m_fatigue'),fmtScore(s.fatigue)));
+  var legacy=s.mentalFatigue==null&&s.physicalFatigue==null&&s.fatigue!=null;
+  var boxes=[
+    metric(ICON.sleep,T('m_sleep'),fmtScore(s.sleep)),
+    metric(ICON.soreness,T('m_soreness'),fmtScore(s.soreness)),
+    metric(ICON.mental,T('f_mental'),fmtScore(s.mentalFatigue)),
+    metric(ICON.fatigue,T('f_physical'),fmtScore(s.physicalFatigue))
+  ];
+  if(legacy)boxes.push(el('div',{class:'mt wide note',
+    text:T('legacy_fatigue').replace('{v}',fmtScore(s.fatigue))}));
+  if(s.RHR!=null){
+    var hr=metric(ICON.hr,T('m_hr'),String(Math.round(s.RHR)),'bpm');
+    hr.className='mt wide';
+    boxes.push(hr);
   }
-  boxes.push(metric(ICON.soreness,T('m_soreness'),fmtScore(s.soreness)));
-  if(s.RHR!=null)boxes.push(metric(ICON.hr,T('m_hr'),String(Math.round(s.RHR)),'bpm'));
-  var strip=el('div',{class:'sub n'+boxes.length},boxes);
-  card.appendChild(strip);
+  card.appendChild(el('div',{class:'sub'},boxes));
 
   /* Açılan kısım: bildirimin ne olduğu ve kime ulaştığı. Ekip üyesi "bana neden
      gelmedi" diye sorduğunda cevap bu satırda duruyor — kayıt zaten taşıyor,
