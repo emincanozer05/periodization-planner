@@ -1060,10 +1060,45 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .wlt2-gh span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--text2)}
 .wlt2-gh em{margin-left:auto;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
 .wlt2-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:10px}
-.wlt2-card{display:flex;flex-direction:column;gap:9px;padding:12px 13px;background:var(--bg2);border:1px solid var(--border);
+/* The three planning steps inside a week card. */
+.wlt3-steps{display:flex;flex-direction:column;gap:7px;padding:9px;border-radius:10px;background:rgba(0,0,0,.18);border:1px solid var(--border)}
+.wlt3-step{position:relative;display:flex;flex-direction:column;gap:4px}
+.wlt3-sl{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.wlt3-sl i{font-style:normal;width:14px;height:14px;border-radius:4px;display:inline-grid;place-items:center;font-size:8.5px;
+  background:var(--panel);border:1px solid var(--border2);color:var(--text2)}
+.wlt3-sl u{width:5px;height:5px;border-radius:50%;background:var(--accent);margin-left:auto}
+.wlt3-btn{position:relative;display:flex;align-items:center;gap:7px;width:100%;min-width:0;padding:6px 9px;border-radius:8px;cursor:pointer;
+  font-family:inherit;font-size:11.5px;font-weight:700;color:var(--text);text-align:left;
+  background:color-mix(in srgb,var(--oc) 14%,var(--panel));border:1px solid color-mix(in srgb,var(--oc) 45%,transparent);
+  transition:background .12s ease,border-color .12s ease}
+.wlt3-btn:hover,.wlt3-btn.open{background:color-mix(in srgb,var(--oc) 24%,var(--panel));border-color:var(--oc)}
+.wlt3-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--oc);box-shadow:0 0 0 3px color-mix(in srgb,var(--oc) 22%,transparent)}
+.wlt3-v{flex:1;min-width:0;line-height:1.25}
+.wlt3-car{flex:none;font-size:9px;color:var(--dim);transition:transform .15s}
+.wlt3-btn.open .wlt3-car{transform:rotate(180deg)}
+.wlt3-menu{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:40;display:flex;flex-direction:column;padding:4px;
+  border-radius:10px;background:var(--panel);border:1px solid var(--border2);box-shadow:0 18px 38px -12px rgba(0,0,0,.85)}
+.wlt3-opt{position:relative;display:flex;align-items:center;gap:8px;padding:7px 8px;border:0;border-radius:7px;background:none;cursor:pointer;
+  font-family:inherit;font-size:11.5px;font-weight:600;color:var(--text2);text-align:left}
+.wlt3-opt:hover{background:color-mix(in srgb,var(--oc) 16%,transparent);color:var(--text)}
+.wlt3-opt.on{color:var(--text);background:color-mix(in srgb,var(--oc) 12%,transparent)}
+.wlt3-opt b{margin-left:auto;color:var(--oc);font-size:11px}
+/* The explanation, in a small box above whatever the pointer is on. */
+.wlt3-btn[data-tip]:hover::after,.wlt3-opt[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);
+  transform:translateX(-50%);width:max-content;max-width:250px;padding:8px 10px;border-radius:8px;z-index:60;pointer-events:none;
+  background:#0b0f16;border:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2));color:#e5e7eb;
+  font-size:11px;font-weight:500;line-height:1.5;text-align:left;white-space:normal;box-shadow:0 12px 28px -10px rgba(0,0,0,.9)}
+.wlt3-btn[data-tip]:hover::before,.wlt3-opt[data-tip]:hover::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#0b0f16;z-index:61;pointer-events:none;
+  border-right:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2));border-bottom:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2))}
+.wlt3-btn.open[data-tip]:hover::after,.wlt3-btn.open[data-tip]:hover::before{display:none}
+.wlt2-card{position:relative;display:flex;flex-direction:column;gap:9px;padding:12px 13px;background:var(--bg2);border:1px solid var(--border);
   border-top:3px solid var(--pc);border-radius:12px;transition:border-color .15s,background .15s,box-shadow .15s}
 .wlt2-card:hover{background:var(--elevated);border-color:var(--border2);border-top-color:var(--pc)}
 .wlt2-card.past{opacity:.72}
+.wlt2-card:hover{z-index:4}
+.wlt2-card:focus-within{z-index:6;opacity:1}
 .wlt2-card.cur{border-color:var(--accent);border-top-color:var(--pc);box-shadow:0 0 0 1px var(--accent) inset;background:var(--elevated)}
 .wlt2-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
 .wlt2-wk{display:flex;flex-direction:column;gap:1px}
@@ -2963,35 +2998,35 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ev2-cat.on{background:var(--grad);color:#06121d}
 .ev2-cat-ic{flex:none;display:grid;place-items:center;opacity:.9}
 .ev2-cat-n{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.7}
-.ev2-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:10px;align-content:start}
-.ev2-tile{position:relative;display:flex;align-items:flex-start;gap:11px;min-height:70px;
-  padding:12px 32px 12px 13px;border-radius:13px;border:1px solid var(--border);background:var(--elevated);
-  cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
-.ev2-tile:hover{transform:translateY(-1px);border-color:var(--border2)}
-.ev2-tile.on{border-color:var(--accent);background:var(--accent-bg);box-shadow:0 0 0 1px rgba(0,148,255,.28)}
-.ev2-tile-ic{flex:none;margin-top:1px;color:var(--muted);transition:color .14s ease}
-.ev2-tile.on .ev2-tile-ic{color:var(--accent2)}
-.ev2-tile-tx{min-width:0}
-.ev2-tile-t{font-size:12.5px;font-weight:700;line-height:1.24;color:var(--text)}
-.ev2-tile-s{font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:var(--dim);margin-top:4px;line-height:1.35}
-.ev2-tile-chk{position:absolute;top:11px;right:11px;width:17px;height:17px;border-radius:5px;
-  border:1.5px solid var(--border2);display:grid;place-items:center;font-size:11px;color:#06121d;background:transparent}
+.ev2-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;align-content:start}
+/* A test tile: the test's name, large, bold and italic, over what it measures. A stripe
+   down the left edge in its group's colour; selected tiles fill with the accent. */
+.ev2-tile{position:relative;display:flex;align-items:stretch;min-height:88px;overflow:hidden;
+  padding:13px 36px 13px 17px;border-radius:14px;border:1px solid var(--border);
+  background:linear-gradient(155deg,rgba(255,255,255,.035),transparent 60%),var(--elevated);
+  cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease,box-shadow .14s ease;--gc:#64748b}
+.ev2-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gc);opacity:.75;transition:opacity .14s,width .14s}
+.ev2-tile.g-basic{--gc:#38bdf8}.ev2-tile.g-move{--gc:#a78bfa}.ev2-tile.g-jump{--gc:#f59e0b}.ev2-tile.g-speed{--gc:#22c55e}.ev2-tile.g-custom{--gc:#f472b6}
+.ev2-tile:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 10px 24px -16px rgba(0,0,0,.8)}
+.ev2-tile:hover::before{opacity:1;width:5px}
+.ev2-tile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,0 10px 26px -16px rgba(0,148,255,.6);
+  background:linear-gradient(155deg,rgba(0,148,255,.2),rgba(0,148,255,.05) 70%),var(--elevated)}
+.ev2-tile.on::before{opacity:1;background:var(--accent)}
+.ev2-tile-tx{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.ev2-tile-k{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gc);min-height:11px}
+.ev2-tile.on .ev2-tile-k{color:var(--accent2)}
+.ev2-tile-t{font-size:17px;font-weight:800;font-style:italic !important;line-height:1.15;letter-spacing:-.015em;color:var(--text)}
+.ev2-tile-s{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);line-height:1.35}
+.ev2-tile.on .ev2-tile-s{color:var(--text2)}
+.ev2-tile-chk{position:absolute;top:12px;right:12px;width:18px;height:18px;border-radius:6px;
+  border:1.5px solid var(--border2);display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;transition:all .14s ease}
 .ev2-tile.on .ev2-tile-chk{background:var(--accent);border-color:var(--accent)}
 .ev2-tile-x{position:absolute;bottom:8px;right:11px;border:none;background:none;color:var(--dim);font-size:11px;cursor:pointer;padding:0 2px;line-height:1}
 .ev2-tile-x:hover{color:var(--red)}
-.ev2-tile-tag{position:absolute;top:10px;left:12px;font-family:'IBM Plex Mono',monospace;font-size:8px;
-  letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:var(--accent2)}
-.ev2-tile.tagged{padding-top:24px}
-.ev2-tile.fms{background:#ee1122;border-color:#ee1122}
-.ev2-tile.fms:hover{background:#f61c2c;border-color:#ff3b48}
-.ev2-tile.fms.on{box-shadow:0 0 0 2px rgba(238,17,34,.45);border-color:#fff}
-.ev2-tile.fms .ev2-tile-t,.ev2-tile.fms .ev2-tile-s{color:#fff}
-.ev2-tile.fms .ev2-tile-s{opacity:.85}
-.ev2-tile.fms .ev2-tile-chk{border-color:rgba(255,255,255,.85);color:#ee1122}
-.ev2-tile.fms.on .ev2-tile-chk{background:#fff;border-color:#fff}
-.ev2-tile-logo{width:22px;height:22px;object-fit:contain;border-radius:4px;background:#fff;padding:1px}
 .ev2-tile.add{border-style:dashed;align-items:center;justify-content:center;padding:12px;color:var(--accent2);text-align:center}
 .ev2-tile.add:hover{border-color:var(--accent)}
+.ev2-tile.add::before{display:none}
+.ev2-tile.add .ev2-tile-tx{align-items:center}
 /* picker footer: date, period, the action */
 .ev2-foot{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
 .ev2-foot label{margin-bottom:6px}
@@ -5083,98 +5118,157 @@ header{background:var(--bg2)!important}
 .ck-out{color:var(--muted)}
 
 /* ===== Interval Timer =====
-   The clock as a colour rather than a number to read: the athlete on the sled does not
-   look at a digit, they look at the colour of the screen. Work is green,
-   rest is red, the break between rounds/sets is blue, and in full screen that colour
-   IS the screen — visible from the other end of the gym. */
-.it-wrap{display:flex;flex-direction:column;gap:16px}
-.it-stage{position:relative;border:1px solid var(--border);border-radius:16px;overflow:hidden;
-  background:color-mix(in srgb,var(--it-c,var(--accent)) 14%,var(--bg2));
-  padding:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:14px;align-items:center;
-  text-align:center;min-height:330px;justify-content:center;transition:background .25s ease}
-.it-phase{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--it-c,var(--text))}
-.it-phase small{display:block;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;margin-bottom:5px}
-.it-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:92px;font-weight:700;line-height:1;
-  color:var(--text);font-variant-numeric:tabular-nums}
-.it-count span{font-size:26px;color:var(--muted);margin-left:6px}
-.it-bar{width:100%;height:10px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);overflow:hidden}
-.it-bar b{display:block;height:100%;background:var(--it-c,var(--accent));border-radius:999px;
-  transform-origin:left center;will-change:transform}
-.it-nums{display:flex;gap:22px;flex-wrap:wrap;align-items:baseline;justify-content:center}
-.it-nums u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
-  text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
-.it-nums strong{font-size:20px;font-weight:800;color:var(--text);margin-left:7px;font-variant-numeric:tabular-nums}
-/* The set drawn to scale — one block per interval, as wide as its seconds. */
-.it-line{display:flex;gap:3px;height:26px;width:100%}
-.it-seg{position:relative;border-radius:6px;background:var(--elevated);border:1px solid var(--border);
-  overflow:hidden;min-width:5px}
-.it-seg.on{border-color:var(--it-c)}
-.it-seg b{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--it-c);opacity:.3;
-  transform-origin:left center;will-change:transform}
-.it-seg.done b{transform:scaleX(1)}
-/* Editor + summary reuse the Tempo look so the tab reads as one page. */
-/* --- interval setup: one card per number --- */
-.it-panel{padding-top:18px}
+   The clock as a colour rather than a number to read: work is green, rest is red, the
+   break between rounds/sets is blue. The countdown sits inside a ring that drains
+   through the block, with the whole session filling a thin ring around it; in full
+   screen the phase colour is the whole display, readable from the far end of the gym. */
+.it2{display:flex;flex-direction:column;gap:16px;--it-c:#10b981}
+.it2-panel{padding:22px;overflow:hidden;position:relative}
+.it2-stage{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:22px;padding:10px 6px 4px;
+  border-radius:18px;background:radial-gradient(55% 80% at 50% 45%,color-mix(in srgb,var(--it-c) 18%,transparent),transparent 72%);
+  transition:background .35s ease}
+.it2-side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.it2-side.l{align-items:flex-end;text-align:right}
+.it2-side.r{align-items:flex-start}
+.it2-kpi{display:flex;flex-direction:column;gap:3px}
+.it2-kpi u,.it2-next u{text-decoration:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.it2-kpi b{font-size:34px;font-weight:800;letter-spacing:-.02em;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+.it2-kpi b i{font-style:normal;font-size:17px;color:var(--dim);font-weight:700;margin-left:2px}
+.it2-dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:150px;margin-top:4px}
+.it2-dots span{width:9px;height:9px;border-radius:50%;background:var(--elevated);border:1px solid var(--border2);transition:background .2s,transform .2s}
+.it2-dots span.d{background:var(--it-c);border-color:transparent;opacity:.55}
+.it2-dots span.c{background:var(--it-c);border-color:transparent;transform:scale(1.3);box-shadow:0 0 10px var(--it-c)}
+.it2-next{display:flex;flex-direction:column;gap:5px;padding:10px 13px;border-radius:12px;background:var(--elevated);border:1px solid var(--border);
+  border-left:3px solid var(--nc,var(--border2))}
+.it2-next b{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:var(--text)}
+.it2-next b span{width:9px;height:9px;border-radius:50%;background:var(--nc)}
+.it2-ring{position:relative;width:min(300px,72vw);aspect-ratio:1}
+.it2-ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.it2-trk{fill:none;stroke:rgba(255,255,255,.07);stroke-width:16}
+.it2-arc{fill:none;stroke-width:16;stroke-linecap:round;transition:stroke .3s ease;filter:drop-shadow(0 0 10px color-mix(in srgb,var(--it-c) 60%,transparent))}
+.it2-trk2{fill:none;stroke:rgba(255,255,255,.05);stroke-width:4}
+.it2-arc2{fill:none;stroke:rgba(255,255,255,.55);stroke-width:4;stroke-linecap:round}
+.it2-ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center}
+.it2-ph{font-size:15px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--it-c);transition:color .3s}
+.it2-big{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:88px;font-weight:700;line-height:1;color:var(--text);
+  font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.it2-sub{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.it2-ring.pulse .it2-big{animation:it2Pulse 1s ease-in-out infinite}
+@keyframes it2Pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07);color:var(--it-c)}}
+.it2-ctrl{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.it2-cb{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  background:var(--elevated);border:1px solid var(--border2);color:var(--text2);transition:all .14s ease}
+.it2-cb:hover:not(:disabled){color:var(--text);border-color:var(--text2);transform:translateY(-1px)}
+.it2-cb:disabled{opacity:.35;cursor:default}
+.it2-cb.act{color:var(--accent2);border-color:rgba(0,148,255,.5)}
+.it2-play{width:72px;height:72px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border:0;
+  color:#fff;background:var(--it-c);box-shadow:0 10px 28px -8px var(--it-c),0 0 0 6px color-mix(in srgb,var(--it-c) 18%,transparent);
+  transition:transform .12s ease,box-shadow .2s ease,background .3s ease}
+.it2-play:hover{transform:scale(1.05)}
+.it2-play:active{transform:scale(.96)}
+.it2-play svg{margin-left:3px}
+.it2-play.on svg{margin-left:0}
+.it2-sep{width:1px;height:28px;background:var(--border2);margin:0 4px}
+.it2-tl{display:flex;gap:2px;height:22px;width:100%;padding:3px;border-radius:10px;background:var(--elevated);border:1px solid var(--border)}
+.it2-tseg{position:relative;min-width:3px;border:0;padding:0;border-radius:4px;cursor:pointer;overflow:hidden;
+  background:color-mix(in srgb,var(--sc) 22%,transparent);transition:filter .12s}
+.it2-tseg:hover{filter:brightness(1.4)}
+.it2-tseg.nset{margin-left:5px}
+.it2-tseg b{position:absolute;inset:0;background:var(--sc);transform-origin:left;transform:scaleX(0)}
+.it2-tseg.done b{opacity:.55}
+.it2-tseg.on{box-shadow:0 0 0 1.5px #fff inset}
+.it2-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text2)}
+.it2-legend span{display:inline-flex;align-items:center;gap:6px}
+.it2-legend i{width:10px;height:10px;border-radius:3px;background:var(--sc)}
+.it2-legend em{margin-left:auto;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim)}
+/* Setup, presets, saved */
+.it2-cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.it2-cols>.panel,.it2-rcol>.panel{margin-bottom:0}
+.it2-rcol{display:flex;flex-direction:column;gap:16px}
+.it2-cols{margin-bottom:16px}
 .it-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
 .it-head-t{min-width:0}
 .it-head-t b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.008em;color:var(--text);line-height:1.2}
 .it-head-t span{display:block;font-size:11.5px;color:var(--dim);line-height:1.45;margin-top:4px}
-.it-presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.it-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-bottom:14px}
-.itf{display:flex;flex-direction:column;gap:5px;margin:0;padding:11px 12px;border-radius:12px;
-  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
-.itf:focus-within{border-color:var(--accent)}
-.itf-l{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
-.itf input{height:36px;padding:0 8px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:19px;
-  font-weight:700;text-align:center;background:var(--bg2);border-radius:9px}
-.itf-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-align:center}
-.it-save{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.it-save input{flex:1 1 220px;min-width:0;height:38px;border-radius:10px}
-.it-saved{display:flex;flex-direction:column;gap:8px}
-.it-sv{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  background:var(--elevated);border:1px solid var(--border);border-radius:11px;padding:10px 14px}
-.it-sv-t{min-width:0}
-.it-sv-t b{font-size:13px;font-weight:700;color:var(--text)}
-.it-sv-t i{display:block;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:10.5px;color:var(--dim);margin-top:3px}
+.it2-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.it2-f{display:flex;flex-direction:column;gap:7px;padding:11px 12px;border-radius:12px;background:var(--elevated);border:1px solid var(--border);
+  border-top:3px solid var(--fc,var(--border2))}
+.it2-f:focus-within{border-color:var(--accent);border-top-color:var(--fc,var(--accent))}
+.it2-fl{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text2)}
+.it2-fl i{width:7px;height:7px;border-radius:50%;background:var(--fc)}
+.it2-fin{display:flex;align-items:center;gap:4px}
+.it2-fin button{flex:none;width:30px;height:36px;border-radius:8px;border:1px solid var(--border2);background:var(--panel);color:var(--text2);
+  font-size:17px;font-weight:700;cursor:pointer;line-height:1}
+.it2-fin button:hover:not(:disabled){color:var(--text);border-color:var(--accent)}
+.it2-fin button:disabled{opacity:.35;cursor:default}
+.it2-fin input{flex:1;min-width:0;height:36px;padding:0 4px;text-align:center;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:20px;font-weight:700;border-radius:8px;-moz-appearance:textfield}
+.it2-fin input::-webkit-outer-spin-button,.it2-fin input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.it2-fh{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--dim);text-align:center}
+.it2-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 14px;border-radius:12px;
+  background:var(--elevated);border:1px solid var(--border)}
+.it2-sum div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.it2-sum div.wide{grid-column:1/-1;flex-direction:row;align-items:center;gap:10px}
+.it2-sum u{text-decoration:none;font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace}
+.it2-sum strong{font-size:17px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+.it2-share{flex:1;height:8px;border-radius:99px;background:color-mix(in srgb,#ef4444 30%,transparent);overflow:hidden}
+.it2-share i{display:block;height:100%;background:#10b981;border-radius:99px}
+.it2-presets{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.it2-pre{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 11px;border-radius:11px;cursor:pointer;text-align:left;
+  background:var(--elevated);border:1px solid var(--border);font-family:inherit;color:var(--text);transition:all .14s ease}
+.it2-pre:hover{border-color:var(--border2);transform:translateY(-1px)}
+.it2-pre.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:var(--accent-bg)}
+.it2-pre b{font-size:13px;font-weight:800}
+.it2-pre span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
+.it2-mini{display:flex;gap:1px;width:100%;height:6px;border-radius:3px;overflow:hidden;margin-top:3px}
+.it2-mini i{display:block;height:100%;opacity:.85}
+.it-save{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.it-save input{flex:1 1 auto;min-width:0;height:36px;border-radius:10px}
+.it2-saved{display:flex;flex-direction:column;gap:8px}
+.it2-sv{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:11px;
+  background:var(--elevated);border:1px solid var(--border)}
+.it2-sv.on{border-color:var(--accent)}
+.it2-sv-t{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.it2-sv-t b{font-size:13px;font-weight:700;color:var(--text)}
+.it2-sv-t i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
 .it-sv-a{display:flex;gap:6px;flex:none}
+@media(max-width:1000px){.it2-cols{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:760px){
-  .it-stage{min-height:260px}
-  .it-count{font-size:64px}
-  .it-phase{font-size:26px}
-  .it-grid>div{flex:1 1 110px}
+  .it2-stage{grid-template-columns:1fr;justify-items:center;gap:14px}
+  .it2-side.l,.it2-side.r{flex-direction:row;align-items:center;justify-content:center;text-align:center;flex-wrap:wrap}
+  .it2-side.l{order:2}.it2-side.r{order:3}
+  .it2-dots{justify-content:center}
+  .it2-big{font-size:70px}
+  .it2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .it2-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .it2-legend em{margin-left:0}
 }
-/* Full screen — the phase colour fills the display. Declared after the phone rules so
-   it wins there too, where the fixed overlay stands in for the Fullscreen API. */
-.it-wrap.fs{position:fixed;inset:0;z-index:2100;margin:0;background:var(--it-c,var(--bg));
-  padding:clamp(16px,3vw,40px);display:flex;flex-direction:column;justify-content:center;
-  gap:clamp(14px,3vh,30px);overflow:hidden;transition:background .25s ease}
-.it-wrap.fs .it-stage{flex:1 1 auto;min-height:0;background:transparent;border:none;
-  gap:clamp(10px,2.4vh,26px);padding:0;color:#fff}
-.it-wrap.fs .it-phase,.it-wrap.fs .it-count{color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.28)}
-.it-wrap.fs .it-phase small,.it-wrap.fs .it-count span,.it-wrap.fs .it-nums u{color:rgba(255,255,255,.82)}
-.it-wrap.fs .it-nums strong{color:#fff}
-.it-wrap.fs .it-phase{font-size:clamp(30px,5.4vw,76px)}
-.it-wrap.fs .it-phase small{font-size:clamp(11px,1.4vw,18px);margin-bottom:8px}
-.it-wrap.fs .it-count{font-size:clamp(96px,24vw,260px)}
-.it-wrap.fs .it-count span{font-size:clamp(22px,3.4vw,52px)}
-.it-wrap.fs .it-nums strong{font-size:clamp(20px,2.6vw,36px)}
-.it-wrap.fs .it-nums u{font-size:clamp(10px,1.2vw,15px)}
-.it-wrap.fs .it-bar{height:clamp(10px,1.6vh,18px);background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.35)}
-.it-wrap.fs .it-bar b{background:#fff}
-.it-wrap.fs .it-line{height:clamp(20px,3.4vh,34px)}
-.it-wrap.fs .it-seg{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
-.it-wrap.fs .it-seg b{background:#fff;opacity:.55}
-.it-wrap.fs .it-seg.on{border-color:#fff}
-.it-wrap.fs .row{justify-content:center}
-.it-wrap.fs .help{color:rgba(255,255,255,.8)}
-.it-wrap.fs .btn,.it-wrap.fs .it-fsx{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);color:#fff}
-.it-wrap.fs .btn:hover:not(:disabled),.it-wrap.fs .it-fsx:hover{background:rgba(255,255,255,.28);color:#fff}
-.it-fsx{position:absolute;top:14px;right:16px;z-index:2;background:var(--elevated);
-  border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:7px 13px;
-  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-.it-fsx:hover{border-color:var(--accent);color:var(--accent2)}
+/* Full screen — the phase colour fills the display. */
+.it2.fs{position:fixed;inset:0;z-index:2100;margin:0;background:var(--it-c);padding:clamp(16px,3vw,40px);
+  justify-content:center;transition:background .35s ease}
+.it2.fs .it2-stage{flex:1 1 auto;background:none}
+.it2.fs .it2-ring{width:min(62vh,78vw)}
+.it2.fs .it2-big{font-size:clamp(90px,18vh,230px);color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.25)}
+.it2.fs .it2-ph{font-size:clamp(16px,3vh,34px);color:#fff}
+.it2.fs .it2-sub,.it2.fs .it2-kpi u,.it2.fs .it2-next u,.it2.fs .it2-kpi b i,.it2.fs .it2-legend,.it2.fs .it2-legend em{color:rgba(255,255,255,.85)}
+.it2.fs .it2-kpi b{color:#fff;font-size:clamp(30px,5vh,56px)}
+.it2.fs .it2-trk{stroke:rgba(255,255,255,.2)}
+.it2.fs .it2-arc{stroke:#fff!important;filter:none}
+.it2.fs .it2-arc2{stroke:rgba(0,0,0,.35)}
+.it2.fs .it2-next{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3)}
+.it2.fs .it2-next b{color:#fff}
+.it2.fs .it2-dots span{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4)}
+.it2.fs .it2-dots span.d,.it2.fs .it2-dots span.c{background:#fff}
+.it2.fs .it2-cb{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.45);color:#fff}
+.it2.fs .it2-play{background:#fff;color:var(--it-c);box-shadow:0 10px 30px -8px rgba(0,0,0,.4)}
+.it2.fs .it2-tl{background:rgba(0,0,0,.18);border-color:rgba(255,255,255,.3)}
+.it2.fs .it2-tseg{background:rgba(255,255,255,.2)}
+.it2.fs .it2-tseg b{background:#fff}
+.it2.fs .it2-legend i{box-shadow:0 0 0 1.5px rgba(255,255,255,.9)}
+.it2-fsx{position:absolute;top:14px;right:16px;z-index:2;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);
+  color:#fff;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.it2-fsx:hover{background:rgba(255,255,255,.28)}
 /* ===== Team Insights board (Calendar tab) =====
    A board of small, self-contained widgets under the week calendar. Every card is
    built the same way — label, one figure, one hint — so seven of them read as one
@@ -12175,6 +12269,87 @@ function SetupEquipment({setup,save,onZoom}){
 /* =========================================================
    SEASON PLAN (with customizable periods)
    ========================================================= */
+/* ---- The three steps a week is planned in ----------------------------------
+   1 Training Phase — where the week sits in the block; 2 Primary Emphasis — the quality
+   it builds; 3 Microcycle Objective — what the week is for. Each option carries its own
+   explanation in both languages, shown on hover. */
+const WLT_STEPS=[
+  {key:'phase',n:1,label:['Antrenman Fazı','Training Phase'],opts:[
+    {id:'base',c:'#38bdf8',l:['Base','Base'],d:['Genel fiziksel kapasitenin, aerobik kapasitenin, work capacity\'nin ve temel hareket/kuvvet altyapısının oluşturulduğu dönem.',
+      'The period in which general physical capacity, aerobic capacity, work capacity and the basic movement/strength foundation are built.']},
+    {id:'accumulation',c:'#3b82f6',l:['Accumulation','Accumulation'],d:['Antrenman hacminin ve temel fiziksel kapasitelerin biriktirildiği dönem. Kuvvet, hipertrofi, aerobik kapasite ve work capacity geliştirilebilir.',
+      'The period in which training volume and basic physical capacities are accumulated. Strength, hypertrophy, aerobic capacity and work capacity can be developed.']},
+    {id:'intensification',c:'#f59e0b',l:['Intensification','Intensification'],d:['Hacmin görece azaltılıp yoğunluğun artırıldığı dönem. Max strength, force production ve yüksek kaliteli power çalışmaları daha fazla önem kazanır.',
+      'The period in which volume is relatively reduced and intensity is raised. Max strength, force production and high-quality power work gain importance.']},
+    {id:'realization',c:'#ef4444',l:['Realization','Realization'],d:['Önceki dönemlerde geliştirilen kapasitelerin performansa dönüştürüldüğü dönem. Speed, power, explosiveness ve özgüllük artar.',
+      'The period in which the capacities built earlier are turned into performance. Speed, power, explosiveness and specificity increase.']},
+    {id:'transition',c:'#2dd4a7',l:['Transition','Transition'],d:['Bir sezon veya antrenman döneminden diğerine geçiş dönemi. Toparlanma, düşük yük ve yeni döneme hazırlık ön plandadır.',
+      'The bridge from one season or training block to the next. Recovery, low load and preparing for the next block come first.']},
+  ]},
+  {key:'emphasis',n:2,label:['Birincil Vurgu','Primary Emphasis'],opts:[
+    {id:'aerobic',c:'#22c55e',l:['Aerobic / Work Capacity','Aerobic / Work Capacity'],d:['Aerobik kapasiteyi, kondisyonu ve sporcunun antrenman yükünü tolere etme kapasitesini geliştirmeye odaklanır.',
+      'Develops aerobic capacity, conditioning and the athlete\'s capacity to tolerate training load.']},
+    {id:'hypertrophy',c:'#a78bfa',l:['Hypertrophy / Structural Capacity','Hypertrophy / Structural Capacity'],d:['Kas kütlesi, kas kesit alanı ve sporcunun yapısal kapasitesini geliştirmeye odaklanır.',
+      'Develops muscle mass, muscle cross-sectional area and the athlete\'s structural capacity.']},
+    {id:'maxStrength',c:'#f43f5e',l:['Max Strength','Max Strength'],d:['Yüksek kuvvet üretme kapasitesini geliştirmeye odaklanır.',
+      'Develops the capacity to produce high force.']},
+    {id:'power',c:'#f59e0b',l:['Power / Explosive Strength','Power / Explosive Strength'],d:['Kuvveti yüksek hızda ve kısa sürede üretme kapasitesine odaklanır. RFD, strength-speed ve speed-strength bu başlık altında değerlendirilebilir.',
+      'Develops the capacity to produce force at high velocity and in a short time. RFD, strength-speed and speed-strength sit under this heading.']},
+    {id:'speed',c:'#38bdf8',l:['Speed / Acceleration','Speed / Acceleration'],d:['İlk hızlanma ve maksimal hız dahil olmak üzere sprint kapasitesini geliştirmeye odaklanır.',
+      'Develops sprint capacity, including initial acceleration and maximal velocity.']},
+  ]},
+  {key:'objective',n:3,label:['Mikrosiklus Hedefi','Microcycle Objective'],opts:[
+    {id:'preparation',c:'#94a3b8',v:60,i:60,l:['Preparation','Preparation'],d:['Yeni bir yüklenme dönemine veya daha yüksek antrenman stresine hazırlık sağlar.',
+      'Prepares for a new loading block or for higher training stress.']},
+    {id:'loading',c:'#3b82f6',v:80,i:70,l:['Loading','Loading'],d:['Planlı gelişimsel yüklenmenin gerçekleştirildiği haftadır.',
+      'The week in which the planned developmental loading is carried out.']},
+    {id:'overreaching',c:'#ef4444',v:95,i:80,l:['Overreaching','Overreaching'],d:['Kısa süreli ve planlı şekilde normalden daha yüksek antrenman stresi oluşturulan haftadır.',
+      'A week of short, planned training stress above the usual.']},
+    {id:'deload',c:'#2dd4a7',v:45,i:55,l:['Deload','Deload'],d:['Biriken yorgunluğu azaltmak ve toparlanmayı desteklemek amacıyla antrenman yükünün düşürüldüğü haftadır.',
+      'A week in which training load is lowered to shed accumulated fatigue and support recovery.']},
+    {id:'peaking',c:'#facc15',v:50,i:85,l:['Peaking','Peaking'],d:['Belirli bir müsabaka veya test tarihinde performansı mümkün olduğunca üst seviyeye çıkarmaya yönelik haftadır.',
+      'A week aimed at bringing performance as high as possible for a specific competition or test date.']},
+    {id:'competition',c:'#f472b6',v:50,i:80,l:['Competition','Competition'],d:['Müsabaka veya yoğun müsabaka dönemine göre yapılandırılan haftadır.',
+      'A week structured around a competition or a congested competition period.']},
+  ]},
+];
+const wltOpt=(key,id)=>{const st=WLT_STEPS.find(x=>x.key===key);return st?st.opts.find(o=>o.id===id)||null:null;};
+/* What a week reads as before the coach has chosen anything: derived from the focus the
+   periodization model gave it, its period, a taper and the games that fall in it. */
+const WLT_FOCUS_PHASE={'Base + aerobic':'base','General':'base','Accumulation':'accumulation','Hi-volume wave':'accumulation',
+  'Transmutation':'intensification','Sport-specific':'intensification','Hi-intensity wave':'intensification','Max-effort':'intensification',
+  'Realization':'realization','Maintain & peak':'realization','Dynamic-effort':'realization','Peak':'realization',
+  'Active recovery':'transition','Deload':'transition'};
+const WLT_PERIOD_PHASE={gp:'base',sp:'accumulation',comp:'realization',trans:'transition'};
+const WLT_PHASE_EMPH={base:'aerobic',accumulation:'hypertrophy',intensification:'maxStrength',realization:'power',transition:'aerobic'};
+function wltDefaults(w,firstOfPeriod,games){
+  const phase=w.taper?'realization':(WLT_FOCUS_PHASE[w.focus]||WLT_PERIOD_PHASE[w.period]||'base');
+  const emphasis=WLT_PHASE_EMPH[phase]||'aerobic';
+  const objective=games>0?'competition':w.taper?'peaking':(w.period==='trans'||w.focus==='Deload'||w.focus==='Active recovery')?'deload'
+    :firstOfPeriod?'preparation':'loading';
+  return{phase,emphasis,objective};
+}
+/* One step of a week card: a coloured button showing the choice, opening a list of the
+   options. The explanation of whatever is under the pointer shows in a small box. */
+function WltStep({step,value,onChange,edited}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useDDOutside([ref],open,()=>setOpen(false));
+  const cur=step.opts.find(o=>o.id===value)||step.opts[0];
+  return(<div className="wlt3-step" ref={ref}>
+    <div className="wlt3-sl"><i>{step.n}</i>{L(step.label[0],step.label[1])}{edited?<u title={L('Elle seçildi','Chosen by hand')}/>:null}</div>
+    <button type="button" className={'wlt3-btn'+(open?' open':'')} style={{'--oc':cur.c}}
+      data-tip={L(cur.d[0],cur.d[1])} onClick={()=>setOpen(o=>!o)} aria-expanded={open}>
+      <span className="wlt3-dot"/><span className="wlt3-v">{L(cur.l[0],cur.l[1])}</span><span className="wlt3-car">▾</span>
+    </button>
+    {open&&<div className="wlt3-menu" role="listbox">
+      {step.opts.map(o=><button key={o.id} type="button" role="option" aria-selected={o.id===value}
+        className={'wlt3-opt'+(o.id===value?' on':'')} style={{'--oc':o.c}} data-tip={L(o.d[0],o.d[1])}
+        onClick={()=>{onChange(o);setOpen(false);}}>
+        <span className="wlt3-dot"/>{L(o.l[0],o.l[1])}{o.id===value?<b>✓</b>:null}</button>)}
+    </div>}
+  </div>);
+}
 /* ---- Weekly Load Targets ---------------------------------------------------
    The season's weeks, grouped under the period they belong to. Each week says what it
    is for (the focus), what it asks for (volume and intensity — now set directly with a
@@ -12191,14 +12366,19 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
   const refs=useRef({});
   const setWeek=(k,patch)=>updateTeam(team.id,{weekOverrides:{...ov,[k]:{...(ov[k]||{}),...patch}}});
   const resetWeek=k=>{const n={...ov};delete n[k];updateTeam(team.id,{weekOverrides:n});};
-  const resetAll=()=>{if(confirm(L('Bütün haftalar periyotlama modelinin önerisine dönsün mü? Elle girilen odak, hacim ve şiddet silinir.',
-    'Return every week to the periodization model\'s default? Hand-set focus, volume and intensity are cleared.')))updateTeam(team.id,{weekOverrides:{}});};
+  const resetAll=()=>{if(confirm(L('Bütün haftalar periyotlama modelinin önerisine dönsün mü? Elle seçilen basamaklar, hacim ve şiddet silinir.',
+    'Return every week to the periodization model\'s default? Hand-set steps, volume and intensity are cleared.')))updateTeam(team.id,{weekOverrides:{}});};
   const rows=useMemo(()=>weeks.map((w,i)=>{
     const end=fmt(addD(parseD(w.week),6));
     let au=0,ses=0;
     for(let d=0;d<7;d++){const dd=days[fmt(addD(parseD(w.week),d))];au+=dLoad(dd);ses+=((dd&&dd.sessions)||[]).length;}
     const games=comps.filter(c=>c&&c.date&&c.date>=w.week&&c.date<=end);
-    return{...w,idx:i,end,au:Math.round(au),ses,games,index:Math.round((Number(w.volume)||0)*(Number(w.intensity)||0)/100),
+    const first=i===0||weeks[i-1].period!==w.period;
+    const def=wltDefaults(w,first,games.length);
+    const o=ov[w.week]||{};
+    const steps={phase:wltOpt('phase',o.phase)?o.phase:def.phase,emphasis:wltOpt('emphasis',o.emphasis)?o.emphasis:def.emphasis,
+      objective:wltOpt('objective',o.objective)?o.objective:def.objective};
+    return{...w,idx:i,end,au:Math.round(au),ses,games,steps,stepSet:{phase:!!o.phase,emphasis:!!o.emphasis,objective:!!o.objective},index:Math.round((Number(w.volume)||0)*(Number(w.intensity)||0)/100),
       current:todayK>=w.week&&todayK<=end,past:end<todayK,edited:!!ov[w.week]};
   }),[weeks,days,comps,ov,todayK]);
   const maxIdx=Math.max(1,...rows.map(r=>r.index));
@@ -12215,8 +12395,8 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
     <div className="wlt2-hd">
       <div>
         <h2 style={{margin:0}}>{L('Haftalık Yük Hedefleri','Weekly Load Targets')}</h2>
-        <div className="help" style={{marginTop:6}}>{L('Odağı seç, hacim ve şiddet odağa göre ayarlanır — istersen kaydırıcıyla elle değiştir. Her kart o haftanın takvimde gerçekleşen yükünü de gösterir.',
-          'Pick the focus and volume and intensity follow it — or set them by hand with the sliders. Each card also shows the load the calendar actually holds for that week.')}</div>
+        <div className="help" style={{marginTop:6}}>{L('Her hafta üç basamakta planlanır: antrenman fazı, birincil vurgu ve mikrosiklus hedefi. Bir seçeneğin üzerine gelince açıklaması görünür. Mikrosiklus hedefi hacim ve şiddeti ayarlar — kaydırıcılarla ince ayar yapabilirsin. Her kart o haftanın takvimde gerçekleşen yükünü de gösterir.',
+          'Each week is planned in three steps: training phase, primary emphasis and microcycle objective. Hover an option to read what it means. The microcycle objective sets volume and intensity — fine-tune them with the sliders. Each card also shows the load the calendar actually holds for that week.')}</div>
       </div>
       <div className="wlt2-tools">
         <div className="wlt2-seg">
@@ -12231,7 +12411,7 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
       {rows.map(r=><button key={r.week} type="button" role="listitem" className={'wlt2-sb'+(r.current?' cur':'')+(r.past?' past':'')}
         style={{'--pc':PHASE_COL[r.period]||'#64748b',height:`${Math.max(8,r.index/maxIdx*100)}%`}}
         onClick={()=>{if(filter!=='all')setFilter('all');setTimeout(()=>jump(r.week),30);}}
-        title={`${L('H','W')}${r.idx+1} · ${fd(r.week)} · ${exLabel(r.focus)} · ${L('Hacim','Vol')} ${r.volume}% · ${L('Şiddet','Int')} ${r.intensity}%${r.games.length?` · ${L('maç','game')}: ${r.games.length}`:''}`}>
+        title={`${L('H','W')}${r.idx+1} · ${fd(r.week)} · ${WLT_STEPS.map(st=>{const o=wltOpt(st.key,r.steps[st.key]);return o?L(o.l[0],o.l[1]):'';}).join(' / ')} · ${L('Hacim','Vol')} ${r.volume}% · ${L('Şiddet','Int')} ${r.intensity}%${r.games.length?` · ${L('maç','game')}: ${r.games.length}`:''}`}>
         {r.games.length?<i/>:null}</button>)}
     </div>
     <div className="wlt2-legend">
@@ -12249,7 +12429,7 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
           <em>{L('ort. hacim','avg vol')} {avgV}% · {L('ort. şiddet','avg int')} {avgI}%</em>
         </div>
         <div className="wlt2-grid">
-          {g.rows.map(w=>{const cls=w.intensity>=85?'high':w.intensity>=70?'med':'low';
+          {g.rows.map(w=>{
             const vol=Math.max(0,Math.min(100,Number(w.volume)||0)),int=Math.max(0,Math.min(100,Number(w.intensity)||0));
             return(<div key={w.week} ref={el=>{refs.current[w.week]=el;}} className={'wlt2-card'+(w.current?' cur':'')+(w.past?' past':'')}>
               <div className="wlt2-top">
@@ -12261,10 +12441,17 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
                   {w.edited&&<button type="button" className="wlt2-rst" onClick={()=>resetWeek(w.week)} title={L('Bu haftayı modelin önerisine döndür','Return this week to the model default')}>↺</button>}
                 </div>
               </div>
-              <select className={`wlt-focus-sel ${cls}`} value={w.focus} onChange={e=>setWeekFocus(w.week,e.target.value)}>
-                {!WEEK_FOCUS.includes(w.focus)&&<option value={w.focus}>{exLabel(w.focus)}</option>}
-                {WEEK_FOCUS.map(f=><option key={f} value={f}>{exLabel(f)}</option>)}
-              </select>
+              <div className="wlt3-steps">
+                {WLT_STEPS.map(st=><WltStep key={st.key} step={st} value={w.steps[st.key]} edited={w.stepSet[st.key]}
+                  onChange={o=>{
+                    const next={...w.steps,[st.key]:o.id};
+                    const ph=wltOpt('phase',next.phase),ob=wltOpt('objective',next.objective);
+                    /* The objective carries a load profile, so picking one sets volume and
+                       intensity to match — the sliders below fine-tune it from there. */
+                    setWeek(w.week,{[st.key]:o.id,focus:`${ph.l[1]} · ${ob.l[1]}`,
+                      ...(st.key==='objective'&&o.v!=null?{volume:o.v,intensity:o.i}:{})});
+                  }}/>)}
+              </div>
               <div className="wlt2-sl vol"><span>{L('Hacim','Volume')}</span>
                 <input type="range" min="0" max="100" step="5" value={vol} style={{'--v':vol+'%'}}
                   onChange={e=>setWeek(w.week,{volume:Number(e.target.value)})} aria-label={L('Hacim','Volume')}/>
@@ -17588,10 +17775,28 @@ function intervalSchedule(c){
 const itClock=s=>{const v=Math.max(0,Math.round(s));return `${Math.floor(v/60)}:${pad(v%60)}`;};
 const itWorkSec=c=>Math.max(1,c.work)*Math.max(1,c.rounds|0)*Math.max(1,c.sets|0);
 
-function IntervalPlayer({cfg}){
+/* The ring the countdown sits in: the inner arc drains through the current block, the
+   thin outer arc fills over the whole session. */
+function ItRing({frac,total,color,children,pulse}){
+  const R=112,C=2*Math.PI*R,R2=128,C2=2*Math.PI*R2;
+  return(<div className={'it2-ring'+(pulse?' pulse':'')}>
+    <svg viewBox="0 0 280 280" aria-hidden="true">
+      <circle cx="140" cy="140" r={R2} className="it2-trk2"/>
+      <circle cx="140" cy="140" r={R2} className="it2-arc2" style={{strokeDasharray:C2,strokeDashoffset:C2*(1-total)}}/>
+      <circle cx="140" cy="140" r={R} className="it2-trk"/>
+      <circle cx="140" cy="140" r={R} className="it2-arc" style={{stroke:color,strokeDasharray:C,strokeDashoffset:C*frac}}/>
+    </svg>
+    <div className="it2-ring-c">{children}</div>
+  </div>);
+}
+
+function IntervalPlayer({cfg,onSound}){
   const steps=useMemo(()=>intervalSchedule(cfg),[cfg]);
   const totalSec=useMemo(()=>steps.reduce((a,p)=>a+p.sec,0),[steps]);
   const prep=cfg.prep,sound=cfg.sound;
+  /* When each block starts on the session clock (the get-ready count included), so a
+     skip or a click on the timeline is one assignment to the clock. */
+  const starts=useMemo(()=>{const a=[];let acc=prep;steps.forEach(s=>{a.push(acc);acc+=s.sec;});return a;},[steps,prep]);
   const[run,setRun]=useState(false);
   const[t,setT]=useState(0);            // seconds since Start, the get-ready count included
   const[fs,setFs]=useState(false);      // full screen — the colour and nothing else
@@ -17619,8 +17824,6 @@ function IntervalPlayer({cfg}){
       if(ex&&(document.fullscreenElement||document.webkitFullscreenElement))ex.call(document);
     }catch(e){}
   };
-  // Leaving full screen by the browser's own route (Esc, the system gesture) must put
-  // the player back in the page rather than leave it stuck in the full-screen layout.
   useEffect(()=>{
     const onCh=()=>{if(native.current&&!(document.fullscreenElement||document.webkitFullscreenElement)){
       native.current=false;setFs(false);}};
@@ -17635,7 +17838,6 @@ function IntervalPlayer({cfg}){
       }catch(e){}
     };
   },[]);
-  // The page behind the overlay shouldn't scroll under it.
   useEffect(()=>{
     if(!fs)return;
     const prev=document.body.style.overflow;document.body.style.overflow='hidden';
@@ -17654,6 +17856,7 @@ function IntervalPlayer({cfg}){
       o.start(now);o.stop(now+(dur||.09)+.02);
     }catch(e){/* no audio device / blocked autoplay — the colour carries on */}
   };
+  const buzz=ms=>{try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}};
 
   useEffect(()=>{
     if(!run)return;
@@ -17678,20 +17881,18 @@ function IntervalPlayer({cfg}){
   const el=Math.min(t,total);
   const inPrep=el<prep;
   const done=totalSec>0&&t>=total;
-  // Which block the clock is in, and how far into it.
   let idx=-1,phEl=0;
   if(!inPrep&&steps.length){
-    let acc=prep;
     for(let i=0;i<steps.length;i++){
-      if(el<acc+steps[i].sec||i===steps.length-1){idx=i;phEl=Math.min(el-acc,steps[i].sec);break;}
-      acc+=steps[i].sec;
+      if(el<starts[i]+steps[i].sec||i===steps.length-1){idx=i;phEl=Math.min(el-starts[i],steps[i].sec);break;}
     }
   }
   const step=idx>=0?steps[idx]:null;
   const kindKey=done?'done':(inPrep?'prep':(step?step.kind:'work'));
   const k=itKind(kindKey);
-  const frac=step&&step.sec>0?Math.min(1,Math.max(0,phEl/step.sec)):0;
+  const frac=done?1:inPrep?(prep?el/prep:1):(step&&step.sec>0?Math.min(1,Math.max(0,phEl/step.sec)):0);
   const remain=done?0:(inPrep?prep-el:(step?step.sec-phEl:0));
+  const nextStep=done?null:(inPrep?steps[0]:steps[idx+1]||null);
 
   /* One tone per block change, pitched by kind, plus a tick on each of the last three
      seconds so the athlete hears the change coming without looking up. */
@@ -17703,8 +17904,8 @@ function IntervalPlayer({cfg}){
     const prevKey=marker.current;marker.current=key;
     if(prevKey===null)return;
     const block=key.split('|')[0];
-    if(done){beep(880,.5,.2);return;}
-    if(prevKey.split('|')[0]!==block)beep(kindKey==='work'?880:kindKey==='rest'?440:620,.16,.18);
+    if(done){beep(880,.5,.2);buzz([200,80,200]);return;}
+    if(prevKey.split('|')[0]!==block){beep(kindKey==='work'?880:kindKey==='rest'?440:620,.16,.18);buzz(120);}
     else if(remain<=3.05)beep(660,.06,.11);
   });
 
@@ -17714,17 +17915,21 @@ function IntervalPlayer({cfg}){
     beep(660,.08,.14);setRun(true);};
   const pause=()=>setRun(false);
   const reset=()=>{setRun(false);setT(0);marker.current=null;};
+  const jumpTo=i=>{marker.current=null;if(i<0){setT(0);return;}if(i>=steps.length){setT(total);return;}setT(starts[i]+0.001);};
+  const next=()=>jumpTo(inPrep?0:idx+1);
+  const prev=()=>{if(inPrep){setT(0);return;}if(phEl>2)jumpTo(idx);else jumpTo(idx-1);};
 
-  // Space starts and stops the session, F fills the screen, Esc comes back. Registered
-  // once and read through a ref: the clock re-renders every frame while it runs.
+  // Space starts and stops the session, ← → skip a block, F fills the screen, Esc comes back.
   const act=useRef(null);
-  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();}};
+  act.current={space:()=>run?pause():start(),f:()=>fs?exitFs():enterFs(),esc:()=>{if(fs)exitFs();},next,prev};
   useEffect(()=>{
     const onKey=e=>{
       const tag=(e.target&&e.target.tagName)||'';
       if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(tag)||(e.target&&e.target.isContentEditable))return;
       if(e.code==='Space'){e.preventDefault();act.current.space();}
       else if(e.code==='KeyF'){e.preventDefault();act.current.f();}
+      else if(e.code==='ArrowRight'){e.preventDefault();act.current.next();}
+      else if(e.code==='ArrowLeft'){e.preventDefault();act.current.prev();}
       else if(e.code==='Escape')act.current.esc();
     };
     window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey);
@@ -17732,48 +17937,87 @@ function IntervalPlayer({cfg}){
 
   const roundNo=step?step.round:(done?cfg.rounds:1);
   const setNo=step?step.set:(done?cfg.sets:1);
-  const title=done?'Finished':(inPrep?'Get ready':k.label);
-  const sub=done?`${cfg.rounds*cfg.sets} round${cfg.rounds*cfg.sets===1?'':'s'} · ${itClock(totalSec)}`
-    :(inPrep?'starting in':k.hint);
-  // The strip shows one set's worth of blocks — the shape the athlete repeats.
-  const setSteps=useMemo(()=>steps.filter(s=>s.set===setNo),[steps,setNo]);
-  const setBase=useMemo(()=>steps.findIndex(s=>s.set===setNo),[steps,setNo]);
+  const secs=Math.ceil(remain-.0001)||0;
+  const big=done?itClock(totalSec):(secs>=60?itClock(secs):String(secs));
+  const title=done?L('Bitti','Finished'):k.label;
+  const sub=done?L(`${cfg.rounds*cfg.sets} tur · ${itClock(totalSec)}`,`${cfg.rounds*cfg.sets} round${cfg.rounds*cfg.sets===1?'':'s'} · ${itClock(totalSec)}`)
+    :k.hint;
+  const idle=!run&&t===0;
 
   if(!steps.length)return(<div className="empty-st">
     {L('Aşağıda çalışma aralığına bir süre ver ki sayacın çalıştıracak bir şeyi olsun.',
        'Give the work interval a duration below and the timer has something to run.')}
   </div>);
 
-  return(<div className={`it-wrap${fs?' fs':''}`} ref={wrap} style={{'--it-c':k.color}}>
-    {fs&&<button className="it-fsx" onClick={exitFs} title="Esc">✕ {L('Tam ekrandan çık','Exit full screen')}</button>}
-    <div className="it-stage">
-      <div className="it-phase"><small>{sub}</small>{title}</div>
-      <div className="it-count">{done?itClock(totalSec):<>{Math.ceil(remain-.0001)||0}<span>s</span></>}</div>
-      <div className="it-bar"><b style={{transform:`scaleX(${done?1:(inPrep?(prep?el/prep:1):frac).toFixed(4)})`}}/></div>
-      <div className="it-nums">
-        <span><u>{L('Tur','Round')}</u><strong>{roundNo} / {cfg.rounds}</strong></span>
-        {cfg.sets>1&&<span><u>{L('Set','Set')}</u><strong>{setNo} / {cfg.sets}</strong></span>}
-        <span><u>{L('Kalan','Left')}</u><strong>{itClock(total-el)}</strong></span>
+  return(<div className={`it2${fs?' fs':''}${run?' running':''}`} ref={wrap} style={{'--it-c':k.color}}>
+    {fs&&<button className="it2-fsx" onClick={exitFs} title="Esc">✕ {L('Tam ekrandan çık','Exit full screen')}</button>}
+    <div className="it2-stage">
+      <div className="it2-side l">
+        <div className="it2-kpi"><u>{L('Tur','Round')}</u><b>{roundNo}<i>/{cfg.rounds}</i></b>
+          <div className="it2-dots">{Array.from({length:Math.min(cfg.rounds,20)},(_,i)=>
+            <span key={i} className={(i+1<roundNo||done)?'d':(i+1===roundNo&&!inPrep&&!idle)?'c':''}/>)}</div></div>
+        {cfg.sets>1&&<div className="it2-kpi"><u>{L('Set','Set')}</u><b>{setNo}<i>/{cfg.sets}</i></b></div>}
       </div>
-      <div className="it-line">
-        {setSteps.map((p,i)=>{const gi=setBase+i;const cur=idx===gi;const past=idx>gi||done;
-          return(<div key={gi} className={`it-seg${cur?' on':''}${past?' done':''}`}
-            style={{flex:`${p.sec} 1 0`,'--it-c':itKind(p.kind).color}}
-            title={`${itKind(p.kind).label} · ${p.sec}s`}>
-            <b style={{transform:`scaleX(${cur?frac.toFixed(4):(past?1:0)})`}}/>
-          </div>);})}
+      <ItRing frac={frac} total={total?el/total:0} color={k.color} pulse={run&&!done&&secs<=3&&secs>0}>
+        <span className="it2-ph">{title}</span>
+        <span className="it2-big">{big}</span>
+        <span className="it2-sub">{sub}</span>
+      </ItRing>
+      <div className="it2-side r">
+        <div className="it2-kpi"><u>{L('Kalan süre','Time left')}</u><b>{itClock(total-el)}</b></div>
+        <div className={'it2-next'+(nextStep?'':' none')} style={nextStep?{'--nc':itKind(nextStep.kind).color}:null}>
+          <u>{L('Sıradaki','Up next')}</u>
+          {nextStep?<b><span/>{itKind(nextStep.kind).label} · {nextStep.sec}{L(' sn',' s')}</b>:<b>{done?'—':L('Bitiş','Finish')}</b>}
+        </div>
       </div>
     </div>
-    <div className="row">
-      {run?<button className="btn" onClick={pause}>❚❚ {L('Duraklat','Pause')}</button>
-          :<button className="btn" onClick={start}>▶ {t>0&&!done?L('Devam et','Resume'):L('Başlat','Start')}</button>}
-      <button className="btn sec" onClick={reset} disabled={!t}>↺ {L('Sıfırla','Reset')}</button>
-      {!fs&&<button className="btn sec" onClick={enterFs}>⛶ {L('Tam ekran','Full screen')}</button>}
-      <span className="help" style={{margin:0}}>{fs
-        ?L('Boşluk başlatır ve durdurur · Esc ya da F geri döner','Space starts & stops · Esc or F comes back')
-        :L('Yeşil çalışma, kırmızı dinlenme, mavi tur ve set arası — tam ekran bütün ekranı o renge boyar',
-           'Green is work, red is rest, blue is the break between rounds & sets — full screen paints the whole display')}</span>
+    <div className="it2-ctrl">
+      <button className="it2-cb" onClick={prev} title={L('Önceki blok (←)','Previous block (←)')} aria-label={L('Önceki','Previous')}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      {run
+        ?<button className="it2-play on" onClick={pause} title={L('Duraklat (boşluk)','Pause (space)')} aria-label={L('Duraklat','Pause')}>
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+        :<button className="it2-play" onClick={start} title={L('Başlat (boşluk)','Start (space)')} aria-label={L('Başlat','Start')}>
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg></button>}
+      <button className="it2-cb" onClick={next} title={L('Sonraki blok (→)','Next block (→)')} aria-label={L('Sonraki','Next')}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <span className="it2-sep"/>
+      <button className="it2-cb" onClick={reset} disabled={!t} title={L('Sıfırla','Reset')} aria-label={L('Sıfırla','Reset')}>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v5h5"/></svg></button>
+      <button className={'it2-cb'+(sound?' act':'')} onClick={onSound} title={sound?L('Ses açık','Sound on'):L('Ses kapalı','Sound off')} aria-label={L('Ses','Sound')}>
+        {sound?<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
+          :<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>}</button>
+      <button className="it2-cb" onClick={()=>fs?exitFs():enterFs()} title={L('Tam ekran (F)','Full screen (F)')} aria-label={L('Tam ekran','Full screen')}>
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
+    {/* The whole session, block by block. A click jumps the clock to that block. */}
+    <div className="it2-tl">
+      {steps.map((p,i)=>{const cur=idx===i&&!done;const past=idx>i||done;
+        return(<button key={i} type="button" className={`it2-tseg${cur?' on':''}${past?' done':''}${i>0&&steps[i-1].set!==p.set?' nset':''}`}
+          style={{flex:`${p.sec} 1 0`,'--sc':itKind(p.kind).color}} onClick={()=>jumpTo(i)}
+          title={`${itKind(p.kind).label} · ${p.sec}${L(' sn',' s')} · ${L('Set','Set')} ${p.set} · ${L('Tur','Round')} ${p.round}`}>
+          <b style={{transform:`scaleX(${cur?frac.toFixed(4):(past?1:0)})`}}/>
+        </button>);})}
+    </div>
+    <div className="it2-legend">
+      {['work','rest','brk'].map(kk=><span key={kk} style={{'--sc':itKind(kk).color}}><i/>{itKind(kk).label}</span>)}
+      <em>{L('Boşluk: başlat/durdur · ← →: blok atla · F: tam ekran','Space: start/stop · ← →: skip block · F: full screen')}</em>
+    </div>
+  </div>);
+}
+
+/* A number with − / + either side, in the unit it is written in. */
+function ItNum({label,hint,value,onChange,lo,hi,step,accent}){
+  const st=step||1;
+  const set=v=>onChange(itNum(v,lo,lo,hi));
+  return(<div className="it2-f" style={accent?{'--fc':accent}:null}>
+    <span className="it2-fl">{accent&&<i/>}{label}</span>
+    <div className="it2-fin">
+      <button type="button" onClick={()=>set(value-st)} disabled={value<=lo} aria-label="−">−</button>
+      <input type="number" min={lo} max={hi} value={value} onChange={e=>set(e.target.value)}/>
+      <button type="button" onClick={()=>set(value+st)} disabled={value>=hi} aria-label="+">+</button>
+    </div>
+    <span className="it2-fh">{hint}</span>
   </div>);
 }
 
@@ -17791,16 +18035,13 @@ function IntervalTimerPanels({data,setData}){
   const loadSaved=s=>patch({name:s.name,work:s.work,rest:s.rest,rounds:s.rounds,sets:s.sets,
     setRest:s.setRest,prep:s.prep});
   const delSaved=id=>patch({saved:c.saved.filter(s=>s.id!==id)});
-  /* One field, one card: the caption over the number rather than beside it, so the six
-     boxes read as one control panel and every number sits on the same baseline whatever
-     the length of the words above it. */
-  const numF=(key,label,hint,lo,hi)=>(<label className="itf" key={key}>
-    <span className="itf-l">{label}</span>
-    <input type="number" min={lo} max={hi} value={c[key]}
-      onChange={e=>patch({[key]:itNum(e.target.value,lo,lo,hi)})}/>
-    <span className="itf-h">{hint}</span>
-  </label>);
+  const isCur=p=>p.work===c.work&&p.rest===c.rest&&p.rounds===c.rounds&&p.sets===c.sets&&p.setRest===c.setRest;
   const ratio=c.rest>0?`1 : ${+(c.rest/c.work).toFixed(2)}`:L('aralıksız','no rest');
+  const workShare=totalSec?Math.round(itWorkSec(c)/totalSec*100):0;
+  const sec=L('saniye','seconds');
+  /* A small picture of a block: work and rest bars for one set, to scale. */
+  const mini=p=>{const st=intervalSchedule({...p,sets:1}).slice(0,24);const tot=st.reduce((a,x)=>a+x.sec,0)||1;
+    return<div className="it2-mini">{st.map((x,i)=><i key={i} style={{flex:`${x.sec} 1 0`,background:itKind(x.kind).color}}/>)}</div>;};
 
   return(<>
     <PageHero title={L('Interval Zamanlayıcı','Interval Timer')}
@@ -17810,69 +18051,76 @@ function IntervalTimerPanels({data,setData}){
               {v:`${c.rounds}×${c.sets}`,l:L('Tur × set','Rounds × sets')},
               {v:itClock(c.prep+totalSec),l:L('Tüm seans','Whole session')}]}/>
 
-    <div className="panel it-panel">
-      <IntervalPlayer cfg={c}/>
+    <div className="panel it2-panel">
+      <IntervalPlayer cfg={c} onSound={()=>patch({sound:!c.sound})}/>
     </div>
 
-    <div className="panel">
-      <div className="it-head">
-        <div className="it-head-t">
-          <b>{L('Aralık ayarı','Interval setup')}</b>
-          <span>{L('Blok kaç tur sürüyorsa çalışma / dinlenme o kadar tekrarlanır, setler boyunca.',
-                   'Work / rest for as many rounds as the block asks for, repeated over sets.')}</span>
+    <div className="it2-cols">
+      <div className="panel it2-setup">
+        <div className="it-head">
+          <div className="it-head-t">
+            <b>{L('Aralık ayarı','Interval setup')}</b>
+            <span>{L('Blok kaç tur sürüyorsa çalışma / dinlenme o kadar tekrarlanır, setler boyunca.',
+                     'Work / rest for as many rounds as the block asks for, repeated over sets.')}</span>
+          </div>
         </div>
-        <button className={`btn xs ${c.sound?'':'sec'}`} onClick={()=>patch({sound:!c.sound})}
-          title={L('Her geçişte bir ton, son üç saniyede tik sesi','A tone on every change, plus a tick on the last three seconds')}>
-          {c.sound?L('Ses açık','Sound on'):L('Ses kapalı','Sound off')}</button>
+        <div className="it2-grid">
+          <ItNum label={L('Çalışma','Work')} hint={sec} value={c.work} lo={1} hi={3600} step={5} accent={IT_KINDS.work.color} onChange={v=>patch({work:v})}/>
+          <ItNum label={L('Dinlenme','Rest')} hint={sec} value={c.rest} lo={0} hi={3600} step={5} accent={IT_KINDS.rest.color} onChange={v=>patch({rest:v})}/>
+          <ItNum label={L('Tur','Rounds')} hint={L('set başına','per set')} value={c.rounds} lo={1} hi={99} onChange={v=>patch({rounds:v})}/>
+          <ItNum label={L('Set','Sets')} hint={L('tekrar','repeats')} value={c.sets} lo={1} hi={99} onChange={v=>patch({sets:v})}/>
+          <ItNum label={L('Set arası','Set break')} hint={sec} value={c.setRest} lo={0} hi={3600} step={15} accent={IT_KINDS.brk.color} onChange={v=>patch({setRest:v})}/>
+          <ItNum label={L('Hazırlık','Get ready')} hint={sec} value={c.prep} lo={0} hi={60} step={5} accent={IT_KINDS.prep.color} onChange={v=>patch({prep:v})}/>
+        </div>
+        <div className="it2-sum">
+          <div><u>{L('Set başına','Per set')}</u><strong>{itClock(c.work*c.rounds+c.rest*Math.max(0,c.rounds-1))}</strong></div>
+          <div><u>{L('Toplam çalışma','Total work')}</u><strong>{itClock(itWorkSec(c))}</strong></div>
+          <div><u>{L('Çalışma : dinlenme','Work : rest')}</u><strong>{ratio}</strong></div>
+          <div><u>{L('Tüm seans','Whole session')}</u><strong>{itClock(c.prep+totalSec)}</strong></div>
+          <div className="wide"><u>{L('Çalışma payı','Work share')}</u>
+            <div className="it2-share"><i style={{width:workShare+'%'}}/></div><strong>{workShare}%</strong></div>
+        </div>
       </div>
-      <div className="it-presets">
-        {IT_PRESETS.map(p=><button key={p.name} className="tt-chip" onClick={()=>usePreset(p)}
-          title={L('Bu aralığı aşağıdaki alanlara yükle','Load this interval into the fields below')}>{p.name}<b>{p.code}</b></button>)}
-      </div>
-      <div className="it-grid">
-        {numF('work',L('Çalışma','Work'),L('saniye','seconds'),1,3600)}
-        {numF('rest',L('Dinlenme','Rest'),L('saniye','seconds'),0,3600)}
-        {numF('rounds',L('Tur','Rounds'),L('set başına','per set'),1,99)}
-        {numF('sets',L('Set','Sets'),L('tekrar','repeats'),1,99)}
-        {numF('setRest',L('Set arası','Set break'),L('saniye','seconds'),0,3600)}
-        {numF('prep',L('Hazırlık','Get ready'),L('saniye','seconds'),0,60)}
-      </div>
-      <div className="tt-sum">
-        <div><u>{L('Set başına','Per set')}</u><strong>{itClock(c.work*c.rounds+c.rest*Math.max(0,c.rounds-1))}</strong></div>
-        <div><u>{L('Toplam çalışma','Total work')}</u><strong>{itClock(itWorkSec(c))}</strong></div>
-        <div><u>{L('Blok','Blocks')}</u><strong>{steps.length}</strong></div>
-        <div><u>{L('Tüm seans','Whole session')}</u><strong>{itClock(c.prep+totalSec)}</strong></div>
-        <div><u>{L('Çalışma : dinlenme','Work : rest')}</u><strong>{ratio}</strong></div>
-      </div>
-    </div>
 
-    <div className="panel">
-      <div className="it-head">
-        <div className="it-head-t">
-          <b>{L('Kayıtlı aralıklar','Saved intervals')}</b>
-          <span>{L('Yukarıdaki aralığı adlandır ve başka bir günde tek tıkla geri yükle.',
-                   'Name the interval above and load it back with one click on another day.')}</span>
+      <div className="it2-rcol">
+        <div className="panel">
+          <div className="it-head"><div className="it-head-t">
+            <b>{L('Hazır protokoller','Ready protocols')}</b>
+            <span>{L('Tek tıkla alanlara yükle.','Load one into the fields with a click.')}</span>
+          </div></div>
+          <div className="it2-presets">
+            {IT_PRESETS.map(p=><button key={p.name} type="button" className={'it2-pre'+(isCur(p)?' on':'')} onClick={()=>usePreset(p)}>
+              <b>{p.name}</b><span>{p.code}</span>{mini(p)}</button>)}
+          </div>
+        </div>
+        <div className="panel">
+          <div className="it-head"><div className="it-head-t">
+            <b>{L('Kayıtlı aralıklar','Saved intervals')}</b>
+            <span>{L('Geçerli aralığı adlandır ve başka bir günde tek tıkla geri yükle.',
+                     'Name the current interval and load it back with one click on another day.')}</span>
+          </div></div>
+          <div className="it-save">
+            <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}} aria-label={L('Ad','Name')}/>
+            <button className="btn sm" onClick={saveCurrent}>{L('Kaydet','Save')}</button>
+          </div>
+          {c.saved.length===0
+            ?<div className="empty-st">{L('Henüz kayıt yok — bir aralık kur ve kaydet.','Nothing saved yet — set an interval up and save it.')}</div>
+            :<div className="it2-saved">
+              {c.saved.map(s=><div key={s.id} className={'it2-sv'+(isCur(s)&&s.prep===c.prep?' on':'')}>
+                <div className="it2-sv-t">
+                  <b>{s.name}</b>
+                  <i>{s.work}/{s.rest} × {s.rounds}{s.sets>1?` × ${s.sets}`:''} · {itClock(s.prep+intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}</i>
+                  {mini(s)}
+                </div>
+                <div className="it-sv-a">
+                  <button className="btn xs" onClick={()=>loadSaved(s)}>{L('Yükle','Load')}</button>
+                  <button className="btn xs danger" onClick={()=>delSaved(s.id)} aria-label={L('Sil','Delete')}>✕</button>
+                </div>
+              </div>)}
+            </div>}
         </div>
       </div>
-      <div className="it-save">
-        <input value={saveName} placeholder={c.name} onChange={e=>setSaveName(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter')saveCurrent();}} aria-label={L('Ad','Name')}/>
-        <button className="btn sm" onClick={saveCurrent}>{L('Bu aralığı kaydet','Save current interval')}</button>
-      </div>
-      {c.saved.length===0
-        ?<div className="empty-st">{L('Henüz kayıt yok — yukarıda bir aralık kur ve başka bir günde kullanmak üzere kaydet.','Nothing saved yet — set an interval above and save it to reuse on another day.')}</div>
-        :<div className="it-saved">
-          {c.saved.map(s=><div key={s.id} className="it-sv">
-            <div className="it-sv-t">
-              <b>{s.name}</b>
-              <i>{L(`${s.work}sn çalışma · ${s.rest}sn dinlenme · ${s.rounds} tur`,`${s.work}s work · ${s.rest}s rest · ${s.rounds} rounds`)}{s.sets>1?L(` · ${s.sets} set (${s.setRest}sn ara)`,` · ${s.sets} sets (${s.setRest}s break)`):''} · {itClock(intervalSchedule(s).reduce((a,p)=>a+p.sec,0))}</i>
-            </div>
-            <div className="it-sv-a">
-              <button className="btn xs sec" onClick={()=>loadSaved(s)}>{L('Yükle','Load')}</button>
-              <button className="btn xs danger" onClick={()=>delSaved(s.id)}>{L('Sil','Delete')}</button>
-            </div>
-          </div>)}
-        </div>}
     </div>
   </>);
 }
@@ -21674,14 +21922,11 @@ function EvaluationView({team,updateTeam,data,setData}){
             </div>
             <div className="ev2-tiles">
               {catalogShown.map(c=>{const on=pick.has(c.id);const m=TEST_META[c.id]||{};
-                const isFms=c.id==='fms';
-                return(<div key={c.id} className={'ev2-tile'+(on?' on':'')+(isFms?' fms':'')+(c.custom?' tagged':'')}
-                  onClick={()=>toggle(c.id)} title={isFms?'FMS — Functional Movement Screen':c.name}>
-                  {c.custom&&<div className="ev2-tile-tag">{Lx('özel','custom')}</div>}
-                  <span className="ev2-tile-ic">
-                    {isFms?<img className="ev2-tile-logo" src="fms-logo.png" alt="FMS"/>:<TIc k={m.ic||'beaker'} size={20}/>}
-                  </span>
+                const cat0=(TEST_CATALOG.find(x=>x.id===c.id)||{});
+                return(<div key={c.id} className={'ev2-tile g-'+testGroupOf(c)+(on?' on':'')}
+                  onClick={()=>toggle(c.id)} title={c.name}>
                   <div className="ev2-tile-tx">
+                    <div className="ev2-tile-k">{c.custom?Lx('Özel','Custom'):(cat0.short||'')}</div>
                     <div className="ev2-tile-t">{c.name}</div>
                     <div className="ev2-tile-s">{m.tr?Lx(m.tr,m.en):Lx('Özel test','Custom test')}</div>
                   </div>
