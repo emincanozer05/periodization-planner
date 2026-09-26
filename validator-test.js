@@ -81,7 +81,7 @@ function loadApp() {
     'diFlag', 'diReadiness', 'diConValue', 'diJaccard', 'diProgramNames', 'diRecentPrograms',
     'diPeerPrograms', 'diWriteGate', 'diProgramPlan', 'askCoach', 'askGemini',
     'aiModelResolve', 'aiModelOf', 'eqAvailable', 'eqNeedOf', 'pwTier',
-    'athReadiness', 'athPainReports', 'diPainDays', 'diRestrictionHits',
+    'athReadiness', 'athPainReports', 'athPainNote', 'diPainDays', 'diRestrictionHits',
     'DI_ADJ_BANDS', 'DI_SET_FLOOR', 'DI_REP_FLOOR', 'DI_RD_REDUCE', 'DI_RD_REVIEW',
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
@@ -836,6 +836,36 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const r1 = A.diReadReview(team, 'src', 'a1', TODAY), r2 = A.diReadReview(team, 'src', 'a2', TODAY), r0 = A.diReadReview(team, 'src', 'a0', TODAY);
     check('iki sporcunun onayı da kayıtlı, mevcut kayıt korunuyor',
       r1 && r1.decision === 'accept' && r2 && r2.decision === 'accept' && r0 && r0.decision === null);
+  }
+
+  group('Ek — Ağrı ne kadar görünür: kırmızı 2 gün, sarı yalnızca o gün');
+  {
+    const tags = (a, d) => A.athPainReports(a, d).map(p => p.tag).sort().join(',');
+    // Dün hamstring Orta (sarı), diz Fazla (kırmızı); bugün hiçbiri işaretlenmedi.
+    const ath = athlete({ wellness: [
+      wellness(back(1), 4, { pain: { hamstring: 2, knee: 3 } }),
+      wellness(TODAY, 4) ] });
+    check('bildirildiği gün ikisi de görünüyor', tags(ath, back(1)) === 'hamstring,knee', tags(ath, back(1)));
+    check('ertesi gün: sarı kayboluyor, kırmızı bir gün daha kalıyor', tags(ath, TODAY) === 'knee', tags(ath, TODAY));
+    check('iki gün sonra kırmızı da kayboluyor', tags(ath, A.fmt(A.addD(A.parseD(TODAY), 1))) === '',
+      tags(ath, A.fmt(A.addD(A.parseD(TODAY), 1))));
+    // Bugün check-in yoksa dünün sarısı taşınmıyor (eskiden 2 gün boyunca görünüyordu).
+    const noToday = athlete({ wellness: [wellness(back(1), 4, { pain: { hamstring: 2 } })] });
+    check('check-in olmayan günde dünün sarı ağrısı görünmüyor', tags(noToday, TODAY) === '', tags(noToday, TODAY));
+    // Aynı bölge bugün daha hafif işaretlendiyse bugünün derecesi geçerli.
+    const again = athlete({ wellness: [
+      wellness(back(1), 4, { pain: { knee: 3 } }), wellness(TODAY, 4, { pain: { knee: 1 } })] });
+    const k = A.athPainReports(again, TODAY);
+    check('iki gün de bildirilen bölgede bugünün derecesi gösteriliyor',
+      k.length === 1 && k[0].sev === 1 && k[0].date === TODAY, JSON.stringify(k));
+    // Izgara (painMap): etiket listesinde olmayan bölgeler de aynı kurala uyuyor.
+    const grid = athlete({ wellness: [
+      wellness(back(1), 4, { painMap: { Boyun: 3, Bel: 2 } }), wellness(TODAY, 4, { painMap: { Omuz: 1 } })] });
+    const n = A.athPainNote(grid, TODAY);
+    const regs = n ? n.regions.map(g => `${g.region}@${g.date === TODAY ? 'bugün' : 'dün'}`).sort().join(',') : '';
+    check('ağrı ızgarası: bugünkü + dünün kırmızısı, dünün sarısı yok', regs === 'Boyun@dün,Omuz@bugün', regs);
+    check('ağrı ızgarası: ertesi gün bugünün sarı bölgesi de kayboluyor',
+      A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
