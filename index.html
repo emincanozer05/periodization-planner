@@ -2113,6 +2113,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* ===== DD/MM/YYYY date field ===== */
 .dmy{position:relative;display:block;width:100%}
 .dmy-t{width:100%;padding-right:32px!important;font-family:'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.02em}
+.dmy-t.dmy-long{cursor:pointer;font-family:inherit;letter-spacing:0}
 .dmy-btn{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:24px;height:24px;padding:0;
   display:grid;place-items:center;background:none;border:none;border-radius:6px;color:var(--muted);
   font-size:13px;line-height:1;cursor:pointer;transition:color .15s,background .15s}
@@ -11622,7 +11623,8 @@ async function liftLocalMedia(obj,fb,uid){
    shows the date the way the rest of the app writes it, keeps storing ISO, and hands
    the calendar picker off to a hidden native input so nothing is lost.
    ========================================================= */
-function DateDMY({value,onChange,style,title}){
+/* `long` shows the date written out ("22 Mayıs 2026") and picks it from the calendar. */
+function DateDMY({value,onChange,style,title,long}){
   const[txt,setTxt]=useState(()=>fd(value));
   const pick=useRef(null);
   useEffect(()=>{setTxt(fd(value));},[value]);
@@ -11638,6 +11640,13 @@ function DateDMY({value,onChange,style,title}){
   const blur=()=>{const iso=pdmy(txt);if(iso)onChange(iso);else setTxt(fd(value));};
   const open=()=>{const el=pick.current;if(!el)return;
     try{el.showPicker?el.showPicker():el.focus();}catch(e){el.focus();}};
+  if(long)return(<div className="dmy" style={style}>
+    <input className="dmy-t dmy-long" readOnly value={value?fdL(value):''} title={title} onClick={open}
+      placeholder={L('Tarih seç','Pick a date')}/>
+    <button type="button" className="dmy-btn" onClick={open} tabIndex={-1} aria-label={L('Takvimden seç','Pick from the calendar')}>🗓</button>
+    <input ref={pick} className="dmy-p" type="date" tabIndex={-1} aria-hidden="true" value={value||''}
+      onChange={e=>{if(e.target.value)onChange(e.target.value);}}/>
+  </div>);
   return(<div className="dmy" style={style}>
     <input className="dmy-t" value={txt} title={title} placeholder={L('gg/aa/yyyy','dd/mm/yyyy')} inputMode="numeric" maxLength={10}
       onChange={e=>type(e.target.value)} onBlur={blur}/>
@@ -12868,7 +12877,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
           :<div className="cmp-list">
             {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
               <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
-                <DateDMY value={c.date} onChange={v=>uc(i,'date',v)}/></div>
+                <DateDMY long value={c.date} onChange={v=>uc(i,'date',v)}/></div>
               <div className="cmp-f grow"><label>{L('Etkinlik / rakip','Event / opponent')}</label>
                 <input value={c.name||''} onChange={e=>uc(i,'name',e.target.value)}/></div>
               <div className="cmp-f grow"><label>{L('Lig / turnuva','League / tournament')}</label>
