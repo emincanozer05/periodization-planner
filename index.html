@@ -2128,6 +2128,45 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mc-head{margin-bottom:4px}
 .mc-title{font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
 .mc-title .mc-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:400;color:var(--dim);margin-left:10px;letter-spacing:0}
+/* Periodization Model: season phases, then the models; a model's explanation shows in a
+   small box above it on hover, as wide as the card so the last column never spills out. */
+.pm-sh{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin:4px 0 10px}
+.pm-sh b{font-size:12.5px;font-weight:700;color:var(--text)}
+.pm-sh span{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim)}
+.pm-sh .btn{margin-left:auto}
+.pm-dot{width:8px;height:8px;border-radius:50%;background:var(--oc)}
+.pm-phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:20px}
+@media(max-width:900px){.pm-phases{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pm-ph{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;padding:10px 11px;border-radius:10px;cursor:pointer;
+  font-family:inherit;text-align:left;color:var(--text2);background:var(--elevated);border:1px solid var(--border);
+  border-top:3px solid color-mix(in srgb,var(--oc) 55%,transparent);transition:background .12s ease,border-color .12s ease}
+.pm-ph:hover{border-color:var(--border2);border-top-color:var(--oc)}
+.pm-ph.on{background:color-mix(in srgb,var(--oc) 12%,var(--panel));border-color:color-mix(in srgb,var(--oc) 60%,transparent);border-top-color:var(--oc);color:var(--text)}
+.pm-ph.none{opacity:.55}
+.pm-ph-n{display:flex;align-items:center;gap:7px;width:100%;font-size:12.5px;font-weight:700;color:var(--text);line-height:1.25}
+.pm-ph-n i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--oc)}
+.pm-ph-n em{margin-left:auto;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;letter-spacing:.08em;
+  padding:1px 5px;border-radius:4px;color:var(--oc);background:color-mix(in srgb,var(--oc) 16%,transparent)}
+.pm-ph-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
+.pm-ph-m{font-size:11px;font-weight:600;color:var(--text2);line-height:1.3}
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.pm-m{position:relative;display:flex;align-items:center;gap:9px;min-width:0;padding:11px 12px;border-radius:10px;cursor:pointer;
+  font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;color:var(--text2);background:var(--elevated);border:1px solid var(--border);
+  transition:background .12s ease,border-color .12s ease}
+.pm-m:hover{border-color:var(--border2);color:var(--text)}
+.pm-m.on{background:color-mix(in srgb,var(--oc) 13%,var(--panel));border-color:var(--oc);color:var(--text)}
+.pm-radio{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid var(--border2)}
+.pm-m.on .pm-radio{border-color:var(--oc);background:radial-gradient(circle,var(--oc) 0 3.5px,transparent 4px)}
+.pm-m-n{flex:1;min-width:0;line-height:1.3}
+.pm-m-u{flex:none;display:flex;gap:3px}
+.pm-m-u i{width:6px;height:6px;border-radius:50%}
+.pm-m[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:-10px;right:-10px;bottom:calc(100% + 8px);
+  padding:9px 11px;border-radius:8px;z-index:60;pointer-events:none;
+  background:#0b0f16;border:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2));color:#e5e7eb;
+  font-size:11.5px;font-weight:500;line-height:1.5;text-align:left;white-space:normal;box-shadow:0 12px 28px -10px rgba(0,0,0,.9)}
+.pm-m[data-tip]:hover::before{content:"";position:absolute;left:50%;bottom:calc(100% + 3px);
+  transform:translateX(-50%) rotate(45deg);width:8px;height:8px;background:#0b0f16;z-index:61;pointer-events:none;
+  border-right:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2));border-bottom:1px solid color-mix(in srgb,var(--oc) 55%,var(--border2))}
 .mc-gantt{--mc-lbl:180px;--mc-gap:16px;margin-top:20px}
 @media(max-width:820px){.mc-gantt{--mc-lbl:130px;--mc-gap:10px}}
 .mc-axis,.mc-row{display:grid;grid-template-columns:var(--mc-lbl) 1fr;gap:var(--mc-gap);align-items:center}
@@ -5846,12 +5885,85 @@ h1,h2,h3,h4,h5,h6{font-weight:700 !important}`;
    CONSTANTS
    ========================================================= */
 const SPORTS=['Basketball','Football (Soccer)','Volleyball','Handball','Tennis','Track & Field','Swimming','Rugby','Other'];
+/* Periodization models. Each carries its explanation in both languages — shown in a
+   small box when the pointer rests on the model in the Periodization Model panel. The
+   names stay in English in both languages; they are the terms coaches use. */
 const MODELS=[
-  {id:'linear',name:'Linear',desc:'Volume decreases, intensity increases over time'},
-  {id:'block',name:'Block',desc:'Accumulation → Transmutation → Realization'},
-  {id:'undulating',name:'Undulating',desc:'Wave-like variation in volume / intensity'},
-  {id:'conjugate',name:'Conjugate',desc:'Concurrent max-effort + dynamic-effort'},
+  {id:'linear',name:'Traditional / Linear Periodization',d:[
+    'Antrenman yükünün uzun dönem içerisinde sistematik ve genellikle kademeli şekilde değiştirildiği modeldir. Çoğunlukla başlangıçta daha yüksek hacim ve daha düşük yoğunluk kullanılır; zaman ilerledikçe hacim azaltılır ve yoğunluk artırılır. Genel fiziksel hazırlıktan kuvvet, power ve performansa doğru ilerleyen klasik bir yapı oluşturur.',
+    'The model in which training load is changed systematically, and usually gradually, over a long period. It mostly starts with higher volume and lower intensity; as time goes on, volume is reduced and intensity raised. It forms the classic progression from general physical preparation towards strength, power and performance.']},
+  {id:'reverse',name:'Reverse Linear Periodization',d:[
+    'Linear periodizasyonun ters yönde uygulanmasıdır. Programın başlangıcında daha yüksek yoğunluk ve daha düşük hacim kullanılır; sonraki dönemlerde yoğunluk azaltılırken hacim artırılır. Özellikle başlangıçta yüksek yoğunluklu çalışmaya hazır olan sporcularda veya belirli dayanıklılık hedeflerinde kullanılabilir.',
+    'Linear periodization run in the opposite direction. The program starts with higher intensity and lower volume; in later periods intensity is reduced while volume is raised. It can be used especially with athletes who are ready for high-intensity work from the start, or for certain endurance goals.']},
+  {id:'undulating',name:'Undulating Periodization',d:[
+    'Antrenman hacmi, yoğunluğu veya egzersiz odağının daha kısa zaman aralıklarında değiştirildiği periodizasyon modelidir. Uzun süre tek bir fiziksel özelliğe odaklanmak yerine farklı özellikler günler veya haftalar içerisinde dönüşümlü olarak çalıştırılabilir. Takım sporlarında sezon boyunca değişen ihtiyaçlara uyum sağlamak için kullanılabilir.',
+    'The periodization model in which training volume, intensity or exercise focus changes over shorter time spans. Instead of focusing on one physical quality for a long time, different qualities can be trained in rotation across days or weeks. In team sports it can be used to adapt to needs that change through the season.']},
+  {id:'dup',name:'Daily Undulating Periodization (DUP)',d:[
+    'Undulating periodizasyonun günlük düzeyde uygulanmasıdır. Aynı hafta içerisinde farklı antrenman günleri farklı amaçlara sahip olabilir. Örneğin Pazartesi strength, Çarşamba power, Cuma speed odaklı olabilir. Böylece farklı fiziksel özellikler aynı hafta içerisinde düzenli olarak uyarılır.',
+    'Undulating periodization applied at the daily level. Within the same week, different training days can have different aims — for example Monday strength, Wednesday power, Friday speed. Different physical qualities are thus stimulated regularly within the same week.']},
+  {id:'wup',name:'Weekly Undulating Periodization (WUP)',d:[
+    'Antrenman odağı veya yüklenme özelliklerinin haftadan haftaya değiştirilmesidir. Örneğin bir hafta strength, sonraki hafta power, daha sonraki hafta speed ağırlıklı olabilir. Günlük yerine haftalık düzeyde dalgalanma meydana gelir.',
+    'The training focus or loading characteristics change from week to week — for example one week strength, the next power, the one after speed. The undulation happens at the weekly rather than the daily level.']},
+  {id:'block',name:'Block Periodization',d:[
+    'Belirli adaptasyonların sınırlı bir zaman diliminde yüksek öncelikle geliştirildiği ardışık bloklardan oluşur. Klasik yapıda Accumulation → Transmutation → Realization şeklinde ilerler. Bir blokta geliştirilen kapasite sonraki blokta daha spesifik bir performans özelliğine dönüştürülür. Özellikle belirli bir performans hedefinin önceliklendirildiği dönemlerde kullanılabilir.',
+    'Made of consecutive blocks in which specific adaptations are developed with high priority over a limited time. The classic structure runs Accumulation → Transmutation → Realization. The capacity built in one block is turned into a more specific performance quality in the next. It can be used especially in periods where a particular performance goal is prioritised.']},
+  {id:'conjugate',name:'Conjugate Periodization',d:[
+    'Birden fazla fiziksel kapasitenin aynı dönem içerisinde paralel olarak geliştirilmesini veya korunmasını amaçlar. Örneğin strength, power ve speed aynı hafta içerisinde farklı günlerde veya farklı yöntemlerle çalışılabilir. Özellikle tek bir kapasiteyi uzun süre izole etmek yerine birden fazla özelliği aynı anda yönetmek isteyen programlarda kullanılabilir.',
+    'Aims to develop or maintain several physical capacities in parallel within the same period. For example strength, power and speed can be trained on different days or with different methods in the same week. It suits programs that want to manage several qualities at once rather than isolate one capacity for a long time.']},
+  {id:'vertical',name:'Vertical Integration',d:[
+    'Farklı fiziksel özelliklerin aynı mikro döngü içerisinde sürekli olarak entegre edilmesine dayanır. Strength, power, speed, conditioning ve movement quality gibi özellikler aynı hafta içerisinde bulunabilir. Bir özelliğin tamamen bitirilip diğerine geçilmesi yerine, önemli özellikler sezon boyunca korunur ve yalnızca öncelikleri değişir. Uzun sezonlu takım sporları için özellikle kullanışlıdır.',
+    'Based on integrating different physical qualities continuously within the same microcycle. Qualities such as strength, power, speed, conditioning and movement quality can all sit in the same week. Rather than finishing one quality completely and moving to the next, the important qualities are kept all season and only their priorities change. Especially useful for team sports with long seasons.']},
+  {id:'horizontal',name:'Horizontal Integration',d:[
+    'Farklı fiziksel özelliklerin zaman içerisinde belirli bir sıra veya önceliklendirme ile organize edilmesidir. Örneğin önce aerobic capacity, ardından strength, daha sonra power ve speed önceliklendirilebilir. Bir özelliğin geliştirilmesi için belirli bir dönem ayrılması, diğer özelliklerin ise geçici olarak daha düşük öncelikte tutulması söz konusudur.',
+    'Different physical qualities are organised over time in a set order or priority — for example aerobic capacity first, then strength, then power and speed. A period is set aside to develop one quality while the others are temporarily kept at a lower priority.']},
+  {id:'hybrid',name:'Hybrid Periodization',d:[
+    'Tek bir periodizasyon modeline bağlı kalmak yerine birden fazla modelin programın farklı dönemlerinde veya aynı program içerisinde birleştirilmesidir. Örneğin preseason\'da Block Periodization, in-season\'da Undulating veya Vertical Integration kullanılabilir. Uzun ve karmaşık takım sporları sezonlarında oldukça esnek bir yapı sağlar.',
+    'Instead of sticking to a single periodization model, several models are combined in different periods of the program or within the same program. For example Block Periodization can be used in the preseason and Undulating or Vertical Integration in-season. It gives long, complex team-sport seasons a very flexible structure.']},
+  {id:'auto',name:'Autoregulated / Flexible Periodization',d:[
+    'Önceden belirlenen antrenman planının sporcunun gerçek zamanlı veya günlük durumuna göre değiştirilmesine dayanır. Readiness, RPE, wellness, HRV, performans testleri veya önceki antrenman yükleri gibi bilgiler kullanılarak hacim, yoğunluk veya egzersiz seçimi düzenlenebilir. Aslında diğer periodizasyon modellerinin yerine geçmek zorunda değildir; Linear, Block, Undulating veya Vertical Integration gibi modellerin üzerine uygulanabilen bir yük yönetimi yaklaşımıdır.',
+    'Based on adjusting the pre-set training plan to the athlete\'s real-time or daily state. Volume, intensity or exercise selection can be adjusted using information such as readiness, RPE, wellness, HRV, performance tests or previous training loads. It does not have to replace the other periodization models; it is a load-management approach that can be laid over models such as Linear, Block, Undulating or Vertical Integration.']},
 ];
+/* Season phases. Each reads its dates off the macrocycle: the off-season is General
+   Preparation, the preseason Specific Preparation, the postseason Transition. Competition
+   splits in two — the playoffs are its closing stretch (the last 15%, or from three weeks
+   before a fixture named like a playoff game), the rest is in-season. A phase can run its
+   own periodization model; one left unset follows the season's model. */
+const SEASON_PHASES=[
+  {id:'off',    period:'gp',   c:'#3b6ef5',name:'Transition / Off-Season'},
+  {id:'pre',    period:'sp',   c:'#facc15',name:'Preseason'},
+  {id:'in',     period:'comp', c:'#f43f5e',name:'In-Season'},
+  {id:'playoff',period:'comp', c:'#a855f7',name:'Playoffs'},
+  {id:'post',   period:'trans',c:'#2dd4a7',name:'Postseason'},
+];
+const SEASON_PLAYOFF_RE=/playoff|play-off|final|çeyrek|yarı ?final|elemin|elimination|conference/i;
+function seasonPhaseRanges(setup,periods){
+  const P=id=>(periods||[]).find(p=>p.id===id)||null;
+  const gp=P('gp'),sp=P('sp'),comp=P('comp'),trans=P('trans');
+  const r=p=>p?{start:p.start,end:p.end}:null;
+  let inR=null,poR=null;
+  if(comp){
+    let st=fmt(addD(parseD(comp.start),Math.ceil(Math.max(0,diffD(comp.start,comp.end))*.85)));
+    const po=((setup&&setup.competitions)||[]).filter(c=>c&&c.date&&c.date>=comp.start&&c.date<=comp.end&&SEASON_PLAYOFF_RE.test(c.name||''))
+      .map(c=>c.date).sort()[0];
+    if(po){const s2=fmt(addD(parseD(po),-21));if(s2<st)st=s2;}
+    if(st<comp.start)st=comp.start;
+    poR={start:st,end:comp.end};
+    if(st>comp.start)inR={start:comp.start,end:fmt(addD(parseD(st),-1))};
+  }
+  return{off:r(gp),pre:r(sp),in:inR,playoff:poR,post:r(trans)};
+}
+/* The season phase a date falls in; outside every range, the one its period maps to. */
+function seasonPhaseAt(ranges,ds,periodId){
+  const hit=SEASON_PHASES.find(ph=>{const x=ranges[ph.id];return x&&ds>=x.start&&ds<=x.end;});
+  if(hit)return hit.id;
+  const byP=SEASON_PHASES.find(ph=>ph.period===periodId);
+  return byP?byP.id:'in';
+}
+const modelOf=id=>MODELS.find(m=>m.id===id)||null;
+function phaseModel(setup,ph){
+  const pm=(setup&&setup.phaseModels)||{};
+  return modelOf(pm[ph])?pm[ph]:(modelOf(setup&&setup.model)?setup.model:'linear');
+}
 const LOAD_TYPES=['Mechanical load','Metabolic load','Neuromuscular load','Cognitive/perceptual load'];
 /* ---------------------------------------------------------------------------
    SESSION FOCUS — two stages, asked in the order a coach actually decides.
@@ -6085,7 +6197,8 @@ const RPE_ZONE_SPANS=RPE_ZONES.map((z,i)=>({
   c:z.c,
   a:rpePct(i?RPE_ZONES[i-1].max+.5:1),
   b:rpePct(i===RPE_ZONES.length-1?10:z.max+.5)}));
-const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak'];
+const WEEK_FOCUS=['General','Base + aerobic','Sport-specific','Maintain & peak','Active recovery','Accumulation','Transmutation','Realization','Hi-volume wave','Hi-intensity wave','Max-effort','Dynamic-effort','Deload','Peak',
+  'Intensity-first','Mixed daily focus','Integrated','Readiness-guided','Aerobic emphasis','Strength emphasis','Power emphasis','Speed emphasis'];
 /* Every week focus carries its own load profile. Weekly Load Targets sets volume and
    intensity from this table when the focus changes, so the focus dropdown is the only
    control a coach needs. Values follow the per-period/per-model defaults in defWeek().
@@ -6095,7 +6208,9 @@ const FOCUS_LOAD={
   'Maintain & peak':{v:55,i:85},'Active recovery':{v:35,i:40},'Accumulation':{v:88,i:58},
   'Transmutation':{v:75,i:72},'Realization':{v:60,i:88},'Hi-volume wave':{v:85,i:60},
   'Hi-intensity wave':{v:62,i:85},'Max-effort':{v:70,i:88},'Dynamic-effort':{v:70,i:78},
-  'Deload':{v:45,i:50},'Peak':{v:50,i:92}};
+  'Deload':{v:45,i:50},'Peak':{v:50,i:92},
+  'Intensity-first':{v:60,i:85},'Mixed daily focus':{v:68,i:78},'Integrated':{v:67,i:77},'Readiness-guided':{v:70,i:70},
+  'Aerobic emphasis':{v:85,i:55},'Strength emphasis':{v:75,i:75},'Power emphasis':{v:65,i:82},'Speed emphasis':{v:58,i:88}};
 const BLOCK_NAMES=['Preparation','Strength & Power','Speed','Agility','Endurance','Core','Mobility & Flexibility','Coordination & Balance','Cool-Down'];
 /* International dialling codes for the athlete's mobile number. Turkey leads because that
    is where the roster is, then the countries a youth team actually travels to and the ones
@@ -8299,13 +8414,19 @@ function getPeriods(s){
   if(s.periods&&Array.isArray(s.periods)&&s.periods.length===4)return s.periods;
   return autoPeriods(s);
 }
+/* Every week runs the periodization model of the season phase it falls in. Models that
+   progress through a phase (Horizontal Integration) also get the week's place in it. */
 function buildWeeks(setup,periods,ov){
-  if(!periods.length)return[];const w=[];let cur=sow(parseD(setup.seasonStart));const end=parseD(setup.seasonEnd);let i=0;
+  if(!periods.length)return[];const rows=[];let cur=sow(parseD(setup.seasonStart));const end=parseD(setup.seasonEnd);
+  const ranges=seasonPhaseRanges(setup,periods);
   while(cur<=end){const k=fmt(cur);const p=periods.find(p=>k>=p.start&&k<=p.end)||periods[0];
-    const d=defWeek(setup.model,p,i,setup.competitions,k);w.push({...d,...(ov[k]||{}),week:k,period:p.id});cur=addD(cur,7);i++;}
-  return w;
+    rows.push({k,p,ph:seasonPhaseAt(ranges,k,p.id)});cur=addD(cur,7);}
+  const count={},seen={};rows.forEach(r=>{count[r.ph]=(count[r.ph]||0)+1;});
+  return rows.map((r,i)=>{const pi=seen[r.ph]||0;seen[r.ph]=pi+1;
+    const d=defWeek(phaseModel(setup,r.ph),r.p,i,setup.competitions,r.k,{pi,pn:count[r.ph]});
+    return{...d,...(ov[r.k]||{}),week:r.k,period:r.p.id};});
 }
-function defWeek(model,period,idx,comps,ws){
+function defWeek(model,period,idx,comps,ws,pos){
   const nc=comps.map(c=>parseD(c.date)).filter(d=>d>=parseD(ws)&&diffD(ws,fmt(d))<=14).sort((a,b)=>a-b)[0];
   const dtc=nc?diffD(ws,fmt(nc)):null;
   let v=70,it=70,f='General',t=false;
@@ -8313,7 +8434,17 @@ function defWeek(model,period,idx,comps,ws){
   if(period.id==='sp'){v=75;it=75;f='Sport-specific';}
   if(period.id==='comp'){v=55;it=85;f='Maintain & peak';}
   if(period.id==='trans'){v=35;it=40;f='Active recovery';}
+  /* Hybrid: blocks while preparing, undulating waves through the competition period. */
+  if(model==='hybrid')model=(period.id==='gp'||period.id==='sp')?'block':period.id==='comp'?'undulating':'';
   if(model==='linear'){v=Math.max(30,v-(idx%16)*.7);it=Math.min(95,it+(idx%16)*.5);}
+  if(model==='reverse'){const r=idx%16;v=Math.min(95,v-10+r*.7);it=Math.max(30,Math.min(95,it+10-r*.5));if(r<5)f='Intensity-first';}
+  if(model==='dup'){v-=2;it+=3;f='Mixed daily focus';}
+  if(model==='wup'){const ph=idx%3;if(ph===0){v+=5;f='Strength emphasis';}if(ph===1){v-=3;it+=5;f='Power emphasis';}if(ph===2){v-=8;it+=8;f='Speed emphasis';}}
+  if(model==='vertical'){v-=3;it+=2;f='Integrated';}
+  if(model==='horizontal'){const p=pos||{pi:idx,pn:16};const st=Math.min(3,Math.floor(p.pi*4/Math.max(1,p.pn)));
+    if(st===0){v+=10;it-=10;f='Aerobic emphasis';}if(st===1){v+=3;it+=3;f='Strength emphasis';}
+    if(st===2){v-=5;it+=7;f='Power emphasis';}if(st===3){v-=10;it+=10;f='Speed emphasis';}}
+  if(model==='auto')f='Readiness-guided';
   if(model==='block'){const ph=idx%3;if(ph===0){v+=10;it-=10;f='Accumulation';}if(ph===1)f='Transmutation';if(ph===2){v-=15;it+=10;f='Realization';}}
   if(model==='undulating'){if(idx%2===0){v+=8;it-=5;f='Hi-volume wave';}else{v-=8;it+=5;f='Hi-intensity wave';}}
   if(model==='conjugate'){v=70;it=80;f=idx%2===0?'Max-effort':'Dynamic-effort';}
@@ -12319,7 +12450,9 @@ const wltOpt=(key,id)=>{const st=WLT_STEPS.find(x=>x.key===key);return st?st.opt
 const WLT_FOCUS_PHASE={'Base + aerobic':'base','General':'base','Accumulation':'accumulation','Hi-volume wave':'accumulation',
   'Transmutation':'intensification','Sport-specific':'intensification','Hi-intensity wave':'intensification','Max-effort':'intensification',
   'Realization':'realization','Maintain & peak':'realization','Dynamic-effort':'realization','Peak':'realization',
-  'Active recovery':'transition','Deload':'transition'};
+  'Active recovery':'transition','Deload':'transition',
+  'Aerobic emphasis':'base','Intensity-first':'intensification','Strength emphasis':'intensification',
+  'Power emphasis':'realization','Speed emphasis':'realization'};
 const WLT_PERIOD_PHASE={gp:'base',sp:'accumulation',comp:'realization',trans:'transition'};
 const WLT_PHASE_EMPH={base:'aerobic',accumulation:'hypertrophy',intensification:'maxStrength',realization:'power',transition:'aerobic'};
 function wltDefaults(w,firstOfPeriod,games){
@@ -12473,6 +12606,49 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
   </div>);
 }
 
+/* ---- Periodization Model ---------------------------------------------------
+   The season's five phases across the top, the eleven models below. A phase is picked
+   first, then the model it runs; each phase card shows its dates and its model, so a
+   hybrid season reads at a glance. Resting the pointer on a model shows its explanation
+   in a small box, in the language the app is in. */
+function PeriodizationModelPanel({s,periods,set}){
+  const ranges=seasonPhaseRanges(s,periods);
+  const tk=fmt(new Date());
+  const todayPh=SEASON_PHASES.find(ph=>{const x=ranges[ph.id];return x&&tk>=x.start&&tk<=x.end;});
+  const[sel,setSel]=useState(todayPh?todayPh.id:'off');
+  const selPh=SEASON_PHASES.find(ph=>ph.id===sel)||SEASON_PHASES[0];
+  const cur=phaseModel(s,sel);
+  const pick=id=>set({phaseModels:{...(s.phaseModels||{}),[sel]:id}});
+  const applyAll=()=>set({model:cur,phaseModels:{}});
+  const same=SEASON_PHASES.every(ph=>phaseModel(s,ph.id)===cur);
+  const rng=x=>x?`${fd(x.start).slice(0,5)} – ${fd(x.end).slice(0,5)}`:L('bu sezonda yok','not in this season');
+  return(<div className="panel pm-panel"><h2>{L('Periyotlama Modeli','Periodization Model')}</h2>
+    <div className="pm-sh"><b>{L('Sezon Aşamaları','Season Phases')}</b>
+      <span>{L('Bir aşama seç, ardından o aşamanın modelini belirle.','Pick a phase, then choose the model it runs.')}</span></div>
+    <div className="pm-phases" role="tablist">
+      {SEASON_PHASES.map(ph=>{const m=modelOf(phaseModel(s,ph.id));const on=ph.id===sel;
+        return(<button key={ph.id} type="button" role="tab" aria-selected={on} className={'pm-ph'+(on?' on':'')+(ranges[ph.id]?'':' none')}
+          style={{'--oc':ph.c}} onClick={()=>setSel(ph.id)}>
+          <span className="pm-ph-n"><i/>{ph.name}{todayPh&&todayPh.id===ph.id?<em>{L('BUGÜN','TODAY')}</em>:null}</span>
+          <span className="pm-ph-d">{rng(ranges[ph.id])}</span>
+          <span className="pm-ph-m">{m?m.name:''}</span>
+        </button>);})}
+    </div>
+    <div className="pm-sh"><b>{L('Periodizasyon Modelleri','Periodization Models')}</b>
+      <span style={{'--oc':selPh.c}}><i className="pm-dot"/>{L(`${selPh.name} için`,`for ${selPh.name}`)}</span>
+      {!same&&<button type="button" className="btn sec sm" onClick={applyAll}
+        title={L('Seçili modeli bütün sezon aşamalarına uygula','Use the selected model in every season phase')}>
+        {L('Tüm aşamalara uygula','Apply to all phases')}</button>}</div>
+    <div className="pm-grid" role="radiogroup">
+      {MODELS.map(m=>{const on=m.id===cur;const used=SEASON_PHASES.filter(ph=>phaseModel(s,ph.id)===m.id);
+        return(<button key={m.id} type="button" role="radio" aria-checked={on} className={'pm-m'+(on?' on':'')}
+          style={{'--oc':selPh.c}} data-tip={L(m.d[0],m.d[1])} onClick={()=>pick(m.id)}>
+          <span className="pm-radio"/><span className="pm-m-n">{m.name}</span>
+          {used.length>0&&<span className="pm-m-u">{used.map(ph=><i key={ph.id} style={{background:ph.c}} title={ph.name}/>)}</span>}
+        </button>);})}
+    </div>
+  </div>);
+}
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
@@ -12591,12 +12767,13 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       const span=Math.max(1,diffD(winStart,winEnd));
       const pctOf=ds=>{const d=Math.max(0,Math.min(span,diffD(winStart,ds)));return d/span*100;};
       const todayPct=(tk>=winStart&&tk<=winEnd)?pctOf(tk):null;
-      const modelName=(MODELS.find(m=>m.id===s.model)?.name)||s.model;
+      const phModels=[...new Set(SEASON_PHASES.map(ph=>phaseModel(s,ph.id)))];
+      const modelName=phModels.length===1?(modelOf(phModels[0])||{}).name||'':L('Aşamaya göre model','Model by phase');
       const fmd=ds=>{const d=parseD(ds);return MN[d.getMonth()]+' '+d.getDate();};
       const ticks=[];let cur=new Date(parseD(winStart).getFullYear(),parseD(winStart).getMonth()+1,1);const endD=parseD(winEnd);
       while(cur<=endD){ticks.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
       return(<div className="panel mc-panel">
-        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${exLabel(modelName)} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div></div>
+        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div></div>
         <div className="mc-gantt">
           <div className="mc-axis">
             <div/>
@@ -12671,12 +12848,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
         macrocycle they draw: the model writes every week's volume/intensity profile and
         the fixture list is what the auto phases are cut around. They belong on the
         screen that shows what they did. */}
-    <div className="panel"><h2>{L('Periyotlama Modeli','Periodization Model')}</h2>
-      <div className="grid cols-2">{MODELS.map(m=>(<label key={m.id} style={{border:'1px solid',borderRadius:8,padding:14,cursor:'pointer',transition:'all .15s',
-        background:s.model===m.id?'var(--accent-bg)':'var(--elevated)',borderColor:s.model===m.id?'var(--accent)':'var(--border)'}}>
-        <div className="row"><input type="radio" name="model" checked={s.model===m.id} onChange={()=>u('model',m.id)} style={{width:'auto'}}/><strong>{exLabel(m.name)}</strong></div>
-        <div className="help" style={{marginLeft:24,marginTop:4}}>{exLabel(m.desc)}</div></label>))}</div>
-    </div>
+    <PeriodizationModelPanel s={s} periods={periods} set={patch=>updateTeam(team.id,{setup:{...s,...patch}})}/>
     {/* The fixture list. Most of it writes itself — a session ticked Competition in the
         session editor lands here on its own — so the panel opens folded: it is a long
         list a coach checks rather than a form they fill in. What is typed here is what
@@ -26884,16 +27056,15 @@ const EX_TERM_TR={
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
   'Linear':'Doğrusal','Block':'Blok','Undulating':'Dalgalı','Conjugate':'Konjuge',
-  'Volume decreases, intensity increases over time':'Hacim zamanla azalır, şiddet artar',
-  'Accumulation → Transmutation → Realization':'Birikim → Dönüşüm → Gerçekleştirme',
-  'Wave-like variation in volume / intensity':'Hacim / şiddette dalga biçimli değişim',
-  'Concurrent max-effort + dynamic-effort':'Eşzamanlı maksimal-efor + dinamik-efor',
   'General':'Genel','Specific':'Özel','Competition':'Müsabaka','Transition':'Geçiş',
   'General Preparation':'Genel Hazırlık','Specific Preparation':'Özel Hazırlık',
   'Base + aerobic':'Temel + aerobik','Sport-specific':'Spora özgü','Maintain & peak':'Koruma ve zirve',
   'Active recovery':'Aktif toparlanma','Accumulation':'Birikim','Transmutation':'Dönüşüm','Realization':'Gerçekleştirme',
   'Hi-volume wave':'Yüksek hacim dalgası','Hi-intensity wave':'Yüksek şiddet dalgası',
   'Max-effort':'Maksimal-efor','Dynamic-effort':'Dinamik-efor','Deload':'Yük azaltma','Peak':'Zirve',
+  'Intensity-first':'Önce şiddet','Mixed daily focus':'Günlük değişen odak','Integrated':'Entegre',
+  'Readiness-guided':'Hazır oluşa göre','Aerobic emphasis':'Aerobik vurgu','Strength emphasis':'Kuvvet vurgusu',
+  'Power emphasis':'Güç vurgusu','Speed emphasis':'Sürat vurgusu',
   'Eccentric':'Eksantrik','Isometric hold':'İzometrik bekleme','Concentric':'Konsantrik','Pause':'Duraklama',
   'No data':'Veri yok','High':'Yüksek','Watch':'İzle','Normal':'Normal','Low':'Düşük',
   'High risk':'Yüksek risk','Optimal':'Optimal','Caution':'Dikkat','Undertraining':'Düşük yük',
