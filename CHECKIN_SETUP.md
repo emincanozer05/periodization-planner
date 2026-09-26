@@ -20,6 +20,12 @@ Hazır Oluş · Uyku · Zihinsel Yorgunluk · Fiziksel Yorgunluk · Kas Ağrıs�
 Yorgunluk ikiye ayrılmadan önce gelen kayıtlarda tek bir yorgunluk skoru var; onlar
 Hazır Oluş'a eskisi gibi girer, iki yeni sütunda boş görünür.
 
+**Dil:** iki formun da sağ üstünde **TR / EN** seçimi var. Seçim sporcunun telefonunda
+saklanır; form her açılışta o dilde gelir. Dil yalnızca ekranı değiştirir: gönderilen
+veri aynıdır (ağrı bölgeleri her zaman Türkçe adlarıyla kaydedilir, ısı haritası ve
+uyarılar o adları kullanır). Form doldurulurken dil değiştirilirse verilen cevaplar
+korunur.
+
 Koç uygulamada **Check-in Formları** ekranına girer, iki düğmeden birine basar, link
 panoya kopyalanır ve sporculara gönderilir. Sporcu formda kendi adını seçer ve gönderir;
 cevap koç uygulamayı açtığında **anında** sporcunun günlüğüne düşer. Tally, Cloudflare
