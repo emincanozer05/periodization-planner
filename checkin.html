@@ -69,6 +69,17 @@ h1,h2{font-weight:700;letter-spacing:-.01em}
   border-radius:0 2px 2px 0;transition:width .45s cubic-bezier(.2,.7,.3,1)}
 
 .wrap{max-width:620px;margin:0 auto;padding:26px 16px 130px}
+/* TR / EN — başlığın sağ üstünde. #root her ekranda baştan kuruluyor; düğme onun
+   DIŞINDA, sıfır yükseklikli bir şeridin içinde duruyor ki form, hata ya da
+   teşekkür ekranı hangisi çizilirse çizilsin yerinde kalsın. */
+.langbar{max-width:620px;margin:0 auto;position:relative;height:0;z-index:5}
+.seg{position:absolute;right:16px;top:20px;display:inline-flex;background:var(--panel);
+  border:1px solid var(--border);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:11px;font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:999px;padding:4px 10px}
+.seg button.on{background:var(--accent);color:#fff}
+/* Dar ekranda ortalanmış wordmark'la çakışmasın diye künyeyi biraz aşağı itiyoruz. */
+@media (max-width:420px){.wrap{padding-top:52px}.seg{top:14px}}
 header{padding:2px 0 20px}
 /* Uygulamanın kendi başlığındaki wordmark (.lp-logo-img) ile aynı iş, bir tık
    küçüğü: sporcu formu açtığında bunun hangi ürün olduğunu ilk satırdan görsün. */
@@ -114,10 +125,14 @@ h1 .yr{color:var(--muted);font-weight:500}
 .card:nth-of-type(6){animation-delay:.2s}.card:nth-of-type(7){animation-delay:.24s}
 
 /* Uygulamanın .panel h2 dili: metin + solunda 3px accent çubuk. */
-.q{font-size:14px;font-weight:600;color:var(--text);margin:0 0 6px;
-  display:flex;align-items:center;gap:9px;flex-wrap:wrap}
-.q::before{content:'';width:3px;height:14px;background:var(--accent);border-radius:2px;flex:none}
-.q .req{color:var(--dim);font-size:11px;font-weight:500}
+/* Metin akışta, çubuk solda sabit: uzun bir soru (ör. "Mental stres/yorgunluk…")
+   dar ekranda iki satıra kırılınca çubuk ve "zorunlu" etiketi ayrı satırlara
+   düşmesin — soru kendi içinde kırılıyor, etiket de metnin hemen arkasından geliyor. */
+.q{font-size:14px;font-weight:600;color:var(--text);margin:0 0 6px;line-height:1.35;
+  position:relative;padding-left:12px}
+.q::before{content:'';position:absolute;left:0;top:2px;width:3px;height:14px;
+  background:var(--accent);border-radius:2px}
+.q .req{color:var(--dim);font-size:11px;font-weight:500;margin-left:8px;white-space:nowrap}
 .scale{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);
   margin:0 0 12px;padding-left:12px;letter-spacing:.02em}
 .scale b{font-weight:500;color:var(--muted)}
@@ -257,20 +272,141 @@ code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;
 </style>
 </head>
 <body>
+<div class="langbar"><div class="seg" id="lang" role="group" aria-label="Dil / Language"></div></div>
 <div class="wrap" id="root">
-  <div class="sub" id="boot">Yükleniyor…</div>
+  <div class="sub" id="boot">…</div>
 </div>
 
 <script>
-/* ── Sabitler ────────────────────────────────────────────────────────────── */
-var FORMS={
-  srpe:{title:'İçsel Yük Takibi',dateLabel:'Antrenman / Maç tarihi'},
-  wellness:{title:'Wellness Takibi',dateLabel:'Tarih'}
+/* ── Dil ─────────────────────────────────────────────────────────────────────
+   Form iki dilde: Türkçe ve İngilizce. Sağ üstteki TR / EN seçimi telefonda
+   saklanıyor — sporcu formu (wellness de RPE de) her açışında o dilde görüyor. Hiç
+   seçim yapılmamışsa telefonun dili (İngilizce ise EN, değilse TR).
+
+   Dil yalnızca EKRANI değiştiriyor, gönderilen veriyi değil: ağrı bölgeleri
+   gönderimde yine Türkçe adlarıyla gidiyor (ısı haritası ve uyarılar o adları
+   anahtar olarak kullanıyor), puanlar zaten sayı. Dil değişince form yerinde
+   yeniden çiziliyor; o ana kadar verilen cevaplar korunuyor. */
+var LS_LANG='coachos.checkin.lang';
+var LANG=(function(){
+  try{var v=localStorage.getItem(LS_LANG);if(v==='tr'||v==='en')return v;}catch(e){}
+  return (navigator.language||'tr').toLowerCase().indexOf('en')===0?'en':'tr';
+})();
+var I18N={
+  tr:{
+    loading:'Yükleniyor…',
+    srpe_title:'İçsel Yük Takibi',srpe_date:'Antrenman / Maç tarihi',
+    wellness_title:'Wellness Takibi',wellness_date:'Tarih',
+    srpe_sub:'Antrenman/maç sonrası doldur. Yapmadığın bölümü boş bırak.',
+    wellness_sub:'Günaydın! Sabah kalkınca doldur — bir dakikanı almaz.',
+    required:'zorunlu',other:'Diğer',
+    roster_empty:'Bu linkte <b>sporcu listesi boş</b>, bu yüzden formu dolduramazsın.',
+    roster_tip:'Koçuna ilet: CoachOS → <b>Check-in Formları</b> → <b>Kadroyu yeniden yayımla</b>. Sonra bu sayfayı yenile.',
+    pick:'— Seç —',athlete:'Sporcu ismi',
+    athlete_hint:'Adını bir kere seçmen yeterli — bu telefonda bir dahaki sefere hazır gelir.',
+    tp_q:'Top antrenmanı ne kadar yorucuydu?',tp_dur:'Top antrenmanı süresi (dk)',
+    sc_q:'Kuvvet & Kondisyon ne kadar yorucuydu?',sc_dur:'Kuvvet & Kondisyon süresi (dk)',
+    game_q:'Müsabaka ne kadar yorucuydu?',game_dur:'Kaç dakika süre aldın?',
+    srpe_hint:'O gün yapmadığın bölümü boş bırak — en az bir bölümü doldurman yeterli.',
+    rhr_q:'Dinlenik KAH nedir? (atım/dk)',rhr_ph:'örn. 58',
+    rhr_hint:'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.',
+    sleep_q:'Uyku kaliten nasıldı?',
+    mental_q:'Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun?',mental_s:'Zihinsel Yorgunluk',
+    physical_q:'Fiziksel olarak ne kadar yorgun hissediyorsun?',physical_s:'Fiziksel Yorgunluk',
+    soreness_q:'Kaslarında ne düzeyde ağrı/sertlik hissediyorsun?',soreness_s:'Kas Ağrısı',
+    pain_q:'Ağrın hangi bölgede ve ne şiddette?',pain_hint:'Opsiyonel — bir bölgeye dokun, şiddetini seç.',
+    sleep_l:['çok kötü','kötü','orta','iyi','çok iyi'],
+    mental_l:['çok yüksek','yüksek','orta','düşük','çok düşük'],
+    physical_l:['bitkin','yorgun','orta','dinç','çok dinç'],
+    soreness_l:['çok ağrılı','ağrılı','orta','hafif','ağrım yok'],
+    sev:['Hafif','Orta','Yüksek'],sev_w:['hafif','orta','yüksek'],
+    selected:'Seçili: ',no_pain:'Ağrın yoksa bu tabloyu boş bırak.',
+    v_date:'Tarihi seç.',v_athlete:'Sporcu ismini seç.',
+    v_rpe:'En az bir bölüm için zorluk (RPE) seç.',v_dur:'{s} için süreyi de seç.',
+    s_tp:'Top antrenmanı',s_sc:'Kuvvet & Kondisyon',s_game:'Müsabaka',
+    v_sleep:'Uyku kaliteni seç.',v_mental:'Mental stres/yorgunluk düzeyini seç.',
+    v_physical:'Fiziksel yorgunluk düzeyini seç.',
+    sending:'Gönderiliyor…',send:'Gönder',left:'· {n} adım kaldı',
+    e_anon:'Gönderim reddedildi. Koçuna ilet: Firebase Console → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> açık olmalı.',
+    e_denied:'Gönderim reddedildi. Koçuna ilet: Firestore kuralları henüz yüklenmemiş olabilir (<code>checkins</code> bölümü).',
+    e_send:'Gönderilemedi: {m}<br>İnternetini kontrol edip tekrar dene.',
+    no_session:'Anonim oturum kurulamadı.',
+    queued_h:'Gönderimin yolda',queued_p:'Bağlantı yavaş görünüyor ama cevabın kaydedildi; şebeke gelince kendiliğinden ulaşacak.',
+    done_h:'Teşekkürler!',done_p:'Cevabın koçuna ulaştı.',again:'Yeni gönderim yap',
+    f_nolink_t:'Link eksik',f_nolink_d:'Bu adreste form anahtarı yok.',
+    f_nolink_x:'Koçundan check-in linkini yeniden iste — link <code>#k=…</code> ile bitmeli.',
+    f_gone_t:'Form bulunamadı',f_gone_d:'Bu link artık geçerli değil.',f_gone_x:'Koçun linki yenilemiş olabilir; ondan güncel linki iste.',
+    f_bad_t:'Form eksik kurulmuş',f_bad_d:'Linkin arkasındaki kayıt eksik.',f_bad_x:'Koçun uygulamada linki bir kez daha kopyalaması yeterli.',
+    f_anon_t:'Form henüz açılmamış',f_anon_d:'Anonim giriş kapalı olduğu için form yüklenemedi.',
+    f_anon_x:'Koçuna ilet: Firebase Console → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> satırı <b>Enabled</b> olmalı (kapalıysa: satıra tıkla → Enable → Save). Açtıktan sonra bu sayfayı yenile.',
+    f_perm_t:'Form okunamadı',f_perm_d:'Bu forma erişim izni yok.',
+    f_perm_x:'Koçuna ilet: Firestore kurallarında <code>checkin_links</code> ve <code>checkins</code> bölümleri eksik.',
+    f_load_t:'Form yüklenemedi',f_load_x:'İnternetini kontrol edip sayfayı yenile.',
+  },
+  en:{
+    loading:'Loading…',
+    srpe_title:'Internal Load Tracking',srpe_date:'Training / match date',
+    wellness_title:'Wellness Tracking',wellness_date:'Date',
+    srpe_sub:'Fill in after training/a match. Leave out any part you didn\'t do.',
+    wellness_sub:'Good morning! Fill it in when you wake up — it takes less than a minute.',
+    required:'required',other:'Other',
+    roster_empty:'The <b>athlete list is empty</b> on this link, so you can\'t fill in the form.',
+    roster_tip:'Tell your coach: CoachOS → <b>Check-in Forms</b> → <b>Republish roster</b>. Then reload this page.',
+    pick:'— Select —',athlete:'Athlete name',
+    athlete_hint:'Pick your name once — it will be ready on this phone next time.',
+    tp_q:'How hard was team training?',tp_dur:'Team training duration (min)',
+    sc_q:'How hard was Strength & Conditioning?',sc_dur:'Strength & Conditioning duration (min)',
+    game_q:'How hard was the competition?',game_dur:'How many minutes did you play?',
+    srpe_hint:'Leave out any part you didn\'t do that day — filling in one is enough.',
+    rhr_q:'What is your resting HR? (bpm)',rhr_ph:'e.g. 58',
+    rhr_hint:'Enter it if you measured it before getting out of bed; otherwise leave it empty.',
+    sleep_q:'How was your sleep quality?',
+    mental_q:'How would you rate your mental stress/fatigue?',mental_s:'Mental Fatigue',
+    physical_q:'How physically tired do you feel?',physical_s:'Physical Fatigue',
+    soreness_q:'How much muscle soreness/stiffness do you feel?',soreness_s:'Muscle Soreness',
+    pain_q:'Where does it hurt, and how much?',pain_hint:'Optional — tap a region and pick the severity.',
+    sleep_l:['very poor','poor','average','good','very good'],
+    mental_l:['very high','high','moderate','low','very low'],
+    physical_l:['exhausted','tired','moderate','fresh','very fresh'],
+    soreness_l:['very sore','sore','moderate','mild','no soreness'],
+    sev:['Mild','Moderate','High'],sev_w:['mild','moderate','high'],
+    selected:'Selected: ',no_pain:'Leave this table empty if nothing hurts.',
+    v_date:'Pick the date.',v_athlete:'Pick your name.',
+    v_rpe:'Pick a difficulty (RPE) for at least one part.',v_dur:'Pick the duration for {s} too.',
+    s_tp:'team training',s_sc:'Strength & Conditioning',s_game:'the competition',
+    v_sleep:'Pick your sleep quality.',v_mental:'Pick your mental stress/fatigue.',
+    v_physical:'Pick your physical fatigue.',
+    sending:'Sending…',send:'Send',left:'· {n} steps left',
+    e_anon:'Submission rejected. Tell your coach: Firebase Console → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> must be enabled.',
+    e_denied:'Submission rejected. Tell your coach: the Firestore rules may not be published yet (<code>checkins</code> section).',
+    e_send:'Could not send: {m}<br>Check your connection and try again.',
+    no_session:'Could not open an anonymous session.',
+    queued_h:'Your answer is on its way',queued_p:'The connection looks slow, but your answer is saved; it will arrive on its own once you have signal.',
+    done_h:'Thank you!',done_p:'Your answer reached your coach.',again:'Send another',
+    f_nolink_t:'Link incomplete',f_nolink_d:'This address has no form key.',
+    f_nolink_x:'Ask your coach for the check-in link again — it should end with <code>#k=…</code>.',
+    f_gone_t:'Form not found',f_gone_d:'This link is no longer valid.',f_gone_x:'Your coach may have renewed the link; ask for the current one.',
+    f_bad_t:'Form set up incompletely',f_bad_d:'The record behind the link is incomplete.',f_bad_x:'Your coach only needs to copy the link again in the app.',
+    f_anon_t:'Form not open yet',f_anon_d:'The form could not load because anonymous sign-in is off.',
+    f_anon_x:'Tell your coach: Firebase Console → <b>Authentication → Sign-in method</b> → <b>Anonymous</b> must be <b>Enabled</b> (if off: click the row → Enable → Save). Then reload this page.',
+    f_perm_t:'Form could not be read',f_perm_d:'There is no permission to open this form.',
+    f_perm_x:'Tell your coach: the <code>checkin_links</code> and <code>checkins</code> sections are missing from the Firestore rules.',
+    f_load_t:'Form could not load',f_load_x:'Check your connection and reload the page.',
+  }
 };
+function T(k){var d=I18N[LANG]||I18N.tr;return d[k]!=null?d[k]:(I18N.tr[k]!=null?I18N.tr[k]:k);}
+document.documentElement.lang=LANG;
+
 // Ağrı matrisinin satırları. Koçun Tally formundaki liste ile birebir aynı: eski
 // check-in'ler de aynı bölge adlarıyla kayıtlı olduğu için ısı haritası bölünmüyor.
+// Bu adlar VERİ — gönderime hep Türkçe gidiyor; İngilizce yalnızca ekrandaki karşılığı.
 var PAIN_REGIONS=['Boyun','Omuz','Sırt','Göğüs','Karın','Dirsek','Bilek / El','Bel','Kalça',
   'Kasık','Hamstring','Quadriceps','Diz','Kalf','Aşil','Ayak Bileği','Ayak'];
+var PAIN_REGIONS_EN={'Boyun':'Neck','Omuz':'Shoulder','Sırt':'Upper back','Göğüs':'Chest',
+  'Karın':'Abdomen','Dirsek':'Elbow','Bilek / El':'Wrist / Hand','Bel':'Lower back','Kalça':'Hip',
+  'Kasık':'Groin','Hamstring':'Hamstring','Quadriceps':'Quadriceps','Diz':'Knee','Kalf':'Calf',
+  'Aşil':'Achilles','Ayak Bileği':'Ankle','Ayak':'Foot'};
+function regionLabel(rg){return LANG==='en'?(PAIN_REGIONS_EN[rg]||rg):rg;}
 var RPE_VALUES=[1,2,3,4,5,6,7,8,9,10];
 // RPE skalasının rengi: 1 mavi (kolay) → 10 kırmızı (bitkin). Aradaki adımlar
 // maviden turkuaza, yeşile, sarıya, turuncuya geçiyor.
@@ -282,15 +418,10 @@ var SCORE_5=[1,2,3,4,5];
 // Wellness skalası ters yönde okunuyor (1 kötü, 5 iyi): 1 kırmızı → 4 yeşil,
 // 5 ise skalanın tepesi olarak mavi.
 var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
-// Her basamağın sözle karşılığı — soruya göre değişiyor, çünkü "5" birinde
-// "mükemmel uyudum", ötekinde "hiç ağrım yok" demek.
-var SLEEP_LABELS   =['çok kötü','kötü','orta','iyi','çok iyi'];
-// Yorgunluk iki ayrı soru: zihinsel (stres) ve fiziksel. Tek bir "yorgunluk"
-// sorusu, sınav haftasında kafası dolu ama bacakları dinç sporcuyla tersini aynı
-// sayıya sıkıştırıyordu. Skala aynı: 1 kötü, 5 iyi.
-var MENTAL_LABELS  =['çok yüksek','yüksek','orta','düşük','çok düşük'];
-var PHYSICAL_LABELS=['bitkin','yorgun','orta','dinç','çok dinç'];
-var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
+// Her basamağın sözle karşılığı (I18N'de *_l) soruya göre değişiyor, çünkü "5"
+// birinde "mükemmel uyudum", ötekinde "hiç ağrım yok" demek. Yorgunluk iki ayrı
+// soru: zihinsel (stres) ve fiziksel — tek bir "yorgunluk" sorusu, sınav haftasında
+// kafası dolu ama bacakları dinç sporcuyla tersini aynı sayıya sıkıştırıyordu.
 
 /* Wellness gönderiminin karşılığı ────────────────────────────────────────────
    Formu gönderen sporcu, skoru kaç olursa olsun sıradaki özlü sözü görüyor. Ödül
@@ -302,17 +433,22 @@ var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
    sırayla.
 
    Ekranda yalnızca yazı var: söz ve altında sözün sahibi. Sıraya yeni bir söz
-   eklemek için listeye `text` + `by` içeren bir satır eklemek yetiyor. */
+   eklemek için listeye `text` + `by` (+ İngilizcesi `en`) içeren bir satır eklemek yetiyor. */
 var MOTIVATION=[
   {by:'Roger Federer',
+   en:"There's no way around hard work. Embrace it. You have to put in the hours because there's always something which you can improve.",
    text:'Çalışkanlığın önüne geçmenin bir yolu yok. Bunu benimseyin. Çok çalışmanız gerekiyor çünkü her zaman kendinizi geliştirebileceğiniz bir şeyler vardır.'},
   {by:'Muhammad Ali',
+   en:"Champions aren't made in gyms. Champions are made from something they have deep inside them — a desire, a dream, a vision.",
    text:'Şampiyonlar spor salonlarında yetişmez. Şampiyonlar içlerinde derinlerde taşıdıkları bir şeyden, bir arzudan, bir hayalden, bir vizyondan doğarlar.'},
   {by:'Usain Bolt',
+   en:"Dreams are free. Goals have a cost. While you can daydream for free, goals don't come without a price. Time, effort, sacrifice and sweat. How will you pay for your goals?",
    text:'Hayaller bedava. Hedeflerin ise bir bedeli var. Hayal kurmak ücretsiz olsa da, hedefler bedelsiz gelmez. Zaman, çaba, fedakarlık ve ter. Hedeflerinizin bedelini nasıl ödeyeceksiniz?'},
   {by:'Kevin Durant',
+   en:"Hard work beats talent when talent fails to work hard.",
    text:'Yetenekli kişi çok çalışmayı ihmal ettiğinde, çok çalışmak yeteneği yener.'},
   {by:'Michael Jordan',
+   en:"Some people want it to happen, some wish it would happen, others make it happen.",
    text:'Bazıları bunun olmasını ister, bazıları olmasını diler, bazıları ise olmasını sağlar.'}
 ];
 /* Listenin sıradaki elemanı: en son gösterilen sıra telefonda tutuluyor, her
@@ -372,11 +508,17 @@ function params(){
   if(!p.get('k')&&q)p=new URLSearchParams(q);
   return p;
 }
+/* O an ekranda olanı yeniden çizen fonksiyon. Dil değişince bu çağrılıyor — form,
+   hata ekranı ya da teşekkür ekranı, hangisiyse o yeni dilde yeniden kuruluyor. */
+var VIEW=null;
 function fatal(title,detail,extra){
+  VIEW=function(){fatal(title,detail,extra);};
   var r=$('#root');r.innerHTML='';
-  r.appendChild(el('header',null,[el('h1',{text:title})]));
-  r.appendChild(el('div',{class:'msg bad',html:detail}));
-  if(extra)r.appendChild(el('div',{class:'hint',html:extra}));
+  // Anahtar verilmişse (f_…) sözlükten, verilmemişse (ham hata mesajı) olduğu gibi.
+  // Parametrelerin kendisi değiştirilmiyor: VIEW onları anahtar olarak tekrar okuyor.
+  r.appendChild(el('header',null,[el('h1',{text:T(title)})]));
+  r.appendChild(el('div',{class:'msg bad',html:T(detail)}));
+  if(extra)r.appendChild(el('div',{class:'hint',html:T(extra)}));
 }
 
 /* ── Firebase ────────────────────────────────────────────────────────────── */
@@ -460,7 +602,7 @@ function chipRow(field,values,opts){
     });
   }
   if(opts.custom){
-    custom=el('input',{type:'number',inputmode:'numeric',min:'0',max:'400',placeholder:'Diğer',
+    custom=el('input',{type:'number',inputmode:'numeric',min:'0',max:'400',placeholder:T('other'),
       style:'width:96px;padding:9px 10px;font-size:14px',oninput:function(){
         var n=parseInt(custom.value,10);
         A[field]=isNaN(n)?null:n;
@@ -480,7 +622,7 @@ function chipRow(field,values,opts){
 }
 function question(label,required,node,scaleHtml,filledFn){
   var kids=[el('div',{class:'q'},[el('span',{text:label}),
-    required?el('span',{class:'req',text:'zorunlu'}):null])];
+    required?el('span',{class:'req',text:T('required')}):null])];
   if(scaleHtml)kids.push(el('div',{class:'scale',html:scaleHtml}));
   kids.push(node);
   var card=el('div',{class:'card'},kids);
@@ -492,16 +634,19 @@ function question(label,required,node,scaleHtml,filledFn){
 
 /* ── Ağrı matrisi ────────────────────────────────────────────────────────── */
 function painGrid(){
-  A.painMap={};
+  // Dil değişince form yeniden çiziliyor; işaretlenmiş bölgeler kaybolmasın.
+  A.painMap=A.painMap||{};
   var tbl=el('table',{class:'grid'});
+  var SEV=T('sev');
   var head=el('tr',null,[el('th',null,[]),
-    el('th',{class:'s1',text:'Hafif'}),el('th',{class:'s2',text:'Orta'}),el('th',{class:'s3',text:'Yüksek'})]);
+    el('th',{class:'s1',text:SEV[0]}),el('th',{class:'s2',text:SEV[1]}),el('th',{class:'s3',text:SEV[2]})]);
   tbl.appendChild(el('thead',null,[head]));
   var body=el('tbody');
   PAIN_REGIONS.forEach(function(rg){
-    var tr=el('tr',null,[el('td',{class:'rg',text:rg})]);
+    // Satırın anahtarı Türkçe bölge adı (veri), ekranda yazan seçilen dildeki karşılığı.
+    var tr=el('tr',{'data-rg':rg},[el('td',{class:'rg',text:regionLabel(rg)})]);
     [1,2,3].forEach(function(sev){
-      var b=el('button',{type:'button',class:'dot s'+sev,'aria-label':rg+' '+sev,onclick:function(){
+      var b=el('button',{type:'button',class:'dot s'+sev,'aria-label':regionLabel(rg)+' '+sev,onclick:function(){
         if(A.painMap[rg]===sev)delete A.painMap[rg];else A.painMap[rg]=sev;
         paint();refreshAll();
       }});
@@ -512,19 +657,19 @@ function painGrid(){
   });
   tbl.appendChild(body);
   var sum=el('div',{class:'painsum'});
-  var SEV_WORD={1:'hafif',2:'orta',3:'yüksek'};
+  var SEV_W=T('sev_w'),SEV_WORD={1:SEV_W[0],2:SEV_W[1],3:SEV_W[2]};
   function paint(){
     Array.prototype.forEach.call(tbl.querySelectorAll('.dot'),function(b){
       b.classList.toggle('on',A.painMap[b.dataset.rg]===Number(b.dataset.sev));
     });
     Array.prototype.forEach.call(body.querySelectorAll('tr'),function(tr){
-      var rg=tr.querySelector('.rg');
-      tr.classList.toggle('on',!!(rg&&A.painMap[rg.textContent]));
+      var rg=tr.getAttribute('data-rg');
+      tr.classList.toggle('on',!!(rg&&A.painMap[rg]));
     });
     var picked=Object.keys(A.painMap);
     sum.textContent=picked.length
-      ? 'Seçili: '+picked.map(function(r){return r+' ('+SEV_WORD[A.painMap[r]]+')';}).join(' · ')
-      : 'Ağrın yoksa bu tabloyu boş bırak.';
+      ? T('selected')+picked.map(function(r){return regionLabel(r)+' ('+SEV_WORD[A.painMap[r]]+')';}).join(' · ')
+      : T('no_pain');
   }
   paint();
   return el('div',null,[tbl,sum]);
@@ -546,7 +691,6 @@ function teamLogoImg(box){
   return img;
 }
 function buildHeader(){
-  var f=FORMS[KIND];
   var team=el('div',{class:'team'});
   var logo=teamLogoImg(team);
   if(!logo)team.classList.add('nologo');
@@ -556,52 +700,42 @@ function buildHeader(){
     el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
     el('div',{class:'tagline',text:'coaching operating system'}),
     team,
-    el('h1',{html:f.title+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
-    el('div',{class:'sub',text:KIND==='srpe'
-      ? 'Antrenman/maç sonrası doldur. Yapmadığın bölümü boş bırak.'
-      : 'Günaydın! Sabah kalkınca doldur — bir dakikanı almaz.'})
+    el('h1',{html:T(KIND+'_title')+(LINK.teamYear?' <span class="yr">('+LINK.teamYear+')</span>':'')}),
+    el('div',{class:'sub',text:T(KIND+'_sub')})
   ]);
 }
 function buildCommon(){
-  var f=FORMS[KIND];
   var dateIn=el('input',{type:'date',value:A.date,onchange:function(){A.date=dateIn.value;}});
   var roster=(LINK.athletes||[]).filter(function(a){return a&&a.id&&(a.name||'').trim();});
   /* Kadro boş gelirse açılır kutu da boş olur ve sporcu formu dolduramaz — ama ekranda
      bunu söyleyen hiçbir şey olmaz. Sebebi koçun tarafında (link kaydı kadro inmeden
      yayımlanmış), o yüzden ne yapılacağı da yazılıyor. */
   if(!roster.length){
-    var warn=el('div',{class:'msg bad',
-      html:'Bu linkte <b>sporcu listesi boş</b>, bu yüzden formu dolduramazsın.'});
-    var tip=el('div',{class:'hint',
-      html:'Koçuna ilet: CoachOS → <b>Check-in Formları</b> → <b>Kadroyu yeniden yayımla</b>. '
-        +'Sonra bu sayfayı yenile.'});
+    var warn=el('div',{class:'msg bad',html:T('roster_empty')});
+    var tip=el('div',{class:'hint',html:T('roster_tip')});
     return [warn,tip];
   }
   var sel=el('select',{onchange:function(){
     A.athleteId=sel.value;
     try{if(A.athleteId)localStorage.setItem(LS_KEY+LINK.teamId,A.athleteId);}catch(e){}
-  }},[el('option',{value:'',text:'— Seç —'})]);
+  }},[el('option',{value:'',text:T('pick')})]);
   roster.forEach(function(a){
     sel.appendChild(el('option',{value:a.id,text:a.name}));
   });
   if(A.athleteId)sel.value=A.athleteId;
   dateIn.addEventListener('change',refreshAll);
   sel.addEventListener('change',refreshAll);
-  return [question(f.dateLabel,true,dateIn,null,function(){return !!A.date;}),
-          question('Sporcu ismi',true,sel,
-            'Adını bir kere seçmen yeterli — bu telefonda bir dahaki sefere hazır gelir.',
+  return [question(T(KIND+'_date'),true,dateIn,null,function(){return !!A.date;}),
+          question(T('athlete'),true,sel,T('athlete_hint'),
             function(){return !!A.athleteId;})];
 }
 function buildSrpe(){
   // Üç bölüm, aynı kalıp: zorluk + süre. Doldurulduğu kartın mavi kenarından
   // görünüyor; bölümün kendisine ayrıca bir onay satırı konmuyor.
   var SECTIONS=[
-    {n:'01',t:'Top antrenmanı ne kadar yorucuydu?',rpe:'tpRPE',dur:'tpDuration',
-     durLabel:'Top antrenmanı süresi (dk)',durVals:DUR_VALUES},
-    {n:'02',t:'Kuvvet & Kondisyon ne kadar yorucuydu?',rpe:'scRPE',dur:'scDuration',
-     durLabel:'Kuvvet & Kondisyon süresi (dk)',durVals:DUR_VALUES},
-    {n:'03',t:'Müsabaka ne kadar yorucuydu?',rpe:'gameRPE',dur:'gameDuration',
-     durLabel:'Kaç dakika süre aldın?',durVals:GAME_MIN},
+    {n:'01',t:T('tp_q'),rpe:'tpRPE',dur:'tpDuration',durLabel:T('tp_dur'),durVals:DUR_VALUES},
+    {n:'02',t:T('sc_q'),rpe:'scRPE',dur:'scDuration',durLabel:T('sc_dur'),durVals:DUR_VALUES},
+    {n:'03',t:T('game_q'),rpe:'gameRPE',dur:'gameDuration',durLabel:T('game_dur'),durVals:GAME_MIN},
   ];
   var sects=SECTIONS.map(function(S){
     return el('div',{class:'sect'},[
@@ -613,7 +747,7 @@ function buildSrpe(){
     ]);
   });
   var box=el('div',{class:'card'},sects.concat([
-    el('div',{class:'hint',text:'O gün yapmadığın bölümü boş bırak — en az bir bölümü doldurman yeterli.'})
+    el('div',{class:'hint',text:T('srpe_hint')})
   ]));
   REFRESH.push(function(){
     box.classList.toggle('filled',['tpRPE','scRPE','gameRPE'].some(function(k){return A[k]!=null;}));
@@ -621,32 +755,31 @@ function buildSrpe(){
   return [box];
 }
 function buildWellness(){
-  var rhr=el('input',{type:'number',inputmode:'numeric',min:'25',max:'150',placeholder:'örn. 58',
+  var rhr=el('input',{type:'number',inputmode:'numeric',min:'25',max:'150',placeholder:T('rhr_ph'),
     oninput:function(){var n=parseInt(rhr.value,10);A.RHR=isNaN(n)?null:n;refreshAll();}});
+  if(A.RHR!=null)rhr.value=String(A.RHR);   // dil değişince yeniden çizilen formda kalsın
   return [
-    question('Dinlenik KAH nedir? (atım/dk)',false,rhr,
-      'Sabah yataktan kalkmadan ölçtüysen yaz; ölçmediysen boş bırak.',
+    question(T('rhr_q'),false,rhr,T('rhr_hint'),
       function(){return A.RHR!=null;}),
     // Skalanın yönünü rozetlerin rengi, her basamağın ne demek olduğunu da
     // altındaki etiket anlatıyor; eski "1 … → 5 …" satırına gerek kalmıyor.
-    question('Uyku kaliten nasıldı?',true,
-      chipRow('sleep',SCORE_5,{palette:SCORE_COLORS,labels:SLEEP_LABELS}),
+    question(T('sleep_q'),true,
+      chipRow('sleep',SCORE_5,{palette:SCORE_COLORS,labels:T('sleep_l')}),
       null,
       function(){return A.sleep!=null;}),
-    question('Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun?',true,
-      chipRow('mentalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:MENTAL_LABELS}),
-      'Zihinsel Yorgunluk',
+    question(T('mental_q'),true,
+      chipRow('mentalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:T('mental_l')}),
+      T('mental_s'),
       function(){return A.mentalFatigue!=null;}),
-    question('Fiziksel olarak ne kadar yorgun hissediyorsun?',true,
-      chipRow('physicalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:PHYSICAL_LABELS}),
-      'Fiziksel Yorgunluk',
+    question(T('physical_q'),true,
+      chipRow('physicalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:T('physical_l')}),
+      T('physical_s'),
       function(){return A.physicalFatigue!=null;}),
-    question('Kaslarında ne düzeyde ağrı/sertlik hissediyorsun?',false,
-      chipRow('soreness',SCORE_5,{palette:SCORE_COLORS,labels:SORENESS_LABELS}),
-      'Kas Ağrısı',
+    question(T('soreness_q'),false,
+      chipRow('soreness',SCORE_5,{palette:SCORE_COLORS,labels:T('soreness_l')}),
+      T('soreness_s'),
       function(){return A.soreness!=null;}),
-    question('Ağrın hangi bölgede ve ne şiddette?',false,painGrid(),
-      'Opsiyonel — bir bölgeye dokun, şiddetini seç.',
+    question(T('pain_q'),false,painGrid(),T('pain_hint'),
       function(){return Object.keys(A.painMap||{}).length>0;})
   ];
 }
@@ -668,19 +801,19 @@ function steps(){
 
 /* ── Doğrulama ───────────────────────────────────────────────────────────── */
 function validate(){
-  if(!A.date)return 'Tarihi seç.';
-  if(!A.athleteId)return 'Sporcu ismini seç.';
+  if(!A.date)return T('v_date');
+  if(!A.athleteId)return T('v_athlete');
   if(KIND==='srpe'){
     var any=['tpRPE','scRPE','gameRPE'].some(function(k){return A[k]!=null;});
-    if(!any)return 'En az bir bölüm için zorluk (RPE) seç.';
-    var pairs=[['tpRPE','tpDuration','Top antrenmanı'],['scRPE','scDuration','Kuvvet & Kondisyon'],['gameRPE','gameDuration','Müsabaka']];
+    if(!any)return T('v_rpe');
+    var pairs=[['tpRPE','tpDuration','s_tp'],['scRPE','scDuration','s_sc'],['gameRPE','gameDuration','s_game']];
     for(var i=0;i<pairs.length;i++){
-      if(A[pairs[i][0]]!=null&&A[pairs[i][1]]==null)return pairs[i][2]+' için süreyi de seç.';
+      if(A[pairs[i][0]]!=null&&A[pairs[i][1]]==null)return T('v_dur').replace('{s}',T(pairs[i][2]));
     }
   }else{
-    if(A.sleep==null)return 'Uyku kaliteni seç.';
-    if(A.mentalFatigue==null)return 'Mental stres/yorgunluk düzeyini seç.';
-    if(A.physicalFatigue==null)return 'Fiziksel yorgunluk düzeyini seç.';
+    if(A.sleep==null)return T('v_sleep');
+    if(A.mentalFatigue==null)return T('v_mental');
+    if(A.physicalFatigue==null)return T('v_physical');
   }
   return null;
 }
@@ -717,7 +850,7 @@ function openSession(){
   var auth=APP.auth();
   return auth.signInAnonymously().then(function(cred){
     var u=auth.currentUser||(cred&&cred.user);
-    if(!u)throw new Error('Anonim oturum kurulamadı.');
+    if(!u)throw new Error(T('no_session'));
     return u.getIdToken(true).then(function(){return u;},function(e){
       /* Jeton ağ yokken tazelenemez; bu, oturumun geçersiz olduğu anlamına gelmez.
          Sahada şebeke zayıf olabildiği için elde olanla devam edilir — gönderim
@@ -752,7 +885,7 @@ function submit(btn,errBox){
     return;
   }
   errBox.style.display='none';
-  btn.disabled=true;btn.textContent='Gönderiliyor…';
+  btn.disabled=true;btn.textContent=T('sending');
   var ath=(LINK.athletes||[]).filter(function(a){return a&&a.id===A.athleteId;})[0];
   var doc={
     coachUid:LINK.coachUid,teamId:LINK.teamId,token:TOKEN,
@@ -780,17 +913,15 @@ function submit(btn,errBox){
     if(settled)return;settled=true;clearTimeout(timer);done(false);
   }).catch(function(e){
     if(settled)return;settled=true;clearTimeout(timer);
-    btn.disabled=false;btn.textContent='Gönder →';
+    btn.disabled=false;btn.textContent=T('send')+' →';
     errBox.className='msg bad';errBox.style.display='';
     var code=(e&&e.code)||'';
     if(isAuthClosed(code)){
-      errBox.innerHTML='Gönderim reddedildi. Koçuna ilet: Firebase Console → '
-        +'<b>Authentication → Sign-in method</b> → <b>Anonymous</b> açık olmalı.';
+      errBox.innerHTML=T('e_anon');
     }else if(code==='permission-denied'){
-      errBox.innerHTML='Gönderim reddedildi. Koçuna ilet: Firestore kuralları henüz '
-        +'yüklenmemiş olabilir (<code>checkins</code> bölümü).';
+      errBox.innerHTML=T('e_denied');
     }else{
-      errBox.innerHTML='Gönderilemedi: '+((e&&e.message)||e)+'<br>İnternetini kontrol edip tekrar dene.';
+      errBox.innerHTML=T('e_send').replace('{m}',String((e&&e.message)||e).replace(/[<>&]/g,''));
     }
   });
 }
@@ -798,12 +929,15 @@ function submit(btn,errBox){
    sağ altında sözün sahibi — skora bakılmıyor, gönderen herkes görüyor.
    Readiness satırı yalnızca skor hesaplanabildiğinde (üç sorudan en az biri
    cevaplandığında) ekleniyor; sözün altında bilgi olarak kalıyor. */
+var QUOTE;   // bu gönderimin sözü — dil değişip ekran yeniden çizilince sıra ilerlemesin
 function rewardNodes(){
   if(KIND!=='wellness')return[];
-  var item=pickNext(MOTIVATION,'quote');
+  if(QUOTE===undefined)QUOTE=pickNext(MOTIVATION,'quote');
+  var item=QUOTE;
   var out=[];
   if(item){
-    var block=[el('div',{class:'quote-text',text:'\u201C'+item.text+'\u201D'})];
+    var qt=(LANG==='en'&&item.en)?item.en:item.text;
+    var block=[el('div',{class:'quote-text',text:'\u201C'+qt+'\u201D'})];
     // Sözün sahibi listede boş bırakılmışsa satır hiç çıkmıyor: tırnağın altında
     // yalnız bir tire durmasın.
     if(item.by)block.push(el('div',{class:'quote-by',text:'\u2014 '+item.by}));
@@ -814,23 +948,26 @@ function rewardNodes(){
   return out;
 }
 function done(queued){
+  VIEW=function(){done(queued);};
   var r=$('#root');r.innerHTML='';
   var bar=document.querySelector('.bar');if(bar)bar.remove();
   var pg=$('#progfill');if(pg)pg.style.width='100%';
   var reward=rewardNodes();
   r.appendChild(el('div',{class:'done'},[
     el('div',{class:'tick',text:queued?'↗':'✓'}),
-    el('h2',{text:queued?'Gönderimin yolda':'Teşekkürler!'}),
-    el('p',{text:queued
-      ? 'Bağlantı yavaş görünüyor ama cevabın kaydedildi; şebeke gelince kendiliğinden ulaşacak.'
-      : 'Cevabın koçuna ulaştı.'})
+    el('h2',{text:T(queued?'queued_h':'done_h')}),
+    el('p',{text:T(queued?'queued_p':'done_p')})
   ].concat(reward,[
-    el('button',{class:'linkish',text:'Yeni gönderim yap',onclick:function(){location.reload();}})
+    el('button',{class:'linkish',text:T('again'),onclick:function(){location.reload();}})
   ])));
 }
 
 /* ── Kurulum ─────────────────────────────────────────────────────────────── */
 function render(){
+  VIEW=render;
+  // Yeniden çizimde (dil değişince) eski dinleyiciler ve eski Gönder çubuğu gitsin.
+  REFRESH=[];
+  var oldBar=document.querySelector('.bar');if(oldBar)oldBar.remove();
   var r=$('#root');r.innerHTML='';
   if(!$('#prog'))document.body.insertBefore(
     el('div',{class:'prog',id:'prog'},[el('i',{id:'progfill'})]),document.body.firstChild);
@@ -844,7 +981,7 @@ function render(){
   }
   (KIND==='srpe'?buildSrpe():buildWellness()).forEach(function(n){r.appendChild(n);});
   r.appendChild(el('div',{class:'foot',text:'CoachOS · '+(LINK.teamName||'')}));
-  var label=el('span',{text:'Gönder'});
+  var label=el('span',{text:T('send')});
   var left=el('span',{class:'left'});
   var btn=el('button',{class:'send',type:'button'},[label,left]);
   btn.addEventListener('click',function(){submit(btn,errBox);});
@@ -854,16 +991,36 @@ function render(){
     var st=steps(),done=st.filter(function(x){return x.ok;}).length;
     if(fill)fill.style.width=Math.round(done/st.length*100)+'%';
     var rem=st.length-done;
-    left.textContent=rem?'· '+rem+' adım kaldı':'';
-    label.textContent=rem?'Gönder':'Gönder →';
+    left.textContent=rem?T('left').replace('{n}',rem):'';
+    label.textContent=rem?T('send'):T('send')+' →';
   });
   refreshAll();
 }
 
+/* Sağ üstteki TR / EN. Seçim telefonda saklanıyor ve o an ekranda ne varsa
+   (form, hata, teşekkür) yeni dilde yeniden çiziliyor — sayfa yenilenmiyor, verilen
+   cevaplar kaybolmuyor. */
+function drawLang(){
+  var box=$('#lang');if(!box)return;
+  box.innerHTML='';
+  [['tr','TR'],['en','EN']].forEach(function(o){
+    box.appendChild(el('button',{type:'button',class:LANG===o[0]?'on':'',
+      'aria-pressed':LANG===o[0]?'true':'false',text:o[1],onclick:function(){
+        if(LANG===o[0])return;
+        LANG=o[0];
+        try{localStorage.setItem(LS_LANG,LANG);}catch(e){}
+        document.documentElement.lang=LANG;
+        drawLang();
+        if(VIEW)VIEW();
+        else{var b=$('#boot');if(b)b.textContent=T('loading');}
+      }}));
+  });
+}
 function start(){
+  drawLang();
+  var boot=$('#boot');if(boot)boot.textContent=T('loading');
   if(!TOKEN){
-    fatal('Link eksik','Bu adreste form anahtarı yok.',
-      'Koçundan check-in linkini yeniden iste — link <code>#k=…</code> ile bitmeli.');
+    fatal('f_nolink_t','f_nolink_d','f_nolink_x');
     return;
   }
   A.date=todayStr();
@@ -871,13 +1028,12 @@ function start(){
     return db.collection('checkin_links').doc(TOKEN).get();
   }).then(function(snap){
     if(!snap.exists){
-      fatal('Form bulunamadı','Bu link artık geçerli değil.',
-        'Koçun linki yenilemiş olabilir; ondan güncel linki iste.');
+      fatal('f_gone_t','f_gone_d','f_gone_x');
       return;
     }
     LINK=snap.data()||{};
     if(!LINK.coachUid||!LINK.teamId){
-      fatal('Form eksik kurulmuş','Linkin arkasındaki kayıt eksik.','Koçun uygulamada linki bir kez daha kopyalaması yeterli.');
+      fatal('f_bad_t','f_bad_d','f_bad_x');
       return;
     }
     try{
@@ -891,15 +1047,11 @@ function start(){
        gelsin sebebi tektir ve söylenmesi gereken şey de tektir. `admin-restricted-operation`
        kodunu atlamak, koça "internetini kontrol et" dedirtiyordu — sorun ağda değilken. */
     if(code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation'){
-      fatal('Form henüz açılmamış','Anonim giriş kapalı olduğu için form yüklenemedi.',
-        'Koçuna ilet: Firebase Console → <b>Authentication → Sign-in method</b> → '
-        +'<b>Anonymous</b> satırı <b>Enabled</b> olmalı (kapalıysa: satıra tıkla → Enable → Save). '
-        +'Açtıktan sonra bu sayfayı yenile.');
+      fatal('f_anon_t','f_anon_d','f_anon_x');
     }else if(code==='permission-denied'){
-      fatal('Form okunamadı','Bu forma erişim izni yok.',
-        'Koçuna ilet: Firestore kurallarında <code>checkin_links</code> ve <code>checkins</code> bölümleri eksik.');
+      fatal('f_perm_t','f_perm_d','f_perm_x');
     }else{
-      fatal('Form yüklenemedi',((e&&e.message)||String(e)),'İnternetini kontrol edip sayfayı yenile.');
+      fatal('f_load_t',String((e&&e.message)||e).replace(/[<>&]/g,''),'f_load_x');
     }
   });
 }
