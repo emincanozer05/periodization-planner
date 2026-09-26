@@ -8684,7 +8684,7 @@ const painChipStyle=v=>{const c=PAIN_SEV_COL[painSevKey(v)];
    and the check-in's grid name the same body in two vocabularies ("Ayak bileği" / "Ankle"),
    and a card that drew both put every region up twice, side by side. The grid's own words
    win: they are what the athlete actually ticked. */
-const painNoteCovers=(note,tag)=>!!(note&&!note.quoted&&(note.covered||[]).indexOf(tag)>=0);
+const painNoteCovers=(note,tag)=>!!(note&&(note.covered||[]).indexOf(tag)>=0);
 /* The check-in's own "Ağrı düzeyin nedir?" (1 çok fazla … 5 çok az) as a 1-3 severity.
    Same athlete, same day, same question about pain — so a region ticked without a
    severity is shown at the level they reported for the day rather than colourless. */
@@ -28130,56 +28130,80 @@ function athWellnessSnap(a,ref){
 }
 
 /* ---- Daily survey → reported pain ----------------------------------------
-   Reads the athlete's LATEST check-in (within the card's window) and returns one
-   record per painful region, for display only. Two shapes are understood: the
-   structured `pain` map written by the wellness survey ({knee:2}), and the
-   free-text "Area of Pain" field that arrives from Tally, matched against the same
-   region keywords. A region reported yesterday but absent from today's check-in is
-   treated as resolved. */
+   How long a reported pain stays on screen is set by how bad it was. A region graded
+   Fazla (the red chip) is shown on the day it was reported AND the day after, whether
+   or not the next check-in ticks it again — a severe report is still worth seeing the
+   morning after. Anything milder (Hafif / Orta), anything ungraded and anything only
+   written in the free-text box is shown on its own day only: a hamstring rated Orta
+   yesterday and not ticked today is gone today, and so is one reported yesterday by an
+   athlete who has not checked in yet. When both days report a region, today's grading
+   is the one shown. */
+const PAIN_CARRY_SEV=3;
+const painCarries=sev=>painSevKey(sev)>=PAIN_CARRY_SEV;
+/* The two check-ins the rule reads: the latest one ON the day, and the latest one on
+   the day before (only its red regions are kept). */
+function painCheckinsFor(a,ref){
+  const lastOn=d=>{const ws=(a.wellness||[]).filter(w=>w&&w.date===d);return ws[ws.length-1]||null;};
+  return{today:lastOn(ref),yesterday:lastOn(fmt(addD(parseD(ref),-1)))};
+}
+/* One record per painful region, for display and for the engine. Two shapes are
+   understood: the structured `pain` map written by the wellness survey ({knee:2}),
+   and the free-text "Area of Pain" field that arrives from Tally, matched against the
+   same region keywords. */
 function athPainReports(a,ref){
-  const ws=(a.wellness||[]).filter(w=>w.date&&w.date<=ref).sort((x,y)=>x.date.localeCompare(y.date));
-  const w=ws[ws.length-1];
-  if(!w||dayGap(w.date,ref)>IV_CHECKIN_WINDOW)return[];
+  const{today,yesterday}=painCheckinsFor(a,ref);
   const out=[],seen=new Set();
   const known=new Set(CONSTRAINT_TAGS.map(t=>t.id));
-  const pm=(w.pain&&typeof w.pain==='object')?w.pain:null;
-  // A tag with severity 0 is still a report — the region was ticked on a question that
-  // never asked how bad it is — so it counts as one and simply shows no grade.
-  if(pm)Object.keys(pm).forEach(tag=>{
-    const sev=Number(pm[tag])||0;
-    if(sev>=0&&known.has(tag)&&!seen.has(tag)){seen.add(tag);out.push({tag,sev,date:w.date,src:'survey'});}});
-  const raw=painFreeText(w.areaOfPain),txt=raw.toLowerCase();
-  if(txt)CONSTRAINT_TAGS.forEach(t=>{
-    if(!seen.has(t.id)&&t.kw.some(k=>txt.includes(k))){
-      seen.add(t.id);out.push({tag:t.id,date:w.date,src:'text',raw});}});
+  const read=(w,carry)=>{
+    const pm=(w.pain&&typeof w.pain==='object')?w.pain:null;
+    // A tag with severity 0 is still a report — the region was ticked on a question that
+    // never asked how bad it is — so it counts as one and simply shows no grade.
+    if(pm)Object.keys(pm).forEach(tag=>{
+      const sev=Number(pm[tag])||0;
+      if(carry&&!painCarries(sev))return;
+      if(sev>=0&&known.has(tag)&&!seen.has(tag)){seen.add(tag);out.push({tag,sev,date:w.date,src:'survey'});}});
+    // Free text carries no grading, so it never outlives its own day.
+    if(carry)return;
+    const raw=painFreeText(w.areaOfPain),txt=raw.toLowerCase();
+    if(txt)CONSTRAINT_TAGS.forEach(t=>{
+      if(!seen.has(t.id)&&t.kw.some(k=>txt.includes(k))){
+        seen.add(t.id);out.push({tag:t.id,date:w.date,src:'text',raw});}});
+  };
+  if(today)read(today,false);
+  if(yesterday)read(yesterday,true);
   return out;
 }
 /* Whatever the athlete reported in the check-in's pain box, in their own words.
    athPainReports only returns regions it could match to a known tag, so a note
    that matches nothing ("belim tutuldu") — or a ticked region the tag list has no
    entry for — would otherwise disappear before the coach ever sees it. Read from
-   the same check-in and the same window. */
-function athPainNote(a,ref){
-  const ws=(a.wellness||[]).filter(w=>w.date&&w.date<=ref).sort((x,y)=>x.date.localeCompare(y.date));
-  const w=ws[ws.length-1];
-  if(!w||dayGap(w.date,ref)>IV_CHECKIN_WINDOW)return null;
-  const note=painFreeText(w.areaOfPain);
-  if(note)return{text:note,date:w.date,quoted:true};
-  /* Nothing written, but a ticked region the tag list has no entry for still has to
-     reach the coach — reported as the grid recorded it, so it is not dressed up as
-     something the athlete said.
+   the same two check-ins under the same rule.
 
-     `text` is the one-line prose the AI briefings and the trigger summaries want.
-     `regions` is the same grid as a list, for the places that DRAW it: a chip per
-     region, coloured by severity, instead of one long chip spelling every grading out
-     in words. `covered` names the constraint tags this grid already accounts for, so
-     the card can drop the tag chips that would otherwise repeat the same regions in a
-     second vocabulary directly beside them. */
-  const map=parsePainMap(w.painMap&&typeof w.painMap==='object'?w.painMap:w.areaOfPain);
-  const regions=painEntries(map);
-  if(!regions.length)return null;
-  return{text:painSummary(w),regions,covered:Object.keys(painTagsFromMap(map)||{}),
-    date:w.date,quoted:false};
+   `text` is the one-line prose the AI briefings and the trigger summaries want —
+   the athlete's own words when they wrote some (`quoted`), else the grid.
+   `regions` is the grid as a list, for the places that DRAW it: a chip per region,
+   coloured by severity, each with the date it was reported. `covered` names the
+   constraint tags these regions already account for, so the card can drop the tag
+   chips that would otherwise repeat the same regions in a second vocabulary. */
+function athPainNote(a,ref){
+  const{today,yesterday}=painCheckinsFor(a,ref);
+  const gridOf=w=>w?painEntries(parsePainMap(w.painMap&&typeof w.painMap==='object'?w.painMap:w.areaOfPain))
+    .map(g=>({...g,date:w.date})):[];
+  const note=today?painFreeText(today.areaOfPain):'';
+  /* A check-in with words in the pain box shows the words, as it always has; the grid
+     of that same morning is left to the tag chips. */
+  const regions=note?[]:gridOf(today);
+  const have=new Set(regions.map(g=>g.region));
+  gridOf(yesterday).forEach(g=>{if(painCarries(g.sev)&&!have.has(g.region)){have.add(g.region);regions.push(g);}});
+  if(!note&&!regions.length)return null;
+  const map={};regions.forEach(g=>{map[g.region]=g.sev;});
+  const covered=Object.keys(painTagsFromMap(map)||{});
+  if(note)return{text:note,date:today.date,quoted:true,regions,covered};
+  const SEV=PAIN_SEV_LABEL();
+  const text=regions.map(g=>(g.sev?`${g.region}: ${SEV[g.sev]}`:g.region)
+    +(today&&g.date!==today.date?` (${g.date})`:'')).join(', ');
+  return{text,regions,covered,date:today&&regions.some(g=>g.date===today.date)?today.date:regions[0].date,
+    quoted:false};
 }
 /* Yesterday, as the athlete reported it: the session RPE they rated and the load
    (sRPE × duration) it worked out to — context for the coach's own edits, so he
@@ -32533,10 +32557,10 @@ function IndivAthleteCard({plan,calendar,panel,flag,open,setOpen}){
       <div className="iv-daybar">
         {plan.painNote&&plan.painNote.quoted&&
           <span className="iv-painchip note" title={L(`Ağrı bildirimi · ${fd(plan.painNote.date)}`,`Pain report · ${fd(plan.painNote.date)}`)}>{`“${plan.painNote.text}”`}</span>}
-        {plan.painNote&&!plan.painNote.quoted&&(plan.painNote.regions||[]).map(g=>
+        {plan.painNote&&(plan.painNote.regions||[]).map(g=>
           <span key={'g'+g.region} className="iv-painchip" style={painChipStyle(g.sev)}
-            title={L(`Ağrı bildirimi · ${fd(plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`,
-                     `Pain report · ${fd(plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`)}>{g.region}</span>)}
+            title={L(`Ağrı bildirimi · ${fd(g.date||plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`,
+                     `Pain report · ${fd(g.date||plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`)}>{g.region}</span>)}
         {(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>
           <span key={'p'+p.tag} className="iv-painchip" style={painChipStyle(p.sev)}
             title={L(`Günlük check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`,
