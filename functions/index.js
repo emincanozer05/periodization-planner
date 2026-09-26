@@ -1,8 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    CoachOS — sunucu tarafı
 
-   Tek iş var: sporcu wellness formunu gönderip `checkins` koleksiyonuna doküman
-   düştüğünde,
+   Sporcu bir check-in formu gönderip `checkins` koleksiyonuna doküman düştüğünde:
+
+   RPE (antrenman sonrası) gönderiminde tek iş var: günün kaydını `rpe_reports`
+   koleksiyonuna yazmak — ekip üyesinin telefon sayfası RPE sekmesini oradan okuyor.
+   Bildirim gitmiyor.
+
+   Wellness (sabah) gönderiminde:
      1) o gönderim için BİR kayıt oluşturmak — kriteri aşsın aşmasın, çünkü koçun
         ekranı "bugün kim doldurdu" sorusunu da cevaplamak zorunda,
      2) kayıt uyarı kriterini aşıyorsa (`flagged`), o sporcuyla ilgili ekip
@@ -30,7 +35,8 @@ const admin = require('firebase-admin');
 const { shouldAlert, buildNotification, buildAlertRecord } = require('./wellness-alert');
 const { tokensFor, groupForSend, eligibleStaff } = require('./recipients');
 const { sendAlert } = require('./push');
-const { rosterDocId, alertDocId, staffAlertLink } = require('./ids');
+const { buildRpeRecord } = require('./rpe-report');
+const { rosterDocId, alertDocId, rpeDocId, staffAlertLink } = require('./ids');
 const { claimForAlert } = require('./claim');
 
 admin.initializeApp();
@@ -46,6 +52,7 @@ const REGION = process.env.FUNCTION_REGION || 'us-central1';
 const ROSTER_COL = 'alert_roster';       // takım başına: ad + ekip kadrosu + uygulama adresi
 const TOKENS_COL = 'push_tokens';        // eşleştirilmiş cihazlar
 const ALERTS_COL = 'wellness_alerts';    // uyarı kayıtları
+const RPE_COL = 'rpe_reports';           // antrenman sonrası RPE kayıtları (telefonun RPE sekmesi)
 
 const db = () => admin.firestore();
 const now = () => admin.firestore.FieldValue.serverTimestamp();
@@ -65,7 +72,8 @@ exports.wellnessAlert = functions
     const sub = snap.data() || {};
     const checkinId = context.params.checkinId;
 
-    if (sub.kind !== 'wellness') return null;                   // sRPE bu işin dışında
+    if (sub.kind === 'srpe') return recordRpe(sub, checkinId);
+    if (sub.kind !== 'wellness') return null;
     if (!sub.coachUid || !sub.teamId || !sub.athleteId) {
       functions.logger.warn('wellness: eksik kimlik alanları, uyarı atlandı', { checkinId });
       return null;
@@ -299,6 +307,44 @@ exports.wellnessAlert = functions
     });
     return null;
   });
+
+/* ── RPE kaydı ───────────────────────────────────────────────────────────────
+   Antrenman sonrası gönderimin telefondaki karşılığı. Sahiplenme damgası yok:
+   kaydın adı sporcu + tarihten türüyor ve yazım tüm dokümanı değiştiriyor, yani
+   aynı olay ikinci kez gelse de sonuç aynı — gönderilecek bir bildirim olmadığı
+   için "iki kez gitti" diye bir risk de yok. Aynı sporcunun aynı günkü ikinci
+   gönderimi, koçun günlüğünde olduğu gibi öncekinin üstüne yazıyor.
+
+   Takım adı kadro özetinden geliyor; okunamazsa kayıt adsız yazılıyor, çünkü
+   sayfa zaten tek bir takımı gösteriyor ve adı başlığında taşıyor. */
+async function recordRpe(sub, checkinId) {
+  if (!sub.coachUid || !sub.teamId || !sub.athleteId) {
+    functions.logger.warn('rpe: eksik kimlik alanları, kayıt atlandı', { checkinId });
+    return null;
+  }
+  let teamName = '';
+  try {
+    const rs = await db().collection(ROSTER_COL).doc(rosterDocId(sub.coachUid, sub.teamId)).get();
+    if (rs.exists) teamName = (rs.data() || {}).teamName || '';
+  } catch (err) {
+    functions.logger.warn('rpe: kadro okunamadı, kayıt takım adısız yazılıyor', { checkinId, error: String(err) });
+  }
+  const id = rpeDocId(sub.coachUid, sub.athleteId, sub.date);
+  const record = Object.assign(buildRpeRecord(sub, teamName), {
+    coachUid: sub.coachUid,
+    checkinId,
+    submittedAt: sub.at || null,
+    createdAt: now(),
+    v: 1,
+  });
+  try {
+    await db().collection(RPE_COL).doc(id).set(record);
+    functions.logger.info('rpe: kayıt yazıldı', { checkinId, rpeId: id, sessions: record.sessions.length });
+  } catch (err) {
+    functions.logger.error('rpe: kayıt yazılamadı', { checkinId, rpeId: id, error: String(err) });
+  }
+  return null;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    YAPAY ZEKÂ — program üretim işi ve Gemini proxy'si

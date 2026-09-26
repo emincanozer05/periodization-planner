@@ -3850,6 +3850,9 @@ button.back:hover{border-color:var(--accent);color:var(--accent);background:var(
 .wh-legend{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .wh-leg-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);letter-spacing:.04em}
 .wh-leg-bar{width:120px;height:8px;border-radius:5px;background:linear-gradient(90deg,#f43f5e,#f59e0b,#2dd4a7)}
+/* A 1-5 score's legend is the form's five buttons, not a ramp: the cell is one of five colours. */
+.wh-leg-steps{display:inline-flex;gap:3px}
+.wh-leg-steps i{width:18px;height:14px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;color:#0a0b0d}
 .wh-leg-team{margin-left:auto;display:inline-flex;align-items:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:4px 11px}
 .wh-leg-team b{color:var(--text);margin-left:5px}
 .wh-scroll{overflow-x:auto;padding-bottom:2px}
@@ -9297,18 +9300,45 @@ function RHRMonitor({athletes,weeks}){
   </div>);
 }
 
+/* The morning check-in asks four scored questions — sleep, mental fatigue, physical
+   fatigue, muscle soreness — each 1-5 with 5 the good end. Fatigue used to be one
+   question; a record written before the split carries only `fatigue`, and one written
+   after carries both halves plus `fatigue` as their mean (for the readers that still
+   want one fatigue number: individualization, the AI export). */
+function wellFatigue(w){
+  const v=[recNum(w&&w.mentalFatigue),recNum(w&&w.physicalFatigue)].filter(x=>x!=null);
+  if(v.length)return +(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1);
+  return recNum(w&&w.fatigue);
+}
+/* Readiness = the mean of the scored questions the athlete answered, one decimal —
+   the same formula as the check-in form and the server's alert rule
+   (functions/wellness-alert.js). On a split record the two fatigue halves count as
+   two questions and the derived `fatigue` is left out, or it would count twice. */
+function wellReadiness(w){
+  if(!w)return null;
+  const split=recNum(w.mentalFatigue)!=null||recNum(w.physicalFatigue)!=null;
+  const keys=split?['sleep','mentalFatigue','physicalFatigue','soreness']:['sleep','fatigue','soreness'];
+  const v=keys.map(k=>recNum(w[k])).filter(x=>x!=null);
+  return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):null;
+}
+/* The 1-5 colours of the check-in form's own buttons (checkin.html SCORE_COLORS) and of
+   the staff phone page: 1 red · 2 orange · 3 yellow · 4 green · 5 blue. The heatmap
+   paints a score in the colour the athlete tapped, so the two never disagree. */
+const SCORE5_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
+const score5Color=v=>{if(v==null||isNaN(Number(v)))return null;return SCORE5_COLORS[Math.min(5,Math.max(1,Math.round(Number(v))))-1];};
+
 /* Wellness Heatmap — athletes × dates grid of a chosen wellness metric, sorted by average */
 function WellnessHeatmap({athletes}){
+  /* One button per question on the morning check-in, in the form's order, so what the
+     athlete answered and what the coach reads are the same list. Readiness is their
+     mean; RHR is the form's optional first box. The pain map rides on every metric as
+     the ring and pip on the day's cell. */
   const METRICS=[
     {id:'readiness',label:L('Hazır Oluş','Readiness'),hi:true,scale:5},
     {id:'sleep',label:L('Uyku','Sleep'),hi:true,scale:5},
-    {id:'fatigue',label:L('Yorgunluk','Fatigue'),hi:true,scale:5},
-    /* Soreness is not offered as a metric here. The day's pain is already ON this grid,
-       and better than a score could put it: the ring and the pip mark which days were
-       reported, and the bubble names the regions with a severity each. A 1-5 column
-       beside that said less about the same thing twice. The score itself is untouched —
-       it still averages into Readiness and still grades a region the athlete ticked
-       without a severity. */
+    {id:'mentalFatigue',label:L('Zihinsel Yorgunluk','Mental Fatigue'),hi:true,scale:5},
+    {id:'physicalFatigue',label:L('Fiziksel Yorgunluk','Physical Fatigue'),hi:true,scale:5},
+    {id:'soreness',label:L('Kas Ağrısı','Muscle Soreness'),hi:true,scale:5},
     {id:'RHR',label:'RHR',hi:false,scale:null},
   ];
   /* The segment's last button is not a fifth metric — it swaps the grid for the RHR
@@ -9331,7 +9361,7 @@ function WellnessHeatmap({athletes}){
   const rangeLabel=mon
     ?fd(monWeeks[0].start).slice(0,5)+' – '+fd(monWeeks[monWeeks.length-1].end).slice(0,5)
     :fd(dates[0]).slice(0,5)+' – '+fd(dates[13]).slice(0,5);
-  const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null);return e.length?Number(e[e.length-1][M.id]):null;};
+  const valOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&w[M.id]!==''&&w[M.id]!=null&&!isNaN(Number(w[M.id])));return e.length?Number(e[e.length-1][M.id]):null;};
   // Free-text the athlete typed into the check-in's "Area of Pain" box ("dizlerim ağrıyor"…).
   // Independent of the selected metric — it flags the day, whichever metric is on screen.
   const noteOf=(a,dk)=>{const e=(a.wellness||[]).filter(w=>w.date===dk&&painFreeText(w.areaOfPain));
@@ -9363,12 +9393,11 @@ function WellnessHeatmap({athletes}){
   const mix=(a,b,t)=>a.map((x,i)=>Math.round(x+(b[i]-x)*t));
   const RED=[244,63,94],AMB=[245,158,11],GRN=[45,212,167];
   const scaleRGB=t=>t==null?null:(t<0.5?mix(RED,AMB,t/0.5):mix(AMB,GRN,(t-0.5)/0.5));
-  // Fatigue uses a discrete scale where 5 = great (no fatigue) and 1 = very bad:
-  // 5 & 4 → green, 3 → yellow, 2 → orange, 1 → red.
-  const isDiscrete=M.id==='fatigue';
-  const lvlCol=v=>{if(v==null)return null;const n=Math.round(v);return n>=4?'#22c55e':n===3?'#eab308':n===2?'#f97316':'#ef4444';};
-  const cellBg=v=>{if(isDiscrete)return lvlCol(v);const c=scaleRGB(goodT(v));return c?`rgb(${c[0]},${c[1]},${c[2]})`:null;};
-  const dotCol=v=>{if(isDiscrete)return lvlCol(v)||'var(--dim)';const t=goodT(v);return t==null?'var(--dim)':t>=0.66?'#2dd4a7':t>=0.33?'#f59e0b':'#f43f5e';};
+  // Every 1-5 score is painted in the check-in form's own colours (1 red … 5 blue);
+  // only RHR, a heart rate with no fixed scale, keeps the continuous ramp.
+  const isDiscrete=M.scale===5;
+  const cellBg=v=>{if(isDiscrete)return score5Color(v);const c=scaleRGB(goodT(v));return c?`rgb(${c[0]},${c[1]},${c[2]})`:null;};
+  const dotCol=v=>{if(isDiscrete)return score5Color(v)||'var(--dim)';const t=goodT(v);return t==null?'var(--dim)':t>=0.66?'#2dd4a7':t>=0.33?'#f59e0b':'#f43f5e';};
   const rows=(athletes||[]).map(a=>{
     const cells=dates.map(dk=>valOf(a,dk));
     const notes=dates.map(dk=>noteOf(a,dk));
@@ -9409,7 +9438,9 @@ function WellnessHeatmap({athletes}){
     :rows.length===0?<div className="empty-st">{L('Bu 2 haftalık aralıkta wellness verisi yok.','No wellness data in this 2-week range.')}</div>:<>
       <div className="wh-legend">
         <span className="wh-leg-cap">{M.id==='RHR'?L('yüksek','high'):L('düşük','low')}</span>
-        <span className="wh-leg-bar"/>
+        {isDiscrete
+          ?<span className="wh-leg-steps">{SCORE5_COLORS.map((c,i)=><i key={i} style={{background:c}}>{i+1}</i>)}</span>
+          :<span className="wh-leg-bar"/>}
         <span className="wh-leg-cap">{M.id==='RHR'?L('düşük','low'):L('yüksek','high')}</span>
         {teamAvg!=null&&<span className="wh-leg-team"><span className="wh-adot" style={{background:dotCol(teamAvg)}}/>{L('takım ort.','team avg')} <b>{fmtV(teamAvg)}</b></span>}
       </div>
@@ -22234,9 +22265,9 @@ function buildAthleteSnapshot(ath,setup,exercises){
   if(recent.length){
     const avg=f=>{const v=recent.map(w=>recNum(w[f])).filter(x=>x!=null);return v.length?(v.reduce((a,b)=>a+b,0)/v.length):null;};
     const fmtA=(f,u)=>{const a=avg(f);return a!=null?a.toFixed(1)+(u||''):'—';};
-    out.push(`Ortalama → Hazır bulunuşluk: ${fmtA('readiness','/5')} | Yorgunluk: ${fmtA('fatigue','/5')} | Ağrı: ${fmtA('soreness','/5')} | Uyku: ${fmtA('sleep')} | RHR: ${fmtA('RHR','bpm')}`);
+    out.push(`Ortalama → Hazır bulunuşluk: ${fmtA('readiness','/5')} | Zihinsel yorgunluk: ${fmtA('mentalFatigue','/5')} | Fiziksel yorgunluk: ${fmtA('physicalFatigue','/5')} | Yorgunluk (genel): ${fmtA('fatigue','/5')} | Kas ağrısı: ${fmtA('soreness','/5')} | Uyku: ${fmtA('sleep')} | RHR: ${fmtA('RHR','bpm')}`);
     const last=[...recent].sort((a,b)=>a.date.localeCompare(b.date)).pop();
-    out.push(`Son check-in (${last.date}): Hazırlık ${last.readiness??'—'}/5, Yorgunluk ${last.fatigue??'—'}/5, Ağrı ${last.soreness??'—'}/5${painSummary(last)?`, Ağrı bölgesi: ${painSummary(last)}`:''} (${recent.length} check-in)`);
+    out.push(`Son check-in (${last.date}): Hazırlık ${last.readiness??'—'}/5, Zihinsel yorgunluk ${recNum(last.mentalFatigue)??'—'}/5, Fiziksel yorgunluk ${recNum(last.physicalFatigue)??'—'}/5, Yorgunluk (genel) ${last.fatigue??'—'}/5, Kas ağrısı ${last.soreness??'—'}/5${painSummary(last)?`, Ağrı bölgesi: ${painSummary(last)}`:''} (${recent.length} check-in)`);
   } else out.push('Son 14 günde wellness verisi yok.');
   // Load / ACWR
   out.push('\n=== YÜK / ACWR ===');
@@ -22487,6 +22518,8 @@ function buildProgramDesignInput(ath,setup){
       wellness_detay:recent.length?{
         son_14_gun_checkin_sayisi:recent.length,
         ortalama_yorgunluk_5:avg('fatigue'),
+        ortalama_zihinsel_yorgunluk_5:avg('mentalFatigue'),
+        ortalama_fiziksel_yorgunluk_5:avg('physicalFatigue'),
         ortalama_agri_5:avg('soreness'),
         ortalama_uyku:avg('sleep'),
         ortalama_rhr_bpm:avg('RHR'),
@@ -22801,7 +22834,7 @@ function pwTrend(ath,ref){
   const last7=days(d(-6),ref),prior7=days(d(-13),d(-7));
   const avg=(arr,f)=>{const v=arr.map(x=>n(x[f])).filter(x=>x!=null);return v.length?+(v.reduce((a,b)=>a+b,0)/v.length).toFixed(2):null;};
   const win=arr=>({checkin_sayisi:arr.length,hazir_bulunusluk_5:avg(arr,'readiness'),
-    yorgunluk_5:avg(arr,'fatigue'),agri_5:avg(arr,'soreness'),uyku:avg(arr,'sleep'),rhr_bpm:avg(arr,'RHR')});
+    yorgunluk_5:avg(arr,'fatigue'),zihinsel_yorgunluk_5:avg(arr,'mentalFatigue'),fiziksel_yorgunluk_5:avg(arr,'physicalFatigue'),agri_5:avg(arr,'soreness'),uyku:avg(arr,'sleep'),rhr_bpm:avg(arr,'RHR')});
   const w1=win(last7),w0=win(prior7);
   const load7=athLoadSum(ath,d(-6),ref),load0=athLoadSum(ath,d(-13),d(-7));
   const acwr=athACWR(ath,ref);
@@ -24088,13 +24121,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
       {/* ---- Wellness Log (from Notion sync or manual) ---- */}
       <div className="panel">
       <div className="row" style={{justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>{L('Wellness Kaydı','Wellness Log')} <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>{L('son 2 hafta · RHR + toparlanma','last 2 weeks · RHR + recovery')}</span></h2>
+        <h2 style={{margin:0,fontSize:16,fontWeight:600,color:'var(--text)'}}>{L('Wellness Kaydı','Wellness Log')} <span style={{fontSize:11,color:'var(--muted)',fontWeight:400}}>{L('son 2 hafta · sabah check-in soruları','last 2 weeks · morning check-in questions')}</span></h2>
         <div className="row" style={{gap:6,alignItems:'center',flexWrap:'wrap'}}>
           <button className="btn sm sec" onClick={()=>setWlWeekEnd(w=>fmt(addD(parseD(w),-7)))} title={L('Önceki hafta','Previous week')}>‹</button>
           <strong style={{fontSize:12,minWidth:118,textAlign:'center',fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--text2)'}}>{fd(fmt(addD(parseD(wlWeekEnd),-13))).slice(0,5)} – {fd(wlWeekEnd).slice(0,5)}</strong>
           <button className="btn sm sec" onClick={()=>setWlWeekEnd(w=>fmt(addD(parseD(w),7)))} title={L('Sonraki hafta','Next week')}>›</button>
           <button className="btn sm sec" onClick={()=>{const ds=(ath.wellness||[]).map(x=>x.date).filter(Boolean).sort();setWlWeekEnd(ds.length?ds[ds.length-1]:fmt(today));}}>{L('En son','Latest')}</button>
-          <button className="btn sm sec" onClick={()=>{const w={id:uid(),srcId:null,date:fmt(today),RHR:'',sleep:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...(ath.wellness||[]),w]});}}>+ {L('Elle','Manual')}</button>
+          <button className="btn sm sec" onClick={()=>{const w={id:uid(),srcId:null,date:fmt(today),RHR:'',sleep:'',mentalFatigue:'',physicalFatigue:'',fatigue:'',soreness:'',areaOfPain:'',readiness:''};updAth(ath.id,{wellness:[...(ath.wellness||[]),w]});}}>+ {L('Elle','Manual')}</button>
         </div>
       </div>
       {(ath.wellness||[]).length===0&&<div className="empty-st">{L('Wellness verisi yok — Tally’den senkronla ya da elle ekle','No wellness data — sync from Tally or add manually')}</div>}
@@ -24102,15 +24135,15 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
         const METRICS=[
           {id:'readiness',label:L('Hazır Oluş','Readiness'),color:'#10b981',dot:'#34d399',unit:'/5',hi:true},
           {id:'sleep',label:L('Uyku','Sleep'),color:'#3b82f6',dot:'#60a5fa',unit:'/5',hi:true},
-          {id:'fatigue',label:L('Yorgunluk','Fatigue'),color:'#f97316',dot:'#fb923c',unit:'/5',hi:true},
-          // No Soreness trend: the pain that matters is where it is, and that is reported
-          // region by region on the heatmap rather than as one number to draw a line
-          // through. The score stays on the record and keeps feeding Readiness.
+          // The check-in's questions in the form's order — the same list as the heatmap.
+          {id:'mentalFatigue',label:L('Zihinsel Yorgunluk','Mental Fatigue'),color:'#a78bfa',dot:'#c4b5fd',unit:'/5',hi:true},
+          {id:'physicalFatigue',label:L('Fiziksel Yorgunluk','Physical Fatigue'),color:'#f97316',dot:'#fb923c',unit:'/5',hi:true},
+          {id:'soreness',label:L('Kas Ağrısı','Muscle Soreness'),color:'#f43f5e',dot:'#fb7185',unit:'/5',hi:true},
           {id:'RHR',label:L('İstirahat Nabzı','Resting HR'),color:'#22d3ee',dot:'#67e8f9',unit:'bpm',hi:false},
         ];
         const valColor='#2dd4a7';
-        // 1-5 score scale colors: 1 red, 2 orange, 3 yellow, 4 green, 5 light blue.
-        const score5Col=v=>{if(v==null)return'var(--dim)';const n=Math.round(Number(v));return n>=5?'#38bdf8':n===4?'#22c55e':n===3?'#eab308':n===2?'#f97316':'#ef4444';};
+        // 1-5 scores in the check-in form's own colours: 1 red … 5 blue.
+        const score5Col=v=>score5Color(v)||'var(--dim)';
         const fmtN=(v,five)=>v==null?'—':(five?(Number.isInteger(v)?String(v):v.toFixed(1)):String(Math.round(v)));
         const _wStart=fmt(addD(parseD(wlWeekEnd),-13));
         const logsAll=[...ath.wellness].filter(w=>w.date&&w.date>=_wStart&&w.date<=wlWeekEnd).sort((a,b)=>a.date.localeCompare(b.date));
@@ -24148,27 +24181,33 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
             </div>
             {wellnessTableOpen&&(()=>{const rev=[...ath.wellness].reverse();const vis=rev.slice(0,wlLimit);const hasMore=rev.length>wlLimit;
               return<div style={{overflowX:'auto'}}><table><thead><tr>
-                <th>{L('Tarih','Date')}</th><th>RHR</th><th>{L('Uyku','Sleep')}</th><th>{L('Yorgunluk','Fatigue')}</th><th>{L('Hazır Oluş','Readiness')}</th><th style={{width:50}}></th>
+                <th>{L('Tarih','Date')}</th><th>RHR</th><th>{L('Uyku','Sleep')}</th><th>{L('Zihinsel Yorg.','Mental Fat.')}</th><th>{L('Fiziksel Yorg.','Physical Fat.')}</th><th>{L('Kas Ağrısı','Soreness')}</th><th>{L('Hazır Oluş','Readiness')}</th><th style={{width:50}}></th>
               </tr></thead><tbody>
                 {vis.map((w,idx)=>{const realIdx=ath.wellness.length-1-idx;
                   /* A value the coach types here is theirs: the field is stamped on the
                      record so the next Tally sync writes around it instead of over it. */
                   const uw=(k,v)=>{const a=[...ath.wellness];const cur=a[realIdx];
-                    a[realIdx]={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
+                    const next={...cur,[k]:v,manualEdits:[...new Set([...(cur.manualEdits||[]),k])]};
+                    // The single fatigue number other screens read follows its two halves.
+                    if(k==='mentalFatigue'||k==='physicalFatigue')next.fatigue=wellFatigue(next)??'';
+                    a[realIdx]=next;
                     updAth(ath.id,{wellness:a});};
+                  /* A row written before fatigue was split has one fatigue score and no
+                     halves; it shows in both boxes, greyed, until the coach types over it. */
+                  const oldFat=recNum(w.mentalFatigue)==null&&recNum(w.physicalFatigue)==null&&recNum(w.fatigue)!=null?String(w.fatigue):undefined;
                   return<tr key={w.id||idx}>
                     <td><input type="date" value={w.date} onChange={e=>uw('date',e.target.value)} style={{width:130}}/><div className="help">{fd(w.date)}</div></td>
                     <td><input type="number" value={w.RHR??''} onChange={e=>uw('RHR',e.target.value)} style={{width:60}}/></td>
                     <td><input type="number" step="0.5" value={w.sleep??''} onChange={e=>uw('sleep',e.target.value)} style={{width:55}}/></td>
-                    <td><input type="number" step="0.5" value={w.fatigue??''} onChange={e=>uw('fatigue',e.target.value)} style={{width:55}}/></td>
-                    {/* Soreness, Area of Pain and Source have no column here. Every one of
-                        those values stays on the record and keeps doing its job — the sync
-                        writes them, Readiness averages soreness, the pain report and the
-                        wellness heatmap read areaOfPain, and srcId still decides what the
-                        next Tally sync is allowed to overwrite. They are simply not what
-                        the coach reads or edits on this table: pain is shown where it is
-                        acted on (the flag list, the heatmap, the athlete's day), and where
-                        a row came from is not a number to correct. */}
+                    <td><input type="number" step="0.5" value={w.mentalFatigue??''} placeholder={oldFat} onChange={e=>uw('mentalFatigue',e.target.value)} style={{width:55}}/></td>
+                    <td><input type="number" step="0.5" value={w.physicalFatigue??''} placeholder={oldFat} onChange={e=>uw('physicalFatigue',e.target.value)} style={{width:55}}/></td>
+                    <td><input type="number" step="0.5" value={w.soreness??''} onChange={e=>uw('soreness',e.target.value)} style={{width:55}}/></td>
+                    {/* Area of Pain and Source have no column here. Both stay on the record
+                        and keep doing their job — the pain report and the wellness heatmap
+                        read areaOfPain, and srcId still decides what the next Tally sync is
+                        allowed to overwrite. Pain is shown where it is acted on (the flag
+                        list, the heatmap, the athlete's day), and where a row came from is
+                        not a number to correct. */}
                     <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
                     <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{wellness:ath.wellness.filter((_,j)=>j!==realIdx)})}>✕</button></td>
                   </tr>;})}
@@ -32362,13 +32401,15 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
     wellness:{
       son_checkin:lastW?{tarih:lastW.date,kac_gun_once:wAge,
         hazir_olus:recNum(lastW.readiness),uyku:recNum(lastW.sleep),yorgunluk:recNum(lastW.fatigue),
+        zihinsel_yorgunluk:recNum(lastW.mentalFatigue),fiziksel_yorgunluk:recNum(lastW.physicalFatigue),
         kas_agrisi:recNum(lastW.soreness),stres:recNum(lastW.stress),ruh_hali:recNum(lastW.mood),
         dinlenik_nabiz_bpm:recNum(lastW.RHR),agri_bolgesi_notu:painFreeText(lastW.areaOfPain)}:null,
       olcek:scale,
       hazir_olus:b.readiness?{skor:b.readiness.score,durum:b.readiness.status,kaynak:b.readiness.source,
         tarih:b.readiness.checkin_date,sinyaller:b.readiness.signals}:null,
       son_7_gun:week.map(w=>({tarih:w.date,hazir_olus:recNum(w.readiness),uyku:recNum(w.sleep),
-        yorgunluk:recNum(w.fatigue),kas_agrisi:recNum(w.soreness),dinlenik_nabiz_bpm:recNum(w.RHR)})),
+        yorgunluk:recNum(w.fatigue),zihinsel_yorgunluk:recNum(w.mentalFatigue),fiziksel_yorgunluk:recNum(w.physicalFatigue),
+        kas_agrisi:recNum(w.soreness),dinlenik_nabiz_bpm:recNum(w.RHR)})),
     },
     rpe:{
       son_kayit:ld.last?{tarih:ld.last.date,tur:ld.last.kind,rpe:ld.last.rpe,sure_dk:ld.last.duration,srpe_au:ld.last.srpe}:null,
@@ -32381,7 +32422,9 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
         toplam_yuk_au:recNum(e.totalLoad)})),
     },
     uyku:wField('sleep','Uyku','Sleep'),
-    yorgunluk:wField('fatigue','Yorgunluk','Fatigue'),
+    yorgunluk:wField('fatigue','Yorgunluk (zihinsel + fiziksel ortalaması)','Fatigue (mean of mental + physical)'),
+    zihinsel_yorgunluk:wField('mentalFatigue','Zihinsel yorgunluk / stres','Mental fatigue / stress'),
+    fiziksel_yorgunluk:wField('physicalFatigue','Fiziksel yorgunluk','Physical fatigue'),
     kas_agrisi:wField('soreness','Kas ağrısı','Muscle soreness'),
     testler:{
       son_test_tarihi:lastTest?lastTest.date:null,
@@ -33865,7 +33908,6 @@ function mergeCheckins(team,docs){
     const n=Number(v);
     return n<lo?lo:(n>hi?hi:n);
   };
-  const num=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v);
   for(const d of docs){
     if(d.teamId!==team.id)continue;
     /* Kimlik önce: sporcu formda kendi adını seçtiği için kimlik zaten elimizde.
@@ -33901,9 +33943,12 @@ function mergeCheckins(team,docs){
     }else if(d.kind==='wellness'){
       const nid=checkinSrcId('wellness',d.athleteId,date);
       const ath=clone(i);
-      const sleep=clamp(p.sleep,1,5),fat=clamp(p.fatigue,1,5),sor=clamp(p.soreness,1,5),rhr=clamp(p.RHR,20,250);
-      const sc=[sleep,fat,sor].filter(v=>v!=null);
-      const readiness=sc.length?+(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):null;
+      const sleep=clamp(p.sleep,1,5),sor=clamp(p.soreness,1,5),rhr=clamp(p.RHR,20,250);
+      const mental=clamp(p.mentalFatigue,1,5),physical=clamp(p.physicalFatigue,1,5);
+      /* Yorgunluk formda iki soru. `fatigue` ikisinin ortalaması olarak kayda yine
+         yazılıyor: bireyselleştirme, AI dışa aktarımı ve eski grafikler o alanı
+         okuyor. Eski formdan (tek yorgunluk sorusu) gelen gönderimde doğrudan o. */
+      const fat=wellFatigue({mentalFatigue:mental,physicalFatigue:physical,fatigue:clamp(p.fatigue,1,5)});
       // Bölge → şiddet. Sporcu şiddeti kendi işaretlediği için tahmine gerek yok.
       let painMap=null;
       const pm=(p.painMap&&typeof p.painMap==='object')?p.painMap:{};
@@ -33914,8 +33959,9 @@ function mergeCheckins(team,docs){
         (painMap||(painMap={}))[rg]=Math.round(sev);
       });
       const entry={id:uid(),srcId:nid,date,submittedAt:at,
-        RHR:rhr,sleep,fatigue:fat,soreness:sor,
-        areaOfPain:'',painMap,pain:painTagsFromMap(painMap),readiness};
+        RHR:rhr,sleep,mentalFatigue:mental,physicalFatigue:physical,fatigue:fat,soreness:sor,
+        areaOfPain:'',painMap,pain:painTagsFromMap(painMap),readiness:null};
+      entry.readiness=wellReadiness(entry);
       const k=ath.wellness.findIndex(w=>(w.srcId||w.notionId)===nid);
       if(k>=0){
         /* AYNI GÜNÜN SON GÖNDERİMİ geçerli: daha eski bir gönderim (rastgele sırada
@@ -33927,10 +33973,8 @@ function mergeCheckins(team,docs){
         if(kept.length){
           kept.forEach(f=>{entry[f]=prev[f];});
           entry.manualEdits=kept;
-          if(!kept.includes('readiness')){
-            const sc2=['sleep','fatigue','soreness'].map(f=>num(entry[f])).filter(v=>v!=null);
-            entry.readiness=sc2.length?+(sc2.reduce((a,b)=>a+b,0)/sc2.length).toFixed(1):null;
-          }
+          if(!kept.includes('fatigue'))entry.fatigue=wellFatigue(entry);
+          if(!kept.includes('readiness'))entry.readiness=wellReadiness(entry);
         }
         entry.id=prev.id;ath.wellness[k]=entry;
       }else ath.wellness.push(entry);
@@ -34102,7 +34146,7 @@ function CheckinPanel({data,setData,team,sync}){
     {kind:'srpe',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),
      hint:L('Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.','Send after training/a match. Asks difficulty + duration for ball training, strength & conditioning, and competition.')},
     {kind:'wellness',label:L('Sabah — Wellness','Morning — Wellness'),
-     hint:L('Sabah at. Dinlenik KAH, uyku, yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Send in the morning. Asks resting HR, sleep, fatigue, soreness, and the pain-region map.')},
+     hint:L('Sabah at. Dinlenik KAH, uyku, zihinsel yorgunluk, fiziksel yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Send in the morning. Asks resting HR, sleep, mental fatigue, physical fatigue, muscle soreness, and the pain-region map.')},
   ];
 
   return(<div>

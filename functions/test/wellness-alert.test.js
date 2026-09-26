@@ -23,11 +23,15 @@ const {
   REASON_LOW_SCORE, REASON_PAIN, WELLNESS_THRESHOLD,
 } = require('../wellness-alert');
 
-// Gerçek form payload'ı: üç skor + ağrı haritası.
+// Formun bugünkü payload'ı: dört skor (uyku, zihinsel, fiziksel, kas ağrısı) + ağrı haritası.
+const N = (sleep, mentalFatigue, physicalFatigue, soreness, painMap) =>
+  ({ sleep, mentalFatigue, physicalFatigue, soreness, painMap: painMap || {} });
+/* Yorgunluk ikiye ayrılmadan ÖNCEKİ formun payload'ı: tek `fatigue` sorusu. Sporcunun
+   telefonunda eski sayfa açık kalmış olabilir; o gönderim de aynı kurala girmeli. */
 const P = (sleep, fatigue, soreness, painMap) => ({ sleep, fatigue, soreness, painMap: painMap || {} });
-/* Tam olarak istenen ortalamayı veren payload. Üç eşit değerin ortalaması
+/* Tam olarak istenen ortalamayı veren payload. Eşit değerlerin ortalaması
    kendisidir, yani senaryodaki skor birebir kuruluyor. */
-const atScore = (score, painMap) => P(score, score, score, painMap);
+const atScore = (score, painMap) => N(score, score, score, score, painMap);
 
 const MOD = { 'Bel': 2 };
 const HIGH = { 'Quadriceps': 3 };
@@ -36,6 +40,22 @@ const LOW_ONLY = { 'Quadriceps': 1 };
 
 /* ── Mevcut formül korunuyor mu ───────────────────────────────────────────── */
 section('Overall Wellness — uygulamanın kendi formülü');
+
+t('uyku + zihinsel + fiziksel yorgunluk + kas ağrısı ortalaması, tek ondalık', () => {
+  assert.strictEqual(overallWellness(N(4, 4, 4, 4)), 4);
+  assert.strictEqual(overallWellness(N(4, 3, 3, 3)), 3.3);   // 3.25
+  assert.strictEqual(overallWellness(N(5, 2, 4, 3)), 3.5);
+});
+t('yeni formda boş kas ağrısı ortalamaya girmiyor', () => {
+  assert.strictEqual(overallWellness(N(4, 3, 2, null)), 3);
+});
+t('yeni formda eski `fatigue` alanı ikinci kez sayılmıyor', () => {
+  const p = Object.assign(N(4, 4, 4, 4), { fatigue: 1 });
+  assert.strictEqual(overallWellness(p), 4);
+});
+t('yalnızca biri dolu olsa da yeni formül geçerli', () => {
+  assert.strictEqual(overallWellness({ sleep: 4, mentalFatigue: 2, soreness: null }), 3);
+});
 
 t('uyku + yorgunluk + kas ağrısı ortalaması, tek ondalık', () => {
   assert.strictEqual(overallWellness(P(4, 4, 4)), 4);
@@ -126,7 +146,21 @@ t('TEST 10 · W=2.5 · yüksek ağrı → UYARI', () => {
 });
 
 /* ── Aynı senaryolar, formun gerçekten üretebildiği değerlerle ─────────────── */
-section('Senaryolar — gerçek form verisiyle (tam sayı rozetler)');
+section('Senaryolar — bugünkü form (dört soru, tam sayı rozetler)');
+
+t('uyku 4 · zihinsel 4 · fiziksel 3 · kas ağrısı 3 · ağrı yok → UYARI YOK (W=3.5 tam)', () => {
+  assert.strictEqual(overallWellnessExact(N(4, 4, 3, 3)), 3.5);
+  assert.strictEqual(shouldAlert(N(4, 4, 3, 3)), false);
+});
+t('uyku 4 · zihinsel 3 · fiziksel 3 · kas ağrısı 3 · ağrı yok → UYARI (W=3.25)', () => {
+  assert.strictEqual(shouldAlert(N(4, 3, 3, 3)), true);
+  assert.deepStrictEqual(alertReasons(N(4, 3, 3, 3)), [REASON_LOW_SCORE]);
+});
+t('uyku 5 · zihinsel 5 · fiziksel 5 · kas ağrısı 5 · orta ağrı → UYARI (ağrı tek başına)', () => {
+  assert.deepStrictEqual(alertReasons(N(5, 5, 5, 5, MOD)), [REASON_PAIN]);
+});
+
+section('Senaryolar — eski form (tek yorgunluk sorusu)');
 
 t('uyku 4 · yorgunluk 4 · kas ağrısı 4 · ağrı yok → UYARI YOK (W=4.0)', () => {
   assert.strictEqual(overallWellness(P(4, 4, 4)), 4);
@@ -155,7 +189,7 @@ section('Bildirim metni');
 
 const SUB = {
   athleteName: 'Emir Papur', athleteId: 'a1', teamId: 't1', date: '2026-03-04',
-  payload: P(3, 3, 4, HIGH),
+  payload: N(3, 3, 3, 4, HIGH),   // 3.25 → ekranda 3.3
 };
 
 t('başlık + gövde: sporcu, takım, skor, ağrı', () => {
@@ -197,14 +231,22 @@ t('kayıt istenen tüm alanları taşıyor', () => {
   assert.strictEqual(r.teamName, 'U16');
   assert.strictEqual(r.date, '2026-03-04');
   assert.strictEqual(r.overall, 3.3);
-  assert.deepStrictEqual(r.scores, { sleep: 3, fatigue: 3, soreness: 4, RHR: null });
+  assert.deepStrictEqual(r.scores,
+    { sleep: 3, mentalFatigue: 3, physicalFatigue: 3, fatigue: null, soreness: 4, RHR: null });
   assert.deepStrictEqual(r.painHigh, ['Quadriceps']);
   assert.deepStrictEqual(r.painModerate, []);
   assert.deepStrictEqual(r.reasons, [REASON_LOW_SCORE, REASON_PAIN]);
 });
 t('bileşen skorları ve RHR kayda giriyor', () => {
+  const r = buildAlertRecord({ payload: Object.assign(N(2, 3, 4, null), { RHR: 58 }) }, '');
+  assert.deepStrictEqual(r.scores,
+    { sleep: 2, mentalFatigue: 3, physicalFatigue: 4, fatigue: null, soreness: null, RHR: 58 });
+});
+t('eski formdan gelen gönderimde tek yorgunluk skoru korunuyor', () => {
   const r = buildAlertRecord({ payload: { sleep: 2, fatigue: 3, soreness: null, RHR: 58, painMap: {} } }, '');
-  assert.deepStrictEqual(r.scores, { sleep: 2, fatigue: 3, soreness: null, RHR: 58 });
+  assert.deepStrictEqual(r.scores,
+    { sleep: 2, mentalFatigue: null, physicalFatigue: null, fatigue: 3, soreness: null, RHR: 58 });
+  assert.strictEqual(r.overall, 2.5);
 });
 t('sebep kod olarak duruyor, cümle olarak değil', () => {
   const r = buildAlertRecord({ payload: P(2, 2, 2) }, '');
@@ -220,13 +262,14 @@ t('kriteri aşan gönderim flagged', () => {
   assert.strictEqual(buildAlertRecord({ payload: P(5, 5, 5, MOD) }, '').flagged, true);
 });
 t('kriteri aşMAYAN gönderimin de kaydı çıkıyor — yalnızca flagged değil', () => {
-  const r = buildAlertRecord({ athleteId: 'a9', athleteName: 'İyi Uyuyan', payload: P(5, 4, 4, LOW_ONLY) }, 'U16');
+  const r = buildAlertRecord({ athleteId: 'a9', athleteName: 'İyi Uyuyan', payload: N(5, 4, 4, 4, LOW_ONLY) }, 'U16');
   assert.strictEqual(r.flagged, false);
   assert.deepStrictEqual(r.reasons, []);
   // Kaydın geri kalanı eksiksiz: ekran bu satırı flagged olanlarla aynı biçimde çiziyor.
   assert.strictEqual(r.athleteName, 'İyi Uyuyan');
-  assert.strictEqual(r.overall, 4.3);
-  assert.deepStrictEqual(r.scores, { sleep: 5, fatigue: 4, soreness: 4, RHR: null });
+  assert.strictEqual(r.overall, 4.3);   // 4.25
+  assert.deepStrictEqual(r.scores,
+    { sleep: 5, mentalFatigue: 4, physicalFatigue: 4, fatigue: null, soreness: 4, RHR: null });
 });
 t('tam eşikteki 3.5 kayda giriyor ama flagged değil', () => {
   const r = buildAlertRecord({ payload: atScore(3.5) }, '');

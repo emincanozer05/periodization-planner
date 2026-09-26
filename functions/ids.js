@@ -32,6 +32,10 @@ const rosterDocId = (coachUid, teamId) => `${safe(coachUid)}__${safe(teamId)}`;
 const alertDocId = (coachUid, athleteId, date) =>
   `${safe(coachUid)}__${safe(athleteId)}__${safe(date)}`;
 
+/* RPE kaydının adı — aynı mantık: sporcu + tarih. Aynı günün ikinci RPE gönderimi
+   öncekinin üstüne yazıyor, koçun günlüğündeki `ci-srpe-<sporcu>-<tarih>` gibi. */
+const rpeDocId = alertDocId;
+
 /* ── Bildirime tıklanınca açılacak adres ───────────────────────────────────
    Uygulamanın nerede yayınlandığını KOÇUN UYGULAMASI biliyor ve kadro dokümanına
    yazıyor — burada sabit bir alan adı durmuyor (Madde 7: kulüp/kurulum bağımsız).
@@ -89,4 +93,4 @@ function staffAlertLink(appUrl) {
   return base ? `${base}/alerts.html` : '';
 }
 
-module.exports = { safe, rosterDocId, alertDocId, alertLink, staffAlertLink, appDir };
+module.exports = { safe, rosterDocId, alertDocId, rpeDocId, alertLink, staffAlertLink, appDir };
