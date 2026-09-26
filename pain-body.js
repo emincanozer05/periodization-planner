@@ -192,6 +192,27 @@
 
     var nr = rows.length, nc = cols.length;
     var pos = new Float32Array(nr * nc * 3);
+    /* Kas kabarıklıkları ve oluklar: yüzeyi kesitin merkezinden dışa (ya da içe)
+       iten yumuşak Gauss tümsekleri — [a, φ, a-genişliği, φ-genişliği (°), genlik].
+       Ayrı parça eklemek kesişim yerinde sert bir kıvrım bırakırdı; bu yüzeyin
+       kendisini şekillendiriyor, bölge sınırlarına da dokunmuyor. `sym` verilen
+       gövdede her tümsek φ=0 eksenine göre aynalanıyor (iki göğüs, iki kürek…). */
+    var bumps = [];
+    (spec.bumps || []).forEach(function (b) {
+      bumps.push(b);
+      if (spec.sym && b[1] !== 0 && Math.abs(b[1]) !== 180) bumps.push([b[0], -b[1], b[2], b[3], b[4]]);
+    });
+    function bumpAt(a, phi) {
+      var d = 0;
+      for (var q = 0; q < bumps.length; q++) {
+        var B = bumps[q], da = (a - B[0]) / B[2];
+        if (da > 3 || da < -3) continue;
+        var dp = wrapPi((phi - B[1]) * DEG) / DEG / B[3];
+        if (dp > 3 || dp < -3) continue;
+        d += B[4] * Math.exp(-(da * da + dp * dp));
+      }
+      return d;
+    }
     var ref = spec.ref || (axisZ ? [0, 1, 0] : [0, 0, 1]);
     for (i = 0; i < nr; i++) {
       var a0 = rows[i], C = center(a0);
@@ -210,6 +231,16 @@
         var rx = rNeg + (rPos - rNeg) * (1 + s) / 2;
         var rz = rb + (rf - rb) * (1 + c) / 2;
         var X = rx * spow(s, 2 / e), Z = rz * spow(c, 2 / e);
+        // Uç halkaları tek bir noktada kapanıyor: kılcal bir açıklık bile topukta,
+        // parmak ucunda içi görünen koyu bir benek bırakıyordu.
+        if (i === 0 || i === nr - 1) { X = 0; Z = 0; }
+        else if (bumps.length) {
+          var len = Math.hypot(X, Z);
+          if (len > 0.004) {
+            var f = Math.max(0.2, (len + bumpAt(a0, th * sg / DEG)) / len);
+            X *= f; Z *= f;
+          }
+        }
         var o = (i * nc + j) * 3;
         pos[o] = C[0] + Sx[0] * X + F[0] * Z;
         pos[o + 1] = C[1] + Sx[1] * X + F[1] * Z;
@@ -258,8 +289,10 @@
   // Baştan kasığa tek parça: baş, yüz, boyun, omuz kuşağı, göğüs, bel, kalça.
   var TORSO = [
     // y      x  z       rl    rm    rf    rb    e
-    [1.805, 0, 0.004, 0.004, 0.004, 0.004, 0.004, 2],
-    [1.797, 0, 0.004, 0.034, 0.034, 0.042, 0.044, 2],
+    [1.806, 0, 0.004, 0.003, 0.003, 0.003, 0.003, 2],
+    [1.8045, 0, 0.004, 0.014, 0.014, 0.017, 0.018, 2],
+    [1.801, 0, 0.004, 0.025, 0.025, 0.030, 0.032, 2],
+    [1.795, 0, 0.004, 0.037, 0.037, 0.046, 0.048, 2],
     [1.778, 0, 0.004, 0.057, 0.057, 0.070, 0.073, 2],
     [1.748, 0, 0.004, 0.071, 0.071, 0.087, 0.091, 2],
     [1.712, 0, 0.004, 0.078, 0.078, 0.094, 0.098, 2],
@@ -286,12 +319,12 @@
     [0.790, 0, -0.010, 0.080, 0.080, 0.035, 0.050, 2],
     [0.772, 0, -0.010, 0.006, 0.006, 0.006, 0.006, 2]
   ];
-  var TORSO_A = [1.628, 1.572, 1.482, 1.38, 1.26, 1.22, 1.15, 1.06, 0.975, 0.985, 0.925, 0.865];
+  var TORSO_A = [1.612, 1.572, 1.482, 1.38, 1.26, 1.22, 1.15, 1.06, 0.975, 0.985, 0.925, 0.865];
   var TORSO_T = [0, 20, -20, 22, -22, 45, -45, 48, -48, 60, -60, 70, -70, 80, -80, 88, -88,
                  105, -105, 112, -112, 120, -120, 128, -128, 160, -160];
   function torsoRegion(y, phi) {
     var ab = Math.abs(phi), side = phi > 0 ? 'L' : 'R';
-    if (y >= 1.628) return 'Baş';
+    if (y >= 1.612) return 'Baş';
     if (y >= 1.572) return ab < 80 ? 'Çene' : 'Baş';
     if (y >= 1.482) return ab < 105 ? 'Boyun' : 'Ense';
     if (y >= 1.38) return ab < 48 ? 'Göğüs' : (ab < 128 ? S(side, 'omuz') : 'Üst sırt');
@@ -415,8 +448,11 @@
   // Ayak: topuktan parmak köküne (a = z). o1 = x, o2 = y; rf üst, rb alt yarıçap.
   var FOOT = [
     // z       x      y      rl     rm     rf     rb
-    [-0.068, 0.124, 0.042, 0.006, 0.006, 0.006, 0.006],
-    [-0.058, 0.124, 0.043, 0.025, 0.025, 0.028, 0.034],
+    [-0.071, 0.124, 0.043, 0.003, 0.003, 0.003, 0.003],
+    [-0.0695, 0.124, 0.043, 0.010, 0.010, 0.011, 0.013],
+    [-0.066, 0.124, 0.043, 0.017, 0.017, 0.019, 0.023],
+    [-0.060, 0.124, 0.043, 0.023, 0.023, 0.026, 0.031],
+    [-0.052, 0.124, 0.044, 0.027, 0.027, 0.032, 0.037],
     [-0.035, 0.124, 0.047, 0.032, 0.032, 0.040, 0.042],
     [0.010, 0.125, 0.054, 0.036, 0.037, 0.046, 0.049],
     [0.060, 0.128, 0.046, 0.042, 0.042, 0.036, 0.041],
@@ -442,10 +478,78 @@
   var TOES = [[-0.026, 0.192, 0.0132], [-0.004, 0.184, 0.0092], [0.011, 0.177, 0.0086],
               [0.024, 0.170, 0.0080], [0.036, 0.161, 0.0074]];
 
+  /* Kas tanımı (bkz. tubeGrid → bumps). Gövdede φ>0 sol ve tablo aynalanıyor;
+     uzuvlarda φ dışa doğru pozitif, 0 ön, 180 arka. */
+  var TORSO_BUMPS = [
+    // baş ve yüz
+    [1.715, 180, 0.030, 50, 0.004],   // kafanın arkası
+    [1.690, 18, 0.008, 20, 0.006],    // kaş kemeri
+    [1.674, 22, 0.010, 12, -0.009],   // göz çukuru
+    [1.655, 52, 0.015, 18, 0.007],    // elmacık
+    [1.700, 72, 0.015, 15, -0.003],   // şakak
+    [1.622, 0, 0.004, 22, -0.003],    // ağız çizgisi
+    [1.628, 0, 0.005, 14, 0.003],     // üst dudak
+    [1.615, 0, 0.005, 13, 0.003],     // alt dudak
+    [1.645, 40, 0.018, 16, 0.004],    // yanak
+    [1.594, 0, 0.012, 18, 0.007],     // çene ucu
+    // boyun ve omuz kuşağı
+    [1.530, 38, 0.035, 14, 0.006],    // boyun yan kası
+    [1.448, 34, 0.012, 26, 0.007],    // köprücük kemiği
+    // göğüs ve karın
+    [1.315, 30, 0.050, 26, 0.021],    // göğüs kası
+    [1.252, 32, 0.012, 24, -0.006],   // göğüs kasının alt kenarı
+    [1.290, 0, 0.090, 6, -0.008],     // göğüs kemiği oluğu
+    [1.075, 10, 0.075, 9, 0.010],     // karın kası sütunu
+    [1.080, 0, 0.100, 3.5, -0.006],   // orta çizgi
+    [1.115, 10, 0.006, 12, -0.005],   // karın kası ara çizgileri
+    [1.050, 10, 0.006, 12, -0.005],
+    [1.170, 10, 0.006, 12, -0.004],
+    [1.030, 62, 0.050, 18, 0.006],    // dış oblik
+    // sırt
+    [1.220, 118, 0.090, 22, 0.014],   // latissimus
+    [1.335, 150, 0.050, 16, 0.009],   // kürek kemiği
+    [1.120, 180, 0.200, 7, -0.010],   // omurga oluğu
+    [1.020, 166, 0.070, 9, 0.009],    // bel kasları
+    // kalça
+    [0.885, 145, 0.050, 28, 0.017],   // gluteus
+    [0.875, 180, 0.045, 5, -0.014]    // kalça yarığı
+  ];
+  var LEG_BUMPS = [
+    [0.710, 5, 0.090, 22, 0.010],     // rectus femoris
+    [0.690, 60, 0.100, 28, 0.011],    // vastus lateralis
+    [0.595, -42, 0.040, 22, 0.015],   // vastus medialis (damla)
+    [0.720, -35, 0.100, 6, -0.005],   // sartorius oluğu
+    [0.680, 95, 0.120, 6, -0.004],    // IT bandı oluğu
+    [0.720, 160, 0.100, 25, 0.006],   // hamstring (dış)
+    [0.720, -160, 0.100, 25, 0.006],  // hamstring (iç)
+    [0.800, -95, 0.050, 30, 0.006],   // adduktor
+    [0.505, 180, 0.020, 30, -0.006],  // diz arkası çukuru
+    [0.375, -150, 0.055, 28, 0.016],  // gastroknemius iç başı
+    [0.390, 150, 0.045, 24, 0.012],   // gastroknemius dış başı
+    [0.340, 25, 0.080, 14, 0.007],    // tibialis anterior
+    [0.130, 128, 0.040, 16, -0.004],  // Aşil kenarları
+    [0.130, -128, 0.040, 16, -0.004]
+  ];
+  var ARM_BUMPS = [
+    [1.405, 25, 0.035, 35, 0.008],    // deltoid ön
+    [1.410, 85, 0.040, 35, 0.009],    // deltoid yan
+    [1.405, 150, 0.035, 35, 0.007],   // deltoid arka
+    [1.235, 0, 0.055, 32, 0.012],     // biceps
+    [1.270, 180, 0.065, 38, 0.011],   // triceps
+    [1.010, 45, 0.045, 30, 0.009],    // brachioradialis
+    [1.000, -40, 0.050, 35, 0.006],   // ön kol fleksörleri
+    [1.118, 180, 0.012, 22, 0.006]    // dirsek ucu (olekranon)
+  ];
+  var FOOT_BUMPS = [
+    [0.050, -150, 0.035, 30, -0.012], // iç kemer
+    [0.115, 180, 0.020, 60, 0.003]    // ayak tabanı yastığı
+  ];
+
   /* Bütün parçaların tarifleri. `side` verilen parçada x aynalanıyor. */
   function bodySpecs() {
     var out = [];
-    out.push({ name: 'torso', keys: TORSO, rows: 150, cols: 88, aBreaks: TORSO_A, thBreaks: TORSO_T, region: torsoRegion });
+    out.push({ name: 'torso', keys: TORSO, rows: 176, cols: 104, aBreaks: TORSO_A, thBreaks: TORSO_T, region: torsoRegion,
+      bumps: TORSO_BUMPS, sym: true });
     // Yüzü belli eden iki işaret: burun ve kulaklar. Öndeyken hangi yöne bakıldığı
     // ilk bakışta anlaşılsın diye.
     out.push({ name: 'nose', keys: capsule(13, function (t) { return [1.668 - 0.036 * t, 0, 0.097 + 0.012 * t]; },
@@ -453,7 +557,8 @@
     ['L', 'R'].forEach(function (side) {
       out.push({ name: 'ear' + side, side: side, keys: blobKeys(0.076, 1.662, -0.004, 0.011, 0.029, 0.017),
         rows: 16, cols: 16, region: function () { return 'Baş'; } });
-      out.push({ name: 'leg' + side, side: side, keys: LEG, rows: 120, cols: 56, aBreaks: LEG_A, thBreaks: LEG_T, region: legRegion(side) });
+      out.push({ name: 'leg' + side, side: side, keys: LEG, rows: 140, cols: 64, aBreaks: LEG_A, thBreaks: LEG_T, region: legRegion(side),
+        bumps: LEG_BUMPS });
       // Diz kapağı ve ayak bileği kemik çıkıntıları: bölgelerin yerini gösteren işaretler.
       out.push({ name: 'patella' + side, side: side, keys: blobKeys(0.113, 0.505, 0.044, 0.030, 0.036, 0.016),
         rows: 16, cols: 18, region: function () { return S(side, 'diz önü'); } });
@@ -461,7 +566,8 @@
         rows: 12, cols: 14, region: function () { return S(side, 'ayak bileği dışı'); } });
       out.push({ name: 'malM' + side, side: side, keys: blobKeys(0.124 - 0.026, 0.09, -0.004, 0.011, 0.015, 0.013),
         rows: 12, cols: 14, region: function () { return S(side, 'ayak bileği içi'); } });
-      out.push({ name: 'arm' + side, side: side, keys: ARM, rows: 100, cols: 40, aBreaks: ARM_A, region: armRegion(side) });
+      out.push({ name: 'arm' + side, side: side, keys: ARM, rows: 116, cols: 48, aBreaks: ARM_A, region: armRegion(side),
+        bumps: ARM_BUMPS });
       out.push({ name: 'palm' + side, side: side, keys: PALM, rows: 24, cols: 32, aBreaks: [0.842],
         region: function (y) { return y >= 0.842 ? S(side, 'el bileği') : S(side, 'el'); } });
       FINGERS.forEach(function (f, n) {
@@ -478,7 +584,7 @@
           function (t) { var q = 0.0115 * (1 - 0.2 * t); return [q, q, q, q]; }, 0.011, 0.009),
         region: function () { return S(side, 'parmaklar'); } });
       out.push({ name: 'foot' + side, side: side, axis: 'z', keys: FOOT, rows: 60, cols: 40, aBreaks: FOOT_A, thBreaks: FOOT_T,
-        region: footRegion(side) });
+        region: footRegion(side), bumps: FOOT_BUMPS });
       TOES.forEach(function (tt, n) {
         var dx = tt[0], zt = tt[1], r = tt[2];
         out.push({ name: 'toe' + side + n, side: side, axis: 'z', rows: 14, cols: 14,
@@ -502,7 +608,8 @@
   function glAvailable() {
     try {
       var c = document.createElement('canvas');
-      return !!(global.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+      // Three.js r163'ten beri yalnızca WebGL2 ile çalışıyor.
+      return !!(global.WebGL2RenderingContext && c.getContext('webgl2'));
     } catch (e) { return false; }
   }
 
@@ -540,19 +647,41 @@
     // Işıklar kameraya bağlı: model hangi yöne çevrilirse çevrilsin bakılan taraf
     // aynı şekilde aydınlanıyor, arka görünüm karanlıkta kalmıyor.
     var lightTarget = new THREE.Object3D(); lightTarget.position.set(0, 0, -4); camera.add(lightTarget);
-    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1d24, 1.25));
-    var key = new THREE.DirectionalLight(0xffffff, 1.9); key.position.set(1.6, 2.4, 1.2); key.target = lightTarget; camera.add(key);
-    var fill = new THREE.DirectionalLight(0xbcd2ff, 0.55); fill.position.set(-2.2, 0.4, 0.6); fill.target = lightTarget; camera.add(fill);
+    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1d24, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(2.2, 2.8, 1.1); key.target = lightTarget; camera.add(key);
+    var fill = new THREE.DirectionalLight(0xbcd2ff, 0.5); fill.position.set(-2.2, 0.4, 0.6); fill.target = lightTarget; camera.add(fill);
     // Arkadan gelen mavi kenar ışığı: siluet koyu zeminde kaybolmasın.
     var rim = new THREE.DirectionalLight(0x5cb8ff, 2.2); rim.position.set(0.3, 1.6, -9); rim.target = lightTarget; camera.add(rim);
 
     var body = new THREE.Group();
     scene.add(body);
-    var material = new THREE.MeshStandardMaterial({
-      vertexColors: true, roughness: 0.58, metalness: 0.06,
-      polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1
-    });
-    var seamMat = new THREE.LineBasicMaterial({ color: 0x0a0c10, transparent: true, opacity: 0.42 });
+    var dpr = Math.min(2, global.devicePixelRatio || 1);
+    var material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.52, metalness: 0.05 });
+    /* Bölge dikişleri shader'da çiziliyor. Her köşe, en yakın bölge sınırına olan
+       yüzey uzaklığını (`seam`, metre) taşıyor; parça gölgelendiricisi bu değerin
+       ekrandaki değişim hızına (fwidth) bakarak sınırın iki yanına sabit piksel
+       kalınlığında koyu bir oluk, hemen yanına da ince bir ışık çizgisi çiziyor.
+       WebGL çizgileri her cihazda 1 piksel kalıyordu; bu, yakınlaşınca da uzaklaşınca
+       da aynı netlikte duran, oyulmuş panel gibi bir sınır veriyor. */
+    var seamUniform = { value: 0.8 * dpr };   // sınırın her iki yanında, piksel
+    material.onBeforeCompile = function (sh) {
+      sh.uniforms.uSeamW = seamUniform;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float seam;\nvarying float vSeam;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeam = seam;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vSeam;\nuniform float uSeamW;')
+        .replace('#include <dithering_fragment>', [
+          'float spx = vSeam / max(length(vec2(dFdx(vSeam), dFdy(vSeam))), 1e-7);',
+          'float groove = 1.0 - smoothstep(uSeamW - 0.5, uSeamW + 0.7, spx);',
+          'float lip = smoothstep(uSeamW + 0.4, uSeamW + 1.2, spx) * (1.0 - smoothstep(uSeamW + 1.2, uSeamW + 2.6, spx));',
+          'gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * 0.16, groove * 0.95);',
+          'gl_FragColor.rgb += lip * 0.05;',
+          '#include <dithering_fragment>'].join('\n'));
+    };
+    var SEAM_FAR = 0.03;
+    // Bölge komşulukları: yan yana iki bölge bir tık farklı tonda boyanıyor.
+    var adj = REGIONS.map(function () { return {}; });
 
     /* Parçaları kur. Her parçanın üçgenleri ayrı köşe taşıyor (indekssiz), böylece
        bir bölgenin rengi komşusuna sızmıyor; normaller ise paylaşılan ızgaradan
@@ -580,7 +709,46 @@
       for (i = 0; i < N.length; i += 3) {
         var l = Math.hypot(N[i], N[i + 1], N[i + 2]) || 1; N[i] /= l; N[i + 1] /= l; N[i + 2] /= l;
       }
+      /* Tüpün iki ucundaki kapak halkası neredeyse tek bir noktada toplanıyor; oradaki
+         üçgenlerden çıkan normal rastgele yönlere bakıp topukta, başın tepesinde koyu
+         bir benek bırakıyordu. Uçta yüzey tüpün ekseni yönüne bakıyor. */
+      [[0, 1], [nr - 1, nr - 2]].forEach(function (e) {
+        var ax = 0, ay = 0, az = 0;
+        for (j = 0; j < nc; j++) {
+          var o0 = vi(e[0], j) * 3, o1 = vi(e[1], j) * 3;
+          ax += P[o0] - P[o1]; ay += P[o0 + 1] - P[o1 + 1]; az += P[o0 + 2] - P[o1 + 2];
+        }
+        var al = Math.hypot(ax, ay, az) || 1;
+        for (j = 0; j < nc; j++) { var o = vi(e[0], j) * 3; N[o] = ax / al; N[o + 1] = ay / al; N[o + 2] = az / al; }
+      });
+      /* Sınıra uzaklık: iki komşu dörtgenin bölgesi farklıysa aradaki kenarın iki
+         köşesi 0; diğer köşeler komşularından birkaç süpürmede yüzey boyunca
+         yayılan en kısa uzaklığı alıyor (SEAM_FAR'da kesiliyor). */
+      var SD = new Float32Array(nr * nc).fill(SEAM_FAR);
+      for (i = 0; i < nr - 1; i++) for (j = 0; j < nc; j++) {
+        var here = g.quad[i * nc + j], right = g.quad[i * nc + (j + 1) % nc];
+        if (right !== here) { SD[vi(i, j + 1)] = 0; SD[vi(i + 1, j + 1)] = 0; adj[here][right] = 1; adj[right][here] = 1; }
+        if (i + 1 < nr - 1) {
+          var down = g.quad[(i + 1) * nc + j];
+          if (down !== here) { SD[vi(i + 1, j)] = 0; SD[vi(i + 1, j + 1)] = 0; adj[here][down] = 1; adj[down][here] = 1; }
+        }
+      }
+      for (var pass = 0; pass < 6; pass++) {
+        for (i = 0; i < nr; i++) for (j = 0; j < nc; j++) {
+          var pv = vi(i, j), best = SD[pv];
+          if (best === 0) continue;
+          for (var di = -1; di <= 1; di++) for (var dj = -1; dj <= 1; dj++) {
+            if ((!di && !dj) || i + di < 0 || i + di >= nr) continue;
+            var qv = vi(i + di, j + dj), dq = SD[qv];
+            if (dq >= best) continue;
+            var dd = dq + Math.hypot(P[pv * 3] - P[qv * 3], P[pv * 3 + 1] - P[qv * 3 + 1], P[pv * 3 + 2] - P[qv * 3 + 2]);
+            if (dd < best) best = dd;
+          }
+          SD[pv] = best;
+        }
+      }
       var pos = new Float32Array(nt * 9), nor = new Float32Array(nt * 9), colr = new Float32Array(nt * 9);
+      var seam = new Float32Array(nt * 3);
       var fr = new Int16Array(nt);
       for (t = 0; t < nt; t++) {
         var reg = tris[t * 4 + 3]; fr[t] = reg;
@@ -589,6 +757,7 @@
           var src = tris[t * 4 + k] * 3, dst = t * 9 + k * 3;
           pos[dst] = P[src]; pos[dst + 1] = P[src + 1]; pos[dst + 2] = P[src + 2];
           nor[dst] = N[src]; nor[dst + 1] = N[src + 1]; nor[dst + 2] = N[src + 2];
+          seam[t * 3 + k] = SD[src / 3];
           for (var ax = 0; ax < 3; ax++) {
             if (P[src + ax] < st.min[ax]) st.min[ax] = P[src + ax];
             if (P[src + ax] > st.max[ax]) st.max[ax] = P[src + ax];
@@ -611,6 +780,7 @@
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
       geo.setAttribute('color', new THREE.BufferAttribute(colr, 3));
+      geo.setAttribute('seam', new THREE.BufferAttribute(seam, 1));
       geo.computeBoundingSphere();
       var mesh = new THREE.Mesh(geo, material);
       mesh.userData.fr = fr;
@@ -618,25 +788,24 @@
       meshes.push(mesh);
       faceRegion.push(fr);
 
-      /* Bölge sınırları: iki komşu dörtgenin bölgesi farklıysa aradaki kenar ince
-         koyu bir dikiş olarak çiziliyor. Sporcu dokunmadan önce bölgelerin nerede
-         başlayıp bittiğini görüyor. */
-      var seg = [];
-      function edge(p, q2) {
-        var o1 = p * 3, o2 = q2 * 3, off = 0.0011;
-        seg.push(P[o1] + N[o1] * off, P[o1 + 1] + N[o1 + 1] * off, P[o1 + 2] + N[o1 + 2] * off,
-                 P[o2] + N[o2] * off, P[o2 + 1] + N[o2 + 1] * off, P[o2 + 2] + N[o2 + 2] * off);
-      }
-      for (i = 0; i < nr - 1; i++) for (j = 0; j < nc; j++) {
-        var here = g.quad[i * nc + j];
-        if (g.quad[i * nc + (j + 1) % nc] !== here) edge(vi(i, j + 1), vi(i + 1, j + 1));
-        if (i + 1 < nr - 1 && g.quad[(i + 1) * nc + j] !== here) edge(vi(i + 1, j), vi(i + 1, j + 1));
-      }
-      if (seg.length) {
-        var lg = new THREE.BufferGeometry();
-        lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(seg), 3));
-        body.add(new THREE.LineSegments(lg, seamMat));
-      }
+    });
+    /* Komşu bölgeler üç tondan farklı birini alıyor (açgözlü boyama): dikişe ek
+       olarak ton farkı da bölgelerin nerede ayrıldığını gösteriyor. */
+    // Ayrı parçalardan kurulan komşular (avuç–parmaklar, ayak–parmaklar) ızgarada
+    // yan yana düşmüyor; komşulukları elle ekleniyor ki onlar da ayrı tonda dursun.
+    ['Sağ', 'Sol'].forEach(function (sd) {
+      [['el', 'parmaklar'], ['ayak üstü', 'ayak parmakları'], ['ayak tabanı', 'ayak parmakları'],
+       ['el bileği', 'parmaklar']].forEach(function (pr) {
+        var x = INDEX[sd + ' ' + pr[0]], y = INDEX[sd + ' ' + pr[1]];
+        adj[x][y] = 1; adj[y][x] = 1;
+      });
+    });
+    var TONE = [1.0, 1.085, 0.9], tone = REGIONS.map(function () { return 0; });
+    REGIONS.forEach(function (r, i) {
+      var used = {};
+      Object.keys(adj[i]).forEach(function (n) { if (+n < i) used[tone[+n]] = 1; });
+      var t = 0; while (used[t] && t < 2) t++;
+      tone[i] = t;
     });
     stats.forEach(function (st) {
       if (!st.area) return;
@@ -718,7 +887,7 @@
           else if (state.active) tmp.lerp(cBase, 0.3);
         } else if (r.k === state.active) tmp.copy(cActive);
         else if (r.k === state.hover) tmp.copy(cHover);
-        else tmp.copy(cBase);
+        else tmp.copy(cBase).multiplyScalar(TONE[tone[i]]);
         regionRGB[i * 3] = tmp.r; regionRGB[i * 3 + 1] = tmp.g; regionRGB[i * 3 + 2] = tmp.b;
       });
       meshes.forEach(function (m) {
