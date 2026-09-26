@@ -285,7 +285,11 @@ var SCORE_COLORS=['#ef4444','#f97316','#fcd34d','#46d6a0','#0094ff'];
 // Her basamağın sözle karşılığı — soruya göre değişiyor, çünkü "5" birinde
 // "mükemmel uyudum", ötekinde "hiç ağrım yok" demek.
 var SLEEP_LABELS   =['çok kötü','kötü','orta','iyi','çok iyi'];
-var FATIGUE_LABELS =['bitkin','yorgun','orta','dinç','çok dinç'];
+// Yorgunluk iki ayrı soru: zihinsel (stres) ve fiziksel. Tek bir "yorgunluk"
+// sorusu, sınav haftasında kafası dolu ama bacakları dinç sporcuyla tersini aynı
+// sayıya sıkıştırıyordu. Skala aynı: 1 kötü, 5 iyi.
+var MENTAL_LABELS  =['çok yüksek','yüksek','orta','düşük','çok düşük'];
+var PHYSICAL_LABELS=['bitkin','yorgun','orta','dinç','çok dinç'];
 var SORENESS_LABELS=['çok ağrılı','ağrılı','orta','hafif','ağrım yok'];
 
 /* Wellness gönderiminin karşılığı ────────────────────────────────────────────
@@ -325,11 +329,11 @@ function pickNext(list,key){
   return list[next];
 }
 /* Koç tarafıyla aynı formül: doldurulan wellness skorlarının ortalaması, tek
-   ondalık. Zorunlu olan yalnızca uyku ve yorgunluk; kas ağrısı boş bırakılmışsa
-   ortalamaya girmiyor. */
+   ondalık. Zorunlu olan uyku, zihinsel ve fiziksel yorgunluk; kas ağrısı boş
+   bırakılmışsa ortalamaya girmiyor. */
 function readinessScore(){
   if(KIND!=='wellness')return null;
-  var vals=[A.sleep,A.fatigue,A.soreness].filter(function(v){return v!=null&&!isNaN(Number(v));});
+  var vals=[A.sleep,A.mentalFatigue,A.physicalFatigue,A.soreness].filter(function(v){return v!=null&&!isNaN(Number(v));});
   if(!vals.length)return null;
   var sum=vals.reduce(function(a,b){return a+Number(b);},0);
   return Math.round(sum/vals.length*10)/10;
@@ -629,13 +633,17 @@ function buildWellness(){
       chipRow('sleep',SCORE_5,{palette:SCORE_COLORS,labels:SLEEP_LABELS}),
       null,
       function(){return A.sleep!=null;}),
-    question('Yorgunluk düzeyin nedir?',true,
-      chipRow('fatigue',SCORE_5,{palette:SCORE_COLORS,labels:FATIGUE_LABELS}),
-      null,
-      function(){return A.fatigue!=null;}),
-    question('Kas ağrısı düzeyin nedir?',false,
+    question('Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun?',true,
+      chipRow('mentalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:MENTAL_LABELS}),
+      'Zihinsel Yorgunluk',
+      function(){return A.mentalFatigue!=null;}),
+    question('Fiziksel olarak ne kadar yorgun hissediyorsun?',true,
+      chipRow('physicalFatigue',SCORE_5,{palette:SCORE_COLORS,labels:PHYSICAL_LABELS}),
+      'Fiziksel Yorgunluk',
+      function(){return A.physicalFatigue!=null;}),
+    question('Kaslarında ne düzeyde ağrı/sertlik hissediyorsun?',false,
       chipRow('soreness',SCORE_5,{palette:SCORE_COLORS,labels:SORENESS_LABELS}),
-      null,
+      'Kas Ağrısı',
       function(){return A.soreness!=null;}),
     question('Ağrın hangi bölgede ve ne şiddette?',false,painGrid(),
       'Opsiyonel — bir bölgeye dokun, şiddetini seç.',
@@ -652,7 +660,8 @@ function steps(){
       .some(function(p){return A[p[0]]!=null&&A[p[1]]!=null;})});
   }else{
     out.push({k:'sleep',ok:A.sleep!=null});
-    out.push({k:'fatigue',ok:A.fatigue!=null});
+    out.push({k:'mentalFatigue',ok:A.mentalFatigue!=null});
+    out.push({k:'physicalFatigue',ok:A.physicalFatigue!=null});
   }
   return out;
 }
@@ -670,7 +679,8 @@ function validate(){
     }
   }else{
     if(A.sleep==null)return 'Uyku kaliteni seç.';
-    if(A.fatigue==null)return 'Yorgunluk düzeyini seç.';
+    if(A.mentalFatigue==null)return 'Mental stres/yorgunluk düzeyini seç.';
+    if(A.physicalFatigue==null)return 'Fiziksel yorgunluk düzeyini seç.';
   }
   return null;
 }
@@ -681,7 +691,8 @@ function payload(){
             gameRPE:A.gameRPE??null,gameDuration:A.gameDuration??null};
   }
   var pm={};Object.keys(A.painMap||{}).forEach(function(k){pm[k]=A.painMap[k];});
-  return {RHR:A.RHR??null,sleep:A.sleep??null,fatigue:A.fatigue??null,
+  return {RHR:A.RHR??null,sleep:A.sleep??null,
+          mentalFatigue:A.mentalFatigue??null,physicalFatigue:A.physicalFatigue??null,
           soreness:A.soreness??null,painMap:pm};
 }
 

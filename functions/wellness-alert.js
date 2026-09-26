@@ -6,8 +6,12 @@
    Firestore ve FCM işleri index.js/push.js'te; bu dosya testten doğrudan
    çağrılabilsin diye ayrı duruyor.
 
-   Alan isimleri checkin.html'deki forma birebir bağlı (payload() → satır 749):
-     sleep / fatigue / soreness  → 1-5, 1 kötü 5 iyi
+   Alan isimleri checkin.html'deki forma birebir bağlı (payload()):
+     sleep / mentalFatigue /
+     physicalFatigue / soreness  → 1-5, 1 kötü 5 iyi
+     fatigue                     → ESKİ formun tek yorgunluk sorusu; yorgunluk ikiye
+                                   ayrılmadan önce açılmış bir formdan gelirse
+                                   ikisinin yerini tutuyor
      RHR                         → dinlenik nabız, opsiyonel
      painMap                     → { 'Bölge': 1|2|3 }, 1 hafif · 2 orta · 3 yüksek
                                    (bölge haritada yoksa o bölgede ağrı yok —
@@ -44,19 +48,31 @@ function num(v) {
    3.5 gibi okunuyordu. Ekranda gösterilen sayı yuvarlanmış olmalı (koç 3.3 görür),
    ama kararı veren sayı ham olmalı.
 
-   Formdan gelen gerçek veride ikisi hiç ayrışmıyor — üç tam sayının ortalaması
-   yalnızca x.0/x.3/x.7, ikisininki x.0/x.5 olabiliyor ve bunların hiçbiri
+   Formdan gelen gerçek veride ikisi hiç ayrışmıyor — dört tam sayının ortalaması
+   yalnızca x.0/x.25/x.5/x.75, üçününki x.0/x.3/x.7 olabiliyor ve bunların hiçbiri
    [3.45, 3.5) aralığına düşmüyor. Yani bu ayrım bugünkü davranışı değiştirmiyor,
    sadece kuralı ifade edildiği gibi doğru kılıyor. */
+/* Ortalamaya giren alanlar. Yeni form yorgunluğu iki soruda soruyor (zihinsel +
+   fiziksel); ikisinden biri doluysa eski tek `fatigue` alanına bakılmıyor, yoksa
+   aynı yorgunluk iki kez sayılırdı. Yalnızca eski formdan gelen payload'da
+   `fatigue` ortalamaya giriyor. */
+function scoreKeys(payload) {
+  const p = payload || {};
+  const split = num(p.mentalFatigue) != null || num(p.physicalFatigue) != null;
+  return split
+    ? ['sleep', 'mentalFatigue', 'physicalFatigue', 'soreness']
+    : ['sleep', 'fatigue', 'soreness'];
+}
 function overallWellnessExact(payload) {
-  const vals = ['sleep', 'fatigue', 'soreness'].map(k => num(payload && payload[k])).filter(v => v != null);
+  const vals = scoreKeys(payload).map(k => num(payload && payload[k])).filter(v => v != null);
   if (!vals.length) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
 /* Gösterim için: checkin.html'deki readinessScore() ve index.html'deki
    mergeCheckins() ile AYNI formül — doldurulan skorların ortalaması, tek ondalık.
-   Zorunlu olan uyku ve yorgunluk; kas ağrısı boş bırakılmışsa ortalamaya girmiyor.
+   Zorunlu olan uyku, zihinsel ve fiziksel yorgunluk; kas ağrısı boş bırakılmışsa
+   ortalamaya girmiyor.
 
    Formül burada YENİDEN TANIMLANMIYOR, kopyalanıyor: uygulamanın ekranda gösterdiği
    "Antrenmana Hazır Oluşluk" ile uyarıda yazan sayı aynı olmak zorunda, yoksa koç
@@ -206,8 +222,12 @@ function buildAlertRecord(sub, teamName) {
     teamName: String(teamName || '').trim(),
     date: (sub && sub.date) || '',
     overall: overallWellness(p),
+    /* Formun soruları, formdaki sırayla. `fatigue` yalnızca eski formdan gelen
+       gönderimde dolu — telefon sayfası o zaman iki kutu yerine tek kutu gösteriyor. */
     scores: {
       sleep: num(p.sleep),
+      mentalFatigue: num(p.mentalFatigue),
+      physicalFatigue: num(p.physicalFatigue),
       fatigue: num(p.fatigue),
       soreness: num(p.soreness),
       RHR: num(p.RHR),

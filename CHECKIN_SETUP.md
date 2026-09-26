@@ -5,7 +5,20 @@ Sporcuların dolduracağı iki form uygulamanın kendi içinde:
 | Form | Ne zaman | Ne sorar |
 |---|---|---|
 | **İçsel Yük (sRPE)** | antrenman/maç sonrası | top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk (1-10) + süre |
-| **Wellness** | sabah | dinlenik KAH, uyku, yorgunluk, kas ağrısı (1-5) ve ağrı bölgesi haritası |
+| **Wellness** | sabah | dinlenik KAH (opsiyonel), uyku, zihinsel yorgunluk, fiziksel yorgunluk, kas ağrısı (1-5) ve ağrı bölgesi haritası |
+
+Wellness formunun dört puanlı sorusu (1 kötü · 5 iyi):
+
+1. Uyku kaliten nasıldı? — zorunlu
+2. Mental stres/yorgunluk düzeyini nasıl değerlendiriyorsun? (Zihinsel Yorgunluk) — zorunlu
+3. Fiziksel olarak ne kadar yorgun hissediyorsun? (Fiziksel Yorgunluk) — zorunlu
+4. Kaslarında ne düzeyde ağrı/sertlik hissediyorsun? (Kas Ağrısı) — opsiyonel
+
+**Hazır Oluş** = cevaplanan puanların ortalaması (tek ondalık). Web sitesindeki
+**Wellness Isı Haritası** aynı soruları aynı sırayla ve formdaki renklerle gösterir:
+Hazır Oluş · Uyku · Zihinsel Yorgunluk · Fiziksel Yorgunluk · Kas Ağrısı · RHR.
+Yorgunluk ikiye ayrılmadan önce gelen kayıtlarda tek bir yorgunluk skoru var; onlar
+Hazır Oluş'a eskisi gibi girer, iki yeni sütunda boş görünür.
 
 Koç uygulamada **Check-in Formları** ekranına girer, iki düğmeden birine basar, link
 panoya kopyalanır ve sporculara gönderilir. Sporcu formda kendi adını seçer ve gönderir;
@@ -68,6 +81,9 @@ https://<siten>/wellness.html#k=<token>   → sabah
 2. Formu doldurur → `checkins` koleksiyonuna tek bir doküman yazılır.
 3. Koçun uygulaması bu koleksiyonu dinler, gönderimi sporcunun `srpeLog` / `wellness`
    kaydına işler ve dokümanı birkaç dakika sonra siler.
+4. Cloud Function aynı gönderimden ekip üyelerinin telefon sayfası için kalıcı bir kayıt
+   yazar: wellness → `wellness_alerts`, RPE → `rpe_reports`. Telefon sayfası
+   (`alerts.html`) ikisini **Wellness** ve **RPE** sekmelerinde, tek linkte gösterir.
 
 Kayıt kimliği `ci-<tür>-<sporcuId>-<tarih>` biçiminde üretilir. Bunun iki sonucu var:
 

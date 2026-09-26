@@ -201,5 +201,25 @@ service cloud.firestore {
       allow read: if isOwner() || isTeamStaff();
       allow write: if false;
     }
+
+    /* Antrenman sonrası RPE kayıtları — ekip üyesinin telefonundaki RPE sekmesi.
+       Uyarı kayıtlarıyla aynı model: yalnızca Cloud Function yazıyor, okuyan hesabın
+       sahibi ve eşleşmiş ekip üyesi — o da YALNIZCA kendi takımını. */
+    match /rpe_reports/{reportId} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
+      function isOwner() {
+        return request.auth != null && resource.data.coachUid == request.auth.uid;
+      }
+      function isTeamStaff() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+          && member().coachUid == resource.data.coachUid
+          && member().teamId   == resource.data.teamId;
+      }
+      allow read: if isOwner() || isTeamStaff();
+      allow write: if false;
+    }
   }
 }

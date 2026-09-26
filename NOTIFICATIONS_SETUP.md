@@ -44,8 +44,10 @@ telefonu çaldırmıyorlar.
 Hafif (1) ağrı uyarı sebebi sayılmaz — sporcuların çoğunda her sabah bir yerde
 hafif bir şey oluyor ve onu bildirmek listeyi okunmaz hale getiriyor.
 
-**Overall Wellness** uygulamanın kendi formülü: uyku, yorgunluk ve kas ağrısı
-skorlarının ortalaması. Kas ağrısı boş bırakılmışsa ortalamaya girmiyor. Ekranda
+**Overall Wellness** uygulamanın kendi formülü: uyku, zihinsel yorgunluk, fiziksel
+yorgunluk ve kas ağrısı skorlarının ortalaması. Kas ağrısı boş bırakılmışsa ortalamaya
+girmiyor. Yorgunluk ikiye ayrılmadan önceki formdan gelen gönderimde (tek `fatigue`
+alanı) ortalama eskisi gibi uyku + yorgunluk + kas ağrısı. Ekranda
 gösterilen sayı tek ondalığa yuvarlanıyor; kararı veren sayı yuvarlanmamış hâli.
 
 Kural `functions/wellness-alert.js` içinde tek bir yerde duruyor ve
@@ -92,7 +94,19 @@ Ekip üyesi → linki telefonunda açar
    → o telefon artık uyarıları alıyor
 ```
 
-Aynı sayfa, kişiye takımının uyarı geçmişini de gösterir (salt okunur).
+Aynı sayfa, kişiye takımının günlük verisini de gösterir (salt okunur), **iki sekmede**:
+
+| Sekme | Kaynak | Ne gösterir |
+|---|---|---|
+| **Wellness** | `wellness_alerts` | sabah formu: skor, uyarı sebebi, ağrı bölgeleri, uyku · zihinsel · fiziksel yorgunluk · kas ağrısı · KAH |
+| **RPE** | `rpe_reports` | antrenman sonrası formu: günün en yüksek RPE'si, günün yükü (AU) ve her bölümün RPE / süre / yükü |
+
+Tek link ikisini de açar. Bildirim yalnızca wellness uyarısında gelir; RPE bir
+uyarı değil, günün kaydı.
+
+**Dil:** sayfanın sağ üstündeki **TR / EN** seçimi telefonda saklanır — sayfa her
+açılışta (ana ekrandan ya da bildirime dokunarak) o dilde açılır. Seçim cihaz
+kaydına da yazıldığı için bildirim metni de o dilde gelir.
 
 **Linki gruba atma.** Linki açan herkes o takımın uyarılarını görür — check-in
 linkleriyle aynı güven modeli. Kişi ekipten ayrılırsa kartından **Geçersiz kıl**
@@ -237,11 +251,11 @@ Bunun çalışması için iki şey düzeltildi; ikisi de kurulumun ön koşuluyd
 
 | Test | Girdi | Beklenen |
 |---|---|---|
-| 1 | Uyku 4 · Yorgunluk 4 · Kas ağrısı 4 · ağrı yok | bildirim **yok** (skor 4.0) |
-| 2 | Uyku 4 · Yorgunluk 3 · kas ağrısı **boş** · ağrı yok | bildirim **yok** (skor tam 3.5) |
-| 3 | Uyku 4 · Yorgunluk 3 · kas ağrısı boş · **orta ağrı** | **bildirim** (ağrı tek başına yeter) |
-| 4 | Uyku 3 · Yorgunluk 3 · Kas ağrısı 3 · ağrı yok | **bildirim** (skor 3.0) |
-| 5 | Uyku 5 · Yorgunluk 5 · Kas ağrısı 5 · **yüksek ağrı** | **bildirim** (skor 5.0 ama ağrı var) |
+| 1 | Uyku 4 · Zihinsel 4 · Fiziksel 4 · Kas ağrısı 4 · ağrı yok | bildirim **yok** (skor 4.0) |
+| 2 | Uyku 4 · Zihinsel 4 · Fiziksel 3 · Kas ağrısı 3 · ağrı yok | bildirim **yok** (skor tam 3.5) |
+| 3 | Uyku 4 · Zihinsel 4 · Fiziksel 3 · Kas ağrısı 3 · **orta ağrı** | **bildirim** (ağrı tek başına yeter) |
+| 4 | Uyku 4 · Zihinsel 3 · Fiziksel 3 · Kas ağrısı 3 · ağrı yok | **bildirim** (skor 3.25) |
+| 5 | Uyku 5 · Zihinsel 5 · Fiziksel 5 · Kas ağrısı 5 · **yüksek ağrı** | **bildirim** (skor 5.0 ama ağrı var) |
 | 6 | bildirime tıkla (uygulama kapalı) | **`alerts.html`** — uyarı listesi açılır |
 | 7 | aynı sporcu aynı gün ikinci kez gönderir | telefonda **tek** satır (uyarı güncellenir) |
 | 8 | bildirime tıkla (uyarı sayfası **açık** bir sekmede) | o sekme öne gelir, yeni sekme açılmaz — **başka** bir CoachOS sayfası (ör. check-in formu) açıksa ona dokunulmaz |
@@ -292,6 +306,7 @@ ulaşmadığını anlamak için gerekmiyorlar.
 | `staff_links` | koç | adresi bilen |
 | `staff_members` | ekip üyesi (kendi kaydı, linkiyle doğrulanır) | kendisi |
 | `alert_roster` | koç | **yalnızca Cloud Function** |
+| `rpe_reports` | **yalnızca Cloud Function** | koç (tüm takımları) · ekip üyesi (yalnızca kendi takımı) |
 
 **1 sporcu = 1 kayıt.** Aynı sabah on yedi sporcu form doldurursa on yedi ayrı
 kayıt oluşur; birleştirilmezler. Bunların kriteri aşanları `flagged: true`. Uyarı kaydının adı sporcu + tarihten türediği için
@@ -299,7 +314,8 @@ aynı sporcunun aynı günkü ikinci gönderimi yeni kayıt açmaz, mevcut kayd�
 günceller.
 
 Uyarı kaydı şunları taşır: sporcu, takım, tarih, Overall Wellness, bileşen
-skorları (uyku / yorgunluk / kas ağrısı / dinlenik nabız), orta ve yüksek ağrı
+skorları (uyku / zihinsel yorgunluk / fiziksel yorgunluk / kas ağrısı / dinlenik nabız;
+eski formdan gelen gönderimde tek `fatigue`), orta ve yüksek ağrı
 bölgeleri, uyarı sebepleri, bildirim gönderilen kişiler ve teslim durumu.
 
 Teslim tarafında üç alan daha var ve hepsi tek bir soruyu cevaplıyor — **"bu

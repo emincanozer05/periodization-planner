@@ -4,11 +4,11 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="robots" content="noindex, nofollow"/>
-<title>CoachOS — Wellness Uyarıları</title>
+<title>CoachOS — Wellness &amp; RPE</title>
 <meta property="og:site_name" content="CoachOS"/>
-<meta property="og:title" content="CoachOS — Wellness Uyarıları"/>
-<meta property="og:description" content="Takımının sabah wellness uyarıları ve bildirim ayarı."/>
-<meta name="description" content="Takımının sabah wellness uyarıları ve bildirim ayarı."/>
+<meta property="og:title" content="CoachOS — Wellness &amp; RPE"/>
+<meta property="og:description" content="Takımının günlük wellness ve antrenman sonrası RPE kayıtları, bildirim ayarı."/>
+<meta name="description" content="Takımının günlük wellness ve antrenman sonrası RPE kayıtları, bildirim ayarı."/>
 <link rel="icon" href="logo-mark.png"/>
 <!--
   Kendi manifesti — uygulamanınkini PAYLAŞMIYOR, ve bu önemli: ana ekrana eklenen
@@ -49,6 +49,14 @@
   Token yine adresin # kısmında duruyor: ne bu sayfanın sunucu loglarına düşüyor,
   ne de link önizlemesi çeken uygulamalara gidiyor.
 
+  İKİ SEKME, TEK LİNK: Wellness (sabah formu, `wellness_alerts`) ve RPE (antrenman
+  sonrası formu, `rpe_reports`). Aynı günün iki verisi aynı sayfada; ekip üyesine
+  ikinci bir link göndermek gerekmiyor. Bildirim yalnızca wellness uyarısı için
+  geliyor — RPE bir uyarı değil, günün kaydı.
+
+  DİL: sağ üstteki TR / EN seçimi telefonda saklanıyor; sayfa her açılışta o dilde
+  açılıyor ve bildirimler de o dilde geliyor (cihaz kaydındaki `lang`).
+
   SAYFA YALNIZCA BUGÜNÜ GÖSTERİYOR. Liste önceden tarih sırasıyla son 50 kaydı
   diziyordu; sabah telefonu açan antrenörün ekranında dünün (bazen önceki günün)
   satırları duruyordu ve hangisinin bugüne ait olduğu ancak küçük gri tarihten
@@ -76,6 +84,20 @@ header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
 .who .n{font-weight:700;font-size:15.5px;letter-spacing:.01em;line-height:1.25;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .who .r{color:#7d8894;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Dil ve sekme seçicileri — aynı kalıp: yuvarlak bir kap, içinde düğmeler ── */
+.seg{display:inline-flex;background:#131619;border:1px solid #232a30;border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:#7d8894;font:inherit;font-weight:700;cursor:pointer;
+  border-radius:999px;padding:5px 11px;font-size:12.5px;letter-spacing:.04em}
+.seg button.on{background:#0094ff;color:#fff}
+.topbar{display:flex;justify-content:flex-end;margin:-8px 0 4px}
+.seg.lang button{padding:4px 10px;font-size:11.5px}
+.tabs{display:flex;margin:26px 0 0}
+.tabs button{flex:1;padding:10px 12px;font-size:15px;letter-spacing:.02em}
+.tabs button .n{display:inline-block;min-width:20px;margin-left:7px;padding:0 6px;border-radius:999px;
+  background:rgba(255,255,255,.08);font-size:12px;font-variant-numeric:tabular-nums}
+.tabs button.on .n{background:rgba(255,255,255,.22)}
+.tabs{width:100%}
 
 /* ── Kurulum kartı ──────────────────────────────────────────────────────── */
 .card{position:relative;overflow:hidden;border-radius:16px;padding:20px 18px;margin-bottom:14px;
@@ -107,7 +129,7 @@ ol li{margin-bottom:5px}
 code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px}
 
 /* ── Bölüm başlığı ──────────────────────────────────────────────────────── */
-.sec-h{display:flex;align-items:baseline;gap:10px;margin:30px 2px 14px}
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;margin:30px 2px 14px}
 .sec-h .t{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .sec-h .c{font-size:14px;color:#6c7681}
 
@@ -138,29 +160,31 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 .tag.m{color:#fcd34d;border-color:rgba(252,211,77,.55);background:rgba(252,211,77,.07)}
 .tag.l{color:#7d8894;border-color:#2c3237;background:transparent}
 
-/* Ölçüm şeridi — dört kutu, aralarında ince ayraç.
+/* Ölçüm şeridi — formun her sorusu için bir kutu, formdaki sırayla.
 
    Kutunun içi İKİ SATIR: üstte etiket, altta ikon + rakam. İlk hâlinde ikon
-   solda, etiket ve rakam sağında duruyordu (görseldeki gibi) — ama 400 piksellik
-   bir telefonda sütun başına ~83 piksel düşüyor ve "Yorgunluk" ile ikonun yan yana
-   sığdığı genişlik bu değil: etiketler noktalanıp "Yorgun…" oluyordu. İki satır,
-   etikete sütunun tamamını veriyor; ikon rakamın yanında kalmaya devam ediyor. */
-.sub{margin-top:13px;display:flex;background:#181c20;border-radius:11px;padding:11px 3px}
-.mt{flex:1;min-width:0;padding:0 7px;position:relative}
-.mt+.mt::before{content:'';position:absolute;left:0;top:2px;bottom:2px;width:1px;background:#242a30}
+   solda, etiket ve rakam sağında duruyordu — ama 400 piksellik bir telefonda sütun
+   başına ~80 piksel düşüyor ve etiketle ikonun yan yana sığdığı genişlik bu değil.
+   İki satır, etikete sütunun tamamını veriyor.
+
+   Kutular arasındaki 1 piksellik boşluk kabın rengini gösteriyor ve ayraç çizgisi
+   o. Sarma olduğunda (dar ekranda) satır arası da aynı çizgiyle ayrılıyor, son
+   satırdaki kutular da satırı dolduracak kadar genişliyor — boş bir hücre kalmıyor. */
+.sub{margin-top:13px;display:flex;flex-wrap:wrap;gap:1px;
+  background:#242a30;border-radius:11px;overflow:hidden}
+.mt{flex:1 1 0;min-width:0;padding:10px 9px;background:#181c20}
 .mt svg{flex:none;color:#93a7b6}
 .mt .k{font-size:11.5px;color:#7d8894;line-height:1.2;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .mt .row{display:flex;align-items:center;gap:6px;margin-top:3px}
 .mt .v{font-size:18px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap}
 .mt .v small{font-size:11px;font-weight:600;color:#7d8894;margin-left:2px}
-/* Dört kutu 360 pikselin altında yan yana okunmuyor; orada ikişerli sarıyor.
-   Küçülterek dörtte ısrar etmek, sabah telefona bakan gözün seçemeyeceği bir
-   rakam bırakıyordu. */
+/* Dört-beş kutu dar ekranda yan yana okunmuyor; orada üçerli, en darda ikişerli
+   sarıyor. Küçülterek hepsini tek satırda tutmak, sabah telefona bakan gözün
+   seçemeyeceği bir rakam bırakıyordu. */
+@media (max-width:459px){.sub .mt{flex-basis:40%}.sub.n5 .mt{flex-basis:30%}}
+@media (max-width:359px){.sub .mt,.sub.n5 .mt{flex-basis:40%}}
 @media (max-width:379px){
-  .sub{flex-wrap:wrap;row-gap:12px;padding:12px 4px}
-  .mt{flex:0 0 50%}
-  .mt:nth-child(odd)::before{display:none}
   /* Dar ekranda satırdaki tarih kalkıyor: liste zaten tek bir günü gösteriyor ve
      o gün bölüm başlığında yazıyor. Yerini isme bırakıyor — "KERE…" diye kesilen
      bir sporcu adı, üç kez tekrar eden bir tarihten pahalı. */
@@ -174,12 +198,27 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 .more div+div{margin-top:5px}
 .more b{color:#c6d0d8;font-weight:600}
 
+/* RPE kartı: bölüm başına bir satır — bölümün adı, zorluk rozeti, süre, yük. */
+.ss{margin-top:12px;background:#181c20;border-radius:11px;padding:4px 12px}
+.ss .s{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px}
+.ss .s+.s{border-top:1px solid #242a30}
+.ss .s .l{flex:1;min-width:0;color:#a8b3bd;line-height:1.3}
+.ss .s .d{flex:none;color:#7d8894;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.ss .s .au{flex:none;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:58px;text-align:right}
+.ss .s .au small{font-size:11px;font-weight:600;color:#7d8894;margin-left:2px}
+.rpe{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;
+  padding:0 7px;border-radius:7px;font-size:13px;font-weight:700;color:#0b0d0f;font-variant-numeric:tabular-nums}
+.pane[hidden]{display:none}
+
 .none,.load{text-align:center;color:#6c7681;padding:30px 12px;font-size:14px}
 .foot{margin-top:28px;text-align:center;color:#3f434a;font-size:11px}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <!-- Dil seçimi başlığın ÜSTÜNDE kendi satırında: başlığın içine konunca dar bir
+       telefonda takım adına yer kalmıyor, "Tofa…" diye kesiliyordu. -->
+  <div class="topbar"><div class="seg lang" id="lang" role="group" aria-label="Dil / Language"></div></div>
   <header>
     <img class="mark" src="logo-wordmark.png" alt="CoachOS"/>
     <div class="rule"></div>
@@ -199,6 +238,151 @@ code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.
 <script>
 (function(){
 'use strict';
+
+/* ── Dil ─────────────────────────────────────────────────────────────────────
+   Sayfa iki dilde: Türkçe ve İngilizce. Seçim sağ üstteki TR / EN düğmesiyle
+   yapılıyor ve TELEFONDA saklanıyor — sayfa her açılışta, ana ekrandan da,
+   bildirime dokunarak da, o dilde açılıyor. Hiç seçim yapılmamışsa telefonun
+   kendi dili (İngilizce ise EN, değilse TR).
+
+   Seçim aynı zamanda cihaz kaydına (`push_tokens.lang`) yazılıyor: sunucu bildirim
+   metnini o alandan kuruyor, yani telefonun çaldığı bildirim de seçilen dilde. */
+var LS_LANG='coachos.alerts.lang';
+var LANG=(function(){
+  try{var v=localStorage.getItem(LS_LANG);if(v==='tr'||v==='en')return v;}catch(e){}
+  return (navigator.language||'tr').toLowerCase().indexOf('en')===0?'en':'tr';
+})();
+var I18N={
+  tr:{
+    title:'CoachOS — Wellness & RPE',
+    install_h:'Uygulama olarak yükle',
+    install_p:'Ana ekranına eklenir, tarayıcı çubuğu olmadan açılır ve bildirimler daha güvenilir gelir.',
+    install_cancel:'Yükleme iptal edildi. Tarayıcı menüsünden "Uygulamayı yükle" ile de kurabilirsin.',
+    install_btn:'Ana ekrana ekle',
+    install_manual:'Bu tarayıcı kurulum düğmesini burada göstermedi. Sırayla dene:',
+    install_steps:['Sayfayı WhatsApp/Instagram içinden açtıysan menüden "Tarayıcıda aç" de — uygulama olarak yükleme yalnızca gerçek tarayıcıda çalışıyor.',
+      'Chrome menüsü (⋮) → "Uygulamayı yükle" ya da "Ana ekrana ekle".',
+      '"Bu uygulama zaten yüklü" diyorsa: kurulu CoachOS uygulamasını kaldırıp bu sayfayı yeniden yükle, sonra ikisini de kur — eski CoachOS kaydı bu sayfayı da kendi içinde sayıyor.'],
+    install_ios:'iPhone ve iPad\'de bildirim yalnızca ana ekrana eklenmiş sayfada çalışıyor:',
+    install_ios_steps:['Safari\'de alttaki Paylaş düğmesine dokun (kutudan çıkan ok).',
+      '"Ana Ekrana Ekle"yi seç ve onayla.',
+      'Uygulamayı ANA EKRANDAN aç — bu sayfa yeniden açılacak.'],
+    no_config:'Yapılandırma yüklenemedi. Koçuna ilet: push-config.js sunucuda eksik.',
+    no_token:'Bu adres eksik. Koçundan sana özel bildirim linkini iste.',
+    open_app:'CoachOS uygulamasını aç',
+    connecting:'Bağlanılıyor…',
+    team:'Takım',
+    link_dead:'Bu link artık geçerli değil. Koçundan güncel linki iste.',
+    no_anon:'Sayfa açılamadı. Koçuna ilet: Firebase → Authentication → Anonymous açık olmalı.',
+    denied:'Erişim reddedildi. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.',
+    cant_connect:'Bağlanılamadı: ',
+    push_unsupported_h:'Bu tarayıcı bildirim desteklemiyor',
+    push_unsupported_p:'Kayıtları aşağıdaki listeden yine takip edebilirsin.',
+    ios_step_h:'iPhone / iPad için bir adım daha',
+    ios_step_p:'Apple, bildirimleri yalnızca ana ekrana eklenmiş sayfalarda çalıştırıyor. Yukarıdaki adımlarla uygulamayı ana ekranına ekle, sonra buradan bildirimleri aç.',
+    no_vapid_h:'Bildirim kurulumu tamamlanmamış',
+    no_vapid_p:'Koçuna ilet: push-config.js içindeki vapidKey boş. Kayıtları aşağıdaki listeden takip edebilirsin.',
+    blocked_h:'Bildirimler bu tarayıcıda engellenmiş',
+    blocked_p:'Adres çubuğundaki kilit simgesine dokunup site ayarlarından bildirimlere izin ver, sonra sayfayı yenile.',
+    push_h:'Wellness uyarılarını telefonuna al',
+    push_p:'Takımından bir sporcunun sabah formu uyarı verdiğinde bu cihaza bildirim gelir.',
+    push_btn:'Bildirimleri aç',
+    push_on:'Bildirimler açık ✓',
+    push_opening:'Açılıyor…',
+    push_refresh_fail:'Bildirim kaydı yenilenemedi: ',
+    push_refused:'İzin verilmedi. Kayıtları aşağıdaki listeden takip edebilirsin.',
+    push_fail:'Açılamadı: ',
+    sw_timeout:'Bildirim servisi zamanında başlamadı — sayfayı yenileyip tekrar dene.',
+    sw_redundant:'Bildirim servisi yüklenemedi. Koçuna ilet: {f} ve push-config.js sitenin kök dizininde yayında olmalı.',
+    no_device_id:'Cihaz kimliği alınamadı.',
+    no_session:'Anonim oturum kurulamadı.',
+    reason_low_score:'Wellness 3.5 altında',reason_pain:'Orta/yüksek ağrı',
+    st_sent:'Bildirim gönderildi',st_partial:'Bildirim kısmen gitti',st_failed:'Bildirim gönderilemedi',
+    st_pending:'Bildirim gönderiliyor…',st_no_recipients:'Bildirilecek cihaz yok',
+    st_not_flagged:'Uyarı eşiği aşılmadı — bildirim gönderilmedi',
+    details:'Ayrıntılar',unnamed:'İsimsiz sporcu',no_alert:'Form dolduruldu — uyarı yok',
+    m_sleep:'Uyku',m_mental:'Zihinsel yorg.',m_physical:'Fiziksel yorg.',m_fatigue:'Yorgunluk',
+    m_soreness:'Kas ağrısı',m_hr:'KAH',
+    f_mental:'Zihinsel yorgunluk',f_physical:'Fiziksel yorgunluk',
+    notif:'Bildirim: ',reached:'Ulaşan: ',device:'cihaz',unreached:'Cihazı bağlı olmayan: ',team_l:'Takım: ',
+    tab_wellness:'Wellness',tab_rpe:'RPE',
+    wellness_h:'Wellness',rpe_h:'Algılanan Zorluk (RPE)',
+    records:' kayıt · ',loading:'Yükleniyor…',
+    wellness_none:'Bugün henüz wellness formu dolduran yok.',
+    rpe_none:'Bugün henüz RPE formu dolduran yok.',
+    read_denied:'Kayıtlar okunamadı. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.',
+    read_fail:'Kayıtlar yüklenemedi: ',
+    s_tp:'Top antrenmanı',s_sc:'Kuvvet & Kondisyon',s_game:'Müsabaka',
+    min:'dk',total:'Günün yükü',max_rpe:'en yüksek RPE',
+    months:['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
+  },
+  en:{
+    title:'CoachOS — Wellness & RPE',
+    install_h:'Install as an app',
+    install_p:'Adds it to your home screen, opens without the browser bar and makes notifications more reliable.',
+    install_cancel:'Installation cancelled. You can also install it from the browser menu with "Install app".',
+    install_btn:'Add to home screen',
+    install_manual:'This browser did not show the install button here. Try in order:',
+    install_steps:['If you opened the page inside WhatsApp/Instagram, choose "Open in browser" from the menu — installing only works in a real browser.',
+      'Chrome menu (⋮) → "Install app" or "Add to home screen".',
+      'If it says "This app is already installed": remove the installed CoachOS app, reload this page, then install both — the old CoachOS entry counts this page as its own.'],
+    install_ios:'On iPhone and iPad notifications only work on a page added to the home screen:',
+    install_ios_steps:['In Safari, tap the Share button at the bottom (the arrow out of a box).',
+      'Choose "Add to Home Screen" and confirm.',
+      'Open the app FROM THE HOME SCREEN — this page will open again.'],
+    no_config:'Configuration could not be loaded. Tell your coach: push-config.js is missing on the server.',
+    no_token:'This address is incomplete. Ask your coach for your personal notification link.',
+    open_app:'Open the CoachOS app',
+    connecting:'Connecting…',
+    team:'Team',
+    link_dead:'This link is no longer valid. Ask your coach for the current link.',
+    no_anon:'The page could not open. Tell your coach: Firebase → Authentication → Anonymous must be enabled.',
+    denied:'Access denied. Tell your coach: the Firestore rules may not be published yet.',
+    cant_connect:'Could not connect: ',
+    push_unsupported_h:'This browser does not support notifications',
+    push_unsupported_p:'You can still follow the records in the list below.',
+    ios_step_h:'One more step for iPhone / iPad',
+    ios_step_p:'Apple only runs notifications on pages added to the home screen. Add the app to your home screen with the steps above, then turn notifications on here.',
+    no_vapid_h:'Notification setup is not finished',
+    no_vapid_p:'Tell your coach: vapidKey in push-config.js is empty. You can follow the records in the list below.',
+    blocked_h:'Notifications are blocked in this browser',
+    blocked_p:'Tap the lock icon in the address bar, allow notifications in the site settings, then reload the page.',
+    push_h:'Get wellness alerts on your phone',
+    push_p:'When an athlete\'s morning check-in raises an alert, this device gets a notification.',
+    push_btn:'Turn on notifications',
+    push_on:'Notifications on ✓',
+    push_opening:'Turning on…',
+    push_refresh_fail:'Could not refresh the notification registration: ',
+    push_refused:'Permission was not granted. You can follow the records in the list below.',
+    push_fail:'Could not turn on: ',
+    sw_timeout:'The notification service did not start in time — reload the page and try again.',
+    sw_redundant:'The notification service could not load. Tell your coach: {f} and push-config.js must be published at the site root.',
+    no_device_id:'Could not get a device ID.',
+    no_session:'Could not open an anonymous session.',
+    reason_low_score:'Wellness below 3.5',reason_pain:'Moderate/high pain',
+    st_sent:'Notification sent',st_partial:'Notification partly delivered',st_failed:'Notification failed',
+    st_pending:'Sending notification…',st_no_recipients:'No device to notify',
+    st_not_flagged:'Alert threshold not reached — no notification sent',
+    details:'Details',unnamed:'Unnamed athlete',no_alert:'Check-in filled — no alert',
+    m_sleep:'Sleep',m_mental:'Mental fat.',m_physical:'Physical fat.',m_fatigue:'Fatigue',
+    m_soreness:'Soreness',m_hr:'RHR',
+    f_mental:'Mental fatigue',f_physical:'Physical fatigue',
+    notif:'Notification: ',reached:'Delivered to: ',device:'device',unreached:'No device paired: ',team_l:'Team: ',
+    tab_wellness:'Wellness',tab_rpe:'RPE',
+    wellness_h:'Wellness',rpe_h:'Perceived Exertion (RPE)',
+    records:' records · ',loading:'Loading…',
+    wellness_none:'No wellness check-in yet today.',
+    rpe_none:'No RPE check-in yet today.',
+    read_denied:'Records could not be read. Tell your coach: the Firestore rules may not be published yet.',
+    read_fail:'Records could not be loaded: ',
+    s_tp:'Team training',s_sc:'Strength & Conditioning',s_game:'Competition',
+    min:'min',total:'Day\'s load',max_rpe:'highest RPE',
+    months:['January','February','March','April','May','June','July','August','September','October','November','December'],
+  }
+};
+function T(k){var d=I18N[LANG]||I18N.tr;return d[k]!=null?d[k]:(I18N.tr[k]!=null?I18N.tr[k]:k);}
+document.documentElement.lang=LANG;
+document.title=T('title');
 
 /* ── Küçük yardımcılar ───────────────────────────────────────────────────── */
 function el(tag,attrs,kids){
@@ -231,6 +415,8 @@ var ICON={
   sleep:'M3 18v-5a2 2 0 0 1 2-2h11a4 4 0 0 1 4 4v3M3 9v9M3 13h18M7.5 8.5h2',
   fatigue:'M4 8h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM21 11v2M5.5 11v2',
   soreness:'M6.5 8v8M4 9.75v4.5M17.5 8v8M20 9.75v4.5M6.5 12h11',
+  mental:'M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 1.5 5A3 3 0 0 0 12 18zM12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-1.5 5A3 3 0 0 1 12 18',
+  rpe:'M13 3 5 14h6l-1 7 8-11h-6l1-7z',
   hr:'M20.3 6.6a4.4 4.4 0 0 0-6.2 0L12 8.7l-2.1-2.1a4.4 4.4 0 0 0-6.2 6.2l8.3 8.3 8.3-8.3a4.4 4.4 0 0 0 0-6.2z',
   chev:'M9 6l6 6-6 6',
   down:'M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 19h14',
@@ -257,12 +443,11 @@ function todayKey(d){
   var p=function(n){return (n<10?'0':'')+n;};
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
 }
-var TR_MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran',
-               'Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 function prettyDate(key){
   var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));
   if(!m)return String(key||'');
-  return Number(m[3])+' '+TR_MONTHS[Number(m[2])-1];
+  var mon=T('months')[Number(m[2])-1];
+  return LANG==='en'?mon+' '+Number(m[3]):Number(m[3])+' '+mon;
 }
 
 /* Uygulamanın kendi 1-5 renk skalası — checkin.html'deki SCORE_COLORS ile aynı
@@ -315,6 +500,24 @@ function bySeverity(a,b){
   return String(a.athleteName||'').localeCompare(String(b.athleteName||''),'tr');
 }
 
+/* RPE listesinin sırası: günün en zorlandığı sporcu en üstte (en yüksek RPE), eşitse
+   günün yükü daha büyük olan, o da eşitse isim sırası. */
+function byExertion(a,b){
+  var ra=a.maxRpe==null?-1:Number(a.maxRpe),rb=b.maxRpe==null?-1:Number(b.maxRpe);
+  if(ra!==rb)return rb-ra;
+  var la=a.totalLoad==null?-1:Number(a.totalLoad),lb=b.totalLoad==null?-1:Number(b.totalLoad);
+  if(la!==lb)return lb-la;
+  return String(a.athleteName||'').localeCompare(String(b.athleteName||''),'tr');
+}
+/* RPE rozetinin rengi — checkin.html'deki RPE_COLORS: 1 mavi (kolay) → 10 kırmızı. */
+var RPE_COLORS=['#0094ff','#22a5f5','#2ec4b6','#46d6a0','#9ed163',
+                '#fcd34d','#f7a832','#f97316','#f2542d','#ef4444'];
+function rpeColor(v){
+  if(v==null)return '#5f646d';
+  var step=Math.min(10,Math.max(1,Math.round(Number(v))));
+  return RPE_COLORS[step-1];
+}
+
 /* ── Firebase ────────────────────────────────────────────────────────────────
    Kendi uygulama adıyla kuruluyor. Sebebi checkin.html'dekiyle birebir aynı:
    Firebase oturumu tarayıcıda `firebase:authUser:<apiKey>:<appAdı>` anahtarıyla
@@ -356,8 +559,25 @@ function platform(){
   if(/Android/.test(UA))return 'android';
   return 'desktop';
 }
-// Bildirim metni kişinin diliyle kurulsun diye eşleşmede saklanıyor.
-function lang(){return (navigator.language||'tr').toLowerCase().indexOf('en')===0?'en':'tr';}
+// Bildirim metni kişinin diliyle kurulsun diye eşleşmede saklanıyor — sayfada seçilen dil.
+function lang(){return LANG;}
+
+/* Sağ üstteki TR / EN. Dil değişince sayfa yeniden yükleniyor: her metin baştan,
+   seçilen dilde kuruluyor ve bildirim izni zaten verilmişse açılıştaki kayıt
+   tazelemesi cihaz kaydındaki dili de güncelliyor. Açık kalan sekme sayısı ve
+   kısmen çevrilmiş bir ekran riski, bir yenilemenin maliyetinden büyük. */
+function drawLang(){
+  var box=document.getElementById('lang');
+  box.innerHTML='';
+  [['tr','TR'],['en','EN']].forEach(function(o){
+    box.appendChild(el('button',{type:'button',class:LANG===o[0]?'on':'','aria-pressed':LANG===o[0]?'true':'false',
+      text:o[1],onclick:function(){
+        if(LANG===o[0])return;
+        try{localStorage.setItem(LS_LANG,o[0]);}catch(e){}
+        location.reload();
+      }}));
+  });
+}
 
 /* ── Uygulama olarak yükleme ────────────────────────────────────────────────
    Bu sayfanın ana ekrana kurulması bir süs değil, bildirimin ÖN KOŞULU: iOS'ta
@@ -394,8 +614,8 @@ function drawInstall(){
   if(INSTALL_EVENT){
     var card=el('div',{class:'card plain nophone'});
     var body=el('div',{class:'body'});
-    body.appendChild(el('h2',{text:'Uygulama olarak yükle'}));
-    body.appendChild(el('p',{text:'Ana ekranına eklenir, tarayıcı çubuğu olmadan açılır ve bildirimler daha güvenilir gelir.'}));
+    body.appendChild(el('h2',{text:T('install_h')}));
+    body.appendChild(el('p',{text:T('install_p')}));
     var msg=el('div');
     var btn=el('button',{class:'btn fill',onclick:function(){
       var ev=INSTALL_EVENT;
@@ -408,11 +628,11 @@ function drawInstall(){
         INSTALL_EVENT=null;
         if(res&&res.outcome==='accepted'){card.remove();return;}
         btn.disabled=false;
-        show(msg,'warn','Yükleme iptal edildi. Tarayıcı menüsünden "Uygulamayı yükle" ile de kurabilirsin.');
+        show(msg,'warn',T('install_cancel'));
       }).catch(function(){btn.disabled=false;});
     }});
     btn.appendChild(icon(ICON.down,18));
-    btn.appendChild(el('span',{text:'Ana ekrana ekle'}));
+    btn.appendChild(el('span',{text:T('install_btn')}));
     body.appendChild(btn);
     body.appendChild(msg);
     card.appendChild(body);
@@ -433,13 +653,10 @@ function drawInstall(){
   if(!IS_IOS&&INSTALL_WAITED){
     var c3=el('div',{class:'card plain nophone'});
     var b3=el('div',{class:'body'});
-    b3.appendChild(el('h2',{text:'Uygulama olarak yükle'}));
-    b3.appendChild(el('p',{text:'Bu tarayıcı kurulum düğmesini burada göstermedi. Sırayla dene:'}));
+    b3.appendChild(el('h2',{text:T('install_h')}));
+    b3.appendChild(el('p',{text:T('install_manual')}));
     var ol3=el('ol');
-    ['Sayfayı WhatsApp/Instagram içinden açtıysan menüden "Tarayıcıda aç" de — uygulama olarak yükleme yalnızca gerçek tarayıcıda çalışıyor.',
-     'Chrome menüsü (⋮) → "Uygulamayı yükle" ya da "Ana ekrana ekle".',
-     '"Bu uygulama zaten yüklü" diyorsa: kurulu CoachOS uygulamasını kaldırıp bu sayfayı yeniden yükle, sonra ikisini de kur — eski CoachOS kaydı bu sayfayı da kendi içinde sayıyor.'
-    ].forEach(function(x){ol3.appendChild(el('li',{text:x}));});
+    T('install_steps').forEach(function(x){ol3.appendChild(el('li',{text:x}));});
     b3.appendChild(ol3);
     c3.appendChild(b3);
     installBox.appendChild(c3);
@@ -452,13 +669,10 @@ function drawInstall(){
   if(IS_IOS){
     var c2=el('div',{class:'card plain nophone'});
     var b2=el('div',{class:'body'});
-    b2.appendChild(el('h2',{text:'Uygulama olarak yükle'}));
-    b2.appendChild(el('p',{text:'iPhone ve iPad\'de bildirim yalnızca ana ekrana eklenmiş sayfada çalışıyor:'}));
+    b2.appendChild(el('h2',{text:T('install_h')}));
+    b2.appendChild(el('p',{text:T('install_ios')}));
     var ol=el('ol');
-    ['Safari\'de alttaki Paylaş düğmesine dokun (kutudan çıkan ok).',
-     '"Ana Ekrana Ekle"yi seç ve onayla.',
-     'Uygulamayı ANA EKRANDAN aç — bu sayfa yeniden açılacak.'
-    ].forEach(function(s){ol.appendChild(el('li',{text:s}));});
+    T('install_ios_steps').forEach(function(s){ol.appendChild(el('li',{text:s}));});
     b2.appendChild(ol);
     c2.appendChild(b2);
     installBox.appendChild(c2);
@@ -479,6 +693,7 @@ function warmServiceWorker(){
 
 /* ── Açılış ──────────────────────────────────────────────────────────────── */
 function boot(){
+  drawLang();
   drawInstall();
   /* Tarayıcı kurulabilirliği hemen değerlendirmiyor; olay çoğu zaman sayfa
      yüklendikten bir-iki saniye sonra geliyor. Elle kurulum yönergesini hemen
@@ -490,19 +705,19 @@ function boot(){
   },3500);
   warmServiceWorker();
   if(!CFG){
-    show(setupBox,'bad','Yapılandırma yüklenemedi. Koçuna ilet: push-config.js sunucuda eksik.');
+    show(setupBox,'bad',T('no_config'));
     return;
   }
   if(!TOKEN){
     /* Bildirimler artık bu sayfaya açılıyor — koçun KENDİ cihazı da buraya
        düşebiliyor. O cihaz kadroda bir ekip üyesi olarak eşleşmemişse elinde
        hiçbir şey kalmasın istemiyoruz: uygulamanın kendisine bir çıkış duruyor. */
-    show(setupBox,'warn','Bu adres eksik. Koçundan sana özel bildirim linkini iste.');
+    show(setupBox,'warn',T('no_token'));
     setupBox.appendChild(el('a',{class:'btn sec full',href:'index.html',
-      style:'text-decoration:none;margin-top:12px',text:'CoachOS uygulamasını aç'}));
+      style:'text-decoration:none;margin-top:12px',text:T('open_app')}));
     return;
   }
-  setupBox.appendChild(el('div',{class:'load',text:'Bağlanılıyor…'}));
+  setupBox.appendChild(el('div',{class:'load',text:T('connecting')}));
 
   openSession()
     .then(function(u){USER=u;return db.collection('staff_links').doc(TOKEN).get();})
@@ -513,7 +728,7 @@ function boot(){
          adı ve rolü altındaki satırda duruyor — telefonu elinde tutan kişi zaten
          kim olduğunu biliyor, bilmediği şey hangi kadronun sabahına baktığı. */
       document.getElementById('who-n').textContent=(LINK.teamName||'').trim()
-        ||(LINK.staffName||'').trim()||'Takım';
+        ||(LINK.staffName||'').trim()||T('team');
       document.getElementById('who-r').textContent=
         [(LINK.staffName||'').trim(),LINK.roleLabel].filter(Boolean).join(' · ');
       // Eşleşme kaydı: kuralların "bu kişi bu takımı görebilir" kontrolü buna bakıyor.
@@ -533,13 +748,13 @@ function boot(){
         // Koç linki geçersiz kılmış: hatırlanan kopyayı da at, yoksa bu telefon
         // her açılışta aynı ölü adresi denemeye devam eder.
         try{localStorage.removeItem(LS_TOKEN);}catch(e2){}
-        show(setupBox,'warn','Bu link artık geçerli değil. Koçundan güncel linki iste.');
+        show(setupBox,'warn',T('link_dead'));
       }else if(code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation'){
-        show(setupBox,'bad','Sayfa açılamadı. Koçuna ilet: Firebase → Authentication → Anonymous açık olmalı.');
+        show(setupBox,'bad',T('no_anon'));
       }else if(code==='permission-denied'){
-        show(setupBox,'bad','Erişim reddedildi. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.');
+        show(setupBox,'bad',T('denied'));
       }else{
-        show(setupBox,'bad','Bağlanılamadı: '+((e&&e.message)||e));
+        show(setupBox,'bad',T('cant_connect')+((e&&e.message)||e));
       }
     });
 }
@@ -552,7 +767,7 @@ function openSession(){
   var auth=APP.auth();
   return auth.signInAnonymously().then(function(cred){
     var u=auth.currentUser||(cred&&cred.user);
-    if(!u)throw new Error('Anonim oturum kurulamadı.');
+    if(!u)throw new Error(T('no_session'));
     return u.getIdToken(true).then(function(){return u;},function(e){
       // Ağ yokken jeton tazelenemez; bu oturumun geçersiz olduğu anlamına gelmez.
       if((e&&e.code)==='auth/network-request-failed')return u;
@@ -600,35 +815,35 @@ function drawSetup(){
 
   if(!supported){
     card.classList.add('nophone');
-    body.appendChild(el('h2',{text:'Bu tarayıcı bildirim desteklemiyor'}));
-    body.appendChild(el('p',{text:'Uyarıları aşağıdaki listeden yine takip edebilirsin.'}));
+    body.appendChild(el('h2',{text:T('push_unsupported_h')}));
+    body.appendChild(el('p',{text:T('push_unsupported_p')}));
     return;
   }
   // iOS: ana ekrana eklenmeden bildirim izni hiç istenemiyor.
   if(IS_IOS&&!IS_STANDALONE){
     card.classList.add('nophone');
-    body.appendChild(el('h2',{text:'iPhone / iPad için bir adım daha'}));
-    body.appendChild(el('p',{text:'Apple, bildirimleri yalnızca ana ekrana eklenmiş sayfalarda çalıştırıyor. Yukarıdaki adımlarla uygulamayı ana ekranına ekle, sonra buradan bildirimleri aç.'}));
+    body.appendChild(el('h2',{text:T('ios_step_h')}));
+    body.appendChild(el('p',{text:T('ios_step_p')}));
     return;
   }
   if(!CFG.vapidKey){
     card.classList.add('nophone');
-    body.appendChild(el('h2',{text:'Bildirim kurulumu tamamlanmamış'}));
-    body.appendChild(el('p',{text:'Koçuna ilet: push-config.js içindeki vapidKey boş. Uyarıları aşağıdaki listeden takip edebilirsin.'}));
+    body.appendChild(el('h2',{text:T('no_vapid_h')}));
+    body.appendChild(el('p',{text:T('no_vapid_p')}));
     return;
   }
   if(Notification.permission==='denied'){
     card.classList.add('nophone');
-    body.appendChild(el('h2',{text:'Bildirimler bu tarayıcıda engellenmiş'}));
-    body.appendChild(el('p',{text:'Adres çubuğundaki kilit simgesine dokunup site ayarlarından bildirimlere izin ver, sonra sayfayı yenile.'}));
+    body.appendChild(el('h2',{text:T('blocked_h')}));
+    body.appendChild(el('p',{text:T('blocked_p')}));
     return;
   }
 
   card.appendChild(phoneArt());
-  body.appendChild(el('h2',{text:'Wellness uyarılarını telefonuna al'}));
-  body.appendChild(el('p',{text:'Takımından bir sporcunun sabah formu uyarı verdiğinde bu cihaza bildirim gelir.'}));
+  body.appendChild(el('h2',{text:T('push_h')}));
+  body.appendChild(el('p',{text:T('push_p')}));
   var msg=el('div');
-  var btn=el('button',{class:'btn',text:'Bildirimleri aç',onclick:function(){enable(btn,msg);}});
+  var btn=el('button',{class:'btn',text:T('push_btn'),onclick:function(){enable(btn,msg);}});
   body.appendChild(btn);
   body.appendChild(msg);
 
@@ -639,30 +854,30 @@ function drawSetup(){
       // Görseldeki hâli: düğme kalkmıyor, "Bildirimler açık ✓" olarak duruyor —
       // ekip üyesi bakınca durumu tek bakışta görsün.
       btn.disabled=true;
-      btn.textContent='Bildirimler açık ✓';
+      btn.textContent=T('push_on');
     }).catch(function(e){
       btn.disabled=false;
-      btn.textContent='Bildirimleri aç';
-      show(msg,'warn','Bildirim kaydı yenilenemedi: '+((e&&e.message)||e));
+      btn.textContent=T('push_btn');
+      show(msg,'warn',T('push_refresh_fail')+((e&&e.message)||e));
     });
   }
 }
 
 function enable(btn,msg){
-  btn.disabled=true;btn.textContent='Açılıyor…';
+  btn.disabled=true;btn.textContent=T('push_opening');
   Notification.requestPermission().then(function(p){
     if(p!=='granted'){
-      btn.disabled=false;btn.textContent='Bildirimleri aç';
-      show(msg,'warn','İzin verilmedi. Uyarıları aşağıdaki listeden takip edebilirsin.');
+      btn.disabled=false;btn.textContent=T('push_btn');
+      show(msg,'warn',T('push_refused'));
       return;
     }
     return register().then(function(){
       btn.disabled=true;
-      btn.textContent='Bildirimler açık ✓';
+      btn.textContent=T('push_on');
     });
   }).catch(function(e){
-    btn.disabled=false;btn.textContent='Bildirimleri aç';
-    show(msg,'bad','Açılamadı: '+((e&&e.message)||e));
+    btn.disabled=false;btn.textContent=T('push_btn');
+    show(msg,'bad',T('push_fail')+((e&&e.message)||e));
   });
 }
 
@@ -682,11 +897,11 @@ function readyServiceWorker(){
     var w=reg.installing||reg.waiting;
     if(!w)return navigator.serviceWorker.ready.then(function(r){return r||reg;});
     return new Promise(function(res,rej){
-      var timer=setTimeout(function(){cleanup();rej(new Error('Bildirim servisi zamanında başlamadı — sayfayı yenileyip tekrar dene.'));},20000);
+      var timer=setTimeout(function(){cleanup();rej(new Error(T('sw_timeout')));},20000);
       function cleanup(){clearTimeout(timer);w.removeEventListener('statechange',onChange);}
       function onChange(){
         if(w.state==='activated'){cleanup();res();}
-        else if(w.state==='redundant'){cleanup();rej(new Error('Bildirim servisi yüklenemedi. Koçuna ilet: '+SW_FILE+' ve push-config.js sitenin kök dizininde yayında olmalı.'));}
+        else if(w.state==='redundant'){cleanup();rej(new Error(T('sw_redundant').replace('{f}',SW_FILE)));}
       }
       w.addEventListener('statechange',onChange);
       onChange();
@@ -739,7 +954,7 @@ function register(){
       return firebase.messaging(APP).getToken({vapidKey:CFG.vapidKey,serviceWorkerRegistration:reg});
     })
     .then(function(tok){
-      if(!tok)throw new Error('Cihaz kimliği alınamadı.');
+      if(!tok)throw new Error(T('no_device_id'));
       return db.collection('push_tokens').doc(tok).set({
         uid:USER.uid,kind:'staff',
         coachUid:LINK.coachUid,teamId:LINK.teamId,staffId:LINK.staffId,
@@ -752,18 +967,14 @@ function register(){
     .then(function(){listenForeground();});
 }
 
-/* ── Uyarı akışı ─────────────────────────────────────────────────────────── */
-var REASON_TXT={low_score:'Wellness 3.5 altında',pain:'Orta/yüksek ağrı'};
-var STATUS_TXT={
-  sent:'Bildirim gönderildi',partial:'Bildirim kısmen gitti',
-  failed:'Bildirim gönderilemedi',pending:'Bildirim gönderiliyor…',
-  no_recipients:'Bildirilecek cihaz yok',not_flagged:'Uyarı eşiği aşılmadı — bildirim gönderilmedi',
-};
+/* ── Wellness kartı ──────────────────────────────────────────────────────── */
+function statusText(st){var k='st_'+st;var v=T(k);return v===k?String(st||'—'):v;}
+function reasonText(r){var k='reason_'+r;var v=T(k);return v===k?r:v;}
 
-function metric(ic,label,value,unit){
+function metric(ic,label,value,unit,title){
   var v=el('div',{class:'v',text:value});
   if(unit)v.appendChild(el('small',{text:' '+unit}));
-  return el('div',{class:'mt'},[
+  return el('div',{class:'mt',title:title||label},[
     el('div',{class:'k',text:label}),
     el('div',{class:'row'},[icon(ic,19),v])
   ]);
@@ -782,7 +993,7 @@ function alertCard(a){
   sc.appendChild(el('i',{style:'background:'+color}));
   sc.appendChild(el('span',{text:fmtScore(a.overall)+'/5'}));
 
-  var chev=el('button',{class:'chev','aria-label':'Ayrıntılar','aria-expanded':'false',
+  var chev=el('button',{class:'chev','aria-label':T('details'),'aria-expanded':'false',
     onclick:function(){
       var open=card.classList.toggle('open');
       chev.setAttribute('aria-expanded',open?'true':'false');
@@ -790,16 +1001,16 @@ function alertCard(a){
   chev.appendChild(icon(ICON.chev,18));
 
   card.appendChild(el('div',{class:'top'},[
-    el('span',{class:'nm',text:(a.athleteName||'').trim()||'İsimsiz sporcu'}),
+    el('span',{class:'nm',text:(a.athleteName||'').trim()||T('unnamed')}),
     sc,
     el('span',{class:'sep'}),
     el('span',{class:'dt',text:prettyDate(a.date)}),
     chev
   ]));
 
-  var reasons=(a.reasons||[]).map(function(r){return REASON_TXT[r]||r;});
+  var reasons=(a.reasons||[]).map(reasonText);
   card.appendChild(el('div',{class:'why',
-    text:reasons.length?reasons.join(' + '):'Form dolduruldu — uyarı yok'}));
+    text:reasons.length?reasons.join(' + '):T('no_alert')}));
 
   var high=a.painHigh||[],mod=a.painModerate||[];
   if(high.length||mod.length){
@@ -809,12 +1020,22 @@ function alertCard(a){
     card.appendChild(pn);
   }
 
+  /* Ölçüm şeridi — sabah formunun soruları, formdaki sırayla: uyku, zihinsel
+     yorgunluk, fiziksel yorgunluk, kas ağrısı; dinlenik nabız doluysa sonda.
+     Yorgunluk ikiye ayrılmadan önce doldurulmuş bir formun kaydında iki yarım yok,
+     tek bir yorgunluk skoru var — o zaman tek kutu. */
   var s=a.scores||{};
-  var strip=el('div',{class:'sub'});
-  strip.appendChild(metric(ICON.sleep,'Uyku',fmtScore(s.sleep==null?null:s.sleep)));
-  strip.appendChild(metric(ICON.fatigue,'Yorgunluk',fmtScore(s.fatigue==null?null:s.fatigue)));
-  strip.appendChild(metric(ICON.soreness,'Kas ağrısı',fmtScore(s.soreness==null?null:s.soreness)));
-  strip.appendChild(metric(ICON.hr,'KAH',s.RHR==null?'—':String(Math.round(s.RHR)),s.RHR==null?'':'bpm'));
+  var split=s.mentalFatigue!=null||s.physicalFatigue!=null||s.fatigue==null;
+  var boxes=[metric(ICON.sleep,T('m_sleep'),fmtScore(s.sleep))];
+  if(split){
+    boxes.push(metric(ICON.mental,T('m_mental'),fmtScore(s.mentalFatigue),'',T('f_mental')));
+    boxes.push(metric(ICON.fatigue,T('m_physical'),fmtScore(s.physicalFatigue),'',T('f_physical')));
+  }else{
+    boxes.push(metric(ICON.fatigue,T('m_fatigue'),fmtScore(s.fatigue)));
+  }
+  boxes.push(metric(ICON.soreness,T('m_soreness'),fmtScore(s.soreness)));
+  if(s.RHR!=null)boxes.push(metric(ICON.hr,T('m_hr'),String(Math.round(s.RHR)),'bpm'));
+  var strip=el('div',{class:'sub n'+boxes.length},boxes);
   card.appendChild(strip);
 
   /* Açılan kısım: bildirimin ne olduğu ve kime ulaştığı. Ekip üyesi "bana neden
@@ -822,57 +1043,126 @@ function alertCard(a){
      ekranda görünmüyordu. */
   var more=el('div',{class:'more'});
   more.appendChild(el('div',{},[
-    el('b',{text:'Bildirim: '}),
-    el('span',{text:STATUS_TXT[a.notificationStatus]||String(a.notificationStatus||'—')})
+    el('b',{text:T('notif')}),
+    el('span',{text:statusText(a.notificationStatus)})
   ]));
   var rec=(a.recipients||[]).filter(function(r){return r&&r.status==='sent';});
   if(rec.length)more.appendChild(el('div',{},[
-    el('b',{text:'Ulaşan: '}),
-    el('span',{text:rec.map(function(r){return (r.name||'').trim()||r.role||'cihaz';}).join(', ')})
+    el('b',{text:T('reached')}),
+    el('span',{text:rec.map(function(r){return (r.name||'').trim()||r.role||T('device');}).join(', ')})
   ]));
   var un=(a.unreachable||[]);
   if(un.length)more.appendChild(el('div',{},[
-    el('b',{text:'Cihazı bağlı olmayan: '}),
+    el('b',{text:T('unreached')}),
     el('span',{text:un.map(function(r){return (r.name||'').trim()||r.staffId;}).join(', ')})
   ]));
-  if(a.teamName)more.appendChild(el('div',{},[el('b',{text:'Takım: '}),el('span',{text:a.teamName})]));
+  if(a.teamName)more.appendChild(el('div',{},[el('b',{text:T('team_l')}),el('span',{text:a.teamName})]));
   card.appendChild(more);
 
   return card;
 }
 
+/* ── RPE kartı ───────────────────────────────────────────────────────────────
+   Antrenman sonrası formun karşılığı: sporcu, günün en yüksek RPE'si ve günün yükü
+   (AU = RPE × dakika) başlıkta; altında yaptığı her bölüm kendi satırında. Şerit
+   ve rozet rengi formdaki RPE düğmelerinin rengi: 1 mavi → 10 kırmızı. */
+function rpeCard(r){
+  var color=rpeColor(r.maxRpe);
+  var card=el('div',{class:'al'});
+  card.appendChild(el('span',{class:'bar',style:'background:'+color}));
+  var sc=el('span',{class:'sc',style:'color:'+color,title:T('max_rpe')});
+  sc.appendChild(el('i',{style:'background:'+color}));
+  sc.appendChild(el('span',{text:(r.maxRpe==null?'—':fmtScore(r.maxRpe))+'/10'}));
+  card.appendChild(el('div',{class:'top'},[
+    el('span',{class:'nm',text:(r.athleteName||'').trim()||T('unnamed')}),
+    sc,
+    el('span',{class:'sep'}),
+    el('span',{class:'dt',text:prettyDate(r.date)})
+  ]));
+  var total=el('div',{class:'why'},[el('span',{text:T('total')+': '}),
+    el('b',{style:'color:#eef2f5',text:r.totalLoad==null?'—':String(Math.round(r.totalLoad))+' AU'})]);
+  card.appendChild(total);
+  var list=el('div',{class:'ss'});
+  (r.sessions||[]).forEach(function(x){
+    var au=el('span',{class:'au',text:x.load==null?'—':String(Math.round(x.load))});
+    if(x.load!=null)au.appendChild(el('small',{text:'AU'}));
+    list.appendChild(el('div',{class:'s'},[
+      el('span',{class:'rpe',style:'background:'+rpeColor(x.rpe),text:fmtScore(x.rpe)}),
+      el('span',{class:'l',text:T('s_'+x.id)}),
+      el('span',{class:'d',text:x.duration==null?'—':Math.round(x.duration)+' '+T('min')}),
+      au
+    ]));
+  });
+  if((r.sessions||[]).length)card.appendChild(list);
+  return card;
+}
+
+/* ── Akış: iki sekme, tek gün ───────────────────────────────────────────────
+   Wellness ve RPE AYNI ANDA dinleniyor, yalnızca biri görünüyor: sekme
+   değiştirmek bekletmiyor ve iki sekmenin sayısı da düğmelerin üstünde hep güncel.
+   Hangi sekmede kalındığı telefonda hatırlanıyor — sabah wellness'a, akşam RPE'ye
+   bakan antrenör sayfayı son bıraktığı yerde buluyor. */
+var LS_TAB='coachos.alerts.tab';
 function watchFeed(){
   feedBox.innerHTML='';
-  var head=el('div',{class:'sec-h'},[
-    el('span',{class:'t',text:'Son uyarılar'}),
-    el('span',{class:'c',id:'feed-c',text:''})
-  ]);
-  var list=el('div',{id:'feed-list'},[el('div',{class:'load',text:'Yükleniyor…'})]);
-  feedBox.appendChild(head);
-  feedBox.appendChild(list);
+  var tab='wellness';
+  try{if(localStorage.getItem(LS_TAB)==='rpe')tab='rpe';}catch(e){}
 
-  var unsub=null,shownDay=null;
+  var tabs=el('div',{class:'seg tabs',role:'tablist'});
+  var FEEDS=[
+    {id:'wellness',label:T('tab_wellness'),head:T('wellness_h'),col:'wellness_alerts',
+     sort:bySeverity,card:alertCard,none:T('wellness_none')},
+    {id:'rpe',label:T('tab_rpe'),head:T('rpe_h'),col:'rpe_reports',
+     sort:byExertion,card:rpeCard,none:T('rpe_none')},
+  ];
+  FEEDS.forEach(function(F){
+    F.count=el('span',{class:'n',text:'·'});
+    F.btn=el('button',{type:'button',role:'tab',onclick:function(){select(F.id);}},
+      [el('span',{text:F.label}),F.count]);
+    tabs.appendChild(F.btn);
+    F.c=el('span',{class:'c',text:''});
+    F.list=el('div',{},[el('div',{class:'load',text:T('loading')})]);
+    F.pane=el('div',{class:'pane',role:'tabpanel'},[
+      el('div',{class:'sec-h'},[el('span',{class:'t',text:F.head}),F.c]),
+      F.list
+    ]);
+  });
+  feedBox.appendChild(tabs);
+  FEEDS.forEach(function(F){feedBox.appendChild(F.pane);});
 
-  function paint(rows,day){
+  function select(id){
+    tab=id;
+    try{localStorage.setItem(LS_TAB,id);}catch(e){}
+    FEEDS.forEach(function(F){
+      var on=F.id===id;
+      F.btn.classList.toggle('on',on);
+      F.btn.setAttribute('aria-selected',on?'true':'false');
+      F.pane.hidden=!on;
+    });
+  }
+  select(tab);
+
+  function paint(F,rows,day){
     /* Sıralama her hâlükârda burada da yapılıyor: sorgu sıralı gelse de gelmese de
-       ekrandaki sıra aynı olsun. Sorgu ağırlık sırasını zaten kuramıyor — o sıra
-       ağrı ve skorun birleşiminden çıkıyor ve ancak burada kurulabiliyor. */
-    rows.sort(bySeverity);
-    document.getElementById('feed-c').textContent=
-      (rows.length?rows.length+' kayıt · ':'')+prettyDate(day);
-    list.innerHTML='';
+       ekrandaki sıra aynı olsun. Wellness'ta sıra ağrı ve skorun birleşiminden,
+       RPE'de zorluk ve yükten çıkıyor ve ancak burada kurulabiliyor. */
+    rows.sort(F.sort);
+    F.count.textContent=String(rows.length);
+    F.c.textContent=(rows.length?rows.length+T('records'):'')+prettyDate(day);
+    F.list.innerHTML='';
     if(!rows.length){
-      list.appendChild(el('div',{class:'none',text:'Bugün henüz form dolduran yok.'}));
+      F.list.appendChild(el('div',{class:'none',text:F.none}));
       return;
     }
-    rows.forEach(function(a){list.appendChild(alertCard(a));});
+    rows.forEach(function(a){F.list.appendChild(F.card(a));});
   }
-  function fail(err){
-    list.innerHTML='';
+  function fail(F,err){
+    F.list.innerHTML='';
+    F.count.textContent='!';
     var why=(err&&err.code)==='permission-denied'
-      ?'Uyarılar okunamadı. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.'
-      :'Uyarılar yüklenemedi: '+((err&&err.message)||err);
-    list.appendChild(el('div',{class:'msg bad',text:why}));
+      ?T('read_denied')
+      :T('read_fail')+((err&&err.message)||err);
+    F.list.appendChild(el('div',{class:'msg bad',text:why}));
   }
   function rowsOf(snap){var r=[];snap.forEach(function(d){r.push(d.data()||{});});return r;}
 
@@ -883,29 +1173,33 @@ function watchFeed(){
      Takım sınırı sorgunun içinde duruyor; kurallar da aynı sınırı sunucuda
      uyguluyor — buradaki filtre onun istemci tarafındaki karşılığı, güvenliğin
      kendisi değil. */
-  function subscribe(day){
-    if(unsub){try{unsub();}catch(e){}unsub=null;}
-    shownDay=day;
-    var q=db.collection('wellness_alerts')
+  var shownDay=null;
+  function subscribe(F,day){
+    if(F.unsub){try{F.unsub();}catch(e){}F.unsub=null;}
+    var q=db.collection(F.col)
       .where('coachUid','==',LINK.coachUid)
       .where('teamId','==',LINK.teamId)
       .where('date','==',day);
-    unsub=q.onSnapshot(function(snap){paint(rowsOf(snap),day);},function(err){
+    F.unsub=q.onSnapshot(function(snap){paint(F,rowsOf(snap),day);},function(err){
       /* Üç eşitlik filtresi indeks istemiyor (Firestore bunları kendi tekil
          indeksleriyle birleştiriyor) ama bir kurulumda yine de reddedilirse liste
          boş kalmasın: takımın son kayıtları çekilip gün burada süzülüyor. */
-      if((err&&err.code)!=='failed-precondition'){fail(err);return;}
-      unsub=db.collection('wellness_alerts')
+      if((err&&err.code)!=='failed-precondition'){fail(F,err);return;}
+      F.unsub=db.collection(F.col)
         .where('coachUid','==',LINK.coachUid)
         .where('teamId','==',LINK.teamId)
         .limit(300)
         .onSnapshot(function(snap){
-          paint(rowsOf(snap).filter(function(a){return String(a.date||'')===day;}),day);
-        },fail);
+          paint(F,rowsOf(snap).filter(function(a){return String(a.date||'')===day;}),day);
+        },function(e2){fail(F,e2);});
     });
   }
+  function subscribeAll(day){
+    shownDay=day;
+    FEEDS.forEach(function(F){subscribe(F,day);});
+  }
 
-  subscribe(todayKey());
+  subscribeAll(todayKey());
 
   /* Gece yarısını geçen açık sekme. Sayfa gün boyu telefonda açık kalabiliyor
      (özellikle ana ekrandan açılmış hâli hiç kapanmıyor) ve o sekme ertesi sabah
@@ -913,7 +1207,7 @@ function watchFeed(){
      Sayfa her öne geldiğinde gün kontrol ediliyor. */
   function recheck(){
     var d=todayKey();
-    if(d!==shownDay)subscribe(d);
+    if(d!==shownDay)subscribeAll(d);
   }
   document.addEventListener('visibilitychange',function(){if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
