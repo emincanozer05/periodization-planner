@@ -962,6 +962,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       em.hareket_paterni.son_28_gunde_maruziyet_yok.includes('Vertical Push') &&
       em.hareket_paterni.kayitlar.some(k => k.ad === 'Knee Dominant'), JSON.stringify(em.hareket_paterni.son_28_gunde_maruziyet_yok));
     check('JSON: görev antrenman profilini ve hard kısıtları anlatıyor', snap.gorev.some(g => /antrenman_profili/.test(g) && /kisitlar\.hard/.test(g)));
+    check('JSON: görev JSON\'da olmayan durum alanından söz etmiyor', !snap.gorev.some(g => /Good \/ Moderate \/ Limited|Limited durum/.test(g)) &&
+      !/durum/.test(JSON.stringify(pr)), snap.gorev.find(g => /antrenman_profili/.test(g)));
     check('JSON: profil doluyken eksik veri sayılmıyor, boş alan yok',
       !(snap.eksik_veriler || []).some(x => /antrenman profili|training profile/.test(x)) &&
       !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
