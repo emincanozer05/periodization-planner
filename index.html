@@ -4898,14 +4898,14 @@ header{background:var(--bg2)!important}
 /* The three colours the whole feature is read by — warming up, the work, coming down —
    plus the neutral the unplaced tray wears. Scoped to the places that use them so a
    two-letter class name cannot reach anything else on the page. */
-/* Preparation yellow, Main Phase green, Cool Down blue. `--ph-hd` is the heading bar's
+/* Every phase is white. `--ph-hd` is the heading bar's
    own fill — stronger than `--ph-bg`, because the bar is now what carries the colour. */
-.pc0{--ph-c:#facc15;--ph-bg:rgba(250,204,21,.12);--ph-hd:rgba(250,204,21,.2)}
-.pc1{--ph-c:#22c55e;--ph-bg:rgba(34,197,94,.12);--ph-hd:rgba(34,197,94,.2)}
-.pc2{--ph-c:#38bdf8;--ph-bg:rgba(56,189,248,.12);--ph-hd:rgba(56,189,248,.2)}
-.pc3{--ph-c:#fb923c;--ph-bg:rgba(251,146,60,.12);--ph-hd:rgba(251,146,60,.2)}
-.pc4{--ph-c:#a78bfa;--ph-bg:rgba(167,139,250,.12);--ph-hd:rgba(167,139,250,.2)}
-.pc5{--ph-c:#f472b6;--ph-bg:rgba(244,114,182,.12);--ph-hd:rgba(244,114,182,.2)}
+.pc0{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
+.pc1{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
+.pc2{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
+.pc3{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
+.pc4{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
+.pc5{--ph-c:#f3f4f6;--ph-bg:rgba(255,255,255,.10);--ph-hd:rgba(255,255,255,.2)}
 .blk-ph.p-loose,.iv-ph-sel.p-loose{--ph-c:var(--border2);--ph-bg:rgba(255,255,255,.035)}
 /* A section of the block: its own heading, its own grid, its own add button. The
    heading bar itself is filled in the phase's colour — that is what tells the three
@@ -4926,6 +4926,10 @@ header{background:var(--bg2)!important}
 .blk-ph-ch{flex:none;background:none;border:none;color:var(--ph-c,var(--accent2));font-size:10px;
   cursor:pointer;padding:2px 3px;line-height:1}
 .blk-ph-nm{flex:none;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ph-c,var(--text))}
+/* The name on the bar is typed straight into it, like the pill above. */
+input.blk-ph-nm{background:transparent;border:none;outline:none;font-family:inherit;padding:0;margin:0;
+  min-width:3ch;width:auto;box-shadow:none;border-radius:0}
+input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .blk-ph-n{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--text2);
   background:rgba(0,0,0,.25);border-radius:20px;padding:1px 8px}
 .blk-ph-note{flex:1 1 170px;min-width:0;font-size:10.5px;color:var(--dim);
@@ -16250,17 +16254,6 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last,phases}){
         <option value="">—</option>
         {SLOT_SS.map(o=><option key={o} value={o}>{o}</option>)}
       </select>
-      {/* Which section of the block this exercise is done in. Only there once the block
-          has sections open — a block written as one list has nothing to answer, and the
-          row stays as narrow as it has always been. */}
-      {Array.isArray(phases)&&phases.length>0&&
-        <select className={'iv-ph-sel '+((phases.find(o=>o.id===exPhase(ex))||{}).cls||'p-loose')}
-          value={phases.some(o=>o.id===exPhase(ex))?exPhase(ex):''}
-          onChange={e=>f('phase',e.target.value)}
-          title={L('Bu egzersiz seansın hangi fazında yapılıyor','Which phase of the session this exercise is done in')}>
-          <option value="">{L('— fazsız','— unplaced')}</option>
-          {phases.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>}
       <div className="iv-slot-nm">
         {/* Picking a library exercise carries its program image, video link, cues and —
             when the entry has been tagged — its pattern / execution across. Typing a known
@@ -17223,16 +17216,6 @@ function BallDrillEdRaw({ex,tag,onChange,onMove,onRemove,first,last,onSaved,phas
   return(<div className={'iv-slot bp-slot'+(empty?' off':'')}>
     <div className="iv-slot-main">
       <span className="iv-ss-tag on bp-tag">{tag}</span>
-      {/* A drill belongs to a phase exactly as a lift does — a ball session is warmed
-          up, played and cooled down like any other. */}
-      {Array.isArray(phases)&&phases.length>0&&
-        <select className={'iv-ph-sel '+((phases.find(o=>o.id===exPhase(ex))||{}).cls||'p-loose')}
-          value={phases.some(o=>o.id===exPhase(ex))?exPhase(ex):''}
-          onChange={e=>f('phase',e.target.value)}
-          title={L('Bu dril seansın hangi fazında yapılıyor','Which phase of the session this drill is done in')}>
-          <option value="">{L('— fazsız','— unplaced')}</option>
-          {phases.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>}
       <div className="iv-slot-nm">
         <LiveInput className="bp-nm" list="bp-lib-names" value={ex.name||''} placeholder={L('Dril adı — ör. 3\'lü Şut Dönüşü','Drill name — e.g. 3-Man Shooting Rotation')}
           onChange={pick}/>
@@ -17539,7 +17522,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           <header className="blk-ph-h">
             <button type="button" className="blk-ph-ch" onClick={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
               title={shut?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{shut?'▶':'▼'}</button>
-            <span className="blk-ph-nm">{g.loose?L('Fazsız','Unplaced'):phLbl(g.phase)}</span>
+            {g.loose?<span className="blk-ph-nm">{L('Fazsız','Unplaced')}</span>
+              :<LiveInput className="blk-ph-nm" value={(block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase)}
+                size={Math.max(4,Math.min(34,String(phLbl(g.phase)).length+1))}
+                onChange={v=>renamePhase(g.phase,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>}
             <span className="blk-ph-n">{isBall
               ?L(`${g.rows.length} dril`,`${g.rows.length} drill${g.rows.length!==1?'s':''}`)
               :L(`${g.rows.length} egzersiz`,`${g.rows.length} exercise${g.rows.length!==1?'s':''}`)}</span>
