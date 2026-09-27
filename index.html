@@ -4771,9 +4771,10 @@ header{background:var(--bg2)!important}
    a colour rather than one more shade of panel — and the block's name is the largest thing
    on the editor, which is what a coach scans for when a session runs to four of them. */
 :root{--blk-hd:linear-gradient(102deg,#13395c 0%,#102a45 46%,#0d1c2d 100%);
+  --blk-hd-shade:linear-gradient(102deg,rgba(40,110,170,.14) 0%,rgba(0,0,0,.06) 46%,rgba(0,0,0,.3) 100%);
   --blk-hd-ink:#eef6ff;--blk-hd-ink2:rgba(226,239,255,.72);--blk-hd-ink3:rgba(226,239,255,.46);
   --blk-hd-line:rgba(120,180,255,.22)}
-.iv-block-hd{background:var(--blk-hd);padding:12px 14px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--blk-hd-line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.iv-block-hd{background-color:var(--blk-c,#11304f);background-image:var(--blk-hd-shade);transition:background-color .6s ease,border-color .6s ease,color .6s ease;padding:12px 14px;font-size:12px;font-weight:700;color:var(--blk-hd-ink);border-bottom:1px solid var(--blk-hd-line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* The head is two things side by side: what the block IS (its kind, its name, what it
    holds — stacked on two lines) and what can be done to it. The actions used to ride on
    the second of those lines, which left them hanging off the bottom of a header twice
@@ -4792,14 +4793,35 @@ header{background:var(--bg2)!important}
 .iv-block-hd .blk-kind.ball{background:rgba(255,159,67,.18);border-color:rgba(255,159,67,.5)}
 .iv-block-hd .btn.xs.sec{background:rgba(9,18,30,.5);border-color:rgba(150,196,255,.26);color:var(--blk-hd-ink2)}
 .iv-block-hd .btn.xs.sec:hover:not(:disabled){background:rgba(9,18,30,.75);border-color:rgba(150,196,255,.5);color:var(--blk-hd-ink)}
-/* Two of those buttons say something with their colour and must keep it: the assignment
-   (amber until the whole roster carries the block, green once it does) and Remove (red on
-   hover). They sit on the same dark plate as the rest, but the plate never recolours them. */
-.iv-block-hd .btn.xs.sec.blk-assign,.iv-block-hd .btn.xs.sec.blk-assign:hover:not(:disabled){
-  background:rgba(9,18,30,.55);border-color:#fcd34d;color:#fcd34d}
-.iv-block-hd .btn.xs.sec.blk-assign.on,.iv-block-hd .btn.xs.sec.blk-assign.on:hover:not(:disabled){
-  background:rgba(9,18,30,.55);border-color:#22c55e;color:#22c55e}
+/* Remove says something with its colour and must keep it (red on hover): it sits on the
+   same dark plate as the rest, but the plate never recolours it. */
 .iv-block-hd .btn.xs.sec.iv-rmb:hover:not(:disabled){border-color:rgba(239,68,68,.55);color:#f87171}
+/* ---- A block wearing its card colour --------------------------------------
+   The bar's colour is a plain background-color (the shading above it is a fixed overlay),
+   so picking a new one fades the whole header into it instead of snapping. The block's
+   frame follows at a softer strength. A light pick flips the bar's ink to dark. */
+.iv-block{transition:border-color .6s ease}
+.iv-block.tinted{border-color:color-mix(in srgb,var(--blk-c) 55%,var(--border))}
+.iv-block.tinted>.iv-block-hd{--blk-hd-shade:linear-gradient(102deg,rgba(255,255,255,.10) 0%,rgba(0,0,0,0) 46%,rgba(0,0,0,.22) 100%);
+  --blk-hd-line:color-mix(in srgb,var(--blk-c) 60%,#000)}
+.iv-block.lt>.iv-block-hd{--blk-hd-ink:#0b1320;--blk-hd-ink2:rgba(11,19,32,.74);--blk-hd-ink3:rgba(11,19,32,.5)}
+.iv-block.lt>.iv-block-hd .btn.xs.sec{background:rgba(255,255,255,.5);border-color:rgba(11,19,32,.22);color:#0b1320}
+.iv-block.lt>.iv-block-hd .btn.xs.sec:hover:not(:disabled){background:rgba(255,255,255,.75);border-color:rgba(11,19,32,.4);color:#0b1320}
+.iv-block-hd .iv-block-nm,.iv-block-hd .iv-blockcnt,.iv-block-hd .blk-grip,.iv-block-hd .iv-blockch{transition:color .6s ease}
+.blk-color{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;padding:3px 7px;border-radius:8px;
+  background:rgba(9,18,30,.45);border:1px solid rgba(150,196,255,.26);transition:background .6s ease,border-color .6s ease}
+.iv-block.lt>.iv-block-hd .blk-color{background:rgba(255,255,255,.5);border-color:rgba(11,19,32,.22)}
+.blk-color-l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--blk-hd-ink2);margin-right:2px;white-space:nowrap}
+.blk-sw{width:17px;height:17px;border-radius:5px;border:1.5px solid rgba(255,255,255,.35);padding:0;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.blk-sw:hover{transform:scale(1.15)}
+.blk-sw.on{border-color:#fff;box-shadow:0 0 0 2px rgba(9,18,30,.85)}
+.blk-sw-custom{width:22px;height:19px;padding:0;border:1px solid rgba(255,255,255,.35);border-radius:5px;background:transparent;cursor:pointer}
+.blk-sw-custom::-webkit-color-swatch-wrapper{padding:1px}
+.blk-sw-custom::-webkit-color-swatch{border:none;border-radius:4px}
+.blk-sw-auto{background:transparent;border:1px solid rgba(150,196,255,.3);color:var(--blk-hd-ink2);padding:2px 7px;border-radius:5px;cursor:pointer;font-size:10.5px;font-family:inherit;font-weight:600}
+.blk-sw-auto:hover{color:var(--blk-hd-ink);border-color:var(--blk-hd-ink2)}
+.blk-sw-auto.on{color:var(--blk-hd-ink);border-color:var(--blk-hd-ink2)}
+.iv-block.lt>.iv-block-hd .blk-sw-auto{border-color:rgba(11,19,32,.3)}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:480px;background:transparent;border:1px solid transparent;border-radius:6px;
@@ -4842,13 +4864,6 @@ header{background:var(--bg2)!important}
 .blk-details-b>.ath-pick{background:transparent;border:none;border-radius:0;padding:0;margin:0}
 .blk-details-b>.sess-cards{margin:0}
 .blk-details-b>.ath-pick+.sess-cards{border-top:1px solid var(--border);padding-top:13px}
-.blk-assign{white-space:nowrap}
-/* Assignment reads at a glance: amber while the practice still has to be assigned,
-   green once the whole roster carries it. */
-.btn.blk-assign{border-color:#fcd34d;color:#fcd34d;background:rgba(252,211,77,.10)}
-.btn.blk-assign:hover:not(:disabled){border-color:#fcd34d;color:#fcd34d;background:rgba(252,211,77,.20)}
-.btn.blk-assign.on{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.12)}
-.btn.blk-assign.on:hover:not(:disabled){border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.22)}
 /* Adding a whole block sits under the last one, where a new block would land. */
 .iv-addblk{align-self:flex-start}
 
@@ -6640,14 +6655,19 @@ const IS_MAC=(()=>{try{return /Mac|iPhone|iPad|iPod/.test((navigator.userAgentDa
 /* Written in the focus tree's own vocabulary — focus, then the capacity inside it — so a
    preset drops into the session editor with stages 1 and 2 already answered and the
    method question open, rather than as a value the editor has to translate on read. */
+/* `tr` is the button's Turkish label and `trName` the Turkish title the new session gets;
+   the focus/sub/purpose values stay in the focus tree's own (English) vocabulary. */
 const SPRESETS=[
-  {name:'Strength & Power',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
-  {name:'Speed & Agility',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
-  {name:'Conditioning',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
-  {name:'Recovery',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
-  {name:'Match',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
-  {name:'Testing',d:{name:'Testing',time:'09:00',loadType:'Neuromuscular load',purpose:'Testing',focus:['Testing'],sub:[],duration:60,bl:[]}},
+  {name:'Strength & Power',tr:'Kuvvet & Güç',trName:'Kuvvet & Güç',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
+  {name:'Speed & Agility',tr:'Sürat & Çeviklik',trName:'Sürat & Çeviklik',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
+  {name:'Conditioning',tr:'Kondisyon',trName:'Kondisyon',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
+  {name:'Recovery',tr:'Toparlanma',trName:'Toparlanma Seansı',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
+  {name:'Match',tr:'Maç',trName:'Maç Günü',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
+  {name:'Testing',tr:'Test',trName:'Test',d:{name:'Testing',time:'09:00',loadType:'Neuromuscular load',purpose:'Testing',focus:['Testing'],sub:[],duration:60,bl:[]}},
 ];
+/* A preset's label and the session it adds, in the language the app is showing. */
+const spLabel=p=>L(p.tr||p.name,p.name);
+const spData=p=>({...p.d,name:L(p.trName||p.d.name,p.d.name)});
 const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -15886,7 +15906,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         <div className="dw-b">
           <div className="dw-quickadd">
             <span className="qa-lbl">{L('Hızlı ekle','Quick add')}</span>
-            {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(p.d)}>+ {p.name}</button>)}
+            {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(spData(p))}>+ {spLabel(p)}</button>)}
             <button onClick={()=>edAdd()}>+ {L('Boş','Empty')}</button>
           </div>
           {(edDay.sessions||[]).length===0&&<div className="dw-empty">{L('Henüz seans yok — yukarıdaki hızlı ekle ile başla','No sessions yet — start with quick add above')}</div>}
@@ -16414,11 +16434,11 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    picked from. */
 function TrainStrip({block,session,u,isTemplate}){
   const pats=block?blockPatterns(block):sessionPatterns(session);
-  /* A drill is drawn, not tagged: a ball block has no pattern field on its rows, so it is
-     given the colour picker and nothing to answer. */
-  const isBall=!!block&&blkKind(block)==='ball';
+  /* A drill is drawn, not tagged: a ball block has no pattern field on its rows, and with
+     the card colour gone up into the block's header there is nothing left to show. */
+  if(block&&blkKind(block)==='ball')return null;
   return(<div className="sess-strip blk-strip">
-    {!isBall&&<div className="sess-strip-l">
+    <div className="sess-strip-l">
       <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
       {pats.length===0
         ?<div className="sess-pat-empty">{L(<>Henüz egzersiz yok — bir egzersiz ekleyip <b>örüntü</b> alanını doldur, burası kendiliğinden dolar.</>,<>No exercise yet — add one and set its <b>pattern</b>; this fills itself in.</>)}</div>
@@ -16429,18 +16449,30 @@ function TrainStrip({block,session,u,isTemplate}){
             {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
           </span>)}
         </div>}
-    </div>}
-    {!isTemplate&&<div className="sess-strip-r">
-      <label>{L('Kart rengi','Card color')}</label>
-      <div className="color-row">
-        {['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'].map(c=>
-          <button key={c} type="button" className={`color-swatch${session.color===c?' on':''}`} style={{background:c}} onClick={()=>u({color:c})} title={c}/>)}
-        <input type="color" className="color-custom" value={session.color||'#0094ff'} onChange={e=>u({color:e.target.value})} title={L('Özel renk','Custom color')}/>
-        <button type="button" className="color-clear" onClick={()=>u({color:''})} title={L('Otomatik (load type rengi)','Automatic (load type color)')}>{L('Otomatik','Automatic')}</button>
-      </div>
-    </div>}
+    </div>
   </div>);
 }
+/* ---- Card colour, in the block's own header ----------------------------
+   It stands where the assignment button used to (ticking names in the picker below IS
+   the assignment, so the button had nothing left to do). Picking a swatch tints the
+   whole header bar — the change is a CSS transition on background-color, so the bar
+   fades into its new colour rather than snapping. The colour also becomes the session's
+   card colour on the calendar, as it did from the strip it used to live in. */
+const CARD_COLORS=['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'];
+function CardColorPick({value,onPick}){
+  return(<span className="blk-color">
+    <span className="blk-color-l">{L('Kart Rengi','Card Color')}</span>
+    {CARD_COLORS.map(c=><button key={c} type="button" className={'blk-sw'+(value===c?' on':'')} style={{background:c}}
+      onClick={()=>onPick(c)} title={c}/>)}
+    <input type="color" className="blk-sw-custom" value={value||'#0094ff'} onChange={e=>onPick(e.target.value)}
+      title={L('Özel renk','Custom color')}/>
+    <button type="button" className={'blk-sw-auto'+(value?'':' on')} onClick={()=>onPick('')}
+      title={L('Varsayılan renge dön','Back to the default colour')}>{L('Otomatik','Auto')}</button>
+  </span>);
+}
+/* The header's tint as the block's root carries it: `--blk-c` drives the bar's colour,
+   and a light pick flips the bar's ink to dark so the title stays readable. */
+const blkTint=c=>c?{cls:' tinted'+(tmInk(c)==='#ffffff'?'':' lt'),style:{'--blk-c':c}}:{cls:'',style:undefined};
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">
@@ -17268,7 +17300,7 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
    see SessionDetails above. The assignment button in the header is the block's too: it
    assigns the players ticked on this block, not on the session. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,setColor}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -17375,46 +17407,10 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
      block's name so the sheet is never headed by nothing. */
   const printSession=()=>({...blkSession(),
     name:String((session&&session.name)||'').trim()||blkName});
-  /* Who does THIS block, and the button that writes it onto their calendars. The list is
-     the block's own; a block nobody has been ticked on assigns the whole squad, exactly as
-     the session-level button did before the blocks came apart. */
-  const roster=Array.isArray(athletes)?athletes:[];
-  const blkSel=blkAthIds(session,block).filter(id=>roster.some(a=>a.id===id));
-  /* Ticking a name IS the assignment: the tick rewrites the block's athlete list, and that
-     is exactly what writes the block onto their calendars. So the button says "assigned"
-     whenever somebody is ticked, rather than only once the whole roster is — which is why
-     it used to stay amber after a coach had picked five players and pressed it. Pressing it
-     with nobody ticked is the one thing left for it to do: tick everyone. */
-  const assignedN=showPicker&&roster.length?blkSel.length:0;
-  const allAssigned=assignedN>0;
-  const wholeTeam=assignedN>0&&assignedN===roster.length;
-  const assignBlk=()=>{
-    if(!showPicker||!roster.length||!athUpd)return;
-    /* Already assigned: re-write the same list. It changes nobody, and re-runs the sync —
-       which is what puts the block back on the calendar of an athlete whose copy was
-       deleted. Nothing to confirm, because nothing is being decided. */
-    if(assignedN){athUpd(blkSel);return;}
-    const ids=roster.map(a=>a.id);
-    const n=ids.length;
-    if(!window.confirm(L(`Bu blok kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
-      `This block will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
-    athUpd(ids);
-  };
-  const assign={
-    show:showPicker,
-    assigned:allAssigned,
-    disabled:!roster.length,
-    onClick:assignBlk,
-    title:allAssigned
-      ?(wholeTeam
-        ?L('Kadrodaki herkes bu bloğa atandı — takvimlerine yeniden işlemek için tekrar bas','Everyone on the roster is assigned to this block — press again to write it onto their calendars afresh')
-        :L(`Bu blok işaretli ${assignedN} sporcunun takviminde. Kimin yapacağını değiştirmek için aşağıdaki listeden işaretle.`,`This block is on the calendar of the ${assignedN} ticked athlete${assignedN>1?'s':''}. Tick names in the list below to change who does it.`))
-      :L('Bu bloğu kadrodaki bütün sporcuların takvimine ata','Assign this block to the calendar of every athlete on the roster'),
-    label:allAssigned
-      ?(wholeTeam?'Assigned to the Team':`Assigned to ${assignedN} Athlete${assignedN>1?'s':''}`)
-      :'Assign the Practice to the Team',
-  };
-  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')}
+  /* The block's own card colour; a block that never picked one wears the session's. */
+  const blkColor=block.color!=null?block.color:((session&&session.color)||'');
+  const tint=blkTint(blkColor);
+  return(<div className={'iv-block cal-block'+(isDragging?' dragging':'')+(isBall?' bp-block':'')+tint.cls} style={tint.style}
     onDragOver={e=>{if(dragB!=null&&dragB!==index)e.preventDefault();}}
     onDrop={e=>{e.preventDefault();onDropBlk&&onDropBlk();}}>
     <div className="iv-block-hd">
@@ -17439,11 +17435,9 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           phased?' · '+phaseList.map(p=>`${phLbl(p)} ${phaseN(p)}`).join(' · '):''}</span>
       </div>
       <span className="iv-blockacts">
-        {/* The assignment sits beside the block's title, at the head of the block that
-            carries the athlete picker: whoever is ticked gets the session written onto
-            their own calendar, and nobody ticked means the whole squad. */}
-        {assign&&assign.show&&<button type="button" className={'btn xs sec blk-assign'+(assign.assigned?' on':'')} onClick={assign.onClick}
-          disabled={assign.disabled} title={assign.title}>{assign.label}</button>}
+        {/* Where the assignment button stood: ticking names in the picker below is the
+            assignment, so the head of the block carries its colour instead. */}
+        {!isTemplate&&setColor&&<CardColorPick value={blkColor} onPick={setColor}/>}
         <button type="button" className="btn xs sec" onClick={onDuplicate}
           title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘ {L('Çoğalt','Clone')}</button>
         <button type="button" className="btn xs sec"
@@ -17953,7 +17947,6 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   const participantCount=(session.athletes||[]).length;
-  const roster=Array.isArray(athletes)?athletes:[];
   /* Writing THIS block's participant list. The other blocks keep whoever they had — a
      block that never had a list of its own gets the session's, written out once here, so
      ticking a player on one block cannot silently change who the rest are for. The
@@ -17963,40 +17956,11 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     const blocks=(session.blocks||[]).map(b=>({...b,athletes:b.id===bid?ids:blkAthIds(session,b)}));
     u({blocks,athletes:unionBlockAthletes(session,blocks)});
   };
-  /* The same assignment the calendar drawer's button makes. Only the card that stands in
-     for a session with no blocks yet uses it — once there are blocks, each carries its own
-     (see BlockEd). Pressable again once everyone is on it, to pick up athletes added to
-     the squad since. */
-  const assignSel=(session.athletes||[]).filter(id=>roster.some(a=>a.id===id));
-  /* Same rule as a block's own button: a ticked name is an assigned name, so the button
-     goes green as soon as anybody is on the session rather than only once everybody is. */
-  const assignedN=showPicker&&roster.length?assignSel.length:0;
-  const allAssigned=assignedN>0;
-  const wholeTeam=assignedN>0&&assignedN===roster.length;
-  const assignAll=()=>{
-    if(!showPicker||!roster.length)return;
-    if(assignedN){u({athletes:assignSel});return;}
-    const ids=roster.map(a=>a.id);
-    const n=ids.length;
-    if(!window.confirm(L(`Bu antrenman kadrodaki ${n} sporcunun takvimine atanacak. Emin misiniz?`,
-      `This practice will be assigned to the calendar of ${n} athlete${n>1?'s':''} on the roster. Are you sure?`)))return;
-    u({athletes:ids});
-  };
-  /* Only for the stand-in card below; every block draws its own. */
-  const assign={
-    show:showPicker,
-    assigned:allAssigned,
-    disabled:!roster.length,
-    onClick:assignAll,
-    title:allAssigned
-      ?(wholeTeam
-        ?L('Kadrodaki herkes bu antrenmana atandı — takvimlerine yeniden işlemek için tekrar bas','Everyone on the roster is assigned to this practice — press again to write it onto their calendars afresh')
-        :L(`Bu antrenman işaretli ${assignedN} sporcunun takviminde. Kimin yapacağını değiştirmek için aşağıdaki listeden işaretle.`,`This practice is on the calendar of the ${assignedN} ticked athlete${assignedN>1?'s':''}. Tick names in the list below to change who does it.`))
-      :L('Bu antrenmanı kadrodaki bütün sporcuların takvimine ata','Assign this practice to the calendar of every athlete on the roster'),
-    label:allAssigned
-      ?(wholeTeam?'Assigned to the Team':`Assigned to ${assignedN} Athlete${assignedN>1?'s':''}`)
-      :'Assign the Practice to the Team',
-  };
+  /* A block's card colour. It is also written as the session's, since the session is the
+     one card the calendar draws — the last colour picked on any of its blocks is the one
+     the calendar wears. */
+  const setBlkColor=(bid,c)=>u({color:c,blocks:(session.blocks||[]).map(b=>b.id===bid?{...b,color:c}:b)});
+  const soloTint=blkTint(session.color||'');
 
   return(<div className="sess-card">
     <div className="sbar" onClick={e=>{if(!['BUTTON','INPUT','SELECT'].includes(e.target.tagName))setOpen(!open);}}>
@@ -18037,7 +18001,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {/* The details live in the blocks — so a session that has none yet still needs
           somewhere to be named, timed and assigned from. This card stands in until the
           first block is added and takes them over. */}
-      {session.blocks.length===0&&<div className="iv-block cal-block">
+      {session.blocks.length===0&&<div className={'iv-block cal-block'+soloTint.cls} style={soloTint.style}>
         <div className="iv-block-hd">
           {/* TWO TITLES, TWO FIELDS. The bar above names the SESSION — the line the day
               plan, the athletes' calendars and every printout carry. This heading names
@@ -18049,9 +18013,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
             placeholder={L('Antrenman Özellikleri','Training Details')}
             title={L('Bu çalışmanın başlığı — üstteki seans adından bağımsızdır','This practice\'s own title — independent of the session name above')}
             onChange={v=>u({soloName:v})}/>
-          {assign.show&&<span className="iv-blockacts">
-            <button type="button" className={'btn xs sec blk-assign'+(assign.assigned?' on':'')} onClick={assign.onClick}
-              disabled={assign.disabled} title={assign.title}>{assign.label}</button>
+          {!isTemplate&&<span className="iv-blockacts">
+            <CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>
           </span>}
         </div>
         <SessionDetails session={session} u={u} athletes={athletes}
@@ -18060,7 +18023,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       {session.blocks.map((b,bi)=><BlockEd key={b.id} block={b} index={bi} onUpdate={nb=>updBlk(b.id,nb)} onRemove={()=>delBlk(b.id)} onDuplicate={()=>dupBlk(b.id)}
         session={session} printContext={printContext} isTemplate={isTemplate}
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
-        athUpd={ids=>setBlkAthletes(b.id,ids)}
+        athUpd={ids=>setBlkAthletes(b.id,ids)} setColor={c=>setBlkColor(b.id,c)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
@@ -18198,7 +18161,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
         </div>
       </div>
       <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{L('Hızlı Ekle','Quick Add')}</strong>
-        {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(p.d)}>+ {p.name}</button>)}
+        {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(spData(p))}>+ {spLabel(p)}</button>)}
         <button onClick={()=>addS()}>+ {L('Boş','Empty')}</button></div>
       {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdaki Hızlı Ekle\'yi kullan','No sessions planned — use Quick Add above')}</div>}
       {day.sessions.map((s,i)=><SessEd key={s.id} session={s} index={i} total={day.sessions.length}
