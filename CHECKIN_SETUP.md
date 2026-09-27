@@ -15,22 +15,23 @@ Wellness formunun dört puanlı sorusu (1 kötü · 5 iyi):
 4. Kaslarında ne düzeyde ağrı/sertlik hissediyorsun? (Kas Ağrısı) — opsiyonel
 
 **Ağrı haritası (opsiyonel):** sporcu çevirebildiği gerçekçi bir 3D insan modelinde
-ağrıyan bölgeye dokunur ve şiddetini seçer (Hafif · Orta · Yüksek). Bölgeler bir
-anatomi atlası gibi derinin üstüne renkli boyalı, aralarında ince açık bir dikiş var.
+ağrıyan bölgeye dokunur ve şiddetini seçer (Hafif · Orta · Yüksek). Manken vitrin
+mankeni gibi yüzsüz ve tek renk; bölgelerin kendi rengi yok, aralarında ince koyu,
+düz bir sınır çizgisi var.
 Modelde 72 bölge var — baş, çene, boyun, ense; omuz, üst kol, dirsek, ön kol, el
 bileği, el, parmaklar; göğüs, kaburga, üst/orta/alt sırt, yan gövde, karın; kalça,
 kasık, sakrum; ön/arka/iç/dış uyluk; diz önü/arkası/içi/dışı; ön bacak, baldır
 (iç/dış), ayak bileği (ön/iç/dış), Aşil, topuk, ayak tabanı, ayak üstü, ayak
 parmakları — sağ ve sol ayrı. İşaretlenen bölge şiddet rengini alır ve yanında
-çizgiyle bağlı bir etiket (bölge + şiddet) çıkar; o sırada işaretsiz bölgeler griye
-döner. Modelin altındaki **Yakınlaş** şeridi baş, el, diz ve ayağa yaklaştırır (aynı
+çizgiyle bağlı bir etiket (bölge + şiddet) çıkar; panelde açık olan bölge mavi
+görünür. Modelin altındaki **Yakınlaş** şeridi baş, el, diz ve ayağa yaklaştırır (aynı
 düğmeye yeniden basmak ense, öbür el, dizlerin ve ayakların arkasını gösterir) —
 parmak, ayak bileği gibi küçük bölgeler böyle kolay işaretlenir. Modelde olmayan bir
 yer için **Diğer** satırına yazılır ("Diğer: sol kulak"). Model tam ekrana alınabilir
 (iki parmakla yakınlaştırma), bölgeler ayrıca açılır listeden de seçilebilir; 3D'yi
 açamayan eski bir telefonda form yalnızca listeyi gösterir. Görüntüleyici
 `pain-body.js`'te, manken `pain-body.bin`'de (MakeHuman'ın CC0 lisanslı insan ağı;
-~280 KB, `tools/pain-body-mesh/` üretir); ikisi ve Three.js yalnızca Wellness formu
+~200 KB, `tools/pain-body-mesh/` üretir); ikisi ve Three.js yalnızca Wellness formu
 açılınca yüklenir.
 
 **Hazır Oluş** = cevaplanan puanların ortalaması (tek ondalık). Web sitesindeki
