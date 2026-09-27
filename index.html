@@ -26992,9 +26992,11 @@ function useCloudSync(data,setData){
         Math.round((Date.now()-lastServerAt.current)/1000)+'sn');
       checkLive();
     },15000);
-    // Yazılmamış değişiklik varken sayfa kapatılır/yenilenirse tarayıcının "ayrılmak istiyor musun?"
-    // onayını göster — kaydedilmemiş değişikliğin sessizce kaybolmasını engeller.
-    const onBeforeUnload=e=>{flush();if(dirty.current||writing.current){e.preventDefault();e.returnValue='';}};
+    // Sayfa kapatılır/yenilenirken bekleyen yazımı gönder ve yerel kopyayı diske yaz.
+    // Tarayıcının "Site yeniden yüklensin mi?" onayı GÖSTERİLMEZ: flush() yazımı hemen
+    // başlattığı için senkron olsa bile uyarı çıkıyordu. Başlatılan yazım Firestore'un
+    // kalıcı (IndexedDB) kuyruğuna düşer ve yeniden açılışta buluta gönderilir.
+    const onBeforeUnload=()=>{flush();};
     document.addEventListener('visibilitychange',onVis);
     window.addEventListener('offline',offline);
     window.addEventListener('online',resume);
