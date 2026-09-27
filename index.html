@@ -11144,12 +11144,10 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
       ${ss.length===0?`<div class="rest-box">
           <div class="rest-tag">${L('DİNLENME','REST')}</div>
         </div>`:
-        /* No RPE on the sheet — neither the target nor the logged sRPE; the coach wants
-           the printed week to say what, when and how long. */
-        ss.map(s=>{const c=colorOf(s);const goal=sesGoalLine(s);
+        /* Only what, when and how long — no RPE (target or logged sRPE) and no goal line. */
+        ss.map(s=>{const c=colorOf(s);
           return`<div class="sess" style="border-color:${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span></div>
-          ${goal?`<div class="sess-pr">${escHTML(goal)}</div>`:''}
           <div class="sess-meta"><span class="sess-time">${s.time}</span><span class="sess-sep"></span><span class="sess-dur">${Number(s.duration)||0} ${L('dk','min')}</span></div>
         </div>`;}).join('')}
       ${ss.length>0?`<div class="day-total"><u>${L('Toplam Yük','Total Load')}</u><b>${Math.round(dayLoad)} AU</b></div>`:''}
@@ -11201,7 +11199,6 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .sess{background:var(--bg2);border:3px solid var(--border2);border-radius:11px;padding:8px 10px;margin:5px;overflow:hidden}
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
-.sess-pr{font-size:9.5px;color:var(--muted);line-height:1.3;margin:-1px 0 5px}
 .sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
 .sess-sep{width:1px;height:11px;background:var(--border2);flex:none}
 .sess-time{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em}
