@@ -13779,7 +13779,7 @@ const tibGroupLabel=g=>L(TIB_GROUP_TR[g&&g.id]||(g&&g.label)||'',(g&&g.label)||'
 const TIB_POS_TR={Guard:'Gard',Forward:'Forvet',Center:'Pivot'};
 const tibPosLabel=p=>{const en=posOf(p);return en?L(TIB_POS_TR[en]||en,en):'';};
 const TIB_CT_TR={knee:'Diz',back:'Sırt / Bel',shoulder:'Omuz',ankle:'Ayak bileği',
-  hip:'Kalça / Kasık',hamstring:'Hamstring',wrist:'El bileği / Dirsek'};
+  hip:'Kalça / Kasık',hamstring:'Hamstring',neck:'Baş / Boyun',trunk:'Göğüs / Kaburga / Karın',wrist:'El bileği / Dirsek'};
 const tibCtLabel=id=>L(TIB_CT_TR[id]||ctLabel(id),ctLabel(id));
 const TIB_ZONE_TR={'No data':'Veri yok','High risk':'Yüksek risk','Optimal':'Optimal','Low':'Düşük','Caution':'Dikkat'};
 const tibZoneLabel=t=>L(TIB_ZONE_TR[t]||t,t);
@@ -28254,13 +28254,15 @@ function ResearchesView({data,setData}){
 /* Pain / restriction tags. `kw` drives the (opt-in) note → tag suggestion in the
    athlete profile; the coach approves each one, nothing is auto-assigned. */
 const CONSTRAINT_TAGS=[
-  {id:'knee',     label:'Knee',            kw:['diz','knee','patell','menisk','çapraz bağ','acl','pcl','jumper']},
+  {id:'knee',     label:'Knee',            kw:['diz','knee','patell','menisk','çapraz bağ','acl','pcl','jumper','quadriceps','ön uyluk','dış uyluk','quad']},
   {id:'back',     label:'Back / Lower back',kw:['sırt','bel ','bel,','beli','lomber','lumbar','disk','omurga','back pain','spine','fıtık','sakrum','kuyruk sokumu','sacrum','tailbone']},
   {id:'shoulder', label:'Shoulder',        kw:['omuz','shoulder','rotator','sıkışma','impingement','supraspinatus']},
-  {id:'ankle',    label:'Ankle',           kw:['ayak bileği','ankle','burkulma','sprain','aşil','achilles']},
+  {id:'ankle',    label:'Ankle',           kw:['ayak bileği','ankle','burkulma','sprain','aşil','achilles','baldır','calf','tibialis','kaval','shin','topuk','heel','ayak tabanı','plantar','ayak üstü','ayak parmak']},
   {id:'hip',      label:'Hip / Groin',     kw:['kalça','hip','kasık','groin','adduktor','adductor']},
   {id:'hamstring',label:'Hamstring',       kw:['hamstring','arka bacak','biceps femoris']},
-  {id:'wrist',    label:'Wrist / Elbow',   kw:['el bileği','wrist','dirsek','elbow']},
+  {id:'neck',     label:'Head / Neck',     kw:['baş ','çene','boyun','ense ','head','jaw','neck','whiplash']},
+  {id:'trunk',    label:'Chest / Ribs / Abdomen',kw:['göğüs','kaburga','yan gövde','karın','chest','ribs','rib ','abdom','oblik','oblique']},
+  {id:'wrist',    label:'Wrist / Elbow',   kw:['el bileği','wrist','dirsek','elbow','üst kol','ön kol','upper arm','forearm','sağ el ','sol el ','sağ parmaklar ','sol parmaklar ']},
 ];
 const ctLabel=id=>((CONSTRAINT_TAGS.find(t=>t.id===id)||{}).label)||id;
 
@@ -28275,6 +28277,8 @@ const PAIN_RULES={
   ankle:    {hit:['Jump / Plyo','Sprint / Locomotion','Squat','Lunge / Unilateral'],prefer:['Hinge','Push','Pull','Core / Brace'],kw:['hip thrust','rdl','leg curl','oturarak','bisiklet']},
   hip:      {hit:['Hinge','Lunge / Unilateral','Rotation','Squat'],  prefer:['Push','Pull','Core / Brace'],         kw:['izometrik','destekli','makine','wall sit']},
   hamstring:{hit:['Hinge','Sprint / Locomotion','Jump / Plyo'],      prefer:['Squat','Push','Core / Brace'],        kw:['goblet','box','leg press','izometrik']},
+  neck:     {hit:['Carry','Push','Rotation','Jump / Plyo'],           prefer:['Lunge / Unilateral','Core / Brace','Mobility'],kw:['destekli','supported','makine','machine','oturarak']},
+  trunk:    {hit:['Rotation','Core / Brace','Carry','Push'],         prefer:['Squat','Lunge / Unilateral','Mobility'],kw:['makine','machine','destekli','supported','izometrik']},
   wrist:    {hit:['Push','Pull','Carry'],                            prefer:['Squat','Hinge','Core / Brace'],       kw:['makine','kayış','strap','landmine']},
 };
 
@@ -28374,7 +28378,11 @@ function athPainReports(a,ref){
   const out=[],seen=new Set();
   const known=new Set(CONSTRAINT_TAGS.map(t=>t.id));
   const read=(w,carry)=>{
-    const pm=(w.pain&&typeof w.pain==='object')?w.pain:null;
+    /* The stored tags, plus the ones the 3D map's regions read to today — so a check-in
+       taken before a region's keyword existed still closes what it should. */
+    const fromMap=painTagsFromMap(w.painMap&&typeof w.painMap==='object'?w.painMap:null)||{};
+    const stored=(w.pain&&typeof w.pain==='object')?w.pain:{};
+    const pm={...fromMap};Object.keys(stored).forEach(k=>{pm[k]=Math.max(Number(pm[k])||0,Number(stored[k])||0);});
     // A tag with severity 0 is still a report — the region was ticked on a question that
     // never asked how bad it is — so it counts as one and simply shows no grade.
     if(pm)Object.keys(pm).forEach(tag=>{
@@ -32441,6 +32449,20 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
     agri_ve_sakatlik:{
       bugunku_agri:painRegions.map(r=>({bolge:r.label,siddet_0_5:r.severity_0_5,siddet_0_3:r.severity_0_3,
         tarih:r.date,kaynak:r.source,kalici_kisit:r.standing||null,durum:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status})),
+      /* The 3D body map as the athlete marked it — exact region, side and grade —
+         because the tags above are coarse and some regions (neck, chest, abdomen…)
+         have no tag at all. Today's check-in, plus yesterday's regions still carrying. */
+      agri_haritasi:(()=>{
+        const{today:tw,yesterday:yw}=painCheckinsFor(a,ref);
+        const SEV=PAIN_SEV_LABEL(),out=[],seen=new Set();
+        const add=(w,carry)=>{if(!w||!w.painMap||typeof w.painMap!=='object')return;
+          painEntries(w.painMap).forEach(({region,sev})=>{
+            if(seen.has(region)||(carry&&!painCarries(sev)))return;seen.add(region);
+            const side=/^Sağ /.test(region)?L('sağ','right'):/^Sol /.test(region)?L('sol','left'):null;
+            out.push({bolge:region,taraf:side,siddet_1_3:sev||null,siddet:SEV[sev]||null,tarih:w.date,
+              bugun:w===tw||null});});};
+        add(tw,false);add(yw,true);
+        return out;})(),
       en_yuksek_agri_0_5:b.pain&&b.pain.peak_severity_0_5,
       sporcunun_ifadesi:b.pain&&b.pain.athlete_words,
       yuk_alinmasi_gereken_paternler:b.pain&&b.pain.patterns_to_unload,
