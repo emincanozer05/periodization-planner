@@ -6668,6 +6668,7 @@ const SPRESETS=[
   {name:'Speed & Agility',tr:'Sürat & Çeviklik',trName:'Sürat & Çeviklik',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
   {name:'Conditioning',tr:'Kondisyon',trName:'Kondisyon',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
   {name:'Recovery',tr:'Toparlanma',trName:'Toparlanma Seansı',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
+  {name:'Team Practice',tr:'Takım Antrenmanı',trName:'Takım Antrenmanı',d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Team Offense, Team Defense',focus:['Technical / Tactical'],sub:['Team Offense','Team Defense'],duration:90,bl:[]}},
   {name:'Match',tr:'Maç',trName:'Maç Günü',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
   {name:'Testing',tr:'Test',trName:'Test',d:{name:'Testing',time:'09:00',loadType:'Neuromuscular load',purpose:'Testing',focus:['Testing'],sub:[],duration:60,bl:[]}},
 ];
@@ -8547,7 +8548,8 @@ function migrateTeam(t){
         if(!s.name)s.name=s.loadType||'Workout';
         if(s.purpose==='Team Practice')s.purpose='Ball Practice';
         if(!Array.isArray(s.focus))s.focus=sesFocus(s);
-        if(s.name==='Team Practice')s.name='Ball Practice';
+        /* The title is no longer renamed: "Team Practice" is the Quick Add preset's
+           English title again, and renaming it here would undo it on every load. */
         if(s.au===undefined)s.au='';
         if(!Array.isArray(s.athletes))s.athletes=[];
         if(s.sourceId===undefined)s.sourceId=null;
@@ -8654,7 +8656,6 @@ function migrateTeam(t){
       d.sessions=d.sessions.map(s=>({...s,
         purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose,
         focus:Array.isArray(s.focus)?s.focus:sesFocus({...s,purpose:s.purpose==='Team Practice'?'Ball Practice':s.purpose}),
-        name:s.name==='Team Practice'?'Ball Practice':s.name,
         blocks:(s.blocks||[]).map(b=>({...b,exercises:(b.exercises||[]).map(e=>({description:'',superset:'',image:'',link:'',...e}))}))}));
     }
   });
