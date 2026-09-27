@@ -32372,9 +32372,9 @@ function diBriefForAI(i){
         sinir_birimi:v&&v.readable?v.unit:null};}),
     kisit_detayi:i.constraintNote||null,
     seans_suresi_dk:i.duration,
-    /* The ceiling binds the MAIN phase only: preparation and complementary work is
-       what closes the athlete's measured gaps, and capping it would cap the fix. */
-    ana_faz_maks_egzersiz:i.maxExercises,
+    /* The ceiling binds the WHOLE session: preparation, main and complementary rows
+       all count, so the number the coach picks is the number the athlete sees. */
+    seans_maks_egzersiz:i.maxExercises,
     ek_notlar:i.notes||null,
   };
 }
@@ -32491,7 +32491,7 @@ const DI_EXT_SCHEMA={
     }],
   },
   uyulan_kisitlar:['antrenörün hangi talimatına nasıl uyulduğu'],
-  flagged_conflicts:[{talimat:'uygulanamayan talimat',alan:'mutlaka_olsun | kacinilacak | kisitlar | seans_suresi_dk | ana_faz_maks_egzersiz',
+  flagged_conflicts:[{talimat:'uygulanamayan talimat',alan:'mutlaka_olsun | kacinilacak | kisitlar | seans_suresi_dk | seans_maks_egzersiz',
     cakisan_kural:'hangi kural / ağrı / sınır engelledi',karar:'ne yapıldı',alternatif:'yerine ne yazıldı'}],
   genel_gerekce:'kısa paragraf: günün önceliği ve egzersiz seçiminin gerekçesi',
   koc_uyarisi:'koçun bakması gereken bir durum varsa tek cümle',
@@ -32499,7 +32499,7 @@ const DI_EXT_SCHEMA={
 const DI_EXT_TASK=[
   'Bu JSON\'daki sporcu için programlanacak_gun alanındaki tarihte uygulanacak TEK bir antrenman seansı yaz.',
   'Yanıt olarak YALNIZCA cikti_formati alanındaki yapıda geçerli bir JSON döndür. Açıklama metni ekleme; anahtar adlarını değiştirme.',
-  'antrenor_talimati bağlayıcıdır: mutlaka_olsun programda yer alır, kacinilacak yer almaz (varyasyonu da), seans_suresi_dk ve ana_faz_maks_egzersiz aşılmaz. Uygulayamadığın talimatı flagged_conflicts alanında nedeniyle yaz.',
+  'antrenor_talimati bağlayıcıdır: mutlaka_olsun programda yer alır, kacinilacak yer almaz (varyasyonu da), seans_suresi_dk ve seans_maks_egzersiz aşılmaz (seans_maks_egzersiz seansın TOPLAM egzersiz sayısıdır: hazırlık, ana ve tamamlayıcı fazlar dahil). Uygulayamadığın talimatı flagged_conflicts alanında nedeniyle yaz.',
   'kodla_denetlenen_sinirlar alanındaki sınırlara uy. Program CoachOS\'a yüklendiğinde bu sınırlar kod tarafından ölçülür ve aşılan her sınır antrenöre uyarı olarak gösterilir.',
   'Programı fazlara böl: her bloğun faz alanı hazirlik, ana ya da tamamlayici olsun. Her egzersizin hareket_paterni değerini hareket_paterni_sozlugu içinden seç ve ekipman alanını doldur.',
   'Her egzersizin dayanak alanına, cevap verdiği ayirt_ediciler maddelerinin id\'lerini yaz (ör. ["D1","D3"]). Listede olmayan id yazma.',
@@ -32826,12 +32826,12 @@ function validateProgram(program,ctx){
   /* `diInstr` marks which of the two numbers the coach actually typed; one it derived
      from the session length is a hint and never fails anything. */
   const setByCoach=k=>!!i[k+'Set'];
-  if(i.maxExercises&&setByCoach('maxExercises')&&main.length>i.maxExercises)
-    H(22,`Ana fazda ${main.length} egzersiz var, antrenörün sınırı ${i.maxExercises}. (Hazırlık ve tamamlayıcı fazlar bu sayıya dahil değil.)`,
-      `The main phase has ${main.length} exercises against the coach's ceiling of ${i.maxExercises}. (Preparation and complementary work does not count.)`);
-  else if(i.maxExercises&&main.length>i.maxExercises)
-    S(22,`Ana fazda ${main.length} egzersiz var; seans süresinden türetilen tavan ${i.maxExercises}. (Antrenör bir sayı girmedi.)`,
-      `The main phase has ${main.length} exercises against a ceiling of ${i.maxExercises} derived from the session length. (The coach set no number.)`);
+  if(i.maxExercises&&setByCoach('maxExercises')&&rows.length>i.maxExercises)
+    H(22,`Seansta toplam ${rows.length} egzersiz var, antrenörün sınırı ${i.maxExercises}. (Hazırlık, ana ve tamamlayıcı fazlar dahil.)`,
+      `The session carries ${rows.length} exercises against the coach's ceiling of ${i.maxExercises}. (Preparation, main and complementary work all count.)`);
+  else if(i.maxExercises&&rows.length>i.maxExercises)
+    S(22,`Seansta toplam ${rows.length} egzersiz var; seans süresinden türetilen tavan ${i.maxExercises}. (Antrenör bir sayı girmedi.)`,
+      `The session carries ${rows.length} exercises against a ceiling of ${i.maxExercises} derived from the session length. (The coach set no number.)`);
   const est=rows.length*DI_MIN_PER_EX;
   if(i.duration&&setByCoach('duration')&&est>i.duration)
     H(21,`Program ${rows.length} egzersiz taşıyor — yaklaşık ${est} dk, antrenörün verdiği süre ${i.duration} dk. (Egzersiz başına ~${DI_MIN_PER_EX} dk, bütün fazlar dahil.)`,
@@ -33382,7 +33382,7 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
           onChange={v=>save({...instr,duration:v,durationSet:v!=null})} choices={DI_DUR_CHOICES}
           unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>)}
       {field(6,L('Maks. egzersiz','Exercise ceiling'),
-        L('Programda en fazla kaç egzersiz olsun?','How many exercises at most?'),
+        L('Seansta toplam en fazla kaç egzersiz olsun? (tüm fazlar dahil)','How many exercises in the whole session at most? (all phases)'),
         <DiNumberChoice value={instr.maxExercises}
           onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
           unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>)}
@@ -33758,7 +33758,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
       not:'Toplam zemin teması (set × tekrar, yalnızca Jump / Plyo paternindeki satırlar) bu üst sınırı aşamaz.'}:null,
     seans_suresi_dk:brief.duration,
     egzersiz_basi_dk:DI_MIN_PER_EX,
-    ana_faz_maks_egzersiz:brief.maxExercises,
+    seans_maks_egzersiz:brief.maxExercises,
     hacim_ayari_yuzde:b.adjustment?b.adjustment.pct:null,
     hacim_ayari_gerekceleri:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
   };
