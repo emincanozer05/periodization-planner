@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'monthFocusLoad', 'buildMonthHTMLDoc'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -984,6 +984,44 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('yeni biçim: qualities okunuyor, status, eski alanlar ve geçersiz değerler yok sayılıyor',
       JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { priority: 'high' }, hinge: { priority: 'medium' } }),
       JSON.stringify(nw.qualities));
+  }
+
+  group('Ek — Aylık çıktı: özelliklere göre yüklenme tablosu');
+  {
+    /* Eylül 2026: 1 Eylül Salı → ilk hafta 1–6, son hafta 28–30. */
+    const S = (name, focus, duration, sub) => ({ name, focus, duration, sub, time: '17:00' });
+    const days = {
+      '2026-09-01': { sessions: [S('Kuvvet + Güç', ['Strength', 'Power'], 60, ['Maximal Strength', 'Ballistic Power'])] },
+      '2026-09-03': { sessions: [S('Sprint', ['Speed'], 45, ['Acceleration']), S('Basketbol', ['Technical / Tactical'], 90)] },
+      '2026-09-08': { sessions: [S('Kuvvet', ['Strength'], 50, ['Maximal Strength'])] },
+      '2026-09-21': { sessions: [S('Maç', ['Competition'], 0), { name: 'Serbest', time: '10:00', duration: 30 }] },
+      '2026-09-30': { sessions: [S('Hız', ['Speed'], 40)] },
+      '2026-10-01': { sessions: [S('Ekim seansı', ['Strength'], 60)] },
+    };
+    const F = A.monthFocusLoad(days, 2026, 8);
+    check('ay haftalara Pazartesi–Pazar bölünüyor, uçlar kırpılıyor',
+      F.weeks.map(w => `${w.from}-${w.to}`).join(',') === '1-6,7-13,14-20,21-27,28-30', JSON.stringify(F.weeks));
+    check('ayın toplamları: seans, süre, antrenman/dinlenme günü; komşu ayın seansı sayılmıyor',
+      F.sessions === 7 && F.minutes === 315 && F.trainDays === 5 && F.restDays === 25, JSON.stringify([F.sessions, F.minutes, F.trainDays, F.restDays]));
+    const r = id => F.rows.find(x => x.id === id);
+    check('çok hedefli seans her hedefte bir kez sayılıyor, süresi eşit bölünüyor',
+      r('Strength').n === 2 && r('Strength').min === 80 && r('Power').n === 1 && r('Power').min === 30 &&
+      r('Strength').weeks[0].min === 30 && r('Strength').weeks[1].min === 50, JSON.stringify([r('Strength'), r('Power')]));
+    check('dakikaların toplamı ayın süresine eşit (paylar %100)',
+      F.rows.reduce((t, x) => t + x.min, 0) === F.minutes && Math.abs(F.rows.reduce((t, x) => t + x.share, 0) - 1) < 1e-9);
+    check('alt özellikler sahibi olan özelliğin altında sayılıyor',
+      JSON.stringify(r('Strength').subs) === JSON.stringify([['Maximal Strength', 2]]) &&
+      JSON.stringify(r('Speed').subs) === JSON.stringify([['Acceleration', 1]]), JSON.stringify(r('Strength').subs));
+    check('hedefi olmayan seans "Diğer" satırında, satırlar ağaç sırasında',
+      r('__other') && r('__other').n === 1 && F.rows[F.rows.length - 1].id === '__other' &&
+      F.rows.map(x => x.id).join('|') === 'Strength|Power|Speed|Technical / Tactical|Competition|__other', F.rows.map(x => x.id).join('|'));
+    const html = A.buildMonthHTMLDoc('Takım <A>', 2026, 8, days);
+    check('aylık çıktı iki sayfa: takvim + tablo; başlık kaçışlı',
+      (html.match(/class="pg fit"/g) || []).length === 2 && html.includes('Takım &lt;A&gt;') && !html.includes('Takım <A>') &&
+      html.includes('Kuvvet + Güç') && !html.includes('Ekim seansı'));
+    const empty = A.monthFocusLoad({}, 2027, 1);   // Şubat 2027 Pazartesi başlıyor → tam 4 hafta
+    check('boş ay: satır yok, 28 dinlenme günü', empty.rows.length === 0 && empty.sessions === 0 && empty.restDays === 28 && empty.weeks.length === 4,
+      JSON.stringify(empty.weeks));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
