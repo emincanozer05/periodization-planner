@@ -1217,13 +1217,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .eximg-x{position:absolute;top:-6px;right:-6px;width:14px;height:14px;padding:0;border:none;border-radius:50%;background:var(--red);color:#fff;font-size:10px;line-height:14px;text-align:center;cursor:pointer;display:none}
 .eximg-wrap:hover .eximg-x{display:block}
 .add-blk{display:flex;gap:6px;flex-wrap:wrap;padding:4px 0}
-.add-blk button{background:var(--elevated);color:var(--muted);border:1px dashed var(--border);padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;transition:all .15s;font-weight:500}
-.add-blk button:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent-bg)}
-/* The three are different kinds of work, so each one hovers to its own colour rather than
-   all three to the app accent — the court block especially, which is the one a coach is
-   scanning for. */
-.add-blk .ab-ball:hover{border-color:#ff9f43;color:#ff9f43;background:rgba(255,159,67,.09)}
-.add-blk .ab-note:hover{border-color:var(--muted);color:var(--text2);background:var(--bg2)}
+.add-blk button{background:rgba(255,255,255,.10);color:var(--text);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;transition:all .15s;font-weight:600;font-family:inherit}
+.add-blk button:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35);transform:translateY(-1px)}
 
 /* =========================================================
    BALL PRACTICE — the court board and the drill row
@@ -17428,9 +17423,6 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           against the whole header rather than riding on its lower line. */}
       <div className="iv-block-hdinfo">
         <div className="iv-block-hdtop">
-          {/* Which of the two kinds of work this block is, said once at its head — the rows
-              inside it are different enough that the coach should never have to guess. */}
-          <span className={'blk-kind '+(isBall?'ball':'sc')}>{isBall?L('TOP','BALL'):L('K&K','S&C')}</span>
           <span className="blk-grip" draggable={setDragB!=null}
             onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
             onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
@@ -18070,14 +18062,9 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
         athUpd={ids=>setBlkAthletes(b.id,ids)}
         dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
-      {/* Three things a coach adds to a session, and they are not the same thing: weight-room
-          work, court work, and something written down. Naming them apart here is what makes
-          the difference visible before the block is added rather than after. */}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
-          title={L('Set / tekrar / yük ile yazılan bir kuvvet-kondisyon bloğu','A strength & conditioning block, written in sets, reps and load')}>+ {L('K&K Bloğu Ekle','Add S&C Block')}</button>
-        <button className="ab-ball" onClick={()=>addBlk('','ball')}
-          title={L('Saha çizimi ve videosuyla birlikte top çalışması bloğu','A ball-practice block, with a court diagram and a clip on every drill')}>+ {L('Top Çalışması Bloğu Ekle','Add Ball Practice Block')}</button>
+          title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>
         <button className="ab-note" onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
