@@ -1929,15 +1929,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .sc-f.tall textarea{min-height:118px}
 /* ===== Athlete Training Profile tab =====
    Three sections on the scouting sheet's own cards (.sc-sec). Each scale keeps one
-   colour meaning across the whole tab: status green / amber / red, the scouting
-   sheet's own reading of good → limited; priority one blue that deepens with the
+   colour meaning across the whole tab: priority one blue that deepens with the
    priority, beside a signal meter; hard constraints red and soft amber; and exposure a
    single blue that deepens with the dose — exposure is an amount, not a verdict, so it
    gets no traffic light. */
 .atp-wrap{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
-.st-good{--lc:#6ee7b7;--lb:rgba(16,185,129,.16);--ld:rgba(16,185,129,.6)}
-.st-moderate{--lc:#fcd34d;--lb:rgba(245,158,11,.16);--ld:rgba(245,158,11,.6)}
-.st-limited{--lc:#fca5a5;--lb:rgba(239,68,68,.16);--ld:rgba(239,68,68,.6)}
 .pr-high{--lc:#5cb8ff;--lb:rgba(0,148,255,.18);--ld:rgba(0,148,255,.6)}
 .pr-medium{--lc:#a5c8f0;--lb:rgba(0,148,255,.09);--ld:rgba(0,148,255,.32)}
 .pr-low{--lc:var(--text2);--lb:rgba(255,255,255,.05);--ld:var(--border2)}
@@ -1996,17 +1992,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-chip{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 3px 0 10px;border-radius:999px;border:1px solid var(--ld,var(--border2));
   background:var(--lb,var(--elevated));color:var(--text);font-size:12px;font-weight:600}
 .atp-chip-dot{width:7px;height:7px;border-radius:50%;flex:none;background:transparent;box-shadow:inset 0 0 0 1px var(--dim)}
-.atp-chip.sd-good .atp-chip-dot{background:#34d399;box-shadow:none}
-.atp-chip.sd-moderate .atp-chip-dot{background:#fbbf24;box-shadow:none}
-.atp-chip.sd-limited .atp-chip-dot{background:#f87171;box-shadow:none}
 .atp-chip button{width:20px;height:20px;padding:0;border:none;border-radius:50%;background:none;color:var(--lc,var(--muted));font-size:9px;
   line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
 .atp-chip button:hover{background:rgba(255,255,255,.1);color:var(--text)}
-.atp-chip.nox{padding-right:11px}
 .atp-empty{font-size:11.5px;color:var(--dim);align-self:center}
-.atp-unranked{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin-top:10px;padding:8px 12px;border:1px dashed var(--border2);border-radius:11px}
-.atp-unranked>span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
-.atp-unranked .atp-chips{margin-top:0;min-height:0}
 /* ---- the quality groups ----
    Two columns of stacked groups (ATP_COLS). Every row is the same height whatever its
    name, so rows read straight across the two columns, and the last card of each column
@@ -2028,7 +2017,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* One height for every row — a name that runs to two lines stays inside it. */
 .atp-it{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:4px 12px 4px 13px;border-top:1px solid var(--border)}
 .atp-its>.atp-it:first-child{border-top:none}
-.atp-it.mv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.atp-it.mv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .atp-it-n{display:flex;align-items:center;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted)}
 .atp-it-l{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.35;overflow-wrap:anywhere}
 /* A rated row is marked on its edge in the colour of its status, so names keep one
@@ -24155,22 +24144,18 @@ const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','condition
 function AtpProfile({q,onSet}){
   const rated=ATP_QUALITIES.filter(it=>q[it.id]);
   const byPri=id=>rated.filter(it=>q[it.id].priority===id);
-  const unranked=rated.filter(it=>!q[it.id].priority);
-  const chip=(it,withX)=>{const r=q[it.id];const s=r.status&&ATP_STATUS.find(x=>x.id===r.status);return(
-    <span key={it.id} className={`atp-chip${r.status?` sd-${r.status}`:''}${withX?'':' nox'}`}
-      title={`${atpT(it.group)}${s?` · ${atpT('Status')}: ${atpT(s.en)}`:''}${REPORT_LANG==='tr'?` · ${it.en}`:''}`}>
+  const chip=it=>(
+    <span key={it.id} className="atp-chip"
+      title={`${atpT(it.group)}${REPORT_LANG==='tr'?` · ${it.en}`:''}`}>
       <i className="atp-chip-dot"/>{atpT(it.en)}
-      {withX&&<button onClick={()=>onSet(it.id,'priority',r.priority)} title={L('Önceliği kaldır','Clear priority')}
-        aria-label={L(`${atpT(it.en)} önceliğini kaldır`,`Clear ${it.en} priority`)}>✕</button>}</span>);};
+      <button onClick={()=>onSet(it.id,'priority',q[it.id].priority)} title={L('Önceliği kaldır','Clear priority')}
+        aria-label={L(`${atpT(it.en)} önceliğini kaldır`,`Clear ${it.en} priority`)}>✕</button></span>);
   const group=g=>{const n=g.items.filter(it=>q[it.id]).length;return(
     <div key={g.id} className="atp-grp" style={{order:ATP_GROUPS.indexOf(g)}}>
       <AtpGrpHead title={atpT(g.en)} n={n} of={g.items.length}/>
       <div className="atp-its">{g.items.map(it=>{const r=q[it.id]||{};return(
-        <div key={it.id} className={`atp-it mv${r.status||r.priority?' set':''}${r.status?` st-${r.status}`:''}`}>
+        <div key={it.id} className={`atp-it mv${r.priority?` set pr-${r.priority}`:''}`}>
           <span className="atp-it-n"><AtpName en={it.en}/></span>
-          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Status')}`}>{ATP_STATUS.map(s=>
-            <button key={s.id} className={`st-${s.id}${r.status===s.id?' on':''}`} aria-pressed={r.status===s.id} aria-label={atpT(s.en)}
-              title={`${atpT('Status')}: ${atpT(s.en)} — ${L(s.dTr,s.dEn)}`} onClick={()=>onSet(it.id,'status',s.id)}>{atpAb(s)}</button>)}</div>
           <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_PRIORITY.map(p=>
             <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
               title={`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>)}</div>
@@ -24178,25 +24163,19 @@ function AtpProfile({q,onSet}){
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
     <AtpSecHead n={1} title={atpT('Athletic Profile')}
-      desc={L('Her fiziksel kalite için iki okuma: Durum — sporcunun bugün nerede olduğu; Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir.',
-        'Two readings for every physical quality: Status — where the athlete stands today; Priority — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement.')}>
-      {ATP_STATUS.map(s=><span key={s.id} className={`atp-hc st-${s.id}`}><i/>{atpT(s.en)}<b>{rated.filter(it=>q[it.id].status===s.id).length}</b></span>)}
-    </AtpSecHead>
+      desc={L('Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir.',
+        'A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement.')}/>
     <div className="sc-sec-b">
       <div className="atp-key">
-        <div className="atp-key-g"><span className="atp-key-k">{atpT('Status')}</span>
-          {ATP_STATUS.map(s=><span key={s.id} className="atp-key-i"><span className={`atp-tag st-${s.id}`}>{atpT(s.en)}</span>{L(s.dTr,s.dEn)}</span>)}</div>
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
           {ATP_PRIORITY.map(p=><span key={p.id} className="atp-key-i"><span className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{atpT(p.en)}</span>{L(p.dTr,p.dEn)}</span>)}</div>
       </div>
       <div className="atp-lanes">{ATP_PRIORITY.map(p=>{const its=byPri(p.id);return(
         <div key={p.id} className={`atp-lane pr-${p.id}`}>
           <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span><span className="atp-lane-n">{its.length}</span></div>
-          <div className="atp-chips">{its.length?its.map(it=>chip(it,true))
+          <div className="atp-chips">{its.length?its.map(chip)
             :<span className="atp-empty">{L('Henüz yok — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
         </div>);})}</div>
-      {unranked.length>0&&<div className="atp-unranked"><span>{L('Önceliği seçilmemiş','No priority yet')}</span>
-        <div className="atp-chips">{unranked.map(it=>chip(it,false))}</div></div>}
       <div className="atp-gwrap"><div className="atp-mgrid">{ATP_COLS.map((col,ci)=>
         <div key={ci} className="atp-mcol">{col.map(id=>group(ATP_GROUPS.find(g=>g.id===id)))}</div>)}</div></div>
     </div>
@@ -24412,16 +24391,16 @@ function TrainingProfileTab({ath,updAth,exercises}){
     const cur={...(tp.qualities[id]||{})};
     if(cur[field]===v)delete cur[field];else cur[field]=v;
     const nx={...tp.qualities};
-    if(cur.status||cur.priority)nx[id]=cur;else delete nx[id];
+    if(cur.priority)nx[id]=cur;else delete nx[id];
     save({qualities:nx});
   };
   const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]);
-  const nS=id=>rated.filter(it=>tp.qualities[it.id].status===id).length;
+  const nP=id=>rated.filter(it=>tp.qualities[it.id].priority===id).length;
   const high=rated.filter(it=>tp.qualities[it.id].priority==='high').map(it=>atpT(it.en));
   const go=id=>{const el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});};
   const tiles=[
     {id:'atp-s1',c:'#0094ff',k:atpT('Athletic Profile'),v:rated.length,u:`/ ${ATP_QUALITIES.length}`,
-      s:high.length?`${atpT('High')}: ${high.join(', ')}`:`${atpT('Good')} ${nS('good')} · ${atpT('Moderate')} ${nS('moderate')} · ${atpT('Limited')} ${nS('limited')}`},
+      s:high.length?`${atpT('High')}: ${high.join(', ')}`:`${atpT('Medium')} ${nP('medium')} · ${atpT('Low')} ${nP('low')}`},
     {id:'atp-s2',c:'#ef4444',k:atpT('Constraints'),v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
       s:`${atpT('Hard')} ${tp.constraints.hard.length} · ${atpT('Soft')} ${tp.constraints.soft.length}`},
     {id:'atp-s3',c:'#22d3ee',k:atpT('Exercise Exposure'),v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
@@ -30244,11 +30223,6 @@ const ATP_GROUPS=[
   {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability'])},
 ];
 const ATP_QUALITIES=ATP_GROUPS.flatMap(g=>g.items.map(it=>({...it,group:g.en})));
-const ATP_STATUS=[
-  {id:'good',    en:'Good',    ab:'GOOD',abTr:'İYİ',    dTr:'Yeterli veya güçlü kapasite.',dEn:'Adequate or strong capacity.'},
-  {id:'moderate',en:'Moderate',ab:'MOD', abTr:'ORTA',   dTr:'Geliştirilebilir, orta düzey kapasite.',dEn:'Developable, middling capacity.'},
-  {id:'limited', en:'Limited', ab:'LTD', abTr:'SINIRLI',dTr:'Belirgin şekilde sınırlı kapasite.',dEn:'Clearly limited capacity.'},
-];
 const ATP_PRIORITY=[
   {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Bu dönemin ana gelişim alanı.',dEn:'A main development area this period.'},
   {id:'medium',en:'Medium',ab:'MED', abTr:'ORTA',  bars:2,dTr:'Geliştirilecek, ama High\'dan sonra.',dEn:'To develop, but after High.'},
@@ -30256,8 +30230,8 @@ const ATP_PRIORITY=[
 ];
 /* The profile used to be two sections — Training Priorities (Primary / Secondary /
    Maintain on 31 qualities) and a Movement Profile (Status + Priority on 29 movements).
-   A profile saved that way is read into the one template: a quality takes the status
-   and priority its movement row had, and a priority level stands in for a missing
+   A profile saved that way is read into the one template: a quality takes the
+   priority its movement row had, and a priority level stands in for a missing
    priority (Primary → High, Secondary → Medium, Maintain → Low). The old names that
    are the same quality under another word are read as it. Ratings with no place in the
    template are left behind. */
@@ -30329,19 +30303,20 @@ const atpCatLabel=id=>((ATP_CON_CATS.find(x=>x.id===id)||{}).en)||'';
 function atpRead(ath){
   const tp=(ath&&ath.trainingProfile&&typeof ath.trainingProfile==='object')?ath.trainingProfile:{};
   const obj=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
-  const okS=v=>ATP_STATUS.some(x=>x.id===v)?v:null,okP=v=>ATP_PRIORITY.some(x=>x.id===v)?v:null;
+  const okP=v=>ATP_PRIORITY.some(x=>x.id===v)?v:null;
   const qualities={};
-  const put=(id,st,pr)=>{st=okS(st);pr=okP(pr);if(st||pr)qualities[id]={...(st?{status:st}:{}),...(pr?{priority:pr}:{})};};
+  /* Only the priority is kept — a Status saved before it was dropped is left behind. */
+  const put=(id,pr)=>{pr=okP(pr);if(pr)qualities[id]={priority:pr};};
   if(tp.qualities&&typeof tp.qualities==='object'){
     const q=obj(tp.qualities);
-    ATP_QUALITIES.forEach(it=>{const r=obj(q[it.id]);put(it.id,r.status,r.priority);});
+    ATP_QUALITIES.forEach(it=>{const r=obj(q[it.id]);put(it.id,r.priority);});
   }else{
     const mv=obj(tp.movement),pri=obj(tp.priorities);
     ATP_QUALITIES.forEach(it=>{
       const ids=[it.id,...(ATP_LEGACY_ALIAS[it.id]||[])];
       const m=obj(mv[it.id]);
       const lv=ids.map(k=>ATP_LEGACY_LEVEL[pri[k]]).find(Boolean)||null;
-      put(it.id,m.status,m.priority||lv);
+      put(it.id,m.priority||lv);
     });
   }
   const con=obj(tp.constraints);
@@ -30605,14 +30580,13 @@ function atpExposure(ath,end,opts){
 function atpSnapshot(ath,ref,libMap){
   const tp=atpRead(ath);
   const en=(list,id)=>((list.find(x=>x.id===id)||{}).en)||null;
-  /* Every rated quality with its group, status and priority, High first — the order the
+  /* Every rated quality with its group and priority, High first — the order the
      session is to be written in — and within one priority in the template's own order.
      The three priority lists repeat the names alone, so the emphasis reads at a glance. */
   const rank=x=>Math.max(0,ATP_PRIORITY.findIndex(p=>p.id===x.r.priority))+(x.r.priority?0:ATP_PRIORITY.length);
   const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]).map(it=>({it,r:tp.qualities[it.id]}));
   const ordered=rated.map((x,i)=>({...x,i})).sort((a,b)=>(rank(a)-rank(b))||(a.i-b.i));
   const byPri=id=>rated.filter(x=>x.r.priority===id).map(x=>x.it.en);
-  const byStatus=id=>rated.filter(x=>x.r.status===id).map(x=>x.it.en);
   const con=list=>list.map(c=>({kisit:atpConLabel(c),kategori:atpCatLabel(atpConCat(c))||null,deger:c.value,not:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
@@ -30629,13 +30603,11 @@ function atpSnapshot(ath,ref,libMap){
       'egzersiz_maruziyeti takvimdeki antrenman kayıtlarından otomatik hesaplanır. Profil sporcuyu tanımlar — tek başına bir egzersiz seçimi değildir.',
     son_guncelleme:tp.updated,
     atletik_profil:rated.length?{
-      aciklama:'Her fiziksel kalite iki ölçekle okunur. durum — sporcunun bugünkü kapasitesi: Good (yeterli/güçlü) · Moderate (geliştirilebilir, orta) · Limited (belirgin sınırlı). '+
-        'oncelik — bu dönemde ne kadar geliştirileceği: High (ana gelişim alanı) > Medium (geliştirilecek, High\'dan sonra) > Low (korunur, gelişim önceliği yok). '+
-        'Girilmemiş kalite değerlendirilmemiştir; "iyi" ya da "öncelik yok" diye okunmaz.',
+      aciklama:'Her fiziksel kalite için oncelik — bu dönemde ne kadar geliştirileceği: High (ana gelişim alanı) > Medium (geliştirilecek, High\'dan sonra) > Low (korunur, gelişim önceliği yok). '+
+        'Girilmemiş kalite değerlendirilmemiştir; "öncelik yok" diye okunmaz.',
       gruplar:ATP_GROUPS.map(g=>g.en),
       oncelik:{high:byPri('high'),medium:byPri('medium'),low:byPri('low')},
-      durum:{good:byStatus('good'),moderate:byStatus('moderate'),limited:byStatus('limited')},
-      kaliteler:ordered.map(({it,r})=>({kalite:it.en,grup:it.group,durum:en(ATP_STATUS,r.status),oncelik:en(ATP_PRIORITY,r.priority)})),
+      kaliteler:ordered.map(({it,r})=>({kalite:it.en,grup:it.group,oncelik:en(ATP_PRIORITY,r.priority)})),
     }:null,
     kisitlar:{
       aciklama:'hard: kesin olarak uyulması gereken kısıtlar · soft: kesin yasak değil, tercih edilen veya sınırlandırılması gereken durumlar',
