@@ -938,10 +938,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const pr = ap.atletik_profil;
     check('JSON: eski profil tek şablona taşınıyor — öncelikler High / Medium / Low',
       pr.oncelik.high.join('|') === 'Acceleration|Landing' && pr.oncelik.medium.join('|') === 'Deceleration' &&
-      pr.oncelik.low.join('|') === 'Squat' && pr.durum.limited.join('|') === 'Landing' && pr.durum.good.join('|') === 'Squat' &&
+      pr.oncelik.low.join('|') === 'Squat' && !('durum' in pr) &&
       !pr.kaliteler.some(k => /Strength/.test(k.kalite)), JSON.stringify(pr.oncelik));
     const land = pr.kaliteler.find(h => h.kalite === 'Landing');
-    check('JSON: kalite durum / öncelik / grup, High önce', land && land.durum === 'Limited' && land.oncelik === 'High' &&
+    check('JSON: kalite öncelik / grup, High önce — durum yok', land && !('durum' in land) && land.oncelik === 'High' &&
       land.grup === 'Plyometric / Reactive' && pr.kaliteler.map(k => k.kalite).join('|') === 'Acceleration|Landing|Deceleration|Squat' &&
       pr.gruplar.length === 7 && !('antrenman_oncelikleri' in ap) && !('hareket_profili' in ap), JSON.stringify(pr.kaliteler));
     check('JSON: hard ve soft ayrı — iki listede birden olan kısıt yalnızca hard\'da',
@@ -979,8 +979,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const nw = A.atpRead({ trainingProfile: {
       qualities: { max_velocity: { status: 'limited', priority: 'high' }, hinge: { status: 'nope', priority: 'medium' }, bogus: { status: 'good' } },
       priorities: { acceleration: 'primary' }, movement: { squat: { status: 'good' } } } });
-    check('yeni biçim: qualities okunuyor, eski alanlar ve geçersiz değerler yok sayılıyor',
-      JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { status: 'limited', priority: 'high' }, hinge: { priority: 'medium' } }),
+    check('yeni biçim: qualities okunuyor, status, eski alanlar ve geçersiz değerler yok sayılıyor',
+      JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { priority: 'high' }, hinge: { priority: 'medium' } }),
       JSON.stringify(nw.qualities));
   }
 
