@@ -1,34 +1,51 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    AĞRI HARİTASI — 3D vücut modeli (Wellness formu)
 
-   Sporcu ağrıyan bölgeyi bir tablodan değil, çevirebildiği bir 3D manken
-   üzerinden seçiyor. Bu dosya iki şey taşıyor:
+   Sporcu ağrıyan bölgeyi bir tablodan değil, çevirebildiği gerçekçi bir 3D
+   insan modeli üzerinden seçiyor. Bu dosya üç şey taşıyor:
 
      1) BÖLGE KATALOĞU (PainBody.REGIONS). Her bölgenin anahtarı Türkçe adı —
         gönderime o ad gidiyor (`painMap: {'Sağ diz önü': 2}`), çünkü koçun
         uygulamasındaki ısı haritası, bireyselleştirme etiketleri ve uyarı
         bildirimi bölgeyi adıyla okuyor. İngilizce yalnızca ekrandaki karşılığı.
 
-     2) MODELİN KENDİSİ (PainBody.create). Hazır bir 3D dosya indirilmiyor; manken
-        birkaç pürüzsüz "tüp"ten burada kuruluyor: baştan kasığa tek bir gövde,
-        iki bacak, iki kol, eller, ayaklar, parmaklar. Her tüp yükseklik × çevre
-        açısıyla tarif ediliyor ve bir bölge o düzlemde bir dikdörtgen: "sol
-        bacakta, 0.445–0.575 m arası, iç taraf" = Sol diz içi. Izgaranın çizgileri
-        bölge sınırlarından geçecek şekilde örneklendiği için her üçgen tam olarak
-        bir bölgeye düşüyor; dokunulan üçgen de doğrudan bölgeyi söylüyor.
+     2) MODELİ AÇAN KOD. Manken `pain-body.bin` dosyasında: MakeHuman'ın taban
+        insan ağı (CC0 lisanslı; atletik genç erkek ölçüleri, kollar yanda) ve her
+        köşesinin hangi bölgeye düştüğü, pişirilmiş ortam gölgesi (AO), saç / kaş /
+        dudak / şort maskeleri. Dosyayı `tools/pain-body-mesh/` üretiyor; bölge
+        sınırlarının kuralları da orada. Burada ağ açılıyor, bölge sınırından geçen
+        üçgenler sınırın üstünden bölünüyor, sınır çizgisi basamaksız olsun diye
+        düzleştiriliyor ve ağ bir kez pürüzsüzleştiriliyor (Loop alt bölümleme).
+        Her üçgen tam olarak bir bölgeye düşüyor; dokunulan üçgen bölgeyi söylüyor.
 
-   Koordinatlar metre; sporcu +z yönüne (ekrana) bakıyor, y yukarı. Sporcunun
-   SAĞI -x tarafında — karşıdan bakan kişinin solunda. Modelin yanındaki SAĞ / SOL
-   etiketleri bu yüzden var: öndeyken sporcunun sağ kolu ekranın solunda durur.
+     3) GÖRÜNTÜLEYİCİ (PainBody.create). Bölgeler referans görseldeki gibi
+        renkli, yarı saydam bir katman olarak derinin üstüne boyanıyor; komşu
+        bölgeler farklı renkte ve arada ince açık bir dikiş var. İşaretlenen
+        bölge şiddet rengini (Hafif / Orta / Yüksek) alıyor, yanına çizgiyle bağlı
+        bir etiket çıkıyor; o sırada işaretsiz bölgeler griye dönüyor ki
+        işaretliler belli olsun. Baş / el / diz / ayak için hızlı yakınlaşma var.
 
-   Three.js yalnızca Wellness formu açılınca, CDN'den modül olarak yükleniyor.
-   Yüklenemezse (eski tarayıcı, WebGL yok, ağ yok) form bölgeyi listeden seçtiriyor;
-   katalog bu dosyada olduğu için liste her durumda çalışıyor.
+   Koordinatlar metre; sporcu +z yönüne (ekrana) bakıyor, y yukarı, ayaklar y=0.
+   Sporcunun SAĞI -x tarafında — karşıdan bakan kişinin solunda. Modelin
+   yanındaki SAĞ / SOL etiketleri bu yüzden var.
+
+   Three.js ve model dosyası yalnızca Wellness formu açılınca yükleniyor.
+   Yüklenemezse (eski tarayıcı, WebGL2 yok, ağ yok) form bölgeyi listeden
+   seçtiriyor; katalog bu dosyada olduğu için liste her durumda çalışıyor.
    ═══════════════════════════════════════════════════════════════════════════ */
 (function (global) {
   'use strict';
 
   var THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js';
+  // Model dosyası bu betiğin yanında duruyor. Sürüm eki, dosya değişince
+  // tarayıcının eski kopyayı kullanmaması için.
+  var MESH_VERSION = '1';
+  var MESH_URL = (function () {
+    var src = '';
+    try { src = (document.currentScript && document.currentScript.src) || ''; } catch (e) {}
+    var base = src ? src.replace(/[?#].*$/, '').replace(/[^/]*$/, '') : '';
+    return base + 'pain-body.bin?v=' + MESH_VERSION;
+  })();
 
   /* ── Bölge kataloğu ───────────────────────────────────────────────────────
      Sıra, formdaki listenin ve seçim açılır kutusunun sırası. `g` bölge grubu
@@ -94,516 +111,495 @@
 
   var BY_KEY = {}, INDEX = {};
   REGIONS.forEach(function (r, i) { BY_KEY[r.k] = r; INDEX[r.k] = i; });
-  // Taraflı bölgenin anahtarı: S('R', 'diz önü') → 'Sağ diz önü'.
-  function S(side, base) { return (side === 'R' ? 'Sağ ' : 'Sol ') + base; }
 
   /* ── Yardımcı matematik ─────────────────────────────────────────────────── */
   var DEG = Math.PI / 180;
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function wrapPi(a) { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; }
-  function spow(v, p) { return (v < 0 ? -1 : 1) * Math.pow(Math.abs(v), p); }
 
-  /* Taşmayan kübik ara değerleme (Fritsch–Carlson). Anahtar noktalar arasında
-     yarıçap yumuşak geçsin ama iki nokta arasında olmayan bir şişkinlik ya da
-     çukur üretmesin — sıradan bir spline dizin altında kasıntı yapabiliyordu. */
-  function monotone(xs, ys) {
-    var n = xs.length, d = [], m = new Array(n), i;
-    if (n === 1) return function () { return ys[0]; };
-    for (i = 0; i < n - 1; i++) d[i] = (ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]);
-    m[0] = d[0]; m[n - 1] = d[n - 2];
-    for (i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
-    for (i = 0; i < n - 1; i++) {
-      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
-      var a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
-      if (s > 9) { var t = 3 / Math.sqrt(s); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
-    }
-    return function (x) {
-      if (x <= xs[0]) return ys[0];
-      if (x >= xs[n - 1]) return ys[n - 1];
-      var lo = 0, hi = n - 1;
-      while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (xs[mid] > x) hi = mid; else lo = mid; }
-      var h = xs[hi] - xs[lo], t = (x - xs[lo]) / h, t2 = t * t, t3 = t2 * t;
-      return (2 * t3 - 3 * t2 + 1) * ys[lo] + (t3 - 2 * t2 + t) * h * m[lo] +
-             (-2 * t3 + 3 * t2) * ys[hi] + (t3 - t2) * h * m[hi];
-    };
-  }
-
-  /* ── Tüp tarifi → ızgara ───────────────────────────────────────────────────
-     Bir tüp, bir eksen boyunca (a: dikey parçalarda y, ayakta z) dizilmiş anahtar
-     kesitlerden oluşuyor. Her kesit:
-       [a, o1, o2, rl, rm, rf, rb, e]
-         o1, o2  kesit merkezinin diğer iki koordinatı (dikeyde x,z · ayakta x,y);
-                 x, SOL taraf için yazılıyor, sağ taraf aynalanıyor
-         rl, rm  dış (lateral) ve iç (medial) yarıçap — baldırın iç kası dıştan dolgun
-         rf, rb  ön ve arka yarıçap (ayakta üst ve alt)
-         e       kesitin köşeliliği: 2 elips, büyüdükçe gövde gibi kare-yumuşak
-     Kesitin açısı θ: 0 önde (ayakta üstte), +90° +x tarafında. φ ise "dışa doğru
-     pozitif" açı: sol uzuvda φ=θ, sağda φ=-θ — böylece bir bölge tarifi (ör. dış
-     uyluk 50°–118°) iki tarafta da aynı yazılıyor. Gövdede φ=θ, yani φ>0 sporcunun
-     solu. */
-  function tubeGrid(spec) {
-    var side = spec.side || null, sg = side === 'R' ? -1 : 1;
-    var keys = spec.keys.slice().sort(function (p, q) { return p[0] - q[0]; });
-    var A = keys.map(function (k) { return k[0]; });
-    function col(i, def) { return keys.map(function (k) { return k[i] == null ? def : k[i]; }); }
-    var fo1 = monotone(A, col(1, 0).map(function (v) { return v * sg; }));
-    var fo2 = monotone(A, col(2, 0));
-    var frl = monotone(A, col(3, 0)), frm = monotone(A, col(4, 0));
-    var frf = monotone(A, col(5, 0)), frb = monotone(A, col(6, 0));
-    var fe = monotone(A, col(7, 2));
-    var axisZ = spec.axis === 'z';
-    // Yol yönü: dikey tüpler yukarıdan aşağı (a azalıyor), ayak topuktan parmağa.
-    var aStart = axisZ ? A[0] : A[A.length - 1], aEnd = axisZ ? A[A.length - 1] : A[0];
-    var dir = aEnd > aStart ? 1 : -1;
-    function center(a) {
-      return axisZ ? [fo1(a), fo2(a), a] : [fo1(a), a, fo2(a)];
-    }
-    function rmax(a) { return Math.max(frl(a), frm(a), frf(a), frb(a)); }
-
-    // Satırlar: yüzey boyunca (yarıçap değişimi de sayılarak) eşit aralıklı, üstüne
-    // bölge sınırları. Uçlardaki kapaklar böylece düz kesilmiş gibi görünmüyor.
-    var FINE = 600, cum = [0], as = [aStart], prevC = center(aStart), prevR = rmax(aStart), i;
-    for (i = 1; i <= FINE; i++) {
-      var a = aStart + (aEnd - aStart) * i / FINE, c = center(a), r = rmax(a);
-      var dx = c[0] - prevC[0], dy = c[1] - prevC[1], dz = c[2] - prevC[2], dr = r - prevR;
-      cum.push(cum[i - 1] + Math.sqrt(dx * dx + dy * dy + dz * dz + dr * dr));
-      as.push(a); prevC = c; prevR = r;
-    }
-    var total = cum[FINE], nRows = spec.rows || 60, rows = [], k = 0;
-    for (i = 0; i <= nRows; i++) {
-      var target = total * i / nRows;
-      while (k < FINE && cum[k + 1] < target) k++;
-      var seg = cum[k + 1] - cum[k], f = seg > 0 ? (target - cum[k]) / seg : 0;
-      rows.push(as[k] + (as[Math.min(FINE, k + 1)] - as[k]) * f);
-    }
-    (spec.aBreaks || []).forEach(function (b) {
-      if ((b - aStart) * dir > 0 && (aEnd - b) * dir > 0) rows.push(b);
+  /* ── Model dosyası ───────────────────────────────────────────────────────
+     'PBM1' | JSON boyu (u32) | JSON (bölge adları, sınır kutusu, göz küreleri,
+     eklemler) | köşeler (u16×3, kutuya göre nicelenmiş) | dörtgenler (u16×4) |
+     köşenin bölgesi (u8, JSON'daki ad listesine sıra) | köşe başına 6 kanal (u8):
+     AO, saç, kaş, dudak/meme ucu, şort, yüz. Hepsi little-endian. */
+  var NA = 6;
+  function decode(buf) {
+    var u8 = new Uint8Array(buf), dv = new DataView(buf);
+    if (u8.length < 8 || String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== 'PBM1') throw new Error('PainBody: model dosyası tanınmadı');
+    var jl = dv.getUint32(4, true), jb = u8.subarray(8, 8 + jl), txt;
+    if (global.TextDecoder) txt = new TextDecoder('utf-8').decode(jb);
+    else { txt = ''; for (var q = 0; q < jb.length; q++) txt += String.fromCharCode(jb[q]); txt = decodeURIComponent(escape(txt)); }
+    var meta = JSON.parse(txt), nv = meta.nv, nq = meta.nq, o = 8 + jl;
+    if (u8.length < o + nv * 6 + nq * 8 + nv + nv * NA) throw new Error('PainBody: model dosyası eksik');
+    var qp = new Uint16Array(buf, o, nv * 3); o += nv * 6;
+    var quads = new Uint16Array(buf, o, nq * 4); o += nq * 8;
+    var rid = new Uint8Array(buf, o, nv); o += nv;
+    var mat = new Uint8Array(buf, o, nv * NA);
+    var pos = new Float32Array(nv * 3), mn = meta.min, mx = meta.max, i, k;
+    for (i = 0; i < nv; i++) for (k = 0; k < 3; k++) pos[i * 3 + k] = mn[k] + (mx[k] - mn[k]) * qp[i * 3 + k] / 65535;
+    // Dosyadaki bölge adı → katalogdaki sıra. Katalogda olmayan bir ad dosyanın
+    // bu koddan eski/yeni olduğunu gösterir; o durumda 3D açılmıyor, liste kalıyor.
+    var map = meta.keys.map(function (k2) {
+      if (INDEX[k2] == null) throw new Error('PainBody: bilinmeyen bölge ' + k2);
+      return INDEX[k2];
     });
-    rows.sort(function (p, q) { return (p - q) * dir; });
-    rows = rows.filter(function (v, j) { return j === 0 || Math.abs(v - rows[j - 1]) > 0.0005; });
+    var r = new Uint8Array(nv);
+    for (i = 0; i < nv; i++) r[i] = map[rid[i]];
+    return { meta: meta, nv: nv, nq: nq, pos: pos, quads: quads, rid: r, mat: mat };
+  }
 
-    // Sütunlar: çevre boyunca eşit aralık + bölge sınırlarının açıları.
-    var nCols = spec.cols || 40, cols = [];
-    for (i = 0; i < nCols; i++) cols.push(-Math.PI + 2 * Math.PI * i / nCols);
-    (spec.thBreaks || []).forEach(function (deg) { cols.push(wrapPi(deg * DEG * sg)); });
-    cols.sort(function (p, q) { return p - q; });
-    cols = cols.filter(function (v, j) { return j === 0 || v - cols[j - 1] > 0.004; });
-    if (cols[cols.length - 1] - cols[0] > 2 * Math.PI - 0.004) cols.pop();
+  // Büyüyebilen köşe deposu: konum + malzeme kanalları.
+  function Store(n, cap) { this.n = n; this.cap = cap; this.p = new Float32Array(cap * 3); this.a = new Float32Array(cap * NA); }
+  Store.prototype.add = function () {
+    if (this.n >= this.cap) {
+      var c = this.cap * 2, p = new Float32Array(c * 3), a = new Float32Array(c * NA);
+      p.set(this.p); a.set(this.a); this.p = p; this.a = a; this.cap = c;
+    }
+    return this.n++;
+  };
+  Store.prototype.lerp = function (dst, i, j, t) {
+    var p = this.p, a = this.a, k;
+    for (k = 0; k < 3; k++) p[dst * 3 + k] = p[i * 3 + k] * (1 - t) + p[j * 3 + k] * t;
+    for (k = 0; k < NA; k++) a[dst * NA + k] = a[i * NA + k] * (1 - t) + a[j * NA + k] * t;
+  };
 
-    var nr = rows.length, nc = cols.length;
-    var pos = new Float32Array(nr * nc * 3);
-    /* Kas kabarıklıkları ve oluklar: yüzeyi kesitin merkezinden dışa (ya da içe)
-       iten yumuşak Gauss tümsekleri — [a, φ, a-genişliği, φ-genişliği (°), genlik].
-       Ayrı parça eklemek kesişim yerinde sert bir kıvrım bırakırdı; bu yüzeyin
-       kendisini şekillendiriyor, bölge sınırlarına da dokunmuyor. `sym` verilen
-       gövdede her tümsek φ=0 eksenine göre aynalanıyor (iki göğüs, iki kürek…). */
-    var bumps = [];
-    (spec.bumps || []).forEach(function (b) {
-      bumps.push(b);
-      if (spec.sym && b[1] !== 0 && Math.abs(b[1]) !== 180) bumps.push([b[0], -b[1], b[2], b[3], b[4]]);
+  /* 1) Dörtgenleri kısa köşegenden üçgenle; köşeleri farklı bölgeye düşen
+        üçgeni kenar ortalarından böl. Böylece her üçgen tek bölgenin oluyor ve
+        sınır, köşelerin arasından geçiyor. */
+  function splitRegions(d) {
+    var nv = d.nv, S = new Store(nv, Math.ceil(nv * 1.3)), i, k;
+    S.p.set(d.pos);
+    for (i = 0; i < nv * NA; i++) S.a[i] = d.mat[i] / 255;
+    var T = [], R = [], rid = d.rid, mids = {}, mEdge = {}, seg = [], cents = [];
+    function d2(a, b) {
+      var p = S.p, x = p[a * 3] - p[b * 3], y = p[a * 3 + 1] - p[b * 3 + 1], z = p[a * 3 + 2] - p[b * 3 + 2];
+      return x * x + y * y + z * z;
+    }
+    function mid(a, b) {
+      var key = a < b ? a * 65536 + b : b * 65536 + a, m = mids[key];
+      if (m == null) { m = S.add(); S.lerp(m, a, b, 0.5); mids[key] = m; mEdge[m] = [a, b, 0.5]; }
+      return m;
+    }
+    function tri(a, b, c) {
+      var ra = rid[a], rb = rid[b], rc = rid[c];
+      if (ra === rb && rb === rc) { T.push(a, b, c); R.push(ra); return; }
+      if (ra !== rb && rb !== rc && ra !== rc) {
+        var mab = mid(a, b), mbc = mid(b, c), mca = mid(c, a), cc = S.add();
+        for (k = 0; k < 3; k++) S.p[cc * 3 + k] = (S.p[a * 3 + k] + S.p[b * 3 + k] + S.p[c * 3 + k]) / 3;
+        for (k = 0; k < NA; k++) S.a[cc * NA + k] = (S.a[a * NA + k] + S.a[b * NA + k] + S.a[c * NA + k]) / 3;
+        cents.push(cc, a, b, c); seg.push(mab, cc, mbc, cc, mca, cc);
+        T.push(a, mab, cc, a, cc, mca); R.push(ra, ra);
+        T.push(b, mbc, cc, b, cc, mab); R.push(rb, rb);
+        T.push(c, mca, cc, c, cc, mbc); R.push(rc, rc);
+        return;
+      }
+      // İkisi aynı bölgede: tek kalanı c'ye döndür.
+      if (ra === rc) { var t0 = a; a = c; c = b; b = t0; }
+      else if (rb === rc) { var t1 = a; a = b; b = c; c = t1; }
+      var mac = mid(a, c), mbc2 = mid(b, c);
+      seg.push(mac, mbc2);
+      T.push(a, b, mbc2, a, mbc2, mac); R.push(rid[a], rid[a]);
+      T.push(mac, mbc2, c); R.push(rid[c]);
+    }
+    for (i = 0; i < d.nq; i++) {
+      var q0 = d.quads[i * 4], q1 = d.quads[i * 4 + 1], q2 = d.quads[i * 4 + 2], q3 = d.quads[i * 4 + 3];
+      if (d2(q0, q2) <= d2(q1, q3)) { tri(q0, q1, q2); tri(q0, q2, q3); }
+      else { tri(q0, q1, q3); tri(q1, q2, q3); }
+    }
+    relax(S, seg, mEdge, cents, 12);
+    return { S: S, T: new Uint32Array(T), R: new Uint8Array(R) };
+  }
+
+  /* 2) Kenar ortası, ızgarayı çapraz kesen bir sınırda basamak bırakıyor. Her
+        bölme noktası kendi kenarı üzerinde (yüzeyden çıkmadan) iki sınır
+        komşusunun ortasına doğru kaydırılıyor; üç bölgenin buluştuğu noktalar da
+        üçgenlerinin içinde komşularının ortasına çekiliyor. */
+  function relax(S, seg, mEdge, cents, iters) {
+    var nb = {}, i, k, it;
+    for (i = 0; i < seg.length; i += 2) {
+      (nb[seg[i]] || (nb[seg[i]] = [])).push(seg[i + 1]);
+      (nb[seg[i + 1]] || (nb[seg[i + 1]] = [])).push(seg[i]);
+    }
+    var ms = Object.keys(mEdge).map(Number).filter(function (m) { return nb[m] && nb[m].length === 2; });
+    for (it = 0; it < iters; it++) {
+      var p = S.p;
+      for (i = 0; i < ms.length; i++) {
+        var m = ms[i], e = mEdge[m], a = e[0], b = e[1], n0 = nb[m][0], n1 = nb[m][1];
+        var tx = (p[n0 * 3] + p[n1 * 3]) / 2 - p[a * 3], ty = (p[n0 * 3 + 1] + p[n1 * 3 + 1]) / 2 - p[a * 3 + 1],
+            tz = (p[n0 * 3 + 2] + p[n1 * 3 + 2]) / 2 - p[a * 3 + 2];
+        var ex = p[b * 3] - p[a * 3], ey = p[b * 3 + 1] - p[a * 3 + 1], ez = p[b * 3 + 2] - p[a * 3 + 2];
+        var t = (tx * ex + ty * ey + tz * ez) / (ex * ex + ey * ey + ez * ez || 1);
+        e[2] += 0.7 * (clamp(t, 0.12, 0.88) - e[2]);
+        S.lerp(m, a, b, e[2]);
+      }
+      for (i = 0; i < cents.length; i += 4) {
+        var c = cents[i], q = nb[c]; if (!q || q.length < 3) continue;
+        var v0 = cents[i + 1], v1 = cents[i + 2], v2 = cents[i + 3];
+        var gx = 0, gy = 0, gz = 0;
+        for (k = 0; k < q.length; k++) { gx += p[q[k] * 3]; gy += p[q[k] * 3 + 1]; gz += p[q[k] * 3 + 2]; }
+        gx = gx / q.length - p[v0 * 3]; gy = gy / q.length - p[v0 * 3 + 1]; gz = gz / q.length - p[v0 * 3 + 2];
+        var e1x = p[v1 * 3] - p[v0 * 3], e1y = p[v1 * 3 + 1] - p[v0 * 3 + 1], e1z = p[v1 * 3 + 2] - p[v0 * 3 + 2];
+        var e2x = p[v2 * 3] - p[v0 * 3], e2y = p[v2 * 3 + 1] - p[v0 * 3 + 1], e2z = p[v2 * 3 + 2] - p[v0 * 3 + 2];
+        var d11 = e1x * e1x + e1y * e1y + e1z * e1z, d12 = e1x * e2x + e1y * e2y + e1z * e2z, d22 = e2x * e2x + e2y * e2y + e2z * e2z;
+        var g1 = gx * e1x + gy * e1y + gz * e1z, g2 = gx * e2x + gy * e2y + gz * e2z, den = d11 * d22 - d12 * d12;
+        if (Math.abs(den) < 1e-16) continue;
+        var wb = (d22 * g1 - d12 * g2) / den, wc = (d11 * g2 - d12 * g1) / den, w = [1 - wb - wc, wb, wc];
+        for (k = 0; k < 3; k++) w[k] = Math.max(0.1, w[k]);
+        var sw = w[0] + w[1] + w[2], v = [v0, v1, v2];
+        for (k = 0; k < 3; k++) S.p[c * 3 + k] = (w[0] * p[v0 * 3 + k] + w[1] * p[v1 * 3 + k] + w[2] * p[v2 * 3 + k]) / sw;
+        for (k = 0; k < NA; k++) S.a[c * NA + k] = (w[0] * S.a[v[0] * NA + k] + w[1] * S.a[v[1] * NA + k] + w[2] * S.a[v[2] * NA + k]) / sw;
+      }
+    }
+  }
+
+  /* 3) Bir kat Loop alt bölümleme: her üçgen dörde bölünüyor, köşeler komşularına
+        göre yumuşatılıyor. Yüzey ve bölge sınırları birlikte pürüzsüzleşiyor;
+        çocuk üçgenler babalarının bölgesini alıyor. Kenarlar, (küçük uç, büyük uç)
+        anahtarına göre sıralanmış yarım kenarlardan çıkarılıyor — nesne tablosu
+        yerine düz dizilerle, telefonda da hızlı. */
+  function subdivide(m) {
+    var S = m.S, T = m.T, R = m.R, n = S.n, nt = R.length, nh = nt * 3, i, k;
+    var comb = new Float64Array(nh);
+    for (i = 0; i < nt; i++) for (k = 0; k < 3; k++) {
+      var a = T[i * 3 + k], b = T[i * 3 + (k + 1) % 3];
+      comb[i * 3 + k] = ((a < b ? a * n + b : b * n + a) * nh) + i * 3 + k;
+    }
+    comb.sort();
+    var heE = new Int32Array(nh), eLo = new Int32Array(nh), eHi = new Int32Array(nh);
+    var eO1 = new Int32Array(nh), eO2 = new Int32Array(nh), eN = new Uint8Array(nh), ne = -1, prev = -1;
+    for (i = 0; i < nh; i++) {
+      var c = comb[i], he = c % nh, key = (c - he) / nh, t = (he / 3) | 0, kk = he - t * 3;
+      var opp = T[t * 3 + (kk + 2) % 3];
+      if (key !== prev) {
+        ne++; prev = key;
+        var x0 = T[t * 3 + kk], x1 = T[t * 3 + (kk + 1) % 3];
+        eLo[ne] = x0 < x1 ? x0 : x1; eHi[ne] = x0 < x1 ? x1 : x0; eO1[ne] = opp; eO2[ne] = -1; eN[ne] = 1;
+      } else { eO2[ne] = opp; if (eN[ne] < 255) eN[ne]++; }
+      heE[he] = ne;
+    }
+    ne++;
+    var P = S.p, A = S.a, N = new Store(n + ne, n + ne), np = N.p, na = N.a;
+    var val = new Uint16Array(n), sum = new Float64Array(n * 3), bc = new Uint8Array(n), bs = new Float64Array(n * 3);
+    for (i = 0; i < ne; i++) {
+      var lo = eLo[i], hi = eHi[i];
+      val[lo]++; val[hi]++;
+      for (k = 0; k < 3; k++) { sum[lo * 3 + k] += P[hi * 3 + k]; sum[hi * 3 + k] += P[lo * 3 + k]; }
+      if (eN[i] === 1) {
+        bc[lo]++; bc[hi]++;
+        for (k = 0; k < 3; k++) { bs[lo * 3 + k] += P[hi * 3 + k]; bs[hi * 3 + k] += P[lo * 3 + k]; }
+      }
+    }
+    for (i = 0; i < n; i++) {
+      var vl = val[i];
+      if (bc[i]) {
+        // Açık kenardaki köşe (göz kapağı kenarı gibi): yalnızca kenar boyunca.
+        if (bc[i] === 2) for (k = 0; k < 3; k++) np[i * 3 + k] = 0.75 * P[i * 3 + k] + 0.125 * bs[i * 3 + k];
+        else for (k = 0; k < 3; k++) np[i * 3 + k] = P[i * 3 + k];
+      } else if (vl >= 3) {
+        var w = vl === 3 ? 3 / 16 : 3 / (8 * vl);
+        for (k = 0; k < 3; k++) np[i * 3 + k] = (1 - vl * w) * P[i * 3 + k] + w * sum[i * 3 + k];
+      } else for (k = 0; k < 3; k++) np[i * 3 + k] = P[i * 3 + k];
+      for (k = 0; k < NA; k++) na[i * NA + k] = A[i * NA + k];
+    }
+    for (i = 0; i < ne; i++) {
+      var v = n + i, l2 = eLo[i], h2 = eHi[i];
+      if (eN[i] === 2) for (k = 0; k < 3; k++) np[v * 3 + k] = 0.375 * (P[l2 * 3 + k] + P[h2 * 3 + k]) + 0.125 * (P[eO1[i] * 3 + k] + P[eO2[i] * 3 + k]);
+      else for (k = 0; k < 3; k++) np[v * 3 + k] = 0.5 * (P[l2 * 3 + k] + P[h2 * 3 + k]);
+      for (k = 0; k < NA; k++) na[v * NA + k] = 0.5 * (A[l2 * NA + k] + A[h2 * NA + k]);
+    }
+    var T2 = new Uint32Array(nt * 12), R2 = new Uint8Array(nt * 4);
+    for (i = 0; i < nt; i++) {
+      var a0 = T[i * 3], a1 = T[i * 3 + 1], a2 = T[i * 3 + 2];
+      var m01 = n + heE[i * 3], m12 = n + heE[i * 3 + 1], m20 = n + heE[i * 3 + 2], o = i * 12;
+      T2[o] = a0; T2[o + 1] = m01; T2[o + 2] = m20;
+      T2[o + 3] = a1; T2[o + 4] = m12; T2[o + 5] = m01;
+      T2[o + 6] = a2; T2[o + 7] = m20; T2[o + 8] = m12;
+      T2[o + 9] = m01; T2[o + 10] = m12; T2[o + 11] = m20;
+      R2[i * 4] = R2[i * 4 + 1] = R2[i * 4 + 2] = R2[i * 4 + 3] = R[i];
+    }
+    return { S: N, T: T2, R: R2 };
+  }
+
+  /* 4) Normaller (bölünmeden önceki, kaynaşık ağda — sınırda gölge kırılmasın),
+        sonra her bölge sınırındaki köşe bölge başına ayrı kopya alıyor: renk
+        komşuya sızmıyor. `seam`, köşenin en yakın sınıra yüzey boyunca uzaklığı
+        (metre); gölgelendirici dikişi bundan çiziyor. Ayrıca bölge komşulukları
+        (renk seçimi) ve bölge istatistikleri (odak, etiket) burada çıkıyor. */
+  function vertexNormals(p, T, nv) {
+    var nrm = new Float32Array(nv * 3), nt = T.length / 3, i;
+    for (i = 0; i < nt; i++) {
+      var a = T[i * 3] * 3, b = T[i * 3 + 1] * 3, c = T[i * 3 + 2] * 3;
+      var ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2];
+      var wx = p[c] - p[a], wy = p[c + 1] - p[a + 1], wz = p[c + 2] - p[a + 2];
+      var nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
+      nrm[a] += nx; nrm[a + 1] += ny; nrm[a + 2] += nz;
+      nrm[b] += nx; nrm[b + 1] += ny; nrm[b + 2] += nz;
+      nrm[c] += nx; nrm[c + 1] += ny; nrm[c + 2] += nz;
+    }
+    for (i = 0; i < nv * 3; i += 3) {
+      var l = Math.sqrt(nrm[i] * nrm[i] + nrm[i + 1] * nrm[i + 1] + nrm[i + 2] * nrm[i + 2]) || 1;
+      nrm[i] /= l; nrm[i + 1] /= l; nrm[i + 2] /= l;
+    }
+    return nrm;
+  }
+  // Köşe → komşu köşeler (sıkıştırılmış satır dizisi).
+  function vertexRings(T, nv) {
+    var nh = T.length, cnt = new Uint32Array(nv + 1), i;
+    for (i = 0; i < nh; i++) { cnt[T[i] + 1]++; cnt[T[i - (i % 3) + (i % 3 + 1) % 3] + 1]++; }
+    for (i = 0; i < nv; i++) cnt[i + 1] += cnt[i];
+    var fill = cnt.slice(0, nv), nb = new Uint32Array(cnt[nv]);
+    for (i = 0; i < nh; i++) {
+      var x = T[i], y = T[i - (i % 3) + (i % 3 + 1) % 3];
+      nb[fill[x]++] = y; nb[fill[y]++] = x;
+    }
+    return { start: cnt, nb: nb };
+  }
+  // Sınıra yüzey boyunca uzaklık (Dijkstra, ikili yığın); FAR'dan ötesi FAR.
+  function seamDistance(p, ring, multi, nv, FAR) {
+    var dist = new Float32Array(nv).fill(FAR), heapV = new Uint32Array(nv * 2 + 16), heapD = new Float32Array(nv * 2 + 16), hn = 0, i;
+    function push(v, d) {
+      var j = hn++;
+      if (j >= heapV.length) { var hv = new Uint32Array(heapV.length * 2), hd = new Float32Array(heapV.length * 2); hv.set(heapV); hd.set(heapD); heapV = hv; heapD = hd; }
+      while (j > 0) { var pa = (j - 1) >> 1; if (heapD[pa] <= d) break; heapV[j] = heapV[pa]; heapD[j] = heapD[pa]; j = pa; }
+      heapV[j] = v; heapD[j] = d;
+    }
+    function pop() {
+      var v = heapV[0], lv = heapV[--hn], ld = heapD[hn], j = 0;
+      while (true) {
+        var l = j * 2 + 1; if (l >= hn) break;
+        if (l + 1 < hn && heapD[l + 1] < heapD[l]) l++;
+        if (heapD[l] >= ld) break;
+        heapV[j] = heapV[l]; heapD[j] = heapD[l]; j = l;
+      }
+      heapV[j] = lv; heapD[j] = ld;
+      return v;
+    }
+    for (i = 0; i < nv; i++) if (multi[i]) { dist[i] = 0; push(i, 0); }
+    var st = ring.start, nb = ring.nb;
+    while (hn) {
+      var d0 = heapD[0], v = pop();
+      if (d0 > dist[v]) continue;
+      for (var q = st[v]; q < st[v + 1]; q++) {
+        var w = nb[q], dx = p[v * 3] - p[w * 3], dy = p[v * 3 + 1] - p[w * 3 + 1], dz = p[v * 3 + 2] - p[w * 3 + 2];
+        var nd = d0 + Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (nd < dist[w]) { dist[w] = nd; push(w, nd); }
+      }
+    }
+    return dist;
+  }
+  function regionStats(P2, N2, RID, index, R, n2, nt) {
+    var stats = REGIONS.map(function () {
+      return { area: 0, c: [0, 0, 0], n: [0, 0, 0], min: [9, 9, 9], max: [-9, -9, -9], anchor: null, an: null, best: 1e9 };
+    }), i, k;
+    for (i = 0; i < nt; i++) {
+      var st = stats[R[i]], i0 = index[i * 3] * 3, i1 = index[i * 3 + 1] * 3, i2 = index[i * 3 + 2] * 3;
+      var ex = P2[i1] - P2[i0], ey = P2[i1 + 1] - P2[i0 + 1], ez = P2[i1 + 2] - P2[i0 + 2];
+      var fx = P2[i2] - P2[i0], fy = P2[i2 + 1] - P2[i0 + 1], fz = P2[i2 + 2] - P2[i0 + 2];
+      var cx = ey * fz - ez * fy, cy = ez * fx - ex * fz, cz = ex * fy - ey * fx, ar = Math.sqrt(cx * cx + cy * cy + cz * cz) / 2;
+      st.area += ar;
+      for (k = 0; k < 3; k++) {
+        var v0 = P2[i0 + k], v1 = P2[i1 + k], v2 = P2[i2 + k];
+        st.c[k] += ar * (v0 + v1 + v2) / 3;
+        if (v0 < st.min[k]) st.min[k] = v0; if (v1 < st.min[k]) st.min[k] = v1; if (v2 < st.min[k]) st.min[k] = v2;
+        if (v0 > st.max[k]) st.max[k] = v0; if (v1 > st.max[k]) st.max[k] = v1; if (v2 > st.max[k]) st.max[k] = v2;
+      }
+      st.n[0] += cx / 2; st.n[1] += cy / 2; st.n[2] += cz / 2;
+    }
+    stats.forEach(function (s) {
+      if (!s.area) return;
+      s.c = s.c.map(function (q) { return q / s.area; });
+      var ln = Math.sqrt(s.n[0] * s.n[0] + s.n[1] * s.n[1] + s.n[2] * s.n[2]);
+      s.dir = ln / s.area;   // 1'e yakınsa bölge tek yöne bakıyor, 0'a yakınsa sarıyor
+      s.n = ln ? s.n.map(function (q) { return q / ln; }) : [0, 0, 1];
     });
-    function bumpAt(a, phi) {
-      var d = 0;
-      for (var q = 0; q < bumps.length; q++) {
-        var B = bumps[q], da = (a - B[0]) / B[2];
-        if (da > 3 || da < -3) continue;
-        var dp = wrapPi((phi - B[1]) * DEG) / DEG / B[3];
-        if (dp > 3 || dp < -3) continue;
-        d += B[4] * Math.exp(-(da * da + dp * dp));
-      }
-      return d;
-    }
-    var ref = spec.ref || (axisZ ? [0, 1, 0] : [0, 0, 1]);
-    for (i = 0; i < nr; i++) {
-      var a0 = rows[i], C = center(a0);
-      var h = 0.0008 * dir, C1 = center(a0 + h), C0 = center(a0 - h);
-      var T = [C1[0] - C0[0], C1[1] - C0[1], C1[2] - C0[2]];
-      var tl = Math.hypot(T[0], T[1], T[2]) || 1; T = [T[0] / tl, T[1] / tl, T[2] / tl];
-      var rd = ref[0] * T[0] + ref[1] * T[1] + ref[2] * T[2];
-      var F = [ref[0] - T[0] * rd, ref[1] - T[1] * rd, ref[2] - T[2] * rd];
-      var fl = Math.hypot(F[0], F[1], F[2]) || 1; F = [F[0] / fl, F[1] / fl, F[2] / fl];
-      var Sx = [F[1] * T[2] - F[2] * T[1], F[2] * T[0] - F[0] * T[2], F[0] * T[1] - F[1] * T[0]];
-      var rl = frl(a0), rm = frm(a0), rf = frf(a0), rb = frb(a0), e = fe(a0);
-      // +x tarafının yarıçapı: sol uzuvda dış, sağ uzuvda iç.
-      var rPos = side === 'R' ? rm : rl, rNeg = side === 'R' ? rl : rm;
-      for (var j = 0; j < nc; j++) {
-        var th = cols[j], s = Math.sin(th), c = Math.cos(th);
-        var rx = rNeg + (rPos - rNeg) * (1 + s) / 2;
-        var rz = rb + (rf - rb) * (1 + c) / 2;
-        var X = rx * spow(s, 2 / e), Z = rz * spow(c, 2 / e);
-        // Uç halkaları tek bir noktada kapanıyor: kılcal bir açıklık bile topukta,
-        // parmak ucunda içi görünen koyu bir benek bırakıyordu.
-        if (i === 0 || i === nr - 1) { X = 0; Z = 0; }
-        else if (bumps.length) {
-          var len = Math.hypot(X, Z);
-          if (len > 0.004) {
-            var f = Math.max(0.2, (len + bumpAt(a0, th * sg / DEG)) / len);
-            X *= f; Z *= f;
-          }
-        }
-        var o = (i * nc + j) * 3;
-        pos[o] = C[0] + Sx[0] * X + F[0] * Z;
-        pos[o + 1] = C[1] + Sx[1] * X + F[1] * Z;
-        pos[o + 2] = C[2] + Sx[2] * X + F[2] * Z;
-      }
-    }
-    // Her dörtgenin bölgesi, merkezinin (a, φ) değerinden.
-    var quad = new Int16Array((nr - 1) * nc);
-    for (i = 0; i < nr - 1; i++) {
-      var am = (rows[i] + rows[i + 1]) / 2;
-      for (j = 0; j < nc; j++) {
-        var t0 = cols[j], t1 = j + 1 < nc ? cols[j + 1] : cols[0] + 2 * Math.PI;
-        var phi = wrapPi((t0 + t1) / 2) * sg / DEG;
-        var key = spec.region(am, phi);
-        var idx = INDEX[key];
-        if (idx == null) throw new Error('PainBody: bilinmeyen bölge ' + key);
-        quad[i * nc + j] = idx;
-      }
-    }
-    return { pos: pos, nr: nr, nc: nc, quad: quad };
-  }
-
-  /* Uçları yuvarlak küçük tüp (parmak, burun, kulak, diz kapağı…). `path(t)` 0→1
-     boyunca [a, o1, o2], `rad(t)` [rl, rm, rf, rb]; uçlar kendiliğinden kapanıyor. */
-  function capsule(n, path, rad, cap0, cap1) {
-    var keys = [], p0 = path(0), p1 = path(1);
-    var len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]);
-    for (var k = 0; k < n; k++) {
-      var t = (1 - Math.cos(Math.PI * k / (n - 1))) / 2;
-      var p = path(t), r = rad(t);
-      var u0 = (t * len) / cap0, u1 = ((1 - t) * len) / cap1;
-      var f = Math.min(u0 >= 1 ? 1 : Math.sqrt(Math.max(0, 1 - (1 - u0) * (1 - u0))),
-                       u1 >= 1 ? 1 : Math.sqrt(Math.max(0, 1 - (1 - u1) * (1 - u1))));
-      f = Math.max(f, 0.06);
-      keys.push([p[0], p[1], p[2], r[0] * f, r[1] * f, r[2] * f, r[3] * f, 2]);
-    }
-    return keys;
-  }
-  // Eksene hizalı elipsoit: merkez (dikeyde x,y,z), yarı eksenler.
-  function blobKeys(cx, cy, cz, rx, ry, rz) {
-    return capsule(15, function (t) { return [cy + ry - 2 * ry * t, cx, cz]; },
-      function () { return [rx, rx, rz, rz]; }, ry, ry);
-  }
-
-  /* ── Mankenin ölçüleri ──────────────────────────────────────────────────── */
-  // Baştan kasığa tek parça: baş, yüz, boyun, omuz kuşağı, göğüs, bel, kalça.
-  var TORSO = [
-    // y      x  z       rl    rm    rf    rb    e
-    [1.806, 0, 0.004, 0.003, 0.003, 0.003, 0.003, 2],
-    [1.8045, 0, 0.004, 0.014, 0.014, 0.017, 0.018, 2],
-    [1.801, 0, 0.004, 0.025, 0.025, 0.030, 0.032, 2],
-    [1.795, 0, 0.004, 0.037, 0.037, 0.046, 0.048, 2],
-    [1.778, 0, 0.004, 0.057, 0.057, 0.070, 0.073, 2],
-    [1.748, 0, 0.004, 0.071, 0.071, 0.087, 0.091, 2],
-    [1.712, 0, 0.004, 0.078, 0.078, 0.094, 0.098, 2],
-    [1.672, 0, 0.005, 0.077, 0.077, 0.096, 0.096, 2.2],
-    [1.636, 0, 0.009, 0.071, 0.071, 0.094, 0.084, 2.3],
-    [1.606, 0, 0.013, 0.062, 0.062, 0.088, 0.064, 2.2],
-    [1.588, 0, 0.012, 0.050, 0.050, 0.079, 0.056, 2.1],
-    [1.572, 0, -0.006, 0.050, 0.050, 0.052, 0.058, 2],
-    [1.540, 0, -0.012, 0.054, 0.054, 0.050, 0.058, 2],
-    [1.502, 0, -0.016, 0.060, 0.060, 0.052, 0.062, 2],
-    [1.477, 0, -0.016, 0.090, 0.090, 0.060, 0.070, 2.2],
-    [1.452, 0, -0.012, 0.138, 0.138, 0.076, 0.080, 2.4],
-    [1.422, 0, -0.008, 0.162, 0.162, 0.095, 0.090, 2.5],
-    [1.380, 0, -0.004, 0.166, 0.166, 0.110, 0.098, 2.5],
-    [1.300, 0, 0.000, 0.158, 0.158, 0.121, 0.102, 2.45],
-    [1.220, 0, 0.000, 0.148, 0.148, 0.116, 0.099, 2.4],
-    [1.140, 0, 0.000, 0.136, 0.136, 0.104, 0.093, 2.35],
-    [1.060, 0, 0.002, 0.127, 0.127, 0.094, 0.086, 2.3],
-    [1.000, 0, 0.002, 0.131, 0.131, 0.093, 0.090, 2.3],
-    [0.950, 0, -0.002, 0.150, 0.150, 0.096, 0.106, 2.35],
-    [0.900, 0, -0.006, 0.166, 0.166, 0.093, 0.124, 2.35],
-    [0.860, 0, -0.008, 0.163, 0.163, 0.083, 0.122, 2.3],
-    [0.820, 0, -0.012, 0.135, 0.135, 0.060, 0.098, 2.2],
-    [0.790, 0, -0.010, 0.080, 0.080, 0.035, 0.050, 2],
-    [0.772, 0, -0.010, 0.006, 0.006, 0.006, 0.006, 2]
-  ];
-  var TORSO_A = [1.612, 1.572, 1.482, 1.38, 1.26, 1.22, 1.15, 1.06, 0.975, 0.985, 0.925, 0.865];
-  var TORSO_T = [0, 20, -20, 22, -22, 45, -45, 48, -48, 60, -60, 70, -70, 80, -80, 88, -88,
-                 105, -105, 112, -112, 120, -120, 128, -128, 160, -160];
-  function torsoRegion(y, phi) {
-    var ab = Math.abs(phi), side = phi > 0 ? 'L' : 'R';
-    if (y >= 1.612) return 'Baş';
-    if (y >= 1.572) return ab < 80 ? 'Çene' : 'Baş';
-    if (y >= 1.482) return ab < 105 ? 'Boyun' : 'Ense';
-    if (y >= 1.38) return ab < 48 ? 'Göğüs' : (ab < 128 ? S(side, 'omuz') : 'Üst sırt');
-    if (y >= 1.26) return ab < 60 ? 'Göğüs' : (ab < 120 ? S(side, 'yan gövde') : 'Üst sırt');
-    if (y >= 1.06) {
-      if (ab >= 120) return y >= 1.26 ? 'Üst sırt' : 'Orta sırt';
-      if (ab >= 88) return S(side, 'yan gövde');
-      if (y >= 1.22) return ab < 60 ? 'Göğüs' : S(side, 'yan gövde');
-      if (ab < 20) return y >= 1.15 ? 'Göğüs' : 'Karın';
-      return S(side, 'kaburga');
-    }
-    if (y >= 0.975) {
-      if (ab >= 160 && y < 0.985) return 'Sakrum / kuyruk sokumu';
-      return ab < 88 ? 'Karın' : (ab < 120 ? S(side, 'yan gövde') : 'Alt sırt / bel');
-    }
-    // Leğen kuşağı.
-    if (ab >= 160 && y >= 0.865) return 'Sakrum / kuyruk sokumu';
-    if (ab >= 70) return S(side, 'kalça');
-    if (ab < 45 && y >= 0.925) return 'Karın';
-    return S(side, 'kasık');
-  }
-
-  // Bacak: kalça ekleminden ayak bileğine tek parça (sol taraf; sağ aynalanıyor).
-  var LEG = [
-    // y      x      z       rl     rm     rf     rb
-    [0.975, 0.096, 0.000, 0.012, 0.012, 0.012, 0.012],
-    [0.962, 0.097, 0.000, 0.045, 0.052, 0.052, 0.045],
-    [0.935, 0.098, 0.000, 0.058, 0.078, 0.080, 0.064],
-    [0.895, 0.100, 0.000, 0.068, 0.088, 0.092, 0.080],
-    [0.840, 0.102, 0.000, 0.086, 0.088, 0.096, 0.094],
-    [0.760, 0.105, 0.004, 0.087, 0.082, 0.089, 0.083],
-    [0.660, 0.108, 0.005, 0.074, 0.074, 0.077, 0.070],
-    [0.580, 0.111, 0.004, 0.059, 0.063, 0.061, 0.056],
-    [0.520, 0.113, 0.004, 0.052, 0.054, 0.052, 0.050],
-    [0.470, 0.114, 0.001, 0.049, 0.051, 0.046, 0.051],
-    [0.420, 0.116, -0.004, 0.050, 0.056, 0.042, 0.062],
-    [0.360, 0.118, -0.006, 0.050, 0.058, 0.040, 0.066],
-    [0.280, 0.120, -0.005, 0.043, 0.047, 0.036, 0.050],
-    [0.200, 0.122, -0.006, 0.035, 0.037, 0.031, 0.036],
-    [0.130, 0.123, -0.008, 0.030, 0.031, 0.028, 0.029],
-    [0.085, 0.124, -0.008, 0.031, 0.031, 0.030, 0.030],
-    [0.060, 0.124, -0.008, 0.028, 0.028, 0.026, 0.026],
-    [0.044, 0.124, -0.008, 0.008, 0.008, 0.008, 0.008]
-  ];
-  var LEG_A = [0.835, 0.575, 0.445, 0.21, 0.14];
-  var LEG_T = [-25, 55, 125, -125, -50, 50, 118, -118, -45, 45, 135, -135,
-               -38, 42, 128, -128, -55];
-  function legRegion(side) {
-    return function (y, phi) {
-      if (y >= 0.835) {
-        if (phi >= -125 && phi < -25) return S(side, 'kasık');
-        if (phi >= -25 && phi < 55) return S(side, 'ön uyluk (Quadriceps)');
-        return S(side, 'kalça');
-      }
-      if (y >= 0.575) {
-        if (phi >= -50 && phi < 50) return S(side, 'ön uyluk (Quadriceps)');
-        if (phi >= 50 && phi < 118) return S(side, 'dış uyluk');
-        if (phi >= -118 && phi < -50) return S(side, 'iç uyluk (Adductor)');
-        return S(side, 'arka uyluk (Hamstring)');
-      }
-      if (y >= 0.445) {
-        if (phi >= -45 && phi < 45) return S(side, 'diz önü');
-        if (phi >= 45 && phi < 135) return S(side, 'diz dışı');
-        if (phi >= -135 && phi < -45) return S(side, 'diz içi');
-        return S(side, 'diz arkası');
-      }
-      if (y >= 0.14) {
-        if (phi >= -38 && phi < 42) return S(side, 'ön bacak (Tibialis anterior)');
-        if (phi >= 42 && phi < 128) return S(side, 'baldır dışı');
-        if (phi >= -128 && phi < -38) return S(side, 'baldır içi');
-        return y >= 0.21 ? S(side, 'baldır') : S(side, 'Aşil');
-      }
-      if (phi >= -55 && phi < 55) return S(side, 'ayak bileği önü');
-      if (phi >= 55 && phi < 135) return S(side, 'ayak bileği dışı');
-      if (phi >= -135 && phi < -55) return S(side, 'ayak bileği içi');
-      return S(side, 'Aşil');
-    };
-  }
-
-  // Kol: omuz başından bileğe; hafif açık duruş, avuç içi gövdeye bakıyor.
-  var ARM = [
-    // y      x      z       rl     rm     rf     rb
-    [1.474, 0.170, -0.004, 0.008, 0.008, 0.008, 0.008],
-    [1.463, 0.176, -0.004, 0.038, 0.032, 0.038, 0.038],
-    [1.432, 0.184, -0.004, 0.054, 0.044, 0.053, 0.053],
-    [1.392, 0.191, -0.004, 0.054, 0.044, 0.051, 0.052],
-    [1.340, 0.202, -0.004, 0.048, 0.042, 0.046, 0.047],
-    [1.250, 0.223, -0.004, 0.042, 0.040, 0.045, 0.044],
-    [1.170, 0.236, -0.004, 0.036, 0.035, 0.036, 0.038],
-    [1.120, 0.245, -0.006, 0.036, 0.036, 0.034, 0.040],
-    [1.070, 0.253, -0.004, 0.040, 0.038, 0.040, 0.036],
-    [0.990, 0.266, 0.000, 0.036, 0.034, 0.034, 0.032],
-    [0.910, 0.279, 0.002, 0.026, 0.024, 0.028, 0.026],
-    [0.870, 0.286, 0.002, 0.020, 0.019, 0.027, 0.024],
-    [0.852, 0.289, 0.002, 0.018, 0.018, 0.024, 0.022],
-    [0.838, 0.290, 0.002, 0.006, 0.006, 0.006, 0.006]
-  ];
-  var ARM_A = [1.345, 1.155, 1.075, 0.905];
-  function armRegion(side) {
-    return function (y) {
-      if (y >= 1.345) return S(side, 'omuz');
-      if (y >= 1.155) return S(side, 'üst kol');
-      if (y >= 1.075) return S(side, 'dirsek');
-      if (y >= 0.905) return S(side, 'ön kol');
-      return S(side, 'el bileği');
-    };
-  }
-  // Avuç: ince (x) ve geniş (z) bir yaprak; baş parmak önde.
-  var PALM = [
-    [0.872, 0.289, 0.004, 0.006, 0.006, 0.006, 0.006],
-    [0.862, 0.290, 0.004, 0.016, 0.016, 0.026, 0.024],
-    [0.842, 0.292, 0.004, 0.017, 0.017, 0.036, 0.034],
-    [0.810, 0.294, 0.004, 0.016, 0.016, 0.042, 0.040],
-    [0.780, 0.296, 0.004, 0.015, 0.015, 0.043, 0.041],
-    [0.764, 0.297, 0.004, 0.013, 0.013, 0.038, 0.037],
-    [0.752, 0.297, 0.004, 0.005, 0.005, 0.010, 0.010]
-  ];
-  // Parmaklar: [z, uzunluk, yarıçap]; işaret parmağı önde, serçe arkada.
-  var FINGERS = [[0.028, 0.074, 0.0088], [0.009, 0.082, 0.0092], [-0.010, 0.077, 0.0088], [-0.028, 0.061, 0.0078]];
-
-  // Ayak: topuktan parmak köküne (a = z). o1 = x, o2 = y; rf üst, rb alt yarıçap.
-  var FOOT = [
-    // z       x      y      rl     rm     rf     rb
-    [-0.071, 0.124, 0.043, 0.003, 0.003, 0.003, 0.003],
-    [-0.0695, 0.124, 0.043, 0.010, 0.010, 0.011, 0.013],
-    [-0.066, 0.124, 0.043, 0.017, 0.017, 0.019, 0.023],
-    [-0.060, 0.124, 0.043, 0.023, 0.023, 0.026, 0.031],
-    [-0.052, 0.124, 0.044, 0.027, 0.027, 0.032, 0.037],
-    [-0.035, 0.124, 0.047, 0.032, 0.032, 0.040, 0.042],
-    [0.010, 0.125, 0.054, 0.036, 0.037, 0.046, 0.049],
-    [0.060, 0.128, 0.046, 0.042, 0.042, 0.036, 0.041],
-    [0.110, 0.132, 0.031, 0.047, 0.047, 0.024, 0.026],
-    [0.140, 0.134, 0.025, 0.044, 0.045, 0.018, 0.020],
-    [0.156, 0.135, 0.024, 0.012, 0.012, 0.008, 0.008]
-  ];
-  var FOOT_A = [-0.012, 0.03];
-  var FOOT_T = [45, -45, 112, -112];
-  function footRegion(side) {
-    return function (z, phi) {
-      var ab = Math.abs(phi);
-      if (z < -0.012) return S(side, 'topuk');
-      if (ab >= 112) return S(side, 'ayak tabanı');
-      if (z < 0.03) {
-        if (ab < 45) return S(side, 'ayak bileği önü');
-        return phi > 0 ? S(side, 'ayak bileği dışı') : S(side, 'ayak bileği içi');
-      }
-      return S(side, 'ayak üstü');
-    };
-  }
-  // Ayak parmakları: [dışa kayma, uç z, yarıçap]; baş parmak içte.
-  var TOES = [[-0.026, 0.192, 0.0132], [-0.004, 0.184, 0.0092], [0.011, 0.177, 0.0086],
-              [0.024, 0.170, 0.0080], [0.036, 0.161, 0.0074]];
-
-  /* Kas tanımı (bkz. tubeGrid → bumps). Gövdede φ>0 sol ve tablo aynalanıyor;
-     uzuvlarda φ dışa doğru pozitif, 0 ön, 180 arka. */
-  var TORSO_BUMPS = [
-    // baş ve yüz
-    [1.715, 180, 0.030, 50, 0.004],   // kafanın arkası
-    [1.690, 18, 0.008, 20, 0.006],    // kaş kemeri
-    [1.674, 22, 0.010, 12, -0.009],   // göz çukuru
-    [1.655, 52, 0.015, 18, 0.007],    // elmacık
-    [1.700, 72, 0.015, 15, -0.003],   // şakak
-    [1.622, 0, 0.004, 22, -0.003],    // ağız çizgisi
-    [1.628, 0, 0.005, 14, 0.003],     // üst dudak
-    [1.615, 0, 0.005, 13, 0.003],     // alt dudak
-    [1.645, 40, 0.018, 16, 0.004],    // yanak
-    [1.594, 0, 0.012, 18, 0.007],     // çene ucu
-    // boyun ve omuz kuşağı
-    [1.530, 38, 0.035, 14, 0.006],    // boyun yan kası
-    [1.448, 34, 0.012, 26, 0.007],    // köprücük kemiği
-    // göğüs ve karın
-    [1.315, 30, 0.050, 26, 0.021],    // göğüs kası
-    [1.252, 32, 0.012, 24, -0.006],   // göğüs kasının alt kenarı
-    [1.290, 0, 0.090, 6, -0.008],     // göğüs kemiği oluğu
-    [1.075, 10, 0.075, 9, 0.010],     // karın kası sütunu
-    [1.080, 0, 0.100, 3.5, -0.006],   // orta çizgi
-    [1.115, 10, 0.006, 12, -0.005],   // karın kası ara çizgileri
-    [1.050, 10, 0.006, 12, -0.005],
-    [1.170, 10, 0.006, 12, -0.004],
-    [1.030, 62, 0.050, 18, 0.006],    // dış oblik
-    // sırt
-    [1.220, 118, 0.090, 22, 0.014],   // latissimus
-    [1.335, 150, 0.050, 16, 0.009],   // kürek kemiği
-    [1.120, 180, 0.200, 7, -0.010],   // omurga oluğu
-    [1.020, 166, 0.070, 9, 0.009],    // bel kasları
-    // kalça
-    [0.885, 145, 0.050, 28, 0.017],   // gluteus
-    [0.875, 180, 0.045, 5, -0.014]    // kalça yarığı
-  ];
-  var LEG_BUMPS = [
-    [0.710, 5, 0.090, 22, 0.010],     // rectus femoris
-    [0.690, 60, 0.100, 28, 0.011],    // vastus lateralis
-    [0.595, -42, 0.040, 22, 0.015],   // vastus medialis (damla)
-    [0.720, -35, 0.100, 6, -0.005],   // sartorius oluğu
-    [0.680, 95, 0.120, 6, -0.004],    // IT bandı oluğu
-    [0.720, 160, 0.100, 25, 0.006],   // hamstring (dış)
-    [0.720, -160, 0.100, 25, 0.006],  // hamstring (iç)
-    [0.800, -95, 0.050, 30, 0.006],   // adduktor
-    [0.505, 180, 0.020, 30, -0.006],  // diz arkası çukuru
-    [0.375, -150, 0.055, 28, 0.016],  // gastroknemius iç başı
-    [0.390, 150, 0.045, 24, 0.012],   // gastroknemius dış başı
-    [0.340, 25, 0.080, 14, 0.007],    // tibialis anterior
-    [0.130, 128, 0.040, 16, -0.004],  // Aşil kenarları
-    [0.130, -128, 0.040, 16, -0.004]
-  ];
-  var ARM_BUMPS = [
-    [1.405, 25, 0.035, 35, 0.008],    // deltoid ön
-    [1.410, 85, 0.040, 35, 0.009],    // deltoid yan
-    [1.405, 150, 0.035, 35, 0.007],   // deltoid arka
-    [1.235, 0, 0.055, 32, 0.012],     // biceps
-    [1.270, 180, 0.065, 38, 0.011],   // triceps
-    [1.010, 45, 0.045, 30, 0.009],    // brachioradialis
-    [1.000, -40, 0.050, 35, 0.006],   // ön kol fleksörleri
-    [1.118, 180, 0.012, 22, 0.006]    // dirsek ucu (olekranon)
-  ];
-  var FOOT_BUMPS = [
-    [0.050, -150, 0.035, 30, -0.012], // iç kemer
-    [0.115, 180, 0.020, 60, 0.003]    // ayak tabanı yastığı
-  ];
-
-  /* Bütün parçaların tarifleri. `side` verilen parçada x aynalanıyor. */
-  function bodySpecs() {
-    var out = [];
-    out.push({ name: 'torso', keys: TORSO, rows: 176, cols: 104, aBreaks: TORSO_A, thBreaks: TORSO_T, region: torsoRegion,
-      bumps: TORSO_BUMPS, sym: true });
-    // Yüzü belli eden iki işaret: burun ve kulaklar. Öndeyken hangi yöne bakıldığı
-    // ilk bakışta anlaşılsın diye.
-    out.push({ name: 'nose', keys: capsule(13, function (t) { return [1.668 - 0.036 * t, 0, 0.097 + 0.012 * t]; },
-      function () { return [0.012, 0.012, 0.014, 0.010]; }, 0.012, 0.011), rows: 16, cols: 18, region: function () { return 'Baş'; } });
-    ['L', 'R'].forEach(function (side) {
-      out.push({ name: 'ear' + side, side: side, keys: blobKeys(0.076, 1.662, -0.004, 0.011, 0.029, 0.017),
-        rows: 16, cols: 16, region: function () { return 'Baş'; } });
-      out.push({ name: 'leg' + side, side: side, keys: LEG, rows: 140, cols: 64, aBreaks: LEG_A, thBreaks: LEG_T, region: legRegion(side),
-        bumps: LEG_BUMPS });
-      // Diz kapağı ve ayak bileği kemik çıkıntıları: bölgelerin yerini gösteren işaretler.
-      out.push({ name: 'patella' + side, side: side, keys: blobKeys(0.113, 0.505, 0.044, 0.030, 0.036, 0.016),
-        rows: 16, cols: 18, region: function () { return S(side, 'diz önü'); } });
-      out.push({ name: 'malL' + side, side: side, keys: blobKeys(0.124 + 0.026, 0.082, -0.012, 0.011, 0.015, 0.013),
-        rows: 12, cols: 14, region: function () { return S(side, 'ayak bileği dışı'); } });
-      out.push({ name: 'malM' + side, side: side, keys: blobKeys(0.124 - 0.026, 0.09, -0.004, 0.011, 0.015, 0.013),
-        rows: 12, cols: 14, region: function () { return S(side, 'ayak bileği içi'); } });
-      out.push({ name: 'arm' + side, side: side, keys: ARM, rows: 116, cols: 48, aBreaks: ARM_A, region: armRegion(side),
-        bumps: ARM_BUMPS });
-      out.push({ name: 'palm' + side, side: side, keys: PALM, rows: 24, cols: 32, aBreaks: [0.842],
-        region: function (y) { return y >= 0.842 ? S(side, 'el bileği') : S(side, 'el'); } });
-      FINGERS.forEach(function (f, n) {
-        var z0 = f[0], len = f[1], r = f[2];
-        out.push({ name: 'finger' + side + n, side: side, rows: 18, cols: 14,
-          keys: capsule(11, function (t) {
-            // Hafif kıvrık: uca doğru avuç içine (içe) ve biraz öne.
-            return [0.768 - len * t, 0.296 - 0.010 * t * t, z0 + 0.004 * t];
-          }, function (t) { var q = r * (1 - 0.18 * t); return [q, q, q, q]; }, r, r * 0.9),
-          region: function () { return S(side, 'parmaklar'); } });
-      });
-      out.push({ name: 'thumb' + side, side: side, rows: 18, cols: 14,
-        keys: capsule(11, function (t) { return [0.846 - 0.07 * t, 0.286 - 0.010 * t, 0.030 + 0.030 * t]; },
-          function (t) { var q = 0.0115 * (1 - 0.2 * t); return [q, q, q, q]; }, 0.011, 0.009),
-        region: function () { return S(side, 'parmaklar'); } });
-      out.push({ name: 'foot' + side, side: side, axis: 'z', keys: FOOT, rows: 60, cols: 40, aBreaks: FOOT_A, thBreaks: FOOT_T,
-        region: footRegion(side), bumps: FOOT_BUMPS });
-      TOES.forEach(function (tt, n) {
-        var dx = tt[0], zt = tt[1], r = tt[2];
-        out.push({ name: 'toe' + side + n, side: side, axis: 'z', rows: 14, cols: 14,
-          keys: capsule(9, function (t) {
-            var z = 0.12 + (zt - 0.12) * t;
-            // Ayak hafif dışa açık: parmakların x'i ileri gittikçe dışa kayıyor.
-            return [z, 0.135 + dx + 0.10 * (z - 0.12), 0.018 - 0.004 * t];
-          }, function (t) { var q = r * (1 - 0.1 * t); return [q, q, q * 0.9, q * 0.85]; }, 0.02, r),
-          region: function () { return S(side, 'ayak parmakları'); } });
-      });
+    // Etiketin çizgisinin indiği nokta: merkeze yakın ve bölgenin baktığı yöne bakan
+    // bir köşe (saran bölgelerde yalnızca yakınlık). Ayrıca altı yöne (ön, arka, iki
+    // yan, üst, alt) bakan birer aday: etiket, o an kameraya en çok bakan ve önü
+    // açık olan adaya iniyor — omuz başı gibi yana bakan bir bölge önden de etiketlenir.
+    var DIRS = [[0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0]];
+    stats.forEach(function (s) {
+      s.rad = Math.max(0.01, Math.sqrt(Math.pow(s.max[0] - s.min[0], 2) + Math.pow(s.max[1] - s.min[1], 2) + Math.pow(s.max[2] - s.min[2], 2)) / 2);
+      s.cs = DIRS.map(function () { return null; }); s.csc = DIRS.map(function () { return -1e9; });
     });
-    return out;
+    for (i = 0; i < n2; i++) {
+      var s3 = stats[RID[i]]; if (!s3.area) continue;
+      var qx = P2[i * 3] - s3.c[0], qy = P2[i * 3 + 1] - s3.c[1], qz = P2[i * 3 + 2] - s3.c[2], q2 = qx * qx + qy * qy + qz * qz;
+      var nx = N2[i * 3], ny = N2[i * 3 + 1], nz = N2[i * 3 + 2];
+      var facing = s3.dir > 0.3 ? (nx * s3.n[0] + ny * s3.n[1] + nz * s3.n[2]) : 1;
+      var sc = q2 * (facing > 0.5 ? 1 : 6);
+      if (sc < s3.best) { s3.best = sc; s3.anchor = [P2[i * 3], P2[i * 3 + 1], P2[i * 3 + 2]]; s3.an = [nx, ny, nz]; }
+      var near = Math.sqrt(q2) / s3.rad;
+      for (k = 0; k < 6; k++) {
+        var dk = DIRS[k], f = nx * dk[0] + ny * dk[1] + nz * dk[2] - 1.2 * near;
+        if (f > s3.csc[k]) { s3.csc[k] = f; s3.cs[k] = [P2[i * 3], P2[i * 3 + 1], P2[i * 3 + 2], nx, ny, nz]; }
+      }
+    }
+    stats.forEach(function (s) {
+      if (!s.area) return;
+      s.cands = [[s.anchor[0], s.anchor[1], s.anchor[2], s.an[0], s.an[1], s.an[2]]].concat(s.cs.filter(Boolean));
+      delete s.cs; delete s.csc; delete s.best;
+    });
+    return stats;
+  }
+  function finish(m, d) {
+    var S = m.S, T = m.T, R = m.R, nv = S.n, nt = R.length, p = S.p, i, k;
+    var nrm = vertexNormals(p, T, nv);
+    var first = new Int16Array(nv).fill(-1), multi = new Uint8Array(nv);
+    for (i = 0; i < nt * 3; i++) {
+      var v = T[i], r0 = R[(i / 3) | 0];
+      if (first[v] < 0) first[v] = r0; else if (first[v] !== r0) multi[v] = 1;
+    }
+    // Komşuluk: sınır köşesinde buluşan bölgeler (renk seçimi için).
+    var NK = REGIONS.length, adjM = new Uint8Array(NK * NK);
+    for (i = 0; i < nt * 3; i++) {
+      var v1 = T[i]; if (!multi[v1]) continue;
+      var ra = R[(i / 3) | 0], rb = first[v1];
+      if (ra !== rb) { adjM[ra * NK + rb] = 1; adjM[rb * NK + ra] = 1; }
+    }
+    var adj = REGIONS.map(function (r, x) {
+      var o = {}; for (var y = 0; y < NK; y++) if (adjM[x * NK + y]) o[y] = 1; return o;
+    });
+    var dist = seamDistance(p, vertexRings(T, nv), multi, nv, 0.03);
+    // Sınır köşelerini bölge başına çoğalt.
+    var copies = {}, out = nv, dup = [], index = new Uint32Array(nt * 3);
+    for (i = 0; i < nt * 3; i++) {
+      var v3 = T[i], r = R[(i / 3) | 0];
+      if (!multi[v3] || first[v3] === r) { index[i] = v3; continue; }
+      var ck = v3 * 256 + r, cp = copies[ck];
+      if (cp == null) { cp = copies[ck] = out++; dup.push(v3, r); }
+      index[i] = cp;
+    }
+    var n2 = out, P2 = new Float32Array(n2 * 3), N2 = new Float32Array(n2 * 3);
+    var A2 = new Float32Array(n2 * 4), B2 = new Float32Array(n2 * 2), RID = new Float32Array(n2), SEAM = new Float32Array(n2);
+    P2.set(p.subarray(0, nv * 3)); N2.set(nrm);
+    var sa = S.a;
+    for (i = 0; i < n2; i++) {
+      var src = i < nv ? i : dup[(i - nv) * 2];
+      if (i >= nv) for (k = 0; k < 3; k++) { P2[i * 3 + k] = p[src * 3 + k]; N2[i * 3 + k] = nrm[src * 3 + k]; }
+      A2[i * 4] = sa[src * NA]; A2[i * 4 + 1] = sa[src * NA + 1]; A2[i * 4 + 2] = sa[src * NA + 2]; A2[i * 4 + 3] = sa[src * NA + 3];
+      B2[i * 2] = sa[src * NA + 4]; B2[i * 2 + 1] = sa[src * NA + 5];
+      if (i < nv) { RID[i] = first[i] < 0 ? 0 : first[i]; SEAM[i] = dist[i]; }
+      else { RID[i] = dup[(i - nv) * 2 + 1]; SEAM[i] = 0; }
+    }
+    return { n: n2, nt: nt, pos: P2, nrm: N2, a: A2, b: B2, rid: RID, seam: SEAM, index: index,
+      faceRegion: R, adj: adj, stats: regionStats(P2, N2, RID, index, R, n2, nt), meta: d.meta };
   }
 
-  /* ── Görüntüleyici ──────────────────────────────────────────────────────── */
+  function buildBody(buf) {
+    var d = decode(buf);
+    return finish(subdivide(splitRegions(d)), d);
+  }
+
+  /* ── Işın izleme ızgarası ─────────────────────────────────────────────────
+     130 bin üçgende her dokunuşta hepsini denemek telefonda yavaş; üçgenler
+     2,5 cm'lik hücrelere dağıtılıyor, ışın yalnızca geçtiği hücrelere bakıyor.
+     Etiketlerin arkada kalıp kalmadığı da bununla sınanıyor. */
+  function Grid(pos, index, nt) {
+    var mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9], i, k;
+    for (i = 0; i < pos.length; i += 3) for (k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], pos[i + k]); mx[k] = Math.max(mx[k], pos[i + k]); }
+    var cs = 0.025, dim = [0, 0, 0];
+    for (k = 0; k < 3; k++) { mn[k] -= 0.001; mx[k] += 0.001; dim[k] = Math.max(1, Math.ceil((mx[k] - mn[k]) / cs)); }
+    var nc = dim[0] * dim[1] * dim[2], cnt = new Uint32Array(nc + 1);
+    function cell(v, k2) { return clamp(Math.floor((v - mn[k2]) / cs), 0, dim[k2] - 1); }
+    function each(t, fn) {
+      var lo = [0, 0, 0], hi = [0, 0, 0], a = index[t * 3] * 3, b = index[t * 3 + 1] * 3, c = index[t * 3 + 2] * 3;
+      for (var q = 0; q < 3; q++) {
+        lo[q] = cell(Math.min(pos[a + q], pos[b + q], pos[c + q]), q);
+        hi[q] = cell(Math.max(pos[a + q], pos[b + q], pos[c + q]), q);
+      }
+      for (var x = lo[0]; x <= hi[0]; x++) for (var y = lo[1]; y <= hi[1]; y++) for (var z = lo[2]; z <= hi[2]; z++)
+        fn((z * dim[1] + y) * dim[0] + x);
+    }
+    for (i = 0; i < nt; i++) each(i, function (c) { cnt[c + 1]++; });
+    for (i = 0; i < nc; i++) cnt[i + 1] += cnt[i];
+    var fill = cnt.slice(0, nc), list = new Uint32Array(cnt[nc]);
+    for (i = 0; i < nt; i++) each(i, function (c) { list[fill[c]++] = i; });
+    this.mn = mn; this.mx = mx; this.cs = cs; this.dim = dim; this.start = cnt; this.list = list;
+    this.pos = pos; this.index = index; this.stamp = new Uint32Array(nt); this.gen = 0;
+  }
+  // Işının ilk çarptığı üçgen: { t, face } ya da null. o, d: [x,y,z] (d birim).
+  Grid.prototype.cast = function (o, d, tMax) {
+    var mn = this.mn, mx = this.mx, cs = this.cs, dim = this.dim, k;
+    var t0 = 0, t1 = tMax || 1e9;
+    for (k = 0; k < 3; k++) {
+      if (Math.abs(d[k]) < 1e-12) { if (o[k] < mn[k] || o[k] > mx[k]) return null; continue; }
+      var ta = (mn[k] - o[k]) / d[k], tb = (mx[k] - o[k]) / d[k];
+      if (ta > tb) { var sw = ta; ta = tb; tb = sw; }
+      t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+      if (t0 > t1) return null;
+    }
+    var p = [o[0] + d[0] * t0, o[1] + d[1] * t0, o[2] + d[2] * t0], c = [0, 0, 0], step = [0, 0, 0], tn = [0, 0, 0], dt = [0, 0, 0];
+    for (k = 0; k < 3; k++) {
+      c[k] = clamp(Math.floor((p[k] - mn[k]) / cs), 0, dim[k] - 1);
+      if (d[k] > 0) { step[k] = 1; tn[k] = t0 + ((mn[k] + (c[k] + 1) * cs) - p[k]) / d[k]; dt[k] = cs / d[k]; }
+      else if (d[k] < 0) { step[k] = -1; tn[k] = t0 + ((mn[k] + c[k] * cs) - p[k]) / d[k]; dt[k] = -cs / d[k]; }
+      else { step[k] = 0; tn[k] = 1e30; dt[k] = 1e30; }
+    }
+    var best = null, bt = t1, gen = ++this.gen, pos = this.pos, idx = this.index, stamp = this.stamp;
+    if (gen > 4e9) { stamp.fill(0); gen = this.gen = 1; }
+    for (var guard = 0; guard < 4096; guard++) {
+      var ci = (c[2] * dim[1] + c[1]) * dim[0] + c[0], s = this.start[ci], e = this.start[ci + 1];
+      for (var q = s; q < e; q++) {
+        var tr = this.list[q]; if (stamp[tr] === gen) continue; stamp[tr] = gen;
+        var a = idx[tr * 3] * 3, b = idx[tr * 3 + 1] * 3, cc = idx[tr * 3 + 2] * 3;
+        var e1x = pos[b] - pos[a], e1y = pos[b + 1] - pos[a + 1], e1z = pos[b + 2] - pos[a + 2];
+        var e2x = pos[cc] - pos[a], e2y = pos[cc + 1] - pos[a + 1], e2z = pos[cc + 2] - pos[a + 2];
+        var px = d[1] * e2z - d[2] * e2y, py = d[2] * e2x - d[0] * e2z, pz = d[0] * e2y - d[1] * e2x;
+        var det = e1x * px + e1y * py + e1z * pz; if (Math.abs(det) < 1e-12) continue;
+        var inv = 1 / det, sx = o[0] - pos[a], sy = o[1] - pos[a + 1], sz = o[2] - pos[a + 2];
+        var u = (sx * px + sy * py + sz * pz) * inv; if (u < 0 || u > 1) continue;
+        var qx = sy * e1z - sz * e1y, qy = sz * e1x - sx * e1z, qz = sx * e1y - sy * e1x;
+        var v = (d[0] * qx + d[1] * qy + d[2] * qz) * inv; if (v < 0 || u + v > 1) continue;
+        var t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+        if (t > 1e-5 && t < bt) { bt = t; best = tr; }
+      }
+      // Bu hücrenin çıkışından önce bir çarpma varsa daha ileriye bakmaya gerek yok.
+      var ax = tn[0] < tn[1] ? (tn[0] < tn[2] ? 0 : 2) : (tn[1] < tn[2] ? 1 : 2);
+      if (best != null && bt <= tn[ax]) break;
+      if (tn[ax] > t1) break;
+      c[ax] += step[ax];
+      if (c[ax] < 0 || c[ax] >= dim[ax]) break;
+      tn[ax] += dt[ax];
+    }
+    return best == null ? null : { t: bt, face: best };
+  };
+
+  /* ── Renkler ────────────────────────────────────────────────────────────── */
   var COL = {
-    base: '#6e7889', hover: '#95a1b4', active: '#2f9dff',
+    active: '#ffffff',
     sev: { 1: '#46d6a0', 2: '#fcd34d', 3: '#ff6b5b' }
   };
+  /* Bölge renkleri referans görseldeki atlas gibi: göğüs mavi, kaburga yeşil,
+     karın sarı, omuz kırmızı, uyluk mor, diz sarı, baldır yeşil… Sağ ve sol aynı
+     renkte. Tercih edilen renk bir komşuda kullanılmışsa sıradaki boş renk
+     alınıyor, yani yan yana iki bölge hiçbir zaman aynı renkte durmuyor. */
+  var PALETTE = { B: '#3f7fe8', P: '#8a5cf0', R: '#e2474b', G: '#35b86b', O: '#f08a32',
+                  Y: '#f0c33c', T: '#22b3a8', K: '#e8649f', L: '#9cc43a' };
+  var PREF = {
+    'Baş': 'B', 'Çene': 'P', 'Boyun': 'L', 'Ense': 'T',
+    'omuz': 'R', 'üst kol': 'T', 'dirsek': 'K', 'ön kol': 'G', 'el bileği': 'B', 'el': 'O', 'parmaklar': 'Y',
+    'Göğüs': 'B', 'kaburga': 'G', 'Üst sırt': 'P', 'Orta sırt': 'R', 'Alt sırt / bel': 'T', 'yan gövde': 'K', 'Karın': 'Y',
+    'kalça': 'O', 'kasık': 'B', 'Sakrum / kuyruk sokumu': 'Y',
+    'ön uyluk (Quadriceps)': 'P', 'arka uyluk (Hamstring)': 'P', 'iç uyluk (Adductor)': 'K', 'dış uyluk': 'B',
+    'diz önü': 'Y', 'diz arkası': 'O', 'diz içi': 'L', 'diz dışı': 'L',
+    'ön bacak (Tibialis anterior)': 'B', 'baldır': 'G', 'baldır içi': 'T', 'baldır dışı': 'T',
+    'ayak bileği önü': 'K', 'ayak bileği içi': 'R', 'ayak bileği dışı': 'R', 'Aşil': 'K',
+    'topuk': 'B', 'ayak tabanı': 'O', 'ayak üstü': 'G', 'ayak parmakları': 'T'
+  };
+  function baseName(k) { return k.replace(/^(Sağ|Sol) /, ''); }
+  function assignColors(adj) {
+    var col = [], order = Object.keys(PALETTE);
+    REGIONS.forEach(function (r, i) {
+      var used = {}, b = baseName(r.k);
+      Object.keys(adj[i]).forEach(function (j) { if (col[j] && baseName(REGIONS[j].k) !== b) used[col[j]] = 1; });
+      for (var j = 0; j < i; j++) if (baseName(REGIONS[j].k) === b && col[j] && !used[col[j]]) { col[i] = col[j]; return; }
+      var pref = [PREF[b] || 'B'].concat(order);
+      for (var q = 0; q < pref.length; q++) if (!used[pref[q]]) { col[i] = pref[q]; return; }
+      col[i] = pref[0];
+    });
+    return col.map(function (c) { return PALETTE[c]; });
+  }
+  function hexRGB(h) { var v = parseInt(h.slice(1), 16); return [v >> 16, (v >> 8) & 255, v & 255]; }
 
   function glAvailable() {
     try {
@@ -613,31 +609,69 @@
     } catch (e) { return false; }
   }
 
-  var loading = null;
-  // Three.js'i bir kez yükle. Takılan bir CDN formu kilitlemesin diye süre sınırı var.
+  /* Three.js'i ve model dosyasını bir kez yükle, modeli bir kez kur. Takılan bir
+     ağ formu kilitlemesin diye süre sınırı var; biri gelmezse 3D açılmıyor. */
+  var loading = null, BODY = null;
   function load() {
     if (loading) return loading;
     loading = new Promise(function (resolve, reject) {
       if (!glAvailable()) { reject(new Error('webgl')); return; }
-      var timer = setTimeout(function () { reject(new Error('timeout')); }, 20000);
+      if (!global.fetch || !global.Promise) { reject(new Error('fetch')); return; }
+      var timer = setTimeout(function () { reject(new Error('timeout')); }, 25000);
       var imp;
       try { imp = import(THREE_URL); } catch (e) { clearTimeout(timer); reject(e); return; }
-      imp.then(function (m) { clearTimeout(timer); resolve(m); },
-               function (e) { clearTimeout(timer); reject(e); });
+      var mesh = BODY ? Promise.resolve(null) : fetch(MESH_URL).then(function (r) {
+        if (!r.ok) throw new Error('PainBody: model dosyası ' + r.status);
+        return r.arrayBuffer();
+      });
+      Promise.all([imp, mesh]).then(function (res) {
+        clearTimeout(timer);
+        if (!BODY) BODY = buildBody(res[1]);
+        resolve(res[0]);
+      }).catch(function (e) { clearTimeout(timer); reject(e); });
     });
     // Başarısız bir deneme kalıcı olmasın: bir sonraki çağrı yeniden denesin.
     loading.catch(function () { loading = null; });
     return loading;
   }
 
+  /* Hızlı yakınlaşma: referans görseldeki "baş ve boyun / el / diz / ayak" kutuları
+     gibi. Aynı düğmeye yeniden basınca ikinci görünüm: ense, öbür el, dizlerin ve
+     ayakların arkası. [yaw, pitch, hedef x, y, z, yükseklik (m), genişlik (m)] */
+  function zonePresets(J) {
+    var hand = function (s) {
+      var w = J['wrist.' + s], sx = s === 'L' ? 1 : -1;
+      return [sx * 0.62, 0.1, w[0] + sx * 0.004, w[1] - 0.1, w[2] + 0.02, 0.34, 0.2];
+    };
+    var knee = J['lowerleg01.L'][1] + 0.025, ank = J['foot.L'];
+    return {
+      head: [[0, 0.04, 0, 1.63, 0.02, 0.44, 0.3], [Math.PI, 0.04, 0, 1.6, 0, 0.46, 0.3]],
+      hand: [hand('R'), hand('L')],
+      knee: [[0, 0.02, 0, knee, 0.03, 0.40, 0.44], [Math.PI, 0.02, 0, knee, 0.0, 0.40, 0.44]],
+      foot: [[0.22, 0.32, 0, ank[1] - 0.02, ank[2] + 0.05, 0.26, 0.46], [Math.PI - 0.22, 0.2, 0, ank[1] + 0.005, ank[2] - 0.03, 0.26, 0.46]]
+    };
+  }
+
+  /* ── Görüntüleyici ──────────────────────────────────────────────────────── */
   function create(THREE, opts) {
     opts = opts || {};
+    if (!BODY) throw new Error('PainBody: önce load()');
+    var B = BODY, NK = REGIONS.length;
     var canvas = document.createElement('canvas');
     canvas.className = 'pb-canvas';
     canvas.setAttribute('aria-hidden', 'true');
+    // Bölge etiketleri ayrı, düz bir tuvalde; modelin üstünde, dokunmayı engellemeden.
+    var lab = document.createElement('canvas');
+    lab.className = 'pb-labels';
+    lab.setAttribute('aria-hidden', 'true');
+    lab.style.pointerEvents = 'none';
+    lab.style.zIndex = '1';
+    var dpr = Math.min(2, global.devicePixelRatio || 1);
     var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(2, global.devicePixelRatio || 1));
+    renderer.setPixelRatio(dpr);
     renderer.setClearColor(0x000000, 0);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
 
     var scene = new THREE.Scene();
     var FOV = 26;
@@ -645,175 +679,130 @@
     scene.add(camera);
 
     // Işıklar kameraya bağlı: model hangi yöne çevrilirse çevrilsin bakılan taraf
-    // aynı şekilde aydınlanıyor, arka görünüm karanlıkta kalmıyor.
-    var lightTarget = new THREE.Object3D(); lightTarget.position.set(0, 0, -4); camera.add(lightTarget);
-    scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1d24, 0.85));
-    var key = new THREE.DirectionalLight(0xffffff, 2.6); key.position.set(2.2, 2.8, 1.1); key.target = lightTarget; camera.add(key);
-    var fill = new THREE.DirectionalLight(0xbcd2ff, 0.5); fill.position.set(-2.2, 0.4, 0.6); fill.target = lightTarget; camera.add(fill);
-    // Arkadan gelen mavi kenar ışığı: siluet koyu zeminde kaybolmasın.
-    var rim = new THREE.DirectionalLight(0x5cb8ff, 2.2); rim.position.set(0.3, 1.6, -9); rim.target = lightTarget; camera.add(rim);
+    // aynı şekilde aydınlanıyor. Anahtar ışık sol üstten (kas kabartısı okunsun),
+    // arkadan soğuk bir kenar ışığı (siluet koyu zeminde kaybolmasın).
+    var lightTarget = new THREE.Object3D(); lightTarget.position.set(0, 0, -3); camera.add(lightTarget);
+    scene.add(new THREE.HemisphereLight(0xdfe7ff, 0x3a2e28, 0.9));
+    function camLight(color, inten, x, y, z) {
+      var l = new THREE.DirectionalLight(color, inten); l.position.set(x, y, z); l.target = lightTarget; camera.add(l); return l;
+    }
+    camLight(0xfff4ea, 2.4, -1.6, 2.2, 2.0);
+    camLight(0xc8d8ff, 0.7, 2.0, 0.3, 1.0);
+    camLight(0x9cc8ff, 1.6, 0.5, 1.2, -3);
 
-    var body = new THREE.Group();
-    scene.add(body);
-    var dpr = Math.min(2, global.devicePixelRatio || 1);
-    var material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.52, metalness: 0.05 });
-    /* Bölge dikişleri shader'da çiziliyor. Her köşe, en yakın bölge sınırına olan
-       yüzey uzaklığını (`seam`, metre) taşıyor; parça gölgelendiricisi bu değerin
-       ekrandaki değişim hızına (fwidth) bakarak sınırın iki yanına sabit piksel
-       kalınlığında koyu bir oluk, hemen yanına da ince bir ışık çizgisi çiziyor.
-       WebGL çizgileri her cihazda 1 piksel kalıyordu; bu, yakınlaşınca da uzaklaşınca
-       da aynı netlikte duran, oyulmuş panel gibi bir sınır veriyor. */
-    var seamUniform = { value: 0.8 * dpr };   // sınırın her iki yanında, piksel
+    /* ── Beden ── */
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(B.pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(B.nrm, 3));
+    geo.setAttribute('rid', new THREE.BufferAttribute(B.rid, 1));
+    geo.setAttribute('seam', new THREE.BufferAttribute(B.seam, 1));
+    geo.setAttribute('pbA', new THREE.BufferAttribute(B.a, 4));
+    geo.setAttribute('pbB', new THREE.BufferAttribute(B.b, 2));
+    geo.setIndex(new THREE.BufferAttribute(B.index, 1));
+    geo.computeBoundingSphere();
+
+    // Bölge başına iki satırlık küçük doku: 1. satır renk + saydamlık, 2. satır
+    // durum (seçili / işaretli / fare üstünde). Renk değişince yalnız bu güncelleniyor.
+    var palData = new Uint8Array(NK * 8);
+    var palTex = new THREE.DataTexture(palData, NK, 2, THREE.RGBAFormat);
+    palTex.magFilter = palTex.minFilter = THREE.NearestFilter;
+    palTex.generateMipmaps = false;
+    palTex.colorSpace = THREE.SRGBColorSpace;
+    palTex.needsUpdate = true;
+
+    var material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0 });
+    var U = {
+      uPal: { value: palTex }, uNK: { value: NK },
+      uSkin: { value: new THREE.Color('#c8906c') }, uHair: { value: new THREE.Color('#2a1d16') },
+      uBrow: { value: new THREE.Color('#2c1f18') }, uLip: { value: new THREE.Color('#a8524a') },
+      uFabric: { value: new THREE.Color('#7b8088') }, uSeamW: { value: 0.9 * dpr }, uFaceK: { value: 0.95 }
+    };
+    /* Gölgelendirici eki. Deri rengi + saç / kaş / dudak / şort maskeleri, üstüne
+       bölge rengi (yüzün ortasında daha az: yüz doğal kalsın), pişirilmiş AO, ve
+       bölge sınırında sabit piksel kalınlığında açık bir dikiş. Dikişin kalınlığı
+       köşenin sınıra olan uzaklığının ekrandaki değişim hızından (fwidth) çıkıyor;
+       yakınlaşınca da uzaklaşınca da aynı incelikte. */
     material.onBeforeCompile = function (sh) {
-      sh.uniforms.uSeamW = seamUniform;
+      for (var k in U) sh.uniforms[k] = U[k];
       sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float seam;\nvarying float vSeam;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeam = seam;');
+        .replace('#include <common>', ['#include <common>',
+          'attribute float rid; attribute float seam; attribute vec4 pbA; attribute vec2 pbB;',
+          'varying float vRid; varying float vSeam; varying vec4 vPbA; varying vec2 vPbB; varying vec3 vObj;'].join('\n'))
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRid = rid; vSeam = seam; vPbA = pbA; vPbB = pbB; vObj = position;');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vSeam;\nuniform float uSeamW;')
+        .replace('#include <common>', ['#include <common>',
+          'varying float vRid; varying float vSeam; varying vec4 vPbA; varying vec2 vPbB; varying vec3 vObj;',
+          'uniform sampler2D uPal; uniform float uNK; uniform vec3 uSkin; uniform vec3 uHair; uniform vec3 uBrow;',
+          'uniform vec3 uLip; uniform vec3 uFabric; uniform float uSeamW; uniform float uFaceK;',
+          'vec4 pbFlags;',
+          'float pbHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+          'float pbNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);',
+          '  return mix(mix(mix(pbHash(i), pbHash(i + vec3(1,0,0)), f.x), mix(pbHash(i + vec3(0,1,0)), pbHash(i + vec3(1,1,0)), f.x), f.y),',
+          '             mix(mix(pbHash(i + vec3(0,0,1)), pbHash(i + vec3(1,0,1)), f.x), mix(pbHash(i + vec3(0,1,1)), pbHash(i + vec3(1,1,1)), f.x), f.y), f.z); }'
+        ].join('\n'))
+        .replace('#include <color_fragment>', ['#include <color_fragment>',
+          'vec3 skin = uSkin * (0.94 + 0.12 * pbNoise(vObj * 40.0));',
+          'float nz = pbNoise(vObj * 180.0) * 0.5 + pbNoise(vObj * 420.0) * 0.5;',
+          'vec3 alb = skin;',
+          'alb = mix(alb, uHair * (0.75 + 0.5 * nz), vPbA.y);',
+          'alb = mix(alb, uBrow, vPbA.z * 0.9);',
+          'alb = mix(alb, uLip, vPbA.w * 0.6);',
+          'alb = mix(alb, uFabric * (0.9 + 0.2 * nz), vPbB.x);',
+          'float rx = (floor(vRid + 0.5) + 0.5) / uNK;',
+          'vec4 rc = texture2D(uPal, vec2(rx, 0.25));',
+          'pbFlags = texture2D(uPal, vec2(rx, 0.75));',
+          'float emph = max(pbFlags.r, pbFlags.g);',
+          'float ra = rc.a * (1.0 - uFaceK * vPbB.y * (1.0 - 0.8 * emph));',
+          // Saç ve kumaş koyu: bölge rengi onların üstünde de koyulaşıyor, yapı kaybolmuyor.
+          'float rel = clamp(dot(alb, vec3(0.3, 0.59, 0.11)) / dot(skin, vec3(0.3, 0.59, 0.11)), 0.5, 1.1);',
+          'alb = mix(alb, rc.rgb * rel, ra);',
+          'diffuseColor.rgb = alb;'].join('\n'))
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.52, 0.85, max(vPbA.y, vPbB.x));')
+        .replace('#include <aomap_fragment>', ['float ambientOcclusion = mix(1.0, vPbA.x, 0.95);',
+          'reflectedLight.indirectDiffuse *= ambientOcclusion;',
+          'reflectedLight.directDiffuse *= mix(1.0, ambientOcclusion, 0.55);',
+          'reflectedLight.indirectSpecular *= ambientOcclusion;'].join('\n'))
         .replace('#include <dithering_fragment>', [
-          'float spx = vSeam / max(length(vec2(dFdx(vSeam), dFdy(vSeam))), 1e-7);',
-          'float groove = 1.0 - smoothstep(uSeamW - 0.5, uSeamW + 0.7, spx);',
-          'float lip = smoothstep(uSeamW + 0.4, uSeamW + 1.2, spx) * (1.0 - smoothstep(uSeamW + 1.2, uSeamW + 2.6, spx));',
-          'gl_FragColor.rgb = mix(gl_FragColor.rgb, gl_FragColor.rgb * 0.16, groove * 0.95);',
-          'gl_FragColor.rgb += lip * 0.05;',
+          'float spx = vSeam / max(fwidth(vSeam), 1e-7);',
+          'float sw = uSeamW * (1.0 + 1.6 * pbFlags.r + 0.5 * pbFlags.g);',
+          'float line = 1.0 - smoothstep(sw, sw + 1.0, spx);',
+          'float la = texture2D(uPal, vec2((floor(vRid + 0.5) + 0.5) / uNK, 0.25)).a > 0.02 ? (0.5 + 0.45 * max(pbFlags.r, pbFlags.g)) * pbFlags.a : 0.0;',
+          'gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.97, 1.0), line * la);',
+          // Seçili bölgenin kenarı içeriden hafifçe parlıyor.
+          'gl_FragColor.rgb += pbFlags.r * (1.0 - smoothstep(0.0, uSeamW * 10.0, spx)) * 0.14;',
           '#include <dithering_fragment>'].join('\n'));
     };
-    var SEAM_FAR = 0.03;
-    // Bölge komşulukları: yan yana iki bölge bir tık farklı tonda boyanıyor.
-    var adj = REGIONS.map(function () { return {}; });
+    var body = new THREE.Mesh(geo, material);
+    scene.add(body);
 
-    /* Parçaları kur. Her parçanın üçgenleri ayrı köşe taşıyor (indekssiz), böylece
-       bir bölgenin rengi komşusuna sızmıyor; normaller ise paylaşılan ızgaradan
-       hesaplandığı için yüzey yine pürüzsüz görünüyor. */
-    var meshes = [], faceRegion = [], stats = REGIONS.map(function () {
-      return { area: 0, c: [0, 0, 0], n: [0, 0, 0], min: [9, 9, 9], max: [-9, -9, -9] };
+    // Gözler: taban ağdaki göz yuvalarına oturan küreler; iris ve göz bebeği
+    // gölgelendiricide çiziliyor (doku dosyası yok).
+    var eyes = B.meta.eyes.map(function (e) {
+      var em = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22 });
+      em.onBeforeCompile = function (sh) {
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDir;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDir = normalize(position);');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vDir;')
+          .replace('#include <color_fragment>', ['#include <color_fragment>',
+            'float c = dot(vDir, normalize(vec3(0.0, 0.02, 1.0)));',
+            'vec3 col = vec3(0.86, 0.83, 0.8);',
+            'col = mix(col, mix(vec3(0.16, 0.09, 0.05), vec3(0.36, 0.22, 0.12), smoothstep(0.93, 0.975, c)), smoothstep(0.905, 0.915, c));',
+            'col = mix(col, vec3(0.02), smoothstep(0.975, 0.982, c));',
+            'diffuseColor.rgb = col;'].join('\n'));
+      };
+      var m = new THREE.Mesh(new THREE.SphereGeometry(e[3] * 0.72, 32, 24), em);
+      m.position.set(e[0], e[1], e[2] + e[3] * 0.08);
+      scene.add(m);
+      return { c: [e[0], e[1], e[2] + e[3] * 0.08], r: e[3] * 0.72 };
     });
-    bodySpecs().forEach(function (spec) {
-      var g = tubeGrid(spec), nr = g.nr, nc = g.nc, P = g.pos, i, j;
-      var N = new Float32Array(P.length);
-      function vi(r, c) { return r * nc + ((c % nc) + nc) % nc; }
-      var tris = [];
-      for (i = 0; i < nr - 1; i++) for (j = 0; j < nc; j++) {
-        var a = vi(i, j), b = vi(i + 1, j), c = vi(i, j + 1), d = vi(i + 1, j + 1), q = g.quad[i * nc + j];
-        tris.push(a, b, c, q, b, d, c, q);
-      }
-      var nt = tris.length / 4, t, k;
-      for (t = 0; t < nt; t++) {
-        var i0 = tris[t * 4] * 3, i1 = tris[t * 4 + 1] * 3, i2 = tris[t * 4 + 2] * 3;
-        var ux = P[i1] - P[i0], uy = P[i1 + 1] - P[i0 + 1], uz = P[i1 + 2] - P[i0 + 2];
-        var wx = P[i2] - P[i0], wy = P[i2 + 1] - P[i0 + 1], wz = P[i2 + 2] - P[i0 + 2];
-        var nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx;
-        for (k = 0; k < 3; k++) { var o = tris[t * 4 + k] * 3; N[o] += nx; N[o + 1] += ny; N[o + 2] += nz; }
-      }
-      for (i = 0; i < N.length; i += 3) {
-        var l = Math.hypot(N[i], N[i + 1], N[i + 2]) || 1; N[i] /= l; N[i + 1] /= l; N[i + 2] /= l;
-      }
-      /* Tüpün iki ucundaki kapak halkası neredeyse tek bir noktada toplanıyor; oradaki
-         üçgenlerden çıkan normal rastgele yönlere bakıp topukta, başın tepesinde koyu
-         bir benek bırakıyordu. Uçta yüzey tüpün ekseni yönüne bakıyor. */
-      [[0, 1], [nr - 1, nr - 2]].forEach(function (e) {
-        var ax = 0, ay = 0, az = 0;
-        for (j = 0; j < nc; j++) {
-          var o0 = vi(e[0], j) * 3, o1 = vi(e[1], j) * 3;
-          ax += P[o0] - P[o1]; ay += P[o0 + 1] - P[o1 + 1]; az += P[o0 + 2] - P[o1 + 2];
-        }
-        var al = Math.hypot(ax, ay, az) || 1;
-        for (j = 0; j < nc; j++) { var o = vi(e[0], j) * 3; N[o] = ax / al; N[o + 1] = ay / al; N[o + 2] = az / al; }
-      });
-      /* Sınıra uzaklık: iki komşu dörtgenin bölgesi farklıysa aradaki kenarın iki
-         köşesi 0; diğer köşeler komşularından birkaç süpürmede yüzey boyunca
-         yayılan en kısa uzaklığı alıyor (SEAM_FAR'da kesiliyor). */
-      var SD = new Float32Array(nr * nc).fill(SEAM_FAR);
-      for (i = 0; i < nr - 1; i++) for (j = 0; j < nc; j++) {
-        var here = g.quad[i * nc + j], right = g.quad[i * nc + (j + 1) % nc];
-        if (right !== here) { SD[vi(i, j + 1)] = 0; SD[vi(i + 1, j + 1)] = 0; adj[here][right] = 1; adj[right][here] = 1; }
-        if (i + 1 < nr - 1) {
-          var down = g.quad[(i + 1) * nc + j];
-          if (down !== here) { SD[vi(i + 1, j)] = 0; SD[vi(i + 1, j + 1)] = 0; adj[here][down] = 1; adj[down][here] = 1; }
-        }
-      }
-      for (var pass = 0; pass < 6; pass++) {
-        for (i = 0; i < nr; i++) for (j = 0; j < nc; j++) {
-          var pv = vi(i, j), best = SD[pv];
-          if (best === 0) continue;
-          for (var di = -1; di <= 1; di++) for (var dj = -1; dj <= 1; dj++) {
-            if ((!di && !dj) || i + di < 0 || i + di >= nr) continue;
-            var qv = vi(i + di, j + dj), dq = SD[qv];
-            if (dq >= best) continue;
-            var dd = dq + Math.hypot(P[pv * 3] - P[qv * 3], P[pv * 3 + 1] - P[qv * 3 + 1], P[pv * 3 + 2] - P[qv * 3 + 2]);
-            if (dd < best) best = dd;
-          }
-          SD[pv] = best;
-        }
-      }
-      var pos = new Float32Array(nt * 9), nor = new Float32Array(nt * 9), colr = new Float32Array(nt * 9);
-      var seam = new Float32Array(nt * 3);
-      var fr = new Int16Array(nt);
-      for (t = 0; t < nt; t++) {
-        var reg = tris[t * 4 + 3]; fr[t] = reg;
-        var st = stats[reg];
-        for (k = 0; k < 3; k++) {
-          var src = tris[t * 4 + k] * 3, dst = t * 9 + k * 3;
-          pos[dst] = P[src]; pos[dst + 1] = P[src + 1]; pos[dst + 2] = P[src + 2];
-          nor[dst] = N[src]; nor[dst + 1] = N[src + 1]; nor[dst + 2] = N[src + 2];
-          seam[t * 3 + k] = SD[src / 3];
-          for (var ax = 0; ax < 3; ax++) {
-            if (P[src + ax] < st.min[ax]) st.min[ax] = P[src + ax];
-            if (P[src + ax] > st.max[ax]) st.max[ax] = P[src + ax];
-          }
-        }
-        // Bölgenin ağırlık merkezi ve baktığı yön (alanla ağırlıklı) — odaklanırken
-        // kameranın nereye döneceği buradan çıkıyor.
-        var p0 = t * 9;
-        var ex = pos[p0 + 3] - pos[p0], ey = pos[p0 + 4] - pos[p0 + 1], ez = pos[p0 + 5] - pos[p0 + 2];
-        var fx = pos[p0 + 6] - pos[p0], fy = pos[p0 + 7] - pos[p0 + 1], fz = pos[p0 + 8] - pos[p0 + 2];
-        var cx = ey * fz - ez * fy, cy = ez * fx - ex * fz, cz = ex * fy - ey * fx;
-        var ar = Math.hypot(cx, cy, cz) / 2;
-        st.area += ar;
-        st.c[0] += ar * (pos[p0] + pos[p0 + 3] + pos[p0 + 6]) / 3;
-        st.c[1] += ar * (pos[p0 + 1] + pos[p0 + 4] + pos[p0 + 7]) / 3;
-        st.c[2] += ar * (pos[p0 + 2] + pos[p0 + 5] + pos[p0 + 8]) / 3;
-        st.n[0] += cx / 2; st.n[1] += cy / 2; st.n[2] += cz / 2;
-      }
-      var geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-      geo.setAttribute('color', new THREE.BufferAttribute(colr, 3));
-      geo.setAttribute('seam', new THREE.BufferAttribute(seam, 1));
-      geo.computeBoundingSphere();
-      var mesh = new THREE.Mesh(geo, material);
-      mesh.userData.fr = fr;
-      body.add(mesh);
-      meshes.push(mesh);
-      faceRegion.push(fr);
 
-    });
-    /* Komşu bölgeler üç tondan farklı birini alıyor (açgözlü boyama): dikişe ek
-       olarak ton farkı da bölgelerin nerede ayrıldığını gösteriyor. */
-    // Ayrı parçalardan kurulan komşular (avuç–parmaklar, ayak–parmaklar) ızgarada
-    // yan yana düşmüyor; komşulukları elle ekleniyor ki onlar da ayrı tonda dursun.
-    ['Sağ', 'Sol'].forEach(function (sd) {
-      [['el', 'parmaklar'], ['ayak üstü', 'ayak parmakları'], ['ayak tabanı', 'ayak parmakları'],
-       ['el bileği', 'parmaklar']].forEach(function (pr) {
-        var x = INDEX[sd + ' ' + pr[0]], y = INDEX[sd + ' ' + pr[1]];
-        adj[x][y] = 1; adj[y][x] = 1;
-      });
-    });
-    var TONE = [1.0, 1.085, 0.9], tone = REGIONS.map(function () { return 0; });
-    REGIONS.forEach(function (r, i) {
-      var used = {};
-      Object.keys(adj[i]).forEach(function (n) { if (+n < i) used[tone[+n]] = 1; });
-      var t = 0; while (used[t] && t < 2) t++;
-      tone[i] = t;
-    });
-    stats.forEach(function (st) {
-      if (!st.area) return;
-      st.c = st.c.map(function (v) { return v / st.area; });
-      var l = Math.hypot(st.n[0], st.n[1], st.n[2]);
-      st.dir = l / st.area; // 1'e yakınsa bölge tek bir yöne bakıyor, 0'a yakınsa sarıyor
-      st.n = l ? st.n.map(function (v) { return v / l; }) : [0, 0, 1];
-    });
+    // Işın ızgarası ilk dokunuşta ya da ilk kareden hemen sonra kuruluyor; açılışı geciktirmesin.
+    var gridObj = null;
+    function grid() { if (!gridObj) gridObj = new Grid(B.pos, B.index, B.nt); return gridObj; }
+    setTimeout(function () { if (!disposed) grid(); }, 400);
+    var stats = B.stats;
+    var BASE = assignColors(B.adj).map(hexRGB);
+    var SEV = { 1: hexRGB(COL.sev[1]), 2: hexRGB(COL.sev[2]), 3: hexRGB(COL.sev[3]) };
 
     /* Zemin: modelin altında yumuşak bir ışık halkası ve gölge. */
     function radialTex(stops) {
@@ -825,14 +814,14 @@
     }
     function flat(r, tex, y, opacity) {
       var m = new THREE.Mesh(new THREE.CircleGeometry(r, 64),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: opacity == null ? 1 : opacity }));
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: opacity == null ? 1 : opacity, toneMapped: false }));
       m.rotation.x = -Math.PI / 2; m.position.y = y; return m;
     }
     var floor = new THREE.Group();
     floor.add(flat(0.62, radialTex([[0, 'rgba(0,148,255,0.20)'], [0.55, 'rgba(0,148,255,0.07)'], [1, 'rgba(0,148,255,0)']]), 0.0005));
     floor.add(flat(0.36, radialTex([[0, 'rgba(0,0,0,0.55)'], [0.6, 'rgba(0,0,0,0.25)'], [1, 'rgba(0,0,0,0)']]), 0.001));
     var ring = new THREE.Mesh(new THREE.RingGeometry(0.47, 0.475, 96),
-      new THREE.MeshBasicMaterial({ color: 0x0094ff, transparent: true, opacity: 0.35, depthWrite: false }));
+      new THREE.MeshBasicMaterial({ color: 0x0094ff, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.0015; floor.add(ring);
     scene.add(floor);
 
@@ -854,7 +843,7 @@
       x.fill(); x.stroke();
       x.fillStyle = '#b5bac4'; x.fillText(text, 128, 49);
       var tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-      var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false }));
+      var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, toneMapped: false }));
       sp.scale.set(0.2, 0.075, 1);
       return sp;
     }
@@ -868,56 +857,49 @@
       requestRender();
     }
 
-    /* ── Renk durumu ── */
+    /* ── Renk durumu ──
+       İşaretsiz bölge atlas renginde. Bir bölge işaretlenince şiddet rengine
+       geçiyor; o sırada işaretsizler griye dönüp soluyor — atlasın sarısı "orta"
+       ile, kırmızısı "yüksek" ile karışmasın. Seçili bölge (panelde açık olan)
+       açık bir kenarla. */
     var state = { map: {}, active: null, hover: null };
-    var cBase = new THREE.Color(COL.base), cHover = new THREE.Color(COL.hover), cActive = new THREE.Color(COL.active);
-    var cSev = { 1: new THREE.Color(COL.sev[1]), 2: new THREE.Color(COL.sev[2]), 3: new THREE.Color(COL.sev[3]) };
-    var cWhite = new THREE.Color(0xffffff);
-    var regionRGB = new Float32Array(REGIONS.length * 3);
+    function mixW(c, f) { return [c[0] + (255 - c[0]) * f, c[1] + (255 - c[1]) * f, c[2] + (255 - c[2]) * f]; }
     function recolor() {
-      var tmp = new THREE.Color();
+      var any = false;
+      for (var k in state.map) if (state.map[k] && INDEX[k] != null) { any = true; break; }
       REGIONS.forEach(function (r, i) {
-        var sev = state.map[r.k];
-        if (sev && cSev[sev]) {
-          // Şiddetin rengi; o an panelde açık olan bölge bir tık parlak, diğerleri
-          // bir tık tok — renk tonu değişmeden hangisinin seçili olduğu belli oluyor.
-          tmp.copy(cSev[sev]);
-          if (r.k === state.active) tmp.lerp(cWhite, 0.1);
-          else if (r.k === state.hover) tmp.lerp(cWhite, 0.06);
-          else if (state.active) tmp.lerp(cBase, 0.3);
-        } else if (r.k === state.active) tmp.copy(cActive);
-        else if (r.k === state.hover) tmp.copy(cHover);
-        else tmp.copy(cBase).multiplyScalar(TONE[tone[i]]);
-        regionRGB[i * 3] = tmp.r; regionRGB[i * 3 + 1] = tmp.g; regionRGB[i * 3 + 2] = tmp.b;
+        var sev = SEV[state.map[r.k]], act = r.k === state.active, hov = r.k === state.hover && !act;
+        var c = sev || BASE[i], a = sev ? 0.93 : 0.8;
+        if (!sev && any) { c = [c[0] + (128 - c[0]) * 0.9, c[1] + (132 - c[1]) * 0.9, c[2] + (142 - c[2]) * 0.9]; a = 0.45; }
+        if (act && !sev) { c = mixW(c, 0.22); a = 0.95; }
+        if (hov) { c = mixW(c, 0.16); a = Math.min(0.95, a + 0.18); }
+        var o = i * 4, f = (NK + i) * 4;
+        palData[o] = c[0]; palData[o + 1] = c[1]; palData[o + 2] = c[2]; palData[o + 3] = Math.round(a * 255);
+        // 4. kanal: dikişin gücü — soluk (işaretsiz, başka bir bölge işaretliyken) bölgede daha ince.
+        palData[f] = act ? 255 : 0; palData[f + 1] = sev ? 255 : 0; palData[f + 2] = hov ? 255 : 0;
+        palData[f + 3] = !sev && !act && any ? 140 : 255;
       });
-      meshes.forEach(function (m) {
-        var fr = m.userData.fr, arr = m.geometry.attributes.color.array;
-        for (var t = 0; t < fr.length; t++) {
-          var s = fr[t] * 3, o = t * 9;
-          arr[o] = arr[o + 3] = arr[o + 6] = regionRGB[s];
-          arr[o + 1] = arr[o + 4] = arr[o + 7] = regionRGB[s + 1];
-          arr[o + 2] = arr[o + 5] = arr[o + 8] = regionRGB[s + 2];
-        }
-        m.geometry.attributes.color.needsUpdate = true;
-      });
+      palTex.needsUpdate = true;
       requestRender();
     }
 
     /* ── Kamera ──
        Hedef noktanın etrafında dönen bir yörünge: yaw (sağa-sola), pitch (yukarı-
        aşağı), uzaklık. Her kare, o anki değer hedef değere yumuşakça yaklaşıyor. */
-    var HOME = { x: 0, y: 0.93, z: 0 };
+    // Başın üstünde görünüm seçiciye yer kalsın diye merkez biraz yukarıda.
+    var HOME = { x: 0, y: 0.96, z: 0 };
     var cur = { yaw: 0.85, pitch: 0.16, dist: 5, x: HOME.x, y: HOME.y, z: HOME.z };
     var goal = { yaw: 0, pitch: 0.06, dist: 5, x: HOME.x, y: HOME.y, z: HOME.z };
     var fitDist = 5, width = 1, height = 1;
-    var PITCH_MIN = -0.8, PITCH_MAX = 1.05, MIN_DIST = 0.55;
+    var PITCH_MIN = -0.8, PITCH_MAX = 1.05, MIN_DIST = 0.42;
     var reduced = false;
     try { reduced = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
     if (reduced) { cur.yaw = goal.yaw; cur.pitch = goal.pitch; }
+    var ZONES = zonePresets(B.meta.joints), zoneState = null;
 
     function computeFit() {
       var tv = Math.tan(FOV * DEG / 2), aspect = width / Math.max(1, height);
-      var dV = (0.5 * 1.98) / tv, dH = (0.5 * 0.95) / (tv * aspect);
+      var dV = (0.5 * 2.1) / tv, dH = (0.5 * 0.95) / (tv * aspect);
       return Math.max(dV, dH) + 0.25;
     }
     function maxDist() { return fitDist * 1.12; }
@@ -935,6 +917,8 @@
         cur.z + cur.dist * cp * Math.cos(cur.yaw));
       camera.lookAt(cur.x, cur.y, cur.z);
     }
+    // Kullanıcı modeli kendisi çevirince/yaklaştırınca hızlı yakınlaşma düğmesi söner.
+    function clearZone() { if (zoneState) { zoneState = null; if (opts.onZone) opts.onZone(null, 0); } }
 
     var raf = 0, dirty = true, lastT = 0, inertia = 0, dragging = false, disposed = false, lastView = null;
     function requestRender() { dirty = true; if (!raf && !disposed) raf = global.requestAnimationFrame(frame); }
@@ -960,6 +944,7 @@
         sp.material.opacity = clamp((d + 0.85) / 0.6, 0, 1);
       });
       renderer.render(scene, camera);
+      drawLabels();
       dirty = false;
       // Hangi yüzden bakıldığı (ön / arka / sağ / sol): arayüz o düğmeyi yakıyor.
       var q = Math.round(wrapPi(cur.yaw) / (Math.PI / 2));
@@ -969,8 +954,98 @@
       else lastT = 0;
     }
 
+    /* ── Etiketler ──
+       İşaretlenen (ve o an seçili) her bölge için, referans görseldeki gibi yan
+       tarafta bir kutu ve bölgeye inen ince bir çizgi. Bölge o açıdan görünmüyorsa
+       (arkada kalıyor ya da önünde başka bir uzuv var) etiketi de çizilmiyor.
+       Kutular modelin solunda ve sağında iki sütuna diziliyor, üst üste binmiyor;
+       iki satır: bölgenin adı ve şiddeti. */
+    var tmpV = new THREE.Vector3(), LFONT = '600 11px "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif';
+    var SFONT = '700 10.5px "Space Grotesk", "Inter", "Segoe UI", system-ui, sans-serif';
+    function roundRect(x, X, Y, w, h, r) {
+      x.beginPath(); x.moveTo(X + r, Y); x.lineTo(X + w - r, Y); x.arcTo(X + w, Y, X + w, Y + r, r);
+      x.lineTo(X + w, Y + h - r); x.arcTo(X + w, Y + h, X + w - r, Y + h, r); x.lineTo(X + r, Y + h);
+      x.arcTo(X, Y + h, X, Y + h - r, r); x.lineTo(X, Y + r); x.arcTo(X, Y, X + r, Y, r); x.closePath();
+    }
+    function fitText(x, t, max) {
+      if (x.measureText(t).width <= max) return t;
+      while (t.length > 1 && x.measureText(t + '…').width > max) t = t.slice(0, -1);
+      return t + '…';
+    }
+    function drawLabels() {
+      var W = width, H = height, pr = labDpr;
+      var x = lab.getContext('2d'); if (!x) return;
+      x.setTransform(pr, 0, 0, pr, 0, 0);
+      x.clearRect(0, 0, W, H);
+      if (!opts.label) return;
+      var keys = Object.keys(state.map).filter(function (k) { return state.map[k] && INDEX[k] != null; });
+      if (state.active && INDEX[state.active] != null && keys.indexOf(state.active) < 0) keys.push(state.active);
+      if (!keys.length) return;
+      var cp = camera.position, items = [];
+      keys.forEach(function (k) {
+        var st = stats[INDEX[k]]; if (!st || !st.cands) return;
+        // Kameraya en çok bakan adaylardan önü açık olan ilki.
+        var cs = st.cands.map(function (c) {
+          var vx = cp.x - c[0], vy = cp.y - c[1], vz = cp.z - c[2], dl = Math.sqrt(vx * vx + vy * vy + vz * vz);
+          return { c: c, dl: dl, v: [vx / dl, vy / dl, vz / dl], f: (c[3] * vx + c[4] * vy + c[5] * vz) / dl };
+        }).filter(function (o) { return o.f > 0.12; }).sort(function (p, q) { return q.f - p.f; }).slice(0, 3);
+        var a = null;
+        for (var ci = 0; ci < cs.length && !a; ci++) {
+          var o = cs[ci], hit = grid().cast([cp.x, cp.y, cp.z], [-o.v[0], -o.v[1], -o.v[2]], o.dl + 0.01);
+          if (!hit || hit.t >= o.dl - 0.012) a = o.c;
+        }
+        if (!a) return;
+        tmpV.set(a[0], a[1], a[2]).project(camera);
+        var sx = (tmpV.x + 1) / 2 * W, sy = (1 - tmpV.y) / 2 * H;
+        if (tmpV.z > 1 || sx < 4 || sx > W - 4 || sy < 4 || sy > H - 4) return;
+        var info = opts.label(k); if (!info) return;
+        items.push({ sx: sx, sy: sy, t: info.t, s: info.s || '', c: info.c || COL.active, act: k === state.active });
+      });
+      if (!items.length) return;
+      // Kaçınılacak kutular (sahnedeki düğmeler): etiket onların altına iniyor.
+      var avoid = [];
+      try { avoid = (opts.labelAvoid && opts.labelAvoid()) || []; } catch (e) { avoid = []; }
+      tmpV.set(cur.x, cur.y, cur.z).project(camera);
+      var mid = (tmpV.x + 1) / 2 * W, bottom = H - 8, GAP = 5, PAD = 8;
+      var maxW = Math.max(84, Math.min(136, W * 0.38));
+      items.forEach(function (it) {
+        x.font = LFONT;
+        it.name = fitText(x, it.t, maxW - 2 * PAD - 8);
+        var w1 = x.measureText(it.name).width, w2 = 0;
+        if (it.s) { x.font = SFONT; w2 = x.measureText(it.s).width; }
+        it.w = Math.ceil(Math.max(w1 + 8, w2 + 8) + 2 * PAD); it.h = it.s ? 34 : 22;
+      });
+      [[items.filter(function (it) { return it.sx < mid; }), true], [items.filter(function (it) { return it.sx >= mid; }), false]].forEach(function (col) {
+        var list = col[0], left = col[1];
+        list.sort(function (p, q) { return p.sy - q.sy; });
+        list.forEach(function (it) {
+          it.bx = left ? 6 : W - 6 - it.w; it.minY = 8;
+          avoid.forEach(function (r) { if (it.bx < r.right + 4 && it.bx + it.w > r.left - 4) it.minY = Math.max(it.minY, r.bottom + 6); });
+        });
+        var y = 8;
+        list.forEach(function (it) { it.y = Math.max(it.sy - it.h / 2, y, it.minY); y = it.y + it.h + GAP; });
+        var lim = bottom;
+        for (var i = list.length - 1; i >= 0; i--) { list[i].y = Math.max(list[i].minY, Math.min(list[i].y, lim - list[i].h)); lim = list[i].y - GAP; }
+        list.forEach(function (it) {
+          var bx = it.bx, by = Math.round(it.y);
+          var cy = by + it.h / 2, ex = left ? bx + it.w : bx, knee = left ? ex + 7 : ex - 7;
+          x.strokeStyle = 'rgba(255,255,255,0.78)'; x.lineWidth = 1;
+          x.beginPath(); x.moveTo(ex, cy); x.lineTo(knee, cy); x.lineTo(it.sx, it.sy); x.stroke();
+          x.beginPath(); x.arc(it.sx, it.sy, 3.5, 0, Math.PI * 2); x.fillStyle = it.c; x.fill();
+          x.lineWidth = 1.5; x.strokeStyle = '#ffffff'; x.stroke();
+          roundRect(x, bx, by, it.w, it.h, 7);
+          x.fillStyle = 'rgba(14,16,20,0.9)'; x.fill();
+          x.lineWidth = it.act ? 1.5 : 1; x.strokeStyle = it.act ? '#ffffff' : it.c; x.stroke();
+          x.fillStyle = it.c; x.beginPath(); x.arc(bx + PAD + 2.5, by + 11, 3, 0, Math.PI * 2); x.fill();
+          x.textBaseline = 'middle';
+          x.font = LFONT; x.fillStyle = '#eef0f3'; x.fillText(it.name, bx + PAD + 9, by + 11.5);
+          if (it.s) { x.font = SFONT; x.fillStyle = it.c; x.fillText(it.s, bx + PAD + 9, by + 25); }
+        });
+      });
+    }
+
     /* ── Boyut ── */
-    var host = null, ro = null;
+    var host = null, ro = null, labDpr = Math.min(2, global.devicePixelRatio || 1);
     function resize() {
       if (!host) return;
       var w = host.clientWidth, h = host.clientHeight;
@@ -978,6 +1053,7 @@
       var oldFit = fitDist;
       width = w; height = h;
       renderer.setSize(w, h, false);
+      lab.width = Math.round(w * labDpr); lab.height = Math.round(h * labDpr);
       camera.aspect = w / h; camera.updateProjectionMatrix();
       fitDist = computeFit();
       var ratioC = cur.dist / oldFit, ratioG = goal.dist / oldFit;
@@ -987,8 +1063,10 @@
     }
     function attach(el) {
       host = el;
-      // Tuvalin üstündeki düğmeler ve yazılar görünür kalsın: tuval hep en altta.
+      // Tuvalin üstündeki düğmeler ve yazılar görünür kalsın: tuval hep en altta,
+      // etiket katmanı hemen üstünde.
       el.insertBefore(canvas, el.firstChild);
+      el.insertBefore(lab, canvas.nextSibling);
       if (ro) ro.disconnect();
       if (global.ResizeObserver) { ro = new ResizeObserver(resize); ro.observe(el); }
       else global.addEventListener('resize', resize);
@@ -1003,12 +1081,20 @@
       ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
       applyCamera(); camera.updateMatrixWorld();
       raycaster.setFromCamera(ndc, camera);
-      var hit = raycaster.intersectObjects(meshes, false)[0];
-      if (!hit || hit.faceIndex == null) return null;
-      var reg = hit.object.userData.fr[hit.faceIndex];
-      return { key: REGIONS[reg].k, point: hit.point };
+      var o = raycaster.ray.origin, d = raycaster.ray.direction;
+      var hit = grid().cast([o.x, o.y, o.z], [d.x, d.y, d.z]), best = hit ? hit.t : Infinity;
+      var key = hit ? REGIONS[B.faceRegion[hit.face]].k : null;
+      // Göz küreleri ağın parçası değil; onlara dokunmak da baş.
+      eyes.forEach(function (e) {
+        var ox = o.x - e.c[0], oy = o.y - e.c[1], oz = o.z - e.c[2];
+        var bq = ox * d.x + oy * d.y + oz * d.z, cq = ox * ox + oy * oy + oz * oz - e.r * e.r, disc = bq * bq - cq;
+        if (disc < 0) return;
+        var t = -bq - Math.sqrt(disc);
+        if (t > 0 && t < best) { best = t; key = 'Baş'; }
+      });
+      if (!key) return null;
+      return { key: key, point: { x: o.x + d.x * best, y: o.y + d.y * best, z: o.z + d.z * best } };
     }
-
     /* ── Dokunma ve fare ──
        Satır içinde (formun ortasında) tek parmakla YATAY kaydırma modeli çeviriyor;
        dikey kaydırma sayfayı kaydırmaya devam ediyor (touch-action: pan-y) —
@@ -1048,6 +1134,7 @@
         gesture.lx = e.clientX; gesture.ly = e.clientY;
         if (!gesture.moved) return;
         dragging = true;
+        clearZone();
         var sp = 5.2 / Math.max(260, width);
         goal.yaw -= dx * sp;
         if (full || gesture.type === 'mouse') goal.pitch = clamp(goal.pitch + dy * sp * 0.8, PITCH_MIN, PITCH_MAX);
@@ -1055,6 +1142,7 @@
         gesture.vx = 0.7 * gesture.vx + 0.3 * (dx * sp / dtm); gesture.lt = now;
         requestRender();
       } else if (gesture.kind === 'two' && npt >= 2) {
+        clearZone();
         var q = ptList();
         var d = Math.hypot(q[0].x - q[1].x, q[0].y - q[1].y) || 1;
         goal.dist = gesture.dist0 * gesture.d0 / d;
@@ -1106,7 +1194,7 @@
       if (hit) {
         // Yakınlaşmışken dokunulan nokta ortaya geliyor; çift dokunuş oraya yaklaşıyor.
         if (dbl) { goal.dist = Math.max(MIN_DIST + 0.1, Math.min(goal.dist, fitDist) * 0.5); }
-        if (dbl || goal.dist < fitDist * 0.8) { goal.x = hit.point.x; goal.y = hit.point.y; goal.z = hit.point.z * 0.5; }
+        if (dbl || goal.dist < fitDist * 0.8) { goal.x = hit.point.x; goal.y = hit.point.y; goal.z = hit.point.z * 0.5; clearZone(); }
         clampGoal();
         requestRender();
         if (opts.onPick) opts.onPick(hit.key);
@@ -1118,6 +1206,7 @@
     function onWheel(e) {
       if (!full && !e.ctrlKey) return;
       e.preventDefault();
+      clearZone();
       goal.dist *= Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0015));
       clampGoal(); requestRender();
     }
@@ -1145,10 +1234,27 @@
       if (y == null) return;
       goal.yaw = nearYaw(y); goal.pitch = 0.06; goal.dist = fitDist;
       goal.x = HOME.x; goal.y = HOME.y; goal.z = HOME.z; inertia = 0;
+      clearZone();
       requestRender();
     }
     function reset() { view('front'); }
-    function zoom(f) { goal.dist *= f; clampGoal(); requestRender(); }
+    function zoom(f) { goal.dist *= f; clampGoal(); clearZone(); requestRender(); }
+    /* Hızlı yakınlaşma (baş / el / diz / ayak). Aynı düğmeye yeniden basmak o
+       bölgenin ikinci görünümüne geçiyor. Hangi görünümde olunduğu dönüyor. */
+    function zone(name) {
+      var Z = ZONES[name]; if (!Z) return -1;
+      var idx = zoneState && zoneState.name === name ? (zoneState.idx + 1) % Z.length : 0, z = Z[idx];
+      var tv = Math.tan(FOV * DEG / 2), aspect = width / Math.max(1, height);
+      goal.yaw = nearYaw(z[0]); goal.pitch = z[1];
+      goal.x = z[2]; goal.y = z[3]; goal.z = z[4];
+      goal.dist = Math.max(z[5] / 2 / tv, z[6] / 2 / (tv * aspect));
+      inertia = 0;
+      clampGoal();
+      zoneState = { name: name, idx: idx };
+      if (opts.onZone) opts.onZone(name, idx);
+      requestRender();
+      return idx;
+    }
     /* Bir bölgeye dön: kamera bölgenin baktığı yöne geçip ona yaklaşıyor. Kendi
        etrafını saran bölgelerde (el, parmaklar) ortalama yön anlamsız olduğundan
        gövdenin ekseninden bölgeye doğru olan yön kullanılıyor. */
@@ -1177,6 +1283,7 @@
       goal.x = st.c[0]; goal.y = st.c[1]; goal.z = st.c[2] * 0.5;
       inertia = 0;
       clampGoal();
+      clearZone();
       // Uzaklık en uzakta kaldıysa clampGoal hedefi merkeze aldı; bakış yönü yine de doğru.
       requestRender();
     }
@@ -1198,31 +1305,37 @@
         if (o.geometry) o.geometry.dispose();
         if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); }
       });
+      palTex.dispose();
       renderer.dispose();
       try { renderer.forceContextLoss(); } catch (e) {}
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+      if (lab.parentNode) lab.parentNode.removeChild(lab);
     }
 
     canvas.style.touchAction = 'pan-y';
     setLabels(opts.right || 'SAĞ', opts.left || 'SOL');
     recolor();
     return {
-      canvas: canvas, attach: attach, update: update, focus: focus, view: view, reset: reset, zoom: zoom,
-      setLabels: setLabels, setExpanded: setExpanded, resize: resize, dispose: dispose,
-      // Test ve hata ayıklama için: bir bölgenin ekrandaki yaklaşık konumu.
+      canvas: canvas, attach: attach, update: update, focus: focus, view: view, zone: zone, reset: reset, zoom: zoom,
+      setLabels: setLabels, setExpanded: setExpanded, resize: resize, dispose: dispose, redraw: requestRender,
+      // Test ve hata ayıklama için: bir bölgenin ekrandaki yaklaşık konumu (yüzeydeki
+      // çapa noktası) ve istatistikleri.
       project: function (k) {
-        var i = INDEX[k]; if (i == null || !stats[i].area) return null;
+        var i = INDEX[k]; if (i == null || !stats[i].anchor) return null;
         applyCamera(); camera.updateMatrixWorld();
-        var v = new THREE.Vector3(stats[i].c[0], stats[i].c[1], stats[i].c[2]).project(camera);
+        var a = stats[i].anchor, v = new THREE.Vector3(a[0], a[1], a[2]).project(camera);
         var r = canvas.getBoundingClientRect();
         return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height };
       },
+      pickAt: function (x, y) { var h = pick(x, y); return h ? h.key : null; },
       stats: function (k) { var i = INDEX[k]; return i == null ? null : stats[i]; }
     };
   }
 
   global.PainBody = {
     REGIONS: REGIONS, GROUPS: GROUPS, byKey: BY_KEY, COLORS: COL,
-    load: load, create: create, glAvailable: glAvailable
+    load: load, create: create, glAvailable: glAvailable,
+    // Model dosyasını Node'da ya da testte doğrudan açmak için.
+    _build: buildBody
   };
 })(typeof window !== 'undefined' ? window : this);

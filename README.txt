@@ -107,11 +107,13 @@ metric picked in the header (Readiness / Sleep / Fatigue /
 Soreness / RHR) and sorted by average.
 
 PAIN ON THE GRID
-The daily check-in asks "Ağrın hangi bölgede ve şiddette?" on a 3D
-body model (pain-body.js): the athlete turns it, taps a region and
-picks a severity (Hafif / Orta / Yüksek). 72 regions, right and
-left apart ("Sağ diz önü", "Sol Aşil"…), plus "Diğer: …" for what
-the athlete types. Older check-ins were a matrix with one row per
+The daily check-in asks "Ağrın hangi bölgede ve şiddette?" on a
+realistic 3D body model (pain-body.js + pain-body.bin, a CC0
+MakeHuman body built by tools/pain-body-mesh): the athlete turns
+it, taps a region — painted like an anatomy atlas, or reached with
+the Head / Hand / Knee / Foot zoom buttons — and picks a severity
+(Hafif / Orta / Yüksek). 72 regions, right and left apart ("Sağ diz
+önü", "Sol Aşil"…), plus "Diğer: …" for what the athlete types. Older check-ins were a matrix with one row per
 body region (Diz, Bel…) and keep their names. Whatever the athlete ticks shows up INSIDE that
 day's own box:
   - a pip in the corner, coloured by the WORST severity reported

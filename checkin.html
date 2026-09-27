@@ -36,7 +36,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- Ağrı haritasının bölge kataloğu ve 3D modeli. Three.js'i kendisi, yalnızca
      Wellness formu açılınca yüklüyor; RPE formu bu dosyadan hiçbir şey indirmiyor. -->
-<script src="pain-body.js?v=1"></script>
+<script src="pain-body.js?v=2"></script>
 <style>
 /* Uygulamanın kendi değişkenleri (index.html :root). Form, sitenin devamı gibi
    görünsün diye renk, yazı tipi ve panel dili birebir oradan alınıyor — sporcunun
@@ -211,10 +211,11 @@ input::placeholder{color:var(--dim)}
 /* Satır içinde dikey kaydırma sayfanın: parmak modelin üstüne denk gelse de form
    aşağı kayabiliyor. Yatay kaydırma modeli çeviriyor. Tam ekranda hepsi modelin. */
 .pb-view canvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;touch-action:pan-y}
-.pb-hint{position:absolute;left:12px;top:54px;right:58px;z-index:2;pointer-events:none;
-  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;letter-spacing:.03em;line-height:1.5;
-  color:var(--muted);transition:opacity .5s}
-.pb-hint.gone{opacity:0}
+/* Hareket ipucu panelde, "dokun" satırının altında: modelin üstüne binmiyor.
+   İlk dokunuştan sonra işini gördü, kalkıyor. */
+.pb-hint{margin:-4px 0 10px 27px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.02em;line-height:1.5;color:var(--dim)}
+.pb-hint.gone{display:none}
 .pb-tools{position:absolute;right:10px;top:10px;z-index:2;display:flex;flex-direction:column;gap:6px}
 .pb-tool{width:36px;height:36px;padding:0;border-radius:10px;border:1px solid var(--border2);cursor:pointer;
   background:rgba(20,23,28,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:var(--text2);
@@ -234,6 +235,22 @@ input::placeholder{color:var(--dim)}
 .pb-views button:hover{color:var(--text)}
 .pb-views button.on{background:var(--accent-bg);color:var(--accent2)}
 @media (max-width:360px){.pb-views button{padding:6px 9px;font-size:10px}}
+/* Hızlı yakınlaşma: referans görseldeki baş / el / diz / ayak kutuları gibi. Modelin
+   hemen altında ayrı bir şerit — modelin üstüne binmiyor. Aynı düğmeye yeniden basmak
+   ikinci görünüme geçiyor (ense, öbür el, dizlerin ve ayakların arkası). */
+.pb-zonebar{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--border);background:var(--bg2)}
+.pb-zonebar-l{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);flex:none}
+.pb-zones{display:flex;gap:5px;flex:1;min-width:0}
+.pb-zones button{flex:1;min-width:0;border:1px solid var(--border2);background:rgba(20,23,28,.6);color:var(--text2);cursor:pointer;
+  border-radius:9px;padding:8px 4px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background .15s,color .15s,border-color .15s,transform .12s}
+.pb-zones button:hover{color:var(--text);border-color:var(--muted)}
+.pb-zones button:active{transform:scale(.95)}
+.pb-zones button.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent2)}
+.pb-stage.nogl .pb-zonebar{display:none}
+@media (max-width:360px){.pb-zonebar-l{display:none}}
 .pb-tip{position:absolute;left:0;top:0;z-index:3;pointer-events:none;padding:5px 9px;border-radius:7px;
   background:rgba(10,12,16,.92);border:1px solid var(--border2);color:var(--text);font-size:12px;font-weight:600;
   white-space:nowrap;opacity:0;transition:opacity .12s}
@@ -312,7 +329,6 @@ html.pb-lock,html.pb-lock body{overflow:hidden}
   background:var(--bg)}
 .pb-full .pb-view{flex:1;height:auto;min-height:0}
 .pb-full .pb-view canvas{touch-action:none}
-.pb-full .pb-hint{top:calc(56px + env(safe-area-inset-top));font-size:11px}
 .pb-full .pb-tools,.pb-full .pb-views{top:calc(10px + env(safe-area-inset-top))}
 .pb-full .pb-panel{padding-bottom:calc(14px + env(safe-area-inset-bottom));box-shadow:0 -12px 30px -18px rgba(0,0,0,.8)}
 .pb-full .pb-panel-in{max-width:620px;margin:0 auto}
@@ -425,6 +441,7 @@ var I18N={
     pb_drag_full:'Çevir · iki parmakla yakınlaştır · bölgeye dokun',
     pb_drag_mouse:'Sürükleyerek çevir · bölgeye tıkla · Ctrl + tekerlek yakınlaştırır',
     pb_front:'Ön',pb_back:'Arka',pb_right:'Sağ',pb_left:'Sol',pb_R:'SAĞ',pb_L:'SOL',
+    pb_zones:'Yakınlaş',pb_z_head:'Baş',pb_z_hand:'El',pb_z_knee:'Diz',pb_z_foot:'Ayak',
     pb_zin:'Yakınlaştır',pb_zout:'Uzaklaştır',pb_reset:'Baştan göster',pb_full:'Tam ekran',pb_exit:'Tam ekrandan çık',
     pb_tap:'Ağrıyan bölgeye dokun ya da listeden seç',pb_list_ph:'— Listeden bölge seç —',
     pb_pick_sev:'Ağrının şiddetini seç',pb_clear:'Kaldır',pb_close:'Kapat',
@@ -486,6 +503,7 @@ var I18N={
     pb_drag_full:'Turn · pinch to zoom · tap a region',
     pb_drag_mouse:'Drag to turn · click a region · Ctrl + wheel zooms',
     pb_front:'Front',pb_back:'Back',pb_right:'Right',pb_left:'Left',pb_R:'RIGHT',pb_L:'LEFT',
+    pb_zones:'Zoom to',pb_z_head:'Head',pb_z_hand:'Hand',pb_z_knee:'Knee',pb_z_foot:'Foot',
     pb_zin:'Zoom in',pb_zout:'Zoom out',pb_reset:'Reset view',pb_full:'Full screen',pb_exit:'Exit full screen',
     pb_tap:'Tap where it hurts, or pick from the list',pb_list_ph:'— Pick a region from the list —',
     pb_pick_sev:'Pick how bad it is',pb_clear:'Remove',pb_close:'Close',
@@ -778,7 +796,7 @@ function question(label,required,node,scaleHtml,filledFn){
    yeni DOM'a taşınıyor — her çizimde yeni bir WebGL bağlamı açmak telefonda bağlam
    sınırına takılıyordu. 3D açılamazsa (WebGL yok, Three.js inmedi) panel bölgeyi
    listeden seçtiriyor; veri iki yolda da aynı. */
-var PB={viewer:null,state:'idle',active:null,full:false,pushed:false,ui:null,hinted:false,view:'front'};
+var PB={viewer:null,state:'idle',active:null,full:false,pushed:false,ui:null,hinted:false,view:'front',zone:null};
 var PB_SEV_COL={1:'#46d6a0',2:'#fcd34d',3:'#ff6b5b'};
 var PB_ICONS={
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -819,6 +837,17 @@ function painBody(){
     var b=el('button',{type:'button',text:T(v[1]),onclick:function(){if(PB.viewer)PB.viewer.view(v[0]);}});
     ui.viewBtns[v[0]]=b;ui.views.appendChild(b);
   });
+  ui.zones=el('div',{class:'pb-zones',role:'group','aria-label':T('pb_zones')});
+  ui.zonebar=el('div',{class:'pb-zonebar'},[el('span',{class:'pb-zonebar-l',text:T('pb_zones')}),ui.zones]);
+  ui.zoneBtns={};
+  [['head','pb_z_head'],['hand','pb_z_hand'],['knee','pb_z_knee'],['foot','pb_z_foot']].forEach(function(z){
+    var b=el('button',{type:'button',text:T(z[1]),onclick:function(){
+      if(!PB.viewer)return;
+      if(!PB.hinted&&PB.ui){PB.hinted=true;PB.ui.hint.classList.add('gone');}
+      PB.viewer.zone(z[0]);
+    }});
+    ui.zoneBtns[z[0]]=b;ui.zones.appendChild(b);
+  });
   ui.fullBtn=pbToolBtn('expand',T('pb_full'),function(){pbSetFull(!PB.full);});
   ui.fullBtn.classList.add('sep');
   ui.tools=el('div',{class:'pb-tools'},[
@@ -827,18 +856,19 @@ function painBody(){
     pbToolBtn('reset',T('pb_reset'),function(){if(PB.viewer)PB.viewer.reset();}),
     ui.fullBtn
   ]);
-  [ui.status,ui.hint,ui.tools,ui.views,ui.tip].forEach(function(n){ui.view.appendChild(n);});
+  [ui.status,ui.tools,ui.views,ui.tip].forEach(function(n){ui.view.appendChild(n);});
   // İlk dokunuşta ipucu kayboluyor: işini gördü.
   ui.view.addEventListener('pointerdown',function(e){
     if(e.target&&e.target.tagName==='CANVAS'&&!PB.hinted){PB.hinted=true;ui.hint.classList.add('gone');}
   });
   ui.panel=el('div',{class:'pb-panel'});
-  ui.stage=el('div',{class:'pb-stage'},[ui.view,ui.panel]);
+  ui.stage=el('div',{class:'pb-stage'},[ui.view,ui.zonebar,ui.panel]);
   ui.list=el('div',{class:'pb-list'});
   ui.other=pbOther();
   PB.ui=ui;
   pbPaint();
   pbPaintViews();
+  pbPaintZones();
   pbStart();
   return el('div',{class:'pb'},[ui.stage,ui.list,ui.other]);
 }
@@ -868,7 +898,22 @@ function pbStart(){
         pbSetActive(k);
       },
       onHover:pbHover,
-      onView:function(v){PB.view=v;pbPaintViews();}
+      onView:function(v){PB.view=v;pbPaintViews();},
+      onZone:function(z){PB.zone=z;pbPaintZones();},
+      // İşaretlenen bölgenin yanında çizgiyle bağlı etiket: adı ve şiddeti.
+      label:function(k){
+        var sev=A.painMap[k];
+        return {t:pbShortLabel(k),s:sev?pbSevWord(sev):'',c:sev?PB_SEV_COL[sev]:'#ffffff'};
+      },
+      // Etiketler sahnedeki düğmelerin (görünüm seçici, araçlar) altına girmesin.
+      labelAvoid:function(){
+        var u=PB.ui;if(!u)return [];
+        var base=u.view.getBoundingClientRect();
+        return [u.views,u.tools].map(function(n){
+          var r=n.getBoundingClientRect();
+          return {left:r.left-base.left,top:r.top-base.top,right:r.right-base.left,bottom:r.bottom-base.top};
+        });
+      }
     });
     PB.state='ready';
     if(PB.ui)pbStart();
@@ -882,7 +927,7 @@ function pbStatus(kind){
   ui.status.innerHTML='';
   ui.stage.classList.toggle('nogl',kind==='failed');
   ui.status.style.display=kind==='loading'?'':'none';
-  [ui.hint,ui.tools,ui.views].forEach(function(n){n.style.visibility=kind?'hidden':'';});
+  [ui.hint,ui.tools,ui.views,ui.zonebar].forEach(function(n){n.style.visibility=kind?'hidden':'';});
   if(kind==='loading'){
     ui.status.appendChild(el('div',{class:'pb-spin'}));
     ui.status.appendChild(el('div',{text:T('pb_loading')}));
@@ -897,6 +942,16 @@ function pbPaintViews(){
     ui.viewBtns[k].setAttribute('aria-pressed',on?'true':'false');
   });
 }
+function pbPaintZones(){
+  var ui=PB.ui;if(!ui||!ui.zoneBtns)return;
+  Object.keys(ui.zoneBtns).forEach(function(k){
+    var on=k===PB.zone;
+    ui.zoneBtns[k].classList.toggle('on',on);
+    ui.zoneBtns[k].setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+// Etikette kısa ad: parantezli kas adı ("(Quadriceps)") dar ekranda sığmıyor.
+function pbShortLabel(k){return regionLabel(k).replace(/\s*\([^)]*\)\s*$/,'');}
 // Fareyle üzerine gelinen bölgenin adı, imlecin yanında.
 function pbHover(k,x,y){
   var ui=PB.ui;if(!ui)return;
@@ -945,6 +1000,7 @@ function pbPaintPanel(){
       t.innerHTML=PB_ICONS.tap;
       t.appendChild(el('span',{text:T('pb_tap')}));
       inner.appendChild(t);
+      if(ui.hint)inner.appendChild(ui.hint);
     }
     inner.appendChild(pbSelect());
   }else{
