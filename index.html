@@ -30868,22 +30868,28 @@ function atpSnapshot(ath,ref,libMap){
       oncelik:{high:byPri('high'),medium:byPri('medium'),low:byPri('low')},
       kaliteler:ordered.map(({it,r})=>({kalite:it.en,grup:it.group,oncelik:en(ATP_PRIORITY,r.priority)})),
     }:null,
-    kisitlar:{
+    /* No constraint entered, no block: a description with nothing under it reads as
+       data that is missing rather than as "none". */
+    kisitlar:(tp.constraints.hard.length||tp.constraints.soft.length)?{
       aciklama:'hard: kesin olarak uyulması gereken kısıtlar · soft: kesin yasak değil, tercih edilen veya sınırlandırılması gereken durumlar',
-      hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)},
+      hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
     egzersiz_maruziyeti:{
       kaynak:'takvimdeki antrenman kayıtlarından otomatik',
       pencere_bitis:end,
+      /* The profile's own classification, finer than the session's pattern vocabulary
+         and named apart from it so the two lists are never mistaken for each other. */
+      hareket_sinifi_notu:'hareket_sinifi, antrenman profilinin ayrıntılı sınıflamasıdır (ör. Hip Dominant, Horizontal Push); '+
+        'programdaki hareket_paterni alanına bu isimler yazılmaz — o alan yalnızca hareket_paterni_sozlugu içinden seçilir.',
       seviye_olcegi:`High / Moderate / Low / None — set sayısından. 7-14-28 günlük pencereler haftalık ortalamayla okunur: `+
         `tek egzersiz ≥${cut.exercise.week[1]} set/hafta High, ≥${cut.exercise.week[0]} Moderate; aile, patern, uyaran ve yüklenme `+
         `≥${cut.group.week[1]} set/hafta High, ≥${cut.group.week[0]} Moderate. Son seans: tek egzersiz ≥${cut.exercise.session[1]} set High, `+
         `≥${cut.exercise.session[0]} Moderate; diğerleri ≥${cut.group.session[1]} High, ≥${cut.group.session[0]} Moderate. 0 set = None / Not Recent.`,
       son_seans:ex.last?{tarih:ex.last.date,seans:ex.last.name,saat:ex.last.time,egzersiz_sayisi:ex.last.rows}:null,
       seans_sayisi:{son_7_gun:ex.sessions.d7,son_14_gun:ex.sessions.d14,son_28_gun:ex.sessions.d28},
-      egzersiz:ex.exercises.slice(0,30).map(t=>({egzersiz:t.label,aile:t.family,hareket_paterni:t.patterns,uyaran:t.stimuli,
+      egzersiz:ex.exercises.slice(0,30).map(t=>({egzersiz:t.label,aile:t.family,hareket_sinifi:t.patterns,uyaran:t.stimuli,
         yuklenme_karakteri:t.loading,son_kullanim:t.lastUsed,siklik_28_gun:t.freq28,maruziyet:per(t,lvOf),set_sayisi:per(t,(x,w)=>x.sets[w])})),
       egzersiz_ailesi:ex.families.map(item),
-      hareket_paterni:fixed(ex.patterns),
+      hareket_sinifi:fixed(ex.patterns),
       atletik_uyaran:fixed(ex.stimuli),
       yuklenme_karakteri:fixed(ex.loading),
     },
@@ -31010,7 +31016,10 @@ const DI_SPORT_DEMANDS={
 function diSportContext(setup){
   const sport=String((setup&&setup.sport)||'').trim();
   if(!sport)return null;
-  const d=DI_SPORT_DEMANDS[sport];
+  /* Matched without regard to case: an imported or hand-edited setup may say
+     "basketball" where the picker writes "Basketball". */
+  const key=Object.keys(DI_SPORT_DEMANDS).find(k=>k.toLowerCase()===sport.toLowerCase());
+  const d=key?DI_SPORT_DEMANDS[key]:null;
   if(!d)return{spor:sport};
   return{spor:L(d.label[0],d.label[1]),
     oyunun_dogasi:d.game.map(g=>L(g[0],g[1])),
@@ -31325,8 +31334,11 @@ const DI_RTP_STAGES=[
   {id:'comp',    label:['Müsabaka','Competition']},
 ];
 const diRtpRow=id=>DI_RTP_STAGES.find(s=>s.id===id)||null;
+/* An injury whose onset lies after the day being read did not exist on that day —
+   a session written for last Tuesday is not written around Thursday's sprain. */
+const diInjOnsetBy=(i,ref)=>{const d=i&&(i.date||i.firstInjuryDay);return!d||!ref||String(d)<=ref;};
 function diInjury(ath,ref){
-  const all=[...(ath.injuries||[])];
+  const all=(ath.injuries||[]).filter(i=>i&&diInjOnsetBy(i,ref));
   const active=all.filter(i=>!i.actualReturn&&(!i.status||i.status!=='Recovered'));
   const fmtInj=i=>({type:i.type||null,region:i.location||i.area||null,side:i.side||null,
     diagnosis:i.diagnosis||i.tissueType||null,onset:i.date||null,status:i.status||null,
@@ -31702,8 +31714,11 @@ function diDifferentiators(ath,bundle,deficits,ref){
 
   // 8. The role, last: it is a starting point (rule 9), not the athlete.
   const pos=bundle.athlete&&bundle.athlete.position;
-  if(pos)add('position',`${pos}${bundle.athlete.position_group?` (${bundle.athlete.position_group})`:''}`,
-    `${pos}${bundle.athlete.position_group?` (${bundle.athlete.position_group})`:''}`);
+  /* The group is named only where it says something the position does not
+     ("Guard (Guard)" read as a typo rather than as information). */
+  const pgl=bundle.athlete&&bundle.athlete.position_group;
+  const posTxt=pos?`${pos}${pgl&&pgl!==pos?` (${pgl})`:''}`:'';
+  if(pos)add('position',posTxt,posTxt);
 
   return out.map((d,i)=>({id:`D${i+1}`,...d}));
 }
@@ -32504,7 +32519,9 @@ const DI_EXT_TASK=[
   'kodla_denetlenen_sinirlar alanındaki sınırlara uy. Program CoachOS\'a yüklendiğinde bu sınırlar kod tarafından ölçülür ve aşılan her sınır antrenöre uyarı olarak gösterilir.',
   'Programı fazlara böl: her bloğun faz alanı hazirlik, ana ya da tamamlayici olsun. Her egzersizin hareket_paterni değerini hareket_paterni_sozlugu içinden seç ve ekipman alanını doldur.',
   'Her egzersizin dayanak alanına, cevap verdiği ayirt_ediciler maddelerinin id\'lerini yaz (ör. ["D1","D3"]). Listede olmayan id yazma.',
-  'Yazdığın set, tekrar ve süre sporcunun takvimine AYNEN geçer; yüklemeden sonra hiçbir kesinti uygulanmaz. kodla_denetlenen_sinirlar.hacim_ayari_yuzde, sporcunun bugünkü hazır oluşuna göre önerilen hacim ayarıdır — dozu yazarken bunu kendin hesaba kat.',
+  'Yazdığın set, tekrar ve süre sporcunun takvimine AYNEN geçer; yüklemeden sonra hiçbir kesinti uygulanmaz. kodla_denetlenen_sinirlar.hacim_ayari_yuzde, bu gün için önerilen hacim ayarıdır — hazır oluş, ağrı, maça kalan gün gibi nedenlerin toplamıdır ve her birinin payı hacim_ayari_gerekceleri alanındadır. Dozu yazarken bunu kendin hesaba kat.',
+  'Aynı hareket ailesinden (hareket_aileleri — ör. Squat ile Lunge / Unilateral aynı ailedir) ana fazda birden fazla egzersiz yazma. Sporcuya gecmis_programlar alanındaki seansların aynısını tekrar verme. Egzersizleri mümkün olduğunca egzersiz_kutuphanesi içinden, adını aynen yazarak seç; kütüphanede olmayan egzersiz yazabilirsin ama antrenöre uyarı olarak gösterilir.',
+  'spor_baglami oyunun herkesten ne istediğini, sporcu.pozisyon_vurgusu pozisyonun en sık istediği kaliteleri söyler: bunlar bağlamdır, tek başına egzersiz seçimini belirlemez — sporcunun kendi verisiyle birlikte tartılır.',
   'Test sonuçlarını ve test yorumlarını oku; ölçülmüş eksikleri hazırlık veya tamamlayıcı fazda karşıla. Ağrı ve aktif sakatlık varsa o bölgeyi yükleme.',
   'antrenman_profili sporcunun antrenman profilidir; programı bunun üzerine kur. atletik_profil her fiziksel kalitenin bu dönemdeki gelişim önceliğini (High > Medium > Low) gösterir: günün vurgusunu High önceliklerden kur, Medium öncelikleri High\'dan sonra geliştir, Low öncelikli kaliteleri koruma dozunda tut; egzersiz_maruziyeti son seansta ve son 7-14-28 günde neye ne kadar maruz kaldığını gösterir. kisitlar.hard kesin kurallardır: hiçbir egzersiz bunları ihlal etmez. kisitlar.soft tercihlerdir: mümkün olduğunca uy.',
   'Veri uydurma; eksik_veriler altındaki konularda karar verme, tanı koyma, yaralanma riski yüzdesi yazma.',
@@ -32515,16 +32532,44 @@ const DI_EXT_TASK=[
 const DI_EXT_TASK_SQUAD=[
   'sporcular listesindeki HER sporcu için, programlanacak_gun tarihinde uygulanacak AYRI bir antrenman seansı yaz. Sporcuları birbirine kopyalama: her program o sporcunun kendi verisine, ayırt edicilerine ve antrenör talimatına dayanmalı.',
   'Yanıt olarak YALNIZCA cikti_formati alanındaki yapıda geçerli bir JSON döndür: programlar dizisinde her sporcu için bir öğe; her öğede sporcu_id ve sporcu_adi, sporcular listesindeki değerlerle birebir aynı olsun. Açıklama metni ekleme; anahtar adlarını değiştirme.',
-  ...DI_EXT_TASK.slice(2).map(x=>x.replace(/kodla_denetlenen_sinirlar/g,'her sporcunun kendi kodla_denetlenen_sinirlar alanı')
-    .replace(/ayirt_ediciler maddelerinin/g,'o sporcunun ayirt_ediciler maddelerinin')),
+  /* Per-athlete fields are named as such; the replacements are phrase by phrase so
+     each sentence still reads as Turkish once rewritten. */
+  ...DI_EXT_TASK.slice(2).map(x=>x
+    .replace('kodla_denetlenen_sinirlar alanındaki','Her sporcunun kendi kodla_denetlenen_sinirlar alanındaki')
+    .replace('kodla_denetlenen_sinirlar.hacim_ayari_yuzde, bu gün için','Her sporcunun kodla_denetlenen_sinirlar.hacim_ayari_yuzde değeri, o sporcu için bu güne')
+    .replace('Sporcuya gecmis_programlar alanındaki','Her sporcuya kendi gecmis_programlar alanındaki')
+    .replace('ayirt_ediciler maddelerinin','o sporcunun ayirt_ediciler maddelerinin')),
 ];
+/* The coach's S&C shelf by movement pattern, so an outside model picks from the
+   exercises this app knows (anything else is accepted but flagged, rule 29). Cut to
+   the gym's kit where an inventory exists, and to a readable length per pattern. */
+const DI_LIB_PER_PATTERN=40;
+function diLibraryForAI(libMap,setup){
+  const eqIds=new Set(eqAvailable(setup||{}).map(e=>e.id));
+  const lib={},seen=new Set();
+  Object.values(libMap||{}).forEach(e=>{
+    const name=String((e&&e.name)||'').trim();
+    if(!name||exLib(e)!=='sc'||seen.has(name.toLowerCase()))return;
+    seen.add(name.toLowerCase());
+    if(eqIds.size){const need=eqNeedOf(e,name);if(need&&!eqIds.has(need))return;}
+    const p=exPatternOf(e)||L('Etiketsiz','Untagged');
+    (lib[p]=lib[p]||[]).push(name);
+  });
+  const out={};
+  [...IV_PATTERNS,...Object.keys(lib).filter(k=>!IV_PATTERNS.includes(k))].forEach(k=>{
+    if(lib[k])out[k]=lib[k].slice(0,DI_LIB_PER_PATTERN);});
+  return out;
+}
+/* The families the variety rule (26) is written against: two patterns, one family. */
+const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patern:p,aile:f?diFamilyLabel(f):null};});
 /* Every athlete on the sheet, built at the press like the single one is. The parts that
    are the same for everyone — the task, the answer's shape, the pattern dictionary and
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
-  const shared=['gorev','cikti_formati','hareket_paterni_sozlugu','ekipman'];
+  const shared=['gorev','cikti_formati','hareket_paterni_sozlugu','hareket_aileleri','egzersiz_kutuphanesi','spor_baglami','ekipman'];
   const list=(items||[]).map(it=>{
-    const one=diAthleteSnapshot({ath:it.ath,setup,date,bundle:it.bundle,instr:it.instr,customTests,now,session:it.session,libMap});
+    const one=diAthleteSnapshot({ath:it.ath,setup,date,bundle:it.bundle,instr:it.instr,customTests,now,session:it.session,libMap,
+      recent:it.recent});
     const out={};
     Object.keys(one).forEach(k=>{if(!shared.includes(k))out[k]=one[k];});
     return out;
@@ -32534,13 +32579,17 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   return snapClean({
     programlanacak_gun:first.programlanacak_gun?{tarih:first.programlanacak_gun.tarih,gun:first.programlanacak_gun.gun,
       bugunden_farki:first.programlanacak_gun.bugunden_farki,mac_gunu_etiketi:first.programlanacak_gun.mac_gunu_etiketi,
-      sonraki_mac:first.programlanacak_gun.sonraki_mac,sezon_fazi:first.programlanacak_gun.sezon_fazi}:{tarih:date},
+      sonraki_mac:first.programlanacak_gun.sonraki_mac,sezon_fazi:first.programlanacak_gun.sezon_fazi,
+      sezon_fazi_odaklari:first.programlanacak_gun.sezon_fazi_odaklari}:{tarih:date},
     gorev:DI_EXT_TASK_SQUAD,
     olusturulma_zamani:new Date(now||Date.now()).toISOString(),
     sporcu_sayisi:list.length,
     ekipman:{tur_sayisi:new Set(eq.map(e=>e.id)).size,
       liste:eq.map(e=>({ekipman:e.label,adet:e.qty==null?L('belirtilmemiş','not given'):e.qty,agirlik_kg:e.kg}))},
+    spor_baglami:diSportContext(setup),
     hareket_paterni_sozlugu:IV_PATTERNS,
+    hareket_aileleri:diFamiliesForAI(),
+    egzersiz_kutuphanesi:diLibraryForAI(libMap,setup),
     sporcular:list,
     cikti_formati:{programlar:[{sporcu_id:'sporcular[].sporcu.id',sporcu_adi:'sporcular[].sporcu.ad',...DI_EXT_SCHEMA}]},
   })||{};
@@ -33603,7 +33652,7 @@ function snapCopy(text){
   }catch(e){}
   return Promise.resolve(fallback());
 }
-function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,libMap}){
+function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,libMap,recent}){
   const a=ath||{},s=setup||{};
   const ref=date||fmt(today);
   const byDate=(x,y)=>String(x.date).localeCompare(String(y.date));
@@ -33627,7 +33676,14 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
   const wAge=lastW?diffD(lastW.date,ref):null;
   const wFrom=fmt(addD(parseD(ref),-6));
   const week=ws.filter(w=>w.date>=wFrom);
-  const base=id=>((b.wellness&&b.wellness.baselines)||[]).find(x=>x.field===id)||null;
+  /* The engine keeps a baseline for its own fields; mental and physical fatigue are
+     not among them, so theirs is read here the same way. */
+  const base=id=>{
+    const x=((b.wellness&&b.wellness.baselines)||[]).find(y=>y.field===id);
+    if(x)return x;
+    const d=diBaseline(a,id,ref);
+    return d.baseline!=null?{baseline:d.baseline,deviation_pct:d.deviation}:null;
+  };
   const scale=L('1-5 (5 = en iyi durum)','1-5 (5 = best)');
   const wField=(id,tr,en)=>{
     const last=[...ws].reverse().find(w=>recNum(w[id])!=null)||null;
@@ -33637,7 +33693,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
       son_deger:last?recNum(last[id]):null,
       tarih:last?last.date:null,
       kac_gun_once:last?diffD(last.date,ref):null,
-      olcek:id==='RHR'?'bpm':scale,
+      olcek:id==='RHR'?L('bpm (kişisel ortalamanın üstü olumsuz)','bpm (above the personal average is worse)'):scale,
       kisisel_ortalama:bl?bl.baseline:null,
       ortalamadan_sapma_yuzde:bl?bl.deviation_pct:null,
       son_7_gun:week.filter(w=>recNum(w[id])!=null).map(w=>({tarih:w.date,deger:recNum(w[id])})),
@@ -33648,6 +33704,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
   /* RPE: the athlete's own log, per slot, for the last seven days — plus the load
      figures the rest of the app reads off it. */
   const srpe=upTo(a.srpeLog).filter(e=>e.date>=wFrom);
+  const KIND={tp:L('Takım antrenmanı','Team practice'),sc:L('Kuvvet & kondisyon','S&C'),game:L('Maç','Game')};
   const slot=(e,k,tr)=>{
     const r=recNum(e[k+'RPE']),d=recNum(e[k+'Duration']);
     return(r==null&&d==null)?null:{tur:tr,rpe:r,sure_dk:d,yuk_au:(r!=null&&d!=null)?Math.round(r*d):null};
@@ -33691,7 +33748,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
     mekanizma:i.mechanism,baglam:i.context,tarih:i.date||i.firstInjuryDay,durum:i.status,
     rtp_asamasi:i.rtpStage?L(...((diRtpRow(i.rtpStage)||{label:[i.rtpStage,i.rtpStage]}).label)):null,
     kisitlamalar:i.restrictions,tahmini_donus:i.estimatedReturn||i.expectedReturn,donus:i.actualReturn,notlar:i.notes});
-  const allInj=[...(a.injuries||[])];
+  const allInj=(a.injuries||[]).filter(i=>i&&diInjOnsetBy(i,ref));
   const activeInj=allInj.filter(i=>!i.actualReturn&&(!i.status||i.status!=='Recovered'));
   const pastInj=allInj.filter(i=>!activeInj.includes(i));
 
@@ -33735,6 +33792,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
     sonraki_mac:cp.next?{tarih:cp.next.date,ad:cp.next.name,kac_gun_sonra:cp.next.days_until}:null,
     onceki_mac:cp.previous?{tarih:cp.previous.date,ad:cp.previous.name,kac_gun_once:cp.previous.days_since}:null,
     sezon_fazi:b.season_phase&&b.season_phase.label,
+    sezon_fazi_odaklari:b.season_phase&&b.season_phase.focus,
     kaynak_seans:ses?{ad:ses.name,saat:ses.time,sure_dk:recNum(ses.duration),odak:ses.focus,bolge:ses.region}:null,
   };
 
@@ -33752,13 +33810,19 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
   const limits={
     yasak_paternler:blockedX,
     kullanilabilir_paternler:IV_PATTERNS.filter(p=>!blockedSetX.has(p)),
-    sert_kisitlar:restrX.map(r=>({kaynak:r.kaynak,bolge:r.bolge,metin:r.metin,eslesen_terimler:r.terimler})),
-    kademe_tavani:capsX?{gecerli_kademe:b.tier.gecerli,maks_set:capsX.max_sets,maks_ana_faz_egzersiz:capsX.max_main,
-      pliometrik_not:capsX.plyo_note}:null,
+    sert_kisitlar:restrX.map(r=>({kaynak:r.kaynak,bolge:r.bolge,rtp_asamasi:r.rtp,metin:r.metin,eslesen_terimler:r.terimler})),
+    /* How the check reads a restriction — word by word, not as a phrase — said here so
+       "derin squat" is not taken to leave every other squat open. */
+    sert_kisit_eslesme_kurali:restrX.length?'Egzersiz adında eslesen_terimler listesindeki kelimelerden HERHANGİ BİRİ tam kelime olarak geçerse '+
+      '(ya da metnin tamamı geçerse) egzersiz o kısıtı ihlal etmiş sayılır. Ör. "derin squat" kısıtı adında "squat" geçen her egzersizi kapsar.':null,
+    kademe_tavani:capsX?{gecerli_kademe:b.tier.gecerli,egzersiz_basi_maks_set:capsX.max_sets,maks_ana_faz_egzersiz:capsX.max_main,
+      pliometrik_not:capsX.plyo_note,
+      not:'egzersiz_basi_maks_set tek bir egzersiz satırının set üst sınırıdır; maks_ana_faz_egzersiz ana fazdaki egzersiz sayısının üst sınırıdır.'}:null,
     pliometrik_temas_siniri:plyoX?{...plyoX,
       not:'Toplam zemin teması (set × tekrar, yalnızca Jump / Plyo paternindeki satırlar) bu üst sınırı aşamaz.'}:null,
     seans_suresi_dk:brief.duration,
     egzersiz_basi_dk:DI_MIN_PER_EX,
+    egzersiz_basi_dk_notu:brief.duration==null?null:'Seans süresi egzersiz sayısı × egzersiz_basi_dk olarak hesaplanır (bütün fazlar dahil) ve seans_suresi_dk ile karşılaştırılır.',
     seans_maks_egzersiz:brief.maxExercises,
     hacim_ayari_yuzde:b.adjustment?b.adjustment.pct:null,
     hacim_ayari_gerekceleri:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
@@ -33782,6 +33846,8 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
       antrenman_yasi:b.athlete&&b.athlete.training_age_years,
       seviye:b.athlete&&b.athlete.level,vucut_tipi:b.athlete&&b.athlete.vucut_tipi,
       spor:s.sport,
+      /* Context for the role, not a prescription from it (§4.3). */
+      pozisyon_vurgusu:b.athlete&&b.athlete.position_qualities,
     },
     antrenman_profili:atp.out,
     wellness:{
@@ -33798,13 +33864,12 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
         kas_agrisi:recNum(w.soreness),dinlenik_nabiz_bpm:recNum(w.RHR)})),
     },
     rpe:{
-      son_kayit:ld.last?{tarih:ld.last.date,tur:ld.last.kind,rpe:ld.last.rpe,sure_dk:ld.last.duration,srpe_au:ld.last.srpe}:null,
+      son_kayit:ld.last?{tarih:ld.last.date,tur:KIND[ld.last.kind]||ld.last.kind,rpe:ld.last.rpe,sure_dk:ld.last.duration,srpe_au:ld.last.srpe}:null,
       ort_rpe_3_gun:ld.rpe3,ort_rpe_7_gun:ld.rpe7,ort_rpe_onceki_7_gun:ld.rpe_prev7,trend:ld.trend,
       srpe_7_gun_au:ld.srpe7,srpe_onceki_7_gun_au:ld.srpe_prev7,yuk_degisimi_yuzde:ld.load_change_pct,
       acwr:ld.acwr,acwr_bolgesi:ld.acwr_zone,monotoni:ld.monotony,zor_gun_sayisi_7:ld.hard_days_7,
       son_7_gun:srpe.map(e=>({tarih:e.date,
-        seanslar:[slot(e,'tp',L('Takım antrenmanı','Team practice')),slot(e,'sc',L('Kuvvet & kondisyon','S&C')),
-          slot(e,'game',L('Maç','Game'))].filter(Boolean),
+        seanslar:[slot(e,'tp',KIND.tp),slot(e,'sc',KIND.sc),slot(e,'game',KIND.game)].filter(Boolean),
         toplam_yuk_au:recNum(e.totalLoad)})),
     },
     uyku:wField('sleep','Uyku','Sleep'),
@@ -33812,6 +33877,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
     zihinsel_yorgunluk:wField('mentalFatigue','Zihinsel yorgunluk / stres','Mental fatigue / stress'),
     fiziksel_yorgunluk:wField('physicalFatigue','Fiziksel yorgunluk','Physical fatigue'),
     kas_agrisi:wField('soreness','Kas ağrısı','Muscle soreness'),
+    dinlenik_nabiz:wField('RHR','Dinlenik nabız','Resting heart rate'),
     testler:{
       son_test_tarihi:lastTest?lastTest.date:null,
       test_kaydi_sayisi:tests.length,
@@ -33822,7 +33888,8 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
       overhead_squat_kompensasyonlari:(()=>{const h=newest(t=>((t.ohs&&t.ohs.problems)||[]).filter(x=>String(x||'').trim()).length
         ?t.ohs.problems.filter(x=>String(x||'').trim()):null);return h?{tarih:h.t.date,liste:h.v}:null;})(),
       yorumlar:notes,
-      kisisel_ortalamadan_sapmalar:b.test_baselines,
+      kisisel_ortalamadan_sapmalar:(b.test_baselines||[]).map(x=>({test:x.metric,guncel:x.current,kisisel_ortalama:x.baseline,
+        sapma_yuzde:x.deviation_pct,birim:x.unit,tarih:x.date,olcum_sayisi:x.readings})),
     },
     agri_ve_sakatlik:{
       bugunku_agri:painRegions.map(r=>({bolge:r.label,siddet_0_5:r.severity_0_5,siddet_0_3:r.severity_0_3,
@@ -33837,7 +33904,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
           painEntries(w.painMap).forEach(({region,sev})=>{
             if(seen.has(region)||(carry&&!painCarries(sev)))return;seen.add(region);
             const side=/^Sağ /.test(region)?L('sağ','right'):/^Sol /.test(region)?L('sol','left'):null;
-            out.push({bolge:region,taraf:side,siddet_1_3:sev||null,siddet:SEV[sev]||null,tarih:w.date,
+            out.push({bolge:region,taraf:side,siddet_0_3:sev||null,siddet:SEV[sev]||null,tarih:w.date,
               bugun:w===tw||null});});};
         add(tw,false);add(yw,true);
         return out;})(),
@@ -33848,7 +33915,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
       kalici_kisit_notu:a.constraints,
       aktif_sakatliklar:activeInj.map(injRow),
       gecmis_sakatliklar:pastInj.slice(-6).map(injRow),
-      tekrarlayan_bolgeler:b.injury&&b.injury.recurrence,
+      tekrarlayan_bolgeler:((b.injury&&b.injury.recurrence)||[]).map(r=>({bolge:r.region,sakatlik_sayisi:r.episodes})),
     },
     ekipman:{
       tur_sayisi:new Set(eq.map(e=>e.id)).size,
@@ -33857,7 +33924,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
     haftalik_takvim:{
       hafta:`${fmt(mon)} – ${fmt(addD(mon,6))}`,
       sezon_fazi:b.season_phase&&b.season_phase.label,
-      sonraki_mac:b.competition&&b.competition.next,
+      sonraki_mac:hedef.sonraki_mac,
       gunler:takvim,
     },
     antrenor_talimati:diBriefForAI(brief),
@@ -33865,7 +33932,13 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
     tespit_edilen_eksikler:((deficitsX&&deficitsX.findings)||[]).map(f=>({bolge:f.bolge,bulgu:f.bulgu,
       gereken_calisma:f.gereken_calisma,oncelik:f.oncelik,olcum:f.olcum,kaynak:f.kaynak})),
     kodla_denetlenen_sinirlar:limits,
+    /* What this athlete was written on the last days this module wrote for them — so
+       the answer does not hand them the same session again (rule 23). */
+    gecmis_programlar:recent&&recent.length?recent:null,
+    spor_baglami:diSportContext(s),
     hareket_paterni_sozlugu:IV_PATTERNS,
+    hareket_aileleri:diFamiliesForAI(),
+    egzersiz_kutuphanesi:diLibraryForAI(libMap,s),
     cikti_formati:DI_EXT_SCHEMA,
   };
   const missing=[];
@@ -33875,6 +33948,9 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,
   if(!kilo)missing.push(L('vücut ağırlığı','body weight'));
   if(!yag)missing.push(L('vücut yağı','body fat'));
   if(!out.sporcu.pozisyon)missing.push(L('pozisyon','position'));
+  if(out.sporcu.antrenman_yasi==null)missing.push(L('antrenman yaşı (sporcu kartında girilmemiş)','training age (not set on the athlete card)'));
+  if(b.tier&&b.tier.yapisal==null)missing.push(L('yapısal kademe (tarama bataryasında ölçüm yok — kademe varsayılmadı)',
+    'structural tier (no screening results — no tier assumed)'));
   if(!lastW)missing.push(L('wellness check-in','wellness check-in'));
   if(!srpe.length)missing.push(L('son 7 günde RPE kaydı','RPE in the last 7 days'));
   if(!tests.length)missing.push(L('test kaydı','test record'));
@@ -33929,7 +34005,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     try{
       const b=diBundle(ath,L0.setup||{},L0.date,{libMap:L0.libMap});
       text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,bundle:b,
-        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap}),null,2);
+        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}),null,2);
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -34332,7 +34408,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       try{
         const review=activeKey?diReadReview(team,activeKey,a.id,date):null;
         items.push({ath:a,bundle:diBundle(a,setup,date,{libMap}),
-          instr:diInstr(review&&review.instr,p?p.meta:null),session:p?p.meta:null});
+          instr:diInstr(review&&review.instr,p?p.meta:null),session:p?p.meta:null,recent:diRecentPrograms(team,a.id,date)});
       }catch(e){skipped.push(a.name||a.id);}
     });
     if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
