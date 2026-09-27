@@ -3305,26 +3305,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ev2-pick{display:grid;grid-template-columns:212px minmax(0,1fr);gap:18px}
 .ev2-cats{display:flex;flex-direction:column;gap:3px;border-right:1px solid var(--border);padding-right:16px}
 .ev2-cat{display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;border-radius:11px;border:none;
-  background:none;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer;white-space:nowrap;
+  background:none;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:800;text-align:left;cursor:pointer;white-space:nowrap;
   transition:background .14s ease,color .14s ease}
 .ev2-cat:hover{background:var(--hover);color:var(--text)}
 .ev2-cat.on{background:var(--grad);color:#06121d}
-.ev2-cat-ic{flex:none;display:grid;place-items:center;opacity:.9}
 .ev2-cat-n{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.7}
 .ev2-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;align-content:start}
-/* A test tile: the test's name, large, bold and italic, over what it measures. A stripe
-   down the left edge in its group's colour; selected tiles fill with the accent. */
+/* A test tile: the test's name, large, bold and italic, over what it measures. The group
+   colour is carried by the short code above the name; selected tiles take the accent. */
 .ev2-tile{position:relative;display:flex;align-items:stretch;min-height:88px;overflow:hidden;
-  padding:13px 36px 13px 17px;border-radius:14px;border:1px solid var(--border);
+  padding:13px 36px 13px 15px;border-radius:14px;border:1px solid var(--border);
   background:linear-gradient(155deg,rgba(255,255,255,.035),transparent 60%),var(--elevated);
   cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease,box-shadow .14s ease;--gc:#64748b}
-.ev2-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gc);opacity:.75;transition:opacity .14s,width .14s}
 .ev2-tile.g-basic{--gc:#38bdf8}.ev2-tile.g-move{--gc:#a78bfa}.ev2-tile.g-jump{--gc:#f59e0b}.ev2-tile.g-speed{--gc:#22c55e}.ev2-tile.g-custom{--gc:#f472b6}
 .ev2-tile:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 10px 24px -16px rgba(0,0,0,.8)}
-.ev2-tile:hover::before{opacity:1;width:5px}
 .ev2-tile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,0 10px 26px -16px rgba(0,148,255,.6);
   background:linear-gradient(155deg,rgba(0,148,255,.2),rgba(0,148,255,.05) 70%),var(--elevated)}
-.ev2-tile.on::before{opacity:1;background:var(--accent)}
 .ev2-tile-tx{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
 .ev2-tile-k{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gc);min-height:11px}
 .ev2-tile.on .ev2-tile-k{color:var(--accent2)}
@@ -3338,7 +3334,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ev2-tile-x:hover{color:var(--red)}
 .ev2-tile.add{border-style:dashed;align-items:center;justify-content:center;padding:12px;color:var(--accent2);text-align:center}
 .ev2-tile.add:hover{border-color:var(--accent)}
-.ev2-tile.add::before{display:none}
 .ev2-tile.add .ev2-tile-tx{align-items:center}
 /* picker footer: date, period, the action */
 .ev2-foot{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
@@ -6994,12 +6989,12 @@ const TEST_META={
   shuttleRun:    {g:'speed',   ic:'shuttle', tr:'Çok yönlülük',                  en:'Shuttle endurance'},
 };
 const TEST_GROUPS=[
-  {id:'all',   ic:'grid',    tr:'Tüm Testler',          en:'All Tests'},
-  {id:'basic', ic:'ruler',   tr:'Temel Ölçümler',       en:'Basic Measures'},
-  {id:'move',  ic:'stand',   tr:'Hareket Kalitesi',     en:'Movement Quality'},
-  {id:'jump',  ic:'up',      tr:'Sıçrama & Reaktivite', en:'Jump & Reactivity'},
-  {id:'speed', ic:'watch',   tr:'Hız & Çeviklik',       en:'Speed & Agility'},
-  {id:'custom',ic:'beaker',  tr:'Özel Testler',         en:'Custom Tests'},
+  {id:'all',   tr:'Tüm Testler',          en:'All Tests'},
+  {id:'basic', tr:'Temel Ölçümler',       en:'Basic Measures'},
+  {id:'move',  tr:'Hareket Kalitesi',     en:'Movement Quality'},
+  {id:'jump',  tr:'Sıçrama & Reaktivite', en:'Jump & Reactivity'},
+  {id:'speed', tr:'Hız & Çeviklik',       en:'Speed & Agility'},
+  {id:'custom',tr:'Özel Testler',         en:'Custom Tests'},
 ];
 const testGroupOf=c=>c.custom?'custom':((TEST_META[c.id]||{}).g||'custom');
 
@@ -22650,7 +22645,6 @@ function EvaluationView({team,updateTeam,data,setData}){
           <div className="ev2-pick">
             <div className="ev2-cats">
               {TEST_GROUPS.map(g=><button key={g.id} className={'ev2-cat'+(cat===g.id?' on':'')} onClick={()=>setCat(g.id)}>
-                <span className="ev2-cat-ic"><TIc k={g.ic} size={16}/></span>
                 {Lx(g.tr,g.en)}
                 <span className="ev2-cat-n">{catCount(g.id)}</span>
               </button>)}
