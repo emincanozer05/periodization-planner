@@ -34159,7 +34159,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   </div>);
 }
 
-function IndivAthleteCard({plan,calendar,panel,flag,open,setOpen}){
+function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const a=plan.ath;
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
@@ -34207,10 +34207,6 @@ function IndivAthleteCard({plan,calendar,panel,flag,open,setOpen}){
         <b>{plan.rd.score!=null?plan.rd.score:'—'}</b><span>{L('hazır oluş','readiness')}</span>
         {plan.rd.src==='srpe'&&<i title={L('Wellness kaydı yok — sRPE trendinden kestirildi','No wellness record — estimated from the sRPE trend')}>{L('tahmin','estimate')}</i>}
       </div>
-      {/* The monitoring flag (§32) rides on the closed header so a squad can be scanned
-          without opening every card. It is a word, never a diagnosis or a risk figure. */}
-      {flag&&<div className="iv-adj" style={{color:flag.color,borderColor:flag.color}}
-        title={flag.reasons.join(' · ')}>{flag.label}</div>}
       {plan.changed>0&&<div className="iv-adj sub">{L(`${plan.changed} değişti`,`${plan.changed} changed`)}</div>}
       <span className="iv-ch">{open?'▼':'▶'}</span>
     </div>
@@ -34658,7 +34654,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       ?L('Bu tarihte takım seansı yok — takvime bir antrenman planla.','There is no team session on this date — plan a session on the calendar.')
       :L('Bu tarihte takım seansı yok — bu gün kimsenin takvimine bir şey yazılmaz.','There is no team session on this date — nothing is written to anyone for this day.')}</div>}
     {src&&plans.map(p=>{const b=bundles[p.ath.id];return(<IndivAthleteCard key={p.ath.id} plan={p}
-      flag={b?b.flag:null}
       open={!!open[p.ath.id]} setOpen={v=>setOpen(o=>({...o,[p.ath.id]:v}))}
       panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
