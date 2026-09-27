@@ -11357,10 +11357,16 @@ function printWeekA4Land(title,weekStart,days,athletes){
    a data URL is always drawn. It is shrunk on the way (the slot is 34-56px,
    drawn at 2x), and PNG keeps a transparent crest transparent on the black header.
    If the crest cannot be read at all the slot is left out, so the sheet shows the club
-   name alone rather than a hole. */
+   name alone rather than a hole.
+   Firebase Storage sends no CORS headers on downloads until the bucket is given a CORS
+   config, so a crest in Storage cannot be read directly. It is then fetched through
+   /api/crest (api/crest.js) on this site's own origin, where no CORS applies. Applying
+   cors.json to the bucket makes the first, direct attempt succeed as well:
+     gcloud storage buckets update gs://periodization-planner.firebasestorage.app --cors-file=cors.json */
 const CREST_PX=240;
 const _crestCache=new Map();
-function readCrest(src,cache){
+const CREST_STORAGE=/^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/periodization-planner\.firebasestorage\.app\/o\/users%2F/;
+function readCrest(src,mode){
   return withTimeout(new Promise((res,rej)=>{
     const draw=(url,after)=>{
       const im=new Image();
@@ -11380,10 +11386,12 @@ function readCrest(src,cache){
       im.onerror=()=>{if(after)after();rej(new Error('load'));};
       im.src=url;
     };
-    if(!cache){draw(src);return;}
-    /* Second attempt: fetch it fresh. A copy the browser cached from a plain <img> may
-       lack the CORS headers a CORS-mode load now needs; 'reload' skips that copy. */
-    fetch(src,{mode:'cors',cache:'reload'}).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.blob();})
+    if(mode==='direct'){draw(src);return;}
+    /* 'proxy': the same file through this site's /api/crest — same origin, no CORS.
+       'fresh': fetch it again past the cache. A copy the browser cached from a plain
+       <img> may lack the CORS headers a CORS-mode load now needs; 'reload' skips it. */
+    const req=mode==='proxy'?fetch('/api/crest?u='+encodeURIComponent(src)):fetch(src,{mode:'cors',cache:'reload'});
+    req.then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.blob();})
       .then(b=>{const u=URL.createObjectURL(b);draw(u,()=>URL.revokeObjectURL(u));}).catch(rej);
   }),8000);
 }
@@ -11395,8 +11403,13 @@ async function drawableCrest(){
   if(/^data:image\/(png|jpe?g|gif|webp)/i.test(src))return src;
   if(_crestCache.has(src))return _crestCache.get(src);
   let out='';
-  try{out=await readCrest(src,false);}
-  catch(e){try{out=await readCrest(src,true);}catch(e2){console.warn('team crest could not be read for the shared sheet',e2);}}
+  const modes=['direct'];
+  if(CREST_STORAGE.test(src)&&/^https?:$/.test(location.protocol))modes.push('proxy');
+  modes.push('fresh');
+  for(const m of modes){
+    try{out=await readCrest(src,m);break;}
+    catch(e){console.warn('team crest: '+m+' read failed',e);}
+  }
   if(out)_crestCache.set(src,out);   // a failure is not remembered: the next share tries again
   return out;
 }
