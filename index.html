@@ -11124,7 +11124,7 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
     // Mirror live calendar logic: custom session color wins; otherwise loadType
     if(s.color)return cardCol(s.color);
     const t=(s.loadType||'').toLowerCase();
-    if(t.includes('mechanical'))return'#9aab3a';
+    if(t.includes('mechanical'))return'#0094ff';
     if(t.includes('metabolic'))return'#5b8cff';
     if(t.includes('neuromuscular'))return'#f59e0b';
     if(t.includes('cognitive'))return'#ff6b5b';
@@ -24386,7 +24386,7 @@ function TrainingProfileTab({ath,updAth,exercises}){
   const[refDate,setRefDate]=useState(()=>fmt(today));
   const refOk=/^\d{4}-\d{2}-\d{2}$/.test(refDate||'')?refDate:fmt(today);
   const exp=useMemo(()=>atpExposure(ath,refOk,{libMap}),[ath.days,libMap,refOk]);
-  /* Clicking the level that is already on takes it off again, on either scale. */
+  /* Clicking the priority that is already on takes it off again. */
   const setQ=(id,field,v)=>{
     const cur={...(tp.qualities[id]||{})};
     if(cur[field]===v)delete cur[field];else cur[field]=v;
@@ -24411,8 +24411,8 @@ function TrainingProfileTab({ath,updAth,exercises}){
       <div className="atp-intro-ic">◎</div>
       <div className="atp-intro-tx">
         <div className="atp-intro-t">{atpT('Athlete Training Profile')}</div>
-        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: atletik profil (her kalitenin durumu ve önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
-          'Defines the athlete as a trainee: the athletic profile (each quality’s status and priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
+        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: atletik profil (her kalitenin önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
+          'Defines the athlete as a trainee: the athletic profile (each quality’s priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
       </div>
       {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
     </div>
@@ -30115,8 +30115,7 @@ function diTolerance(ath,name,ref,days){
 
 /* ---- Athlete Training Profile ----------------------------------------------
    The athlete as a trainee, in three parts: every physical quality on one template,
-   each with where the athlete stands (Status) and how much the current period develops
-   it (Priority) — the Athletic Profile; what training has to respect (Constraints); and
+   each with how much the current period develops it (Priority) — the Athletic Profile; what training has to respect (Constraints); and
    what the athlete has actually been exposed to lately (Exercise Exposure).
 
    It DESCRIBES the athlete. Nothing in the app picks an exercise or writes a session
@@ -30149,8 +30148,8 @@ const ATP_TR={
   'Lower-Body Power':'Alt Vücut Gücü','Upper-Body Power':'Üst Vücut Gücü','Rate of Force Development':'Kuvvet Gelişim Hızı',
   'Mobility':'Hareketlilik','Stability':'Stabilite','Coordination':'Koordinasyon','Balance':'Denge',
   'Aerobic Capacity':'Aerobik Kapasite','Anaerobic Capacity':'Anaerobik Kapasite','Repeat Sprint Ability':'Tekrarlı Sprint Yeteneği',
-  /* the two scales */
-  'Status':'Durum','Priority':'Öncelik','Good':'İyi','Moderate':'Orta','Limited':'Sınırlı','High':'Yüksek','Medium':'Orta','Low':'Düşük',
+  /* the priority scale (Moderate is an exposure level) */
+  'Priority':'Öncelik','Moderate':'Orta','High':'Yüksek','Medium':'Orta','Low':'Düşük',
   /* exposure patterns that are not template qualities */
   'Lunge':'Lunge','Knee Dominant':'Diz Baskın','Hip Dominant':'Kalça Baskın',
   'Anti-Extension':'Anti-Ekstansiyon','Anti-Rotation':'Anti-Rotasyon','Anti-Lateral Flexion':'Anti-Lateral Fleksiyon','Rotation':'Rotasyon',
@@ -30210,8 +30209,7 @@ function atpT(en){
 /* The short form a level carries on its button. */
 const atpAb=l=>REPORT_LANG==='tr'?l.abTr:l.ab;
 /* The one template the profile is written on: seven groups, every quality in them rated
-   on the same two scales — Status (where the athlete stands) and Priority (how much the
-   current period develops it). The ids are the English words, so a quality keeps its id
+   on the same scale — Priority (how much the current period develops it). The ids are the English words, so a quality keeps its id
    whatever the screen is read in. */
 const ATP_GROUPS=[
   {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity','Sprint Mechanics'])},
