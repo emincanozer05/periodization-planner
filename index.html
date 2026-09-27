@@ -11146,9 +11146,15 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
           <div class="rest-rule"></div>
           <div class="rest-say">${L('Toparlanma yarının<br>performansını kurar.','Recovery builds tomorrow\'s<br>performance.')}</div>
         </div>`:
-        ss.map(s=>{const c=colorOf(s);return`<div class="sess" style="border-color:${c}">
+        ss.map(s=>{const c=colorOf(s);const goal=sesGoalLine(s);
+          /* The calendar card's target badge, in the print twin of its band colour. Plain
+             rgba rather than color-mix: html2canvas draws the shared PNG and cannot read it. */
+          const[rlo,rhi]=sesRpeRange(s);const rz=rpeZone(sesRpeTarget(s));
+          const rgba=(h,a)=>`rgba(${parseInt(h.slice(1,3),16)},${parseInt(h.slice(3,5),16)},${parseInt(h.slice(5,7),16)},${a})`;
+          return`<div class="sess" style="border-color:${c}">
           <div class="sess-h"><span class="sess-name">${s.name}</span>${s.sRPE!==''?`<span class="srpe-pill">sRPE ${s.sRPE}</span>`:''}</div>
-          <div class="sess-meta"><span class="sess-time">${s.time}</span><span class="sess-dur">${Number(s.duration)||0} ${L('dk','min')}</span></div>
+          ${goal?`<div class="sess-pr">${escHTML(goal)}</div>`:''}
+          <div class="sess-meta"><span class="sess-time">${s.time}</span><span class="sess-sep"></span><span class="sess-dur">${Number(s.duration)||0} ${L('dk','min')}</span><span class="sess-rpe" style="color:${rz.pc};background:${rgba(rz.pc,.1)};border-color:${rgba(rz.pc,.55)}">RPE ${rlo}-${rhi}</span></div>
         </div>`;}).join('')}
       ${ss.length>0?`<div class="day-total"><u>${L('Toplam Yük','Total Load')}</u><b>${Math.round(dayLoad)} AU</b></div>`:''}
       ${day?.dailyNotes?`<div class="day-notes"><em>${day.dailyNotes}</em></div>`:''}
@@ -11199,7 +11205,10 @@ table{width:100%;border-collapse:separate;border-spacing:5px;table-layout:fixed}
 .sess-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:5px}
 .sess-name{font-weight:600;font-size:12.5px;color:var(--text);line-height:1.2;flex:1;word-wrap:break-word;letter-spacing:-.01em}
 .srpe-pill{background:#0a0b0d;color:#fff;padding:1px 7px;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;white-space:nowrap}
+.sess-pr{font-size:9.5px;color:var(--muted);line-height:1.3;margin:-1px 0 5px}
 .sess-meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)}
+.sess-sep{width:1px;height:11px;background:var(--border2);flex:none}
+.sess-rpe{margin-left:auto;flex:none;font-family:'Space Grotesk',Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.02em;padding:1px 7px;border-radius:999px;border:1.5px solid transparent;white-space:nowrap}
 .sess-time{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em}
 .sess-dur{font-size:10px;font-weight:600;color:var(--text2)}
 .au-pill{background:var(--accent);color:#0a0b0d;padding:1px 7px;border-radius:4px;font-weight:600}
