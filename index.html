@@ -1927,6 +1927,261 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .sc-f textarea{min-height:84px;padding:10px 12px;border-radius:10px;font-size:13px;line-height:1.55}
 .sc-f .help{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;font-style:normal}
 .sc-f.tall textarea{min-height:118px}
+/* ===== Athlete Training Profile tab =====
+   Four sections on the scouting sheet's own cards (.sc-sec). Each scale keeps one
+   colour meaning across the whole tab: priorities blue / violet / teal; movement
+   status green / amber / red, the scouting sheet's own reading of good → limited;
+   hard constraints red and soft amber; and exposure a single blue that deepens with
+   the dose — exposure is an amount, not a verdict, so it gets no traffic light. */
+.atp-wrap{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.lv-primary{--lc:#5cb8ff;--lb:rgba(0,148,255,.16);--ld:rgba(0,148,255,.55)}
+.lv-secondary{--lc:#c4b5fd;--lb:rgba(139,92,246,.18);--ld:rgba(139,92,246,.55)}
+.lv-maintain{--lc:#5eead4;--lb:rgba(20,184,166,.15);--ld:rgba(20,184,166,.5)}
+.st-good{--lc:#6ee7b7;--lb:rgba(16,185,129,.16);--ld:rgba(16,185,129,.6)}
+.st-moderate{--lc:#fcd34d;--lb:rgba(245,158,11,.16);--ld:rgba(245,158,11,.6)}
+.st-limited{--lc:#fca5a5;--lb:rgba(239,68,68,.16);--ld:rgba(239,68,68,.6)}
+.pr-high{--lc:#5cb8ff;--lb:rgba(0,148,255,.18);--ld:rgba(0,148,255,.6)}
+.pr-medium{--lc:#a5c8f0;--lb:rgba(0,148,255,.09);--ld:rgba(0,148,255,.32)}
+.pr-low{--lc:var(--text2);--lb:rgba(255,255,255,.05);--ld:var(--border2)}
+.cn-hard{--lc:#fca5a5;--ld:#ef4444}
+.cn-soft{--lc:#fcd34d;--ld:#f59e0b}
+/* ---- intro + the four tiles ---- */
+.atp-intro{display:flex;align-items:flex-start;gap:14px;padding:15px 18px;border-radius:16px;border:1px solid rgba(0,148,255,.24);
+  background:linear-gradient(115deg,rgba(0,148,255,.10),rgba(139,92,246,.06) 55%,rgba(20,184,166,.04)),var(--panel)}
+.atp-intro-ic{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--accent-bg);
+  border:1px solid rgba(0,148,255,.36);color:var(--accent2);font-size:17px;line-height:1}
+.atp-intro-tx{flex:1;min-width:0}
+.atp-intro-t{font-size:15px;font-weight:700;letter-spacing:.01em;color:var(--text)}
+.atp-intro-d{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6;max-width:880px}
+.atp-intro-up{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.atp-intro-up b{font-size:12px;color:var(--text2);letter-spacing:.02em}
+@media(max-width:640px){.atp-intro{flex-wrap:wrap}.atp-intro-up{align-items:flex-start;flex-direction:row;gap:8px}}
+.atp-glance{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media(max-width:980px){.atp-glance{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.atp-glance{grid-template-columns:minmax(0,1fr)}}
+.atp-gl{position:relative;display:block;width:100%;min-width:0;overflow:hidden;text-align:left;cursor:pointer;
+  background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:14px 16px 13px 18px;
+  color:inherit;font-family:inherit;transition:border-color .15s ease,background .15s ease}
+.atp-gl::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gc)}
+.atp-gl:hover{border-color:var(--border2);background:var(--elevated)}
+.atp-gl .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+.atp-gl .v{font-size:26px;font-weight:700;margin-top:8px;line-height:1;color:var(--text);letter-spacing:-.01em}
+.atp-gl .v small{font-size:12px;font-weight:500;color:var(--dim);margin-left:6px;letter-spacing:0}
+.atp-gl .s{font-size:11.5px;color:var(--muted);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ---- section header counters ---- */
+.atp-hcnt{margin-left:auto;flex:none;display:flex;gap:6px;flex-wrap:wrap}
+.atp-hc{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:10px;border:1px solid var(--border2);
+  background:var(--elevated);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--muted)}
+.atp-hc i{width:8px;height:8px;border-radius:2px;background:var(--ld)}
+.atp-hc b{font-size:12.5px;color:var(--lc);letter-spacing:0}
+.atp-hc.atp-auto{color:var(--accent2);border-color:rgba(0,148,255,.32);background:var(--accent-bg)}
+/* ---- priority lanes ---- */
+.atp-lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-top:16px}
+@media(max-width:820px){.atp-lanes{grid-template-columns:minmax(0,1fr)}}
+.atp-lane{border:1px solid var(--border);border-top:2px solid var(--ld);border-radius:13px;padding:12px 14px 13px;min-width:0;
+  background:linear-gradient(180deg,var(--lb),transparent 72%),var(--bg2)}
+.atp-lane-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.atp-lane-t{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--lc)}
+.atp-lane-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:19px;font-weight:700;color:var(--text);line-height:1}
+.atp-lane-d{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.atp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;min-height:28px;align-content:flex-start}
+.atp-chip{display:inline-flex;align-items:center;gap:3px;height:27px;padding:0 3px 0 11px;border-radius:999px;border:1px solid var(--ld);
+  background:var(--lb);color:var(--text);font-size:12px;font-weight:600}
+.atp-chip button{width:20px;height:20px;padding:0;border:none;border-radius:50%;background:none;color:var(--lc);font-size:9px;
+  line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
+.atp-chip button:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.atp-empty{font-size:11.5px;color:var(--dim);align-self:center}
+/* ---- item groups: priorities and the movement profile ---- */
+.atp-grp{border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden;min-width:0;align-self:start}
+/* Groups of different lengths, packed as columns rather than a grid — a grid row is
+   as tall as its longest card and leaves a hole under every short one. */
+.atp-groups{column-width:290px;column-gap:12px;margin-top:14px}
+.atp-groups.mv{column-width:440px}
+.atp-groups>.atp-grp{display:inline-block;width:100%;margin-bottom:12px;break-inside:avoid;vertical-align:top}
+.atp-grp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:var(--elevated);border-bottom:1px solid var(--border)}
+.atp-grp-t{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text)}
+.atp-grp-s{font-size:10.5px;color:var(--dim);margin-top:2px}
+.atp-grp-c{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
+.atp-grp-c b{color:var(--text2);font-size:12px}
+.atp-it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px 7px 13px;border-top:1px solid var(--border)}
+.atp-grp-h+.atp-it{border-top:none}
+.atp-it.mv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+@media(max-width:560px){.atp-it.mv{grid-template-columns:auto auto;justify-content:start}.atp-it.mv .atp-it-n{grid-column:1/-1}}
+.atp-it-n{display:flex;align-items:center;gap:7px;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted)}
+.atp-it.set .atp-it-n{color:var(--text)}
+.atp-it.set{background:rgba(255,255,255,.015)}
+.atp-dot{width:7px;height:7px;border-radius:50%;background:var(--ld);flex:none;box-shadow:0 0 0 3px var(--lb)}
+.atp-seg{display:inline-flex;flex:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--panel)}
+.atp-seg button{height:26px;min-width:40px;padding:0 8px;border:none;border-left:1px solid var(--border2);background:none;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:.07em;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .12s ease,color .12s ease}
+.atp-seg button:first-child{border-left:none}
+.atp-seg button:hover{color:var(--text);background:var(--hover)}
+.atp-seg button.on{background:var(--lb);color:var(--lc);box-shadow:inset 0 0 0 1px var(--ld)}
+.atp-seg button:focus-visible,.atp-wseg button:focus-visible,.atp-opt:focus-visible,.atp-gl:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* Priority as a signal meter — three bars, as many lit as the priority is high. */
+.atp-bars{display:inline-flex;align-items:flex-end;gap:1.5px;height:9px;flex:none}
+.atp-bars s{display:block;width:2.5px;border-radius:1px;background:currentColor;opacity:.28;text-decoration:none}
+.atp-bars s:nth-child(1){height:4px}.atp-bars s:nth-child(2){height:6.5px}.atp-bars s:nth-child(3){height:9px}
+.atp-bars.b1 s:nth-child(1),.atp-bars.b2 s:nth-child(-n+2),.atp-bars.b3 s{opacity:1}
+/* ---- movement profile: the two scales, spelled out, and the readout ---- */
+.atp-defs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:16px}
+@media(max-width:760px){.atp-defs{grid-template-columns:minmax(0,1fr)}}
+.atp-def{border:1px solid var(--border);border-radius:12px;background:var(--bg2);padding:11px 13px}
+.atp-def-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.atp-def-r{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:center;padding:3px 0;font-size:11.5px;color:var(--muted)}
+.atp-tag{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:6px;background:var(--lb);color:var(--lc);
+  border:1px solid var(--ld);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;flex:none;justify-self:start;white-space:nowrap}
+.atp-readout{margin-top:12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);padding:11px 13px 12px}
+.atp-readout-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.atp-ro-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr));gap:5px 14px;margin-top:9px}
+.atp-ro{display:flex;align-items:center;gap:7px;min-width:0;padding:5px 8px;border-radius:8px}
+.atp-ro.focus{background:rgba(0,148,255,.06);box-shadow:inset 2px 0 0 var(--accent)}
+.atp-ro-n{font-size:12.5px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atp-ro-a{color:var(--dim);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;flex:none}
+/* ---- constraints: two lists, never one ---- */
+.atp-con2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding-top:16px}
+@media(max-width:900px){.atp-con2{grid-template-columns:minmax(0,1fr)}}
+.atp-con{border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.atp-con.hard{--cc:#ef4444;--cl:#fca5a5;--cb:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);
+  background:linear-gradient(172deg,rgba(239,68,68,.08),transparent 42%),var(--bg2)}
+.atp-con.soft{--cc:#f59e0b;--cl:#fcd34d;--cb:rgba(245,158,11,.12);border-color:rgba(245,158,11,.28);
+  background:linear-gradient(172deg,rgba(245,158,11,.07),transparent 42%),var(--bg2)}
+.atp-con-h{display:flex;align-items:flex-start;gap:11px}
+.atp-con-badge{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;
+  padding:5px 9px;border-radius:7px;background:var(--cb);border:1px solid var(--cc);color:var(--cl)}
+.atp-con-tx{flex:1;min-width:0}
+.atp-con-t{font-size:13.5px;font-weight:700;color:var(--text)}
+.atp-con-d{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.atp-con-n{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:22px;font-weight:700;color:var(--cl);line-height:1}
+.atp-con-list{display:flex;flex-direction:column;gap:8px}
+.atp-con-none{font-size:12px;color:var(--dim);padding:10px 12px;border:1px dashed var(--border2);border-radius:10px}
+.atp-con-row{border:1px solid var(--border2);border-left:3px solid var(--cc);border-radius:10px;background:var(--panel);padding:9px 10px 10px 12px}
+.atp-con-top{display:flex;align-items:center;gap:9px}
+.atp-con-cat{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;letter-spacing:.09em;
+  text-transform:uppercase;padding:3px 7px;border-radius:5px;border:1px solid var(--border2);color:var(--muted);background:var(--bg2)}
+.atp-con-l{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text)}
+.atp-x{flex:none;width:26px;height:26px;padding:0;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);
+  cursor:pointer;font-size:11px;font-family:inherit;display:grid;place-items:center}
+.atp-x:hover{border-color:var(--border2);color:#fca5a5;background:var(--hover)}
+.atp-con-in{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin-top:8px}
+.atp-con-in.two{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+@media(max-width:560px){.atp-con-in.two{grid-template-columns:minmax(0,1fr)}}
+.atp-con-in input{height:32px;padding:0 10px;font-size:12px;border-radius:8px}
+.atp-con-add{align-self:flex-start;height:32px;padding:0 14px;border-radius:9px;border:1px dashed var(--border2);background:none;
+  color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:border-color .14s ease,color .14s ease}
+.atp-con-add:hover{border-color:var(--cc);color:var(--cl)}
+.atp-pick{border:1px solid var(--border2);border-radius:12px;background:var(--panel);overflow:hidden}
+.atp-pick-tabs{display:flex;gap:4px;padding:8px;overflow-x:auto;border-bottom:1px solid var(--border);background:var(--elevated)}
+.atp-pick-tabs button{flex:none;height:27px;padding:0 10px;border-radius:7px;border:1px solid transparent;background:none;color:var(--muted);
+  font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.atp-pick-tabs button:hover{color:var(--text)}
+.atp-pick-tabs button.on{background:var(--cb);border-color:var(--cc);color:var(--cl)}
+.atp-pick-list{display:flex;flex-wrap:wrap;gap:6px;padding:11px}
+.atp-opt{display:inline-flex;align-items:center;gap:6px;height:29px;padding:0 12px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:border-color .12s ease,color .12s ease}
+.atp-opt:hover:not(:disabled){border-color:var(--cc);color:var(--text)}
+.atp-opt.on{background:var(--cb);border-color:var(--cc);color:var(--cl)}
+.atp-opt:disabled{opacity:.38;cursor:not-allowed}
+.atp-opt i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.08em;padding:1px 5px;
+  border-radius:4px;border:1px solid var(--border2);color:var(--dim)}
+.atp-pick-custom{display:flex;gap:7px;padding:0 11px 11px;flex-wrap:wrap}
+.atp-pick-custom select{width:auto;flex:none;height:32px;padding:0 8px;font-size:12px;border-radius:8px}
+.atp-pick-custom input{flex:1 1 160px;width:auto;height:32px;padding:0 10px;font-size:12px;border-radius:8px}
+.atp-pick-custom button{flex:none;height:32px;padding:0 15px;border-radius:8px;border:1px solid var(--cc);background:var(--cb);color:var(--cl);
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.atp-pick-custom button:disabled{opacity:.4;cursor:not-allowed}
+.atp-pick-msg{padding:0 11px 11px;font-size:11.5px;color:var(--cl)}
+/* ---- exercise exposure ---- */
+.x-none{--xb:var(--bg2);--xd:var(--border2);--xc:var(--dim)}
+.x-low{--xb:rgba(0,148,255,.12);--xd:rgba(0,148,255,.32);--xc:#7cc4ff}
+.x-moderate{--xb:rgba(0,148,255,.3);--xd:rgba(0,148,255,.6);--xc:#d6ecff}
+.x-high{--xb:#0094ff;--xd:#0094ff;--xc:#04121f}
+.atp-xbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:16px}
+.atp-wseg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--border2);border-radius:10px;background:var(--bg2)}
+.atp-wseg button{flex:none;height:34px;padding:0 14px;border:none;border-left:1px solid var(--border2);background:none;color:var(--muted);
+  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .12s ease,color .12s ease}
+.atp-wseg button:first-child{border-left:none}
+.atp-wseg button:hover{color:var(--text)}
+.atp-wseg button.on{background:var(--accent-bg);color:var(--accent2);box-shadow:inset 0 -2px 0 var(--accent)}
+.atp-ref{display:flex;align-items:center;gap:9px;margin:0}
+.atp-ref span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.atp-ref input{width:150px;height:34px;padding:0 10px;font-size:12px;border-radius:9px}
+.atp-xmeta{margin-top:12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted)}
+.atp-xmeta b{color:var(--text2);font-weight:600}
+.atp-xleg{display:flex;align-items:center;gap:6px 16px;flex-wrap:wrap;margin-top:9px;font-size:11px;color:var(--muted)}
+.atp-xleg>span{display:inline-flex;align-items:center;gap:6px}
+.atp-xleg-strip{margin-left:auto;color:var(--dim)}
+.atp-xleg-strip .atp-sw{margin-right:-3px}
+.atp-xleg-strip .atp-sw:nth-child(4){margin-right:4px}
+.atp-sw{display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--xb);border:1px solid var(--xd);flex:none}
+.atp-lv{display:inline-flex;align-items:center;justify-content:center;height:21px;min-width:84px;padding:0 8px;border-radius:6px;
+  background:var(--xb);border:1px solid var(--xd);color:var(--xc);font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;flex:none}
+.atp-strip{display:inline-flex;align-items:center;gap:5px;flex:none;padding:0 2px}
+.atp-strip i{width:10px;height:10px;border-radius:3px;background:var(--xb);border:1px solid var(--xd)}
+/* The window on screen: a ring set off from the cell, never over its neighbours. */
+.atp-strip i.cur{box-shadow:0 0 0 2px var(--bg2),0 0 0 3px var(--text2)}
+.atp-sub-t{display:flex;align-items:baseline;gap:10px;margin-top:16px;font-size:11.5px;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text)}
+.atp-sub-t b{font-weight:700}
+.atp-sub-t span{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:500;letter-spacing:.06em;color:var(--dim)}
+.atp-xempty{margin-top:14px;padding:22px 18px;border:1px dashed var(--border2);border-radius:13px;text-align:center;font-size:12.5px;
+  color:var(--muted);line-height:1.6}
+.atp-xt{margin-top:9px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden}
+.atp-xt-h,.atp-xt-r{display:grid;grid-template-columns:minmax(150px,1.35fr) minmax(120px,1fr) minmax(140px,1.15fr) minmax(150px,1.3fr) 84px 70px 168px;
+  gap:12px;align-items:center;padding:9px 14px}
+.atp-xt-h{background:var(--elevated);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.atp-xt-h .r{text-align:right}
+.atp-xt-r{border-top:1px solid var(--border)}
+.atp-xt-h+.atp-xt-r{border-top:none}
+.atp-xt-r:hover{background:rgba(255,255,255,.02)}
+.atp-xt-n{font-size:13px;font-weight:700;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atp-xt-f{font-size:12px;color:var(--text2);min-width:0}
+.atp-xt-tags{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.atp-mini{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;background:var(--elevated);border:1px solid var(--border2);
+  font-size:10.5px;font-weight:600;color:var(--text2);white-space:nowrap}
+.atp-mini.st{border-color:rgba(34,211,238,.32);color:#a5f3fc;background:rgba(34,211,238,.07)}
+.atp-mini.ld{border-style:dashed;color:var(--muted);background:none}
+.atp-xt-d{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted)}
+.atp-xt-q{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:700;color:var(--text2)}
+.atp-xt-q small{font-weight:500;color:var(--dim);margin-left:2px;font-size:10px}
+.atp-xt-lv{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.atp-xt-more{display:block;width:100%;padding:10px;border:none;border-top:1px solid var(--border);background:none;color:var(--accent2);
+  font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.atp-xt-more:hover{background:var(--hover)}
+@media(max-width:1180px){
+  .atp-xt-h{display:none}
+  .atp-xt-r{grid-template-columns:minmax(0,1fr) auto;gap:7px 12px;padding:11px 14px}
+  .atp-xt-r>*{grid-column:1/-1}
+  .atp-xt-r>.atp-xt-n{grid-column:1;grid-row:1}
+  .atp-xt-r>.atp-xt-lv{grid-column:2;grid-row:1}
+  .atp-xt-r>.atp-xt-d,.atp-xt-r>.atp-xt-q{grid-column:auto;display:inline}
+  .atp-xt-r>.atp-xt-d{white-space:nowrap}
+  .atp-xt-r>.atp-xt-d::before{content:attr(data-k)}
+  .atp-xt-r>.atp-xt-q{justify-self:end}
+}
+.atp-layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;align-items:start}
+@media(max-width:900px){.atp-layers{grid-template-columns:minmax(0,1fr)}}
+.atp-ly-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(50px,100px) 46px auto auto;gap:10px;align-items:center;
+  padding:7px 13px;border-top:1px solid var(--border)}
+.atp-grp-h+.atp-ly-r{border-top:none}
+.atp-ly-n{font-size:12.5px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.atp-ly-bar{height:6px;border-radius:3px;background:var(--elevated);overflow:hidden}
+.atp-ly-bar i{display:block;height:100%;border-radius:3px;background:var(--xd)}
+.atp-ly-bar.x-high i{background:#0094ff}
+.atp-ly-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+.atp-ly-empty{padding:13px;font-size:12px;color:var(--dim)}
+.atp-ly-none{padding:10px 13px 12px;border-top:1px solid var(--border)}
+.atp-ly-none .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.atp-ly-none .l{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.atp-ly-none .l span{font-size:11px;color:var(--dim);padding:2px 9px;border-radius:999px;border:1px dashed var(--border2)}
+@media(max-width:560px){.atp-ly-r{grid-template-columns:minmax(0,1fr) auto auto}.atp-ly-bar,.atp-ly-s{display:none}}
 /* Dated notes panel — arrow-navigated, light (non-italic) body text */
 .notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .notes-add{width:auto;flex:none;padding:6px 12px;font-size:12px;background:var(--elevated);border:1px solid var(--border2);border-radius:8px;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
@@ -23838,6 +24093,349 @@ function ProfileTab({ath,updAth,setup}){
     </div>
   </div>);
 }
+/* ═══ ATHLETE TRAINING PROFILE — the tab beside Profile ═══
+   Four sections on the same cards the scouting sheet uses. The first three are the
+   coach's and are written straight onto `ath.trainingProfile`; the fourth is drawn
+   from the calendar and cannot be edited, only read. Nothing here selects an exercise
+   or builds a session — the profile reaches programming through the individualization
+   JSON (atpSnapshot), as context.
+
+   The taxonomy is English and much of it is set in capitals by CSS. <html lang> follows
+   the app language, and a Turkish uppercase turns "Training" into "TRAİNİNG" — so every
+   English label that is uppercased carries lang="en" itself. */
+const atpBars=n=><i className={`atp-bars b${n}`} aria-hidden="true"><s/><s/><s/></i>;
+function AtpSecHead({n,title,desc,children}){
+  return(<div className="sc-sec-h">
+    <div className="sc-sec-n">{n}</div>
+    <div className="sc-sec-tx"><div className="sc-sec-t" lang="en">{title}</div><div className="sc-sec-d">{desc}</div></div>
+    {children&&<div className="atp-hcnt">{children}</div>}
+  </div>);
+}
+function AtpPriorities({pri,onSet}){
+  const inLevel=id=>ATP_PRIORITY_GROUPS.flatMap(g=>g.items.filter(it=>pri[it.id]===id));
+  return(<div className="sc-sec" id="atp-s1">
+    <AtpSecHead n={1} title="Training Priorities"
+      desc={L('Mevcut dönemde geliştirilmesi veya korunması gereken fiziksel özellikler. Her alan üç seviyeden biriyle tanımlanır; performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesine göre belirlenir.',
+        'The physical qualities to develop or keep in the current period, each at one of three levels — set from performance data, test results, training history and the coach’s judgement.')}>
+      {ATP_PRI_LEVELS.map(l=><span key={l.id} className={`atp-hc lv-${l.id}`} lang="en"><i/>{l.en}<b>{inLevel(l.id).length}</b></span>)}
+    </AtpSecHead>
+    <div className="sc-sec-b">
+      <div className="atp-lanes">{ATP_PRI_LEVELS.map(l=>{const its=inLevel(l.id);return(
+        <div key={l.id} className={`atp-lane lv-${l.id}`}>
+          <div className="atp-lane-h"><span className="atp-lane-t" lang="en">{l.en}</span><span className="atp-lane-n">{its.length}</span></div>
+          <div className="atp-lane-d">{L(l.dTr,l.dEn)}</div>
+          <div className="atp-chips">{its.length?its.map(it=>
+            <span key={it.id} className="atp-chip">{it.en}
+              <button onClick={()=>onSet(it.id,null)} title={L('Kaldır','Remove')} aria-label={L(`${it.en} kaldır`,`Remove ${it.en}`)}>✕</button></span>)
+            :<span className="atp-empty">{L('Henüz seçilmedi — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
+        </div>);})}</div>
+      <div className="atp-groups">{ATP_PRIORITY_GROUPS.map(g=>{const n=g.items.filter(it=>pri[it.id]).length;return(
+        <div key={g.id} className="atp-grp">
+          <div className="atp-grp-h">
+            <div><div className="atp-grp-t" lang="en">{g.en}</div>{L(g.tr,'')&&<div className="atp-grp-s">{g.tr}</div>}</div>
+            <span className="atp-grp-c"><b>{n}</b>/{g.items.length}</span>
+          </div>
+          {g.items.map(it=>{const v=pri[it.id]||'';return(
+            <div key={it.id} className={`atp-it${v?' set':''}`}>
+              <span className="atp-it-n">{v&&<i className={`atp-dot lv-${v}`}/>}{it.en}</span>
+              <div className="atp-seg" role="group" aria-label={it.en}>{ATP_PRI_LEVELS.map(l=>
+                <button key={l.id} className={`lv-${l.id}${v===l.id?' on':''}`} aria-pressed={v===l.id}
+                  title={`${l.en} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(it.id,v===l.id?null:l.id)}>{l.ab}</button>)}</div>
+            </div>);})}
+        </div>);})}</div>
+    </div>
+  </div>);
+}
+function AtpMovement({mv,onSet}){
+  const rated=ATP_MOVE_GROUPS.flatMap(g=>g.items.filter(it=>mv[it.id]&&(mv[it.id].status||mv[it.id].priority)).map(it=>({...it,r:mv[it.id]})));
+  const focus=x=>x.r.status==='limited'||x.r.priority==='high';
+  const readout=[...rated.filter(focus),...rated.filter(x=>!focus(x))];
+  const S=id=>ATP_MV_STATUS.find(x=>x.id===id),P=id=>ATP_MV_PRIORITY.find(x=>x.id===id);
+  return(<div className="sc-sec" id="atp-s2">
+    <AtpSecHead n={2} title="Movement Profile"
+      desc={L('Temel hareketlerde ve hareket kalitelerinde mevcut durum — her kalite için Status ve Priority. Sporcunun hareket kapasitesini tanımlar; tek başına egzersiz seçimi anlamına gelmez.',
+        'Where the athlete stands on each fundamental movement and movement quality — a Status and a Priority for each. It describes movement capacity; on its own it is not an exercise selection.')}>
+      {ATP_MV_STATUS.map(s=><span key={s.id} className={`atp-hc st-${s.id}`} lang="en"><i/>{s.en}<b>{rated.filter(x=>x.r.status===s.id).length}</b></span>)}
+    </AtpSecHead>
+    <div className="sc-sec-b">
+      <div className="atp-defs">
+        <div className="atp-def"><div className="atp-def-k" lang="en">Status</div>
+          {ATP_MV_STATUS.map(s=><div key={s.id} className="atp-def-r"><span lang="en" className={`atp-tag st-${s.id}`}>{s.en}</span><span>{L(s.dTr,s.dEn)}</span></div>)}</div>
+        <div className="atp-def"><div className="atp-def-k" lang="en">Priority</div>
+          {ATP_MV_PRIORITY.map(p=><div key={p.id} className="atp-def-r"><span lang="en" className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{p.en}</span><span>{L(p.dTr,p.dEn)}</span></div>)}</div>
+      </div>
+      {readout.length>0&&<div className="atp-readout">
+        <div className="atp-readout-h"><span>{L('Profil özeti','Profile readout')}</span>
+          <span>{L(`${rated.length} hareket · ${rated.filter(focus).length} odak`,`${rated.length} rated · ${rated.filter(focus).length} in focus`)}</span></div>
+        <div className="atp-ro-list">{readout.map(x=>
+          <div key={x.id} className={`atp-ro${focus(x)?' focus':''}`}
+            title={focus(x)?L('Odak: Limited durum veya High öncelik','Focus: Limited status or High priority'):undefined}>
+            <span className="atp-ro-n">{x.en}</span><span className="atp-ro-a">→</span>
+            {x.r.status?<span lang="en" className={`atp-tag st-${x.r.status}`}>{S(x.r.status).en}</span>:<span className="atp-ro-a">—</span>}
+            <span className="atp-ro-a">/</span>
+            {x.r.priority?<span lang="en" className={`atp-tag pr-${x.r.priority}`}>{atpBars(P(x.r.priority).bars)}{P(x.r.priority).en}</span>:<span className="atp-ro-a">—</span>}
+          </div>)}</div>
+      </div>}
+      <div className="atp-groups mv">{ATP_MOVE_GROUPS.map(g=>{const n=g.items.filter(it=>mv[it.id]).length;return(
+        <div key={g.id} className="atp-grp">
+          <div className="atp-grp-h">
+            <div><div className="atp-grp-t" lang="en">{g.en}</div>{L(g.tr,'')&&<div className="atp-grp-s">{g.tr}</div>}</div>
+            <span className="atp-grp-c"><b>{n}</b>/{g.items.length}</span>
+          </div>
+          {g.items.map(it=>{const r=mv[it.id]||{};return(
+            <div key={it.id} className={`atp-it mv${r.status||r.priority?' set':''}`}>
+              <span className="atp-it-n">{r.status&&<i className={`atp-dot st-${r.status}`}/>}{it.en}</span>
+              <div className="atp-seg" role="group" aria-label={`${it.en} — Status`}>{ATP_MV_STATUS.map(s=>
+                <button key={s.id} className={`st-${s.id}${r.status===s.id?' on':''}`} aria-pressed={r.status===s.id}
+                  title={`Status: ${s.en} — ${L(s.dTr,s.dEn)}`} onClick={()=>onSet(it.id,'status',s.id)}>{s.ab}</button>)}</div>
+              <div className="atp-seg" role="group" aria-label={`${it.en} — Priority`}>{ATP_MV_PRIORITY.map(p=>
+                <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id}
+                  title={`Priority: ${p.en} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{p.ab}</button>)}</div>
+            </div>);})}
+        </div>);})}</div>
+    </div>
+  </div>);
+}
+function AtpConPanel({kind,list,other,onList}){
+  const[open,setOpen]=useState(false);
+  const[cat,setCat]=useState('suggest');
+  const[custom,setCustom]=useState('');
+  const[customCat,setCustomCat]=useState('load');
+  const[msg,setMsg]=useState('');
+  const hard=kind==='hard';
+  const mine=new Set(list.map(c=>c.id)),theirs=new Set(other.map(c=>c.id));
+  const otherName=hard?'Soft':'Hard';
+  const add=id=>{if(!mine.has(id)&&!theirs.has(id))onList([...list,{id}]);};
+  const remove=id=>onList(list.filter(c=>c.id!==id));
+  const patch=(id,p)=>onList(list.map(c=>c.id===id?{...c,...p}:c));
+  /* A typed constraint that names a catalogue entry IS that entry — so the same rule can
+     never sit on the list twice, or on both lists, just because it was typed. */
+  const addCustom=()=>{
+    const t=custom.trim();if(!t)return;
+    const hit=ATP_CONSTRAINTS.find(c=>c.en.toLowerCase()===t.toLowerCase());
+    if(hit){
+      if(theirs.has(hit.id)){setMsg(L(`"${hit.en}" zaten ${otherName} listesinde.`,`"${hit.en}" is already on the ${otherName} list.`));return;}
+      if(!atpConFits(hit,kind)){setMsg(L(`"${hit.en}" yalnızca ${otherName} olabilir.`,`"${hit.en}" can only be ${otherName}.`));return;}
+      add(hit.id);
+    }else{
+      const low=t.toLowerCase();
+      if([...list,...other].some(c=>atpConLabel(c).toLowerCase()===low)){setMsg(L('Bu kısıt zaten ekli.','That constraint is already there.'));return;}
+      onList([...list,{id:'c_'+uid(),label:t,cat:customCat}]);
+    }
+    setCustom('');setMsg('');
+  };
+  const opts=(cat==='suggest'?ATP_CON_SUGGEST[kind].map(atpConDef):ATP_CONSTRAINTS.filter(c=>c.cat===cat)).filter(Boolean);
+  return(<div className={`atp-con ${kind}`}>
+    <div className="atp-con-h">
+      <span className="atp-con-badge" lang="en">{hard?'HARD':'SOFT'}</span>
+      <div className="atp-con-tx">
+        <div className="atp-con-t">{hard?'Hard Constraints':'Soft Constraints'}</div>
+        <div className="atp-con-d">{hard?L('Kesin olarak uyulması gereken kısıtlamalar.','Rules that must be followed, without exception.')
+          :L('Kesin yasak olmayan; tercih edilen veya sınırlandırılması gereken durumlar.','Not prohibitions — preferences, or things to keep limited.')}</div>
+      </div>
+      <span className="atp-con-n">{list.length}</span>
+    </div>
+    <div className="atp-con-list">
+      {list.length===0&&<div className="atp-con-none">{hard?L('Hard kısıt yok.','No hard constraints.'):L('Soft kısıt yok.','No soft constraints.')}</div>}
+      {list.map(c=>{const d=atpConDef(c.id);const withVal=!!(d&&d.ph);return(
+        <div key={c.id} className="atp-con-row">
+          <div className="atp-con-top">
+            {atpCatLabel(atpConCat(c))?<span className="atp-con-cat" lang="en">{atpCatLabel(atpConCat(c))}</span>
+              :<span className="atp-con-cat">{L('Diğer','Other')}</span>}
+            <span className="atp-con-l">{atpConLabel(c)}</span>
+            <button className="atp-x" onClick={()=>remove(c.id)} title={L('Kısıtı kaldır','Remove constraint')} aria-label={L('Kısıtı kaldır','Remove constraint')}>✕</button>
+          </div>
+          <div className={`atp-con-in${withVal?' two':''}`}>
+            {withVal&&<input value={c.value||''} onChange={e=>patch(c.id,{value:e.target.value})} placeholder={L(d.ph[0],d.ph[1])}
+              aria-label={L('Değer','Value')}/>}
+            <input value={c.note||''} onChange={e=>patch(c.id,{note:e.target.value})}
+              placeholder={L('Not — bölge, süre, gerekçe…','Note — region, duration, reason…')} aria-label={L('Not','Note')}/>
+          </div>
+        </div>);})}
+    </div>
+    <button className="atp-con-add" onClick={()=>{setOpen(o=>!o);setMsg('');}}>{open?L('Kapat','Close'):L('+ Kısıt ekle','+ Add constraint')}</button>
+    {open&&<div className="atp-pick">
+      <div className="atp-pick-tabs">
+        <button className={cat==='suggest'?'on':''} onClick={()=>setCat('suggest')}>{L('Önerilen','Suggested')}</button>
+        {ATP_CON_CATS.map(k=><button key={k.id} className={cat===k.id?'on':''} onClick={()=>setCat(k.id)}>{k.en}</button>)}
+      </div>
+      <div className="atp-pick-list">{opts.map(d=>{
+        const on=mine.has(d.id),elsewhere=theirs.has(d.id),fits=atpConFits(d,kind);
+        const why=elsewhere?L(`${otherName} listesinde — bir kısıt iki listede birden olamaz.`,`On the ${otherName} list — a constraint cannot be on both.`)
+          :!fits?L(`Bu kısıt yalnızca ${otherName} olabilir.`,`This constraint can only be ${otherName}.`):undefined;
+        return<button key={d.id} className={`atp-opt${on?' on':''}`} disabled={!on&&(elsewhere||!fits)} title={why}
+          onClick={()=>on?remove(d.id):add(d.id)}>{on?'✓':'+'} {d.en}{elsewhere&&<i>{otherName.toUpperCase()}</i>}</button>;})}</div>
+      <div className="atp-pick-custom">
+        <select value={customCat} onChange={e=>setCustomCat(e.target.value)} aria-label={L('Kategori','Category')}>
+          {ATP_CON_CATS.map(k=><option key={k.id} value={k.id}>{k.en}</option>)}</select>
+        <input value={custom} onChange={e=>{setCustom(e.target.value);setMsg('');}} onKeyDown={e=>{if(e.key==='Enter')addCustom();}}
+          placeholder={L('Özel kısıt yaz…','Write a custom constraint…')}/>
+        <button onClick={addCustom} disabled={!custom.trim()}>{L('Ekle','Add')}</button>
+      </div>
+      {msg&&<div className="atp-pick-msg">{msg}</div>}
+    </div>}
+  </div>);
+}
+function AtpConstraints({con,onChange}){
+  return(<div className="sc-sec" id="atp-s3">
+    <AtpSecHead n={3} title="Constraints"
+      desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Hard ve Soft kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
+        'The limits and preferences training has to take into account. Hard and Soft are kept strictly apart — a constraint can sit on one list only.')}>
+      <span className="atp-hc cn-hard" lang="en"><i/>Hard<b>{con.hard.length}</b></span>
+      <span className="atp-hc cn-soft" lang="en"><i/>Soft<b>{con.soft.length}</b></span>
+    </AtpSecHead>
+    <div className="sc-sec-b">
+      <div className="atp-con2">
+        <AtpConPanel kind="hard" list={con.hard} other={con.soft} onList={l=>onChange({...con,hard:l})}/>
+        <AtpConPanel kind="soft" list={con.soft} other={con.hard} onList={l=>onChange({...con,soft:l})}/>
+      </div>
+    </div>
+  </div>);
+}
+function AtpExposure({exp,refDate,setRefDate}){
+  const[win,setWin]=useState('d7');
+  const[all,setAll]=useState(false);
+  const lv=id=>ATP_EXP_LEVELS.find(x=>x.id===id)||ATP_EXP_LEVELS[0];
+  const strip=t=><span className="atp-strip" aria-hidden="true">{ATP_EXP_WINDOWS.map(w=>
+    <i key={w.id} className={`x-${t.level[w.id]}${w.id===win?' cur':''}`}
+      title={`${w.en}: ${lv(t.level[w.id]).en} · ${t.sets[w.id]} set`}/>)}</span>;
+  const pill=id=><span className={`atp-lv x-${id}`} lang="en">{lv(id).ab}</span>;
+  const byWin=list=>list.filter(t=>t.sets[win]>0)
+    .sort((a,b)=>(b.sets[win]-a.sets[win])||String(b.lastUsed||'').localeCompare(String(a.lastUsed||'')));
+  const exRows=byWin(exp.exercises);
+  const shown=all?exRows:exRows.slice(0,10);
+  const layer=(title,sub,list,fixed)=>{
+    const on=byWin(list);
+    const max=Math.max(1,...on.map(t=>t.sets[win]));
+    const off=fixed?list.filter(t=>!(t.sets[win]>0)):[];
+    return(<div className="atp-grp">
+      <div className="atp-grp-h">
+        <div><div className="atp-grp-t" lang="en">{title}</div><div className="atp-grp-s">{sub}</div></div>
+        <span className="atp-grp-c"><b>{on.length}</b>{fixed?`/${list.length}`:''}</span>
+      </div>
+      {on.length===0&&<div className="atp-ly-empty">{L('Bu aralıkta maruziyet yok.','No exposure in this window.')}</div>}
+      {on.map(t=>{const l=t.level[win];return(
+        <div key={t.key} className="atp-ly-r">
+          <span className="atp-ly-n" title={t.label}>{t.label}</span>
+          <span className={`atp-ly-bar x-${l}`}><i style={{width:`${Math.max(6,Math.round(t.sets[win]/max*100))}%`}}/></span>
+          <span className="atp-ly-s">{t.sets[win]} set</span>
+          {pill(l)}{strip(t)}
+        </div>);})}
+      {off.length>0&&<div className="atp-ly-none"><div className="k" lang="en">None / Not Recent</div>
+        <div className="l">{off.map(t=><span key={t.key}>{t.label}</span>)}</div></div>}
+    </div>);
+  };
+  const W=ATP_EXP_WINDOWS.find(w=>w.id===win);
+  return(<div className="sc-sec" id="atp-s4">
+    <AtpSecHead n={4} title="Exercise Exposure"
+      desc={L('Sporcunun takvimindeki antrenman kayıtlarından otomatik oluşturulur: hangi egzersizlere ve kategorilere ne sıklıkta maruz kaldığı — yalnızca çeşitlilik değil, yüklenme geçmişi. Seviyeler set sayısından okunur.',
+        'Built automatically from the training records on the athlete’s calendar: which exercises and categories they have been exposed to, and how often — not just variety but loading history. Levels are read from set counts.')}>
+      <span className="atp-hc atp-auto">{L('Otomatik','Automatic')}</span>
+    </AtpSecHead>
+    <div className="sc-sec-b">
+      <div className="atp-xbar">
+        <div className="atp-wseg" role="tablist">{ATP_EXP_WINDOWS.map(w=>
+          <button key={w.id} role="tab" aria-selected={win===w.id} className={win===w.id?'on':''} onClick={()=>setWin(w.id)}>{w.en}</button>)}</div>
+        <label className="atp-ref"><span>{L('Referans günü','Reference day')}</span>
+          <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/></label>
+      </div>
+      <div className="atp-xmeta">{win==='last'
+        ?(exp.last?<>{L('Son seans','Last session')} · <b>{fd(exp.last.date)}</b>{exp.last.name?<> · {exp.last.name}</>:null} · {L(`${exp.last.rows} egzersiz`,`${exp.last.rows} exercises`)}</>
+          :L('Kayıtlı seans yok.','No session on record.'))
+        :<><b>{fd(exp.from[win])} – {fd(exp.end)}</b> · {L(`${exp.sessions[win]} seans`,`${exp.sessions[win]} sessions`)} · {L(`${exp.rows[win]} egzersiz satırı`,`${exp.rows[win]} exercise rows`)}</>}</div>
+      <div className="atp-xleg">{ATP_EXP_LEVELS.slice().reverse().map(l=>
+        <span key={l.id} title={L(l.dTr,l.dEn)}><i className={`atp-sw x-${l.id}`}/>{l.en}</span>)}
+        <span className="atp-xleg-strip"><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/>
+          {L('kareler: son seans · 7 · 14 · 28 gün','squares: last session · 7 · 14 · 28 days')}</span>
+      </div>
+      {!exp.last?<div className="atp-xempty">{L('Takvimde egzersiz kaydı yok. Exercise Exposure, sporcunun takvimine yazılan seanslardan — takım seansları dahil — kendiliğinden oluşur.',
+          'No exercise on the calendar yet. Exercise Exposure builds itself from the sessions on the athlete’s calendar, team sessions included.')}</div>
+      :<>
+        <div className="atp-sub-t"><b lang="en">Exercise Level</b><span>{L(`${W.en} · ${exRows.length} egzersiz`,`${W.en} · ${exRows.length} exercises`)}</span></div>
+        {exRows.length===0?<div className="atp-xempty">{L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
+        :<div className="atp-xt">
+          <div className="atp-xt-h" lang="en"><span>Exercise</span><span>Exercise Family</span><span>Movement Pattern</span><span>Stimulus · Loading</span>
+            <span>Last Used</span><span>Frequency</span><span className="r">Recent Exposure</span></div>
+          {shown.map(t=>{const l=t.level[win];return(
+            <div key={t.key} className="atp-xt-r">
+              <span className="atp-xt-n" title={t.label}>{t.label}</span>
+              <span className="atp-xt-f">{t.family}</span>
+              <span className="atp-xt-tags">{t.patterns.length?t.patterns.map(p=><span key={p} className="atp-mini">{p}</span>):<span className="atp-xt-d">—</span>}</span>
+              <span className="atp-xt-tags">{t.stimuli.map(s=><span key={'s'+s} className="atp-mini st">{s}</span>)}
+                {t.loading.map(s=><span key={'l'+s} className="atp-mini ld">{s}</span>)}
+                {!t.stimuli.length&&!t.loading.length&&<span className="atp-xt-d">—</span>}</span>
+              <span className="atp-xt-d" data-k={L('Son kullanım · ','Last used · ')}>{fd(t.lastUsed)}</span>
+              <span className="atp-xt-q" title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}×<small>{L('/28g','/28d')}</small></span>
+              <span className="atp-xt-lv">{pill(l)}{strip(t)}</span>
+            </div>);})}
+          {exRows.length>10&&<button className="atp-xt-more" onClick={()=>setAll(a=>!a)}>{all?L('Daralt','Collapse'):L(`Tümünü göster (${exRows.length})`,`Show all (${exRows.length})`)}</button>}
+        </div>}
+        <div className="atp-layers">
+          {layer('Exercise Family',L('Egzersiz ailesi','Groups of related exercises'),exp.families,false)}
+          {layer('Movement Pattern',L('Hareket paterni','What the movement trains'),exp.patterns,true)}
+          {layer('Athletic Stimulus',L('Atletik uyaran','The athletic demand delivered'),exp.stimuli,true)}
+          {layer('Loading Characteristic',L('Yüklenme karakteri','How the body was loaded'),exp.loading,true)}
+        </div>
+      </>}
+    </div>
+  </div>);
+}
+function TrainingProfileTab({ath,updAth,exercises}){
+  const tp=atpRead(ath);
+  const raw=(ath.trainingProfile&&typeof ath.trainingProfile==='object')?ath.trainingProfile:{};
+  const save=patch=>updAth(ath.id,{trainingProfile:{...raw,...patch,updated:fmt(new Date())}});
+  const libMap=useMemo(()=>atpLibMap(exercises),[exercises]);
+  const[refDate,setRefDate]=useState(()=>fmt(today));
+  const refOk=/^\d{4}-\d{2}-\d{2}$/.test(refDate||'')?refDate:fmt(today);
+  const exp=useMemo(()=>atpExposure(ath,refOk,{libMap}),[ath.days,libMap,refOk]);
+  const setPri=(id,v)=>{const nx={...tp.priorities};if(v)nx[id]=v;else delete nx[id];save({priorities:nx});};
+  /* Clicking the level that is already on takes it off again, on either axis. */
+  const setMv=(id,field,v)=>{
+    const cur={...(tp.movement[id]||{})};
+    if(cur[field]===v)delete cur[field];else cur[field]=v;
+    const nx={...tp.movement};
+    if(cur.status||cur.priority)nx[id]=cur;else delete nx[id];
+    save({movement:nx});
+  };
+  const priN=Object.values(tp.priorities).filter(v=>ATP_PRI_LEVELS.some(l=>l.id===v)).length;
+  const primary=ATP_PRIORITY_GROUPS.flatMap(g=>g.items).filter(it=>tp.priorities[it.id]==='primary').map(it=>it.en);
+  const mvAll=ATP_MOVE_GROUPS.flatMap(g=>g.items);
+  const mvRated=mvAll.filter(it=>tp.movement[it.id]&&(tp.movement[it.id].status||tp.movement[it.id].priority));
+  const mvLim=mvRated.filter(it=>tp.movement[it.id].status==='limited').length;
+  const mvHigh=mvRated.filter(it=>tp.movement[it.id].priority==='high').length;
+  const go=id=>{const el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});};
+  const tiles=[
+    {id:'atp-s1',c:'#0094ff',k:'Training Priorities',v:priN,u:L('alan','areas'),
+      s:primary.length?`Primary: ${primary.join(', ')}`:L('Primary alan seçilmedi','No Primary area yet')},
+    {id:'atp-s2',c:'#10b981',k:'Movement Profile',v:mvRated.length,u:`/ ${mvAll.length}`,
+      s:`Limited ${mvLim} · High ${mvHigh}`},
+    {id:'atp-s3',c:'#ef4444',k:'Constraints',v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
+      s:`Hard ${tp.constraints.hard.length} · Soft ${tp.constraints.soft.length}`},
+    {id:'atp-s4',c:'#22d3ee',k:'Exercise Exposure',v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
+      s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
+  ];
+  return(<div className="atp-wrap">
+    <div className="atp-intro">
+      <div className="atp-intro-ic">◎</div>
+      <div className="atp-intro-tx">
+        <div className="atp-intro-t">Athlete Training Profile</div>
+        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: öncelikler, hareket profili, kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
+          'Defines the athlete as a trainee: priorities, movement profile, constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
+      </div>
+      {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
+    </div>
+    <div className="atp-glance">{tiles.map(t=>
+      <button key={t.id} className="atp-gl" style={{'--gc':t.c}} onClick={()=>go(t.id)}>
+        <div className="k" lang="en">{t.k}</div>
+        <div className="v">{t.v}<small>{t.u}</small></div>
+        <div className="s" title={t.s}>{t.s}</div>
+      </button>)}</div>
+    <AtpPriorities pri={tp.priorities} onSet={setPri}/>
+    <AtpMovement mv={tp.movement} onSet={setMv}/>
+    <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
+    <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
+  </div>);
+}
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
   /* Normally the profile, but a wellness notification opens straight onto the tab it
      is about — the coach tapped a line about last night's sleep, not a biography. */
@@ -23909,6 +24507,9 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
     {id:'profile',ic:'◈',l:L('Profil','Profile')},
+    /* The athlete as a trainee — priorities, movement profile, constraints, exposure.
+       Named in English in both languages: it is the name of the profile it holds. */
+    {id:'training',ic:'◎',l:'Athlete Training Profile'},
     {id:'load',ic:'▤',l:L('Yük','Load')},
     {id:'calendar',ic:'▣',l:L('Takvim','Calendar')},
     /* The tape measure, and only the tape measure. Test results are read on the Testing
@@ -23948,6 +24549,7 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
     </div>
     <div className="ath-tabs">{ATH_TABS.map(t=><button key={t.id} className={tab===t.id?'on':''} onClick={()=>setTab(t.id)}><span className="ic">{t.ic}</span>{t.l}</button>)}</div>
     {tab==='profile'&&<ProfileTab ath={ath} updAth={updAth} setup={setup}/>}
+    {tab==='training'&&<TrainingProfileTab ath={ath} updAth={updAth} exercises={exercises}/>}
 
     {editProfileOpen&&<div className="modal-bg" onClick={()=>setEditProfileOpen(false)}>
       <div className="modal" style={{maxWidth:680,width:'95vw',background:'#15181e',backdropFilter:'none',WebkitBackdropFilter:'none'}} onClick={e=>e.stopPropagation()}>
@@ -29519,6 +30121,433 @@ function diTolerance(ath,name,ref,days){
         :L('sonraki gün belirgin değişiklik yok','no clear next-day change'))};
 }
 
+/* ---- Athlete Training Profile ----------------------------------------------
+   The athlete as a trainee, in four parts: what the current period develops or keeps
+   (Training Priorities), where each movement quality stands (Movement Profile), what
+   training has to respect (Constraints), and what the athlete has actually been
+   exposed to lately (Exercise Exposure).
+
+   It DESCRIBES the athlete. Nothing in the app picks an exercise or writes a session
+   from it; it is handed to the individualization JSON beside the rest of the athlete's
+   data, as ground for whoever writes the session. The first three parts are the
+   coach's, stored under `ath.trainingProfile`; the fourth is read off the athlete's own
+   calendar every time it is shown, so it cannot go stale.
+
+   The terms stay in English whatever the app language: they are the taxonomy the
+   profile is defined in, and the same words reach the JSON on every device. */
+const atpId=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+const atpItems=list=>list.map(en=>({id:atpId(en),en}));
+const ATP_PRIORITY_GROUPS=[
+  {id:'speed',       en:'Speed',                tr:'Sürat',               items:atpItems(['Acceleration','Max Velocity','Sprint Mechanics','Speed Exposure'])},
+  {id:'cod',         en:'Change of Direction',  tr:'Yön değiştirme',      items:atpItems(['Deceleration','Change of Direction','Lateral Movement','Braking Ability'])},
+  {id:'plyo',        en:'Plyometric / Reactive',tr:'Pliometrik / reaktif',items:atpItems(['Jump Ability','Reactive Strength','Elastic Strength','Landing Ability','Ankle Stiffness'])},
+  {id:'strength',    en:'Strength',             tr:'Kuvvet',              items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength','Relative Strength','Isometric Strength','Eccentric Strength'])},
+  {id:'power',       en:'Power',                tr:'Güç',                 items:atpItems(['Lower-Body Power','Upper-Body Power','Explosive Strength','Rate of Force Development'])},
+  {id:'movement',    en:'Movement',             tr:'Hareket',             items:atpItems(['Mobility','Stability','Coordination','Trunk Control'])},
+  {id:'conditioning',en:'Conditioning',         tr:'Kondisyon',           items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability','Work Capacity'])},
+];
+const ATP_PRI_LEVELS=[
+  {id:'primary',  en:'Primary',  ab:'PRI',dTr:'Sporcunun en önemli gelişim alanları.',dEn:'The athlete’s most important development areas.'},
+  {id:'secondary',en:'Secondary',ab:'SEC',dTr:'Geliştirilmesi önemli, ancak Primary seviyesinden daha düşük öncelikli alanlar.',dEn:'Important to develop, but below Primary.'},
+  {id:'maintain', en:'Maintain', ab:'MNT',dTr:'Mevcut kapasitenin korunması gereken alanlar.',dEn:'Areas where current capacity is to be kept.'},
+];
+/* Trunk Control is not in the trunk list the profile was specified with, but it is the
+   word the specification's own examples use for the trunk as a whole — so it heads
+   that group instead of being a rating the coach has nowhere to put. */
+const ATP_MOVE_GROUPS=[
+  {id:'lower',   en:'Lower Body',       tr:'Alt vücut',      items:atpItems(['Squat','Hinge','Lunge','Unilateral','Knee Dominant','Hip Dominant','Ankle Function'])},
+  {id:'upper',   en:'Upper Body',       tr:'Üst vücut',      items:atpItems(['Horizontal Push','Horizontal Pull','Vertical Push','Vertical Pull'])},
+  {id:'athletic',en:'Athletic Movement',tr:'Atletik hareket',items:atpItems(['Acceleration','Deceleration','Jumping','Landing','Hopping','Sprinting','Lateral Movement','Change of Direction'])},
+  {id:'trunk',   en:'Trunk',            tr:'Gövde',          items:atpItems(['Trunk Control','Bracing','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Rotation'])},
+  {id:'general', en:'General Movement', tr:'Genel hareket',  items:atpItems(['Mobility','Stability','Coordination','Balance'])},
+];
+const ATP_MV_STATUS=[
+  {id:'good',    en:'Good',    ab:'GOOD',dTr:'Yeterli veya güçlü kapasite.',dEn:'Adequate or strong capacity.'},
+  {id:'moderate',en:'Moderate',ab:'MOD', dTr:'Geliştirilebilir veya orta düzey kapasite.',dEn:'Developable, middling capacity.'},
+  {id:'limited', en:'Limited', ab:'LTD', dTr:'Belirgin şekilde sınırlı kapasite.',dEn:'Clearly limited capacity.'},
+];
+const ATP_MV_PRIORITY=[
+  {id:'high',  en:'High',  ab:'HIGH',bars:3,dTr:'Önemli gelişim alanı.',dEn:'An important development area.'},
+  {id:'medium',en:'Medium',ab:'MED', bars:2,dTr:'Orta düzeyde öncelik.',dEn:'A middling priority.'},
+  {id:'low',   en:'Low',   ab:'LOW', bars:1,dTr:'Önemli bir sınırlılık veya öncelik bulunmuyor.',dEn:'No notable limitation or priority.'},
+];
+const ATP_CON_CATS=[
+  {id:'load',en:'Load',tr:'Yük'},{id:'volume',en:'Volume',tr:'Hacim'},{id:'intensity',en:'Intensity',tr:'Şiddet'},
+  {id:'speed',en:'Speed',tr:'Sürat'},{id:'impact',en:'Impact',tr:'Darbe'},{id:'movement',en:'Movement',tr:'Hareket'},
+  {id:'equipment',en:'Equipment',tr:'Ekipman'},{id:'contact',en:'Contact',tr:'Temas'},
+];
+/* `kind` is the list a constraint may sit on. A "No …" is a rule by its own wording and
+   only goes on Hard; a "Prefer …" / "Limit …" is a lean and only goes on Soft; a cap, a
+   reduction or a limited range is whichever the coach says it is. `ph` marks the ones
+   that carry their own number — the cap itself — and hints at how it is written. */
+const ATP_CONSTRAINTS=[
+  {id:'max_load',           cat:'load',     en:'Maximum Load',              kind:'any', ph:['ör. 60 kg / %70 1RM','e.g. 60 kg / 70% 1RM']},
+  {id:'reduced_load',       cat:'load',     en:'Reduced Load',              kind:'any', ph:['ör. %20 azalt','e.g. −20%']},
+  {id:'no_heavy_load',      cat:'load',     en:'No Heavy Loading',          kind:'hard'},
+  {id:'no_bilateral_load',  cat:'load',     en:'No Bilateral Loading',      kind:'hard'},
+  {id:'no_unilateral_load', cat:'load',     en:'No Unilateral Loading',     kind:'hard'},
+  {id:'prefer_unilateral',  cat:'load',     en:'Prefer Unilateral',         kind:'soft'},
+  {id:'max_volume',         cat:'volume',   en:'Maximum Volume',            kind:'any', ph:['ör. seans başına 12 set','e.g. 12 sets per session']},
+  {id:'limited_sets',       cat:'volume',   en:'Limited Sets',              kind:'any', ph:['ör. egzersiz başına maks 3','e.g. max 3 per exercise']},
+  {id:'limited_reps',       cat:'volume',   en:'Limited Repetitions',       kind:'any', ph:['ör. set başına maks 6','e.g. max 6 per set']},
+  {id:'limit_ecc_volume',   cat:'volume',   en:'Limit Eccentric Volume',    kind:'soft'},
+  {id:'limit_knee_volume',  cat:'volume',   en:'Limit Knee-Dominant Volume',kind:'soft'},
+  {id:'limit_repeated',     cat:'volume',   en:'Limit Repeated Exposure',   kind:'soft'},
+  {id:'max_rpe',            cat:'intensity',en:'Maximum RPE',               kind:'any', ph:['ör. RPE 7','e.g. RPE 7']},
+  {id:'max_intensity',      cat:'intensity',en:'Maximum Intensity',         kind:'any', ph:['ör. %75 1RM','e.g. 75% 1RM']},
+  {id:'submaximal_only',    cat:'intensity',en:'Submaximal Only',           kind:'any'},
+  {id:'prefer_low_fatigue', cat:'intensity',en:'Prefer Low-Fatigue Work',   kind:'soft'},
+  {id:'no_max_sprint',      cat:'speed',    en:'No Maximal Sprint',         kind:'hard'},
+  {id:'submax_sprint',      cat:'speed',    en:'Submaximal Sprint',         kind:'any', ph:['ör. maks %80 hız','e.g. max 80% speed']},
+  {id:'limited_accel',      cat:'speed',    en:'Limited Acceleration',      kind:'any'},
+  {id:'no_jumping',         cat:'impact',   en:'No Jumping',                kind:'hard'},
+  {id:'no_high_impact_jump',cat:'impact',   en:'No High-Impact Jumping',    kind:'hard'},
+  {id:'limited_jumping',    cat:'impact',   en:'Limited Jumping',           kind:'any', ph:['ör. maks 40 temas','e.g. max 40 contacts']},
+  {id:'low_impact_only',    cat:'impact',   en:'Low-Impact Only',           kind:'any'},
+  {id:'limit_high_impact',  cat:'impact',   en:'Limit High-Impact Work',    kind:'soft'},
+  {id:'limited_rom',        cat:'movement', en:'Limited ROM',               kind:'any', ph:['ör. sol omuz, 90° üstü yok','e.g. left shoulder, nothing above 90°']},
+  {id:'limited_knee_flex',  cat:'movement', en:'Limited Knee Flexion',      kind:'any', ph:['ör. maks 90°','e.g. max 90°']},
+  {id:'no_overhead',        cat:'movement', en:'No Overhead Movement',      kind:'hard'},
+  {id:'limited_overhead',   cat:'movement', en:'Limited Overhead Movement', kind:'any'},
+  {id:'limited_rotation',   cat:'movement', en:'Limited Rotation',          kind:'any'},
+  {id:'prefer_stable',      cat:'movement', en:'Prefer Stable Exercises',   kind:'soft'},
+  {id:'no_barbell',         cat:'equipment',en:'No Barbell',                kind:'hard'},
+  {id:'no_machine',         cat:'equipment',en:'No Machine',                kind:'hard'},
+  {id:'no_cable',           cat:'equipment',en:'No Cable',                  kind:'hard'},
+  {id:'prefer_dumbbell',    cat:'equipment',en:'Prefer Dumbbell',           kind:'soft'},
+  {id:'no_contact',         cat:'contact',  en:'No Contact',                kind:'hard'},
+  {id:'limited_contact',    cat:'contact',  en:'Limited Contact',           kind:'any'},
+];
+/* The examples each list was specified with — offered first, one tap each. */
+const ATP_CON_SUGGEST={
+  hard:['no_max_sprint','no_high_impact_jump','no_heavy_load','no_bilateral_load','no_unilateral_load','no_overhead',
+    'no_contact','no_barbell','limited_rom','limited_knee_flex','limited_rotation'],
+  soft:['prefer_unilateral','prefer_dumbbell','limit_ecc_volume','limit_knee_volume','prefer_low_fatigue',
+    'limit_high_impact','prefer_stable','limit_repeated'],
+};
+const atpConDef=id=>ATP_CONSTRAINTS.find(c=>c.id===id)||null;
+const atpConFits=(def,kind)=>!def||def.kind==='any'||def.kind===kind;
+const atpConLabel=c=>{const d=atpConDef(c&&c.id);return d?d.en:String((c&&c.label)||'').trim();};
+const atpConCat=c=>{const d=atpConDef(c&&c.id);return(d?d.cat:(c&&c.cat))||'';};
+const atpCatLabel=id=>((ATP_CON_CATS.find(x=>x.id===id)||{}).en)||'';
+/* The stored profile, read defensively. Hard and Soft are two lists and stay two: a
+   constraint that somehow sits on both is kept where it is strictest, on Hard. */
+function atpRead(ath){
+  const tp=(ath&&ath.trainingProfile&&typeof ath.trainingProfile==='object')?ath.trainingProfile:{};
+  const obj=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
+  const con=obj(tp.constraints);
+  const list=v=>(Array.isArray(v)?v:[]).filter(c=>c&&c.id&&atpConLabel(c));
+  const hard=list(con.hard),hardIds=new Set(hard.map(c=>c.id));
+  return{priorities:obj(tp.priorities),movement:obj(tp.movement),
+    constraints:{hard,soft:list(con.soft).filter(c=>!hardIds.has(c.id))},updated:tp.updated||null};
+}
+
+/* ---- Exercise Exposure ------------------------------------------------------
+   Read off the athlete's own calendar — the one training log (§15) — never typed in.
+   Every exercise row is filed on five layers at once: the exercise itself, the family
+   it belongs to, the movement pattern(s) it trains, the athletic stimulus it delivers
+   and how it loads the body; every layer is counted in sets over four windows. */
+const ATP_EXP_WINDOWS=[
+  {id:'last',en:'Last Session',tr:'Son seans', days:0},
+  {id:'d7',  en:'Last 7 Days', tr:'Son 7 gün', days:7},
+  {id:'d14', en:'Last 14 Days',tr:'Son 14 gün',days:14},
+  {id:'d28', en:'Last 28 Days',tr:'Son 28 gün',days:28},
+];
+const ATP_EXP_LEVELS=[
+  {id:'none',    en:'None / Not Recent',ab:'None',    dTr:'Yakın dönemde maruziyet bulunmuyor.',dEn:'No recent exposure.'},
+  {id:'low',     en:'Low',              ab:'Low',     dTr:'Düşük düzeyde maruziyet.',dEn:'Low exposure.'},
+  {id:'moderate',en:'Moderate',         ab:'Moderate',dTr:'Orta düzeyde maruziyet.',dEn:'Moderate exposure.'},
+  {id:'high',    en:'High',             ab:'High',    dTr:'Yakın dönemde yüksek maruziyet.',dEn:'High recent exposure.'},
+];
+/* Sets that read as Moderate / High. A day window is read per week (sets × 7 / days),
+   so a 7-day and a 28-day read mean the same thing; the last session is read as it
+   stands. One exercise needs fewer sets than a whole pattern to count as "a lot". */
+const ATP_EXP_CUT={
+  exercise:{week:[3,6],session:[2,4]},
+  group:   {week:[6,12],session:[4,8]},
+};
+function atpExpLevel(sets,kind,days){
+  if(!(sets>0))return'none';
+  const c=ATP_EXP_CUT[kind]||ATP_EXP_CUT.group;
+  const[m,h]=days?c.week:c.session;
+  const v=days?sets*7/days:sets;
+  return v>=h?'high':v>=m?'moderate':'low';
+}
+const ATP_EXP_PATTERNS=['Knee Dominant','Hip Dominant','Squat','Hinge','Lunge','Unilateral Knee Dominant','Unilateral Hip Dominant',
+  'Horizontal Push','Horizontal Pull','Vertical Push','Vertical Pull','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion',
+  'Anti-Flexion','Rotation','Trunk Flexion / Extension','Full Body','Carry','Ankle / Calf','Plyometric','Sprint / Locomotion',
+  'Mobility','Stability / Balance'];
+const ATP_EXP_STIMULI=['Acceleration','Max Velocity','Deceleration','Change of Direction','Lateral Movement','Jumping',
+  'Landing','Hopping / Bounding','Reactive / Depth','Throwing'];
+const ATP_EXP_LOADING=['Heavy Loading','High-Velocity','Eccentric Loading','Isometric','Ballistic'];
+/* Families, read off the exercise's name, most specific first: a "Split Squat Jump" is
+   a jump before it is a split squat, a "Nordic Hamstring Curl" a curl whatever else. */
+const ATP_FAMILIES=[
+  ['Olympic Lift Family',        /\b(clean|snatch|jerk)\b|high pull|olimpik/],
+  ['Sprint Family',              /sprint|accel|ivmelen|flying|wicket|\b[ab][- ]?skip|hız koşu|resisted run|sled (push|pull|drag)|build[- ]?up|max velocity|top speed/],
+  ['Deceleration Family',        /decel|yavaşla|braking|fren/],
+  ['COD / Agility Family',       /\bcod\b|change of direction|yön değiş|agility|çeviklik|shuffle|cutting|5-0-5|\b505\b|zig ?zag|t-test|pro agility|lane agility|mirror drill|carioca|defensive slide/],
+  ['Landing Family',             /landing|iniş|snap ?down|\bstick\b/],
+  ['Depth / Drop Jump Family',   /depth|drop jump|altitude|rebound jump/],
+  ['Hop / Bound Family',         /\bhops?\b|hopping|bound|pogo|sekme/],
+  ['Jump Family',                /jump|sıçra|\bcmj\b|tuck/],
+  ['Med Ball Throw Family',      /med ?ball|medicine ball|sağlık topu|throw|slam|scoop|shot ?put|chest pass|fırlat/],
+  ['Split Squat Family',         /split squat|bulgarian|rfess|rear[- ]?foot/],
+  ['Lunge Family',               /lunge|hamle/],
+  ['Step-Up Family',             /step[- ]?(up|down)/],
+  ['Squat Family',               /squat|çömel|wall sit|leg press|hack|pistol/],
+  ['Hip Thrust / Bridge Family', /thrust|bridge|köprü/],
+  ['Hamstring Curl Family',      /nordic|leg curl|hamstring curl|glute[- ]?ham|\bghr\b|slider curl|ball curl|razor curl/],
+  ['Hinge Family',               /deadlift|\b(sldl|rdl)\b|romanian|good ?morning|hinge|swing|pull[- ]?through|back extension|hyperextension|stiff/],
+  ['Calf / Ankle Family',        /calf|heel raise|tibialis|toe raise|ankle|baldır|ayak bileği/],
+  ['Vertical Pull Family',       /pull[- ]?ups?\b|chin[- ]?ups?\b|pull ?down|\blat\b|barfiks/],
+  ['Horizontal Pull Family',     /\brows?\b|rowing|face ?pull|rear delt|inverted|kürek|reverse fly|pull[- ]?apart/],
+  ['Vertical Press Family',      /overhead|shoulder press|military|\bohp\b|push press|landmine press|arnold|z[- ]?press|handstand|pike push|\bdips?\b/],
+  ['Horizontal Press Family',    /bench|push[- ]?ups?\b|şınav|floor press|chest press|incline|decline|\bfly\b|\bflyes?\b/],
+  ['Carry Family',               /carry|farmer|suitcase|waiter|taşı/],
+  ['Anti-Rotation Family',       /pallof|anti[- ]?rotation|bird ?dog|press ?out/],
+  ['Anti-Lateral Flexion Family',/side ?plank|copenhagen|anti[- ]?lateral/],
+  ['Anti-Extension Family',      /plank|dead ?bug|roll ?out|ab wheel|body ?saw|hollow|stir the pot|anti[- ]?extension/],
+  ['Rotation Family',            /chop|twist|rotation|rotasyon|rotational/],
+  ['Trunk Flexion Family',       /crunch|sit[- ]?up|leg raise|knee raise|\bv[- ]?ups?\b|toes ?to ?bar|mekik/],
+  ['Mobility Family',            /mobility|mobilit|mobiliz|stretch|esneme|\bcars\b|90\/90|greatest|foam roll/],
+];
+const ATP_FAMILY_AXIS={'Split Squat Family':'knee','Lunge Family':'knee','Step-Up Family':'knee','Squat Family':'knee',
+  'Hip Thrust / Bridge Family':'hip','Hamstring Curl Family':'hip','Hinge Family':'hip',
+  'Vertical Pull Family':'pull','Horizontal Pull Family':'pull','Vertical Press Family':'push','Horizontal Press Family':'push',
+  'Anti-Rotation Family':'core','Anti-Lateral Flexion Family':'core','Anti-Extension Family':'core','Rotation Family':'core',
+  'Trunk Flexion Family':'core','Carry Family':'carry','Olympic Lift Family':'full','Calf / Ankle Family':'ankle'};
+/* The coach's tag on the row (and the library's) names the axis before the name does. */
+const ATP_AXIS_OF={'Knee Dominant':'knee','Hip Dominant':'hip','Upper Body Push':'push','Upper Body Pull':'pull','Core':'core',
+  'Full Body':'full','Squat':'knee','Lunge / Unilateral':'knee','Hinge':'hip','Push':'push','Pull':'pull','Core / Brace':'core',
+  'Rotation':'core','Carry':'carry'};
+const ATP_AXIS_FAMILY={knee:'Knee Dominant (Other)',hip:'Hip Dominant (Other)',push:'Upper Body Push (Other)',
+  pull:'Upper Body Pull (Other)',core:'Core (Other)',full:'Full Body (Other)',carry:'Carry Family',ankle:'Calf / Ankle Family'};
+function atpLibMap(exercises){
+  const m={};
+  (exercises||[]).forEach(e=>{const n=String((e&&e.name)||'').trim().toLowerCase();if(n&&!m[n])m[n]=e;});
+  return m;
+}
+/* One exercise row → its family, patterns, stimuli and loading characteristics. What
+   cannot be told is left out rather than guessed into a category. */
+function atpClassify(row,libMap){
+  const n=String((row&&row.name)||'').trim().toLowerCase();
+  const lib=(libMap&&libMap[n])||{};
+  const tagP=String(row.pattern||'').trim();
+  const P=tagP||String(lib.exPattern||'').trim()||(EX_PATTERNS.includes(lib.type)?lib.type:'');
+  const S=String(row.plane||'').trim()||String(lib.exPlane||'').trim()||String(lib.subType||'').trim();
+  const type=String(lib.type||'').trim(),sub=String(lib.subType||'').trim();
+  const mp=String(lib.movePattern||'').trim()||(['Unilateral','Lunges','Step-up'].includes(lib.pattern)?'Lunge / Unilateral':'');
+  const fam0=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
+  const plyo=type==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
+  const run=type==='Multi Directional Speed'||mp==='Sprint / Locomotion'||['Sprint Family','Deceleration Family','COD / Agility Family'].includes(fam0);
+  const throwing=type==='Medicine Ball'||fam0==='Med Ball Throw Family';
+  let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||null;
+  if(!axis&&!plyo&&!run&&!throwing)axis=ATP_FAMILY_AXIS[fam0]||null;
+  const uni=/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|split|lunge|step[- ]?(up|down)|bulgarian|pistol|skater|rfess|hamle|b[- ]?stance|kickstand|staggered|rear[- ]?foot/.test(n)
+    ||['Unilateral','Lunges','Step-up'].includes(lib.pattern)||mp==='Lunge / Unilateral';
+  /* A jump's knee bend is not a squat set: the strength sub-patterns are only read on
+     rows that are not jumps or runs. The axis itself still counts when it was tagged. */
+  const lift=!plyo&&!run;
+  const pats=new Set();
+  if(axis==='knee'){pats.add('Knee Dominant');
+    if(lift){
+      if(uni){pats.add('Unilateral Knee Dominant');
+        if(/lunge|split|hamle|bulgarian|rfess|rear[- ]?foot/.test(n)||lib.pattern==='Lunges')pats.add('Lunge');}
+      else if(fam0==='Squat Family'||mp==='Squat'||/squat|leg press|hack/.test(n))pats.add('Squat');}}
+  if(axis==='hip'){pats.add('Hip Dominant');
+    if(lift){
+      if(fam0==='Hinge Family'||mp==='Hinge'||/deadlift|\brdl\b|romanian|hinge|good ?morning|swing/.test(n))pats.add('Hinge');
+      if(uni)pats.add('Unilateral Hip Dominant');}}
+  if(axis==='push'||axis==='pull'){
+    const dir=(S==='Vertical'||S==='Horizontal'||S==='Rotational')?S:(/Vertical/.test(fam0||'')?'Vertical':'Horizontal');
+    pats.add(dir==='Rotational'?'Rotation':`${dir} ${axis==='push'?'Push':'Pull'}`);
+  }
+  if(axis==='core'){
+    const q=CORE_QUALITIES.has(S)?S:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
+      'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'})[fam0]
+      ||(mp==='Rotation'?'Rotation':EX_STYLE_DEFAULT.Core);
+    pats.add(['Flexion','Extension','Lateral Flexion'].includes(q)?'Trunk Flexion / Extension':q);
+  }
+  if(axis==='full')pats.add('Full Body');
+  if(axis==='carry')pats.add('Carry');
+  if(axis==='ankle'||fam0==='Calf / Ankle Family')pats.add('Ankle / Calf');
+  if(plyo)pats.add('Plyometric');
+  if(run)pats.add('Sprint / Locomotion');
+  if(type==='Mobility'||mp==='Mobility'||fam0==='Mobility Family'||(type==='Warm-Up'&&/Mobilisation|Dynamic Stretching/.test(sub)))pats.add('Mobility');
+  if(type==='Stability'||type==='Balance'||/balance|denge|stability|stabilite/.test(n))pats.add('Stability / Balance');
+
+  const st=new Set();
+  const maxV=/flying|max(imal)? velocity|top speed|maks(imum)? hız|wicket|\b(30|35|40|50|60) ?m\b|fly[- ]?in/.test(n);
+  if(run){
+    if(maxV)st.add('Max Velocity');
+    if(sub==='Acceleration'||/accel|ivmelen|start|sled|resisted|drive/.test(n)
+      ||(fam0==='Sprint Family'&&!maxV&&!/\b[ab][- ]?skip|mechanic|technique|teknik/.test(n)))st.add('Acceleration');
+    if(sub==='Deceleration'||fam0==='Deceleration Family'||/\bstop\b|5-0-5|\b505\b/.test(n))st.add('Deceleration');
+    if(['COD','Non-Reactive Agility','Reactive Agility'].includes(sub)||fam0==='COD / Agility Family')st.add('Change of Direction');
+  }
+  if((run||plyo)&&(/lateral|shuffle|carioca|skater|side ?step|slide|crossover|yanal/.test(n)||(type==='Plyometric'&&sub==='Lateral')))st.add('Lateral Movement');
+  if(plyo){
+    if(fam0==='Jump Family'||fam0==='Depth / Drop Jump Family'||(!fam0&&type==='Plyometric'))st.add('Jumping');
+    if(fam0==='Landing Family'||/landing|iniş|\bstick\b/.test(n))st.add('Landing');
+    if(fam0==='Hop / Bound Family')st.add('Hopping / Bounding');
+    if(fam0==='Depth / Drop Jump Family'||/reactive|reaktif|pogo|rebound|continuous|repeated/.test(n))st.add('Reactive / Depth');
+  }
+  if(throwing)st.add('Throwing');
+
+  const ld=new Set();
+  const loadTxt=String(row.load||'').toLowerCase();
+  const pm=loadTxt.match(/(\d{2,3})\s*%|%\s*(\d{2,3})/);
+  const pct=pm?Number(pm[1]||pm[2]):null;
+  const rm=loadTxt.match(/rpe\s*(\d+(?:[.,]\d)?)/);
+  const rpe=recNum(row.rpe)!=null?recNum(row.rpe):(rm?Number(rm[1].replace(',','.')):null);
+  const rn=String(row.reps||'').match(/\d+/g);
+  const reps=rn?Math.max(...rn.map(Number)):null;
+  const loaded=!!loadTxt.trim()&&!/\bbw\b|body ?weight|vücut ağırlığı/.test(loadTxt);
+  const strength=lift&&!throwing&&['knee','hip','push','pull','full'].includes(axis);
+  if(strength&&((pct!=null&&pct>=80)||(rpe!=null&&rpe>=8&&reps!=null&&reps<=6)||(reps!=null&&reps<=5&&loaded)
+    ||/heavy|ağır|\b[1-5] ?rm\b/.test(n)))ld.add('Heavy Loading');
+  const tm=String(row.tempo||'').trim().match(/^(\d)/);
+  if(S==='Eccentric'||sub==='Eccentric'||/eccentric|eksantrik|nordic|negative|slow lower/.test(n)||(tm&&Number(tm[1])>=3))ld.add('Eccentric Loading');
+  if(S==='ISO'||sub==='Isometric'||/\biso\b|isometric|izometrik|\bhold\b|wall sit|plank|copenhagen|pin press|overcoming|yielding/.test(n))ld.add('Isometric');
+  const bal=(plyo&&fam0!=='Landing Family')||throwing||/swing|ballistic|balistik|slam|throw/.test(n);
+  if(run||bal||fam0==='Olympic Lift Family'||['Explosive','Olympic Lift'].includes(S)||['Explosive','Olympic Lift'].includes(sub)
+    ||/speed|velocity|explosive|patlayıcı|dynamic effort/.test(n))ld.add('High-Velocity');
+  if(bal)ld.add('Ballistic');
+
+  const family=fam0||ATP_AXIS_FAMILY[axis]||(type?`${type} Family`:'Unclassified');
+  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld]};
+}
+/* Every session on the athlete's calendar up to `to` that has at least one exercise
+   row, oldest first; sessions of one day in the order they were run. A block or row the
+   individualization sheet marked removed was never trained, so it is not exposure. */
+function atpSessions(ath,from,to){
+  const days=(ath&&ath.days)||{};
+  const out=[];
+  Object.keys(days).filter(dk=>/^\d{4}-\d{2}-\d{2}$/.test(dk)&&(!from||dk>=from)&&dk<=to).sort().forEach(dk=>{
+    ((days[dk]||{}).sessions||[]).map((s,i)=>({s,i})).filter(x=>x.s)
+      .sort((a,b)=>String(a.s.time||'').localeCompare(String(b.s.time||''))||a.i-b.i)
+      .forEach(({s,i})=>{
+        const rows=[];
+        (s.blocks||[]).forEach(b=>{if(!b||b.removed)return;
+          (b.exercises||[]).forEach(x=>{if(x&&!x.removed&&String(x.name||'').trim())rows.push(x);});});
+        if(rows.length)out.push({date:dk,key:dk+'|'+i,name:s.name||'',time:s.time||'',rows});
+      });
+  });
+  return out;
+}
+/* The exposure read, with `end` as the last day counted. The Last Session window is
+   the newest session on or before it, however old — it says its own date. */
+function atpExposure(ath,end,opts){
+  const libMap=(opts&&opts.libMap)||null;
+  const from={d7:fmt(addD(parseD(end),-6)),d14:fmt(addD(parseD(end),-13)),d28:fmt(addD(parseD(end),-27))};
+  const all=atpSessions(ath,null,end);
+  const last=all[all.length-1]||null;
+  const use=all.filter(s=>s.date>=from.d28);
+  if(last&&!use.includes(last))use.push(last);
+  const W=['last','d7','d14','d28'];
+  const sessions={d7:0,d14:0,d28:0},rows={last:0,d7:0,d14:0,d28:0};
+  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{}};
+  const bump=(layer,key,label,wins,sets,sess,date)=>{
+    const t=layers[layer][key]||(layers[layer][key]={key,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
+    wins.forEach(w=>{t.sets[w]+=sets;});
+    if(wins.includes('d28'))t.sess.add(sess);
+    if(!t.lastUsed||date>=t.lastUsed){t.lastUsed=date;t.label=label;}
+    return t;
+  };
+  use.forEach(s=>{
+    const wins=W.filter(w=>w==='last'?s===last:s.date>=from[w]);
+    wins.forEach(w=>{if(w!=='last')sessions[w]++;rows[w]+=s.rows.length;});
+    s.rows.forEach(r=>{
+      const name=String(r.name).trim();
+      const sets=recNum(r.sets)||1;
+      const c=atpClassify(r,libMap);
+      const t=bump('exercise',diExName(name)||name.toLowerCase(),name,wins,sets,s.key,s.date);
+      t.family=c.family;
+      ['patterns','stimuli','loading'].forEach(k=>{t[k]=[...new Set([...(t[k]||[]),...c[k]])];});
+      bump('family',c.family,c.family,wins,sets,s.key,s.date);
+      c.patterns.forEach(p=>bump('pattern',p,p,wins,sets,s.key,s.date));
+      c.stimuli.forEach(p=>bump('stimulus',p,p,wins,sets,s.key,s.date));
+      c.loading.forEach(p=>bump('loading',p,p,wins,sets,s.key,s.date));
+    });
+  });
+  const fin=(t,kind)=>{
+    const level={};W.forEach(w=>{level[w]=atpExpLevel(t.sets[w],kind,w==='last'?0:Number(w.slice(1)));});
+    const{sess,...rest}=t;
+    return{...rest,freq28:sess.size,level};
+  };
+  const empty=label=>({key:label,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
+  const fixed=(layer,list)=>list.map(l=>fin(layers[layer][l]||empty(l),'group'));
+  const bySets=(a,b)=>(b.sets.d28-a.sets.d28)||(b.sets.last-a.sets.last)||String(b.lastUsed).localeCompare(String(a.lastUsed));
+  return{end,from,
+    last:last?{date:last.date,name:last.name,time:last.time,rows:last.rows.length}:null,
+    sessions,rows,
+    exercises:Object.values(layers.exercise).map(t=>fin(t,'exercise')).sort(bySets),
+    families:Object.values(layers.family).map(t=>fin(t,'group')).sort(bySets),
+    patterns:fixed('pattern',ATP_EXP_PATTERNS),
+    stimuli:fixed('stimulus',ATP_EXP_STIMULI),
+    loading:fixed('loading',ATP_EXP_LOADING)};
+}
+/* The profile as the individualization JSON carries it. The day being programmed is
+   not exposure yet, so the window ends the day before it — the same rule the daily
+   engine's own exposure read keeps. `filled` says whether the coach has written any of
+   the first three parts; an empty profile is named in eksik_veriler rather than read
+   as "no priorities, no constraints". */
+function atpSnapshot(ath,ref,libMap){
+  const tp=atpRead(ath);
+  const pri={primary:[],secondary:[],maintain:[]};
+  ATP_PRIORITY_GROUPS.forEach(g=>g.items.forEach(it=>{const v=tp.priorities[it.id];if(pri[v])pri[v].push(it.en);}));
+  const en=(list,id)=>((list.find(x=>x.id===id)||{}).en)||null;
+  const mv=[];
+  ATP_MOVE_GROUPS.forEach(g=>g.items.forEach(it=>{
+    const r=tp.movement[it.id];
+    if(!r||(!r.status&&!r.priority))return;
+    mv.push({hareket:it.en,grup:g.en,durum:en(ATP_MV_STATUS,r.status),oncelik:en(ATP_MV_PRIORITY,r.priority)});
+  }));
+  const con=list=>list.map(c=>({kisit:atpConLabel(c),kategori:atpCatLabel(atpConCat(c))||null,deger:c.value,not:c.note}));
+  const end=fmt(addD(parseD(ref),-1));
+  const ex=atpExposure(ath,end,{libMap});
+  const WK={last:'son_seans',d7:'son_7_gun',d14:'son_14_gun',d28:'son_28_gun'};
+  const per=(t,f)=>{const o={};Object.keys(WK).forEach(w=>{o[WK[w]]=f(t,w);});return o;};
+  const lvOf=(t,w)=>en(ATP_EXP_LEVELS,t.level[w]);
+  const item=t=>({ad:t.label,son_kullanim:t.lastUsed,siklik_28_gun:t.freq28,maruziyet:per(t,lvOf),set_sayisi:per(t,(x,w)=>x.sets[w])});
+  const fixed=list=>({kayitlar:list.filter(t=>t.lastUsed).map(item),
+    son_28_gunde_maruziyet_yok:list.filter(t=>!t.lastUsed).map(t=>t.label)});
+  const cut=ATP_EXP_CUT;
+  const filled=pri.primary.length+pri.secondary.length+pri.maintain.length+mv.length
+    +tp.constraints.hard.length+tp.constraints.soft.length>0;
+  return{filled,out:{
+    tanim:'Sporcunun antrenman profili. antrenman_oncelikleri, hareket_profili ve kisitlar antrenörün girdisidir; '+
+      'egzersiz_maruziyeti takvimdeki antrenman kayıtlarından otomatik hesaplanır. Profil sporcuyu tanımlar — tek başına bir egzersiz seçimi değildir.',
+    son_guncelleme:tp.updated,
+    antrenman_oncelikleri:{
+      aciklama:'primary: en önemli gelişim alanları · secondary: önemli ama primary\'den düşük öncelikli · maintain: mevcut kapasite korunur',
+      primary:pri.primary,secondary:pri.secondary,maintain:pri.maintain},
+    hareket_profili:mv.length?{
+      aciklama:'durum: Good (yeterli/güçlü) · Moderate (geliştirilebilir) · Limited (belirgin sınırlı) — oncelik: High · Medium · Low',
+      hareketler:mv}:null,
+    kisitlar:{
+      aciklama:'hard: kesin olarak uyulması gereken kısıtlar · soft: kesin yasak değil, tercih edilen veya sınırlandırılması gereken durumlar',
+      hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)},
+    egzersiz_maruziyeti:{
+      kaynak:'takvimdeki antrenman kayıtlarından otomatik',
+      pencere_bitis:end,
+      seviye_olcegi:`High / Moderate / Low / None — set sayısından. 7-14-28 günlük pencereler haftalık ortalamayla okunur: `+
+        `tek egzersiz ≥${cut.exercise.week[1]} set/hafta High, ≥${cut.exercise.week[0]} Moderate; aile, patern, uyaran ve yüklenme `+
+        `≥${cut.group.week[1]} set/hafta High, ≥${cut.group.week[0]} Moderate. Son seans: tek egzersiz ≥${cut.exercise.session[1]} set High, `+
+        `≥${cut.exercise.session[0]} Moderate; diğerleri ≥${cut.group.session[1]} High, ≥${cut.group.session[0]} Moderate. 0 set = None / Not Recent.`,
+      son_seans:ex.last?{tarih:ex.last.date,seans:ex.last.name,saat:ex.last.time,egzersiz_sayisi:ex.last.rows}:null,
+      seans_sayisi:{son_7_gun:ex.sessions.d7,son_14_gun:ex.sessions.d14,son_28_gun:ex.sessions.d28},
+      egzersiz:ex.exercises.slice(0,30).map(t=>({egzersiz:t.label,aile:t.family,hareket_paterni:t.patterns,uyaran:t.stimuli,
+        yuklenme_karakteri:t.loading,son_kullanim:t.lastUsed,siklik_28_gun:t.freq28,maruziyet:per(t,lvOf),set_sayisi:per(t,(x,w)=>x.sets[w])})),
+      egzersiz_ailesi:ex.families.map(item),
+      hareket_paterni:fixed(ex.patterns),
+      atletik_uyaran:fixed(ex.stimuli),
+      yuklenme_karakteri:fixed(ex.loading),
+    },
+  }};
+}
+
 /* ---- Position emphasis (§4.3) --------------------------------------------
    What a role's game asks for most often. It is CONTEXT, never the programme: the
    spec is explicit that position alone must not decide anything, so this is handed
@@ -31134,6 +32163,7 @@ const DI_EXT_TASK=[
   'Her egzersizin dayanak alanına, cevap verdiği ayirt_ediciler maddelerinin id\'lerini yaz (ör. ["D1","D3"]). Listede olmayan id yazma.',
   'Yazdığın set, tekrar ve süre sporcunun takvimine AYNEN geçer; yüklemeden sonra hiçbir kesinti uygulanmaz. kodla_denetlenen_sinirlar.hacim_ayari_yuzde, sporcunun bugünkü hazır oluşuna göre önerilen hacim ayarıdır — dozu yazarken bunu kendin hesaba kat.',
   'Test sonuçlarını ve test yorumlarını oku; ölçülmüş eksikleri hazırlık veya tamamlayıcı fazda karşıla. Ağrı ve aktif sakatlık varsa o bölgeyi yükleme.',
+  'antrenman_profili sporcunun antrenman profilidir; programı bunun üzerine kur. antrenman_oncelikleri günün vurgusunu (primary > secondary > maintain), hareket_profili hareket kalitelerinin durumunu ve gelişim önceliğini, egzersiz_maruziyeti son seansta ve son 7-14-28 günde neye ne kadar maruz kaldığını gösterir. kisitlar.hard kesin kurallardır: hiçbir egzersiz bunları ihlal etmez. kisitlar.soft tercihlerdir: mümkün olduğunca uy.',
   'Veri uydurma; eksik_veriler altındaki konularda karar verme, tanı koyma, yaralanma riski yüzdesi yazma.',
 ];
 /* The same task for a whole squad in one request: one session per athlete, returned
@@ -31148,10 +32178,10 @@ const DI_EXT_TASK_SQUAD=[
 /* Every athlete on the sheet, built at the press like the single one is. The parts that
    are the same for everyone — the task, the answer's shape, the pattern dictionary and
    the gym's kit — are said once at the top instead of once per athlete. */
-function diSquadSnapshot({items,setup,date,customTests,now}){
+function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   const shared=['gorev','cikti_formati','hareket_paterni_sozlugu','ekipman'];
   const list=(items||[]).map(it=>{
-    const one=diAthleteSnapshot({ath:it.ath,setup,date,bundle:it.bundle,instr:it.instr,customTests,now,session:it.session});
+    const one=diAthleteSnapshot({ath:it.ath,setup,date,bundle:it.bundle,instr:it.instr,customTests,now,session:it.session,libMap});
     const out={};
     Object.keys(one).forEach(k=>{if(!shared.includes(k))out[k]=one[k];});
     return out;
@@ -32230,7 +33260,7 @@ function snapCopy(text){
   }catch(e){}
   return Promise.resolve(fallback());
 }
-function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}){
+function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session,libMap}){
   const a=ath||{},s=setup||{};
   const ref=date||fmt(today);
   const byDate=(x,y)=>String(x.date).localeCompare(String(y.date));
@@ -32391,6 +33421,10 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
     hacim_ayari_gerekceleri:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
   };
 
+  /* The Athlete Training Profile — the coach's priorities, movement profile and
+     constraints, and the exposure the calendar shows — as the ground the session is
+     written on. It describes the athlete; the model reads it, nothing here acts on it. */
+  const atp=atpSnapshot(a,ref,libMap||null);
   const out={
     programlanacak_gun:hedef,
     gorev:DI_EXT_TASK,
@@ -32406,6 +33440,7 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
       seviye:b.athlete&&b.athlete.level,vucut_tipi:b.athlete&&b.athlete.vucut_tipi,
       spor:s.sport,
     },
+    antrenman_profili:atp.out,
     wellness:{
       son_checkin:lastW?{tarih:lastW.date,kac_gun_once:wAge,
         hazir_olus:recNum(lastW.readiness),uyku:recNum(lastW.sleep),yorgunluk:recNum(lastW.fatigue),
@@ -32501,6 +33536,8 @@ function diAthleteSnapshot({ath,setup,date,bundle,instr,customTests,now,session}
   if(!srpe.length)missing.push(L('son 7 günde RPE kaydı','RPE in the last 7 days'));
   if(!tests.length)missing.push(L('test kaydı','test record'));
   if(!eq.length)missing.push(L('ekipman envanteri','equipment inventory'));
+  if(!atp.filled)missing.push(L('antrenman profili (öncelikler, hareket profili ve kısıtlar girilmemiş)',
+    'training profile (no priorities, movement profile or constraints entered)'));
   const res=snapClean(out)||{};
   if(missing.length)res.eksik_veriler=missing;
   return res;
@@ -32549,7 +33586,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     try{
       const b=diBundle(ath,L0.setup||{},L0.date,{libMap:L0.libMap});
       text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,bundle:b,
-        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta}),null,2);
+        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap}),null,2);
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -32961,7 +33998,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     });
     if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
     let text;
-    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests}),null,2);}
+    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests,libMap}),null,2);}
     catch(e){setToast((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     const note=L(`${items.length} sporcu.`,`${items.length} athletes.`)+(skipped.length
       ?' '+L(`Verisi okunamayan: ${skipped.join(', ')}.`,`Could not read: ${skipped.join(', ')}.`):'');

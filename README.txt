@@ -101,6 +101,39 @@ template_exercise, prescribed_exercise, changed, added, sets, reps,
 time, tempo, rpe, load, rest, note, link}). "added" marks a row you put
 on the sheet yourself, which the source session does not carry.
 
+ATHLETE TRAINING PROFILE (athlete page, beside Profil)
+The athlete as a trainee, in four parts. It DESCRIBES the athlete:
+nothing in the app selects an exercise or builds a session from it.
+It goes into the individualization JSON as `antrenman_profili`.
+  1. Training Priorities — Speed, Change of Direction, Plyometric /
+     Reactive, Strength, Power, Movement and Conditioning qualities,
+     each set to PRIMARY, SECONDARY or MAINTAIN (click again to clear).
+  2. Movement Profile — every movement quality (lower body, upper
+     body, athletic movement, trunk, general) gets a Status (Good /
+     Moderate / Limited) and a Priority (High / Medium / Low). The
+     readout lists them as "Landing → Limited / High", focus first.
+  3. Constraints — two lists, kept strictly apart: HARD (must be
+     followed) and SOFT (preferences, things to keep limited).
+     Constraints are filed by category (Load, Volume, Intensity,
+     Speed, Impact, Movement, Equipment, Contact). A "No …" can only
+     be Hard, a "Prefer …" / "Limit …" only Soft; a constraint on one
+     list cannot be added to the other. Caps (Maximum Load, Maximum
+     RPE…) take a value; every constraint takes a note. Custom
+     constraints can be typed.
+  4. Exercise Exposure — never typed in: read off the athlete's
+     calendar every time. Each exercise row is filed as the exercise,
+     its family (Split Squat Family, Hinge Family…), its movement
+     pattern(s), its athletic stimulus and its loading
+     characteristic, counted in sets over Last Session / 7 / 14 / 28
+     days, with last used and frequency. Levels: High, Moderate, Low,
+     None / Not Recent — windows read per week (a single exercise
+     ≥6 sets/week High, ≥3 Moderate; a family / pattern / stimulus /
+     loading ≥12 High, ≥6 Moderate); the last session as it stands.
+In the JSON the exposure window ends the day BEFORE the day being
+programmed, and an empty profile is named in `eksik_veriler`. The
+task tells the model hard constraints are binding and soft ones are
+preferences.
+
 WELLNESS HEATMAP (Load Monitoring tab)
 Athletes × the last 14 days, one box per day, coloured by the
 metric picked in the header (Readiness / Sleep / Fatigue /
