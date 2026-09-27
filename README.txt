@@ -102,17 +102,33 @@ time, tempo, rpe, load, rest, note, link}). "added" marks a row you put
 on the sheet yourself, which the source session does not carry.
 
 ATHLETE TRAINING PROFILE (athlete page, beside Profil)
-The athlete as a trainee, in four parts. It DESCRIBES the athlete:
+The athlete as a trainee, in three parts. It DESCRIBES the athlete:
 nothing in the app selects an exercise or builds a session from it.
 It goes into the individualization JSON as `antrenman_profili`.
-  1. Training Priorities — Speed, Change of Direction, Plyometric /
-     Reactive, Strength, Power, Movement and Conditioning qualities,
-     each set to PRIMARY, SECONDARY or MAINTAIN (click again to clear).
-  2. Movement Profile — every movement quality (lower body, upper
-     body, athletic movement, trunk, general) gets a Status (Good /
-     Moderate / Limited) and a Priority (High / Medium / Low). The
-     readout lists them as "Landing → Limited / High", focus first.
-  3. Constraints — two lists, kept strictly apart: HARD (must be
+  1. Athletic Profile — one template, seven groups:
+       Speed: Acceleration, Max Velocity, Sprint Mechanics
+       Change of Direction: Deceleration, Change of Direction,
+         Lateral Movement
+       Plyometric / Reactive: Jumping, Landing, Hopping
+       Strength: Squat, Hinge, Unilateral, Horizontal Push,
+         Horizontal Pull, Vertical Push, Vertical Pull
+       Power: Lower-Body Power, Upper-Body Power,
+         Rate of Force Development
+       Movement Quality: Mobility, Stability, Coordination, Balance
+       Conditioning: Aerobic Capacity, Anaerobic Capacity,
+         Repeat Sprint Ability
+     Every quality gets a STATUS (Good / Moderate / Limited — where
+     the athlete stands) and a PRIORITY (High / Medium / Low — how
+     much this period develops it); click again to clear. The High /
+     Medium / Low lanes on top list the qualities by priority, each
+     chip dotted in its status colour. A profile saved in the old
+     two-section shape (Training Priorities + Movement Profile) is
+     read into the template: Primary → High, Secondary → Medium,
+     Maintain → Low; ratings with no place in it are left behind.
+     JSON: `atletik_profil` {oncelik {high, medium, low}, durum
+     {good, moderate, limited}, kaliteler [{kalite, grup, durum,
+     oncelik}] High first}.
+  2. Constraints — two lists, kept strictly apart: HARD (must be
      followed) and SOFT (preferences, things to keep limited).
      Constraints are filed by category (Load, Volume, Intensity,
      Speed, Impact, Movement, Equipment, Contact). A "No …" can only
@@ -120,8 +136,12 @@ It goes into the individualization JSON as `antrenman_profili`.
      list cannot be added to the other. Caps (Maximum Load, Maximum
      RPE…) take a value; every constraint takes a note. Custom
      constraints can be typed.
-  4. Exercise Exposure — never typed in: read off the athlete's
-     calendar every time. Each exercise row is filed as the exercise,
+  3. Exercise Exposure — never typed in: read off the athlete's
+     calendar every time. On screen: the window, four numbers for it
+     (sessions, exercises, total sets), the exercise list (name,
+     family · last used · frequency, a bar and the level) and one
+     category card with tabs (Movement Pattern / Athletic Stimulus /
+     Loading / Exercise Family). Each exercise row is filed as the exercise,
      its family (Split Squat Family, Hinge Family…), its movement
      pattern(s), its athletic stimulus and its loading
      characteristic, counted in sets over Last Session / 7 / 14 / 28
