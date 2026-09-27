@@ -11060,7 +11060,7 @@ function weekShareText(title,weekStart,days,athletes){
 /* The weekly sheet as a document, apart from the window it is printed in. The printout
    and the image the Share panel shows are the SAME page by construction: one builder,
    one layout, and nothing to drift out of step the next time the sheet is edited. */
-function buildWeekHTMLDoc(title,weekStart,days,athletes){
+function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
   const dates=Array.from({length:7},(_,i)=>fmt(addD(parseD(weekStart),i)));
   /* Per-day AU loads (Mon..Sun) — through teamDailyLoadMap, the same helper the
      calendar and Load Monitoring read. A day whose sessions carry no session-level
@@ -11217,7 +11217,9 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
     </td>`;};
   /* The club signs the sheet: a plan that leaves the app on WhatsApp is read next to
      four other clubs' plans, and a crest is how it is told apart at a glance. */
-  const crest=hasMedia(teamLogo())?escHTML(mediaSrc(teamLogo())):'';
+  // The caller may hand in its own crest (the PNG builder passes one it has made drawable).
+  const rawCrest=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
+  const crest=hasMedia(rawCrest)?escHTML(mediaSrc(rawCrest)):'';
   const club=escHTML(clubNameNow());
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Haftalık Plan','Weekly Plan')}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11347,8 +11349,60 @@ function printWeekA4Land(title,weekStart,days,athletes){
    part of a screen. It is rendered once at `scale` 2 and that one picture serves both
    the preview on the panel and the file that is downloaded, copied or shared — a second
    pass at preview quality would be a second html2canvas run for the same image. */
+/* THE CREST AS A PICTURE html2canvas CAN DRAW. The shared PNG and PDF are drawn by
+   html2canvas, which re-loads every cross-origin <img> itself (in CORS mode) and silently
+   skips any it cannot load — the crest on the shared sheet came out as an empty 34px box
+   between the divider and the club name, while the sidebar showed the same picture.
+   Reading the crest into a data URL up front takes that decision away from html2canvas:
+   a data URL is always drawn. It is shrunk on the way (the slot is 34-56px,
+   drawn at 2x), and PNG keeps a transparent crest transparent on the black header.
+   If the crest cannot be read at all the slot is left out, so the sheet shows the club
+   name alone rather than a hole. */
+const CREST_PX=240;
+const _crestCache=new Map();
+function readCrest(src,cache){
+  return withTimeout(new Promise((res,rej)=>{
+    const draw=(url,after)=>{
+      const im=new Image();
+      if(!/^(data|blob):/i.test(url))im.crossOrigin='anonymous';
+      im.onload=()=>{
+        try{
+          let w=im.naturalWidth,h=im.naturalHeight;
+          if(!w||!h){rej(new Error('empty'));return;}
+          const k=Math.min(1,CREST_PX/Math.max(w,h));w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));
+          const c=document.createElement('canvas');c.width=w;c.height=h;
+          const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+          ctx.drawImage(im,0,0,w,h);
+          res(c.toDataURL('image/png'));   // throws on a tainted canvas → next attempt
+        }catch(e){rej(e);}
+        finally{if(after)after();}
+      };
+      im.onerror=()=>{if(after)after();rej(new Error('load'));};
+      im.src=url;
+    };
+    if(!cache){draw(src);return;}
+    /* Second attempt: fetch it fresh. A copy the browser cached from a plain <img> may
+       lack the CORS headers a CORS-mode load now needs; 'reload' skips that copy. */
+    fetch(src,{mode:'cors',cache:'reload'}).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.blob();})
+      .then(b=>{const u=URL.createObjectURL(b);draw(u,()=>URL.revokeObjectURL(u));}).catch(rej);
+  }),8000);
+}
+async function drawableCrest(){
+  const raw=teamLogo();
+  if(!hasMedia(raw))return '';
+  const src=mediaSrc(raw);
+  if(!src||src===LM_BLANK)return '';
+  if(/^data:image\/(png|jpe?g|gif|webp)/i.test(src))return src;
+  if(_crestCache.has(src))return _crestCache.get(src);
+  let out='';
+  try{out=await readCrest(src,false);}
+  catch(e){try{out=await readCrest(src,true);}catch(e2){console.warn('team crest could not be read for the shared sheet',e2);}}
+  if(out)_crestCache.set(src,out);   // a failure is not remembered: the next share tries again
+  return out;
+}
 async function buildWeekImageBlob(title,weekStart,days,athletes,scale=2){
-  const html=buildWeekHTMLDoc(title,weekStart,days,athletes);
+  const logo=await drawableCrest();
+  const html=buildWeekHTMLDoc(title,weekStart,days,athletes,{logo});
   const W=1123;   // 297mm at 96dpi — A4 landscape
   const iframe=document.createElement('iframe');
   iframe.style.cssText=`position:fixed;left:-9999px;top:0;width:${W}px;height:1px;border:none;visibility:hidden`;
@@ -11446,7 +11500,8 @@ async function applyTurkishFont(doc){
    output — Turkish characters, photos, and layout all match exactly.
    ========================================================= */
 async function buildSessionPDFBlob(title,subtitle,sessions){
-  const html=buildSessionHTMLDoc(title,subtitle,sessions);
+  const logo=await drawableCrest();
+  const html=buildSessionHTMLDoc(title,subtitle,sessions,{logo});
   // Offscreen iframe rendered at A4 width (794px ≈ 210mm @ 96dpi)
   const iframe=document.createElement('iframe');
   iframe.style.cssText='position:fixed;left:-9999px;top:0;width:794px;height:1px;border:none;visibility:hidden';
