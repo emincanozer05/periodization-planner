@@ -759,21 +759,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .mm-notes{flex:1;width:100%;min-height:64px;box-sizing:border-box;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;line-height:1.5;resize:vertical;outline:none;transition:border-color .15s ease;font-weight:400 !important}
 .mm-notes::placeholder{color:rgba(255,255,255,.25);font-weight:400}
 .mm-notes:focus{border-color:var(--accent)}
-/* Calendar session hover tooltip */
-.ses-tooltip{position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:#0e1117;border:1px solid var(--border2);border-radius:9px;padding:8px 11px;z-index:500;min-width:170px;max-width:240px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.8);animation:tipIn .12s ease-out}
-@keyframes tipIn{from{opacity:0;transform:translateX(-50%) translateY(3px)}}
-.ses-tooltip::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#0e1117}
-.tip-row{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text2);padding:2px 0}
-.tip-row .tip-dot{width:7px;height:7px;border-radius:50%;flex:none}
-.tip-row .tip-lbl{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tip-row .tip-ct{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--accent)}
-.ses-tooltip .tip-h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.ses-tooltip .tip-pat{padding:3px 0}
-.ses-tooltip .tip-pat+.tip-pat{border-top:1px solid rgba(255,255,255,.05)}
-.ses-tooltip .tip-pat-nm{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:var(--dim)}
-.ses-tooltip .tip-pat.on .tip-pat-nm{color:var(--text)}
-.ses-tooltip .tip-pat-dot{display:none}
-.ses-tooltip .tip-pat-pl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;color:var(--accent);margin-top:1px;margin-left:0}
 /* Athlete muscle load map */
 .ath-mmap-wrap{margin-top:20px;padding-top:18px;border-top:1px solid var(--border)}
 .ath-mmap-body{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
@@ -5422,35 +5407,107 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 @media(max-width:620px){.cmp-f.date,.cmp-f.score{flex:1 1 100%}.cmp-f.act{margin-left:0}}
 
 /* ===== Check-in Forms =====
-   Two links to hand out and one day's answers. Nothing here is decorated: a form is a
-   link and an answer is a number, and both read better as words than as a pictogram. */
+   Two links to hand out and one day's answers. Each form keeps one colour everywhere it
+   appears — RPE blue, Wellness green, the roster purple — on its icon, its bar and its
+   rule, so the hero, the link cards and the day's summary read as the same three things.
+   The surfaces stay the app's own panels; only the accents carry the colour. */
+.ck-page{--ck-rpe:#1e90ff;--ck-well:#2ee6a6;--ck-ros:#a15cff}
+.ck-page .rpe{--ck-c:var(--ck-rpe)}
+.ck-page .well{--ck-c:var(--ck-well)}
+.ck-page .ros{--ck-c:var(--ck-ros)}
+.ck-page .ph-sub{font-family:inherit;font-size:13.5px;color:var(--text2);margin-top:7px}
 .ck-note{margin-bottom:14px;padding:12px 14px;border-radius:11px;font-size:13px;line-height:1.5;color:var(--text2)}
 .ck-note.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.35)}
 .ck-note.err{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35)}
-.ck-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.ck-hstat{display:flex;align-items:center;gap:14px;min-width:170px;padding:11px 12px 11px 18px;border-radius:13px;cursor:pointer;
+  background:var(--elevated);border:1px solid var(--border);color:var(--text2);text-align:left;transition:border-color .15s ease,transform .15s ease}
+.ck-hstat:hover{border-color:color-mix(in srgb,var(--ck-c) 45%,var(--border2));transform:translateY(-1px)}
+.ck-hstat-b{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}
+.ck-hstat-b b{font-size:19px;font-weight:700;line-height:1.1;color:var(--text);white-space:nowrap}
+.ck-hstat-b small{font-size:11px;color:var(--text2);white-space:nowrap}
+.ck-hstat>svg{flex:none;color:var(--text2)}
+.ck-bar{display:block;height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}
+.ck-bar i{display:block;height:100%;border-radius:inherit;background:var(--ck-c);transition:width .3s ease}
+.ck-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
 .ck-head-t{min-width:0;flex:1 1 320px}
-.ck-head-t b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.008em;color:var(--text);line-height:1.2}
-.ck-head-t span{display:block;font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:4px}
-.ck-daynav{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.ck-daynav input{width:auto;min-width:150px;height:30px;padding:0 9px;font-size:12px;border-radius:8px}
-.ck-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-.ck-link{display:flex;flex-direction:column;gap:8px;padding:15px 16px;border-radius:13px;
-  background:var(--elevated);border:1px solid var(--border);transition:border-color .15s ease}
-.ck-link:hover{border-color:var(--border2)}
-.ck-link-t{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3}
-.ck-link-h{font-size:11.5px;color:var(--dim);line-height:1.55;flex:1}
-.ck-link .btn{width:100%;justify-content:center}
-.ck-link-u{display:flex;flex-direction:column;gap:4px;min-width:0}
-.ck-link-u a{font-size:12px;color:var(--accent2)}
-.ck-link-u code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--muted);
-  word-break:break-all;user-select:all}
+.ck-head-t b{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em;color:var(--text);line-height:1.2}
+.ck-head-t span{display:block;font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:5px}
+.ck-head-t b.ck-h-lg{font-size:18px}
+.ck-daynav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ck-daynav input{width:auto;min-width:160px;height:36px;padding:0 11px;font-size:13px;border-radius:9px}
+.ck-sq{display:inline-grid;place-items:center;width:36px;height:36px;padding:0;border-radius:9px;cursor:pointer;
+  background:var(--elevated);border:1px solid var(--border);color:var(--text2);transition:border-color .15s ease,color .15s ease}
+.ck-sq:hover{border-color:var(--border2);color:var(--text)}
+.ck-sq.sm{width:30px;height:30px;border-radius:8px}
+.ck-today{height:36px;padding:0 15px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:700;
+  background:var(--elevated);border:1px solid var(--border);color:var(--text)}
+.ck-today:hover{border-color:var(--border2)}
+.ck-ico{display:inline-grid;place-items:center;flex:none;width:52px;height:52px;border-radius:13px;
+  color:var(--ck-c);background:color-mix(in srgb,var(--ck-c) 16%,transparent);border:1px solid color-mix(in srgb,var(--ck-c) 22%,transparent)}
+.ck-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.ck-link{display:flex;flex-direction:column;gap:14px;padding:18px 20px;border-radius:14px;
+  background:var(--elevated);border:1px solid color-mix(in srgb,var(--ck-c) 22%,var(--border));transition:border-color .15s ease}
+.ck-link:hover{border-color:color-mix(in srgb,var(--ck-c) 45%,var(--border))}
+.ck-link-top{display:flex;align-items:flex-start;gap:16px;flex:1}
+.ck-link-tx{min-width:0;flex:1}
+.ck-link-t{font-size:15px;font-weight:700;color:var(--text);line-height:1.3;margin-top:2px}
+.ck-link-h{font-size:12.5px;color:var(--text2);line-height:1.55;margin-top:5px}
+.ck-copy{position:relative;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:44px;
+  border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:#fff;
+  background:linear-gradient(90deg,#0a84ff,#1e90ff);box-shadow:0 6px 18px -8px rgba(10,132,255,.7);
+  transition:filter .15s ease,transform .15s ease}
+.ck-copy:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.ck-copy:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+.ck-copy .ck-copy-r{position:absolute;right:16px;opacity:.9}
+.ck-link-u{display:flex;align-items:flex-start;gap:10px;min-width:0}
+.ck-link-u>svg{flex:none;color:var(--accent2);margin-top:1px}
+.ck-link-u>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ck-link-u a{font-size:13px;font-weight:600;color:var(--accent2);text-decoration:none}
+.ck-link-u a:hover{text-decoration:underline}
+.ck-link-u code{font-size:11.5px;color:var(--text2);word-break:break-all;user-select:all}
 .ck-state{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  margin-top:12px;padding:10px 14px;border-radius:11px;background:var(--bg2);border:1px solid var(--border);
-  font-size:12px;color:var(--dim)}
-.ck-state-a{display:flex;gap:7px;flex-wrap:wrap}
-.ck-in{color:var(--accent2);font-weight:600;font-size:12.5px}
-.ck-in i{font-style:normal;color:var(--muted);font-size:11px;font-weight:400}
-.ck-out{color:var(--muted)}
+  margin-top:16px;padding:10px 12px 10px 16px;border-radius:12px;background:var(--bg2);border:1px solid var(--border);
+  font-size:13px;color:var(--text2)}
+.ck-state-l{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;min-width:0}
+.ck-state-l b{color:var(--text)}
+.ck-state-i{color:var(--text2);flex:none}
+.ck-state-sep{width:1px;height:16px;background:var(--border2)}
+.ck-state-w{color:var(--med-t)}
+.ck-state-a{display:flex;gap:8px;flex-wrap:wrap}
+.ck-state-a .btn{gap:8px}
+.ck-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:18px}
+.ck-kpi{position:relative;overflow:hidden;display:flex;align-items:flex-start;gap:16px;padding:20px 18px;border-radius:12px;
+  background:var(--elevated);border:1px solid color-mix(in srgb,var(--ck-c) 22%,var(--border))}
+.ck-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ck-c)}
+.ck-kpi-b{min-width:0;flex:1}
+.ck-kpi-l{font-size:13px;color:var(--text2);line-height:1.2}
+.ck-kpi-v{font-size:30px;font-weight:700;line-height:1.1;color:var(--text);margin-top:7px;letter-spacing:-.01em}
+.ck-kpi-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--text2);margin-top:5px}
+.ck-kpi-c{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;
+  background:none;border:1px solid var(--border2);color:var(--text2)}
+.ck-kpi-c:hover{color:var(--text);border-color:var(--ck-c)}
+.ck-tbl-w{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+.ck-tbl{font-size:13.5px;min-width:640px}
+.ck-tbl th{background:transparent;padding:14px 16px;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2)}
+.ck-tbl td{padding:9px 16px;vertical-align:middle;line-height:1.2}
+.ck-tbl tbody tr:last-child td{border-bottom:none}
+.ck-tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
+.ck-tbl th.n,.ck-tbl td.n{width:56px;text-align:center;padding-right:0}
+.ck-tbl td.n span{display:inline-grid;place-items:center;min-width:30px;height:28px;padding:0 6px;border-radius:7px;
+  background:var(--elevated);border:1px solid var(--border);font-weight:700;font-size:13px;color:var(--text)}
+.ck-tbl td.nm{font-weight:700;color:var(--text);padding-left:24px}
+.ck-tbl th.m,.ck-tbl td.m{width:52px;text-align:right}
+.ck-val{display:inline-flex;vertical-align:middle;align-items:baseline;gap:12px;white-space:nowrap}
+.ck-val b{font-size:15px;font-weight:700;color:var(--ck-c)}
+.ck-val i{font-size:13px;color:var(--text2)}
+.ck-miss{display:inline-block;padding:6px 12px;border-radius:8px;background:var(--hover);border:1px solid var(--border);
+  font-size:13px;color:var(--text2);white-space:nowrap}
+.ck-last{display:inline-flex;vertical-align:middle;align-items:center;gap:10px;color:var(--text2);white-space:nowrap}
+.ck-dash{color:var(--muted)}
+.ck-toast{margin-top:10px;font-size:12px;color:var(--low-t)}
+.ck-menu{width:220px}
+.ck-menu button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:620px){.ck-hstat{flex:1 1 100%}.ck-link{padding:16px}.ck-ico{width:44px;height:44px}}
 
 /* ===== Interval Timer =====
    The clock as a colour rather than a number to read: work is green, rest is red, the
@@ -15383,7 +15440,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const setWeek=d=>{const n=addD(weekStart,d*7);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:fmt(n)});};
   const[drawerSes,setDrawerSes]=useState(null);
   const[drawerDate,setDrawerDate]=useState(null);
-  const[hovSes,setHovSes]=useState(null);
   const[rpeOpen,setRpeOpen]=useState(false);
   const[editDate,setEditDate]=useState(null);
   /* The session card the editor was opened from — what "Back" returns to. Only the id is
@@ -15897,26 +15953,12 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             <span>{L('Dinlenme','Rest')}</span>
           </div>}
           {ss.map(s=>{
-            const _hov=hovSes===s.id;
-            /* The same answer the session's own strip gives — read off its exercises, with
-               a hand-picked list as the fallback — so hovering a day cannot say one thing
-               while the session says another. */
-            const _pats=sessionPatterns(s);
             return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
               style={s.color?{'--sc':cardCol(s.color)}:undefined}
-              onMouseEnter={()=>setHovSes(s.id)}
-              onMouseLeave={()=>setHovSes(null)}
-              onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});setHovSes(null);}}
+              onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
-              {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
-                <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
-                {_pats.map(({pattern,planes})=>(<div key={pattern} className="tip-pat on">
-                    <div className="tip-pat-nm">{pattern}</div>
-                    {planes.length>0&&<div className="tip-pat-pl">{planes.join(' · ')}</div>}
-                  </div>))}
-              </div>}
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
                 <button title={L('Sil','Delete')} className="del" onClick={e=>{e.stopPropagation();if(confirm(L('Bu seans silinsin mi?','Delete this session?')))delSession(k,s.id);}}>✕</button>
@@ -15973,19 +16015,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         return(<div key={k+'-'+i} className={`calm-cell${c.out?' out':''}${isSel?' sel':''}${isToday?' today':''}${isWk?' wk':''}${ss.length?'':' empty'}`} onClick={()=>pickMonth(k)} title={L('Planla','Plan')}>
           <div className="ch"><span className="d">{d.getDate()}</span>{ss.length>0&&<span className="cn">{ss.length}</span>}</div>
           {ss.length>0&&<div className="csess">
-            {ss.slice(0,3).map((s,j)=>{
-              const _hov=hovSes===s.id;const _pats=sessionPatterns(s);
-              return(<div key={s.id||j} className="cs-item-wrap" onMouseEnter={e=>{e.stopPropagation();setHovSes(s.id);}} onMouseLeave={()=>setHovSes(null)}>
+            {ss.slice(0,3).map((s,j)=>(<div key={s.id||j} className="cs-item-wrap">
                 <div className="cs-item" style={{'--sc':sesColor(s)}}>{s.time&&<em>{s.time}</em>}<span>{s.name||L('Seans','Session')}</span></div>
-                {_hov&&_pats.length>0&&<div className="ses-tooltip" onClick={e=>e.stopPropagation()}>
-                  <div className="tip-h">{L('Hareketler ve Örüntüler','Movements & Patterns')}</div>
-                  {_pats.map(({pattern,planes})=>(<div key={pattern} className="tip-pat on">
-                      <div className="tip-pat-nm">{pattern}</div>
-                      {planes.length>0&&<div className="tip-pat-pl">{planes.join(' · ')}</div>}
-                    </div>))}
-                </div>}
-              </div>);
-            })}
+              </div>))}
             {ss.length>3&&<div className="cs-more">{L(`+${ss.length-3} daha`,`+${ss.length-3} more`)}</div>}
           </div>}
           {(au>0||(mAvg&&mAvg.avg>0))&&<div className="mau">
@@ -35511,19 +35543,63 @@ function CheckinPanel({data,setData,team,sync}){
   const shiftDay=n=>setDate(d=>fmt(addD(parseD(d),n)));
 
   const LINK_BTN=[
-    {kind:'srpe',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),
+    {kind:'srpe',tone:'rpe',icon:'bars',label:L('Antrenman sonrası — İçsel Yük (RPE)','Post-training — Internal Load (RPE)'),
      hint:L('Antrenman/maç bitince at. Top antrenmanı, kuvvet & kondisyon ve müsabaka için zorluk + süre sorar.','Send after training/a match. Asks difficulty + duration for ball training, strength & conditioning, and competition.')},
-    {kind:'wellness',label:L('Sabah — Wellness','Morning — Wellness'),
-     hint:L('Sabah at. Dinlenik KAH, uyku, zihinsel yorgunluk, fiziksel yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Send in the morning. Asks resting HR, sleep, mental fatigue, physical fatigue, muscle soreness, and the pain-region map.')},
+    {kind:'wellness',tone:'well',icon:'heart',label:'Wellness',
+     hint:L('Dinlenik KAH, uyku, zihinsel yorgunluk, fiziksel yorgunluk, kas ağrısı ve ağrı bölgesi haritasını sorar.','Asks resting HR, sleep, mental fatigue, physical fatigue, muscle soreness, and the pain-region map.')},
   ];
+  const nA=athletes.length;
+  const pct=n=>nA?Math.min(100,Math.round(n/nA*100)):0;
+  const sumRef=useRef(null),linksRef=useRef(null);
+  const goTo=r=>{if(r.current)r.current.scrollIntoView({behavior:'smooth',block:'start'});};
+  const HERO=[
+    {v:`${nS} / ${nA}`,l:L('İçsel Yük (RPE)','Internal Load (RPE)'),p:pct(nS),tone:'rpe',to:sumRef},
+    {v:`${nW} / ${nA}`,l:'Wellness',p:pct(nW),tone:'well',to:sumRef},
+    {v:published,l:L('Linkteki kadro','Roster on the link'),p:pct(published),tone:'ros',to:linksRef},
+  ];
+  const copyMissing=async k=>{
+    const names=missing(k);if(!names.length)return;
+    const ok=await copyText(names.join(', '));
+    if(ok){setCopied('miss-'+k);setTimeout(()=>setCopied(c=>c==='miss-'+k?'':c),2500);}
+  };
+  /* Satırın ⋮ menüsü: o sporcuya gidecek hatırlatma — adı ve formun linki tek mesajda,
+     koç WhatsApp'ta tek tek yazmasın. Link henüz yoksa ilk kopyada yayımlanır. */
+  const[menu,setMenu]=useState(null);
+  const openMenu=(e,a)=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    const up=r.bottom+120>window.innerHeight;
+    setMenu({id:a.id,name:a.name,left:Math.max(8,r.right-200),top:up?r.top-4:r.bottom+4,up});
+  };
+  const copyReminder=async(kind,name)=>{
+    setMenu(null);setErr(null);setBusy(true);
+    try{
+      const t=await ensureLink();
+      const url=checkinUrl(t,kind);
+      const msg=kind==='srpe'
+        ?L(`${name}, antrenman sonrası İçsel Yük (RPE) formunu doldurmayı unutma: ${url}`,`${name}, don't forget the post-training Internal Load (RPE) form: ${url}`)
+        :L(`${name}, bugünkü Wellness formunu doldurmayı unutma: ${url}`,`${name}, don't forget today's Wellness form: ${url}`);
+      const ok=await copyText(msg);
+      if(!ok)throw new Error(L('Panoya kopyalanamadı.','Could not copy to clipboard.'));
+      setCopied('rem');setTimeout(()=>setCopied(c=>c==='rem'?'':c),2500);
+    }catch(e){setErr((e&&e.message)||String(e));}
+    finally{setBusy(false);}
+  };
+  const lastAt=(...es)=>es.filter(e=>e&&e.submittedAt).map(e=>e.submittedAt).sort().pop()||null;
+  const fmtWell=v=>{const n=Number(v);return isFinite(n)?String(Math.round(n*10)/10):v;};
 
-  return(<div>
+  return(<div className="ck-page">
     <PageHero title={L('Check-in Formları','Check-in Forms')}
       sub={L(`Sporcunun kendi doldurduğu iki form · ${team.setup.teamName}`,
-             `The two forms the athletes fill in themselves · ${team.setup.teamName}`)}
-      stats={[{v:`${nS} / ${athletes.length}`,l:L('İçsel Yük','Internal Load')},
-              {v:`${nW} / ${athletes.length}`,l:'Wellness'},
-              {v:published,l:L('Linkteki kadro','Roster on the link')}]}/>
+             `The two forms the athletes fill in themselves · ${team.setup.teamName}`)}>
+      {HERO.map((s,i)=><button key={i} type="button" className={`ck-hstat ${s.tone}`} onClick={()=>goTo(s.to)}>
+        <span className="ck-hstat-b">
+          <b>{s.v}</b>
+          <span className="ck-bar"><i style={{width:s.p+'%'}}/></span>
+          <small>{s.l}</small>
+        </span>
+        <CkIcon n="chev" s={16}/>
+      </button>)}
+    </PageHero>
 
     {!user&&<div className="ck-note warn">
       {L(<>Linkler koç hesabına bağlandığı için <b>önce giriş yapman</b> gerekiyor.</>,
@@ -35531,38 +35607,53 @@ function CheckinPanel({data,setData,team,sync}){
     </div>}
     {err&&<div className="ck-note err">{err}</div>}
 
-    <div className="panel">
+    <div className="panel" ref={linksRef}>
       <div className="ck-head">
         <div className="ck-head-t">
           <b>{L('Formların linkleri','The form links')}</b>
-          <span>{L('Düğmeye bas → link panoya kopyalanır → WhatsApp grubuna yapıştır. Sporcu formda kendi adını seçip gönderir; cevap uygulamayı açtığın anda sporcunun günlüğüne düşer.',
-                   'Click the button → the link is copied to the clipboard → paste it into the WhatsApp group. The athlete picks their own name and submits; the answer lands in their log the moment you open the app.')}</span>
+          <span>{L('Aşağıdaki linkleri sporcularla paylaşın. Sporcu forma kendi adını seçerek doldurur, cevap uygulamaya otomatik olarak kaydedilir.',
+                   'Share the links below with the athletes. The athlete picks their own name on the form, and the answer is saved to the app automatically.')}</span>
         </div>
       </div>
       <div className="ck-links">
-        {LINK_BTN.map(b=><div key={b.kind} className="ck-link">
-          <div className="ck-link-t">{b.label}</div>
-          <div className="ck-link-h">{b.hint}</div>
-          <button className="btn" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded}>
-            {copied===b.kind?L('Kopyalandı','Copied'):(busy?'…':(loaded?L('Linki kopyala','Copy link'):L('Veriler yükleniyor…','Loading data…')))}
+        {LINK_BTN.map(b=><div key={b.kind} className={`ck-link ${b.tone}`}>
+          <div className="ck-link-top">
+            <span className="ck-ico"><CkIcon n={b.icon} s={24}/></span>
+            <div className="ck-link-tx">
+              <div className="ck-link-t">{b.label}</div>
+              <div className="ck-link-h">{b.hint}</div>
+            </div>
+          </div>
+          <button className="ck-copy" onClick={()=>copyLink(b.kind)} disabled={busy||!user||!loaded}>
+            <CkIcon n={copied===b.kind?'check':'link'} s={17}/>
+            <span>{copied===b.kind?L('Kopyalandı','Copied'):(busy?'…':(loaded?L('Linki kopyala','Copy link'):L('Veriler yükleniyor…','Loading data…')))}</span>
+            <CkIcon n="copy" s={16} c="ck-copy-r"/>
           </button>
           {token&&<div className="ck-link-u">
-            <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer">{L('Formu aç / önizle','Open / preview form')}</a>
-            <code>{checkinUrl(token,b.kind)}</code>
+            <CkIcon n="ext" s={17}/>
+            <div>
+              <a href={checkinUrl(token,b.kind)} target="_blank" rel="noreferrer">{L('Formu aç / önizle','Open / preview form')}</a>
+              <code>{checkinUrl(token,b.kind)}</code>
+            </div>
           </div>}
         </div>)}
       </div>
       {/* Sporcunun formda göreceği liste bu. Boşsa form işe yaramaz, o yüzden sayı
           burada yazıyor — koç linki göndermeden önce görsün. */}
       {token&&<div className="ck-state">
-        <span>{L('Linkteki kadro:','Roster on the link:')} <b style={{color:published===0?'var(--high-t)':'var(--text2)'}}>{L(`${published} sporcu`,`${published} athletes`)}</b>
-          {cfg.publishedAt?L(` · son güncelleme ${new Date(cfg.publishedAt).toLocaleString('tr-TR')}`,` · last updated ${new Date(cfg.publishedAt).toLocaleString('en-GB')}`):''}
-          {cfg.rev!==rev?L(' · kadro değişti, yayımlanıyor…',' · roster changed, publishing…'):''}</span>
+        <div className="ck-state-l">
+          <CkIcon n="info" s={20} c="ck-state-i"/>
+          <span>{L('Linkteki kadro:','Roster on the link:')} <b style={published===0?{color:'var(--high-t)'}:undefined}>{L(`${published} sporcu`,`${published} athletes`)}</b></span>
+          {cfg.publishedAt&&<><i className="ck-state-sep"/>
+            <span>{L('Son güncelleme:','Last updated:')} {new Date(cfg.publishedAt).toLocaleString(L('tr-TR','en-GB'))}</span></>}
+          {cfg.rev!==rev&&<span className="ck-state-w">{L('kadro değişti, yayımlanıyor…','roster changed, publishing…')}</span>}
+        </div>
         <div className="ck-state-a">
-          <button className="btn sec xs" onClick={republish} disabled={busy||!loaded}>{L('Kadroyu yeniden yayımla','Republish roster')}</button>
-          <button className="btn sec xs" onClick={resetToken} disabled={busy}
+          <button className="btn sec" onClick={republish} disabled={busy||!loaded}>
+            <CkIcon n="sync" s={15}/>{copied==='pub'?L('Yayımlandı','Published'):L('Kadroyu yeniden yayımla','Republish roster')}</button>
+          <button className="btn sec" onClick={resetToken} disabled={busy}
             title={L('Link birine yanlışlıkla gittiyse ya da eski sporcuların elinde kaldıysa kullan.','Use this if a link went to the wrong person, or is still in former athletes\' hands.')}>
-            {L('Linkleri yenile','Refresh links')}</button>
+            <CkIcon n="link" s={15}/>{L('Linkleri yenile','Refresh links')}</button>
         </div>
       </div>}
       {token&&published===0&&<div className="ck-note warn" style={{marginTop:10,marginBottom:0}}>
@@ -35573,75 +35664,112 @@ function CheckinPanel({data,setData,team,sync}){
       </div>}
     </div>
 
-    <div className="panel">
+    <div className="panel" ref={sumRef}>
       <div className="ck-head">
         <div className="ck-head-t">
-          <b>{L('Günün Özeti','Today\'s Summary')}</b>
+          <b className="ck-h-lg">{L('Günün Özeti','Today\'s Summary')}</b>
           <span>{fd(date)}</span>
         </div>
         <div className="ck-daynav">
-          <button className="btn sec xs" onClick={()=>shiftDay(-1)} aria-label={L('Önceki gün','Previous day')}>‹</button>
+          <button className="ck-sq" onClick={()=>shiftDay(-1)} aria-label={L('Önceki gün','Previous day')}><CkIcon n="chevl" s={15}/></button>
           <input type="date" value={date} onChange={e=>setDate(e.target.value||fmt(today))}/>
-          <button className="btn sec xs" onClick={()=>shiftDay(1)} aria-label={L('Sonraki gün','Next day')}>›</button>
-          <button className="btn sec xs" onClick={()=>setDate(fmt(today))}>{L('Bugün','Today')}</button>
+          <button className="ck-sq" onClick={()=>shiftDay(1)} aria-label={L('Sonraki gün','Next day')}><CkIcon n="chev" s={15}/></button>
+          <button className="ck-today" onClick={()=>setDate(fmt(today))}>{L('Bugün','Today')}</button>
         </div>
       </div>
-      <div className="metrics">
-        <div className={`metric ${nS===0?'':(nS>=athletes.length?'ok':'')}`}>
-          <div className="ml">{L('İçsel Yük (RPE)','Internal Load (RPE)')}</div>
-          <div className="mv">{nS} / {athletes.length}</div>
-          <div className="mh">{L(`${athletes.length-nS} kişi doldurmadı`,`${athletes.length-nS} not submitted`)}</div>
-        </div>
-        <div className={`metric ${nW===0?'':(nW>=athletes.length?'ok':'')}`}>
-          <div className="ml">Wellness</div>
-          <div className="mv">{nW} / {athletes.length}</div>
-          <div className="mh">{L(`${athletes.length-nW} kişi doldurmadı`,`${athletes.length-nW} not submitted`)}</div>
-        </div>
-        <div className="metric">
-          <div className="ml">{L('Kadro','Roster')}</div>
-          <div className="mv">{athletes.length}</div>
-          <div className="mh">{L('Bu takımdaki sporcu','Athletes on this team')}</div>
+      <div className="ck-kpis">
+        {[{k:'srpe',tone:'rpe',icon:'bars',l:L('İçsel Yük (RPE)','Internal Load (RPE)'),n:nS},
+          {k:'wellness',tone:'well',icon:'heart',l:'Wellness',n:nW}].map(m=>{
+          const miss=nA-m.n;
+          return<div key={m.k} className={`ck-kpi ${m.tone}`}>
+            <span className="ck-ico"><CkIcon n={m.icon} s={24}/></span>
+            <div className="ck-kpi-b">
+              <div className="ck-kpi-l">{m.l}</div>
+              <div className="ck-kpi-v">{m.n} / {nA}</div>
+              <div className="ck-kpi-h">
+                {miss>0?L(`${miss} kişi doldurmadı`,`${miss} not submitted`):L('Herkes doldurdu','Everyone submitted')}
+                {miss>0&&<button type="button" className="ck-kpi-c" onClick={()=>copyMissing(m.k)}
+                  title={L('Doldurmayanların adlarını kopyala','Copy the names of who hasn\'t submitted')}>
+                  <CkIcon n={copied==='miss-'+m.k?'check':'copy'} s={12}/>{copied==='miss-'+m.k?L('Kopyalandı','Copied'):L('Adları kopyala','Copy names')}</button>}
+              </div>
+            </div>
+          </div>;
+        })}
+        <div className="ck-kpi ros">
+          <span className="ck-ico"><CkIcon n="users" s={24}/></span>
+          <div className="ck-kpi-b">
+            <div className="ck-kpi-l">{L('Kadro','Roster')}</div>
+            <div className="ck-kpi-v">{nA}</div>
+            <div className="ck-kpi-h">{L('Bu takımdaki sporcu','Athletes on this team')}</div>
+          </div>
         </div>
       </div>
 
-      {athletes.length>0&&<>
-        <div className="row" style={{marginTop:14,gap:8,flexWrap:'wrap'}}>
-          {['srpe','wellness'].map(k=>{
-            const names=missing(k);
-            if(!names.length)return null;
-            return<button key={k} className="btn sec xs" onClick={async()=>{
-              const ok=await copyText(names.join(', '));
-              if(ok){setCopied('miss-'+k);setTimeout(()=>setCopied(c=>c==='miss-'+k?'':c),2500);}
-            }}>
-              {copied==='miss-'+k?L('Kopyalandı','Copied'):L(`${k==='srpe'?'RPE':'Wellness'} doldurmayanları kopyala (${names.length})`,`Copy who hasn't submitted ${k==='srpe'?'RPE':'Wellness'} (${names.length})`)}
-            </button>;
-          })}
-        </div>
-        <table style={{marginTop:12}}>
-          <thead><tr><th style={{textAlign:'left'}}>{L('Sporcu','Athlete')}</th><th>{L('İçsel Yük','Internal Load')}</th><th>Wellness</th></tr></thead>
+      {nA>0&&<div className="ck-tbl-w">
+        <table className="ck-tbl">
+          <thead><tr>
+            <th className="n">#</th>
+            <th>{L('Sporcu','Athlete')}</th>
+            <th>{L('İçsel Yük (RPE)','Internal Load (RPE)')}</th>
+            <th>Wellness</th>
+            <th>{L('Son güncelleme','Last update')}</th>
+            <th className="m"/>
+          </tr></thead>
           <tbody>
-            {rows.map(({a,srpe,well})=><tr key={a.id}>
-              <td style={{fontWeight:600}}>{a.name}</td>
-              <td style={{textAlign:'center'}}>
-                {srpe?<span className="ck-in">{srpe.totalLoad?`${srpe.totalLoad} AU`:L('geldi','in')}
-                  {hhmm(srpe.submittedAt)?<i> · {hhmm(srpe.submittedAt)}</i>:null}</span>
-                  :<span className="ck-out">—</span>}
-              </td>
-              <td style={{textAlign:'center'}}>
-                {well?<span className="ck-in">{well.readiness!=null?well.readiness:L('geldi','in')}
-                  {hhmm(well.submittedAt)?<i> · {hhmm(well.submittedAt)}</i>:null}</span>
-                  :<span className="ck-out">—</span>}
-              </td>
-            </tr>)}
+            {rows.map(({a,srpe,well},i)=>{
+              const last=hhmm(lastAt(srpe,well));
+              return<tr key={a.id}>
+                <td className="n"><span>{i+1}</span></td>
+                <td className="nm">{a.name}</td>
+                <td>{srpe?<span className="ck-val rpe"><b>{srpe.totalLoad?`${srpe.totalLoad} AU`:L('geldi','in')}</b>{hhmm(srpe.submittedAt)&&<i>{hhmm(srpe.submittedAt)}</i>}</span>
+                  :<span className="ck-miss">{L('Doldurulmadı','Not submitted')}</span>}</td>
+                <td>{well?<span className="ck-val well"><b>{well.readiness!=null?fmtWell(well.readiness):L('geldi','in')}</b>{hhmm(well.submittedAt)&&<i>{hhmm(well.submittedAt)}</i>}</span>
+                  :<span className="ck-miss">{L('Doldurulmadı','Not submitted')}</span>}</td>
+                <td>{last?<span className="ck-last"><CkIcon n="clock" s={17}/>{last}</span>:<span className="ck-dash">—</span>}</td>
+                <td className="m"><button type="button" className="ck-sq sm" aria-label={L('Seçenekler','Options')}
+                  onClick={e=>openMenu(e,a)}><CkIcon n="dots" s={16}/></button></td>
+              </tr>;
+            })}
           </tbody>
         </table>
-      </>}
-      {!athletes.length&&<div className="help" style={{marginTop:10}}>
+      </div>}
+      {copied==='rem'&&<div className="ck-toast">{L('Hatırlatma panoya kopyalandı','Reminder copied to the clipboard')}</div>}
+      {menu&&ReactDOM.createPortal(<>
+        <div className="abm-bd" onClick={()=>setMenu(null)}/>
+        <div className="abm-menu ck-menu" style={{left:menu.left,top:menu.top,transform:menu.up?'translateY(-100%)':'none'}}>
+          <button type="button" disabled={busy||!user||!loaded} onClick={()=>copyReminder('srpe',menu.name)}>
+            <CkIcon n="bars" s={14}/>{L('RPE hatırlatması kopyala','Copy RPE reminder')}</button>
+          <button type="button" disabled={busy||!user||!loaded} onClick={()=>copyReminder('wellness',menu.name)}>
+            <CkIcon n="heart" s={14}/>{L('Wellness hatırlatması kopyala','Copy Wellness reminder')}</button>
+        </div>
+      </>,document.body)}
+      {!nA&&<div className="help" style={{marginTop:10}}>
         {L(<>Bu takımda sporcu yok. <b>Kadro</b> ekranından kadroyu ekle — formdaki isim listesi oradan geliyor.</>,
           <>This team has no athletes. Add the roster from the <b>Roster</b> screen — the form's name list comes from there.</>)}
       </div>}
     </div>
   </div>);
+}
+
+/* Check-in sayfasının çizgi simgeleri — tek renk, currentColor. */
+function CkIcon({n,s=16,c}){
+  const P={
+    bars:<><rect x="4" y="12" width="4" height="8" rx="1.3" fill="currentColor" stroke="none"/><rect x="10" y="5" width="4" height="15" rx="1.3" fill="currentColor" stroke="none"/><rect x="16" y="9" width="4" height="11" rx="1.3" fill="currentColor" stroke="none"/></>,
+    heart:<><path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.3a4.9 4.9 0 0 1 7.5 6.3z"/><path d="M3.5 12.5h4l1.6-2.6 2.4 5 1.8-3.4h7.2"/></>,
+    users:<><circle cx="9" cy="8" r="3.4" fill="currentColor" stroke="none"/><path d="M2.8 19.5c.4-3.5 3-5.6 6.2-5.6s5.8 2.1 6.2 5.6z" fill="currentColor" stroke="none"/><circle cx="16.6" cy="8.6" r="2.7" fill="currentColor" stroke="none" opacity=".75"/><path d="M16.8 13.4c2.6.2 4.3 2.1 4.6 5.1h-4.2c-.2-2-1-3.7-2.2-4.8.5-.2 1.1-.3 1.8-.3z" fill="currentColor" stroke="none" opacity=".75"/></>,
+    link:<><path d="M10 13.5a4.2 4.2 0 0 0 6 .3l2.9-2.9a4.2 4.2 0 0 0-6-6l-1.4 1.4"/><path d="M14 10.5a4.2 4.2 0 0 0-6-.3l-2.9 2.9a4.2 4.2 0 0 0 6 6l1.4-1.4"/></>,
+    copy:<><rect x="8.5" y="8.5" width="12" height="12" rx="2.2"/><path d="M15.5 8.5V5.7a2.2 2.2 0 0 0-2.2-2.2H5.7a2.2 2.2 0 0 0-2.2 2.2v7.6a2.2 2.2 0 0 0 2.2 2.2h2.8"/></>,
+    check:<path d="m5 12.5 4.5 4.5L19 7.5"/>,
+    ext:<><path d="M18 13.5V19a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 19V8a1.5 1.5 0 0 1 1.5-1.5H11"/><path d="M15 3.5h5.5V9"/><path d="M10.5 13.5l10-10"/></>,
+    info:<><circle cx="12" cy="12" r="9.5" fill="currentColor" stroke="none"/><path d="M12 11v6" stroke="var(--panel)" strokeWidth="2.2"/><circle cx="12" cy="7.6" r="1.35" fill="var(--panel)" stroke="none"/></>,
+    sync:<><path d="M20 11a8 8 0 0 0-14.6-4.2L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.6 4.2l1.4-1.7"/><path d="M20 20v-4.5h-4.5"/></>,
+    chev:<path d="m9 5 7 7-7 7"/>,
+    chevl:<path d="m15 5-7 7 7 7"/>,
+    clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></>,
+    dots:<><circle cx="12" cy="5.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor" stroke="none"/></>,
+  };
+  return<svg className={c} width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{P[n]}</svg>;
 }
 
 /* =========================================================
