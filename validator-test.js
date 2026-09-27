@@ -701,6 +701,41 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const anon = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr, customTests: [] });
     check('girilmemiş cinsiyet uydurulmuyor, eksik olarak bildiriliyor',
       !('cinsiyet' in anon.sporcu) && (anon.eksik_veriler || []).some(x => /cinsiyet|sex/.test(x)), JSON.stringify(anon.eksik_veriler));
+
+    /* Denetimde bulunan yanlışlıklar ve eksikler. */
+    check('RPE son kaydın türü okunur etiket, ham kod değil', snap.rpe.son_kayit && !/^(tp|sc|game)$/.test(snap.rpe.son_kayit.tur),
+      JSON.stringify(snap.rpe.son_kayit));
+    const lim = snap.kodla_denetlenen_sinirlar;
+    check('kademe tavanı egzersiz başına set diye adlandırılıyor ve açıklanıyor',
+      lim.kademe_tavani && lim.kademe_tavani.egzersiz_basi_maks_set === 5 && !('maks_set' in lim.kademe_tavani) && !!lim.kademe_tavani.not,
+      JSON.stringify(lim.kademe_tavani));
+    check('sert kısıtın eşleşme kuralı yazılı', /HERHANGİ BİRİ/.test(lim.sert_kisit_eslesme_kurali || ''), lim.sert_kisit_eslesme_kurali);
+    check('görev hacim ayarını yalnızca hazır oluşa bağlamıyor',
+      snap.gorev.some(g => /hacim_ayari_yuzde/.test(g) && /ağrı/.test(g) && /hacim_ayari_gerekceleri/.test(g)));
+    const sapma = snap.testler.kisisel_ortalamadan_sapmalar || [];
+    check('test sapmaları Türkçe anahtarlarla', sapma.length && sapma.every(x => 'test' in x && !('metric' in x) && !('current' in x)),
+      JSON.stringify(sapma));
+    check('ağrı haritası ve bugünkü ağrı aynı ölçek adını kullanıyor',
+      !JSON.stringify(snap.agri_ve_sakatlik).includes('siddet_1_3'));
+    const snapL = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [], libMap });
+    check('bağlam: spor, pozisyon vurgusu, hareket aileleri, kütüphane',
+      snap.spor_baglami && (snap.spor_baglami.oyunun_dogasi || []).length > 0 &&
+      (snap.sporcu.pozisyon_vurgusu || []).length > 0 &&
+      snap.hareket_aileleri.find(f => f.patern === 'Squat').aile === snap.hareket_aileleri.find(f => f.patern === 'Lunge / Unilateral').aile &&
+      ((snapL.egzersiz_kutuphanesi || {}).Squat || []).includes('Goblet Squat'),
+      JSON.stringify({ spor: snap.spor_baglami, poz: snap.sporcu.pozisyon_vurgusu, kut: snapL.egzersiz_kutuphanesi }));
+    check('dinlenik nabız kendi alanında', snap.dinlenik_nabiz && snap.dinlenik_nabiz.son_deger === 52, JSON.stringify(snap.dinlenik_nabiz));
+    const withRecent = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [], libMap,
+      recent: [{ tarih: back(2), egzersizler: ['Goblet Squat'], ayirt_ediciler: [] }] });
+    check('geçmiş programlar JSON\'a giriyor', (withRecent.gecmis_programlar || [])[0].egzersizler[0] === 'Goblet Squat');
+    check('eksik veriler antrenman yaşını da sayıyor',
+      (A.diAthleteSnapshot({ ath: athlete({ trainingAge: '' }), setup: SETUP, date: TODAY, instr, customTests: [] }).eksik_veriler || [])
+        .some(x => /antrenman yaşı|training age/.test(x)));
+    const futureInj = Object.assign({}, ath, { injuries: [...ath.injuries,
+      { type: 'Zorlanma', location: 'Hamstring', side: 'Sağ', status: 'Active', date: A.fmt(A.addD(A.parseD(TODAY), 3)) }] });
+    const snapF = A.diAthleteSnapshot({ ath: futureInj, setup: SETUP, date: TODAY, instr, customTests: [] });
+    check('programlanan günden sonra başlayan sakatlık o günün JSON\'unda yok',
+      !JSON.stringify(snapF.agri_ve_sakatlik).includes('Hamstring'), JSON.stringify(snapF.agri_ve_sakatlik.aktif_sakatliklar));
   }
 
   group('Ek — Harici AI programı: JSON yapıştır → program → denetim');
@@ -809,6 +844,15 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const items = [a1, a2].map(a => ({ ath: a, bundle: A.diBundle(a, SETUP, TODAY, { libMap }),
       instr: A.diInstr(a.id === 'a2' ? { notes: 'Yalnız üst vücut' } : null, { duration: 60 }), session: { name: 'Takım', duration: 60 } }));
     const sq = A.diSquadSnapshot({ items, setup: SETUP, date: TODAY, customTests: [] });
+    check('toplu görev metni bozuk ifade taşımıyor',
+      !sq.gorev.some(g => /alanı alanındaki|alanı\.hacim|\. (o|her) sporcunun/.test(g)) &&
+      sq.gorev.some(g => /Her sporcunun kendi kodla_denetlenen_sinirlar alanındaki/.test(g)) &&
+      sq.gorev.some(g => /Her sporcunun kodla_denetlenen_sinirlar\.hacim_ayari_yuzde değeri/.test(g)), sq.gorev.join(' || '));
+    const sqL = A.diSquadSnapshot({ items, setup: SETUP, date: TODAY, customTests: [], libMap });
+    check('toplu JSON: kütüphane, aileler ve spor bağlamı bir kez, en üstte',
+      !!sqL.egzersiz_kutuphanesi && !!sqL.hareket_aileleri && !!sqL.spor_baglami &&
+      !sqL.sporcular.some(x => 'egzersiz_kutuphanesi' in x || 'hareket_aileleri' in x || 'spor_baglami' in x),
+      Object.keys(sqL).join(','));
     JSON.parse(JSON.stringify(sq));
     check('toplu JSON: her sporcu kendi verisi ve talimatıyla, ortak kısımlar bir kez',
       sq.sporcu_sayisi === 2 && sq.sporcular.length === 2 && sq.sporcular[0].sporcu.id === 'a1' &&
@@ -963,12 +1007,13 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       em.son_seans.tarih === back(1) && em.seans_sayisi.son_7_gun === 3, JSON.stringify(em.son_seans));
     const bssJ = em.egzersiz.find(e => e.egzersiz === 'Bulgarian Split Squat');
     check('JSON: egzersiz kaydı aile, patern, son kullanım, sıklık ve dört pencere taşıyor',
-      bssJ && bssJ.aile === 'Split Squat Family' && bssJ.hareket_paterni.includes('Unilateral Knee Dominant') &&
+      bssJ && bssJ.aile === 'Split Squat Family' && bssJ.hareket_sinifi.includes('Unilateral Knee Dominant') && !('hareket_paterni' in bssJ) &&
       bssJ.son_kullanim === back(1) && bssJ.siklik_28_gun === 3 && bssJ.maruziyet.son_7_gun === 'High' &&
       Object.keys(bssJ.maruziyet).join(',') === 'son_seans,son_7_gun,son_14_gun,son_28_gun', JSON.stringify(bssJ));
     check('JSON: maruziyeti olmayan paternler ayrı listede',
-      em.hareket_paterni.son_28_gunde_maruziyet_yok.includes('Vertical Push') &&
-      em.hareket_paterni.kayitlar.some(k => k.ad === 'Knee Dominant'), JSON.stringify(em.hareket_paterni.son_28_gunde_maruziyet_yok));
+      em.hareket_sinifi.son_28_gunde_maruziyet_yok.includes('Vertical Push') &&
+      em.hareket_sinifi.kayitlar.some(k => k.ad === 'Knee Dominant') && !('hareket_paterni' in em) && !!em.hareket_sinifi_notu,
+      JSON.stringify(em.hareket_sinifi.son_28_gunde_maruziyet_yok));
     check('JSON: görev antrenman profilini ve hard kısıtları anlatıyor', snap.gorev.some(g => /antrenman_profili/.test(g) && /kisitlar\.hard/.test(g)));
     check('JSON: görev JSON\'da olmayan durum alanından söz etmiyor', !snap.gorev.some(g => /Good \/ Moderate \/ Limited|Limited durum/.test(g)) &&
       !/durum/.test(JSON.stringify(pr)), snap.gorev.find(g => /antrenman_profili/.test(g)));
