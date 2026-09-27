@@ -61,7 +61,7 @@ function segments(W, nb, used, iters) {
   }
   const seg = new Array(nv);
   for (let i = 0; i < nv; i++) { let b = -1, bi = 0; for (let k = 0; k < G.length; k++) if (F[k][i] > b) { b = F[k][i]; bi = k; } seg[i] = G[bi]; }
-  return seg;
+  return { seg, G, F };
 }
 // Kırık çizgi (omuz → dirsek → bilek → el) üzerinde en yakın nokta: yay boyu.
 function onChain(chain, p) {
@@ -97,9 +97,10 @@ function sliceCenters(P, idx, lo, hi, step) {
 }
 
 function classify(m) {
-  const { P, J, W, quads } = m, nv = P.length / 3;
+  // Yüzeyler: dörtgenler + yüz yamasının üçgenleri (face.js).
+  const { P, J, W } = m, quads = m.quads.concat(m.tris || []), nv = P.length / 3;
   const used = new Uint8Array(nv); quads.forEach(q => q.forEach(i => { used[i] = 1; }));
-  const nb = neighbors(nv, quads), seg = segments(W, nb, used, 24);
+  const nb = neighbors(nv, quads), { seg, G, F } = segments(W, nb, used, 24);
   const j = n => J[n].head, jt = n => J[n].tail;
   const EYE = j('eye.L')[1], KNEE = j('lowerleg01.L')[1], ANKLE = j('foot.L')[1];
   const VN = new Float64Array(nv * 3);
@@ -129,22 +130,31 @@ function classify(m) {
     if (S0[1] - y > 0.035 && (S0[0] - x) * sx > 0.035) return null;
     return d < 0.098 ? S(side, 'omuz') : null;
   }
+  /* Boyun: boyun ekseninden (dikey, z = 0,02) uzaklığı eşiğin altında kalan
+     yüzey. Boyun tabanında yüzey eksenden hızla uzaklaşıyor (önde göğüs kemiği,
+     yanda trapez, arkada sırt); eşik o kıvrılmanın başına denk geliyor, sınır
+     basamaksız bir yaka çizgisi oluyor: önde ~1,49 m, yanda ~1,57 m, arkada
+     ~1,52 m. Arkası (açı ≥ 100°) Ense. */
+  function neckRegion(x, y, z) {
+    if (y < 1.40 || y > 1.66) return null;
+    const th = Math.abs(Math.atan2(x, z - 0.02) * DEG), r = Math.hypot(x, z - 0.02);
+    const t = Math.max(0, Math.min(1, (th - 100) / 80)), lim = 0.077 - 0.017 * t * t * (3 - 2 * t);
+    return r < lim ? (th < 100 ? 'Boyun' : 'Ense') : null;
+  }
   function headRegion(x, y, z, g, n) {
     const th = Math.abs(Math.atan2(x, z - 0.02) * DEG);   // baş ekseni etrafında açı
-    if (g === 'neck') return th < 100 ? 'Boyun' : 'Ense';
     if (th >= 118 && y < EYE - 0.055) return 'Ense';      // kafanın arkasının altı
-    const mouthY = EYE - 0.068;
+    const mouthY = EYE - 0.068;                            // (yüzsüz başta) ağzın hizası
     // Çene hattının altı (çene ucunun alt yüzü → çene köşesi) boyna ait.
     const jawY = 1.584 + 0.034 * Math.max(0, Math.min(1, (0.125 - z) / 0.1));
     if (y < jawY && n[1] < -0.2 && th < 95) return 'Boyun';
-    // Ağzın içi (dudakların arkası, ağız tabanı) başla kalıyor: dudakta dikiş görünmesin.
-    if (Math.abs(x) < 0.032 && y > 1.605 && y < 1.645 && z > 0.12 && n[2] < -0.2) return 'Baş';
-    if (Math.abs(x) < 0.036 && y > 1.585 && y < 1.63 && z < 0.15 && z > 0.03 && n[1] > 0.25) return 'Baş';
-    // Çene: alt dudağın altındaki kıvrımdan aşağısı, kulağın önü.
+    // Çene: ağız hizasının biraz altından aşağısı, kulağın önü.
     if (y < mouthY - 0.019 - 0.012 * Math.max(0, (th - 20) / 60) && th < 80 && z > -0.01) return 'Çene';
     return 'Baş';
   }
-  function torsoRegion(x, y, phi, side) {
+  // Şortun bel bandı (pain-body.js'teki gölgelendiriciyle aynı formül): karın burada bitiyor.
+  const waistY = (x, z) => 0.962 + 0.015 * (1 - Math.cos(Math.atan2(x, z + 0.01)));
+  function torsoRegion(x, y, z, phi, side) {
     const ab = Math.abs(phi), ax = Math.abs(x);
     const PEC = 1.262, RIB = 1.085, CREST = 0.995;        // göğüs altı, kaburga altı, leğen kemiği
     if (y >= 1.325) {                                      // koltuk altlarının üstü: göğüs | üst sırt
@@ -155,26 +165,22 @@ function classify(m) {
       if (y >= 1.262) return 'Üst sırt';
       if (y >= RIB) return 'Orta sırt';
       if (y >= CREST) return 'Alt sırt / bel';
-      if (ab >= 157 && y >= 0.87) return 'Sakrum / kuyruk sokumu';
+      if (ab >= 157) return 'Sakrum / kuyruk sokumu';
       return S(side, 'kalça');
     }
-    if (ab >= 90) return y >= CREST ? S(side, 'yan gövde') : S(side, 'kalça');   // yan
+    if (ab >= 80) return y >= CREST ? S(side, 'yan gövde') : S(side, 'kalça');   // yan
     if (y >= PEC) return y >= 1.30 || ax < 0.16 ? 'Göğüs' : S(side, 'yan gövde');
     // Karnın üst yarısı, orta çizgiden ikiye (referans görseldeki "Kaburga").
     if (y >= RIB) return S(side, 'kaburga');
-    if (y >= 0.93) return ab < 72 || y >= CREST ? 'Karın' : S(side, 'kalça');
-    return ab < 72 ? S(side, 'kasık') : S(side, 'kalça');
+    // Bel bandının altı, iki kasık çizgisi arasında kalan üçgen: kasık.
+    return y >= waistY(x, z) ? 'Karın' : S(side, 'kasık');
   }
   function legRegion(side, y, phi) {
-    if (y >= 0.835) {                                      // uyluğun kökü
-      if (phi >= -125 && phi < -25) return S(side, 'kasık');
-      if (phi >= -25 && phi < 55) return S(side, 'ön uyluk (Quadriceps)');
-      return S(side, 'kalça');
-    }
     if (y >= KNEE + 0.07) {
       if (phi >= -50 && phi < 50) return S(side, 'ön uyluk (Quadriceps)');
-      if (phi >= 50 && phi < 118) return S(side, 'dış uyluk');
       if (phi >= -118 && phi < -50) return S(side, 'iç uyluk (Adductor)');
+      if (y >= 0.835) return S(side, 'kalça');             // uyluğun kökü, yanda ve arkada
+      if (phi >= 50 && phi < 118) return S(side, 'dış uyluk');
       return S(side, 'arka uyluk (Hamstring)');
     }
     if (y >= KNEE - 0.06) {
@@ -207,32 +213,49 @@ function classify(m) {
     return S(side, 'ayak üstü');
   }
 
-  const reg = new Array(nv).fill(null);
-  for (const i of all) {
-    const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], n = [VN[i * 3], VN[i * 3 + 1], VN[i * 3 + 2]];
+  // Bir yüzey noktasının bölgesi: konum, normal ve parça.
+  function regionOf(x, y, z, n, g) {
     const side = x > 0 ? 'L' : 'R';
-    let g = seg[i];
-    // Boyun kemikleri trapezin üstünü de çekiyor; boyun bir silindir olarak kalsın.
-    if (g === 'neck' && Math.abs(x) > 0.064 && y < 1.56) g = 'torso';
-    if (g === 'head' || g === 'jaw' || g === 'neck') reg[i] = headRegion(x, y, z, g, n);
-    else if (/^(torso|shoulder)/.test(g)) {
+    // Boyun kemikleri trapezin üstünü de çekiyor, gövde kemikleri de boynun altını:
+    // boyunla gövde arasındaki sınır parçalardan değil, boyun kuralından geliyor.
+    if (g === 'neck' || /^(torso|shoulder)/.test(g)) {
+      const nk = neckRegion(x, y, z);
+      if (nk) return nk;
+      if (g === 'neck') g = y > 1.575 ? 'head' : 'torso';
+    }
+    if (g === 'head' || g === 'jaw') return headRegion(x, y, z, g, n);
+    /* Gövde ile bacak arasındaki sınır kemik ağırlıklarından değil, kalçada tek bir
+       düzlemden: kasık çizgisi (önde leğen kemiğinin ucundan kasığa ~31° iniyor),
+       yanda kalça, arkada kalçanın üstü. Ağırlıkların sınırı bu düzleme ±7 mm
+       uyuyordu ama dalgalıydı. Şortun belinin üstü her zaman gövde: karnın alt
+       kenarı bel bandı boyunca gidiyor. */
+    if (/^(torso|leg)/.test(g) && y > 0.75 && y < 1.08) {
+      const d = -0.523 * (Math.abs(x) - 0.078) + 0.851 * (y - 0.949) - 0.041 * (z - 0.021);
+      g = d > 0 || y >= waistY(x, z) ? 'torso' : 'leg' + side;
+    }
+    if (/^(torso|shoulder)/.test(g)) {
       const phi = Math.atan2(x, z - (zFront(y)[1] + zBack(y)[1]) / 2) * DEG;
-      reg[i] = omuz(x, y, z, side) || torsoRegion(x, y, phi, side);
-    } else if (/^(arm|hand|thumbBase)/.test(g)) {
+      return omuz(x, y, z, side) || torsoRegion(x, y, z, phi, side);
+    }
+    if (/^(arm|hand|thumbBase)/.test(g)) {
       const s = g.slice(-1), c = onChain(armChain(s), [x, y, z]), se = sElbow(s), sw = sWrist(s);
-      if ((c.s < 0.11 && omuz(x, y, z, s)) || c.s < 0.06) reg[i] = S(s, 'omuz');
-      else if (c.s < se - 0.04) reg[i] = S(s, 'üst kol');
-      else if (c.s < se + 0.04) reg[i] = S(s, 'dirsek');
-      else if (c.s < sw - 0.035) reg[i] = S(s, 'ön kol');
-      else if (c.s < sw + 0.022) reg[i] = S(s, 'el bileği');
-      else reg[i] = S(s, 'el');
-    } else if (/^finger/.test(g)) reg[i] = S(g.slice(-1), 'parmaklar');
-    else if (/^leg/.test(g)) {
+      if ((c.s < 0.11 && omuz(x, y, z, s)) || c.s < 0.06) return S(s, 'omuz');
+      if (c.s < se - 0.04) return S(s, 'üst kol');
+      if (c.s < se + 0.04) return S(s, 'dirsek');
+      if (c.s < sw - 0.035) return S(s, 'ön kol');
+      if (c.s < sw + 0.022) return S(s, 'el bileği');
+      return S(s, 'el');
+    }
+    if (/^finger/.test(g)) return S(g.slice(-1), 'parmaklar');
+    if (/^leg/.test(g)) {
       const s = g.slice(-1), c = legC[s](y);
-      reg[i] = legRegion(s, y, Math.atan2((x - c[0]) * (s === 'L' ? 1 : -1), z - c[1]) * DEG);
-    } else if (/^foot/.test(g)) reg[i] = footRegion(g.slice(-1), x, y, z);
-    else if (/^toe/.test(g)) reg[i] = S(g.slice(-1), 'ayak parmakları');
+      return legRegion(s, y, Math.atan2((x - c[0]) * (s === 'L' ? 1 : -1), z - c[1]) * DEG);
+    }
+    if (/^foot/.test(g)) return footRegion(g.slice(-1), x, y, z);
+    return S(g.slice(-1), 'ayak parmakları');   // toe
   }
+  const reg = new Array(nv).fill(null);
+  for (const i of all) reg[i] = regionOf(P[i * 3], P[i * 3 + 1], P[i * 3 + 2], [VN[i * 3], VN[i * 3 + 1], VN[i * 3 + 2]], seg[i]);
 
   // Adacıklar: bir bölgenin ana parçasından kopmuş 30 köşeden küçük kırıntılar komşuya.
   for (let pass = 0; pass < 4; pass++) {
@@ -259,7 +282,17 @@ function classify(m) {
     });
     if (!changed) break;
   }
-  return { reg, seg, used };
+  /* İki köşe arasındaki bir noktanın bölgesi (t: 0 → a, 1 → b). Konum, normal ve
+     yumuşatılmış parça alanları doğrusal karışıyor; sınır, köşelerin arasında
+     tam kuralın geçtiği yerde bulunabilsin diye (build.js → sınır noktaları). */
+  function between(a, b, t) {
+    const x = P[a * 3] + (P[b * 3] - P[a * 3]) * t, y = P[a * 3 + 1] + (P[b * 3 + 1] - P[a * 3 + 1]) * t, z = P[a * 3 + 2] + (P[b * 3 + 2] - P[a * 3 + 2]) * t;
+    const n = [0, 1, 2].map(k => VN[a * 3 + k] + (VN[b * 3 + k] - VN[a * 3 + k]) * t), l = Math.hypot(n[0], n[1], n[2]) || 1;
+    let best = -1, g = seg[a];
+    for (let k = 0; k < G.length; k++) { const f = F[k][a] + (F[k][b] - F[k][a]) * t; if (f > best) { best = f; g = G[k]; } }
+    return regionOf(x, y, z, [n[0] / l, n[1] / l, n[2] / l], g);
+  }
+  return { reg, seg, used, between, nb };
 }
 
 module.exports = { classify };

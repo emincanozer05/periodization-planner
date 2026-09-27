@@ -10,20 +10,21 @@
         bildirimi bölgeyi adıyla okuyor. İngilizce yalnızca ekrandaki karşılığı.
 
      2) MODELİ AÇAN KOD. Manken `pain-body.bin` dosyasında: MakeHuman'ın taban
-        insan ağı (CC0 lisanslı; atletik genç erkek ölçüleri, kollar yanda) ve her
-        köşesinin hangi bölgeye düştüğü, pişirilmiş ortam gölgesi (AO), saç / kaş /
-        dudak / şort maskeleri. Dosyayı `tools/pain-body-mesh/` üretiyor; bölge
-        sınırlarının kuralları da orada. Burada ağ açılıyor, bölge sınırından geçen
-        üçgenler sınırın üstünden bölünüyor, sınır çizgisi basamaksız olsun diye
-        düzleştiriliyor ve ağ bir kez pürüzsüzleştiriliyor (Loop alt bölümleme).
-        Her üçgen tam olarak bir bölgeye düşüyor; dokunulan üçgen bölgeyi söylüyor.
+        insan ağı (CC0 lisanslı; atletik genç erkek ölçüleri, kollar yanda, yüz
+        hatları düzleştirilmiş — bir manken başı), her köşesinin hangi bölgeye
+        düştüğü, bölge sınırının her kenarı tam nerede kestiği, pişirilmiş ortam
+        gölgesi (AO) ve şort maskesi. Dosyayı `tools/pain-body-mesh/` üretiyor;
+        bölge sınırlarının kuralları da orada. Burada ağ açılıyor, bölge
+        sınırından geçen üçgenler dosyadaki kesim noktalarından bölünüyor (sınır
+        köşeler arasından düz geçiyor, basamak yapmıyor) ve ağ bir kez
+        pürüzsüzleştiriliyor (Loop alt bölümleme). Her üçgen tam olarak bir
+        bölgeye düşüyor; dokunulan üçgen bölgeyi söylüyor.
 
-     3) GÖRÜNTÜLEYİCİ (PainBody.create). Bölgeler referans görseldeki gibi
-        renkli, yarı saydam bir katman olarak derinin üstüne boyanıyor; komşu
-        bölgeler farklı renkte ve arada ince açık bir dikiş var. İşaretlenen
-        bölge şiddet rengini (Hafif / Orta / Yüksek) alıyor, yanına çizgiyle bağlı
-        bir etiket çıkıyor; o sırada işaretsiz bölgeler griye dönüyor ki
-        işaretliler belli olsun. Baş / el / diz / ayak için hızlı yakınlaşma var.
+     3) GÖRÜNTÜLEYİCİ (PainBody.create). Deri tek renk; bölgeler arasında ince
+        koyu bir sınır çizgisi var, bölgelerin kendi rengi yok. İşaretlenen bölge
+        şiddet rengini (Hafif / Orta / Yüksek) alıyor, yanına çizgiyle bağlı bir
+        etiket çıkıyor; panelde açık olan bölge mavi. Baş / el / diz / ayak için
+        hızlı yakınlaşma var.
 
    Koordinatlar metre; sporcu +z yönüne (ekrana) bakıyor, y yukarı, ayaklar y=0.
    Sporcunun SAĞI -x tarafında — karşıdan bakan kişinin solunda. Modelin
@@ -39,7 +40,7 @@
   var THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js';
   // Model dosyası bu betiğin yanında duruyor. Sürüm eki, dosya değişince
   // tarayıcının eski kopyayı kullanmaması için.
-  var MESH_VERSION = '1';
+  var MESH_VERSION = '2';
   var MESH_URL = (function () {
     var src = '';
     try { src = (document.currentScript && document.currentScript.src) || ''; } catch (e) {}
@@ -118,23 +119,29 @@
   function wrapPi(a) { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; }
 
   /* ── Model dosyası ───────────────────────────────────────────────────────
-     'PBM1' | JSON boyu (u32) | JSON (bölge adları, sınır kutusu, göz küreleri,
-     eklemler) | köşeler (u16×3, kutuya göre nicelenmiş) | dörtgenler (u16×4) |
-     köşenin bölgesi (u8, JSON'daki ad listesine sıra) | köşe başına 6 kanal (u8):
-     AO, saç, kaş, dudak/meme ucu, şort, yüz. Hepsi little-endian. */
-  var NA = 6;
+     'PBM3' | JSON boyu (u32) | JSON (bölge adları, sınır kutusu, sayılar, eklemler) |
+     köşeler (u16×3, kutuya göre nicelenmiş) | dörtgenler (u16×4) | üçgenler (u16×3,
+     yüz yaması) | sınır kenarları (u16×2, küçük uç önce) | köşegen bitleri (dörtgen
+     başına 1: b–d köşegeni) | köşenin bölgesi (u8, JSON'daki ad listesine sıra) |
+     köşe başına 2 kanal (u8): AO, şort | sınır kenarının kesim noktası (u8, küçük
+     uçtan t × 255). Hepsi little-endian. */
+  var NA = 2;
   function decode(buf) {
     var u8 = new Uint8Array(buf), dv = new DataView(buf);
-    if (u8.length < 8 || String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== 'PBM1') throw new Error('PainBody: model dosyası tanınmadı');
+    if (u8.length < 8 || String.fromCharCode(u8[0], u8[1], u8[2], u8[3]) !== 'PBM3') throw new Error('PainBody: model dosyası tanınmadı');
     var jl = dv.getUint32(4, true), jb = u8.subarray(8, 8 + jl), txt;
     if (global.TextDecoder) txt = new TextDecoder('utf-8').decode(jb);
     else { txt = ''; for (var q = 0; q < jb.length; q++) txt += String.fromCharCode(jb[q]); txt = decodeURIComponent(escape(txt)); }
-    var meta = JSON.parse(txt), nv = meta.nv, nq = meta.nq, o = 8 + jl;
-    if (u8.length < o + nv * 6 + nq * 8 + nv + nv * NA) throw new Error('PainBody: model dosyası eksik');
+    var meta = JSON.parse(txt), nv = meta.nv, nq = meta.nq, nt = meta.nt, ne = meta.ne, nd = Math.ceil(nq / 8), o = 8 + jl;
+    if (u8.length < o + nv * 6 + nq * 8 + nt * 6 + ne * 4 + nd + nv + nv * NA + ne) throw new Error('PainBody: model dosyası eksik');
     var qp = new Uint16Array(buf, o, nv * 3); o += nv * 6;
     var quads = new Uint16Array(buf, o, nq * 4); o += nq * 8;
+    var tris = new Uint16Array(buf, o, nt * 3); o += nt * 6;
+    var ed = new Uint16Array(buf, o, ne * 2); o += ne * 4;
+    var diag = new Uint8Array(buf, o, nd); o += nd;
     var rid = new Uint8Array(buf, o, nv); o += nv;
-    var mat = new Uint8Array(buf, o, nv * NA);
+    var mat = new Uint8Array(buf, o, nv * NA); o += nv * NA;
+    var et = new Uint8Array(buf, o, ne);
     var pos = new Float32Array(nv * 3), mn = meta.min, mx = meta.max, i, k;
     for (i = 0; i < nv; i++) for (k = 0; k < 3; k++) pos[i * 3 + k] = mn[k] + (mx[k] - mn[k]) * qp[i * 3 + k] / 65535;
     // Dosyadaki bölge adı → katalogdaki sıra. Katalogda olmayan bir ad dosyanın
@@ -145,7 +152,9 @@
     });
     var r = new Uint8Array(nv);
     for (i = 0; i < nv; i++) r[i] = map[rid[i]];
-    return { meta: meta, nv: nv, nq: nq, pos: pos, quads: quads, rid: r, mat: mat };
+    var cut = {};
+    for (i = 0; i < ne; i++) cut[ed[i * 2] * 65536 + ed[i * 2 + 1]] = et[i] / 255;
+    return { meta: meta, nv: nv, nq: nq, nt: nt, pos: pos, quads: quads, tris: tris, diag: diag, cut: cut, rid: r, mat: mat };
   }
 
   // Büyüyebilen köşe deposu: konum + malzeme kanalları.
@@ -163,21 +172,25 @@
     for (k = 0; k < NA; k++) a[dst * NA + k] = a[i * NA + k] * (1 - t) + a[j * NA + k] * t;
   };
 
-  /* 1) Dörtgenleri kısa köşegenden üçgenle; köşeleri farklı bölgeye düşen
-        üçgeni kenar ortalarından böl. Böylece her üçgen tek bölgenin oluyor ve
-        sınır, köşelerin arasından geçiyor. */
+  /* 1) Dörtgenleri dosyadaki köşegenden üçgenle (yüz yaması zaten üçgen);
+        köşeleri farklı bölgeye düşen üçgeni böl. Sınırın her kenarı tam nerede
+        kestiği dosyada (derlemede bölge kuralının kendisiyle bulundu): bölme
+        noktası oraya konuyor, sınır köşelerin arasından düz bir çizgi olarak
+        geçiyor. Her üçgen tek bölgenin oluyor. */
   function splitRegions(d) {
     var nv = d.nv, S = new Store(nv, Math.ceil(nv * 1.3)), i, k;
     S.p.set(d.pos);
     for (i = 0; i < nv * NA; i++) S.a[i] = d.mat[i] / 255;
     var T = [], R = [], rid = d.rid, mids = {}, mEdge = {}, seg = [], cents = [];
-    function d2(a, b) {
-      var p = S.p, x = p[a * 3] - p[b * 3], y = p[a * 3 + 1] - p[b * 3 + 1], z = p[a * 3 + 2] - p[b * 3 + 2];
-      return x * x + y * y + z * z;
-    }
     function mid(a, b) {
-      var key = a < b ? a * 65536 + b : b * 65536 + a, m = mids[key];
-      if (m == null) { m = S.add(); S.lerp(m, a, b, 0.5); mids[key] = m; mEdge[m] = [a, b, 0.5]; }
+      var lo = a < b ? a : b, hi = a < b ? b : a, key = lo * 65536 + hi, m = mids[key];
+      if (m == null) {
+        var t = d.cut[key];
+        m = S.add(); mids[key] = m;
+        // Dosyada noktası olmayan kenar (olmamalı) ortadan bölünüp sonra düzleştiriliyor.
+        if (t == null) { t = 0.5; mEdge[m] = [lo, hi, t]; }
+        S.lerp(m, lo, hi, t);
+      }
       return m;
     }
     function tri(a, b, c) {
@@ -203,17 +216,18 @@
     }
     for (i = 0; i < d.nq; i++) {
       var q0 = d.quads[i * 4], q1 = d.quads[i * 4 + 1], q2 = d.quads[i * 4 + 2], q3 = d.quads[i * 4 + 3];
-      if (d2(q0, q2) <= d2(q1, q3)) { tri(q0, q1, q2); tri(q0, q2, q3); }
-      else { tri(q0, q1, q3); tri(q1, q2, q3); }
+      if (d.diag[i >> 3] & (1 << (i & 7))) { tri(q0, q1, q3); tri(q1, q2, q3); }
+      else { tri(q0, q1, q2); tri(q0, q2, q3); }
     }
-    relax(S, seg, mEdge, cents, 12);
+    for (i = 0; i < d.nt; i++) tri(d.tris[i * 3], d.tris[i * 3 + 1], d.tris[i * 3 + 2]);
+    relax(S, seg, mEdge, cents, 6);
     return { S: S, T: new Uint32Array(T), R: new Uint8Array(R) };
   }
 
-  /* 2) Kenar ortası, ızgarayı çapraz kesen bir sınırda basamak bırakıyor. Her
-        bölme noktası kendi kenarı üzerinde (yüzeyden çıkmadan) iki sınır
-        komşusunun ortasına doğru kaydırılıyor; üç bölgenin buluştuğu noktalar da
-        üçgenlerinin içinde komşularının ortasına çekiliyor. */
+  /* 2) Üç bölgenin buluştuğu üçgende bölme noktası üçgenin ağırlık merkezinde
+        doğuyor; üç sınır komşusunun ortasına (üçgenin içinde kalarak) çekiliyor.
+        Dosyada noktası olmayan bir kenar olursa o da kendi kenarı üzerinde iki
+        sınır komşusunun ortasına kaydırılıyor. */
   function relax(S, seg, mEdge, cents, iters) {
     var nb = {}, i, k, it;
     for (i = 0; i < seg.length; i += 2) {
@@ -253,10 +267,13 @@
   }
 
   /* 3) Bir kat Loop alt bölümleme: her üçgen dörde bölünüyor, köşeler komşularına
-        göre yumuşatılıyor. Yüzey ve bölge sınırları birlikte pürüzsüzleşiyor;
-        çocuk üçgenler babalarının bölgesini alıyor. Kenarlar, (küçük uç, büyük uç)
-        anahtarına göre sıralanmış yarım kenarlardan çıkarılıyor — nesne tablosu
-        yerine düz dizilerle, telefonda da hızlı. */
+        göre yumuşatılıyor; çocuk üçgenler babalarının bölgesini alıyor. Bölge
+        sınırı bir kıvrım gibi işleniyor: sınırdaki köşe yalnızca sınır boyunca
+        yumuşuyor, sınır kenarının yeni noktası kenarın ortası. Yoksa sınır
+        köşeleri iki yandaki düzensiz üçgenlere göre sağa sola kayıp çizgiyi
+        titretiyordu. Kenarlar, (küçük uç, büyük uç) anahtarına göre sıralanmış
+        yarım kenarlardan çıkarılıyor — nesne tablosu yerine düz dizilerle,
+        telefonda da hızlı. */
   function subdivide(m) {
     var S = m.S, T = m.T, R = m.R, n = S.n, nt = R.length, nh = nt * 3, i, k;
     var comb = new Float64Array(nh);
@@ -266,15 +283,16 @@
     }
     comb.sort();
     var heE = new Int32Array(nh), eLo = new Int32Array(nh), eHi = new Int32Array(nh);
-    var eO1 = new Int32Array(nh), eO2 = new Int32Array(nh), eN = new Uint8Array(nh), ne = -1, prev = -1;
+    var eO1 = new Int32Array(nh), eO2 = new Int32Array(nh), eN = new Uint8Array(nh), eB = new Uint8Array(nh), eR = new Int16Array(nh);
+    var ne = -1, prev = -1;
     for (i = 0; i < nh; i++) {
       var c = comb[i], he = c % nh, key = (c - he) / nh, t = (he / 3) | 0, kk = he - t * 3;
       var opp = T[t * 3 + (kk + 2) % 3];
       if (key !== prev) {
         ne++; prev = key;
         var x0 = T[t * 3 + kk], x1 = T[t * 3 + (kk + 1) % 3];
-        eLo[ne] = x0 < x1 ? x0 : x1; eHi[ne] = x0 < x1 ? x1 : x0; eO1[ne] = opp; eO2[ne] = -1; eN[ne] = 1;
-      } else { eO2[ne] = opp; if (eN[ne] < 255) eN[ne]++; }
+        eLo[ne] = x0 < x1 ? x0 : x1; eHi[ne] = x0 < x1 ? x1 : x0; eO1[ne] = opp; eO2[ne] = -1; eN[ne] = 1; eR[ne] = R[t];
+      } else { eO2[ne] = opp; if (eN[ne] < 255) eN[ne]++; if (R[t] !== eR[ne]) eB[ne] = 1; }
       heE[he] = ne;
     }
     ne++;
@@ -284,7 +302,7 @@
       var lo = eLo[i], hi = eHi[i];
       val[lo]++; val[hi]++;
       for (k = 0; k < 3; k++) { sum[lo * 3 + k] += P[hi * 3 + k]; sum[hi * 3 + k] += P[lo * 3 + k]; }
-      if (eN[i] === 1) {
+      if (eN[i] === 1 || eB[i]) {
         bc[lo]++; bc[hi]++;
         for (k = 0; k < 3; k++) { bs[lo * 3 + k] += P[hi * 3 + k]; bs[hi * 3 + k] += P[lo * 3 + k]; }
       }
@@ -292,7 +310,8 @@
     for (i = 0; i < n; i++) {
       var vl = val[i];
       if (bc[i]) {
-        // Açık kenardaki köşe (göz kapağı kenarı gibi): yalnızca kenar boyunca.
+        // Sınırdaki (ya da açık kenardaki) köşe: yalnızca sınır boyunca. Üç bölgenin
+        // buluştuğu köşe yerinde kalıyor.
         if (bc[i] === 2) for (k = 0; k < 3; k++) np[i * 3 + k] = 0.75 * P[i * 3 + k] + 0.125 * bs[i * 3 + k];
         else for (k = 0; k < 3; k++) np[i * 3 + k] = P[i * 3 + k];
       } else if (vl >= 3) {
@@ -303,7 +322,7 @@
     }
     for (i = 0; i < ne; i++) {
       var v = n + i, l2 = eLo[i], h2 = eHi[i];
-      if (eN[i] === 2) for (k = 0; k < 3; k++) np[v * 3 + k] = 0.375 * (P[l2 * 3 + k] + P[h2 * 3 + k]) + 0.125 * (P[eO1[i] * 3 + k] + P[eO2[i] * 3 + k]);
+      if (eN[i] === 2 && !eB[i]) for (k = 0; k < 3; k++) np[v * 3 + k] = 0.375 * (P[l2 * 3 + k] + P[h2 * 3 + k]) + 0.125 * (P[eO1[i] * 3 + k] + P[eO2[i] * 3 + k]);
       else for (k = 0; k < 3; k++) np[v * 3 + k] = 0.5 * (P[l2 * 3 + k] + P[h2 * 3 + k]);
       for (k = 0; k < NA; k++) na[v * NA + k] = 0.5 * (A[l2 * NA + k] + A[h2 * NA + k]);
     }
@@ -323,8 +342,8 @@
   /* 4) Normaller (bölünmeden önceki, kaynaşık ağda — sınırda gölge kırılmasın),
         sonra her bölge sınırındaki köşe bölge başına ayrı kopya alıyor: renk
         komşuya sızmıyor. `seam`, köşenin en yakın sınıra yüzey boyunca uzaklığı
-        (metre); gölgelendirici dikişi bundan çiziyor. Ayrıca bölge komşulukları
-        (renk seçimi) ve bölge istatistikleri (odak, etiket) burada çıkıyor. */
+        (metre); gölgelendirici sınır çizgisini bundan çiziyor. Bölge
+        istatistikleri (odak, etiket) de burada çıkıyor. */
   function vertexNormals(p, T, nv) {
     var nrm = new Float32Array(nv * 3), nt = T.length / 3, i;
     for (i = 0; i < nt; i++) {
@@ -354,9 +373,15 @@
     }
     return { start: cnt, nb: nb };
   }
-  // Sınıra yüzey boyunca uzaklık (Dijkstra, ikili yığın); FAR'dan ötesi FAR.
-  function seamDistance(p, ring, multi, nv, FAR) {
-    var dist = new Float32Array(nv).fill(FAR), heapV = new Uint32Array(nv * 2 + 16), heapD = new Float32Array(nv * 2 + 16), hn = 0, i;
+  /* Köşenin sınır çizgisine uzaklığı. Önce Dijkstra (ikili yığın) her köşe için
+     en yakın sınır köşesini buluyor; sonra uzaklık, o köşeye ve komşularına bağlı
+     sınır kenarlarına dik olarak ölçülüyor. Kenarlar boyunca yürünen yol zikzak
+     yaptığı için uzaklığı fazla sayıyordu; çizginin kenarı da o yüzden titrek
+     çıkıyordu. Dik uzaklık üçgen içinde doğrusal: çizgi eşit kalınlıkta ve düz.
+     FAR'dan ötesi FAR. */
+  function seamDistance(p, ring, multi, nv, FAR, bseg) {
+    var dist = new Float32Array(nv).fill(FAR), src = new Int32Array(nv).fill(-1);
+    var heapV = new Uint32Array(nv * 2 + 16), heapD = new Float32Array(nv * 2 + 16), hn = 0, i;
     function push(v, d) {
       var j = hn++;
       if (j >= heapV.length) { var hv = new Uint32Array(heapV.length * 2), hd = new Float32Array(heapV.length * 2); hv.set(heapV); hd.set(heapD); heapV = hv; heapD = hd; }
@@ -374,7 +399,7 @@
       heapV[j] = lv; heapD[j] = ld;
       return v;
     }
-    for (i = 0; i < nv; i++) if (multi[i]) { dist[i] = 0; push(i, 0); }
+    for (i = 0; i < nv; i++) if (multi[i]) { dist[i] = 0; src[i] = i; push(i, 0); }
     var st = ring.start, nb = ring.nb;
     while (hn) {
       var d0 = heapD[0], v = pop();
@@ -382,8 +407,25 @@
       for (var q = st[v]; q < st[v + 1]; q++) {
         var w = nb[q], dx = p[v * 3] - p[w * 3], dy = p[v * 3 + 1] - p[w * 3 + 1], dz = p[v * 3 + 2] - p[w * 3 + 2];
         var nd = d0 + Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (nd < dist[w]) { dist[w] = nd; push(w, nd); }
+        if (nd < dist[w]) { dist[w] = nd; src[w] = src[v]; push(w, nd); }
       }
+    }
+    function segD(x, a, b) {
+      var ax = p[b * 3] - p[a * 3], ay = p[b * 3 + 1] - p[a * 3 + 1], az = p[b * 3 + 2] - p[a * 3 + 2];
+      var qx = p[x * 3] - p[a * 3], qy = p[x * 3 + 1] - p[a * 3 + 1], qz = p[x * 3 + 2] - p[a * 3 + 2];
+      var t = clamp((qx * ax + qy * ay + qz * az) / (ax * ax + ay * ay + az * az || 1), 0, 1);
+      qx -= ax * t; qy -= ay * t; qz -= az * t;
+      return Math.sqrt(qx * qx + qy * qy + qz * qz);
+    }
+    for (i = 0; i < nv; i++) {
+      var s0 = src[i]; if (multi[i] || s0 < 0 || dist[i] >= FAR) continue;
+      var best = dist[i], l1 = bseg[s0] || [];
+      for (var a = 0; a < l1.length; a++) {
+        var n1 = l1[a], l2 = bseg[n1] || [];
+        best = Math.min(best, segD(i, s0, n1));
+        for (var b = 0; b < l2.length; b++) best = Math.min(best, segD(i, n1, l2[b]));
+      }
+      dist[i] = best;
     }
     return dist;
   }
@@ -449,17 +491,19 @@
       var v = T[i], r0 = R[(i / 3) | 0];
       if (first[v] < 0) first[v] = r0; else if (first[v] !== r0) multi[v] = 1;
     }
-    // Komşuluk: sınır köşesinde buluşan bölgeler (renk seçimi için).
-    var NK = REGIONS.length, adjM = new Uint8Array(NK * NK);
-    for (i = 0; i < nt * 3; i++) {
-      var v1 = T[i]; if (!multi[v1]) continue;
-      var ra = R[(i / 3) | 0], rb = first[v1];
-      if (ra !== rb) { adjM[ra * NK + rb] = 1; adjM[rb * NK + ra] = 1; }
+    // Sınır kenarları: iki yanındaki üçgen farklı bölgede. bseg[v]: v'nin sınır komşuları.
+    var eReg = new Map(), bseg = {};
+    for (i = 0; i < nt; i++) for (k = 0; k < 3; k++) {
+      var ea = T[i * 3 + k], eb = T[i * 3 + (k + 1) % 3];
+      if (!multi[ea] || !multi[eb]) continue;
+      var key = ea < eb ? ea * nv + eb : eb * nv + ea, er = eReg.get(key);
+      if (er == null) eReg.set(key, R[i]);
+      else if (er !== R[i] && er !== -1) {
+        (bseg[ea] || (bseg[ea] = [])).push(eb); (bseg[eb] || (bseg[eb] = [])).push(ea);
+        eReg.set(key, -1);
+      }
     }
-    var adj = REGIONS.map(function (r, x) {
-      var o = {}; for (var y = 0; y < NK; y++) if (adjM[x * NK + y]) o[y] = 1; return o;
-    });
-    var dist = seamDistance(p, vertexRings(T, nv), multi, nv, 0.03);
+    var dist = seamDistance(p, vertexRings(T, nv), multi, nv, 0.03, bseg);
     // Sınır köşelerini bölge başına çoğalt.
     var copies = {}, out = nv, dup = [], index = new Uint32Array(nt * 3);
     for (i = 0; i < nt * 3; i++) {
@@ -470,19 +514,19 @@
       index[i] = cp;
     }
     var n2 = out, P2 = new Float32Array(n2 * 3), N2 = new Float32Array(n2 * 3);
-    var A2 = new Float32Array(n2 * 4), B2 = new Float32Array(n2 * 2), RID = new Float32Array(n2), SEAM = new Float32Array(n2);
-    P2.set(p.subarray(0, nv * 3)); N2.set(nrm);
-    var sa = S.a;
+    var A2 = new Float32Array(n2 * NA), RID = new Float32Array(n2), SEAM = new Float32Array(n2);
+    P2.set(p.subarray(0, nv * 3)); N2.set(nrm); A2.set(S.a.subarray(0, nv * NA));
+    for (i = nv; i < n2; i++) {
+      var src = dup[(i - nv) * 2];
+      for (k = 0; k < 3; k++) { P2[i * 3 + k] = p[src * 3 + k]; N2[i * 3 + k] = nrm[src * 3 + k]; }
+      for (k = 0; k < NA; k++) A2[i * NA + k] = S.a[src * NA + k];
+    }
     for (i = 0; i < n2; i++) {
-      var src = i < nv ? i : dup[(i - nv) * 2];
-      if (i >= nv) for (k = 0; k < 3; k++) { P2[i * 3 + k] = p[src * 3 + k]; N2[i * 3 + k] = nrm[src * 3 + k]; }
-      A2[i * 4] = sa[src * NA]; A2[i * 4 + 1] = sa[src * NA + 1]; A2[i * 4 + 2] = sa[src * NA + 2]; A2[i * 4 + 3] = sa[src * NA + 3];
-      B2[i * 2] = sa[src * NA + 4]; B2[i * 2 + 1] = sa[src * NA + 5];
       if (i < nv) { RID[i] = first[i] < 0 ? 0 : first[i]; SEAM[i] = dist[i]; }
       else { RID[i] = dup[(i - nv) * 2 + 1]; SEAM[i] = 0; }
     }
-    return { n: n2, nt: nt, pos: P2, nrm: N2, a: A2, b: B2, rid: RID, seam: SEAM, index: index,
-      faceRegion: R, adj: adj, stats: regionStats(P2, N2, RID, index, R, n2, nt), meta: d.meta };
+    return { n: n2, nt: nt, pos: P2, nrm: N2, a: A2, rid: RID, seam: SEAM, index: index,
+      faceRegion: R, stats: regionStats(P2, N2, RID, index, R, n2, nt), meta: d.meta };
   }
 
   function buildBody(buf) {
@@ -564,41 +608,13 @@
     return best == null ? null : { t: bt, face: best };
   };
 
-  /* ── Renkler ────────────────────────────────────────────────────────────── */
+  /* ── Renkler ──────────────────────────────────────────────────────────────
+     Bölgelerin kendi rengi yok; renk yalnızca durumu gösteriyor: seçili bölge
+     vurgu mavisi, işaretli bölge şiddet rengi (Hafif / Orta / Yüksek). */
   var COL = {
-    active: '#ffffff',
+    active: '#2f9dff',
     sev: { 1: '#46d6a0', 2: '#fcd34d', 3: '#ff6b5b' }
   };
-  /* Bölge renkleri referans görseldeki atlas gibi: göğüs mavi, kaburga yeşil,
-     karın sarı, omuz kırmızı, uyluk mor, diz sarı, baldır yeşil… Sağ ve sol aynı
-     renkte. Tercih edilen renk bir komşuda kullanılmışsa sıradaki boş renk
-     alınıyor, yani yan yana iki bölge hiçbir zaman aynı renkte durmuyor. */
-  var PALETTE = { B: '#3f7fe8', P: '#8a5cf0', R: '#e2474b', G: '#35b86b', O: '#f08a32',
-                  Y: '#f0c33c', T: '#22b3a8', K: '#e8649f', L: '#9cc43a' };
-  var PREF = {
-    'Baş': 'B', 'Çene': 'P', 'Boyun': 'L', 'Ense': 'T',
-    'omuz': 'R', 'üst kol': 'T', 'dirsek': 'K', 'ön kol': 'G', 'el bileği': 'B', 'el': 'O', 'parmaklar': 'Y',
-    'Göğüs': 'B', 'kaburga': 'G', 'Üst sırt': 'P', 'Orta sırt': 'R', 'Alt sırt / bel': 'T', 'yan gövde': 'K', 'Karın': 'Y',
-    'kalça': 'O', 'kasık': 'B', 'Sakrum / kuyruk sokumu': 'Y',
-    'ön uyluk (Quadriceps)': 'P', 'arka uyluk (Hamstring)': 'P', 'iç uyluk (Adductor)': 'K', 'dış uyluk': 'B',
-    'diz önü': 'Y', 'diz arkası': 'O', 'diz içi': 'L', 'diz dışı': 'L',
-    'ön bacak (Tibialis anterior)': 'B', 'baldır': 'G', 'baldır içi': 'T', 'baldır dışı': 'T',
-    'ayak bileği önü': 'K', 'ayak bileği içi': 'R', 'ayak bileği dışı': 'R', 'Aşil': 'K',
-    'topuk': 'B', 'ayak tabanı': 'O', 'ayak üstü': 'G', 'ayak parmakları': 'T'
-  };
-  function baseName(k) { return k.replace(/^(Sağ|Sol) /, ''); }
-  function assignColors(adj) {
-    var col = [], order = Object.keys(PALETTE);
-    REGIONS.forEach(function (r, i) {
-      var used = {}, b = baseName(r.k);
-      Object.keys(adj[i]).forEach(function (j) { if (col[j] && baseName(REGIONS[j].k) !== b) used[col[j]] = 1; });
-      for (var j = 0; j < i; j++) if (baseName(REGIONS[j].k) === b && col[j] && !used[col[j]]) { col[i] = col[j]; return; }
-      var pref = [PREF[b] || 'B'].concat(order);
-      for (var q = 0; q < pref.length; q++) if (!used[pref[q]]) { col[i] = pref[q]; return; }
-      col[i] = pref[0];
-    });
-    return col.map(function (c) { return PALETTE[c]; });
-  }
   function hexRGB(h) { var v = parseInt(h.slice(1), 16); return [v >> 16, (v >> 8) & 255, v & 255]; }
 
   function glAvailable() {
@@ -696,13 +712,12 @@
     geo.setAttribute('normal', new THREE.BufferAttribute(B.nrm, 3));
     geo.setAttribute('rid', new THREE.BufferAttribute(B.rid, 1));
     geo.setAttribute('seam', new THREE.BufferAttribute(B.seam, 1));
-    geo.setAttribute('pbA', new THREE.BufferAttribute(B.a, 4));
-    geo.setAttribute('pbB', new THREE.BufferAttribute(B.b, 2));
+    geo.setAttribute('pbA', new THREE.BufferAttribute(B.a, NA));
     geo.setIndex(new THREE.BufferAttribute(B.index, 1));
     geo.computeBoundingSphere();
 
     // Bölge başına iki satırlık küçük doku: 1. satır renk + saydamlık, 2. satır
-    // durum (seçili / işaretli / fare üstünde). Renk değişince yalnız bu güncelleniyor.
+    // durum (seçili / işaretli / fare üstünde). Durum değişince yalnız bu güncelleniyor.
     var palData = new Uint8Array(NK * 8);
     var palTex = new THREE.DataTexture(palData, NK, 2, THREE.RGBAFormat);
     palTex.magFilter = palTex.minFilter = THREE.NearestFilter;
@@ -713,27 +728,28 @@
     var material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0 });
     var U = {
       uPal: { value: palTex }, uNK: { value: NK },
-      uSkin: { value: new THREE.Color('#c8906c') }, uHair: { value: new THREE.Color('#2a1d16') },
-      uBrow: { value: new THREE.Color('#2c1f18') }, uLip: { value: new THREE.Color('#a8524a') },
-      uFabric: { value: new THREE.Color('#7b8088') }, uSeamW: { value: 0.9 * dpr }, uFaceK: { value: 0.95 }
+      uSkin: { value: new THREE.Color('#c8906c') }, uFabric: { value: new THREE.Color('#8b919a') },
+      uLine: { value: new THREE.Color('#24160f') }, uSeamW: { value: 0.6 * dpr },
+      uHipL: { value: new THREE.Vector3().fromArray(B.meta.joints['upperleg01.L']) },
+      uHipR: { value: new THREE.Vector3().fromArray(B.meta.joints['upperleg01.R']) }
     };
-    /* Gölgelendirici eki. Deri rengi + saç / kaş / dudak / şort maskeleri, üstüne
-       bölge rengi (yüzün ortasında daha az: yüz doğal kalsın), pişirilmiş AO, ve
-       bölge sınırında sabit piksel kalınlığında açık bir dikiş. Dikişin kalınlığı
-       köşenin sınıra olan uzaklığının ekrandaki değişim hızından (fwidth) çıkıyor;
-       yakınlaşınca da uzaklaşınca da aynı incelikte. */
+    /* Gölgelendirici eki. Tek renk deri (şortta kumaş), pişirilmiş AO, bölge
+       sınırında ince koyu bir çizgi. İşaretli bölge şiddet rengini, seçili bölge
+       vurgu mavisini alıyor; işaretsiz bölgelerin rengi yok. Çizginin kalınlığı
+       köşenin sınıra olan uzaklığının ekrandaki değişim hızından çıkıyor;
+       yakınlaşınca da uzaklaşınca da aynı incelikte, her yönde aynı kalınlıkta. */
     material.onBeforeCompile = function (sh) {
       for (var k in U) sh.uniforms[k] = U[k];
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', ['#include <common>',
-          'attribute float rid; attribute float seam; attribute vec4 pbA; attribute vec2 pbB;',
-          'varying float vRid; varying float vSeam; varying vec4 vPbA; varying vec2 vPbB; varying vec3 vObj;'].join('\n'))
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRid = rid; vSeam = seam; vPbA = pbA; vPbB = pbB; vObj = position;');
+          'attribute float rid; attribute float seam; attribute vec2 pbA;',
+          'varying float vRid; varying float vSeam; varying vec2 vPbA; varying vec3 vObj;'].join('\n'))
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRid = rid; vSeam = seam; vPbA = pbA; vObj = position;');
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', ['#include <common>',
-          'varying float vRid; varying float vSeam; varying vec4 vPbA; varying vec2 vPbB; varying vec3 vObj;',
-          'uniform sampler2D uPal; uniform float uNK; uniform vec3 uSkin; uniform vec3 uHair; uniform vec3 uBrow;',
-          'uniform vec3 uLip; uniform vec3 uFabric; uniform float uSeamW; uniform float uFaceK;',
+          'varying float vRid; varying float vSeam; varying vec2 vPbA; varying vec3 vObj;',
+          'uniform sampler2D uPal; uniform float uNK; uniform vec3 uSkin; uniform vec3 uFabric;',
+          'uniform vec3 uLine; uniform float uSeamW; uniform vec3 uHipL; uniform vec3 uHipR;',
           'vec4 pbFlags;',
           'float pbHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
           'float pbNoise(vec3 x) { vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);',
@@ -743,65 +759,49 @@
         .replace('#include <color_fragment>', ['#include <color_fragment>',
           'vec3 skin = uSkin * (0.94 + 0.12 * pbNoise(vObj * 40.0));',
           'float nz = pbNoise(vObj * 180.0) * 0.5 + pbNoise(vObj * 420.0) * 0.5;',
-          'vec3 alb = skin;',
-          'alb = mix(alb, uHair * (0.75 + 0.5 * nz), vPbA.y);',
-          'alb = mix(alb, uBrow, vPbA.z * 0.9);',
-          'alb = mix(alb, uLip, vPbA.w * 0.6);',
-          'alb = mix(alb, uFabric * (0.9 + 0.2 * nz), vPbB.x);',
+          // Şort: bel bandı (önde 96 cm, yanlarda biraz yukarıda; bölge kurallarındaki
+          // waistY ile aynı — karın orada bitiyor) ile paça ağzı (dışta biraz aşağıda,
+          // arkada kalçanın altında) arası; kenar konumdan, bir piksel yumuşaklıkta.
+          // Maske yalnızca kumaşın olabileceği köşeleri (gövde, bacak) seçiyor.
+          'float sd = vObj.x > 0.0 ? 1.0 : -1.0;',
+          'vec3 hip = vObj.x > 0.0 ? uHipL : uHipR;',
+          'float waist = 0.962 + 0.015 * (1.0 - cos(atan(vObj.x, vObj.z + 0.01)));',
+          'float lph = atan((vObj.x - hip.x) * sd, vObj.z - hip.z);',
+          'float legO = 0.80 + 0.009 * (1.0 + sin(lph)) - 0.005 * (1.0 + cos(lph));',
+          'float band = min(vObj.y - legO, waist - vObj.y);',
+          'float fwb = max(fwidth(band), 1e-5);',
+          'float fab = step(0.5, vPbA.y) * smoothstep(-fwb, fwb, band);',
+          'vec3 alb = mix(skin, uFabric * (0.9 + 0.2 * nz), fab);',
           'float rx = (floor(vRid + 0.5) + 0.5) / uNK;',
           'vec4 rc = texture2D(uPal, vec2(rx, 0.25));',
           'pbFlags = texture2D(uPal, vec2(rx, 0.75));',
-          'float emph = max(pbFlags.r, pbFlags.g);',
-          'float ra = rc.a * (1.0 - uFaceK * vPbB.y * (1.0 - 0.8 * emph));',
-          // Saç ve kumaş koyu: bölge rengi onların üstünde de koyulaşıyor, yapı kaybolmuyor.
+          // Kumaş koyu: şiddet rengi şortun üstünde de koyulaşıyor, yapı kaybolmuyor.
           'float rel = clamp(dot(alb, vec3(0.3, 0.59, 0.11)) / dot(skin, vec3(0.3, 0.59, 0.11)), 0.5, 1.1);',
-          'alb = mix(alb, rc.rgb * rel, ra);',
+          'alb = mix(alb, rc.rgb * rel, rc.a);',
           'diffuseColor.rgb = alb;'].join('\n'))
-        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.52, 0.85, max(vPbA.y, vPbB.x));')
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.52, 0.85, fab);')
         .replace('#include <aomap_fragment>', ['float ambientOcclusion = mix(1.0, vPbA.x, 0.95);',
           'reflectedLight.indirectDiffuse *= ambientOcclusion;',
           'reflectedLight.directDiffuse *= mix(1.0, ambientOcclusion, 0.55);',
           'reflectedLight.indirectSpecular *= ambientOcclusion;'].join('\n'))
         .replace('#include <dithering_fragment>', [
-          'float spx = vSeam / max(fwidth(vSeam), 1e-7);',
-          'float sw = uSeamW * (1.0 + 1.6 * pbFlags.r + 0.5 * pbFlags.g);',
-          'float line = 1.0 - smoothstep(sw, sw + 1.0, spx);',
-          'float la = texture2D(uPal, vec2((floor(vRid + 0.5) + 0.5) / uNK, 0.25)).a > 0.02 ? (0.5 + 0.45 * max(pbFlags.r, pbFlags.g)) * pbFlags.a : 0.0;',
-          'gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.95, 0.97, 1.0), line * la);',
+          'float spx = vSeam / max(length(vec2(dFdx(vSeam), dFdy(vSeam))), 1e-7);',
+          'float sw = uSeamW * (1.0 + 1.2 * pbFlags.r + 0.4 * pbFlags.g);',
+          'float line = 1.0 - smoothstep(sw - 0.5, sw + 0.5, spx);',
+          'gl_FragColor.rgb = mix(gl_FragColor.rgb, uLine, line * (0.7 + 0.25 * max(pbFlags.r, pbFlags.g)));',
           // Seçili bölgenin kenarı içeriden hafifçe parlıyor.
-          'gl_FragColor.rgb += pbFlags.r * (1.0 - smoothstep(0.0, uSeamW * 10.0, spx)) * 0.14;',
+          'gl_FragColor.rgb += pbFlags.r * (1.0 - smoothstep(0.0, uSeamW * 10.0, spx)) * vec3(0.05, 0.12, 0.2);',
           '#include <dithering_fragment>'].join('\n'));
     };
     var body = new THREE.Mesh(geo, material);
     scene.add(body);
-
-    // Gözler: taban ağdaki göz yuvalarına oturan küreler; iris ve göz bebeği
-    // gölgelendiricide çiziliyor (doku dosyası yok).
-    var eyes = B.meta.eyes.map(function (e) {
-      var em = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22 });
-      em.onBeforeCompile = function (sh) {
-        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDir;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvDir = normalize(position);');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vDir;')
-          .replace('#include <color_fragment>', ['#include <color_fragment>',
-            'float c = dot(vDir, normalize(vec3(0.0, 0.02, 1.0)));',
-            'vec3 col = vec3(0.86, 0.83, 0.8);',
-            'col = mix(col, mix(vec3(0.16, 0.09, 0.05), vec3(0.36, 0.22, 0.12), smoothstep(0.93, 0.975, c)), smoothstep(0.905, 0.915, c));',
-            'col = mix(col, vec3(0.02), smoothstep(0.975, 0.982, c));',
-            'diffuseColor.rgb = col;'].join('\n'));
-      };
-      var m = new THREE.Mesh(new THREE.SphereGeometry(e[3] * 0.72, 32, 24), em);
-      m.position.set(e[0], e[1], e[2] + e[3] * 0.08);
-      scene.add(m);
-      return { c: [e[0], e[1], e[2] + e[3] * 0.08], r: e[3] * 0.72 };
-    });
 
     // Işın ızgarası ilk dokunuşta ya da ilk kareden hemen sonra kuruluyor; açılışı geciktirmesin.
     var gridObj = null;
     function grid() { if (!gridObj) gridObj = new Grid(B.pos, B.index, B.nt); return gridObj; }
     setTimeout(function () { if (!disposed) grid(); }, 400);
     var stats = B.stats;
-    var BASE = assignColors(B.adj).map(hexRGB);
+    var ACT = hexRGB(COL.active);
     var SEV = { 1: hexRGB(COL.sev[1]), 2: hexRGB(COL.sev[2]), 3: hexRGB(COL.sev[3]) };
 
     /* Zemin: modelin altında yumuşak bir ışık halkası ve gölge. */
@@ -858,26 +858,20 @@
     }
 
     /* ── Renk durumu ──
-       İşaretsiz bölge atlas renginde. Bir bölge işaretlenince şiddet rengine
-       geçiyor; o sırada işaretsizler griye dönüp soluyor — atlasın sarısı "orta"
-       ile, kırmızısı "yüksek" ile karışmasın. Seçili bölge (panelde açık olan)
-       açık bir kenarla. */
+       İşaretsiz bölge renksiz: yalnızca deri ve sınır çizgisi. İşaretlenen bölge
+       şiddet rengine boyanıyor; panelde açık olan (seçili) bölge vurgu mavisinde,
+       kenarı kalın. Fare üstündeki bölge hafifçe açılıyor. */
     var state = { map: {}, active: null, hover: null };
-    function mixW(c, f) { return [c[0] + (255 - c[0]) * f, c[1] + (255 - c[1]) * f, c[2] + (255 - c[2]) * f]; }
     function recolor() {
-      var any = false;
-      for (var k in state.map) if (state.map[k] && INDEX[k] != null) { any = true; break; }
       REGIONS.forEach(function (r, i) {
         var sev = SEV[state.map[r.k]], act = r.k === state.active, hov = r.k === state.hover && !act;
-        var c = sev || BASE[i], a = sev ? 0.93 : 0.8;
-        if (!sev && any) { c = [c[0] + (128 - c[0]) * 0.9, c[1] + (132 - c[1]) * 0.9, c[2] + (142 - c[2]) * 0.9]; a = 0.45; }
-        if (act && !sev) { c = mixW(c, 0.22); a = 0.95; }
-        if (hov) { c = mixW(c, 0.16); a = Math.min(0.95, a + 0.18); }
+        var c = [255, 255, 255], a = 0;
+        if (sev) { c = sev; a = act ? 0.95 : 0.88; }
+        else if (act) { c = ACT; a = 0.68; }
+        else if (hov) a = 0.16;
         var o = i * 4, f = (NK + i) * 4;
         palData[o] = c[0]; palData[o + 1] = c[1]; palData[o + 2] = c[2]; palData[o + 3] = Math.round(a * 255);
-        // 4. kanal: dikişin gücü — soluk (işaretsiz, başka bir bölge işaretliyken) bölgede daha ince.
-        palData[f] = act ? 255 : 0; palData[f + 1] = sev ? 255 : 0; palData[f + 2] = hov ? 255 : 0;
-        palData[f + 3] = !sev && !act && any ? 140 : 255;
+        palData[f] = act ? 255 : 0; palData[f + 1] = sev ? 255 : 0; palData[f + 2] = hov ? 255 : 0; palData[f + 3] = 255;
       });
       palTex.needsUpdate = true;
       requestRender();
@@ -1082,18 +1076,9 @@
       applyCamera(); camera.updateMatrixWorld();
       raycaster.setFromCamera(ndc, camera);
       var o = raycaster.ray.origin, d = raycaster.ray.direction;
-      var hit = grid().cast([o.x, o.y, o.z], [d.x, d.y, d.z]), best = hit ? hit.t : Infinity;
-      var key = hit ? REGIONS[B.faceRegion[hit.face]].k : null;
-      // Göz küreleri ağın parçası değil; onlara dokunmak da baş.
-      eyes.forEach(function (e) {
-        var ox = o.x - e.c[0], oy = o.y - e.c[1], oz = o.z - e.c[2];
-        var bq = ox * d.x + oy * d.y + oz * d.z, cq = ox * ox + oy * oy + oz * oz - e.r * e.r, disc = bq * bq - cq;
-        if (disc < 0) return;
-        var t = -bq - Math.sqrt(disc);
-        if (t > 0 && t < best) { best = t; key = 'Baş'; }
-      });
-      if (!key) return null;
-      return { key: key, point: { x: o.x + d.x * best, y: o.y + d.y * best, z: o.z + d.z * best } };
+      var hit = grid().cast([o.x, o.y, o.z], [d.x, d.y, d.z]);
+      if (!hit) return null;
+      return { key: REGIONS[B.faceRegion[hit.face]].k, point: { x: o.x + d.x * hit.t, y: o.y + d.y * hit.t, z: o.z + d.z * hit.t } };
     }
     /* ── Dokunma ve fare ──
        Satır içinde (formun ortasında) tek parmakla YATAY kaydırma modeli çeviriyor;

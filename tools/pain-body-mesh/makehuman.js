@@ -135,8 +135,8 @@ function standPose(rg, o) {
   return pose;
 }
 
-/* Hazır manken: köşeler (metre), gövde dörtgenleri, deri ağırlıkları, eklemler
-   (duruş verilmiş hâlleriyle, metre) ve göz küreleri. */
+/* Hazır manken: köşeler (metre), gövde dörtgenleri, deri ağırlıkları ve eklemler
+   (duruş verilmiş hâlleriyle, metre). */
 function posed() {
   const obj = shape(SHAPE), rg = rig(obj.V), { P, G } = skin(obj.V, rg, standPose(rg, POSE));
   const body = obj.faces.filter(f => f.g === 'body');
@@ -149,14 +149,7 @@ function posed() {
     const h = b.head.clone().applyMatrix4(gp), t = b.tail.clone().applyMatrix4(G[n]);
     J[n] = { head: [h.x * S, (h.y - miny) * S, h.z * S], tail: [t.x * S, (t.y - miny) * S, t.z * S] };
   }
-  // Göz küreleri: taban ağdaki yardımcı kürelerin merkezi ve ortalama yarıçapı.
-  const eyes = ['helper-l-eye', 'helper-r-eye'].map(gn => {
-    const s = new Set(); obj.faces.filter(f => f.g === gn).forEach(f => f.v.forEach(i => s.add(i)));
-    const c = [0, 0, 0]; s.forEach(i => { for (let a = 0; a < 3; a++) c[a] += out[i * 3 + a] / s.size; });
-    let r = 0; s.forEach(i => { r += Math.hypot(out[i * 3] - c[0], out[i * 3 + 1] - c[1], out[i * 3 + 2] - c[2]) / s.size; });
-    return c.concat([r]);
-  });
-  return { P: out, quads: body.map(f => f.v), W: rg.W, J, eyes };
+  return { P: out, quads: body.map(f => f.v), W: rg.W, J };
 }
 
 module.exports = { posed, SHAPE, POSE };
