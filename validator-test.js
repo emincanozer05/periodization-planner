@@ -869,7 +869,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
   }
 
-  group('Ek — Athlete Training Profile: öncelikler, hareket profili, kısıtlar, maruziyet');
+  group('Ek — Athlete Training Profile: atletik profil, kısıtlar, maruziyet');
   {
     const row = (name, o) => Object.assign({ name, sets: '3', reps: '6' }, o || {});
     const day = (date, name, rows, time) => ({ date, sessions: [{ name, time: time || '17:00', blocks: [{ name: 'Ana', exercises: rows }] }] });
@@ -932,13 +932,18 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const ap = snap.antrenman_profili;
     check('JSON: antrenman_profili sporcunun hemen ardından', !!ap && Object.keys(snap).indexOf('antrenman_profili') === Object.keys(snap).indexOf('sporcu') + 1,
       Object.keys(snap).join(','));
-    check('JSON: öncelikler seviyelerine göre',
-      ap.antrenman_oncelikleri.primary.join('|') === 'Acceleration|Lower-Body Strength' &&
-      ap.antrenman_oncelikleri.secondary.join('|') === 'Deceleration' && ap.antrenman_oncelikleri.maintain.join('|') === 'Upper-Body Strength',
-      JSON.stringify(ap.antrenman_oncelikleri));
-    const land = ap.hareket_profili.hareketler.find(h => h.hareket === 'Landing');
-    check('JSON: hareket profili durum / öncelik', land && land.durum === 'Limited' && land.oncelik === 'High' && land.grup === 'Athletic Movement',
-      JSON.stringify(ap.hareket_profili));
+    /* Kayıt eski iki bölümlü biçimde (priorities + movement): tek şablona okunuyor.
+       Primary → High, Secondary → Medium; şablonda karşılığı olmayan (Lower-Body Strength,
+       Upper-Body Strength) geride kalıyor. */
+    const pr = ap.atletik_profil;
+    check('JSON: eski profil tek şablona taşınıyor — öncelikler High / Medium / Low',
+      pr.oncelik.high.join('|') === 'Acceleration|Landing' && pr.oncelik.medium.join('|') === 'Deceleration' &&
+      pr.oncelik.low.join('|') === 'Squat' && pr.durum.limited.join('|') === 'Landing' && pr.durum.good.join('|') === 'Squat' &&
+      !pr.kaliteler.some(k => /Strength/.test(k.kalite)), JSON.stringify(pr.oncelik));
+    const land = pr.kaliteler.find(h => h.kalite === 'Landing');
+    check('JSON: kalite durum / öncelik / grup, High önce', land && land.durum === 'Limited' && land.oncelik === 'High' &&
+      land.grup === 'Plyometric / Reactive' && pr.kaliteler.map(k => k.kalite).join('|') === 'Acceleration|Landing|Deceleration|Squat' &&
+      pr.gruplar.length === 7 && !('antrenman_oncelikleri' in ap) && !('hareket_profili' in ap), JSON.stringify(pr.kaliteler));
     check('JSON: hard ve soft ayrı — iki listede birden olan kısıt yalnızca hard\'da',
       ap.kisitlar.hard.map(c => c.kisit).join('|') === 'No Maximal Sprint|Limited Knee Flexion' &&
       ap.kisitlar.hard[1].deger === 'maks 90°' && ap.kisitlar.hard[1].not === 'sol diz' &&
@@ -965,10 +970,18 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(bare.eksik_veriler));
     const squad = A.diSquadSnapshot({ items: [{ ath, instr: A.diInstr(null, { duration: null }) }], setup: SETUP, date: TODAY, customTests: [], libMap });
     check('toplu JSON: her sporcu kendi antrenman profilini taşıyor',
-      !!squad.sporcular[0].antrenman_profili && squad.sporcular[0].antrenman_profili.antrenman_oncelikleri.primary.length === 2);
+      !!squad.sporcular[0].antrenman_profili && squad.sporcular[0].antrenman_profili.atletik_profil.oncelik.high.length === 2);
     const rd = A.atpRead({ trainingProfile: { constraints: { hard: [{ id: 'no_contact' }, { id: 'bogus' }, null], soft: 'x' } } });
     check('kayıtlı profil savunmacı okunuyor', rd.constraints.hard.length === 1 && rd.constraints.soft.length === 0 &&
-      typeof rd.priorities === 'object', JSON.stringify(rd));
+      typeof rd.qualities === 'object', JSON.stringify(rd));
+    /* Yeni biçimde kaydedilmiş profil: eski alanlar artık okunmuyor, şablon dışı kalite ve
+       geçersiz değer atılıyor. */
+    const nw = A.atpRead({ trainingProfile: {
+      qualities: { max_velocity: { status: 'limited', priority: 'high' }, hinge: { status: 'nope', priority: 'medium' }, bogus: { status: 'good' } },
+      priorities: { acceleration: 'primary' }, movement: { squat: { status: 'good' } } } });
+    check('yeni biçim: qualities okunuyor, eski alanlar ve geçersiz değerler yok sayılıyor',
+      JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { status: 'limited', priority: 'high' }, hinge: { priority: 'medium' } }),
+      JSON.stringify(nw.qualities));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
