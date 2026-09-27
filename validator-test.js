@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'monthFocusLoad', 'buildMonthHTMLDoc'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -1022,6 +1022,23 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const empty = A.monthFocusLoad({}, 2027, 1);   // Şubat 2027 Pazartesi başlıyor → tam 4 hafta
     check('boş ay: satır yok, 28 dinlenme günü', empty.rows.length === 0 && empty.sessions === 0 && empty.restDays === 28 && empty.weeks.length === 4,
       JSON.stringify(empty.weeks));
+  }
+
+  group('Ek — Periyotlama modelleri: beş model, eski seçimler en yakın modele');
+  {
+    check('model listesi sadeleşti: beş model, istenen sırada',
+      A.MODELS.map(m => m.id).join(',') === 'linear,block,undulating,hybrid,auto' &&
+      A.MODELS.every(m => m.name && m.d && m.d[0] && m.d[1]), A.MODELS.map(m => m.id).join(','));
+    const legacy = { reverse: 'linear', dup: 'undulating', wup: 'undulating', conjugate: 'undulating', vertical: 'undulating', horizontal: 'block' };
+    check('kayıtlı eski model en yakın kalan modele okunuyor (sezon modeli ve aşama modeli)',
+      Object.entries(legacy).every(([o, n]) => A.phaseModel({ model: o }, 'in') === n && A.phaseModel({ model: 'auto', phaseModels: { pre: o } }, 'pre') === n &&
+        A.modelOf(o) && A.modelOf(o).id === n));
+    check('geçerli seçim korunuyor; bilinmeyen ya da boş model Linear',
+      A.phaseModel({ model: 'hybrid', phaseModels: { in: 'block' } }, 'in') === 'block' && A.phaseModel({ model: 'hybrid' }, 'post') === 'hybrid' &&
+      A.phaseModel({ model: 'bogus' }, 'in') === 'linear' && A.phaseModel(null, 'in') === 'linear' && A.modelOf('bogus') === null);
+    const P = { id: 'sp' };
+    check('Horizontal Integration seçmiş sezonun haftaları Block olarak hesaplanıyor',
+      ['Accumulation', 'Transmutation', 'Realization'].every((f, i) => A.defWeek(A.phaseModel({ model: 'horizontal' }, 'pre'), P, i, [], '2026-09-07').focus === f));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
