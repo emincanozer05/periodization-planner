@@ -474,26 +474,30 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-col .dh .dh-acts{display:flex;gap:4px;align-items:center}
 .calw-col .dh .add.paste{font-size:10px;border-color:var(--accent);color:var(--accent)}
 .calw-col .dh .add.paste:hover{background:var(--accent-bg)}
-.calw-ses{border-radius:9px;padding:10px 11px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;transition:transform .12s,border-color .15s;text-align:left;width:100%;display:block;color:inherit;font-family:inherit;position:relative}
-.calw-ses:hover{transform:translateY(-2px);border-color:var(--border2)}
+/* The session's colour runs all the way round the card, not just down its left edge —
+   `--sc` is the card colour the coach picked, or the load-type hue when none was picked. */
+.calw-ses{--sc:var(--border2);border-radius:12px;padding:11px 12px 10px;border:2px solid var(--sc);background:var(--bg2);cursor:pointer;transition:transform .12s,box-shadow .15s;text-align:left;width:100%;display:block;color:inherit;font-family:inherit;position:relative}
+.calw-ses:hover{transform:translateY(-2px);box-shadow:0 0 0 3px color-mix(in srgb,var(--sc) 18%,transparent)}
 .calw-ses-act{position:absolute;top:6px;right:6px;display:flex;gap:3px;opacity:0;transition:opacity .12s}
 .calw-ses:hover .calw-ses-act{opacity:1}
 .calw-ses-act button{width:22px;height:22px;border-radius:6px;border:1px solid var(--border2);background:var(--panel);color:var(--text2);font-size:11px;line-height:1;display:grid;place-items:center;cursor:pointer;font-family:inherit;padding:0;transition:all .12s}
 .calw-ses-act button:hover{border-color:var(--accent);color:var(--accent)}
 .calw-ses-act button.del:hover{border-color:var(--high-t);color:var(--high-t)}
-.calw-ses.mech{border-left:3px solid var(--accent)}
-.calw-ses.metab{border-left:3px solid var(--peak-t)}
-.calw-ses.neuro{border-left:3px solid var(--med-t)}
-.calw-ses.cog{border-left:3px solid var(--high-t)}
-.calw-ses .nm{font-size:13px;font-weight:600;line-height:1.25;color:var(--text)}
-.calw-ses .pr{font-size:11px;color:var(--muted);margin-top:3px}
-.calw-ses .mt{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--text2);margin-top:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.calw-ses.mech{--sc:var(--accent)}
+.calw-ses.metab{--sc:var(--peak-t)}
+.calw-ses.neuro{--sc:var(--med-t)}
+.calw-ses.cog{--sc:var(--high-t)}
+.calw-ses .nm{font-size:13.5px;font-weight:700;line-height:1.25;letter-spacing:-.01em;color:var(--text)}
+.calw-ses .pr{font-size:11px;color:var(--muted);margin-top:4px}
+.calw-ses .mt{font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text);margin-top:9px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* A thin rule between the clock and the length, so the two numbers read as two facts. */
+.calw-ses .mt .sep{width:1px;height:12px;background:var(--border2);flex:none}
 /* The target sits at the far end of the line, away from the clock pair, and wears its own
    band's colour — the one thing on the chip that is a judgement rather than a fact. Pushed
    right rather than simply spaced, so it lands on the same edge on every chip whatever the
    time and duration in front of it measure. */
-.calw-ses .mt .rpe{margin-left:auto;flex:none;font-size:9.5px;font-weight:700;letter-spacing:.02em;
-  padding:1px 6px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.calw-ses .mt .rpe{margin-left:auto;flex:none;font-size:10px;font-weight:700;letter-spacing:.02em;
+  padding:2px 8px;border-radius:999px;border:1.5px solid transparent;white-space:nowrap}
 .calw-ses[draggable=true]{cursor:grab}
 .calw-ses.dragging{opacity:.45;cursor:grabbing}
 .calw-col.drop{border-color:var(--accent);background:rgba(0,148,255,.05)}
@@ -15698,7 +15702,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             const _pats=sessionPatterns(s);
             return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
-              style={s.color?{borderLeft:`3px solid ${cardCol(s.color)}`}:undefined}
+              style={s.color?{'--sc':cardCol(s.color)}:undefined}
               onMouseEnter={()=>setHovSes(s.id)}
               onMouseLeave={()=>setHovSes(null)}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});setHovSes(null);}}
@@ -15725,9 +15729,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
                   long, never how hard. It is the same target the session editor's scale
                   sets and the printed program prints, in the same band colour, so the day
                   column reads how hard the week is without opening a single session. */}
-              <div className="mt"><span>{s.time}</span><span>{Number(s.duration)||0}m</span>{(()=>{
+              <div className="mt"><span>{s.time}</span><span className="sep"/><span>{Number(s.duration)||0}m</span>{(()=>{
                 const[rlo,rhi]=sesRpeRange(s);const rz=rpeZone(sesRpeTarget(s));
-                return<span className="rpe" style={{color:rz.c,background:rz.soft,borderColor:rz.ring}}
+                return<span className="rpe" style={{color:rz.c,background:rz.soft,borderColor:`color-mix(in srgb,${rz.c} 60%,transparent)`}}
                   title={L(`Hedeflenen RPE ${rlo}-${rhi} — ${rz.tr}`,`Target RPE ${rlo}-${rhi} — ${rz.en}`)}>RPE {rlo}-{rhi}</span>;
               })()}</div>
             </div>);
