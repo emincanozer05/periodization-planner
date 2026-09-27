@@ -1993,34 +1993,97 @@ tr:hover td{background:rgba(255,255,255,.02)}
   line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
 .atp-chip button:hover{background:rgba(255,255,255,.1);color:var(--text)}
 .atp-empty{font-size:11.5px;color:var(--dim);align-self:center}
-/* ---- item groups: priorities and the movement profile ---- */
-.atp-grp{border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden;min-width:0;align-self:start}
-/* Groups of different lengths, packed as columns rather than a grid — a grid row is
-   as tall as its longest card and leaves a hole under every short one. */
-.atp-groups{column-width:290px;column-gap:12px;margin-top:14px}
-.atp-groups.mv{column-width:440px}
-.atp-groups>.atp-grp{display:inline-block;width:100%;margin-bottom:12px;break-inside:avoid;vertical-align:top}
+/* ---- item groups: priorities and the movement profile ----
+   Cards side by side share one height and one set of row lines. Every item row is the
+   same height whatever its name, so rows read straight across neighbouring cards, and a
+   card with fewer items ends in empty space instead of pulling its row out of line.
+   The layouts ask their container how wide they are, not the window: the sidebar takes
+   a different share of the screen on every device. */
+.atp-grp{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden;min-width:0}
+.atp-gwrap{container-type:inline-size;margin-top:14px}
+/* Training Priorities — seven groups, four across and then three across, both rows
+   filling the width; the three-across row lines up with the three lanes above it. */
+.atp-pgrid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.atp-pgrid>.atp-grp{grid-column:span 3}
+.atp-pgrid>.atp-grp:nth-child(n+5){grid-column:span 4}
+/* Movement Profile — two columns of stacked groups (ATP_MOVE_COLS). The last card of
+   each column takes up the few pixels between them, so both end on one line. Each card
+   is a container of its own: its rows ask the card how wide it is. */
+.atp-mgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.atp-mcol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.atp-mcol>.atp-grp:last-child{flex:1}
+.atp-mgrid .atp-grp{container-type:inline-size}
 .atp-grp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;background:var(--elevated);border-bottom:1px solid var(--border)}
 .atp-grp-t{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text)}
 .atp-grp-s{font-size:10.5px;color:var(--dim);margin-top:2px}
 .atp-grp-c{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--dim)}
 .atp-grp-c b{color:var(--text2);font-size:12px}
-.atp-it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px 7px 13px;border-top:1px solid var(--border)}
-.atp-grp-h+.atp-it{border-top:none}
+.atp-its{display:grid;grid-template-columns:minmax(0,1fr);align-content:start}
+/* One height for every row — a name that runs to two lines stays inside it. */
+.atp-it{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:4px 12px 4px 13px;border-top:1px solid var(--border)}
+.atp-its>.atp-it:first-child{border-top:none}
 .atp-it.mv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
-@media(max-width:560px){.atp-it.mv{grid-template-columns:auto auto;justify-content:start}.atp-it.mv .atp-it-n{grid-column:1/-1}}
-.atp-it-n{display:flex;align-items:center;gap:7px;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted)}
+.atp-it-n{display:flex;align-items:center;min-width:0;font-size:12.5px;font-weight:600;color:var(--muted)}
+.atp-it-l{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.35;overflow-wrap:anywhere}
+/* A rated row is marked on its edge in the colour of its level (or movement status),
+   so names keep one left edge down the card. */
+.atp-it.set{background:linear-gradient(90deg,var(--lb,rgba(255,255,255,.03)),transparent 60%);box-shadow:inset 2px 0 0 var(--ld,var(--border2))}
 .atp-it.set .atp-it-n{color:var(--text)}
-.atp-it.set{background:rgba(255,255,255,.015)}
-.atp-dot{width:7px;height:7px;border-radius:50%;background:var(--ld);flex:none;box-shadow:0 0 0 3px var(--lb)}
-.atp-seg{display:inline-flex;flex:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--panel)}
-.atp-seg button{height:26px;min-width:40px;padding:0 8px;border:none;border-left:1px solid var(--border2);background:none;color:var(--dim);
+/* The three buttons of a scale are one width, the widest label's, so the scale sits as
+   an even block whatever language it is written in. */
+.atp-seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;flex:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--panel)}
+.atp-seg button{height:26px;min-width:38px;padding:0 7px;border:none;border-left:1px solid var(--border2);background:none;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:.07em;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .12s ease,color .12s ease}
 .atp-seg button:first-child{border-left:none}
 .atp-seg button:hover{color:var(--text);background:var(--hover)}
 .atp-seg button.on{background:var(--lb);color:var(--lc);box-shadow:inset 0 0 0 1px var(--ld)}
 .atp-seg button:focus-visible,.atp-wseg button:focus-visible,.atp-opt:focus-visible,.atp-gl:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+/* The narrower steps. Four across needs about 300px a card; two across a little less. */
+@container (max-width:1230px){
+  .atp-pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .atp-pgrid>.atp-grp,.atp-pgrid>.atp-grp:nth-child(n+5){grid-column:auto}
+  /* Two across leaves the seventh group alone: it spans the row, its items two by two.
+     The 14px between its halves is the grid's 12px gap plus the two card borders, so
+     each half lines up with the card above it; a hairline marks the middle. */
+  .atp-pgrid>.atp-grp:nth-child(7){grid-column:1/-1}
+  .atp-pgrid>.atp-grp:nth-child(7)>.atp-its{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;
+    background:linear-gradient(var(--border),var(--border)) center/1px 100% no-repeat}
+  .atp-pgrid>.atp-grp:nth-child(7)>.atp-its>.atp-it:nth-child(2){border-top:none}
+}
+@container (max-width:900px){
+  .atp-mgrid{grid-template-columns:minmax(0,1fr)}
+  .atp-mcol{display:contents}
+}
+@container (max-width:600px){
+  .atp-pgrid{grid-template-columns:minmax(0,1fr)}
+  .atp-pgrid>.atp-grp:nth-child(7)>.atp-its{grid-template-columns:minmax(0,1fr);background:none}
+  .atp-pgrid>.atp-grp:nth-child(7)>.atp-its>.atp-it:nth-child(2){border-top:1px solid var(--border)}
+}
+/* A movement row carries two scales. On a card too narrow for both beside the name,
+   the name takes a line of its own and the scales sit under it; on a phone, one scale
+   to a line. */
+@container (max-width:540px){
+  .atp-it.mv{grid-template-columns:auto auto;justify-content:start;padding-top:8px;padding-bottom:8px}
+  .atp-it.mv .atp-it-n{grid-column:1/-1}
+}
+@container (max-width:420px){.atp-it.mv{grid-template-columns:auto}}
+/* Without container queries: the same steps read off the window, with the 300px
+   sidebar counted in above 760px and gone below it. */
+@supports not (container-type:inline-size){
+  @media(max-width:1620px){
+    .atp-pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .atp-pgrid>.atp-grp,.atp-pgrid>.atp-grp:nth-child(n+5){grid-column:auto}
+    .atp-pgrid>.atp-grp:nth-child(7){grid-column:1/-1}
+  }
+  @media(max-width:1480px){
+    .atp-it.mv{grid-template-columns:auto auto;justify-content:start;padding-top:8px;padding-bottom:8px}
+    .atp-it.mv .atp-it-n{grid-column:1/-1}
+  }
+  @media(max-width:1290px){.atp-mgrid{grid-template-columns:minmax(0,1fr)}.atp-mcol{display:contents}}
+  @media(max-width:690px){.atp-pgrid{grid-template-columns:minmax(0,1fr)}}
+  @media(max-width:500px){.atp-it.mv{grid-template-columns:auto}}
+}
 /* Priority as a signal meter — three bars, as many lit as the priority is high. */
 .atp-bars{display:inline-flex;align-items:flex-end;gap:1.5px;height:9px;flex:none}
 .atp-bars s{display:block;width:2.5px;border-radius:1px;background:currentColor;opacity:.28;text-decoration:none}
@@ -2053,7 +2116,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:linear-gradient(172deg,rgba(245,158,11,.07),transparent 42%),var(--bg2)}
 .atp-con-h{display:flex;align-items:flex-start;gap:11px}
 .atp-con-badge{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:700;letter-spacing:.14em;
-  padding:5px 9px;border-radius:7px;background:var(--cb);border:1px solid var(--cc);color:var(--cl)}
+  text-transform:uppercase;padding:5px 9px;border-radius:7px;background:var(--cb);border:1px solid var(--cc);color:var(--cl)}
 .atp-con-tx{flex:1;min-width:0}
 .atp-con-t{font-size:13.5px;font-weight:700;color:var(--text)}
 .atp-con-d{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
@@ -2088,7 +2151,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-opt.on{background:var(--cb);border-color:var(--cc);color:var(--cl)}
 .atp-opt:disabled{opacity:.38;cursor:not-allowed}
 .atp-opt i{font-style:normal;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:.08em;padding:1px 5px;
-  border-radius:4px;border:1px solid var(--border2);color:var(--dim)}
+  text-transform:uppercase;border-radius:4px;border:1px solid var(--border2);color:var(--dim)}
 .atp-pick-custom{display:flex;gap:7px;padding:0 11px 11px;flex-wrap:wrap}
 .atp-pick-custom select{width:auto;flex:none;height:32px;padding:0 8px;font-size:12px;border-radius:8px}
 .atp-pick-custom input{flex:1 1 160px;width:auto;height:32px;padding:0 10px;font-size:12px;border-radius:8px}
@@ -2166,7 +2229,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .atp-xt-r>.atp-xt-d::before{content:attr(data-k)}
   .atp-xt-r>.atp-xt-q{justify-self:end}
 }
-.atp-layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;align-items:start}
+.atp-layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 @media(max-width:900px){.atp-layers{grid-template-columns:minmax(0,1fr)}}
 .atp-ly-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(50px,100px) 46px auto auto;gap:10px;align-items:center;
   padding:7px 13px;border-top:1px solid var(--border)}
@@ -2177,7 +2240,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-ly-bar.x-high i{background:#0094ff}
 .atp-ly-s{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
 .atp-ly-empty{padding:13px;font-size:12px;color:var(--dim)}
-.atp-ly-none{padding:10px 13px 12px;border-top:1px solid var(--border)}
+.atp-ly-none{margin-top:auto;padding:10px 13px 12px;border-top:1px solid var(--border)}
 .atp-ly-none .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .atp-ly-none .l{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .atp-ly-none .l span{font-size:11px;color:var(--dim);padding:2px 9px;border-radius:999px;border:1px dashed var(--border2)}
@@ -24100,102 +24163,117 @@ function ProfileTab({ath,updAth,setup}){
    or builds a session — the profile reaches programming through the individualization
    JSON (atpSnapshot), as context.
 
-   The taxonomy is English and much of it is set in capitals by CSS. <html lang> follows
-   the app language, and a Turkish uppercase turns "Training" into "TRAİNİNG" — so every
-   English label that is uppercased carries lang="en" itself. */
+   Every term is stored in English and drawn through atpT(), so the tab reads in the app
+   language while the JSON keeps one vocabulary. Much of it is set in capitals by CSS,
+   and <html lang> follows the app language — so a Turkish label gets its dotted
+   capitals ("İVMELENME") and an English one stays "TRAINING". */
 const atpBars=n=><i className={`atp-bars b${n}`} aria-hidden="true"><s/><s/><s/></i>;
 function AtpSecHead({n,title,desc,children}){
   return(<div className="sc-sec-h">
     <div className="sc-sec-n">{n}</div>
-    <div className="sc-sec-tx"><div className="sc-sec-t" lang="en">{title}</div><div className="sc-sec-d">{desc}</div></div>
+    <div className="sc-sec-tx"><div className="sc-sec-t">{title}</div><div className="sc-sec-d">{desc}</div></div>
     {children&&<div className="atp-hcnt">{children}</div>}
   </div>);
 }
+function AtpGrpHead({title,n,of}){
+  return(<div className="atp-grp-h">
+    <div className="atp-grp-t">{title}</div>
+    <span className="atp-grp-c"><b>{n}</b>/{of}</span>
+  </div>);
+}
+/* A quality's name in the app language. In Turkish the English term it is stored and
+   sent as is kept on hover — it is the word the JSON carries. */
+const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:undefined}>{atpT(en)}</span>;
 function AtpPriorities({pri,onSet}){
   const inLevel=id=>ATP_PRIORITY_GROUPS.flatMap(g=>g.items.filter(it=>pri[it.id]===id));
   return(<div className="sc-sec" id="atp-s1">
-    <AtpSecHead n={1} title="Training Priorities"
+    <AtpSecHead n={1} title={atpT('Training Priorities')}
       desc={L('Mevcut dönemde geliştirilmesi veya korunması gereken fiziksel özellikler. Her alan üç seviyeden biriyle tanımlanır; performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesine göre belirlenir.',
         'The physical qualities to develop or keep in the current period, each at one of three levels — set from performance data, test results, training history and the coach’s judgement.')}>
-      {ATP_PRI_LEVELS.map(l=><span key={l.id} className={`atp-hc lv-${l.id}`} lang="en"><i/>{l.en}<b>{inLevel(l.id).length}</b></span>)}
+      {ATP_PRI_LEVELS.map(l=><span key={l.id} className={`atp-hc lv-${l.id}`}><i/>{atpT(l.en)}<b>{inLevel(l.id).length}</b></span>)}
     </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-lanes">{ATP_PRI_LEVELS.map(l=>{const its=inLevel(l.id);return(
         <div key={l.id} className={`atp-lane lv-${l.id}`}>
-          <div className="atp-lane-h"><span className="atp-lane-t" lang="en">{l.en}</span><span className="atp-lane-n">{its.length}</span></div>
+          <div className="atp-lane-h"><span className="atp-lane-t">{atpT(l.en)}</span><span className="atp-lane-n">{its.length}</span></div>
           <div className="atp-lane-d">{L(l.dTr,l.dEn)}</div>
           <div className="atp-chips">{its.length?its.map(it=>
-            <span key={it.id} className="atp-chip">{it.en}
-              <button onClick={()=>onSet(it.id,null)} title={L('Kaldır','Remove')} aria-label={L(`${it.en} kaldır`,`Remove ${it.en}`)}>✕</button></span>)
+            <span key={it.id} className="atp-chip" title={REPORT_LANG==='tr'?it.en:undefined}>{atpT(it.en)}
+              <button onClick={()=>onSet(it.id,null)} title={L('Kaldır','Remove')} aria-label={L(`${atpT(it.en)} kaldır`,`Remove ${it.en}`)}>✕</button></span>)
             :<span className="atp-empty">{L('Henüz seçilmedi — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
         </div>);})}</div>
-      <div className="atp-groups">{ATP_PRIORITY_GROUPS.map(g=>{const n=g.items.filter(it=>pri[it.id]).length;return(
+      <div className="atp-gwrap"><div className="atp-pgrid">{ATP_PRIORITY_GROUPS.map(g=>{const n=g.items.filter(it=>pri[it.id]).length;return(
         <div key={g.id} className="atp-grp">
-          <div className="atp-grp-h">
-            <div><div className="atp-grp-t" lang="en">{g.en}</div>{L(g.tr,'')&&<div className="atp-grp-s">{g.tr}</div>}</div>
-            <span className="atp-grp-c"><b>{n}</b>/{g.items.length}</span>
-          </div>
-          {g.items.map(it=>{const v=pri[it.id]||'';return(
-            <div key={it.id} className={`atp-it${v?' set':''}`}>
-              <span className="atp-it-n">{v&&<i className={`atp-dot lv-${v}`}/>}{it.en}</span>
-              <div className="atp-seg" role="group" aria-label={it.en}>{ATP_PRI_LEVELS.map(l=>
-                <button key={l.id} className={`lv-${l.id}${v===l.id?' on':''}`} aria-pressed={v===l.id}
-                  title={`${l.en} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(it.id,v===l.id?null:l.id)}>{l.ab}</button>)}</div>
-            </div>);})}
-        </div>);})}</div>
+          <AtpGrpHead title={atpT(g.en)} n={n} of={g.items.length}/>
+          <div className="atp-its">{g.items.map(it=>{const v=pri[it.id]||'';return(
+            <div key={it.id} className={`atp-it${v?` set lv-${v}`:''}`}>
+              <span className="atp-it-n"><AtpName en={it.en}/></span>
+              <div className="atp-seg" role="group" aria-label={atpT(it.en)}>{ATP_PRI_LEVELS.map(l=>
+                <button key={l.id} className={`lv-${l.id}${v===l.id?' on':''}`} aria-pressed={v===l.id} aria-label={atpT(l.en)}
+                  title={`${atpT(l.en)} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(it.id,v===l.id?null:l.id)}>{atpAb(l)}</button>)}</div>
+            </div>);})}</div>
+        </div>);})}</div></div>
     </div>
   </div>);
 }
+/* The five movement groups in two columns of equal height: Lower Body and Athletic
+   Movement (15 qualities under two headers) beside Upper Body, Trunk and General
+   Movement (14 under three). Any other split leaves one column a card taller than the
+   other; this one leaves them within a few pixels, which the last card of each column
+   takes up. On a narrow screen the columns fold into one list, in the groups' own order. */
+const ATP_MOVE_COLS=[['lower','athletic'],['upper','trunk','general']];
 function AtpMovement({mv,onSet}){
   const rated=ATP_MOVE_GROUPS.flatMap(g=>g.items.filter(it=>mv[it.id]&&(mv[it.id].status||mv[it.id].priority)).map(it=>({...it,r:mv[it.id]})));
   const focus=x=>x.r.status==='limited'||x.r.priority==='high';
   const readout=[...rated.filter(focus),...rated.filter(x=>!focus(x))];
   const S=id=>ATP_MV_STATUS.find(x=>x.id===id),P=id=>ATP_MV_PRIORITY.find(x=>x.id===id);
+  const group=g=>{const n=g.items.filter(it=>mv[it.id]).length;return(
+    <div key={g.id} className="atp-grp" style={{order:ATP_MOVE_GROUPS.indexOf(g)}}>
+      <AtpGrpHead title={atpT(g.en)} n={n} of={g.items.length}/>
+      <div className="atp-its">{g.items.map(it=>{const r=mv[it.id]||{};return(
+        <div key={it.id} className={`atp-it mv${r.status||r.priority?' set':''}${r.status?` st-${r.status}`:''}`}>
+          <span className="atp-it-n"><AtpName en={it.en}/></span>
+          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Status')}`}>{ATP_MV_STATUS.map(s=>
+            <button key={s.id} className={`st-${s.id}${r.status===s.id?' on':''}`} aria-pressed={r.status===s.id} aria-label={atpT(s.en)}
+              title={`${atpT('Status')}: ${atpT(s.en)} — ${L(s.dTr,s.dEn)}`} onClick={()=>onSet(it.id,'status',s.id)}>{atpAb(s)}</button>)}</div>
+          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_MV_PRIORITY.map(p=>
+            <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
+              title={`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>)}</div>
+        </div>);})}</div>
+    </div>);};
   return(<div className="sc-sec" id="atp-s2">
-    <AtpSecHead n={2} title="Movement Profile"
-      desc={L('Temel hareketlerde ve hareket kalitelerinde mevcut durum — her kalite için Status ve Priority. Sporcunun hareket kapasitesini tanımlar; tek başına egzersiz seçimi anlamına gelmez.',
+    <AtpSecHead n={2} title={atpT('Movement Profile')}
+      desc={L('Temel hareketlerde ve hareket kalitelerinde mevcut durum — her kalite için Durum ve Öncelik. Sporcunun hareket kapasitesini tanımlar; tek başına egzersiz seçimi anlamına gelmez.',
         'Where the athlete stands on each fundamental movement and movement quality — a Status and a Priority for each. It describes movement capacity; on its own it is not an exercise selection.')}>
-      {ATP_MV_STATUS.map(s=><span key={s.id} className={`atp-hc st-${s.id}`} lang="en"><i/>{s.en}<b>{rated.filter(x=>x.r.status===s.id).length}</b></span>)}
+      {ATP_MV_STATUS.map(s=><span key={s.id} className={`atp-hc st-${s.id}`}><i/>{atpT(s.en)}<b>{rated.filter(x=>x.r.status===s.id).length}</b></span>)}
     </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-defs">
-        <div className="atp-def"><div className="atp-def-k" lang="en">Status</div>
-          {ATP_MV_STATUS.map(s=><div key={s.id} className="atp-def-r"><span lang="en" className={`atp-tag st-${s.id}`}>{s.en}</span><span>{L(s.dTr,s.dEn)}</span></div>)}</div>
-        <div className="atp-def"><div className="atp-def-k" lang="en">Priority</div>
-          {ATP_MV_PRIORITY.map(p=><div key={p.id} className="atp-def-r"><span lang="en" className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{p.en}</span><span>{L(p.dTr,p.dEn)}</span></div>)}</div>
+        <div className="atp-def"><div className="atp-def-k">{atpT('Status')}</div>
+          {ATP_MV_STATUS.map(s=><div key={s.id} className="atp-def-r"><span className={`atp-tag st-${s.id}`}>{atpT(s.en)}</span><span>{L(s.dTr,s.dEn)}</span></div>)}</div>
+        <div className="atp-def"><div className="atp-def-k">{atpT('Priority')}</div>
+          {ATP_MV_PRIORITY.map(p=><div key={p.id} className="atp-def-r"><span className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{atpT(p.en)}</span><span>{L(p.dTr,p.dEn)}</span></div>)}</div>
       </div>
       {readout.length>0&&<div className="atp-readout">
         <div className="atp-readout-h"><span>{L('Profil özeti','Profile readout')}</span>
           <span>{L(`${rated.length} hareket · ${rated.filter(focus).length} odak`,`${rated.length} rated · ${rated.filter(focus).length} in focus`)}</span></div>
         <div className="atp-ro-list">{readout.map(x=>
           <div key={x.id} className={`atp-ro${focus(x)?' focus':''}`}
-            title={focus(x)?L('Odak: Limited durum veya High öncelik','Focus: Limited status or High priority'):undefined}>
-            <span className="atp-ro-n">{x.en}</span><span className="atp-ro-a">→</span>
-            {x.r.status?<span lang="en" className={`atp-tag st-${x.r.status}`}>{S(x.r.status).en}</span>:<span className="atp-ro-a">—</span>}
+            title={focus(x)?L('Odak: Sınırlı durum veya Yüksek öncelik','Focus: Limited status or High priority'):undefined}>
+            <span className="atp-ro-n">{atpT(x.en)}</span><span className="atp-ro-a">→</span>
+            {x.r.status?<span className={`atp-tag st-${x.r.status}`}>{atpT(S(x.r.status).en)}</span>:<span className="atp-ro-a">—</span>}
             <span className="atp-ro-a">/</span>
-            {x.r.priority?<span lang="en" className={`atp-tag pr-${x.r.priority}`}>{atpBars(P(x.r.priority).bars)}{P(x.r.priority).en}</span>:<span className="atp-ro-a">—</span>}
+            {x.r.priority?<span className={`atp-tag pr-${x.r.priority}`}>{atpBars(P(x.r.priority).bars)}{atpT(P(x.r.priority).en)}</span>:<span className="atp-ro-a">—</span>}
           </div>)}</div>
       </div>}
-      <div className="atp-groups mv">{ATP_MOVE_GROUPS.map(g=>{const n=g.items.filter(it=>mv[it.id]).length;return(
-        <div key={g.id} className="atp-grp">
-          <div className="atp-grp-h">
-            <div><div className="atp-grp-t" lang="en">{g.en}</div>{L(g.tr,'')&&<div className="atp-grp-s">{g.tr}</div>}</div>
-            <span className="atp-grp-c"><b>{n}</b>/{g.items.length}</span>
-          </div>
-          {g.items.map(it=>{const r=mv[it.id]||{};return(
-            <div key={it.id} className={`atp-it mv${r.status||r.priority?' set':''}`}>
-              <span className="atp-it-n">{r.status&&<i className={`atp-dot st-${r.status}`}/>}{it.en}</span>
-              <div className="atp-seg" role="group" aria-label={`${it.en} — Status`}>{ATP_MV_STATUS.map(s=>
-                <button key={s.id} className={`st-${s.id}${r.status===s.id?' on':''}`} aria-pressed={r.status===s.id}
-                  title={`Status: ${s.en} — ${L(s.dTr,s.dEn)}`} onClick={()=>onSet(it.id,'status',s.id)}>{s.ab}</button>)}</div>
-              <div className="atp-seg" role="group" aria-label={`${it.en} — Priority`}>{ATP_MV_PRIORITY.map(p=>
-                <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id}
-                  title={`Priority: ${p.en} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{p.ab}</button>)}</div>
-            </div>);})}
-        </div>);})}</div>
+      <div className="atp-gwrap"><div className="atp-mgrid">{ATP_MOVE_COLS.map((col,ci)=>
+        <div key={ci} className="atp-mcol">{col.map(id=>group(ATP_MOVE_GROUPS.find(g=>g.id===id)))}</div>)}</div></div>
     </div>
   </div>);
 }
+/* A constraint as the coach reads it: a catalogue entry in the app language, one the
+   coach typed exactly as it was typed. */
+const atpConShow=c=>atpConDef(c&&c.id)?atpT(atpConLabel(c)):atpConLabel(c);
 function AtpConPanel({kind,list,other,onList}){
   const[open,setOpen]=useState(false);
   const[cat,setCat]=useState('suggest');
@@ -24204,22 +24282,23 @@ function AtpConPanel({kind,list,other,onList}){
   const[msg,setMsg]=useState('');
   const hard=kind==='hard';
   const mine=new Set(list.map(c=>c.id)),theirs=new Set(other.map(c=>c.id));
-  const otherName=hard?'Soft':'Hard';
+  const otherName=atpT(hard?'Soft':'Hard');
   const add=id=>{if(!mine.has(id)&&!theirs.has(id))onList([...list,{id}]);};
   const remove=id=>onList(list.filter(c=>c.id!==id));
   const patch=(id,p)=>onList(list.map(c=>c.id===id?{...c,...p}:c));
-  /* A typed constraint that names a catalogue entry IS that entry — so the same rule can
-     never sit on the list twice, or on both lists, just because it was typed. */
+  const low=x=>String(x||'').trim().toLocaleLowerCase(REPORT_LANG==='tr'?'tr-TR':'en-US');
+  /* A typed constraint that names a catalogue entry IS that entry — in either language —
+     so the same rule can never sit on the list twice, or on both lists, just because it
+     was typed. */
   const addCustom=()=>{
     const t=custom.trim();if(!t)return;
-    const hit=ATP_CONSTRAINTS.find(c=>c.en.toLowerCase()===t.toLowerCase());
+    const hit=ATP_CONSTRAINTS.find(c=>low(c.en)===low(t)||low(atpT(c.en))===low(t));
     if(hit){
-      if(theirs.has(hit.id)){setMsg(L(`"${hit.en}" zaten ${otherName} listesinde.`,`"${hit.en}" is already on the ${otherName} list.`));return;}
-      if(!atpConFits(hit,kind)){setMsg(L(`"${hit.en}" yalnızca ${otherName} olabilir.`,`"${hit.en}" can only be ${otherName}.`));return;}
+      if(theirs.has(hit.id)){setMsg(L(`"${atpT(hit.en)}" zaten ${otherName} listesinde.`,`"${hit.en}" is already on the ${otherName} list.`));return;}
+      if(!atpConFits(hit,kind)){setMsg(L(`"${atpT(hit.en)}" yalnızca ${otherName} olabilir.`,`"${hit.en}" can only be ${otherName}.`));return;}
       add(hit.id);
     }else{
-      const low=t.toLowerCase();
-      if([...list,...other].some(c=>atpConLabel(c).toLowerCase()===low)){setMsg(L('Bu kısıt zaten ekli.','That constraint is already there.'));return;}
+      if([...list,...other].some(c=>low(atpConLabel(c))===low(t)||low(atpConShow(c))===low(t))){setMsg(L('Bu kısıt zaten ekli.','That constraint is already there.'));return;}
       onList([...list,{id:'c_'+uid(),label:t,cat:customCat}]);
     }
     setCustom('');setMsg('');
@@ -24227,22 +24306,22 @@ function AtpConPanel({kind,list,other,onList}){
   const opts=(cat==='suggest'?ATP_CON_SUGGEST[kind].map(atpConDef):ATP_CONSTRAINTS.filter(c=>c.cat===cat)).filter(Boolean);
   return(<div className={`atp-con ${kind}`}>
     <div className="atp-con-h">
-      <span className="atp-con-badge" lang="en">{hard?'HARD':'SOFT'}</span>
+      <span className="atp-con-badge">{atpT(hard?'Hard':'Soft')}</span>
       <div className="atp-con-tx">
-        <div className="atp-con-t">{hard?'Hard Constraints':'Soft Constraints'}</div>
+        <div className="atp-con-t">{atpT(hard?'Hard Constraints':'Soft Constraints')}</div>
         <div className="atp-con-d">{hard?L('Kesin olarak uyulması gereken kısıtlamalar.','Rules that must be followed, without exception.')
           :L('Kesin yasak olmayan; tercih edilen veya sınırlandırılması gereken durumlar.','Not prohibitions — preferences, or things to keep limited.')}</div>
       </div>
       <span className="atp-con-n">{list.length}</span>
     </div>
     <div className="atp-con-list">
-      {list.length===0&&<div className="atp-con-none">{hard?L('Hard kısıt yok.','No hard constraints.'):L('Soft kısıt yok.','No soft constraints.')}</div>}
+      {list.length===0&&<div className="atp-con-none">{hard?L('Kesin kısıt yok.','No hard constraints.'):L('Esnek kısıt yok.','No soft constraints.')}</div>}
       {list.map(c=>{const d=atpConDef(c.id);const withVal=!!(d&&d.ph);return(
         <div key={c.id} className="atp-con-row">
           <div className="atp-con-top">
-            {atpCatLabel(atpConCat(c))?<span className="atp-con-cat" lang="en">{atpCatLabel(atpConCat(c))}</span>
+            {atpCatLabel(atpConCat(c))?<span className="atp-con-cat">{atpT(atpCatLabel(atpConCat(c)))}</span>
               :<span className="atp-con-cat">{L('Diğer','Other')}</span>}
-            <span className="atp-con-l">{atpConLabel(c)}</span>
+            <span className="atp-con-l" title={d&&REPORT_LANG==='tr'?d.en:undefined}>{atpConShow(c)}</span>
             <button className="atp-x" onClick={()=>remove(c.id)} title={L('Kısıtı kaldır','Remove constraint')} aria-label={L('Kısıtı kaldır','Remove constraint')}>✕</button>
           </div>
           <div className={`atp-con-in${withVal?' two':''}`}>
@@ -24257,17 +24336,17 @@ function AtpConPanel({kind,list,other,onList}){
     {open&&<div className="atp-pick">
       <div className="atp-pick-tabs">
         <button className={cat==='suggest'?'on':''} onClick={()=>setCat('suggest')}>{L('Önerilen','Suggested')}</button>
-        {ATP_CON_CATS.map(k=><button key={k.id} className={cat===k.id?'on':''} onClick={()=>setCat(k.id)}>{k.en}</button>)}
+        {ATP_CON_CATS.map(k=><button key={k.id} className={cat===k.id?'on':''} onClick={()=>setCat(k.id)}>{atpT(k.en)}</button>)}
       </div>
       <div className="atp-pick-list">{opts.map(d=>{
         const on=mine.has(d.id),elsewhere=theirs.has(d.id),fits=atpConFits(d,kind);
         const why=elsewhere?L(`${otherName} listesinde — bir kısıt iki listede birden olamaz.`,`On the ${otherName} list — a constraint cannot be on both.`)
           :!fits?L(`Bu kısıt yalnızca ${otherName} olabilir.`,`This constraint can only be ${otherName}.`):undefined;
         return<button key={d.id} className={`atp-opt${on?' on':''}`} disabled={!on&&(elsewhere||!fits)} title={why}
-          onClick={()=>on?remove(d.id):add(d.id)}>{on?'✓':'+'} {d.en}{elsewhere&&<i>{otherName.toUpperCase()}</i>}</button>;})}</div>
+          onClick={()=>on?remove(d.id):add(d.id)}>{on?'✓':'+'} {atpT(d.en)}{elsewhere&&<i>{otherName}</i>}</button>;})}</div>
       <div className="atp-pick-custom">
         <select value={customCat} onChange={e=>setCustomCat(e.target.value)} aria-label={L('Kategori','Category')}>
-          {ATP_CON_CATS.map(k=><option key={k.id} value={k.id}>{k.en}</option>)}</select>
+          {ATP_CON_CATS.map(k=><option key={k.id} value={k.id}>{atpT(k.en)}</option>)}</select>
         <input value={custom} onChange={e=>{setCustom(e.target.value);setMsg('');}} onKeyDown={e=>{if(e.key==='Enter')addCustom();}}
           placeholder={L('Özel kısıt yaz…','Write a custom constraint…')}/>
         <button onClick={addCustom} disabled={!custom.trim()}>{L('Ekle','Add')}</button>
@@ -24278,11 +24357,11 @@ function AtpConPanel({kind,list,other,onList}){
 }
 function AtpConstraints({con,onChange}){
   return(<div className="sc-sec" id="atp-s3">
-    <AtpSecHead n={3} title="Constraints"
-      desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Hard ve Soft kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
+    <AtpSecHead n={3} title={atpT('Constraints')}
+      desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Kesin ve Esnek kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
         'The limits and preferences training has to take into account. Hard and Soft are kept strictly apart — a constraint can sit on one list only.')}>
-      <span className="atp-hc cn-hard" lang="en"><i/>Hard<b>{con.hard.length}</b></span>
-      <span className="atp-hc cn-soft" lang="en"><i/>Soft<b>{con.soft.length}</b></span>
+      <span className="atp-hc cn-hard"><i/>{atpT('Hard')}<b>{con.hard.length}</b></span>
+      <span className="atp-hc cn-soft"><i/>{atpT('Soft')}<b>{con.soft.length}</b></span>
     </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-con2">
@@ -24298,36 +24377,38 @@ function AtpExposure({exp,refDate,setRefDate}){
   const lv=id=>ATP_EXP_LEVELS.find(x=>x.id===id)||ATP_EXP_LEVELS[0];
   const strip=t=><span className="atp-strip" aria-hidden="true">{ATP_EXP_WINDOWS.map(w=>
     <i key={w.id} className={`x-${t.level[w.id]}${w.id===win?' cur':''}`}
-      title={`${w.en}: ${lv(t.level[w.id]).en} · ${t.sets[w.id]} set`}/>)}</span>;
-  const pill=id=><span className={`atp-lv x-${id}`} lang="en">{lv(id).ab}</span>;
+      title={`${atpT(w.en)}: ${atpT(lv(t.level[w.id]).en)} · ${t.sets[w.id]} set`}/>)}</span>;
+  const pill=id=><span className={`atp-lv x-${id}`}>{atpAb(lv(id))}</span>;
   const byWin=list=>list.filter(t=>t.sets[win]>0)
     .sort((a,b)=>(b.sets[win]-a.sets[win])||String(b.lastUsed||'').localeCompare(String(a.lastUsed||'')));
   const exRows=byWin(exp.exercises);
   const shown=all?exRows:exRows.slice(0,10);
+  /* The four layers name their rows in the taxonomy's own terms, so each row is drawn
+     through atpT(); the exercise table above names exercises as the coach wrote them. */
   const layer=(title,sub,list,fixed)=>{
     const on=byWin(list);
     const max=Math.max(1,...on.map(t=>t.sets[win]));
     const off=fixed?list.filter(t=>!(t.sets[win]>0)):[];
     return(<div className="atp-grp">
       <div className="atp-grp-h">
-        <div><div className="atp-grp-t" lang="en">{title}</div><div className="atp-grp-s">{sub}</div></div>
+        <div><div className="atp-grp-t">{atpT(title)}</div><div className="atp-grp-s">{sub}</div></div>
         <span className="atp-grp-c"><b>{on.length}</b>{fixed?`/${list.length}`:''}</span>
       </div>
       {on.length===0&&<div className="atp-ly-empty">{L('Bu aralıkta maruziyet yok.','No exposure in this window.')}</div>}
       {on.map(t=>{const l=t.level[win];return(
         <div key={t.key} className="atp-ly-r">
-          <span className="atp-ly-n" title={t.label}>{t.label}</span>
+          <span className="atp-ly-n" title={atpT(t.label)}>{atpT(t.label)}</span>
           <span className={`atp-ly-bar x-${l}`}><i style={{width:`${Math.max(6,Math.round(t.sets[win]/max*100))}%`}}/></span>
           <span className="atp-ly-s">{t.sets[win]} set</span>
           {pill(l)}{strip(t)}
         </div>);})}
-      {off.length>0&&<div className="atp-ly-none"><div className="k" lang="en">None / Not Recent</div>
-        <div className="l">{off.map(t=><span key={t.key}>{t.label}</span>)}</div></div>}
+      {off.length>0&&<div className="atp-ly-none"><div className="k">{atpT('None / Not Recent')}</div>
+        <div className="l">{off.map(t=><span key={t.key}>{atpT(t.label)}</span>)}</div></div>}
     </div>);
   };
   const W=ATP_EXP_WINDOWS.find(w=>w.id===win);
   return(<div className="sc-sec" id="atp-s4">
-    <AtpSecHead n={4} title="Exercise Exposure"
+    <AtpSecHead n={4} title={atpT('Exercise Exposure')}
       desc={L('Sporcunun takvimindeki antrenman kayıtlarından otomatik oluşturulur: hangi egzersizlere ve kategorilere ne sıklıkta maruz kaldığı — yalnızca çeşitlilik değil, yüklenme geçmişi. Seviyeler set sayısından okunur.',
         'Built automatically from the training records on the athlete’s calendar: which exercises and categories they have been exposed to, and how often — not just variety but loading history. Levels are read from set counts.')}>
       <span className="atp-hc atp-auto">{L('Otomatik','Automatic')}</span>
@@ -24335,7 +24416,7 @@ function AtpExposure({exp,refDate,setRefDate}){
     <div className="sc-sec-b">
       <div className="atp-xbar">
         <div className="atp-wseg" role="tablist">{ATP_EXP_WINDOWS.map(w=>
-          <button key={w.id} role="tab" aria-selected={win===w.id} className={win===w.id?'on':''} onClick={()=>setWin(w.id)}>{w.en}</button>)}</div>
+          <button key={w.id} role="tab" aria-selected={win===w.id} className={win===w.id?'on':''} onClick={()=>setWin(w.id)}>{atpT(w.en)}</button>)}</div>
         <label className="atp-ref"><span>{L('Referans günü','Reference day')}</span>
           <input type="date" value={refDate} onChange={e=>setRefDate(e.target.value)}/></label>
       </div>
@@ -24344,25 +24425,25 @@ function AtpExposure({exp,refDate,setRefDate}){
           :L('Kayıtlı seans yok.','No session on record.'))
         :<><b>{fd(exp.from[win])} – {fd(exp.end)}</b> · {L(`${exp.sessions[win]} seans`,`${exp.sessions[win]} sessions`)} · {L(`${exp.rows[win]} egzersiz satırı`,`${exp.rows[win]} exercise rows`)}</>}</div>
       <div className="atp-xleg">{ATP_EXP_LEVELS.slice().reverse().map(l=>
-        <span key={l.id} title={L(l.dTr,l.dEn)}><i className={`atp-sw x-${l.id}`}/>{l.en}</span>)}
+        <span key={l.id} title={L(l.dTr,l.dEn)}><i className={`atp-sw x-${l.id}`}/>{atpT(l.en)}</span>)}
         <span className="atp-xleg-strip"><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/><i className="atp-sw x-moderate"/>
           {L('kareler: son seans · 7 · 14 · 28 gün','squares: last session · 7 · 14 · 28 days')}</span>
       </div>
-      {!exp.last?<div className="atp-xempty">{L('Takvimde egzersiz kaydı yok. Exercise Exposure, sporcunun takvimine yazılan seanslardan — takım seansları dahil — kendiliğinden oluşur.',
+      {!exp.last?<div className="atp-xempty">{L('Takvimde egzersiz kaydı yok. Egzersiz maruziyeti, sporcunun takvimine yazılan seanslardan — takım seansları dahil — kendiliğinden oluşur.',
           'No exercise on the calendar yet. Exercise Exposure builds itself from the sessions on the athlete’s calendar, team sessions included.')}</div>
       :<>
-        <div className="atp-sub-t"><b lang="en">Exercise Level</b><span>{L(`${W.en} · ${exRows.length} egzersiz`,`${W.en} · ${exRows.length} exercises`)}</span></div>
+        <div className="atp-sub-t"><b>{atpT('Exercise Level')}</b><span>{L(`${atpT(W.en)} · ${exRows.length} egzersiz`,`${W.en} · ${exRows.length} exercises`)}</span></div>
         {exRows.length===0?<div className="atp-xempty">{L('Bu aralıkta egzersiz kaydı yok.','No exercise in this window.')}</div>
         :<div className="atp-xt">
-          <div className="atp-xt-h" lang="en"><span>Exercise</span><span>Exercise Family</span><span>Movement Pattern</span><span>Stimulus · Loading</span>
-            <span>Last Used</span><span>Frequency</span><span className="r">Recent Exposure</span></div>
+          <div className="atp-xt-h"><span>{atpT('Exercise')}</span><span>{atpT('Exercise Family')}</span><span>{atpT('Movement Pattern')}</span>
+            <span>{atpT('Stimulus · Loading')}</span><span>{atpT('Last Used')}</span><span>{atpT('Frequency')}</span><span className="r">{atpT('Recent Exposure')}</span></div>
           {shown.map(t=>{const l=t.level[win];return(
             <div key={t.key} className="atp-xt-r">
               <span className="atp-xt-n" title={t.label}>{t.label}</span>
-              <span className="atp-xt-f">{t.family}</span>
-              <span className="atp-xt-tags">{t.patterns.length?t.patterns.map(p=><span key={p} className="atp-mini">{p}</span>):<span className="atp-xt-d">—</span>}</span>
-              <span className="atp-xt-tags">{t.stimuli.map(s=><span key={'s'+s} className="atp-mini st">{s}</span>)}
-                {t.loading.map(s=><span key={'l'+s} className="atp-mini ld">{s}</span>)}
+              <span className="atp-xt-f">{atpT(t.family)}</span>
+              <span className="atp-xt-tags">{t.patterns.length?t.patterns.map(p=><span key={p} className="atp-mini">{atpT(p)}</span>):<span className="atp-xt-d">—</span>}</span>
+              <span className="atp-xt-tags">{t.stimuli.map(s=><span key={'s'+s} className="atp-mini st">{atpT(s)}</span>)}
+                {t.loading.map(s=><span key={'l'+s} className="atp-mini ld">{atpT(s)}</span>)}
                 {!t.stimuli.length&&!t.loading.length&&<span className="atp-xt-d">—</span>}</span>
               <span className="atp-xt-d" data-k={L('Son kullanım · ','Last used · ')}>{fd(t.lastUsed)}</span>
               <span className="atp-xt-q" title={L('Son 28 günde yer aldığı seans sayısı','Sessions it appeared in over the last 28 days')}>{t.freq28}×<small>{L('/28g','/28d')}</small></span>
@@ -24371,10 +24452,10 @@ function AtpExposure({exp,refDate,setRefDate}){
           {exRows.length>10&&<button className="atp-xt-more" onClick={()=>setAll(a=>!a)}>{all?L('Daralt','Collapse'):L(`Tümünü göster (${exRows.length})`,`Show all (${exRows.length})`)}</button>}
         </div>}
         <div className="atp-layers">
-          {layer('Exercise Family',L('Egzersiz ailesi','Groups of related exercises'),exp.families,false)}
-          {layer('Movement Pattern',L('Hareket paterni','What the movement trains'),exp.patterns,true)}
-          {layer('Athletic Stimulus',L('Atletik uyaran','The athletic demand delivered'),exp.stimuli,true)}
-          {layer('Loading Characteristic',L('Yüklenme karakteri','How the body was loaded'),exp.loading,true)}
+          {layer('Exercise Family',L('Birbiriyle ilişkili egzersiz grupları','Groups of related exercises'),exp.families,false)}
+          {layer('Movement Pattern',L('Hareketin çalıştırdığı patern','What the movement trains'),exp.patterns,true)}
+          {layer('Athletic Stimulus',L('Verilen atletik talep','The athletic demand delivered'),exp.stimuli,true)}
+          {layer('Loading Characteristic',L('Vücudun nasıl yüklendiği','How the body was loaded'),exp.loading,true)}
         </div>
       </>}
     </div>
@@ -24398,27 +24479,27 @@ function TrainingProfileTab({ath,updAth,exercises}){
     save({movement:nx});
   };
   const priN=Object.values(tp.priorities).filter(v=>ATP_PRI_LEVELS.some(l=>l.id===v)).length;
-  const primary=ATP_PRIORITY_GROUPS.flatMap(g=>g.items).filter(it=>tp.priorities[it.id]==='primary').map(it=>it.en);
+  const primary=ATP_PRIORITY_GROUPS.flatMap(g=>g.items).filter(it=>tp.priorities[it.id]==='primary').map(it=>atpT(it.en));
   const mvAll=ATP_MOVE_GROUPS.flatMap(g=>g.items);
   const mvRated=mvAll.filter(it=>tp.movement[it.id]&&(tp.movement[it.id].status||tp.movement[it.id].priority));
   const mvLim=mvRated.filter(it=>tp.movement[it.id].status==='limited').length;
   const mvHigh=mvRated.filter(it=>tp.movement[it.id].priority==='high').length;
   const go=id=>{const el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});};
   const tiles=[
-    {id:'atp-s1',c:'#0094ff',k:'Training Priorities',v:priN,u:L('alan','areas'),
-      s:primary.length?`Primary: ${primary.join(', ')}`:L('Primary alan seçilmedi','No Primary area yet')},
-    {id:'atp-s2',c:'#10b981',k:'Movement Profile',v:mvRated.length,u:`/ ${mvAll.length}`,
-      s:`Limited ${mvLim} · High ${mvHigh}`},
-    {id:'atp-s3',c:'#ef4444',k:'Constraints',v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
-      s:`Hard ${tp.constraints.hard.length} · Soft ${tp.constraints.soft.length}`},
-    {id:'atp-s4',c:'#22d3ee',k:'Exercise Exposure',v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
+    {id:'atp-s1',c:'#0094ff',k:atpT('Training Priorities'),v:priN,u:L('alan','areas'),
+      s:primary.length?`${atpT('Primary')}: ${primary.join(', ')}`:L('Birincil alan seçilmedi','No Primary area yet')},
+    {id:'atp-s2',c:'#10b981',k:atpT('Movement Profile'),v:mvRated.length,u:`/ ${mvAll.length}`,
+      s:`${atpT('Limited')} ${mvLim} · ${atpT('High')} ${mvHigh}`},
+    {id:'atp-s3',c:'#ef4444',k:atpT('Constraints'),v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
+      s:`${atpT('Hard')} ${tp.constraints.hard.length} · ${atpT('Soft')} ${tp.constraints.soft.length}`},
+    {id:'atp-s4',c:'#22d3ee',k:atpT('Exercise Exposure'),v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
       s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
   ];
   return(<div className="atp-wrap">
     <div className="atp-intro">
       <div className="atp-intro-ic">◎</div>
       <div className="atp-intro-tx">
-        <div className="atp-intro-t">Athlete Training Profile</div>
+        <div className="atp-intro-t">{atpT('Athlete Training Profile')}</div>
         <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: öncelikler, hareket profili, kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
           'Defines the athlete as a trainee: priorities, movement profile, constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
       </div>
@@ -24426,7 +24507,7 @@ function TrainingProfileTab({ath,updAth,exercises}){
     </div>
     <div className="atp-glance">{tiles.map(t=>
       <button key={t.id} className="atp-gl" style={{'--gc':t.c}} onClick={()=>go(t.id)}>
-        <div className="k" lang="en">{t.k}</div>
+        <div className="k">{t.k}</div>
         <div className="v">{t.v}<small>{t.u}</small></div>
         <div className="s" title={t.s}>{t.s}</div>
       </button>)}</div>
@@ -24507,9 +24588,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
     {id:'profile',ic:'◈',l:L('Profil','Profile')},
-    /* The athlete as a trainee — priorities, movement profile, constraints, exposure.
-       Named in English in both languages: it is the name of the profile it holds. */
-    {id:'training',ic:'◎',l:'Athlete Training Profile'},
+    /* The athlete as a trainee — priorities, movement profile, constraints, exposure. */
+    {id:'training',ic:'◎',l:atpT('Athlete Training Profile')},
     {id:'load',ic:'▤',l:L('Yük','Load')},
     {id:'calendar',ic:'▣',l:L('Takvim','Calendar')},
     /* The tape measure, and only the tape measure. Test results are read on the Testing
@@ -30133,48 +30213,137 @@ function diTolerance(ath,name,ref,days){
    coach's, stored under `ath.trainingProfile`; the fourth is read off the athlete's own
    calendar every time it is shown, so it cannot go stale.
 
-   The terms stay in English whatever the app language: they are the taxonomy the
-   profile is defined in, and the same words reach the JSON on every device. */
+   The terms are STORED and SENT in English: they are the taxonomy the profile is
+   defined in, and the same words reach the JSON on every device whatever language the
+   coach reads the app in. On screen they follow the app language — atpT() below puts
+   each term into Turkish at the moment it is drawn, and nothing else. */
 const atpId=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
 const atpItems=list=>list.map(en=>({id:atpId(en),en}));
+/* Every term of the tab, English → Turkish. One list for all four parts, keyed by the
+   English word, so a term that appears in two places (Acceleration is a priority, a
+   movement quality and a stimulus) cannot be translated two ways. */
+const ATP_TR={
+  /* titles */
+  'Athlete Training Profile':'Sporcu Antrenman Profili','Training Priorities':'Antrenman Öncelikleri',
+  'Movement Profile':'Hareket Profili','Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti',
+  /* priority groups and levels */
+  'Speed':'Sürat','Change of Direction':'Yön Değiştirme','Plyometric / Reactive':'Pliometrik / Reaktif',
+  'Strength':'Kuvvet','Power':'Güç','Movement':'Hareket','Conditioning':'Kondisyon',
+  'Primary':'Birincil','Secondary':'İkincil','Maintain':'Koruma',
+  /* priority qualities */
+  'Acceleration':'İvmelenme','Max Velocity':'Maksimal Hız','Sprint Mechanics':'Sprint Mekaniği','Speed Exposure':'Sürat Maruziyeti',
+  'Deceleration':'Yavaşlama','Lateral Movement':'Lateral Hareket','Braking Ability':'Frenleme Yeteneği',
+  'Jump Ability':'Sıçrama Yeteneği','Reactive Strength':'Reaktif Kuvvet','Elastic Strength':'Elastik Kuvvet',
+  'Landing Ability':'İniş Yeteneği','Ankle Stiffness':'Ayak Bileği Sertliği',
+  'Lower-Body Strength':'Alt Vücut Kuvveti','Upper-Body Strength':'Üst Vücut Kuvveti','Unilateral Strength':'Tek Taraflı Kuvvet',
+  'Relative Strength':'Göreli Kuvvet','Isometric Strength':'İzometrik Kuvvet','Eccentric Strength':'Eksantrik Kuvvet',
+  'Lower-Body Power':'Alt Vücut Gücü','Upper-Body Power':'Üst Vücut Gücü','Explosive Strength':'Patlayıcı Kuvvet',
+  'Rate of Force Development':'Kuvvet Gelişim Hızı',
+  'Mobility':'Hareketlilik','Stability':'Stabilite','Coordination':'Koordinasyon','Trunk Control':'Gövde Kontrolü',
+  'Aerobic Capacity':'Aerobik Kapasite','Anaerobic Capacity':'Anaerobik Kapasite','Repeat Sprint Ability':'Tekrarlı Sprint Yeteneği',
+  'Work Capacity':'İş Kapasitesi',
+  /* movement groups, qualities and the two scales */
+  'Lower Body':'Alt Vücut','Upper Body':'Üst Vücut','Athletic Movement':'Atletik Hareket','Trunk':'Gövde','General Movement':'Genel Hareket',
+  'Squat':'Squat','Hinge':'Kalça Menteşesi','Lunge':'Lunge','Unilateral':'Tek Taraflı','Knee Dominant':'Diz Baskın',
+  'Hip Dominant':'Kalça Baskın','Ankle Function':'Ayak Bileği Fonksiyonu',
+  'Horizontal Push':'Yatay İtme','Horizontal Pull':'Yatay Çekme','Vertical Push':'Dikey İtme','Vertical Pull':'Dikey Çekme',
+  'Jumping':'Sıçrama','Landing':'İniş','Hopping':'Sekme','Sprinting':'Sprint',
+  'Bracing':'Gövde Sabitleme','Anti-Extension':'Anti-Ekstansiyon','Anti-Rotation':'Anti-Rotasyon',
+  'Anti-Lateral Flexion':'Anti-Lateral Fleksiyon','Rotation':'Rotasyon','Balance':'Denge',
+  'Status':'Durum','Priority':'Öncelik','Good':'İyi','Moderate':'Orta','Limited':'Sınırlı','High':'Yüksek','Medium':'Orta','Low':'Düşük',
+  /* constraints */
+  'Hard':'Kesin','Soft':'Esnek','Hard Constraints':'Kesin Kısıtlar','Soft Constraints':'Esnek Kısıtlar',
+  'Load':'Yük','Volume':'Hacim','Intensity':'Şiddet','Impact':'Darbe','Equipment':'Ekipman','Contact':'Temas',
+  'Maximum Load':'Maksimum Yük','Reduced Load':'Azaltılmış Yük','No Heavy Loading':'Ağır Yüklenme Yok',
+  'No Bilateral Loading':'Çift Taraflı Yüklenme Yok','No Unilateral Loading':'Tek Taraflı Yüklenme Yok',
+  'Prefer Unilateral':'Tek Taraflı Tercih Et','Maximum Volume':'Maksimum Hacim','Limited Sets':'Sınırlı Set',
+  'Limited Repetitions':'Sınırlı Tekrar','Limit Eccentric Volume':'Eksantrik Hacmi Sınırla',
+  'Limit Knee-Dominant Volume':'Diz Baskın Hacmi Sınırla','Limit Repeated Exposure':'Tekrarlı Maruziyeti Sınırla',
+  'Maximum RPE':'Maksimum RPE','Maximum Intensity':'Maksimum Şiddet','Submaximal Only':'Yalnızca Submaksimal',
+  'Prefer Low-Fatigue Work':'Düşük Yorgunluklu Çalışma Tercih Et','No Maximal Sprint':'Maksimal Sprint Yok',
+  'Submaximal Sprint':'Submaksimal Sprint','Limited Acceleration':'Sınırlı İvmelenme','No Jumping':'Sıçrama Yok',
+  'No High-Impact Jumping':'Yüksek Darbeli Sıçrama Yok','Limited Jumping':'Sınırlı Sıçrama','Low-Impact Only':'Yalnızca Düşük Darbe',
+  'Limit High-Impact Work':'Yüksek Darbeli Çalışmayı Sınırla','Limited ROM':'Sınırlı Hareket Açıklığı (ROM)',
+  'Limited Knee Flexion':'Sınırlı Diz Fleksiyonu','No Overhead Movement':'Baş Üstü Hareket Yok',
+  'Limited Overhead Movement':'Sınırlı Baş Üstü Hareket','Limited Rotation':'Sınırlı Rotasyon',
+  'Prefer Stable Exercises':'Stabil Egzersizleri Tercih Et','No Barbell':'Barbell Yok','No Machine':'Makine Yok',
+  'No Cable':'Kablo Yok','Prefer Dumbbell':'Dambıl Tercih Et','No Contact':'Temas Yok','Limited Contact':'Sınırlı Temas',
+  /* exposure: windows, levels, table, layers */
+  'Last Session':'Son Seans','Last 7 Days':'Son 7 Gün','Last 14 Days':'Son 14 Gün','Last 28 Days':'Son 28 Gün',
+  'None / Not Recent':'Yakın Dönemde Yok','None':'Yok',
+  'Exercise Level':'Egzersiz Düzeyi','Exercise':'Egzersiz','Exercise Family':'Egzersiz Ailesi','Movement Pattern':'Hareket Paterni',
+  'Stimulus · Loading':'Uyaran · Yüklenme','Last Used':'Son Kullanım','Frequency':'Sıklık','Recent Exposure':'Son Maruziyet',
+  'Athletic Stimulus':'Atletik Uyaran','Loading Characteristic':'Yüklenme Karakteri',
+  'Unilateral Knee Dominant':'Tek Taraflı Diz Baskın','Unilateral Hip Dominant':'Tek Taraflı Kalça Baskın',
+  'Anti-Flexion':'Anti-Fleksiyon','Trunk Flexion / Extension':'Gövde Fleksiyon / Ekstansiyon','Full Body':'Tüm Vücut',
+  'Carry':'Taşıma','Ankle / Calf':'Ayak Bileği / Baldır','Plyometric':'Pliometrik','Sprint / Locomotion':'Sprint / Lokomosyon',
+  'Stability / Balance':'Stabilite / Denge',
+  'Hopping / Bounding':'Sekme / Bounding','Reactive / Depth':'Reaktif / Derinlik','Throwing':'Fırlatma',
+  'Heavy Loading':'Ağır Yüklenme','High-Velocity':'Yüksek Hız','Eccentric Loading':'Eksantrik Yüklenme','Isometric':'İzometrik',
+  'Ballistic':'Balistik',
+  'Olympic Lift Family':'Olimpik Halter Ailesi','Sprint Family':'Sprint Ailesi','Deceleration Family':'Yavaşlama Ailesi',
+  'COD / Agility Family':'Yön Değiştirme / Çeviklik Ailesi','Landing Family':'İniş Ailesi',
+  'Depth / Drop Jump Family':'Derinlik / Düşme Sıçraması Ailesi','Hop / Bound Family':'Sekme / Bounding Ailesi',
+  'Jump Family':'Sıçrama Ailesi','Med Ball Throw Family':'Sağlık Topu Fırlatma Ailesi','Split Squat Family':'Split Squat Ailesi',
+  'Lunge Family':'Lunge Ailesi','Step-Up Family':'Step-Up Ailesi','Squat Family':'Squat Ailesi',
+  'Hip Thrust / Bridge Family':'Hip Thrust / Köprü Ailesi','Hamstring Curl Family':'Hamstring Curl Ailesi',
+  'Hinge Family':'Kalça Menteşesi Ailesi','Calf / Ankle Family':'Baldır / Ayak Bileği Ailesi',
+  'Vertical Pull Family':'Dikey Çekme Ailesi','Horizontal Pull Family':'Yatay Çekme Ailesi',
+  'Vertical Press Family':'Dikey İtme Ailesi','Horizontal Press Family':'Yatay İtme Ailesi','Carry Family':'Taşıma Ailesi',
+  'Anti-Rotation Family':'Anti-Rotasyon Ailesi','Anti-Lateral Flexion Family':'Anti-Lateral Fleksiyon Ailesi',
+  'Anti-Extension Family':'Anti-Ekstansiyon Ailesi','Rotation Family':'Rotasyon Ailesi','Trunk Flexion Family':'Gövde Fleksiyon Ailesi',
+  'Mobility Family':'Hareketlilik Ailesi','Knee Dominant (Other)':'Diz Baskın (Diğer)','Hip Dominant (Other)':'Kalça Baskın (Diğer)',
+  'Upper Body Push (Other)':'Üst Vücut İtme (Diğer)','Upper Body Pull (Other)':'Üst Vücut Çekme (Diğer)','Core (Other)':'Core (Diğer)',
+  'Full Body (Other)':'Tüm Vücut (Diğer)','Unclassified':'Sınıflandırılmamış',
+};
+/* A term in the app language. A family named after a library type ("Warm-Up Family")
+   is not in the list; it is read as that type's own Turkish name plus "Ailesi". */
+function atpT(en){
+  if(REPORT_LANG!=='tr'||!en)return en;
+  if(ATP_TR[en])return ATP_TR[en];
+  const f=/^(.+) Family$/.exec(en);
+  return f?`${exLabel(f[1])} Ailesi`:en;
+}
+/* The short form a level carries on its button. */
+const atpAb=l=>REPORT_LANG==='tr'?l.abTr:l.ab;
 const ATP_PRIORITY_GROUPS=[
-  {id:'speed',       en:'Speed',                tr:'Sürat',               items:atpItems(['Acceleration','Max Velocity','Sprint Mechanics','Speed Exposure'])},
-  {id:'cod',         en:'Change of Direction',  tr:'Yön değiştirme',      items:atpItems(['Deceleration','Change of Direction','Lateral Movement','Braking Ability'])},
-  {id:'plyo',        en:'Plyometric / Reactive',tr:'Pliometrik / reaktif',items:atpItems(['Jump Ability','Reactive Strength','Elastic Strength','Landing Ability','Ankle Stiffness'])},
-  {id:'strength',    en:'Strength',             tr:'Kuvvet',              items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength','Relative Strength','Isometric Strength','Eccentric Strength'])},
-  {id:'power',       en:'Power',                tr:'Güç',                 items:atpItems(['Lower-Body Power','Upper-Body Power','Explosive Strength','Rate of Force Development'])},
-  {id:'movement',    en:'Movement',             tr:'Hareket',             items:atpItems(['Mobility','Stability','Coordination','Trunk Control'])},
-  {id:'conditioning',en:'Conditioning',         tr:'Kondisyon',           items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability','Work Capacity'])},
+  {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity','Sprint Mechanics','Speed Exposure'])},
+  {id:'cod',         en:'Change of Direction',  items:atpItems(['Deceleration','Change of Direction','Lateral Movement','Braking Ability'])},
+  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jump Ability','Reactive Strength','Elastic Strength','Landing Ability','Ankle Stiffness'])},
+  {id:'strength',    en:'Strength',             items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength','Relative Strength','Isometric Strength','Eccentric Strength'])},
+  {id:'power',       en:'Power',                items:atpItems(['Lower-Body Power','Upper-Body Power','Explosive Strength','Rate of Force Development'])},
+  {id:'movement',    en:'Movement',             items:atpItems(['Mobility','Stability','Coordination','Trunk Control'])},
+  {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability','Work Capacity'])},
 ];
 const ATP_PRI_LEVELS=[
-  {id:'primary',  en:'Primary',  ab:'PRI',dTr:'Sporcunun en önemli gelişim alanları.',dEn:'The athlete’s most important development areas.'},
-  {id:'secondary',en:'Secondary',ab:'SEC',dTr:'Geliştirilmesi önemli, ancak Primary seviyesinden daha düşük öncelikli alanlar.',dEn:'Important to develop, but below Primary.'},
-  {id:'maintain', en:'Maintain', ab:'MNT',dTr:'Mevcut kapasitenin korunması gereken alanlar.',dEn:'Areas where current capacity is to be kept.'},
+  {id:'primary',  en:'Primary',  ab:'PRI',abTr:'BİR',dTr:'Sporcunun en önemli gelişim alanları.',dEn:'The athlete’s most important development areas.'},
+  {id:'secondary',en:'Secondary',ab:'SEC',abTr:'İKİ',dTr:'Geliştirilmesi önemli, ancak Birincil seviyeden daha düşük öncelikli alanlar.',dEn:'Important to develop, but below Primary.'},
+  {id:'maintain', en:'Maintain', ab:'MNT',abTr:'KOR',dTr:'Mevcut kapasitenin korunması gereken alanlar.',dEn:'Areas where current capacity is to be kept.'},
 ];
 /* Trunk Control is not in the trunk list the profile was specified with, but it is the
    word the specification's own examples use for the trunk as a whole — so it heads
    that group instead of being a rating the coach has nowhere to put. */
 const ATP_MOVE_GROUPS=[
-  {id:'lower',   en:'Lower Body',       tr:'Alt vücut',      items:atpItems(['Squat','Hinge','Lunge','Unilateral','Knee Dominant','Hip Dominant','Ankle Function'])},
-  {id:'upper',   en:'Upper Body',       tr:'Üst vücut',      items:atpItems(['Horizontal Push','Horizontal Pull','Vertical Push','Vertical Pull'])},
-  {id:'athletic',en:'Athletic Movement',tr:'Atletik hareket',items:atpItems(['Acceleration','Deceleration','Jumping','Landing','Hopping','Sprinting','Lateral Movement','Change of Direction'])},
-  {id:'trunk',   en:'Trunk',            tr:'Gövde',          items:atpItems(['Trunk Control','Bracing','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Rotation'])},
-  {id:'general', en:'General Movement', tr:'Genel hareket',  items:atpItems(['Mobility','Stability','Coordination','Balance'])},
+  {id:'lower',   en:'Lower Body',       items:atpItems(['Squat','Hinge','Lunge','Unilateral','Knee Dominant','Hip Dominant','Ankle Function'])},
+  {id:'upper',   en:'Upper Body',       items:atpItems(['Horizontal Push','Horizontal Pull','Vertical Push','Vertical Pull'])},
+  {id:'athletic',en:'Athletic Movement',items:atpItems(['Acceleration','Deceleration','Jumping','Landing','Hopping','Sprinting','Lateral Movement','Change of Direction'])},
+  {id:'trunk',   en:'Trunk',            items:atpItems(['Trunk Control','Bracing','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Rotation'])},
+  {id:'general', en:'General Movement', items:atpItems(['Mobility','Stability','Coordination','Balance'])},
 ];
 const ATP_MV_STATUS=[
-  {id:'good',    en:'Good',    ab:'GOOD',dTr:'Yeterli veya güçlü kapasite.',dEn:'Adequate or strong capacity.'},
-  {id:'moderate',en:'Moderate',ab:'MOD', dTr:'Geliştirilebilir veya orta düzey kapasite.',dEn:'Developable, middling capacity.'},
-  {id:'limited', en:'Limited', ab:'LTD', dTr:'Belirgin şekilde sınırlı kapasite.',dEn:'Clearly limited capacity.'},
+  {id:'good',    en:'Good',    ab:'GOOD',abTr:'İYİ',    dTr:'Yeterli veya güçlü kapasite.',dEn:'Adequate or strong capacity.'},
+  {id:'moderate',en:'Moderate',ab:'MOD', abTr:'ORTA',   dTr:'Geliştirilebilir veya orta düzey kapasite.',dEn:'Developable, middling capacity.'},
+  {id:'limited', en:'Limited', ab:'LTD', abTr:'SINIRLI',dTr:'Belirgin şekilde sınırlı kapasite.',dEn:'Clearly limited capacity.'},
 ];
 const ATP_MV_PRIORITY=[
-  {id:'high',  en:'High',  ab:'HIGH',bars:3,dTr:'Önemli gelişim alanı.',dEn:'An important development area.'},
-  {id:'medium',en:'Medium',ab:'MED', bars:2,dTr:'Orta düzeyde öncelik.',dEn:'A middling priority.'},
-  {id:'low',   en:'Low',   ab:'LOW', bars:1,dTr:'Önemli bir sınırlılık veya öncelik bulunmuyor.',dEn:'No notable limitation or priority.'},
+  {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Önemli gelişim alanı.',dEn:'An important development area.'},
+  {id:'medium',en:'Medium',ab:'MED', abTr:'ORTA',  bars:2,dTr:'Orta düzeyde öncelik.',dEn:'A middling priority.'},
+  {id:'low',   en:'Low',   ab:'LOW', abTr:'DÜŞÜK', bars:1,dTr:'Önemli bir sınırlılık veya öncelik bulunmuyor.',dEn:'No notable limitation or priority.'},
 ];
 const ATP_CON_CATS=[
-  {id:'load',en:'Load',tr:'Yük'},{id:'volume',en:'Volume',tr:'Hacim'},{id:'intensity',en:'Intensity',tr:'Şiddet'},
-  {id:'speed',en:'Speed',tr:'Sürat'},{id:'impact',en:'Impact',tr:'Darbe'},{id:'movement',en:'Movement',tr:'Hareket'},
-  {id:'equipment',en:'Equipment',tr:'Ekipman'},{id:'contact',en:'Contact',tr:'Temas'},
+  {id:'load',en:'Load'},{id:'volume',en:'Volume'},{id:'intensity',en:'Intensity'},
+  {id:'speed',en:'Speed'},{id:'impact',en:'Impact'},{id:'movement',en:'Movement'},
+  {id:'equipment',en:'Equipment'},{id:'contact',en:'Contact'},
 ];
 /* `kind` is the list a constraint may sit on. A "No …" is a rule by its own wording and
    only goes on Hard; a "Prefer …" / "Limit …" is a lean and only goes on Soft; a cap, a
@@ -30248,16 +30417,16 @@ function atpRead(ath){
    it belongs to, the movement pattern(s) it trains, the athletic stimulus it delivers
    and how it loads the body; every layer is counted in sets over four windows. */
 const ATP_EXP_WINDOWS=[
-  {id:'last',en:'Last Session',tr:'Son seans', days:0},
-  {id:'d7',  en:'Last 7 Days', tr:'Son 7 gün', days:7},
-  {id:'d14', en:'Last 14 Days',tr:'Son 14 gün',days:14},
-  {id:'d28', en:'Last 28 Days',tr:'Son 28 gün',days:28},
+  {id:'last',en:'Last Session',days:0},
+  {id:'d7',  en:'Last 7 Days', days:7},
+  {id:'d14', en:'Last 14 Days',days:14},
+  {id:'d28', en:'Last 28 Days',days:28},
 ];
 const ATP_EXP_LEVELS=[
-  {id:'none',    en:'None / Not Recent',ab:'None',    dTr:'Yakın dönemde maruziyet bulunmuyor.',dEn:'No recent exposure.'},
-  {id:'low',     en:'Low',              ab:'Low',     dTr:'Düşük düzeyde maruziyet.',dEn:'Low exposure.'},
-  {id:'moderate',en:'Moderate',         ab:'Moderate',dTr:'Orta düzeyde maruziyet.',dEn:'Moderate exposure.'},
-  {id:'high',    en:'High',             ab:'High',    dTr:'Yakın dönemde yüksek maruziyet.',dEn:'High recent exposure.'},
+  {id:'none',    en:'None / Not Recent',ab:'None',    abTr:'Yok',   dTr:'Yakın dönemde maruziyet bulunmuyor.',dEn:'No recent exposure.'},
+  {id:'low',     en:'Low',              ab:'Low',     abTr:'Düşük', dTr:'Düşük düzeyde maruziyet.',dEn:'Low exposure.'},
+  {id:'moderate',en:'Moderate',         ab:'Moderate',abTr:'Orta',  dTr:'Orta düzeyde maruziyet.',dEn:'Moderate exposure.'},
+  {id:'high',    en:'High',             ab:'High',    abTr:'Yüksek',dTr:'Yakın dönemde yüksek maruziyet.',dEn:'High recent exposure.'},
 ];
 /* Sets that read as Moderate / High. A day window is read per week (sets × 7 / days),
    so a 7-day and a 28-day read mean the same thing; the last session is read as it
