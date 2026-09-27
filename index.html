@@ -4825,7 +4825,7 @@ header{background:var(--bg2)!important}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:480px;background:transparent;border:1px solid transparent;border-radius:6px;
-  padding:5px 9px;font-family:inherit;font-size:20px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em}
+  padding:5px 9px;font-family:inherit;font-size:20px;font-weight:800;font-style:italic;color:var(--blk-hd-ink);letter-spacing:.01em}
 .iv-block-nm::placeholder{color:var(--blk-hd-ink3)}
 .iv-block-nm:hover{border-color:rgba(160,205,255,.34)}
 .iv-block-nm:focus{background:var(--panel);border-color:var(--accent);color:var(--text);outline:none}
@@ -11177,7 +11177,7 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes){
   // Color per session purpose for left-border accent
   const colorOf=s=>{
     // Mirror live calendar logic: custom session color wins; otherwise loadType
-    if(s.color)return s.color;
+    if(s.color)return cardCol(s.color);
     const t=(s.loadType||'').toLowerCase();
     if(t.includes('mechanical'))return'#9aab3a';
     if(t.includes('metabolic'))return'#5b8cff';
@@ -15518,7 +15518,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const setMo=d=>setMonthRef(new Date(yr,mo+d,1));
   const goToday=()=>{const k=fmt(today);setSelected({year:today.getFullYear(),month:today.getMonth()+1,date:k});setMonthRef(new Date(today.getFullYear(),today.getMonth(),1));};
   // Session bar colour — identical to the weekly cards (custom s.color, else load-type colour).
-  const sesColor=s=>s.color||ltColor(ltCls(s.loadType));
+  const sesColor=s=>cardCol(s.color)||ltColor(ltCls(s.loadType));
   // Full weeks: pad leading days from the previous month and trailing from the next.
   const monthCells=(()=>{const first=new Date(yr,mo,1);const off=(first.getDay()+6)%7;const dim=new Date(yr,mo+1,0).getDate();const a=[];
     for(let i=off;i>0;i--)a.push({d:new Date(yr,mo,1-i),out:true});
@@ -15678,7 +15678,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             const _pats=sessionPatterns(s);
             return(<div key={s.id} className={`calw-ses ${s.color?'':ltCls(s.loadType)}${dragInfo?.sessionId===s.id?' dragging':''}`}
               draggable={canEdit}
-              style={s.color?{borderLeft:`3px solid ${s.color}`}:undefined}
+              style={s.color?{borderLeft:`3px solid ${cardCol(s.color)}`}:undefined}
               onMouseEnter={()=>setHovSes(s.id)}
               onMouseLeave={()=>setHovSes(null)}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});setHovSes(null);}}
@@ -16458,13 +16458,20 @@ function TrainStrip({block,session,u,isTemplate}){
    whole header bar — the change is a CSS transition on background-color, so the bar
    fades into its new colour rather than snapping. The colour also becomes the session's
    card colour on the calendar, as it did from the strip it used to live in. */
-const CARD_COLORS=['#0094ff','#fcd34d','#ff6b5b','#22c55e','#f97316','#a855f7','#22d3ee','#ec4899'];
+/* The palette sits a shade deeper than it first did — the brighter set glared across a
+   whole header bar. Cards saved with the earlier shades are read through CARD_COLOR_OLD,
+   so they deepen with the palette (and still light up their swatch) without rewriting data. */
+const CARD_COLORS=['#0070cc','#e0b020','#e04a3c','#16a34a','#ea580c','#9333ea','#0fb5cf','#db2777'];
+const CARD_COLOR_OLD={'#0094ff':'#0070cc','#fcd34d':'#e0b020','#ff6b5b':'#e04a3c','#22c55e':'#16a34a',
+  '#f97316':'#ea580c','#a855f7':'#9333ea','#22d3ee':'#0fb5cf','#ec4899':'#db2777'};
+const cardCol=c=>c&&CARD_COLOR_OLD[String(c).toLowerCase()]||c;
 function CardColorPick({value,onPick}){
+  value=cardCol(value);
   return(<span className="blk-color">
     <span className="blk-color-l">{L('Kart Rengi','Card Color')}</span>
     {CARD_COLORS.map(c=><button key={c} type="button" className={'blk-sw'+(value===c?' on':'')} style={{background:c}}
       onClick={()=>onPick(c)} title={c}/>)}
-    <input type="color" className="blk-sw-custom" value={value||'#0094ff'} onChange={e=>onPick(e.target.value)}
+    <input type="color" className="blk-sw-custom" value={value||CARD_COLORS[0]} onChange={e=>onPick(e.target.value)}
       title={L('Özel renk','Custom color')}/>
     <button type="button" className={'blk-sw-auto'+(value?'':' on')} onClick={()=>onPick('')}
       title={L('Varsayılan renge dön','Back to the default colour')}>{L('Otomatik','Auto')}</button>
@@ -16472,7 +16479,7 @@ function CardColorPick({value,onPick}){
 }
 /* The header's tint as the block's root carries it: `--blk-c` drives the bar's colour,
    and a light pick flips the bar's ink to dark so the title stays readable. */
-const blkTint=c=>c?{cls:' tinted'+(tmInk(c)==='#ffffff'?'':' lt'),style:{'--blk-c':c}}:{cls:'',style:undefined};
+const blkTint=c=>(c=cardCol(c))?{cls:' tinted'+(tmInk(c)==='#ffffff'?'':' lt'),style:{'--blk-c':c}}:{cls:'',style:undefined};
 function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,blockUpd,athUpd}){
   const[open,setOpen]=useState(true);
   return(<div className="blk-details">
