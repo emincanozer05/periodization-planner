@@ -86,7 +86,8 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview'];
+    'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead'];
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') + '\n';
   new Function(...names, code + tail)(
     bag, React, { createRoot: () => ({ render: noop }) }, doc, win, win.navigator, win.location,
@@ -866,6 +867,108 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('ağrı ızgarası: bugünkü + dünün kırmızısı, dünün sarısı yok', regs === 'Boyun@dün,Omuz@bugün', regs);
     check('ağrı ızgarası: ertesi gün bugünün sarı bölgesi de kayboluyor',
       A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
+  }
+
+  group('Ek — Athlete Training Profile: öncelikler, hareket profili, kısıtlar, maruziyet');
+  {
+    const row = (name, o) => Object.assign({ name, sets: '3', reps: '6' }, o || {});
+    const day = (date, name, rows, time) => ({ date, sessions: [{ name, time: time || '17:00', blocks: [{ name: 'Ana', exercises: rows }] }] });
+    const has = (arr, v) => (arr || []).includes(v);
+    // Sınıflama: aile, patern, uyaran ve yüklenme karakteri egzersizin kendisinden okunuyor.
+    const bss = A.atpClassify(row('Bulgarian Split Squat', { tempo: '3-1-1' }), libMap);
+    check('Bulgarian Split Squat: split squat ailesi, tek taraflı diz dominant, eksantrik',
+      bss.family === 'Split Squat Family' && has(bss.patterns, 'Knee Dominant') && has(bss.patterns, 'Unilateral Knee Dominant') &&
+      has(bss.patterns, 'Lunge') && !has(bss.patterns, 'Squat') && has(bss.loading, 'Eccentric Loading'), JSON.stringify(bss));
+    const rdl = A.atpClassify(row('Romanian Deadlift', { load: '%85 1RM', reps: '5' }), libMap);
+    check('RDL: hinge ailesi, kalça dominant + hinge, %85 ağır yüklenme',
+      rdl.family === 'Hinge Family' && has(rdl.patterns, 'Hip Dominant') && has(rdl.patterns, 'Hinge') && has(rdl.loading, 'Heavy Loading'),
+      JSON.stringify(rdl));
+    const box = A.atpClassify(row('Box Jump'), libMap);
+    check('Box Jump: sıçrama, pliometrik, balistik — squat seti sayılmıyor',
+      box.family === 'Jump Family' && has(box.stimuli, 'Jumping') && has(box.patterns, 'Plyometric') &&
+      has(box.loading, 'Ballistic') && !has(box.patterns, 'Squat'), JSON.stringify(box));
+    const fly = A.atpClassify(row('Flying 30m Sprint'), libMap);
+    check('Flying sprint: maksimal hız, ivmelenme değil', has(fly.stimuli, 'Max Velocity') && !has(fly.stimuli, 'Acceleration') &&
+      has(fly.loading, 'High-Velocity'), JSON.stringify(fly));
+    const pull = A.atpClassify(row('Lat Pulldown'), libMap);
+    const press = A.atpClassify(row('DB Bench Press'), libMap);
+    check('üst vücut: dikey çekiş ve yatay itiş', has(pull.patterns, 'Vertical Pull') && has(press.patterns, 'Horizontal Push'),
+      JSON.stringify([pull.patterns, press.patterns]));
+    const tagged = A.atpClassify(row('Özel Hareket', { pattern: 'Core', plane: 'Anti-Rotation' }), libMap);
+    check('satırdaki patern etiketi isimden önce geliyor', has(tagged.patterns, 'Anti-Rotation'), JSON.stringify(tagged));
+
+    // Maruziyet: takvimden, pencereler referans gününe göre; bugünün seansı sayılmıyor.
+    const days = {};
+    [[back(1), 'Kuvvet A', [row('Bulgarian Split Squat', { sets: '4' }), row('Box Jump', { sets: '4', reps: '5' }), row('Lat Pulldown')]],
+     [back(3), 'Kuvvet B', [row('Bulgarian Split Squat', { sets: '4' }), row('Romanian Deadlift', { load: '%85 1RM', reps: '5' })]],
+     [back(5), 'Kuvvet C', [row('Bulgarian Split Squat', { sets: '4' }), row('Box Jump', { sets: '4', reps: '5' })]],
+     [back(20), 'Sprint', [row('Flying 30m Sprint', { sets: '4', reps: '1' })]],
+     [TODAY, 'Bugün', [row('Goblet Squat')]]].forEach(([d, n, r]) => { days[d] = day(d, n, r); });
+    const ath = athlete({ days,
+      trainingProfile: {
+        priorities: { acceleration: 'primary', lower_body_strength: 'primary', deceleration: 'secondary', upper_body_strength: 'maintain' },
+        movement: { squat: { status: 'good', priority: 'low' }, landing: { status: 'limited', priority: 'high' } },
+        constraints: {
+          hard: [{ id: 'no_max_sprint' }, { id: 'limited_knee_flex', value: 'maks 90°', note: 'sol diz' }],
+          soft: [{ id: 'prefer_unilateral' }, { id: 'no_max_sprint' }, { id: 'c_x1', label: 'Sıçramaları yumuşak zeminde yap', cat: 'impact' }],
+        },
+        updated: back(2),
+      } });
+    const exp = A.atpExposure(ath, back(1), { libMap });
+    const bssE = exp.exercises.find(t => t.label === 'Bulgarian Split Squat');
+    check('egzersiz maruziyeti: son seans, 7 gün, sıklık ve son kullanım',
+      exp.last && exp.last.date === back(1) && bssE && bssE.sets.last === 4 && bssE.sets.d7 === 12 && bssE.freq28 === 3 &&
+      bssE.lastUsed === back(1) && bssE.level.d7 === 'high' && bssE.level.last === 'high', JSON.stringify(bssE));
+    const pat = id => exp.patterns.find(t => t.label === id);
+    check('patern maruziyeti: tek taraflı diz yüksek, dikey itiş yok',
+      pat('Unilateral Knee Dominant').level.d7 === 'high' && pat('Vertical Push').level.d28 === 'none' &&
+      pat('Hinge').level.d7 === 'low', JSON.stringify([pat('Unilateral Knee Dominant').level, pat('Hinge').level]));
+    const stim = id => exp.stimuli.find(t => t.label === id);
+    check('uyaran maruziyeti: maksimal hız 7 günde yok, 28 günde var',
+      stim('Max Velocity').level.d7 === 'none' && stim('Max Velocity').sets.d28 === 4 && stim('Jumping').level.d7 !== 'none',
+      JSON.stringify(stim('Max Velocity')));
+
+    const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    const ap = snap.antrenman_profili;
+    check('JSON: antrenman_profili sporcunun hemen ardından', !!ap && Object.keys(snap).indexOf('antrenman_profili') === Object.keys(snap).indexOf('sporcu') + 1,
+      Object.keys(snap).join(','));
+    check('JSON: öncelikler seviyelerine göre',
+      ap.antrenman_oncelikleri.primary.join('|') === 'Acceleration|Lower-Body Strength' &&
+      ap.antrenman_oncelikleri.secondary.join('|') === 'Deceleration' && ap.antrenman_oncelikleri.maintain.join('|') === 'Upper-Body Strength',
+      JSON.stringify(ap.antrenman_oncelikleri));
+    const land = ap.hareket_profili.hareketler.find(h => h.hareket === 'Landing');
+    check('JSON: hareket profili durum / öncelik', land && land.durum === 'Limited' && land.oncelik === 'High' && land.grup === 'Athletic Movement',
+      JSON.stringify(ap.hareket_profili));
+    check('JSON: hard ve soft ayrı — iki listede birden olan kısıt yalnızca hard\'da',
+      ap.kisitlar.hard.map(c => c.kisit).join('|') === 'No Maximal Sprint|Limited Knee Flexion' &&
+      ap.kisitlar.hard[1].deger === 'maks 90°' && ap.kisitlar.hard[1].not === 'sol diz' &&
+      ap.kisitlar.soft.map(c => c.kisit).join('|') === 'Prefer Unilateral|Sıçramaları yumuşak zeminde yap' &&
+      ap.kisitlar.soft[1].kategori === 'Impact', JSON.stringify(ap.kisitlar));
+    const em = ap.egzersiz_maruziyeti;
+    check('JSON: maruziyet programlanan günden önce biter (bugünün seansı yok)',
+      em.pencere_bitis === back(1) && !em.egzersiz.some(e => e.egzersiz === 'Goblet Squat') &&
+      em.son_seans.tarih === back(1) && em.seans_sayisi.son_7_gun === 3, JSON.stringify(em.son_seans));
+    const bssJ = em.egzersiz.find(e => e.egzersiz === 'Bulgarian Split Squat');
+    check('JSON: egzersiz kaydı aile, patern, son kullanım, sıklık ve dört pencere taşıyor',
+      bssJ && bssJ.aile === 'Split Squat Family' && bssJ.hareket_paterni.includes('Unilateral Knee Dominant') &&
+      bssJ.son_kullanim === back(1) && bssJ.siklik_28_gun === 3 && bssJ.maruziyet.son_7_gun === 'High' &&
+      Object.keys(bssJ.maruziyet).join(',') === 'son_seans,son_7_gun,son_14_gun,son_28_gun', JSON.stringify(bssJ));
+    check('JSON: maruziyeti olmayan paternler ayrı listede',
+      em.hareket_paterni.son_28_gunde_maruziyet_yok.includes('Vertical Push') &&
+      em.hareket_paterni.kayitlar.some(k => k.ad === 'Knee Dominant'), JSON.stringify(em.hareket_paterni.son_28_gunde_maruziyet_yok));
+    check('JSON: görev antrenman profilini ve hard kısıtları anlatıyor', snap.gorev.some(g => /antrenman_profili/.test(g) && /kisitlar\.hard/.test(g)));
+    check('JSON: profil doluyken eksik veri sayılmıyor, boş alan yok',
+      !(snap.eksik_veriler || []).some(x => /antrenman profili|training profile/.test(x)) &&
+      !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
+    const bare = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('JSON: profil boşsa eksik_veriler bunu söylüyor', (bare.eksik_veriler || []).some(x => /antrenman profili|training profile/.test(x)),
+      JSON.stringify(bare.eksik_veriler));
+    const squad = A.diSquadSnapshot({ items: [{ ath, instr: A.diInstr(null, { duration: null }) }], setup: SETUP, date: TODAY, customTests: [], libMap });
+    check('toplu JSON: her sporcu kendi antrenman profilini taşıyor',
+      !!squad.sporcular[0].antrenman_profili && squad.sporcular[0].antrenman_profili.antrenman_oncelikleri.primary.length === 2);
+    const rd = A.atpRead({ trainingProfile: { constraints: { hard: [{ id: 'no_contact' }, { id: 'bogus' }, null], soft: 'x' } } });
+    check('kayıtlı profil savunmacı okunuyor', rd.constraints.hard.length === 1 && rd.constraints.soft.length === 0 &&
+      typeof rd.priorities === 'object', JSON.stringify(rd));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
