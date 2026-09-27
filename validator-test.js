@@ -334,6 +334,14 @@ group('8 — Antrenör talimatı');
   check('dolu "maks egzersiz" → SERT ihlal', vFull.hardViolations.some(h => h.rule === 22), hardText(vFull));
   const vDur = validate(aiReply(six), ath, { rawInstr: { duration: 20, durationSet: true } });
   check('dolu "seans süresi" → SERT ihlal', vDur.hardViolations.some(h => h.rule === 21), hardText(vDur));
+  // sınır tüm seansı kapsar: ana fazda 2 + hazırlıkta 2 = 4 egzersiz, sınır 3 → ihlal
+  const phased = aiReply(null, { program: { seans_adi: 'Alt vücut kuvvet', bloklar: [
+    { ad: 'Hazırlık', faz: 'hazirlik', egzersizler: six.slice(3) },
+    { ad: 'Ana', faz: 'ana', egzersizler: six.slice(0, 2) }] } });
+  const vPhased = validate(phased, ath, { rawInstr: { maxExercises: 3, maxExercisesSet: true } });
+  check('"maks egzersiz" tüm fazları sayıyor (hazırlık dahil)', vPhased.hardViolations.some(h => h.rule === 22), hardText(vPhased));
+  const vPhasedOk = validate(phased, ath, { rawInstr: { maxExercises: 4, maxExercisesSet: true } });
+  check('toplam sınırın içindeki seans kural 22\'ye takılmıyor', !vPhasedOk.hardViolations.some(h => h.rule === 22), hardText(vPhasedOk));
   const vDerived = validate(aiReply(six), ath, { rawInstr: { maxExercises: 3, duration: 60 } });
   check('türetilmiş (koçun yazmadığı) tavan SERT ihlal DEĞİL, uyarı',
     vDerived.status === 'pass' && vDerived.softWarnings.some(w => /türetilen|derived/i.test(w.text)),
@@ -678,7 +686,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('antrenör talimatı istekteki biçimle aynı (boş alanlar hariç)',
       Object.keys(snap.antrenor_talimati).every(k => JSON.stringify(snap.antrenor_talimati[k]) === JSON.stringify(brief[k])) &&
       snap.antrenor_talimati.mutlaka_olsun[0] === 'Calf Raise' && snap.antrenor_talimati.kacinilacak[0] === 'derin squat' &&
-      snap.antrenor_talimati.ana_faz_maks_egzersiz === 8 && snap.antrenor_talimati.ek_notlar === 'Yarın maç var',
+      snap.antrenor_talimati.seans_maks_egzersiz === 8 && snap.antrenor_talimati.ek_notlar === 'Yarın maç var',
       JSON.stringify(snap.antrenor_talimati));
     check('boş alanlar çıktıya girmiyor', !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
     /* Her basış o anki veriden: yeni bir check-in ve yeni bir not bir sonraki çıktıda. */
