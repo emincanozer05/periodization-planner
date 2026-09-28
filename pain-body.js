@@ -214,9 +214,31 @@
       T.push(a, b, mbc2, a, mbc2, mac); R.push(rid[a], rid[a]);
       T.push(mac, mbc2, c); R.push(rid[c]);
     }
+    /* Dört bölgenin buluştuğu dörtgen (orta çizgi göğüs altını kesiyor: sağ/sol göğüs,
+       sağ/sol kaburga). İki üçgene bölününce her birinde ayrı bir üçlü kavşak doğuyor
+       ve haç yerine yuvarlanmış, kaymış bir köşe çıkıyor. Bunun yerine dörtgen iki
+       sınır çizgisinin (karşılıklı kenarların kesim noktalarını birleştiren iki
+       doğrunun) kesiştiği noktadan dörde bölünüyor: dört köşe, dört dörtte bir. */
+    function quad4(v) {
+      var m = [mid(v[0], v[1]), mid(v[1], v[2]), mid(v[2], v[3]), mid(v[3], v[0])], p = S.p, cc = S.add(), j;
+      // m0–m2 ile m1–m3 doğrularının birbirine en yakın noktalarının ortası.
+      var a = m[0] * 3, b = m[2] * 3, c = m[1] * 3, e = m[3] * 3, u = [], w = [], r = [];
+      for (j = 0; j < 3; j++) { u.push(p[b + j] - p[a + j]); w.push(p[e + j] - p[c + j]); r.push(p[a + j] - p[c + j]); }
+      var uu = u[0] * u[0] + u[1] * u[1] + u[2] * u[2], uw = u[0] * w[0] + u[1] * w[1] + u[2] * w[2], ww = w[0] * w[0] + w[1] * w[1] + w[2] * w[2];
+      var ur = u[0] * r[0] + u[1] * r[1] + u[2] * r[2], wr = w[0] * r[0] + w[1] * r[1] + w[2] * r[2], den = uu * ww - uw * uw;
+      var sP = den > 1e-16 ? clamp((uw * wr - ww * ur) / den, 0, 1) : 0.5, tP = den > 1e-16 ? clamp((uu * wr - uw * ur) / den, 0, 1) : 0.5;
+      for (j = 0; j < 3; j++) p[cc * 3 + j] = ((p[a + j] + u[j] * sP) + (p[c + j] + w[j] * tP)) / 2;
+      for (j = 0; j < NA; j++) S.a[cc * NA + j] = (S.a[v[0] * NA + j] + S.a[v[1] * NA + j] + S.a[v[2] * NA + j] + S.a[v[3] * NA + j]) / 4;
+      for (j = 0; j < 4; j++) {
+        seg.push(m[j], cc);
+        T.push(v[j], m[j], cc, v[j], cc, m[(j + 3) % 4]); R.push(rid[v[j]], rid[v[j]]);
+      }
+    }
     for (i = 0; i < d.nq; i++) {
       var q0 = d.quads[i * 4], q1 = d.quads[i * 4 + 1], q2 = d.quads[i * 4 + 2], q3 = d.quads[i * 4 + 3];
-      if (d.diag[i >> 3] & (1 << (i & 7))) { tri(q0, q1, q3); tri(q1, q2, q3); }
+      var r0 = rid[q0], r1 = rid[q1], r2 = rid[q2], r3 = rid[q3];
+      if (r0 !== r1 && r0 !== r2 && r0 !== r3 && r1 !== r2 && r1 !== r3 && r2 !== r3) quad4([q0, q1, q2, q3]);
+      else if (d.diag[i >> 3] & (1 << (i & 7))) { tri(q0, q1, q3); tri(q1, q2, q3); }
       else { tri(q0, q1, q2); tri(q0, q2, q3); }
     }
     for (i = 0; i < d.nt; i++) tri(d.tris[i * 3], d.tris[i * 3 + 1], d.tris[i * 3 + 2]);
@@ -651,20 +673,21 @@
     return loading;
   }
 
-  /* Hızlı yakınlaşma: referans görseldeki "baş ve boyun / el / diz / ayak" kutuları
-     gibi, bir de gövde. Aynı düğmeye yeniden basınca ikinci görünüm: ense, sırt,
-     öbür el, dizlerin ve ayakların arkası. [yaw, pitch, hedef x, y, z, yükseklik (m), genişlik (m)] */
+  /* Hızlı yakınlaşma: baş ve boyun / gövde / el / bacak / ayak. Aynı düğmeye yeniden
+     basınca ikinci görünüm: ense, sırt, öbür el, bacakların ve ayakların arkası. [yaw, pitch, hedef x, y, z, yükseklik (m), genişlik (m)] */
   function zonePresets(J) {
     var hand = function (s) {
       var w = J['wrist.' + s], sx = s === 'L' ? 1 : -1;
       return [sx * 0.62, 0.1, w[0] + sx * 0.004, w[1] - 0.1, w[2] + 0.02, 0.34, 0.2];
     };
-    var knee = J['lowerleg01.L'][1] + 0.025, ank = J['foot.L'];
+    var ank = J['foot.L'], hip = J['upperleg01.L'][1];
+    // Bacak: kalçadan ayak tabanına iki bacak birden, dizin tek başına değil.
+    var legTop = hip + 0.08, legY = legTop / 2, legH = legTop + 0.06;
     return {
       head: [[0, 0.04, 0, 1.63, 0.02, 0.44, 0.3], [Math.PI, 0.04, 0, 1.6, 0, 0.46, 0.3]],
       trunk: [[0, 0.04, 0, 1.2, 0.03, 0.64, 0.56], [Math.PI, 0.04, 0, 1.2, -0.03, 0.64, 0.56]],
       hand: [hand('R'), hand('L')],
-      knee: [[0, 0.02, 0, knee, 0.03, 0.40, 0.44], [Math.PI, 0.02, 0, knee, 0.0, 0.40, 0.44]],
+      leg: [[0, 0.02, 0, legY, 0.02, legH, 0.6], [Math.PI, 0.02, 0, legY, 0.0, legH, 0.6]],
       foot: [[0.22, 0.32, 0, ank[1] - 0.02, ank[2] + 0.05, 0.26, 0.46], [Math.PI - 0.22, 0.2, 0, ank[1] + 0.005, ank[2] - 0.03, 0.26, 0.46]]
     };
   }
@@ -1225,7 +1248,7 @@
     }
     function reset() { view('front'); }
     function zoom(f) { goal.dist *= f; clampGoal(); clearZone(); requestRender(); }
-    /* Hızlı yakınlaşma (baş / el / diz / ayak). Aynı düğmeye yeniden basmak o
+    /* Hızlı yakınlaşma (baş / gövde / el / bacak / ayak). Aynı düğmeye yeniden basmak o
        bölgenin ikinci görünümüne geçiyor. Hangi görünümde olunduğu dönüyor. */
     function zone(name) {
       var Z = ZONES[name]; if (!Z) return -1;

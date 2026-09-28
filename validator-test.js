@@ -768,6 +768,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const badRegion = PB.REGIONS.filter(r => A.painRegionEn(r.k) !== r.en).map(r => r.k);
     check('ağrı bölgesi çevirisi pain-body.js kataloğunun tamamıyla aynı', PB.REGIONS.length > 60 && badRegion.length === 0,
       badRegion.join(', '));
+    /* Anahtarlar İngilizce, ama modelin yazdığı açıklamalar takvime ve çıktıya olduğu gibi
+       geçer: yanıtın dili arayüzün dili. */
+    const enSnap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [], libMap });
+    check('JSON: yanıt dili arayüz diliyle aynı', trSnap.response_language === 'Turkish' && enSnap.response_language === 'English' &&
+      trSnap.task.some(g => /response_language/.test(g) && /rationale/.test(g)), trSnap.response_language + ' / ' + enSnap.response_language);
     check('dil anahtarı JSON\'dan sonra eski haline dönüyor', A.inTurkish(() => { A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [] }); return A.L('tr', 'en'); }) === 'tr');
   }
 
@@ -915,7 +920,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('toplu JSON: her sporcu kendi verisi ve talimatıyla, ortak kısımlar bir kez',
       sq.athlete_count === 2 && sq.athletes.length === 2 && sq.athletes[0].athlete.id === 'a1' &&
       sq.athletes[1].sleep.latest_value === 2 && sq.athletes[1].coach_brief.additional_notes === 'Yalnız üst vücut' &&
-      !('task' in sq.athletes[0]) && !('output_format' in sq.athletes[0]) && !('equipment' in sq.athletes[0]) &&
+      !('task' in sq.athletes[0]) && !('response_language' in sq.athletes[0]) && sq.response_language === 'English' && !('output_format' in sq.athletes[0]) && !('equipment' in sq.athletes[0]) &&
       Array.isArray(sq.task) && Array.isArray(sq.output_format.programs) && !!sq.equipment && sq.session_day.date === TODAY,
       Object.keys(sq).join(','));
     /* Şemadaki biçimde (programs / athlete_id / athlete_name) yazılmış toplu yanıt. */
