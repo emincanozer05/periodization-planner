@@ -714,6 +714,12 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       lim.available_patterns.includes('Hinge') && !!lim.available_patterns_note, JSON.stringify(lim.available_patterns));
     check('FMS toplamı ölçülen hareketlere göre', snap.tests.fms.max === 6 && snap.tests.fms.complete === false && !!snap.tests.fms.note,
       JSON.stringify(snap.tests.fms));
+    check('JSON kökünde session_day.date tekrarı yok; şemada egzersiz RPE alanı var',
+      !('date' in snap) && !!snap.session_day.date && !!snap.output_format.program.blocks[0].exercises[0].rpe);
+    const withRpe = A.diParseExternalProgram(JSON.stringify({ program: { session_name: 'X', blocks: [{ name: 'Ana', phase: 'main',
+      exercises: [{ name: 'Trap Bar Deadlift', sets: '3', reps: '5', rpe: '7', rationale: 'Hinge strength.' }] }] } }), libMap);
+    const rpeRow = A.diProgramPlan(A.buildIndivPlan({ id: 's1', name: 'T', time: '09:00', duration: 60, blocks: [] }, ath, { ref: TODAY, ovr: {} }), withRpe, 0).blocks[0].rows[0];
+    check('modelin yazdığı RPE takvim satırının RPE sütununa gidiyor', rpeRow.rpe === '7', JSON.stringify(rpeRow));
     check('görev: güvenlik koç talimatından önce', snap.task.some(g => /^Safety comes first/.test(g) && /flagged_conflicts/.test(g)));
     check('maruziyet takım antrenmanını saymadığını söylüyor', /Team practice and games are not in it/.test(snap.training_profile.exercise_exposure.scope || ''));
     check('maç takvimi yoksa missing_data söylüyor', (snap.missing_data || []).some(m => /^game schedule/.test(m)), JSON.stringify(snap.missing_data));
