@@ -36,7 +36,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- Ağrı haritasının bölge kataloğu ve 3D modeli. Three.js'i kendisi, yalnızca
      Wellness formu açılınca yüklüyor; RPE formu bu dosyadan hiçbir şey indirmiyor. -->
-<script src="pain-body.js?v=3"></script>
+<script src="pain-body.js?v=4"></script>
 <style>
 /* Uygulamanın kendi değişkenleri (index.html :root). Form, sitenin devamı gibi
    görünsün diye renk, yazı tipi ve panel dili birebir oradan alınıyor — sporcunun
@@ -441,7 +441,7 @@ var I18N={
     pb_drag_full:'Çevir · iki parmakla yakınlaştır · bölgeye dokun',
     pb_drag_mouse:'Sürükleyerek çevir · bölgeye tıkla · Ctrl + tekerlek yakınlaştırır',
     pb_front:'Ön',pb_back:'Arka',pb_right:'Sağ',pb_left:'Sol',pb_R:'SAĞ',pb_L:'SOL',
-    pb_zones:'Yakınlaş',pb_z_head:'Baş',pb_z_hand:'El',pb_z_knee:'Diz',pb_z_foot:'Ayak',
+    pb_zones:'Yakınlaş',pb_z_head:'Baş',pb_z_trunk:'Gövde',pb_z_hand:'El',pb_z_knee:'Diz',pb_z_foot:'Ayak',
     pb_zin:'Yakınlaştır',pb_zout:'Uzaklaştır',pb_reset:'Baştan göster',pb_full:'Tam ekran',pb_exit:'Tam ekrandan çık',
     pb_tap:'Ağrıyan bölgeye dokun ya da listeden seç',pb_list_ph:'— Listeden bölge seç —',
     pb_pick_sev:'Ağrının şiddetini seç',pb_clear:'Kaldır',pb_close:'Kapat',
@@ -503,7 +503,7 @@ var I18N={
     pb_drag_full:'Turn · pinch to zoom · tap a region',
     pb_drag_mouse:'Drag to turn · click a region · Ctrl + wheel zooms',
     pb_front:'Front',pb_back:'Back',pb_right:'Right',pb_left:'Left',pb_R:'RIGHT',pb_L:'LEFT',
-    pb_zones:'Zoom to',pb_z_head:'Head',pb_z_hand:'Hand',pb_z_knee:'Knee',pb_z_foot:'Foot',
+    pb_zones:'Zoom to',pb_z_head:'Head',pb_z_trunk:'Trunk',pb_z_hand:'Hand',pb_z_knee:'Knee',pb_z_foot:'Foot',
     pb_zin:'Zoom in',pb_zout:'Zoom out',pb_reset:'Reset view',pb_full:'Full screen',pb_exit:'Exit full screen',
     pb_tap:'Tap where it hurts, or pick from the list',pb_list_ph:'— Pick a region from the list —',
     pb_pick_sev:'Pick how bad it is',pb_clear:'Remove',pb_close:'Close',
@@ -537,7 +537,7 @@ var I18N={
 function T(k){var d=I18N[LANG]||I18N.tr;return d[k]!=null?d[k]:(I18N.tr[k]!=null?I18N.tr[k]:k);}
 document.documentElement.lang=LANG;
 
-/* Ağrı bölgeleri pain-body.js'teki katalogdan geliyor (72 bölge, sağ/sol ayrı). Bölge
+/* Ağrı bölgeleri pain-body.js'teki katalogdan geliyor (74 bölge, sağ/sol ayrı). Bölge
    adı VERİ — gönderime hep Türkçe gidiyor ('Sağ diz önü'); İngilizce yalnızca ekrandaki
    karşılığı. Modelde olmayan bir yer "Diğer: <sporcunun yazdığı>" olarak gidiyor. */
 var PAIN_OTHER='Diğer: ';
@@ -840,7 +840,7 @@ function painBody(){
   ui.zones=el('div',{class:'pb-zones',role:'group','aria-label':T('pb_zones')});
   ui.zonebar=el('div',{class:'pb-zonebar'},[el('span',{class:'pb-zonebar-l',text:T('pb_zones')}),ui.zones]);
   ui.zoneBtns={};
-  [['head','pb_z_head'],['hand','pb_z_hand'],['knee','pb_z_knee'],['foot','pb_z_foot']].forEach(function(z){
+  [['head','pb_z_head'],['trunk','pb_z_trunk'],['hand','pb_z_hand'],['knee','pb_z_knee'],['foot','pb_z_foot']].forEach(function(z){
     var b=el('button',{type:'button',text:T(z[1]),onclick:function(){
       if(!PB.viewer)return;
       if(!PB.hinted&&PB.ui){PB.hinted=true;PB.ui.hint.classList.add('gone');}

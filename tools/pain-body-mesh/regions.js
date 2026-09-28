@@ -1,4 +1,4 @@
-/* Bölge kuralları: mankenin her köşesi 72 bölgeden hangisine düşüyor.
+/* Bölge kuralları: mankenin her köşesi 74 bölgeden hangisine düşüyor.
 
    İki adım:
    1) Parça: MakeHuman'ın deri ağırlıkları köşenin hangi kemiğe bağlı olduğunu
@@ -7,7 +7,8 @@
       zikzak yapmasın.
    2) Bölge: parçanın içinde geometriyle — gövdede yükseklik ve gövde eksenine göre
       açı (0° ön, 90° yan, 180° arka), kolda omuzdan bileğe olan mesafe, bacakta
-      yükseklik ve bacak eksenine göre açı (dışa doğru pozitif). Eşikler eski
+      yükseklik ve bacak eksenine göre açı (dışa doğru pozitif). Göğüs ve üst
+      sırt, kaburga gibi orta çizgiden sağ ve sol olarak ikiye ayrılıyor. Eşikler eski
       tüp modelinin bölgeleriyle aynı anlamda; referans görselin düzenine göre
       (göğüs, kaburga, karın, omuz başı…) ayarlandı.
 
@@ -96,6 +97,40 @@ function sliceCenters(P, idx, lo, hi, step) {
   return y => { const t = Math.max(0, Math.min(n - 1, (y - lo) / step)), k = Math.min(n - 2, Math.floor(t)), f = t - k; return [X[k] + (X[k + 1] - X[k]) * f, Z[k] + (Z[k + 1] - Z[k]) * f]; };
 }
 
+/* Bacağın ekseni: dilim ortalarına (x, z) y'nin üçüncü derece polinomu olarak en
+   küçük kareler uydurması. Dilim ortaları kas kabartılarıyla santim santim
+   oynuyordu; ekseni onlardan alınca bacaktaki dikey bölge çizgileri de
+   oynuyor, girintili çıkıntılı görünüyordu. Pürüzsüz eksenden ölçülen sabit
+   açı, yüzeyi düz ve yumuşak bir çizgiden kesiyor. Uydurma aralığının dışında
+   eksen uçtaki değerinde kalıyor. */
+function legAxis(P, idx, lo, hi, step) {
+  const n = Math.round((hi - lo) / step) + 1, sx = new Float64Array(n), sz = new Float64Array(n), c = new Float64Array(n);
+  for (const i of idx) { const k = Math.round((P[i * 3 + 1] - lo) / step); if (k < 0 || k >= n) continue; sx[k] += P[i * 3]; sz[k] += P[i * 3 + 2]; c[k]++; }
+  const D = 4, M = Array.from({ length: D }, () => new Float64Array(D)), bx = new Float64Array(D), bz = new Float64Array(D);
+  const u = y => (y - (lo + hi) / 2) / ((hi - lo) / 2);
+  for (let k = 0; k < n; k++) {
+    if (!c[k]) continue;
+    const t = u(lo + k * step), pw = [1, t, t * t, t * t * t], X = sx[k] / c[k], Z = sz[k] / c[k];
+    for (let a = 0; a < D; a++) { bx[a] += pw[a] * X; bz[a] += pw[a] * Z; for (let b = 0; b < D; b++) M[a][b] += pw[a] * pw[b]; }
+  }
+  function solve(b0) {
+    const A = M.map(r => Array.from(r)), b = Array.from(b0);
+    for (let i = 0; i < D; i++) {
+      let pv = i; for (let r = i + 1; r < D; r++) if (Math.abs(A[r][i]) > Math.abs(A[pv][i])) pv = r;
+      [A[i], A[pv]] = [A[pv], A[i]]; [b[i], b[pv]] = [b[pv], b[i]];
+      for (let r = i + 1; r < D; r++) { const f = A[r][i] / A[i][i]; for (let q = i; q < D; q++) A[r][q] -= f * A[i][q]; b[r] -= f * b[i]; }
+    }
+    const x = new Array(D).fill(0);
+    for (let i = D - 1; i >= 0; i--) { let v = b[i]; for (let q = i + 1; q < D; q++) v -= A[i][q] * x[q]; x[i] = v / A[i][i]; }
+    return x;
+  }
+  const cx = solve(bx), cz = solve(bz);
+  const ev = (co, t) => co[0] + t * (co[1] + t * (co[2] + t * co[3]));
+  return y => { const t = Math.max(-1, Math.min(1, u(y))); return [ev(cx, t), ev(cz, t)]; };
+}
+// 0 → 1 arası yumuşak geçiş (a'da 0, b'de 1).
+function smooth01(y, a, b) { const t = Math.max(0, Math.min(1, (y - a) / (b - a))); return t * t * (3 - 2 * t); }
+
 function classify(m) {
   // Yüzeyler: dörtgenler + yüz yamasının üçgenleri (face.js).
   const { P, J, W } = m, quads = m.quads.concat(m.tris || []), nv = P.length / 3;
@@ -116,8 +151,8 @@ function classify(m) {
   const mid = all.filter(i => /^(torso|shoulder)/.test(seg[i]) && Math.abs(P[i * 3]) < 0.04);
   const zFront = sliceCenters(P, mid.filter(i => P[i * 3 + 2] > 0), 0.75, 1.6, 0.01);
   const zBack = sliceCenters(P, mid.filter(i => P[i * 3 + 2] <= 0), 0.75, 1.6, 0.01);
-  const legC = { L: sliceCenters(P, all.filter(i => seg[i] === 'legL'), 0.05, 1.0, 0.01),
-                 R: sliceCenters(P, all.filter(i => seg[i] === 'legR'), 0.05, 1.0, 0.01) };
+  const legC = { L: legAxis(P, all.filter(i => seg[i] === 'legL'), ANKLE + 0.02, 0.86, 0.01),
+                 R: legAxis(P, all.filter(i => seg[i] === 'legR'), ANKLE + 0.02, 0.86, 0.01) };
   const armChain = s => [j('upperarm01.' + s), j('lowerarm01.' + s), j('wrist.' + s), jt('metacarpal3.' + s)];
   const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const sElbow = s => dist3(j('lowerarm01.' + s), j('upperarm01.' + s));
@@ -158,46 +193,60 @@ function classify(m) {
     const ab = Math.abs(phi), ax = Math.abs(x);
     const PEC = 1.262, RIB = 1.085, CREST = 0.995;        // göğüs altı, kaburga altı, leğen kemiği
     if (y >= 1.325) {                                      // koltuk altlarının üstü: göğüs | üst sırt
-      if (ab < 90) return y >= PEC ? 'Göğüs' : S(side, 'kaburga');
-      return 'Üst sırt';
+      if (ab < 90) return y >= PEC ? S(side, 'göğüs') : S(side, 'kaburga');
+      return S(side, 'üst sırt');
     }
     if (ab >= 122) {                                       // sırt
-      if (y >= 1.262) return 'Üst sırt';
+      if (y >= 1.262) return S(side, 'üst sırt');
       if (y >= RIB) return 'Orta sırt';
       if (y >= CREST) return 'Alt sırt / bel';
       if (ab >= 157) return 'Sakrum / kuyruk sokumu';
       return S(side, 'kalça');
     }
     if (ab >= 80) return y >= CREST ? S(side, 'yan gövde') : S(side, 'kalça');   // yan
-    if (y >= PEC) return y >= 1.30 || ax < 0.16 ? 'Göğüs' : S(side, 'yan gövde');
+    if (y >= PEC) return y >= 1.30 || ax < 0.16 ? S(side, 'göğüs') : S(side, 'yan gövde');
     // Karnın üst yarısı, orta çizgiden ikiye (referans görseldeki "Kaburga").
     if (y >= RIB) return S(side, 'kaburga');
     // Bel bandının altı, iki kasık çizgisi arasında kalan üçgen: kasık.
     return y >= waistY(x, z) ? 'Karın' : S(side, 'kasık');
   }
+  /* Bacaktaki dikey sınırların açısı yükseklikle yumuşakça değişiyor: uylukta,
+     dizde, alt bacakta ve ayak bileğinde ayrı değerler var ama birinden
+     ötekine basamakla değil, yatay çizginin iki yanında kademeli geçiliyor.
+     Önceden her bölmede açı birden değişiyordu; dikey çizgiler yatay çizgide
+     yana kayıp kırık bir hat çiziyordu. [uyluk, diz, alt bacak, ayak bileği] */
+  const LEG_ANG = { fo: [50, 45, 42, 55], fi: [-50, -45, -38, -55], ob: [118, 135, 128, 135], ib: [-118, -135, -128, -135] };
+  function legAng(key, y) {
+    const v = LEG_ANG[key];
+    const a = v[2] + (v[3] - v[2]) * (1 - smooth01(y, ANKLE + 0.01, ANKLE + 0.11));   // alt bacak ↔ ayak bileği
+    const b = a + (v[1] - a) * smooth01(y, KNEE - 0.16, KNEE - 0.02);                    // ↔ diz
+    return b + (v[0] - b) * smooth01(y, KNEE + 0.02, KNEE + 0.16);                       // ↔ uyluk
+  }
   function legRegion(side, y, phi) {
+    const fo = legAng('fo', y), fi = legAng('fi', y), ob = legAng('ob', y), ib = legAng('ib', y);
+    const front = phi >= fi && phi < fo, outer = phi >= fo && phi < ob, inner = phi >= ib && phi < fi;
     if (y >= KNEE + 0.07) {
-      if (phi >= -50 && phi < 50) return S(side, 'ön uyluk (Quadriceps)');
-      if (phi >= -118 && phi < -50) return S(side, 'iç uyluk (Adductor)');
+      if (front) return S(side, 'ön uyluk (Quadriceps)');
+      if (inner) return S(side, 'iç uyluk (Adductor)');
       if (y >= 0.835) return S(side, 'kalça');             // uyluğun kökü, yanda ve arkada
-      if (phi >= 50 && phi < 118) return S(side, 'dış uyluk');
+      if (outer) return S(side, 'dış uyluk');
       return S(side, 'arka uyluk (Hamstring)');
     }
     if (y >= KNEE - 0.06) {
-      if (phi >= -45 && phi < 45) return S(side, 'diz önü');
-      if (phi >= 45 && phi < 135) return S(side, 'diz dışı');
-      if (phi >= -135 && phi < -45) return S(side, 'diz içi');
+      if (front) return S(side, 'diz önü');
+      if (outer) return S(side, 'diz dışı');
+      if (inner) return S(side, 'diz içi');
       return S(side, 'diz arkası');
     }
     if (y >= ANKLE + 0.055) {
-      if (phi >= -38 && phi < 42) return S(side, 'ön bacak (Tibialis anterior)');
-      if (phi >= 42 && phi < 128) return S(side, 'baldır dışı');
-      if (phi >= -128 && phi < -38) return S(side, 'baldır içi');
+      if (front) return S(side, 'ön bacak (Tibialis anterior)');
+      if (outer) return S(side, 'baldır dışı');
+      if (inner) return S(side, 'baldır içi');
       return y >= ANKLE + 0.125 ? S(side, 'baldır') : S(side, 'Aşil');
     }
-    if (phi >= -55 && phi < 55) return S(side, 'ayak bileği önü');
-    if (phi >= 55 && phi < 135) return S(side, 'ayak bileği dışı');
-    if (phi >= -135 && phi < -55) return S(side, 'ayak bileği içi');
+    if (front) return S(side, 'ayak bileği önü');
+    if (outer) return S(side, 'ayak bileği dışı');
+    if (inner) return S(side, 'ayak bileği içi');
     return S(side, 'Aşil');
   }
   function footRegion(side, x, y, z) {
