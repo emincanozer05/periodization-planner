@@ -10523,286 +10523,12 @@ ${purposeSec}
    regardless of which path the user takes.
    ========================================================= */
 const escHTML=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-/* Best-effort volume summary for the printed program's "Training Volume" panel — total
-   sets and reps are exact sums of what the coach typed; total load is a tonnage estimate
-   (sets × reps × the first number found in the load field) since load is free text
-   ("20-24 kg", "Bodyweight") rather than a guaranteed number. Shown with a leading "~" for
-   exactly that reason. */
-function sessionVolumeStats(s){
-  let sets=0,reps=0,tonnage=0,hasLoad=false;
-  (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
-    if(!e.name)return;
-    const st=Number(e.sets)||0,rp=Number(e.reps)||0;
-    sets+=st;reps+=rp;
-    const lm=String(e.load||'').match(/[\d.]+/);
-    if(lm){hasLoad=true;tonnage+=parseFloat(lm[0])*(st||1)*(rp||1);}
-  }));
-  return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
-}
-function buildSessionHTMLDoc(title,subtitle,sessions,opts){
-  const withImages=!!(opts&&opts.withImages);
-  /* Coach copy: prints the justification recorded against every changed exercise.
-     The athlete copy leaves them out entirely — same document, two audiences. */
-  const withReasons=!!(opts&&opts.withReasons);
-  // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
-  const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
-  const dash=`<span class="dash">—</span>`;
-  const computeLabels=exs=>{const cnt={};return exs.map(ex=>{
-    const ss=(ex.superset||'').toString().toUpperCase().trim();
-    if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:`${ss}${cnt[ss]}`,letter:ss};}
-    cnt._=(cnt._||0)+1;return{tag:`${cnt._}.`,letter:''};});};
-  /* One exercise, one row: # (plain or a superset badge) · exercise (image + name +
-     movement tag) · Set x Reps · Load · Time · Tempo · Rest · Notes/coaching cues as
-     bullets. Replaces the old one-card-per-exercise layout (each with its own little
-     6-column sub-table) with a single continuous table per block, which is how a
-     printed program is actually read off mid-session. */
-  const exTable=b=>{
-    const namedExs=(b.exercises||[]).filter(e=>e.name);
-    if(namedExs.length===0)return`<div class="empty-block">${L('Egzersiz yok','No exercises')}</div>`;
-    const labs=computeLabels(b.exercises||[]);
-    /* A block written in phases says so on paper: the section's name crosses the table
-       where the work changes character, so nobody reading the sheet at the side of a
-       court has to guess where the warm-up ended. A block with no phases has no heading
-       to print and comes out exactly as it always has. */
-    let lastPh=null;
-    const bPh=blkPhases(b);
-    const rows=(b.exercises||[]).map((e,i)=>{
-      if(!e.name)return'';
-      const lab=labs[i];const isSS=!!lab.letter;
-      const ph=bPh.includes(exPhase(e))?exPhase(e):'';
-      let phRow='';
-      if(ph!==lastPh){
-        if(ph)phRow=`<tr class="ph-row ${phCls(ph,bPh)}"><td colspan="8"><span class="ph-nm">${escHTML(blkPhaseLbl(ph,b))}</span><span class="ph-note">${escHTML(blkPhaseNote(ph,b))}</span></td></tr>`;
-        lastPh=ph;
-      }
-      let setReps='';
-      if(e.sets&&e.reps)setReps=`${e.sets} × ${e.reps}`;
-      else if(e.sets)setReps=`${e.sets} ${L('set','sets')}`;
-      else if(e.reps)setReps=e.reps;
-      // Reference link — clickable in the shared PDF, and short enough on paper to type out.
-      const lnk=safeURL(e.link);
-      /* Notes column reads as bullets — one per line the coach wrote, plus the recorded
-         justification (coach copy only) as a last bullet, rather than a run-on paragraph. */
-      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
-      if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
-      const notesHTML=notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:dash;
-      /* The alternative, printed as its own row directly under the exercise it stands in
-         for: same seven columns, so it can be read straight across, with the coach's
-         reason spelled out in the notes column. A program that says "or do this instead"
-         without saying why is one the next coach simply ignores. */
-      const alt=(e.alt&&typeof e.alt==='object')?e.alt:null;
-      const altNm=String((alt&&alt.name)||'').trim();
-      const altWhy=String((alt&&alt.reason)||'').trim();
-      let altRow='';
-      if(altNm||altWhy){
-        let aSR='';
-        if(alt.sets&&alt.reps)aSR=`${alt.sets} × ${alt.reps}`;
-        else if(alt.sets)aSR=`${alt.sets} ${L('set','sets')}`;
-        else if(alt.reps)aSR=String(alt.reps);
-        const aLnk=safeURL(alt.link);
-        const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
-        const aNotesHTML=aNotes.length?`<ul class="ex-notes">${aNotes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:'';
-        /* Whose alternative this is has to be unmissable, or the row reads as an eighth
-           exercise rather than a second way of doing the fourth. So it says so three
-           times over: the number column carries the parent's own badge behind a ↳, the
-           first line of the cell names the exercise it replaces, and the two rows are
-           tied together by dropping the rule between them. */
-        altRow=`<tr class="ex-row alt-row">
-          <td class="c-no"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${isSS?' ss':''} ghost">${lab.tag}</span></span></td>
-          <td class="c-ex">
-            <div class="ex-ex-wrap">
-              ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
-              <div class="ex-ex-txt">
-                <div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
-                <div class="ex-nm-wrap"><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
-              </div>
-            </div>
-          </td>
-          <td class="c-sr">${aSR?escHTML(aSR):dash}</td>
-          <td class="c-load">${alt.load?escHTML(alt.load):dash}</td>
-          <td class="c-dur">${alt.duration?escHTML(alt.duration):dash}</td>
-          <td class="c-tempo">${alt.tempo?escHTML(alt.tempo):dash}</td>
-          <td class="c-rest">${alt.rest?('⏱ '+escHTML(alt.rest)):dash}</td>
-          <td class="c-notes">${aNotesHTML}${altWhy?`<div class="alt-why"><span class="alt-why-k">${L('Gerekçe','Reason')}</span>${escHTML(altWhy)}</div>`:''}</td>
-        </tr>`;
-      }
-      return`${phRow}<tr class="ex-row${altRow?' has-alt':''}">
-        <td class="c-no"><span class="ex-badge${isSS?' ss':''}">${lab.tag}</span></td>
-        <td class="c-ex">
-          <div class="ex-ex-wrap">
-            ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
-            <div class="ex-ex-txt">
-              <div class="ex-nm-wrap"><span class="ex-name">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
-            </div>
-          </div>
-        </td>
-        <td class="c-sr">${setReps?escHTML(setReps):dash}</td>
-        <td class="c-load">${e.load?escHTML(e.load):dash}</td>
-        <td class="c-dur">${e.duration?escHTML(e.duration):dash}</td>
-        <td class="c-tempo">${e.tempo?escHTML(e.tempo):dash}</td>
-        <td class="c-rest">${e.rest?('⏱ '+escHTML(e.rest)):dash}</td>
-        <td class="c-notes">${notesHTML}</td>
-      </tr>${altRow}`;
-    }).join('');
-    const heads=[L('#','#'),L('Egzersiz','Exercise'),L('Set x Tekrar','Set x Reps'),L('Yük','Load'),
-      L('Süre','Time'),L('Tempo','Tempo'),L('Dinlenme','Rest'),L('Notlar / Koçluk İpuçları','Notes / Coaching Cues')];
-    return`<div class="ex-tbl-wrap"><table class="ex-tbl2"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
-  };
-  /* A ball-practice block does not go in a table. What a coach needs off the sheet at the
-     side of a court is the picture — so each drill prints as a card: the diagram at the
-     size it can actually be read, the prescription beside it, and the coaching points
-     under both. The court is inline SVG built from the same descriptors the on-screen
-     board draws, in its print colours, so it prints crisply at any paper size. */
-  const drillCards=b=>{
-    const named=(b.exercises||[]).filter(e=>e.name);
-    if(!named.length)return`<div class="empty-block">${L('Dril yok','No drills')}</div>`;
-    let lastPh=null;
-    const bPh=blkPhases(b);
-    return`<div class="drill-cards">${named.map((e,i)=>{
-      // The phase heading, on the same terms as the exercise table's — see exTable above.
-      const ph=bPh.includes(exPhase(e))?exPhase(e):'';
-      let phHd='';
-      if(ph!==lastPh){
-        if(ph)phHd=`<div class="dc-ph ${phCls(ph,bPh)}"><span class="ph-nm">${escHTML(blkPhaseLbl(ph,b))}</span><span class="ph-note">${escHTML(blkPhaseNote(ph,b))}</span></div>`;
-        lastPh=ph;
-      }
-      const bits=[];
-      if(e.sets&&e.reps)bits.push(`${e.sets} × ${e.reps}`);
-      else if(e.sets)bits.push(`${e.sets} ${L('set','sets')}`);
-      else if(e.reps)bits.push(String(e.reps));
-      if(e.duration)bits.push(escHTML(e.duration));
-      if(e.players)bits.push(escHTML(e.players));
-      if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
-      if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
-      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
-      const lnk=safeURL(e.videoUrl);
-      return`${phHd}<div class="drill-card">
-        <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
-          ${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
-        <div class="dc-body">
-          <div class="dc-fig">${sceneIsEmpty(e.court)?`<div class="dc-nofig">${L('Çizim yok','No diagram')}</div>`:courtSVGString(e.court)}</div>
-          <div class="dc-txt">
-            ${bits.length?`<div class="dc-presc">${bits.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
-            ${notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:''}
-          </div>
-        </div>
-      </div>`;
-    }).join('')}</div>`;
-  };
-  /* One document can carry several athletes: each is a group with its own header — the same
-     header a single athlete's printout has — starting on a fresh page. Called the plain way,
-     with (title, subtitle, sessions), there is exactly one group and the document is the one
-     it has always been. */
-  const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
-  // What this document is FOR, next to the title — every focus tag across its own sessions.
-  const focusFor=list=>{const set=new Set();(list||[]).forEach(s=>sesFocus(s).forEach(f=>f&&set.add(f)));return[...set].join(', ');};
-  const docHead=(t,sub,focusTxt)=>`<div class="doc-top"><span class="doc-top-l"><span class="wm">COACH<b>OS</b></span><span class="wm-sub">Coaching Operating System</span></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
-<div class="doc-head">
-  <div class="doc-l">
-    ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`:''}
-    <div>
-      <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
-      <h1>${t}</h1>
-    </div>
-  </div>
-  ${focusTxt?`<div class="doc-r">
-    <div class="doc-focus-ic">🎯</div>
-    <div><div class="lbl">${L('Odak','Focus')}</div><div class="doc-focus-val">${escHTML(focusTxt)}</div></div>
-  </div>`:''}
-</div>`;
-  const nf=v=>Number(v||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
-  /* Training Volume + Intensity Target, side by side under the session banner — the
-     coach's plan for the session at a glance, before the exercise-by-exercise detail. */
-  const statsRowHTML=s=>{
-    const vol=sessionVolumeStats(s);
-    const[rlo,rhi]=sesRpeRange(s);
-    const rz=rpeZone(sesRpeTarget(s));const rp=rpePct(sesRpeTarget(s));
-    return`<div class="stat-row">
-      <div class="stat-box">
-        <div class="stat-box-lbl">${L('Antrenman Hacmi','Training Volume')}</div>
-        <div class="stat-box-cols">
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Set','Total Sets')}</span><span class="stat-col-val">${vol.sets||dash}</span></div>
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Tekrar','Total Reps')}</span><span class="stat-col-val">${vol.reps||dash}</span></div>
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Yük','Total Load')}</span><span class="stat-col-val">${vol.hasLoad?`~${nf(vol.tonnage)} kg`:dash}</span></div>
-        </div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-box-lbl">${L('Yoğunluk Hedefi','Intensity Target')}</div>
-        <div class="stat-int-row">
-          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span><span class="stat-int-zone" style="color:${rz.pc}">${L(rz.tr,rz.en)}</span></span>
-          <div class="rpe-gauge-print">
-            <div class="rpe-gauge-print-lead" style="width:${rpePct(rlo)}%;background:${rz.pc}"></div>
-            <div class="rpe-gauge-print-band" style="left:${rpePct(rlo)}%;width:${rpePct(rhi)-rpePct(rlo)}%;background:${rz.pc}"></div>
-            <div class="rpe-gauge-print-thumb" style="left:${rp}%;background:${rz.pc}"></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  };
-  /* A block whose heading is the session's own title (a one-block session, or a block
-     printed on its own, which is headed by it) would print the same line twice, one
-     under the other — so its heading is left to the session banner. */
-  const sameTitle=(a,b)=>String(a||'').trim().toLocaleLowerCase()===String(b||'').trim().toLocaleLowerCase();
-  const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
-  <div class="sh">
-    <div class="sh-l"><span class="sn">${i+1}</span>${s.ownerName?`<span class="sh-own">${escHTML(s.ownerName)}</span>`:''}${s.name}</div>
-    <div class="sh-r">
-      <div class="sh-stat"><span class="sh-stat-v">🕐 ${s.time}</span><span class="sh-stat-k">${L('BAŞLANGIÇ','START')}</span></div>
-      <div class="sh-stat-div"></div>
-      <div class="sh-stat"><span class="sh-stat-v">${Number(s.duration)||0} ${L('DK','MIN')}</span><span class="sh-stat-k">${L('TOPLAM SÜRE','TOTAL TIME')}</span></div>
-    </div>
-  </div>
-  <div class="meta-bar">
-    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${escHTML(sesFocusLine(s)||s.purpose||'')}</span></div>
-  </div>
-  ${statsRowHTML(s)}
-  ${(()=>{
-    // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
-    // categorization, blocks stay in the order the user arranged them.
-    const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
-    if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
-    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block${blkKind(b)==='ball'?' ball-block':''}">${b.name&&!sameTitle(b.name,s.name)?`<div class="bh">${b.name}${blkKind(b)==='ball'?`<span class="bh-kind">${L('TOP','BALL')}</span>`:''}</div>`:''}${blkKind(b)==='ball'?drillCards(b):exTable(b)}</div>`).join('')}</div>`;
-  })()}
-  ${(s.planNote||s.notes)?`<div class="sf">
-    <div class="sf-notes">
-      ${s.planNote?`<div class="sf-plan-note">${escHTML(s.planNote)}</div>`:''}
-      ${s.notes?`<div><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
-    </div>
-  </div>`:''}
-</div>`).join('');
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-/* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
-   (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
-   meant the two outputs never matched.
-
-   Zero page margin, and the 10mm the sheet is set in comes from the body's padding
-   instead. The browser draws its own header and footer — the print date, the document
-   title, the page number, the about:blank URL — inside the page margin, and a sheet a
-   coach hands an athlete should carry the program's branding, not the browser's; with
-   no margin there is nowhere for that strip to go. It also makes the two outputs match
-   for the first time: html2canvas never saw @page at all, so the shared PDF has always
-   run its content to the bare edge of the paper. Padding is honoured by both. */
-@page{size:A4 portrait;margin:0}
-${RPT_FONT}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
-body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
-/* The sides come from the body's padding above, but padding only ever falls at the two
-   ends of the whole document — a program that runs to three pages would start pages two
-   and three hard against the top of the paper, inside the strip most printers cannot
-   print on. A thead and a tfoot are repeated by the browser on every page it breaks
-   onto, so an empty row in each is the one thing that reserves the same band of white
-   at the top and foot of every sheet. */
-.pg-frame{width:100%;border-collapse:collapse}
-.pg-frame>thead{display:table-header-group}
-.pg-frame>tfoot{display:table-footer-group}
-.pg-frame>tbody>tr>td{padding:0;vertical-align:top}
-.pg-pad{height:10mm;padding:0;border:none}
-
-/* The sheet's own masthead, centred across the top where the browser used to print its
+/* ONE LOOK FOR EVERY PRINTED PROGRAMME. A session prints from two places — the
+   calendar (buildSessionHTMLDoc) and the individualization panel (printDiProgram) —
+   and an athlete handed both should not be able to tell which one each sheet came
+   from. So the masthead, the session banner and the phase cards are drawn once, here,
+   and both documents are built out of them. */
+const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where the browser used to print its
    title strip. It carries the product mark and nothing else: what document this is and
    whose it is are the two lines directly under it, and repeating either up here would
    only crowd a header that has to earn its height back in exercises. Set as plain text
@@ -10870,7 +10596,330 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .meta-bar{padding:7px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;gap:20px;align-items:center;flex-wrap:wrap;break-after:avoid;page-break-after:avoid}
 .meta-item{display:flex;align-items:center;gap:6px;font-size:12px}
 .meta-item .lbl{font-family:'IBM Plex Mono',monospace;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.6px;font-size:11px}
-.meta-item .val{color:#0f172a;font-weight:600}
+.meta-item .val{color:#0f172a;font-weight:600}`;
+/* A phase of the session as a card: its name on a grey bar with an accent rule, the kind
+   of work it is as a quiet tag at the far end, and its exercises in a six-column table —
+   #, the exercise with its coaching text under it, Set × Reps, Load, Tempo, Rest. The
+   table's head repeats on every page a long phase breaks onto; a row never splits. */
+const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overflow:hidden;margin-bottom:11px;background:#fff}
+.pc-hd{display:flex;align-items:center;gap:9px;padding:8px 12px;background:#f4f5f7;border-bottom:1px solid #e5e7eb;break-after:avoid;page-break-after:avoid}
+.pc-dot{flex:none;width:3px;height:14px;border-radius:2px;background:#9aab3a}
+.pc-t{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:#0a0b0d}
+.pc-tag{margin-left:auto;flex:none;font-size:9px;color:#5c626c;border:1px solid #e5e7eb;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.pc-tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.pc-tbl thead{display:table-header-group}
+.pc-tbl th{font-size:9px;font-weight:600;color:#5c626c;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;text-align:center;border-bottom:1px solid #e5e7eb}
+.pc-tbl td{padding:8px;text-align:center;vertical-align:top;border-top:1px solid #e5e7eb;font-size:10.5px;color:#3b4252}
+.pc-tbl tbody tr:first-child td{border-top:0}
+.pc-tbl tr{break-inside:avoid;page-break-inside:avoid}
+.pc-tbl th.n,.pc-tbl td.n{width:36px;padding-left:6px;padding-right:4px;color:#8b9099;font-weight:700}
+.pc-tbl th.ex,.pc-tbl td.ex{width:46%;text-align:left}
+.pc-nm{font-size:12px;font-weight:700;color:#0a0b0d}
+.pc-why{font-size:9.5px;color:#5c626c;margin-top:3px;line-height:1.45}
+.pc-tbl td.ds b{font-size:12px;color:#0a0b0d}
+.pc-tbl td.ds s{color:#8b9099}
+.pc-dd{font-size:9.5px;color:#5c626c;margin-top:2px}`;
+/* The masthead: the product line with the date, then the team's crest, what the sheet is,
+   whose it is and what the work is for. `titleHTML` goes in as markup. */
+function rptDocHead(titleHTML,sub,focusTxt,logo){
+  return`<div class="doc-top"><span class="doc-top-l"><span class="wm">COACH<b>OS</b></span><span class="wm-sub">Coaching Operating System</span></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
+<div class="doc-head">
+  <div class="doc-l">
+    ${logo?`<img class="doc-logo" src="${escHTML(mediaSrc(logo))}" alt="">`:''}
+    <div>
+      <div class="lbl">${L('Antrenman Programı','Training Program')}</div>
+      <h1>${titleHTML}</h1>
+    </div>
+  </div>
+  ${focusTxt?`<div class="doc-r">
+    <div class="doc-focus-ic">🎯</div>
+    <div><div class="lbl">${L('Odak','Focus')}</div><div class="doc-focus-val">${escHTML(focusTxt)}</div></div>
+  </div>`:''}
+</div>`;
+}
+/* The session's black banner — its number, its name, when it starts and how long it
+   runs — and the purpose line under it. `nameHTML` / `ownerHTML` go in as markup. */
+function rptSessBanner({no,nameHTML,ownerHTML,time,duration,purpose,meta}){
+  return`<div class="sh">
+    <div class="sh-l"><span class="sn">${no}</span>${ownerHTML?`<span class="sh-own">${ownerHTML}</span>`:''}${nameHTML}</div>
+    <div class="sh-r">
+      <div class="sh-stat"><span class="sh-stat-v">🕐 ${escHTML(time||'—')}</span><span class="sh-stat-k">${L('BAŞLANGIÇ','START')}</span></div>
+      <div class="sh-stat-div"></div>
+      <div class="sh-stat"><span class="sh-stat-v">${Number(duration)||0} ${L('DK','MIN')}</span><span class="sh-stat-k">${L('TOPLAM SÜRE','TOTAL TIME')}</span></div>
+    </div>
+  </div>
+  <div class="meta-bar">
+    <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${escHTML(purpose||'')}</span></div>
+    ${(meta||[]).filter(m=>m&&m.val).map(m=>`<div class="meta-item"><span class="lbl">${escHTML(m.lbl)}</span><span class="val">${escHTML(m.val)}</span></div>`).join('')}
+  </div>`;
+}
+/* One phase card around rows already drawn as <tr>s. Title and tag are plain text; a
+   card with neither prints its table alone. */
+function rptPhaseCard(title,tag,rowsHTML){
+  const t=String(title||'').trim(),g=String(tag||'').trim();
+  return`<div class="pc-card">${t||g?`<div class="pc-hd"><span class="pc-dot"></span><span class="pc-t">${escHTML(t)}</span>${g?`<span class="pc-tag">${escHTML(g)}</span>`:''}</div>`:''}
+    <table class="pc-tbl"><thead><tr><th class="n">#</th><th class="ex">${L('Egzersiz','Exercise')}</th><th>${L('Set × Tekrar','Sets × Reps')}</th>
+      <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>`;
+}
+/* Best-effort volume summary for the printed program's "Training Volume" panel — total
+   sets and reps are exact sums of what the coach typed; total load is a tonnage estimate
+   (sets × reps × the first number found in the load field) since load is free text
+   ("20-24 kg", "Bodyweight") rather than a guaranteed number. Shown with a leading "~" for
+   exactly that reason. */
+function sessionVolumeStats(s){
+  let sets=0,reps=0,tonnage=0,hasLoad=false;
+  (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
+    if(!e.name)return;
+    const st=Number(e.sets)||0,rp=Number(e.reps)||0;
+    sets+=st;reps+=rp;
+    const lm=String(e.load||'').match(/[\d.]+/);
+    if(lm){hasLoad=true;tonnage+=parseFloat(lm[0])*(st||1)*(rp||1);}
+  }));
+  return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
+}
+function buildSessionHTMLDoc(title,subtitle,sessions,opts){
+  const withImages=!!(opts&&opts.withImages);
+  /* Coach copy: prints the justification recorded against every changed exercise.
+     The athlete copy leaves them out entirely — same document, two audiences. */
+  const withReasons=!!(opts&&opts.withReasons);
+  // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
+  const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
+  const dash=`<span class="dash">—</span>`;
+  const computeLabels=exs=>{const cnt={};return exs.map(ex=>{
+    const ss=(ex.superset||'').toString().toUpperCase().trim();
+    if(ss){cnt[ss]=(cnt[ss]||0)+1;return{tag:`${ss}${cnt[ss]}`,letter:ss};}
+    cnt._=(cnt._||0)+1;return{tag:`${cnt._}.`,letter:''};});};
+  /* Exercises print as phase cards (rptPhaseCard) — one card per section of the block,
+     in the running order, the section's name on its bar and what it is for as its tag.
+     A block with no sections is one card under the block's own name (left off when it
+     only repeats the session's title). Each row: # (plain or a superset badge) ·
+     exercise (image + name + link, the coaching text under it) · Set × Reps (with the
+     time under it) · Load · Tempo · Rest. */
+  const exTable=(b,showName)=>{
+    const namedExs=(b.exercises||[]).filter(e=>e.name);
+    if(namedExs.length===0)return`<div class="empty-block">${L('Egzersiz yok','No exercises')}</div>`;
+    const labs=computeLabels(b.exercises||[]);
+    const bPh=blkPhases(b);
+    const dose=(sets,reps,dur)=>{
+      let sr='';
+      if(sets&&reps)sr=`${sets}×${reps}`;
+      else if(sets)sr=`${sets} ${L('set','sets')}`;
+      else if(reps)sr=String(reps);
+      if(!sr&&!dur)return dash;
+      return sr?`<b>${escHTML(sr)}</b>${dur?`<div class="pc-dd">${escHTML(dur)}</div>`:''}`:`<b>${escHTML(dur)}</b>`;
+    };
+    const lines=arr=>arr.map(n=>`<div class="pc-why">${escHTML(n)}</div>`).join('');
+    const cards=[];
+    let cur=null;
+    (b.exercises||[]).forEach((e,i)=>{
+      if(!e.name)return;
+      const lab=labs[i];const isSS=!!lab.letter;
+      const ph=bPh.length?(bPh.includes(exPhase(e))?exPhase(e):''):null;
+      if(!cur||cur.ph!==ph){
+        cur=ph===null
+          ?{ph,title:showName?b.name:'',tag:'',rows:[]}
+          :{ph,title:ph?blkPhaseLbl(ph,b):L('Fazsız','Unplaced'),tag:ph?blkPhaseNote(ph,b):'',rows:[]};
+        cards.push(cur);
+      }
+      const num=isSS?`<span class="ex-badge ss">${lab.tag}</span>`:String(lab.tag).replace(/\.$/,'');
+      // Reference link — clickable in the shared PDF, and short enough on paper to type out.
+      const lnk=safeURL(e.link);
+      /* The coaching text reads under the name, a line per line the coach wrote, plus
+         the recorded justification (coach copy only) as a last line. */
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
+      /* The alternative, printed as its own row directly under the exercise it stands in
+         for: same columns, so it can be read straight across, with the coach's reason
+         spelled out under its name. A program that says "or do this instead" without
+         saying why is one the next coach simply ignores. */
+      const alt=(e.alt&&typeof e.alt==='object')?e.alt:null;
+      const altNm=String((alt&&alt.name)||'').trim();
+      const altWhy=String((alt&&alt.reason)||'').trim();
+      let altRow='';
+      if(altNm||altWhy){
+        const aLnk=safeURL(alt.link);
+        const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+        /* Whose alternative this is has to be unmissable, or the row reads as an eighth
+           exercise rather than a second way of doing the fourth: the number column carries
+           the parent's own badge behind a ↳, the cell opens with the word, and the two
+           rows are tied together by dropping the rule between them. */
+        altRow=`<tr class="ex-row alt-row">
+          <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge${isSS?' ss':''} ghost">${lab.tag}</span></span></td>
+          <td class="ex">
+            <div class="ex-ex-wrap">
+              ${withImages&&alt.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(alt.image))}" alt="${escHTML(altNm)}"></div>`:''}
+              <div class="ex-ex-txt">
+                <div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+                <div class="ex-nm-wrap"><span class="alt-name">${escHTML(altNm||L('(belirtilmedi)','(not named)'))}</span>${aLnk?`<a class="ex-lnk" href="${aLnk}">🔗 ${escHTML(linkLabel(aLnk))}</a>`:''}</div>
+                ${lines(aNotes)}
+                ${altWhy?`<div class="alt-why"><span class="alt-why-k">${L('Gerekçe','Reason')}</span>${escHTML(altWhy)}</div>`:''}
+              </div>
+            </div>
+          </td>
+          <td class="ds">${dose(alt.sets,alt.reps,alt.duration)}</td>
+          <td>${alt.load?escHTML(alt.load):dash}</td>
+          <td>${alt.tempo?escHTML(alt.tempo):dash}</td>
+          <td>${alt.rest?escHTML(alt.rest):dash}</td>
+        </tr>`;
+      }
+      cur.rows.push(`<tr class="ex-row${altRow?' has-alt':''}">
+        <td class="n">${num}</td>
+        <td class="ex">
+          <div class="ex-ex-wrap">
+            ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
+            <div class="ex-ex-txt">
+              <div class="ex-nm-wrap"><span class="pc-nm">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
+              ${lines(notes)}
+            </div>
+          </div>
+        </td>
+        <td class="ds">${dose(e.sets,e.reps,e.duration)}</td>
+        <td>${e.load?escHTML(e.load):dash}</td>
+        <td>${e.tempo?escHTML(e.tempo):dash}</td>
+        <td>${e.rest?escHTML(e.rest):dash}</td>
+      </tr>${altRow}`);
+    });
+    return cards.map(c=>rptPhaseCard(c.title,c.tag,c.rows.join(''))).join('');
+  };
+  /* A ball-practice block does not go in a table. What a coach needs off the sheet at the
+     side of a court is the picture — so each drill prints as a card: the diagram at the
+     size it can actually be read, the prescription beside it, and the coaching points
+     under both. The court is inline SVG built from the same descriptors the on-screen
+     board draws, in its print colours, so it prints crisply at any paper size. */
+  const drillCards=b=>{
+    const named=(b.exercises||[]).filter(e=>e.name);
+    if(!named.length)return`<div class="empty-block">${L('Dril yok','No drills')}</div>`;
+    let lastPh=null;
+    const bPh=blkPhases(b);
+    return`<div class="drill-cards">${named.map((e,i)=>{
+      // The phase heading, on the same terms as the exercise table's — see exTable above.
+      const ph=bPh.includes(exPhase(e))?exPhase(e):'';
+      let phHd='';
+      if(ph!==lastPh){
+        if(ph)phHd=`<div class="dc-ph ${phCls(ph,bPh)}"><span class="ph-nm">${escHTML(blkPhaseLbl(ph,b))}</span><span class="ph-note">${escHTML(blkPhaseNote(ph,b))}</span></div>`;
+        lastPh=ph;
+      }
+      const bits=[];
+      if(e.sets&&e.reps)bits.push(`${e.sets} × ${e.reps}`);
+      else if(e.sets)bits.push(`${e.sets} ${L('set','sets')}`);
+      else if(e.reps)bits.push(String(e.reps));
+      if(e.duration)bits.push(escHTML(e.duration));
+      if(e.players)bits.push(escHTML(e.players));
+      if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
+      if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      const lnk=safeURL(e.videoUrl);
+      return`${phHd}<div class="drill-card">
+        <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
+          ${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
+        <div class="dc-body">
+          <div class="dc-fig">${sceneIsEmpty(e.court)?`<div class="dc-nofig">${L('Çizim yok','No diagram')}</div>`:courtSVGString(e.court)}</div>
+          <div class="dc-txt">
+            ${bits.length?`<div class="dc-presc">${bits.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
+            ${notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+  };
+  /* One document can carry several athletes: each is a group with its own header — the same
+     header a single athlete's printout has — starting on a fresh page. Called the plain way,
+     with (title, subtitle, sessions), there is exactly one group and the document is the one
+     it has always been. */
+  const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
+  // What this document is FOR, next to the title — every focus tag across its own sessions.
+  const focusFor=list=>{const set=new Set();(list||[]).forEach(s=>sesFocus(s).forEach(f=>f&&set.add(f)));return[...set].join(', ');};
+  const docHead=(t,sub,focusTxt)=>rptDocHead(t,sub,focusTxt,logo);
+  const nf=v=>Number(v||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
+  /* Training Volume + Intensity Target, side by side under the session banner — the
+     coach's plan for the session at a glance, before the exercise-by-exercise detail. */
+  const statsRowHTML=s=>{
+    const vol=sessionVolumeStats(s);
+    const[rlo,rhi]=sesRpeRange(s);
+    const rz=rpeZone(sesRpeTarget(s));const rp=rpePct(sesRpeTarget(s));
+    return`<div class="stat-row">
+      <div class="stat-box">
+        <div class="stat-box-lbl">${L('Antrenman Hacmi','Training Volume')}</div>
+        <div class="stat-box-cols">
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Set','Total Sets')}</span><span class="stat-col-val">${vol.sets||dash}</span></div>
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Tekrar','Total Reps')}</span><span class="stat-col-val">${vol.reps||dash}</span></div>
+          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Yük','Total Load')}</span><span class="stat-col-val">${vol.hasLoad?`~${nf(vol.tonnage)} kg`:dash}</span></div>
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-lbl">${L('Yoğunluk Hedefi','Intensity Target')}</div>
+        <div class="stat-int-row">
+          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span><span class="stat-int-zone" style="color:${rz.pc}">${L(rz.tr,rz.en)}</span></span>
+          <div class="rpe-gauge-print">
+            <div class="rpe-gauge-print-lead" style="width:${rpePct(rlo)}%;background:${rz.pc}"></div>
+            <div class="rpe-gauge-print-band" style="left:${rpePct(rlo)}%;width:${rpePct(rhi)-rpePct(rlo)}%;background:${rz.pc}"></div>
+            <div class="rpe-gauge-print-thumb" style="left:${rp}%;background:${rz.pc}"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  };
+  /* A block whose heading is the session's own title (a one-block session, or a block
+     printed on its own, which is headed by it) would print the same line twice, one
+     under the other — so its heading is left to the session banner. */
+  const sameTitle=(a,b)=>String(a||'').trim().toLocaleLowerCase()===String(b||'').trim().toLocaleLowerCase();
+  const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
+  ${rptSessBanner({no:i+1,nameHTML:s.name,ownerHTML:s.ownerName?escHTML(s.ownerName):'',
+    time:s.time,duration:s.duration,purpose:sesFocusLine(s)||s.purpose||''})}
+  ${statsRowHTML(s)}
+  ${(()=>{
+    // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
+    // categorization, blocks stay in the order the user arranged them.
+    const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
+    if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
+    /* A table block with no sections carries its name on its one card, so only a ball
+       block, or a block split into sections, keeps a heading of its own above them. */
+    return`<div class="bs blocks-grid">${blks.map(b=>{
+      const ball=blkKind(b)==='ball';
+      const named=!!(b.name&&!sameTitle(b.name,s.name));
+      const head=named&&(ball||blkPhases(b).length)?`<div class="bh">${b.name}${ball?`<span class="bh-kind">${L('TOP','BALL')}</span>`:''}</div>`:'';
+      return`<div class="block${ball?' ball-block':''}">${head}${ball?drillCards(b):exTable(b,named)}</div>`;
+    }).join('')}</div>`;
+  })()}
+  ${(s.planNote||s.notes)?`<div class="sf">
+    <div class="sf-notes">
+      ${s.planNote?`<div class="sf-plan-note">${escHTML(s.planNote)}</div>`:''}
+      ${s.notes?`<div><strong style="color:#0f172a">${L('Notlar:','Notes:')}</strong> ${s.notes}</div>`:''}
+    </div>
+  </div>`:''}
+</div>`).join('');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — ${L('Antrenman Programı','Training Program')}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Portrait: a program is read top-to-bottom like a worksheet, and the Share/PDF path
+   (buildSessionPDFBlob) has always rendered at A4 portrait width — printing landscape
+   meant the two outputs never matched.
+
+   Zero page margin, and the 10mm the sheet is set in comes from the body's padding
+   instead. The browser draws its own header and footer — the print date, the document
+   title, the page number, the about:blank URL — inside the page margin, and a sheet a
+   coach hands an athlete should carry the program's branding, not the browser's; with
+   no margin there is nowhere for that strip to go. It also makes the two outputs match
+   for the first time: html2canvas never saw @page at all, so the shared PDF has always
+   run its content to the bare edge of the paper. Padding is honoured by both. */
+@page{size:A4 portrait;margin:0}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-size:12px;color:#0f172a;line-height:1.4;letter-spacing:.005em;padding:0 10mm}
+/* The sides come from the body's padding above, but padding only ever falls at the two
+   ends of the whole document — a program that runs to three pages would start pages two
+   and three hard against the top of the paper, inside the strip most printers cannot
+   print on. A thead and a tfoot are repeated by the browser on every page it breaks
+   onto, so an empty row in each is the one thing that reserves the same band of white
+   at the top and foot of every sheet. */
+.pg-frame{width:100%;border-collapse:collapse}
+.pg-frame>thead{display:table-header-group}
+.pg-frame>tfoot{display:table-footer-group}
+.pg-frame>tbody>tr>td{padding:0;vertical-align:top}
+.pg-pad{height:10mm;padding:0;border:none}
+
+${RPT_HEAD_CSS}
 
 /* Training Volume + Intensity Target — the coach's plan for the session, at a glance,
    before the exercise-by-exercise table. Two equal panels, same card language (rounded
@@ -10934,20 +10983,12 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .dc-presc span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:700;color:#334155;
   background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;padding:2px 8px}
 
-/* Exercise table — one row per exercise, read straight down like a worksheet. Header
-   repeats on every printed page it breaks across; each row keeps its image/name/prescription
-   together rather than splitting mid-row. */
-.ex-tbl-wrap{margin-top:6px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
-.ex-tbl2{width:100%;border-collapse:collapse;font-size:12px}
-.ex-tbl2 thead{display:table-header-group}
-.ex-tbl2 th{background:#f8fafc;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
-  color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;text-align:left;padding:6px 8px;border-bottom:1px solid #e2e8f0}
-.ex-tbl2 th:first-child{width:34px;text-align:center}
-.ex-tbl2 td{padding:7px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#0f172a}
-.ex-tbl2 tr:last-child td{border-bottom:none}
-.ex-tbl2 tr:nth-child(even) td{background:#fcfdfe}
-.ex-row{break-inside:avoid;page-break-inside:avoid}
-.c-no{text-align:center;vertical-align:middle !important}
+/* The exercises print as phase cards — the same cards the individualization panel's
+   printout draws (RPT_PHASE_CSS), so a programme reads the same whichever sheet it
+   came off. What follows is only what the calendar's rows carry on top: superset
+   badges, images, links and alternatives. */
+${RPT_PHASE_CSS}
+.block .pc-card:last-child{margin-bottom:0}
 /* Superset rows get the green badge; a plain sequence number otherwise gets the same
    pill shape in neutral grey, so the column reads as one system either way. */
 .ex-badge{display:inline-block;min-width:24px;padding:2px 6px;border-radius:5px;text-align:center;
@@ -10956,11 +10997,9 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-ex-wrap{display:flex;gap:9px;align-items:flex-start}
 .ex-ex-txt{min-width:0}
 .ex-nm-wrap{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.ex-name{font-weight:700;font-size:14px;color:#0f172a;line-height:1.25}
 .ex-lnk{display:inline-block;font-size:10.5px;font-weight:700;color:#6f7d29;text-decoration:none;
   background:rgba(154,171,58,.14);border:1px solid rgba(154,171,58,.45);border-radius:5px;
   padding:1px 7px;line-height:1.5;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.c-sr,.c-load,.c-dur,.c-tempo,.c-rest{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;white-space:nowrap}
 .ex-notes{margin:0;padding-left:14px;font-weight:400;font-size:11px;color:#64748b;line-height:1.5}
 .ex-notes li{margin-bottom:1px}
 /* The alternative rides directly under the exercise it replaces, tinted amber and bound
@@ -10968,11 +11007,9 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
    as two exercises in a row. The binding is the whole point: the row above gives up its
    bottom rule and refuses to break away from this one, the number column repeats that
    row's own badge behind a hook, and the cell opens by naming what is being replaced. */
-.ex-tbl2 tr.alt-row td,.ex-tbl2 tr:nth-child(even) td.alt-c,.ex-tbl2 tr.alt-row:nth-child(even) td{background:rgba(245,158,11,.055)}
-.ex-tbl2 tr.alt-row td{border-top:0;padding-top:4px}
+.pc-tbl tr.alt-row td{border-top:0;padding-top:4px;background:rgba(245,158,11,.055)}
 /* No rule between an exercise and its alternative, and no page break either. */
-.ex-tbl2 tr.ex-row.has-alt td{border-bottom:none;padding-bottom:3px;break-after:avoid;page-break-after:avoid}
-.ex-tbl2 tr.ex-row.has-alt td{background:rgba(245,158,11,.055)}
+.pc-tbl tr.has-alt td{padding-bottom:3px;background:rgba(245,158,11,.055);break-after:avoid;page-break-after:avoid}
 /* The hook and the parent's own badge, greyed back: read down the # column and the
    alternative points straight at the row it belongs to. */
 .alt-of{display:inline-flex;align-items:center;gap:2px;justify-content:center}
@@ -10998,18 +11035,8 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .ex-img{display:block;width:100%;height:100%;object-fit:contain}
 .dash{color:#cbd5e1;font-weight:400}
 
-/* The phase headings — a rule across the table (or across the drill cards) in the
-   section's own colour, holding the section's name and what belongs in it. Bound to the
-   work underneath: a heading never prints as the last line of a page. */
-.ex-tbl2 tr.ph-row td{padding:5px 9px;background:#f1f5f9;border-bottom:1px solid #e2e8f0;
-  border-left:3px solid #94a3b8}
-.ex-tbl2 tr.ph-row.pc0 td{border-left-color:#ca8a04;background:rgba(234,179,8,.14)}
-.ex-tbl2 tr.ph-row.pc1 td{border-left-color:#16a34a;background:rgba(22,163,74,.12)}
-.ex-tbl2 tr.ph-row.pc2 td{border-left-color:#0284c7;background:rgba(2,132,199,.12)}
-.ex-tbl2 tr.ph-row.pc3 td{border-left-color:#ea580c;background:rgba(234,88,12,.12)}
-.ex-tbl2 tr.ph-row.pc4 td{border-left-color:#7c3aed;background:rgba(124,58,237,.12)}
-.ex-tbl2 tr.ph-row.pc5 td{border-left-color:#db2777;background:rgba(219,39,119,.12)}
-.ph-row{break-after:avoid;page-break-after:avoid;break-inside:avoid;page-break-inside:avoid}
+/* The phase headings between drill cards — a rule in the section's own colour, holding
+   the section's name and what belongs in it, bound to the drill underneath. */
 .dc-ph{margin:8px 0 5px;padding:5px 9px;background:#f1f5f9;border-left:3px solid #94a3b8;border-radius:0 6px 6px 0;
   break-after:avoid;page-break-after:avoid}
 .dc-ph.pc0{border-left-color:#ca8a04;background:rgba(234,179,8,.14)}
@@ -33725,13 +33752,16 @@ const diDose=d=>{
 };
 /* The programme on paper: the rows the card draws — the calendar's version once it has
    been edited there — laid out for the gym floor, one exercise to a line, and handed
-   straight to the browser's print dialog (which also saves it as a PDF). */
-function printDiProgram({ath,date,title,rows,pct}){
+   straight to the browser's print dialog (which also saves it as a PDF). It is drawn
+   out of the same masthead, session banner and phase cards as the calendar's printout
+   (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
+   `time`, `duration` and `focus` are the session's own line: the calendar's copy once
+   it is written, the plan's before. */
+function printDiProgram({ath,date,title,rows,pct,time,duration,focus}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const a=ath||{};
-  const sub=[a.position?posOf(a.position):'',fdL(date)].filter(Boolean).map(esc).join(' · ');
   const blocks=diGroupRows(rows).map(b=>{
     const bl=diBlockLabel(b);
     const trs=b.rows.map((r,k)=>{
@@ -33739,13 +33769,11 @@ function printDiProgram({ath,date,title,rows,pct}){
         ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
         :`<b>${esc(diDose(r.adjusted))}</b>`;
       return`<tr><td class="n">${k+1}</td>
-        <td class="ex"><div class="nm">${esc(r.name)}</div>${r.why?`<div class="why">${esc(r.why)}</div>`:''}</td>
-        <td class="ds">${d}${r.distance?`<div class="dd">${esc(r.distance)}</div>`:''}</td>
+        <td class="ex"><div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</td>
+        <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
         <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>`;
     }).join('');
-    return`<div class="blk">${bl.title?`<div class="bh"><span class="dot"></span><span class="bt">${esc(bl.title)}</span>${bl.tag?`<span class="tag">${esc(bl.tag)}</span>`:''}</div>`:''}
-      <table><thead><tr><th class="n">#</th><th class="ex">${L('Egzersiz','Exercise')}</th><th>${L('Set × Tekrar','Sets × Reps')}</th>
-        <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+    return rptPhaseCard(bl.title,bl.tag,trs);
   }).join('');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)} — ${esc(a.name||'')}</title>
 <style>
@@ -33754,29 +33782,11 @@ ${RPT_FONT}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 :root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
 body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
-.hd{display:flex;align-items:center;gap:14px;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
-.hd img{height:24px;width:auto;flex:none}
-.hd h1{font-size:19px;font-weight:700;line-height:1.1}
-.hd .tm{font-size:10.5px;color:rgba(255,255,255,.7);margin-top:4px}
-.hd .ses{margin-left:auto;text-align:right;font-size:12px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:6px 13px;border-radius:7px;max-width:50%}
-.blk{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:11px;break-inside:avoid;page-break-inside:avoid}
-.bh{display:flex;align-items:center;gap:9px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border)}
-.bh .dot{width:3px;height:14px;border-radius:2px;background:var(--accent)}
-.bh .bt{font-size:11.5px;font-weight:700;letter-spacing:.04em}
-.bh .tag{margin-left:auto;font-size:9px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 8px}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-th{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;text-align:center;border-bottom:1px solid var(--border)}
-td{padding:8px;text-align:center;vertical-align:top;border-top:1px solid var(--border);font-size:10.5px;color:var(--text2)}
-tbody tr:first-child td{border-top:0}
-tr{break-inside:avoid;page-break-inside:avoid}
-th.n,td.n{width:28px;color:var(--dim);font-weight:700}
-th.ex,td.ex{width:46%;text-align:left}
-td.ex .nm{font-size:12px;font-weight:700;color:var(--text)}
-td.ex .why{font-size:9.5px;color:var(--muted);margin-top:3px;line-height:1.45}
-td.ds b{font-size:12px;color:var(--text)}
-td.ds s{color:var(--dim)}
-td.ds .dd{font-size:9.5px;color:var(--muted);margin-top:2px}
-.adj{font-size:9.5px;color:var(--muted);margin:2px 2px 10px}
+${RPT_HEAD_CSS}
+${RPT_PHASE_CSS}
+.bs{padding:10px 16px}
+.bs .pc-card:last-child{margin-bottom:0}
+.adj{font-size:9.5px;color:var(--muted);margin:0 2px 10px}
 .ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
 .print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
 .print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:7px 16px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}
@@ -33784,12 +33794,17 @@ td.ds .dd{font-size:9.5px;color:var(--muted);margin-top:2px}
 @media print{.print-bar,.scr-sp{display:none}}
 </style></head><body>
 <div class="print-bar">${L('Program hazır','The programme is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
-<div class="scr-sp" style="height:52px"></div>
-<div class="hd"><img src="${COACHOS_LOGO}" alt="CoachOS"><div><h1>${esc(a.name||'—')}</h1>${sub?`<div class="tm">${sub}</div>`:''}</div>
-  <div class="ses">${esc(title)}</div></div>
+<div class="scr-sp" style="height:66px"></div>
+${rptDocHead(esc(a.name||'—'),fdLong(date),focus,teamLogo())}
+<div class="sess">
+${rptSessBanner({no:1,nameHTML:esc(title),time,duration,purpose:focus,
+  meta:[{lbl:L('Pozisyon','Position'),val:a.position?posOf(a.position):''}]})}
+<div class="bs">
 ${pct?`<div class="adj">${L(`Hazır oluşa göre hacim ayarı %${Math.abs(pct)} uygulandı — üstü çizili değer modelin yazdığı, kalın olan uygulanacak olan.`,
   `The readiness adjustment of ${Math.abs(pct)}% has been applied — the struck value is what the model wrote, the bold one is what is done.`)}</div>`:''}
 ${blocks||`<div class="adj">${L('Programda egzersiz yok.','The programme has no exercises.')}</div>`}
+</div>
+</div>
 <div class="ft"><span>${esc(title)}</span><span>CoachOS · ${esc(fdL(date))}</span></div>
 </body></html>`);
   w.document.close();
@@ -34528,7 +34543,13 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       <div className="di-result">
         <div className="di-resacts">
           <button type="button" className="btn xs sec"
-            onClick={()=>printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct})}
+            onClick={()=>{
+              /* The session's own line — start, length, focus — as the athlete has it:
+                 off the calendar once written, off the plan before that. */
+              const m=(written&&calSes)||plan.meta||{};
+              printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct,
+                time:m.time,duration:m.duration,focus:sesFocusLine(m)});
+            }}
             title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
             {L('🖨 Yazdır','🖨 Print')}</button>
           <button type="button" className="btn xs sec" onClick={discard}>
