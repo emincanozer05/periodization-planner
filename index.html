@@ -33871,9 +33871,14 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const b=diBundle(a,s,ref,{libMap:libMap||undefined});
   const age=b.athlete&&b.athlete.age!=null?b.athlete.age:null;
 
+  /* Measured data — tests and body readings — is always the NEWEST on record, whatever
+     day the session is for: a test taken after the picked day is still this athlete's
+     current number, and a JSON that held the latest test back read as if it had never
+     been entered. Older tests only fill in a measure the newest one did not take. */
+  const allDated=list=>[...(list||[])].filter(r=>r&&r.date).sort(byDate);
   /* Body: the latest reading of each measure across the body-composition log and the
      test sheets (a weigh-in is often only on one of them), falling back to the card. */
-  const bodyRows=upTo([...(a.measurements||[]),...(a.tests||[])]);
+  const bodyRows=allDated([...(a.measurements||[]),...(a.tests||[])]);
   const latestBody=(k,card)=>{
     for(let i=bodyRows.length-1;i>=0;i--){const v=recNum(bodyRows[i][k]);if(v!=null)return{value:v,date:bodyRows[i].date};}
     const c=recNum(card);return c!=null?{value:c,date:null,source:'athlete card'}:null;
@@ -33924,7 +33929,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
 
   /* Tests: every metric the comparison table knows (the coach's own tests included),
      each at its most recent value. */
-  const tests=upTo(a.tests);
+  const tests=allDated(a.tests);
   const newest=(get)=>{for(let i=tests.length-1;i>=0;i--){let v=null;try{v=get(tests[i]);}catch(e){}if(v!=null)return{v,t:tests[i]};}return null;};
   const groups={};
   cmpMetrics(customTests||[]).forEach(m=>{
@@ -34112,8 +34117,9 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       overhead_squat_compensations:(()=>{const h=newest(t=>((t.ohs&&t.ohs.problems)||[]).filter(x=>String(x||'').trim()).length
         ?t.ohs.problems.filter(x=>String(x||'').trim()):null);return h?{date:h.t.date,list:h.v}:null;})(),
       comments:notes,
-      deviations_from_personal_average:(b.test_baselines||[]).filter(x=>x.baseline!=null).map(x=>({test:x.metric,current:x.current,personal_average:x.baseline,
-        deviation_pct:x.deviation_pct,unit:x.unit,date:x.date,readings:x.readings})),
+      deviations_from_personal_average:DI_TEST_METRICS.map(m=>diTestBaseline(a,m,null)).filter(x=>x&&x.baseline!=null)
+        .map(x=>({test:L(x.label[0],x.label[1]),current:x.current,personal_average:x.baseline,
+          deviation_pct:x.deviation,unit:x.unit.trim()||null,date:x.date,readings:x.n})),
     },
     pain_and_injury:{
       current_pain:painRegions.map(r=>({region:r.label,severity_0_5:r.severity_0_5,severity_0_3:r.severity_0_3,
