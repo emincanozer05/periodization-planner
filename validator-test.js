@@ -699,6 +699,16 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const snap2 = A.diAthleteSnapshot({ ath: ath2, setup: SETUP, date: TODAY, instr, customTests: [] });
     check('ikinci basış güncel veriyi okuyor', snap2.sleep.latest_value === 2 && snap2.muscle_soreness.latest_value === 1 &&
       snap2.tests.comments.some(x => x.comment === 'Bugünkü not'), JSON.stringify(snap2.sleep));
+    /* Seçilen günden SONRA alınmış bir test de en güncel veri olarak JSON'a girer. */
+    const ath3 = Object.assign({}, ath, {
+      tests: [...ath.tests, Object.assign(cleanTest(A.fmt(A.addD(A.parseD(TODAY), 3))), { cmj: 47, notes: 'Yeni test notu' })],
+    });
+    const snap3 = A.diAthleteSnapshot({ ath: ath3, setup: SETUP, date: back(2), instr, customTests: [] });
+    const cmj3 = Object.values(snap3.tests.results).flat().find(x => x.test === 'CMJ');
+    check('seans gününden sonraki test de en güncel veri olarak yazılıyor',
+      cmj3 && cmj3.value === 47 && snap3.tests.test_record_count === 3 &&
+      snap3.tests.comments.some(x => x.comment === 'Yeni test notu') &&
+      snap3.tests.fms && snap3.tests.fms.total === 4, JSON.stringify(cmj3));
     const anon = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr, customTests: [] });
     check('girilmemiş cinsiyet uydurulmuyor, eksik olarak bildiriliyor',
       !('sex' in anon.athlete) && (anon.missing_data || []).some(x => /^sex/.test(x)), JSON.stringify(anon.missing_data));
