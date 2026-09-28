@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -894,6 +894,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('modelin açıklaması takvim satırında dilleriyle tutuluyor', withWhy.length > 0 &&
       withWhy.every(e => e.descI18n && Object.values(e.descI18n).includes(e.description)) && withWhy[0].descI18n.en === 'Opens the thoracic spine.',
       JSON.stringify(withWhy.map(e => [e.description, e.descI18n])));
+    const sesTr = JSON.parse(JSON.stringify(ses));
+    sesTr.blocks[0].exercises.forEach(e => { if (e.descI18n) e.descI18n.tr = 'çeviri'; });
+    check('çeviri eklenince seans elle düzenlenmiş sayılmıyor', A.indivSig(sesTr) === A.indivSig(ses));
     const one = A.diProgramPlan(plan0, A.diParseExternalProgram(aiReply([ex()]), libMap), 0);
     check('tek bölümlük program fazsız düz blok', one.blocks.length === 1 && !(one.blocks[0].phases || []).length);
     const legacy = { phases: ['hazirlik', 'ana'], exercises: [] };

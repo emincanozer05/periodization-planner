@@ -29522,7 +29522,7 @@ function indivSig(ses){
   const walk=(v,d)=>{
     if(Array.isArray(v))return v.map(x=>walk(x,d+1));
     if(v&&typeof v==='object')return Object.keys(v)
-      .filter(k=>k!=='id'&&!(d===0&&INDIV_SIG_SKIP.has(k))).sort()
+      .filter(k=>k!=='id'&&k!=='descI18n'&&!(d===0&&INDIV_SIG_SKIP.has(k))).sort()
       .reduce((o,k)=>{o[k]=walk(v[k],d+1);return o;},{});
     return v==null?'':v;
   };
@@ -29610,7 +29610,10 @@ async function descTrFlush(){
         if(v)descTrCache[b.k]=v;else descTrFailed.add(b.k);
         done(b.k,v||null);
       });
-    }catch(e){list.forEach(b=>{descTrFailed.add(b.k);done(b.k,null);});}
+    }catch(e){
+      try{console.warn('[CoachOS] description translation failed:',(e&&e.message)||e);}catch(_){}
+      list.forEach(b=>{descTrFailed.add(b.k);done(b.k,null);});
+    }
   }
   try{
     const ks=Object.keys(descTrCache);
@@ -29618,21 +29621,30 @@ async function descTrFlush(){
     localStorage.setItem(DESC_TR_KEY,JSON.stringify(descTrCache));
   }catch(e){}
 }
-/* A row editor asks for its description in the app's language when it is missing, and
-   writes the answer onto the row. */
+/* A row editor shows its description in the app's language. The row's own versions
+   (descI18n) are used when the description is still one of them; otherwise the
+   description as it stands is taken as the original — a programme written before
+   descI18n existed, one edited on the calendar, or one typed in — and, when it is in the
+   other language, the missing version is asked for and stored beside it. The text the
+   coach wrote is never replaced: `description` stays as it is, descI18n only adds the
+   other language for display. */
 function useDescI18n(ex,onChange){
   // The rows are memoised: subscribing is what re-renders one when the language changes.
   const lang=useAppLang();
   const exRef=useRef(ex);exRef.current=ex;
   const cbRef=useRef(onChange);cbRef.current=onChange;
-  const src=descUnedited(ex)&&!ex.descI18n[lang]?String(ex.description):null;
+  const d=String((ex&&ex.description)||'').trim();
+  const kept=descUnedited(ex);
+  const src=!d?null:(kept?(ex.descI18n[lang]?null:d):(descLangOf(d)===lang?null:d));
   useEffect(()=>{
     if(!src)return;
     let live=true;
     descTranslate(src,lang).then(t=>{
       const cur=exRef.current;
-      if(!live||!t||!descUnedited(cur)||cur.descI18n[lang])return;
-      cbRef.current({...cur,descI18n:{...cur.descI18n,[lang]:t}});
+      if(!live||!t||String((cur&&cur.description)||'').trim()!==src)return;
+      const base=descUnedited(cur)?cur.descI18n:{[descLangOf(src)]:String(cur.description)};
+      if(base[lang])return;
+      cbRef.current({...cur,descI18n:{...base,[lang]:t}});
     });
     return()=>{live=false;};
   },[src,lang]);
