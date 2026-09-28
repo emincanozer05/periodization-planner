@@ -10555,7 +10555,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const lnk=safeURL(e.link);
       /* Notes column reads as bullets — one per line the coach wrote, plus the recorded
          justification (coach copy only) as a last bullet, rather than a run-on paragraph. */
-      const notes=String(e.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
       const notesHTML=notes.length?`<ul class="ex-notes">${notes.map(n=>`<li>${escHTML(n)}</li>`).join('')}</ul>`:dash;
       /* The alternative, printed as its own row directly under the exercise it stands in
@@ -10647,7 +10647,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.players)bits.push(escHTML(e.players));
       if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
       if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
-      const notes=String(e.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       const lnk=safeURL(e.videoUrl);
       return`${phHd}<div class="drill-card">
         <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
@@ -11221,7 +11221,7 @@ function buildWeekHTMLDoc(title,weekStart,days,athletes,opts){
     const ss=(ex.superset||'').toString().toUpperCase().trim();
     if(ss){c[ss]=(c[ss]||0)+1;return{tag:ss+c[ss],ss};}
     c._=(c._||0)+1;return{tag:c._+'.',ss:''};});};
-  const renderEx=(e,lab)=>`<div class="ex"><span class="ex-no${lab.ss?' ss':''}">${lab.tag}</span><span class="exn">${e.name||''}</span>${(e.sets||e.reps)?`<span class="exr">${e.sets||''}×${e.reps||''}</span>`:''}${e.rpe?`<span class="exl">RPE ${e.rpe}</span>`:''}${e.load?`<span class="exl">@${e.load}</span>`:''}${e.duration?`<span class="exd">${e.duration}</span>`:''}${e.tempo?`<span class="ext">t:${e.tempo}</span>`:''}${e.rest?`<span class="exrr">r:${e.rest}</span>`:''}${e.description?`<div class="exdesc">${e.description}</div>`:''}</div>`;
+  const renderEx=(e,lab)=>`<div class="ex"><span class="ex-no${lab.ss?' ss':''}">${lab.tag}</span><span class="exn">${e.name||''}</span>${(e.sets||e.reps)?`<span class="exr">${e.sets||''}×${e.reps||''}</span>`:''}${e.rpe?`<span class="exl">RPE ${e.rpe}</span>`:''}${e.load?`<span class="exl">@${e.load}</span>`:''}${e.duration?`<span class="exd">${e.duration}</span>`:''}${e.tempo?`<span class="ext">t:${e.tempo}</span>`:''}${e.rest?`<span class="exrr">r:${e.rest}</span>`:''}${exDesc(e)?`<div class="exdesc">${exDesc(e)}</div>`:''}</div>`;
   const renderDay=(date,i)=>{const day=days[date];const ss=day?.sessions||[];const isWeekend=i>=5;
     const dayLoad=rDay[i];   // realized team load for the day (matches chart + monotony)
     return`<td class="day-cell${isWeekend?' weekend':''}">
@@ -16502,6 +16502,7 @@ function ExLinkCell({value,onChange}){
    in one strip, then the reference link and the coaching cues. The two screens are
    the same editor now — a coach who has learned one has learned the other. */
 function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last,phases}){
+  useDescI18n(ex,onChange);
   const ss=(ex.superset||'').toUpperCase();
   const f=(k,v)=>onChange({...ex,[k]:v});
   const styles=exStylesFor(ex.pattern);
@@ -16637,7 +16638,7 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last,phases}){
       </div>
       <div className="iv-linkrow"><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></div>
       <div className="iv-noterow">
-        <label>{L('açıklama','description')}<LiveInput value={ex.description||''} onChange={v=>f('description',v)}
+        <label>{L('açıklama','description')}<LiveInput value={exDesc(ex)} onChange={v=>f('description',v)}
           placeholder={L('Açıklama / koçluk ipuçları (opsiyonel)…','Description / coaching cues (optional)…')}/></label>
       </div>
       {/* The swap lives here, at the end of what is written about the exercise, because
@@ -29537,6 +29538,105 @@ function indivHandEdited(ses){
   return !!sig&&indivSig(ses)!==sig;
 }
 
+/* ---- AI-written exercise descriptions, in the app's language ---------------------
+   The programme JSON is English end to end and says nothing about language; the model
+   answers in whatever language it likes. What it wrote as an exercise's description is
+   kept with the row as `descI18n` ({en, tr}, keyed by the language it is in), and the
+   calendar and the printed sheet read it through exDesc() — so switching the app's
+   language switches the description too. The missing language is filled in by the
+   coach's own AI connection the first time the row is shown in it (descTranslate), and
+   stored on the row, so it is asked for once. A description the coach has typed over is
+   the coach's: it no longer matches any stored version and is shown exactly as typed. */
+function descLangOf(t){
+  const x=String(t||'');
+  return /[çğıöşüÇĞİÖŞÜ]/.test(x)||/\b(ve|için|ile|bir|bu|daha|olarak|sporcu)\b/i.test(x)?'tr':'en';
+}
+function descI18nFor(isAI,text){
+  const t=String(text||'').trim();
+  return isAI&&t?{descI18n:{[descLangOf(t)]:t}}:{};
+}
+// The row's description is still one the model wrote (not typed over by the coach).
+function descUnedited(ex){
+  const m=ex&&ex.descI18n,d=String((ex&&ex.description)||'');
+  return !!(m&&typeof m==='object'&&d&&Object.keys(m).some(k=>m[k]===d));
+}
+function exDesc(ex){
+  const d=String((ex&&ex.description)||'');
+  if(!descUnedited(ex))return d;
+  return ex.descI18n[REPORT_LANG]||d;
+}
+/* The AI settings the translator uses — registered by the App, like the library bridge. */
+let DESC_AI_CFG=null;
+const DESC_TR_KEY='coachos_desc_tr_v1';
+const descTrCache=(()=>{try{const o=JSON.parse(localStorage.getItem(DESC_TR_KEY)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return{};}})();
+const descTrWait={},descTrFailed=new Set();
+let descTrQ=[],descTrTimer=0;
+/* One translation, answered from the cache or batched with the others the screen asks
+   for in the same moment — a phased session asks for a dozen rows at once. Resolves to
+   null when there is no AI connection or the call fails; the row then keeps the
+   language it was written in, and a failed text is not asked for again this visit. */
+function descTranslate(text,to){
+  const k=to+'|'+text;
+  if(descTrCache[k])return Promise.resolve(descTrCache[k]);
+  if(descTrFailed.has(k))return Promise.resolve(null);
+  return new Promise(res=>{
+    const w=descTrWait[k]||(descTrWait[k]=[]);
+    w.push(res);
+    if(w.length===1)descTrQ.push({k,text,to});
+    clearTimeout(descTrTimer);descTrTimer=setTimeout(descTrFlush,150);
+  });
+}
+async function descTrFlush(){
+  const batch=descTrQ.splice(0,30);
+  if(descTrQ.length)descTrTimer=setTimeout(descTrFlush,150);
+  const done=(k,v)=>{const w=descTrWait[k]||[];delete descTrWait[k];w.forEach(r=>r(v));};
+  const byTo={};batch.forEach(b=>(byTo[b.to]=byTo[b.to]||[]).push(b));
+  for(const to of Object.keys(byTo)){
+    const list=byTo[to];
+    try{
+      const ai=DESC_AI_CFG||{};
+      const provider=aiProviderOf(ai),key=aiKeyOf(ai),model=aiModelOf(ai);
+      if(!key)throw new Error('no ai');
+      const sys=`Translate each strength-and-conditioning exercise note into ${to==='tr'?'Turkish':'English'}. `+
+        'Keep exercise names, numbers, units and abbreviations (RPE, 1RM, RFD, DB, KB) as they are; add nothing. '+
+        'Reply with ONLY a JSON array of strings: one translation per input, in the same order.';
+      const msgs=[{role:'user',content:JSON.stringify(list.map(b=>b.text))}];
+      const txt=provider==='anthropic'
+        ?await askCoach(key,model,sys,msgs,{maxTokens:4000,effort:'low'})
+        :await askGemini(key,model,sys,msgs,{maxTokens:4000,json:true,thinkingBudget:0,temperature:0.2});
+      const arr=JSON.parse(txt.slice(txt.indexOf('['),txt.lastIndexOf(']')+1));
+      list.forEach((b,i)=>{
+        const v=String((Array.isArray(arr)&&arr[i]!=null)?arr[i]:'').trim();
+        if(v)descTrCache[b.k]=v;else descTrFailed.add(b.k);
+        done(b.k,v||null);
+      });
+    }catch(e){list.forEach(b=>{descTrFailed.add(b.k);done(b.k,null);});}
+  }
+  try{
+    const ks=Object.keys(descTrCache);
+    ks.slice(0,Math.max(0,ks.length-600)).forEach(k=>{delete descTrCache[k];});
+    localStorage.setItem(DESC_TR_KEY,JSON.stringify(descTrCache));
+  }catch(e){}
+}
+/* A row editor asks for its description in the app's language when it is missing, and
+   writes the answer onto the row. */
+function useDescI18n(ex,onChange){
+  // The rows are memoised: subscribing is what re-renders one when the language changes.
+  const lang=useAppLang();
+  const exRef=useRef(ex);exRef.current=ex;
+  const cbRef=useRef(onChange);cbRef.current=onChange;
+  const src=descUnedited(ex)&&!ex.descI18n[lang]?String(ex.description):null;
+  useEffect(()=>{
+    if(!src)return;
+    let live=true;
+    descTranslate(src,lang).then(t=>{
+      const cur=exRef.current;
+      if(!live||!t||!descUnedited(cur)||cur.descI18n[lang])return;
+      cbRef.current({...cur,descI18n:{...cur.descI18n,[lang]:t}});
+    });
+    return()=>{live=false;};
+  },[src,lang]);
+}
 /* Turn a built sheet into a session object for the athlete's own calendar. Which exercise
    the source session had asked for rides along on every changed slot, so the card can still
    say what was swapped; it prints nowhere. */
@@ -29547,6 +29647,7 @@ function planToSession(plan,src,dateKey,srcKey){
     return{name:t(r.name),sets:t(r.sets),reps:t(r.reps),duration:t(r.duration),
       tempo:t(r.tempo),rpe:t(r.rpe),load:t(r.load),rest:t(r.rest),
       description:[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':''),
+      ...descI18nFor(r.base.aiDesc,[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':'')),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
       pattern:t(r.pattern),plane:t(r.plane),
@@ -32554,21 +32655,12 @@ const DI_EXT_TASK=[
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Choose every exercise\'s movement_pattern from movement_pattern_vocabulary and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
   'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
-  'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Choose exercises from exercise_library wherever possible, writing the name exactly as listed; an exercise outside the library is allowed but is shown to the coach as a warning.',
+  'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days. constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
-  /* The JSON is English, but what the model writes lands on the calendar and the printed
-     sheet as it is written — so the prose comes back in the language the coach reads
-     the app in, named in response_language. Keys and the controlled values stay as
-     they are: the parser and the checks read them. */
-  'Write every free-text value of the reply in the language named in response_language: status_summary, the training_priorities, session_name, the block names, each exercise\'s rationale, constraints_respected, the flagged_conflicts texts, rationale and coach_warning. '+
-    'Keys, phase, movement_pattern, equipment and the basis ids stay exactly as specified, and an exercise taken from exercise_library keeps its library name.',
 ];
-/* The language the model is to write its prose in: the one the app is showing when the
-   JSON is built. Read before diInEnglish switches every label to English. */
-const diReplyLang=()=>REPORT_LANG==='tr'?'Turkish':'English';
 /* The same task for a whole squad in one request: one session per athlete, returned
    together, each tagged with the athlete it is for — so the one answer can be pasted
    into every athlete's "AI Programını Yükle" box and each box takes its own. */
@@ -32584,8 +32676,9 @@ const DI_EXT_TASK_SQUAD=[
     .replace('as one in recent_programs','as one in that athlete\'s recent_programs')
     .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')),
 ];
-/* The coach's S&C shelf by movement pattern, so an outside model picks from the
-   exercises this app knows (anything else is accepted but flagged, rule 29). Cut to
+/* The coach's S&C shelf by movement pattern — a reference, not the pool the session is
+   built from: the task tells the model to lean on it as little as possible, and an
+   exercise outside it is accepted (rule 29 only notes it). Cut to
    the gym's kit where an inventory exists, and to a readable length per pattern. */
 const DI_LIB_PER_PATTERN=40;
 function diLibraryForAI(libMap,setup){
@@ -32618,9 +32711,8 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    are the same for everyone — the task, the answer's shape, the pattern dictionary and
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
-  const replyLang=diReplyLang();
   return diInEnglish(()=>{
-  const shared=['task','response_language','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -32634,7 +32726,6 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     session_day:day?{date:day.date,weekday:day.weekday,relative_to_today:day.relative_to_today,match_day_label:day.match_day_label,
       next_game:day.next_game,season_phase:day.season_phase,season_phase_focus:day.season_phase_focus}:{date},
     task:DI_EXT_TASK_SQUAD,
-    response_language:replyLang,
     generated_at:new Date(now||Date.now()).toISOString(),
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
@@ -33162,7 +33253,9 @@ function diProgramPlan(plan,program,pct){
   const mkRow=(e)=>{
     const adj=diAdjustRow({sets:e.sets,reps:e.reps,duration:e.duration},cut);
     const why=String(e.why||'').trim();
-    return{key:e.key,base:{description:why,notes:'',name:''},
+    /* aiDesc: the description is the model's, so the calendar shows it in whichever
+       language the app is in (descI18n, below) rather than the one it was written in. */
+    return{key:e.key,base:{description:why,notes:'',name:'',aiDesc:!!why},
       name:e.name,added:true,addId:e.key,
       sets:adj.sets||'',reps:adj.reps||'',duration:adj.duration||'',
       tempo:e.tempo||'',rpe:'',load:e.load||'',rest:e.rest||'',
@@ -33708,7 +33801,6 @@ function snapCopy(text){
   return Promise.resolve(fallback());
 }
 function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,recent}){
-  const replyLang=diReplyLang();
   return diInEnglish(()=>{
   const a=ath||{},s=setup||{};
   const ref=date||fmt(today);
@@ -33901,7 +33993,6 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const out={
     session_day:target,
     task:DI_EXT_TASK,
-    response_language:replyLang,
     generated_at:nowD.toISOString(),
     date:ref,
     athlete:{
@@ -36197,6 +36288,8 @@ function App(){
     return{...prev,exercises:next};
   }));
   return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);};},[setData]);
+  // The AI connection the description translator uses (see descTranslate).
+  DESC_AI_CFG=(data&&data.ai)||null;
   // Keep the exercise editor's picker in sync with the library (names + categories), and
   // carry each entry's program image and video link along: picking the exercise while
   // writing a program copies both onto the row, so the coach never hunts for the image

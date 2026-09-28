@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -768,11 +768,21 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const badRegion = PB.REGIONS.filter(r => A.painRegionEn(r.k) !== r.en).map(r => r.k);
     check('ağrı bölgesi çevirisi pain-body.js kataloğunun tamamıyla aynı', PB.REGIONS.length > 60 && badRegion.length === 0,
       badRegion.join(', '));
-    /* Anahtarlar İngilizce, ama modelin yazdığı açıklamalar takvime ve çıktıya olduğu gibi
-       geçer: yanıtın dili arayüzün dili. */
-    const enSnap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [], libMap });
-    check('JSON: yanıt dili arayüz diliyle aynı', trSnap.response_language === 'Turkish' && enSnap.response_language === 'English' &&
-      trSnap.task.some(g => /response_language/.test(g) && /rationale/.test(g)), trSnap.response_language + ' / ' + enSnap.response_language);
+    check('JSON: dil alanı ya da dil talimatı yok', !('response_language' in trSnap) &&
+      !trSnap.task.some(g => /response_language|Turkish/.test(g)));
+    check('JSON: görev kütüphaneye olabildiğince az başvurmasını söylüyor',
+      trSnap.task.some(g => /exercise_library as little as possible/.test(g) && /fully accepted/.test(g)) &&
+      !trSnap.task.some(g => /wherever possible|outside the library is allowed but/.test(g)));
+    /* Modelin yazdığı açıklama satırda iki dilli tutuluyor; ekran ve çıktı uygulama
+       dilindekini okuyor, koçun üzerine yazdığı metin olduğu gibi kalıyor. */
+    const rowEn = Object.assign({ description: 'Targets ankle dorsiflexion.' }, A.descI18nFor(true, 'Targets ankle dorsiflexion.'));
+    const rowTr = Object.assign({}, rowEn, { descI18n: Object.assign({}, rowEn.descI18n, { tr: 'Ayak bileği dorsifleksiyonunu hedefler.' }) });
+    check('açıklama uygulama diliyle değişiyor',
+      rowEn.descI18n.en === 'Targets ankle dorsiflexion.' && A.exDesc(rowEn) === 'Targets ankle dorsiflexion.' &&
+      A.inTurkish(() => A.exDesc(rowTr)) === 'Ayak bileği dorsifleksiyonunu hedefler.' && A.exDesc(rowTr) === 'Targets ankle dorsiflexion.' &&
+      A.inTurkish(() => A.exDesc(Object.assign({}, rowTr, { description: 'Koçun notu' }))) === 'Koçun notu' &&
+      A.descLangOf('Sol ayak bileği için') === 'tr' && Object.keys(A.descI18nFor(false, 'x')).length === 0,
+      JSON.stringify(rowTr));
     check('dil anahtarı JSON\'dan sonra eski haline dönüyor', A.inTurkish(() => { A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [] }); return A.L('tr', 'en'); }) === 'tr');
   }
 
@@ -861,7 +871,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const ath = athlete({ wellness: [wellness(TODAY, 4)] });
     const plan0 = { ath, meta: { name: 'Takım', duration: 60, focus: [] }, blocks: [] };
     const multi = A.diParseExternalProgram(JSON.stringify({ program: { seans_adi: 'Kuvvet Koruma', bloklar: [
-      { ad: 'Hazırlık — Mobilite', faz: 'hazirlik', egzersizler: [{ ad: 'Thoracic Extension', set: '2', tekrar: '8' }, { ad: 'Wall Slides', set: '2', tekrar: '8' }] },
+      { ad: 'Hazırlık — Mobilite', faz: 'hazirlik', egzersizler: [{ ad: 'Thoracic Extension', set: '2', tekrar: '8', gerekce: 'Opens the thoracic spine.' }, { ad: 'Wall Slides', set: '2', tekrar: '8' }] },
       { ad: 'Ana — Kuvvet koruma (itiş-çekiş)', faz: 'ana', egzersizler: [{ ad: 'DB Bench Press', set: '3', tekrar: '8' }] },
       { ad: 'Soğuma', faz: 'soguma', egzersizler: [{ ad: 'Nefes', sure: '3 dk' }] },
     ] } }), libMap);
@@ -880,6 +890,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('takvime yazılan seansta da tek blok, fazlar ve adları korunuyor', ses.blocks.length === 1 && sb.phases.length === 3 &&
       sb.phaseNames[sb.phases[1]] === 'Ana — Kuvvet koruma (itiş-çekiş)' && sb.exercises.map(e => sb.phases.indexOf(e.phase)).join(',') === '0,0,1,2',
       JSON.stringify({ n: ses.blocks.length, ph: sb.phases, names: sb.phaseNames }));
+    const withWhy = sb.exercises.filter(e => e.description);
+    check('modelin açıklaması takvim satırında dilleriyle tutuluyor', withWhy.length > 0 &&
+      withWhy.every(e => e.descI18n && Object.values(e.descI18n).includes(e.description)) && withWhy[0].descI18n.en === 'Opens the thoracic spine.',
+      JSON.stringify(withWhy.map(e => [e.description, e.descI18n])));
     const one = A.diProgramPlan(plan0, A.diParseExternalProgram(aiReply([ex()]), libMap), 0);
     check('tek bölümlük program fazsız düz blok', one.blocks.length === 1 && !(one.blocks[0].phases || []).length);
     const legacy = { phases: ['hazirlik', 'ana'], exercises: [] };
@@ -920,7 +934,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('toplu JSON: her sporcu kendi verisi ve talimatıyla, ortak kısımlar bir kez',
       sq.athlete_count === 2 && sq.athletes.length === 2 && sq.athletes[0].athlete.id === 'a1' &&
       sq.athletes[1].sleep.latest_value === 2 && sq.athletes[1].coach_brief.additional_notes === 'Yalnız üst vücut' &&
-      !('task' in sq.athletes[0]) && !('response_language' in sq.athletes[0]) && sq.response_language === 'English' && !('output_format' in sq.athletes[0]) && !('equipment' in sq.athletes[0]) &&
+      !('task' in sq.athletes[0]) && !('response_language' in sq) && !('output_format' in sq.athletes[0]) && !('equipment' in sq.athletes[0]) &&
       Array.isArray(sq.task) && Array.isArray(sq.output_format.programs) && !!sq.equipment && sq.session_day.date === TODAY,
       Object.keys(sq).join(','));
     /* Şemadaki biçimde (programs / athlete_id / athlete_name) yazılmış toplu yanıt. */
