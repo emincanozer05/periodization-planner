@@ -41,7 +41,7 @@ eski kopyayı kullanmasın.
    yamayla kapatılıyor. Yamanın yüzeyi çevresindeki alından, şakaklardan,
    yanaklardan ve çeneden ince plaka eğrisiyle sürüyor — pürüzsüz, hafif kubbeli
    bir manken yüzü. Kulaklar ve kafanın biçimi yerinde.
-4. **Bölgeler** (`regions.js`): her köşe 72 bölgeden birine. Önce deri
+4. **Bölgeler** (`regions.js`): her köşe 74 bölgeden birine. Önce deri
    ağırlıklarından parça (kol, el, parmak, bacak, ayak, baş, boyun, gövde),
    sonra parçanın içinde geometri: gövdede yükseklik ve gövde eksenine göre açı,
    kolda omuzdan uzaklık, bacakta yükseklik ve bacak eksenine göre açı. Boyun

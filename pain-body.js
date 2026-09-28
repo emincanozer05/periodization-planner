@@ -40,7 +40,7 @@
   var THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.min.js';
   // Model dosyası bu betiğin yanında duruyor. Sürüm eki, dosya değişince
   // tarayıcının eski kopyayı kullanmaması için.
-  var MESH_VERSION = '2';
+  var MESH_VERSION = '3';
   var MESH_URL = (function () {
     var src = '';
     try { src = (document.currentScript && document.currentScript.src) || ''; } catch (e) {}
@@ -79,9 +79,9 @@
   two('el bileği', 'wrist', 'arm');
   two('el', 'hand', 'arm');
   two('parmaklar', 'fingers', 'arm');
-  one('Göğüs', 'Chest', 'trunk');
+  two('göğüs', 'chest', 'trunk');
   two('kaburga', 'ribs', 'trunk');
-  one('Üst sırt', 'Upper back', 'trunk');
+  two('üst sırt', 'upper back', 'trunk');
   one('Orta sırt', 'Mid back', 'trunk');
   one('Alt sırt / bel', 'Lower back', 'trunk');
   two('yan gövde', 'flank', 'trunk');
@@ -652,8 +652,8 @@
   }
 
   /* Hızlı yakınlaşma: referans görseldeki "baş ve boyun / el / diz / ayak" kutuları
-     gibi. Aynı düğmeye yeniden basınca ikinci görünüm: ense, öbür el, dizlerin ve
-     ayakların arkası. [yaw, pitch, hedef x, y, z, yükseklik (m), genişlik (m)] */
+     gibi, bir de gövde. Aynı düğmeye yeniden basınca ikinci görünüm: ense, sırt,
+     öbür el, dizlerin ve ayakların arkası. [yaw, pitch, hedef x, y, z, yükseklik (m), genişlik (m)] */
   function zonePresets(J) {
     var hand = function (s) {
       var w = J['wrist.' + s], sx = s === 'L' ? 1 : -1;
@@ -662,6 +662,7 @@
     var knee = J['lowerleg01.L'][1] + 0.025, ank = J['foot.L'];
     return {
       head: [[0, 0.04, 0, 1.63, 0.02, 0.44, 0.3], [Math.PI, 0.04, 0, 1.6, 0, 0.46, 0.3]],
+      trunk: [[0, 0.04, 0, 1.2, 0.03, 0.64, 0.56], [Math.PI, 0.04, 0, 1.2, -0.03, 0.64, 0.56]],
       hand: [hand('R'), hand('L')],
       knee: [[0, 0.02, 0, knee, 0.03, 0.40, 0.44], [Math.PI, 0.02, 0, knee, 0.0, 0.40, 0.44]],
       foot: [[0.22, 0.32, 0, ank[1] - 0.02, ank[2] + 0.05, 0.26, 0.46], [Math.PI - 0.22, 0.2, 0, ank[1] + 0.005, ank[2] - 0.03, 0.26, 0.46]]
