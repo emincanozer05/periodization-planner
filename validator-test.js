@@ -709,14 +709,28 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const lim = snap.code_checked_limits;
     check('kademe tavanı egzersiz başına set diye adlandırılıyor ve açıklanıyor',
       lim.tier_caps && lim.tier_caps.max_sets_per_exercise === 5 && !!lim.tier_caps.note &&
-      lim.tier_caps.plyometric_note === 'reactive and single-leg contacts included', JSON.stringify(lim.tier_caps));
+      !('plyometric_note' in lim.tier_caps) && /higher is better/.test(lim.tier_caps.tier_scale || ''), JSON.stringify(lim.tier_caps));
+    check('"squat" yasağı varken Squat paterni açık gösterilmiyor', !lim.available_patterns.includes('Squat') &&
+      lim.available_patterns.includes('Hinge') && !!lim.available_patterns_note, JSON.stringify(lim.available_patterns));
+    check('FMS toplamı ölçülen hareketlere göre', snap.tests.fms.max === 6 && snap.tests.fms.complete === false && !!snap.tests.fms.note,
+      JSON.stringify(snap.tests.fms));
+    check('JSON kökünde session_day.date tekrarı yok; şemada egzersiz RPE alanı var',
+      !('date' in snap) && !!snap.session_day.date && !!snap.output_format.program.blocks[0].exercises[0].rpe);
+    const withRpe = A.diParseExternalProgram(JSON.stringify({ program: { session_name: 'X', blocks: [{ name: 'Ana', phase: 'main',
+      exercises: [{ name: 'Trap Bar Deadlift', sets: '3', reps: '5', rpe: '7', rationale: 'Hinge strength.' }] }] } }), libMap);
+    const rpeRow = A.diProgramPlan(A.buildIndivPlan({ id: 's1', name: 'T', time: '09:00', duration: 60, blocks: [] }, ath, { ref: TODAY, ovr: {} }), withRpe, 0).blocks[0].rows[0];
+    check('modelin yazdığı RPE takvim satırının RPE sütununa gidiyor', rpeRow.rpe === '7', JSON.stringify(rpeRow));
+    check('görev: güvenlik koç talimatından önce', snap.task.some(g => /^Safety comes first/.test(g) && /flagged_conflicts/.test(g)));
+    check('maruziyet takım antrenmanını saymadığını söylüyor', /Team practice and games are not in it/.test(snap.training_profile.exercise_exposure.scope || ''));
+    check('maç takvimi yoksa missing_data söylüyor', (snap.missing_data || []).some(m => /^game schedule/.test(m)), JSON.stringify(snap.missing_data));
+    check('RPE ve süreden yük: 7 günlük sRPE toplamı', snap.rpe.srpe_7_days_au === 630, JSON.stringify(snap.rpe));
     check('sert kısıtın eşleşme kuralı yazılı', /ANY ONE/.test(lim.hard_restriction_matching_rule || '') &&
       lim.hard_restrictions[0].source === 'coach brief', lim.hard_restriction_matching_rule);
     check('görev hacim ayarını yalnızca hazır oluşa bağlamıyor',
       snap.task.some(g => /volume_adjustment_pct/.test(g) && /pain/.test(g) && /volume_adjustment_reasons/.test(g)));
     const snapL = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [], libMap });
     const dev = snapL.tests.deviations_from_personal_average || [];
-    check('test sapmaları İngilizce anahtarlarla', dev.length && dev.every(x => 'test' in x && 'current' in x && !('metric' in x)),
+    check('tek ölçümlü test sapma listesine girmiyor (kişisel ortalama yok)', dev.every(x => x.personal_average != null) && !dev.some(x => x.test === 'CMJ'),
       JSON.stringify(dev));
     check('bağlam: spor, pozisyon vurgusu, hareket aileleri, kütüphane',
       snap.sport_context && (snap.sport_context.nature_of_the_game || []).length > 0 &&
