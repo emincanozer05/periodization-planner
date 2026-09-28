@@ -8885,8 +8885,11 @@ const PHASE_NAME={gp:'General Preparation',sp:'Specific Preparation',comp:'Compe
    readiness reading "No data", so every downstream layer (Load Board, risk alerts,
    readiness-based load adjustment) had nothing to work with. Never double-counts: the
    calendar is consulted only for days the log doesn't cover. */
+/* A log row that stored only RPE and minutes for a slot (older rows did) still carries
+   that slot's load: RPE × minutes, the same product the rest of the app shows for it. */
+const _slotLoad=(e,k)=>Number(e[k+'Load'])||((Number(e[k+'RPE'])||0)*(Number(e[k+'Duration'])||0));
 function athDayLoad(a,dk){let v=0;(a.srpeLog||[]).forEach(e=>{if(e.date!==dk)return;
-  v+=Number(e.totalLoad)||((Number(e.tpLoad)||0)+(Number(e.scLoad)||0)+(Number(e.gameLoad)||0));});
+  v+=Number(e.totalLoad)||(_slotLoad(e,'tp')+_slotLoad(e,'sc')+_slotLoad(e,'game'));});
   if(v===0){const ss=(((a.days||{})[dk]||{}).sessions)||[];
     ss.forEach(s=>{v+=Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0);});}
   return Math.round(v);}
@@ -23279,6 +23282,8 @@ const PW_POS_PATTERNS={
   other:{oyun_talebi:null,vurgu:[],koruma:[]},
 };
 
+// How the tier reads, said wherever the tier number reaches the model.
+const DI_TIER_SCALE='1 = fails the screening, 2 = limited, 3 = passes; the lowest screen sets the tier, higher is better';
 /* ---- Reference 2: structural tier (weakest link) --------------------------
    The screening battery, scored on cut-offs the app ALREADY uses: ankle
    dorsiflexion 35° and ASLR / overhead squat ≤1 out of 3 come from the
@@ -31020,6 +31025,7 @@ function atpSnapshot(ath,ref,libMap){
       hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
     exercise_exposure:{
       source:'computed automatically from the training sessions on the calendar',
+      scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
       /* The profile's own classification, finer than the session's pattern vocabulary
          and named apart from it so the two lists are never mistaken for each other. */
@@ -31829,7 +31835,7 @@ function diDifferentiators(ath,bundle,deficits,ref){
   if(t.yapisal!=null){
     const weak=(t.zayif_halka||[])[0]||null;
     add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
-      `structural tier ${t.yapisal}${weak?` (weakest link: ${weak})`:''}`);
+      `structural tier ${t.yapisal} of 3 — ${DI_TIER_SCALE}${weak?` (weakest link: ${weak})`:''}`);
     if(t.gecici_dusus)
       add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
         `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
@@ -32670,6 +32676,7 @@ const DI_EXT_TASK=[
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
+  'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days. constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
 ];
@@ -33889,7 +33896,11 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   });
   const fmsHit=newest(t=>{const r=fmsCalc(t.fms);return r.n?r:null;});
   const fms=fmsHit?{
-    date:fmsHit.t.date,total:fmsHit.v.total,movements_scored:fmsHit.v.n,max:21,
+    /* The ceiling of what was actually scored (3 per movement), not the full 21: a
+       two-movement screen totalling 4 is 4 of 6, not a poor FMS. */
+    date:fmsHit.t.date,total:fmsHit.v.total,movements_scored:fmsHit.v.n,max:fmsHit.v.n*3,
+    complete:fmsHit.v.n>=7,
+    note:fmsHit.v.n<7?`Only ${fmsHit.v.n} of the 7 FMS movements were scored; total and max cover those movements only.`:null,
     movements:fmsHit.v.items.filter(i=>i.filled).map(i=>({movement:i.en,score:i.score,
       right:i.right,left:i.left,asymmetry:i.asym,
       clearing_test:(i.clear&&i.cleared)?(i.cleared==='pos'?'positive (painful)':'negative'):null}))}:null;
@@ -33979,14 +33990,18 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const limits={
     blocked_patterns:blockedX.map(x=>({region:x.bolge,severity_0_5:x.siddet_0_5,source:SRC_EN[x.kaynak]||x.kaynak,
       standing:x.kalici,blocked_patterns:x.yasak_paternler,redirect_to_patterns:x.yonlendirilecek_paternler})),
-    available_patterns:IV_PATTERNS.filter(p=>!blockedSetX.has(p)),
+    /* A pattern whose own name is a hard-restriction term ("squat" → Squat) is not
+       offered as open: every exercise in it that says so in its name is blocked. */
+    available_patterns:IV_PATTERNS.filter(p=>!blockedSetX.has(p)&&
+      !restrX.some(r=>diExName(p).split(' ').some(w=>(r.terimler||[]).includes(w)))),
+    available_patterns_note:'Open as far as pain, injury and the coach\'s restrictions allow. hard_restrictions still apply by exercise name inside every pattern.',
     hard_restrictions:restrX.map(r=>({source:SRC_EN[r.kaynak]||r.kaynak,region:r.bolge,rtp_stage:r.rtp,text:r.metin,match_terms:r.terimler})),
     /* How the check reads a restriction — word by word, not as a phrase — said here so
        "deep squat" is not taken to leave every other squat open. */
     hard_restriction_matching_rule:restrX.length?'An exercise violates a restriction when ANY ONE of the words in match_terms appears in its name as a whole word '+
       '(or the whole text does). E.g. a "deep squat" restriction covers every exercise with "squat" in its name.':null,
-    tier_caps:capsX?{current_tier:b.tier.gecerli,max_sets_per_exercise:capsX.max_sets,max_main_phase_exercises:capsX.max_main,
-      plyometric_note:capsX.plyo_note_en||capsX.plyo_note,
+    tier_caps:capsX?{current_tier:b.tier.gecerli,tier_scale:DI_TIER_SCALE,max_sets_per_exercise:capsX.max_sets,max_main_phase_exercises:capsX.max_main,
+      plyometric_note:plyoX?(capsX.plyo_note_en||capsX.plyo_note):null,
       note:'max_sets_per_exercise is the set ceiling of a single exercise row; max_main_phase_exercises is the ceiling on the number of exercises in the main phase.'}:null,
     plyometric_contact_limit:plyoX?{min:plyoX.min,max:plyoX.max,group:plyoX.grup,
       note:'Total ground contacts (sets × reps, only rows in the Jump / Plyo pattern) may not exceed this ceiling.'}:null,
@@ -34058,7 +34073,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       overhead_squat_compensations:(()=>{const h=newest(t=>((t.ohs&&t.ohs.problems)||[]).filter(x=>String(x||'').trim()).length
         ?t.ohs.problems.filter(x=>String(x||'').trim()):null);return h?{date:h.t.date,list:h.v}:null;})(),
       comments:notes,
-      deviations_from_personal_average:(b.test_baselines||[]).map(x=>({test:x.metric,current:x.current,personal_average:x.baseline,
+      deviations_from_personal_average:(b.test_baselines||[]).filter(x=>x.baseline!=null).map(x=>({test:x.metric,current:x.current,personal_average:x.baseline,
         deviation_pct:x.deviation_pct,unit:x.unit,date:x.date,readings:x.readings})),
     },
     pain_and_injury:{
@@ -34122,6 +34137,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   if(!tests.length)missing.push('test record');
   if(!eq.length)missing.push('equipment inventory');
   if(!atp.filled)missing.push('training profile (no athletic profile or constraints entered)');
+  if(!cp.next&&!cp.previous&&!cp.today)missing.push('game schedule (no games on the season calendar — next_game and the game-proximity volume adjustment cannot be computed; a game mentioned only in coach_brief.additional_notes is not in volume_adjustment_pct)');
   const res=snapClean(out)||{};
   if(missing.length)res.missing_data=missing;
   return res;
