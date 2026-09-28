@@ -4638,7 +4638,6 @@ header{background:var(--bg2)!important}
    athlete's own card. Everything above .di-ai is computed; everything inside it is
    written by the model and waits on the coach. */
 .di-title{font-size:12px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.08em;font-family:'IBM Plex Mono',ui-monospace,monospace}
-.di-flag{border:1px solid var(--border);border-radius:999px;padding:2px 11px;font-size:11px;font-weight:800;letter-spacing:.04em}
 .di-dim{color:var(--dim);font-size:11px}
 .di-k{font-size:9.5px;font-family:'IBM Plex Mono',ui-monospace,monospace;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;flex:none}
 .di-box .di-v.sm{font-size:14px}
@@ -5853,8 +5852,10 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .di-panel{border:1px solid var(--border);border-radius:14px;background:var(--elevated);
   padding:14px 16px 16px;display:flex;flex-direction:column;gap:16px}
 .di-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-/* The fold toggle, at the far end of the header. Folded, the panel is its header alone. */
-.di-fold{margin-left:auto;display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+/* The header's two buttons, at its far end: the flip between the brief and the
+   programme, then the fold. Folded, the panel is its header alone. */
+.di-hdacts{margin-left:auto;display:flex;align-items:center;gap:8px}
+.di-fold{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
   background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:5px 11px;
   color:var(--text2);font:700 11px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;
   text-transform:uppercase;transition:border-color .12s ease,color .12s ease,background .12s ease}
@@ -5862,14 +5863,46 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .di-fold i{font-style:normal;font-size:12px;transition:transform .18s ease;transform:rotate(-90deg)}
 .di-fold.open i{transform:none}
 .di-panel:has(.di-hd.folded){padding-bottom:14px}
+/* "Programı Gör": the panel is a card with two faces — today and the brief on the
+   front, the programme on the back — so the page carries one of them at a time. */
+.di-flipbtn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  background:var(--accent-bg);border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);
+  border-radius:9px;padding:5px 12px;color:var(--accent2);
+  font:700 11px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;
+  transition:border-color .12s ease,color .12s ease,background .12s ease}
+.di-flipbtn:hover{border-color:var(--accent);color:var(--text);background:color-mix(in srgb,var(--accent) 20%,transparent)}
+.di-flipbtn i{font-style:normal;font-size:13px;display:inline-block;transition:transform .45s cubic-bezier(.2,.7,.3,1)}
+.di-flipbtn.back i{transform:rotate(-180deg)}
+/* The turn itself: the face swings edge-on, the other face swings in from the far
+   edge. The perspective is deep so the turn stays a light one and the near edge never
+   grows past the panel's own width. */
+.di-face{display:flex;flex-direction:column;gap:16px;transform-origin:50% 50%}
+.di-face.out{animation:di-flip-out .17s ease-in forwards}
+.di-face.in{animation:di-flip-in .28s cubic-bezier(.2,.7,.3,1)}
+@keyframes di-flip-out{from{transform:perspective(3600px) rotateY(0);opacity:1}
+  to{transform:perspective(3600px) rotateY(90deg);opacity:.25}}
+@keyframes di-flip-in{from{transform:perspective(3600px) rotateY(-90deg);opacity:.25}
+  to{transform:perspective(3600px) rotateY(0);opacity:1}}
+/* Clipped to the panel while it turns, so a tall face never swings out over the page. */
+.di-panel:has(>.di-face.out),.di-panel:has(>.di-face.in){overflow:hidden}
+@media(prefers-reduced-motion:reduce){.di-face.out,.di-face.in{animation:none}.di-flipbtn i{transition:none}}
 .di-sec{display:flex;flex-direction:column;gap:11px}
-.di-sech{display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-  border-bottom:1px solid var(--border);padding-bottom:7px}
-.di-sech h4{margin:0;font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em;
-  flex:1 1 auto;min-width:0;text-align:left}
-.di-secn{width:19px;height:19px;border-radius:6px;background:var(--panel);border:1px solid var(--border2);
-  color:var(--dim);font:700 10px/19px 'IBM Plex Mono',ui-monospace,monospace;text-align:center;flex:none}
-.di-secmeta{margin-left:auto;font-size:10.5px;color:var(--dim);text-align:right;flex:0 1 auto}
+/* A section's title line. It is a <header>, and the app's own header rule (the sticky,
+   blurred bar across the top of the page) would otherwise dress it as a second top
+   bar — every one of those properties is taken back here. The underline starts in the
+   accent and fades into the border, so the number, the title and the line read as one. */
+.di-sech{position:static;z-index:auto;display:flex;align-items:center;justify-content:flex-start;
+  gap:10px;flex-wrap:wrap;margin:0;padding:2px 0 10px;border:0;box-shadow:none;
+  -webkit-backdrop-filter:none;backdrop-filter:none;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 65%,transparent),var(--border) 38%,transparent)
+    left bottom/100% 1px no-repeat!important}
+.di-sech h4{margin:0;font-size:14px;font-weight:700;color:var(--text);letter-spacing:.005em;
+  flex:1 1 auto;min-width:0;text-align:left;line-height:1.3}
+.di-secn{width:22px;height:22px;border-radius:7px;background:var(--accent-bg);
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+  color:var(--accent2);font:700 11px/20px 'IBM Plex Mono',ui-monospace,monospace;text-align:center;flex:none}
+.di-secmeta{margin-left:auto;font-size:10.5px;color:var(--text2);text-align:right;flex:0 1 auto;
+  background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:3px 10px;line-height:1.35}
 /* ---- Act 1: the computed tiles ---- */
 .di-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(142px,1fr));gap:9px}
 .di-box{position:relative;border:1px solid var(--border);border-radius:11px;background:var(--panel);
@@ -5890,24 +5923,14 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
    bar reads as one scale rather than as a coloured bar on a grey one. */
 .di-meter{height:3px;border-radius:2px;background:color-mix(in srgb,var(--tone) 22%,transparent);overflow:hidden}
 .di-meter>span{display:block;height:100%;border-radius:2px;background:var(--tone)}
-.di-sigrow{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .di-sigchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
   border-radius:7px;padding:3px 9px}
 .di-defchip{font-size:11px;color:var(--text2);background:var(--panel);border:1px solid var(--border);
   border-radius:7px;padding:3px 9px;cursor:help}
 .di-defchip.hi{border-color:rgba(245,158,11,.45);color:#fcd34d;background:rgba(245,158,11,.08)}
-/* A differentiator wears its id, because the id is what the session cites back. The
-   coach reading "D2" beside an exercise's rationale can find D2 here without being
-   told what the convention is. */
-.di-diffchip{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#bae6fd;
-  background:rgba(0,148,255,.09);border:1px solid rgba(0,148,255,.4);border-radius:7px;padding:3px 9px}
-.di-diffchip i{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.06em;
-  font-family:'IBM Plex Mono',ui-monospace,monospace;color:#7dd3fc;
-  background:rgba(0,148,255,.18);border-radius:4px;padding:1px 5px}
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
-.di-brief-hint{margin:0;font-size:11.5px;color:var(--dim);line-height:1.5;max-width:80ch}
 /* Three across, and three exactly. auto-fit used to open a fourth column on a wide
    screen that nothing ever filled: seven fields with the constraints row spanning the
    lot left one hole beside "Keep out" and another beside "Notes". The form is three
@@ -6066,6 +6089,7 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
   border-radius:5px;padding:0 6px;color:var(--dim);font-weight:600}
 .di-phase.ana{color:#7dd3fc;border-color:rgba(56,189,248,.4)}
 .di-prow-why{font-size:11.5px;color:var(--text2);line-height:1.5;max-width:74ch}
+.di-basis[title]{cursor:help}
 .di-basis{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.06em;
   font-family:'IBM Plex Mono',ui-monospace,monospace;color:#7dd3fc;
   background:rgba(0,148,255,.16);border-radius:4px;padding:1px 5px;margin-right:6px;
@@ -33579,9 +33603,6 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
       <div className="di-fctl">{control}</div>
     </div>);
   return(<div className="di-brief">
-    <p className="di-brief-hint">{L('Bu sporcunun bugünkü programını bireyselleştirmek için talimatlarını gir. Boş bıraktığın alan kısıt değildir, yok sayılır.',
-      'Tell the model how to individualise this athlete today. A field left empty is not a constraint — it is ignored.')}</p>
-
     <div className="di-fgrid">
       {field(1,L('Bugünün önceliği','Today\'s priority'),
         L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
@@ -33677,31 +33698,113 @@ function diSessionRows(ses,program){
   });
   return out;
 }
-function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
+/* Consecutive rows of the same block and phase, as one block — the way both the card
+   and its printout draw a session. */
+function diGroupRows(rows){
   const blocks=[];
-  rows.forEach(r=>{
+  (rows||[]).forEach(r=>{
     const last=blocks[blocks.length-1];
     if(last&&last.name===r.block&&last.phase===r.phase)last.rows.push(r);
     else blocks.push({name:r.block,phase:r.phase,rows:[r]});
   });
-  const dose=d=>{
-    const reps=d.reps||d.duration||'';
-    return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
-  };
+  return blocks;
+}
+/* A block's title and, where it says something the title does not, its phase tag. */
+function diBlockLabel(b){
+  const lbl=b.phase&&DI_PHASES_LBL[b.phase]?L(DI_PHASES_LBL[b.phase][0],DI_PHASES_LBL[b.phase][1]):'';
+  if(!b.name)return{title:lbl,tag:''};
+  /* "Ana İş" under a block already called Ana İş is a label twice, not a label.
+     Spaces come out of the key as well: lowercasing a Turkish İ leaves a
+     combining dot behind, which the normaliser turns into a space. */
+  const key=x=>diExName(x).replace(/\s+/g,'');
+  return{title:b.name,tag:lbl&&key(lbl)!==key(b.name)?lbl:''};
+}
+const diDose=d=>{
+  const reps=d.reps||d.duration||'';
+  return d.sets?(reps?`${d.sets}×${reps}`:`${d.sets}×`):(reps||'—');
+};
+/* The programme on paper: the rows the card draws — the calendar's version once it has
+   been edited there — laid out for the gym floor, one exercise to a line, and handed
+   straight to the browser's print dialog (which also saves it as a PDF). */
+function printDiProgram({ath,date,title,rows,pct}){
+  const w=window.open('','_blank','width=960,height=1000');
+  if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
+  const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const a=ath||{};
+  const sub=[a.position?posOf(a.position):'',fdL(date)].filter(Boolean).map(esc).join(' · ');
+  const blocks=diGroupRows(rows).map(b=>{
+    const bl=diBlockLabel(b);
+    const trs=b.rows.map((r,k)=>{
+      const d=r.changed
+        ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
+        :`<b>${esc(diDose(r.adjusted))}</b>`;
+      return`<tr><td class="n">${k+1}</td>
+        <td class="ex"><div class="nm">${esc(r.name)}</div>${r.why?`<div class="why">${esc(r.why)}</div>`:''}</td>
+        <td class="ds">${d}${r.distance?`<div class="dd">${esc(r.distance)}</div>`:''}</td>
+        <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>`;
+    }).join('');
+    return`<div class="blk">${bl.title?`<div class="bh"><span class="dot"></span><span class="bt">${esc(bl.title)}</span>${bl.tag?`<span class="tag">${esc(bl.tag)}</span>`:''}</div>`:''}
+      <table><thead><tr><th class="n">#</th><th class="ex">${L('Egzersiz','Exercise')}</th><th>${L('Set × Tekrar','Sets × Reps')}</th>
+        <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${trs}</tbody></table></div>`;
+  }).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)} — ${esc(a.name||'')}</title>
+<style>
+@page{size:A4 portrait;margin:10mm}
+${RPT_FONT}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+:root{--accent:#9aab3a;--border:#e5e7eb;--text:#0a0b0d;--text2:#3b4252;--muted:#5c626c;--dim:#8b9099;--bg2:#f4f5f7}
+body{color:var(--text);font-size:11px;line-height:1.4;background:#fff;padding:0 2px}
+.hd{display:flex;align-items:center;gap:14px;background:#0a0b0d;color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px}
+.hd img{height:24px;width:auto;flex:none}
+.hd h1{font-size:19px;font-weight:700;line-height:1.1}
+.hd .tm{font-size:10.5px;color:rgba(255,255,255,.7);margin-top:4px}
+.hd .ses{margin-left:auto;text-align:right;font-size:12px;font-weight:600;color:#0a0b0d;background:var(--accent);padding:6px 13px;border-radius:7px;max-width:50%}
+.blk{border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:11px;break-inside:avoid;page-break-inside:avoid}
+.bh{display:flex;align-items:center;gap:9px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.bh .dot{width:3px;height:14px;border-radius:2px;background:var(--accent)}
+.bh .bt{font-size:11.5px;font-weight:700;letter-spacing:.04em}
+.bh .tag{margin-left:auto;font-size:9px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 8px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:6px 8px;text-align:center;border-bottom:1px solid var(--border)}
+td{padding:8px;text-align:center;vertical-align:top;border-top:1px solid var(--border);font-size:10.5px;color:var(--text2)}
+tbody tr:first-child td{border-top:0}
+tr{break-inside:avoid;page-break-inside:avoid}
+th.n,td.n{width:28px;color:var(--dim);font-weight:700}
+th.ex,td.ex{width:46%;text-align:left}
+td.ex .nm{font-size:12px;font-weight:700;color:var(--text)}
+td.ex .why{font-size:9.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+td.ds b{font-size:12px;color:var(--text)}
+td.ds s{color:var(--dim)}
+td.ds .dd{font-size:9.5px;color:var(--muted);margin-top:2px}
+.adj{font-size:9.5px;color:var(--muted);margin:2px 2px 10px}
+.ft{margin-top:6px;font-size:9px;color:var(--dim);display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px}
+.print-bar{position:fixed;top:0;left:0;right:0;background:#0a0b0d;color:#fff;padding:12px;text-align:center;font-size:12px;z-index:9999}
+.print-bar button{background:var(--accent);color:#0a0b0d;border:none;padding:7px 16px;border-radius:7px;font-weight:600;cursor:pointer;margin:0 4px;font-size:12.5px}
+.print-bar button.sec{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.25)}
+@media print{.print-bar,.scr-sp{display:none}}
+</style></head><body>
+<div class="print-bar">${L('Program hazır','The programme is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
+<div class="scr-sp" style="height:52px"></div>
+<div class="hd"><img src="${COACHOS_LOGO}" alt="CoachOS"><div><h1>${esc(a.name||'—')}</h1>${sub?`<div class="tm">${sub}</div>`:''}</div>
+  <div class="ses">${esc(title)}</div></div>
+${pct?`<div class="adj">${L(`Hazır oluşa göre hacim ayarı %${Math.abs(pct)} uygulandı — üstü çizili değer modelin yazdığı, kalın olan uygulanacak olan.`,
+  `The readiness adjustment of ${Math.abs(pct)}% has been applied — the struck value is what the model wrote, the bold one is what is done.`)}</div>`:''}
+${blocks||`<div class="adj">${L('Programda egzersiz yok.','The programme has no exercises.')}</div>`}
+<div class="ft"><span>${esc(title)}</span><span>CoachOS · ${esc(fdL(date))}</span></div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>{try{w.focus();w.print();}catch(e){}},400);
+}
+function DiProgramView({program,rows,adj,libMap,onAddToLibrary,diffs}){
+  const blocks=diGroupRows(rows);
+  const dose=diDose;
+  /* The D-ids an exercise cites, spelled out on hover — the card no longer lists them. */
+  const diffText=id=>{const d=(diffs||[]).find(x=>x.id===id);return d?d.text:undefined;};
   return(<div className="di-prog">
-    {blocks.map((b,i)=><div key={i} className="di-progblk">
-      {(b.name||b.phase)&&<div className="di-blkh">
-        <span>{b.name||L(DI_PHASES_LBL[b.phase][0],DI_PHASES_LBL[b.phase][1])}</span>
-        {(()=>{
-          if(!b.phase||!b.name)return null;
-          const lbl=L(DI_PHASES_LBL[b.phase][0],DI_PHASES_LBL[b.phase][1]);
-          /* "Ana İş" under a block already called Ana İş is a label twice, not a label.
-             Spaces come out of the key as well: lowercasing a Turkish İ leaves a
-             combining dot behind, which the normaliser turns into a space. */
-          const key=x=>diExName(x).replace(/\s+/g,'');
-          return key(lbl)===key(b.name)?null
-            :<i className={'di-phase '+b.phase}>{lbl}</i>;
-        })()}
+    {blocks.map((b,i)=>{const bl=diBlockLabel(b);return <div key={i} className="di-progblk">
+      {bl.title&&<div className="di-blkh">
+        <span>{bl.title}</span>
+        {bl.tag?<i className={'di-phase '+b.phase}>{bl.tag}</i>:null}
       </div>}
       {b.rows.map((r,k)=><div key={r.key} className="di-prow">
         <span className="di-pnum">{k+1}</span>
@@ -33729,7 +33832,7 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
               citing the differentiator about a painful knee is visible here and
               nowhere else. */}
           {(r.why||(r.basis||[]).length>0)&&<div className="di-prow-why">
-            {(r.basis||[]).map(b=><i key={b} className="di-basis">{b}</i>)}
+            {(r.basis||[]).map(b=><i key={b} className="di-basis" title={diffText(b)}>{b}</i>)}
             {r.why||''}</div>}
         </div>
         <div className="di-prow-right">
@@ -33746,7 +33849,7 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
           </div>
         </div>
       </div>)}
-    </div>)}
+    </div>;})}
     {adj&&adj.pct?<div className="di-progadj">
       {L(`Hazır oluşa göre hacim ayarı %${Math.abs(adj.pct)} uygulandı — üstü çizili değer modelin yazdığı, kalın olan takvime yazılacak olan.`,
         `The readiness adjustment of ${Math.abs(adj.pct)}% has been applied — the struck value is what the model wrote, the bold one is what gets written.`)}
@@ -34198,6 +34301,19 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
   const setOpen=v=>{setOpenRaw(v);try{localStorage.setItem('coachos_di_open',v?'1':'0');}catch(e){}};
+  /* Which face of the panel is up: today and the brief, or the programme. The turn is
+     two halves — the face swings out, the other swings in — so the swap happens at the
+     point where the card is edge-on and neither face is readable. */
+  const[side,setSide]=useState('brief');
+  const[flip,setFlip]=useState('');           // '' | 'out' | 'in' — the half of the turn under way
+  const flipT=useRef([]);
+  useEffect(()=>()=>flipT.current.forEach(clearTimeout),[]);
+  const flipTo=next=>{
+    if(next===side||flip)return;
+    setFlip('out');
+    flipT.current=[setTimeout(()=>{setSide(next);setFlip('in');},170),
+      setTimeout(()=>setFlip(''),170+280)];
+  };
   const review=diReadReview(team,srcKey,plan.ath.id,date);
   const program=diReviewProgram(review);
   const instr=useMemo(()=>diInstr(review&&review.instr,plan.meta),[review,plan.meta]);
@@ -34263,8 +34379,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       decision:null,decided_at:null,jobId:null,pendingJob:null,
       generation:{source:'external-json'}});
     setImp(null);setErr('');
-    setTimeout(()=>{try{const el=panelRef.current&&panelRef.current.querySelector('.di-sec-prog');
-      if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+    /* What was just pasted is what the coach wants to read next: turn the card over to it. */
+    flipTo('prog');
+    setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
@@ -34302,7 +34419,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{program:null,decision:null,decided_at:null});
   };
 
-  const rd=bundle.readiness,flag=bundle.flag;
+  const rd=bundle.readiness;
   const written=!!(review&&review.decision==='accept');
   /* Status roles, each one paired with the word beside it on the tile: readiness by the
      app's own band colours, ACWR by its own zone table, the game day by how close it is.
@@ -34316,16 +34433,28 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const adjTone=adj.pct<=-25?'bad':adj.pct<0?'warn':'good';
 
   const external=!!(review&&review.model==='external');
+  const progTitle=(calEdited&&String(calSes.name||'').trim())||(program&&program.session_name)||L('Önerilen program','Proposed session');
+  const progRows=calRows||rows;
+  const progAdj=(calRows||(program&&program.external))?{...adj,pct:0}:adj;
+  const onProg=side==='prog';
   return(<div className="di-panel" ref={panelRef}>
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
-      <span className="di-flag" style={{borderColor:flag.color,color:flag.color}}>{flag.label}</span>
-      <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
-        aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
-        <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
-      </button>
+      <div className="di-hdacts">
+        {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
+          onClick={()=>flipTo(onProg?'brief':'prog')}
+          title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
+            :L('Kartı çevir, bu sporcunun programını göster','Turn the card over to this athlete\'s programme')}>
+          <i>⟳</i><span>{onProg?L('Talimata Dön','Back to Brief'):L('Programı Gör','View Programme')}</span>
+        </button>}
+        <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
+          aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
+          <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
+        </button>
+      </div>
     </div>
-    {open&&<>
+    {open&&<div className={'di-face'+(flip?' '+flip:'')}>
+    {!onProg&&<>
 
     <DiSection n="1" title={L('Bugünün tablosu','Today at a glance')}
       meta={L('hesaplanan değerler — model bunları üretmez','computed — the model does not produce these')}>
@@ -34358,16 +34487,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
             ?adj.reasons.map(r=>r.label).join(' · ')
             :L('hazır oluş normal','readiness normal')}/>
       </div>
-      {/* WHAT MAKES THIS ATHLETE'S SESSION DIFFERENT, on the screen as well as in the
-          request. It is here for the coach's benefit rather than the model's: if these
-          four lines do not describe the player standing in front of them, the session
-          written from them will not either, and that is a thing to catch before the
-          programme is read rather than after it is written. */}
-      {differentiators.length>0&&<div className="di-sigrow">
-        <span className="di-k">{L('Bu sporcuyu ayıran','What sets this athlete apart')}</span>
-        <div className="di-chips">{differentiators.map(d=><span key={d.id} className="di-diffchip">
-          <i>{d.id}</i>{d.text}</span>)}</div>
-      </div>}
       </DiSection>
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
@@ -34398,27 +34517,28 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           </div>
         </div>
       </div>,document.body)}
-      {err&&<div className="di-err">{err}</div>}
     </DiSection>
+    </>}
 
-    {program&&<DiSection n="3" title={(calEdited&&String(calSes.name||'').trim())||program.session_name||L('Önerilen program','Proposed session')}
+    {onProg&&program&&<DiSection n="3" title={progTitle}
       className="di-sec-prog"
       meta={written?(calEdited?L('takvimdeki güncel hali','as it stands on the calendar'):L('takvime yazıldı','on the calendar'))
         :external?L('yüklenen AI programı — onaylanmadan sporcuya ulaşmaz','loaded AI programme — it reaches nobody until you approve it')
         :L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
       <div className="di-result">
         <div className="di-resacts">
-          <button type="button" className="btn xs sec" onClick={()=>setImp({text:'',err:''})}>
-            {L('↻ Yeniden yükle','↻ Load again')}</button>
+          <button type="button" className="btn xs sec"
+            onClick={()=>printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct})}
+            title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
+            {L('🖨 Yazdır','🖨 Print')}</button>
           <button type="button" className="btn xs sec" onClick={discard}>
             {L('✕ Sil','✕ Discard')}</button>
         </div>
         {/* Once written and then edited on the athlete's calendar, the card shows the
             calendar's version — the one the athlete actually has — rather than the
             programme as it was loaded, so the two never disagree. */}
-        <DiProgramView program={program} rows={calRows||rows}
-          adj={(calRows||program.external)?{...adj,pct:0}:adj} libMap={libMap}
-          onAddToLibrary={addLib}/>
+        <DiProgramView program={program} rows={progRows} adj={progAdj} libMap={libMap}
+          onAddToLibrary={addLib} diffs={differentiators}/>
 
         {/* A hard violation stops the write, so it is still said here. The model's own
             notes on the programme — how it read the brief, its checks, its rationale and
@@ -34450,11 +34570,14 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
     </DiSection>}
 
-    {!program&&<div className="di-hold sm">
+    {onProg&&!program&&<div className="di-hold sm">
       {L('Bu sporcu için henüz bir program yüklenmedi — "Sporcu Bilgilerini Al" ile veriyi al, yapay zekânın yazdığı programı "AI Programını Yükle" ile yapıştır. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
          'No programme has been loaded for this athlete yet — take the data with "Get athlete data" and paste the model\'s programme with "Load AI programme". Until one is approved, this page puts nothing on their calendar.')}
     </div>}
-    </>}
+    </div>}
+    {/* Outside the faces: an approval refused on the programme side and a snapshot that
+        failed on the brief side both have to be seen whichever face is up. */}
+    {open&&err&&<div className="di-err">{err}</div>}
   </div>);
 }
 
