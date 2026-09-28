@@ -4784,6 +4784,14 @@ header{background:var(--bg2)!important}
    wrap rather than squeezing the block name out of readability. */
 .iv-blockacts{margin-left:auto;align-self:center;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .iv-blockacts .iv-rmb:hover{border-color:rgba(239,68,68,.55);color:#f87171}
+/* The calendar block: its buttons on one line and the card colour on the line below them. */
+.iv-blockacts:has(>.cal-acts-row){flex-direction:column;align-items:flex-end;gap:6px}
+.cal-acts-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+/* The session's number at the head of its block — the badge the session bar carried. */
+.blk-sn{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 7px;
+  border-radius:14px;background:var(--accent);color:#fff;font-size:13px;font-weight:800;line-height:1;cursor:grab;user-select:none;
+  box-shadow:0 0 0 2px rgba(255,255,255,.18)}
+.blk-sn:active{cursor:grabbing}
 /* A removed template block keeps a slim bar on the card so it can be put back —
    the same bargain as an emptied slot, which stays dimmed rather than vanishing. */
 .iv-block.gone{opacity:.55;border-style:dashed}
@@ -10704,6 +10712,10 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       </div>
     </div>`;
   };
+  /* A block whose heading is the session's own title (a one-block session, or a block
+     printed on its own, which is headed by it) would print the same line twice, one
+     under the other — so its heading is left to the session banner. */
+  const sameTitle=(a,b)=>String(a||'').trim().toLocaleLowerCase()===String(b||'').trim().toLocaleLowerCase();
   const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
   <div class="sh">
     <div class="sh-l"><span class="sn">${i+1}</span>${s.ownerName?`<span class="sh-own">${escHTML(s.ownerName)}</span>`:''}${s.name}</div>
@@ -10722,7 +10734,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
     // categorization, blocks stay in the order the user arranged them.
     const blks=(s.blocks||[]).filter(b=>(b.exercises||[]).some(e=>e.name));
     if(blks.length===0)return`<div class="bs"><div class="empty-block">${L('Antrenman planlanmadı','No exercises planned')}</div></div>`;
-    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block${blkKind(b)==='ball'?' ball-block':''}">${b.name?`<div class="bh">${b.name}${blkKind(b)==='ball'?`<span class="bh-kind">${L('TOP','BALL')}</span>`:''}</div>`:''}${blkKind(b)==='ball'?drillCards(b):exTable(b)}</div>`).join('')}</div>`;
+    return`<div class="bs blocks-grid">${blks.map(b=>`<div class="block${blkKind(b)==='ball'?' ball-block':''}">${b.name&&!sameTitle(b.name,s.name)?`<div class="bh">${b.name}${blkKind(b)==='ball'?`<span class="bh-kind">${L('TOP','BALL')}</span>`:''}</div>`:''}${blkKind(b)==='ball'?drillCards(b):exTable(b)}</div>`).join('')}</div>`;
   })()}
   ${(s.planNote||s.notes)?`<div class="sf">
     <div class="sf-notes">
@@ -17612,7 +17624,7 @@ const BallDrillEd=React.memo(BallDrillEdRaw);
    see SessionDetails above. The assignment button in the header is the block's too: it
    assigns the players ticked on this block, not on the session. */
 function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDropBlk,session,printContext,isTemplate,
-                  sessionUpd,athletes,showPicker,coach,athUpd,setColor}){
+                  sessionUpd,athletes,showPicker,coach,athUpd,setColor,ses,sesMoves}){
   const[open,setOpen]=useState(true);const exs=block.exercises||[];
   /* Sections the coach has folded away, keyed by phase. A session written in three
      phases is long, and the one being worked on should not sit under the other two. */
@@ -17731,9 +17743,13 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           against the whole header rather than riding on its lower line. */}
       <div className="iv-block-hdinfo">
         <div className="iv-block-hdtop">
-          <span className="blk-grip" draggable={setDragB!=null}
+          {/* The session's number heads the block (the bar that carried it is gone), and
+              it is the handle the block is dragged by. A session split into several
+              blocks numbers them under it: 1.1, 1.2. */}
+          <span className={ses?'blk-sn':'blk-grip'} draggable={setDragB!=null}
             onDragStart={e=>{setDragB&&setDragB(index);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(index));}catch(_){}}}
-            onDragEnd={()=>setDragB&&setDragB(null)} title={L('Sürükleyerek sırala','Drag to reorder')}>⠿</span>
+            onDragEnd={()=>setDragB&&setDragB(null)}
+            title={ses?L('Seans numarası · sürükleyerek sırala','Session number · drag to reorder'):L('Sürükleyerek sırala','Drag to reorder')}>{ses?(ses.multi?`${ses.no}.${index+1}`:ses.no):'⠿'}</span>
           <button type="button" className="iv-blockch" onClick={()=>setOpen(!open)}
             title={open?L('Bu bloğu daralt','Collapse this block'):L('Bu bloğu genişlet','Expand this block')}>{open?'▼':'▶'}</button>
           <LiveInput className="iv-block-nm" value={block.name} placeholder={isBall?L(`Top Bloğu ${index+1}`,`Ball Block ${index+1}`):L(`Blok ${index+1}`,`Block ${index+1}`)}
@@ -17747,19 +17763,25 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           phased?' · '+phaseList.map(p=>`${phLbl(p)} ${phaseN(p)}`).join(' · '):''}</span>
       </div>
       <span className="iv-blockacts">
-        {/* Where the assignment button stood: ticking names in the picker below is the
-            assignment, so the head of the block carries its colour instead. */}
+        {/* The buttons on one line and the card colour on the line under them, so the
+            colour row no longer eats into the width the block's title has to show in.
+            A session's only block is the session: its Remove deletes the session, and
+            the first block also carries the session's ↑ ↓. */}
+        <span className="cal-acts-row">
+          {sesMoves}
+          <button type="button" className="btn xs sec" onClick={onDuplicate}
+            title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘ {L('Çoğalt','Clone')}</button>
+          <button type="button" className="btn xs sec"
+            onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()])}
+            title={L('Yalnızca bu bloğu yazdır','Print this block only')}>{L('Yazdır','Print')}</button>
+          <button type="button" className="btn xs sec"
+            onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()],{withImages:true})}
+            title={L('Yalnızca bu bloğu, yüklenen egzersiz görselleriyle yazdır','Print this block only, including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
+          <button type="button" className="btn xs sec iv-rmb"
+            onClick={()=>{if(ses&&!ses.multi){ses.remove();return;}if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
+            title={ses&&!ses.multi?L('Bu seansı sil','Delete this session'):L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
+        </span>
         {!isTemplate&&setColor&&<CardColorPick value={blkColor} onPick={setColor}/>}
-        <button type="button" className="btn xs sec" onClick={onDuplicate}
-          title={L('Bu bloğu çoğalt','Duplicate this block')}>⎘ {L('Çoğalt','Clone')}</button>
-        <button type="button" className="btn xs sec"
-          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()])}
-          title={L('Yalnızca bu bloğu yazdır','Print this block only')}>{L('Yazdır','Print')}</button>
-        <button type="button" className="btn xs sec"
-          onClick={()=>printDayA4(printContext.title,printContext.subtitle,[printSession()],{withImages:true})}
-          title={L('Yalnızca bu bloğu, yüklenen egzersiz görselleriyle yazdır','Print this block only, including the uploaded exercise images')}>{L('Görselle Yazdır','Print with Image')}</button>
-        <button type="button" className="btn xs sec iv-rmb" onClick={()=>{if(confirm(L('Blok silinsin mi?','Delete block?')))onRemove();}}
-          title={L('Bu bloğu sil','Delete this block')}>✕ {L('Kaldır','Remove')}</button>
       </span>
     </div>
     {open&&<>
@@ -18240,7 +18262,7 @@ function RpeGauge({value,onChange,hideZone}){
 }
 
 function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
-  const[open,setOpen]=useState(true);const u=upd=>onUpdate({...session,...upd});
+  const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
   const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
@@ -18250,15 +18272,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     const nb={...o,id:uid(),exercises:o.exercises.map(e=>({...e}))};const a=[...session.blocks];a.splice(i+1,0,nb);u({blocks:a});};
   const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n,kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
-  // Renaming from the bar: the name is written straight through as it is typed, and the
-  // name it had when editing started is held so Escape can put it back.
-  const[edNm,setEdNm]=useState(false);
-  const nmBefore=useRef('');
-  const startEdNm=()=>{nmBefore.current=session.name||'';setEdNm(true);};
-  const endEdNm=revert=>{if(revert)u({name:nmBefore.current});setEdNm(false);};
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
-  const participantCount=(session.athletes||[]).length;
   /* Writing THIS block's participant list. The other blocks keep whoever they had — a
      block that never had a list of its own gets the session's, written out once here, so
      ticking a player on one block cannot silently change who the rest are for. The
@@ -18274,40 +18289,22 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const setBlkColor=(bid,c)=>u({color:c,blocks:(session.blocks||[]).map(b=>b.id===bid?{...b,color:c}:b)});
   const soloTint=blkTint(session.color||'');
 
+  /* The session's own controls. The bar that used to head the card — number, title,
+     time, the team badge, ↑ ↓ and Delete — is gone: the title it showed is the block's
+     heading again a few lines down (and printed twice on the sheet), so the card now
+     opens straight on its blocks. The number rides at the head of each block, the
+     two moves and the delete ride with the blocks' own actions. */
+  const delSess=()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();};
+  const nBlk=(session.blocks||[]).length;
+  const sesCtl={no:index+1,total,index,onMove,remove:delSess,multi:nBlk>1};
+  const moveBtns=total>1&&<>
+    <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}
+      title={L('Seansı yukarı taşı','Move the session up')}>↑</button>
+    <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}
+      title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>;
+
   return(<div className="sess-card">
-    <div className="sbar" onClick={e=>{if(!['BUTTON','INPUT','SELECT'].includes(e.target.tagName))setOpen(!open);}}>
-      <span className="sn">{index+1}</span>
-      {/* Click the title to rename the session right here. It reads as text until it is
-          clicked, so the bar keeps one box for the name rather than standing a second
-          permanent field beside the one on the session's own line below — Enter or
-          clicking away keeps the new name, Escape puts the old one back. */}
-      {edNm
-        ?<LiveInput className="sbar-nmi" value={session.name||''} autoFocus placeholder={L('Seans başlığı…','Session title…')}
-          onChange={v=>u({name:v})}
-          onFocus={e=>e.target.select()}
-          onClick={e=>e.stopPropagation()}
-          onBlur={()=>endEdNm(false)}
-          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();endEdNm(false);}else if(e.key==='Escape'){e.preventDefault();endEdNm(true);}}}/>
-        :<span className={`sbar-nm${session.name?'':' ph'}`} title={L('Bu seansı yeniden adlandırmak için tıkla','Click to rename this session')}
-          onClick={e=>{e.stopPropagation();startEdNm();}}>{session.name||L('Adsız seans','Untitled session')}</span>}
-      <span style={{color:'var(--text)',fontSize:12}}>{(()=>{const dur=Number(session.duration)||0;return isTemplate?L(`${dur}dk`,`${dur}min`):L(`${session.time} · ${dur}dk`,`${session.time} · ${dur}min`);})()}</span>
-      {fromTeam&&<span className="team-badge" title={L('Bu seans takım planından kopyalandı. Takım seansındaki düzenlemeler buraya senkronize olur.','This session was copied from a team plan. Edits to the team session will sync here.')}>⚡ {L('TAKIMDAN','FROM TEAM')}</span>}
-      {showPicker&&participantCount>0&&<span className="tag" style={{background:'rgba(139,92,246,.15)',color:'#c4b5fd'}}>{L(`${participantCount} sporcu`,`${participantCount} athlete${participantCount!==1?'s':''}`)}</span>}
-      <span className="grow"/>
-      <div className="row" onClick={e=>e.stopPropagation()}>
-        <button className="btn xs sec" onClick={()=>onMove(-1)} disabled={index===0}>↑</button>
-        <button className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}>↓</button>
-        {/* Clone / Save to Templates / Print / Print with Image are not here any more: they
-            sit in each block's own header and act on that block, so a coach can hand a
-            single block to the athletes doing it instead of printing the whole session
-            every time. Only the two that move the session and the one that deletes it are
-            about the session as a whole, so only those stayed. */}
-        <button className="btn xs danger" onClick={()=>{if(confirm(fromTeam?L('Bu takım-senkronlu seans yalnızca bu sporcudan silinsin mi? (Takım planı değişmez)','Delete this team-synced session from this athlete only? (The team plan is unchanged)'):L('Seans silinsin mi? Bu, atandığı tüm sporculardan da kaldırılacak.','Delete session? This will also remove it from any athletes it was assigned to.')))onRemove();}}>{L('Sil','Delete')}</button>
-      </div>
-      <span style={{cursor:'pointer',color:'var(--muted)',fontSize:13}}>{open?'▼':'▶'}</span>
-    </div>
-    {open&&<div className="sbody">
-      {fromTeam&&<div className="help" style={{marginBottom:12,padding:'8px 12px',background:'rgba(139,92,246,.08)',border:'1px solid rgba(139,92,246,.2)',borderRadius:6,color:'var(--text2)'}}>{L(<>Bu seans takım planından senkronize edilir. Antrenman içeriği (bloklar, egzersizler, saat, süre) takımdan yansıtılır. <strong>Kişisel sRPE, AU ve notların</strong> gizli kalır ve takım güncellemeleriyle üzerine yazılmaz.</>,<>This session is synced from the team plan. Workout content (blocks, exercises, time, duration) is mirrored from the team. Your <strong>personal sRPE, AU and notes</strong> are kept private and won't be overwritten by team updates.</>)}</div>}
+    <div className="sbody">
       {/* The strip that used to stand here — what the session trains, and the card colour —
           rides inside each block now, directly above the exercises it is read from. */}
       {/* The details live in the blocks — so a session that has none yet still needs
@@ -18321,13 +18318,17 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
               "Yarı Saha 5v5"), and a session that has not been split yet deserves the
               same. They were the same field, so naming the work renamed the session and
               a coach could not have both. Left empty it still reads "Training Details". */}
+          <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
           <LiveInput className="iv-block-nm" value={session.soloName||''}
             placeholder={L('Antrenman Özellikleri','Training Details')}
             title={L('Bu çalışmanın başlığı — üstteki seans adından bağımsızdır','This practice\'s own title — independent of the session name above')}
             onChange={v=>u({soloName:v})}/>
-          {!isTemplate&&<span className="iv-blockacts">
-            <CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>
-          </span>}
+          <span className="iv-blockacts">
+            {!isTemplate&&<CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>}
+            {moveBtns}
+            <button type="button" className="btn xs sec iv-rmb" onClick={delSess}
+              title={L('Bu seansı sil','Delete this session')}>✕ {L('Kaldır','Remove')}</button>
+          </span>
         </div>
         <SessionDetails session={session} u={u} athletes={athletes}
           showPicker={showPicker} isTemplate={isTemplate} coach={coach}/>
@@ -18336,7 +18337,8 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
         session={session} printContext={printContext} isTemplate={isTemplate}
         sessionUpd={u} athletes={athletes} showPicker={showPicker} coach={coach}
         athUpd={ids=>setBlkAthletes(b.id,ids)} setColor={c=>setBlkColor(b.id,c)}
-        dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}/>)}
+        dragB={dragB} setDragB={setDragB} onDropBlk={()=>{moveBlk(dragB,bi);setDragB(null);}}
+        ses={sesCtl} sesMoves={bi===0?moveBtns:null}/>)}
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
           title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>
@@ -18349,7 +18351,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
           card here. They are gone: the session is planned in the blocks above, and the
           numbers that describe how it actually went are collected from the athletes
           themselves rather than typed onto the plan. */}
-    </div>}
+    </div>
   </div>);
 }
 
@@ -32557,7 +32559,16 @@ const DI_EXT_TASK=[
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days. constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
+  /* The JSON is English, but what the model writes lands on the calendar and the printed
+     sheet as it is written — so the prose comes back in the language the coach reads
+     the app in, named in response_language. Keys and the controlled values stay as
+     they are: the parser and the checks read them. */
+  'Write every free-text value of the reply in the language named in response_language: status_summary, the training_priorities, session_name, the block names, each exercise\'s rationale, constraints_respected, the flagged_conflicts texts, rationale and coach_warning. '+
+    'Keys, phase, movement_pattern, equipment and the basis ids stay exactly as specified, and an exercise taken from exercise_library keeps its library name.',
 ];
+/* The language the model is to write its prose in: the one the app is showing when the
+   JSON is built. Read before diInEnglish switches every label to English. */
+const diReplyLang=()=>REPORT_LANG==='tr'?'Turkish':'English';
 /* The same task for a whole squad in one request: one session per athlete, returned
    together, each tagged with the athlete it is for — so the one answer can be pasted
    into every athlete's "AI Programını Yükle" box and each box takes its own. */
@@ -32607,8 +32618,9 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    are the same for everyone — the task, the answer's shape, the pattern dictionary and
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
+  const replyLang=diReplyLang();
   return diInEnglish(()=>{
-  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','response_language','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -32622,6 +32634,7 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     session_day:day?{date:day.date,weekday:day.weekday,relative_to_today:day.relative_to_today,match_day_label:day.match_day_label,
       next_game:day.next_game,season_phase:day.season_phase,season_phase_focus:day.season_phase_focus}:{date},
     task:DI_EXT_TASK_SQUAD,
+    response_language:replyLang,
     generated_at:new Date(now||Date.now()).toISOString(),
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
@@ -33695,6 +33708,7 @@ function snapCopy(text){
   return Promise.resolve(fallback());
 }
 function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,recent}){
+  const replyLang=diReplyLang();
   return diInEnglish(()=>{
   const a=ath||{},s=setup||{};
   const ref=date||fmt(today);
@@ -33887,6 +33901,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const out={
     session_day:target,
     task:DI_EXT_TASK,
+    response_language:replyLang,
     generated_at:nowD.toISOString(),
     date:ref,
     athlete:{
