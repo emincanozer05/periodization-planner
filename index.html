@@ -4892,7 +4892,8 @@ header{background:var(--bg2)!important}
 .blk-ph-nm{flex:none;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ph-c,var(--text))}
 /* The name on the bar is typed straight into it, like the pill above. */
 input.blk-ph-nm{background:transparent;border:none;outline:none;font-family:inherit;padding:0;margin:0;
-  min-width:3ch;width:auto;box-shadow:none;border-radius:0}
+  min-width:3ch;max-width:100%;box-shadow:none;border-radius:0}
+@supports (field-sizing:content){input.blk-ph-nm{field-sizing:content;width:auto!important}}
 input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .blk-ph-n{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;color:var(--text2);
   background:rgba(0,0,0,.25);border-radius:20px;padding:1px 8px}
@@ -16457,6 +16458,14 @@ function LiveInput({value,onChange,...rest}){
   const[v,set]=useLiveValue(value==null?'':value,onChange);
   return<input value={v} onChange={e=>set(e.target.value)} {...rest}/>;
 }
+/* A phase name typed straight onto its bar. Sized to what is in it as it is typed —
+   the bar shows the name in bold capitals, which run wider than the box's own
+   character width, so a fixed size cut long names off. */
+function PhaseNameInput({value,onChange,...rest}){
+  const[v,set]=useLiveValue(value==null?'':value,onChange);
+  const n=Math.max(4,[...String(v)].length+1);
+  return<input value={v} onChange={e=>set(e.target.value)} style={{width:`calc(${n}ch + ${n*0.2}em)`}} {...rest}/>;
+}
 function LiveTextarea({value,onChange,...rest}){
   const[v,set]=useLiveValue(value==null?'':value,onChange);
   return<textarea value={v} onChange={e=>set(e.target.value)} {...rest}/>;
@@ -17847,8 +17856,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
             <button type="button" className="blk-ph-ch" onClick={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
               title={shut?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{shut?'▶':'▼'}</button>
             {g.loose?<span className="blk-ph-nm">{L('Fazsız','Unplaced')}</span>
-              :<LiveInput className="blk-ph-nm" value={(block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase)}
-                size={Math.max(4,Math.min(34,String(phLbl(g.phase)).length+1))}
+              :<PhaseNameInput className="blk-ph-nm" value={(block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase)}
                 onChange={v=>renamePhase(g.phase,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>}
             <span className="blk-ph-n">{isBall
               ?L(`${g.rows.length} dril`,`${g.rows.length} drill${g.rows.length!==1?'s':''}`)
@@ -33639,6 +33647,36 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
    both numbers with an arrow between them. */
 const DI_PHASES_LBL={hazirlik:['Hazırlık','Preparation'],ana:['Ana iş','Main work'],
   tamamlayici:['Tamamlayıcı','Complementary']};
+/* The athlete's written session, read back off their calendar into the rows the
+   programme card draws. What the calendar does not carry (the D-ids an exercise
+   answers, its kit, the kind of section) is taken from the loaded programme wherever
+   the exercise or section is still the same one. */
+function diSessionRows(ses,program){
+  const lo=x=>String(x||'').trim().toLowerCase();
+  const byName={},kindOf={};
+  diProgramRows(program,0).forEach(r=>{
+    if(!byName[lo(r.name)])byName[lo(r.name)]=r;
+    if(r.block&&r.phase&&!kindOf[lo(r.block)])kindOf[lo(r.block)]=r.phase;
+  });
+  const out=[];
+  ((ses&&ses.blocks)||[]).forEach((b,bi)=>{
+    const phases=blkPhases(b);
+    const exs=phases.length?sortExsByPhase(b.exercises||[],phases):(b.exercises||[]);
+    exs.forEach((e,i)=>{
+      if(!String(e.name||'').trim())return;
+      const ph=exPhase(e);
+      const block=phases.length?(ph?blkPhaseLbl(ph,b):L('Fazsız','Unplaced')):String(b.name||'');
+      const src=byName[lo(e.name)]||null;
+      const dose={sets:e.sets||'',reps:e.reps||'',duration:e.duration||''};
+      out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
+        pattern:e.pattern||(src&&src.pattern)||'',equipment:(src&&src.equipment)||'',
+        why:exDesc(e),basis:(src&&src.basis)||[],
+        load:e.load||'',tempo:e.tempo||'',rest:e.rest||'',
+        prescribed:dose,adjusted:dose,changed:false});
+    });
+  });
+  return out;
+}
 function DiProgramView({program,rows,adj,libMap,onAddToLibrary}){
   const blocks=[];
   rows.forEach(r=>{
@@ -34145,7 +34183,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   });
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes}){
   const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
   const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
   const panelRef=useRef(null);
@@ -34161,6 +34199,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const adj=bundle.adjustment;
   const rowPct=program&&program.external?0:adj.pct;
   const rows=useMemo(()=>program?diProgramRows(program,rowPct):[],[program,rowPct]);
+  const calEdited=!!(program&&review&&review.decision==='accept'&&calSes&&indivHandEdited(calSes));
+  const calRows=useMemo(()=>calEdited?diSessionRows(calSes,program):null,[calEdited,calSes,program]);
   const deficits=useMemo(()=>diDeficits(plan.ath,date),[plan.ath,date]);
   /* Recomputed on every render rather than read back off the stored draft: the
      athlete's day moves under it, and what the coach is looking at has to be judged
@@ -34355,9 +34395,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       {err&&<div className="di-err">{err}</div>}
     </DiSection>
 
-    {program&&<DiSection n="3" title={program.session_name||L('Önerilen program','Proposed session')}
+    {program&&<DiSection n="3" title={(calEdited&&String(calSes.name||'').trim())||program.session_name||L('Önerilen program','Proposed session')}
       className="di-sec-prog"
-      meta={written?L('takvime yazıldı','on the calendar')
+      meta={written?(calEdited?L('takvimdeki güncel hali','as it stands on the calendar'):L('takvime yazıldı','on the calendar'))
         :external?L('yüklenen AI programı — onaylanmadan sporcuya ulaşmaz','loaded AI programme — it reaches nobody until you approve it')
         :L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
       <div className="di-result">
@@ -34367,16 +34407,11 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           <button type="button" className="btn xs sec" onClick={discard}>
             {L('✕ Sil','✕ Discard')}</button>
         </div>
-        {program.summary&&<p className="di-lead">{program.summary}</p>}
-        {program.priorities.length>0&&<div className="di-row">
-          <span className="di-k">{L('Antrenman önceliği','Training priority')}</span>
-          <ul className="di-sig">{program.priorities.map((p,i)=>
-            <li key={i}><b>{p.oncelik}</b>{p.gerekce?` — ${p.gerekce}`:''}</li>)}</ul>
-        </div>}
-
-        {program.external&&<div className="di-dim" style={{lineHeight:1.5}}>{L('Yüklenen program olduğu gibi yazılır: set ve tekrar değiştirilmez, kural denetimleri yalnızca bilgi amaçlıdır ve yazımı engellemez.',
-          'A loaded programme is written as loaded: sets and reps are not changed, and the rule checks are information only — they never block the write.')}</div>}
-        <DiProgramView program={program} rows={rows} adj={program.external?{...adj,pct:0}:adj} libMap={libMap}
+        {/* Once written and then edited on the athlete's calendar, the card shows the
+            calendar's version — the one the athlete actually has — rather than the
+            programme as it was loaded, so the two never disagree. */}
+        <DiProgramView program={program} rows={calRows||rows}
+          adj={(calRows||program.external)?{...adj,pct:0}:adj} libMap={libMap}
           onAddToLibrary={addLib}/>
 
         {/* A hard violation stops the write, so it is still said here. The model's own
@@ -34917,7 +34952,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         exercises={exercises} setup={team.setup||{}} libMap={libMap}
         customTests={data.customTests}
-        writeOne={(id,program)=>applyTo([id],{force:{id,program}})}/>:null}
+        writeOne={(id,program)=>applyTo([id],{force:{id,program}})}
+        calSes={written[p.ath.id]||null}/>:null}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
