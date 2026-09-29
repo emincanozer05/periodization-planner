@@ -2689,17 +2689,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rc-del{position:absolute;top:13px;left:16px;z-index:3;width:26px;height:26px;border-radius:7px;border:1px solid transparent;background:none;color:var(--dim);font-size:15px;line-height:1;display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;font-family:inherit;padding:0}
 .rc:hover .rc-del{opacity:1}
 .rc-del:hover{border-color:var(--high-t);color:var(--high-t);background:rgba(239,68,68,.12)}
-/* The load verdict, read off ACWR: the one word a coach wants before the numbers. */
-.rc-badge{display:inline-flex;align-items:center;font-family:inherit;font-size:9.5px;font-weight:700;
-  letter-spacing:.02em;padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
-.rc-badge.ok{background:rgba(16,185,129,.14);border-color:rgba(16,185,129,.34);color:#34d399}
-.rc-badge.mid{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.34);color:#fbbf24}
-.rc-badge.hi{background:rgba(245,158,11,.18);border-color:rgba(245,158,11,.45);color:#fbbf24}
-.rc-badge.na{background:rgba(148,163,184,.12);border-color:rgba(148,163,184,.26);color:#cbd5e1}
-.rc-badge.inj{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.34);color:#f87171}
-/* The verdict, top right — the first thing read on the card and out of the way of
-   everything else on it. The card's own top padding is the room it sits in. */
-.rc-badgerow{position:absolute;top:13px;right:16px;z-index:2;display:flex;align-items:center;gap:8px;margin:0;padding:0}
 .rc-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
 /* A squad photo is a PORTRAIT, and a portrait is a rectangle: a circle crops the
    shoulders off every player and leaves seventeen heads floating in a grid. Square
@@ -2753,7 +2742,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rr-m .v small{font-size:9.5px;font-weight:500;color:var(--dim)}
 @media(max-width:860px){
   .rr{grid-template-columns:34px 40px minmax(0,1fr) 30px;gap:11px}
-  .rr-m,.rr .rc-badge{display:none}
+  .rr-m{display:none}
 }
 /* ---- the floor of the list: how many athletes it is showing. There is no pager any
    more — the whole squad stands on one page — so the count is all this row carries. ---- */
@@ -3334,7 +3323,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ev2-tile.g-basic{--gc:#38bdf8}.ev2-tile.g-move{--gc:#a78bfa}.ev2-tile.g-jump{--gc:#f59e0b}.ev2-tile.g-speed{--gc:#22c55e}.ev2-tile.g-custom{--gc:#f472b6}
 .ev2-tile:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 10px 24px -16px rgba(0,0,0,.8)}
 .ev2-tile.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset,0 10px 26px -16px rgba(0,148,255,.6);
-  background:linear-gradient(155deg,rgba(0,148,255,.2),rgba(0,148,255,.05) 70%),var(--elevated)}
+  background:color-mix(in srgb,var(--accent) 16%,var(--elevated))}
 .ev2-tile-tx{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:4px}
 .ev2-tile-k{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gc);min-height:11px}
 .ev2-tile.on .ev2-tile-k{color:var(--accent2)}
@@ -22648,7 +22637,7 @@ function EvaluationView({team,updateTeam,data,setData}){
      which drawer of the test catalog is open ---- */
   const[posFilter,setPosFilter]=useState('all');
   const[q,setQ]=useState('');
-  const[sortBy,setSortBy]=useState('num');
+  const[sortBy,setSortBy]=useState('name');
   const[listView,setListView]=useState(false);
   const[cat,setCat]=useState('all');
   const templates=Array.isArray(data?.testTemplates)?data.testTemplates:[];
@@ -22717,8 +22706,8 @@ function EvaluationView({team,updateTeam,data,setData}){
         <input placeholder={Lx('Sporcu ara…','Search athlete…')} value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
       <select className="ev2-sort" value={sortBy} onChange={e=>setSortBy(e.target.value)}>
-        <option value="num">{Lx('Forma No (Küçükten Büyüğe)','Jersey No (ascending)')}</option>
         <option value="name">{Lx('İsme Göre (A–Z)','Name (A–Z)')}</option>
+        <option value="num">{Lx('Forma No (Küçükten Büyüğe)','Jersey No (ascending)')}</option>
         <option value="tests">{Lx('Test Sayısı (Çoktan Aza)','Test Count (most first)')}</option>
       </select>
       <div className="ev2-vt">
@@ -25680,16 +25669,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
      loaded, who has not checked in — and a page break through the middle of it hid half
      the answer behind a button. */
   const list=sorted;
-  /* The one word on the card. An injured athlete is called injured whatever their load
-     says; otherwise the verdict is read off ACWR, where >1.5 is the ratio the load
-     alerts already treat as risk and 1.3 is the top of the optimal band. */
-  const statusOf=r=>{
-    if(r.inj)return{cls:'inj',t:L('Sakat','Injured')};
-    if(!r.acwr)return{cls:'na',t:L('Veri Yok','No Data')};
-    if(r.acwr>1.5)return{cls:'hi',t:L('Yüksek Yük','High Load')};
-    if(r.acwr>1.3)return{cls:'mid',t:L('Orta Yük','Moderate Load')};
-    return{cls:'ok',t:L('Hazır','Ready')};
-  };
   const fmtLoad=v=>v?v.toLocaleString('en-US').replace(/,/g,'.'):'—';
   if(sel){const ath=athletes.find(a=>a.id===sel);
     if(!ath)return<div className="panel"><button className="btn sec" onClick={()=>setSel(null)}>← {L('Geri','Back')}</button><p>{L('Sporcu bulunamadı','Athlete not found')}</p></div>;
@@ -25747,13 +25726,12 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
     {athletes.length===0&&<div className="empty-st">{L('Henüz sporcu yok — başlamak için "Sporcu Ekle"ye tıkla.','No athletes yet — click "Add Athlete" to start.')}</div>}
     {athletes.length>0&&sorted.length===0&&<div className="empty-st">{L('Eşleşme yok.','No matches.')}</div>}
     {mode==='grid'&&<div className="rost-grid">{list.map(r=>{
-      const a=r.a;const st=statusOf(r);
+      const a=r.a;
       const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       const tdTot=r.td.attended+r.td.missed;
       return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
         <button className="rc-del" title={L('Sporcuyu sil','Delete athlete')} onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
-        <div className="rc-badgerow"><span className={'rc-badge '+st.cls}>{st.t}</span></div>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
           <div className={`rc-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
@@ -25792,7 +25770,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
       </div>);
     })}</div>}
     {mode==='list'&&<div className="rost-rows">{list.map(r=>{
-      const a=r.a;const st=statusOf(r);
+      const a=r.a;
       const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       return(<div key={a.id} className="rr" onClick={()=>setSel(a.id)}>
@@ -25810,7 +25788,6 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
           <div className="v"><span style={{color:'var(--green)'}}>{r.td.attended}</span>
             <span style={{color:'var(--dim)',fontWeight:500,margin:'0 2px'}}>/</span>
             <span style={{color:r.td.missed>0?'#f43f5e':'var(--dim)'}}>{r.td.missed}</span></div></div>
-        <span className={'rc-badge '+st.cls} style={{justifySelf:'end'}}>{st.t}</span>
         <button className="rc-go" style={{gridRow:'auto',gridColumn:'auto'}} aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();setSel(a.id);}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
         </button>
@@ -28495,6 +28472,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
   );
   const editRight=(
     <div className="ex-modal-right">
+      {/* One grid for every field, so an optional field that is absent (no action, no
+          movement pattern) closes up instead of leaving an empty cell in the middle. */}
       <div className="grid cols-2">
         <div><label>{ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type')}</label>
           <select value={ex.type||''} onChange={e=>{const v=e.target.value;
@@ -28513,25 +28492,18 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
         </div>
-      </div>
-      {!ball&&ACTIONS_FOR[ex.type]&&<div className="grid cols-2" style={{marginTop:14}}>
-        <div><label>{exLabel('Action')}</label>
+        {!ball&&ACTIONS_FOR[ex.type]&&<div><label>{exLabel('Action')}</label>
           <select value={ex.action||''} onChange={e=>set('action',e.target.value)}>
             <option value="">—</option>
             {ACTIONS_FOR[ex.type].map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
-        </div>
-        <div></div>
-      </div>}
-      {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).length>0&&<div className="grid cols-2" style={{marginTop:14}}>
-        {EX_EXTRA_FILTERS[ex.type].map(d=><div key={d.key}><label>{exLabel(d.label)}</label>
+        </div>}
+        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).map(d=><div key={d.key}><label>{exLabel(d.label)}</label>
           <select value={ex[d.key]||''} onChange={e=>set(d.key,e.target.value)}>
             <option value="">—</option>
             {d.values.map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
         </div>)}
-      </div>}
-      <div className="grid cols-2" style={{marginTop:14}}>
         {ball
           ?<div><label>{L('Oyuncu Sayısı','Players')}</label>
             <input value={ex.players||''} onChange={e=>set('players',e.target.value)} placeholder={L('ör. 3v3, 5 oyuncu','e.g. 3v3, 5 players')}/></div>
@@ -28539,7 +28511,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             <select value={ex.pattern||''} onChange={e=>set('pattern',e.target.value)}>
               <option value="">—</option>
               {PATTERNS_FOR[ex.type].map(p=><option key={p} value={p}>{exLabel(p)}</option>)}
-            </select></div>:<div></div>}
+            </select></div>:null}
         <div><label>{L('Zorluk','Difficulty')}</label>
           <select value={ex.difficulty||''} onChange={e=>set('difficulty',e.target.value)}>
             <option value="">—</option>
