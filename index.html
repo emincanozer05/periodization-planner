@@ -1411,9 +1411,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .plan-note-view{margin-top:14px;padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:9px;
   color:var(--text2);white-space:pre-wrap;font-size:13.5px;line-height:1.6;
   font-weight:400 !important}
-/* Session bar */
-.sess-card{margin-bottom:14px}
-.sess-card:last-child{margin-bottom:0}
+/* A session on the day plan. Its own class, not .sess-card: sharing the name with the
+   details cards below gave it their border and radius too, and that frame sat a few
+   pixels outside .sbody's — two lines round every session where one was meant. */
+.sess-ed{margin-bottom:14px}
+.sess-ed:last-child{margin-bottom:0}
 /* Color picker swatches inside SessEd */
 /* One strip inside every block, directly above its exercises: what the block trains on the
    left — read off those exercises, never ticked — and the session's card colour on the
@@ -2360,11 +2362,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:var(--bg2);border:1px solid var(--border2);color:var(--text2);
 }
 /* Chip-style filters inside a category */
-.chip-filters{margin-bottom:18px;display:flex;flex-direction:column;gap:10px}
-.chip-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px}
-.chip-row-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:500;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-right:4px;min-width:120px}
-.fchip{background:transparent;border:1.5px solid;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;transition:all .15s;line-height:1.1}
-.fchip:hover{transform:translateY(-1px)}
+/* Library filters (SegFilter): a caption, then the values in one rounded track with a
+   white pill that slides under the picked one. Thin rules part the values, except on
+   either side of the pill, where the pill itself is the separation. */
+.seg-filters{margin-bottom:18px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px 22px;align-items:center}
+/* Each row lays its caption and track into the shared grid, so every track starts on
+   the same line however long the caption beside it is. */
+.seg-row{display:contents}
+.seg-row>.seg{justify-self:start}
+.seg-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;
+  color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
+.seg{position:relative;display:flex;align-items:center;min-width:0;max-width:100%;padding:4px;
+  border:1px solid var(--border2);border-radius:999px;background:rgba(255,255,255,.025);
+  overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg-pill{position:absolute;top:4px;bottom:4px;border-radius:999px;background:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.35);transition:left .32s cubic-bezier(.2,.7,.3,1),width .32s cubic-bezier(.2,.7,.3,1)}
+.seg-opt{position:relative;z-index:1;flex:none;background:none;border:0;border-radius:999px;cursor:pointer;
+  padding:9px 22px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;line-height:1.1;
+  transition:color .25s ease}
+.seg-opt:hover:not(.on){color:#fff}
+/* The picked label darkens a beat after the pill starts moving, so it turns dark as the
+   pill arrives under it rather than going dark on the dark track first. */
+.seg-opt.on{color:#0a0b0d;transition:color .2s ease .14s}
+.seg-opt+.seg-opt::before{content:'';position:absolute;left:0;top:28%;bottom:28%;width:1px;background:var(--border2);transition:opacity .2s}
+.seg-opt.on::before,.seg-opt.on+.seg-opt::before{opacity:0}
+@media(max-width:700px){
+  .seg-filters{grid-template-columns:minmax(0,1fr);row-gap:6px}
+  .seg-row>.seg{margin-bottom:6px}
+  .seg-opt{padding:8px 15px;font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.seg-pill{transition:none}}
 /* Difficulty badge on the exercise card */
 .ex-cbody{position:relative}
 .diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -4604,7 +4632,8 @@ header{background:var(--bg2)!important}
 
 .iv-card{background:var(--panel);border:1px solid var(--border);border-radius:13px;overflow:hidden}
 .iv-card.open{border-color:var(--dim)}
-.iv-card-hd{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;flex-wrap:wrap}
+.iv-card-hd{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;flex-wrap:nowrap}
+.iv-card-hd>.iv-av,.iv-card-hd>.iv-rd,.iv-card-hd>.iv-adj,.iv-card-hd>.iv-ch{flex:none}
 .iv-card-hd:hover{background:var(--elevated)}
 .iv-av{width:36px;height:36px;border-radius:10px;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--text2);overflow:hidden;flex:none}
 .iv-av img{width:100%;height:100%;object-fit:cover}
@@ -4615,9 +4644,14 @@ header{background:var(--bg2)!important}
 .iv-painchip{color:#fecaca;background:rgba(244,63,94,.2);border:1px solid rgba(244,63,94,.5);border-radius:6px;padding:1px 7px;font-weight:600}
 /* Yesterday's reported load and today's pain reports, read next to the readiness
    badge — the athlete's side of the header, opposite the program's. */
-.iv-daybar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;font-size:11px}
-.iv-daybar .iv-painchip{white-space:normal;max-width:280px}
-.iv-daybar .iv-painchip.note{font-weight:500}
+.iv-daybar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-left:auto;font-size:11px;min-width:0}
+/* One line of pain chips, however many were reported — see PAIN_MAX in IndivAthleteCard.
+   A chip that still does not fit is cut with an ellipsis rather than wrapped. */
+.iv-pains{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;min-width:0;overflow:hidden}
+.iv-daybar .iv-painchip{white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
+.iv-daybar .iv-painchip.note{font-weight:500;max-width:220px}
+.iv-daybar .iv-painchip.more{flex:none;cursor:help;color:var(--text2);background:var(--elevated);border-color:var(--border2)}
+.iv-daybar .iv-dchip{flex:none}
 .iv-dchip{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--border);border-radius:8px;padding:3px 10px;background:var(--elevated);white-space:nowrap}
 .iv-dchip i{font-size:8.5px;font-style:normal;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
 .iv-dchip b{font-size:12.5px;font-weight:700;color:var(--text2);font-family:'IBM Plex Mono',ui-monospace,monospace}
@@ -4765,7 +4799,7 @@ header{background:var(--bg2)!important}
 /* The heading is a text box, not a label: renaming a block is per athlete, like
    every other thing on this sheet. It stays flush with the header until focused. */
 .iv-block-nm{flex:1 1 220px;min-width:0;max-width:640px;background:transparent;border:1px solid transparent;border-radius:6px;
-  padding:5px 9px;font-family:inherit;font-size:30px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em;
+  padding:5px 9px;font-family:inherit;font-size:26px;font-weight:700;color:var(--blk-hd-ink);letter-spacing:.01em;
   /* Bold italic by request. The page-wide rule forces every element upright with !important,
      so the italic has to be !important too (a class outranks *). Archivo ships no italic
      face and nothing past Bold (700), so the slant is the browser's synthesized oblique and
@@ -5346,6 +5380,10 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .alt-use{flex:none;background:var(--elevated);border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:5px 11px;font-size:11.5px;cursor:pointer;white-space:nowrap}
 .alt-use:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .alt-use:disabled{opacity:.4;cursor:default}
+@media(max-width:1100px){
+  .iv-card-hd{flex-wrap:wrap}
+  .iv-daybar{flex-wrap:wrap}
+}
 @media(max-width:700px){
   .iv-card-hd{gap:8px}
   .iv-slot-nums{gap:10px}
@@ -5863,6 +5901,14 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .di-fold i{font-style:normal;font-size:12px;transition:transform .18s ease;transform:rotate(-90deg)}
 .di-fold.open i{transform:none}
 .di-panel:has(.di-hd.folded){padding-bottom:14px}
+/* Print, between the flip and the fold while the programme is up: framed in the
+   product's blue so it reads as the one action that leaves the app. */
+.di-printbtn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  background:transparent;border:1px solid #0094ff;border-radius:9px;padding:5px 12px;color:#4db4ff;
+  font:700 11px/1 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;
+  transition:background .12s ease,color .12s ease}
+.di-printbtn:hover{background:rgba(0,148,255,.14);color:var(--text)}
+.di-printbtn i{font-style:normal;font-size:12px}
 /* "Programı Gör": the panel is a card with two faces — today and the brief on the
    front, the programme on the back — so the page carries one of them at a time. */
 .di-flipbtn{display:inline-flex;align-items:center;gap:7px;cursor:pointer;
@@ -8775,7 +8821,12 @@ function migrate(data){
        live in `action`; the contraction box keeps only what is a contraction. Nothing is
        lost — an entry filed "Pull" reads Action: Pull, Contraction Focus: not set. */
     .map(e=>(ACTIONS_FOR[e.type]&&EX_ACTIONS.includes(e.subType))
-      ?{...e,action:e.action||e.subType,subType:''}:e);
+      ?{...e,action:e.action||e.subType,subType:''}:e)
+    /* Mobility's regions became Ankle · Hip · Spine · Shoulder · Wrist; the thoracic
+       spine is part of the spine, so an entry filed "Thoracic" reads Spine. */
+    .map(e=>(e.type==='Mobility'&&e.subType==='Thoracic')?{...e,subType:'Spine'}:e)
+    /* "Step-up" is spelled "Step-Up" now, as the rest of the pattern list is cased. */
+    .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e);
   /* The Gemini key used to ride in the synced workspace (and so in this browser's
      cache of it). It lives on the server now, so an old copy is dropped here rather
      than left sitting in the browser. The Gemini-vs-Claude choice and the model stay. */
@@ -10555,13 +10606,17 @@ const RPT_HEAD_CSS=`/* The sheet's own masthead, centred across the top where th
 .doc-logo{height:auto;width:auto;max-height:56px;max-width:124px;object-fit:contain;flex:none}
 .doc-l h1{font-size:23px;font-weight:800 !important;color:#0f172a;letter-spacing:-0.03em;line-height:1.05}
 .doc-l .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px}
-/* Focus badge — what this document is FOR, opposite the title. A round icon chip beside
-   two stacked lines, the same "label over value" pattern the rest of the sheet uses. */
-.doc-r{display:flex;align-items:center;gap:10px;text-align:right}
-.doc-r .lbl{margin-bottom:3px}
-.doc-focus-ic{flex:none;width:34px;height:34px;border-radius:50%;background:#eef4de;display:flex;align-items:center;
-  justify-content:center;font-size:16px}
-.doc-focus-val{font-size:14px;font-weight:800;color:#0f172a;letter-spacing:-.01em}
+/* The session's volume and target RPE, opposite the title — two quiet "label over value"
+   pairs split by a hairline. They used to be two framed panels under the session banner;
+   up here they take no height of their own, which is height handed back to exercises. */
+.doc-r{display:flex;align-items:flex-end;gap:12px;text-align:right;flex:none}
+.doc-kv{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.doc-kv-k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.9px}
+.doc-kv-v{font-size:12.5px;font-weight:700;color:#0f172a;white-space:nowrap;letter-spacing:-.005em}
+.doc-kv-v small{font-size:9.5px;font-weight:600;color:#94a3b8}
+.doc-kv-v em{font-style:normal;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-left:5px}
+.doc-kv-sep{color:#cbd5e1;font-weight:500;margin:0 4px}
+.doc-kv-div{width:1px;align-self:stretch;background:#e2e8f0}
 
 /* Session card — refined; allow page breaks INSIDE the session so a long
    session flows naturally across pages (no half-empty pages). The header /
@@ -10620,8 +10675,9 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
 .pc-tbl td.ds s{color:#8b9099}
 .pc-dd{font-size:9.5px;color:#5c626c;margin-top:2px}`;
 /* The masthead: the product line with the date, then the team's crest, what the sheet is,
-   whose it is and what the work is for. `titleHTML` goes in as markup. */
-function rptDocHead(titleHTML,sub,focusTxt,logo){
+   whose it is and — opposite — the volume and target RPE (rptHeadStats). `titleHTML` and
+   `statsHTML` go in as markup. */
+function rptDocHead(titleHTML,sub,statsHTML,logo){
   return`<div class="doc-top"><span class="doc-top-l"><span class="wm">COACH<b>OS</b></span><span class="wm-sub">Coaching Operating System</span></span><span class="doc-top-date">${escHTML(String(sub==null?'':sub).replace(/,/g,'·'))}</span></div>
 <div class="doc-head">
   <div class="doc-l">
@@ -10631,11 +10687,24 @@ function rptDocHead(titleHTML,sub,focusTxt,logo){
       <h1>${titleHTML}</h1>
     </div>
   </div>
-  ${focusTxt?`<div class="doc-r">
-    <div class="doc-focus-ic">🎯</div>
-    <div><div class="lbl">${L('Odak','Focus')}</div><div class="doc-focus-val">${escHTML(focusTxt)}</div></div>
-  </div>`:''}
+  ${statsHTML||''}
 </div>`;
+}
+/* Volume and target RPE for the masthead: `vol` from rptVolStats, `rlo`/`rhi` the RPE
+   range. Plain text on the white sheet, no frame — it is a summary, not a panel. */
+function rptHeadStats(vol,rlo,rhi){
+  const nf=v=>Number(v||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
+  const sep=`<span class="doc-kv-sep">·</span>`;
+  const parts=[];
+  if(vol.sets)parts.push(`${vol.sets} ${L('set','sets')}`);
+  if(vol.reps)parts.push(`${vol.reps} ${L('tekrar','reps')}`);
+  if(vol.hasLoad)parts.push(`~${nf(vol.tonnage)} kg`);
+  const rz=rpeZone(Math.round((rlo+rhi)/2));
+  return`<div class="doc-r">
+    <div class="doc-kv"><span class="doc-kv-k">${L('Antrenman Hacmi','Training Volume')}</span><span class="doc-kv-v">${parts.length?parts.join(sep):'—'}</span></div>
+    <div class="doc-kv-div"></div>
+    <div class="doc-kv"><span class="doc-kv-k">${L('Hedef RPE','Target RPE')}</span><span class="doc-kv-v">${rlo===rhi?rlo:`${rlo}-${rhi}`}<small>/10</small><em style="color:${rz.pc}">${L(rz.tr,rz.en)}</em></span></div>
+  </div>`;
 }
 /* The session's black banner — its number, its name, when it starts and how long it
    runs — and the purpose line under it. `nameHTML` / `ownerHTML` go in as markup. */
@@ -10661,20 +10730,20 @@ function rptPhaseCard(title,tag,rowsHTML){
     <table class="pc-tbl"><thead><tr><th class="n">#</th><th class="ex">${L('Egzersiz','Exercise')}</th><th>${L('Set × Tekrar','Sets × Reps')}</th>
       <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>`;
 }
-/* Best-effort volume summary for the printed program's "Training Volume" panel — total
+/* Best-effort volume summary for the printed program's "Training Volume" line — total
    sets and reps are exact sums of what the coach typed; total load is a tonnage estimate
    (sets × reps × the first number found in the load field) since load is free text
    ("20-24 kg", "Bodyweight") rather than a guaranteed number. Shown with a leading "~" for
    exactly that reason. */
-function sessionVolumeStats(s){
+function rptVolStats(list){
   let sets=0,reps=0,tonnage=0,hasLoad=false;
-  (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
-    if(!e.name)return;
+  (list||[]).forEach(e=>{
+    if(!e||!e.name)return;
     const st=Number(e.sets)||0,rp=Number(e.reps)||0;
     sets+=st;reps+=rp;
     const lm=String(e.load||'').match(/[\d.]+/);
     if(lm){hasLoad=true;tonnage+=parseFloat(lm[0])*(st||1)*(rp||1);}
-  }));
+  });
   return{sets,reps,tonnage:Math.round(tonnage),hasLoad};
 }
 function buildSessionHTMLDoc(title,subtitle,sessions,opts){
@@ -10827,38 +10896,17 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
      with (title, subtitle, sessions), there is exactly one group and the document is the one
      it has always been. */
   const groups=(opts&&Array.isArray(opts.groups)&&opts.groups.length)?opts.groups:[{title,subtitle,sessions}];
-  // What this document is FOR, next to the title — every focus tag across its own sessions.
-  const focusFor=list=>{const set=new Set();(list||[]).forEach(s=>sesFocus(s).forEach(f=>f&&set.add(f)));return[...set].join(', ');};
-  const docHead=(t,sub,focusTxt)=>rptDocHead(t,sub,focusTxt,logo);
-  const nf=v=>Number(v||0).toLocaleString(REPORT_LANG==='tr'?'tr-TR':'en-US');
-  /* Training Volume + Intensity Target, side by side under the session banner — the
-     coach's plan for the session at a glance, before the exercise-by-exercise detail. */
-  const statsRowHTML=s=>{
-    const vol=sessionVolumeStats(s);
-    const[rlo,rhi]=sesRpeRange(s);
-    const rz=rpeZone(sesRpeTarget(s));const rp=rpePct(sesRpeTarget(s));
-    return`<div class="stat-row">
-      <div class="stat-box">
-        <div class="stat-box-lbl">${L('Antrenman Hacmi','Training Volume')}</div>
-        <div class="stat-box-cols">
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Set','Total Sets')}</span><span class="stat-col-val">${vol.sets||dash}</span></div>
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Tekrar','Total Reps')}</span><span class="stat-col-val">${vol.reps||dash}</span></div>
-          <div class="stat-col"><span class="stat-col-lbl">${L('Toplam Yük','Total Load')}</span><span class="stat-col-val">${vol.hasLoad?`~${nf(vol.tonnage)} kg`:dash}</span></div>
-        </div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-box-lbl">${L('Yoğunluk Hedefi','Intensity Target')}</div>
-        <div class="stat-int-row">
-          <span class="stat-int-val">RPE ${rlo}-${rhi}<span class="stat-int-max">/10</span><span class="stat-int-zone" style="color:${rz.pc}">${L(rz.tr,rz.en)}</span></span>
-          <div class="rpe-gauge-print">
-            <div class="rpe-gauge-print-lead" style="width:${rpePct(rlo)}%;background:${rz.pc}"></div>
-            <div class="rpe-gauge-print-band" style="left:${rpePct(rlo)}%;width:${rpePct(rhi)-rpePct(rlo)}%;background:${rz.pc}"></div>
-            <div class="rpe-gauge-print-thumb" style="left:${rp}%;background:${rz.pc}"></div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+  /* Volume and target RPE across the group's own sessions, for the masthead: the sets,
+     reps and tonnage summed, and the RPE range running from the lowest target's floor to
+     the highest one's ceiling — one session prints exactly its own range. */
+  const headStats=list=>{
+    const ss=list||[];
+    if(!ss.length)return'';
+    const vol=rptVolStats(ss.flatMap(s=>(s.blocks||[]).flatMap(b=>b.exercises||[])));
+    const rr=ss.map(sesRpeRange);
+    return rptHeadStats(vol,Math.min(...rr.map(r=>r[0])),Math.max(...rr.map(r=>r[1])));
   };
+  const docHead=(t,sub,statsHTML)=>rptDocHead(t,sub,statsHTML,logo);
   /* A block whose heading is the session's own title (a one-block session, or a block
      printed on its own, which is headed by it) would print the same line twice, one
      under the other — so its heading is left to the session banner. */
@@ -10866,7 +10914,6 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   const sessionsHTML=list=>(list||[]).map((s,i)=>`<div class="sess${(opts&&opts.pageBreaks&&i>0)?' brk':''}">
   ${rptSessBanner({no:i+1,nameHTML:s.name,ownerHTML:s.ownerName?escHTML(s.ownerName):'',
     time:s.time,duration:s.duration,purpose:sesFocusLine(s)||s.purpose||''})}
-  ${statsRowHTML(s)}
   ${(()=>{
     // Lay every block out side-by-side in a flowing grid — no warmup/main/cooldown
     // categorization, blocks stay in the order the user arranged them.
@@ -10920,38 +10967,6 @@ body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;font-si
 .pg-pad{height:10mm;padding:0;border:none}
 
 ${RPT_HEAD_CSS}
-
-/* Training Volume + Intensity Target — the coach's plan for the session, at a glance,
-   before the exercise-by-exercise table. Two equal panels, same card language (rounded
-   frame, mono caption over a bold value) as the rest of the document. */
-/* These two panels are a summary, not the programme — every millimetre they take is a
-   millimetre of exercises pushed onto a second sheet. So the caption lies alongside the
-   figures instead of stacked above them, and the whole strip is drawn tight: it costs
-   roughly the height of one table row now rather than two. */
-.stat-row{display:flex;gap:8px;padding:8px 16px 0;break-inside:avoid;page-break-inside:avoid}
-.stat-box{flex:1 1 0;min-width:0;border:1px solid #e2e8f0;border-radius:7px;padding:6px 10px;background:#fbfcfd;
-  display:flex;align-items:center;gap:11px}
-.stat-box-lbl{flex:none;max-width:74px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:700;
-  color:#6f7d29;text-transform:uppercase;letter-spacing:.5px;line-height:1.3}
-/* Three equal thirds, each figure centred in its own — the box reads as one balanced
-   row of numbers rather than three left-packed ones with dead space after the last. */
-.stat-box-cols{flex:1 1 0;min-width:0;display:flex;gap:10px}
-.stat-col{flex:1 1 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:1px;min-width:0}
-.stat-col-lbl{font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px}
-.stat-col-val{font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:-.01em;line-height:1.2}
-.stat-int-row{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:4px}
-.stat-int-val{font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:800;color:#0f172a;letter-spacing:-.01em;line-height:1.2}
-.stat-int-max{font-size:9.5px;color:#94a3b8;font-weight:600}
-.stat-int-zone{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.5px;margin-left:6px}
-/* Static twin of the editor's gauge — the same run-up, lit band and centre marker, in the
-   same zone colour, so the page shows exactly what the editor showed. */
-.rpe-gauge-print{position:relative;height:7px;border-radius:999px;background:#e2e8f0;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
-.rpe-gauge-print-lead{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:#ea580c;opacity:.34}
-.rpe-gauge-print-band{position:absolute;top:0;bottom:0;border-radius:999px;background:#ea580c}
-.rpe-gauge-print-thumb{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;
-  transform:translate(-50%,-50%);background:#ea580c;border:2px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
 
 .bs{padding:10px 16px}
 /* Blocks stack one under the other, in the order the coach arranged them, so the sheet
@@ -11070,7 +11085,7 @@ ${RPT_PHASE_CSS}
 <tbody><tr><td>
 
 ${groups.map((g,gi)=>`<section class="ath-doc${gi>0?' brk':''}">
-${docHead(g.title,g.subtitle,focusFor(g.sessions))}
+${docHead(g.title,g.subtitle,headStats(g.sessions))}
 ${sessionsHTML(g.sessions)}
 </section>`).join('')}
 
@@ -16932,14 +16947,11 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
               </select>
             </div>
             {/* Training method keeps a row of its own — the list it opens is the longest
-                of the three. The assistant sits at the end of it, where the coach is
-                already looking when deciding what this session is made of; it only
-                appears where there is one athlete to read. */}
+                of the three. */}
             <div className="sf-row wide">
               <span className="sf-l">{L('Antrenman Metodu','Training Method')}</span>
               <div className="sf-in-wrap iv-mrow">
                 <MethodSelect value={sesMethods(session)} onChange={arr=>u({methods:arr})}/>
-                {coach&&coach.ath&&<CoachAssistant ath={coach.ath} date={coach.date}/>}
               </div>
             </div>
           </div>
@@ -18366,7 +18378,7 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
     <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={index===total-1}
       title={L('Seansı aşağı taşı','Move the session down')}>↓</button></>;
 
-  return(<div className="sess-card">
+  return(<div className="sess-ed">
     <div className="sbody">
       {/* The strip that used to stand here — what the session trains, and the card colour —
           rides inside each block now, directly above the exercises it is read from. */}
@@ -27980,9 +27992,8 @@ const TYPE_COLORS={
   'Balance':'#fde68a',                   // pale yellow
   'Accessory':'#cbd5e1',                 // slate
 };
-const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-up'];
-const HIP_PATTERNS=['Bilateral','Unilateral'];
-const PATTERNS_FOR={'Knee Dominant':KNEE_PATTERNS,'Hip Dominant':HIP_PATTERNS};
+const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-Up'];
+const PATTERNS_FOR={'Knee Dominant':KNEE_PATTERNS,'Hip Dominant':KNEE_PATTERNS};
 /* Hip and Knee Dominant are described on two separate axes: WHICH contraction the
    exercise is built around (Contraction Focus — the sub-type) and WHICH way the load
    moves (Action). They used to share one list, "Push · Pull · Eccentric · Isometric",
@@ -27995,16 +28006,17 @@ const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
 // Each Exercise Type has its own secondary filter dimension.
 const SUB_TYPES={
   'Warm-Up':{label:'Category',values:['General','Specific','Activation','Mobilisation','Dynamic Stretching','Neural Priming']},
-  'Upper Body Push':{label:'Plane of Motion',values:['Horizontal','Vertical']},
-  'Upper Body Pull':{label:'Plane of Motion',values:['Horizontal','Vertical']},
+  'Upper Body Push':{label:'Movement',values:['Horizontal','Vertical']},
+  'Upper Body Pull':{label:'Movement',values:['Horizontal','Vertical']},
   'Hip Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
   'Knee Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
-  'Core':{label:'Movement Pattern',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
+  'Core':{label:'Movement',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
   'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
   'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
   'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational']},
-  'Medicine Ball':{label:'Movement Pattern',values:['Horizontal','Vertical','Rotational']},
-  'Mobility':{label:'Region',values:['Thoracic','Shoulder','Hip','Ankle']},
+  'Medicine Ball':{label:'Direction',values:['Vertical','Horizontal','Rotational']},
+  /* The spine is one region: "Thoracic" entries were moved onto it (migrate). */
+  'Mobility':{label:'Region',values:['Ankle','Hip','Spine','Shoulder','Wrist']},
   /* Stability is filed by the joint it is holding, top to bottom — the order a coach
      reads a body down, not alphabetical. The shoulder and the scapula hold together and
      are trained together, so they are one region rather than two. */
@@ -28016,6 +28028,24 @@ const SUB_TYPES={
      injury-prevention pieces are what a coach looks for first when writing a warm-up. */
   'Accessory':{label:'Region',values:['Upper Body','Lower Body','Shoulder & Scapula','Hip & Hamstring','Prehab & Injury Prevention']},
 };
+/* The filters a category carries beyond its sub-type (and, for Hip / Knee Dominant, the
+   Action and Movement Pattern above): each is its own field on the library entry, set
+   on the exercise card and filtered on in the library. */
+const EX_POSITIONS=['Standing','Half-Kneeling','Tall-Kneeling','Seated','Supine','Prone','Quadruped'];
+const EX_EXTRA_FILTERS={
+  'Plyometric':[
+    {key:'exKind',label:'Exercise Type',values:['Jump','Hop','Bound','Hurdle','Drop Jump','Landing','Rebound']},
+    {key:'technique',label:'Technique',values:['Bilateral','Unilateral']}],
+  'Medicine Ball':[
+    {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
+  'Core':[{key:'position',label:'Position',values:EX_POSITIONS}],
+  'Mobility':[{key:'position',label:'Position',values:EX_POSITIONS}],
+  'Upper Body Push':[{key:'equipment',label:'Equipment',values:['Dumbbell','Barbell','Cable','Machine','Band','Bodyweight']}],
+  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:['Dumbbell','Barbell','Cable','Machine','Band','Bodyweight']}],
+  'Hip Dominant':[{key:'equipment',label:'Equipment',values:['Barbell','Dumbbell','Kettlebell','Machine','Cable','Band','Bodyweight']}],
+  'Knee Dominant':[{key:'equipment',label:'Equipment',values:['Barbell','Dumbbell','Kettlebell','Machine','Cable','Band','Bodyweight']}],
+};
+const EX_EXTRA_KEYS=['exKind','technique','position','equipment'];
 /* Every fixed taxonomy term across the app (exercise type/muscle/difficulty,
    session focus, periodization model, load type, …) is stored in English as
    the canonical value — filtering, saved data, and the report generator key
@@ -28027,7 +28057,7 @@ const EX_TERM_TR={
   'Warm-Up':'Isınma','Upper Body Push':'Üst Vücut İtme','Upper Body Pull':'Üst Vücut Çekme',
   'Hip Dominant':'Kalça Baskın','Knee Dominant':'Diz Baskın','Core':'Core','Full Body':'Tüm Vücut',
   'Multi Directional Speed':'Çok Yönlü Hız','Multidirectional Speed':'Çok Yönlü Hız','Plyometric':'Pliometrik',
-  'Medicine Ball':'Sağlık Topu','Mobility':'Hareketlilik','Stability':'Stabilite',
+  'Medicine Ball':'Sağlık Topu','Mobility':'Mobilite','Stability':'Stabilite',
   'Balance':'Denge','Static Balance':'Statik Denge','Dynamic Balance':'Dinamik Denge',
   'Unilateral Balance':'Tek Taraflı Denge','Reactive Balance':'Reaktif Denge',
   'Upper Body':'Üst Vücut','Lower Body':'Alt Vücut','Shoulder & Scapula':'Omuz & Skapula',
@@ -28037,7 +28067,7 @@ const EX_TERM_TR={
   'Biceps':'Biceps','Triceps':'Triceps','Quadriceps':'Kuadriseps','Hamstrings':'Hamstring','Glutes':'Kalça (Gluteus)',
   'Calves':'Baldır','Forearms':'Önkol','Hip Flexors':'Kalça Fleksörleri','Adductors':'Adduktör','Abductors':'Abduktör',
   'Cardio':'Kardiyo',
-  'Bilateral':'Bilateral','Unilateral':'Unilateral','Lunges':'Lunge','Step-up':'Step-up',
+  'Bilateral':'Bilateral','Unilateral':'Unilateral','Lunges':'Lunge',
   'Level 1':'Seviye 1','Level 2':'Seviye 2','Level 3':'Seviye 3',
   'Category':'Kategori','Plane of Motion':'Hareket Düzlemi','Contraction Type':'Kasılma Tipi',
   'Movement Pattern':'Hareket Örüntüsü','Skill':'Beceri','Direction':'Yön','Region':'Bölge',
@@ -28052,7 +28082,8 @@ const EX_TERM_TR={
   'Non-Reactive Agility':'Reaktif Olmayan Çeviklik','Reactive Agility':'Reaktif Çeviklik',
   'Acceleration':'İvmelenme','Deceleration':'Yavaşlama','COD':'Yön Değiştirme','Sprint Technique':'Sprint Tekniği',
   'Lateral':'Lateral','Rotational':'Rotasyonel',
-  'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği',
+  'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
+  'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
   'Linear':'Doğrusal','Block':'Blok','Undulating':'Dalgalı','Conjugate':'Konjuge',
@@ -28073,7 +28104,7 @@ const EX_TERM_TR={
   'Strength & Power':'Kuvvet ve Güç','Multi-Directional Speed':'Çok Yönlü Hız','Conditioning':'Kondisyon',
   'Movement Quality':'Hareket Kalitesi','Other':'Diğer',
   'Hypertrophy':'Hipertrofi','Speed':'Hız','Acceleration':'İvmelenme','Deceleration':'Yavaşlama',
-  'Change of Direction':'Yön Değiştirme','Agility':'Çeviklik','Plyometrics':'Pliometrik','Mobility':'Hareketlilik',
+  'Change of Direction':'Yön Değiştirme','Agility':'Çeviklik','Plyometrics':'Pliometrik','Mobility':'Mobilite',
   'Stability':'Stabilite','Injury Prevention':'Sakatlık Önleme','Technical':'Teknik','Tactical':'Taktik',
   'Competition':'Müsabaka','Assessment':'Değerlendirme','Recovery':'Toparlanma',
   /* --- Session focus tree, stage 1 --- */
@@ -28419,6 +28450,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         {ball&&metaBox(L('Oyuncu','Players'),ex.players)}
         {!ball&&ACTIONS_FOR[ex.type]&&metaBox(exLabel('Action'),ex.action?exLabel(ex.action):'—')}
         {!ball&&PATTERNS_FOR[ex.type]&&metaBox(L('Hareket Örüntüsü','Movement Pattern'),ex.pattern?exLabel(ex.pattern):'—')}
+        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).map(d=><React.Fragment key={d.key}>{metaBox(exLabel(d.label),ex[d.key]?exLabel(ex[d.key]):'—')}</React.Fragment>)}
         {metaBox(L('Zorluk','Difficulty'),exLabel(ex.difficulty),ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
         {/* The pair every program fills in from here, and writes back to when it is
             tagged on a session. Shown together because one is meaningless alone. */}
@@ -28449,7 +28481,12 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
     <div className="ex-modal-right">
       <div className="grid cols-2">
         <div><label>{ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type')}</label>
-          <select value={ex.type||''} onChange={e=>{const v=e.target.value;onChange({type:v,subType:'',...(ACTIONS_FOR[v]?{}:{action:''})});}}>
+          <select value={ex.type||''} onChange={e=>{const v=e.target.value;
+            /* The category's own extra fields go with it: an Equipment set on a push is
+               not carried onto a Core entry, where there is no filter to find it by. */
+            const keep=new Set((EX_EXTRA_FILTERS[v]||[]).map(d=>d.key));
+            const drop={};EX_EXTRA_KEYS.forEach(k=>{if(!keep.has(k)&&ex[k])drop[k]='';});
+            onChange({type:v,subType:'',...(ACTIONS_FOR[v]?{}:{action:''}),...drop});}}>
             <option value="">—</option>
             {TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
           </select>
@@ -28469,6 +28506,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
           </select>
         </div>
         <div></div>
+      </div>}
+      {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).length>0&&<div className="grid cols-2" style={{marginTop:14}}>
+        {EX_EXTRA_FILTERS[ex.type].map(d=><div key={d.key}><label>{exLabel(d.label)}</label>
+          <select value={ex[d.key]||''} onChange={e=>set(d.key,e.target.value)}>
+            <option value="">—</option>
+            {d.values.map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+          </select>
+        </div>)}
       </div>}
       <div className="grid cols-2" style={{marginTop:14}}>
         {ball
@@ -28614,6 +28659,38 @@ const ExerciseCard=React.memo(ExerciseCardRaw);
    they get two shelves rather than one list with a filter on it. An entry saved before
    ball practice existed has no `lib` and is S&C, which is what it was. */
 const exLib=e=>(e&&e.lib==='ball')?'ball':'sc';
+/* One library filter as a segmented pill: the caption on the left, "All" and the
+   values in one rounded track, and a white pill under the picked one that slides to
+   whichever value is picked next. The pill is measured off the picked button rather
+   than computed, so it fits any label length; a long row scrolls inside its track. */
+function SegFilter({label,values,value,onChange}){
+  const trackRef=useRef(null);
+  const[pill,setPill]=useState(null);
+  const opts=['',...values];
+  useLayoutEffect(()=>{
+    const measure=()=>{
+      const t=trackRef.current;
+      const b=t&&t.querySelector('.seg-opt.on');
+      if(!b){setPill(null);return;}
+      const next={left:b.offsetLeft,width:b.offsetWidth};
+      setPill(p=>p&&p.left===next.left&&p.width===next.width?p:next);
+    };
+    measure();
+    const t=trackRef.current;
+    const ro=(typeof ResizeObserver==='function'&&t)?new ResizeObserver(measure):null;
+    if(ro)ro.observe(t);
+    return()=>{ro&&ro.disconnect();};
+  },[value,values.join('|'),REPORT_LANG]);
+  return(<div className="seg-row">
+    <span className="seg-lbl">{label}</span>
+    <div className="seg" ref={trackRef} role="radiogroup" aria-label={label}>
+      {pill&&<span className="seg-pill" style={{left:pill.left,width:pill.width}} aria-hidden="true"/>}
+      {opts.map(v=><button key={v||'__all'} type="button" role="radio" aria-checked={value===v}
+        className={'seg-opt'+(value===v?' on':'')} onClick={()=>onChange(v)}>
+        {v?exLabel(v):L('Tümü','All')}</button>)}
+    </div>
+  </div>);
+}
 function ExercisesView({data,setData}){
   const[libTab,setLibTab]=useState('sc');       // 'sc' | 'ball' — which shelf is open
   const ball=libTab==='ball';
@@ -28624,17 +28701,16 @@ function ExercisesView({data,setData}){
   const setExercises=arr=>setData({...data,exercises:[...arr,...allEx.filter(e=>exLib(e)!==libTab)]});
   const[activeType,setActiveType]=useState(null);  // null => category grid; type name => exercises within
   const[q,setQ]=useState('');
-  const[fSub,setFSub]=useState('');
-  const[fMuscle,setFMuscle]=useState('');     // extra filter for Hip Dominant
-  const[fAction,setFAction]=useState('');   // Hip / Knee Dominant: Push or Pull
-  const[fPattern,setFPattern]=useState('');   // extra filter for Knee Dominant
+  /* The category's filters, one value per field ({subType:'Vertical', equipment:'Band'});
+     a field with no value is not filtered on. */
+  const[filt,setFilt]=useState({});
   const[openId,setOpenId]=useState(null);
   const openCard=useCallback(id=>setOpenId(id),[]);   // stable, so the memoised cards hold
   // The two shelves have different categories, so a filter set on one means nothing on
   // the other — switching shelves lands on that shelf's own landing page.
   const TYPES=ball?BALL_TYPES:EX_TYPES;
   const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
-  const switchLib=t=>{if(t===libTab)return;setLibTab(t);setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setFAction('');setQ('');setOpenId(null);};
+  const switchLib=t=>{if(t===libTab)return;setLibTab(t);setActiveType(null);setFilt({});setQ('');setOpenId(null);};
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
   /* Muscles the coach typed that the fixed list does not carry, kept on the account so
@@ -28654,7 +28730,7 @@ function ExercisesView({data,setData}){
     setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
-  const goBack=()=>{setActiveType(null);setFSub('');setFMuscle('');setFPattern('');setFAction('');setQ('');};
+  const goBack=()=>{setActiveType(null);setFilt({});setQ('');};
   // How many times each exercise name is prescribed across the whole season program (all teams).
   const usageCounts=useMemo(()=>{const m={};
     (data.teams||[]).forEach(t=>Object.values(t.days||{}).forEach(day=>(day.sessions||[]).forEach(s=>(s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(ex=>{
@@ -28681,7 +28757,7 @@ function ExercisesView({data,setData}){
   // Every option carries its exercise count in parentheses, so the coach sees how
   // full each category is without opening it.
   const catDropdown=(
-    <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFSub('');setFMuscle('');setFPattern('');setFAction('');setQ('');}}}>
+    <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFilt({});setQ('');}}}>
       <option value="">{L('Tüm kategoriler','All categories')} ({exercises.length})</option>
       {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{exLabel(lbl)} ({typeCounts[val]||0})</option>)}
       {uncatCount>0&&<option value="__uncat__">{L('Kategorisiz','Uncategorized')} ({uncatCount})</option>}
@@ -28721,20 +28797,23 @@ function ExercisesView({data,setData}){
   // ----- Inside a category -----
   const isUncat=activeType==='__uncat__';
   const sub=isUncat?null:(SUBS[activeType]||null);
-  const hasMuscleFilter=false;   // muscle-group filter removed; Hip/Knee Dominant use Movement Pattern
-  const hasPatternFilter=!ball&&!isUncat&&!!PATTERNS_FOR[activeType];
-  const patternVals=PATTERNS_FOR[activeType]||KNEE_PATTERNS;
-  const hasActionFilter=!ball&&!isUncat&&!!ACTIONS_FOR[activeType];
+  /* Every filter this category carries, in the order they are read: the sub-type first,
+     then Hip / Knee Dominant's Action and Movement Pattern, then the category's own
+     extras (EX_EXTRA_FILTERS). Each one filters on the entry field named by `key`. */
+  const lift=!ball&&!isUncat;
+  const dims=[
+    sub&&{key:'subType',label:sub.label,values:sub.values},
+    lift&&ACTIONS_FOR[activeType]&&{key:'action',label:'Action',values:ACTIONS_FOR[activeType]},
+    lift&&PATTERNS_FOR[activeType]&&{key:'pattern',label:'Movement Pattern',values:PATTERNS_FOR[activeType]},
+    ...(lift?(EX_EXTRA_FILTERS[activeType]||[]):[]),
+  ].filter(Boolean);
+  const filtered=dims.some(d=>filt[d.key]);
   const ql=q.toLowerCase();
   const list=exercises.filter(e=>{
     if(isUncat){if(TYPES.includes(e.type))return false;}
     else if(e.type!==activeType)return false;
     if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
-    if(!isUncat&&fSub&&e.subType!==fSub)return false;
-    if(hasMuscleFilter&&fMuscle&&!(e.muscle||[]).includes(fMuscle))return false;
-    if(hasPatternFilter&&fPattern&&e.pattern!==fPattern)return false;
-    if(hasActionFilter&&fAction&&e.action!==fAction)return false;
-    return true;
+    return dims.every(d=>!filt[d.key]||e[d.key]===filt[d.key]);
   });
 
   return(<div className="ex-wrap">
@@ -28745,7 +28824,7 @@ function ExercisesView({data,setData}){
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← {L('Kategoriler','Categories')}</button>
         <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):exLabel(activeType)}</h1>
         {isUncat&&<div className="sub">{L('Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart\'a tıklayıp kategori ata.','Exercises added automatically from the program / not yet assigned a category. Click a card to assign one.')}</div>}
-        {sub&&<div className="sub">{L('Filtre:','Filter:')} <b>{exLabel(sub.label)}</b>{hasPatternFilter?' · '+L('Hareket Örüntüsü','Movement Pattern'):''}</div>}
+        {dims.length>0&&<div className="sub">{L('Filtre:','Filter:')} <b>{dims.map(d=>exLabel(d.label)).join(' · ')}</b></div>}
       </div>
     </div>
     <div className="ex-toolbar">
@@ -28754,22 +28833,11 @@ function ExercisesView({data,setData}){
       <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
     </div>
-    {(()=>{
-      /* Flat chips: no neon glow, no category tint on the label — every chip reads
-         white, and the picked one is marked by a filled pill rather than a colour. */
-      const onSty={background:'rgba(255,255,255,.16)',borderColor:'#ffffff',color:'#ffffff',boxShadow:'none',fontWeight:800};
-      const offSty={background:'transparent',borderColor:'rgba(255,255,255,.35)',color:'#ffffff',boxShadow:'none'};
-      const ChipRow=({label,values,val,setVal})=>(<div className="chip-row">
-        <span className="chip-row-lbl">{label}</span>
-        <button className={`fchip${val===''?' on':''}`} style={val===''?onSty:offSty} onClick={()=>setVal('')}>{L('Tümü','All')}</button>
-        {values.map(v=><button key={v} className={`fchip${val===v?' on':''}`} style={val===v?onSty:offSty} onClick={()=>setVal(val===v?'':v)}>{exLabel(v)}</button>)}
-      </div>);
-      return(<div className="chip-filters">
-        {sub&&<ChipRow label={exLabel(sub.label)} values={sub.values} val={fSub} setVal={setFSub}/>}
-        {hasActionFilter&&<ChipRow label={exLabel('Action')} values={ACTIONS_FOR[activeType]} val={fAction} setVal={setFAction}/>}
-        {hasPatternFilter&&<ChipRow label={L('Hareket Örüntüsü','Movement Pattern')} values={patternVals} val={fPattern} setVal={setFPattern}/>}
-      </div>);})()}
-    {list.length===0&&<div className="ex-empty">{(fSub||fMuscle||fPattern||fAction||q)
+    {dims.length>0&&<div className="seg-filters">
+      {dims.map(d=><SegFilter key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
+        value={filt[d.key]||''} onChange={v=>setFilt(f=>({...f,[d.key]:v}))}/>)}
+    </div>}
+    {list.length===0&&<div className="ex-empty">{(filtered||q)
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
       :(ball?L('Bu kategoride dril yok. ','No drills in this category. '):L('Bu kategoride egzersiz yok. ','No exercises in this category. '))}
       {L('Eklemek için','Add one with')} <b>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
@@ -30889,7 +30957,7 @@ function atpClassify(row,libMap){
   const P=tagP||String(lib.exPattern||'').trim()||(EX_PATTERNS.includes(lib.type)?lib.type:'');
   const S=String(row.plane||'').trim()||String(lib.exPlane||'').trim()||String(lib.subType||'').trim();
   const type=String(lib.type||'').trim(),sub=String(lib.subType||'').trim();
-  const mp=String(lib.movePattern||'').trim()||(['Unilateral','Lunges','Step-up'].includes(lib.pattern)?'Lunge / Unilateral':'');
+  const mp=String(lib.movePattern||'').trim()||(['Unilateral','Lunges','Step-Up'].includes(lib.pattern)?'Lunge / Unilateral':'');
   const fam0=(ATP_FAMILIES.find(([,re])=>re.test(n))||[])[0]||null;
   const plyo=type==='Plyometric'||mp==='Jump / Plyo'||['Jump Family','Hop / Bound Family','Depth / Drop Jump Family','Landing Family'].includes(fam0);
   const run=type==='Multi Directional Speed'||mp==='Sprint / Locomotion'||['Sprint Family','Deceleration Family','COD / Agility Family'].includes(fam0);
@@ -30897,7 +30965,7 @@ function atpClassify(row,libMap){
   let axis=ATP_AXIS_OF[P]||ATP_AXIS_OF[mp]||null;
   if(!axis&&!plyo&&!run&&!throwing)axis=ATP_FAMILY_AXIS[fam0]||null;
   const uni=/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|split|lunge|step[- ]?(up|down)|bulgarian|pistol|skater|rfess|hamle|b[- ]?stance|kickstand|staggered|rear[- ]?foot/.test(n)
-    ||['Unilateral','Lunges','Step-up'].includes(lib.pattern)||mp==='Lunge / Unilateral';
+    ||['Unilateral','Lunges','Step-Up'].includes(lib.pattern)||mp==='Lunge / Unilateral';
   /* A jump's knee bend is not a squat set: the strength sub-patterns are only read on
      rows that are not jumps or runs. The axis itself still counts when it was tagged. */
   const lift=!plyo&&!run;
@@ -33755,9 +33823,9 @@ const diDose=d=>{
    straight to the browser's print dialog (which also saves it as a PDF). It is drawn
    out of the same masthead, session banner and phase cards as the calendar's printout
    (rptDocHead · rptSessBanner · rptPhaseCard), so the two sheets are one design.
-   `time`, `duration` and `focus` are the session's own line: the calendar's copy once
-   it is written, the plan's before. */
-function printDiProgram({ath,date,title,rows,pct,time,duration,focus}){
+   `time`, `duration`, `focus` and `rpe` (its target RPE) are the session's own line: the
+   calendar's copy once it is written, the plan's before. */
+function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
   const w=window.open('','_blank','width=960,height=1000');
   if(!w){alert(L('Pop-up engellendi — bu site için pop-up izni ver.','Pop-up blocked — allow pop-ups for this site.'));return;}
   const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -33795,7 +33863,9 @@ ${RPT_PHASE_CSS}
 </style></head><body>
 <div class="print-bar">${L('Program hazır','The programme is ready')} · <button onclick="window.print()">${L('Yazdır / PDF','Print / Save as PDF')}</button> <button class="sec" onclick="window.close()">${L('Kapat','Close')}</button></div>
 <div class="scr-sp" style="height:66px"></div>
-${rptDocHead(esc(a.name||'—'),fdLong(date),focus,teamLogo())}
+${rptDocHead(esc(a.name||'—'),fdLong(date),
+  rptHeadStats(rptVolStats((rows||[]).map(r=>({name:r.name,sets:r.adjusted&&r.adjusted.sets,reps:r.adjusted&&r.adjusted.reps,load:r.load}))),
+    ...sesRpeRange({rpeTarget:rpe})),teamLogo())}
 <div class="sess">
 ${rptSessBanner({no:1,nameHTML:esc(title),time,duration,purpose:focus,
   meta:[{lbl:L('Pozisyon','Position'),val:a.position?posOf(a.position):''}]})}
@@ -34462,6 +34532,16 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
             :L('Kartı çevir, bu sporcunun programını göster','Turn the card over to this athlete\'s programme')}>
           <i>⟳</i><span>{onProg?L('Talimata Dön','Back to Brief'):L('Programı Gör','View Programme')}</span>
         </button>}
+        {open&&onProg&&program&&<button type="button" className="di-printbtn"
+          onClick={()=>{
+            /* The session's own line — start, length, focus, target RPE — as the athlete
+               has it: off the calendar once written, off the plan before that. */
+            const m=(written&&calSes)||plan.meta||{};
+            printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct,
+              time:m.time,duration:m.duration,focus:sesFocusLine(m),rpe:sesRpeTarget(m)});
+          }}
+          title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
+          <i>🖨</i><span>{L('Yazdır','Print')}</span></button>}
         <button type="button" className={'di-fold'+(open?' open':'')} onClick={()=>setOpen(!open)}
           aria-expanded={open} title={open?L('Paneli kapat','Fold the panel'):L('Paneli aç','Open the panel')}>
           <span>{open?L('Kapat','Fold'):L('Aç','Open')}</span><i>▾</i>
@@ -34542,16 +34622,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
         :L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
       <div className="di-result">
         <div className="di-resacts">
-          <button type="button" className="btn xs sec"
-            onClick={()=>{
-              /* The session's own line — start, length, focus — as the athlete has it:
-                 off the calendar once written, off the plan before that. */
-              const m=(written&&calSes)||plan.meta||{};
-              printDiProgram({ath:plan.ath,date,title:progTitle,rows:progRows,pct:progAdj.pct,
-                time:m.time,duration:m.duration,focus:sesFocusLine(m)});
-            }}
-            title={L('Programı yazdır ya da PDF olarak kaydet','Print the programme or save it as a PDF')}>
-            {L('🖨 Yazdır','🖨 Print')}</button>
           <button type="button" className="btn xs sec" onClick={discard}>
             {L('✕ Sil','✕ Discard')}</button>
         </div>
@@ -34609,6 +34679,21 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
      runs the same way round as readiness: low is the one to look at. */
   const wCol=v=>v==null?'var(--dim)':v<2.5?'#f43f5e':v<3.5?'#f59e0b':v<4.5?'#eab308':'#2dd4a7';
+  const sevTxt=sev=>painSevWord(sev)?` · ${painSevWord(sev)}`:'';
+  const painChips=[
+    ...(plan.painNote&&plan.painNote.quoted?[{key:'note',note:true,text:`“${plan.painNote.text}”`,
+      title:L(`Ağrı bildirimi · ${fd(plan.painNote.date)}`,`Pain report · ${fd(plan.painNote.date)}`)}]:[]),
+    ...(plan.painNote?(plan.painNote.regions||[]).map(g=>({key:'g'+g.region,text:g.region,style:painChipStyle(g.sev),
+      title:L(`Ağrı bildirimi · ${fd(g.date||plan.painNote.date)}${sevTxt(g.sev)}`,`Pain report · ${fd(g.date||plan.painNote.date)}${sevTxt(g.sev)}`)})):[]),
+    ...(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>({key:'p'+p.tag,text:ctLabel(p.tag),style:painChipStyle(p.sev),
+      title:L(`Günlük check-in · ${fd(p.date)}${sevTxt(p.sev)}`,`Daily check-in · ${fd(p.date)}${sevTxt(p.sev)}`)})),
+  ];
+  /* A long list of sore spots used to wrap the header onto two or three lines and
+     knock the card out of shape. The first few show; the rest fold into a "+N" chip
+     that lists them on hover, so the header keeps one line whatever was reported. */
+  const PAIN_MAX=3;
+  const painShown=painChips.length>PAIN_MAX+1?painChips.slice(0,PAIN_MAX):painChips;
+  const painRest=painChips.slice(painShown.length);
   return(<div className={'iv-card'+(open?' open':'')}>
     <div className="iv-card-hd" onClick={()=>setOpen(!open)}>
       <div className="iv-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials}</div>
@@ -34623,16 +34708,11 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
           words about what hurts lead — it is the one thing here that is not a
           number, and the thing most likely to change what the coach writes. */}
       <div className="iv-daybar">
-        {plan.painNote&&plan.painNote.quoted&&
-          <span className="iv-painchip note" title={L(`Ağrı bildirimi · ${fd(plan.painNote.date)}`,`Pain report · ${fd(plan.painNote.date)}`)}>{`“${plan.painNote.text}”`}</span>}
-        {plan.painNote&&(plan.painNote.regions||[]).map(g=>
-          <span key={'g'+g.region} className="iv-painchip" style={painChipStyle(g.sev)}
-            title={L(`Ağrı bildirimi · ${fd(g.date||plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`,
-                     `Pain report · ${fd(g.date||plan.painNote.date)}${painSevWord(g.sev)?` · ${painSevWord(g.sev)}`:''}`)}>{g.region}</span>)}
-        {(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>
-          <span key={'p'+p.tag} className="iv-painchip" style={painChipStyle(p.sev)}
-            title={L(`Günlük check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`,
-                     `Daily check-in · ${fd(p.date)}${painSevWord(p.sev)?` · ${painSevWord(p.sev)}`:''}`)}>{ctLabel(p.tag)}</span>)}
+        {painChips.length>0&&<div className="iv-pains">
+          {painShown.map(c=><span key={c.key} className={'iv-painchip'+(c.note?' note':'')} style={c.style} title={c.title}>{c.text}</span>)}
+          {painRest.length>0&&<span className="iv-painchip more"
+            title={painRest.map(c=>`${c.text} — ${c.title}`).join('\n')}>+{painRest.length}</span>}
+        </div>}
         <span className="iv-dchip" title={L(`Dünkü seans RPE'si (${fd(plan.prev.date)}) — sporcunun kendi puanı`,`Yesterday's session RPE (${fd(plan.prev.date)}) — the athlete's own rating`)}>
           <i>{L('dün rpe','yest. rpe')}</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
         </span>
