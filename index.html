@@ -4645,12 +4645,12 @@ header{background:var(--bg2)!important}
 /* Yesterday's reported load and today's pain reports, read next to the readiness
    badge — the athlete's side of the header, opposite the program's. */
 .iv-daybar{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-left:auto;font-size:11px;min-width:0}
-/* One line of pain chips, however many were reported — see PAIN_MAX in IndivAthleteCard.
-   A chip that still does not fit is cut with an ellipsis rather than wrapped. */
-.iv-pains{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;min-width:0;overflow:hidden}
-.iv-daybar .iv-painchip{white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0}
-.iv-daybar .iv-painchip.note{font-weight:500;max-width:220px}
-.iv-daybar .iv-painchip.more{flex:none;cursor:help;color:var(--text2);background:var(--elevated);border-color:var(--border2)}
+/* Every reported sore spot is shown in full: when they do not fit on one line the
+   chips wrap onto the next, right-aligned against the numbers, and the card header
+   grows taller to hold them rather than hiding any behind a "+N". */
+.iv-pains{display:flex;gap:5px 6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;flex:0 1 auto;min-width:0;max-width:460px}
+.iv-daybar .iv-painchip{white-space:nowrap;flex:0 1 auto;min-width:0;max-width:100%;line-height:1.45}
+.iv-daybar .iv-painchip.note{font-weight:500;white-space:normal;overflow-wrap:anywhere}
 .iv-daybar .iv-dchip{flex:none}
 .iv-dchip{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--border);border-radius:8px;padding:3px 10px;background:var(--elevated);white-space:nowrap}
 .iv-dchip i{font-size:8.5px;font-style:normal;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',ui-monospace,monospace}
@@ -34688,12 +34688,6 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
     ...(plan.pains||[]).filter(p=>!painNoteCovers(plan.painNote,p.tag)).map(p=>({key:'p'+p.tag,text:ctLabel(p.tag),style:painChipStyle(p.sev),
       title:L(`Günlük check-in · ${fd(p.date)}${sevTxt(p.sev)}`,`Daily check-in · ${fd(p.date)}${sevTxt(p.sev)}`)})),
   ];
-  /* A long list of sore spots used to wrap the header onto two or three lines and
-     knock the card out of shape. The first few show; the rest fold into a "+N" chip
-     that lists them on hover, so the header keeps one line whatever was reported. */
-  const PAIN_MAX=3;
-  const painShown=painChips.length>PAIN_MAX+1?painChips.slice(0,PAIN_MAX):painChips;
-  const painRest=painChips.slice(painShown.length);
   return(<div className={'iv-card'+(open?' open':'')}>
     <div className="iv-card-hd" onClick={()=>setOpen(!open)}>
       <div className="iv-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials}</div>
@@ -34709,9 +34703,7 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
           number, and the thing most likely to change what the coach writes. */}
       <div className="iv-daybar">
         {painChips.length>0&&<div className="iv-pains">
-          {painShown.map(c=><span key={c.key} className={'iv-painchip'+(c.note?' note':'')} style={c.style} title={c.title}>{c.text}</span>)}
-          {painRest.length>0&&<span className="iv-painchip more"
-            title={painRest.map(c=>`${c.text} — ${c.title}`).join('\n')}>+{painRest.length}</span>}
+          {painChips.map(c=><span key={c.key} className={'iv-painchip'+(c.note?' note':'')} style={c.style} title={c.title}>{c.text}</span>)}
         </div>}
         <span className="iv-dchip" title={L(`Dünkü seans RPE'si (${fd(plan.prev.date)}) — sporcunun kendi puanı`,`Yesterday's session RPE (${fd(plan.prev.date)}) — the athlete's own rating`)}>
           <i>{L('dün rpe','yest. rpe')}</i><b style={{color:rpeColor(plan.prev.rpe)||'var(--dim)'}}>{plan.prev.rpe!=null?plan.prev.rpe:'—'}</b>
