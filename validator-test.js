@@ -1127,14 +1127,32 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       em.movement_class.no_exposure_last_28_days.includes('Vertical Push') &&
       em.movement_class.records.some(k => k.name === 'Knee Dominant') && !!em.movement_class_note,
       JSON.stringify(em.movement_class.no_exposure_last_28_days));
-    // Alt vücut bilateral / unilateral ve kullanılan ekipman: sınıflama.
+    // Kuvvet çalışması: taraf, düzlem, aksiyon, kasılma odağı ve ekipman — sınıflama.
     const latOf = (n, o) => A.atpClassify(row(n, o), libMap);
-    check('taraf: split squat unilateral, RDL ve goblet squat bilateral',
+    check('taraf: alt vücut adından; üst vücut yalnızca tek kol / alternating denirse unilateral',
       latOf('Bulgarian Split Squat').laterality === 'Unilateral' && latOf('Romanian Deadlift').laterality === 'Bilateral' &&
-      latOf('Goblet Squat').laterality === 'Bilateral', JSON.stringify([latOf('Bulgarian Split Squat').laterality, latOf('Romanian Deadlift').laterality]));
-    check('taraf: sıçrama, sprint ve üst vücut hareketine taraf verilmiyor',
-      !latOf('Box Jump').laterality && !latOf('Flying 30m Sprint').laterality && !latOf('Lat Pulldown').laterality &&
-      !latOf('DB Bench Press').laterality);
+      latOf('Goblet Squat').laterality === 'Bilateral' && latOf('DB Bench Press').laterality === 'Bilateral' &&
+      latOf('Lat Pulldown').laterality === 'Bilateral' && latOf('Single Arm DB Row').laterality === 'Unilateral',
+      JSON.stringify(['Single Arm DB Row', 'Lat Pulldown'].map(n => latOf(n).laterality)));
+    check('sıçrama ve sprint hiçbir kuvvet özelliği almıyor',
+      ['Box Jump', 'Flying 30m Sprint'].every(n => { const c = latOf(n); return !c.laterality && !c.plane && !c.action && !c.focus; }));
+    check('düzlem: lateral / side → frontal, rotasyon ve anti-rotasyon → transverse, diğer kuvvet → sagittal',
+      latOf('Lateral Lunge').plane === 'Frontal' && latOf('Side Plank').plane === 'Frontal' &&
+      latOf('Pallof Press').plane === 'Transverse' && latOf('Landmine Rotation').plane === 'Transverse' &&
+      latOf('Reverse Lunge').plane === 'Sagittal' && latOf('Back Squat').plane === 'Sagittal' && latOf('Lat Pulldown').plane === 'Sagittal',
+      JSON.stringify(['Lateral Lunge', 'Side Plank', 'Pallof Press', 'Landmine Rotation', 'Reverse Lunge'].map(n => latOf(n).plane)));
+    check('aksiyon: üst vücutta eksenden; kalça / diz satırında yalnızca kütüphane etiketinden',
+      latOf('Lat Pulldown').action === 'Pull' && latOf('DB Bench Press').action === 'Push' &&
+      latOf('Romanian Deadlift').action === '' && latOf('Back Squat').action === '',
+      JSON.stringify([latOf('Romanian Deadlift').action]));
+    check('kasılma odağı: nordic eksantrik, wall sit ve plank izometrik, sıradan lift boş',
+      latOf('Nordic Hamstring Curl').focus === 'Eccentric' && latOf('Wall Sit').focus === 'Isometric' &&
+      latOf('Plank').focus === 'Isometric' && latOf('Back Squat').focus === '');
+    const tagLib = { 'hip thrust': { name: 'Hip Thrust', type: 'Hip Dominant', subType: 'Concentric', action: 'Push', pattern: 'Bilateral', equipment: 'Barbell' } };
+    const ht = A.atpClassify(row('Hip Thrust'), tagLib);
+    check('kütüphane etiketi: hip thrust → push, konsantrik, bilateral, barbell, sagittal',
+      ht.action === 'Push' && ht.focus === 'Concentric' && ht.laterality === 'Bilateral' && ht.equipment === 'Barbell' && ht.plane === 'Sagittal',
+      JSON.stringify(ht));
     check('ekipman: satırdaki alan, sonra isim — isim söylemiyorsa tahmin edilmiyor',
       latOf('Goblet Squat', { equipment: 'Kettlebell' }).equipment === 'Kettlebell' &&
       latOf('DB Bench Press').equipment === 'Dumbbell' && latOf('Lat Pulldown').equipment === 'Cable' &&
@@ -1143,30 +1161,108 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify([latOf('Romanian Deadlift').equipment]));
     // Maruziyet ve JSON: yeni katmanlar dört pencereyle geliyor, boş alan yok.
     const ath2 = athlete({ days: {
-      [back(1)]: day(back(1), 'Kuvvet', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Romanian Deadlift', { sets: '3', equipment: 'Barbell' }), row('Push-Up', { equipment: 'bodyweight' })]),
-      [back(4)]: day(back(4), 'Kuvvet 2', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Lat Pulldown')]),
+      [back(1)]: day(back(1), 'Kuvvet', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Romanian Deadlift', { sets: '3', equipment: 'Barbell' }),
+        row('Push-Up', { equipment: 'bodyweight' }), row('Lateral Lunge'), row('Box Jump')]),
+      [back(4)]: day(back(4), 'Kuvvet 2', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Lat Pulldown'), row('Nordic Hamstring Curl')]),
     } });
     const exp2 = A.atpExposure(ath2, back(1), { libMap });
-    const lat2 = id => exp2.laterality.find(t => t.label === id);
-    check('taraf maruziyeti: unilateral 8 set, bilateral 3 set',
-      lat2('Unilateral').sets.d7 === 8 && lat2('Bilateral').sets.d7 === 3 && lat2('Unilateral').freq28 === 2,
-      JSON.stringify([lat2('Unilateral').sets, lat2('Bilateral').sets]));
-    const eq2 = id => exp2.equipment.find(t => t.label === id);
+    const pick2 = (list, id) => list.find(t => t.label === id);
+    check('taraf maruziyeti: unilateral 11 set (2 seans), bilateral 12 set',
+      pick2(exp2.laterality, 'Unilateral').sets.d7 === 11 && pick2(exp2.laterality, 'Bilateral').sets.d7 === 12 && pick2(exp2.laterality, 'Unilateral').freq28 === 2,
+      JSON.stringify([pick2(exp2.laterality, 'Unilateral').sets, pick2(exp2.laterality, 'Bilateral').sets]));
+    check('düzlem, aksiyon ve odak maruziyeti: frontal 3, transverse yok; itme 3, çekme 3; eksantrik 3, izometrik yok',
+      pick2(exp2.planes, 'Frontal').sets.d7 === 3 && pick2(exp2.planes, 'Sagittal').sets.d7 === 20 && pick2(exp2.planes, 'Transverse').level.d28 === 'none' &&
+      pick2(exp2.actions, 'Push').sets.d7 === 3 && pick2(exp2.actions, 'Pull').sets.d7 === 3 &&
+      pick2(exp2.focus, 'Eccentric').sets.d7 === 3 && pick2(exp2.focus, 'Isometric').level.d28 === 'none',
+      JSON.stringify([exp2.planes.map(t => [t.label, t.sets.d7]), exp2.focus.map(t => [t.label, t.sets.d7])]));
     check('ekipman maruziyeti: dumbbell 8 set, barbell 3 set, vücut ağırlığı ve kablo görünüyor',
-      eq2('Dumbbell').sets.d7 === 8 && eq2('Barbell').sets.d7 === 3 && !!eq2('Bodyweight') && !!eq2('Cable') && !eq2('Kettlebell'),
+      pick2(exp2.equipment, 'Dumbbell').sets.d7 === 8 && pick2(exp2.equipment, 'Barbell').sets.d7 === 3 &&
+      !!pick2(exp2.equipment, 'Bodyweight') && !!pick2(exp2.equipment, 'Cable') && !pick2(exp2.equipment, 'Kettlebell'),
       JSON.stringify(exp2.equipment.map(t => [t.label, t.sets.d7])));
     const snap2 = A.atpSnapshot(ath2, TODAY, libMap).out.exercise_exposure;
-    const bssJ2 = snap2.exercises.find(e => e.exercise === 'Bulgarian Split Squat');
-    check('JSON: egzersiz kaydı taraf ve ekipman taşıyor; taraf verilmeyen satırda alan yok',
-      bssJ2 && bssJ2.laterality === 'Unilateral' && bssJ2.equipment === 'Dumbbell' &&
-      !('laterality' in snap2.exercises.find(e => e.exercise === 'Lat Pulldown')), JSON.stringify(bssJ2));
-    check('JSON: alt vücut tarafı iki kayıtla, ekipman yalnızca kullanılanlarla, notlar var',
-      snap2.lower_body_laterality.records.map(r => r.name).sort().join('|') === 'Bilateral|Unilateral' &&
+    const rec2 = n => snap2.exercises.find(e => e.exercise === n);
+    check('JSON: egzersiz kaydı taraf, düzlem, aksiyon, odak ve ekipman taşıyor; verilmeyen alan hiç yazılmıyor',
+      rec2('Bulgarian Split Squat').laterality === 'Unilateral' && rec2('Bulgarian Split Squat').equipment === 'Dumbbell' &&
+      rec2('Lateral Lunge').movement_plane === 'Frontal' && rec2('Lat Pulldown').action === 'Pull' &&
+      rec2('Nordic Hamstring Curl').contraction_focus === 'Eccentric' &&
+      !['laterality', 'movement_plane', 'action', 'contraction_focus', 'equipment'].some(k => k in rec2('Box Jump')), JSON.stringify(rec2('Box Jump')));
+    const smp = snap2.strength_movement_profile;
+    check('JSON: strength_movement_profile dört eksenle, maruziyeti olmayan değerler ayrı, not var',
+      !!smp.note && smp.laterality.records.map(r => r.name).sort().join('|') === 'Bilateral|Unilateral' &&
+      smp.movement_plane.no_exposure_last_28_days.join('|') === 'Transverse' &&
+      smp.action.records.length === 2 && smp.contraction_focus.no_exposure_last_28_days.includes('Isometric') &&
+      !('lower_body_laterality' in snap2), JSON.stringify(smp.movement_plane));
+    check('JSON: ekipman yalnızca kullanılanlarla, not var',
       snap2.equipment_used.records.some(r => r.name === 'Dumbbell' && r.exposure.last_7_days === 'Moderate' && r.sets.last_7_days === 8) &&
-      !snap2.equipment_used.records.some(r => r.name === 'Kettlebell') &&
-      !!snap2.lower_body_laterality_note && !!snap2.equipment_used_note, JSON.stringify(snap2.equipment_used));
-    check('JSON: görev taraf ve ekipman maruziyetinden söz ediyor',
-      snap.task.some(g => /exercise_exposure/.test(g) && /bilateral \/ unilateral/.test(g) && /equipment used/.test(g)));
+      !snap2.equipment_used.records.some(r => r.name === 'Kettlebell') && !!snap2.equipment_used_note, JSON.stringify(snap2.equipment_used));
+    // Her kütüphane kategorisi: kendi alt boyutlarıyla sınıflama.
+    const fc = (n, lm) => A.atpClassify(row(n), lm || libMap);
+    const f = (n, lm) => fc(n, lm).facets;
+    check('core: hareket türü adından — anti-rotasyon, anti-ekstansiyon, anti-lateral, rotasyon ayrı ayrı',
+      fc('Pallof Press').cat === 'Core' && f('Pallof Press').Movement === 'Anti-Rotation' && f('Dead Bug').Movement === 'Anti-Extension' &&
+      f('Side Plank').Movement === 'Anti-Lateral Flexion' && f('Cable Woodchop').Movement === 'Rotation',
+      JSON.stringify(['Pallof Press', 'Dead Bug', 'Side Plank', 'Cable Woodchop'].map(n => f(n).Movement)));
+    check('pliometrik: yön, tür ve teknik — söylemeyen alan yazılmıyor',
+      fc('Box Jump').cat === 'Plyometric' && f('Box Jump').Direction === 'Vertical' && f('Box Jump')['Exercise Type'] === 'Jump' && f('Box Jump').Technique === 'Bilateral' &&
+      f('Broad Jump').Direction === 'Horizontal' && f('Lateral Bound').Direction === 'Lateral' && f('Lateral Bound')['Exercise Type'] === 'Bound' &&
+      !('Technique' in f('Lateral Bound')) && f('Single Leg Box Jump').Technique === 'Unilateral', JSON.stringify(f('Lateral Bound')));
+    check('sağlık topu, hız, tüm vücut, mobilite',
+      fc('Med Ball Rotational Throw').cat === 'Medicine Ball' && f('Med Ball Rotational Throw').Direction === 'Rotational' && f('Med Ball Rotational Throw')['Exercise Type'] === 'Throw' &&
+      f('Overhead Med Ball Slam')['Exercise Type'] === 'Slam' && f('Overhead Med Ball Slam').Direction === 'Vertical' &&
+      fc('Lateral Shuffle').cat === 'Multi Directional Speed' && f('Lateral Shuffle').Skill === 'COD' && f('Sled Sprint').Skill === 'Acceleration' &&
+      fc('Power Clean').cat === 'Full Body' && f('Power Clean').Category === 'Olympic Lift' &&
+      fc('Hip 90/90 Mobility').cat === 'Mobility' && f('Hip 90/90 Mobility').Region === 'Hip',
+      JSON.stringify([f('Lateral Shuffle'), f('Sled Sprint'), f('Hip 90/90 Mobility')]));
+    check('üst vücut ve alt vücut: hareket, ekipman ve örüntü',
+      fc('DB Bench Press').cat === 'Upper Body Push' && f('DB Bench Press').Movement === 'Horizontal' && f('DB Bench Press').Equipment === 'Dumbbell' &&
+      fc('Lat Pulldown').cat === 'Upper Body Pull' && f('Lat Pulldown').Movement === 'Vertical' && f('Lat Pulldown').Equipment === 'Cable' &&
+      fc('Bulgarian Split Squat').cat === 'Knee Dominant' && f('Bulgarian Split Squat')['Movement Pattern'] === 'Lunges' &&
+      f('Box Step-Up')['Movement Pattern'] === 'Step-Up' && f('Goblet Squat')['Movement Pattern'] === 'Bilateral' &&
+      fc('Romanian Deadlift').cat === 'Hip Dominant' && f('Romanian Deadlift')['Movement Pattern'] === 'Bilateral' && !('Action' in f('Romanian Deadlift')),
+      JSON.stringify([f('Bulgarian Split Squat'), f('Box Step-Up'), f('Romanian Deadlift')]));
+    const tagLib2 = {
+      'single leg balance reach': { type: 'Balance', subType: 'Dynamic Balance' }, 'ankle band walk': { type: 'Stability', subType: 'Ankle' },
+      'copenhagen adductor': { type: 'Accessory', subType: 'Prehab & Injury Prevention' }, 'glute bridge march': { type: 'Warm-Up', subType: 'Activation' },
+    };
+    check('yalnızca kütüphane etiketiyle bilinen kategoriler: denge, stabilite, aksesuar, ısınma',
+      f('Single Leg Balance Reach', tagLib2).Category === 'Dynamic Balance' && f('Ankle Band Walk', tagLib2).Region === 'Ankle' &&
+      f('Copenhagen Adductor', tagLib2).Region === 'Prehab & Injury Prevention' && f('Glute Bridge March', tagLib2).Category === 'Activation' &&
+      fc('Single Leg Balance Reach', tagLib2).cat === 'Balance', JSON.stringify(f('Ankle Band Walk', tagLib2)));
+    check('etiketi olmayan özel egzersiz kategori yüzü uydurmuyor', fc('Özel Hareket').cat === '' && Object.keys(f('Özel Hareket')).length === 0);
+    // Haftanın kapsaması: yapılanlar ve yapılmayanlar, kategori kategori.
+    const ath3 = athlete({ days: {
+      [back(1)]: day(back(1), 'A', [row('Dead Bug'), row('Box Jump'), row('Med Ball Rotational Throw')]),
+      [back(3)]: day(back(3), 'B', [row('Plank'), row('Box Jump'), row('Hip 90/90 Mobility')]),
+      [back(10)]: day(back(10), 'C', [row('Pallof Press'), row('Lateral Bound')]),
+    } });
+    const exp3 = A.atpExposure(ath3, back(1), { libMap });
+    const cov = t => exp3.coverage.find(c => c.type === t);
+    const cf = (t, l) => cov(t).facets.find(x => x.label === l);
+    const cv = (t, l, v) => cf(t, l).values.find(x => x.label === v);
+    check('kapsama: core anti-ekstansiyon bu hafta yapıldı, anti-rotasyon yalnızca 28 günde, rotasyon hiç',
+      cv('Core', 'Movement', 'Anti-Extension').sets.d7 === 6 && cv('Core', 'Movement', 'Anti-Rotation').sets.d7 === 0 &&
+      cv('Core', 'Movement', 'Anti-Rotation').sets.d28 === 3 && cv('Core', 'Movement', 'Rotation').sets.d28 === 0,
+      JSON.stringify(cf('Core', 'Movement').values.map(t => [t.label, t.sets.d7, t.sets.d28])));
+    check('kapsama: pliometrik yön ve tür; teknik yalnızca etiketlenenlerde',
+      cv('Plyometric', 'Direction', 'Vertical').sets.d7 === 6 && cv('Plyometric', 'Direction', 'Lateral').sets.d7 === 0 && cv('Plyometric', 'Direction', 'Lateral').sets.d28 === 3 &&
+      cv('Plyometric', 'Exercise Type', 'Bound').sets.d28 === 3 && cf('Plyometric', 'Technique').values.find(t => t.label === 'Bilateral').sets.d7 === 6,
+      JSON.stringify(cf('Plyometric', 'Direction').values.map(t => [t.label, t.sets.d7, t.sets.d28])));
+    check('kapsama: etiketi hiç olmayan alt boyut listelenmiyor; çalışma olmayan kategoriler ayrı',
+      !cov('Core').facets.some(x => x.label === 'Position') && !exp3.coverageMissing.includes('Core') &&
+      ['Balance', 'Stability', 'Accessory', 'Warm-Up'].every(t => exp3.coverageMissing.includes(t)), JSON.stringify(exp3.coverageMissing));
+    const cc = A.atpSnapshot(ath3, TODAY, libMap).out.exercise_exposure.category_coverage;
+    const coreMv = cc.categories.find(c => c.category === 'Core').facets.find(x => x.facet === 'Movement');
+    check('JSON: category_coverage — yapılan, bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
+      !!cc.note && coreMv.done.some(r => r.name === 'Anti-Extension' && r.sets.last_7_days === 6) &&
+      coreMv.not_done_last_7_days.includes('Anti-Rotation') && coreMv.not_done_last_7_days.includes('Rotation') && !coreMv.not_done_last_7_days.includes('Anti-Extension') &&
+      !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') &&
+      cc.categories_without_recorded_work.includes('Balance') && !cc.categories_without_recorded_work.includes('Core'),
+      JSON.stringify(coreMv));
+    check('JSON: görev her kategori için category_coverage okunmasını ve aynı değerin tekrar yazılmamasını söylüyor',
+      snap.task.some(g => /category_coverage/.test(g) && /EVERY exercise category/.test(g) && /anti-extension every time for core/.test(g)));
+    check('JSON: görev strength_movement_profile, ekipman ve çok yönlü program hedefinden söz ediyor',
+      snap.task.some(g => /exercise_exposure/.test(g) && /strength_movement_profile/.test(g) && /equipment used/.test(g)) &&
+      snap.task.some(g => /multi-directional/.test(g) && /code_checked_limits come first/.test(g)));
     check('JSON: görev antrenman profilini ve hard kısıtları anlatıyor', snap.task.some(g => /training_profile/.test(g) && /constraints\.hard/.test(g)));
     check('JSON: görev JSON\'da olmayan durum alanından söz etmiyor', !snap.task.some(g => /Good \/ Moderate \/ Limited|Limited status/.test(g)) &&
       !/status/.test(JSON.stringify(pr)), snap.task.find(g => /training_profile/.test(g)));

@@ -30889,10 +30889,16 @@ const ATP_EXP_PATTERNS=['Knee Dominant','Hip Dominant','Squat','Hinge','Lunge','
 const ATP_EXP_STIMULI=['Acceleration','Max Velocity','Deceleration','Change of Direction','Lateral Movement','Jumping',
   'Landing','Hopping / Bounding','Reactive / Depth','Throwing'];
 const ATP_EXP_LOADING=['Heavy Loading','High-Velocity','Eccentric Loading','Isometric','Ballistic'];
-/* Lower-body strength rows are told apart as bilateral or unilateral; nothing else is
-   given a side, because a two-arm press and a one-arm press are not the question the
-   coach asks about a week of squats and hinges. */
+/* Strength rows (knee, hip, push, pull and core work — never a jump or a run) are also
+   told apart by the four things a coach varies week to week: bilateral or unilateral,
+   the plane the movement happens in, whether the load is pushed or pulled, and which
+   contraction the exercise is built around. Each is read from the library entry's own
+   tag when there is one and from the exercise name when the name says it; a row where
+   neither says is left out of that list instead of guessed into it. */
 const ATP_EXP_LATERALITY=['Bilateral','Unilateral'];
+const ATP_EXP_PLANES=['Sagittal','Frontal','Transverse'];
+const ATP_EXP_ACTIONS=['Push','Pull'];
+const ATP_EXP_FOCUS=['Concentric','Eccentric','Isometric'];
 /* The implement a row was done with, most specific first. Read only where the row, the
    library entry or the name SAYS the implement: "Romanian Deadlift" alone does not say
    barbell or dumbbell, so it is left without one rather than guessed into either. */
@@ -30907,6 +30913,23 @@ const ATP_EQUIP_RE=[
   ['Machine',       /machine|makine|leg press|leg curl|leg extension|smith|hack squat/],
   ['Barbell',       /barbell|halter|\bbb\b/],
 ];
+/* The library's own filing, as data: every category with the facets an exercise is filed by
+   (its sub-type, Action and Movement Pattern for hip / knee, and the extra filters). Built
+   from the same tables the library screen uses, so the coverage read below speaks the
+   coach's vocabulary and cannot drift from it. */
+const ATP_TAXONOMY=Object.keys(SUB_TYPES).map(type=>{
+  const s=SUB_TYPES[type];
+  const facets=[{label:s.label,values:s.values}];
+  if(ACTIONS_FOR[type])facets.push({label:'Action',values:ACTIONS_FOR[type]});
+  if(PATTERNS_FOR[type])facets.push({label:'Movement Pattern',values:PATTERNS_FOR[type]});
+  (EX_EXTRA_FILTERS[type]||[]).forEach(x=>facets.push({label:x.label,values:x.values}));
+  return{type,facets};
+});
+const atpFacetValues=(type,label)=>{
+  const t=ATP_TAXONOMY.find(x=>x.type===type);
+  const f=t&&t.facets.find(x=>x.label===label);
+  return f?f.values:[];
+};
 function atpEquipmentOf(row,lib){
   const find=t=>{
     const s=String(t==null?'':t).toLowerCase();
@@ -31053,9 +31076,90 @@ function atpClassify(row,libMap){
   if(bal)ld.add('Ballistic');
 
   const family=fam0||ATP_AXIS_FAMILY[axis]||(type?`${type} Family`:'Unclassified');
-  /* Bilateral or unilateral, for lower-body strength lifts only (never a jump or a run). */
-  const laterality=(lift&&(axis==='knee'||axis==='hip'))?(uni?'Unilateral':'Bilateral'):'';
-  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,equipment:atpEquipmentOf(row,lib)};
+  /* The four strength attributes, on strength rows only (never a jump, a run or a throw).
+     Bilateral or unilateral: a lower-body row is unilateral when the name or the library
+     says so; an upper-body row only when the name says single-arm / one-arm / alternating,
+     since a press or a row is a two-hand lift unless it says otherwise. */
+  const strengthRow=lift&&!throwing&&['knee','hip','push','pull','core'].includes(axis);
+  const armUni=/single[- ]?arm|one[- ]?arm|\bsa\b|tek kol|alternating|unilateral/.test(n)||['Unilateral','Lunges','Step-Up'].includes(lib.pattern);
+  const laterality=(lift&&(axis==='knee'||axis==='hip'))?(uni?'Unilateral':'Bilateral')
+    :(lift&&(axis==='push'||axis==='pull'))?(armUni?'Unilateral':'Bilateral'):'';
+  /* Plane: transverse for rotation and anti-rotation work, frontal for lateral / side work,
+     sagittal for every other strength lift — squats, hinges, lunges, presses, rows and
+     the flexion and extension core work all happen in it unless the name or tag says
+     otherwise. */
+  const rotCue=S==='Rotational'||/rotational|rotation|rotasyon|transverse|wood ?chop|\bchops?\b|twist|windmill/.test(n)
+    ||pats.has('Rotation')||pats.has('Anti-Rotation');
+  const latCue=S==='Lateral Flexion'||/lateral|side ?(lunge|step|squat|plank|bend)|cossack|skater|curtsy|yan ?(hamle|adım)|frontal|copenhagen/.test(n)
+    ||pats.has('Anti-Lateral Flexion');
+  const plane=strengthRow?(rotCue?'Transverse':latCue?'Frontal':'Sagittal'):'';
+  /* Action: an upper-body push or pull is its axis; a hip or knee row takes the library's
+     own Action tag and nothing else, because "push" and "pull" mean different things at
+     the hip and the knee and a name does not settle which. */
+  const libAction=String(lib.action||'').trim();
+  const action=strengthRow?(axis==='push'?'Push':axis==='pull'?'Pull':(ATP_EXP_ACTIONS.includes(libAction)?libAction:'')):'';
+  /* Contraction focus: the library's tag, else what the name or the tempo shows. Concentric
+     is only ever the library's word — no name says "concentric". */
+  const focus=strengthRow?(ATP_EXP_FOCUS.includes(sub)?sub:ld.has('Eccentric Loading')?'Eccentric':ld.has('Isometric')?'Isometric':''):'';
+  const equipment=atpEquipmentOf(row,lib);
+  /* The library category the row belongs to and the facets it is filed by there, in the
+     library's own words. The library's tag on the entry wins; where the entry has none, a
+     value is read off the name only when the name says it. What neither says is left out —
+     the coverage below would otherwise count a guess as work done. */
+  const pick=(v,list)=>{const s=String(v==null?'':v).trim();return list.includes(s)?s:'';};
+  const CORE_FAM_Q={'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
+    'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'};
+  const coreQ=axis==='core'?(CORE_QUALITIES.has(S)?S:(CORE_FAM_Q[fam0]||(mp==='Rotation'?'Rotation':''))):'';
+  const cat=ATP_TAXONOMY.some(x=>x.type===type)?type
+    :plyo?'Plyometric':run?'Multi Directional Speed':throwing?'Medicine Ball'
+    :({knee:'Knee Dominant',hip:'Hip Dominant',push:'Upper Body Push',pull:'Upper Body Pull',core:'Core',full:'Full Body'})[axis]
+    ||(pats.has('Mobility')?'Mobility':'');
+  const facets={};
+  const put=(label,v)=>{if(v)facets[label]=v;};
+  const V=label=>atpFacetValues(cat,label);
+  const eqIn=label=>{const e=equipment;return V(label).includes(e)?e:'';};
+  if(cat==='Knee Dominant'||cat==='Hip Dominant'){
+    const knee=cat==='Knee Dominant';
+    put('Contraction Focus',focus);
+    put('Action',action);
+    put('Movement Pattern',pick(lib.pattern,V('Movement Pattern'))||(lift
+      ?(knee&&fam0==='Step-Up Family'?'Step-Up':knee&&(fam0==='Lunge Family'||fam0==='Split Squat Family')?'Lunges':uni?'Unilateral':'Bilateral'):''));
+    put('Equipment',eqIn('Equipment'));
+  }else if(cat==='Upper Body Push'||cat==='Upper Body Pull'){
+    put('Movement',pick(S,V('Movement'))||(/Horizontal/.test(fam0||'')?'Horizontal':/Vertical/.test(fam0||'')?'Vertical':''));
+    put('Equipment',eqIn('Equipment'));
+  }else if(cat==='Core'){
+    put('Movement',coreQ);
+    put('Position',pick(lib.position,V('Position')));
+  }else if(cat==='Full Body'){
+    put('Category',pick(sub,V('Category'))||(fam0==='Olympic Lift Family'?'Olympic Lift':''));
+  }else if(cat==='Multi Directional Speed'){
+    put('Skill',pick(sub,V('Skill'))||(st.has('Change of Direction')?'COD':st.has('Deceleration')?'Deceleration':st.has('Acceleration')?'Acceleration':''));
+  }else if(cat==='Plyometric'){
+    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist/.test(n)?'Rotational'
+      :/lateral|skater|side ?(hop|jump|bound)|\byan\b/.test(n)?'Lateral'
+      :/broad jump|horizontal|bounds?\b|standing long|hurdle hop/.test(n)?'Horizontal'
+      :/box jump|vertical|cmj|counter ?movement|squat jump|jump squat|tuck|drop jump|depth jump|pogo|ankle hop/.test(n)?'Vertical':''));
+    const kind=pick(lib.exKind,V('Exercise Type'))||(fam0==='Depth / Drop Jump Family'?'Drop Jump':fam0==='Landing Family'?'Landing'
+      :fam0==='Hop / Bound Family'?(/bound/.test(n)?'Bound':'Hop'):/hurdle/.test(n)?'Hurdle':/rebound/.test(n)?'Rebound':fam0==='Jump Family'?'Jump':'');
+    put('Exercise Type',kind);
+    put('Technique',pick(lib.technique,V('Technique'))
+      ||(/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|skater|alternating/.test(n)?'Unilateral':(kind==='Hop'||kind==='Bound'||!kind)?'':'Bilateral'));
+  }else if(cat==='Medicine Ball'){
+    put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
+      :/overhead|slam|vertical|scoop/.test(n)?'Vertical':/chest pass|horizontal|push pass|wall throw/.test(n)?'Horizontal':''));
+    put('Exercise Type',pick(lib.exKind,V('Exercise Type'))||(/slam/.test(n)?'Slam':/catch/.test(n)?'Catch':/pass/.test(n)?'Pass'
+      :/throw|toss|shot ?put|scoop/.test(n)?'Throw':''));
+  }else if(cat==='Mobility'){
+    put('Region',pick(sub,V('Region'))||(/ankle|dorsiflexion|calf/.test(n)?'Ankle':/hip|90\/90|pigeon|adductor|groin/.test(n)?'Hip'
+      :/thoracic|spine|t-spine|cat[- ]?cow|open book|thread the needle/.test(n)?'Spine':/shoulder|scap|wall slide/.test(n)?'Shoulder':/wrist|forearm/.test(n)?'Wrist':''));
+    put('Position',pick(lib.position,V('Position')));
+  }else if(cat==='Warm-Up'||cat==='Balance'){
+    put('Category',pick(sub,V('Category')));
+  }else if(cat==='Stability'||cat==='Accessory'){
+    put('Region',pick(sub,V('Region')));
+  }
+  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets};
 }
 /* Every session on the athlete's calendar up to `to` that has at least one exercise
    row, oldest first; sessions of one day in the order they were run. A block or row the
@@ -31086,7 +31190,7 @@ function atpExposure(ath,end,opts){
   if(last&&!use.includes(last))use.push(last);
   const W=['last','d7','d14','d28'];
   const sessions={d7:0,d14:0,d28:0},rows={last:0,d7:0,d14:0,d28:0};
-  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},equipment:{}};
+  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},plane:{},action:{},focus:{},equipment:{},category:{},facet:{}};
   const bump=(layer,key,label,wins,sets,sess,date)=>{
     const t=layers[layer][key]||(layers[layer][key]={key,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
     wins.forEach(w=>{t.sets[w]+=sets;});
@@ -31104,11 +31208,16 @@ function atpExposure(ath,end,opts){
       const t=bump('exercise',diExName(name)||name.toLowerCase(),name,wins,sets,s.key,s.date);
       t.family=c.family;
       ['patterns','stimuli','loading'].forEach(k=>{t[k]=[...new Set([...(t[k]||[]),...c[k]])];});
-      if(c.laterality)t.laterality=c.laterality;
-      if(c.equipment)t.equipment=c.equipment;
+      ['laterality','plane','action','focus','equipment'].forEach(k=>{if(c[k])t[k]=c[k];});
       bump('family',c.family,c.family,wins,sets,s.key,s.date);
-      if(c.laterality)bump('laterality',c.laterality,c.laterality,wins,sets,s.key,s.date);
-      if(c.equipment)bump('equipment',c.equipment,c.equipment,wins,sets,s.key,s.date);
+      ['laterality','plane','action','focus','equipment'].forEach(k=>{
+        if(c[k])bump(k,c[k],c[k],wins,sets,s.key,s.date);});
+      if(c.cat){
+        bump('category',c.cat,c.cat,wins,sets,s.key,s.date);
+        Object.keys(c.facets).forEach(f=>{
+          const ft=bump('facet',`${c.cat}|${f}|${c.facets[f]}`,c.facets[f],wins,sets,s.key,s.date);
+          ft.type=c.cat;ft.facet=f;});
+      }
       c.patterns.forEach(p=>bump('pattern',p,p,wins,sets,s.key,s.date));
       c.stimuli.forEach(p=>bump('stimulus',p,p,wins,sets,s.key,s.date));
       c.loading.forEach(p=>bump('loading',p,p,wins,sets,s.key,s.date));
@@ -31131,6 +31240,25 @@ function atpExposure(ath,end,opts){
     stimuli:fixed('stimulus',ATP_EXP_STIMULI),
     loading:fixed('loading',ATP_EXP_LOADING),
     laterality:fixed('laterality',ATP_EXP_LATERALITY),
+    planes:fixed('plane',ATP_EXP_PLANES),
+    actions:fixed('action',ATP_EXP_ACTIONS),
+    focus:fixed('focus',ATP_EXP_FOCUS),
+    /* Per library category the athlete trained: every facet the category is filed by, with
+       every value the library offers — done or not. A facet is listed only when at least one
+       recorded row of the category carries it (a facet nobody tagged is unknown, not
+       missing); categories with no recorded row at all are named apart. */
+    coverage:ATP_TAXONOMY.map(tx=>{
+      const cat=layers.category[tx.type];
+      if(!cat)return null;
+      const facets=tx.facets.map(fc=>{
+        const any=Object.values(layers.facet).some(t=>t.type===tx.type&&t.facet===fc.label);
+        if(!any)return null;
+        return{label:fc.label,
+          values:fc.values.map(v=>fin(layers.facet[`${tx.type}|${fc.label}|${v}`]||empty(v),'group'))};
+      }).filter(Boolean);
+      return{type:tx.type,cat:fin(cat,'group'),facets};
+    }).filter(Boolean),
+    coverageMissing:ATP_TAXONOMY.filter(tx=>!layers.category[tx.type]).map(tx=>tx.type),
     equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets)};
 }
 /* The profile as the individualization JSON carries it. The day being programmed is
@@ -31190,15 +31318,38 @@ function atpSnapshot(ath,ref,libMap){
       last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercise_count:ex.last.rows}:null,
       session_count:{last_7_days:ex.sessions.d7,last_14_days:ex.sessions.d14,last_28_days:ex.sessions.d28},
       exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,movement_class:t.patterns,stimulus:t.stimuli,
-        loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.equipment?{equipment:t.equipment}:{}),
+        loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.plane?{movement_plane:t.plane}:{}),
+        ...(t.action?{action:t.action}:{}),...(t.focus?{contraction_focus:t.focus}:{}),...(t.equipment?{equipment:t.equipment}:{}),
         last_used:t.lastUsed,frequency_28_days:t.freq28,exposure:per(t,lvOf),sets:per(t,(x,w)=>x.sets[w])})),
       exercise_families:ex.families.map(item),
       movement_class:fixed(ex.patterns),
       athletic_stimulus:fixed(ex.stimuli),
       loading_character:fixed(ex.loading),
-      lower_body_laterality_note:'lower_body_laterality counts only lower-body strength lifts (knee- and hip-dominant, not jumps or runs) as Bilateral or Unilateral, in sets. '+
-        'A row whose side cannot be told is not counted; None here means no such row was recorded, not that the athlete avoided it.',
-      lower_body_laterality:fixed(ex.laterality),
+      strength_movement_profile:{
+        note:'How the strength work (knee-, hip-, push-, pull- and core-work; not jumps, runs or throws) was spread, in sets, over four axes. '+
+          'laterality: bilateral or unilateral (an upper-body row is unilateral only when its name says single-arm / one-arm / alternating). '+
+          'movement_plane: Sagittal (squats, hinges, lunges, presses, rows, flexion / extension core work) unless the name or tag says lateral (Frontal) or rotational / anti-rotational (Transverse). '+
+          'action: Push or Pull — for hip and knee work only where the library entry says. '+
+          'contraction_focus: the library tag, or Eccentric / Isometric where the name or tempo shows it; Concentric only from a library tag. '+
+          'A row whose value cannot be told is not counted on that axis, and None means no such row was recorded, not that the athlete avoided it.',
+        laterality:fixed(ex.laterality),
+        movement_plane:fixed(ex.planes),
+        action:fixed(ex.actions),
+        contraction_focus:fixed(ex.focus),
+      },
+      category_coverage:{
+        note:'For every exercise category the athlete has trained (the library\'s own categories: core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, warm-up, accessory), '+
+          'every facet the category is filed by (movement, direction, type, position, technique, contraction focus, action, implement…) with what was done and what was not. '+
+          'done: the values that were recorded, in sets, over the last session and the last 7 / 14 / 28 days. '+
+          'not_done_last_7_days: the values with no set in the last 7 days — the gaps of this week. not_done_last_28_days: the values with no set in the last 28 days. '+
+          'A facet is listed only when at least one recorded exercise of the category carries it, so a value missing from the list of a listed facet means it was not recorded, not that it was avoided; a row whose value cannot be told is not counted.',
+        categories:ex.coverage.map(c=>({category:c.type,exposure:per(c.cat,lvOf),sets:per(c.cat,(x,w)=>x.sets[w]),
+          facets:c.facets.map(f=>({facet:f.label,
+            done:f.values.filter(t=>t.lastUsed).map(item),
+            not_done_last_7_days:f.values.filter(t=>!(t.sets.d7>0)).map(t=>t.label),
+            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)).map(t=>t.label)}))})),
+        categories_without_recorded_work:ex.coverageMissing,
+      },
       equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
         'An exercise whose implement cannot be told is not counted, and an implement that is not listed was not recorded — it does not mean it was not used.',
       equipment_used:{records:ex.equipment.filter(t=>t.lastUsed).map(item)},
@@ -32836,7 +32987,8 @@ const DI_EXT_TASK=[
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
-  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including bilateral / unilateral lower-body work and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, warm-up, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
