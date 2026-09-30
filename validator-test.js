@@ -1127,6 +1127,46 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       em.movement_class.no_exposure_last_28_days.includes('Vertical Push') &&
       em.movement_class.records.some(k => k.name === 'Knee Dominant') && !!em.movement_class_note,
       JSON.stringify(em.movement_class.no_exposure_last_28_days));
+    // Alt vücut bilateral / unilateral ve kullanılan ekipman: sınıflama.
+    const latOf = (n, o) => A.atpClassify(row(n, o), libMap);
+    check('taraf: split squat unilateral, RDL ve goblet squat bilateral',
+      latOf('Bulgarian Split Squat').laterality === 'Unilateral' && latOf('Romanian Deadlift').laterality === 'Bilateral' &&
+      latOf('Goblet Squat').laterality === 'Bilateral', JSON.stringify([latOf('Bulgarian Split Squat').laterality, latOf('Romanian Deadlift').laterality]));
+    check('taraf: sıçrama, sprint ve üst vücut hareketine taraf verilmiyor',
+      !latOf('Box Jump').laterality && !latOf('Flying 30m Sprint').laterality && !latOf('Lat Pulldown').laterality &&
+      !latOf('DB Bench Press').laterality);
+    check('ekipman: satırdaki alan, sonra isim — isim söylemiyorsa tahmin edilmiyor',
+      latOf('Goblet Squat', { equipment: 'Kettlebell' }).equipment === 'Kettlebell' &&
+      latOf('DB Bench Press').equipment === 'Dumbbell' && latOf('Lat Pulldown').equipment === 'Cable' &&
+      latOf('Push-Up', { equipment: 'bodyweight' }).equipment === 'Bodyweight' &&
+      latOf('Hex Bar Deadlift').equipment === 'Trap Bar' && latOf('Romanian Deadlift').equipment === '',
+      JSON.stringify([latOf('Romanian Deadlift').equipment]));
+    // Maruziyet ve JSON: yeni katmanlar dört pencereyle geliyor, boş alan yok.
+    const ath2 = athlete({ days: {
+      [back(1)]: day(back(1), 'Kuvvet', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Romanian Deadlift', { sets: '3', equipment: 'Barbell' }), row('Push-Up', { equipment: 'bodyweight' })]),
+      [back(4)]: day(back(4), 'Kuvvet 2', [row('Bulgarian Split Squat', { sets: '4', equipment: 'Dumbbell' }), row('Lat Pulldown')]),
+    } });
+    const exp2 = A.atpExposure(ath2, back(1), { libMap });
+    const lat2 = id => exp2.laterality.find(t => t.label === id);
+    check('taraf maruziyeti: unilateral 8 set, bilateral 3 set',
+      lat2('Unilateral').sets.d7 === 8 && lat2('Bilateral').sets.d7 === 3 && lat2('Unilateral').freq28 === 2,
+      JSON.stringify([lat2('Unilateral').sets, lat2('Bilateral').sets]));
+    const eq2 = id => exp2.equipment.find(t => t.label === id);
+    check('ekipman maruziyeti: dumbbell 8 set, barbell 3 set, vücut ağırlığı ve kablo görünüyor',
+      eq2('Dumbbell').sets.d7 === 8 && eq2('Barbell').sets.d7 === 3 && !!eq2('Bodyweight') && !!eq2('Cable') && !eq2('Kettlebell'),
+      JSON.stringify(exp2.equipment.map(t => [t.label, t.sets.d7])));
+    const snap2 = A.atpSnapshot(ath2, TODAY, libMap).out.exercise_exposure;
+    const bssJ2 = snap2.exercises.find(e => e.exercise === 'Bulgarian Split Squat');
+    check('JSON: egzersiz kaydı taraf ve ekipman taşıyor; taraf verilmeyen satırda alan yok',
+      bssJ2 && bssJ2.laterality === 'Unilateral' && bssJ2.equipment === 'Dumbbell' &&
+      !('laterality' in snap2.exercises.find(e => e.exercise === 'Lat Pulldown')), JSON.stringify(bssJ2));
+    check('JSON: alt vücut tarafı iki kayıtla, ekipman yalnızca kullanılanlarla, notlar var',
+      snap2.lower_body_laterality.records.map(r => r.name).sort().join('|') === 'Bilateral|Unilateral' &&
+      snap2.equipment_used.records.some(r => r.name === 'Dumbbell' && r.exposure.last_7_days === 'Moderate' && r.sets.last_7_days === 8) &&
+      !snap2.equipment_used.records.some(r => r.name === 'Kettlebell') &&
+      !!snap2.lower_body_laterality_note && !!snap2.equipment_used_note, JSON.stringify(snap2.equipment_used));
+    check('JSON: görev taraf ve ekipman maruziyetinden söz ediyor',
+      snap.task.some(g => /exercise_exposure/.test(g) && /bilateral \/ unilateral/.test(g) && /equipment used/.test(g)));
     check('JSON: görev antrenman profilini ve hard kısıtları anlatıyor', snap.task.some(g => /training_profile/.test(g) && /constraints\.hard/.test(g)));
     check('JSON: görev JSON\'da olmayan durum alanından söz etmiyor', !snap.task.some(g => /Good \/ Moderate \/ Limited|Limited status/.test(g)) &&
       !/status/.test(JSON.stringify(pr)), snap.task.find(g => /training_profile/.test(g)));

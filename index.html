@@ -30889,6 +30889,34 @@ const ATP_EXP_PATTERNS=['Knee Dominant','Hip Dominant','Squat','Hinge','Lunge','
 const ATP_EXP_STIMULI=['Acceleration','Max Velocity','Deceleration','Change of Direction','Lateral Movement','Jumping',
   'Landing','Hopping / Bounding','Reactive / Depth','Throwing'];
 const ATP_EXP_LOADING=['Heavy Loading','High-Velocity','Eccentric Loading','Isometric','Ballistic'];
+/* Lower-body strength rows are told apart as bilateral or unilateral; nothing else is
+   given a side, because a two-arm press and a one-arm press are not the question the
+   coach asks about a week of squats and hinges. */
+const ATP_EXP_LATERALITY=['Bilateral','Unilateral'];
+/* The implement a row was done with, most specific first. Read only where the row, the
+   library entry or the name SAYS the implement: "Romanian Deadlift" alone does not say
+   barbell or dumbbell, so it is left without one rather than guessed into either. */
+const ATP_EQUIP_RE=[
+  ['Trap Bar',      /trap[- ]?bar|hex[- ]?bar/],
+  ['Kettlebell',    /kettle ?bell|\bkb\b/],
+  ['Dumbbell',      /dumbbell|dambıl|\bdbs?\b|\b2 ?db\b/],
+  ['Cable',         /cable|kablo|pulldown|pull-down/],
+  ['Band',          /\bbands?\b|banded|lastik/],
+  ['Medicine Ball', /med(icine)?[- ]?ball|sağlık topu/],
+  ['Sled',          /\bsled\b|kızak|prowler/],
+  ['Machine',       /machine|makine|leg press|leg curl|leg extension|smith|hack squat/],
+  ['Barbell',       /barbell|halter|\bbb\b/],
+];
+function atpEquipmentOf(row,lib){
+  const find=t=>{
+    const s=String(t==null?'':t).toLowerCase();
+    if(!s.trim())return'';
+    if(/bodyweight|body weight|vücut ağırlığı|\bbw\b/.test(s))return'Bodyweight';
+    const h=ATP_EQUIP_RE.find(([,re])=>re.test(s));
+    return h?h[0]:'';
+  };
+  return find(row&&row.equipment)||find(lib&&lib.equipment)||find(row&&row.name)||'';
+}
 /* Families, read off the exercise's name, most specific first: a "Split Squat Jump" is
    a jump before it is a split squat, a "Nordic Hamstring Curl" a curl whatever else. */
 const ATP_FAMILIES=[
@@ -31025,7 +31053,9 @@ function atpClassify(row,libMap){
   if(bal)ld.add('Ballistic');
 
   const family=fam0||ATP_AXIS_FAMILY[axis]||(type?`${type} Family`:'Unclassified');
-  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld]};
+  /* Bilateral or unilateral, for lower-body strength lifts only (never a jump or a run). */
+  const laterality=(lift&&(axis==='knee'||axis==='hip'))?(uni?'Unilateral':'Bilateral'):'';
+  return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,equipment:atpEquipmentOf(row,lib)};
 }
 /* Every session on the athlete's calendar up to `to` that has at least one exercise
    row, oldest first; sessions of one day in the order they were run. A block or row the
@@ -31056,7 +31086,7 @@ function atpExposure(ath,end,opts){
   if(last&&!use.includes(last))use.push(last);
   const W=['last','d7','d14','d28'];
   const sessions={d7:0,d14:0,d28:0},rows={last:0,d7:0,d14:0,d28:0};
-  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{}};
+  const layers={exercise:{},family:{},pattern:{},stimulus:{},loading:{},laterality:{},equipment:{}};
   const bump=(layer,key,label,wins,sets,sess,date)=>{
     const t=layers[layer][key]||(layers[layer][key]={key,label,sets:{last:0,d7:0,d14:0,d28:0},sess:new Set(),lastUsed:null});
     wins.forEach(w=>{t.sets[w]+=sets;});
@@ -31074,7 +31104,11 @@ function atpExposure(ath,end,opts){
       const t=bump('exercise',diExName(name)||name.toLowerCase(),name,wins,sets,s.key,s.date);
       t.family=c.family;
       ['patterns','stimuli','loading'].forEach(k=>{t[k]=[...new Set([...(t[k]||[]),...c[k]])];});
+      if(c.laterality)t.laterality=c.laterality;
+      if(c.equipment)t.equipment=c.equipment;
       bump('family',c.family,c.family,wins,sets,s.key,s.date);
+      if(c.laterality)bump('laterality',c.laterality,c.laterality,wins,sets,s.key,s.date);
+      if(c.equipment)bump('equipment',c.equipment,c.equipment,wins,sets,s.key,s.date);
       c.patterns.forEach(p=>bump('pattern',p,p,wins,sets,s.key,s.date));
       c.stimuli.forEach(p=>bump('stimulus',p,p,wins,sets,s.key,s.date));
       c.loading.forEach(p=>bump('loading',p,p,wins,sets,s.key,s.date));
@@ -31095,7 +31129,9 @@ function atpExposure(ath,end,opts){
     families:Object.values(layers.family).map(t=>fin(t,'group')).sort(bySets),
     patterns:fixed('pattern',ATP_EXP_PATTERNS),
     stimuli:fixed('stimulus',ATP_EXP_STIMULI),
-    loading:fixed('loading',ATP_EXP_LOADING)};
+    loading:fixed('loading',ATP_EXP_LOADING),
+    laterality:fixed('laterality',ATP_EXP_LATERALITY),
+    equipment:Object.values(layers.equipment).map(t=>fin(t,'group')).sort(bySets)};
 }
 /* The profile as the individualization JSON carries it. The day being programmed is
    not exposure yet, so the window ends the day before it — the same rule the daily
@@ -31154,11 +31190,18 @@ function atpSnapshot(ath,ref,libMap){
       last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercise_count:ex.last.rows}:null,
       session_count:{last_7_days:ex.sessions.d7,last_14_days:ex.sessions.d14,last_28_days:ex.sessions.d28},
       exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,movement_class:t.patterns,stimulus:t.stimuli,
-        loading_character:t.loading,last_used:t.lastUsed,frequency_28_days:t.freq28,exposure:per(t,lvOf),sets:per(t,(x,w)=>x.sets[w])})),
+        loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.equipment?{equipment:t.equipment}:{}),
+        last_used:t.lastUsed,frequency_28_days:t.freq28,exposure:per(t,lvOf),sets:per(t,(x,w)=>x.sets[w])})),
       exercise_families:ex.families.map(item),
       movement_class:fixed(ex.patterns),
       athletic_stimulus:fixed(ex.stimuli),
       loading_character:fixed(ex.loading),
+      lower_body_laterality_note:'lower_body_laterality counts only lower-body strength lifts (knee- and hip-dominant, not jumps or runs) as Bilateral or Unilateral, in sets. '+
+        'A row whose side cannot be told is not counted; None here means no such row was recorded, not that the athlete avoided it.',
+      lower_body_laterality:fixed(ex.laterality),
+      equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
+        'An exercise whose implement cannot be told is not counted, and an implement that is not listed was not recorded — it does not mean it was not used.',
+      equipment_used:{records:ex.equipment.filter(t=>t.lastUsed).map(item)},
     },
   }};
 }
@@ -32793,7 +32836,7 @@ const DI_EXT_TASK=[
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
-  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days. constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including bilateral / unilateral lower-body work and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
