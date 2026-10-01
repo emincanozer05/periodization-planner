@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryMarkdown'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1032,6 +1032,40 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('ağrı ızgarası: bugünkü + dünün kırmızısı, dünün sarısı yok', regs === 'Boyun@dün,Omuz@bugün', regs);
     check('ağrı ızgarası: ertesi gün bugünün sarı bölgesi de kayboluyor',
       A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
+  }
+
+  group('Ek — Egzersiz kütüphanesi: Markdown dışa aktarma');
+  {
+    const lib = [
+      { name: 'Romanian Deadlift', type: 'Hip Dominant', subType: 'Concentric', action: 'Pull', pattern: 'Bilateral', equipment: 'Barbell', difficulty: 'Level 2',
+        muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Hinge pattern\n   for hamstrings.' },
+      { name: 'Pallof Press', type: 'Core', subType: 'Anti-Rotation', position: 'Standing', purpose: '' },
+      { name: 'Box Jump', type: 'Plyometric', subType: 'Vertical', exKind: 'Jump', technique: 'Bilateral', purpose: 'x'.repeat(700) },
+      { name: 'Özel Hareket', type: '' },
+      { name: '   ', type: 'Core' },
+    ];
+    const md = A.exLibraryMarkdown(lib, { date: '2026-10-01' });
+    const block = n => { const a = md.indexOf('### ' + n); const b = md.indexOf('\n###', a + 1); return md.slice(a, b < 0 ? undefined : b); };
+    check('markdown: başlık, sayı, tarih ve kullanım notu; adsız kayıt yok',
+      md.startsWith('# CoachOS Exercise Library — Strength & Conditioning') && /4 exercises · exported 2026-10-01/.test(md) &&
+      /How to use:/.test(md) && !/###\s*\n/.test(md), md.split('\n').slice(0, 6).join(' | '));
+    check('markdown: her kategori kendi başlığı altında, kategorisiz sonda',
+      ['## Hip Dominant', '## Core', '## Plyometric', '## Uncategorized'].every(h => md.includes(h)) &&
+      md.indexOf('## Uncategorized') > md.indexOf('## Plyometric') && md.indexOf('### Özel Hareket') > md.indexOf('## Uncategorized'));
+    const rdl = block('Romanian Deadlift');
+    check('markdown: egzersiz bloğu kütüphane etiketlerini ve açıklamayı taşıyor; boşluklar tek satıra iniyor',
+      /- Contraction Focus: Concentric/.test(rdl) && /- Action: Pull/.test(rdl) && /- Movement Pattern: Bilateral/.test(rdl) &&
+      /- Equipment: Barbell/.test(rdl) && /- Difficulty: Level 2 \(Intermediate\)/.test(rdl) && /- Muscles: Hamstrings, Glutes/.test(rdl) &&
+      /- Contraindications: Knee/.test(rdl) && /- Description: Hinge pattern for hamstrings\./.test(rdl) && /- movement_pattern: \S/.test(rdl), rdl);
+    check('markdown: kayıtta olmayan alan hiç yazılmıyor (boş açıklama, boş zorluk)',
+      !/- Description/.test(block('Pallof Press')) && !/- Difficulty/.test(block('Pallof Press')) && /- Position: Standing/.test(block('Pallof Press')));
+    const bj = block('Box Jump');
+    check('markdown: pliometrik yön, tür, teknik; uzun açıklama 600 karakterde kesiliyor',
+      /- Direction: Vertical/.test(bj) && /- Exercise Type: Jump/.test(bj) && /- Technique: Bilateral/.test(bj) &&
+      (bj.match(/- Description: (.*)/) || [])[1].length <= 600 && /…$/m.test(bj), (bj.match(/- Description: (.*)/) || [''])[0].length);
+    const empty = A.exLibraryMarkdown([], {});
+    check('markdown: boş kütüphane ve top çalışması başlığı', /0 exercises/.test(empty) && !/\n## /.test(empty) &&
+      /Ball Practice/.test(A.exLibraryMarkdown([{ name: 'Drill A', type: 'Shooting' }], { ball: true })));
   }
 
   group('Ek — Athlete Training Profile: atletik profil, kısıtlar, maruziyet');

@@ -28729,6 +28729,17 @@ function ExercisesView({data,setData}){
   // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!TYPES.includes(e.type)).length;
+  /* The open shelf as a markdown file — what an AI project is loaded with. */
+  const downloadLibMd=()=>{
+    const md=exLibraryMarkdown(exercises,{ball,date:new Date().toISOString().slice(0,10)});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob(['﻿'+md],{type:'text/markdown;charset=utf-8'}));
+    a.download=`exercise_library_${libTab}_${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);};
+  const mdBtn=<button className="btn sm" onClick={downloadLibMd} disabled={exercises.length===0}
+    title={L('Kütüphaneyi bir yapay zekâ projesine yüklemek için Markdown dosyası olarak indir','Download the library as a Markdown file to load into an AI project')}>
+    ⬇ {L('Markdown','Markdown')}</button>;
   const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
   /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
      both the coach's library, and which one is open should never be something to hunt
@@ -28773,6 +28784,7 @@ function ExercisesView({data,setData}){
         {catDropdown}
         <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
         <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+        {mdBtn}
       </div>
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
         ?(ball?L('Henüz dril yok. ＋ Dril Ekle ile başla — ya da bir top çalışması bloğunda çizip oradan kaydet.','No drills yet. Start with ＋ Add Drill — or draw one in a ball practice block and save it from there.')
@@ -28821,6 +28833,7 @@ function ExercisesView({data,setData}){
       {catDropdown}
       <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+        {mdBtn}
     </div>
     {dims.length>0&&<div className="seg-filters">
       {dims.map(d=><SegFilter key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
@@ -29299,6 +29312,50 @@ const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip 
   'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
+/* The library as one markdown file, for loading into an AI project as reference material.
+   Markdown rather than JSON because a file like this is read in pieces: one block per
+   exercise keeps everything about an exercise in one piece, where a cut through a large
+   JSON leaves a half-record. Values are the library's own canonical (English) words, the
+   same ones the programme JSON uses, so a name, a movement_pattern or an implement can be
+   copied across unchanged. Only what the entry actually carries is written. */
+function exLibraryMarkdown(list,opts){
+  const o=opts||{};
+  const subs=o.ball?BALL_SUB_TYPES:SUB_TYPES;
+  const types=o.ball?BALL_TYPES:EX_TYPES;
+  const one=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
+  const cap=(v,n)=>{const s=one(v);return s.length>n?s.slice(0,n-1).trimEnd()+'…':s;};
+  const items=(Array.isArray(list)?list:[]).filter(e=>e&&one(e.name));
+  const byType={};
+  items.forEach(e=>{const t=types.includes(e.type)?e.type:'Uncategorized';(byType[t]=byType[t]||[]).push(e);});
+  const out=[`# CoachOS Exercise Library — ${o.ball?'Ball Practice':'Strength & Conditioning'}`,'',
+    `${items.length} exercises${o.date?` · exported ${o.date}`:''}`,'',
+    'How to use: each exercise is one block under its category. Names are exact — when you choose an exercise from this list, write its name as given. '+
+    '`movement_pattern` is the value to write in a programme row; `Equipment` is the implement. An exercise outside this list is allowed: this list is a set of candidates, not a limit.',''];
+  [...types,'Uncategorized'].forEach(t=>{
+    const rows=(byType[t]||[]).slice().sort((a,b)=>one(a.name).localeCompare(one(b.name)));
+    if(!rows.length)return;
+    out.push(`## ${t}`,'');
+    rows.forEach(e=>{
+      out.push(`### ${one(e.name)}`);
+      const put=(k,v)=>{const s=one(v);if(s)out.push(`- ${k}: ${s}`);};
+      const sub=subs[e.type];
+      if(sub)put(sub.label,e.subType);
+      if(!o.ball){
+        if(ACTIONS_FOR[e.type])put('Action',e.action);
+        if(PATTERNS_FOR[e.type])put('Movement Pattern',e.pattern);
+        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(d.label,e[d.key]));
+        put('movement_pattern',exPatternOf(e));
+      }
+      put('Difficulty',e.difficulty?`${e.difficulty}${LEVEL_LABEL[e.difficulty]?` (${LEVEL_LABEL[e.difficulty]})`:''}`:'');
+      put('Muscles',(Array.isArray(e.muscle)?e.muscle:[]).map(one).filter(Boolean).join(', '));
+      put('Contraindications',exContraOf(e).map(id=>ctLabel(id)).join(', '));
+      if(o.ball)put('Players',e.players);
+      put('Description',cap(e.purpose,600));
+      out.push('');
+    });
+  });
+  return out.join('\n');
+}
 const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Advanced'};
 
 /* Position → grouping axis. Non-basketball rosters fall into `other`, which
