@@ -232,7 +232,7 @@ h1,h2,h3,h4,h5,h6,.ex-h1{font-family:'Space Grotesk','Inter',sans-serif;font-wei
   box-shadow:var(--glass-hi);
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;gap:8px;padding:16px 12px;
-  position:sticky;top:0;height:100vh;overflow-y:auto;z-index:50;
+  position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;z-index:50;
 }
 .brand{display:flex;align-items:center;justify-content:center;padding:14px 0 20px;margin-bottom:0}
 .brand-logo{
@@ -331,10 +331,14 @@ nav{
 .mscrim{display:none}
 .mclose{display:none;position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:9px;border:1px solid var(--border2);background:var(--elevated);color:var(--muted);font-size:14px;cursor:pointer;z-index:5}
 .mclose:active{background:var(--hover)}
-@media(max-width:760px){
+/* Drawer + top bar from portrait tablets down. A 300px sidebar beside an 768–1024px
+   screen leaves the page about two thirds of the glass, which is what squeezed the week
+   grid and the tables; behind the hamburger the content gets the full width instead.
+   Phone-only tightening (padding, scrolling tables) stays in the 760px block below. */
+@media(max-width:1024px){
   .app{flex-direction:column}
   /* Sidebar slides in from the left as a drawer */
-  .sidebar{position:fixed;top:0;left:0;bottom:0;height:100dvh;width:272px;max-width:86vw;
+  .sidebar{position:fixed;top:0;left:0;bottom:0;height:100dvh;width:300px;max-width:86vw;
     transform:translateX(-100%);transition:transform .28s cubic-bezier(.2,.7,.3,1);z-index:200;
     border-right:1px solid var(--border);border-bottom:none;overflow-y:auto}
   .app.menu-open .sidebar{transform:translateX(0);box-shadow:14px 0 48px rgba(0,0,0,.6)}
@@ -350,6 +354,9 @@ nav{
   .mtb-logo{height:20px;width:auto}
   .mtb-team{font-weight:600;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:2px}
   nav{flex-direction:column}
+}
+@media(max-width:760px){
+  .sidebar{width:272px}
   main{padding:14px}
   .panel{padding:15px;border-radius:12px;margin-bottom:13px}
   /* Wide tables scroll horizontally instead of breaking the layout */
@@ -460,7 +467,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-toolbar .nav-arrows{display:flex;gap:6px}
 .calw-toolbar .nav-arrows button{width:34px;height:34px;border-radius:8px;background:var(--panel);border:1px solid var(--border2);color:var(--text);display:grid;place-items:center;cursor:pointer;font-size:16px;line-height:1;transition:border-color .2s;font-family:inherit}
 .calw-toolbar .nav-arrows button:hover{border-color:var(--text2)}
-.calw-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px}
+/* minmax(0,…) so seven columns never push the page sideways; at a width where a day
+   would get narrower than its chips, the week scrolls inside its own box (a swipe on a
+   tablet) rather than the whole page. */
+.calw-grid{display:grid;grid-template-columns:repeat(7,minmax(112px,1fr));gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 .calw-col{background:var(--panel);border:1px solid var(--border);border-radius:14px;min-height:340px;padding:13px 12px;display:flex;flex-direction:column;gap:9px}
 .calw-col .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;
   padding-bottom:9px;border-bottom:1px solid var(--border)}
@@ -557,7 +567,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calw-legend{display:flex;gap:18px;margin-top:16px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);flex-wrap:wrap;align-items:center}
 .calw-legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal}
 .calw-legend i b{width:9px;height:9px;border-radius:2px;display:inline-block}
-@media(max-width:1000px){.calw-grid{grid-template-columns:repeat(2,1fr)}}
+/* Portrait tablet: the week as two rows of four (Mon–Thu, Fri–Sun) rather than four
+   rows of two; phones keep two, then one. */
+@media(max-width:1000px){.calw-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:760px){.calw-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.calw-grid{grid-template-columns:1fr}}
 /* Session drawer */
 /* Every scrim in the app frosts the page behind it by the same amount — a window
@@ -6292,6 +6305,51 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
   .eqc-form-2{grid-template-columns:1fr}
 }
 
+/* ---- Tablets & touch ----
+   Kept at the very end of the sheet on purpose: these override rules written all through
+   the file (main, .panel, the calendar cards…), and a media query adds no specificity,
+   so anything placed earlier would lose to the base rule on source order. */
+/* Landscape tablets and small laptops keep the sidebar, but a slimmer one, so the
+   7-day week and the wide tables get back the width they need. */
+@media(min-width:1025px) and (max-width:1366px){
+  .sidebar{width:240px;padding:14px 10px}
+  .brand{padding:10px 0 14px}
+  .brand-logo{max-width:180px}
+  .nav-item{padding:9px 10px;gap:10px}
+  main{padding:20px}
+}
+@media(min-width:761px) and (max-width:1024px){main{padding:20px}}
+/* Touch screens (tablets, phones). Hover has no "off" on glass — a tapped card keeps its
+   lifted hover state until something else is touched — so the lift is dropped; taps
+   don't wait on double-tap-to-zoom; and the smallest controls grow to a finger's size. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@media(hover:none){
+  .panel:hover{transform:none;box-shadow:var(--shadow);border-color:var(--border)}
+  .btn:hover{transform:none;box-shadow:none}
+  .calw-ses:hover{transform:none}
+  /* Controls the desktop reveals on hover would never appear under a finger. On touch
+     they are always shown — the session card's pair as a row of its own above the name,
+     so they never sit on top of it. */
+  .calw-ses-act{position:static;opacity:1;justify-content:flex-end;margin:-4px -5px 6px 0}
+  .calw-ses-act button{width:28px;height:28px;font-size:13px;border-radius:7px}
+  .ws-actions{position:static;opacity:1;justify-content:flex-end;margin-bottom:4px}
+  .ws-actions button{width:26px;height:26px;font-size:12px;border-radius:6px}
+  .rc-del,.stf-x,.stf-collapse,.su-img-box.has .su-img-zo{opacity:1}
+  .rc-del{width:32px;height:32px;top:8px;left:10px}
+  .stf-x,.stf-collapse{width:30px;height:30px}
+  .stf-collapse{right:44px}
+}
+@media(pointer:coarse){
+  *{-webkit-tap-highlight-color:transparent}
+  button,a,select,label,input[type=checkbox],input[type=radio],[role=button]{touch-action:manipulation}
+  .btn{min-height:40px}
+  .btn.sm{min-height:36px}
+  .btn.xs{min-height:32px}
+  .nav-item{min-height:44px}
+  .calw-col .dh .add{width:30px;height:30px;font-size:15px;border-radius:8px}
+  .calw-toolbar .nav-arrows button{width:40px;height:40px}
+  .rlang-seg button{padding:7px 13px}
+}
 </style>
 </head>
 <body>
