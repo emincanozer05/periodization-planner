@@ -5695,6 +5695,13 @@ input.blk-ph-nm:focus{border-bottom:1px dashed currentColor}
 .it2.fs{position:fixed;inset:0;z-index:2100;margin:0;background:var(--it-c);padding:clamp(16px,3vw,40px);
   justify-content:center;transition:background .35s ease}
 .it2.fs .it2-stage{flex:1 1 auto;background:none}
+/* The cover is position:fixed, and fixed resolves against the nearest ancestor that holds
+   a transform — which the player's own panel does: its entrance animation keeps one
+   (fill:both), and a tap leaves the hover lift on it on a touch screen. Inside that, and
+   the panel's overflow:hidden, "full screen" came out as a strip across the top of the
+   panel wherever the browser refuses element full screen (Safari on iPad / iPhone). While
+   the player is full screen the panel lets go of all three. */
+body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:none;overflow:visible}
 .it2.fs .it2-ring{width:min(62vh,78vw)}
 .it2.fs .it2-big{font-size:clamp(90px,18vh,230px);color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.25)}
 .it2.fs .it2-ph{font-size:clamp(16px,3vh,34px);color:#fff}
@@ -18772,7 +18779,8 @@ function IntervalPlayer({cfg,onSound}){
   useEffect(()=>{
     if(!fs)return;
     const prev=document.body.style.overflow;document.body.style.overflow='hidden';
-    return()=>{document.body.style.overflow=prev;};
+    document.body.classList.add('it2-fs-on');
+    return()=>{document.body.style.overflow=prev;document.body.classList.remove('it2-fs-on');};
   },[fs]);
 
   const beep=(freq,dur,vol)=>{
@@ -18938,14 +18946,31 @@ function IntervalPlayer({cfg,onSound}){
 }
 
 /* A number with − / + either side, in the unit it is written in. */
+/* The box keeps what is being TYPED as its own text, and hands the parent a number only
+   when that text is one: clamping every keystroke turned an emptied box straight back
+   into the minimum, so "5" could never become "45" — clearing it left "1", and the 4
+   landed in front of it. A value in range applies as it is typed; anything else (an
+   empty box, a number past the limit) is settled when the box is left or Enter is hit. */
 function ItNum({label,hint,value,onChange,lo,hi,step,accent}){
   const st=step||1;
   const set=v=>onChange(itNum(v,lo,lo,hi));
+  const[draft,setDraft]=useState(null);   // null = not being edited: show the value
+  const type=raw=>{
+    const t=String(raw).replace(/[^0-9]/g,'').slice(0,String(hi).length);
+    setDraft(t);
+    const n=Number(t);
+    if(t!==''&&n>=lo&&n<=hi&&n!==value)onChange(n);
+  };
+  const commit=()=>{if(draft==null)return;if(draft!=='')set(draft);setDraft(null);};
   return(<div className="it2-f" style={accent?{'--fc':accent}:null}>
     <span className="it2-fl">{accent&&<i/>}{label}</span>
     <div className="it2-fin">
       <button type="button" onClick={()=>set(value-st)} disabled={value<=lo} aria-label="−">−</button>
-      <input type="number" min={lo} max={hi} value={value} onChange={e=>set(e.target.value)}/>
+      <input type="text" inputMode="numeric" pattern="[0-9]*" enterKeyHint="done" aria-label={label}
+        value={draft!=null?draft:String(value)}
+        onFocus={e=>{setDraft(String(value));const el=e.target;setTimeout(()=>{try{el.setSelectionRange(0,el.value.length);}catch(_){}},0);}}
+        onChange={e=>type(e.target.value)} onBlur={commit}
+        onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}/>
       <button type="button" onClick={()=>set(value+st)} disabled={value>=hi} aria-label="+">+</button>
     </div>
     <span className="it2-fh">{hint}</span>
