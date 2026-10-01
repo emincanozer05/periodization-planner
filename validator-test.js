@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryText', 'exLibraryDescriptions'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'EXPDF_IMG', 'exLibraryDescriptions'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1034,45 +1034,100 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
   }
 
-  group('Ek — Egzersiz kütüphanesi: metin (.txt) dışa aktarma, uygulama dilinde');
+  group('Ek — Egzersiz kütüphanesi: PDF dışa aktarma, uygulama dilinde, görsel çerçeveli');
   {
     const lib = [
       { name: 'Romanian Deadlift', type: 'Hip Dominant', subType: 'Concentric', action: 'Pull', pattern: 'Bilateral', equipment: 'Barbell', difficulty: 'Level 2',
-        muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Kalça menteşesi\n   hamstring için.' },
+        muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Kalça menteşesi\n   hamstring için.', image: 'data:image/png;base64,AAAA' },
       { name: 'Pallof Press', type: 'Core', subType: 'Anti-Rotation', position: 'Standing', purpose: '' },
       { name: 'Box Jump', type: 'Plyometric', subType: 'Vertical', exKind: 'Jump', technique: 'Bilateral', purpose: 'x'.repeat(700) },
       { name: 'Özel Hareket', type: '' },
       { name: '   ', type: 'Core' },
     ];
-    const en = A.exLibraryText(lib, { lang: 'en', date: '2026-10-01' });
-    const tr = A.exLibraryText(lib, { lang: 'tr', date: '2026-10-01' });
-    const block = (txt, n) => { const a = txt.indexOf('\n' + n + '\n'); const b = txt.indexOf('\n------', a); return txt.slice(a, b < 0 ? undefined : b); };
-    check('metin: markdown işareti yok, düz metin; başlık, sayı, tarih ve kullanım notu; adsız kayıt yok',
-      en.startsWith('COACHOS EXERCISE LIBRARY — STRENGTH & CONDITIONING') && /4 exercises · exported 2026-10-01/.test(en) && /HOW TO USE/.test(en) &&
-      !/^#{1,6} /m.test(en) && !/\*\*/.test(en) && !en.includes('   \n'), en.split('\n').slice(0, 5).join(' | '));
-    check('metin: her kategori kendi başlığı altında, kategorisiz sonda',
-      ['HIP DOMINANT (1)', 'CORE (1)', 'PLYOMETRIC (1)', 'UNCATEGORIZED (1)'].every(h => en.includes(h)) &&
-      en.indexOf('UNCATEGORIZED') > en.indexOf('PLYOMETRIC') && en.indexOf('Özel Hareket') > en.indexOf('UNCATEGORIZED'));
-    const rdl = block(en, 'Romanian Deadlift');
-    check('metin (en): etiketler, zorluk, kaslar, kontrendikasyon ve tek satıra inen açıklama',
-      /  Contraction Focus: Concentric/.test(rdl) && /  Action: Pull/.test(rdl) && /  Movement Pattern: Bilateral/.test(rdl) && /  Equipment: Barbell/.test(rdl) &&
-      /  Difficulty: Level 2 \(Intermediate\)/.test(rdl) && /  Muscles: Hamstrings, Glutes/.test(rdl) && /  Contraindications: Knee/.test(rdl) &&
-      /  Description: Kalça menteşesi hamstring için\./.test(rdl) && /  movement_pattern: \S/.test(rdl), rdl);
-    const rdlTr = block(tr, 'Romanian Deadlift');
-    check('metin (tr): başlıklar, filtre adları ve değerler Türkçe; movement_pattern her zaman İngilizce',
-      tr.startsWith('COACHOS EGZERSİZ KÜTÜPHANESİ — KUVVET VE KONDİSYON') && /NASIL KULLANILIR/.test(tr) && /KALÇA BASKIN \(1\)/.test(tr) && /KATEGORİSİZ \(1\)/.test(tr) &&
-      /  Kasılma Odağı: Konsantrik/.test(rdlTr) && /  Aksiyon: Çekme/.test(rdlTr) && /  Zorluk: Seviye 2 \(Orta\)/.test(rdlTr) &&
-      /  Kaslar: /.test(rdlTr) && /  Açıklama: Kalça menteşesi/.test(rdlTr) && /  movement_pattern: Hinge/.test(rdlTr), rdlTr);
-    check('metin: kayıtta olmayan alan hiç yazılmıyor; uzun açıklama 600 karakterde kesiliyor',
-      !/Description/.test(block(en, 'Pallof Press')) && !/Difficulty/.test(block(en, 'Pallof Press')) && /  Position: Standing/.test(block(en, 'Pallof Press')) &&
-      /  Direction: Vertical/.test(block(en, 'Box Jump')) && (block(en, 'Box Jump').match(/  Description: (.*)/) || [])[1].length <= 600 && /…$/m.test(block(en, 'Box Jump')));
-    const withDesc = A.exLibraryText(lib, { lang: 'en', descOf: e => e.name === 'Romanian Deadlift' ? 'Hip hinge for the hamstrings.' : '', untranslated: 2 });
-    check('metin: çevrilmiş açıklama descOf ile geliyor; çevrilemeyenlerin sayısı başta söyleniyor',
-      /  Description: Hip hinge for the hamstrings\./.test(block(withDesc, 'Romanian Deadlift')) && /2 description\(s\) could not be translated/.test(withDesc) &&
-      /2 açıklama çevrilemedi/.test(A.exLibraryText(lib, { lang: 'tr', untranslated: 2 })));
-    check('metin: boş kütüphane ve top çalışması başlığı', /0 exercises/.test(A.exLibraryText([], { lang: 'en' })) && !/={10}/.test(A.exLibraryText([], { lang: 'en' })) &&
-      /BALL PRACTICE/.test(A.exLibraryText([{ name: 'Drill A', type: 'Shooting' }], { ball: true, lang: 'en' })) &&
-      /TOP ÇALIŞMASI/.test(A.exLibraryText([{ name: 'Drill A', type: 'Shooting' }], { ball: true, lang: 'tr' })));
+    const en = A.exLibraryEntries(lib, { lang: 'en' });
+    const tr = A.exLibraryEntries(lib, { lang: 'tr' });
+    const row = (L, n) => L.sections.flatMap(s => s.rows).find(r => r.name === n);
+    const fld = (r, k) => (r.fields.find(f => f.k === k) || {}).v;
+    check('kartlar: adsız kayıt yok; her kategori kendi bölümünde, kategorisiz sonda',
+      en.total === 4 && en.sections.map(s => s.title).join('|') === 'Hip Dominant|Core|Plyometric|Uncategorized' &&
+      row(en, 'Özel Hareket') && en.sections[3].rows[0].name === 'Özel Hareket', en.sections.map(s => s.title).join('|'));
+    const rdl = row(en, 'Romanian Deadlift');
+    check('kart (en): etiketler, zorluk, kaslar, kontrendikasyon ve tek satıra inen açıklama',
+      fld(rdl, 'Contraction Focus') === 'Concentric' && fld(rdl, 'Action') === 'Pull' && fld(rdl, 'Movement Pattern') === 'Bilateral' &&
+      fld(rdl, 'Equipment') === 'Barbell' && fld(rdl, 'Difficulty') === 'Level 2 (Intermediate)' && fld(rdl, 'Muscles') === 'Hamstrings, Glutes' &&
+      fld(rdl, 'Contraindications') === 'Knee' && rdl.desc === 'Kalça menteşesi hamstring için.' && /\S/.test(fld(rdl, 'movement_pattern') || ''),
+      JSON.stringify(rdl.fields));
+    check('kart: kaslar ve kontrendikasyonlar geniş alan, diğerleri üçerli',
+      rdl.fields.filter(f => f.wide).map(f => f.k).join('|') === 'Muscles|Contraindications' && rdl.fields.filter(f => !f.wide).length >= 5);
+    const rdlTr = row(tr, 'Romanian Deadlift');
+    check('kart (tr): bölüm, filtre adları ve değerler Türkçe; movement_pattern her zaman İngilizce',
+      tr.sections.map(s => s.title).join('|') === 'Kalça Baskın|Core|Pliometrik|Kategorisiz' &&
+      fld(rdlTr, 'Kasılma Odağı') === 'Konsantrik' && fld(rdlTr, 'Aksiyon') === 'Çekme' && fld(rdlTr, 'Zorluk') === 'Seviye 2 (Orta)' &&
+      fld(rdlTr, 'Kaslar') && fld(rdlTr, 'movement_pattern') === 'Hinge', tr.sections.map(s => s.title).join('|') + ' ' + JSON.stringify(rdlTr.fields));
+    check('kart: kayıtta olmayan alan hiç yazılmıyor; uzun açıklama 600 karakterde kesiliyor',
+      !row(en, 'Pallof Press').desc && !fld(row(en, 'Pallof Press'), 'Difficulty') && fld(row(en, 'Pallof Press'), 'Position') === 'Standing' &&
+      fld(row(en, 'Box Jump'), 'Direction') === 'Vertical' && row(en, 'Box Jump').desc.length <= 600 && /…$/.test(row(en, 'Box Jump').desc));
+    check('kart: çevrilmiş açıklama descOf ile geliyor; top çalışması kendi kategorilerinde',
+      row(A.exLibraryEntries(lib, { lang: 'en', descOf: e => e.name === 'Romanian Deadlift' ? 'Hip hinge for the hamstrings.' : '' }), 'Romanian Deadlift').desc === 'Hip hinge for the hamstrings.' &&
+      A.exLibraryEntries([{ name: 'Drill A', type: 'Shooting', players: '2' }], { ball: true, lang: 'en' }).sections[0].title === 'Shooting' &&
+      A.exLibraryEntries([], { lang: 'en' }).sections.length === 0);
+
+    /* PDF'in kendisi: jsPDF yerine çizilen her şeyi kaydeden sahte bir belge. Kullanıcının
+       asıl istediği burada sınanıyor — her kartın solunda AYNI ölçüde bir görsel çerçevesi
+       (görsel yoksa boş), kartlar sayfa dışına taşmıyor ve iki sayfaya bölünmüyor. */
+    const fakeDoc = () => {
+      let page = 1, pages = 1, fs = 10;
+      const calls = [];
+      const rec = (op, a) => calls.push({ op, page, a });
+      const wrap = (t, w) => {
+        const per = Math.max(1, Math.floor(w / (fs * 0.3528 * 0.5)));
+        const out = [];
+        String(t).split(' ').forEach(wd => {
+          const last = out[out.length - 1];
+          if (last != null && (last + ' ' + wd).length <= per) out[out.length - 1] = last + ' ' + wd; else out.push(wd);
+        });
+        return out;
+      };
+      return {
+        calls, get pages() { return pages; },
+        setFont() {}, setFontSize(n) { fs = n; }, setTextColor() {}, setFillColor() {}, setDrawColor() {}, setLineWidth() {}, setLineDashPattern(d) { rec('dash', [d]); },
+        rect(...a) { rec('rect', a); }, roundedRect(...a) { rec('rrect', a); }, line(...a) { rec('line', a); },
+        text(...a) { rec('text', a); }, addImage(...a) { rec('img', a); },
+        addPage() { pages++; page = pages; }, setPage(n) { page = n; }, getNumberOfPages() { return pages; },
+        splitTextToSize: wrap, getTextWidth: t => String(t).length * fs * 0.3528 * 0.5,
+        getImageProperties: () => ({ width: 200, height: 100 }),
+      };
+    };
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      name: 'Exercise ' + String(i).padStart(2, '0'), type: ['Hip Dominant', 'Core', 'Plyometric'][i % 3], subType: '', difficulty: 'Level 1',
+      muscle: ['Glutes', 'Hamstrings'], purpose: i % 4 ? 'A short note.' : 'Long description '.repeat(30), image: i % 3 ? 'pic' + i : '' }));
+    const libMany = A.exLibraryEntries(many, { lang: 'en' });
+    const d = fakeDoc();
+    A.exLibraryPDF(d, libMany, { lang: 'en', date: '1 October 2026', font: 'Archivo', imageOf: e => e.image ? 'data:image/jpeg;base64,' + e.image : '' });
+    const F = A.EXPDF_IMG;
+    const imgs = d.calls.filter(c => c.op === 'img');
+    const frames = d.calls.filter(c => c.op === 'rect' && c.a[2] === F.w && c.a[3] === F.h && c.a[4] === 'S');
+    const empties = d.calls.filter(c => c.op === 'rect' && c.a[2] === F.w && c.a[3] === F.h && c.a[4] === 'F');
+    const withPic = many.filter(e => e.image).length;
+    check('pdf: görseli olan her egzersiz çerçeveye tam oturan tek görsel, olmayan boş çerçeve',
+      imgs.length === withPic && imgs.every(c => c.a[4] === F.w && c.a[5] === F.h) && empties.length === many.length - withPic &&
+      frames.length === many.length, `${imgs.length}/${withPic} görsel, ${empties.length} boş, ${frames.length} çerçeve`);
+    check('pdf: her çerçeve aynı en-boy (4:3) ve aynı sol hizada',
+      Math.abs(F.w / F.h - 4 / 3) < 1e-9 && new Set(frames.map(c => c.a[0])).size === 1);
+    const cards = d.calls.filter(c => c.op === 'rrect' && c.a[2] === 182 && c.a[6] === 'S');
+    check('pdf: kart sayısı egzersiz sayısı; hiçbiri sayfanın altına taşmıyor, kartın boyu en az çerçeve kadar',
+      cards.length === many.length && cards.every(c => c.a[1] + c.a[3] <= 281.0001 && c.a[3] >= F.h + 8 - 1e-9),
+      cards.map(c => (c.a[1] + c.a[3]).toFixed(1)).join(','));
+    const texts = d.calls.filter(c => c.op === 'text').map(c => [].concat(c.a[0]).join(' '));
+    check('pdf: birden çok sayfa, her sayfada "Page i / n"; kategori başlıkları ve sayılar yazılı',
+      d.pages > 1 && Array.from({ length: d.pages }, (_, i) => `Page ${i + 1} / ${d.pages}`).every(t => texts.includes(t)) &&
+      ['HIP DOMINANT', 'CORE', 'PLYOMETRIC'].every(h => texts.includes(h)) && texts.includes('EXERCISE LIBRARY') && texts.includes('Exercise 00'), d.pages);
+    const dt = fakeDoc();
+    A.exLibraryPDF(dt, A.exLibraryEntries(lib, { lang: 'tr' }), { lang: 'tr', untranslated: 2 });
+    const tt = dt.calls.filter(c => c.op === 'text').map(c => [].concat(c.a[0]).join(' ')).join('\n');
+    check('pdf (tr): başlık, bölümler ve sayfa numarası Türkçe; çevrilemeyenlerin sayısı söyleniyor',
+      /Egzersiz Kütüphanesi/.test(tt) && /KALÇA BASKIN/.test(tt) && /KATEGORİSİZ/.test(tt) && /Sayfa 1 \/ \d/.test(tt) && /2 açıklama çevrilemedi/.test(tt) &&
+      /NASIL KULLANILIR/.test(tt), tt);
     // Açıklama çevirisi: Türkçede olduğu gibi; İngilizcede çeviri, çevrilemeyen sayılır; zaten İngilizce olan çağrılmaz.
     const dTr = await A.exLibraryDescriptions([{ purpose: 'Kalça menteşesi' }], 'tr');
     check('açıklamalar: Türkçe modda olduğu gibi, çeviri çağrısı yok', dTr.map['Kalça menteşesi'] === 'Kalça menteşesi' && dTr.untranslated === 0);
