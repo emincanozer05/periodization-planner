@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryMarkdown'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryText', 'exLibraryDescriptions'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1034,38 +1034,51 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       A.athPainNote(grid, A.fmt(A.addD(A.parseD(TODAY), 1))) === null);
   }
 
-  group('Ek — Egzersiz kütüphanesi: Markdown dışa aktarma');
+  group('Ek — Egzersiz kütüphanesi: metin (.txt) dışa aktarma, uygulama dilinde');
   {
     const lib = [
       { name: 'Romanian Deadlift', type: 'Hip Dominant', subType: 'Concentric', action: 'Pull', pattern: 'Bilateral', equipment: 'Barbell', difficulty: 'Level 2',
-        muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Hinge pattern\n   for hamstrings.' },
+        muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Kalça menteşesi\n   hamstring için.' },
       { name: 'Pallof Press', type: 'Core', subType: 'Anti-Rotation', position: 'Standing', purpose: '' },
       { name: 'Box Jump', type: 'Plyometric', subType: 'Vertical', exKind: 'Jump', technique: 'Bilateral', purpose: 'x'.repeat(700) },
       { name: 'Özel Hareket', type: '' },
       { name: '   ', type: 'Core' },
     ];
-    const md = A.exLibraryMarkdown(lib, { date: '2026-10-01' });
-    const block = n => { const a = md.indexOf('### ' + n); const b = md.indexOf('\n###', a + 1); return md.slice(a, b < 0 ? undefined : b); };
-    check('markdown: başlık, sayı, tarih ve kullanım notu; adsız kayıt yok',
-      md.startsWith('# CoachOS Exercise Library — Strength & Conditioning') && /4 exercises · exported 2026-10-01/.test(md) &&
-      /How to use:/.test(md) && !/###\s*\n/.test(md), md.split('\n').slice(0, 6).join(' | '));
-    check('markdown: her kategori kendi başlığı altında, kategorisiz sonda',
-      ['## Hip Dominant', '## Core', '## Plyometric', '## Uncategorized'].every(h => md.includes(h)) &&
-      md.indexOf('## Uncategorized') > md.indexOf('## Plyometric') && md.indexOf('### Özel Hareket') > md.indexOf('## Uncategorized'));
-    const rdl = block('Romanian Deadlift');
-    check('markdown: egzersiz bloğu kütüphane etiketlerini ve açıklamayı taşıyor; boşluklar tek satıra iniyor',
-      /- Contraction Focus: Concentric/.test(rdl) && /- Action: Pull/.test(rdl) && /- Movement Pattern: Bilateral/.test(rdl) &&
-      /- Equipment: Barbell/.test(rdl) && /- Difficulty: Level 2 \(Intermediate\)/.test(rdl) && /- Muscles: Hamstrings, Glutes/.test(rdl) &&
-      /- Contraindications: Knee/.test(rdl) && /- Description: Hinge pattern for hamstrings\./.test(rdl) && /- movement_pattern: \S/.test(rdl), rdl);
-    check('markdown: kayıtta olmayan alan hiç yazılmıyor (boş açıklama, boş zorluk)',
-      !/- Description/.test(block('Pallof Press')) && !/- Difficulty/.test(block('Pallof Press')) && /- Position: Standing/.test(block('Pallof Press')));
-    const bj = block('Box Jump');
-    check('markdown: pliometrik yön, tür, teknik; uzun açıklama 600 karakterde kesiliyor',
-      /- Direction: Vertical/.test(bj) && /- Exercise Type: Jump/.test(bj) && /- Technique: Bilateral/.test(bj) &&
-      (bj.match(/- Description: (.*)/) || [])[1].length <= 600 && /…$/m.test(bj), (bj.match(/- Description: (.*)/) || [''])[0].length);
-    const empty = A.exLibraryMarkdown([], {});
-    check('markdown: boş kütüphane ve top çalışması başlığı', /0 exercises/.test(empty) && !/\n## /.test(empty) &&
-      /Ball Practice/.test(A.exLibraryMarkdown([{ name: 'Drill A', type: 'Shooting' }], { ball: true })));
+    const en = A.exLibraryText(lib, { lang: 'en', date: '2026-10-01' });
+    const tr = A.exLibraryText(lib, { lang: 'tr', date: '2026-10-01' });
+    const block = (txt, n) => { const a = txt.indexOf('\n' + n + '\n'); const b = txt.indexOf('\n------', a); return txt.slice(a, b < 0 ? undefined : b); };
+    check('metin: markdown işareti yok, düz metin; başlık, sayı, tarih ve kullanım notu; adsız kayıt yok',
+      en.startsWith('COACHOS EXERCISE LIBRARY — STRENGTH & CONDITIONING') && /4 exercises · exported 2026-10-01/.test(en) && /HOW TO USE/.test(en) &&
+      !/^#{1,6} /m.test(en) && !/\*\*/.test(en) && !en.includes('   \n'), en.split('\n').slice(0, 5).join(' | '));
+    check('metin: her kategori kendi başlığı altında, kategorisiz sonda',
+      ['HIP DOMINANT (1)', 'CORE (1)', 'PLYOMETRIC (1)', 'UNCATEGORIZED (1)'].every(h => en.includes(h)) &&
+      en.indexOf('UNCATEGORIZED') > en.indexOf('PLYOMETRIC') && en.indexOf('Özel Hareket') > en.indexOf('UNCATEGORIZED'));
+    const rdl = block(en, 'Romanian Deadlift');
+    check('metin (en): etiketler, zorluk, kaslar, kontrendikasyon ve tek satıra inen açıklama',
+      /  Contraction Focus: Concentric/.test(rdl) && /  Action: Pull/.test(rdl) && /  Movement Pattern: Bilateral/.test(rdl) && /  Equipment: Barbell/.test(rdl) &&
+      /  Difficulty: Level 2 \(Intermediate\)/.test(rdl) && /  Muscles: Hamstrings, Glutes/.test(rdl) && /  Contraindications: Knee/.test(rdl) &&
+      /  Description: Kalça menteşesi hamstring için\./.test(rdl) && /  movement_pattern: \S/.test(rdl), rdl);
+    const rdlTr = block(tr, 'Romanian Deadlift');
+    check('metin (tr): başlıklar, filtre adları ve değerler Türkçe; movement_pattern her zaman İngilizce',
+      tr.startsWith('COACHOS EGZERSİZ KÜTÜPHANESİ — KUVVET VE KONDİSYON') && /NASIL KULLANILIR/.test(tr) && /KALÇA BASKIN \(1\)/.test(tr) && /KATEGORİSİZ \(1\)/.test(tr) &&
+      /  Kasılma Odağı: Konsantrik/.test(rdlTr) && /  Aksiyon: Çekme/.test(rdlTr) && /  Zorluk: Seviye 2 \(Orta\)/.test(rdlTr) &&
+      /  Kaslar: /.test(rdlTr) && /  Açıklama: Kalça menteşesi/.test(rdlTr) && /  movement_pattern: Hinge/.test(rdlTr), rdlTr);
+    check('metin: kayıtta olmayan alan hiç yazılmıyor; uzun açıklama 600 karakterde kesiliyor',
+      !/Description/.test(block(en, 'Pallof Press')) && !/Difficulty/.test(block(en, 'Pallof Press')) && /  Position: Standing/.test(block(en, 'Pallof Press')) &&
+      /  Direction: Vertical/.test(block(en, 'Box Jump')) && (block(en, 'Box Jump').match(/  Description: (.*)/) || [])[1].length <= 600 && /…$/m.test(block(en, 'Box Jump')));
+    const withDesc = A.exLibraryText(lib, { lang: 'en', descOf: e => e.name === 'Romanian Deadlift' ? 'Hip hinge for the hamstrings.' : '', untranslated: 2 });
+    check('metin: çevrilmiş açıklama descOf ile geliyor; çevrilemeyenlerin sayısı başta söyleniyor',
+      /  Description: Hip hinge for the hamstrings\./.test(block(withDesc, 'Romanian Deadlift')) && /2 description\(s\) could not be translated/.test(withDesc) &&
+      /2 açıklama çevrilemedi/.test(A.exLibraryText(lib, { lang: 'tr', untranslated: 2 })));
+    check('metin: boş kütüphane ve top çalışması başlığı', /0 exercises/.test(A.exLibraryText([], { lang: 'en' })) && !/={10}/.test(A.exLibraryText([], { lang: 'en' })) &&
+      /BALL PRACTICE/.test(A.exLibraryText([{ name: 'Drill A', type: 'Shooting' }], { ball: true, lang: 'en' })) &&
+      /TOP ÇALIŞMASI/.test(A.exLibraryText([{ name: 'Drill A', type: 'Shooting' }], { ball: true, lang: 'tr' })));
+    // Açıklama çevirisi: Türkçede olduğu gibi; İngilizcede çeviri, çevrilemeyen sayılır; zaten İngilizce olan çağrılmaz.
+    const dTr = await A.exLibraryDescriptions([{ purpose: 'Kalça menteşesi' }], 'tr');
+    check('açıklamalar: Türkçe modda olduğu gibi, çeviri çağrısı yok', dTr.map['Kalça menteşesi'] === 'Kalça menteşesi' && dTr.untranslated === 0);
+    const dEn = await A.exLibraryDescriptions([{ purpose: 'Hip hinge for the hamstrings.' }, { purpose: '' }], 'en');
+    check('açıklamalar: zaten İngilizce olan metin çevrilmeden geçiyor, boşlar atlanıyor', dEn.map['Hip hinge for the hamstrings.'] === 'Hip hinge for the hamstrings.' && dEn.untranslated === 0 &&
+      Object.keys(dEn.map).length === 1);
   }
 
   group('Ek — Athlete Training Profile: atletik profil, kısıtlar, maruziyet');

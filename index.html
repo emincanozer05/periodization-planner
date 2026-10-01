@@ -28694,6 +28694,7 @@ function ExercisesView({data,setData}){
      a field with no value is not filtered on. */
   const[filt,setFilt]=useState({});
   const[openId,setOpenId]=useState(null);
+  const[mdBusy,setMdBusy]=useState(false);
   const openCard=useCallback(id=>setOpenId(id),[]);   // stable, so the memoised cards hold
   // The two shelves have different categories, so a filter set on one means nothing on
   // the other — switching shelves lands on that shelf's own landing page.
@@ -28729,17 +28730,27 @@ function ExercisesView({data,setData}){
   // Exercises with no/unknown category (e.g. auto-added from the program editor) live here
   // so the coach can find and categorise them later.
   const uncatCount=exercises.filter(e=>!TYPES.includes(e.type)).length;
-  /* The open shelf as a markdown file — what an AI project is loaded with. */
-  const downloadLibMd=()=>{
-    const md=exLibraryMarkdown(exercises,{ball,date:new Date().toISOString().slice(0,10)});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob(['﻿'+md],{type:'text/markdown;charset=utf-8'}));
-    a.download=`exercise_library_${libTab}_${new Date().toISOString().slice(0,10)}.md`;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(a.href),2000);};
-  const mdBtn=<button className="btn sm" onClick={downloadLibMd} disabled={exercises.length===0}
-    title={L('Kütüphaneyi bir yapay zekâ projesine yüklemek için Markdown dosyası olarak indir','Download the library as a Markdown file to load into an AI project')}>
-    ⬇ {L('Markdown','Markdown')}</button>;
+  /* The open shelf as a plain-text file in the app's language — what an AI project is
+     loaded with, and what anyone can open. The descriptions are translated first, which
+     takes a moment, so the button says it is working. */
+  const downloadLibTxt=async()=>{
+    if(mdBusy)return;
+    setMdBusy(true);
+    try{
+      const lang=REPORT_LANG;
+      const{map,untranslated}=await exLibraryDescriptions(exercises,lang);
+      const date=new Date().toISOString().slice(0,10);
+      const txt=exLibraryText(exercises,{ball,lang,date,untranslated,
+        descOf:e=>map[String(e.purpose||'').trim()]||e.purpose||''});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob(['﻿'+txt],{type:'text/plain;charset=utf-8'}));
+      a.download=`exercise_library_${libTab}_${lang}_${date}.txt`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    }finally{setMdBusy(false);}};
+  const mdBtn=<button className="btn sm" onClick={downloadLibTxt} disabled={exercises.length===0||mdBusy}
+    title={L('Kütüphaneyi uygulamanın diliyle, her cihazda açılan bir metin dosyası (.txt) olarak indir','Download the library as a text file (.txt) in the app language, readable on any device')}>
+    {mdBusy?L('Hazırlanıyor…','Preparing…'):`⬇ ${L('İndir (.txt)','Download (.txt)')}`}</button>;
   const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
   /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
      both the coach's library, and which one is open should never be something to hunt
@@ -29312,14 +29323,20 @@ const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip 
   'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
-/* The library as one markdown file, for loading into an AI project as reference material.
-   Markdown rather than JSON because a file like this is read in pieces: one block per
-   exercise keeps everything about an exercise in one piece, where a cut through a large
-   JSON leaves a half-record. Values are the library's own canonical (English) words, the
-   same ones the programme JSON uses, so a name, a movement_pattern or an implement can be
-   copied across unchanged. Only what the entry actually carries is written. */
-function exLibraryMarkdown(list,opts){
+/* The library as one plain-text file, for loading into an AI project as reference material
+   and for anyone to read. Plain text because it opens in every app on every device (a
+   markdown file opens in whatever app claims the extension, often a notes app), and one
+   block per exercise because a file like this is read in pieces: everything about an
+   exercise stays in one piece. It is written in the app's language: the headings, the
+   filter names and values, and the description (`descOf` hands in the description already
+   in that language). `movement_pattern` is the one value that is never translated — it is the
+   word the programme JSON uses, so it can be copied across unchanged. Only what the entry
+   actually carries is written. */
+function exLibraryText(list,opts){
   const o=opts||{};
+  const tr=o.lang==='tr';
+  const T=(a,b)=>tr?a:b;
+  const lab=s=>tr?(EX_TERM_TR[s]||s):s;
   const subs=o.ball?BALL_SUB_TYPES:SUB_TYPES;
   const types=o.ball?BALL_TYPES:EX_TYPES;
   const one=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
@@ -29327,34 +29344,67 @@ function exLibraryMarkdown(list,opts){
   const items=(Array.isArray(list)?list:[]).filter(e=>e&&one(e.name));
   const byType={};
   items.forEach(e=>{const t=types.includes(e.type)?e.type:'Uncategorized';(byType[t]=byType[t]||[]).push(e);});
-  const out=[`# CoachOS Exercise Library — ${o.ball?'Ball Practice':'Strength & Conditioning'}`,'',
-    `${items.length} exercises${o.date?` · exported ${o.date}`:''}`,'',
-    'How to use: each exercise is one block under its category. Names are exact — when you choose an exercise from this list, write its name as given. '+
-    '`movement_pattern` is the value to write in a programme row; `Equipment` is the implement. An exercise outside this list is allowed: this list is a set of candidates, not a limit.',''];
+  const heavy='='.repeat(48),light='-'.repeat(48);
+  const out=[
+    T(o.ball?'COACHOS DRİL KÜTÜPHANESİ — TOP ÇALIŞMASI':'COACHOS EGZERSİZ KÜTÜPHANESİ — KUVVET VE KONDİSYON',
+      o.ball?'COACHOS DRILL LIBRARY — BALL PRACTICE':'COACHOS EXERCISE LIBRARY — STRENGTH & CONDITIONING'),
+    `${items.length} ${T(o.ball?'dril':'egzersiz',o.ball?'drills':'exercises')}${o.date?` · ${T('dışa aktarım','exported')} ${o.date}`:''}`,'',
+    T('NASIL KULLANILIR','HOW TO USE'),
+    T('Her egzersiz kendi kategorisi altında tek bir blok olarak yazılmıştır. Listeden egzersiz seçerken adı yazıldığı gibi kullan. '+
+      '`movement_pattern` programdaki satıra yazılacak değerdir ve her zaman İngilizce yazılır. Bu liste bir aday listesidir, sınır değildir: listede olmayan egzersiz de yazılabilir.',
+      'Each exercise is one block under its category. When you choose an exercise from this list, write its name as given. '+
+      '`movement_pattern` is the value to write in a programme row and is always in English. This list is a set of candidates, not a limit: an exercise outside it is allowed.')];
+  if(o.untranslated>0)out.push(T(`Not: ${o.untranslated} açıklama çevrilemedi ve yazıldığı dilde bırakıldı.`,
+    `Note: ${o.untranslated} description(s) could not be translated and are left in the language they were written in.`));
+  out.push('');
   [...types,'Uncategorized'].forEach(t=>{
     const rows=(byType[t]||[]).slice().sort((a,b)=>one(a.name).localeCompare(one(b.name)));
     if(!rows.length)return;
-    out.push(`## ${t}`,'');
+    out.push(heavy,`${(t==='Uncategorized'?T('Kategorisiz','Uncategorized'):lab(t)).toLocaleUpperCase(tr?'tr':'en')} (${rows.length})`,heavy,'');
     rows.forEach(e=>{
-      out.push(`### ${one(e.name)}`);
-      const put=(k,v)=>{const s=one(v);if(s)out.push(`- ${k}: ${s}`);};
+      out.push(one(e.name));
+      const put=(k,v)=>{const s=one(v);if(s)out.push(`  ${k}: ${s}`);};
       const sub=subs[e.type];
-      if(sub)put(sub.label,e.subType);
+      if(sub)put(lab(sub.label),e.subType?lab(e.subType):'');
       if(!o.ball){
-        if(ACTIONS_FOR[e.type])put('Action',e.action);
-        if(PATTERNS_FOR[e.type])put('Movement Pattern',e.pattern);
-        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(d.label,e[d.key]));
+        if(ACTIONS_FOR[e.type])put(lab('Action'),e.action?lab(e.action):'');
+        if(PATTERNS_FOR[e.type])put(lab('Movement Pattern'),e.pattern?lab(e.pattern):'');
+        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),e[d.key]?lab(e[d.key]):''));
         put('movement_pattern',exPatternOf(e));
       }
-      put('Difficulty',e.difficulty?`${e.difficulty}${LEVEL_LABEL[e.difficulty]?` (${LEVEL_LABEL[e.difficulty]})`:''}`:'');
-      put('Muscles',(Array.isArray(e.muscle)?e.muscle:[]).map(one).filter(Boolean).join(', '));
-      put('Contraindications',exContraOf(e).map(id=>ctLabel(id)).join(', '));
-      if(o.ball)put('Players',e.players);
-      put('Description',cap(e.purpose,600));
-      out.push('');
+      put(T('Zorluk','Difficulty'),e.difficulty?`${lab(e.difficulty)}${LEVEL_LABEL[e.difficulty]?` (${tr?({Beginner:'Başlangıç',Intermediate:'Orta',Advanced:'İleri'}[LEVEL_LABEL[e.difficulty]]):LEVEL_LABEL[e.difficulty]})`:''}`:'');
+      put(T('Kaslar','Muscles'),(Array.isArray(e.muscle)?e.muscle:[]).map(one).filter(Boolean).map(lab).join(', '));
+      put(T('Kontrendikasyonlar','Contraindications'),exContraOf(e).map(id=>ctLabel(id)).join(', '));
+      if(o.ball)put(T('Oyuncu','Players'),e.players);
+      const d=o.descOf?o.descOf(e):e.purpose;
+      put(T('Açıklama','Description'),cap(d,600));
+      out.push('',light,'');
     });
   });
   return out.join('\n');
+}
+/* The description of every exercise in the app's language. A description is stored as the
+   coach wrote it — in practice Turkish — and the screen shows an English machine
+   translation while the app is in English; the export does the same, a few at a time. A
+   description that could not be translated is kept as written and counted, so the file
+   can say so. */
+async function exLibraryDescriptions(list,lang){
+  const map={};
+  const texts=[...new Set((list||[]).map(e=>String((e&&e.purpose)||'').trim()).filter(Boolean))];
+  let untranslated=0;
+  if(lang!=='en'){texts.forEach(t=>{map[t]=t;});return{map,untranslated};}
+  let i=0;
+  const worker=async()=>{
+    while(i<texts.length){
+      const t=texts[i++];
+      if(descLangOf(t)!=='tr'){map[t]=t;continue;}
+      const r=await mtToEn(t);
+      map[t]=r;
+      if(r===t)untranslated++;
+    }
+  };
+  await Promise.all(Array.from({length:Math.min(6,texts.length)},worker));
+  return{map,untranslated};
 }
 const LEVEL_LABEL={'Level 1':'Beginner','Level 2':'Intermediate','Level 3':'Advanced'};
 
