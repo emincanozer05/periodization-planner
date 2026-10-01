@@ -1623,9 +1623,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .x-btn:hover{background:var(--hover);color:var(--text)}
 .ex-modal-body{padding:16px;overflow-y:auto}
 .ex-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-/* A still or a GIF standing in for a clip: fitted whole, never cropped — the frame is
-   16/9 and the picture usually is not. */
-.ex-still{object-fit:contain;background:#000}
+/* The exercise's picture while editing: small, at the 4:3 of the PDF's image frame, so the
+   coach sees the crop the PDF will print. Focusable, so Ctrl/Cmd+V over it pastes too. */
+.ex-pic{display:flex;align-items:flex-end;gap:10px;margin-top:12px}
+.ex-pic-box{position:relative;width:200px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--elevated);flex:none;outline:none}
+.ex-pic-box:focus-visible{border-color:var(--accent)}
+.ex-pic-box img{width:100%;height:100%;object-fit:cover;display:block}
+.ex-pic-box.empty{border-style:dashed;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;font-size:11.5px;color:var(--dim);cursor:pointer}
+.ex-pic-x{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.65);color:#fff;font-size:15px;line-height:1;cursor:pointer}
+.ex-pic-x:hover{background:rgba(220,38,38,.9)}
 .ex-player-wrap.ig{aspect-ratio:auto;height:640px;background:#000}
 .ex-video{width:100%;height:100%;display:block;border:none;background:#000;object-fit:contain}
 .ex-novid{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-size:13px}
@@ -28273,13 +28279,10 @@ function InstagramVideo({url,embedSrc}){
 }
 function VideoPlayer({ex}){
   const v=videoEmbed(ex.videoData||ex.videoUrl);
-  /* Only the video plays here. The picture on the entry belongs to the program row it is
-     copied onto, not to the library page, so it is shown next to its own control below
-     rather than standing in as the entry's cover. */
-  /* No clip, but a still or a GIF was added: that IS the demonstration, so it plays the
-     part of the video rather than sitting somewhere else on the card. */
-  if(!v&&ex.image)return<img className="ex-video ex-still" src={mediaSrc(ex.image)} alt=""/>;
-  if(!v)return<div className="ex-novid">{L('Henüz video yok — aşağıdan video ya da görsel/GIF ekle, veya link yapıştır.','No video yet — add a video or an image/GIF below, or paste a link.')}</div>;
+  /* Only the video plays here. The exercise's picture is the library card's cover and the
+     PDF's image; on the open entry it is shown only while editing, small, under its own
+     Paste button. */
+  if(!v)return<div className="ex-novid">{L('Henüz video yok — düzenleyip video yükle veya link yapıştır.','No video yet — edit to upload a video or paste a link.')}</div>;
   if(v.kind==='file')return<video className="ex-video" src={v.src} controls/>;
   if(v.ig)return<InstagramVideo url={ex.videoData||ex.videoUrl} embedSrc={v.src}/>;
   return<iframe className="ex-video" src={v.src} title={L('egzersiz videosu','exercise video')} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen frameBorder="0"/>;
@@ -28439,6 +28442,29 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
     };
     r.readAsDataURL(file);
   };
+  /* Paste Image / GIF: whatever image is on the clipboard is uploaded at once, through the
+     same path as a picked file. Right-click on the button still opens the file picker. */
+  const imgFileRef=useRef(null);
+  const pasteExImage=async()=>{
+    if(!navigator.clipboard||!navigator.clipboard.read){
+      alert(L('Bu tarayıcı panodan okumaya izin vermiyor. Görseli kopyala, aşağıdaki kutuya tıkla ve Ctrl/Cmd+V yap.','This browser does not allow reading the clipboard. Copy the image, click the box below and press Ctrl/Cmd+V.'));return;}
+    try{
+      const items=await navigator.clipboard.read();
+      for(const it of items){
+        const type=it.types.find(t=>t.startsWith('image/'));
+        if(!type)continue;
+        const blob=await it.getType(type);
+        const ext=(type.split('/')[1]||'png').replace(/[^a-z0-9]/gi,'')||'png';
+        onImageFile(new File([blob],'pasted.'+ext,{type}));
+        return;
+      }
+      alert(L('Panoda görsel yok. Önce bir görsel kopyala, sonra Yapıştır\'a bas.','No image on the clipboard. Copy an image first, then press Paste.'));
+    }catch(e){
+      alert(L('Pano okunamadı. Bu site için pano iznini aç ya da görseli kopyalayıp aşağıdaki kutuda Ctrl/Cmd+V yap.','The clipboard could not be read. Allow clipboard access for this site, or copy the image and press Ctrl/Cmd+V over the box below.'));
+    }
+  };
+  // Removing the picture removes it everywhere it lives on the entry (see exPicture).
+  const clearExImage=()=>onChange({image:'',planImage:'',thumb:''});
   const metaLbl={fontSize:10,fontFamily:"'IBM Plex Mono',ui-monospace,monospace",color:'var(--dim)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4,display:'block'};
   const metaBox=(label,value,extra)=>value?(<div style={{background:'var(--elevated)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 13px'}}>
     <span style={metaLbl}>{label}</span>
@@ -28564,19 +28590,34 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>📹 {L('Video Yükle','Upload Video')}
               <input type="file" accept="video/*" style={{display:'none'}} onChange={e=>onVideoFile(e.target.files[0])}/>
             </label>
-            {/* Not every exercise has a clip; plenty are shown by a still or a looping GIF,
-                and this is where that goes — next to the clip it stands in for. */}
-            <label className="btn sec sm" style={{cursor:'pointer',margin:0}}>🖼 {L('Görsel / GIF Ekle','Add Image / GIF')}
-              <input type="file" accept="image/*,.gif" style={{display:'none'}} onChange={e=>onImageFile(e.target.files[0])}/>
-            </label>
+            {/* The exercise's picture — the library card's cover and the PDF's image. A
+                copied picture is pasted and uploaded in one click; right-click picks a file. */}
+            {/* A label, like Upload Video beside it, so the two read as one row of buttons. */}
+            <label role="button" tabIndex={0} className="btn sec sm" style={{cursor:'pointer',margin:0}} onClick={pasteExImage}
+              onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pasteExImage();}}}
+              onContextMenu={e=>{e.preventDefault();imgFileRef.current&&imgFileRef.current.click();}}
+              title={L('Kopyalanan görseli yapıştır · Sağ tık: dosya seç','Paste the copied image · Right-click: choose a file')}>
+              🖼 {L('Görsel / GIF Yapıştır','Paste Image / GIF')}</label>
+            <input ref={imgFileRef} type="file" accept="image/*,.gif" style={{display:'none'}} onChange={e=>{onImageFile(e.target.files[0]);e.target.value='';}}/>
             {/* The pasted link is a third way of filling the same frame, so it stands with the
                 two buttons that fill it rather than halfway down the other column. */}
             <input className="ex-vlink" value={ex.videoUrl} onChange={e=>set('videoUrl',e.target.value)}
               placeholder={L('…ya da link yapıştır (YouTube / Vimeo / mp4)','…or paste a link (YouTube / Vimeo / mp4)')}/>
             {ex.videoData&&<button className="btn ghost xs" onClick={()=>set('videoData','')}>{L('Videoyu kaldır','Remove video')}</button>}
-            {ex.image&&<button className="btn ghost xs" onClick={()=>set('image','')}>{L('Görseli kaldır','Remove image')}</button>}
           </div>}
-          {editing&&<div className="help" style={{marginTop:6}}>{L('Kart görseli YouTube/Vimeo\'dan otomatik alınır; program görselinin yerine yazılmaz.','The card image is fetched automatically from YouTube/Vimeo; it does not replace the program image.')}</div>}
+          {/* The picture, small, only while editing — the open entry shows the clip. */}
+          {editing&&(()=>{const pic=exPicture(ex);const has=hasMedia(pic);
+            return<div className="ex-pic">
+              <div className={`ex-pic-box${has?'':' empty'}`} tabIndex={0}
+                onPaste={e=>{const f=imageFileFromPaste(e);if(f){e.preventDefault();onImageFile(f);}}}
+                onClick={has?undefined:pasteExImage}
+                title={L('Ctrl/Cmd+V ile de yapıştırabilirsin','You can also paste with Ctrl/Cmd+V')}>
+                {has?<><img src={mediaSrc(pic)} alt=""/>
+                  <button type="button" className="ex-pic-x" title={L('Görseli kaldır','Remove image')} onClick={clearExImage}>×</button></>
+                  :L('Görsel yok — kopyaladığın görseli yapıştır','No image — paste a copied image')}
+              </div>
+              <div className="help" style={{margin:0}}>{L('Bu görsel kütüphane kartında ve PDF\'te görünür.','This image is shown on the library card and in the PDF.')}</div>
+            </div>;})()}
           {upPct!=null&&<div className="help" style={{marginTop:6}}>{L('Yükleniyor… ','Uploading… ')}{upPct}%</div>}
         </div>
         {editing?editRight:viewRight}
@@ -28612,11 +28653,11 @@ function ExerciseCardRaw({ex,onOpen,used=0}){
   const shownName=useExerciseText(ex.name);
   const[hov,setHov]=useState(false);
   const[igImg,setIgImg]=useState('');
-  /* The card's picture comes from the exercise's VIDEO only — its auto-thumbnail, or the
-     og:image of an Instagram reel. The picture the coach pastes on the entry (`thumb`) is
-     not a cover: it is the shot that drops into the exercise box while a program is being
-     written, so it is deliberately left out here and the card falls back to its placeholder. */
-  const cover=videoThumb(ex.videoData||ex.videoUrl)||igImg||(ex.image?mediaSrc(ex.image):'');
+  /* The card's picture is the one the coach put on the exercise — the same one the
+     library PDF prints — and only without one does the video's auto-thumbnail (or an
+     Instagram reel's og:image) stand in. Hovering still plays the clip. */
+  const pic=exPicture(ex);
+  const cover=(hasMedia(pic)?pic:'')||videoThumb(ex.videoData||ex.videoUrl)||igImg;
   // Instagram reels have no auto thumbnail → fetch the og:image once
   useEffect(()=>{
     if(!v||!v.ig){setIgImg('');return;}
@@ -29328,6 +29369,11 @@ const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip 
   'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
+/* The exercise's own picture — the one the coach pastes on the library entry (`image`),
+   else the one a program row remembered (`planImage`) or the old Program Image control set
+   (`thumb`): all three are a picture the coach put on this exercise. The library card and
+   the library PDF both show this one. */
+const exPicture=e=>(e&&(e.image||e.planImage||e.thumb))||'';
 /* The library laid out as sections and cards, in the app's language — what the PDF is
    drawn from. One card per exercise under its category, categories in the shelf's own
    order, uncategorised ones last. The headings, the filter names and values, and the
@@ -29402,12 +29448,12 @@ function exLibraryPDF(doc,lib,opts){
   const unit=o.ball?T('dril','drills'):T('egzersiz','exercises');
   let y=0;
 
-  // ── first page: the dark band with the title, the shelf, the count and the date
+  // ── first page: the dark band with the title, the shelf and the count
   doc.setFillColor(INK);doc.rect(0,0,PW,38,'F');
   doc.setFillColor(ACC);doc.rect(0,38,PW,1.2,'F');
   font('bold',7.5,ACC);text('COACHOS',M,10,{charSpace:0.9});
   font('bold',22,'#ffffff');text(title,M,15);
-  font('normal',9.5,'#cbd5e1');text([shelf,`${lib.total} ${unit}`,o.date].filter(Boolean).join('   ·   '),M,27.5);
+  font('normal',9.5,'#cbd5e1');text(`${shelf}   ·   ${lib.total} ${unit}`,M,27.5);
   if(o.crest){
     try{
       const p=doc.getImageProperties(o.crest);
@@ -29546,14 +29592,14 @@ async function pdfUseArchivo(doc){
     return applyTurkishFont(doc);
   }
 }
-/* Each exercise's uploaded picture, cropped from its centre to the PDF's frame and read
+/* Each exercise's picture (exPicture — the one its library card shows), cropped from its centre to the PDF's frame and read
    into a JPEG data URL, six at a time. A picture that cannot be read is simply missing:
    its card gets the empty frame. */
 async function exLibraryImages(lib){
   const out=new Map();
   const todo=[];
   lib.sections.forEach(s=>s.rows.forEach(r=>{
-    const raw=r.ex.image;
+    const raw=exPicture(r.ex);
     if(!hasMedia(raw))return;
     const src=mediaSrc(raw);
     if(src&&src!==LM_BLANK)todo.push([r.ex,src]);
@@ -29590,7 +29636,7 @@ async function downloadExLibraryPDF(exercises,{ball,libTab}){
   const images=await exLibraryImages(lib);
   const doc=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
   const font=await pdfUseArchivo(doc);
-  exLibraryPDF(doc,lib,{ball,lang,untranslated,font,crest,date:fdL(fmt(today)),imageOf:e=>images.get(e)||''});
+  exLibraryPDF(doc,lib,{ball,lang,untranslated,font,crest,imageOf:e=>images.get(e)||''});
   doc.save(`exercise_library_${libTab}_${lang}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 /* The description of every exercise in the app's language. A description is stored as the

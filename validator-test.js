@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'EXPDF_IMG', 'exLibraryDescriptions'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1103,7 +1103,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       muscle: ['Glutes', 'Hamstrings'], purpose: i % 4 ? 'A short note.' : 'Long description '.repeat(30), image: i % 3 ? 'pic' + i : '' }));
     const libMany = A.exLibraryEntries(many, { lang: 'en' });
     const d = fakeDoc();
-    A.exLibraryPDF(d, libMany, { lang: 'en', date: '1 October 2026', font: 'Archivo', imageOf: e => e.image ? 'data:image/jpeg;base64,' + e.image : '' });
+    A.exLibraryPDF(d, libMany, { lang: 'en', font: 'Archivo', imageOf: e => e.image ? 'data:image/jpeg;base64,' + e.image : '' });
     const F = A.EXPDF_IMG;
     const imgs = d.calls.filter(c => c.op === 'img');
     const frames = d.calls.filter(c => c.op === 'rect' && c.a[2] === F.w && c.a[3] === F.h && c.a[4] === 'S');
@@ -1122,6 +1122,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('pdf: birden çok sayfa, her sayfada "Page i / n"; kategori başlıkları ve sayılar yazılı',
       d.pages > 1 && Array.from({ length: d.pages }, (_, i) => `Page ${i + 1} / ${d.pages}`).every(t => texts.includes(t)) &&
       ['HIP DOMINANT', 'CORE', 'PLYOMETRIC'].every(h => texts.includes(h)) && texts.includes('EXERCISE LIBRARY') && texts.includes('Exercise 00'), d.pages);
+    check('pdf: kapakta tarih yok — yalnızca raf ve egzersiz sayısı',
+      texts.includes('Strength & Conditioning   ·   30 exercises') && !texts.some(t => /\b20\d\d\b|October|Ekim/.test(t)), texts.slice(0, 4).join(' | '));
+    check('görsel: kütüphane kartı ve PDF aynı görseli okur — yapıştırılan önce, sonra program satırının, sonra eski Program Image',
+      A.exPicture({ image: 'a', planImage: 'b', thumb: 'c' }) === 'a' && A.exPicture({ planImage: 'b', thumb: 'c' }) === 'b' &&
+      A.exPicture({ thumb: 'c' }) === 'c' && A.exPicture({}) === '' && A.exPicture(null) === '');
     const dt = fakeDoc();
     A.exLibraryPDF(dt, A.exLibraryEntries(lib, { lang: 'tr' }), { lang: 'tr', untranslated: 2 });
     const tt = dt.calls.filter(c => c.op === 'text').map(c => [].concat(c.a[0]).join(' ')).join('\n');
