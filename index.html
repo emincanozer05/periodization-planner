@@ -895,7 +895,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .calm-mix-lg i{width:8px;height:8px;border-radius:2px;flex:none}
 .calm-mix-lg b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;color:var(--dim);font-weight:600}
 /* ---- the week, summed up above the grid that makes it ----
-   Five cards: which week is on screen, what it loads, how many sessions carry that load,
+   Four cards: what the week loads, how many sessions carry that load,
    how hard they were felt to be, and how alike they were. Every one is read off the same
    numbers as the columns below, so nothing here can contradict the grid. */
 .calw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:11px;margin-bottom:16px}
@@ -15956,9 +15956,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(x.includes('neuromuscular'))return'neuro';
     if(x.includes('cognitive'))return'cog';return'';};
   const ltColor=cls=>cls==='mech'?'var(--accent)':cls==='metab'?'var(--peak-t)':cls==='neuro'?'var(--med-t)':cls==='cog'?'var(--high-t)':'var(--dim)';
-  const fmtRange=()=>{const ws=weekStart,we=weekEnd;
-    if(ws.getMonth()===we.getMonth())return`${ws.getDate()} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;
-    return`${ws.getDate()} ${MN[ws.getMonth()]} – ${we.getDate()} ${MN[we.getMonth()]} ${we.getFullYear()}`;};
   // ---- Week monotony (Foster) for the week on screen. Same helper the Load Monitoring
   // card uses, so the two screens can never show different numbers for the same week. ----
   const weekMonoV=useMemo(()=>teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart]);
@@ -16035,16 +16032,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     athletes={teamMode?athletes:undefined} staff={staff}/>}
   <div className="panel">
     {calMode==='week'?<>
-    {/* The week in five numbers, before the seven columns that make them up. */}
+    {/* The week in four numbers, before the seven columns that make them up. */}
     <div className="calw-stats">
-      <div className="cws">
-        <span className="cws-ic blue"><TIc k="cal" size={19}/></span>
-        <div className="cws-tx">
-          <div className="cws-k">{L('Program Bloğu','Program Block')}</div>
-          <div className="cws-v range">{fmtRange()}</div>
-          <div className="cws-s">{L('Haftalık görünüm','Weekly overview')}</div>
-        </div>
-      </div>
       <div className="cws">
         <span className="cws-ic blue"><TIc k="chart" size={19}/></span>
         <div className="cws-tx">
@@ -16125,19 +16114,19 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           {/* Team averages for the day, right under the date: session RPE (0–10) and
               wellness readiness (0–5), each tinted by its own severity scale. The RPE is
               given per kind of session — the check-in asks about S&C, ball practice and
-              the match separately, so the day can say which of them was hard. The match
-              line only appears on a day somebody reported one. */}
+              the match separately, so the day can say which of them was hard. All four
+              rows are always shown (— when empty) so every column lines up. */}
           <div className="calw-avg">
             {teamMode?<>
               <span className="cav" title={L('Bu gün için takım ortalaması Kuvvet & Kondisyon RPE\'si (0–10)','Team average S&C RPE for this day (0–10)')}>
-                <em>{'S&C RPE'}</em><b style={{color:rpeColor(dayRpeSC)||'var(--dim)'}}>{dayRpeSC!=null?dayRpeSC.toFixed(1):'—'}</b>
+                <em>{'S&C'}</em><b style={{color:rpeColor(dayRpeSC)||'var(--dim)'}}>{dayRpeSC!=null?dayRpeSC.toFixed(1):'—'}</b>
               </span>
               <span className="cav" title={L('Bu gün için takım ortalaması top antrenmanı RPE\'si (0–10)','Team average ball practice RPE for this day (0–10)')}>
                 <em>{L('Top Antrenmanı','Ball Practice')}</em><b style={{color:rpeColor(dayRpeTP)||'var(--dim)'}}>{dayRpeTP!=null?dayRpeTP.toFixed(1):'—'}</b>
               </span>
-              {dayRpeGM!=null&&<span className="cav" title={L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
-                <em>{L('MAÇ RPE','MATCH RPE')}</em><b style={{color:rpeColor(dayRpeGM)||'var(--dim)'}}>{dayRpeGM.toFixed(1)}</b>
-              </span>}
+              <span className="cav" title={L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
+                <em>{L('Maç','Match')}</em><b style={{color:rpeColor(dayRpeGM)||'var(--dim)'}}>{dayRpeGM!=null?dayRpeGM.toFixed(1):'—'}</b>
+              </span>
             </>:<span className="cav" title={L('Bu gün için takım ortalaması seans RPE\'si (0–10)','Team average session RPE for this day (0–10)')}>
               <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
             </span>}
