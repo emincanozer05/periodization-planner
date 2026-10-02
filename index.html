@@ -2380,38 +2380,37 @@ tr:hover td{background:rgba(255,255,255,.02)}
   font-size:10px;font-weight:500;padding:3px 9px;border-radius:5px;
   background:var(--bg2);border:1px solid var(--border2);color:var(--text2);
 }
-/* Chip-style filters inside a category */
-/* Library filters (SegFilter): a caption, then the values in one rounded track with a
-   white pill that slides under the picked one. Thin rules part the values, except on
-   either side of the pill, where the pill itself is the separation. */
-.seg-filters{margin-bottom:16px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 22px;align-items:center}
-/* Each row lays its caption and track into the shared grid, so every track starts on
-   the same line however long the caption beside it is. */
-.seg-row{display:contents}
-.seg-row>.seg{justify-self:start}
-.seg-lbl{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;
-  color:var(--dim);text-transform:uppercase;letter-spacing:.14em}
-.seg{position:relative;display:flex;align-items:center;min-width:0;max-width:100%;padding:3px;
-  border:1px solid var(--border2);border-radius:999px;background:rgba(255,255,255,.025);
-  overflow-x:auto;scrollbar-width:none}
-.seg::-webkit-scrollbar{display:none}
-.seg-pill{position:absolute;top:3px;bottom:3px;border-radius:999px;background:#fff;
-  box-shadow:0 2px 8px rgba(0,0,0,.35);transition:left .32s cubic-bezier(.2,.7,.3,1),width .32s cubic-bezier(.2,.7,.3,1)}
-.seg-opt{position:relative;z-index:1;flex:none;background:none;border:0;border-radius:999px;cursor:pointer;
-  padding:5px 16px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;line-height:1.1;
-  transition:color .25s ease}
-.seg-opt:hover:not(.on){color:#fff}
-/* The picked label darkens a beat after the pill starts moving, so it turns dark as the
-   pill arrives under it rather than going dark on the dark track first. */
-.seg-opt.on{color:#0a0b0d;transition:color .2s ease .14s}
-.seg-opt+.seg-opt::before{content:'';position:absolute;left:0;top:28%;bottom:28%;width:1px;background:var(--border2);transition:opacity .2s}
-.seg-opt.on::before,.seg-opt.on+.seg-opt::before{opacity:0}
-@media(max-width:700px){
-  .seg-filters{grid-template-columns:minmax(0,1fr);row-gap:6px}
-  .seg-row>.seg{margin-bottom:6px}
-  .seg-opt{padding:5px 13px;font-size:12px}
-}
-@media(prefers-reduced-motion:reduce){.seg-pill{transition:none}}
+/* Library filters (FilterDD): one compact button per filter in a single wrapping row —
+   the filter's name, the value picked (or "All") and a caret. A click opens the values as
+   a list under it. A button with a value set is lit in the accent colour, so what is
+   narrowing the grid reads at a glance; "Clear" drops them all at once. */
+.exf-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}
+.exf{position:relative}
+.exf-btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px 0 12px;border-radius:9px;
+  border:1px solid var(--border2);background:rgba(255,255,255,.025);color:var(--text);cursor:pointer;
+  font-family:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;transition:border-color .15s,background .15s}
+.exf-btn:hover{border-color:var(--muted);background:rgba(255,255,255,.05)}
+.exf-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.08em}
+.exf-v{color:var(--text2)}
+.exf-car{font-size:10px;color:var(--dim);transition:transform .15s}
+.exf.open .exf-car{transform:rotate(180deg)}
+.exf.on .exf-btn{border-color:var(--accent);background:var(--accent-bg)}
+.exf.on .exf-v{color:var(--accent2)}
+.exf-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:100%;max-width:calc(100vw - 32px);
+  max-height:320px;overflow-y:auto;padding:5px;border-radius:11px;background:var(--elevated);
+  border:1px solid var(--border2);box-shadow:0 14px 34px -10px rgba(0,0,0,.7)}
+.exf-menu.right{left:auto;right:0}
+.exf-opt{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:7px 10px;
+  border:0;border-radius:7px;background:none;color:var(--text);font-family:inherit;font-size:12.5px;font-weight:500;
+  text-align:left;white-space:nowrap;cursor:pointer}
+.exf-opt:hover{background:var(--hover)}
+.exf-opt.on{color:var(--accent2);font-weight:600}
+.exf-opt b{font-size:11px}
+.exf-clear{height:32px;padding:0 10px;border:0;background:none;color:var(--muted);font-family:inherit;
+  font-size:12px;font-weight:600;cursor:pointer;border-radius:8px}
+.exf-clear:hover{color:var(--text);background:rgba(255,255,255,.05)}
+@media(max-width:700px){.exf-btn{height:34px}}
 /* Difficulty badge on the exercise card */
 .ex-cbody{position:relative}
 .diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -28786,36 +28785,32 @@ const ExerciseCard=React.memo(ExerciseCardRaw);
    they get two shelves rather than one list with a filter on it. An entry saved before
    ball practice existed has no `lib` and is S&C, which is what it was. */
 const exLib=e=>(e&&e.lib==='ball')?'ball':'sc';
-/* One library filter as a segmented pill: the caption on the left, "All" and the
-   values in one rounded track, and a white pill under the picked one that slides to
-   whichever value is picked next. The pill is measured off the picked button rather
-   than computed, so it fits any label length; a long row scrolls inside its track. */
-function SegFilter({label,values,value,onChange}){
-  const trackRef=useRef(null);
-  const[pill,setPill]=useState(null);
-  const opts=['',...values];
+/* One library filter as a dropdown: a compact button carrying the filter's name and the
+   value picked, opening the values as a list. A row of these fits every filter of a
+   category on one line, where a track of every value ran off the screen. */
+function FilterDD({label,values,value,onChange}){
+  const[open,setOpen]=useState(false);
+  const[right,setRight]=useState(false);
+  const ref=useRef(null),menuRef=useRef(null);
+  useDDOutside([ref],open,()=>setOpen(false));
+  /* A list opened near the right edge of the screen hangs leftward instead of off it. */
   useLayoutEffect(()=>{
-    const measure=()=>{
-      const t=trackRef.current;
-      const b=t&&t.querySelector('.seg-opt.on');
-      if(!b){setPill(null);return;}
-      const next={left:b.offsetLeft,width:b.offsetWidth};
-      setPill(p=>p&&p.left===next.left&&p.width===next.width?p:next);
-    };
-    measure();
-    const t=trackRef.current;
-    const ro=(typeof ResizeObserver==='function'&&t)?new ResizeObserver(measure):null;
-    if(ro)ro.observe(t);
-    return()=>{ro&&ro.disconnect();};
-  },[value,values.join('|'),REPORT_LANG]);
-  return(<div className="seg-row">
-    <span className="seg-lbl">{label}</span>
-    <div className="seg" ref={trackRef} role="radiogroup" aria-label={label}>
-      {pill&&<span className="seg-pill" style={{left:pill.left,width:pill.width}} aria-hidden="true"/>}
-      {opts.map(v=><button key={v||'__all'} type="button" role="radio" aria-checked={value===v}
-        className={'seg-opt'+(value===v?' on':'')} onClick={()=>onChange(v)}>
-        {v?exLabel(v):L('Tümü','All')}</button>)}
-    </div>
+    if(!open){setRight(false);return;}
+    const m=menuRef.current;
+    if(m&&m.getBoundingClientRect().right>window.innerWidth-8)setRight(true);
+  },[open]);
+  const pick=v=>{onChange(v);setOpen(false);};
+  return(<div className={'exf'+(value?' on':'')+(open?' open':'')} ref={ref}>
+    <button type="button" className="exf-btn" onClick={()=>setOpen(o=>!o)} aria-haspopup="listbox" aria-expanded={open}>
+      <span className="exf-k">{label}</span>
+      <span className="exf-v">{value?exLabel(value):L('Tümü','All')}</span>
+      <span className="exf-car" aria-hidden="true">▾</span>
+    </button>
+    {open&&<div className={'exf-menu'+(right?' right':'')} ref={menuRef} role="listbox" aria-label={label}>
+      {['',...values].map(v=><button key={v||'__all'} type="button" role="option" aria-selected={value===v}
+        className={'exf-opt'+(value===v?' on':'')} onClick={()=>pick(v)}>
+        {v?exLabel(v):L('Tümü','All')}{value===v?<b>✓</b>:null}</button>)}
+    </div>}
   </div>);
 }
 function ExercisesView({data,setData}){
@@ -28977,9 +28972,10 @@ function ExercisesView({data,setData}){
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
-    {dims.length>0&&<div className="seg-filters">
-      {dims.map(d=><SegFilter key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
+    {dims.length>0&&<div className="exf-bar">
+      {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
         value={filt[d.key]||''} onChange={v=>setFilt(f=>({...f,[d.key]:v}))}/>)}
+      {filtered&&<button type="button" className="exf-clear" onClick={()=>setFilt({})}>✕ {L('Temizle','Clear')}</button>}
     </div>}
     {list.length===0&&<div className="ex-empty">{(filtered||q)
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
