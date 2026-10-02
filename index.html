@@ -28084,7 +28084,7 @@ function CloudBar({sync,onOpen}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility','Stability','Balance','Accessory'];
+const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility','Stability','Balance','Corrective','Accessory'];
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
 // Phosphor color for each category tile.
 const TYPE_COLORS={
@@ -28101,6 +28101,7 @@ const TYPE_COLORS={
   'Mobility':'#a7f3d0',                  // mint
   'Stability':'#93c5fd',                 // light blue
   'Balance':'#fde68a',                   // pale yellow
+  'Corrective':'#f0abfc',                // orchid
   'Accessory':'#cbd5e1',                 // slate
 };
 const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-Up'];
@@ -28135,6 +28136,10 @@ const SUB_TYPES={
   /* Balance is filed by the demand it makes: holding still, holding while moving, holding
      on one leg, and recovering from a perturbation — the order balance work progresses in. */
   'Balance':{label:'Category',values:['Static Balance','Dynamic Balance','Unilateral Balance','Reactive Balance']},
+  /* Corrective work is filed by what it restores, in the order a return runs: range
+     first, then control of it, then the quality of the movement, then performance. The
+     body region it targets is its own filter (EX_EXTRA_FILTERS). */
+  'Corrective':{label:'Type',values:['Mobility','Stability','Movement Quality','Return to Performance']},
   /* Accessory work is filed by where it goes, with prehab as its own shelf: the
      injury-prevention pieces are what a coach looks for first when writing a warm-up. */
   'Accessory':{label:'Region',values:['Upper Body','Lower Body','Shoulder & Scapula','Hip & Hamstring','Prehab & Injury Prevention']},
@@ -28160,12 +28165,15 @@ const EX_EXTRA_FILTERS={
     {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
   'Core':[{key:'position',label:'Position',values:EX_POSITIONS}],
   'Mobility':[{key:'position',label:'Position',values:EX_POSITIONS}],
+  /* Read top to bottom, foot to hand, with the whole-body pieces last. */
+  'Corrective':[{key:'bodyRegion',label:'Region',values:['Foot & Ankle','Knee','Hip','Pelvis','Lumbar Spine',
+    'Thoracic Spine','Shoulder','Elbow & Wrist','Full Body']}],
   'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
   'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
   'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
   'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
 };
-const EX_EXTRA_KEYS=['exKind','technique','position','equipment'];
+const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion'];
 /* Every fixed taxonomy term across the app (exercise type/muscle/difficulty,
    session focus, periodization model, load type, …) is stored in English as
    the canonical value — filtering, saved data, and the report generator key
@@ -28206,6 +28214,9 @@ const EX_TERM_TR={
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
+  'Type':'Tip','Return to Performance':'Performansa Dönüş',
+  'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
+  'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
   'Linear':'Doğrusal','Block':'Blok','Undulating':'Dalgalı','Conjugate':'Konjuge',
   'General':'Genel','Specific':'Özel','Competition':'Müsabaka','Transition':'Geçiş',
@@ -28926,7 +28937,7 @@ function ExercisesView({data,setData}){
     </div>);
   // Top-right category dropdown (label → the active shelf's own category values).
   const CAT_OPTIONS=ball?BALL_TYPES.map(t=>[t,t])
-    :[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Accessory','Accessory']];
+    :[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
   // Every option carries its exercise count in parentheses, so the coach sees how
   // full each category is without opening it.
   const catDropdown=(
@@ -31646,6 +31657,9 @@ function atpClassify(row,libMap){
     put('Category',pick(sub,V('Category')));
   }else if(cat==='Stability'||cat==='Accessory'){
     put('Region',pick(sub,V('Region')));
+  }else if(cat==='Corrective'){
+    put('Type',pick(sub,V('Type')));
+    put('Region',pick(lib.bodyRegion,V('Region')));
   }
   return{family,patterns:[...pats],stimuli:[...st],loading:[...ld],laterality,plane,action,focus,equipment,cat,facets};
 }
@@ -33476,7 +33490,7 @@ const DI_EXT_TASK=[
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
-  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
