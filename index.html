@@ -2410,7 +2410,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .exf-clear{height:32px;padding:0 10px;border:0;background:none;color:var(--muted);font-family:inherit;
   font-size:12px;font-weight:600;cursor:pointer;border-radius:8px}
 .exf-clear:hover{color:var(--text);background:rgba(255,255,255,.05)}
-@media(max-width:700px){.exf-btn{height:34px}}
+/* Level, on the right of the same row: a segmented track — "All", then each level with
+   its own colour dot. The picked level lights its segment in that level's colour, the
+   same green / amber / red the badge on the card wears. */
+.exf-lvl{margin-left:auto;display:inline-flex;align-items:center;gap:2px;height:32px;padding:3px;border-radius:10px;
+  border:1px solid var(--border2);background:rgba(255,255,255,.025)}
+.exf-lvl-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.08em;padding:0 8px 0 7px}
+.exf-lvl button{--lc:var(--text);display:inline-flex;align-items:center;gap:6px;height:100%;padding:0 11px;border:1px solid transparent;
+  border-radius:7px;background:none;color:var(--text2);font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;
+  white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.exf-lvl button:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.exf-lvl button i{width:7px;height:7px;border-radius:50%;background:var(--lc);flex:none}
+.exf-lvl button.on{color:var(--text);background:color-mix(in srgb,var(--lc) 16%,transparent);
+  border-color:color-mix(in srgb,var(--lc) 55%,transparent)}
+.exf-lvl button.all.on{--lc:#ffffff;background:rgba(255,255,255,.1);border-color:var(--border2)}
+@media(max-width:700px){.exf-btn,.exf-lvl{height:34px}.exf-lvl{margin-left:0}}
 /* Difficulty badge on the exercise card */
 .ex-cbody{position:relative}
 .diff-badge{display:inline-block;font-size:10px;font-weight:800;padding:3px 9px;border-radius:11px;text-transform:uppercase;letter-spacing:.5px;margin-top:6px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
@@ -28819,6 +28834,17 @@ function FilterDD({label,values,value,onChange}){
     </div>}
   </div>);
 }
+/* The level picker beside the filters: "All" and the three levels, each in its colour. */
+function LevelSeg({value,onChange}){
+  return(<div className="exf-lvl" role="radiogroup" aria-label={L('Seviye','Level')}>
+    <span className="exf-lvl-k">{L('Seviye','Level')}</span>
+    <button type="button" role="radio" aria-checked={!value} className={'all'+(!value?' on':'')} onClick={()=>onChange('')}>
+      {L('Tümü','All')}</button>
+    {DIFFICULTIES.map(d=><button key={d} type="button" role="radio" aria-checked={value===d}
+      className={value===d?'on':''} style={{'--lc':DIFF_COLOR[d]}} onClick={()=>onChange(value===d?'':d)}
+      title={exLabel(d)}><i/>{d.replace(/\D+/g,'')}</button>)}
+  </div>);
+}
 function ExercisesView({data,setData}){
   const[libTab,setLibTab]=useState('sc');       // 'sc' | 'ball' — which shelf is open
   const ball=libTab==='ball';
@@ -28951,12 +28977,13 @@ function ExercisesView({data,setData}){
     lift&&PATTERNS_FOR[activeType]&&{key:'pattern',label:'Movement Pattern',values:PATTERNS_FOR[activeType]},
     ...(lift?(EX_EXTRA_FILTERS[activeType]||[]):[]),
   ].filter(Boolean);
-  const filtered=dims.some(d=>filt[d.key]);
+  const filtered=dims.some(d=>filt[d.key])||!!filt.difficulty;
   const ql=q.toLowerCase();
   const list=exercises.filter(e=>{
     if(isUncat){if(TYPES.includes(e.type))return false;}
     else if(e.type!==activeType)return false;
     if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
+    if(filt.difficulty&&e.difficulty!==filt.difficulty)return false;
     return dims.every(d=>!filt[d.key]||e[d.key]===filt[d.key]);
   });
 
@@ -28978,11 +29005,12 @@ function ExercisesView({data,setData}){
       <button className="btn sm" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
-    {dims.length>0&&<div className="exf-bar">
+    <div className="exf-bar">
       {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
         value={filt[d.key]||''} onChange={v=>setFilt(f=>({...f,[d.key]:v}))}/>)}
       {filtered&&<button type="button" className="exf-clear" onClick={()=>setFilt({})}>✕ {L('Temizle','Clear')}</button>}
-    </div>}
+      <LevelSeg value={filt.difficulty||''} onChange={v=>setFilt(f=>({...f,difficulty:v}))}/>
+    </div>
     {list.length===0&&<div className="ex-empty">{(filtered||q)
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
       :(ball?L('Bu kategoride dril yok. ','No drills in this category. '):L('Bu kategoride egzersiz yok. ','No exercises in this category. '))}
