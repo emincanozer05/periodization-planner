@@ -36228,10 +36228,13 @@ function alertRosterRev(team){
   const parts=[(team.setup&&team.setup.teamName)||''];
   (team.staff||[]).forEach(m=>parts.push(
     [m.id,m.role,(m.name||'').trim(),(m.athleteIds||[]).slice().sort().join('+')].join(':')));
+  // Sporcu listesi de damganın parçası: ekip üyesinin sayfasındaki "kim doldurdu,
+  // kim doldurmadı" şeridi bu listeye bakıyor; kadroya eklenen sporcu orada görünsün.
+  (team.athletes||[]).forEach(a=>parts.push('a:'+a.id+':'+(a.name||'').trim()));
   const s=parts.join('|');
   let h=5381;
   for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;
-  return h.toString(36)+'.'+(team.staff||[]).length;
+  return h.toString(36)+'.'+(team.staff||[]).length+'.'+(team.athletes||[]).length;
 }
 
 /* Sunucunun okuyacağı kadro özeti. Yalnızca uyarı yönlendirmesi için gereken
@@ -36254,6 +36257,10 @@ async function publishAlertRoster(uid_,team){
       // takımın tamamını kapsıyor ve listeyi taşımalarının bir anlamı yok.
       athleteIds:m.role===INDIVIDUAL_ROLE?(m.athleteIds||[]):[],
     })),
+    /* Sporcuların yalnızca kimliği ve adı — ekip üyesinin sayfası bugünkü kayıtları
+       bununla karşılaştırıp formu henüz doldurmayanları gösteriyor. Aynı adlar zaten
+       uyarı kayıtlarında ve check-in linkinde duruyor; yeni bir bilgi açılmıyor. */
+    athletes:(team.athletes||[]).map(a=>({id:a.id,name:(a.name||'').trim()})).filter(a=>a.name),
     rev:alertRosterRev(team),updatedAt:new Date().toISOString(),
   });
 }

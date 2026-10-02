@@ -79,10 +79,19 @@ service cloud.firestore {
     }
 
     /* Takımın kadro özeti — function'ın "bu sporcunun uyarısı kime gider"
-       sorusunu cevaplamak için okuduğu tek doküman. Koçun uygulaması yazıyor,
-       başka kimse okumuyor: ekip üyesinin sayfası buna ihtiyaç duymuyor. */
+       sorusunu cevaplamak için okuduğu tek doküman. Koçun uygulaması yazıyor.
+       Eşleşmiş ekip üyesi de YALNIZCA kendi takımınınkini tek tek okuyabiliyor
+       (listeleyemiyor): sayfasındaki "kim doldurdu, kim doldurmadı" şeridi
+       sporcu listesini buradan alıyor. */
     match /alert_roster/{docId} {
+      function member() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
       allow read: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      allow get: if request.auth != null
+        && exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+        && member().coachUid == resource.data.coachUid
+        && member().teamId   == resource.data.teamId;
       allow create, update: if request.auth != null && request.auth.uid == request.resource.data.coachUid;
       allow delete: if request.auth != null && request.auth.uid == resource.data.coachUid;
     }
