@@ -28150,7 +28150,7 @@ const SUB_TYPES={
 /* One equipment list for every category that is filed by it — the same choices, in the
    same order, whether the lift is a push, a pull, a hinge or a squat. */
 const EX_EQUIPMENT=['Barbell','Trap Bar','Dumbbell','Kettlebell','Machine','Cable','Band','TRX','Landmine','Sled',
-  'Battle Rope','Stability Ball','BOSU','Medicine Ball','Bodyweight'];
+  'Battle Rope','Stability Ball','BOSU','Medicine Ball','Box','Bodyweight'];
 /* Jumps are set up with their own kit — what the athlete jumps onto, over or through,
    what loads or resists the jump, and what measures it — so Plyometric has its own list. */
 const EX_PLYO_EQUIPMENT=['No Equipment','Box','Resistance Band','Hurdle','Mini Hurdle','Agility Ladder','Cone','Jump Rope',
@@ -28160,7 +28160,7 @@ const EX_EXTRA_FILTERS={
   'Plyometric':[
     {key:'exKind',label:'Exercise Type',values:['Jump','Hop','Bound','Drop Jump','Landing']},
     {key:'technique',label:'Technique',values:['Bilateral','Unilateral']},
-    {key:'equipment',label:'Equipment',values:EX_PLYO_EQUIPMENT}],
+    {key:'equipment',label:'Equipment',values:EX_PLYO_EQUIPMENT,multi:true}],
   'Medicine Ball':[
     {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
   'Core':[{key:'position',label:'Position',values:EX_POSITIONS}],
@@ -28168,12 +28168,16 @@ const EX_EXTRA_FILTERS={
   /* Read top to bottom, foot to hand, with the whole-body pieces last. */
   'Corrective':[{key:'bodyRegion',label:'Region',values:['Foot & Ankle','Knee','Hip','Pelvis','Lumbar Spine',
     'Thoracic Spine','Shoulder','Elbow & Wrist','Full Body']}],
-  'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
-  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
-  'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
-  'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT}],
+  'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
 };
 const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion'];
+/* A `multi` filter (Equipment) holds a list — a step-up takes dumbbells AND a box. Entries
+   saved before it became a list hold one string; both read the same through exMulti. */
+const exMulti=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
+const exEquipText=v=>exMulti(v).join(', ');
 /* Every fixed taxonomy term across the app (exercise type/muscle/difficulty,
    session focus, periodization model, load type, …) is stored in English as
    the canonical value — filtering, saved data, and the report generator key
@@ -28597,16 +28601,15 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
   const viewRight=(
     <div className="ex-modal-right">
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-        {metaBox(ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type'),exLabel(ex.type))}
-        {SUBS[ex.type]&&metaBox(exLabel(SUBS[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
+        {/* At a glance the coach needs what to set up and how hard it is; the filing
+            (type, sub-type, action, pattern…) is on the edit side. A drill keeps its
+            type and player count, which is how a drill is read. */}
+        {ball&&metaBox(L('Dril Tipi','Drill Type'),exLabel(ex.type))}
+        {ball&&SUBS[ex.type]&&metaBox(exLabel(SUBS[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
         {ball&&metaBox(L('Oyuncu','Players'),ex.players)}
-        {!ball&&ACTIONS_FOR[ex.type]&&metaBox(exLabel('Action'),ex.action?exLabel(ex.action):'—')}
-        {!ball&&PATTERNS_FOR[ex.type]&&metaBox(L('Hareket Örüntüsü','Movement Pattern'),ex.pattern?exLabel(ex.pattern):'—')}
-        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).map(d=><React.Fragment key={d.key}>{metaBox(exLabel(d.label),ex[d.key]?exLabel(ex[d.key]):'—')}</React.Fragment>)}
+        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).some(d=>d.key==='equipment')
+          &&metaBox(exLabel('Equipment'),exMulti(ex.equipment).map(exLabel).join(', ')||'—')}
         {metaBox(L('Zorluk','Difficulty'),exLabel(ex.difficulty),ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
-        {/* The pair every program fills in from here, and writes back to when it is
-            tagged on a session. Shown together because one is meaningless alone. */}
-        {(ex.exPattern||ex.exPlane)&&metaBox(L('Örüntü · Uygulama','Pattern · Execution'),[ex.exPattern,ex.exPlane].filter(Boolean).join(' · '))}
       </div>
       {ball&&!sceneIsEmpty(ex.court)&&<div style={{marginBottom:14}}>
         <span style={metaLbl}>{L('Saha Çizimi','Court Diagram')}</span>
@@ -28657,7 +28660,15 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             {ACTIONS_FOR[ex.type].map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
           </select>
         </div>}
-        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).map(d=><div key={d.key}><label>{exLabel(d.label)}</label>
+        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).map(d=>d.multi?<div key={d.key}><label>{exLabel(d.label)}</label>
+          <div className="mus-pick">
+            {exMulti(ex[d.key]).map(v=><span key={v} className="mus-chip on">{exLabel(v)}<button type="button" onClick={()=>set(d.key,exMulti(ex[d.key]).filter(x=>x!==v))}>✕</button></span>)}
+            <select value="" onChange={e=>{const v=e.target.value;const list=exMulti(ex[d.key]);if(v&&!list.includes(v))set(d.key,[...list,v]);}}>
+              <option value="">{exMulti(ex[d.key]).length?L('+ Ekle…','+ Add…'):'—'}</option>
+              {d.values.filter(v=>!exMulti(ex[d.key]).includes(v)).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+            </select>
+          </div>
+        </div>:<div key={d.key}><label>{exLabel(d.label)}</label>
           <select value={ex[d.key]||''} onChange={e=>set(d.key,e.target.value)}>
             <option value="">—</option>
             {d.values.map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
@@ -28999,7 +29010,7 @@ function ExercisesView({data,setData}){
     else if(e.type!==activeType)return false;
     if(q&&!(e.name||'').toLowerCase().includes(ql))return false;
     if(filt.difficulty&&e.difficulty!==filt.difficulty)return false;
-    return dims.every(d=>!filt[d.key]||e[d.key]===filt[d.key]);
+    return dims.every(d=>!filt[d.key]||(d.multi?exMulti(e[d.key]).includes(filt[d.key]):e[d.key]===filt[d.key]));
   });
 
   return(<div className="ex-wrap">
@@ -29536,7 +29547,7 @@ function exLibraryEntries(list,opts){
       if(!o.ball){
         if(ACTIONS_FOR[e.type])put(lab('Action'),e.action?lab(e.action):'');
         if(PATTERNS_FOR[e.type])put(lab('Movement Pattern'),e.pattern?lab(e.pattern):'');
-        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),e[d.key]?lab(e[d.key]):''));
+        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),exMulti(e[d.key]).map(lab).join(', ')));
         put('movement_pattern',exPatternOf(e));
       }
       put(T('Zorluk','Difficulty'),e.difficulty?`${lab(e.difficulty)}${LEVEL_LABEL[e.difficulty]?` (${tr?({Beginner:'Başlangıç',Intermediate:'Orta',Advanced:'İleri'}[LEVEL_LABEL[e.difficulty]]):LEVEL_LABEL[e.difficulty]})`:''}`:'');
@@ -31436,7 +31447,7 @@ function atpEquipmentOf(row,lib){
     const h=ATP_EQUIP_RE.find(([,re])=>re.test(s));
     return h?h[0]:'';
   };
-  return find(row&&row.equipment)||find(lib&&lib.equipment)||find(row&&row.name)||'';
+  return find(exEquipText(row&&row.equipment))||find(exEquipText(lib&&lib.equipment))||find(row&&row.name)||'';
 }
 /* Families, read off the exercise's name, most specific first: a "Split Squat Jump" is
    a jump before it is a split squat, a "Nordic Hamstring Curl" a curl whatever else. */
@@ -31643,7 +31654,7 @@ function atpClassify(row,libMap){
     put('Exercise Type',kind);
     put('Technique',pick(lib.technique,V('Technique'))
       ||(/single[- ]?leg|one[- ]?leg|\bsl\b|tek bacak|unilateral|skater|alternating/.test(n)?'Unilateral':(kind==='Hop'||kind==='Bound'||!kind)?'':'Bilateral'));
-    put('Equipment',pick(lib.equipment,V('Equipment'))||eqIn('Equipment')||(equipment==='Bodyweight'?'No Equipment':''));
+    put('Equipment',exMulti(lib.equipment).find(x=>V('Equipment').includes(x))||eqIn('Equipment')||(equipment==='Bodyweight'?'No Equipment':''));
   }else if(cat==='Medicine Ball'){
     put('Direction',pick(sub,V('Direction'))||(/rotational|rotation|twist|russian|side (toss|throw)|lateral/.test(n)?'Rotational'
       :/overhead|slam|vertical|scoop/.test(n)?'Vertical':/chest pass|horizontal|push pass|wall throw/.test(n)?'Horizontal':''));
@@ -32225,7 +32236,7 @@ const EQ_KEYWORDS=[
   {id:'machine', kw:['machine','makine','leg press','leg curl','leg extension','smith']},
 ];
 function eqNeedOf(libItem,text){
-  const tagged=[libItem&&libItem.equipment,...((libItem&&Array.isArray(libItem.equipmentTags))?libItem.equipmentTags:[])]
+  const tagged=[...exMulti(libItem&&libItem.equipment),...((libItem&&Array.isArray(libItem.equipmentTags))?libItem.equipmentTags:[])]
     .filter(Boolean).map(x=>String(x).toLowerCase());
   for(const e of EQ_KEYWORDS)if(tagged.some(t=>t.includes(e.id)))return e.id;
   const s=String(text==null?'':text).toLowerCase();
@@ -34471,7 +34482,7 @@ function diSessionRows(ses,program){
       const src=byName[lo(e.name)]||null;
       const dose={sets:e.sets||'',reps:e.reps||'',duration:e.duration||''};
       out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
-        pattern:e.pattern||(src&&src.pattern)||'',equipment:(src&&src.equipment)||'',
+        pattern:e.pattern||(src&&src.pattern)||'',equipment:exEquipText(src&&src.equipment),
         why:exDesc(e),basis:(src&&src.basis)||[],
         load:e.load||'',tempo:e.tempo||'',rest:e.rest||'',
         prescribed:dose,adjusted:dose,changed:false});
