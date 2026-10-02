@@ -57,11 +57,16 @@
   DİL: sağ üstteki TR / EN seçimi telefonda saklanıyor; sayfa her açılışta o dilde
   açılıyor ve bildirimler de o dilde geliyor (cihaz kaydındaki `lang`).
 
-  SAYFA YALNIZCA BUGÜNÜ GÖSTERİYOR. Liste önceden tarih sırasıyla son 50 kaydı
-  diziyordu; sabah telefonu açan antrenörün ekranında dünün (bazen önceki günün)
-  satırları duruyordu ve hangisinin bugüne ait olduğu ancak küçük gri tarihten
-  okunabiliyordu. Bu ekranın tek sorusu "bu sabah kiminle ilgilenmeliyim" — geçmiş
-  günler uygulamanın kendi sporcu ekranında zaten duruyor.
+  SAYFA TEK BİR GÜNÜ GÖSTERİYOR — açılışta bugünü. Liste önceden tarih sırasıyla
+  son 50 kaydı diziyordu; sabah telefonu açan antrenörün ekranında dünün (bazen
+  önceki günün) satırları duruyordu ve hangisinin bugüne ait olduğu ancak küçük gri
+  tarihten okunabiliyordu. Geçmişe bakmak isteyen, sekmelerin üstündeki gün
+  seçicisiyle (‹ ›, ya da tarihe dokunup takvimden) bir günü bütünüyle açıyor:
+  karışık bir liste yerine yine tek ve adı yazılı bir gün.
+
+  KİM DOLDURDU, KİM DOLDURMADI: listenin üstündeki ince şerit, seçili günün
+  kayıtlarını takımın sporcu listesiyle (alert_roster.athletes) karşılaştırıyor.
+  Kapalıyken tek satır; dokununca eksik ve dolduran isimler açılıyor.
 -->
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -92,26 +97,79 @@ header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
 .seg button.on{background:#0094ff;color:#fff}
 .topbar{display:flex;justify-content:flex-end;margin:-8px 0 4px}
 .seg.lang button{padding:4px 10px;font-size:11.5px}
-.tabs{display:flex;margin:26px 0 0}
+.tabs{display:flex;margin:12px 0 0}
 .tabs button{flex:1;padding:10px 12px;font-size:15px;letter-spacing:.02em}
 .tabs button .n{display:inline-block;min-width:20px;margin-left:7px;padding:0 6px;border-radius:999px;
   background:rgba(255,255,255,.08);font-size:12px;font-variant-numeric:tabular-nums}
 .tabs button.on .n{background:rgba(255,255,255,.22)}
 .tabs{width:100%}
 
+/* ── Gün seçici ─────────────────────────────────────────────────────────── */
+.daynav{display:flex;align-items:center;gap:8px;margin:20px 0 0}
+.daynav .arr{flex:none;width:38px;height:38px;border-radius:50%;border:1px solid #232a30;background:#131619;
+  color:#c6d0d8;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.daynav .arr:disabled{opacity:.3;cursor:default}
+.daynav .arr.back svg{transform:rotate(180deg)}
+/* Ortadaki etiket: üstüne şeffaf bir tarih alanı biniyor, dokununca telefonun
+   kendi takvimi açılıyor — uzak bir güne ok ok gitmek gerekmesin. */
+.daynav .day{position:relative;flex:1;min-width:0;height:38px;border-radius:999px;border:1px solid #232a30;
+  background:#131619;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;
+  white-space:nowrap;overflow:hidden}
+.daynav .day b{font-weight:700}
+.daynav .day span{color:#7d8894}
+.daynav .day.past{border-color:rgba(0,148,255,.55)}
+.daynav .day input{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0;margin:0;
+  cursor:pointer;-webkit-appearance:none;appearance:none}
+/* "Bugüne dön": geçmiş bir gün açıkken bölüm başlığının sağında. */
+.go-today{flex:none;margin-left:auto;align-self:center;border:0;background:none;color:#0094ff;font:inherit;
+  font-weight:700;font-size:13px;letter-spacing:0;text-transform:none;cursor:pointer;padding:4px 2px}
+.go-today[hidden]{display:none}
+
+/* ── Kim doldurdu şeridi ─────────────────────────────────────────────────────
+   Kapalıyken TEK satır: ince bir doluluk çubuğu ve "12/15 · 3 eksik". Dokununca
+   isimler açılıyor. Alan kaplamaması isteğin kendisiydi: liste hâlâ ekranın işi. */
+.fill{margin:14px 0 0;background:#131619;border:1px solid #1e2429;border-radius:12px;overflow:hidden}
+.fill[hidden]{display:none}
+.fill .hd{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;background:none;
+  color:inherit;font:inherit;cursor:pointer;text-align:left}
+.fill .meter{flex:1;min-width:40px;height:6px;border-radius:999px;background:#242a30;overflow:hidden}
+.fill .meter i{display:block;height:100%;border-radius:999px;background:#2fe0a8;transition:width .25s ease}
+.fill .lbl{flex:none;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fill .lbl b{font-weight:700}
+.fill .lbl .miss{color:#fcd34d;font-weight:600}
+.fill .lbl .all{color:#2fe0a8;font-weight:600}
+.fill .chev{flex:none;color:#6c7681;display:inline-flex;transition:transform .18s ease}
+.fill.open .chev{transform:rotate(90deg)}
+.fill .ls{display:none;padding:2px 12px 12px;border-top:1px solid #1e2429}
+.fill.open .ls{display:block}
+.fill .gh{margin:10px 0 6px;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:#7d8894}
+.fill .nm{display:flex;flex-wrap:wrap;gap:6px}
+.fill .p{font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid;line-height:1.35}
+.fill .p.no{color:#fcd34d;border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.06)}
+.fill .p.yes{color:#8fe9cd;border-color:rgba(47,224,168,.3);background:rgba(47,224,168,.05)}
+
 /* ── Kurulum kartı ──────────────────────────────────────────────────────── */
 .card{position:relative;overflow:hidden;border-radius:16px;padding:20px 18px;margin-bottom:14px;
   background:linear-gradient(135deg,rgba(21,58,54,.55),rgba(14,22,26,.75));
   border:1px solid #1e4a45}
 .card.plain{background:#131619;border-color:#232a30}
-.card .body{position:relative;z-index:1;max-width:calc(100% - 118px)}
-.card.nophone .body{max-width:100%}
+.card .body{position:relative;z-index:1}
 .card h2{margin:0 0 6px;font-size:19px;font-weight:700;line-height:1.25;letter-spacing:-.01em}
 .card p{margin:0;color:#8d9aa4;font-size:14px}
-/* Telefon çizimi kartın sağ yarısında duruyor; dar ekranda gövdeyle çakışmaması
-   için 400 pikselin altında tamamen kalkıyor (metin her zaman kazanıyor). */
-.phone{position:absolute;right:14px;top:50%;transform:translateY(-50%);z-index:0;opacity:.85}
-@media (max-width:399px){.phone{display:none}.card .body{max-width:100%}}
+
+/* Bildirim kartının ince hâli. Kart her açılışta ekranın en üstünde duruyor ve iş
+   bir kez yapılıp bitiyor (izin bir kez veriliyor) — büyük bir kart, asıl içeriği,
+   yani sporcuları, ekranın altına itiyordu. Artık tek satır: zil, başlık, düğme.
+   Açıklama satırı yalnızca bildirimler henüz kapalıyken görünüyor. */
+.card.compact{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-radius:14px}
+.card.compact .bell{flex:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;background:rgba(47,224,168,.12);color:#2fe0a8}
+.card.compact .body{flex:1;min-width:0;max-width:none}
+.card.compact h2{margin:0;font-size:14.5px;line-height:1.3}
+.card.compact p{font-size:12.5px;line-height:1.35;margin-top:2px}
+.card.compact .btn{flex:none;margin-top:0;padding:7px 14px;font-size:13px}
+.card.compact .btn.on{border-color:rgba(47,224,168,.45);opacity:1}
+.card.compact + .msgbox .msg{margin:-6px 0 14px}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
   margin-top:16px;padding:12px 22px;border-radius:999px;border:1.5px solid #2fe0a8;
@@ -129,7 +187,7 @@ ol li{margin-bottom:5px}
 code{font-family:ui-monospace,monospace;font-size:11.5px;background:rgba(0,0,0,.35);padding:1px 5px;border-radius:4px}
 
 /* ── Bölüm başlığı ──────────────────────────────────────────────────────── */
-.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;margin:30px 2px 14px}
+.sec-h{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:10px;row-gap:2px;margin:22px 2px 14px}
 .sec-h .t{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .sec-h .c{font-size:14px;color:#6c7681}
 
@@ -289,9 +347,10 @@ var I18N={
     blocked_h:'Bildirimler bu tarayıcıda engellenmiş',
     blocked_p:'Adres çubuğundaki kilit simgesine dokunup site ayarlarından bildirimlere izin ver, sonra sayfayı yenile.',
     push_h:'Wellness uyarılarını telefonuna al',
-    push_p:'Takımından bir sporcunun sabah formu uyarı verdiğinde bu cihaza bildirim gelir.',
-    push_btn:'Bildirimleri aç',
-    push_on:'Bildirimler açık ✓',
+    push_p:'Sabah formu uyarı verdiğinde bu cihaza bildirim gelir.',
+    push_h_on:'Wellness bildirimleri',
+    push_btn:'Aç',
+    push_on:'Açık ✓',
     push_opening:'Açılıyor…',
     push_refresh_fail:'Bildirim kaydı yenilenemedi: ',
     push_refused:'İzin verilmedi. Kayıtları aşağıdaki listeden takip edebilirsin.',
@@ -315,6 +374,14 @@ var I18N={
     records:' kayıt · ',loading:'Yükleniyor…',
     wellness_none:'Bugün henüz wellness formu dolduran yok.',
     rpe_none:'Bugün henüz RPE formu dolduran yok.',
+    wellness_none_past:'Bu gün wellness formu dolduran olmamış.',
+    rpe_none_past:'Bu gün RPE formu dolduran olmamış.',
+    records_only:' kayıt',
+    today:'Bugün',yesterday:'Dün',back_today:'Bugüne dön',
+    prev_day:'Önceki gün',next_day:'Sonraki gün',pick_day:'Gün seç',
+    filled:'doldurdu',missing:' eksik',all_filled:'hepsi doldurdu',
+    not_filled_h:'Doldurmayan',filled_h:'Dolduran',who_filled:'Kim doldurdu',
+    weekdays:['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'],
     read_denied:'Kayıtlar okunamadı. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.',
     read_fail:'Kayıtlar yüklenemedi: ',
     s_tp:'Top antrenmanı',s_sc:'Kuvvet & Kondisyon',s_game:'Müsabaka',
@@ -353,9 +420,10 @@ var I18N={
     blocked_h:'Notifications are blocked in this browser',
     blocked_p:'Tap the lock icon in the address bar, allow notifications in the site settings, then reload the page.',
     push_h:'Get wellness alerts on your phone',
-    push_p:'When an athlete\'s morning check-in raises an alert, this device gets a notification.',
-    push_btn:'Turn on notifications',
-    push_on:'Notifications on ✓',
+    push_p:'This device is notified when a morning check-in raises an alert.',
+    push_h_on:'Wellness notifications',
+    push_btn:'Turn on',
+    push_on:'On ✓',
     push_opening:'Turning on…',
     push_refresh_fail:'Could not refresh the notification registration: ',
     push_refused:'Permission was not granted. You can follow the records in the list below.',
@@ -379,6 +447,14 @@ var I18N={
     records:' records · ',loading:'Loading…',
     wellness_none:'No wellness check-in yet today.',
     rpe_none:'No RPE check-in yet today.',
+    wellness_none_past:'No wellness check-in on this day.',
+    rpe_none_past:'No RPE check-in on this day.',
+    records_only:' records',
+    today:'Today',yesterday:'Yesterday',back_today:'Back to today',
+    prev_day:'Previous day',next_day:'Next day',pick_day:'Pick a day',
+    filled:'filled',missing:' missing',all_filled:'everyone filled',
+    not_filled_h:'Not filled',filled_h:'Filled',who_filled:'Who filled',
+    weekdays:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
     read_denied:'Records could not be read. Tell your coach: the Firestore rules may not be published yet.',
     read_fail:'Records could not be loaded: ',
     s_tp:'Team training',s_sc:'Strength & Conditioning',s_game:'Competition',
@@ -420,12 +496,15 @@ function icon(d,size){
 var ICON={
   sleep:'M3 18v-5a2 2 0 0 1 2-2h11a4 4 0 0 1 4 4v3M3 9v9M3 13h18M7.5 8.5h2',
   fatigue:'M4 8h12a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM21 11v2M5.5 11v2',
-  soreness:'M6.5 8v8M4 9.75v4.5M17.5 8v8M20 9.75v4.5M6.5 12h11',
+  /* Kas ağrısı: kasılmış bir kol (pazı) ve üstünde iki küçük sızı çizgisi — eski
+     dambıl, ağrıyı değil antrenmanı anlatıyordu. */
+  soreness:'M3 20h12.5a5 5 0 0 0 4.8-6.4L17.6 6.6c-.2-2.1-2-3.6-4-3.2-1.6.3-2.2 2-1 2.9l2 1.3.9 4.8c-1.3-1.8-3.4-2.8-5.8-2.6C6.7 9.9 5 11.6 3 13M6.6 7.4 5.6 6M9.8 6.6V5',
   mental:'M12 5a3 3 0 0 0-5.8 1A3 3 0 0 0 4 11a3 3 0 0 0 1.5 5A3 3 0 0 0 12 18zM12 5a3 3 0 0 1 5.8 1A3 3 0 0 1 20 11a3 3 0 0 1-1.5 5A3 3 0 0 1 12 18',
   rpe:'M13 3 5 14h6l-1 7 8-11h-6l1-7z',
   hr:'M20.3 6.6a4.4 4.4 0 0 0-6.2 0L12 8.7l-2.1-2.1a4.4 4.4 0 0 0-6.2 6.2l8.3 8.3 8.3-8.3a4.4 4.4 0 0 0 0-6.2z',
   chev:'M9 6l6 6-6 6',
   down:'M12 4v11m0 0 4.5-4.5M12 15l-4.5-4.5M5 19h14',
+  bell:'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
 };
 function params(){
   var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
@@ -454,6 +533,24 @@ function prettyDate(key){
   if(!m)return String(key||'');
   var mon=T('months')[Number(m[2])-1];
   return LANG==='en'?mon+' '+Number(m[3]):Number(m[3])+' '+mon;
+}
+/* Gün anahtarından ±n gün. Öğlen saatiyle kuruluyor: yaz saati geçişinde gece
+   yarısına kurulmuş bir tarih bir saat kayıp önceki güne düşebiliyor. */
+function keyDate(key){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(key||''));
+  return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12):new Date();
+}
+function addDays(key,n){
+  var d=keyDate(key);d.setDate(d.getDate()+n);
+  return todayKey(d);
+}
+/* Gün seçicinin etiketi: "Bugün · 2 Ekim", "Dün · 1 Ekim", daha eskisi
+   "Pazartesi · 28 Eylül" — haftanın günü, antrenman programıyla eşleştirmeyi kolaylaştırıyor. */
+function dayLabel(key){
+  var t=todayKey();
+  if(key===t)return T('today');
+  if(key===addDays(t,-1))return T('yesterday');
+  return T('weekdays')[keyDate(key).getDay()];
 }
 
 /* Uygulamanın kendi 1-5 renk skalası — checkin.html'deki SCORE_COLORS ile aynı
@@ -785,31 +882,6 @@ function openSession(){
 }
 
 /* ── Bildirim kurulumu ───────────────────────────────────────────────────── */
-/* Karttaki telefon çizimi. Görseldeki gibi: eğik bir telefon gövdesi, içinde bir
-   mesaj kutusu ve sağ üstünde iki kıvılcım. */
-function phoneArt(){
-  var ns='http://www.w3.org/2000/svg';
-  var s=document.createElementNS(ns,'svg');
-  s.setAttribute('viewBox','0 0 120 130');
-  s.setAttribute('width','104');s.setAttribute('height','112');
-  s.setAttribute('fill','none');s.setAttribute('aria-hidden','true');
-  s.setAttribute('class','phone');
-  [['M30 24h44a10 10 0 0 1 10 10v70a10 10 0 0 1-10 10H30a10 10 0 0 1-10-10V34a10 10 0 0 1 10-10z',
-    {stroke:'#2a7d72','stroke-width':'2.4',fill:'rgba(47,224,168,.05)'}],
-   ['M44 31h16',{stroke:'#2a7d72','stroke-width':'2.4','stroke-linecap':'round'}],
-   ['M34 56h36a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6H34a6 6 0 0 1-6-6V62a6 6 0 0 1 6-6z',
-    {fill:'rgba(47,224,168,.16)'}],
-   ['M37 66h22M37 76h14',{stroke:'#8fe9cd','stroke-width':'3','stroke-linecap':'round'}],
-   ['M97 26l6-9M101 40h11M99 52l8 6',{stroke:'#2fe0a8','stroke-width':'3','stroke-linecap':'round'}]
-  ].forEach(function(pair){
-    var p=document.createElementNS(ns,'path');
-    p.setAttribute('d',pair[0]);
-    Object.keys(pair[1]).forEach(function(k){p.setAttribute(k,pair[1][k]);});
-    s.appendChild(p);
-  });
-  return s;
-}
-
 function drawSetup(){
   setupBox.innerHTML='';
   var card=el('div',{class:'card'});
@@ -845,31 +917,46 @@ function drawSetup(){
     return;
   }
 
-  card.appendChild(phoneArt());
-  body.appendChild(el('h2',{text:T('push_h')}));
-  body.appendChild(el('p',{text:T('push_p')}));
-  var msg=el('div');
-  var btn=el('button',{class:'btn',text:T('push_btn'),onclick:function(){enable(btn,msg);}});
-  body.appendChild(btn);
-  body.appendChild(msg);
+  /* İnce kart (CSS'teki .card.compact notuna bak): zil · başlık · düğme. Hata ve
+     uyarı mesajları kartın İÇİNE değil altına düşüyor, satırı bozmasınlar. */
+  card.className='card compact';
+  var bell=el('span',{class:'bell'});
+  bell.appendChild(icon(ICON.bell,18));
+  card.insertBefore(bell,body);
+  var h2=el('h2',{text:T('push_h')});
+  var p=el('p',{text:T('push_p')});
+  body.appendChild(h2);
+  body.appendChild(p);
+  var msg=el('div',{class:'msgbox'});
+  var btn=el('button',{class:'btn',text:T('push_btn'),onclick:function(){enable(btn,msg,setOn);}});
+  card.appendChild(btn);
+  setupBox.appendChild(msg);
+  /* Açık hâli daha da kısa: açıklama kalkıyor, başlık kısalıyor. Düğme kalkmıyor,
+     "Açık ✓" olarak duruyor — ekip üyesi bakınca durumu tek bakışta görsün. */
+  function setOn(on){
+    btn.classList.toggle('on',on);
+    h2.textContent=on?T('push_h_on'):T('push_h');
+    p.hidden=on;
+  }
 
   // Zaten açıksa token'ı sessizce tazele — cihaz token'ları dönebiliyor.
   if(Notification.permission==='granted'){
     btn.disabled=true;
+    btn.textContent=T('push_on');
+    setOn(true);
     register().then(function(){
-      // Görseldeki hâli: düğme kalkmıyor, "Bildirimler açık ✓" olarak duruyor —
-      // ekip üyesi bakınca durumu tek bakışta görsün.
       btn.disabled=true;
       btn.textContent=T('push_on');
     }).catch(function(e){
       btn.disabled=false;
       btn.textContent=T('push_btn');
+      setOn(false);
       show(msg,'warn',T('push_refresh_fail')+((e&&e.message)||e));
     });
   }
 }
 
-function enable(btn,msg){
+function enable(btn,msg,setOn){
   btn.disabled=true;btn.textContent=T('push_opening');
   Notification.requestPermission().then(function(p){
     if(p!=='granted'){
@@ -880,6 +967,8 @@ function enable(btn,msg){
     return register().then(function(){
       btn.disabled=true;
       btn.textContent=T('push_on');
+      msg.innerHTML='';
+      if(setOn)setOn(true);
     });
   }).catch(function(e){
     btn.disabled=false;btn.textContent=T('push_btn');
@@ -1112,19 +1201,48 @@ function rpeCard(r){
    Wellness ve RPE AYNI ANDA dinleniyor, yalnızca biri görünüyor: sekme
    değiştirmek bekletmiyor ve iki sekmenin sayısı da düğmelerin üstünde hep güncel.
    Hangi sekmede kalındığı telefonda hatırlanıyor — sabah wellness'a, akşam RPE'ye
-   bakan antrenör sayfayı son bıraktığı yerde buluyor. */
+   bakan antrenör sayfayı son bıraktığı yerde buluyor.
+
+   Gösterilen gün gün seçiciden geliyor; açılışta her zaman bugün. Seçilen geçmiş
+   gün telefonda HATIRLANMIYOR: ertesi sabah sayfayı açan antrenör dünü değil
+   bugünü görmeli. */
 var LS_TAB='coachos.alerts.tab';
 function watchFeed(){
   feedBox.innerHTML='';
   var tab='wellness';
   try{if(localStorage.getItem(LS_TAB)==='rpe')tab='rpe';}catch(e){}
 
+  /* ── Gün seçici: ‹ Bugün · 2 Ekim › ─────────────────────────────────────── */
+  var prevBtn=el('button',{type:'button',class:'arr back','aria-label':T('prev_day'),title:T('prev_day'),
+    onclick:function(){go(addDays(shownDay,-1));}});
+  prevBtn.appendChild(icon(ICON.chev,18));
+  var nextBtn=el('button',{type:'button',class:'arr','aria-label':T('next_day'),title:T('next_day'),
+    onclick:function(){go(addDays(shownDay,1));}});
+  nextBtn.appendChild(icon(ICON.chev,18));
+  var dayB=el('b'),dayS=el('span');
+  var picker=el('input',{type:'date','aria-label':T('pick_day'),title:T('pick_day'),
+    onchange:function(){if(/^\d{4}-\d{2}-\d{2}$/.test(picker.value))go(picker.value);}});
+  var dayBox=el('div',{class:'day'},[dayB,dayS,picker]);
+  var todayBtn=el('button',{type:'button',class:'go-today',text:T('back_today'),
+    onclick:function(){go(todayKey());}});
+  feedBox.appendChild(el('div',{class:'daynav'},[prevBtn,dayBox,nextBtn]));
+  function drawDay(){
+    var t=todayKey(),isToday=shownDay===t;
+    dayB.textContent=dayLabel(shownDay);
+    dayS.textContent=prettyDate(shownDay);
+    dayBox.classList.toggle('past',!isToday);
+    nextBtn.disabled=shownDay>=t;
+    picker.max=t;
+    picker.value=shownDay;
+    todayBtn.hidden=isToday;
+  }
+
   var tabs=el('div',{class:'seg tabs',role:'tablist'});
   var FEEDS=[
     {id:'wellness',label:T('tab_wellness'),head:T('wellness_h'),col:'wellness_alerts',
-     sort:bySeverity,card:alertCard,none:T('wellness_none')},
+     sort:bySeverity,card:alertCard,none:T('wellness_none'),nonePast:T('wellness_none_past')},
     {id:'rpe',label:T('tab_rpe'),head:T('rpe_h'),col:'rpe_reports',
-     sort:byExertion,card:rpeCard,none:T('rpe_none')},
+     sort:byExertion,card:rpeCard,none:T('rpe_none'),nonePast:T('rpe_none_past')},
   ];
   FEEDS.forEach(function(F){
     F.count=el('span',{class:'n',text:'·'});
@@ -1133,8 +1251,11 @@ function watchFeed(){
     tabs.appendChild(F.btn);
     F.c=el('span',{class:'c',text:''});
     F.list=el('div',{},[el('div',{class:'load',text:T('loading')})]);
+    F.fill=fillStrip();
+    F.rows=null;
     F.pane=el('div',{class:'pane',role:'tabpanel'},[
-      el('div',{class:'sec-h'},[el('span',{class:'t',text:F.head}),F.c]),
+      F.fill.box,
+      F.head_=el('div',{class:'sec-h'},[el('span',{class:'t',text:F.head}),F.c]),
       F.list
     ]);
   });
@@ -1149,20 +1270,88 @@ function watchFeed(){
       F.btn.classList.toggle('on',on);
       F.btn.setAttribute('aria-selected',on?'true':'false');
       F.pane.hidden=!on;
+      // "Bugüne dön" tek bir düğme; görünen sekmenin başlığına taşınıyor.
+      if(on)F.head_.appendChild(todayBtn);
     });
   }
   select(tab);
+
+  /* ── Kim doldurdu şeridi ─────────────────────────────────────────────────
+     Takımın sporcu listesi koçun uygulamasının yayımladığı kadro özetinden
+     (alert_roster) geliyor. Liste henüz yoksa — koç bu sürümü daha açmamışsa ya da
+     kurallar yayımlanmamışsa — şerit hiç görünmüyor: yanlış bir "0/0" yerine
+     hiçbir şey. */
+  var ROSTER=null;     // [{id,name}] — null: henüz bilinmiyor / okunamadı
+  function fillStrip(){
+    var box=el('div',{class:'fill',hidden:''});
+    var bar=el('i');
+    var lbl=el('span',{class:'lbl'});
+    var chev=el('span',{class:'chev'});chev.appendChild(icon(ICON.chev,16));
+    var hd=el('button',{type:'button',class:'hd','aria-expanded':'false','aria-label':T('who_filled'),
+      onclick:function(){
+        var open=box.classList.toggle('open');
+        hd.setAttribute('aria-expanded',open?'true':'false');
+      }},[el('span',{class:'meter'},[bar]),lbl,chev]);
+    var ls=el('div',{class:'ls'});
+    box.appendChild(hd);box.appendChild(ls);
+    return {box:box,bar:bar,lbl:lbl,ls:ls};
+  }
+  function byName(a,b){return String(a.name||'').localeCompare(String(b.name||''),'tr');}
+  function drawFill(F){
+    var f=F.fill;
+    if(!ROSTER||!ROSTER.length||!F.rows){f.box.hidden=true;return;}
+    var done={};
+    F.rows.forEach(function(r){if(r&&r.athleteId)done[r.athleteId]=true;});
+    var yes=[],no=[];
+    ROSTER.forEach(function(a){(done[a.id]?yes:no).push(a);});
+    yes.sort(byName);no.sort(byName);
+    var total=ROSTER.length;
+    f.bar.style.width=Math.round(yes.length*100/total)+'%';
+    f.lbl.innerHTML='';
+    f.lbl.appendChild(el('b',{text:yes.length+'/'+total}));
+    f.lbl.appendChild(document.createTextNode(' '+T('filled')+' · '));
+    f.lbl.appendChild(no.length
+      ?el('span',{class:'miss',text:no.length+T('missing')})
+      :el('span',{class:'all',text:T('all_filled')}));
+    f.ls.innerHTML='';
+    function group(title,list,cls){
+      if(!list.length)return;
+      f.ls.appendChild(el('div',{class:'gh',text:title+' · '+list.length}));
+      var nm=el('div',{class:'nm'});
+      list.forEach(function(a){nm.appendChild(el('span',{class:'p '+cls,text:a.name}));});
+      f.ls.appendChild(nm);
+    }
+    group(T('not_filled_h'),no,'no');
+    group(T('filled_h'),yes,'yes');
+    f.box.hidden=false;
+  }
+  function watchRoster(){
+    db.collection('alert_roster').doc(LINK.coachUid+'__'+LINK.teamId).onSnapshot(function(snap){
+      var d=snap.exists?(snap.data()||{}):{};
+      ROSTER=Array.isArray(d.athletes)
+        ?d.athletes.filter(function(a){return a&&a.id&&String(a.name||'').trim();})
+            .map(function(a){return {id:a.id,name:String(a.name).trim()};})
+        :null;
+      FEEDS.forEach(drawFill);
+    },function(){
+      // Okunamıyorsa (kurallar eski, doküman yok) şerit sessizce kapalı kalıyor.
+      ROSTER=null;FEEDS.forEach(drawFill);
+    });
+  }
 
   function paint(F,rows,day){
     /* Sıralama her hâlükârda burada da yapılıyor: sorgu sıralı gelse de gelmese de
        ekrandaki sıra aynı olsun. Wellness'ta sıra ağrı ve skorun birleşiminden,
        RPE'de zorluk ve yükten çıkıyor ve ancak burada kurulabiliyor. */
+    if(day!==shownDay)return;     // gün değişti; geç gelen eski cevap ekrana yazılmasın
     rows.sort(F.sort);
+    F.rows=rows;
     F.count.textContent=String(rows.length);
-    F.c.textContent=(rows.length?rows.length+T('records'):'')+prettyDate(day);
+    F.c.textContent=rows.length?rows.length+T('records_only'):'';
+    drawFill(F);
     F.list.innerHTML='';
     if(!rows.length){
-      F.list.appendChild(el('div',{class:'none',text:F.none}));
+      F.list.appendChild(el('div',{class:'none',text:day===todayKey()?F.none:F.nonePast}));
       return;
     }
     rows.forEach(function(a){F.list.appendChild(F.card(a));});
@@ -1170,6 +1359,7 @@ function watchFeed(){
   function fail(F,err){
     F.list.innerHTML='';
     F.count.textContent='!';
+    F.rows=null;drawFill(F);
     var why=(err&&err.code)==='permission-denied'
       ?T('read_denied')
       :T('read_fail')+((err&&err.message)||err);
@@ -1177,7 +1367,7 @@ function watchFeed(){
   }
   function rowsOf(snap){var r=[];snap.forEach(function(d){r.push(d.data()||{});});return r;}
 
-  /* YALNIZCA BUGÜN. Gün, sunucudan değil cihazdan okunuyor ve bu bilinçli: formu
+  /* TEK GÜN. Gün, sunucudan değil cihazdan okunuyor ve bu bilinçli: formu
      dolduran sporcu da tarihi kendi cihazından seçiyor, yani ikisi aynı takvimi
      kullanıyor.
 
@@ -1195,30 +1385,51 @@ function watchFeed(){
       /* Üç eşitlik filtresi indeks istemiyor (Firestore bunları kendi tekil
          indeksleriyle birleştiriyor) ama bir kurulumda yine de reddedilirse liste
          boş kalmasın: takımın son kayıtları çekilip gün burada süzülüyor. */
-      if((err&&err.code)!=='failed-precondition'){fail(F,err);return;}
+      if((err&&err.code)!=='failed-precondition'){if(day===shownDay)fail(F,err);return;}
       F.unsub=db.collection(F.col)
         .where('coachUid','==',LINK.coachUid)
         .where('teamId','==',LINK.teamId)
         .limit(300)
         .onSnapshot(function(snap){
           paint(F,rowsOf(snap).filter(function(a){return String(a.date||'')===day;}),day);
-        },function(e2){fail(F,e2);});
+        },function(e2){if(day===shownDay)fail(F,e2);});
     });
   }
   function subscribeAll(day){
     shownDay=day;
-    FEEDS.forEach(function(F){subscribe(F,day);});
+    drawDay();
+    FEEDS.forEach(function(F){
+      // Yeni gün yüklenirken eski günün satırları ekranda kalmasın.
+      F.rows=null;drawFill(F);
+      F.count.textContent='·';F.c.textContent='';
+      F.list.innerHTML='';
+      F.list.appendChild(el('div',{class:'load',text:T('loading')}));
+      subscribe(F,day);
+    });
+  }
+  // Gelecek gün yok: seçici bugünden ileri gitmiyor (takvim de max ile sınırlı).
+  function go(day){
+    var t=todayKey();
+    if(!day||day>t)day=t;
+    if(day!==shownDay)subscribeAll(day);
   }
 
   subscribeAll(todayKey());
+  watchRoster();
 
   /* Gece yarısını geçen açık sekme. Sayfa gün boyu telefonda açık kalabiliyor
      (özellikle ana ekrandan açılmış hâli hiç kapanmıyor) ve o sekme ertesi sabah
      hâlâ dünü dinliyor olurdu — düzeltmenin kendisini boşa çıkaran tam da bu.
-     Sayfa her öne geldiğinde gün kontrol ediliyor. */
+     Sayfa her öne geldiğinde gün kontrol ediliyor. Ama yalnızca BUGÜNE bakılıyorsa:
+     bilerek geçmiş bir günü açmış antrenörün ekranı elinden alınmıyor. */
+  var lastToday=todayKey();
   function recheck(){
     var d=todayKey();
-    if(d!==shownDay)subscribeAll(d);
+    if(d===lastToday)return;
+    var wasToday=shownDay===lastToday;
+    lastToday=d;
+    if(wasToday)subscribeAll(d);
+    else drawDay();     // "Dün" etiketi artık "Pazartesi" olabilir; > düğmesi açılır
   }
   document.addEventListener('visibilitychange',function(){if(!document.hidden)recheck();});
   window.addEventListener('focus',recheck);
