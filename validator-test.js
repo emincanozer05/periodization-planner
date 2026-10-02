@@ -1329,11 +1329,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify([f('Bulgarian Split Squat'), f('Box Step-Up'), f('Romanian Deadlift')]));
     const tagLib2 = {
       'single leg balance reach': { type: 'Balance', subType: 'Dynamic Balance' }, 'ankle band walk': { type: 'Stability', subType: 'Ankle' },
-      'copenhagen adductor': { type: 'Accessory', subType: 'Prehab & Injury Prevention' }, 'glute bridge march': { type: 'Warm-Up', subType: 'Activation' },
+      'copenhagen adductor': { type: 'Accessory', subType: 'Prehab & Injury Prevention' },
     };
-    check('yalnızca kütüphane etiketiyle bilinen kategoriler: denge, stabilite, aksesuar, ısınma',
+    check('yalnızca kütüphane etiketiyle bilinen kategoriler: denge, stabilite, aksesuar',
       f('Single Leg Balance Reach', tagLib2).Category === 'Dynamic Balance' && f('Ankle Band Walk', tagLib2).Region === 'Ankle' &&
-      f('Copenhagen Adductor', tagLib2).Region === 'Prehab & Injury Prevention' && f('Glute Bridge March', tagLib2).Category === 'Activation' &&
+      f('Copenhagen Adductor', tagLib2).Region === 'Prehab & Injury Prevention' &&
       fc('Single Leg Balance Reach', tagLib2).cat === 'Balance', JSON.stringify(f('Ankle Band Walk', tagLib2)));
     check('etiketi olmayan özel egzersiz kategori yüzü uydurmuyor', fc('Özel Hareket').cat === '' && Object.keys(f('Özel Hareket')).length === 0);
     // Haftanın kapsaması: yapılanlar ve yapılmayanlar, kategori kategori.
@@ -1356,7 +1356,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(cf('Plyometric', 'Direction').values.map(t => [t.label, t.sets.d7, t.sets.d28])));
     check('kapsama: etiketi hiç olmayan alt boyut listelenmiyor; çalışma olmayan kategoriler ayrı',
       !cov('Core').facets.some(x => x.label === 'Position') && !exp3.coverageMissing.includes('Core') &&
-      ['Balance', 'Stability', 'Accessory', 'Warm-Up'].every(t => exp3.coverageMissing.includes(t)), JSON.stringify(exp3.coverageMissing));
+      ['Balance', 'Stability', 'Accessory'].every(t => exp3.coverageMissing.includes(t)) && !exp3.coverageMissing.includes('Warm-Up'), JSON.stringify(exp3.coverageMissing));
     const cc = A.atpSnapshot(ath3, TODAY, libMap).out.exercise_exposure.category_coverage;
     const coreMv = cc.categories.find(c => c.category === 'Core').facets.find(x => x.facet === 'Movement');
     check('JSON: category_coverage — yapılan, bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
