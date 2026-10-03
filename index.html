@@ -4639,10 +4639,6 @@ header{background:var(--bg2)!important}
 .iv-chip{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .12s}
 .iv-chip:hover{border-color:var(--dim)}
 .iv-chip.on{background:rgba(244,63,94,.16);border-color:#f43f5e;color:#fda4af;font-weight:700}
-.ex-review{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 13px;border-radius:10px;border:1px solid rgba(245,158,11,.55);background:rgba(245,158,11,.10)}
-.ex-review b{display:block;font-size:12px;color:#f59e0b;margin-bottom:2px}
-.ex-review span{font-size:12px;color:var(--text2)}
-.ex-review-badge{display:inline-block;margin-top:4px;margin-left:4px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;color:#f59e0b;border:1px solid rgba(245,158,11,.6)}
 
 .iv-suggest{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--elevated);border:1px dashed var(--border);border-radius:10px;padding:9px 12px}
 .iv-suggest .h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace}
@@ -8962,7 +8958,18 @@ function migrate(data){
        spine is part of the spine, so an entry filed "Thoracic" reads Spine. */
     .map(e=>(e.type==='Mobility'&&e.subType==='Thoracic')?{...e,subType:'Spine'}:e)
     /* "Step-up" is spelled "Step-Up" now, as the rest of the pattern list is cased. */
-    .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e);
+    .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e)
+    /* The one-off suggestion import marked every field it filled as "awaiting review".
+       The import and the marks are gone. The values it filled stay, except the
+       movement_pattern: that one is dropped again, so the pattern reads off the category
+       as before. A movement_pattern the entry carried before the import was never marked,
+       so it stays. */
+    .map(e=>{
+      if(!('review'in e))return e;
+      const{review,...rest}=e;
+      if(Array.isArray(review)&&review.includes('movePattern'))rest.movePattern='';
+      return rest;
+    });
   /* The Gemini key used to ride in the synced workspace (and so in this browser's
      cache of it). It lives on the server now, so an old copy is dropped here rather
      than left sitting in the browser. The Gemini-vs-Claude choice and the model stay. */
@@ -28654,15 +28661,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         <span style={metaLbl}>{L('Saha Çizimi','Court Diagram')}</span>
         <div className="bp-modal-court"><CourtView scene={ex.court}/></div>
       </div>}
-      {exReviewOf(ex).length>0&&<div className="ex-review">
-        <div>
-          <b>{L('Kontrol bekliyor','Awaiting review')}</b>
-          <span>{L('Bu alanlar öneri dosyasından dolduruldu: ','These fields were filled from the suggestion file: ')}
-            {exReviewOf(ex).map(k=>L(...(EX_REVIEW_LABEL[k]||[k,k]))).join(', ')}</span>
-        </div>
-        <button type="button" className="btn sm" onClick={()=>onChange({review:[]})}>
-          ✓ {L('Kontrol ettim','Reviewed')}</button>
-      </div>}
       {exContraOf(ex).length>0&&<div style={{marginBottom:14}}>
         <span style={metaLbl}>{L('Kontrendikasyon Uyarısı','Contraindication Warning')}</span>
         <div className="iv-chips">{exContraOf(ex).map(id=><span key={id} className="iv-chip on">{ctLabelIn(id,REPORT_LANG==='tr')}</span>)}</div>
@@ -28736,15 +28734,6 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             {DIFFICULTIES.map(d=><option key={d} value={d}>{exLabel(d)}</option>)}
           </select>
         </div>
-        {/* The word the programme row and the library file carry. Left on Automatic it is
-            read off the category (exPatternOf); set, it wins — a lunge filed under Knee
-            Dominant is single-leg work, not a squat. */}
-        {!ball&&<div><label>movement_pattern</label>
-          <select value={IV_PATTERNS.includes(ex.movePattern)?ex.movePattern:''} onChange={e=>set('movePattern',e.target.value)}>
-            <option value="">{L('Otomatik','Automatic')}{(()=>{const a=exPatternOf({...ex,movePattern:''});return a?` (${a})`:'';})()}</option>
-            {IV_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>}
       </div>
       <div style={{marginTop:14}}>
         <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
@@ -28882,8 +28871,6 @@ function ExerciseCardRaw({ex,onOpen,used=0}){
     <div className="ex-cbody">
       <div className="ex-cname">{shownName||L('(isimsiz egzersiz)','(unnamed exercise)')}</div>
       {ex.difficulty&&<div className="diff-badge" style={{background:DIFF_COLOR[ex.difficulty],color:'#fff'}}>{exLabel(ex.difficulty)}</div>}
-      {exReviewOf(ex).length>0&&<div className="ex-review-badge" title={L('Öneri dosyasından doldurulan alanlar kontrol bekliyor','Fields filled from the suggestion file are awaiting review')}>
-        {L('Kontrol bekliyor','Awaiting review')}</div>}
     </div>
   </div>);
 }
@@ -29008,38 +28995,7 @@ function ExercisesView({data,setData}){
     catch(e){console.warn('library text failed',e);
       alert(L('Metin dosyası oluşturulamadı — tekrar dene.','The text file could not be created — try again.'));}
     finally{setMdBusy(false);}};
-  /* A suggestion file (.json, tools/exercise-suggestions) fills the S&C shelf's EMPTY
-     fields only — see exApplySuggestions. The coach sees how many entries and fields it
-     will touch before anything is written, and every field written waits on the card for
-     the coach to confirm it. */
-  const sugFileRef=useRef(null);
-  const reviewN=exercises.filter(e=>exReviewOf(e).length).length;
-  const importSuggestions=async file=>{
-    if(!file)return;
-    let parsed;
-    try{parsed=JSON.parse(await file.text());}catch(e){parsed=null;}
-    if(!parsed||parsed.format!=='coachos-exercise-suggestions'||!Array.isArray(parsed.exercises)){
-      alert(L('Bu bir CoachOS öneri dosyası değil.','This is not a CoachOS suggestion file.'));return;}
-    const r=exApplySuggestions(allEx,parsed);
-    if(!r.touched){
-      alert(L('Doldurulacak boş alan bulunamadı — kütüphanede değişiklik yapılmadı.','No empty field to fill — the library was not changed.'));return;}
-    const miss=r.unmatched.length?L(`\n\nKütüphanede bulunamayan ${r.unmatched.length} öneri atlandı.`,`\n\n${r.unmatched.length} suggestion(s) matched no exercise and were skipped.`):'';
-    if(!window.confirm(L(`${r.touched} egzersizde ${r.fields} boş alan doldurulacak. Dolu alanlara dokunulmaz; doldurulan alanlar "Kontrol bekliyor" olarak işaretlenir.${miss}\n\nDevam edilsin mi?`,
-      `${r.fields} empty field(s) on ${r.touched} exercise(s) will be filled. Filled fields are left alone; every field written is marked "Awaiting review".${miss}\n\nContinue?`)))return;
-    /* Applied to the state as it is at the press, not as it was read above, so an edit
-       made in between is never written over. */
-    setData(prev=>({...prev,exercises:exApplySuggestions(prev.exercises||[],parsed).list}));
-  };
   const mdBtn=<>
-    {!ball&&<>
-      <input ref={sugFileRef} type="file" accept=".json,application/json" style={{display:'none'}}
-        onChange={e=>{const f=e.target.files&&e.target.files[0];e.target.value='';importSuggestions(f);}}/>
-      <button className="btn sm" onClick={()=>sugFileRef.current&&sugFileRef.current.click()}
-        title={L('Öneri dosyasındaki değerleri yalnızca BOŞ alanlara yazar; dolu alanlara dokunmaz','Writes the suggestion file\'s values into EMPTY fields only; filled fields are left alone')}>
-        {`⬆ ${L('Önerileri içe aktar','Import suggestions')}`}</button>
-      {reviewN>0&&<span className="ex-review-badge" style={{alignSelf:'center'}}>
-        {L(`${reviewN} egzersiz kontrol bekliyor`,`${reviewN} awaiting review`)}</span>}
-    </>}
     <button className="btn sm danger" onClick={downloadLibPdf} disabled={exercises.length===0||mdBusy}
       title={L('Kütüphaneyi uygulamanın diliyle, egzersiz görselleriyle birlikte PDF olarak indir','Download the library as a PDF in the app language, with the exercise images')}>
       {mdBusy?L('Hazırlanıyor…','Preparing…'):`⬇ ${L('İndir (PDF)','Download (PDF)')}`}</button>
@@ -29626,62 +29582,6 @@ const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip 
   'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
-/* A suggestion file (tools/exercise-suggestions) fills the gaps in the S&C shelf and
-   nothing else: a value is written only into a field the entry has EMPTY, never over one
-   the coach filled, and only when it is a value the app itself offers for that field —
-   the category's own sub-types, filters and equipment, the fixed muscle list, the pain
-   regions, the pattern vocabulary. The category is settled first, so every other field
-   is checked against the category the entry ends up with. Every field written is listed
-   on the entry's `review`, and the card says so until the coach confirms it. Matched by
-   name, case and spacing aside; a name the shelf does not carry is reported, not added. */
-const exNameKey=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
-function exApplySuggestions(list,file){
-  const rows=(file&&Array.isArray(file.exercises))?file.exercises:[];
-  const by={};
-  rows.forEach(s=>{const k=exNameKey(s&&s.name);if(k)by[k]=s;});
-  const matched=new Set();
-  let touched=0,fields=0;
-  const out=(Array.isArray(list)?list:[]).map(e=>{
-    if(!e||exLib(e)!=='sc')return e;
-    const s=by[exNameKey(e.name)];
-    if(!s)return e;
-    matched.add(exNameKey(e.name));
-    const next={...e},filled=[];
-    const empty=k=>{const v=next[k];return Array.isArray(v)?!v.filter(Boolean).length:!String(v==null?'':v).trim();};
-    const put=(k,v)=>{
-      if(v==null||(Array.isArray(v)?!v.length:!String(v).trim()))return;
-      if(!empty(k))return;
-      next[k]=v;filled.push(k);
-    };
-    const pick=(v,allowed)=>allowed&&allowed.includes(v)?v:null;
-    if(!EX_TYPES.includes(next.type))put('type',pick(s.type,EX_TYPES));
-    const t=next.type;
-    put('subType',pick(s.subType,SUB_TYPES[t]&&SUB_TYPES[t].values));
-    put('action',pick(s.action,ACTIONS_FOR[t]));
-    put('pattern',pick(s.pattern,PATTERNS_FOR[t]));
-    (EX_EXTRA_FILTERS[t]||[]).forEach(d=>{
-      if(d.multi){const ok=exMulti(s[d.key]).filter(v=>d.values.includes(v));put(d.key,ok.length?ok:null);}
-      else put(d.key,pick(s[d.key],d.values));
-    });
-    put('movePattern',pick(s.movePattern,IV_PATTERNS));
-    put('difficulty',pick(s.difficulty,DIFFICULTIES));
-    put('muscle',exMulti(s.muscle).filter(m=>EX_MUSCLES.includes(m)));
-    put('contra',exMulti(s.contra).filter(id=>CONSTRAINT_TAGS.some(c=>c.id===id)));
-    if(!filled.length)return e;
-    touched++;fields+=filled.length;
-    next.review=[...new Set([...exMulti(e.review),...filled])];
-    return next;
-  });
-  const unmatched=rows.map(s=>s&&s.name).filter(n=>exNameKey(n)&&!matched.has(exNameKey(n)));
-  return{list:out,touched,fields,unmatched};
-}
-/* The field names the review note reads out, in the app's language. */
-const EX_REVIEW_LABEL={type:['Kategori','Category'],subType:['Alt tip','Sub-type'],action:['Aksiyon','Action'],
-  pattern:['Hareket örüntüsü','Movement pattern'],exKind:['Egzersiz tipi','Exercise type'],technique:['Teknik','Technique'],
-  position:['Pozisyon','Position'],equipment:['Ekipman','Equipment'],bodyRegion:['Bölge','Region'],
-  movePattern:['movement_pattern','movement_pattern'],difficulty:['Zorluk','Difficulty'],muscle:['Kaslar','Muscles'],
-  contra:['Kontrendikasyon','Contraindications']};
-const exReviewOf=e=>exMulti(e&&e.review);
 /* The exercise's own picture — the one the coach pastes on the library entry (`image`),
    else the one a program row remembered (`planImage`) or the old Program Image control set
    (`thumb`): all three are a picture the coach put on this exercise. The library card and
