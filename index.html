@@ -4639,6 +4639,10 @@ header{background:var(--bg2)!important}
 .iv-chip{background:var(--elevated);border:1px solid var(--border);color:var(--text2);border-radius:999px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all .12s}
 .iv-chip:hover{border-color:var(--dim)}
 .iv-chip.on{background:rgba(244,63,94,.16);border-color:#f43f5e;color:#fda4af;font-weight:700}
+.ex-review{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 13px;border-radius:10px;border:1px solid rgba(245,158,11,.55);background:rgba(245,158,11,.10)}
+.ex-review b{display:block;font-size:12px;color:#f59e0b;margin-bottom:2px}
+.ex-review span{font-size:12px;color:var(--text2)}
+.ex-review-badge{display:inline-block;margin-top:4px;margin-left:4px;padding:1px 7px;border-radius:999px;font-size:10px;font-weight:700;color:#f59e0b;border:1px solid rgba(245,158,11,.6)}
 
 .iv-suggest{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--elevated);border:1px dashed var(--border);border-radius:10px;padding:9px 12px}
 .iv-suggest .h{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-family:'IBM Plex Mono',monospace}
@@ -28650,9 +28654,18 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         <span style={metaLbl}>{L('Saha Çizimi','Court Diagram')}</span>
         <div className="bp-modal-court"><CourtView scene={ex.court}/></div>
       </div>}
+      {exReviewOf(ex).length>0&&<div className="ex-review">
+        <div>
+          <b>{L('Kontrol bekliyor','Awaiting review')}</b>
+          <span>{L('Bu alanlar öneri dosyasından dolduruldu: ','These fields were filled from the suggestion file: ')}
+            {exReviewOf(ex).map(k=>L(...(EX_REVIEW_LABEL[k]||[k,k]))).join(', ')}</span>
+        </div>
+        <button type="button" className="btn sm" onClick={()=>onChange({review:[]})}>
+          ✓ {L('Kontrol ettim','Reviewed')}</button>
+      </div>}
       {exContraOf(ex).length>0&&<div style={{marginBottom:14}}>
         <span style={metaLbl}>{L('Kontrendikasyon Uyarısı','Contraindication Warning')}</span>
-        <div className="iv-chips">{exContraOf(ex).map(id=><span key={id} className="iv-chip on">{ctLabel(id)}</span>)}</div>
+        <div className="iv-chips">{exContraOf(ex).map(id=><span key={id} className="iv-chip on">{ctLabelIn(id,REPORT_LANG==='tr')}</span>)}</div>
       </div>}
       {(ex.muscle||[]).length>0&&<div style={{marginBottom:14}}>
         <span style={metaLbl}>{L('Kas Grupları','Muscle Groups')}</span>
@@ -28723,6 +28736,15 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             {DIFFICULTIES.map(d=><option key={d} value={d}>{exLabel(d)}</option>)}
           </select>
         </div>
+        {/* The word the programme row and the library file carry. Left on Automatic it is
+            read off the category (exPatternOf); set, it wins — a lunge filed under Knee
+            Dominant is single-leg work, not a squat. */}
+        {!ball&&<div><label>movement_pattern</label>
+          <select value={IV_PATTERNS.includes(ex.movePattern)?ex.movePattern:''} onChange={e=>set('movePattern',e.target.value)}>
+            <option value="">{L('Otomatik','Automatic')}{(()=>{const a=exPatternOf({...ex,movePattern:''});return a?` (${a})`:'';})()}</option>
+            {IV_PATTERNS.map(p=><option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>}
       </div>
       <div style={{marginTop:14}}>
         <label>{L('Amaç / Açıklama','Purpose / Description')}</label>
@@ -28736,6 +28758,15 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
           {(ex.muscle||[]).map((m,i)=><span key={i} className="mus-chip on">{exLabel(m)}<button type="button" onClick={()=>set('muscle',(ex.muscle||[]).filter((_,j)=>j!==i))}>✕</button></span>)}
           <MusclePicker value={ex.muscle||[]} onAdd={v=>{const list=ex.muscle||[];if(!list.includes(v))set('muscle',[...list,v]);}}
             custom={customMuscles} onRemember={onRememberMuscle} onForget={onForgetMuscle}/>
+        </div>
+      </div>}
+      {/* The pain regions this exercise is not given with — the same regions the athlete's
+          pain and injury records use. Written into the library file for the AI project. */}
+      {!ball&&<div style={{marginTop:14}}><label>{L('Kontrendikasyon — bu bölgede ağrı / sakatlık varsa verilmez','Contraindication — not given with pain or injury in this region')}</label>
+        <div className="iv-chips">
+          {CONSTRAINT_TAGS.map(tg=>{const cur=exContraOf(ex),on=cur.includes(tg.id);
+            return<button key={tg.id} type="button" className={'iv-chip'+(on?' on':'')} aria-pressed={on}
+              onClick={()=>set('contra',on?cur.filter(x=>x!==tg.id):[...cur,tg.id])}>{ctLabelIn(tg.id,REPORT_LANG==='tr')}</button>;})}
         </div>
       </div>}
     </div>
@@ -28851,6 +28882,8 @@ function ExerciseCardRaw({ex,onOpen,used=0}){
     <div className="ex-cbody">
       <div className="ex-cname">{shownName||L('(isimsiz egzersiz)','(unnamed exercise)')}</div>
       {ex.difficulty&&<div className="diff-badge" style={{background:DIFF_COLOR[ex.difficulty],color:'#fff'}}>{exLabel(ex.difficulty)}</div>}
+      {exReviewOf(ex).length>0&&<div className="ex-review-badge" title={L('Öneri dosyasından doldurulan alanlar kontrol bekliyor','Fields filled from the suggestion file are awaiting review')}>
+        {L('Kontrol bekliyor','Awaiting review')}</div>}
     </div>
   </div>);
 }
@@ -28975,7 +29008,38 @@ function ExercisesView({data,setData}){
     catch(e){console.warn('library text failed',e);
       alert(L('Metin dosyası oluşturulamadı — tekrar dene.','The text file could not be created — try again.'));}
     finally{setMdBusy(false);}};
+  /* A suggestion file (.json, tools/exercise-suggestions) fills the S&C shelf's EMPTY
+     fields only — see exApplySuggestions. The coach sees how many entries and fields it
+     will touch before anything is written, and every field written waits on the card for
+     the coach to confirm it. */
+  const sugFileRef=useRef(null);
+  const reviewN=exercises.filter(e=>exReviewOf(e).length).length;
+  const importSuggestions=async file=>{
+    if(!file)return;
+    let parsed;
+    try{parsed=JSON.parse(await file.text());}catch(e){parsed=null;}
+    if(!parsed||parsed.format!=='coachos-exercise-suggestions'||!Array.isArray(parsed.exercises)){
+      alert(L('Bu bir CoachOS öneri dosyası değil.','This is not a CoachOS suggestion file.'));return;}
+    const r=exApplySuggestions(allEx,parsed);
+    if(!r.touched){
+      alert(L('Doldurulacak boş alan bulunamadı — kütüphanede değişiklik yapılmadı.','No empty field to fill — the library was not changed.'));return;}
+    const miss=r.unmatched.length?L(`\n\nKütüphanede bulunamayan ${r.unmatched.length} öneri atlandı.`,`\n\n${r.unmatched.length} suggestion(s) matched no exercise and were skipped.`):'';
+    if(!window.confirm(L(`${r.touched} egzersizde ${r.fields} boş alan doldurulacak. Dolu alanlara dokunulmaz; doldurulan alanlar "Kontrol bekliyor" olarak işaretlenir.${miss}\n\nDevam edilsin mi?`,
+      `${r.fields} empty field(s) on ${r.touched} exercise(s) will be filled. Filled fields are left alone; every field written is marked "Awaiting review".${miss}\n\nContinue?`)))return;
+    /* Applied to the state as it is at the press, not as it was read above, so an edit
+       made in between is never written over. */
+    setData(prev=>({...prev,exercises:exApplySuggestions(prev.exercises||[],parsed).list}));
+  };
   const mdBtn=<>
+    {!ball&&<>
+      <input ref={sugFileRef} type="file" accept=".json,application/json" style={{display:'none'}}
+        onChange={e=>{const f=e.target.files&&e.target.files[0];e.target.value='';importSuggestions(f);}}/>
+      <button className="btn sm" onClick={()=>sugFileRef.current&&sugFileRef.current.click()}
+        title={L('Öneri dosyasındaki değerleri yalnızca BOŞ alanlara yazar; dolu alanlara dokunmaz','Writes the suggestion file\'s values into EMPTY fields only; filled fields are left alone')}>
+        {`⬆ ${L('Önerileri içe aktar','Import suggestions')}`}</button>
+      {reviewN>0&&<span className="ex-review-badge" style={{alignSelf:'center'}}>
+        {L(`${reviewN} egzersiz kontrol bekliyor`,`${reviewN} awaiting review`)}</span>}
+    </>}
     <button className="btn sm danger" onClick={downloadLibPdf} disabled={exercises.length===0||mdBusy}
       title={L('Kütüphaneyi uygulamanın diliyle, egzersiz görselleriyle birlikte PDF olarak indir','Download the library as a PDF in the app language, with the exercise images')}>
       {mdBusy?L('Hazırlanıyor…','Preparing…'):`⬇ ${L('İndir (PDF)','Download (PDF)')}`}</button>
@@ -29532,6 +29596,11 @@ const CONSTRAINT_TAGS=[
   {id:'wrist',    label:'Wrist / Elbow',   kw:['el bileği','wrist','dirsek','elbow','üst kol','ön kol','upper arm','forearm','sağ el ','sol el ','sağ parmaklar ','sol parmaklar ']},
 ];
 const ctLabel=id=>((CONSTRAINT_TAGS.find(t=>t.id===id)||{}).label)||id;
+/* The same regions in Turkish, for the screens and the files written in Turkish. The id
+   and the English label above stay the stored, canonical value. */
+const CT_LABEL_TR={knee:'Diz',back:'Sırt / Bel',shoulder:'Omuz',ankle:'Ayak Bileği',hip:'Kalça / Kasık',
+  hamstring:'Hamstring',neck:'Baş / Boyun',trunk:'Göğüs / Kaburga / Karın',wrist:'El Bileği / Dirsek'};
+const ctLabelIn=(id,tr)=>tr?(CT_LABEL_TR[id]||ctLabel(id)):ctLabel(id);
 
 /* Which movement patterns a pain region loads (`hit`), where work is usually
    redirected instead (`prefer`), and the wording that marks a friendlier variation
@@ -29557,6 +29626,62 @@ const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip 
   'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
+/* A suggestion file (tools/exercise-suggestions) fills the gaps in the S&C shelf and
+   nothing else: a value is written only into a field the entry has EMPTY, never over one
+   the coach filled, and only when it is a value the app itself offers for that field —
+   the category's own sub-types, filters and equipment, the fixed muscle list, the pain
+   regions, the pattern vocabulary. The category is settled first, so every other field
+   is checked against the category the entry ends up with. Every field written is listed
+   on the entry's `review`, and the card says so until the coach confirms it. Matched by
+   name, case and spacing aside; a name the shelf does not carry is reported, not added. */
+const exNameKey=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
+function exApplySuggestions(list,file){
+  const rows=(file&&Array.isArray(file.exercises))?file.exercises:[];
+  const by={};
+  rows.forEach(s=>{const k=exNameKey(s&&s.name);if(k)by[k]=s;});
+  const matched=new Set();
+  let touched=0,fields=0;
+  const out=(Array.isArray(list)?list:[]).map(e=>{
+    if(!e||exLib(e)!=='sc')return e;
+    const s=by[exNameKey(e.name)];
+    if(!s)return e;
+    matched.add(exNameKey(e.name));
+    const next={...e},filled=[];
+    const empty=k=>{const v=next[k];return Array.isArray(v)?!v.filter(Boolean).length:!String(v==null?'':v).trim();};
+    const put=(k,v)=>{
+      if(v==null||(Array.isArray(v)?!v.length:!String(v).trim()))return;
+      if(!empty(k))return;
+      next[k]=v;filled.push(k);
+    };
+    const pick=(v,allowed)=>allowed&&allowed.includes(v)?v:null;
+    if(!EX_TYPES.includes(next.type))put('type',pick(s.type,EX_TYPES));
+    const t=next.type;
+    put('subType',pick(s.subType,SUB_TYPES[t]&&SUB_TYPES[t].values));
+    put('action',pick(s.action,ACTIONS_FOR[t]));
+    put('pattern',pick(s.pattern,PATTERNS_FOR[t]));
+    (EX_EXTRA_FILTERS[t]||[]).forEach(d=>{
+      if(d.multi){const ok=exMulti(s[d.key]).filter(v=>d.values.includes(v));put(d.key,ok.length?ok:null);}
+      else put(d.key,pick(s[d.key],d.values));
+    });
+    put('movePattern',pick(s.movePattern,IV_PATTERNS));
+    put('difficulty',pick(s.difficulty,DIFFICULTIES));
+    put('muscle',exMulti(s.muscle).filter(m=>EX_MUSCLES.includes(m)));
+    put('contra',exMulti(s.contra).filter(id=>CONSTRAINT_TAGS.some(c=>c.id===id)));
+    if(!filled.length)return e;
+    touched++;fields+=filled.length;
+    next.review=[...new Set([...exMulti(e.review),...filled])];
+    return next;
+  });
+  const unmatched=rows.map(s=>s&&s.name).filter(n=>exNameKey(n)&&!matched.has(exNameKey(n)));
+  return{list:out,touched,fields,unmatched};
+}
+/* The field names the review note reads out, in the app's language. */
+const EX_REVIEW_LABEL={type:['Kategori','Category'],subType:['Alt tip','Sub-type'],action:['Aksiyon','Action'],
+  pattern:['Hareket örüntüsü','Movement pattern'],exKind:['Egzersiz tipi','Exercise type'],technique:['Teknik','Technique'],
+  position:['Pozisyon','Position'],equipment:['Ekipman','Equipment'],bodyRegion:['Bölge','Region'],
+  movePattern:['movement_pattern','movement_pattern'],difficulty:['Zorluk','Difficulty'],muscle:['Kaslar','Muscles'],
+  contra:['Kontrendikasyon','Contraindications']};
+const exReviewOf=e=>exMulti(e&&e.review);
 /* The exercise's own picture — the one the coach pastes on the library entry (`image`),
    else the one a program row remembered (`planImage`) or the old Program Image control set
    (`thumb`): all three are a picture the coach put on this exercise. The library card and
@@ -29600,7 +29725,7 @@ function exLibraryEntries(list,opts){
       put(T('Zorluk','Difficulty'),e.difficulty?`${lab(e.difficulty)}${LEVEL_LABEL[e.difficulty]?` (${tr?({Beginner:'Başlangıç',Intermediate:'Orta',Advanced:'İleri'}[LEVEL_LABEL[e.difficulty]]):LEVEL_LABEL[e.difficulty]})`:''}`:'');
       if(o.ball)put(T('Oyuncu','Players'),e.players);
       put(T('Kaslar','Muscles'),(Array.isArray(e.muscle)?e.muscle:[]).map(one).filter(Boolean).map(lab).join(', '),true);
-      put(T('Kontrendikasyonlar','Contraindications'),exContraOf(e).map(id=>ctLabel(id)).join(', '),true);
+      put(T('Kontrendikasyonlar','Contraindications'),exContraOf(e).map(id=>ctLabelIn(id,tr)).join(', '),true);
       return{ex:e,name:one(e.name),fields,desc:cap(o.descOf?o.descOf(e):e.purpose,600)};
     })});
   });
@@ -29651,12 +29776,9 @@ function exLibraryPDF(doc,lib,opts){
     }catch(e){}
   }
   y=46;
-  // How to read it — the same note the text export carried, so the file still works as an
+  // How to read it — the same note the text export carries, so the file still works as an
   // AI project's reference.
-  let note=T('Her egzersiz kendi kategorisi altında tek bir kart olarak yer alır. Listeden egzersiz seçerken adı yazıldığı gibi kullan. '+
-    'movement_pattern programdaki satıra yazılacak değerdir ve her zaman İngilizce yazılır. Bu liste bir aday listesidir, sınır değildir: listede olmayan egzersiz de yazılabilir.',
-    'Each exercise is one card under its category. When you choose an exercise from this list, write its name as given. '+
-    'movement_pattern is the value to write in a programme row and is always in English. This list is a set of candidates, not a limit: an exercise outside it is allowed.');
+  let note=exLibraryNote(tr,'card');
   if(o.untranslated>0)note+=' '+T(`Not: ${o.untranslated} açıklama çevrilemedi ve yazıldığı dilde bırakıldı.`,
     `Note: ${o.untranslated} description(s) could not be translated and are left in the language they were written in.`);
   font('normal',7.5);
@@ -29827,6 +29949,26 @@ async function downloadExLibraryPDF(exercises,{ball,libTab}){
   exLibraryPDF(doc,lib,{ball,lang,untranslated,font,logo:COACHOS_LOGO,imageOf:e=>images.get(e)||''});
   doc.save(`exercise_library_${libTab}_${lang}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
+/* "How to use", at the head of the .txt and the PDF alike: what an AI project reads before
+   the list. The list is where an exercise is chosen from first; one from outside it is
+   still allowed, with its reason said. Difficulty and contraindications are said to bind,
+   and a field that is not written is said to be unknown — not to be guessed as empty. */
+function exLibraryNote(tr,unit){
+  const card=unit==='card';
+  return tr
+    ?`Her egzersiz kendi kategorisi altında tek bir ${card?'kart':'blok'} olarak yer alır. `+
+      'Egzersizi önce bu listeden seç ve adını yazıldığı gibi kullan; listede uygun bir egzersiz yoksa dışarıdan yazabilirsin, ama nedenini belirt. '+
+      'movement_pattern programdaki satıra yazılacak değerdir ve her zaman İngilizce yazılır. '+
+      'Zorluk: Seviye 1 başlangıç, Seviye 2 orta, Seviye 3 ileri; sporcunun seviyesinin üstündeki bir egzersizi seçme. '+
+      'Kontrendikasyonlar: o bölgede ağrısı ya da sakatlığı olan sporcuya bu egzersizi verme. '+
+      'Bir egzersizde yazmayan alan, o bilginin girilmediği anlamına gelir.'
+    :`Each exercise is one ${card?'card':'block'} under its category. `+
+      'Choose exercises from this list first and write the name as given; if nothing on it fits, you may write one from outside it, but say why. '+
+      'movement_pattern is the value to write in a programme row and is always in English. '+
+      'Difficulty: Level 1 beginner, Level 2 intermediate, Level 3 advanced; do not choose an exercise above the athlete\'s level. '+
+      'Contraindications: do not give the exercise to an athlete with pain or an injury in that region. '+
+      'A field an exercise does not show means the information was not entered.';
+}
 /* The same library as one plain-text file — the format the programme-writing
    instructions describe for an AI project's reference file ("CoachOS Exercise Library",
    .txt): one block per exercise under its category, the name on its own line and every
@@ -29842,10 +29984,7 @@ function exLibraryText(lib,opts){
       o.ball?'COACHOS DRILL LIBRARY — BALL PRACTICE':'COACHOS EXERCISE LIBRARY — STRENGTH & CONDITIONING'),
     `${lib.total} ${T(o.ball?'dril':'egzersiz',o.ball?'drills':'exercises')}${o.date?` · ${T('dışa aktarım','exported')} ${o.date}`:''}`,'',
     T('NASIL KULLANILIR','HOW TO USE'),
-    T('Her egzersiz kendi kategorisi altında tek bir blok olarak yazılmıştır. Listeden egzersiz seçerken adı yazıldığı gibi kullan. '+
-      'movement_pattern programdaki satıra yazılacak değerdir ve her zaman İngilizce yazılır. Bu liste bir aday listesidir, sınır değildir: listede olmayan egzersiz de yazılabilir.',
-      'Each exercise is one block under its category. When you choose an exercise from this list, write its name as given. '+
-      'movement_pattern is the value to write in a programme row and is always in English. This list is a set of candidates, not a limit: an exercise outside it is allowed.')];
+    exLibraryNote(tr,'block')];
   if(o.untranslated>0)out.push(T(`Not: ${o.untranslated} açıklama çevrilemedi ve yazıldığı dilde bırakıldı.`,
     `Note: ${o.untranslated} description(s) could not be translated and are left in the language they were written in.`));
   out.push('');
