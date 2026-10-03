@@ -31779,7 +31779,7 @@ function atpExposure(ath,end,opts){
    engine's own exposure read keeps. `filled` says whether the coach has written any of
    the first three parts; an empty profile is named in missing_data rather than read
    as "no priorities, no constraints". */
-function atpSnapshot(ath,ref,libMap){
+function atpSnapshot(ath,ref,libMap,setup){
   const tp=atpRead(ath);
   const en=(list,id)=>((list.find(x=>x.id===id)||{}).en)||null;
   /* Every rated quality with its group and priority, High first — the order the
@@ -31794,12 +31794,26 @@ function atpSnapshot(ath,ref,libMap){
   const ex=atpExposure(ath,end,{libMap});
   const WK={last:'last_session',d7:'last_7_days',d14:'last_14_days',d28:'last_28_days'};
   const per=(t,f)=>{const o={};Object.keys(WK).forEach(w=>{o[WK[w]]=f(t,w);});return o;};
-  const lvOf=(t,w)=>en(ATP_EXP_LEVELS,t.level[w]);
-  const item=t=>({name:t.label,last_used:t.lastUsed,frequency_28_days:t.freq28,exposure:per(t,lvOf),sets:per(t,(x,w)=>x.sets[w])});
+  /* Sets per window only: the High / Moderate / Low level is read off them by
+     level_scale, so it is not written out a second time beside every record. */
+  const item=t=>({name:t.label,last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])});
   const fixed=list=>({records:list.filter(t=>t.lastUsed).map(item),
     no_exposure_last_28_days:list.filter(t=>!t.lastUsed).map(t=>t.label)});
+  /* An implement the gym does not have is not a gap to fill: with an inventory on the
+     Settings tab, an Equipment facet's "not done" lists name only the kit that is there
+     (bodyweight is always there). No inventory, no cut. */
+  const eqHave=eqAvailable(setup||{});
+  const eqIds=new Set(eqHave.map(e=>e.id)),eqNames=new Set(eqHave.map(e=>diExName(e.label)));
+  const ATP_EQ_ID={'Barbell':'barbell','Trap Bar':'trapbar','Dumbbell':'dumbbell','Cable':'cable','Medicine Ball':'medball',
+    'Box':'plyobox','Band':'bands','Resistance Band':'bands','Sled':'sled','Machine':'machine'};
+  const inGym=v=>!eqIds.size||v==='Bodyweight'||v==='No Equipment'||
+    (ATP_EQ_ID[v]?eqIds.has(ATP_EQ_ID[v]):(eqIds.has(EQ_CUSTOM+diExName(v))||eqNames.has(diExName(v))));
+  const gapOf=f=>f.label==='Equipment'?(t=>inGym(t.label)):(()=>true);
   const cut=ATP_EXP_CUT;
   const filled=rated.length+tp.constraints.hard.length+tp.constraints.soft.length>0;
+  /* With no S&C session on the calendar in 28 days every list below would only say
+     "none" at length, so the block is cut to the count and the scope that explains it. */
+  const anyEx=ex.sessions.d28>0;
   return{filled,out:{
     definition:'The athlete\'s training profile. athletic_profile and constraints are entered by the coach; '+
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
@@ -31816,15 +31830,18 @@ function atpSnapshot(ath,ref,libMap){
     constraints:(tp.constraints.hard.length||tp.constraints.soft.length)?{
       description:'hard: constraints that must be respected without exception · soft: not strict prohibitions, but preferences or situations to limit',
       hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
-    exercise_exposure:{
-      source:'computed automatically from the training sessions on the calendar',
+    exercise_exposure:!anyEx?{
+      scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
+      window_end:end,
+      session_count:{last_7_days:0,last_14_days:0,last_28_days:0},
+    }:{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
       /* The profile's own classification, finer than the session's pattern vocabulary
          and named apart from it so the two lists are never mistaken for each other. */
       movement_class_note:'movement_class is the training profile\'s detailed classification (e.g. Hip Dominant, Horizontal Push); '+
-        'these names are never written into a programme\'s movement_pattern field — that field is chosen only from movement_pattern_vocabulary.',
-      level_scale:`High / Moderate / Low / None — from set counts. The 7-14-28 day windows are read as a weekly average: `+
+        'these names are never written into a programme\'s movement_pattern field — that field is chosen only from the pattern names in movement_families.',
+      level_scale:`The exposure level of a record, read off its sets: High / Moderate / Low / None. The 7-14-28 day windows are read as a weekly average: `+
         `a single exercise ≥${cut.exercise.week[1]} sets/week High, ≥${cut.exercise.week[0]} Moderate; family, pattern, stimulus and loading `+
         `≥${cut.group.week[1]} sets/week High, ≥${cut.group.week[0]} Moderate. Last session: a single exercise ≥${cut.exercise.session[1]} sets High, `+
         `≥${cut.exercise.session[0]} Moderate; the others ≥${cut.group.session[1]} High, ≥${cut.group.session[0]} Moderate. 0 sets = None / Not Recent.`,
@@ -31833,7 +31850,7 @@ function atpSnapshot(ath,ref,libMap){
       exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,movement_class:t.patterns,stimulus:t.stimuli,
         loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.plane?{movement_plane:t.plane}:{}),
         ...(t.action?{action:t.action}:{}),...(t.focus?{contraction_focus:t.focus}:{}),...(t.equipment?{equipment:t.equipment}:{}),
-        last_used:t.lastUsed,frequency_28_days:t.freq28,exposure:per(t,lvOf),sets:per(t,(x,w)=>x.sets[w])})),
+        last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])})),
       exercise_families:ex.families.map(item),
       movement_class:fixed(ex.patterns),
       athletic_stimulus:fixed(ex.stimuli),
@@ -31854,13 +31871,14 @@ function atpSnapshot(ath,ref,libMap){
         note:'For every exercise category the athlete has trained (the library\'s own categories: core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, accessory), '+
           'every facet the category is filed by (movement, direction, type, position, technique, contraction focus, action, implement…) with what was done and what was not. '+
           'done: the values that were recorded, in sets, over the last session and the last 7 / 14 / 28 days. '+
-          'not_done_last_7_days: the values with no set in the last 7 days — the gaps of this week. not_done_last_28_days: the values with no set in the last 28 days. '+
+          'not_done_last_28_days: the values with no set in the last 28 days. done_last_28_not_last_7_days: the values done earlier in the 28 days but not in the last 7. '+
+          'The gaps of this week are the two lists together. For Equipment, only the kit in the gym\'s inventory is listed as not done. '+
           'A facet is listed only when at least one recorded exercise of the category carries it, so a value missing from the list of a listed facet means it was not recorded, not that it was avoided; a row whose value cannot be told is not counted.',
-        categories:ex.coverage.map(c=>({category:c.type,exposure:per(c.cat,lvOf),sets:per(c.cat,(x,w)=>x.sets[w]),
-          facets:c.facets.map(f=>({facet:f.label,
+        categories:ex.coverage.map(c=>({category:c.type,sets:per(c.cat,(x,w)=>x.sets[w]),
+          facets:c.facets.map(f=>{const gap=gapOf(f);return{facet:f.label,
             done:f.values.filter(t=>t.lastUsed).map(item),
-            not_done_last_7_days:f.values.filter(t=>!(t.sets.d7>0)).map(t=>t.label),
-            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)).map(t=>t.label)}))})),
+            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label),
+            done_last_28_not_last_7_days:f.values.filter(t=>t.sets.d28>0&&!(t.sets.d7>0)).map(t=>t.label)};})})),
         categories_without_recorded_work:ex.coverageMissing,
       },
       equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
@@ -33474,7 +33492,7 @@ const DI_EXT_SCHEMA={
         name:'exercise name',sets:'3',reps:"6 (or '4-6')",duration:'only if needed (e.g. 30 s), otherwise leave empty',
         distance:'only if needed, otherwise leave empty',load:'e.g. 70% 1RM, 60 kg, bodyweight',rpe:"target RPE 1-10 (e.g. '7' or '6-7'); leave empty for mobility / activation",tempo:'only if needed',
         rest:'e.g. 90 s',equipment:"one item of the gym's equipment, or 'bodyweight'",
-        movement_pattern:'one of movement_pattern_vocabulary',
+        movement_pattern:'one of the pattern names in movement_families',
         rationale:'why this exercise for this athlete — which data / finding / instruction',
         basis:['D1'],
       }],
@@ -33493,7 +33511,7 @@ const DI_EXT_TASK=[
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
   'coach_brief is binding: must_include is in the session, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
-  'Split the session into phases: each block\'s phase is preparation, main or complementary. Choose every exercise\'s movement_pattern from movement_pattern_vocabulary and fill in its equipment.',
+  'Split the session into phases: each block\'s phase is preparation, main or complementary. Choose every exercise\'s movement_pattern from the pattern names in movement_families and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
   'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
@@ -33501,7 +33519,7 @@ const DI_EXT_TASK=[
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
-  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_28_days, done_last_28_not_last_7_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
@@ -33556,7 +33574,7 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   return diInEnglish(()=>{
-  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','output_format','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -33574,7 +33592,6 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
     sport_context:diSportContext(setup),
-    movement_pattern_vocabulary:IV_PATTERNS,
     movement_families:diFamiliesForAI(),
     exercise_library:diLibraryForAI(libMap,setup),
     athletes:list,
@@ -34786,18 +34803,21 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     return d.baseline!=null?{baseline:d.baseline,deviation_pct:d.deviation}:null;
   };
   const scale='1-5 (5 = best)';
+  /* One field against the athlete's own average. Its day-by-day values are in
+     wellness.last_7_days and not repeated here; a field never answered is left out
+     whole rather than sent as a name with nothing under it. */
   const wField=(id,name)=>{
     const last=[...ws].reverse().find(w=>recNum(w[id])!=null)||null;
+    if(!last)return null;
     const bl=base(id);
     return{
       name,
-      latest_value:last?recNum(last[id]):null,
-      date:last?last.date:null,
-      days_ago:last?diffD(last.date,ref):null,
-      scale:id==='RHR'?'bpm (above the personal average is worse)':scale,
+      latest_value:recNum(last[id]),
+      date:last.date,
+      days_ago:diffD(last.date,ref),
+      scale:id==='RHR'?'bpm (above the personal average is worse)':null,
       personal_average:bl?bl.baseline:null,
       deviation_from_average_pct:bl?bl.deviation_pct:null,
-      last_7_days:week.filter(w=>recNum(w[id])!=null).map(w=>({date:w.date,value:recNum(w[id])})),
     };
   };
   const painRegions=((b.pain&&b.pain.regions)||[]);
@@ -34822,6 +34842,9 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     if(!hit)return;
     const g=CMP_GROUPS.find(x=>x.id===m.g);
     const gk=g?g.en:m.g;
+    /* Height, weight and body fat are on the athlete block already, newest reading
+       and date included. */
+    if(gk==='Anthropometry'&&/^(height|weight|body fat)$/i.test(cmpLabel(m)))return;
     (groups[gk]=groups[gk]||[]).push({test:cmpLabel(m),value:hit.v,unit:m.u||null,date:hit.t.date});
   });
   const fmsHit=newest(t=>{const r=fmsCalc(t.fms);return r.n?r:null;});
@@ -34946,7 +34969,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   /* The Athlete Training Profile — the coach's priorities, movement profile and
      constraints, and the exposure the calendar shows — as the ground the session is
      written on. It describes the athlete; the model reads it, nothing here acts on it. */
-  const atp=atpSnapshot(a,ref,libMap||null);
+  const atp=atpSnapshot(a,ref,libMap||null,s);
   const out={
     session_day:target,
     task:DI_EXT_TASK,
@@ -34978,7 +35001,9 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
         muscle_soreness:recNum(w.soreness),resting_hr_bpm:recNum(w.RHR)})),
     },
     rpe:{
-      latest_entry:ld.last?{date:ld.last.date,type:KIND[ld.last.kind]||ld.last.kind,rpe:ld.last.rpe,duration_min:ld.last.duration,srpe_au:ld.last.srpe}:null,
+      /* The last entry is already the last day of last_7_days when it falls in that
+         week; it is written out only when it is older than that. */
+      latest_entry:(ld.last&&!srpe.some(e=>e.date===ld.last.date))?{date:ld.last.date,type:KIND[ld.last.kind]||ld.last.kind,rpe:ld.last.rpe,duration_min:ld.last.duration,srpe_au:ld.last.srpe}:null,
       avg_rpe_3_days:ld.rpe3,avg_rpe_7_days:ld.rpe7,avg_rpe_previous_7_days:ld.rpe_prev7,trend:ld.trend,
       srpe_7_days_au:ld.srpe7,srpe_previous_7_days_au:ld.srpe_prev7,load_change_pct:ld.load_change_pct,
       acwr:ld.acwr,acwr_zone:ld.acwr_zone,monotony:ld.monotony,hard_days_7:ld.hard_days_7,
@@ -35035,8 +35060,6 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     equipment:diEquipmentForAI(s),
     weekly_calendar:{
       week:`${fmt(mon)} – ${fmt(addD(mon,6))}`,
-      season_phase:b.season_phase&&b.season_phase.label,
-      next_game:target.next_game,
       days:calendar,
     },
     coach_brief:diBriefForAI(brief),
@@ -35048,7 +35071,6 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
        the answer does not hand them the same session again (rule 23). */
     recent_programs:recent&&recent.length?recent.map(p=>({date:p.tarih,exercises:p.egzersizler,differentiators:p.ayirt_ediciler})):null,
     sport_context:diSportContext(s),
-    movement_pattern_vocabulary:IV_PATTERNS,
     movement_families:diFamiliesForAI(),
     exercise_library:diLibraryForAI(libMap,s),
     output_format:DI_EXT_SCHEMA,
@@ -35131,7 +35153,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     let text;
     try{
       text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,
-        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}),null,2);
+        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -35549,7 +35571,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     });
     if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
     let text;
-    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests,libMap}),null,2);}
+    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests,libMap}));}
     catch(e){setToast((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     const note=L(`${items.length} sporcu.`,`${items.length} athletes.`)+(skipped.length
       ?' '+L(`Verisi okunamayan: ${skipped.join(', ')}.`,`Could not read: ${skipped.join(', ')}.`):'');

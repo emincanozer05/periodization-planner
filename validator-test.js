@@ -714,8 +714,16 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !('sex' in anon.athlete) && (anon.missing_data || []).some(x => /^sex/.test(x)), JSON.stringify(anon.missing_data));
 
     /* Denetimde bulunan yanlışlıklar ve eksikler. */
-    check('RPE son kaydın türü okunur etiket, ham kod değil', snap.rpe.latest_entry && snap.rpe.latest_entry.type === 'Team practice',
-      JSON.stringify(snap.rpe.latest_entry));
+    check('RPE türü okunur etiket, ham kod değil; son kayıt 7 günün içindeyse ayrıca yazılmıyor',
+      snap.rpe.last_7_days[0].sessions[0].type === 'Team practice' && !('latest_entry' in snap.rpe),
+      JSON.stringify(snap.rpe));
+    check('tekrar yok: wellness alanlarının günlük serisi yalnızca wellness.last_7_days\'te; boy/kilo testlerde ikinci kez yok',
+      !('last_7_days' in snap.sleep) && snap.wellness.last_7_days.length === 2 && !('mental_fatigue' in snap) &&
+      !(snap.tests.results.Anthropometry || []).some(x => /^(Height|Weight|Body Fat)$/.test(x.test)) &&
+      !('season_phase' in snap.weekly_calendar) && !('next_game' in snap.weekly_calendar) && !('movement_pattern_vocabulary' in snap),
+      JSON.stringify({ sleep: snap.sleep, anthro: snap.tests.results.Anthropometry }));
+    check('antrenman kaydı yoksa maruziyet bloğu kısa: sayım ve kapsam', Object.keys(snap.training_profile.exercise_exposure).join(',') === 'scope,window_end,session_count',
+      JSON.stringify(snap.training_profile.exercise_exposure));
     const lim = snap.code_checked_limits;
     check('kademe tavanı egzersiz başına set diye adlandırılıyor ve açıklanıyor',
       lim.tier_caps && lim.tier_caps.max_sets_per_exercise === 5 && !!lim.tier_caps.note &&
@@ -818,7 +826,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr, customTests: [] });
     check('sporcu JSON\'u görevi, çıktı formatını ve kod sınırlarını taşıyor',
       Array.isArray(snap.task) && snap.task.length > 3 && !!snap.output_format.program.blocks &&
-      !!snap.code_checked_limits && Array.isArray(snap.movement_pattern_vocabulary) &&
+      !!snap.code_checked_limits && Array.isArray(snap.movement_families) &&
       snap.code_checked_limits.hard_restrictions.some(r => /derin squat/.test(r.text)),
       JSON.stringify(snap.code_checked_limits).slice(0, 300));
     const ctx = ctxFor(ath);
@@ -1228,8 +1236,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const bssJ = em.exercises.find(e => e.exercise === 'Bulgarian Split Squat');
     check('JSON: egzersiz kaydı aile, patern, son kullanım, sıklık ve dört pencere taşıyor',
       bssJ && bssJ.family === 'Split Squat Family' && bssJ.movement_class.includes('Unilateral Knee Dominant') && !('movement_pattern' in bssJ) &&
-      bssJ.last_used === back(1) && bssJ.frequency_28_days === 3 && bssJ.exposure.last_7_days === 'High' &&
-      Object.keys(bssJ.exposure).join(',') === 'last_session,last_7_days,last_14_days,last_28_days', JSON.stringify(bssJ));
+      bssJ.last_used === back(1) && bssJ.frequency_28_days === 3 && !('exposure' in bssJ) && !!em.level_scale &&
+      Object.keys(bssJ.sets).join(',') === 'last_session,last_7_days,last_14_days,last_28_days', JSON.stringify(bssJ));
     check('JSON: maruziyeti olmayan paternler ayrı listede',
       em.movement_class.no_exposure_last_28_days.includes('Vertical Push') &&
       em.movement_class.records.some(k => k.name === 'Knee Dominant') && !!em.movement_class_note,
@@ -1300,7 +1308,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       smp.action.records.length === 2 && smp.contraction_focus.no_exposure_last_28_days.includes('Isometric') &&
       !('lower_body_laterality' in snap2), JSON.stringify(smp.movement_plane));
     check('JSON: ekipman yalnızca kullanılanlarla, not var',
-      snap2.equipment_used.records.some(r => r.name === 'Dumbbell' && r.exposure.last_7_days === 'Moderate' && r.sets.last_7_days === 8) &&
+      snap2.equipment_used.records.some(r => r.name === 'Dumbbell' && r.sets.last_7_days === 8) &&
       !snap2.equipment_used.records.some(r => r.name === 'Kettlebell') && !!snap2.equipment_used_note, JSON.stringify(snap2.equipment_used));
     // Her kütüphane kategorisi: kendi alt boyutlarıyla sınıflama.
     const fc = (n, lm) => A.atpClassify(row(n), lm || libMap);
@@ -1361,10 +1369,20 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const coreMv = cc.categories.find(c => c.category === 'Core').facets.find(x => x.facet === 'Movement');
     check('JSON: category_coverage — yapılan, bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
       !!cc.note && coreMv.done.some(r => r.name === 'Anti-Extension' && r.sets.last_7_days === 6) &&
-      coreMv.not_done_last_7_days.includes('Anti-Rotation') && coreMv.not_done_last_7_days.includes('Rotation') && !coreMv.not_done_last_7_days.includes('Anti-Extension') &&
-      !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') &&
+      coreMv.done_last_28_not_last_7_days.includes('Anti-Rotation') && !coreMv.done_last_28_not_last_7_days.includes('Rotation') && !coreMv.done_last_28_not_last_7_days.includes('Anti-Extension') &&
+      !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') && !('not_done_last_7_days' in coreMv) &&
       cc.categories_without_recorded_work.includes('Balance') && !cc.categories_without_recorded_work.includes('Core'),
       JSON.stringify(coreMv));
+    {
+      /* Envanter varken Ekipman alt boyutu yalnızca salonda olan kiti "yapılmadı" diye sayıyor. */
+      const eqF = cov => cov.categories.flatMap(c => c.facets.filter(x => x.facet === 'Equipment'));
+      const withInv = eqF(A.atpSnapshot(ath2, TODAY, libMap, SETUP).out.exercise_exposure.category_coverage);
+      const noInv = eqF(A.atpSnapshot(ath2, TODAY, libMap, {}).out.exercise_exposure.category_coverage);
+      const gaps = withInv.flatMap(x => x.not_done_last_28_days || []);
+      check('JSON: ekipman boşlukları salonun envanteriyle sınırlı (envanter yoksa hepsi)',
+        withInv.length > 0 && !gaps.includes('Kettlebell') && !gaps.includes('Sled') &&
+        noInv.flatMap(x => x.not_done_last_28_days || []).includes('Kettlebell'), JSON.stringify(withInv.map(x => x.not_done_last_28_days)));
+    }
     check('JSON: görev her kategori için category_coverage okunmasını ve aynı değerin tekrar yazılmamasını söylüyor',
       snap.task.some(g => /category_coverage/.test(g) && /EVERY exercise category/.test(g) && /anti-extension every time for core/.test(g)));
     check('JSON: görev strength_movement_profile, ekipman ve çok yönlü program hedefinden söz ediyor',
