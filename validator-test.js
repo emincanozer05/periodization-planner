@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1466,6 +1466,44 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const P = { id: 'sp' };
     check('Horizontal Integration seçmiş sezonun haftaları Block olarak hesaplanıyor',
       ['Accumulation', 'Transmutation', 'Realization'].every((f, i) => A.defWeek(A.phaseModel({ model: 'horizontal' }, 'pre'), P, i, [], '2026-09-07').focus === f));
+  }
+
+  group('Ek — Maç günü, gün adları, talimat formu, JSON tutarlılığı');
+  {
+    /* Çarşamba ve perşembe maç, bugün cumartesi: son maçın üstünden İKİ gün geçti. */
+    const days = {
+      '2026-09-30': { date: '2026-09-30', sessions: [{ id: 'g1', name: 'MG (A) U16', focus: ['Competition'] }] },
+      /* İçindeki kopya tarih anahtarından kaymış bir gün: maç takvimde göründüğü güne yazılmalı. */
+      '2026-10-01': { date: '2026-10-02', sessions: [{ id: 'g2', name: 'Balkan Olimpik U18', focus: ['Competition'] }] },
+      '2026-10-02': { date: '2026-10-02', sessions: [{ id: 't1', name: 'Takım Antrenmanı', focus: ['Technical / Tactical'] }] },
+    };
+    const comps = A.syncCompetitions([], days, []);
+    check('maç, takvimdeki gününe (anahtarına) yazılıyor', comps.map(c => c.date).join(',') === '2026-09-30,2026-10-01', JSON.stringify(comps));
+    const cp = A.diCompetition({ competitions: comps }, '2026-10-03');
+    check('perşembe maçından sonra cumartesi MD+2', cp.md === 'MD+2' && cp.previous.days_since === 2, JSON.stringify(cp));
+    check('cuma MD+1', A.diCompetition({ competitions: comps }, '2026-10-02').md === 'MD+1');
+
+    check('gün ve ay adları Türkçe açıkken Türkçe', A.inTurkish(() => A.DN[0] + ' ' + A.DN[5] + ' ' + A.MN[8]) === 'Pzt Cmt Eyl',
+      A.inTurkish(() => A.DN.map(d => d).join(',')));
+    check('gün ve ay adları İngilizce açıkken İngilizce', A.DN[0] === 'Mon' && A.MN[9] === 'Oct' && A.DN.length === 7);
+
+    const typed = A.diBrief({ notes: 'bugün maç ', constraints: ['intensity'], constraintValues: { intensity: 'RPE 6' }, constraintNote: 'x' }, null);
+    check('ek notlar yazıldığı gibi saklanıyor (sondaki boşluk silinmiyor)', typed.notes === 'bugün maç ', JSON.stringify(typed.notes));
+    check('formdan kaldırılan ek kısıtlar talimatla taşınmıyor',
+      typed.constraints.length === 0 && Object.keys(typed.constraintValues).length === 0 && typed.constraintNote === '');
+    const ath = athlete({
+      wellness: [wellness(back(5), 4, { fatigue: 4 }), wellness(back(4), 4, { fatigue: 4 }), wellness(back(3), 4, { fatigue: 4 }),
+        wellness(back(2), 4, { fatigue: 4 }), wellness(back(1), 4, { fatigue: 4 }), wellness(TODAY, 4, { fatigue: 4.5 })],
+      srpeLog: [{ date: back(1), tpRPE: 6, tpDuration: 60 }],
+    });
+    const snap = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr: A.diBrief({ notes: '  not  ', avoid: ['derin squat'] }, null), customTests: [] });
+    check('JSON: notlar kırpılmış gidiyor', snap.coach_brief.additional_notes === 'not', JSON.stringify(snap.coach_brief));
+    const fat = snap.fatigue;
+    check('JSON: sapma yüzdesi yanındaki son değere göre', fat && fat.latest_value === 4.5 &&
+      fat.deviation_from_average_pct === Math.round((4.5 - fat.personal_average) / fat.personal_average * 1000) / 10, JSON.stringify(fat));
+    check('JSON: yalnız bir günlük yük geçmişinde ACWR notu var', /ACWR is 1\.0 by construction/.test(snap.rpe.acwr_note || ''), JSON.stringify(snap.rpe));
+    check('JSON: tercih edilen paternler kapalı paternleri içermiyor',
+      !((snap.pain_and_injury || {}).preferred_patterns || []).some(p => !snap.code_checked_limits.available_patterns.includes(p)));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
