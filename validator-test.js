@@ -690,6 +690,12 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       snap.coach_brief.must_include[0] === 'Calf Raise' && snap.coach_brief.avoid[0] === 'derin squat' &&
       snap.coach_brief.session_max_exercises === 8 && snap.coach_brief.additional_notes === 'Yarın maç var',
       JSON.stringify(snap.coach_brief));
+    const briefC = A.diBriefForAI(Object.assign({}, instr, { priorities: ['mobility', 'corrective'] }));
+    const snapC = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY,
+      instr: Object.assign({}, instr, { priorities: ['corrective'] }), customTests: [] });
+    check('öncelik: Düzeltici (Corrective) Hareket Kalitesi altında, seçilince JSON\'a yazılıyor',
+      briefC.priorities.length === 2 && snapC.coach_brief.priorities[0] === 'Corrective',
+      JSON.stringify([briefC.priorities, snapC.coach_brief.priorities]));
     check('boş alanlar çıktıya girmiyor', !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
     /* Her basış o anki veriden: yeni bir check-in ve yeni bir not bir sonraki çıktıda. */
     const ath2 = Object.assign({}, ath, {
