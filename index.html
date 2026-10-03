@@ -6548,11 +6548,16 @@ const FOCUS_SUB_FROM_LEGACY={
    resync; only the date follows the session. */
 const compRowsFromDays=days=>{
   const out=[];
-  Object.values(days||{}).forEach(d=>{
-    if(!d||!d.date)return;
+  /* The day's KEY is where the calendar draws it, so that is the fixture's date. The copy
+     of the date stored inside the day is only a fallback: a day object whose own `date`
+     had drifted from its key put the game one day off from where the coach sees it, and
+     every MD±n read off the fixture list was off with it. */
+  Object.entries(days||{}).forEach(([k,d])=>{
+    const date=/^\d{4}-\d{2}-\d{2}$/.test(k)?k:(d&&d.date);
+    if(!d||!date)return;
     (d.sessions||[]).forEach(ses=>{
       if(!ses||!sesFocus(ses).includes('Competition'))return;
-      out.push({srcId:String(ses.id||''),date:d.date,name:(ses.name||'').trim()||'Competition'});
+      out.push({srcId:String(ses.id||''),date,name:(ses.name||'').trim()||'Competition'});
     });
   });
   return out;
@@ -6836,9 +6841,19 @@ const SPRESETS=[
 /* A preset's label and the session it adds, in the language the app is showing. */
 const spLabel=p=>L(p.tr||p.name,p.name);
 const spData=p=>({...p.d,name:L(p.trName||p.d.name,p.d.name)});
-const DN=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+/* Short weekday and month names, read in the language the app is showing at the moment
+   they are read — not frozen in English when the script loads. Every calendar header,
+   tooltip and printout that indexes DN[i] / MN[m] follows the TR/EN switch through this,
+   and output that must stay English (the athlete JSON) already runs inside diInEnglish. */
+const _DN_EN_S=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],_DN_TR_S=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+const _MN_EN_S=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  _MN_TR_S=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const _langList=(en,tr)=>new Proxy(en,{get:(t,k)=>{
+  let tr0=false;try{tr0=REPORT_LANG==='tr';}catch(e){}
+  return Reflect.get(tr0?tr:t,k);}});
+const DN=_langList(_DN_EN_S,_DN_TR_S);
 const TEST_PERIODS=[{id:'pre',label:'Pre-Season',short:'Sezon Öncesi'},{id:'in',label:'In-Season',short:'Sezon İçi'},{id:'post',label:'Post-Season',short:'Sezon Sonu'}];
-const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MN=_langList(_MN_EN_S,_MN_TR_S);
 const CHART_DARK={
   // Impactful entrance: bars/points cascade in left→right, easing out smoothly.
   // Only on the initial 'default' draw (not hover/resize), and the per-item delay
@@ -6871,6 +6886,26 @@ const diffD=(a,b)=>Math.round((parseD(b)-parseD(a))/86400000);
 const sow=d=>{const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x};
 const wk=d=>fmt(sow(d));
 const today=new Date();
+/* `today` was fixed when the page loaded, so a tab or installed app left open past
+   midnight kept working on the day before: a sheet opened on Friday read Saturday as
+   Friday — the day after Thursday's game, MD+1, when it was already MD+2. The object is
+   kept (the whole app holds a reference to it) and moved forward in place once the
+   calendar day has changed. */
+function rollToday(){const n=new Date();if(fmt(n)===fmt(today))return false;today.setTime(n.getTime());return true;}
+/* A date picker that opened on today keeps following today: when the day turns over
+   while the page is open (or the tab comes back the next morning), a picker still
+   sitting on the old day moves with it. A day the coach picked by hand is left alone. */
+function useFollowToday(setDate){
+  const seen=useRef(fmt(today));
+  useEffect(()=>{
+    const tick=()=>{rollToday();const now=fmt(today),prev=seen.current;if(now===prev)return;
+      seen.current=now;setDate(d=>d===prev?now:d);};
+    const onVis=()=>{if(document.visibilityState==='visible')tick();};
+    const id=setInterval(tick,60000);
+    document.addEventListener('visibilitychange',onVis);window.addEventListener('focus',tick);
+    return()=>{clearInterval(id);document.removeEventListener('visibilitychange',onVis);window.removeEventListener('focus',tick);};
+  },[]);
+}
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ===== App language (global TR/EN switch — drives the whole UI and every print
@@ -32991,9 +33026,17 @@ function diInstr(raw,src){
     /* Carried through normalisation so a re-read of a stored brief still knows which
        of the two numbers is an instruction and which is a fallback. */
     durationSet:durSet,maxExercisesSet:maxSet,
-    notes:String(r.notes||'').trim(),
+    /* Kept as typed. The box writes through this on every keystroke and reads the
+       result back: trimming here took the space off the end of "word " the moment it
+       was typed, and the box, seeing a different value come back, jumped the caret. */
+    notes:String(r.notes||''),
   };
 }
+/* The brief as the sheet reads it. "Ek kısıtlar" is no longer on the form, so a
+   constraint left on an older stored brief is not carried: nothing the coach can no
+   longer see or clear may still steer the JSON or fail the check. The engine keeps
+   reading constraints for any caller that passes them on purpose. */
+const diBrief=(raw,src)=>({...diInstr(raw,src),constraints:[],constraintValues:{},constraintNote:''});
 /* A constraint value the coach typed, as a number a check can use. Deliberately
    forgiving about how it is written ("%60", "60 %", "RPE 7", "40kg", "12") and
    deliberately unforgiving about what it means: a figure whose unit cannot be told
@@ -33019,7 +33062,7 @@ function diConValue(kind,txt){
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
 const diInstrFilled=i=>!!(i&&(i.priorities.length||i.must.length||i.avoid.length
-  ||i.constraints.length||i.constraintNote||i.notes));
+  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()));
 
 /* ---- The coach's own words on the test sheet ------------------------------
    The battery is not only numbers. The posture box, the overhead-squat box and the
@@ -33383,7 +33426,7 @@ function diBriefForAI(i){
     /* The ceiling binds the WHOLE session: preparation, main and complementary rows
        all count, so the number the coach picks is the number the athlete sees. */
     session_max_exercises:i.maxExercises,
-    additional_notes:i.notes||null,
+    additional_notes:String(i.notes||'').trim()||null,
   };
 }
 /* Extraction and validation. Rebuilt field by field rather than handed back as it
@@ -34306,75 +34349,33 @@ function DiPriorityPicker({value,onChange}){
   </div>);
 }
 
-/* The constraints, as a dropdown that stays open while several are ticked. Hovering
-   a row (or reaching it with the keyboard) opens the box that says what the constraint
-   means, how a coach says it, and what the model is required to do about it — the last
-   line being exactly the sentence that is shipped with the request, so what the coach
-   reads and what the model is told are the same sentence. */
-function DiConstraintPicker({value,onChange,note,onNote,values,onValue}){
-  const[open,setOpen]=useState(false);
-  const list=(Array.isArray(value)?value:[]).filter(diConRow);
-  const toggle=id=>onChange(list.includes(id)?list.filter(x=>x!==id):[...list,id]);
-  return(<div className="di-conwrap">
-    <button type="button" className={'di-condrop'+(open?' on':'')} onClick={()=>setOpen(o=>!o)}>
-      <span>{list.length
-        ?L(`${list.length} kısıt seçili`,`${list.length} constraint${list.length>1?'s':''} selected`)
-        :L('Kısıtlama seç…','Pick constraints…')}</span>
-      <i>{open?'▲':'▼'}</i>
-    </button>
-    {open&&<div className="di-conmenu">
-      {DI_CONSTRAINT_TYPES.map(c=><div key={c.id} className={'di-conitem'+(list.includes(c.id)?' on':'')}
-        tabIndex={0} onClick={()=>toggle(c.id)}
-        onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(c.id);}}}>
-        <span className="di-conbox">{list.includes(c.id)?'✓':''}</span>
-        <span className="di-connm">{L(c.label[0],c.label[1])}</span>
-        <div className="di-contip" role="tooltip">
-          <b>{L(c.label[0],c.label[1])}</b>
-          <p>{L(c.what[0],c.what[1])}</p>
-          <p className="ex">{L(c.ex[0],c.ex[1])}</p>
-          <p className="ai"><i>{L('AI davranışı','AI behaviour')}:</i> {L(c.ai[0],c.ai[1])}</p>
-        </div>
-      </div>)}
-    </div>}
-    {/* A CONSTRAINT WITH NO NUMBER IN IT IS NOT A CONSTRAINT CODE CAN HOLD ANYTHING TO.
-        "Load limit" told the model to keep the load down and told the app nothing at
-        all, so rule 22 could only ever be advice. The box beside the chip is where the
-        limit itself goes, and it is optional: leave it empty and the constraint behaves
-        exactly as it did before — prose for the model, nothing for the checks. Fill it
-        and the session is held to it. */}
-    {list.length>0&&<div className="di-chips">
-      {list.map(id=>{const c=diConRow(id);return<span key={id} className="di-tag con">
-        <span>{L(c.label[0],c.label[1])}</span>
-        {c.deger&&<LiveInput className="di-conval" value={(values&&values[id])||''}
-          onChange={v=>onValue&&onValue(id,v)}
-          placeholder={L(c.deger.ph[0],c.deger.ph[1])}
-          title={L('Boş bırakırsan bu kısıt yalnızca modele metin olarak gider; doldurursan koda da bağlar.',
-                   'Leave it empty and this constraint is prose for the model only; fill it in and it binds the checks too.')}/>}
-        <button type="button" onClick={()=>toggle(id)} aria-label={L('Kaldır','Remove')}>✕</button></span>;})}
-    </div>}
-    <LiveInput className="di-connote" value={note||''} onChange={onNote}
-      placeholder={L('Ek kısıtlamaları detaylandır… (ör. zıplama hacmini düşük tut, yalnızca üst vücut)',
-        'Spell the constraints out… (e.g. keep jump volume low, upper body only)')}/>
-  </div>);
-}
-
 /* A number with the answers a coach actually gives beside it. Typing is still allowed —
    the buttons are shortcuts, not the only way in. */
 function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
+  /* What is in the box while it is being typed in. Emptying the box used to hand
+     `null` straight up, the brief fell back to the session's own figure and that figure
+     came straight back into the box — so it could never be cleared to type a new
+     number. Now an empty box stays empty while it has focus, every real number typed is
+     saved as it is typed, and only leaving the box empty hands the field back to auto. */
+  const[txt,setTxt]=useState(null);
+  const shown=txt!=null?txt:(value==null?'':String(value));
   return(<div className="di-numc">
     <div className="di-numin">
-      <input type="number" min={min||1} max={max||999} value={value==null?'':value}
-        onChange={e=>onChange(e.target.value===''?null:Number(e.target.value))} placeholder={placeholder}/>
+      <input type="number" min={min||1} max={max||999} value={shown}
+        onChange={e=>{const t=e.target.value;setTxt(t);
+          if(t!==''){const n=Number(t);if(isFinite(n)&&n>0)onChange(n);}}}
+        onBlur={()=>{if(txt==='')onChange(null);setTxt(null);}}
+        placeholder={placeholder}/>
       <span>{unit}</span>
     </div>
     <div className="di-numbtns">
       {choices.map(c=><button key={c} type="button" className={'di-numb'+(Number(value)===c?' on':'')}
-        onClick={()=>onChange(c)}>{c}</button>)}
+        onClick={()=>{setTxt(null);onChange(c);}}>{c}</button>)}
     </div>
   </div>);
 }
 
-/* The brief. Seven fields, none of them required, and the line under the heading says
+/* The brief. Six fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
    and without a card edge they read as one ragged block of controls. It is stored per
@@ -34426,24 +34427,17 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
         <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
           pending={avoidPend}
           placeholder={L('ör. derin squat','e.g. deep squat')}/>)}
-      {field(4,L('Ek kısıtlar','Constraints'),
-        L('Bugüne özel bir sınır var mı? Bir kısıtın üstüne gelince ne anlama geldiği açılır.',
-          'Any limit that applies today. Hover one to read what it means.'),
-        <DiConstraintPicker value={instr.constraints} onChange={v=>set('constraints',v)}
-          note={instr.constraintNote} onNote={v=>set('constraintNote',v)}
-          values={instr.constraintValues}
-          onValue={(id,v)=>set('constraintValues',{...(instr.constraintValues||{}),[id]:v})}/>,true)}
-      {field(5,L('Seans süresi','Session length'),
+      {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}
           onChange={v=>save({...instr,duration:v,durationSet:v!=null})} choices={DI_DUR_CHOICES}
           unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>)}
-      {field(6,L('Maks. egzersiz','Exercise ceiling'),
+      {field(5,L('Maks. egzersiz','Exercise ceiling'),
         L('Seansta toplam en fazla kaç egzersiz olsun? (tüm fazlar dahil)','How many exercises in the whole session at most? (all phases)'),
         <DiNumberChoice value={instr.maxExercises}
           onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
           unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>)}
-      {field(7,L('Ek notlar','Notes'),
+      {field(6,L('Ek notlar','Notes'),
         L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
           placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
@@ -34810,14 +34804,18 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     const last=[...ws].reverse().find(w=>recNum(w[id])!=null)||null;
     if(!last)return null;
     const bl=base(id);
+    const v=recNum(last[id]),avg=bl?recNum(bl.baseline):null;
     return{
       name,
-      latest_value:recNum(last[id]),
+      latest_value:v,
       date:last.date,
       days_ago:diffD(last.date,ref),
       scale:id==='RHR'?'bpm (above the personal average is worse)':null,
-      personal_average:bl?bl.baseline:null,
-      deviation_from_average_pct:bl?bl.deviation_pct:null,
+      personal_average:avg,
+      /* Of the value printed beside it. The engine's own deviation is of the mean of the
+         last three days, and written next to latest_value it read as that value's
+         deviation — a 4.5 against an average of 4.13 went out as +1.1 %. */
+      deviation_from_average_pct:(v!=null&&avg)?Math.round((v-avg)/avg*1000)/10:null,
     };
   };
   const painRegions=((b.pain&&b.pain.regions)||[]);
@@ -35006,7 +35004,13 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       latest_entry:(ld.last&&!srpe.some(e=>e.date===ld.last.date))?{date:ld.last.date,type:KIND[ld.last.kind]||ld.last.kind,rpe:ld.last.rpe,duration_min:ld.last.duration,srpe_au:ld.last.srpe}:null,
       avg_rpe_3_days:ld.rpe3,avg_rpe_7_days:ld.rpe7,avg_rpe_previous_7_days:ld.rpe_prev7,trend:ld.trend,
       srpe_7_days_au:ld.srpe7,srpe_previous_7_days_au:ld.srpe_prev7,load_change_pct:ld.load_change_pct,
-      acwr:ld.acwr,acwr_zone:ld.acwr_zone,monotony:ld.monotony,hard_days_7:ld.hard_days_7,
+      acwr:ld.acwr,acwr_zone:ld.acwr_zone,
+      /* The chronic side is averaged over the history the 28-day window actually holds,
+         so with a week or less of it the ratio is acute over itself — 1.0, "optimal",
+         whatever the load was. Said, so it is not read as a measured balance. */
+      acwr_note:(()=>{const h=loadWindows(k=>athDayLoad(a,k),ref).hist;
+        return ld.acwr!=null&&h<=7?`Only ${h} day(s) of load history in the 28-day window: acute and chronic cover the same days, so ACWR is 1.0 by construction and says nothing yet.`:null;})(),
+      monotony:ld.monotony,hard_days_7:ld.hard_days_7,
       last_7_days:srpe.map(e=>({date:e.date,
         sessions:[slot(e,'tp'),slot(e,'sc'),slot(e,'game')].filter(Boolean),
         total_load_au:recNum(e.totalLoad)})),
@@ -35051,7 +35055,10 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       peak_pain_0_5:b.pain&&b.pain.peak_severity_0_5,
       athlete_words:b.pain&&b.pain.athlete_words,
       patterns_to_unload:b.pain&&b.pain.patterns_to_unload,
-      preferred_patterns:b.pain&&b.pain.patterns_preferred,
+      /* Only patterns the limits leave open: a pattern the coach's brief or a hard
+         restriction closes (squat, under "no deep squat") is not offered here as the
+         one to steer towards. */
+      preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)),
       standing_constraint_note:a.constraints,
       active_injuries:activeInj.map(injRow),
       past_injuries:pastInj.slice(-6).map(injRow),
@@ -35120,7 +35127,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   };
   const review=diReadReview(team,srcKey,plan.ath.id,date);
   const program=diReviewProgram(review);
-  const instr=useMemo(()=>diInstr(review&&review.instr,plan.meta),[review,plan.meta]);
+  const instr=useMemo(()=>diBrief(review&&review.instr,plan.meta),[review,plan.meta]);
   const saveInstr=next=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{instr:next});
   const adj=bundle.adjustment;
   const rowPct=program&&program.external?0:adj.pct;
@@ -35153,7 +35160,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     let text;
     try{
       text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,
-        instr:diInstr(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
+        instr:diBrief(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -35270,7 +35277,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {open&&<div className={'di-face'+(flip?' '+flip:'')}>
     {!onProg&&<>
 
-    <DiSection n="1" title={L('Bugünün tablosu','Today at a glance')}
+    <DiSection n="1" title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
+        :L(`${fd(date)} tablosu`,`${fd(date)} at a glance`)}
       meta={L('hesaplanan değerler — model bunları üretmez','computed — the model does not produce these')}>
       <div className="di-grid">
         <DiTile label={L('Hazır oluş','Readiness')}
@@ -35278,10 +35286,14 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
           fill={rd.score!=null?rd.score/5*100:null} tone={rdTone}
           sub={`${rd.status||'—'}${rd.source==='estimated from sRPE trend'?L(' · tahmini',' · estimated'):''}`}/>
         <DiTile label={L('Müsabaka günü','Competition day')} value={md||'—'} tone={mdTone}
-          sub={bundle.competition.next
-            ?L(`${bundle.competition.next.days_until} gün sonra: ${bundle.competition.next.name||'maç'}`,
-               `in ${bundle.competition.next.days_until} days: ${bundle.competition.next.name||'game'}`)
-            :L('planlı maç yok','no fixture scheduled')}/>
+          sub={(()=>{const cp=bundle.competition;
+            /* The fixture the label is counted from, named, so an MD+n can be checked
+               against the calendar at a glance. */
+            if(cp.today)return L(`bugün: ${cp.today.name||'maç'}`,`today: ${cp.today.name||'game'}`);
+            if(md&&/^MD\+/.test(md)&&cp.previous)
+              return L(`son maç ${fd(cp.previous.date)}: ${cp.previous.name||'maç'}`,`last game ${fd(cp.previous.date)}: ${cp.previous.name||'game'}`);
+            if(cp.next)return L(`${cp.next.days_until} gün sonra: ${cp.next.name||'maç'}`,`in ${cp.next.days_until} days: ${cp.next.name||'game'}`);
+            return L('planlı maç yok','no fixture scheduled');})()}/>
         <DiTile label={L('Sezon fazı','Season phase')} value={bundle.season_phase.label||'—'} text
           sub={bundle.season_phase.focus.slice(0,3).join(' · ')||'—'}/>
         <DiTile label={L('İç yük','Internal load')} value={bundle.load.srpe7||0}
@@ -35475,6 +35487,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const athletes=team.athletes||[];
   const store=team.indiv||{};
   const[date,setDate]=useState(fmt(today));
+  useFollowToday(setDate);
   const[srcKey,setSrcKey]=useState('');
   const[sel,setSel]=useState(null);           // null = auto (assigned / all)
   const[open,setOpen]=useState({});
@@ -35566,7 +35579,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       try{
         const review=activeKey?diReadReview(team,activeKey,a.id,date):null;
         items.push({ath:a,
-          instr:diInstr(review&&review.instr,p?p.meta:null),session:p?p.meta:null,recent:diRecentPrograms(team,a.id,date)});
+          instr:diBrief(review&&review.instr,p?p.meta:null),session:p?p.meta:null,recent:diRecentPrograms(team,a.id,date)});
       }catch(e){skipped.push(a.name||a.id);}
     });
     if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
@@ -35601,7 +35614,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     const r=diReadReview(team,activeKey,p.ath.id,date);
     const deficits=diDeficits(p.ath,date);
     return validateProgram(prog,{
-      bundle:b,instr:diInstr(r&&r.instr,p.meta),
+      bundle:b,instr:diBrief(r&&r.instr,p.meta),
       setup:team.setup||{},libMap,deficits,
       differentiators:diDifferentiators(p.ath,b,deficits,date),
       recent:diRecentPrograms(team,p.ath.id,date),
