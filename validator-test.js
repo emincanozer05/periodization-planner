@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exApplySuggestions', 'exLibraryNote', 'ctLabelIn'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1537,49 +1537,16 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       trContra.split('\n').includes('  Kontrendikasyonlar: Diz, Sırt / Bel') && A.ctLabelIn('knee', false) === 'Knee', trContra);
   }
 
-  group('Ek — Egzersiz kütüphanesi: öneri dosyası yalnızca boş alanları dolduruyor');
+  group('Ek — Egzersiz kütüphanesi: eski "kontrol bekliyor" işaretleri siliniyor');
   {
-    const shelf = [
-      { id: 'a', name: 'Lateral Split Squat', type: '', muscle: [], contra: [] },
-      { id: 'b', name: 'DB  RDL', type: 'Hip Dominant', difficulty: 'Level 3', muscle: ['Glutes'], contra: [], equipment: [] },
-      { id: 'c', name: 'Box Jump', lib: 'ball', type: '' },
-      { id: 'd', name: 'Untouched', type: 'Core', subType: 'Flexion' },
-    ];
-    const file = { format: 'coachos-exercise-suggestions', exercises: [
-      { name: 'lateral split squat', type: 'Knee Dominant', subType: 'Concentric', action: 'Push', pattern: 'Lunges',
-        equipment: ['Bodyweight', 'Spaceship'], difficulty: 'Level 1', muscle: ['Quadriceps', 'Nope'], contra: ['knee', 'elbowz'], movePattern: 'Lunge / Unilateral' },
-      { name: 'DB RDL', type: 'Knee Dominant', subType: 'Isometric', action: 'Lunge', equipment: ['Dumbbell'], difficulty: 'Level 1', muscle: ['Hamstrings'], contra: ['back'], movePattern: 'Hinge' },
-      { name: 'Box Jump', type: 'Plyometric', difficulty: 'Level 1' },
-      { name: 'Not In Library', type: 'Core' },
-    ] };
-    const r = A.exApplySuggestions(shelf, file);
-    const by = id => r.list.find(e => e.id === id);
-    const a = by('a'), b = by('b');
-    check('öneri: boş kategori ve ona bağlı alanlar doluyor; listede olmayan değerler atlanıyor',
-      a.type === 'Knee Dominant' && a.subType === 'Concentric' && a.action === 'Push' && a.pattern === 'Lunges' &&
-      JSON.stringify(a.equipment) === '["Bodyweight"]' && JSON.stringify(a.muscle) === '["Quadriceps"]' &&
-      JSON.stringify(a.contra) === '["knee"]' && a.movePattern === 'Lunge / Unilateral' && a.difficulty === 'Level 1', JSON.stringify(a));
-    check('öneri: dolu alana dokunulmuyor (kategori, zorluk, kaslar); yalnız boşlar yazılıyor',
-      b.type === 'Hip Dominant' && b.difficulty === 'Level 3' && JSON.stringify(b.muscle) === '["Glutes"]' &&
-      b.subType === 'Isometric' && !b.action && JSON.stringify(b.equipment) === '["Dumbbell"]' && JSON.stringify(b.contra) === '["back"]' && b.movePattern === 'Hinge',
-      JSON.stringify(b));
-    check('öneri: doldurulan her alan "kontrol bekliyor" listesinde',
-      JSON.stringify(b.review) === '["subType","equipment","movePattern","contra"]' && a.review.includes('type') && a.review.includes('contra'),
-      JSON.stringify([a.review, b.review]));
-    check('öneri: top çalışması rafına ve eşleşmeyen kayda dokunulmuyor; sayılar doğru',
-      by('c') === shelf[2] && by('d') === shelf[3] && r.touched === 2 && r.fields === a.review.length + b.review.length &&
-      JSON.stringify(r.unmatched) === '["Box Jump","Not In Library"]', JSON.stringify({ t: r.touched, f: r.fields, u: r.unmatched }));
-    const again = A.exApplySuggestions(r.list, file);
-    check('öneri: ikinci kez uygulanınca hiçbir şey değişmiyor', again.touched === 0 && again.list.every((e, i) => e === r.list[i]));
-    const real = require('./tools/exercise-suggestions/exercise-suggestions.json');
-    // Each suggestion applied to a blank entry of that name must come back whole: a value
-    // the app does not offer would be dropped without a word.
-    const bad = real.exercises.filter(s => {
-      const one = A.exApplySuggestions([{ id: 'x', name: s.name }], real).list[0];
-      return Object.keys(s).some(k => k !== 'name' && JSON.stringify(one[k]) !== JSON.stringify(s[k]));
-    }).map(s => s.name);
-    check('öneri dosyası: her öneri değeri uygulamanın kendi listelerinde var (hiçbiri sessizce düşmüyor)',
-      real.format === 'coachos-exercise-suggestions' && real.exercises.length > 300 && bad.length === 0, bad.slice(0, 10).join(', '));
+    const m = A.migrate({ exercises: [
+      { id: 'a', name: 'DB RDL', type: 'Hip Dominant', difficulty: 'Level 1', contra: ['back'], review: ['difficulty', 'contra'] },
+      { id: 'b', name: 'Plank', type: 'Core' },
+    ] });
+    const a = m.exercises.find(e => e.id === 'a');
+    check('migrate: review alanı kalkıyor, doldurulan değerler duruyor',
+      !('review' in a) && a.difficulty === 'Level 1' && JSON.stringify(a.contra) === '["back"]' &&
+      !m.exercises.some(e => 'review' in e), JSON.stringify(m.exercises));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
