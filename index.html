@@ -28967,9 +28967,21 @@ function ExercisesView({data,setData}){
     catch(e){console.warn('library PDF failed',e);
       alert(L('PDF oluşturulamadı — bağlantını kontrol edip tekrar dene.','The PDF could not be created — check your connection and try again.'));}
     finally{setMdBusy(false);}};
-  const mdBtn=<button className="btn sm danger" onClick={downloadLibPdf} disabled={exercises.length===0||mdBusy}
-    title={L('Kütüphaneyi uygulamanın diliyle, egzersiz görselleriyle birlikte PDF olarak indir','Download the library as a PDF in the app language, with the exercise images')}>
-    {mdBusy?L('Hazırlanıyor…','Preparing…'):`⬇ ${L('İndir (PDF)','Download (PDF)')}`}</button>;
+  /* The same shelf as a .txt — the file an AI project is loaded with as reference. */
+  const downloadLibTxt=async()=>{
+    if(mdBusy)return;
+    setMdBusy(true);
+    try{await downloadExLibraryText(exercises,{ball,libTab});}
+    catch(e){console.warn('library text failed',e);
+      alert(L('Metin dosyası oluşturulamadı — tekrar dene.','The text file could not be created — try again.'));}
+    finally{setMdBusy(false);}};
+  const mdBtn=<>
+    <button className="btn sm danger" onClick={downloadLibPdf} disabled={exercises.length===0||mdBusy}
+      title={L('Kütüphaneyi uygulamanın diliyle, egzersiz görselleriyle birlikte PDF olarak indir','Download the library as a PDF in the app language, with the exercise images')}>
+      {mdBusy?L('Hazırlanıyor…','Preparing…'):`⬇ ${L('İndir (PDF)','Download (PDF)')}`}</button>
+    <button className="btn sm" onClick={downloadLibTxt} disabled={exercises.length===0||mdBusy}
+      title={L('Kütüphaneyi uygulamanın diliyle metin dosyası (.txt) olarak indir — AI projesine referans dosyası olarak yüklenir','Download the library as a text file (.txt) in the app language — the reference file an AI project is loaded with')}>
+      {`⬇ ${L('İndir (.txt)','Download (.txt)')}`}</button></>;
   const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
   /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
      both the coach's library, and which one is open should never be something to hunt
@@ -29814,6 +29826,51 @@ async function downloadExLibraryPDF(exercises,{ball,libTab}){
   const font=await pdfUseArchivo(doc);
   exLibraryPDF(doc,lib,{ball,lang,untranslated,font,logo:COACHOS_LOGO,imageOf:e=>images.get(e)||''});
   doc.save(`exercise_library_${libTab}_${lang}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+/* The same library as one plain-text file — the format the programme-writing
+   instructions describe for an AI project's reference file ("CoachOS Exercise Library",
+   .txt): one block per exercise under its category, the name on its own line and every
+   field the PDF card carries on an indented line under it. Built from the very entries
+   the PDF is drawn from, so the two files can never list different things. */
+function exLibraryText(lib,opts){
+  const o=opts||{};
+  const tr=o.lang==='tr';
+  const T=(a,b)=>tr?a:b;
+  const heavy='='.repeat(48),light='-'.repeat(48);
+  const out=[
+    T(o.ball?'COACHOS DRİL KÜTÜPHANESİ — TOP ÇALIŞMASI':'COACHOS EGZERSİZ KÜTÜPHANESİ — KUVVET VE KONDİSYON',
+      o.ball?'COACHOS DRILL LIBRARY — BALL PRACTICE':'COACHOS EXERCISE LIBRARY — STRENGTH & CONDITIONING'),
+    `${lib.total} ${T(o.ball?'dril':'egzersiz',o.ball?'drills':'exercises')}${o.date?` · ${T('dışa aktarım','exported')} ${o.date}`:''}`,'',
+    T('NASIL KULLANILIR','HOW TO USE'),
+    T('Her egzersiz kendi kategorisi altında tek bir blok olarak yazılmıştır. Listeden egzersiz seçerken adı yazıldığı gibi kullan. '+
+      'movement_pattern programdaki satıra yazılacak değerdir ve her zaman İngilizce yazılır. Bu liste bir aday listesidir, sınır değildir: listede olmayan egzersiz de yazılabilir.',
+      'Each exercise is one block under its category. When you choose an exercise from this list, write its name as given. '+
+      'movement_pattern is the value to write in a programme row and is always in English. This list is a set of candidates, not a limit: an exercise outside it is allowed.')];
+  if(o.untranslated>0)out.push(T(`Not: ${o.untranslated} açıklama çevrilemedi ve yazıldığı dilde bırakıldı.`,
+    `Note: ${o.untranslated} description(s) could not be translated and are left in the language they were written in.`));
+  out.push('');
+  lib.sections.forEach(sec=>{
+    out.push(heavy,`${sec.title.toLocaleUpperCase(tr?'tr':'en')} (${sec.rows.length})`,heavy,'');
+    sec.rows.forEach(r=>{
+      out.push(r.name);
+      r.fields.forEach(f=>out.push(`  ${f.k}: ${f.v}`));
+      if(r.desc)out.push(`  ${T('Açıklama','Description')}: ${r.desc}`);
+      out.push('',light,'');
+    });
+  });
+  return out.join('\n');
+}
+async function downloadExLibraryText(exercises,{ball,libTab}){
+  const lang=REPORT_LANG;
+  const date=new Date().toISOString().slice(0,10);
+  const{map,untranslated}=await exLibraryDescriptions(exercises,lang);
+  const lib=exLibraryEntries(exercises,{ball,lang,descOf:e=>map[String(e.purpose||'').trim()]||e.purpose||''});
+  const txt=exLibraryText(lib,{ball,lang,date,untranslated});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+txt],{type:'text/plain;charset=utf-8'}));
+  a.download=`exercise_library_${libTab}_${lang}_${date}.txt`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 /* The description of every exercise in the app's language. A description is stored as the
    coach wrote it — in practice Turkish — and the screen shows an English machine
@@ -31875,7 +31932,7 @@ function atpSnapshot(ath,ref,libMap,setup){
       /* The profile's own classification, finer than the session's pattern vocabulary
          and named apart from it so the two lists are never mistaken for each other. */
       movement_class_note:'movement_class is the training profile\'s detailed classification (e.g. Hip Dominant, Horizontal Push); '+
-        'these names are never written into a programme\'s movement_pattern field — that field is chosen only from the pattern names in movement_families.',
+        'these names are never written into a programme\'s movement_pattern field — that field is chosen only from movement_pattern_vocabulary.',
       level_scale:`The exposure level of a record, read off its sets: High / Moderate / Low / None. The 7-14-28 day windows are read as a weekly average: `+
         `a single exercise ≥${cut.exercise.week[1]} sets/week High, ≥${cut.exercise.week[0]} Moderate; family, pattern, stimulus and loading `+
         `≥${cut.group.week[1]} sets/week High, ≥${cut.group.week[0]} Moderate. Last session: a single exercise ≥${cut.exercise.session[1]} sets High, `+
@@ -31906,14 +31963,14 @@ function atpSnapshot(ath,ref,libMap,setup){
         note:'For every exercise category the athlete has trained (the library\'s own categories: core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, accessory), '+
           'every facet the category is filed by (movement, direction, type, position, technique, contraction focus, action, implement…) with what was done and what was not. '+
           'done: the values that were recorded, in sets, over the last session and the last 7 / 14 / 28 days. '+
-          'not_done_last_28_days: the values with no set in the last 28 days. done_last_28_not_last_7_days: the values done earlier in the 28 days but not in the last 7. '+
-          'The gaps of this week are the two lists together. For Equipment, only the kit in the gym\'s inventory is listed as not done. '+
+          'not_done_last_7_days: the values with no set in the last 7 days (this week\'s gaps — it includes the values of not_done_last_28_days). not_done_last_28_days: the values with no set in the last 28 days. '+
+          'Prefer not_done_last_28_days first, then the rest of not_done_last_7_days. For Equipment, only the kit in the gym\'s inventory is listed as not done. '+
           'A facet is listed only when at least one recorded exercise of the category carries it, so a value missing from the list of a listed facet means it was not recorded, not that it was avoided; a row whose value cannot be told is not counted.',
         categories:ex.coverage.map(c=>({category:c.type,sets:per(c.cat,(x,w)=>x.sets[w]),
           facets:c.facets.map(f=>{const gap=gapOf(f);return{facet:f.label,
             done:f.values.filter(t=>t.lastUsed).map(item),
-            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label),
-            done_last_28_not_last_7_days:f.values.filter(t=>t.sets.d28>0&&!(t.sets.d7>0)).map(t=>t.label)};})})),
+            not_done_last_7_days:f.values.filter(t=>!(t.sets.d7>0)&&(t.sets.d28>0||gap(t))).map(t=>t.label),
+            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label)};})})),
         categories_without_recorded_work:ex.coverageMissing,
       },
       equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
@@ -33535,7 +33592,7 @@ const DI_EXT_SCHEMA={
         name:'exercise name',sets:'3',reps:"6 (or '4-6')",duration:'only if needed (e.g. 30 s), otherwise leave empty',
         distance:'only if needed, otherwise leave empty',load:'e.g. 70% 1RM, 60 kg, bodyweight',rpe:"target RPE 1-10 (e.g. '7' or '6-7'); leave empty for mobility / activation",tempo:'only if needed',
         rest:'e.g. 90 s',equipment:"one item of the gym's equipment, or 'bodyweight'",
-        movement_pattern:'one of the pattern names in movement_families',
+        movement_pattern:'one of movement_pattern_vocabulary, written exactly as listed',
         rationale:'why this exercise for this athlete — which data / finding / instruction',
         basis:['D1'],
       }],
@@ -33554,7 +33611,7 @@ const DI_EXT_TASK=[
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
   'coach_brief is binding: must_include is in the session, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
-  'Split the session into phases: each block\'s phase is preparation, main or complementary. Choose every exercise\'s movement_pattern from the pattern names in movement_families and fill in its equipment.',
+  'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
   'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
@@ -33562,7 +33619,7 @@ const DI_EXT_TASK=[
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
-  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_28_days, done_last_28_not_last_7_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
@@ -33617,7 +33674,7 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   return diInEnglish(()=>{
-  const shared=['task','output_format','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -33635,6 +33692,7 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
     sport_context:diSportContext(setup),
+    movement_pattern_vocabulary:[...IV_PATTERNS],
     movement_families:diFamiliesForAI(),
     exercise_library:diLibraryForAI(libMap,setup),
     athletes:list,
@@ -35078,6 +35136,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
        the answer does not hand them the same session again (rule 23). */
     recent_programs:recent&&recent.length?recent.map(p=>({date:p.tarih,exercises:p.egzersizler,differentiators:p.ayirt_ediciler})):null,
     sport_context:diSportContext(s),
+    movement_pattern_vocabulary:[...IV_PATTERNS],
     movement_families:diFamiliesForAI(),
     exercise_library:diLibraryForAI(libMap,s),
     output_format:DI_EXT_SCHEMA,
