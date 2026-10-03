@@ -8960,8 +8960,16 @@ function migrate(data){
     /* "Step-up" is spelled "Step-Up" now, as the rest of the pattern list is cased. */
     .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e)
     /* The one-off suggestion import marked every field it filled as "awaiting review".
-       The import and the marks are gone; the values it filled stay as they are. */
-    .map(e=>{if(!('review'in e))return e;const{review,...rest}=e;return rest;});
+       The import and the marks are gone. The values it filled stay, except the
+       movement_pattern: that one is dropped again, so the pattern reads off the category
+       as before. A movement_pattern the entry carried before the import was never marked,
+       so it stays. */
+    .map(e=>{
+      if(!('review'in e))return e;
+      const{review,...rest}=e;
+      if(Array.isArray(review)&&review.includes('movePattern'))rest.movePattern='';
+      return rest;
+    });
   /* The Gemini key used to ride in the synced workspace (and so in this browser's
      cache of it). It lives on the server now, so an old copy is dropped here rather
      than left sitting in the browser. The Gemini-vs-Claude choice and the model stay. */

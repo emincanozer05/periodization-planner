@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1542,7 +1542,13 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const m = A.migrate({ exercises: [
       { id: 'a', name: 'DB RDL', type: 'Hip Dominant', difficulty: 'Level 1', contra: ['back'], review: ['difficulty', 'contra'] },
       { id: 'b', name: 'Plank', type: 'Core' },
+      { id: 'c', name: '2DB Reverse Lunge', type: 'Knee Dominant', movePattern: 'Lunge / Unilateral', review: ['movePattern', 'contra'], contra: ['knee'] },
+      { id: 'd', name: 'Dynamic Copenhagen Plank', type: 'Core', movePattern: 'Lunge / Unilateral', review: ['contra'], contra: ['hip'] },
     ] });
+    const c = m.exercises.find(e => e.id === 'c'), d = m.exercises.find(e => e.id === 'd');
+    check('migrate: içe aktarmanın doldurduğu movement_pattern siliniyor, öncekiler ve diğer alanlar kalıyor',
+      !c.movePattern && JSON.stringify(c.contra) === '["knee"]' && d.movePattern === 'Lunge / Unilateral' &&
+      A.exPatternOf(c) === 'Squat', JSON.stringify([c, d]));
     const a = m.exercises.find(e => e.id === 'a');
     check('migrate: review alanı kalkıyor, doldurulan değerler duruyor',
       !('review' in a) && a.difficulty === 'Level 1' && JSON.stringify(a.contra) === '["back"]' &&
