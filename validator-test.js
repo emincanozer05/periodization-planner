@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -720,7 +720,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('tekrar yok: wellness alanlarının günlük serisi yalnızca wellness.last_7_days\'te; boy/kilo testlerde ikinci kez yok',
       !('last_7_days' in snap.sleep) && snap.wellness.last_7_days.length === 2 && !('mental_fatigue' in snap) &&
       !(snap.tests.results.Anthropometry || []).some(x => /^(Height|Weight|Body Fat)$/.test(x.test)) &&
-      !('season_phase' in snap.weekly_calendar) && !('next_game' in snap.weekly_calendar) && !('movement_pattern_vocabulary' in snap),
+      !('season_phase' in snap.weekly_calendar) && !('next_game' in snap.weekly_calendar),
       JSON.stringify({ sleep: snap.sleep, anthro: snap.tests.results.Anthropometry }));
     check('antrenman kaydı yoksa maruziyet bloğu kısa: sayım ve kapsam', Object.keys(snap.training_profile.exercise_exposure).join(',') === 'scope,window_end,session_count',
       JSON.stringify(snap.training_profile.exercise_exposure));
@@ -1369,8 +1369,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const coreMv = cc.categories.find(c => c.category === 'Core').facets.find(x => x.facet === 'Movement');
     check('JSON: category_coverage — yapılan, bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
       !!cc.note && coreMv.done.some(r => r.name === 'Anti-Extension' && r.sets.last_7_days === 6) &&
-      coreMv.done_last_28_not_last_7_days.includes('Anti-Rotation') && !coreMv.done_last_28_not_last_7_days.includes('Rotation') && !coreMv.done_last_28_not_last_7_days.includes('Anti-Extension') &&
-      !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') && !('not_done_last_7_days' in coreMv) &&
+      coreMv.not_done_last_7_days.includes('Anti-Rotation') && coreMv.not_done_last_7_days.includes('Rotation') && !coreMv.not_done_last_7_days.includes('Anti-Extension') &&
+      !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') && !('done_last_28_not_last_7_days' in coreMv) &&
       cc.categories_without_recorded_work.includes('Balance') && !cc.categories_without_recorded_work.includes('Core'),
       JSON.stringify(coreMv));
     {
@@ -1504,6 +1504,30 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('JSON: yalnız bir günlük yük geçmişinde ACWR notu var', /ACWR is 1\.0 by construction/.test(snap.rpe.acwr_note || ''), JSON.stringify(snap.rpe));
     check('JSON: tercih edilen paternler kapalı paternleri içermiyor',
       !((snap.pain_and_injury || {}).preferred_patterns || []).some(p => !snap.code_checked_limits.available_patterns.includes(p)));
+  }
+
+  group('Ek — Program talimatı (Revize 10) ile JSON ve kütüphane dosyası uyumu');
+  {
+    const snap = A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
+      instr: A.diBrief(null, { duration: 60 }), customTests: [] });
+    check('JSON: movement_pattern_vocabulary kodun patern listesinin birebir kopyası',
+      JSON.stringify(snap.movement_pattern_vocabulary) === JSON.stringify(A.IV_PATTERNS) && snap.movement_pattern_vocabulary.includes('Jump / Plyo'),
+      JSON.stringify(snap.movement_pattern_vocabulary));
+    check('JSON: görev ve çıktı şeması movement_pattern için vocabulary\'yi gösteriyor',
+      snap.task.some(t => /movement_pattern_vocabulary/.test(t)) && /movement_pattern_vocabulary/.test(JSON.stringify(snap.output_format)));
+    const squad = A.diSquadSnapshot({ items: [{ ath: athlete(), instr: A.diBrief(null, { duration: 60 }) }], setup: SETUP, date: TODAY, customTests: [] });
+    check('takım JSON\'u: vocabulary bir kez, en üstte', Array.isArray(squad.movement_pattern_vocabulary) &&
+      !squad.athletes.some(x => 'movement_pattern_vocabulary' in x));
+    const lib = A.exLibraryEntries([
+      { name: 'Romanian Deadlift', type: 'Hip Dominant', movePattern: 'Hinge', difficulty: 'Intermediate', muscle: ['Hamstrings'], purpose: 'Kalça menteşesi.' },
+      { name: 'Box Jump', type: 'Plyometric', movePattern: 'Jump / Plyo' },
+    ], { lang: 'tr' });
+    const txt = A.exLibraryText(lib, { lang: 'tr', date: '2026-10-03' });
+    const lines = txt.split('\n');
+    check('kütüphane .txt: her egzersiz kendi satırında, alanlar girintili, movement_pattern İngilizce',
+      lines.includes('Romanian Deadlift') && lines.includes('Box Jump') && lines.includes('  movement_pattern: Hinge') &&
+      lines.includes('  movement_pattern: Jump / Plyo') && lines.some(l => /^  Açıklama: Kalça menteşesi\.$/.test(l)) &&
+      /aday listesidir, sınır değildir/.test(txt), txt.slice(0, 600));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
