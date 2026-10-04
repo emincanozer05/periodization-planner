@@ -2,5 +2,15 @@
 # Without this, some browsers sever the popup's window.opener and the popup just closes
 # with no login (the "popup opens then immediately closes" symptom). The app also falls
 # back to signInWithRedirect, but this lets the faster popup flow work directly.
+#
+# Güvenlik başlıkları (vercel.json'daki ile AYNI olmak zorunda: headers-test.js denetliyor).
+# Content-Security-Policy şimdilik YALNIZCA RAPOR modunda: hiçbir şeyi engellemiyor, ihlalleri
+# tarayıcı konsoluna yazıyor. Uygulama birçok dış adresle konuşuyor (Firebase, kaynakça
+# servisleri, video gömmeleri); konsol temiz çıkana kadar zorlayıcı politikaya geçilmemeli.
 /*
   Cross-Origin-Opener-Policy: same-origin-allow-popups
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), payment=(), usb=(), geolocation=(self)
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdn.sheetjs.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' data: blob: https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net https://www.gstatic.com https://cdn.jsdelivr.net https://api.anthropic.com https://corsproxy.io https://api.allorigins.win https://r.jina.ai https://api.crossref.org https://www.ebi.ac.uk https://europepmc.org https://nominatim.openstreetmap.org https://*.basemaps.cartocdn.com; frame-src 'self' blob: data: https://drive.google.com https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://*.firebaseapp.com https://accounts.google.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'

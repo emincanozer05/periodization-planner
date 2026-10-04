@@ -27,7 +27,7 @@ const PAGES = ['index.html', 'travel.html'];
 
 // dist/'e KOPYALANMAYANLAR: sunucu tarafı kod, araçlar, testler, belgeler.
 const SKIP_DIRS = new Set(['.git', '.github', '.claude', 'node_modules', 'functions', 'tools', 'api', 'dist']);
-const SKIP_FILES = new Set(['build.js', 'check-syntax.js', 'validator-test.js', 'sync-test.js', 'sw-test.js']);
+const SKIP_FILES = new Set(['build.js', 'check-syntax.js', 'validator-test.js', 'sync-test.js', 'sw-test.js', 'headers-test.js']);
 const SKIP_EXT = new Set(['.md']);
 
 const BABEL_TAG = /[ \t]*<script\b[^>]*@babel\/standalone[^>]*><\/script>[ \t]*\r?\n?/;
