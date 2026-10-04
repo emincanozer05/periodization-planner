@@ -163,7 +163,7 @@ function isApp(url) {
 function isLib(url) {
   if (url.protocol !== 'https:') return false;
   const h = url.hostname, p = url.pathname;
-  return h === 'unpkg.com' || h === 'cdn.jsdelivr.net' || h === 'cdn.sheetjs.com' ||
+  return h === 'unpkg.com' || h === 'cdn.jsdelivr.net' ||
          h === 'fonts.googleapis.com' || h === 'fonts.gstatic.com' ||
          (h === 'www.gstatic.com' && p.startsWith('/firebasejs/'));
 }
