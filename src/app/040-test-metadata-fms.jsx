@@ -165,6 +165,7 @@ async function fmsReadPdf(file){
   const isPdf=/\.pdf$/i.test(file.name||'')||file.type==='application/pdf';
   if(!isPdf)throw new Error(L('Bu bir PDF değil.','That is not a PDF.'));
   if(file.size>FMS_PDF_MAX)throw new Error(L('PDF çok büyük (en fazla 12 MB).','That PDF is too large (12 MB max).'));
+  try{await needLibs('pdfjs');}catch(e){/* aşağıdaki mesaj söylüyor */}
   const lib=window.pdfjsLib;
   if(!lib)throw new Error(L('PDF okuyucu yüklenemedi — bağlantını kontrol et.','The PDF reader did not load — check your connection.'));
   if(lib.GlobalWorkerOptions&&!lib.GlobalWorkerOptions.workerSrc)
