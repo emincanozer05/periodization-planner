@@ -34531,7 +34531,7 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
    and without a card edge they read as one ragged block of controls. It is stored per
    athlete PER DAY, beside the session it produced, so yesterday's instruction never
    silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport}){
+function DiInstructionForm({instr,save,onSnapshot,onImport,onGenerate,gen}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the two chip boxes but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -34554,6 +34554,11 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
     const merged=withPending();
     if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
     if(onSnapshot)onSnapshot(merged);
+  };
+  const generate=()=>{
+    const merged=withPending();
+    if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
+    if(onGenerate)onGenerate(merged);
   };
   const field=(n,title,hint,control,wide)=>(
     <div className={'di-field'+(wide?' wide':'')}>
@@ -34595,6 +34600,15 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
     </div>
 
     <div className="di-genbar">
+      {onGenerate&&<button type="button" className="di-snapbtn" disabled={!gen||gen.busy||!gen.ready} onClick={generate}
+        title={gen&&gen.ready
+          ?L('Sporcunun güncel verisini ve bu talimatı Claude\'a gönderir; yanıt, yapıştırılan program gibi okunur, doğrulanır ve onayını bekler.',
+            'Sends the athlete\'s current data and this brief to Claude; the answer is read like a pasted programme, checked, and waits for your approval.')
+          :L('Önce Ayarlar → Yapay Zekâ Asistanı\'ndan sağlayıcıyı Claude seç ve anahtarını gir.',
+            'First choose Claude and enter its key under Settings → AI Assistant.')}>
+        <span className="di-gen-t">{gen&&gen.busy?L('Claude yazıyor…','Claude is writing…'):L('Claude ile Yaz','Write with Claude')}</span>
+        <span className="di-gen-s">{gen&&gen.ready?gen.model:L('Claude anahtarı gerekli','Claude key needed')}</span>
+      </button>}
       {onSnapshot&&<button type="button" className="di-snapbtn" onClick={snapshot}
         title={L('Sporcunun o anki bütün güncel verisini ve bu talimatı tek bir JSON olarak verir.',
           'The athlete\'s current data and this brief, as one JSON document.')}>
@@ -35254,7 +35268,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   });
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,ai}){
   const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
   const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
   const panelRef=useRef(null);
@@ -35305,13 +35319,16 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   /* "Sporcu Bilgilerini Al": rebuilt from the live state on every press — the athlete
      as the team holds them right now, not the copy this card was drawn from — and put
      on the clipboard in the same press, so one click is enough to paste it anywhere. */
-  const takeSnapshot=brief=>{
+  const snapshotText=brief=>{
     const L0=live.current;
     const ath=((L0.team&&L0.team.athletes)||[]).find(x=>x.id===L0.plan.ath.id)||L0.plan.ath;
+    return JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,
+      instr:diBrief(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
+  };
+  const takeSnapshot=brief=>{
     let text;
     try{
-      text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,
-        instr:diBrief(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
+      text=snapshotText(brief);
     }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
     setSnap({text,copied:null});
     snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
@@ -35320,30 +35337,67 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      produces and checked by the same validator — so it shows in section 3 exactly as a
      generated session does, and reaches the calendar only through "Onayla ve takvime
      yaz", which re-checks it against the athlete's day as it stands at that moment. */
-  const importProgram=()=>{
-    if(!imp)return;
+  const loadProgramText=(text,generation,briefUsed,noAsk)=>{
     const L0=live.current;
+    const ins=briefUsed||instr;
     let obj,v;
     try{
-      obj=diParseExternalProgram(imp.text,L0.libMap,{id:L0.plan.ath.id,name:L0.plan.ath.name});
-      v=validateProgram(obj,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
+      obj=diParseExternalProgram(text,L0.libMap,{id:L0.plan.ath.id,name:L0.plan.ath.name});
+      v=validateProgram(obj,{bundle:L0.bundle,instr:ins,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
         differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
-    }catch(e){setImp(x=>x&&{...x,err:e.message||String(e)});return;}
+    }catch(e){return e.message||String(e);}
     const cur=L0.review&&L0.review.program;
-    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program taslağı zaten var. Yapıştırdığın programla değiştirilsin mi?',
-      'There is already a draft for this athlete on this day. Replace it with the pasted programme?')))return;
+    if(cur&&!noAsk&&!confirm(L('Bu sporcu için bu güne ait bir program taslağı zaten var. Yeni programla değiştirilsin mi?',
+      'There is already a draft for this athlete on this day. Replace it with the new programme?')))return'';
     diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
-      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:obj,instr,
+      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:obj,instr:ins,
       differentiators:L0.differentiators,validation:v,
       engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
         competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
       model:'external',created_at:new Date().toISOString(),
       decision:null,decided_at:null,jobId:null,pendingJob:null,
-      generation:{source:'external-json'}});
-    setImp(null);setErr('');
-    /* What was just pasted is what the coach wants to read next: turn the card over to it. */
+      generation});
+    setErr('');
+    /* What was just loaded is what the coach wants to read next: turn the card over to it. */
     flipTo('prog');
     setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+    return'';
+  };
+  const importProgram=()=>{
+    if(!imp)return;
+    const e=loadProgramText(imp.text,{source:'external-json'});
+    if(e)setImp(x=>x&&{...x,err:e});
+    else setImp(null);
+  };
+  /* "Claude ile Yaz": the same athlete data "Sporcu Bilgilerini Al" copies, sent straight
+     to Claude with the coach's own key, and the answer put through the very path a pasted
+     programme takes — same parser, same validator, same draft, same approval. Nothing is
+     written to a calendar here. No server job, no model chain, no 120 s clock: the model is
+     the one the coach picked in Settings. */
+  const aiReady=aiProviderOf(ai)==='anthropic'&&!!aiKeyOf(ai);
+  const aiModel=aiModelOf(ai);
+  const[genBusy,setGenBusy]=useState(false);
+  const genLock=useRef(false);
+  const generate=async brief=>{
+    if(genLock.current||!aiReady)return;
+    /* Asked before the call, not after it: nobody wants to pay for a programme and then be asked. */
+    if(live.current.review&&live.current.review.program&&!confirm(L('Bu sporcu için bu güne ait bir program taslağı zaten var. Claude yenisini yazıp onun yerine koysun mu?',
+      'There is already a draft for this athlete on this day. Have Claude write a new one in its place?')))return;
+    genLock.current=true;setGenBusy(true);setErr('');
+    try{
+      const ins=diBrief(brief||instr,live.current.plan.meta);
+      const text=snapshotText(ins);
+      const msgs=[{role:'user',content:text}];
+      const sys='You are the programme writer inside CoachOS, a strength & conditioning platform. The user message is ONE JSON document about one athlete. Follow its "task" exactly and answer with ONLY the JSON described in its "output_format" — no prose, no code fence.';
+      const ask=()=>askCoach(aiKeyOf(ai),aiModel,sys,msgs,{maxTokens:16000,effort:'high'});
+      let ans=await ask();
+      let e=loadProgramText(ans,{source:'in-app',provider:'anthropic',model:aiModel},ins,true);
+      /* A formatting slip (unreadable JSON, no exercises) is asked for once more; a rule
+         verdict is not a slip and is shown to the coach as it is. */
+      if(e){ans=await ask();e=loadProgramText(ans,{source:'in-app',provider:'anthropic',model:aiModel},ins,true);}
+      if(e)setErr(e);
+    }catch(e){setErr(e.message||String(e));}
+    finally{genLock.current=false;setGenBusy(false);}
   };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
@@ -35469,7 +35523,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot}
-        onImport={()=>setImp({text:'',err:''})}/>
+        onImport={()=>setImp({text:'',err:''})} onGenerate={generate}
+        gen={{busy:genBusy,ready:aiReady,model:aiModel}}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>
       {imp&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setImp(null)}>
@@ -36056,7 +36111,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       panel={b?<DailyIndivPanel plan={p} bundle={b}
         team={team} updateTeam={updateTeam} srcKey={activeKey} date={date}
         exercises={exercises} setup={team.setup||{}} libMap={libMap}
-        customTests={data.customTests}
+        customTests={data.customTests} ai={data.ai}
         writeOne={(id,program)=>applyTo([id],{force:{id,program}})}
         calSes={written[p.ath.id]||null}/>:null}
       calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}

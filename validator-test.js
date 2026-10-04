@@ -451,20 +451,32 @@ group('12 — Bozuk / geçersiz model yanıtı');
   check('boş program doğrulamada SERT ihlal', vEmpty.status === 'fail', hardText(vEmpty));
 }
 
-group('13 / 19 — Site içinde otomatik program üretimi yok');
+group('13 / 19 — Site içinde program yazımı: yalnızca Claude, yalnızca koçun anahtarı, aynı doğrulama');
 {
-  /* Program artık yalnızca dışarıdan yükleniyor: "Sporcu Bilgilerini Al" → harici
-     yapay zekâ → "AI Programını Yükle". Panel hiçbir modeli çağırmıyor ve sunucuya
-     üretim işi açmıyor. */
+  /* "Claude ile Yaz" düğmesi vardır; ama yeni bir güven yolu açmaz: sporcu verisi
+     "Sporcu Bilgilerini Al" ile aynı JSON'dur, yanıt yapıştırılan program gibi aynı
+     ayrıştırıcıdan ve aynı validateProgram'dan geçer, taslak olarak kalır ve takvime
+     yalnızca koçun "Onayla ve takvime yaz" basışıyla gider. Sunucuda üretim işi, Gemini
+     zinciri ya da otomatik takvim yazımı YOKTUR. */
   const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
   const panel = html.indexOf('function DailyIndivPanel');
   const end = html.indexOf('function IndivAthleteCard');
   const genSrc = html.slice(panel, end);
-  check('13 — günlük bireyselleştirme modeli doğrudan çağırmıyor',
-    !/askGemini\(|askCoach\(|await ask\(\)/.test(genSrc));
+  const gStart = genSrc.indexOf('const generate=async brief=>');
+  const gEnd = genSrc.indexOf('const write=()=>');
+  const gen = genSrc.slice(gStart, gEnd);
+  check('13 — günlük bireyselleştirme Gemini çağırmıyor', !/askGemini\(/.test(genSrc));
+  check('13-i — yazım yalnızca Claude + koçun kendi anahtarıyla',
+    gStart > 0 && /askCoach\(aiKeyOf\(ai\)/.test(gen) && /aiProviderOf\(ai\)==='anthropic'/.test(genSrc));
   check('13a — üretim işi (ai_generation_jobs) açılmıyor', !/ai_generation_jobs/.test(html) && !/await ref\.set\(\{/.test(genSrc));
   check('13b — "Antrenmanı oluştur" düğmesi yok', !/Antrenmanı oluştur/.test(html));
   check('13c — harici program yükleme yolu duruyor', /AI Programını Yükle/.test(genSrc) && /Sporcu Bilgilerini Al/.test(html));
+  check('13d — Claude yanıtı yapıştırmayla AYNI ayrıştırıcıdan ve doğrulayıcıdan geçiyor',
+    /loadProgramText\(ans/.test(gen) && /diParseExternalProgram\(text/.test(genSrc) && /validateProgram\(obj/.test(genSrc));
+  check('13e — yazım takvime kendiliğinden yazmıyor (writeOne yalnızca onayda)',
+    !/writeOne\(/.test(gen) && !/applyTo\(/.test(gen));
+  check('13f — anahtar istemciden başka yere gitmiyor (Claude uç noktası dışında ağ çağrısı yok)',
+    !/fetch\(/.test(gen));
 }
 
 group('AI güvenliği — Gemini anahtarı tarayıcıda yok');
