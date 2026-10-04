@@ -40,6 +40,8 @@ function makeWorld({ online = true, netDelay = 0 } = {}) {
           return undefined;
         },
         async put(r, res) { m.set(key(r), res); },
+        async keys() { return [...m.keys()].map(url => ({ url })); },
+        async delete(r) { return m.delete(key(r)); },
       };
     },
     async keys() { return Object.keys(stores); },
@@ -52,6 +54,7 @@ function makeWorld({ online = true, netDelay = 0 } = {}) {
     world.calls.push({ url, mode: r.mode });
     if (world.netDelay) await new Promise(res => setTimeout(res, world.netDelay));
     if (!world.online) throw new TypeError('Failed to fetch');
+    if (world.noCors && r.mode === 'cors') throw new TypeError('CORS');
     const route = world.routes[url.split('?')[0]];
     return new Res(route === undefined ? 'net:' + url : route.body, route ? route.status : 200);
   };
@@ -205,6 +208,63 @@ test('activate: eski sürüm kopyaları siliniyor, güncel olanlar kalıyor', as
   let p; w.handlers.activate({ waitUntil: x => { p = x; } });
   await p;
   assert.deepStrictEqual(Object.keys(w.caches.stores).sort(), ['baska-uygulama', 'coachos-app-v1', 'coachos-libs-v1']);
+});
+
+const MEDIA_URL = 'https://firebasestorage.googleapis.com/v0/b/periodization-planner.firebasestorage.app/o/users%2Fu1%2Fphotos%2F1_ab.jpg?alt=media&token=t1';
+
+test('yüklenen medya (Storage alt=media) CORS kipinde alınıp saklanıyor, çevrimdışıyken kopyadan geliyor', async () => {
+  const w = makeWorld();
+  w.routes[MEDIA_URL.split('?')[0]] = { body: 'foto' };
+  assert.strictEqual((await w.fetchEvent(get(MEDIA_URL))).body, 'foto');
+  assert.strictEqual(w.calls[0].mode, 'cors');
+  w.online = false;
+  assert.strictEqual((await w.fetchEvent(get(MEDIA_URL))).body, 'foto');
+});
+
+test('medya kopyası varsa ağa hiç gidilmiyor (adres değişmez, eskimez)', async () => {
+  const w = makeWorld();
+  await w.fetchEvent(get(MEDIA_URL));
+  const n = w.calls.length;
+  await w.fetchEvent(get(MEDIA_URL));
+  assert.strictEqual(w.calls.length, n);
+});
+
+test('Storage\'ın alt=media olmayan istekleri ve başka Storage adresleri dokunulmuyor', async () => {
+  const w = makeWorld();
+  const base = 'https://firebasestorage.googleapis.com/v0/b/b/o/x';
+  assert.strictEqual(await w.fetchEvent(get(base)), null);                         // yükleme / meta veri
+  assert.strictEqual(await w.fetchEvent(get(base + '?alt=json')), null);
+  assert.strictEqual(await w.fetchEvent(get('https://storage.googleapis.com/b/x?alt=media')), null);
+  assert.strictEqual(await w.fetchEvent(get('https://drive.google.com/thumbnail?id=1')), null);
+  assert.strictEqual(w.caches.stores['coachos-media-v1'], undefined);
+});
+
+test('medya kopyası 400 ile sınırlı: en eskiler atılıyor', async () => {
+  const w = makeWorld();
+  for (let i = 0; i < 403; i++) await w.fetchEvent(get(MEDIA_URL.replace('1_ab', 'p' + i)));
+  const keys = await (await w.caches.open('coachos-media-v1')).keys();
+  assert.strictEqual(keys.length, 400);
+  assert.ok(!keys.some(k => k.url.includes('%2Fp0.jpg')) && keys.some(k => k.url.includes('%2Fp402.jpg')));
+});
+
+test('çıkışta (clear-media mesajı) saklanan sporcu fotoğrafları siliniyor, başkası değil', async () => {
+  const w = makeWorld();
+  await w.fetchEvent(get(MEDIA_URL));
+  await w.fetchEvent(get(APP + 'index.html'));
+  let p; w.handlers.message({ data: { coachos: 'clear-media' }, waitUntil: x => { p = x; } });
+  await p;
+  assert.strictEqual(w.caches.stores['coachos-media-v1'], undefined);
+  assert.ok(w.caches.stores['coachos-app-v1']);
+  w.handlers.message({ data: { baska: 1 }, waitUntil: () => { throw new Error('dokunmamalıydı'); } });   // başka mesajlar
+});
+
+test('kova CORS vermiyorsa görsel kopyasız, eskisi gibi ağdan geliyor', async () => {
+  const w = makeWorld();
+  w.noCors = true;
+  const res = await w.fetchEvent(get(MEDIA_URL));
+  assert.ok(res.body.startsWith('net:'));
+  assert.deepStrictEqual(w.calls.map(c => c.mode), ['cors', 'no-cors']);      // önce CORS, sonra düz istek
+  assert.strictEqual((await (await w.caches.open('coachos-media-v1')).keys()).length, 0);
 });
 
 (async () => {

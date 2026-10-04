@@ -27716,6 +27716,9 @@ function useCloudSync(data,setData){
     signOut:async()=>{
       // Çıkıştan önce bekleyen yazımın gerçekten bitmesini bekle (en fazla ~6 sn)
       try{await writeNow();let k=0;while((writing.current||dirty.current)&&k++<40)await new Promise(r=>setTimeout(r,150));}catch(e){}
+      /* Service worker'ın sakladığı sporcu fotoğrafları bu cihazda kalmasın. En iyi çaba:
+         worker yoksa ya da mesaj gitmezse çıkış yine de tamamlanır. */
+      try{const sw=navigator.serviceWorker&&navigator.serviceWorker.controller;if(sw)sw.postMessage({coachos:'clear-media'});}catch(e){}
       return FB().auth().signOut();
     },
     signInWithGoogle:async()=>{
