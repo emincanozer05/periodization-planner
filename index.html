@@ -118,6 +118,18 @@
       .catch(e=>console.warn('offline persistence unavailable:',e&&e.code||e));}catch(e){}
   }catch(e){console.warn('Firebase init failed',e);}
 </script>
+<script>
+  /* Service worker açılışta kaydediliyor: uygulama kabuğu (sayfa, kütüphaneler, yazı
+     tipleri) ağ yokken de açılsın diye. Önbellek "önce ağ" çalışıyor — çevrimiçiyken
+     hep sunucudaki sürüm gelir (firebase-messaging-sw.js'e bak). Aynı dosya bildirim
+     için de kullanılıyor; kayıt tekrarlandığında (bildirim açılırken) aynı worker döner.
+     Adres sayfaya göre kuruluyor: uygulama alt dizinde de yayınlanabiliyor. */
+  if('serviceWorker' in navigator&&window.isSecureContext){
+    window.addEventListener('load',function(){
+      try{navigator.serviceWorker.register(location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js').catch(function(){});}catch(e){}
+    });
+  }
+</script>
 <style>
 /* User-uploaded Archivo — the app's typeface, upright, applied site-wide.
    Four drawn weights rather than two ranges: the app declares 500 on 106 rules and
