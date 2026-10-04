@@ -28199,7 +28199,9 @@ const SUB_TYPES={
   'Corrective':{label:'Type',values:['Mobility','Stability','Movement Quality','Return to Performance']},
   /* Accessory work is filed by where it goes, with prehab as its own shelf: the
      injury-prevention pieces are what a coach looks for first when writing a warm-up. */
-  'Accessory':{label:'Region',values:['Upper Body','Lower Body','Shoulder & Scapula','Hip & Hamstring','Prehab & Injury Prevention']},
+  'Accessory':{label:'Region',values:['Upper Body','Neck','Chest','Upper Back','Shoulder & Scapula','Arms','Forearm & Grip',
+    'Core & Trunk','Lower Body','Hip & Hamstring','Glutes','Quadriceps','Adductors & Abductors','Calf & Ankle','Foot',
+    'Prehab & Injury Prevention']},
 };
 /* The filters a category carries beyond its sub-type (and, for Hip / Knee Dominant, the
    Action and Movement Pattern above): each is its own field on the library entry, set
@@ -28230,7 +28232,20 @@ const EX_EXTRA_FILTERS={
   'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
   'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
 };
-const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion'];
+/* Every category carries a Contraction Type and an Equipment box. Hip / Knee Dominant already
+   file by contraction (their sub-type) and Plyometric has its own kit list, so those keep
+   theirs; the rest take the shared lists. Equipment stays the last filter of a category. */
+const EX_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
+const EX_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
+  'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
+EX_TYPES.forEach(t=>{
+  const list=(EX_EXTRA_FILTERS[t]=(EX_EXTRA_FILTERS[t]||[]).slice());
+  const eq=list.find(d=>d.key==='equipment');
+  const rest=list.filter(d=>d.key!=='equipment');
+  if(!(t in ACTIONS_FOR))rest.push({key:'contraction',label:'Contraction Type',values:EX_CONTRACTIONS,multi:true});
+  EX_EXTRA_FILTERS[t]=[...rest,eq||{key:'equipment',label:'Equipment',values:EX_GENERAL_EQUIPMENT,multi:true}];
+});
+const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion','contraction'];
 /* A `multi` filter (Equipment) holds a list — a step-up takes dumbbells AND a box. Entries
    saved before it became a list hold one string; both read the same through exMulti. */
 const exMulti=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
@@ -28252,6 +28267,11 @@ const EX_TERM_TR={
   'Unilateral Balance':'Tek Taraflı Denge','Reactive Balance':'Reaktif Denge',
   'Upper Body':'Üst Vücut','Lower Body':'Alt Vücut','Shoulder & Scapula':'Omuz & Skapula',
   'Hip & Hamstring':'Kalça & Hamstring','Prehab & Injury Prevention':'Prehab & Sakatlık Önleme',
+  'Neck':'Boyun','Arms':'Kollar','Forearm & Grip':'Önkol & Kavrama','Core & Trunk':'Core & Gövde',
+  'Adductors & Abductors':'Adduktör & Abduktör','Calf & Ankle':'Baldır & Ayak Bileği','Foot':'Ayak',
+  'Foam Roller':'Foam Roller','Lacrosse Ball':'Lacrosse Topu','Mini Band':'Mini Bant','Slider':'Slider',
+  'Bench':'Bench','Pull-Up Bar':'Barfiks Barı','Wall':'Duvar','Ab Wheel':'Ab Wheel','Balance Pad':'Denge Pedi',
+  'Agility Ladder':'Çeviklik Merdiveni','Cone':'Koni','Hurdle':'Engel',
   'Contraction Focus':'Kasılma Odağı','Action':'Aksiyon',
   'Abs & Core':'Karın ve Core','Chest':'Göğüs','Upper Back':'Üst Sırt','Lats':'Lat','Shoulders':'Omuz',
   'Biceps':'Biceps','Triceps':'Triceps','Quadriceps':'Kuadriseps','Hamstrings':'Hamstring','Glutes':'Kalça (Gluteus)',
@@ -28664,6 +28684,8 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         {ball&&metaBox(L('Dril Tipi','Drill Type'),exLabel(ex.type))}
         {ball&&SUBS[ex.type]&&metaBox(exLabel(SUBS[ex.type].label),ex.subType?exLabel(ex.subType):'—')}
         {ball&&metaBox(L('Oyuncu','Players'),ex.players)}
+        {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).some(d=>d.key==='contraction')
+          &&metaBox(exLabel('Contraction Type'),exMulti(ex.contraction).map(exLabel).join(', ')||'—')}
         {!ball&&(EX_EXTRA_FILTERS[ex.type]||[]).some(d=>d.key==='equipment')
           &&metaBox(exLabel('Equipment'),exMulti(ex.equipment).map(exLabel).join(', ')||'—')}
         {metaBox(L('Zorluk','Difficulty'),exLabel(ex.difficulty),ex.difficulty&&<span style={{width:8,height:8,borderRadius:'50%',background:DIFF_COLOR[ex.difficulty]||'var(--dim)',display:'inline-block'}}/>)}
