@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    SÖZDİZİMİ DENETİMİ — uygulamanın kendi derleyicisiyle
 
-   CoachOS'un derleme adımı yok: index.html içindeki JSX tarayıcıda, sayfa
-   açılırken @babel/standalone ile derleniyor. Bunun bedeli şu: bir sözdizimi
+   index.html içindeki JSX yerelde tarayıcıda, yayında ise build.js ile
+   @babel/standalone kullanılarak derleniyor. Bunun bedeli şu: bir sözdizimi
    hatası derleme zamanında değil, KOÇUN EKRANINDA ortaya çıkıyor — ve beyaz bir
    sayfa olarak çıkıyor, hata mesajı yalnızca konsolda.
 
