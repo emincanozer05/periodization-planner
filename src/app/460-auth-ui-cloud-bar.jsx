@@ -197,7 +197,7 @@ function LoginPage({sync}){
         <div className="ln-extras">{LN_EXTRAS.map((x,i)=><span key={i}>{L(x[0],x[1])}</span>)}</div>
       </section>
       <footer className="ln-foot">
-        <span>© {new Date().getFullYear()} CoachOS</span>
+        <span>© {new Date().getFullYear()} CoachOS · {L('Tüm hakları saklıdır.','All rights reserved.')}</span>
         <PrivacyLink/>
       </footer>
     </div>
