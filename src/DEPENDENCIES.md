@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1368**, yinelenen: **0**
+- Üst düzey ad sayısı: **1370**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -47,7 +47,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | # | Parça | Tanım | Bağlı olduğu parçalar |
 |---:|---|---:|---|
 | 1 | `prelude` | 12 | `dates-language-factories`↑ |
-| 2 | `constants-session-focus` | 76 | `dates-language-factories`↑ |
+| 2 | `constants-session-focus` | 78 | `dates-language-factories`↑ |
 | 3 | `dates-language-factories` | 78 | `prelude`, `constants-session-focus` |
 | 4 | `test-metadata-fms` | 35 | `prelude`, `dates-language-factories` |
 | 5 | `athlete-boxes` | 76 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`↑ |

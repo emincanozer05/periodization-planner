@@ -149,9 +149,19 @@ const FOCUS_SUB_FROM_LEGACY={
    Dates list used to be typed a second time by hand, next to a calendar that already knew
    which days were matches; it is written from the calendar now. Every session whose focus
    is Competition owns one row, keyed by the session's id, so a match that is moved moves
-   its row and a session that is deleted or re-focused takes its row with it. What the
-   coach types INTO the row — venue, competition, score, a renamed event — survives every
-   resync; only the date follows the session. */
+   its row and a session that is deleted or re-focused takes its row with it.
+   The row also follows what the match window says about the game: its title (the block
+   title the calendar card shows), the score and the location. Each of those is written
+   onto the row only when it CHANGES on the calendar — the row keeps a copy of what the
+   calendar last told it (`cal`) — so a value typed on the Season screen stays until the
+   coach changes that same field on the session. A row written before `cal` existed is
+   only filled where it is still empty, so nothing typed there earlier is overwritten. */
+const COMP_CAL_FIELDS=['name','location','scoreFor','scoreAgainst'];
+const compCalOf=ses=>{
+  const m=(ses&&ses.match)||{};
+  const str=v=>v==null?'':String(v).trim();
+  return{name:str(ses&&ses.name),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
+};
 const compRowsFromDays=days=>{
   const out=[];
   /* The day's KEY is where the calendar draws it, so that is the fixture's date. The copy
@@ -162,8 +172,9 @@ const compRowsFromDays=days=>{
     const date=/^\d{4}-\d{2}-\d{2}$/.test(k)?k:(d&&d.date);
     if(!d||!date)return;
     (d.sessions||[]).forEach(ses=>{
-      if(!ses||!sesFocus(ses).includes('Competition'))return;
-      out.push({srcId:String(ses.id||''),date,name:(ses.name||'').trim()||'Competition'});
+      if(!ses||!(sesFocus(ses).includes('Competition')||ses.kind==='match'))return;
+      const cal=compCalOf(ses);
+      out.push({srcId:String(ses.id||''),date,name:cal.name||'Competition',cal});
     });
   });
   return out;
@@ -176,7 +187,19 @@ const syncCompetitions=(list,days,hidden)=>{
   const byId={};prev.forEach(c=>{if(c&&c.srcId)byId[c.srcId]=c;});
   const auto=compRowsFromDays(days).filter(a=>a.srcId&&!hide.has(a.srcId)).map(a=>{
     const ex=byId[a.srcId];
-    return ex?{...ex,date:a.date}:{...a};
+    if(!ex){
+      const row={srcId:a.srcId,date:a.date,name:a.name,cal:a.cal};
+      ['location','scoreFor','scoreAgainst'].forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
+      return row;
+    }
+    const row={...ex,date:a.date,cal:a.cal};
+    const had=ex.cal&&typeof ex.cal==='object'?ex.cal:null;
+    COMP_CAL_FIELDS.forEach(f=>{
+      const v=a.cal[f];
+      if(had){if(v!==(had[f]==null?'':String(had[f])))row[f]=(f==='name'&&!v)?'Competition':v;}
+      else if(v&&String(ex[f]==null?'':ex[f]).trim()==='')row[f]=v;
+    });
+    return row;
   });
   return[...prev.filter(c=>c&&!c.srcId),...auto]
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));

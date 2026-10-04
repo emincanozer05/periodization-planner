@@ -1520,6 +1520,22 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     };
     const comps = A.syncCompetitions([], days, []);
     check('maç, takvimdeki gününe (anahtarına) yazılıyor', comps.map(c => c.date).join(',') === '2026-09-30,2026-10-01', JSON.stringify(comps));
+    /* Müsabaka penceresi fikstüre yazılıyor: başlık, skor, lokasyon. Sezon ekranında elle
+       yazılan değer, takvimde o alan değişene kadar korunuyor. */
+    const mDays = s => ({ '2026-10-10': { date: '2026-10-10', sessions: [s] } });
+    const m0 = { id: 'm1', name: 'Fenerbahçe Maçı', kind: 'match', focus: ['Competition'], match: { scoreFor: '82', scoreAgainst: '74', location: 'Ülker' } };
+    const f1 = A.syncCompetitions([], mDays(m0), []);
+    check('müsabaka başlığı, skoru ve lokasyonu fikstüre yazılıyor',
+      f1.length === 1 && f1[0].name === 'Fenerbahçe Maçı' && f1[0].scoreFor === '82' && f1[0].scoreAgainst === '74' && f1[0].location === 'Ülker', JSON.stringify(f1));
+    const f2 = A.syncCompetitions([{ ...f1[0], location: 'Ülker Sports Arena' }], mDays(m0), []);
+    check('sezonda elle düzeltilen alan, takvimde değişmedikçe korunuyor', f2[0].location === 'Ülker Sports Arena', JSON.stringify(f2));
+    const f3 = A.syncCompetitions(f2, mDays({ ...m0, name: 'FB Deplasman', match: { ...m0.match, scoreFor: '90' } }), []);
+    check('takvimde değişen başlık ve skor fikstüre geçiyor',
+      f3[0].name === 'FB Deplasman' && f3[0].scoreFor === '90' && f3[0].location === 'Ülker Sports Arena', JSON.stringify(f3));
+    const legacy = A.syncCompetitions([{ srcId: 'm1', date: '2026-10-10', name: 'Eski ad', scoreFor: '', scoreAgainst: '' }], mDays(m0), []);
+    check('cal kaydı olmayan eski satırda yalnızca boş alanlar dolduruluyor',
+      legacy[0].name === 'Eski ad' && legacy[0].scoreFor === '82', JSON.stringify(legacy));
+    check('ikinci senkron hiçbir şeyi değiştirmiyor (döngü yok)', JSON.stringify(A.syncCompetitions(f3, mDays({ ...m0, name: 'FB Deplasman', match: { ...m0.match, scoreFor: '90' } }), [])) === JSON.stringify(f3));
     const cp = A.diCompetition({ competitions: comps }, '2026-10-03');
     check('perşembe maçından sonra cumartesi MD+2', cp.md === 'MD+2' && cp.previous.days_since === 2, JSON.stringify(cp));
     check('cuma MD+1', A.diCompetition({ competitions: comps }, '2026-10-02').md === 'MD+1');

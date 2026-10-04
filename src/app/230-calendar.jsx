@@ -240,6 +240,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
     setDrawerSes(ns);
   };
+  /* Renaming from the session panel renames the block heading the editor shows with it
+     (the first block's, or the heading of a session with no blocks yet): the card and the
+     heading are one name. */
+  const drwRename=v=>{
+    if(!drawerSes)return;
+    const bl=drawerSes.blocks||[];
+    drwUpd(bl.length?{name:v,blocks:bl.map((b,i)=>i===0?{...b,name:v}:b)}:{name:v,soloName:v});
+  };
   // ---- Per-athlete RPE for a team session ----
   // Writes to each athlete's srpeLog (the canonical inner-load record that powers
   // the sRPE chart, Wellness heatmap & ACWR). One entry per athlete per session,
@@ -740,7 +748,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {/* The title is the session's name as the calendar shows it — editable in
                 place, saved like the other fields here. */}
             {canEdit
-              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwUpd({name:e.target.value})} title={L('Seans adını değiştir','Rename the session')}/>
+              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwRename(e.target.value)} title={L('Seans adını değiştir','Rename the session')}/>
               :<div className="ti">{drawerSes.name}</div>}
             <div className="su">{drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose}</div>
           </div>

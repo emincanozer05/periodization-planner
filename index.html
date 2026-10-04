@@ -7133,9 +7133,19 @@ const FOCUS_SUB_FROM_LEGACY={
    Dates list used to be typed a second time by hand, next to a calendar that already knew
    which days were matches; it is written from the calendar now. Every session whose focus
    is Competition owns one row, keyed by the session's id, so a match that is moved moves
-   its row and a session that is deleted or re-focused takes its row with it. What the
-   coach types INTO the row — venue, competition, score, a renamed event — survives every
-   resync; only the date follows the session. */
+   its row and a session that is deleted or re-focused takes its row with it.
+   The row also follows what the match window says about the game: its title (the block
+   title the calendar card shows), the score and the location. Each of those is written
+   onto the row only when it CHANGES on the calendar — the row keeps a copy of what the
+   calendar last told it (`cal`) — so a value typed on the Season screen stays until the
+   coach changes that same field on the session. A row written before `cal` existed is
+   only filled where it is still empty, so nothing typed there earlier is overwritten. */
+const COMP_CAL_FIELDS=['name','location','scoreFor','scoreAgainst'];
+const compCalOf=ses=>{
+  const m=(ses&&ses.match)||{};
+  const str=v=>v==null?'':String(v).trim();
+  return{name:str(ses&&ses.name),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
+};
 const compRowsFromDays=days=>{
   const out=[];
   /* The day's KEY is where the calendar draws it, so that is the fixture's date. The copy
@@ -7146,8 +7156,9 @@ const compRowsFromDays=days=>{
     const date=/^\d{4}-\d{2}-\d{2}$/.test(k)?k:(d&&d.date);
     if(!d||!date)return;
     (d.sessions||[]).forEach(ses=>{
-      if(!ses||!sesFocus(ses).includes('Competition'))return;
-      out.push({srcId:String(ses.id||''),date,name:(ses.name||'').trim()||'Competition'});
+      if(!ses||!(sesFocus(ses).includes('Competition')||ses.kind==='match'))return;
+      const cal=compCalOf(ses);
+      out.push({srcId:String(ses.id||''),date,name:cal.name||'Competition',cal});
     });
   });
   return out;
@@ -7160,7 +7171,19 @@ const syncCompetitions=(list,days,hidden)=>{
   const byId={};prev.forEach(c=>{if(c&&c.srcId)byId[c.srcId]=c;});
   const auto=compRowsFromDays(days).filter(a=>a.srcId&&!hide.has(a.srcId)).map(a=>{
     const ex=byId[a.srcId];
-    return ex?{...ex,date:a.date}:{...a};
+    if(!ex){
+      const row={srcId:a.srcId,date:a.date,name:a.name,cal:a.cal};
+      ['location','scoreFor','scoreAgainst'].forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
+      return row;
+    }
+    const row={...ex,date:a.date,cal:a.cal};
+    const had=ex.cal&&typeof ex.cal==='object'?ex.cal:null;
+    COMP_CAL_FIELDS.forEach(f=>{
+      const v=a.cal[f];
+      if(had){if(v!==(had[f]==null?'':String(had[f])))row[f]=(f==='name'&&!v)?'Competition':v;}
+      else if(v&&String(ex[f]==null?'':ex[f]).trim()==='')row[f]=v;
+    });
+    return row;
   });
   return[...prev.filter(c=>c&&!c.srcId),...auto]
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
@@ -16514,6 +16537,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
     setDrawerSes(ns);
   };
+  /* Renaming from the session panel renames the block heading the editor shows with it
+     (the first block's, or the heading of a session with no blocks yet): the card and the
+     heading are one name. */
+  const drwRename=v=>{
+    if(!drawerSes)return;
+    const bl=drawerSes.blocks||[];
+    drwUpd(bl.length?{name:v,blocks:bl.map((b,i)=>i===0?{...b,name:v}:b)}:{name:v,soloName:v});
+  };
   // ---- Per-athlete RPE for a team session ----
   // Writes to each athlete's srpeLog (the canonical inner-load record that powers
   // the sRPE chart, Wellness heatmap & ACWR). One entry per athlete per session,
@@ -17014,7 +17045,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {/* The title is the session's name as the calendar shows it — editable in
                 place, saved like the other fields here. */}
             {canEdit
-              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwUpd({name:e.target.value})} title={L('Seans adını değiştir','Rename the session')}/>
+              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwRename(e.target.value)} title={L('Seans adını değiştir','Rename the session')}/>
               :<div className="ti">{drawerSes.name}</div>}
             <div className="su">{drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose}</div>
           </div>
@@ -19552,12 +19583,25 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
-  const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
-  const updBlk=(bid,nb)=>u({blocks:session.blocks.map(b=>b.id===bid?nb:b)});
-  const delBlk=bid=>u({blocks:session.blocks.filter(b=>b.id!==bid)});
+  /* ONE NAME FOR THE SESSION. The title typed at the head of the first block is the name
+     the calendar card, the day plan and the fixture list show — so a new block list is
+     written together with the name its first heading now gives the session — but only
+     when that heading changed (typed, or another block moved to the top), so editing an
+     exercise never renames anything. A heading left empty keeps the session's name. */
+  const withName=blocks=>{
+    const o=(session.blocks||[])[0],n=blocks[0];
+    if(!n||(o&&o.id===n.id&&o.name===n.name))return{blocks};
+    const t=String(n.name||'').trim();
+    return(t&&t!==session.name)?{blocks,name:t}:{blocks};
+  };
+  const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u(withName(a));};
+  const updBlk=(bid,nb)=>u(withName(session.blocks.map(b=>b.id===bid?nb:b)));
+  const delBlk=bid=>u(withName(session.blocks.filter(b=>b.id!==bid)));
   const dupBlk=bid=>{const o=session.blocks.find(b=>b.id===bid);const i=session.blocks.indexOf(o);
     const nb={...o,id:uid(),exercises:o.exercises.map(e=>({...e}))};const a=[...session.blocks];a.splice(i+1,0,nb);u({blocks:a});};
-  const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n,kind)]});
+  /* The first block of a session is headed with the session's own name, so the heading
+     and the calendar card start out saying the same thing. */
+  const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n||(session.blocks.length?'':(session.soloName||session.name||'')),kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
@@ -19606,10 +19650,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
               same. They were the same field, so naming the work renamed the session and
               a coach could not have both. Left empty it still reads "Training Details". */}
           <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
-          <LiveInput className="iv-block-nm" value={session.soloName||''}
+          <LiveInput className="iv-block-nm" value={session.soloName||session.name||''}
             placeholder={L('Antrenman Özellikleri','Training Details')}
-            title={L('Bu çalışmanın başlığı — üstteki seans adından bağımsızdır','This practice\'s own title — independent of the session name above')}
-            onChange={v=>u({soloName:v})}/>
+            title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
+            onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
             {!isTemplate&&<CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>}
             {moveBtns}
