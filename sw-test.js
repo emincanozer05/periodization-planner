@@ -17,8 +17,8 @@ const test = (name, fn) => tests.push([name, fn]);
 
 /* ── sahte tarayıcı yüzeyi ─────────────────────────────────────────────── */
 class Res {
-  constructor(body, status = 200) { this.body = body; this.status = status; this.ok = status >= 200 && status < 300; }
-  clone() { return new Res(this.body, this.status); }
+  constructor(body, status = 200, type = 'basic') { this.body = body; this.status = status; this.type = type; this.ok = status >= 200 && status < 300; }
+  clone() { return new Res(this.body, this.status, this.type); }
 }
 class Req {
   constructor(url, init = {}) { this.url = url; this.method = init.method || 'GET'; this.mode = init.mode || 'no-cors';
@@ -48,7 +48,7 @@ function makeWorld({ online = true, netDelay = 0 } = {}) {
     async delete(n) { delete stores[n]; return true; },
     stores,
   };
-  const world = { online, netDelay, calls: [], routes: {}, caches };
+  const world = { online, netDelay, calls: [], routes: {}, caches, noCors: false };
   const fetchFn = async r => {
     const url = typeof r === 'string' ? r : r.url;
     world.calls.push({ url, mode: r.mode });
@@ -56,7 +56,10 @@ function makeWorld({ online = true, netDelay = 0 } = {}) {
     if (!world.online) throw new TypeError('Failed to fetch');
     if (world.noCors && r.mode === 'cors') throw new TypeError('CORS');
     const route = world.routes[url.split('?')[0]];
-    return new Res(route === undefined ? 'net:' + url : route.body, route ? route.status : 200);
+    const body = route === undefined ? 'net:' + url : route.body, status = route ? route.status : 200;
+    // Gerçek tarayıcıdaki kural: başka kaynağa CORS'suz (no-cors) istek OPAK yanıt döner (durum 0).
+    if (r.mode === 'no-cors' && !url.startsWith('https://coachos.test/') && world.opaque !== false) return new Res(body, 0, 'opaque');
+    return new Res(body, status, r.mode === 'cors' ? 'cors' : 'basic');
   };
 
   const handlers = {};
@@ -212,13 +215,14 @@ test('activate: eski sürüm kopyaları siliniyor, güncel olanlar kalıyor', as
 
 const MEDIA_URL = 'https://firebasestorage.googleapis.com/v0/b/periodization-planner.firebasestorage.app/o/users%2Fu1%2Fphotos%2F1_ab.jpg?alt=media&token=t1';
 
-test('yüklenen medya (Storage alt=media) CORS kipinde alınıp saklanıyor, çevrimdışıyken kopyadan geliyor', async () => {
+test('<img> medyası (Storage alt=media, CORS\'suz) aynen istenip OPAK olarak saklanıyor, çevrimdışıyken kopyadan geliyor', async () => {
   const w = makeWorld();
-  w.routes[MEDIA_URL.split('?')[0]] = { body: 'foto' };
-  assert.strictEqual((await w.fetchEvent(get(MEDIA_URL))).body, 'foto');
-  assert.strictEqual(w.calls[0].mode, 'cors');
+  const res = await w.fetchEvent(get(MEDIA_URL));              // sayfa ne istediyse: no-cors
+  assert.strictEqual(res.type, 'opaque');
+  assert.deepStrictEqual(w.calls.map(c => c.mode), ['no-cors']);   // CORS denemesi YOK: konsolda kırmızı hata çıkmaz
   w.online = false;
-  assert.strictEqual((await w.fetchEvent(get(MEDIA_URL))).body, 'foto');
+  const off = await w.fetchEvent(get(MEDIA_URL));
+  assert.strictEqual(off.type, 'opaque');
 });
 
 test('medya kopyası varsa ağa hiç gidilmiyor (adres değişmez, eskimez)', async () => {
@@ -226,6 +230,24 @@ test('medya kopyası varsa ağa hiç gidilmiyor (adres değişmez, eskimez)', as
   await w.fetchEvent(get(MEDIA_URL));
   const n = w.calls.length;
   await w.fetchEvent(get(MEDIA_URL));
+  assert.strictEqual(w.calls.length, n);
+});
+
+test('sayfa kodunun kendi CORS isteğine opak kopya VERİLMİYOR (reddedilirdi), ağdan gidiliyor', async () => {
+  const w = makeWorld();
+  await w.fetchEvent(get(MEDIA_URL));                           // opak kopya var
+  const n = w.calls.length;
+  const res = await w.fetchEvent(get(MEDIA_URL, { mode: 'cors' }));
+  assert.strictEqual(w.calls.length, n + 1);
+  assert.strictEqual(res.type, 'cors');
+});
+
+test('kova ileride CORS verirse: sayfanın CORS yanıtı varsa o veriliyor', async () => {
+  const w = makeWorld();
+  const c = await w.caches.open('coachos-media-v1');
+  await c.put(MEDIA_URL, new Res('cors-kopya', 200, 'cors'));
+  const n = w.calls.length;
+  assert.strictEqual((await w.fetchEvent(get(MEDIA_URL, { mode: 'cors' }))).body, 'cors-kopya');
   assert.strictEqual(w.calls.length, n);
 });
 
@@ -239,12 +261,20 @@ test('Storage\'ın alt=media olmayan istekleri ve başka Storage adresleri dokun
   assert.strictEqual(w.caches.stores['coachos-media-v1'], undefined);
 });
 
-test('medya kopyası 400 ile sınırlı: en eskiler atılıyor', async () => {
+test('hata yanıtı (404) saklanmıyor', async () => {
   const w = makeWorld();
-  for (let i = 0; i < 403; i++) await w.fetchEvent(get(MEDIA_URL.replace('1_ab', 'p' + i)));
+  w.opaque = false;                                             // bu kova yanıtı okunabilir bir 404 döndürüyor
+  w.routes[MEDIA_URL.split('?')[0]] = { body: 'yok', status: 404 };
+  await w.fetchEvent(get(MEDIA_URL));
+  assert.strictEqual(w.caches.stores['coachos-media-v1'] && (await (await w.caches.open('coachos-media-v1')).keys()).length, 0);
+});
+
+test('medya kopyası 150 ile sınırlı: en eskiler atılıyor', async () => {
+  const w = makeWorld();
+  for (let i = 0; i < 153; i++) await w.fetchEvent(get(MEDIA_URL.replace('1_ab', 'p' + i)));
   const keys = await (await w.caches.open('coachos-media-v1')).keys();
-  assert.strictEqual(keys.length, 400);
-  assert.ok(!keys.some(k => k.url.includes('%2Fp0.jpg')) && keys.some(k => k.url.includes('%2Fp402.jpg')));
+  assert.strictEqual(keys.length, 150);
+  assert.ok(!keys.some(k => k.url.includes('%2Fp0.jpg')) && keys.some(k => k.url.includes('%2Fp152.jpg')));
 });
 
 test('çıkışta (clear-media mesajı) saklanan sporcu fotoğrafları siliniyor, başkası değil', async () => {
@@ -256,15 +286,6 @@ test('çıkışta (clear-media mesajı) saklanan sporcu fotoğrafları siliniyor
   assert.strictEqual(w.caches.stores['coachos-media-v1'], undefined);
   assert.ok(w.caches.stores['coachos-app-v1']);
   w.handlers.message({ data: { baska: 1 }, waitUntil: () => { throw new Error('dokunmamalıydı'); } });   // başka mesajlar
-});
-
-test('kova CORS vermiyorsa görsel kopyasız, eskisi gibi ağdan geliyor', async () => {
-  const w = makeWorld();
-  w.noCors = true;
-  const res = await w.fetchEvent(get(MEDIA_URL));
-  assert.ok(res.body.startsWith('net:'));
-  assert.deepStrictEqual(w.calls.map(c => c.mode), ['cors', 'no-cors']);      // önce CORS, sonra düz istek
-  assert.strictEqual((await (await w.caches.open('coachos-media-v1')).keys()).length, 0);
 });
 
 (async () => {

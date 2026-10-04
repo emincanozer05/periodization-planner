@@ -18,6 +18,8 @@ her parçanın tek başına derlenmesi (`check-syntax.js`) ve `node deps.js --ch
 ve hata/boş sekme varsa kırmızı verir. Kod yapısını değiştiren işlerde önce/sonra karşılaştırması
 için: `--save onceki.json`, değişiklikten sonra `--compare onceki.json` (aynı gün içinde).
 CI'da çalışmaz (Chromium ve npm erişimi ister); yapıyı değiştiren her PR'dan önce elle çalıştır.
+Service worker'a dokunan işlerde ayrıca `node tools/sw-browser-test.js`: gerçek Chromium'da gerçek worker'ı,
+CORS göndermeyen sahte bir Storage sunucusuna karşı sınar (medya önbelleği, çevrimdışı görsel).
 
 ## Parça sırası neden önemli
 Betik tek parça gibi çalıştığı için bir parça, yükleme sırasında (bir işlevin DIŞINDA) yalnızca
