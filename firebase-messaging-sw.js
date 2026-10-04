@@ -128,13 +128,13 @@ self.addEventListener('notificationclick', event => {
       Bu adresler DEĞİŞMEZ — her yükleme zaman damgalı yeni bir yola ve yeni bir jetona
       yazılıyor — yani kopya hiçbir zaman eskimiş olamaz, arkada tazelemeye gerek yok.
       Çevrimdışıyken görsellerin gelmemesinin sebebi buydu. Kopyalar kişisel veri
-      (sporcu fotoğrafları): MEDIA_MAX ile sınırlı ve koç ÇIKIŞ YAPINCA siliniyor
+      (sporcu fotoğrafları): MEDIA_MAX (150) ile sınırlı ve koç ÇIKIŞ YAPINCA siliniyor
       (aşağıdaki `message` dinleyicisi). */
 const SHELL = 'coachos-alerts-v1';
 const APP = 'coachos-app-v1';
 const LIBS = 'coachos-libs-v1';
 const MEDIA = 'coachos-media-v1';
-const MEDIA_MAX = 400;
+const MEDIA_MAX = 150;
 const APP_TIMEOUT_MS = 5000;
 
 const SHELL_FILES = ['alerts.html', 'alerts.webmanifest', 'logo-wordmark.png',
@@ -208,21 +208,25 @@ async function libFirst(event, req) {
 async function mediaFirst(req) {
   const cache = await caches.open(MEDIA);
   const hit = await cache.match(req.url);
+  /* Sayfa kodunun KENDİ CORS isteklerine (fetch(..., {mode:'cors'})) opak bir kopya
+     verilemez: yanıt reddedilir. Onlar için kopyaya bakılmıyor ve ağdan gidiliyor. */
+  if (req.mode === 'cors') return (hit && hit.type !== 'opaque') ? hit : fetch(req);
   if (hit) return hit;
-  /* CORS kipinde isteniyor (opak yanıtlar kotadan ~7 MB yer tutar). Storage kovası CORS
-     vermiyorsa istek reddedilir ve görsel eskisi gibi, kopyasız çiziliyor. */
-  try {
-    const res = await fetch(new Request(req.url, { mode: 'cors', credentials: 'omit' }));
-    if (res && res.status === 200) {
+  /* <img> istekleri: sayfa ne istediyse (CORS'suz) aynen isteniyor ve gelen yanıt saklanıyor.
+     Firebase Storage kovasına CORS verilmedikçe bu yanıt OPAK olur (içi okunamaz ama <img>
+     için çizilebilir). Eskiden CORS kipinde istenip başarısızlığa düşülüyordu: konsolda
+     kırmızı hata, çevrimdışı için de hiç kopya yoktu. Opak yanıtlar kotadan kopya başına
+     birkaç MB yer tutuyor (MEDIA_MAX bu yüzden küçük). */
+  const res = await fetch(req);
+  if (res && (res.type === 'opaque' || res.status === 200)) {
+    try {
       await cache.put(req.url, res.clone());
       // En eski kopyalar atılıyor (Cache anahtarları ekleme sırasıyla geliyor).
       const keys = await cache.keys();
       for (let i = 0; i < keys.length - MEDIA_MAX; i++) await cache.delete(keys[i]);
-    }
-    return res;
-  } catch (e) {
-    return fetch(req);
+    } catch (e) { /* kota doldu: görsel yine de ekranda, yalnızca kopya yok */ }
   }
+  return res;
 }
 
 self.addEventListener('fetch', event => {
