@@ -131,7 +131,7 @@ function SkRpeTable({list,rpe,minutes,onMinutes,readOnly}){
         {v.fromAthlete&&<span className="sk-src" title={L('Sporcunun check-in formundan geldi — üzerine yazabilirsin.','From the athlete\'s check-in form — you can overwrite it.')}>{L('form','form')}</span>}
       </span>
       {withMin&&<span className="sk-cell">{readOnly?<b className="sk-val">{min!==''?min:'—'}</b>
-        :<input type="number" min="0" max="60" inputMode="numeric" className={'sk-num'+(!hasTyped&&formMin!==''?' auto':'')}
+        :<input type="number" min="0" max="300" inputMode="numeric" className={'sk-num'+(!hasTyped&&formMin!==''?' auto':'')}
           placeholder="—" value={min} title={!hasTyped&&formMin!==''?L('Sporcunun formda verdiği süre','Minutes the athlete reported on the form'):''}
           onChange={e=>onMinutes(a.id,e.target.value)}/>}<em>{L('dk','min')}</em></span>}
       <span className="sk-cell">{(readOnly||!rpe||!rpe.set)?<b className="sk-val">{hasR?v.rpe:'—'}</b>
@@ -222,9 +222,10 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
           :<LiveTextarea className="sk-ta" value={s.content||''} onChange={v=>u({content:v})}
             placeholder={L('Antrenmanın içeriği — hücum setleri, savunma, 5v5…','What the practice covers — offensive sets, defence, 5v5…')}/>}
       </SkSec>
-      {team&&rpe&&<SkSec title={L('RPE & sRPE','RPE & sRPE')}
-        sub={L('Sporcuların check-in formundan otomatik dolar','Filled in automatically from the athletes\' check-in form')}>
-        <SkRpeTable list={rpeList} rpe={rpe} readOnly={readOnly}/>
+      {team&&rpe&&<SkSec title={L('Süre · RPE · sRPE','Minutes · RPE · sRPE')}
+        sub={L('Süre, RPE ve sRPE sporcuların check-in formundan otomatik dolar','Minutes, RPE and sRPE fill in automatically from the athletes\' check-in form')}>
+        <SkRpeTable list={rpeList} rpe={rpe} readOnly={readOnly} minutes={s.minutes||{}}
+          onMinutes={(id,v)=>u({minutes:{...(s.minutes||{}),[id]:v===''?'':Math.max(0,Number(v))}})}/>
       </SkSec>}
       {notes}
     </div>);
