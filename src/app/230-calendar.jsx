@@ -240,13 +240,21 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(teamMode){saveDays(nd);syncAths(dateK,oldS,newS);}else saveDays(nd);
     setDrawerSes(ns);
   };
+  /* Renaming from the session panel renames the block heading the editor shows with it
+     (the first block's, or the heading of a session with no blocks yet): the card and the
+     heading are one name. */
+  const drwRename=v=>{
+    if(!drawerSes)return;
+    const bl=drawerSes.blocks||[];
+    drwUpd(bl.length?{name:v,blocks:bl.map((b,i)=>i===0?{...b,name:v}:b)}:{name:v,soloName:v});
+  };
   // ---- Per-athlete RPE for a team session ----
   // Writes to each athlete's srpeLog (the canonical inner-load record that powers
   // the sRPE chart, Wellness heatmap & ACWR). One entry per athlete per session,
   // tagged with sessionId so re-entering a value updates it instead of duplicating.
   const aInit=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const srpeSlot=lt=>{const x=(lt||'').toLowerCase();return(x.includes('mechanical')||x.includes('neuromuscular'))?'sc':'tp';};
-  const rpeCatOf=ses=>(ses&&ses.rpeCat)||srpeSlot(ses&&ses.loadType);
+  const rpeCatOf=ses=>(ses&&ses.rpeCat)||(sesKind(ses)==='match'?'game':srpeSlot(ses&&ses.loadType));
   /* Who the session is for: the athletes assigned to it, or the whole roster while none
      are — the same list the RPE panel shows and the team sRPE averages. */
   const rpeRoster=ses=>{
@@ -366,6 +374,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
      target, out of 10). Neither is a new field — both are the ones the session editor and
      the printed program already read, so a pick made here is the same pick made there. */
   const drwGoals=drawerSes?sesFocus(drawerSes):[];
+  // A team practice, a match or a test day opens its own window instead of the exercise one.
+  const drwKind=drawerSes?sesKind(drawerSes):'';
   const drwRpeT=drawerSes?sesRpeTarget(drawerSes):7;
   const drwZone=rpeZone(drwRpeT);
   /* Picking goals here is the same act as picking them in the editor, so it follows the
@@ -376,12 +386,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     const sub=sesSubFocus(drawerSes).filter(x=>arr.includes(SUBFOCUS_OWNER[x]));
     drwUpd({focus:arr,sub,purpose:[...arr,...sub].join(', ')});
   };
-  const setAthRPE=(athId,rpeRaw)=>{
+  /* `durOverride` is the minutes this one athlete was actually on for — a match, where
+     the load is RPE × their own minutes rather than × the length of the game. */
+  const setAthRPE=(athId,rpeRaw,durOverride)=>{
     if(!teamMode||!drawerSes)return;
     const dk=drawerDate||Object.keys(days).find(k=>(days[k].sessions||[]).some(x=>x.id===drawerSes.id));
     if(!dk)return;
-    const dur=Number(drawerSes.duration)||0;
-    const slot=drawerSes.rpeCat||srpeSlot(drawerSes.loadType);
+    const dur=Number(durOverride)||Number(drawerSes.duration)||0;
+    const slot=rpeCatOf(drawerSes);
     const rpe=(rpeRaw===''||rpeRaw==null)?'':Number(rpeRaw);
     const load=(rpe===''||isNaN(rpe))?'':Math.round(rpe*dur);
     const newAthletes=athletes.map(a=>{
@@ -665,7 +677,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               {/* Only the goals — Kuvvet, Güç, Hız — never the sub-focuses under them:
                   five lines of capacities pushed the time, the length and the RPE badge
                   off the bottom of the card. */}
-              <div className="pr">{sesGoalLine(s)}</div>
+              <div className="pr">{sesKindLine(s)||sesGoalLine(s)}</div>
               {/* Clock, length, and the intensity the coach planned for the day — the third
                   number belongs on this line because the first two only say when and how
                   long, never how hard. It is the same target the session editor's scale
@@ -736,9 +748,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             {/* The title is the session's name as the calendar shows it — editable in
                 place, saved like the other fields here. */}
             {canEdit
-              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwUpd({name:e.target.value})} title={L('Seans adını değiştir','Rename the session')}/>
+              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwRename(e.target.value)} title={L('Seans adını değiştir','Rename the session')}/>
               :<div className="ti">{drawerSes.name}</div>}
-            <div className="su">{drawerSes.purpose}</div>
+            <div className="su">{drwKind?`${sesKindName(drwKind)} · ${fdLong(drwDateKey)}`:drawerSes.purpose}</div>
           </div>
           {/* No assignment button here any more. Assigning is a per-BLOCK decision — the
               guards and the forwards get different work on the same day — and this one
@@ -750,7 +762,23 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         {/* The exercises take the left of the drawer — they are what the session IS — and
             what it trains is summarised down the right, where it can be read against
             them. */}
-        <div className="dw-layout">
+        {drwKind?<div className="dw-layout">
+          <div className="dw-b">
+            <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}>
+              <button className={'btn sm'+(copied?' outline':' sec')}
+                onClick={()=>{copySessionToClipboard(drawerSes);setCopied(true);}}
+                title={L('Panoya kopyalanır — başka bir günün başlığındaki 📋 ile yapıştır','Copied to the clipboard — paste it with the 📋 on any day header')}>
+                {copied?L('✓ Kopyalandı','✓ Copied'):L('Kopyala','Copy')}</button>
+            </div>
+            <SesKindForm session={drawerSes} dateKey={drwDateKey} onPatch={drwUpd} readOnly={!canEdit}
+              roster={teamMode?athletes:undefined} teamName={labelOwner||setup?.teamName||''}
+              rpe={teamMode?{get:a=>athRPEFor(a,drawerSes,drwDateKey),set:canEdit?setAthRPE:null}:null}/>
+            <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button className="btn sec sm" onClick={()=>setDrawerSes(null)}>{L('Kapat','Close')}</button>
+            </div>
+          </div>
+        </div>
+        :<div className="dw-layout">
           <div className="dw-b">
           <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:10,flexWrap:'wrap'}}>
             {/* Five actions share this row now, so it wraps to a second line on a narrow
@@ -862,7 +890,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           </div>
         </div>
         <div className="dw-right-panel"><TrainContent session={drawerSes} onPatch={drwUpd} readOnly={!canEdit}/></div>
-        </div>
+        </div>}
       </aside>
     </>))}
     {editDate&&layer((<>
@@ -880,13 +908,13 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
         <div className="dw-layout">
         <div className="dw-b">
-          <div className="dw-quickadd">
-            <span className="qa-lbl">{L('Hızlı ekle','Quick add')}</span>
-            {SPRESETS.map(p=><button key={p.name} onClick={()=>edAdd(spData(p))}>+ {spLabel(p)}</button>)}
-            <button onClick={()=>edAdd()}>+ {L('Boş','Empty')}</button>
-          </div>
-          {(edDay.sessions||[]).length===0&&<div className="dw-empty">{L('Henüz seans yok — yukarıdaki hızlı ekle ile başla','No sessions yet — start with quick add above')}</div>}
-          {(edDay.sessions||[]).map((s,i)=><SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
+          <BlockAddBar onAdd={edAdd}/>
+          {(edDay.sessions||[]).length===0&&<div className="dw-empty">{L('Henüz seans yok — yukarıdan bir antrenman bloğu ekleyerek başla','No sessions yet — start by adding a training block above')}</div>}
+          {(edDay.sessions||[]).map((s,i)=>sesKind(s)
+            ?<SesKindCard key={s.id} session={s} index={i} total={edDay.sessions.length}
+              onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onMove={dir=>edMv(s.id,dir)}
+              athletes={teamMode?athletes:undefined} dateKey={editDate} teamName={labelOwner||setup?.teamName||''}/>
+            :<SessEd key={s.id} session={s} index={i} total={edDay.sessions.length}
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}

@@ -392,12 +392,25 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
-  const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u({blocks:a});};
-  const updBlk=(bid,nb)=>u({blocks:session.blocks.map(b=>b.id===bid?nb:b)});
-  const delBlk=bid=>u({blocks:session.blocks.filter(b=>b.id!==bid)});
+  /* ONE NAME FOR THE SESSION. The title typed at the head of the first block is the name
+     the calendar card, the day plan and the fixture list show — so a new block list is
+     written together with the name its first heading now gives the session — but only
+     when that heading changed (typed, or another block moved to the top), so editing an
+     exercise never renames anything. A heading left empty keeps the session's name. */
+  const withName=blocks=>{
+    const o=(session.blocks||[])[0],n=blocks[0];
+    if(!n||(o&&o.id===n.id&&o.name===n.name))return{blocks};
+    const t=String(n.name||'').trim();
+    return(t&&t!==session.name)?{blocks,name:t}:{blocks};
+  };
+  const moveBlk=(from,to)=>{if(from==null||to==null||from===to)return;const a=[...session.blocks];const[m]=a.splice(from,1);a.splice(to,0,m);u(withName(a));};
+  const updBlk=(bid,nb)=>u(withName(session.blocks.map(b=>b.id===bid?nb:b)));
+  const delBlk=bid=>u(withName(session.blocks.filter(b=>b.id!==bid)));
   const dupBlk=bid=>{const o=session.blocks.find(b=>b.id===bid);const i=session.blocks.indexOf(o);
     const nb={...o,id:uid(),exercises:o.exercises.map(e=>({...e}))};const a=[...session.blocks];a.splice(i+1,0,nb);u({blocks:a});};
-  const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n,kind)]});
+  /* The first block of a session is headed with the session's own name, so the heading
+     and the calendar card start out saying the same thing. */
+  const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n||(session.blocks.length?'':(session.soloName||session.name||'')),kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
@@ -446,10 +459,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
               same. They were the same field, so naming the work renamed the session and
               a coach could not have both. Left empty it still reads "Training Details". */}
           <span className="blk-sn" title={L('Seans numarası','Session number')}>{index+1}</span>
-          <LiveInput className="iv-block-nm" value={session.soloName||''}
+          <LiveInput className="iv-block-nm" value={session.soloName||session.name||''}
             placeholder={L('Antrenman Özellikleri','Training Details')}
-            title={L('Bu çalışmanın başlığı — üstteki seans adından bağımsızdır','This practice\'s own title — independent of the session name above')}
-            onChange={v=>u({soloName:v})}/>
+            title={L('Blok başlığı — takvimdeki kartta da bu ad görünür','Block title — the calendar card shows this name too')}
+            onChange={v=>{const t=String(v||'').trim();u(t?{soloName:v,name:t}:{soloName:v});}}/>
           <span className="iv-blockacts">
             {!isTemplate&&<CardColorPick value={session.color||''} onPick={c=>u({color:c})}/>}
             {moveBtns}
@@ -601,11 +614,13 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
             <ShareIcon/> {L('Paylaş','Share')}</button>
         </div>
       </div>
-      <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{L('Hızlı Ekle','Quick Add')}</strong>
-        {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(spData(p))}>+ {spLabel(p)}</button>)}
-        <button onClick={()=>addS()}>+ {L('Boş','Empty')}</button></div>
-      {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdaki Hızlı Ekle\'yi kullan','No sessions planned — use Quick Add above')}</div>}
-      {day.sessions.map((s,i)=><SessEd key={s.id} session={s} index={i} total={day.sessions.length}
+      <BlockAddBar variant="planner" onAdd={addS}/>
+      {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdan bir antrenman bloğu ekle','No sessions planned — add a training block above')}</div>}
+      {day.sessions.map((s,i)=>sesKind(s)
+        ?<SesKindCard key={s.id} session={s} index={i} total={day.sessions.length}
+          onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onMove={d=>mvS(s.id,d)}
+          athletes={teamMode?athletes:undefined} dateKey={selDay} teamName={labelOwner||setup.teamName||''}/>
+        :<SessEd key={s.id} session={s} index={i} total={day.sessions.length}
         onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onDuplicate={()=>dupS(s.id)} onMove={d=>mvS(s.id,d)}
         printContext={{title:labelOwner||setup.teamName,subtitle:dayLabel}}
         athletes={teamMode?athletes:undefined}/>)}
