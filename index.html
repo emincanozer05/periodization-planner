@@ -2035,6 +2035,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
   line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
 .atp-chip button:hover{background:var(--hover);color:var(--text)}
 .atp-empty{font-size:11.5px;color:var(--dim);align-self:center}
+.atp-lane-warn{margin-top:10px;padding:7px 10px;border-radius:9px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);
+  color:var(--orange,#f59e0b);font-size:11.5px;line-height:1.4}
 /* ---- the quality groups ----
    Two columns of stacked groups (ATP_COLS). Every row is the same height whatever its
    name, so rows read straight across the two columns, and the last card of each column
@@ -24682,8 +24684,8 @@ function AtpGrpHead({title,n,of}){
    sent as is kept on hover — it is the word the JSON carries. */
 const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:undefined}>{atpT(en)}</span>;
 /* The seven groups in two columns of near-equal height: Speed, Change of Direction,
-   Plyometric / Reactive and Power (12 qualities under four headers) beside Strength,
-   Movement Quality and Conditioning (14 under three). The last card of each column
+   Plyometric / Reactive and Power (9 qualities under four headers) beside Strength,
+   Movement Quality and Conditioning (9 under three). The last card of each column
    takes up the few pixels between them; on a narrow screen the columns fold into one
    list in the template's own order. */
 const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','conditioning']];
@@ -24709,8 +24711,8 @@ function AtpProfile({q,onSet}){
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
     <AtpSecHead n={1} title={atpT('Athletic Profile')}
-      desc={L('Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir.',
-        'A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement.')}/>
+      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek'i bu dönemin ana hedefleriyle sınırla (en fazla ${ATP_HIGH_MAX}); öncelik verilmeyen kalite Düşük gibi korunur.`,
+        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. Keep High to this period’s main goals (${ATP_HIGH_MAX} at most); a quality left unrated is maintained, like Low.`)}/>
     <div className="sc-sec-b">
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
@@ -24721,6 +24723,9 @@ function AtpProfile({q,onSet}){
           <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span><span className="atp-lane-n">{its.length}</span></div>
           <div className="atp-chips">{its.length?its.map(chip)
             :<span className="atp-empty">{L('Henüz yok — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
+          {p.id==='high'&&its.length>ATP_HIGH_MAX&&<div className="atp-lane-warn" role="status">
+            {L(`${its.length} Yüksek öncelik var — ${ATP_HIGH_MAX}'dan fazlası seansın neye ağırlık vereceğini belirsizleştirir. Bir kısmını Orta'ya al.`,
+              `${its.length} High priorities — more than ${ATP_HIGH_MAX} blurs what the session should lead with. Move some to Medium.`)}</div>}
         </div>);})}</div>
       <div className="atp-gwrap"><div className="atp-mgrid">{ATP_COLS.map((col,ci)=>
         <div key={ci} className="atp-mcol">{col.map(id=>group(ATP_GROUPS.find(g=>g.id===id)))}</div>)}</div></div>
@@ -31338,6 +31343,7 @@ const ATP_TR={
   'Jumping':'Sıçrama','Landing':'İniş','Hopping':'Sekme',
   'Squat':'Squat','Hinge':'Kalça Menteşesi','Unilateral':'Tek Taraflı',
   'Horizontal Push':'Yatay İtme','Horizontal Pull':'Yatay Çekme','Vertical Push':'Dikey İtme','Vertical Pull':'Dikey Çekme',
+  'Lower-Body Strength':'Alt Vücut Kuvveti','Upper-Body Strength':'Üst Vücut Kuvveti','Unilateral Strength':'Tek Taraflı Kuvvet',
   'Lower-Body Power':'Alt Vücut Gücü','Upper-Body Power':'Üst Vücut Gücü','Rate of Force Development':'Kuvvet Gelişim Hızı',
   'Mobility':'Hareketlilik','Stability':'Stabilite','Coordination':'Koordinasyon','Balance':'Denge',
   'Aerobic Capacity':'Aerobik Kapasite','Anaerobic Capacity':'Anaerobik Kapasite','Repeat Sprint Ability':'Tekrarlı Sprint Yeteneği',
@@ -31403,16 +31409,21 @@ function atpT(en){
 const atpAb=l=>REPORT_LANG==='tr'?l.abTr:l.ab;
 /* The one template the profile is written on: seven groups, every quality in them rated
    on the same scale — Priority (how much the current period develops it). The ids are the English words, so a quality keeps its id
-   whatever the screen is read in. */
+   whatever the screen is read in. Only physical qualities are on it: how the work is
+   spread over movement patterns (squat, hinge, push, pull…) is read off the calendar by
+   Exercise Exposure, so it is not rated here a second time. */
 const ATP_GROUPS=[
-  {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity','Sprint Mechanics'])},
-  {id:'cod',         en:'Change of Direction',  items:atpItems(['Deceleration','Change of Direction','Lateral Movement'])},
-  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing','Hopping'])},
-  {id:'strength',    en:'Strength',             items:atpItems(['Squat','Hinge','Unilateral','Horizontal Push','Horizontal Pull','Vertical Push','Vertical Pull'])},
+  {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity'])},
+  {id:'cod',         en:'Change of Direction',  items:atpItems(['Deceleration','Change of Direction'])},
+  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing'])},
+  {id:'strength',    en:'Strength',             items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength'])},
   {id:'power',       en:'Power',                items:atpItems(['Lower-Body Power','Upper-Body Power','Rate of Force Development'])},
-  {id:'movement',    en:'Movement Quality',     items:atpItems(['Mobility','Stability','Coordination','Balance'])},
+  {id:'movement',    en:'Movement Quality',     items:atpItems(['Mobility','Stability','Coordination'])},
   {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability'])},
 ];
+/* More High priorities than this and High stops telling the session what to lead with;
+   the tab says so, it does not stop the coach. */
+const ATP_HIGH_MAX=6;
 const ATP_QUALITIES=ATP_GROUPS.flatMap(g=>g.items.map(it=>({...it,group:g.en})));
 const ATP_PRIORITY=[
   {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Bu dönemin ana gelişim alanı.',dEn:'A main development area this period.'},
@@ -31427,7 +31438,21 @@ const ATP_PRIORITY=[
    are the same quality under another word are read as it. Ratings with no place in the
    template are left behind. */
 const ATP_LEGACY_LEVEL={primary:'high',secondary:'medium',maintain:'low'};
-const ATP_LEGACY_ALIAS={jumping:['jump_ability'],landing:['landing_ability']};
+/* The ids a quality is also read from: the old names of the same quality, and the items
+   the template once had and has since folded into it (Sprint Mechanics into
+   Acceleration, Lateral Movement into Change of Direction, Hopping into Jumping, the
+   seven movement patterns into Lower-Body / Upper-Body / Unilateral Strength, Balance
+   into Stability). A quality takes the highest priority any of its ids carries, so
+   folding never lowers one; the next save keeps only the template's own ids. */
+const ATP_LEGACY_ALIAS={
+  acceleration:['sprint_mechanics'],
+  change_of_direction:['lateral_movement'],
+  jumping:['hopping','jump_ability'],landing:['landing_ability'],
+  lower_body_strength:['squat','hinge'],
+  upper_body_strength:['horizontal_push','horizontal_pull','vertical_push','vertical_pull'],
+  unilateral_strength:['unilateral'],
+  stability:['balance'],
+};
 const ATP_CON_CATS=[
   {id:'load',en:'Load'},{id:'volume',en:'Volume'},{id:'intensity',en:'Intensity'},
   {id:'speed',en:'Speed'},{id:'impact',en:'Impact'},{id:'movement',en:'Movement'},
@@ -31496,18 +31521,20 @@ function atpRead(ath){
   const obj=v=>(v&&typeof v==='object'&&!Array.isArray(v))?v:{};
   const okP=v=>ATP_PRIORITY.some(x=>x.id===v)?v:null;
   const qualities={};
-  /* Only the priority is kept — a Status saved before it was dropped is left behind. */
-  const put=(id,pr)=>{pr=okP(pr);if(pr)qualities[id]={priority:pr};};
+  /* Only the priority is kept — a Status saved before it was dropped is left behind.
+     Of several candidates (a quality and the ids folded into it) the highest wins. */
+  const top=list=>{const ok=list.map(okP).filter(Boolean);
+    return ok.length?ok.reduce((a,b)=>ATP_PRIORITY.findIndex(p=>p.id===b)<ATP_PRIORITY.findIndex(p=>p.id===a)?b:a):null;};
+  const put=(id,pr)=>{if(pr)qualities[id]={priority:pr};};
+  const idsOf=it=>[it.id,...(ATP_LEGACY_ALIAS[it.id]||[])];
   if(tp.qualities&&typeof tp.qualities==='object'){
     const q=obj(tp.qualities);
-    ATP_QUALITIES.forEach(it=>{const r=obj(q[it.id]);put(it.id,r.priority);});
+    ATP_QUALITIES.forEach(it=>put(it.id,top(idsOf(it).map(k=>obj(q[k]).priority))));
   }else{
     const mv=obj(tp.movement),pri=obj(tp.priorities);
     ATP_QUALITIES.forEach(it=>{
-      const ids=[it.id,...(ATP_LEGACY_ALIAS[it.id]||[])];
-      const m=obj(mv[it.id]);
-      const lv=ids.map(k=>ATP_LEGACY_LEVEL[pri[k]]).find(Boolean)||null;
-      put(it.id,m.priority||lv);
+      const ids=idsOf(it);
+      put(it.id,top([...ids.map(k=>obj(mv[k]).priority),...ids.map(k=>ATP_LEGACY_LEVEL[pri[k]])]));
     });
   }
   const con=obj(tp.constraints);
@@ -31951,6 +31978,7 @@ function atpSnapshot(ath,ref,libMap,setup){
   const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]).map(it=>({it,r:tp.qualities[it.id]}));
   const ordered=rated.map((x,i)=>({...x,i})).sort((a,b)=>(rank(a)-rank(b))||(a.i-b.i));
   const byPri=id=>rated.filter(x=>x.r.priority===id).map(x=>x.it.en);
+  const unrated=ATP_QUALITIES.filter(it=>!tp.qualities[it.id]).map(it=>it.en);
   const con=list=>list.map(c=>({constraint:atpConLabel(c),category:atpCatLabel(atpConCat(c))||null,value:c.value,note:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
@@ -31982,9 +32010,10 @@ function atpSnapshot(ath,ref,libMap,setup){
     last_updated:tp.updated,
     athletic_profile:rated.length?{
       description:'Priority of each physical quality — how much it is to be developed in this period: High (main development area) > Medium (to be developed, after High) > Low (maintained, no development priority). '+
-        'A quality that is not listed has not been assessed; it does not mean "no priority".',
+        'not_rated lists the qualities the coach set no priority for: keep them at a maintenance dose, the same as Low.',
       groups:ATP_GROUPS.map(g=>g.en),
       priority:{high:byPri('high'),medium:byPri('medium'),low:byPri('low')},
+      ...(unrated.length?{not_rated:unrated}:{}),
       qualities:ordered.map(({it,r})=>({quality:it.en,group:it.group,priority:en(ATP_PRIORITY,r.priority)})),
     }:null,
     /* No constraint entered, no block: a description with nothing under it reads as
@@ -33689,7 +33718,7 @@ const DI_EXT_TASK=[
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
   'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
-  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',

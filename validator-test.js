@@ -87,7 +87,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1219,17 +1219,22 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('JSON: training_profile sporcunun hemen ardından', !!ap && Object.keys(snap).indexOf('training_profile') === Object.keys(snap).indexOf('athlete') + 1,
       Object.keys(snap).join(','));
     /* Kayıt eski iki bölümlü biçimde (priorities + movement): tek şablona okunuyor.
-       Primary → High, Secondary → Medium; şablonda karşılığı olmayan (Lower-Body Strength,
-       Upper-Body Strength) geride kalıyor. */
+       Primary → High, Secondary → Medium, Maintain → Low. Squat artık Lower-Body Strength'in
+       içinde: Low olan squat, Primary olan Lower-Body Strength'i düşürmüyor (en yüksek kazanır). */
     const pr = ap.athletic_profile;
     check('JSON: eski profil tek şablona taşınıyor — öncelikler High / Medium / Low',
-      pr.priority.high.join('|') === 'Acceleration|Landing' && pr.priority.medium.join('|') === 'Deceleration' &&
-      pr.priority.low.join('|') === 'Squat' && !('status' in pr) &&
-      !pr.qualities.some(k => /Strength/.test(k.quality)), JSON.stringify(pr.priority));
+      pr.priority.high.join('|') === 'Acceleration|Landing|Lower-Body Strength' && pr.priority.medium.join('|') === 'Deceleration' &&
+      pr.priority.low.join('|') === 'Upper-Body Strength' && !('status' in pr) &&
+      !pr.qualities.some(k => k.quality === 'Squat'), JSON.stringify(pr.priority));
     const land = pr.qualities.find(h => h.quality === 'Landing');
     check('JSON: kalite öncelik / grup, High önce — durum yok', land && !('status' in land) && land.priority === 'High' &&
-      land.group === 'Plyometric / Reactive' && pr.qualities.map(k => k.quality).join('|') === 'Acceleration|Landing|Deceleration|Squat' &&
+      land.group === 'Plyometric / Reactive' &&
+      pr.qualities.map(k => k.quality).join('|') === 'Acceleration|Landing|Lower-Body Strength|Deceleration|Upper-Body Strength' &&
       pr.groups.length === 7, JSON.stringify(pr.qualities));
+    check('JSON: öncelik verilmeyen kaliteler not_rated listesinde, koruma dozu olarak tanımlı',
+      Array.isArray(pr.not_rated) && pr.not_rated.length === A.ATP_QUALITIES.length - 5 && pr.not_rated.includes('Max Velocity') &&
+      !pr.not_rated.includes('Acceleration') && /maintenance dose/.test(pr.description) &&
+      snap.task.some(g => /not_rated qualities at a maintenance dose/.test(g)), JSON.stringify(pr.not_rated));
     check('JSON: hard ve soft ayrı — iki listede birden olan kısıt yalnızca hard\'da',
       ap.constraints.hard.map(c => c.constraint).join('|') === 'No Maximal Sprint|Limited Knee Flexion' &&
       ap.constraints.hard[1].value === 'maks 90°' && ap.constraints.hard[1].note === 'sol diz' &&
@@ -1405,7 +1410,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !('constraints' in (bare.training_profile || {})), JSON.stringify(bare.missing_data));
     const squad = A.diSquadSnapshot({ items: [{ ath, instr: A.diInstr(null, { duration: null }) }], setup: SETUP, date: TODAY, customTests: [], libMap });
     check('toplu JSON: her sporcu kendi antrenman profilini taşıyor',
-      !!squad.athletes[0].training_profile && squad.athletes[0].training_profile.athletic_profile.priority.high.length === 2);
+      !!squad.athletes[0].training_profile && squad.athletes[0].training_profile.athletic_profile.priority.high.length === 3);
     const rd = A.atpRead({ trainingProfile: { constraints: { hard: [{ id: 'no_contact' }, { id: 'bogus' }, null], soft: 'x' } } });
     check('kayıtlı profil savunmacı okunuyor', rd.constraints.hard.length === 1 && rd.constraints.soft.length === 0 &&
       typeof rd.qualities === 'object', JSON.stringify(rd));
@@ -1415,8 +1420,22 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       qualities: { max_velocity: { status: 'limited', priority: 'high' }, hinge: { status: 'nope', priority: 'medium' }, bogus: { status: 'good' } },
       priorities: { acceleration: 'primary' }, movement: { squat: { status: 'good' } } } });
     check('yeni biçim: qualities okunuyor, status, eski alanlar ve geçersiz değerler yok sayılıyor',
-      JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { priority: 'high' }, hinge: { priority: 'medium' } }),
+      JSON.stringify(nw.qualities) === JSON.stringify({ max_velocity: { priority: 'high' }, lower_body_strength: { priority: 'medium' } }),
       JSON.stringify(nw.qualities));
+    /* Sadeleştirme: 26 madde 18'e indi. Kaldırılan maddeler birleştikleri kaliteye en
+       yüksek öncelikleriyle taşınıyor; hiçbir öncelik düşmüyor. */
+    check('şablon 18 kalite, kuvvet grubu patern değil kalite',
+      A.ATP_QUALITIES.length === 18 && A.ATP_GROUPS.find(g => g.id === 'strength').items.map(i => i.en).join('|') ===
+        'Lower-Body Strength|Upper-Body Strength|Unilateral Strength', A.ATP_QUALITIES.map(q => q.en).join('|'));
+    const mg = A.atpRead({ trainingProfile: { qualities: {
+      sprint_mechanics: { priority: 'high' }, acceleration: { priority: 'low' },
+      lateral_movement: { priority: 'medium' }, hopping: { priority: 'low' }, jumping: { priority: 'medium' },
+      squat: { priority: 'low' }, hinge: { priority: 'medium' }, horizontal_pull: { priority: 'high' }, vertical_push: { priority: 'low' },
+      unilateral: { priority: 'high' }, balance: { priority: 'high' }, stability: { priority: 'medium' } } } });
+    check('birleşen maddeler en yüksek öncelikle taşınıyor',
+      JSON.stringify(mg.qualities) === JSON.stringify({ acceleration: { priority: 'high' }, change_of_direction: { priority: 'medium' },
+        jumping: { priority: 'medium' }, lower_body_strength: { priority: 'medium' }, upper_body_strength: { priority: 'high' },
+        unilateral_strength: { priority: 'high' }, stability: { priority: 'high' } }), JSON.stringify(mg.qualities));
   }
 
   group('Ek — Aylık çıktı: özelliklere göre yüklenme tablosu');
