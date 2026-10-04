@@ -1,7 +1,7 @@
 # Sayfaların sözdizimi denetimi — her değişiklikte.
 #
 # index.html src/ altındaki parçalardan üretiliyor (node assemble.js --check, ikisinin aynı
-# olduğunu doğrular). İçindeki JSX yayında build.js ile önceden derleniyor; yerelde ise
+# olduğunu; node deps.js --check parça sırasının güvenli olduğunu doğrular). İçindeki JSX yayında build.js ile önceden derleniyor; yerelde ise
 # tarayıcıda derlenmeye devam ediyor. Bir sözdizimi hatası KOÇUN EKRANINDA beyaz
 # bir sayfa olarak çıkar. Bu iş, o hatayı yayına çıkmadan yakalıyor ve yayın
 # derlemesinin (node build.js) ve service worker önbelleğinin (node sw-test.js) de
@@ -30,6 +30,7 @@ jobs:
         with:
           node-version: '22'
       - run: node assemble.js --check
+      - run: node deps.js --check
       - run: node check-syntax.js
       - run: node build.js
       - run: node sw-test.js
