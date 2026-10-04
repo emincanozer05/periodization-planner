@@ -218,6 +218,18 @@ group('1 — Normal sporcu, hazır oluş ≥ 3.5');
   check('program sert ihlal taşımıyor → kaydedilebilir', v.status === 'pass', hardText(v));
 }
 
+group('1b — Maçtan sonraki gün: kesinti maçın bedeline göre');
+{
+  const adj = (md, last) => A.diLoadAdjust({ readiness: { score: 4 }, load: {}, pain: {},
+    competition: { md }, playing_time: { last } }).pct;
+  check('MD+1, 18 dk → küçük kesinti (-5)', adj('MD+1', { minutes: 18, rpe: 6, days_since: 1 }) === -5);
+  check('MD+1, 5 dk → kesinti yok', adj('MD+1', { minutes: 5, rpe: 6, days_since: 1 }) === 0);
+  check('MD+1, 36 dk → -25', adj('MD+1', { minutes: 36, rpe: 6, days_since: 1 }) === -25);
+  check('MD+1, 36 dk, RPE 9 → -30', adj('MD+1', { minutes: 36, rpe: 9, days_since: 1 }) === -30);
+  check('MD+1, 30 dk, RPE 3 → -15', adj('MD+1', { minutes: 30, rpe: 3, days_since: 1 }) === -15);
+  check('MD+1, süre kaydı yok → -10 (düz -25 değil)', adj('MD+1', null) === -10);
+}
+
 group('2 — Hazır oluş < 3.5, kümülatif azaltma ve taban');
 {
   const ath = athlete({ wellness: [wellness(TODAY, 3.4)] });

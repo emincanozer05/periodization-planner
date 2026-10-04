@@ -32577,14 +32577,27 @@ function diLoadAdjust(b){
   if(peak!=null&&peak>=3)add('pain',-25,`Ağrı ${peak}/5`,`Pain ${peak}/5`);
   const md=b.competition?b.competition.md:null;
   if(md==='MD-1')add('md',-20,'Maça 1 gün','1 day to the game');
-  else if(md==='MD+1')add('md',-25,'Maçtan 1 gün sonra','1 day after the game');
+  else if(md==='MD+1'){
+    /* The day after a game is not a flat -25: it depends on what the game cost. Minutes
+       played set the base, the game's own RPE nudges it, and a game the athlete barely
+       played in costs little or nothing. Without a minutes record we cut a modest
+       amount rather than guess a full game. */
+    const g=b.playing_time&&b.playing_time.last;
+    if(g&&g.days_since<=1&&g.minutes!=null){
+      const m=g.minutes;
+      let p=m<10?0:m<20?-5:m<28?-10:m<35?-20:-25;
+      if(g.rpe!=null&&p<0){
+        if(g.rpe>=8)p-=5;
+        else if(g.rpe<=4)p+=5;
+      }
+      if(p<0)add('md',p,`Maçtan 1 gün sonra — ${m} dk${g.rpe!=null?`, maç RPE ${g.rpe}`:''}`,
+        `1 day after the game — ${m} min${g.rpe!=null?`, game RPE ${g.rpe}`:''}`);
+    }else add('md',-10,'Maçtan 1 gün sonra (süre kaydı yok)','1 day after the game (no minutes recorded)');
+  }
   else if(md==='MD')add('md',-40,'Maç günü','Game day');
   if(b.readiness&&b.readiness.wellness&&b.readiness.wellness.cluster)
     add('cluster',-10,`${b.readiness.wellness.signals.length} wellness sinyali bir arada`,
       `${b.readiness.wellness.signals.length} wellness signals together`);
-  const pt=b.playing_time&&b.playing_time.last;
-  if(pt&&pt.days_since<=1&&pt.minutes>=28)
-    add('minutes',-15,`Son maçta ${pt.minutes} dk`,`${pt.minutes} minutes in the last game`);
   const raw=pct;
   const floored=pct<DI_ADJ_FLOOR;
   if(floored)pct=DI_ADJ_FLOOR;
