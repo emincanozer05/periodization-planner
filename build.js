@@ -32,9 +32,37 @@ const SKIP_DIRS = new Set(['.git', '.github', '.claude', 'node_modules', 'functi
 const SKIP_FILES = new Set(['build.js', 'assemble.js', 'check-syntax.js', 'validator-test.js', 'sync-test.js', 'sw-test.js', 'headers-test.js', 'deps.js', 'shell-test.js']);
 const SKIP_EXT = new Set(['.md']);
 
+/* KÜÇÜLTME — terser (node_modules/terser, depoda duruyor; @babel/standalone gibi kurulum gerekmez).
+   Yalnızca yerel değişken adları kısaltılıyor: ÜST DÜZEY adlar (fonksiyonlar, sabitler) olduğu gibi
+   kalıyor, çünkü betik tek genel kapsam ve sayfanın başka yerleri (print pencereleri, testler)
+   onlara adıyla ulaşıyor. "unsafe" sıkıştırmalar kapalı. Paket UMD; kaynak haritası istenmediği için
+   @jridgewell/source-map gerekmiyor, boş bir nesneyle karşılanıyor. MINIFY=0 küçültmeyi kapatır.
+   Küçültme başarısız olursa yayın DURMUYOR: uyarı basılıp küçültülmemiş kod kullanılıyor. */
+function loadTerser() {
+  const src = fs.readFileSync(path.join(ROOT, 'node_modules/terser/dist/bundle.min.js'), 'utf8');
+  const mod = { exports: {} };
+  new Function('exports', 'module', 'require', src)(mod.exports, mod, n => (n === '@jridgewell/source-map' ? {} : require(n)));
+  return mod.exports;
+}
+async function minify(code, file) {
+  if (process.env.MINIFY === '0') return code;
+  try {
+    const r = await loadTerser().minify(code, {
+      ecma: 2020, toplevel: false, keep_classnames: true,
+      compress: { passes: 1, unsafe: false, drop_console: false },
+      mangle: { toplevel: false },
+      format: { comments: false },
+    });
+    return r.code;
+  } catch (e) {
+    console.warn(`  UYARI ${file}: küçültme başarısız, küçültülmemiş kod kullanılıyor — ${e.message}`);
+    return code;
+  }
+}
+
 const BABEL_TAG = /[ \t]*<script\b[^>]*@babel\/standalone[^>]*><\/script>[ \t]*\r?\n?/;
 
-function compilePage(file) {
+async function compilePage(file) {
   const html = fs.readFileSync(path.join(ROOT, file), 'utf8');
   const open = html.indexOf('<script type="text/babel"');
   if (open < 0) throw new Error(file + ': text/babel bloğu bulunamadı');
@@ -45,9 +73,10 @@ function compilePage(file) {
     throw new Error(file + ': birden fazla text/babel bloğu var, build.js tek blok bekliyor');
   }
 
-  const { code } = babel.transform(html.slice(start, end), {
+  const compiled = babel.transform(html.slice(start, end), {
     presets: ['react'], filename: file + '.jsx', compact: true, comments: false,
-  });
+  }).code;
+  const code = await minify(compiled, file);
   // Satır içi <script> içinde bu diziler HTML ayrıştırıcısını yanıltır.
   if (/<\/script|<!--/i.test(code)) throw new Error(file + ': derlenmiş kodda </script veya <!-- geçiyor');
 
@@ -57,7 +86,7 @@ function compilePage(file) {
   if (/text\/babel|@babel\/standalone/.test(out.replace(/<!--[\s\S]*?-->/g, ''))) {
     throw new Error(file + ': çıktıda hâlâ Babel izi var');
   }
-  return { out, before: html.length };
+  return { out, before: html.length, compiled: compiled.length, minified: code.length };
 }
 
 function copyTree(dir, rel) {
@@ -83,9 +112,12 @@ fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 copyTree(ROOT, '');
 
-for (const file of PAGES) {
-  const { out, before } = compilePage(file);
-  fs.writeFileSync(path.join(OUT, file), out);
-  console.log(`  ok   ${file}  ${(before / 1024).toFixed(0)} KB -> ${(out.length / 1024).toFixed(0)} KB`);
-}
-console.log('dist/ hazır');
+(async () => {
+  for (const file of PAGES) {
+    const { out, before, compiled, minified } = await compilePage(file);
+    fs.writeFileSync(path.join(OUT, file), out);
+    const kb = n => (n / 1024).toFixed(0) + ' KB';
+    console.log(`  ok   ${file}  ${kb(before)} -> ${kb(out.length)}  (betik: derlenmiş ${kb(compiled)}, küçültülmüş ${kb(minified)})`);
+  }
+  console.log('dist/ hazır');
+})().catch(e => { console.error(e); process.exit(1); });

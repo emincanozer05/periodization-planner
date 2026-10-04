@@ -11,7 +11,8 @@
    Sınanan şey davranış, iddia değil: her senaryo gerçek bir sporcu kaydı, gerçek bir
    envanter ve modelin döndürebileceği gerçek bir JSON kurar, sonra sonucu okur.
 
-   Çalıştırma:  node validator-test.js
+   Çalıştırma:  node validator-test.js          (kaynak)
+                node validator-test.js --dist   (yayına giden küçültülmüş betik; önce node build.js)
    ═══════════════════════════════════════════════════════════════════════════ */
 const fs = require('fs');
 const babel = require('@babel/standalone');
@@ -21,12 +22,15 @@ const babel = require('@babel/standalone');
    çalıştırılmaz; geri kalan her şey — otuz kural, hesap motoru, denetleyici —
    olduğu gibi yüklenir. */
 function loadApp() {
-  const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
-  const open = html.indexOf('<script type="text/babel"');
+  /* --dist: kaynak yerine YAYINA GİDEN derlenmiş + küçültülmüş betiği sına (önce `node build.js`).
+     Küçültücü bir kuralı bozarsa bu, tarayıcıda değil burada kırmızı olur. */
+  const DIST = process.argv.includes('--dist');
+  const html = fs.readFileSync(__dirname + (DIST ? '/dist/index.html' : '/index.html'), 'utf8');
+  const open = DIST ? html.indexOf('<script>\n', html.indexOf('id="root"')) : html.indexOf('<script type="text/babel"');
   const start = html.indexOf('>', open) + 1;
   const end = html.indexOf('</script>', start);
   let src = html.slice(start, end);
-  const cut = src.indexOf('lmPersist();');
+  const cut = DIST ? src.lastIndexOf('lmPersist()') : src.indexOf('lmPersist();');
   if (cut < 0) throw new Error('betiğin sonu bulunamadı');
   src = src.slice(0, cut);
 
