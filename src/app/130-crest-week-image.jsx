@@ -82,6 +82,7 @@ async function readDrawable(src,render){
   return '';
 }
 async function buildWeekImageBlob(title,weekStart,days,athletes,scale=2){
+  await needLibs('html2canvas');
   const logo=await drawableCrest();
   const html=buildWeekHTMLDoc(title,weekStart,days,athletes,{logo});
   const W=1123;   // 297mm at 96dpi — A4 landscape

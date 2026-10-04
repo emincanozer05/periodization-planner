@@ -46,6 +46,7 @@ async function applyTurkishFont(doc){
    output — Turkish characters, photos, and layout all match exactly.
    ========================================================= */
 async function buildSessionPDFBlob(title,subtitle,sessions){
+  await needLibs('html2canvas','jspdf');
   const logo=await drawableCrest();
   const html=buildSessionHTMLDoc(title,subtitle,sessions,{logo});
   // Offscreen iframe rendered at A4 width (794px ≈ 210mm @ 96dpi)
@@ -135,6 +136,7 @@ const ShareIcon=({size=14})=>(<svg width={size} height={size} viewBox="0 0 24 24
    COACH REPORT (PDF)
    ========================================================= */
 async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pMix,acwrVal){
+  await needLibs('jspdf','autotable');
   const{jsPDF}=window.jspdf;const doc=new jsPDF();
   const fontName=await applyTurkishFont(doc);
   // header

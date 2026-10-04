@@ -17,6 +17,7 @@
 
    Kullanım (önce `node build.js` ile dist/ üretilmiş olmalı):
      node tools/smoke-test.js                      sekmeleri gez, hata/boş sekme varsa kırmızı
+     --pdf            dışa aktarma akışlarını da çalıştır (PDF, haftalık görsel, FMS PDF okuma)
      node tools/smoke-test.js --save onceki.json   sonucu kaydet
      node tools/smoke-test.js --compare onceki.json kayıtlı sonuçla birebir karşılaştır
      --shots klasör   her sekmenin ekran görüntüsünü yaz   --dist klasör (varsayılan dist)
@@ -150,9 +151,27 @@ function playwright() {
     tabs[cur] = { chars: text.length, elements, hash: crypto.createHash('md5').update(norm(text)).digest('hex').slice(0, 10) };
     if (shots) await page.screenshot({ path: path.join(shots, `tab-${String(i).padStart(2, '0')}.png`) });
   }
+  /* --pdf: dışa aktarma akışlarını gerçekten çalıştır (jsPDF, html2canvas, pdf.js). Sayfanın
+     üst düzey işlevleri klasik betikte tanımlı olduğu için window'dan çağrılabiliyor. */
+  let pdf = null;
+  if (argv.includes('--pdf')) {
+    cur = 'pdf';
+    pdf = await page.evaluate(async () => {
+      const r = {};
+      const t = (k, f) => f().then(v => { r[k] = v; }, e => { r[k] = 'HATA: ' + (e && e.message || e); });
+      r.libsBefore = [typeof window.jspdf, typeof window.html2canvas, typeof window.pdfjsLib].join(',');
+      await t('weekImage', async () => { const b = await buildWeekImageBlob('Smoke', '2026-09-28', {}, []); return b && b.size > 1000 ? 'png ok' : 'boş: ' + (b && b.size); });
+      let blob;
+      await t('sessionPdf', async () => { blob = await buildSessionPDFBlob('Smoke', 'Test', []); return blob && blob.size > 1000 && /pdf/.test(blob.type) ? 'pdf ok' : 'boş'; });
+      await t('coachReport', async () => { await generateCoachReport('Smoke', 'P', {}, [], [], [], 1.1); return 'ok'; });
+      await t('exLibPdf', async () => { await downloadExLibraryPDF([], { ball: false, libTab: 'all' }); return 'ok'; });
+      await t('fmsPdf', async () => { const f = new File([blob], 'x.pdf', { type: 'application/pdf' }); const x = await fmsReadPdf(f); return x && x.pages && x.pages.length ? x.pages.length + ' sayfa' : 'boş'; });
+      return r;
+    });
+  }
   await browser.close(); srv.close();
 
-  const result = { navs, tabs, errors };
+  const result = { navs, tabs, errors, pdf };
   let bad = 0;
   for (const [k, v] of Object.entries(tabs)) {
     const e = errors[k] || [];
@@ -162,6 +181,15 @@ function playwright() {
     if (e.length || empty) bad++;
   }
   (errors['açılış'] || []).forEach(m => { console.log('  HATA açılış: ' + m); bad++; });
+  if (pdf) {
+    console.log('\n  dışa aktarma (--pdf):  açılışta yüklü kütüphaneler [jspdf,html2canvas,pdfjs] = ' + pdf.libsBefore);
+    for (const k of ['weekImage', 'sessionPdf', 'coachReport', 'exLibPdf', 'fmsPdf']) {
+      const ok = !/^HATA|boş/.test(String(pdf[k]));
+      console.log(`  ${ok ? 'ok  ' : 'HATA'} ${k.padEnd(12)} ${pdf[k]}`);
+      if (!ok) bad++;
+    }
+    (errors.pdf || []).forEach(m => { console.log('        ' + m); bad++; });
+  }
   if (opt('--save')) { fs.writeFileSync(opt('--save'), JSON.stringify(result, null, 1)); console.log('kaydedildi: ' + opt('--save')); }
   if (opt('--compare')) {
     const base = JSON.parse(fs.readFileSync(opt('--compare'), 'utf8'));

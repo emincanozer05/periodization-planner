@@ -35,13 +35,10 @@
 <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<!-- pdf.js — an uploaded FMS score sheet is a PDF, and a PDF does not print from
-     inside a report window. Its pages are rasterised on upload and it is the
-     pictures that go on the sheet. -->
-<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<!-- jsPDF, jspdf-autotable, html2canvas ve pdf.js burada YÜKLENMİYOR: yalnızca dışa aktarma
+     (PDF, paylaşılan hafta görseli) ve FMS PDF yüklemesi sırasında lazımlar ve açılışta
+     ~900 KB'lık render'ı bloklayan indirme demekti. İhtiyaç anında needLibs() yüklüyor
+     (src/app/010-prelude.jsx). -->
 <!-- Firebase (cloud sync) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -6448,6 +6445,40 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 <script type="text/babel" data-presets="react">
 const{useState,useEffect,useLayoutEffect,useMemo,useRef,useCallback}=React;
 
+/* Dışa aktarma kütüphaneleri İHTİYAÇ ANINDA. Eskiden <head>'de senkron yükleniyorlardı:
+   her açılışta ~900 KB, ilk çizimi bekleten indirme — oysa yalnızca PDF/görsel dışa
+   aktarırken ve FMS PDF'i yüklerken lazımlar. Sıralı yükleniyor (autotable jsPDF'e takılır).
+   Uygulama açıldıktan sonra boşta bir kez arka planda ÇEKİLİYOR (çalıştırılmadan): service
+   worker kopyasını saklıyor, yani dışa aktarma çevrimdışıyken de çalışıyor ve ilk tıklamada
+   beklenmiyor. pdf.js: yüklenen FMS puan kâğıdı bir PDF; sayfaları yüklemede resme çevrilip
+   rapora o resimler basılıyor. */
+const LIB_SRC={
+  jspdf:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+  autotable:'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.min.js',
+  html2canvas:'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+  pdfjs:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+};
+const LIB_READY={jspdf:()=>!!window.jspdf,autotable:()=>!!(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable),
+  html2canvas:()=>typeof window.html2canvas==='function',pdfjs:()=>!!window.pdfjsLib};
+const _libLoading={};
+function loadLib(key){
+  if(LIB_READY[key]())return Promise.resolve();
+  return _libLoading[key]||(_libLoading[key]=new Promise((res,rej)=>{
+    const s=document.createElement('script');s.src=LIB_SRC[key];s.async=true;
+    s.onload=()=>res();
+    s.onerror=()=>{delete _libLoading[key];s.remove();
+      rej(new Error(L(`Gerekli bileşen yüklenemedi (${key}) — bağlantını kontrol edip tekrar dene.`,`A required component could not load (${key}) — check your connection and try again.`)));};
+    document.head.appendChild(s);
+  }));
+}
+async function needLibs(...keys){for(const k of keys)await loadLib(k);}
+// Boşta bir kez arka planda çek (çalıştırmadan): kopya service worker'da, ilk tıklama beklemesin.
+window.addEventListener('load',()=>{
+  const go=()=>{try{const c=navigator.connection;if(c&&c.saveData)return;
+    Object.values(LIB_SRC).forEach(u=>fetch(u,{mode:'cors',credentials:'omit'}).catch(()=>{}));}catch(e){}};
+  setTimeout(()=>(window.requestIdleCallback||setTimeout)(go,{timeout:8000}),6000);
+});
+
 /* Report/print/PDF font — mirror the site's Archivo so exported outputs use
    the same typeface as the web app. Uses an absolute URL so the font resolves in
    both print windows (window.open) and offscreen iframes. */
@@ -7405,6 +7436,7 @@ async function fmsReadPdf(file){
   const isPdf=/\.pdf$/i.test(file.name||'')||file.type==='application/pdf';
   if(!isPdf)throw new Error(L('Bu bir PDF değil.','That is not a PDF.'));
   if(file.size>FMS_PDF_MAX)throw new Error(L('PDF çok büyük (en fazla 12 MB).','That PDF is too large (12 MB max).'));
+  try{await needLibs('pdfjs');}catch(e){/* aşağıdaki mesaj söylüyor */}
   const lib=window.pdfjsLib;
   if(!lib)throw new Error(L('PDF okuyucu yüklenemedi — bağlantını kontrol et.','The PDF reader did not load — check your connection.'));
   if(lib.GlobalWorkerOptions&&!lib.GlobalWorkerOptions.workerSrc)
@@ -11750,6 +11782,7 @@ async function readDrawable(src,render){
   return '';
 }
 async function buildWeekImageBlob(title,weekStart,days,athletes,scale=2){
+  await needLibs('html2canvas');
   const logo=await drawableCrest();
   const html=buildWeekHTMLDoc(title,weekStart,days,athletes,{logo});
   const W=1123;   // 297mm at 96dpi — A4 landscape
@@ -12065,6 +12098,7 @@ async function applyTurkishFont(doc){
    output — Turkish characters, photos, and layout all match exactly.
    ========================================================= */
 async function buildSessionPDFBlob(title,subtitle,sessions){
+  await needLibs('html2canvas','jspdf');
   const logo=await drawableCrest();
   const html=buildSessionHTMLDoc(title,subtitle,sessions,{logo});
   // Offscreen iframe rendered at A4 width (794px ≈ 210mm @ 96dpi)
@@ -12154,6 +12188,7 @@ const ShareIcon=({size=14})=>(<svg width={size} height={size} viewBox="0 0 24 24
    COACH REPORT (PDF)
    ========================================================= */
 async function generateCoachReport(teamName,periodLabel,days,weeks,monthWeeks,pMix,acwrVal){
+  await needLibs('jspdf','autotable');
   const{jsPDF}=window.jspdf;const doc=new jsPDF();
   const fontName=await applyTurkishFont(doc);
   // header
@@ -29956,6 +29991,7 @@ async function exLibraryImages(lib){
 /* The open shelf as a designed A4 PDF in the app's language: the descriptions are
    translated, the pictures read, the font loaded — then drawn and saved. */
 async function downloadExLibraryPDF(exercises,{ball,libTab}){
+  await needLibs('jspdf');
   if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('jsPDF is not loaded');
   const lang=REPORT_LANG;
   const{map,untranslated}=await exLibraryDescriptions(exercises,lang);

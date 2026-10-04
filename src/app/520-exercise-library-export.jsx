@@ -315,6 +315,7 @@ async function exLibraryImages(lib){
 /* The open shelf as a designed A4 PDF in the app's language: the descriptions are
    translated, the pictures read, the font loaded — then drawn and saved. */
 async function downloadExLibraryPDF(exercises,{ball,libTab}){
+  await needLibs('jspdf');
   if(!window.jspdf||!window.jspdf.jsPDF)throw new Error('jsPDF is not loaded');
   const lang=REPORT_LANG;
   const{map,untranslated}=await exLibraryDescriptions(exercises,lang);
