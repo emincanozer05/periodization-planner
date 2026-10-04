@@ -91,37 +91,60 @@ function SkPlayerPick({athletes,selected,onChange,max,readOnly}){
 
 /* Each player's RPE and the sRPE (AU) it makes. The RPE is the one the player submitted
    on the day's check-in form when there is one — marked "form" — and the coach can type
-   over it. `rpe` is supplied by the calendar, which owns the athletes' logs. With
-   `minutes` (a match), the sRPE is RPE × the minutes that player was on the floor. */
+   over it. `rpe` is supplied by the calendar, which owns the athletes' logs.
+   With `minutes` (a match) there is a minutes column: the minutes the player reported on
+   the form fill it, and a number the coach types there wins. The sRPE is then the form's
+   own load, or RPE × those minutes. A summary row closes the table. */
+const skLoadTone=v=>{const n=Number(v)||0;return n>=500?'hi':n>=300?'mid':n>0?'lo':'';};
 function SkRpeTable({list,rpe,minutes,onMinutes,readOnly}){
   if(!list.length)return<div className="dw-empty">{L('Listede oyuncu yok.','No players listed.')}</div>;
   const withMin=!!minutes;
-  return(<div className="sk-tbl">
+  const rows=list.map(a=>{
+    const v=rpe?rpe.get(a):{rpe:'',load:'',fromAthlete:false};
+    const typed=withMin?minutes[a.id]:'';
+    const hasTyped=typed!==''&&typed!=null;
+    const formMin=v.dur!==''&&v.dur!=null?Number(v.dur):'';
+    const min=hasTyped?Number(typed):formMin;
+    const hasR=v.rpe!==''&&v.rpe!=null&&!isNaN(Number(v.rpe));
+    let load;
+    if(!withMin)load=v.load;
+    else if(!hasTyped&&v.fromAthlete&&v.formLoad!==''&&v.formLoad!=null)load=v.formLoad;
+    else if(hasR&&min!=='')load=Math.round(Number(v.rpe)*Number(min));
+    else load=hasR&&!v.fromAthlete?v.load:'';
+    return{a,v,min,hasTyped,formMin,hasR,load};
+  });
+  const rs=rows.filter(r=>r.hasR).map(r=>Number(r.v.rpe));
+  const ls=rows.map(r=>Number(r.load)).filter(x=>x>0);
+  const ms=rows.map(r=>Number(r.min)).filter(x=>x>0);
+  const nForm=rows.filter(r=>r.v.fromAthlete).length;
+  const avg=xs=>xs.length?xs.reduce((x,y)=>x+y,0)/xs.length:null;
+  return(<div className={'sk-tbl'+(withMin?' min':'')}>
     <div className="sk-tr sk-th">
       <span>{L('Oyuncu','Player')}</span>
-      {withMin&&<span>{L('Süre (dk)','Minutes')}</span>}
-      <span>RPE</span><span>sRPE (AU)</span>
+      {withMin&&<span>{L('Süre','Minutes')}</span>}
+      <span>RPE</span><span>sRPE</span>
     </div>
-    {list.map(a=>{
-      const v=rpe?rpe.get(a):{rpe:'',load:'',fromAthlete:false};
-      const min=withMin?minutes[a.id]:'';
-      const nMin=Number(min)||0;
-      const hasR=v.rpe!==''&&v.rpe!=null&&!isNaN(Number(v.rpe));
-      const load=(v.fromAthlete&&v.load!==''&&v.load!=null)?v.load
-        :(withMin&&hasR&&nMin)?Math.round(Number(v.rpe)*nMin):v.load;
-      return(<div key={a.id} className={'sk-tr'+(v.fromAthlete?' own':'')}>
-        <span className="sk-pl">
-          <span className="dw-rpe-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:skInit(a.name)}</span>
-          <span className="dw-rpe-nm">{a.name}</span>
-          {v.fromAthlete&&<span className="dw-rpe-src" title={L('Bu değer sporcunun check-in formundan geldi — üzerine yazabilirsin.','This value came from the athlete\'s check-in form — you can overwrite it.')}>{L('form','form')}</span>}
-        </span>
-        {withMin&&<span>{readOnly?(min||'—'):<input type="number" min="0" max="60" className="dw-rpe-in" placeholder="dk" value={min??''}
-          onChange={e=>onMinutes(a.id,e.target.value)}/>}</span>}
-        <span>{(readOnly||!rpe||!rpe.set)?(hasR?v.rpe:'—'):<input type="number" min="0" max="10" step="0.5" className="dw-rpe-in" placeholder="RPE"
-          value={v.rpe} onChange={e=>rpe.set(a.id,e.target.value,withMin&&nMin?nMin:undefined)}/>}</span>
-        <span className="sk-au">{load!==''&&load!=null?load:'—'}</span>
-      </div>);
-    })}
+    {rows.map(({a,v,min,hasTyped,formMin,hasR,load})=>(<div key={a.id} className={'sk-tr'+(hasR?'':' empty')}>
+      <span className="sk-pl">
+        <span className="dw-rpe-av">{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:skInit(a.name)}</span>
+        <span className="sk-pl-nm">{a.name}</span>
+        {v.fromAthlete&&<span className="sk-src" title={L('Sporcunun check-in formundan geldi — üzerine yazabilirsin.','From the athlete\'s check-in form — you can overwrite it.')}>{L('form','form')}</span>}
+      </span>
+      {withMin&&<span className="sk-cell">{readOnly?<b className="sk-val">{min!==''?min:'—'}</b>
+        :<input type="number" min="0" max="60" inputMode="numeric" className={'sk-num'+(!hasTyped&&formMin!==''?' auto':'')}
+          placeholder="—" value={min} title={!hasTyped&&formMin!==''?L('Sporcunun formda verdiği süre','Minutes the athlete reported on the form'):''}
+          onChange={e=>onMinutes(a.id,e.target.value)}/>}<em>{L('dk','min')}</em></span>}
+      <span className="sk-cell">{(readOnly||!rpe||!rpe.set)?<b className="sk-val">{hasR?v.rpe:'—'}</b>
+        :<input type="number" min="0" max="10" step="0.5" inputMode="decimal" className={'sk-num'+(v.fromAthlete?' auto':'')} placeholder="—"
+          value={v.rpe} onChange={e=>rpe.set(a.id,e.target.value,withMin&&min!==''?min:undefined)}/>}</span>
+      <span className="sk-cell"><span className={'sk-au '+skLoadTone(load)}>{load!==''&&load!=null?load:'—'}</span></span>
+    </div>))}
+    <div className="sk-tr sk-tf">
+      <span>{L(`${nForm}/${rows.length} oyuncu formu doldurdu`,`${nForm}/${rows.length} players filled in the form`)}</span>
+      {withMin&&<span className="sk-cell"><b>{ms.length?ms.reduce((x,y)=>x+y,0):'—'}</b><em>{L('top.','total')}</em></span>}
+      <span className="sk-cell"><b>{rs.length?avg(rs).toFixed(1):'—'}</b><em>{L('ort.','avg')}</em></span>
+      <span className="sk-cell"><b>{ls.length?Math.round(avg(ls)):'—'}</b><em>{L('ort.','avg')}</em></span>
+    </div>
   </div>);
 }
 
@@ -215,37 +238,48 @@ function SesKindForm({session,dateKey,onPatch,readOnly,roster,rpe,teamName}){
     const out=team&&squad.length?roster.filter(a=>!(s.athletes||[]).includes(a.id)):[];
     const minutes=m.minutes||{};
     const outNotes=m.outNotes||{};
-    const scoreIn=(k,ph)=>readOnly?<span className="sk-score-n">{m[k]!==''&&m[k]!=null?m[k]:'–'}</span>
-      :<input type="number" min="0" inputMode="numeric" className="sk-score-n" placeholder={ph} value={m[k]??''}
+    const scoreIn=(k)=>readOnly?<span className="sk-score-n">{m[k]!==''&&m[k]!=null?m[k]:'–'}</span>
+      :<input type="number" min="0" inputMode="numeric" className="sk-score-n" placeholder="–" value={m[k]??''}
         onChange={e=>um({[k]:e.target.value})}/>;
     const home=m.venue!=='away';
+    const usAb=compAbbr(teamName)||L('BİZ','US'),themAb=compAbbr(m.opponent)||L('RAK','OPP');
+    const field=(k,ph,cls)=>readOnly?<span className={'sk-mf-v '+(cls||'')}>{m[k]||'—'}</span>
+      :<LiveInput className={'sk-mf-in '+(cls||'')} value={m[k]||''} onChange={v=>um({[k]:v})} placeholder={ph}/>;
+    /* The game at a glance: the two sides and the score across the middle, where it was
+       played and what it counted for above, when below. Every field here is also the
+       fixture's on the Season screen — typed in either place, it shows in both. */
     return(<div className="sk">
-      <div className={'sk-score'+(res?' '+res.k:'')}>
-        <div className="sk-score-side">
-          <span className="sk-score-tm">{teamName||L('Biz','Us')}</span>
-          {scoreIn('scoreFor','0')}
-        </div>
-        <div className="sk-score-mid">
-          {res?<span className={'sk-res '+res.k} title={res.title}>{res.title}</span>:<span className="sk-res">{L('Sonuç','Result')}</span>}
-          <span className="sk-score-dash">–</span>
-        </div>
-        <div className="sk-score-side">
-          {readOnly?<span className="sk-score-tm">{m.opponent||L('Rakip','Opponent')}</span>
-            :<LiveInput className="sk-score-opp" value={m.opponent||''} onChange={v=>um({opponent:v})} placeholder={L('Rakip takım','Opponent')}/>}
-          {scoreIn('scoreAgainst','0')}
-        </div>
-      </div>
-      <div className="dw-meta">
-        {timeTile}
-        {tile(L('Lokasyon','Location'),'#f59e0b',<SkIcPin/>,readOnly
-          ?<div className="v sk-hz">{m.location||'—'}</div>
-          :<LiveInput className="dw-inp sk-txt" value={m.location||''} onChange={v=>um({location:v})} placeholder={L('Salon / şehir','Venue / city')}/>)}
-        {tile(L('Ev / Deplasman','Home / Away'),home?'#22c55e':'#3b82f6',<SkIcPin/>,
-          <div className="sk-seg">
+      <div className={'sk-match'+(res?' '+res.k:'')}>
+        <div className="sk-mh">
+          <span className="sk-mh-comp"><SkIcCal/>{field('comp',L('Lig / turnuva','League / tournament'))}</span>
+          <div className="sk-seg sk-venue">
             <button type="button" className={home?'on':''} disabled={readOnly} onClick={()=>um({venue:'home'})}>{L('Ev sahibi','Home')}</button>
             <button type="button" className={!home?'on':''} disabled={readOnly} onClick={()=>um({venue:'away'})}>{L('Deplasman','Away')}</button>
-          </div>)}
-        {durTile}
+          </div>
+        </div>
+        <div className="sk-score">
+          <div className="sk-side">
+            <span className="sk-crest us">{usAb}</span>
+            <span className="sk-side-nm">{teamName||L('Biz','Us')}</span>
+            {scoreIn('scoreFor')}
+          </div>
+          <div className="sk-score-mid">
+            <span className={'sk-res'+(res?' '+res.k:'')}>{res?res.title:L('Sonuç','Result')}</span>
+            <span className="sk-score-dash">:</span>
+          </div>
+          <div className="sk-side">
+            <span className="sk-crest them">{themAb}</span>
+            {field('opponent',L('Rakip takım','Opponent'),'sk-side-in')}
+            {scoreIn('scoreAgainst')}
+          </div>
+        </div>
+        <div className="sk-mf">
+          <label className="sk-mf-i"><SkIcClock/>
+            {readOnly?<span className="sk-mf-v">{s.time||'—'}</span>
+              :<input type="time" className="sk-mf-in sk-mf-time" value={s.time||''} onChange={e=>u({time:e.target.value})}/>}</label>
+          <label className="sk-mf-i grow"><SkIcPin/>{field('location',L('Salon / şehir','Venue / city'))}</label>
+          {dateKey&&<span className="sk-mf-i sk-mf-date">{fdLong(dateKey)}</span>}
+        </div>
       </div>
       {team&&!fromTeam&&<SkSec title={L('İlk 12','Match Squad (12)')}
         sub={L('Maç kadrosu — seçilenlerin kişisel takvimine eklenir','The game-day twelve — added to their own calendars')}>

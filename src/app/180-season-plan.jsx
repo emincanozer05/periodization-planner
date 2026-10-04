@@ -267,7 +267,24 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);
     updateTeam(team.id,{setup:{...s,periods:np,seasonStart:np[0].start,seasonEnd:np[np.length-1].end}});};
   const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
-  const uc=(i,k,v)=>{const c=[...s.competitions];c[i]={...c[i],[k]:v};u('competitions',c);};
+  /* A row the calendar wrote is the match session's own fixture: what is typed into it
+     here is written onto that session as well (and onto the athletes' copies of it), so
+     the match window shows the same opponent, league, venue and score. */
+  const uc=(i,k,v)=>{
+    const c=[...s.competitions];const row={...c[i],[k]:v};c[i]=row;
+    let dk=null,ses=null;
+    if(row.srcId)Object.entries(team.days||{}).some(([key,d])=>{
+      const hit=((d&&d.sessions)||[]).find(x=>String(x.id)===row.srcId);
+      if(hit){dk=key;ses=hit;return true;}return false;});
+    const patch=ses?compRowToSesPatch(ses,k,v):null;
+    if(!patch){u('competitions',c);return;}
+    const d0=team.days[dk];const oldS=d0.sessions||[];
+    const newS=oldS.map(x=>x===ses?{...x,...patch}:x);
+    row.cal={...(row.cal||compCalOf(ses)),[k]:String(v==null?'':v).trim()};
+    const upd={setup:{...s,competitions:c},days:{...team.days,[dk]:{...d0,sessions:newS}}};
+    if(Array.isArray(team.athletes))upd.athletes=syncSessionsToAthletes(team.athletes,dk,oldS,newS);
+    updateTeam(team.id,upd);
+  };
   /* Deleting a fixture. A row the calendar wrote is remembered as deleted, so the next
      resync does not bring it back while its session is still on the calendar. */
   const delComp=i=>{

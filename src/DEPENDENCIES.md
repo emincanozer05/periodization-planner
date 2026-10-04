@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1370**, yinelenen: **0**
+- Üst düzey ad sayısı: **1375**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -22,8 +22,8 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 | `test-metadata-fms` | 16 | 2 |
 | `exercise-taxonomy-text` | 16 | 2 |
 | `exercise-library-export` | 12 | 9 |
+| `rhr-team-sync-picker` | 11 | 6 |
 | `athlete-detail-snapshot` | 11 | 4 |
-| `athlete-context-readiness` | 11 | 4 |
 
 ## Bağımsız adaylar
 
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **77** / toplam bağ 475
+- Geriye bağ sayısı: **77** / toplam bağ 476
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 42 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -47,7 +47,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | # | Parça | Tanım | Bağlı olduğu parçalar |
 |---:|---|---:|---|
 | 1 | `prelude` | 12 | `dates-language-factories`↑ |
-| 2 | `constants-session-focus` | 78 | `dates-language-factories`↑ |
+| 2 | `constants-session-focus` | 82 | `dates-language-factories`↑ |
 | 3 | `dates-language-factories` | 78 | `prelude`, `constants-session-focus` |
 | 4 | `test-metadata-fms` | 35 | `prelude`, `dates-language-factories` |
 | 5 | `athlete-boxes` | 76 | `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`↑ |
@@ -63,13 +63,13 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 15 | `pdf-share-coach-report` | 9 | `prelude`, `dates-language-factories`, `print-session-html`, `crest-week-image` |
 | 16 | `photo-local-media-store` | 39 | `drive-embed-body-model`↑, `sync-infra-chunking-merge`↑ |
 | 17 | `setup-all-teams-calendar` | 14 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `team-data-migration`, `photo-local-media-store`, `privacy-notice`↑, `di-engine-baseline`↑, `sport-context-equipment`↑, `wellness-alerts-coach`↑ |
-| 18 | `season-plan` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `team-data-migration`, `periods-weeks-load-monotony`, `chart-wrapper`, `setup-all-teams-calendar`, `session-editor-planner`↑, `exercise-taxonomy-text`↑ |
+| 18 | `season-plan` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `team-data-migration`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `setup-all-teams-calendar`, `session-editor-planner`↑, `exercise-taxonomy-text`↑ |
 | 19 | `session-analysis-muscle-model` | 44 | `prelude`, `constants-session-focus`, `dates-language-factories`, `exercise-taxonomy-text`↑, `coach-assistant`↑ |
 | 20 | `team-insights-helpers` | 31 | `constants-session-focus`¹, `dates-language-factories`, `periods-weeks-load-monotony`, `exercise-library-export`↑ |
 | 21 | `team-insights-report` | 1 | `prelude`, `dates-language-factories`, `photo-local-media-store`, `team-insights-helpers` |
 | 22 | `team-insights-board` | 1 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `photo-local-media-store`, `team-insights-helpers`, `team-insights-report`, `athlete-context-readiness`↑, `coach-assistant`↑ |
 | 23 | `calendar` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `print-week`, `crest-week-image`, `print-month`, `pdf-share-coach-report`, `photo-local-media-store`, `session-analysis-muscle-model`, `session-kinds`↑, `block-editor-session-details`↑, `ball-practice`↑, `session-editor-planner`↑, `exercise-taxonomy-text`↑ |
-| 24 | `session-kinds` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`, `photo-local-media-store`, `block-editor-session-details`↑, `evaluation-tryouts`↑ |
+| 24 | `session-kinds` | 17 | `prelude`, `constants-session-focus`, `dates-language-factories`, `photo-local-media-store`, `block-editor-session-details`↑, `evaluation-tryouts`↑ |
 | 25 | `block-editor-session-details` | 22 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `rhr-team-sync-picker`, `photo-local-media-store`, `session-analysis-muscle-model`, `session-editor-planner`↑, `exercise-taxonomy-text`↑, `indiv-plan-descriptions`↑, `coach-assistant`↑ |
 | 26 | `ball-practice` | 47 | `prelude`, `dates-language-factories`, `rhr-team-sync-picker`, `print-session-html`, `print-week`, `photo-local-media-store`, `block-editor-session-details`, `sync-infra-chunking-merge`↑, `exercise-video-picker`↑, `coach-assistant`↑ |
 | 27 | `session-editor-planner` | 10 | `prelude`, `constants-session-focus`, `dates-language-factories`, `session-load-clipboard`, `rhr-team-sync-picker`, `print-week`, `pdf-share-coach-report`, `session-kinds`, `block-editor-session-details`, `ball-practice`, `exercise-taxonomy-text`↑ |

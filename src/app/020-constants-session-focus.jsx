@@ -156,11 +156,13 @@ const FOCUS_SUB_FROM_LEGACY={
    calendar last told it (`cal`) — so a value typed on the Season screen stays until the
    coach changes that same field on the session. A row written before `cal` existed is
    only filled where it is still empty, so nothing typed there earlier is overwritten. */
-const COMP_CAL_FIELDS=['name','opponent','location','scoreFor','scoreAgainst'];
+const COMP_CAL_FIELDS=['name','opponent','comp','location','scoreFor','scoreAgainst'];
+/* The fields a fixture row and its match session hold in common (all but the title live in `session.match`). */
+const COMP_MATCH_FIELDS=['opponent','comp','location','scoreFor','scoreAgainst'];
 const compCalOf=ses=>{
   const m=(ses&&ses.match)||{};
   const str=v=>v==null?'':String(v).trim();
-  return{name:str(ses&&ses.name),opponent:str(m.opponent),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
+  return{name:str(ses&&ses.name),opponent:str(m.opponent),comp:str(m.comp),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
 };
 const compRowsFromDays=days=>{
   const out=[];
@@ -189,7 +191,7 @@ const syncCompetitions=(list,days,hidden)=>{
     const ex=byId[a.srcId];
     if(!ex){
       const row={srcId:a.srcId,date:a.date,name:a.name,cal:a.cal};
-      ['opponent','location','scoreFor','scoreAgainst'].forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
+      COMP_MATCH_FIELDS.forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
       return row;
     }
     const row={...ex,date:a.date,cal:a.cal};
@@ -203,6 +205,43 @@ const syncCompetitions=(list,days,hidden)=>{
   });
   return[...prev.filter(c=>c&&!c.srcId),...auto]
     .sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+};
+/* THE OTHER DIRECTION — fixture → match window. What was typed on the Season screen
+   (before the match window existed, or since) fills the fields the session still leaves
+   empty, so opening the match shows the score, the venue, the league and the opponent
+   the fixture already knows. It only ever fills blanks: a value the session holds is the
+   calendar's own and is carried the other way by syncCompetitions. A row written before
+   the fixture had an Opponent column kept the opponent in its name, so that is where the
+   opponent is read from for such a row. Returns `days` itself when nothing changed. */
+const isMatchSes=ses=>!!ses&&(ses.kind==='match'||sesFocus(ses).includes('Competition'));
+const backfillMatchesFromComps=(days,comps)=>{
+  const byId={};(Array.isArray(comps)?comps:[]).forEach(c=>{if(c&&c.srcId)byId[c.srcId]=c;});
+  let changed=false;const out={...(days||{})};
+  Object.entries(days||{}).forEach(([k,d])=>{
+    if(!d||!Array.isArray(d.sessions)||!d.sessions.length)return;
+    let dc=false;
+    const sessions=d.sessions.map(ses=>{
+      const c=ses&&byId[String(ses.id||'')];
+      if(!c||!isMatchSes(ses))return ses;
+      const cal=compCalOf(ses);const m={...(ses.match||{})};let sc=false;
+      COMP_MATCH_FIELDS.forEach(f=>{
+        let v=String(c[f]==null?'':c[f]).trim();
+        if(!v&&f==='opponent'&&!(c.cal&&'opponent' in c.cal))v=String(c.name||'').trim();
+        if(v&&!cal[f]){m[f]=v;sc=true;}
+      });
+      if(!sc)return ses;
+      dc=true;return{...ses,match:m};
+    });
+    if(dc){out[k]={...d,sessions};changed=true;}
+  });
+  return changed?out:days;
+};
+/* An edit made on a calendar-written fixture row, as the patch its match session takes. */
+const compRowToSesPatch=(ses,f,v)=>{
+  const t=String(v==null?'':v);
+  if(f==='name')return t.trim()?{name:t}:null;
+  if(!COMP_MATCH_FIELDS.includes(f))return null;
+  return{match:{...((ses&&ses.match)||{}),[f]:t}};
 };
 /* A team's name as a short tag — "Tofaş U18 A Maçı" → "TOF", "AE Spor Kulübü" → "AE",
    "FSA" → "FSA". A word already written in capitals is taken as the club's own tag;
