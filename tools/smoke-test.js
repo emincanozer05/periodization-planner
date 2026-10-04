@@ -21,6 +21,7 @@
      node tools/smoke-test.js --save onceki.json   sonucu kaydet
      node tools/smoke-test.js --compare onceki.json kayıtlı sonuçla birebir karşılaştır
      --shots klasör   her sekmenin ekran görüntüsünü yaz   --dist klasör (varsayılan dist)
+     --theme light   açık temayla çalıştır (localStorage coachos_theme)
 
    Gerekenler: Playwright + Chromium (PLAYWRIGHT_BROWSERS_PATH), `curl`, `tar` ve npm
    kayıt defterine erişim (kütüphaneler ilk çalıştırmada TMP/coachos-smoke-libs'e iner).
@@ -120,6 +121,7 @@ function playwright() {
 
   const browser = await chromium.launch({ args: ['--no-sandbox'] });
   const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 }, serviceWorkers: 'block' })).newPage();
+  if (opt('--theme')) await page.addInitScript(t => { try { localStorage.setItem('coachos_theme', t); } catch (e) {} }, opt('--theme'));
   let cur = 'açılış'; const errors = {};
   const err = m => { (errors[cur] = errors[cur] || []).push(m); };
   page.on('pageerror', e => err('PAGEERROR ' + e.message.slice(0, 200)));

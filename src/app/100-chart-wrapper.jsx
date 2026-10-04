@@ -12,10 +12,34 @@ if(window.Chart&&window.ChartDataLabels){
     window.Chart.defaults.font.style='normal';
   }catch(e){console.warn('datalabels register failed:',e);}
 }
+/* Açık tema: grafik seçenekleri koyu tema için yazıldı (eksen/legend yazısı açık gri,
+   ızgara yarı saydam beyaz). Her grafiği tek tek değiştirmek yerine burada, yalnızca açık
+   temada, `color` anahtarlarındaki açık renkler koyu karşılığına çevrilir. Veri renkleri ve
+   datalabels (renkli çubuk üstündeki beyaz yazı) dokunulmaz; koyu temada seçenekler aynen geçer. */
+function chartLightColor(v){
+  if(typeof v!=='string')return v;
+  const w=v.match(/^rgba?\(\s*255\s*,\s*255\s*,\s*255\s*(?:,\s*([\d.]+)\s*)?\)$/i);
+  if(w)return w[1]!=null?`rgba(15,23,42,${w[1]})`:'#334155';
+  const h=v.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if(h){let x=h[1];if(x.length===3)x=x.split('').map(c=>c+c).join('');
+    const[r,g,b]=[0,2,4].map(k=>parseInt(x.slice(k,k+2),16)/255);
+    if(0.2126*r+0.7152*g+0.0722*b>0.78)return'#334155';}
+  if(/^white$/i.test(v))return'#334155';
+  return v;
+}
+function chartLightOpts(o,key){
+  if(Array.isArray(o))return o.map(x=>chartLightOpts(x));
+  if(!o||typeof o!=='object'||Object.getPrototypeOf(o)!==Object.prototype)return key==='color'?chartLightColor(o):o;
+  const out={};
+  for(const k in o)out[k]=k==='datalabels'?o[k]:chartLightOpts(o[k],k);
+  return out;
+}
 function ChartC({type,chartData,options,plugins}){
   const ref=useRef(null),inst=useRef(null);
+  const theme=useAppTheme();
   useEffect(()=>{try{if(inst.current)inst.current.destroy();if(!ref.current||!window.Chart)return;
-    inst.current=new window.Chart(ref.current,{type,data:chartData,options,plugins:plugins||[]});}catch(e){console.error(e);}
+    const opts=theme==='light'&&options?chartLightOpts(options):options;
+    inst.current=new window.Chart(ref.current,{type,data:chartData,options:opts,plugins:plugins||[]});}catch(e){console.error(e);}
     // A canvas can be created while its container is still 0-sized (tab switch,
     // panel remount, a section that was just shown) → Chart.js renders blank until
     // the next window resize. Nudge a resize on the next frames AND observe the
@@ -25,7 +49,7 @@ function ChartC({type,chartData,options,plugins}){
     let ro;const host=ref.current&&ref.current.parentNode;
     if(host&&window.ResizeObserver){ro=new ResizeObserver(fix);try{ro.observe(host);}catch{}}
     return()=>{clearTimeout(t1);clearTimeout(t2);try{ro&&ro.disconnect();}catch{}try{inst.current?.destroy();}catch{}};
-  },[type,JSON.stringify(chartData),JSON.stringify(options)]);
+  },[type,theme,JSON.stringify(chartData),JSON.stringify(options)]);
   return <canvas ref={ref}/>;
 }
 
