@@ -111,7 +111,7 @@ self.addEventListener('notificationclick', event => {
 });
 
 /* ── Önbellek: `fetch` dinleyicisi ─────────────────────────────────────────
-   Üç sınıf istek karşılanıyor, GERİ KALAN HER ŞEY (Firestore, Auth, API çağrıları,
+   Dört sınıf istek karşılanıyor, GERİ KALAN HER ŞEY (Firestore, Auth, API çağrıları,
    check-in formları, POST'lar) için `respondWith` ÇAĞRILMIYOR ve istek tarayıcının
    kendi yoluyla ağa gidiyor — sağlık verisinin geçtiği hiçbir istek önbelleğe girmiyor.
 
@@ -122,10 +122,19 @@ self.addEventListener('notificationclick', event => {
       beklenir.
    3) Kütüphaneler (React, Chart.js, Firebase SDK, yazı tipi dosyaları — yalnızca
       LIB_HOSTS listesindeki adresler): kopya VARSA hemen o verilir, arkada tazelenir.
-      Her açılışta 15 kütüphaneyi yeniden beklemiyoruz; sürümleri adreste yazılı. */
+      Her açılışta 15 kütüphaneyi yeniden beklemiyoruz; sürümleri adreste yazılı.
+   4) Yüklenen medya (sporcu fotoğrafı, takım arması, egzersiz görseli: yalnızca
+      Firebase Storage'ın `alt=media` indirme adresleri): kopya varsa hemen o verilir.
+      Bu adresler DEĞİŞMEZ — her yükleme zaman damgalı yeni bir yola ve yeni bir jetona
+      yazılıyor — yani kopya hiçbir zaman eskimiş olamaz, arkada tazelemeye gerek yok.
+      Çevrimdışıyken görsellerin gelmemesinin sebebi buydu. Kopyalar kişisel veri
+      (sporcu fotoğrafları): MEDIA_MAX ile sınırlı ve koç ÇIKIŞ YAPINCA siliniyor
+      (aşağıdaki `message` dinleyicisi). */
 const SHELL = 'coachos-alerts-v1';
 const APP = 'coachos-app-v1';
 const LIBS = 'coachos-libs-v1';
+const MEDIA = 'coachos-media-v1';
+const MEDIA_MAX = 400;
 const APP_TIMEOUT_MS = 5000;
 
 const SHELL_FILES = ['alerts.html', 'alerts.webmanifest', 'logo-wordmark.png',
@@ -157,6 +166,11 @@ function isLib(url) {
   return h === 'unpkg.com' || h === 'cdn.jsdelivr.net' || h === 'cdn.sheetjs.com' ||
          h === 'fonts.googleapis.com' || h === 'fonts.gstatic.com' ||
          (h === 'www.gstatic.com' && p.startsWith('/firebasejs/'));
+}
+
+function isMedia(url) {
+  return url.protocol === 'https:' && url.hostname === 'firebasestorage.googleapis.com' &&
+         url.pathname.startsWith('/v0/b/') && url.searchParams.get('alt') === 'media';
 }
 
 // Yalnızca tam (200) yanıtlar saklanıyor: hata sayfası ya da kısmi içerik kopya olmasın.
@@ -191,6 +205,26 @@ async function libFirst(event, req) {
   catch (e) { return fetch(req); }               // CORS vermeyen sunucu: eskisi gibi, kopyasız
 }
 
+async function mediaFirst(req) {
+  const cache = await caches.open(MEDIA);
+  const hit = await cache.match(req.url);
+  if (hit) return hit;
+  /* CORS kipinde isteniyor (opak yanıtlar kotadan ~7 MB yer tutar). Storage kovası CORS
+     vermiyorsa istek reddedilir ve görsel eskisi gibi, kopyasız çiziliyor. */
+  try {
+    const res = await fetch(new Request(req.url, { mode: 'cors', credentials: 'omit' }));
+    if (res && res.status === 200) {
+      await cache.put(req.url, res.clone());
+      // En eski kopyalar atılıyor (Cache anahtarları ekleme sırasıyla geliyor).
+      const keys = await cache.keys();
+      for (let i = 0; i < keys.length - MEDIA_MAX; i++) await cache.delete(keys[i]);
+    }
+    return res;
+  } catch (e) {
+    return fetch(req);
+  }
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET' || req.headers.has('range')) return;
@@ -202,7 +236,15 @@ self.addEventListener('fetch', event => {
     event.respondWith(networkFirst(event, req, APP, APP_TIMEOUT_MS));
   } else if (isLib(url)) {
     event.respondWith(libFirst(event, req));
+  } else if (isMedia(url)) {
+    event.respondWith(mediaFirst(req));
   }                                              // geri kalanı ağa, dokunulmadan
+});
+
+/* Koç çıkış yapınca sayfa bu mesajı yolluyor: saklanan sporcu fotoğrafları o cihazda
+   kalmasın (ortak kullanılan bir telefon/bilgisayarda bir sonraki kişi görmesin). */
+self.addEventListener('message', event => {
+  if (event.data && event.data.coachos === 'clear-media') event.waitUntil(caches.delete(MEDIA));
 });
 
 /* Yeni worker'ın beklemeden devreye girmesi. Bildirim taşıyan bir worker'da
@@ -215,7 +257,7 @@ self.addEventListener('activate', event => event.waitUntil((async () => {
   // değiştiği için bu, "eski bir uyarı sayfası geri geldi" ihtimalini kapatıyor.
   try {
     const names = await caches.keys();
-    const current = [SHELL, APP, LIBS];
+    const current = [SHELL, APP, LIBS, MEDIA];
     await Promise.all(names.filter(n => n.startsWith('coachos-') && current.indexOf(n) < 0)
       .map(n => caches.delete(n)));
   } catch (e) {}
