@@ -151,16 +151,16 @@ const FOCUS_SUB_FROM_LEGACY={
    is Competition owns one row, keyed by the session's id, so a match that is moved moves
    its row and a session that is deleted or re-focused takes its row with it.
    The row also follows what the match window says about the game: its title (the block
-   title the calendar card shows), the score and the location. Each of those is written
+   title the calendar card shows), the opponent, the score and the location. Each of those is written
    onto the row only when it CHANGES on the calendar — the row keeps a copy of what the
    calendar last told it (`cal`) — so a value typed on the Season screen stays until the
    coach changes that same field on the session. A row written before `cal` existed is
    only filled where it is still empty, so nothing typed there earlier is overwritten. */
-const COMP_CAL_FIELDS=['name','location','scoreFor','scoreAgainst'];
+const COMP_CAL_FIELDS=['name','opponent','location','scoreFor','scoreAgainst'];
 const compCalOf=ses=>{
   const m=(ses&&ses.match)||{};
   const str=v=>v==null?'':String(v).trim();
-  return{name:str(ses&&ses.name),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
+  return{name:str(ses&&ses.name),opponent:str(m.opponent),location:str(m.location),scoreFor:str(m.scoreFor),scoreAgainst:str(m.scoreAgainst)};
 };
 const compRowsFromDays=days=>{
   const out=[];
@@ -189,7 +189,7 @@ const syncCompetitions=(list,days,hidden)=>{
     const ex=byId[a.srcId];
     if(!ex){
       const row={srcId:a.srcId,date:a.date,name:a.name,cal:a.cal};
-      ['location','scoreFor','scoreAgainst'].forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
+      ['opponent','location','scoreFor','scoreAgainst'].forEach(f=>{if(a.cal[f])row[f]=a.cal[f];});
       return row;
     }
     const row={...ex,date:a.date,cal:a.cal};

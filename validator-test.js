@@ -1523,10 +1523,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     /* Müsabaka penceresi fikstüre yazılıyor: başlık, skor, lokasyon. Sezon ekranında elle
        yazılan değer, takvimde o alan değişene kadar korunuyor. */
     const mDays = s => ({ '2026-10-10': { date: '2026-10-10', sessions: [s] } });
-    const m0 = { id: 'm1', name: 'Fenerbahçe Maçı', kind: 'match', focus: ['Competition'], match: { scoreFor: '82', scoreAgainst: '74', location: 'Ülker' } };
+    const m0 = { id: 'm1', name: 'Fenerbahçe Maçı', kind: 'match', focus: ['Competition'], match: { opponent: 'Fenerbahçe Beko', scoreFor: '82', scoreAgainst: '74', location: 'Ülker' } };
     const f1 = A.syncCompetitions([], mDays(m0), []);
     check('müsabaka başlığı, skoru ve lokasyonu fikstüre yazılıyor',
       f1.length === 1 && f1[0].name === 'Fenerbahçe Maçı' && f1[0].scoreFor === '82' && f1[0].scoreAgainst === '74' && f1[0].location === 'Ülker', JSON.stringify(f1));
+    check('müsabaka rakibi fikstürün rakip alanına yazılıyor', f1[0].opponent === 'Fenerbahçe Beko', JSON.stringify(f1));
     const f2 = A.syncCompetitions([{ ...f1[0], location: 'Ülker Sports Arena' }], mDays(m0), []);
     check('sezonda elle düzeltilen alan, takvimde değişmedikçe korunuyor', f2[0].location === 'Ülker Sports Arena', JSON.stringify(f2));
     const f3 = A.syncCompetitions(f2, mDays({ ...m0, name: 'FB Deplasman', match: { ...m0.match, scoreFor: '90' } }), []);
