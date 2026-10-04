@@ -601,11 +601,13 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
             <ShareIcon/> {L('Paylaş','Share')}</button>
         </div>
       </div>
-      <div className="pbar"><strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{L('Hızlı Ekle','Quick Add')}</strong>
-        {SPRESETS.map(p=><button key={p.name} onClick={()=>addS(spData(p))}>+ {spLabel(p)}</button>)}
-        <button onClick={()=>addS()}>+ {L('Boş','Empty')}</button></div>
-      {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdaki Hızlı Ekle\'yi kullan','No sessions planned — use Quick Add above')}</div>}
-      {day.sessions.map((s,i)=><SessEd key={s.id} session={s} index={i} total={day.sessions.length}
+      <BlockAddBar variant="planner" onAdd={addS}/>
+      {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdan bir antrenman bloğu ekle','No sessions planned — add a training block above')}</div>}
+      {day.sessions.map((s,i)=>sesKind(s)
+        ?<SesKindCard key={s.id} session={s} index={i} total={day.sessions.length}
+          onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onMove={d=>mvS(s.id,d)}
+          athletes={teamMode?athletes:undefined} dateKey={selDay} teamName={labelOwner||setup.teamName||''}/>
+        :<SessEd key={s.id} session={s} index={i} total={day.sessions.length}
         onUpdate={ns=>updS(s.id,ns)} onRemove={()=>delS(s.id)} onDuplicate={()=>dupS(s.id)} onMove={d=>mvS(s.id,d)}
         printContext={{title:labelOwner||setup.teamName,subtitle:dayLabel}}
         athletes={teamMode?athletes:undefined}/>)}

@@ -61,6 +61,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/210-team-insights-report.jsx` | — |
 | `app/220-team-insights-board.jsx` | — |
 | `app/230-calendar.jsx` | CALENDAR (reusable for team & athlete) |
+| `app/235-session-kinds.jsx` | TRAINING BLOCK BAR · TEAM PRACTICE / MATCH / TEST WINDOWS |
 | `app/240-block-editor-session-details.jsx` | BLOCK EDITOR (now with exercise description row) · SESSION DETAILS — carried by every block |
 | `app/250-ball-practice.jsx` | BALL PRACTICE — the court, and the drills drawn on it |
 | `app/260-session-editor-planner.jsx` | SESSION EDITOR · PLANNER (week view + day detail; reusable for team/athlete) |

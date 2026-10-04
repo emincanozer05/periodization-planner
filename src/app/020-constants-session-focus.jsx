@@ -434,19 +434,63 @@ const IS_MAC=(()=>{try{return /Mac|iPhone|iPad|iPod/.test((navigator.userAgentDa
    preset drops into the session editor with stages 1 and 2 already answered and the
    method question open, rather than as a value the editor has to translate on read. */
 /* `tr` is the button's Turkish label and `trName` the Turkish title the new session gets;
-   the focus/sub/purpose values stay in the focus tree's own (English) vocabulary. */
+   the focus/sub/purpose values stay in the focus tree's own (English) vocabulary.
+   `dTr` / `dEn` are what the button's hover card says the block covers.
+   `kind` marks the three blocks that are not S&C work and so open a window of their own
+   instead of the exercise editor: a team practice (`tp`), a match (`match`) and a test
+   day (`test`). `rpeCat` is the check-in slot their RPE is read from and written under. */
 const SPRESETS=[
-  {name:'Strength & Power',tr:'Kuvvet & Güç',trName:'Kuvvet & Güç',d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
-  {name:'Speed & Agility',tr:'Sürat & Çeviklik',trName:'Sürat & Çeviklik',d:{name:'Speed & Agility',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Acceleration, Change of Direction, Reactive Agility',focus:['Speed'],sub:['Acceleration','Change of Direction','Reactive Agility'],duration:45,bl:[]}},
-  {name:'Conditioning',tr:'Kondisyon',trName:'Kondisyon',d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
-  {name:'Recovery',tr:'Toparlanma',trName:'Toparlanma Seansı',d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
-  {name:'Team Practice',tr:'Takım Antrenmanı',trName:'Takım Antrenmanı',d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Team Offense, Team Defense',focus:['Technical / Tactical'],sub:['Team Offense','Team Defense'],duration:90,bl:[]}},
-  {name:'Match',tr:'Maç',trName:'Maç Günü',d:{name:'Match Day',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[]}},
-  {name:'Testing',tr:'Test',trName:'Test',d:{name:'Testing',time:'09:00',loadType:'Neuromuscular load',purpose:'Testing',focus:['Testing'],sub:[],duration:60,bl:[]}},
+  {name:'Strength & Power',tr:'Kuvvet & Güç',trName:'Kuvvet & Güç',
+   dTr:'Maksimal kuvvet, kuvvet gelişimi, hipertrofi, patlayıcı kuvvet ve güç üretimi.',
+   dEn:'Maximal strength, strength development, hypertrophy, explosive strength and power production.',
+   d:{name:'Strength & Power',time:'09:00',loadType:'Mechanical load',purpose:'Strength, Power, Maximal Strength, Explosive Strength',focus:['Strength','Power'],sub:['Maximal Strength','Explosive Strength'],duration:75,bl:[]}},
+  {name:'On-Court Performance',tr:'Saha İçi Performans',trName:'Saha İçi Performans',
+   dTr:'Sprint, ivmelenme, yavaşlama, yön değiştirme, çeviklik, reaktif hareketler ve pliometrik çalışmalar.',
+   dEn:'Sprinting, acceleration, deceleration, change of direction, agility, reactive movement and plyometric work.',
+   d:{name:'On-Court Performance',time:'08:30',loadType:'Neuromuscular load',purpose:'Speed, Power, Acceleration, Deceleration, Change of Direction, Reactive Agility, Reactive Strength',focus:['Speed','Power'],sub:['Acceleration','Deceleration','Change of Direction','Reactive Agility','Reactive Strength'],duration:45,bl:[]}},
+  {name:'Conditioning',tr:'Kondisyon',trName:'Kondisyon',
+   dTr:'Aerobik ve anaerobik kapasite, yüksek yoğunluklu eforları tekrarlama ve maç temposunu sürdürebilme.',
+   dEn:'Aerobic and anaerobic capacity, repeating high-intensity efforts and sustaining match tempo.',
+   d:{name:'Conditioning',time:'08:00',loadType:'Metabolic load',purpose:'Conditioning, Aerobic Capacity',focus:['Conditioning'],sub:['Aerobic Capacity'],duration:45,bl:[]}},
+  {name:'Recovery',tr:'Toparlanma',trName:'Toparlanma Seansı',
+   dTr:'Antrenman ve müsabaka sonrası fiziksel toparlanmayı destekleyen düşük yoğunluklu çalışmalar, mobilite ve rejeneratif uygulamalar.',
+   dEn:'Low-intensity work, mobility and regenerative practices that support physical recovery after training and competition.',
+   d:{name:'Recovery Session',time:'10:00',loadType:'Metabolic load',purpose:'Recovery, Active Recovery',focus:['Recovery'],sub:['Active Recovery'],duration:30,bl:[]}},
+  {name:'Team Practice',tr:'Takım Antrenmanı',trName:'Takım Antrenmanı',
+   dTr:'Takımın teknik, taktik ve oyun içi becerilerini geliştirmeye yönelik basketbol antrenmanları.',
+   dEn:'Basketball practices that develop the team\'s technical, tactical and in-game skills.',
+   d:{name:'Team Practice',time:'17:00',loadType:'Cognitive/perceptual load',purpose:'Technical / Tactical, Team Offense, Team Defense',focus:['Technical / Tactical'],sub:['Team Offense','Team Defense'],duration:90,bl:[],kind:'tp',rpeCat:'tp'}},
+  {name:'Competition',tr:'Müsabaka',trName:'Müsabaka',
+   dTr:'Resmî veya hazırlık müsabakaları ve müsabaka sürecine ait fiziksel yük.',
+   dEn:'Official or preparation games and the physical load that comes with competing.',
+   d:{name:'Competition',time:'19:00',loadType:'Cognitive/perceptual load',purpose:'Competition, League Match',focus:['Competition'],sub:['League Match'],duration:90,bl:[],kind:'match',rpeCat:'game'}},
+  {name:'Test',tr:'Test',trName:'Test',
+   dTr:'Fiziksel performans, hareket kalitesi, atletik kapasite ve sporcunun mevcut durumunu değerlendirmeye yönelik testler.',
+   dEn:'Tests that assess physical performance, movement quality, athletic capacity and the athlete\'s current state.',
+   d:{name:'Test',time:'09:00',loadType:'Neuromuscular load',purpose:'Testing',focus:['Testing'],sub:[],duration:60,bl:[],kind:'test'}},
 ];
 /* A preset's label and the session it adds, in the language the app is showing. */
 const spLabel=p=>L(p.tr||p.name,p.name);
+const spDesc=p=>L(p.dTr||'',p.dEn||'');
 const spData=p=>({...p.d,name:L(p.trName||p.d.name,p.d.name)});
+/* Which window a session opens in: 'tp' (team practice), 'match', 'test', or '' for the
+   S&C sessions that keep the exercise editor. Sessions written before `kind` existed are
+   read off their focus — a Competition session is a match, a session that is nothing but
+   Testing is a test day, one that is nothing but Technical / Tactical a team practice —
+   but only while they carry no exercises, so work already written on one is never hidden
+   behind a window that does not show it. */
+const SES_KINDS=['tp','match','test'];
+const sesKind=s=>{
+  if(!s)return'';
+  if(SES_KINDS.includes(s.kind))return s.kind;
+  if(s.kind==='sc')return'';
+  if((s.blocks||[]).some(b=>(b.exercises||[]).length))return'';
+  const f=sesFocus(s);
+  if(f.includes('Competition'))return'match';
+  if(f.length===1&&f[0]==='Testing')return'test';
+  if(f.length===1&&f[0]==='Technical / Tactical')return'tp';
+  return'';
+};
 /* Short weekday and month names, read in the language the app is showing at the moment
    they are read — not frozen in English when the script loads. Every calendar header,
    tooltip and printout that indexes DN[i] / MN[m] follows the TR/EN switch through this,
