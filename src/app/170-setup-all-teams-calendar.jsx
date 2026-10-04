@@ -449,6 +449,11 @@ function Setup({team,updateTeam,data,setData}){
       <PushCard/>
     </div>
 
+    <div className="panel su-panel"><h2>{L('Gizlilik ve KVKK','Privacy')}</h2>
+      <p className="su-lead">{L('Hangi verilerin işlendiği, nereye aktarıldığı ve haklarınla ilgili bilgi.','What data is processed, where it is transferred, and your rights.')}</p>
+      <PrivacyLink className="btn sec"/>
+    </div>
+
     {zoom&&<div className="su-lb" onClick={()=>setZoom(null)}>
       <img src={zoom.src} alt={zoom.alt||''} onClick={e=>e.stopPropagation()}/>
       <button type="button" className="su-lbx" onClick={()=>setZoom(null)} aria-label={L('Kapat','Close')}>✕</button>
