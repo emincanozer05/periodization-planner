@@ -600,6 +600,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dw-h .x{margin-left:auto;background:none;border:1px solid var(--border2);border-radius:8px;color:var(--text2);width:32px;height:32px;display:grid;place-items:center;cursor:pointer;transition:all .2s;flex:none;font-size:18px;line-height:1;font-family:inherit}
 .dw-h .x:hover{border-color:var(--text2);color:var(--text)}
 .dw-h .ti{font-size:20px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
+.dw-h .dw-ti-in{display:block;width:100%;background:transparent;border:1px solid transparent;border-radius:8px;outline:none;font-family:inherit;padding:2px 6px;margin:-3px -7px;transition:border-color .2s}
+.dw-h .dw-ti-in:hover{border-color:var(--border2)}
+.dw-h .dw-ti-in:focus{border-color:var(--text2)}
 .dw-h .su{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.02em}
 .dw-b{overflow-y:auto;overscroll-behavior:contain;padding:22px;flex:1}
 .dw-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0 20px}
@@ -16887,7 +16890,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
         <div className="dw-h">
           <div style={{flex:1,minWidth:0}}>
-            <div className="ti">{drawerSes.name}</div>
+            {/* The title is the session's name as the calendar shows it — editable in
+                place, saved like the other fields here. */}
+            {canEdit
+              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwUpd({name:e.target.value})} title={L('Seans adını değiştir','Rename the session')}/>
+              :<div className="ti">{drawerSes.name}</div>}
             <div className="su">{drawerSes.purpose}</div>
           </div>
           {/* No assignment button here any more. Assigning is a per-BLOCK decision — the

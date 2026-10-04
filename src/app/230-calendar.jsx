@@ -733,7 +733,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
         <div className="dw-h">
           <div style={{flex:1,minWidth:0}}>
-            <div className="ti">{drawerSes.name}</div>
+            {/* The title is the session's name as the calendar shows it — editable in
+                place, saved like the other fields here. */}
+            {canEdit
+              ?<input className="ti dw-ti-in" value={drawerSes.name||''} placeholder={L('Seans adı','Session name')} onChange={e=>drwUpd({name:e.target.value})} title={L('Seans adını değiştir','Rename the session')}/>
+              :<div className="ti">{drawerSes.name}</div>}
             <div className="su">{drawerSes.purpose}</div>
           </div>
           {/* No assignment button here any more. Assigning is a per-BLOCK decision — the
