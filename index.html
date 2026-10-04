@@ -2035,8 +2035,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
   line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit}
 .atp-chip button:hover{background:var(--hover);color:var(--text)}
 .atp-empty{font-size:11.5px;color:var(--dim);align-self:center}
-.atp-lane-warn{margin-top:10px;padding:7px 10px;border-radius:9px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);
-  color:var(--orange,#f59e0b);font-size:11.5px;line-height:1.4}
 /* ---- the quality groups ----
    Two columns of stacked groups (ATP_COLS). Every row is the same height whatever its
    name, so rows read straight across the two columns, and the last card of each column
@@ -24711,8 +24709,8 @@ function AtpProfile({q,onSet}){
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
     <AtpSecHead n={1} title={atpT('Athletic Profile')}
-      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek'i bu dönemin ana hedefleriyle sınırla (en fazla ${ATP_HIGH_MAX}); öncelik verilmeyen kalite Düşük gibi korunur.`,
-        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. Keep High to this period’s main goals (${ATP_HIGH_MAX} at most); a quality left unrated is maintained, like Low.`)}/>
+      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
+        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. A quality left unrated is maintained, like Low.`)}/>
     <div className="sc-sec-b">
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
@@ -24723,9 +24721,6 @@ function AtpProfile({q,onSet}){
           <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span><span className="atp-lane-n">{its.length}</span></div>
           <div className="atp-chips">{its.length?its.map(chip)
             :<span className="atp-empty">{L('Henüz yok — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
-          {p.id==='high'&&its.length>ATP_HIGH_MAX&&<div className="atp-lane-warn" role="status">
-            {L(`${its.length} Yüksek öncelik var — ${ATP_HIGH_MAX}'dan fazlası seansın neye ağırlık vereceğini belirsizleştirir. Bir kısmını Orta'ya al.`,
-              `${its.length} High priorities — more than ${ATP_HIGH_MAX} blurs what the session should lead with. Move some to Medium.`)}</div>}
         </div>);})}</div>
       <div className="atp-gwrap"><div className="atp-mgrid">{ATP_COLS.map((col,ci)=>
         <div key={ci} className="atp-mcol">{col.map(id=>group(ATP_GROUPS.find(g=>g.id===id)))}</div>)}</div></div>
@@ -31421,9 +31416,6 @@ const ATP_GROUPS=[
   {id:'movement',    en:'Movement Quality',     items:atpItems(['Mobility','Stability','Coordination'])},
   {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability'])},
 ];
-/* More High priorities than this and High stops telling the session what to lead with;
-   the tab says so, it does not stop the coach. */
-const ATP_HIGH_MAX=6;
 const ATP_QUALITIES=ATP_GROUPS.flatMap(g=>g.items.map(it=>({...it,group:g.en})));
 const ATP_PRIORITY=[
   {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Bu dönemin ana gelişim alanı.',dEn:'A main development area this period.'},
