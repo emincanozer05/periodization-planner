@@ -6399,10 +6399,53 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .calw-toolbar .nav-arrows button{width:40px;height:40px}
   .rlang-seg button{padding:7px 13px}
 }
+
+/* ── Önyükleme ekranı ────────────────────────────────────────────────────────
+   Uygulama betiği (≈2 MB) ayrıştırılırken ekran bomboş kalıyordu. #root içindeki bu
+   ekran sayfa açılır açılmaz görünür; React ilk çizimde #root'un içeriğini değiştirdiği
+   için uygulama açılınca kendiliğinden kaybolur. 20 sn içinde açılmazsa .failed sınıfı
+   eklenir ve yenileme önerisi görünür (20-app-open.html). */
+.boot-splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;padding:24px;text-align:center;background:var(--bg,#101010);color:var(--text2,#b5bac4);
+  font-size:14px;z-index:2147483000}
+.boot-splash .boot-brand{font-weight:700;font-size:22px;letter-spacing:.04em;color:var(--text,#f3f4f6)}
+.boot-splash .boot-ring{width:34px;height:34px;border:3px solid rgba(255,255,255,.12);
+  border-top-color:var(--accent,#0094ff);border-radius:50%;animation:boot-spin .9s linear infinite}
+@keyframes boot-spin{to{transform:rotate(360deg)}}
+.boot-splash .boot-fail{display:none;max-width:420px;line-height:1.6}
+.boot-splash .boot-fail button{margin-top:10px;padding:8px 16px;border-radius:8px;border:1px solid var(--border2,#2e333c);
+  background:var(--elevated,#181c22);color:var(--text,#f3f4f6);font:inherit;cursor:pointer}
+.boot-splash.failed .boot-ring,.boot-splash.failed .boot-txt{display:none}
+.boot-splash.failed .boot-fail{display:block}
+
+/* ── Klavye odağı ────────────────────────────────────────────────────────────
+   Birçok bileşende outline:none var; klavyeyle gezen biri odağın nerede olduğunu
+   göremiyordu. :focus-visible YALNIZCA klavye odağında eşleşir (fare tıklamasında
+   düğmelere eşleşmez), yani fare kullanıcısı hiçbir fark görmez. Metin kutuları,
+   textarea ve select bilerek dışarıda: bunların kendi :focus stili (kenarlık rengi) var. */
+:where(button,a[href],summary,[role="button"],[role="tab"],[role="menuitem"],[role="option"],
+  [role="radio"],[role="slider"],[tabindex]:not([tabindex="-1"]),
+  input[type="checkbox"],input[type="radio"],input[type="range"],input[type="button"],
+  input[type="submit"],input[type="file"]):focus-visible{
+  outline:2px solid var(--accent2,#5cb8ff)!important;outline-offset:2px!important}
+
+/* ── Hareketi azalt ──────────────────────────────────────────────────────────
+   Yalnızca işletim sisteminde "hareketi azalt" açık olan kullanıcılar için: animasyon ve
+   geçişler son durumlarına anında atlar (olaylar yine tetiklenir, görünen sonuç aynı). */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
 </style>
 </head>
 <body>
-<div id="root"></div>
+<noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:#101010;color:#f3f4f6;font:16px/1.6 system-ui,sans-serif">CoachOS çalışmak için JavaScript gerektirir. Tarayıcı ayarlarından JavaScript'i etkinleştirip sayfayı yenile.<br>CoachOS requires JavaScript. Enable it in your browser and reload.</div></noscript>
+<div id="root"><div class="boot-splash" role="status" aria-live="polite">
+<div class="boot-brand">COACHOS</div><div class="boot-ring" aria-hidden="true"></div>
+<div class="boot-txt">Yükleniyor… / Loading…</div>
+<div class="boot-fail">Uygulama yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.<br>The app could not load. Check your connection and reload.<br><button type="button" onclick="location.reload()">Yenile / Reload</button></div>
+</div></div>
+<script>setTimeout(function(){var s=document.querySelector('.boot-splash');if(s)s.className+=' failed';},20000);</script>
 <script type="text/babel" data-presets="react">
 const{useState,useEffect,useLayoutEffect,useMemo,useRef,useCallback}=React;
 
