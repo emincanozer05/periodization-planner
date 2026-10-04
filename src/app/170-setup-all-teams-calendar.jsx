@@ -465,6 +465,7 @@ function Setup({team,updateTeam,data,setData}){
     <div className="panel su-panel"><h2>{L('Gizlilik ve KVKK','Privacy')}</h2>
       <p className="su-lead">{L('Hangi verilerin işlendiği, nereye aktarıldığı ve haklarınla ilgili bilgi.','What data is processed, where it is transferred, and your rights.')}</p>
       <PrivacyLink className="btn sec"/>
+      <p className="su-lead" style={{marginTop:12,marginBottom:0}}>© {new Date().getFullYear()} CoachOS · {L('Tüm hakları saklıdır.','All rights reserved.')}</p>
     </div>
 
     {zoom&&<div className="su-lb" onClick={()=>setZoom(null)}>
