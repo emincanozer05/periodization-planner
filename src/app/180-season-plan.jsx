@@ -171,7 +171,7 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
                 <div className="wlt2-tags">
                   {w.current&&<span className="wlt2-now">{L('Bu hafta','This week')}</span>}
                   {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
-                  {w.games.length>0&&<span className="wlt2-game" title={w.games.map(c=>`${fd(c.date)} · ${c.name||''}${c.opponent?` (${c.opponent})`:''}`).join('\n')}>🏀 {w.games.length}</span>}
+                  {w.games.length>0&&<span className="wlt2-game" title={w.games.map(c=>`${fd(c.date)} · ${c.opponent||c.name||''}`).join('\n')}>🏀 {w.games.length}</span>}
                   {w.edited&&<button type="button" className="wlt2-rst" onClick={()=>resetWeek(w.week)} title={L('Bu haftayı modelin önerisine döndür','Return this week to the model default')}>↺</button>}
                 </div>
               </div>
@@ -289,7 +289,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
      resync does not bring it back while its session is still on the calendar. */
   const delComp=i=>{
     const c=s.competitions[i];if(!c)return;
-    if(!confirm(L(`"${c.name||'Müsabaka'}" (${fd(c.date)}) silinsin mi?`,`Delete "${c.name||'Competition'}" (${fd(c.date)})?`)))return;
+    if(!confirm(L(`"${c.opponent||c.name||'Müsabaka'}" (${fd(c.date)}) silinsin mi?`,`Delete "${c.opponent||c.name||'Competition'}" (${fd(c.date)})?`)))return;
     const next=s.competitions.filter((_,j)=>j!==i);
     const hidden=Array.isArray(s.compHidden)?s.compHidden:[];
     updateTeam(team.id,{setup:{...s,competitions:next,
@@ -487,10 +487,8 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
               <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
                 <DateDMY long value={c.date} onChange={v=>uc(i,'date',v)}/></div>
-              <div className="cmp-f grow"><label>{L('Etkinlik','Event')}</label>
-                <input value={c.name||''} onChange={e=>uc(i,'name',e.target.value)}/></div>
               <div className="cmp-f grow"><label>{L('Rakip','Opponent')}</label>
-                <input value={c.opponent||''} placeholder={L('rakip takım','opposing team')}
+                <input value={c.opponent||''} placeholder={c.name||L('rakip takım','opposing team')}
                   onChange={e=>uc(i,'opponent',e.target.value)}/></div>
               <div className="cmp-f grow"><label>{L('Lig / turnuva','League / tournament')}</label>
                 <input value={c.comp||''} placeholder={L('ör. U16 Bölgesel Lig','e.g. U16 Regional League')}
