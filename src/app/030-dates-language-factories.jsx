@@ -46,7 +46,10 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
    useAppLang() re-renders the instant it changes, so switching language updates
    the page immediately with no reload. ===== */
 const LANG_KEY='coachos_lang';
-let REPORT_LANG=(()=>{try{const s=localStorage.getItem(LANG_KEY);if(s==='tr'||s==='en')return s;}catch(e){}return'en';})();
+/* Kayıtlı bir tercih yoksa tarayıcının dili: Türkçe bir tarayıcıda giriş sayfası Türkçe açılır.
+   Kayıtlı tercihi olan herkes için hiçbir şey değişmez. */
+let REPORT_LANG=(()=>{try{const s=localStorage.getItem(LANG_KEY);if(s==='tr'||s==='en')return s;}catch(e){}
+  try{if(/^tr\b/i.test(navigator.language||''))return'tr';}catch(e){}return'en';})();
 const _langSubs=new Set();
 /* Keep <html lang> on the active language: CSS text-transform:uppercase is
    locale-aware, and without this every uppercased Turkish label loses its dotted

@@ -1202,6 +1202,9 @@ function useCloudSync(data,setData){
     signIn:(e,p)=>FB().auth().signInWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     signUp:(e,p)=>FB().auth().createUserWithEmailAndPassword(String(e||'').trim(),String(p||'')),
     methodsFor:(e)=>FB().auth().fetchSignInMethodsForEmail(String(e||'').trim()).catch(()=>[]),
+    /* Şifre sıfırlama bağlantısı. E-posta uygulamanın diliyle gidiyor. Firebase, e-posta numaralandırma
+       koruması açıksa kayıtlı olmayan adres için de hata vermiyor: mesaj bilerek "kayıtlıysa" diyor. */
+    resetPassword:(e)=>{const a=FB().auth();try{a.languageCode=REPORT_LANG;}catch(x){}return a.sendPasswordResetEmail(String(e||'').trim());},
     signOut:async()=>{
       // Çıkıştan önce bekleyen yazımın gerçekten bitmesini bekle (en fazla ~6 sn)
       try{await writeNow();let k=0;while((writing.current||dirty.current)&&k++<40)await new Promise(r=>setTimeout(r,150));}catch(e){}
