@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1523,10 +1523,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     /* Müsabaka penceresi fikstüre yazılıyor: başlık, skor, lokasyon. Sezon ekranında elle
        yazılan değer, takvimde o alan değişene kadar korunuyor. */
     const mDays = s => ({ '2026-10-10': { date: '2026-10-10', sessions: [s] } });
-    const m0 = { id: 'm1', name: 'Fenerbahçe Maçı', kind: 'match', focus: ['Competition'], match: { scoreFor: '82', scoreAgainst: '74', location: 'Ülker' } };
+    const m0 = { id: 'm1', name: 'Fenerbahçe Maçı', kind: 'match', focus: ['Competition'], match: { opponent: 'Fenerbahçe Beko', scoreFor: '82', scoreAgainst: '74', location: 'Ülker' } };
     const f1 = A.syncCompetitions([], mDays(m0), []);
     check('müsabaka başlığı, skoru ve lokasyonu fikstüre yazılıyor',
       f1.length === 1 && f1[0].name === 'Fenerbahçe Maçı' && f1[0].scoreFor === '82' && f1[0].scoreAgainst === '74' && f1[0].location === 'Ülker', JSON.stringify(f1));
+    check('müsabaka rakibi fikstürün rakip alanına yazılıyor', f1[0].opponent === 'Fenerbahçe Beko', JSON.stringify(f1));
     const f2 = A.syncCompetitions([{ ...f1[0], location: 'Ülker Sports Arena' }], mDays(m0), []);
     check('sezonda elle düzeltilen alan, takvimde değişmedikçe korunuyor', f2[0].location === 'Ülker Sports Arena', JSON.stringify(f2));
     const f3 = A.syncCompetitions(f2, mDays({ ...m0, name: 'FB Deplasman', match: { ...m0.match, scoreFor: '90' } }), []);
@@ -1536,6 +1537,22 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('cal kaydı olmayan eski satırda yalnızca boş alanlar dolduruluyor',
       legacy[0].name === 'Eski ad' && legacy[0].scoreFor === '82', JSON.stringify(legacy));
     check('ikinci senkron hiçbir şeyi değiştirmiyor (döngü yok)', JSON.stringify(A.syncCompetitions(f3, mDays({ ...m0, name: 'FB Deplasman', match: { ...m0.match, scoreFor: '90' } }), [])) === JSON.stringify(f3));
+    /* Fikstür → müsabaka penceresi: fikstürde yazılı olan, pencerenin boş alanlarını doldurur. */
+    const bDays = { '2026-10-01': { date: '2026-10-01', sessions: [{ id: 'b1', name: 'Balkan Olimpik U18', kind: 'match', focus: ['Competition'] }] } };
+    const bRows = [{ srcId: 'b1', date: '2026-10-01', name: 'MG (A) U16', comp: 'U16 Yerel Lig', location: 'Vakıf Bera', scoreFor: '81', scoreAgainst: '48', cal: { name: 'Balkan Olimpik U18', location: '', scoreFor: '', scoreAgainst: '' } }];
+    const bOut = A.backfillMatchesFromComps(bDays, bRows);
+    const bm = bOut['2026-10-01'].sessions[0].match || {};
+    check('fikstürdeki skor, lig, lokasyon ve rakip müsabaka penceresine geliyor',
+      bm.scoreFor === '81' && bm.scoreAgainst === '48' && bm.comp === 'U16 Yerel Lig' && bm.location === 'Vakıf Bera' && bm.opponent === 'MG (A) U16', JSON.stringify(bm));
+    const bSync = A.syncCompetitions(bRows, bOut, []);
+    check('geri doldurmadan sonra fikstür bozulmuyor ve döngü yok',
+      bSync[0].scoreFor === '81' && bSync[0].location === 'Vakıf Bera' && A.backfillMatchesFromComps(bOut, bSync) === bOut &&
+      JSON.stringify(A.syncCompetitions(bSync, bOut, [])) === JSON.stringify(bSync), JSON.stringify(bSync));
+    const bFull = { '2026-10-01': { date: '2026-10-01', sessions: [{ id: 'b1', name: 'X', kind: 'match', match: { scoreFor: '90' } }] } };
+    check('pencerede dolu olan alan fikstürle ezilmiyor', A.backfillMatchesFromComps(bFull, bRows)['2026-10-01'].sessions[0].match.scoreFor === '90');
+    check('sezonda yazılan alan seansın müsabaka verisine yama oluyor',
+      JSON.stringify(A.compRowToSesPatch({ match: { opponent: 'A' } }, 'scoreFor', '70')) === JSON.stringify({ match: { opponent: 'A', scoreFor: '70' } }) &&
+      A.compRowToSesPatch({}, 'date', 'x') === null && A.compRowToSesPatch({}, 'name', '  ') === null);
     const cp = A.diCompetition({ competitions: comps }, '2026-10-03');
     check('perşembe maçından sonra cumartesi MD+2', cp.md === 'MD+2' && cp.previous.days_since === 2, JSON.stringify(cp));
     check('cuma MD+1', A.diCompetition({ competitions: comps }, '2026-10-02').md === 'MD+1');

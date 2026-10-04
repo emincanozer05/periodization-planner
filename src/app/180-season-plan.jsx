@@ -171,7 +171,7 @@ function WeeklyLoadTargets({team,updateTeam,weeks,periods,setWeekFocus}){
                 <div className="wlt2-tags">
                   {w.current&&<span className="wlt2-now">{L('Bu hafta','This week')}</span>}
                   {w.taper&&<span className="wlt-taper">⚠ TAPER</span>}
-                  {w.games.length>0&&<span className="wlt2-game" title={w.games.map(c=>`${fd(c.date)} · ${c.name||''}`).join('\n')}>🏀 {w.games.length}</span>}
+                  {w.games.length>0&&<span className="wlt2-game" title={w.games.map(c=>`${fd(c.date)} · ${c.name||''}${c.opponent?` (${c.opponent})`:''}`).join('\n')}>🏀 {w.games.length}</span>}
                   {w.edited&&<button type="button" className="wlt2-rst" onClick={()=>resetWeek(w.week)} title={L('Bu haftayı modelin önerisine döndür','Return this week to the model default')}>↺</button>}
                 </div>
               </div>
@@ -267,7 +267,24 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
     const cur=s.periods||autoPeriods(s);const np=cur.map(p=>p.id===id?{...p,[field]:val}:p);
     updateTeam(team.id,{setup:{...s,periods:np,seasonStart:np[0].start,seasonEnd:np[np.length-1].end}});};
   const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
-  const uc=(i,k,v)=>{const c=[...s.competitions];c[i]={...c[i],[k]:v};u('competitions',c);};
+  /* A row the calendar wrote is the match session's own fixture: what is typed into it
+     here is written onto that session as well (and onto the athletes' copies of it), so
+     the match window shows the same opponent, league, venue and score. */
+  const uc=(i,k,v)=>{
+    const c=[...s.competitions];const row={...c[i],[k]:v};c[i]=row;
+    let dk=null,ses=null;
+    if(row.srcId)Object.entries(team.days||{}).some(([key,d])=>{
+      const hit=((d&&d.sessions)||[]).find(x=>String(x.id)===row.srcId);
+      if(hit){dk=key;ses=hit;return true;}return false;});
+    const patch=ses?compRowToSesPatch(ses,k,v):null;
+    if(!patch){u('competitions',c);return;}
+    const d0=team.days[dk];const oldS=d0.sessions||[];
+    const newS=oldS.map(x=>x===ses?{...x,...patch}:x);
+    row.cal={...(row.cal||compCalOf(ses)),[k]:String(v==null?'':v).trim()};
+    const upd={setup:{...s,competitions:c},days:{...team.days,[dk]:{...d0,sessions:newS}}};
+    if(Array.isArray(team.athletes))upd.athletes=syncSessionsToAthletes(team.athletes,dk,oldS,newS);
+    updateTeam(team.id,upd);
+  };
   /* Deleting a fixture. A row the calendar wrote is remembered as deleted, so the next
      resync does not bring it back while its session is still on the calendar. */
   const delComp=i=>{
@@ -470,15 +487,18 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             {s.competitions.map((c,i)=><div key={c.srcId||i} className="cmp-row">
               <div className="cmp-f date"><label>{L('Tarih','Date')}</label>
                 <DateDMY long value={c.date} onChange={v=>uc(i,'date',v)}/></div>
-              <div className="cmp-f grow"><label>{L('Etkinlik / rakip','Event / opponent')}</label>
+              <div className="cmp-f grow"><label>{L('Etkinlik','Event')}</label>
                 <input value={c.name||''} onChange={e=>uc(i,'name',e.target.value)}/></div>
+              <div className="cmp-f grow"><label>{L('Rakip','Opponent')}</label>
+                <input value={c.opponent||''} placeholder={L('rakip takım','opposing team')}
+                  onChange={e=>uc(i,'opponent',e.target.value)}/></div>
               <div className="cmp-f grow"><label>{L('Lig / turnuva','League / tournament')}</label>
                 <input value={c.comp||''} placeholder={L('ör. U16 Bölgesel Lig','e.g. U16 Regional League')}
                   onChange={e=>uc(i,'comp',e.target.value)}/></div>
               <div className="cmp-f grow"><label>{L('Konum','Location')}</label>
                 <input value={c.location||''} placeholder={L('salon / şehir','venue / city')}
                   onChange={e=>uc(i,'location',e.target.value)}/></div>
-              {(()=>{const res=compResult(c);const oppAuto=compAbbr(c.name)||L('RAK','OPP');
+              {(()=>{const res=compResult(c);const oppAuto=compAbbr(c.opponent||c.name)||L('RAK','OPP');
                 return(<div className="cmp-f score"><label>{L('Skor','Score')}</label>
                 <div className="cmp-score">
                   <div className="cmp-side us">
@@ -491,7 +511,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
                   <span className="cmp-dash">–</span>
                   <div className="cmp-side them">
                     <input className="cmp-abbr" value={c.oppAbbr||''} placeholder={oppAuto} maxLength={5}
-                      title={L(`Rakip — ${c.name||''} (kısaltmayı değiştirmek için yaz)`,`Opponent — ${c.name||''} (type to change the tag)`)}
+                      title={L(`Rakip — ${c.opponent||c.name||''} (kısaltmayı değiştirmek için yaz)`,`Opponent — ${c.opponent||c.name||''} (type to change the tag)`)}
                       onChange={e=>uc(i,'oppAbbr',e.target.value.toLocaleUpperCase('tr'))}/>
                     <input inputMode="numeric" value={c.scoreAgainst??''} aria-label={L('Rakip skoru','Opponent score')}
                       onChange={e=>uc(i,'scoreAgainst',e.target.value)}/>
@@ -511,7 +531,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             </div>)}
           </div>}
         <button className="btn sec sm" style={{marginTop:12}}
-          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
+          onClick={()=>u('competitions',[...s.competitions,{date:s.seasonStart,name:L('Yeni müsabaka','New fixture'),opponent:'',comp:'',location:'',scoreFor:'',scoreAgainst:''}])}>
           {L('Müsabaka ekle','Add competition')}</button>
       </div>}
     </div>

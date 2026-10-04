@@ -134,10 +134,14 @@ function App(){
   useEffect(()=>{
     if(!team||!team.setup)return;
     const cur=team.setup.competitions||[];
-    const next=syncCompetitions(cur,team.days,team.setup.compHidden);
-    if(JSON.stringify(next)===JSON.stringify(cur))return;
-    setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>t.id===team.id
-      ?{...t,setup:{...t.setup,competitions:next}}:t)}));
+    /* Both directions in one pass: what the fixture knows fills the match window's blanks
+       first, then the fixture follows the calendar. */
+    const days=backfillMatchesFromComps(team.days,cur);
+    const next=syncCompetitions(cur,days,team.setup.compHidden);
+    const compSame=JSON.stringify(next)===JSON.stringify(cur);
+    if(compSame&&days===team.days)return;
+    setData(prev=>({...prev,teams:(prev.teams||[]).map(t=>t.id!==team.id?t
+      :{...t,...(days!==team.days?{days}:{}),setup:{...t.setup,competitions:next}})}));
   },[team&&team.id,team&&team.days,team&&team.setup&&team.setup.competitions,team&&team.setup&&team.setup.compHidden]);
   /* The completions offered on every ball-practice row. Built once per library change
      rather than on every render: it was being filtered and rebuilt on each edit, and the

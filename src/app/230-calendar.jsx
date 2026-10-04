@@ -275,7 +275,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     if(own){
       const v=[own.scRPE,own.tpRPE,own.gameRPE].find(x=>x!==''&&x!=null);
       const ld=(own.totalLoad!==''&&own.totalLoad!=null)?own.totalLoad:'';
-      return{rpe:v==null?'':v,load:ld,fromAthlete:false};
+      const od=[own.scDuration,own.tpDuration,own.gameDuration].find(x=>x!==''&&x!=null);
+      return{rpe:v==null?'':v,load:ld,dur:od==null?'':od,fromAthlete:false};
     }
     const cat=rpeCatOf(ses);
     /* What they submitted is a rating for their day, not for one session on it, so it is read
@@ -288,7 +289,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       const v=e[cat+'RPE'];
       if(v===''||v==null||isNaN(Number(v)))continue;
       const ld=e[cat+'Load'];
-      return{rpe:v,load:(ld!==''&&ld!=null)?ld:(dur?Math.round(Number(v)*dur):''),fromAthlete:true};
+      /* The minutes they reported with it — for a match, the time they were on the floor. */
+      const fd=e[cat+'Duration'];
+      return{rpe:v,load:(ld!==''&&ld!=null)?ld:(dur?Math.round(Number(v)*dur):''),
+        formLoad:(ld!==''&&ld!=null)?ld:'',dur:(fd!==''&&fd!=null&&!isNaN(Number(fd)))?Number(fd):'',fromAthlete:true};
     }
     return{rpe:'',load:'',fromAthlete:false};
   };
