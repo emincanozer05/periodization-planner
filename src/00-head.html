@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoachOS — Periodization Planner</title>
+<meta name="theme-color" content="#0a0b0d">
+<meta property="og:type" content="website">
+<meta property="og:title" content="CoachOS — The Coaching Operating System">
+<meta property="og:description" content="Periodization, training programs and athlete monitoring in one place.">
+<meta property="og:image" content="logo-mark.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="logo-mark.png">
+<link rel="icon" type="image/png" href="logo-mark.png">
+<link rel="apple-touch-icon" href="logo-mark.png">
+<!-- Web push için. Uygulama bir PWA'ya dönüşmüyor: ne service worker önbelleği var
+     ne çevrimdışı kabuk — Firestore'un kendi IndexedDB kalıcılığı o işi zaten
+     yapıyor. Manifest burada tek bir sebeple duruyor: Apple, bildirimleri YALNIZCA
+     ana ekrana eklenmiş sayfalarda çalıştırıyor ve "ana ekrana ekle" bir manifest
+     olmadan standalone açılmıyor. Android ve masaüstünde bildirim bunsuz da çalışır. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CoachOS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<!-- Pinned to Babel 7.x: this app loads via a plain <script>, not a module bundler. Babel 8's
+     React preset defaults JSX to the AUTOMATIC runtime, which emits `import {jsx} from
+     "react/jsx-runtime"` → "Cannot use import statement outside a module" → blank page. 7.x
+     uses the classic runtime (React.createElement) which works with the React UMD globals above.
+     Do NOT change to an unpinned/8.x URL. -->
+<script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.7.1/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- pdf.js — an uploaded FMS score sheet is a PDF, and a PDF does not print from
+     inside a report window. Its pages are rasterised on upload and it is the
+     pictures that go on the sheet. -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<!-- Firebase (cloud sync) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<!-- Wellness uyarılarının koçun telefonuna düşmesi için. Yalnızca token kaydı ve izin
+     akışı burada; uyarının KİME gideceğine ve gönderimin kendisine sunucu karar veriyor. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
+<!-- VAPID anahtarı + aynı Firebase yapılandırması. Service worker bir <script> etiketi
+     okuyamadığı için değerler ayrı bir dosyada duruyor ve worker onu importScripts ile
+     alıyor; böylece anahtar tek bir yerde. Dosya yüklenemezse uygulama bugünkü gibi
+     çalışır, sadece bildirim açılamaz (aşağıdaki her kullanım varlığını kontrol ediyor). -->
+<script src="push-config.js"></script>
+<script>
+  try{
+    firebase.initializeApp({
+      apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
+      authDomain:"periodization-planner.firebaseapp.com",
+      projectId:"periodization-planner",
+      storageBucket:"periodization-planner.firebasestorage.app",
+      messagingSenderId:"225598184270",
+      appId:"1:225598184270:web:a2b812983e298441df1c1f"
+    });
+    /* TAŞIMA KATMANI CİHAZA GÖRE SEÇİLİR — tek bir seçim her ağa uymuyor.
+       Firestore sunucuyla iki biçimde konuşabiliyor: akış (WebChannel) ve düz
+       istek/yanıt (long-polling). Hangisinin geçeceği ağa bağlı:
+         • bazı mobil operatör ağları, vekil sunucular ve antıvirüsler WebChannel'i
+           tamponlayıp boğuyor — telefon "bağlı" görünüyor ama hiçbir yazım onaylanmıyor;
+         • bazı kurumsal/masaüstü kurulumlar ise long-polling'in uzun tutulan isteğini
+           kesiyor — bu sefer aynı şey masaüstünde oluyor.
+       Uzun süre long-polling HERKESE zorlanıyordu; telefonu kurtaran o seçim, aynı hesabın
+       bilgisayarını sarıda bırakabiliyor ve o cihazın başka çıkışı yoktu.
+       Artık varsayılan otomatik algılama; hangi taşımanın GERÇEKTEN sunucuya ulaştığı
+       bu tarayıcıda saklanıyor ve bir dahaki açılışta doğrudan o kullanılıyor. Seçilen
+       taşıma hiç bağlanamazsa (ağ açık, giriş yapılmış, ama Firestore'dan tek bir sunucu
+       yanıtı gelmemiş) uygulama ötekine geçip sayfayı bir kez yeniliyor — oturum başına
+       YALNIZCA BİR KEZ, yani bir ileri bir geri döngüye giremez.
+       Bu ayar her türlü Firestore kullanımından (persistence dâhil) ÖNCE yapılmalı. */
+    var _TKEY='coachos_fs_transport', _TSW='coachos_fs_transport_switched';
+    var _tp=null; try{_tp=localStorage.getItem(_TKEY);}catch(e){}
+    if(_tp!=='long'&&_tp!=='auto')_tp='auto';
+    window.__fsTransport=_tp;
+    try{firebase.firestore().settings(_tp==='long'
+      ?{experimentalForceLongPolling:true}
+      :{experimentalAutoDetectLongPolling:true});}catch(e){}
+    /* Sunucuya gerçekten ulaşıldı: kullanılan taşıma bu cihazın seçimi olarak yazılır.
+       Her sunucu yanıtında çağrılıyor, ama iş yalnızca ilkinde yapılıyor: localStorage
+       yazımı senkron bir iştir ve koç çalışırken saniyede birkaç yanıt gelebilir. */
+    var _tOk=false;
+    window.__fsTransportWorks=function(){
+      if(_tOk)return; _tOk=true;
+      try{if(localStorage.getItem(_TKEY)!==_tp)localStorage.setItem(_TKEY,_tp);}catch(e){}
+    };
+    // Ötekine geç: true dönerse çağıran sayfayı yeniler. Oturum başına bir kez.
+    window.__fsSwitchTransport=function(){
+      try{
+        if(sessionStorage.getItem(_TSW))return false;
+        sessionStorage.setItem(_TSW,'1');
+        localStorage.setItem(_TKEY,_tp==='long'?'auto':'long');
+        return true;
+      }catch(e){return false;}
+    };
+    /* YAZIM ÖNCE DİSKE, SONRA BULUTA. Kalıcı önbellek açık değilken bekleyen bir yazım
+       yalnızca sekmenin belleğinde duruyordu: bağlantı yavaşsa düzenleme sunucu onaylayana
+       kadar hiçbir yere kaydedilmiş olmuyor, sekme o arada kapanırsa da büsbütün gidiyordu.
+       Açıkken Firestore her yazımı önce cihazın IndexedDB'sine işliyor — düzenleme, ağ ne
+       olursa olsun ANINDA ve kalıcı olarak kaydedilmiş oluyor — ve bağlantı döndüğünde,
+       gerekirse sayfa yenilendikten sonra bile, kendisi buluta gönderiyor. Açılış da bunun
+       üstüne hızlanır: veri ağ beklenmeden yerel önbellekten çizilir.
+       En iyi çaba: eski bir tarayıcı ('unimplemented') ya da çok sekmeli bir kurulum
+       ('failed-precondition') reddederse uygulama bugünkü gibi çalışmaya devam eder.
+       Her türlü Firestore kullanımından ÖNCE, settings()'in hemen ardından çağrılmalı. */
+    try{firebase.firestore().enablePersistence({synchronizeTabs:true})
+      .catch(e=>console.warn('offline persistence unavailable:',e&&e.code||e));}catch(e){}
+  }catch(e){console.warn('Firebase init failed',e);}
+</script>
+<script>
+  /* Service worker açılışta kaydediliyor: uygulama kabuğu (sayfa, kütüphaneler, yazı
+     tipleri) ağ yokken de açılsın diye. Önbellek "önce ağ" çalışıyor — çevrimiçiyken
+     hep sunucudaki sürüm gelir (firebase-messaging-sw.js'e bak). Aynı dosya bildirim
+     için de kullanılıyor; kayıt tekrarlandığında (bildirim açılırken) aynı worker döner.
+     Adres sayfaya göre kuruluyor: uygulama alt dizinde de yayınlanabiliyor. */
+  if('serviceWorker' in navigator&&window.isSecureContext){
+    window.addEventListener('load',function(){
+      try{navigator.serviceWorker.register(location.pathname.replace(/[^/]*$/,'')+'firebase-messaging-sw.js').catch(function(){});}catch(e){}
+    });
+  }
+</script>
+<style>

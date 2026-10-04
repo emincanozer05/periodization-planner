@@ -112,6 +112,25 @@ function checkHooks(file) {
   if (!found) console.log('  ok   her hook koşullu return\'lerden önce');
 }
 
+/* ── src/ parçaları ───────────────────────────────────────────────────────
+   index.html src/ altından üretiliyor. Her parça bütün ifadelerden oluşuyor (bölme
+   üst düzey ifade sınırlarından yapıldı), yani tek başına da derlenmeli. Bir hata
+   olduğunda 37 bin satırlık dosyada satır aramak yerine doğrudan dosya ve satır
+   gösteriliyor. */
+function checkSrcChunks() {
+  console.log('\n== src/app — parçalar ==');
+  const dir = 'src/app';
+  if (!fs.existsSync(dir)) { console.log('  (src/app yok)'); return; }
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.jsx')).sort();
+  let bad = 0;
+  for (const f of files) {
+    try { babel.transform(fs.readFileSync(dir + '/' + f, 'utf8'), { presets: ['react'], filename: f }); }
+    catch (e) { console.error(`  HATA ${dir}/${f}: ${e.message}`); failed++; bad++; }
+  }
+  if (!bad) console.log(`  ok   ${files.length} parça tek başına derleniyor`);
+}
+
+checkSrcChunks();
 PAGES.forEach(checkPage);
 PAGES.forEach(checkHooks);
 console.log('\n== bağımsız js ==');
