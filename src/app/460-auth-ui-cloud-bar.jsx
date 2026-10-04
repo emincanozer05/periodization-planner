@@ -19,17 +19,57 @@ function GoogleBtn({onClick,busy}){
   );
 }
 
+/* Giriş öncesi sayfa. Giriş kartı açılışta görünür (eskiden tanıtım sayfasındaki bir düğmeyle
+   açılan pencereydi); altında uygulamanın GERÇEK modüllerini anlatan bölümler var. Uydurma rakam,
+   fiyat ya da "demo" yok. Giriş mantığı (Google, e-posta/şifre, hata mesajları) değişmedi. */
+const LN_FEATURES=[
+  {ic:'▤',t:['Sezon ve periyotlama','Season & periodization'],
+   d:['Sezonu makrosiklus, faz ve haftalara böl; her haftanın planlı hacim ve şiddetini gör. Lineer, blok, dalgalı ve diğer periyotlama modelleri.',
+      'Split the season into a macrocycle, phases and weeks and see each week\'s planned volume and intensity. Linear, block, undulating and other periodization models.']},
+  {ic:'▣',t:['Haftalık takvim','Weekly calendar'],
+   d:['Takım ve sporcu seanslarını haftalık ya da aylık planla; seansları sürükle-bırakla taşı, kopyala. Haftayı yazdır ya da PDF/görsel olarak paylaş.',
+      'Plan team and athlete sessions by week or month; drag sessions to move or copy them. Print the week or share it as a PDF or image.']},
+  {ic:'◉',t:['Kadro ve sporcu profili','Roster & athlete profile'],
+   d:['Her sporcu için antropometri, sakatlık ve ağrı kaydı, notlar, antrenman profili ve kişisel takvim tek sayfada.',
+      'Anthropometrics, injury and pain records, notes, a training profile and a personal calendar for every athlete on one page.']},
+  {ic:'◎',t:['Test ve değerlendirme','Testing & assessment'],
+   d:['FMS, sıçrama, sprint, çeviklik, mobilite ve kuvvet testlerini kaydet; sonuçları yaşa ve pozisyona göre referanslarla ve takımla karşılaştır.',
+      'Record FMS, jump, sprint, agility, mobility and strength tests; compare results with age- and position-based references and with the squad.']},
+  {ic:'▥',t:['Yük takibi','Load monitoring'],
+   d:['Seans RPE\'si ve süreden iç yükü (AU) hesapla; akut:kronik oran, monotoni, zorlanma ve wellness ısı haritasıyla riskli haftaları erken gör.',
+      'Compute internal load (AU) from session RPE and duration; spot risky weeks early with the acute:chronic ratio, monotony, strain and a wellness heatmap.']},
+  {ic:'⫶',t:['Egzersiz kütüphanesi','Exercise library'],
+   d:['Hareket kalıbı, ekipman, zorluk ve kas grubuna göre düzenlenmiş egzersizler; video, açıklama ve kontrendikasyon uyarılarıyla. PDF olarak dışa aktar.',
+      'Exercises organized by movement pattern, equipment, difficulty and muscle group, with video, description and contraindication warnings. Export as a PDF.']},
+  {ic:'⧉',t:['Bireyselleştirme','Individualization'],
+   d:['Bir takım seansını her sporcu için ayrı, düzenlenebilir bir programa çevir. Yapay zekâ önerir; ağrı ve sakatlık kurallarını denetleyen kod onaylamadan hiçbir şey kaydedilmez.',
+      'Turn one team session into a separate, editable program for every athlete. AI suggests; nothing is saved until code that checks pain and injury rules approves it.']},
+  {ic:'✓',t:['Check-in formları','Check-in forms'],
+   d:['Sporculara wellness ve RPE formu bağlantısı gönder; yanıtlar takvime ve yük takibine düşer, eşiği aşan durumlarda ekibe uyarı gider.',
+      'Send athletes wellness and RPE form links; answers land in the calendar and load monitoring, and the staff is alerted when a threshold is crossed.']},
+];
+const LN_EXTRAS=[
+  ['Seçmeler havuzu','Tryouts pool'],['Interval zamanlayıcı','Interval timer'],['Ortak kulüp takvimi','Shared club calendar'],
+  ['Türkçe / İngilizce','Turkish / English'],['Çevrimdışı çalışır','Works offline'],['Bulut senkronu ve yedekleme','Cloud sync & backup'],
+];
+
+function LangSeg(){
+  useAppLang();
+  return(<div className="ln-lang" role="group" aria-label={L('Dil seçimi','Language')}>
+    {[['tr','TR'],['en','EN']].map(([k,lbl])=><button key={k} type="button" className={REPORT_LANG===k?'on':''}
+      aria-pressed={REPORT_LANG===k} onClick={()=>setReportLang(k)}>{lbl}</button>)}
+  </div>);
+}
+
 function LoginPage({sync}){
+  useAppLang();
   const[tab,setTab]=useState('google'); // google|email
   const[isSignup,setIsSignup]=useState(false);
   const[email,setEmail]=useState('');
   const[pw,setPw]=useState('');
   const[err,setErr]=useState('');
+  const[note,setNote]=useState('');
   const[busy,setBusy]=useState(false);
-  const[showLogin,setShowLogin]=useState(false);
-  const[lpPage,setLpPage]=useState('home');
-  const goPage=(p)=>{setLpPage(p);window.scrollTo({top:0,behavior:'smooth'});};
-  const openLogin=()=>{setErr('');sync.clearAuthErr&&sync.clearAuthErr();setShowLogin(true);};
   const googleLogin=async()=>{
     setErr('');sync.clearAuthErr&&sync.clearAuthErr();setBusy(true);
     try{await sync.signInWithGoogle();}
@@ -74,171 +114,90 @@ function LoginPage({sync}){
       setErr(msgs[e.code]||e.message);
     }finally{setBusy(false);}
   };
+  const resetPassword=async()=>{
+    const mail=email.trim();
+    setErr('');setNote('');
+    if(!mail){setErr(L('Şifre sıfırlama bağlantısı için önce e-postanı yaz.','Type your email first so we can send the reset link.'));return;}
+    setBusy(true);
+    try{
+      await sync.resetPassword(mail);
+      setNote(L('Bu e-posta kayıtlıysa şifre sıfırlama bağlantısı gönderildi. Gelen kutunu (ve spam klasörünü) kontrol et.',
+        'If this email is registered, a password reset link has been sent. Check your inbox (and spam folder).'));
+    }catch(e){
+      const msgs={'auth/invalid-email':L('Geçersiz e-posta.','Invalid email.'),'auth/missing-email':L('E-posta girin.','Enter your email.'),
+        'auth/network-request-failed':L('Bağlantı hatası.','Connection error.'),
+        'auth/too-many-requests':L('Çok fazla deneme — biraz bekleyip tekrar dene.','Too many attempts — wait a moment and try again.')};
+      setErr(msgs[e.code]||e.message);
+    }finally{setBusy(false);}
+  };
+  const shownErr=err||sync.authErr;
   return(
-    <div className="lp">
-      <nav className="lp-nav">
-        <div className="lp-logo"><img className="lp-logo-img" src="logo-wordmark.png" alt="CoachOS"/></div>
-        <div className="lp-links">
-          <a onClick={()=>goPage('platform')} style={{color:lpPage==='platform'?'var(--accent)':''}}>{L('Platform','Platform')}</a>
-          <a onClick={()=>goPage('workflow')} style={{color:lpPage==='workflow'?'var(--accent)':''}}>{L('İş Akışı','Workflow')}</a>
-          <a onClick={()=>goPage('analytics')} style={{color:lpPage==='analytics'?'var(--accent)':''}}>{L('Analitik','Analytics')}</a>
-          <a onClick={()=>goPage('pricing')} style={{color:lpPage==='pricing'?'var(--accent)':''}}>{L('Fiyatlandırma','Pricing')}</a>
+    <div className="ln">
+      <header className="ln-top">
+        <img className="ln-logo" src="logo-wordmark.png" alt="CoachOS"/>
+        <LangSeg/>
+      </header>
+      <main className="ln-hero">
+        <div className="ln-intro">
+          <div className="ln-kicker">{L('Kuvvet ve kondisyon ekipleri için','For strength & conditioning staff')}</div>
+          <h1 className="ln-h1">{L('Antrenman planlama ve sporcu takibi, tek yerde.','Training planning and athlete monitoring, in one place.')}</h1>
+          <p className="ln-sub">{L('Sezon planı, haftalık takvim, yük takibi, testler ve sporcuya özel programlar — koç ve performans ekibinin günlük işi için.',
+            'Season plan, weekly calendar, load monitoring, testing and athlete-specific programs — for the daily work of coaches and performance staff.')}</p>
+          <ul className="ln-points">
+            <li>{L('Verilerin hesabına bağlı; bilgisayar ve telefon arasında senkronize olur.','Your data is tied to your account and syncs between computer and phone.')}</li>
+            <li>{L('İnternet yokken de açılır, bağlantı gelince kaydeder.','Opens without internet and saves once you are back online.')}</li>
+          </ul>
         </div>
-        <div className="lp-actions">
-          <button className="lp-btn ghost" onClick={openLogin}>{L('Giriş yap','Log in')}</button>
-          <button className="lp-btn accent" onClick={openLogin}>{L('Demo talep et','Book a demo')}</button>
-        </div>
-      </nav>
-      {lpPage==='home'&&(<div className="lp-hero">
-        <div className="lp-hero-l">
-          <div className="auth-badge"><span className="dot"></span>{L('Yüksek performans ekipleri için tasarlandı','Built for high-performance staff')}</div>
-          <h1 className="auth-h1">{L('Kuvvet ve kondisyon için Performans İşletim Sistemi.','Performance OS for strength & conditioning.')}</h1>
-          <p className="auth-sub">{L('Periyotlanmış antrenmanı programla, her sporcuya ilet ve yük, hız ile hazır oluşu veri geldikçe oku — hepsi tek sistemde.','Program periodized training, deliver it to every athlete, and read load, velocity and readiness as the data lands — all in one system.')}</p>
-          <div className="lp-cta">
-            <button className="lp-btn accent" onClick={openLogin}>{L('Demo talep et','Book a demo')}</button>
-            <button className="lp-btn ghost" onClick={()=>goPage('analytics')}>{L('Panele göz at','See the dashboard')}</button>
-          </div>
-        </div>
-        <div className="lp-hero-r">
-          <div className="auth-mock">
-            <div className="auth-mock-top">
-              <div className="auth-mock-dots"><i></i><i></i><i></i></div>
-              <div className="auth-mock-tag">{L('forge · hazır oluş','forge · readiness')}</div>
+        <section className="ln-card" aria-label={L('Giriş','Sign in')}>
+          <div className="ln-card-hd">
+            <div>
+              <div className="ln-card-t">{isSignup&&tab==='email'?L('Hesap oluştur','Create an account'):L('Giriş yap','Sign in')}</div>
+              <div className="ln-card-s">{L('Verilerine erişmek için hesabınla devam et','Continue with your account to reach your data')}</div>
             </div>
-            <div className="auth-mock-stats">
-              <div className="auth-stat"><div className="k">{L('Akut Yük','Acute Load')}</div><div className="v">847<small>▲4%</small></div></div>
-              <div className="auth-stat"><div className="k">{L('A:K Oranı','A:C Ratio')}</div><div className="v">1.08</div></div>
-              <div className="auth-stat"><div className="k">{L('Hazır','Ready')}</div><div className="v">22/24</div></div>
-            </div>
-            <div className="auth-mock-bars">
-              {[38,46,52,64,92,58,70,44,60,50].map((h,i)=><span key={i} className={i===4?'on':''} style={{height:h+'%'}}/>)}
-            </div>
-          </div>
-        </div>
-      </div>)}
-      {lpPage==='platform'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">{L('Platform','Platform')}</div>
-        <h2 className="lp-sec-h2">{L('Antrenman kadronuzun ihtiyaç duyduğu her şey','Everything your coaching staff needs')}</h2>
-        <p className="lp-sec-sub">{L('CoachOS periyotlama, yük yönetimi ve sporcu iletişimini tek bir bağlı iş akışında birleştirir.','CoachOS brings periodization, load management, and athlete communication into a single connected workflow.')}</p>
-        <div className="lp-features">
-          {[
-            {icon:'📅',title:L('Sezon Planlayıcı','Season Planner'),desc:L('Çok fazlı periyotlanmış programlar kur. Tüm sezon için mezosikluları, yükleme örüntülerini ve antrenman hedeflerini tanımla.','Build multi-phase periodized programs. Define mesocycles, loading patterns, and training goals for the whole season.')},
-            {icon:'📊',title:L('Yük Takibi','Load Monitoring'),desc:L('Akut ve kronik antrenman yükünü gerçek zamanlı izle. ACWR, monotonluk ve zorlanma — hepsi sporcu seans verisinden.','Track acute and chronic workload in real time. ACWR, monotony, and strain — all from athlete session data.')},
-            {icon:'👥',title:L('Sporcu Profilleri','Athlete Profiles'),desc:L('Tüm kadronuzu yönetin. Sakatlıkları, sağlık trendlerini, test sonuçlarını ve bireysel antrenman geçmişini takip edin.','Manage your full roster. Track injuries, wellness trends, test results, and individual training history.')},
-            {icon:'🧪',title:L('Test ve Değerlendirme','Testing & Assessment'),desc:L('Test protokollerini kaydedin ve görselleştirin. Otomatik karşılaştırmalarla zaman içindeki ilerlemeyi izleyin.','Log and visualize testing protocols. Track progress over time with automatic comparisons.')},
-            {icon:'📚',title:L('Egzersiz Kütüphanesi','Exercise Library'),desc:L('Takımınızın egzersiz veritabanını oluşturun. Tipe, kas grubuna, zorluğa ve hareket örüntüsüne göre düzenleyin.','Build your team\'s exercise database. Organize by type, muscle group, difficulty, and movement pattern.')},
-            {icon:'🤖',title:L('Yapay Zeka Koç','AI Coach'),desc:L('Planlama kararları, antrenman tasarımı ve sporcu yönetimi için yerleşik yapay zeka asistanınızdan anlık destek alın.','Get instant support for planning decisions, training design, and athlete management from your built-in AI assistant.')},
-          ].map(f=><div key={f.title} className="lp-feat-card"><div className="lp-feat-icon">{f.icon}</div><div className="lp-feat-title">{f.title}</div><div className="lp-feat-desc">{f.desc}</div></div>)}
-        </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Başla','Get started')}</button><button className="lp-btn ghost" onClick={()=>goPage('pricing')}>{L('Fiyatlara bak','See pricing')}</button></div>
-      </div></div>)}
-      {lpPage==='workflow'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">{L('İş Akışı','Workflow')}</div>
-        <h2 className="lp-sec-h2">{L('Plandan performansa, tek sistemde','From plan to performance, in one system')}</h2>
-        <p className="lp-sec-sub">{L('CoachOS koçluk sürecinin her adımını birbirine bağlar — hiçbir şey atlanmaz.','CoachOS connects every step of the coaching process — so nothing falls through the cracks.')}</p>
-        <div className="lp-steps">
-          {[
-            {n:'01',title:L('Takımını kur','Set up your team'),desc:L('Takım profilini oluştur, kadronu ekle ve sezon tarihlerini ayarla. Beş dakikadan kısa sürer.','Create your team profile, add your roster, and configure your season dates. Takes less than five minutes.')},
-            {n:'02',title:L('Sezonunu planla','Plan your season'),desc:L('Fazlar, mezosikluslar ve haftalık yükleme hedefleriyle periyotlanmış bir program kur. CoachOS bunu otomatik olarak takvimine işler.','Build a periodized program with phases, mesocycles, and weekly loading targets. CoachOS maps it across your calendar automatically.')},
-            {n:'03',title:L('Günlük seansları programla','Program daily sessions'),desc:L('Antrenmanları günlere ata, set ve yükleri takip et, seans RPE\'sini kaydet. Sporcular planlarını anında alır.','Assign workouts to days, track sets and loads, and log session RPE. Athletes receive their plan instantly.')},
-            {n:'04',title:L('Yükü ve hazır oluşu izle','Monitor load & readiness'),desc:L('Seanslar geldikçe ACWR, monotonluk ve sağlık verilerinin gerçek zamanlı güncellendiğini gör. Riski sakatlığa dönüşmeden fark et.','See ACWR, monotony, and wellness data update in real time as sessions come in. Spot risk before it becomes injury.')},
-          ].map(s=><div key={s.n} className="lp-step"><div className="lp-step-n">{s.n}</div><div><div className="lp-step-title">{s.title}</div><div className="lp-step-desc">{s.desc}</div></div></div>)}
-        </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Ücretsiz başla','Start free')}</button></div>
-      </div></div>)}
-      {lpPage==='analytics'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">{L('Analitik','Analytics')}</div>
-        <h2 className="lp-sec-h2">{L('Karar aldıran veriler','Data that actually informs decisions')}</h2>
-        <p className="lp-sec-sub">{L('Kadronuzun takip ettiği her metrik, gerçek zamanlı görünür. Ne tablo ne dışa aktarma — sadece cevaplar.','Every metric your staff tracks, surfaced in real time. No spreadsheets, no exports — just answers.')}</p>
-        <div className="lp-analytics-grid">
-          <div className="lp-analytics-main">
-            <div className="auth-mock" style={{maxWidth:'100%'}}>
-              <div className="auth-mock-top"><div className="auth-mock-dots"><i></i><i></i><i></i></div><div className="auth-mock-tag">{L('yük takibi · 24. hafta','load monitoring · week 24')}</div></div>
-              <div className="auth-mock-stats">
-                <div className="auth-stat"><div className="k">{L('Akut Yük','Acute Load')}</div><div className="v">847<small>▲4%</small></div></div>
-                <div className="auth-stat"><div className="k">{L('Kronik Yük','Chronic Load')}</div><div className="v">783</div></div>
-                <div className="auth-stat"><div className="k">{L('A:K Oranı','A:C Ratio')}</div><div className="v" style={{color:'#10b981'}}>1.08</div></div>
-                <div className="auth-stat"><div className="k">{L('Monotonluk','Monotony')}</div><div className="v">1.4</div></div>
-                <div className="auth-stat"><div className="k">{L('Zorlanma','Strain')}</div><div className="v">1185</div></div>
-                <div className="auth-stat"><div className="k">{L('Hazır','Ready')}</div><div className="v">22/24</div></div>
-              </div>
-              <div className="auth-mock-bars" style={{height:100}}>
-                {[38,46,52,64,92,58,70,44,60,50,72,80,62,55].map((h,i)=><span key={i} className={i===4||i===10?'on':''} style={{height:h+'%'}}/>)}
-              </div>
-            </div>
-          </div>
-          <div className="lp-analytics-aside">
-            {[
-              {label:L('ACWR Takibi','ACWR Monitoring'),desc:L('Takımının ne zaman aşırı yüklendiğini ya da az yüklendiğini tam olarak bil.','Know exactly when your team is overreached or underloaded.')},
-              {label:L('Sağlık Trendleri','Wellness Trends'),desc:L('Kadro genelinde uyku, yorgunluk, ruh hali ve kas ağrısını takip et.','Track sleep, fatigue, mood, and soreness across the roster.')},
-              {label:L('Antrenman Monotonluğu','Training Monotony'),desc:L('Durağanlığa yol açmadan önce çok az çeşitliliğe sahip haftaları belirle.','Identify weeks with too little variation before they cause stagnation.')},
-              {label:L('Sporcu Hazır Oluşu','Athlete Readiness'),desc:L('Kimin sıkı antrenmana hazır, kimin yükünün azaltılması gerektiğini gör.','See who is ready to train hard and who needs a reduction.')},
-            ].map(m=><div key={m.label} className="lp-metric-item"><div className="lp-metric-dot"></div><div><div className="lp-metric-title">{m.label}</div><div className="lp-metric-desc">{m.desc}</div></div></div>)}
-          </div>
-        </div>
-        <div className="lp-cta" style={{marginTop:40}}><button className="lp-btn accent" onClick={openLogin}>{L('Paneline eriş','Access your dashboard')}</button></div>
-      </div></div>)}
-      {lpPage==='pricing'&&(<div className="lp-section"><div className="lp-sec-inner">
-        <div className="lp-sec-label">{L('Fiyatlandırma','Pricing')}</div>
-        <h2 className="lp-sec-h2">{L('Basit, şeffaf fiyatlandırma','Simple, transparent pricing')}</h2>
-        <p className="lp-sec-sub">{L('Ücretsiz başla. Hazır olduğunda büyüt. Gizli ücret yok, sporcu başına koltuk maliyeti yok.','Start free. Scale when you\'re ready. No hidden fees, no per-athlete seat costs.')}</p>
-        <div className="lp-plans">
-          {[
-            {name:L('Başlangıç','Starter'),price:L('Ücretsiz','Free'),desc:L('Yeni başlayan bireysel koçlar için mükemmel.','Perfect for individual coaches getting started.'),features:[L('1 takım','1 team'),L('15 sporcuya kadar','Up to 15 athletes'),L('Sezon planlayıcı','Season planner'),L('Yük takibi','Load monitoring'),L('Egzersiz kütüphanesi','Exercise library')],cta:L('Başla','Get started'),accent:false},
-            {name:L('Pro','Pro'),price:'$49',period:L('/ay','/mo'),desc:L('Birden fazla takımı yöneten antrenman kadroları için.','For coaching staff managing multiple teams.'),features:[L('Sınırsız takım','Unlimited teams'),L('Sınırsız sporcu','Unlimited athletes'),L('Başlangıç\'taki her şey','Everything in Starter'),L('Analitik paneli','Analytics dashboard'),L('Yapay Zeka Koç','AI Coach'),L('Öncelikli destek','Priority support')],cta:L('Pro denemesini başlat','Start Pro trial'),accent:true},
-            {name:L('Kurumsal','Enterprise'),price:L('Özel','Custom'),desc:L('Kulüpler ve yüksek performans enstitüleri için.','For clubs and high-performance institutes.'),features:[L('Pro\'daki her şey','Everything in Pro'),L('Özel entegrasyonlar','Custom integrations'),L('Özel katılım süreci','Dedicated onboarding'),L('SLA ve çalışma süresi garantisi','SLA & uptime guarantee'),L('Beyaz etiket seçenekleri','White-label options')],cta:L('Bize ulaşın','Contact us'),accent:false},
-          ].map(p=><div key={p.name} className={`lp-plan-card${p.accent?' lp-plan-accent':''}`}>
-            <div className="lp-plan-name">{p.name}</div>
-            <div className="lp-plan-price">{p.price}{p.period&&<span className="lp-plan-period">{p.period}</span>}</div>
-            <div className="lp-plan-desc">{p.desc}</div>
-            <ul className="lp-plan-features">{p.features.map(f=><li key={f}>✓ {f}</li>)}</ul>
-            <button className={`lp-btn${p.accent?' accent':' ghost'}`} style={{width:'100%',marginTop:24}} onClick={openLogin}>{p.cta}</button>
-          </div>)}
-        </div>
-      </div></div>)}
-      {showLogin&&(
-      <div className="lp-modal-bg" onClick={()=>setShowLogin(false)}>
-        <div className="panel" style={{width:400,maxWidth:'100%',margin:0}} onClick={e=>e.stopPropagation()}>
-          <div style={{textAlign:'center',marginBottom:24}}>
-            <img src="logo.png" alt="CoachOS" style={{height:52,marginBottom:10}}/>
-            <div style={{fontWeight:700,fontSize:22,color:'var(--text)'}}>{L('Koçluk İşletim Sistemi','The Coaching Operating System')}</div>
-            <div style={{fontSize:13,color:'var(--dim)',marginTop:6}}>{L('Verilerine erişmek için hesabınla giriş yap','Sign in to your account to access your data')}</div>
           </div>
           <GoogleBtn onClick={googleLogin} busy={busy&&tab==='google'}/>
-          {(tab==='google'&&(err||sync.authErr))&&<div style={{color:'var(--red)',fontSize:12,marginTop:10}}>{err||sync.authErr}</div>}
-          <div style={{display:'flex',alignItems:'center',gap:8,margin:'16px 0',color:'var(--dim)',fontSize:12}}>
-            <div style={{flex:1,height:1,background:'var(--border)'}}/>
-            <span>{L('veya','or')}</span>
-            <div style={{flex:1,height:1,background:'var(--border)'}}/>
-          </div>
+          {(tab==='google'&&shownErr)&&<div className="ln-err" role="alert">{shownErr}</div>}
+          <div className="ln-or"><i/><span>{L('veya','or')}</span><i/></div>
           {tab==='google'?(
-            <button className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');}}>{L('E-posta / Şifre ile Giriş','Sign in with Email / Password')}</button>
+            <button type="button" className="btn sec" style={{width:'100%'}} onClick={()=>{setTab('email');setErr('');setNote('');}}>{L('E-posta / Şifre ile Giriş','Sign in with Email / Password')}</button>
           ):(
-            <>
-              <label>{L('E-posta','Email')}</label>
-              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
-              <label style={{marginTop:10}}>{L('Şifre','Password')} {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>{L('(en az 6 karakter)','(at least 6 characters)')}</span>}</label>
-              <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
-                autoComplete={isSignup?'new-password':'current-password'}
-                onKeyDown={e=>{if(e.key==='Enter')emailSubmit();}}
-                placeholder="••••••"/>
-              {err&&<div style={{color:'var(--red)',fontSize:12,marginTop:8}}>{err}</div>}
-              <button className="btn" style={{width:'100%',marginTop:12}} disabled={busy} onClick={emailSubmit}>
+            <form onSubmit={e=>{e.preventDefault();emailSubmit();}} noValidate>
+              <label htmlFor="ln-email">{L('E-posta','Email')}</label>
+              <input id="ln-email" type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" placeholder="ornek@mail.com"/>
+              <label htmlFor="ln-pw" style={{marginTop:10}}>{L('Şifre','Password')} {isSignup&&<span style={{color:'var(--dim)',textTransform:'none'}}>{L('(en az 6 karakter)','(at least 6 characters)')}</span>}</label>
+              <input id="ln-pw" type="password" value={pw} onChange={e=>setPw(e.target.value)}
+                autoComplete={isSignup?'new-password':'current-password'} placeholder="••••••"/>
+              {!isSignup&&<button type="button" className="ln-link ln-forgot" onClick={resetPassword} disabled={busy}>{L('Şifremi unuttum','Forgot password?')}</button>}
+              {shownErr&&<div className="ln-err" role="alert">{shownErr}</div>}
+              {note&&<div className="ln-note" role="status">{note}</div>}
+              <button type="submit" className="btn" style={{width:'100%',marginTop:12}} disabled={busy}>
                 {busy?'…':(isSignup?L('Kayıt Ol','Sign Up'):L('Giriş Yap','Sign In'))}
               </button>
-              <div style={{textAlign:'center',marginTop:10,fontSize:12,color:'var(--dim)'}}>
+              <div className="ln-switch">
                 {isSignup?L('Zaten hesabın var mı? ','Already have an account? '):L('Hesabın yok mu? ','Don\'t have an account? ')}
-                <a style={{color:'var(--accent2)',cursor:'pointer',fontWeight:600}} onClick={()=>{setErr('');setIsSignup(!isSignup);}}>
+                <button type="button" className="ln-link" onClick={()=>{setErr('');setNote('');setIsSignup(!isSignup);}}>
                   {isSignup?L('Giriş yap','Sign in'):L('Kayıt ol','Sign up')}
-                </a>
+                </button>
               </div>
-              <button className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');}}>{L('← Geri','← Back')}</button>
-            </>
+              <button type="button" className="btn sec" style={{width:'100%',marginTop:8,fontSize:12}} onClick={()=>{setTab('google');setErr('');setNote('');}}>{L('← Geri','← Back')}</button>
+            </form>
           )}
+        </section>
+      </main>
+      <section className="ln-feats" aria-label={L('Neler yapabilirsin','What you can do')}>
+        <h2 className="ln-h2">{L('CoachOS ile neler yapabilirsin','What you can do with CoachOS')}</h2>
+        <div className="ln-grid">
+          {LN_FEATURES.map((f,i)=><article key={i} className="ln-feat">
+            <div className="ln-feat-ic" aria-hidden="true">{f.ic}</div>
+            <h3>{L(f.t[0],f.t[1])}</h3>
+            <p>{L(f.d[0],f.d[1])}</p>
+          </article>)}
         </div>
-      </div>
-      )}
-      <LanguageSelector/>
+        <div className="ln-extras">{LN_EXTRAS.map((x,i)=><span key={i}>{L(x[0],x[1])}</span>)}</div>
+      </section>
+      <footer className="ln-foot">
+        <span>© {new Date().getFullYear()} CoachOS</span>
+      </footer>
     </div>
   );
 }
