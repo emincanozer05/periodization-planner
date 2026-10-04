@@ -252,6 +252,14 @@ function AllTeamsCalendar({teams,activeTeamId,openDay}){
   </div>);
 }
 
+function ThemePicker(){
+  const t=useAppTheme();
+  return(<div className="th-seg" role="radiogroup" aria-label={L('Tema','Theme')}>
+    {[['dark',L('Koyu','Dark'),'☾'],['light',L('Açık','Light'),'☀']].map(([k,lbl,ic])=>
+      <button key={k} type="button" role="radio" aria-checked={t===k} className={t===k?'on':''} onClick={()=>setTheme(k)}>
+        <span aria-hidden="true">{ic}</span>{lbl}</button>)}
+  </div>);
+}
 function Setup({team,updateTeam,data,setData}){
   const s=team.setup;const u=(k,v)=>updateTeam(team.id,{setup:{...s,[k]:v}});
   /* Several setup keys in ONE write. Two `u` calls in a row would each build their
@@ -447,6 +455,11 @@ function Setup({team,updateTeam,data,setData}){
         you switch on once and forget. */}
     <div className="panel su-panel"><h2>{L('Bildirimler','Notifications')}</h2>
       <PushCard/>
+    </div>
+
+    <div className="panel su-panel"><h2>{L('Görünüm','Appearance')}</h2>
+      <p className="su-lead">{L('Tema bu cihaz için saklanır.','The theme is saved for this device.')}</p>
+      <ThemePicker/>
     </div>
 
     <div className="panel su-panel"><h2>{L('Gizlilik ve KVKK','Privacy')}</h2>

@@ -36,6 +36,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 |---|---|
 | `00-head.html` | `<head>`: meta, CDN etiketleri, Firebase başlatma, service worker kaydı |
 | `10-styles.css` | Tüm CSS |
+| `15-theme-light.css` | Açık tema: elle yazılmış değişkenler + `tools/gen-light-theme.js`'in ürettiği bölüm (10-styles.css'te sabit koyu renk değişince yeniden çalıştır) |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
