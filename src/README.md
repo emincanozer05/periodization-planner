@@ -12,6 +12,13 @@ tek genel kapsam (parçalar arası `import` yok): bir parça başka parçadaki a
 CI üç şeyi denetler: `node assemble.js --check` (`index.html` `src/`'den üretilenle aynı mı),
 her parçanın tek başına derlenmesi (`check-syntax.js`) ve `node deps.js --check`.
 
+## Gerçek tarayıcıda duman sınaması
+`node build.js && node tools/smoke-test.js`: dist/ altındaki GERÇEK siteyi Chromium'da açar
+(kütüphaneler npm'den, Firebase ağı kapalı, sahte oturum), kenar çubuğundaki her sekmeyi gezer
+ve hata/boş sekme varsa kırmızı verir. Kod yapısını değiştiren işlerde önce/sonra karşılaştırması
+için: `--save onceki.json`, değişiklikten sonra `--compare onceki.json` (aynı gün içinde).
+CI'da çalışmaz (Chromium ve npm erişimi ister); yapıyı değiştiren her PR'dan önce elle çalıştır.
+
 ## Parça sırası neden önemli
 Betik tek parça gibi çalıştığı için bir parça, yükleme sırasında (bir işlevin DIŞINDA) yalnızca
 kendinden ÖNCEKİ parçalardaki adları kullanabilir; işlevlerin içinde ise sonraki parçalardaki
