@@ -83,6 +83,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/440-sync-infra-chunking-merge.jsx` | ROOT · CLOUD SYNC — Firestore parçalı, İÇERİK ADRESLİ (Storage YOK) · ÜÇ YÖNLÜ BİRLEŞTİRME (3-way merge) |
 | `app/450-use-cloud-sync.jsx` | — |
 | `app/460-auth-ui-cloud-bar.jsx` | — |
+| `app/465-privacy-notice.jsx` | KVKK aydınlatma metni (taslak), PrivacyNotice / PrivacyLink |
 | `app/470-exercise-taxonomy-text.jsx` | EXERCISES LIBRARY |
 | `app/480-exercise-video-picker.jsx` | — |
 | `app/490-exercise-modal-cards.jsx` | — |

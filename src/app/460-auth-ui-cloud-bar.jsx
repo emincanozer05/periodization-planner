@@ -173,6 +173,7 @@ function LoginPage({sync}){
               <button type="submit" className="btn" style={{width:'100%',marginTop:12}} disabled={busy}>
                 {busy?'…':(isSignup?L('Kayıt Ol','Sign Up'):L('Giriş Yap','Sign In'))}
               </button>
+              {isSignup&&<div className="ln-legal">{L('Kayıt olarak ','By signing up you confirm you have read the ')}<PrivacyLink>{L('KVKK Aydınlatma Metni','Privacy Notice')}</PrivacyLink>{L('\'ni okuduğunu kabul edersin.','.')}</div>}
               <div className="ln-switch">
                 {isSignup?L('Zaten hesabın var mı? ','Already have an account? '):L('Hesabın yok mu? ','Don\'t have an account? ')}
                 <button type="button" className="ln-link" onClick={()=>{setErr('');setNote('');setIsSignup(!isSignup);}}>
@@ -197,6 +198,7 @@ function LoginPage({sync}){
       </section>
       <footer className="ln-foot">
         <span>© {new Date().getFullYear()} CoachOS</span>
+        <PrivacyLink/>
       </footer>
     </div>
   );
