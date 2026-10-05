@@ -33,7 +33,7 @@ const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:un
    takes up the few pixels between them; on a narrow screen the columns fold into one
    list in the template's own order. */
 const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','conditioning']];
-function AtpProfile({q,onSet}){
+function AtpProfile({q,onSet,onClear}){
   const rated=ATP_QUALITIES.filter(it=>q[it.id]);
   const byPri=id=>rated.filter(it=>q[it.id].priority===id);
   /* High is capped (ATP_HIGH_MAX): once it is full, High is offered on no other
@@ -69,6 +69,8 @@ function AtpProfile({q,onSet}){
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
           {ATP_PRIORITY.map(p=><span key={p.id} className="atp-key-i"><span className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{atpT(p.en)}</span>{L(p.dTr,p.dEn)}</span>)}</div>
+        <button className="atp-clear" disabled={!rated.length} onClick={onClear}
+          title={L('Seçili tüm öncelikleri kaldır','Remove every selected priority')}>{L('Temizle','Clear')}</button>
       </div>
       <div className="atp-lanes">{ATP_PRIORITY.map(p=>{const its=byPri(p.id);return(
         <div key={p.id} className={`atp-lane pr-${p.id}`}>
@@ -453,6 +455,12 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(cur.priority)nx[id]=cur;else delete nx[id];
     save({qualities:nx});
   };
+  /* Clear: every priority set on the Athletic Profile is taken off (asked first — there is no undo). */
+  const clearQ=()=>{
+    if(!Object.keys(tp.qualities).length)return;
+    if(!confirm(L('Atletik Profil\'deki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Profile?')))return;
+    save({qualities:{}});
+  };
   /* A joint's level for one need; clicking the level that is on takes it off. A joint
      left with neither need nor note is dropped from the record. */
   const setJ=(key,field,v)=>{
@@ -481,15 +489,6 @@ function TrainingProfileTab({ath,updAth,exercises}){
       s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
   ];
   return(<div className="atp-wrap">
-    <div className="atp-intro">
-      <div className="atp-intro-ic">◎</div>
-      <div className="atp-intro-tx">
-        <div className="atp-intro-t">{atpT('Athlete Profile')}</div>
-        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: eklem ihtiyaçları (Joint by Joint), atletik profil (her kalitenin önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
-          'Defines the athlete as a trainee: joint needs (Joint by Joint), the athletic profile (each quality’s priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
-      </div>
-      {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
-    </div>
     <div className="atp-glance">{tiles.map(t=>
       <button key={t.id} className="atp-gl" style={{'--gc':t.c}} onClick={()=>go(t.id)}>
         <div className="k">{t.k}</div>
@@ -497,7 +496,7 @@ function TrainingProfileTab({ath,updAth,exercises}){
         <div className="s" title={t.s}>{t.s}</div>
       </button>)}</div>
     <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
-    <AtpProfile q={tp.qualities} onSet={setQ}/>
+    <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
     <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
   </div>);

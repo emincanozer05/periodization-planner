@@ -2106,18 +2106,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pr-low{--lc:#60a5fa;--lb:#12203a;--ld:#2563eb}
 .cn-hard{--lc:#fca5a5;--ld:#ef4444}
 .cn-soft{--lc:#fcd34d;--ld:#f59e0b}
-/* ---- intro + the three tiles ---- */
-.atp-intro{display:flex;align-items:flex-start;gap:14px;padding:15px 18px;border-radius:16px;border:1px solid var(--border);
-  background:var(--panel)}
-.atp-intro-ic{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--accent-bg);
-  border:1px solid rgba(0,148,255,.36);color:var(--accent2);font-size:17px;line-height:1}
-.atp-intro-tx{flex:1;min-width:0}
-.atp-intro-t{font-size:15px;font-weight:700;letter-spacing:.01em;color:var(--text)}
-.atp-intro-d{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6;max-width:880px}
-.atp-intro-up{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.atp-intro-up b{font-size:12px;color:var(--text2);letter-spacing:.02em}
-@media(max-width:640px){.atp-intro{flex-wrap:wrap}.atp-intro-up{align-items:flex-start;flex-direction:row;gap:8px}}
+/* ---- the tiles ---- */
 .atp-glance{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media(max-width:1100px){.atp-glance{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.atp-glance{grid-template-columns:minmax(0,1fr)}}
@@ -2139,8 +2128,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-hc b{font-size:12.5px;color:var(--lc);letter-spacing:0}
 .atp-hc.atp-auto{color:var(--accent2);border-color:rgba(0,148,255,.32);background:var(--accent-bg)}
 /* ---- athletic profile: the key to the two scales, one line each ---- */
-.atp-key{display:flex;flex-wrap:wrap;gap:8px 28px;padding:14px 0 2px}
+.atp-key{display:flex;flex-wrap:wrap;align-items:center;gap:8px 28px;padding:14px 0 2px}
 .atp-key-g{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;min-width:0}
+.atp-clear{margin-left:auto;padding:6px 14px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--text2);
+  font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.atp-clear:hover:not(:disabled){border-color:#ef4444;color:#ef4444;background:rgba(239,68,68,.08)}
+.atp-clear:disabled{opacity:.4;cursor:default}
 .atp-key-k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);min-width:58px}
 .atp-key-i{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
 .atp-tag{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:6px;background:var(--lb);color:var(--lc);
@@ -26047,7 +26040,7 @@ const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:un
    takes up the few pixels between them; on a narrow screen the columns fold into one
    list in the template's own order. */
 const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','conditioning']];
-function AtpProfile({q,onSet}){
+function AtpProfile({q,onSet,onClear}){
   const rated=ATP_QUALITIES.filter(it=>q[it.id]);
   const byPri=id=>rated.filter(it=>q[it.id].priority===id);
   /* High is capped (ATP_HIGH_MAX): once it is full, High is offered on no other
@@ -26083,6 +26076,8 @@ function AtpProfile({q,onSet}){
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
           {ATP_PRIORITY.map(p=><span key={p.id} className="atp-key-i"><span className={`atp-tag pr-${p.id}`}>{atpBars(p.bars)}{atpT(p.en)}</span>{L(p.dTr,p.dEn)}</span>)}</div>
+        <button className="atp-clear" disabled={!rated.length} onClick={onClear}
+          title={L('Seçili tüm öncelikleri kaldır','Remove every selected priority')}>{L('Temizle','Clear')}</button>
       </div>
       <div className="atp-lanes">{ATP_PRIORITY.map(p=>{const its=byPri(p.id);return(
         <div key={p.id} className={`atp-lane pr-${p.id}`}>
@@ -26467,6 +26462,12 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(cur.priority)nx[id]=cur;else delete nx[id];
     save({qualities:nx});
   };
+  /* Clear: every priority set on the Athletic Profile is taken off (asked first — there is no undo). */
+  const clearQ=()=>{
+    if(!Object.keys(tp.qualities).length)return;
+    if(!confirm(L('Atletik Profil\'deki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Profile?')))return;
+    save({qualities:{}});
+  };
   /* A joint's level for one need; clicking the level that is on takes it off. A joint
      left with neither need nor note is dropped from the record. */
   const setJ=(key,field,v)=>{
@@ -26495,15 +26496,6 @@ function TrainingProfileTab({ath,updAth,exercises}){
       s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
   ];
   return(<div className="atp-wrap">
-    <div className="atp-intro">
-      <div className="atp-intro-ic">◎</div>
-      <div className="atp-intro-tx">
-        <div className="atp-intro-t">{atpT('Athlete Profile')}</div>
-        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: eklem ihtiyaçları (Joint by Joint), atletik profil (her kalitenin önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
-          'Defines the athlete as a trainee: joint needs (Joint by Joint), the athletic profile (each quality’s priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
-      </div>
-      {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
-    </div>
     <div className="atp-glance">{tiles.map(t=>
       <button key={t.id} className="atp-gl" style={{'--gc':t.c}} onClick={()=>go(t.id)}>
         <div className="k">{t.k}</div>
@@ -26511,7 +26503,7 @@ function TrainingProfileTab({ath,updAth,exercises}){
         <div className="s" title={t.s}>{t.s}</div>
       </button>)}</div>
     <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
-    <AtpProfile q={tp.qualities} onSet={setQ}/>
+    <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
     <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
   </div>);
@@ -33183,6 +33175,10 @@ const ATP_JOINT_ROWS=ATP_JOINTS.flatMap(j=>j.bi
   ?[{key:j.id+'_r',joint:j,side:'Right'},{key:j.id+'_l',joint:j,side:'Left'}]
   :[{key:j.id,joint:j,side:null}]);
 const atpJointLv=id=>Math.max(0,ATP_JOINT_LEVELS.findIndex(l=>l.id===id)+1);
+/* The colour the mannequin draws a level in — the word the JSON carries beside it, so
+   "red zones first" is said in the data as well as in the instructions. */
+const ATP_JOINT_ZONE={high:'red',medium:'yellow',low:'green'};
+const atpJointZone=id=>ATP_JOINT_ZONE[id]||null;
 /* The joint's name with its side, in English — the word the JSON carries. */
 const atpJointName=r=>r.side?`${r.side} ${r.joint.en}`:r.joint.en;
 /* The stored profile, read defensively. Hard and Soft are two lists and stay two: a
@@ -33695,15 +33691,20 @@ function atpSnapshot(ath,ref,libMap,setup){
     description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
       'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine, neck, shoulder, wrist — need mobility. '+
       'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
-      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need.',
+      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
+      'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',
     level_scale:Object.fromEntries(ATP_JOINT_LEVELS.map(l=>[l.en,l.dEn])),
-    use:'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
+    use:'Joint-by-Joint priority: write the programme red zones first — every High (red) joint is addressed before any Medium or Low joint, '+
+      'in priority_order, and none of the Medium / Low work may crowd a High joint out of the session. '+
+      'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
       'every High need gets targeted work in the session, Medium needs regular work in the preparation block, Low needs a short maintenance dose. '+
       'Mobility need: give the joint its range (mobilisation, dynamic stretching, end-range control) before it is loaded. '+
       'Stability need: train the joint for control (isometrics, anti-movement, balance, slow eccentrics) — no mobilisation for more range, '+
       'and do not load it at an end range it cannot control. A joint need is not a diagnosis: pain is for the medical staff.',
+    /* Red (High) first: the order the programme is to be written in. */
+    priority_order:jRows.map((x,i)=>({rank:i+1,joint:atpJointName(x.r),level:en(ATP_JOINT_LEVELS,x.j.level),zone:atpJointZone(x.j.level)})),
     joints:jRows.map(({r,j})=>({joint:atpJointName(r),...(r.side?{side:r.side}:{}),
-      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),
+      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),zone:atpJointZone(j.level),
       ...(j.note&&j.note.trim()?{note:j.note.trim()}:{})})),
     /* The same, by need and level, the names alone; an empty level or need is left out. */
     by_need:Object.fromEntries(ATP_JOINT_NEEDS.map(n=>[n.id,Object.fromEntries([...ATP_JOINT_LEVELS].reverse()
@@ -35711,7 +35712,7 @@ const DI_EXT_TASK=[
   'measured_deficits and the test comments are observations, not diagnoses: do not infer a cause from them and do not turn them into exercises automatically (no "finding → assumed cause → corrective exercise" chain). Weigh them with everything above them in decision_hierarchy and address one only where it fits today\'s session. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
   'Safety comes first: when a coach_brief instruction would break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts. The coach\'s movement_patterns are not dropped for pain: the coach has opened them for today, so write each one as a pain-free, modified variation of the same pattern.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, over the last 7 and 28 days, and what the last session held (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
-  'training_profile.joint_needs, where present, is the coach\'s Joint-by-Joint reading of the athlete: which joint, on which side, needs its Joint-by-Joint need (mobile joints mobility, stable joints stability — one need per joint) and how much (High > Medium > Low). Build the preparation phase from it — every High need gets targeted work today, Medium needs regular work in the preparation block, Low needs a short maintenance dose — and any corrective or rehabilitation work; a stable joint (knee, low back, foot, scapula, elbow) gets control work, never mobilisation for more range, and is not loaded at an end range it cannot control. It is not a diagnosis.',
+  'training_profile.joint_needs, where present, is the coach\'s Joint-by-Joint reading of the athlete: which joint, on which side, needs its Joint-by-Joint need (mobile joints mobility, stable joints stability — one need per joint) and how much (High > Medium > Low). Joint-by-Joint priority: red zones first — joint_needs.priority_order lists the joints with High (red) first, and the programme is written in that order, so every High joint is addressed before any Medium or Low one. Build the preparation phase from it — every High need gets targeted work today, Medium needs regular work in the preparation block, Low needs a short maintenance dose — and any corrective or rehabilitation work; a stable joint (knee, low back, foot, scapula, elbow) gets control work, never mobilisation for more range, and is not loaded at an end range it cannot control. It is not a diagnosis.',
   'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists, for every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement), the values that were not done (not_done_last_7_days, not_done_last_28_days); what was done is in exercise_exposure.exercises — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
