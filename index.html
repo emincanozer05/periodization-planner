@@ -2348,71 +2348,76 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .atp-ex-r .atp-ly-bar,.atp-ly-r .atp-ly-bar{display:none}
 }
 
-/* ---- 4 · Joint by Joint: two mannequins beside the table ----
-   Mobile joints blue, stable joints orange — the Joint-by-Joint chart's own colours —
-   on the figure and in the table alike; how much is the priority scale's own colours
-   and meters (Low blue, Medium yellow, High red). */
+/* ---- 4 · Joint by Joint: rated on the mannequins ----
+   The joint's ring is its need — mobile blue, stable orange, the Joint-by-Joint chart's
+   own colours; the fill is how much — green Low, yellow Medium, red High. */
 .jb-mobility{--jc:#4f8fe8;--jb:rgba(79,143,232,.12)}
 .jb-stability{--jc:#f28c28;--jb:rgba(242,140,40,.12)}
+.jl-low{--lv:#22c55e;--lvb:rgba(34,197,94,.13)}
+.jl-medium{--lv:#facc15;--lvb:rgba(250,204,21,.13)}
+.jl-high{--lv:#ef4444;--lvb:rgba(239,68,68,.14)}
 .atp-hc.jb-mobility i,.atp-hc.jb-stability i{background:var(--jc)}
-.atp-jb-kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-@media(max-width:640px){.atp-jb-kinds{grid-template-columns:minmax(0,1fr)}}
-.atp-jb-kind{display:flex;flex-direction:column;gap:4px;padding:10px 13px;border-radius:11px;border:1px solid var(--jc);background:var(--jb)}
-.atp-jb-kind b{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--jc)}
-.atp-jb-kind span{font-size:12.5px;color:var(--text2);line-height:1.5}
-.atp-jb{display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr);gap:16px;align-items:start;margin-top:12px}
-@media(max-width:980px){.atp-jb{grid-template-columns:minmax(0,1fr)}}
-.atp-jb-figs{position:sticky;top:12px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);padding:14px 10px 10px}
-@media(max-width:980px){.atp-jb-figs{position:static}}
-.atp-jb-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:400px;margin:0 auto}
-.atp-jb-fig{margin:0;display:flex;flex-direction:column;align-items:center;min-width:0}
-.atp-jb-fig figcaption{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--dim);margin-top:6px}
+.atp-jb{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.atp-jb-figs{flex:0 1 380px;min-width:260px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);padding:10px 8px 4px}
+.atp-jb-pair{position:relative;display:grid;grid-template-columns:1fr 1fr}
 .atp-jb-svg{width:100%;height:auto;display:block;overflow:visible}
 .atp-jb-body{fill:#2a3039;filter:drop-shadow(0 0 .6px rgba(150,160,175,.55))}
 .atp-jb-lines{fill:none;stroke:rgba(150,160,175,.32);stroke-width:1;stroke-linecap:round}
 .atp-jb-lines .atp-jb-spine{stroke:rgba(150,160,175,.55);stroke-width:2.2}
-.atp-jb-side{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;fill:var(--dim)}
+.atp-jb-side,.atp-jb-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;fill:var(--dim)}
+.atp-jb-cap{font-size:11px;letter-spacing:.12em}
 .atp-jb-m{cursor:pointer;outline:none}
-.atp-jb-empty{fill:rgba(16,18,22,.55);stroke:var(--jc);stroke-width:1.6;stroke-dasharray:2.6 2.1}
+.atp-jb-hit{fill:transparent}
+.atp-jb-empty{fill:rgba(16,18,22,.55);stroke:var(--jc);stroke-width:1.7;stroke-dasharray:2.6 2.1}
 .atp-jb-m:hover .atp-jb-empty{stroke-dasharray:none;fill:var(--jb)}
-.atp-jb-dot{fill:var(--jc);stroke:rgba(255,255,255,.85);stroke-width:1.2}
-.atp-jb-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;fill:#fff;text-anchor:middle;pointer-events:none}
-.atp-jb-halo{fill:none;stroke:var(--accent);stroke-width:2}
+.atp-jb-dot{fill:var(--lv);stroke:var(--jc);stroke-width:2.6}
+.atp-jb-m:hover .atp-jb-dot{stroke-width:3.4}
+.atp-jb-halo{fill:none;stroke:var(--text);stroke-width:1.6}
 .atp-jb-m:focus-visible .atp-jb-halo,.atp-jb-m:focus-visible .atp-jb-empty{stroke:var(--accent)}
-.atp-jb-leg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;padding-top:9px;border-top:1px solid var(--border);
-  font-size:11px;color:var(--muted)}
-.atp-jb-leg span{display:inline-flex;align-items:center;gap:5px}
-.atp-jb-leg-n{flex-basis:100%;justify-content:center;color:var(--dim);font-size:10.5px}
-.jb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--jc)}
-.jb-dot.jb-none{background:none;border:1.4px dashed var(--muted)}
+/* the picker */
+.atp-jb-pop{position:absolute;z-index:6;width:224px;transform:translate(-50%,16px);padding:10px;border-radius:12px;
+  border:1px solid var(--border2);background:var(--panel);box-shadow:0 10px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px}
+.atp-jb-pop.up{transform:translate(-50%,calc(-100% - 16px))}
+.atp-jb-pop-h{display:flex;align-items:center;gap:8px}
+.atp-jb-pop-h b{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text)}
+.atp-jb-pop-h .atp-x{flex:none}
+.atp-jb-lvs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.atp-jb-lvs button{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:30px;padding:0 6px;border-radius:8px;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--muted);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.atp-jb-lvs button i{width:8px;height:8px;border-radius:50%;background:var(--lv)}
+.atp-jb-lvs button:hover{color:var(--text);border-color:var(--lv)}
+.atp-jb-lvs button.on{background:var(--lvb);border-color:var(--lv);color:var(--text)}
+.atp-jb-lvs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.atp-jb-pop-d{font-size:10.5px;color:var(--dim);line-height:1.45}
+.atp-jb-note{height:30px;padding:0 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);
+  color:var(--text);font:inherit;font-size:12px;min-width:0}
+.atp-jb-note:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
 .atp-jb-tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--jc);white-space:nowrap}
 .atp-jb-tag i{width:7px;height:7px;border-radius:50%;background:var(--jc)}
-.atp-jb-tbl{border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden;min-width:0}
-.atp-jb-hr,.atp-jb-r{display:grid;grid-template-columns:minmax(110px,1fr) 96px 186px;align-items:center;gap:8px 12px;padding:6px 12px 6px 13px}
-.atp-jb-hr{background:var(--elevated);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding-top:9px;padding-bottom:9px}
-.atp-jb-r{border-top:1px solid var(--border);cursor:pointer}
-.atp-jb-hr+.atp-jb-r{border-top:none}
-.atp-jb-r.pair+.atp-jb-r{border-top:1px dashed var(--border)}
-.atp-jb-r:hover{background:var(--hover)}
-.atp-jb-r.set{box-shadow:inset 3px 0 0 var(--accent)}
-.atp-jb-r.on{background:var(--accent-bg)}
-.atp-jb-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;min-width:0}
-.atp-jb-n b{font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
-.atp-jb-r.set .atp-jb-n b{color:var(--text)}
-.atp-jb-n small{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.atp-jb-c{display:flex;align-items:center}
-.atp-jb-c .atp-seg{width:186px}
-.atp-jb-note{grid-column:1/-1;height:30px;padding:0 10px;border:1px solid var(--border2);border-radius:8px;background:var(--panel);
-  color:var(--text);font:inherit;font-size:12px}
-.atp-jb-note:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
-@media(max-width:560px){
-  .atp-jb-hr{display:none}
-  .atp-jb-r{grid-template-columns:minmax(0,1fr) auto;padding-top:9px;padding-bottom:9px}
-  .atp-jb-c{grid-column:1/-1}
-  .atp-jb-c .atp-seg{width:100%;max-width:280px}
-}
+/* the list of what is marked, and the key */
+.atp-jb-side-col{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.atp-jb-sum{border:1px solid var(--border);border-radius:12px;background:var(--bg2);padding:10px 12px}
+.atp-jb-sum-h{display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.atp-jb-sum-h b{font-size:12px;color:var(--text2)}
+.atp-jb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.atp-jb-chip{display:inline-flex;align-items:stretch;border:1px solid var(--lv);border-radius:8px;background:var(--lvb);overflow:hidden}
+.atp-jb-chip.on{box-shadow:0 0 0 1px var(--lv)}
+.atp-jb-chip-b{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 8px;border:none;background:none;color:var(--text);
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.atp-jb-chip-b i{width:8px;height:8px;border-radius:50%;background:var(--lv)}
+.atp-jb-chip-b small{font-size:10.5px;font-weight:500;color:var(--muted)}
+.atp-jb-chip-b em{font-style:normal;font-size:10px;color:var(--dim)}
+.atp-jb-chip-x{border:none;background:none;color:var(--dim);padding:0 7px;cursor:pointer;font-size:10px}
+.atp-jb-chip-x:hover{color:var(--text)}
+.atp-jb-chip button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.atp-jb-none{font-size:12px;color:var(--muted)}
+.atp-jb-leg{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);padding:0 2px}
+.atp-jb-leg>div{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px}
+.atp-jb-leg span{display:inline-flex;align-items:center;gap:5px}
+.atp-jb-leg .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);min-width:48px}
+.jb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lv)}
+.jb-ring{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--jc)}
 /* Dated notes panel — arrow-navigated, light (non-italic) body text */
 .notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .notes-add{width:auto;flex:none;padding:6px 12px;font-size:12px;background:var(--elevated);border:1px solid var(--border2);border-radius:8px;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
@@ -6744,6 +6749,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .atp-jb-lines{stroke:rgba(15,23,42,.22)}
 :root[data-theme="light"] .atp-jb-lines .atp-jb-spine{stroke:rgba(15,23,42,.4)}
 :root[data-theme="light"] .atp-jb-empty{fill:rgba(255,255,255,.7)}
+:root[data-theme="light"] .atp-jb-pop{box-shadow:0 10px 28px rgba(15,23,42,.16)}
 
 /* Ayarlar → Görünüm seçicisi (her iki temada) */
 .th-seg{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--border2);border-radius:12px;background:var(--elevated)}
@@ -6863,7 +6869,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .atp-ex-r:hover,
 :root[data-theme="light"] .atp-ly-r:hover{background:rgba(15,23,42,.02)}
 :root[data-theme="light"] .atp-ly-bar.x-high i{background:var(--elevated)}
-:root[data-theme="light"] .atp-jb-dot{stroke:rgba(15,23,42,.85)}
+:root[data-theme="light"] .atp-jb-pop{box-shadow:0 10px 28px rgba(15,23,42,0.18)}
 :root[data-theme="light"] .exf-btn{background:rgba(15,23,42,.025)}
 :root[data-theme="light"] .exf-btn:hover{background:rgba(15,23,42,.05)}
 :root[data-theme="light"] .exf-menu{box-shadow:0 14px 34px -10px rgba(15,23,42,0.25)}
@@ -26272,17 +26278,20 @@ function AtpExposure({exp,refDate,setRefDate}){
     </div>
   </div>);
 }
-/* ---- Joint by Joint: the two mannequins and the table ----
+/* ---- Joint by Joint: rated on the mannequins themselves ----
    A figure seen from the front and one from the back. The front is drawn facing the
    coach, so the athlete's right is on the left of the picture; the back the other way
-   round. Each joint is a marker in its need's colour — blue for a mobile joint, orange
-   for a stable one, the Joint-by-Joint chart's own colours: an empty dashed ring while
-   it is not rated, a filled disc once it is, growing with the level it carries as a
-   number. Clicking a marker picks the joint's row in the table, where it is rated.
+   round. Every joint is a marker: while it is not rated, a dashed ring in its need's
+   colour (blue for a mobile joint, orange for a stable one — the Joint-by-Joint chart's
+   colours); once rated, a disc filled in the colour of the level (green Low, yellow
+   Medium, red High) inside a ring of its need's colour. Clicking a joint opens a small
+   picker next to it, which closes once a level is picked (a note is typed before, or
+   on reopening the joint); what is marked is listed in one compact box beside the figures,
+   so the section takes little room.
 
    The body is drawn as halves: each shape is written once for the right of the picture
    and drawn again mirrored, so the figure is symmetric by construction. */
-const ATP_JB_W=200,ATP_JB_H=446;
+const ATP_JB_W=200,ATP_JB_H=462;
 const ATP_JB_HALF={
   torso:'M99.5 50L108 50C108 58 110 64 116 67C126 71 138 72 143 80C147 88 146 102 141 114C137 132 133 150 131 168C130 182 134 194 138 207C141 221 137 235 128 244L99.5 247Z',
   arm:'M137 82C147 80 154 90 154 106C155 124 157 140 157 157C159 177 162 201 162 227C164 239 166 251 163 263C159 271 152 269 152 259C150 249 150 240 152 230C150 206 145 181 142 161C140 145 138 129 138 113Z',
@@ -26296,6 +26305,8 @@ const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
   if(!r.side)return[x,y];
   const leftOfPic=(view==='front')===(r.side==='Right');
   return[leftOfPic?ATP_JB_W-x:x,y];};
+/* A joint's name with its side, in the app language. */
+const atpJbLabel=r=>`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
 function AtpMannequin({view,joints,sel,onPick}){
   const mir=`translate(${ATP_JB_W} 0) scale(-1 1)`;
   const both=d=><><path d={d}/><path d={d} transform={mir}/></>;
@@ -26303,23 +26314,22 @@ function AtpMannequin({view,joints,sel,onPick}){
     const[x,y]=atpJbXY(r,view);
     const j=joints[r.key]||{};
     const lv=atpJointLv(j.level);
-    const rad=lv?6.5+lv*1.7:6;
+    const rad=lv?8.5:6.5;
     const on=sel===r.key;
     const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
-    const tip=`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)} — ${atpT(need.en)}: ${lv?atpT(ATP_JOINT_LEVELS[lv-1].en):'—'}`;
-    const pick=()=>onPick(r.key);
-    return(<g key={r.key} className={`atp-jb-m jb-${r.joint.need}${on?' on':''}${lv?' set':''}`} transform={`translate(${x} ${y})`}
-      role="button" tabIndex={0} aria-label={tip} aria-pressed={on}
-      onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}}}>
+    const tip=`${atpJbLabel(r)} — ${atpT(need.en)}: ${lv?atpT(ATP_JOINT_LEVELS[lv-1].en):'—'}`;
+    const pick=e=>{e.stopPropagation();onPick(r.key);};
+    return(<g key={r.key} className={`atp-jb-m jb-${r.joint.need}${lv?` jl-${j.level}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
+      role="button" tabIndex={0} aria-label={tip} aria-pressed={on} aria-haspopup="dialog"
+      onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}}}>
       <title>{tip}</title>
+      <circle className="atp-jb-hit" r="13"/>
       {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
       <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
-      {lv>0&&<text className="atp-jb-n" dy="0.36em">{lv}</text>}
     </g>);
   };
   const front=view==='front';
-  return(<figure className="atp-jb-fig">
-    <svg viewBox={`0 0 ${ATP_JB_W} ${ATP_JB_H}`} className="atp-jb-svg" role="group"
+  return(<svg viewBox={`0 0 ${ATP_JB_W} ${ATP_JB_H}`} className="atp-jb-svg" role="group"
       aria-label={`${atpT(front?'Front':'Back')} — ${atpT('Joint by Joint')}`}>
       <g className="atp-jb-body">
         {both(ATP_JB_HALF.arm)}{both(ATP_JB_HALF.leg)}{both(ATP_JB_HALF.torso)}
@@ -26336,71 +26346,86 @@ function AtpMannequin({view,joints,sel,onPick}){
           {both('M100 222C110 232 124 234 134 226')}{both('M118 330C122 326 128 326 132 330')}</g>}
       <text className="atp-jb-side" x="8" y="300">{atpT(front?'Right':'Left')}</text>
       <text className="atp-jb-side" x={ATP_JB_W-8} y="300" textAnchor="end">{atpT(front?'Left':'Right')}</text>
+      <text className="atp-jb-cap" x={ATP_JB_W/2} y={ATP_JB_H-6} textAnchor="middle">{atpT(front?'Front':'Back')}</text>
       {ATP_JOINT_ROWS.filter(r=>r.joint.view===view).map(marker)}
-    </svg>
-    <figcaption>{atpT(front?'Front':'Back')}</figcaption>
-  </figure>);
+    </svg>);
+}
+/* The picker that opens next to a joint: its need, the three levels and a note. It sits
+   over the figures, below the joint (above it for the lower half of the body), and is
+   kept inside the card at the edges. */
+function AtpJointPop({r,j,onSet,onNote,onClose}){
+  const view=r.joint.view,[x,y]=atpJbXY(r,view);
+  const left=(view==='front'?0:50)+x/ATP_JB_W*50,top=y/ATP_JB_H*100;
+  const up=top>58;
+  const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
+  return(<div className={`atp-jb-pop${up?' up':''}`} role="dialog" aria-label={atpJbLabel(r)}
+    style={{left:`clamp(112px, ${left}%, calc(100% - 112px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
+    <div className="atp-jb-pop-h">
+      <b>{atpJbLabel(r)}</b>
+      <span className={`atp-jb-tag jb-${need.id}`}><i/>{atpT(need.en)}</span>
+      <button className="atp-x" onClick={onClose} aria-label={L('Kapat','Close')} title={L('Kapat','Close')}>✕</button>
+    </div>
+    <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
+      <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
+        title={L(l.dTr,l.dEn)} onClick={()=>{onSet(r.key,'level',l.id);onClose();}}><i/>{atpT(l.en)}</button>)}</div>
+    <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(r.key,e.target.value)} autoFocus={false}
+      placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
+    {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
+  </div>);
 }
 function AtpJoints({joints,onSet,onNote}){
   const[sel,setSel]=useState(null);
-  const pick=key=>{
-    setSel(k=>k===key?null:key);
-    const el=document.getElementById('atp-jr-'+key);
-    if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'nearest'});
-  };
-  const count=id=>ATP_JOINT_ROWS.filter(r=>r.joint.need===id&&(joints[r.key]||{}).level).length;
-  const needTag=id=>{const n=ATP_JOINT_NEEDS.find(x=>x.id===id);return<span className={`atp-jb-tag jb-${id}`}><i/>{atpT(n.en)}</span>;};
-  const listOf=id=>ATP_JOINTS.filter(j=>j.need===id).map(j=>atpT(j.en)).join(' · ');
+  const boxRef=useRef(null);
+  /* A click anywhere outside the figures and the list, or Escape, closes the picker. */
+  useEffect(()=>{
+    if(!sel)return;
+    const down=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setSel(null);};
+    const key=e=>{if(e.key==='Escape')setSel(null);};
+    document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
+    return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
+  },[sel]);
+  const pick=key=>setSel(k=>k===key?null:key);
+  /* The marked joints, the strongest need first, head to foot within one level. */
+  const marked=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:joints[r.key]||{}})).filter(x=>x.j.level)
+    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
+  const count=id=>marked.filter(x=>x.r.joint.need===id).length;
+  const selRow=sel&&ATP_JOINT_ROWS.find(r=>r.key===sel);
   return(<div className="sc-sec" id="atp-s4">
     <AtpSecHead n={4} title={atpT('Joint by Joint')}
-      desc={L('Joint by Joint yaklaşımı: eklemler aşağıdan yukarı sırayla stabil ve mobil olarak dizilir. Her eklemin tek bir ihtiyacı vardır — diz stabil bir eklemdir, mobiliteye değil stabiliteye ihtiyaç duyar. Sporcunun değerlendirmesine göre her eklem ve taraf için bu ihtiyacın düzeyini Düşük / Orta / Yüksek olarak işaretle. Bilgiler bireyselleştirme JSON\'una yazılır ve hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
-        'The Joint-by-Joint approach: up the body the joints alternate between stable and mobile. Each joint has one need — the knee is a stable joint, it needs stability, not mobility. Mark how much of that need the athlete has, from the assessment, per joint and side as Low / Medium / High. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
+      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç. Bilgiler bireyselleştirme JSON\'una yazılır; hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
+        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
       <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
       <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
     </AtpSecHead>
     <div className="sc-sec-b">
-      <div className="atp-jb-kinds">
-        <div className="atp-jb-kind jb-stability"><b>{atpT('Stable Joints')}</b><span>{listOf('stability')}</span></div>
-        <div className="atp-jb-kind jb-mobility"><b>{atpT('Mobile Joints')}</b><span>{listOf('mobility')}</span></div>
-      </div>
-      <div className="atp-key">
-        <div className="atp-key-g"><span className="atp-key-k">{atpT('Level')}</span>
-          {ATP_JOINT_LEVELS.map(l=><span key={l.id} className="atp-key-i"><span className={`atp-tag pr-${l.id}`}>{atpBars(l.bars)}{atpT(l.en)}</span>{L(l.dTr,l.dEn)}</span>)}</div>
-      </div>
-      <div className="atp-jb">
+      <div className="atp-jb" ref={boxRef}>
         <div className="atp-jb-figs">
           <div className="atp-jb-pair">
             <AtpMannequin view="front" joints={joints} sel={sel} onPick={pick}/>
             <AtpMannequin view="back" joints={joints} sel={sel} onPick={pick}/>
-          </div>
-          <div className="atp-jb-leg">
-            <span><i className="jb-dot jb-mobility"/>{atpT('Mobility')}</span>
-            <span><i className="jb-dot jb-stability"/>{atpT('Stability')}</span>
-            <span><i className="jb-dot jb-none"/>{L('Değerlendirilmedi','Not rated')}</span>
-            <span className="atp-jb-leg-n">{L('Sayı ve boyut: ihtiyaç düzeyi (1–3)','Number and size: level of need (1–3)')}</span>
+            {selRow&&<AtpJointPop r={selRow} j={joints[sel]||{}} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
           </div>
         </div>
-        <div className="atp-jb-tbl" role="table" aria-label={atpT('Joint by Joint')}>
-          <div className="atp-jb-hr" role="row">
-            <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
-            <span role="columnheader">{atpT('Level')}</span>
+        <div className="atp-jb-side-col">
+          <div className="atp-jb-sum">
+            <div className="atp-jb-sum-h">{L('İşaretlenen eklemler','Marked joints')}<b>{marked.length}</b></div>
+            {marked.length?<div className="atp-jb-chips">{marked.map(({r,j})=>
+              <span key={r.key} className={`atp-jb-chip jl-${j.level}${sel===r.key?' on':''}`}>
+                <button className="atp-jb-chip-b" onClick={()=>pick(r.key)} title={j.note||undefined}>
+                  <i/>{atpJbLabel(r)}<small>{atpT(ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need).en)} · {atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</small>
+                  {j.note&&<em aria-hidden="true">✎</em>}</button>
+                <button className="atp-jb-chip-x" onClick={()=>onSet(r.key,'level',j.level)}
+                  aria-label={L(`${atpJbLabel(r)} işaretini kaldır`,`Clear ${atpJbLabel(r)}`)} title={L('Kaldır','Clear')}>✕</button>
+              </span>)}</div>
+            :<div className="atp-jb-none">{L('Henüz işaretleme yok — mankende bir eklemi tıkla.','Nothing marked yet — click a joint on the mannequin.')}</div>}
           </div>
-          {ATP_JOINT_ROWS.map(r=>{const j=joints[r.key]||{};const n=ATP_JOINT_NEEDS.find(x=>x.id===r.joint.need);return(
-            <div key={r.key} id={'atp-jr-'+r.key} role="row"
-              className={`atp-jb-r${sel===r.key?' on':''}${j.level?' set':''}${r.side==='Right'?' pair':''}`}
-              onClick={()=>setSel(r.key)}>
-              <span className="atp-jb-n" role="cell">
-                <b title={REPORT_LANG==='tr'?r.joint.en:undefined}>{atpT(r.joint.en)}</b>
-                {r.side&&<small>{atpT(r.side)}</small>}</span>
-              <span role="cell">{needTag(r.joint.need)}</span>
-              <span role="cell" className="atp-jb-c">
-                <div className="atp-seg" role="group" aria-label={`${atpT(atpJointName(r))} — ${atpT(n.en)}`}>{ATP_JOINT_LEVELS.map(l=>
-                  <button key={l.id} className={`pr-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id} aria-label={atpT(l.en)}
-                    title={`${atpT(n.en)}: ${atpT(l.en)} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(r.key,'level',l.id)}>{atpBars(l.bars)}{atpAb(l)}</button>)}</div></span>
-              {(sel===r.key||j.note)&&<input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(r.key,e.target.value)}
-                onClick={e=>e.stopPropagation()}
-                placeholder={L('Not — test sonucu, ağrı, gözlem…','Note — test result, pain, observation…')} aria-label={atpT('Note')}/>}
-            </div>);})}
+          <div className="atp-jb-leg">
+            <div><span className="k">{L('Eklem','Joint')}</span>
+              <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
+              <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span></div>
+            <div><span className="k">{atpT('Level')}</span>
+              {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}</div>
+          </div>
         </div>
       </div>
     </div>

@@ -2214,71 +2214,76 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .atp-ex-r .atp-ly-bar,.atp-ly-r .atp-ly-bar{display:none}
 }
 
-/* ---- 4 · Joint by Joint: two mannequins beside the table ----
-   Mobile joints blue, stable joints orange — the Joint-by-Joint chart's own colours —
-   on the figure and in the table alike; how much is the priority scale's own colours
-   and meters (Low blue, Medium yellow, High red). */
+/* ---- 4 · Joint by Joint: rated on the mannequins ----
+   The joint's ring is its need — mobile blue, stable orange, the Joint-by-Joint chart's
+   own colours; the fill is how much — green Low, yellow Medium, red High. */
 .jb-mobility{--jc:#4f8fe8;--jb:rgba(79,143,232,.12)}
 .jb-stability{--jc:#f28c28;--jb:rgba(242,140,40,.12)}
+.jl-low{--lv:#22c55e;--lvb:rgba(34,197,94,.13)}
+.jl-medium{--lv:#facc15;--lvb:rgba(250,204,21,.13)}
+.jl-high{--lv:#ef4444;--lvb:rgba(239,68,68,.14)}
 .atp-hc.jb-mobility i,.atp-hc.jb-stability i{background:var(--jc)}
-.atp-jb-kinds{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-@media(max-width:640px){.atp-jb-kinds{grid-template-columns:minmax(0,1fr)}}
-.atp-jb-kind{display:flex;flex-direction:column;gap:4px;padding:10px 13px;border-radius:11px;border:1px solid var(--jc);background:var(--jb)}
-.atp-jb-kind b{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--jc)}
-.atp-jb-kind span{font-size:12.5px;color:var(--text2);line-height:1.5}
-.atp-jb{display:grid;grid-template-columns:minmax(300px,400px) minmax(0,1fr);gap:16px;align-items:start;margin-top:12px}
-@media(max-width:980px){.atp-jb{grid-template-columns:minmax(0,1fr)}}
-.atp-jb-figs{position:sticky;top:12px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);padding:14px 10px 10px}
-@media(max-width:980px){.atp-jb-figs{position:static}}
-.atp-jb-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:400px;margin:0 auto}
-.atp-jb-fig{margin:0;display:flex;flex-direction:column;align-items:center;min-width:0}
-.atp-jb-fig figcaption{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--dim);margin-top:6px}
+.atp-jb{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.atp-jb-figs{flex:0 1 380px;min-width:260px;border:1px solid var(--border);border-radius:13px;background:var(--bg2);padding:10px 8px 4px}
+.atp-jb-pair{position:relative;display:grid;grid-template-columns:1fr 1fr}
 .atp-jb-svg{width:100%;height:auto;display:block;overflow:visible}
 .atp-jb-body{fill:#2a3039;filter:drop-shadow(0 0 .6px rgba(150,160,175,.55))}
 .atp-jb-lines{fill:none;stroke:rgba(150,160,175,.32);stroke-width:1;stroke-linecap:round}
 .atp-jb-lines .atp-jb-spine{stroke:rgba(150,160,175,.55);stroke-width:2.2}
-.atp-jb-side{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;fill:var(--dim)}
+.atp-jb-side,.atp-jb-cap{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;fill:var(--dim)}
+.atp-jb-cap{font-size:11px;letter-spacing:.12em}
 .atp-jb-m{cursor:pointer;outline:none}
-.atp-jb-empty{fill:rgba(16,18,22,.55);stroke:var(--jc);stroke-width:1.6;stroke-dasharray:2.6 2.1}
+.atp-jb-hit{fill:transparent}
+.atp-jb-empty{fill:rgba(16,18,22,.55);stroke:var(--jc);stroke-width:1.7;stroke-dasharray:2.6 2.1}
 .atp-jb-m:hover .atp-jb-empty{stroke-dasharray:none;fill:var(--jb)}
-.atp-jb-dot{fill:var(--jc);stroke:rgba(255,255,255,.85);stroke-width:1.2}
-.atp-jb-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9px;font-weight:700;fill:#fff;text-anchor:middle;pointer-events:none}
-.atp-jb-halo{fill:none;stroke:var(--accent);stroke-width:2}
+.atp-jb-dot{fill:var(--lv);stroke:var(--jc);stroke-width:2.6}
+.atp-jb-m:hover .atp-jb-dot{stroke-width:3.4}
+.atp-jb-halo{fill:none;stroke:var(--text);stroke-width:1.6}
 .atp-jb-m:focus-visible .atp-jb-halo,.atp-jb-m:focus-visible .atp-jb-empty{stroke:var(--accent)}
-.atp-jb-leg{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;margin-top:10px;padding-top:9px;border-top:1px solid var(--border);
-  font-size:11px;color:var(--muted)}
-.atp-jb-leg span{display:inline-flex;align-items:center;gap:5px}
-.atp-jb-leg-n{flex-basis:100%;justify-content:center;color:var(--dim);font-size:10.5px}
-.jb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--jc)}
-.jb-dot.jb-none{background:none;border:1.4px dashed var(--muted)}
+/* the picker */
+.atp-jb-pop{position:absolute;z-index:6;width:224px;transform:translate(-50%,16px);padding:10px;border-radius:12px;
+  border:1px solid var(--border2);background:var(--panel);box-shadow:0 10px 28px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px}
+.atp-jb-pop.up{transform:translate(-50%,calc(-100% - 16px))}
+.atp-jb-pop-h{display:flex;align-items:center;gap:8px}
+.atp-jb-pop-h b{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text)}
+.atp-jb-pop-h .atp-x{flex:none}
+.atp-jb-lvs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.atp-jb-lvs button{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:30px;padding:0 6px;border-radius:8px;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--muted);font:inherit;font-size:11.5px;font-weight:600;cursor:pointer}
+.atp-jb-lvs button i{width:8px;height:8px;border-radius:50%;background:var(--lv)}
+.atp-jb-lvs button:hover{color:var(--text);border-color:var(--lv)}
+.atp-jb-lvs button.on{background:var(--lvb);border-color:var(--lv);color:var(--text)}
+.atp-jb-lvs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.atp-jb-pop-d{font-size:10.5px;color:var(--dim);line-height:1.45}
+.atp-jb-note{height:30px;padding:0 10px;border:1px solid var(--border2);border-radius:8px;background:var(--bg2);
+  color:var(--text);font:inherit;font-size:12px;min-width:0}
+.atp-jb-note:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
 .atp-jb-tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--jc);white-space:nowrap}
 .atp-jb-tag i{width:7px;height:7px;border-radius:50%;background:var(--jc)}
-.atp-jb-tbl{border:1px solid var(--border);border-radius:13px;background:var(--bg2);overflow:hidden;min-width:0}
-.atp-jb-hr,.atp-jb-r{display:grid;grid-template-columns:minmax(110px,1fr) 96px 186px;align-items:center;gap:8px 12px;padding:6px 12px 6px 13px}
-.atp-jb-hr{background:var(--elevated);border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',ui-monospace,monospace;
-  font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding-top:9px;padding-bottom:9px}
-.atp-jb-r{border-top:1px solid var(--border);cursor:pointer}
-.atp-jb-hr+.atp-jb-r{border-top:none}
-.atp-jb-r.pair+.atp-jb-r{border-top:1px dashed var(--border)}
-.atp-jb-r:hover{background:var(--hover)}
-.atp-jb-r.set{box-shadow:inset 3px 0 0 var(--accent)}
-.atp-jb-r.on{background:var(--accent-bg)}
-.atp-jb-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 7px;min-width:0}
-.atp-jb-n b{font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.3;overflow-wrap:anywhere}
-.atp-jb-r.set .atp-jb-n b{color:var(--text)}
-.atp-jb-n small{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.atp-jb-c{display:flex;align-items:center}
-.atp-jb-c .atp-seg{width:186px}
-.atp-jb-note{grid-column:1/-1;height:30px;padding:0 10px;border:1px solid var(--border2);border-radius:8px;background:var(--panel);
-  color:var(--text);font:inherit;font-size:12px}
-.atp-jb-note:focus{outline:2px solid var(--accent);outline-offset:0;border-color:transparent}
-@media(max-width:560px){
-  .atp-jb-hr{display:none}
-  .atp-jb-r{grid-template-columns:minmax(0,1fr) auto;padding-top:9px;padding-bottom:9px}
-  .atp-jb-c{grid-column:1/-1}
-  .atp-jb-c .atp-seg{width:100%;max-width:280px}
-}
+/* the list of what is marked, and the key */
+.atp-jb-side-col{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.atp-jb-sum{border:1px solid var(--border);border-radius:12px;background:var(--bg2);padding:10px 12px}
+.atp-jb-sum-h{display:flex;align-items:center;justify-content:space-between;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.atp-jb-sum-h b{font-size:12px;color:var(--text2)}
+.atp-jb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.atp-jb-chip{display:inline-flex;align-items:stretch;border:1px solid var(--lv);border-radius:8px;background:var(--lvb);overflow:hidden}
+.atp-jb-chip.on{box-shadow:0 0 0 1px var(--lv)}
+.atp-jb-chip-b{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 8px;border:none;background:none;color:var(--text);
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.atp-jb-chip-b i{width:8px;height:8px;border-radius:50%;background:var(--lv)}
+.atp-jb-chip-b small{font-size:10.5px;font-weight:500;color:var(--muted)}
+.atp-jb-chip-b em{font-style:normal;font-size:10px;color:var(--dim)}
+.atp-jb-chip-x{border:none;background:none;color:var(--dim);padding:0 7px;cursor:pointer;font-size:10px}
+.atp-jb-chip-x:hover{color:var(--text)}
+.atp-jb-chip button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.atp-jb-none{font-size:12px;color:var(--muted)}
+.atp-jb-leg{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);padding:0 2px}
+.atp-jb-leg>div{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px}
+.atp-jb-leg span{display:inline-flex;align-items:center;gap:5px}
+.atp-jb-leg .k{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);min-width:48px}
+.jb-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--lv)}
+.jb-ring{display:inline-block;width:10px;height:10px;border-radius:50%;border:2px solid var(--jc)}
 /* Dated notes panel — arrow-navigated, light (non-italic) body text */
 .notes-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .notes-add{width:auto;flex:none;padding:6px 12px;font-size:12px;background:var(--elevated);border:1px solid var(--border2);border-radius:8px;color:var(--text);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
