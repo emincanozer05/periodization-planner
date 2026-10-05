@@ -40,6 +40,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const vr=useMemo(()=>program?validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers}):null,
     [program,bundle,instr,review,setup,libMap,deficits,differentiators,recent,peers]);
   const blocked=!!(vr&&vr.status==='fail');
+  /* The patterns today's pain or a standing restriction has closed — marked on the brief's pattern toggles. */
+  const closedPats=useMemo(()=>diBlockedSet(diBlockedPatterns(bundle)),[bundle]);
 
   /* The handlers below read the panel's CURRENT props through this ref rather than the
      ones captured on an earlier render — a draft saved against a stale copy of the team
@@ -212,7 +214,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot}
+      <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
         onImport={()=>setImp({text:'',err:''})}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>

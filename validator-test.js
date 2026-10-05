@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1646,6 +1646,84 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('migrate: review alanı kalkıyor, doldurulan değerler duruyor',
       !('review' in a) && a.difficulty === 'Level 1' && JSON.stringify(a.contra) === '["back"]' &&
       !m.exercises.some(e => 'review' in e), JSON.stringify(m.exercises));
+  }
+
+  group('Ek — Hareket paterni seçimi (Revize 12): form → JSON → denetim');
+  {
+    const raw = { must: ['Trap Bar Jump'], avoid: ['derin squat'],
+      patterns: [{ id: 'knee_dominant', type: ['split_squat', 'yok'], side: ['unilateral'], goal: ['maximal'] },
+        { id: 'knee_dominant' }, { id: 'uydurma' }, { id: 'core', task: ['anti_rotation'], goal: ['endurance', 'maximal'] }, 'carry'] };
+    const b = A.diBrief(raw, null);
+    check('brief: "mutlaka olsun" formda yok, taşınmıyor; paternler temizlenmiş',
+      b.must.length === 0 && b.patterns.length === 3 && b.patterns[0].id === 'knee_dominant' &&
+      JSON.stringify(b.patterns[0].type) === '["split_squat"]' && JSON.stringify(b.patterns[1].goal) === '["endurance"]' &&
+      b.patterns[2].id === 'carry' && b.patterns[2].type.length === 0, JSON.stringify(b.patterns));
+    const snap = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
+      instr: b, customTests: [] }));
+    const mp = snap.coach_brief.movement_patterns || [];
+    check('JSON: seçilen paternler sırasıyla, İngilizce, filtreleriyle; boş filtre yazılmıyor',
+      mp.length === 3 && mp[0].id === 'knee_dominant' && mp[0].pattern === 'Knee dominant' &&
+      JSON.stringify(mp[0].type) === '["Split squat"]' && JSON.stringify(mp[0].side_support) === '["Single leg"]' &&
+      JSON.stringify(mp[0].strength_goal) === '["Maximal strength"]' && !('direction' in mp[0]) &&
+      JSON.stringify(mp[0].movement_pattern_values) === '["Squat","Lunge / Unilateral"]' &&
+      JSON.stringify(mp[1].task) === '["Anti-rotation"]' && mp[2].pattern === 'Carry' && !('type' in mp[2]),
+      JSON.stringify(mp));
+    check('JSON: patern kuralı bağlayıcı, must_include yok, kaçınılacak duruyor',
+      /MUST be in the session/.test(snap.coach_brief.movement_patterns_rule || '') && !('must_include' in snap.coach_brief) &&
+      snap.coach_brief.avoid[0] === 'derin squat', JSON.stringify(snap.coach_brief));
+    check('JSON: görev ve çıktı şeması coach_pattern\'i istiyor',
+      snap.task.some(t => /movement_patterns/.test(t)) && !!snap.output_format.program.blocks[0].exercises[0].coach_pattern &&
+      /movement_patterns/.test(JSON.stringify(snap.output_format.flagged_conflicts)) && !/must_include/.test(JSON.stringify(snap.output_format)));
+    const none = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr: A.diBrief(null, null), customTests: [] });
+    check('patern seçilmezse JSON\'da patern alanı ve kuralı yok',
+      !none.coach_brief || (!('movement_patterns' in none.coach_brief) && !('movement_patterns_rule' in none.coach_brief)));
+    check('her paternin filtreleri istenen başlıklarla',
+      (() => { const f = id => A.DI_MOVE_PATTERNS.find(p => p.id === id).facets.map(x => x.k).join(',');
+        return f('knee_dominant') === 'type,side,direction,goal' && f('hip_dominant') === 'type,side,goal' &&
+          f('horizontal_push') === 'side,goal' && f('vertical_pull') === 'side,goal' &&
+          f('carry') === 'type,side,direction,goal' && f('core') === 'side,task,goal' &&
+          A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[2].opts.length === 2 &&
+          A.DI_MOVE_PATTERNS.find(p => p.id === 'knee_dominant').facets[3].opts.length === 6; })());
+
+    const ath = athlete({ wellness: [wellness(TODAY, 4)] });
+    const want = ids => ({ rawInstr: { patterns: ids.map(id => ({ id })) } });
+    const vOk = validate(aiReply([ex({ koc_paterni: 'knee_dominant' })]), ath, want(['knee_dominant']));
+    check('istenen patern etiketli egzersizle karşılanmış → geçer', vOk.status === 'pass', hardText(vOk));
+    const vUntag = validate(aiReply([ex()]), ath, want(['knee_dominant']));
+    check('etiket yoksa movement_pattern\'den tanınıyor', vUntag.status === 'pass', hardText(vUntag));
+    const push = ex({ ad: 'DB Bench Press', hareket_paterni: 'Push', yuk: '20 kg' });
+    const vTwo = validate(aiReply([ex(), push]), ath, want(['horizontal_push', 'vertical_push']));
+    check('tek bir Push satırı hem yatay hem dikey itişi karşılamıyor → SERT ihlal',
+      vTwo.status === 'fail' && vTwo.hardViolations.filter(h => /pattern|paterni/i.test(h.text)).length === 1, hardText(vTwo));
+    const vMiss = validate(aiReply([ex()]), ath, want(['horizontal_pull']));
+    check('istenen patern hiç yoksa ve çatışma bildirilmemişse SERT ihlal (kural 22)',
+      vMiss.status === 'fail' && vMiss.hardViolations.some(h => h.rule === 22 && /Yatay çekiş|Horizontal pull/.test(h.text)), hardText(vMiss));
+    const vDecl = validate(aiReply([ex()], { flagged_conflicts: [{ talimat: 'Horizontal pull', alan: 'movement_patterns',
+      cakisan_kural: 'omuz ağrısı', karar: 'çıkarıldı', alternatif: 'Pallof Press' }] }), ath, want(['horizontal_pull']));
+    check('çatışma olarak bildirilen eksik patern uyarı, kaydı engellemez',
+      vDecl.status === 'pass' && vDecl.softWarnings.some(w => /Yatay çekiş|Horizontal pull/.test(w.text)), hardText(vDecl));
+    const vWrong = validate(aiReply([ex(), ex({ ad: 'Pallof Press', hareket_paterni: 'Core / Brace', koc_paterni: 'vertical_pull' })]),
+      ath, want(['vertical_pull']));
+    check('etiketlenen egzersizin paterni uyuşmuyorsa uyarı', vWrong.softWarnings.some(w => /Pallof Press/.test(w.text) && /Pull/.test(w.text)),
+      softText(vWrong));
+    const jump = ex({ ad: 'Trap Bar Jump', hareket_paterni: 'Jump / Plyo', yuk: '30 kg', ekipman: 'trap bar', koc_paterni: 'hip_dominant' });
+    const vJumpPow = validate(aiReply([jump]), ath, { rawInstr: { patterns: [{ id: 'hip_dominant', goal: ['power'] }] } });
+    const vJumpMax = validate(aiReply([jump]), ath, { rawInstr: { patterns: [{ id: 'hip_dominant', goal: ['maximal'] }] } });
+    check('güç/reaktif hedefli alt vücut paterninde sıçrama (Jump / Plyo) paterni karşılıyor, maksimalde uyarı',
+      !softText(vJumpPow).includes('Trap Bar Jump" is written') && /Trap Bar Jump" is written/.test(softText(vJumpMax)) &&
+      JSON.stringify(A.diBriefForAI(A.diBrief({ patterns: [{ id: 'knee_dominant', goal: ['reactive'] }] }, null)).movement_patterns[0].movement_pattern_values) ===
+        '["Squat","Lunge / Unilateral","Jump / Plyo"]', softText(vJumpPow) + ' || ' + softText(vJumpMax));
+    check('etiket ad olarak yazılsa da okunuyor', A.diMoveIdOf('Knee dominant') === 'knee_dominant' &&
+      A.diMoveIdOf('Diz dominant') === 'knee_dominant' && A.diMoveIdOf('Carry') === 'carry' && A.diMoveIdOf(null) === null &&
+      A.diMoveIdOf('vertical_pull') === 'vertical_pull');
+    const extTxt = JSON.stringify({ program: { session_name: 'x', blocks: [{ name: 'Main', phase: 'main', exercises: [
+      { name: 'Goblet Squat', sets: '3', reps: '6', movement_pattern: 'Squat', coach_pattern: 'Knee dominant', rationale: 'r' }] }] } });
+    const ext = A.diParseExternalProgram(extTxt, libMap);
+    check('dışarıdan yüklenen İngilizce yanıtta coach_pattern okunuyor', ext.blocks[0].exercises[0].coachPattern === 'knee_dominant',
+      JSON.stringify(ext.blocks[0].exercises[0]));
+    const vExt = A.validateProgram(ext, ctxFor(ath, want(['knee_dominant', 'carry'])));
+    check('yüklenen programda eksik patern engellemez, uyarı olarak görünür',
+      vExt.status === 'pass' && vExt.softWarnings.some(w => w.was_hard && /Taşıma|Carry/.test(w.text)), softText(vExt));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

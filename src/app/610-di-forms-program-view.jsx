@@ -132,6 +132,63 @@ function DiPriorityPicker({value,onChange}){
   </div>);
 }
 
+/* The movement patterns the session must carry. Eight toggles across the top; a
+   ticked pattern drops into the list below as its own filter box, and only one box is
+   open at a time — the others fold to one line that says what was picked, so three
+   patterns cost three lines rather than three panels. Inside a box each facet is a row
+   of toggles: nothing ticked means the model chooses, several ticked mean any of them.
+   A pattern today's pain or a standing restriction has closed is still selectable (the
+   coach may know better), but it says so, and the answer is told to substitute and
+   declare it. */
+function DiPatternPicker({value,onChange,closed}){
+  const list=diMovePatterns(value);
+  const[open,setOpen]=useState(null);
+  const shut=closed instanceof Set?closed:new Set();
+  const isClosed=row=>row.vocab.every(v=>shut.has(v));
+  const toggle=id=>{
+    if(list.some(p=>p.id===id)){onChange(list.filter(p=>p.id!==id));if(open===id)setOpen(null);}
+    else{onChange([...list,{id}]);setOpen(id);}
+  };
+  const flip=(id,k,val)=>onChange(list.map(p=>{
+    if(p.id!==id)return p;
+    const cur=p[k]||[];
+    return{...p,[k]:cur.includes(val)?cur.filter(x=>x!==val):[...cur,val]};
+  }));
+  const summary=(pick,row)=>row.facets.map(f=>diMoveFacetText(pick,f).join(' / ')).filter(Boolean).join(' · ');
+  return(<div className="di-mvp">
+    <div className="di-mvp-pick" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
+      {DI_MOVE_PATTERNS.map(row=>{const on=list.some(p=>p.id===row.id);const cl=isClosed(row);
+        return<button key={row.id} type="button" aria-pressed={on}
+          className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
+          title={cl?L('Bugün ağrı/kısıt nedeniyle kapalı — seçilirse model güvenli bir alternatif yazıp bildirir.',
+            'Closed today by pain / a restriction — if picked, the model writes a safe substitute and declares it.'):undefined}
+          onClick={()=>toggle(row.id)}>{on?'✓ ':''}{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
+    </div>
+    {list.length>0&&<div className="di-mvp-list">
+      {list.map(pick=>{const row=diMoveRow(pick.id);if(!row)return null;
+        const isOpen=open===pick.id;const sum=summary(pick,row);
+        return<div key={pick.id} className={'di-mvp-box'+(isOpen?' open':'')}>
+          <div className="di-mvp-hd">
+            <button type="button" className="di-mvp-tg" onClick={()=>setOpen(isOpen?null:pick.id)} aria-expanded={isOpen}>
+              <b>{L(row.label[0],row.label[1])}</b>
+              <span className={'di-mvp-sum'+(sum?'':' dim')}>{sum||L('filtre yok — model seçer','no filter — model chooses')}</span>
+              <i>{isOpen?'▲':'▼'}</i>
+            </button>
+            <button type="button" className="di-mvp-x" onClick={()=>toggle(pick.id)} aria-label={L('Kaldır','Remove')}>✕</button>
+          </div>
+          {isOpen&&<div className="di-mvp-body">
+            {row.facets.map(f=><div key={f.k} className="di-mvp-row">
+              <span className="di-mvp-k">{L(f.label[0],f.label[1])}</span>
+              <div className="di-mvp-opts">{f.opts.map(op=>{const on=(pick[f.k]||[]).includes(op[0]);
+                return<button key={op[0]} type="button" aria-pressed={on} className={'di-mvp-opt'+(on?' on':'')}
+                  onClick={()=>flip(pick.id,f.k,op[0])}>{L(op[1],op[2])}</button>;})}</div>
+            </div>)}
+          </div>}
+        </div>;})}
+    </div>}
+  </div>);
+}
+
 /* A number with the answers a coach actually gives beside it. Typing is still allowed —
    the buttons are shortcuts, not the only way in. */
 function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
@@ -161,35 +218,33 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
 /* The brief. Six fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
-   and without a card edge they read as one ragged block of controls. It is stored per
-   athlete PER DAY, beside the session it produced, so yesterday's instruction never
-   silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport}){
+   and without a card edge they read as one ragged block of controls. The pattern card
+   is the tall one, so it takes two columns and two rows on the right while priority
+   and keep-out stack beside it; the three short answers share the last row. It is
+   stored per athlete PER DAY, beside the session it produced, so yesterday's
+   instruction never silently drives today's. */
+function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
   const set=(k,v)=>save({...instr,[k]:v});
-  /* Whatever is typed in the two chip boxes but not yet turned into a chip. Blur commits
+  /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
      reads the brief from THIS render — so the pending text is folded in here as well,
      and the request is built from the merged brief rather than from whichever of the two
      updates happened to win. */
-  const mustPend=useRef('');
   const avoidPend=useRef('');
   const withPending=()=>{
-    const add=(arr,ref)=>{
-      const v=String((ref&&ref.current)||'').trim();
-      const l=Array.isArray(arr)?arr:[];
-      if(!v||l.some(x=>x.toLowerCase()===v.toLowerCase()))return l;
-      return[...l,v];
-    };
-    return{...instr,must:add(instr.must,mustPend),avoid:add(instr.avoid,avoidPend)};
+    const v=String(avoidPend.current||'').trim();
+    const l=Array.isArray(instr.avoid)?instr.avoid:[];
+    if(!v||l.some(x=>x.toLowerCase()===v.toLowerCase()))return instr;
+    return{...instr,avoid:[...l,v]};
   };
   /* The merged brief, so a chip still being typed is in the copy too. Read-only: it writes nothing but that fold-in. */
   const snapshot=()=>{
     const merged=withPending();
-    if(merged.must!==instr.must||merged.avoid!==instr.avoid)save(merged);
+    if(merged!==instr)save(merged);
     if(onSnapshot)onSnapshot(merged);
   };
-  const field=(n,title,hint,control,wide)=>(
-    <div className={'di-field'+(wide?' wide':'')}>
+  const field=(n,title,hint,control,area)=>(
+    <div className={'di-field'+(area?' '+area:'')}>
       <div className="di-fhd"><i className="di-num">{n}</i>
         <label>{title}</label></div>
       <span className="di-fhint">{hint}</span>
@@ -199,32 +254,31 @@ function DiInstructionForm({instr,save,onSnapshot,onImport}){
     <div className="di-fgrid">
       {field(1,L('Bugünün önceliği','Today\'s priority'),
         L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
-        <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>)}
-      {field(2,L('Mutlaka olsun','Must be in'),
-        L('Programda mutlaka yer alsın.','What the session has to carry.'),
-        <DiChipList value={instr.must} onChange={v=>set('must',v)} tone="must"
-          pending={mustPend}
-          placeholder={L('ör. Trap Bar Jump','e.g. trap bar jump')}/>)}
+        <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>,'a1')}
+      {field(2,L('Hareket paterni','Movement pattern'),
+        L('Seçilen her patern programa kesinlikle eklenir. Filtre boşsa seçimi model yapar.',
+          'Every pattern picked is in the session. An empty filter is the model\'s choice.'),
+        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2')}
       {field(3,L('Kaçınılacak','Keep out'),
         L('Bugün yapılmasın.','What must not appear today.'),
         <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
           pending={avoidPend}
-          placeholder={L('ör. derin squat','e.g. deep squat')}/>)}
+          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a3')}
       {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}
           onChange={v=>save({...instr,duration:v,durationSet:v!=null})} choices={DI_DUR_CHOICES}
-          unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>)}
+          unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>,'a4')}
       {field(5,L('Maks. egzersiz','Exercise ceiling'),
         L('Seansta toplam en fazla kaç egzersiz olsun? (tüm fazlar dahil)','How many exercises in the whole session at most? (all phases)'),
         <DiNumberChoice value={instr.maxExercises}
           onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
-          unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>)}
-      {field(6,L('Ek notlar','Notes'),
+          unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>,'a5')}
+      {field(6,L('Notlar','Notes'),
         L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
           placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
-            'e.g. game today, keep it to priming')}/>)}
+            'e.g. game today, keep it to priming')}/>,'a6')}
     </div>
 
     <div className="di-genbar">
@@ -276,7 +330,7 @@ function diSessionRows(ses,program){
       const src=byName[lo(e.name)]||null;
       const dose={sets:e.sets||'',reps:e.reps||'',duration:e.duration||''};
       out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
-        pattern:e.pattern||(src&&src.pattern)||'',equipment:exEquipText(src&&src.equipment),
+        pattern:e.pattern||(src&&src.pattern)||'',coachPattern:(src&&src.coachPattern)||null,equipment:exEquipText(src&&src.equipment),
         why:exDesc(e),basis:(src&&src.basis)||[],
         load:e.load||'',tempo:e.tempo||'',rest:e.rest||'',
         prescribed:dose,adjusted:dose,changed:false});

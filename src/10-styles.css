@@ -6011,18 +6011,52 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
-/* Three across, and three exactly. auto-fit used to open a fourth column on a wide
-   screen that nothing ever filled: seven fields with the constraints row spanning the
-   lot left one hole beside "Keep out" and another beside "Notes". The form is three
-   columns wide — 1-2-3, the constraints row, 5-6-7 — so it is asked for as three.
-   Narrower, it folds to two and the fields that would end a row short take the whole
-   row instead, and then to one. Cards stretch to their row so no card ends early. */
-.di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+/* Three across, by named areas. The movement-pattern card (2) is the one that grows —
+   a filter box per picked pattern — so it takes two columns and two rows on the right,
+   with priority (1) and keep-out (3) stacked beside it; length, ceiling and notes
+   (4-5-6) share the last row. Narrower, it folds to two (the pattern card across the
+   whole width) and then to one, always in field order. Cards stretch to their row so
+   no card ends early. */
+.di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
+  grid-template-areas:"a1 a2 a2" "a3 a2 a2" "a4 a5 a6"}
+.di-field.a1{grid-area:a1}.di-field.a2{grid-area:a2}.di-field.a3{grid-area:a3}
+.di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}
 @media(max-width:1040px){
-  .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .di-fgrid>.di-field:nth-child(3),.di-fgrid>.di-field:nth-child(7){grid-column:1/-1}
+  .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"a1 a3" "a2 a2" "a4 a5" "a6 a6"}
 }
-@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a2" "a3" "a4" "a5" "a6"}}
+/* The movement-pattern picker: eight toggles, then one filter box per picked pattern.
+   One box is open at a time; a folded box is a single line saying what was picked. */
+.di-mvp{display:flex;flex-direction:column;gap:8px}
+.di-mvp-pick{display:flex;flex-wrap:wrap;gap:6px}
+.di-mvp-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:999px;
+  padding:5px 11px;font-size:12px;cursor:pointer;line-height:1.2}
+.di-mvp-chip:hover{border-color:var(--accent);color:var(--text)}
+.di-mvp-chip.on{border-color:rgba(45,212,167,.55);background:rgba(45,212,167,.12);color:#7ee7c7;font-weight:600}
+.di-mvp-chip.closed{border-style:dashed}
+.di-mvp-chip i{font-style:normal;font-weight:800;color:#fbbf24;margin-left:5px}
+.di-mvp-list{display:flex;flex-direction:column;gap:6px}
+.di-mvp-box{border:1px solid var(--border);border-radius:9px;background:var(--panel)}
+.di-mvp-box.open{border-color:rgba(45,212,167,.4)}
+.di-mvp-hd{display:flex;align-items:stretch}
+.di-mvp-tg{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;padding:7px 10px;
+  cursor:pointer;color:var(--text);text-align:left;font-size:12px}
+.di-mvp-tg b{flex:none;font-weight:700}
+.di-mvp-sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2);font-size:11.5px}
+.di-mvp-sum.dim{color:var(--dim);font-style:italic}
+.di-mvp-tg i{font-style:normal;font-size:9px;color:var(--dim)}
+.di-mvp-x{background:none;border:0;border-left:1px solid var(--border);color:var(--dim);cursor:pointer;padding:0 11px;font-size:11px}
+.di-mvp-x:hover{color:#fda4af}
+.di-mvp-body{border-top:1px solid var(--border);padding:8px 10px 10px;display:flex;flex-direction:column;gap:7px}
+.di-mvp-row{display:grid;grid-template-columns:108px minmax(0,1fr);gap:8px;align-items:start}
+.di-mvp-k{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);padding-top:5px;
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-mvp-opts{display:flex;flex-wrap:wrap;gap:5px}
+.di-mvp-opt{border:1px solid var(--border);background:var(--elevated);color:var(--text2);border-radius:7px;
+  padding:3px 9px;font-size:11.5px;cursor:pointer;line-height:1.3}
+.di-mvp-opt:hover{border-color:var(--border2);color:var(--text)}
+.di-mvp-opt.on{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:#fcd34d;font-weight:600}
+@media(max-width:680px){.di-mvp-row{grid-template-columns:minmax(0,1fr);gap:4px}.di-mvp-k{padding-top:0}}
 .di-field{display:flex;flex-direction:column;gap:6px;min-width:0;
   border:1px solid var(--border);border-radius:11px;background:var(--bg2);padding:11px 12px 12px}
 .di-field.wide{grid-column:1/-1}
