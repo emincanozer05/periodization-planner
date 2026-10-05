@@ -245,6 +245,10 @@ const ATP_JOINT_ROWS=ATP_JOINTS.flatMap(j=>j.bi
   ?[{key:j.id+'_r',joint:j,side:'Right'},{key:j.id+'_l',joint:j,side:'Left'}]
   :[{key:j.id,joint:j,side:null}]);
 const atpJointLv=id=>Math.max(0,ATP_JOINT_LEVELS.findIndex(l=>l.id===id)+1);
+/* The colour the mannequin draws a level in — the word the JSON carries beside it, so
+   "red zones first" is said in the data as well as in the instructions. */
+const ATP_JOINT_ZONE={high:'red',medium:'yellow',low:'green'};
+const atpJointZone=id=>ATP_JOINT_ZONE[id]||null;
 /* The joint's name with its side, in English — the word the JSON carries. */
 const atpJointName=r=>r.side?`${r.side} ${r.joint.en}`:r.joint.en;
 /* The stored profile, read defensively. Hard and Soft are two lists and stay two: a
@@ -757,15 +761,20 @@ function atpSnapshot(ath,ref,libMap,setup){
     description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
       'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine, neck, shoulder, wrist — need mobility. '+
       'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
-      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need.',
+      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
+      'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',
     level_scale:Object.fromEntries(ATP_JOINT_LEVELS.map(l=>[l.en,l.dEn])),
-    use:'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
+    use:'Joint-by-Joint priority: write the programme red zones first — every High (red) joint is addressed before any Medium or Low joint, '+
+      'in priority_order, and none of the Medium / Low work may crowd a High joint out of the session. '+
+      'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
       'every High need gets targeted work in the session, Medium needs regular work in the preparation block, Low needs a short maintenance dose. '+
       'Mobility need: give the joint its range (mobilisation, dynamic stretching, end-range control) before it is loaded. '+
       'Stability need: train the joint for control (isometrics, anti-movement, balance, slow eccentrics) — no mobilisation for more range, '+
       'and do not load it at an end range it cannot control. A joint need is not a diagnosis: pain is for the medical staff.',
+    /* Red (High) first: the order the programme is to be written in. */
+    priority_order:jRows.map((x,i)=>({rank:i+1,joint:atpJointName(x.r),level:en(ATP_JOINT_LEVELS,x.j.level),zone:atpJointZone(x.j.level)})),
     joints:jRows.map(({r,j})=>({joint:atpJointName(r),...(r.side?{side:r.side}:{}),
-      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),
+      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),zone:atpJointZone(j.level),
       ...(j.note&&j.note.trim()?{note:j.note.trim()}:{})})),
     /* The same, by need and level, the names alone; an empty level or need is left out. */
     by_need:Object.fromEntries(ATP_JOINT_NEEDS.map(n=>[n.id,Object.fromEntries([...ATP_JOINT_LEVELS].reverse()
