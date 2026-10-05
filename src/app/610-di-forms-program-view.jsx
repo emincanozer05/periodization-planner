@@ -55,11 +55,33 @@ function DiChipList({value,onChange,placeholder,tone,pending}){
    dropdown per quality plus "+ Ek öncelik ekle" for each further one — three priorities
    cost three separate opens and two extra presses. The order they are ticked in is still
    the order they are read, and each picked quality sits under the box as a chip with its
-   own ✕. A click outside the list, or Escape, closes it. */
+   own ✕. A click outside the list, or Escape, closes it.
+
+   Hovering (or focusing) a quality shows a short box beside the list: what it is and
+   how it is usually trained. The list scrolls, so a box drawn inside it would be cut
+   off at its edge — it is drawn fixed-position into <body>, beside the list where
+   there is room and under the row where there is not. */
+const DI_PRIO_TIP_W=290;
 function DiPriorityPicker({value,onChange}){
   const list=(Array.isArray(value)?value:[]).filter(diPrioRow);
   const[open,setOpen]=useState(false);
+  const[tip,setTip]=useState(null);   // hovered quality → {id,left,top|bottom}
   const wrap=useRef(null);
+  const menu=useRef(null);
+  const showTip=(e,id)=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    const m=menu.current?menu.current.getBoundingClientRect():r;
+    const W=window.innerWidth,H=window.innerHeight,gap=10;
+    let left,top=r.top-4,below=false;
+    if(m.right+gap+DI_PRIO_TIP_W<=W-8)left=m.right+gap;
+    else if(m.left-gap-DI_PRIO_TIP_W>=8)left=m.left-gap-DI_PRIO_TIP_W;
+    else{left=Math.max(8,Math.min(W-DI_PRIO_TIP_W-8,r.left));top=r.bottom+6;below=true;}
+    /* Near the foot of the window the box hangs upwards from the row instead. */
+    const pos=(!below&&top>H-170)||(below&&top>H-150)
+      ?{left,bottom:H-(below?r.top-6:r.bottom+4)}:{left,top};
+    setTip({id,...pos});
+  };
+  useEffect(()=>{if(!open)setTip(null);},[open]);
   useEffect(()=>{
     if(!open)return;
     const away=e=>{if(wrap.current&&!wrap.current.contains(e.target))setOpen(false);};
@@ -77,12 +99,16 @@ function DiPriorityPicker({value,onChange}){
         :L('— öncelik seç','— pick priorities')}</span>
       <i>{open?'▲':'▼'}</i>
     </button>
-    {open&&<div className="di-conmenu" role="listbox" aria-multiselectable="true">
+    {open&&<div className="di-conmenu" role="listbox" aria-multiselectable="true" ref={menu}
+      onScroll={()=>setTip(null)}>
       {DI_PRIORITIES.map(g=><div key={g.group[0]} className="di-prio-grp">
         <div className="di-prio-gh">{L(g.group[0],g.group[1])}</div>
         {g.items.map(p=>{const on=list.includes(p.id);
           return<div key={p.id} className={'di-conitem'+(on?' on':'')} role="option" aria-selected={on}
             tabIndex={0} onClick={()=>toggle(p.id)}
+            onMouseEnter={e=>showTip(e,p.id)} onMouseLeave={()=>setTip(null)}
+            onFocus={e=>showTip(e,p.id)} onBlur={()=>setTip(null)}
+            aria-describedby={tip&&tip.id===p.id?'di-prio-tip':undefined}
             onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(p.id);}}}>
             <span className="di-conbox">{on?'✓':''}</span>
             <span className="di-connm">{L(p.label[0],p.label[1])}</span>
@@ -90,6 +116,14 @@ function DiPriorityPicker({value,onChange}){
           </div>;})}
       </div>)}
     </div>}
+    {open&&tip&&(()=>{const p=diPrioRow(tip.id);if(!p||!p.desc)return null;
+      return ReactDOM.createPortal(
+        <div id="di-prio-tip" className="di-prio-tip" role="tooltip"
+          style={{left:tip.left,top:tip.top,bottom:tip.bottom,width:DI_PRIO_TIP_W}}>
+          <b>{L(p.label[0],p.label[1])}</b>
+          <p>{L(p.desc[0],p.desc[1])}</p>
+          {p.ex&&<p className="ex">{L(p.ex[0],p.ex[1])}</p>}
+        </div>,document.body);})()}
     {list.length>0&&<div className="di-chips">
       {list.map((id,i)=><span key={id} className="di-tag prio" title={diPrioLabel(id)}>
         {list.length>1?<b className="di-prio-ord">{i+1}</b>:null}<span>{diPrioLabel(id)}</span>

@@ -712,6 +712,12 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('öncelik: Düzeltici (Corrective) Hareket Kalitesi altında, seçilince JSON\'a yazılıyor',
       briefC.priorities.length === 2 && snapC.coach_brief.priorities[0] === 'Corrective',
       JSON.stringify([briefC.priorities, snapC.coach_brief.priorities]));
+    /* Formun yazdığı yoldan (diBrief), Türkçe arayüzle: kuvvet öğeleri işaretlendiği sırayla ve İngilizce adlarıyla. */
+    const snapK = A.inTurkish(() => A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY,
+      instr: A.diBrief(Object.assign({}, instr, { priorities: ['foundational_strength', 'power'] }), null), customTests: [] }));
+    check('öncelik: Temel Kuvvet + Güç işaretlendiği sırayla JSON\'a yazılıyor',
+      JSON.stringify(snapK.coach_brief.priorities) === '["Foundational strength","Power"]',
+      JSON.stringify(snapK.coach_brief.priorities));
     check('boş alanlar çıktıya girmiyor', !JSON.stringify(snap).includes('""') && !JSON.stringify(snap).includes(':null'));
     /* Her basış o anki veriden: yeni bir check-in ve yeni bir not bir sonraki çıktıda. */
     const ath2 = Object.assign({}, ath, {
