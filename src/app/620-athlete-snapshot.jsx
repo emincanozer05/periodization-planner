@@ -142,6 +142,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     };
   };
   const painRegions=((b.pain&&b.pain.regions)||[]);
+  const painGraded=r=>!r.standing&&Number(r.severity_0_3)>0;
 
   /* RPE: the athlete's own log, per slot, for the last seven days — plus the load
      figures the rest of the app reads off it. */
@@ -359,8 +360,14 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
           deviation_pct:x.deviation,unit:x.unit.trim()||null,date:x.date,readings:x.n})),
     },
     pain_and_injury:{
-      current_pain:painRegions.map(r=>({region:r.label,severity_0_5:r.severity_0_5,severity_0_3:r.severity_0_3,
-        date:r.date,source:r.source,standing_constraint:r.standing||null,trend:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status})),
+      /* A region ticked without a grade (the multi-select question) or named only in
+         the free-text box is a REPORT whose severity was never asked. The engine keeps
+         it as 0, but in the JSON a 0 reads as "no pain" — so it goes out with no number
+         and says it is ungraded, and the peak is taken over the graded reports only. */
+      current_pain:painRegions.map(r=>{const g=painGraded(r);
+        return{region:r.label,severity_0_5:g?r.severity_0_5:null,severity_0_3:g?r.severity_0_3:null,
+          severity_graded:r.standing||g?null:false,
+          date:r.date,source:r.source,standing_constraint:r.standing||null,trend:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status};}),
       /* The 3D body map as the athlete marked it — exact region, side and grade —
          because the tags above are coarse and some regions (neck, chest, abdomen…)
          have no tag at all. Today's check-in, plus yesterday's regions still carrying. */
@@ -371,17 +378,20 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
           painEntries(w.painMap).forEach(({region,sev})=>{
             if(seen.has(region)||(carry&&!painCarries(sev)))return;seen.add(region);
             const side=/^Sağ /.test(region)?'right':/^Sol /.test(region)?'left':null;
-            out.push({region:painRegionEn(region),side,severity_0_3:sev||null,severity:SEV[sev]||null,date:w.date,
-              today:w===tw||null});});};
+            out.push({region:painRegionEn(region),side,severity_0_3:sev||null,severity:SEV[sev]||null,
+              severity_graded:sev?null:false,date:w.date,today:w===tw||null});});};
         add(tw,false);add(yw,true);
         return out;})(),
-      peak_pain_0_5:b.pain&&b.pain.peak_severity_0_5,
+      peak_pain_0_5:painRegions.some(painGraded)?b.pain.peak_severity_0_5:null,
       athlete_words:b.pain&&b.pain.athlete_words,
       patterns_to_unload:b.pain&&b.pain.patterns_to_unload,
       /* Only patterns the limits leave open: a pattern the coach's brief or a hard
          restriction closes (squat, under "no deep squat") is not offered here as the
-         one to steer towards. */
-      preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)),
+         one to steer towards. Nor is one another painful region asks to unload: a mild
+         neck takes Push off without blocking it, and a knee redirecting to Push must
+         not put it back in the list it was just taken out of. */
+      preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)
+        &&!(b.pain.patterns_to_unload||[]).includes(p)),
       standing_constraint_note:a.constraints,
       active_injuries:activeInj.map(injRow),
       past_injuries:pastInj.slice(-6).map(injRow),

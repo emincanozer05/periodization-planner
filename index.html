@@ -6177,6 +6177,11 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
   display:inline-flex;align-items:center;justify-content:center;background:rgba(56,189,248,.16);color:#7dd3fc;
   font-family:'IBM Plex Mono',ui-monospace,monospace}
 .di-tag.prio{border-color:rgba(56,189,248,.45);color:#bae6fd;background:rgba(56,189,248,.1);padding-left:7px}
+.di-prio-tip{position:fixed;z-index:1000;pointer-events:none;background:var(--bg2);
+  border:1px solid var(--border2);border-radius:10px;padding:10px 12px;box-shadow:0 16px 38px rgba(0,0,0,.6)}
+.di-prio-tip b{display:block;font-size:12px;color:var(--text);margin-bottom:4px}
+.di-prio-tip p{margin:0 0 5px;font-size:11px;line-height:1.5;color:var(--text2)}
+.di-prio-tip p.ex{color:var(--dim);font-style:italic;margin-bottom:0}
 .di-x{width:30px;height:30px;flex:none;border:1px solid var(--border);border-radius:8px;background:var(--elevated);
   color:var(--dim);font-size:12px;cursor:pointer;line-height:1}
 .di-x:hover{border-color:#f43f5e;color:#fda4af}
@@ -6956,6 +6961,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .tib-tag{background:rgba(15,23,42,.05)}
 :root[data-theme="light"] .tib-mini i.p{background:rgba(15,23,42,.24)}
 :root[data-theme="light"] .tib-tr .c .bar{background:rgba(15,23,42,.04)}
+:root[data-theme="light"] .di-prio-tip{box-shadow:0 16px 38px rgba(15,23,42,0.21)}
 :root[data-theme="light"] .di-conmenu{box-shadow:0 16px 38px rgba(15,23,42,0.19)}
 :root[data-theme="light"] .di-contip{box-shadow:0 16px 38px rgba(15,23,42,0.21)}
 :root[data-theme="light"] .modal.di-snap{background:var(--elevated)}
@@ -34341,35 +34347,81 @@ function diRowUnits(row){
 
 /* ---- What the coach can ask for (the brief, field 1) ----------------------
    Grouped the way a coach thinks about qualities rather than alphabetically, and
-   carried as ids so the answer is asked for one of these rather than for prose. */
+   carried as ids so the answer is asked for one of these rather than for prose.
+   `desc` (what the quality is) and `ex` (how it is typically trained) are only the
+   hover box in the picker; the request still carries the label alone. */
 const DI_PRIORITIES=[
   {group:['Kuvvet','Strength'],items:[
-    {id:'foundational_strength',label:['Temel Kuvvet (Foundational Strength)','Foundational strength']},
-    {id:'max_strength',label:['Maksimal Kuvvet','Maximal strength']},
-    {id:'rfd',         label:['Kuvvet Geliştirme Hızı (RFD)','Rate of force development']},
-    {id:'power',       label:['Güç (Power)','Power']},
-    {id:'reactive',    label:['Reaktif Kuvvet','Reactive strength']},
-    {id:'hypertrophy', label:['Hipertrofi','Hypertrophy']}]},
+    {id:'foundational_strength',label:['Temel Kuvvet (Foundational Strength)','Foundational strength'],
+     desc:['Temel hareket kalıplarında (squat, hinge, itme, çekme) teknik ve doku kapasitesi kurmak; diğer kuvvet niteliklerinin zemini.','Building technique and tissue capacity in the basic patterns (squat, hinge, push, pull) — the base the other strength qualities stand on.'],
+     ex:['Örn. goblet squat, RDL, split squat · orta yük, kontrollü tempo','e.g. goblet squat, RDL, split squat · moderate load, controlled tempo']},
+    {id:'max_strength',label:['Maksimal Kuvvet','Maximal strength'],
+     desc:['Üretilebilecek en yüksek kuvveti artırmak: yüksek yük, düşük tekrar, uzun dinlenme.','Raising the most force the athlete can produce: heavy loads, low reps, long rests.'],
+     ex:['Örn. %85+ 1RM, 1–5 tekrar, 3–5 dk dinlenme','e.g. 85%+ 1RM, 1–5 reps, 3–5 min rest']},
+    {id:'rfd',         label:['Kuvvet Geliştirme Hızı (RFD)','Rate of force development'],
+     desc:['Kuvveti kısa sürede üretebilme — ilk 50–250 ms\'de kuvvetin ne kadar hızlı yükseldiği.','Producing force quickly — how fast force rises in the first 50–250 ms.'],
+     ex:['Örn. balistik kaldırışlar, hızlı izometrik itişler, kısa temaslı sıçramalar','e.g. ballistic lifts, rapid isometric pushes, short-contact jumps']},
+    {id:'power',       label:['Güç (Power)','Power'],
+     desc:['Kuvvet × hız: hafif-orta yükleri maksimum niyetle, olabildiğince hızlı hareket ettirmek.','Force × velocity: moving light-to-moderate loads with maximal intent, as fast as possible.'],
+     ex:['Örn. jump squat, trap bar jump, med ball atışları, olimpik kaldırış türevleri','e.g. jump squat, trap bar jump, med-ball throws, Olympic lift derivatives']},
+    {id:'reactive',    label:['Reaktif Kuvvet','Reactive strength'],
+     desc:['Esneme-kısalma döngüsünü kullanarak kısa yer temasında yüksek kuvvet üretme (RSI).','Using the stretch-shortening cycle to produce high force in a short ground contact (RSI).'],
+     ex:['Örn. pogo, drop jump, sekmeli sıçramalar','e.g. pogos, drop jumps, hops']},
+    {id:'hypertrophy', label:['Hipertrofi','Hypertrophy'],
+     desc:['Kas kesit alanını artırmak: orta yük, yüksek hacim, tükenişe yakın setler.','Increasing muscle size: moderate loads, high volume, sets taken close to failure.'],
+     ex:['Örn. 6–12 tekrar, 3–5 set, RIR 1–3','e.g. 6–12 reps, 3–5 sets, RIR 1–3']}]},
   {group:['Hız ve Hareket','Speed & movement'],items:[
-    {id:'accel',       label:['İvmelenme','Acceleration']},
-    {id:'max_velocity',label:['Maksimum Hız','Maximum velocity']},
-    {id:'decel',       label:['Yavaşlama','Deceleration']},
-    {id:'cod',         label:['Yön Değiştirme (COD)','Change of direction']},
-    {id:'agility',     label:['Çeviklik','Agility']}]},
+    {id:'accel',       label:['İvmelenme','Acceleration'],
+     desc:['Duruştan ya da düşük hızdan hızlanma: ilk 0–20 m, öne eğik pozisyon ve güçlü itiş.','Speeding up from a standstill or low speed: the first 0–20 m, forward lean and a powerful push-off.'],
+     ex:['Örn. 10–20 m sprintler, kızak çekişi, duvar drilleri','e.g. 10–20 m sprints, sled pulls, wall drills']},
+    {id:'max_velocity',label:['Maksimum Hız','Maximum velocity'],
+     desc:['Ulaşılabilen en yüksek koşu hızı ve dik koşu mekaniği.','The highest running speed reached, and upright sprint mechanics.'],
+     ex:['Örn. uçan 10–30 m sprintler, tam dinlenmeyle','e.g. flying 10–30 m sprints with full rest']},
+    {id:'decel',       label:['Yavaşlama','Deceleration'],
+     desc:['Hızı güvenle ve çabucak kesme: eksantrik kuvvet ve frenleme mekaniği.','Bleeding off speed quickly and safely: eccentric strength and braking mechanics.'],
+     ex:['Örn. sprint-dur, eksantrik vurgulu iniş ve frenleme drilleri','e.g. sprint-to-stop, eccentric-focused landing and braking drills']},
+    {id:'cod',         label:['Yön Değiştirme (COD)','Change of direction'],
+     desc:['Önceden bilinen bir yöne hızla dönme — planlı, tepkisel olmayan hareket.','Turning quickly in a known direction — planned, not reactive.'],
+     ex:['Örn. 5-0-5, T-testi, kon dönüşleri','e.g. 5-0-5, T-test, cone cuts']},
+    {id:'agility',     label:['Çeviklik','Agility'],
+     desc:['Bir uyarana (rakip, top, sinyal) tepki olarak yön değiştirme: algı + karar + hareket.','Changing direction in response to a stimulus (opponent, ball, signal): perception + decision + movement.'],
+     ex:['Örn. ayna drilleri, sinyalli/reaktif dönüşler, küçük alan oyunları','e.g. mirror drills, cued/reactive cuts, small-sided games']}]},
   {group:['Hareket Kalitesi','Movement quality'],items:[
-    {id:'mobility',    label:['Mobilite','Mobility']},
-    {id:'stability',   label:['Stabilite','Stability']},
-    {id:'landing',     label:['İniş / Kuvvet Absorpsiyonu','Landing / force absorption']},
-    {id:'corrective',  label:['Düzeltici','Corrective']}]},
+    {id:'mobility',    label:['Mobilite','Mobility'],
+     desc:['Eklemlerde aktif ve kontrollü hareket açıklığını artırmak.','Increasing active, controlled range of motion at the joints.'],
+     ex:['Örn. kalça/torasik mobilite, dinamik esneme, CARs','e.g. hip/thoracic mobility, dynamic stretching, CARs']},
+    {id:'stability',   label:['Stabilite','Stability'],
+     desc:['Hareket altında gövdeyi ve eklemleri kontrol etme, pozisyonu koruma.','Controlling the trunk and joints under movement; holding position.'],
+     ex:['Örn. anti-rotasyon, tek bacak denge, Pallof press','e.g. anti-rotation, single-leg balance, Pallof press']},
+    {id:'landing',     label:['İniş / Kuvvet Absorpsiyonu','Landing / force absorption'],
+     desc:['Sıçrama ve ani duruşlarda kuvveti güvenle karşılama: diz-kalça hizası, yumuşak iniş.','Absorbing force safely in landings and sudden stops: knee-hip alignment, soft landings.'],
+     ex:['Örn. snap down, kutudan iniş (stick), tek bacak iniş','e.g. snap downs, box-drop sticks, single-leg landings']},
+    {id:'corrective',  label:['Düzeltici','Corrective'],
+     desc:['Testte görülen bir eksikliği, asimetriyi ya da kompansasyonu hedefleyen çalışma.','Work aimed at a deficit, asymmetry or compensation the tests showed.'],
+     ex:['Örn. zayıf tarafa ek set, glute med aktivasyonu, skapular kontrol','e.g. extra sets for the weaker side, glute med activation, scapular control']}]},
   {group:['Enerji Sistemleri','Energy systems'],items:[
-    {id:'aerobic',     label:['Aerobik Kapasite','Aerobic capacity']},
-    {id:'anaerobic',   label:['Anaerobik Kapasite','Anaerobic capacity']},
-    {id:'rsa',         label:['Tekrarlı Sprint Yeteneği','Repeated sprint ability']}]},
+    {id:'aerobic',     label:['Aerobik Kapasite','Aerobic capacity'],
+     desc:['Uzun süre orta yoğunlukta çalışabilme ve eforlar arası toparlanma kapasitesi.','Sustaining work at moderate intensity, and recovering between efforts.'],
+     ex:['Örn. tempo koşuları, 20–40 dk sürekli çalışma, uzun intervaller','e.g. tempo runs, 20–40 min continuous work, long intervals']},
+    {id:'anaerobic',   label:['Anaerobik Kapasite','Anaerobic capacity'],
+     desc:['Kısa ve çok yoğun eforları (yaklaşık 20 sn – 2 dk) sürdürebilme, laktata tolerans.','Holding short, very hard efforts (about 20 s – 2 min) and tolerating lactate.'],
+     ex:['Örn. 30–60 sn yüksek yoğunluklu intervaller, shuttle koşuları','e.g. 30–60 s high-intensity intervals, shuttle runs']},
+    {id:'rsa',         label:['Tekrarlı Sprint Yeteneği','Repeated sprint ability'],
+     desc:['Kısa dinlenmelerle art arda maksimale yakın sprint atabilme.','Repeating near-maximal sprints with short rests.'],
+     ex:['Örn. 6–10 × 20–30 m sprint, 20–30 sn dinlenme','e.g. 6–10 × 20–30 m sprints, 20–30 s rest']}]},
   {group:['Koruma / Rehabilitasyon','Maintenance / rehab'],items:[
-    {id:'strength_maint',label:['Kuvvet Koruma','Strength maintenance']},
-    {id:'speed_maint',   label:['Hız / Güç Koruma','Speed / power maintenance']},
-    {id:'recondition',   label:['Reconditioning','Reconditioning']},
-    {id:'rtp',           label:['Oyuna Dönüş (RTP)','Return to play']}]},
+    {id:'strength_maint',label:['Kuvvet Koruma','Strength maintenance'],
+     desc:['Yoğun dönemde (sezon içi) kazanılmış kuvveti düşük hacim, yüksek yoğunlukla korumak.','Holding on to strength in busy periods (in season) with low volume and high intensity.'],
+     ex:['Örn. haftada 1–2 seans, ana kaldırışlarda 2–3 ağır set','e.g. 1–2 sessions a week, 2–3 heavy sets of the main lifts']},
+    {id:'speed_maint',   label:['Hız / Güç Koruma','Speed / power maintenance'],
+     desc:['Hız ve patlayıcılığı az hacimle, taze ve kaliteli tekrarlarla korumak.','Keeping speed and explosiveness on little volume — a few fresh, high-quality reps.'],
+     ex:['Örn. birkaç maksimal sprint, kısa sıçrama/atış serileri','e.g. a few maximal sprints, short jump/throw series']},
+    {id:'recondition',   label:['Reconditioning','Reconditioning'],
+     desc:['Sakatlık sonrası rehabilitasyondan sahaya geçişte kapasiteyi kademeli geri kazandırmak.','Gradually rebuilding capacity on the way from rehab back to the field after an injury.'],
+     ex:['Örn. kademeli koşu progresyonu, artan yük ve hacim','e.g. graded running progressions, rising load and volume']},
+    {id:'rtp',           label:['Oyuna Dönüş (RTP)','Return to play'],
+     desc:['Sakatlık sonrası sporun tam taleplerine dönüş: kriter bazlı, adım adım ilerleme.','Returning to the full demands of the sport after injury: criteria-based, step by step.'],
+     ex:['Örn. spora özgü driller, test kriterleri karşılandıkça ilerleme','e.g. sport-specific drills, progressing as test criteria are met']}]},
 ];
 const DI_PRIORITY_ALL=DI_PRIORITIES.reduce((a,g)=>a.concat(g.items),[]);
 const diPrioRow=id=>DI_PRIORITY_ALL.find(p=>p.id===id)||null;
@@ -35784,11 +35836,33 @@ function DiChipList({value,onChange,placeholder,tone,pending}){
    dropdown per quality plus "+ Ek öncelik ekle" for each further one — three priorities
    cost three separate opens and two extra presses. The order they are ticked in is still
    the order they are read, and each picked quality sits under the box as a chip with its
-   own ✕. A click outside the list, or Escape, closes it. */
+   own ✕. A click outside the list, or Escape, closes it.
+
+   Hovering (or focusing) a quality shows a short box beside the list: what it is and
+   how it is usually trained. The list scrolls, so a box drawn inside it would be cut
+   off at its edge — it is drawn fixed-position into <body>, beside the list where
+   there is room and under the row where there is not. */
+const DI_PRIO_TIP_W=290;
 function DiPriorityPicker({value,onChange}){
   const list=(Array.isArray(value)?value:[]).filter(diPrioRow);
   const[open,setOpen]=useState(false);
+  const[tip,setTip]=useState(null);   // hovered quality → {id,left,top|bottom}
   const wrap=useRef(null);
+  const menu=useRef(null);
+  const showTip=(e,id)=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    const m=menu.current?menu.current.getBoundingClientRect():r;
+    const W=window.innerWidth,H=window.innerHeight,gap=10;
+    let left,top=r.top-4,below=false;
+    if(m.right+gap+DI_PRIO_TIP_W<=W-8)left=m.right+gap;
+    else if(m.left-gap-DI_PRIO_TIP_W>=8)left=m.left-gap-DI_PRIO_TIP_W;
+    else{left=Math.max(8,Math.min(W-DI_PRIO_TIP_W-8,r.left));top=r.bottom+6;below=true;}
+    /* Near the foot of the window the box hangs upwards from the row instead. */
+    const pos=(!below&&top>H-170)||(below&&top>H-150)
+      ?{left,bottom:H-(below?r.top-6:r.bottom+4)}:{left,top};
+    setTip({id,...pos});
+  };
+  useEffect(()=>{if(!open)setTip(null);},[open]);
   useEffect(()=>{
     if(!open)return;
     const away=e=>{if(wrap.current&&!wrap.current.contains(e.target))setOpen(false);};
@@ -35806,12 +35880,16 @@ function DiPriorityPicker({value,onChange}){
         :L('— öncelik seç','— pick priorities')}</span>
       <i>{open?'▲':'▼'}</i>
     </button>
-    {open&&<div className="di-conmenu" role="listbox" aria-multiselectable="true">
+    {open&&<div className="di-conmenu" role="listbox" aria-multiselectable="true" ref={menu}
+      onScroll={()=>setTip(null)}>
       {DI_PRIORITIES.map(g=><div key={g.group[0]} className="di-prio-grp">
         <div className="di-prio-gh">{L(g.group[0],g.group[1])}</div>
         {g.items.map(p=>{const on=list.includes(p.id);
           return<div key={p.id} className={'di-conitem'+(on?' on':'')} role="option" aria-selected={on}
             tabIndex={0} onClick={()=>toggle(p.id)}
+            onMouseEnter={e=>showTip(e,p.id)} onMouseLeave={()=>setTip(null)}
+            onFocus={e=>showTip(e,p.id)} onBlur={()=>setTip(null)}
+            aria-describedby={tip&&tip.id===p.id?'di-prio-tip':undefined}
             onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(p.id);}}}>
             <span className="di-conbox">{on?'✓':''}</span>
             <span className="di-connm">{L(p.label[0],p.label[1])}</span>
@@ -35819,6 +35897,14 @@ function DiPriorityPicker({value,onChange}){
           </div>;})}
       </div>)}
     </div>}
+    {open&&tip&&(()=>{const p=diPrioRow(tip.id);if(!p||!p.desc)return null;
+      return ReactDOM.createPortal(
+        <div id="di-prio-tip" className="di-prio-tip" role="tooltip"
+          style={{left:tip.left,top:tip.top,bottom:tip.bottom,width:DI_PRIO_TIP_W}}>
+          <b>{L(p.label[0],p.label[1])}</b>
+          <p>{L(p.desc[0],p.desc[1])}</p>
+          {p.ex&&<p className="ex">{L(p.ex[0],p.ex[1])}</p>}
+        </div>,document.body);})()}
     {list.length>0&&<div className="di-chips">
       {list.map((id,i)=><span key={id} className="di-tag prio" title={diPrioLabel(id)}>
         {list.length>1?<b className="di-prio-ord">{i+1}</b>:null}<span>{diPrioLabel(id)}</span>
@@ -36297,6 +36383,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     };
   };
   const painRegions=((b.pain&&b.pain.regions)||[]);
+  const painGraded=r=>!r.standing&&Number(r.severity_0_3)>0;
 
   /* RPE: the athlete's own log, per slot, for the last seven days — plus the load
      figures the rest of the app reads off it. */
@@ -36514,8 +36601,14 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
           deviation_pct:x.deviation,unit:x.unit.trim()||null,date:x.date,readings:x.n})),
     },
     pain_and_injury:{
-      current_pain:painRegions.map(r=>({region:r.label,severity_0_5:r.severity_0_5,severity_0_3:r.severity_0_3,
-        date:r.date,source:r.source,standing_constraint:r.standing||null,trend:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status})),
+      /* A region ticked without a grade (the multi-select question) or named only in
+         the free-text box is a REPORT whose severity was never asked. The engine keeps
+         it as 0, but in the JSON a 0 reads as "no pain" — so it goes out with no number
+         and says it is ungraded, and the peak is taken over the graded reports only. */
+      current_pain:painRegions.map(r=>{const g=painGraded(r);
+        return{region:r.label,severity_0_5:g?r.severity_0_5:null,severity_0_3:g?r.severity_0_3:null,
+          severity_graded:r.standing||g?null:false,
+          date:r.date,source:r.source,standing_constraint:r.standing||null,trend:((b.pain.trend||[]).find(t=>t.region===r.label)||{}).status};}),
       /* The 3D body map as the athlete marked it — exact region, side and grade —
          because the tags above are coarse and some regions (neck, chest, abdomen…)
          have no tag at all. Today's check-in, plus yesterday's regions still carrying. */
@@ -36526,17 +36619,20 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
           painEntries(w.painMap).forEach(({region,sev})=>{
             if(seen.has(region)||(carry&&!painCarries(sev)))return;seen.add(region);
             const side=/^Sağ /.test(region)?'right':/^Sol /.test(region)?'left':null;
-            out.push({region:painRegionEn(region),side,severity_0_3:sev||null,severity:SEV[sev]||null,date:w.date,
-              today:w===tw||null});});};
+            out.push({region:painRegionEn(region),side,severity_0_3:sev||null,severity:SEV[sev]||null,
+              severity_graded:sev?null:false,date:w.date,today:w===tw||null});});};
         add(tw,false);add(yw,true);
         return out;})(),
-      peak_pain_0_5:b.pain&&b.pain.peak_severity_0_5,
+      peak_pain_0_5:painRegions.some(painGraded)?b.pain.peak_severity_0_5:null,
       athlete_words:b.pain&&b.pain.athlete_words,
       patterns_to_unload:b.pain&&b.pain.patterns_to_unload,
       /* Only patterns the limits leave open: a pattern the coach's brief or a hard
          restriction closes (squat, under "no deep squat") is not offered here as the
-         one to steer towards. */
-      preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)),
+         one to steer towards. Nor is one another painful region asks to unload: a mild
+         neck takes Push off without blocking it, and a knee redirecting to Push must
+         not put it back in the list it was just taken out of. */
+      preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)
+        &&!(b.pain.patterns_to_unload||[]).includes(p)),
       standing_constraint_note:a.constraints,
       active_injuries:activeInj.map(injRow),
       past_injuries:pastInj.slice(-6).map(injRow),
