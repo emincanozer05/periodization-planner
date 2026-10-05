@@ -82,31 +82,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     });
     return out;
   },[plans,team.setup,date,libMap]);
-  /* "Tüm Sporcuların Bilgilerini Al": every selected athlete, from the team as it stands
-     at the press. Each carries their own brief for this day and source; an athlete whose
-     record the engine cannot read is named rather than silently left out. */
-  const[squadSnap,setSquadSnap]=useState(null);
-  const takeSquadSnapshot=()=>{
-    const setup=team.setup||{};
-    const items=[],skipped=[];
-    athletes.filter(a=>chosen.includes(a.id)).forEach(a=>{
-      const p=plans.find(x=>x.ath.id===a.id)||null;
-      try{
-        const review=activeKey?diReadReview(team,activeKey,a.id,date):null;
-        items.push({ath:a,
-          instr:diBrief(review&&review.instr,p?p.meta:null),session:p?p.meta:null,recent:diRecentPrograms(team,a.id,date)});
-      }catch(e){skipped.push(a.name||a.id);}
-    });
-    if(!items.length){setToast(L('Seçili sporcuların verisi okunamadı.','The selected athletes\' data could not be read.'));return;}
-    let text;
-    try{text=JSON.stringify(diSquadSnapshot({items,setup,date,customTests:data.customTests,libMap}));}
-    catch(e){setToast((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
-    const note=L(`${items.length} sporcu.`,`${items.length} athletes.`)+(skipped.length
-      ?' '+L(`Verisi okunamayan: ${skipped.join(', ')}.`,`Could not read: ${skipped.join(', ')}.`):'');
-    setSquadSnap({text,copied:null,note});
-    snapCopy(text).then(ok=>setSquadSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
-  };
-
   /* The review standing against each athlete on this source and day, and — from it —
      the plan the sheet is allowed to write for them. A draft still waiting on the coach
      returns no plan at all: that athlete's calendar is held until they decide. Both the
@@ -158,6 +133,27 @@ function IndividualizationView({data,team,updateTeam,weeks}){
     });
     return out;
   },[athletes,date,activeKey]);
+  /* "Sporcuların Antrenman Çıktısını Al": the programme each selected athlete actually has
+     on their calendar for this source and day, in ONE document — the calendar's own A4
+     printout, an athlete per page under their own header, so it prints (or saves as a PDF)
+     in a single go. It reads `written`, i.e. what reached the calendars: an athlete whose
+     draft is still waiting on the coach has nothing there yet, so they are named instead of
+     being printed as an empty sheet. */
+  const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
+  const printSquad=()=>{
+    if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
+    const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
+    const setup=team.setup||{};
+    try{
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{
+        groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
+    }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
+    if(missing.length){
+      const msg=L(`Programı henüz takvime yazılmayan ${missing.length} sporcu çıktıya girmedi: ${missing.join(', ')}.`,
+        `${missing.length} athlete${missing.length>1?'s':''} without a written programme left out: ${missing.join(', ')}.`);
+      setToast(msg);setTimeout(()=>setToast(t=>t===msg?'':t),6000);
+    }
+  };
 
   /* Writing is scoped to a list of athletes so the same path serves the squad
      button in the bar and the per-athlete button on each card. */
@@ -385,12 +381,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         {removable.length>0&&<button className="btn sec sm" onClick={removeFrom}
           title={L('Bu programı seçili sporcuların takviminden kaldırır.','Removes this program from the selected athletes\' calendars.')}>
           ✕ {L('Takvimden kaldır','Remove from calendars')}</button>}
-        {/* Everyone selected above, in one JSON, rebuilt at the press — for one request to
-            an outside model instead of one per athlete. */}
-        <button className="btn sec sm" onClick={takeSquadSnapshot} disabled={!chosen.length}
-          title={L('Seçili sporcuların o anki bütün güncel verisini ve talimatlarını tek bir JSON olarak verir.',
-            'The current data and brief of every selected athlete, as one JSON document.')}>
-          {'{ }'} {L(`Tüm Sporcuların Bilgilerini Al (${chosen.length})`,`Get all athletes' data (${chosen.length})`)}</button>
+        {/* Everyone selected above, as one printout: each athlete's programme from their own
+            calendar, one document. Counts only the athletes who have one written. */}
+        <button className="btn sec sm" onClick={printSquad} disabled={!printable.length}
+          title={L('Seçili sporcuların takvimine yazılmış programlarını tek belgede yazdırır ya da PDF olarak kaydeder (her sporcu ayrı sayfada).',
+            'Prints the programmes written to the selected athletes\' calendars as one document, or saves it as a PDF (one athlete per page).')}>
+          🖨 {L(`Sporcuların Antrenman Çıktısını Al (${printable.length})`,`Print all athletes' programmes (${printable.length})`)}</button>
       </div>
       {toast&&<div className="iv-toast">{toast}</div>}
       <div className="help" style={{width:'100%',margin:0}}>
@@ -426,8 +422,6 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       calendar={<IndivAthleteCalendar ath={p.ath} team={team} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
-    <DiJsonModal title={L('Tüm Sporcuların Bilgileri','All athletes\' data')} date={date}
-      snap={squadSnap} setSnap={setSquadSnap} fileBase={L('tum_sporcular','all_athletes')}/>
     {src&&plans.length===0&&<div className="ex-empty">{srcRoster&&!srcRoster.length
       ?L('Bu seans yalnızca kadroda olmayan sporculara atanmış — seansın katılımcı listesini takvimden güncelle.',
          'This session is assigned only to athletes who have left the roster — update its participant list on the session itself.')
