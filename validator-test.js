@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1280,10 +1280,11 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       em.window_end === back(1) && !em.exercises.some(e => e.exercise === 'Goblet Squat') &&
       em.last_session.date === back(1) && em.session_count.last_7_days === 3, JSON.stringify(em.last_session));
     const bssJ = em.exercises.find(e => e.exercise === 'Bulgarian Split Squat');
-    check('JSON: egzersiz kaydı aile, patern, son kullanım, sıklık ve dört pencere taşıyor',
-      bssJ && bssJ.family === 'Split Squat Family' && bssJ.movement_class.includes('Unilateral Knee Dominant') && !('movement_pattern' in bssJ) &&
-      bssJ.last_used === back(1) && bssJ.frequency_28_days === 3 && !('exposure' in bssJ) && !!em.level_scale &&
-      Object.keys(bssJ.sets).join(',') === 'last_session,last_7_days,last_14_days,last_28_days', JSON.stringify(bssJ));
+    check('JSON: egzersiz kaydı sade — ad, aile, son kullanım, 7 ve 28 gün seti; sınıflama tekrarı yok',
+      bssJ && Object.keys(bssJ).join(',') === 'exercise,family,last_used,sets_7_days,sets_28_days' &&
+      bssJ.family === 'Split Squat Family' && bssJ.last_used === back(1) && bssJ.sets_7_days === 12 && bssJ.sets_28_days === 12 &&
+      !!em.format && !('level_scale' in em) && !('exercise_families' in em) &&
+      em.last_session.exercises.includes('Bulgarian Split Squat') && !('last_14_days' in em.session_count), JSON.stringify(bssJ));
     check('JSON: maruziyeti olmayan paternler ayrı listede',
       em.movement_class.no_exposure_last_28_days.includes('Vertical Push') &&
       em.movement_class.records.some(k => k.name === 'Knee Dominant') && !!em.movement_class_note,
@@ -1342,11 +1343,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(exp2.equipment.map(t => [t.label, t.sets.d7])));
     const snap2 = A.atpSnapshot(ath2, TODAY, libMap).out.exercise_exposure;
     const rec2 = n => snap2.exercises.find(e => e.exercise === n);
-    check('JSON: egzersiz kaydı taraf, düzlem, aksiyon, odak ve ekipman taşıyor; verilmeyen alan hiç yazılmıyor',
-      rec2('Bulgarian Split Squat').laterality === 'Unilateral' && rec2('Bulgarian Split Squat').equipment === 'Dumbbell' &&
-      rec2('Lateral Lunge').movement_plane === 'Frontal' && rec2('Lat Pulldown').action === 'Pull' &&
-      rec2('Nordic Hamstring Curl').contraction_focus === 'Eccentric' &&
-      !['laterality', 'movement_plane', 'action', 'contraction_focus', 'equipment'].some(k => k in rec2('Box Jump')), JSON.stringify(rec2('Box Jump')));
+    check('JSON: egzersiz kaydı sınıflamayı tekrar etmiyor — eksenler yalnızca strength_movement_profile ve equipment_used\'da',
+      rec2('Bulgarian Split Squat').sets_7_days === 8 &&
+      !['laterality', 'movement_plane', 'action', 'contraction_focus', 'equipment', 'movement_class', 'stimulus', 'loading_character', 'sets']
+        .some(k => k in rec2('Bulgarian Split Squat')), JSON.stringify(rec2('Bulgarian Split Squat')));
     const smp = snap2.strength_movement_profile;
     check('JSON: strength_movement_profile dört eksenle, maruziyeti olmayan değerler ayrı, not var',
       !!smp.note && smp.laterality.records.map(r => r.name).sort().join('|') === 'Bilateral|Unilateral' &&
@@ -1354,8 +1354,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       smp.action.records.length === 2 && smp.contraction_focus.no_exposure_last_28_days.includes('Isometric') &&
       !('lower_body_laterality' in snap2), JSON.stringify(smp.movement_plane));
     check('JSON: ekipman yalnızca kullanılanlarla, not var',
-      snap2.equipment_used.records.some(r => r.name === 'Dumbbell' && r.sets.last_7_days === 8) &&
-      !snap2.equipment_used.records.some(r => r.name === 'Kettlebell') && !!snap2.equipment_used_note, JSON.stringify(snap2.equipment_used));
+      snap2.equipment_used.some(r => r.name === 'Dumbbell' && r.sets_7_days === 8) &&
+      !snap2.equipment_used.some(r => r.name === 'Kettlebell'), JSON.stringify(snap2.equipment_used));
     // Her kütüphane kategorisi: kendi alt boyutlarıyla sınıflama.
     const fc = (n, lm) => A.atpClassify(row(n), lm || libMap);
     const f = (n, lm) => fc(n, lm).facets;
@@ -1413,8 +1413,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       ['Balance', 'Stability', 'Accessory'].every(t => exp3.coverageMissing.includes(t)) && !exp3.coverageMissing.includes('Warm-Up'), JSON.stringify(exp3.coverageMissing));
     const cc = A.atpSnapshot(ath3, TODAY, libMap).out.exercise_exposure.category_coverage;
     const coreMv = cc.categories.find(c => c.category === 'Core').facets.find(x => x.facet === 'Movement');
-    check('JSON: category_coverage — yapılan, bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
-      !!cc.note && coreMv.done.some(r => r.name === 'Anti-Extension' && r.sets.last_7_days === 6) &&
+    check('JSON: category_coverage — yalnızca boşluklar: bu hafta yapılmayan, 28 günde yapılmayan ve çalışma olmayan kategoriler',
+      !!cc.note && !('done' in coreMv) && cc.categories.find(c => c.category === 'Core').sets_7_days === 6 &&
       coreMv.not_done_last_7_days.includes('Anti-Rotation') && coreMv.not_done_last_7_days.includes('Rotation') && !coreMv.not_done_last_7_days.includes('Anti-Extension') &&
       !coreMv.not_done_last_28_days.includes('Anti-Rotation') && coreMv.not_done_last_28_days.includes('Rotation') && !('done_last_28_not_last_7_days' in coreMv) &&
       cc.categories_without_recorded_work.includes('Balance') && !cc.categories_without_recorded_work.includes('Core'),
@@ -1459,8 +1459,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(nw.qualities));
     /* Sadeleştirme: 26 madde 18'e indi. Kaldırılan maddeler birleştikleri kaliteye en
        yüksek öncelikleriyle taşınıyor; hiçbir öncelik düşmüyor. */
-    check('şablon 18 kalite, kuvvet grubu patern değil kalite',
-      A.ATP_QUALITIES.length === 18 && A.ATP_GROUPS.find(g => g.id === 'strength').items.map(i => i.en).join('|') ===
+    check('şablon 19 kalite (Reaktif Kuvvet pliometrik grupta), kuvvet grubu patern değil kalite',
+      A.ATP_QUALITIES.length === 19 && A.ATP_GROUPS.find(g => g.id === 'plyo').items.map(i => i.en).join('|') === 'Jumping|Landing|Reactive Strength' &&
+      A.atpT('Reactive Strength') !== '' && A.ATP_GROUPS.find(g => g.id === 'strength').items.map(i => i.en).join('|') ===
         'Lower-Body Strength|Upper-Body Strength|Unilateral Strength', A.ATP_QUALITIES.map(q => q.en).join('|'));
     const mg = A.atpRead({ trainingProfile: { qualities: {
       sprint_mechanics: { priority: 'high' }, acceleration: { priority: 'low' },
@@ -1781,6 +1782,91 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const vExt = A.validateProgram(ext, ctxFor(ath, want(['knee_dominant', 'carry'])));
     check('yüklenen programda eksik patern engellemez, uyarı olarak görünür',
       vExt.status === 'pass' && vExt.softWarnings.some(w => w.was_hard && /Taşıma|Carry/.test(w.text)), softText(vExt));
+  }
+
+  group('Ek — Program talimatı (Revize 13): karar hiyerarşisi, yorumsuz çıktı, maç yakınlığı, sade JSON');
+  {
+    // Yüksek öncelik en fazla 5; JSON açıklaması bunu söylüyor.
+    const five = {}; ['acceleration', 'max_velocity', 'jumping', 'landing', 'reactive_strength'].forEach(k => { five[k] = { priority: 'high' }; });
+    const ath5 = athlete({ trainingProfile: { qualities: five } });
+    const s5 = A.diAthleteSnapshot({ ath: ath5, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('Yüksek öncelik sınırı 5; JSON açıklaması sınırı yazıyor; Reaktif Kuvvet JSON\'a gidiyor',
+      A.ATP_HIGH_MAX === 5 && /at most 5 qualities/.test(s5.training_profile.athletic_profile.description) &&
+      s5.training_profile.athletic_profile.priority.high.includes('Reactive Strength'), JSON.stringify(s5.training_profile.athletic_profile.priority));
+
+    // Karar hiyerarşisi: altı basamak, doğru sırada; görev ona başvuruyor; takım JSON'unda bir kez.
+    const dh = s5.decision_hierarchy || [];
+    const order = ['Safety / hard constraints', 'Coach brief', 'Match context', 'Individual needs', 'Recent load / exposure', 'Variety'];
+    check('decision_hierarchy: güvenlik → koç talimatı → maç → bireysel ihtiyaç → geçmiş yük → çeşitlilik',
+      order.every((t, i) => dh[i] && dh[i].startsWith(`${i + 1}. ${t}`)) && s5.task.some(g => /decision_hierarchy/.test(g)), JSON.stringify(dh));
+    const sq = A.diSquadSnapshot({ items: [{ ath: ath5, instr: A.diInstr(null, { duration: null }) }], setup: SETUP, date: TODAY, customTests: [], libMap });
+    check('takım JSON\'u: decision_hierarchy bir kez, en üstte', Array.isArray(sq.decision_hierarchy) && !('decision_hierarchy' in sq.athletes[0]));
+
+    // Çıktı şeması: yalnızca program; yorum alanı yok, egzersizde açıklama var.
+    const of = s5.output_format;
+    const exS = of.program.blocks[0].exercises[0];
+    check('çıktı şeması yorumsuz: durum özeti / öncelik / gerekçe / koç uyarısı / uyulan kısıtlar yok; egzersizde description',
+      Object.keys(of).join(',') === 'program,flagged_conflicts' && !('rationale' in exS) && /no commentary/.test(exS.description) &&
+      ['name', 'sets', 'reps', 'tempo', 'rest', 'description'].every(k => k in exS) &&
+      s5.task.some(g => /Write NO commentary/.test(g)), JSON.stringify(Object.keys(of)));
+    const dsc = A.diParseExternalProgram(JSON.stringify({ program: { session_name: 'x', blocks: [{ name: 'Main', phase: 'main', exercises: [
+      { name: 'Goblet Squat', sets: '3', reps: '6', tempo: '3-1-1', rest: '90 s', movement_pattern: 'Squat', description: 'Dirsekler dizlerin içinde, gövde dik.' }] }] } }), libMap);
+    check('description okunup takvim açıklamasına gidiyor', dsc.blocks[0].exercises[0].why === 'Dirsekler dizlerin içinde, gövde dik.' &&
+      dsc.blocks[0].exercises[0].tempo === '3-1-1', JSON.stringify(dsc.blocks[0].exercises[0]));
+
+    // Pliometrik: yalnızca üst sınır.
+    const pl = A.diPlyoCeiling({ athlete: { age: 16 } });
+    const plS = A.diAthleteSnapshot({ ath: athlete({ dateOfBirth: '2010-01-01' }), setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('pliometrik temas: minimum yok, yalnızca maksimum', pl && pl.max === 100 && !('min' in pl) &&
+      !('min' in plS.code_checked_limits.plyometric_contact_limit) && /no minimum/.test(plS.code_checked_limits.plyometric_contact_limit.note),
+      JSON.stringify(plS.code_checked_limits.plyometric_contact_limit));
+
+    // Ölçülen eksikler: gözlem; neden ya da egzersiz çözümü yok.
+    const dAth = athlete({ tests: [Object.assign(cleanTest(back(30)), { ankleDF: { right: 28, left: 30 } })] });
+    const dS = A.diAthleteSnapshot({ ath: dAth, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('measured_deficits gözlem olarak: required_work yok, not çıkarım yapılmamasını söylüyor',
+      dS.measured_deficits.length > 0 && !dS.measured_deficits.some(f => 'required_work' in f) && !!dS.measured_deficits[0].flag &&
+      /not diagnoses/.test(dS.measured_deficits_note) && /Do not infer a cause/.test(dS.measured_deficits_note) &&
+      s5.task.some(g => /no "finding → assumed cause → corrective exercise" chain/.test(g)), JSON.stringify(dS.measured_deficits));
+
+    // Maç yakınlığı: MD-1 düşük bütçe; aynı gün takım antrenmanı bir basamak daha düşürüyor.
+    const md1Setup = Object.assign({}, SETUP, { competitions: [{ date: A.fmt(A.addD(A.parseD(TODAY), 1)), name: 'Rakip' }] });
+    const tpAth = athlete({ trainingProfile: { qualities: { acceleration: { priority: 'high' }, reactive_strength: { priority: 'high' } } },
+      wellness: [wellness(TODAY, 4, { pain: { knee: 1 } })],
+      days: { [TODAY]: { date: TODAY, sessions: [{ name: 'Takım Antrenmanı', kind: 'tp', time: '18:00', duration: 90, blocks: [] }] } } });
+    const md1S = A.diAthleteSnapshot({ ath: tpAth, setup: md1Setup, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    const fb = md1S.code_checked_limits.session_fatigue_budget;
+    check('MD-1 + aynı gün takım antrenmanı: bütçe minimal, RPE tavanı, toplam yorgunluk kuralı',
+      fb.match_day_label === 'MD-1' && fb.same_day_team_practice === true && fb.budget === 'minimal' && fb.max_target_rpe === 5 &&
+      /TOTAL fatigue cost/.test(fb.rule) && md1S.session_day.same_day_team_practice.time === '18:00' &&
+      md1S.task.some(g => /session_fatigue_budget/.test(g)), JSON.stringify(fb));
+    const md1Only = A.diAthleteSnapshot({ ath: athlete(), setup: md1Setup, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('yalnız MD-1: bütçe low, maç olmayan gün normal',
+      md1Only.code_checked_limits.session_fatigue_budget.budget === 'low' &&
+      s5.code_checked_limits.session_fatigue_budget.budget === 'normal');
+
+    // Ayırt ediciler: maç, ağrı, aynı gün antrenman ve gelişim öncelikleri önce; pozisyon yok.
+    const dd = md1S.differentiators;
+    check('differentiators: MD-1, mevcut ağrı, takım antrenmanı ve gelişim öncelikleri öne çıkıyor',
+      dd[0].type === 'match' && /^MD-1/.test(dd[0].description) &&
+      dd.findIndex(d => d.type === 'pain') < dd.findIndex(d => d.type === 'team_practice') &&
+      dd.findIndex(d => d.type === 'team_practice') < dd.findIndex(d => d.type === 'priority') &&
+      /Acceleration, Reactive Strength/.test(dd.find(d => d.type === 'priority').description) &&
+      !dd.some(d => d.type === 'position'), JSON.stringify(dd));
+
+    // Doğrulayıcı: düşük bütçeli günde pahalı iş ve yüksek RPE uyarılıyor ama engellemiyor.
+    const vMd = A.validateProgram(A.diParseProgram(aiReply([ex({ ad: 'Nordic Hamstring Curl', hareket_paterni: 'Hinge', ekipman: 'bodyweight', yuk: 'bodyweight', rpe: '8' })])),
+      Object.assign(ctxFor(tpAth), { bundle: A.diBundle(tpAth, md1Setup, TODAY, { libMap }) }));
+    check('MD-1 günü: Nordic ve RPE 8 yumuşak uyarı, yazımı engellemiyor',
+      vMd.softWarnings.some(w => /Nordic Hamstring Curl/.test(w.text) && /fatigue budget|Yorgunluk bütçesi/.test(w.text)) &&
+      vMd.softWarnings.some(w => /RPE/.test(w.text) && /5/.test(w.text)) && !vMd.hardViolations.some(h => /Nordic/.test(h.text)), softText(vMd));
+
+    // Joint by Joint JSON'a gidiyor (Athlete Profile'ın ilk bölümü).
+    const jAth = athlete({ trainingProfile: { joints: { knee_l: { level: 'high' } } } });
+    const jS = A.diAthleteSnapshot({ ath: jAth, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('Joint by Joint JSON\'a yazılıyor: training_profile.joint_needs', jS.training_profile.joint_needs &&
+      jS.training_profile.joint_needs.joints[0].joint === 'Left Knee' && jS.training_profile.joint_needs.joints[0].need === 'Stability',
+      JSON.stringify(jS.training_profile.joint_needs));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

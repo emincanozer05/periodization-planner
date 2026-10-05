@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1391**, yinelenen: **0**
+- Üst düzey ad sayısı: **1414**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -16,7 +16,7 @@ Bunlara çok parça bağlı: ES modülüne ilk bunlar çevrilmeli, çünkü geri
 |---|---:|---:|
 | `dates-language-factories` | 68 | 2 |
 | `prelude` | 51 | 1 |
-| `constants-session-focus` | 35 | 1 |
+| `constants-session-focus` | 36 | 1 |
 | `photo-local-media-store` | 29 | 2 |
 | `periods-weeks-load-monotony` | 24 | 7 |
 | `test-metadata-fms` | 16 | 2 |
@@ -35,7 +35,7 @@ Yalnızca çekirdek (ilk üç parça) ve en fazla 3 parçaya bağlı, kendisine 
 
 Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde kullanıyorsa güvenli (işlev sonradan çağrılır) ama modüle çevirirken döngüsel `import` olur.
 
-- Geriye bağ sayısı: **77** / toplam bağ 476
+- Geriye bağ sayısı: **77** / toplam bağ 478
 - Döngüsel gruplar (karşılıklı bağlı parçalar): **3** — en büyüğü 42 parça
 
   - `prelude` ↔ `constants-session-focus` ↔ `dates-language-factories`
@@ -87,7 +87,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 39 | `test-reports-recommends` | 8 | `prelude`, `constants-session-focus`, `dates-language-factories`, `test-metadata-fms`, `chart-wrapper`, `athlete-detail-snapshot`, `program-design-assistant`, `ai-coach`↑ |
 | 40 | `scouting-notes` | 12 | `prelude`, `dates-language-factories` |
 | 41 | `profile-tab` | 1 | `dates-language-factories`, `scouting-notes` |
-| 42 | `atp-profile-ui` | 12 | `prelude`, `dates-language-factories`, `atp-athlete-training-profile`↑ |
+| 42 | `atp-profile-ui` | 21 | `prelude`, `dates-language-factories`, `atp-athlete-training-profile`↑ |
 | 43 | `athlete-detail` | 1 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `rhr-team-sync-picker`, `chart-wrapper`, `pdf-share-coach-report`, `photo-local-media-store`, `session-analysis-muscle-model`, `calendar`, `reports-photo-cell`, `test-pdf`, `athlete-detail-snapshot`, `test-reports-recommends`, `profile-tab`, `atp-profile-ui`, `atp-athlete-training-profile`↑ |
 | 44 | `staff-roster-backup` | 6 | `prelude`, `constants-session-focus`, `dates-language-factories`, `team-data-migration`, `periods-weeks-load-monotony`, `photo-local-media-store`, `setup-all-teams-calendar`, `athlete-detail`, `sync-infra-chunking-merge`↑, `checkin-wellness-alerts-client`↑ |
 | 45 | `sync-infra-chunking-merge` | 55 | `team-data-migration` |
@@ -104,10 +104,10 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 56 | `indiv-plan-descriptions` | 23 | `prelude`, `constants-session-focus`, `dates-language-factories`, `rhr-team-sync-picker`, `athlete-context-readiness`, `ai-coach`↑ |
 | 57 | `coach-assistant` | 18 | `prelude`, `dates-language-factories`, `test-metadata-fms`, `session-load-clipboard`, `periods-weeks-load-monotony`, `block-editor-session-details`, `exercise-library-export`, `athlete-context-readiness` |
 | 58 | `di-engine-baseline` | 31 | `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `exercise-library-export`, `athlete-context-readiness` |
-| 59 | `atp-athlete-training-profile` | 43 | `dates-language-factories`, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `exercise-taxonomy-text`¹, `di-engine-baseline`, `sport-context-equipment`↑ |
+| 59 | `atp-athlete-training-profile` | 50 | `dates-language-factories`, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `exercise-taxonomy-text`¹, `di-engine-baseline`, `sport-context-equipment`↑ |
 | 60 | `sport-context-equipment` | 34 | `dates-language-factories`, `athlete-detail-snapshot`, `exercise-taxonomy-text`, `exercise-library-export`, `athlete-context-readiness`, `di-engine-baseline` |
-| 61 | `di-adjust-tier-bundle` | 40 | `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-writer`, `athlete-context-readiness`, `di-engine-baseline`, `sport-context-equipment`, `ai-layer`↑ |
-| 62 | `ai-layer` | 67 | `dates-language-factories`, `test-metadata-fms`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-modal-cards`, `exercise-library-export`, `coach-assistant`, `di-engine-baseline`, `sport-context-equipment`, `di-adjust-tier-bundle`, `di-forms-program-view`↑, `athlete-snapshot`↑ |
+| 61 | `di-adjust-tier-bundle` | 46 | `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-writer`, `athlete-context-readiness`, `di-engine-baseline`, `atp-athlete-training-profile`, `sport-context-equipment`, `ai-layer`↑ |
+| 62 | `ai-layer` | 68 | `dates-language-factories`, `test-metadata-fms`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-modal-cards`, `exercise-library-export`, `coach-assistant`, `di-engine-baseline`, `sport-context-equipment`, `di-adjust-tier-bundle`, `di-forms-program-view`↑, `athlete-snapshot`↑ |
 | 63 | `di-forms-program-view` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`, `print-session-html`, `block-editor-session-details`, `exercise-taxonomy-text`, `indiv-plan-descriptions`, `di-engine-baseline`, `ai-layer` |
 | 64 | `athlete-snapshot` | 8 | `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-writer`, `exercise-library-export`, `athlete-context-readiness`, `di-engine-baseline`, `atp-athlete-training-profile`, `sport-context-equipment`, `di-adjust-tier-bundle`, `ai-layer` |
 | 65 | `daily-indiv-panel` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `photo-local-media-store`, `calendar`, `exercise-library-export`, `athlete-context-readiness`, `indiv-plan-descriptions`, `di-adjust-tier-bundle`, `ai-layer`, `di-forms-program-view`, `athlete-snapshot` |

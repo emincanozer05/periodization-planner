@@ -396,25 +396,25 @@ const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.mu
 const DI_OBS_RULES=[
   {id:'obs_thoracic',oncelik:'yüksek',
    kw:['torakal','thoracic','kifoz','kyphos','yuvarlak omuz','round shoulder','rounded shoulder','üst sırt','ust sirt','t spine','tspine'],
-   area:['Torakal omurga','Thoracic spine'],
+   area:['Üst sırt / omuz duruşu','Upper back / shoulder posture'],
    work:['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
          'Thoracic extension and rotation mobility, scapular control'],
    cover:['torakal','thoracic','t spine','tspine','ekstansiyon mobilite','foam roll','skapula','scapula','open book','kedi deve','cat cow']},
   {id:'obs_valgus',oncelik:'yüksek',
    kw:['valgus','diz içe','diz ice','dizler içe','knee cave','knees in','medial kollaps','medial collapse'],
-   area:['Diz / kalça kontrolü','Knee / hip control'],
+   area:['Diz hizası','Knee alignment'],
    work:['Kalça abdüktör ve dış rotatör kuvveti, iniş mekaniği, tek bacak kontrol',
          'Hip abductor and external-rotator strength, landing mechanics, single-leg control'],
    cover:['abdüktör','abduktor','abduct','gluteus','glute med','dış rotat','dis rotat','external rotat','band walk','monster walk','iniş','inis','landing','tek bacak','single leg','lateral band']},
   {id:'obs_heel',oncelik:'yüksek',
    kw:['topuk kalk','topuk yüksel','topuk yuksel','heel rise','heels lift','heel lift','topukları kalk'],
-   area:['Ayak bileği','Ankle'],
+   area:['Topuk (çömelmede)','Heel (in the squat)'],
    work:['Ayak bileği dorsifleksiyon mobilitesi ve yüklü mobilizasyon',
          'Ankle dorsiflexion mobility and loaded mobilisation'],
    cover:['ayak bile','ankle','dorsifleks','dorsiflex','soleus','gastro','calf']},
   {id:'obs_lean',oncelik:'orta',
    kw:['öne eğil','one egil','gövde öne','govde one','forward lean','torso lean','excessive lean','öne yaslan'],
-   area:['Gövde / kalça','Torso / hip'],
+   area:['Gövde açısı (çömelmede)','Torso angle (in the squat)'],
    work:['Kalça ve ayak bileği mobilitesi + gövde diklik kontrolü (karşı ağırlıklı çömelme progresyonu)',
          'Hip and ankle mobility plus upright-torso control (a counterbalanced squat progression)'],
    cover:['goblet','counterbalance','karşı ağırlık','karsi agirlik','kalça mobilite','hip mobility','ayak bile','ankle','gövde diklik','govde diklik','front rack']},
@@ -586,7 +586,7 @@ function diDeficits(ath,ref){
     n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.left)].filter(x=>x!=null);
 
   if(sm.length&&Math.min(...sm)<=1)
-    add('thoracic',['Torakal omurga / omuz','Thoracic spine / shoulder'],
+    add('thoracic',['Omuz mobilitesi (FMS)','Shoulder mobility (FMS)'],
       [`Omuz mobilitesi ${Math.min(...sm)}/3`,`Shoulder mobility ${Math.min(...sm)}/3`],
       ['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
        'Thoracic extension and rotation mobility, scapular control'],
@@ -755,7 +755,7 @@ function diBriefForAI(i){
       '(sets, reps, load, tempo, rest). PAIN NEVER REMOVES A PATTERN LISTED HERE: the coach has seen today\'s pain and still requires it, '+
       'and these patterns are already left out of code_checked_limits.blocked_patterns (see opened_for_coach_patterns). When a listed pattern '+
       'loads a painful region, write it as a pain-free, modified variation (reduced load and range of motion, controlled tempo, supported, '+
-      'isometric or unilateral on the pain-free side, no impact) and say so in its rationale and in coach_warning. Only an injury-record '+
+      'isometric or unilateral on the pain-free side, no impact) and write the modification into its description. Only an injury-record '+
       'restriction (code_checked_limits.hard_restrictions) or the avoid list can keep a listed pattern out; then write the closest allowed '+
       'variation of the same pattern and record it in flagged_conflicts with field "movement_patterns".':null,
     must_include:i.must,
@@ -885,8 +885,6 @@ function diParseProgram(text){
    handed to diParseProgram. Nothing is invented on the way: a field the answer did not
    give stays empty, and an answer with no exercise in it is refused. */
 const DI_EXT_SCHEMA={
-  status_summary:'1-2 sentences: the athlete\'s state today',
-  training_priorities:[{priority:'the main goal of the day',rationale:'which data / which instruction it rests on'}],
   program:{
     session_name:'short title',
     blocks:[{
@@ -898,34 +896,44 @@ const DI_EXT_SCHEMA={
         rest:'e.g. 90 s',equipment:"one item of the gym's equipment, or 'bodyweight'",
         movement_pattern:'one of movement_pattern_vocabulary, written exactly as listed',
         coach_pattern:'the id of the coach_brief.movement_patterns item this exercise fulfils (e.g. knee_dominant); null if it fulfils none',
-        rationale:'why this exercise for this athlete — which data / finding / instruction',
+        description:'how to perform it: setup, execution and coaching cue, 1-2 short sentences — no justification, no commentary',
         basis:['D1'],
       }],
     }],
   },
-  constraints_respected:['which coach instruction was followed, and how'],
   flagged_conflicts:[{instruction:'the instruction that could not be applied',field:'movement_patterns | avoid | session_duration_min | session_max_exercises',
     rule:'which rule / pain / limit prevented it',decision:'what was done',alternative:'what was written instead'}],
-  rationale:'short paragraph: the priority of the day and why these exercises were chosen',
-  coach_warning:'one sentence, if there is something the coach should look at',
 };
+/* The order a conflict between two inputs is settled in. Said once, as data, so the
+   answer has one rule to fall back on rather than weighing thirty sentences anew. */
+const DI_DECISION_HIERARCHY=[
+  '1. Safety / hard constraints — pain, active injury, code_checked_limits (hard_restrictions, blocked_patterns, plyometric_contact_limit, tier_caps), training_profile.constraints.hard.',
+  '2. Coach brief — coach_brief (movement_patterns, avoid, priorities, session_duration_min, session_max_exercises, constraints, additional_notes).',
+  '3. Match context — session_day.match_day_label and next / previous game, session_day.same_day_team_practice, code_checked_limits.session_fatigue_budget and volume_adjustment_pct.',
+  '4. Individual needs — training_profile (athletic_profile priorities, joint_needs, constraints.soft), differentiators, wellness and readiness, measured_deficits.',
+  '5. Recent load / exposure — rpe, training_profile.exercise_exposure, recent_programs.',
+  '6. Variety — exercise_exposure.category_coverage and strength_movement_profile.',
+  'A higher level always wins over a lower one; a lower level only chooses between options the higher levels leave open.',
+];
 /* The task, in English like everything else in the export: the model is asked to
    write to field names it can read, and the answer comes back in the same language. */
 const DI_EXT_TASK=[
   'Write ONE training session for the athlete in this JSON, for the date in session_day.',
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
+  'Write the programme only: for every exercise its name, sets, reps (or duration / distance), load, target RPE, tempo, rest, equipment, movement_pattern, coach_pattern, basis and a short description of how to perform it. Write NO commentary anywhere — no status summary, no rationale or justification, no priorities paragraph, no notes to the coach. The only free text besides description is flagged_conflicts, and only when an instruction could not be applied.',
+  'Settle every conflict between inputs by decision_hierarchy, top to bottom: safety / hard constraints, then the coach brief, then the match context, then individual needs, then recent load / exposure, then variety.',
   'coach_brief is binding: EVERY pattern in coach_brief.movement_patterns is in the session with at least one exercise, tagged with coach_pattern and written to the filters it carries (movement_patterns_rule says how) — a session missing one of them fails the code check; pain does not remove them, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
-  'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
-  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
+  'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list. differentiators are listed most decisive first: the game, current pain, a same-day team practice and the development priorities change today\'s session the most.',
+  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
-  'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
+  'measured_deficits and the test comments are observations, not diagnoses: do not infer a cause from them and do not turn them into exercises automatically (no "finding → assumed cause → corrective exercise" chain). Weigh them with everything above them in decision_hierarchy and address one only where it fits today\'s session. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
   'Safety comes first: when a coach_brief instruction would break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts. The coach\'s movement_patterns are not dropped for pain: the coach has opened them for today, so write each one as a pain-free, modified variation of the same pattern.',
-  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, over the last 7 and 28 days, and what the last session held (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'training_profile.joint_needs, where present, is the coach\'s Joint-by-Joint reading of the athlete: which joint, on which side, needs its Joint-by-Joint need (mobile joints mobility, stable joints stability — one need per joint) and how much (High > Medium > Low). Build the preparation phase from it — every High need gets targeted work today, Medium needs regular work in the preparation block, Low needs a short maintenance dose — and any corrective or rehabilitation work; a stable joint (knee, low back, foot, scapula, elbow) gets control work, never mobilisation for more range, and is not loaded at an end range it cannot control. It is not a diagnosis.',
-  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists, for every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement), the values that were not done (not_done_last_7_days, not_done_last_28_days); what was done is in exercise_exposure.exercises — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
@@ -942,7 +950,8 @@ const DI_EXT_TASK_SQUAD=[
     .replace('Respect the limits in code_checked_limits','Respect the limits in each athlete\'s own code_checked_limits')
     .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for that athlete on this day')
     .replace('as one in recent_programs','as one in that athlete\'s recent_programs')
-    .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')),
+    .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')
+    .replace('inside code_checked_limits.session_fatigue_budget','inside that athlete\'s own code_checked_limits.session_fatigue_budget')),
 ];
 /* The coach's S&C shelf by movement pattern — a reference, not the pool the session is
    built from: the task tells the model to lean on it as little as possible, and an
@@ -980,7 +989,7 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   return diInEnglish(()=>{
-  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','decision_hierarchy','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -994,6 +1003,7 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     session_day:day?{date:day.date,weekday:day.weekday,relative_to_today:day.relative_to_today,match_day_label:day.match_day_label,
       next_game:day.next_game,season_phase:day.season_phase,season_phase_focus:day.season_phase_focus}:{date},
     task:DI_EXT_TASK_SQUAD,
+    decision_hierarchy:DI_DECISION_HIERARCHY,
     generated_at:new Date(now||Date.now()).toISOString(),
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
@@ -1042,7 +1052,7 @@ function diExtNormalize(obj){
       ekipman:str(pick(e,['ekipman','equipment'])),
       hareket_paterni:str(pick(e,['hareket_paterni','pattern','movement_pattern','patern','movementPattern'])),
       koc_paterni:str(pick(e,['koc_paterni','coach_pattern','coachPattern','brief_pattern','required_pattern'])),
-      gerekce:str(pick(e,['gerekce','gerekçe','rationale','reason','why','notlar','notes','not','aciklama','açıklama'])),
+      gerekce:str(pick(e,['description','aciklama','açıklama','cue','coaching_cue','gerekce','gerekçe','rationale','reason','why','notlar','notes','not'])),
       dayanak:basis==null?[]:(Array.isArray(basis)?basis:String(basis).split(/[\s,;]+/)),
     };
   };
@@ -1397,6 +1407,24 @@ function validateProgram(program,ctx){
 
   /* ================= SOFT — none of these stops a save ==================== */
 
+  /* The day's fatigue budget (game distance, same-day team practice): volume cut or
+     not, a near-game session should not carry the work that takes days to clear. */
+  const fb=diFatigueBudget(bundle);
+  if(fb.budget!=='normal'){
+    const why=fb.md&&fb.same_day_practice?`${fb.md} + ${L('aynı gün takım antrenmanı','same-day team practice')}`
+      :fb.md||L('aynı gün takım antrenmanı','same-day team practice');
+    const costly=rows.filter(r=>DI_FATIGUE_RE.test(`${r.name||''} ${r.tempo||''} ${r.reps||''}`));
+    if(costly.length&&(fb.budget!=='moderate'||costly.length>1))
+      S(null,`Yorgunluk bütçesi ${fb.budget} (${why}), ama programda toparlanması pahalı iş var: ${costly.map(r=>r.name).join(', ')}.`,
+        `The fatigue budget is ${fb.budget} (${why}), yet the session carries work that is costly to recover from: ${costly.map(r=>r.name).join(', ')}.`);
+    const rpeHi=fb.max_rpe==null?[]:rows.filter(r=>{
+      const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
+      return n&&Math.max(...n.map(Number))>fb.max_rpe;});
+    if(rpeHi.length)
+      S(null,`Yorgunluk bütçesi ${fb.budget} (${why}) hedef RPE'yi ${fb.max_rpe} ile sınırlıyor; aşan satırlar: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
+        `The ${fb.budget} fatigue budget (${why}) caps target RPE at ${fb.max_rpe}; rows above it: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
+  }
+
   /* Free text is always allowed (rule 29, and the spec says so twice). Recorded so
      the coach can see what was written outside their library and file it if they
      want to; never counted against the session. */
@@ -1411,16 +1439,16 @@ function validateProgram(program,ctx){
     const known=new Set(diffs.map(d=>d.id));
     const used=[...cited].filter(x=>known.has(x));
     if(!used.length)
-      S(null,`Bu sporcunun ${diffs.length} ayırt edici özelliği hesaplandı ama hiçbir egzersizin gerekçesi bunlardan birine dayanmıyor — program bu sporcuya özel yazılmamış olabilir.`,
-        `${diffs.length} differentiators were computed for this athlete and no exercise's rationale rests on any of them — the session may not be about this athlete at all.`);
+      S(null,`Bu sporcunun ${diffs.length} ayırt edici özelliği hesaplandı ama hiçbir egzersizin dayanağı bunlardan birine dayanmıyor — program bu sporcuya özel yazılmamış olabilir.`,
+        `${diffs.length} differentiators were computed for this athlete and no exercise's basis rests on any of them — the session may not be about this athlete at all.`);
     else if(used.length<Math.min(2,diffs.length))
       S(null,`Hesaplanan ${diffs.length} ayırt ediciden yalnızca ${used.length} tanesi programda karşılık buldu.`,
         `Only ${used.length} of the ${diffs.length} computed differentiators is answered anywhere in the session.`);
   }
   const noWhy=rows.filter(r=>!String(r.why||'').trim());
   if(noWhy.length)
-    S(null,`${noWhy.length} egzersizde gerekçe yok (${noWhy.map(r=>r.name).join(', ')}).`,
-      `${noWhy.length} exercise${noWhy.length>1?'s carry':' carries'} no rationale (${noWhy.map(r=>r.name).join(', ')}).`);
+    S(null,`${noWhy.length} egzersizde açıklama yok (${noWhy.map(r=>r.name).join(', ')}).`,
+      `${noWhy.length} exercise${noWhy.length>1?'s carry':' carries'} no description (${noWhy.map(r=>r.name).join(', ')}).`);
 
   /* Repetition over time — the athlete against their own recent sessions. */
   const names=diProgramNames(program);
@@ -1450,8 +1478,8 @@ function validateProgram(program,ctx){
     const words=diExName(lbl).split(' ').filter(w=>w.length>=DI_TERM_MIN);
     if(!words.length)return;
     const hit=rows.some(r=>{const hay=diExName(`${r.name} ${r.why||''}`);return words.some(w=>hay.includes(w));});
-    if(!hit)S(22,`Günün önceliği "${lbl}" programda adıyla karşılık bulmuyor — gerekçeleri kontrol et.`,
-      `Today's priority "${lbl}" is not named anywhere in the session — check the rationales.`);
+    if(!hit)S(22,`Günün önceliği "${lbl}" programda adıyla karşılık bulmuyor — egzersizleri kontrol et.`,
+      `Today's priority "${lbl}" is not named anywhere in the session — check the exercises.`);
   });
 
   /* Two exercises of one movement family in the MAIN phase. A quality point, not a

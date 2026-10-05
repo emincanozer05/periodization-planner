@@ -33,7 +33,7 @@ const ATP_TR={
   'Strength':'Kuvvet','Power':'Güç','Movement Quality':'Hareket Kalitesi','Conditioning':'Kondisyon',
   'Acceleration':'İvmelenme','Max Velocity':'Maksimal Hız','Sprint Mechanics':'Sprint Mekaniği',
   'Deceleration':'Yavaşlama','Lateral Movement':'Lateral Hareket',
-  'Jumping':'Sıçrama','Landing':'İniş','Hopping':'Sekme',
+  'Jumping':'Sıçrama','Landing':'İniş','Reactive Strength':'Reaktif Kuvvet','Hopping':'Sekme',
   'Squat':'Squat','Hinge':'Kalça Menteşesi','Unilateral':'Tek Taraflı',
   'Horizontal Push':'Yatay İtme','Horizontal Pull':'Yatay Çekme','Vertical Push':'Dikey İtme','Vertical Pull':'Dikey Çekme',
   'Lower-Body Strength':'Alt Vücut Kuvveti','Upper-Body Strength':'Üst Vücut Kuvveti','Unilateral Strength':'Tek Taraflı Kuvvet',
@@ -108,13 +108,17 @@ const atpAb=l=>REPORT_LANG==='tr'?l.abTr:l.ab;
 const ATP_GROUPS=[
   {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity'])},
   {id:'cod',         en:'Change of Direction',  items:atpItems(['Deceleration','Change of Direction'])},
-  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing'])},
+  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing','Reactive Strength'])},
   {id:'strength',    en:'Strength',             items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength'])},
   {id:'power',       en:'Power',                items:atpItems(['Lower-Body Power','Upper-Body Power','Rate of Force Development'])},
   {id:'movement',    en:'Movement Quality',     items:atpItems(['Mobility','Stability','Coordination'])},
   {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability'])},
 ];
 const ATP_QUALITIES=ATP_GROUPS.flatMap(g=>g.items.map(it=>({...it,group:g.en})));
+/* At most this many qualities may be High at once. High is what the session is built
+   around; past a handful it stops saying what matters most, so the profile refuses a
+   sixth rather than letting the emphasis thin out. */
+const ATP_HIGH_MAX=5;
 const ATP_PRIORITY=[
   {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Bu dönemin ana gelişim alanı.',dEn:'A main development area this period.'},
   {id:'medium',en:'Medium',ab:'MED', abTr:'ORTA',  bars:2,dTr:'Geliştirilecek, ama High\'dan sonra.',dEn:'To develop, but after High.'},
@@ -677,7 +681,8 @@ function atpExposure(ath,end,opts){
   const fixed=(layer,list)=>list.map(l=>fin(layers[layer][l]||empty(l),'group'));
   const bySets=(a,b)=>(b.sets.d28-a.sets.d28)||(b.sets.last-a.sets.last)||String(b.lastUsed).localeCompare(String(a.lastUsed));
   return{end,from,
-    last:last?{date:last.date,name:last.name,time:last.time,rows:last.rows.length}:null,
+    last:last?{date:last.date,name:last.name,time:last.time,rows:last.rows.length,
+      names:[...new Set(last.rows.map(r=>String(r.name).trim()))]}:null,
     sessions,rows,
     exercises:Object.values(layers.exercise).map(t=>fin(t,'exercise')).sort(bySets),
     families:Object.values(layers.family).map(t=>fin(t,'group')).sort(bySets),
@@ -725,11 +730,12 @@ function atpSnapshot(ath,ref,libMap,setup){
   const con=list=>list.map(c=>({constraint:atpConLabel(c),category:atpCatLabel(atpConCat(c))||null,value:c.value,note:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
-  const WK={last:'last_session',d7:'last_7_days',d14:'last_14_days',d28:'last_28_days'};
-  const per=(t,f)=>{const o={};Object.keys(WK).forEach(w=>{o[WK[w]]=f(t,w);});return o;};
-  /* Sets per window only: the High / Moderate / Low level is read off them by
-     level_scale, so it is not written out a second time beside every record. */
-  const item=t=>({name:t.label,last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])});
+  /* Every record is one name with its sets over the last 7 and 28 days — the two
+     windows the session is written against — and the day it was last done. The last
+     session is named by its exercises once, at the top, instead of as a third column
+     beside every record; the 14-day window sat between the two and said nothing they
+     did not. */
+  const item=t=>({name:t.label,last_used:t.lastUsed,sets_7_days:t.sets.d7,sets_28_days:t.sets.d28});
   const fixed=list=>({records:list.filter(t=>t.lastUsed).map(item),
     no_exposure_last_28_days:list.filter(t=>!t.lastUsed).map(t=>t.label)});
   /* An implement the gym does not have is not a gap to fill: with an inventory on the
@@ -775,7 +781,7 @@ function atpSnapshot(ath,ref,libMap,setup){
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
     last_updated:tp.updated,
     athletic_profile:rated.length?{
-      description:'Priority of each physical quality — how much it is to be developed in this period: High (main development area) > Medium (to be developed, after High) > Low (maintained, no development priority). '+
+      description:`Priority of each physical quality — how much it is to be developed in this period: High (main development area, at most ${ATP_HIGH_MAX} qualities) > Medium (to be developed, after High) > Low (maintained, no development priority). `+
         'not_rated lists the qualities the coach set no priority for: keep them at a maintenance dose, the same as Low.',
       groups:ATP_GROUPS.map(g=>g.en),
       priority:{high:byPri('high'),medium:byPri('medium'),low:byPri('low')},
@@ -792,57 +798,48 @@ function atpSnapshot(ath,ref,libMap,setup){
     exercise_exposure:!anyEx?{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
-      session_count:{last_7_days:0,last_14_days:0,last_28_days:0},
+      session_count:{last_7_days:0,last_28_days:0},
     }:{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
+      /* Each fact once: an exercise's classification is not repeated beside it — the
+         lists below are those classifications, summed. */
+      format:'Every record: name, last_used, sets_7_days, sets_28_days. '+
+        `Read as a weekly load: a single exercise ≥${cut.exercise.week[1]} sets/week is high, ≥${cut.exercise.week[0]} moderate; `+
+        `a movement class, stimulus, loading character or axis ≥${cut.group.week[1]} sets/week high, ≥${cut.group.week[0]} moderate (the 28-day figure is four weeks).`,
+      session_count:{last_7_days:ex.sessions.d7,last_28_days:ex.sessions.d28},
+      last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercises:ex.last.names}:null,
+      exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,
+        last_used:t.lastUsed,sets_7_days:t.sets.d7,sets_28_days:t.sets.d28})),
       /* The profile's own classification, finer than the session's pattern vocabulary
          and named apart from it so the two lists are never mistaken for each other. */
       movement_class_note:'movement_class is the training profile\'s detailed classification (e.g. Hip Dominant, Horizontal Push); '+
         'these names are never written into a programme\'s movement_pattern field — that field is chosen only from movement_pattern_vocabulary.',
-      level_scale:`The exposure level of a record, read off its sets: High / Moderate / Low / None. The 7-14-28 day windows are read as a weekly average: `+
-        `a single exercise ≥${cut.exercise.week[1]} sets/week High, ≥${cut.exercise.week[0]} Moderate; family, pattern, stimulus and loading `+
-        `≥${cut.group.week[1]} sets/week High, ≥${cut.group.week[0]} Moderate. Last session: a single exercise ≥${cut.exercise.session[1]} sets High, `+
-        `≥${cut.exercise.session[0]} Moderate; the others ≥${cut.group.session[1]} High, ≥${cut.group.session[0]} Moderate. 0 sets = None / Not Recent.`,
-      last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercise_count:ex.last.rows}:null,
-      session_count:{last_7_days:ex.sessions.d7,last_14_days:ex.sessions.d14,last_28_days:ex.sessions.d28},
-      exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,movement_class:t.patterns,stimulus:t.stimuli,
-        loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.plane?{movement_plane:t.plane}:{}),
-        ...(t.action?{action:t.action}:{}),...(t.focus?{contraction_focus:t.focus}:{}),...(t.equipment?{equipment:t.equipment}:{}),
-        last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])})),
-      exercise_families:ex.families.map(item),
       movement_class:fixed(ex.patterns),
       athletic_stimulus:fixed(ex.stimuli),
       loading_character:fixed(ex.loading),
       strength_movement_profile:{
-        note:'How the strength work (knee-, hip-, push-, pull- and core-work; not jumps, runs or throws) was spread, in sets, over four axes. '+
-          'laterality: bilateral or unilateral (an upper-body row is unilateral only when its name says single-arm / one-arm / alternating). '+
-          'movement_plane: Sagittal (squats, hinges, lunges, presses, rows, flexion / extension core work) unless the name or tag says lateral (Frontal) or rotational / anti-rotational (Transverse). '+
-          'action: Push or Pull — for hip and knee work only where the library entry says. '+
-          'contraction_focus: the library tag, or Eccentric / Isometric where the name or tempo shows it; Concentric only from a library tag. '+
-          'A row whose value cannot be told is not counted on that axis, and None means no such row was recorded, not that the athlete avoided it.',
+        note:'How the strength work (knee-, hip-, push-, pull- and core-work; not jumps, runs or throws) was spread, in sets, over four axes: '+
+          'laterality (bilateral / unilateral), movement_plane (sagittal / frontal / transverse), action (push / pull) and contraction_focus (concentric / eccentric / isometric). '+
+          'A row whose value cannot be told is not counted on that axis; no_exposure means no such row was recorded, not that the athlete avoided it.',
         laterality:fixed(ex.laterality),
         movement_plane:fixed(ex.planes),
         action:fixed(ex.actions),
         contraction_focus:fixed(ex.focus),
       },
       category_coverage:{
-        note:'For every exercise category the athlete has trained (the library\'s own categories: core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, accessory), '+
-          'every facet the category is filed by (movement, direction, type, position, technique, contraction focus, action, implement…) with what was done and what was not. '+
-          'done: the values that were recorded, in sets, over the last session and the last 7 / 14 / 28 days. '+
-          'not_done_last_7_days: the values with no set in the last 7 days (this week\'s gaps — it includes the values of not_done_last_28_days). not_done_last_28_days: the values with no set in the last 28 days. '+
-          'Prefer not_done_last_28_days first, then the rest of not_done_last_7_days. For Equipment, only the kit in the gym\'s inventory is listed as not done. '+
-          'A facet is listed only when at least one recorded exercise of the category carries it, so a value missing from the list of a listed facet means it was not recorded, not that it was avoided; a row whose value cannot be told is not counted.',
-        categories:ex.coverage.map(c=>({category:c.type,sets:per(c.cat,(x,w)=>x.sets[w]),
+        note:'The gaps only — what was done is already in exercises. For every exercise category the athlete has trained, every facet the library files it by '+
+          '(movement, direction, type, position, technique, contraction focus, action, implement…) with the values that had no set: '+
+          'not_done_last_7_days (this week\'s gaps; it includes not_done_last_28_days) and not_done_last_28_days. For Equipment, only the kit in the gym\'s inventory is listed. '+
+          'A facet is listed only when at least one recorded exercise of the category carries it; a value that cannot be told is not counted.',
+        categories:ex.coverage.map(c=>({category:c.type,sets_7_days:c.cat.sets.d7,sets_28_days:c.cat.sets.d28,
           facets:c.facets.map(f=>{const gap=gapOf(f);return{facet:f.label,
-            done:f.values.filter(t=>t.lastUsed).map(item),
             not_done_last_7_days:f.values.filter(t=>!(t.sets.d7>0)&&(t.sets.d28>0||gap(t))).map(t=>t.label),
-            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label)};})})),
+            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label)};})
+            .filter(f=>f.not_done_last_7_days.length||f.not_done_last_28_days.length)})),
         categories_without_recorded_work:ex.coverageMissing,
       },
-      equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
-        'An exercise whose implement cannot be told is not counted, and an implement that is not listed was not recorded — it does not mean it was not used.',
-      equipment_used:{records:ex.equipment.filter(t=>t.lastUsed).map(item)},
+      equipment_used:ex.equipment.filter(t=>t.lastUsed).map(item),
     },
   }};
 }
