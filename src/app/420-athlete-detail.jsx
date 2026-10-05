@@ -69,8 +69,8 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   const ATH_TABS=[
     {id:'profile',ic:'◈',l:L('Profil','Profile')},
-    /* The athlete as a trainee — priorities, movement profile, constraints, exposure. */
-    {id:'training',ic:'◎',l:atpT('Athlete Training Profile')},
+    /* The athlete as a trainee — priorities, constraints, exposure, joint needs. */
+    {id:'training',ic:'◎',l:atpT('Athlete Profile')},
     {id:'load',ic:'▤',l:L('Yük','Load')},
     {id:'calendar',ic:'▣',l:L('Takvim','Calendar')},
     /* The tape measure, and only the tape measure. Test results are read on the Testing
