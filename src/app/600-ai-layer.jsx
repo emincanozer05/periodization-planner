@@ -294,6 +294,27 @@ function diMoveFacetText(pick,facet){
   const byId=new Map(facet.opts.map(op=>[op[0],op]));
   return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
 }
+/* The coach's pattern picks for one athlete and day, one line per pattern — "Diz dominant:
+   Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the form
+   lists them). The calendar shows it on hover; a day with no pick has no lines. When the day
+   has been briefed from more than one source session, the most recently saved brief is read. */
+function diPatternTipLines(team,athId,dateKey){
+  const store=(team&&team.indiv&&team.indiv.ai)||{};
+  let best=null;
+  Object.keys(store).forEach(k=>{
+    const bits=k.split('|');
+    if(bits[0]!==dateKey||bits.slice(2).join('|')!==athId)return;
+    const rec=store[k];
+    if(!rec||!rec.instr||!Array.isArray(rec.instr.patterns)||!rec.instr.patterns.length)return;
+    if(!best||String(rec.updated_at||'')>String(best.updated_at||''))best=rec;
+  });
+  if(!best)return[];
+  return diMovePatterns(best.instr.patterns).map(p=>{
+    const row=diMoveRow(p.id);
+    return{id:p.id,name:diMoveLabel(p.id),
+      parts:row.facets.flatMap(f=>diMoveFacetText(p,f))};
+  });
+}
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);

@@ -159,6 +159,43 @@ function exGuessStyle(name,pattern){
   const d=EX_STYLE_DEFAULT[pattern];
   return styles.includes(d)?d:styles[0];
 }
+/* Which pattern an exercise trains, read off what is known about it — so a row whose name
+   was typed (or written by a model) does not have to be answered by hand. In order: what
+   the library has tagged on that exact name, the assistant coach's pool (it files each
+   exercise under a slot), then the words in the name. Returns '' when nothing says: a
+   wrong pattern is worse than a blank one, so there is no default here. */
+const EX_NAME_PATTERN=[
+  ['Full Body',/\bclean\b|snatch|\bjerk\b|thruster|high pull|burpee/],
+  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|suitcase|\bcarry\b|farmer|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Hip Dominant',/deadlift|\brdl\b|hip thrust|glute bridge|\bbridge\b|good ?morning|\bswing\b|pull ?through|back ext|hyperext|reverse hyper|hamstring|nordic|glute ham|\bkick ?back|hip ext|\bhinge\b|\bglute\b/],
+  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|leg ext|split|wall sit|\bsissy\b|\bpistol\b/],
+  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|rear delt|\bshrug\b|\blat\b|pullover|bicep|\bcurl\b/],
+  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|tricep|\braise\b|landmine/]];
+/* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
+const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
+  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+function exGuessPattern(name){
+  const nm=String(name||'').trim().toLowerCase();
+  if(!nm)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
+  if(hit&&EX_PATTERNS.includes(hit.exPattern))return hit.exPattern;
+  for(const k in CA_POOL)for(const c of CA_POOL[k]){
+    if(c.n.toLowerCase()!==nm)continue;
+    const slot=CA_SLOTS.find(sl=>sl.id===k);
+    if(slot&&EX_PATTERNS.includes(slot.pattern))return slot.pattern;
+  }
+  for(const[pat,re]of EX_NAME_PATTERN)if(re.test(nm))return pat;
+  return'';
+}
+/* A row's pattern and execution as far as they can be known: what is already there stays,
+   a model's vocabulary word is translated, and what is missing is read off the name. */
+function exResolveTags(name,pattern,plane){
+  let pat=String(pattern||'').trim();
+  if(!EX_PATTERNS.includes(pat))pat=EX_VOCAB_PATTERN[pat]||exGuessPattern(name);
+  if(!pat)return{pattern:'',plane:''};
+  const st=String(plane||'').trim();
+  return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(name,pat)};
+}
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
    is being replaced, so the new exercise brings its own pattern with it. An untagged entry
@@ -172,7 +209,7 @@ function exTagsFromLib(it,row){
     const st=String((it&&it.exPlane)||'').trim();
     return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(nm,pat)};
   }
-  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:'';
+  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:exGuessPattern(nm);
   if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:exGuessStyle(nm,guess)};
   return null;
 }

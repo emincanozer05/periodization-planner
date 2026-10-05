@@ -308,7 +308,7 @@ function planToSession(plan,src,dateKey,srcKey){
       ...descI18nFor(r.base.aiDesc,[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':'')),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
-      pattern:t(r.pattern),plane:t(r.plane),
+      ...exResolveTags(t(r.name),t(r.pattern),t(r.plane)),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option
