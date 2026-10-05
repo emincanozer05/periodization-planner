@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1471,6 +1471,43 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(mg.qualities) === JSON.stringify({ acceleration: { priority: 'high' }, change_of_direction: { priority: 'medium' },
         jumping: { priority: 'medium' }, lower_body_strength: { priority: 'medium' }, upper_body_strength: { priority: 'high' },
         unilateral_strength: { priority: 'high' }, stability: { priority: 'high' } }), JSON.stringify(mg.qualities));
+  }
+
+  group('Ek — Athlete Profile: Joint by Joint eklem ihtiyaçları');
+  {
+    // Şablon: her eklemin tek ihtiyacı var — stabil eklemler stabilite, mobil eklemler mobilite.
+    const need = id => A.ATP_JOINTS.find(j => j.id === id).need;
+    check('şablon: 11 eklem, çift taraflılar sağ / sol — 19 satır; stabil ve mobil eklemler',
+      A.ATP_JOINTS.length === 11 && A.ATP_JOINT_ROWS.length === 19 &&
+      ['foot', 'knee', 'lumbar', 'scapula', 'elbow'].every(id => need(id) === 'stability') &&
+      ['ankle', 'hip', 'thoracic', 'cervical', 'shoulder', 'wrist'].every(id => need(id) === 'mobility'));
+    // Okuma: yalnızca şablondaki eklem / taraf ve üç düzey; eklemin kendi ihtiyacı dışındaki değer okunmuyor.
+    const jr = A.atpRead({ trainingProfile: { joints: {
+      knee_l: { level: 'high', note: 'valgus çöküşü' }, knee_r: { mobility: 'high' }, hip_r: { mobility: 'medium' },
+      thoracic: { level: 'bogus' }, elbow_x: { level: 'high' }, wrist_r: {}, ankle_l: 'x', lumbar: { level: 'low' } } } });
+    check('eklemler savunmacı okunuyor: dizde mobilite yok, geçersiz anahtar / düzey / boş kayıt atılıyor',
+      JSON.stringify(jr.joints) === JSON.stringify({ lumbar: { level: 'low' }, hip_r: { level: 'medium' },
+        knee_l: { level: 'high', note: 'valgus çöküşü' } }), JSON.stringify(jr.joints));
+    // JSON: bireyselleştirme verisine en yüksek ihtiyaç önce, baştan ayağa yazılıyor.
+    const ja = athlete({ trainingProfile: { joints: {
+      ankle_r: { level: 'medium' }, knee_l: { level: 'high', note: '  valgus çöküşü ' }, hip_r: { level: 'high' },
+      lumbar: { level: 'low' }, cervical: { level: 'low' }, wrist_l: { note: 'yalnız not' } } } });
+    const js = A.diAthleteSnapshot({ ath: ja, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    const jn = js.training_profile && js.training_profile.joint_needs;
+    check('JSON: joint_needs eklem, taraf, tek ihtiyaç ve düzeyle yazılıyor',
+      !!jn && jn.joints.map(j => j.joint).join('|') === 'Right Hip|Left Knee|Right Ankle|Neck|Low Back' &&
+      jn.joints[0].side === 'Right' && jn.joints[0].need === 'Mobility' && jn.joints[0].level === 'High' &&
+      jn.joints[1].need === 'Stability' && jn.joints[1].note === 'valgus çöküşü' && !('side' in jn.joints[3]) &&
+      jn.joints[3].need === 'Mobility' && !('needs' in jn.joints[0]) && !!jn.use && Object.keys(jn.level_scale).length === 3,
+      JSON.stringify(jn));
+    check('JSON: by_need ihtiyaca ve düzeye göre adlar; boş düzey yok',
+      JSON.stringify(jn.by_need) === JSON.stringify({ mobility: { high: ['Right Hip'], medium: ['Right Ankle'], low: ['Neck'] },
+        stability: { high: ['Left Knee'], low: ['Low Back'] } }), JSON.stringify(jn.by_need));
+    check('JSON: yalnız eklem ihtiyacı girilmiş profil dolu sayılıyor, eksik veri yok',
+      !(js.missing_data || []).some(x => /training profile/.test(x)), JSON.stringify(js.missing_data));
+    check('AI talimatı joint_needs\'i hazırlık ve rehabilitasyona bağlıyor', js.task.some(g => /joint_needs/.test(g) && /preparation phase/.test(g)));
+    const jb = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
+    check('JSON: eklem ihtiyacı yoksa joint_needs anahtarı hiç yok', !('joint_needs' in (jb.training_profile || {})));
   }
 
   group('Ek — Aylık çıktı: özelliklere göre yüklenme tablosu');

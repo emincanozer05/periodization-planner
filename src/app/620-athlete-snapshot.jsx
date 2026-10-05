@@ -433,7 +433,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   if(!srpe.length)missing.push('RPE in the last 7 days');
   if(!tests.length)missing.push('test record');
   if(!eq.length)missing.push('equipment inventory');
-  if(!atp.filled)missing.push('training profile (no athletic profile or constraints entered)');
+  if(!atp.filled)missing.push('training profile (no athletic profile, constraints or joint needs entered)');
   if(!cp.next&&!cp.previous&&!cp.today)missing.push('game schedule (no games on the season calendar — next_game and the game-proximity volume adjustment cannot be computed; a game mentioned only in coach_brief.additional_notes is not in volume_adjustment_pct)');
   const res=snapClean(out)||{};
   if(missing.length)res.missing_data=missing;

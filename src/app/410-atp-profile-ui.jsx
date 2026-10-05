@@ -1,7 +1,8 @@
-/* ═══ ATHLETE TRAINING PROFILE — the tab beside Profile ═══
-   Three sections on the same cards the scouting sheet uses. The first two are the
-   coach's and are written straight onto `ath.trainingProfile`; the third is drawn
-   from the calendar and cannot be edited, only read. Nothing here selects an exercise
+/* ═══ ATHLETE PROFILE (Athlete Training Profile) — the tab beside Profile ═══
+   Four sections on the same cards the scouting sheet uses. The first two and the
+   fourth (Joint by Joint) are the coach's and are written straight onto
+   `ath.trainingProfile`; the third is drawn from the calendar and cannot be edited,
+   only read. Nothing here selects an exercise
    or builds a session — the profile reaches programming through the individualization
    JSON (atpSnapshot), as context.
 
@@ -266,13 +267,166 @@ function AtpExposure({exp,refDate,setRefDate}){
     </div>
   </div>);
 }
+/* ---- Joint by Joint: rated on the mannequins themselves ----
+   A figure seen from the front and one from the back. The front is drawn facing the
+   coach, so the athlete's right is on the left of the picture; the back the other way
+   round. Every joint is a marker: while it is not rated, a dashed ring in its need's
+   colour (blue for a mobile joint, orange for a stable one — the Joint-by-Joint chart's
+   colours); once rated, a disc filled in the colour of the level (green Low, yellow
+   Medium, red High) inside a ring of its need's colour. Clicking a joint opens a small
+   picker next to it, which closes once a level is picked (a note is typed before, or
+   on reopening the joint); what is marked is listed in one compact box beside the figures,
+   so the section takes little room.
+
+   The body is drawn as halves: each shape is written once for the right of the picture
+   and drawn again mirrored, so the figure is symmetric by construction. */
+const ATP_JB_W=200,ATP_JB_H=462;
+const ATP_JB_HALF={
+  torso:'M99.5 50L108 50C108 58 110 64 116 67C126 71 138 72 143 80C147 88 146 102 141 114C137 132 133 150 131 168C130 182 134 194 138 207C141 221 137 235 128 244L99.5 247Z',
+  arm:'M137 82C147 80 154 90 154 106C155 124 157 140 157 157C159 177 162 201 162 227C164 239 166 251 163 263C159 271 152 269 152 259C150 249 150 240 152 230C150 206 145 181 142 161C140 145 138 129 138 113Z',
+  leg:'M138 204C143 230 143 258 139 287C137 301 136 312 136 322C138 341 141 361 137 385C135 400 133 409 133 417C135 423 141 427 141 432C139 437 119 437 116 432C116 426 118 420 118 414C116 396 112 371 114 350C114 338 112 330 112 322C110 300 106 271 102 246L99.5 242L99.5 204Z',
+};
+/* Where each joint sits on the right of the picture (mirrored for the other side). */
+const ATP_JB_AT={cervical:[100,54],scapula:[121,104],shoulder:[141,88],elbow:[150,158],wrist:[158,230],
+  thoracic:[100,124],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
+/* x on the picture: the front shows the athlete's right on the left, the back on the right. */
+const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
+  if(!r.side)return[x,y];
+  const leftOfPic=(view==='front')===(r.side==='Right');
+  return[leftOfPic?ATP_JB_W-x:x,y];};
+/* A joint's name with its side, in the app language. */
+const atpJbLabel=r=>`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
+function AtpMannequin({view,joints,sel,onPick}){
+  const mir=`translate(${ATP_JB_W} 0) scale(-1 1)`;
+  const both=d=><><path d={d}/><path d={d} transform={mir}/></>;
+  const marker=r=>{
+    const[x,y]=atpJbXY(r,view);
+    const j=joints[r.key]||{};
+    const lv=atpJointLv(j.level);
+    const rad=lv?8.5:6.5;
+    const on=sel===r.key;
+    const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
+    const tip=`${atpJbLabel(r)} — ${atpT(need.en)}: ${lv?atpT(ATP_JOINT_LEVELS[lv-1].en):'—'}`;
+    const pick=e=>{e.stopPropagation();onPick(r.key);};
+    return(<g key={r.key} className={`atp-jb-m jb-${r.joint.need}${lv?` jl-${j.level}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
+      role="button" tabIndex={0} aria-label={tip} aria-pressed={on} aria-haspopup="dialog"
+      onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}}}>
+      <title>{tip}</title>
+      <circle className="atp-jb-hit" r="13"/>
+      {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
+      <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
+    </g>);
+  };
+  const front=view==='front';
+  return(<svg viewBox={`0 0 ${ATP_JB_W} ${ATP_JB_H}`} className="atp-jb-svg" role="group"
+      aria-label={`${atpT(front?'Front':'Back')} — ${atpT('Joint by Joint')}`}>
+      <g className="atp-jb-body">
+        {both(ATP_JB_HALF.arm)}{both(ATP_JB_HALF.leg)}{both(ATP_JB_HALF.torso)}
+        <ellipse cx="100" cy="30" rx="17" ry="21"/>
+      </g>
+      {front
+        ?<g className="atp-jb-lines">
+          {both('M100 72C110 74 122 72 132 76')}{both('M104 104C112 112 124 112 132 106')}
+          <path d="M100 118L100 196"/>{both('M108 132L126 134M108 152L124 154M108 172L122 174')}
+          <ellipse cx="125" cy="318" rx="6.5" ry="8"/><ellipse cx="75" cy="318" rx="6.5" ry="8"/></g>
+        :<g className="atp-jb-lines">
+          <path d="M100 58L100 214" strokeDasharray="1.5 5" strokeLinecap="round" className="atp-jb-spine"/>
+          {both('M108 86C116 84 128 86 134 92C130 106 124 118 116 124C112 112 110 98 108 86Z')}
+          {both('M100 222C110 232 124 234 134 226')}{both('M118 330C122 326 128 326 132 330')}</g>}
+      <text className="atp-jb-side" x="8" y="300">{atpT(front?'Right':'Left')}</text>
+      <text className="atp-jb-side" x={ATP_JB_W-8} y="300" textAnchor="end">{atpT(front?'Left':'Right')}</text>
+      <text className="atp-jb-cap" x={ATP_JB_W/2} y={ATP_JB_H-6} textAnchor="middle">{atpT(front?'Front':'Back')}</text>
+      {ATP_JOINT_ROWS.filter(r=>r.joint.view===view).map(marker)}
+    </svg>);
+}
+/* The picker that opens next to a joint: its need, the three levels and a note. It sits
+   over the figures, below the joint (above it for the lower half of the body), and is
+   kept inside the card at the edges. */
+function AtpJointPop({r,j,onSet,onNote,onClose}){
+  const view=r.joint.view,[x,y]=atpJbXY(r,view);
+  const left=(view==='front'?0:50)+x/ATP_JB_W*50,top=y/ATP_JB_H*100;
+  const up=top>58;
+  const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
+  return(<div className={`atp-jb-pop${up?' up':''}`} role="dialog" aria-label={atpJbLabel(r)}
+    style={{left:`clamp(112px, ${left}%, calc(100% - 112px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
+    <div className="atp-jb-pop-h">
+      <b>{atpJbLabel(r)}</b>
+      <span className={`atp-jb-tag jb-${need.id}`}><i/>{atpT(need.en)}</span>
+      <button className="atp-x" onClick={onClose} aria-label={L('Kapat','Close')} title={L('Kapat','Close')}>✕</button>
+    </div>
+    <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
+      <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
+        title={L(l.dTr,l.dEn)} onClick={()=>{onSet(r.key,'level',l.id);onClose();}}><i/>{atpT(l.en)}</button>)}</div>
+    <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(r.key,e.target.value)} autoFocus={false}
+      placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
+    {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
+  </div>);
+}
+function AtpJoints({joints,onSet,onNote}){
+  const[sel,setSel]=useState(null);
+  const boxRef=useRef(null);
+  /* A click anywhere outside the figures and the list, or Escape, closes the picker. */
+  useEffect(()=>{
+    if(!sel)return;
+    const down=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setSel(null);};
+    const key=e=>{if(e.key==='Escape')setSel(null);};
+    document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
+    return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
+  },[sel]);
+  const pick=key=>setSel(k=>k===key?null:key);
+  /* The marked joints, the strongest need first, head to foot within one level. */
+  const marked=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:joints[r.key]||{}})).filter(x=>x.j.level)
+    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
+  const count=id=>marked.filter(x=>x.r.joint.need===id).length;
+  const selRow=sel&&ATP_JOINT_ROWS.find(r=>r.key===sel);
+  return(<div className="sc-sec" id="atp-s4">
+    <AtpSecHead n={4} title={atpT('Joint by Joint')}
+      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç. Bilgiler bireyselleştirme JSON\'una yazılır; hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
+        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
+      <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
+      <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
+    </AtpSecHead>
+    <div className="sc-sec-b">
+      <div className="atp-jb" ref={boxRef}>
+        <div className="atp-jb-figs">
+          <div className="atp-jb-pair">
+            <AtpMannequin view="front" joints={joints} sel={sel} onPick={pick}/>
+            <AtpMannequin view="back" joints={joints} sel={sel} onPick={pick}/>
+            {selRow&&<AtpJointPop r={selRow} j={joints[sel]||{}} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
+          </div>
+        </div>
+        <div className="atp-jb-side-col">
+          <div className="atp-jb-sum">
+            <div className="atp-jb-sum-h">{L('İşaretlenen eklemler','Marked joints')}<b>{marked.length}</b></div>
+            {marked.length?<div className="atp-jb-chips">{marked.map(({r,j})=>
+              <span key={r.key} className={`atp-jb-chip jl-${j.level}${sel===r.key?' on':''}`}>
+                <button className="atp-jb-chip-b" onClick={()=>pick(r.key)} title={j.note||undefined}>
+                  <i/>{atpJbLabel(r)}<small>{atpT(ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need).en)} · {atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</small>
+                  {j.note&&<em aria-hidden="true">✎</em>}</button>
+                <button className="atp-jb-chip-x" onClick={()=>onSet(r.key,'level',j.level)}
+                  aria-label={L(`${atpJbLabel(r)} işaretini kaldır`,`Clear ${atpJbLabel(r)}`)} title={L('Kaldır','Clear')}>✕</button>
+              </span>)}</div>
+            :<div className="atp-jb-none">{L('Henüz işaretleme yok — mankende bir eklemi tıkla.','Nothing marked yet — click a joint on the mannequin.')}</div>}
+          </div>
+          <div className="atp-jb-leg">
+            <div><span className="k">{L('Eklem','Joint')}</span>
+              <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
+              <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span></div>
+            <div><span className="k">{atpT('Level')}</span>
+              {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>);
+}
 function TrainingProfileTab({ath,updAth,exercises}){
   const tp=atpRead(ath);
   const raw=(ath.trainingProfile&&typeof ath.trainingProfile==='object')?ath.trainingProfile:{};
   /* A save always writes the profile in the template's shape; the two sections it
      replaced (priorities, movement) are read into it by atpRead and not kept. */
   const save=patch=>{const{priorities,movement,...rest}=raw;
-    updAth(ath.id,{trainingProfile:{...rest,qualities:tp.qualities,...patch,updated:fmt(new Date())}});};
+    updAth(ath.id,{trainingProfile:{...rest,qualities:tp.qualities,joints:tp.joints,...patch,updated:fmt(new Date())}});};
   const libMap=useMemo(()=>atpLibMap(exercises),[exercises]);
   const[refDate,setRefDate]=useState(()=>fmt(today));
   const refOk=/^\d{4}-\d{2}-\d{2}$/.test(refDate||'')?refDate:fmt(today);
@@ -285,6 +439,18 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(cur.priority)nx[id]=cur;else delete nx[id];
     save({qualities:nx});
   };
+  /* A joint's level for one need; clicking the level that is on takes it off. A joint
+     left with neither need nor note is dropped from the record. */
+  const setJ=(key,field,v)=>{
+    const cur={...(tp.joints[key]||{})};
+    if(field==='note'?!v:cur[field]===v)delete cur[field];else cur[field]=v;
+    const nx={...tp.joints};
+    if(Object.keys(cur).length)nx[key]=cur;else delete nx[key];
+    save({joints:nx});
+  };
+  const jRated=ATP_JOINT_ROWS.filter(r=>(tp.joints[r.key]||{}).level);
+  const jHigh=jRated.filter(r=>tp.joints[r.key].level==='high');
+  const jN=id=>jRated.filter(r=>r.joint.need===id).length;
   const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]);
   const nP=id=>rated.filter(it=>tp.qualities[it.id].priority===id).length;
   const high=rated.filter(it=>tp.qualities[it.id].priority==='high').map(it=>atpT(it.en));
@@ -296,14 +462,17 @@ function TrainingProfileTab({ath,updAth,exercises}){
       s:`${atpT('Hard')} ${tp.constraints.hard.length} · ${atpT('Soft')} ${tp.constraints.soft.length}`},
     {id:'atp-s3',c:'#22d3ee',k:atpT('Exercise Exposure'),v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
       s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
+    {id:'atp-s4',c:'#2dd4bf',k:atpT('Joint by Joint'),v:jRated.length,u:`/ ${ATP_JOINT_ROWS.length}`,
+      s:jHigh.length?`${atpT('High')}: ${jHigh.map(r=>(r.side?atpT(r.side)+' ':'')+atpT(r.joint.en)).join(', ')}`
+        :`${atpT('Mobility')} ${jN('mobility')} · ${atpT('Stability')} ${jN('stability')}`},
   ];
   return(<div className="atp-wrap">
     <div className="atp-intro">
       <div className="atp-intro-ic">◎</div>
       <div className="atp-intro-tx">
-        <div className="atp-intro-t">{atpT('Athlete Training Profile')}</div>
-        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: atletik profil (her kalitenin önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
-          'Defines the athlete as a trainee: the athletic profile (each quality’s priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
+        <div className="atp-intro-t">{atpT('Athlete Profile')}</div>
+        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: atletik profil (her kalitenin önceliği), kısıtlar, egzersiz maruziyeti ve eklem ihtiyaçları (Joint by Joint). Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
+          'Defines the athlete as a trainee: the athletic profile (each quality’s priority), constraints, exercise exposure and joint needs (Joint by Joint). No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
       </div>
       {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
     </div>
@@ -316,5 +485,6 @@ function TrainingProfileTab({ath,updAth,exercises}){
     <AtpProfile q={tp.qualities} onSet={setQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
     <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
+    <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
   </div>);
 }

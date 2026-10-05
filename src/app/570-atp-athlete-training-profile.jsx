@@ -20,8 +20,14 @@ const atpItems=list=>list.map(en=>({id:atpId(en),en}));
    stimulus) cannot be translated two ways. */
 const ATP_TR={
   /* titles */
-  'Athlete Training Profile':'Sporcu Antrenman Profili','Athletic Profile':'Atletik Profil',
-  'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti',
+  'Athlete Profile':'Sporcu Profili','Athletic Profile':'Atletik Profil',
+  'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti','Joint by Joint':'Eklem Eklem (Joint by Joint)',
+  /* joint by joint: joints, sides, views, the need scale */
+  'Neck':'Boyun','Low Back':'Bel (Lumbar)','Scapula':'Skapula','Shoulder':'Omuz','Elbow':'Dirsek',
+  'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga','Hip':'Kalça','Knee':'Diz',
+  'Ankle':'Ayak Bileği','Foot':'Ayak','Right':'Sağ','Left':'Sol','Front':'Önden','Back':'Arkadan',
+  'Need':'İhtiyaç','Joint':'Eklem','Side':'Taraf','Note':'Not','Level':'Düzey',
+  'Stable Joints':'Stabil Eklemler','Mobile Joints':'Mobil Eklemler',
   /* the template: groups and qualities */
   'Speed':'Sürat','Change of Direction':'Yön Değiştirme','Plyometric / Reactive':'Pliometrik / Reaktif',
   'Strength':'Kuvvet','Power':'Güç','Movement Quality':'Hareket Kalitesi','Conditioning':'Kondisyon',
@@ -32,7 +38,7 @@ const ATP_TR={
   'Horizontal Push':'Yatay İtme','Horizontal Pull':'Yatay Çekme','Vertical Push':'Dikey İtme','Vertical Pull':'Dikey Çekme',
   'Lower-Body Strength':'Alt Vücut Kuvveti','Upper-Body Strength':'Üst Vücut Kuvveti','Unilateral Strength':'Tek Taraflı Kuvvet',
   'Lower-Body Power':'Alt Vücut Gücü','Upper-Body Power':'Üst Vücut Gücü','Rate of Force Development':'Kuvvet Gelişim Hızı',
-  'Mobility':'Hareketlilik','Stability':'Stabilite','Coordination':'Koordinasyon','Balance':'Denge',
+  'Mobility':'Mobilite','Stability':'Stabilite','Coordination':'Koordinasyon','Balance':'Denge',
   'Aerobic Capacity':'Aerobik Kapasite','Anaerobic Capacity':'Anaerobik Kapasite','Repeat Sprint Ability':'Tekrarlı Sprint Yeteneği',
   /* the priority scale (Moderate is an exposure level) */
   'Priority':'Öncelik','Moderate':'Orta','High':'Yüksek','Medium':'Orta','Low':'Düşük',
@@ -80,7 +86,7 @@ const ATP_TR={
   'Vertical Press Family':'Dikey İtme Ailesi','Horizontal Press Family':'Yatay İtme Ailesi','Carry Family':'Taşıma Ailesi',
   'Anti-Rotation Family':'Anti-Rotasyon Ailesi','Anti-Lateral Flexion Family':'Anti-Lateral Fleksiyon Ailesi',
   'Anti-Extension Family':'Anti-Ekstansiyon Ailesi','Rotation Family':'Rotasyon Ailesi','Trunk Flexion Family':'Gövde Fleksiyon Ailesi',
-  'Mobility Family':'Hareketlilik Ailesi','Knee Dominant (Other)':'Diz Baskın (Diğer)','Hip Dominant (Other)':'Kalça Baskın (Diğer)',
+  'Mobility Family':'Mobilite Ailesi','Knee Dominant (Other)':'Diz Baskın (Diğer)','Hip Dominant (Other)':'Kalça Baskın (Diğer)',
   'Upper Body Push (Other)':'Üst Vücut İtme (Diğer)','Upper Body Pull (Other)':'Üst Vücut Çekme (Diğer)','Core (Other)':'Core (Diğer)',
   'Full Body (Other)':'Tüm Vücut (Diğer)','Unclassified':'Sınıflandırılmamış',
 };
@@ -196,6 +202,47 @@ const atpConFits=(def,kind)=>!def||def.kind==='any'||def.kind===kind;
 const atpConLabel=c=>{const d=atpConDef(c&&c.id);return d?d.en:String((c&&c.label)||'').trim();};
 const atpConCat=c=>{const d=atpConDef(c&&c.id);return(d?d.cat:(c&&c.cat))||'';};
 const atpCatLabel=id=>((ATP_CON_CATS.find(x=>x.id===id)||{}).en)||'';
+/* ---- Joint by Joint -----------------------------------------------------------
+   Boyle & Cook's Joint-by-Joint approach: up the body the joints alternate between
+   stable and mobile — the foot stable, the ankle mobile, the knee stable, the hip
+   mobile, the low back stable, the thoracic spine mobile, the scapula stable, the
+   shoulder mobile, the elbow stable, the wrist mobile, the neck mobile. A joint has ONE
+   need and it is fixed by the approach: a knee is trained for stability, never for
+   more range. What the coach rates is how much of that need the athlete has, per joint
+   and per side, on three steps. `view` is the mannequin the joint is drawn on — the
+   back carries the spine and the shoulder blades, the front everything else. Listed
+   head to foot, as the table reads. */
+const ATP_JOINTS=[
+  {id:'cervical',en:'Neck',          need:'mobility', bi:false,view:'back'},
+  {id:'scapula', en:'Scapula',       need:'stability',bi:true, view:'back'},
+  {id:'shoulder',en:'Shoulder',      need:'mobility', bi:true, view:'front'},
+  {id:'elbow',   en:'Elbow',         need:'stability',bi:true, view:'front'},
+  {id:'wrist',   en:'Wrist',         need:'mobility', bi:true, view:'front'},
+  {id:'thoracic',en:'Thoracic Spine',need:'mobility', bi:false,view:'back'},
+  {id:'lumbar',  en:'Low Back',      need:'stability',bi:false,view:'back'},
+  {id:'hip',     en:'Hip',           need:'mobility', bi:true, view:'front'},
+  {id:'knee',    en:'Knee',          need:'stability',bi:true, view:'front'},
+  {id:'ankle',   en:'Ankle',         need:'mobility', bi:true, view:'front'},
+  {id:'foot',    en:'Foot',          need:'stability',bi:true, view:'front'},
+];
+const ATP_JOINT_NEEDS=[{id:'mobility',en:'Mobility'},{id:'stability',en:'Stability'}];
+/* How much of its need a joint has. The ids are the priority scale's, so the same
+   colours and meters read "how much" across the tab; the words say what the dose is. */
+const ATP_JOINT_LEVELS=[
+  {id:'low',   en:'Low',   ab:'LOW', abTr:'DÜŞÜK', bars:1,dTr:'Hafif ihtiyaç — ısınmada kısa bir bakım dozu.',
+    dEn:'A slight need: a short maintenance dose in the warm-up.'},
+  {id:'medium',en:'Medium',ab:'MED', abTr:'ORTA',  bars:2,dTr:'Belirgin ihtiyaç — hazırlık bloğunda düzenli, hedefli çalışma.',
+    dEn:'A clear need: regular, targeted work in the preparation block.'},
+  {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Öncelikli ihtiyaç — her seansta hedefli çalışma; düzeltici / rehabilitasyon önceliği.',
+    dEn:'A priority need: targeted work every session; a corrective / rehabilitation priority.'},
+];
+/* One row per joint and side: `knee_r`, `knee_l`; a midline joint is its own id. */
+const ATP_JOINT_ROWS=ATP_JOINTS.flatMap(j=>j.bi
+  ?[{key:j.id+'_r',joint:j,side:'Right'},{key:j.id+'_l',joint:j,side:'Left'}]
+  :[{key:j.id,joint:j,side:null}]);
+const atpJointLv=id=>Math.max(0,ATP_JOINT_LEVELS.findIndex(l=>l.id===id)+1);
+/* The joint's name with its side, in English — the word the JSON carries. */
+const atpJointName=r=>r.side?`${r.side} ${r.joint.en}`:r.joint.en;
 /* The stored profile, read defensively. Hard and Soft are two lists and stay two: a
    constraint that somehow sits on both is kept where it is strictest, on Hard. A
    profile written before the template was one (see ATP_LEGACY_LEVEL) is read into it;
@@ -221,10 +268,22 @@ function atpRead(ath){
       put(it.id,top([...ids.map(k=>obj(mv[k]).priority),...ids.map(k=>ATP_LEGACY_LEVEL[pri[k]])]));
     });
   }
+  /* Joint needs: only the template's joints and sides, only a level on the scale; a
+     joint with neither a level nor a note is not kept. A level once stored under the
+     need's own name ({mobility:'high'}) is read as the level of the joint's one need. */
+  const jt=obj(tp.joints),joints={};
+  const okL=v=>ATP_JOINT_LEVELS.some(x=>x.id===v)?v:null;
+  ATP_JOINT_ROWS.forEach(r=>{
+    const j=obj(jt[r.key]),o={};
+    const lv=okL(j.level)||okL(j[r.joint.need]);
+    if(lv)o.level=lv;
+    if(typeof j.note==='string'&&j.note.trim())o.note=j.note;
+    if(Object.keys(o).length)joints[r.key]=o;
+  });
   const con=obj(tp.constraints);
   const list=v=>(Array.isArray(v)?v:[]).filter(c=>c&&c.id&&atpConLabel(c));
   const hard=list(con.hard),hardIds=new Set(hard.map(c=>c.id));
-  return{qualities,
+  return{qualities,joints,
     constraints:{hard,soft:list(con.soft).filter(c=>!hardIds.has(c.id))},updated:tp.updated||null};
 }
 
@@ -684,12 +743,35 @@ function atpSnapshot(ath,ref,libMap,setup){
     (ATP_EQ_ID[v]?eqIds.has(ATP_EQ_ID[v]):(eqIds.has(EQ_CUSTOM+diExName(v))||eqNames.has(diExName(v))));
   const gapOf=f=>f.label==='Equipment'?(t=>inGym(t.label)):(()=>true);
   const cut=ATP_EXP_CUT;
-  const filled=rated.length+tp.constraints.hard.length+tp.constraints.soft.length>0;
+  /* Joints with a rated need, the strongest first, head to foot within one level. A
+     note alone is not a need and is not sent. */
+  const jRows=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:tp.joints[r.key]||{}})).filter(x=>x.j.level)
+    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
+  const jointNeeds=jRows.length?{
+    description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
+      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine, neck, shoulder, wrist — need mobility. '+
+      'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
+      'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need.',
+    level_scale:Object.fromEntries(ATP_JOINT_LEVELS.map(l=>[l.en,l.dEn])),
+    use:'Build the preparation phase (warm-up, mobilisation, activation) and any corrective / rehabilitation work on these needs: '+
+      'every High need gets targeted work in the session, Medium needs regular work in the preparation block, Low needs a short maintenance dose. '+
+      'Mobility need: give the joint its range (mobilisation, dynamic stretching, end-range control) before it is loaded. '+
+      'Stability need: train the joint for control (isometrics, anti-movement, balance, slow eccentrics) — no mobilisation for more range, '+
+      'and do not load it at an end range it cannot control. A joint need is not a diagnosis: pain is for the medical staff.',
+    joints:jRows.map(({r,j})=>({joint:atpJointName(r),...(r.side?{side:r.side}:{}),
+      need:en(ATP_JOINT_NEEDS,r.joint.need),level:en(ATP_JOINT_LEVELS,j.level),
+      ...(j.note&&j.note.trim()?{note:j.note.trim()}:{})})),
+    /* The same, by need and level, the names alone; an empty level or need is left out. */
+    by_need:Object.fromEntries(ATP_JOINT_NEEDS.map(n=>[n.id,Object.fromEntries([...ATP_JOINT_LEVELS].reverse()
+      .map(l=>[l.id,jRows.filter(x=>x.r.joint.need===n.id&&x.j.level===l.id).map(x=>atpJointName(x.r))]).filter(([,v])=>v.length))])
+      .filter(([,v])=>Object.keys(v).length)),
+  }:null;
+  const filled=rated.length+tp.constraints.hard.length+tp.constraints.soft.length+jRows.length>0;
   /* With no S&C session on the calendar in 28 days every list below would only say
      "none" at length, so the block is cut to the count and the scope that explains it. */
   const anyEx=ex.sessions.d28>0;
   return{filled,out:{
-    definition:'The athlete\'s training profile. athletic_profile and constraints are entered by the coach; '+
+    definition:'The athlete\'s training profile. athletic_profile, constraints and joint_needs are entered by the coach; '+
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
     last_updated:tp.updated,
     athletic_profile:rated.length?{
@@ -705,6 +787,8 @@ function atpSnapshot(ath,ref,libMap,setup){
     constraints:(tp.constraints.hard.length||tp.constraints.soft.length)?{
       description:'hard: constraints that must be respected without exception · soft: not strict prohibitions, but preferences or situations to limit',
       hard:con(tp.constraints.hard),soft:con(tp.constraints.soft)}:null,
+    /* No joint rated, no block: the key is left out rather than sent as null. */
+    ...(jointNeeds?{joint_needs:jointNeeds}:{}),
     exercise_exposure:!anyEx?{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
