@@ -423,7 +423,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         customTests={data.customTests}
         writeOne={(id,program)=>applyTo([id],{force:{id,program}})}
         calSes={written[p.ath.id]||null}/>:null}
-      calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
+      calendar={<IndivAthleteCalendar ath={p.ath} team={team} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
     <DiJsonModal title={L('Tüm Sporcuların Bilgileri','All athletes\' data')} date={date}

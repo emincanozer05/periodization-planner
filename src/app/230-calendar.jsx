@@ -141,7 +141,7 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   </div>);
 }
 
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete}){
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -161,6 +161,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // the moment it is copied — from this calendar or from another athlete's.
   const sesClip=useSessionClipboard();
   const[copied,setCopied]=useState(false);
+  /* A session card's hover note, when the owner of the calendar has one to give: sesTip(dateKey)
+     returns [{id,name,parts}] — drawn in a small box beside the card, outside the scrolling grid. */
+  const[tipBox,setTipBox]=useState(null);
+  const showTip=(ev,k)=>{
+    const lines=sesTip?sesTip(k):null;
+    if(!lines||!lines.length){setTipBox(null);return;}
+    const r=ev.currentTarget.getBoundingClientRect();
+    const half=150,vw=window.innerWidth||0;
+    setTipBox({x:Math.min(Math.max(r.left+r.width/2,half),Math.max(half,vw-half)),y:r.top,lines});
+  };
   useEffect(()=>{setCopied(false);},[drawerSes&&drawerSes.id]);
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
@@ -599,6 +609,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     </div>
     {canEdit&&<div className="calw-hint">{L(<>Bir seansı başka güne sürükle · bırakırken <strong>Ctrl/⌥</strong>'ye bas → kopyalar</>,<>Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</>)}</div>}
     <div className="calw-grid">
+      {tipBox&&ReactDOM.createPortal(
+        <div className="calw-pat-tip" style={{left:tipBox.x,top:tipBox.y}}>
+          <div className="h">{L('Hareket paterni','Movement pattern')}</div>
+          {tipBox.lines.map(l=><div key={l.id} className="r"><b>{l.name}</b>{l.parts.length>0&&<span>{l.parts.join(' · ')}</span>}</div>)}
+        </div>,document.body)}
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
         // Daily load = exactly what the Team Load Trend chart plots for this date:
@@ -672,6 +687,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               style={s.color?{'--sc':cardCol(s.color)}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
+              onMouseEnter={sesTip?(ev=>showTip(ev,k)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>

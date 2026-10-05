@@ -2896,6 +2896,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-rpe-tip .s{display:block;font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lb-rpe-tip .none{font-size:11px;color:var(--dim);white-space:nowrap}
 
+.calw-pat-tip{position:fixed;z-index:120;transform:translate(-50%,calc(-100% - 8px));min-width:190px;max-width:300px;background:var(--elevated,var(--bg2));border:1px solid var(--border2,var(--border));border-radius:10px;padding:8px 12px 9px;box-shadow:0 12px 34px rgba(0,0,0,.55);pointer-events:none}
+.calw-pat-tip .h{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.calw-pat-tip .r{display:flex;flex-direction:column;gap:1px;padding:3px 0}
+.calw-pat-tip .r+.r{border-top:1px solid var(--border)}
+.calw-pat-tip .r b{font-size:12px;font-weight:700;color:var(--text)}
+.calw-pat-tip .r span{font-size:11px;color:var(--muted);line-height:1.4}
+
 /* ===== Roster (Athletes) ===== */
 .rost-head{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px}
 .rost-head:empty{display:none;margin:0}
@@ -14961,6 +14968,43 @@ function exGuessStyle(name,pattern){
   const d=EX_STYLE_DEFAULT[pattern];
   return styles.includes(d)?d:styles[0];
 }
+/* Which pattern an exercise trains, read off what is known about it — so a row whose name
+   was typed (or written by a model) does not have to be answered by hand. In order: what
+   the library has tagged on that exact name, the assistant coach's pool (it files each
+   exercise under a slot), then the words in the name. Returns '' when nothing says: a
+   wrong pattern is worse than a blank one, so there is no default here. */
+const EX_NAME_PATTERN=[
+  ['Full Body',/\bclean\b|snatch|\bjerk\b|thruster|high pull|burpee/],
+  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|suitcase|\bcarry\b|farmer|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Hip Dominant',/deadlift|\brdl\b|hip thrust|glute bridge|\bbridge\b|good ?morning|\bswing\b|pull ?through|back ext|hyperext|reverse hyper|hamstring|nordic|glute ham|\bkick ?back|hip ext|\bhinge\b|\bglute\b/],
+  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|leg ext|split|wall sit|\bsissy\b|\bpistol\b/],
+  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|rear delt|\bshrug\b|\blat\b|pullover|bicep|\bcurl\b/],
+  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|tricep|\braise\b|landmine/]];
+/* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
+const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
+  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+function exGuessPattern(name){
+  const nm=String(name||'').trim().toLowerCase();
+  if(!nm)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
+  if(hit&&EX_PATTERNS.includes(hit.exPattern))return hit.exPattern;
+  for(const k in CA_POOL)for(const c of CA_POOL[k]){
+    if(c.n.toLowerCase()!==nm)continue;
+    const slot=CA_SLOTS.find(sl=>sl.id===k);
+    if(slot&&EX_PATTERNS.includes(slot.pattern))return slot.pattern;
+  }
+  for(const[pat,re]of EX_NAME_PATTERN)if(re.test(nm))return pat;
+  return'';
+}
+/* A row's pattern and execution as far as they can be known: what is already there stays,
+   a model's vocabulary word is translated, and what is missing is read off the name. */
+function exResolveTags(name,pattern,plane){
+  let pat=String(pattern||'').trim();
+  if(!EX_PATTERNS.includes(pat))pat=EX_VOCAB_PATTERN[pat]||exGuessPattern(name);
+  if(!pat)return{pattern:'',plane:''};
+  const st=String(plane||'').trim();
+  return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(name,pat)};
+}
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
    is being replaced, so the new exercise brings its own pattern with it. An untagged entry
@@ -14974,7 +15018,7 @@ function exTagsFromLib(it,row){
     const st=String((it&&it.exPlane)||'').trim();
     return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(nm,pat)};
   }
-  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:'';
+  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:exGuessPattern(nm);
   if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:exGuessStyle(nm,guess)};
   return null;
 }
@@ -16657,7 +16701,7 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   </div>);
 }
 
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete}){
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -16677,6 +16721,16 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // the moment it is copied — from this calendar or from another athlete's.
   const sesClip=useSessionClipboard();
   const[copied,setCopied]=useState(false);
+  /* A session card's hover note, when the owner of the calendar has one to give: sesTip(dateKey)
+     returns [{id,name,parts}] — drawn in a small box beside the card, outside the scrolling grid. */
+  const[tipBox,setTipBox]=useState(null);
+  const showTip=(ev,k)=>{
+    const lines=sesTip?sesTip(k):null;
+    if(!lines||!lines.length){setTipBox(null);return;}
+    const r=ev.currentTarget.getBoundingClientRect();
+    const half=150,vw=window.innerWidth||0;
+    setTipBox({x:Math.min(Math.max(r.left+r.width/2,half),Math.max(half,vw-half)),y:r.top,lines});
+  };
   useEffect(()=>{setCopied(false);},[drawerSes&&drawerSes.id]);
   useEffect(()=>{setMonthRef(parseD(selected.date));},[selected.date]);
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
@@ -17115,6 +17169,11 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     </div>
     {canEdit&&<div className="calw-hint">{L(<>Bir seansı başka güne sürükle · bırakırken <strong>Ctrl/⌥</strong>'ye bas → kopyalar</>,<>Drag a session to another day · hold <strong>Ctrl/⌥</strong> and drop → copies</>)}</div>}
     <div className="calw-grid">
+      {tipBox&&ReactDOM.createPortal(
+        <div className="calw-pat-tip" style={{left:tipBox.x,top:tipBox.y}}>
+          <div className="h">{L('Hareket paterni','Movement pattern')}</div>
+          {tipBox.lines.map(l=><div key={l.id} className="r"><b>{l.name}</b>{l.parts.length>0&&<span>{l.parts.join(' · ')}</span>}</div>)}
+        </div>,document.body)}
       {dayCells.map((d,i)=>{
         const k=fmt(d);const day=days[k];const ss=day?.sessions||[];
         // Daily load = exactly what the Team Load Trend chart plots for this date:
@@ -17188,6 +17247,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               style={s.color?{'--sc':cardCol(s.color)}:undefined}
               onDragStart={e=>{if(!canEdit)return;e.stopPropagation();e.dataTransfer.effectAllowed='copyMove';try{e.dataTransfer.setData('text/plain',s.id);}catch{}setDragInfo({fromDate:k,sessionId:s.id});}}
               onDragEnd={()=>{setDragInfo(null);setDragOverDate(null);}}
+              onMouseEnter={sesTip?(ev=>showTip(ev,k)):undefined} onMouseLeave={sesTip?(()=>setTipBox(null)):undefined}
               onClick={()=>{setDrawerSes(s);setDrawerDate(k);}}>
               {canEdit&&<div className="calw-ses-act" onClick={e=>e.stopPropagation()}>
                 <button title={L('Çoğalt','Duplicate')} onClick={e=>{e.stopPropagation();dupSession(k,s.id);}}>⎘</button>
@@ -18102,10 +18162,12 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last,phases}){
   /* Written the other way round — the pattern first, the exercise after — the execution
      is worked out once the name is there to read. */
   const nameTagged=nm=>{
-    if(!ex.pattern||ex.plane)return;
-    const plane=exGuessStyle(nm,ex.pattern);
-    if(!plane)return;
-    onChange({...ex,name:nm,plane});rememberExerciseTags(nm,ex.pattern,plane);
+    if(ex.plane)return;
+    /* No pattern yet: the name says it (Dead Bug → Core · Anti-Extension). A pattern the
+       coach set is never replaced — only its missing execution is filled. */
+    const t=ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'','');
+    if(!t.pattern||!t.plane)return;
+    onChange({...ex,name:nm,pattern:t.pattern,plane:t.plane});rememberExerciseTags(nm,t.pattern,t.plane);
   };
   /* Typing a name the library already knows fills the row's image box from that entry,
      the same picture picking it off the list would have brought. Only when the box is
@@ -32071,7 +32133,7 @@ function planToSession(plan,src,dateKey,srcKey){
       ...descI18nFor(r.base.aiDesc,[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':'')),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
-      pattern:t(r.pattern),plane:t(r.plane),
+      ...exResolveTags(t(r.name),t(r.pattern),t(r.plane)),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option
@@ -35074,6 +35136,27 @@ function diMoveFacetText(pick,facet){
   const byId=new Map(facet.opts.map(op=>[op[0],op]));
   return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
 }
+/* The coach's pattern picks for one athlete and day, one line per pattern — "Diz dominant:
+   Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the form
+   lists them). The calendar shows it on hover; a day with no pick has no lines. When the day
+   has been briefed from more than one source session, the most recently saved brief is read. */
+function diPatternTipLines(team,athId,dateKey){
+  const store=(team&&team.indiv&&team.indiv.ai)||{};
+  let best=null;
+  Object.keys(store).forEach(k=>{
+    const bits=k.split('|');
+    if(bits[0]!==dateKey||bits.slice(2).join('|')!==athId)return;
+    const rec=store[k];
+    if(!rec||!rec.instr||!Array.isArray(rec.instr.patterns)||!rec.instr.patterns.length)return;
+    if(!best||String(rec.updated_at||'')>String(best.updated_at||''))best=rec;
+  });
+  if(!best)return[];
+  return diMovePatterns(best.instr.patterns).map(p=>{
+    const row=diMoveRow(p.id);
+    return{id:p.id,name:diMoveLabel(p.id),
+      parts:row.facets.flatMap(f=>diMoveFacetText(p,f))};
+  });
+}
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -37829,12 +37912,12 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
    editing, except that opening a session and editing it happens INSIDE the card rather
    than in a modal over the page. It keeps its own week cursor, starting on the day
    being individualized. */
-function IndivAthleteCalendar({ath,setup,weeks,exercises,saveDays,date}){
+function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date}){
   const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
     return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
   return<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
     weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
-    coachAthlete={ath}/>;
+    coachAthlete={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>;
 }
 
 function IndividualizationView({data,team,updateTeam,weeks}){
@@ -38262,7 +38345,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
         customTests={data.customTests}
         writeOne={(id,program)=>applyTo([id],{force:{id,program}})}
         calSes={written[p.ath.id]||null}/>:null}
-      calendar={<IndivAthleteCalendar ath={p.ath} setup={team.setup} weeks={weeks}
+      calendar={<IndivAthleteCalendar ath={p.ath} team={team} setup={team.setup} weeks={weeks}
         exercises={exercises} date={date}
         saveDays={d=>saveAthDays(p.ath.id,d)}/>}/>);})}
     <DiJsonModal title={L('Tüm Sporcuların Bilgileri','All athletes\' data')} date={date}

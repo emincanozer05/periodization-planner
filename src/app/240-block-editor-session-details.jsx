@@ -285,10 +285,12 @@ function CalSlotEdRaw({ex,tag,onChange,onMove,onRemove,first,last,phases}){
   /* Written the other way round — the pattern first, the exercise after — the execution
      is worked out once the name is there to read. */
   const nameTagged=nm=>{
-    if(!ex.pattern||ex.plane)return;
-    const plane=exGuessStyle(nm,ex.pattern);
-    if(!plane)return;
-    onChange({...ex,name:nm,plane});rememberExerciseTags(nm,ex.pattern,plane);
+    if(ex.plane)return;
+    /* No pattern yet: the name says it (Dead Bug → Core · Anti-Extension). A pattern the
+       coach set is never replaced — only its missing execution is filled. */
+    const t=ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'','');
+    if(!t.pattern||!t.plane)return;
+    onChange({...ex,name:nm,pattern:t.pattern,plane:t.plane});rememberExerciseTags(nm,t.pattern,t.plane);
   };
   /* Typing a name the library already knows fills the row's image box from that entry,
      the same picture picking it off the list would have brought. Only when the box is
