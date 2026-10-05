@@ -137,14 +137,14 @@ function DiPriorityPicker({value,onChange}){
    open at a time — the others fold to one line that says what was picked, so three
    patterns cost three lines rather than three panels. Inside a box each facet is a row
    of toggles: nothing ticked means the model chooses, several ticked mean any of them.
-   A pattern today's pain or a standing restriction has closed is still selectable (the
-   coach may know better), but it says so, and the answer is told to substitute and
-   declare it. */
+   A pattern that loads a region reported painful today is marked, and stays a full
+   choice: the coach has seen the pain, so a picked pattern is never dropped for it —
+   the answer writes it as a pain-free, modified variation instead. */
 function DiPatternPicker({value,onChange,closed}){
   const list=diMovePatterns(value);
   const[open,setOpen]=useState(null);
   const shut=closed instanceof Set?closed:new Set();
-  const isClosed=row=>row.vocab.every(v=>shut.has(v));
+  const isClosed=row=>row.vocab.some(v=>shut.has(v));
   const toggle=id=>{
     if(list.some(p=>p.id===id)){onChange(list.filter(p=>p.id!==id));if(open===id)setOpen(null);}
     else{onChange([...list,{id}]);setOpen(id);}
@@ -160,8 +160,8 @@ function DiPatternPicker({value,onChange,closed}){
       {DI_MOVE_PATTERNS.map(row=>{const on=list.some(p=>p.id===row.id);const cl=isClosed(row);
         return<button key={row.id} type="button" aria-pressed={on}
           className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
-          title={cl?L('Bugün ağrı/kısıt nedeniyle kapalı — seçilirse model güvenli bir alternatif yazıp bildirir.',
-            'Closed today by pain / a restriction — if picked, the model writes a safe substitute and declares it.'):undefined}
+          title={cl?L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
+            'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.'):undefined}
           onClick={()=>toggle(row.id)}>{on?'✓ ':''}{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
     </div>
     {list.length>0&&<div className="di-mvp-list">

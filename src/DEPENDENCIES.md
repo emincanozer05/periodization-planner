@@ -5,7 +5,7 @@
 
 ## Değişmezler (CI denetliyor)
 
-- Üst düzey ad sayısı: **1389**, yinelenen: **0**
+- Üst düzey ad sayısı: **1391**, yinelenen: **0**
 - Yükleme sırasında (erken) ileriye başvuru: **0**
 
 ## Çekirdek parçalar (en çok bağlanılanlar)
@@ -107,7 +107,7 @@ Parça, kendinden SONRA gelen bir parçadaki adı yalnızca bir işlevin içinde
 | 59 | `atp-athlete-training-profile` | 43 | `dates-language-factories`, `session-analysis-muscle-model`, `athlete-detail-snapshot`, `exercise-taxonomy-text`¹, `di-engine-baseline`, `sport-context-equipment`↑ |
 | 60 | `sport-context-equipment` | 34 | `dates-language-factories`, `athlete-detail-snapshot`, `exercise-taxonomy-text`, `exercise-library-export`, `athlete-context-readiness`, `di-engine-baseline` |
 | 61 | `di-adjust-tier-bundle` | 40 | `dates-language-factories`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-writer`, `athlete-context-readiness`, `di-engine-baseline`, `sport-context-equipment`, `ai-layer`↑ |
-| 62 | `ai-layer` | 65 | `dates-language-factories`, `test-metadata-fms`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-modal-cards`, `exercise-library-export`, `coach-assistant`, `di-engine-baseline`, `sport-context-equipment`, `di-adjust-tier-bundle`, `di-forms-program-view`↑, `athlete-snapshot`↑ |
+| 62 | `ai-layer` | 67 | `dates-language-factories`, `test-metadata-fms`, `athlete-detail-snapshot`, `program-design-assistant`, `exercise-modal-cards`, `exercise-library-export`, `coach-assistant`, `di-engine-baseline`, `sport-context-equipment`, `di-adjust-tier-bundle`, `di-forms-program-view`↑, `athlete-snapshot`↑ |
 | 63 | `di-forms-program-view` | 16 | `prelude`, `constants-session-focus`, `dates-language-factories`, `print-session-html`, `block-editor-session-details`, `exercise-taxonomy-text`, `indiv-plan-descriptions`, `di-engine-baseline`, `ai-layer` |
 | 64 | `athlete-snapshot` | 8 | `dates-language-factories`, `test-metadata-fms`, `periods-weeks-load-monotony`, `athlete-detail-snapshot`, `program-writer`, `exercise-library-export`, `athlete-context-readiness`, `di-engine-baseline`, `atp-athlete-training-profile`, `sport-context-equipment`, `di-adjust-tier-bundle`, `ai-layer` |
 | 65 | `daily-indiv-panel` | 3 | `prelude`, `constants-session-focus`, `dates-language-factories`, `periods-weeks-load-monotony`, `photo-local-media-store`, `calendar`, `exercise-library-export`, `athlete-context-readiness`, `indiv-plan-descriptions`, `di-adjust-tier-bundle`, `ai-layer`, `di-forms-program-view`, `athlete-snapshot` |
