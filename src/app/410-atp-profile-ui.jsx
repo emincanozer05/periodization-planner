@@ -270,73 +270,70 @@ function AtpExposure({exp,refDate,setRefDate}){
 /* ---- Joint by Joint: the two mannequins and the table ----
    A figure seen from the front and one from the back. The front is drawn facing the
    coach, so the athlete's right is on the left of the picture; the back the other way
-   round. Each joint is a marker: an empty dashed ring in its Joint-by-Joint colour while
-   nothing is rated, a filled disc once it is — teal for mobility, violet for stability,
-   split in two when both — growing with the highest level, which it carries as a
-   number. Clicking a marker picks the joint's row in the table, where it is rated. */
-const ATP_JB_W=160,ATP_JB_H=372;
-/* Where each joint sits, on the athlete's RIGHT side in the front view (x mirrored for
-   the left and for the back view). Midline joints have no side. */
-const ATP_JB_AT={cervical:[80,52],scapula:[62,88],shoulder:[47,68],elbow:[37,126],wrist:[30,186],
-  thoracic:[80,104],lumbar:[80,150],hip:[65,184],knee:[64,264],ankle:[64,330],foot:[61,356]};
+   round. Each joint is a marker in its need's colour — blue for a mobile joint, orange
+   for a stable one, the Joint-by-Joint chart's own colours: an empty dashed ring while
+   it is not rated, a filled disc once it is, growing with the level it carries as a
+   number. Clicking a marker picks the joint's row in the table, where it is rated.
+
+   The body is drawn as halves: each shape is written once for the right of the picture
+   and drawn again mirrored, so the figure is symmetric by construction. */
+const ATP_JB_W=200,ATP_JB_H=446;
+const ATP_JB_HALF={
+  torso:'M99.5 50L108 50C108 58 110 64 116 67C126 71 138 72 143 80C147 88 146 102 141 114C137 132 133 150 131 168C130 182 134 194 138 207C141 221 137 235 128 244L99.5 247Z',
+  arm:'M137 82C147 80 154 90 154 106C155 124 157 140 157 157C159 177 162 201 162 227C164 239 166 251 163 263C159 271 152 269 152 259C150 249 150 240 152 230C150 206 145 181 142 161C140 145 138 129 138 113Z',
+  leg:'M138 204C143 230 143 258 139 287C137 301 136 312 136 322C138 341 141 361 137 385C135 400 133 409 133 417C135 423 141 427 141 432C139 437 119 437 116 432C116 426 118 420 118 414C116 396 112 371 114 350C114 338 112 330 112 322C110 300 106 271 102 246L99.5 242L99.5 204Z',
+};
+/* Where each joint sits on the right of the picture (mirrored for the other side). */
+const ATP_JB_AT={cervical:[100,54],scapula:[121,104],shoulder:[141,88],elbow:[150,158],wrist:[158,230],
+  thoracic:[100,124],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
+/* x on the picture: the front shows the athlete's right on the left, the back on the right. */
 const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
   if(!r.side)return[x,y];
-  const right=r.side==='Right';
-  return[(view==='front')===right?x:ATP_JB_W-x,y];};
+  const leftOfPic=(view==='front')===(r.side==='Right');
+  return[leftOfPic?ATP_JB_W-x:x,y];};
 function AtpMannequin({view,joints,sel,onPick}){
-  const m=x=>ATP_JB_W-x;
-  /* One limb segment, drawn on both sides. */
-  const limb=(x1,y1,x2,y2,w)=><g key={`${x1}-${y1}`}>
-    <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={w}/><line x1={m(x1)} y1={y1} x2={m(x2)} y2={y2} strokeWidth={w}/></g>;
-  const rows=ATP_JOINT_ROWS.filter(r=>r.joint.view===view);
-  const lv=id=>atpJointLv(id);
+  const mir=`translate(${ATP_JB_W} 0) scale(-1 1)`;
+  const both=d=><><path d={d}/><path d={d} transform={mir}/></>;
   const marker=r=>{
     const[x,y]=atpJbXY(r,view);
     const j=joints[r.key]||{};
-    const mo=lv(j.mobility),st=lv(j.stability),top=Math.max(mo,st);
-    const rad=top?6+top*1.6:5.5;
+    const lv=atpJointLv(j.level);
+    const rad=lv?6.5+lv*1.7:6;
     const on=sel===r.key;
-    const name=`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
-    const tip=`${name} — ${ATP_JOINT_NEEDS.map(n=>`${atpT(n.en)}: ${j[n.id]?atpT((ATP_JOINT_LEVELS.find(l=>l.id===j[n.id])||{}).en):'—'}`).join(' · ')}`;
+    const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
+    const tip=`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)} — ${atpT(need.en)}: ${lv?atpT(ATP_JOINT_LEVELS[lv-1].en):'—'}`;
     const pick=()=>onPick(r.key);
-    return(<g key={r.key} className={`atp-jb-m${on?' on':''}${top?' set':''}`} transform={`translate(${x} ${y})`}
+    return(<g key={r.key} className={`atp-jb-m jb-${r.joint.need}${on?' on':''}${lv?' set':''}`} transform={`translate(${x} ${y})`}
       role="button" tabIndex={0} aria-label={tip} aria-pressed={on}
       onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}}}>
       <title>{tip}</title>
       {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
-      {!top&&<circle className={`atp-jb-empty jb-${r.joint.jbj}`} r={rad}/>}
-      {top>0&&mo>0&&st>0&&<>
-        <path className="jb-fill-mobility" d={`M0 ${-rad}A${rad} ${rad} 0 0 0 0 ${rad}Z`}/>
-        <path className="jb-fill-stability" d={`M0 ${-rad}A${rad} ${rad} 0 0 1 0 ${rad}Z`}/>
-        <circle className="atp-jb-ring" r={rad}/></>}
-      {top>0&&!(mo>0&&st>0)&&<circle className={`atp-jb-ring jb-fill-${mo?'mobility':'stability'}`} r={rad}/>}
-      {top>0&&<text className="atp-jb-n" dy="0.35em">{top}</text>}
+      <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
+      {lv>0&&<text className="atp-jb-n" dy="0.36em">{lv}</text>}
     </g>);
   };
-  const sideL=view==='front'?'Right':'Left',sideR=view==='front'?'Left':'Right';
+  const front=view==='front';
   return(<figure className="atp-jb-fig">
     <svg viewBox={`0 0 ${ATP_JB_W} ${ATP_JB_H}`} className="atp-jb-svg" role="group"
-      aria-label={`${atpT(view==='front'?'Front':'Back')} — ${atpT('Joint by Joint')}`}>
+      aria-label={`${atpT(front?'Front':'Back')} — ${atpT('Joint by Joint')}`}>
       <g className="atp-jb-body">
-        <ellipse cx="80" cy="26" rx="15" ry="18"/>
-        <rect x="72" y="40" width="16" height="16" rx="5"/>
-        <path d="M49 58Q80 50 111 58L117 72Q116 104 108 140Q107 160 110 182L50 182Q53 160 52 140Q44 104 43 72Z"/>
-        <g className="atp-jb-limbs">
-          {limb(47,68,37,126,14)}{limb(37,126,30,186,11)}{limb(30,186,28,204,10)}
-          {limb(66,186,64,264,22)}{limb(64,264,64,333,16)}
-        </g>
-        <ellipse cx="61" cy="350" rx="9" ry={view==='front'?7:5}/><ellipse cx={m(61)} cy="350" rx="9" ry={view==='front'?7:5}/>
+        {both(ATP_JB_HALF.arm)}{both(ATP_JB_HALF.leg)}{both(ATP_JB_HALF.torso)}
+        <ellipse cx="100" cy="30" rx="17" ry="21"/>
       </g>
-      {view==='back'
+      {front
         ?<g className="atp-jb-lines">
-          <line x1="80" y1="44" x2="80" y2="176" strokeDasharray="3 3"/>
-          <path d="M54 76L72 80L68 106Z"/><path d={`M${m(54)} 76L${m(72)} 80L${m(68)} 106Z`}/></g>
-        :<g className="atp-jb-lines"><path d="M60 182Q80 196 100 182"/><line x1="80" y1="62" x2="80" y2="140" strokeDasharray="2 4"/></g>}
-      <text className="atp-jb-side" x="14" y="364">{atpT(sideL)}</text>
-      <text className="atp-jb-side" x={ATP_JB_W-14} y="364" textAnchor="end">{atpT(sideR)}</text>
-      {rows.map(marker)}
+          {both('M100 72C110 74 122 72 132 76')}{both('M104 104C112 112 124 112 132 106')}
+          <path d="M100 118L100 196"/>{both('M108 132L126 134M108 152L124 154M108 172L122 174')}
+          <ellipse cx="125" cy="318" rx="6.5" ry="8"/><ellipse cx="75" cy="318" rx="6.5" ry="8"/></g>
+        :<g className="atp-jb-lines">
+          <path d="M100 58L100 214" strokeDasharray="1.5 5" strokeLinecap="round" className="atp-jb-spine"/>
+          {both('M108 86C116 84 128 86 134 92C130 106 124 118 116 124C112 112 110 98 108 86Z')}
+          {both('M100 222C110 232 124 234 134 226')}{both('M118 330C122 326 128 326 132 330')}</g>}
+      <text className="atp-jb-side" x="8" y="300">{atpT(front?'Right':'Left')}</text>
+      <text className="atp-jb-side" x={ATP_JB_W-8} y="300" textAnchor="end">{atpT(front?'Left':'Right')}</text>
+      {ATP_JOINT_ROWS.filter(r=>r.joint.view===view).map(marker)}
     </svg>
-    <figcaption>{atpT(view==='front'?'Front':'Back')}</figcaption>
+    <figcaption>{atpT(front?'Front':'Back')}</figcaption>
   </figure>);
 }
 function AtpJoints({joints,onSet,onNote}){
@@ -346,22 +343,23 @@ function AtpJoints({joints,onSet,onNote}){
     const el=document.getElementById('atp-jr-'+key);
     if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'nearest'});
   };
-  const count=id=>ATP_JOINT_ROWS.filter(r=>(joints[r.key]||{})[id]).length;
+  const count=id=>ATP_JOINT_ROWS.filter(r=>r.joint.need===id&&(joints[r.key]||{}).level).length;
   const needTag=id=>{const n=ATP_JOINT_NEEDS.find(x=>x.id===id);return<span className={`atp-jb-tag jb-${id}`}><i/>{atpT(n.en)}</span>;};
-  const seg=(r,n)=>{const v=(joints[r.key]||{})[n.id];return(
-    <div className="atp-seg" role="group" aria-label={`${atpT(atpJointName(r))} — ${atpT(n.en)}`}>{ATP_JOINT_LEVELS.map(l=>
-      <button key={l.id} className={`pr-${l.id}${v===l.id?' on':''}`} aria-pressed={v===l.id} aria-label={atpT(l.en)}
-        title={`${atpT(n.en)}: ${atpT(l.en)} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(r.key,n.id,l.id)}>{atpBars(l.bars)}{atpAb(l)}</button>)}</div>);};
+  const listOf=id=>ATP_JOINTS.filter(j=>j.need===id).map(j=>atpT(j.en)).join(' · ');
   return(<div className="sc-sec" id="atp-s4">
     <AtpSecHead n={4} title={atpT('Joint by Joint')}
-      desc={L('Joint by Joint yaklaşımı: eklemler aşağıdan yukarı sırayla ağırlıklı olarak mobilite ya da stabilite ister (ayak stabilite, ayak bileği mobilite, diz stabilite, kalça mobilite, lumbar stabilite, torasik mobilite, skapula stabilite, omuz mobilite…). JbJ sütunu bu temel ihtiyacı gösterir; sporcunun gerçek ihtiyacını değerlendirmeye göre her eklem ve taraf için Düşük / Orta / Yüksek olarak işaretle. Bilgiler bireyselleştirme JSON\'una yazılır ve hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
-        'The Joint-by-Joint approach: up the body the joints alternate between a primary need for mobility or for stability (foot stability, ankle mobility, knee stability, hip mobility, lumbar stability, thoracic mobility, scapula stability, shoulder mobility…). The JbJ column shows that textbook need; mark what the athlete actually needs, from the assessment, per joint and side as Low / Medium / High. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
+      desc={L('Joint by Joint yaklaşımı: eklemler aşağıdan yukarı sırayla stabil ve mobil olarak dizilir. Her eklemin tek bir ihtiyacı vardır — diz stabil bir eklemdir, mobiliteye değil stabiliteye ihtiyaç duyar. Sporcunun değerlendirmesine göre her eklem ve taraf için bu ihtiyacın düzeyini Düşük / Orta / Yüksek olarak işaretle. Bilgiler bireyselleştirme JSON\'una yazılır ve hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
+        'The Joint-by-Joint approach: up the body the joints alternate between stable and mobile. Each joint has one need — the knee is a stable joint, it needs stability, not mobility. Mark how much of that need the athlete has, from the assessment, per joint and side as Low / Medium / High. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
       <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
       <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
     </AtpSecHead>
     <div className="sc-sec-b">
+      <div className="atp-jb-kinds">
+        <div className="atp-jb-kind jb-stability"><b>{atpT('Stable Joints')}</b><span>{listOf('stability')}</span></div>
+        <div className="atp-jb-kind jb-mobility"><b>{atpT('Mobile Joints')}</b><span>{listOf('mobility')}</span></div>
+      </div>
       <div className="atp-key">
-        <div className="atp-key-g"><span className="atp-key-k">{atpT('Need')}</span>
+        <div className="atp-key-g"><span className="atp-key-k">{atpT('Level')}</span>
           {ATP_JOINT_LEVELS.map(l=><span key={l.id} className="atp-key-i"><span className={`atp-tag pr-${l.id}`}>{atpBars(l.bars)}{atpT(l.en)}</span>{L(l.dTr,l.dEn)}</span>)}</div>
       </div>
       <div className="atp-jb">
@@ -371,29 +369,31 @@ function AtpJoints({joints,onSet,onNote}){
             <AtpMannequin view="back" joints={joints} sel={sel} onPick={pick}/>
           </div>
           <div className="atp-jb-leg">
-            <span><i className="jb-dot jb-fill-mobility"/>{atpT('Mobility')}</span>
-            <span><i className="jb-dot jb-fill-stability"/>{atpT('Stability')}</span>
-            <span><i className="jb-dot jb-split"/>{L('İkisi birden','Both')}</span>
+            <span><i className="jb-dot jb-mobility"/>{atpT('Mobility')}</span>
+            <span><i className="jb-dot jb-stability"/>{atpT('Stability')}</span>
             <span><i className="jb-dot jb-none"/>{L('Değerlendirilmedi','Not rated')}</span>
-            <span className="atp-jb-leg-n">{L('Sayı ve boyut: en yüksek düzey (1–3)','Number and size: highest level (1–3)')}</span>
+            <span className="atp-jb-leg-n">{L('Sayı ve boyut: ihtiyaç düzeyi (1–3)','Number and size: level of need (1–3)')}</span>
           </div>
         </div>
         <div className="atp-jb-tbl" role="table" aria-label={atpT('Joint by Joint')}>
           <div className="atp-jb-hr" role="row">
-            <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('JbJ')}</span>
-            <span role="columnheader">{atpT('Mobility')}</span><span role="columnheader">{atpT('Stability')}</span>
+            <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
+            <span role="columnheader">{atpT('Level')}</span>
           </div>
-          {ATP_JOINT_ROWS.map(r=>{const j=joints[r.key]||{};const set=ATP_JOINT_NEEDS.some(n=>j[n.id]);return(
+          {ATP_JOINT_ROWS.map(r=>{const j=joints[r.key]||{};const n=ATP_JOINT_NEEDS.find(x=>x.id===r.joint.need);return(
             <div key={r.key} id={'atp-jr-'+r.key} role="row"
-              className={`atp-jb-r${sel===r.key?' on':''}${set?' set':''}${r.side==='Right'?' pair':''}`}
+              className={`atp-jb-r${sel===r.key?' on':''}${j.level?' set':''}${r.side==='Right'?' pair':''}`}
               onClick={()=>setSel(r.key)}>
               <span className="atp-jb-n" role="cell">
                 <b title={REPORT_LANG==='tr'?r.joint.en:undefined}>{atpT(r.joint.en)}</b>
                 {r.side&&<small>{atpT(r.side)}</small>}</span>
-              <span role="cell">{needTag(r.joint.jbj)}</span>
-              <span role="cell" className="atp-jb-c"><em>{atpT('Mobility')}</em>{seg(r,ATP_JOINT_NEEDS[0])}</span>
-              <span role="cell" className="atp-jb-c"><em>{atpT('Stability')}</em>{seg(r,ATP_JOINT_NEEDS[1])}</span>
+              <span role="cell">{needTag(r.joint.need)}</span>
+              <span role="cell" className="atp-jb-c">
+                <div className="atp-seg" role="group" aria-label={`${atpT(atpJointName(r))} — ${atpT(n.en)}`}>{ATP_JOINT_LEVELS.map(l=>
+                  <button key={l.id} className={`pr-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id} aria-label={atpT(l.en)}
+                    title={`${atpT(n.en)}: ${atpT(l.en)} — ${L(l.dTr,l.dEn)}`} onClick={()=>onSet(r.key,'level',l.id)}>{atpBars(l.bars)}{atpAb(l)}</button>)}</div></span>
               {(sel===r.key||j.note)&&<input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(r.key,e.target.value)}
+                onClick={e=>e.stopPropagation()}
                 placeholder={L('Not — test sonucu, ağrı, gözlem…','Note — test result, pain, observation…')} aria-label={atpT('Note')}/>}
             </div>);})}
         </div>
@@ -429,9 +429,9 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(Object.keys(cur).length)nx[key]=cur;else delete nx[key];
     save({joints:nx});
   };
-  const jRated=ATP_JOINT_ROWS.filter(r=>ATP_JOINT_NEEDS.some(n=>(tp.joints[r.key]||{})[n.id]));
-  const jHigh=jRated.filter(r=>ATP_JOINT_NEEDS.some(n=>tp.joints[r.key][n.id]==='high'));
-  const jN=id=>jRated.filter(r=>tp.joints[r.key][id]).length;
+  const jRated=ATP_JOINT_ROWS.filter(r=>(tp.joints[r.key]||{}).level);
+  const jHigh=jRated.filter(r=>tp.joints[r.key].level==='high');
+  const jN=id=>jRated.filter(r=>r.joint.need===id).length;
   const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]);
   const nP=id=>rated.filter(it=>tp.qualities[it.id].priority===id).length;
   const high=rated.filter(it=>tp.qualities[it.id].priority==='high').map(it=>atpT(it.en));

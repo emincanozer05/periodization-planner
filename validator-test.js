@@ -1475,32 +1475,34 @@ group('16 — Seçilen model gerçekten tele gidiyor');
 
   group('Ek — Athlete Profile: Joint by Joint eklem ihtiyaçları');
   {
-    // Okuma: yalnızca şablondaki eklem / taraf ve üç düzey; ne ihtiyaç ne not taşıyan eklem atılıyor.
-    const jr = A.atpRead({ trainingProfile: { joints: {
-      knee_l: { stability: 'high', mobility: 'bogus', note: 'valgus çöküşü' }, hip_r: { mobility: 'medium' },
-      thoracic: { mobility: 'low', stability: 'high' }, elbow_x: { stability: 'high' }, wrist_r: {}, ankle_l: 'x' } } });
-    check('eklemler savunmacı okunuyor: geçersiz anahtar, düzey ve boş kayıt atılıyor',
-      JSON.stringify(jr.joints) === JSON.stringify({ thoracic: { mobility: 'low', stability: 'high' }, hip_r: { mobility: 'medium' },
-        knee_l: { stability: 'high', note: 'valgus çöküşü' } }), JSON.stringify(jr.joints));
-    check('şablon: 11 eklem, çift taraflılar sağ / sol — 19 satır; JbJ sırası mobilite / stabilite',
+    // Şablon: her eklemin tek ihtiyacı var — stabil eklemler stabilite, mobil eklemler mobilite.
+    const need = id => A.ATP_JOINTS.find(j => j.id === id).need;
+    check('şablon: 11 eklem, çift taraflılar sağ / sol — 19 satır; stabil ve mobil eklemler',
       A.ATP_JOINTS.length === 11 && A.ATP_JOINT_ROWS.length === 19 &&
-      ['ankle', 'hip', 'thoracic', 'shoulder', 'wrist'].every(id => A.ATP_JOINTS.find(j => j.id === id).jbj === 'mobility') &&
-      ['foot', 'knee', 'lumbar', 'scapula', 'elbow'].every(id => A.ATP_JOINTS.find(j => j.id === id).jbj === 'stability'));
+      ['foot', 'knee', 'lumbar', 'scapula', 'elbow'].every(id => need(id) === 'stability') &&
+      ['ankle', 'hip', 'thoracic', 'cervical', 'shoulder', 'wrist'].every(id => need(id) === 'mobility'));
+    // Okuma: yalnızca şablondaki eklem / taraf ve üç düzey; eklemin kendi ihtiyacı dışındaki değer okunmuyor.
+    const jr = A.atpRead({ trainingProfile: { joints: {
+      knee_l: { level: 'high', note: 'valgus çöküşü' }, knee_r: { mobility: 'high' }, hip_r: { mobility: 'medium' },
+      thoracic: { level: 'bogus' }, elbow_x: { level: 'high' }, wrist_r: {}, ankle_l: 'x', lumbar: { level: 'low' } } } });
+    check('eklemler savunmacı okunuyor: dizde mobilite yok, geçersiz anahtar / düzey / boş kayıt atılıyor',
+      JSON.stringify(jr.joints) === JSON.stringify({ lumbar: { level: 'low' }, hip_r: { level: 'medium' },
+        knee_l: { level: 'high', note: 'valgus çöküşü' } }), JSON.stringify(jr.joints));
     // JSON: bireyselleştirme verisine en yüksek ihtiyaç önce, baştan ayağa yazılıyor.
     const ja = athlete({ trainingProfile: { joints: {
-      ankle_r: { mobility: 'medium' }, knee_l: { stability: 'high', note: '  valgus çöküşü ' }, hip_r: { mobility: 'high', stability: 'low' },
-      lumbar: { stability: 'low' }, wrist_l: { note: 'yalnız not' } } } });
+      ankle_r: { level: 'medium' }, knee_l: { level: 'high', note: '  valgus çöküşü ' }, hip_r: { level: 'high' },
+      lumbar: { level: 'low' }, cervical: { level: 'low' }, wrist_l: { note: 'yalnız not' } } } });
     const js = A.diAthleteSnapshot({ ath: ja, setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
     const jn = js.training_profile && js.training_profile.joint_needs;
-    check('JSON: joint_needs eklem, taraf, JbJ temel ihtiyacı ve düzeylerle yazılıyor',
-      !!jn && jn.joints.map(j => j.joint).join('|') === 'Right Hip|Left Knee|Right Ankle|Lumbar Spine' &&
-      jn.joints[0].side === 'Right' && jn.joints[0].jbj_primary_need === 'Mobility' &&
-      JSON.stringify(jn.joints[0].needs) === JSON.stringify([{ need: 'Mobility', level: 'High' }, { need: 'Stability', level: 'Low' }]) &&
-      jn.joints[1].note === 'valgus çöküşü' && !('side' in jn.joints[3]) && !!jn.use && Object.keys(jn.level_scale).length === 3,
+    check('JSON: joint_needs eklem, taraf, tek ihtiyaç ve düzeyle yazılıyor',
+      !!jn && jn.joints.map(j => j.joint).join('|') === 'Right Hip|Left Knee|Right Ankle|Neck|Low Back' &&
+      jn.joints[0].side === 'Right' && jn.joints[0].need === 'Mobility' && jn.joints[0].level === 'High' &&
+      jn.joints[1].need === 'Stability' && jn.joints[1].note === 'valgus çöküşü' && !('side' in jn.joints[3]) &&
+      jn.joints[3].need === 'Mobility' && !('needs' in jn.joints[0]) && !!jn.use && Object.keys(jn.level_scale).length === 3,
       JSON.stringify(jn));
     check('JSON: by_need ihtiyaca ve düzeye göre adlar; boş düzey yok',
-      JSON.stringify(jn.by_need) === JSON.stringify({ mobility: { high: ['Right Hip'], medium: ['Right Ankle'] },
-        stability: { high: ['Left Knee'], low: ['Right Hip', 'Lumbar Spine'] } }), JSON.stringify(jn.by_need));
+      JSON.stringify(jn.by_need) === JSON.stringify({ mobility: { high: ['Right Hip'], medium: ['Right Ankle'], low: ['Neck'] },
+        stability: { high: ['Left Knee'], low: ['Low Back'] } }), JSON.stringify(jn.by_need));
     check('JSON: yalnız eklem ihtiyacı girilmiş profil dolu sayılıyor, eksik veri yok',
       !(js.missing_data || []).some(x => /training profile/.test(x)), JSON.stringify(js.missing_data));
     check('AI talimatı joint_needs\'i hazırlık ve rehabilitasyona bağlıyor', js.task.some(g => /joint_needs/.test(g) && /preparation phase/.test(g)));
