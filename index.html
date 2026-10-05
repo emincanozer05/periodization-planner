@@ -26010,10 +26010,10 @@ function ProfileTab({ath,updAth,setup}){
   </div>);
 }
 /* ═══ ATHLETE PROFILE (Athlete Training Profile) — the tab beside Profile ═══
-   Four sections on the same cards the scouting sheet uses. The first two and the
-   fourth (Joint by Joint) are the coach's and are written straight onto
-   `ath.trainingProfile`; the third is drawn from the calendar and cannot be edited,
-   only read. Nothing here selects an exercise
+   Four sections on the same cards the scouting sheet uses, Joint by Joint first. It,
+   the Athletic Profile and the Constraints are the coach's and are written straight onto
+   `ath.trainingProfile`; Exercise Exposure is drawn from the calendar and cannot be
+   edited, only read. Nothing here selects an exercise
    or builds a session — the profile reaches programming through the individualization
    JSON (atpSnapshot), as context.
 
@@ -26065,7 +26065,7 @@ function AtpProfile({q,onSet}){
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
-    <AtpSecHead n={1} title={atpT('Athletic Profile')}
+    <AtpSecHead n={2} title={atpT('Athletic Profile')}
       desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
         `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. A quality left unrated is maintained, like Low.`)}/>
     <div className="sc-sec-b">
@@ -26170,7 +26170,7 @@ function AtpConPanel({kind,list,other,onList}){
 }
 function AtpConstraints({con,onChange}){
   return(<div className="sc-sec" id="atp-s2">
-    <AtpSecHead n={2} title={atpT('Constraints')}
+    <AtpSecHead n={3} title={atpT('Constraints')}
       desc={L('Antrenmanda dikkate alınması gereken sınırlamalar ve tercihler. Kesin ve Esnek kısıtlar kesinlikle ayrı tutulur — bir kısıt yalnızca bir listede bulunabilir.',
         'The limits and preferences training has to take into account. Hard and Soft are kept strictly apart — a constraint can sit on one list only.')}>
       <span className="atp-hc cn-hard"><i/>{atpT('Hard')}<b>{con.hard.length}</b></span>
@@ -26217,7 +26217,7 @@ function AtpExposure({exp,refDate,setRefDate}){
     :[[L('Aralık','Window'),`${fd(exp.from[win])} – ${fd(exp.end)}`],[L('Seans','Sessions'),exp.sessions[win]],
       [L('Egzersiz','Exercises'),exRows.length],[L('Toplam set','Total sets'),totalSets]];
   return(<div className="sc-sec" id="atp-s3">
-    <AtpSecHead n={3} title={atpT('Exercise Exposure')}
+    <AtpSecHead n={4} title={atpT('Exercise Exposure')}
       desc={L('Sporcunun takvimindeki antrenman kayıtlarından otomatik oluşur: seçilen aralıkta hangi egzersize ve hangi kategoriye kaç set maruz kaldığı. Düzey set sayısından okunur.',
         'Built automatically from the training records on the athlete’s calendar: how many sets of which exercise and which category the athlete did in the chosen window. The level is read from the set count.')}>
       <span className="atp-hc atp-auto">{L('Otomatik','Automatic')}</span>
@@ -26391,7 +26391,7 @@ function AtpJoints({joints,onSet,onNote}){
   const count=id=>marked.filter(x=>x.r.joint.need===id).length;
   const selRow=sel&&ATP_JOINT_ROWS.find(r=>r.key===sel);
   return(<div className="sc-sec" id="atp-s4">
-    <AtpSecHead n={4} title={atpT('Joint by Joint')}
+    <AtpSecHead n={1} title={atpT('Joint by Joint')}
       desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç. Bilgiler bireyselleştirme JSON\'una yazılır; hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
         'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
       <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
@@ -26467,23 +26467,23 @@ function TrainingProfileTab({ath,updAth,exercises}){
   const high=rated.filter(it=>tp.qualities[it.id].priority==='high').map(it=>atpT(it.en));
   const go=id=>{const el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});};
   const tiles=[
+    {id:'atp-s4',c:'#2dd4bf',k:atpT('Joint by Joint'),v:jRated.length,u:`/ ${ATP_JOINT_ROWS.length}`,
+      s:jHigh.length?`${atpT('High')}: ${jHigh.map(r=>(r.side?atpT(r.side)+' ':'')+atpT(r.joint.en)).join(', ')}`
+        :`${atpT('Mobility')} ${jN('mobility')} · ${atpT('Stability')} ${jN('stability')}`},
     {id:'atp-s1',c:'#0094ff',k:atpT('Athletic Profile'),v:rated.length,u:`/ ${ATP_QUALITIES.length}`,
       s:high.length?`${atpT('High')}: ${high.join(', ')}`:`${atpT('Medium')} ${nP('medium')} · ${atpT('Low')} ${nP('low')}`},
     {id:'atp-s2',c:'#ef4444',k:atpT('Constraints'),v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
       s:`${atpT('Hard')} ${tp.constraints.hard.length} · ${atpT('Soft')} ${tp.constraints.soft.length}`},
     {id:'atp-s3',c:'#22d3ee',k:atpT('Exercise Exposure'),v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
       s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
-    {id:'atp-s4',c:'#2dd4bf',k:atpT('Joint by Joint'),v:jRated.length,u:`/ ${ATP_JOINT_ROWS.length}`,
-      s:jHigh.length?`${atpT('High')}: ${jHigh.map(r=>(r.side?atpT(r.side)+' ':'')+atpT(r.joint.en)).join(', ')}`
-        :`${atpT('Mobility')} ${jN('mobility')} · ${atpT('Stability')} ${jN('stability')}`},
   ];
   return(<div className="atp-wrap">
     <div className="atp-intro">
       <div className="atp-intro-ic">◎</div>
       <div className="atp-intro-tx">
         <div className="atp-intro-t">{atpT('Athlete Profile')}</div>
-        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: atletik profil (her kalitenin önceliği), kısıtlar, egzersiz maruziyeti ve eklem ihtiyaçları (Joint by Joint). Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
-          'Defines the athlete as a trainee: the athletic profile (each quality’s priority), constraints, exercise exposure and joint needs (Joint by Joint). No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
+        <div className="atp-intro-d">{L('Sporcunun antrenman profilini tanımlar: eklem ihtiyaçları (Joint by Joint), atletik profil (her kalitenin önceliği), kısıtlar ve egzersiz maruziyeti. Bu bölümden egzersiz seçimi veya program oluşturma yapılmaz — bilgiler bireyselleştirme JSON\'una sporcunun profili olarak eklenir.',
+          'Defines the athlete as a trainee: joint needs (Joint by Joint), the athletic profile (each quality’s priority), constraints and exercise exposure. No exercise is selected and no programme is built from this section — it goes into the individualization JSON as the athlete’s profile.')}</div>
       </div>
       {tp.updated&&<div className="atp-intro-up">{L('Son güncelleme','Last updated')}<b>{fd(tp.updated)}</b></div>}
     </div>
@@ -26493,10 +26493,10 @@ function TrainingProfileTab({ath,updAth,exercises}){
         <div className="v">{t.v}<small>{t.u}</small></div>
         <div className="s" title={t.s}>{t.s}</div>
       </button>)}</div>
+    <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
     <AtpExposure exp={exp} refDate={refDate} setRefDate={setRefDate}/>
-    <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
   </div>);
 }
 function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,initialTab}){
