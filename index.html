@@ -2156,6 +2156,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-lane-t{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:700;
   letter-spacing:.13em;text-transform:uppercase;color:var(--lc)}
 .atp-lane-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:19px;font-weight:700;color:var(--text);line-height:1}
+.atp-lane-n small{font-size:12px;font-weight:500;color:var(--dim);margin-left:1px}
+.atp-lane-warn{margin-top:6px;font-size:11px;line-height:1.35;color:var(--red)}
 .atp-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;min-height:28px;align-content:flex-start}
 .atp-chip{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 3px 0 10px;border-radius:999px;border:1px solid var(--ld,var(--border2));
   background:var(--lb,var(--elevated));color:var(--text);font-size:12px;font-weight:600}
@@ -2200,6 +2202,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .12s ease,color .12s ease}
 .atp-seg button:first-child{border-left:none}
 .atp-seg button:hover{color:var(--text);background:var(--hover)}
+.atp-seg button:disabled{opacity:.35;cursor:not-allowed;background:none;color:var(--dim)}
 .atp-seg button.on{background:var(--lb);color:var(--lc);box-shadow:inset 0 0 0 1px var(--ld)}
 .atp-seg button:focus-visible,.atp-wseg button:focus-visible,.atp-xtabs button:focus-visible,.atp-opt:focus-visible,.atp-gl:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @container (max-width:900px){
@@ -26039,7 +26042,7 @@ function AtpGrpHead({title,n,of}){
    sent as is kept on hover — it is the word the JSON carries. */
 const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:undefined}>{atpT(en)}</span>;
 /* The seven groups in two columns of near-equal height: Speed, Change of Direction,
-   Plyometric / Reactive and Power (9 qualities under four headers) beside Strength,
+   Plyometric / Reactive and Power (10 qualities under four headers) beside Strength,
    Movement Quality and Conditioning (9 under three). The last card of each column
    takes up the few pixels between them; on a narrow screen the columns fold into one
    list in the template's own order. */
@@ -26047,6 +26050,12 @@ const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','condition
 function AtpProfile({q,onSet}){
   const rated=ATP_QUALITIES.filter(it=>q[it.id]);
   const byPri=id=>rated.filter(it=>q[it.id].priority===id);
+  /* High is capped (ATP_HIGH_MAX): once it is full, High is offered on no other
+     quality until one is taken off. A profile saved over the cap before it existed is
+     drawn as it is and says so; it cannot take another. */
+  const nHigh=byPri('high').length,highFull=nHigh>=ATP_HIGH_MAX;
+  const highTip=L(`Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir — önce birini kaldır.`,
+    `High can be set on at most ${ATP_HIGH_MAX} qualities — take one off first.`);
   const chip=it=>(
     <span key={it.id} className="atp-chip"
       title={`${atpT(it.group)}${REPORT_LANG==='tr'?` · ${it.en}`:''}`}>
@@ -26059,15 +26068,17 @@ function AtpProfile({q,onSet}){
       <div className="atp-its">{g.items.map(it=>{const r=q[it.id]||{};return(
         <div key={it.id} className={`atp-it mv${r.priority?` set pr-${r.priority}`:''}`}>
           <span className="atp-it-n"><AtpName en={it.en}/></span>
-          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_PRIORITY.map(p=>
-            <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
-              title={`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>)}</div>
+          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_PRIORITY.map(p=>{
+            const shut=p.id==='high'&&highFull&&r.priority!=='high';
+            return(<button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
+              disabled={shut} title={shut?highTip:`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`}
+              onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>);})}</div>
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
     <AtpSecHead n={2} title={atpT('Athletic Profile')}
-      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
-        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. A quality left unrated is maintained, like Low.`)}/>
+      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
+        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities. A quality left unrated is maintained, like Low.`)}/>
     <div className="sc-sec-b">
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
@@ -26075,7 +26086,10 @@ function AtpProfile({q,onSet}){
       </div>
       <div className="atp-lanes">{ATP_PRIORITY.map(p=>{const its=byPri(p.id);return(
         <div key={p.id} className={`atp-lane pr-${p.id}`}>
-          <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span><span className="atp-lane-n">{its.length}</span></div>
+          <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span>
+            <span className="atp-lane-n" title={p.id==='high'?highTip:undefined}>{its.length}{p.id==='high'&&<small>/{ATP_HIGH_MAX}</small>}</span></div>
+          {p.id==='high'&&nHigh>ATP_HIGH_MAX&&<div className="atp-lane-warn">{L(`En fazla ${ATP_HIGH_MAX} Yüksek öncelik kabul edilir — ${nHigh-ATP_HIGH_MAX} tanesini Orta'ya indir.`,
+            `At most ${ATP_HIGH_MAX} High priorities are accepted — move ${nHigh-ATP_HIGH_MAX} down to Medium.`)}</div>}
           <div className="atp-chips">{its.length?its.map(chip)
             :<span className="atp-empty">{L('Henüz yok — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
         </div>);})}</div>
@@ -26445,6 +26459,9 @@ function TrainingProfileTab({ath,updAth,exercises}){
   /* Clicking the priority that is already on takes it off again. */
   const setQ=(id,field,v)=>{
     const cur={...(tp.qualities[id]||{})};
+    /* A sixth High is refused (ATP_HIGH_MAX), whatever path the click came by. */
+    if(field==='priority'&&v==='high'&&cur.priority!=='high'&&
+      Object.values(tp.qualities).filter(x=>x&&x.priority==='high').length>=ATP_HIGH_MAX)return;
     if(cur[field]===v)delete cur[field];else cur[field]=v;
     const nx={...tp.qualities};
     if(cur.priority)nx[id]=cur;else delete nx[id];
@@ -32954,7 +32971,7 @@ const ATP_TR={
   'Strength':'Kuvvet','Power':'Güç','Movement Quality':'Hareket Kalitesi','Conditioning':'Kondisyon',
   'Acceleration':'İvmelenme','Max Velocity':'Maksimal Hız','Sprint Mechanics':'Sprint Mekaniği',
   'Deceleration':'Yavaşlama','Lateral Movement':'Lateral Hareket',
-  'Jumping':'Sıçrama','Landing':'İniş','Hopping':'Sekme',
+  'Jumping':'Sıçrama','Landing':'İniş','Reactive Strength':'Reaktif Kuvvet','Hopping':'Sekme',
   'Squat':'Squat','Hinge':'Kalça Menteşesi','Unilateral':'Tek Taraflı',
   'Horizontal Push':'Yatay İtme','Horizontal Pull':'Yatay Çekme','Vertical Push':'Dikey İtme','Vertical Pull':'Dikey Çekme',
   'Lower-Body Strength':'Alt Vücut Kuvveti','Upper-Body Strength':'Üst Vücut Kuvveti','Unilateral Strength':'Tek Taraflı Kuvvet',
@@ -33029,13 +33046,17 @@ const atpAb=l=>REPORT_LANG==='tr'?l.abTr:l.ab;
 const ATP_GROUPS=[
   {id:'speed',       en:'Speed',                items:atpItems(['Acceleration','Max Velocity'])},
   {id:'cod',         en:'Change of Direction',  items:atpItems(['Deceleration','Change of Direction'])},
-  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing'])},
+  {id:'plyo',        en:'Plyometric / Reactive',items:atpItems(['Jumping','Landing','Reactive Strength'])},
   {id:'strength',    en:'Strength',             items:atpItems(['Lower-Body Strength','Upper-Body Strength','Unilateral Strength'])},
   {id:'power',       en:'Power',                items:atpItems(['Lower-Body Power','Upper-Body Power','Rate of Force Development'])},
   {id:'movement',    en:'Movement Quality',     items:atpItems(['Mobility','Stability','Coordination'])},
   {id:'conditioning',en:'Conditioning',         items:atpItems(['Aerobic Capacity','Anaerobic Capacity','Repeat Sprint Ability'])},
 ];
 const ATP_QUALITIES=ATP_GROUPS.flatMap(g=>g.items.map(it=>({...it,group:g.en})));
+/* At most this many qualities may be High at once. High is what the session is built
+   around; past a handful it stops saying what matters most, so the profile refuses a
+   sixth rather than letting the emphasis thin out. */
+const ATP_HIGH_MAX=5;
 const ATP_PRIORITY=[
   {id:'high',  en:'High',  ab:'HIGH',abTr:'YÜKSEK',bars:3,dTr:'Bu dönemin ana gelişim alanı.',dEn:'A main development area this period.'},
   {id:'medium',en:'Medium',ab:'MED', abTr:'ORTA',  bars:2,dTr:'Geliştirilecek, ama High\'dan sonra.',dEn:'To develop, but after High.'},
@@ -33598,7 +33619,8 @@ function atpExposure(ath,end,opts){
   const fixed=(layer,list)=>list.map(l=>fin(layers[layer][l]||empty(l),'group'));
   const bySets=(a,b)=>(b.sets.d28-a.sets.d28)||(b.sets.last-a.sets.last)||String(b.lastUsed).localeCompare(String(a.lastUsed));
   return{end,from,
-    last:last?{date:last.date,name:last.name,time:last.time,rows:last.rows.length}:null,
+    last:last?{date:last.date,name:last.name,time:last.time,rows:last.rows.length,
+      names:[...new Set(last.rows.map(r=>String(r.name).trim()))]}:null,
     sessions,rows,
     exercises:Object.values(layers.exercise).map(t=>fin(t,'exercise')).sort(bySets),
     families:Object.values(layers.family).map(t=>fin(t,'group')).sort(bySets),
@@ -33646,11 +33668,12 @@ function atpSnapshot(ath,ref,libMap,setup){
   const con=list=>list.map(c=>({constraint:atpConLabel(c),category:atpCatLabel(atpConCat(c))||null,value:c.value,note:c.note}));
   const end=fmt(addD(parseD(ref),-1));
   const ex=atpExposure(ath,end,{libMap});
-  const WK={last:'last_session',d7:'last_7_days',d14:'last_14_days',d28:'last_28_days'};
-  const per=(t,f)=>{const o={};Object.keys(WK).forEach(w=>{o[WK[w]]=f(t,w);});return o;};
-  /* Sets per window only: the High / Moderate / Low level is read off them by
-     level_scale, so it is not written out a second time beside every record. */
-  const item=t=>({name:t.label,last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])});
+  /* Every record is one name with its sets over the last 7 and 28 days — the two
+     windows the session is written against — and the day it was last done. The last
+     session is named by its exercises once, at the top, instead of as a third column
+     beside every record; the 14-day window sat between the two and said nothing they
+     did not. */
+  const item=t=>({name:t.label,last_used:t.lastUsed,sets_7_days:t.sets.d7,sets_28_days:t.sets.d28});
   const fixed=list=>({records:list.filter(t=>t.lastUsed).map(item),
     no_exposure_last_28_days:list.filter(t=>!t.lastUsed).map(t=>t.label)});
   /* An implement the gym does not have is not a gap to fill: with an inventory on the
@@ -33696,7 +33719,7 @@ function atpSnapshot(ath,ref,libMap,setup){
       'exercise_exposure is computed automatically from the training sessions on the calendar. The profile describes the athlete — it is not an exercise selection on its own.',
     last_updated:tp.updated,
     athletic_profile:rated.length?{
-      description:'Priority of each physical quality — how much it is to be developed in this period: High (main development area) > Medium (to be developed, after High) > Low (maintained, no development priority). '+
+      description:`Priority of each physical quality — how much it is to be developed in this period: High (main development area, at most ${ATP_HIGH_MAX} qualities) > Medium (to be developed, after High) > Low (maintained, no development priority). `+
         'not_rated lists the qualities the coach set no priority for: keep them at a maintenance dose, the same as Low.',
       groups:ATP_GROUPS.map(g=>g.en),
       priority:{high:byPri('high'),medium:byPri('medium'),low:byPri('low')},
@@ -33713,57 +33736,48 @@ function atpSnapshot(ath,ref,libMap,setup){
     exercise_exposure:!anyEx?{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
-      session_count:{last_7_days:0,last_14_days:0,last_28_days:0},
+      session_count:{last_7_days:0,last_28_days:0},
     }:{
       scope:'Counts only the S&C exercises written on the athlete\'s calendar. Team practice and games are not in it — their load is in rpe; zero sessions here does not mean the athlete did not train.',
       window_end:end,
+      /* Each fact once: an exercise's classification is not repeated beside it — the
+         lists below are those classifications, summed. */
+      format:'Every record: name, last_used, sets_7_days, sets_28_days. '+
+        `Read as a weekly load: a single exercise ≥${cut.exercise.week[1]} sets/week is high, ≥${cut.exercise.week[0]} moderate; `+
+        `a movement class, stimulus, loading character or axis ≥${cut.group.week[1]} sets/week high, ≥${cut.group.week[0]} moderate (the 28-day figure is four weeks).`,
+      session_count:{last_7_days:ex.sessions.d7,last_28_days:ex.sessions.d28},
+      last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercises:ex.last.names}:null,
+      exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,
+        last_used:t.lastUsed,sets_7_days:t.sets.d7,sets_28_days:t.sets.d28})),
       /* The profile's own classification, finer than the session's pattern vocabulary
          and named apart from it so the two lists are never mistaken for each other. */
       movement_class_note:'movement_class is the training profile\'s detailed classification (e.g. Hip Dominant, Horizontal Push); '+
         'these names are never written into a programme\'s movement_pattern field — that field is chosen only from movement_pattern_vocabulary.',
-      level_scale:`The exposure level of a record, read off its sets: High / Moderate / Low / None. The 7-14-28 day windows are read as a weekly average: `+
-        `a single exercise ≥${cut.exercise.week[1]} sets/week High, ≥${cut.exercise.week[0]} Moderate; family, pattern, stimulus and loading `+
-        `≥${cut.group.week[1]} sets/week High, ≥${cut.group.week[0]} Moderate. Last session: a single exercise ≥${cut.exercise.session[1]} sets High, `+
-        `≥${cut.exercise.session[0]} Moderate; the others ≥${cut.group.session[1]} High, ≥${cut.group.session[0]} Moderate. 0 sets = None / Not Recent.`,
-      last_session:ex.last?{date:ex.last.date,session:ex.last.name,time:ex.last.time,exercise_count:ex.last.rows}:null,
-      session_count:{last_7_days:ex.sessions.d7,last_14_days:ex.sessions.d14,last_28_days:ex.sessions.d28},
-      exercises:ex.exercises.slice(0,30).map(t=>({exercise:t.label,family:t.family,movement_class:t.patterns,stimulus:t.stimuli,
-        loading_character:t.loading,...(t.laterality?{laterality:t.laterality}:{}),...(t.plane?{movement_plane:t.plane}:{}),
-        ...(t.action?{action:t.action}:{}),...(t.focus?{contraction_focus:t.focus}:{}),...(t.equipment?{equipment:t.equipment}:{}),
-        last_used:t.lastUsed,frequency_28_days:t.freq28,sets:per(t,(x,w)=>x.sets[w])})),
-      exercise_families:ex.families.map(item),
       movement_class:fixed(ex.patterns),
       athletic_stimulus:fixed(ex.stimuli),
       loading_character:fixed(ex.loading),
       strength_movement_profile:{
-        note:'How the strength work (knee-, hip-, push-, pull- and core-work; not jumps, runs or throws) was spread, in sets, over four axes. '+
-          'laterality: bilateral or unilateral (an upper-body row is unilateral only when its name says single-arm / one-arm / alternating). '+
-          'movement_plane: Sagittal (squats, hinges, lunges, presses, rows, flexion / extension core work) unless the name or tag says lateral (Frontal) or rotational / anti-rotational (Transverse). '+
-          'action: Push or Pull — for hip and knee work only where the library entry says. '+
-          'contraction_focus: the library tag, or Eccentric / Isometric where the name or tempo shows it; Concentric only from a library tag. '+
-          'A row whose value cannot be told is not counted on that axis, and None means no such row was recorded, not that the athlete avoided it.',
+        note:'How the strength work (knee-, hip-, push-, pull- and core-work; not jumps, runs or throws) was spread, in sets, over four axes: '+
+          'laterality (bilateral / unilateral), movement_plane (sagittal / frontal / transverse), action (push / pull) and contraction_focus (concentric / eccentric / isometric). '+
+          'A row whose value cannot be told is not counted on that axis; no_exposure means no such row was recorded, not that the athlete avoided it.',
         laterality:fixed(ex.laterality),
         movement_plane:fixed(ex.planes),
         action:fixed(ex.actions),
         contraction_focus:fixed(ex.focus),
       },
       category_coverage:{
-        note:'For every exercise category the athlete has trained (the library\'s own categories: core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, accessory), '+
-          'every facet the category is filed by (movement, direction, type, position, technique, contraction focus, action, implement…) with what was done and what was not. '+
-          'done: the values that were recorded, in sets, over the last session and the last 7 / 14 / 28 days. '+
-          'not_done_last_7_days: the values with no set in the last 7 days (this week\'s gaps — it includes the values of not_done_last_28_days). not_done_last_28_days: the values with no set in the last 28 days. '+
-          'Prefer not_done_last_28_days first, then the rest of not_done_last_7_days. For Equipment, only the kit in the gym\'s inventory is listed as not done. '+
-          'A facet is listed only when at least one recorded exercise of the category carries it, so a value missing from the list of a listed facet means it was not recorded, not that it was avoided; a row whose value cannot be told is not counted.',
-        categories:ex.coverage.map(c=>({category:c.type,sets:per(c.cat,(x,w)=>x.sets[w]),
+        note:'The gaps only — what was done is already in exercises. For every exercise category the athlete has trained, every facet the library files it by '+
+          '(movement, direction, type, position, technique, contraction focus, action, implement…) with the values that had no set: '+
+          'not_done_last_7_days (this week\'s gaps; it includes not_done_last_28_days) and not_done_last_28_days. For Equipment, only the kit in the gym\'s inventory is listed. '+
+          'A facet is listed only when at least one recorded exercise of the category carries it; a value that cannot be told is not counted.',
+        categories:ex.coverage.map(c=>({category:c.type,sets_7_days:c.cat.sets.d7,sets_28_days:c.cat.sets.d28,
           facets:c.facets.map(f=>{const gap=gapOf(f);return{facet:f.label,
-            done:f.values.filter(t=>t.lastUsed).map(item),
             not_done_last_7_days:f.values.filter(t=>!(t.sets.d7>0)&&(t.sets.d28>0||gap(t))).map(t=>t.label),
-            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label)};})})),
+            not_done_last_28_days:f.values.filter(t=>!(t.sets.d28>0)&&gap(t)).map(t=>t.label)};})
+            .filter(f=>f.not_done_last_7_days.length||f.not_done_last_28_days.length)})),
         categories_without_recorded_work:ex.coverageMissing,
       },
-      equipment_used_note:'equipment_used lists the implement each exercise row was done with, read from the row\'s equipment field, the library entry or the exercise name, in sets. '+
-        'An exercise whose implement cannot be told is not counted, and an implement that is not listed was not recorded — it does not mean it was not used.',
-      equipment_used:{records:ex.equipment.filter(t=>t.lastUsed).map(item)},
+      equipment_used:ex.equipment.filter(t=>t.lastUsed).map(item),
     },
   }};
 }
@@ -34498,6 +34512,7 @@ function diBundle(ath,setup,ref,opts){
     exposure:diExposure(ath,ref,{days:3,libMap:o.libMap}),
     exposure_7:diExposure(ath,ref,{days:7,libMap:o.libMap}),
     competition:diCompetition(setup,ref),
+    same_day_practice:diSameDayPractice(ath,ref),
     playing_time:diPlayingTime(ath,ref),
     season_phase:(()=>{const p=diSeasonPhase(setup,ref);
       return{id:p.id,label:p.label?L(p.label[0],p.label[1]):null,
@@ -34542,20 +34557,75 @@ function diPainDays(ath,region,ref){
   }
   return n;
 }
+/* A team practice on the day being programmed: the session the athlete already has
+   that day, from their own calendar (team sessions are mirrored onto it) or from the
+   team-practice slot of their RPE log. The S&C session is written on top of it, so
+   what it may cost depends on it. */
+function diSameDayPractice(ath,ref){
+  const ses=(((ath&&ath.days)||{})[ref]||{}).sessions||[];
+  const tp=ses.find(x=>x&&sesKind(x)==='tp');
+  if(tp)return{name:tp.name||null,time:tp.time||null,duration_min:recNum(tp.duration)};
+  const log=((ath&&ath.srpeLog)||[]).find(e=>e&&e.date===ref&&(recNum(e.tpDuration)!=null||recNum(e.tpRPE)!=null));
+  return log?{name:null,time:null,duration_min:recNum(log.tpDuration),rpe:recNum(log.tpRPE)}:null;
+}
+/* ---- How much fatigue the session may cost, by its distance from the game -------
+   The volume cut (diLoadAdjust) says how MUCH; this says what KIND of work the day can
+   afford. A session at 80 % volume can still be the wrong session on MD-1 if what is
+   left is a set of Nordics and depth jumps: the fatigue a session leaves — eccentric
+   and impact damage, work near failure, maximal efforts — is what the game pays for.
+   The budget steps down near the game, and one more step when a team practice shares
+   the day. NOT A KNOWLEDGE-BASE NUMBER: the RPE caps are this module's own, they feed
+   soft warnings only and never block a save. */
+const DI_FATIGUE_LEVELS=['minimal','low','moderate','normal'];
+const DI_MD_FATIGUE={
+  'MD':  {budget:'minimal',focus:['Yalnızca aktivasyon / hazırlık — kuvvet veya kondisyon yükü yok','Activation / priming only — no strength or conditioning load']},
+  'MD-1':{budget:'low',    focus:['Kısa, düşük hacimli aktivasyon; hız/güç düşük hacimde, tam toparlanmayla','Short, low-volume priming; speed / power at low volume with full recovery']},
+  'MD+1':{budget:'low',    focus:['Toparlanma: düşük darbe, mobilite, hafif aerobik','Recovery: low impact, mobility, light aerobic work']},
+  'MD-2':{budget:'moderate',focus:['Orta yük; yüksek eksantrik ve yüksek darbe sınırlı','Moderate load; heavy eccentric and high-impact work limited']},
+  'MD+2':{budget:'moderate',focus:['Orta yük; maçın yorgunluğu henüz geçmemiş olabilir','Moderate load; the game may not have cleared yet']},
+};
+const DI_FATIGUE_RPE={minimal:5,low:6,moderate:7,normal:null};
+/* What makes a row costly to recover from: read off its name and dose. Eccentric
+   overload, high-impact plyometrics, maximal sprinting, and work at or near failure. */
+const DI_FATIGUE_RE=/nordic|eccentric|eksantrik|negatif|depth jump|drop jump|derinlik|bound|flying|max(imal)? (velocity|sprint|speed)|to failure|tükeniş|amrap|repeated sprint|rsa\b/i;
+function diFatigueBudget(bundle,practiceIn){
+  const practice=practiceIn!==undefined?practiceIn:((bundle&&bundle.same_day_practice)||null);
+  const md=bundle&&bundle.competition?bundle.competition.md:null;
+  const row=md?DI_MD_FATIGUE[md]:null;
+  let lv=DI_FATIGUE_LEVELS.indexOf(row?row.budget:'normal');
+  if(practice&&lv>0)lv--;
+  const budget=DI_FATIGUE_LEVELS[lv];
+  return{md,budget,max_rpe:DI_FATIGUE_RPE[budget],
+    focus:row?L(row.focus[0],row.focus[1]):null,same_day_practice:practice||null};
+}
 function diDifferentiators(ath,bundle,deficits,ref){
   const out=[];
   const add=(kind,tr,en)=>{if(out.length<DI_DIFF_MAX)out.push({kind,text:L(tr,en)});};
 
-  // 1. An active injury — the hardest fact about this athlete today.
+  /* The order is what changes today's programme most, first. A list capped at six is
+     read top-down, and a position or a tier is a property of the athlete every day;
+     a game tomorrow, a sore knee or a team practice at 17:00 is what makes TODAY's
+     session this athlete's and not last week's. */
+
+  // 1. The game: distance to it decides what kind of work the day can afford.
+  const md=bundle.competition&&bundle.competition.md;
+  if(md&&DI_MD_FATIGUE[md]){
+    const r=DI_MD_FATIGUE[md];
+    add('match',`${md} — ${r.focus[0]}`,`${md} — ${r.focus[1]}`);
+  }
+
+  // 2. An active injury — the hardest fact about this athlete today.
   ((bundle.injury&&bundle.injury.active)||[]).slice(0,2).forEach(inj=>{
     const bits=[inj.region,inj.side,inj.rtp_stage?L(inj.rtp_stage[0],inj.rtp_stage[1]):null]
       .filter(Boolean).join(' · ');
     add('injury',`aktif sakatlık: ${bits||inj.type||'kayıtlı'}`,`active injury: ${bits||inj.type||'on record'}`);
   });
 
-  // 2. Pain, with how long it has been going on — a three-day knee is not a bad morning.
+  // 3. Current pain, any graded report, with how long it has been going on — a
+  //    three-day knee is not a bad morning. Worst first.
   ((bundle.pain&&bundle.pain.regions)||[])
-    .filter(r=>r.standing||(r.severity_0_5!=null&&r.severity_0_5>=DI_PAIN_BLOCK))
+    .filter(r=>r.standing||(r.severity_0_5!=null&&r.severity_0_5>0))
+    .sort((a,b)=>(b.severity_0_5||0)-(a.severity_0_5||0))
     .slice(0,2).forEach(r=>{
       if(r.standing)
         return add('pain',`${r.label} — koçun kalıcı kısıt etiketi`,`${r.label} — standing coach restriction`);
@@ -34564,28 +34634,20 @@ function diDifferentiators(ath,bundle,deficits,ref){
         `${r.label} pain at ${r.severity_0_5}/5, reported ${n} day${n>1?'s':''} running`);
     });
 
-  // 3. The structural tier and the screen that set it (weakest link, rule 28).
-  const t=bundle.tier||{};
-  if(t.yapisal!=null){
-    const weak=(t.zayif_halka||[])[0]||null;
-    add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
-      `structural tier ${t.yapisal} of 3 — ${DI_TIER_SCALE}${weak?` (weakest link: ${weak})`:''}`);
-    if(t.gecici_dusus)
-      add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
-        `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
+  // 4. A team practice the same day: the session is written on top of it.
+  const tp=bundle.same_day_practice!==undefined?bundle.same_day_practice:diSameDayPractice(ath,ref);
+  if(tp){
+    const when=[tp.time,tp.duration_min!=null?`${tp.duration_min} dk`:null].filter(Boolean).join(', ');
+    const whenEn=[tp.time,tp.duration_min!=null?`${tp.duration_min} min`:null].filter(Boolean).join(', ');
+    add('team_practice',`aynı gün takım antrenmanı${when?` (${when})`:''} — günün toplam yorgunluğu birlikte hesaplanır`,
+      `team practice the same day${whenEn?` (${whenEn})`:''} — the day's total fatigue counts both`);
   }
 
-  // 4. The battery's own high-priority findings, as the code read them.
-  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').slice(0,2)
-    .forEach(f=>add('finding',`bulgu: ${f.bolge} — ${f.bulgu}`,`finding: ${f.bolge} — ${f.bulgu}`));
-
-  // 5. A performance test that has moved against the athlete's OWN baseline. Stated as
-  //    that and nothing more — the app holds no squad percentiles to rank them in.
-  (bundle.test_baselines||[])
-    .filter(x=>x.deviation_pct!=null&&x.deviation_pct<=-DI_DIFF_TEST_DEV)
-    .sort((a,b)=>a.deviation_pct-b.deviation_pct).slice(0,1)
-    .forEach(x=>add('test',`${x.metric} kendi baseline'ının %${Math.abs(x.deviation_pct)} altında`,
-      `${x.metric} is ${Math.abs(x.deviation_pct)}% below their own baseline`));
+  // 5. The development priorities the coach set for this period (High only).
+  const tq=atpRead(ath).qualities;
+  const high=ATP_QUALITIES.filter(it=>tq[it.id]&&tq[it.id].priority==='high').map(it=>it.en);
+  if(high.length)add('priority',`gelişim öncelikleri (Yüksek): ${high.map(atpT).join(', ')}`,
+    `development priorities (High): ${high.join(', ')}`);
 
   // 6. Today's readiness, only where it is actually low enough to change anything.
   const rd=bundle.readiness||{};
@@ -34597,13 +34659,27 @@ function diDifferentiators(ath,bundle,deficits,ref){
   if(acwr!=null&&(acwr>1.5||acwr<0.8))
     add('load',`ACWR ${acwr} — ${acwr>1.5?'yüksek':'düşük'}`,`ACWR ${acwr} — ${acwr>1.5?'high':'low'}`);
 
-  // 8. The role, last: it is a starting point (rule 9), not the athlete.
-  const pos=bundle.athlete&&bundle.athlete.position;
-  /* The group is named only where it says something the position does not
-     ("Guard (Guard)" read as a typo rather than as information). */
-  const pgl=bundle.athlete&&bundle.athlete.position_group;
-  const posTxt=pos?`${pos}${pgl&&pgl!==pos?` (${pgl})`:''}`:'';
-  if(pos)add('position',posTxt,posTxt);
+  // 8. The structural tier and the screen that set it (weakest link, rule 28).
+  const t=bundle.tier||{};
+  if(t.yapisal!=null){
+    const weak=(t.zayif_halka||[])[0]||null;
+    add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
+      `structural tier ${t.yapisal} of 3 — ${DI_TIER_SCALE}${weak?` (weakest link: ${weak})`:''}`);
+    if(t.gecici_dusus)
+      add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
+        `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
+  }
+
+  // 9. The battery's own high-priority findings, as measured — the observation only.
+  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').slice(0,1)
+    .forEach(f=>add('finding',`ölçüm: ${f.bolge} — ${f.bulgu}`,`measured: ${f.bolge} — ${f.bulgu}`));
+
+  // 10. A performance test that has moved against the athlete's OWN baseline.
+  (bundle.test_baselines||[])
+    .filter(x=>x.deviation_pct!=null&&x.deviation_pct<=-DI_DIFF_TEST_DEV)
+    .sort((a,b)=>a.deviation_pct-b.deviation_pct).slice(0,1)
+    .forEach(x=>add('test',`${x.metric} kendi baseline'ının %${Math.abs(x.deviation_pct)} altında`,
+      `${x.metric} is ${Math.abs(x.deviation_pct)}% below their own baseline`));
 
   return out.map((d,i)=>({id:`D${i+1}`,...d}));
 }
@@ -34655,24 +34731,26 @@ const DI_SIM_PEER=0.8;
 
 /* ---- Rule 27: plyometric contacts per session -----------------------------
    The rule states a band per age group and, for the senior team, per season half.
-   Read verbatim; the UPPER bound is the ceiling a session is held to, and the lower
-   bound is carried so the prompt can aim inside the band rather than at its edge. */
+   Only its UPPER bound is carried: it is the ceiling a session is held to. There is
+   no floor — a session writes plyometrics when the day calls for them, and a minimum
+   contact count would push jumps into a session (MD-1, a sore knee, a day after team
+   practice) that should have none. */
 const DI_PLYO_BANDS=[
-  {under:13,min:20,max:40, label:['U9-U12','U9-U12']},
-  {under:15,min:40,max:60, label:['U13-U14','U13-U14']},
-  {under:19,min:60,max:100,label:['U15-U18','U15-U18']},
+  {under:13,max:40, label:['U9-U12','U9-U12']},
+  {under:15,max:60, label:['U13-U14','U13-U14']},
+  {under:19,max:100,label:['U15-U18','U15-U18']},
 ];
 function diPlyoCeiling(bundle){
   const age=bundle&&bundle.athlete&&bundle.athlete.age;
   if(age==null)return null;               // no birth date → no band, and nothing is assumed
   const band=DI_PLYO_BANDS.find(b=>age<b.under);
-  if(band)return{min:band.min,max:band.max,grup:L(band.label[0],band.label[1])};
-  /* Senior. The rule splits by season half rather than by age: in-season 30-60,
-     off-season 60-100. A phase the app cannot read leaves this unset rather than
+  if(band)return{max:band.max,grup:L(band.label[0],band.label[1])};
+  /* Senior. The rule splits by season half rather than by age: in-season up to 60,
+     off-season up to 100. A phase the app cannot read leaves this unset rather than
      guessed — an unbounded check is better than a bound nobody stated. */
   const ph=(bundle.season_phase&&bundle.season_phase.id)||null;
-  if(ph==='in'||ph==='playoff')return{min:30,max:60,grup:L('A takım, sezon içi','Senior, in-season')};
-  if(ph==='off'||ph==='pre'||ph==='trans')return{min:60,max:100,grup:L('A takım, sezon dışı','Senior, off-season')};
+  if(ph==='in'||ph==='playoff')return{max:60,grup:L('A takım, sezon içi','Senior, in-season')};
+  if(ph==='off'||ph==='pre'||ph==='trans')return{max:100,grup:L('A takım, sezon dışı','Senior, off-season')};
   return null;
 }
 /* Ground contacts a written row asks for. Only a row that is plyometric by pattern
@@ -35097,25 +35175,25 @@ const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.mu
 const DI_OBS_RULES=[
   {id:'obs_thoracic',oncelik:'yüksek',
    kw:['torakal','thoracic','kifoz','kyphos','yuvarlak omuz','round shoulder','rounded shoulder','üst sırt','ust sirt','t spine','tspine'],
-   area:['Torakal omurga','Thoracic spine'],
+   area:['Üst sırt / omuz duruşu','Upper back / shoulder posture'],
    work:['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
          'Thoracic extension and rotation mobility, scapular control'],
    cover:['torakal','thoracic','t spine','tspine','ekstansiyon mobilite','foam roll','skapula','scapula','open book','kedi deve','cat cow']},
   {id:'obs_valgus',oncelik:'yüksek',
    kw:['valgus','diz içe','diz ice','dizler içe','knee cave','knees in','medial kollaps','medial collapse'],
-   area:['Diz / kalça kontrolü','Knee / hip control'],
+   area:['Diz hizası','Knee alignment'],
    work:['Kalça abdüktör ve dış rotatör kuvveti, iniş mekaniği, tek bacak kontrol',
          'Hip abductor and external-rotator strength, landing mechanics, single-leg control'],
    cover:['abdüktör','abduktor','abduct','gluteus','glute med','dış rotat','dis rotat','external rotat','band walk','monster walk','iniş','inis','landing','tek bacak','single leg','lateral band']},
   {id:'obs_heel',oncelik:'yüksek',
    kw:['topuk kalk','topuk yüksel','topuk yuksel','heel rise','heels lift','heel lift','topukları kalk'],
-   area:['Ayak bileği','Ankle'],
+   area:['Topuk (çömelmede)','Heel (in the squat)'],
    work:['Ayak bileği dorsifleksiyon mobilitesi ve yüklü mobilizasyon',
          'Ankle dorsiflexion mobility and loaded mobilisation'],
    cover:['ayak bile','ankle','dorsifleks','dorsiflex','soleus','gastro','calf']},
   {id:'obs_lean',oncelik:'orta',
    kw:['öne eğil','one egil','gövde öne','govde one','forward lean','torso lean','excessive lean','öne yaslan'],
-   area:['Gövde / kalça','Torso / hip'],
+   area:['Gövde açısı (çömelmede)','Torso angle (in the squat)'],
    work:['Kalça ve ayak bileği mobilitesi + gövde diklik kontrolü (karşı ağırlıklı çömelme progresyonu)',
          'Hip and ankle mobility plus upright-torso control (a counterbalanced squat progression)'],
    cover:['goblet','counterbalance','karşı ağırlık','karsi agirlik','kalça mobilite','hip mobility','ayak bile','ankle','gövde diklik','govde diklik','front rack']},
@@ -35287,7 +35365,7 @@ function diDeficits(ath,ref){
     n(t.fms&&t.fms.shoulderMobility&&t.fms.shoulderMobility.left)].filter(x=>x!=null);
 
   if(sm.length&&Math.min(...sm)<=1)
-    add('thoracic',['Torakal omurga / omuz','Thoracic spine / shoulder'],
+    add('thoracic',['Omuz mobilitesi (FMS)','Shoulder mobility (FMS)'],
       [`Omuz mobilitesi ${Math.min(...sm)}/3`,`Shoulder mobility ${Math.min(...sm)}/3`],
       ['Torakal ekstansiyon ve rotasyon mobilitesi, skapular kontrol',
        'Thoracic extension and rotation mobility, scapular control'],
@@ -35456,7 +35534,7 @@ function diBriefForAI(i){
       '(sets, reps, load, tempo, rest). PAIN NEVER REMOVES A PATTERN LISTED HERE: the coach has seen today\'s pain and still requires it, '+
       'and these patterns are already left out of code_checked_limits.blocked_patterns (see opened_for_coach_patterns). When a listed pattern '+
       'loads a painful region, write it as a pain-free, modified variation (reduced load and range of motion, controlled tempo, supported, '+
-      'isometric or unilateral on the pain-free side, no impact) and say so in its rationale and in coach_warning. Only an injury-record '+
+      'isometric or unilateral on the pain-free side, no impact) and write the modification into its description. Only an injury-record '+
       'restriction (code_checked_limits.hard_restrictions) or the avoid list can keep a listed pattern out; then write the closest allowed '+
       'variation of the same pattern and record it in flagged_conflicts with field "movement_patterns".':null,
     must_include:i.must,
@@ -35586,8 +35664,6 @@ function diParseProgram(text){
    handed to diParseProgram. Nothing is invented on the way: a field the answer did not
    give stays empty, and an answer with no exercise in it is refused. */
 const DI_EXT_SCHEMA={
-  status_summary:'1-2 sentences: the athlete\'s state today',
-  training_priorities:[{priority:'the main goal of the day',rationale:'which data / which instruction it rests on'}],
   program:{
     session_name:'short title',
     blocks:[{
@@ -35599,34 +35675,44 @@ const DI_EXT_SCHEMA={
         rest:'e.g. 90 s',equipment:"one item of the gym's equipment, or 'bodyweight'",
         movement_pattern:'one of movement_pattern_vocabulary, written exactly as listed',
         coach_pattern:'the id of the coach_brief.movement_patterns item this exercise fulfils (e.g. knee_dominant); null if it fulfils none',
-        rationale:'why this exercise for this athlete — which data / finding / instruction',
+        description:'how to perform it: setup, execution and coaching cue, 1-2 short sentences — no justification, no commentary',
         basis:['D1'],
       }],
     }],
   },
-  constraints_respected:['which coach instruction was followed, and how'],
   flagged_conflicts:[{instruction:'the instruction that could not be applied',field:'movement_patterns | avoid | session_duration_min | session_max_exercises',
     rule:'which rule / pain / limit prevented it',decision:'what was done',alternative:'what was written instead'}],
-  rationale:'short paragraph: the priority of the day and why these exercises were chosen',
-  coach_warning:'one sentence, if there is something the coach should look at',
 };
+/* The order a conflict between two inputs is settled in. Said once, as data, so the
+   answer has one rule to fall back on rather than weighing thirty sentences anew. */
+const DI_DECISION_HIERARCHY=[
+  '1. Safety / hard constraints — pain, active injury, code_checked_limits (hard_restrictions, blocked_patterns, plyometric_contact_limit, tier_caps), training_profile.constraints.hard.',
+  '2. Coach brief — coach_brief (movement_patterns, avoid, priorities, session_duration_min, session_max_exercises, constraints, additional_notes).',
+  '3. Match context — session_day.match_day_label and next / previous game, session_day.same_day_team_practice, code_checked_limits.session_fatigue_budget and volume_adjustment_pct.',
+  '4. Individual needs — training_profile (athletic_profile priorities, joint_needs, constraints.soft), differentiators, wellness and readiness, measured_deficits.',
+  '5. Recent load / exposure — rpe, training_profile.exercise_exposure, recent_programs.',
+  '6. Variety — exercise_exposure.category_coverage and strength_movement_profile.',
+  'A higher level always wins over a lower one; a lower level only chooses between options the higher levels leave open.',
+];
 /* The task, in English like everything else in the export: the model is asked to
    write to field names it can read, and the answer comes back in the same language. */
 const DI_EXT_TASK=[
   'Write ONE training session for the athlete in this JSON, for the date in session_day.',
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
+  'Write the programme only: for every exercise its name, sets, reps (or duration / distance), load, target RPE, tempo, rest, equipment, movement_pattern, coach_pattern, basis and a short description of how to perform it. Write NO commentary anywhere — no status summary, no rationale or justification, no priorities paragraph, no notes to the coach. The only free text besides description is flagged_conflicts, and only when an instruction could not be applied.',
+  'Settle every conflict between inputs by decision_hierarchy, top to bottom: safety / hard constraints, then the coach brief, then the match context, then individual needs, then recent load / exposure, then variety.',
   'coach_brief is binding: EVERY pattern in coach_brief.movement_patterns is in the session with at least one exercise, tagged with coach_pattern and written to the filters it carries (movement_patterns_rule says how) — a session missing one of them fails the code check; pain does not remove them, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
-  'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
-  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
+  'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list. differentiators are listed most decisive first: the game, current pain, a same-day team practice and the development priorities change today\'s session the most.',
+  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
-  'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
+  'measured_deficits and the test comments are observations, not diagnoses: do not infer a cause from them and do not turn them into exercises automatically (no "finding → assumed cause → corrective exercise" chain). Weigh them with everything above them in decision_hierarchy and address one only where it fits today\'s session. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
   'Safety comes first: when a coach_brief instruction would break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts. The coach\'s movement_patterns are not dropped for pain: the coach has opened them for today, so write each one as a pain-free, modified variation of the same pattern.',
-  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
+  'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, over the last 7 and 28 days, and what the last session held (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'training_profile.joint_needs, where present, is the coach\'s Joint-by-Joint reading of the athlete: which joint, on which side, needs its Joint-by-Joint need (mobile joints mobility, stable joints stability — one need per joint) and how much (High > Medium > Low). Build the preparation phase from it — every High need gets targeted work today, Medium needs regular work in the preparation block, Low needs a short maintenance dose — and any corrective or rehabilitation work; a stable joint (knee, low back, foot, scapula, elbow) gets control work, never mobilisation for more range, and is not loaded at an end range it cannot control. It is not a diagnosis.',
-  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
+  'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists, for every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement), the values that were not done (not_done_last_7_days, not_done_last_28_days); what was done is in exercise_exposure.exercises — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
   'As the system principles state explicitly, do not invent any deficit or constraint that is not in the dataset: every deficit you address and every constraint you respect must come from this JSON.',
 ];
@@ -35643,7 +35729,8 @@ const DI_EXT_TASK_SQUAD=[
     .replace('Respect the limits in code_checked_limits','Respect the limits in each athlete\'s own code_checked_limits')
     .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for that athlete on this day')
     .replace('as one in recent_programs','as one in that athlete\'s recent_programs')
-    .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')),
+    .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')
+    .replace('inside code_checked_limits.session_fatigue_budget','inside that athlete\'s own code_checked_limits.session_fatigue_budget')),
 ];
 /* The coach's S&C shelf by movement pattern — a reference, not the pool the session is
    built from: the task tells the model to lean on it as little as possible, and an
@@ -35681,7 +35768,7 @@ const diFamiliesForAI=()=>IV_PATTERNS.map(p=>{const f=diFamilyOf(p);return{patte
    the gym's kit — are said once at the top instead of once per athlete. */
 function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
   return diInEnglish(()=>{
-  const shared=['task','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
+  const shared=['task','decision_hierarchy','output_format','movement_pattern_vocabulary','movement_families','exercise_library','sport_context','equipment'];
   const list=(items||[]).map(it=>{
     const one=diAthleteSnapshot({ath:it.ath,setup,date,instr:it.instr,customTests,now,session:it.session,libMap,
       recent:it.recent});
@@ -35695,6 +35782,7 @@ function diSquadSnapshot({items,setup,date,customTests,now,libMap}){
     session_day:day?{date:day.date,weekday:day.weekday,relative_to_today:day.relative_to_today,match_day_label:day.match_day_label,
       next_game:day.next_game,season_phase:day.season_phase,season_phase_focus:day.season_phase_focus}:{date},
     task:DI_EXT_TASK_SQUAD,
+    decision_hierarchy:DI_DECISION_HIERARCHY,
     generated_at:new Date(now||Date.now()).toISOString(),
     athlete_count:list.length,
     equipment:diEquipmentForAI(setup),
@@ -35743,7 +35831,7 @@ function diExtNormalize(obj){
       ekipman:str(pick(e,['ekipman','equipment'])),
       hareket_paterni:str(pick(e,['hareket_paterni','pattern','movement_pattern','patern','movementPattern'])),
       koc_paterni:str(pick(e,['koc_paterni','coach_pattern','coachPattern','brief_pattern','required_pattern'])),
-      gerekce:str(pick(e,['gerekce','gerekçe','rationale','reason','why','notlar','notes','not','aciklama','açıklama'])),
+      gerekce:str(pick(e,['description','aciklama','açıklama','cue','coaching_cue','gerekce','gerekçe','rationale','reason','why','notlar','notes','not'])),
       dayanak:basis==null?[]:(Array.isArray(basis)?basis:String(basis).split(/[\s,;]+/)),
     };
   };
@@ -36098,6 +36186,24 @@ function validateProgram(program,ctx){
 
   /* ================= SOFT — none of these stops a save ==================== */
 
+  /* The day's fatigue budget (game distance, same-day team practice): volume cut or
+     not, a near-game session should not carry the work that takes days to clear. */
+  const fb=diFatigueBudget(bundle);
+  if(fb.budget!=='normal'){
+    const why=fb.md&&fb.same_day_practice?`${fb.md} + ${L('aynı gün takım antrenmanı','same-day team practice')}`
+      :fb.md||L('aynı gün takım antrenmanı','same-day team practice');
+    const costly=rows.filter(r=>DI_FATIGUE_RE.test(`${r.name||''} ${r.tempo||''} ${r.reps||''}`));
+    if(costly.length&&(fb.budget!=='moderate'||costly.length>1))
+      S(null,`Yorgunluk bütçesi ${fb.budget} (${why}), ama programda toparlanması pahalı iş var: ${costly.map(r=>r.name).join(', ')}.`,
+        `The fatigue budget is ${fb.budget} (${why}), yet the session carries work that is costly to recover from: ${costly.map(r=>r.name).join(', ')}.`);
+    const rpeHi=fb.max_rpe==null?[]:rows.filter(r=>{
+      const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
+      return n&&Math.max(...n.map(Number))>fb.max_rpe;});
+    if(rpeHi.length)
+      S(null,`Yorgunluk bütçesi ${fb.budget} (${why}) hedef RPE'yi ${fb.max_rpe} ile sınırlıyor; aşan satırlar: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
+        `The ${fb.budget} fatigue budget (${why}) caps target RPE at ${fb.max_rpe}; rows above it: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
+  }
+
   /* Free text is always allowed (rule 29, and the spec says so twice). Recorded so
      the coach can see what was written outside their library and file it if they
      want to; never counted against the session. */
@@ -36112,16 +36218,16 @@ function validateProgram(program,ctx){
     const known=new Set(diffs.map(d=>d.id));
     const used=[...cited].filter(x=>known.has(x));
     if(!used.length)
-      S(null,`Bu sporcunun ${diffs.length} ayırt edici özelliği hesaplandı ama hiçbir egzersizin gerekçesi bunlardan birine dayanmıyor — program bu sporcuya özel yazılmamış olabilir.`,
-        `${diffs.length} differentiators were computed for this athlete and no exercise's rationale rests on any of them — the session may not be about this athlete at all.`);
+      S(null,`Bu sporcunun ${diffs.length} ayırt edici özelliği hesaplandı ama hiçbir egzersizin dayanağı bunlardan birine dayanmıyor — program bu sporcuya özel yazılmamış olabilir.`,
+        `${diffs.length} differentiators were computed for this athlete and no exercise's basis rests on any of them — the session may not be about this athlete at all.`);
     else if(used.length<Math.min(2,diffs.length))
       S(null,`Hesaplanan ${diffs.length} ayırt ediciden yalnızca ${used.length} tanesi programda karşılık buldu.`,
         `Only ${used.length} of the ${diffs.length} computed differentiators is answered anywhere in the session.`);
   }
   const noWhy=rows.filter(r=>!String(r.why||'').trim());
   if(noWhy.length)
-    S(null,`${noWhy.length} egzersizde gerekçe yok (${noWhy.map(r=>r.name).join(', ')}).`,
-      `${noWhy.length} exercise${noWhy.length>1?'s carry':' carries'} no rationale (${noWhy.map(r=>r.name).join(', ')}).`);
+    S(null,`${noWhy.length} egzersizde açıklama yok (${noWhy.map(r=>r.name).join(', ')}).`,
+      `${noWhy.length} exercise${noWhy.length>1?'s carry':' carries'} no description (${noWhy.map(r=>r.name).join(', ')}).`);
 
   /* Repetition over time — the athlete against their own recent sessions. */
   const names=diProgramNames(program);
@@ -36151,8 +36257,8 @@ function validateProgram(program,ctx){
     const words=diExName(lbl).split(' ').filter(w=>w.length>=DI_TERM_MIN);
     if(!words.length)return;
     const hit=rows.some(r=>{const hay=diExName(`${r.name} ${r.why||''}`);return words.some(w=>hay.includes(w));});
-    if(!hit)S(22,`Günün önceliği "${lbl}" programda adıyla karşılık bulmuyor — gerekçeleri kontrol et.`,
-      `Today's priority "${lbl}" is not named anywhere in the session — check the rationales.`);
+    if(!hit)S(22,`Günün önceliği "${lbl}" programda adıyla karşılık bulmuyor — egzersizleri kontrol et.`,
+      `Today's priority "${lbl}" is not named anywhere in the session — check the exercises.`);
   });
 
   /* Two exercises of one movement family in the MAIN phase. A quality point, not a
@@ -37111,6 +37217,8 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const wd=(parseD(ref).getDay()+6)%7;
   const cp=b.competition||{};
   const ses=session||null;
+  const tpX=b.same_day_practice||null;
+  const fatX=diFatigueBudget(b);
   const target={
     date:ref,
     weekday:SNAP_DAYS_EN[wd],
@@ -37123,6 +37231,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     season_phase:b.season_phase&&b.season_phase.label,
     season_phase_focus:b.season_phase&&b.season_phase.focus,
     source_session:ses?{name:ses.name,time:ses.time,duration_min:recNum(ses.duration),focus:ses.focus,region:ses.region}:null,
+    same_day_team_practice:tpX,
   };
 
   /* What an outside model needs in order to write a session CoachOS will accept: the
@@ -37147,7 +37256,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       opened_for_coach_patterns:x.acilan_paternler&&x.acilan_paternler.length?x.acilan_paternler:null,
       redirect_to_patterns:x.yonlendirilecek_paternler})),
     blocked_patterns_note:blockedX.some(x=>(x.acilan_paternler||[]).length)
-      ?'opened_for_coach_patterns: this region\'s pain would close these patterns, but the coach requires them today (coach_brief.movement_patterns). They are open: write them as pain-free, modified variations and say so in the rationale and coach_warning.':null,
+      ?'opened_for_coach_patterns: this region\'s pain would close these patterns, but the coach requires them today (coach_brief.movement_patterns). They are open: write them as pain-free, modified variations and write the modification into the exercise\'s description.':null,
     /* A pattern whose own name is a hard-restriction term ("squat" → Squat) is not
        offered as open: every exercise in it that says so in its name is blocked. */
     available_patterns:IV_PATTERNS.filter(p=>!blockedSetX.has(p)&&
@@ -37161,14 +37270,28 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     tier_caps:capsX?{current_tier:b.tier.gecerli,tier_scale:DI_TIER_SCALE,max_sets_per_exercise:capsX.max_sets,max_main_phase_exercises:capsX.max_main,
       plyometric_note:plyoX?(capsX.plyo_note_en||capsX.plyo_note):null,
       note:'max_sets_per_exercise is the set ceiling of a single exercise row; max_main_phase_exercises is the ceiling on the number of exercises in the main phase.'}:null,
-    plyometric_contact_limit:plyoX?{min:plyoX.min,max:plyoX.max,group:plyoX.grup,
-      note:'Total ground contacts (sets × reps, only rows in the Jump / Plyo pattern) may not exceed this ceiling.'}:null,
+    plyometric_contact_limit:plyoX?{max:plyoX.max,group:plyoX.grup,
+      note:'A ceiling only, never a target: total ground contacts (sets × reps, only rows in the Jump / Plyo pattern) may not exceed it. '+
+        'There is no minimum — write plyometrics only when today\'s priorities call for them, and fewer (or none) when the fatigue budget is low.'}:null,
     session_duration_min:brief.duration,
     minutes_per_exercise:DI_MIN_PER_EX,
     minutes_per_exercise_note:brief.duration==null?null:'Session length is computed as the number of exercises × minutes_per_exercise (all phases included) and compared with session_duration_min.',
     session_max_exercises:brief.maxExercises,
     volume_adjustment_pct:b.adjustment?b.adjustment.pct:null,
     volume_adjustment_reasons:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    /* The volume cut says how much; this says what kind of work the day can afford. */
+    session_fatigue_budget:{
+      match_day_label:fatX.md,
+      same_day_team_practice:!!tpX,
+      budget:fatX.budget,
+      budget_scale:'minimal < low < moderate < normal. Set by the distance to the game (MD: minimal, MD-1 / MD+1: low, MD-2 / MD+2: moderate, otherwise normal), one step lower when a team practice is on the same day.',
+      max_target_rpe:fatX.max_rpe,
+      day_focus:fatX.focus,
+      rule:'Check the TOTAL fatigue cost of the session, not only its volume. volume_adjustment_pct lowers the dose; it does not make a costly session cheap. '+
+        'The cost comes from: sets taken near failure or above max_target_rpe, heavy eccentric / eccentric-overload work (e.g. Nordics, slow negatives), '+
+        'high-impact and depth plyometrics, maximal sprinting, conditioning to exhaustion, new or unfamiliar exercises (soreness), and the number of hard sets in all. '+
+        'On a minimal or low budget write none of these; on moderate, at most a small dose; with a team practice the same day, the practice\'s load is part of the day\'s total.',
+    },
   };
 
   /* The Athlete Training Profile — the coach's priorities, movement profile and
@@ -37178,6 +37301,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const out={
     session_day:target,
     task:DI_EXT_TASK,
+    decision_hierarchy:DI_DECISION_HIERARCHY,
     generated_at:nowD.toISOString(),
     athlete:{
       id:a.id,name:a.name,jersey_number:a.number,
@@ -37287,8 +37411,14 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     },
     coach_brief:diBriefForAI(brief),
     differentiators:diffsX.map(d=>({id:d.id,type:d.kind,description:d.text})),
+    /* What was measured or written down, and nothing more: no assumed cause and no
+       prescribed exercise. A finding goes from observation to "therefore this
+       exercise" only through the coach's own reading, not through the export. */
     measured_deficits:((deficitsX&&deficitsX.findings)||[]).map(f=>({area:f.bolge,finding:f.bulgu,
-      required_work:f.gereken_calisma,priority:PRIO_EN[f.oncelik]||f.oncelik,measurement:f.olcum,source:SRC_EN[f.kaynak]||f.kaynak})),
+      measurement:f.olcum,flag:PRIO_EN[f.oncelik]||f.oncelik,source:SRC_EN[f.kaynak]||f.kaynak})),
+    measured_deficits_note:((deficitsX&&deficitsX.findings)||[]).length?'Observations against a test threshold or from the coach\'s test notes — not diagnoses and not causes. '+
+      'Do not infer a cause from a finding, and do not turn a finding into an exercise automatically: weigh it with the coach brief, pain, the game and the training profile, '+
+      'and address it only where it fits today\'s session. flag (High / Medium / Low) is how far the reading sits from its threshold, not a prescription.':null,
     code_checked_limits:limits,
     /* What this athlete was written on the last days this module wrote for them — so
        the answer does not hand them the same session again (rule 23). */

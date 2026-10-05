@@ -232,6 +232,8 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const wd=(parseD(ref).getDay()+6)%7;
   const cp=b.competition||{};
   const ses=session||null;
+  const tpX=b.same_day_practice||null;
+  const fatX=diFatigueBudget(b);
   const target={
     date:ref,
     weekday:SNAP_DAYS_EN[wd],
@@ -244,6 +246,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     season_phase:b.season_phase&&b.season_phase.label,
     season_phase_focus:b.season_phase&&b.season_phase.focus,
     source_session:ses?{name:ses.name,time:ses.time,duration_min:recNum(ses.duration),focus:ses.focus,region:ses.region}:null,
+    same_day_team_practice:tpX,
   };
 
   /* What an outside model needs in order to write a session CoachOS will accept: the
@@ -268,7 +271,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       opened_for_coach_patterns:x.acilan_paternler&&x.acilan_paternler.length?x.acilan_paternler:null,
       redirect_to_patterns:x.yonlendirilecek_paternler})),
     blocked_patterns_note:blockedX.some(x=>(x.acilan_paternler||[]).length)
-      ?'opened_for_coach_patterns: this region\'s pain would close these patterns, but the coach requires them today (coach_brief.movement_patterns). They are open: write them as pain-free, modified variations and say so in the rationale and coach_warning.':null,
+      ?'opened_for_coach_patterns: this region\'s pain would close these patterns, but the coach requires them today (coach_brief.movement_patterns). They are open: write them as pain-free, modified variations and write the modification into the exercise\'s description.':null,
     /* A pattern whose own name is a hard-restriction term ("squat" → Squat) is not
        offered as open: every exercise in it that says so in its name is blocked. */
     available_patterns:IV_PATTERNS.filter(p=>!blockedSetX.has(p)&&
@@ -282,14 +285,28 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     tier_caps:capsX?{current_tier:b.tier.gecerli,tier_scale:DI_TIER_SCALE,max_sets_per_exercise:capsX.max_sets,max_main_phase_exercises:capsX.max_main,
       plyometric_note:plyoX?(capsX.plyo_note_en||capsX.plyo_note):null,
       note:'max_sets_per_exercise is the set ceiling of a single exercise row; max_main_phase_exercises is the ceiling on the number of exercises in the main phase.'}:null,
-    plyometric_contact_limit:plyoX?{min:plyoX.min,max:plyoX.max,group:plyoX.grup,
-      note:'Total ground contacts (sets × reps, only rows in the Jump / Plyo pattern) may not exceed this ceiling.'}:null,
+    plyometric_contact_limit:plyoX?{max:plyoX.max,group:plyoX.grup,
+      note:'A ceiling only, never a target: total ground contacts (sets × reps, only rows in the Jump / Plyo pattern) may not exceed it. '+
+        'There is no minimum — write plyometrics only when today\'s priorities call for them, and fewer (or none) when the fatigue budget is low.'}:null,
     session_duration_min:brief.duration,
     minutes_per_exercise:DI_MIN_PER_EX,
     minutes_per_exercise_note:brief.duration==null?null:'Session length is computed as the number of exercises × minutes_per_exercise (all phases included) and compared with session_duration_min.',
     session_max_exercises:brief.maxExercises,
     volume_adjustment_pct:b.adjustment?b.adjustment.pct:null,
     volume_adjustment_reasons:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    /* The volume cut says how much; this says what kind of work the day can afford. */
+    session_fatigue_budget:{
+      match_day_label:fatX.md,
+      same_day_team_practice:!!tpX,
+      budget:fatX.budget,
+      budget_scale:'minimal < low < moderate < normal. Set by the distance to the game (MD: minimal, MD-1 / MD+1: low, MD-2 / MD+2: moderate, otherwise normal), one step lower when a team practice is on the same day.',
+      max_target_rpe:fatX.max_rpe,
+      day_focus:fatX.focus,
+      rule:'Check the TOTAL fatigue cost of the session, not only its volume. volume_adjustment_pct lowers the dose; it does not make a costly session cheap. '+
+        'The cost comes from: sets taken near failure or above max_target_rpe, heavy eccentric / eccentric-overload work (e.g. Nordics, slow negatives), '+
+        'high-impact and depth plyometrics, maximal sprinting, conditioning to exhaustion, new or unfamiliar exercises (soreness), and the number of hard sets in all. '+
+        'On a minimal or low budget write none of these; on moderate, at most a small dose; with a team practice the same day, the practice\'s load is part of the day\'s total.',
+    },
   };
 
   /* The Athlete Training Profile — the coach's priorities, movement profile and
@@ -299,6 +316,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const out={
     session_day:target,
     task:DI_EXT_TASK,
+    decision_hierarchy:DI_DECISION_HIERARCHY,
     generated_at:nowD.toISOString(),
     athlete:{
       id:a.id,name:a.name,jersey_number:a.number,
@@ -408,8 +426,14 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     },
     coach_brief:diBriefForAI(brief),
     differentiators:diffsX.map(d=>({id:d.id,type:d.kind,description:d.text})),
+    /* What was measured or written down, and nothing more: no assumed cause and no
+       prescribed exercise. A finding goes from observation to "therefore this
+       exercise" only through the coach's own reading, not through the export. */
     measured_deficits:((deficitsX&&deficitsX.findings)||[]).map(f=>({area:f.bolge,finding:f.bulgu,
-      required_work:f.gereken_calisma,priority:PRIO_EN[f.oncelik]||f.oncelik,measurement:f.olcum,source:SRC_EN[f.kaynak]||f.kaynak})),
+      measurement:f.olcum,flag:PRIO_EN[f.oncelik]||f.oncelik,source:SRC_EN[f.kaynak]||f.kaynak})),
+    measured_deficits_note:((deficitsX&&deficitsX.findings)||[]).length?'Observations against a test threshold or from the coach\'s test notes — not diagnoses and not causes. '+
+      'Do not infer a cause from a finding, and do not turn a finding into an exercise automatically: weigh it with the coach brief, pain, the game and the training profile, '+
+      'and address it only where it fits today\'s session. flag (High / Medium / Low) is how far the reading sits from its threshold, not a prescription.':null,
     code_checked_limits:limits,
     /* What this athlete was written on the last days this module wrote for them — so
        the answer does not hand them the same session again (rule 23). */

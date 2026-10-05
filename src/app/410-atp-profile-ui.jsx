@@ -28,7 +28,7 @@ function AtpGrpHead({title,n,of}){
    sent as is kept on hover — it is the word the JSON carries. */
 const AtpName=({en})=><span className="atp-it-l" title={REPORT_LANG==='tr'?en:undefined}>{atpT(en)}</span>;
 /* The seven groups in two columns of near-equal height: Speed, Change of Direction,
-   Plyometric / Reactive and Power (9 qualities under four headers) beside Strength,
+   Plyometric / Reactive and Power (10 qualities under four headers) beside Strength,
    Movement Quality and Conditioning (9 under three). The last card of each column
    takes up the few pixels between them; on a narrow screen the columns fold into one
    list in the template's own order. */
@@ -36,6 +36,12 @@ const ATP_COLS=[['speed','cod','plyo','power'],['strength','movement','condition
 function AtpProfile({q,onSet}){
   const rated=ATP_QUALITIES.filter(it=>q[it.id]);
   const byPri=id=>rated.filter(it=>q[it.id].priority===id);
+  /* High is capped (ATP_HIGH_MAX): once it is full, High is offered on no other
+     quality until one is taken off. A profile saved over the cap before it existed is
+     drawn as it is and says so; it cannot take another. */
+  const nHigh=byPri('high').length,highFull=nHigh>=ATP_HIGH_MAX;
+  const highTip=L(`Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir — önce birini kaldır.`,
+    `High can be set on at most ${ATP_HIGH_MAX} qualities — take one off first.`);
   const chip=it=>(
     <span key={it.id} className="atp-chip"
       title={`${atpT(it.group)}${REPORT_LANG==='tr'?` · ${it.en}`:''}`}>
@@ -48,15 +54,17 @@ function AtpProfile({q,onSet}){
       <div className="atp-its">{g.items.map(it=>{const r=q[it.id]||{};return(
         <div key={it.id} className={`atp-it mv${r.priority?` set pr-${r.priority}`:''}`}>
           <span className="atp-it-n"><AtpName en={it.en}/></span>
-          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_PRIORITY.map(p=>
-            <button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
-              title={`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`} onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>)}</div>
+          <div className="atp-seg" role="group" aria-label={`${atpT(it.en)} — ${atpT('Priority')}`}>{ATP_PRIORITY.map(p=>{
+            const shut=p.id==='high'&&highFull&&r.priority!=='high';
+            return(<button key={p.id} className={`pr-${p.id}${r.priority===p.id?' on':''}`} aria-pressed={r.priority===p.id} aria-label={atpT(p.en)}
+              disabled={shut} title={shut?highTip:`${atpT('Priority')}: ${atpT(p.en)} — ${L(p.dTr,p.dEn)}`}
+              onClick={()=>onSet(it.id,'priority',p.id)}>{atpBars(p.bars)}{atpAb(p)}</button>);})}</div>
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
     <AtpSecHead n={2} title={atpT('Athletic Profile')}
-      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
-        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. A quality left unrated is maintained, like Low.`)}/>
+      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
+        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities. A quality left unrated is maintained, like Low.`)}/>
     <div className="sc-sec-b">
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
@@ -64,7 +72,10 @@ function AtpProfile({q,onSet}){
       </div>
       <div className="atp-lanes">{ATP_PRIORITY.map(p=>{const its=byPri(p.id);return(
         <div key={p.id} className={`atp-lane pr-${p.id}`}>
-          <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span><span className="atp-lane-n">{its.length}</span></div>
+          <div className="atp-lane-h"><span className="atp-lane-t">{atpBars(p.bars)}{atpT(p.en)}</span>
+            <span className="atp-lane-n" title={p.id==='high'?highTip:undefined}>{its.length}{p.id==='high'&&<small>/{ATP_HIGH_MAX}</small>}</span></div>
+          {p.id==='high'&&nHigh>ATP_HIGH_MAX&&<div className="atp-lane-warn">{L(`En fazla ${ATP_HIGH_MAX} Yüksek öncelik kabul edilir — ${nHigh-ATP_HIGH_MAX} tanesini Orta'ya indir.`,
+            `At most ${ATP_HIGH_MAX} High priorities are accepted — move ${nHigh-ATP_HIGH_MAX} down to Medium.`)}</div>}
           <div className="atp-chips">{its.length?its.map(chip)
             :<span className="atp-empty">{L('Henüz yok — aşağıdan seç.','Nothing yet — pick from below.')}</span>}</div>
         </div>);})}</div>
@@ -434,6 +445,9 @@ function TrainingProfileTab({ath,updAth,exercises}){
   /* Clicking the priority that is already on takes it off again. */
   const setQ=(id,field,v)=>{
     const cur={...(tp.qualities[id]||{})};
+    /* A sixth High is refused (ATP_HIGH_MAX), whatever path the click came by. */
+    if(field==='priority'&&v==='high'&&cur.priority!=='high'&&
+      Object.values(tp.qualities).filter(x=>x&&x.priority==='high').length>=ATP_HIGH_MAX)return;
     if(cur[field]===v)delete cur[field];else cur[field]=v;
     const nx={...tp.qualities};
     if(cur.priority)nx[id]=cur;else delete nx[id];

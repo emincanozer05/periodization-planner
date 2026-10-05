@@ -304,6 +304,7 @@ function diBundle(ath,setup,ref,opts){
     exposure:diExposure(ath,ref,{days:3,libMap:o.libMap}),
     exposure_7:diExposure(ath,ref,{days:7,libMap:o.libMap}),
     competition:diCompetition(setup,ref),
+    same_day_practice:diSameDayPractice(ath,ref),
     playing_time:diPlayingTime(ath,ref),
     season_phase:(()=>{const p=diSeasonPhase(setup,ref);
       return{id:p.id,label:p.label?L(p.label[0],p.label[1]):null,
@@ -348,20 +349,75 @@ function diPainDays(ath,region,ref){
   }
   return n;
 }
+/* A team practice on the day being programmed: the session the athlete already has
+   that day, from their own calendar (team sessions are mirrored onto it) or from the
+   team-practice slot of their RPE log. The S&C session is written on top of it, so
+   what it may cost depends on it. */
+function diSameDayPractice(ath,ref){
+  const ses=(((ath&&ath.days)||{})[ref]||{}).sessions||[];
+  const tp=ses.find(x=>x&&sesKind(x)==='tp');
+  if(tp)return{name:tp.name||null,time:tp.time||null,duration_min:recNum(tp.duration)};
+  const log=((ath&&ath.srpeLog)||[]).find(e=>e&&e.date===ref&&(recNum(e.tpDuration)!=null||recNum(e.tpRPE)!=null));
+  return log?{name:null,time:null,duration_min:recNum(log.tpDuration),rpe:recNum(log.tpRPE)}:null;
+}
+/* ---- How much fatigue the session may cost, by its distance from the game -------
+   The volume cut (diLoadAdjust) says how MUCH; this says what KIND of work the day can
+   afford. A session at 80 % volume can still be the wrong session on MD-1 if what is
+   left is a set of Nordics and depth jumps: the fatigue a session leaves — eccentric
+   and impact damage, work near failure, maximal efforts — is what the game pays for.
+   The budget steps down near the game, and one more step when a team practice shares
+   the day. NOT A KNOWLEDGE-BASE NUMBER: the RPE caps are this module's own, they feed
+   soft warnings only and never block a save. */
+const DI_FATIGUE_LEVELS=['minimal','low','moderate','normal'];
+const DI_MD_FATIGUE={
+  'MD':  {budget:'minimal',focus:['Yalnızca aktivasyon / hazırlık — kuvvet veya kondisyon yükü yok','Activation / priming only — no strength or conditioning load']},
+  'MD-1':{budget:'low',    focus:['Kısa, düşük hacimli aktivasyon; hız/güç düşük hacimde, tam toparlanmayla','Short, low-volume priming; speed / power at low volume with full recovery']},
+  'MD+1':{budget:'low',    focus:['Toparlanma: düşük darbe, mobilite, hafif aerobik','Recovery: low impact, mobility, light aerobic work']},
+  'MD-2':{budget:'moderate',focus:['Orta yük; yüksek eksantrik ve yüksek darbe sınırlı','Moderate load; heavy eccentric and high-impact work limited']},
+  'MD+2':{budget:'moderate',focus:['Orta yük; maçın yorgunluğu henüz geçmemiş olabilir','Moderate load; the game may not have cleared yet']},
+};
+const DI_FATIGUE_RPE={minimal:5,low:6,moderate:7,normal:null};
+/* What makes a row costly to recover from: read off its name and dose. Eccentric
+   overload, high-impact plyometrics, maximal sprinting, and work at or near failure. */
+const DI_FATIGUE_RE=/nordic|eccentric|eksantrik|negatif|depth jump|drop jump|derinlik|bound|flying|max(imal)? (velocity|sprint|speed)|to failure|tükeniş|amrap|repeated sprint|rsa\b/i;
+function diFatigueBudget(bundle,practiceIn){
+  const practice=practiceIn!==undefined?practiceIn:((bundle&&bundle.same_day_practice)||null);
+  const md=bundle&&bundle.competition?bundle.competition.md:null;
+  const row=md?DI_MD_FATIGUE[md]:null;
+  let lv=DI_FATIGUE_LEVELS.indexOf(row?row.budget:'normal');
+  if(practice&&lv>0)lv--;
+  const budget=DI_FATIGUE_LEVELS[lv];
+  return{md,budget,max_rpe:DI_FATIGUE_RPE[budget],
+    focus:row?L(row.focus[0],row.focus[1]):null,same_day_practice:practice||null};
+}
 function diDifferentiators(ath,bundle,deficits,ref){
   const out=[];
   const add=(kind,tr,en)=>{if(out.length<DI_DIFF_MAX)out.push({kind,text:L(tr,en)});};
 
-  // 1. An active injury — the hardest fact about this athlete today.
+  /* The order is what changes today's programme most, first. A list capped at six is
+     read top-down, and a position or a tier is a property of the athlete every day;
+     a game tomorrow, a sore knee or a team practice at 17:00 is what makes TODAY's
+     session this athlete's and not last week's. */
+
+  // 1. The game: distance to it decides what kind of work the day can afford.
+  const md=bundle.competition&&bundle.competition.md;
+  if(md&&DI_MD_FATIGUE[md]){
+    const r=DI_MD_FATIGUE[md];
+    add('match',`${md} — ${r.focus[0]}`,`${md} — ${r.focus[1]}`);
+  }
+
+  // 2. An active injury — the hardest fact about this athlete today.
   ((bundle.injury&&bundle.injury.active)||[]).slice(0,2).forEach(inj=>{
     const bits=[inj.region,inj.side,inj.rtp_stage?L(inj.rtp_stage[0],inj.rtp_stage[1]):null]
       .filter(Boolean).join(' · ');
     add('injury',`aktif sakatlık: ${bits||inj.type||'kayıtlı'}`,`active injury: ${bits||inj.type||'on record'}`);
   });
 
-  // 2. Pain, with how long it has been going on — a three-day knee is not a bad morning.
+  // 3. Current pain, any graded report, with how long it has been going on — a
+  //    three-day knee is not a bad morning. Worst first.
   ((bundle.pain&&bundle.pain.regions)||[])
-    .filter(r=>r.standing||(r.severity_0_5!=null&&r.severity_0_5>=DI_PAIN_BLOCK))
+    .filter(r=>r.standing||(r.severity_0_5!=null&&r.severity_0_5>0))
+    .sort((a,b)=>(b.severity_0_5||0)-(a.severity_0_5||0))
     .slice(0,2).forEach(r=>{
       if(r.standing)
         return add('pain',`${r.label} — koçun kalıcı kısıt etiketi`,`${r.label} — standing coach restriction`);
@@ -370,28 +426,20 @@ function diDifferentiators(ath,bundle,deficits,ref){
         `${r.label} pain at ${r.severity_0_5}/5, reported ${n} day${n>1?'s':''} running`);
     });
 
-  // 3. The structural tier and the screen that set it (weakest link, rule 28).
-  const t=bundle.tier||{};
-  if(t.yapisal!=null){
-    const weak=(t.zayif_halka||[])[0]||null;
-    add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
-      `structural tier ${t.yapisal} of 3 — ${DI_TIER_SCALE}${weak?` (weakest link: ${weak})`:''}`);
-    if(t.gecici_dusus)
-      add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
-        `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
+  // 4. A team practice the same day: the session is written on top of it.
+  const tp=bundle.same_day_practice!==undefined?bundle.same_day_practice:diSameDayPractice(ath,ref);
+  if(tp){
+    const when=[tp.time,tp.duration_min!=null?`${tp.duration_min} dk`:null].filter(Boolean).join(', ');
+    const whenEn=[tp.time,tp.duration_min!=null?`${tp.duration_min} min`:null].filter(Boolean).join(', ');
+    add('team_practice',`aynı gün takım antrenmanı${when?` (${when})`:''} — günün toplam yorgunluğu birlikte hesaplanır`,
+      `team practice the same day${whenEn?` (${whenEn})`:''} — the day's total fatigue counts both`);
   }
 
-  // 4. The battery's own high-priority findings, as the code read them.
-  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').slice(0,2)
-    .forEach(f=>add('finding',`bulgu: ${f.bolge} — ${f.bulgu}`,`finding: ${f.bolge} — ${f.bulgu}`));
-
-  // 5. A performance test that has moved against the athlete's OWN baseline. Stated as
-  //    that and nothing more — the app holds no squad percentiles to rank them in.
-  (bundle.test_baselines||[])
-    .filter(x=>x.deviation_pct!=null&&x.deviation_pct<=-DI_DIFF_TEST_DEV)
-    .sort((a,b)=>a.deviation_pct-b.deviation_pct).slice(0,1)
-    .forEach(x=>add('test',`${x.metric} kendi baseline'ının %${Math.abs(x.deviation_pct)} altında`,
-      `${x.metric} is ${Math.abs(x.deviation_pct)}% below their own baseline`));
+  // 5. The development priorities the coach set for this period (High only).
+  const tq=atpRead(ath).qualities;
+  const high=ATP_QUALITIES.filter(it=>tq[it.id]&&tq[it.id].priority==='high').map(it=>it.en);
+  if(high.length)add('priority',`gelişim öncelikleri (Yüksek): ${high.map(atpT).join(', ')}`,
+    `development priorities (High): ${high.join(', ')}`);
 
   // 6. Today's readiness, only where it is actually low enough to change anything.
   const rd=bundle.readiness||{};
@@ -403,13 +451,27 @@ function diDifferentiators(ath,bundle,deficits,ref){
   if(acwr!=null&&(acwr>1.5||acwr<0.8))
     add('load',`ACWR ${acwr} — ${acwr>1.5?'yüksek':'düşük'}`,`ACWR ${acwr} — ${acwr>1.5?'high':'low'}`);
 
-  // 8. The role, last: it is a starting point (rule 9), not the athlete.
-  const pos=bundle.athlete&&bundle.athlete.position;
-  /* The group is named only where it says something the position does not
-     ("Guard (Guard)" read as a typo rather than as information). */
-  const pgl=bundle.athlete&&bundle.athlete.position_group;
-  const posTxt=pos?`${pos}${pgl&&pgl!==pos?` (${pgl})`:''}`:'';
-  if(pos)add('position',posTxt,posTxt);
+  // 8. The structural tier and the screen that set it (weakest link, rule 28).
+  const t=bundle.tier||{};
+  if(t.yapisal!=null){
+    const weak=(t.zayif_halka||[])[0]||null;
+    add('tier',`yapısal kademe ${t.yapisal}${weak?` (en zayıf halka: ${weak})`:''}`,
+      `structural tier ${t.yapisal} of 3 — ${DI_TIER_SCALE}${weak?` (weakest link: ${weak})`:''}`);
+    if(t.gecici_dusus)
+      add('tier',`geçici kademe düşüşü — ${(t.gecici_dusus_gerekcesi||[])[0]||'çok günlük trend'}`,
+        `temporary tier downgrade — ${(t.gecici_dusus_gerekcesi||[])[0]||'multi-day trend'}`);
+  }
+
+  // 9. The battery's own high-priority findings, as measured — the observation only.
+  ((deficits&&deficits.findings)||[]).filter(f=>f.oncelik==='yüksek').slice(0,1)
+    .forEach(f=>add('finding',`ölçüm: ${f.bolge} — ${f.bulgu}`,`measured: ${f.bolge} — ${f.bulgu}`));
+
+  // 10. A performance test that has moved against the athlete's OWN baseline.
+  (bundle.test_baselines||[])
+    .filter(x=>x.deviation_pct!=null&&x.deviation_pct<=-DI_DIFF_TEST_DEV)
+    .sort((a,b)=>a.deviation_pct-b.deviation_pct).slice(0,1)
+    .forEach(x=>add('test',`${x.metric} kendi baseline'ının %${Math.abs(x.deviation_pct)} altında`,
+      `${x.metric} is ${Math.abs(x.deviation_pct)}% below their own baseline`));
 
   return out.map((d,i)=>({id:`D${i+1}`,...d}));
 }
@@ -461,24 +523,26 @@ const DI_SIM_PEER=0.8;
 
 /* ---- Rule 27: plyometric contacts per session -----------------------------
    The rule states a band per age group and, for the senior team, per season half.
-   Read verbatim; the UPPER bound is the ceiling a session is held to, and the lower
-   bound is carried so the prompt can aim inside the band rather than at its edge. */
+   Only its UPPER bound is carried: it is the ceiling a session is held to. There is
+   no floor — a session writes plyometrics when the day calls for them, and a minimum
+   contact count would push jumps into a session (MD-1, a sore knee, a day after team
+   practice) that should have none. */
 const DI_PLYO_BANDS=[
-  {under:13,min:20,max:40, label:['U9-U12','U9-U12']},
-  {under:15,min:40,max:60, label:['U13-U14','U13-U14']},
-  {under:19,min:60,max:100,label:['U15-U18','U15-U18']},
+  {under:13,max:40, label:['U9-U12','U9-U12']},
+  {under:15,max:60, label:['U13-U14','U13-U14']},
+  {under:19,max:100,label:['U15-U18','U15-U18']},
 ];
 function diPlyoCeiling(bundle){
   const age=bundle&&bundle.athlete&&bundle.athlete.age;
   if(age==null)return null;               // no birth date → no band, and nothing is assumed
   const band=DI_PLYO_BANDS.find(b=>age<b.under);
-  if(band)return{min:band.min,max:band.max,grup:L(band.label[0],band.label[1])};
-  /* Senior. The rule splits by season half rather than by age: in-season 30-60,
-     off-season 60-100. A phase the app cannot read leaves this unset rather than
+  if(band)return{max:band.max,grup:L(band.label[0],band.label[1])};
+  /* Senior. The rule splits by season half rather than by age: in-season up to 60,
+     off-season up to 100. A phase the app cannot read leaves this unset rather than
      guessed — an unbounded check is better than a bound nobody stated. */
   const ph=(bundle.season_phase&&bundle.season_phase.id)||null;
-  if(ph==='in'||ph==='playoff')return{min:30,max:60,grup:L('A takım, sezon içi','Senior, in-season')};
-  if(ph==='off'||ph==='pre'||ph==='trans')return{min:60,max:100,grup:L('A takım, sezon dışı','Senior, off-season')};
+  if(ph==='in'||ph==='playoff')return{max:60,grup:L('A takım, sezon içi','Senior, in-season')};
+  if(ph==='off'||ph==='pre'||ph==='trans')return{max:100,grup:L('A takım, sezon dışı','Senior, off-season')};
   return null;
 }
 /* Ground contacts a written row asks for. Only a row that is plyometric by pattern
