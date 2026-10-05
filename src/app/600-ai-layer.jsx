@@ -185,6 +185,115 @@ const diConRow=id=>DI_CONSTRAINT_TYPES.find(c=>c.id===id)||null;
    fits the slot on the calendar. */
 const DI_DUR_CHOICES=[30,45,60,75,90];
 const DI_EX_CHOICES=[4,6,8,10];
+
+/* ---- Movement patterns the coach puts in the session -----------------------
+   The brief's second field. A pattern ticked here is IN the session — not a wish the
+   model may weigh — and each one carries its own filter box: what kind of exercise,
+   which side or stance, which direction, which strength quality it is dosed for.
+   Every facet is optional; an empty one leaves that choice to the model, and two or
+   more values in one facet mean "any of these".
+
+   `vocab` is how the check recognises the pattern in a written session: the
+   movement_pattern values (IV_PATTERNS) an exercise of that pattern is filed under.
+   The vocabulary has no horizontal / vertical split, so the answer also tags each
+   exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
+   tag first. */
+const DI_STR_GOALS=[
+  ['foundational','Temel kuvvet','Foundational strength'],
+  ['maximal','Maksimal kuvvet','Maximal strength'],
+  ['hypertrophy','Hipertrofi','Hypertrophy'],
+  ['power','Patlayıcı kuvvet / Güç','Explosive strength / Power'],
+  ['reactive','Reaktif kuvvet','Reactive strength'],
+  ['endurance','Kuvvet dayanıklılığı','Strength endurance'],
+];
+const DI_STR_GOALS_BASIC=DI_STR_GOALS.filter(g=>g[0]==='foundational'||g[0]==='endurance');
+const DI_ARM_SIDE=[['bilateral','Çift kol','Both arms'],['unilateral','Tek kol','Single arm'],['alternating','Alternatif','Alternating']];
+const diArmPattern=(id,tr,en,vocab)=>({id,label:[tr,en],vocab,facets:[
+  {k:'side',label:['Taraf / Destek','Side / support'],opts:DI_ARM_SIDE},
+  {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
+]});
+const DI_MOVE_PATTERNS=[
+  {id:'knee_dominant',label:['Diz dominant','Knee dominant'],vocab:['Squat','Lunge / Unilateral'],facets:[
+    {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],['split_squat','Split squat','Split squat'],
+      ['lunge','Lunge','Lunge'],['step_up','Step-up','Step-up'],['step_down','Step-down','Step-down']]},
+    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['bilateral','Çift bacak','Double leg'],
+      ['unilateral','Tek bacak','Single leg'],['split','Split duruş','Split stance']]},
+    {k:'direction',label:['Yön','Direction'],opts:[['in_place','Yerinde','In place'],['forward','Öne','Forward'],
+      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['diagonal','Çapraz','Diagonal'],
+      ['multi','Çok yönlü','Multi-directional']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
+  ]},
+  {id:'hip_dominant',label:['Kalça dominant','Hip dominant'],vocab:['Hinge'],facets:[
+    {k:'type',label:['Tür','Type'],opts:[['deadlift','Deadlift','Deadlift'],['rdl','RDL','RDL'],
+      ['good_morning','Good morning','Good morning'],['hip_thrust','Hip thrust','Hip thrust'],
+      ['glute_bridge','Glute bridge','Glute bridge'],['pull_through','Pull-through','Pull-through'],['swing','Swing','Swing']]},
+    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['bilateral','Çift bacak','Double leg'],
+      ['unilateral','Tek bacak','Single leg'],['b_stance','B-stance','B-stance']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
+  ]},
+  diArmPattern('horizontal_push','Yatay itiş','Horizontal push',['Push']),
+  diArmPattern('vertical_push','Dikey itiş','Vertical push',['Push']),
+  diArmPattern('horizontal_pull','Yatay çekiş','Horizontal pull',['Pull']),
+  diArmPattern('vertical_pull','Dikey çekiş','Vertical pull',['Pull']),
+  {id:'carry',label:['Taşıma (carry)','Carry'],vocab:['Carry'],facets:[
+    {k:'type',label:['Tür','Type'],opts:[['side','Yanda taşıma','Side (suitcase / farmer) carry'],
+      ['front_rack','Front rack taşıma','Front rack carry'],['overhead','Baş üstü taşıma','Overhead carry'],
+      ['goblet','Goblet taşıma','Goblet carry'],['bear_hug','Bear-hug taşıma','Bear-hug carry'],['mixed','Karma taşıma','Mixed carry']]},
+    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['unilateral','Tek taraflı yük','Unilateral load'],
+      ['bilateral','Çift taraflı yük','Bilateral load'],['centred','Merkezde yük','Centred load']]},
+    {k:'direction',label:['Yön / İlerleme','Direction / progression'],opts:[['forward','Öne','Forward'],
+      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['march','Yerinde march','March in place'],
+      ['hold','Sabit tutuş','Static hold']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
+  ]},
+  {id:'core',label:['Core','Core'],vocab:['Core / Brace','Rotation'],facets:[
+    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['symmetrical','Simetrik','Symmetrical'],
+      ['asymmetrical','Tek taraflı / Asimetrik','Unilateral / asymmetrical'],['alternating','Dönüşümlü','Alternating'],
+      ['contralateral','Çapraz kol-bacak','Contralateral arm-leg']]},
+    {k:'task',label:['Görev','Task'],opts:[['anti_extension','Antiekstansiyon','Anti-extension'],
+      ['anti_flexion','Antifleksiyon','Anti-flexion'],['anti_rotation','Antirotasyon','Anti-rotation'],
+      ['anti_lateral_flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],['flexion','Fleksiyon','Flexion'],
+      ['extension','Ekstansiyon','Extension'],['rotation','Rotasyon','Rotation'],
+      ['lateral_flexion','Lateral fleksiyon','Lateral flexion'],['combined','Çapraz / Birleşik','Diagonal / combined']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
+  ]},
+];
+const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
+/* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
+   duplicate value inside a facet is dropped, a pattern ticked twice counts once. */
+function diMovePatterns(v){
+  const seen=new Set(),out=[];
+  (Array.isArray(v)?v:[]).forEach(x=>{
+    const id=typeof x==='string'?x:(x&&x.id);
+    const row=diMoveRow(id);
+    if(!row||seen.has(id))return;
+    seen.add(id);
+    const o={id};
+    row.facets.forEach(f=>{
+      const raw=x&&typeof x==='object'&&Array.isArray(x[f.k])?x[f.k]:[];
+      const ok=new Set(f.opts.map(op=>op[0]));
+      o[f.k]=[...new Set(raw.map(String))].filter(val=>ok.has(val));
+    });
+    out.push(o);
+  });
+  return out;
+}
+/* The movement_pattern values that count as this pick. A lower-body pattern dosed for
+   power or reactive strength is usually trained as a jump (trap bar jump, drop jump),
+   which the vocabulary files under Jump / Plyo — so for those goals that counts too. */
+function diMoveVocab(pick){
+  const row=diMoveRow(pick&&pick.id);
+  if(!row)return[];
+  const lower=row.id==='knee_dominant'||row.id==='hip_dominant';
+  const fast=(pick.goal||[]).some(g=>g==='power'||g==='reactive');
+  return lower&&fast?[...row.vocab,'Jump / Plyo']:[...row.vocab];
+}
+const diMoveLabel=id=>{const r=diMoveRow(id);return r?L(r.label[0],r.label[1]):String(id||'');};
+/* The values of one facet of a pick, as words. */
+function diMoveFacetText(pick,facet){
+  const byId=new Map(facet.opts.map(op=>[op[0],op]));
+  return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
+}
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -222,6 +331,7 @@ function diInstr(raw,src){
   });
   return{
     priorities:list(r.priorities).filter(id=>diPrioRow(id)),
+    patterns:diMovePatterns(r.patterns),
     must:list(r.must),avoid:list(r.avoid),
     constraints:cons,
     constraintValues:cv,
@@ -236,11 +346,12 @@ function diInstr(raw,src){
     notes:String(r.notes||''),
   };
 }
-/* The brief as the sheet reads it. "Ek kısıtlar" is no longer on the form, so a
-   constraint left on an older stored brief is not carried: nothing the coach can no
-   longer see or clear may still steer the JSON or fail the check. The engine keeps
-   reading constraints for any caller that passes them on purpose. */
-const diBrief=(raw,src)=>({...diInstr(raw,src),constraints:[],constraintValues:{},constraintNote:''});
+/* The brief as the sheet reads it. "Ek kısıtlar" and "Mutlaka olsun" are no longer on
+   the form (the movement-pattern field took the second one's place), so either one left
+   on an older stored brief is not carried: nothing the coach can no longer see or clear
+   may still steer the JSON or fail the check. The engine keeps reading both for any
+   caller that passes them on purpose. */
+const diBrief=(raw,src)=>({...diInstr(raw,src),must:[],constraints:[],constraintValues:{},constraintNote:''});
 /* A constraint value the coach typed, as a number a check can use. Deliberately
    forgiving about how it is written ("%60", "60 %", "RPE 7", "40kg", "12") and
    deliberately unforgiving about what it means: a figure whose unit cannot be told
@@ -265,7 +376,7 @@ function diConValue(kind,txt){
 }
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
-const diInstrFilled=i=>!!(i&&(i.priorities.length||i.must.length||i.avoid.length
+const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
   ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()));
 
 /* ---- The coach's own words on the test sheet ------------------------------
@@ -608,9 +719,28 @@ const diBlockedSet=blocked=>{
 /* The coach's brief as the model reads it — one shape, used by the request the job
    sends and by the "Sporcu Bilgilerini Al" export, so what the coach copies out is
    exactly what the programme writer would have been told. */
+/* The JSON key each facet of a pattern pick is written under. */
+const DI_MOVE_FACET_KEY={type:'type',side:'side_support',direction:'direction',goal:'strength_goal',task:'task'};
+function diMovePatternsForAI(list){
+  return(list||[]).map(p=>{
+    const row=diMoveRow(p.id);
+    if(!row)return null;
+    const o={id:p.id,pattern:L(row.label[0],row.label[1]),movement_pattern_values:diMoveVocab(p)};
+    row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[DI_MOVE_FACET_KEY[f.k]||f.k]=v;});
+    return o;
+  }).filter(Boolean);
+}
 function diBriefForAI(i){
+  const pats=diMovePatternsForAI(i.patterns);
   return{
     priorities:i.priorities.map(diPrioLabel),
+    movement_patterns:pats,
+    movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
+      'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
+      'Each filter given (type, side_support, direction, strength_goal, task) binds that exercise: choose only from the listed values '+
+      '(more than one value means any of them). A filter that is not given is your choice. strength_goal sets how the exercise is dosed '+
+      '(sets, reps, load, tempo, rest). The only reason to leave a pattern out is safety (a blocked pattern, pain, an injury restriction, '+
+      'avoid): then write the safest substitute and record it in flagged_conflicts with field "movement_patterns".':null,
     must_include:i.must,
     avoid:i.avoid,
     constraints:i.constraints.map(id=>{const c=diConRow(id);
@@ -636,6 +766,15 @@ function diBriefForAI(i){
 /* Extraction and validation. Rebuilt field by field rather than handed back as it
    arrived: anything the schema has no place for — an injury-risk figure, a confidence
    rating, a readiness score of its own — never leaves this function. */
+/* Which coach pattern an answer's tag names. The id is asked for; a model that wrote
+   the pattern's name instead ("Knee dominant", "Diz dominant") is read the same way. */
+function diMoveIdOf(v){
+  const k=diExName(v==null?'':String(v)).replace(/[\s_\-()]+/g,'');
+  if(!k||k==='null')return null;
+  const hit=DI_MOVE_PATTERNS.find(p=>[p.id,p.label[0],p.label[1]]
+    .some(x=>diExName(x).replace(/[\s_\-()]+/g,'')===k));
+  return hit?hit.id:null;
+}
 function diParseProgram(text){
   let s=(text||'').trim();
   const fence=s.match(/```(?:json)?\s*([\s\S]*?)```/);if(fence)s=fence[1].trim();
@@ -668,6 +807,7 @@ function diParseProgram(text){
           load:t(e.yuk),tempo:t(e.tempo),rest:t(e.dinlenme),rpe:t(e.rpe),
           equipment:t(e.ekipman),
           pattern:(()=>{const p=t(e.hareket_paterni);return p&&IV_PATTERNS.includes(p)?p:(p||'');})(),
+          coachPattern:diMoveIdOf(e.koc_paterni),
           why:t(e.gerekce),
           /* Which of the injected differentiators this exercise answers, by id. Kept
              as ids rather than as prose precisely so it can be checked: a sentence
@@ -740,13 +880,14 @@ const DI_EXT_SCHEMA={
         distance:'only if needed, otherwise leave empty',load:'e.g. 70% 1RM, 60 kg, bodyweight',rpe:"target RPE 1-10 (e.g. '7' or '6-7'); leave empty for mobility / activation",tempo:'only if needed',
         rest:'e.g. 90 s',equipment:"one item of the gym's equipment, or 'bodyweight'",
         movement_pattern:'one of movement_pattern_vocabulary, written exactly as listed',
+        coach_pattern:'the id of the coach_brief.movement_patterns item this exercise fulfils (e.g. knee_dominant); null if it fulfils none',
         rationale:'why this exercise for this athlete — which data / finding / instruction',
         basis:['D1'],
       }],
     }],
   },
   constraints_respected:['which coach instruction was followed, and how'],
-  flagged_conflicts:[{instruction:'the instruction that could not be applied',field:'must_include | avoid | constraints | session_duration_min | session_max_exercises',
+  flagged_conflicts:[{instruction:'the instruction that could not be applied',field:'movement_patterns | avoid | session_duration_min | session_max_exercises',
     rule:'which rule / pain / limit prevented it',decision:'what was done',alternative:'what was written instead'}],
   rationale:'short paragraph: the priority of the day and why these exercises were chosen',
   coach_warning:'one sentence, if there is something the coach should look at',
@@ -756,7 +897,7 @@ const DI_EXT_SCHEMA={
 const DI_EXT_TASK=[
   'Write ONE training session for the athlete in this JSON, for the date in session_day.',
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
-  'coach_brief is binding: must_include is in the session, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
+  'coach_brief is binding: every pattern in movement_patterns is in the session, written to the filters it carries (movement_patterns_rule says how), avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
@@ -764,7 +905,7 @@ const DI_EXT_TASK=[
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
-  'Safety comes first: when a coach_brief instruction (must_include included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
+  'Safety comes first: when a coach_brief instruction (a movement_patterns item included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
@@ -882,6 +1023,7 @@ function diExtNormalize(obj){
       dinlenme:str(pick(e,['dinlenme','rest','recovery'])),
       ekipman:str(pick(e,['ekipman','equipment'])),
       hareket_paterni:str(pick(e,['hareket_paterni','pattern','movement_pattern','patern','movementPattern'])),
+      koc_paterni:str(pick(e,['koc_paterni','coach_pattern','coachPattern','brief_pattern','required_pattern'])),
       gerekce:str(pick(e,['gerekce','gerekçe','rationale','reason','why','notlar','notes','not','aciklama','açıklama'])),
       dayanak:basis==null?[]:(Array.isArray(basis)?basis:String(basis).split(/[\s,;]+/)),
     };
@@ -1145,6 +1287,45 @@ function validateProgram(program,ctx){
   else if(i.duration&&est>i.duration)
     S(21,`Program yaklaşık ${est} dk sürer; kaynak seansın süresi ${i.duration} dk. (Antrenör bir süre girmedi.)`,
       `The session runs to roughly ${est} min against the source session's ${i.duration} min. (The coach set no length.)`);
+
+  /* ---- HARD (rule 22): the movement patterns the coach put in -------------
+     A ticked pattern is an instruction, not a hint: each one needs an exercise. The
+     answer's own tag (coach_pattern) is read first; an answer without tags is matched
+     on movement_pattern, one exercise per pattern, so one Push row cannot stand in for
+     both horizontal and vertical push. A pattern may be missing only for safety — when
+     today's pain has closed it, or when the answer declared why in flagged_conflicts —
+     and then it is a warning to read, not a failure. */
+  const pats=i.patterns||[];
+  if(pats.length){
+    const said=((program.conflicts)||[]).map(x=>diExName(`${x.talimat||''} ${x.alan||''} ${x.rule||''} ${x.alt||''}`));
+    const taken=new Set();
+    pats.forEach(p=>{
+      const row=diMoveRow(p.id);
+      if(!row)return;
+      const tr=row.label[0],en=row.label[1];
+      const vocab=diMoveVocab(p);
+      let hit=rows.find(r=>r.coachPattern===p.id&&!taken.has(r));
+      if(hit){
+        taken.add(hit);
+        const pat=patOf(hit);
+        if(pat&&!vocab.includes(pat))
+          S(22,`"${hit.name}" ${tr} paterni için yazılmış ama hareket paterni ${pat} — beklenen: ${vocab.join(' / ')}.`,
+            `"${hit.name}" is written for the ${en} pattern but filed as ${pat} — expected ${vocab.join(' / ')}.`);
+        return;
+      }
+      hit=rows.find(r=>!taken.has(r)&&!r.coachPattern&&vocab.includes(patOf(r)));
+      if(hit){taken.add(hit);return;}
+      const keys=[tr,en,p.id].map(diExName).filter(Boolean);
+      const flagged=said.some(d=>keys.some(k=>d.includes(k)));
+      const closed=row.vocab.every(v=>blockedSet.has(v));
+      if(flagged||closed)
+        S(22,`Antrenör ${tr} paterni istemişti; programda yok — ${closed?'bugünkü ağrı/kısıt bu paterni kapatıyor':'program gerekçesini çatışma olarak bildirmiş'}, kontrol et.`,
+          `The coach asked for the ${en} pattern and it is not in the session — ${closed?"today's pain / restriction closes that pattern":'the session declared why as a conflict'}; check it.`);
+      else
+        H(22,`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok (ve bir çatışma da bildirilmemiş).`,
+          `The coach asked for the ${en} pattern and the session has no exercise in it (nor a declared conflict).`);
+    });
+  }
 
   /* ---- HARD 8 (rule 28): the tier the session is held to ----------------- */
   const tier=bundle.tier||{};
