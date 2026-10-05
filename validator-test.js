@@ -824,6 +824,19 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const pm = trSnap.pain_and_injury.pain_map || [];
     check('ağrı haritası bölgeleri İngilizce', pm.some(r => r.region === 'Left front of knee' && r.side === 'left') &&
       pm.some(r => r.region === 'Neck'), JSON.stringify(pm));
+    /* Diz Push'a yönlendiriyor, hafif boyun ağrısı Push'u yükten alıyor: aynı desen iki listede birden olmamalı. */
+    const pj = trSnap.pain_and_injury;
+    check('ağrı: yükten alınacak desen önerilen desenler arasında yok',
+      pj.patterns_to_unload.includes('Push') && !(pj.preferred_patterns || []).some(p => pj.patterns_to_unload.includes(p)),
+      JSON.stringify([pj.patterns_to_unload, pj.preferred_patterns]));
+    /* Şiddeti sorulmamış bölge (çoklu seçim) "0 = ağrı yok" diye gitmiyor. */
+    const ungraded = A.diAthleteSnapshot({ ath: Object.assign({}, ath, { wellness: [...ath.wellness.slice(0, 1),
+      wellness(TODAY, 4, { painMap: { 'Sağ ayak bileği dışı': 0 } })] }), setup: SETUP, date: TODAY, instr, customTests: [] }).pain_and_injury;
+    const ug = (ungraded.current_pain || []).find(r => r.region === 'Ankle') || {};
+    check('ağrı: şiddetsiz bildirim 0 olarak değil, derecelendirilmemiş olarak yazılıyor',
+      ug.severity_graded === false && !('severity_0_5' in ug) && !('peak_pain_0_5' in ungraded) &&
+      (ungraded.pain_map || []).some(r => r.region === 'Right outer ankle' && r.severity_graded === false && !('severity_0_3' in r)),
+      JSON.stringify(ungraded.current_pain) + ' ' + JSON.stringify(ungraded.pain_map));
     const PB = require('./pain-body.js').PainBody;
     const badRegion = PB.REGIONS.filter(r => A.painRegionEn(r.k) !== r.en).map(r => r.k);
     check('ağrı bölgesi çevirisi pain-body.js kataloğunun tamamıyla aynı', PB.REGIONS.length > 60 && badRegion.length === 0,
