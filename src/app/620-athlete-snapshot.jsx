@@ -252,7 +252,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const brief=instr||diInstr(null,null);
   const deficitsX=diDeficits(a,ref);
   const diffsX=diDifferentiators(a,b,deficitsX,ref);
-  const blockedX=diBlockedPatterns(b);
+  const blockedX=diBlockedPatterns(b,brief);
   const blockedSetX=diBlockedSet(blockedX);
   const restrX=diRestrictions(b,brief);
   const plyoX=diPlyoCeiling(b);
@@ -264,7 +264,11 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const PRIO_EN={'yüksek':'High','orta':'Medium','düşük':'Low'};
   const limits={
     blocked_patterns:blockedX.map(x=>({region:x.bolge,severity_0_5:x.siddet_0_5,source:SRC_EN[x.kaynak]||x.kaynak,
-      standing:x.kalici,blocked_patterns:x.yasak_paternler,redirect_to_patterns:x.yonlendirilecek_paternler})),
+      standing:x.kalici,blocked_patterns:x.yasak_paternler,
+      opened_for_coach_patterns:x.acilan_paternler&&x.acilan_paternler.length?x.acilan_paternler:null,
+      redirect_to_patterns:x.yonlendirilecek_paternler})),
+    blocked_patterns_note:blockedX.some(x=>(x.acilan_paternler||[]).length)
+      ?'opened_for_coach_patterns: this region\'s pain would close these patterns, but the coach requires them today (coach_brief.movement_patterns). They are open: write them as pain-free, modified variations and say so in the rationale and coach_warning.':null,
     /* A pattern whose own name is a hard-restriction term ("squat" → Squat) is not
        offered as open: every exercise in it that says so in its name is blocked. */
     available_patterns:IV_PATTERNS.filter(p=>!blockedSetX.has(p)&&

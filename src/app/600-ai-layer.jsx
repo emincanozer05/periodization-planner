@@ -644,7 +644,19 @@ function diDeficits(ath,ref){
    rest of the app reads — so "knee at 3/5 means no knee-dominant work" is one rule
    here, not a special case. */
 const DI_PAIN_BLOCK=3;   // severity 0-5; the check-in's 0-3 grid maps 1/2/3 to 2/3/5
-function diBlockedPatterns(bundle){
+/* The movement_pattern values the coach's own pattern picks stand for. The coach has
+   seen today's pain on the card and still put these patterns in the session, so pain
+   no longer closes them: they are written as a modified, pain-free variation instead
+   of being dropped. Only the base vocabulary counts — a power goal does not open
+   Jump / Plyo on a painful joint. Injury-record restrictions and the keep-out list
+   are names, not patterns, and stay closed whatever is picked here. */
+function diCoachOpenSet(instr){
+  const s=new Set();
+  ((instr&&instr.patterns)||[]).forEach(p=>{const row=diMoveRow(p&&p.id);if(row)row.vocab.forEach(v=>s.add(v));});
+  return s;
+}
+function diBlockedPatterns(bundle,instr){
+  const open=diCoachOpenSet(instr);
   const out=[];
   ((bundle&&bundle.pain&&bundle.pain.regions)||[]).forEach(r=>{
     const sev=r.severity_0_5;
@@ -655,7 +667,8 @@ function diBlockedPatterns(bundle){
     out.push({bolge:r.label,siddet_0_5:sev,
       kaynak:r.standing?'koç kısıt etiketi':'check-in ağrı bildirimi',
       kalici:!!r.standing,
-      yasak_paternler:r.loads_patterns||[],
+      yasak_paternler:(r.loads_patterns||[]).filter(p=>!open.has(p)),
+      acilan_paternler:(r.loads_patterns||[]).filter(p=>open.has(p)),
       yonlendirilecek_paternler:r.redirect_patterns||[]});
   });
   return out;
@@ -739,8 +752,12 @@ function diBriefForAI(i){
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
       'Each filter given (type, side_support, direction, strength_goal, task) binds that exercise: choose only from the listed values '+
       '(more than one value means any of them). A filter that is not given is your choice. strength_goal sets how the exercise is dosed '+
-      '(sets, reps, load, tempo, rest). The only reason to leave a pattern out is safety (a blocked pattern, pain, an injury restriction, '+
-      'avoid): then write the safest substitute and record it in flagged_conflicts with field "movement_patterns".':null,
+      '(sets, reps, load, tempo, rest). PAIN NEVER REMOVES A PATTERN LISTED HERE: the coach has seen today\'s pain and still requires it, '+
+      'and these patterns are already left out of code_checked_limits.blocked_patterns (see opened_for_coach_patterns). When a listed pattern '+
+      'loads a painful region, write it as a pain-free, modified variation (reduced load and range of motion, controlled tempo, supported, '+
+      'isometric or unilateral on the pain-free side, no impact) and say so in its rationale and in coach_warning. Only an injury-record '+
+      'restriction (code_checked_limits.hard_restrictions) or the avoid list can keep a listed pattern out; then write the closest allowed '+
+      'variation of the same pattern and record it in flagged_conflicts with field "movement_patterns".':null,
     must_include:i.must,
     avoid:i.avoid,
     constraints:i.constraints.map(id=>{const c=diConRow(id);
@@ -897,15 +914,15 @@ const DI_EXT_SCHEMA={
 const DI_EXT_TASK=[
   'Write ONE training session for the athlete in this JSON, for the date in session_day.',
   'Reply with ONLY valid JSON in the structure given in output_format. Add no prose; do not rename any key.',
-  'coach_brief is binding: every pattern in movement_patterns is in the session, written to the filters it carries (movement_patterns_rule says how), avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
+  'coach_brief is binding: EVERY pattern in coach_brief.movement_patterns is in the session with at least one exercise, tagged with coach_pattern and written to the filters it carries (movement_patterns_rule says how) — a session missing one of them fails the code check; pain does not remove them, avoid is not (nor any variation of it), and neither session_duration_min nor session_max_exercises is exceeded (session_max_exercises is the TOTAL number of exercises in the session: preparation, main and complementary phases included). Put any instruction you could not apply in flagged_conflicts, with the reason.',
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list.',
   'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose.',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
-  'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region.',
-  'Safety comes first: when a coach_brief instruction (a movement_patterns item included) would load a painful or injured region, or break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts.',
+  'Read the test results and the test comments; address measured deficits in the preparation or complementary phase. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
+  'Safety comes first: when a coach_brief instruction would break a hard restriction or code_checked_limits, do not write it — write a safe alternative and record it in flagged_conflicts. The coach\'s movement_patterns are not dropped for pain: the coach has opened them for today, so write each one as a pain-free, modified variation of the same pattern.',
   'training_profile is the athlete\'s training profile; build the session on it. athletic_profile gives each physical quality\'s development priority for this period (High > Medium > Low): build the emphasis of the day from the High priorities, develop Medium priorities after High, and keep Low-priority and not_rated qualities at a maintenance dose; exercise_exposure shows what the athlete was exposed to, and how much, in the last session and over the last 7-14-28 days (including strength_movement_profile — how the strength work was spread over bilateral / unilateral, movement plane, push / pull action and contraction focus — and the equipment used). constraints.hard are strict rules: no exercise violates them. constraints.soft are preferences: follow them as far as possible.',
   'Aim for a multi-directional, varied programme over the week, not only within this one session, and in EVERY exercise category, not only strength: read exercise_exposure.category_coverage — for each category the athlete has trained (core, plyometric, medicine ball, mobility, upper-body push / pull, speed, hip / knee dominant, full body, stability, balance, corrective, accessory) it lists every facet the library files that category by (movement, direction, exercise type, position, technique, contraction focus, action, implement) with what was done (done) and what was not (not_done_last_7_days, not_done_last_28_days) — and read strength_movement_profile for the movement plane (sagittal / frontal / transverse), push / pull, contraction focus and bilateral / unilateral spread of the strength work. Do not keep writing the same value of a facet (for example anti-extension every time for core, vertical every time for jumps, one implement every time): when a category is in the session, prefer a value of its facets that was not done this week or in the last 28 days, provided it serves this athlete\'s priorities and needs today. Variety is a means, not a goal in itself: do not add exercises only for variety, do not repeat the same movement family twice in the main phase, and safety, constraints and code_checked_limits come first.',
   'Do not invent data; do not decide on anything listed under missing_data, do not diagnose, and do not write an injury-risk percentage.',
@@ -1206,7 +1223,7 @@ function validateProgram(program,ctx){
   });
 
   /* ---- HARD 2 (rule 17): patterns today's pain has closed ---------------- */
-  const blocked=diBlockedPatterns(bundle);
+  const blocked=diBlockedPatterns(bundle,i);
   const blockedSet=diBlockedSet(blocked);
   if(blockedSet.size)rows.forEach(r=>{
     const pat=patOf(r);
@@ -1315,15 +1332,16 @@ function validateProgram(program,ctx){
       }
       hit=rows.find(r=>!taken.has(r)&&!r.coachPattern&&vocab.includes(patOf(r)));
       if(hit){taken.add(hit);return;}
+      /* Pain does not excuse it — the coach's pick opens the pattern for today (diCoachOpenSet)
+         — so a missing pattern fails the brief even where the answer declared a reason. */
       const keys=[tr,en,p.id].map(diExName).filter(Boolean);
       const flagged=said.some(d=>keys.some(k=>d.includes(k)));
-      const closed=row.vocab.every(v=>blockedSet.has(v));
-      if(flagged||closed)
-        S(22,`Antrenör ${tr} paterni istemişti; programda yok — ${closed?'bugünkü ağrı/kısıt bu paterni kapatıyor':'program gerekçesini çatışma olarak bildirmiş'}, kontrol et.`,
-          `The coach asked for the ${en} pattern and it is not in the session — ${closed?"today's pain / restriction closes that pattern":'the session declared why as a conflict'}; check it.`);
-      else
-        H(22,`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok (ve bir çatışma da bildirilmemiş).`,
-          `The coach asked for the ${en} pattern and the session has no exercise in it (nor a declared conflict).`);
+      H(22,flagged
+        ?`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok — program bir çatışma bildirmiş, ancak antrenörün seçtiği patern zorunludur.`
+        :`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok (ve bir çatışma da bildirilmemiş).`,
+        flagged
+        ?`The coach asked for the ${en} pattern and the session has no exercise in it — it declared a conflict, but the coach's patterns are mandatory.`
+        :`The coach asked for the ${en} pattern and the session has no exercise in it (nor a declared conflict).`);
     });
   }
 
@@ -1449,6 +1467,14 @@ function validateProgram(program,ctx){
     S(26,`Ana fazda ${nm.length} ${diFamilyLabel(f)} egzersizi var (${nm.join(', ')}) — aynı iş iki kez yapılmış.`,
       `The main phase carries ${nm.length} ${diFamilyLabel(f)} exercises (${nm.join(', ')}) — the same work twice.`);
   });
+
+  /* A pattern the pain would close, opened because the coach requires it today: it is
+     in the session on purpose, and the coach should see that it loads a painful region. */
+  blocked.forEach(b=>(b.acilan_paternler||[]).forEach(pat=>rows.forEach(r=>{
+    if(patOf(r)!==pat)return;
+    S(17,`"${r.name}" ${pat} paterninde ve ${b.bolge} ${b.kalici?'kalıcı kısıtlı':`ağrılı (${b.siddet_0_5}/5)`} — antrenörün zorunlu paterni olduğu için yazıldı; ağrısız, modifiye bir varyasyon olduğunu kontrol et.`,
+      `"${r.name}" is a ${pat} movement and ${b.bolge} is ${b.kalici?'under a standing restriction':`painful (${b.siddet_0_5}/5)`} — written because the coach requires this pattern; check it is a pain-free, modified variation.`);
+  })));
 
   /* Pain below the blocking threshold is still worth a look where the session loads it. */
   ((bundle.pain&&bundle.pain.regions)||[]).forEach(p=>{

@@ -1700,8 +1700,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       vMiss.status === 'fail' && vMiss.hardViolations.some(h => h.rule === 22 && /Yatay çekiş|Horizontal pull/.test(h.text)), hardText(vMiss));
     const vDecl = validate(aiReply([ex()], { flagged_conflicts: [{ talimat: 'Horizontal pull', alan: 'movement_patterns',
       cakisan_kural: 'omuz ağrısı', karar: 'çıkarıldı', alternatif: 'Pallof Press' }] }), ath, want(['horizontal_pull']));
-    check('çatışma olarak bildirilen eksik patern uyarı, kaydı engellemez',
-      vDecl.status === 'pass' && vDecl.softWarnings.some(w => /Yatay çekiş|Horizontal pull/.test(w.text)), hardText(vDecl));
+    check('çatışma bildirilse de eksik zorunlu patern SERT ihlal (antrenörün paterni zorunlu)',
+      vDecl.status === 'fail' && vDecl.hardViolations.some(h => /Horizontal pull/.test(h.text) && /mandatory/.test(h.text)), hardText(vDecl));
     const vWrong = validate(aiReply([ex(), ex({ ad: 'Pallof Press', hareket_paterni: 'Core / Brace', koc_paterni: 'vertical_pull' })]),
       ath, want(['vertical_pull']));
     check('etiketlenen egzersizin paterni uyuşmuyorsa uyarı', vWrong.softWarnings.some(w => /Pallof Press/.test(w.text) && /Pull/.test(w.text)),
@@ -1713,6 +1713,26 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !softText(vJumpPow).includes('Trap Bar Jump" is written') && /Trap Bar Jump" is written/.test(softText(vJumpMax)) &&
       JSON.stringify(A.diBriefForAI(A.diBrief({ patterns: [{ id: 'knee_dominant', goal: ['reactive'] }] }, null)).movement_patterns[0].movement_pattern_values) ===
         '["Squat","Lunge / Unilateral","Jump / Plyo"]', softText(vJumpPow) + ' || ' + softText(vJumpMax));
+    /* Ağrı antrenörün seçtiği paterni düşürmez: o patern açılır, modifiye yazılır. */
+    const kneeAth = athlete({ wellness: [wellness(TODAY, 4, { pain: { knee: 3 } })] });
+    const vPainNo = validate(aiReply([ex()]), kneeAth, {});
+    const vPainCoach = validate(aiReply([ex({ koc_paterni: 'knee_dominant' })]), kneeAth, want(['knee_dominant']));
+    check('ağrı kapatıyor ama antrenör seçtiyse paterndeki egzersiz SERT ihlal değil, kontrol uyarısı',
+      vPainNo.status === 'fail' && vPainCoach.status === 'pass' &&
+      vPainCoach.softWarnings.some(w => /Goblet Squat/.test(w.text) && /coach requires|zorunlu/.test(w.text)), hardText(vPainCoach) + ' || ' + softText(vPainCoach));
+    const vPainMiss = validate(aiReply([ex({ ad: 'Barbell Row', hareket_paterni: 'Pull' })]), kneeAth, want(['knee_dominant']));
+    check('ağrılı bölgedeki zorunlu patern programda yoksa yine SERT ihlal (ağrı gerekçe değil)',
+      vPainMiss.status === 'fail' && vPainMiss.hardViolations.some(h => /Knee dominant|Diz dominant/.test(h.text)), hardText(vPainMiss));
+    const painSnap = A.diAthleteSnapshot({ ath: kneeAth, setup: SETUP, date: TODAY, instr: A.diBrief({ patterns: [{ id: 'knee_dominant' }] }, null), customTests: [] });
+    const kb = painSnap.code_checked_limits.blocked_patterns.find(x => (x.opened_for_coach_patterns || []).length);
+    check('JSON: ağrının kapattığı ama antrenörün seçtiği patern açılmış olarak yazılıyor',
+      !!kb && kb.opened_for_coach_patterns.includes('Squat') && !kb.blocked_patterns.includes('Squat') &&
+      painSnap.code_checked_limits.available_patterns.includes('Squat') && /coach requires/.test(painSnap.code_checked_limits.blocked_patterns_note) &&
+      /PAIN NEVER REMOVES/.test(painSnap.coach_brief.movement_patterns_rule) && painSnap.task.some(t => /pain does not remove them/.test(t)),
+      JSON.stringify(painSnap.code_checked_limits.blocked_patterns));
+    const painSnap0 = A.diAthleteSnapshot({ ath: kneeAth, setup: SETUP, date: TODAY, instr: A.diBrief(null, null), customTests: [] });
+    check('patern seçilmediyse ağrı paterni kapatmaya devam ediyor',
+      painSnap0.code_checked_limits.blocked_patterns.some(x => x.blocked_patterns.includes('Squat')) && !painSnap0.code_checked_limits.blocked_patterns_note);
     check('etiket ad olarak yazılsa da okunuyor', A.diMoveIdOf('Knee dominant') === 'knee_dominant' &&
       A.diMoveIdOf('Diz dominant') === 'knee_dominant' && A.diMoveIdOf('Carry') === 'carry' && A.diMoveIdOf(null) === null &&
       A.diMoveIdOf('vertical_pull') === 'vertical_pull');
