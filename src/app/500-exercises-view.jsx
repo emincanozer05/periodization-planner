@@ -1,6 +1,7 @@
 function ExercisesView({data,setData}){
-  const[libTab,setLibTab]=useState('sc');       // 'sc' | 'ball' — which shelf is open
-  const ball=libTab==='ball';
+  /* The library is the S&C shelf only. Ball-practice drills (lib:'ball') stay stored —
+     the ball-practice blocks still name them — but are no longer a library section. */
+  const libTab='sc';
   const allEx=data.exercises||[];
   const exercises=useMemo(()=>allEx.filter(e=>exLib(e)===libTab),[allEx,libTab]);
   // Writes go back into the ONE list the app stores: the shelf is a view of it, never a
@@ -14,11 +15,8 @@ function ExercisesView({data,setData}){
   const[openId,setOpenId]=useState(null);
   const[mdBusy,setMdBusy]=useState(false);
   const openCard=useCallback(id=>setOpenId(id),[]);   // stable, so the memoised cards hold
-  // The two shelves have different categories, so a filter set on one means nothing on
-  // the other — switching shelves lands on that shelf's own landing page.
-  const TYPES=ball?BALL_TYPES:EX_TYPES;
-  const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
-  const switchLib=t=>{if(t===libTab)return;setLibTab(t);setActiveType(null);setFilt({});setQ('');setOpenId(null);};
+  const TYPES=EX_TYPES;
+  const SUBS=SUB_TYPES;
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
   /* Muscles the coach typed that the fixed list does not carry, kept on the account so
@@ -31,10 +29,9 @@ function ExercisesView({data,setData}){
       return{...prev,customMuscles:[...cur,v]};}),
     onForgetMuscle:m=>setData(prev=>({...prev,customMuscles:(Array.isArray(prev.customMuscles)?prev.customMuscles:[]).filter(x=>x!==m)})),
   };
-  const remove=id=>{if(window.confirm(ball?L('Bu dril silinsin mi?','Delete this drill?'):L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
+  const remove=id=>{if(window.confirm(L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
   const addExercise=type=>{const t=type||activeType||'';
-    const e={id:uid(),name:'',lib:libTab,type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',
-      ...(ball?{court:emptyScene(),players:''}:{})};
+    const e={id:uid(),name:'',lib:libTab,type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};
     setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
@@ -55,7 +52,7 @@ function ExercisesView({data,setData}){
   const downloadLibPdf=async()=>{
     if(mdBusy)return;
     setMdBusy(true);
-    try{await downloadExLibraryPDF(exercises,{ball,libTab});}
+    try{await downloadExLibraryPDF(exercises,{ball:false,libTab});}
     catch(e){console.warn('library PDF failed',e);
       alert(L('PDF oluşturulamadı — bağlantını kontrol edip tekrar dene.','The PDF could not be created — check your connection and try again.'));}
     finally{setMdBusy(false);}};
@@ -63,7 +60,7 @@ function ExercisesView({data,setData}){
   const downloadLibTxt=async()=>{
     if(mdBusy)return;
     setMdBusy(true);
-    try{await downloadExLibraryText(exercises,{ball,libTab});}
+    try{await downloadExLibraryText(exercises,{ball:false,libTab});}
     catch(e){console.warn('library text failed',e);
       alert(L('Metin dosyası oluşturulamadı — tekrar dene.','The text file could not be created — try again.'));}
     finally{setMdBusy(false);}};
@@ -73,20 +70,8 @@ function ExercisesView({data,setData}){
     {id:'txt',label:L('Metin (.txt)','Text (.txt)'),run:downloadLibTxt,
       hint:L('AI projesine referans dosyası olarak yüklenir','The reference file an AI project is loaded with')},
   ]}/>;
-  const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
-  /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
-     both the coach's library, and which one is open should never be something to hunt
-     for in a dropdown. */
-  const libSplit=(
-    <div className="lib-split">
-      <button type="button" className={libTab==='sc'?'on':''} onClick={()=>switchLib('sc')}>
-        🏋 {L('Kuvvet ve Kondisyon','Strength & Conditioning')} <b>{scN}</b></button>
-      <button type="button" className={ball?'on ball':''} onClick={()=>switchLib('ball')}>
-        🏀 {L('Top Çalışması','Ball Practice')} <b>{ballN}</b></button>
-    </div>);
   // Top-right category dropdown (label → the active shelf's own category values).
-  const CAT_OPTIONS=ball?BALL_TYPES.map(t=>[t,t])
-    :[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
+  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
   // Every option carries its exercise count in parentheses, so the coach sees how
   // full each category is without opening it.
   const catDropdown=(
@@ -108,20 +93,17 @@ function ExercisesView({data,setData}){
       <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <PageHero title={L('Egzersiz Kütüphanesi','Exercise Library')}
-        sub={ball?L('Top antrenmanı drilleri · tüm kategoriler','Ball-practice drills · all categories')
-                 :L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
-        stats={[{v:exercises.length,l:ball?L('Dril','Drills'):L('Egzersiz','Exercises')},
+        sub={L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
+        stats={[{v:exercises.length,l:L('Egzersiz','Exercises')},
                 {v:allEx.length,l:L('Kütüphane toplamı','Library total')}]}/>
       <div className="ex-toolbar">
-        {libSplit}
         {catDropdown}
-        <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
-        <button className="btn sm white" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+        <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercises…')}/></div>
+        <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
       </div>
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
-        ?(ball?L('Henüz dril yok. ＋ Dril Ekle ile başla — ya da bir top çalışması bloğunda çizip oradan kaydet.','No drills yet. Start with ＋ Add Drill — or draw one in a ball practice block and save it from there.')
-              :L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.'))
+        ?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.')
         :L('Aramanla eşleşen sonuç yok.','Nothing matches your search.')}</div>}
       <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
@@ -134,7 +116,7 @@ function ExercisesView({data,setData}){
   /* Every filter this category carries, in the order they are read: the sub-type first,
      then Hip / Knee Dominant's Action and Movement Pattern, then the category's own
      extras (EX_EXTRA_FILTERS). Each one filters on the entry field named by `key`. */
-  const lift=!ball&&!isUncat;
+  const lift=!isUncat;
   const dims=[
     sub&&{key:'subType',label:sub.label,values:sub.values},
     lift&&ACTIONS_FOR[activeType]&&{key:'action',label:'Action',values:ACTIONS_FOR[activeType]},
@@ -163,10 +145,9 @@ function ExercisesView({data,setData}){
       </div>
     </div>
     <div className="ex-toolbar">
-      {libSplit}
       {catDropdown}
       <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
-      <button className="btn sm white" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+      <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
     <div className="exf-bar">
@@ -177,8 +158,8 @@ function ExercisesView({data,setData}){
     </div>
     {list.length===0&&<div className="ex-empty">{(filtered||q)
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
-      :(ball?L('Bu kategoride dril yok. ','No drills in this category. '):L('Bu kategoride egzersiz yok. ','No exercises in this category. '))}
-      {L('Eklemek için','Add one with')} <b>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
+      :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
+      {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
   </div>);

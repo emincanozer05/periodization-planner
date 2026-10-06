@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'diVolumeAdj', 'DI_INTENSITY'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1478,10 +1478,14 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   {
     // Şablon: her eklemin tek ihtiyacı var — stabil eklemler stabilite, mobil eklemler mobilite.
     const need = id => A.ATP_JOINTS.find(j => j.id === id).need;
-    check('şablon: 11 eklem, çift taraflılar sağ / sol — 19 satır; stabil ve mobil eklemler',
-      A.ATP_JOINTS.length === 11 && A.ATP_JOINT_ROWS.length === 19 &&
+    check('şablon: 12 eklem (torasik ekstansiyon ve rotasyon ayrı), çift taraflılar sağ / sol — 20 satır; stabil ve mobil eklemler',
+      A.ATP_JOINTS.length === 12 && A.ATP_JOINT_ROWS.length === 20 && !A.ATP_JOINTS.some(j => j.id === 'thoracic') &&
       ['foot', 'knee', 'lumbar', 'scapula', 'elbow'].every(id => need(id) === 'stability') &&
-      ['ankle', 'hip', 'thoracic', 'cervical', 'shoulder', 'wrist'].every(id => need(id) === 'mobility'));
+      ['ankle', 'hip', 'thoracic_ext', 'thoracic_rot', 'cervical', 'shoulder', 'wrist'].every(id => need(id) === 'mobility'));
+    // Eski tek "thoracic" kaydı iki harekete de taşınıyor; yeni anahtar varsa o geçerli.
+    const jt = A.atpRead({ trainingProfile: { joints: { thoracic: { level: 'medium', note: 'kifoz' }, thoracic_rot: { level: 'high' } } } });
+    check('eski torasik kayıt ekstansiyona taşınıyor, rotasyonun kendi kaydı korunuyor',
+      JSON.stringify(jt.joints) === JSON.stringify({ thoracic_ext: { level: 'medium', note: 'kifoz' }, thoracic_rot: { level: 'high' } }), JSON.stringify(jt.joints));
     // Okuma: yalnızca şablondaki eklem / taraf ve üç düzey; eklemin kendi ihtiyacı dışındaki değer okunmuyor.
     const jr = A.atpRead({ trainingProfile: { joints: {
       knee_l: { level: 'high', note: 'valgus çöküşü' }, knee_r: { mobility: 'high' }, hip_r: { mobility: 'medium' },
@@ -1509,6 +1513,68 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('AI talimatı joint_needs\'i hazırlık ve rehabilitasyona bağlıyor', js.task.some(g => /joint_needs/.test(g) && /preparation phase/.test(g)));
     const jb = A.diAthleteSnapshot({ ath: athlete(), setup: SETUP, date: TODAY, instr: A.diInstr(null, { duration: null }), customTests: [], libMap });
     check('JSON: eklem ihtiyacı yoksa joint_needs anahtarı hiç yok', !('joint_needs' in (jb.training_profile || {})));
+  }
+
+  group('Ek — Talimat: hacim ve yoğunluk antrenörün elinde');
+  {
+    const n = A.diInstr({ volume: 10, intensity: 'high' }, { duration: null });
+    check('hacim ve yoğunluk normalleşiyor; boş / aralık dışı / bilinmeyen değer "oto"',
+      n.volume === 10 && n.intensity === 'high' && A.diInstr({ volume: 0 }, null).volume === 0 &&
+      A.diInstr({ volume: 80, intensity: 'max' }, null).volume === null && A.diInstr({ volume: 80, intensity: 'max' }, null).intensity === null &&
+      A.diInstr({ volume: '' }, null).volume === null && A.diBrief({ volume: -25, intensity: 'low' }, null).volume === -25);
+    const auto = { pct: -40, raw: -40, floored: false, floor: -50, reasons: [{ id: 'md', pct: -40, label: 'Maç günü' }] };
+    const ov = A.diVolumeAdj(auto, n), keep = A.diVolumeAdj(auto, A.diInstr(null, null));
+    check('antrenörün hacmi sistemin ayarının yerine geçiyor, sistemin değeri saklanıyor',
+      ov.pct === 10 && ov.coach && ov.auto === -40 && ov.reasons.length === 1 && keep.pct === -40 && !keep.coach);
+    const up = A.diAdjustRow({ sets: '3', reps: '6' }, 20), up2 = A.diAdjustRow({ sets: null, reps: '10' }, 20);
+    check('artı hacim seti (yoksa tekrarı) artırıyor: 3 set +%20 → 4, 10 tekrar → 12',
+      up.sets === '4' && up.changed && up2.reps === '12', JSON.stringify([up, up2]));
+    const ath = athlete({ wellness: [wellness(TODAY, 4.2)] });
+    const snapOf = raw => A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr: A.diBrief(raw, { duration: null }), customTests: [], libMap });
+    const js = snapOf({ volume: -25, intensity: 'moderate' });
+    const lim = js.code_checked_limits, cb = js.coach_brief;
+    check('JSON: code_checked_limits antrenörün hacmini ve RPE tavanını taşıyor',
+      lim.volume_adjustment_pct === -25 && lim.volume_adjustment_source === 'coach' && lim.system_volume_adjustment.pct === 0 &&
+      lim.session_fatigue_budget.max_target_rpe === 7 && lim.session_fatigue_budget.max_target_rpe_source === 'coach',
+      JSON.stringify([lim.volume_adjustment_pct, lim.volume_adjustment_source, lim.system_volume_adjustment, lim.session_fatigue_budget]));
+    check('JSON: coach_brief hacim, yoğunluk ve kuralı yazıyor',
+      cb.volume_adjustment_pct === -25 && cb.intensity.level === 'Moderate' && cb.intensity.target_rpe === 'RPE 7' &&
+      /binding/.test(cb.volume_intensity_rule || ''), JSON.stringify(cb));
+    const js0 = snapOf(null);
+    check('JSON: oto bırakılınca sistemin ayarı geçerli, coach_brief\'te hacim / yoğunluk yok',
+      js0.code_checked_limits.volume_adjustment_source === 'system' && !('system_volume_adjustment' in js0.code_checked_limits) &&
+      ['volume_adjustment_pct', 'intensity', 'volume_intensity_rule'].every(k => !(k in (js0.coach_brief || {}))));
+    const vi = validate(aiReply([ex({ rpe: '9' })]), ath, { rawInstr: { intensity: 'low' } });
+    check('yoğunluk "Düşük" iken RPE 9 satırı uyarı veriyor, yazımı engellemiyor',
+      vi.status === 'pass' && /RPE 5–6/.test(softText(vi)), softText(vi));
+    const vok = validate(aiReply([ex({ rpe: '6' })]), ath, { rawInstr: { intensity: 'low' } });
+    check('bandın içindeki RPE uyarı vermiyor', !/RPE 5–6/.test(softText(vok)), softText(vok));
+  }
+
+  group('Ek — ACWR: her sporcunun kendi yükünden, yük panosunun okuduğu sayı');
+  {
+    const REF = '2026-10-06';
+    const day = i => A.fmt(A.addD(A.parseD(REF), -i));
+    // daysAgo → AU, sRPE kaydı olarak (S&C yuvasına)
+    const ath = m => ({ id: 'x', srpeLog: Object.entries(m).map(([i, au]) => ({ date: day(+i), scRPE: 5, scDuration: au / 5, scLoad: au, totalLoad: au })), days: {} });
+    const range = (from, to, au) => Object.fromEntries(Array.from({ length: to - from + 1 }, (_, k) => [from + k, au]));
+    const r2 = v => Math.round(v * 100) / 100;
+    check('her gün 500 AU, 28 gün: ACWR 1.00', r2(A.athACWR(ath(range(0, 27, 500)), REF)) === 1);
+    check('3 hafta 300 AU/gün, son hafta 600 AU/gün: 4200 / ((6300+4200)/4) = 1.60',
+      r2(A.athACWR(ath({ ...range(7, 27, 300), ...range(0, 6, 600) }), REF)) === 1.6, String(A.athACWR(ath({ ...range(7, 27, 300), ...range(0, 6, 600) }), REF)));
+    check('28 günden eski yük sayılmıyor', r2(A.athACWR(ath({ ...range(0, 27, 500), 28: 9000, 40: 9000 }), REF)) === 1);
+    check('yalnız son 3 günde yük (kısa geçmiş): kronik geçmişin kendisine bölünüyor, 4.00 değil 1.00',
+      r2(A.athACWR(ath(range(0, 2, 700)), REF)) === 1);
+    check('2 hafta önce tek yük + son 2 gün: (2×700) / ((2×700+700)/(15/7)) = 1.43',
+      r2(A.athACWR(ath({ 0: 700, 1: 700, 14: 700 }), REF)) === 1.43, String(A.athACWR(ath({ 0: 700, 1: 700, 14: 700 }), REF)));
+    const idle = ath(range(10, 20, 400));
+    check('son 7 gün boş, öncesi yüklü: ACWR 0 ve bölge "Low" (veri yok değil)',
+      A.athACWR(idle, REF) === 0 && A.loadWindows(k => A.athDayLoad(idle, k), REF).ch > 0 &&
+      A.acwrZoneOf(0, true).t === 'Low' && A.acwrZoneOf(0).t === 'No data');
+    // Takvim yalnızca o gün sRPE kaydı yoksa okunuyor — iki kaynak aynı günü iki kez saymıyor.
+    const both = { id: 'y', srpeLog: [{ date: day(0), totalLoad: 600 }],
+      days: { [day(0)]: { sessions: [{ au: 900 }] }, [day(1)]: { sessions: [{ sRPE: 6, duration: 50 }] } } };
+    check('günlük yük: sRPE kaydı önce, takvim yalnız kaydı olmayan günde', A.athDayLoad(both, day(0)) === 600 && A.athDayLoad(both, day(1)) === 300);
   }
 
   group('Ek — Aylık çıktı: özelliklere göre yüklenme tablosu');

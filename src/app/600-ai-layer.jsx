@@ -185,6 +185,31 @@ const diConRow=id=>DI_CONSTRAINT_TYPES.find(c=>c.id===id)||null;
    fits the slot on the calendar. */
 const DI_DUR_CHOICES=[30,45,60,75,90];
 const DI_EX_CHOICES=[4,6,8,10];
+/* Volume and intensity, the coach's own call for the day. Volume is a percentage on the
+   session's normal dose; left on auto, the engine's readiness / game / pain adjustment
+   (diLoadAdjust) stands. Set, the coach's figure REPLACES that adjustment everywhere it
+   is read — the card, the JSON and the dose written to the calendar — and, unlike the
+   engine, it may add volume as well as take it away. Intensity is a target-RPE band for
+   the working sets; set, it is the session's RPE ceiling in place of the fatigue
+   budget's. */
+const DI_VOL_CHOICES=[-40,-25,-10,0,10,20];
+const DI_VOL_MIN=-50,DI_VOL_MAX=30;
+const DI_INTENSITY=[
+  {id:'low',     label:['Düşük','Low'],     en:'Low',     rpe:[5,6]},
+  {id:'moderate',label:['Orta','Moderate'], en:'Moderate',rpe:[7,7]},
+  {id:'high',    label:['Yüksek','High'],   en:'High',    rpe:[8,9]},
+];
+const diIntensityRow=id=>DI_INTENSITY.find(x=>x.id===id)||null;
+const diRpeBand=r=>r.rpe[0]===r.rpe[1]?`RPE ${r.rpe[0]}`:`RPE ${r.rpe[0]}–${r.rpe[1]}`;
+/* The adjustment that is actually in force: the coach's volume when the brief sets one,
+   otherwise the engine's. `auto` keeps the engine's figure so it can still be shown. */
+function diVolumeAdj(adj,instr){
+  const a=adj||{pct:0,raw:0,floored:false,floor:DI_ADJ_FLOOR,reasons:[]};
+  const v=instr?instr.volume:null;
+  if(v==null)return{...a,coach:false,auto:a.pct};
+  return{...a,pct:v,coach:true,auto:a.pct,
+    reasons:[{id:'coach',pct:v,label:L(`Antrenör ayarı (${v>0?'+':''}${v}%)`,`Set by the coach (${v>0?'+':''}${v}%)`)}]};
+}
 
 /* ---- Movement patterns the coach puts in the session -----------------------
    The brief's second field. A pattern ticked here is IN the session — not a wish the
@@ -379,6 +404,10 @@ function diInstr(raw,src){
     /* Carried through normalisation so a re-read of a stored brief still knows which
        of the two numbers is an instruction and which is a fallback. */
     durationSet:durSet,maxExercisesSet:maxSet,
+    /* null = auto. A figure outside the range is read as not set, never clamped into it:
+       a stored +80 is a typo, not an instruction. */
+    volume:(()=>{const v=recNum(r.volume);return v!=null&&Number.isInteger(v)&&v>=DI_VOL_MIN&&v<=DI_VOL_MAX?v:null;})(),
+    intensity:diIntensityRow(r.intensity)?r.intensity:null,
     /* Kept as typed. The box writes through this on every keystroke and reads the
        result back: trimming here took the space off the end of "word " the moment it
        was typed, and the box, seeing a different value come back, jumped the caret. */
@@ -416,7 +445,7 @@ function diConValue(kind,txt){
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
 const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
-  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()));
+  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity));
 
 /* ---- The coach's own words on the test sheet ------------------------------
    The battery is not only numbers. The posture box, the overhead-squat box and the
@@ -821,6 +850,13 @@ function diBriefForAI(i){
         limit_checked_by_code:!!(v&&v.readable),
         limit_unit:v&&v.readable?v.unit:null};}),
     constraint_details:i.constraintNote||null,
+    /* Null = the coach left it on auto (code_checked_limits carries the engine's figure). */
+    volume_adjustment_pct:i.volume==null?null:i.volume,
+    intensity:(()=>{const r=diIntensityRow(i.intensity);
+      return r?{level:r.en,target_rpe:diRpeBand(r),target_rpe_min:r.rpe[0],target_rpe_max:r.rpe[1]}:null;})(),
+    volume_intensity_rule:(i.volume!=null||i.intensity)?'Set by the coach for this athlete today and binding. '+
+      (i.volume!=null?`volume_adjustment_pct: change the dose a normal day would carry by ${i.volume>0?'+':''}${i.volume}% (sets first, then reps / duration) — it replaces the system's own volume adjustment and is the figure in code_checked_limits.volume_adjustment_pct. `:'')+
+      (i.intensity?'intensity: dose every main-phase working set at target_rpe — no working set above target_rpe_max, and the main work not easier than target_rpe_min; preparation work may sit below it. Write the RPE on every row.':''):null,
     session_duration_min:i.duration,
     /* The ceiling binds the WHOLE session: preparation, main and complementary rows
        all count, so the number the coach picks is the number the athlete sees. */
@@ -974,7 +1010,7 @@ const DI_EXT_TASK=[
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list. differentiators are listed most decisive first: the game, current pain, a same-day team practice and the development priorities change today\'s session the most.',
-  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
+  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons, or, when volume_adjustment_source is "coach", the coach\'s own figure from coach_brief, which replaces them. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'measured_deficits and the test comments are observations, not diagnoses: do not infer a cause from them and do not turn them into exercises automatically (no "finding → assumed cause → corrective exercise" chain). Weigh them with everything above them in decision_hierarchy and address one only where it fits today\'s session. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
@@ -996,7 +1032,7 @@ const DI_EXT_TASK_SQUAD=[
   ...DI_EXT_TASK.slice(2).map(x=>x
     .replace('coach_brief is binding','Each athlete\'s own coach_brief is binding')
     .replace('Respect the limits in code_checked_limits','Respect the limits in each athlete\'s own code_checked_limits')
-    .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for that athlete on this day')
+    .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment for that athlete on this day')
     .replace('as one in recent_programs','as one in that athlete\'s recent_programs')
     .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')
     .replace('inside code_checked_limits.session_fatigue_budget','inside that athlete\'s own code_checked_limits.session_fatigue_budget')),
@@ -1465,12 +1501,24 @@ function validateProgram(program,ctx){
     if(costly.length&&(fb.budget!=='moderate'||costly.length>1))
       S(null,`Yorgunluk bütçesi ${fb.budget} (${why}), ama programda toparlanması pahalı iş var: ${costly.map(r=>r.name).join(', ')}.`,
         `The fatigue budget is ${fb.budget} (${why}), yet the session carries work that is costly to recover from: ${costly.map(r=>r.name).join(', ')}.`);
-    const rpeHi=fb.max_rpe==null?[]:rows.filter(r=>{
+    /* The coach's intensity, when set, is the ceiling instead (checked below). */
+    const rpeHi=(fb.max_rpe==null||diIntensityRow(i.intensity))?[]:rows.filter(r=>{
       const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
       return n&&Math.max(...n.map(Number))>fb.max_rpe;});
     if(rpeHi.length)
       S(null,`Yorgunluk bütçesi ${fb.budget} (${why}) hedef RPE'yi ${fb.max_rpe} ile sınırlıyor; aşan satırlar: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
         `The ${fb.budget} fatigue budget (${why}) caps target RPE at ${fb.max_rpe}; rows above it: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
+  }
+
+  /* The coach's intensity: no row's target RPE above the band. A warning, like the
+     budget's ceiling it replaces — RPE is the model's prescription, not a measured load. */
+  const intR=diIntensityRow(i.intensity);
+  if(intR){
+    const over=rows.filter(r=>{const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
+      return n&&Math.max(...n.map(Number))>intR.rpe[1];});
+    if(over.length)
+      S(null,`Antrenörün yoğunluk ayarı ${L(intR.label[0],intR.label[1])} (${diRpeBand(intR)}); aşan satırlar: ${over.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
+        `The coach set intensity to ${intR.en} (${diRpeBand(intR)}); rows above it: ${over.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
   }
 
   /* Free text is always allowed (rule 29, and the spec says so twice). Recorded so

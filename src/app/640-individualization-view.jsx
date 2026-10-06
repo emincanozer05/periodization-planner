@@ -88,7 +88,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      automatic pass and the button go through here, so there is exactly one answer to
      "what reaches the athlete", and it is the coach's. */
   const reviewOf=p=>diReadReview(team,activeKey,p.ath.id,date);
-  const pctFor=p=>{const b=bundles[p.ath.id];return(b&&b.adjustment&&b.adjustment.pct)||0;};
+  /* The coach's volume from the day's brief, when set, replaces the engine's adjustment. */
+  const pctFor=p=>{const b=bundles[p.ath.id];const r=reviewOf(p);
+    return diVolumeAdj(b&&b.adjustment,diBrief(r&&r.instr,p.meta)).pct||0;};
   /* THE LAST GATE, AND THE ONE THAT ACTUALLY GUARDS THE DATABASE.
      Everything above it is a screen the coach reads; this is the check that runs on
      the exact programme about to be written, with the athlete's data as it stands at

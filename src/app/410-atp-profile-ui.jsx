@@ -301,7 +301,7 @@ const ATP_JB_HALF={
 };
 /* Where each joint sits on the right of the picture (mirrored for the other side). */
 const ATP_JB_AT={cervical:[100,54],scapula:[121,104],shoulder:[141,88],elbow:[150,158],wrist:[158,230],
-  thoracic:[100,124],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
+  thoracic_ext:[100,116],thoracic_rot:[100,144],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
 /* x on the picture: the front shows the athlete's right on the left, the back on the right. */
 const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
   if(!r.side)return[x,y];
@@ -328,6 +328,7 @@ function AtpMannequin({view,joints,sel,onPick}){
       <circle className="atp-jb-hit" r="13"/>
       {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
       <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
+      {r.joint.mk&&<text className="atp-jb-mk" textAnchor="middle" dy="2.6">{r.joint.mk}</text>}
     </g>);
   };
   const front=view==='front';

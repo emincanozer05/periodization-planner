@@ -179,7 +179,9 @@ function athLatestDate(a){let m='';(a.srpeLog||[]).forEach(e=>{if(e.date&&e.date
   (a.wellness||[]).forEach(w=>{if(w.date&&w.date>m)m=w.date;});return m||fmt(today);}
 function athWellnessVal(a,field,ref){const ws=(a.wellness||[]).filter(w=>w.date&&w[field]!==''&&w[field]!=null&&(!ref||w.date<=ref))
   .sort((x,y)=>x.date.localeCompare(y.date));return ws.length?Number(ws[ws.length-1][field]):null;}
-function acwrZoneOf(v){return v===0?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
+/* `has` = the athlete has load in the 28-day window. Without it a 0 is read as "no data";
+   with it, 0 is a real ACWR — nothing in the last 7 days after a loaded month — and Low. */
+function acwrZoneOf(v,has=v!==0){return !has?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
   :v>1.5?{t:'High risk',c:'#f43f5e',dot:'#f43f5e'}
   :(v>=0.8&&v<=1.3)?{t:'Optimal',c:'#2dd4a7',dot:'#2dd4a7'}
   :v<0.8?{t:'Low',c:'#f59e0b',dot:'#f59e0b'}
@@ -351,15 +353,19 @@ function MonoBar({value}){
   </div>);
 }
 
-/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, ACWR, readiness & RHR */
+/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, readiness & ACWR.
+   The ACWR is athACWR at the board's reference day — the same number the zone, the risk
+   alerts and the individualization snapshot read — shown to two decimals, "—" with no
+   load in the 28-day window. */
 function AthleteLoadBoard({athletes,refDate}){
   const[lbSort,setLbSort]=useState('load');
   const ref=refDate||fmt(today);
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
-    return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),
-      rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
+    const w=loadWindows(k=>athDayLoad(a,k),ref);
+    return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),has:w.ch>0,
+      rd:athWellnessVal(a,'readiness',ref)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
   const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
@@ -381,16 +387,16 @@ function AthleteLoadBoard({athletes,refDate}){
           <th><div className="lb-rpe-hd">{L('7 günlük RPE','7-day RPE')}
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
-          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r">RHR</th>
+          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
-        <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
+        <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
           <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
           <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
-          <td className="r"><span className="lb-rhr">{r.rhr!=null?Math.round(r.rhr):'—'}</span></td>
+          <td className="r"><span className="lb-acwr" style={{color:r.has?z.c:undefined}}>{r.has?r.acwr.toFixed(2):'—'}</span></td>
         </tr>);})}</tbody>
       </table>
     </div>}

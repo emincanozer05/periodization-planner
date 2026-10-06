@@ -215,15 +215,52 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
   </div>);
 }
 
-/* The brief. Six fields, none of them required, and the line under the heading says
+/* Volume and intensity on one card: two rows of buttons, auto first. Auto leaves the
+   engine's adjustment (shown on the button) and the fatigue budget's RPE ceiling in
+   force; anything else is the coach's figure for the day (diVolumeAdj, diIntensityRow).
+   Pressing the button that is on goes back to auto. */
+function DiVolIntPicker({volume,intensity,autoVol,onChange}){
+  const sg=v=>`${v>0?'+':''}${v}%`;
+  const ir=diIntensityRow(intensity);
+  return(<div className="di-vi">
+    <div className="di-vi-row">
+      <span className="di-vi-k">{L('Hacim %','Volume %')}</span>
+      <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
+        <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
+          title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
+          onClick={()=>onChange({volume:null})}>{L('Oto','Auto')}</button>
+        {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
+          title={v===0?L('Normal doz','Normal dose'):sg(v)}
+          onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+      </div>
+    </div>
+    <div className="di-vi-row">
+      <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
+      <div className="di-numbtns" role="group" aria-label={L('Yoğunluk','Intensity')}>
+        <button type="button" className={'di-numb'+(!intensity?' on':'')} aria-pressed={!intensity}
+          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}</button>
+        {DI_INTENSITY.map(r=><button key={r.id} type="button" className={'di-numb'+(intensity===r.id?' on':'')}
+          aria-pressed={intensity===r.id} title={diRpeBand(r)}
+          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}</button>)}
+      </div>
+    </div>
+    <div className="di-vi-sum">{[
+      volume==null?L(`Hacim: sistem önerisi (${autoVol?sg(autoVol):'ayar yok'})`,`Volume: system (${autoVol?sg(autoVol):'no adjustment'})`)
+        :L(`Hacim ${volume===0?'normal':sg(volume)}`,`Volume ${volume===0?'normal':sg(volume)}`),
+      ir?L(`çalışma setleri ${diRpeBand(ir)}`,`working sets at ${diRpeBand(ir)}`):L('yoğunluk: sistemin RPE sınırı','intensity: the system\'s RPE ceiling'),
+    ].join(' · ')}</div>
+  </div>);
+}
+
+/* The brief. Seven fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
    and without a card edge they read as one ragged block of controls. The pattern card
    is the tall one, so it takes two columns and two rows on the right while priority
-   and keep-out stack beside it; the three short answers share the last row. It is
+   and volume / intensity stack beside it; the short answers share the rows below. It is
    stored per athlete PER DAY, beside the session it produced, so yesterday's
    instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
+function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -259,11 +296,10 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
         L('Seçilen her patern programa kesinlikle eklenir. Filtre boşsa seçimi model yapar.',
           'Every pattern picked is in the session. An empty filter is the model\'s choice.'),
         <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2')}
-      {field(3,L('Kaçınılacak','Keep out'),
-        L('Bugün yapılmasın.','What must not appear today.'),
-        <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
-          pending={avoidPend}
-          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a3')}
+      {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
+        L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
+        <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
+          onChange={p=>save({...instr,...p})}/>,'a3')}
       {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}
@@ -274,7 +310,12 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
         <DiNumberChoice value={instr.maxExercises}
           onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
           unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>,'a5')}
-      {field(6,L('Notlar','Notes'),
+      {field(6,L('Kaçınılacak','Keep out'),
+        L('Bugün yapılmasın.','What must not appear today.'),
+        <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
+          pending={avoidPend}
+          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a7')}
+      {field(7,L('Notlar','Notes'),
         L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
           placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
