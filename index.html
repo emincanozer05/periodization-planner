@@ -131,6 +131,26 @@
     });
   }
 </script>
+<script>
+/* PANEL IŞIĞI — imlecin altındaki panele hafif bir marka ışığı (17-motion-polish.css: .panel.co-lit).
+   Tek bir pasif dinleyici, kare başına en fazla bir yazım. Dokunmatikte ve "az hareket"
+   tercihinde hiç çalışmaz. React sınıfı yeniden yazarsa bir sonraki harekette geri gelir. */
+(function(){
+  try{
+    if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches||!matchMedia('(hover: hover)').matches)return;
+    var cur=null,raf=0,ex=0,ey=0;
+    function paint(){raf=0;if(!cur)return;var r=cur.getBoundingClientRect();
+      cur.style.setProperty('--mx',(ex-r.left)+'px');cur.style.setProperty('--my',(ey-r.top)+'px');}
+    document.addEventListener('pointermove',function(e){
+      ex=e.clientX;ey=e.clientY;var t=e.target;
+      var p=t&&t.closest?t.closest('main .panel'):null;
+      if(p!==cur){if(cur)cur.classList.remove('co-lit');cur=p;}
+      if(cur){if(!cur.classList.contains('co-lit'))cur.classList.add('co-lit');if(!raf)raf=requestAnimationFrame(paint);}
+    },{passive:true});
+    document.documentElement.addEventListener('pointerleave',function(){if(cur){cur.classList.remove('co-lit');cur=null;}});
+  }catch(e){}
+})();
+</script>
 <style>
 /* User-uploaded Archivo — the app's typeface, upright, applied site-wide.
    Four drawn weights rather than two ranges: the app declares 500 on 106 rules and
@@ -7106,7 +7126,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
         seçim göstergelerinde. Süreler dört basamak: 120 / 200 / 320 / 560 ms.
      3) Büyük yüzeyler (panel) hover'da YERİNDEN OYNAMAZ: grafik ve tablo taşıyan bir
         panelin kalkması okumayı bozuyor. Onun yerine imleci izleyen hafif bir ışık
-        (spotlight) — konumu 20-app-open.html'deki küçük betik --mx/--my olarak yazıyor.
+        (spotlight) — konumu 00-head.html'in sonundaki küçük betik --mx/--my olarak yazıyor.
 
    NOT: <main>'e transform verme (10-styles.css'teki uyarı) — modallar main'e göre
    konumlanır. Buradaki hiçbir kural main'i ya da modalların atalarını dönüştürmüyor.
@@ -7259,26 +7279,6 @@ tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 <div class="boot-fail">Uygulama yüklenemedi. İnternet bağlantını kontrol edip sayfayı yenile.<br>The app could not load. Check your connection and reload.<br><button type="button" onclick="location.reload()">Yenile / Reload</button></div>
 </div></div>
 <script>setTimeout(function(){var s=document.querySelector('.boot-splash');if(s)s.className+=' failed';},20000);</script>
-<script>
-/* PANEL IŞIĞI — imlecin altındaki panele hafif bir marka ışığı (17-motion-polish.css: .panel.co-lit).
-   Tek bir pasif dinleyici, kare başına en fazla bir yazım. Dokunmatikte ve "az hareket"
-   tercihinde hiç çalışmaz. React sınıfı yeniden yazarsa bir sonraki harekette geri gelir. */
-(function(){
-  try{
-    if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches||!matchMedia('(hover: hover)').matches)return;
-    var cur=null,raf=0,ex=0,ey=0;
-    function paint(){raf=0;if(!cur)return;var r=cur.getBoundingClientRect();
-      cur.style.setProperty('--mx',(ex-r.left)+'px');cur.style.setProperty('--my',(ey-r.top)+'px');}
-    document.addEventListener('pointermove',function(e){
-      ex=e.clientX;ey=e.clientY;var t=e.target;
-      var p=t&&t.closest?t.closest('main .panel'):null;
-      if(p!==cur){if(cur)cur.classList.remove('co-lit');cur=p;}
-      if(cur){if(!cur.classList.contains('co-lit'))cur.classList.add('co-lit');if(!raf)raf=requestAnimationFrame(paint);}
-    },{passive:true});
-    document.documentElement.addEventListener('pointerleave',function(){if(cur){cur.classList.remove('co-lit');cur=null;}});
-  }catch(e){}
-})();
-</script>
 <script type="text/babel" data-presets="react">
 const{useState,useEffect,useLayoutEffect,useMemo,useRef,useCallback}=React;
 
