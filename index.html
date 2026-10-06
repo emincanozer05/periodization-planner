@@ -35614,6 +35614,7 @@ const diBlockedSet=blocked=>{
    sends and by the "Sporcu Bilgilerini Al" export, so what the coach copies out is
    exactly what the programme writer would have been told. */
 /* The JSON key each facet of a pattern pick is written under. */
+const DI_CONTRACTION_NOT_SET='not selected';
 const DI_MOVE_FACET_KEY={type:'type',side:'side_support',direction:'direction',goal:'strength_goal',task:'task',contraction:'contraction_type'};
 function diMovePatternsForAI(list){
   return(list||[]).map(p=>{
@@ -35621,6 +35622,9 @@ function diMovePatternsForAI(list){
     if(!row)return null;
     const o={id:p.id,pattern:L(row.label[0],row.label[1]),movement_pattern_values:diMoveVocab(p)};
     row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
+    /* The contraction is always written, picked or not: an empty one is said out loud
+       rather than left off, so the export shows the coach did not set it. */
+    if(!o.contraction_type)o.contraction_type=DI_CONTRACTION_NOT_SET;
     return o;
   }).filter(Boolean);
 }
@@ -35632,7 +35636,7 @@ function diBriefForAI(i){
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
       'Each filter given (type, side_support, direction, strength_goal, task, contraction_type) carries ONE value and binds that exercise: '+
-      'the exercise must be exactly that value. A filter that is not given is your choice. strength_goal sets how the exercise is dosed '+
+      'the exercise must be exactly that value. A filter that is not given — or contraction_type "not selected" — is your choice. strength_goal sets how the exercise is dosed '+
       '(sets, reps, load, tempo, rest). contraction_type sets the contraction the exercise is built around, and its tempo and description must show it: '+
       'concentric (the lifting / pushing / pulling phase emphasised, lowering not loaded or controlled without emphasis), '+
       'eccentric (a slow, loaded lowering phase — e.g. a 3-5 s eccentric tempo — or an eccentric-overload exercise), '+

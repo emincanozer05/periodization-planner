@@ -1733,10 +1733,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       const cs = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
         instr: cb, customTests: [] }));
       const cm = cs.coach_brief.movement_patterns || [];
-      check('JSON: kasılma türü contraction_type olarak, İngilizce yazılıyor; seçilmeyende yok',
+      check('JSON: kasılma türü contraction_type olarak, İngilizce yazılıyor; seçilmeyende "not selected"',
         cm[0].contraction_type === 'Reactive / SSC (stretch-shortening cycle)' &&
         cm[1].contraction_type === 'Isometric' && cm[2].contraction_type === 'Concentric' &&
-        !('contraction_type' in cm[3]) && /contraction_type/.test(cs.coach_brief.movement_patterns_rule), JSON.stringify(cm));
+        cm[3].contraction_type === 'not selected' && /"not selected"/.test(cs.coach_brief.movement_patterns_rule), JSON.stringify(cm));
       const one = A.diBrief({ patterns: [{ id: 'knee_dominant', type: ['squat', 'split_squat'], side: ['bilateral', 'unilateral'],
         direction: ['forward', 'lateral'], goal: ['maximal', 'power'], contraction: ['eccentric', 'isometric'] }] }, null).patterns[0];
       check('her alt filtreden yalnızca bir değer: squat ve split squat birlikte kalmıyor',
