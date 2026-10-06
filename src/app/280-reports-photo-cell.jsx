@@ -252,7 +252,7 @@ function TeamReports({team,weeks,selected,setSelected}){
     <div className="lm-head" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',gap:12,marginBottom:16}}>
       <div>
         <div className="lm-title">{L('Yük İzleme','Load Monitoring')}</div>
-        <div className="lm-sub">{L('Akut:kronik iş yükü, antrenman monotonluğu ve wellness trendleri','Acute:chronic workload, training monotony & wellness trends')} · <span style={{color:'#2dd4a7',fontWeight:700}}>build 27.07b — ACWR gap fix</span></div>
+        <div className="lm-sub">{L('Akut:kronik iş yükü, antrenman monotonluğu ve wellness trendleri','Acute:chronic workload, training monotony & wellness trends')}</div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
         <div className="lm-wksel">

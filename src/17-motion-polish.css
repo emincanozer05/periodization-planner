@@ -1,0 +1,155 @@
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HAREKET + CİLA KATMANI — CoachOS tasarım sistemiyle aynı kurallar
+   (Design System artifact'ı: "Motion" bölümü). En sonda yüklenir, iki temada da geçerli.
+
+   Üç ilke:
+     1) Hareket bilgi taşır: bir şey ya yeni geldi (giriş), ya seçildi (gösterge),
+        ya da elin altında (hover/press). Süs için sürekli dönen animasyon yok.
+     2) Tek bir eğri ailesi: --ease-out her giriş ve geçişte, --ease-spring yalnızca
+        seçim göstergelerinde. Süreler dört basamak: 120 / 200 / 320 / 560 ms.
+     3) Büyük yüzeyler (panel) hover'da YERİNDEN OYNAMAZ: grafik ve tablo taşıyan bir
+        panelin kalkması okumayı bozuyor. Onun yerine imleci izleyen hafif bir ışık
+        (spotlight) — konumu 20-app-open.html'deki küçük betik --mx/--my olarak yazıyor.
+
+   NOT: <main>'e transform verme (10-styles.css'teki uyarı) — modallar main'e göre
+   konumlanır. Buradaki hiçbir kural main'i ya da modalların atalarını dönüştürmüyor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-inout:cubic-bezier(.65,0,.35,1);
+  --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--dur-4:560ms;
+  --spot:rgba(0,148,255,.10);
+  --ring:#5cb8ff;
+}
+:root[data-theme="light"]{--spot:rgba(0,132,230,.07);--ring:#0069c2}
+
+/* ---- Zemin: düz siyah yerine üstten çok hafif marka ışığı (sabit, kaydırmada repaint yok) */
+body{background:
+  radial-gradient(1100px 520px at 72% -8%,rgba(0,148,255,.075),transparent 62%),
+  radial-gradient(800px 420px at -6% 104%,rgba(0,148,255,.035),transparent 60%),
+  var(--bg) fixed}
+:root[data-theme="light"] body{background:
+  radial-gradient(1100px 520px at 72% -8%,rgba(0,132,230,.07),transparent 62%),
+  var(--bg) fixed}
+
+/* ---- Odak halkası: klavyeyle gezen için her yerde aynı, iki temada da ≥3:1 */
+.btn:focus-visible,.nav-item:focus-visible,.ph-stat:focus-within,
+.lb-seg button:focus-visible,.calm-seg button:focus-visible,.pm-seg>button:focus-visible,
+.ath-seg button:focus-visible,.rlang-seg button:focus-visible,.th-seg button:focus-visible{
+  outline:2px solid var(--ring);outline-offset:2px}
+
+/* ═════ KENAR ÇUBUĞU ═════ */
+/* Logo açılışta soldan sağa bir kez silinerek gelir. */
+@keyframes coLogoWipe{from{clip-path:inset(0 100% 0 0);opacity:.2}to{clip-path:inset(0 0 0 0);opacity:1}}
+.brand-logo{animation:coLogoWipe .9s var(--ease-out) .05s both}
+
+/* Seçili sekme: kutu çerçevesi yerine dolgu + soldan büyüyen ışıklı gösterge çubuğu. */
+.nav-item{position:relative;border-color:transparent;
+  transition:background var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),border-color var(--dur-2)}
+.nav-item .ni-ic{transition:transform var(--dur-3) var(--ease-out),color var(--dur-2)}
+.nav-item:hover{border-color:transparent;background:rgba(255,255,255,.045);color:var(--text)}
+.nav-item:hover .ni-ic{transform:translateX(2px)}
+.nav-item:active{transform:scale(.985)}
+.nav-item.active{border-color:rgba(0,148,255,.22);color:var(--text);
+  background:linear-gradient(90deg,rgba(0,148,255,.16),rgba(0,148,255,.04) 70%,transparent)}
+.nav-item.active .ni-ic{color:var(--accent2)}
+.nav-item.active::before{content:"";position:absolute;left:-1px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;
+  background:var(--accent);box-shadow:0 0 12px rgba(0,148,255,.75);
+  transform-origin:center;animation:coNavInd var(--dur-3) var(--ease-spring) both}
+@keyframes coNavInd{from{transform:scaleY(0);opacity:0}to{transform:scaleY(1);opacity:1}}
+:root[data-theme="light"] .nav-item:hover{background:rgba(15,23,42,.045)}
+:root[data-theme="light"] .nav-item.active{border-color:rgba(0,132,230,.25);
+  background:linear-gradient(90deg,rgba(0,132,230,.12),rgba(0,132,230,.03) 70%,transparent)}
+:root[data-theme="light"] .nav-item.active .ni-ic{color:var(--accent)}
+:root[data-theme="light"] .nav-item.active::before{box-shadow:0 0 10px rgba(0,132,230,.45)}
+
+/* Senkron noktası: "Senkronize ediliyor" (turuncu) iken nefes alır; diğer durumlar sabit. */
+@keyframes coSyncPulse{0%{transform:scale(1);opacity:1}50%{transform:scale(.7);opacity:.55}100%{transform:scale(1);opacity:1}}
+.sync-dot[style*="--yellow"]{animation:coSyncPulse 1.4s var(--ease-inout) infinite}
+
+/* ═════ SAYFA BAŞLIĞI (ph-hero) ═════ */
+.ph-hero{position:relative}
+/* Üst kenarda marka çizgisi: açılışta ortadan iki yana açılır, sonra sakin kalır. */
+.ph-hero::before{content:"";position:absolute;top:-1px;left:22px;right:22px;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(92,184,255,.9) 30%,rgba(0,148,255,.9) 70%,transparent);
+  transform-origin:center;animation:coLineIn .9s var(--ease-out) .12s both}
+@keyframes coLineIn{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:.85}}
+/* Başlık bulanıklıktan netleşerek yükselir; alt satır ve istatistikler sırayla gelir. */
+@keyframes coTitleIn{from{opacity:0;transform:translateY(10px);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes coFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ph-ttl{animation:coTitleIn var(--dur-4) var(--ease-out) both}
+.ph-sub{animation:coFadeUp var(--dur-4) var(--ease-out) .08s both}
+.ph-hero-r>*{animation:coFadeUp var(--dur-4) var(--ease-out) both}
+.ph-hero-r>*:nth-child(1){animation-delay:.12s}
+.ph-hero-r>*:nth-child(2){animation-delay:.17s}
+.ph-hero-r>*:nth-child(3){animation-delay:.22s}
+.ph-hero-r>*:nth-child(4){animation-delay:.27s}
+.ph-hero-r>*:nth-child(n+5){animation-delay:.32s}
+.ph-stat{transition:border-color var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out),background var(--dur-2)}
+.ph-stat:hover{border-color:rgba(0,148,255,.35);transform:translateY(-1px)}
+.ph-stat-v{font-variant-numeric:tabular-nums}
+
+/* ═════ PANELLER ═════ */
+/* Kalkma yok; çerçeve hafifçe marka rengine döner ve imleç altında yumuşak bir ışık gezer. */
+.panel{transition:border-color var(--dur-3) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
+.panel:hover{transform:none;border-color:rgba(0,148,255,.22)!important}
+.panel.co-lit{background:
+  radial-gradient(520px circle at var(--mx,50%) var(--my,0%),var(--spot),transparent 62%),
+  var(--panel)!important}
+:root[data-theme="light"] .panel:hover{border-color:rgba(0,132,230,.28)!important}
+/* Panel başlığındaki aksan çubuğu girişte aşağıdan büyür. */
+.panel h2::before{transform-origin:bottom;animation:coBarUp var(--dur-4) var(--ease-spring) .2s both}
+@keyframes coBarUp{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+
+/* ═════ HAFTA ÖZETİ KARTLARI + GÜN SÜTUNLARI (Takvim) ═════ */
+.cws{transition:border-color var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
+.cws:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:0 14px 30px -18px rgba(0,0,0,.7)}
+:root[data-theme="light"] .cws:hover{box-shadow:0 14px 30px -18px rgba(15,23,42,.25)}
+.cws-ic{transition:transform var(--dur-3) var(--ease-spring),box-shadow var(--dur-3)}
+.cws:hover .cws-ic{transform:scale(1.08) rotate(-4deg)}
+.calw-stats>.cws{animation:coFadeUp var(--dur-4) var(--ease-out) both}
+.calw-stats>.cws:nth-child(2){animation-delay:.06s}
+.calw-stats>.cws:nth-child(3){animation-delay:.12s}
+.calw-stats>.cws:nth-child(4){animation-delay:.18s}
+.calw-grid>.calw-col{animation:coFadeUp var(--dur-4) var(--ease-out) both;
+  transition:border-color var(--dur-2) var(--ease-out),background var(--dur-2)}
+.calw-grid>.calw-col:nth-child(1){animation-delay:.10s}
+.calw-grid>.calw-col:nth-child(2){animation-delay:.14s}
+.calw-grid>.calw-col:nth-child(3){animation-delay:.18s}
+.calw-grid>.calw-col:nth-child(4){animation-delay:.22s}
+.calw-grid>.calw-col:nth-child(5){animation-delay:.26s}
+.calw-grid>.calw-col:nth-child(6){animation-delay:.30s}
+.calw-grid>.calw-col:nth-child(n+7){animation-delay:.34s}
+.calw-col:hover{border-color:var(--border2)}
+
+/* ═════ MAKROSİKLUS: BUGÜN çizgisi ═════ */
+/* Etiket yerine oturur, çizgi yumuşak bir dalga yayar — "şu an buradasın". */
+@keyframes coTodayGlow{0%,100%{box-shadow:0 0 0 0 rgba(0,148,255,.0)}50%{box-shadow:0 0 14px 2px rgba(0,148,255,.55)}}
+.mc-todayline{animation:coTodayGlow 2.6s var(--ease-inout) infinite}
+.mc-today span{display:inline-block;animation:coFadeUp var(--dur-4) var(--ease-spring) .3s both}
+
+/* ═════ BUTONLAR + SEGMENTLER ═════ */
+.btn{transition:filter var(--dur-1),transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out),background var(--dur-2)}
+.btn:active{transform:translateY(0) scale(.965)}
+.btn.sec:hover,.btn.white:hover{transform:translateY(-1px)}
+/* Segmentte seçilen düğme yerine "oturur" (yaylı küçük bir ölçek). */
+.lb-seg button,.calm-seg button,.pm-seg>button,.ath-seg button,.rlang-seg button,.th-seg button{
+  transition:background var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),box-shadow var(--dur-2)}
+@keyframes coSegOn{from{transform:scale(.9);opacity:.6}to{transform:scale(1);opacity:1}}
+.lb-seg button.on,.calm-seg button.on,.pm-seg>button.on,.ath-seg button.on,.rlang-seg button.on,.th-seg button.on{
+  animation:coSegOn var(--dur-3) var(--ease-spring)}
+
+/* ═════ Tablolar: satır hover'ı soldan aksan ═════ */
+tbody tr{transition:background var(--dur-1) linear}
+tbody tr:hover td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+
+/* ═════ Az hareket tercih edenler ═════ */
+@media (prefers-reduced-motion: reduce){
+  .brand-logo,.nav-item.active::before,.sync-dot,.ph-hero::before,.ph-ttl,.ph-sub,.ph-hero-r>*,
+  .panel h2::before,.calw-stats>.cws,.calw-grid>.calw-col,.mc-todayline,.mc-today span,
+  .lb-seg button.on,.calm-seg button.on,.pm-seg>button.on,.ath-seg button.on,.rlang-seg button.on,.th-seg button.on{
+    animation:none!important}
+  .ph-stat:hover,.cws:hover,.btn.sec:hover,.btn.white:hover,.cws:hover .cws-ic,.nav-item:hover .ni-ic{transform:none}
+}
