@@ -1717,11 +1717,29 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !none.coach_brief || (!('movement_patterns' in none.coach_brief) && !('movement_patterns_rule' in none.coach_brief)));
     check('her paternin filtreleri istenen başlıklarla',
       (() => { const f = id => A.DI_MOVE_PATTERNS.find(p => p.id === id).facets.map(x => x.k).join(',');
-        return f('knee_dominant') === 'type,side,direction,goal' && f('hip_dominant') === 'type,side,goal' &&
-          f('horizontal_push') === 'side,goal' && f('vertical_pull') === 'side,goal' &&
-          f('carry') === 'type,side,direction,goal' && f('core') === 'side,task,goal' &&
+        return f('knee_dominant') === 'type,side,direction,goal,contraction' && f('hip_dominant') === 'type,side,goal,contraction' &&
+          f('horizontal_push') === 'side,goal,contraction' && f('vertical_pull') === 'side,goal,contraction' &&
+          f('carry') === 'type,side,direction,goal,contraction' && f('core') === 'side,task,goal,contraction' &&
+          A.DI_MOVE_PATTERNS.every(p => JSON.stringify(p.facets[p.facets.length - 1].opts.map(o => o[0])) === '["concentric","eccentric","isometric","reactive"]') &&
           A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[2].opts.length === 2 &&
           A.DI_MOVE_PATTERNS.find(p => p.id === 'knee_dominant').facets[3].opts.length === 6; })());
+
+    {
+      const cb = A.diBrief({ patterns: [{ id: 'knee_dominant', contraction: ['eccentric', 'reactive', 'uydurma'] },
+        { id: 'core', contraction: ['isometric'] }, { id: 'horizontal_pull', contraction: ['concentric'] }, { id: 'hip_dominant' }] }, null);
+      check('kasılma türü: geçersiz değer atılıyor, geçerliler saklanıyor',
+        JSON.stringify(cb.patterns[0].contraction) === '["eccentric","reactive"]' && cb.patterns[3].contraction.length === 0,
+        JSON.stringify(cb.patterns));
+      const cs = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
+        instr: cb, customTests: [] }));
+      const cm = cs.coach_brief.movement_patterns || [];
+      check('JSON: kasılma türü contraction_type olarak, İngilizce yazılıyor; seçilmeyende yok',
+        JSON.stringify(cm[0].contraction_type) === '["Eccentric","Reactive / SSC (stretch-shortening cycle)"]' &&
+        JSON.stringify(cm[1].contraction_type) === '["Isometric"]' && JSON.stringify(cm[2].contraction_type) === '["Concentric"]' &&
+        !('contraction_type' in cm[3]) && /contraction_type/.test(cs.coach_brief.movement_patterns_rule), JSON.stringify(cm));
+      check('reaktif kasılmalı alt vücut paterni Jump / Plyo\'yu da sayıyor',
+        cm[0].movement_pattern_values.includes('Jump / Plyo') && !cm[3].movement_pattern_values.includes('Jump / Plyo'));
+    }
 
     const ath = athlete({ wellness: [wellness(TODAY, 4)] });
     const want = ids => ({ rawInstr: { patterns: ids.map(id => ({ id })) } });
