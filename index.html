@@ -131,26 +131,6 @@
     });
   }
 </script>
-<script>
-/* PANEL IŞIĞI — imlecin altındaki panele hafif bir marka ışığı (17-motion-polish.css: .panel.co-lit).
-   Tek bir pasif dinleyici, kare başına en fazla bir yazım. Dokunmatikte ve "az hareket"
-   tercihinde hiç çalışmaz. React sınıfı yeniden yazarsa bir sonraki harekette geri gelir. */
-(function(){
-  try{
-    if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches||!matchMedia('(hover: hover)').matches)return;
-    var cur=null,raf=0,ex=0,ey=0;
-    function paint(){raf=0;if(!cur)return;var r=cur.getBoundingClientRect();
-      cur.style.setProperty('--mx',(ex-r.left)+'px');cur.style.setProperty('--my',(ey-r.top)+'px');}
-    document.addEventListener('pointermove',function(e){
-      ex=e.clientX;ey=e.clientY;var t=e.target;
-      var p=t&&t.closest?t.closest('main .panel'):null;
-      if(p!==cur){if(cur)cur.classList.remove('co-lit');cur=p;}
-      if(cur){if(!cur.classList.contains('co-lit'))cur.classList.add('co-lit');if(!raf)raf=requestAnimationFrame(paint);}
-    },{passive:true});
-    document.documentElement.addEventListener('pointerleave',function(){if(cur){cur.classList.remove('co-lit');cur=null;}});
-  }catch(e){}
-})();
-</script>
 <style>
 /* User-uploaded Archivo — the app's typeface, upright, applied site-wide.
    Four drawn weights rather than two ranges: the app declares 500 on 106 rules and
@@ -7125,8 +7105,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
      2) Tek bir eğri ailesi: --ease-out her giriş ve geçişte, --ease-spring yalnızca
         seçim göstergelerinde. Süreler dört basamak: 120 / 200 / 320 / 560 ms.
      3) Büyük yüzeyler (panel) hover'da YERİNDEN OYNAMAZ: grafik ve tablo taşıyan bir
-        panelin kalkması okumayı bozuyor. Onun yerine imleci izleyen hafif bir ışık
-        (spotlight) — konumu 00-head.html'in sonundaki küçük betik --mx/--my olarak yazıyor.
+        panelin kalkması okumayı bozuyor. Yalnızca çerçeve rengi değişir; zeminde
+        imleci izleyen ışık ya da başka bir arka plan animasyonu YOK (kullanıcı istemedi).
 
    NOT: <main>'e transform verme (10-styles.css'teki uyarı) — modallar main'e göre
    konumlanır. Buradaki hiçbir kural main'i ya da modalların atalarını dönüştürmüyor.
@@ -7136,19 +7116,14 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   --ease-spring:cubic-bezier(.34,1.56,.64,1);
   --ease-inout:cubic-bezier(.65,0,.35,1);
   --dur-1:120ms;--dur-2:200ms;--dur-3:320ms;--dur-4:560ms;
-  --spot:rgba(0,148,255,.10);
   --ring:#5cb8ff;
 }
-:root[data-theme="light"]{--spot:rgba(0,132,230,.07);--ring:#0069c2}
+:root[data-theme="light"]{--ring:#0069c2}
 
-/* ---- Zemin: düz siyah yerine üstten çok hafif marka ışığı (sabit, kaydırmada repaint yok) */
-body{background:
-  radial-gradient(1100px 520px at 72% -8%,rgba(0,148,255,.075),transparent 62%),
-  radial-gradient(800px 420px at -6% 104%,rgba(0,148,255,.035),transparent 60%),
-  var(--bg) fixed}
-:root[data-theme="light"] body{background:
-  radial-gradient(1100px 520px at 72% -8%,rgba(0,132,230,.07),transparent 62%),
-  var(--bg) fixed}
+/* ---- Zemin: koyu temada siyaha daha yakın, düz (ışık/gradyan yok). Kenar çubuğu ve başlık
+   zemini de aynı oranda koyulaşır ki sayfadan açık kalmasın. Paneller (#14171c) olduğu gibi. */
+:root:not([data-theme="light"]){--bg:#08090a;--bg2:#0c0d10}
+body{background:var(--bg)}
 
 /* ---- Odak halkası: klavyeyle gezen için her yerde aynı, iki temada da ≥3:1 */
 .btn:focus-visible,.nav-item:focus-visible,.ph-stat:focus-within,
@@ -7208,12 +7183,9 @@ body{background:
 .ph-stat-v{font-variant-numeric:tabular-nums}
 
 /* ═════ PANELLER ═════ */
-/* Kalkma yok; çerçeve hafifçe marka rengine döner ve imleç altında yumuşak bir ışık gezer. */
+/* Kalkma yok; yalnızca çerçeve hafifçe marka rengine döner. */
 .panel{transition:border-color var(--dur-3) var(--ease-out),box-shadow var(--dur-3) var(--ease-out)}
 .panel:hover{transform:none;border-color:rgba(0,148,255,.22)!important}
-.panel.co-lit{background:
-  radial-gradient(520px circle at var(--mx,50%) var(--my,0%),var(--spot),transparent 62%),
-  var(--panel)!important}
 :root[data-theme="light"] .panel:hover{border-color:rgba(0,132,230,.28)!important}
 /* Panel başlığındaki aksan çubuğu girişte aşağıdan büyür. */
 .panel h2::before{transform-origin:bottom;animation:coBarUp var(--dur-4) var(--ease-spring) .2s both}

@@ -131,24 +131,4 @@
     });
   }
 </script>
-<script>
-/* PANEL IŞIĞI — imlecin altındaki panele hafif bir marka ışığı (17-motion-polish.css: .panel.co-lit).
-   Tek bir pasif dinleyici, kare başına en fazla bir yazım. Dokunmatikte ve "az hareket"
-   tercihinde hiç çalışmaz. React sınıfı yeniden yazarsa bir sonraki harekette geri gelir. */
-(function(){
-  try{
-    if(!window.matchMedia||matchMedia('(prefers-reduced-motion: reduce)').matches||!matchMedia('(hover: hover)').matches)return;
-    var cur=null,raf=0,ex=0,ey=0;
-    function paint(){raf=0;if(!cur)return;var r=cur.getBoundingClientRect();
-      cur.style.setProperty('--mx',(ex-r.left)+'px');cur.style.setProperty('--my',(ey-r.top)+'px');}
-    document.addEventListener('pointermove',function(e){
-      ex=e.clientX;ey=e.clientY;var t=e.target;
-      var p=t&&t.closest?t.closest('main .panel'):null;
-      if(p!==cur){if(cur)cur.classList.remove('co-lit');cur=p;}
-      if(cur){if(!cur.classList.contains('co-lit'))cur.classList.add('co-lit');if(!raf)raf=requestAnimationFrame(paint);}
-    },{passive:true});
-    document.documentElement.addEventListener('pointerleave',function(){if(cur){cur.classList.remove('co-lit');cur=null;}});
-  }catch(e){}
-})();
-</script>
 <style>
