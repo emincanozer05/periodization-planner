@@ -260,6 +260,8 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const restrX=diRestrictions(b,brief);
   const plyoX=diPlyoCeiling(b);
   const capsX=diTierCaps(b.tier&&b.tier.gecerli);
+  const volX=(b.adjustment||brief.volume!=null)?diVolumeAdj(b.adjustment,brief):null;
+  const intX=diIntensityRow(brief.intensity);
   /* The engine's own records carry Turkish source tags the validator compares
      against; they are translated on the way out, never at the source. */
   const SRC_EN={'check-in ağrı bildirimi':'check-in pain report','koç kısıt etiketi':'coach constraint tag',
@@ -292,15 +294,24 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     minutes_per_exercise:DI_MIN_PER_EX,
     minutes_per_exercise_note:brief.duration==null?null:'Session length is computed as the number of exercises × minutes_per_exercise (all phases included) and compared with session_duration_min.',
     session_max_exercises:brief.maxExercises,
-    volume_adjustment_pct:b.adjustment?b.adjustment.pct:null,
-    volume_adjustment_reasons:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    /* The coach's volume, when the brief sets one, replaces the engine's adjustment; the
+       engine's figure and reasons stay beside it so the model can see what was overridden. */
+    volume_adjustment_pct:volX?volX.pct:null,
+    volume_adjustment_source:volX?(volX.coach?'coach':'system'):null,
+    volume_adjustment_reasons:volX?volX.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    system_volume_adjustment:volX&&volX.coach?{pct:volX.auto,
+      reasons:((b.adjustment&&b.adjustment.reasons)||[]).map(r=>`${r.label} (${r.pct}%)`)}:undefined,
     /* The volume cut says how much; this says what kind of work the day can afford. */
     session_fatigue_budget:{
       match_day_label:fatX.md,
       same_day_team_practice:!!tpX,
       budget:fatX.budget,
       budget_scale:'minimal < low < moderate < normal. Set by the distance to the game (MD: minimal, MD-1 / MD+1: low, MD-2 / MD+2: moderate, otherwise normal), one step lower when a team practice is on the same day.',
-      max_target_rpe:fatX.max_rpe,
+      /* The coach's intensity sets the ceiling when given (coach brief ranks above the
+         match context); the budget's own ceiling is kept beside it. */
+      max_target_rpe:intX?intX.rpe[1]:fatX.max_rpe,
+      max_target_rpe_source:intX?'coach':(fatX.max_rpe==null?null:'fatigue budget'),
+      fatigue_budget_max_rpe:intX?fatX.max_rpe:undefined,
       day_focus:fatX.focus,
       rule:'Check the TOTAL fatigue cost of the session, not only its volume. volume_adjustment_pct lowers the dose; it does not make a costly session cheap. '+
         'The cost comes from: sets taken near failure or above max_target_rpe, heavy eccentric / eccentric-overload work (e.g. Nordics, slow negatives), '+

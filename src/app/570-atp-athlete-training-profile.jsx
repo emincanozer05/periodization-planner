@@ -24,7 +24,8 @@ const ATP_TR={
   'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti','Joint by Joint':'Eklem Eklem (Joint by Joint)',
   /* joint by joint: joints, sides, views, the need scale */
   'Neck':'Boyun','Low Back':'Bel (Lumbar)','Scapula':'Skapula','Shoulder':'Omuz','Elbow':'Dirsek',
-  'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga','Hip':'Kalça','Knee':'Diz',
+  'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga',
+  'Thoracic Extension':'Torasik Ekstansiyon','Thoracic Rotation':'Torasik Rotasyon','Hip':'Kalça','Knee':'Diz',
   'Ankle':'Ayak Bileği','Foot':'Ayak','Right':'Sağ','Left':'Sol','Front':'Önden','Back':'Arkadan',
   'Need':'İhtiyaç','Joint':'Eklem','Side':'Taraf','Note':'Not','Level':'Düzey',
   'Stable Joints':'Stabil Eklemler','Mobile Joints':'Mobil Eklemler',
@@ -222,7 +223,8 @@ const ATP_JOINTS=[
   {id:'shoulder',en:'Shoulder',      need:'mobility', bi:true, view:'front'},
   {id:'elbow',   en:'Elbow',         need:'stability',bi:true, view:'front'},
   {id:'wrist',   en:'Wrist',         need:'mobility', bi:true, view:'front'},
-  {id:'thoracic',en:'Thoracic Spine',need:'mobility', bi:false,view:'back'},
+  {id:'thoracic_ext',en:'Thoracic Extension',need:'mobility',bi:false,view:'back',mk:'E'},
+  {id:'thoracic_rot',en:'Thoracic Rotation', need:'mobility',bi:false,view:'back',mk:'R'},
   {id:'lumbar',  en:'Low Back',      need:'stability',bi:false,view:'back'},
   {id:'hip',     en:'Hip',           need:'mobility', bi:true, view:'front'},
   {id:'knee',    en:'Knee',          need:'stability',bi:true, view:'front'},
@@ -280,9 +282,11 @@ function atpRead(ath){
      joint with neither a level nor a note is not kept. A level once stored under the
      need's own name ({mobility:'high'}) is read as the level of the joint's one need. */
   const jt=obj(tp.joints),joints={};
+  /* A rating made when the thoracic spine was one joint stands for both of its motions. */
+  const legacyT=obj(jt.thoracic);
   const okL=v=>ATP_JOINT_LEVELS.some(x=>x.id===v)?v:null;
   ATP_JOINT_ROWS.forEach(r=>{
-    const j=obj(jt[r.key]),o={};
+    const j=(r.joint.id.startsWith('thoracic_')&&!(r.key in jt))?legacyT:obj(jt[r.key]),o={};
     const lv=okL(j.level)||okL(j[r.joint.need]);
     if(lv)o.level=lv;
     if(typeof j.note==='string'&&j.note.trim())o.note=j.note;
@@ -759,7 +763,7 @@ function atpSnapshot(ath,ref,libMap,setup){
     .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
   const jointNeeds=jRows.length?{
     description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
-      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine, neck, shoulder, wrist — need mobility. '+
+      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine (rated separately for extension and for rotation), neck, shoulder, wrist — need mobility. '+
       'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
       'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
       'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',

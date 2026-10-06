@@ -1519,20 +1519,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dv-player video,.dv-player iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
 
 /* ---- Ball practice in the library ---- */
-/* One row with the rest of the toolbar, not a box stacked on top of one: as an
-   inline-flex block on its own line it sat in the line box's leading and read as a
-   second frame nested above the filters. */
-.lib-split{display:flex;flex:0 0 auto;gap:3px;padding:3px;background:var(--elevated,var(--bg2));
-  border:1px solid var(--border);border-radius:9px;align-self:stretch;align-items:center}
-@media(max-width:760px){.lib-split{flex:1 1 100%}}
-.lib-split button{background:transparent;border:none;border-radius:7px;padding:6px 14px;color:var(--muted);
-  font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .14s,color .14s;
-  display:inline-flex;align-items:center;gap:7px}
-.lib-split button:hover{color:var(--text)}
-.lib-split button.on{background:var(--bg2);color:var(--text)}
-.lib-split button.on.ball{color:#ff9f43}
-.lib-split b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:700;
-  color:var(--dim);background:var(--panel,var(--bg2));border-radius:20px;padding:1px 6px}
 /* A drill's card shows the drill — the diagram is the thumbnail, because that is what a
    coach recognises it by. */
 .ex-thumb .bp-card-court{width:100%;height:100%;object-fit:contain;display:block;background:#171a1f}
@@ -2368,6 +2354,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .atp-jb-m:hover .atp-jb-empty{stroke-dasharray:none;fill:var(--jb)}
 .atp-jb-dot{fill:var(--lv);stroke:var(--jc);stroke-width:2.6}
 .atp-jb-m:hover .atp-jb-dot{stroke-width:3.4}
+.atp-jb-mk{font-size:7.5px;font-weight:800;fill:var(--text);pointer-events:none}
+.atp-jb-m[class*="jl-"] .atp-jb-mk{fill:#0b0d10}
 .atp-jb-halo{fill:none;stroke:var(--text);stroke-width:1.6}
 .atp-jb-m:focus-visible .atp-jb-halo,.atp-jb-m:focus-visible .atp-jb-empty{stroke:var(--accent)}
 /* the picker */
@@ -2881,7 +2869,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .lb-zone{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);white-space:nowrap}
 .lb-zdot{width:8px;height:8px;border-radius:50%;flex:none}
 .lb-rd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700}
-.lb-rhr{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:600;color:var(--text2)}
+.lb-acwr{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:700;color:var(--text2)}
 /* Mon–Sun RPE strip (replaces the old 21-day trend sparkline) */
 .lb-rpe-row{display:flex;gap:4px;align-items:center}
 /* Weekday initials in the column header — same 27px/4px grid as .lb-rpe-cell */
@@ -3482,7 +3470,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   border:1px solid var(--border);background:var(--panel);color:var(--text2);
   font-family:inherit;font-size:12.5px;cursor:pointer;transition:border-color .14s ease,color .14s ease,background .14s ease}
 .ev2-tab:hover{border-color:var(--border2);color:var(--text)}
-.ev2-tab.on{background:var(--grad);border-color:transparent;color:#06121d}
+.ev2-tab.on{background:#fff;border-color:transparent;color:#0b0d10}
 .ev2-tab-n{font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.72}
 .ev2-bar-sp{flex:1 1 24px}
 .ev2-search{position:relative;flex:0 1 250px;min-width:170px}
@@ -3558,7 +3546,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   background:none;color:var(--muted);font-family:inherit;font-size:12.5px;font-weight:800;text-align:left;cursor:pointer;white-space:nowrap;
   transition:background .14s ease,color .14s ease}
 .ev2-cat:hover{background:var(--hover);color:var(--text)}
-.ev2-cat.on{background:var(--grad);color:#06121d}
+.ev2-cat.on{background:#fff;color:#0b0d10}
 .ev2-cat-n{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;opacity:.7}
 .ev2-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;align-content:start}
 /* A test tile: the test's name, large, bold and italic, over what it measures. The group
@@ -6222,18 +6210,26 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
 /* Three across, by named areas. The movement-pattern card (2) is the one that grows —
    a filter box per picked pattern — so it takes two columns and two rows on the right,
-   with priority (1) and keep-out (3) stacked beside it; length, ceiling and notes
-   (4-5-6) share the last row. Narrower, it folds to two (the pattern card across the
+   with priority (1) and volume / intensity (3) stacked beside it; length, ceiling and
+   keep-out (4-5-6) share the next row and notes (7) the last. Narrower, it folds to two (the pattern card across the
    whole width) and then to one, always in field order. Cards stretch to their row so
    no card ends early. */
 .di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
-  grid-template-areas:"a1 a2 a2" "a3 a2 a2" "a4 a5 a6"}
+  grid-template-areas:"a1 a2 a2" "a3 a2 a2" "a4 a5 a7" "a6 a6 a6"}
 .di-field.a1{grid-area:a1}.di-field.a2{grid-area:a2}.di-field.a3{grid-area:a3}
-.di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}
+.di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}.di-field.a7{grid-area:a7}
 @media(max-width:1040px){
-  .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"a1 a3" "a2 a2" "a4 a5" "a6 a6"}
+  .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"a1 a3" "a2 a2" "a4 a5" "a7 a6"}
 }
-@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a2" "a3" "a4" "a5" "a6"}}
+@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a2" "a3" "a4" "a5" "a7" "a6"}}
+/* Volume & intensity: a label column and a row of buttons per setting, one summary line. */
+.di-vi{display:flex;flex-direction:column;gap:8px}
+.di-vi-row{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center}
+.di-vi-k{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
+  font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-vi .di-numbtns{max-width:100%}
+.di-vi .di-numb{padding:5px 9px}
+.di-vi-sum{font-size:11px;color:var(--text2);line-height:1.4}
 /* The movement-pattern picker: eight toggles, then one filter box per picked pattern.
    One box is open at a time; a folded box is a single line saying what was picked. */
 .di-mvp{display:flex;flex-direction:column;gap:8px}
@@ -6773,6 +6769,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .di-tag.prio{color:var(--peak-t)}
 :root[data-theme="light"] .di-tag.avoid{color:var(--high-t)}
 
+/* Değerlendirme: seçili sporcu filtresi / test grubu koyu temada beyaz; açık zeminde beyaz kaybolur, koyu dolgu. */
+:root[data-theme="light"] .ev2-tab.on,
+:root[data-theme="light"] .ev2-cat.on{background:#0f172a;color:#fff}
+
 /* === OTOMATİK: tools/gen-light-theme.js üretti, elle düzenleme === */
 :root[data-theme="light"] .brand-team .bt-teamlogo{background:rgba(15,23,42,.05)}
 :root[data-theme="light"] .lang-fixed{box-shadow:0 6px 18px rgba(15,23,42,0.12)}
@@ -6890,6 +6890,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .tpl-card .tpl-tip{box-shadow:0 -16px 44px rgba(15,23,42,0.21)}
 :root[data-theme="light"] .lb-tbl thead th{background:linear-gradient(180deg,rgba(15,23,42,.06),rgba(15,23,42,.02));border-bottom:1px solid rgba(15,23,42,.1)}
 :root[data-theme="light"] .lb-rpe-tip{box-shadow:0 12px 34px rgba(15,23,42,0.19)}
+:root[data-theme="light"] .calw-pat-tip{box-shadow:0 12px 34px rgba(15,23,42,0.19)}
 :root[data-theme="light"] .ath-search .kbd{background:rgba(15,23,42,.04)}
 :root[data-theme="light"] .rc-st .bar{background:rgba(15,23,42,.07)}
 :root[data-theme="light"] .rc-go{background:rgba(15,23,42,.04)}
@@ -10194,7 +10195,9 @@ function athLatestDate(a){let m='';(a.srpeLog||[]).forEach(e=>{if(e.date&&e.date
   (a.wellness||[]).forEach(w=>{if(w.date&&w.date>m)m=w.date;});return m||fmt(today);}
 function athWellnessVal(a,field,ref){const ws=(a.wellness||[]).filter(w=>w.date&&w[field]!==''&&w[field]!=null&&(!ref||w.date<=ref))
   .sort((x,y)=>x.date.localeCompare(y.date));return ws.length?Number(ws[ws.length-1][field]):null;}
-function acwrZoneOf(v){return v===0?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
+/* `has` = the athlete has load in the 28-day window. Without it a 0 is read as "no data";
+   with it, 0 is a real ACWR — nothing in the last 7 days after a loaded month — and Low. */
+function acwrZoneOf(v,has=v!==0){return !has?{t:'No data',c:'var(--dim)',dot:'#5c626c'}
   :v>1.5?{t:'High risk',c:'#f43f5e',dot:'#f43f5e'}
   :(v>=0.8&&v<=1.3)?{t:'Optimal',c:'#2dd4a7',dot:'#2dd4a7'}
   :v<0.8?{t:'Low',c:'#f59e0b',dot:'#f59e0b'}
@@ -10366,15 +10369,19 @@ function MonoBar({value}){
   </div>);
 }
 
-/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, ACWR, readiness & RHR */
+/* Athlete Load Board — per-athlete 7-day load, Mon–Sun RPE strip, zone, readiness & ACWR.
+   The ACWR is athACWR at the board's reference day — the same number the zone, the risk
+   alerts and the individualization snapshot read — shown to two decimals, "—" with no
+   load in the 28-day window. */
 function AthleteLoadBoard({athletes,refDate}){
   const[lbSort,setLbSort]=useState('load');
   const ref=refDate||fmt(today);
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
-    return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),
-      rd:athWellnessVal(a,'readiness',ref),rhr:athWellnessVal(a,'RHR',ref)};
+    const w=loadWindows(k=>athDayLoad(a,k),ref);
+    return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),has:w.ch>0,
+      rd:athWellnessVal(a,'readiness',ref)};
   });
   const maxL7=Math.max(1,...rows.map(r=>r.l7));
   const sorted=[...rows].sort((x,y)=>lbSort==='az'?x.name.localeCompare(y.name):y.l7-x.l7);
@@ -10396,16 +10403,16 @@ function AthleteLoadBoard({athletes,refDate}){
           <th><div className="lb-rpe-hd">{L('7 günlük RPE','7-day RPE')}
             <div className="lb-rpe-days">{DN.map((d,i)=><span key={i}>{d[0]}</span>)}</div>
           </div></th>
-          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r">RHR</th>
+          <th>{L('Bölge','Zone')}</th><th className="r">{L('Hazır Oluş','Readiness')}</th><th className="r" title={L('Akut:kronik iş yükü oranı — son 7 gün / 28 günün haftalık ortalaması','Acute:chronic workload ratio — last 7 days / 28-day weekly mean')}>ACWR</th>
         </tr></thead>
-        <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr);return(<tr key={ri}>
+        <tbody>{sorted.map((r,ri)=>{const z=acwrZoneOf(r.acwr,r.has);return(<tr key={ri}>
           <td><div className="lb-ath"><div className="lb-av">{r.a.photo?<img src={mediaSrc(r.a.photo)} alt=""/>:initials(r.name)}</div><span className="lb-name">{r.name}</span></div></td>
           <td>{r.pos?<span className="lb-pos">{r.pos}</span>:'—'}</td>
           <td><div className="lb-load"><span className="v">{r.l7?r.l7.toLocaleString('en-US').replace(/,/g,'.'):'·'}</span><span className="lb-bar"><i style={{width:`${Math.min(100,r.l7/maxL7*100)}%`}}/></span></div></td>
           <td><RpeWeekStrip athlete={r.a} refDate={ref}/></td>
           <td><span className="lb-zone"><span className="lb-zdot" style={{background:z.dot}}/>{exLabel(z.t)}</span></td>
           <td className="r"><span className="lb-rd" style={{color:readyColor(r.rd)}}>{r.rd!=null?r.rd.toFixed(1)+'/5':'—'}</span></td>
-          <td className="r"><span className="lb-rhr">{r.rhr!=null?Math.round(r.rhr):'—'}</span></td>
+          <td className="r"><span className="lb-acwr" style={{color:r.has?z.c:undefined}}>{r.has?r.acwr.toFixed(2):'—'}</span></td>
         </tr>);})}</tbody>
       </table>
     </div>}
@@ -26517,7 +26524,7 @@ const ATP_JB_HALF={
 };
 /* Where each joint sits on the right of the picture (mirrored for the other side). */
 const ATP_JB_AT={cervical:[100,54],scapula:[121,104],shoulder:[141,88],elbow:[150,158],wrist:[158,230],
-  thoracic:[100,124],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
+  thoracic_ext:[100,116],thoracic_rot:[100,144],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
 /* x on the picture: the front shows the athlete's right on the left, the back on the right. */
 const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
   if(!r.side)return[x,y];
@@ -26544,6 +26551,7 @@ function AtpMannequin({view,joints,sel,onPick}){
       <circle className="atp-jb-hit" r="13"/>
       {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
       <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
+      {r.joint.mk&&<text className="atp-jb-mk" textAnchor="middle" dy="2.6">{r.joint.mk}</text>}
     </g>);
   };
   const front=view==='front';
@@ -30789,8 +30797,9 @@ function LibDownloadMenu({disabled,busy,items}){
   </div>);
 }
 function ExercisesView({data,setData}){
-  const[libTab,setLibTab]=useState('sc');       // 'sc' | 'ball' — which shelf is open
-  const ball=libTab==='ball';
+  /* The library is the S&C shelf only. Ball-practice drills (lib:'ball') stay stored —
+     the ball-practice blocks still name them — but are no longer a library section. */
+  const libTab='sc';
   const allEx=data.exercises||[];
   const exercises=useMemo(()=>allEx.filter(e=>exLib(e)===libTab),[allEx,libTab]);
   // Writes go back into the ONE list the app stores: the shelf is a view of it, never a
@@ -30804,11 +30813,8 @@ function ExercisesView({data,setData}){
   const[openId,setOpenId]=useState(null);
   const[mdBusy,setMdBusy]=useState(false);
   const openCard=useCallback(id=>setOpenId(id),[]);   // stable, so the memoised cards hold
-  // The two shelves have different categories, so a filter set on one means nothing on
-  // the other — switching shelves lands on that shelf's own landing page.
-  const TYPES=ball?BALL_TYPES:EX_TYPES;
-  const SUBS=ball?BALL_SUB_TYPES:SUB_TYPES;
-  const switchLib=t=>{if(t===libTab)return;setLibTab(t);setActiveType(null);setFilt({});setQ('');setOpenId(null);};
+  const TYPES=EX_TYPES;
+  const SUBS=SUB_TYPES;
 
   const patch=(id,p)=>setData(prev=>({...prev,exercises:(prev.exercises||[]).map(e=>e.id===id?{...e,...p}:e)}));
   /* Muscles the coach typed that the fixed list does not carry, kept on the account so
@@ -30821,10 +30827,9 @@ function ExercisesView({data,setData}){
       return{...prev,customMuscles:[...cur,v]};}),
     onForgetMuscle:m=>setData(prev=>({...prev,customMuscles:(Array.isArray(prev.customMuscles)?prev.customMuscles:[]).filter(x=>x!==m)})),
   };
-  const remove=id=>{if(window.confirm(ball?L('Bu dril silinsin mi?','Delete this drill?'):L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
+  const remove=id=>{if(window.confirm(L('Bu egzersiz silinsin mi?','Delete this exercise?'))){setExercises(exercises.filter(e=>e.id!==id));setOpenId(null);}};
   const addExercise=type=>{const t=type||activeType||'';
-    const e={id:uid(),name:'',lib:libTab,type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',
-      ...(ball?{court:emptyScene(),players:''}:{})};
+    const e={id:uid(),name:'',lib:libTab,type:t==='__uncat__'?'':t,subType:'',movePattern:'',contra:[],muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:''};
     setExercises([e,...exercises]);setOpenId(e.id);};
   const typeCounts=useMemo(()=>{const m={};TYPES.forEach(t=>m[t]=0);exercises.forEach(e=>{if(TYPES.includes(e.type))m[e.type]=(m[e.type]||0)+1;});return m;},[exercises,TYPES]);
   const open=exercises.find(e=>e.id===openId);
@@ -30845,7 +30850,7 @@ function ExercisesView({data,setData}){
   const downloadLibPdf=async()=>{
     if(mdBusy)return;
     setMdBusy(true);
-    try{await downloadExLibraryPDF(exercises,{ball,libTab});}
+    try{await downloadExLibraryPDF(exercises,{ball:false,libTab});}
     catch(e){console.warn('library PDF failed',e);
       alert(L('PDF oluşturulamadı — bağlantını kontrol edip tekrar dene.','The PDF could not be created — check your connection and try again.'));}
     finally{setMdBusy(false);}};
@@ -30853,7 +30858,7 @@ function ExercisesView({data,setData}){
   const downloadLibTxt=async()=>{
     if(mdBusy)return;
     setMdBusy(true);
-    try{await downloadExLibraryText(exercises,{ball,libTab});}
+    try{await downloadExLibraryText(exercises,{ball:false,libTab});}
     catch(e){console.warn('library text failed',e);
       alert(L('Metin dosyası oluşturulamadı — tekrar dene.','The text file could not be created — try again.'));}
     finally{setMdBusy(false);}};
@@ -30863,20 +30868,8 @@ function ExercisesView({data,setData}){
     {id:'txt',label:L('Metin (.txt)','Text (.txt)'),run:downloadLibTxt,
       hint:L('AI projesine referans dosyası olarak yüklenir','The reference file an AI project is loaded with')},
   ]}/>;
-  const scN=allEx.filter(e=>exLib(e)==='sc').length,ballN=allEx.length-scN;
-  /* The two shelves, side by side at the head of the page — S&C and Ball Practice are
-     both the coach's library, and which one is open should never be something to hunt
-     for in a dropdown. */
-  const libSplit=(
-    <div className="lib-split">
-      <button type="button" className={libTab==='sc'?'on':''} onClick={()=>switchLib('sc')}>
-        🏋 {L('Kuvvet ve Kondisyon','Strength & Conditioning')} <b>{scN}</b></button>
-      <button type="button" className={ball?'on ball':''} onClick={()=>switchLib('ball')}>
-        🏀 {L('Top Çalışması','Ball Practice')} <b>{ballN}</b></button>
-    </div>);
   // Top-right category dropdown (label → the active shelf's own category values).
-  const CAT_OPTIONS=ball?BALL_TYPES.map(t=>[t,t])
-    :[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
+  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
   // Every option carries its exercise count in parentheses, so the coach sees how
   // full each category is without opening it.
   const catDropdown=(
@@ -30898,20 +30891,17 @@ function ExercisesView({data,setData}){
       <datalist id="ex-types">{EX_TYPES.map(t=><option key={t} value={t}/>)}</datalist>
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <PageHero title={L('Egzersiz Kütüphanesi','Exercise Library')}
-        sub={ball?L('Top antrenmanı drilleri · tüm kategoriler','Ball-practice drills · all categories')
-                 :L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
-        stats={[{v:exercises.length,l:ball?L('Dril','Drills'):L('Egzersiz','Exercises')},
+        sub={L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
+        stats={[{v:exercises.length,l:L('Egzersiz','Exercises')},
                 {v:allEx.length,l:L('Kütüphane toplamı','Library total')}]}/>
       <div className="ex-toolbar">
-        {libSplit}
         {catDropdown}
-        <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={ball?L('Dril ara…','Search drills…'):L('Egzersiz ara…','Search exercises…')}/></div>
-        <button className="btn sm white" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+        <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercises…')}/></div>
+        <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
       </div>
       {flat.length===0&&<div className="ex-empty">{exercises.length===0
-        ?(ball?L('Henüz dril yok. ＋ Dril Ekle ile başla — ya da bir top çalışması bloğunda çizip oradan kaydet.','No drills yet. Start with ＋ Add Drill — or draw one in a ball practice block and save it from there.')
-              :L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.'))
+        ?L('Henüz egzersiz yok. ＋ Egzersiz Ekle ile başla.','No exercises yet. Start with ＋ Add Exercise.')
         :L('Aramanla eşleşen sonuç yok.','Nothing matches your search.')}</div>}
       <div className="ex-grid">{flat.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
       {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
@@ -30924,7 +30914,7 @@ function ExercisesView({data,setData}){
   /* Every filter this category carries, in the order they are read: the sub-type first,
      then Hip / Knee Dominant's Action and Movement Pattern, then the category's own
      extras (EX_EXTRA_FILTERS). Each one filters on the entry field named by `key`. */
-  const lift=!ball&&!isUncat;
+  const lift=!isUncat;
   const dims=[
     sub&&{key:'subType',label:sub.label,values:sub.values},
     lift&&ACTIONS_FOR[activeType]&&{key:'action',label:'Action',values:ACTIONS_FOR[activeType]},
@@ -30953,10 +30943,9 @@ function ExercisesView({data,setData}){
       </div>
     </div>
     <div className="ex-toolbar">
-      {libSplit}
       {catDropdown}
       <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
-      <button className="btn sm white" onClick={()=>addExercise()}>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</button>
+      <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
     <div className="exf-bar">
@@ -30967,8 +30956,8 @@ function ExercisesView({data,setData}){
     </div>
     {list.length===0&&<div className="ex-empty">{(filtered||q)
       ?L('Bu kategoride filtrelerine uyan sonuç yok. ','Nothing in this category matches your filters. ')
-      :(ball?L('Bu kategoride dril yok. ','No drills in this category. '):L('Bu kategoride egzersiz yok. ','No exercises in this category. '))}
-      {L('Eklemek için','Add one with')} <b>＋ {ball?L('Dril Ekle','Add Drill'):L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
+      :L('Bu kategoride egzersiz yok. ','No exercises in this category. ')}
+      {L('Eklemek için','Add one with')} <b>＋ {L('Egzersiz Ekle','Add Exercise')}</b>{L('\'yı kullan.','.')}</div>}
     <div className="ex-grid">{list.map(e=><ExerciseCard key={e.id} ex={e} used={usedOf(e)} onOpen={openCard}/>)}</div>
     {open && <ExerciseModal ex={open} onChange={p=>patch(open.id,p)} onDelete={()=>remove(open.id)} onClose={()=>setOpenId(null)} {...muscleProps}/>}
   </div>);
@@ -33163,7 +33152,8 @@ const ATP_TR={
   'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti','Joint by Joint':'Eklem Eklem (Joint by Joint)',
   /* joint by joint: joints, sides, views, the need scale */
   'Neck':'Boyun','Low Back':'Bel (Lumbar)','Scapula':'Skapula','Shoulder':'Omuz','Elbow':'Dirsek',
-  'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga','Hip':'Kalça','Knee':'Diz',
+  'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga',
+  'Thoracic Extension':'Torasik Ekstansiyon','Thoracic Rotation':'Torasik Rotasyon','Hip':'Kalça','Knee':'Diz',
   'Ankle':'Ayak Bileği','Foot':'Ayak','Right':'Sağ','Left':'Sol','Front':'Önden','Back':'Arkadan',
   'Need':'İhtiyaç','Joint':'Eklem','Side':'Taraf','Note':'Not','Level':'Düzey',
   'Stable Joints':'Stabil Eklemler','Mobile Joints':'Mobil Eklemler',
@@ -33361,7 +33351,8 @@ const ATP_JOINTS=[
   {id:'shoulder',en:'Shoulder',      need:'mobility', bi:true, view:'front'},
   {id:'elbow',   en:'Elbow',         need:'stability',bi:true, view:'front'},
   {id:'wrist',   en:'Wrist',         need:'mobility', bi:true, view:'front'},
-  {id:'thoracic',en:'Thoracic Spine',need:'mobility', bi:false,view:'back'},
+  {id:'thoracic_ext',en:'Thoracic Extension',need:'mobility',bi:false,view:'back',mk:'E'},
+  {id:'thoracic_rot',en:'Thoracic Rotation', need:'mobility',bi:false,view:'back',mk:'R'},
   {id:'lumbar',  en:'Low Back',      need:'stability',bi:false,view:'back'},
   {id:'hip',     en:'Hip',           need:'mobility', bi:true, view:'front'},
   {id:'knee',    en:'Knee',          need:'stability',bi:true, view:'front'},
@@ -33419,9 +33410,11 @@ function atpRead(ath){
      joint with neither a level nor a note is not kept. A level once stored under the
      need's own name ({mobility:'high'}) is read as the level of the joint's one need. */
   const jt=obj(tp.joints),joints={};
+  /* A rating made when the thoracic spine was one joint stands for both of its motions. */
+  const legacyT=obj(jt.thoracic);
   const okL=v=>ATP_JOINT_LEVELS.some(x=>x.id===v)?v:null;
   ATP_JOINT_ROWS.forEach(r=>{
-    const j=obj(jt[r.key]),o={};
+    const j=(r.joint.id.startsWith('thoracic_')&&!(r.key in jt))?legacyT:obj(jt[r.key]),o={};
     const lv=okL(j.level)||okL(j[r.joint.need]);
     if(lv)o.level=lv;
     if(typeof j.note==='string'&&j.note.trim())o.note=j.note;
@@ -33898,7 +33891,7 @@ function atpSnapshot(ath,ref,libMap,setup){
     .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
   const jointNeeds=jRows.length?{
     description:'Joint-by-Joint approach (Boyle & Cook): up the body the joints alternate between stable and mobile. '+
-      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine, neck, shoulder, wrist — need mobility. '+
+      'Stable joints — foot, knee, low back (lumbar spine), scapula, elbow — need stability; mobile joints — ankle, hip, thoracic spine (rated separately for extension and for rotation), neck, shoulder, wrist — need mobility. '+
       'Each joint has that one need only (a knee is trained for stability, never for more range). level is how much of it THIS athlete has, '+
       'rated by the coach from screening and assessment per joint and side: High > Medium > Low. A joint not listed has no rated need. '+
       'High is the red zone: the joints are listed by priority_order, red (High) joints first, and the programme is written in that order.',
@@ -34530,7 +34523,8 @@ function diLoadAdjust(b){
    becomes 3×6, which is how a coach writes it down — and reps are only touched when
    there is no set count to cut (a timed hold, a contact count). The result never
    falls under DI_SET_FLOOR unless the prescription was already below it, so a
-   two-set finisher is not adjusted into a one-set one. */
+   two-set finisher is not adjusted into a one-set one. A positive percentage (only the
+   coach's own volume setting is ever one) adds work the same way: 3 sets at +20% is 4. */
 function diAdjustRow(row,pct){
   const out={sets:row.sets,reps:row.reps,duration:row.duration,changed:false,from:null};
   if(!pct)return out;
@@ -34538,7 +34532,7 @@ function diAdjustRow(row,pct){
   const sets=recNum(row.sets);
   if(sets!=null&&sets>0){
     const floor=Math.min(sets,DI_SET_FLOOR);
-    const next=Math.max(floor,Math.min(sets,Math.round(sets*f)));
+    const next=pct>0?Math.round(sets*f):Math.max(floor,Math.min(sets,Math.round(sets*f)));
     if(next!==sets){out.sets=String(next);out.changed=true;out.from={sets:String(sets)};}
     return out;
   }
@@ -34548,7 +34542,7 @@ function diAdjustRow(row,pct){
        was ALREADY under four reps (a heavy triple, a two-rep jump) is not raised to
        four by an adjustment whose only job is to take work away. */
     const floor=Math.min(reps,DI_REP_FLOOR);
-    const next=Math.max(floor,Math.min(reps,Math.round(reps*f)));
+    const next=pct>0?Math.round(reps*f):Math.max(floor,Math.min(reps,Math.round(reps*f)));
     if(next!==reps){out.reps=String(next);out.changed=true;out.from={reps:String(reps)};}
     return out;
   }
@@ -35174,6 +35168,31 @@ const diConRow=id=>DI_CONSTRAINT_TYPES.find(c=>c.id===id)||null;
    fits the slot on the calendar. */
 const DI_DUR_CHOICES=[30,45,60,75,90];
 const DI_EX_CHOICES=[4,6,8,10];
+/* Volume and intensity, the coach's own call for the day. Volume is a percentage on the
+   session's normal dose; left on auto, the engine's readiness / game / pain adjustment
+   (diLoadAdjust) stands. Set, the coach's figure REPLACES that adjustment everywhere it
+   is read — the card, the JSON and the dose written to the calendar — and, unlike the
+   engine, it may add volume as well as take it away. Intensity is a target-RPE band for
+   the working sets; set, it is the session's RPE ceiling in place of the fatigue
+   budget's. */
+const DI_VOL_CHOICES=[-40,-25,-10,0,10,20];
+const DI_VOL_MIN=-50,DI_VOL_MAX=30;
+const DI_INTENSITY=[
+  {id:'low',     label:['Düşük','Low'],     en:'Low',     rpe:[5,6]},
+  {id:'moderate',label:['Orta','Moderate'], en:'Moderate',rpe:[7,7]},
+  {id:'high',    label:['Yüksek','High'],   en:'High',    rpe:[8,9]},
+];
+const diIntensityRow=id=>DI_INTENSITY.find(x=>x.id===id)||null;
+const diRpeBand=r=>r.rpe[0]===r.rpe[1]?`RPE ${r.rpe[0]}`:`RPE ${r.rpe[0]}–${r.rpe[1]}`;
+/* The adjustment that is actually in force: the coach's volume when the brief sets one,
+   otherwise the engine's. `auto` keeps the engine's figure so it can still be shown. */
+function diVolumeAdj(adj,instr){
+  const a=adj||{pct:0,raw:0,floored:false,floor:DI_ADJ_FLOOR,reasons:[]};
+  const v=instr?instr.volume:null;
+  if(v==null)return{...a,coach:false,auto:a.pct};
+  return{...a,pct:v,coach:true,auto:a.pct,
+    reasons:[{id:'coach',pct:v,label:L(`Antrenör ayarı (${v>0?'+':''}${v}%)`,`Set by the coach (${v>0?'+':''}${v}%)`)}]};
+}
 
 /* ---- Movement patterns the coach puts in the session -----------------------
    The brief's second field. A pattern ticked here is IN the session — not a wish the
@@ -35368,6 +35387,10 @@ function diInstr(raw,src){
     /* Carried through normalisation so a re-read of a stored brief still knows which
        of the two numbers is an instruction and which is a fallback. */
     durationSet:durSet,maxExercisesSet:maxSet,
+    /* null = auto. A figure outside the range is read as not set, never clamped into it:
+       a stored +80 is a typo, not an instruction. */
+    volume:(()=>{const v=recNum(r.volume);return v!=null&&Number.isInteger(v)&&v>=DI_VOL_MIN&&v<=DI_VOL_MAX?v:null;})(),
+    intensity:diIntensityRow(r.intensity)?r.intensity:null,
     /* Kept as typed. The box writes through this on every keystroke and reads the
        result back: trimming here took the space off the end of "word " the moment it
        was typed, and the box, seeing a different value come back, jumped the caret. */
@@ -35405,7 +35428,7 @@ function diConValue(kind,txt){
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
 const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
-  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()));
+  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity));
 
 /* ---- The coach's own words on the test sheet ------------------------------
    The battery is not only numbers. The posture box, the overhead-squat box and the
@@ -35810,6 +35833,13 @@ function diBriefForAI(i){
         limit_checked_by_code:!!(v&&v.readable),
         limit_unit:v&&v.readable?v.unit:null};}),
     constraint_details:i.constraintNote||null,
+    /* Null = the coach left it on auto (code_checked_limits carries the engine's figure). */
+    volume_adjustment_pct:i.volume==null?null:i.volume,
+    intensity:(()=>{const r=diIntensityRow(i.intensity);
+      return r?{level:r.en,target_rpe:diRpeBand(r),target_rpe_min:r.rpe[0],target_rpe_max:r.rpe[1]}:null;})(),
+    volume_intensity_rule:(i.volume!=null||i.intensity)?'Set by the coach for this athlete today and binding. '+
+      (i.volume!=null?`volume_adjustment_pct: change the dose a normal day would carry by ${i.volume>0?'+':''}${i.volume}% (sets first, then reps / duration) — it replaces the system's own volume adjustment and is the figure in code_checked_limits.volume_adjustment_pct. `:'')+
+      (i.intensity?'intensity: dose every main-phase working set at target_rpe — no working set above target_rpe_max, and the main work not easier than target_rpe_min; preparation work may sit below it. Write the RPE on every row.':''):null,
     session_duration_min:i.duration,
     /* The ceiling binds the WHOLE session: preparation, main and complementary rows
        all count, so the number the coach picks is the number the athlete sees. */
@@ -35963,7 +35993,7 @@ const DI_EXT_TASK=[
   'Respect the limits in code_checked_limits. When the programme is loaded into CoachOS these limits are measured by code, and every limit exceeded is shown to the coach as a warning.',
   'Split the session into phases: each block\'s phase is preparation, main or complementary. Write every exercise\'s movement_pattern as one of the values in movement_pattern_vocabulary, exactly as listed (the plyometric contact check reads "Jump / Plyo" by that exact name), and fill in its equipment.',
   'In each exercise\'s basis, list the ids of the differentiators items it answers (e.g. ["D1","D3"]). Do not write an id that is not in the list. differentiators are listed most decisive first: the game, current pain, a same-day team practice and the development priorities change today\'s session the most.',
-  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
+  'The sets, reps and durations you write go onto the athlete\'s calendar EXACTLY as written; no reduction is applied after loading. code_checked_limits.volume_adjustment_pct is the volume adjustment for this day — the sum of reasons such as readiness, pain and days to the game, each listed with its share in volume_adjustment_reasons, or, when volume_adjustment_source is "coach", the coach\'s own figure from coach_brief, which replaces them. Take it into account yourself when you write the dose. Volume is not the whole cost: keep the session\'s TOTAL fatigue cost inside code_checked_limits.session_fatigue_budget (no work near failure or above max_target_rpe, no heavy eccentric, depth / high-impact plyometric or maximal-sprint work on a minimal or low budget; on a day with a team practice, its load counts too).',
   'Do not put more than one exercise from the same movement family (movement_families — e.g. Squat and Lunge / Unilateral are one family) in the main phase. Do not give the athlete the same session again as one in recent_programs. Rely on exercise_library as little as possible: it is only a list of names the coach has on file, not the pool the session is built from. Choose every exercise for what this athlete needs today and write it by its common name — an exercise outside the library is fully accepted. Use a library name only where that exact exercise is clearly the best choice, and then write it exactly as listed.',
   'sport_context says what the game asks of everyone who plays it, athlete.position_emphasis the qualities the position asks for most often: this is context, it does not decide the exercise selection on its own — weigh it with the athlete\'s own data.',
   'measured_deficits and the test comments are observations, not diagnoses: do not infer a cause from them and do not turn them into exercises automatically (no "finding → assumed cause → corrective exercise" chain). Weigh them with everything above them in decision_hierarchy and address one only where it fits today\'s session. Where there is pain or an active injury, do not load that region — except with the coach\'s required movement_patterns, which are written as pain-free modified variations instead (movement_patterns_rule).',
@@ -35985,7 +36015,7 @@ const DI_EXT_TASK_SQUAD=[
   ...DI_EXT_TASK.slice(2).map(x=>x
     .replace('coach_brief is binding','Each athlete\'s own coach_brief is binding')
     .replace('Respect the limits in code_checked_limits','Respect the limits in each athlete\'s own code_checked_limits')
-    .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment recommended for that athlete on this day')
+    .replace('code_checked_limits.volume_adjustment_pct is the volume adjustment for this day','Each athlete\'s code_checked_limits.volume_adjustment_pct is the volume adjustment for that athlete on this day')
     .replace('as one in recent_programs','as one in that athlete\'s recent_programs')
     .replace('ids of the differentiators items','ids of that athlete\'s differentiators items')
     .replace('inside code_checked_limits.session_fatigue_budget','inside that athlete\'s own code_checked_limits.session_fatigue_budget')),
@@ -36454,12 +36484,24 @@ function validateProgram(program,ctx){
     if(costly.length&&(fb.budget!=='moderate'||costly.length>1))
       S(null,`Yorgunluk bütçesi ${fb.budget} (${why}), ama programda toparlanması pahalı iş var: ${costly.map(r=>r.name).join(', ')}.`,
         `The fatigue budget is ${fb.budget} (${why}), yet the session carries work that is costly to recover from: ${costly.map(r=>r.name).join(', ')}.`);
-    const rpeHi=fb.max_rpe==null?[]:rows.filter(r=>{
+    /* The coach's intensity, when set, is the ceiling instead (checked below). */
+    const rpeHi=(fb.max_rpe==null||diIntensityRow(i.intensity))?[]:rows.filter(r=>{
       const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
       return n&&Math.max(...n.map(Number))>fb.max_rpe;});
     if(rpeHi.length)
       S(null,`Yorgunluk bütçesi ${fb.budget} (${why}) hedef RPE'yi ${fb.max_rpe} ile sınırlıyor; aşan satırlar: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
         `The ${fb.budget} fatigue budget (${why}) caps target RPE at ${fb.max_rpe}; rows above it: ${rpeHi.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
+  }
+
+  /* The coach's intensity: no row's target RPE above the band. A warning, like the
+     budget's ceiling it replaces — RPE is the model's prescription, not a measured load. */
+  const intR=diIntensityRow(i.intensity);
+  if(intR){
+    const over=rows.filter(r=>{const n=String(r.rpe==null?'':r.rpe).match(/\d+(\.\d+)?/g);
+      return n&&Math.max(...n.map(Number))>intR.rpe[1];});
+    if(over.length)
+      S(null,`Antrenörün yoğunluk ayarı ${L(intR.label[0],intR.label[1])} (${diRpeBand(intR)}); aşan satırlar: ${over.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`,
+        `The coach set intensity to ${intR.en} (${diRpeBand(intR)}); rows above it: ${over.map(r=>`${r.name} (RPE ${r.rpe})`).join(', ')}.`);
   }
 
   /* Free text is always allowed (rule 29, and the spec says so twice). Recorded so
@@ -36944,15 +36986,52 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
   </div>);
 }
 
-/* The brief. Six fields, none of them required, and the line under the heading says
+/* Volume and intensity on one card: two rows of buttons, auto first. Auto leaves the
+   engine's adjustment (shown on the button) and the fatigue budget's RPE ceiling in
+   force; anything else is the coach's figure for the day (diVolumeAdj, diIntensityRow).
+   Pressing the button that is on goes back to auto. */
+function DiVolIntPicker({volume,intensity,autoVol,onChange}){
+  const sg=v=>`${v>0?'+':''}${v}%`;
+  const ir=diIntensityRow(intensity);
+  return(<div className="di-vi">
+    <div className="di-vi-row">
+      <span className="di-vi-k">{L('Hacim %','Volume %')}</span>
+      <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
+        <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
+          title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
+          onClick={()=>onChange({volume:null})}>{L('Oto','Auto')}</button>
+        {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
+          title={v===0?L('Normal doz','Normal dose'):sg(v)}
+          onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+      </div>
+    </div>
+    <div className="di-vi-row">
+      <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
+      <div className="di-numbtns" role="group" aria-label={L('Yoğunluk','Intensity')}>
+        <button type="button" className={'di-numb'+(!intensity?' on':'')} aria-pressed={!intensity}
+          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}</button>
+        {DI_INTENSITY.map(r=><button key={r.id} type="button" className={'di-numb'+(intensity===r.id?' on':'')}
+          aria-pressed={intensity===r.id} title={diRpeBand(r)}
+          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}</button>)}
+      </div>
+    </div>
+    <div className="di-vi-sum">{[
+      volume==null?L(`Hacim: sistem önerisi (${autoVol?sg(autoVol):'ayar yok'})`,`Volume: system (${autoVol?sg(autoVol):'no adjustment'})`)
+        :L(`Hacim ${volume===0?'normal':sg(volume)}`,`Volume ${volume===0?'normal':sg(volume)}`),
+      ir?L(`çalışma setleri ${diRpeBand(ir)}`,`working sets at ${diRpeBand(ir)}`):L('yoğunluk: sistemin RPE sınırı','intensity: the system\'s RPE ceiling'),
+    ].join(' · ')}</div>
+  </div>);
+}
+
+/* The brief. Seven fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
    and without a card edge they read as one ragged block of controls. The pattern card
    is the tall one, so it takes two columns and two rows on the right while priority
-   and keep-out stack beside it; the three short answers share the last row. It is
+   and volume / intensity stack beside it; the short answers share the rows below. It is
    stored per athlete PER DAY, beside the session it produced, so yesterday's
    instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
+function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -36988,11 +37067,10 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
         L('Seçilen her patern programa kesinlikle eklenir. Filtre boşsa seçimi model yapar.',
           'Every pattern picked is in the session. An empty filter is the model\'s choice.'),
         <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2')}
-      {field(3,L('Kaçınılacak','Keep out'),
-        L('Bugün yapılmasın.','What must not appear today.'),
-        <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
-          pending={avoidPend}
-          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a3')}
+      {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
+        L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
+        <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
+          onChange={p=>save({...instr,...p})}/>,'a3')}
       {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}
@@ -37003,7 +37081,12 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed}){
         <DiNumberChoice value={instr.maxExercises}
           onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
           unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>,'a5')}
-      {field(6,L('Notlar','Notes'),
+      {field(6,L('Kaçınılacak','Keep out'),
+        L('Bugün yapılmasın.','What must not appear today.'),
+        <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
+          pending={avoidPend}
+          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a7')}
+      {field(7,L('Notlar','Notes'),
         L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
           placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
@@ -37503,6 +37586,8 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   const restrX=diRestrictions(b,brief);
   const plyoX=diPlyoCeiling(b);
   const capsX=diTierCaps(b.tier&&b.tier.gecerli);
+  const volX=(b.adjustment||brief.volume!=null)?diVolumeAdj(b.adjustment,brief):null;
+  const intX=diIntensityRow(brief.intensity);
   /* The engine's own records carry Turkish source tags the validator compares
      against; they are translated on the way out, never at the source. */
   const SRC_EN={'check-in ağrı bildirimi':'check-in pain report','koç kısıt etiketi':'coach constraint tag',
@@ -37535,15 +37620,24 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     minutes_per_exercise:DI_MIN_PER_EX,
     minutes_per_exercise_note:brief.duration==null?null:'Session length is computed as the number of exercises × minutes_per_exercise (all phases included) and compared with session_duration_min.',
     session_max_exercises:brief.maxExercises,
-    volume_adjustment_pct:b.adjustment?b.adjustment.pct:null,
-    volume_adjustment_reasons:b.adjustment?b.adjustment.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    /* The coach's volume, when the brief sets one, replaces the engine's adjustment; the
+       engine's figure and reasons stay beside it so the model can see what was overridden. */
+    volume_adjustment_pct:volX?volX.pct:null,
+    volume_adjustment_source:volX?(volX.coach?'coach':'system'):null,
+    volume_adjustment_reasons:volX?volX.reasons.map(r=>`${r.label} (${r.pct}%)`):null,
+    system_volume_adjustment:volX&&volX.coach?{pct:volX.auto,
+      reasons:((b.adjustment&&b.adjustment.reasons)||[]).map(r=>`${r.label} (${r.pct}%)`)}:undefined,
     /* The volume cut says how much; this says what kind of work the day can afford. */
     session_fatigue_budget:{
       match_day_label:fatX.md,
       same_day_team_practice:!!tpX,
       budget:fatX.budget,
       budget_scale:'minimal < low < moderate < normal. Set by the distance to the game (MD: minimal, MD-1 / MD+1: low, MD-2 / MD+2: moderate, otherwise normal), one step lower when a team practice is on the same day.',
-      max_target_rpe:fatX.max_rpe,
+      /* The coach's intensity sets the ceiling when given (coach brief ranks above the
+         match context); the budget's own ceiling is kept beside it. */
+      max_target_rpe:intX?intX.rpe[1]:fatX.max_rpe,
+      max_target_rpe_source:intX?'coach':(fatX.max_rpe==null?null:'fatigue budget'),
+      fatigue_budget_max_rpe:intX?fatX.max_rpe:undefined,
       day_focus:fatX.focus,
       rule:'Check the TOTAL fatigue cost of the session, not only its volume. volume_adjustment_pct lowers the dose; it does not make a costly session cheap. '+
         'The cost comes from: sets taken near failure or above max_target_rpe, heavy eccentric / eccentric-overload work (e.g. Nordics, slow negatives), '+
@@ -37734,7 +37828,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const program=diReviewProgram(review);
   const instr=useMemo(()=>diBrief(review&&review.instr,plan.meta),[review,plan.meta]);
   const saveInstr=next=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{instr:next});
-  const adj=bundle.adjustment;
+  /* The adjustment in force: the coach's volume from the brief when set, else the engine's. */
+  const adj=diVolumeAdj(bundle.adjustment,instr);
   const rowPct=program&&program.external?0:adj.pct;
   const rows=useMemo(()=>program?diProgramRows(program,rowPct):[],[program,rowPct]);
   const calEdited=!!(program&&review&&review.decision==='accept'&&calSes&&indivHandEdited(calSes));
@@ -37917,10 +38012,12 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
         {/* The one number the model is not allowed to move, on the same row as the rest:
             whatever the session comes back as, this percentage comes off it. */}
         <DiTile label={L('Hacim ayarı','Volume adjustment')} text={!adj.pct}
-          value={adj.pct?`${adj.pct}%`:L('yok','none')}
-          fill={adj.pct?Math.abs(adj.pct)/Math.abs(adj.floor)*100:0} tone={adjTone}
+          value={adj.pct?`${adj.pct>0?'+':''}${adj.pct}%`:L('yok','none')}
+          fill={adj.pct?Math.min(100,Math.abs(adj.pct)/Math.abs(adj.floor)*100):0} tone={adjTone}
           title={adj.reasons.map(r=>`${r.label} → ${r.pct}%`).join('\n')}
-          sub={adj.reasons.length
+          sub={adj.coach
+            ?L(`antrenör ayarı · sistem önerisi ${adj.auto?`${adj.auto}%`:'yok'}`,`set by the coach · system ${adj.auto?`${adj.auto}%`:'none'}`)
+            :adj.reasons.length
             ?adj.reasons.map(r=>r.label).join(' · ')
             :L('hazır oluş normal','readiness normal')}/>
       </div>
@@ -37929,6 +38026,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
+        autoVol={bundle.adjustment?bundle.adjustment.pct:0}
         onImport={()=>setImp({text:'',err:''})}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>
@@ -38184,7 +38282,9 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      automatic pass and the button go through here, so there is exactly one answer to
      "what reaches the athlete", and it is the coach's. */
   const reviewOf=p=>diReadReview(team,activeKey,p.ath.id,date);
-  const pctFor=p=>{const b=bundles[p.ath.id];return(b&&b.adjustment&&b.adjustment.pct)||0;};
+  /* The coach's volume from the day's brief, when set, replaces the engine's adjustment. */
+  const pctFor=p=>{const b=bundles[p.ath.id];const r=reviewOf(p);
+    return diVolumeAdj(b&&b.adjustment,diBrief(r&&r.instr,p.meta)).pct||0;};
   /* THE LAST GATE, AND THE ONE THAT ACTUALLY GUARDS THE DATABASE.
      Everything above it is a screen the coach reads; this is the check that runs on
      the exact programme about to be written, with the athlete's data as it stands at

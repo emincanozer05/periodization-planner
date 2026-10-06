@@ -24,7 +24,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const program=diReviewProgram(review);
   const instr=useMemo(()=>diBrief(review&&review.instr,plan.meta),[review,plan.meta]);
   const saveInstr=next=>diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{instr:next});
-  const adj=bundle.adjustment;
+  /* The adjustment in force: the coach's volume from the brief when set, else the engine's. */
+  const adj=diVolumeAdj(bundle.adjustment,instr);
   const rowPct=program&&program.external?0:adj.pct;
   const rows=useMemo(()=>program?diProgramRows(program,rowPct):[],[program,rowPct]);
   const calEdited=!!(program&&review&&review.decision==='accept'&&calSes&&indivHandEdited(calSes));
@@ -207,10 +208,12 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
         {/* The one number the model is not allowed to move, on the same row as the rest:
             whatever the session comes back as, this percentage comes off it. */}
         <DiTile label={L('Hacim ayarı','Volume adjustment')} text={!adj.pct}
-          value={adj.pct?`${adj.pct}%`:L('yok','none')}
-          fill={adj.pct?Math.abs(adj.pct)/Math.abs(adj.floor)*100:0} tone={adjTone}
+          value={adj.pct?`${adj.pct>0?'+':''}${adj.pct}%`:L('yok','none')}
+          fill={adj.pct?Math.min(100,Math.abs(adj.pct)/Math.abs(adj.floor)*100):0} tone={adjTone}
           title={adj.reasons.map(r=>`${r.label} → ${r.pct}%`).join('\n')}
-          sub={adj.reasons.length
+          sub={adj.coach
+            ?L(`antrenör ayarı · sistem önerisi ${adj.auto?`${adj.auto}%`:'yok'}`,`set by the coach · system ${adj.auto?`${adj.auto}%`:'none'}`)
+            :adj.reasons.length
             ?adj.reasons.map(r=>r.label).join(' · ')
             :L('hazır oluş normal','readiness normal')}/>
       </div>
@@ -219,6 +222,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
+        autoVol={bundle.adjustment?bundle.adjustment.pct:0}
         onImport={()=>setImp({text:'',err:''})}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>

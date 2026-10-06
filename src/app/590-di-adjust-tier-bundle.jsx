@@ -112,7 +112,8 @@ function diLoadAdjust(b){
    becomes 3×6, which is how a coach writes it down — and reps are only touched when
    there is no set count to cut (a timed hold, a contact count). The result never
    falls under DI_SET_FLOOR unless the prescription was already below it, so a
-   two-set finisher is not adjusted into a one-set one. */
+   two-set finisher is not adjusted into a one-set one. A positive percentage (only the
+   coach's own volume setting is ever one) adds work the same way: 3 sets at +20% is 4. */
 function diAdjustRow(row,pct){
   const out={sets:row.sets,reps:row.reps,duration:row.duration,changed:false,from:null};
   if(!pct)return out;
@@ -120,7 +121,7 @@ function diAdjustRow(row,pct){
   const sets=recNum(row.sets);
   if(sets!=null&&sets>0){
     const floor=Math.min(sets,DI_SET_FLOOR);
-    const next=Math.max(floor,Math.min(sets,Math.round(sets*f)));
+    const next=pct>0?Math.round(sets*f):Math.max(floor,Math.min(sets,Math.round(sets*f)));
     if(next!==sets){out.sets=String(next);out.changed=true;out.from={sets:String(sets)};}
     return out;
   }
@@ -130,7 +131,7 @@ function diAdjustRow(row,pct){
        was ALREADY under four reps (a heavy triple, a two-rep jump) is not raised to
        four by an adjustment whose only job is to take work away. */
     const floor=Math.min(reps,DI_REP_FLOOR);
-    const next=Math.max(floor,Math.min(reps,Math.round(reps*f)));
+    const next=pct>0?Math.round(reps*f):Math.max(floor,Math.min(reps,Math.round(reps*f)));
     if(next!==reps){out.reps=String(next);out.changed=true;out.from={reps:String(reps)};}
     return out;
   }
