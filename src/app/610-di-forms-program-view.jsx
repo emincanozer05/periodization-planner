@@ -136,7 +136,8 @@ function DiPriorityPicker({value,onChange}){
    ticked pattern drops into the list below as its own filter box, and only one box is
    open at a time — the others fold to one line that says what was picked, so three
    patterns cost three lines rather than three panels. Inside a box each facet is a row
-   of toggles: nothing ticked means the model chooses, several ticked mean any of them.
+   of toggles that takes ONE value: nothing ticked means the model chooses, ticking another
+   value replaces the one before, and ticking the chosen one again clears it.
    A pattern that loads a region reported painful today is marked, and stays a full
    choice: the coach has seen the pain, so a picked pattern is never dropped for it —
    the answer writes it as a pain-free, modified variation instead. */
@@ -151,8 +152,7 @@ function DiPatternPicker({value,onChange,closed}){
   };
   const flip=(id,k,val)=>onChange(list.map(p=>{
     if(p.id!==id)return p;
-    const cur=p[k]||[];
-    return{...p,[k]:cur.includes(val)?cur.filter(x=>x!==val):[...cur,val]};
+    return{...p,[k]:(p[k]||[]).includes(val)?[]:[val]};
   }));
   const summary=(pick,row)=>row.facets.map(f=>diMoveFacetText(pick,f).join(' / ')).filter(Boolean).join(' · ');
   return(<div className="di-mvp">

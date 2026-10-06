@@ -1701,10 +1701,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const mp = snap.coach_brief.movement_patterns || [];
     check('JSON: seçilen paternler sırasıyla, İngilizce, filtreleriyle; boş filtre yazılmıyor',
       mp.length === 3 && mp[0].id === 'knee_dominant' && mp[0].pattern === 'Knee dominant' &&
-      JSON.stringify(mp[0].type) === '["Split squat"]' && JSON.stringify(mp[0].side_support) === '["Single leg"]' &&
-      JSON.stringify(mp[0].strength_goal) === '["Maximal strength"]' && !('direction' in mp[0]) &&
+      mp[0].type === 'Split squat' && mp[0].side_support === 'Single leg' &&
+      mp[0].strength_goal === 'Maximal strength' && !('direction' in mp[0]) &&
       JSON.stringify(mp[0].movement_pattern_values) === '["Squat","Lunge / Unilateral"]' &&
-      JSON.stringify(mp[1].task) === '["Anti-rotation"]' && mp[2].pattern === 'Carry' && !('type' in mp[2]),
+      mp[1].task === 'Anti-rotation' && mp[2].pattern === 'Carry' && !('type' in mp[2]),
       JSON.stringify(mp));
     check('JSON: patern kuralı bağlayıcı, must_include yok, kaçınılacak duruyor',
       /MUST be in the session/.test(snap.coach_brief.movement_patterns_rule || '') && !('must_include' in snap.coach_brief) &&
@@ -1725,18 +1725,25 @@ group('16 — Seçilen model gerçekten tele gidiyor');
           A.DI_MOVE_PATTERNS.find(p => p.id === 'knee_dominant').facets[3].opts.length === 6; })());
 
     {
-      const cb = A.diBrief({ patterns: [{ id: 'knee_dominant', contraction: ['eccentric', 'reactive', 'uydurma'] },
+      const cb = A.diBrief({ patterns: [{ id: 'knee_dominant', contraction: ['uydurma', 'reactive', 'eccentric'] },
         { id: 'core', contraction: ['isometric'] }, { id: 'horizontal_pull', contraction: ['concentric'] }, { id: 'hip_dominant' }] }, null);
-      check('kasılma türü: geçersiz değer atılıyor, geçerliler saklanıyor',
-        JSON.stringify(cb.patterns[0].contraction) === '["eccentric","reactive"]' && cb.patterns[3].contraction.length === 0,
+      check('kasılma türü: geçersiz değer atılıyor, eski çoklu seçimden yalnızca ilk geçerli değer kalıyor',
+        JSON.stringify(cb.patterns[0].contraction) === '["reactive"]' && cb.patterns[3].contraction.length === 0,
         JSON.stringify(cb.patterns));
       const cs = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
         instr: cb, customTests: [] }));
       const cm = cs.coach_brief.movement_patterns || [];
       check('JSON: kasılma türü contraction_type olarak, İngilizce yazılıyor; seçilmeyende yok',
-        JSON.stringify(cm[0].contraction_type) === '["Eccentric","Reactive / SSC (stretch-shortening cycle)"]' &&
-        JSON.stringify(cm[1].contraction_type) === '["Isometric"]' && JSON.stringify(cm[2].contraction_type) === '["Concentric"]' &&
+        cm[0].contraction_type === 'Reactive / SSC (stretch-shortening cycle)' &&
+        cm[1].contraction_type === 'Isometric' && cm[2].contraction_type === 'Concentric' &&
         !('contraction_type' in cm[3]) && /contraction_type/.test(cs.coach_brief.movement_patterns_rule), JSON.stringify(cm));
+      const one = A.diBrief({ patterns: [{ id: 'knee_dominant', type: ['squat', 'split_squat'], side: ['bilateral', 'unilateral'],
+        direction: ['forward', 'lateral'], goal: ['maximal', 'power'], contraction: ['eccentric', 'isometric'] }] }, null).patterns[0];
+      check('her alt filtreden yalnızca bir değer: squat ve split squat birlikte kalmıyor',
+        ['type', 'side', 'direction', 'goal', 'contraction'].every(k => one[k].length === 1) &&
+        one.type[0] === 'squat' && one.contraction[0] === 'eccentric', JSON.stringify(one));
+      check('JSON: kural her filtrenin tek değer taşıdığını söylüyor, "any of them" yok',
+        /carries ONE value/.test(cs.coach_brief.movement_patterns_rule) && !/any of them/.test(cs.coach_brief.movement_patterns_rule));
       check('reaktif kasılmalı alt vücut paterni Jump / Plyo\'yu da sayıyor',
         cm[0].movement_pattern_values.includes('Jump / Plyo') && !cm[3].movement_pattern_values.includes('Jump / Plyo'));
     }

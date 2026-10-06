@@ -190,8 +190,9 @@ const DI_EX_CHOICES=[4,6,8,10];
    The brief's second field. A pattern ticked here is IN the session — not a wish the
    model may weigh — and each one carries its own filter box: what kind of exercise,
    which side or stance, which direction, which strength quality it is dosed for.
-   Every facet is optional; an empty one leaves that choice to the model, and two or
-   more values in one facet mean "any of these".
+   Every facet is optional and takes ONE value: an empty one leaves that choice to the
+   model, a filled one names exactly what that exercise is (a squat OR a split squat,
+   never "either").
 
    `vocab` is how the check recognises the pattern in a written session: the
    movement_pattern values (IV_PATTERNS) an exercise of that pattern is filed under.
@@ -275,7 +276,8 @@ const DI_MOVE_PATTERNS=[
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
-   duplicate value inside a facet is dropped, a pattern ticked twice counts once. */
+   duplicate value inside a facet is dropped, a pattern ticked twice counts once. A facet
+   holds one value: a brief saved while several could be ticked keeps the first. */
 function diMovePatterns(v){
   const seen=new Set(),out=[];
   (Array.isArray(v)?v:[]).forEach(x=>{
@@ -287,7 +289,7 @@ function diMovePatterns(v){
     row.facets.forEach(f=>{
       const raw=x&&typeof x==='object'&&Array.isArray(x[f.k])?x[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
-      o[f.k]=[...new Set(raw.map(String))].filter(val=>ok.has(val));
+      o[f.k]=raw.map(String).filter(val=>ok.has(val)).slice(0,1);
     });
     out.push(o);
   });
@@ -776,7 +778,7 @@ function diMovePatternsForAI(list){
     const row=diMoveRow(p.id);
     if(!row)return null;
     const o={id:p.id,pattern:L(row.label[0],row.label[1]),movement_pattern_values:diMoveVocab(p)};
-    row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[DI_MOVE_FACET_KEY[f.k]||f.k]=v;});
+    row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
     return o;
   }).filter(Boolean);
 }
@@ -787,8 +789,8 @@ function diBriefForAI(i){
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
-      'Each filter given (type, side_support, direction, strength_goal, task, contraction_type) binds that exercise: choose only from the listed values '+
-      '(more than one value means any of them). A filter that is not given is your choice. strength_goal sets how the exercise is dosed '+
+      'Each filter given (type, side_support, direction, strength_goal, task, contraction_type) carries ONE value and binds that exercise: '+
+      'the exercise must be exactly that value. A filter that is not given is your choice. strength_goal sets how the exercise is dosed '+
       '(sets, reps, load, tempo, rest). contraction_type sets the contraction the exercise is built around, and its tempo and description must show it: '+
       'concentric (the lifting / pushing / pulling phase emphasised, lowering not loaded or controlled without emphasis), '+
       'eccentric (a slow, loaded lowering phase — e.g. a 3-5 s eccentric tempo — or an eccentric-overload exercise), '+
