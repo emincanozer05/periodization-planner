@@ -35295,43 +35295,54 @@ const DI_STR_GOALS=[
   ['reactive','Reaktif kuvvet','Reactive strength'],
   ['endurance','Kuvvet dayanıklılığı','Strength endurance'],
 ];
-const DI_STR_GOALS_BASIC=DI_STR_GOALS.filter(g=>g[0]==='foundational'||g[0]==='endurance');
-/* The contraction the exercise is built around — on every pattern, because it changes the
-   exercise as much as its type does (a slow-lowering split squat, a split-squat hold and a
-   split-squat jump are three sessions). Reactive is the fast stretch-shortening cycle. */
-const DI_CONTRACTIONS=[
-  ['concentric','Konsantrik','Concentric'],
+const diStrGoals=(ids,rename)=>ids.map(id=>{const g=DI_STR_GOALS.find(x=>x[0]===id);
+  return rename&&rename[id]?[id,...rename[id]]:g;});
+/* The lower body names power plainly ("Güç"); the upper body keeps "Patlayıcı kuvvet / Güç".
+   Reactive strength is a knee-dominant goal only (hops, bounds, drop jumps). */
+const DI_POWER_PLAIN={power:['Güç','Power']};
+const DI_STR_GOALS_KNEE=diStrGoals(['foundational','maximal','hypertrophy','power','reactive','endurance'],DI_POWER_PLAIN);
+const DI_STR_GOALS_HIP=diStrGoals(['foundational','maximal','hypertrophy','power','endurance'],DI_POWER_PLAIN);
+const DI_STR_GOALS_ARM=diStrGoals(['foundational','maximal','hypertrophy','power','endurance']);
+const DI_STR_GOALS_BASIC=diStrGoals(['foundational','endurance']);
+/* The muscle action the exercise emphasises — on every pattern, because it changes the
+   exercise as much as its type does (a slow-lowering split squat and a split-squat hold are
+   two sessions). Standard is an ordinary controlled tempo with no phase singled out. Carry
+   and core have no eccentric choice: they are held, not lowered. */
+const DI_ACTIONS=[
+  ['standard','Standart','Standard'],
   ['eccentric','Eksantrik','Eccentric'],
   ['isometric','İzometrik','Isometric'],
-  ['reactive','Reaktif / SSC','Reactive / SSC (stretch-shortening cycle)'],
 ];
-const DI_CONTRACTION_FACET={k:'contraction',label:['Kasılma türü','Contraction type'],opts:DI_CONTRACTIONS};
+const diActionFacet=ids=>({k:'contraction',ai:'muscle_action_emphasis',label:['Kas aksiyonu vurgusu','Muscle action emphasis'],
+  opts:DI_ACTIONS.filter(a=>ids.includes(a[0]))});
+const DI_ACTION_FACET=diActionFacet(['standard','eccentric','isometric']);
+const DI_ACTION_FACET_HOLD=diActionFacet(['standard','isometric']);
 const DI_ARM_SIDE=[['bilateral','Çift kol','Both arms'],['unilateral','Tek kol','Single arm'],['alternating','Alternatif','Alternating']];
 const diArmPattern=(id,tr,en,vocab)=>({id,label:[tr,en],vocab,facets:[
   {k:'side',label:['Taraf / Destek','Side / support'],opts:DI_ARM_SIDE},
-  {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
-  DI_CONTRACTION_FACET,
+  {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
+  DI_ACTION_FACET,
 ]});
 const DI_MOVE_PATTERNS=[
   {id:'knee_dominant',label:['Diz dominant','Knee dominant'],vocab:['Squat','Lunge / Unilateral'],facets:[
     {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],['split_squat','Split squat','Split squat'],
       ['lunge','Lunge','Lunge'],['step_up','Step-up','Step-up'],['step_down','Step-down','Step-down']]},
-    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['bilateral','Çift bacak','Double leg'],
-      ['unilateral','Tek bacak','Single leg'],['split','Split duruş','Split stance']]},
+    {k:'side',ai:'stance',label:['Duruş','Stance'],opts:[['bilateral','Bilateral','Bilateral'],
+      ['unilateral','Unilateral','Unilateral'],['split','Split stance','Split stance']]},
     {k:'direction',label:['Yön','Direction'],opts:[['in_place','Yerinde','In place'],['forward','Öne','Forward'],
       ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['diagonal','Çapraz','Diagonal'],
       ['multi','Çok yönlü','Multi-directional']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
-    DI_CONTRACTION_FACET,
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_KNEE},
+    DI_ACTION_FACET,
   ]},
   {id:'hip_dominant',label:['Kalça dominant','Hip dominant'],vocab:['Hinge'],facets:[
     {k:'type',label:['Tür','Type'],opts:[['deadlift','Deadlift','Deadlift'],['rdl','RDL','RDL'],
       ['good_morning','Good morning','Good morning'],['hip_thrust','Hip thrust','Hip thrust'],
       ['glute_bridge','Glute bridge','Glute bridge'],['pull_through','Pull-through','Pull-through'],['swing','Swing','Swing']]},
-    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['bilateral','Çift bacak','Double leg'],
-      ['unilateral','Tek bacak','Single leg'],['b_stance','B-stance','B-stance']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS},
-    DI_CONTRACTION_FACET,
+    {k:'side',ai:'stance_support',label:['Stance / Destek','Stance / support'],opts:[['bilateral','Bilateral','Bilateral'],
+      ['unilateral','Unilateral','Unilateral'],['b_stance','B-stance','B-stance']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_HIP},
+    DI_ACTION_FACET,
   ]},
   diArmPattern('horizontal_push','Yatay itiş','Horizontal push',['Push']),
   diArmPattern('vertical_push','Dikey itiş','Vertical push',['Push']),
@@ -35341,25 +35352,25 @@ const DI_MOVE_PATTERNS=[
     {k:'type',label:['Tür','Type'],opts:[['side','Yanda taşıma','Side (suitcase / farmer) carry'],
       ['front_rack','Front rack taşıma','Front rack carry'],['overhead','Baş üstü taşıma','Overhead carry'],
       ['goblet','Goblet taşıma','Goblet carry'],['bear_hug','Bear-hug taşıma','Bear-hug carry'],['mixed','Karma taşıma','Mixed carry']]},
-    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['unilateral','Tek taraflı yük','Unilateral load'],
+    {k:'side',ai:'load_distribution',label:['Yük dağılımı','Load distribution'],opts:[['unilateral','Tek taraflı yük','Unilateral load'],
       ['bilateral','Çift taraflı yük','Bilateral load'],['centred','Merkezde yük','Centred load']]},
     {k:'direction',label:['Yön / İlerleme','Direction / progression'],opts:[['forward','Öne','Forward'],
       ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['march','Yerinde march','March in place'],
       ['hold','Sabit tutuş','Static hold']]},
     {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_CONTRACTION_FACET,
+    DI_ACTION_FACET_HOLD,
   ]},
   {id:'core',label:['Core','Core'],vocab:['Core / Brace','Rotation'],facets:[
     {k:'side',label:['Taraf / Destek','Side / support'],opts:[['symmetrical','Simetrik','Symmetrical'],
-      ['asymmetrical','Tek taraflı / Asimetrik','Unilateral / asymmetrical'],['alternating','Dönüşümlü','Alternating'],
-      ['contralateral','Çapraz kol-bacak','Contralateral arm-leg']]},
+      ['asymmetrical','Tek taraflı / Asimetrik','Unilateral / asymmetrical'],
+      ['contralateral','Çapraz','Contralateral (cross-body)']]},
     {k:'task',label:['Görev','Task'],opts:[['anti_extension','Antiekstansiyon','Anti-extension'],
       ['anti_flexion','Antifleksiyon','Anti-flexion'],['anti_rotation','Antirotasyon','Anti-rotation'],
       ['anti_lateral_flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],['flexion','Fleksiyon','Flexion'],
       ['extension','Ekstansiyon','Extension'],['rotation','Rotasyon','Rotation'],
-      ['lateral_flexion','Lateral fleksiyon','Lateral flexion'],['combined','Çapraz / Birleşik','Diagonal / combined']]},
+      ['lateral_flexion','Lateral fleksiyon','Lateral flexion']]},
     {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_CONTRACTION_FACET,
+    DI_ACTION_FACET_HOLD,
   ]},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
@@ -35385,13 +35396,12 @@ function diMovePatterns(v){
 }
 /* The movement_pattern values that count as this pick. A lower-body pattern dosed for
    power or reactive strength is usually trained as a jump (trap bar jump, drop jump),
-   which the vocabulary files under Jump / Plyo — so for those goals, and for a reactive
-   (SSC) contraction, that counts too. */
+   which the vocabulary files under Jump / Plyo — so for those goals that counts too. */
 function diMoveVocab(pick){
   const row=diMoveRow(pick&&pick.id);
   if(!row)return[];
   const lower=row.id==='knee_dominant'||row.id==='hip_dominant';
-  const fast=(pick.goal||[]).some(g=>g==='power'||g==='reactive')||(pick.contraction||[]).includes('reactive');
+  const fast=(pick.goal||[]).some(g=>g==='power'||g==='reactive');
   return lower&&fast?[...row.vocab,'Jump / Plyo']:[...row.vocab];
 }
 const diMoveLabel=id=>{const r=diMoveRow(id);return r?L(r.label[0],r.label[1]):String(id||'');};
@@ -35863,18 +35873,19 @@ const diBlockedSet=blocked=>{
 /* The coach's brief as the model reads it — one shape, used by the request the job
    sends and by the "Sporcu Bilgilerini Al" export, so what the coach copies out is
    exactly what the programme writer would have been told. */
-/* The JSON key each facet of a pattern pick is written under. */
-const DI_CONTRACTION_NOT_SET='not selected';
-const DI_MOVE_FACET_KEY={type:'type',side:'side_support',direction:'direction',goal:'strength_goal',task:'task',contraction:'contraction_type'};
+/* The JSON key each facet of a pattern pick is written under — the facet's own `ai` key
+   when it has one (the knee's stance, the carry's load distribution), else this map. */
+const DI_ACTION_NOT_SET='not selected';
+const DI_MOVE_FACET_KEY={type:'type',side:'side_support',direction:'direction',goal:'strength_goal',task:'task',contraction:'muscle_action_emphasis'};
 function diMovePatternsForAI(list){
   return(list||[]).map(p=>{
     const row=diMoveRow(p.id);
     if(!row)return null;
     const o={id:p.id,pattern:L(row.label[0],row.label[1]),movement_pattern_values:diMoveVocab(p)};
-    row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
-    /* The contraction is always written, picked or not: an empty one is said out loud
+    row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai||DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
+    /* The muscle action is always written, picked or not: an empty one is said out loud
        rather than left off, so the export shows the coach did not set it. */
-    if(!o.contraction_type)o.contraction_type=DI_CONTRACTION_NOT_SET;
+    if(!o.muscle_action_emphasis)o.muscle_action_emphasis=DI_ACTION_NOT_SET;
     return o;
   }).filter(Boolean);
 }
@@ -35885,13 +35896,12 @@ function diBriefForAI(i){
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
-      'Each filter given (type, side_support, direction, strength_goal, task, contraction_type) carries ONE value and binds that exercise: '+
-      'the exercise must be exactly that value. A filter that is not given — or contraction_type "not selected" — is your choice. strength_goal sets how the exercise is dosed '+
-      '(sets, reps, load, tempo, rest). contraction_type sets the contraction the exercise is built around, and its tempo and description must show it: '+
-      'concentric (the lifting / pushing / pulling phase emphasised, lowering not loaded or controlled without emphasis), '+
+      'Each filter given (type, stance, stance_support, side_support, load_distribution, direction, strength_goal, task, muscle_action_emphasis) carries ONE value and binds that exercise: '+
+      'the exercise must be exactly that value. A filter that is not given — or muscle_action_emphasis "not selected" — is your choice. strength_goal sets how the exercise is dosed '+
+      '(sets, reps, load, tempo, rest). muscle_action_emphasis sets the muscle action the exercise emphasises, and its tempo and description must show it: '+
+      'standard (an ordinary controlled tempo, no phase singled out), '+
       'eccentric (a slow, loaded lowering phase — e.g. a 3-5 s eccentric tempo — or an eccentric-overload exercise), '+
-      'isometric (a held position: hold time in duration, no movement), '+
-      'reactive / SSC (a fast stretch-shortening cycle with minimal ground contact or amortisation time: jumps, hops, bounds, rebounds, ballistic throws). '+
+      'isometric (a held position: hold time in duration, no movement). '+
       'PAIN NEVER REMOVES A PATTERN LISTED HERE: the coach has seen today\'s pain and still requires it, '+
       'and these patterns are already left out of code_checked_limits.blocked_patterns (see opened_for_coach_patterns). When a listed pattern '+
       'loads a painful region, write it as a pain-free, modified variation (reduced load and range of motion, controlled tempo, supported, '+
