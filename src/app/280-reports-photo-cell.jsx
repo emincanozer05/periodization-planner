@@ -73,6 +73,9 @@ function TeamReports({team,weeks,selected,setSelected}){
   const dayLoad=d=>Math.round(teamDaily[d]||0);
   // Load Monitoring uses the same calendar-matching session-AU sum everywhere (trend, ACWR, monotony).
   const dayAvg=dayLoad;
+  /* The squad's first day with load, so the team curve's chronic side divides by four
+     weeks once its record is that long (see loadWindows). */
+  const teamFirst=useMemo(()=>firstLoadKey(teamDaily),[teamDaily]);
   // ---- All-athletes weekly AU chart (per athlete = a segment) ----
   const allAthletesChart=useMemo(()=>{
     const{year,month}=selected;
@@ -139,10 +142,9 @@ function TeamReports({team,weeks,selected,setSelected}){
   const meanMono=monoW.length?monoW.reduce((a,b)=>a+b.monotony,0)/monoW.length:0;
   const monthTotal=mWeeks.reduce((a,b)=>a+b.total,0);
 
-  // ---- ACWR: acute(7d) : chronic(28d weekly avg), from team daily load, at end of period.
-  // Chronic normalized by the history present in the 28-day window (loadWindows) so a
-  // short or restarted history doesn't pin the ratio at 4.00.
-  const acwrAt=ref=>acwrFrom(dayLoad,ref);
+  // ---- ACWR: acute (7-day total) ÷ chronic (28-day weekly average), from team daily load,
+  // at end of period. Only a record shorter than 28 days shortens the chronic side (loadWindows).
+  const acwrAt=ref=>acwrFrom(dayLoad,ref,teamFirst);
   const refDate=me<=fmt(today)?me:fmt(today);   // end of selected month, capped at today
   const acwrVal=acwrAt(refDate);
   const acwrZone=acwrVal===0?{t:'No data',c:'#94a3b8'}:acwrVal>1.5?{t:'High risk',c:'#ef4444'}
@@ -159,7 +161,7 @@ function TeamReports({team,weeks,selected,setSelected}){
   // with empty future days (steady 500 AU/day reads ACWR 0.18 on Archivoy instead of 1.00).
   const lmRef=lmEnd<=fmt(today)?lmEnd:fmt(today);
   // Acute (7d) / chronic (28d) / ACWR averaged per athlete, like the monotony below.
-  const lmLoad=teamLoadStats(team.athletes,dayAvg,lmRef);
+  const lmLoad=teamLoadStats(team.athletes,dayAvg,lmRef,teamFirst);
   const lmAcwrZone=lmLoad.acwr===0?{c:'var(--text)'}:lmLoad.acwr>1.5?{c:'#ef4444'}
     :(lmLoad.acwr>=0.8&&lmLoad.acwr<=1.3)?{c:'#10b981'}:{c:'#f59e0b'};
   // Monotony / SD / strain come from the selected Mon–Sun week via the shared helper, so
@@ -177,9 +179,9 @@ function TeamReports({team,weeks,selected,setSelected}){
       // Rolling means are left blank past today: their windows would be padded with days
       // that simply haven't happened yet and the lines would nosedive at the week's end.
       if(k>tk){out.push({k,daily,acute:null,chronic:null});continue;}
-      const w=loadWindows(dayAvg,k);const a=w.ac/7,c=w.ch/Math.max(7,w.hist);
+      const w=loadWindows(dayAvg,k,teamFirst);const a=w.ac/7,c=w.ch/(w.weeks*7);
       out.push({k,daily,acute:Math.round(a),chronic:Math.round(c)});}
-    return out;},[teamDaily,lmEnd,lmWin]);
+    return out;},[teamDaily,teamFirst,lmEnd,lmWin]);
 
   // ---- Training purpose distribution (planned sessions, by minutes) ----
   const pMix=useMemo(()=>{const t={};Object.values(team.days||{}).forEach(d=>{if(!d?.date||d.date<ms||d.date>me)return;

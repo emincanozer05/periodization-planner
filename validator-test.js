@@ -91,7 +91,7 @@ function loadApp() {
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
-    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'diVolumeAdj', 'DI_INTENSITY'];
+    'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1574,6 +1574,18 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       r2(A.athACWR(ath(range(0, 2, 700)), REF)) === 1);
     check('2 hafta önce tek yük + son 2 gün: (2×700) / ((2×700+700)/(15/7)) = 1.43',
       r2(A.athACWR(ath({ 0: 700, 1: 700, 14: 700 }), REF)) === 1.43, String(A.athACWR(ath({ 0: 700, 1: 700, 14: 700 }), REF)));
+    // Formül: ACWR = son 7 günün toplamı ÷ son 28 günün haftalık ortalaması (28 gün toplamı ÷ 4).
+    // Pencerenin başındaki dinlenme de yüktür (0); kısaltma yalnız sporcunun kaydı 28 günden kısaysa.
+    check('pencerenin ilk haftası dinlenme, öncesinde kayıt var: 3500 / (10500/4) = 1.33 (eski hesap 1.00)',
+      r2(A.athACWR(ath({ ...range(0, 20, 500), 35: 500 }), REF)) === 1.33, String(A.athACWR(ath({ ...range(0, 20, 500), 35: 500 }), REF)));
+    check('3 hafta ara sonrası dönüş: 7×600 / (4200/4) = 4.00 (sıçrama gizlenmiyor)',
+      r2(A.athACWR(ath({ ...range(0, 6, 600), ...range(40, 60, 500) }), REF)) === 4, String(A.athACWR(ath({ ...range(0, 6, 600), ...range(40, 60, 500) }), REF)));
+    check('ilk yük 2 hafta önce (soğuk başlangıç): kronik kaydın kendisine bölünüyor',
+      A.athLoadWindows(ath({ 0: 700, 14: 700 }), REF).hist === 15 && A.athLoadWindows(ath({ 0: 700, 40: 700 }), REF).hist === 28);
+    // Her sporcu kendi kaydıyla: aynı son 4 hafta, farklı geçmiş → farklı ACWR.
+    const newA = ath({ ...range(0, 6, 600), ...range(14, 20, 300) }), oldA = ath({ ...range(0, 6, 600), ...range(14, 20, 300), 50: 300 });
+    check('her sporcu kendi kaydına göre: yeni sporcu 4200/(6300/3)=2.00, eski sporcu 4200/(6300/4)=2.67',
+      r2(A.athACWR(newA, REF)) === 2 && r2(A.athACWR(oldA, REF)) === 2.67, String([A.athACWR(newA, REF), A.athACWR(oldA, REF)]));
     const idle = ath(range(10, 20, 400));
     check('son 7 gün boş, öncesi yüklü: ACWR 0 ve bölge "Low" (veri yok değil)',
       A.athACWR(idle, REF) === 0 && A.loadWindows(k => A.athDayLoad(idle, k), REF).ch > 0 &&
