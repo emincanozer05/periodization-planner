@@ -147,6 +147,7 @@ header .rule{flex:none;width:1px;align-self:stretch;margin:2px 0;
 .fill .p{font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid;line-height:1.35}
 .fill .p.no{color:#fcd34d;border-color:rgba(252,211,77,.45);background:rgba(252,211,77,.06)}
 .fill .p.yes{color:#8fe9cd;border-color:rgba(47,224,168,.3);background:rgba(47,224,168,.05)}
+.fill .src{margin-top:10px;font-size:11.5px;line-height:1.4;color:#7d8894}
 
 /* ── Kurulum kartı ──────────────────────────────────────────────────────── */
 .card{position:relative;overflow:hidden;border-radius:16px;padding:20px 18px;margin-bottom:14px;
@@ -381,6 +382,7 @@ var I18N={
     prev_day:'Önceki gün',next_day:'Sonraki gün',pick_day:'Gün seç',
     filled:'doldurdu',missing:' eksik',all_filled:'hepsi doldurdu',
     not_filled_h:'Doldurmayan',filled_h:'Dolduran',who_filled:'Kim doldurdu',
+    roster_recent:'Takım listesi okunamadı; liste son 14 günde form dolduranlardan kuruldu. Koç uygulamasını bir kez açmak tam listeyi getirir.',
     weekdays:['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'],
     read_denied:'Kayıtlar okunamadı. Koçuna ilet: Firestore kuralları henüz yayınlanmamış olabilir.',
     read_fail:'Kayıtlar yüklenemedi: ',
@@ -454,6 +456,7 @@ var I18N={
     prev_day:'Previous day',next_day:'Next day',pick_day:'Pick a day',
     filled:'filled',missing:' missing',all_filled:'everyone filled',
     not_filled_h:'Not filled',filled_h:'Filled',who_filled:'Who filled',
+    roster_recent:'The team list could not be read; this list is built from everyone who filled a form in the last 14 days. Opening the coach app once brings the full list.',
     weekdays:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
     read_denied:'Records could not be read. Tell your coach: the Firestore rules may not be published yet.',
     read_fail:'Records could not be loaded: ',
@@ -1280,8 +1283,44 @@ function watchFeed(){
      Takımın sporcu listesi koçun uygulamasının yayımladığı kadro özetinden
      (alert_roster) geliyor. Liste henüz yoksa — koç bu sürümü daha açmamışsa ya da
      kurallar yayımlanmamışsa — şerit hiç görünmüyor: yanlış bir "0/0" yerine
-     hiçbir şey. */
+     hiçbir şey.
+
+     YEDEK LİSTE: Kadro özeti okunamadığında şerit eskiden sessizce kayboluyordu ve
+     sahada sebebi görünmüyordu. Artık takımın son 14 gündeki wellness ve RPE
+     kayıtlarından (bu sayfanın zaten okuyabildiği iki koleksiyon) bir liste
+     kuruluyor; şerit, listenin nereden geldiğini ve okuma hatasının kodunu
+     açılan kısımda yazıyor. Hiç kaydı olmayan sporcu bu listede yok — o yüzden
+     yalnızca yedek. */
   var ROSTER=null;     // [{id,name}] — null: henüz bilinmiyor / okunamadı
+  var RECENT=null,recentBusy=false,rosterWhy='';
+  function loadRecent(){
+    if(recentBusy||RECENT)return;
+    recentBusy=true;
+    var end=todayKey(),days=[];
+    for(var i=0;i<14;i++)days.push(addDays(end,-i));
+    var seen={};
+    function add(snap){
+      snap.forEach(function(d){
+        var r=d.data()||{},nm=String(r.athleteName||'').trim();
+        if(r.athleteId&&nm&&days.indexOf(String(r.date||''))>=0)seen[r.athleteId]={id:r.athleteId,name:nm};
+      });
+    }
+    function base(col){
+      return db.collection(col).where('coachUid','==',LINK.coachUid).where('teamId','==',LINK.teamId);
+    }
+    function take(col){
+      return base(col).where('date','in',days).get().then(add,function(e){
+        // Bir kurulumda dizin isterse: takımın kayıtları çekilip gün burada süzülüyor.
+        if((e&&e.code)!=='failed-precondition'){console.warn('recent '+col,(e&&e.code)||e);return;}
+        return base(col).limit(500).get().then(add,function(e2){console.warn('recent '+col,(e2&&e2.code)||e2);});
+      });
+    }
+    Promise.all(FEEDS.map(function(F){return take(F.col);})).then(function(){
+      recentBusy=false;
+      RECENT=Object.keys(seen).map(function(k){return seen[k];});
+      FEEDS.forEach(drawFill);
+    });
+  }
   function fillStrip(){
     var box=el('div',{class:'fill',hidden:''});
     var bar=el('i');
@@ -1299,13 +1338,25 @@ function watchFeed(){
   function byName(a,b){return String(a.name||'').localeCompare(String(b.name||''),'tr');}
   function drawFill(F){
     var f=F.fill;
-    if(!ROSTER||!ROSTER.length||!F.rows){f.box.hidden=true;return;}
+    var fallback=!(ROSTER&&ROSTER.length);
+    var list=fallback?RECENT:ROSTER;
+    if(!list||!F.rows){f.box.hidden=true;return;}
+    if(fallback){
+      // Yedek listede, bugün ilk kez form dolduran sporcu da görünsün.
+      var known={};list.forEach(function(a){known[a.id]=true;});
+      list=list.slice();
+      F.rows.forEach(function(r){
+        var nm=r&&String(r.athleteName||'').trim();
+        if(r&&r.athleteId&&nm&&!known[r.athleteId]){known[r.athleteId]=true;list.push({id:r.athleteId,name:nm});}
+      });
+      if(!list.length){f.box.hidden=true;return;}
+    }
     var done={};
     F.rows.forEach(function(r){if(r&&r.athleteId)done[r.athleteId]=true;});
     var yes=[],no=[];
-    ROSTER.forEach(function(a){(done[a.id]?yes:no).push(a);});
+    list.forEach(function(a){(done[a.id]?yes:no).push(a);});
     yes.sort(byName);no.sort(byName);
-    var total=ROSTER.length;
+    var total=list.length;
     f.bar.style.width=Math.round(yes.length*100/total)+'%';
     f.lbl.innerHTML='';
     f.lbl.appendChild(el('b',{text:yes.length+'/'+total}));
@@ -1323,6 +1374,8 @@ function watchFeed(){
     }
     group(T('not_filled_h'),no,'no');
     group(T('filled_h'),yes,'yes');
+    if(fallback)f.ls.appendChild(el('div',{class:'src',
+      text:T('roster_recent')+(rosterWhy?' ('+rosterWhy+')':'')}));
     f.box.hidden=false;
   }
   /* Dinleyici hata verdiğinde Firestore onu KAPATIYOR ve bir daha kendiliğinden
@@ -1343,13 +1396,19 @@ function watchFeed(){
         ?d.athletes.filter(function(a){return a&&a.id&&String(a.name||'').trim();})
             .map(function(a){return {id:a.id,name:String(a.name).trim()};})
         :null;
+      if(!ROSTER||!ROSTER.length){
+        rosterWhy=!snap.exists?'no-doc':(Array.isArray(d.athletes)?'empty':'no-athletes');
+        loadRecent();
+      }else rosterWhy='';
       FEEDS.forEach(drawFill);
     },function(err){
-      // Okunamıyorsa (kurallar eski, doküman yok, jeton düştü) şerit kapalı kalıyor
-      // ama vazgeçilmiyor: biraz sonra yeniden deneniyor.
+      // Okunamıyorsa (kurallar eski, doküman yok, jeton düştü) yedek liste devreye
+      // giriyor; dinleyiciden de vazgeçilmiyor: biraz sonra yeniden deneniyor.
       console.warn('alert_roster',(err&&err.code)||err);
       rosterUnsub=null;
+      rosterWhy=String((err&&err.code)||'error');
       ROSTER=null;FEEDS.forEach(drawFill);
+      loadRecent();
       rosterWait=Math.min(rosterWait?rosterWait*2:15000,10*60*1000);
       rosterRetry=setTimeout(watchRoster,rosterWait);
     });
