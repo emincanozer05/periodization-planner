@@ -708,9 +708,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       JSON.stringify(snap.coach_brief));
     const instrM = A.diInstr({ method: 'superset' }, { duration: 60 });
     const snapM = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr: instrM, customTests: [] });
-    check('antrenman metodu: seçilen JSON\'a yazılıyor, seçilmeyen yazılmıyor, bilinmeyen atılıyor',
+    check('antrenman metodu: seçilen JSON\'a yazılıyor; seçilmeyen/bilinmeyen Klasik set (model seçmiyor)',
       instrM.method === 'superset' && snapM.coach_brief.training_method && snapM.coach_brief.training_method.id === 'superset' &&
-      snap.coach_brief.training_method == null && A.diInstr({ method: 'yok' }, null).method === null,
+      snap.coach_brief.training_method && snap.coach_brief.training_method.id === 'straight' &&
+      A.diInstr({ method: 'yok' }, null).method === 'straight' && A.diInstr(null, null).method === 'straight',
       JSON.stringify([snapM.coach_brief.training_method, snap.coach_brief.training_method]));
     const briefC = A.diBriefForAI(Object.assign({}, instr, { priorities: ['mobility', 'corrective'] }));
     const snapC = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY,
