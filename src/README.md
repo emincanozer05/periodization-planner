@@ -39,6 +39,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `15-theme-light.css` | Açık tema: elle yazılmış değişkenler + `tools/gen-light-theme.js`'in ürettiği bölüm (10-styles.css'te sabit koyu renk değişince yeniden çalıştır) |
 | `17-motion-polish.css` | Hareket + cila katmanı: hareket değişkenleri (`--ease-*`, `--dur-*`), kenar çubuğu seçili göstergesi, sayfa başlığı girişleri, koyu zemin, az-hareket koruması |
 | `18-elements.css` | Sekme içi elemanlar: tek ölçüde panel başlıkları (16px + aksan çubuğu), koyu `color-scheme` ve form alanı hover/disabled, boş durum kutusu (`.empty-st`), tablo rakam hizası |
+| `19-profile-tests-load.css` | Sporcu Profili (Joint by Joint, Atletik Profil), Test ve Değerlendirme ve Sporcu Yük Panosu: düz/opak yüzeyler (gradyan ve yarı saydam katman yok), renk yalnızca küçük işaretlerde, seçim ve gelişte kısa hareketler. `:is(:root,:root[data-theme])` öneki açık temanın otomatik kurallarını aynı özgüllükte geçer |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |

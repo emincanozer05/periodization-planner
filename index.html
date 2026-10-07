@@ -7340,6 +7340,254 @@ th{letter-spacing:.07em}
 @media (prefers-reduced-motion: reduce){
   .mc-title::before,.lb-title::before,.it-head-t b::before,.ck-head-t b::before{animation:none!important}
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPORCU PROFİLİ (Joint by Joint · Atletik Profil) · TEST VE DEĞERLENDİRME ·
+   SPORCU YÜK PANOSU — sade, düz yüzeyler
+
+   Kurallar (kullanıcının isteği: "gereksiz saydam/gradyan yok, gözü yormasın, dinamik"):
+     • Yüzeyler DÜZ ve OPAK: panel → --panel, içindeki kart → --elevated, giriş alanı
+       → --bg2. rgba(255,255,255,.04) gibi yarı saydam katmanlar ve linear-gradient yok.
+     • Renk küçük işaretlerde: nokta, 2–3px çizgi, yazı rengi. Renkli zemin + renkli
+       kenarlıklı kutular yok; seçili durum = 1px aksan kenarı, parlama (glow) yok.
+     • Hareket anlamlı anlarda: seçim (yaylı), yeni gelen öğe (kısa yükselme), dolan
+       çubuklar. Süreler/eğriler 17-motion-polish.css'teki --dur-* / --ease-*.
+
+   Özgüllük: 15-theme-light.css'in ürettiği `:root[data-theme="light"] .x` kuralları
+   (0,3,0) bu alanlarda gradyan/saydam değerler taşıyor. Buradaki kurallar aynı
+   özgüllüğe :is(:root,:root[data-theme]) önekiyle çıkıyor ve sonra yüklendiği için
+   iki temada da kazanıyor; renkler değişkenlerden geldiği için tema kendiliğinden uyar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════════ ORTAK ═════════════ */
+/* Bölüm numarası (Sporcu Profili bölümleri ve testin adımları): saydam mavi zemin yerine
+   düz kart, numara aksan renginde. */
+:is(:root,:root[data-theme]) .sc-sec-n,
+:is(:root,:root[data-theme]) .ev2-step-n{
+  background:var(--elevated);border:1px solid var(--border2);color:var(--accent2);box-shadow:none}
+:is(:root,:root[data-theme]) .ev2-step-n{width:28px;height:28px;border-radius:9px;font-size:13px}
+@keyframes coRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes coPop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes coGrowX{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ═════════════ 1) SPORCU PROFİLİ — JOINT BY JOINT ═════════════ */
+:is(:root,:root[data-theme]) .atp-hc{background:var(--elevated);border-color:var(--border)}
+:is(:root,:root[data-theme]) .atp-hc.atp-auto{background:var(--elevated);border-color:var(--border);color:var(--accent2)}
+:is(:root,:root[data-theme]) .atp-jb-figs{background:var(--bg2);border-color:var(--border)}
+/* İşaretlenmemiş eklem: yarı saydam dolgu yerine zeminle aynı düz renk; hover'da halka
+   düz çizgiye döner ve dolgu bir ton açılır. */
+:is(:root,:root[data-theme]) .atp-jb-empty{fill:var(--bg2);transition:fill var(--dur-2),stroke-dasharray var(--dur-2)}
+:is(:root,:root[data-theme]) .atp-jb-m:hover .atp-jb-empty{fill:var(--elevated)}
+/* İşaretli eklem: seçildiği an yaylı bir "pıt" ile dolar; üstüne gelince hafifçe büyür. */
+.atp-jb-dot,.atp-jb-empty{transform-box:fill-box;transform-origin:center;transition:transform var(--dur-3) var(--ease-spring),stroke-width var(--dur-2)}
+.atp-jb-dot{animation:coPop var(--dur-3) var(--ease-spring) both}
+.atp-jb-m:hover .atp-jb-dot,.atp-jb-m:hover .atp-jb-empty{transform:scale(1.14)}
+.atp-jb-halo{transform-box:fill-box;transform-origin:center;animation:coPop var(--dur-3) var(--ease-spring) both}
+/* Seçici: düz kart, kısa bir yükselişle açılır. */
+:is(:root,:root[data-theme]) .atp-jb-pop{background:var(--panel);border-color:var(--border2);animation:coRise var(--dur-2) var(--ease-out) both}
+:is(:root,:root[data-theme]) .atp-jb-lvs button{background:var(--bg2);border-color:var(--border);transition:border-color var(--dur-1),color var(--dur-1),background var(--dur-1)}
+:is(:root,:root[data-theme]) .atp-jb-lvs button.on{background:var(--elevated);border-color:var(--lv);color:var(--text);box-shadow:inset 0 -2px 0 var(--lv)}
+:is(:root,:root[data-theme]) .atp-jb-note{background:var(--bg2);border-color:var(--border)}
+/* İşaretlenen eklemler: renkli kenarlıklı/renkli zeminli çipler yerine düzenli bir liste.
+   Her satır düz kart; seviyenin rengi yalnızca soldaki 3px çizgide ve noktada. */
+:is(:root,:root[data-theme]) .atp-jb-sum{background:var(--bg2);border-color:var(--border);padding:12px}
+.atp-jb-chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px}
+:is(:root,:root[data-theme]) .atp-jb-chip{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:9px;
+  background:var(--panel);box-shadow:inset 3px 0 0 var(--lv);overflow:hidden;
+  transition:border-color var(--dur-2) var(--ease-out),background var(--dur-2);animation:coRise var(--dur-3) var(--ease-out) both}
+:is(:root,:root[data-theme]) .atp-jb-chip:hover{border-color:var(--border2);background:var(--elevated)}
+:is(:root,:root[data-theme]) .atp-jb-chip.on{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--lv)}
+.atp-jb-chips>.atp-jb-chip:nth-child(2){animation-delay:30ms}.atp-jb-chips>.atp-jb-chip:nth-child(3){animation-delay:60ms}
+.atp-jb-chips>.atp-jb-chip:nth-child(4){animation-delay:90ms}.atp-jb-chips>.atp-jb-chip:nth-child(n+5){animation-delay:120ms}
+.atp-jb-chip-b{flex:1;min-width:0;flex-wrap:wrap;align-content:center;row-gap:2px;padding:7px 4px 7px 12px;text-align:left;font-size:12.5px}
+.atp-jb-chip-b small{order:3;flex-basis:100%;padding-left:14px;font-size:11px;color:var(--muted)}
+.atp-jb-chip-b em{order:2;margin-left:auto;padding-right:2px}
+.atp-jb-chip-x{flex:none;width:30px;padding:0;display:grid;place-items:center;transition:color var(--dur-1),background var(--dur-1)}
+:is(:root,:root[data-theme]) .atp-jb-chip-x:hover{color:var(--high-t);background:var(--bg2)}
+
+/* ═════════════ 2) SPORCU PROFİLİ — ATLETİK PROFİL ═════════════ */
+/* Öncelik etiketleri (anahtar satırı): renkli zemin/kenarlık yerine nötr kart, renk yazıda. */
+:is(:root,:root[data-theme]) .atp-tag{background:var(--elevated);border-color:var(--border2);color:var(--lc)}
+/* Şeritler (Yüksek / Orta / Düşük): üstteki renkli çizgi kalktı; başlıktaki sinyal ikonu
+   ve renkli başlık seviyeyi zaten söylüyor. Yüzey düz. */
+:is(:root,:root[data-theme]) .atp-lane{background:var(--bg2);border:1px solid var(--border);border-top:1px solid var(--border)}
+.atp-lane-n{font-variant-numeric:tabular-nums}
+/* Şeritteki kaliteler: renkli zeminli çip yerine nötr çip; renk yalnızca noktada.
+   Bir kaliteye öncelik verildiği an çip yaylı bir şekilde şeride düşer. */
+:is(:root,:root[data-theme]) .atp-chip{background:var(--panel);border:1px solid var(--border);color:var(--text);
+  transition:border-color var(--dur-2) var(--ease-out);animation:coPop var(--dur-3) var(--ease-spring) both}
+:is(:root,:root[data-theme]) .atp-chip:hover{border-color:var(--border2)}
+:is(:root,:root[data-theme]) .atp-chip button{color:var(--muted)}
+:is(:root,:root[data-theme]) .atp-chip button:hover{background:var(--elevated);color:var(--high-t)}
+/* Kalite grupları: başlık şeridi düz, satırlar arasında ince çizgi. */
+:is(:root,:root[data-theme]) .atp-grp{background:var(--bg2);border-color:var(--border)}
+:is(:root,:root[data-theme]) .atp-grp-h{background:var(--elevated);border-bottom-color:var(--border)}
+.atp-it{transition:background var(--dur-1) linear}
+.atp-it:hover{background:var(--panel)}
+.atp-it.set{box-shadow:inset 2px 0 0 var(--ld,var(--border2))}
+/* YÜKSEK / ORTA / DÜŞÜK seçici: seçili düğme renkli zemin + renkli çerçeve yerine
+   bir ton açık düz zemin, renkli yazı ve alt kenarda 2px renk çizgisi. Sinyal
+   çubukları seçildiği an soldan sağa sırayla dolar. */
+:is(:root,:root[data-theme]) .atp-seg{background:var(--panel);border-color:var(--border)}
+:is(:root,:root[data-theme]) .atp-seg button{border-left-color:var(--border)}
+:is(:root,:root[data-theme]) .atp-seg button.on{background:var(--hover);color:var(--lc);box-shadow:inset 0 -2px 0 var(--ld)}
+@keyframes coBar{from{transform:scaleY(.2)}to{transform:scaleY(1)}}
+.atp-bars s{transform-origin:bottom}
+.atp-seg button.on .atp-bars s{animation:coBar var(--dur-3) var(--ease-spring) both}
+.atp-seg button.on .atp-bars s:nth-child(2){animation-delay:50ms}
+.atp-seg button.on .atp-bars s:nth-child(3){animation-delay:100ms}
+/* Açık temada renkli yazılar beyaz zeminde okunsun (lc açık tonlar koyu zemin içindi). */
+:root[data-theme="light"] .pr-high{--lc:#c5352a}
+:root[data-theme="light"] .pr-medium{--lc:#a15c07}
+:root[data-theme="light"] .pr-low{--lc:#2f5fd0}
+
+/* ═════════════ 3) TEST VE DEĞERLENDİRME ═════════════ */
+/* Filtre sekmeleri ve kategori listesi: seçili olan beyaz dolgulu blok değil;
+   düz kart + aksan kenarı (sekme) ya da soldan aksan çizgisi (kategori). */
+:is(:root,:root[data-theme]) .ev2-tab{background:var(--panel)}
+:is(:root,:root[data-theme]) .ev2-tab.on{background:var(--elevated);border-color:var(--accent);color:var(--text)}
+:is(:root,:root[data-theme]) .ev2-tab.on .ev2-tab-n{color:var(--accent2);opacity:1}
+:is(:root,:root[data-theme]) .ev2-cat{position:relative;font-weight:700}
+:is(:root,:root[data-theme]) .ev2-cat.on{background:var(--elevated);color:var(--text)}
+.ev2-cat.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;
+  background:var(--accent);animation:coNavInd var(--dur-3) var(--ease-spring) both}
+.ev2-cat.on .ev2-cat-n{color:var(--accent2);opacity:1}
+:is(:root,:root[data-theme]) .ev2-vt button.on{background:var(--elevated);color:var(--accent2)}
+
+/* Sporcu kartları: üstüne gelince hafif kalkar ama gölge/parlama yok; seçili kart
+   1px aksan kenarı. Avatar düz kart, "2 test" etiketi nötr. */
+:is(:root,:root[data-theme]) .ev2-card{transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2),background var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-card:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:none}
+:is(:root,:root[data-theme]) .ev2-card.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--panel)}
+:is(:root,:root[data-theme]) .ev2-card-av,
+:is(:root,:root[data-theme]) .ev2-lrow-av{background:var(--elevated);border:1px solid var(--border2)}
+:is(:root,:root[data-theme]) .ev2-card.on .ev2-card-av{border-color:var(--accent)}
+:is(:root,:root[data-theme]) .ev2-card-b{background:var(--elevated);border:1px solid var(--border);color:var(--muted)}
+:is(:root,:root[data-theme]) .ev2-card.on .ev2-card-b{color:var(--accent2)}
+.ev2-card.on .ev2-card-chk,.ev2-tile.on .ev2-tile-chk{animation:coPop var(--dur-3) var(--ease-spring) both}
+.ev2-grid>.ev2-card{animation:coRise var(--dur-3) var(--ease-out) both}
+.ev2-grid>.ev2-card:nth-child(2){animation-delay:25ms}.ev2-grid>.ev2-card:nth-child(3){animation-delay:50ms}
+.ev2-grid>.ev2-card:nth-child(4){animation-delay:75ms}.ev2-grid>.ev2-card:nth-child(5){animation-delay:100ms}
+.ev2-grid>.ev2-card:nth-child(n+6){animation-delay:125ms}
+:is(:root,:root[data-theme]) .ev2-lrow.on{border-color:var(--accent);box-shadow:none}
+
+/* Test kutucukları: gradyan zemin yerine düz kart; seçili kutucuk saydam mavi dolgu ve
+   parlama yerine aksan kenarı. Kategori rengi yalnızca kısa kodda. */
+:is(:root,:root[data-theme]) .ev2-tile{background:var(--elevated);
+  transition:transform var(--dur-3) var(--ease-out),border-color var(--dur-2),background var(--dur-2)}
+:is(:root,:root[data-theme]) .ev2-tile:hover{transform:translateY(-2px);border-color:var(--border2);box-shadow:none}
+:is(:root,:root[data-theme]) .ev2-tile.on{background:var(--elevated);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+:is(:root,:root[data-theme]) .ev2-tile.on .ev2-tile-s{color:var(--muted)}
+:is(:root,:root[data-theme]) .ev2-tile-chk{color:var(--on-accent,#0a0b0d)}
+.ev2-tiles>.ev2-tile{animation:coRise var(--dur-3) var(--ease-out) both}
+.ev2-tiles>.ev2-tile:nth-child(3n+2){animation-delay:30ms}.ev2-tiles>.ev2-tile:nth-child(3n){animation-delay:60ms}
+
+/* Kayıtlı testler: hover'da parlama yok, kenar bir ton koyulaşır; açık olan aksan kenarı.
+   "Testi Sil" dolu kırmızı blok değil — kırmızı yazılı çerçeve, üstüne gelince dolar. */
+:is(:root,:root[data-theme]) .ev2-res-row{background:var(--elevated);transition:border-color var(--dur-2),transform var(--dur-3) var(--ease-out)}
+:is(:root,:root[data-theme]) .ev2-res-row:hover{border-color:var(--border2);box-shadow:none;transform:translateY(-1px)}
+:is(:root,:root[data-theme]) .ev2-res-row.open{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.ev2-res>.ev2-res-row{animation:coRise var(--dur-3) var(--ease-out) both}
+.ev2-res>.ev2-res-row:nth-child(2){animation-delay:40ms}.ev2-res>.ev2-res-row:nth-child(n+3){animation-delay:80ms}
+.ev2-res-dd{font-variant-numeric:tabular-nums}
+:is(:root,:root[data-theme]) .ev2-res-a .btn.danger{background:transparent;color:var(--high-t);border:1px solid var(--border2)}
+:is(:root,:root[data-theme]) .ev2-res-a .btn.danger:hover{background:var(--red);border-color:var(--red);color:#fff;box-shadow:none}
+.ev2-res-a .btn.danger::after{display:none}
+
+/* Test kaydı (açılan kayıt): kartlar düz --elevated, değer kutuları düz --bg2 + ince
+   kenar. Beyaz numara rozeti yerine düz rozet. Kartlar sırayla gelir. */
+:is(:root,:root[data-theme]) .tcard{background:var(--elevated);border:1px solid var(--border);box-shadow:none;
+  transition:border-color var(--dur-2);animation:coRise var(--dur-3) var(--ease-out) both}
+:is(:root,:root[data-theme]) .tcard:hover{border-color:var(--border2);box-shadow:none}
+.ts-wrap>.tcard:nth-child(2){animation-delay:40ms}.ts-wrap>.tcard:nth-child(3){animation-delay:80ms}
+.ts-wrap>.tcard:nth-child(4){animation-delay:120ms}.ts-wrap>.tcard:nth-child(n+5){animation-delay:160ms}
+:is(:root,:root[data-theme]) .tcard-badge{background:var(--bg2);border:1px solid var(--border2);color:var(--text)}
+:is(:root,:root[data-theme]) .tcard-summary .tcard-badge{background:var(--accent);border-color:var(--accent);color:var(--on-accent,#0a0b0d)}
+:is(:root,:root[data-theme]) .tcard-tag{border:1px solid var(--border2);color:var(--muted)}
+:is(:root,:root[data-theme]) .mk-input,
+:is(:root,:root[data-theme]) .mk-select{background:var(--bg2);border:1px solid var(--border);transition:border-color var(--dur-2),box-shadow var(--dur-2)}
+:is(:root,:root[data-theme]) .mk-input:hover,
+:is(:root,:root[data-theme]) .mk-select:hover{border-color:var(--border2)}
+:is(:root,:root[data-theme]) .mk-input:focus-within,
+:is(:root,:root[data-theme]) .mk-select:focus-within{background:var(--bg2);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+:is(:root,:root[data-theme]) .mk-input input,
+:is(:root,:root[data-theme]) .mk-select select{color:var(--text);font-variant-numeric:tabular-nums}
+:is(:root,:root[data-theme]) .mk-input input::placeholder{color:var(--dim)}
+:is(:root,:root[data-theme]) .tc-obs textarea,
+:is(:root,:root[data-theme]) .ohs-comp-input{background:var(--bg2);border:1px solid var(--border)}
+:is(:root,:root[data-theme]) .tc-obs textarea::placeholder,
+:is(:root,:root[data-theme]) .ohs-comp-input::placeholder{color:var(--dim)}
+/* Asimetri: saydam turuncu hap yerine düz hap, uyarı rengi noktada ve yazıda. */
+:is(:root,:root[data-theme]) .mk-asym-pill{gap:7px;background:var(--bg2);border:1px solid var(--border2);color:var(--med-t)}
+.mk-asym-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+/* Y Balance, foto kutuları, FMS PDF: aynı düz yüzey dili. */
+:is(:root,:root[data-theme]) .yb-side{background:var(--bg2);border:1px solid var(--border)}
+:is(:root,:root[data-theme]) .yb-score{background:var(--bg2);border:1px solid var(--border)}
+:is(:root,:root[data-theme]) .yb-comp{background:var(--panel)}
+:is(:root,:root[data-theme]) .yb-diff-val{background:var(--panel);border:1px solid var(--border)}
+:is(:root,:root[data-theme]) .yb-diff-val.ok{background:var(--panel);border-color:var(--border);color:var(--low-t)}
+:is(:root,:root[data-theme]) .yb-diff-val.bad{background:var(--panel);border-color:var(--border);color:var(--high-t)}
+:is(:root,:root[data-theme]) .mk-up-box{background:var(--bg2);border:1.5px dashed var(--border2)}
+:is(:root,:root[data-theme]) .mk-up-box:hover{background:var(--hover);border-color:var(--accent)}
+:is(:root,:root[data-theme]) .fms-pdf-have{background:var(--bg2);border:1px solid var(--border)}
+:is(:root,:root[data-theme]) .tsess-avph{background:var(--elevated);border:1px solid var(--border2)}
+:is(:root,:root[data-theme]) .tsess-av{border:1px solid var(--accent)}
+
+/* Sporcu karşılaştırma: metrik grubu ve sporcu çipleri beyaz çerçeve / saydam dolgu
+   yerine düz çip; seçili olan aksan kenarı. */
+:is(:root,:root[data-theme]) .cmp-chip.grp,
+:is(:root,:root[data-theme]) .cmp-chip.ath{color:var(--text2);border-color:var(--border);background:var(--bg2)}
+:is(:root,:root[data-theme]) .cmp-chip.grp:hover,
+:is(:root,:root[data-theme]) .cmp-chip.ath:hover{color:var(--text);border-color:var(--border2)}
+:is(:root,:root[data-theme]) .cmp-chip.on,
+:is(:root,:root[data-theme]) .cmp-chip.grp.on,
+:is(:root,:root[data-theme]) .cmp-chip.ath.on{color:var(--text);border-color:var(--accent);background:var(--elevated)}
+:is(:root,:root[data-theme]) .cmp-chip.ath.on .n{color:var(--accent2)}
+.cmp-tbl td{font-variant-numeric:tabular-nums}
+
+/* ═════════════ 4) SPORCU YÜK PANOSU ═════════════ */
+/* Başlık satırı: gradyanlı yuvarlak şerit yerine düz satır, altında ince çizgi. */
+:is(:root,:root[data-theme]) .lb-tbl thead th{background:none;color:var(--dim);padding-top:4px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.lb-tbl thead th:first-child,.lb-tbl thead th:last-child{border-radius:0}
+.lb-tbl thead th:first-child{padding-left:14px}
+/* Satır: üstüne gelince düz bir ton açılır; sayılar sütunda hizalı. */
+.lb-tbl td{padding-top:10px;padding-bottom:10px;font-variant-numeric:tabular-nums}
+:is(:root,:root[data-theme]) .lb-tbl tbody tr:hover td{background:var(--elevated)}
+.lb-tbl tbody tr{animation:coRise var(--dur-3) var(--ease-out) both}
+.lb-tbl tbody tr:nth-child(2){animation-delay:30ms}.lb-tbl tbody tr:nth-child(3){animation-delay:60ms}
+.lb-tbl tbody tr:nth-child(4){animation-delay:90ms}.lb-tbl tbody tr:nth-child(5){animation-delay:120ms}
+.lb-tbl tbody tr:nth-child(n+6){animation-delay:150ms}
+/* Avatar: gradyan yerine düz kart. Mevki: kutu değil, sade yazı. */
+:is(:root,:root[data-theme]) .lb-av{background:var(--elevated);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px}
+:is(:root,:root[data-theme]) .lb-pos{background:none;border:none;padding:0;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--muted)}
+/* 7 günlük yük: daha okunur bir çubuk, satır geldiğinde soldan dolar. */
+.lb-load .v{font-family:inherit;font-variant-numeric:tabular-nums}
+:is(:root,:root[data-theme]) .lb-bar{width:84px;height:6px;border-radius:999px;background:var(--border)}
+:is(:root,:root[data-theme]) .lb-bar i{background:var(--accent);border-radius:999px;transform-origin:left;
+  animation:coGrowX var(--dur-4) var(--ease-out) .15s both}
+/* RPE haftası: hücre renkli zemin + renkli kenarlık değil. Düz hücre, değer renkli yazıyla
+   ve hücrenin altında 2px aynı renk çizgi (--rc, satırın JSX'i yazar). Boş gün: kesik
+   çizgili boş kutu. */
+:is(:root,:root[data-theme]) .lb-rpe-cell{width:28px;height:28px;border-radius:7px;border:1px solid var(--border);
+  background:var(--elevated);color:var(--rc,var(--dim));font-family:inherit;font-variant-numeric:tabular-nums;font-size:11.5px;
+  box-shadow:inset 0 -2px 0 var(--rc,transparent);transition:transform var(--dur-2) var(--ease-out),border-color var(--dur-2)}
+:is(:root,:root[data-theme]) .lb-rpe-cell:hover{transform:translateY(-2px);border-color:var(--border2)}
+:is(:root,:root[data-theme]) .lb-rpe-cell.empty{opacity:1;background:transparent;border:1px dashed var(--border);color:var(--dim);box-shadow:none}
+.lb-rpe-days span{width:28px}
+.lb-rpe-row,.lb-rpe-days{gap:5px}
+.lb-rd,.lb-acwr{font-family:inherit;font-variant-numeric:tabular-nums}
+
+/* Açık temada iç yüzeyler bir ton açık kalsın: --bg2 beyaz panel üstünde fazla griydi. */
+:root[data-theme="light"] .atp-grp,:root[data-theme="light"] .atp-lane,
+:root[data-theme="light"] .atp-jb-sum,:root[data-theme="light"] .atp-jb-figs{background:var(--elevated)}
+:root[data-theme="light"] .atp-it:hover{background:var(--panel)}
+
+@media (prefers-reduced-motion: reduce){
+  .atp-jb-dot,.atp-jb-halo,.atp-jb-pop,.atp-jb-chip,.atp-chip,.atp-seg button.on .atp-bars s,.ev2-cat.on::before,
+  .ev2-card.on .ev2-card-chk,.ev2-tile.on .ev2-tile-chk,.ev2-grid>.ev2-card,.ev2-tiles>.ev2-tile,.ev2-res>.ev2-res-row,
+  .tcard,.lb-tbl tbody tr,.lb-bar i{animation:none!important}
+  .ev2-card:hover,.ev2-tile:hover,.ev2-res-row:hover,.lb-rpe-cell:hover,.atp-jb-m:hover .atp-jb-dot,.atp-jb-m:hover .atp-jb-empty{transform:none!important}
+}
 </style>
 </head>
 <body>
@@ -10409,7 +10657,9 @@ function RpeWeekStrip({athlete,refDate}){
   return(<div className="lb-rpe-row">
     {days7.map(dk=>{const rpe=athDayRPE(athlete,dk);const c=rpeColor(rpe);
       return<span key={dk} className={'lb-rpe-cell'+(rpe==null?' empty':'')}
-        style={c?{background:c+'26',borderColor:c+'66',color:c}:null}
+        /* The day's colour reaches the cell as one variable; 19-profile-tests-load.css draws
+           it as the value's colour and a 2px line under the cell, on a plain card. */
+        style={c?{'--rc':c}:null}
         onMouseEnter={ev=>show(ev,dk)} onMouseLeave={()=>setTip(null)}>{fmtRPE(rpe)}</span>;})}
     {tip&&ReactDOM.createPortal(
       <div className="lb-rpe-tip" style={{left:tip.x,top:tip.y}}>
