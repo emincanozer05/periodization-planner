@@ -1325,17 +1325,33 @@ function watchFeed(){
     group(T('filled_h'),yes,'yes');
     f.box.hidden=false;
   }
+  /* Dinleyici hata verdiğinde Firestore onu KAPATIYOR ve bir daha kendiliğinden
+     açmıyor. Eskiden burada tek bir deneme vardı: ana ekrandan açılıp günlerce açık
+     kalan sayfada bir kez jeton tazelenemediğinde (ya da koç kadroyu henüz
+     yayımlamamışken) şerit o sekme kapanana kadar kayboluyordu — wellness ve RPE
+     listeleri gün değişiminde yeniden abone olduğu için onlar geri geliyor, şerit
+     gelmiyordu. Artık hata alınca kendini yeniden kuruyor (artan aralıkla), gün
+     değişince ve sayfa öne gelince de ölü dinleyici yeniden deneniyor. */
+  var rosterUnsub=null,rosterRetry=null,rosterWait=0;
   function watchRoster(){
-    db.collection('alert_roster').doc(LINK.coachUid+'__'+LINK.teamId).onSnapshot(function(snap){
+    if(rosterRetry){clearTimeout(rosterRetry);rosterRetry=null;}
+    if(rosterUnsub)return;     // dinleyici zaten ayakta
+    rosterUnsub=db.collection('alert_roster').doc(LINK.coachUid+'__'+LINK.teamId).onSnapshot(function(snap){
+      rosterWait=0;
       var d=snap.exists?(snap.data()||{}):{};
       ROSTER=Array.isArray(d.athletes)
         ?d.athletes.filter(function(a){return a&&a.id&&String(a.name||'').trim();})
             .map(function(a){return {id:a.id,name:String(a.name).trim()};})
         :null;
       FEEDS.forEach(drawFill);
-    },function(){
-      // Okunamıyorsa (kurallar eski, doküman yok) şerit sessizce kapalı kalıyor.
+    },function(err){
+      // Okunamıyorsa (kurallar eski, doküman yok, jeton düştü) şerit kapalı kalıyor
+      // ama vazgeçilmiyor: biraz sonra yeniden deneniyor.
+      console.warn('alert_roster',(err&&err.code)||err);
+      rosterUnsub=null;
       ROSTER=null;FEEDS.forEach(drawFill);
+      rosterWait=Math.min(rosterWait?rosterWait*2:15000,10*60*1000);
+      rosterRetry=setTimeout(watchRoster,rosterWait);
     });
   }
 
@@ -1398,6 +1414,7 @@ function watchFeed(){
   function subscribeAll(day){
     shownDay=day;
     drawDay();
+    if(!rosterUnsub)watchRoster();     // gün değişimi ölü kadro dinleyicisini de diriltsin
     FEEDS.forEach(function(F){
       // Yeni gün yüklenirken eski günün satırları ekranda kalmasın.
       F.rows=null;drawFill(F);
@@ -1424,6 +1441,7 @@ function watchFeed(){
      bilerek geçmiş bir günü açmış antrenörün ekranı elinden alınmıyor. */
   var lastToday=todayKey();
   function recheck(){
+    if(!rosterUnsub)watchRoster();     // arkadan öne gelen sayfa: şeridi beklemeden yeniden dene
     var d=todayKey();
     if(d===lastToday)return;
     var wasToday=shownDay===lastToday;
