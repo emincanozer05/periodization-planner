@@ -295,7 +295,9 @@ function RpeWeekStrip({athlete,refDate}){
   return(<div className="lb-rpe-row">
     {days7.map(dk=>{const rpe=athDayRPE(athlete,dk);const c=rpeColor(rpe);
       return<span key={dk} className={'lb-rpe-cell'+(rpe==null?' empty':'')}
-        style={c?{background:c+'26',borderColor:c+'66',color:c}:null}
+        /* The day's colour reaches the cell as one variable; 19-profile-tests-load.css draws
+           it as the value's colour and a 2px line under the cell, on a plain card. */
+        style={c?{'--rc':c}:null}
         onMouseEnter={ev=>show(ev,dk)} onMouseLeave={()=>setTip(null)}>{fmtRPE(rpe)}</span>;})}
     {tip&&ReactDOM.createPortal(
       <div className="lb-rpe-tip" style={{left:tip.x,top:tip.y}}>
