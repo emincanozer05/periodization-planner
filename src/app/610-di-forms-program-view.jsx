@@ -190,7 +190,7 @@ function DiPatternPicker({value,onChange,closed}){
 }
 
 /* The training method, in the pattern card's header: one button that opens the list.
-   One pick or none — picking the one that is on goes back to "model chooses". */
+   Always exactly one pick — there is no "model chooses"; unset reads as straight sets. */
 function DiMethodPicker({value,onChange}){
   const[open,setOpen]=useState(false);
   const ref=useRef(null);
@@ -201,19 +201,17 @@ function DiMethodPicker({value,onChange}){
     document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
     return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};
   },[open]);
-  const cur=diMethodRow(value);
-  const pick=id=>{onChange(value===id?null:id);setOpen(false);};
+  const cur=diMethodRow(value)||diMethodRow(DI_METHOD_DEFAULT);
+  const pick=id=>{onChange(id);setOpen(false);};
   return(<div className="di-meth" ref={ref}>
-    <button type="button" className={'di-meth-btn'+(cur?' on':'')} aria-haspopup="listbox" aria-expanded={open}
+    <button type="button" className="di-meth-btn on" aria-haspopup="listbox" aria-expanded={open}
       onClick={()=>setOpen(o=>!o)}>
       <span className="di-meth-k">{L('Antrenman metodu','Training method')}</span>
-      <b>{cur?L(cur.label[0],cur.label[1]):L('Oto','Auto')}</b><i>▾</i>
+      <b>{L(cur.label[0],cur.label[1])}</b><i>▾</i>
     </button>
     {open&&<div className="di-meth-menu" role="listbox" aria-label={L('Antrenman metodu','Training method')}>
-      <button type="button" role="option" aria-selected={!cur} className={'di-meth-opt'+(!cur?' on':'')}
-        onClick={()=>{onChange(null);setOpen(false);}}>{L('Oto — model seçer','Auto — model chooses')}</button>
-      {DI_METHODS.map(m=><button key={m.id} type="button" role="option" aria-selected={value===m.id}
-        className={'di-meth-opt'+(value===m.id?' on':'')} title={m.ai}
+      {DI_METHODS.map(m=><button key={m.id} type="button" role="option" aria-selected={cur.id===m.id}
+        className={'di-meth-opt'+(cur.id===m.id?' on':'')} title={m.ai}
         onClick={()=>pick(m.id)}>{L(m.label[0],m.label[1])}</button>)}
     </div>}
   </div>);

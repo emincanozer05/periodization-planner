@@ -200,8 +200,9 @@ const DI_INTENSITY=[
   {id:'high',    label:['Yüksek','High'],   en:'High',    rpe:[8,9]},
 ];
 const diIntensityRow=id=>DI_INTENSITY.find(x=>x.id===id)||null;
-/* How the session is put together — the brief's training method. One pick or none
-   (null = the model's choice). It shapes the set structure, not what is in it: the
+/* How the session is put together — the brief's training method. Always exactly one:
+   the model never picks it, so an unset or unknown value reads as straight sets
+   (DI_METHOD_DEFAULT). It shapes the set structure, not what is in it: the
    patterns, dose and ceilings above still bind. `ai` is what the JSON tells the model. */
 const DI_METHODS=[
   {id:'straight', label:['Klasik set','Straight sets'],en:'Straight sets',
@@ -222,6 +223,7 @@ const DI_METHODS=[
     ai:'Load rises and reps fall set by set on the main lifts (ascending pyramid).'},
 ];
 const diMethodRow=id=>DI_METHODS.find(x=>x.id===id)||null;
+const DI_METHOD_DEFAULT='straight';
 const diRpeBand=r=>r.rpe[0]===r.rpe[1]?`RPE ${r.rpe[0]}`:`RPE ${r.rpe[0]}–${r.rpe[1]}`;
 /* The adjustment that is actually in force: the coach's volume when the brief sets one,
    otherwise the engine's. `auto` keeps the engine's figure so it can still be shown. */
@@ -440,7 +442,7 @@ function diInstr(raw,src){
        a stored +80 is a typo, not an instruction. */
     volume:(()=>{const v=recNum(r.volume);return v!=null&&Number.isInteger(v)&&v>=DI_VOL_MIN&&v<=DI_VOL_MAX?v:null;})(),
     intensity:diIntensityRow(r.intensity)?r.intensity:null,
-    method:diMethodRow(r.method)?r.method:null,
+    method:diMethodRow(r.method)?r.method:DI_METHOD_DEFAULT,
     /* Kept as typed. The box writes through this on every keystroke and reads the
        result back: trimming here took the space off the end of "word " the moment it
        was typed, and the box, seeing a different value come back, jumped the caret. */
@@ -478,7 +480,7 @@ function diConValue(kind,txt){
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
 const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
-  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity||i.method));
+  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity||(i.method&&i.method!==DI_METHOD_DEFAULT)));
 
 /* ---- The coach's own words on the test sheet ------------------------------
    The battery is not only numbers. The posture box, the overhead-squat box and the
@@ -890,8 +892,8 @@ function diBriefForAI(i){
     volume_intensity_rule:(i.volume!=null||i.intensity)?'Set by the coach for this athlete today and binding. '+
       (i.volume!=null?`volume_adjustment_pct: change the dose a normal day would carry by ${i.volume>0?'+':''}${i.volume}% (sets first, then reps / duration) — it replaces the system's own volume adjustment and is the figure in code_checked_limits.volume_adjustment_pct. `:'')+
       (i.intensity?'intensity: dose every main-phase working set at target_rpe — no working set above target_rpe_max, and the main work not easier than target_rpe_min; preparation work may sit below it. Write the RPE on every row.':''):null,
-    /* Null = no method picked: the set structure is the model's choice. */
-    training_method:(()=>{const m=diMethodRow(i.method);
+    /* Always set: the coach's pick, straight sets when none was made. */
+    training_method:(()=>{const m=diMethodRow(i.method)||diMethodRow(DI_METHOD_DEFAULT);
       return m?{id:m.id,method:m.en,how:m.ai,
         rule:'Set by the coach for today and binding: organise the session\'s main work with this method and say so in each affected exercise\'s description. It changes how the work is structured, not the patterns, dose or ceilings above.'}:null;})(),
     session_duration_min:i.duration,
