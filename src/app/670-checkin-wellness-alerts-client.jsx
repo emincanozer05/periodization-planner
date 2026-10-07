@@ -177,16 +177,22 @@ async function publishAlertRoster(uid_,team){
        yalnızca tarayıcı biliyor; sunucuda sabit bir alan adı durmasın diye
        buradan gidiyor (Madde 7). */
     appUrl:location.origin+location.pathname,
-    staff:(team.staff||[]).map(m=>({
-      id:m.id,role:m.role,name:(m.name||'').trim(),
+    /* Firestore `undefined` taşıyan bir dokümanı BÜTÜNÜYLE reddediyor: kimliği
+       olmayan tek bir satır (eski bir yedekten gelen sporcu, rolü boş ekip üyesi)
+       kadronun hiç yayımlanmamasına — ve telefon sayfasındaki "kim doldurdu"
+       şeridinin kaybolmasına — yetiyordu. Kimliksiz satır atlanıyor, kalan alanlar
+       her zaman tanımlı. */
+    staff:(team.staff||[]).filter(m=>m&&m.id).map(m=>({
+      id:String(m.id),role:m.role||'',name:(m.name||'').trim(),
       // Sporcu ataması yalnızca bireysel antrenör için anlamlı; diğer dört rol
       // takımın tamamını kapsıyor ve listeyi taşımalarının bir anlamı yok.
-      athleteIds:m.role===INDIVIDUAL_ROLE?(m.athleteIds||[]):[],
+      athleteIds:m.role===INDIVIDUAL_ROLE?(m.athleteIds||[]).filter(Boolean).map(String):[],
     })),
     /* Sporcuların yalnızca kimliği ve adı — ekip üyesinin sayfası bugünkü kayıtları
        bununla karşılaştırıp formu henüz doldurmayanları gösteriyor. Aynı adlar zaten
        uyarı kayıtlarında ve check-in linkinde duruyor; yeni bir bilgi açılmıyor. */
-    athletes:(team.athletes||[]).map(a=>({id:a.id,name:(a.name||'').trim()})).filter(a=>a.name),
+    athletes:(team.athletes||[]).filter(a=>a&&a.id)
+      .map(a=>({id:String(a.id),name:(a.name||'').trim()})).filter(a=>a.name),
     rev:alertRosterRev(team),updatedAt:new Date().toISOString(),
   });
 }
