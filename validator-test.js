@@ -706,6 +706,12 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       snap.coach_brief.must_include[0] === 'Calf Raise' && snap.coach_brief.avoid[0] === 'derin squat' &&
       snap.coach_brief.session_max_exercises === 8 && snap.coach_brief.additional_notes === 'Yarın maç var',
       JSON.stringify(snap.coach_brief));
+    const instrM = A.diInstr({ method: 'superset' }, { duration: 60 });
+    const snapM = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY, instr: instrM, customTests: [] });
+    check('antrenman metodu: seçilen JSON\'a yazılıyor, seçilmeyen yazılmıyor, bilinmeyen atılıyor',
+      instrM.method === 'superset' && snapM.coach_brief.training_method && snapM.coach_brief.training_method.id === 'superset' &&
+      snap.coach_brief.training_method == null && A.diInstr({ method: 'yok' }, null).method === null,
+      JSON.stringify([snapM.coach_brief.training_method, snap.coach_brief.training_method]));
     const briefC = A.diBriefForAI(Object.assign({}, instr, { priorities: ['mobility', 'corrective'] }));
     const snapC = A.diAthleteSnapshot({ ath, setup: SETUP, date: TODAY,
       instr: Object.assign({}, instr, { priorities: ['corrective'] }), customTests: [] });

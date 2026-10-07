@@ -200,6 +200,28 @@ const DI_INTENSITY=[
   {id:'high',    label:['Yüksek','High'],   en:'High',    rpe:[8,9]},
 ];
 const diIntensityRow=id=>DI_INTENSITY.find(x=>x.id===id)||null;
+/* How the session is put together — the brief's training method. One pick or none
+   (null = the model's choice). It shapes the set structure, not what is in it: the
+   patterns, dose and ceilings above still bind. `ai` is what the JSON tells the model. */
+const DI_METHODS=[
+  {id:'straight', label:['Klasik set','Straight sets'],en:'Straight sets',
+    ai:'Every exercise on its own: all its sets, with full rest, before the next exercise starts.'},
+  {id:'superset', label:['Süperset','Superset'],en:'Superset',
+    ai:'Pair exercises (A1/A2), ideally antagonist or non-competing patterns, done back to back with rest after the pair.'},
+  {id:'triset',   label:['Triset','Tri-set'],en:'Tri-set',
+    ai:'Group exercises in threes (A1/A2/A3) done back to back with rest after the group.'},
+  {id:'circuit',  label:['Devre','Circuit'],en:'Circuit',
+    ai:'Run the main work as a circuit: one set of each exercise in turn with minimal rest, rest at the end of each round.'},
+  {id:'complex',  label:['Kompleks / kontrast','Complex / contrast'],en:'Complex / contrast',
+    ai:'Pair a heavy strength exercise with a biomechanically similar explosive one (e.g. squat → jump) for post-activation performance enhancement.'},
+  {id:'cluster',  label:['Cluster set','Cluster sets'],en:'Cluster sets',
+    ai:'Split the main lifts\' sets into small clusters with 15–30 s intra-set rest to keep bar speed and quality high.'},
+  {id:'emom',     label:['EMOM','EMOM'],en:'EMOM',
+    ai:'Dose the main work every minute on the minute: the set starts at the top of each minute, the rest of the minute is rest.'},
+  {id:'pyramid',  label:['Piramit','Pyramid'],en:'Pyramid',
+    ai:'Load rises and reps fall set by set on the main lifts (ascending pyramid).'},
+];
+const diMethodRow=id=>DI_METHODS.find(x=>x.id===id)||null;
 const diRpeBand=r=>r.rpe[0]===r.rpe[1]?`RPE ${r.rpe[0]}`:`RPE ${r.rpe[0]}–${r.rpe[1]}`;
 /* The adjustment that is actually in force: the coach's volume when the brief sets one,
    otherwise the engine's. `auto` keeps the engine's figure so it can still be shown. */
@@ -418,6 +440,7 @@ function diInstr(raw,src){
        a stored +80 is a typo, not an instruction. */
     volume:(()=>{const v=recNum(r.volume);return v!=null&&Number.isInteger(v)&&v>=DI_VOL_MIN&&v<=DI_VOL_MAX?v:null;})(),
     intensity:diIntensityRow(r.intensity)?r.intensity:null,
+    method:diMethodRow(r.method)?r.method:null,
     /* Kept as typed. The box writes through this on every keystroke and reads the
        result back: trimming here took the space off the end of "word " the moment it
        was typed, and the box, seeing a different value come back, jumped the caret. */
@@ -455,7 +478,7 @@ function diConValue(kind,txt){
 /* Whether the coach has actually said anything. Used only to tell an untouched form
    from a deliberately empty one on screen. */
 const diInstrFilled=i=>!!(i&&(i.priorities.length||(i.patterns||[]).length||i.must.length||i.avoid.length
-  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity));
+  ||i.constraints.length||i.constraintNote||String(i.notes||'').trim()||i.volume!=null||i.intensity||i.method));
 
 /* ---- The coach's own words on the test sheet ------------------------------
    The battery is not only numbers. The posture box, the overhead-squat box and the
@@ -867,6 +890,10 @@ function diBriefForAI(i){
     volume_intensity_rule:(i.volume!=null||i.intensity)?'Set by the coach for this athlete today and binding. '+
       (i.volume!=null?`volume_adjustment_pct: change the dose a normal day would carry by ${i.volume>0?'+':''}${i.volume}% (sets first, then reps / duration) — it replaces the system's own volume adjustment and is the figure in code_checked_limits.volume_adjustment_pct. `:'')+
       (i.intensity?'intensity: dose every main-phase working set at target_rpe — no working set above target_rpe_max, and the main work not easier than target_rpe_min; preparation work may sit below it. Write the RPE on every row.':''):null,
+    /* Null = no method picked: the set structure is the model's choice. */
+    training_method:(()=>{const m=diMethodRow(i.method);
+      return m?{id:m.id,method:m.en,how:m.ai,
+        rule:'Set by the coach for today and binding: organise the session\'s main work with this method and say so in each affected exercise\'s description. It changes how the work is structured, not the patterns, dose or ceilings above.'}:null;})(),
     session_duration_min:i.duration,
     /* The ceiling binds the WHOLE session: preparation, main and complementary rows
        all count, so the number the coach picks is the number the athlete sees. */

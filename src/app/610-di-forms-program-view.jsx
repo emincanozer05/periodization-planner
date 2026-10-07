@@ -189,6 +189,36 @@ function DiPatternPicker({value,onChange,closed}){
   </div>);
 }
 
+/* The training method, in the pattern card's header: one button that opens the list.
+   One pick or none — picking the one that is on goes back to "model chooses". */
+function DiMethodPicker({value,onChange}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  useEffect(()=>{
+    if(!open)return;
+    const off=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
+    return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};
+  },[open]);
+  const cur=diMethodRow(value);
+  const pick=id=>{onChange(value===id?null:id);setOpen(false);};
+  return(<div className="di-meth" ref={ref}>
+    <button type="button" className={'di-meth-btn'+(cur?' on':'')} aria-haspopup="listbox" aria-expanded={open}
+      onClick={()=>setOpen(o=>!o)}>
+      <span className="di-meth-k">{L('Antrenman metodu','Training method')}</span>
+      <b>{cur?L(cur.label[0],cur.label[1]):L('Oto','Auto')}</b><i>▾</i>
+    </button>
+    {open&&<div className="di-meth-menu" role="listbox" aria-label={L('Antrenman metodu','Training method')}>
+      <button type="button" role="option" aria-selected={!cur} className={'di-meth-opt'+(!cur?' on':'')}
+        onClick={()=>{onChange(null);setOpen(false);}}>{L('Oto — model seçer','Auto — model chooses')}</button>
+      {DI_METHODS.map(m=><button key={m.id} type="button" role="option" aria-selected={value===m.id}
+        className={'di-meth-opt'+(value===m.id?' on':'')} title={m.ai}
+        onClick={()=>pick(m.id)}>{L(m.label[0],m.label[1])}</button>)}
+    </div>}
+  </div>);
+}
+
 /* A number with the answers a coach actually gives beside it. Typing is still allowed —
    the buttons are shortcuts, not the only way in. */
 function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
@@ -280,10 +310,10 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
     if(merged!==instr)save(merged);
     if(onSnapshot)onSnapshot(merged);
   };
-  const field=(n,title,hint,control,area)=>(
+  const field=(n,title,hint,control,area,extra)=>(
     <div className={'di-field'+(area?' '+area:'')}>
       <div className="di-fhd"><i className="di-num">{n}</i>
-        <label>{title}</label></div>
+        <label>{title}</label>{extra?<div className="di-fhd-x">{extra}</div>:null}</div>
       <span className="di-fhint">{hint}</span>
       <div className="di-fctl">{control}</div>
     </div>);
@@ -295,7 +325,8 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
       {field(2,L('Hareket paterni','Movement pattern'),
         L('Seçilen her patern programa kesinlikle eklenir. Filtre boşsa seçimi model yapar.',
           'Every pattern picked is in the session. An empty filter is the model\'s choice.'),
-        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2')}
+        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
+        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
       {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
         L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
         <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
