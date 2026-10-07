@@ -365,7 +365,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       /* The chronic side is averaged over the history the 28-day window actually holds,
          so with a week or less of it the ratio is acute over itself — 1.0, "optimal",
          whatever the load was. Said, so it is not read as a measured balance. */
-      acwr_note:(()=>{const h=loadWindows(k=>athDayLoad(a,k),ref).hist;
+      acwr_note:(()=>{const h=athLoadWindows(a,ref).hist;
         return ld.acwr!=null&&h<=7?`Only ${h} day(s) of load history in the 28-day window: acute and chronic cover the same days, so ACWR is 1.0 by construction and says nothing yet.`:null;})(),
       monotony:ld.monotony,hard_days_7:ld.hard_days_7,
       last_7_days:srpe.map(e=>({date:e.date,

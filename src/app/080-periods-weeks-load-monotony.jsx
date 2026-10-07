@@ -98,26 +98,40 @@ function teamWeekMono(days,athletes,weekStartKey){
    logs put two different data sources on one card (a 172 AU acute next to a monotony
    that implied a ~90 AU mean). With no athlete load at all it falls back to the team
    daily curve, so a purely planned squad still reads. */
-function teamLoadStats(athletes,teamLoadAt,ref){
-  const per=(athletes||[]).map(a=>{const w=loadWindows(k=>athDayLoad(a,k),ref);
-    return w.ch>0?{acute:w.ac/7,chronic:w.ch/Math.max(7,w.hist),acwr:acwrFrom(k=>athDayLoad(a,k),ref)}:null;}).filter(Boolean);
+function teamLoadStats(athletes,teamLoadAt,ref,teamFirst){
+  const per=(athletes||[]).map(a=>{const w=athLoadWindows(a,ref);
+    return w.ch>0?{acute:w.ac/7,chronic:w.ch/(w.weeks*7),acwr:w.ac/(w.ch/w.weeks)}:null;}).filter(Boolean);
   if(per.length){const avg=k=>per.reduce((s,r)=>s+r[k],0)/per.length;
     return{acute:avg('acute'),chronic:avg('chronic'),acwr:avg('acwr'),n:per.length};}
-  const w=loadWindows(teamLoadAt,ref);
-  return{acute:w.ac/7,chronic:w.ch/Math.max(7,w.hist),acwr:acwrFrom(teamLoadAt,ref),n:0};}
+  const w=loadWindows(teamLoadAt,ref,teamFirst);
+  return{acute:w.ac/7,chronic:w.ch/(w.weeks*7),acwr:w.ch>0?w.ac/(w.ch/w.weeks):0,n:0};}
 function weekMono(loads){const a=loads.map(l=>l.load);const m=a.reduce((s,v)=>s+v,0)/a.length;if(m===0)return{mean:0,sd:0,monotony:0,strain:0,total:0};
   const sd=Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);const mono=sd===0?0:m/sd;const total=a.reduce((s,v)=>s+v,0);return{mean:m,sd,monotony:mono,strain:total*mono,total};}
-/* Chronic load must be a *weekly average*, but a fixed ÷4 misreads sparse history: when
-   all in-window data sits in the last 7 days, chronic=acute/4 and ACWR pins at exactly
-   4.00 — both on a cold start and on a return after a ≥4-week logging gap (old logs far
-   outside the window used to count as "history", pinning the divisor at 4 weeks for the
-   whole roster). Normalize by the history inside the 28-day window itself: days from the
-   oldest in-window load day to ref, min 1 week, max 4. */
-function loadWindows(loadAt,ref){const r=parseD(ref);let ac=0,ch=0,hist=0;
-  for(let i=0;i<28;i++){const v=loadAt(fmt(addD(r,-i)))||0;ch+=v;if(v>0)hist=i+1;if(i<7)ac+=v;}
+/* ACWR = acute load (the last 7 days' total, ref included) ÷ chronic load (the last 28
+   days' weekly average: the 28-day total ÷ 4). The same ratio as the 7-day daily mean
+   over the 28-day daily mean.
+
+   Rest days are load. A window whose first weeks are empty — a layoff, an injury, a
+   break — still divides by four weeks, so the return reads as the spike it is. The
+   only shortening is a true cold start: when the athlete's FIRST load ever (`first`,
+   a date key) falls inside the window, the days before it are not rest, they are
+   before the record began, so the chronic side averages over the days since `first`
+   (min 1 week, max 4). Without that every new athlete would read 4.00 "High risk" in
+   their first week. `first` is looked up over the whole record, never inside the
+   window: reading it off the window took a three-week rest for a cold start and
+   halved the ratio it should have flagged. */
+function loadWindows(loadAt,ref,first){const r=parseD(ref);let ac=0,ch=0,inWin=0;
+  for(let i=0;i<28;i++){const v=loadAt(fmt(addD(r,-i)))||0;ch+=v;if(v>0)inWin=i+1;if(i<7)ac+=v;}
+  /* Days of record up to ref, capped at the window. Without a known first day, the
+     oldest load inside the window stands in for it. */
+  const since=first&&first<=ref?Math.round((r-parseD(first))/864e5)+1:inWin;
+  const hist=Math.min(28,Math.max(since,inWin));
   return{ac,ch,hist,weeks:Math.min(4,Math.max(1,hist/7))};}
-function acwrFrom(loadAt,ref){const w=loadWindows(loadAt,ref);const c=w.ch/w.weeks;return c===0?0:w.ac/c;}
-function calcACWR(days,ref){return acwrFrom(k=>dLoad(days[k]),ref);}
+function acwrFrom(loadAt,ref,first){const w=loadWindows(loadAt,ref,first);const c=w.ch/w.weeks;return c===0?0:w.ac/c;}
+/* The earliest date key carrying load in a {date: load} map (or a days map, via `val`). */
+function firstLoadKey(map,val=v=>Number(v)||0){let m=null;
+  Object.keys(map||{}).forEach(k=>{if(val(map[k])>0&&(m==null||k<m))m=k;});return m;}
+function calcACWR(days,ref){return acwrFrom(k=>dLoad(days[k]),ref,firstLoadKey(days,dLoad));}
 
 /* ---- Per-athlete inner-load + wellness metrics (from srpeLog / wellness) ---- */
 /* Written out per code rather than through posOf, because the legacy five carry a
@@ -146,7 +160,14 @@ function athDayLoad(a,dk){let v=0;(a.srpeLog||[]).forEach(e=>{if(e.date!==dk)ret
   return Math.round(v);}
 function athLoadSum(a,from,to){let s=0,c=parseD(from);const e=parseD(to);while(c<=e){s+=athDayLoad(a,fmt(c));c=addD(c,1);}return s;}
 function athTrend(a,ref,n){const r=parseD(ref),out=[];for(let i=n-1;i>=0;i--)out.push(athDayLoad(a,fmt(addD(r,-i))));return out;}
-function athACWR(a,ref){return acwrFrom(k=>athDayLoad(a,k),ref);}
+/* The athlete's first day with load — off the sRPE log or their own calendar, the two
+   sources athDayLoad reads — over the whole record. */
+function athFirstLoad(a){let m=null;const see=k=>{if(k&&(m==null||k<m))m=k;};
+  (a.srpeLog||[]).forEach(e=>{if(e.date&&(Number(e.totalLoad)||(_slotLoad(e,'tp')+_slotLoad(e,'sc')+_slotLoad(e,'game')))>0)see(e.date);});
+  Object.entries(a.days||{}).forEach(([k,d])=>{if(((d&&d.sessions)||[]).some(s=>(Number(s.au)||((s.sRPE!==''&&s.sRPE!=null)?Number(s.sRPE)*Number(s.duration||0):0))>0))see(k);});
+  return m;}
+function athLoadWindows(a,ref){return loadWindows(k=>athDayLoad(a,k),ref,athFirstLoad(a));}
+function athACWR(a,ref){return acwrFrom(k=>athDayLoad(a,k),ref,athFirstLoad(a));}
 /* The macrocycle window as set up in Season → Macrocycle Timeline: General
    Preparation's start through Transition's end. Follows the coach's custom
    period dates when there are any, otherwise the auto-generated ones. */
@@ -365,7 +386,7 @@ function AthleteLoadBoard({athletes,refDate}){
   const initials=n=>(n||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rows=(athletes||[]).map(a=>{
     const l7=athLoadSum(a,fmt(addD(parseD(ref),-6)),ref);
-    const w=loadWindows(k=>athDayLoad(a,k),ref);
+    const w=athLoadWindows(a,ref);
     return{a,name:a.name||'—',pos:posOf(a.position),l7,acwr:athACWR(a,ref),has:w.ch>0,
       rd:athWellnessVal(a,'readiness',ref)};
   });
