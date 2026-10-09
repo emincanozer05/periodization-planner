@@ -192,6 +192,15 @@ firebase deploy --only functions --project periodization-planner
 
 `npm test` yeşil değilse deploy etme.
 
+İki function gönderimleri işliyor: `wellnessAlert` (Firestore tetikleyicisi, hızlı yol)
+ve `processCheckins` (HTTPS, tetikleyiciden bağımsız ikinci kapı). Form gönderimi yazınca,
+ekip üyesinin sayfası ve koçun uygulaması açılınca `processCheckins`'i çağırıyor; tetikleyici
+olay almayı bıraksa bile (8 Ekim'de bir deploy sonrası olan buydu) gönderimler işleniyor.
+**Teşhis:** `checkins` koleksiyonunda `alertClaimedAt`/`alertSent` (wellness) ya da
+`rpeRecordedAt` (RPE) damgası olmayan, birkaç dakikadan eski doküman varsa tetikleyici
+çalışmıyor demektir; function loglarında "tetikleyicinin işlemediği gönderimler HTTPS ile
+işlendi" uyarısı da bunu söyler. Çaresi function'ı yeniden deploy etmek.
+
 ### 6. Statik dosyaları yayınla
 
 `index.html`, `alerts.html`, `push-config.js`, `firebase-messaging-sw.js`,

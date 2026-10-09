@@ -1357,6 +1357,28 @@ function ensureSession(force){
   });
 }
 
+/* ── Sunucuya "bu gönderimi işle" ──────────────────────────────────────────
+   Gönderimi telefon sayfasına ve uyarıya çeviren iş sunucuda. Eskiden TEK yolu,
+   dokümanın yazılmasıyla çalışan Firestore tetikleyicisiydi; tetikleyici bir deploy
+   sonrası olay almayı bıraktığında formlar `checkins` içinde sessizce bekledi ve
+   ekip "0/17 doldurdu" gördü. Form artık yazımdan sonra aynı işi düz bir HTTPS
+   isteğiyle de istiyor (callable protokolü, ek SDK yok). Tetikleyici zaten
+   işlediyse sunucu bunu damgadan görüp hiçbir şey yapmıyor; ikinci bildirim yok.
+   Sonucu beklenmiyor ve hatası sporcuya gösterilmiyor: gönderim yazıldı, gerisi
+   sunucunun ve ekip sayfasının işi. */
+var FN_BASE='https://us-central1-'+FB_CONF.projectId+'.cloudfunctions.net';
+function kickServer(id){
+  try{
+    var u=APP.auth().currentUser;
+    if(!u||!id)return;
+    u.getIdToken().then(function(tok){
+      return fetch(FN_BASE+'/processCheckins',{method:'POST',
+        headers:{'content-type':'application/json',authorization:'Bearer '+tok},
+        body:JSON.stringify({data:{id:String(id)}})});
+    }).catch(function(){});
+  }catch(e){}
+}
+
 /* ── Gönderim ────────────────────────────────────────────────────────────── */
 function submit(btn,errBox){
   var problem=validate();
@@ -1390,7 +1412,9 @@ function submit(btn,errBox){
     if(settled)return;settled=true;
     done(true);
   },7000);
-  write.then(function(){
+  write.then(function(ref){
+    // Gönderim sunucuya ulaştı: işlenmesini tetikleyiciye bırakmadan kendimiz de iste.
+    kickServer(ref&&ref.id);
     if(settled)return;settled=true;clearTimeout(timer);done(false);
   }).catch(function(e){
     if(settled)return;settled=true;clearTimeout(timer);
