@@ -60,21 +60,12 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      # processCheckins: tetikleyiciden BAĞIMSIZ ikinci kapı (HTTPS). Tetikleyici bir
-      # deploy sonrası olay almayı bıraktığında gönderimler yine işleniyor.
-      - name: Deploy
-        if: env.HAS_CREDENTIALS == 'true'
-        run: >
-          npx --yes firebase-tools@15 deploy
-          --only functions:wellnessAlert,functions:processCheckins
-          --project periodization-planner
-          --non-interactive
-          --force
-
       # Firestore kuralları KENDİ adımında. Eskiden yapay zekâ adımının içindeydi ve
       # o adım GEMINI_API_KEY sırrına erişemeyince (403) kurallar da hiç
       # yayınlanmıyordu — telefon sayfasının RPE sekmesi "okunamadı" diyordu.
       # Kurallar Gemini'ye bağlı değil; bu adım yalnızca kendi hatasıyla düşer.
+      # Fonksiyonlardan ÖNCE: kurallar ücretsiz planda da yayımlanıyor, fonksiyonlar
+      # ise faturalandırma hesabı ister — onların düşmesi kuralları sürüklemesin.
       - name: Deploy Firestore rules
         if: env.HAS_CREDENTIALS == 'true'
         run: >
@@ -83,6 +74,29 @@ jobs:
           --project periodization-planner
           --non-interactive
           --force
+
+      # processCheckins: tetikleyiciden BAĞIMSIZ ikinci kapı (HTTPS). Tetikleyici bir
+      # deploy sonrası olay almayı bıraktığında gönderimler yine işleniyor.
+      #
+      # Faturalandırma hesabı (Blaze) yoksa ya da sorunluysa Google bu adımı 403 ile
+      # reddediyor. Telefon sayfasının listesi artık fonksiyonlara bağlı değil (formları
+      # doğrudan okuyor), o yüzden bu adım iş akışını kırmızıya çevirmiyor: uyarı
+      # bırakıyor ve yalnızca push bildirimleri etkileniyor.
+      - name: Deploy
+        id: deploy_fn
+        if: env.HAS_CREDENTIALS == 'true'
+        continue-on-error: true
+        run: >
+          npx --yes firebase-tools@15 deploy
+          --only functions:wellnessAlert,functions:processCheckins
+          --project periodization-planner
+          --non-interactive
+          --force
+
+      - name: Functions deploy uyarısı
+        if: env.HAS_CREDENTIALS == 'true' && steps.deploy_fn.outcome == 'failure'
+        run: |
+          echo "::warning::Cloud Functions deploy edilemedi (çoğunlukla faturalandırma hesabı). Wellness/RPE listesi etkilenmez; push bildirimleri gitmez."
 
       # Yapay zekâ işleri ayrı adımda: GEMINI_API_KEY Secret Manager'da henüz
       # tanımlı değilse (ya da servis hesabı okuyamıyorsa) bu adım düşer ama

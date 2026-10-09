@@ -372,7 +372,15 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
                         list, the heatmap, the athlete's day), and where a row came from is
                         not a number to correct. */}
                     <td><input type="number" step="0.1" value={w.readiness??''} onChange={e=>uw('readiness',e.target.value)} style={{width:60}}/></td>
-                    <td><button className="btn xs danger" onClick={()=>updAth(ath.id,{wellness:ath.wellness.filter((_,j)=>j!==realIdx)})}>✕</button></td>
+                    {/* Formdan gelen satırın silinmesi kaynağını da mezar taşına yazıyor: gönderim
+                        14 gün `checkins`'te duruyor ve taşı olmayan satırı gelen kutusu geri getirirdi. */}
+                    <td><button className="btn xs danger" onClick={()=>{
+                      const row=ath.wellness[realIdx];
+                      const src=row&&row.srcId;
+                      const upd={wellness:ath.wellness.filter((_,j)=>j!==realIdx)};
+                      if(src)upd.deletedWellnessSrcIds=[...new Set([...(ath.deletedWellnessSrcIds||[]),src])];
+                      updAth(ath.id,upd);
+                    }}>✕</button></td>
                   </tr>;})}
               </tbody></table>
               <div className="row" style={{justifyContent:'center',marginTop:10,gap:6}}>

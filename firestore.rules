@@ -21,6 +21,9 @@ service cloud.firestore {
 
     // Sporcu gönderimleri: yalnızca geçerli bir token ile YAZILIR, sonradan değiştirilemez.
     match /checkins/{id} {
+      function ciMember() {
+        return get(/databases/$(database)/documents/staff_members/$(request.auth.uid)).data;
+      }
       allow create: if request.auth != null
         && request.resource.data.keys().hasAll(['coachUid','teamId','athleteId','token','kind','date','payload'])
         && request.resource.data.keys().hasOnly(['coachUid','teamId','athleteId','athleteName','token','kind','date','payload','at','v'])
@@ -32,7 +35,16 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/checkin_links/$(request.resource.data.token))
         && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.coachUid == request.resource.data.coachUid
         && get(/databases/$(database)/documents/checkin_links/$(request.resource.data.token)).data.teamId == request.resource.data.teamId;
-      allow read, delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
+      /* Okuyan: hesabın sahibi ve eşleşmiş ekip üyesi — o da YALNIZCA kendi takımını
+         (wellness_alerts ile aynı model). Ekip üyesinin telefon sayfası günün listesini
+         artık doğrudan buradan kuruyor: liste bir sunucu fonksiyonuna (ve onun
+         faturalandırma hesabına) bağlı kalmasın. */
+      allow read: if request.auth != null && (
+        resource.data.coachUid == request.auth.uid
+        || (exists(/databases/$(database)/documents/staff_members/$(request.auth.uid))
+            && ciMember().coachUid == resource.data.coachUid
+            && ciMember().teamId   == resource.data.teamId));
+      allow delete: if request.auth != null && resource.data.coachUid == request.auth.uid;
       allow update: if false;
     }
 
