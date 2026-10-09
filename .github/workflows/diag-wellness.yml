@@ -1,0 +1,26 @@
+name: Diag wellness (temporary)
+on:
+  push:
+    branches: [ccr-4d8020cf-oy7i54]
+    paths: ['tools/diag-wellness.js', '.github/workflows/diag-wellness.yml']
+permissions:
+  contents: read
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm ci
+        working-directory: functions
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - run: node tools/diag-wellness.js
+      - name: Function logs (yalnızca mesaj)
+        continue-on-error: true
+        run: >
+          gcloud logging read 'resource.type="cloud_function" AND resource.labels.function_name="wellnessAlert"'
+          --project periodization-planner --freshness=4d --limit 80
+          --format='value(timestamp,severity,jsonPayload.message,textPayload)' | cut -c1-200
