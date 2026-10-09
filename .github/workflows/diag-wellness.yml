@@ -9,18 +9,29 @@ jobs:
   diag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - run: npm ci
-        working-directory: functions
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-      - run: node tools/diag-wellness.js
-      - name: Function logs (yalnızca mesaj)
+      - name: Function state
+        continue-on-error: true
+        run: |
+          gcloud functions list --project periodization-planner --format='table(name,state,status,environment,runtime,updateTime)' 2>&1 | cut -c1-200
+          gcloud functions describe wellnessAlert --region us-central1 --project periodization-planner \
+            --format='yaml(status,state,runtime,updateTime,eventTrigger,versionId,buildId,serviceConfig.revision)' 2>&1 | cut -c1-200
+      - name: Warnings/errors last 30h (all resources)
         continue-on-error: true
         run: >
-          gcloud logging read 'resource.type="cloud_function" AND resource.labels.function_name="wellnessAlert"'
-          --project periodization-planner --freshness=4d --limit 80
-          --format='value(timestamp,severity,jsonPayload.message,textPayload)' | cut -c1-200
+          gcloud logging read 'severity>=WARNING AND timestamp>="2026-10-08T06:00:00Z"'
+          --project periodization-planner --limit 60
+          --format='value(timestamp,severity,resource.type,logName,jsonPayload.message,textPayload,protoPayload.status.message)' 2>&1 | cut -c1-260
+      - name: Admin audit (functions/firestore/billing) last 3d
+        continue-on-error: true
+        run: >
+          gcloud logging read 'logName:"cloudaudit.googleapis.com%2Factivity" AND timestamp>="2026-10-06T00:00:00Z"'
+          --project periodization-planner --limit 40
+          --format='value(timestamp,protoPayload.serviceName,protoPayload.methodName,protoPayload.resourceName,protoPayload.status.message)' 2>&1 | cut -c1-260
+      - name: Services
+        continue-on-error: true
+        run: |
+          gcloud services list --enabled --project periodization-planner --format='value(config.name)' 2>&1 | grep -Ei 'function|firestore|eventarc|pubsub|run|billing' || true
+          gcloud billing projects describe periodization-planner 2>&1 | cut -c1-200 || true
