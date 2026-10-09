@@ -364,6 +364,7 @@ var I18N={
     st_sent:'Bildirim gönderildi',st_partial:'Bildirim kısmen gitti',st_failed:'Bildirim gönderilemedi',
     st_pending:'Bildirim gönderiliyor…',st_no_recipients:'Bildirilecek cihaz yok',
     st_not_flagged:'Uyarı eşiği aşılmadı — bildirim gönderilmedi',
+    st_late:'Gönderim geç işlendi — bildirim gönderilmedi',
     details:'Ayrıntılar',unnamed:'İsimsiz sporcu',no_alert:'Form dolduruldu — uyarı yok',
     m_sleep:'Uyku',
     m_soreness:'Kas ağrısı',m_hr:'KAH',
@@ -438,6 +439,7 @@ var I18N={
     st_sent:'Notification sent',st_partial:'Notification partly delivered',st_failed:'Notification failed',
     st_pending:'Sending notification…',st_no_recipients:'No device to notify',
     st_not_flagged:'Alert threshold not reached — no notification sent',
+    st_late:'Processed late — no notification sent',
     details:'Details',unnamed:'Unnamed athlete',no_alert:'Check-in filled — no alert',
     m_sleep:'Sleep',
     m_soreness:'Soreness',m_hr:'RHR',
@@ -1209,6 +1211,29 @@ function rpeCard(r){
    Gösterilen gün gün seçiciden geliyor; açılışta her zaman bugün. Seçilen geçmiş
    gün telefonda HATIRLANMIYOR: ertesi sabah sayfayı açan antrenör dünü değil
    bugünü görmeli. */
+/* ── Bekleyen gönderimleri sunucuya işlet ───────────────────────────────────
+   Sporcu formu yazıldığında onu wellness/RPE kaydına çeviren Firestore
+   tetikleyicisiydi — TEK yol. 8 Ekim akşamı bir deploy'dan sonra tetikleyici hiç
+   çalışmadı: ertesi sabah 10 form `checkins` içinde bekliyordu, bu sayfa "0/17"
+   diyordu ve hiçbir yerde hata yoktu. Sayfa artık açılırken (ve öne her geldiğinde,
+   en fazla iki dakikada bir) sunucudan kendi takımının işlenmemiş gönderimlerini
+   işlemesini istiyor. Sunucu kapsamı bu oturumun eşleşme kaydından çıkarıyor;
+   işlenen kayıtlar aşağıdaki dinleyicilere kendiliğinden düşüyor. Tetikleyici
+   çalışıyorsa çağrı boş döner. */
+var SWEEP_GAP=2*60*1000,lastSweep=0;
+function sweepPending(){
+  if(!USER||!CFG||Date.now()-lastSweep<SWEEP_GAP)return;
+  lastSweep=Date.now();
+  var base='https://us-central1-'+CFG.firebase.projectId+'.cloudfunctions.net';
+  USER.getIdToken().then(function(tok){
+    return fetch(base+'/processCheckins',{method:'POST',
+      headers:{'content-type':'application/json',authorization:'Bearer '+tok},
+      body:JSON.stringify({data:{}})});
+  }).then(function(r){return r&&r.json();}).then(function(j){
+    if(j&&j.result&&j.result.processed)console.info('processCheckins',j.result);
+  }).catch(function(e){console.warn('processCheckins',e);});
+}
+
 var LS_TAB='coachos.alerts.tab';
 function watchFeed(){
   feedBox.innerHTML='';
@@ -1492,6 +1517,7 @@ function watchFeed(){
 
   subscribeAll(todayKey());
   watchRoster();
+  sweepPending();
 
   /* Gece yarısını geçen açık sekme. Sayfa gün boyu telefonda açık kalabiliyor
      (özellikle ana ekrandan açılmış hâli hiç kapanmıyor) ve o sekme ertesi sabah
@@ -1501,6 +1527,7 @@ function watchFeed(){
   var lastToday=todayKey();
   function recheck(){
     if(!rosterUnsub)watchRoster();     // arkadan öne gelen sayfa: şeridi beklemeden yeniden dene
+    sweepPending();
     var d=todayKey();
     if(d===lastToday)return;
     var wasToday=shownDay===lastToday;

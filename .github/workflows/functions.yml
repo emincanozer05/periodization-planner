@@ -60,11 +60,13 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
+      # processCheckins: tetikleyiciden BAĞIMSIZ ikinci kapı (HTTPS). Tetikleyici bir
+      # deploy sonrası olay almayı bıraktığında gönderimler yine işleniyor.
       - name: Deploy
         if: env.HAS_CREDENTIALS == 'true'
         run: >
           npx --yes firebase-tools@15 deploy
-          --only functions:wellnessAlert
+          --only functions:wellnessAlert,functions:processCheckins
           --project periodization-planner
           --non-interactive
           --force

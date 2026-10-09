@@ -8,6 +8,7 @@ require('./recipients.test.js');       // Test 11-13 · kim alıyor, kim almıyo
 require('./idempotency.test.js');      // Test 14-15 · çift gönderim, ayrı kayıtlar
 require('./push.test.js');             // Madde 14-15 · gönderim ve teslim durumu
 require('./rpe-report.test.js');       // RPE · telefonun RPE sekmesinin kaydı
+require('./pending.test.js');          // HTTPS kapısı · tetikleyicinin kaçırdığı gönderimler
 require('./ai-router.test.js');        // AI · model zinciri, bütçe, retry, fallback, doğrulama
 require('./ai-job.test.js');           // AI · arka plan işi, çift üretim, kilit, takvim güvenliği
 

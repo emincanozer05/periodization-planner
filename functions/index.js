@@ -38,6 +38,7 @@ const { sendAlert } = require('./push');
 const { buildRpeRecord } = require('./rpe-report');
 const { rosterDocId, alertDocId, rpeDocId, staffAlertLink } = require('./ids');
 const { claimForAlert } = require('./claim');
+const { pickPending, pushStillUseful, isNewer, SWEEP_LIMIT } = require('./pending');
 
 admin.initializeApp();
 
@@ -53,6 +54,8 @@ const ROSTER_COL = 'alert_roster';       // takım başına: ad + ekip kadrosu +
 const TOKENS_COL = 'push_tokens';        // eşleştirilmiş cihazlar
 const ALERTS_COL = 'wellness_alerts';    // uyarı kayıtları
 const RPE_COL = 'rpe_reports';           // antrenman sonrası RPE kayıtları (telefonun RPE sekmesi)
+const CHECKINS_COL = 'checkins';         // sporcu gönderimleri (formun yazdığı yer)
+const STAFF_MEMBERS_COL = 'staff_members'; // ekip üyesinin eşleşme kaydı (anonim oturum → takım)
 
 const db = () => admin.firestore();
 const now = () => admin.firestore.FieldValue.serverTimestamp();
@@ -68,11 +71,63 @@ exports.wellnessAlert = functions
     failurePolicy: false,
   })
   .firestore.document('checkins/{checkinId}')
-  .onCreate(async (snap, context) => {
-    const sub = snap.data() || {};
-    const checkinId = context.params.checkinId;
+  .onCreate((snap, context) => processCheckin(snap.ref, snap.data() || {}, context.params.checkinId, 'trigger'));
 
-    if (sub.kind === 'srpe') return recordRpe(sub, checkinId);
+/* ── İkinci kapı: HTTPS ile işletme ──────────────────────────────────────────
+   Tetikleyici TEK yol olduğu sürece, olay teslim edilmediği her an gönderimler
+   sessizce `checkins` içinde bekliyordu. Sahada tam olarak bu oldu: function 8 Ekim
+   akşamı GitHub dışından yeniden deploy edildi ve o andan sonra Firestore
+   tetikleyicisi bir kez bile çalışmadı. Ertesi sabah 10 sporcunun formu yazılmıştı,
+   hiçbiri işlenmemişti; telefon sayfası "0/17" diyordu, hiçbir yerde hata yoktu.
+
+   Bu kapı aynı işi tetikleyiciden BAĞIMSIZ yapıyor (Firestore olayı değil, düz bir
+   HTTPS isteği) ve üç yerden çağrılıyor:
+     • sporcunun formu, gönderimi yazar yazmaz kendi kaydı için ({id}),
+     • ekip üyesinin uyarı sayfası, açılınca kendi takımının bekleyenleri için,
+     • koçun uygulaması, gelen kutusunda işlenmemiş gönderim görünce.
+   Tetikleyici çalışıyorsa bu kapı boşa döner: sahiplenme damgası ve `rpeRecordedAt`
+   ikinci işlemeyi engelliyor, ikinci bildirim gitmiyor. */
+exports.processCheckins = functions
+  .region(REGION)
+  .runWith({ timeoutSeconds: 120, memory: '256MB' })
+  .https.onCall(async (data, context) => {
+    const uid = context.auth && context.auth.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Oturum yok.');
+    const id = data && typeof data.id === 'string' ? data.id : '';
+    let snaps = [];
+    if (id) {
+      // Tek gönderim: formun kendi yazdığı doküman. Ad tahmin edilemez (add() kimliği).
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new functions.https.HttpsError('invalid-argument', 'Geçersiz kimlik.');
+      const s = await db().collection(CHECKINS_COL).doc(id).get();
+      if (s.exists) snaps = [s];
+    } else {
+      /* Kapsam çağıranın kim olduğundan çıkıyor, istekten DEĞİL: eşleşmiş ekip üyesi
+         yalnızca kendi takımını, hesabın sahibi kendi hesabını süpürebiliyor. Kimseyle
+         eşleşmemiş bir oturum coachUid == kendi kimliği sorgusuyla boş döner. */
+      const sm = await db().collection(STAFF_MEMBERS_COL).doc(uid).get();
+      const m = sm.exists ? (sm.data() || {}) : null;
+      let q = db().collection(CHECKINS_COL);
+      q = (m && m.coachUid && m.teamId)
+        ? q.where('coachUid', '==', m.coachUid).where('teamId', '==', m.teamId)
+        : q.where('coachUid', '==', uid);
+      snaps = (await q.limit(SWEEP_LIMIT).get()).docs;
+    }
+    const pending = pickPending(snaps.map(s => ({ id: s.id, ref: s.ref, data: s.data() || {} })), Date.now());
+    for (const p of pending) {
+      try { await processCheckin(p.ref, p.data, p.id, id ? 'kick' : 'sweep'); }
+      catch (err) { functions.logger.error('checkin: işlenemedi', { checkinId: p.id, error: String(err) }); }
+    }
+    if (pending.length) {
+      functions.logger.warn('checkin: tetikleyicinin işlemediği gönderimler HTTPS ile işlendi', {
+        processed: pending.length, checked: snaps.length, via: id ? 'kick' : 'sweep',
+      });
+    }
+    return { checked: snaps.length, processed: pending.length };
+  });
+
+/* ── Tek bir gönderimin işlenmesi — tetikleyici ve HTTPS kapısı aynı yolu kullanıyor ── */
+async function processCheckin(ref, sub, checkinId, via) {
+    if (sub.kind === 'srpe') return recordRpe(ref, sub, checkinId);
     if (sub.kind !== 'wellness') return null;
     if (!sub.coachUid || !sub.teamId || !sub.athleteId) {
       functions.logger.warn('wellness: eksik kimlik alanları, uyarı atlandı', { checkinId });
@@ -89,7 +144,12 @@ exports.wellnessAlert = functions
        Artık HER wellness gönderimi kaydediliyor; `flagged` alanı kriteri taşıyor.
        PUSH yalnızca flagged gönderimler için gidiyor: ekran günün tamamını
        gösteriyor, telefon yalnızca ilgilenilmesi gerekeni çalıyor. */
-    const flagged = shouldAlert(sub.payload || {});
+    const crit = shouldAlert(sub.payload || {});
+    /* Geç işlenen gönderim (tetikleyici kaçırdı, HTTPS kapısı saatler sonra yakaladı)
+       kaydediliyor ama telefonu ÇALDIRMIYOR: dünün sabahının uyarısı bugün öğlen
+       gelirse gürültüdür. Ekranda kaydı ve ölçümleri yine duruyor. */
+    const late = crit && !pushStillUseful(sub, Date.now());
+    const flagged = crit && !late;
 
     /* ── Çift gönderim koruması (Madde 13, Test 14) ───────────────────────
        Gönderimden ÖNCE dokümanı bir işlem (transaction) içinde sahipleniyoruz.
@@ -99,10 +159,9 @@ exports.wellnessAlert = functions
 
        Damga artık kriteri karşılamayan gönderimlere de basılıyor: onlar da bir
        doküman yazıyor ve o yazımın da tek olması gerekiyor. */
-    const ref = snap.ref;
     const claimed = await claimForAlert(db(), ref, now);
     if (!claimed) {
-      functions.logger.info('wellness: bu gönderim zaten işlenmiş, ikinci bildirim yok', { checkinId });
+      functions.logger.info('wellness: bu gönderim zaten işlenmiş, ikinci bildirim yok', { checkinId, via });
       return null;
     }
 
@@ -136,14 +195,26 @@ exports.wellnessAlert = functions
     const alertRef = db().collection(ALERTS_COL).doc(alertId);
     const record = buildAlertRecord(sub, roster.teamName);
 
+    /* Geç işlenen ESKİ bir gönderim, aynı sporcunun aynı günkü daha YENİ kaydının
+       üstüne yazmasın (sporcunun düzeltmesi kazanır — koçun gelen kutusundaki kural). */
+    try {
+      const cur = await alertRef.get();
+      if (cur.exists && isNewer((cur.data() || {}).submittedAt, sub.at)) {
+        await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
+        functions.logger.info('wellness: daha yeni kayıt var, eski gönderim yalnızca damgalandı', { checkinId, alertId, via });
+        return null;
+      }
+    } catch (err) { /* okunamadıysa eskisi gibi yaz */ }
+
     const base = Object.assign({}, record, {
       coachUid: sub.coachUid,
       checkinId,
       submittedAt: sub.at || null,
       createdAt: now(),
       // Kriteri karşılamayan gönderimde gönderilecek bir bildirim yok; durum bunu
-      // 'failed' ile karıştırılmayacak biçimde söylüyor.
-      notificationStatus: flagged ? 'pending' : 'not_flagged',
+      // 'failed' ile karıştırılmayacak biçimde söylüyor. Geç işlenen uyarıda bildirim
+      // bilerek gönderilmedi: 'late'.
+      notificationStatus: flagged ? 'pending' : (late ? 'late' : 'not_flagged'),
       /* Aynı sporcunun aynı günkü İKİNCİ gönderimi bu dokümanın üstüne yazıyor
          (ad sporcu+tarihten türüyor). Sabah kriteri aşan bir gönderim yapıp
          öğleden sonra düzelten sporcunun kaydında, artık gönderilmeyen bir
@@ -166,8 +237,10 @@ exports.wellnessAlert = functions
        sebep yok ve her sabah 17 gereksiz sorgu demek olurdu. */
     if (!flagged) {
       await ref.update({ alertSent: true, alertSentAt: now() }).catch(() => {});
-      functions.logger.info('wellness: gönderim kaydedildi, kriter karşılanmadı — bildirim yok', {
-        checkinId, alertId, athleteId: sub.athleteId, date: sub.date,
+      functions.logger.info(late
+        ? 'wellness: uyarı geç işlendi — kaydedildi, bildirim gönderilmedi'
+        : 'wellness: gönderim kaydedildi, kriter karşılanmadı — bildirim yok', {
+        checkinId, alertId, athleteId: sub.athleteId, date: sub.date, via,
       });
       return null;
     }
@@ -304,9 +377,10 @@ exports.wellnessAlert = functions
       unreachableStaff: unreachable.length,
       linked: !!link,
       errors: Array.from(new Set(results.filter(r => !r.ok).map(r => String(r.error || '')))),
+      via,
     });
     return null;
-  });
+}
 
 /* ── RPE kaydı ───────────────────────────────────────────────────────────────
    Antrenman sonrası gönderimin telefondaki karşılığı. Sahiplenme damgası yok:
@@ -317,11 +391,23 @@ exports.wellnessAlert = functions
 
    Takım adı kadro özetinden geliyor; okunamazsa kayıt adsız yazılıyor, çünkü
    sayfa zaten tek bir takımı gösteriyor ve adı başlığında taşıyor. */
-async function recordRpe(sub, checkinId) {
+async function recordRpe(ref, sub, checkinId) {
   if (!sub.coachUid || !sub.teamId || !sub.athleteId) {
     functions.logger.warn('rpe: eksik kimlik alanları, kayıt atlandı', { checkinId });
     return null;
   }
+  const id = rpeDocId(sub.coachUid, sub.athleteId, sub.date);
+  const rpeRef = db().collection(RPE_COL).doc(id);
+  /* `rpeRecordedAt`: HTTPS kapısının "bu gönderim işlendi mi" sorusunun cevabı, koçun
+     gelen kutusunun da "silebilir miyim" sorusunun. */
+  const stamp = () => ref.update({ rpeRecordedAt: now() }).catch(() => {});
+  try {
+    const cur = await rpeRef.get();
+    if (cur.exists && isNewer((cur.data() || {}).submittedAt, sub.at)) {
+      await stamp();
+      return null;
+    }
+  } catch (err) { /* okunamadıysa eskisi gibi yaz */ }
   let teamName = '';
   try {
     const rs = await db().collection(ROSTER_COL).doc(rosterDocId(sub.coachUid, sub.teamId)).get();
@@ -329,7 +415,6 @@ async function recordRpe(sub, checkinId) {
   } catch (err) {
     functions.logger.warn('rpe: kadro okunamadı, kayıt takım adısız yazılıyor', { checkinId, error: String(err) });
   }
-  const id = rpeDocId(sub.coachUid, sub.athleteId, sub.date);
   const record = Object.assign(buildRpeRecord(sub, teamName), {
     coachUid: sub.coachUid,
     checkinId,
@@ -338,7 +423,8 @@ async function recordRpe(sub, checkinId) {
     v: 1,
   });
   try {
-    await db().collection(RPE_COL).doc(id).set(record);
+    await rpeRef.set(record);
+    await stamp();
     functions.logger.info('rpe: kayıt yazıldı', { checkinId, rpeId: id, sessions: record.sessions.length });
   } catch (err) {
     functions.logger.error('rpe: kayıt yazılamadı', { checkinId, rpeId: id, error: String(err) });
