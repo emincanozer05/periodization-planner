@@ -192,6 +192,13 @@ firebase deploy --only functions --project periodization-planner
 
 `npm test` yeşil değilse deploy etme.
 
+**Faturalandırma olmadan ne çalışır:** Cloud Functions Google'ın Blaze planını (kart
+tanımlı faturalandırma hesabı) istiyor. Ekip üyesinin telefon sayfası günün Wellness/RPE
+listesini ve "kim doldurdu" şeridini artık doğrudan sporcunun formundan (`checkins`)
+kuruyor; bu kısım ücretsiz Spark planında da çalışıyor. Functions yoksa ya da deploy
+edilemiyorsa yalnızca **push bildirimleri** gitmez (iş akışı bunu uyarı olarak yazar).
+Gönderimler 14 gün `checkins`'te tutuluyor (koçun uygulaması daha eskisini siliyor).
+
 İki function gönderimleri işliyor: `wellnessAlert` (Firestore tetikleyicisi, hızlı yol)
 ve `processCheckins` (HTTPS, tetikleyiciden bağımsız ikinci kapı). Form gönderimi yazınca,
 ekip üyesinin sayfası ve koçun uygulaması açılınca `processCheckins`'i çağırıyor; tetikleyici

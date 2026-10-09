@@ -13,24 +13,22 @@
    sporcu KİMLİĞİ taşıdığı için Tally'deki "eşleşmeyen isim atlandı" derdi burada yok.
 
    Sporcunun gönderimi `checkins` koleksiyonuna düşer; aşağıdaki CheckinInbox bunu
-   dinler, sporcunun günlüğüne işler ve — durum buluta yazıldıktan SONRA — dokümanı
-   siler. Sıra bu yüzden önemli: silmeyi yazımdan önce yapmak, tarayıcı o arada
-   kapandığında check-in'i hiçbir yerde bırakmaz.
+   dinler, sporcunun günlüğüne işler ve 14 gün sonra — durum buluta yazılmışken —
+   dokümanı siler (aşağıdaki CHECKIN_KEEP_MS notuna bak).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const CHECKIN_LINKS='checkin_links', CHECKIN_COL='checkins';
-/* İşlenen gönderim hemen silinmez. Birleştirme aynı sonucu veren (idempotent) bir iş
-   olduğu için ikinci kez işlenmesi zararsız; buna karşılık gönderimi yazımdan önce
-   silmek, tarayıcı o arada kapandığında check-in'i hiçbir yerde bırakmaz. Bu yüzden
-   doküman birkaç dakika daha durur ve ancak durum buluta yazıldıktan sonra süpürülür.
-   Aynı pencere koçun ikinci cihazının da aynı gönderimi görmesine izin verir. */
-const CHECKIN_KEEP_MS=10*60*1000;
-/* Sunucunun İŞLEMEDİĞİ gönderim (telefon sayfasına ve uyarıya çevrilmemiş) silinmez:
-   eskiden 10 dakikayı geçen her doküman süpürülüyordu ve sunucunun tetikleyicisi bir
-   deploy sonrası olay almayı bıraktığında o sabahın formları koçun uygulaması açılır
-   açılmaz ekip sayfasına hiç ulaşamadan siliniyordu. İşlenmemiş doküman ancak bu kadar
-   eskiyse gider (sunucu da bundan eskisine bakmıyor). */
-const CHECKIN_UNPROCESSED_KEEP_MS=3*24*60*60*1000;
+/* Gönderim 14 GÜN durur, sonra süpürülür.
+   Eskiden işlenen gönderim 10 dakika sonra siliniyordu, çünkü kalıcı kaydı sunucu
+   (wellness_alerts / rpe_reports) yazıyordu. O sunucu Google'ın ücretli planına bağlı;
+   faturalandırma hesabı sorun çıkardığında durdu ve ekip üyesinin telefon sayfası boş
+   kaldı. Sayfa artık günün listesini — ve gün seçicideki geçmiş günleri — doğrudan
+   buradan kuruyor, yani gönderim, sayfanın baktığı süre kadar yaşamak zorunda. 14 gün,
+   sayfadaki "son 14 günde form dolduranlar" yedek listesiyle aynı pencere. Bir sporcu
+   gönderimi ~1 KB; 20 kişilik bir takımda iki formla bu, Firestore'un ücretsiz
+   kotasında önemsiz bir yer. Birleştirme aynı sonucu veren (idempotent) bir iş
+   olduğu için uzun durması koçun günlüğünü bozmuyor. */
+const CHECKIN_KEEP_MS=14*24*60*60*1000;
 function checkinProcessed(d){
   if(!d)return true;
   if(d.kind==='wellness')return !!(d.alertSent||d.alertClaimedAt);
@@ -438,12 +436,16 @@ function mergeCheckins(team,docs){
       if(k>=0){
         // Aynı günün daha ESKİ bir gönderimi, duran kaydın üstüne yazmıyor.
         if(!checkinWins(at,ath.srpeLog[k]))continue;
+        // Bu gönderim zaten işlenmiş (gönderim 14 gün duruyor, her açılışta yeniden gelir).
+        if(at&&ath.srpeLog[k].submittedAt===at)continue;
         entry.id=ath.srpeLog[k].id;ath.srpeLog[k]=entry;
       }else ath.srpeLog.push(entry);
       touched++;
     }else if(d.kind==='wellness'){
       const nid=checkinSrcId('wellness',d.athleteId,date);
       const ath=clone(i);
+      // Koç bu satırı silmişse geri getirme — RPE'deki mezar taşının aynısı.
+      if((ath.deletedWellnessSrcIds||[]).includes(nid))continue;
       const sleep=clamp(p.sleep,1,5),sor=clamp(p.soreness,1,5),rhr=clamp(p.RHR,20,250);
       const mental=clamp(p.mentalFatigue,1,5),physical=clamp(p.physicalFatigue,1,5);
       /* Yorgunluk formda iki soru. `fatigue` ikisinin ortalaması olarak kayda yine
@@ -468,6 +470,7 @@ function mergeCheckins(team,docs){
         /* AYNI GÜNÜN SON GÖNDERİMİ geçerli: daha eski bir gönderim (rastgele sırada
            gelmiş olabilir) sporcunun sonradan yaptığı düzeltmeyi geri almıyor. */
         if(!checkinWins(at,ath.wellness[k]))continue;
+        if(at&&ath.wellness[k].submittedAt===at)continue;   // zaten işlenmiş
         /* Koçun elle düzelttiği alanlar yeniden gönderimde de korunur — Tally yolundaki
            kuralın aynısı, yoksa koçun düzeltmesi sessizce geri alınırdı. */
         const prev=ath.wellness[k],kept=prev.manualEdits||[];
@@ -512,12 +515,12 @@ function CheckinInbox({sync,setData}){
       const now=Date.now();
       seen.current.filter(d=>{
         const t=d.at&&d.at.toDate?d.at.toDate().getTime():null;
-        return t!=null&&now-t>(checkinProcessed(d)?CHECKIN_KEEP_MS:CHECKIN_UNPROCESSED_KEEP_MS);
+        return t!=null&&now-t>CHECKIN_KEEP_MS;
       }).forEach(d=>col.doc(d._docId).delete().catch(()=>{}));
       // Bir dakikadan uzun süredir işlenmemiş gönderim varsa tetikleyici kaçırmış demektir.
       if(seen.current.some(d=>{
         const t=d.at&&d.at.toDate?d.at.toDate().getTime():null;
-        return !checkinProcessed(d)&&t!=null&&now-t>60*1000;
+        return !checkinProcessed(d)&&t!=null&&now-t>60*1000&&now-t<6*60*60*1000;
       }))sweepCheckinsOnServer();
     };
     const unsub=col.where('coachUid','==',user.uid).onSnapshot(snap=>{

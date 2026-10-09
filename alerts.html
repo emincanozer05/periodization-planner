@@ -365,6 +365,7 @@ var I18N={
     st_pending:'Bildirim gönderiliyor…',st_no_recipients:'Bildirilecek cihaz yok',
     st_not_flagged:'Uyarı eşiği aşılmadı — bildirim gönderilmedi',
     st_late:'Gönderim geç işlendi — bildirim gönderilmedi',
+    st_local:'Form doğrudan okundu — sunucuda bildirim kaydı yok',
     details:'Ayrıntılar',unnamed:'İsimsiz sporcu',no_alert:'Form dolduruldu — uyarı yok',
     m_sleep:'Uyku',
     m_soreness:'Kas ağrısı',m_hr:'KAH',
@@ -440,6 +441,7 @@ var I18N={
     st_pending:'Sending notification…',st_no_recipients:'No device to notify',
     st_not_flagged:'Alert threshold not reached — no notification sent',
     st_late:'Processed late — no notification sent',
+    st_local:'Read straight from the form — no notification record on the server',
     details:'Details',unnamed:'Unnamed athlete',no_alert:'Check-in filled — no alert',
     m_sleep:'Sleep',
     m_soreness:'Soreness',m_hr:'RHR',
@@ -624,6 +626,77 @@ function rpeColor(v){
   if(v==null)return '#5f646d';
   var step=Math.min(10,Math.max(1,Math.round(Number(v))));
   return RPE_COLORS[step-1];
+}
+
+/* ── Formdan kayıt: sunucu olmadan ──────────────────────────────────────────
+   Liste eskiden YALNIZCA sunucunun yazdığı `wellness_alerts` / `rpe_reports`
+   kayıtlarından kuruluyordu. Sunucu fonksiyonu Google'ın ücretli planına bağlı ve
+   9 Ekim'de faturalandırma hesabı sorun çıkarınca durdu: sporcuların formları
+   `checkins` içinde duruyordu ama bu sayfa "0/17" diyordu. Sayfa artık günün
+   gönderimlerini doğrudan `checkins`'ten de okuyor ve kaydı burada kuruyor;
+   sunucunun kaydı varsa (bildirimin kime gittiği orada yazıyor) o tercih ediliyor.
+
+   Hesap sunucudakiyle AYNI olmak zorunda — functions/wellness-alert.js
+   (buildAlertRecord, eşik 3.5, orta/yüksek ağrı) ve functions/rpe-report.js
+   (RPE 0-10, süre 0-400, yük = RPE × süre). Birini değiştiren ötekini de değiştirsin. */
+function numv(v){return (v===null||v===undefined||v===''||isNaN(Number(v)))?null:Number(v);}
+function clampv(v,lo,hi){var n=numv(v);return n==null?null:(n<lo?lo:(n>hi?hi:n));}
+function atOf(d){return d&&d.at?d.at:null;}
+function localWellness(d){
+  var p=d.payload||{};
+  var split=numv(p.mentalFatigue)!=null||numv(p.physicalFatigue)!=null;
+  var keys=split?['sleep','mentalFatigue','physicalFatigue','soreness']:['sleep','fatigue','soreness'];
+  var vals=keys.map(function(k){return numv(p[k]);}).filter(function(v){return v!=null;});
+  var exact=vals.length?vals.reduce(function(a,b){return a+b;},0)/vals.length:null;
+  var pm=(p.painMap&&typeof p.painMap==='object')?p.painMap:{};
+  var high=[],mod=[];
+  Object.keys(pm).forEach(function(raw){
+    var r=String(raw||'').trim(),s=Math.round(numv(pm[raw])||0);
+    if(!r)return;
+    if(s===3)high.push(r);else if(s===2)mod.push(r);
+  });
+  var reasons=[];
+  if(exact!=null&&exact<3.5)reasons.push('low_score');
+  if(high.length||mod.length)reasons.push('pain');
+  return {athleteId:d.athleteId||'',athleteName:String(d.athleteName||'').trim(),
+    teamId:d.teamId||'',date:d.date||'',
+    overall:exact==null?null:Math.round(exact*10)/10,
+    scores:{sleep:numv(p.sleep),mentalFatigue:numv(p.mentalFatigue),physicalFatigue:numv(p.physicalFatigue),
+            fatigue:numv(p.fatigue),soreness:numv(p.soreness),RHR:numv(p.RHR)},
+    painHigh:high,painModerate:mod,reasons:reasons,flagged:reasons.length>0,
+    submittedAt:atOf(d),notificationStatus:'local'};
+}
+function localRpe(d){
+  var p=d.payload||{};
+  var sessions=[['tp','tpRPE','tpDuration'],['sc','scRPE','scDuration'],['game','gameRPE','gameDuration']]
+    .map(function(s){
+      var rpe=clampv(p[s[1]],0,10);
+      if(rpe==null)return null;
+      var dur=clampv(p[s[2]],0,400);
+      return {id:s[0],rpe:rpe,duration:dur,load:rpe&&dur?Math.round(rpe*dur):null};
+    }).filter(Boolean);
+  var total=sessions.reduce(function(a,s){return a+(s.load||0);},0);
+  var rpes=sessions.map(function(s){return s.rpe;});
+  return {athleteId:d.athleteId||'',athleteName:String(d.athleteName||'').trim(),
+    teamId:d.teamId||'',date:d.date||'',sessions:sessions,totalLoad:total||null,
+    maxRpe:rpes.length?Math.max.apply(null,rpes):null,submittedAt:atOf(d)};
+}
+function msOf(t){
+  if(!t)return -1;
+  if(typeof t.toMillis==='function')return t.toMillis();
+  var n=Date.parse(String(t));return isNaN(n)?-1:n;
+}
+/* Sporcu başına TEK satır: sunucunun kaydı ile formdan kurulanın daha yeni olanı.
+   Aynı gönderimden geliyorlarsa (zaman eşit) sunucununki kalıyor — bildirim bilgisi onda. */
+function mergeRows(srv,loc){
+  var by={};
+  (srv||[]).forEach(function(r){if(r&&r.athleteId)by[r.athleteId]=r;});
+  (loc||[]).forEach(function(r){
+    if(!r||!r.athleteId)return;
+    var cur=by[r.athleteId];
+    if(!cur||msOf(r.submittedAt)>msOf(cur.submittedAt))by[r.athleteId]=r;
+  });
+  return Object.keys(by).map(function(k){return by[k];});
 }
 
 /* ── Firebase ────────────────────────────────────────────────────────────────
@@ -1268,8 +1341,10 @@ function watchFeed(){
   var tabs=el('div',{class:'seg tabs',role:'tablist'});
   var FEEDS=[
     {id:'wellness',label:T('tab_wellness'),head:T('wellness_h'),col:'wellness_alerts',
+     kind:'wellness',build:localWellness,
      sort:bySeverity,card:alertCard,none:T('wellness_none'),nonePast:T('wellness_none_past')},
     {id:'rpe',label:T('tab_rpe'),head:T('rpe_h'),col:'rpe_reports',
+     kind:'srpe',build:localRpe,
      sort:byExertion,card:rpeCard,none:T('rpe_none'),nonePast:T('rpe_none_past')},
   ];
   FEEDS.forEach(function(F){
@@ -1340,7 +1415,8 @@ function watchFeed(){
         return base(col).limit(500).get().then(add,function(e2){console.warn('recent '+col,(e2&&e2.code)||e2);});
       });
     }
-    Promise.all(FEEDS.map(function(F){return take(F.col);})).then(function(){
+    // Formların kendisi de (checkins) — sunucu çalışmadığı günlerin sporcuları da listede olsun.
+    Promise.all(FEEDS.map(function(F){return take(F.col);}).concat([take('checkins')])).then(function(){
       recentBusy=false;
       RECENT=Object.keys(seen).map(function(k){return seen[k];});
       FEEDS.forEach(drawFill);
@@ -1465,7 +1541,26 @@ function watchFeed(){
       :T('read_fail')+((err&&err.message)||err);
     F.list.appendChild(el('div',{class:'msg bad',text:why}));
   }
-  function rowsOf(snap){var r=[];snap.forEach(function(d){r.push(d.data()||{});});return r;}
+  function rowsOf(snap){var r=[];snap.forEach(function(d){r.push(d.data({serverTimestamps:'estimate'})||{});});return r;}
+
+  /* İKİ KAYNAK, TEK LİSTE. Her sekme iki yerden besleniyor:
+       srv — sunucunun yazdığı kayıt (wellness_alerts / rpe_reports): bildirimin
+             kime gittiği burada. Sunucu çalışmıyorsa boş kalır.
+       loc — sporcunun gönderdiği formun kendisi (checkins), kayıt burada kuruluyor.
+             Sunucuya hiç bağlı değil.
+     Biri hata verirse öteki yine gösteriliyor; ikisi birden hata verirse hata
+     yazılıyor. İkisinden biri henüz gelmemişse ve öteki boşsa beklenmiyor: boş
+     liste "yükleniyor" yerine görünsün diye en az bir kaynak geldiğinde çiziliyor. */
+  function repaint(F,day){
+    if(day!==shownDay)return;
+    var s=F.srvState,l=F.locState;
+    if(s==='wait'&&l==='wait')return;
+    if(s==='err'&&l==='err'){fail(F,F.srvErr);return;}
+    // Kaynaklardan biri hâlâ bekliyorsa ve elimizdeki boşsa, erken "kimse yok" demeyelim.
+    var any=(F.srv&&F.srv.length)||(F.loc&&F.loc.length);
+    if(!any&&(s==='wait'||l==='wait'))return;
+    paint(F,mergeRows(s==='ok'?F.srv:[],l==='ok'?F.loc:[]),day);
+  }
 
   /* TEK GÜN. Gün, sunucudan değil cihazdan okunuyor ve bu bilinçli: formu
      dolduran sporcu da tarihi kendi cihazından seçiyor, yani ikisi aynı takvimi
@@ -1474,26 +1569,50 @@ function watchFeed(){
      Takım sınırı sorgunun içinde duruyor; kurallar da aynı sınırı sunucuda
      uyguluyor — buradaki filtre onun istemci tarafındaki karşılığı, güvenliğin
      kendisi değil. */
-  var shownDay=null;
+  var shownDay=null,ckUnsub=null;
   function subscribe(F,day){
     if(F.unsub){try{F.unsub();}catch(e){}F.unsub=null;}
+    F.srv=null;F.srvState='wait';F.srvErr=null;
     var q=db.collection(F.col)
       .where('coachUid','==',LINK.coachUid)
       .where('teamId','==',LINK.teamId)
       .where('date','==',day);
-    F.unsub=q.onSnapshot(function(snap){paint(F,rowsOf(snap),day);},function(err){
+    function ok(rows){F.srv=rows;F.srvState='ok';repaint(F,day);}
+    function bad(err){F.srvState='err';F.srvErr=err;console.warn(F.col,(err&&err.code)||err);repaint(F,day);}
+    F.unsub=q.onSnapshot(function(snap){ok(rowsOf(snap));},function(err){
       /* Üç eşitlik filtresi indeks istemiyor (Firestore bunları kendi tekil
          indeksleriyle birleştiriyor) ama bir kurulumda yine de reddedilirse liste
          boş kalmasın: takımın son kayıtları çekilip gün burada süzülüyor. */
-      if((err&&err.code)!=='failed-precondition'){if(day===shownDay)fail(F,err);return;}
+      if((err&&err.code)!=='failed-precondition'){bad(err);return;}
       F.unsub=db.collection(F.col)
         .where('coachUid','==',LINK.coachUid)
         .where('teamId','==',LINK.teamId)
         .limit(300)
         .onSnapshot(function(snap){
-          paint(F,rowsOf(snap).filter(function(a){return String(a.date||'')===day;}),day);
-        },function(e2){if(day===shownDay)fail(F,e2);});
+          ok(rowsOf(snap).filter(function(a){return String(a.date||'')===day;}));
+        },bad);
     });
+  }
+  /* Günün formları — iki sekme için tek dinleyici, türüne göre ayrılıyor. */
+  function subscribeForms(day){
+    if(ckUnsub){try{ckUnsub();}catch(e){}ckUnsub=null;}
+    FEEDS.forEach(function(F){F.loc=null;F.locState='wait';});
+    function ok(docs){
+      FEEDS.forEach(function(F){
+        F.loc=docs.filter(function(d){return d.kind===F.kind&&String(d.date||'')===day;}).map(F.build);
+        F.locState='ok';repaint(F,day);
+      });
+    }
+    function bad(err){
+      // Kurallar henüz yayımlanmamışsa (eski kurulum) sessizce yalnızca sunucu kaydına kalınıyor.
+      console.warn('checkins',(err&&err.code)||err);
+      FEEDS.forEach(function(F){F.locState='err';repaint(F,day);});
+    }
+    ckUnsub=db.collection('checkins')
+      .where('coachUid','==',LINK.coachUid)
+      .where('teamId','==',LINK.teamId)
+      .where('date','==',day)
+      .onSnapshot(function(snap){ok(rowsOf(snap));},bad);
   }
   function subscribeAll(day){
     shownDay=day;
@@ -1507,6 +1626,7 @@ function watchFeed(){
       F.list.appendChild(el('div',{class:'load',text:T('loading')}));
       subscribe(F,day);
     });
+    subscribeForms(day);
   }
   // Gelecek gün yok: seçici bugünden ileri gitmiyor (takvim de max ile sınırlı).
   function go(day){
