@@ -1,0 +1,226 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AÇIK DEFTER (B) — tüm sitenin son stil katmanı
+
+   Açık tema varsayılan (00-head.html), koyu tema Ayarlar → Görünüm'de kalıyor. Bu katman:
+     • Renk değişkenleri: açık temada sakin gri zemin, beyaz paneller, lacivert yazı, tek mavi
+       aksan; en soluk yazı bile beyaz zeminde 4.5:1 kontrastı geçer. Koyu temada da aynı düz,
+       opak yüzeyler.
+     • Kabuk: masaüstünde üstte ince bir çubuk (logo, takım, senkron, dil, çıkış) ve altında
+       yalnız menüden oluşan 216px'lik kenar çubuğu. 1024px altında eski çekmece + üst çubuk.
+     • Cam, gradyan ve parlama yok: kenar çubuğu, sayfa başlığı ve düğmeler düz renk.
+     • Sayfa başlığı kart değil: başlık + alt satır + kutusuz rakam satırı.
+     • Takvim haftası tek tablo gibi: günler sütun çizgileriyle ayrılır, seans türü açık
+       tonlu zeminle okunur.
+
+   Özgüllük: 15-theme-light.css'in `:root[data-theme="light"] .x` kuralları ile aynı seviyeye
+   :is(:root,:root[data-theme]) önekiyle çıkılıyor; bu dosya en son yüklendiği için kazanıyor.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════════ RENKLER ═════════════ */
+:root[data-theme="light"]{
+  --bg:#f4f5f7;--bg2:#f7f8fa;--panel:#ffffff;--elevated:#f7f8fa;--hover:#eef0f3;
+  --border:#e2e5ea;--border2:#cfd4db;
+  --text:#0f1720;--text2:#3a4350;--muted:#5e6774;--dim:#6b7480;
+  --accent:#0a6cdc;--accent2:#0a5fc2;--accent-bg:#e7f0fc;
+  --grad:#0a6cdc;--grad-soft:#e7f0fc;
+  --low:#e5f5ef;--med:#fbf2e0;--high:#fcebe9;--peak:#eaf0fd;
+  --low-t:#0b8a64;--med-t:#9a6206;--high-t:#c53526;--peak-t:#2f5fd0;
+  --shadow:0 1px 2px rgba(15,23,42,.04);
+  --shadow-glow:0 0 0 1px rgba(10,108,220,.25);
+  --glass-hi:none;--panel-glass:var(--panel);
+  --tb-h:52px;
+}
+:root:not([data-theme="light"]){
+  --bg:#111317;--bg2:#15181d;--panel:#171a1f;--elevated:#1c2026;--hover:#22262d;
+  --border:#262a31;--border2:#333841;
+  --text:#eef0f3;--text2:#bcc2cb;--muted:#9aa1ac;--dim:#7d8590;
+  --accent:#3d9bff;--accent2:#7ab8ff;--accent-bg:#16263b;
+  --grad:#3d9bff;--grad-soft:#16263b;
+  --shadow:none;--shadow-glow:0 0 0 1px rgba(61,155,255,.3);
+  --glass-hi:none;--panel-glass:var(--panel);
+  --tb-h:52px;
+}
+body{background:var(--bg)}
+::selection{background:color-mix(in srgb,var(--accent) 22%,transparent);color:inherit}
+
+/* ═════════════ KABUK: üst çubuk + kenar çubuğu ═════════════ */
+.topbar{display:none}
+@media(min-width:1025px){
+  .app{display:grid;grid-template-columns:216px minmax(0,1fr);grid-template-rows:var(--tb-h) auto;align-items:start}
+  .topbar{grid-column:1/-1;position:sticky;top:0;z-index:60;height:var(--tb-h);display:flex;align-items:center;gap:16px;
+    padding:0 18px;background:var(--panel);border-bottom:1px solid var(--border)}
+  :is(:root,:root[data-theme]) .sidebar{position:sticky;top:var(--tb-h);height:calc(100vh - var(--tb-h));height:calc(100dvh - var(--tb-h));
+    width:auto;padding:12px 10px 20px;gap:0;background:var(--bg);border-right:1px solid var(--border);
+    -webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+  /* Logo, takım, senkron ve dil üst çubukta: kenar çubuğunda yalnız menü kalır. */
+  .sidebar>.brand,.sidebar>.brand-team,.sidebar>.lang-inline{display:none}
+  .content{min-width:0}
+}
+.tb-logo{height:19px;width:auto;flex:none;margin-right:26px}
+:root[data-theme="light"] .tb-logo,
+:root[data-theme="light"] .mtb-logo{filter:invert(1) hue-rotate(180deg) saturate(1.4)}
+.topbar .brand-team{display:flex;flex-direction:row;align-items:center;gap:10px;padding:0;margin:0;border:0;min-width:0}
+.tb-club{font-size:12px;color:var(--muted);white-space:nowrap}
+:is(:root,:root[data-theme]) .topbar .bt-row.team-sel{background:var(--panel);border:1px solid var(--border2);border-radius:7px;padding:4px 10px;gap:8px;min-width:240px}
+.topbar .bt-row.team-sel select{font-size:13px;font-weight:600}
+.topbar .brand-team .bt-label{font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;color:var(--dim)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}
+/* Senkron: tek satır durum; adres ipucunda (title). */
+:is(:root,:root[data-theme]) .tb-sync .team-sw.sync-chip{background:transparent;border:0;padding:4px 6px;align-items:center}
+.tb-sync .sync-dot{margin-top:0;box-shadow:none !important}
+.tb-sync .sync-txt b{font-size:12px;font-weight:500;color:var(--muted)}
+.tb-sync .sync-txt em{display:none}
+/* Senkron hatası açıklaması çubuğu itmesin: durumun altında açılan bir kutu olarak durur. */
+.tb-sync{position:relative}
+.tb-sync>div>div:not(.team-sw){position:absolute;top:calc(100% + 8px);right:0;width:340px;z-index:70;margin:0 !important;
+  box-shadow:0 12px 30px -10px rgba(15,23,32,.25);background:var(--panel) !important}
+:is(:root,:root[data-theme]) .topbar .lang-inline{margin:0;padding:4px 10px;border-radius:7px;background:var(--panel);border-color:var(--border2)}
+.topbar .lang-inline .bt-label{display:none}
+.topbar .lang-inline-sel{font-size:12.5px;width:auto}
+
+/* Menü: kutusuz satırlar; seçili olan beyaz zeminli ince çerçeveli kart. */
+:is(:root,:root[data-theme]) nav{gap:10px}
+:is(:root,:root[data-theme]) .nav-glabel{font-family:inherit;font-size:10.5px;font-weight:600;letter-spacing:.1em;color:var(--dim);padding:8px 10px 5px}
+:is(:root,:root[data-theme]) .nav-group{gap:1px}
+:is(:root,:root[data-theme]) .nav-item{padding:7px 10px;gap:10px;font-size:13.5px;border-radius:7px;color:var(--text2);border:1px solid transparent}
+:is(:root,:root[data-theme]) .nav-item .ni-ic{color:var(--muted);width:16px}
+:is(:root,:root[data-theme]) .nav-item:hover{background:var(--hover);border-color:transparent;color:var(--text)}
+:is(:root,:root[data-theme]) .nav-item.active{background:var(--panel);border-color:var(--border);color:var(--text);box-shadow:var(--shadow)}
+:is(:root,:root[data-theme]) .nav-item.active .ni-ic{color:var(--accent)}
+:is(:root,:root[data-theme]) .nav-item .ni-count{font-family:inherit;font-size:11px;background:transparent;border:0;padding:0;color:var(--dim)}
+:is(:root,:root[data-theme]) .nav-item.active::before,
+:is(:root,:root[data-theme]) .nav-item.active::after{display:none}
+
+/* Telefon üst çubuğu ve çekmece: düz renk, bulanıklık yok. */
+@media(max-width:1024px){
+  :is(:root,:root[data-theme]) .mtopbar{background:var(--panel);-webkit-backdrop-filter:none;backdrop-filter:none}
+  :is(:root,:root[data-theme]) .sidebar{background:var(--panel);-webkit-backdrop-filter:none;backdrop-filter:none}
+  :is(:root,:root[data-theme]) .mscrim{background:rgba(15,23,32,.4);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* ═════════════ SAYFA BAŞLIĞI ═════════════ */
+:is(:root,:root[data-theme]) .ph-hero{background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;box-shadow:none;
+  padding:4px 0 16px;margin-bottom:20px;align-items:flex-end}
+.ph-hero::before{display:none}
+:is(:root,:root[data-theme]) .ph-ttl{font-size:26px;letter-spacing:-.015em;animation:none}
+:is(:root,:root[data-theme]) .ph-sub{font-family:inherit;font-size:13px;color:var(--muted);margin-top:4px;animation:none}
+:is(:root,:root[data-theme]) .ph-hero-r{gap:6px 28px;align-items:flex-end}
+/* Rakamlar kutusuz: etiket üstte, değer altında. */
+:is(:root,:root[data-theme]) .ph-stat{padding:0;background:none;border:0;border-radius:0;display:flex;flex-direction:column-reverse;gap:1px}
+:is(:root,:root[data-theme]) .ph-stat:hover{border:0;transform:none}
+:is(:root,:root[data-theme]) .ph-stat-v{font-size:19px;font-weight:700}
+:is(:root,:root[data-theme]) .ph-stat-l{font-family:inherit;font-size:11.5px;color:var(--muted);margin:0}
+:is(:root,:root[data-theme]) .ph-acts{gap:6px}
+.ph-hero-r>*{animation:none}
+@media(max-width:700px){:is(:root,:root[data-theme]) .ph-hero{padding:0 0 14px}}
+
+/* ═════════════ YÜZEYLER ═════════════ */
+main{padding:24px 28px}
+:is(:root,:root[data-theme]) .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow)}
+:is(:root,:root[data-theme]) .panel:hover{transform:none;box-shadow:var(--shadow)}
+main .panel,main .ap-head{animation:none}
+:is(:root,:root[data-theme]) .panel h2{letter-spacing:-.01em}
+
+/* Eski cam katmanı (10-styles.css "iOS-style glass surfaces") iki temada da düz yüzeye döner:
+   yarı saydam gradyan, arka plan bulanıklığı ve arkadaki renkli ışık lekeleri yok. */
+.app::before,.app::after{display:none}
+:is(:root,:root[data-theme]) .panel,
+:is(:root,:root[data-theme]) .ap-head,
+:is(:root,:root[data-theme]) .rc,
+:is(:root,:root[data-theme]) .rr,
+:is(:root,:root[data-theme]) .rsf-card,
+:is(:root,:root[data-theme]) .rec-card{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+:is(:root,:root[data-theme]) .ex-card{box-shadow:var(--shadow)}
+:is(:root,:root[data-theme]) .rc:hover{transform:none;border-color:var(--border2)}
+:is(:root,:root[data-theme]) .ath-stat,
+:is(:root,:root[data-theme]) .metric-card,
+:is(:root,:root[data-theme]) .mono-chip,
+:is(:root,:root[data-theme]) .wh-avg-in,
+:is(:root,:root[data-theme]) .rec-bar,
+:is(:root,:root[data-theme]) .lmix-row,
+:is(:root,:root[data-theme]) .ath-bar .back,
+:is(:root,:root[data-theme]) .ath-bar-edit{background:var(--elevated);border:1px solid var(--border);box-shadow:none}
+:is(:root,:root[data-theme]) .lb-seg,
+:is(:root,:root[data-theme]) .ath-seg,
+:is(:root,:root[data-theme]) .ath-search,
+:is(:root,:root[data-theme]) .ex-search,
+:is(:root,:root[data-theme]) .rost-sort,
+:is(:root,:root[data-theme]) .rost-view{background:var(--elevated);border-color:var(--border)}
+:is(:root,:root[data-theme]) .modal{background:var(--panel);border:1px solid var(--border);-webkit-backdrop-filter:none;backdrop-filter:none;
+  box-shadow:0 24px 60px -12px rgba(15,23,32,.28)}
+:is(:root,:root[data-theme]) .modal-bg,
+:is(:root,:root[data-theme]) .modal-bg.rs-bg,
+:is(:root,:root[data-theme]) .aic-scrim{background:rgba(15,23,32,.42);-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-theme="light"] .modal.rs-modal,
+:root[data-theme="light"] .modal.ex-modal-wide,
+:root[data-theme="light"] .aic-panel{background:var(--panel);border-color:var(--border)}
+/* Kadro kartı: avatar düz zeminde, forma numarası soluk değil okunur gri. */
+:is(:root,:root[data-theme]) .rc-av{background:var(--elevated);color:var(--text2)}
+:is(:root,:root[data-theme]) .rc-num{color:var(--border2);opacity:1}
+:is(:root,:root[data-theme]) .rost-add{box-shadow:none}
+/* Egzersiz kartı: görseli olmayan kapak açık temada koyu lacivert blok değil, açık gri. */
+:root[data-theme="light"] .ex-thumb{background:var(--elevated)}
+:root[data-theme="light"] .ex-thumb:not(:has(img,video,iframe))::after{display:none}
+/* Ortak takvim: takım rengindeki küçük başlık açık zeminde okunsun. */
+:root[data-theme="light"] .atc-ev-tm{filter:none;color:color-mix(in srgb,var(--tc) 60%,#0f1720)}
+
+/* ═════════════ DÜĞMELER: bir ana, bir ikincil ═════════════ */
+:is(:root,:root[data-theme]) .btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:7px;box-shadow:none}
+:is(:root,:root[data-theme]) .btn:hover{filter:none;background:var(--accent2);border-color:var(--accent2);box-shadow:none;transform:none}
+:is(:root,:root[data-theme]) .btn::after{display:none}
+:is(:root,:root[data-theme]) .btn.sec,
+:is(:root,:root[data-theme]) .btn.white,
+:is(:root,:root[data-theme]) .btn.outline{background:var(--panel);color:var(--text);border:1px solid var(--border2)}
+:is(:root,:root[data-theme]) .btn.sec:hover,
+:is(:root,:root[data-theme]) .btn.white:hover,
+:is(:root,:root[data-theme]) .btn.outline:hover{background:var(--hover);border-color:var(--border2);filter:none;transform:none}
+:is(:root,:root[data-theme]) .btn.danger{background:var(--high-t);border-color:var(--high-t);color:#fff}
+:is(:root,:root[data-theme]) .btn.ghost{background:transparent;color:var(--muted);border:1px dashed var(--border2)}
+:root:not([data-theme="light"]) .btn:not(.sec):not(.white):not(.outline):not(.ghost){color:#06121f}
+/* Kendi sınıfıyla çizilen iki ana düğme de aynı kurala uyar. */
+:is(:root,:root[data-theme]) .rost-add{background:var(--accent);color:#fff;border-radius:7px;transform:none}
+:is(:root,:root[data-theme]) .rost-add:hover{background:var(--accent2);transform:none;box-shadow:none}
+:is(:root,:root[data-theme]) .calm-share{background:var(--accent);border-color:var(--accent);color:#fff}
+:is(:root,:root[data-theme]) .calm-share:hover{background:var(--accent2);border-color:var(--accent2);color:#fff}
+:root:not([data-theme="light"]) .rost-add,
+:root:not([data-theme="light"]) .calm-share,
+:root:not([data-theme="light"]) .calm-share:hover{color:#06121f}
+
+/* Form alanları: beyaz zemin, ince çerçeve, odakta mavi halka. */
+:root[data-theme="light"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+:root[data-theme="light"] select,:root[data-theme="light"] textarea{background:var(--panel);border-color:var(--border2)}
+:is(:root,:root[data-theme]) input:focus,:is(:root,:root[data-theme]) select:focus,:is(:root,:root[data-theme]) textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+:root[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-theme="light"] input[type="time"]::-webkit-calendar-picker-indicator{filter:none;opacity:.6}
+
+/* ═════════════ TAKVİM HAFTASI ═════════════ */
+/* Yedi gün tek panelde: sütunlar arası çizgi, gün başlığı alt çizgili, bugün mavi. */
+:is(:root,:root[data-theme]) .calw-grid{gap:0;border:1px solid var(--border);border-radius:10px;background:var(--panel);overflow:hidden}
+:is(:root,:root[data-theme]) .calw-col{background:var(--panel);border:0;border-left:1px solid var(--border);border-radius:0;padding:0 9px 10px;gap:8px}
+:is(:root,:root[data-theme]) .calw-col:first-child{border-left:0}
+:is(:root,:root[data-theme]) .calw-col .dh{margin:0 -9px;padding:10px 10px 9px;border-bottom:1px solid var(--border)}
+:is(:root,:root[data-theme]) .calw-col .dh-d b{font-size:12px}
+:is(:root,:root[data-theme]) .calw-col .dh-d i{font-family:inherit;color:var(--muted)}
+:is(:root,:root[data-theme]) .calw-col.drop{background:var(--accent-bg)}
+/* Seans: türünün açık tonlu zemini, adı türünün renginde. */
+:is(:root,:root[data-theme]) .calw-ses{border:0;border-radius:7px;padding:9px 10px;
+  background:color-mix(in srgb,var(--sc) 10%,var(--panel))}
+:is(:root,:root[data-theme]) .calw-ses:hover{transform:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--sc) 45%,transparent)}
+:is(:root,:root[data-theme]) .calw-ses .nm{font-size:12.5px;color:color-mix(in srgb,var(--sc) 80%,var(--text))}
+:is(:root,:root[data-theme]) .calw-ses .mt{margin-top:6px;color:var(--text2)}
+/* Haftanın dört rakamı: dört ayrı kutu yerine bölmeli tek şerit, ikonlar sade. */
+:is(:root,:root[data-theme]) .calw-stats{gap:0;border:1px solid var(--border);border-radius:10px;background:var(--panel);overflow:hidden}
+:is(:root,:root[data-theme]) .cws{border:0;border-left:1px solid var(--border);border-radius:0;background:transparent;padding:13px 16px}
+:is(:root,:root[data-theme]) .cws:first-child{border-left:0}
+:is(:root,:root[data-theme]) .cws:hover{transform:none;box-shadow:none}
+:is(:root,:root[data-theme]) .cws-ic{width:32px;height:32px;border-radius:8px;border:0}
+:is(:root,:root[data-theme]) .cws-k{font-family:inherit}
+@media(max-width:560px){:is(:root,:root[data-theme]) .cws{border-left:0;border-top:1px solid var(--border)}
+  :is(:root,:root[data-theme]) .cws:first-child{border-top:0}}
+:is(:root,:root[data-theme]) .calw-avg{background:var(--elevated);border-color:var(--border);border-radius:7px}
+:is(:root,:root[data-theme]) .calw-hint{font-family:inherit}
+
+/* ═════════════ HAREKET ═════════════ */
+@media (prefers-reduced-motion:reduce){.topbar,.nav-item{transition:none}}

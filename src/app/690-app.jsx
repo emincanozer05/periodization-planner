@@ -219,7 +219,37 @@ function App(){
     ]},
   ];
 
+  /* The team picker, drawn twice: in the desktop top bar and in the phone drawer. Only one
+     of the two is ever visible (CSS switches them at 1024px). */
+  const teamSel=(<div className="bt-row team-sel">
+          <span className="bt-label">{L('Takım','Team')}</span>
+          {/* The crest, immediately left of the name it belongs to. A native select cannot
+              carry a picture, so it rides beside the box — which is enough: a coach working
+              across two squads recognises the badge before they have read the word. */}
+          {hasMedia(team.setup&&team.setup.logo)&&
+            <img className="bt-teamlogo" src={mediaSrc(team.setup.logo)} alt=""/>}
+          <select value={data.activeTeamId} onChange={e=>setData(withTeam(data,e.target.value))}
+            aria-label={L('Takım','Team')}>
+            {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
+          </select>
+        </div>);
+  const clubName=String(team.setup.clubName||'').trim();
+
   return(<div className={"app"+(menuOpen?' menu-open':'')}>
+    {/* Desktop top bar: brand, the squad being looked at, sync state, language, account.
+        On phones the same things live in the drawer instead (see .brand-team below). */}
+    <div className="topbar">
+      <img className="tb-logo" src="logo-wordmark.png" alt="CoachOS"/>
+      <div className="tb-team brand-team">
+        {clubName&&<span className="tb-club">{clubName}</span>}
+        {teamSel}
+      </div>
+      <div className="tb-right">
+        <div className="tb-sync brand-team"><CloudBar sync={sync} onOpen={()=>{}}/></div>
+        <LanguageSelector inline/>
+        {sync.user&&<button className="btn sec sm" onClick={()=>sync.signOut()}>{L('Çıkış Yap','Sign Out')}</button>}
+      </div>
+    </div>
     <div className="mscrim" onClick={()=>setMenuOpen(false)}/>
     <aside className="sidebar">
       <button className="mclose" onClick={()=>setMenuOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
@@ -228,19 +258,8 @@ function App(){
         {/* The club the squad below belongs to. Only drawn when the Setup tab has been
             given one — a club that has not named itself should not push the team picker
             down the sidebar for an empty line. */}
-        {String(team.setup.clubName||'').trim()&&
-          <div className="bt-club">{team.setup.clubName.trim()}</div>}
-        <div className="bt-row team-sel">
-          <span className="bt-label">{L('Takım','Team')}</span>
-          {/* The crest, immediately left of the name it belongs to. A native select cannot
-              carry a picture, so it rides beside the box — which is enough: a coach working
-              across two squads recognises the badge before they have read the word. */}
-          {hasMedia(team.setup&&team.setup.logo)&&
-            <img className="bt-teamlogo" src={mediaSrc(team.setup.logo)} alt=""/>}
-          <select value={data.activeTeamId} onChange={e=>setData(withTeam(data,e.target.value))}>
-            {data.teams.map(t=><option key={t.id} value={t.id}>{t.setup.teamName}</option>)}
-          </select>
-        </div>
+        {clubName&&<div className="bt-club">{clubName}</div>}
+        {teamSel}
         {sync.user&&<button className="btn sec xs" onClick={()=>sync.signOut()} style={{width:'100%',justifyContent:'center'}}>{L('Çıkış Yap','Sign Out')}</button>}
         <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>{}}/></div>
       </div>
