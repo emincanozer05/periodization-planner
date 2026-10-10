@@ -141,10 +141,13 @@ function TryoutsView({data,setData,teams,activeTeamId}){
   const[moveTo,setMoveTo]=useState(activeTeamId);
   const photoRef=useRef(null);
   const save=next=>setData({...data,tryouts:next});
-  const upd=(id,patch)=>save(list.map(t=>t.id===id?{...t,...patch}:t));
+  // Applied to the list as it is when the change lands — a candidate's photo arrives after
+  // its upload, and writing the list (and `data`) captured at the click would undo
+  // everything edited in between.
+  const upd=(id,patch)=>setData(d=>({...d,tryouts:(Array.isArray(d.tryouts)?d.tryouts:[]).map(t=>t.id===id?{...t,...(typeof patch==='function'?patch(t):patch)}:t)}));
   const cur=list.find(t=>t.id===sel)||null;
   const updT=patch=>cur&&upd(cur.id,patch);
-  const updTest=(k,v)=>cur&&upd(cur.id,{tests:{...(cur.tests||{}),[k]:v}});
+  const updTest=(k,v)=>cur&&upd(cur.id,t=>({tests:{...(t.tests||{}),[k]:v}}));
   const add=()=>{const t=makeTryout();save([t,...list]);setSel(t.id);};
   const del=id=>{const t=list.find(x=>x.id===id);
     if(!confirm(Lx(`${t&&t.name?t.name:'Bu aday'} kaydı silinsin mi?`,`Delete ${t&&t.name?t.name:'this candidate'}?`)))return;
@@ -539,8 +542,9 @@ function EvaluationView({team,updateTeam,data,setData}){
   const[pick,setPick]=useState(()=>new Set(['anthro','circ']));
   const[date,setDate]=useState(fmt(today));
   const[period,setPeriod]=useState('pre');
-  const save=a=>updateTeam(team.id,{athletes:a});
-  const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
+  // Applied to the athlete as they are when the change lands (see updateTeam): a test photo
+  // is written seconds after it was picked, and by then the closed-over list is stale.
+  const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
   const ath=athletes.find(a=>a.id===selId)||null;
   const tests=ath?.tests||[];
   const editing=editingId?tests.find(t=>t.id===editingId):null;
@@ -557,11 +561,13 @@ function EvaluationView({team,updateTeam,data,setData}){
     if(pick.size===0){alert(Lx('En az bir test seç.','Pick at least one test.'));return;}
     const ids=fullCatalog.filter(c=>pick.has(c.id)).map(c=>c.id);
     const t={...makeTest(period),date,year:parseD(date).getFullYear(),battery:ids};
-    updAth(ath.id,{tests:[...tests,t]});
+    updAth(ath.id,a=>({tests:[...(a.tests||[]),t]}));
     setEditingId(t.id);
   };
-  const updTest=(id,upd)=>{
-    const nextTests=tests.map(t=>t.id===id?{...t,...upd}:t);
+  /* `upd` is a patch or a function of the test as it is when the change lands — an upload
+     finishing after another one must not put back the photo slots the first one filled. */
+  const updTest=(id,upd)=>updAth(ath.id,a=>{
+    const nextTests=(a.tests||[]).map(t=>t.id===id?{...t,...(typeof upd==='function'?upd(t):upd)}:t);
     const patch={tests:nextTests};
     // Keep the Body Comp section in sync: mirror this test's Anthropometric
     // Measurement (height/weight/wingspan/body fat + its date) into ath.measurements.
@@ -570,7 +576,7 @@ function EvaluationView({team,updateTeam,data,setData}){
       const ANTHRO=['height','weight','wingspan','bodyFat'];
       const has=k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k]));
       const hasAnthro=ANTHRO.some(has);
-      const ms=ath.measurements||[];
+      const ms=a.measurements||[];
       const exIdx=ms.findIndex(m=>m.srcTest===id);
       if(hasAnthro&&tt.date){
         const rec={id:exIdx>=0?ms[exIdx].id:uid(),srcTest:id,date:tt.date,
@@ -582,8 +588,8 @@ function EvaluationView({team,updateTeam,data,setData}){
         patch.measurements=ms.filter((_,i)=>i!==exIdx);
       }
     }
-    updAth(ath.id,patch);
-  };
+    return patch;
+  });
   // Battery of an already-taken test (legacy records without `battery` cover everything).
   const batOf=t=>Array.isArray(t.battery)?t.battery:fullCatalog.map(c=>c.id);
   /* A coach's own measurement, created straight from the picker: it joins the catalog

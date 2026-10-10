@@ -189,7 +189,12 @@ function App(){
   /* Applied to the LATEST state, not to the `data` this render closed over: a press that
      updates two parts of the team in one tick (the review, then the athletes' calendars)
      used to lose the first update to the second. */
-  const updateTeam=(id,upd)=>setData(d=>({...d,teams:d.teams.map(t=>t.id===id?{...t,...upd}:t)}));
+  /* `upd` may be a function of the team as it is at the moment the change is applied. An
+     edit that lands late — a photo once its upload finishes, a PDF once it has been read —
+     must be built from THAT team, not the one on screen when it started: built from the
+     old one, it put back whatever had changed in between, which is how one photo wiped
+     out the one uploaded just before it. */
+  const updateTeam=(id,upd)=>setData(d=>({...d,teams:d.teams.map(t=>t.id===id?{...t,...(typeof upd==='function'?upd(t):upd)}:t)}));
   const goDayView=k=>{setDayKey(k);setView('program');};
 
   const exCount=(data.exercises||[]).length;

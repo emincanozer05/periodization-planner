@@ -440,7 +440,9 @@ function FmsPdfPanel({pdf,onChange}){
 
 function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
   const u=(k,v)=>onUpdate({[k]:v});
-  const uN=(key,sub,val)=>onUpdate({[key]:{...(test[key]||{}),[sub]:val}});
+  // Merged into the test as it is when the value lands: photos arrive after their upload,
+  // and merging into the closed-over `test` dropped the slots filled in the meantime.
+  const uN=(key,sub,val)=>onUpdate(t=>({[key]:{...(t[key]||{}),[sub]:val}}));
   const cat=TEST_CATALOG.find(c=>c.id===id);
   const name=custom?custom.name:(MK_TITLE[id]||(cat?cat.name:id));
   const tag=custom?'':(MK_SHORT[id]||'');
@@ -522,7 +524,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
 
   if(id==='fms'){
     const f=test.fms||{};
-    const setF=(k,v)=>onUpdate({fms:{...f,[k]:v}});
+    const setF=(k,v)=>onUpdate(t=>({fms:{...(t.fms||{}),[k]:v}}));
     /* The screen is run on the official FMS sheet and comes back as a PDF, so
        the sheet is the record — there is nothing to re-key here. */
     return(<div className="tcard tcard-wide" style={{'--card-accent':badgeColor}}>
