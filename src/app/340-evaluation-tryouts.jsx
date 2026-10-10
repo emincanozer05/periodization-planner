@@ -570,17 +570,17 @@ function EvaluationView({team,updateTeam,data,setData}){
     const nextTests=(a.tests||[]).map(t=>t.id===id?{...t,...(typeof upd==='function'?upd(t):upd)}:t);
     const patch={tests:nextTests};
     // Keep the Body Comp section in sync: mirror this test's Anthropometric
-    // Measurement (height/weight/wingspan/body fat + its date) into ath.measurements.
+    // Measurement (height/weight/wingspan/body fat/leg length + its date) into ath.measurements.
     const tt=nextTests.find(t=>t.id===id);
     if(tt){
-      const ANTHRO=['height','weight','wingspan','bodyFat'];
+      const ANTHRO=['height','weight','wingspan','bodyFat','legLength'];
       const has=k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k]));
       const hasAnthro=ANTHRO.some(has);
       const ms=a.measurements||[];
       const exIdx=ms.findIndex(m=>m.srcTest===id);
       if(hasAnthro&&tt.date){
         const rec={id:exIdx>=0?ms[exIdx].id:uid(),srcTest:id,date:tt.date,
-          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',
           notes:exIdx>=0?(ms[exIdx].notes||''):''};
         patch.measurements=exIdx>=0?ms.map((m,i)=>i===exIdx?{...m,...rec}:m):[...ms,rec];
       }else if(exIdx>=0){

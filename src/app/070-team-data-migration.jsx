@@ -183,15 +183,15 @@ function migrateTeam(t){
       return tt;
     });
     // Sync Anthropometric Measurement tests into the Body Comp measurements list.
-    // Any test carrying height/weight/wingspan/bodyFat with a date is mirrored as a
+    // Any test carrying height/weight/wingspan/bodyFat/leg length with a date is mirrored as a
     // measurement row linked via srcTest, so past tests populate Body Comp too.
     let measurements=(a.measurements||[]).slice();
     tests.forEach(tt=>{
-      const hasAnthro=['height','weight','wingspan','bodyFat'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
+      const hasAnthro=['height','weight','wingspan','bodyFat','legLength'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
       const exIdx=measurements.findIndex(m=>m.srcTest===tt.id);
       if(hasAnthro&&tt.date){
         const rec={id:exIdx>=0?measurements[exIdx].id:uid(),srcTest:tt.id,date:tt.date,
-          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',
           notes:exIdx>=0?(measurements[exIdx].notes||''):''};
         if(exIdx>=0)measurements[exIdx]={...measurements[exIdx],...rec};else measurements.push(rec);
       }else if(exIdx>=0){measurements.splice(exIdx,1);}

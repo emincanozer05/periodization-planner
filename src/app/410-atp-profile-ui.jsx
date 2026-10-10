@@ -62,9 +62,11 @@ function AtpProfile({q,onSet,onClear}){
         </div>);})}</div>
     </div>);};
   return(<div className="sc-sec" id="atp-s1">
-    <AtpSecHead n={2} title={atpT('Athletic Profile')}
-      desc={L(`Her fiziksel kalite için Öncelik — bu dönemde ne kadar geliştirileceği. Performans verileri, test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir. Öncelik verilmeyen kalite Düşük gibi korunur.`,
-        `A Priority for every physical quality — how much this period develops it. Set from performance data, test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities. A quality left unrated is maintained, like Low.`)}/>
+    <AtpSecHead n={2} title={atpT('Athletic Development Priorities')}
+      desc={L(`Her fiziksel kalite için bu dönemde ne kadar geliştirileceği. Test sonuçları, antrenman geçmişi ve antrenör değerlendirmesiyle belirlenir. Yüksek öncelik en fazla ${ATP_HIGH_MAX} kalitede olabilir; öncelik verilmeyen kalite korunur.`,
+        `How much this period develops every physical quality. Set from test results, training history and the coach’s judgement. High can be set on at most ${ATP_HIGH_MAX} qualities; a quality left unrated is maintained.`)}>
+      {ATP_PRIORITY.map(p=><span key={p.id} className={`atp-hc pr-${p.id}`}><i/>{atpT(p.en)}<b>{byPri(p.id).length}{p.id==='high'?`/${ATP_HIGH_MAX}`:''}</b></span>)}
+    </AtpSecHead>
     <div className="sc-sec-b">
       <div className="atp-key">
         <div className="atp-key-g"><span className="atp-key-k">{atpT('Priority')}</span>
@@ -280,106 +282,119 @@ function AtpExposure({exp,refDate,setRefDate}){
     </div>
   </div>);
 }
-/* ---- Joint by Joint: rated on the mannequins themselves ----
-   A figure seen from the front and one from the back. The front is drawn facing the
-   coach, so the athlete's right is on the left of the picture; the back the other way
-   round. Every joint is a marker: while it is not rated, a dashed ring in its need's
-   colour (blue for a mobile joint, orange for a stable one — the Joint-by-Joint chart's
-   colours); once rated, a disc filled in the colour of the level (green Low, yellow
-   Medium, red High) inside a ring of its need's colour. Clicking a joint opens a small
-   picker next to it, which closes once a level is picked (a note is typed before, or
-   on reopening the joint); what is marked is listed in one compact box beside the figures,
-   so the section takes little room.
+/* ---- Joint by Joint: rated on the mannequin photograph ----
+   The coach's own joint map (joint-model.jpg, made from "Eklem Ağrısı Haritası.png"): the
+   athlete from the front and from the back, each joint marked where the photograph marks
+   it. The front shows the athlete's right on the left of the picture, the back the other
+   way round. Every joint is a marker drawn over the photograph's own dot: a ring in the
+   colour of its need (blue for a mobile joint, amber for a stable one), filled in the
+   colour of the level once it is rated (green Low, yellow Medium, red High). The
+   thoracic spine is one dot on the photograph and two motions in the record (extension
+   and rotation); its marker opens both. The photograph has no dot on the feet, so those
+   two markers are the only ones that sit on bare skin.
 
-   The body is drawn as halves: each shape is written once for the right of the picture
-   and drawn again mirrored, so the figure is symmetric by construction. */
-const ATP_JB_W=200,ATP_JB_H=462;
-const ATP_JB_HALF={
-  torso:'M99.5 50L108 50C108 58 110 64 116 67C126 71 138 72 143 80C147 88 146 102 141 114C137 132 133 150 131 168C130 182 134 194 138 207C141 221 137 235 128 244L99.5 247Z',
-  arm:'M137 82C147 80 154 90 154 106C155 124 157 140 157 157C159 177 162 201 162 227C164 239 166 251 163 263C159 271 152 269 152 259C150 249 150 240 152 230C150 206 145 181 142 161C140 145 138 129 138 113Z',
-  leg:'M138 204C143 230 143 258 139 287C137 301 136 312 136 322C138 341 141 361 137 385C135 400 133 409 133 417C135 423 141 427 141 432C139 437 119 437 116 432C116 426 118 420 118 414C116 396 112 371 114 350C114 338 112 330 112 322C110 300 106 271 102 246L99.5 242L99.5 204Z',
-};
-/* Where each joint sits on the right of the picture (mirrored for the other side). */
-const ATP_JB_AT={cervical:[100,54],scapula:[121,104],shoulder:[141,88],elbow:[150,158],wrist:[158,230],
-  thoracic_ext:[100,116],thoracic_rot:[100,144],lumbar:[100,192],hip:[123,226],knee:[125,322],ankle:[126,406],foot:[130,432]};
-/* x on the picture: the front shows the athlete's right on the left, the back on the right. */
-const atpJbXY=(r,view)=>{const[x,y]=ATP_JB_AT[r.joint.id];
-  if(!r.side)return[x,y];
-  const leftOfPic=(view==='front')===(r.side==='Right');
-  return[leftOfPic?ATP_JB_W-x:x,y];};
+   Beside the figures the chain itself, head to foot, alternating mobile and stable —
+   the approach read as a table, each side a cell that opens the same picker. */
+const ATP_JB_IMG={src:'joint-model.jpg',w:1000,h:951};
+const ATP_JB_MARKS=[
+  {id:'cervical',  keys:['cervical'],                    at:[744,131],    r:23},
+  {id:'scapula_l', keys:['scapula_l'],                   at:[689.1,209],  r:23},
+  {id:'scapula_r', keys:['scapula_r'],                   at:[799,208.8],  r:23},
+  {id:'thoracic',  keys:['thoracic_ext','thoracic_rot'], at:[744.2,262.3],r:23},
+  {id:'lumbar',    keys:['lumbar'],                      at:[743.6,357.6],r:23},
+  {id:'shoulder_r',keys:['shoulder_r'],                  at:[152.8,185.3],r:23},
+  {id:'shoulder_l',keys:['shoulder_l'],                  at:[347.4,185.2],r:23},
+  {id:'elbow_r',   keys:['elbow_r'],                     at:[119.6,319.7],r:23},
+  {id:'elbow_l',   keys:['elbow_l'],                     at:[377.8,321.1],r:23},
+  {id:'wrist_r',   keys:['wrist_r'],                     at:[72.1,421.3], r:21},
+  {id:'wrist_l',   keys:['wrist_l'],                     at:[420.9,422.7],r:21},
+  {id:'hip_r',     keys:['hip_r'],                       at:[186.7,427.4],r:23},
+  {id:'hip_l',     keys:['hip_l'],                       at:[313,427.7],  r:23},
+  {id:'knee_r',    keys:['knee_r'],                      at:[191.2,623.1],r:23},
+  {id:'knee_l',    keys:['knee_l'],                      at:[308.6,623.8],r:23},
+  {id:'ankle_r',   keys:['ankle_r'],                     at:[181.9,800.4],r:21},
+  {id:'ankle_l',   keys:['ankle_l'],                     at:[316.7,800.7],r:21},
+  {id:'foot_r',    keys:['foot_r'],                      at:[170,856],    r:19},
+  {id:'foot_l',    keys:['foot_l'],                      at:[329,856],    r:19},
+];
+const atpJbMarkOf=key=>ATP_JB_MARKS.find(m=>m.keys.includes(key))||null;
+const atpJbRow=key=>ATP_JOINT_ROWS.find(r=>r.key===key);
 /* A joint's name with its side, in the app language. */
 const atpJbLabel=r=>`${r.side?atpT(r.side)+' ':''}${atpT(r.joint.en)}`;
-function AtpMannequin({view,joints,sel,onPick}){
-  const mir=`translate(${ATP_JB_W} 0) scale(-1 1)`;
-  const both=d=><><path d={d}/><path d={d} transform={mir}/></>;
-  const marker=r=>{
-    const[x,y]=atpJbXY(r,view);
-    const j=joints[r.key]||{};
-    const lv=atpJointLv(j.level);
-    const rad=lv?8.5:6.5;
-    const on=sel===r.key;
-    const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
-    const tip=`${atpJbLabel(r)} — ${atpT(need.en)}: ${lv?atpT(ATP_JOINT_LEVELS[lv-1].en):'—'}`;
-    const pick=e=>{e.stopPropagation();onPick(r.key);};
-    return(<g key={r.key} className={`atp-jb-m jb-${r.joint.need}${lv?` jl-${j.level}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
+/* A marker's name: the joint and side, or just "Thoracic Spine" for the two motions. */
+const atpJbMarkLabel=m=>m.keys.length>1?atpT('Thoracic Spine'):atpJbLabel(atpJbRow(m.keys[0]));
+/* The level letter a rated marker carries, so a level is read without its colour too. */
+const atpJbLetter=id=>({low:L('D','L'),medium:L('O','M'),high:L('Y','H')}[id]||'');
+function AtpJbStage({joints,sel,onPick,children}){
+  const marker=m=>{
+    const rows=m.keys.map(atpJbRow);
+    const need=rows[0].joint.need;
+    /* A two-motion marker shows the stronger of its two levels. */
+    const lv=Math.max(0,...m.keys.map(k=>atpJointLv((joints[k]||{}).level)));
+    const lvId=lv?ATP_JOINT_LEVELS[lv-1].id:null;
+    const on=sel===m.id;
+    const[x,y]=m.at,R=m.r;
+    const tip=`${atpJbMarkLabel(m)} — ${atpT(ATP_JOINT_NEEDS.find(n=>n.id===need).en)}: ${m.keys.map(k=>{const v=(joints[k]||{}).level;
+      return(m.keys.length>1?`${atpT(atpJbRow(k).joint.en)} `:'')+(v?atpT(ATP_JOINT_LEVELS[atpJointLv(v)-1].en):'—');}).join(' · ')}`;
+    const pick=e=>{e.stopPropagation();onPick(m.id);};
+    return(<g key={m.id} className={`jb2-m jb-${need}${lvId?` jl-${lvId}`:''}${on?' on':''}`} transform={`translate(${x} ${y})`}
       role="button" tabIndex={0} aria-label={tip} aria-pressed={on} aria-haspopup="dialog"
       onClick={pick} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e);}}}>
       <title>{tip}</title>
-      <circle className="atp-jb-hit" r="13"/>
-      {on&&<circle className="atp-jb-halo" r={rad+4.5}/>}
-      <circle className={lv?'atp-jb-dot':'atp-jb-empty'} r={rad}/>
-      {r.joint.mk&&<text className="atp-jb-mk" textAnchor="middle" dy="2.6">{r.joint.mk}</text>}
+      <circle className="jb2-hit" r={R+8}/>
+      {on&&<circle className="jb2-halo" r={R+7}/>}
+      <circle className="jb2-disc" r={R-1.5}/>
+      <circle className="jb2-ring" r={R-2.5}/>
+      {lvId?<text className="jb2-lt" textAnchor="middle" dy="7">{atpJbLetter(lvId)}</text>:<circle className="jb2-core" r={5.5}/>}
+      {m.keys.length>1&&<text className="jb2-two" textAnchor="middle" y={-R-7}>E · R</text>}
     </g>);
   };
-  const front=view==='front';
-  return(<svg viewBox={`0 0 ${ATP_JB_W} ${ATP_JB_H}`} className="atp-jb-svg" role="group"
-      aria-label={`${atpT(front?'Front':'Back')} — ${atpT('Joint by Joint')}`}>
-      <g className="atp-jb-body">
-        {both(ATP_JB_HALF.arm)}{both(ATP_JB_HALF.leg)}{both(ATP_JB_HALF.torso)}
-        <ellipse cx="100" cy="30" rx="17" ry="21"/>
-      </g>
-      {front
-        ?<g className="atp-jb-lines">
-          {both('M100 72C110 74 122 72 132 76')}{both('M104 104C112 112 124 112 132 106')}
-          <path d="M100 118L100 196"/>{both('M108 132L126 134M108 152L124 154M108 172L122 174')}
-          <ellipse cx="125" cy="318" rx="6.5" ry="8"/><ellipse cx="75" cy="318" rx="6.5" ry="8"/></g>
-        :<g className="atp-jb-lines">
-          <path d="M100 58L100 214" strokeDasharray="1.5 5" strokeLinecap="round" className="atp-jb-spine"/>
-          {both('M108 86C116 84 128 86 134 92C130 106 124 118 116 124C112 112 110 98 108 86Z')}
-          {both('M100 222C110 232 124 234 134 226')}{both('M118 330C122 326 128 326 132 330')}</g>}
-      <text className="atp-jb-side" x="8" y="300">{atpT(front?'Right':'Left')}</text>
-      <text className="atp-jb-side" x={ATP_JB_W-8} y="300" textAnchor="end">{atpT(front?'Left':'Right')}</text>
-      <text className="atp-jb-cap" x={ATP_JB_W/2} y={ATP_JB_H-6} textAnchor="middle">{atpT(front?'Front':'Back')}</text>
-      {ATP_JOINT_ROWS.filter(r=>r.joint.view===view).map(marker)}
-    </svg>);
+  return(<div className="jb2-stage">
+    <img src={ATP_JB_IMG.src} alt="" width={ATP_JB_IMG.w} height={ATP_JB_IMG.h} draggable="false"/>
+    <svg viewBox={`0 0 ${ATP_JB_IMG.w} ${ATP_JB_IMG.h}`} className="jb2-svg" role="group" aria-label="Joint by Joint">
+      {ATP_JB_MARKS.map(marker)}
+    </svg>
+    <span className="jb2-cap" style={{left:'25%'}}>{atpT('Front')}</span>
+    <span className="jb2-cap" style={{left:'75%'}}>{atpT('Back')}</span>
+    <span className="jb2-side" style={{left:'3%'}}>{atpT('Right')}</span>
+    <span className="jb2-side" style={{left:'47%',transform:'translateX(-100%)'}}>{atpT('Left')}</span>
+    <span className="jb2-side" style={{left:'53%'}}>{atpT('Left')}</span>
+    <span className="jb2-side" style={{left:'97%',transform:'translateX(-100%)'}}>{atpT('Right')}</span>
+    {children}
+  </div>);
 }
-/* The picker that opens next to a joint: its need, the three levels and a note. It sits
-   over the figures, below the joint (above it for the lower half of the body), and is
-   kept inside the card at the edges. */
-function AtpJointPop({r,j,onSet,onNote,onClose}){
-  const view=r.joint.view,[x,y]=atpJbXY(r,view);
-  const left=(view==='front'?0:50)+x/ATP_JB_W*50,top=y/ATP_JB_H*100;
-  const up=top>58;
-  const need=ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need);
-  return(<div className={`atp-jb-pop${up?' up':''}`} role="dialog" aria-label={atpJbLabel(r)}
-    style={{left:`clamp(112px, ${left}%, calc(100% - 112px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
+/* The picker that opens next to a marker: the need, the three levels and a note — once
+   per motion on the thoracic spine. It sits below the marker (above it for the lower
+   half of the picture) and is kept inside the picture at the edges. */
+function AtpJointPop({m,joints,onSet,onNote,onClose}){
+  const[x,y]=m.at;
+  const left=x/ATP_JB_IMG.w*100,top=y/ATP_JB_IMG.h*100;
+  const up=top>55;
+  const need=ATP_JOINT_NEEDS.find(n=>n.id===atpJbRow(m.keys[0]).joint.need);
+  const one=k=>{const r=atpJbRow(k),j=joints[k]||{};return(
+    <div key={k} className="jb2-pop-b">
+      {m.keys.length>1&&<div className="jb2-pop-k">{atpT(r.joint.en)}</div>}
+      <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
+        <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
+          title={L(l.dTr,l.dEn)} onClick={()=>{onSet(k,'level',l.id);if(m.keys.length===1)onClose();}}><i/>{atpT(l.en)}</button>)}</div>
+      <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(k,e.target.value)}
+        placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
+      {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
+    </div>);};
+  return(<div className={`atp-jb-pop jb2-pop${up?' up':''}`} role="dialog" aria-label={atpJbMarkLabel(m)}
+    style={{left:`clamp(118px, ${left}%, calc(100% - 118px))`,top:`${top}%`}} onClick={e=>e.stopPropagation()}>
     <div className="atp-jb-pop-h">
-      <b>{atpJbLabel(r)}</b>
+      <b>{atpJbMarkLabel(m)}</b>
       <span className={`atp-jb-tag jb-${need.id}`}><i/>{atpT(need.en)}</span>
       <button className="atp-x" onClick={onClose} aria-label={L('Kapat','Close')} title={L('Kapat','Close')}>✕</button>
     </div>
-    <div className="atp-jb-lvs" role="group" aria-label={`${atpJbLabel(r)} — ${atpT(need.en)}`}>{ATP_JOINT_LEVELS.map(l=>
-      <button key={l.id} className={`jl-${l.id}${j.level===l.id?' on':''}`} aria-pressed={j.level===l.id}
-        title={L(l.dTr,l.dEn)} onClick={()=>{onSet(r.key,'level',l.id);onClose();}}><i/>{atpT(l.en)}</button>)}</div>
-    <input className="atp-jb-note" value={j.note||''} onChange={e=>onNote(r.key,e.target.value)} autoFocus={false}
-      placeholder={L('Not — test, ağrı, gözlem…','Note — test, pain, observation…')} aria-label={atpT('Note')}/>
-    {j.level&&<div className="atp-jb-pop-d">{L(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dTr,ATP_JOINT_LEVELS[atpJointLv(j.level)-1].dEn)}</div>}
+    {m.keys.map(one)}
   </div>);
 }
 function AtpJoints({joints,onSet,onNote}){
   const[sel,setSel]=useState(null);
   const boxRef=useRef(null);
-  /* A click anywhere outside the figures and the list, or Escape, closes the picker. */
+  /* A click anywhere outside the figures and the chain, or Escape, closes the picker. */
   useEffect(()=>{
     if(!sel)return;
     const down=e=>{if(boxRef.current&&!boxRef.current.contains(e.target))setSel(null);};
@@ -387,50 +402,119 @@ function AtpJoints({joints,onSet,onNote}){
     document.addEventListener('pointerdown',down);document.addEventListener('keydown',key);
     return()=>{document.removeEventListener('pointerdown',down);document.removeEventListener('keydown',key);};
   },[sel]);
-  const pick=key=>setSel(k=>k===key?null:key);
-  /* The marked joints, the strongest need first, head to foot within one level. */
-  const marked=ATP_JOINT_ROWS.map((r,i)=>({r,i,j:joints[r.key]||{}})).filter(x=>x.j.level)
-    .sort((a,b)=>(atpJointLv(b.j.level)-atpJointLv(a.j.level))||(a.i-b.i));
-  const count=id=>marked.filter(x=>x.r.joint.need===id).length;
-  const selRow=sel&&ATP_JOINT_ROWS.find(r=>r.key===sel);
+  const pick=id=>setSel(k=>k===id?null:id);
+  const rated=ATP_JOINT_ROWS.filter(r=>(joints[r.key]||{}).level);
+  const count=id=>rated.filter(r=>r.joint.need===id).length;
+  const selMark=sel&&ATP_JB_MARKS.find(m=>m.id===sel);
+  const cell=r=>{const j=joints[r.key]||{};const m=atpJbMarkOf(r.key);const on=m&&sel===m.id;
+    return(<button key={r.key} className={`jb2-cell${j.level?` jl-${j.level}`:''}${on?' on':''}`}
+      onClick={e=>{e.stopPropagation();if(m)pick(m.id);}} title={j.note||atpJbLabel(r)}
+      aria-label={`${atpJbLabel(r)}: ${j.level?atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en):'—'}`}>
+      {j.level?<><i/>{atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</>:<span className="jb2-none">—</span>}
+      {j.note&&<em className="jb2-note">{L('not','note')}</em>}
+    </button>);};
   return(<div className="sc-sec" id="atp-s4">
-    <AtpSecHead n={1} title={atpT('Joint by Joint')}
-      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç. Bilgiler bireyselleştirme JSON\'una yazılır; hazırlık / rehabilitasyon bölümü bunlara göre kurulur.',
-        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs. It is written into the individualization JSON, and the preparation / rehabilitation part is built on it.')}>
+    <AtpSecHead n={1} title={<span lang="en">Joint by Joint</span>}
+      desc={L('Eklemler sırayla stabil ve mobildir; her eklemin tek bir ihtiyacı vardır (diz stabilite ister, mobilite değil). Mankende bir eklemi tıkla ve ihtiyaç düzeyini seç.',
+        'Joints alternate between stable and mobile; each has one need (the knee needs stability, not mobility). Click a joint on the mannequin and pick how much it needs.')}>
       <span className="atp-hc jb-mobility"><i/>{atpT('Mobility')}<b>{count('mobility')}</b></span>
       <span className="atp-hc jb-stability"><i/>{atpT('Stability')}<b>{count('stability')}</b></span>
     </AtpSecHead>
     <div className="sc-sec-b">
-      <div className="atp-jb" ref={boxRef}>
-        <div className="atp-jb-figs">
-          <div className="atp-jb-pair">
-            <AtpMannequin view="front" joints={joints} sel={sel} onPick={pick}/>
-            <AtpMannequin view="back" joints={joints} sel={sel} onPick={pick}/>
-            {selRow&&<AtpJointPop r={selRow} j={joints[sel]||{}} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
+      <div className="jb2" ref={boxRef}>
+        <AtpJbStage joints={joints} sel={sel} onPick={pick}>
+          {selMark&&<AtpJointPop m={selMark} joints={joints} onSet={onSet} onNote={onNote} onClose={()=>setSel(null)}/>}
+        </AtpJbStage>
+        <div className="jb2-chain">
+          <div className="jb2-tbl" role="table" aria-label={L('Eklem zinciri','Joint chain')}>
+            <div className="jb2-tr jb2-th" role="row">
+              <span role="columnheader">{atpT('Joint')}</span><span role="columnheader">{atpT('Need')}</span>
+              <span role="columnheader">{atpT('Right')}</span><span role="columnheader">{atpT('Left')}</span>
+            </div>
+            {ATP_JOINTS.map(j=>{const rs=ATP_JOINT_ROWS.filter(r=>r.joint.id===j.id);return(
+              <div key={j.id} className={`jb2-tr jb-${j.need}`} role="row">
+                <span className="jb2-jn" role="cell">{atpT(j.en)}</span>
+                <span className="jb2-need" role="cell"><i/>{atpT(j.need==='mobility'?'Mobility':'Stability')}</span>
+                {j.bi?<>{cell(rs[0])}{cell(rs[1])}</>:<span className="jb2-mid" role="cell">{cell(rs[0])}</span>}
+              </div>);})}
           </div>
-        </div>
-        <div className="atp-jb-side-col">
-          <div className="atp-jb-sum">
-            <div className="atp-jb-sum-h">{L('İşaretlenen eklemler','Marked joints')}<b>{marked.length}</b></div>
-            {marked.length?<div className="atp-jb-chips">{marked.map(({r,j})=>
-              <span key={r.key} className={`atp-jb-chip jl-${j.level}${sel===r.key?' on':''}`}>
-                <button className="atp-jb-chip-b" onClick={()=>pick(r.key)} title={j.note||undefined}>
-                  <i/>{atpJbLabel(r)}<small>{atpT(ATP_JOINT_NEEDS.find(n=>n.id===r.joint.need).en)} · {atpT(ATP_JOINT_LEVELS[atpJointLv(j.level)-1].en)}</small>
-                  {j.note&&<em aria-hidden="true">✎</em>}</button>
-                <button className="atp-jb-chip-x" onClick={()=>onSet(r.key,'level',j.level)}
-                  aria-label={L(`${atpJbLabel(r)} işaretini kaldır`,`Clear ${atpJbLabel(r)}`)} title={L('Kaldır','Clear')}>✕</button>
-              </span>)}</div>
-            :<div className="atp-jb-none">{L('Henüz işaretleme yok — mankende bir eklemi tıkla.','Nothing marked yet — click a joint on the mannequin.')}</div>}
-          </div>
-          <div className="atp-jb-leg">
-            <div><span className="k">{L('Eklem','Joint')}</span>
-              <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
-              <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span></div>
-            <div><span className="k">{atpT('Level')}</span>
-              {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}</div>
+          <div className="jb2-leg">
+            <span><i className="jb-ring jb-mobility"/>{atpT('Mobile Joints')}</span>
+            <span><i className="jb-ring jb-stability"/>{atpT('Stable Joints')}</span>
+            {ATP_JOINT_LEVELS.map(l=><span key={l.id} title={L(l.dTr,l.dEn)}><i className={`jb-dot jl-${l.id}`}/>{atpT(l.en)}</span>)}
           </div>
         </div>
       </div>
+    </div>
+  </div>);
+}
+/* ---- The latest test results, at the top of the tab ----
+   Movement Quality, Jump & Reactivity and Speed & Agility, each test as one small box
+   with its most recent result, the date it was taken and how it moved against the
+   result before it. Only the tests the athlete has actually done are shown — a category
+   with none taken does not appear at all. The boxes are one width across the strip, and
+   when there are more than eight they fold into two even rows. */
+const ATH_TEST_BOXES=[
+  {g:'move',id:'ankleDF',tr:'Ayak Bileği DF',en:'Ankle DF',u:'°',dir:'hi',bi:t=>[cmpN(t.ankleDF&&t.ankleDF.right),cmpN(t.ankleDF&&t.ankleDF.left)]},
+  {g:'move',id:'aslr',tr:'ASLR',en:'ASLR',u:'/3',dir:'hi',bi:t=>[cmpN(t.aslr&&t.aslr.right),cmpN(t.aslr&&t.aslr.left)]},
+  {g:'move',id:'ohs',tr:'Overhead Squat',en:'Overhead Squat',u:'/3',dir:'hi',get:t=>cmpN(t.ohs&&t.ohs.score)},
+  {g:'move',id:'fms',tr:'FMS',en:'FMS',u:'/21',dir:'hi',get:t=>{const f=fmsCalc(t.fms);return f.n?f.total:null;}},
+  {g:'move',id:'yBalance',tr:'Y Balance',en:'Y Balance',u:'%',dir:'hi',bi:t=>{const y=ybCalc(t.yBalance);return[y.compR,y.compL];}},
+  {g:'jump',id:'verticalJump',tr:'Dikey Sıçrama',en:'Vertical Jump',u:'cm',dir:'hi',get:t=>cmpN(t.verticalJump)},
+  {g:'jump',id:'cmj',tr:'CMJ',en:'CMJ',u:'cm',dir:'hi',get:t=>cmpN(t.cmj)},
+  {g:'jump',id:'squatJump',tr:'Squat Jump',en:'Squat Jump',u:'cm',dir:'hi',get:t=>cmpN(t.squatJump)},
+  {g:'jump',id:'dropJump',tr:'Drop Jump',en:'Drop Jump',u:'RSI',dir:'hi',get:t=>cmpN(t.dropJump)},
+  {g:'jump',id:'horizontalJump',tr:'Yatay Sıçrama',en:'Horizontal Jump',u:'cm',dir:'hi',get:t=>cmpN(t.horizontalJump)},
+  {g:'jump',id:'lateralCmj',tr:'Lateral CMJ',en:'Lateral CMJ',u:'cm',dir:'hi',bi:t=>[cmpN(t.lateralCmj&&t.lateralCmj.right),cmpN(t.lateralCmj&&t.lateralCmj.left)]},
+  {g:'speed',id:'sprint',tr:'20 m Sprint',en:'20 m Sprint',u:'s',dir:'lo',get:t=>cmpN(t.sprint20m&&t.sprint20m.time)},
+  {g:'speed',id:'tTest',tr:'T-Test',en:'T-Test',u:'s',dir:'lo',get:t=>cmpN(t.tTest)},
+  {g:'speed',id:'fiveZeroFive',tr:'5-0-5',en:'5-0-5',u:'s',dir:'lo',get:t=>cmpN(t.fiveZeroFive)},
+  {g:'speed',id:'shuttleRun',tr:'Shuttle Run',en:'Shuttle Run',u:'VO2max',get:t=>cmpN(t.shuttleRun)},
+];
+const ATH_TEST_GROUPS=['move','jump','speed'];
+/* Every box with a result: its latest value(s), the date, and the change against the
+   record before it (single-value tests) or the side-to-side gap (two-sided tests). */
+function athLatestTests(ath){
+  const ts=[...(ath.tests||[])].filter(t=>t&&t.date).sort((a,b)=>a.date.localeCompare(b.date));
+  const out=[];
+  ATH_TEST_BOXES.forEach(b=>{
+    const vals=ts.map(t=>({t,v:b.bi?b.bi(t):b.get(t)}))
+      .filter(x=>b.bi?(x.v[0]!=null||x.v[1]!=null):x.v!=null);
+    if(!vals.length)return;
+    const last=vals[vals.length-1],prev=vals[vals.length-2]||null;
+    let delta=null,gap=null;
+    if(b.bi){if(last.v[0]!=null&&last.v[1]!=null)gap=+Math.abs(last.v[0]-last.v[1]).toFixed(1);}
+    else if(prev)delta=+(last.v-prev.v).toFixed(2);
+    out.push({...b,v:last.v,date:last.t.date,delta,gap,good:delta==null||!b.dir?null:(b.dir==='hi'?delta>0:delta<0)});
+  });
+  return out;
+}
+const athTestFmt=v=>v==null?'—':String(+(Math.round(v*100)/100));
+function AtpTestStrip({ath}){
+  const all=athLatestTests(ath);
+  const groups=ATH_TEST_GROUPS.map(g=>({g,meta:TEST_GROUPS.find(x=>x.id===g),items:all.filter(b=>b.g===g)})).filter(x=>x.items.length);
+  if(!groups.length)return(<div className="ats ats-empty">
+    <div className="ats-h"><b>{L('Son Test Sonuçları','Latest Test Results')}</b></div>
+    <div className="ats-none">{L('Hareket Kalitesi, Sıçrama & Reaktivite ya da Hız & Çeviklik kategorisinde alınmış test yok. Testler Test ve Değerlendirme ekranından girilir.',
+      'No Movement Quality, Jump & Reactivity or Speed & Agility test taken yet. Tests are entered on the Testing & Assessment screen.')}</div>
+  </div>);
+  const N=all.length,rows=N>8?2:1;
+  const cols=groups.map(x=>Math.ceil(x.items.length/rows));
+  return(<div className="ats">
+    <div className="ats-h"><b>{L('Son Test Sonuçları','Latest Test Results')}</b><span>{L(`${N} test · her testin en son sonucu`,`${N} tests · each test's latest result`)}</span></div>
+    <div className="ats-grid" style={{gridTemplateColumns:cols.map(c=>`minmax(0,${c}fr)`).join(' ')}}>
+      {groups.map((x,gi)=><div key={x.g} className={`ats-g ats-${x.g}`} style={{'--cols':cols[gi]}}>
+        <div className="ats-gh">{L(x.meta.tr,x.meta.en)}</div>
+        <div className="ats-boxes">{x.items.map(b=><div key={b.id} className="ats-b" title={`${L(b.tr,b.en)} · ${fd(b.date)}`}>
+          <div className="ats-n"><span>{L(b.tr,b.en)}</span><em>{b.u}</em></div>
+          {b.bi?<div className="ats-v ats-bi">
+              <span><small>{L('Sağ','R')}</small>{athTestFmt(b.v[0])}</span>
+              <span><small>{L('Sol','L')}</small>{athTestFmt(b.v[1])}</span>
+            </div>
+            :<div className="ats-v">{athTestFmt(b.v)}{b.delta!=null&&b.delta!==0&&<i className={b.good==null?'':b.good?'up':'dn'}>{b.delta>0?'+':''}{athTestFmt(b.delta)}</i>}</div>}
+          <div className="ats-d">{fd(b.date)}{b.gap!=null&&<span>{L('fark','gap')} {athTestFmt(b.gap)}</span>}</div>
+        </div>)}</div>
+      </div>)}
     </div>
   </div>);
 }
@@ -459,7 +543,7 @@ function TrainingProfileTab({ath,updAth,exercises}){
   /* Clear: every priority set on the Athletic Profile is taken off (asked first — there is no undo). */
   const clearQ=()=>{
     if(!Object.keys(tp.qualities).length)return;
-    if(!confirm(L('Atletik Profil\'deki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Profile?')))return;
+    if(!confirm(L('Atletik Gelişim Öncelikleri\'ndeki tüm öncelikler kaldırılsın mı?','Remove every priority from the Athletic Development Priorities?')))return;
     save({qualities:{}});
   };
   /* A joint's level for one need; clicking the level that is on takes it off. A joint
@@ -471,31 +555,8 @@ function TrainingProfileTab({ath,updAth,exercises}){
     if(Object.keys(cur).length)nx[key]=cur;else delete nx[key];
     save({joints:nx});
   };
-  const jRated=ATP_JOINT_ROWS.filter(r=>(tp.joints[r.key]||{}).level);
-  const jHigh=jRated.filter(r=>tp.joints[r.key].level==='high');
-  const jN=id=>jRated.filter(r=>r.joint.need===id).length;
-  const rated=ATP_QUALITIES.filter(it=>tp.qualities[it.id]);
-  const nP=id=>rated.filter(it=>tp.qualities[it.id].priority===id).length;
-  const high=rated.filter(it=>tp.qualities[it.id].priority==='high').map(it=>atpT(it.en));
-  const go=id=>{const el=document.getElementById(id);if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});};
-  const tiles=[
-    {id:'atp-s4',c:'#2dd4bf',k:atpT('Joint by Joint'),v:jRated.length,u:`/ ${ATP_JOINT_ROWS.length}`,
-      s:jHigh.length?`${atpT('High')}: ${jHigh.map(r=>(r.side?atpT(r.side)+' ':'')+atpT(r.joint.en)).join(', ')}`
-        :`${atpT('Mobility')} ${jN('mobility')} · ${atpT('Stability')} ${jN('stability')}`},
-    {id:'atp-s1',c:'#0094ff',k:atpT('Athletic Profile'),v:rated.length,u:`/ ${ATP_QUALITIES.length}`,
-      s:high.length?`${atpT('High')}: ${high.join(', ')}`:`${atpT('Medium')} ${nP('medium')} · ${atpT('Low')} ${nP('low')}`},
-    {id:'atp-s2',c:'#ef4444',k:atpT('Constraints'),v:tp.constraints.hard.length+tp.constraints.soft.length,u:L('kısıt','total'),
-      s:`${atpT('Hard')} ${tp.constraints.hard.length} · ${atpT('Soft')} ${tp.constraints.soft.length}`},
-    {id:'atp-s3',c:'#22d3ee',k:atpT('Exercise Exposure'),v:exp.sessions.d28,u:L('seans / 28 gün','sessions / 28 d'),
-      s:exp.last?`${L('Son seans','Last session')} ${fd(exp.last.date)}`:L('Takvimde kayıt yok','Nothing on the calendar')},
-  ];
   return(<div className="atp-wrap">
-    <div className="atp-glance">{tiles.map(t=>
-      <button key={t.id} className="atp-gl" style={{'--gc':t.c}} onClick={()=>go(t.id)}>
-        <div className="k">{t.k}</div>
-        <div className="v">{t.v}<small>{t.u}</small></div>
-        <div className="s" title={t.s}>{t.s}</div>
-      </button>)}</div>
+    <AtpTestStrip ath={ath}/>
     <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>
