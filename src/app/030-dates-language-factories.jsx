@@ -65,7 +65,7 @@ function setReportLang(l){
   _langSubs.forEach(fn=>{try{fn();}catch(e){}});
 }
 // Subscribe a component to language changes so the whole tree re-renders live.
-/* Tema: koyu varsayılan, açık tema Ayarlar → Görünüm'den. Tercih bu cihazda saklanıyor ve
+/* Tema: açık varsayılan, koyu tema Ayarlar → Görünüm'den. Tercih bu cihazda saklanıyor ve
    <head>'deki küçük betik onu ilk çizimden önce uyguluyor (00-head.html). */
 const THEME_KEY='coachos_theme';
 function getTheme(){return document.documentElement.getAttribute('data-theme')==='light'?'light':'dark';}
@@ -73,7 +73,7 @@ function setTheme(t){
   const light=t==='light';
   if(light)document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');
   try{localStorage.setItem(THEME_KEY,light?'light':'dark');}catch(e){}
-  try{document.querySelector('meta[name="theme-color"]').setAttribute('content',light?'#f4f6f9':'#0a0b0d');}catch(e){}
+  try{document.querySelector('meta[name="theme-color"]').setAttribute('content',light?'#f4f5f7':'#0a0b0d');}catch(e){}
   try{window.dispatchEvent(new Event('coachos-theme'));}catch(e){}
 }
 function useAppTheme(){
