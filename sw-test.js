@@ -288,6 +288,24 @@ test('çıkışta (clear-media mesajı) saklanan sporcu fotoğrafları siliniyor
   w.handlers.message({ data: { baska: 1 }, waitUntil: () => { throw new Error('dokunmamalıydı'); } });   // başka mesajlar
 });
 
+test('drop-media: bozuk kopya siliniyor ve sayfaya bildiriliyor; Storage dışı adres dokunulmuyor', async () => {
+  const w = makeWorld();
+  await w.fetchEvent(get(MEDIA_URL));
+  await w.fetchEvent(get(APP + 'index.html'));
+  const ask = async url => {
+    let p, got; const port = { postMessage: m => { got = m; } };
+    w.handlers.message({ data: { coachos: 'drop-media', url }, ports: [port], waitUntil: x => { p = x; } });
+    if (p) await p;
+    return got;
+  };
+  assert.deepStrictEqual(await ask(MEDIA_URL), { dropped: true });
+  assert.strictEqual((await (await w.caches.open('coachos-media-v1')).keys()).length, 0);
+  assert.deepStrictEqual(await ask(MEDIA_URL), { dropped: false });             // kopya yok: yeniden deneme yok
+  assert.deepStrictEqual(await ask(APP + 'index.html'), { dropped: false });    // uygulama dosyası değil medya
+  assert.ok((await (await w.caches.open('coachos-app-v1')).keys()).length);
+  assert.deepStrictEqual(await ask('kotu adres'), { dropped: false });
+});
+
 (async () => {
   for (const [name, fn] of tests) {
     try { await fn(); passed++; console.log('  ok   ' + name); }

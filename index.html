@@ -13906,6 +13906,38 @@ function mediaSrc(v){
   // either gets it into Storage or writes the picture back into the state.
   return _lmCache.get(v.slice(LM_REF.length))||LM_BLANK;
 }
+/* BOZUK ÖNBELLEK KOPYASINI ONAR. Service worker Storage görsellerini çevrimdışı için saklıyor,
+   ama kova CORS vermediği için yanıt opak: durum kodu okunamıyor ve bir 403/404/503 da
+   görsel diye saklanıyordu. O cihazda görsel, her açılışta aynı bozuk kopyadan verildiği için
+   kalıcı olarak boş görünüyordu. Çizilemeyen her Storage görselinde worker'dan o kopyayı
+   silmesi isteniyor ve görsel bir kez yeniden yükleniyor. `error` olayı kabarmadığı için
+   yakalama evresinde dinleniyor; böylece her <img> tek tek değiştirilmeden kapsanıyor. */
+const isStorageMediaUrl=u=>typeof u==='string'&&/^https:\/\/firebasestorage\.googleapis\.com\/v0\/b\/[^?#]*\?(?:[^#]*&)?alt=media(?:[&#]|$)/.test(u);
+const _mediaRetried=new Set();   // adres başına oturumda bir kez: kalıcı bir hata döngüye girmesin
+function dropCachedMedia(url){
+  return new Promise(res=>{
+    try{
+      const sw=navigator.serviceWorker&&navigator.serviceWorker.controller;
+      if(!sw||typeof MessageChannel==='undefined')return res(false);
+      const ch=new MessageChannel();
+      const t=setTimeout(()=>res(false),3000);
+      ch.port1.onmessage=e=>{clearTimeout(t);res(!!(e.data&&e.data.dropped));};
+      sw.postMessage({coachos:'drop-media',url},[ch.port2]);
+    }catch(e){res(false);}
+  });
+}
+if(typeof document!=='undefined')document.addEventListener('error',e=>{
+  const img=e.target;
+  if(!img||img.tagName!=='IMG')return;
+  const url=img.src;
+  if(!isStorageMediaUrl(url)||_mediaRetried.has(url))return;
+  _mediaRetried.add(url);
+  dropCachedMedia(url).then(dropped=>{
+    // Kopya yoktuysa hata ağdan geldi; aynı isteği tekrarlamak bir şey değiştirmez.
+    if(!dropped||!img.isConnected||img.src!==url)return;
+    img.removeAttribute('src');img.src=url;
+  });
+},true);
 /* Backup dosyası için: cihazda duran görselleri tutamak yerine gerçek içerikleriyle yaz.
    Yedek tek başına taşınabilir olmalı — tutamak başka bir cihazda hiçbir şeye karşılık gelmez.
    (Geri yüklemede base64 yeniden duruma girer; liftLocalMedia birkaç saniye içinde onu
