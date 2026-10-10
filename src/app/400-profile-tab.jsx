@@ -13,8 +13,9 @@ function athProfileBasics(ath){
   const h=pull('height')||(Number(ath.height)?{v:Number(ath.height)}:null);
   const w=pull('weight')||(Number(ath.weight)?{v:Number(ath.weight)}:null);
   const ws=pull('wingspan');
+  const bf=pull('bodyFat');
   const sc=(ath.scYears===''||ath.scYears==null||isNaN(Number(ath.scYears)))?null:Number(ath.scYears);
-  return{age,h,w,ws,sc};
+  return{age,h,w,ws,bf,sc};
 }
 /* The head coach's observations open and close as one block; which way it was left is
    remembered on this device. */

@@ -377,14 +377,15 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
    athlete's own calendar and is edited there, on their card. There is no rule
    configuration because there are no rules. */
 /* The athlete's own calendar — the same component the Athletes tab shows, with the same
-   editing, except that opening a session and editing it happens INSIDE the card rather
+   athlete summary, the same editing and the same load distribution under it, except that opening a session and editing it happens INSIDE the card rather
    than in a modal over the page. It keeps its own week cursor, starting on the day
    being individualized. */
 function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date}){
   const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
     return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
-  return<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
+  return<><CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
     weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
-    coachAthlete={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>;
+    coachAthlete={ath} ownerAth={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>
+    <MuscleLoadDistribution days={ath.days||{}} refDate={sel.date}/></>;
 }
 

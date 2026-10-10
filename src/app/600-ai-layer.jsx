@@ -44,7 +44,11 @@ const DI_PRIORITIES=[
      ex:['Örn. pogo, drop jump, sekmeli sıçramalar','e.g. pogos, drop jumps, hops']},
     {id:'hypertrophy', label:['Hipertrofi','Hypertrophy'],
      desc:['Kas kesit alanını artırmak: orta yük, yüksek hacim, tükenişe yakın setler.','Increasing muscle size: moderate loads, high volume, sets taken close to failure.'],
-     ex:['Örn. 6–12 tekrar, 3–5 set, RIR 1–3','e.g. 6–12 reps, 3–5 sets, RIR 1–3']}]},
+     ex:['Örn. 6–12 tekrar, 3–5 set, RIR 1–3','e.g. 6–12 reps, 3–5 sets, RIR 1–3']},
+    {id:'strength_endurance',label:['Kuvvet Dayanıklılığı','Strength endurance'],
+     desc:['Nöromüsküler sistemin, yorgunluğa karşı koyarak belirli bir süre boyunca tekrarlı veya sürdürülebilir kuvvet üretme kapasitesidir.',
+       'The capacity of the neuromuscular system to resist fatigue and produce repeated or sustained force over a given period.'],
+     ex:['Örn. 12–20+ tekrar, kısa dinlenme, devre ya da süreli setler','e.g. 12–20+ reps, short rests, circuits or timed sets']}]},
   {group:['Hız ve Hareket','Speed & movement'],items:[
     {id:'accel',       label:['İvmelenme','Acceleration'],
      desc:['Duruştan ya da düşük hızdan hızlanma: ilk 0–20 m, öne eğik pozisyon ve güçlü itiş.','Speeding up from a standstill or low speed: the first 0–20 m, forward lean and a powerful push-off.'],
@@ -286,7 +290,7 @@ const diArmPattern=(id,tr,en,vocab)=>({id,label:[tr,en],vocab,facets:[
 ]});
 const DI_MOVE_PATTERNS=[
   {id:'knee_dominant',label:['Diz dominant','Knee dominant'],vocab:['Squat','Lunge / Unilateral'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],['split_squat','Split squat','Split squat'],
+    {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],
       ['lunge','Lunge','Lunge'],['step_up','Step-up','Step-up'],['step_down','Step-down','Step-down']]},
     {k:'side',ai:'stance',label:['Duruş','Stance'],opts:[['bilateral','Bilateral','Bilateral'],
       ['unilateral','Unilateral','Unilateral'],['split','Split stance','Split stance']]},

@@ -72,11 +72,11 @@ function ExercisesView({data,setData}){
   ]}/>;
   // Top-right category dropdown (label → the active shelf's own category values).
   const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
-  // Every option carries its exercise count in parentheses, so the coach sees how
-  // full each category is without opening it.
+  // Every category carries its exercise count in parentheses, so the coach sees how
+  // full each one is without opening it (the whole library's count is in the header).
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFilt({});setQ('');}}}>
-      <option value="">{L('Tüm kategoriler','All categories')} ({exercises.length})</option>
+      <option value="">{L('Tüm kategoriler','All categories')}</option>
       {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{exLabel(lbl)} ({typeCounts[val]||0})</option>)}
       {uncatCount>0&&<option value="__uncat__">{L('Kategorisiz','Uncategorized')} ({uncatCount})</option>}
     </select>);
@@ -94,8 +94,7 @@ function ExercisesView({data,setData}){
       <datalist id="ex-muscles">{EX_MUSCLES.map(t=><option key={t} value={t}/>)}</datalist>
       <PageHero title={L('Egzersiz Kütüphanesi','Exercise Library')}
         sub={L('Kuvvet ve kondisyon egzersizleri · tüm kategoriler','Strength & conditioning exercises · all categories')}
-        stats={[{v:exercises.length,l:L('Egzersiz','Exercises')},
-                {v:allEx.length,l:L('Kütüphane toplamı','Library total')}]}/>
+        stats={[{v:exercises.length,l:L('Egzersiz','Exercises')}]}/>
       <div className="ex-toolbar">
         {catDropdown}
         <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L('Egzersiz ara…','Search exercises…')}/></div>

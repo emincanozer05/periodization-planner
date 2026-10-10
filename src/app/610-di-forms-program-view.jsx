@@ -167,10 +167,12 @@ function DiPatternPicker({value,onChange,closed}){
     {list.length>0&&<div className="di-mvp-list">
       {list.map(pick=>{const row=diMoveRow(pick.id);if(!row)return null;
         const isOpen=open===pick.id;const sum=summary(pick,row);
+        const nSet=row.facets.filter(f=>(pick[f.k]||[]).length).length;
         return<div key={pick.id} className={'di-mvp-box'+(isOpen?' open':'')}>
           <div className="di-mvp-hd">
             <button type="button" className="di-mvp-tg" onClick={()=>setOpen(isOpen?null:pick.id)} aria-expanded={isOpen}>
               <b>{L(row.label[0],row.label[1])}</b>
+              <span className={'di-mvp-cnt'+(nSet?' on':'')} title={L('Seçilen filtre','Filters set')}>{nSet}/{row.facets.length}</span>
               <span className={'di-mvp-sum'+(sum?'':' dim')}>{sum||L('filtre yok — model seçer','no filter — model chooses')}</span>
               <i>{isOpen?'▲':'▼'}</i>
             </button>

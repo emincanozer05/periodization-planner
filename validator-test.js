@@ -1775,19 +1775,19 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   group('Ek — Hareket paterni seçimi (Revize 12): form → JSON → denetim');
   {
     const raw = { must: ['Trap Bar Jump'], avoid: ['derin squat'],
-      patterns: [{ id: 'knee_dominant', type: ['split_squat', 'yok'], side: ['unilateral'], goal: ['maximal'] },
+      patterns: [{ id: 'knee_dominant', type: ['lunge', 'yok'], side: ['unilateral'], goal: ['maximal'] },
         { id: 'knee_dominant' }, { id: 'uydurma' }, { id: 'core', task: ['anti_rotation'], goal: ['endurance', 'maximal'] }, 'carry'] };
     const b = A.diBrief(raw, null);
     check('brief: "mutlaka olsun" formda yok, taşınmıyor; paternler temizlenmiş',
       b.must.length === 0 && b.patterns.length === 3 && b.patterns[0].id === 'knee_dominant' &&
-      JSON.stringify(b.patterns[0].type) === '["split_squat"]' && JSON.stringify(b.patterns[1].goal) === '["endurance"]' &&
+      JSON.stringify(b.patterns[0].type) === '["lunge"]' && JSON.stringify(b.patterns[1].goal) === '["endurance"]' &&
       b.patterns[2].id === 'carry' && b.patterns[2].type.length === 0, JSON.stringify(b.patterns));
     const snap = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
       instr: b, customTests: [] }));
     const mp = snap.coach_brief.movement_patterns || [];
     check('JSON: seçilen paternler sırasıyla, İngilizce, filtreleriyle; boş filtre yazılmıyor',
       mp.length === 3 && mp[0].id === 'knee_dominant' && mp[0].pattern === 'Knee dominant' &&
-      mp[0].type === 'Split squat' && mp[0].stance === 'Unilateral' && !('side_support' in mp[0]) &&
+      mp[0].type === 'Lunge' && mp[0].stance === 'Unilateral' && !('side_support' in mp[0]) &&
       mp[0].strength_goal === 'Maximal strength' && !('direction' in mp[0]) &&
       JSON.stringify(mp[0].movement_pattern_values) === '["Squat","Lunge / Unilateral"]' &&
       mp[1].task === 'Anti-rotation' && mp[2].pattern === 'Carry' && !('type' in mp[2]),
@@ -1830,9 +1830,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
         cm[1].muscle_action_emphasis === 'Isometric' && cm[2].muscle_action_emphasis === 'Standard' &&
         cm[3].muscle_action_emphasis === 'not selected' && !cm.some(x => 'contraction_type' in x) &&
         /"not selected"/.test(cs.coach_brief.movement_patterns_rule), JSON.stringify(cm));
-      const one = A.diBrief({ patterns: [{ id: 'knee_dominant', type: ['squat', 'split_squat'], side: ['bilateral', 'unilateral'],
+      const one = A.diBrief({ patterns: [{ id: 'knee_dominant', type: ['squat', 'lunge'], side: ['bilateral', 'unilateral'],
         direction: ['forward', 'lateral'], goal: ['maximal', 'power'], contraction: ['eccentric', 'isometric'] }] }, null).patterns[0];
-      check('her alt filtreden yalnızca bir değer: squat ve split squat birlikte kalmıyor',
+      check('her alt filtreden yalnızca bir değer: squat ve lunge birlikte kalmıyor',
         ['type', 'side', 'direction', 'goal', 'contraction'].every(k => one[k].length === 1) &&
         one.type[0] === 'squat' && one.contraction[0] === 'eccentric', JSON.stringify(one));
       check('JSON: kural her filtrenin tek değer taşıdığını söylüyor, "any of them" yok',

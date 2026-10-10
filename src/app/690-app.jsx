@@ -252,7 +252,6 @@ function App(){
       <div className="tb-right">
         <div className="tb-sync brand-team"><CloudBar sync={sync} onOpen={()=>{}}/></div>
         <LanguageSelector inline/>
-        {sync.user&&<button className="btn sec sm" onClick={()=>sync.signOut()}>{L('Çıkış Yap','Sign Out')}</button>}
       </div>
     </div>
     <div className="mscrim" onClick={()=>setMenuOpen(false)}/>
@@ -265,7 +264,6 @@ function App(){
             down the sidebar for an empty line. */}
         {clubName&&<div className="bt-club">{clubName}</div>}
         {teamSel}
-        {sync.user&&<button className="btn sec xs" onClick={()=>sync.signOut()} style={{width:'100%',justifyContent:'center'}}>{L('Çıkış Yap','Sign Out')}</button>}
         <div className="bt-row" style={{width:'100%'}}><CloudBar sync={sync} onOpen={()=>{}}/></div>
       </div>
       <LanguageSelector inline/>
@@ -279,6 +277,17 @@ function App(){
           </button>)}
         </div>)}
       </nav>
+      {/* The signed-in account, pinned to the foot of the menu: who is working here and
+          the one way out. */}
+      {sync.user&&(()=>{const u=sync.user,nm=String(u.displayName||'').trim(),em=String(u.email||'').trim();
+        const label=nm||em.split('@')[0]||L('Hesap','Account');
+        return<div className="sb-account">
+          <span className="sba-av" aria-hidden="true">{label.slice(0,1).toUpperCase()}</span>
+          <div className="sba-id"><div className="sba-n" title={label}>{label}</div>{em&&<div className="sba-e" title={em}>{em}</div>}</div>
+          <button className="sba-out" onClick={()=>sync.signOut()} title={L('Çıkış Yap','Sign Out')}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            <span>{L('Çıkış','Sign out')}</span></button>
+        </div>;})()}
     </aside>
     <div className="content">
     <div className="mtopbar">
