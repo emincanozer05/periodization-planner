@@ -244,7 +244,9 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
     dateOfBirth:'',height:'',weight:'',phone:'',phoneCode:DEFAULT_DIAL,photo:null,notes:'',trainingAge:'',somatotype:'',constraints:'',
     constraintTags:[],levelTag:'',
     injuries:[],measurements:[],wellness:[],srpeLog:[],tests:[],days:{}};save([...athletes,a]);setSel(a.id);};
-  const updAth=(id,upd)=>save(athletes.map(a=>a.id===id?{...a,...upd}:a));
+  // Applied to the athlete as they are when the change lands (see updateTeam): the photo
+  // callback runs seconds after the click, and the list it closed over is stale by then.
+  const updAth=(id,upd)=>updateTeam(team.id,t=>({athletes:(t.athletes||[]).map(a=>a.id===id?{...a,...(typeof upd==='function'?upd(a):upd)}:a)}));
   const delAth=id=>{if(!confirm(L('Bu sporcu ve tüm verileri silinsin mi?','Delete this athlete and all their data?')))return;save(athletes.filter(a=>a.id!==id));if(sel===id)setSel(null);};
   const ageOf=a=>{if(!a.dateOfBirth)return null;const b=parseD(a.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;};
   const totalAU=a=>Object.values(a.days||{}).reduce((s,d)=>s+(d.sessions||[]).reduce((x,ses)=>x+Number(ses.au||0),0),0);

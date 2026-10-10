@@ -129,7 +129,12 @@ self.addEventListener('notificationclick', event => {
       yazılıyor — yani kopya hiçbir zaman eskimiş olamaz, arkada tazelemeye gerek yok.
       Çevrimdışıyken görsellerin gelmemesinin sebebi buydu. Kopyalar kişisel veri
       (sporcu fotoğrafları): MEDIA_MAX (150) ile sınırlı ve koç ÇIKIŞ YAPINCA siliniyor
-      (aşağıdaki `message` dinleyicisi). */
+      (aşağıdaki `message` dinleyicisi).
+      Opak bir yanıtın durum kodu okunamıyor: kovadan dönen bir 403/404/503 da sağlam bir
+      görsel gibi saklanıyordu ve o cihazda görsel KALICI olarak bozuk görünüyordu (her
+      açılışta aynı bozuk kopya veriliyordu). Bu yüzden sayfa, çizilemeyen her Storage
+      görseli için `drop-media` yolluyor: kopya siliniyor ve görsel bir kez ağdan yeniden
+      isteniyor. */
 const SHELL = 'coachos-alerts-v1';
 const APP = 'coachos-app-v1';
 const LIBS = 'coachos-libs-v1';
@@ -248,7 +253,19 @@ self.addEventListener('fetch', event => {
 /* Koç çıkış yapınca sayfa bu mesajı yolluyor: saklanan sporcu fotoğrafları o cihazda
    kalmasın (ortak kullanılan bir telefon/bilgisayarda bir sonraki kişi görmesin). */
 self.addEventListener('message', event => {
-  if (event.data && event.data.coachos === 'clear-media') event.waitUntil(caches.delete(MEDIA));
+  const d = event.data;
+  if (d && d.coachos === 'clear-media') event.waitUntil(caches.delete(MEDIA));
+  /* Sayfa bir Storage görselini çizemedi: o adresin kopyası (varsa) bozuk bir opak yanıt.
+     Silinip silinmediği sayfaya bildiriliyor; yalnızca silindiyse yeniden denemenin anlamı
+     var (kopya yoksa hata ağdan geliyor, yeniden istemek aynı hatayı getirir). */
+  else if (d && d.coachos === 'drop-media' && typeof d.url === 'string') {
+    const port = event.ports && event.ports[0];
+    const reply = dropped => { try { if (port) port.postMessage({ dropped }); } catch (e) {} };
+    let url = null;
+    try { url = new URL(d.url); } catch (e) {}
+    if (!url || !isMedia(url)) { reply(false); return; }
+    event.waitUntil(caches.open(MEDIA).then(c => c.delete(url.href)).then(reply, () => reply(false)));
+  }
 });
 
 /* Yeni worker'ın beklemeden devreye girmesi. Bildirim taşıyan bir worker'da
