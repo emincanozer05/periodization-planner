@@ -140,14 +140,15 @@ function IndividualizationView({data,team,updateTeam,weeks}){
      printout, an athlete per page under their own header, so it prints (or saves as a PDF)
      in a single go. It reads `written`, i.e. what reached the calendars: an athlete whose
      draft is still waiting on the coach has nothing there yet, so they are named instead of
-     being printed as an empty sheet. */
+     being printed as an empty sheet. Exercises print by name only (`noDesc`): the coaching
+     text under them is what pushed a programme onto a second page. */
   const printable=useMemo(()=>athletes.filter(a=>chosen.includes(a.id)&&written[a.id]),[athletes,chosen,written]);
   const printSquad=()=>{
     if(!printable.length){setToast(L('Takvime yazılmış program yok — önce programları onaylayıp takvime yaz.','No programme has been written to a calendar yet — approve and write them first.'));return;}
     const missing=athletes.filter(a=>chosen.includes(a.id)&&!written[a.id]).map(a=>a.name||a.id);
     const setup=team.setup||{};
     try{
-      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{
+      printDayA4(setup.teamName||team.name||'',fdLong(date),[],{noDesc:true,
         groups:printable.map(a=>({title:a.name||'—',subtitle:fdLong(date),sessions:[written[a.id]]}))});
     }catch(e){setToast(L('Çıktı hazırlanamadı: ','Could not build the printout: ')+(e.message||String(e)));return;}
     if(missing.length){

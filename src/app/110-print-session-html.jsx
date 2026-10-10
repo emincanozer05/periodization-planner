@@ -181,6 +181,9 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
   /* Coach copy: prints the justification recorded against every changed exercise.
      The athlete copy leaves them out entirely — same document, two audiences. */
   const withReasons=!!(opts&&opts.withReasons);
+  /* Names only: the coaching text under each exercise (and its alternative) is left out,
+     so a squad printout keeps each athlete's programme on a single page. */
+  const noDesc=!!(opts&&opts.noDesc);
   // Active team's logo, unless the caller passes its own (opts.logo:'' prints unbranded).
   const logo=(opts&&opts.logo!==undefined)?opts.logo:teamLogo();
   const dash=`<span class="dash">—</span>`;
@@ -225,7 +228,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const lnk=safeURL(e.link);
       /* The coaching text reads under the name, a line per line the coach wrote, plus
          the recorded justification (coach copy only) as a last line. */
-      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=noDesc?[]:String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       if(withReasons&&e.why)notes.push(`${L('Gerekçe','Reason')}: ${e.why}`);
       /* The alternative, printed as its own row directly under the exercise it stands in
          for: same columns, so it can be read straight across, with the coach's reason
@@ -237,7 +240,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       let altRow='';
       if(altNm||altWhy){
         const aLnk=safeURL(alt.link);
-        const aNotes=String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
+        const aNotes=noDesc?[]:String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
         /* Whose alternative this is has to be unmissable, or the row reads as an eighth
            exercise rather than a second way of doing the fourth: the number column carries
            the parent's own badge behind a ↳, the cell opens with the word, and the two
@@ -306,7 +309,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       if(e.players)bits.push(escHTML(e.players));
       if(e.rpe)bits.push(`RPE ${escHTML(String(e.rpe))}`);
       if(e.rest)bits.push(`⏱ ${escHTML(e.rest)}`);
-      const notes=String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
+      const notes=noDesc?[]:String(exDesc(e)).split('\n').map(x=>x.trim()).filter(Boolean);
       const lnk=safeURL(e.videoUrl);
       return`${phHd}<div class="drill-card">
         <div class="dc-hd"><span class="dc-no">${i+1}</span><span class="dc-nm">${escHTML(e.name)}</span>
