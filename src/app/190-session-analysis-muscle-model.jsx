@@ -496,170 +496,43 @@ const tmDim=hex=>{
   const m=v=>Math.max(0,Math.min(255,Math.round(v*0.42+0.58*22)));
   return`#${[m((n>>16)&255),m((n>>8)&255),m(n&255)].map(v=>v.toString(16).padStart(2,'0')).join('')}`;
 };
-/* Cell text flips to ink on the light cells and to paper on the dark ones, so a
-   label stays readable whatever colour the pattern carries. */
-const tmInk=hex=>{
-  const n=parseInt(String(hex||'#5c626c').slice(1),16);
-  const lum=(0.299*((n>>16)&255)+0.587*((n>>8)&255)+0.114*(n&255))/255;
-  return lum>0.62?'#0a0b0d':'#ffffff';
-};
-
-/* ---- Squarified treemap layout (Bruls / Huizing / van Wijk) ---------------
-   Lays `items` ([{key,value,…}], any order) into the rect (x,y,w,h) in pixels,
-   biggest first, keeping every cell as close to square as the areas allow — a
-   long thin sliver is unreadable and unclickable, which is the whole reason this
-   is not a simple slice-and-dice. Returns the items with x/y/w/h attached. */
-function tmSquarify(items,x,y,w,h){
-  const live=items.filter(i=>i.value>0).slice().sort((a,b)=>b.value-a.value);
-  if(!live.length||w<=0||h<=0)return[];
-  const total=live.reduce((s,i)=>s+i.value,0);
-  const scale=(w*h)/total;
-  const rest=live.map(i=>({...i,area:i.value*scale}));
-  /* Aspect ratio of the worst cell in a candidate row, laid along the short side
-     of what is left — the number the algorithm minimises row by row. */
-  const worst=(row,sum,side)=>{
-    if(!row.length||sum<=0||side<=0)return Infinity;
-    let mx=-Infinity,mn=Infinity;
-    row.forEach(it=>{if(it.area>mx)mx=it.area;if(it.area<mn)mn=it.area;});
-    const s2=sum*sum,d2=side*side;
-    return Math.max((d2*mx)/s2,s2/(d2*mn));
-  };
-  const out=[];
-  let rx=x,ry=y,rw=w,rh=h,i=0;
-  while(i<rest.length&&rw>0.5&&rh>0.5){
-    const side=Math.min(rw,rh);
-    const row=[];let sum=0,best=Infinity;
-    while(i<rest.length){
-      const cand=sum+rest[i].area;
-      const r=worst([...row,rest[i]],cand,side);
-      if(!row.length||r<=best){row.push(rest[i]);sum=cand;best=r;i++;}
-      else break;
-    }
-    if(rw>=rh){
-      const rowW=sum/rh;let cy=ry;
-      row.forEach(it=>{const ih=(it.area/sum)*rh;out.push({...it,x:rx,y:cy,w:rowW,h:ih});cy+=ih;});
-      rx+=rowW;rw-=rowW;
-    }else{
-      const rowH=sum/rw;let cx=rx;
-      row.forEach(it=>{const iw=(it.area/sum)*rw;out.push({...it,x:cx,y:ry,w:iw,h:rowH});cx+=iw;});
-      ry+=rowH;rh-=rowH;
-    }
-  }
-  return out;
-}
-
-/* Track a box's pixel width so the treemap can be laid out in real coordinates
-   (percent units cannot keep a cell square, and a header strip is a px height). */
-function useBoxWidth(ref){
-  const[w,setW]=useState(0);
-  useEffect(()=>{
-    const el=ref.current;if(!el)return;
-    const read=()=>setW(el.clientWidth||0);
-    read();
-    if(typeof ResizeObserver==='undefined'){window.addEventListener('resize',read);return()=>window.removeEventListener('resize',read);}
-    const ro=new ResizeObserver(read);ro.observe(el);return()=>ro.disconnect();
-  },[ref]);
-  return w;
-}
-
-/* ---- Load distribution treemap -------------------------------------------
-   One figure, not two: every movement pattern is a cell sized by its share of the
-   week (or month), and each pattern's executions are cells INSIDE it — so "how
-   much hip work" and "which flavour of it" are read in the same glance instead of
-   matched up between two rings.
-
-   Clicking a pattern zooms it: it grows to fill the figure and its executions are
-   re-laid out across the whole area, each labelled with its share OF THAT PATTERN
-   (the cells never leave the DOM, so the growth animates). The ⊖ button, or a
-   click on the pattern's own header, zooms back out. */
-function LoadTreemap({entries,zoom,setZoom}){
-  const boxRef=useRef(null);
-  const W=useBoxWidth(boxRef);
-  const H=Math.max(300,Math.min(460,Math.round(W*0.52)))||360;
-  const GAP=3,HD=22;
-  // Exercise lines inside an opened box: where they start under the name/%, and their line height.
-  const EXTOP=46,EXLH=17;
-  const live=entries.filter(e=>e.value>0);
-  const total=live.reduce((s,e)=>s+e.value,0);
-  const zoomed=zoom&&live.some(e=>e.key===zoom)?zoom:null;
-  /* Zoomed, the picked pattern is the only cell with area; the rest keep their
-     place in the DOM at zero size so growing and shrinking are the same animation. */
-  const cells=zoomed
-    ?live.map(e=>e.key===zoomed
-        ?{...e,x:0,y:0,w:Math.max(0,W),h:H}
-        :{...e,x:0,y:0,w:0,h:0})
-    :tmSquarify(live.map(e=>({...e})),0,0,Math.max(0,W),H);
-  const pct=v=>total?Math.round((v/total)*1000)/10:0;
-  const fmtPct=v=>`${Number.isInteger(pct(v))?pct(v):pct(v).toFixed(1)}%`;
-  return(<div className="mld-tm" ref={boxRef} style={{height:H}}>
-    {W>0&&cells.map(c=>{
-      const on=zoomed===c.key,hidden=zoomed&&!on;
-      const ink=tmInk(c.color);
-      /* Inside the cell: the header strip keeps the pattern's name, the rest of the
-         box is the execution treemap. Below ~46px tall there is no room for both,
-         so the executions take the whole cell and the header floats over them. */
-      const bodyY=c.h>=46?HD:0;
-      const bodyH=Math.max(0,c.h-bodyY-GAP);
-      const bodyW=Math.max(0,c.w-GAP*2);
-      const kidTotal=c.kids.reduce((s,k)=>s+k.value,0)||1;
-      const kids=tmSquarify(c.kids,0,0,bodyW,bodyH);
-      return(<div key={c.key} className={'mld-tm-cell'+(on?' zoom':'')+(hidden?' gone':'')}
-        style={{left:c.x,top:c.y,width:Math.max(0,c.w-GAP),height:Math.max(0,c.h-GAP),
-          background:c.color,color:ink}}
-        title={`${c.name} · ${c.value} selection${c.value===1?'':'s'} · ${fmtPct(c.value)} of the period`}
-        onClick={()=>setZoom(on?null:c.key)}>
-        <div className="mld-tm-hd" style={{height:bodyY||HD}}>
-          <span className="n">{c.name}</span>
-          <span className="p">{fmtPct(c.value)}</span>
-        </div>
-        <div className="mld-tm-body" style={{left:GAP,top:bodyY,width:bodyW,height:bodyH}}>
-          {kids.map(k=>{
-            const kink=tmInk(k.color);
-            /* Zoomed in, an execution's share is read against its own pattern —
-               that is the distribution the pattern was opened to see. Zoomed out
-               it stays a share of the whole period, so the cells still add up. */
-            const share=on?Math.round((k.value/kidTotal)*1000)/10:pct(k.value);
-            const txt=`${Number.isInteger(share)?share:share.toFixed(1)}%`;
-            /* How many exercise lines this box can hold under its name and %, at the
-               17px they are set in. One line short of the arithmetic, so the last
-               name never sits flush against the bottom edge. A box with room for one
-               line spends it on "+n more" rather than naming one of several. */
-            const exLines=Math.floor((k.h-EXTOP)/EXLH)-1;
-            const nEx=(k.exs||[]).length;
-            const exFit=exLines>=nEx?nEx:Math.max(0,exLines-1);
-            return(<div key={k.key} className="mld-tm-kid"
-              style={{left:k.x,top:k.y,width:Math.max(0,k.w-2),height:Math.max(0,k.h-2),
-                background:k.color,color:kink}}
-              title={[`${c.name} · ${k.name} — ${k.value} selection${k.value===1?'':'s'} · ${txt}${on?` of ${c.name}`:' of the period'}`]
-                .concat((k.exs||[]).map(x=>`${x.name} ×${x.count}`)).join('\n')}>
-              {k.w>52&&k.h>30&&<span className="n">{k.name}</span>}
-              {k.w>34&&k.h>16&&<span className="p">{txt}</span>}
-              {/* The exercises live IN the box they belong to, not in a list beside
-                  the figure: opening a pattern is what makes room for them, and only
-                  as many as the box is actually tall enough to hold. */}
-              {on&&exLines>0&&(k.exs||[]).length>0&&
-                <div className="mld-tm-exs">
-                  {(k.exs||[]).slice(0,exFit).map(x=>
-                    <div key={x.name} className="ex"><span className="xn">{x.name}</span><span className="xc">×{x.count}</span></div>)}
-                  {(k.exs||[]).length>exFit&&<div className="ex more">+{(k.exs||[]).length-exFit} more</div>}
-                </div>}
-            </div>);
-          })}
-        </div>
-      </div>);
-    })}
-    {zoomed&&<button type="button" className="mld-tm-out" title={L('Bütün hareket paternlerine dön','Back to every movement pattern')}
-      onClick={()=>setZoom(null)} aria-label={L('Uzaklaş','Zoom out')}>
-      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round">
-        <circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.4" y1="15.4" x2="21" y2="21"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/>
-      </svg>
-    </button>}
+/* ---- Load distribution as horizontal bars --------------------------------
+   One bar per movement pattern, as long as its share of the week (or month) against
+   the busiest pattern, split along its length into the executions it was done in —
+   so "how much hip work" and "which flavour of it" are read on one line. The share
+   of the period and the count sit at the end of the bar. A row opens to list the
+   exercises behind each execution, most prescribed first. */
+function LoadDistBars({entries}){
+  const[open,setOpen]=useState(null);
+  const total=entries.reduce((s,e)=>s+e.value,0)||1;
+  const max=Math.max(1,...entries.map(e=>e.value));
+  const pct=v=>{const x=Math.round(v/total*1000)/10;return`${Number.isInteger(x)?x:x.toFixed(1)}%`;};
+  const name=n=>n==='not set'?L('belirtilmemiş','not set'):exLabel(n);
+  const rows=entries.slice().sort((a,b)=>b.value-a.value);
+  return(<div className="ldb">
+    {rows.map(e=>{const on=open===e.key;const kt=e.kids.reduce((s,k)=>s+k.value,0)||1;return(
+      <div key={e.key} className={`ldb-row${on?' on':''}`}>
+        <button type="button" className="ldb-main" aria-expanded={on} onClick={()=>setOpen(on?null:e.key)}
+          title={L('Uygulamaları ve egzersizleri göster','Show executions and exercises')}>
+          <span className="ldb-n"><i style={{background:e.color}}/>{exLabel(e.name)}</span>
+          <span className="ldb-track"><span className="ldb-bar" style={{width:`${Math.max(2,e.value/max*100)}%`}}>
+            {e.kids.map(k=><span key={k.key} className="ldb-seg" style={{width:`${k.value/kt*100}%`,background:k.color}}
+              title={`${exLabel(e.name)} · ${name(k.name)} — ${k.value} · ${pct(k.value)}`}/>)}
+          </span></span>
+          <span className="ldb-p">{pct(e.value)}</span>
+          <span className="ldb-c">{e.value}×</span>
+        </button>
+        {on&&<div className="ldb-kids">{e.kids.slice().sort((a,b)=>b.value-a.value).map(k=>
+          <div key={k.key} className="ldb-kid">
+            <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
+            {(k.exs||[]).length>0&&<div className="ldb-exs">{k.exs.map(x=><span key={x.name}>{x.name} <em>×{x.count}</em></span>)}</div>}
+          </div>)}</div>}
+      </div>);})}
   </div>);
 }
 function MuscleLoadDistribution({days,title,refDate}){
   const[mode,setMode]=useState('week');
   const[anchor,setAnchor]=useState(()=>refDate||fmt(today));
-  const[zoom,setZoom]=useState(null);
   useEffect(()=>{if(refDate)setAnchor(refDate);},[refDate]);
   // Resolve the active period (synced to the calendar's selected date).
   let startK,endK,periodLabel;
@@ -676,12 +549,12 @@ function MuscleLoadDistribution({days,title,refDate}){
   const fdays={};Object.entries(days||{}).forEach(([k,d])=>{if(k>=startK&&k<=endK)fdays[k]=d;});
   const agg=aggSessions(fdays);
   /* One entry per movement pattern, in canonical order, each carrying its own
-     executions as children — the shape the treemap nests. Legacy/unknown keys
+     executions as children — the segments each bar is split into. Legacy/unknown keys
      (e.g. the old Push/Pull patterns) are dropped.
 
      An exercise can be tagged with a pattern and no execution, so the children
      rarely add up to the pattern on their own; the shortfall becomes a "not set"
-     child. Without it the executions inside a cell would silently claim the whole
+     child. Without it the executions inside a bar would silently claim the whole
      pattern, and the untagged work would disappear from a figure whose only job
      is showing where the load went. */
   const entries=EX_PATTERNS.map(p=>{
@@ -705,9 +578,6 @@ function MuscleLoadDistribution({days,title,refDate}){
     return{key:p,name:p,value,color:base,kids};
   }).filter(e=>e.value>0);
   const hasData=entries.length>0;
-  // A pattern that fell out of the period must not leave the figure stuck zoomed on it.
-  useEffect(()=>{if(zoom&&!entries.some(e=>e.key===zoom))setZoom(null);},[startK,endK,zoom,entries.length]);
-  const zoomEntry=zoom?entries.find(e=>e.key===zoom):null;
   return(<div className="panel ath-mmap-wrap">
     <div className="mld-head">
       <h2 style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text)'}}>{title||L('Yük Dağılımı','Load Distribution')}</h2>
@@ -726,13 +596,8 @@ function MuscleLoadDistribution({days,title,refDate}){
     {!hasData
       ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} etiketlenmiş bir şey yok — seansta hareket paterni seç ya da Bireyselleştirme kartında egzersiz bazında etiketle.`,`Nothing tagged in this ${mode==='week'?'week':'month'} — pick movement patterns on the session, or tag them per exercise on the Individualization card.`)}</div>
       :<>
-      <div className="mld-sub">
-        {zoomEntry
-          ?L(<>Uygulama · <b style={{color:zoomEntry.color}}>{zoomEntry.name}</b> — bu paternin payı, her kutunun içinde egzersizleriyle</>,
-              <>Execution · <b style={{color:zoomEntry.color}}>{zoomEntry.name}</b> — share of this pattern, with the exercises inside each box</>)
-          :L('Hareket Paterni · Uygulama — açmak için bir paterne dokun','Movement Pattern · Execution — tap a pattern to open it')}
-      </div>
-      <LoadTreemap entries={entries} zoom={zoom} setZoom={setZoom}/>
+      <div className="mld-sub">{L('Hareket paterni · uygulama — çubuk dönemin payını, renkler uygulamaları gösterir; egzersizler için satıra dokun','Movement pattern · execution — the bar is the share of the period, the colours its executions; tap a row for the exercises')}</div>
+      <LoadDistBars entries={entries}/>
       </>}
   </div>);
 }

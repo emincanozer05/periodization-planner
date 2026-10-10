@@ -147,7 +147,7 @@ const SHELL_FILES = ['alerts.html', 'alerts.webmanifest', 'logo-wordmark.png',
 // Koç uygulamasının kendi dosyaları. check-in / wellness / rpe formları bilerek yok.
 const APP_FILES = ['', 'index.html', 'travel.html', 'manifest.webmanifest', 'push-config.js',
                    'pain-body.js', 'pain-body.bin', 'logo.png', 'logo-wordmark.png',
-                   'logo-mark.png', 'fms-logo.png', 'body-model.png', 'icon-192.png',
+                   'logo-mark.png', 'fms-logo.png', 'body-model.png', 'joint-model.jpg', 'icon-192.png',
                    'icon-512.png', 'icon-maskable-512.png'];
 
 function relPath(url) {

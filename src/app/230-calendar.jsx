@@ -141,7 +141,7 @@ function ShareWeekModal({title,weekStart,days,athletes,staff,onClose}){
   </div>);
 }
 
-function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip}){
+function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,athletes,staff,saveAthletes,labelOwner,exercises,inline,coachAthlete,sesTip,ownerAth}){
   const ref=parseD(selected.date);
   const weekStart=sow(ref);
   const weekEnd=addD(weekStart,6);
@@ -176,6 +176,9 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   // ---- Inline editing (so planning happens from the calendar, not the Program tab) ----
   const canEdit=typeof saveDays==='function';
   const teamMode=Array.isArray(athletes)&&typeof saveAthletes==='function';
+  /* One athlete's own calendar: the week's numbers and every day's RPE are that
+     athlete's — their logged load, their ratings, their check-ins — not a squad's. */
+  const athMode=!teamMode&&!!ownerAth;
   /* Daily team load per date, straight from the shared helper Load Monitoring's
      Team Load Trend reads — so the "Daily" figure under a week column is the same
      number that day's bar shows in the trend chart, by construction. */
@@ -492,14 +495,17 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   const ltColor=cls=>cls==='mech'?'var(--accent)':cls==='metab'?'var(--peak-t)':cls==='neuro'?'var(--med-t)':cls==='cog'?'var(--high-t)':'var(--dim)';
   // ---- Week monotony (Foster) for the week on screen. Same helper the Load Monitoring
   // card uses, so the two screens can never show different numbers for the same week. ----
-  const weekMonoV=useMemo(()=>teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart]);
+  /* On an athlete's calendar it is THEIR week: Foster's monotony of their own seven daily
+     loads (rest days counted as zero) — mean ÷ SD — the number the squad figure averages. */
+  const weekMonoV=useMemo(()=>athMode?weekMono(athWeekLoads(ownerAth,fmt(weekStart))).monotony
+    :teamWeekMono(days,athletes,fmt(weekStart)).monotony,[days,athletes,weekStart,athMode,ownerAth]);
   const weekMonoZ=monoZoneOf(weekMonoV);
   /* ---- What the week ADDS UP TO, read once at the top of it -------------------
      Seven columns say what happens on each day; none of them says what the week is.
      These five do, and every one of them is read off the same numbers the columns and
      Load Monitoring already draw, so no card here can disagree with the grid under it. */
   const weekSum=useMemo(()=>{
-    const at=d=>Math.round(teamDaily[fmt(d)]||0);
+    const at=d=>athMode?athDayLoad(ownerAth,fmt(d)):Math.round(teamDaily[fmt(d)]||0);
     let load=0,prev=0;
     for(let i=0;i<7;i++){load+=at(addD(weekStart,i));prev+=at(addD(weekStart,i-7));}
     // How many sessions, and which kind: a session carrying a ball block is court work.
@@ -510,14 +516,14 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       ((days[k]||{}).sessions||[]).forEach(ss=>{
         if((ss.blocks||[]).some(b=>blkKind(b)==='ball'))court++;else floor++;
       });
-      const r=teamMode?teamDayRPE(athletes,k):null;
+      const r=teamMode?teamDayRPE(athletes,k):athMode?athDayRPE(ownerAth,k):null;
       if(r!=null)rpes.push(r);
     }
     const rpe=rpes.length?rpes.reduce((a,b)=>a+b,0)/rpes.length:null;
     return{load,prev,
       delta:prev>0?Math.round((load-prev)/prev*100):null,
       court,floor,sessions:court+floor,rpe};
-  },[days,athletes,teamDaily,weekStart,teamMode]);
+  },[days,athletes,teamDaily,weekStart,teamMode,athMode,ownerAth]);
   /* The planned band is 5-7: under it the week is too easy to adapt to, over it the squad
      is being asked for more than a week of training should ask. */
   const rpeBand=weekSum.rpe==null?{t:L('Veri yok','No data'),c:'var(--dim)'}
@@ -574,7 +580,8 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-k">{L('Toplam Yük','Total Load')}</div>
           <div className="cws-v">{weekSum.load}<small>AU</small>
             {weekSum.delta!=null&&<em className={weekSum.delta>=0?'up':'down'}
-              title={L('Önceki haftanın toplam takım yüküne göre değişim','Change against the previous week\'s total team load')}>
+              title={athMode?L('Sporcunun önceki haftadaki toplam yüküne göre değişim','Change against the athlete\'s total load the week before')
+                :L('Önceki haftanın toplam takım yüküne göre değişim','Change against the previous week\'s total team load')}>
               {weekSum.delta>=0?'↑':'↓'} %{Math.abs(weekSum.delta)}</em>}
           </div>
           <div className="cws-s">{L('Önceki haftaya göre','Against the previous week')}</div>
@@ -597,10 +604,12 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           <div className="cws-s">{L('Hedef aralık: 5–7','Target band: 5–7')}</div>
         </div>
       </div>
-      <div className="cws" title={L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
+      <div className="cws" title={athMode
+        ?L('Haftalık monotoni (Foster) = sporcunun bu haftaki 7 günlük yükünün ortalaması ÷ standart sapması; dinlenme günleri 0 olarak sayılır.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Weekly monotony (Foster) = the mean of the athlete\'s 7 daily loads this week ÷ their SD; rest days count as 0.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')
+        :L('Bu haftanın takım monotonluğu = her sporcunun kendi Foster monotonluğunun (ortalama günlük yükü ÷ günlük yüklerinin standart sapması) kadro genelinde ortalaması.\n<1.0 düşük — yükler çok değişken\n1.0–1.5 normal / kabul edilebilir\n1.5–2.0 artan monotonluk — izle\n>2.0 yüksek — aşırı yüklenme ve hastalık/sakatlık riski artar','Team monotony for this week = each athlete\'s own Foster monotony (their mean daily load ÷ the SD of their daily loads), averaged across the squad.\n<1.0 low — loads highly varied\n1.0–1.5 normal / acceptable\n1.5–2.0 rising monotony — watch it\n>2.0 high — overload and illness/injury risk climbs')}>
         <span className="cws-ic amber"><TIc k="tape" size={19}/></span>
         <div className="cws-tx">
-          <div className="cws-k">{L('Takım Monotonluğu','Team Monotony')}</div>
+          <div className="cws-k">{athMode?L('Haftalık Monotoni','Weekly Monotony'):L('Takım Monotonluğu','Team Monotony')}</div>
           <div className="cws-v">{weekMonoV?weekMonoV.toFixed(2):'—'}
             <em className="band" style={{color:weekMonoZ.dot,borderColor:weekMonoZ.dot}}>{exLabel(weekMonoZ.t)}</em></div>
           <div className="cws-s">{L('Hedef aralık: < 1.50','Target band: < 1.50')}</div>
@@ -619,19 +628,19 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         // Daily load = exactly what the Team Load Trend chart plots for this date:
         // the planned team-session AU, or the athletes' logged average on a day that
         // was only logged. Read from the same map so the two screens cannot drift.
-        const dayAU=Math.round(teamDaily[k]||0);
+        const dayAU=athMode?athDayLoad(ownerAth,k):Math.round(teamDaily[k]||0);
         // Team averages under the date. In team mode they come from the roster's logs;
         // on a personal calendar the "team" is the single athlete, so fall back to the
         // day's own session RPEs.
-        const dayRPE=teamMode?null
+        const dayRPE=(teamMode||athMode)?null
           :(()=>{const v=ss.map(s=>Number(s.sRPE)).filter(x=>!isNaN(x)&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;})();
         /* Split by what the athletes were actually asked about, so the day says which
            session earned the score. Only a team calendar can split it: a personal one has
            no check-ins to read and keeps the single figure. */
-        const dayRpeSC=teamMode?teamDayRPE(athletes,k,['sc']):null;
-        const dayRpeTP=teamMode?teamDayRPE(athletes,k,['tp']):null;
-        const dayRpeGM=teamMode?teamDayRPE(athletes,k,['game']):null;
-        const dayRdy=teamMode?teamDayReadiness(athletes,k):null;
+        const dayRpeSC=teamMode?teamDayRPE(athletes,k,['sc']):athMode?athDayRPEOf(ownerAth,k,['sc']):null;
+        const dayRpeTP=teamMode?teamDayRPE(athletes,k,['tp']):athMode?athDayRPEOf(ownerAth,k,['tp']):null;
+        const dayRpeGM=teamMode?teamDayRPE(athletes,k,['game']):athMode?athDayRPEOf(ownerAth,k,['game']):null;
+        const dayRdy=teamMode?teamDayReadiness(athletes,k):athMode?teamDayReadiness([ownerAth],k):null;
         const isDrop=canEdit&&dragInfo&&dragOverDate===k&&dragInfo.fromDate!==k;
         return(<div key={k} className={`calw-col${isDrop?' drop':''}`}
           onDragOver={e=>{if(canEdit&&dragInfo){e.preventDefault();e.dataTransfer.dropEffect=(e.ctrlKey||e.metaKey||e.altKey)?'copy':'move';setDragOverDate(k);}}}
@@ -655,21 +664,21 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
               given per kind of session — the check-in asks about S&C, ball practice and
               the match separately, so the day can say which of them was hard. All four
               rows are always shown (— when empty) so every column lines up. */}
-          <div className="calw-avg">
-            {teamMode?<>
-              <span className="cav" title={L('Bu gün için takım ortalaması Kuvvet & Kondisyon RPE\'si (0–10)','Team average S&C RPE for this day (0–10)')}>
+          <div className={`calw-avg${athMode?' own':''}`}>
+            {(teamMode||athMode)?<>
+              <span className="cav" title={athMode?L('Sporcunun bu gün verdiği Kuvvet & Kondisyon RPE\'si (0–10)','The athlete\'s own S&C RPE for this day (0–10)'):L('Bu gün için takım ortalaması Kuvvet & Kondisyon RPE\'si (0–10)','Team average S&C RPE for this day (0–10)')}>
                 <em>{'S&C'}</em><b style={{color:rpeColor(dayRpeSC)||'var(--dim)'}}>{dayRpeSC!=null?dayRpeSC.toFixed(1):'—'}</b>
               </span>
-              <span className="cav" title={L('Bu gün için takım ortalaması top antrenmanı RPE\'si (0–10)','Team average ball practice RPE for this day (0–10)')}>
+              <span className="cav" title={athMode?L('Sporcunun bu gün verdiği top antrenmanı RPE\'si (0–10)','The athlete\'s own ball practice RPE for this day (0–10)'):L('Bu gün için takım ortalaması top antrenmanı RPE\'si (0–10)','Team average ball practice RPE for this day (0–10)')}>
                 <em>{L('Top Antrenmanı','Ball Practice')}</em><b style={{color:rpeColor(dayRpeTP)||'var(--dim)'}}>{dayRpeTP!=null?dayRpeTP.toFixed(1):'—'}</b>
               </span>
-              <span className="cav" title={L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
+              <span className="cav" title={athMode?L('Sporcunun bu gün verdiği maç RPE\'si (0–10)','The athlete\'s own match RPE for this day (0–10)'):L('Bu gün için takım ortalaması müsabaka RPE\'si (0–10)','Team average match RPE for this day (0–10)')}>
                 <em>{L('Maç','Match')}</em><b style={{color:rpeColor(dayRpeGM)||'var(--dim)'}}>{dayRpeGM!=null?dayRpeGM.toFixed(1):'—'}</b>
               </span>
             </>:<span className="cav" title={L('Bu gün için takım ortalaması seans RPE\'si (0–10)','Team average session RPE for this day (0–10)')}>
               <em>RPE</em><b style={{color:rpeColor(dayRPE)||'var(--dim)'}}>{dayRPE!=null?dayRPE.toFixed(1):'—'}</b>
             </span>}
-            <span className="cav" title={L('Bu günün wellness check-in\'lerinden takım ortalama hazır oluşu (0–5)','Team average readiness from this day\'s wellness check-ins (0–5)')}>
+            <span className="cav" title={athMode?L('Sporcunun bu günkü wellness check-in\'inden hazır oluş (0–5)','The athlete\'s readiness from this day\'s wellness check-in (0–5)'):L('Bu günün wellness check-in\'lerinden takım ortalama hazır oluşu (0–5)','Team average readiness from this day\'s wellness check-ins (0–5)')}>
               <em>{L('Hazır Oluş','Readiness')}</em><b style={{color:readyColor(dayRdy)}}>{dayRdy!=null?dayRdy.toFixed(1):'—'}</b>
             </span>
           </div>
@@ -712,7 +721,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
           })}
           {/* The day's team load — the same value Load Monitoring's Team Load Trend plots. */}
           {dayAU>0&&<div className="calw-daytot">
-            <div className="dtrow" title={L('Yük Takibi → Takım Yük Trendi\'ndeki günlük yük','The daily load from Load Monitoring → Team Load Trend')}><span>{L('Günlük Yük','Daily Load')}</span><b>{dayAU} AU</b></div>
+            <div className="dtrow" title={athMode?L('Sporcunun bu günkü yükü (RPE × dk)','The athlete\'s load for this day (RPE × min)'):L('Yük Takibi → Takım Yük Trendi\'ndeki günlük yük','The daily load from Load Monitoring → Team Load Trend')}><span>{L('Günlük Yük','Daily Load')}</span><b>{dayAU} AU</b></div>
           </div>}
         </div>);
       })}

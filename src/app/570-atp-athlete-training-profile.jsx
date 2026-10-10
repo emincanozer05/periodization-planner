@@ -21,7 +21,9 @@ const atpItems=list=>list.map(en=>({id:atpId(en),en}));
 const ATP_TR={
   /* titles */
   'Athlete Profile':'Sporcu Profili','Athletic Profile':'Atletik Profil',
-  'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti','Joint by Joint':'Eklem Eklem (Joint by Joint)',
+  'Athletic Development Priorities':'Atletik Gelişim Öncelikleri',
+  /* "Joint by Joint" is the approach's own name and is not translated. */
+  'Constraints':'Kısıtlar','Exercise Exposure':'Egzersiz Maruziyeti',
   /* joint by joint: joints, sides, views, the need scale */
   'Neck':'Boyun','Low Back':'Bel (Lumbar)','Scapula':'Skapula','Shoulder':'Omuz','Elbow':'Dirsek',
   'Wrist':'El Bileği','Thoracic Spine':'Torasik Omurga',
