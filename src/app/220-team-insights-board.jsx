@@ -280,28 +280,6 @@ function TeamInsights({days,athletes,refDate,setup}){
         title={L('Takım analizi çıktısı (A4 yatay)','Team Insights export (A4 landscape)')}>⎙ {L('Çıktı al','Export')}</button>
     </div>
 
-    {/* ---- Coach alerts: the board's headline, so it sits above the grid ---- */}
-    <div className="tib-card" style={card()}>
-      <div className="tib-chead">
-        <div><div className="tib-ct">{L('Antrenör Uyarıları','Coach Alerts')}</div>
-          <div className="tib-cs">{L('Doğrudan bu haftanın rakamlarından','Read straight off this week’s numbers')}</div></div>
-        <span className={'tib-count'+(alerts.length?' on':'')}>{alerts.length}</span>
-      </div>
-      {alerts.length===0
-        ?<div className="tib-none">{L('✓ Bu hafta işaretlenecek bir şey yok — yük, toparlanma ve check-in’lerin hepsi kendi bandında.',
-                                      '✓ Nothing to flag this week — load, recovery and check-ins are all inside their bands.')}</div>
-        :<div className="tib-al-grid">
-          {alerts.map((al,i)=><div key={al.id+i} className={'tib-al '+(al.sev>1?'high':'mid')} style={{'--i':i}}>
-            <span className="dot"/>
-            <div className="tx">
-              <div className="k">{al.kind}</div>
-              <div className="w">{al.where}</div>
-              <div className="t">{al.text}</div>
-            </div>
-          </div>)}
-        </div>}
-    </div>
-
     {/* Three explicit columns, so Load Trend and the sRPE table can be told to fill the
         height their column is given and the board ends on one line at the bottom. Which
         card sits in which column is fixed rather than balanced: they are grouped by what

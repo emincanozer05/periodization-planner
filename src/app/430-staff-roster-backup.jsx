@@ -450,32 +450,6 @@ const NORM=s=>(s||'').toString()
    ========================================================= */
 function Backup({data,setData,sync}){
   const fRef=useRef(null);
-  const mRef=useRef(null);
-  const[msg,setMsg]=useState('');
-  const rep=useMemo(()=>mediaReport(data),[data]);
-  const missingMedia=rep.lost;
-  // Cihazda duran görselleri elle durumun içine geri yaz (açılışta da otomatik yapılır).
-  const restoreNow=()=>{
-    const clone=JSON.parse(JSON.stringify(data));
-    const{restored,missing}=restoreLocalMedia(clone);
-    if(restored)setData(clone);
-    setMsg(restored?L(`${restored} görsel bu cihazdan geri alındı.`,`${restored} image(s) restored from this device.`):L(`Bu cihazda geri alınacak görsel yok${missing?` (${missing} görsel başka bir cihazda kalmış)`:''}.`,`No images to restore on this device${missing?` (${missing} image(s) are on another device)`:''}.`));
-  };
-  // Yedek dosyasından SADECE görselleri al — plan, program, testler olduğu gibi kalır.
-  const impMedia=e=>{
-    const f=e.target.files?.[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=ev=>{
-      try{
-        const bak=JSON.parse(ev.target.result);
-        const clone=JSON.parse(JSON.stringify(data));
-        const n=mergeMediaFrom(clone,bak);
-        if(n)setData(clone);
-        setMsg(n?L(`${n} görsel yedekten geri alındı.`,`${n} image(s) restored from the backup.`):L('Bu yedekte, şu an eksik olan görsellerden hiçbiri yok.','This backup contains none of the currently missing images.'));
-      }catch(err){setMsg(L('Yedek okunamadı: ','Could not read backup: ')+(err.message||err));}
-    };
-    r.readAsText(f);e.target.value='';
-  };
   const exp=()=>{const b=new Blob([JSON.stringify(inlineLocalMedia(data),null,2)],{type:'application/json'});const a=document.createElement('a');
     a.href=URL.createObjectURL(b);a.download=`periodization_backup_${fmt(today)}.json`;a.click();URL.revokeObjectURL(a.href);};
   const imp=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();
@@ -483,8 +457,8 @@ function Backup({data,setData,sync}){
     r.readAsText(f);e.target.value='';};
   return(<div>
     <PageHero title={L('Yedekleme','Backup')}
-      sub={L('Her takımı tek dosyada dışa aktar, geri yükle ve medyayı denetle.',
-             'Export every team as one file, restore it, and audit the media.')}
+      sub={L('Her takımı tek dosyada dışa aktar ve geri yükle.',
+             'Export every team as one file and restore it.')}
       stats={[{v:(data.teams||[]).length,l:L('Takım','Teams')},
               {v:(data.teams||[]).reduce((n,t)=>n+((t.athletes||[]).length),0),l:L('Sporcu','Athletes')}]}/>
     <div className="panel"><h2>{L('Tüm Takımlar Özeti','All Teams Summary')}</h2>
@@ -501,26 +475,6 @@ function Backup({data,setData,sync}){
         <button className="btn" onClick={exp}>📦 {L('Tam Yedeği İndir','Download Full Backup')}</button>
         <button className="btn sec" onClick={()=>fRef.current.click()}>📂 {L('Yedek Yükle','Load Backup')}</button>
         <input type="file" accept=".json" ref={fRef} onChange={imp} className="hidden"/>
-      </div>
-    </div>
-    <div className="panel"><h2>{L('Görseller','Images')}</h2>
-      <div className="help" style={{marginBottom:10}}>
-        {L('Durumdaki görseller:','Images in the data:')} <b>{rep.inline}</b> {L('verinin içinde','inline')} · <b>{rep.cloud}</b> {L('bulutta','in the cloud')} ·
-        <b> {rep.device}</b> {L('bu cihazda','on this device')} · <b>{rep.drive}</b> Drive ·
-        <b style={{color:rep.lost?'var(--yellow)':'inherit'}}> {rep.lost}</b> {L('bulunamıyor','not found')}
-      </div>
-      {rep.lost>0&&<div className="help" style={{marginBottom:10,color:'var(--yellow)'}}>
-        {L(`${rep.lost} görselin dosyası bu tarayıcıda yok. Bir önceki sürüm onları cihaz deposuna taşımıştı: o görselleri yükleyen tarayıcıda uygulamayı bir kez açmak yeterli — açılışta kendiliğinden veriye geri yazılır ve tüm cihazlara gider. O tarayıcıya erişemiyorsan, görselleri içeren bir yedek dosyasından aşağıdaki düğmeyle sadece görselleri geri alabilirsin.`,
-        `${rep.lost} image(s) have no file in this browser. An earlier version moved them into device storage: opening the app once in the browser that uploaded them is enough — they write themselves back into the data on load and reach every device. If you can't access that browser, you can restore just the images from a backup file that contains them using the button below.`)}
-      </div>}
-      <div className="row" style={{gap:8}}>
-        <button className="btn sec" onClick={restoreNow}>🖼 {L('Bu cihazdaki görselleri geri yükle','Restore images on this device')}</button>
-        <button className="btn sec" onClick={()=>mRef.current.click()}>📂 {L('Yedekten sadece görselleri al','Load images only from backup')}</button>
-        <input type="file" accept=".json" ref={mRef} onChange={impMedia} className="hidden"/>
-      </div>
-      {msg&&<div className="help" style={{marginTop:10}}>{msg}</div>}
-      <div className="help" style={{marginTop:10}}>
-        {L('"Yedekten sadece görselleri al" planı, programı ve test verilerini değiştirmez; yalnızca şu an eksik olan görselleri yedekteki karşılıklarıyla doldurur.','"Load images only from backup" does not change the plan, program, or test data; it only fills in currently missing images with their counterparts from the backup.')}
       </div>
     </div>
   </div>);

@@ -267,8 +267,6 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
   ${kpi(tibPct(R.pva.d),'',L('Plan / gerçekleşen','Planned vs actual'),`${tibNum(R.pva.pT)} → ${tibNum(R.pva.aT)} AU`)}
   ${kpi(R.mono!=null?R.mono.toFixed(2):'—','',L('Haftalık monotoni','Weekly monotony'),R.mono>2?L('yüksek — hafif gün ekle','high — add an easy day'):L('kendi bandında','inside its band'))}
 </div>
-${card(L('Antrenör Uyarıları','Coach Alerts'),L('Doğrudan bu haftanın rakamlarından','Read straight off this week’s numbers'),
-  `<span class="count${R.alerts.length?' on':''}">${R.alerts.length}</span>`,alerts)}
 <div class="cols">
   <div>
     ${card(L('Antrenman Dağılımı','Session Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
