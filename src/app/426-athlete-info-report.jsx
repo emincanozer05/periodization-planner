@@ -41,42 +41,6 @@ function airRadarSvg(items,vals){
     o+=`<text x="${x.toFixed(1)}" y="${y0.toFixed(1)}" text-anchor="${an}" font-size="10.2" font-weight="700" fill="#1f2731">${ls.map((l,j)=>`<tspan x="${x.toFixed(1)}" dy="${j?12:0}">${esc(l)}</tspan>`).join('')}</text>`;});
   return o+'</svg>';
 }
-/* One measure over time, as a small line chart for the printed sheet: every measurement
-   a dot on its date, the dates along the bottom (all of them when they fit, otherwise the
-   first, the middle and the last). */
-function airLineSvg(pts,color){
-  const W=380,H=150,l=34,r=20,t=22,b=26,iw=W-l-r,ih=H-t-b;
-  const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  if(!pts.length)return`<svg viewBox="0 0 ${W} ${H}" class="lc"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="11" fill="#9aa1ac">${esc(L('Ölçüm yok','No measurement'))}</text></svg>`;
-  const vs=pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
-  if(hi-lo<1e-9){lo-=1;hi+=1;}else{const pad=(hi-lo)*.18;lo-=pad;hi+=pad;}
-  const t0=parseD(pts[0].date).getTime(),t1=parseD(pts[pts.length-1].date).getTime();
-  const X=p=>pts.length<2||t1===t0?l+iw/2:l+(parseD(p.date).getTime()-t0)/(t1-t0)*iw;
-  const Y=v=>t+ih-(v-lo)/(hi-lo)*ih;
-  const nf=v=>String(+Number(v).toFixed(1));
-  let o=`<svg viewBox="0 0 ${W} ${H}" class="lc">`;
-  [0,.5,1].forEach(f=>{const y=t+ih*f;o+=`<line x1="${l}" y1="${y.toFixed(1)}" x2="${W-r}" y2="${y.toFixed(1)}" stroke="#e2e5ea" stroke-width="1"/>`+
-    `<text x="${l-5}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa1ac">${nf(hi-(hi-lo)*f)}</text>`;});
-  if(pts.length>1)o+=`<polyline points="${pts.map(p=>`${X(p).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-  /* Every value is written on its point. Where measurements sit close together their
-     labels take turns underneath and above (then stack a row further out), so a run of
-     near dates stays legible. */
-  const near=(a,b)=>!!a&&!!b&&Math.abs(X(a)-X(b))<26;
-  let crowd=0;
-  pts.forEach((p,i)=>{const x=X(p),y=Y(p.v),last=i===pts.length-1;
-    crowd=near(pts[i-1],p)?crowd+1:0;
-    const dy=(crowd||near(p,pts[i+1]))?[16,-8,28,-20][Math.min(crowd,3)]:-8;
-    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?4.4:3.4}" fill="${last?color:'#fff'}" stroke="${color}" stroke-width="2"/>`;
-    const lx=Math.min(W-12,Math.max(l-6,x));
-    o+=`<text x="${lx.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f1720">${nf(p.v)}</text>`;});
-  /* Every date that has room: one is skipped when it would sit on top of the one before. */
-  let prevX=-1e9;
-  pts.forEach((p,i)=>{const x=X(p);if(x-prevX<52)return;
-    prevX=x;const an=pts.length<2?'middle':i===0?'start':i===pts.length-1?'end':'middle';
-    const[y_,m_,d_]=p.date.split('-');
-    o+=`<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="${an}" font-size="10" fill="#5e6774">${d_}.${m_}.${y_.slice(2)}</text>`;});
-  return o+'</svg>';
-}
 /* The joint map with every rated joint coloured, as markup for the printed sheet. */
 function airJointFigure(joints){
   let o=`<div class="jbf"><img src="${location.origin}/${ATP_JB_IMG.src}" alt=""/><svg viewBox="0 0 ${ATP_JB_IMG.w} ${ATP_JB_IMG.h}">`;
@@ -194,7 +158,8 @@ function printAthleteInfo(ath,setup,exercises){
       </div></div>
     <div class="blk">${subH(L('Atletik Gelişim Öncelikleri','Athletic Development Priorities'))}<div class="three">${pri}</div></div>
   </section>`;
-  /* ── 4 · Anthropometric tracking ── one row of four small charts, each measure over time */
+  /* ── 4 · Anthropometric tracking ── one table: a row per measurement date, a column per
+     measure, each value with its change from that measure's previous reading */
   const anthroSeries=k=>{const byDate={};
     [...(ath.tests||[]),...(ath.measurements||[])].forEach(x=>{const v=x&&x[k];if(!x||!x.date||v===''||v==null||isNaN(Number(v)))return;byDate[x.date]=Number(v);});
     return Object.keys(byDate).sort().map(d=>({date:d,v:byDate[d]}));};
@@ -202,14 +167,19 @@ function printAthleteInfo(ath,setup,exercises){
     {k:'wingspan',tr:'Kulaç',en:'Wingspan',u:'cm',c:'#7c3aed'},{k:'bodyFat',tr:'Yağ Oranı',en:'Body Fat',u:'%',c:'#f97316'}];
   const anSer=ANTHRO.map(m=>({...m,pts:anthroSeries(m.k)}));
   const anDates=[...new Set(anSer.flatMap(m=>m.pts.map(p=>p.date)))].sort();
-  const anCard=m=>{const n=m.pts.length,last=n?m.pts[n-1]:null,prev=n>1?m.pts[n-2]:null;
-    const dv=last&&prev?+(last.v-prev.v).toFixed(1):null;
-    return`<div class="card an"><div class="an-h"><span class="pk">${esc(L(m.tr,m.en))} <em>${m.u}</em></span><span class="an-v">${last?num(last.v):'—'}${dv?`<i>${dv>0?'+':''}${dv}</i>`:''}</span></div>${airLineSvg(m.pts,m.c)}</div>`;};
+  const anDelta=d=>d?`<i>${d>0?'+':''}${d}</i>`:'';
+  const anRows=anDates.map(d=>`<tr><td class="b">${fd(d)}</td>${anSer.map(m=>{const i=m.pts.findIndex(p=>p.date===d);
+    if(i<0)return'<td class="r sw">—</td>';
+    const dv=i>0?+(m.pts[i].v-m.pts[i-1].v).toFixed(1):0;
+    return`<td class="r"><b>${num(m.pts[i].v)}</b>${anDelta(dv)}</td>`;}).join('')}</tr>`).join('');
+  const anTotal=`<tr class="tot"><td class="b">${L('İlk → son değişim','First → latest change')}</td>${anSer.map(m=>{
+    const n=m.pts.length;if(n<2)return'<td class="r sw">—</td>';
+    const dv=+(m.pts[n-1].v-m.pts[0].v).toFixed(1);return`<td class="r">${dv>0?'+':''}${dv}</td>`;}).join('')}</tr>`;
   const s4=`<section>
     ${secH(4,L('Antropometrik Ölçüm Takibi','Anthropometric Tracking'),anDates.length
       ?L(`${anDates.length} ölçüm tarihi · ${fd(anDates[0])} – ${fd(anDates[anDates.length-1])}`,`${anDates.length} measurement dates · ${fd(anDates[0])} – ${fd(anDates[anDates.length-1])}`)
       :L('Boy, kilo, kulaç ve yağ oranı zaman içinde','Height, weight, wingspan and body fat over time'))}
-    ${anDates.length?`<div class="blk"><div class="four">${anSer.map(anCard).join('')}</div></div>`
+    ${anDates.length?`<div class="blk"><table class="an-t"><tr><th>${L('Ölçüm Tarihi','Date')}</th>${anSer.map(m=>`<th class="r">${esc(L(m.tr,m.en))} <em>${m.u}</em></th>`).join('')}</tr>${anRows}${anTotal}</table></div>`
       :`<div class="card none">${L('Kayıtlı antropometrik ölçüm yok.','No anthropometric measurements recorded.')}</div>`}
   </section>`;
   /* ── 5 · Injuries ── */
@@ -265,15 +235,12 @@ section{margin-top:12px}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-.four{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-.pg2{break-before:page;page-break-before:always}
-.card.an{padding:9px 12px 6px}
-.an-h{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
-.an-h .pk{margin-bottom:0}
-.an-h .pk em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-v{font-size:17px;font-weight:700}
-.an-v i{font-style:normal;font-size:10px;font-weight:600;color:var(--mu);margin-left:4px}
-.lc{width:100%;height:auto;display:block}
+.an-t td{font-size:11.5px;padding:7px 10px}
+.an-t th{padding:7px 10px}
+.an-t th em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
+.an-t td b{font-size:13px;font-weight:700}
+.an-t td i{font-style:normal;font-size:9px;font-weight:600;margin-left:6px;color:var(--mu)}
+.an-t tr.tot td{background:var(--soft);font-weight:700;border-top:1px solid var(--ln2)}
 .txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
 .none,.txt.none{color:var(--dim);font-size:10px}
 .kvs{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px}
