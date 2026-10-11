@@ -45,9 +45,9 @@ function airRadarSvg(items,vals){
    a dot on its date, the dates along the bottom (all of them when they fit, otherwise the
    first, the middle and the last). */
 function airLineSvg(pts,color){
-  const W=230,H=96,l=26,r=10,t=14,b=20,iw=W-l-r,ih=H-t-b;
+  const W=380,H=150,l=34,r=20,t=22,b=26,iw=W-l-r,ih=H-t-b;
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  if(!pts.length)return`<svg viewBox="0 0 ${W} ${H}" class="lc"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="9" fill="#9aa1ac">${esc(L('Ölçüm yok','No measurement'))}</text></svg>`;
+  if(!pts.length)return`<svg viewBox="0 0 ${W} ${H}" class="lc"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="11" fill="#9aa1ac">${esc(L('Ölçüm yok','No measurement'))}</text></svg>`;
   const vs=pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
   if(hi-lo<1e-9){lo-=1;hi+=1;}else{const pad=(hi-lo)*.18;lo-=pad;hi+=pad;}
   const t0=parseD(pts[0].date).getTime(),t1=parseD(pts[pts.length-1].date).getTime();
@@ -56,16 +56,25 @@ function airLineSvg(pts,color){
   const nf=v=>String(+Number(v).toFixed(1));
   let o=`<svg viewBox="0 0 ${W} ${H}" class="lc">`;
   [0,.5,1].forEach(f=>{const y=t+ih*f;o+=`<line x1="${l}" y1="${y.toFixed(1)}" x2="${W-r}" y2="${y.toFixed(1)}" stroke="#e2e5ea" stroke-width="1"/>`+
-    `<text x="${l-4}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#9aa1ac">${nf(hi-(hi-lo)*f)}</text>`;});
-  if(pts.length>1)o+=`<polyline points="${pts.map(p=>`${X(p).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-  const showV=pts.length<=6;
+    `<text x="${l-5}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa1ac">${nf(hi-(hi-lo)*f)}</text>`;});
+  if(pts.length>1)o+=`<polyline points="${pts.map(p=>`${X(p).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  /* Every value is written on its point. Where measurements sit close together their
+     labels take turns underneath and above (then stack a row further out), so a run of
+     near dates stays legible. */
+  const near=(a,b)=>!!a&&!!b&&Math.abs(X(a)-X(b))<26;
+  let crowd=0;
   pts.forEach((p,i)=>{const x=X(p),y=Y(p.v),last=i===pts.length-1;
-    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?3.2:2.4}" fill="${last?color:'#fff'}" stroke="${color}" stroke-width="1.6"/>`;
-    if(showV||last)o+=`<text x="${x.toFixed(1)}" y="${(y-5.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#0f1720">${nf(p.v)}</text>`;});
-  const lab=pts.length<=4?pts.map((_,i)=>i):[0,Math.floor((pts.length-1)/2),pts.length-1];
-  lab.forEach(i=>{const p=pts[i],x=X(p);const an=pts.length<2?'middle':i===0?'start':i===pts.length-1?'end':'middle';
+    crowd=near(pts[i-1],p)?crowd+1:0;
+    const dy=(crowd||near(p,pts[i+1]))?[16,-8,28,-20][Math.min(crowd,3)]:-8;
+    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?4.4:3.4}" fill="${last?color:'#fff'}" stroke="${color}" stroke-width="2"/>`;
+    const lx=Math.min(W-12,Math.max(l-6,x));
+    o+=`<text x="${lx.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f1720">${nf(p.v)}</text>`;});
+  /* Every date that has room: one is skipped when it would sit on top of the one before. */
+  let prevX=-1e9;
+  pts.forEach((p,i)=>{const x=X(p);if(x-prevX<52)return;
+    prevX=x;const an=pts.length<2?'middle':i===0?'start':i===pts.length-1?'end':'middle';
     const[y_,m_,d_]=p.date.split('-');
-    o+=`<text x="${x.toFixed(1)}" y="${H-5}" text-anchor="${an}" font-size="7.5" fill="#5e6774">${d_}.${m_}.${y_.slice(2)}</text>`;});
+    o+=`<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="${an}" font-size="10" fill="#5e6774">${d_}.${m_}.${y_.slice(2)}</text>`;});
   return o+'</svg>';
 }
 /* The joint map with every rated joint coloured, as markup for the printed sheet. */
@@ -256,14 +265,14 @@ section{margin-top:12px}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-.four{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.four{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
 .pg2{break-before:page;page-break-before:always}
-.card.an{padding:6px 8px 4px}
+.card.an{padding:9px 12px 6px}
 .an-h{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
 .an-h .pk{margin-bottom:0}
 .an-h .pk em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-v{font-size:13px;font-weight:700}
-.an-v i{font-style:normal;font-size:8.5px;font-weight:600;color:var(--mu);margin-left:4px}
+.an-v{font-size:17px;font-weight:700}
+.an-v i{font-style:normal;font-size:10px;font-weight:600;color:var(--mu);margin-left:4px}
 .lc{width:100%;height:auto;display:block}
 .txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
 .none,.txt.none{color:var(--dim);font-size:10px}
@@ -342,17 +351,19 @@ td.r,th.r{text-align:right}
 .sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .pt .txt{font-size:9px;line-height:1.38}
 .pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.jb{display:grid;grid-template-columns:78mm 1fr;gap:10px;align-items:start}
+.jb{display:grid;grid-template-columns:54mm 1fr;gap:10px;align-items:start}
 .jbf{position:relative;border-radius:9px;overflow:hidden;background:#11151b;line-height:0}
 .jbf img{width:100%;height:auto;display:block}
 .jbf svg{position:absolute;inset:0;width:100%;height:100%}
 .jbf .cap{position:absolute;bottom:6px;transform:translateX(-50%);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#cfd4db;line-height:1}
-.jbt td,.jbt th{padding:3.5px 5px}
+.jbt td,.jbt th{padding:1.5px 4px;line-height:1.25}
+.jbt td{font-size:8.5px}
+.jbt th{font-size:7.5px}
 .jbt td.mid{text-align:left}
-.lv{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:9.5px}
-.lv i{width:7px;height:7px;border-radius:50%}
-.need{font-size:9px;font-weight:600}
-.jn{font-size:8.5px;color:var(--mu)}
+.lv{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:8.5px}
+.lv i{width:6px;height:6px;border-radius:50%}
+.need{font-size:8.5px;font-weight:600}
+.jn{font-size:7.5px;color:var(--mu)}
 .lane .cnt{color:var(--mu);font-weight:600}
 .pd2{font-size:8.8px;color:var(--mu);margin-bottom:5px}
 .ql{list-style:none;display:flex;flex-direction:column;gap:3px}

@@ -250,6 +250,25 @@ function PeriodizationModelPanel({s,periods,set}){
     </div>
   </div>);
 }
+/* What each macrocycle phase is for — shown from the "?" on the Season Macrocycle card. */
+const PHASE_INFO=[
+  {id:'gp',tr:{t:'Genel Hazırlık',w:'Sezon öncesi hazırlığın ilk aşaması.',
+    d:'Temel kuvvet, aerobik dayanıklılık, mobilite ve hareket kalitesinin geliştirilmesi hedeflenir. Antrenman hacmi kademeli artırılarak daha yoğun yüklenmelere fiziksel altyapı oluşturulur.'},
+    en:{t:'General Preparation',w:'The first stage of pre-season preparation.',
+    d:'The aim is to develop base strength, aerobic endurance, mobility and movement quality. Training volume is raised gradually, building the physical foundation for heavier loading.'}},
+  {id:'sp',tr:{t:'Özel Hazırlık',w:'Sezon öncesi hazırlığın son aşaması.',
+    d:'Maksimal kuvvet, patlayıcı güç, sürat, çeviklik ve branşa özgü kondisyon geliştirilir. Antrenmanların özgüllüğü artırılarak sporcu müsabaka taleplerine hazırlanır.'},
+    en:{t:'Specific Preparation',w:'The last stage of pre-season preparation.',
+    d:'Maximal strength, explosive power, speed, agility and sport-specific conditioning are developed. Training becomes more specific, preparing the athlete for the demands of competition.'}},
+  {id:'comp',tr:{t:'Müsabaka',w:'Müsabaka sezonu boyunca.',
+    d:'Kazanılan fiziksel özelliklerin korunması ve performansın sürdürülmesi amaçlanır. Antrenman yükleri maç takvimine göre düzenlenerek yorgunluk ve toparlanma süreçleri yönetilir.'},
+    en:{t:'Competition',w:'Throughout the competitive season.',
+    d:'The aim is to maintain the physical qualities already gained and sustain performance. Training loads are arranged around the match calendar so fatigue and recovery can be managed.'}},
+  {id:'trans',tr:{t:'Geçiş',w:'Sezon sonu ve sezonlar arası.',
+    d:'Fiziksel ve psikolojik toparlanma ön plandadır. Antrenman yükleri azaltılarak aktif dinlenme ve bireysel eksikliklere yönelik çalışmalarla yeni sezona hazırlık desteklenir.'},
+    en:{t:'Transition',w:'End of season and between seasons.',
+    d:'Physical and psychological recovery comes first. Loads are reduced, and active rest plus work on individual weaknesses supports preparation for the new season.'}},
+];
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
@@ -308,6 +327,9 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const athleteCount=(team.athletes||[]).length;
   /* Planned Microcycles: the whole season at once, or one month at a time. A week that
      straddles two months shows up under both, so no microcycle falls out of the monthly view. */
+  const[phInfoOpen,setPhInfoOpen]=useState(false);
+  useEffect(()=>{if(!phInfoOpen)return;const k=e=>{if(e.key==='Escape')setPhInfoOpen(false);};
+    window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[phInfoOpen]);
   const[mcView,setMcView]=useState('year');
   const[mcMonth,setMcMonth]=useState('');
   const months=useMemo(()=>monthTicks.map(d=>({k:fmt(d).slice(0,7),label:MN[d.getMonth()],year:d.getFullYear()})),[monthTicks]);
@@ -391,7 +413,8 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       const ticks=[];let cur=new Date(parseD(winStart).getFullYear(),parseD(winStart).getMonth()+1,1);const endD=parseD(winEnd);
       while(cur<=endD){ticks.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
       return(<div className="panel mc-panel">
-        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div></div>
+        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div>
+          <button className="mc-help" onClick={()=>setPhInfoOpen(true)} aria-label={L('Faz bilgisi','Phase info')} title={L('Faz bilgisi','Phase info')}>?</button></div>
         <div className="mc-gantt">
           <div className="mc-axis">
             <div/>
@@ -401,7 +424,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             </div>
           </div>
           {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));
-            const nm=PHASE_NAME[p.id]||p.name,col=PHASE_COL[p.id]||'#64748b';return(
+            const nm=exLabel(PHASE_NAME[p.id]||p.name),col=PHASE_COL[p.id]||'#64748b';return(
             <div key={p.id} className="mc-row">
               <div className="mc-lbl" title={nm}>
                 <span className="mc-dot" style={{background:col}}/>
@@ -415,6 +438,20 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
               </div>
             </div>);})}
         </div>
+        {phInfoOpen&&<div className="modal-bg" onClick={()=>setPhInfoOpen(false)}>
+          <div className="modal mc-info" role="dialog" aria-label={L('Faz bilgisi','Phase info')} onClick={e=>e.stopPropagation()}>
+            <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Sezon Fazları','Season Phases')}</h2>
+              <span style={{flex:1}}/><button className="x-btn" onClick={()=>setPhInfoOpen(false)}>✕</button></div>
+            <div className="mc-info-body">
+              {PHASE_INFO.map((ph,i)=>{const x=REPORT_LANG==='tr'?ph.tr:ph.en;return(
+                <div key={ph.id} className="mc-info-ph">
+                  <div className="mc-info-t"><span className="mc-dot" style={{background:PHASE_COL[ph.id]}}/>{i+1}. {x.t}</div>
+                  <div className="mc-info-w"><b>{L('Dönem','Period')}:</b> {x.w}</div>
+                  <p>{x.d}</p>
+                </div>);})}
+            </div>
+          </div>
+        </div>}
       </div>);
     })()}
     <div className="mc-extra">

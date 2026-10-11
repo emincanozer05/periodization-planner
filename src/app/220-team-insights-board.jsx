@@ -283,30 +283,11 @@ function TeamInsights({days,athletes,refDate,setup}){
     {/* Three explicit columns, so Load Trend and the sRPE table can be told to fill the
         height their column is given and the board ends on one line at the bottom. Which
         card sits in which column is fixed rather than balanced: they are grouped by what
-        a coach reads together — the squad's shape on the left, the week's load in the
+        a coach reads together — the flagged athletes on the left, the week's load in the
         middle, the athlete-by-athlete ranking on its own. Below ~1000px the columns wrap
         and the same grouping stacks. */}
     <div className="tib-grid">
       <div className="tib-col">
-      {/* ---- Session distribution ---- */}
-      <div className="tib-card" style={card()}>
-        <div className="tib-chead">
-          <div><div className="tib-ct">{L('Antrenman Dağılımı','Session Distribution')}</div>
-            <div className="tib-cs">{L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained')}</div></div>
-          <span className="tib-tot">{sesDist.total}<u>{L('antrenman','sessions')}</u></span>
-        </div>
-        {sesDist.rows.length===0
-          ?<div className="tib-none">{L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>
-          :<div className="tib-sd">
-            {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
-              <span className="l"><i style={{background:r.c}}/>{TIB_FOCUS_LABEL(r)}</span>
-              <span className="n">{r.n}</span>
-              <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
-              <span className="m">{r.min} {L('dk','min')}</span>
-            </div>)}
-          </div>}
-      </div>
-
       {/* ---- Flagged athletes ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
@@ -334,28 +315,23 @@ function TeamInsights({days,athletes,refDate,setup}){
       </div>
 
       <div className="tib-col">
-      {/* ---- Planned vs actual ---- */}
+      {/* ---- Session distribution ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
-          <div><div className="tib-ct">{L('Planlanan / Gerçekleşen','Planned vs Actual')}</div>
-            <div className="tib-cs">{L('Hedef RPE × dakika, geri dönen yüke karşı','Target RPE × minutes, against the load that came back')}</div></div>
-          {pva.d!=null&&<span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span>}
+          <div><div className="tib-ct">{L('Yük Dağılımı','Load Distribution')}</div>
+            <div className="tib-cs">{L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained')}</div></div>
+          <span className="tib-tot">{sesDist.total}<u>{L('antrenman','sessions')}</u></span>
         </div>
-        {pva.live.length===0
-          ?<div className="tib-none">{L('Bu hafta için henüz plan ya da kayıt yok.','Nothing planned or logged on this week yet.')}</div>
-          :<div className="tib-pv"><table className="tib-tbl">
-            <thead><tr><th>{L('Gün','Day')}</th><th className="r">{L('Planlanan','Planned')}</th><th className="r">{L('Gerçekleşen','Actual')}</th><th className="r">Δ</th></tr></thead>
-            <tbody>{pva.rows.map(r=>(r.planned>0||r.actual>0)&&<tr key={r.k}>
-              <td className="d">{r.label}</td>
-              <td className="r"><span className="pl">{r.planned?tibNum(r.planned):'—'}</span>
-                <span className="tib-mini"><i className="p" style={grow(r.planned/pva.max*100)}/><i className="a" style={grow(r.actual/pva.max*100)}/></span></td>
-              <td className="r ac">{r.actual?tibNum(r.actual):'—'}</td>
-              <td className="r"><span className="tib-d" style={{color:tibDevCol(r.d)}}>{tibPct(r.d)}</span></td>
-            </tr>)}</tbody>
-            <tfoot><tr><td className="d">{L('Hafta','Week')}</td><td className="r">{tibNum(pva.pT)}</td>
-              <td className="r ac">{pva.aT?tibNum(pva.aT):'—'}</td>
-              <td className="r"><span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span></td></tr></tfoot>
-          </table></div>}
+        {sesDist.rows.length===0
+          ?<div className="tib-none">{L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>
+          :<div className="tib-sd">
+            {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
+              <span className="l"><i style={{background:r.c}}/>{TIB_FOCUS_LABEL(r)}</span>
+              <span className="n">{r.n}</span>
+              <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
+              <span className="m">{r.min} {L('dk','min')}</span>
+            </div>)}
+          </div>}
       </div>
 
       {/* ---- Week-to-week trend ---- */}

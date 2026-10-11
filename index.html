@@ -2642,7 +2642,17 @@ tr:hover td{background:rgba(255,255,255,.02)}
    only a sliver of a 10-month season, and a label printed inside it was clipped to nothing.
    The bars carry colour and span only, so nothing on this chart can be truncated. */
 .mc-panel{padding:22px 24px}
-.mc-head{margin-bottom:4px}
+.mc-head{margin-bottom:4px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.mc-help{flex:none;width:28px;height:28px;border-radius:50%;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:14px;font-weight:700;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.mc-help:hover,.mc-help:focus-visible{color:var(--text);border-color:var(--accent);outline:none}
+.modal.mc-info{max-width:560px}
+.mc-info-body{padding:6px 18px 18px;overflow:auto}
+.mc-info-ph{padding:12px 0;border-bottom:1px solid var(--border)}
+.mc-info-ph:last-child{border-bottom:0}
+.mc-info-t{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;color:var(--text)}
+.mc-info-w{margin-top:4px;font-size:12.5px;color:var(--muted)}
+.mc-info-w b{color:var(--text);font-weight:600}
+.mc-info-ph p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--text)}
 .mc-title{font-size:18px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
 .mc-title .mc-sub{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;font-weight:400;color:var(--dim);margin-left:10px;letter-spacing:0}
 /* Periodization Model: season phases, then the models; a model's explanation shows in a
@@ -8196,8 +8206,7 @@ main .panel,main .ap-head{animation:none}
 
 /* ═════════════ 6) WELLNESS + UYKU VE HRV ═════════════ */
 .wl2{display:flex;flex-direction:column;gap:14px}
-.wl2-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
-@media(max-width:1200px){.wl2-grid{grid-template-columns:minmax(0,1fr)}}
+.wl2-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}   /* Wellness Kaydı, then Uyku ve HRV beneath it */
 .wl2-grid>.panel{margin:0}
 .wl2-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .wl2-h h2{margin:0;font-size:16px}
@@ -15784,6 +15793,25 @@ function PeriodizationModelPanel({s,periods,set}){
     </div>
   </div>);
 }
+/* What each macrocycle phase is for — shown from the "?" on the Season Macrocycle card. */
+const PHASE_INFO=[
+  {id:'gp',tr:{t:'Genel Hazırlık',w:'Sezon öncesi hazırlığın ilk aşaması.',
+    d:'Temel kuvvet, aerobik dayanıklılık, mobilite ve hareket kalitesinin geliştirilmesi hedeflenir. Antrenman hacmi kademeli artırılarak daha yoğun yüklenmelere fiziksel altyapı oluşturulur.'},
+    en:{t:'General Preparation',w:'The first stage of pre-season preparation.',
+    d:'The aim is to develop base strength, aerobic endurance, mobility and movement quality. Training volume is raised gradually, building the physical foundation for heavier loading.'}},
+  {id:'sp',tr:{t:'Özel Hazırlık',w:'Sezon öncesi hazırlığın son aşaması.',
+    d:'Maksimal kuvvet, patlayıcı güç, sürat, çeviklik ve branşa özgü kondisyon geliştirilir. Antrenmanların özgüllüğü artırılarak sporcu müsabaka taleplerine hazırlanır.'},
+    en:{t:'Specific Preparation',w:'The last stage of pre-season preparation.',
+    d:'Maximal strength, explosive power, speed, agility and sport-specific conditioning are developed. Training becomes more specific, preparing the athlete for the demands of competition.'}},
+  {id:'comp',tr:{t:'Müsabaka',w:'Müsabaka sezonu boyunca.',
+    d:'Kazanılan fiziksel özelliklerin korunması ve performansın sürdürülmesi amaçlanır. Antrenman yükleri maç takvimine göre düzenlenerek yorgunluk ve toparlanma süreçleri yönetilir.'},
+    en:{t:'Competition',w:'Throughout the competitive season.',
+    d:'The aim is to maintain the physical qualities already gained and sustain performance. Training loads are arranged around the match calendar so fatigue and recovery can be managed.'}},
+  {id:'trans',tr:{t:'Geçiş',w:'Sezon sonu ve sezonlar arası.',
+    d:'Fiziksel ve psikolojik toparlanma ön plandadır. Antrenman yükleri azaltılarak aktif dinlenme ve bireysel eksikliklere yönelik çalışmalarla yeni sezona hazırlık desteklenir.'},
+    en:{t:'Transition',w:'End of season and between seasons.',
+    d:'Physical and psychological recovery comes first. Loads are reduced, and active rest plus work on individual weaknesses supports preparation for the new season.'}},
+];
 function SeasonPlan({team,updateTeam,periods,weeks}){
   const s=team.setup;
   const total=diffD(s.seasonStart,s.seasonEnd);
@@ -15842,6 +15870,9 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
   const athleteCount=(team.athletes||[]).length;
   /* Planned Microcycles: the whole season at once, or one month at a time. A week that
      straddles two months shows up under both, so no microcycle falls out of the monthly view. */
+  const[phInfoOpen,setPhInfoOpen]=useState(false);
+  useEffect(()=>{if(!phInfoOpen)return;const k=e=>{if(e.key==='Escape')setPhInfoOpen(false);};
+    window.addEventListener('keydown',k);return()=>window.removeEventListener('keydown',k);},[phInfoOpen]);
   const[mcView,setMcView]=useState('year');
   const[mcMonth,setMcMonth]=useState('');
   const months=useMemo(()=>monthTicks.map(d=>({k:fmt(d).slice(0,7),label:MN[d.getMonth()],year:d.getFullYear()})),[monthTicks]);
@@ -15925,7 +15956,8 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
       const ticks=[];let cur=new Date(parseD(winStart).getFullYear(),parseD(winStart).getMonth()+1,1);const endD=parseD(winEnd);
       while(cur<=endD){ticks.push(new Date(cur));cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);}
       return(<div className="panel mc-panel">
-        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div></div>
+        <div className="mc-head"><div className="mc-title">{L('Sezon Makrosiklüsü','Season Macrocycle')}<span className="mc-sub">{L(`${modelName} · ${periods.length} faz`,`${modelName} · ${periods.length} phases`)}</span></div>
+          <button className="mc-help" onClick={()=>setPhInfoOpen(true)} aria-label={L('Faz bilgisi','Phase info')} title={L('Faz bilgisi','Phase info')}>?</button></div>
         <div className="mc-gantt">
           <div className="mc-axis">
             <div/>
@@ -15935,7 +15967,7 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
             </div>
           </div>
           {periods.map((p,pi)=>{const l=pctOf(p.start),r=pctOf(p.end);const wk=Math.max(1,Math.round((diffD(p.start,p.end)+1)/7));
-            const nm=PHASE_NAME[p.id]||p.name,col=PHASE_COL[p.id]||'#64748b';return(
+            const nm=exLabel(PHASE_NAME[p.id]||p.name),col=PHASE_COL[p.id]||'#64748b';return(
             <div key={p.id} className="mc-row">
               <div className="mc-lbl" title={nm}>
                 <span className="mc-dot" style={{background:col}}/>
@@ -15949,6 +15981,20 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
               </div>
             </div>);})}
         </div>
+        {phInfoOpen&&<div className="modal-bg" onClick={()=>setPhInfoOpen(false)}>
+          <div className="modal mc-info" role="dialog" aria-label={L('Faz bilgisi','Phase info')} onClick={e=>e.stopPropagation()}>
+            <div className="modal-head"><h2 style={{margin:0,fontSize:18}}>{L('Sezon Fazları','Season Phases')}</h2>
+              <span style={{flex:1}}/><button className="x-btn" onClick={()=>setPhInfoOpen(false)}>✕</button></div>
+            <div className="mc-info-body">
+              {PHASE_INFO.map((ph,i)=>{const x=REPORT_LANG==='tr'?ph.tr:ph.en;return(
+                <div key={ph.id} className="mc-info-ph">
+                  <div className="mc-info-t"><span className="mc-dot" style={{background:PHASE_COL[ph.id]}}/>{i+1}. {x.t}</div>
+                  <div className="mc-info-w"><b>{L('Dönem','Period')}:</b> {x.w}</div>
+                  <p>{x.d}</p>
+                </div>);})}
+            </div>
+          </div>
+        </div>}
       </div>);
     })()}
     <div className="mc-extra">
@@ -17150,7 +17196,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 </div>
 <div class="cols">
   <div>
-    ${card(L('Antrenman Dağılımı','Session Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
+    ${card(L('Yük Dağılımı','Load Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
       `<span class="tot">${R.sesDist.total}<u>${L('antrenman','sessions')}</u></span>`,sesDist)}
     ${/* With the pain summary on its own page the left column would end short, so the
           load trend moves across to it: what the week trained, then how the load moved. */''}
@@ -17521,30 +17567,11 @@ function TeamInsights({days,athletes,refDate,setup}){
     {/* Three explicit columns, so Load Trend and the sRPE table can be told to fill the
         height their column is given and the board ends on one line at the bottom. Which
         card sits in which column is fixed rather than balanced: they are grouped by what
-        a coach reads together — the squad's shape on the left, the week's load in the
+        a coach reads together — the flagged athletes on the left, the week's load in the
         middle, the athlete-by-athlete ranking on its own. Below ~1000px the columns wrap
         and the same grouping stacks. */}
     <div className="tib-grid">
       <div className="tib-col">
-      {/* ---- Session distribution ---- */}
-      <div className="tib-card" style={card()}>
-        <div className="tib-chead">
-          <div><div className="tib-ct">{L('Antrenman Dağılımı','Session Distribution')}</div>
-            <div className="tib-cs">{L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained')}</div></div>
-          <span className="tib-tot">{sesDist.total}<u>{L('antrenman','sessions')}</u></span>
-        </div>
-        {sesDist.rows.length===0
-          ?<div className="tib-none">{L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>
-          :<div className="tib-sd">
-            {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
-              <span className="l"><i style={{background:r.c}}/>{TIB_FOCUS_LABEL(r)}</span>
-              <span className="n">{r.n}</span>
-              <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
-              <span className="m">{r.min} {L('dk','min')}</span>
-            </div>)}
-          </div>}
-      </div>
-
       {/* ---- Flagged athletes ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
@@ -17572,28 +17599,23 @@ function TeamInsights({days,athletes,refDate,setup}){
       </div>
 
       <div className="tib-col">
-      {/* ---- Planned vs actual ---- */}
+      {/* ---- Session distribution ---- */}
       <div className="tib-card" style={card()}>
         <div className="tib-chead">
-          <div><div className="tib-ct">{L('Planlanan / Gerçekleşen','Planned vs Actual')}</div>
-            <div className="tib-cs">{L('Hedef RPE × dakika, geri dönen yüke karşı','Target RPE × minutes, against the load that came back')}</div></div>
-          {pva.d!=null&&<span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span>}
+          <div><div className="tib-ct">{L('Yük Dağılımı','Load Distribution')}</div>
+            <div className="tib-cs">{L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained')}</div></div>
+          <span className="tib-tot">{sesDist.total}<u>{L('antrenman','sessions')}</u></span>
         </div>
-        {pva.live.length===0
-          ?<div className="tib-none">{L('Bu hafta için henüz plan ya da kayıt yok.','Nothing planned or logged on this week yet.')}</div>
-          :<div className="tib-pv"><table className="tib-tbl">
-            <thead><tr><th>{L('Gün','Day')}</th><th className="r">{L('Planlanan','Planned')}</th><th className="r">{L('Gerçekleşen','Actual')}</th><th className="r">Δ</th></tr></thead>
-            <tbody>{pva.rows.map(r=>(r.planned>0||r.actual>0)&&<tr key={r.k}>
-              <td className="d">{r.label}</td>
-              <td className="r"><span className="pl">{r.planned?tibNum(r.planned):'—'}</span>
-                <span className="tib-mini"><i className="p" style={grow(r.planned/pva.max*100)}/><i className="a" style={grow(r.actual/pva.max*100)}/></span></td>
-              <td className="r ac">{r.actual?tibNum(r.actual):'—'}</td>
-              <td className="r"><span className="tib-d" style={{color:tibDevCol(r.d)}}>{tibPct(r.d)}</span></td>
-            </tr>)}</tbody>
-            <tfoot><tr><td className="d">{L('Hafta','Week')}</td><td className="r">{tibNum(pva.pT)}</td>
-              <td className="r ac">{pva.aT?tibNum(pva.aT):'—'}</td>
-              <td className="r"><span className="tib-d" style={{color:tibDevCol(pva.d)}}>{tibPct(pva.d)}</span></td></tr></tfoot>
-          </table></div>}
+        {sesDist.rows.length===0
+          ?<div className="tib-none">{L('Bu haftanın planında henüz antrenman yok.','No sessions on this week’s plan yet.')}</div>
+          :<div className="tib-sd">
+            {sesDist.rows.map(r=><div key={r.id} className="tib-sd-r">
+              <span className="l"><i style={{background:r.c}}/>{TIB_FOCUS_LABEL(r)}</span>
+              <span className="n">{r.n}</span>
+              <span className="tib-bar"><i style={{...grow(r.n/sesDist.max*100),background:r.c}}/></span>
+              <span className="m">{r.min} {L('dk','min')}</span>
+            </div>)}
+          </div>}
       </div>
 
       {/* ---- Week-to-week trend ---- */}
@@ -27917,12 +27939,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   // Header snapshot metrics — at the athlete's most recent logged date
   const apRef=athLatestDate(ath);
-  const apL7=athLoadSum(ath,fmt(addD(parseD(apRef),-6)),apRef);
   const apAcwr=athACWR(ath,apRef);
   const apRd=athWellnessVal(ath,'readiness',apRef);
-  const apRhr=athWellnessVal(ath,'RHR',apRef);
   const apEntries=(ath.srpeLog||[]).length;
   const apCheckins=(ath.wellness||[]).length;
+  const apAge=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  // Same 7-day monotony the risk alerts read, at the same reference date as ACWR.
+  const apMono=weekMono(athTrend(ath,apRef,7).map(v=>({load:v}))).monotony;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   /* Six tabs. Load has no tab of its own: the athlete's load is read where it is made —
      on their calendar, day by day, with the week's totals and monotony above it. */
@@ -27955,10 +27978,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
         </div>
       </div>
       <div className="ap-stats">
-        <div className="ap-stat"><div className="k">{L('Hazır Oluş','Readiness')}</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
-        <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
-        <div className="ap-stat"><div className="k">{L('7g yük','7d load')}</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
+        <div className="ap-stat"><div className="k">{L('Yaş','Age')}</div><div className="v">{apAge!=null?apAge:'—'}</div></div>
+        <div className="ap-stat"><div className="k">Readiness</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
+        <div className="ap-stat"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:monoZoneOf(apMono).c}}>{apMono?<CountUp value={apMono} decimals={2}/>:'—'}</div></div>
       </div>
       {/* The athlete on paper, for the people the coach reports to: profile, the head
           coach's observations, the athletic profile and the injury record, A4 portrait. */}
@@ -28697,9 +28720,9 @@ function airRadarSvg(items,vals){
    a dot on its date, the dates along the bottom (all of them when they fit, otherwise the
    first, the middle and the last). */
 function airLineSvg(pts,color){
-  const W=230,H=96,l=26,r=10,t=14,b=20,iw=W-l-r,ih=H-t-b;
+  const W=380,H=150,l=34,r=20,t=22,b=26,iw=W-l-r,ih=H-t-b;
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-  if(!pts.length)return`<svg viewBox="0 0 ${W} ${H}" class="lc"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="9" fill="#9aa1ac">${esc(L('Ölçüm yok','No measurement'))}</text></svg>`;
+  if(!pts.length)return`<svg viewBox="0 0 ${W} ${H}" class="lc"><text x="${W/2}" y="${H/2}" text-anchor="middle" font-size="11" fill="#9aa1ac">${esc(L('Ölçüm yok','No measurement'))}</text></svg>`;
   const vs=pts.map(p=>p.v);let lo=Math.min(...vs),hi=Math.max(...vs);
   if(hi-lo<1e-9){lo-=1;hi+=1;}else{const pad=(hi-lo)*.18;lo-=pad;hi+=pad;}
   const t0=parseD(pts[0].date).getTime(),t1=parseD(pts[pts.length-1].date).getTime();
@@ -28708,16 +28731,25 @@ function airLineSvg(pts,color){
   const nf=v=>String(+Number(v).toFixed(1));
   let o=`<svg viewBox="0 0 ${W} ${H}" class="lc">`;
   [0,.5,1].forEach(f=>{const y=t+ih*f;o+=`<line x1="${l}" y1="${y.toFixed(1)}" x2="${W-r}" y2="${y.toFixed(1)}" stroke="#e2e5ea" stroke-width="1"/>`+
-    `<text x="${l-4}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="7.5" fill="#9aa1ac">${nf(hi-(hi-lo)*f)}</text>`;});
-  if(pts.length>1)o+=`<polyline points="${pts.map(p=>`${X(p).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-  const showV=pts.length<=6;
+    `<text x="${l-5}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa1ac">${nf(hi-(hi-lo)*f)}</text>`;});
+  if(pts.length>1)o+=`<polyline points="${pts.map(p=>`${X(p).toFixed(1)},${Y(p.v).toFixed(1)}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  /* Every value is written on its point. Where measurements sit close together their
+     labels take turns underneath and above (then stack a row further out), so a run of
+     near dates stays legible. */
+  const near=(a,b)=>!!a&&!!b&&Math.abs(X(a)-X(b))<26;
+  let crowd=0;
   pts.forEach((p,i)=>{const x=X(p),y=Y(p.v),last=i===pts.length-1;
-    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?3.2:2.4}" fill="${last?color:'#fff'}" stroke="${color}" stroke-width="1.6"/>`;
-    if(showV||last)o+=`<text x="${x.toFixed(1)}" y="${(y-5.5).toFixed(1)}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#0f1720">${nf(p.v)}</text>`;});
-  const lab=pts.length<=4?pts.map((_,i)=>i):[0,Math.floor((pts.length-1)/2),pts.length-1];
-  lab.forEach(i=>{const p=pts[i],x=X(p);const an=pts.length<2?'middle':i===0?'start':i===pts.length-1?'end':'middle';
+    crowd=near(pts[i-1],p)?crowd+1:0;
+    const dy=(crowd||near(p,pts[i+1]))?[16,-8,28,-20][Math.min(crowd,3)]:-8;
+    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last?4.4:3.4}" fill="${last?color:'#fff'}" stroke="${color}" stroke-width="2"/>`;
+    const lx=Math.min(W-12,Math.max(l-6,x));
+    o+=`<text x="${lx.toFixed(1)}" y="${(y+dy).toFixed(1)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f1720">${nf(p.v)}</text>`;});
+  /* Every date that has room: one is skipped when it would sit on top of the one before. */
+  let prevX=-1e9;
+  pts.forEach((p,i)=>{const x=X(p);if(x-prevX<52)return;
+    prevX=x;const an=pts.length<2?'middle':i===0?'start':i===pts.length-1?'end':'middle';
     const[y_,m_,d_]=p.date.split('-');
-    o+=`<text x="${x.toFixed(1)}" y="${H-5}" text-anchor="${an}" font-size="7.5" fill="#5e6774">${d_}.${m_}.${y_.slice(2)}</text>`;});
+    o+=`<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="${an}" font-size="10" fill="#5e6774">${d_}.${m_}.${y_.slice(2)}</text>`;});
   return o+'</svg>';
 }
 /* The joint map with every rated joint coloured, as markup for the printed sheet. */
@@ -28908,14 +28940,14 @@ section{margin-top:12px}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-.four{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.four{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
 .pg2{break-before:page;page-break-before:always}
-.card.an{padding:6px 8px 4px}
+.card.an{padding:9px 12px 6px}
 .an-h{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
 .an-h .pk{margin-bottom:0}
 .an-h .pk em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-v{font-size:13px;font-weight:700}
-.an-v i{font-style:normal;font-size:8.5px;font-weight:600;color:var(--mu);margin-left:4px}
+.an-v{font-size:17px;font-weight:700}
+.an-v i{font-style:normal;font-size:10px;font-weight:600;color:var(--mu);margin-left:4px}
 .lc{width:100%;height:auto;display:block}
 .txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
 .none,.txt.none{color:var(--dim);font-size:10px}
@@ -28994,17 +29026,19 @@ td.r,th.r{text-align:right}
 .sh figcaption{font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mu);font-weight:600;margin-top:2px}
 .pt .txt{font-size:9px;line-height:1.38}
 .pp{margin:0 0 3px 13px;font-size:9px;line-height:1.35}
-.jb{display:grid;grid-template-columns:78mm 1fr;gap:10px;align-items:start}
+.jb{display:grid;grid-template-columns:54mm 1fr;gap:10px;align-items:start}
 .jbf{position:relative;border-radius:9px;overflow:hidden;background:#11151b;line-height:0}
 .jbf img{width:100%;height:auto;display:block}
 .jbf svg{position:absolute;inset:0;width:100%;height:100%}
 .jbf .cap{position:absolute;bottom:6px;transform:translateX(-50%);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:#cfd4db;line-height:1}
-.jbt td,.jbt th{padding:3.5px 5px}
+.jbt td,.jbt th{padding:1.5px 4px;line-height:1.25}
+.jbt td{font-size:8.5px}
+.jbt th{font-size:7.5px}
 .jbt td.mid{text-align:left}
-.lv{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:9.5px}
-.lv i{width:7px;height:7px;border-radius:50%}
-.need{font-size:9px;font-weight:600}
-.jn{font-size:8.5px;color:var(--mu)}
+.lv{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:8.5px}
+.lv i{width:6px;height:6px;border-radius:50%}
+.need{font-size:8.5px;font-weight:600}
+.jn{font-size:7.5px;color:var(--mu)}
 .lane .cnt{color:var(--mu);font-weight:600}
 .pd2{font-size:8.8px;color:var(--mu);margin-bottom:5px}
 .ql{list-style:none;display:flex;flex-direction:column;gap:3px}
