@@ -158,8 +158,9 @@ function printAthleteInfo(ath,setup,exercises){
       </div></div>
     <div class="blk">${subH(L('Atletik Gelişim Öncelikleri','Athletic Development Priorities'))}<div class="three">${pri}</div></div>
   </section>`;
-  /* ── 4 · Anthropometric tracking ── one table: a row per measurement date, a column per
-     measure, each value with its change from that measure's previous reading */
+  /* ── 4 · Anthropometric tracking ── one slim table per measure: its dates along the top,
+     the values straight underneath, each with its change from the reading before. A measure
+     with more dates than fit a row continues on a second pair of rows. */
   const anthroSeries=k=>{const byDate={};
     [...(ath.tests||[]),...(ath.measurements||[])].forEach(x=>{const v=x&&x[k];if(!x||!x.date||v===''||v==null||isNaN(Number(v)))return;byDate[x.date]=Number(v);});
     return Object.keys(byDate).sort().map(d=>({date:d,v:byDate[d]}));};
@@ -167,19 +168,22 @@ function printAthleteInfo(ath,setup,exercises){
     {k:'wingspan',tr:'Kulaç',en:'Wingspan',u:'cm',c:'#7c3aed'},{k:'bodyFat',tr:'Yağ Oranı',en:'Body Fat',u:'%',c:'#f97316'}];
   const anSer=ANTHRO.map(m=>({...m,pts:anthroSeries(m.k)}));
   const anDates=[...new Set(anSer.flatMap(m=>m.pts.map(p=>p.date)))].sort();
-  const anDelta=d=>d?`<i>${d>0?'+':''}${d}</i>`:'';
-  const anRows=anDates.map(d=>`<tr><td class="b">${fd(d)}</td>${anSer.map(m=>{const i=m.pts.findIndex(p=>p.date===d);
-    if(i<0)return'<td class="r sw">—</td>';
-    const dv=i>0?+(m.pts[i].v-m.pts[i-1].v).toFixed(1):0;
-    return`<td class="r"><b>${num(m.pts[i].v)}</b>${anDelta(dv)}</td>`;}).join('')}</tr>`).join('');
-  const anTotal=`<tr class="tot"><td class="b">${L('İlk → son değişim','First → latest change')}</td>${anSer.map(m=>{
-    const n=m.pts.length;if(n<2)return'<td class="r sw">—</td>';
-    const dv=+(m.pts[n-1].v-m.pts[0].v).toFixed(1);return`<td class="r">${dv>0?'+':''}${dv}</td>`;}).join('')}</tr>`;
+  const AN_PER_ROW=10;
+  const anTable=m=>{const n=m.pts.length;if(!n)return'';
+    const tot=n>1?+(m.pts[n-1].v-m.pts[0].v).toFixed(1):null;
+    const chunks=[];for(let i=0;i<n;i+=AN_PER_ROW)chunks.push(m.pts.slice(i,i+AN_PER_ROW).map((p,j)=>({...p,i:i+j})));
+    const cols=Math.min(n,AN_PER_ROW);
+    const lbl=`<th class="an-l" rowspan="${chunks.length*2}" style="border-left-color:${m.c}">${esc(L(m.tr,m.en))} <em>${m.u}</em>${tot!=null?`<span>${tot>0?'+':''}${tot} ${L('toplam','total')}</span>`:''}</th>`;
+    const pad=c=>'<td></td>'.repeat(cols-c.length);
+    const rows=chunks.map((c,ci)=>`<tr class="an-d">${ci?'':lbl}${c.map(p=>`<th>${p.date.slice(8)}.${p.date.slice(5,7)}.${p.date.slice(2,4)}</th>`).join('')}${pad(c).replace(/td/g,'th')}</tr>
+      <tr class="an-v">${c.map(p=>{const dv=p.i>0?+(p.v-m.pts[p.i-1].v).toFixed(1):0;
+        return`<td><b>${num(p.v)}</b>${dv?`<i>${dv>0?'+':''}${dv}</i>`:''}</td>`;}).join('')}${pad(c)}</tr>`).join('');
+    return`<table class="an-t">${rows}</table>`;};
   const s4=`<section>
     ${secH(4,L('Antropometrik Ölçüm Takibi','Anthropometric Tracking'),anDates.length
       ?L(`${anDates.length} ölçüm tarihi · ${fd(anDates[0])} – ${fd(anDates[anDates.length-1])}`,`${anDates.length} measurement dates · ${fd(anDates[0])} – ${fd(anDates[anDates.length-1])}`)
       :L('Boy, kilo, kulaç ve yağ oranı zaman içinde','Height, weight, wingspan and body fat over time'))}
-    ${anDates.length?`<div class="blk"><table class="an-t"><tr><th>${L('Ölçüm Tarihi','Date')}</th>${anSer.map(m=>`<th class="r">${esc(L(m.tr,m.en))} <em>${m.u}</em></th>`).join('')}</tr>${anRows}${anTotal}</table></div>`
+    ${anDates.length?`<div class="blk an-w">${anSer.map(anTable).join('')}</div>`
       :`<div class="card none">${L('Kayıtlı antropometrik ölçüm yok.','No anthropometric measurements recorded.')}</div>`}
   </section>`;
   /* ── 5 · Injuries ── */
@@ -235,12 +239,16 @@ section{margin-top:12px}
 .card{border:1px solid var(--ln);border-radius:9px;padding:9px 11px;background:#fff;break-inside:avoid;page-break-inside:avoid}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
-.an-t td{font-size:11.5px;padding:7px 10px}
-.an-t th{padding:7px 10px}
-.an-t th em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
-.an-t td b{font-size:13px;font-weight:700}
-.an-t td i{font-style:normal;font-size:9px;font-weight:600;margin-left:6px;color:var(--mu)}
-.an-t tr.tot td{background:var(--soft);font-weight:700;border-top:1px solid var(--ln2)}
+.an-w{display:flex;flex-direction:column;gap:6px}
+.an-t{table-layout:fixed;border:1px solid var(--ln);border-radius:8px;border-collapse:separate;border-spacing:0;overflow:hidden;break-inside:avoid;page-break-inside:avoid}
+.an-t th,.an-t td{padding:2px 4px;text-align:center;border-bottom:0;background:#fff}
+.an-t .an-d th{font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);background:var(--soft);padding-top:3px}
+.an-t .an-v td{font-size:10px;padding-bottom:4px}
+.an-t .an-v b{font-size:11.5px;font-weight:700}
+.an-t .an-v i{font-style:normal;font-size:7.5px;font-weight:600;color:var(--mu);margin-left:3px}
+.an-t th.an-l{width:25mm;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:#fff;border-left:4px solid;border-right:1px solid var(--ln);padding:4px 7px;vertical-align:middle}
+.an-t th.an-l em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--dim);font-weight:500}
+.an-t th.an-l span{display:block;font-size:7.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--mu);margin-top:2px}
 .txt{white-space:pre-wrap;font-size:10.5px;color:var(--ink)}
 .none,.txt.none{color:var(--dim);font-size:10px}
 .kvs{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px}
