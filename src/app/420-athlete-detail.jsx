@@ -54,12 +54,13 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
   const initials=(ath.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   // Header snapshot metrics — at the athlete's most recent logged date
   const apRef=athLatestDate(ath);
-  const apL7=athLoadSum(ath,fmt(addD(parseD(apRef),-6)),apRef);
   const apAcwr=athACWR(ath,apRef);
   const apRd=athWellnessVal(ath,'readiness',apRef);
-  const apRhr=athWellnessVal(ath,'RHR',apRef);
   const apEntries=(ath.srpeLog||[]).length;
   const apCheckins=(ath.wellness||[]).length;
+  const apAge=ath.dateOfBirth?(()=>{const b=parseD(ath.dateOfBirth);const t=new Date();let y=t.getFullYear()-b.getFullYear();if(t<new Date(t.getFullYear(),b.getMonth(),b.getDate()))y--;return y;})():null;
+  // Same 7-day monotony the risk alerts read, at the same reference date as ACWR.
+  const apMono=weekMono(athTrend(ath,apRef,7).map(v=>({load:v}))).monotony;
   const apRcls=apRd==null?'na':apRd>=4?'':apRd>=3?'warn':'bad';
   /* Six tabs. Load has no tab of its own: the athlete's load is read where it is made —
      on their calendar, day by day, with the week's totals and monotony above it. */
@@ -92,10 +93,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
         </div>
       </div>
       <div className="ap-stats">
-        <div className="ap-stat"><div className="k">{L('Hazır Oluş','Readiness')}</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
-        <div className="ap-stat"><div className="k">RHR</div><div className="v">{apRhr!=null?<CountUp value={apRhr} decimals={0}/>:'—'}<small>bpm</small></div></div>
-        <div className="ap-stat"><div className="k">{L('7g yük','7d load')}</div><div className="v" style={{color:'#3b6ef5'}}>{apL7?<CountUp value={apL7} format={x=>Math.round(x).toLocaleString('en-US').replace(/,/g,'.')}/>:'—'}<small>AU</small></div></div>
+        <div className="ap-stat"><div className="k">{L('Yaş','Age')}</div><div className="v">{apAge!=null?apAge:'—'}</div></div>
+        <div className="ap-stat"><div className="k">Readiness</div><div className="v" style={{color:readyColor(apRd)}}>{apRd!=null?<CountUp value={apRd} decimals={1}/>:'—'}<small>/5</small></div></div>
         <div className="ap-stat"><div className="k">ACWR</div><div className="v" style={{color:acwrZoneOf(apAcwr).c}}>{apAcwr?<CountUp value={apAcwr} decimals={2}/>:'—'}</div></div>
+        <div className="ap-stat"><div className="k">{L('Monotoni','Monotony')}</div><div className="v" style={{color:monoZoneOf(apMono).c}}>{apMono?<CountUp value={apMono} decimals={2}/>:'—'}</div></div>
       </div>
       {/* The athlete on paper, for the people the coach reports to: profile, the head
           coach's observations, the athletic profile and the injury record, A4 portrait. */}

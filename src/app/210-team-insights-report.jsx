@@ -269,7 +269,7 @@ body{font-family:'Space Grotesk',Arial,sans-serif;color:var(--text);font-size:10
 </div>
 <div class="cols">
   <div>
-    ${card(L('Antrenman Dağılımı','Session Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
+    ${card(L('Yük Dağılımı','Load Distribution'),L('Hafta hangi antrenman odaklarını çalıştı','Which session focus the week trained'),
       `<span class="tot">${R.sesDist.total}<u>${L('antrenman','sessions')}</u></span>`,sesDist)}
     ${/* With the pain summary on its own page the left column would end short, so the
           load trend moves across to it: what the week trained, then how the load moved. */''}
