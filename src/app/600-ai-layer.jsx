@@ -345,7 +345,7 @@ const DI_MOVE_PATTERNS=[
       ['forearm_grip','Ön kol / Kavrama','Forearm / Grip'],['calf','Baldır','Calf'],['tibialis','Tibialis','Tibialis'],
       ['hip_isolation','Kalça izolasyonu','Hip isolation'],['knee_isolation','Diz izolasyonu','Knee isolation'],
       ['neck','Boyun','Neck'],['scapula','Skapula','Scapula'],['rotator_cuff','Rotator cuff','Rotator cuff'],
-      ['adductor_abductor','Adduktor / Abduktor','Adductor / Abductor']]},
+      ['adductor','Adduktor','Adductor'],['abductor','Abduktor','Abductor']]},
     {k:'side',ai:'position',label:['Duruş','Position'],opts:[['standing','Ayakta','Standing'],['seated','Oturarak','Seated'],
       ['lying','Yatarak','Lying'],['kneeling','Diz üstü','Kneeling'],['half_kneeling','Tek diz üstü','Half-kneeling'],
       ['hanging','Asılı','Hanging'],['supported','Destekli','Supported']]},
