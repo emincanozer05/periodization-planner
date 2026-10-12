@@ -92,7 +92,7 @@ function loadApp() {
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diAthleteSnapshot', 'diBriefForAI', 'diParseExternalProgram', 'diExtPhase', 'DI_EXT_SCHEMA', 'diSquadSnapshot', 'diWriteReviews', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
-    'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads'];
+    'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -2070,6 +2070,13 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const rd = A.scRead(A.SC_TECH, { handling: { s: 4 }, shooting: { s: 2 }, passing: { s: 3 }, defOn: { s: '' } });
     check('Teknik-Taktik: ortalama, güçlü yönler (3–4) ve gelişim alanları (1–2)',
       rd.avg === 3 && rd.strong.map(r => r.it.k).join() === 'handling,passing' && rd.develop.map(r => r.it.k).join() === 'shooting');
+    /* Kart rengi seçmek blok başlığını boyar; blkTint tanımsız bir yardımcıya düşerse
+       seçim anında ekran kararır. Koyu renkte beyaz yazı, açık renkte koyu yazı. */
+    let tDark = null, tLight = null, tNone = null, tErr = '';
+    try { tDark = A.blkTint('#0070cc'); tLight = A.blkTint('#e0b020'); tNone = A.blkTint(''); } catch (e) { tErr = String(e); }
+    check('Kart rengi: blok başlığı tonu hatasız hesaplanır (koyu → beyaz yazı, açık → koyu yazı)',
+      !tErr && tDark && tDark.cls === ' tinted' && tDark.style['--blk-c'] === '#0070cc' &&
+      tLight && tLight.cls === ' tinted lt' && tNone && tNone.cls === '', tErr);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
