@@ -39621,7 +39621,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
   });
 }
 
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calOn,setCalOn,loadOn,setLoadOn}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
   const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
   const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
   const panelRef=useRef(null);
@@ -39630,7 +39630,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
   const setOpen=v=>{setOpenRaw(v);try{localStorage.setItem('coachos_di_open',v?'1':'0');}catch(e){}};
-  /* Which face of the panel is up: today and the brief, or the programme. The turn is
+  /* Which face of the panel is up: today and the brief, the programme, the athlete's
+     calendar or its load distribution — the last two are the header's "Takvim" and
+     "Yük Dağılımı", opened over the same area instead of under the card. The turn is
      two halves — the face swings out, the other swings in — so the swap happens at the
      point where the card is edge-on and neither face is readable. */
   const[side,setSide]=useState('brief');
@@ -39777,16 +39779,15 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
       <div className="di-hdacts">
-        {/* The athlete's calendar and its load distribution live under the panel; they
-            are shown on request so the card does not carry them all the time. */}
-        {setCalOn&&<button type="button" className={'di-viewbtn'+(calOn?' on':'')} aria-pressed={!!calOn}
-          onClick={()=>setCalOn(!calOn)}
-          title={calOn?L('Sporcunun takvimini gizle','Hide the athlete\'s calendar'):L('Sporcunun takvimini göster','Show the athlete\'s calendar')}>
-          <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
-        {setLoadOn&&<button type="button" className={'di-viewbtn'+(loadOn?' on':'')} aria-pressed={!!loadOn}
-          onClick={()=>setLoadOn(!loadOn)}
-          title={loadOn?L('Yük dağılımını gizle','Hide the load distribution'):L('Yük dağılımını göster','Show the load distribution')}>
-          <i>◔</i><span>{L('Yük Dağılımı','Load Distribution')}</span></button>}
+        {open&&calendar&&<>
+          <button type="button" className={'di-viewbtn'+(side==='cal'?' on':'')} aria-pressed={side==='cal'}
+            onClick={()=>flipTo(side==='cal'?'brief':'cal')}
+            title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
+            <i>▦</i><span>{L('Takvim','Calendar')}</span></button>
+          <button type="button" className={'di-viewbtn'+(side==='load'?' on':'')} aria-pressed={side==='load'}
+            onClick={()=>flipTo(side==='load'?'brief':'load')}
+            title={side==='load'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, yük dağılımını göster','Turn the card over to the load distribution')}>
+            <i>◔</i><span>{L('Yük Dağılımı','Load Distribution')}</span></button></>}
         {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
           onClick={()=>flipTo(onProg?'brief':'prog')}
           title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
@@ -39810,7 +39811,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
     </div>
     {open&&<div className={'di-face'+(flip?' '+flip:'')}>
-    {!onProg&&<>
+    {side==='brief'&&<>
 
     <DiSection n="1" title={date===fmt(today)?L('Bugünün tablosu','Today at a glance')
         :L(`${fd(date)} tablosu`,`${fd(date)} at a glance`)}
@@ -39930,6 +39931,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
     </DiSection>}
 
+    {(side==='cal'||side==='load')&&calendar&&React.cloneElement(calendar,{showCal:side==='cal',showLoad:side==='load'})}
+
     {onProg&&!program&&<div className="di-hold sm">
       {L('Bu sporcu için henüz bir program yüklenmedi — "Sporcu Bilgilerini Al" ile veriyi al, yapay zekânın yazdığı programı "AI Programını Yükle" ile yapıştır. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
          'No programme has been loaded for this athlete yet — take the data with "Get athlete data" and paste the model\'s programme with "Load AI programme". Until one is approved, this page puts nothing on their calendar.')}
@@ -39941,21 +39944,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   </div>);
 }
 
-/* A per-device on/off remembered under its own key, like the panel's fold. */
-function useDevFlag(key){
-  const[on,setRaw]=useState(()=>{try{return localStorage.getItem(key)==='1';}catch(e){return false;}});
-  const set=v=>{setRaw(v);try{localStorage.setItem(key,v?'1':'0');}catch(e){}};
-  return[on,set];
-}
-
 function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const a=plan.ath;
-  /* Calendar and load distribution are off until asked for from the panel's header
-     (both buttons), so an open card is the panel alone. With no panel there is no header
-     to ask from, so the calendar stays up. */
-  const[calOn,setCalOn]=useDevFlag('coachos_iv_cal');
-  const[loadOn,setLoadOn]=useDevFlag('coachos_iv_load');
-  const view={calOn:!panel||calOn,setCalOn,loadOn:!panel||loadOn,setLoadOn};
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
@@ -40012,11 +40002,12 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
       <span className="t">{plan.notes[0].date?`${fd(plan.notes[0].date)} — `:''}{plan.notes[0].text}</span>
       {plan.notes.length>1&&<span className="iv-dim">+{plan.notes.length-1} {L('tane daha','more')}</span>}
     </div>}
-    {/* The card opens straight onto this athlete's own calendar: the program is written
-        and edited there, on the session itself, so there is one place it lives. */}
+    {/* The program is written and edited on this athlete's own calendar, on the session
+        itself, so there is one place it lives. With the panel, that calendar and its load
+        distribution are two more faces of the panel's card (header buttons); without one
+        there is nothing to turn, so the calendar is simply shown. */}
     {open&&<div className="iv-card-body iv-calbody">
-      {panel&&React.cloneElement(panel,view)}
-      {React.cloneElement(calendar,{showCal:view.calOn,showLoad:view.loadOn})}</div>}
+      {panel?React.cloneElement(panel,{calendar}):calendar}</div>}
   </div>);
 }
 
