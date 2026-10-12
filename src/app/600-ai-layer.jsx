@@ -313,7 +313,7 @@ const DI_MOVE_PATTERNS=[
   diArmPattern('vertical_push','Dikey itiş','Vertical push',['Push']),
   diArmPattern('horizontal_pull','Yatay çekiş','Horizontal pull',['Pull']),
   diArmPattern('vertical_pull','Dikey çekiş','Vertical pull',['Pull']),
-  {id:'carry',label:['Taşıma (carry)','Carry'],vocab:['Carry'],facets:[
+  {id:'carry',label:['Carry','Carry'],vocab:['Carry'],facets:[
     {k:'type',label:['Tür','Type'],opts:[['side','Yanda taşıma','Side (suitcase / farmer) carry'],
       ['front_rack','Front rack taşıma','Front rack carry'],['overhead','Baş üstü taşıma','Overhead carry'],
       ['goblet','Goblet taşıma','Goblet carry'],['bear_hug','Bear-hug taşıma','Bear-hug carry'],['mixed','Karma taşıma','Mixed carry']]},
@@ -337,6 +337,35 @@ const DI_MOVE_PATTERNS=[
     {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
     DI_ACTION_FACET_HOLD,
   ]},
+  /* Accessory work has no movement_pattern of its own — a curl, a calf raise, a neck
+     isometric are filed under whatever pattern fits — so its vocabulary is empty: it is
+     matched on its coach_pattern tag only, and picking it opens no pain-closed pattern. */
+  {id:'accessory',label:['Aksesuar','Accessory'],vocab:[],facets:[
+    {k:'type',label:['Tür','Type'],opts:[['shoulder','Omuz','Shoulder'],['arm','Kol','Arm'],
+      ['forearm_grip','Ön kol / Kavrama','Forearm / Grip'],['calf','Baldır','Calf'],['tibialis','Tibialis','Tibialis'],
+      ['hip_isolation','Kalça izolasyonu','Hip isolation'],['knee_isolation','Diz izolasyonu','Knee isolation'],
+      ['neck','Boyun','Neck'],['scapula','Skapula','Scapula'],['rotator_cuff','Rotator cuff','Rotator cuff'],
+      ['adductor_abductor','Adduktor / Abduktor','Adductor / Abductor']]},
+    {k:'side',ai:'position',label:['Duruş','Position'],opts:[['standing','Ayakta','Standing'],['seated','Oturarak','Seated'],
+      ['lying','Yatarak','Lying'],['kneeling','Diz üstü','Kneeling'],['half_kneeling','Tek diz üstü','Half-kneeling'],
+      ['hanging','Asılı','Hanging'],['supported','Destekli','Supported']]},
+    {k:'direction',label:['Yön','Direction'],opts:[['forward','Öne','Forward'],['backward','Arkaya','Backward'],
+      ['lateral','Yana','Lateral'],['up','Yukarı','Up'],['down','Aşağı','Down'],['rotation','Rotasyon','Rotation'],
+      ['multi','Çok yönlü','Multi-directional'],['na','Uygulanamaz','Not applicable']]},
+    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
+    DI_ACTION_FACET,
+  ]},
+];
+/* The table the picker draws: one column per facet kind, the same five for every
+   pattern. A pattern's facet sits in the column of its kind (the core's task is its
+   type, every side / stance / load-distribution facet is its stance); a pattern with
+   no facet of a kind leaves that cell empty. */
+const DI_MOVE_COLS=[
+  {ks:['type','task'],label:['Tür','Type']},
+  {ks:['side'],label:['Duruş','Stance']},
+  {ks:['direction'],label:['Yön','Direction']},
+  {ks:['goal'],label:['Kuvvet hedefi','Strength goal']},
+  {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
@@ -847,7 +876,9 @@ function diMovePatternsForAI(list){
   return(list||[]).map(p=>{
     const row=diMoveRow(p.id);
     if(!row)return null;
-    const o={id:p.id,pattern:L(row.label[0],row.label[1]),movement_pattern_values:diMoveVocab(p)};
+    const vocab=diMoveVocab(p);
+    const o={id:p.id,pattern:L(row.label[0],row.label[1])};
+    if(vocab.length)o.movement_pattern_values=vocab;
     row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai||DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
     /* The muscle action is always written, picked or not: an empty one is said out loud
        rather than left off, so the export shows the coach did not set it. */
@@ -861,8 +892,8 @@ function diBriefForAI(i){
     priorities:i.priorities.map(diPrioLabel),
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
-      'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values. '+
-      'Each filter given (type, stance, stance_support, side_support, load_distribution, direction, strength_goal, task, muscle_action_emphasis) carries ONE value and binds that exercise: '+
+      'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values (a pattern without movement_pattern_values — accessory — takes whichever movement_pattern fits the exercise). '+
+      'Each filter given (type, stance, stance_support, side_support, load_distribution, position, direction, strength_goal, task, muscle_action_emphasis) carries ONE value and binds that exercise: '+
       'the exercise must be exactly that value. A filter that is not given — or muscle_action_emphasis "not selected" — is your choice. strength_goal sets how the exercise is dosed '+
       '(sets, reps, load, tempo, rest). muscle_action_emphasis sets the muscle action the exercise emphasises, and its tempo and description must show it: '+
       'standard (an ordinary controlled tempo, no phase singled out), '+
@@ -1463,7 +1494,7 @@ function validateProgram(program,ctx){
       if(hit){
         taken.add(hit);
         const pat=patOf(hit);
-        if(pat&&!vocab.includes(pat))
+        if(pat&&vocab.length&&!vocab.includes(pat))
           S(22,`"${hit.name}" ${tr} paterni için yazılmış ama hareket paterni ${pat} — beklenen: ${vocab.join(' / ')}.`,
             `"${hit.name}" is written for the ${en} pattern but filed as ${pat} — expected ${vocab.join(' / ')}.`);
         return;
