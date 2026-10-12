@@ -17939,6 +17939,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
      and no portal — and the panel that just opened is scrolled to, because in place it
      can land below the fold of the card it belongs to. */
   const layer=node=>inline?node:ReactDOM.createPortal(node,document.body);
+  /* Inline, an open session or day editor TAKES the calendar's place — the week (or month)
+     steps aside for it rather than the panel stacking underneath — and closing it
+     brings the calendar back. */
+  const inlineOpen=!!(inline&&(drawerSes||editDate));
   const inlineRef=useRef(null);
   useEffect(()=>{
     if(!inline||!inlineRef.current)return;
@@ -18250,7 +18254,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
   return(<>
   {/* Controls only. The screen is named once, by the masthead above it — the calendar
       used to title itself as well, so the tab opened with the word "Calendar" twice. */}
-  <div className="cal-head">
+  {!inlineOpen&&<div className="cal-head">
     <div className="calm-ctrl">
       <div className="calm-seg">
         <button className={calMode==='week'?'on':''} onClick={()=>setCalMode('week')}>{L('Hafta','Week')}</button>
@@ -18269,12 +18273,12 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         <button onClick={()=>calMode==='week'?setWeek(1):setMo(1)} title={L('İleri','Forward')}>›</button>
       </div>
     </div>
-  </div>
+  </div>}
   {shareOpen&&<ShareWeekModal onClose={()=>setShareOpen(false)}
     title={labelOwner||setup?.teamName||''} weekStart={fmt(weekStart)} days={days}
     athletes={teamMode?athletes:undefined} staff={staff}/>}
   <div className="panel">
-    {calMode==='week'?<>
+    {!inlineOpen&&(calMode==='week'?<>
     {/* The week in four numbers, before the seven columns that make them up. */}
     <div className="calw-stats">
       <div className="cws">
@@ -18471,7 +18475,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>);
       })}
     </div>
-    </>}
+    </>)}
     {drawerSes&&layer((<>
       {!inline&&<div className="dw-scrim" onClick={()=>setDrawerSes(null)}/>}
       <aside className={'dw'+(inline?' inline':'')} ref={inline?inlineRef:null}>
