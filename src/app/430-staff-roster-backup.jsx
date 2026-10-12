@@ -220,6 +220,16 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
      name in a list they were not looking at. The tab is remembered separately so going
      Back and opening the same athlete again behaves normally. */
   const[focusTab,setFocusTab]=useState(null);
+  /* The page scrolls as a whole, so an athlete opened from halfway down the squad
+     landed halfway down their profile — name, stats and tabs above the fold. The
+     profile scrolls itself to the top (AthleteDetail); the list's own position is kept
+     here and given back on Back, so the coach returns to the name they left from. */
+  const listY=useRef(null);
+  const openAth=id=>{listY.current=window.scrollY;setSel(id);};
+  useLayoutEffect(()=>{
+    if(sel||listY.current==null)return;
+    window.scrollTo(0,listY.current);listY.current=null;
+  },[sel]);
   useEffect(()=>{
     if(!focus||!focus.athleteId)return;
     if(!(team.athletes||[]).some(a=>a.id===focus.athleteId))return;   // başka takımın sporcusu
@@ -355,7 +365,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
       const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
       const tdTot=r.td.attended+r.td.missed;
-      return(<div key={a.id} className="rc" onClick={()=>setSel(a.id)}>
+      return(<div key={a.id} className="rc" onClick={()=>openAth(a.id)}>
         <button className="rc-del" title={L('Sporcuyu sil','Delete athlete')} onClick={e=>{e.stopPropagation();delAth(a.id);}}>✕</button>
         <div className="rc-num">{a.number||''}</div>
         <div className="rc-top">
@@ -388,7 +398,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
               <i style={{width:`${tdTot?r.td.missed/tdTot*100:0}%`}}/>
             </span>
           </div>
-          <button className="rc-go" aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();setSel(a.id);}}>
+          <button className="rc-go" aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();openAth(a.id);}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -398,7 +408,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
       const a=r.a;
       const rcls=r.rd==null?'na':r.rd>=4?'':r.rd>=3?'warn':'bad';
       const posFull=POS_FULL[a.position]||a.position||'—';
-      return(<div key={a.id} className="rr" onClick={()=>setSel(a.id)}>
+      return(<div key={a.id} className="rr" onClick={()=>openAth(a.id)}>
         <div className="rr-num">{a.number||'—'}</div>
         <div className={`rr-av ${rcls}`}>{a.photo?<img src={mediaSrc(a.photo)} alt=""/>:initials(a.name)}</div>
         <div style={{minWidth:0}}>
@@ -413,7 +423,7 @@ function Athletes({team,updateTeam,weeks,ai,exercises,customTests,focus}){
           <div className="v"><span style={{color:'var(--green)'}}>{r.td.attended}</span>
             <span style={{color:'var(--dim)',fontWeight:500,margin:'0 2px'}}>/</span>
             <span style={{color:r.td.missed>0?'#f43f5e':'var(--dim)'}}>{r.td.missed}</span></div></div>
-        <button className="rc-go" style={{gridRow:'auto',gridColumn:'auto'}} aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();setSel(a.id);}}>
+        <button className="rc-go" style={{gridRow:'auto',gridColumn:'auto'}} aria-label={L('Sporcuyu aç','Open athlete')} onClick={e=>{e.stopPropagation();openAth(a.id);}}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>);
