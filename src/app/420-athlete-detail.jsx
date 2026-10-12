@@ -22,6 +22,10 @@ function AthleteDetail({ath,onBack,updAth,setup,weeks,exercises,ai,customTests,i
      is about — the coach tapped a line about last night's sleep, not a biography. */
   const[tab,setTab]=useState(ATH_TAB_IDS.includes(initialTab)?initialTab:'profile');
   const[editProfileOpen,setEditProfileOpen]=useState(false);
+  /* Open at the top. The page scrolls as one, so without this the profile kept the
+     scroll of the list it was opened from and hid its own header and tabs. The roster
+     remounts this per athlete (key), so it runs once per athlete opened. */
+  useLayoutEffect(()=>{window.scrollTo(0,0);},[ath.id]);
   const[dobText,setDobText]=useState('');
   useEffect(()=>{setDobText(fd(ath.dateOfBirth));},[ath.dateOfBirth,editProfileOpen]);
   // Find the most recent date that has any data (sessions/wellness/measurements)
