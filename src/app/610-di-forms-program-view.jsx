@@ -133,9 +133,10 @@ function DiPriorityPicker({value,onChange}){
 }
 
 /* The movement patterns the session must carry. Toggles across the top; every ticked
-   pattern is a row of the table below, one select per facet column (DI_MOVE_COLS). A
+   pattern is a row of the grid below, one select per facet column (DI_MOVE_COLS). A
    select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has no
-   facet of that kind is a dash.
+   facet of that kind is a dash. Where the card is narrow the rows turn into small cards,
+   each select under its own column name (container query in the CSS).
    A pattern that loads a region reported painful today is marked, and stays a full
    choice: the coach has seen the pain, so a picked pattern is never dropped for it —
    the answer writes it as a pain-free, modified variation instead. */
@@ -143,6 +144,8 @@ function DiPatternPicker({value,onChange,closed}){
   const list=diMovePatterns(value);
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
+  const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
+    'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.');
   const toggle=id=>{
     if(list.some(p=>p.id===id))onChange(list.filter(p=>p.id!==id));
     else onChange([...list,{id}]);
@@ -156,30 +159,43 @@ function DiPatternPicker({value,onChange,closed}){
         {DI_MOVE_PATTERNS.map(row=>{const on=list.some(p=>p.id===row.id);const cl=isClosed(row);
           return<button key={row.id} type="button" aria-pressed={on}
             className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
-            title={cl?L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
-              'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.'):undefined}
+            title={cl?painTip:undefined}
             onClick={()=>toggle(row.id)}>{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
       </div>
-      <span className="di-mvp-n">{L(`${list.length} seçili`,`${list.length} selected`)}</span>
+      <span className={'di-mvp-n'+(list.length?' on':'')}>{L(`${list.length} seçili`,`${list.length} selected`)}</span>
     </div>
-    {rows.length>0&&<div className="di-mvp-tblw">
-      <table className="di-mvp-tbl">
-        <thead><tr><th>{L('Patern','Pattern')}</th>
-          {DI_MOVE_COLS.map(c=><th key={c.ks[0]}>{L(c.label[0],c.label[1])}</th>)}</tr></thead>
-        <tbody>{rows.map(({row,pick})=><tr key={row.id}>
-          <th scope="row">{L(row.label[0],row.label[1])}</th>
+    {rows.length>0?<div className="di-mvp-grid" role="table" aria-label={L('Patern filtreleri','Pattern filters')}>
+      <div className="di-mvp-tr di-mvp-th" role="row">
+        <span role="columnheader">{L('Patern','Pattern')}</span>
+        {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{L(c.label[0],c.label[1])}</span>)}
+      </div>
+      {rows.map(({row,pick})=>{const cl=isClosed(row);
+        return<div key={row.id} className="di-mvp-tr" role="row">
+          <div className="di-mvp-name" role="rowheader">
+            <b>{L(row.label[0],row.label[1])}</b>
+            {cl?<i className="di-mvp-pain" title={painTip}>!</i>:null}
+            <button type="button" className="di-mvp-x" onClick={()=>toggle(row.id)}
+              aria-label={L('Kaldır','Remove')} title={L('Kaldır','Remove')}>✕</button>
+          </div>
           {DI_MOVE_COLS.map(c=>{const f=row.facets.find(x=>c.ks.includes(x.k));
-            if(!f)return<td key={c.ks[0]}><span className="di-mvp-na">—</span></td>;
+            const head=<span className="di-mvp-cl">{L(c.label[0],c.label[1])}</span>;
+            if(!f)return<div key={c.ks[0]} className="di-mvp-td na" role="cell">{head}
+              <span className="di-mvp-na" title={L('Bu paternde bu filtre yok','This pattern has no such filter')}>—</span></div>;
             const cur=(pick[f.k]||[])[0]||'';
-            return<td key={c.ks[0]}><select className={'di-mvp-sel'+(cur?' on':'')} value={cur}
-              aria-label={`${L(row.label[0],row.label[1])} · ${L(f.label[0],f.label[1])}`}
-              onChange={e=>setFacet(row.id,f.k,e.target.value)}>
-              <option value="">{L('Seçiniz','Select')}</option>
-              {f.opts.map(op=><option key={op[0]} value={op[0]}>{L(op[1],op[2])}</option>)}
-            </select></td>;})}
-        </tr>)}</tbody>
-      </table>
-    </div>}
+            const op=cur&&f.opts.find(o=>o[0]===cur);
+            return<label key={c.ks[0]} className="di-mvp-td" role="cell">{head}
+              <span className={'di-mvp-sel'+(cur?' on':'')}>
+                <select value={cur} title={op?L(op[1],op[2]):undefined}
+                  aria-label={`${L(row.label[0],row.label[1])} · ${L(f.label[0],f.label[1])}`}
+                  onChange={e=>setFacet(row.id,f.k,e.target.value)}>
+                  <option value="">{L('Seçiniz','Select')}</option>
+                  {f.opts.map(o=><option key={o[0]} value={o[0]}>{L(o[1],o[2])}</option>)}
+                </select>
+              </span>
+            </label>;})}
+        </div>;})}
+    </div>
+    :<div className="di-mvp-empty">{L('Paterni seçince filtreleri burada açılır.','Pick a pattern to set its filters here.')}</div>}
   </div>);
 }
 
