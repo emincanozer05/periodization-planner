@@ -240,6 +240,7 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
     relative_to_today:offset===0?'today':offset===1?'tomorrow':offset===-1?'yesterday'
       :offset>0?`in ${offset} days`:`${-offset} days ago`,
     match_day_label:cp.md,
+    back_to_back_games:cp.back_to_back||null,
     game_on_the_day:cp.today?(cp.today.name||'Game'):null,
     next_game:cp.next?{date:cp.next.date,name:cp.next.name,days_until:cp.next.days_until}:null,
     previous_game:cp.previous?{date:cp.previous.date,name:cp.previous.name,days_since:cp.previous.days_since}:null,
@@ -341,6 +342,13 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
       /* Context for the role, not a prescription from it (§4.3). */
       position_emphasis:b.athlete&&b.athlete.position_qualities,
     },
+    /* The coach's short- and long-term performance goals from the athlete card. */
+    performance_goals:(()=>{const g=(a.goals&&typeof a.goals==='object')?a.goals:{};
+      return{short_term:g.short,long_term:g.long};})(),
+    /* Minutes actually played, off the GAME slot of the athlete's own sRPE log. */
+    playing_time:(()=>{const p=b.playing_time;
+      return p&&p.recorded?{last_game:p.last?{date:p.last.date,minutes:p.last.minutes,rpe:p.last.rpe,
+        load_au:p.last.load,days_ago:p.last.days_since}:null,minutes_last_7_days:p.minutes_7,games_last_7_days:p.games_7}:null;})(),
     training_profile:atp.out,
     wellness:{
       latest_checkin:lastW?{date:lastW.date,days_ago:wAge,
@@ -425,7 +433,9 @@ function diAthleteSnapshot({ath,setup,date,instr,customTests,now,session,libMap,
          not put it back in the list it was just taken out of. */
       preferred_patterns:b.pain&&(b.pain.patterns_preferred||[]).filter(p=>limits.available_patterns.includes(p)
         &&!(b.pain.patterns_to_unload||[]).includes(p)),
-      standing_constraint_note:a.constraints,
+      /* The coach's dated notes on the athlete card, newest first. `a.constraints` is only the
+         legacy seed of this list: once a note is edited it is no longer kept in step. */
+      coach_notes:athNotesList(a).map(n=>({date:n.date||null,text:String(n.text).trim()})),
       active_injuries:activeInj.map(injRow),
       past_injuries:pastInj.slice(-6).map(injRow),
       recurring_regions:((b.injury&&b.injury.recurrence)||[]).map(r=>({region:r.region,episodes:r.episodes})),
