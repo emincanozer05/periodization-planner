@@ -1,4 +1,4 @@
-function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes}){
+function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calOn,setCalOn,loadOn,setLoadOn}){
   const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
   const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
   const panelRef=useRef(null);
@@ -154,6 +154,16 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
       <div className="di-hdacts">
+        {/* The athlete's calendar and its load distribution live under the panel; they
+            are shown on request so the card does not carry them all the time. */}
+        {setCalOn&&<button type="button" className={'di-viewbtn'+(calOn?' on':'')} aria-pressed={!!calOn}
+          onClick={()=>setCalOn(!calOn)}
+          title={calOn?L('Sporcunun takvimini gizle','Hide the athlete\'s calendar'):L('Sporcunun takvimini göster','Show the athlete\'s calendar')}>
+          <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
+        {setLoadOn&&<button type="button" className={'di-viewbtn'+(loadOn?' on':'')} aria-pressed={!!loadOn}
+          onClick={()=>setLoadOn(!loadOn)}
+          title={loadOn?L('Yük dağılımını gizle','Hide the load distribution'):L('Yük dağılımını göster','Show the load distribution')}>
+          <i>◔</i><span>{L('Yük Dağılımı','Load Distribution')}</span></button>}
         {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
           onClick={()=>flipTo(onProg?'brief':'prog')}
           title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
@@ -308,8 +318,21 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   </div>);
 }
 
+/* A per-device on/off remembered under its own key, like the panel's fold. */
+function useDevFlag(key){
+  const[on,setRaw]=useState(()=>{try{return localStorage.getItem(key)==='1';}catch(e){return false;}});
+  const set=v=>{setRaw(v);try{localStorage.setItem(key,v?'1':'0');}catch(e){}};
+  return[on,set];
+}
+
 function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
   const a=plan.ath;
+  /* Calendar and load distribution are off until asked for from the panel's header
+     (both buttons), so an open card is the panel alone. With no panel there is no header
+     to ask from, so the calendar stays up. */
+  const[calOn,setCalOn]=useDevFlag('coachos_iv_cal');
+  const[loadOn,setLoadOn]=useDevFlag('coachos_iv_load');
+  const view={calOn:!panel||calOn,setCalOn,loadOn:!panel||loadOn,setLoadOn};
   const initials=(a.name||'').trim().split(/\s+/).slice(0,2).map(p=>p[0]||'').join('').toUpperCase()||'?';
   const rdCol=plan.band?plan.band.color:'var(--dim)';
   /* Soreness and fatigue are rated 1-5 with 5 as the good end, so the colour scale
@@ -368,7 +391,9 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
     </div>}
     {/* The card opens straight onto this athlete's own calendar: the program is written
         and edited there, on the session itself, so there is one place it lives. */}
-    {open&&<div className="iv-card-body iv-calbody">{panel}{calendar}</div>}
+    {open&&<div className="iv-card-body iv-calbody">
+      {panel&&React.cloneElement(panel,view)}
+      {React.cloneElement(calendar,{showCal:view.calOn,showLoad:view.loadOn})}</div>}
   </div>);
 }
 
@@ -380,12 +405,14 @@ function IndivAthleteCard({plan,calendar,panel,open,setOpen}){
    athlete summary, the same editing and the same load distribution under it, except that opening a session and editing it happens INSIDE the card rather
    than in a modal over the page. It keeps its own week cursor, starting on the day
    being individualized. */
-function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date}){
+function IndivAthleteCalendar({ath,team,setup,weeks,exercises,saveDays,date,showCal=true,showLoad=true}){
   const[sel,setSel]=useState(()=>{const d=parseD(date||fmt(today));
     return{year:d.getFullYear(),month:d.getMonth()+1,date:date||fmt(today)};});
-  return<><CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
+  /* Each part is drawn only when its header button is on; the week cursor lives here, so
+     it survives the calendar being hidden and shown again. */
+  return<>{showCal&&<CalendarView days={ath.days||{}} selected={sel} setSelected={setSel} goDayView={()=>{}}
     weeks={weeks||[]} saveDays={saveDays} setup={setup} labelOwner={ath.name} exercises={exercises} inline
-    coachAthlete={ath} ownerAth={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>
-    <MuscleLoadDistribution days={ath.days||{}} refDate={sel.date}/></>;
+    coachAthlete={ath} ownerAth={ath} sesTip={k=>diPatternTipLines(team,ath.id,k)}/>}
+    {showLoad&&<MuscleLoadDistribution days={ath.days||{}} refDate={sel.date}/>}</>;
 }
 
