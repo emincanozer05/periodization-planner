@@ -132,61 +132,53 @@ function DiPriorityPicker({value,onChange}){
   </div>);
 }
 
-/* The movement patterns the session must carry. Eight toggles across the top; a
-   ticked pattern drops into the list below as its own filter box, and only one box is
-   open at a time — the others fold to one line that says what was picked, so three
-   patterns cost three lines rather than three panels. Inside a box each facet is a row
-   of toggles that takes ONE value: nothing ticked means the model chooses, ticking another
-   value replaces the one before, and ticking the chosen one again clears it.
+/* The movement patterns the session must carry. Toggles across the top; every ticked
+   pattern is a row of the table below, one select per facet column (DI_MOVE_COLS). A
+   select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has no
+   facet of that kind is a dash.
    A pattern that loads a region reported painful today is marked, and stays a full
    choice: the coach has seen the pain, so a picked pattern is never dropped for it —
    the answer writes it as a pain-free, modified variation instead. */
 function DiPatternPicker({value,onChange,closed}){
   const list=diMovePatterns(value);
-  const[open,setOpen]=useState(null);
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
   const toggle=id=>{
-    if(list.some(p=>p.id===id)){onChange(list.filter(p=>p.id!==id));if(open===id)setOpen(null);}
-    else{onChange([...list,{id}]);setOpen(id);}
+    if(list.some(p=>p.id===id))onChange(list.filter(p=>p.id!==id));
+    else onChange([...list,{id}]);
   };
-  const flip=(id,k,val)=>onChange(list.map(p=>{
-    if(p.id!==id)return p;
-    return{...p,[k]:(p[k]||[]).includes(val)?[]:[val]};
-  }));
-  const summary=(pick,row)=>row.facets.map(f=>diMoveFacetText(pick,f).join(' / ')).filter(Boolean).join(' · ');
+  const setFacet=(id,k,val)=>onChange(list.map(p=>p.id!==id?p:{...p,[k]:val?[val]:[]}));
+  /* Rows in the order of the toggles, not the order they were ticked. */
+  const rows=DI_MOVE_PATTERNS.map(row=>({row,pick:list.find(p=>p.id===row.id)})).filter(x=>x.pick);
   return(<div className="di-mvp">
-    <div className="di-mvp-pick" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
-      {DI_MOVE_PATTERNS.map(row=>{const on=list.some(p=>p.id===row.id);const cl=isClosed(row);
-        return<button key={row.id} type="button" aria-pressed={on}
-          className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
-          title={cl?L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
-            'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.'):undefined}
-          onClick={()=>toggle(row.id)}>{on?'✓ ':''}{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
+    <div className="di-mvp-top">
+      <div className="di-mvp-pick" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
+        {DI_MOVE_PATTERNS.map(row=>{const on=list.some(p=>p.id===row.id);const cl=isClosed(row);
+          return<button key={row.id} type="button" aria-pressed={on}
+            className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
+            title={cl?L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
+              'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.'):undefined}
+            onClick={()=>toggle(row.id)}>{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
+      </div>
+      <span className="di-mvp-n">{L(`${list.length} seçili`,`${list.length} selected`)}</span>
     </div>
-    {list.length>0&&<div className="di-mvp-list">
-      {list.map(pick=>{const row=diMoveRow(pick.id);if(!row)return null;
-        const isOpen=open===pick.id;const sum=summary(pick,row);
-        const nSet=row.facets.filter(f=>(pick[f.k]||[]).length).length;
-        return<div key={pick.id} className={'di-mvp-box'+(isOpen?' open':'')}>
-          <div className="di-mvp-hd">
-            <button type="button" className="di-mvp-tg" onClick={()=>setOpen(isOpen?null:pick.id)} aria-expanded={isOpen}>
-              <b>{L(row.label[0],row.label[1])}</b>
-              <span className={'di-mvp-cnt'+(nSet?' on':'')} title={L('Seçilen filtre','Filters set')}>{nSet}/{row.facets.length}</span>
-              <span className={'di-mvp-sum'+(sum?'':' dim')}>{sum||L('filtre yok — model seçer','no filter — model chooses')}</span>
-              <i>{isOpen?'▲':'▼'}</i>
-            </button>
-            <button type="button" className="di-mvp-x" onClick={()=>toggle(pick.id)} aria-label={L('Kaldır','Remove')}>✕</button>
-          </div>
-          {isOpen&&<div className="di-mvp-body">
-            {row.facets.map(f=><div key={f.k} className="di-mvp-row">
-              <span className="di-mvp-k">{L(f.label[0],f.label[1])}</span>
-              <div className="di-mvp-opts">{f.opts.map(op=>{const on=(pick[f.k]||[]).includes(op[0]);
-                return<button key={op[0]} type="button" aria-pressed={on} className={'di-mvp-opt'+(on?' on':'')}
-                  onClick={()=>flip(pick.id,f.k,op[0])}>{L(op[1],op[2])}</button>;})}</div>
-            </div>)}
-          </div>}
-        </div>;})}
+    {rows.length>0&&<div className="di-mvp-tblw">
+      <table className="di-mvp-tbl">
+        <thead><tr><th>{L('Patern','Pattern')}</th>
+          {DI_MOVE_COLS.map(c=><th key={c.ks[0]}>{L(c.label[0],c.label[1])}</th>)}</tr></thead>
+        <tbody>{rows.map(({row,pick})=><tr key={row.id}>
+          <th scope="row">{L(row.label[0],row.label[1])}</th>
+          {DI_MOVE_COLS.map(c=>{const f=row.facets.find(x=>c.ks.includes(x.k));
+            if(!f)return<td key={c.ks[0]}><span className="di-mvp-na">—</span></td>;
+            const cur=(pick[f.k]||[])[0]||'';
+            return<td key={c.ks[0]}><select className={'di-mvp-sel'+(cur?' on':'')} value={cur}
+              aria-label={`${L(row.label[0],row.label[1])} · ${L(f.label[0],f.label[1])}`}
+              onChange={e=>setFacet(row.id,f.k,e.target.value)}>
+              <option value="">{L('Seçiniz','Select')}</option>
+              {f.opts.map(op=><option key={op[0]} value={op[0]}>{L(op[1],op[2])}</option>)}
+            </select></td>;})}
+        </tr>)}</tbody>
+      </table>
     </div>}
   </div>);
 }
