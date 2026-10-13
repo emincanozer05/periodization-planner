@@ -215,6 +215,14 @@ function DiInstructionForm({instr,save,onBuild,closed}){
    loud ("üçüncü hareket"), and the dose sits in one pill beside the name rather than
    at the far end of a wide card. Where the readiness cut moved a row, the pill carries
    both numbers with an arrow between them. */
+/* An alternative's dose on one line: "3×8 · 60% 1RM · 3-0-1 · RPE 7 · dinlenme 90 sn". */
+function diAltDose(a){
+  if(!a)return'';
+  const t=v=>String(v==null?'':v).trim();
+  const sr=t(a.sets)&&t(a.reps)?`${t(a.sets)}×${t(a.reps)}`:(t(a.sets)?`${t(a.sets)} ${L('set','sets')}`:t(a.reps));
+  return[sr,t(a.duration),t(a.load),t(a.tempo),t(a.rpe)?`RPE ${t(a.rpe)}`:'',t(a.rest)?`${L('dinlenme','rest')} ${t(a.rest)}`:'']
+    .filter(Boolean).join(' · ');
+}
 const DI_PHASES_LBL={hazirlik:['Hazırlık','Preparation'],ana:['Ana iş','Main work'],
   tamamlayici:['Tamamlayıcı','Complementary']};
 /* The athlete's written session, read back off their calendar into the rows the
@@ -241,7 +249,8 @@ function diSessionRows(ses,program){
       out.push({key:e.id||`c${bi}-${i}`,name:e.name,block,phase:kindOf[lo(block)]||undefined,
         pattern:e.pattern||(src&&src.pattern)||'',coachPattern:(src&&src.coachPattern)||null,equipment:exEquipText(src&&src.equipment),
         why:exDesc(e),basis:(src&&src.basis)||[],
-        load:e.load||'',tempo:e.tempo||'',rest:e.rest||'',
+        load:e.load||'',tempo:e.tempo||'',rpe:e.rpe||'',rest:e.rest||'',
+        ...(e.alt&&typeof e.alt==='object'?{alt:e.alt}:{}),
         prescribed:dose,adjusted:dose,changed:false});
     });
   });
@@ -290,10 +299,20 @@ function printDiProgram({ath,date,title,rows,pct,time,duration,focus,rpe}){
       const d=r.changed
         ?`<s>${esc(diDose(r.prescribed))}</s> → <b>${esc(diDose(r.adjusted))}</b>`
         :`<b>${esc(diDose(r.adjusted))}</b>`;
-      return`<tr><td class="n">${k+1}</td>
+      /* The alternative, as its own row under the exercise it stands in for, with the dose it
+         is done at — the same row the calendar's printout draws. */
+      const al=(r.alt&&typeof r.alt==='object')?r.alt:null;
+      const alDose=al&&['sets','reps','duration','load','tempo','rpe','rest'].some(x=>String(al[x]||'').trim());
+      const alRow=al&&(String(al.name||'').trim()||alDose)?`<tr class="ex-row alt-row">
+        <td class="n"><span class="alt-of"><span class="alt-hook">↳</span><span class="ex-badge ghost">${k+1}</span></span></td>
+        <td class="ex"><div class="ex-ex-txt"><div class="alt-for">${L('⇄ ALTERNATİF','⇄ ALTERNATIVE')}</div>
+          <div class="ex-nm-wrap"><span class="alt-name">${esc(al.name)||L('(belirtilmedi)','(not named)')}</span></div></div></td>
+        <td class="ds">${diDose({sets:al.sets,reps:al.reps,duration:al.duration})==='—'?'—':`<b>${esc(diDose({sets:al.sets,reps:al.reps,duration:al.duration}))}</b>`}</td>
+        <td>${esc(al.load)||'—'}</td><td>${esc(al.tempo)||'—'}</td><td>${esc(al.rpe)||'—'}</td><td>${esc(al.rest)||'—'}</td></tr>`:'';
+      return`<tr class="ex-row${alRow?' has-alt':''}"><td class="n">${k+1}</td>
         <td class="ex"><div class="pc-nm">${esc(r.name)}</div>${r.why?`<div class="pc-why">${esc(r.why)}</div>`:''}</td>
         <td class="ds">${d}${r.distance?`<div class="pc-dd">${esc(r.distance)}</div>`:''}</td>
-        <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>`;
+        <td>${esc(r.load)||'—'}</td><td>${esc(r.tempo)||'—'}</td><td>${esc(r.rpe)||'—'}</td><td>${esc(r.rest)||'—'}</td></tr>${alRow}`;
     }).join('');
     return rptPhaseCard(bl.title,bl.tag,trs);
   }).join('');
@@ -370,8 +389,8 @@ function DiProgramView({program,rows,adj,libMap,onAddToLibrary,diffs}){
               lines that disagree are the useful case: a rationale about ankle mobility
               citing the differentiator about a painful knee is visible here and
               nowhere else. */}
-          {r.alt&&r.alt.name&&<div className="di-prow-why"><i className="di-basis">⇄</i>
-            {L('Alternatif:','Alternative:')} <b>{r.alt.name}</b></div>}
+          {r.alt&&(r.alt.name||diAltDose(r.alt))&&<div className="di-prow-why"><i className="di-basis">⇄</i>
+            {L('Alternatif:','Alternative:')} <b>{r.alt.name||'—'}</b>{diAltDose(r.alt)?<span> · {diAltDose(r.alt)}</span>:null}</div>}
           {(r.why||(r.basis||[]).length>0)&&<div className="di-prow-why">
             {(r.basis||[]).map(b=><i key={b} className="di-basis" title={diffText(b)}>{b}</i>)}
             {r.why||''}</div>}

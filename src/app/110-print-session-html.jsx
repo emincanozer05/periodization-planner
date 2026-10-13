@@ -158,7 +158,7 @@ function rptPhaseCard(title,tag,rowsHTML){
   const t=String(title||'').trim(),g=String(tag||'').trim();
   return`<div class="pc-card">${t||g?`<div class="pc-hd"><span class="pc-dot"></span><span class="pc-t">${escHTML(t)}</span>${g?`<span class="pc-tag">${escHTML(g)}</span>`:''}</div>`:''}
     <table class="pc-tbl"><thead><tr><th class="n">#</th><th class="ex">${L('Egzersiz','Exercise')}</th><th>${L('Set × Tekrar','Sets × Reps')}</th>
-      <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>`;
+      <th>${L('Yük','Load')}</th><th>${L('Tempo','Tempo')}</th><th>RPE</th><th>${L('Dinlenme','Rest')}</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>`;
 }
 /* Best-effort volume summary for the printed program's "Training Volume" line — total
    sets and reps are exact sums of what the coach typed; total load is a tonnage estimate
@@ -196,7 +196,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
      A block with no sections is one card under the block's own name (left off when it
      only repeats the session's title). Each row: # (plain or a superset badge) ·
      exercise (image + name + link, the coaching text under it) · Set × Reps (with the
-     time under it) · Load · Tempo · Rest. */
+     time under it) · Load · Tempo · RPE · Rest. */
   const exTable=(b,showName)=>{
     const namedExs=(b.exercises||[]).filter(e=>e.name);
     if(namedExs.length===0)return`<div class="empty-block">${L('Egzersiz yok','No exercises')}</div>`;
@@ -238,7 +238,8 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
       const altNm=String((alt&&alt.name)||'').trim();
       const altWhy=String((alt&&alt.reason)||'').trim();
       let altRow='';
-      if(altNm||altWhy){
+      const altDose=alt&&['sets','reps','duration','load','tempo','rpe','rest'].some(k=>String(alt[k]||'').trim());
+      if(altNm||altWhy||altDose){
         const aLnk=safeURL(alt.link);
         const aNotes=noDesc?[]:String(alt.description||'').split('\n').map(x=>x.trim()).filter(Boolean);
         /* Whose alternative this is has to be unmissable, or the row reads as an eighth
@@ -261,6 +262,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
           <td class="ds">${dose(alt.sets,alt.reps,alt.duration)}</td>
           <td>${alt.load?escHTML(alt.load):dash}</td>
           <td>${alt.tempo?escHTML(alt.tempo):dash}</td>
+          <td>${alt.rpe?escHTML(alt.rpe):dash}</td>
           <td>${alt.rest?escHTML(alt.rest):dash}</td>
         </tr>`;
       }
@@ -278,6 +280,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
         <td class="ds">${dose(e.sets,e.reps,e.duration)}</td>
         <td>${e.load?escHTML(e.load):dash}</td>
         <td>${e.tempo?escHTML(e.tempo):dash}</td>
+        <td>${e.rpe?escHTML(e.rpe):dash}</td>
         <td>${e.rest?escHTML(e.rest):dash}</td>
       </tr>${altRow}`);
     });
