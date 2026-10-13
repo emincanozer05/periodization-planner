@@ -108,7 +108,6 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/590-di-adjust-tier-bundle.jsx` | — |
 | `app/600-ai-layer.jsx` | AI LAYER — the coach briefs it, it writes the session. |
 | `app/610-di-forms-program-view.jsx` | — |
-| `app/620-athlete-snapshot.jsx` | — |
 | `app/630-daily-indiv-panel.jsx` | — |
 | `app/640-individualization-view.jsx` | — |
 | `app/650-language-selector-nav-icons.jsx` | — |

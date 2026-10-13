@@ -516,26 +516,11 @@ function DiVolIntPicker({volume,intensity,autoVol,autoReasons,autoRpe,autoBudget
    the wide one and takes a row of its own; the short answers share the rows below. It is
    stored per athlete PER DAY, beside the session it produced, so yesterday's
    instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol,autoReasons,autoRpe,autoBudget}){
+function DiInstructionForm({instr,save,closed,autoVol,autoReasons,autoRpe,autoBudget}){
   const set=(k,v)=>save({...instr,[k]:v});
-  /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
-     it on its own, but blur and click land in the same tick and the generate handler
-     reads the brief from THIS render — so the pending text is folded in here as well,
-     and the request is built from the merged brief rather than from whichever of the two
-     updates happened to win. */
+  /* What is typed in the keep-out box but not yet a chip: the box commits it itself when
+     it loses focus, `pending` only lets it be read before that. */
   const avoidPend=useRef('');
-  const withPending=()=>{
-    const v=String(avoidPend.current||'').trim();
-    const l=Array.isArray(instr.avoid)?instr.avoid:[];
-    if(!v||l.some(x=>x.toLowerCase()===v.toLowerCase()))return instr;
-    return{...instr,avoid:[...l,v]};
-  };
-  /* The merged brief, so a chip still being typed is in the copy too. Read-only: it writes nothing but that fold-in. */
-  const snapshot=()=>{
-    const merged=withPending();
-    if(merged!==instr)save(merged);
-    if(onSnapshot)onSnapshot(merged);
-  };
   const field=(n,title,hint,control,area,extra)=>(
     <div className={'di-field'+(area?' '+area:'')}>
       <div className="di-fhd"><i className="di-num">{n}</i>
@@ -578,21 +563,6 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol,autoRe
         <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
           placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
             'e.g. game today, keep it to priming')}/>,'a6')}
-    </div>
-
-    <div className="di-genbar">
-      {onSnapshot&&<button type="button" className="di-snapbtn" onClick={snapshot}
-        title={L('Sporcunun o anki bütün güncel verisini ve bu talimatı tek bir JSON olarak verir.',
-          'The athlete\'s current data and this brief, as one JSON document.')}>
-        <span className="di-gen-t">{L('Sporcu Bilgilerini Al','Get athlete data')}</span>
-        <span className="di-gen-s">{L('Güncel veriler + talimat · JSON','Current data + brief · JSON')}</span>
-      </button>}
-      {onImport&&<button type="button" className="di-snapbtn" onClick={onImport}
-        title={L('Başka bir yapay zekânın yazdığı program JSON\'unu yapıştır; program olarak okunur, onayından sonra takvime yazılır.',
-          'Paste a programme JSON written by another model; it is read as a session and written to the calendar once you approve it.')}>
-        <span className="di-gen-t">{L('AI Programını Yükle','Load AI programme')}</span>
-        <span className="di-gen-s">{L('JSON yapıştır · onayla · takvime yaz','Paste JSON · approve · write')}</span>
-      </button>}
     </div>
   </div>);
 }

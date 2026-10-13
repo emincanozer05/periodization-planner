@@ -1,6 +1,4 @@
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
-  const[snap,setSnap]=useState(null);         // {text, copied} — the athlete-data JSON on screen
-  const[imp,setImp]=useState(null);           // {text, err} — the paste box for an outside model's answer
   const panelRef=useRef(null);
   const[err,setErr]=useState('');
   /* Open or folded. Remembered per device, so a coach who works with the panel folded
@@ -55,49 +53,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* "Sporcu Bilgilerini Al": rebuilt from the live state on every press — the athlete
-     as the team holds them right now, not the copy this card was drawn from — and put
-     on the clipboard in the same press, so one click is enough to paste it anywhere. */
-  const takeSnapshot=brief=>{
-    const L0=live.current;
-    const ath=((L0.team&&L0.team.athletes)||[]).find(x=>x.id===L0.plan.ath.id)||L0.plan.ath;
-    let text;
-    try{
-      text=JSON.stringify(diAthleteSnapshot({ath,setup:L0.setup||{},date:L0.date,
-        instr:diBrief(brief||instr,L0.plan.meta),customTests,session:L0.plan.meta,libMap:L0.libMap,recent:L0.recent}));
-    }catch(e){setErr((e.message||String(e))+' — '+L('sporcu bilgileri okunamadı.','the athlete data could not be read.'));return;}
-    setSnap({text,copied:null});
-    snapCopy(text).then(ok=>setSnap(x=>x&&x.text===text?{...x,copied:ok}:x));
-  };
-  /* An outside model's answer, pasted in. Read into the same draft the in-app writer
-     produces and checked by the same validator — so it shows in section 3 exactly as a
-     generated session does, and reaches the calendar only through "Onayla ve takvime
-     yaz", which re-checks it against the athlete's day as it stands at that moment. */
-  const importProgram=()=>{
-    if(!imp)return;
-    const L0=live.current;
-    let obj,v;
-    try{
-      obj=diParseExternalProgram(imp.text,L0.libMap,{id:L0.plan.ath.id,name:L0.plan.ath.name});
-      v=validateProgram(obj,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
-        differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
-    }catch(e){setImp(x=>x&&{...x,err:e.message||String(e)});return;}
-    const cur=L0.review&&L0.review.program;
-    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program taslağı zaten var. Yapıştırdığın programla değiştirilsin mi?',
-      'There is already a draft for this athlete on this day. Replace it with the pasted programme?')))return;
-    diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
-      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:obj,instr,
-      differentiators:L0.differentiators,validation:v,
-      engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
-        competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
-      model:'external',created_at:new Date().toISOString(),
-      decision:null,decided_at:null,jobId:null,pendingJob:null,
-      generation:{source:'external-json'}});
-    setImp(null);setErr('');
-    /* What was just pasted is what the coach wants to read next: turn the card over to it. */
-    flipTo('prog');
-    setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
-  };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
   const write=()=>{
@@ -111,8 +66,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     const v=validateProgram(program,{bundle,instr,setup,libMap,deficits,differentiators,recent,peers});
     if(v.status==='fail'){
       diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,{validation:v});
-      setErr(L(`Bu program ${v.hardViolations.length} sert kuralı ihlal ediyor ve takvime yazılamaz. Aşağıdaki maddeleri gider ya da programı yeniden yükle.`,
-        `This session breaks ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} and cannot be written to the calendar. Clear the items below, or load the programme again.`));
+      setErr(L(`Bu program ${v.hardViolations.length} sert kuralı ihlal ediyor ve takvime yazılamaz. Aşağıdaki maddeleri gider ya da tabloyu düzenleyip programı yeniden oluştur.`,
+        `This session breaks ${v.hardViolations.length} hard rule${v.hardViolations.length>1?'s':''} and cannot be written to the calendar. Clear the items below, or edit the table and build the programme again.`));
       return;
     }
     diWriteReview(team,updateTeam,srcKey,plan.ath.id,date,
@@ -232,43 +187,17 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
+      <DiInstructionForm instr={instr} save={saveInstr} closed={closedPats}
         autoVol={bundle.adjustment?bundle.adjustment.pct:0}
         autoReasons={bundle.adjustment?bundle.adjustment.reasons:[]}
-        autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}
-        onImport={()=>setImp({text:'',err:''})}/>
-      <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
-        snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>
-      {imp&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setImp(null)}>
-        <div className="modal di-snap" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
-          <div className="modal-head">
-            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('AI Programını Yükle','Load AI programme')} — {plan.ath.name||'—'}
-              <span className="di-dim" style={{fontSize:12,fontWeight:500,marginLeft:8}}>{L('program günü','session day')}: {fd(date)}</span></h2>
-            <button className="x-btn" onClick={()=>setImp(null)} aria-label={L('Kapat','Close')}>✕</button>
-          </div>
-          <div className="di-snap-bar">
-            <span className="di-dim">{L('Yapay zekânın verdiği JSON\'u olduğu gibi yapıştır. Tüm sporcular için tek yanıt aldıysan onu da yapıştırabilirsin — bu sporcunun programı içinden seçilir. Program kurallarla denetlenir; takvime ancak sen "Onayla ve takvime yaz"a bastığında işlenir.',
-              'Paste the model\'s JSON as it came. A single answer for the whole squad works too — this athlete\'s programme is picked out of it. It is checked against the rules and reaches the calendar only when you press "Approve and write".')}</span>
-          </div>
-          <textarea className="di-imp-ta" autoFocus value={imp.text} spellCheck={false}
-            onChange={e=>setImp({text:e.target.value,err:''})}
-            placeholder={'{\n  "program": {\n    "seans_adi": "…",\n    "bloklar": [ … ]\n  }\n}'}/>
-          {imp.err&&<div className="di-imp-err" role="alert">⛔ {imp.err}</div>}
-          <div className="di-snap-bar" style={{justifyContent:'flex-end',borderBottom:0,borderTop:'1px solid var(--border)'}}>
-            <button type="button" className="btn xs sec" onClick={()=>setImp(null)}>{L('Vazgeç','Cancel')}</button>
-            <button type="button" className="btn xs" onClick={importProgram} disabled={!imp.text.trim()}>
-              {L('Programa dönüştür','Read as programme')}</button>
-          </div>
-        </div>
-      </div>,document.body)}
+        autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}/>
     </DiSection>
     </>}
 
     {onProg&&program&&<DiSection n="3" title={progTitle}
       className="di-sec-prog"
       meta={written?(calEdited?L('takvimdeki güncel hali','as it stands on the calendar'):L('takvime yazıldı','on the calendar'))
-        :external?L('yüklenen AI programı — onaylanmadan sporcuya ulaşmaz','loaded AI programme — it reaches nobody until you approve it')
-        :L('AI taslağı — yazılmadan sporcuya ulaşmaz','AI draft — it reaches nobody until it is written')}>
+        :L('senin yazdığın program — onaylanmadan sporcuya ulaşmaz','the session you wrote — it reaches nobody until you approve it')}>
       <div className="di-result">
         <div className="di-resacts">
           <button type="button" className="btn xs sec" onClick={discard}>
@@ -303,8 +232,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
                   'There is a hard rule violation — clear the items above first.'):''}>
                 ✓ {L('Onayla ve takvime yaz','Approve and write to the calendar')}</button>
               <span className="di-dim">{blocked
-                ?L('Sert kural ihlali giderilmeden yazılamaz. Programı yeniden yükleyebilir ya da sporcunun kendi takviminden elle yazabilirsin.',
-                   'It cannot be written until the hard violation is cleared. Load the programme again, or write it by hand on the athlete\'s own calendar.')
+                ?L('Sert kural ihlali giderilmeden yazılamaz. Tabloyu düzenleyip programı yeniden oluşturabilir ya da sporcunun kendi takviminden elle yazabilirsin.',
+                   'It cannot be written until the hard violation is cleared. Edit the table and build the programme again, or write it by hand on the athlete\'s own calendar.')
                 :L('Onaylayıp sporcunun kendi takvimine işler.','Approves it and puts it on the athlete\'s own calendar.')}</span></>}
         </div>
       </div>
@@ -313,8 +242,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {(side==='cal'||side==='load')&&calendar&&React.cloneElement(calendar,{showCal:side==='cal',showLoad:side==='load'})}
 
     {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yüklenmedi — "Sporcu Bilgilerini Al" ile veriyi al, yapay zekânın yazdığı programı "AI Programını Yükle" ile yapıştır. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme has been loaded for this athlete yet — take the data with "Get athlete data" and paste the model\'s programme with "Load AI programme". Until one is approved, this page puts nothing on their calendar.')}
+      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Oluştur"a bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
+         'No programme for this athlete yet — fill in the Movement Pattern table and press "Build programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
     </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that

@@ -168,8 +168,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
        what this athlete does today, and it is not finished. They are named in the toast
        rather than silently dropped, so the button never looks broken. */
     const forceId=(opts.force&&opts.force.id)||null;
-    /* One programme per athlete, handed in by the press itself (a squad JSON pasted into
-       the bar): these athletes are written with it, whatever their stored draft says. */
+    /* One programme per athlete, handed in by the press itself: these athletes are written with it, whatever their stored draft says. */
     const forceMap=opts.forceMap||{};
     const forcedOf=id=>forceMap[id]||(forceId===id&&opts.force?opts.force.program:null);
     const held=targets.filter(p=>!forcedOf(p.ath.id)&&diWriteGate(reviewOf(p)).waiting);
@@ -397,8 +396,8 @@ function IndividualizationView({data,team,updateTeam,weeks}){
           'This is a team session: the individual program replaces the athlete\'s copy of it (no duplicate row is created), and editing the team session afterwards no longer overwrites it. '):''}
         {srcRoster&&srcRoster.length?L(`Bu seans ${srcRoster.length} sporcuya atanmış — program yalnızca onların takvimine işlenir. Başka bir sporcuya gitmesi için önce seansın katılımcı listesine eklenmeli. `,
                      `This session is assigned to ${srcRoster.length} athlete${srcRoster.length>1?'s':''} — the program is written to their calendars only. To reach anyone else, tick them on the session itself first. `):''}
-        {L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Seansta kimse işaretli değilse takvime kendiliğinden hiçbir şey yazılmaz — sporcunun kartından <em>AI Programını Yükle</em> ile programını yükleyip onayla. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
-          <>This program is written by itself onto the calendars of the athletes <strong>ticked on that day's team session</strong>, and reaches nobody else. With a session nobody is ticked on, nothing is written on its own — load and approve a programme from the athlete's card with <em>Load AI programme</em>. Open an athlete's card, pick the session on their calendar and edit it in place with <em>✎ Edit</em>; a day you edit by hand is never overwritten from this page again.</>)}
+        {L(<>Bu program, o günün takım seansına <strong>işaretlediğin</strong> sporcuların takvimine kendiliğinden işlenir; başka kimseye gitmez. Seansta kimse işaretli değilse takvime kendiliğinden hiçbir şey yazılmaz — sporcunun kartından Hareket Paterni tablosunu doldurup programı oluştur ve onayla. Sporcunun kartını aç, takviminden antrenmanı seç ve <em>✎ Düzenle</em> ile aynı kartın içinde düzenle; elle düzenlediğin bir gün bu sayfa tarafından bir daha üzerine yazılmaz.</>,
+          <>This program is written by itself onto the calendars of the athletes <strong>ticked on that day's team session</strong>, and reaches nobody else. With a session nobody is ticked on, nothing is written on its own — fill in the Movement Pattern table on the athlete's card, build the programme and approve it. Open an athlete's card, pick the session on their calendar and edit it in place with <em>✎ Edit</em>; a day you edit by hand is never overwritten from this page again.</>)}
       </div>
     </div>
     {/* Only the athletes this source may reach are offered: "All" over an assigned session
