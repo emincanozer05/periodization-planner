@@ -53,6 +53,36 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
+  /* "Programı Oluştur": the Movement Pattern table gathered into a programme and put where
+     the coach reads it — the same draft, the same checks and the same approval a written
+     programme always had. It reaches the calendar only through "Onayla ve takvime yaz". */
+  const buildProgram=()=>{
+    const L0=live.current;
+    const prog=diManualProgram(instr,L0.libMap,L0.plan.meta&&L0.plan.meta.name);
+    if(!prog){
+      setErr(L('Programa girecek egzersiz yok — Hareket Paterni tablosunda en az bir egzersiz adı yaz.',
+        'There is nothing to build from — write at least one exercise name in the Movement Pattern table.'));
+      return;
+    }
+    let v;
+    try{
+      v=validateProgram(prog,{bundle:L0.bundle,instr,setup:L0.setup,libMap:L0.libMap,deficits:L0.deficits,
+        differentiators:L0.differentiators,recent:L0.recent,peers:L0.peers});
+    }catch(e){setErr((e.message||String(e))+' — '+L('program kontrol edilemedi.','the programme could not be checked.'));return;}
+    const cur=L0.review&&L0.review.program;
+    if(cur&&!confirm(L('Bu sporcu için bu güne ait bir program zaten var. Tablodan yeniden oluşturulsun mu?',
+      'There is already a programme for this athlete on this day. Build it again from the table?')))return;
+    diWriteReview(L0.team,L0.updateTeam,L0.srcKey,L0.plan.ath.id,L0.date,{
+      athlete:L0.plan.ath.id,date:L0.date,src:L0.srcKey,program:prog,instr,
+      differentiators:L0.differentiators,validation:v,
+      engine:{readiness:L0.bundle.readiness,adjustment:L0.bundle.adjustment,flag:L0.bundle.flag,
+        competition:L0.bundle.competition,season_phase:L0.bundle.season_phase,tier:L0.bundle.tier},
+      model:'manual',created_at:new Date().toISOString(),
+      decision:null,decided_at:null,jobId:null,pendingJob:null,generation:{source:'manual'}});
+    setErr('');
+    flipTo('prog');
+    setTimeout(()=>{try{if(panelRef.current)panelRef.current.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},60);
+  };
   /* Write is the approval: the coach read the session and said yes, so it is recorded
      as the decision AND put on the athlete's calendar in the same press. */
   const write=()=>{
@@ -102,7 +132,6 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const acwrTone=acwr==null?null:(acwr>1.5?'bad':(acwr>=0.8&&acwr<=1.3)?'good':'warn');
   const adjTone=adj.pct<=-25?'bad':adj.pct<0?'warn':'good';
 
-  const external=!!(review&&review.model==='external');
   const progTitle=(calEdited&&String(calSes.name||'').trim())||(program&&program.session_name)||L('Önerilen program','Proposed session');
   const progRows=calRows||rows;
   const progAdj=(calRows||(program&&program.external))?{...adj,pct:0}:adj;
@@ -187,7 +216,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} closed={closedPats}
+      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}
         autoVol={bundle.adjustment?bundle.adjustment.pct:0}
         autoReasons={bundle.adjustment?bundle.adjustment.reasons:[]}
         autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}/>

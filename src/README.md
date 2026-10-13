@@ -42,6 +42,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19-profile-tests-load.css` | Sporcu Profili (Joint by Joint, Atletik Profil), Test ve Değerlendirme ve Sporcu Yük Panosu: düz/opak yüzeyler (gradyan ve yarı saydam katman yok), renk yalnızca küçük işaretlerde, seçim ve gelişte kısa hareketler. `:is(:root,:root[data-theme])` öneki açık temanın otomatik kurallarını aynı özgüllükte geçer |
 | `19b-notebook.css` | "Açık Defter" tasarımı, son stil katmanı: açık tema renkleri (varsayılan), masaüstü üst çubuğu + yalnız menüden oluşan kenar çubuğu, kutusuz sayfa başlığı, tek ana/ikincil düğme stili, tek panelli takvim haftası. Cam ve gradyan yok |
 | `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Wellness + Uyku ve HRV. Düz yüzey, gradyan yok |
+| `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -68,6 +69,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/230-calendar.jsx` | CALENDAR (reusable for team & athlete) |
 | `app/235-session-kinds.jsx` | TRAINING BLOCK BAR · TEAM PRACTICE / MATCH / TEST WINDOWS |
 | `app/240-block-editor-session-details.jsx` | BLOCK EDITOR (now with exercise description row) · SESSION DETAILS — carried by every block |
+| `app/242-pattern-plan-table.jsx` | THE PATTERN TABLE — antrenmanın elle yazıldığı tablo (`PlanTable`); takvim bloğu adaptörü `CalPlanGrid`, bireyselleştirmedeki karşılığı `DiPatternPlan` (610) |
 | `app/250-ball-practice.jsx` | BALL PRACTICE — the court, and the drills drawn on it |
 | `app/260-session-editor-planner.jsx` | SESSION EDITOR · PLANNER (week view + day detail; reusable for team/athlete) |
 | `app/270-interval-timer.jsx` | INTERVAL TIMER |

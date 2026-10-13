@@ -90,7 +90,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diWriteReviews', 'diReadReview',
+    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
@@ -1469,6 +1469,50 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('Kart rengi: blok başlığı tonu hatasız hesaplanır (koyu → beyaz yazı, açık → koyu yazı)',
       !tErr && tDark && tDark.cls === ' tinted' && tDark.style['--blk-c'] === '#0070cc' &&
       tLight && tLight.cls === ' tinted lt' && tNone && tNone.cls === '', tErr);
+  }
+
+  group('Ek — Elle yazılan program: patern tablosu → program → takvim');
+  {
+    const row = (id, exercise, o) => Object.assign({ id, exercise, sets: '3', reps: '5', rest: '90 sn' }, o || {});
+    const raw = [
+      row('knee_dominant', 'Back Squat', { sets: '4', tempo: '3-0-1', rpe: '7', load: '70% 1RM', superset: 'a', alt: 'Front Squat', note: 'Derinlik kontrollü' }),
+      row('hip_dominant', 'Romanian Deadlift'),
+      row('horizontal_push', ''),                                   // adı boş: programa girmez
+      row('horizontal_pull', 'Chest Supported Row', { superset: 'Z' }),
+      { id: 'yok_boyle_bir_patern', exercise: 'X' },
+    ];
+    const kept = A.diMovePatterns(raw);
+    check('tablo: doz, süperset ve alternatif saklanıyor; bilinmeyen patern düşüyor',
+      kept.length === 4 && kept[0].sets === '4' && kept[0].tempo === '3-0-1' && kept[0].load === '70% 1RM' &&
+      kept[0].superset === 'A' && kept[0].alt === 'Front Squat' && kept[0].note === 'Derinlik kontrollü' && kept[3].superset === '',
+      JSON.stringify(kept.map(k => [k.id, k.superset])));
+    const prog = A.diManualProgram({ patterns: raw }, libMap, 'Alt vücut');
+    const rows = prog ? prog.blocks[0].exercises : [];
+    check('program: yalnızca adı olan satırlar giriyor, hepsi tek ana blokta',
+      !!prog && prog.blocks.length === 1 && rows.map(r => r.name).join('|') === 'Back Squat|Romanian Deadlift|Chest Supported Row' &&
+      prog.session_name === 'Alt vücut', JSON.stringify(rows.map(r => r.name)));
+    check('program: elle yazılmış sayılıyor (external) ve her satır kendi patern kimliğini taşıyor',
+      prog.external === true && prog.manual === true && rows[0].coachPattern === 'knee_dominant' && rows[2].coachPattern === 'horizontal_pull' &&
+      rows[0].pattern === 'Squat' && rows[0].exPattern === 'Knee Dominant' && rows[2].exPattern === 'Upper Body Pull' && rows[2].exPlane === 'Horizontal');
+    check('program: kütüphanedeki egzersiz "library", olmayan "custom"', rows[1].source === 'library' && rows[0].source === 'custom');
+    check('program: hiç adı olan satır yoksa program yok',
+      A.diManualProgram({ patterns: [row('knee_dominant', '   '), row('core', '')] }, libMap, '') === null && A.diManualProgram({}, libMap, '') === null);
+    const ath = athlete({ wellness: [wellness(TODAY, 4.5)] });
+    const ctx = ctxFor(ath, { rawInstr: { avoid: ['back squat'] } });
+    const v = A.validateProgram(prog, ctx);
+    check('elle yazılan program asla engellenmiyor: kaçınılacak listesi yalnızca uyarı olarak okunuyor',
+      v.status === 'pass' && v.hardViolations.length === 0 && v.softWarnings.some(w => w.was_hard), softText(v));
+    const plan = { blocks: [], meta: { name: 'Alt vücut' }, rd: { score: 4 }, band: null, posGroup: '', changed: 0 };
+    const cut = A.diProgramPlan(plan, prog, -40);
+    const pr = cut.blocks[0].rows;
+    check('takvime giderken hazır oluş kesintisi uygulanmıyor: set ve tekrar yazıldığı gibi',
+      pr[0].sets === '4' && pr[0].reps === '5' && pr[1].sets === '3');
+    const ses = A.planToSession(cut, { name: 'S', time: '09:00', blocks: [] }, TODAY, 'k');
+    const e = ses.blocks[0].exercises;
+    check('takvime gidince süperset, alternatif, patern ve uygulama satırda duruyor',
+      e.length === 3 && e[0].superset === 'A' && e[0].alt && e[0].alt.name === 'Front Squat' && e[0].pattern === 'Knee Dominant' &&
+      e[2].pattern === 'Upper Body Pull' && e[2].plane === 'Horizontal' && e[0].load === '70% 1RM' && e[0].tempo === '3-0-1' &&
+      e[0].description === 'Derinlik kontrollü', JSON.stringify(e.map(x => [x.name, x.pattern, x.plane, x.superset])));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

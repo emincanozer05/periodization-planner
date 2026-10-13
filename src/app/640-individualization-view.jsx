@@ -176,7 +176,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       const skip=new Set(held.map(p=>p.ath.id));
       targets=targets.filter(p=>!skip.has(p.ath.id));
       if(!opts.auto)setTimeout(()=>setToast(L(
-        `${held.length} sporcu AI taslağı onayı bekliyor — kartı açıp onayla`,
+        `${held.length} sporcunun programı onay bekliyor — kartı açıp onayla`,
         `${held.length} athlete${held.length>1?'s':''} waiting on draft approval — open the card and approve`)),0);
     }
     if(targets.length===0)return;

@@ -385,6 +385,15 @@ const DI_MOVE_EXTRAS=[
    library or typed — and then that exercise is the one written. Never more than this
    many of one pattern. */
 const DI_MOVE_MAX_SLOTS=6;
+/* What the coach writes against each exercise of a pattern: the prescription. */
+const DI_MOVE_DOSE=['sets','reps','duration','tempo','rpe','load','rest'];
+/* How the calendar files each coach pattern: its movement pattern and the execution that
+   goes with it. A carry is trunk work against a side load, which is how the calendar's own
+   taxonomy reads it. */
+const DI_PAT_EX={knee_dominant:['Knee Dominant',''],hip_dominant:['Hip Dominant',''],
+  horizontal_push:['Upper Body Push','Horizontal'],vertical_push:['Upper Body Push','Vertical'],
+  horizontal_pull:['Upper Body Pull','Horizontal'],vertical_pull:['Upper Body Pull','Vertical'],
+  carry:['Core','Anti-Lateral Flexion'],core:['Core',''],accessory:['Accessory','']};
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
    while several could be ticked keeps the first. The items of one pattern are kept
@@ -408,6 +417,10 @@ function diMovePatterns(v){
     row.facets.forEach(f=>{o[f.k]=clean(f,1);});
     DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
     o.note=String(obj.note==null?'':obj.note).slice(0,240);
+    /* The dose the coach wrote for this exercise, and its alternative — kept as typed. */
+    DI_MOVE_DOSE.forEach(k=>{o[k]=String(obj[k]==null?'':obj[k]).trim().slice(0,40);});
+    o.superset=/^[A-F]$/i.test(String(obj.superset||'').trim())?String(obj.superset).trim().toUpperCase():'';
+    o.alt=String(obj.alt==null?'':obj.alt).trim().slice(0,120);
     g.push(o);
   });
   return[...groups.values()].flat();
@@ -981,6 +994,29 @@ function diParseProgram(text){
   return out;
 }
 
+/* The programme the coach wrote in the pattern table, in the shape the card, the validator
+   and the calendar write all read. Only rows with an exercise name go in; it is the coach's
+   own, so it is written as typed — no readiness cut on its sets and reps — and what the
+   rules would have stopped is listed as a warning to read (validateProgram, `external`). */
+function diManualProgram(instr,libMap,sessionName){
+  const items=diMovePatterns(instr&&instr.patterns).filter(p=>String(p.exercise||'').trim());
+  if(!items.length)return null;
+  const t=v=>{const x=String(v==null?'':v).trim();return x?x:null;};
+  const lib=libMap||{};
+  const exercises=items.map((p,i)=>{
+    const row=diMoveRow(p.id);
+    const[exPat,exPlane]=DI_PAT_EX[p.id]||['',''];
+    const nm=String(p.exercise).trim();
+    const alt=t(p.alt);
+    return{key:`man:0:${i}`,phase:'ana',name:nm,source:lib[nm.toLowerCase()]?'library':'custom',
+      sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
+      rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
+      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,superset:p.superset||'',
+      ...(alt?{alt:{name:alt,pattern:exPat,plane:exPlane}}:{})};
+  });
+  return{session_name:t(sessionName),blocks:[{key:'man:0',name:'',phase:'ana',exercises}],summary:null,priorities:[],
+    respected:[],conflicts:[],rationale:null,warning:null,truncated:false,external:true,manual:true};
+}
 /* The stored draft's programme, flagged as loaded where the draft says so — drafts
    loaded before the flag was carried on the programme itself are read the same way. */
 function diReviewProgram(r){
@@ -1426,10 +1462,10 @@ function validateProgram(program,ctx){
   /* Rule 17's other half: a reading the system must not decide on by itself. */
   if(bundle.readiness&&bundle.readiness.score!=null&&bundle.readiness.score<DI_RD_REVIEW)
     S(28,program.external
-      ?`Hazır oluş ${bundle.readiness.score}/5 — ${DI_RD_REVIEW} altında. Yüklenen programa otomatik azaltma uygulanmaz: set ve tekrarı yazmadan önce gözden geçir.`
+      ?`Hazır oluş ${bundle.readiness.score}/5 — ${DI_RD_REVIEW} altında. Elle yazılan programa otomatik azaltma uygulanmaz: set ve tekrarı yazmadan önce gözden geçir.`
       :`Hazır oluş ${bundle.readiness.score}/5 — ${DI_RD_REVIEW} altında. Otomatik azaltma uygulandı ama son karar antrenörün: bu programı yazmadan önce gözden geçir.`,
       program.external
-      ?`Readiness is ${bundle.readiness.score}/5, under ${DI_RD_REVIEW}. No automatic reduction is applied to a loaded programme — review the sets and reps before writing it.`
+      ?`Readiness is ${bundle.readiness.score}/5, under ${DI_RD_REVIEW}. No automatic reduction is applied to a programme you wrote — review the sets and reps before writing it.`
       :`Readiness is ${bundle.readiness.score}/5, under ${DI_RD_REVIEW}. The automatic reduction was applied, but the call is the coach's — review this before writing it.`);
 
   const uniq=list=>{const seen=new Set();return list.filter(v=>{const k=v.rule+'|'+v.text;
@@ -1480,8 +1516,9 @@ function diProgramPlan(plan,program,pct){
       name:e.name,added:true,addId:e.key,
       sets:adj.sets||'',reps:adj.reps||'',duration:adj.duration||'',
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
-      superset:'',pattern:e.pattern||'',plane:'',link:'',
+      superset:e.superset||'',pattern:e.exPattern||e.pattern||'',plane:e.exPlane||'',link:'',
       description:why,image:'',changedName:false,
+      ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};
   };
   const name=String((program&&program.session_name)||'').trim();
