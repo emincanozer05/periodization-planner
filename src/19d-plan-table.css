@@ -1,0 +1,125 @@
+/* ---- The pattern table ---------------------------------------------------
+   Chips across the top pick the movement patterns; every picked pattern is a row of the
+   grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
+   time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
+   individualization brief (PlanTable). Wider than a card can be on a mid-size screen: it
+   scrolls sideways there, and folds into small cards below 780px of its own width. */
+.pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
+.pt-host{padding:12px 14px 14px;min-width:0}
+.pt-top{display:flex;align-items:flex-start;gap:12px}
+.pt-chips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
+.pt-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:10px;padding:7px 15px;
+  font-size:13px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+.pt-chip:hover{border-color:var(--accent);color:var(--text)}
+.pt-chip.on{border-color:rgba(45,212,167,.6);background:rgba(45,212,167,.12);color:#7ee7c7;font-weight:700}
+.pt-chip.warn{border-style:dashed}
+.pt-chip i{font-style:normal;font-weight:800;color:#fbbf24;margin-left:6px}
+.pt-chip:focus-visible,.pt-more:focus-visible,.pt-altadd:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.pt-n{flex:none;font-size:12px;font-weight:600;color:var(--dim);padding:5px 13px;border-radius:999px;border:1px solid var(--border);
+  white-space:nowrap}
+.pt-n b{font-weight:700}
+.pt-n.on{color:var(--text2);border-color:var(--border2)}
+.pt-n.on b{color:var(--text)}
+.pt-scroll{overflow-x:auto;padding-bottom:2px}
+.pt-grid{min-width:1216px;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
+.pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
+  grid-template-columns:minmax(112px,.9fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
+.pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
+.pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
+.pt-grp+.pt-grp{border-top:1px solid var(--border)}
+.pt-tr+.pt-tr{border-top:1px dashed var(--border)}
+.pt-tr:hover{background:rgba(255,255,255,.012)}
+.pt-cl{display:none}
+.pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
+/* The pattern's name — bold, a dot of its colour in front, and its ✕ when the row is hovered. */
+.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;min-height:36px;
+  padding-right:24px;color:var(--text)}
+.pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
+.pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
+.pt-sub{margin-left:16px;font-size:11px;color:var(--dim)}
+.pt-pat>.pt-x{position:absolute;right:0;top:7px;margin:0}
+.pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
+  border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
+.pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
+.pt-x{flex:none;width:22px;height:22px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
+  opacity:0;transition:opacity .12s,background .12s,color .12s;margin-left:auto}
+.pt-tr:hover .pt-x,.pt-x:focus-visible{opacity:1}
+.pt-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
+/* The exercise: tag and name are one joined box; the alternative sits under it. */
+.pt-exmain{display:flex;align-items:stretch;gap:0;min-width:0}
+.pt-exmain .pt-x{margin-left:4px;align-self:center;opacity:.55}
+.pt-tag{position:relative;flex:none;display:flex;align-items:center;justify-content:center;min-width:38px;padding:0 6px;
+  border:1px solid var(--border);border-right:0;border-radius:8px 0 0 8px;background:rgba(56,152,236,.1);color:#6cb4f5;
+  font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;cursor:pointer;margin:0;text-transform:none;letter-spacing:0}
+.pt-tag:not(.on){color:var(--dim);background:var(--elevated)}
+.pt-tag:hover{border-color:var(--border2)}
+.pt-tag select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;background:none}
+.pt-tag:focus-within{border-color:var(--accent)}
+.pt-exname{flex:1;min-width:0}
+.pt-exname .en-wrap{display:block}
+.pt-exname .en{width:100%;min-height:34px;font-family:inherit;font-size:13px;font-weight:600;line-height:1.3;padding:8px 10px;resize:none;
+  overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box;background:var(--elevated);color:var(--text);
+  border:1px solid var(--border);border-radius:0 8px 8px 0;transition:border-color .15s}
+.pt-exname .en::placeholder{color:var(--dim);font-weight:400}
+.pt-exname .en:hover{border-color:var(--border2)}
+.pt-exname .en:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+.pt-exname.alt .en{border-radius:8px;min-height:30px;font-size:12px;font-weight:500;color:var(--text2);padding:6px 9px}
+.pt-more{flex:none;width:28px;margin-left:4px;border:1px solid var(--border);border-radius:8px;background:var(--elevated);color:var(--dim);
+  font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,color .15s}
+.pt-more:hover,.pt-more.on{border-color:var(--accent);color:var(--text)}
+.pt-alt{display:flex;align-items:center;gap:7px;margin-top:6px;min-width:0}
+.pt-altk{flex:none;width:38px;text-align:center;font-size:12px;color:var(--dim)}
+.pt-altadd{margin-left:auto;border:0;background:none;color:#5eead4;font-size:12px;font-weight:600;cursor:pointer;padding:3px 2px;border-radius:5px}
+.pt-altadd:hover{text-decoration:underline}
+.pt-altx{flex:none;border:0;background:none;color:var(--dim);font-size:11px;cursor:pointer;padding:3px 5px;border-radius:5px}
+.pt-altx:hover{color:#fda4af}
+/* Numbers and short answers: one look for every box in the grid. */
+.pt-step,.pt-combo{position:relative;display:flex;align-items:stretch;min-height:36px;border:1px solid var(--border);border-radius:8px;
+  background:var(--elevated);overflow:hidden;transition:border-color .15s}
+.pt-step:hover,.pt-combo:hover{border-color:var(--border2)}
+.pt-step:focus-within,.pt-combo:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+.pt-step input,.pt-combo input{flex:1;min-width:0;width:100%;border:0;background:none;color:var(--text);font-size:13px;font-weight:600;
+  padding:7px 10px;font-variant-numeric:tabular-nums;font-family:inherit}
+.pt-step input{text-align:left;-moz-appearance:textfield}
+.pt-step.cnt input{text-align:center;padding-left:0}
+.pt-step input::-webkit-inner-spin-button,.pt-step input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.pt-step input:focus,.pt-combo input:focus{outline:none}
+.pt-step input::placeholder,.pt-combo input::placeholder,.pt-noteinp::placeholder{color:var(--dim);font-weight:400}
+.pt-spin{display:flex;flex-direction:column;border-left:1px solid var(--border);flex:none}
+.pt-spin button{flex:1;width:22px;border:0;background:none;cursor:pointer;position:relative}
+.pt-spin button::before{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-1px 0 0 -3px;
+  border-left:1.5px solid var(--text2);border-top:1.5px solid var(--text2);transform:rotate(45deg)}
+.pt-spin button+button::before{transform:rotate(-135deg);margin-top:-4px}
+.pt-spin button:hover:not(:disabled){background:var(--hover)}
+.pt-spin button:disabled{cursor:default;opacity:.35}
+.pt-combo.dd::after{content:'';position:absolute;right:11px;top:50%;width:6px;height:6px;margin-top:-5px;pointer-events:none;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
+.pt-combo.dd input{padding-right:26px}
+.pt-combo.dd input::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;top:0;width:28px;height:100%;cursor:pointer}
+.pt-noteinp{width:100%;min-height:36px;box-sizing:border-box;background:var(--elevated);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:7px 10px;font-size:12.5px;font-family:inherit;transition:border-color .15s}
+.pt-noteinp:hover{border-color:var(--border2)}
+.pt-noteinp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+/* The row's "more": execution, image, link, the reason for the alternative, order. */
+.pt-detail{padding:0 12px 12px 12px;border-top:1px dashed var(--border)}
+.pt-det{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 16px;border:1px solid var(--border);border-radius:10px;background:var(--elevated);padding:10px 12px;margin-top:10px}
+.pt-dl{display:flex;flex-direction:column;gap:4px;margin:0;font-size:11px;font-weight:600;color:var(--dim);text-transform:none;letter-spacing:normal}
+.pt-dl select,.pt-dl input{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px}
+.pt-dl.wide{flex:1 1 260px;min-width:220px}
+.pt-dl.wide>input,.pt-dl.wide .exlink{width:100%}
+.pt-dacts{display:flex;gap:6px;margin-left:auto}
+.pt-empty{padding:18px 16px;border:1px dashed var(--border2);border-radius:12px;color:var(--dim);font-size:12.5px;text-align:center}
+.pt-add{margin-top:2px}
+@container (max-width:780px){
+  .pt-scroll{overflow:visible}
+  .pt-grid{min-width:0;background:none;border:0;border-radius:0;display:flex;flex-direction:column;gap:10px;overflow:visible}
+  .pt-th{display:none}
+  .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
+  .pt-grp+.pt-grp{border-top:1px solid var(--border)}
+  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px;padding:12px}
+  .pt-pat,.pt-ex,.pt-note{grid-column:1/-1}
+  .pt-cnt{grid-column:span 1}
+  .pt-cl{display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;color:var(--dim)}
+  .pt-x{opacity:.7}
+}

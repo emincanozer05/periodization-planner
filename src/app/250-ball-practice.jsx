@@ -726,11 +726,19 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   /* Every write goes back sorted into the block's phases, so the array the rest of the
      app reads — the sheet, the printout, the athlete's copy — is always in the order
      the session is actually run. With no phase open the sort is the identity. */
-  const setExs=a=>{const{block:b,onUpdate:up}=liveRef.current;up({...b,exercises:sortExsByPhase(a,blkPhases(b))});};
+  const setExs=a=>{const{block:b,onUpdate:up}=liveRef.current;
+    const next=sortExsByPhase(a,blkPhases(b));
+    /* The next edit starts from what was just written, not from the last render: two edits
+       before the screen catches up (a name, then a number in the next row) must both land. */
+    liveRef.current={...liveRef.current,exs:next,block:{...b,exercises:next}};
+    up({...b,exercises:next});};
   const setExsRef=useRef(setExs);setExsRef.current=setExs;
   /* One set of handlers per row, rebuilt only when the number of rows changes. */
   const slotFns=useMemo(()=>exs.map((_,i)=>({
     onChange:nx=>{const a=[...liveRef.current.exs];a[i]=nx;setExsRef.current(a);},
+    /* The same write, built from the row as it stands NOW (the pattern table patches a field
+       at a time, and two patches to one row must both survive). */
+    update:fn=>{const a=[...liveRef.current.exs];if(!a[i])return;a[i]=fn(a[i]);setExsRef.current(a);},
     /* Up and down move a row within its OWN section: the nearest neighbour sharing its
        phase, which is simply the next row along in a block with no phases open. A row
        changes section through the picker in its header, never by being nudged out of
@@ -795,6 +803,17 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
   const placeLooseIn=p=>{const ph=blkPhases(liveRef.current.block);
     setExs(liveRef.current.exs.map(e=>ph.includes(exPhase(e))?e:{...e,phase:p}));};
   const addEx=p=>{setOpen(true);setExs([...liveRef.current.exs,{...(isBall?BALL_EX():EX()),phase:p||''}]);};
+  /* The pattern table's two moves: add `n` rows of a pattern right after row `after` (or at
+     the end of the section), and drop a set of rows in one write — several removals in one
+     tick would each start from the same stale list. */
+  const addExAt=(ph,pat,after,n)=>{
+    setOpen(true);
+    const cur=liveRef.current.exs;
+    const at=after==null?cur.length:after+1;
+    const add=Array.from({length:n||1},()=>({...EX(),phase:ph||'',...(pat?{pattern:pat}:{})}));
+    setExs([...cur.slice(0,at),...add,...cur.slice(at)]);
+  };
+  const removeIdx=idxs=>{const gone=new Set(idxs);setExs(liveRef.current.exs.filter((_,j)=>!gone.has(j)));};
   /* The rows as they are read: one group per open section, in running order, with
      whatever is not placed yet collected at the end. No sections open means one group
      holding everything, which is the block as it has always been drawn. */
@@ -907,25 +926,23 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
       <div className="iv-slotswrap">{view.map(g=>{
         const gKey=g.phase||'_loose';
         const shut=!!shutPh[gKey];
-        const grid=(<div className={isBall?'iv-slots bp-slots':'iv-slots'}>
-          {g.rows.map((r,k)=>isBall
-            ?<BallDrillEd key={r.ex.id||r.i} ex={r.ex} tag={labels[r.i]} {...slotFns[r.i]} phases={phaseOpts}
-              first={k===0} last={k===g.rows.length-1}/>
-            :<CalSlotEd key={r.i} ex={r.ex} tag={labels[r.i]} {...slotFns[r.i]} phases={phaseOpts}
+        const grid=isBall
+          ?(<div className="iv-slots bp-slots">
+            {g.rows.map((r,k)=><BallDrillEd key={r.ex.id||r.i} ex={r.ex} tag={labels[r.i]} {...slotFns[r.i]} phases={phaseOpts}
               first={k===0} last={k===g.rows.length-1}/>)}
-          {/* Adding lands where the next exercise goes: at the end of THIS section,
-              beside the last one when the row still has a free half, across the row when
-              the last row is full. An unplaced row is never added on purpose, so the
-              tray at the foot has no button of its own. */}
-          {!g.loose&&<button type="button" className={'iv-addslot'+(!isBall&&g.rows.length%2?' beside':'')}
-            onClick={()=>addEx(g.phase)}
-            title={g.phase
-              ?(isBall?L(`${phLbl(g.phase)} bölümüne dril ekle`,`Add a drill to the ${phLbl(g.phase)} section`)
-                     :L(`${phLbl(g.phase)} bölümüne egzersiz ekle`,`Add an exercise to the ${phLbl(g.phase)} section`))
-              :(isBall?L(`${blkName}'a dril ekle`,`Add a drill to ${blkName}`):L(`${blkName}'a egzersiz ekle`,`Add an exercise to ${blkName}`))}>
-            + {isBall?L('Dril ekle','Add drill'):L('Egzersiz ekle','Add exercise')}
-            {g.phase?<u>{phLbl(g.phase)}</u>:null}</button>}
-        </div>);
+            {/* Adding lands at the end of THIS section. An unplaced row is never added on
+                purpose, so the tray at the foot has no button of its own. */}
+            {!g.loose&&<button type="button" className="iv-addslot"
+              onClick={()=>addEx(g.phase)}
+              title={g.phase?L(`${phLbl(g.phase)} bölümüne dril ekle`,`Add a drill to the ${phLbl(g.phase)} section`)
+                :L(`${blkName}'a dril ekle`,`Add a drill to ${blkName}`)}>
+              + {L('Dril ekle','Add drill')}
+              {g.phase?<u>{phLbl(g.phase)}</u>:null}</button>}
+          </div>)
+          /* S&C is written in the pattern table: the same one the individualization brief
+             uses — patterns across the top, one row per exercise with its prescription. */
+          :<CalPlanGrid rows={g.rows} labels={labels} fns={slotFns} phase={g.phase} loose={!!g.loose}
+            onAdd={addExAt} onRemoveIdx={removeIdx}/>;
         if(g.flat)return<React.Fragment key="flat">{grid}</React.Fragment>;
         return(<section key={gKey} className={'blk-ph '+(g.phase?phC(g.phase):'p-loose')}>
           <header className="blk-ph-h">
