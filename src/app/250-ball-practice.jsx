@@ -722,7 +722,16 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
      memo never holds. They read the block and its exercises out of refs — always the
      current ones — instead of closing over them, which is what keeps their identity. */
   const liveRef=useRef(null);
-  liveRef.current={exs,block,onUpdate};
+  /* The lists this block wrote that have not come back yet. One that does is an echo: an OLDER
+     one than the last written means a newer edit is still on its way and the next edit must
+     start from that, not from the stale echo. Anything this block did not write is taken. */
+  const sentRef=useRef([]);
+  {
+    const lst=sentRef.current;
+    const echo=lst.length?lst.indexOf(JSON.stringify(exs)):-1;
+    if(echo>=0&&echo<lst.length-1)liveRef.current={...liveRef.current,onUpdate};
+    else{sentRef.current=[];liveRef.current={exs,block,onUpdate};}
+  }
   /* Every write goes back sorted into the block's phases, so the array the rest of the
      app reads — the sheet, the printout, the athlete's copy — is always in the order
      the session is actually run. With no phase open the sort is the identity. */
@@ -731,6 +740,7 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
     /* The next edit starts from what was just written, not from the last render: two edits
        before the screen catches up (a name, then a number in the next row) must both land. */
     liveRef.current={...liveRef.current,exs:next,block:{...b,exercises:next}};
+    sentRef.current=[...sentRef.current.slice(-30),JSON.stringify(next)];
     up({...b,exercises:next});};
   const setExsRef=useRef(setExs);setExsRef.current=setExs;
   /* One set of handlers per row, rebuilt only when the number of rows changes. */

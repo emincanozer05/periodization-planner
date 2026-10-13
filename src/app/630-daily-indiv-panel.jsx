@@ -216,10 +216,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}
-        autoVol={bundle.adjustment?bundle.adjustment.pct:0}
-        autoReasons={bundle.adjustment?bundle.adjustment.reasons:[]}
-        autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}/>
+      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
     </DiSection>
     </>}
 
