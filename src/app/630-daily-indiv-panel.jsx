@@ -234,6 +234,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
         autoVol={bundle.adjustment?bundle.adjustment.pct:0}
+        autoReasons={bundle.adjustment?bundle.adjustment.reasons:[]}
+        autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}
         onImport={()=>setImp({text:'',err:''})}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>

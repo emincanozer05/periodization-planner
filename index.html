@@ -6227,28 +6227,59 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
-/* Three across, by named areas. The movement-pattern card (2) is the one that grows —
-   a wide grid, a row per picked pattern — so it takes a whole row of its own, under
-   priority (1) and volume / intensity (3); length, ceiling and keep-out (4-5-6) share
-   the next row and notes (7) the last. Narrower, it folds to two (the pattern card across the
-   whole width) and then to one, always in field order. Cards stretch to their row so
-   no card ends early. */
-.di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
-  grid-template-areas:"a1 a3 a3" "a2 a2 a2" "a4 a5 a7" "a6 a6 a6"}
+/* By named areas on six tracks. Priority (1, area a1) and volume / intensity (2, area
+   a3) share the first row in equal halves; the movement-pattern card (3, area a2) is
+   the wide one — a grid with a row per picked pattern — and takes a whole row of its
+   own; length, ceiling and keep-out (4-5-6) share the next row in thirds and notes (7)
+   the last. Narrower, it folds to two (the pattern card across the whole width) and then
+   to one, always in field order. Cards stretch to their row so no card ends early. */
+.di-fgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:stretch;
+  grid-template-areas:"a1 a1 a1 a3 a3 a3" "a2 a2 a2 a2 a2 a2" "a4 a4 a5 a5 a7 a7" "a6 a6 a6 a6 a6 a6"}
 .di-field.a1{grid-area:a1}.di-field.a2{grid-area:a2}.di-field.a3{grid-area:a3}
 .di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}.di-field.a7{grid-area:a7}
 @media(max-width:1040px){
   .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"a1 a3" "a2 a2" "a4 a5" "a7 a6"}
 }
-@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a2" "a3" "a4" "a5" "a7" "a6"}}
-/* Volume & intensity: a label column and a row of buttons per setting, one summary line. */
-.di-vi{display:flex;flex-direction:column;gap:8px}
-.di-vi-row{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center}
+@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a3" "a2" "a4" "a5" "a7" "a6"}}
+/* Volume & intensity: two blocks side by side (stacked when narrow), each a header line
+   with its figure, the buttons, a picture of the result (dose bar / RPE scale) and a line
+   saying what it means. */
+.di-vi{display:flex;flex-wrap:wrap;gap:10px}
+.di-vi-blk{flex:1 1 360px;display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid var(--border);border-radius:9px;
+  background:var(--panel);padding:10px 11px}
+.di-vi-hd{display:flex;align-items:center;gap:7px;min-width:0}
 .di-vi-k{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-vi-src{font-size:10px;font-weight:600;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 7px}
+.di-vi-src.coach{color:var(--med-t);border-color:rgba(245,158,11,.45)}
+.di-vi-big{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.di-vi-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .di-vi .di-numbtns{max-width:100%}
 .di-vi .di-numb{padding:5px 9px}
-.di-vi-sum{font-size:11px;color:var(--text2);line-height:1.4}
+.di-vi .di-numb small{font-size:10px;font-weight:500;opacity:.75;margin-left:3px}
+.di-vi-int .di-numb{display:inline-flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 11px}
+.di-vi-int .di-numb small{margin:1px 0 0}
+.di-vi-step{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--elevated)}
+.di-vi-step button{width:28px;height:28px;border:0;background:none;color:var(--text2);font-size:15px;cursor:pointer}
+.di-vi-step button:hover:not(:disabled){background:var(--hover);color:var(--text)}
+.di-vi-step button:disabled{opacity:.35;cursor:default}
+.di-vi-step span{min-width:46px;text-align:center;font-size:12.5px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;
+  border-left:1px solid var(--border);border-right:1px solid var(--border);line-height:28px}
+.di-vi-meter{position:relative;height:8px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);overflow:hidden}
+.di-vi-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--text2);opacity:.55;transition:width .2s}
+.di-vi-meter i.cut{background:var(--med-t);opacity:.8}
+.di-vi-meter i.add{background:var(--low-t);opacity:.8}
+.di-vi-meter em{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--text)}
+.di-vi-rpe{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}
+.di-vi-rpe span{text-align:center;font-size:10.5px;font-weight:600;color:var(--dim);border-radius:5px;padding:3px 0;
+  background:var(--elevated);border:1px solid var(--border);font-variant-numeric:tabular-nums}
+.di-vi-rpe span.ok{color:var(--text2);border-color:var(--border2)}
+.di-vi-rpe span.on{color:var(--med-t);border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14)}
+.di-vi-note{font-size:11px;color:var(--text2);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.di-vi-why{display:inline-flex;flex-wrap:wrap;gap:4px}
+.di-vi-tag{font-size:10.5px;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 7px;background:var(--elevated)}
+.di-vi-reset{flex-basis:100%;text-align:left;background:none;border:0;padding:0;font-size:11.5px;color:var(--accent);cursor:pointer}
+.di-vi-reset:hover{text-decoration:underline}
 /* The movement-pattern picker: a toggle per pattern, then the filter grid below. */
 .di-mvp{display:flex;flex-direction:column;gap:12px;container-type:inline-size}
 .di-mvp-top{display:flex;align-items:flex-start;gap:12px}
@@ -6267,9 +6298,9 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
    exercises under it, one row each. Wider than the card can be on a mid-size screen: it
    scrolls sideways there, and folds to small cards below 640px. */
 .di-mvp-scroll{overflow-x:auto;margin:0 -2px;padding:0 2px 2px}
-.di-mvp-grid{min-width:1000px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
+.di-mvp-grid{min-width:1090px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
   display:flex;flex-direction:column;gap:6px;padding:0 6px 6px}
-.di-mvp-tr{display:grid;grid-template-columns:26px minmax(112px,1.15fr) 116px 92px repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+.di-mvp-tr{display:grid;grid-template-columns:26px minmax(132px,1.2fr) minmax(150px,1.3fr) 92px repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
   gap:6px;align-items:center;padding:7px 6px}
 .di-mvp-th{background:none;padding-top:10px;padding-bottom:6px;border-bottom:1px solid var(--border);margin:0 -6px;padding-left:12px;padding-right:12px}
 .di-mvp-th span{font-size:11px;font-weight:600;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6308,14 +6339,6 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-sel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
 .di-mvp-sel.on select{color:var(--text);font-weight:600;border-color:var(--border2);background:var(--panel)}
 .di-mvp-sel select option{color:var(--text);background:var(--panel);font-weight:400}
-/* The role: one colour each — main green, assistance blue, complementary violet. */
-.di-mvp-role select{font-weight:600}
-.di-mvp-role.r-main select{color:var(--low-t);border-color:rgba(45,212,167,.5);background:rgba(45,212,167,.1)}
-.di-mvp-role.r-assist select{color:var(--peak-t);border-color:rgba(91,140,255,.55);background:rgba(91,140,255,.1)}
-.di-mvp-role.r-comp select{color:var(--mvp-violet,#c4b5fd);border-color:rgba(167,139,250,.55);background:rgba(167,139,250,.12)}
-.di-mvp-role.r-main::after{border-color:var(--low-t)}
-.di-mvp-role.r-assist::after{border-color:var(--peak-t)}
-.di-mvp-role.r-comp::after{border-color:var(--mvp-violet,#c4b5fd)}
 /* How many exercises: the number, and a small up / down pair beside it. */
 .di-mvp-cnt{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:7px;background:var(--elevated);overflow:hidden}
 .di-mvp-cnt:focus-within{border-color:var(--accent)}
@@ -6340,6 +6363,22 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-xf:hover{border-color:var(--accent);color:var(--text2)}
 .di-mvp-xf.on{border-style:solid;border-color:var(--border2);background:var(--panel);color:var(--text);font-weight:600}
 .di-mvp-xf:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+/* The exercise box: the programme editor's library picker (a growing textarea), drawn
+   like the selects beside it; on a folded row of several, a button that lists them. */
+.di-mvp-ex .en-wrap{display:block}
+.di-mvp-ex .en{width:100%;min-height:31px;font-family:inherit;font-size:12px;font-weight:600;line-height:1.3;padding:7px 9px;
+  resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box;
+  background:var(--elevated);color:var(--text);border:1px solid var(--border);border-radius:7px;transition:border-color .15s}
+.di-mvp-ex .en::placeholder{color:var(--dim);font-weight:400}
+.di-mvp-ex .en:hover{border-color:var(--border2)}
+.di-mvp-ex .en:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+.di-mvp-slotex{gap:6px}
+.di-mvp-slotex .di-mvp-ex{flex:1;min-width:0}
+.di-mvp-exs{width:100%;text-align:left;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);border-radius:7px;
+  padding:7px 9px;font-size:12px;line-height:1.3;cursor:pointer}
+.di-mvp-exs span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di-mvp-exs.on{border-style:solid;color:var(--text);font-weight:600}
+.di-mvp-exs:hover{border-color:var(--accent)}
 /* The panel under a row: one line of chips per extra filter, then the note. */
 .di-mvp-det{padding:0 10px 10px 38px}
 .di-mvp-detin{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);padding:10px 12px}
@@ -6356,7 +6395,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-note:focus{outline:none;border-color:var(--accent)}
 /* The exercises of an opened pattern: their own table, inset under the pattern's row. */
 .di-mvp-slots{margin:0 8px 8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);overflow:hidden}
-.di-mvp-sr{display:grid;grid-template-columns:28px minmax(96px,.9fr) repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+.di-mvp-sr{display:grid;grid-template-columns:28px minmax(180px,1.7fr) repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
   gap:6px;align-items:center;padding:6px 8px 6px 10px}
 .di-mvp-sr+.di-mvp-sr,.di-mvp-det+.di-mvp-sr{border-top:1px solid var(--border)}
 .di-mvp-slots .di-mvp-th{margin:0;padding:8px 8px 7px 10px;background:var(--elevated)}
@@ -6376,7 +6415,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
   .di-mvp-th{display:none}
   .di-mvp-tr,.di-mvp-sr{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:10px 12px 12px}
   .di-mvp-tr>.di-mvp-ctl:not(.end),.di-mvp-no{display:none}
-  .di-mvp-name,.di-mvp-ctl.end{grid-column:1/-1}
+  .di-mvp-name,.di-mvp-ctl.end,.di-mvp-tr>.di-mvp-ex{grid-column:1/-1}
   .di-mvp-ctl.end{justify-content:center;border-top:1px solid var(--border);margin:0 -12px -8px;padding-top:2px}
   .di-mvp-x{opacity:1}
   .di-mvp-cl{display:block;font-size:10.5px;font-weight:600;color:var(--dim);margin:0 0 3px 1px}
@@ -6906,7 +6945,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .di-mvp-chip.on{color:var(--low-t)}
 :root[data-theme="light"] .di-mvp-chip i,
 :root[data-theme="light"] .di-mvp-pain{color:var(--med-t)}
-:root[data-theme="light"] .di-mvp{--mvp-violet:#6d28d9}
 :root[data-theme="light"] .di-numb.on{color:var(--med-t)}
 :root[data-theme="light"] .di-tag.prio{color:var(--peak-t)}
 :root[data-theme="light"] .di-tag.avoid{color:var(--high-t)}
@@ -37189,17 +37227,6 @@ const DI_MOVE_COLS=[
   {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
-/* What a pattern's exercises are FOR in the session. Main work is the heavy, primary lift
-   of the main phase; assistance follows it in the main phase; complementary goes to the
-   complementary phase. A pick without a role reads as its pattern's usual one. */
-const DI_MOVE_ROLES=[
-  {id:'main',label:['Ana','Main'],ai:'main',how:'a primary lift of the main phase, done first and loaded heaviest'},
-  {id:'assist',label:['Yardımcı','Assistance'],ai:'assistance',how:'assistance work in the main phase, after the primary lifts'},
-  {id:'comp',label:['Tamamlayıcı','Complementary'],ai:'complementary',how:'complementary work, written in the complementary phase'},
-];
-const DI_MOVE_ROLE_DEFAULT={knee_dominant:'main',hip_dominant:'main',horizontal_push:'assist',vertical_push:'assist',
-  horizontal_pull:'assist',vertical_pull:'assist',carry:'comp',core:'comp',accessory:'comp'};
-const diMoveRole=id=>DI_MOVE_ROLES.find(r=>r.id===id)||null;
 /* The extra filters, on every pattern alike: the kit the exercise is done with (any of
    the ticked items), its range of motion and its stability. All optional. */
 const DI_MOVE_EXTRAS=[
@@ -37213,7 +37240,9 @@ const DI_MOVE_EXTRAS=[
 ];
 /* One pattern can be asked for more than once: each item of the list is ONE exercise,
    so knee dominant ticked twice is two knee-dominant exercises (a squat and a lunge),
-   each with its own filters. Never more than this many of one pattern. */
+   each with its own filters. An item may also name the exercise itself — picked off the
+   library or typed — and then that exercise is the one written. Never more than this
+   many of one pattern. */
 const DI_MOVE_MAX_SLOTS=6;
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
@@ -37229,7 +37258,7 @@ function diMovePatterns(v){
     const g=groups.get(id);
     if(g.length>=DI_MOVE_MAX_SLOTS)return;
     const obj=x&&typeof x==='object'?x:{};
-    const o={id,role:diMoveRole(obj.role)?obj.role:(DI_MOVE_ROLE_DEFAULT[id]||'main')};
+    const o={id,exercise:String(obj.exercise==null?'':obj.exercise).trim().slice(0,120)};
     const clean=(f,max)=>{
       const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
@@ -37278,7 +37307,7 @@ function diPatternTipLines(team,athId,dateKey){
     const row=diMoveRow(p.id);
     const same=picks.filter(x=>x.id===p.id);
     return{id:`${p.id}:${i}`,name:diMoveLabel(p.id)+(same.length>1?` ${same.indexOf(p)+1}`:''),
-      parts:[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))};
+      parts:[...(p.exercise?[p.exercise]:[]),...[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))]};
   });
 }
 function diInstr(raw,src){
@@ -37737,8 +37766,7 @@ function diMovePatternsForAI(list){
     /* A pattern asked for more than once says which of its exercises this item is. */
     const same=list.filter(x=>x&&x.id===p.id);
     if(same.length>1){o.exercise_no=same.indexOf(p)+1;o.exercises_of_this_pattern=same.length;}
-    const role=diMoveRole(p.role);
-    if(role)o.role=role.ai;
+    if(p.exercise)o.exercise=p.exercise;
     if(vocab.length)o.movement_pattern_values=vocab;
     row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai||DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
     /* The muscle action is always written, picked or not: an empty one is said out loud
@@ -37757,7 +37785,7 @@ function diBriefForAI(i){
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
       'Each item is ONE exercise: a pattern listed more than once (exercise_no / exercises_of_this_pattern) needs that many different exercises, each tagged with the pattern\'s id and each written to its own item\'s filters. '+
-      'role places the exercise: '+DI_MOVE_ROLES.map(r=>`${r.ai} = ${r.how}`).join('; ')+'. '+
+      'exercise, when given, is the exercise the coach chose for that item: write exactly that exercise, by exactly that name, tagged with the pattern\'s id — the filters then only describe how it is done. '+
       'equipment (a list: the exercise uses one of them), range_of_motion, stability and coach_note, when given, bind that exercise too. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values (a pattern without movement_pattern_values — accessory — takes whichever movement_pattern fits the exercise). '+
       'Each filter given (type, stance, stance_support, side_support, load_distribution, position, direction, strength_goal, task, muscle_action_emphasis, range_of_motion, stability) carries ONE value and binds that exercise: '+
@@ -38393,6 +38421,19 @@ function validateProgram(program,ctx){
         ?`The coach asked for the ${en} pattern and the session has no exercise in it — it declared a conflict, but the coach's patterns are mandatory.`
         :`The coach asked for the ${en} pattern and the session has no exercise in it (nor a declared conflict).`);
     });
+    /* An exercise the coach named (picked off the library or typed) is an instruction
+       too: it has to be in the session under that name. */
+    const named=new Set();
+    pats.forEach(p=>{
+      const nm=String(p.exercise||'').trim();
+      const k=diExName(nm);
+      if(!k||named.has(k))return;
+      named.add(k);
+      if(rows.some(r=>diExName(r.name)===k))return;
+      const row=diMoveRow(p.id);
+      H(22,`Antrenör ${row?row.label[0]+' paterni için ':''}"${nm}" egzersizini seçti ama programda yok.`,
+        `The coach picked "${nm}"${row?` for the ${row.label[1]} pattern`:''} and the session does not have it.`);
+    });
   }
 
   /* ---- HARD 8 (rule 28): the tier the session is held to ----------------- */
@@ -38876,8 +38917,11 @@ function DiPriorityPicker({value,onChange}){
 }
 
 /* The movement patterns the session must carry. Toggles across the top; every ticked
-   pattern is a row of the grid below: its role in the session, how many exercises of it,
-   and one select per facet column (DI_MOVE_COLS) plus the extra filters (DI_MOVE_EXTRAS).
+   pattern is a row of the grid below: the exercise itself, how many exercises of it, and
+   one select per facet column (DI_MOVE_COLS) plus the extra filters (DI_MOVE_EXTRAS).
+   The exercise box is the programme editor's own (ExNameField): it lists the library as
+   it is typed in, and a name the library does not have is filed into it on its own. An
+   empty box leaves the exercise to the model, within the filters.
    A select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has
    no facet of that kind is a dash.
    A pattern can be asked for more than once — each exercise of it is one item of the
@@ -38901,7 +38945,7 @@ function DiPatternPicker({value,onChange,closed}){
     'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.');
   /* Groups in the order of the toggles, not the order they were ticked; saved the same way. */
   const groups=DI_MOVE_PATTERNS.map(row=>({row,items:list.filter(p=>p.id===row.id)})).filter(g=>g.items.length);
-  const fresh=(id,role)=>diMovePatterns([{id,role}])[0];
+  const fresh=id=>diMovePatterns([{id}])[0];
   const setGroup=(id,items)=>onChange(DI_MOVE_PATTERNS.flatMap(r=>r.id===id?items:list.filter(p=>p.id===r.id)));
   const itemsOf=id=>list.filter(p=>p.id===id);
   const toggle=id=>{
@@ -38913,8 +38957,7 @@ function DiPatternPicker({value,onChange,closed}){
     const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
     if(want===items.length)return;
     if(want>items.length){
-      const role=items[0]&&items[0].role;
-      setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id,role))]);
+      setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id))]);
       setOpen(s=>new Set(s).add(id));
     }else setGroup(id,items.slice(0,want));
   };
@@ -38969,6 +39012,13 @@ function DiPatternPicker({value,onChange,closed}){
       </span>
     </label>;
   };
+  /* The exercise box of one item. A pick off the library and a typed name are kept the
+     same way, as the name; the box files a new name into the library itself. */
+  const exCell=(row,ix,cur)=><div className="di-mvp-td di-mvp-ex" role="cell">
+    <span className="di-mvp-cl">{L('Egzersiz','Exercise')}</span>
+    <ExNameField value={cur} onChange={v=>patch(row.id,ix,p=>({...p,exercise:String(v||'').slice(0,120)}))}
+      onPick={it=>patch(row.id,ix,p=>({...p,exercise:String(it&&it.name||'').slice(0,120)}))}/>
+  </div>;
   const extrasCell=(items,dk,aria)=>{const sm=extrasSum(items);
     return<div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Ek filtreler','Extra filters')}</span>
       <button type="button" className={'di-mvp-xf'+(sm.txt?' on':'')+(det.has(dk)?' open':'')} aria-expanded={det.has(dk)}
@@ -39018,14 +39068,15 @@ function DiPatternPicker({value,onChange,closed}){
       <div className="di-mvp-tr di-mvp-th" role="row">
         <span role="columnheader" aria-label={L('Aç / kapat','Open / close')}/>
         <span role="columnheader">{L('Patern','Pattern')}</span>
-        <span role="columnheader">{L('Rol','Role')}</span>
-        <span role="columnheader">{L('Egzersiz adedi','Exercises')}</span>
+        <span role="columnheader">{L('Egzersiz','Exercise')}</span>
+        <span role="columnheader">{L('Egzersiz adedi','How many')}</span>
         {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
         <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
         <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
       </div>
       {groups.map(({row,items})=>{const cl=isClosed(row);const name=label(row);
-        const isOpen=open.has(row.id);const role=items[0].role;const n=items.length;
+        const isOpen=open.has(row.id);const n=items.length;
+        const names=items.map(p=>p.exercise).filter(Boolean);
         return<div key={row.id} className={'di-mvp-grp'+(isOpen?' open':'')} role="rowgroup">
           <div className="di-mvp-tr" role="row">
             <div className="di-mvp-ctl" role="cell">{chev(isOpen,()=>flip(setOpen,row.id),
@@ -39036,15 +39087,15 @@ function DiPatternPicker({value,onChange,closed}){
               <button type="button" className="di-mvp-x" onClick={()=>toggle(row.id)}
                 aria-label={L('Kaldır','Remove')} title={L('Kaldır','Remove')}>✕</button>
             </div>
-            <label className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Rol','Role')}</span>
-              <span className={'di-mvp-sel di-mvp-role r-'+role}>
-                <select value={role} aria-label={`${name} · ${L('Rol','Role')}`}
-                  onChange={e=>patch(row.id,null,p=>({...p,role:e.target.value}))}>
-                  {DI_MOVE_ROLES.map(r=><option key={r.id} value={r.id}>{label(r)}</option>)}
-                </select>
-              </span>
-            </label>
-            <div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz adedi','Exercises')}</span>
+            {n===1&&!isOpen?exCell(row,0,items[0].exercise)
+              :<div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz','Exercise')}</span>
+                {isOpen?<span className="di-mvp-na">—</span>
+                  :<button type="button" className={'di-mvp-exs'+(names.length?' on':'')} title={names.join(', ')||undefined}
+                    onClick={()=>flip(setOpen,row.id)}>
+                    <span>{names.length?names.join(', '):L(`${n} egzersiz · seç`,`${n} exercises · pick`)}</span>
+                  </button>}
+              </div>}
+            <div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz adedi','How many')}</span>
               <span className="di-mvp-cnt">
                 <input type="number" min={1} max={DI_MOVE_MAX_SLOTS} value={n}
                   aria-label={`${name} · ${L('Egzersiz adedi','Exercises')}`}
@@ -39070,7 +39121,7 @@ function DiPatternPicker({value,onChange,closed}){
           {isOpen&&<div className="di-mvp-slots" role="table" aria-label={`${name} · ${L('Egzersizler','Exercises')}`}>
             <div className="di-mvp-sr di-mvp-th" role="row">
               <span role="columnheader">#</span>
-              <span role="columnheader">{L('Egzersiz slotu','Exercise slot')}</span>
+              <span role="columnheader">{L('Egzersiz','Exercise')}</span>
               {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
               <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
               <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
@@ -39079,8 +39130,12 @@ function DiPatternPicker({value,onChange,closed}){
               return<React.Fragment key={ix}>
                 <div className="di-mvp-sr" role="row">
                   <span className="di-mvp-no" role="cell">{ix+1}</span>
-                  <div className="di-mvp-name" role="rowheader">
-                    <span>{L(`Egzersiz ${ix+1}`,`Exercise ${ix+1}`)}</span>
+                  <div className="di-mvp-name di-mvp-slotex" role="rowheader">
+                    <div className="di-mvp-ex">
+                      <span className="di-mvp-cl">{L(`Egzersiz ${ix+1}`,`Exercise ${ix+1}`)}</span>
+                      <ExNameField value={p.exercise} onChange={v=>patch(row.id,ix,q=>({...q,exercise:String(v||'').slice(0,120)}))}
+                        onPick={it=>patch(row.id,ix,q=>({...q,exercise:String(it&&it.name||'').slice(0,120)}))}/>
+                    </div>
                     {n>1&&<button type="button" className="di-mvp-x" onClick={()=>removeSlot(row.id,ix)}
                       aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Egzersizi kaldır','Remove exercise')}>✕</button>}
                   </div>
@@ -39154,52 +39209,98 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
   </div>);
 }
 
-/* Volume and intensity on one card: two rows of buttons, auto first. Auto leaves the
-   engine's adjustment (shown on the button) and the fatigue budget's RPE ceiling in
-   force; anything else is the coach's figure for the day (diVolumeAdj, diIntensityRow).
-   Pressing the button that is on goes back to auto. */
-function DiVolIntPicker({volume,intensity,autoVol,onChange}){
+/* Volume and intensity on one card, each a block of its own. Auto leaves the engine in
+   force: the volume block shows the engine's figure and the reasons behind it, the
+   intensity block the fatigue budget's RPE ceiling (diVolumeAdj, diFatigueBudget).
+   Anything else is the coach's figure for the day. Volume takes a preset or any step of
+   5 % with the − / + pair, and a bar shows the dose that results against a normal day;
+   intensity is a band on a 1–10 RPE scale. Pressing the button that is on goes back to
+   auto, and one button puts both back. */
+const DI_BUDGET_LBL={minimal:['minimal','minimal'],low:['düşük','low'],moderate:['orta','moderate'],normal:['normal','normal']};
+function DiVolIntPicker({volume,intensity,autoVol,autoReasons,autoRpe,autoBudget,onChange}){
   const sg=v=>`${v>0?'+':''}${v}%`;
   const ir=diIntensityRow(intensity);
+  const auto=Math.round(Number(autoVol)||0);
+  const eff=volume==null?auto:volume;
+  const clamp=v=>Math.max(DI_VOL_MIN,Math.min(DI_VOL_MAX,Math.round(v)));
+  const step=d=>onChange({volume:clamp(eff+d)});
+  const dose=100+eff;
+  const span=100+DI_VOL_MAX;
+  const reasons=(Array.isArray(autoReasons)?autoReasons:[]).filter(r=>r&&r.label);
+  const band=ir?ir.rpe:null;
+  const ceil=band?band[1]:(autoRpe==null?null:autoRpe);
+  const bud=autoBudget&&DI_BUDGET_LBL[autoBudget];
   return(<div className="di-vi">
-    <div className="di-vi-row">
-      <span className="di-vi-k">{L('Hacim %','Volume %')}</span>
-      <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
-        <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
-          title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
-          onClick={()=>onChange({volume:null})}>{L('Oto','Auto')}</button>
-        {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
-          title={v===0?L('Normal doz','Normal dose'):sg(v)}
-          onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+    <div className="di-vi-blk">
+      <div className="di-vi-hd">
+        <span className="di-vi-k">{L('Hacim','Volume')}</span>
+        <span className={'di-vi-src'+(volume==null?'':' coach')}>{volume==null?L('sistem','system'):L('antrenör','coach')}</span>
+        <b className="di-vi-big">{eff===0?L('normal','normal'):sg(eff)}</b>
+      </div>
+      <div className="di-vi-row">
+        <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
+          <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
+            title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
+            onClick={()=>onChange({volume:null})}>{L('Oto','Auto')} <small>{auto?sg(auto):'0'}</small></button>
+          {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
+            title={v===0?L('Normal doz','Normal dose'):sg(v)}
+            onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+        </div>
+        <div className="di-vi-step" role="group" aria-label={L('Hacmi 5 % adımlarla ayarla','Adjust volume in steps of 5 %')}>
+          <button type="button" disabled={eff<=DI_VOL_MIN} onClick={()=>step(-5)} aria-label={L('5 % azalt','5 % less')}>−</button>
+          <span>{sg(eff)}</span>
+          <button type="button" disabled={eff>=DI_VOL_MAX} onClick={()=>step(5)} aria-label={L('5 % artır','5 % more')}>+</button>
+        </div>
+      </div>
+      <div className="di-vi-meter" aria-hidden="true">
+        <i className={eff<0?'cut':eff>0?'add':''} style={{width:`${Math.max(0,Math.min(100,dose/span*100))}%`}}/>
+        <em style={{left:`${100/span*100}%`}}/>
+      </div>
+      <div className="di-vi-note">
+        {L(`Normal dozun %${dose}'i`,`${dose}% of a normal day's dose`)}
+        {volume==null&&reasons.length>0&&<span className="di-vi-why">{reasons.map(r=>
+          <span key={r.id||r.label} className="di-vi-tag">{r.label}{r.pct!=null?` ${sg(r.pct)}`:''}</span>)}</span>}
+        {volume!=null&&<span className="di-vi-why"><span className="di-vi-tag">{L(`sistem önerisi ${auto?sg(auto):'yok'}`,`system ${auto?sg(auto):'none'}`)}</span></span>}
       </div>
     </div>
-    <div className="di-vi-row">
-      <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
-      <div className="di-numbtns" role="group" aria-label={L('Yoğunluk','Intensity')}>
+    <div className="di-vi-blk">
+      <div className="di-vi-hd">
+        <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
+        <span className={'di-vi-src'+(ir?' coach':'')}>{ir?L('antrenör','coach'):L('sistem','system')}</span>
+        <b className="di-vi-big">{ir?diRpeBand(ir):(ceil!=null?`RPE ≤ ${ceil}`:L('sınırsız','no ceiling'))}</b>
+      </div>
+      <div className="di-numbtns di-vi-int" role="group" aria-label={L('Yoğunluk','Intensity')}>
         <button type="button" className={'di-numb'+(!intensity?' on':'')} aria-pressed={!intensity}
-          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}</button>
+          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}<small>{autoRpe!=null?`≤ ${autoRpe}`:'—'}</small></button>
         {DI_INTENSITY.map(r=><button key={r.id} type="button" className={'di-numb'+(intensity===r.id?' on':'')}
           aria-pressed={intensity===r.id} title={diRpeBand(r)}
-          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}</button>)}
+          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}<small>{diRpeBand(r).replace('RPE ','')}</small></button>)}
       </div>
+      <div className="di-vi-rpe" aria-hidden="true">
+        {[1,2,3,4,5,6,7,8,9,10].map(n=><span key={n} className={
+          band?(n>=band[0]&&n<=band[1]?'on':''):(ceil!=null&&n<=ceil?'ok':'')}>{n}</span>)}
+      </div>
+      <div className="di-vi-note">{ir
+        ?L(`Ana fazın çalışma setleri ${diRpeBand(ir)}; hiçbiri RPE ${ir.rpe[1]}'in üstünde değil.`,
+          `Main-phase working sets at ${diRpeBand(ir)}; none above RPE ${ir.rpe[1]}.`)
+        :autoRpe!=null
+        ?L(`Sistem sınırı: RPE ${autoRpe}${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`System ceiling: RPE ${autoRpe}${bud?` (${bud[1]} fatigue budget)`:''}.`)
+        :L(`Sistem sınırı yok${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`No system ceiling${bud?` (${bud[1]} fatigue budget)`:''}.`)}</div>
     </div>
-    <div className="di-vi-sum">{[
-      volume==null?L(`Hacim: sistem önerisi (${autoVol?sg(autoVol):'ayar yok'})`,`Volume: system (${autoVol?sg(autoVol):'no adjustment'})`)
-        :L(`Hacim ${volume===0?'normal':sg(volume)}`,`Volume ${volume===0?'normal':sg(volume)}`),
-      ir?L(`çalışma setleri ${diRpeBand(ir)}`,`working sets at ${diRpeBand(ir)}`):L('yoğunluk: sistemin RPE sınırı','intensity: the system\'s RPE ceiling'),
-    ].join(' · ')}</div>
+    {(volume!=null||intensity)&&<button type="button" className="di-vi-reset" onClick={()=>onChange({volume:null,intensity:null})}>
+      {L('İkisini de otoya döndür','Put both back on auto')}</button>}
   </div>);
 }
 
 /* The brief. Seven fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
-   and without a card edge they read as one ragged block of controls. The pattern card
-   is the tall one, so it takes two columns and two rows on the right while priority
-   and volume / intensity stack beside it; the short answers share the rows below. It is
+   and without a card edge they read as one ragged block of controls. Priority (1) and
+   volume / intensity (2) share the first row in equal halves; the pattern card (3) is
+   the wide one and takes a row of its own; the short answers share the rows below. It is
    stored per athlete PER DAY, beside the session it produced, so yesterday's
    instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
+function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol,autoReasons,autoRpe,autoBudget}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -39231,15 +39332,16 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
       {field(1,L('Bugünün önceliği','Today\'s priority'),
         L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
         <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>,'a1')}
-      {field(2,L('Hareket paterni','Movement pattern'),
-        L('Seçilen her patern için egzersiz sayısı, rolü ve filtreleri belirle. Boş bırakılan filtreler egzersiz seçimini sınırlandırmaz.',
-          'Set how many exercises, the role and the filters of every pattern picked. An empty filter leaves the choice open.'),
-        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
-        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
-      {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
+      {field(2,L('Hacim ve yoğunluk','Volume & intensity'),
         L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
         <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
+          autoReasons={autoReasons} autoRpe={autoRpe} autoBudget={autoBudget}
           onChange={p=>save({...instr,...p})}/>,'a3')}
+      {field(3,L('Hareket paterni','Movement pattern'),
+        L('Seçilen her patern için egzersizi ve sayısını, filtreleri belirle. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bırakılan alanlar seçimi sınırlandırmaz.',
+          'Set the exercise, how many and the filters of every pattern picked. Pick from the library or type one — a new name is filed into the library. An empty field leaves the choice open.'),
+        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
+        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
       {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}
@@ -40217,6 +40319,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onSnapshot={takeSnapshot} closed={closedPats}
         autoVol={bundle.adjustment?bundle.adjustment.pct:0}
+        autoReasons={bundle.adjustment?bundle.adjustment.reasons:[]}
+        autoRpe={diFatigueBudget(bundle).max_rpe} autoBudget={diFatigueBudget(bundle).budget}
         onImport={()=>setImp({text:'',err:''})}/>
       <DiJsonModal title={L('Sporcu Bilgileri','Athlete data')+' — '+(plan.ath.name||'—')} date={date}
         snap={snap} setSnap={setSnap} fileBase={plan.ath.name||'sporcu'}/>
