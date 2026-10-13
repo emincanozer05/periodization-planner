@@ -6093,13 +6093,13 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
 /* Three across, by named areas. The movement-pattern card (2) is the one that grows —
-   a filter box per picked pattern — so it takes two columns and two rows on the right,
-   with priority (1) and volume / intensity (3) stacked beside it; length, ceiling and
-   keep-out (4-5-6) share the next row and notes (7) the last. Narrower, it folds to two (the pattern card across the
+   a wide grid, a row per picked pattern — so it takes a whole row of its own, under
+   priority (1) and volume / intensity (3); length, ceiling and keep-out (4-5-6) share
+   the next row and notes (7) the last. Narrower, it folds to two (the pattern card across the
    whole width) and then to one, always in field order. Cards stretch to their row so
    no card ends early. */
 .di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
-  grid-template-areas:"a1 a2 a2" "a3 a2 a2" "a4 a5 a7" "a6 a6 a6"}
+  grid-template-areas:"a1 a3 a3" "a2 a2 a2" "a4 a5 a7" "a6 a6 a6"}
 .di-field.a1{grid-area:a1}.di-field.a2{grid-area:a2}.di-field.a3{grid-area:a3}
 .di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}.di-field.a7{grid-area:a7}
 @media(max-width:1040px){
@@ -6114,8 +6114,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-vi .di-numbtns{max-width:100%}
 .di-vi .di-numb{padding:5px 9px}
 .di-vi-sum{font-size:11px;color:var(--text2);line-height:1.4}
-/* The movement-pattern picker: eight toggles, then one filter box per picked pattern.
-   One box is open at a time; a folded box is a single line saying what was picked. */
+/* The movement-pattern picker: a toggle per pattern, then the filter grid below. */
 .di-mvp{display:flex;flex-direction:column;gap:12px;container-type:inline-size}
 .di-mvp-top{display:flex;align-items:flex-start;gap:12px}
 .di-mvp-pick{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px}
@@ -6128,44 +6127,128 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-chip.on{border-color:rgba(45,212,167,.55);background:rgba(45,212,167,.12);color:#7ee7c7;font-weight:600}
 .di-mvp-chip.closed{border-style:dashed}
 .di-mvp-chip i,.di-mvp-pain{font-style:normal;font-weight:800;color:#fbbf24;margin-left:5px}
-/* The filter grid: one row per picked pattern, the same six columns for every row. */
-.di-mvp-grid{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel)}
-.di-mvp-tr{display:grid;grid-template-columns:minmax(104px,1.05fr) repeat(5,minmax(0,1fr));gap:6px;align-items:center;padding:6px 8px 6px 12px}
-.di-mvp-tr+.di-mvp-tr{border-top:1px solid var(--border)}
-.di-mvp-tr:not(.di-mvp-th):hover{background:var(--hover)}
-.di-mvp-th{background:var(--elevated);padding-top:8px;padding-bottom:8px}
+/* The filter grid: one row per picked pattern — open / name / role / how many / the five
+   facet columns / extra filters / detail — and, when the row is opened, a table of its
+   exercises under it, one row each. Wider than the card can be on a mid-size screen: it
+   scrolls sideways there, and folds to small cards below 640px. */
+.di-mvp-scroll{overflow-x:auto;margin:0 -2px;padding:0 2px 2px}
+.di-mvp-grid{min-width:1000px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
+  display:flex;flex-direction:column;gap:6px;padding:0 6px 6px}
+.di-mvp-tr{display:grid;grid-template-columns:26px minmax(112px,1.15fr) 116px 92px repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+  gap:6px;align-items:center;padding:7px 6px}
+.di-mvp-th{background:none;padding-top:10px;padding-bottom:6px;border-bottom:1px solid var(--border);margin:0 -6px;padding-left:12px;padding-right:12px}
 .di-mvp-th span{font-size:11px;font-weight:600;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.di-mvp-th span+span{padding-left:2px}
+.di-mvp-th .di-mvp-thd{text-align:right;overflow:visible}
+.di-mvp-grp{border:1px solid var(--border);border-radius:10px;background:var(--bg2);transition:border-color .15s}
+.di-mvp-grp:hover{border-color:var(--border2)}
+.di-mvp-grp.open{border-color:var(--border2)}
 .di-mvp-name{display:flex;align-items:center;gap:4px;min-width:0}
-.di-mvp-name b{font-size:12.5px;font-weight:700;color:var(--text);line-height:1.25;min-width:0}
+.di-mvp-name b{font-size:13px;font-weight:700;color:var(--text);line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.di-mvp-name>span{font-size:12.5px;color:var(--text2);white-space:nowrap}
 .di-mvp-pain{margin-left:2px}
 .di-mvp-x{margin-left:auto;flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:6px;border:0;background:none;
   color:var(--dim);font-size:10px;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,background .15s}
-.di-mvp-tr:hover .di-mvp-x,.di-mvp-x:focus-visible{opacity:1}
+.di-mvp-tr:hover>.di-mvp-name .di-mvp-x,.di-mvp-sr:hover .di-mvp-x,.di-mvp-x:focus-visible{opacity:1}
 .di-mvp-x:hover{color:#fda4af;background:rgba(244,63,94,.1)}
+.di-mvp-ctl{display:flex;align-items:center}
+.di-mvp-ctl.end{justify-content:flex-end}
+/* The chevrons: a drawn arrow, down when shut and up when open (the left one points right when shut). */
+.di-mvp-chev{width:24px;height:24px;border:0;border-radius:6px;background:none;cursor:pointer;position:relative;flex:none}
+.di-mvp-chev::before{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-5px 0 0 -3px;
+  border-right:1.5px solid var(--text2);border-bottom:1.5px solid var(--text2);transform:rotate(45deg);transition:transform .15s,margin .15s}
+.di-mvp-chev.on::before{transform:rotate(-135deg);margin-top:-2px}
+.di-mvp-ctl:not(.end) .di-mvp-chev::before{transform:rotate(-45deg);margin:-3px 0 0 -5px}
+.di-mvp-ctl:not(.end) .di-mvp-chev.on::before{transform:rotate(45deg);margin:-5px 0 0 -3px}
+.di-mvp-chev:hover{background:var(--hover)}
+.di-mvp-chev:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.35)}
 .di-mvp-td{display:block;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
 .di-mvp-cl{display:none}
 .di-mvp-sel{position:relative;display:block}
 .di-mvp-sel::after{content:'';position:absolute;right:9px;top:50%;width:6px;height:6px;margin-top:-5px;pointer-events:none;
   border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
 .di-mvp-sel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);
-  border:1px solid var(--border);border-radius:7px;padding:6px 24px 6px 9px;font-size:12px;line-height:1.3;cursor:pointer;
+  border:1px solid var(--border);border-radius:7px;padding:7px 24px 7px 9px;font-size:12px;line-height:1.3;cursor:pointer;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s,background .15s,color .15s}
 .di-mvp-sel select:hover{border-color:var(--border2);color:var(--text2)}
 .di-mvp-sel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
-.di-mvp-sel.on select{color:var(--text);font-weight:600;border-color:rgba(45,212,167,.45);background:rgba(45,212,167,.08)}
-.di-mvp-sel.on::after{border-color:#7ee7c7}
+.di-mvp-sel.on select{color:var(--text);font-weight:600;border-color:var(--border2);background:var(--panel)}
 .di-mvp-sel select option{color:var(--text);background:var(--panel);font-weight:400}
+/* The role: one colour each — main green, assistance blue, complementary violet. */
+.di-mvp-role select{font-weight:600}
+.di-mvp-role.r-main select{color:var(--low-t);border-color:rgba(45,212,167,.5);background:rgba(45,212,167,.1)}
+.di-mvp-role.r-assist select{color:var(--peak-t);border-color:rgba(91,140,255,.55);background:rgba(91,140,255,.1)}
+.di-mvp-role.r-comp select{color:var(--mvp-violet,#c4b5fd);border-color:rgba(167,139,250,.55);background:rgba(167,139,250,.12)}
+.di-mvp-role.r-main::after{border-color:var(--low-t)}
+.di-mvp-role.r-assist::after{border-color:var(--peak-t)}
+.di-mvp-role.r-comp::after{border-color:var(--mvp-violet,#c4b5fd)}
+/* How many exercises: the number, and a small up / down pair beside it. */
+.di-mvp-cnt{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:7px;background:var(--elevated);overflow:hidden}
+.di-mvp-cnt:focus-within{border-color:var(--accent)}
+.di-mvp-cnt input{flex:1;min-width:0;width:100%;border:0;background:none;color:var(--text);font-size:13px;font-weight:600;
+  text-align:center;padding:6px 0;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+.di-mvp-cnt input::-webkit-inner-spin-button,.di-mvp-cnt input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.di-mvp-cnt input:focus{outline:none}
+.di-mvp-spin{display:flex;flex-direction:column;border-left:1px solid var(--border)}
+.di-mvp-spin button{flex:1;width:22px;border:0;background:none;cursor:pointer;position:relative}
+.di-mvp-spin button::before{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-1px 0 0 -3px;
+  border-left:1.5px solid var(--text2);border-top:1.5px solid var(--text2);transform:rotate(45deg)}
+.di-mvp-spin button+button::before{transform:rotate(-135deg);margin-top:-4px}
+.di-mvp-spin button:hover:not(:disabled){background:var(--hover)}
+.di-mvp-spin button:disabled{cursor:default;opacity:.35}
+/* The extra-filters button: a summary ("Ekipman 2 / ROM 1") that opens the panel. */
+.di-mvp-xf{position:relative;width:100%;text-align:left;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
+  border-radius:7px;padding:7px 24px 7px 9px;font-size:12px;line-height:1.3;cursor:pointer;transition:border-color .15s,color .15s}
+.di-mvp-xf span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di-mvp-xf::after{content:'';position:absolute;right:9px;top:50%;width:6px;height:6px;margin-top:-5px;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
+.di-mvp-xf.open::after{transform:rotate(-135deg);margin-top:-2px}
+.di-mvp-xf:hover{border-color:var(--accent);color:var(--text2)}
+.di-mvp-xf.on{border-style:solid;border-color:var(--border2);background:var(--panel);color:var(--text);font-weight:600}
+.di-mvp-xf:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+/* The panel under a row: one line of chips per extra filter, then the note. */
+.di-mvp-det{padding:0 10px 10px 38px}
+.di-mvp-detin{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);padding:10px 12px}
+.di-mvp-xg{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;align-items:center;margin:0;text-transform:none;letter-spacing:normal}
+.di-mvp-xk{font-size:11px;font-weight:600;color:var(--dim)}
+.di-mvp-xk em{display:block;font-style:normal;font-weight:400;font-size:10px;opacity:.8}
+.di-mvp-xo{display:flex;flex-wrap:wrap;gap:5px}
+.di-mvp-xc{border:1px solid var(--border2);background:var(--elevated);color:var(--text2);border-radius:999px;padding:4px 10px;font-size:11.5px;cursor:pointer;
+  transition:border-color .15s,background .15s,color .15s}
+.di-mvp-xc:hover{border-color:var(--accent);color:var(--text)}
+.di-mvp-xc.on{border-color:rgba(45,212,167,.55);background:rgba(45,212,167,.12);color:var(--low-t);font-weight:600}
+.di-mvp-xc.part{border-style:dashed;border-color:rgba(45,212,167,.55);color:var(--low-t)}
+.di-mvp-note{width:100%;background:var(--elevated);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:6px 9px;font-size:12px}
+.di-mvp-note:focus{outline:none;border-color:var(--accent)}
+/* The exercises of an opened pattern: their own table, inset under the pattern's row. */
+.di-mvp-slots{margin:0 8px 8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);overflow:hidden}
+.di-mvp-sr{display:grid;grid-template-columns:28px minmax(96px,.9fr) repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+  gap:6px;align-items:center;padding:6px 8px 6px 10px}
+.di-mvp-sr+.di-mvp-sr,.di-mvp-det+.di-mvp-sr{border-top:1px solid var(--border)}
+.di-mvp-slots .di-mvp-th{margin:0;padding:8px 8px 7px 10px;background:var(--elevated)}
+.di-mvp-no{font-size:12px;font-weight:600;color:var(--dim);text-align:center;font-variant-numeric:tabular-nums}
+.di-mvp-slots .di-mvp-det{padding-left:44px}
+.di-mvp-add{display:flex;align-items:center;justify-content:center;gap:6px;width:calc(100% - 16px);margin:6px 8px 8px;
+  border:1px dashed var(--border2);border-radius:8px;background:none;color:var(--text2);font-size:12.5px;padding:9px;cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s}
+.di-mvp-add span{font-size:16px;line-height:1;font-weight:400}
+.di-mvp-add:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
 .di-mvp-na{display:block;text-align:center;color:var(--dim);font-size:12px;opacity:.6;cursor:default}
 .di-mvp-empty{border:1px dashed var(--border2);border-radius:10px;padding:14px;text-align:center;font-size:12px;color:var(--dim)}
 /* Narrow card: each pattern is its own small card, every select under its column name. */
-@container (max-width:600px){
+@container (max-width:640px){
+  .di-mvp-scroll{overflow:visible;margin:0;padding:0}
+  .di-mvp-grid{min-width:0;border:0;background:none;padding:0;gap:8px}
   .di-mvp-th{display:none}
-  .di-mvp-tr{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:10px 12px 12px}
-  .di-mvp-name{grid-column:1/-1}
+  .di-mvp-tr,.di-mvp-sr{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:10px 12px 12px}
+  .di-mvp-tr>.di-mvp-ctl:not(.end),.di-mvp-no{display:none}
+  .di-mvp-name,.di-mvp-ctl.end{grid-column:1/-1}
+  .di-mvp-ctl.end{justify-content:center;border-top:1px solid var(--border);margin:0 -12px -8px;padding-top:2px}
   .di-mvp-x{opacity:1}
   .di-mvp-cl{display:block;font-size:10.5px;font-weight:600;color:var(--dim);margin:0 0 3px 1px}
   .di-mvp-td.na{display:none}
+  .di-mvp-det,.di-mvp-slots .di-mvp-det{padding:0 10px 10px}
+  .di-mvp-slots{margin:0 8px 8px}
+  .di-mvp-xg{grid-template-columns:minmax(0,1fr)}
 }
 .di-field{display:flex;flex-direction:column;gap:6px;min-width:0;
   border:1px solid var(--border);border-radius:11px;background:var(--bg2);padding:11px 12px 12px}

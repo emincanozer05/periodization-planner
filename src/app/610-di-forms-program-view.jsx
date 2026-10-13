@@ -133,26 +133,130 @@ function DiPriorityPicker({value,onChange}){
 }
 
 /* The movement patterns the session must carry. Toggles across the top; every ticked
-   pattern is a row of the grid below, one select per facet column (DI_MOVE_COLS). A
-   select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has no
-   facet of that kind is a dash. Where the card is narrow the rows turn into small cards,
-   each select under its own column name (container query in the CSS).
+   pattern is a row of the grid below: its role in the session, how many exercises of it,
+   and one select per facet column (DI_MOVE_COLS) plus the extra filters (DI_MOVE_EXTRAS).
+   A select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has
+   no facet of that kind is a dash.
+   A pattern can be asked for more than once — each exercise of it is one item of the
+   list (diMovePatterns). Folded, the row's selects set every exercise of the pattern at
+   once and a select whose exercises differ reads "A / B"; opened, each exercise is a row
+   of its own with its own filters, and "Alt egzersiz ekle" adds one more. The detail
+   chevron of an exercise opens its extra filters and a note.
+   Where the card is narrow the rows turn into small cards, each select under its own
+   column name (container query in the CSS).
    A pattern that loads a region reported painful today is marked, and stays a full
    choice: the coach has seen the pain, so a picked pattern is never dropped for it —
    the answer writes it as a pain-free, modified variation instead. */
 function DiPatternPicker({value,onChange,closed}){
   const list=diMovePatterns(value);
+  const[open,setOpen]=useState(()=>new Set());
+  const[det,setDet]=useState(()=>new Set());
+  const flip=(set,k)=>set(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;});
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
   const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçilirse yine programa girer, ağrısız ve modifiye bir varyasyonla yazılır.',
     'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.');
+  /* Groups in the order of the toggles, not the order they were ticked; saved the same way. */
+  const groups=DI_MOVE_PATTERNS.map(row=>({row,items:list.filter(p=>p.id===row.id)})).filter(g=>g.items.length);
+  const fresh=(id,role)=>diMovePatterns([{id,role}])[0];
+  const setGroup=(id,items)=>onChange(DI_MOVE_PATTERNS.flatMap(r=>r.id===id?items:list.filter(p=>p.id===r.id)));
+  const itemsOf=id=>list.filter(p=>p.id===id);
   const toggle=id=>{
-    if(list.some(p=>p.id===id))onChange(list.filter(p=>p.id!==id));
-    else onChange([...list,{id}]);
+    if(list.some(p=>p.id===id))setGroup(id,[]);
+    else setGroup(id,[fresh(id)]);
   };
-  const setFacet=(id,k,val)=>onChange(list.map(p=>p.id!==id?p:{...p,[k]:val?[val]:[]}));
-  /* Rows in the order of the toggles, not the order they were ticked. */
-  const rows=DI_MOVE_PATTERNS.map(row=>({row,pick:list.find(p=>p.id===row.id)})).filter(x=>x.pick);
+  const setCount=(id,n)=>{
+    const items=itemsOf(id);
+    const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
+    if(want===items.length)return;
+    if(want>items.length){
+      const role=items[0]&&items[0].role;
+      setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id,role))]);
+      setOpen(s=>new Set(s).add(id));
+    }else setGroup(id,items.slice(0,want));
+  };
+  const removeSlot=(id,ix)=>{const items=itemsOf(id);setGroup(id,items.filter((_,i)=>i!==ix));};
+  const patch=(id,ix,fn)=>setGroup(id,itemsOf(id).map((p,i)=>ix==null||i===ix?fn(p):p));
+  const setFacet=(id,ix,k,val)=>patch(id,ix,p=>({...p,[k]:val?[val]:[]}));
+  /* An extra filter's chip. Multi (equipment) toggles one value; the others hold one
+     value and a second click on the picked one clears it. On the folded row it sets every
+     exercise: a chip some exercises have and some not is added to all. */
+  const tapExtra=(id,ix,f,val)=>{
+    const items=itemsOf(id);
+    const scope=ix==null?items:[items[ix]];
+    const all=scope.every(p=>(p[f.k]||[]).includes(val));
+    patch(id,ix,p=>{
+      const cur=p[f.k]||[];
+      if(!f.multi)return{...p,[f.k]:all?[]:[val]};
+      return{...p,[f.k]:all?cur.filter(x=>x!==val):(cur.includes(val)?cur:[...cur,val])};
+    });
+  };
+  const optText=(f,v)=>{const o=f.opts.find(x=>x[0]===v);return o?L(o[1],o[2]):v;};
+  const label=r=>L(r.label[0],r.label[1]);
+  const extrasSum=items=>{
+    const key=p=>DI_MOVE_EXTRAS.map(f=>(p[f.k]||[]).join(',')).join('|');
+    if(items.some(p=>key(p)!==key(items[0])))return{txt:L('Egzersize göre','Per exercise'),tip:''};
+    const p=items[0];
+    const parts=DI_MOVE_EXTRAS.filter(f=>(p[f.k]||[]).length);
+    return{txt:parts.map(f=>`${label(f)} ${p[f.k].length}`).join(' / '),
+      tip:parts.map(f=>`${label(f)}: ${p[f.k].map(v=>optText(f,v)).join(', ')}`).join(' · ')};
+  };
+  const chev=(on,onClick,lbl)=><button type="button" className={'di-mvp-chev'+(on?' on':'')} aria-expanded={on}
+    aria-label={lbl} title={lbl} onClick={onClick}/>;
+  /* One facet cell. `items` is the exercises it writes to: all of the pattern's on the
+     folded row, one on an exercise row. */
+  const facetCell=(row,c,items,ix,aria)=>{
+    const f=row.facets.find(x=>c.ks.includes(x.k));
+    const head=<span className="di-mvp-cl">{label(c)}</span>;
+    if(!f)return<div key={c.ks[0]} className="di-mvp-td na" role="cell">{head}
+      <span className="di-mvp-na" title={L('Bu paternde bu filtre yok','This pattern has no such filter')}>—</span></div>;
+    const vals=items.map(p=>(p[f.k]||[])[0]||'');
+    const mixed=vals.some(v=>v!==vals[0]);
+    const cur=mixed?'__mix':vals[0];
+    const mixTxt=mixed?[...new Set(vals)].map(v=>v?optText(f,v):L('Seçiniz','Select')).join(' / '):'';
+    return<label key={c.ks[0]} className="di-mvp-td" role="cell">{head}
+      <span className={'di-mvp-sel'+(cur?' on':'')}>
+        <select value={cur} title={mixed?mixTxt:(cur?optText(f,cur):undefined)}
+          aria-label={`${aria} · ${label(f)}`}
+          onChange={e=>setFacet(row.id,ix,f.k,e.target.value)}>
+          {mixed&&<option value="__mix" disabled hidden>{mixTxt}</option>}
+          <option value="">{L('Seçiniz','Select')}</option>
+          {f.opts.map(o=><option key={o[0]} value={o[0]}>{L(o[1],o[2])}</option>)}
+        </select>
+      </span>
+    </label>;
+  };
+  const extrasCell=(items,dk,aria)=>{const sm=extrasSum(items);
+    return<div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Ek filtreler','Extra filters')}</span>
+      <button type="button" className={'di-mvp-xf'+(sm.txt?' on':'')+(det.has(dk)?' open':'')} aria-expanded={det.has(dk)}
+        aria-label={`${aria} · ${L('Ek filtreler','Extra filters')}`} title={sm.tip||undefined}
+        onClick={()=>flip(setDet,dk)}>
+        <span>{sm.txt||L('Ekle','Add')}</span>
+      </button>
+    </div>;};
+  /* The panel under a row: the extra filters as chips, and — for one exercise — a note. */
+  const detail=(row,items,ix,dk)=>{
+    if(!det.has(dk))return null;
+    const one=ix!=null?items[ix]:(items.length===1?items[0]:null);
+    const nix=ix!=null?ix:0;
+    return<div className="di-mvp-det" role="row"><div role="cell" className="di-mvp-detin">
+      {DI_MOVE_EXTRAS.map(f=><div key={f.k} className="di-mvp-xg">
+        <span className="di-mvp-xk">{label(f)}{f.multi?<em>{L('birden çok','any of')}</em>:null}</span>
+        <div className="di-mvp-xo">{f.opts.map(o=>{
+          const scope=ix!=null?[items[ix]]:items;
+          const n=scope.filter(p=>(p[f.k]||[]).includes(o[0])).length;
+          const st=n===scope.length?' on':(n?' part':'');
+          return<button key={o[0]} type="button" className={'di-mvp-xc'+st} aria-pressed={n===scope.length}
+            onClick={()=>tapExtra(row.id,ix,f,o[0])}>{L(o[1],o[2])}</button>;})}</div>
+      </div>)}
+      {one&&<label className="di-mvp-xg">
+        <span className="di-mvp-xk">{L('Not','Note')}</span>
+        <LiveInput className="di-mvp-note" value={one.note} maxLength={240}
+          onChange={v=>patch(row.id,nix,p=>({...p,note:v}))}
+          placeholder={L('ör. tempo 3-1-1, kutu 40 cm','e.g. tempo 3-1-1, 40 cm box')}/>
+      </label>}
+    </div></div>;
+  };
   return(<div className="di-mvp">
     <div className="di-mvp-top">
       <div className="di-mvp-pick" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
@@ -160,41 +264,95 @@ function DiPatternPicker({value,onChange,closed}){
           return<button key={row.id} type="button" aria-pressed={on}
             className={'di-mvp-chip'+(on?' on':'')+(cl?' closed':'')}
             title={cl?painTip:undefined}
-            onClick={()=>toggle(row.id)}>{L(row.label[0],row.label[1])}{cl?<i>!</i>:null}</button>;})}
+            onClick={()=>toggle(row.id)}>{label(row)}{cl?<i>!</i>:null}</button>;})}
       </div>
-      <span className={'di-mvp-n'+(list.length?' on':'')}>{L(`${list.length} seçili`,`${list.length} selected`)}</span>
+      <span className={'di-mvp-n'+(groups.length?' on':'')}
+        title={L(`${list.length} egzersiz`,`${list.length} exercises`)}>
+        <b>{L(`${groups.length} seçili`,`${groups.length} selected`)}</b> / {L(`${DI_MOVE_PATTERNS.length} patern`,`${DI_MOVE_PATTERNS.length} patterns`)}
+      </span>
     </div>
-    {rows.length>0?<div className="di-mvp-grid" role="table" aria-label={L('Patern filtreleri','Pattern filters')}>
+    {groups.length>0?<div className="di-mvp-scroll"><div className="di-mvp-grid" role="table" aria-label={L('Patern filtreleri','Pattern filters')}>
       <div className="di-mvp-tr di-mvp-th" role="row">
+        <span role="columnheader" aria-label={L('Aç / kapat','Open / close')}/>
         <span role="columnheader">{L('Patern','Pattern')}</span>
-        {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{L(c.label[0],c.label[1])}</span>)}
+        <span role="columnheader">{L('Rol','Role')}</span>
+        <span role="columnheader">{L('Egzersiz adedi','Exercises')}</span>
+        {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
+        <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
+        <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
       </div>
-      {rows.map(({row,pick})=>{const cl=isClosed(row);
-        return<div key={row.id} className="di-mvp-tr" role="row">
-          <div className="di-mvp-name" role="rowheader">
-            <b>{L(row.label[0],row.label[1])}</b>
-            {cl?<i className="di-mvp-pain" title={painTip}>!</i>:null}
-            <button type="button" className="di-mvp-x" onClick={()=>toggle(row.id)}
-              aria-label={L('Kaldır','Remove')} title={L('Kaldır','Remove')}>✕</button>
-          </div>
-          {DI_MOVE_COLS.map(c=>{const f=row.facets.find(x=>c.ks.includes(x.k));
-            const head=<span className="di-mvp-cl">{L(c.label[0],c.label[1])}</span>;
-            if(!f)return<div key={c.ks[0]} className="di-mvp-td na" role="cell">{head}
-              <span className="di-mvp-na" title={L('Bu paternde bu filtre yok','This pattern has no such filter')}>—</span></div>;
-            const cur=(pick[f.k]||[])[0]||'';
-            const op=cur&&f.opts.find(o=>o[0]===cur);
-            return<label key={c.ks[0]} className="di-mvp-td" role="cell">{head}
-              <span className={'di-mvp-sel'+(cur?' on':'')}>
-                <select value={cur} title={op?L(op[1],op[2]):undefined}
-                  aria-label={`${L(row.label[0],row.label[1])} · ${L(f.label[0],f.label[1])}`}
-                  onChange={e=>setFacet(row.id,f.k,e.target.value)}>
-                  <option value="">{L('Seçiniz','Select')}</option>
-                  {f.opts.map(o=><option key={o[0]} value={o[0]}>{L(o[1],o[2])}</option>)}
+      {groups.map(({row,items})=>{const cl=isClosed(row);const name=label(row);
+        const isOpen=open.has(row.id);const role=items[0].role;const n=items.length;
+        return<div key={row.id} className={'di-mvp-grp'+(isOpen?' open':'')} role="rowgroup">
+          <div className="di-mvp-tr" role="row">
+            <div className="di-mvp-ctl" role="cell">{chev(isOpen,()=>flip(setOpen,row.id),
+              isOpen?L('Egzersizleri gizle','Hide exercises'):L('Egzersizleri göster','Show exercises'))}</div>
+            <div className="di-mvp-name" role="rowheader">
+              <b>{name}</b>
+              {cl?<i className="di-mvp-pain" title={painTip}>!</i>:null}
+              <button type="button" className="di-mvp-x" onClick={()=>toggle(row.id)}
+                aria-label={L('Kaldır','Remove')} title={L('Kaldır','Remove')}>✕</button>
+            </div>
+            <label className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Rol','Role')}</span>
+              <span className={'di-mvp-sel di-mvp-role r-'+role}>
+                <select value={role} aria-label={`${name} · ${L('Rol','Role')}`}
+                  onChange={e=>patch(row.id,null,p=>({...p,role:e.target.value}))}>
+                  {DI_MOVE_ROLES.map(r=><option key={r.id} value={r.id}>{label(r)}</option>)}
                 </select>
               </span>
-            </label>;})}
+            </label>
+            <div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz adedi','Exercises')}</span>
+              <span className="di-mvp-cnt">
+                <input type="number" min={1} max={DI_MOVE_MAX_SLOTS} value={n}
+                  aria-label={`${name} · ${L('Egzersiz adedi','Exercises')}`}
+                  onChange={e=>{if(e.target.value!=='')setCount(row.id,Number(e.target.value));}}/>
+                <span className="di-mvp-spin">
+                  <button type="button" disabled={n>=DI_MOVE_MAX_SLOTS} aria-label={L('Bir egzersiz ekle','One more exercise')}
+                    onClick={()=>setCount(row.id,n+1)}/>
+                  <button type="button" disabled={n<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
+                    onClick={()=>setCount(row.id,n-1)}/>
+                </span>
+              </span>
+            </div>
+            {isOpen
+              ?[...DI_MOVE_COLS.map(c=><div key={c.ks[0]} className="di-mvp-td na" role="cell">
+                  <span className="di-mvp-na" title={L('Egzersizlere göre, aşağıda','Per exercise, below')}>—</span></div>),
+                <div key="xf" className="di-mvp-td na" role="cell"><span className="di-mvp-na">—</span></div>]
+              :[...DI_MOVE_COLS.map(c=>facetCell(row,c,items,null,name)),
+                <React.Fragment key="xf">{extrasCell(items,`g:${row.id}`,name)}</React.Fragment>]}
+            <div className="di-mvp-ctl end" role="cell">{chev(isOpen,()=>flip(setOpen,row.id),
+              isOpen?L('Egzersizleri gizle','Hide exercises'):L('Egzersizleri göster','Show exercises'))}</div>
+          </div>
+          {!isOpen&&detail(row,items,null,`g:${row.id}`)}
+          {isOpen&&<div className="di-mvp-slots" role="table" aria-label={`${name} · ${L('Egzersizler','Exercises')}`}>
+            <div className="di-mvp-sr di-mvp-th" role="row">
+              <span role="columnheader">#</span>
+              <span role="columnheader">{L('Egzersiz slotu','Exercise slot')}</span>
+              {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
+              <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
+              <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
+            </div>
+            {items.map((p,ix)=>{const dk=`s:${row.id}:${ix}`;const sn=`${name} · ${L('Egzersiz','Exercise')} ${ix+1}`;
+              return<React.Fragment key={ix}>
+                <div className="di-mvp-sr" role="row">
+                  <span className="di-mvp-no" role="cell">{ix+1}</span>
+                  <div className="di-mvp-name" role="rowheader">
+                    <span>{L(`Egzersiz ${ix+1}`,`Exercise ${ix+1}`)}</span>
+                    {n>1&&<button type="button" className="di-mvp-x" onClick={()=>removeSlot(row.id,ix)}
+                      aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Egzersizi kaldır','Remove exercise')}>✕</button>}
+                  </div>
+                  {DI_MOVE_COLS.map(c=>facetCell(row,c,[p],ix,sn))}
+                  {extrasCell([p],dk,sn)}
+                  <div className="di-mvp-ctl end" role="cell">{chev(det.has(dk),()=>flip(setDet,dk),
+                    det.has(dk)?L('Detayı gizle','Hide detail'):L('Detayı göster','Show detail'))}</div>
+                </div>
+                {detail(row,items,ix,dk)}
+              </React.Fragment>;})}
+            {n<DI_MOVE_MAX_SLOTS&&<button type="button" className="di-mvp-add" onClick={()=>setCount(row.id,n+1)}>
+              <span aria-hidden="true">+</span>{L('Alt egzersiz ekle','Add an exercise')}</button>}
+          </div>}
         </div>;})}
-    </div>
+    </div></div>
     :<div className="di-mvp-empty">{L('Paterni seçince filtreleri burada açılır.','Pick a pattern to set its filters here.')}</div>}
   </div>);
 }
@@ -331,8 +489,8 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
         L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
         <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>,'a1')}
       {field(2,L('Hareket paterni','Movement pattern'),
-        L('Seçilen her patern programa kesinlikle eklenir. Filtre boşsa seçimi model yapar.',
-          'Every pattern picked is in the session. An empty filter is the model\'s choice.'),
+        L('Seçilen her patern için egzersiz sayısı, rolü ve filtreleri belirle. Boş bırakılan filtreler egzersiz seçimini sınırlandırmaz.',
+          'Set how many exercises, the role and the filters of every pattern picked. An empty filter leaves the choice open.'),
         <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
         <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
       {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
