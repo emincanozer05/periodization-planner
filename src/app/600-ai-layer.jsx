@@ -368,25 +368,58 @@ const DI_MOVE_COLS=[
   {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
+/* What a pattern's exercises are FOR in the session. Main work is the heavy, primary lift
+   of the main phase; assistance follows it in the main phase; complementary goes to the
+   complementary phase. A pick without a role reads as its pattern's usual one. */
+const DI_MOVE_ROLES=[
+  {id:'main',label:['Ana','Main'],ai:'main',how:'a primary lift of the main phase, done first and loaded heaviest'},
+  {id:'assist',label:['Yardımcı','Assistance'],ai:'assistance',how:'assistance work in the main phase, after the primary lifts'},
+  {id:'comp',label:['Tamamlayıcı','Complementary'],ai:'complementary',how:'complementary work, written in the complementary phase'},
+];
+const DI_MOVE_ROLE_DEFAULT={knee_dominant:'main',hip_dominant:'main',horizontal_push:'assist',vertical_push:'assist',
+  horizontal_pull:'assist',vertical_pull:'assist',carry:'comp',core:'comp',accessory:'comp'};
+const diMoveRole=id=>DI_MOVE_ROLES.find(r=>r.id===id)||null;
+/* The extra filters, on every pattern alike: the kit the exercise is done with (any of
+   the ticked items), its range of motion and its stability. All optional. */
+const DI_MOVE_EXTRAS=[
+  {k:'equip',ai:'equipment',multi:true,label:['Ekipman','Equipment'],
+    opts:[...DI_EQUIPMENT.filter(e=>e.id!=='plyobox'&&e.id!=='sled').map(e=>[e.id,e.label[0],e.label[1]]),
+      ['kettlebell','Kettlebell','Kettlebell'],['landmine','Landmine','Landmine']]},
+  {k:'rom',ai:'range_of_motion',label:['ROM','ROM'],opts:[['full','Tam ROM','Full range'],['partial','Kısmi ROM','Partial range'],
+    ['lengthened','Uzamış pozisyon','Lengthened position'],['shortened','Kısalmış pozisyon','Shortened position']]},
+  {k:'stab',ai:'stability',label:['Stabilite','Stability'],opts:[['stable','Stabil','Stable'],
+    ['semi','Yarı stabil','Semi-stable'],['unstable','İnstabil','Unstable']]},
+];
+/* One pattern can be asked for more than once: each item of the list is ONE exercise,
+   so knee dominant ticked twice is two knee-dominant exercises (a squat and a lunge),
+   each with its own filters. Never more than this many of one pattern. */
+const DI_MOVE_MAX_SLOTS=6;
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
-   duplicate value inside a facet is dropped, a pattern ticked twice counts once. A facet
-   holds one value: a brief saved while several could be ticked keeps the first. */
+   duplicate value inside a facet is dropped. A facet holds one value: a brief saved
+   while several could be ticked keeps the first. The items of one pattern are kept
+   together, patterns in the order they were first picked. */
 function diMovePatterns(v){
-  const seen=new Set(),out=[];
+  const groups=new Map();
   (Array.isArray(v)?v:[]).forEach(x=>{
     const id=typeof x==='string'?x:(x&&x.id);
     const row=diMoveRow(id);
-    if(!row||seen.has(id))return;
-    seen.add(id);
-    const o={id};
-    row.facets.forEach(f=>{
-      const raw=x&&typeof x==='object'&&Array.isArray(x[f.k])?x[f.k]:[];
+    if(!row)return;
+    if(!groups.has(id))groups.set(id,[]);
+    const g=groups.get(id);
+    if(g.length>=DI_MOVE_MAX_SLOTS)return;
+    const obj=x&&typeof x==='object'?x:{};
+    const o={id,role:diMoveRole(obj.role)?obj.role:(DI_MOVE_ROLE_DEFAULT[id]||'main')};
+    const clean=(f,max)=>{
+      const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
-      o[f.k]=raw.map(String).filter(val=>ok.has(val)).slice(0,1);
-    });
-    out.push(o);
+      return[...new Set(raw.map(String).filter(val=>ok.has(val)))].slice(0,max);
+    };
+    row.facets.forEach(f=>{o[f.k]=clean(f,1);});
+    DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
+    o.note=String(obj.note==null?'':obj.note).slice(0,240);
+    g.push(o);
   });
-  return out;
+  return[...groups.values()].flat();
 }
 /* The movement_pattern values that count as this pick. A lower-body pattern dosed for
    power or reactive strength is usually trained as a jump (trap bar jump, drop jump),
@@ -404,9 +437,9 @@ function diMoveFacetText(pick,facet){
   const byId=new Map(facet.opts.map(op=>[op[0],op]));
   return(pick[facet.k]||[]).map(val=>{const op=byId.get(val);return op?L(op[1],op[2]):val;});
 }
-/* The coach's pattern picks for one athlete and day, one line per pattern — "Diz dominant:
-   Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the form
-   lists them). The calendar shows it on hover; a day with no pick has no lines. When the day
+/* The coach's pattern picks for one athlete and day, one line per exercise asked for — "Diz
+   dominant: Step-up · Tek bacak · Yerinde · Temel kuvvet" (type · side · direction · goal, as the
+   form lists them, then the extra filters); a pattern asked for twice is numbered "Diz dominant 1", "… 2". The calendar shows it on hover; a day with no pick has no lines. When the day
    has been briefed from more than one source session, the most recently saved brief is read. */
 function diPatternTipLines(team,athId,dateKey){
   const store=(team&&team.indiv&&team.indiv.ai)||{};
@@ -419,10 +452,12 @@ function diPatternTipLines(team,athId,dateKey){
     if(!best||String(rec.updated_at||'')>String(best.updated_at||''))best=rec;
   });
   if(!best)return[];
-  return diMovePatterns(best.instr.patterns).map(p=>{
+  const picks=diMovePatterns(best.instr.patterns);
+  return picks.map((p,i)=>{
     const row=diMoveRow(p.id);
-    return{id:p.id,name:diMoveLabel(p.id),
-      parts:row.facets.flatMap(f=>diMoveFacetText(p,f))};
+    const same=picks.filter(x=>x.id===p.id);
+    return{id:`${p.id}:${i}`,name:diMoveLabel(p.id)+(same.length>1?` ${same.indexOf(p)+1}`:''),
+      parts:[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))};
   });
 }
 function diInstr(raw,src){
@@ -878,11 +913,19 @@ function diMovePatternsForAI(list){
     if(!row)return null;
     const vocab=diMoveVocab(p);
     const o={id:p.id,pattern:L(row.label[0],row.label[1])};
+    /* A pattern asked for more than once says which of its exercises this item is. */
+    const same=list.filter(x=>x&&x.id===p.id);
+    if(same.length>1){o.exercise_no=same.indexOf(p)+1;o.exercises_of_this_pattern=same.length;}
+    const role=diMoveRole(p.role);
+    if(role)o.role=role.ai;
     if(vocab.length)o.movement_pattern_values=vocab;
     row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai||DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
     /* The muscle action is always written, picked or not: an empty one is said out loud
        rather than left off, so the export shows the coach did not set it. */
     if(!o.muscle_action_emphasis)o.muscle_action_emphasis=DI_ACTION_NOT_SET;
+    DI_MOVE_EXTRAS.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai]=f.multi?v:v[0];});
+    const note=String(p.note||'').trim();
+    if(note)o.coach_note=note;
     return o;
   }).filter(Boolean);
 }
@@ -892,8 +935,11 @@ function diBriefForAI(i){
     priorities:i.priorities.map(diPrioLabel),
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
+      'Each item is ONE exercise: a pattern listed more than once (exercise_no / exercises_of_this_pattern) needs that many different exercises, each tagged with the pattern\'s id and each written to its own item\'s filters. '+
+      'role places the exercise: '+DI_MOVE_ROLES.map(r=>`${r.ai} = ${r.how}`).join('; ')+'. '+
+      'equipment (a list: the exercise uses one of them), range_of_motion, stability and coach_note, when given, bind that exercise too. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values (a pattern without movement_pattern_values — accessory — takes whichever movement_pattern fits the exercise). '+
-      'Each filter given (type, stance, stance_support, side_support, load_distribution, position, direction, strength_goal, task, muscle_action_emphasis) carries ONE value and binds that exercise: '+
+      'Each filter given (type, stance, stance_support, side_support, load_distribution, position, direction, strength_goal, task, muscle_action_emphasis, range_of_motion, stability) carries ONE value and binds that exercise: '+
       'the exercise must be exactly that value. A filter that is not given — or muscle_action_emphasis "not selected" — is your choice. strength_goal sets how the exercise is dosed '+
       '(sets, reps, load, tempo, rest). muscle_action_emphasis sets the muscle action the exercise emphasises, and its tempo and description must show it: '+
       'standard (an ordinary controlled tempo, no phase singled out), '+
@@ -1485,6 +1531,9 @@ function validateProgram(program,ctx){
   if(pats.length){
     const said=((program.conflicts)||[]).map(x=>diExName(`${x.talimat||''} ${x.alan||''} ${x.rule||''} ${x.alt||''}`));
     const taken=new Set();
+    /* A pattern asked for N times needs N exercises; the misses are counted per pattern
+       and said once, with the numbers. */
+    const miss=new Map();
     pats.forEach(p=>{
       const row=diMoveRow(p.id);
       if(!row)return;
@@ -1501,10 +1550,21 @@ function validateProgram(program,ctx){
       }
       hit=rows.find(r=>!taken.has(r)&&!r.coachPattern&&vocab.includes(patOf(r)));
       if(hit){taken.add(hit);return;}
+      miss.set(p.id,(miss.get(p.id)||0)+1);
+    });
+    miss.forEach((n,id)=>{
+      const row=diMoveRow(id);
+      const tr=row.label[0],en=row.label[1];
+      const want=pats.filter(p=>p.id===id).length,got=want-n;
       /* Pain does not excuse it — the coach's pick opens the pattern for today (diCoachOpenSet)
          — so a missing pattern fails the brief even where the answer declared a reason. */
-      const keys=[tr,en,p.id].map(diExName).filter(Boolean);
+      const keys=[tr,en,id].map(diExName).filter(Boolean);
       const flagged=said.some(d=>keys.some(k=>d.includes(k)));
+      if(got>0){
+        H(22,`Antrenör ${tr} paterninden ${want} egzersiz istedi ama programda ${got} tane var${flagged?' — program bir çatışma bildirmiş, ancak antrenörün istediği egzersiz sayısı zorunludur':''}.`,
+          `The coach asked for ${want} ${en} exercises and the session has ${got}${flagged?' — it declared a conflict, but the coach\'s count is mandatory':''}.`);
+        return;
+      }
       H(22,flagged
         ?`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok — program bir çatışma bildirmiş, ancak antrenörün seçtiği patern zorunludur.`
         :`Antrenör ${tr} paterninin programda olmasını istedi ama bu paternde egzersiz yok (ve bir çatışma da bildirilmemiş).`,

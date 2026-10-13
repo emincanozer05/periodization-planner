@@ -1778,19 +1778,21 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       patterns: [{ id: 'knee_dominant', type: ['lunge', 'yok'], side: ['unilateral'], goal: ['maximal'] },
         { id: 'knee_dominant' }, { id: 'uydurma' }, { id: 'core', task: ['anti_rotation'], goal: ['endurance', 'maximal'] }, 'carry'] };
     const b = A.diBrief(raw, null);
-    check('brief: "mutlaka olsun" formda yok, taşınmıyor; paternler temizlenmiş',
-      b.must.length === 0 && b.patterns.length === 3 && b.patterns[0].id === 'knee_dominant' &&
-      JSON.stringify(b.patterns[0].type) === '["lunge"]' && JSON.stringify(b.patterns[1].goal) === '["endurance"]' &&
-      b.patterns[2].id === 'carry' && b.patterns[2].type.length === 0, JSON.stringify(b.patterns));
+    check('brief: "mutlaka olsun" formda yok, taşınmıyor; paternler temizlenmiş, iki kez seçilen patern iki egzersiz',
+      b.must.length === 0 && b.patterns.length === 4 && b.patterns[0].id === 'knee_dominant' && b.patterns[1].id === 'knee_dominant' &&
+      JSON.stringify(b.patterns[0].type) === '["lunge"]' && b.patterns[1].type.length === 0 && JSON.stringify(b.patterns[2].goal) === '["endurance"]' &&
+      b.patterns[3].id === 'carry' && b.patterns[3].type.length === 0, JSON.stringify(b.patterns));
     const snap = A.inTurkish(() => A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY,
       instr: b, customTests: [] }));
     const mp = snap.coach_brief.movement_patterns || [];
     check('JSON: seçilen paternler sırasıyla, İngilizce, filtreleriyle; boş filtre yazılmıyor',
-      mp.length === 3 && mp[0].id === 'knee_dominant' && mp[0].pattern === 'Knee dominant' &&
+      mp.length === 4 && mp[0].id === 'knee_dominant' && mp[0].pattern === 'Knee dominant' &&
       mp[0].type === 'Lunge' && mp[0].stance === 'Unilateral' && !('side_support' in mp[0]) &&
       mp[0].strength_goal === 'Maximal strength' && !('direction' in mp[0]) &&
       JSON.stringify(mp[0].movement_pattern_values) === '["Squat","Lunge / Unilateral"]' &&
-      mp[1].task === 'Anti-rotation' && mp[2].pattern === 'Carry' && !('type' in mp[2]),
+      mp[0].exercise_no === 1 && mp[1].exercise_no === 2 && mp[1].exercises_of_this_pattern === 2 && !('type' in mp[1]) &&
+      mp[2].task === 'Anti-rotation' && !('exercise_no' in mp[2]) && mp[3].pattern === 'Carry' && !('type' in mp[3]) &&
+      !mp.some(x => 'equipment' in x || 'range_of_motion' in x || 'stability' in x || 'coach_note' in x),
       JSON.stringify(mp));
     check('JSON: patern kuralı bağlayıcı, must_include yok, kaçınılacak duruyor',
       /MUST be in the session/.test(snap.coach_brief.movement_patterns_rule || '') && !('must_include' in snap.coach_brief) &&
@@ -1839,6 +1841,39 @@ group('16 — Seçilen model gerçekten tele gidiyor');
         /carries ONE value/.test(cs.coach_brief.movement_patterns_rule) && !/any of them/.test(cs.coach_brief.movement_patterns_rule));
       check('reaktif kuvvet hedefli alt vücut paterni Jump / Plyo\'yu da sayıyor',
         cm[0].movement_pattern_values.includes('Jump / Plyo') && !cm[3].movement_pattern_values.includes('Jump / Plyo'));
+    }
+
+    {
+      /* Bir paternden birden fazla egzersiz: her öğe bir egzersiz, kendi filtreleriyle; rol ve ek filtreler. */
+      const many = A.diBrief({ patterns: [
+        { id: 'knee_dominant', role: 'main', type: ['squat'], equip: ['barbell', 'trapbar', 'uydurma'], rom: ['full', 'partial'] },
+        { id: 'core', role: 'yok', stab: ['unstable'], note: '  tempo 3-1-1 ' },
+        { id: 'knee_dominant', role: 'main', type: ['lunge'], side: ['unilateral'] }] }, null);
+      const mk = many.patterns;
+      check('çoklu patern: aynı paternin egzersizleri bir arada, rol geçersizse paternin olağan rolü, ek filtreler temiz',
+        mk.length === 3 && mk[0].id === 'knee_dominant' && mk[1].id === 'knee_dominant' && mk[2].id === 'core' &&
+        JSON.stringify(mk[1].type) === '["lunge"]' && mk[2].role === 'comp' &&
+        JSON.stringify(mk[0].equip) === '["barbell","trapbar"]' && JSON.stringify(mk[0].rom) === '["full"]' &&
+        JSON.stringify(mk[2].stab) === '["unstable"]', JSON.stringify(mk));
+      const capped = A.diBrief({ patterns: Array.from({ length: 9 }, () => ({ id: 'core' })) }, null).patterns;
+      check('bir paternden en fazla 6 egzersiz', capped.length === 6, String(capped.length));
+      const ms = A.diAthleteSnapshot({ ath: athlete({ wellness: [wellness(TODAY, 4)] }), setup: SETUP, date: TODAY, instr: many, customTests: [] });
+      const mm = ms.coach_brief.movement_patterns || [];
+      check('JSON: her egzersiz ayrı öğe, rolü, ekipman listesi, ROM, stabilite ve not ile; kural sayıyı ve rolü anlatıyor',
+        mm.length === 3 && mm[0].exercise_no === 1 && mm[1].exercise_no === 2 && mm[0].exercises_of_this_pattern === 2 &&
+        mm[0].role === 'main' && mm[2].role === 'complementary' && JSON.stringify(mm[0].equipment) === '["Barbell","Trap bar"]' &&
+        mm[0].range_of_motion === 'Full range' && mm[2].stability === 'Unstable' && mm[2].coach_note === 'tempo 3-1-1' &&
+        mm[1].type === 'Lunge' && /Each item is ONE exercise/.test(ms.coach_brief.movement_patterns_rule) &&
+        /role places the exercise/.test(ms.coach_brief.movement_patterns_rule), JSON.stringify(mm));
+      const ath2 = athlete({ wellness: [wellness(TODAY, 4)] });
+      const two = { rawInstr: { patterns: [{ id: 'knee_dominant' }, { id: 'knee_dominant' }] } };
+      const vOne = validate(aiReply([ex({ koc_paterni: 'knee_dominant' })]), ath2, two);
+      check('aynı paternden iki egzersiz istenip bir tane yazılırsa SERT ihlal, sayılarla',
+        vOne.status === 'fail' && vOne.hardViolations.some(h => h.rule === 22 && /2 Knee dominant exercises and the session has 1|2 egzersiz istedi ama programda 1/.test(h.text)),
+        hardText(vOne));
+      const vBoth = validate(aiReply([ex({ koc_paterni: 'knee_dominant' }),
+        ex({ ad: 'Reverse Lunge', hareket_paterni: 'Lunge / Unilateral', koc_paterni: 'knee_dominant' })]), ath2, two);
+      check('aynı paternden iki egzersiz yazılınca geçer', !vBoth.hardViolations.some(h => h.rule === 22), hardText(vBoth));
     }
 
     const ath = athlete({ wellness: [wellness(TODAY, 4)] });
