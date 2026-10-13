@@ -368,17 +368,6 @@ const DI_MOVE_COLS=[
   {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
-/* What a pattern's exercises are FOR in the session. Main work is the heavy, primary lift
-   of the main phase; assistance follows it in the main phase; complementary goes to the
-   complementary phase. A pick without a role reads as its pattern's usual one. */
-const DI_MOVE_ROLES=[
-  {id:'main',label:['Ana','Main'],ai:'main',how:'a primary lift of the main phase, done first and loaded heaviest'},
-  {id:'assist',label:['Yardımcı','Assistance'],ai:'assistance',how:'assistance work in the main phase, after the primary lifts'},
-  {id:'comp',label:['Tamamlayıcı','Complementary'],ai:'complementary',how:'complementary work, written in the complementary phase'},
-];
-const DI_MOVE_ROLE_DEFAULT={knee_dominant:'main',hip_dominant:'main',horizontal_push:'assist',vertical_push:'assist',
-  horizontal_pull:'assist',vertical_pull:'assist',carry:'comp',core:'comp',accessory:'comp'};
-const diMoveRole=id=>DI_MOVE_ROLES.find(r=>r.id===id)||null;
 /* The extra filters, on every pattern alike: the kit the exercise is done with (any of
    the ticked items), its range of motion and its stability. All optional. */
 const DI_MOVE_EXTRAS=[
@@ -392,7 +381,9 @@ const DI_MOVE_EXTRAS=[
 ];
 /* One pattern can be asked for more than once: each item of the list is ONE exercise,
    so knee dominant ticked twice is two knee-dominant exercises (a squat and a lunge),
-   each with its own filters. Never more than this many of one pattern. */
+   each with its own filters. An item may also name the exercise itself — picked off the
+   library or typed — and then that exercise is the one written. Never more than this
+   many of one pattern. */
 const DI_MOVE_MAX_SLOTS=6;
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
@@ -408,7 +399,7 @@ function diMovePatterns(v){
     const g=groups.get(id);
     if(g.length>=DI_MOVE_MAX_SLOTS)return;
     const obj=x&&typeof x==='object'?x:{};
-    const o={id,role:diMoveRole(obj.role)?obj.role:(DI_MOVE_ROLE_DEFAULT[id]||'main')};
+    const o={id,exercise:String(obj.exercise==null?'':obj.exercise).trim().slice(0,120)};
     const clean=(f,max)=>{
       const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
@@ -457,7 +448,7 @@ function diPatternTipLines(team,athId,dateKey){
     const row=diMoveRow(p.id);
     const same=picks.filter(x=>x.id===p.id);
     return{id:`${p.id}:${i}`,name:diMoveLabel(p.id)+(same.length>1?` ${same.indexOf(p)+1}`:''),
-      parts:[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))};
+      parts:[...(p.exercise?[p.exercise]:[]),...[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))]};
   });
 }
 function diInstr(raw,src){
@@ -916,8 +907,7 @@ function diMovePatternsForAI(list){
     /* A pattern asked for more than once says which of its exercises this item is. */
     const same=list.filter(x=>x&&x.id===p.id);
     if(same.length>1){o.exercise_no=same.indexOf(p)+1;o.exercises_of_this_pattern=same.length;}
-    const role=diMoveRole(p.role);
-    if(role)o.role=role.ai;
+    if(p.exercise)o.exercise=p.exercise;
     if(vocab.length)o.movement_pattern_values=vocab;
     row.facets.forEach(f=>{const v=diMoveFacetText(p,f);if(v.length)o[f.ai||DI_MOVE_FACET_KEY[f.k]||f.k]=v[0];});
     /* The muscle action is always written, picked or not: an empty one is said out loud
@@ -936,7 +926,7 @@ function diBriefForAI(i){
     movement_patterns:pats,
     movement_patterns_rule:pats.length?'Every pattern listed here MUST be in the session, with at least one exercise each. '+
       'Each item is ONE exercise: a pattern listed more than once (exercise_no / exercises_of_this_pattern) needs that many different exercises, each tagged with the pattern\'s id and each written to its own item\'s filters. '+
-      'role places the exercise: '+DI_MOVE_ROLES.map(r=>`${r.ai} = ${r.how}`).join('; ')+'. '+
+      'exercise, when given, is the exercise the coach chose for that item: write exactly that exercise, by exactly that name, tagged with the pattern\'s id — the filters then only describe how it is done. '+
       'equipment (a list: the exercise uses one of them), range_of_motion, stability and coach_note, when given, bind that exercise too. '+
       'Write that exercise\'s coach_pattern as the pattern\'s id and its movement_pattern as one of the pattern\'s movement_pattern_values (a pattern without movement_pattern_values — accessory — takes whichever movement_pattern fits the exercise). '+
       'Each filter given (type, stance, stance_support, side_support, load_distribution, position, direction, strength_goal, task, muscle_action_emphasis, range_of_motion, stability) carries ONE value and binds that exercise: '+
@@ -1571,6 +1561,19 @@ function validateProgram(program,ctx){
         flagged
         ?`The coach asked for the ${en} pattern and the session has no exercise in it — it declared a conflict, but the coach's patterns are mandatory.`
         :`The coach asked for the ${en} pattern and the session has no exercise in it (nor a declared conflict).`);
+    });
+    /* An exercise the coach named (picked off the library or typed) is an instruction
+       too: it has to be in the session under that name. */
+    const named=new Set();
+    pats.forEach(p=>{
+      const nm=String(p.exercise||'').trim();
+      const k=diExName(nm);
+      if(!k||named.has(k))return;
+      named.add(k);
+      if(rows.some(r=>diExName(r.name)===k))return;
+      const row=diMoveRow(p.id);
+      H(22,`Antrenör ${row?row.label[0]+' paterni için ':''}"${nm}" egzersizini seçti ama programda yok.`,
+        `The coach picked "${nm}"${row?` for the ${row.label[1]} pattern`:''} and the session does not have it.`);
     });
   }
 

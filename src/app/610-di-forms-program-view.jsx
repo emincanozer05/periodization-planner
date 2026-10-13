@@ -133,8 +133,11 @@ function DiPriorityPicker({value,onChange}){
 }
 
 /* The movement patterns the session must carry. Toggles across the top; every ticked
-   pattern is a row of the grid below: its role in the session, how many exercises of it,
-   and one select per facet column (DI_MOVE_COLS) plus the extra filters (DI_MOVE_EXTRAS).
+   pattern is a row of the grid below: the exercise itself, how many exercises of it, and
+   one select per facet column (DI_MOVE_COLS) plus the extra filters (DI_MOVE_EXTRAS).
+   The exercise box is the programme editor's own (ExNameField): it lists the library as
+   it is typed in, and a name the library does not have is filed into it on its own. An
+   empty box leaves the exercise to the model, within the filters.
    A select takes ONE value: "Seçiniz" means the model chooses. A cell whose pattern has
    no facet of that kind is a dash.
    A pattern can be asked for more than once — each exercise of it is one item of the
@@ -158,7 +161,7 @@ function DiPatternPicker({value,onChange,closed}){
     'Loads a region reported painful today — if picked it is still in the session, written as a pain-free, modified variation.');
   /* Groups in the order of the toggles, not the order they were ticked; saved the same way. */
   const groups=DI_MOVE_PATTERNS.map(row=>({row,items:list.filter(p=>p.id===row.id)})).filter(g=>g.items.length);
-  const fresh=(id,role)=>diMovePatterns([{id,role}])[0];
+  const fresh=id=>diMovePatterns([{id}])[0];
   const setGroup=(id,items)=>onChange(DI_MOVE_PATTERNS.flatMap(r=>r.id===id?items:list.filter(p=>p.id===r.id)));
   const itemsOf=id=>list.filter(p=>p.id===id);
   const toggle=id=>{
@@ -170,8 +173,7 @@ function DiPatternPicker({value,onChange,closed}){
     const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
     if(want===items.length)return;
     if(want>items.length){
-      const role=items[0]&&items[0].role;
-      setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id,role))]);
+      setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id))]);
       setOpen(s=>new Set(s).add(id));
     }else setGroup(id,items.slice(0,want));
   };
@@ -226,6 +228,13 @@ function DiPatternPicker({value,onChange,closed}){
       </span>
     </label>;
   };
+  /* The exercise box of one item. A pick off the library and a typed name are kept the
+     same way, as the name; the box files a new name into the library itself. */
+  const exCell=(row,ix,cur)=><div className="di-mvp-td di-mvp-ex" role="cell">
+    <span className="di-mvp-cl">{L('Egzersiz','Exercise')}</span>
+    <ExNameField value={cur} onChange={v=>patch(row.id,ix,p=>({...p,exercise:String(v||'').slice(0,120)}))}
+      onPick={it=>patch(row.id,ix,p=>({...p,exercise:String(it&&it.name||'').slice(0,120)}))}/>
+  </div>;
   const extrasCell=(items,dk,aria)=>{const sm=extrasSum(items);
     return<div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Ek filtreler','Extra filters')}</span>
       <button type="button" className={'di-mvp-xf'+(sm.txt?' on':'')+(det.has(dk)?' open':'')} aria-expanded={det.has(dk)}
@@ -275,14 +284,15 @@ function DiPatternPicker({value,onChange,closed}){
       <div className="di-mvp-tr di-mvp-th" role="row">
         <span role="columnheader" aria-label={L('Aç / kapat','Open / close')}/>
         <span role="columnheader">{L('Patern','Pattern')}</span>
-        <span role="columnheader">{L('Rol','Role')}</span>
-        <span role="columnheader">{L('Egzersiz adedi','Exercises')}</span>
+        <span role="columnheader">{L('Egzersiz','Exercise')}</span>
+        <span role="columnheader">{L('Egzersiz adedi','How many')}</span>
         {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
         <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
         <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
       </div>
       {groups.map(({row,items})=>{const cl=isClosed(row);const name=label(row);
-        const isOpen=open.has(row.id);const role=items[0].role;const n=items.length;
+        const isOpen=open.has(row.id);const n=items.length;
+        const names=items.map(p=>p.exercise).filter(Boolean);
         return<div key={row.id} className={'di-mvp-grp'+(isOpen?' open':'')} role="rowgroup">
           <div className="di-mvp-tr" role="row">
             <div className="di-mvp-ctl" role="cell">{chev(isOpen,()=>flip(setOpen,row.id),
@@ -293,15 +303,15 @@ function DiPatternPicker({value,onChange,closed}){
               <button type="button" className="di-mvp-x" onClick={()=>toggle(row.id)}
                 aria-label={L('Kaldır','Remove')} title={L('Kaldır','Remove')}>✕</button>
             </div>
-            <label className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Rol','Role')}</span>
-              <span className={'di-mvp-sel di-mvp-role r-'+role}>
-                <select value={role} aria-label={`${name} · ${L('Rol','Role')}`}
-                  onChange={e=>patch(row.id,null,p=>({...p,role:e.target.value}))}>
-                  {DI_MOVE_ROLES.map(r=><option key={r.id} value={r.id}>{label(r)}</option>)}
-                </select>
-              </span>
-            </label>
-            <div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz adedi','Exercises')}</span>
+            {n===1&&!isOpen?exCell(row,0,items[0].exercise)
+              :<div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz','Exercise')}</span>
+                {isOpen?<span className="di-mvp-na">—</span>
+                  :<button type="button" className={'di-mvp-exs'+(names.length?' on':'')} title={names.join(', ')||undefined}
+                    onClick={()=>flip(setOpen,row.id)}>
+                    <span>{names.length?names.join(', '):L(`${n} egzersiz · seç`,`${n} exercises · pick`)}</span>
+                  </button>}
+              </div>}
+            <div className="di-mvp-td" role="cell"><span className="di-mvp-cl">{L('Egzersiz adedi','How many')}</span>
               <span className="di-mvp-cnt">
                 <input type="number" min={1} max={DI_MOVE_MAX_SLOTS} value={n}
                   aria-label={`${name} · ${L('Egzersiz adedi','Exercises')}`}
@@ -327,7 +337,7 @@ function DiPatternPicker({value,onChange,closed}){
           {isOpen&&<div className="di-mvp-slots" role="table" aria-label={`${name} · ${L('Egzersizler','Exercises')}`}>
             <div className="di-mvp-sr di-mvp-th" role="row">
               <span role="columnheader">#</span>
-              <span role="columnheader">{L('Egzersiz slotu','Exercise slot')}</span>
+              <span role="columnheader">{L('Egzersiz','Exercise')}</span>
               {DI_MOVE_COLS.map(c=><span key={c.ks[0]} role="columnheader">{label(c)}</span>)}
               <span role="columnheader">{L('Ek filtreler','Extra filters')}</span>
               <span role="columnheader" className="di-mvp-thd">{L('Detay','Detail')}</span>
@@ -336,8 +346,12 @@ function DiPatternPicker({value,onChange,closed}){
               return<React.Fragment key={ix}>
                 <div className="di-mvp-sr" role="row">
                   <span className="di-mvp-no" role="cell">{ix+1}</span>
-                  <div className="di-mvp-name" role="rowheader">
-                    <span>{L(`Egzersiz ${ix+1}`,`Exercise ${ix+1}`)}</span>
+                  <div className="di-mvp-name di-mvp-slotex" role="rowheader">
+                    <div className="di-mvp-ex">
+                      <span className="di-mvp-cl">{L(`Egzersiz ${ix+1}`,`Exercise ${ix+1}`)}</span>
+                      <ExNameField value={p.exercise} onChange={v=>patch(row.id,ix,q=>({...q,exercise:String(v||'').slice(0,120)}))}
+                        onPick={it=>patch(row.id,ix,q=>({...q,exercise:String(it&&it.name||'').slice(0,120)}))}/>
+                    </div>
                     {n>1&&<button type="button" className="di-mvp-x" onClick={()=>removeSlot(row.id,ix)}
                       aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Egzersizi kaldır','Remove exercise')}>✕</button>}
                   </div>
@@ -411,52 +425,98 @@ function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
   </div>);
 }
 
-/* Volume and intensity on one card: two rows of buttons, auto first. Auto leaves the
-   engine's adjustment (shown on the button) and the fatigue budget's RPE ceiling in
-   force; anything else is the coach's figure for the day (diVolumeAdj, diIntensityRow).
-   Pressing the button that is on goes back to auto. */
-function DiVolIntPicker({volume,intensity,autoVol,onChange}){
+/* Volume and intensity on one card, each a block of its own. Auto leaves the engine in
+   force: the volume block shows the engine's figure and the reasons behind it, the
+   intensity block the fatigue budget's RPE ceiling (diVolumeAdj, diFatigueBudget).
+   Anything else is the coach's figure for the day. Volume takes a preset or any step of
+   5 % with the − / + pair, and a bar shows the dose that results against a normal day;
+   intensity is a band on a 1–10 RPE scale. Pressing the button that is on goes back to
+   auto, and one button puts both back. */
+const DI_BUDGET_LBL={minimal:['minimal','minimal'],low:['düşük','low'],moderate:['orta','moderate'],normal:['normal','normal']};
+function DiVolIntPicker({volume,intensity,autoVol,autoReasons,autoRpe,autoBudget,onChange}){
   const sg=v=>`${v>0?'+':''}${v}%`;
   const ir=diIntensityRow(intensity);
+  const auto=Math.round(Number(autoVol)||0);
+  const eff=volume==null?auto:volume;
+  const clamp=v=>Math.max(DI_VOL_MIN,Math.min(DI_VOL_MAX,Math.round(v)));
+  const step=d=>onChange({volume:clamp(eff+d)});
+  const dose=100+eff;
+  const span=100+DI_VOL_MAX;
+  const reasons=(Array.isArray(autoReasons)?autoReasons:[]).filter(r=>r&&r.label);
+  const band=ir?ir.rpe:null;
+  const ceil=band?band[1]:(autoRpe==null?null:autoRpe);
+  const bud=autoBudget&&DI_BUDGET_LBL[autoBudget];
   return(<div className="di-vi">
-    <div className="di-vi-row">
-      <span className="di-vi-k">{L('Hacim %','Volume %')}</span>
-      <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
-        <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
-          title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
-          onClick={()=>onChange({volume:null})}>{L('Oto','Auto')}</button>
-        {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
-          title={v===0?L('Normal doz','Normal dose'):sg(v)}
-          onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+    <div className="di-vi-blk">
+      <div className="di-vi-hd">
+        <span className="di-vi-k">{L('Hacim','Volume')}</span>
+        <span className={'di-vi-src'+(volume==null?'':' coach')}>{volume==null?L('sistem','system'):L('antrenör','coach')}</span>
+        <b className="di-vi-big">{eff===0?L('normal','normal'):sg(eff)}</b>
+      </div>
+      <div className="di-vi-row">
+        <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
+          <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
+            title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
+            onClick={()=>onChange({volume:null})}>{L('Oto','Auto')} <small>{auto?sg(auto):'0'}</small></button>
+          {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
+            title={v===0?L('Normal doz','Normal dose'):sg(v)}
+            onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
+        </div>
+        <div className="di-vi-step" role="group" aria-label={L('Hacmi 5 % adımlarla ayarla','Adjust volume in steps of 5 %')}>
+          <button type="button" disabled={eff<=DI_VOL_MIN} onClick={()=>step(-5)} aria-label={L('5 % azalt','5 % less')}>−</button>
+          <span>{sg(eff)}</span>
+          <button type="button" disabled={eff>=DI_VOL_MAX} onClick={()=>step(5)} aria-label={L('5 % artır','5 % more')}>+</button>
+        </div>
+      </div>
+      <div className="di-vi-meter" aria-hidden="true">
+        <i className={eff<0?'cut':eff>0?'add':''} style={{width:`${Math.max(0,Math.min(100,dose/span*100))}%`}}/>
+        <em style={{left:`${100/span*100}%`}}/>
+      </div>
+      <div className="di-vi-note">
+        {L(`Normal dozun %${dose}'i`,`${dose}% of a normal day's dose`)}
+        {volume==null&&reasons.length>0&&<span className="di-vi-why">{reasons.map(r=>
+          <span key={r.id||r.label} className="di-vi-tag">{r.label}{r.pct!=null?` ${sg(r.pct)}`:''}</span>)}</span>}
+        {volume!=null&&<span className="di-vi-why"><span className="di-vi-tag">{L(`sistem önerisi ${auto?sg(auto):'yok'}`,`system ${auto?sg(auto):'none'}`)}</span></span>}
       </div>
     </div>
-    <div className="di-vi-row">
-      <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
-      <div className="di-numbtns" role="group" aria-label={L('Yoğunluk','Intensity')}>
+    <div className="di-vi-blk">
+      <div className="di-vi-hd">
+        <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
+        <span className={'di-vi-src'+(ir?' coach':'')}>{ir?L('antrenör','coach'):L('sistem','system')}</span>
+        <b className="di-vi-big">{ir?diRpeBand(ir):(ceil!=null?`RPE ≤ ${ceil}`:L('sınırsız','no ceiling'))}</b>
+      </div>
+      <div className="di-numbtns di-vi-int" role="group" aria-label={L('Yoğunluk','Intensity')}>
         <button type="button" className={'di-numb'+(!intensity?' on':'')} aria-pressed={!intensity}
-          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}</button>
+          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}<small>{autoRpe!=null?`≤ ${autoRpe}`:'—'}</small></button>
         {DI_INTENSITY.map(r=><button key={r.id} type="button" className={'di-numb'+(intensity===r.id?' on':'')}
           aria-pressed={intensity===r.id} title={diRpeBand(r)}
-          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}</button>)}
+          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}<small>{diRpeBand(r).replace('RPE ','')}</small></button>)}
       </div>
+      <div className="di-vi-rpe" aria-hidden="true">
+        {[1,2,3,4,5,6,7,8,9,10].map(n=><span key={n} className={
+          band?(n>=band[0]&&n<=band[1]?'on':''):(ceil!=null&&n<=ceil?'ok':'')}>{n}</span>)}
+      </div>
+      <div className="di-vi-note">{ir
+        ?L(`Ana fazın çalışma setleri ${diRpeBand(ir)}; hiçbiri RPE ${ir.rpe[1]}'in üstünde değil.`,
+          `Main-phase working sets at ${diRpeBand(ir)}; none above RPE ${ir.rpe[1]}.`)
+        :autoRpe!=null
+        ?L(`Sistem sınırı: RPE ${autoRpe}${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`System ceiling: RPE ${autoRpe}${bud?` (${bud[1]} fatigue budget)`:''}.`)
+        :L(`Sistem sınırı yok${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`No system ceiling${bud?` (${bud[1]} fatigue budget)`:''}.`)}</div>
     </div>
-    <div className="di-vi-sum">{[
-      volume==null?L(`Hacim: sistem önerisi (${autoVol?sg(autoVol):'ayar yok'})`,`Volume: system (${autoVol?sg(autoVol):'no adjustment'})`)
-        :L(`Hacim ${volume===0?'normal':sg(volume)}`,`Volume ${volume===0?'normal':sg(volume)}`),
-      ir?L(`çalışma setleri ${diRpeBand(ir)}`,`working sets at ${diRpeBand(ir)}`):L('yoğunluk: sistemin RPE sınırı','intensity: the system\'s RPE ceiling'),
-    ].join(' · ')}</div>
+    {(volume!=null||intensity)&&<button type="button" className="di-vi-reset" onClick={()=>onChange({volume:null,intensity:null})}>
+      {L('İkisini de otoya döndür','Put both back on auto')}</button>}
   </div>);
 }
 
 /* The brief. Seven fields, none of them required, and the line under the heading says
    what an empty one means. Each field is its own small card: the columns of a
    three-across grid have very different heights (a priority list against a number),
-   and without a card edge they read as one ragged block of controls. The pattern card
-   is the tall one, so it takes two columns and two rows on the right while priority
-   and volume / intensity stack beside it; the short answers share the rows below. It is
+   and without a card edge they read as one ragged block of controls. Priority (1) and
+   volume / intensity (2) share the first row in equal halves; the pattern card (3) is
+   the wide one and takes a row of its own; the short answers share the rows below. It is
    stored per athlete PER DAY, beside the session it produced, so yesterday's
    instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
+function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol,autoReasons,autoRpe,autoBudget}){
   const set=(k,v)=>save({...instr,[k]:v});
   /* Whatever is typed in the keep-out box but not yet turned into a chip. Blur commits
      it on its own, but blur and click land in the same tick and the generate handler
@@ -488,15 +548,16 @@ function DiInstructionForm({instr,save,onSnapshot,onImport,closed,autoVol}){
       {field(1,L('Bugünün önceliği','Today\'s priority'),
         L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
         <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>,'a1')}
-      {field(2,L('Hareket paterni','Movement pattern'),
-        L('Seçilen her patern için egzersiz sayısı, rolü ve filtreleri belirle. Boş bırakılan filtreler egzersiz seçimini sınırlandırmaz.',
-          'Set how many exercises, the role and the filters of every pattern picked. An empty filter leaves the choice open.'),
-        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
-        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
-      {field(3,L('Hacim ve yoğunluk','Volume & intensity'),
+      {field(2,L('Hacim ve yoğunluk','Volume & intensity'),
         L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
         <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
+          autoReasons={autoReasons} autoRpe={autoRpe} autoBudget={autoBudget}
           onChange={p=>save({...instr,...p})}/>,'a3')}
+      {field(3,L('Hareket paterni','Movement pattern'),
+        L('Seçilen her patern için egzersizi ve sayısını, filtreleri belirle. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bırakılan alanlar seçimi sınırlandırmaz.',
+          'Set the exercise, how many and the filters of every pattern picked. Pick from the library or type one — a new name is filed into the library. An empty field leaves the choice open.'),
+        <DiPatternPicker value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
+        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
       {field(4,L('Seans süresi','Session length'),
         L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
         <DiNumberChoice value={instr.duration}

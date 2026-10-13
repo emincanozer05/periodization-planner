@@ -6092,28 +6092,59 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 /* ---- Act 2: the brief ---- */
 .di-brief{border:1px solid var(--border);border-radius:12px;background:var(--panel);
   padding:13px 14px 14px;display:flex;flex-direction:column;gap:13px}
-/* Three across, by named areas. The movement-pattern card (2) is the one that grows —
-   a wide grid, a row per picked pattern — so it takes a whole row of its own, under
-   priority (1) and volume / intensity (3); length, ceiling and keep-out (4-5-6) share
-   the next row and notes (7) the last. Narrower, it folds to two (the pattern card across the
-   whole width) and then to one, always in field order. Cards stretch to their row so
-   no card ends early. */
-.di-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch;
-  grid-template-areas:"a1 a3 a3" "a2 a2 a2" "a4 a5 a7" "a6 a6 a6"}
+/* By named areas on six tracks. Priority (1, area a1) and volume / intensity (2, area
+   a3) share the first row in equal halves; the movement-pattern card (3, area a2) is
+   the wide one — a grid with a row per picked pattern — and takes a whole row of its
+   own; length, ceiling and keep-out (4-5-6) share the next row in thirds and notes (7)
+   the last. Narrower, it folds to two (the pattern card across the whole width) and then
+   to one, always in field order. Cards stretch to their row so no card ends early. */
+.di-fgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:stretch;
+  grid-template-areas:"a1 a1 a1 a3 a3 a3" "a2 a2 a2 a2 a2 a2" "a4 a4 a5 a5 a7 a7" "a6 a6 a6 a6 a6 a6"}
 .di-field.a1{grid-area:a1}.di-field.a2{grid-area:a2}.di-field.a3{grid-area:a3}
 .di-field.a4{grid-area:a4}.di-field.a5{grid-area:a5}.di-field.a6{grid-area:a6}.di-field.a7{grid-area:a7}
 @media(max-width:1040px){
   .di-fgrid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"a1 a3" "a2 a2" "a4 a5" "a7 a6"}
 }
-@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a2" "a3" "a4" "a5" "a7" "a6"}}
-/* Volume & intensity: a label column and a row of buttons per setting, one summary line. */
-.di-vi{display:flex;flex-direction:column;gap:8px}
-.di-vi-row{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center}
+@media(max-width:680px){.di-fgrid{grid-template-columns:minmax(0,1fr);grid-template-areas:"a1" "a3" "a2" "a4" "a5" "a7" "a6"}}
+/* Volume & intensity: two blocks side by side (stacked when narrow), each a header line
+   with its figure, the buttons, a picture of the result (dose bar / RPE scale) and a line
+   saying what it means. */
+.di-vi{display:flex;flex-wrap:wrap;gap:10px}
+.di-vi-blk{flex:1 1 360px;display:flex;flex-direction:column;gap:8px;min-width:0;border:1px solid var(--border);border-radius:9px;
+  background:var(--panel);padding:10px 11px}
+.di-vi-hd{display:flex;align-items:center;gap:7px;min-width:0}
 .di-vi-k{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
   font-family:'IBM Plex Mono',ui-monospace,monospace}
+.di-vi-src{font-size:10px;font-weight:600;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 7px}
+.di-vi-src.coach{color:var(--med-t);border-color:rgba(245,158,11,.45)}
+.di-vi-big{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.di-vi-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .di-vi .di-numbtns{max-width:100%}
 .di-vi .di-numb{padding:5px 9px}
-.di-vi-sum{font-size:11px;color:var(--text2);line-height:1.4}
+.di-vi .di-numb small{font-size:10px;font-weight:500;opacity:.75;margin-left:3px}
+.di-vi-int .di-numb{display:inline-flex;flex-direction:column;align-items:center;line-height:1.15;padding:5px 11px}
+.di-vi-int .di-numb small{margin:1px 0 0}
+.di-vi-step{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--elevated)}
+.di-vi-step button{width:28px;height:28px;border:0;background:none;color:var(--text2);font-size:15px;cursor:pointer}
+.di-vi-step button:hover:not(:disabled){background:var(--hover);color:var(--text)}
+.di-vi-step button:disabled{opacity:.35;cursor:default}
+.di-vi-step span{min-width:46px;text-align:center;font-size:12.5px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;
+  border-left:1px solid var(--border);border-right:1px solid var(--border);line-height:28px}
+.di-vi-meter{position:relative;height:8px;border-radius:999px;background:var(--elevated);border:1px solid var(--border);overflow:hidden}
+.di-vi-meter i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--text2);opacity:.55;transition:width .2s}
+.di-vi-meter i.cut{background:var(--med-t);opacity:.8}
+.di-vi-meter i.add{background:var(--low-t);opacity:.8}
+.di-vi-meter em{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--text)}
+.di-vi-rpe{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:3px}
+.di-vi-rpe span{text-align:center;font-size:10.5px;font-weight:600;color:var(--dim);border-radius:5px;padding:3px 0;
+  background:var(--elevated);border:1px solid var(--border);font-variant-numeric:tabular-nums}
+.di-vi-rpe span.ok{color:var(--text2);border-color:var(--border2)}
+.di-vi-rpe span.on{color:var(--med-t);border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14)}
+.di-vi-note{font-size:11px;color:var(--text2);line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.di-vi-why{display:inline-flex;flex-wrap:wrap;gap:4px}
+.di-vi-tag{font-size:10.5px;color:var(--dim);border:1px solid var(--border);border-radius:999px;padding:1px 7px;background:var(--elevated)}
+.di-vi-reset{flex-basis:100%;text-align:left;background:none;border:0;padding:0;font-size:11.5px;color:var(--accent);cursor:pointer}
+.di-vi-reset:hover{text-decoration:underline}
 /* The movement-pattern picker: a toggle per pattern, then the filter grid below. */
 .di-mvp{display:flex;flex-direction:column;gap:12px;container-type:inline-size}
 .di-mvp-top{display:flex;align-items:flex-start;gap:12px}
@@ -6132,9 +6163,9 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
    exercises under it, one row each. Wider than the card can be on a mid-size screen: it
    scrolls sideways there, and folds to small cards below 640px. */
 .di-mvp-scroll{overflow-x:auto;margin:0 -2px;padding:0 2px 2px}
-.di-mvp-grid{min-width:1000px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
+.di-mvp-grid{min-width:1090px;border:1px solid var(--border);border-radius:12px;background:var(--panel);
   display:flex;flex-direction:column;gap:6px;padding:0 6px 6px}
-.di-mvp-tr{display:grid;grid-template-columns:26px minmax(112px,1.15fr) 116px 92px repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+.di-mvp-tr{display:grid;grid-template-columns:26px minmax(132px,1.2fr) minmax(150px,1.3fr) 92px repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
   gap:6px;align-items:center;padding:7px 6px}
 .di-mvp-th{background:none;padding-top:10px;padding-bottom:6px;border-bottom:1px solid var(--border);margin:0 -6px;padding-left:12px;padding-right:12px}
 .di-mvp-th span{font-size:11px;font-weight:600;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -6173,14 +6204,6 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-sel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
 .di-mvp-sel.on select{color:var(--text);font-weight:600;border-color:var(--border2);background:var(--panel)}
 .di-mvp-sel select option{color:var(--text);background:var(--panel);font-weight:400}
-/* The role: one colour each — main green, assistance blue, complementary violet. */
-.di-mvp-role select{font-weight:600}
-.di-mvp-role.r-main select{color:var(--low-t);border-color:rgba(45,212,167,.5);background:rgba(45,212,167,.1)}
-.di-mvp-role.r-assist select{color:var(--peak-t);border-color:rgba(91,140,255,.55);background:rgba(91,140,255,.1)}
-.di-mvp-role.r-comp select{color:var(--mvp-violet,#c4b5fd);border-color:rgba(167,139,250,.55);background:rgba(167,139,250,.12)}
-.di-mvp-role.r-main::after{border-color:var(--low-t)}
-.di-mvp-role.r-assist::after{border-color:var(--peak-t)}
-.di-mvp-role.r-comp::after{border-color:var(--mvp-violet,#c4b5fd)}
 /* How many exercises: the number, and a small up / down pair beside it. */
 .di-mvp-cnt{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:7px;background:var(--elevated);overflow:hidden}
 .di-mvp-cnt:focus-within{border-color:var(--accent)}
@@ -6205,6 +6228,22 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-xf:hover{border-color:var(--accent);color:var(--text2)}
 .di-mvp-xf.on{border-style:solid;border-color:var(--border2);background:var(--panel);color:var(--text);font-weight:600}
 .di-mvp-xf:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+/* The exercise box: the programme editor's library picker (a growing textarea), drawn
+   like the selects beside it; on a folded row of several, a button that lists them. */
+.di-mvp-ex .en-wrap{display:block}
+.di-mvp-ex .en{width:100%;min-height:31px;font-family:inherit;font-size:12px;font-weight:600;line-height:1.3;padding:7px 9px;
+  resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;display:block;box-sizing:border-box;
+  background:var(--elevated);color:var(--text);border:1px solid var(--border);border-radius:7px;transition:border-color .15s}
+.di-mvp-ex .en::placeholder{color:var(--dim);font-weight:400}
+.di-mvp-ex .en:hover{border-color:var(--border2)}
+.di-mvp-ex .en:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.2)}
+.di-mvp-slotex{gap:6px}
+.di-mvp-slotex .di-mvp-ex{flex:1;min-width:0}
+.di-mvp-exs{width:100%;text-align:left;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);border-radius:7px;
+  padding:7px 9px;font-size:12px;line-height:1.3;cursor:pointer}
+.di-mvp-exs span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.di-mvp-exs.on{border-style:solid;color:var(--text);font-weight:600}
+.di-mvp-exs:hover{border-color:var(--accent)}
 /* The panel under a row: one line of chips per extra filter, then the note. */
 .di-mvp-det{padding:0 10px 10px 38px}
 .di-mvp-detin{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);padding:10px 12px}
@@ -6221,7 +6260,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-mvp-note:focus{outline:none;border-color:var(--accent)}
 /* The exercises of an opened pattern: their own table, inset under the pattern's row. */
 .di-mvp-slots{margin:0 8px 8px;border:1px solid var(--border);border-radius:9px;background:var(--panel);overflow:hidden}
-.di-mvp-sr{display:grid;grid-template-columns:28px minmax(96px,.9fr) repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
+.di-mvp-sr{display:grid;grid-template-columns:28px minmax(180px,1.7fr) repeat(5,minmax(84px,1fr)) minmax(112px,1.15fr) 40px;
   gap:6px;align-items:center;padding:6px 8px 6px 10px}
 .di-mvp-sr+.di-mvp-sr,.di-mvp-det+.di-mvp-sr{border-top:1px solid var(--border)}
 .di-mvp-slots .di-mvp-th{margin:0;padding:8px 8px 7px 10px;background:var(--elevated)}
@@ -6241,7 +6280,7 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
   .di-mvp-th{display:none}
   .di-mvp-tr,.di-mvp-sr{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:10px 12px 12px}
   .di-mvp-tr>.di-mvp-ctl:not(.end),.di-mvp-no{display:none}
-  .di-mvp-name,.di-mvp-ctl.end{grid-column:1/-1}
+  .di-mvp-name,.di-mvp-ctl.end,.di-mvp-tr>.di-mvp-ex{grid-column:1/-1}
   .di-mvp-ctl.end{justify-content:center;border-top:1px solid var(--border);margin:0 -12px -8px;padding-top:2px}
   .di-mvp-x{opacity:1}
   .di-mvp-cl{display:block;font-size:10.5px;font-weight:600;color:var(--dim);margin:0 0 3px 1px}
