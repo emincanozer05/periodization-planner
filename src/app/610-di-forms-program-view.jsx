@@ -106,14 +106,24 @@ function DiPatternPlan({plan,onChange:emit,closed}){
         Object.keys(pt).forEach(f=>{
           const v=pt[f];
           if(f==='alt'){nx.alt={};}                                   // the alternative, deleted
-          else if(f.startsWith('a_'))nx.alt[f.slice(2)]=v;
-          else if(f==='name')nx.exercise=v;
+          else if(f.startsWith('a_')){
+            nx.alt[f.slice(2)]=v;
+            /* A name the library knows brings its saved link, unless the box already has one. */
+            if(f==='a_name'&&!String(nx.alt.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.alt.link=lk;}
+          }
+          else if(f==='name'){
+            nx.exercise=v;
+            if(!String(nx.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
+          }
           else nx[f]=f==='superset'?String(v||'').toUpperCase():v;
         });
         return nx;}),
+      /* Picking an exercise off the library brings its saved link along. */
       onPick:(k,it,isAlt)=>patch(k,p=>isAlt
-        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120)}}
-        :{...p,exercise:String(it&&it.name||'').slice(0,120)}),
+        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}
+        :{...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}),
+      onLinkBlur:(k,isAlt,v)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p)return;
+        rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
       onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
     };
