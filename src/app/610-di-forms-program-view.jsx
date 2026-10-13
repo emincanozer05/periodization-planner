@@ -60,15 +60,28 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     `${items.length} exercise${items.length>1?'s':''} will be deleted. Continue?`));
   const parse=k=>{const[ph,id,ix]=k.split('|');return[ph,id,Number(ix)];};
   const patch=(k,fn)=>{const[ph,id,ix]=parse(k);setGroup(id,ph,itemsOf(id,ph).map((p,i)=>i===ix?fn(p):p));};
-  const addPhase=()=>{
+  /* A new phase: a ready-made one (`preset`: preparation, main, cool-down — named in the app's
+     language, no typing) or a custom one. Preparation goes first and cool-down last, the main
+     phase before the cool-down. The first phase opened takes in everything already written —
+     unless it is a preparation or a cool-down, which are not where the written work belongs. */
+  const addPhase=preset=>{
     const cur=latest.current;
     const id='ph_'+Math.random().toString(36).slice(2,7);
     const n=cur.phases.length+1;
-    const ph=[...cur.phases,{id,name:L(`Faz ${n}`,`Phase ${n}`)}];
-    /* The first phase takes in everything already written. */
-    commit(cur.phases.length?cur.list:cur.list.map(p=>({...p,phase:id})),ph);
+    const np={id,name:preset?'':L(`Faz ${n}`,`Phase ${n}`),preset:preset||''};
+    let ph;
+    if(preset==='prep')ph=[np,...cur.phases];
+    else if(preset==='main'&&cur.phases.some(x=>x.preset==='cool')){
+      const i=cur.phases.findIndex(x=>x.preset==='cool');ph=[...cur.phases.slice(0,i),np,...cur.phases.slice(i)];}
+    else ph=[...cur.phases,np];
+    const takes=!cur.phases.length&&preset!=='prep'&&preset!=='cool';
+    commit(takes?cur.list.map(p=>({...p,phase:id})):cur.list,ph);
   };
-  const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>x.id===id?{...x,name}:x));
+  /* Typing the ready-made name back leaves the name unset, so it keeps following the language. */
+  const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>{
+    if(x.id!==id)return x;
+    const pr=diPhasePreset(x.preset);
+    return{...x,name:pr&&name===L(pr.label[0],pr.label[1])?'':name};}));
   const closePhase=id=>{
     const cur=latest.current;
     commit(cur.list.map(p=>p.phase===id?{...p,phase:''}:p),cur.phases.filter(x=>x.id!==id));
@@ -76,12 +89,16 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   const section=(ph,loose)=>{
     /* A, B… with the place inside the letter: A1, A2, B1 — the same label the calendar gives. */
     const tags={};
+    /* Patterns in chip order, then the exercises that have no pattern yet. */
+    const ALLP=[...DI_MOVE_PATTERNS,{id:'',label:['Patern seçilmedi','No pattern']}];
     {const cnt={};let plain=0;
-      DI_MOVE_PATTERNS.forEach(r=>itemsOf(r.id,ph).forEach((p,ix)=>{
+      ALLP.forEach(r=>itemsOf(r.id,ph).forEach((p,ix)=>{
         const ss=String(p.superset||'').toUpperCase();
         tags[`${ph}|${r.id}|${ix}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);}));}
-    const groups=DI_MOVE_PATTERNS.map(row=>({row,items:itemsOf(row.id,ph)})).filter(g=>g.items.length).map(({row,items})=>({
+    const patOpts=DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1])}));
+    const groups=ALLP.map(row=>({row,items:itemsOf(row.id,ph)})).filter(g=>g.items.length).map(({row,items})=>({
       id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
+      pick:row.id==='',options:patOpts,
       slots:items.map((p,ix)=>{const k=`${ph}|${row.id}|${ix}`;const a=p.alt||{};
         return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
           sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
@@ -126,18 +143,26 @@ function DiPatternPlan({plan,onChange:emit,closed}){
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
       onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
+      /* A row with no pattern was given one: it moves into that pattern's rows. */
+      onPattern:(k,nid)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p||!diMoveRow(nid))return;
+        commit([...latest.current.list.filter(x=>x!==p),{...p,id:nid}],latest.current.phases);},
     };
-    return(<PlanTable chips={chips} groups={groups} selected={groups.length} total={loose?null:DI_MOVE_PATTERNS.length}
+    const addBlank=()=>setGroup('',ph,[...itemsOf('',ph),fresh('',ph)]);
+    return(<PlanTable chips={chips} groups={groups} selected={groups.filter(g=>!g.pick).length} total={loose?null:DI_MOVE_PATTERNS.length}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
-      empty={loose?L('Fazsız satır yok.','No unplaced rows.'):L('Paterni seçince egzersizi ve dozu burada yazarsın.','Pick a pattern to write its exercise and dose here.')}/>);
+      onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
+      empty={L('Fazsız satır yok.','No unplaced rows.')}/>);
   };
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
     <div className="blk-phbar di-ppbar">
       <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
       <div className="blk-phbar-chips">
-        <button type="button" className="blk-phadd" onClick={addPhase}
-          title={L('Hareket paternine yeni bir faz ekle','Add a new phase to the movement pattern')}>＋ {L('Faz Ekle','Add Phase')}</button>
+        {DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>
+          <button key={pr.id} type="button" className="blk-phadd" onClick={()=>addPhase(pr.id)}
+            title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(pr.label[0],pr.label[1])}</button>)}
+        <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
+          title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
       </div>
     </div>
     {phases.length===0
@@ -145,7 +170,7 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)}>
           <header className="di-pph">
             <i className="di-pph-dot"/>
-            <PhaseNameInput className="di-pph-nm" value={p.name} onChange={v=>renamePhase(p.id,v)}
+            <PhaseNameInput className="di-pph-nm" value={diPhaseName(p)} onChange={v=>renamePhase(p.id,v)}
               title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
             <span className="di-pph-n">{L(`${list.filter(x=>x.phase===p.id).length} egzersiz`,`${list.filter(x=>x.phase===p.id).length} exercises`)}</span>
             <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}

@@ -134,7 +134,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           </div>
           {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
             onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
-          {grp.count>1&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+          {(grp.count>1||grp.pick)&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
       </div>
@@ -179,7 +179,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options);
 
-function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,children}){
+function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
   const ids=useMemo(()=>({tempo:`pt-tempo-${uid.current}`,rpe:`pt-rpe-${uid.current}`,load:`pt-load-${uid.current}`,rest:`pt-rest-${uid.current}`}),[]);
   const sug=ptSuggest();
@@ -228,7 +228,10 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
           </React.Fragment>)}
         </div>)}
       </div></div>
-      :<div className="pt-empty">{empty||L('Paterni seçince egzersizleri burada açılır.','Pick a pattern to write its exercises here.')}</div>}
+      :(onAdd
+        ?<button type="button" className="pt-empty pt-emptybtn" onClick={onAdd}>+ {addLabel}</button>
+        :<div className="pt-empty">{empty||L('Paterni seçince egzersizleri burada açılır.','Pick a pattern to write its exercises here.')}</div>)}
+    {rows.length>0&&onAdd&&<button type="button" className="iv-addslot pt-add" onClick={onAdd}>+ {addLabel}</button>}
     {children}
   </div>);
 }
