@@ -90,7 +90,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diReadReview',
+    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
@@ -1543,6 +1543,21 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const typed = A.diMovePatterns([row('core', 'Pallof ', { rest: '2-3 ', load: '70% ' })]);
     check('tablo yazıldığı gibi saklanıyor: satır sonundaki boşluk silinmiyor (yazarken kaybolmasın)',
       typed[0].exercise === 'Pallof ' && typed[0].rest === '2-3 ' && typed[0].load === '70% ');
+  }
+
+  group('Ek — Çıktı: RPE sütunu ve alternatif egzersiz');
+  {
+    const alt = { name: 'Front Squat', sets: '3', reps: '8', load: '60% 1RM', rpe: '6', rest: '90 sn' };
+    const ses = { id: 's1', name: 'T', time: '09:00', duration: 60, color: '',
+      blocks: [{ id: 'b', name: 'B', exercises: [{ name: 'Back Squat', sets: '4', reps: '5', load: '70% 1RM', tempo: '3-0-1', rpe: '7', rest: '2 dk', alt }] }] };
+    const html = A.buildSessionHTMLDoc('T', 'x', [ses], {});
+    check('çıktı: tabloda RPE sütunu var ve egzersizin RPE değeri yazılıyor',
+      /<th>RPE<\/th>/.test(html) && /<td>7<\/td>/.test(html));
+    check('çıktı: alternatif kendi satırında, kendi dozu ve RPE\'siyle yazılıyor',
+      /alt-row/.test(html) && /Front Squat/.test(html) && /alt-row[\s\S]*?<td>6<\/td>/.test(html) && /60% 1RM/.test(html));
+    const dose = { ...ses.blocks[0].exercises[0], alt: { sets: '3', reps: '8' } };
+    const html2 = A.buildSessionHTMLDoc('T', 'x', [{ ...ses, blocks: [{ id: 'b', name: 'B', exercises: [dose] }] }], {});
+    check('çıktı: adı olmayan ama dozu yazılmış alternatif de yazılıyor', /alt-row/.test(html2));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
