@@ -8287,9 +8287,7 @@ main .panel,main .ap-head{animation:none}
 .ldb-row{border-radius:9px;transition:background var(--dur-1,.1s)}
 .ldb-row.on{background:var(--elevated)}
 .ldb-main{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 56px 44px;align-items:center;gap:12px;width:100%;padding:8px 10px;
-  border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:9px}
-.ldb-main:hover{background:var(--hover)}
-.ldb-main:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  border:0;background:none;color:inherit;font:inherit;text-align:left;border-radius:9px}
 .ldb-n{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ldb-n i{width:9px;height:9px;border-radius:2px;flex:none}
 .ldb-track{height:16px;border-radius:5px;background:var(--elevated);overflow:hidden}
@@ -16772,20 +16770,18 @@ const tmInk=hex=>{
    One bar per movement pattern, as long as its share of the week (or month) against
    the busiest pattern, split along its length into the executions it was done in —
    so "how much hip work" and "which flavour of it" are read on one line. The share
-   of the period and the count sit at the end of the bar. A row opens to list the
-   exercises behind each execution, most prescribed first. */
+   of the period and the count sit at the end of the bar. Every row is always open,
+   listing the exercises behind each execution, most prescribed first. */
 function LoadDistBars({entries}){
-  const[open,setOpen]=useState(null);
   const total=entries.reduce((s,e)=>s+e.value,0)||1;
   const max=Math.max(1,...entries.map(e=>e.value));
   const pct=v=>{const x=Math.round(v/total*1000)/10;return`${Number.isInteger(x)?x:x.toFixed(1)}%`;};
   const name=n=>n==='not set'?L('belirtilmemiş','not set'):exLabel(n);
   const rows=entries.slice().sort((a,b)=>b.value-a.value);
   return(<div className="ldb">
-    {rows.map(e=>{const on=open===e.key;const kt=e.kids.reduce((s,k)=>s+k.value,0)||1;return(
-      <div key={e.key} className={`ldb-row${on?' on':''}`}>
-        <button type="button" className="ldb-main" aria-expanded={on} onClick={()=>setOpen(on?null:e.key)}
-          title={L('Uygulamaları ve egzersizleri göster','Show executions and exercises')}>
+    {rows.map(e=>{const kt=e.kids.reduce((s,k)=>s+k.value,0)||1;return(
+      <div key={e.key} className="ldb-row on">
+        <div className="ldb-main">
           <span className="ldb-n"><i style={{background:e.color}}/>{exLabel(e.name)}</span>
           <span className="ldb-track"><span className="ldb-bar" style={{width:`${Math.max(2,e.value/max*100)}%`}}>
             {e.kids.map(k=><span key={k.key} className="ldb-seg" style={{width:`${k.value/kt*100}%`,background:k.color}}
@@ -16793,12 +16789,12 @@ function LoadDistBars({entries}){
           </span></span>
           <span className="ldb-p">{pct(e.value)}</span>
           <span className="ldb-c">{e.value}×</span>
-        </button>
-        {on&&<div className="ldb-kids">{e.kids.slice().sort((a,b)=>b.value-a.value).map(k=>
+        </div>
+        <div className="ldb-kids">{e.kids.slice().sort((a,b)=>b.value-a.value).map(k=>
           <div key={k.key} className="ldb-kid">
             <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
             {(k.exs||[]).length>0&&<div className="ldb-exs">{k.exs.map(x=><span key={x.name}>{x.name} <em>×{x.count}</em></span>)}</div>}
-          </div>)}</div>}
+          </div>)}</div>
       </div>);})}
   </div>);
 }
@@ -16868,7 +16864,7 @@ function MuscleLoadDistribution({days,title,refDate}){
     {!hasData
       ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} etiketlenmiş bir şey yok — seansta hareket paterni seç ya da Bireyselleştirme kartında egzersiz bazında etiketle.`,`Nothing tagged in this ${mode==='week'?'week':'month'} — pick movement patterns on the session, or tag them per exercise on the Individualization card.`)}</div>
       :<>
-      <div className="mld-sub">{L('Hareket paterni · uygulama — çubuk dönemin payını, renkler uygulamaları gösterir; egzersizler için satıra dokun','Movement pattern · execution — the bar is the share of the period, the colours its executions; tap a row for the exercises')}</div>
+      <div className="mld-sub">{L('Hareket paterni · uygulama — çubuk dönemin payını, renkler uygulamaları gösterir; egzersizler her satırın altında','Movement pattern · execution — the bar is the share of the period, the colours its executions; the exercises are listed under each row')}</div>
       <LoadDistBars entries={entries}/>
       </>}
   </div>);
