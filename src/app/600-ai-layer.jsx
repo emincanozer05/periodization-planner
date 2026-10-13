@@ -403,14 +403,16 @@ function diMovePatterns(v){
   (Array.isArray(v)?v:[]).forEach(x=>{
     const id=typeof x==='string'?x:(x&&x.id);
     const row=diMoveRow(id);
-    if(!row)return;
+    /* An exercise with no pattern yet ("Egzersiz Ekle") has the empty id; any other unknown
+       id is dropped. */
+    if(!row&&id!=='')return;
     const obj=x&&typeof x==='object'?x:{};
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
     const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
     const gk=id+'|'+phase;
     if(!groups.has(gk))groups.set(gk,[]);
     const g=groups.get(gk);
-    if(g.length>=DI_MOVE_MAX_SLOTS)return;
+    if(g.length>=(id===''?12:DI_MOVE_MAX_SLOTS))return;
     /* Text boxes are kept exactly as typed — trimming here would take the space off the end
        of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
     const txt=(val,max)=>String(val==null?'':val).slice(0,max);
@@ -420,7 +422,7 @@ function diMovePatterns(v){
       const ok=new Set(f.opts.map(op=>op[0]));
       return[...new Set(raw.map(String).filter(val=>ok.has(val)))].slice(0,max);
     };
-    row.facets.forEach(f=>{o[f.k]=clean(f,1);});
+    if(row)row.facets.forEach(f=>{o[f.k]=clean(f,1);});
     DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
     o.note=txt(obj.note,240);
     /* The dose the coach wrote for this exercise, its link, and its alternative — which has a
@@ -471,15 +473,26 @@ function diPatternTipLines(team,athId,dateKey){
   return picks.map((p,i)=>{
     const row=diMoveRow(p.id);
     const same=picks.filter(x=>x.id===p.id);
-    return{id:`${p.id}:${i}`,name:diMoveLabel(p.id)+(same.length>1?` ${same.indexOf(p)+1}`:''),
-      parts:[...(p.exercise?[p.exercise]:[]),...[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))]};
+    return{id:`${p.id}:${i}`,name:(row?diMoveLabel(p.id):L('Patern yok','No pattern'))+(same.length>1?` ${same.indexOf(p)+1}`:''),
+      parts:[...(p.exercise?[p.exercise]:[]),...(row?[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f)):[])]};
   });
 }
 /* The phases the coach opened on the movement-pattern table — each a section of the session
    with a name of its own. Items name theirs by id. */
+/* Ready-made phases: the coach picks one instead of typing its name. The name is not stored
+   — it is read in the app's language each time — until the coach types one over it. */
+const DI_PHASE_PRESETS=[
+  {id:'prep',label:['Hazırlık Bölümü','Preparation'],ph:'hazirlik'},
+  {id:'main',label:['Ana Bölüm','Main Phase'],ph:'ana'},
+  {id:'cool',label:['Soğuma','Cool Down'],ph:'tamamlayici'}];
+const diPhasePreset=id=>DI_PHASE_PRESETS.find(p=>p.id===id)||null;
+/* What a phase is called: the name the coach typed, else its ready-made name in this language. */
+const diPhaseName=ph=>{const n=String(ph&&ph.name||'').trim();if(n)return n;
+  const pr=diPhasePreset(ph&&ph.preset);return pr?L(pr.label[0],pr.label[1]):'';};
 function diMovePhases(v){
   const seen=new Set();
-  return(Array.isArray(v)?v:[]).map(x=>({id:String(x&&x.id||'').trim(),name:String(x&&x.name==null?'':x.name).slice(0,40)}))
+  return(Array.isArray(v)?v:[]).map(x=>({id:String(x&&x.id||'').trim(),name:String(x&&x.name==null?'':x.name).slice(0,40),
+      preset:diPhasePreset(x&&x.preset)?x.preset:''}))
     .filter(x=>/^[\w-]{1,24}$/.test(x.id)&&!seen.has(x.id)&&seen.add(x.id)).slice(0,6);
 }
 function diInstr(raw,src){
@@ -1048,12 +1061,13 @@ function diManualProgram(instr,libMap,sessionName){
   };
   /* Phases in their own order; whatever is not placed in one closes the session. */
   const order=[...phases,{id:'',name:''}];
-  const chip=id=>DI_MOVE_PATTERNS.findIndex(r=>r.id===id);
+  const chip=id=>{const i=DI_MOVE_PATTERNS.findIndex(r=>r.id===id);return i<0?99:i;};
   const blocks=order.map((ph,bi)=>{
     const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)))
       .sort((a,b)=>chip(a.id)-chip(b.id));
-    const name=ph.id?String(ph.name||'').trim():'';
-    return{key:`man:${bi}`,name,phase:phaseOf(name),exercises:mine.map((p,i)=>exOf(p,bi,i,phaseOf(name)))};
+    const name=ph.id?diPhaseName(ph):'';
+    const kind=diPhasePreset(ph.preset)?diPhasePreset(ph.preset).ph:phaseOf(name);
+    return{key:`man:${bi}`,name,phase:kind,exercises:mine.map((p,i)=>exOf(p,bi,i,kind))};
   }).filter(b=>b.exercises.length);
   return{session_name:t(sessionName),blocks,summary:null,priorities:[],
     respected:[],conflicts:[],rationale:null,warning:null,truncated:false,external:true,manual:true};

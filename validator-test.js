@@ -90,7 +90,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diReadReview',
+    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
@@ -1574,6 +1574,25 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('kütüphanede kayıtlı link ada göre (büyük/küçük harf farksız) okunuyor; yoksa boş',
       A.libLinkOf('zebra squat ') === 'https://example.com/z' && A.libLinkOf('Boş') === '' && A.libLinkOf('Bilinmeyen') === '' && A.libLinkOf('') === '');
     A.setLibItems([]);
+  }
+
+  group('Ek — Patern seçilmemiş egzersiz ve hazır fazlar');
+  {
+    const raw = [{ id: '', exercise: 'Patern Yok Hareketi', sets: '3' }, { id: 'core', exercise: 'Plank', phase: 'ph_p' }, { id: 'yok_boyle', exercise: 'X' }];
+    const kept = A.diMovePatterns(raw);
+    check('patern seçilmemiş egzersiz saklanıyor, bilinmeyen patern düşüyor', kept.length === 2 && kept[0].id === '' && kept[0].exercise === 'Patern Yok Hareketi');
+    const plan = {
+      phases: [{ id: 'ph_p', name: '', preset: 'prep' }, { id: 'ph_m', name: '', preset: 'main' }, { id: 'ph_c', name: 'Benim Soğumam', preset: 'cool' }, { id: 'ph_x', name: 'Zararlı', preset: 'uydurma' }],
+      patterns: [{ id: 'core', exercise: 'Plank', phase: 'ph_p' }, { id: '', exercise: 'Serbest Hareket', phase: 'ph_m' }, { id: 'carry', exercise: 'Farmer Carry', phase: 'ph_c' }],
+    };
+    const en = A.diManualProgram(plan, libMap, 'S'), tr = A.inTurkish(() => A.diManualProgram(plan, libMap, 'S'));
+    check('hazır fazlar uygulama dilinde adlanıyor (İngilizce / Türkçe), yazılan ad hazır adın yerine geçiyor',
+      en.blocks.map(b => b.name).join('|') === 'Preparation|Main Phase|Benim Soğumam' &&
+      tr.blocks.map(b => b.name).join('|') === 'Hazırlık Bölümü|Ana Bölüm|Benim Soğumam', JSON.stringify([en.blocks.map(b => b.name), tr.blocks.map(b => b.name)]));
+    check('hazır fazlar doğrulayıcının hazırlık / ana iş / tamamlayıcı fazlarına bağlanıyor; bilinmeyen hazır ad atılıyor',
+      en.blocks.map(b => b.phase).join(',') === 'hazirlik,ana,tamamlayici' && A.diMovePhases(plan.phases)[3].preset === '');
+    check('patern seçilmemiş satır programa giriyor (patern etiketi boş)',
+      en.blocks[1].exercises[0].name === 'Serbest Hareket' && en.blocks[1].exercises[0].coachPattern === '' && en.blocks[1].exercises[0].exPattern === '');
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
