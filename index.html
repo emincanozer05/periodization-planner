@@ -9255,6 +9255,24 @@ function rememberExerciseImage(name,url){
   const nm=(name||'').trim();
   if(nm&&_libImage)_libImage(nm,typeof url==='string'?url:'');
 }
+/* The link the coach puts on a program row, remembered against the exercise ITSELF as its
+   video link (the library's own), so the next program that names this exercise fills it in.
+   Only an exercise with no link yet takes one: a link already on the library card is the
+   card's, and a row's own different link stays on that row. A name the library has never
+   seen is added carrying the link, exactly as typing it would. */
+let _libLink=null;
+function registerLibLink(fn){_libLink=fn;}
+function rememberExerciseLink(name,url){
+  const nm=(name||'').trim(),u=safeURL(url);
+  if(nm&&u&&_libLink)_libLink(nm,u);
+}
+/* The link the library holds for an exercise, '' when it has none. */
+function libLinkOf(name){
+  const lo=String(name||'').trim().toLowerCase();
+  if(!lo)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===lo);
+  return(hit&&hit.link)||'';
+}
 /* A block is either strength & conditioning work (`kind:'sc'` — the exercise grid this app
    has always had) or ball practice (`kind:'ball'` — the same grid, but each row is a court
    drill carrying a diagram and a clip instead of a barbell prescription). Both keep their
@@ -19853,6 +19871,7 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
      onPattern(key,id)        a row without a pattern was given one (optional)
+     onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
      renderDetail(key)        what the row's "more" button opens (optional) */
 let PT_UID=0;
 /* The suggestions behind the dropdown arrows. Any text is still accepted: a rep RANGE, a
@@ -19936,6 +19955,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
       <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>,
     <div key="link" className="pt-td pt-link" role="cell"><span className="pt-cl">Link</span>
       <LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
+        onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
         placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>];
   const style={'--pat-c':grp.color||'var(--border2)'};
   const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
@@ -20026,6 +20046,7 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onRemoveGroup:g=>live.current.onRemoveGroup(g),
     onCount:(g,n)=>live.current.onCount(g,n),
     onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
+    onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
   // eslint-disable-next-line
   }),[!!handlers.onNew]);
@@ -20172,10 +20193,16 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
           if(!cur){const lo=String(v||'').trim().toLowerCase();
             const hit=lo?getLibItems().find(it=>(it.name||'').trim().toLowerCase()===lo):null;
             if(hit&&hit.image)nx.image=hit.image;}
+          /* A name the library knows brings its saved link, unless the row already has one. */
+          if(!String(ex.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
         }
         else if(key==='note')nx.description=v;
         else if(key==='alt'){delete nx.alt;}                       // the alternative, deleted
-        else if(key.startsWith('a_'))nx.alt={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),[key.slice(2)]:v};
+        else if(key.startsWith('a_')){
+          const al={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),[key.slice(2)]:v};
+          if(key==='a_name'&&!String(al.link||'').trim()){const lk=libLinkOf(v);if(lk)al.link=lk;}
+          nx.alt=al;
+        }
         else nx[key]=v;
       });
       /* An alternative with nothing left in it is no alternative. */
@@ -20198,6 +20225,8 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
     onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
     onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
+    onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
+      rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
     <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}
@@ -39006,14 +39035,24 @@ function DiPatternPlan({plan,onChange:emit,closed}){
         Object.keys(pt).forEach(f=>{
           const v=pt[f];
           if(f==='alt'){nx.alt={};}                                   // the alternative, deleted
-          else if(f.startsWith('a_'))nx.alt[f.slice(2)]=v;
-          else if(f==='name')nx.exercise=v;
+          else if(f.startsWith('a_')){
+            nx.alt[f.slice(2)]=v;
+            /* A name the library knows brings its saved link, unless the box already has one. */
+            if(f==='a_name'&&!String(nx.alt.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.alt.link=lk;}
+          }
+          else if(f==='name'){
+            nx.exercise=v;
+            if(!String(nx.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
+          }
           else nx[f]=f==='superset'?String(v||'').toUpperCase():v;
         });
         return nx;}),
+      /* Picking an exercise off the library brings its saved link along. */
       onPick:(k,it,isAlt)=>patch(k,p=>isAlt
-        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120)}}
-        :{...p,exercise:String(it&&it.name||'').slice(0,120)}),
+        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}
+        :{...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}),
+      onLinkBlur:(k,isAlt,v)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p)return;
+        rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
       onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
     };
@@ -41578,7 +41617,19 @@ function App(){
     const next=[...exs];next[i]={...cur,planImage:url};
     return{...prev,exercises:next};
   }));
-  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);};},[setData]);
+  /* A link written on a program row is filed as the exercise's video link when the library
+     has none for it; a name the library has never seen is added carrying the link. */
+  registerLibLink((nm,url)=>setData(prev=>{
+    const exs=prev.exercises||[];
+    const lo=nm.trim().toLowerCase();
+    const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
+    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:url,videoData:'',thumb:'',purpose:''},...exs]};
+    const cur=exs[i];
+    if(cur.videoUrl||cur.videoData)return prev;
+    const next=[...exs];next[i]={...cur,videoUrl:url};
+    return{...prev,exercises:next};
+  }));
+  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);registerLibLink(null);};},[setData]);
   // The AI connection the description translator uses (see descTranslate).
   DESC_AI_CFG=(data&&data.ai)||null;
   // Keep the exercise editor's picker in sync with the library (names + categories), and

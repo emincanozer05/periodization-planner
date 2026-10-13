@@ -19,6 +19,7 @@
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
      onPattern(key,id)        a row without a pattern was given one (optional)
+     onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
      renderDetail(key)        what the row's "more" button opens (optional) */
 let PT_UID=0;
 /* The suggestions behind the dropdown arrows. Any text is still accepted: a rep RANGE, a
@@ -102,6 +103,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
       <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>,
     <div key="link" className="pt-td pt-link" role="cell"><span className="pt-cl">Link</span>
       <LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
+        onBlur={e=>cb.onLinkBlur&&cb.onLinkBlur(k,pre==='a_',e.target.value)}
         placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>];
   const style={'--pat-c':grp.color||'var(--border2)'};
   const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
@@ -192,6 +194,7 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onRemoveGroup:g=>live.current.onRemoveGroup(g),
     onCount:(g,n)=>live.current.onCount(g,n),
     onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
+    onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
   // eslint-disable-next-line
   }),[!!handlers.onNew]);
@@ -338,10 +341,16 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
           if(!cur){const lo=String(v||'').trim().toLowerCase();
             const hit=lo?getLibItems().find(it=>(it.name||'').trim().toLowerCase()===lo):null;
             if(hit&&hit.image)nx.image=hit.image;}
+          /* A name the library knows brings its saved link, unless the row already has one. */
+          if(!String(ex.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
         }
         else if(key==='note')nx.description=v;
         else if(key==='alt'){delete nx.alt;}                       // the alternative, deleted
-        else if(key.startsWith('a_'))nx.alt={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),[key.slice(2)]:v};
+        else if(key.startsWith('a_')){
+          const al={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),[key.slice(2)]:v};
+          if(key==='a_name'&&!String(al.link||'').trim()){const lk=libLinkOf(v);if(lk)al.link=lk;}
+          nx.alt=al;
+        }
         else nx[key]=v;
       });
       /* An alternative with nothing left in it is no alternative. */
@@ -364,6 +373,8 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
     onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
     onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
+    onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
+      rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
     <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}

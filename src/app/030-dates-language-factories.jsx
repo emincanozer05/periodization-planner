@@ -179,6 +179,24 @@ function rememberExerciseImage(name,url){
   const nm=(name||'').trim();
   if(nm&&_libImage)_libImage(nm,typeof url==='string'?url:'');
 }
+/* The link the coach puts on a program row, remembered against the exercise ITSELF as its
+   video link (the library's own), so the next program that names this exercise fills it in.
+   Only an exercise with no link yet takes one: a link already on the library card is the
+   card's, and a row's own different link stays on that row. A name the library has never
+   seen is added carrying the link, exactly as typing it would. */
+let _libLink=null;
+function registerLibLink(fn){_libLink=fn;}
+function rememberExerciseLink(name,url){
+  const nm=(name||'').trim(),u=safeURL(url);
+  if(nm&&u&&_libLink)_libLink(nm,u);
+}
+/* The link the library holds for an exercise, '' when it has none. */
+function libLinkOf(name){
+  const lo=String(name||'').trim().toLowerCase();
+  if(!lo)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===lo);
+  return(hit&&hit.link)||'';
+}
 /* A block is either strength & conditioning work (`kind:'sc'` — the exercise grid this app
    has always had) or ball practice (`kind:'ball'` — the same grid, but each row is a court
    drill carrying a diagram and a clip instead of a barbell prescription). Both keep their

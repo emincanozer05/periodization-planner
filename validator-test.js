@@ -90,7 +90,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'diReadReview',
+    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
@@ -1558,6 +1558,22 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const dose = { ...ses.blocks[0].exercises[0], alt: { sets: '3', reps: '8' } };
     const html2 = A.buildSessionHTMLDoc('T', 'x', [{ ...ses, blocks: [{ id: 'b', name: 'B', exercises: [dose] }] }], {});
     check('çıktı: adı olmayan ama dozu yazılmış alternatif de yazılıyor', /alt-row/.test(html2));
+  }
+
+  group('Ek — Kütüphane bağlantısı: yazılan link egzersize kaydolur, kayıtlı link otomatik gelir');
+  {
+    const got = [];
+    A.registerLibLink((nm, u) => got.push([nm, u]));
+    A.rememberExerciseLink('  Zebra Squat ', 'https://example.com/z');
+    A.rememberExerciseLink('Zebra Squat', 'javascript:alert(1)');
+    A.rememberExerciseLink('', 'https://example.com/z');
+    check('link kütüphaneye yalnızca geçerli http(s) adresi ve adlı egzersiz için gidiyor',
+      got.length === 1 && got[0][0] === 'Zebra Squat' && got[0][1] === 'https://example.com/z', JSON.stringify(got));
+    A.registerLibLink(null);
+    A.setLibItems([{ name: 'Zebra Squat', link: 'https://example.com/z' }, { name: 'Boş', link: '' }]);
+    check('kütüphanede kayıtlı link ada göre (büyük/küçük harf farksız) okunuyor; yoksa boş',
+      A.libLinkOf('zebra squat ') === 'https://example.com/z' && A.libLinkOf('Boş') === '' && A.libLinkOf('Bilinmeyen') === '' && A.libLinkOf('') === '');
+    A.setLibItems([]);
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

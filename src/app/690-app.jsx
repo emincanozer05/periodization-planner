@@ -60,7 +60,19 @@ function App(){
     const next=[...exs];next[i]={...cur,planImage:url};
     return{...prev,exercises:next};
   }));
-  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);};},[setData]);
+  /* A link written on a program row is filed as the exercise's video link when the library
+     has none for it; a name the library has never seen is added carrying the link. */
+  registerLibLink((nm,url)=>setData(prev=>{
+    const exs=prev.exercises||[];
+    const lo=nm.trim().toLowerCase();
+    const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
+    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:url,videoData:'',thumb:'',purpose:''},...exs]};
+    const cur=exs[i];
+    if(cur.videoUrl||cur.videoData)return prev;
+    const next=[...exs];next[i]={...cur,videoUrl:url};
+    return{...prev,exercises:next};
+  }));
+  return()=>{registerLibAdd(null);registerLibReplace(null);registerLibTags(null);registerLibImage(null);registerLibLink(null);};},[setData]);
   // The AI connection the description translator uses (see descTranslate).
   DESC_AI_CFG=(data&&data.ai)||null;
   // Keep the exercise editor's picker in sync with the library (names + categories), and
