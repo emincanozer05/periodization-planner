@@ -9,193 +9,146 @@ function DiSignals({items,limit}){
     {limit&&items.length>limit?<li className="di-dim">+{items.length-limit}</li>:null}</ul>);
 }
 
-/* A list the coach builds by typing — "must be in", "keep out". Enter, the ＋ button
-   or leaving the box files what is in it; each entry is a chip with its own ✕. Free
-   text on purpose: it is read by the model, not matched against the library, so
-   "adduktör çalışması" is as valid an answer as a named exercise.
-
-   The text is this component's own state until it becomes a chip, and that is where the
-   module used to lose half of every brief: only Enter and ＋ committed, so a coach who
-   typed "Trap Bar Jump" and went straight to the export button sent an EMPTY
-   mutlaka_olsun with the request — the instruction never reached the prompt at all, and
-   the session came back looking as though the model had ignored it. Three things close
-   that hole: the text commits when the box loses focus (a click on any button blurs it
-   first), `pending` hands whatever is still uncommitted to the parent so the generate
-   press can fold it in before the request is built, and the box clears itself once its
-   text has become a chip by any of those routes. */
-function DiChipList({value,onChange,placeholder,tone,pending}){
-  const[txt,setTxt]=useState('');
-  const list=Array.isArray(value)?value:[];
-  useEffect(()=>{if(pending)pending.current=txt;},[txt,pending]);
-  useEffect(()=>()=>{if(pending)pending.current='';},[pending]);
-  useEffect(()=>{const v=txt.trim();
-    if(v&&list.some(x=>x.toLowerCase()===v.toLowerCase()))setTxt('');
-    // eslint-disable-next-line
-  },[value]);
-  const add=()=>{const v=txt.trim();if(!v)return;
-    if(!list.some(x=>x.toLowerCase()===v.toLowerCase()))onChange([...list,v]);
-    setTxt('');};
-  return(<div className="di-chiplist">
-    <div className="di-chipin">
-      <input value={txt} onChange={e=>setTxt(e.target.value)} placeholder={placeholder}
-        onBlur={add}
-        onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add();}}}/>
-      <button type="button" className="di-chipadd" onClick={add} disabled={!txt.trim()}
-        aria-label={L('Ekle','Add')}>＋</button>
-    </div>
-    {list.length>0&&<div className="di-chips">
-      {list.map((x,i)=><span key={i} className={'di-tag '+(tone||'')} title={x}><span>{x}</span>
-        <button type="button" onClick={()=>onChange(list.filter((_,k)=>k!==i))} aria-label={L('Kaldır','Remove')}>✕</button></span>)}
-    </div>}
-  </div>);
-}
-
-/* Today's priorities. ONE box: pressing it opens a list that stays open while several
-   qualities are ticked, grouped the way DI_PRIORITIES groups them. The old shape was one
-   dropdown per quality plus "+ Ek öncelik ekle" for each further one — three priorities
-   cost three separate opens and two extra presses. The order they are ticked in is still
-   the order they are read, and each picked quality sits under the box as a chip with its
-   own ✕. A click outside the list, or Escape, closes it.
-
-   Hovering (or focusing) a quality shows a short box beside the list: what it is and
-   how it is usually trained. The list scrolls, so a box drawn inside it would be cut
-   off at its edge — it is drawn fixed-position into <body>, beside the list where
-   there is room and under the row where there is not. */
-const DI_PRIO_TIP_W=290;
-function DiPriorityPicker({value,onChange}){
-  const list=(Array.isArray(value)?value:[]).filter(diPrioRow);
-  const[open,setOpen]=useState(false);
-  const[tip,setTip]=useState(null);   // hovered quality → {id,left,top|bottom}
-  const wrap=useRef(null);
-  const menu=useRef(null);
-  const showTip=(e,id)=>{
-    const r=e.currentTarget.getBoundingClientRect();
-    const m=menu.current?menu.current.getBoundingClientRect():r;
-    const W=window.innerWidth,H=window.innerHeight,gap=10;
-    let left,top=r.top-4,below=false;
-    if(m.right+gap+DI_PRIO_TIP_W<=W-8)left=m.right+gap;
-    else if(m.left-gap-DI_PRIO_TIP_W>=8)left=m.left-gap-DI_PRIO_TIP_W;
-    else{left=Math.max(8,Math.min(W-DI_PRIO_TIP_W-8,r.left));top=r.bottom+6;below=true;}
-    /* Near the foot of the window the box hangs upwards from the row instead. */
-    const pos=(!below&&top>H-170)||(below&&top>H-150)
-      ?{left,bottom:H-(below?r.top-6:r.bottom+4)}:{left,top};
-    setTip({id,...pos});
-  };
-  useEffect(()=>{if(!open)setTip(null);},[open]);
-  useEffect(()=>{
-    if(!open)return;
-    const away=e=>{if(wrap.current&&!wrap.current.contains(e.target))setOpen(false);};
-    const esc=e=>{if(e.key==='Escape')setOpen(false);};
-    document.addEventListener('mousedown',away);
-    document.addEventListener('keydown',esc);
-    return()=>{document.removeEventListener('mousedown',away);document.removeEventListener('keydown',esc);};
-  },[open]);
-  const toggle=id=>onChange(list.includes(id)?list.filter(x=>x!==id):[...list,id]);
-  return(<div className="di-conwrap di-prio" ref={wrap}>
-    <button type="button" className={'di-condrop'+(open?' on':'')} onClick={()=>setOpen(o=>!o)}
-      aria-haspopup="listbox" aria-expanded={open}>
-      <span>{list.length
-        ?(list.length===1?diPrioLabel(list[0]):L(`${list.length} öncelik seçili`,`${list.length} priorities selected`))
-        :L('— öncelik seç','— pick priorities')}</span>
-      <i>{open?'▲':'▼'}</i>
-    </button>
-    {open&&<div className="di-conmenu" role="listbox" aria-multiselectable="true" ref={menu}
-      onScroll={()=>setTip(null)}>
-      {DI_PRIORITIES.map(g=><div key={g.group[0]} className="di-prio-grp">
-        <div className="di-prio-gh">{L(g.group[0],g.group[1])}</div>
-        {g.items.map(p=>{const on=list.includes(p.id);
-          return<div key={p.id} className={'di-conitem'+(on?' on':'')} role="option" aria-selected={on}
-            tabIndex={0} onClick={()=>toggle(p.id)}
-            onMouseEnter={e=>showTip(e,p.id)} onMouseLeave={()=>setTip(null)}
-            onFocus={e=>showTip(e,p.id)} onBlur={()=>setTip(null)}
-            aria-describedby={tip&&tip.id===p.id?'di-prio-tip':undefined}
-            onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(p.id);}}}>
-            <span className="di-conbox">{on?'✓':''}</span>
-            <span className="di-connm">{L(p.label[0],p.label[1])}</span>
-            {on&&list.length>1?<span className="di-prio-ord">{list.indexOf(p.id)+1}</span>:null}
-          </div>;})}
-      </div>)}
-    </div>}
-    {open&&tip&&(()=>{const p=diPrioRow(tip.id);if(!p||!p.desc)return null;
-      return ReactDOM.createPortal(
-        <div id="di-prio-tip" className="di-prio-tip" role="tooltip"
-          style={{left:tip.left,top:tip.top,bottom:tip.bottom,width:DI_PRIO_TIP_W}}>
-          <b>{L(p.label[0],p.label[1])}</b>
-          <p>{L(p.desc[0],p.desc[1])}</p>
-          {p.ex&&<p className="ex">{L(p.ex[0],p.ex[1])}</p>}
-        </div>,document.body);})()}
-    {list.length>0&&<div className="di-chips">
-      {list.map((id,i)=><span key={id} className="di-tag prio" title={diPrioLabel(id)}>
-        {list.length>1?<b className="di-prio-ord">{i+1}</b>:null}<span>{diPrioLabel(id)}</span>
-        <button type="button" onClick={()=>toggle(id)} aria-label={L('Kaldır','Remove')}>✕</button></span>)}
-    </div>}
-  </div>);
-}
-
 /* The movement patterns of the session, written by hand. Chips across the top pick them;
    every picked pattern is a row of the table (PlanTable): the exercise — picked off the
-   library or typed, a new name is filed into it — an alternative under it, how many
-   exercises of the pattern, and the prescription: sets, reps, time, tempo, RPE, load, rest
-   and a note. "Egzersiz adedi" adds further rows of the same pattern.
+   library or typed, a new name is filed into it — its alternative (with a dose of its own),
+   how many exercises of the pattern, the prescription, a link and a note. "Egzersiz adedi"
+   adds further rows of the same pattern.
+   The session can be cut into phases ("Faz Ekle"): each phase is a section with a table of
+   its own and a name the coach types over; the first one opened takes in what is already
+   written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
-function DiPatternPlan({value,onChange:emit,closed}){
-  const list=diMovePatterns(value);
-  /* Every edit starts from the latest list THIS table wrote, not from the one it last drew:
+function DiPatternPlan({plan,onChange:emit,closed}){
+  const list=diMovePatterns(plan&&plan.patterns);
+  const phases=diMovePhases(plan&&plan.phases);
+  /* Every edit starts from the latest plan THIS table wrote, not from the one it last drew:
      the store takes a moment to hand a write back, and two edits in quick succession (a name
-     typed, then a number in the next row) would otherwise each start from the same old list
-     and the second would wipe the first. The list the store hands back replaces it. */
-  const latest=useRef(list);
-  useEffect(()=>{latest.current=diMovePatterns(value);},[value]);
-  const onChange=v=>{latest.current=diMovePatterns(v);emit(v);};
+     typed, then a number in the next row) would otherwise each start from the same old plan
+     and the second would wipe the first. The plan the store hands back replaces it. */
+  const latest=useRef({list,phases});
+  /* The plans this table wrote that the store has not handed back yet. When one comes back it
+     is only an echo: if it is an older one than the last written, the newer edit is still on
+     its way and must not be thrown away; anything the table did not write is taken as it is. */
+  const sent=useRef([]);
+  const sig=(l,ph)=>JSON.stringify([l,ph]);
+  useEffect(()=>{
+    const nl=diMovePatterns(plan&&plan.patterns),np=diMovePhases(plan&&plan.phases);
+    const at=sent.current.indexOf(sig(nl,np));
+    if(at>=0&&at<sent.current.length-1)return;                  // an older echo
+    sent.current=[];
+    latest.current={list:nl,phases:np};
+  },[plan&&plan.patterns,plan&&plan.phases]);
+  const commit=(l,ph)=>{
+    const nl=diMovePatterns(l),np=diMovePhases(ph);
+    latest.current={list:nl,phases:np};
+    sent.current=[...sent.current.slice(-30),sig(nl,np)];
+    emit({patterns:nl,phases:np});
+  };
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
   const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçersen yine programa girer; ağrısız ve modifiye bir varyasyon yazmayı düşün.',
     'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
-  const itemsOf=id=>latest.current.filter(p=>p.id===id);
-  /* Written back in the order of the chips, not the order they were ticked. */
-  const setGroup=(id,items)=>onChange(DI_MOVE_PATTERNS.flatMap(r=>r.id===id?items:latest.current.filter(p=>p.id===r.id)));
-  const fresh=id=>diMovePatterns([{id}])[0];
-  const parse=k=>{const i=k.lastIndexOf(':');return[k.slice(0,i),Number(k.slice(i+1))];};
-  const patch=(k,fn)=>{const[id,ix]=parse(k);setGroup(id,itemsOf(id).map((p,i)=>i===ix?fn(p):p));};
+  const known=ph=>latest.current.phases.some(x=>x.id===ph);
+  const phOf=p=>(known(p.phase||'')?p.phase:'');
+  const itemsOf=(id,ph)=>latest.current.list.filter(p=>p.id===id&&phOf(p)===ph);
+  const setGroup=(id,ph,items)=>commit([...latest.current.list.filter(p=>!(p.id===id&&phOf(p)===ph)),
+    ...items.map(i=>({...i,phase:ph}))],latest.current.phases);
+  const fresh=(id,ph)=>({...diMovePatterns([{id,phase:ph}])[0]});
   const named=p=>!!(String(p.exercise||'').trim()||String(p.sets||'').trim()||String(p.reps||'').trim());
   const confirmDrop=items=>!items.some(named)||confirm(L(`${items.length} egzersiz silinecek. Devam edilsin mi?`,
     `${items.length} exercise${items.length>1?'s':''} will be deleted. Continue?`));
-  /* A, B… with the place inside the letter: A1, A2, B1 — the same label the calendar gives. */
-  const tags={};
-  {const cnt={};let plain=0;
-    DI_MOVE_PATTERNS.forEach(r=>itemsOf(r.id).forEach((p,ix)=>{
-      const ss=String(p.superset||'').toUpperCase();
-      tags[`${r.id}:${ix}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);}));}
-  const groups=DI_MOVE_PATTERNS.map(row=>({row,items:itemsOf(row.id)})).filter(g=>g.items.length).map(({row,items})=>({
-    id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
-    slots:items.map((p,ix)=>({key:`${row.id}:${ix}`,tag:tags[`${row.id}:${ix}`],tagVal:String(p.superset||'').toUpperCase(),
-      name:p.exercise||'',alt:p.alt||'',sets:p.sets||'',reps:p.reps||'',duration:p.duration||'',tempo:p.tempo||'',
-      rpe:p.rpe||'',load:p.load||'',rest:p.rest||'',note:p.note||'',sub:'',tagP:'',tagS:''}))}));
-  const chips=DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),on:list.some(p=>p.id===row.id),
-    warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
-  const handlers={
-    onChip:id=>{
-      const items=itemsOf(id);
-      if(!items.length)setGroup(id,[fresh(id)]);
-      else if(confirmDrop(items))setGroup(id,[]);
-    },
-    onCount:(id,n)=>{
-      const items=itemsOf(id);
-      const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
-      if(want>items.length)setGroup(id,[...items,...Array.from({length:want-items.length},()=>fresh(id))]);
-      else if(want<items.length){const drop=items.slice(want);if(confirmDrop(drop))setGroup(id,items.slice(0,want));}
-    },
-    onSlot:(k,pt)=>patch(k,p=>{const nx={...p};
-      Object.keys(pt).forEach(f=>{nx[f==='name'?'exercise':f]=f==='superset'?String(pt[f]||'').toUpperCase():pt[f];});
-      return nx;}),
-    onPick:(k,it,isAlt)=>patch(k,p=>isAlt?{...p,alt:String(it&&it.name||'').slice(0,120)}:{...p,exercise:String(it&&it.name||'').slice(0,120)}),
-    onRemove:k=>{const[id,ix]=parse(k);setGroup(id,itemsOf(id).filter((_,i)=>i!==ix));},
-    onRemoveGroup:id=>{const items=itemsOf(id);if(confirmDrop(items))setGroup(id,[]);},
+  const parse=k=>{const[ph,id,ix]=k.split('|');return[ph,id,Number(ix)];};
+  const patch=(k,fn)=>{const[ph,id,ix]=parse(k);setGroup(id,ph,itemsOf(id,ph).map((p,i)=>i===ix?fn(p):p));};
+  const addPhase=()=>{
+    const cur=latest.current;
+    const id='ph_'+Math.random().toString(36).slice(2,7);
+    const n=cur.phases.length+1;
+    const ph=[...cur.phases,{id,name:L(`Faz ${n}`,`Phase ${n}`)}];
+    /* The first phase takes in everything already written. */
+    commit(cur.phases.length?cur.list:cur.list.map(p=>({...p,phase:id})),ph);
   };
-  return(<PlanTable chips={chips} groups={groups} selected={groups.length} total={DI_MOVE_PATTERNS.length}
-    handlers={handlers} max={DI_MOVE_MAX_SLOTS}
-    empty={L('Paterni seçince egzersizi ve dozu burada yazarsın.','Pick a pattern to write its exercise and dose here.')}/>);
+  const renamePhase=(id,name)=>commit(latest.current.list,latest.current.phases.map(x=>x.id===id?{...x,name}:x));
+  const closePhase=id=>{
+    const cur=latest.current;
+    commit(cur.list.map(p=>p.phase===id?{...p,phase:''}:p),cur.phases.filter(x=>x.id!==id));
+  };
+  const section=(ph,loose)=>{
+    /* A, B… with the place inside the letter: A1, A2, B1 — the same label the calendar gives. */
+    const tags={};
+    {const cnt={};let plain=0;
+      DI_MOVE_PATTERNS.forEach(r=>itemsOf(r.id,ph).forEach((p,ix)=>{
+        const ss=String(p.superset||'').toUpperCase();
+        tags[`${ph}|${r.id}|${ix}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);}));}
+    const groups=DI_MOVE_PATTERNS.map(row=>({row,items:itemsOf(row.id,ph)})).filter(g=>g.items.length).map(({row,items})=>({
+      id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
+      slots:items.map((p,ix)=>{const k=`${ph}|${row.id}|${ix}`;const a=p.alt||{};
+        return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
+          sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
+          a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
+          a_rest:a.rest,a_link:a.link,sub:'',tagP:'',tagS:''};})}));
+    const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
+      on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
+    const handlers={
+      onChip:id=>{
+        const items=itemsOf(id,ph);
+        if(!items.length)setGroup(id,ph,[fresh(id,ph)]);
+        else if(confirmDrop(items))setGroup(id,ph,[]);
+      },
+      onCount:(id,n)=>{
+        const items=itemsOf(id,ph);
+        const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
+        if(want>items.length)setGroup(id,ph,[...items,...Array.from({length:want-items.length},()=>fresh(id,ph))]);
+        else if(want<items.length){const drop=items.slice(want);if(confirmDrop(drop))setGroup(id,ph,items.slice(0,want));}
+      },
+      onSlot:(k,pt)=>patch(k,p=>{
+        const nx={...p,alt:{...(p.alt||{})}};
+        Object.keys(pt).forEach(f=>{
+          const v=pt[f];
+          if(f==='alt'){nx.alt={};}                                   // the alternative, deleted
+          else if(f.startsWith('a_'))nx.alt[f.slice(2)]=v;
+          else if(f==='name')nx.exercise=v;
+          else nx[f]=f==='superset'?String(v||'').toUpperCase():v;
+        });
+        return nx;}),
+      onPick:(k,it,isAlt)=>patch(k,p=>isAlt
+        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120)}}
+        :{...p,exercise:String(it&&it.name||'').slice(0,120)}),
+      onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
+      onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
+    };
+    return(<PlanTable chips={chips} groups={groups} selected={groups.length} total={loose?null:DI_MOVE_PATTERNS.length}
+      handlers={handlers} max={DI_MOVE_MAX_SLOTS}
+      empty={loose?L('Fazsız satır yok.','No unplaced rows.'):L('Paterni seçince egzersizi ve dozu burada yazarsın.','Pick a pattern to write its exercise and dose here.')}/>);
+  };
+  const unplaced=list.some(p=>!known(p.phase||''));
+  return(<div className="di-pp">
+    <div className="blk-phbar di-ppbar">
+      <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
+      <div className="blk-phbar-chips">
+        <button type="button" className="blk-phadd" onClick={addPhase}
+          title={L('Hareket paternine yeni bir faz ekle','Add a new phase to the movement pattern')}>＋ {L('Faz Ekle','Add Phase')}</button>
+      </div>
+    </div>
+    {phases.length===0
+      ?section('',false)
+      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)}>
+          <header className="di-pph">
+            <i className="di-pph-dot"/>
+            <PhaseNameInput className="di-pph-nm" value={p.name} onChange={v=>renamePhase(p.id,v)}
+              title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
+            <span className="di-pph-n">{L(`${list.filter(x=>x.phase===p.id).length} egzersiz`,`${list.filter(x=>x.phase===p.id).length} exercises`)}</span>
+            <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}
+              title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button></span>
+          </header>
+          {section(p.id,false)}
+        </section>)}
+        {unplaced&&<section className="di-ppsec loose">
+          <header className="di-pph"><span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
+            <span className="di-pph-n">{L('Henüz bir faza konmadı — program bunları sona ekler.','Not placed in a phase yet — the programme puts them last.')}</span></header>
+          {section('',true)}
+        </section>}</>}
+  </div>);
 }
 
 /* The training method, in the pattern card's header: one button that opens the list.
@@ -226,170 +179,22 @@ function DiMethodPicker({value,onChange}){
   </div>);
 }
 
-/* A number with the answers a coach actually gives beside it. Typing is still allowed —
-   the buttons are shortcuts, not the only way in. */
-function DiNumberChoice({value,onChange,choices,unit,placeholder,min,max}){
-  /* What is in the box while it is being typed in. Emptying the box used to hand
-     `null` straight up, the brief fell back to the session's own figure and that figure
-     came straight back into the box — so it could never be cleared to type a new
-     number. Now an empty box stays empty while it has focus, every real number typed is
-     saved as it is typed, and only leaving the box empty hands the field back to auto. */
-  const[txt,setTxt]=useState(null);
-  const shown=txt!=null?txt:(value==null?'':String(value));
-  return(<div className="di-numc">
-    <div className="di-numin">
-      <input type="number" min={min||1} max={max||999} value={shown}
-        onChange={e=>{const t=e.target.value;setTxt(t);
-          if(t!==''){const n=Number(t);if(isFinite(n)&&n>0)onChange(n);}}}
-        onBlur={()=>{if(txt==='')onChange(null);setTxt(null);}}
-        placeholder={placeholder}/>
-      <span>{unit}</span>
-    </div>
-    <div className="di-numbtns">
-      {choices.map(c=><button key={c} type="button" className={'di-numb'+(Number(value)===c?' on':'')}
-        onClick={()=>{setTxt(null);onChange(c);}}>{c}</button>)}
-    </div>
-  </div>);
-}
-
-/* Volume and intensity on one card, each a block of its own. Auto leaves the engine in
-   force: the volume block shows the engine's figure and the reasons behind it, the
-   intensity block the fatigue budget's RPE ceiling (diVolumeAdj, diFatigueBudget).
-   Anything else is the coach's figure for the day. Volume takes a preset or any step of
-   5 % with the − / + pair, and a bar shows the dose that results against a normal day;
-   intensity is a band on a 1–10 RPE scale. Pressing the button that is on goes back to
-   auto, and one button puts both back. */
-const DI_BUDGET_LBL={minimal:['minimal','minimal'],low:['düşük','low'],moderate:['orta','moderate'],normal:['normal','normal']};
-function DiVolIntPicker({volume,intensity,autoVol,autoReasons,autoRpe,autoBudget,onChange}){
-  const sg=v=>`${v>0?'+':''}${v}%`;
-  const ir=diIntensityRow(intensity);
-  const auto=Math.round(Number(autoVol)||0);
-  const eff=volume==null?auto:volume;
-  const clamp=v=>Math.max(DI_VOL_MIN,Math.min(DI_VOL_MAX,Math.round(v)));
-  const step=d=>onChange({volume:clamp(eff+d)});
-  const dose=100+eff;
-  const span=100+DI_VOL_MAX;
-  const reasons=(Array.isArray(autoReasons)?autoReasons:[]).filter(r=>r&&r.label);
-  const band=ir?ir.rpe:null;
-  const ceil=band?band[1]:(autoRpe==null?null:autoRpe);
-  const bud=autoBudget&&DI_BUDGET_LBL[autoBudget];
-  return(<div className="di-vi">
-    <div className="di-vi-blk">
-      <div className="di-vi-hd">
-        <span className="di-vi-k">{L('Hacim','Volume')}</span>
-        <span className={'di-vi-src'+(volume==null?'':' coach')}>{volume==null?L('sistem','system'):L('antrenör','coach')}</span>
-        <b className="di-vi-big">{eff===0?L('normal','normal'):sg(eff)}</b>
-      </div>
-      <div className="di-vi-row">
-        <div className="di-numbtns" role="group" aria-label={L('Hacim','Volume')}>
-          <button type="button" className={'di-numb'+(volume==null?' on':'')} aria-pressed={volume==null}
-            title={L('Sistem önerisi: hazır oluş, maç günü, ağrı','System adjustment: readiness, game day, pain')}
-            onClick={()=>onChange({volume:null})}>{L('Oto','Auto')} <small>{auto?sg(auto):'0'}</small></button>
-          {DI_VOL_CHOICES.map(v=><button key={v} type="button" className={'di-numb'+(volume===v?' on':'')} aria-pressed={volume===v}
-            title={v===0?L('Normal doz','Normal dose'):sg(v)}
-            onClick={()=>onChange({volume:volume===v?null:v})}>{v>0?'+':''}{v}</button>)}
-        </div>
-        <div className="di-vi-step" role="group" aria-label={L('Hacmi 5 % adımlarla ayarla','Adjust volume in steps of 5 %')}>
-          <button type="button" disabled={eff<=DI_VOL_MIN} onClick={()=>step(-5)} aria-label={L('5 % azalt','5 % less')}>−</button>
-          <span>{sg(eff)}</span>
-          <button type="button" disabled={eff>=DI_VOL_MAX} onClick={()=>step(5)} aria-label={L('5 % artır','5 % more')}>+</button>
-        </div>
-      </div>
-      <div className="di-vi-meter" aria-hidden="true">
-        <i className={eff<0?'cut':eff>0?'add':''} style={{width:`${Math.max(0,Math.min(100,dose/span*100))}%`}}/>
-        <em style={{left:`${100/span*100}%`}}/>
-      </div>
-      <div className="di-vi-note">
-        {L(`Normal dozun %${dose}'i`,`${dose}% of a normal day's dose`)}
-        {volume==null&&reasons.length>0&&<span className="di-vi-why">{reasons.map(r=>
-          <span key={r.id||r.label} className="di-vi-tag">{r.label}{r.pct!=null?` ${sg(r.pct)}`:''}</span>)}</span>}
-        {volume!=null&&<span className="di-vi-why"><span className="di-vi-tag">{L(`sistem önerisi ${auto?sg(auto):'yok'}`,`system ${auto?sg(auto):'none'}`)}</span></span>}
-      </div>
-    </div>
-    <div className="di-vi-blk">
-      <div className="di-vi-hd">
-        <span className="di-vi-k">{L('Yoğunluk','Intensity')}</span>
-        <span className={'di-vi-src'+(ir?' coach':'')}>{ir?L('antrenör','coach'):L('sistem','system')}</span>
-        <b className="di-vi-big">{ir?diRpeBand(ir):(ceil!=null?`RPE ≤ ${ceil}`:L('sınırsız','no ceiling'))}</b>
-      </div>
-      <div className="di-numbtns di-vi-int" role="group" aria-label={L('Yoğunluk','Intensity')}>
-        <button type="button" className={'di-numb'+(!intensity?' on':'')} aria-pressed={!intensity}
-          onClick={()=>onChange({intensity:null})}>{L('Oto','Auto')}<small>{autoRpe!=null?`≤ ${autoRpe}`:'—'}</small></button>
-        {DI_INTENSITY.map(r=><button key={r.id} type="button" className={'di-numb'+(intensity===r.id?' on':'')}
-          aria-pressed={intensity===r.id} title={diRpeBand(r)}
-          onClick={()=>onChange({intensity:intensity===r.id?null:r.id})}>{L(r.label[0],r.label[1])}<small>{diRpeBand(r).replace('RPE ','')}</small></button>)}
-      </div>
-      <div className="di-vi-rpe" aria-hidden="true">
-        {[1,2,3,4,5,6,7,8,9,10].map(n=><span key={n} className={
-          band?(n>=band[0]&&n<=band[1]?'on':''):(ceil!=null&&n<=ceil?'ok':'')}>{n}</span>)}
-      </div>
-      <div className="di-vi-note">{ir
-        ?L(`Ana fazın çalışma setleri ${diRpeBand(ir)}; hiçbiri RPE ${ir.rpe[1]}'in üstünde değil.`,
-          `Main-phase working sets at ${diRpeBand(ir)}; none above RPE ${ir.rpe[1]}.`)
-        :autoRpe!=null
-        ?L(`Sistem sınırı: RPE ${autoRpe}${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`System ceiling: RPE ${autoRpe}${bud?` (${bud[1]} fatigue budget)`:''}.`)
-        :L(`Sistem sınırı yok${bud?` (${bud[0]} yorgunluk bütçesi)`:''}.`,`No system ceiling${bud?` (${bud[1]} fatigue budget)`:''}.`)}</div>
-    </div>
-    {(volume!=null||intensity)&&<button type="button" className="di-vi-reset" onClick={()=>onChange({volume:null,intensity:null})}>
-      {L('İkisini de otoya döndür','Put both back on auto')}</button>}
-  </div>);
-}
-
-/* The brief. Seven fields, none of them required, and the line under the heading says
-   what an empty one means. Each field is its own small card: the columns of a
-   three-across grid have very different heights (a priority list against a number),
-   and without a card edge they read as one ragged block of controls. Priority (1) and
-   volume / intensity (2) share the first row in equal halves; the pattern card (3) is
-   the wide one and takes a row of its own; the short answers share the rows below. It is
-   stored per athlete PER DAY, beside the session it produced, so yesterday's
-   instruction never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed,autoVol,autoReasons,autoRpe,autoBudget}){
-  const set=(k,v)=>save({...instr,[k]:v});
-  /* What is typed in the keep-out box but not yet a chip: the box commits it itself when
-     it loses focus, `pending` only lets it be read before that. */
-  const avoidPend=useRef('');
-  const field=(n,title,hint,control,area,extra)=>(
-    <div className={'di-field'+(area?' '+area:'')}>
-      <div className="di-fhd"><i className="di-num">{n}</i>
-        <label>{title}</label>{extra?<div className="di-fhd-x">{extra}</div>:null}</div>
-      <span className="di-fhint">{hint}</span>
-      <div className="di-fctl">{control}</div>
-    </div>);
+/* The brief is the movement-pattern table: patterns across the top, an exercise and its dose
+   in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
+   notes left the form — the coach writes the session itself). It is stored per athlete PER
+   DAY, beside the session it produced, so yesterday's table never silently drives today's. */
+function DiInstructionForm({instr,save,onBuild,closed}){
   return(<div className="di-brief">
     <div className="di-fgrid">
-      {field(1,L('Bugünün önceliği','Today\'s priority'),
-        L('Bugün en çok hangi fiziksel kaliteye odaklanılsın?','Which physical quality should today build?'),
-        <DiPriorityPicker value={instr.priorities} onChange={v=>set('priorities',v)}/>,'a1')}
-      {field(2,L('Hacim ve yoğunluk','Volume & intensity'),
-        L('Bugünkü dozu sen belirle. Oto: sistem önerisi.','Set today\'s dose yourself. Auto: the system\'s call.'),
-        <DiVolIntPicker volume={instr.volume} intensity={instr.intensity} autoVol={autoVol}
-          autoReasons={autoReasons} autoRpe={autoRpe} autoBudget={autoBudget}
-          onChange={p=>save({...instr,...p})}/>,'a3')}
-      {field(3,L('Hareket paterni','Movement pattern'),
-        L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
-          'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.'),
-        <DiPatternPlan value={instr.patterns} onChange={v=>set('patterns',v)} closed={closed}/>,'a2',
-        <DiMethodPicker value={instr.method} onChange={v=>set('method',v)}/>)}
-      {field(4,L('Seans süresi','Session length'),
-        L('Bugünkü S&C seansı için hedef süre.','Target length for today\'s session.'),
-        <DiNumberChoice value={instr.duration}
-          onChange={v=>save({...instr,duration:v,durationSet:v!=null})} choices={DI_DUR_CHOICES}
-          unit={L('dk','min')} placeholder={L('seanstan','auto')} min={10} max={240}/>,'a4')}
-      {field(5,L('Maks. egzersiz','Exercise ceiling'),
-        L('Seansta toplam en fazla kaç egzersiz olsun? (tüm fazlar dahil)','How many exercises in the whole session at most? (all phases)'),
-        <DiNumberChoice value={instr.maxExercises}
-          onChange={v=>save({...instr,maxExercises:v,maxExercisesSet:v!=null})} choices={DI_EX_CHOICES}
-          unit={L('adet','items')} placeholder={L('süreden','auto')} min={1} max={14}/>,'a5')}
-      {field(6,L('Kaçınılacak','Keep out'),
-        L('Bugün yapılmasın.','What must not appear today.'),
-        <DiChipList value={instr.avoid} onChange={v=>set('avoid',v)} tone="avoid"
-          pending={avoidPend}
-          placeholder={L('ör. derin squat','e.g. deep squat')}/>,'a7')}
-      {field(7,L('Notlar','Notes'),
-        L('Bu sporcu için ek not veya talimat.','Anything else the model should know.'),
-        <LiveInput className="di-notes" value={instr.notes} onChange={v=>set('notes',v)}
-          placeholder={L('ör. bugün maç var, seans hazırlık niteliğinde olsun',
-            'e.g. game today, keep it to priming')}/>,'a6')}
+      <div className="di-field wide">
+        <div className="di-fhd"><i className="di-num">3</i>
+          <label>{L('Hareket paterni','Movement pattern')}</label>
+          <div className="di-fhd-x"><DiMethodPicker value={instr.method} onChange={v=>save({...instr,method:v})}/></div></div>
+        <span className="di-fhint">{L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
+          'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
+        <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
+          onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
+      </div>
     </div>
     {onBuild&&<div className="di-genbar">
       <span className="di-dim">{L('Hareket Paterni tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',

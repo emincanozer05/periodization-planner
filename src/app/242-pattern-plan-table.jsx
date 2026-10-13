@@ -11,8 +11,9 @@
    gets every edit back through `handlers`, addressed by the slot's own `key`:
      onChip(id)               a pattern chip was pressed
      onCount(gid,n)           the "how many" stepper of a group
-     onSlot(key,patch)        fields of one slot changed (name, alt, sets, reps, duration,
-                              tempo, rpe, load, rest, note, superset)
+     onSlot(key,patch)        fields of one slot changed (name, link, sets, reps, duration,
+                              tempo, rpe, load, rest, note, superset; the alternative's own
+                              under a_name, a_sets … a_link; {alt:null} deletes it)
      onPick(key,item,isAlt)   an exercise was picked off the library
      onNew(key,name)          a name the library did not have was typed (optional)
      onRemove(key)            one exercise removed
@@ -70,84 +71,108 @@ const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
   return ka.length===kb.length&&ka.every(k=>a[k]===b[k]);
 };
-/* One exercise row. Memoised on what it draws: a table of twenty rows is two hundred inputs,
-   and a keystroke in one of them must not rebuild the other nineteen. */
+const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
+/* One exercise: up to three grid rows under its pattern — the exercise itself with its dose
+   and link; its alternative, written like an exercise with a dose of its own (a swap may be
+   done at other sets, reps and load); and the note, in the open space beside them.
+   Memoised on what it draws: a table of twenty rows is two hundred inputs, and a keystroke
+   in one of them must not rebuild the other nineteen. */
 const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detailOpen}){
   const k=slot.key;
   const[altOn,setAltOn]=useState(false);
-  const showAlt=!!slot.alt||altOn;
+  const hasAlt=!!(slot.a_name||PT_ALT_KEYS.some(f=>slot['a_'+f]));
+  const showAlt=hasAlt||altOn;
   const f=(name,v)=>cb.onSlot(k,{[name]:v});
   const lab=n=>`${grp.label} · ${n}`;
-  return(<div className={'pt-tr'+(first?' first':'')} role="row" style={{'--pat-c':grp.color||'var(--border2)'}}>
-    <div className="pt-pat" role="rowheader">
-      {first&&(grp.pick
-        ?<label className="pt-patpick"><span className="pt-cl">{L('Patern','Pattern')}</span>
-          <select value="" aria-label={L('Patern seç','Pick a pattern')} onChange={e=>{if(e.target.value)cb.onPattern(k,e.target.value);}}>
-            <option value="">{L('Patern seç…','Pick pattern…')}</option>
-            {grp.options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-          </select></label>
-        :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
-          <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
-            aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
-      {slot.sub&&<span className="pt-sub" title={L('Uygulama','Execution')}>{slot.sub}</span>}
-    </div>
-    <div className="pt-td pt-ex" role="cell">
-      <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
-      <div className="pt-exmain">
-        <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
-        <div className="pt-exname">
-          <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS}}
-            onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
-            onPick={it=>cb.onPick(k,it,false)}/>
+  const alab=n=>`${grp.label} · ${L('Alternatif','Alternative')} · ${n}`;
+  const dose=(pre,labf)=>[
+    <div key="sets" className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
+      <PtStep value={slot[pre+'sets']} onChange={v=>f(pre+'sets',v)} label={labf(L('Set','Sets'))} max={20}/></div>,
+    <div key="reps" className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
+      <PtStep value={slot[pre+'reps']} onChange={v=>f(pre+'reps',v)} label={labf(L('Tekrar','Reps'))} max={100}/></div>,
+    <div key="duration" className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
+      <PtCombo value={slot[pre+'duration']} onChange={v=>f(pre+'duration',v)} label={labf(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>,
+    <div key="tempo" className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
+      <PtCombo value={slot[pre+'tempo']} onChange={v=>f(pre+'tempo',v)} listId={ids.tempo} label={labf('Tempo')}/></div>,
+    <div key="rpe" className="pt-td" role="cell"><span className="pt-cl">RPE</span>
+      <PtCombo value={slot[pre+'rpe']} onChange={v=>f(pre+'rpe',v)} listId={ids.rpe} label={labf('RPE')}/></div>,
+    <div key="load" className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
+      <PtCombo value={slot[pre+'load']} onChange={v=>f(pre+'load',v)} listId={ids.load} label={labf(L('Yük','Load'))}/></div>,
+    <div key="rest" className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
+      <PtCombo value={slot[pre+'rest']} onChange={v=>f(pre+'rest',v)} listId={ids.rest} label={labf(L('Dinlenme','Rest'))}/></div>,
+    <div key="link" className="pt-td pt-link" role="cell"><span className="pt-cl">Link</span>
+      <LiveInput className="pt-noteinp" value={slot[pre+'link']} maxLength={300} onChange={v=>f(pre+'link',v)}
+        placeholder={L('Link ekle...','Add a link...')} aria-label={labf('Link')}/></div>];
+  const style={'--pat-c':grp.color||'var(--border2)'};
+  const noteBox=<div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
+    <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
+      placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>;
+  return(<>
+    <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
+      <div className="pt-pat" role="rowheader">
+        {first&&(grp.pick
+          ?<label className="pt-patpick"><span className="pt-cl">{L('Patern','Pattern')}</span>
+            <select value="" aria-label={L('Patern seç','Pick a pattern')} onChange={e=>{if(e.target.value)cb.onPattern(k,e.target.value);}}>
+              <option value="">{L('Patern seç…','Pick pattern…')}</option>
+              {grp.options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+            </select></label>
+          :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
+            <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
+              aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
+        {slot.sub&&<span className="pt-sub" title={L('Uygulama','Execution')}>{slot.sub}</span>}
+      </div>
+      <div className="pt-td pt-ex" role="cell">
+        <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
+        <div className="pt-exmain">
+          <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
+          <div className="pt-exname">
+            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS}}
+              onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
+              onPick={it=>cb.onPick(k,it,false)}/>
+          </div>
+          {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
+            onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
+          {grp.count>1&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+            aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
-        {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
-          onClick={()=>cb.toggleDetail(k)} title={L('Görsel, bağlantı, uygulama ve diğer ayrıntılar','Image, link, execution and other details')}>⋯</button>}
-        {grp.count>1&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
-          aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
       </div>
-      <div className="pt-alt">
-        {showAlt
-          ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
-            <div className="pt-exname alt">
-              <ExNameField value={slot.alt||''} onChange={v=>f('alt',v)}
-                onPick={it=>cb.onPick(k,it,true)}/>
-            </div>
-            {!slot.alt&&<button type="button" className="pt-altx" onClick={()=>setAltOn(false)}
-              aria-label={L('Alternatifi kapat','Close the alternative')}>✕</button>}</>
-          :<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
-            title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
-            {L('Alternatif Ekle','Add Alternative')}</button>}
+      <div className="pt-td pt-cnt" role="cell">
+        {first&&!grp.pick&&<><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
+          <input type="number" min={1} max={grp.max} value={grp.count} aria-label={lab(L('Egzersiz adedi','Exercises'))}
+            onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
+          <span className="pt-spin">
+            <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
+              onClick={()=>cb.onCount(gid,grp.count+1)}/>
+            <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
+              onClick={()=>cb.onCount(gid,grp.count-1)}/>
+          </span></span></>}
       </div>
+      {dose('',lab)}
     </div>
-    <div className="pt-td pt-cnt" role="cell">
-      {first&&!grp.pick&&<><span className="pt-cl">{L('Egzersiz Adedi','Exercises')}</span><span className="pt-step cnt on">
-        <input type="number" min={1} max={grp.max} value={grp.count} aria-label={lab(L('Egzersiz adedi','Exercises'))}
-          onChange={e=>{if(e.target.value!=='')cb.onCount(gid,Number(e.target.value));}}/>
-        <span className="pt-spin">
-          <button type="button" tabIndex={-1} disabled={grp.count>=grp.max} aria-label={L('Bir egzersiz ekle','One more exercise')}
-            onClick={()=>cb.onCount(gid,grp.count+1)}/>
-          <button type="button" tabIndex={-1} disabled={grp.count<=1} aria-label={L('Bir egzersiz çıkar','One exercise fewer')}
-            onClick={()=>cb.onCount(gid,grp.count-1)}/>
-        </span></span></>}
+    <div className={'pt-tr pt-sec'+(showAlt?' alt':'')} role="row" style={style}>
+      <div className="pt-pat" role="rowheader"/>
+      <div className="pt-td pt-ex" role="cell">
+        <div className="pt-alt">
+          {showAlt
+            ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
+              <div className="pt-exname alt">
+                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}/>
+              </div>
+              <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
+                aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button></>
+            :<button type="button" className="pt-altadd" onClick={()=>setAltOn(true)}
+              title={L('Bu egzersiz yapılamazsa yerine ne yapılacağını yaz','Write what is done instead of this exercise')}>
+              {L('Alternatif Ekle','Add Alternative')}</button>}
+        </div>
+      </div>
+      {showAlt
+        ?<><div className="pt-td pt-cnt" role="cell"/>{dose('a_',alab)}</>
+        :noteBox}
     </div>
-    <div className="pt-td" role="cell"><span className="pt-cl">{L('Set','Sets')}</span>
-      <PtStep value={slot.sets} onChange={v=>f('sets',v)} label={lab(L('Set','Sets'))} max={20}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">{L('Tekrar','Reps')}</span>
-      <PtStep value={slot.reps} onChange={v=>f('reps',v)} label={lab(L('Tekrar','Reps'))} max={100}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">{L('Süre','Time')}</span>
-      <PtCombo value={slot.duration} onChange={v=>f('duration',v)} label={lab(L('Süre (ör. 30s)','Time (e.g. 30s)'))}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">Tempo</span>
-      <PtCombo value={slot.tempo} onChange={v=>f('tempo',v)} listId={ids.tempo} label={lab('Tempo')}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">RPE</span>
-      <PtCombo value={slot.rpe} onChange={v=>f('rpe',v)} listId={ids.rpe} label={lab('RPE')}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">{L('Yük','Load')}</span>
-      <PtCombo value={slot.load} onChange={v=>f('load',v)} listId={ids.load} label={lab(L('Yük','Load'))}/></div>
-    <div className="pt-td" role="cell"><span className="pt-cl">{L('Dinlenme','Rest')}</span>
-      <PtCombo value={slot.rest} onChange={v=>f('rest',v)} listId={ids.rest} label={lab(L('Dinlenme','Rest'))}/></div>
-    <div className="pt-td pt-note" role="cell"><span className="pt-cl">{L('Not','Note')}</span>
-      <LiveInput className="pt-noteinp" value={slot.note} maxLength={240} onChange={v=>f('note',v)}
-        placeholder={L('Not ekle...','Add a note...')} aria-label={lab(L('Not','Note'))}/></div>
-  </div>);
+    {showAlt&&<div className="pt-tr pt-sec note" role="row" style={style}>
+      <div className="pt-pat" role="rowheader"/><div className="pt-td pt-ex" role="cell"/>{noteBox}
+    </div>}
+  </>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
   &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options);
@@ -189,7 +214,7 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
         <div className="pt-tr pt-th" role="row">
           {[L('Patern','Pattern'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
-            L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),L('Not','Note')]
+            L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),'Link']
             .map((h,i)=><span key={i} role="columnheader">{h}</span>)}
         </div>
         {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
@@ -230,7 +255,6 @@ function CalSlotDetail({ex,onChange,onMove,first,last}){
     </label>
     <label className="pt-dl">{L('Görsel','Image')}
       <ExImgBtn image={ex.image||''} onChange={url=>{f('image',url||'');rememberExerciseImage(ex.name,url||'');}}/></label>
-    <div className="pt-dl wide"><span>{L('Bağlantı','Link')}</span><ExLinkCell value={ex.link||''} onChange={v=>f('link',v)}/></div>
     {(alt&&String(alt.name||'').trim())&&<label className="pt-dl wide">{L('Alternatif neden?','Why this alternative?')}
       <LiveInput value={alt.reason||''} onChange={v=>onChange({...ex,alt:{...alt,reason:v}})}
         placeholder={L('ör. Omuz ağrısı nedeniyle nötr tutuş — aynı örüntü, ağrısız açı.','e.g. Shoulder pain, so a neutral grip — same pattern, pain-free angle.')}/></label>}
@@ -263,9 +287,12 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     color:run.pat?ML_PIE_COLS[run.pat]:'',pick:!run.pat,options:patOpts,
     slots:run.rows.map(r=>{const ex=r.ex;const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
       const tg=String(labels[r.i]||'');
+      const a=alt||{};
       return{key:r.i,tag:tg.replace(/\.$/,''),tagVal:String(ex.superset||'').toUpperCase(),
-        name:ex.name||'',alt:String((alt&&alt.name)||''),sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
+        name:ex.name||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
+        a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
+        a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
         sub:ex.plane?exLabel(ex.plane):'',tagP:ex.pattern||'',tagS:ex.plane||''};})}));
   const chips=EX_PATTERNS.map(p=>({id:p,label:exLabel(p),on:rows.some(r=>r.ex.pattern===p)}));
   const selected=chips.filter(c=>c.on).length;
@@ -313,9 +340,12 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
             if(hit&&hit.image)nx.image=hit.image;}
         }
         else if(key==='note')nx.description=v;
-        else if(key==='alt')nx.alt={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),name:v};
+        else if(key==='alt'){delete nx.alt;}                       // the alternative, deleted
+        else if(key.startsWith('a_'))nx.alt={...((ex.alt&&typeof ex.alt==='object')?ex.alt:{}),[key.slice(2)]:v};
         else nx[key]=v;
       });
+      /* An alternative with nothing left in it is no alternative. */
+      if(nx.alt&&!['name','sets','reps','duration','tempo','rpe','load','rest','link','reason'].some(f=>String(nx.alt[f]||'').trim()))delete nx.alt;
       return nx;
     }),
     onPick:(k,it,isAlt)=>edit(k,ex=>{

@@ -1076,7 +1076,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('hacim ve yoğunluk normalleşiyor; boş / aralık dışı / bilinmeyen değer "oto"',
       n.volume === 10 && n.intensity === 'high' && A.diInstr({ volume: 0 }, null).volume === 0 &&
       A.diInstr({ volume: 80, intensity: 'max' }, null).volume === null && A.diInstr({ volume: 80, intensity: 'max' }, null).intensity === null &&
-      A.diInstr({ volume: '' }, null).volume === null && A.diBrief({ volume: -25, intensity: 'low' }, null).volume === -25);
+      A.diInstr({ volume: '' }, null).volume === null);
+    check('formdan kalkan alanlar (öncelik, hacim, yoğunluk, kaçınılacak, not) eski kayıtta kalsa da talimatla taşınmıyor',
+      (b => b.volume === null && b.intensity === null && b.priorities.length === 0 && b.avoid.length === 0 && b.notes === '' && !b.durationSet && !b.maxExercisesSet)(
+        A.diBrief({ volume: -25, intensity: 'low', priorities: ['strength'], avoid: ['squat'], notes: 'x', durationSet: true, duration: 60, maxExercisesSet: true, maxExercises: 5 }, null)));
     const auto = { pct: -40, raw: -40, floored: false, floor: -50, reasons: [{ id: 'md', pct: -40, label: 'Maç günü' }] };
     const ov = A.diVolumeAdj(auto, n), keep = A.diVolumeAdj(auto, A.diInstr(null, null));
     check('antrenörün hacmi sistemin ayarının yerine geçiyor, sistemin değeri saklanıyor',
@@ -1238,7 +1241,6 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('gün ve ay adları İngilizce açıkken İngilizce', A.DN[0] === 'Mon' && A.MN[9] === 'Oct' && A.DN.length === 7);
 
     const typed = A.diBrief({ notes: 'bugün maç ', constraints: ['intensity'], constraintValues: { intensity: 'RPE 6' }, constraintNote: 'x' }, null);
-    check('ek notlar yazıldığı gibi saklanıyor (sondaki boşluk silinmiyor)', typed.notes === 'bugün maç ', JSON.stringify(typed.notes));
     check('formdan kaldırılan ek kısıtlar talimatla taşınmıyor',
       typed.constraints.length === 0 && Object.keys(typed.constraintValues).length === 0 && typed.constraintNote === '');
     const ath = athlete({
@@ -1475,7 +1477,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   {
     const row = (id, exercise, o) => Object.assign({ id, exercise, sets: '3', reps: '5', rest: '90 sn' }, o || {});
     const raw = [
-      row('knee_dominant', 'Back Squat', { sets: '4', tempo: '3-0-1', rpe: '7', load: '70% 1RM', superset: 'a', alt: 'Front Squat', note: 'Derinlik kontrollü' }),
+      row('knee_dominant', 'Back Squat', { sets: '4', tempo: '3-0-1', rpe: '7', load: '70% 1RM', superset: 'a', alt: { name: 'Front Squat', sets: '3', reps: '8', load: '60% 1RM' }, link: 'https://x.test/s', note: 'Derinlik kontrollü' }),
       row('hip_dominant', 'Romanian Deadlift'),
       row('horizontal_push', ''),                                   // adı boş: programa girmez
       row('horizontal_pull', 'Chest Supported Row', { superset: 'Z' }),
@@ -1484,7 +1486,8 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const kept = A.diMovePatterns(raw);
     check('tablo: doz, süperset ve alternatif saklanıyor; bilinmeyen patern düşüyor',
       kept.length === 4 && kept[0].sets === '4' && kept[0].tempo === '3-0-1' && kept[0].load === '70% 1RM' &&
-      kept[0].superset === 'A' && kept[0].alt === 'Front Squat' && kept[0].note === 'Derinlik kontrollü' && kept[3].superset === '',
+      kept[0].superset === 'A' && kept[0].alt.name === 'Front Squat' && kept[0].alt.sets === '3' && kept[0].alt.load === '60% 1RM' &&
+      kept[0].link === 'https://x.test/s' && kept[0].note === 'Derinlik kontrollü' && kept[3].superset === '' && kept[1].alt.name === '',
       JSON.stringify(kept.map(k => [k.id, k.superset])));
     const prog = A.diManualProgram({ patterns: raw }, libMap, 'Alt vücut');
     const rows = prog ? prog.blocks[0].exercises : [];
@@ -1512,7 +1515,34 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('takvime gidince süperset, alternatif, patern ve uygulama satırda duruyor',
       e.length === 3 && e[0].superset === 'A' && e[0].alt && e[0].alt.name === 'Front Squat' && e[0].pattern === 'Knee Dominant' &&
       e[2].pattern === 'Upper Body Pull' && e[2].plane === 'Horizontal' && e[0].load === '70% 1RM' && e[0].tempo === '3-0-1' &&
-      e[0].description === 'Derinlik kontrollü', JSON.stringify(e.map(x => [x.name, x.pattern, x.plane, x.superset])));
+      e[0].description === 'Derinlik kontrollü' && e[0].alt.sets === '3' && e[0].alt.reps === '8' && e[0].alt.load === '60% 1RM' &&
+      e[0].link === 'https://x.test/s', JSON.stringify(e.map(x => [x.name, x.pattern, x.plane, x.superset])));
+
+    /* Fazlar: her faz programda kendi adıyla bir bölüm; fazsız satırlar sona kalıyor. */
+    const phased = {
+      phases: [{ id: 'ph_a', name: 'Hazırlık' }, { id: 'ph_b', name: 'Ana İş' }],
+      patterns: [
+        row('core', 'Pallof Press', { phase: 'ph_a' }),
+        row('knee_dominant', 'Back Squat', { phase: 'ph_b' }),
+        row('hip_dominant', 'Hip Thrust', { phase: 'ph_b' }),
+        row('carry', 'Farmer Carry', { phase: 'silinmis_faz' }),      // fazı olmayan: sona
+      ],
+    };
+    const pp = A.diManualProgram(phased, libMap, 'Faz denemesi');
+    check('fazlı program: her faz kendi adıyla bir blok, fazsız satır sonda',
+      pp.blocks.map(b => b.name + ':' + b.exercises.map(x => x.name).join('+')).join(' | ') ===
+      'Hazırlık:Pallof Press | Ana İş:Back Squat+Hip Thrust | :Farmer Carry', JSON.stringify(pp.blocks.map(b => [b.name, b.phase])));
+    check('fazlı program: faz adından hazırlık / ana iş okunuyor',
+      pp.blocks[0].phase === 'hazirlik' && pp.blocks[1].phase === 'ana' && pp.blocks[0].exercises[0].phase === 'hazirlik');
+    const pplan = A.diProgramPlan({ blocks: [], meta: { name: 'x' }, rd: { score: 4 }, band: null, posGroup: '', changed: 0 }, pp, 0);
+    const pses = A.planToSession(pplan, { name: 'S', time: '09:00', blocks: [] }, TODAY, 'k');
+    check('fazlı program takvime tek blokta fazlar olarak gidiyor, adlar korunuyor',
+      pses.blocks.length === 1 && pses.blocks[0].phases.length === 3 &&
+      Object.values(pses.blocks[0].phaseNames).slice(0, 2).join('|') === 'Hazırlık|Ana İş' &&
+      pses.blocks[0].exercises.length === 4);
+    const typed = A.diMovePatterns([row('core', 'Pallof ', { rest: '2-3 ', load: '70% ' })]);
+    check('tablo yazıldığı gibi saklanıyor: satır sonundaki boşluk silinmiyor (yazarken kaybolmasın)',
+      typed[0].exercise === 'Pallof ' && typed[0].rest === '2-3 ' && typed[0].load === '70% ');
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */

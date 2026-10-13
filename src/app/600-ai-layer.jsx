@@ -404,11 +404,17 @@ function diMovePatterns(v){
     const id=typeof x==='string'?x:(x&&x.id);
     const row=diMoveRow(id);
     if(!row)return;
-    if(!groups.has(id))groups.set(id,[]);
-    const g=groups.get(id);
-    if(g.length>=DI_MOVE_MAX_SLOTS)return;
     const obj=x&&typeof x==='object'?x:{};
-    const o={id,exercise:String(obj.exercise==null?'':obj.exercise).trim().slice(0,120)};
+    /* One pattern may stand in several phases; the cap is per pattern per phase. */
+    const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
+    const gk=id+'|'+phase;
+    if(!groups.has(gk))groups.set(gk,[]);
+    const g=groups.get(gk);
+    if(g.length>=DI_MOVE_MAX_SLOTS)return;
+    /* Text boxes are kept exactly as typed — trimming here would take the space off the end
+       of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
+    const txt=(val,max)=>String(val==null?'':val).slice(0,max);
+    const o={id,phase,exercise:txt(obj.exercise,120)};
     const clean=(f,max)=>{
       const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
@@ -416,11 +422,16 @@ function diMovePatterns(v){
     };
     row.facets.forEach(f=>{o[f.k]=clean(f,1);});
     DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
-    o.note=String(obj.note==null?'':obj.note).slice(0,240);
-    /* The dose the coach wrote for this exercise, and its alternative — kept as typed. */
-    DI_MOVE_DOSE.forEach(k=>{o[k]=String(obj[k]==null?'':obj[k]).trim().slice(0,40);});
+    o.note=txt(obj.note,240);
+    /* The dose the coach wrote for this exercise, its link, and its alternative — which has a
+       dose of its own, since the swap may be done at other sets and reps. */
+    DI_MOVE_DOSE.forEach(k=>{o[k]=txt(obj[k],40);});
+    o.link=txt(obj.link,300);
     o.superset=/^[A-F]$/i.test(String(obj.superset||'').trim())?String(obj.superset).trim().toUpperCase():'';
-    o.alt=String(obj.alt==null?'':obj.alt).trim().slice(0,120);
+    const ar=(obj.alt&&typeof obj.alt==='object')?obj.alt:{name:obj.alt};
+    o.alt={name:txt(ar.name,120)};
+    DI_MOVE_DOSE.forEach(k=>{o.alt[k]=txt(ar[k],40);});
+    o.alt.link=txt(ar.link,300);
     g.push(o);
   });
   return[...groups.values()].flat();
@@ -464,6 +475,13 @@ function diPatternTipLines(team,athId,dateKey){
       parts:[...(p.exercise?[p.exercise]:[]),...[...row.facets,...DI_MOVE_EXTRAS].flatMap(f=>diMoveFacetText(p,f))]};
   });
 }
+/* The phases the coach opened on the movement-pattern table — each a section of the session
+   with a name of its own. Items name theirs by id. */
+function diMovePhases(v){
+  const seen=new Set();
+  return(Array.isArray(v)?v:[]).map(x=>({id:String(x&&x.id||'').trim(),name:String(x&&x.name==null?'':x.name).slice(0,40)}))
+    .filter(x=>/^[\w-]{1,24}$/.test(x.id)&&!seen.has(x.id)&&seen.add(x.id)).slice(0,6);
+}
 function diInstr(raw,src){
   const r=raw||{};
   const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -502,6 +520,7 @@ function diInstr(raw,src){
   return{
     priorities:list(r.priorities).filter(id=>diPrioRow(id)),
     patterns:diMovePatterns(r.patterns),
+    phases:diMovePhases(r.phases),
     must:list(r.must),avoid:list(r.avoid),
     constraints:cons,
     constraintValues:cv,
@@ -526,7 +545,11 @@ function diInstr(raw,src){
    on an older stored brief is not carried: nothing the coach can no longer see or clear
    may still steer the JSON or fail the check. The engine keeps reading both for any
    caller that passes them on purpose. */
-const diBrief=(raw,src)=>({...diInstr(raw,src),must:[],constraints:[],constraintValues:{},constraintNote:''});
+const diBrief=(raw,src)=>({...diInstr(raw,src),must:[],constraints:[],constraintValues:{},constraintNote:'',
+  /* The brief is the movement-pattern table now: what an older stored brief holds in the
+     fields that left the form (priorities, dose, length, ceiling, keep-out, notes) is no
+     longer carried. */
+  priorities:[],avoid:[],volume:null,intensity:null,durationSet:false,maxExercisesSet:false,notes:''});
 /* A constraint value the coach typed, as a number a check can use. Deliberately
    forgiving about how it is written ("%60", "60 %", "RPE 7", "40kg", "12") and
    deliberately unforgiving about what it means: a figure whose unit cannot be told
@@ -1003,18 +1026,36 @@ function diManualProgram(instr,libMap,sessionName){
   if(!items.length)return null;
   const t=v=>{const x=String(v==null?'':v).trim();return x?x:null;};
   const lib=libMap||{};
-  const exercises=items.map((p,i)=>{
+  const phases=diMovePhases(instr&&instr.phases);
+  /* The calendar's own phase names, read for the validator's three phases: preparation,
+     main work, complementary. A name that says neither is main work. */
+  const phaseOf=nm=>/ısınma|isinma|hazırlık|hazirlik|warm|prep|aktivasyon|activation/i.test(nm)?'hazirlik'
+    :/soğuma|soguma|cool|tamamlayıcı|tamamlayici|complement|finish/i.test(nm)?'tamamlayici':'ana';
+  const exOf=(p,bi,i,ph)=>{
     const row=diMoveRow(p.id);
     const[exPat,exPlane]=DI_PAT_EX[p.id]||['',''];
     const nm=String(p.exercise).trim();
-    const alt=t(p.alt);
-    return{key:`man:0:${i}`,phase:'ana',name:nm,source:lib[nm.toLowerCase()]?'library':'custom',
+    const al=p.alt||{};
+    const altName=String(al.name||'').trim();
+    return{key:`man:${bi}:${i}`,phase:ph,name:nm,source:lib[nm.toLowerCase()]?'library':'custom',
       sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
       rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
-      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,superset:p.superset||'',
-      ...(alt?{alt:{name:alt,pattern:exPat,plane:exPlane}}:{})};
-  });
-  return{session_name:t(sessionName),blocks:[{key:'man:0',name:'',phase:'ana',exercises}],summary:null,priorities:[],
+      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,superset:p.superset||'',link:t(p.link),
+      ...(altName?{alt:{name:altName,pattern:exPat,plane:exPlane,
+        sets:String(al.sets||'').trim(),reps:String(al.reps||'').trim(),duration:String(al.duration||'').trim(),
+        tempo:String(al.tempo||'').trim(),rpe:String(al.rpe||'').trim(),load:String(al.load||'').trim(),
+        rest:String(al.rest||'').trim(),link:String(al.link||'').trim()}}:{})};
+  };
+  /* Phases in their own order; whatever is not placed in one closes the session. */
+  const order=[...phases,{id:'',name:''}];
+  const chip=id=>DI_MOVE_PATTERNS.findIndex(r=>r.id===id);
+  const blocks=order.map((ph,bi)=>{
+    const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)))
+      .sort((a,b)=>chip(a.id)-chip(b.id));
+    const name=ph.id?String(ph.name||'').trim():'';
+    return{key:`man:${bi}`,name,phase:phaseOf(name),exercises:mine.map((p,i)=>exOf(p,bi,i,phaseOf(name)))};
+  }).filter(b=>b.exercises.length);
+  return{session_name:t(sessionName),blocks,summary:null,priorities:[],
     respected:[],conflicts:[],rationale:null,warning:null,truncated:false,external:true,manual:true};
 }
 /* The stored draft's programme, flagged as loaded where the draft says so — drafts
@@ -1516,7 +1557,7 @@ function diProgramPlan(plan,program,pct){
       name:e.name,added:true,addId:e.key,
       sets:adj.sets||'',reps:adj.reps||'',duration:adj.duration||'',
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
-      superset:e.superset||'',pattern:e.exPattern||e.pattern||'',plane:e.exPlane||'',link:'',
+      superset:e.superset||'',pattern:e.exPattern||e.pattern||'',plane:e.exPlane||'',link:e.link||'',
       description:why,image:'',changedName:false,
       ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};
