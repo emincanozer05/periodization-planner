@@ -6287,22 +6287,6 @@ body.it2-fs-on main .panel.it2-panel{animation:none;transform:none;transition:no
 .di-fhd label{font-size:12.5px;font-weight:700;color:var(--text);margin:0}
 .di-fhd-x{margin-left:auto}
 /* Training method: a compact button in the pattern card's header, opening a short list. */
-.di-meth{position:relative}
-.di-meth-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border2);background:var(--panel);
-  color:var(--text2);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer;line-height:1.2}
-.di-meth-btn:hover{border-color:var(--accent);color:var(--text)}
-.di-meth-btn b{font-weight:600;color:var(--text)}
-.di-meth-btn.on{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14)}
-.di-meth-btn.on b{color:#fcd34d}
-.di-meth-btn i{font-style:normal;font-size:9px;color:var(--dim)}
-.di-meth-k{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
-  font-family:'IBM Plex Mono',ui-monospace,monospace}
-.di-meth-menu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;min-width:200px;display:flex;flex-direction:column;
-  padding:4px;border:1px solid var(--border2);border-radius:10px;background:var(--elevated);box-shadow:0 10px 28px rgba(0,0,0,.35)}
-.di-meth-opt{text-align:left;background:none;border:0;border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text2);cursor:pointer}
-.di-meth-opt:hover{background:var(--panel);color:var(--text)}
-.di-meth-opt.on{color:#fcd34d;font-weight:600;background:rgba(245,158,11,.12)}
-@media(max-width:680px){.di-meth-k{display:none}}
 .di-fhint{font-size:10.5px;color:var(--dim);line-height:1.45}
 .di-fctl{margin-top:2px}
 /* One badge, one colour. Seven colours read as seven categories, and the fields are
@@ -7109,7 +7093,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root[data-theme="light"] .tib-tag{background:rgba(15,23,42,.05)}
 :root[data-theme="light"] .tib-mini i.p{background:rgba(15,23,42,.24)}
 :root[data-theme="light"] .tib-tr .c .bar{background:rgba(15,23,42,.04)}
-:root[data-theme="light"] .di-meth-menu{box-shadow:0 10px 28px rgba(15,23,42,0.12)}
 :root[data-theme="light"] .di-prio-tip{box-shadow:0 16px 38px rgba(15,23,42,0.21)}
 :root[data-theme="light"] .di-conmenu{box-shadow:0 16px 38px rgba(15,23,42,0.19)}
 :root[data-theme="light"] .di-contip{box-shadow:0 16px 38px rgba(15,23,42,0.21)}
@@ -39147,45 +39130,19 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   </div>);
 }
 
-/* The training method, in the pattern card's header: one button that opens the list.
-   Always exactly one pick — there is no "model chooses"; unset reads as straight sets. */
-function DiMethodPicker({value,onChange}){
-  const[open,setOpen]=useState(false);
-  const ref=useRef(null);
-  useEffect(()=>{
-    if(!open)return;
-    const off=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
-    const esc=e=>{if(e.key==='Escape')setOpen(false);};
-    document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
-    return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};
-  },[open]);
-  const cur=diMethodRow(value)||diMethodRow(DI_METHOD_DEFAULT);
-  const pick=id=>{onChange(id);setOpen(false);};
-  return(<div className="di-meth" ref={ref}>
-    <button type="button" className="di-meth-btn on" aria-haspopup="listbox" aria-expanded={open}
-      onClick={()=>setOpen(o=>!o)}>
-      <span className="di-meth-k">{L('Antrenman metodu','Training method')}</span>
-      <b>{L(cur.label[0],cur.label[1])}</b><i>▾</i>
-    </button>
-    {open&&<div className="di-meth-menu" role="listbox" aria-label={L('Antrenman metodu','Training method')}>
-      {DI_METHODS.map(m=><button key={m.id} type="button" role="option" aria-selected={cur.id===m.id}
-        className={'di-meth-opt'+(cur.id===m.id?' on':'')} title={m.ai}
-        onClick={()=>pick(m.id)}>{L(m.label[0],m.label[1])}</button>)}
-    </div>}
-  </div>);
-}
-
 /* The brief is the movement-pattern table: patterns across the top, an exercise and its dose
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed}){
+function DiInstructionForm({instr,save,onBuild,onShowLoad,closed}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
           <label>{L('Hareket paterni','Movement pattern')}</label>
-          <div className="di-fhd-x"><DiMethodPicker value={instr.method} onChange={v=>save({...instr,method:v})}/></div></div>
+          {onShowLoad&&<div className="di-fhd-x"><button type="button" className="di-viewbtn" onClick={onShowLoad}
+            title={L('Bu sporcunun haftalık yük dağılımını bir pencerede göster','Show this athlete\'s weekly load distribution in a window')}>
+            <i>◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button></div>}</div>
         <span className="di-fhint">{L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
@@ -39196,8 +39153,7 @@ function DiInstructionForm({instr,save,onBuild,closed}){
       <span className="di-dim">{L('Hareket Paterni tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
         'The exercises and doses in the Movement Pattern table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
       <button type="button" className="di-gen" onClick={onBuild}>
-        <span className="di-gen-t">{L('Programı Oluştur','Build Programme')}</span>
-        <span className="di-gen-s">{L('Tablodan · oku · onayla','From the table · read · approve')}</span>
+        <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
       </button>
     </div>}
   </div>);
@@ -39442,6 +39398,13 @@ function DiSection({n,title,meta,children,className}){
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
   const panelRef=useRef(null);
   const[err,setErr]=useState('');
+  const[loadOpen,setLoadOpen]=useState(false);   // the weekly load distribution, in a window
+  useEffect(()=>{
+    if(!loadOpen)return;
+    const esc=e=>{if(e.key==='Escape')setLoadOpen(false);};
+    document.addEventListener('keydown',esc);
+    return()=>document.removeEventListener('keydown',esc);
+  },[loadOpen]);
   /* Open or folded. Remembered per device, so a coach who works with the panel folded
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
@@ -39494,7 +39457,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* "Programı Oluştur": the Movement Pattern table gathered into a programme and put where
+  /* "Programı Kaydet": the Movement Pattern table gathered into a programme and put where
      the coach reads it — the same draft, the same checks and the same approval a written
      programme always had. It reaches the calendar only through "Onayla ve takvime yaz". */
   const buildProgram=()=>{
@@ -39657,7 +39620,18 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
+      {loadOpen&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setLoadOpen(false)}>
+        <div className="modal" style={{maxWidth:1000,width:'96vw'}} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-head">
+            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</h2>
+            <button className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+          </div>
+          <div style={{padding:'4px 16px 16px',overflow:'auto',maxHeight:'80vh'}}>
+            <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
+          </div>
+        </div>
+      </div>,document.body)}
     </DiSection>
     </>}
 
@@ -39709,8 +39683,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {(side==='cal'||side==='load')&&calendar&&React.cloneElement(calendar,{showCal:side==='cal',showLoad:side==='load'})}
 
     {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Oluştur"a bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme for this athlete yet — fill in the Movement Pattern table and press "Build programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
+      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Kaydet"e bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
+         'No programme for this athlete yet — fill in the Movement Pattern table and press "Save programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
     </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that
