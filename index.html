@@ -8423,6 +8423,17 @@ main .panel,main .ap-head{animation:none}
 .di-ppsec.pc0{--ph-c:#38bdf8}.di-ppsec.pc1{--ph-c:#f59e0b}.di-ppsec.pc2{--ph-c:#a78bfa}
 .di-ppsec.pc3{--ph-c:#34d399}.di-ppsec.pc4{--ph-c:#f472b6}.di-ppsec.pc5{--ph-c:#fb923c}
 .di-ppsec.loose{border-style:dashed}
+
+/* The weekly load distribution, as a small window at the right edge: no backdrop, no blur. */
+.di-loadwin{position:fixed;right:16px;top:76px;z-index:900;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 100px);
+  display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.38);overflow:hidden}
+.di-loadwin-hd{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);background:var(--elevated)}
+.di-loadwin-hd b{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.di-loadwin-body{padding:0 12px 12px;overflow:auto}
+.di-loadwin-body .ath-mmap-wrap{margin-top:8px;padding-top:12px;border-top:0}
+.di-loadwin-body .mld-head{flex-wrap:wrap;gap:8px}
+@media(max-width:640px){.di-loadwin{right:8px;left:8px;width:auto;top:60px}}
 </style>
 </head>
 <body>
@@ -39621,17 +39632,17 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
-      {loadOpen&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setLoadOpen(false)}>
-        <div className="modal" style={{maxWidth:1000,width:'96vw'}} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
-          <div className="modal-head">
-            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</h2>
-            <button className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-          </div>
-          <div style={{padding:'4px 16px 16px',overflow:'auto',maxHeight:'80vh'}}>
-            <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
-          </div>
+      {/* A small window at the side of the screen — no backdrop, nothing dimmed or blurred, the
+          page behind stays usable while the chart is open. */}
+      {loadOpen&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
+        <div className="di-loadwin-hd">
+          <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</b>
+          <button type="button" className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
         </div>
-      </div>,document.body)}
+        <div className="di-loadwin-body">
+          <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
+        </div>
+      </aside>,document.body)}
     </DiSection>
     </>}
 

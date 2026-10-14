@@ -224,17 +224,17 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
       <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
-      {loadOpen&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setLoadOpen(false)}>
-        <div className="modal" style={{maxWidth:1000,width:'96vw'}} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
-          <div className="modal-head">
-            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</h2>
-            <button className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-          </div>
-          <div style={{padding:'4px 16px 16px',overflow:'auto',maxHeight:'80vh'}}>
-            <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
-          </div>
+      {/* A small window at the side of the screen — no backdrop, nothing dimmed or blurred, the
+          page behind stays usable while the chart is open. */}
+      {loadOpen&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
+        <div className="di-loadwin-hd">
+          <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</b>
+          <button type="button" className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
         </div>
-      </div>,document.body)}
+        <div className="di-loadwin-body">
+          <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
+        </div>
+      </aside>,document.body)}
     </DiSection>
     </>}
 
