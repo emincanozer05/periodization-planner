@@ -90,7 +90,7 @@ function loadApp() {
     'DI_PAIN_BLOCK', 'DI_MIN_PER_EX', 'DI_SIM_SELF', 'DI_SIM_PEER', 'DI_TIER_CAPS',
     'IV_PATTERNS', 'fmt', 'addD', 'parseD', 'recNum',
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
-    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
+    'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
@@ -1593,6 +1593,29 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       en.blocks.map(b => b.phase).join(',') === 'hazirlik,ana,tamamlayici' && A.diMovePhases(plan.phases)[3].preset === '');
     check('patern seçilmemiş satır programa giriyor (patern etiketi boş)',
       en.blocks[1].exercises[0].name === 'Serbest Hareket' && en.blocks[1].exercises[0].coachPattern === '' && en.blocks[1].exercises[0].exPattern === '');
+  }
+
+  group('Ek — Patern tablosu: yazılan sıra ve kütüphanedeki tür');
+  {
+    const raw = [{ id: 'core', exercise: 'Plank' }, { id: 'knee_dominant', exercise: 'Back Squat' }, { id: 'core', exercise: 'Dead Bug' }, { id: '', exercise: 'Germe' }];
+    const kept = A.diMovePatterns(raw);
+    check('liste yazıldığı sırada kalıyor (aynı patern yeniden gruplanmıyor)',
+      kept.map(k => k.exercise).join('|') === 'Plank|Back Squat|Dead Bug|Germe', JSON.stringify(kept.map(k => k.exercise)));
+    const prog = A.diManualProgram({ patterns: raw }, {}, 'S');
+    check('program, patern sırasına değil yazılan sıraya göre kuruluyor',
+      prog.blocks[0].exercises.map(e => e.name).join('|') === 'Plank|Back Squat|Dead Bug|Germe', JSON.stringify(prog.blocks[0].exercises.map(e => e.name)));
+    const six = A.diMovePatterns(Array.from({ length: 8 }, (_, i) => ({ id: 'knee_dominant', exercise: 'S' + i })));
+    check('patern başına üst sınır hâlâ geçerli', six.length === 6);
+    const pc = A.diPickTags({ name: 'Pallof Press', exPattern: 'Core', exPlane: 'Anti-Rotation' }, 'Pallof Press');
+    const pk = A.diPickTags({ name: 'Bulgarian Split Squat', exPattern: 'Knee Dominant', exPlane: 'Push' }, 'Bulgarian Split Squat');
+    const ph = A.diPickTags({ name: 'Romanian Deadlift', exPattern: 'Hip Dominant', exPlane: 'Pull' }, 'Romanian Deadlift');
+    const pu = A.diPickTags({ name: 'Overhead Press', exPattern: 'Upper Body Push', exPlane: 'Vertical' }, 'Overhead Press');
+    const pn = A.diPickTags({ name: 'Boş Kart' }, 'Boş Kart');
+    check('kütüphane etiketi → tablonun paterni ve türü (core görevi, squat/lunge, hinge, dikey itiş)',
+      pc.id === 'core' && pc.type === 'anti_rotation' && pk.id === 'knee_dominant' && pk.type === 'lunge' &&
+      ph.id === 'hip_dominant' && ph.type === 'rdl' && pu.id === 'vertical_push' && pu.type === '',
+      JSON.stringify([pc, pk, ph, pu]));
+    check('etiketsiz ve tahmin edilemeyen kart hiçbir şey söylemiyor', pn.id === '' && pn.type === '', JSON.stringify(pn));
   }
 
   group('Ek — Takvimde hazır fazlar uygulama diliyle senkron');
