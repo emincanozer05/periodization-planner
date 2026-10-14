@@ -100,6 +100,8 @@ const RPT_PHASE_CSS=`.pc-card{border:1px solid #e5e7eb;border-radius:11px;overfl
 .pc-tbl th.n,.pc-tbl td.n{width:36px;padding-left:6px;padding-right:4px;color:#8b9099;font-weight:700}
 .pc-tbl th.ex,.pc-tbl td.ex{width:46%;text-align:left}
 .pc-nm{font-size:12px;font-weight:700;color:#0a0b0d}
+/* The movement pattern, a quiet caption directly over the exercise's name. */
+.pc-pat{font-size:8px;font-weight:700;color:#8b9099;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
 .pc-why{font-size:9.5px;color:#5c626c;margin-top:3px;line-height:1.45}
 .pc-tbl td.ds b{font-size:12px;color:#0a0b0d}
 .pc-tbl td.ds s{color:#8b9099}
@@ -151,6 +153,15 @@ function rptSessBanner({no,nameHTML,ownerHTML,time,duration,purpose,meta}){
     <div class="meta-item"><span class="lbl">${L('Amaç','Purpose')}</span><span class="val">${escHTML(purpose||'')}</span></div>
     ${(meta||[]).filter(m=>m&&m.val).map(m=>`<div class="meta-item"><span class="lbl">${escHTML(m.lbl)}</span><span class="val">${escHTML(m.val)}</span></div>`).join('')}
   </div>`;
+}
+/* The pattern caption over an exercise's name ("Diz Dominant" over a Trap Bar Squat), as
+   markup. The row's own pattern wins; a row that was never tagged is read off its name
+   (exResolveTags), and one nothing can place prints no caption at all. */
+const RPT_PAT_TR={'Hip Dominant':'Kalça Dominant','Knee Dominant':'Diz Dominant'};
+function rptPatHTML(name,pattern){
+  const p=exResolveTags(name,pattern,'').pattern;
+  if(!p)return'';
+  return`<div class="pc-pat">${escHTML(REPORT_LANG==='tr'?(RPT_PAT_TR[p]||exLabel(p)):p)}</div>`;
 }
 /* One phase card around rows already drawn as <tr>s. Title and tag are plain text; a
    card with neither prints its table alone. */
@@ -272,6 +283,7 @@ function buildSessionHTMLDoc(title,subtitle,sessions,opts){
           <div class="ex-ex-wrap">
             ${withImages&&e.image?`<div class="ex-imgwrap"><img class="ex-img" src="${escHTML(mediaSrc(e.image))}" alt="${escHTML(e.name)}"></div>`:''}
             <div class="ex-ex-txt">
+              ${rptPatHTML(e.name,e.pattern)}
               <div class="ex-nm-wrap"><span class="pc-nm">${e.name}</span>${lnk?`<a class="ex-lnk" href="${lnk}">🔗 ${escHTML(linkLabel(lnk))}</a>`:''}</div>
               ${lines(notes)}
             </div>
