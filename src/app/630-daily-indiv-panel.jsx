@@ -13,8 +13,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
   const setOpen=v=>{setOpenRaw(v);try{localStorage.setItem('coachos_di_open',v?'1':'0');}catch(e){}};
   /* Which face of the panel is up: today and the brief, the programme, the athlete's
-     calendar or its load distribution — the last two are the header's "Takvim" and
-     "Yük Dağılımı", opened over the same area instead of under the card. The turn is
+     calendar — the header's "Takvim", opened over the same area instead of under the
+     card. (The weekly load distribution is the "Haftalık Yük Dağılımı" button on the
+     brief's movement-pattern box, in a window of its own.) The turn is
      two halves — the face swings out, the other swings in — so the swap happens at the
      point where the card is edge-on and neither face is readable. */
   const[side,setSide]=useState('brief');
@@ -147,15 +148,10 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     <div className={'di-hd'+(open?'':' folded')}>
       <span className="di-title">{L('Günlük Bireyselleştirme','Daily individualization')}</span>
       <div className="di-hdacts">
-        {open&&calendar&&<>
-          <button type="button" className={'di-viewbtn'+(side==='cal'?' on':'')} aria-pressed={side==='cal'}
-            onClick={()=>flipTo(side==='cal'?'brief':'cal')}
-            title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
-            <i>▦</i><span>{L('Takvim','Calendar')}</span></button>
-          <button type="button" className={'di-viewbtn'+(side==='load'?' on':'')} aria-pressed={side==='load'}
-            onClick={()=>flipTo(side==='load'?'brief':'load')}
-            title={side==='load'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, yük dağılımını göster','Turn the card over to the load distribution')}>
-            <i>◔</i><span>{L('Yük Dağılımı','Load Distribution')}</span></button></>}
+        {open&&calendar&&<button type="button" className={'di-viewbtn'+(side==='cal'?' on':'')} aria-pressed={side==='cal'}
+          onClick={()=>flipTo(side==='cal'?'brief':'cal')}
+          title={side==='cal'?L('Bugünün tablosuna ve talimata dön','Back to today and the brief'):L('Kartı çevir, sporcunun takvimini göster','Turn the card over to the athlete\'s calendar')}>
+          <i>▦</i><span>{L('Takvim','Calendar')}</span></button>}
         {open&&<button type="button" className={'di-flipbtn'+(onProg?' back':'')} aria-pressed={onProg}
           onClick={()=>flipTo(onProg?'brief':'prog')}
           title={onProg?L('Bugünün tablosuna ve talimata dön','Back to today and the brief')
@@ -283,7 +279,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
       </div>
     </DiSection>}
 
-    {(side==='cal'||side==='load')&&calendar&&React.cloneElement(calendar,{showCal:side==='cal',showLoad:side==='load'})}
+    {side==='cal'&&calendar&&React.cloneElement(calendar,{showCal:true,showLoad:false})}
 
     {onProg&&!program&&<div className="di-hold sm">
       {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Kaydet"e bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
