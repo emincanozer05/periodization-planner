@@ -8274,8 +8274,9 @@ main .panel,main .ap-head{animation:none}
    Chips across the top pick the movement patterns; every picked pattern is a row of the
    grid: the exercise (superset tag, an alternative under it), how many, then sets, reps,
    time, tempo, RPE, load, rest and a note. Used by the calendar's block editor and by the
-   individualization brief (PlanTable). Wider than a card can be on a mid-size screen: it
-   scrolls sideways there, and folds into small cards below 780px of its own width. */
+   individualization brief (PlanTable). It is a full-width grid only where its eleven columns fit
+   (1260px of its own width and up); below that each exercise folds into a card — pattern, exercise
+   and note across the top, the dose boxes wrapping underneath — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
 .pt-top{display:flex;align-items:flex-start;gap:12px}
@@ -8293,9 +8294,9 @@ main .panel,main .ap-head{animation:none}
 .pt-n.on{color:var(--text2);border-color:var(--border2)}
 .pt-n.on b{color:var(--text)}
 .pt-scroll{overflow-x:auto;padding-bottom:2px}
-.pt-grid{min-width:1216px;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
+.pt-grid{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
 .pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
-  grid-template-columns:minmax(112px,.9fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
+  grid-template-columns:minmax(128px,.9fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
 .pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
 .pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
 .pt-grp+.pt-grp{border-top:1px solid var(--border)}
@@ -8315,7 +8316,14 @@ main .panel,main .ap-head{animation:none}
 .pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
 .pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
-.pt-sub{margin-left:16px;font-size:11px;color:var(--dim)}
+.pt-type{position:relative;display:block;margin:0;max-width:100%;text-transform:none;letter-spacing:normal;font-weight:400}
+.pt-type select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px solid var(--border);
+  border-radius:7px;padding:5px 20px 5px 8px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;text-overflow:ellipsis}
+.pt-type.on select{color:var(--text2)}
+.pt-type select:hover{border-color:var(--border2)}
+.pt-type select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+.pt-type::after{content:'';position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
 .pt-pat>.pt-x{position:absolute;right:0;top:7px;margin:0}
 .pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
   border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
@@ -8327,6 +8335,17 @@ main .panel,main .ap-head{animation:none}
 /* The exercise: tag and name are one joined box; the alternative sits under it. */
 .pt-exmain{display:flex;align-items:stretch;gap:0;min-width:0}
 .pt-exmain .pt-x{margin-left:4px;align-self:center;opacity:.55}
+/* ↑ / ↓: one small stacked pair beside the name, always in view. */
+.pt-mv{flex:none;display:flex;flex-direction:column;align-self:center;margin-left:4px;border:1px solid var(--border);border-radius:7px;
+  overflow:hidden;background:var(--elevated)}
+.pt-mv button{position:relative;width:24px;height:17px;border:0;background:none;cursor:pointer;padding:0}
+.pt-mv button+button{border-top:1px solid var(--border)}
+.pt-mv button::before{content:'';position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2px 0 0 -3px;
+  border-left:1.5px solid var(--text2);border-top:1.5px solid var(--text2);transform:rotate(45deg)}
+.pt-mv button.dn::before{margin-top:-4px;transform:rotate(-135deg)}
+.pt-mv button:hover:not(:disabled){background:var(--hover)}
+.pt-mv button:focus-visible{outline:none;background:var(--hover)}
+.pt-mv button:disabled{cursor:default;opacity:.3}
 .pt-tag{position:relative;flex:none;display:flex;align-items:center;justify-content:center;min-width:38px;padding:0 6px;
   border:1px solid var(--border);border-right:0;border-radius:8px 0 0 8px;background:rgba(56,152,236,.1);color:#6cb4f5;
   font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;cursor:pointer;margin:0;text-transform:none;letter-spacing:0}
@@ -8391,17 +8410,27 @@ main .panel,main .ap-head{animation:none}
 .pt-add{margin-top:2px}
 .pt-emptybtn{width:100%;background:none;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s}
 .pt-emptybtn:hover{border-color:var(--accent);color:var(--text);background:var(--hover)}
-@container (max-width:780px){
+@container (max-width:1260px){
   .pt-scroll{overflow:visible}
-  .pt-grid{min-width:0;background:none;border:0;border-radius:0;display:flex;flex-direction:column;gap:10px;overflow:visible}
+  .pt-grid{background:none;border:0;border-radius:0;display:flex;flex-direction:column;gap:10px;overflow:visible}
   .pt-th{display:none}
   .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
   .pt-grp+.pt-grp{border-top:1px solid var(--border)}
-  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px;padding:12px}
-  .pt-pat,.pt-ex,.pt-note{grid-column:1/-1}
+  .pt-tr{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:9px 10px;padding:12px}
+  .pt-pat,.pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
+  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 10px;min-height:0}
+  .pt-pat:empty{display:none}
+  .pt-pat .pt-type{flex:0 1 160px}
   .pt-cnt{grid-column:span 1}
+  .pt-cnt:empty{display:none}
+  .pt-link{grid-column:span 2}
   .pt-cl{display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;color:var(--dim)}
   .pt-x{opacity:.7}
+}
+@container (max-width:560px){
+  .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pt-link{grid-column:1/-1}
+}
 }
 
 /* The movement-pattern table inside the brief, with phases. */
@@ -8411,6 +8440,10 @@ main .panel,main .ap-head{animation:none}
 .di-ppsec .pt{padding:12px}
 /* A phase: a bar with its name (typed over), how much it holds and its ✕, then its own table. */
 .di-pph{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--elevated);border-bottom:1px solid var(--border)}
+.di-pph-ch{flex:none;border:0;background:none;color:var(--ph-c,var(--dim));font-size:10px;cursor:pointer;padding:4px 5px;margin:0 -2px 0 -4px;border-radius:5px}
+.di-pph-ch:hover{background:var(--panel)}
+.di-pph-ch:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.di-ppsec.folded .di-pph{border-bottom:0}
 .di-pph-dot{width:9px;height:9px;border-radius:3px;flex:none;background:var(--ph-c,var(--accent))}
 .di-pph-nm{background:none;border:0;color:var(--text);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   padding:3px 6px;margin:0 0 0 -6px;border-radius:6px;min-width:60px;font-family:inherit}
@@ -19879,6 +19912,11 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
      onPattern(key,id)        a row without a pattern was given one (optional)
+     onType(key,id)           the row's type box ("Tür": Horizontal, Anti-Extension, Squat …) was
+                              changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
+                              current one in `typeVal` (optional — no box when a slot has none)
+     onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
+                              go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
      renderDetail(key)        what the row's "more" button opens (optional) */
 let PT_UID=0;
@@ -19928,9 +19966,22 @@ function PtTag({tag,val,onChange}){
     </select>
   </label>);
 }
+/* The row's type — how the pattern is executed (horizontal / vertical, anti-extension …) or what
+   kind of lift it is — as a small box under the pattern's name. Pressing it opens the list. */
+function PtType({value,opts,onChange,label}){
+  if(!opts||!opts.length)return null;
+  const known=opts.some(o=>o[0]===value);
+  return(<label className={'pt-type'+(known?' on':'')} title={L('Egzersizin türü — değiştirmek için seç','The exercise\'s type — pick to change it')}>
+    <select value={known?value:''} aria-label={label} onChange={e=>onChange(e.target.value)}>
+      <option value="">{L('Tür seç…','Pick type…')}</option>
+      {opts.map(o=><option key={o[0]} value={o[0]}>{o[1]}</option>)}
+    </select>
+  </label>);
+}
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
-  return ka.length===kb.length&&ka.every(k=>a[k]===b[k]);
+  /* `typeOpts` is a fresh array on every draw of the host; it counts as the same when it holds the same. */
+  return ka.length===kb.length&&ka.every(k=>a[k]===b[k]||(Array.isArray(a[k])&&Array.isArray(b[k])&&JSON.stringify(a[k])===JSON.stringify(b[k])));
 };
 const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
 /* One exercise: up to three grid rows under its pattern — the exercise itself with its dose
@@ -19981,7 +20032,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
             <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
               aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
-        {slot.sub&&<span className="pt-sub" title={L('Uygulama','Execution')}>{slot.sub}</span>}
+        <PtType value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} onChange={v=>cb.onType(k,v)}/>
       </div>
       <div className="pt-td pt-ex" role="cell">
         <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
@@ -19994,6 +20045,12 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           </div>
           {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
             onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
+          {cb.hasMove&&<span className="pt-mv">
+            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+          </span>}
           {(grp.count>1||grp.pick)&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
@@ -20055,9 +20112,12 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onCount:(g,n)=>live.current.onCount(g,n),
     onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
+    onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
+    onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
+    hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
   // eslint-disable-next-line
-  }),[!!handlers.onNew]);
+  }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
     <div className="pt-top">
@@ -20147,6 +20207,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     return out;
   },[rows]);
   const patOpts=useMemo(()=>EX_PATTERNS.map(p=>({id:p,label:exLabel(p)})),[]);
+  const posOf=useMemo(()=>{const m={};rows.forEach((r,ix)=>{m[r.i]=ix;});return m;},[rows]);
   const groups=runs.map((run,gi)=>({
     id:`${gi}:${run.pat}`,pat:run.pat,
     label:run.pat?exLabel(run.pat):L('Patern seçilmedi','No pattern'),
@@ -20159,7 +20220,9 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
-        sub:ex.plane?exLabel(ex.plane):'',tagP:ex.pattern||'',tagS:ex.plane||''};})}));
+        typeOpts:exStylesFor(ex.pattern).map(o=>[o,exLabel(o)]),typeVal:ex.plane||'',
+        canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
+        tagP:ex.pattern||'',tagS:ex.plane||''};})}));
   const chips=EX_PATTERNS.map(p=>({id:p,label:exLabel(p),on:rows.some(r=>r.ex.pattern===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
@@ -20236,6 +20299,8 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
     onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
     onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
+    onType:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,v);edit(k,x=>({...x,plane:v}));},
+    onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
@@ -38357,7 +38422,11 @@ function diManualProgram(instr,libMap,sessionName){
     :/soğuma|soguma|cool|tamamlayıcı|tamamlayici|complement|finish/i.test(nm)?'tamamlayici':'ana';
   const exOf=(p,bi,i,ph)=>{
     const row=diMoveRow(p.id);
-    const[exPat,exPlane]=DI_PAT_EX[p.id]||['',''];
+    const[exPat,exPlane0]=DI_PAT_EX[p.id]||['',''];
+    /* A core row's task (anti-extension, rotation …) is the calendar's execution for it. */
+    const taskPlane=p.id==='core'&&p.task&&p.task[0]
+      ?exStylesFor('Core').find(x=>x.toLowerCase().replace(/[- ]/g,'')===String(p.task[0]).replace(/_/g,'')):'';
+    const exPlane=taskPlane||exPlane0;
     const nm=String(p.exercise).trim();
     const al=p.alt||{};
     const altName=String(al.name||'').trim();
@@ -38989,6 +39058,10 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
+/* The facet that says what kind of exercise a pattern's row is — the squat / lunge / step-up of a
+   knee-dominant row, the anti-extension of a core row. The push and pull patterns carry theirs in
+   the pattern itself (horizontal / vertical) and have none. */
+const diTypeFacet=id=>{const row=diMoveRow(id);return row?(row.facets.find(f=>f.k==='type'||f.k==='task')||null):null;};
 function DiPatternPlan({plan,onChange:emit,closed}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -39017,6 +39090,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   };
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
+  /* Phase sections fold shut to a bar ("Hazırlık Bölümü · 6 egzersiz"); what is written in one is
+     kept, only not drawn. Keyed by phase id, '_loose' for the unplaced tray. */
+  const[folded,setFolded]=useState(()=>new Set());
+  const toggleFold=id=>setFolded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçersen yine programa girer; ağrısız ve modifiye bir varyasyon yazmayı düşün.',
     'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
   const known=ph=>latest.current.phases.some(x=>x.id===ph);
@@ -39070,10 +39147,13 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
       pick:row.id==='',options:patOpts,
       slots:items.map((p,ix)=>{const k=`${ph}|${row.id}|${ix}`;const a=p.alt||{};
+        const tf=diTypeFacet(row.id);
         return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
           sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
           a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
-          a_rest:a.rest,a_link:a.link,sub:'',tagP:'',tagS:''};})}));
+          a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
+          typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
+          canUp:ix>0,canDown:ix<items.length-1};})}));
     const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     const handlers={
@@ -39112,6 +39192,13 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       onLinkBlur:(k,isAlt,v)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p)return;
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
+      /* The type box writes the pattern's own "type" (or, for the core, "task") facet. */
+      onType:(k,v)=>patch(k,p=>{const tf=diTypeFacet(p.id);return tf?{...p,[tf.k]:v?[v]:[]}:p;}),
+      /* Up and down swap a row with its neighbour in the same pattern (and phase): the table
+         lists patterns in chip order, so a row moves within its own pattern. */
+      onMove:(k,d)=>{const[h,id,ix]=parse(k);const items=itemsOf(id,h);const j=ix+d;
+        if(j<0||j>=items.length)return;
+        const a=[...items];[a[ix],a[j]]=[a[j],a[ix]];setGroup(id,h,a);},
       onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
       /* A row with no pattern was given one: it moves into that pattern's rows. */
       onPattern:(k,nid)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p||!diMoveRow(nid))return;
@@ -39137,8 +39224,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     </div>
     {phases.length===0
       ?section('',false)
-      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)}>
+      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)+(folded.has(p.id)?' folded':'')}>
           <header className="di-pph">
+            <button type="button" className="di-pph-ch" aria-expanded={!folded.has(p.id)} onClick={()=>toggleFold(p.id)}
+              title={folded.has(p.id)?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has(p.id)?'▶':'▼'}</button>
             <i className="di-pph-dot"/>
             <PhaseNameInput className="di-pph-nm" value={diPhaseName(p)} onChange={v=>renamePhase(p.id,v)}
               title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
@@ -39146,12 +39235,15 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}
               title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button></span>
           </header>
-          {section(p.id,false)}
+          {!folded.has(p.id)&&section(p.id,false)}
         </section>)}
-        {unplaced&&<section className="di-ppsec loose">
-          <header className="di-pph"><span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
+        {unplaced&&<section className={'di-ppsec loose'+(folded.has('_loose')?' folded':'')}>
+          <header className="di-pph">
+            <button type="button" className="di-pph-ch" aria-expanded={!folded.has('_loose')} onClick={()=>toggleFold('_loose')}
+              title={folded.has('_loose')?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has('_loose')?'▶':'▼'}</button>
+            <span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
             <span className="di-pph-n">{L('Henüz bir faza konmadı — program bunları sona ekler.','Not placed in a phase yet — the programme puts them last.')}</span></header>
-          {section('',true)}
+          {!folded.has('_loose')&&section('',true)}
         </section>}</>}
   </div>);
 }

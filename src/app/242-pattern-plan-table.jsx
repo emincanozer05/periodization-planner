@@ -19,6 +19,11 @@
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
      onPattern(key,id)        a row without a pattern was given one (optional)
+     onType(key,id)           the row's type box ("Tür": Horizontal, Anti-Extension, Squat …) was
+                              changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
+                              current one in `typeVal` (optional — no box when a slot has none)
+     onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
+                              go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
      renderDetail(key)        what the row's "more" button opens (optional) */
 let PT_UID=0;
@@ -68,9 +73,22 @@ function PtTag({tag,val,onChange}){
     </select>
   </label>);
 }
+/* The row's type — how the pattern is executed (horizontal / vertical, anti-extension …) or what
+   kind of lift it is — as a small box under the pattern's name. Pressing it opens the list. */
+function PtType({value,opts,onChange,label}){
+  if(!opts||!opts.length)return null;
+  const known=opts.some(o=>o[0]===value);
+  return(<label className={'pt-type'+(known?' on':'')} title={L('Egzersizin türü — değiştirmek için seç','The exercise\'s type — pick to change it')}>
+    <select value={known?value:''} aria-label={label} onChange={e=>onChange(e.target.value)}>
+      <option value="">{L('Tür seç…','Pick type…')}</option>
+      {opts.map(o=><option key={o[0]} value={o[0]}>{o[1]}</option>)}
+    </select>
+  </label>);
+}
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
-  return ka.length===kb.length&&ka.every(k=>a[k]===b[k]);
+  /* `typeOpts` is a fresh array on every draw of the host; it counts as the same when it holds the same. */
+  return ka.length===kb.length&&ka.every(k=>a[k]===b[k]||(Array.isArray(a[k])&&Array.isArray(b[k])&&JSON.stringify(a[k])===JSON.stringify(b[k])));
 };
 const PT_ALT_KEYS=['sets','reps','duration','tempo','rpe','load','rest','link'];
 /* One exercise: up to three grid rows under its pattern — the exercise itself with its dose
@@ -121,7 +139,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
             <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
               aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
-        {slot.sub&&<span className="pt-sub" title={L('Uygulama','Execution')}>{slot.sub}</span>}
+        <PtType value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} onChange={v=>cb.onType(k,v)}/>
       </div>
       <div className="pt-td pt-ex" role="cell">
         <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
@@ -134,6 +152,12 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           </div>
           {hasDetail&&<button type="button" className={'pt-more'+(detailOpen?' on':'')} aria-expanded={detailOpen}
             onClick={()=>cb.toggleDetail(k)} title={L('Görsel, uygulama ve diğer ayrıntılar','Image, execution and other details')}>⋯</button>}
+          {cb.hasMove&&<span className="pt-mv">
+            <button type="button" className="up" disabled={!slot.canUp} onClick={()=>cb.onMove(k,-1)}
+              aria-label={L('Yukarı taşı','Move up')} title={L('Yukarı taşı','Move up')}/>
+            <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
+              aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
+          </span>}
           {(grp.count>1||grp.pick)&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
@@ -195,9 +219,12 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onCount:(g,n)=>live.current.onCount(g,n),
     onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
+    onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
+    onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
+    hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
   // eslint-disable-next-line
-  }),[!!handlers.onNew]);
+  }),[!!handlers.onNew,!!handlers.onMove]);
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
     <div className="pt-top">
@@ -287,6 +314,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     return out;
   },[rows]);
   const patOpts=useMemo(()=>EX_PATTERNS.map(p=>({id:p,label:exLabel(p)})),[]);
+  const posOf=useMemo(()=>{const m={};rows.forEach((r,ix)=>{m[r.i]=ix;});return m;},[rows]);
   const groups=runs.map((run,gi)=>({
     id:`${gi}:${run.pat}`,pat:run.pat,
     label:run.pat?exLabel(run.pat):L('Patern seçilmedi','No pattern'),
@@ -299,7 +327,9 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
-        sub:ex.plane?exLabel(ex.plane):'',tagP:ex.pattern||'',tagS:ex.plane||''};})}));
+        typeOpts:exStylesFor(ex.pattern).map(o=>[o,exLabel(o)]),typeVal:ex.plane||'',
+        canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
+        tagP:ex.pattern||'',tagS:ex.plane||''};})}));
   const chips=EX_PATTERNS.map(p=>({id:p,label:exLabel(p),on:rows.some(r=>r.ex.pattern===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
@@ -376,6 +406,8 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
     onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
     onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
+    onType:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,v);edit(k,x=>({...x,plane:v}));},
+    onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
