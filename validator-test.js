@@ -1595,6 +1595,15 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       en.blocks[1].exercises[0].name === 'Serbest Hareket' && en.blocks[1].exercises[0].coachPattern === '' && en.blocks[1].exercises[0].exPattern === '');
   }
 
+  group('Ek — Takvimde hazır fazlar uygulama diliyle senkron');
+  {
+    const en = ['hazirlik', 'ana', 'soguma'].map(k => A.blkPhaseLbl(k, {})).join('|');
+    const tr = A.inTurkish(() => ['hazirlik', 'ana', 'soguma'].map(k => A.blkPhaseLbl(k, {})).join('|'));
+    check('hazır fazlar: Hazırlık Bölümü / Ana Bölüm / Soğuma, dile göre okunuyor', en === 'Preparation|Main Phase|Cool Down' && tr === 'Hazırlık Bölümü|Ana Bölüm|Soğuma', en + ' / ' + tr);
+    check('hazır fazın üstüne yazılan ad hazır adın yerine geçiyor',
+      A.blkPhaseLbl('ana', { phaseNames: { ana: 'Güç Bölümü' } }) === 'Güç Bölümü');
+  }
+
   /* ─── özet ─────────────────────────────────────────────────────────────── */
   /* Yarıda kesilmiş bir koşu YEŞİL GÖRÜNMEMELİ. Senaryoların bir kısmı async bir
      blokta; oradaki bir istisna sessizce sona atlamış olsaydı, koşan üç testin

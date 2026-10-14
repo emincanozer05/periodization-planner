@@ -221,7 +221,7 @@ const blkKind=b=>(b&&b.kind==='ball')?'ball':'sc';
    opens a section with a name of the coach's choosing, and a programme loaded from JSON
    opens one per block it brings. */
 const BLK_PHASES=['hazirlik','ana','soguma'];
-const BLK_PHASE_LBL={hazirlik:['Hazırlık','Preparation'],ana:['Ana Faz','Main Phase'],soguma:['Soğuma','Cool Down']};
+const BLK_PHASE_LBL={hazirlik:['Hazırlık Bölümü','Preparation'],ana:['Ana Bölüm','Main Phase'],soguma:['Soğuma','Cool Down']};
 const BLK_PHASE_NOTE={hazirlik:['ısınma · aktivasyon · hareketlilik','warm-up · activation · mobility'],
   ana:['seansın asıl işi','the work the session exists for'],
   soguma:['toparlanma · esneme · nefes','recovery · stretching · breathing']};
