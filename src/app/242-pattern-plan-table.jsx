@@ -398,7 +398,10 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     }),
     onNew:(k,nm)=>edit(k,ex=>{
       if(ex.plane)return ex;
-      const t=ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'','');
+      /* A card the library already has for this name says how it is filed; only without one is
+         the row read off its name. */
+      const hit=exLibHit(nm),lt=hit?exTagsFromLib(hit,ex):null;
+      const t=lt||(ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'',''));
       if(!t.pattern||!t.plane)return ex;
       rememberExerciseTags(nm,t.pattern,t.plane);
       return{...ex,name:nm,pattern:t.pattern,plane:t.plane};

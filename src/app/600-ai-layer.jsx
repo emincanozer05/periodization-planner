@@ -394,12 +394,42 @@ const DI_PAT_EX={knee_dominant:['Knee Dominant',''],hip_dominant:['Hip Dominant'
   horizontal_push:['Upper Body Push','Horizontal'],vertical_push:['Upper Body Push','Vertical'],
   horizontal_pull:['Upper Body Pull','Horizontal'],vertical_pull:['Upper Body Pull','Vertical'],
   carry:['Core','Anti-Lateral Flexion'],core:['Core',''],accessory:['Accessory','']};
+/* Which of the brief's patterns — and which type under it — a library exercise is filed as,
+   read off the pair its card was tagged with (movement pattern + execution), falling back to
+   the card's Exercise Type and then nothing: `{id,type}`, each '' when the library does not
+   say. Rotational pressing and pulling, full-body lifts and untagged cards have no pattern
+   of the brief's to land in. The type is the execution of a core row (anti-extension …) and,
+   for squat / hinge rows, the lift read off the name. */
+const DI_TYPE_WORDS={
+  knee_dominant:[[/step[- ]?down/,'step_down'],[/step[- ]?up/,'step_up'],[/lunge|split squat|\bsplit\b/,'lunge'],[/squat|leg press/,'squat']],
+  hip_dominant:[[/good ?morning/,'good_morning'],[/hip thrust/,'hip_thrust'],[/glute bridge|\bbridge\b/,'glute_bridge'],
+    [/pull[- ]?through/,'pull_through'],[/\bswing\b/,'swing'],[/\brdl\b|romanian/,'rdl'],[/deadlift/,'deadlift']]};
+function diPickTags(it,name){
+  const t=exTagsFromLib(it,{})||{pattern:'',plane:''};
+  const nm=String(name||(it&&it.name)||'').toLowerCase();
+  let id='';
+  if(t.pattern==='Knee Dominant')id='knee_dominant';
+  else if(t.pattern==='Hip Dominant')id='hip_dominant';
+  else if(t.pattern==='Core')id='core';
+  else if(t.pattern==='Accessory')id='accessory';
+  else if(t.pattern==='Upper Body Push'||t.pattern==='Upper Body Pull'){
+    const arm=t.pattern==='Upper Body Push'?'push':'pull';
+    id=t.plane==='Vertical'?`vertical_${arm}`:t.plane==='Horizontal'?`horizontal_${arm}`:'';
+  }
+  let type='';
+  if(id==='core')type=String(t.plane||'').toLowerCase().replace(/[- ]/g,'_');
+  else if(DI_TYPE_WORDS[id]){const hit=DI_TYPE_WORDS[id].find(([re])=>re.test(nm));type=hit?hit[1]:'';}
+  const row=diMoveRow(id),tf=row&&row.facets.find(f=>f.k==='type'||f.k==='task');
+  if(!tf||!tf.opts.some(op=>op[0]===type))type='';
+  return{id,type};
+}
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
-   while several could be ticked keeps the first. The items of one pattern are kept
-   together, patterns in the order they were first picked. */
+   while several could be ticked keeps the first. The list keeps the order the coach wrote
+   it in — the table is a running order, and ↑ / ↓ can put a core exercise between two
+   squats — only the cap per pattern per phase is enforced. */
 function diMovePatterns(v){
-  const groups=new Map();
+  const counts=new Map(),out=[];
   (Array.isArray(v)?v:[]).forEach(x=>{
     const id=typeof x==='string'?x:(x&&x.id);
     const row=diMoveRow(id);
@@ -410,9 +440,8 @@ function diMovePatterns(v){
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
     const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
     const gk=id+'|'+phase;
-    if(!groups.has(gk))groups.set(gk,[]);
-    const g=groups.get(gk);
-    if(g.length>=(id===''?12:DI_MOVE_MAX_SLOTS))return;
+    if((counts.get(gk)||0)>=(id===''?12:DI_MOVE_MAX_SLOTS))return;
+    counts.set(gk,(counts.get(gk)||0)+1);
     /* Text boxes are kept exactly as typed — trimming here would take the space off the end
        of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
     const txt=(val,max)=>String(val==null?'':val).slice(0,max);
@@ -434,9 +463,9 @@ function diMovePatterns(v){
     o.alt={name:txt(ar.name,120)};
     DI_MOVE_DOSE.forEach(k=>{o.alt[k]=txt(ar[k],40);});
     o.alt.link=txt(ar.link,300);
-    g.push(o);
+    out.push(o);
   });
-  return[...groups.values()].flat();
+  return out;
 }
 /* The movement_pattern values that count as this pick. A lower-body pattern dosed for
    power or reactive strength is usually trained as a jump (trap bar jump, drop jump),
@@ -1065,10 +1094,8 @@ function diManualProgram(instr,libMap,sessionName){
   };
   /* Phases in their own order; whatever is not placed in one closes the session. */
   const order=[...phases,{id:'',name:''}];
-  const chip=id=>{const i=DI_MOVE_PATTERNS.findIndex(r=>r.id===id);return i<0?99:i;};
   const blocks=order.map((ph,bi)=>{
-    const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)))
-      .sort((a,b)=>chip(a.id)-chip(b.id));
+    const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)));
     const name=ph.id?diPhaseName(ph):'';
     const kind=diPhasePreset(ph.preset)?diPhasePreset(ph.preset).ph:phaseOf(name);
     return{key:`man:${bi}`,name,phase:kind,exercises:mine.map((p,i)=>exOf(p,bi,i,kind))};

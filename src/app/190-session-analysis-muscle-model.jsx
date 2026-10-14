@@ -174,6 +174,9 @@ const EX_NAME_PATTERN=[
 /* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
 const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
   'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+/* The library card carrying exactly this name, or null. */
+const exLibHit=name=>{const nm=String(name||'').trim().toLowerCase();
+  return nm?(getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm)||null):null;};
 function exGuessPattern(name){
   const nm=String(name||'').trim().toLowerCase();
   if(!nm)return'';

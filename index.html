@@ -8416,21 +8416,37 @@ main .panel,main .ap-head{animation:none}
   .pt-th{display:none}
   .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
   .pt-grp+.pt-grp{border-top:1px solid var(--border)}
-  .pt-tr{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:9px 10px;padding:12px}
-  .pt-pat,.pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 10px;min-height:0}
+  /* A folded row is kept short: pattern beside the exercise on one line, the dose boxes under
+     them, and the alternative button beside the note. Only the number boxes carry a caption —
+     the others say what they are in their own placeholder. */
+  .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
+  .pt-pat{grid-column:span 3}
+  .pt-ex{grid-column:span 9}
   .pt-pat:empty{display:none}
-  .pt-pat .pt-type{flex:0 1 160px}
+  .pt-pat:empty+.pt-ex{grid-column:1/-1}
+  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px;min-height:36px}
+  .pt-pat .pt-type{flex:1 1 100%}
+  .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-link .pt-cl,.pt-note .pt-cl{display:none}
   .pt-cnt{grid-column:span 1}
   .pt-cnt:empty{display:none}
-  .pt-link{grid-column:span 2}
-  .pt-cl{display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;color:var(--dim)}
+  .pt-link{grid-column:span 3}
+  .pt-note,.pt-sec .pt-note{grid-column:span 9}
+  .pt-sec:not(.alt) .pt-ex{grid-column:span 3}
+  .pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
+  .pt-sec.note .pt-note{grid-column:1/-1}
+  .pt-sec .pt-pat{display:none}
+  .pt-tr.pt-sec{margin-top:0;padding-top:0}
+  .pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
   .pt-x{opacity:.7}
 }
-@container (max-width:560px){
+@container (max-width:760px){
+  .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .pt-pat,.pt-ex,.pt-sec:not(.alt) .pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
+  .pt-link{grid-column:span 3}
+}
+@container (max-width:480px){
   .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
   .pt-link{grid-column:1/-1}
-}
 }
 
 /* The movement-pattern table inside the brief, with phases. */
@@ -16490,6 +16506,9 @@ const EX_NAME_PATTERN=[
 /* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
 const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
   'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+/* The library card carrying exactly this name, or null. */
+const exLibHit=name=>{const nm=String(name||'').trim().toLowerCase();
+  return nm?(getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm)||null):null;};
 function exGuessPattern(name){
   const nm=String(name||'').trim().toLowerCase();
   if(!nm)return'';
@@ -20291,7 +20310,10 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     }),
     onNew:(k,nm)=>edit(k,ex=>{
       if(ex.plane)return ex;
-      const t=ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'','');
+      /* A card the library already has for this name says how it is filed; only without one is
+         the row read off its name. */
+      const hit=exLibHit(nm),lt=hit?exTagsFromLib(hit,ex):null;
+      const t=lt||(ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'',''));
       if(!t.pattern||!t.plane)return ex;
       rememberExerciseTags(nm,t.pattern,t.plane);
       return{...ex,name:nm,pattern:t.pattern,plane:t.plane};
@@ -37770,12 +37792,42 @@ const DI_PAT_EX={knee_dominant:['Knee Dominant',''],hip_dominant:['Hip Dominant'
   horizontal_push:['Upper Body Push','Horizontal'],vertical_push:['Upper Body Push','Vertical'],
   horizontal_pull:['Upper Body Pull','Horizontal'],vertical_pull:['Upper Body Pull','Vertical'],
   carry:['Core','Anti-Lateral Flexion'],core:['Core',''],accessory:['Accessory','']};
+/* Which of the brief's patterns — and which type under it — a library exercise is filed as,
+   read off the pair its card was tagged with (movement pattern + execution), falling back to
+   the card's Exercise Type and then nothing: `{id,type}`, each '' when the library does not
+   say. Rotational pressing and pulling, full-body lifts and untagged cards have no pattern
+   of the brief's to land in. The type is the execution of a core row (anti-extension …) and,
+   for squat / hinge rows, the lift read off the name. */
+const DI_TYPE_WORDS={
+  knee_dominant:[[/step[- ]?down/,'step_down'],[/step[- ]?up/,'step_up'],[/lunge|split squat|\bsplit\b/,'lunge'],[/squat|leg press/,'squat']],
+  hip_dominant:[[/good ?morning/,'good_morning'],[/hip thrust/,'hip_thrust'],[/glute bridge|\bbridge\b/,'glute_bridge'],
+    [/pull[- ]?through/,'pull_through'],[/\bswing\b/,'swing'],[/\brdl\b|romanian/,'rdl'],[/deadlift/,'deadlift']]};
+function diPickTags(it,name){
+  const t=exTagsFromLib(it,{})||{pattern:'',plane:''};
+  const nm=String(name||(it&&it.name)||'').toLowerCase();
+  let id='';
+  if(t.pattern==='Knee Dominant')id='knee_dominant';
+  else if(t.pattern==='Hip Dominant')id='hip_dominant';
+  else if(t.pattern==='Core')id='core';
+  else if(t.pattern==='Accessory')id='accessory';
+  else if(t.pattern==='Upper Body Push'||t.pattern==='Upper Body Pull'){
+    const arm=t.pattern==='Upper Body Push'?'push':'pull';
+    id=t.plane==='Vertical'?`vertical_${arm}`:t.plane==='Horizontal'?`horizontal_${arm}`:'';
+  }
+  let type='';
+  if(id==='core')type=String(t.plane||'').toLowerCase().replace(/[- ]/g,'_');
+  else if(DI_TYPE_WORDS[id]){const hit=DI_TYPE_WORDS[id].find(([re])=>re.test(nm));type=hit?hit[1]:'';}
+  const row=diMoveRow(id),tf=row&&row.facets.find(f=>f.k==='type'||f.k==='task');
+  if(!tf||!tf.opts.some(op=>op[0]===type))type='';
+  return{id,type};
+}
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
-   while several could be ticked keeps the first. The items of one pattern are kept
-   together, patterns in the order they were first picked. */
+   while several could be ticked keeps the first. The list keeps the order the coach wrote
+   it in — the table is a running order, and ↑ / ↓ can put a core exercise between two
+   squats — only the cap per pattern per phase is enforced. */
 function diMovePatterns(v){
-  const groups=new Map();
+  const counts=new Map(),out=[];
   (Array.isArray(v)?v:[]).forEach(x=>{
     const id=typeof x==='string'?x:(x&&x.id);
     const row=diMoveRow(id);
@@ -37786,9 +37838,8 @@ function diMovePatterns(v){
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
     const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
     const gk=id+'|'+phase;
-    if(!groups.has(gk))groups.set(gk,[]);
-    const g=groups.get(gk);
-    if(g.length>=(id===''?12:DI_MOVE_MAX_SLOTS))return;
+    if((counts.get(gk)||0)>=(id===''?12:DI_MOVE_MAX_SLOTS))return;
+    counts.set(gk,(counts.get(gk)||0)+1);
     /* Text boxes are kept exactly as typed — trimming here would take the space off the end
        of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
     const txt=(val,max)=>String(val==null?'':val).slice(0,max);
@@ -37810,9 +37861,9 @@ function diMovePatterns(v){
     o.alt={name:txt(ar.name,120)};
     DI_MOVE_DOSE.forEach(k=>{o.alt[k]=txt(ar[k],40);});
     o.alt.link=txt(ar.link,300);
-    g.push(o);
+    out.push(o);
   });
-  return[...groups.values()].flat();
+  return out;
 }
 /* The movement_pattern values that count as this pick. A lower-body pattern dosed for
    power or reactive strength is usually trained as a jump (trap bar jump, drop jump),
@@ -38441,10 +38492,8 @@ function diManualProgram(instr,libMap,sessionName){
   };
   /* Phases in their own order; whatever is not placed in one closes the session. */
   const order=[...phases,{id:'',name:''}];
-  const chip=id=>{const i=DI_MOVE_PATTERNS.findIndex(r=>r.id===id);return i<0?99:i;};
   const blocks=order.map((ph,bi)=>{
-    const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)))
-      .sort((a,b)=>chip(a.id)-chip(b.id));
+    const mine=items.filter(p=>(p.phase||'')===ph.id||(ph.id===''&&!phases.some(x=>x.id===p.phase)));
     const name=ph.id?diPhaseName(ph):'';
     const kind=diPhasePreset(ph.preset)?diPhasePreset(ph.preset).ph:phaseOf(name);
     return{key:`man:${bi}`,name,phase:kind,exercises:mine.map((p,i)=>exOf(p,bi,i,kind))};
@@ -39052,7 +39101,9 @@ function DiSignals({items,limit}){
    every picked pattern is a row of the table (PlanTable): the exercise — picked off the
    library or typed, a new name is filed into it — its alternative (with a dose of its own),
    how many exercises of the pattern, the prescription, a link and a note. "Egzersiz adedi"
-   adds further rows of the same pattern.
+   adds further rows of the same pattern. The rows are a running order: neighbours that share a
+   pattern fold under one name, and ↑ / ↓ move an exercise past its neighbour, whatever pattern it
+   is — the programme and the printout read in the order written here.
    The session can be cut into phases ("Faz Ekle"): each phase is a section with a table of
    its own and a name the coach types over; the first one opened takes in what is already
    written, and closing one puts its rows back as unplaced.
@@ -39098,15 +39149,21 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
   const known=ph=>latest.current.phases.some(x=>x.id===ph);
   const phOf=p=>(known(p.phase||'')?p.phase:'');
+  /* Rows are addressed by their place in the phase's own running order: key `phase|n`. */
+  const phIdx=ph=>{const o=[];latest.current.list.forEach((p,i)=>{if(phOf(p)===ph)o.push(i);});return o;};
   const itemsOf=(id,ph)=>latest.current.list.filter(p=>p.id===id&&phOf(p)===ph);
-  const setGroup=(id,ph,items)=>commit([...latest.current.list.filter(p=>!(p.id===id&&phOf(p)===ph)),
-    ...items.map(i=>({...i,phase:ph}))],latest.current.phases);
+  const setList=l=>commit(l,latest.current.phases);
   const fresh=(id,ph)=>({...diMovePatterns([{id,phase:ph}])[0]});
   const named=p=>!!(String(p.exercise||'').trim()||String(p.sets||'').trim()||String(p.reps||'').trim());
   const confirmDrop=items=>!items.some(named)||confirm(L(`${items.length} egzersiz silinecek. Devam edilsin mi?`,
     `${items.length} exercise${items.length>1?'s':''} will be deleted. Continue?`));
-  const parse=k=>{const[ph,id,ix]=k.split('|');return[ph,id,Number(ix)];};
-  const patch=(k,fn)=>{const[ph,id,ix]=parse(k);setGroup(id,ph,itemsOf(id,ph).map((p,i)=>i===ix?fn(p):p));};
+  const parse=k=>{const[ph,n]=k.split('|');return[ph,Number(n)];};
+  const gidx=k=>{const[ph,n]=parse(k);return phIdx(ph)[n];};
+  const patch=(k,fn)=>{const gi=gidx(k);if(gi==null)return;
+    setList(latest.current.list.map((p,i)=>i===gi?fn(p):p));};
+  /* The consecutive rows of one pattern — a "run" — as global list positions. */
+  const runsOf=ph=>{const out=[];phIdx(ph).forEach(gi=>{const p=latest.current.list[gi],last=out[out.length-1];
+    if(last&&last.id===p.id)last.at.push(gi);else out.push({id:p.id,at:[gi]});});return out;};
   /* A new phase: a ready-made one (`preset`: preparation, main, cool-down — named in the app's
      language, no typing) or a custom one. Preparation goes first and cool-down last, the main
      phase before the cool-down. The first phase opened takes in everything already written —
@@ -39134,78 +39191,117 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     commit(cur.list.map(p=>p.phase===id?{...p,phase:''}:p),cur.phases.filter(x=>x.id!==id));
   };
   const section=(ph,loose)=>{
-    /* A, B… with the place inside the letter: A1, A2, B1 — the same label the calendar gives. */
+    /* A, B… with the place inside the letter: A1, A2, B1 — the same label the calendar gives; the
+       rest are numbered 1, 2, 3 in running order. */
+    const at=phIdx(ph);
     const tags={};
-    /* Patterns in chip order, then the exercises that have no pattern yet. */
-    const ALLP=[...DI_MOVE_PATTERNS,{id:'',label:['Patern seçilmedi','No pattern']}];
     {const cnt={};let plain=0;
-      ALLP.forEach(r=>itemsOf(r.id,ph).forEach((p,ix)=>{
-        const ss=String(p.superset||'').toUpperCase();
-        tags[`${ph}|${r.id}|${ix}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);}));}
+      at.forEach((gi,n)=>{const ss=String(latest.current.list[gi].superset||'').toUpperCase();
+        tags[`${ph}|${n}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);});}
     const patOpts=DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1])}));
-    const groups=ALLP.map(row=>({row,items:itemsOf(row.id,ph)})).filter(g=>g.items.length).map(({row,items})=>({
-      id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
-      pick:row.id==='',options:patOpts,
-      slots:items.map((p,ix)=>{const k=`${ph}|${row.id}|${ix}`;const a=p.alt||{};
-        const tf=diTypeFacet(row.id);
-        return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
-          sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
-          a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
-          a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
-          typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
-          canUp:ix>0,canDown:ix<items.length-1};})}));
+    const runs=runsOf(ph);
+    let n0=0;
+    const groups=runs.map((run,ri)=>{
+      const row=diMoveRow(run.id);
+      const g={id:`${ph}|${ri}`,pat:run.id,
+        label:row?L(row.label[0],row.label[1]):L('Patern seçilmedi','No pattern'),
+        color:row?(ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||''):'',pick:run.id==='',options:patOpts,
+        slots:run.at.map(gi=>{const p=latest.current.list[gi];const n=n0++;const k=`${ph}|${n}`;const a=p.alt||{};
+          const tf=diTypeFacet(p.id);
+          return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
+            sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
+            a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
+            a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
+            typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
+            canUp:n>0,canDown:n<at.length-1};})};
+      return g;
+    });
     const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
+    /* What a library exercise says about the row it lands on: the pattern the card is filed under
+       and the card's type go onto the row. `force` is a pick (the row's exercise is being
+       replaced, so the new one brings its own pattern and type); without it (a typed name) only
+       an unpatterned row takes the pattern, and a type already set stays. */
+    const withLib=(k,it,force)=>{
+      const gi=gidx(k);if(gi==null||!it)return;
+      const p=latest.current.list[gi];
+      const t=diPickTags(it,p.exercise);
+      const nid=(force||p.id==='')&&t.id?t.id:p.id;
+      const tf=diTypeFacet(nid);
+      const nx={...p,id:nid};
+      if(tf&&t.type&&(nid===t.id)&&(force||!(p[tf.k]||[])[0]))nx[tf.k]=[t.type];
+      if(nx.id===p.id&&nx[tf?tf.k:'id']===p[tf?tf.k:'id'])return;
+      setList(latest.current.list.map((x,i)=>i===gi?nx:x));
+    };
     const handlers={
       onChip:id=>{
         const items=itemsOf(id,ph);
-        if(!items.length)setGroup(id,ph,[fresh(id,ph)]);
-        else if(confirmDrop(items))setGroup(id,ph,[]);
+        if(!items.length)setList([...latest.current.list,fresh(id,ph)]);
+        else if(confirmDrop(items))setList(latest.current.list.filter(p=>!(p.id===id&&phOf(p)===ph)));
       },
-      onCount:(id,n)=>{
-        const items=itemsOf(id,ph);
+      /* The stepper of a run adds or drops rows at its end. */
+      onCount:(gid,n)=>{
+        const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         const want=Math.max(1,Math.min(DI_MOVE_MAX_SLOTS,Math.round(n)||1));
-        if(want>items.length)setGroup(id,ph,[...items,...Array.from({length:want-items.length},()=>fresh(id,ph))]);
-        else if(want<items.length){const drop=items.slice(want);if(confirmDrop(drop))setGroup(id,ph,items.slice(0,want));}
+        const cur=latest.current.list;
+        if(want>run.at.length){
+          const last=run.at[run.at.length-1];
+          setList([...cur.slice(0,last+1),...Array.from({length:want-run.at.length},()=>fresh(run.id,ph)),...cur.slice(last+1)]);
+        }else if(want<run.at.length){
+          const drop=run.at.slice(want);
+          if(confirmDrop(drop.map(gi=>cur[gi])))setList(cur.filter((_,i)=>!drop.includes(i)));
+        }
       },
-      onSlot:(k,pt)=>patch(k,p=>{
-        const nx={...p,alt:{...(p.alt||{})}};
-        Object.keys(pt).forEach(f=>{
-          const v=pt[f];
-          if(f==='alt'){nx.alt={};}                                   // the alternative, deleted
-          else if(f.startsWith('a_')){
-            nx.alt[f.slice(2)]=v;
-            /* A name the library knows brings its saved link, unless the box already has one. */
-            if(f==='a_name'&&!String(nx.alt.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.alt.link=lk;}
-          }
-          else if(f==='name'){
-            nx.exercise=v;
-            if(!String(nx.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
-          }
-          else nx[f]=f==='superset'?String(v||'').toUpperCase():v;
-        });
-        return nx;}),
-      /* Picking an exercise off the library brings its saved link along. */
-      onPick:(k,it,isAlt)=>patch(k,p=>isAlt
-        ?{...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}
-        :{...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}),
-      onLinkBlur:(k,isAlt,v)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p)return;
+      onSlot:(k,pt)=>{
+        patch(k,p=>{
+          const nx={...p,alt:{...(p.alt||{})}};
+          Object.keys(pt).forEach(f=>{
+            const v=pt[f];
+            if(f==='alt'){nx.alt={};}                                   // the alternative, deleted
+            else if(f.startsWith('a_')){
+              nx.alt[f.slice(2)]=v;
+              /* A name the library knows brings its saved link, unless the box already has one. */
+              if(f==='a_name'&&!String(nx.alt.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.alt.link=lk;}
+            }
+            else if(f==='name'){
+              nx.exercise=v;
+              if(!String(nx.link||'').trim()){const lk=libLinkOf(v);if(lk)nx.link=lk;}
+            }
+            else nx[f]=f==='superset'?String(v||'').toUpperCase():v;
+          });
+          return nx;});
+        /* A typed name the library has exactly: a row that already has its pattern takes the
+           card's type if it has none yet (a row without one is filed when the box is left). */
+        if('name' in pt){const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
+          if(p&&p.id!=='')withLib(k,exLibHit(pt.name),false);}
+      },
+      /* Picking an exercise off the library brings its saved link, pattern and type along. */
+      onPick:(k,it,isAlt)=>{
+        if(isAlt){patch(k,p=>({...p,alt:{...(p.alt||{}),name:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||(p.alt&&p.alt.link)||''}}));return;}
+        patch(k,p=>({...p,exercise:String(it&&it.name||'').slice(0,120),link:(it&&it.link)||p.link||''}));
+        withLib(k,it,true);
+      },
+      /* A name the library has never seen was typed and the box left: if a card by that name
+         exists, an unpatterned row is filed the way the card is. */
+      onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
+        if(p&&p.id==='')withLib(k,exLibHit(nm),false);},
+      onLinkBlur:(k,isAlt,v)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];if(!p)return;
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
-      onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
+      onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
+      onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
+        if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
+      /* A row with no pattern was given one: it stays where it is and folds into its neighbours. */
+      onPattern:(k,nid)=>{if(!diMoveRow(nid))return;patch(k,p=>({...p,id:nid}));},
       /* The type box writes the pattern's own "type" (or, for the core, "task") facet. */
       onType:(k,v)=>patch(k,p=>{const tf=diTypeFacet(p.id);return tf?{...p,[tf.k]:v?[v]:[]}:p;}),
-      /* Up and down swap a row with its neighbour in the same pattern (and phase): the table
-         lists patterns in chip order, so a row moves within its own pattern. */
-      onMove:(k,d)=>{const[h,id,ix]=parse(k);const items=itemsOf(id,h);const j=ix+d;
-        if(j<0||j>=items.length)return;
-        const a=[...items];[a[ix],a[j]]=[a[j],a[ix]];setGroup(id,h,a);},
-      onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
-      /* A row with no pattern was given one: it moves into that pattern's rows. */
-      onPattern:(k,nid)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p||!diMoveRow(nid))return;
-        commit([...latest.current.list.filter(x=>x!==p),{...p,id:nid}],latest.current.phases);},
+      /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
+      onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
+        if(a==null||b==null)return;
+        const l=[...latest.current.list];[l[a],l[b]]=[l[b],l[a]];setList(l);},
     };
-    const addBlank=()=>setGroup('',ph,[...itemsOf('',ph),fresh('',ph)]);
-    return(<PlanTable chips={chips} groups={groups} selected={groups.filter(g=>!g.pick).length} total={loose?null:DI_MOVE_PATTERNS.length}
+    const addBlank=()=>setList([...latest.current.list,fresh('',ph)]);
+    const picked=new Set(runs.map(r=>r.id).filter(Boolean)).size;
+    return(<PlanTable chips={chips} groups={groups} selected={picked} total={loose?null:DI_MOVE_PATTERNS.length}
       handlers={handlers} max={DI_MOVE_MAX_SLOTS}
       onAdd={loose?undefined:addBlank} addLabel={L('Egzersiz Ekle','Add Exercise')}
       empty={L('Fazsız satır yok.','No unplaced rows.')}/>);

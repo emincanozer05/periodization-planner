@@ -144,21 +144,37 @@
   .pt-th{display:none}
   .pt-grp{border:1px solid var(--border);border-radius:12px;background:var(--panel)}
   .pt-grp+.pt-grp{border-top:1px solid var(--border)}
-  .pt-tr{grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:9px 10px;padding:12px}
-  .pt-pat,.pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 10px;min-height:0}
+  /* A folded row is kept short: pattern beside the exercise on one line, the dose boxes under
+     them, and the alternative button beside the note. Only the number boxes carry a caption —
+     the others say what they are in their own placeholder. */
+  .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
+  .pt-pat{grid-column:span 3}
+  .pt-ex{grid-column:span 9}
   .pt-pat:empty{display:none}
-  .pt-pat .pt-type{flex:0 1 160px}
+  .pt-pat:empty+.pt-ex{grid-column:1/-1}
+  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px;min-height:36px}
+  .pt-pat .pt-type{flex:1 1 100%}
+  .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-link .pt-cl,.pt-note .pt-cl{display:none}
   .pt-cnt{grid-column:span 1}
   .pt-cnt:empty{display:none}
-  .pt-link{grid-column:span 2}
-  .pt-cl{display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;color:var(--dim)}
+  .pt-link{grid-column:span 3}
+  .pt-note,.pt-sec .pt-note{grid-column:span 9}
+  .pt-sec:not(.alt) .pt-ex{grid-column:span 3}
+  .pt-sec.alt .pt-ex,.pt-sec.note .pt-ex{grid-column:1/-1}
+  .pt-sec.note .pt-note{grid-column:1/-1}
+  .pt-sec .pt-pat{display:none}
+  .pt-tr.pt-sec{margin-top:0;padding-top:0}
+  .pt-cl{display:block;margin-bottom:2px;font-size:10.5px;font-weight:600;color:var(--dim)}
   .pt-x{opacity:.7}
 }
-@container (max-width:560px){
+@container (max-width:760px){
+  .pt-tr{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .pt-pat,.pt-ex,.pt-sec:not(.alt) .pt-ex,.pt-note,.pt-sec .pt-note{grid-column:1/-1}
+  .pt-link{grid-column:span 3}
+}
+@container (max-width:480px){
   .pt-tr{grid-template-columns:repeat(3,minmax(0,1fr))}
   .pt-link{grid-column:1/-1}
-}
 }
 
 /* The movement-pattern table inside the brief, with phases. */
