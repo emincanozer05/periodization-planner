@@ -19,6 +19,10 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
+/* The facet that says what kind of exercise a pattern's row is — the squat / lunge / step-up of a
+   knee-dominant row, the anti-extension of a core row. The push and pull patterns carry theirs in
+   the pattern itself (horizontal / vertical) and have none. */
+const diTypeFacet=id=>{const row=diMoveRow(id);return row?(row.facets.find(f=>f.k==='type'||f.k==='task')||null):null;};
 function DiPatternPlan({plan,onChange:emit,closed}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -47,6 +51,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   };
   const shut=closed instanceof Set?closed:new Set();
   const isClosed=row=>row.vocab.some(v=>shut.has(v));
+  /* Phase sections fold shut to a bar ("Hazırlık Bölümü · 6 egzersiz"); what is written in one is
+     kept, only not drawn. Keyed by phase id, '_loose' for the unplaced tray. */
+  const[folded,setFolded]=useState(()=>new Set());
+  const toggleFold=id=>setFolded(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
   const painTip=L('Bugün ağrılı bir bölgeyi yüklüyor — seçersen yine programa girer; ağrısız ve modifiye bir varyasyon yazmayı düşün.',
     'Loads a region reported painful today — if picked it is still in the session; consider writing a pain-free, modified variation.');
   const known=ph=>latest.current.phases.some(x=>x.id===ph);
@@ -100,10 +108,13 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       id:row.id,label:L(row.label[0],row.label[1]),color:ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||'',
       pick:row.id==='',options:patOpts,
       slots:items.map((p,ix)=>{const k=`${ph}|${row.id}|${ix}`;const a=p.alt||{};
+        const tf=diTypeFacet(row.id);
         return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
           sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
           a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
-          a_rest:a.rest,a_link:a.link,sub:'',tagP:'',tagS:''};})}));
+          a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
+          typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
+          canUp:ix>0,canDown:ix<items.length-1};})}));
     const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
     const handlers={
@@ -142,6 +153,13 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       onLinkBlur:(k,isAlt,v)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p)return;
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const[h,id,ix]=parse(k);setGroup(id,h,itemsOf(id,h).filter((_,i)=>i!==ix));},
+      /* The type box writes the pattern's own "type" (or, for the core, "task") facet. */
+      onType:(k,v)=>patch(k,p=>{const tf=diTypeFacet(p.id);return tf?{...p,[tf.k]:v?[v]:[]}:p;}),
+      /* Up and down swap a row with its neighbour in the same pattern (and phase): the table
+         lists patterns in chip order, so a row moves within its own pattern. */
+      onMove:(k,d)=>{const[h,id,ix]=parse(k);const items=itemsOf(id,h);const j=ix+d;
+        if(j<0||j>=items.length)return;
+        const a=[...items];[a[ix],a[j]]=[a[j],a[ix]];setGroup(id,h,a);},
       onRemoveGroup:id=>{const items=itemsOf(id,ph);if(confirmDrop(items))setGroup(id,ph,[]);},
       /* A row with no pattern was given one: it moves into that pattern's rows. */
       onPattern:(k,nid)=>{const[h,id,ix]=parse(k);const p=itemsOf(id,h)[ix];if(!p||!diMoveRow(nid))return;
@@ -167,8 +185,10 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     </div>
     {phases.length===0
       ?section('',false)
-      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)}>
+      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)+(folded.has(p.id)?' folded':'')}>
           <header className="di-pph">
+            <button type="button" className="di-pph-ch" aria-expanded={!folded.has(p.id)} onClick={()=>toggleFold(p.id)}
+              title={folded.has(p.id)?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has(p.id)?'▶':'▼'}</button>
             <i className="di-pph-dot"/>
             <PhaseNameInput className="di-pph-nm" value={diPhaseName(p)} onChange={v=>renamePhase(p.id,v)}
               title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
@@ -176,12 +196,15 @@ function DiPatternPlan({plan,onChange:emit,closed}){
             <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}
               title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button></span>
           </header>
-          {section(p.id,false)}
+          {!folded.has(p.id)&&section(p.id,false)}
         </section>)}
-        {unplaced&&<section className="di-ppsec loose">
-          <header className="di-pph"><span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
+        {unplaced&&<section className={'di-ppsec loose'+(folded.has('_loose')?' folded':'')}>
+          <header className="di-pph">
+            <button type="button" className="di-pph-ch" aria-expanded={!folded.has('_loose')} onClick={()=>toggleFold('_loose')}
+              title={folded.has('_loose')?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has('_loose')?'▶':'▼'}</button>
+            <span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
             <span className="di-pph-n">{L('Henüz bir faza konmadı — program bunları sona ekler.','Not placed in a phase yet — the programme puts them last.')}</span></header>
-          {section('',true)}
+          {!folded.has('_loose')&&section('',true)}
         </section>}</>}
   </div>);
 }

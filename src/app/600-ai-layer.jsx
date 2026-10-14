@@ -1046,7 +1046,11 @@ function diManualProgram(instr,libMap,sessionName){
     :/soğuma|soguma|cool|tamamlayıcı|tamamlayici|complement|finish/i.test(nm)?'tamamlayici':'ana';
   const exOf=(p,bi,i,ph)=>{
     const row=diMoveRow(p.id);
-    const[exPat,exPlane]=DI_PAT_EX[p.id]||['',''];
+    const[exPat,exPlane0]=DI_PAT_EX[p.id]||['',''];
+    /* A core row's task (anti-extension, rotation …) is the calendar's execution for it. */
+    const taskPlane=p.id==='core'&&p.task&&p.task[0]
+      ?exStylesFor('Core').find(x=>x.toLowerCase().replace(/[- ]/g,'')===String(p.task[0]).replace(/_/g,'')):'';
+    const exPlane=taskPlane||exPlane0;
     const nm=String(p.exercise).trim();
     const al=p.alt||{};
     const altName=String(al.name||'').trim();
