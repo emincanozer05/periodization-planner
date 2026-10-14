@@ -1,6 +1,13 @@
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
   const panelRef=useRef(null);
   const[err,setErr]=useState('');
+  const[loadOpen,setLoadOpen]=useState(false);   // the weekly load distribution, in a window
+  useEffect(()=>{
+    if(!loadOpen)return;
+    const esc=e=>{if(e.key==='Escape')setLoadOpen(false);};
+    document.addEventListener('keydown',esc);
+    return()=>document.removeEventListener('keydown',esc);
+  },[loadOpen]);
   /* Open or folded. Remembered per device, so a coach who works with the panel folded
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
@@ -53,7 +60,7 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
      would drop whatever else was written in between. */
   const live=useRef({});
   live.current={plan,bundle,team,updateTeam,srcKey,date,setup,libMap,deficits,differentiators,recent,peers,review};
-  /* "Programı Oluştur": the Movement Pattern table gathered into a programme and put where
+  /* "Programı Kaydet": the Movement Pattern table gathered into a programme and put where
      the coach reads it — the same draft, the same checks and the same approval a written
      programme always had. It reaches the calendar only through "Onayla ve takvime yaz". */
   const buildProgram=()=>{
@@ -216,7 +223,18 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
+      {loadOpen&&ReactDOM.createPortal(<div className="modal-bg" onClick={()=>setLoadOpen(false)}>
+        <div className="modal" style={{maxWidth:1000,width:'96vw'}} onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-head">
+            <h2 style={{margin:0,fontSize:16,flex:1}}>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</h2>
+            <button className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+          </div>
+          <div style={{padding:'4px 16px 16px',overflow:'auto',maxHeight:'80vh'}}>
+            <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
+          </div>
+        </div>
+      </div>,document.body)}
     </DiSection>
     </>}
 
@@ -268,8 +286,8 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
     {(side==='cal'||side==='load')&&calendar&&React.cloneElement(calendar,{showCal:side==='cal',showLoad:side==='load'})}
 
     {onProg&&!program&&<div className="di-hold sm">
-      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Oluştur"a bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
-         'No programme for this athlete yet — fill in the Movement Pattern table and press "Build programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
+      {L('Bu sporcu için henüz bir program yok — Hareket Paterni tablosunu doldurup "Programı Kaydet"e bas ya da sporcunun takviminden elle yaz. Program onaylanıp takvime işlenene kadar sporcunun takvimine bu sayfadan bir şey yazılmaz.',
+         'No programme for this athlete yet — fill in the Movement Pattern table and press "Save programme", or write it by hand on the athlete\'s calendar. Until one is approved, this page puts nothing on their calendar.')}
     </div>}
     </div>}
     {/* Outside the faces: an approval refused on the programme side and a snapshot that

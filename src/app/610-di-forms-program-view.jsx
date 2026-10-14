@@ -186,45 +186,19 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   </div>);
 }
 
-/* The training method, in the pattern card's header: one button that opens the list.
-   Always exactly one pick — there is no "model chooses"; unset reads as straight sets. */
-function DiMethodPicker({value,onChange}){
-  const[open,setOpen]=useState(false);
-  const ref=useRef(null);
-  useEffect(()=>{
-    if(!open)return;
-    const off=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
-    const esc=e=>{if(e.key==='Escape')setOpen(false);};
-    document.addEventListener('mousedown',off);document.addEventListener('keydown',esc);
-    return()=>{document.removeEventListener('mousedown',off);document.removeEventListener('keydown',esc);};
-  },[open]);
-  const cur=diMethodRow(value)||diMethodRow(DI_METHOD_DEFAULT);
-  const pick=id=>{onChange(id);setOpen(false);};
-  return(<div className="di-meth" ref={ref}>
-    <button type="button" className="di-meth-btn on" aria-haspopup="listbox" aria-expanded={open}
-      onClick={()=>setOpen(o=>!o)}>
-      <span className="di-meth-k">{L('Antrenman metodu','Training method')}</span>
-      <b>{L(cur.label[0],cur.label[1])}</b><i>▾</i>
-    </button>
-    {open&&<div className="di-meth-menu" role="listbox" aria-label={L('Antrenman metodu','Training method')}>
-      {DI_METHODS.map(m=><button key={m.id} type="button" role="option" aria-selected={cur.id===m.id}
-        className={'di-meth-opt'+(cur.id===m.id?' on':'')} title={m.ai}
-        onClick={()=>pick(m.id)}>{L(m.label[0],m.label[1])}</button>)}
-    </div>}
-  </div>);
-}
-
 /* The brief is the movement-pattern table: patterns across the top, an exercise and its dose
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,closed}){
+function DiInstructionForm({instr,save,onBuild,onShowLoad,closed}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
           <label>{L('Hareket paterni','Movement pattern')}</label>
-          <div className="di-fhd-x"><DiMethodPicker value={instr.method} onChange={v=>save({...instr,method:v})}/></div></div>
+          {onShowLoad&&<div className="di-fhd-x"><button type="button" className="di-viewbtn" onClick={onShowLoad}
+            title={L('Bu sporcunun haftalık yük dağılımını bir pencerede göster','Show this athlete\'s weekly load distribution in a window')}>
+            <i>◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button></div>}</div>
         <span className="di-fhint">{L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
           'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
@@ -235,8 +209,7 @@ function DiInstructionForm({instr,save,onBuild,closed}){
       <span className="di-dim">{L('Hareket Paterni tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
         'The exercises and doses in the Movement Pattern table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
       <button type="button" className="di-gen" onClick={onBuild}>
-        <span className="di-gen-t">{L('Programı Oluştur','Build Programme')}</span>
-        <span className="di-gen-s">{L('Tablodan · oku · onayla','From the table · read · approve')}</span>
+        <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
       </button>
     </div>}
   </div>);
