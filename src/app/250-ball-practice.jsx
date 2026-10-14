@@ -786,13 +786,23 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
      that work in — a coach who gives phases to a written block gets it all in the first
      section and lifts the rest out of it, instead of placing twenty rows by hand. Later
      sections start empty. Each new section gets a name the coach can type over. */
-  const addPhase=()=>{
+  /* `preset` is one of the ready-made sections — preparation, main phase, cool-down (BLK_PHASES).
+     They keep no name of their own: the label is read in the app's language each time, until
+     the coach types one over it. Preparation goes first, cool-down last, the main phase before
+     the cool-down; the first section opened takes in the rows already written, unless it is a
+     preparation or a cool-down. */
+  const addPhase=preset=>{
     const{block:b,onUpdate:up}=liveRef.current;
     const had=blkPhases(b);
-    const id=newPhaseId();
-    const next=[...had,id];
-    const names={...(b.phaseNames||{}),[id]:L(`Faz ${next.length}`,`Phase ${next.length}`)};
-    const rows=!had.length?liveRef.current.exs.map(e=>had.includes(exPhase(e))?e:{...e,phase:id}):liveRef.current.exs;
+    if(preset&&had.includes(preset))return;
+    const id=preset||newPhaseId();
+    let next;
+    if(preset==='hazirlik')next=[id,...had];
+    else if(preset==='ana'&&had.includes('soguma')){const i=had.indexOf('soguma');next=[...had.slice(0,i),id,...had.slice(i)];}
+    else next=[...had,id];
+    const names=preset?{...(b.phaseNames||{})}:{...(b.phaseNames||{}),[id]:L(`Faz ${next.length}`,`Phase ${next.length}`)};
+    const takes=!had.length&&preset!=='hazirlik'&&preset!=='soguma';
+    const rows=takes?liveRef.current.exs.map(e=>had.includes(exPhase(e))?e:{...e,phase:id}):liveRef.current.exs;
     up({...b,phases:next,phaseNames:names,exercises:sortExsByPhase(rows,next)});
     setOpen(true);
   };
@@ -924,8 +934,11 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
             <button type="button" onClick={()=>closePhase(o.id)}
               title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button>
           </span>)}
-          <button type="button" className="blk-phadd" onClick={addPhase}
-            title={L('Bu bloğa yeni bir faz ekle','Add a new phase to this block')}>＋ {L('Faz Ekle','Add Phase')}</button>
+          {BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>
+            <button key={p} type="button" className="blk-phadd" onClick={()=>addPhase(p)}
+              title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}</button>)}
+          <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
+            title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
         </div>
       </div>
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
