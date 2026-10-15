@@ -62,6 +62,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/160-photo-local-media-store.jsx` | PHOTO RESIZE · LOCAL MEDIA STORE (device-only, IndexedDB) |
 | `app/170-setup-all-teams-calendar.jsx` | DD/MM/YYYY DATE FIELD · SETUP · ALL-TEAMS CALENDAR — one week, every squad |
 | `app/180-season-plan.jsx` | SEASON PLAN (with customizable periods) |
+| `app/185-move-taxonomy.jsx` | HAREKET TAKSONOMİSİ — Kategori · Tür · Yön: patern tablosu, egzersiz seçici, kütüphane ve yük dağılımının ortak listesi |
 | `app/190-session-analysis-muscle-model.jsx` | SESSION ANALYSIS HELPERS · INTERACTIVE MUSCLE / MOVEMENT MODEL  (manual, session-scoped) |
 | `app/200-team-insights-helpers.jsx` | TEAM INSIGHTS — the widget board under the week calendar · TEAM INSIGHTS REPORT — the board as one A4 landscape sheet. |
 | `app/210-team-insights-report.jsx` | — |

@@ -95,7 +95,8 @@ function loadApp() {
     'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint',
     'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
     'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
-    'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly'];
+    'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly',
+    'MV_CATS', 'mvGuessType', 'mvGuessDir', 'mvNormType', 'mvMigrateLibCard', 'mvLibCat', 'aggSessions', 'exTagsFromLib', 'EX_TYPES', 'SUB_TYPES'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -714,10 +715,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
   group('Ek — Egzersiz kütüphanesi: PDF dışa aktarma, uygulama dilinde, görsel çerçeveli');
   {
     const lib = [
-      { name: 'Romanian Deadlift', type: 'Hip Dominant', subType: 'Concentric', action: 'Pull', pattern: 'Bilateral', equipment: 'Barbell', difficulty: 'Level 2',
+      { name: 'Romanian Deadlift', type: 'Hip Dominant', subType: 'RDL', equipment: 'Barbell', difficulty: 'Level 2',
         muscle: ['Hamstrings', 'Glutes'], contra: ['knee'], purpose: 'Kalça menteşesi\n   hamstring için.', image: 'data:image/png;base64,AAAA' },
       { name: 'Pallof Press', type: 'Core', subType: 'Anti-Rotation', position: 'Standing', purpose: '' },
-      { name: 'Box Jump', type: 'Plyometric', subType: 'Vertical', exKind: 'Jump', technique: 'Bilateral', purpose: 'x'.repeat(700) },
+      { name: 'Box Jump', type: 'Plyometric', subType: 'Jump', dir: 'Vertical', purpose: 'x'.repeat(700) },
       { name: 'Özel Hareket', type: '' },
       { name: '   ', type: 'Core' },
     ];
@@ -730,19 +731,19 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       row(en, 'Özel Hareket') && en.sections[3].rows[0].name === 'Özel Hareket', en.sections.map(s => s.title).join('|'));
     const rdl = row(en, 'Romanian Deadlift');
     check('kart (en): etiketler, zorluk, kaslar, kontrendikasyon ve tek satıra inen açıklama',
-      fld(rdl, 'Contraction Focus') === 'Concentric' && fld(rdl, 'Action') === 'Pull' && fld(rdl, 'Movement Pattern') === 'Bilateral' &&
+      fld(rdl, 'Type') === 'RDL' && !fld(rdl, 'Action') && !fld(rdl, 'Movement Pattern') &&
       fld(rdl, 'Equipment') === 'Barbell' && fld(rdl, 'Difficulty') === 'Level 2 (Intermediate)' && fld(rdl, 'Muscles') === 'Hamstrings, Glutes' &&
       fld(rdl, 'Contraindications') === 'Knee' && rdl.desc === 'Kalça menteşesi hamstring için.' && /\S/.test(fld(rdl, 'movement_pattern') || ''),
       JSON.stringify(rdl.fields));
     check('kart: kaslar ve kontrendikasyonlar geniş alan, diğerleri üçerli',
-      rdl.fields.filter(f => f.wide).map(f => f.k).join('|') === 'Muscles|Contraindications' && rdl.fields.filter(f => !f.wide).length >= 5);
+      rdl.fields.filter(f => f.wide).map(f => f.k).join('|') === 'Muscles|Contraindications' && rdl.fields.filter(f => !f.wide).length >= 4);
     const rdlTr = row(tr, 'Romanian Deadlift');
     check('kart (tr): bölüm, filtre adları ve değerler Türkçe; movement_pattern her zaman İngilizce',
-      tr.sections.map(s => s.title).join('|') === 'Kalça Baskın|Core|Pliometrik|Kategorisiz' &&
-      fld(rdlTr, 'Kasılma Odağı') === 'Konsantrik' && fld(rdlTr, 'Aksiyon') === 'Çekme' && fld(rdlTr, 'Zorluk') === 'Seviye 2 (Orta)' &&
+      tr.sections.map(s => s.title).join('|') === 'Kalça Dominant|Core|Pliometrik|Kategorisiz' &&
+      fld(rdlTr, 'Tür') === 'RDL' && fld(row(tr, 'Box Jump'), 'Yön') === 'Dikey' && fld(row(tr, 'Pallof Press'), 'Tür') === 'Anti-rotasyon' && fld(rdlTr, 'Zorluk') === 'Seviye 2 (Orta)' &&
       fld(rdlTr, 'Kaslar') && fld(rdlTr, 'movement_pattern') === 'Hinge', tr.sections.map(s => s.title).join('|') + ' ' + JSON.stringify(rdlTr.fields));
     check('kart: kayıtta olmayan alan hiç yazılmıyor; uzun açıklama 600 karakterde kesiliyor',
-      !row(en, 'Pallof Press').desc && !fld(row(en, 'Pallof Press'), 'Difficulty') && fld(row(en, 'Pallof Press'), 'Position') === 'Standing' &&
+      !row(en, 'Pallof Press').desc && !fld(row(en, 'Pallof Press'), 'Difficulty') && !fld(row(en, 'Pallof Press'), 'Position') &&
       fld(row(en, 'Box Jump'), 'Direction') === 'Vertical' && row(en, 'Box Jump').desc.length <= 600 && /…$/.test(row(en, 'Box Jump').desc));
     check('kart: çevrilmiş açıklama descOf ile geliyor; top çalışması kendi kategorilerinde',
       row(A.exLibraryEntries(lib, { lang: 'en', descOf: e => e.name === 'Romanian Deadlift' ? 'Hip hinge for the hamstrings.' : '' }), 'Romanian Deadlift').desc === 'Hip hinge for the hamstrings.' &&
@@ -808,7 +809,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     A.exLibraryPDF(dt, A.exLibraryEntries(lib, { lang: 'tr' }), { lang: 'tr', untranslated: 2 });
     const tt = dt.calls.filter(c => c.op === 'text').map(c => [].concat(c.a[0]).join(' ')).join('\n');
     check('pdf (tr): başlık, bölümler ve sayfa numarası Türkçe; çevrilemeyenlerin sayısı söyleniyor',
-      /Egzersiz Kütüphanesi/.test(tt) && /KALÇA BASKIN/.test(tt) && /KATEGORİSİZ/.test(tt) && /Sayfa 1 \/ \d/.test(tt) && /2 açıklama çevrilemedi/.test(tt) &&
+      /Egzersiz Kütüphanesi/.test(tt) && /KALÇA DOMİNANT/.test(tt) && /KATEGORİSİZ/.test(tt) && /Sayfa 1 \/ \d/.test(tt) && /2 açıklama çevrilemedi/.test(tt) &&
       /NASIL KULLANILIR/.test(tt), tt);
     // Açıklama çevirisi: Türkçede olduğu gibi; İngilizcede çeviri, çevrilemeyen sayılır; zaten İngilizce olan çağrılmaz.
     const dTr = await A.exLibraryDescriptions([{ purpose: 'Kalça menteşesi' }], 'tr');
@@ -1300,22 +1301,20 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const b = A.diBrief(raw, null);
     check('brief: "mutlaka olsun" formda yok, taşınmıyor; paternler temizlenmiş, iki kez seçilen patern iki egzersiz',
       b.must.length === 0 && b.patterns.length === 4 && b.patterns[0].id === 'knee_dominant' && b.patterns[1].id === 'knee_dominant' &&
-      JSON.stringify(b.patterns[0].type) === '["lunge"]' && b.patterns[1].type.length === 0 && JSON.stringify(b.patterns[2].goal) === '["endurance"]' &&
-      b.patterns[3].id === 'carry' && b.patterns[3].type.length === 0, JSON.stringify(b.patterns));
-    check('her paternin filtreleri istenen başlıklarla',
+      JSON.stringify(b.patterns[0].type) === '["Lunge"]' && b.patterns[1].type.length === 0 && JSON.stringify(b.patterns[2].type) === '["Anti-Rotation"]' &&
+      !('goal' in b.patterns[0]) && b.patterns[3].id === 'carry' && b.patterns[3].type.length === 0 &&
+      (() => { const o = A.diMovePatterns([{ id: 'horizontal_push' }, { id: 'vertical_pull', type: ['x'] }]);
+        return o[0].id === 'upper_push' && o[0].type[0] === 'Horizontal Push' && o[0].direction[0] === 'Horizontal' &&
+          o[1].id === 'upper_pull' && o[1].type[0] === 'Vertical Pull'; })(), JSON.stringify(b.patterns));
+    check('her kategorinin kutuları: Tür, yönü olanlarda Yön; 11 kategori',
       (() => { const f = id => A.DI_MOVE_PATTERNS.find(p => p.id === id).facets.map(x => x.k).join(',');
-        return f('knee_dominant') === 'type,side,direction,goal,contraction' && f('hip_dominant') === 'type,side,goal,contraction' &&
-          f('horizontal_push') === 'side,goal,contraction' && f('vertical_pull') === 'side,goal,contraction' &&
-          f('carry') === 'type,side,direction,goal,contraction' && f('core') === 'side,task,goal,contraction' &&
-          A.DI_MOVE_PATTERNS.every(p => JSON.stringify(p.facets[p.facets.length - 1].opts.map(o => o[0])) ===
-            (p.id === 'carry' || p.id === 'core' ? '["standard","isometric"]' : '["standard","eccentric","isometric"]')) &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[2].opts.length === 2 &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'carry').facets[3].opts.length === 2 &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'knee_dominant').facets[3].opts.length === 6 &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'hip_dominant').facets[2].opts.map(o => o[0]).join(',') === 'foundational,maximal,hypertrophy,power,endurance' &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'horizontal_push').facets[1].opts.map(o => o[0]).join(',') === 'foundational,maximal,hypertrophy,power,endurance' &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[0].opts.map(o => o[0]).join(',') === 'symmetrical,asymmetrical,contralateral' &&
-          A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[1].opts.length === 8; })());
+        return A.DI_MOVE_PATTERNS.length === 11 && f('knee_dominant') === 'type,direction' && f('hip_dominant') === 'type' &&
+          f('upper_push') === 'type,direction' && f('upper_pull') === 'type,direction' && f('core') === 'type' && f('carry') === 'type' &&
+          f('olympic') === 'type' && f('plyometric') === 'type,direction' && f('med_ball') === 'type,direction' &&
+          f('full_body') === 'type,direction' && f('accessory') === 'type' &&
+          A.DI_MOVE_PATTERNS.find(p => p.id === 'knee_dominant').facets[0].opts.map(o => o[0]).join(',') === 'Squat,Split Squat,Lunge,Step-up,Step-down' &&
+          A.DI_MOVE_PATTERNS.find(p => p.id === 'core').facets[0].opts.length === 8 &&
+          A.DI_MOVE_PATTERNS.find(p => p.id === 'accessory').facets[0].opts.length === 13; })());
 
     const ath = athlete({ wellness: [wellness(TODAY, 4)] });
     const want = ids => ({ rawInstr: { patterns: ids.map(id => ({ id })) } });
@@ -1326,14 +1325,14 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const push = ex({ ad: 'DB Bench Press', hareket_paterni: 'Push', yuk: '20 kg' });
     const vTwo = validate(aiReply([ex(), push]), ath, want(['horizontal_push', 'vertical_push']));
     check('tek bir Push satırı hem yatay hem dikey itişi karşılamıyor → SERT ihlal',
-      vTwo.status === 'fail' && vTwo.hardViolations.filter(h => /pattern|paterni/i.test(h.text)).length === 1, hardText(vTwo));
+      vTwo.status === 'fail' && vTwo.hardViolations.filter(h => h.rule === 22).length === 1, hardText(vTwo));
     const vMiss = validate(aiReply([ex()]), ath, want(['horizontal_pull']));
     check('istenen patern hiç yoksa ve çatışma bildirilmemişse SERT ihlal (kural 22)',
-      vMiss.status === 'fail' && vMiss.hardViolations.some(h => h.rule === 22 && /Yatay çekiş|Horizontal pull/.test(h.text)), hardText(vMiss));
-    const vDecl = validate(aiReply([ex()], { flagged_conflicts: [{ talimat: 'Horizontal pull', alan: 'movement_patterns',
+      vMiss.status === 'fail' && vMiss.hardViolations.some(h => h.rule === 22 && /Üst Vücut Çekiş|Upper Body Pull/.test(h.text)), hardText(vMiss));
+    const vDecl = validate(aiReply([ex()], { flagged_conflicts: [{ talimat: 'Upper Body Pull', alan: 'movement_patterns',
       cakisan_kural: 'omuz ağrısı', karar: 'çıkarıldı', alternatif: 'Pallof Press' }] }), ath, want(['horizontal_pull']));
     check('çatışma bildirilse de eksik zorunlu patern SERT ihlal (antrenörün paterni zorunlu)',
-      vDecl.status === 'fail' && vDecl.hardViolations.some(h => /Horizontal pull/.test(h.text) && /mandatory/.test(h.text)), hardText(vDecl));
+      vDecl.status === 'fail' && vDecl.hardViolations.some(h => /Upper Body Pull/.test(h.text) && /mandatory/.test(h.text)), hardText(vDecl));
     const vWrong = validate(aiReply([ex(), ex({ ad: 'Pallof Press', hareket_paterni: 'Core / Brace', koc_paterni: 'vertical_pull' })]),
       ath, want(['vertical_pull']));
     check('etiketlenen egzersizin paterni uyuşmuyorsa uyarı', vWrong.softWarnings.some(w => /Pallof Press/.test(w.text) && /Pull/.test(w.text)),
@@ -1350,10 +1349,10 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       vPainCoach.softWarnings.some(w => /Goblet Squat/.test(w.text) && /coach requires|zorunlu/.test(w.text)), hardText(vPainCoach) + ' || ' + softText(vPainCoach));
     const vPainMiss = validate(aiReply([ex({ ad: 'Barbell Row', hareket_paterni: 'Pull' })]), kneeAth, want(['knee_dominant']));
     check('ağrılı bölgedeki zorunlu patern programda yoksa yine SERT ihlal (ağrı gerekçe değil)',
-      vPainMiss.status === 'fail' && vPainMiss.hardViolations.some(h => /Knee dominant|Diz dominant/.test(h.text)), hardText(vPainMiss));
+      vPainMiss.status === 'fail' && vPainMiss.hardViolations.some(h => /Knee dominant|Diz dominant/i.test(h.text)), hardText(vPainMiss));
     check('etiket ad olarak yazılsa da okunuyor', A.diMoveIdOf('Knee dominant') === 'knee_dominant' &&
       A.diMoveIdOf('Diz dominant') === 'knee_dominant' && A.diMoveIdOf('Carry') === 'carry' && A.diMoveIdOf(null) === null &&
-      A.diMoveIdOf('vertical_pull') === 'vertical_pull');
+      A.diMoveIdOf('vertical_pull') === 'upper_pull' && A.diMoveIdOf('Med Ball') === 'med_ball');
     const extTxt = JSON.stringify({ program: { session_name: 'x', blocks: [{ name: 'Main', phase: 'main', exercises: [
       { name: 'Goblet Squat', sets: '3', reps: '6', movement_pattern: 'Squat', coach_pattern: 'Knee dominant', rationale: 'r' }] }] } });
   }
@@ -1498,8 +1497,9 @@ group('16 — Seçilen model gerçekten tele gidiyor');
       !!prog && prog.blocks.length === 1 && rows.map(r => r.name).join('|') === 'Back Squat|Romanian Deadlift|Chest Supported Row' &&
       prog.session_name === 'Alt vücut', JSON.stringify(rows.map(r => r.name)));
     check('program: elle yazılmış sayılıyor (external) ve her satır kendi patern kimliğini taşıyor',
-      prog.external === true && prog.manual === true && rows[0].coachPattern === 'knee_dominant' && rows[2].coachPattern === 'horizontal_pull' &&
-      rows[0].pattern === 'Squat' && rows[0].exPattern === 'Knee Dominant' && rows[2].exPattern === 'Upper Body Pull' && rows[2].exPlane === 'Horizontal');
+      prog.external === true && prog.manual === true && rows[0].coachPattern === 'knee_dominant' && rows[2].coachPattern === 'upper_pull' &&
+      rows[0].pattern === 'Squat' && rows[0].exPattern === 'Knee Dominant' && rows[2].exPattern === 'Upper Body Pull' &&
+      rows[2].exPlane === 'Horizontal Pull' && rows[2].exDir === 'Horizontal', JSON.stringify(rows.map(r => [r.coachPattern, r.exPattern, r.exPlane, r.exDir])));
     check('program: kütüphanedeki egzersiz "library", olmayan "custom"', rows[1].source === 'library' && rows[0].source === 'custom');
     check('program: hiç adı olan satır yoksa program yok',
       A.diManualProgram({ patterns: [row('knee_dominant', '   '), row('core', '')] }, libMap, '') === null && A.diManualProgram({}, libMap, '') === null);
@@ -1517,7 +1517,7 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const e = ses.blocks[0].exercises;
     check('takvime gidince süperset, alternatif, patern ve uygulama satırda duruyor',
       e.length === 3 && e[0].superset === 'A' && e[0].alt && e[0].alt.name === 'Front Squat' && e[0].pattern === 'Knee Dominant' &&
-      e[2].pattern === 'Upper Body Pull' && e[2].plane === 'Horizontal' && e[0].load === '70% 1RM' && e[0].tempo === '3-0-1' &&
+      e[2].pattern === 'Upper Body Pull' && e[2].plane === 'Horizontal Pull' && e[2].dir === 'Horizontal' && e[0].load === '70% 1RM' && e[0].tempo === '3-0-1' &&
       e[0].description === 'Derinlik kontrollü' && e[0].alt.sets === '3' && e[0].alt.reps === '8' && e[0].alt.load === '60% 1RM' &&
       e[0].link === 'https://x.test/s', JSON.stringify(e.map(x => [x.name, x.pattern, x.plane, x.superset])));
 
@@ -1615,10 +1615,56 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     const pu = A.diPickTags({ name: 'Overhead Press', exPattern: 'Upper Body Push', exPlane: 'Vertical' }, 'Overhead Press');
     const pn = A.diPickTags({ name: 'Boş Kart' }, 'Boş Kart');
     check('kütüphane etiketi → tablonun paterni ve türü (core görevi, squat/lunge, hinge, dikey itiş)',
-      pc.id === 'core' && pc.type === 'anti_rotation' && pk.id === 'knee_dominant' && pk.type === 'lunge' &&
-      ph.id === 'hip_dominant' && ph.type === 'rdl' && pu.id === 'vertical_push' && pu.type === '',
+      pc.id === 'core' && pc.type === 'Anti-Rotation' && pk.id === 'knee_dominant' && pk.type === 'Split Squat' &&
+      ph.id === 'hip_dominant' && ph.type === 'RDL' && pu.id === 'upper_push' && pu.type === 'Vertical Push' && pu.dir === 'Vertical',
       JSON.stringify([pc, pk, ph, pu]));
     check('etiketsiz ve tahmin edilemeyen kart hiçbir şey söylemiyor', pn.id === '' && pn.type === '', JSON.stringify(pn));
+  }
+
+  group('Ek — Hareket taksonomisi: Kategori · Tür · Yön');
+  {
+    const cats = A.MV_CATS.map(c => c.k);
+    check('11 kategori, kütüphane rafları da aynı liste; her rafın filtresi kendi türleri',
+      cats.join('|') === 'Knee Dominant|Hip Dominant|Upper Body Push|Upper Body Pull|Core|Carry|Olympic Lift|Plyometric|Medicine Ball|Full Body|Accessory' &&
+      A.EX_TYPES.join('|') === cats.join('|') && A.SUB_TYPES['Carry'].values.length === 5 && A.SUB_TYPES['Accessory'].values.length === 13,
+      cats.join('|'));
+    check('yön listeleri yalnızca istenen kategorilerde',
+      A.MV_CATS.filter(c => c.dirs.length).map(c => c.k).join('|') === 'Knee Dominant|Upper Body Push|Upper Body Pull|Plyometric|Medicine Ball|Full Body' &&
+      A.MV_CATS.find(c => c.k === 'Medicine Ball').dirs.map(d => d[1]).join(',') === 'Öne,Geriye,Yukarı,Aşağı,Yana,Rotasyonel,Diyagonal' &&
+      A.MV_CATS.find(c => c.k === 'Plyometric').dirs.map(d => d[1]).join(',') === 'Dikey,İleriye,Geriye,Yanal,Diyagonal,Çok Yönlü');
+    check('türü ve yönü addan okuma: söylemeyen ad boş kalır',
+      A.mvGuessType('Knee Dominant', 'Bulgarian Split Squat') === 'Split Squat' && A.mvGuessType('Knee Dominant', 'Reverse Lunge') === 'Lunge' &&
+      A.mvGuessDir('Knee Dominant', 'Reverse Lunge', 'Lunge') === 'Backward' && A.mvGuessType('Upper Body Push', 'Incline DB Bench Press') === 'Horizontal Push' &&
+      A.mvGuessDir('Upper Body Push', 'Incline DB Bench Press', 'Horizontal Push') === 'Angled' && A.mvGuessType('Olympic Lift', 'Clean Pull') === 'Olympic Pull' &&
+      A.mvGuessType('Medicine Ball', 'Med Ball Slam') === 'Slam' && A.mvGuessDir('Medicine Ball', 'Med Ball Slam', 'Slam') === 'Down' &&
+      A.mvGuessType('Hip Dominant', 'Ankle Mobility') === '' && A.mvNormType('Upper Body Pull', 'Vertical', 'Lat Pulldown') === 'Vertical Pull');
+    const mig = [
+      { name: 'DB Bench Press', type: 'Upper Body Push', subType: 'Horizontal' },
+      { name: 'Lateral Bound', type: 'Plyometric', subType: 'Lateral', exKind: 'Bound' },
+      { name: 'Eccentric Squat', type: 'Knee Dominant', subType: 'Eccentric' },
+      { name: 'Power Clean', type: 'Full Body', subType: 'Olympic Lift' },
+      { name: 'Hip 90/90', type: 'Mobility', subType: 'Hip' },
+      { name: 'Goblet Squat', type: 'Knee Dominant', subType: '' }].map(A.mvMigrateLibCard);
+    check('eski kütüphane kartı yeni taksonomiye okunuyor; tekrar okunduğunda değişmiyor',
+      mig[0].subType === 'Horizontal Push' && mig[0].dir === 'Horizontal' && mig[1].subType === 'Bound' && mig[1].dir === 'Lateral' &&
+      mig[2].subType === 'Squat' && JSON.stringify(mig[2].contraction) === '["Eccentric"]' && mig[3].type === 'Olympic Lift' && mig[3].subType === 'Clean' &&
+      mig[4].type === 'Mobility' && mig[4].subType === 'Hip' && mig[5].subType === '' &&
+      JSON.stringify(mig.map(A.mvMigrateLibCard)) === JSON.stringify(mig), JSON.stringify(mig));
+    A.setLibItems([{ name: 'Ankle Dorsiflexion Mobilization', type: 'Core', subType: 'Anti-Extension', exPattern: '', exPlane: '', dir: '' },
+      { name: 'Box Jump', type: 'Plyometric', subType: 'Jump', exPattern: '', exPlane: '', dir: 'Vertical' }]);
+    const days = { [TODAY]: { sessions: [{ blocks: [{ exercises: [
+      { name: 'Ankle Dorsiflexion Mobilization', noPat: true },
+      { name: 'Ankle Dorsiflexion Mobilization' },
+      { name: 'Box Jump' },
+      { name: 'Back Squat', pattern: 'Knee Dominant', plane: 'Squat', dir: 'In Place' }] }] }] } };
+    const agg = A.aggSessions(days);
+    check('yük dağılımı: kategorisi kaldırılan satır sayılmıyor; diğerleri kütüphaneden kategori ve türünü alıyor',
+      agg.patterns['Core'] === 1 && agg.patterns['Plyometric'] === 1 && agg.patterns['Knee Dominant'] === 1 &&
+      !!agg.exercises['Plyometric']['box jump'].styles['Jump'], JSON.stringify(agg.patterns));
+    const t = A.exTagsFromLib({ name: 'Box Jump', type: 'Plyometric', subType: 'Jump', dir: 'Vertical' }, {});
+    check('kütüphaneden seçilen egzersiz kategorisini, türünü ve yönünü getiriyor',
+      t.pattern === 'Plyometric' && t.plane === 'Jump' && t.dir === 'Vertical', JSON.stringify(t));
+    A.setLibItems([]);
   }
 
   group('Ek — Takvimde hazır fazlar uygulama diliyle senkron');

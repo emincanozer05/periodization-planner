@@ -8335,7 +8335,10 @@ main .panel,main .ap-head{animation:none}
    and note across the top, the dose boxes wrapping underneath — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
-.pt-top{display:flex;align-items:flex-start;gap:12px}
+.pt-top{display:flex;align-items:center;gap:12px}
+/* "KATEGORİ" in front of the chips: the chips are the categories a row can be written under. */
+.pt-chipl{flex:none;align-self:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--muted,var(--dim))}
 .pt-chips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
 .pt-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:10px;padding:7px 15px;
   font-size:13px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
@@ -8352,7 +8355,7 @@ main .panel,main .ap-head{animation:none}
 .pt-scroll{overflow-x:auto;padding-bottom:2px}
 .pt-grid{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
 .pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
-  grid-template-columns:minmax(128px,.9fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
+  grid-template-columns:minmax(170px,1fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
 .pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
 .pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
 .pt-grp+.pt-grp{border-top:1px solid var(--border)}
@@ -8366,9 +8369,27 @@ main .panel,main .ap-head{animation:none}
 .pt-tr:hover{background:rgba(255,255,255,.012)}
 .pt-cl{display:none}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
-/* The pattern's name — bold, a dot of its colour in front, and its ✕ when the row is hovered. */
-.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;min-height:36px;
-  padding-right:24px;color:var(--text)}
+/* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
+   group's first row, then the row's own type and direction boxes. */
+.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:6px;min-height:36px;
+  color:var(--text)}
+.pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
+.pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
+.pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
+.pt-catsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--text);
+  border:1px solid var(--border2);border-radius:8px;padding:8px 24px 8px 25px;font-size:13px;font-weight:700;font-family:inherit;
+  cursor:pointer;text-overflow:ellipsis;transition:border-color .15s}
+.pt-catsel::after{content:'';position:absolute;right:10px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
+.pt-catsel select:hover{border-color:var(--pat-c)}
+.pt-catsel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+.pt-cat:not(.on) .pt-catsel select{border-style:dashed;color:var(--dim);font-weight:500}
+.pt-cat:not(.on) .pt-dot{background:transparent;border:1.5px dashed var(--border2)}
+.pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
+  opacity:.55;transition:opacity .12s,background .12s,color .12s}
+.pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
+.pt-tdr{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
 .pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
@@ -8380,7 +8401,6 @@ main .panel,main .ap-head{animation:none}
 .pt-type select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 .pt-type::after{content:'';position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
   border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
-.pt-pat>.pt-x{position:absolute;right:0;top:7px;margin:0}
 .pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
   border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
 .pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
@@ -8476,12 +8496,14 @@ main .panel,main .ap-head{animation:none}
      them, and the alternative button beside the note. Only the number boxes carry a caption —
      the others say what they are in their own placeholder. */
   .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
-  .pt-pat{grid-column:span 3}
-  .pt-ex{grid-column:span 9}
+  /* Kategori · Tür · Yön read as one line across the top of the exercise's card. */
+  .pt-pat{grid-column:1/-1}
+  .pt-ex{grid-column:1/-1}
   .pt-pat:empty{display:none}
-  .pt-pat:empty+.pt-ex{grid-column:1/-1}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px;min-height:36px}
-  .pt-pat .pt-type{flex:1 1 100%}
+  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 8px;min-height:0}
+  .pt-cat{flex:0 1 240px}
+  .pt-tdr{flex:1 1 260px;flex-direction:row;gap:8px}
+  .pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
   .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
   /* The link box has no caption of its own, but keeps the room for one so it sits level with the
      boxes beside it. */
@@ -8507,29 +8529,63 @@ main .panel,main .ap-head{animation:none}
   .pt-link{grid-column:1/-1}
 }
 
-/* The movement-pattern table inside the brief, with phases. */
+/* ---- Phases: one look in the calendar and in the brief -------------------
+   A slim bar adds the phases not open yet (and one named by hand), with the weekly load
+   distribution at its right; each open phase is a card with a header of its own. */
 .di-pp{display:flex;flex-direction:column;gap:12px;min-width:0}
-.di-ppbar{border:0;padding:0;background:none}
-.di-ppsec{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg2)}
-.di-ppsec .pt{padding:12px}
-/* A phase: a bar with its name (typed over), how much it holds and its ✕, then its own table. */
-.di-pph{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--elevated);border-bottom:1px solid var(--border)}
-.di-pph-ch{flex:none;border:0;background:none;color:var(--ph-c,var(--dim));font-size:10px;cursor:pointer;padding:4px 5px;margin:0 -2px 0 -4px;border-radius:5px}
-.di-pph-ch:hover{background:var(--panel)}
-.di-pph-ch:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
-.di-ppsec.folded .di-pph{border-bottom:0}
-.di-pph-dot{width:9px;height:9px;border-radius:3px;flex:none;background:var(--ph-c,var(--accent))}
-.di-pph-nm{background:none;border:0;color:var(--text);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  padding:3px 6px;margin:0 0 0 -6px;border-radius:6px;min-width:60px;font-family:inherit}
-.di-pph-nm:hover,.di-pph-nm:focus{background:var(--panel);outline:none}
-.di-pph-nm.static{cursor:default}
-.di-pph-n{font-size:11.5px;color:var(--dim)}
-.di-pph-acts{margin-left:auto}
-.di-pph-x{border:0;background:none;color:var(--dim);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:11px}
-.di-pph-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
-.di-ppsec.pc0{--ph-c:#38bdf8}.di-ppsec.pc1{--ph-c:#f59e0b}.di-ppsec.pc2{--ph-c:#a78bfa}
-.di-ppsec.pc3{--ph-c:#34d399}.di-ppsec.pc4{--ph-c:#f472b6}.di-ppsec.pc5{--ph-c:#fb923c}
-.di-ppsec.loose{border-style:dashed}
+.pp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border)}
+.di-pp>.pp-bar{padding:0;border:0}
+.pp-bar-l{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted,var(--dim));margin-right:2px}
+.pp-bar-add{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.pp-add{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;background:transparent;
+  border:1px dashed var(--border2);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:border-color .14s,color .14s,background .14s}
+.pp-add:hover{border-color:var(--accent);border-style:solid;color:var(--text);background:var(--hover)}
+.pp-add.custom{color:var(--dim)}
+.pp-add:focus-visible,.pp-load:focus-visible,.pp-ch:focus-visible,.pp-x:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.pp-load{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+  background:var(--elevated);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:border-color .14s,background .14s}
+.pp-load i{font-style:normal;font-size:14px;line-height:1;color:var(--accent)}
+.pp-load:hover,.pp-load.on{border-color:var(--accent)}
+.pp-load.on{background:var(--hover)}
+.pp-sec{--pp-c:var(--border2);margin:12px 14px;border:1px solid var(--border);border-left:3px solid var(--pp-c);border-radius:12px;
+  background:var(--panel);overflow:hidden;min-width:0}
+.di-pp .pp-sec{margin:0}
+.pp-sec.pc0{--pp-c:#38bdf8}.pp-sec.pc1{--pp-c:#2dd4a7}.pp-sec.pc2{--pp-c:#f59e0b}
+.pp-sec.pc3{--pp-c:#a78bfa}.pp-sec.pc4{--pp-c:#f472b6}.pp-sec.pc5{--pp-c:#fb923c}
+.pp-sec.loose{border-style:dashed;border-left-style:dashed}
+/* !important: a site-wide `header{background:…!important}` would paint every phase header grey. */
+.pp-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--elevated)!important;
+  border-bottom:1px solid var(--border)}
+.pp-sec.folded .pp-h{border-bottom:0}
+.pp-ch{flex:none;border:0;background:none;color:var(--dim);font-size:10px;cursor:pointer;padding:4px 5px;margin:0 -4px 0 -4px;border-radius:5px}
+.pp-ch:hover{background:var(--panel);color:var(--text)}
+.pp-dot{flex:none;width:9px;height:9px;border-radius:3px;background:var(--pp-c)}
+.pp-nm{background:transparent;border:0;outline:none;color:var(--text);font-family:inherit;font-size:12.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;margin:0 0 0 -6px;border-radius:6px;min-width:4ch;max-width:100%;box-shadow:none}
+@supports (field-sizing:content){input.pp-nm{field-sizing:content;width:auto!important}}
+input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
+.pp-nm.static{color:var(--text2)}
+.pp-n{flex:none;font-size:11.5px;font-weight:600;color:var(--dim);padding:1px 9px;border-radius:999px;border:1px solid var(--border);
+  font-variant-numeric:tabular-nums}
+.pp-note{flex:1 1 160px;min-width:0;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-acts{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pp-x{flex:none;border:0;background:none;color:var(--dim);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:11px}
+.pp-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
+.pp-mv{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:999px;padding:3px 10px;font-family:inherit;
+  font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pp-mv:hover{border-color:var(--accent);color:var(--text)}
+.pp-body{min-width:0}
+.pp-body>.pt-host{padding:12px}
+.di-pp .pp-body>.pt{padding:12px}
+.pp-body>.iv-slots{padding:10px 12px}
+
+/* The exercise picker, narrowed to the row's category: its colour in the header, and the
+   direction filters under the type filters. */
+.en-catdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+.en-phd-sub{border-top:1px solid var(--border2)}
 
 /* The weekly load distribution, as a small window at the right edge: no backdrop, no blur. */
 .di-loadwin{position:fixed;right:16px;top:76px;z-index:900;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 100px);
@@ -9360,9 +9416,9 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
    exercise everywhere else. The library card is where the pair is cleared for good. */
 let _libTags=null;
 function registerLibTags(fn){_libTags=fn;}
-function rememberExerciseTags(name,pattern,plane){
+function rememberExerciseTags(name,pattern,plane,dir){
   const nm=(name||'').trim();
-  if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'');
+  if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'',dir||'');
 }
 /* The picture the coach puts on a program row, remembered against the exercise ITSELF
    the same way its pattern / execution are — write the exercise into the next program
@@ -11333,6 +11389,9 @@ function migrate(data){
     /* Mobility's regions became Ankle · Hip · Spine · Shoulder · Wrist; the thoracic
        spine is part of the spine, so an entry filed "Thoracic" reads Spine. */
     .map(e=>(e.type==='Mobility'&&e.subType==='Thoracic')?{...e,subType:'Spine'}:e)
+    /* The shelves became the eleven categories of the movement taxonomy (Kategori · Tür · Yön):
+       an old sub-type is read into the type / direction it now is. */
+    .map(e=>exLib(e)==='ball'?e:mvMigrateLibCard(e))
     /* "Step-up" is spelled "Step-Up" now, as the rest of the pattern list is cased. */
     .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e)
     /* The one-off suggestion import marked every field it filled as "awaiting review".
@@ -16414,6 +16473,236 @@ function SeasonPlan({team,updateTeam,periods,weeks}){
 }
 
 /* =========================================================
+   MOVEMENT TAXONOMY — Kategori · Tür · Yön
+   =========================================================
+   ONE list of movement categories for the whole app: the chips of the pattern table (the
+   calendar's block editor and the individualization brief alike), the Kategori / Tür / Yön
+   boxes on every exercise row, the exercise picker's filter, the exercise library's shelves
+   and filters, and the weekly load distribution all read this table.
+
+   Every value is stored in English (`k`) — saved sessions, library cards and the load
+   distribution key off these exact strings — and shown in the app's language through the
+   labels beside it. A category without a direction list has no Yön box. `id` is the slug the
+   individualization brief stores its rows under. */
+const MV_DIR_GROUND=[['In Place','Yerinde','In place'],['Forward','Öne','Forward'],['Backward','Geriye','Backward'],
+  ['Lateral','Yana','Lateral'],['Diagonal','Çapraz','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']];
+const MV_DIR_ARM=[['Horizontal','Yatay','Horizontal'],['Vertical','Dikey','Vertical'],['Angled','Açılı','Angled']];
+const MV_CATS=[
+  {k:'Knee Dominant',id:'knee_dominant',tr:'Diz Dominant',en:'Knee Dominant',color:'#3987e5',
+    types:[['Squat','Squat','Squat'],['Split Squat','Split Squat','Split Squat'],['Lunge','Lunge','Lunge'],
+      ['Step-up','Step-up','Step-up'],['Step-down','Step-down','Step-down']],
+    dirs:MV_DIR_GROUND},
+  {k:'Hip Dominant',id:'hip_dominant',tr:'Kalça Dominant',en:'Hip Dominant',color:'#199e70',
+    types:[['Deadlift','Deadlift','Deadlift'],['RDL','RDL','RDL'],['Good Morning','Good Morning','Good Morning'],
+      ['Hip Thrust','Hip Thrust','Hip Thrust'],['Glute Bridge','Glute Bridge','Glute Bridge'],
+      ['Pull-through','Pull-through','Pull-through'],['Swing','Swing','Swing']],
+    dirs:[]},
+  {k:'Upper Body Push',id:'upper_push',tr:'Üst Vücut İtiş',en:'Upper Body Push',color:'#d55181',
+    types:[['Horizontal Push','Yatay İtiş','Horizontal Push'],['Vertical Push','Dikey İtiş','Vertical Push']],
+    dirs:MV_DIR_ARM},
+  {k:'Upper Body Pull',id:'upper_pull',tr:'Üst Vücut Çekiş',en:'Upper Body Pull',color:'#c98500',
+    types:[['Horizontal Pull','Yatay Çekiş','Horizontal Pull'],['Vertical Pull','Dikey Çekiş','Vertical Pull']],
+    dirs:MV_DIR_ARM},
+  {k:'Core',id:'core',tr:'Core',en:'Core',color:'#8b5cf6',
+    types:[['Anti-Extension','Anti-ekstansiyon','Anti-extension'],['Anti-Flexion','Anti-fleksiyon','Anti-flexion'],
+      ['Anti-Rotation','Anti-rotasyon','Anti-rotation'],['Anti-Lateral Flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],
+      ['Flexion','Fleksiyon','Flexion'],['Extension','Ekstansiyon','Extension'],['Rotation','Rotasyon','Rotation'],
+      ['Lateral Flexion','Lateral fleksiyon','Lateral flexion']],
+    dirs:[]},
+  {k:'Carry',id:'carry',tr:'Carry',en:'Carry',color:'#0ea5b7',
+    types:[["Farmer's Carry","Farmer's Carry","Farmer's Carry"],['Suitcase Carry','Suitcase Carry','Suitcase Carry'],
+      ['Front Rack Carry','Front Rack Carry','Front Rack Carry'],['Overhead Carry','Overhead Carry','Overhead Carry'],
+      ['Zercher Carry','Zercher Carry','Zercher Carry']],
+    dirs:[]},
+  {k:'Olympic Lift',id:'olympic',tr:'Olimpik Kaldırış',en:'Olympic Lift',color:'#e5484d',
+    types:[['Clean','Clean','Clean'],['Snatch','Snatch','Snatch'],['Jerk','Jerk','Jerk'],['Olympic Pull','Pull','Pull'],
+      ['Technique / Assistance','Teknik / Yardımcı','Technique / Assistance']],
+    dirs:[]},
+  {k:'Plyometric',id:'plyometric',tr:'Pliometrik',en:'Plyometric',color:'#7cb518',
+    types:[['Jump','Jump','Jump'],['Hop','Hop','Hop'],['Bound','Bound','Bound'],['Upper Body','Upper Body','Upper Body']],
+    dirs:[['Vertical','Dikey','Vertical'],['Forward','İleriye','Forward'],['Backward','Geriye','Backward'],
+      ['Lateral','Yanal','Lateral'],['Diagonal','Diyagonal','Diagonal'],['Multi-Directional','Çok Yönlü','Multi-directional']]},
+  {k:'Medicine Ball',id:'med_ball',tr:'Med Ball',en:'Med Ball',color:'#f08c3c',
+    types:[['Chest Pass','Chest Pass','Chest Pass'],['Overhead Throw','Overhead Throw','Overhead Throw'],
+      ['Rotational Throw','Rotational Throw','Rotational Throw'],['Scoop Toss','Scoop Toss','Scoop Toss'],
+      ['Slam','Slam','Slam'],['Shot Put Throw','Shot Put Throw','Shot Put Throw']],
+    dirs:[['Forward','Öne','Forward'],['Backward','Geriye','Backward'],['Up','Yukarı','Up'],['Down','Aşağı','Down'],
+      ['Lateral','Yana','Lateral'],['Rotational','Rotasyonel','Rotational'],['Diagonal','Diyagonal','Diagonal']]},
+  {k:'Full Body',id:'full_body',tr:'Tüm Vücut',en:'Full Body',color:'#9c6644',
+    types:[['Squat + Press','Squat + Press','Squat + Press'],['Lunge + Press','Lunge + Press','Lunge + Press'],
+      ['Hinge + Pull','Hinge + Pull','Hinge + Pull'],['Hinge + Press','Hinge + Press','Hinge + Press'],
+      ['Squat + Pull','Squat + Pull','Squat + Pull'],['Pull + Press','Pull + Press','Pull + Press'],
+      ['Get-up','Get-up','Get-up'],['Ground to Standing','Ground to Standing','Ground to Standing'],
+      ['Complex / Flow','Complex / Flow','Complex / Flow']],
+    dirs:MV_DIR_GROUND},
+  {k:'Accessory',id:'accessory',tr:'Aksesuar',en:'Accessory',color:'#5c8a99',
+    types:[['Shoulder','Omuz','Shoulder'],['Arm','Kol','Arm'],['Forearm / Grip','Ön Kol / Kavrama','Forearm / Grip'],
+      ['Calf','Baldır','Calf'],['Tibialis','Tibialis','Tibialis'],['Hip Isolation','Kalça İzolasyonu','Hip Isolation'],
+      ['Knee Extension','Diz Ekstansiyonu','Knee Extension'],['Knee Flexion','Diz Fleksiyonu','Knee Flexion'],
+      ['Neck','Boyun','Neck'],['Scapula','Skapula','Scapula'],['Rotator Cuff','Rotator Cuff','Rotator Cuff'],
+      ['Adductor','Adduktor','Adductor'],['Abductor','Abduktor','Abductor']],
+    dirs:[]},
+];
+const MV_KEYS=MV_CATS.map(c=>c.k);
+const mvCat=k=>MV_CATS.find(c=>c.k===k)||null;
+const mvCatById=id=>MV_CATS.find(c=>c.id===id)||null;
+const mvCatLabel=k=>{const c=mvCat(k);return c?L(c.tr,c.en):String(k||'');};
+const mvTypes=k=>{const c=mvCat(k);return c?c.types.map(t=>t[0]):[];};
+const mvDirs=k=>{const c=mvCat(k);return c?c.dirs.map(t=>t[0]):[];};
+/* A type or a direction of a category, in the app's language. The same English word can
+   read differently under two categories ("Lateral" is Yana for a lunge and Yanal for a
+   jump), so the category is part of the question. */
+const mvTerm=(k,v)=>{const c=mvCat(k);if(!c||!v)return'';
+  const hit=c.types.find(t=>t[0]===v)||c.dirs.find(t=>t[0]===v);return hit?L(hit[1],hit[2]):'';};
+const mvTermOr=(k,v)=>mvTerm(k,v)||(typeof exLabel==='function'?exLabel(v):v);
+
+/* ---- Reading a type and a direction off an exercise's name -----------------
+   A row whose exercise was picked or typed is filled in with what its name says, so the
+   coach only answers what the name does not. Most specific first; every answer is one of
+   the category's own values, and nothing is guessed where nothing matches. */
+const MV_TYPE_WORDS={
+  'Knee Dominant':[[/step[- ]?down/,'Step-down'],[/step[- ]?up/,'Step-up'],[/split ?squat|bulgarian|rfess|rear[- ]?foot/,'Split Squat'],
+    [/lunge|hamle/,'Lunge'],[/squat|leg press|pistol|wall sit|\bsissy\b/,'Squat']],
+  'Hip Dominant':[[/good ?morning/,'Good Morning'],[/hip thrust/,'Hip Thrust'],[/glute bridge|\bbridge\b/,'Glute Bridge'],
+    [/pull[- ]?through/,'Pull-through'],[/\bswing\b/,'Swing'],[/\brdl\b|romanian|stiff[- ]?leg/,'RDL'],[/deadlift|\bdl\b/,'Deadlift']],
+  'Upper Body Push':[[/overhead|shoulder press|military|\bohp\b|push press|\bjerk\b|z[- ]?press|arnold|handstand|pike/,'Vertical Push'],
+    [/landmine/,'Vertical Push'],
+    [/bench|push[- ]?up|chest|\bfly\b|floor press|incline|decline|\bdip\b|\bdb press\b/,'Horizontal Push']],
+  'Upper Body Pull':[[/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\blat\b|pullover/,'Vertical Pull'],
+    [/\brow\b|face ?pull|rear delt|inverted/,'Horizontal Pull']],
+  'Core':[[/anti[- ]?rotation|pallof|bird ?dog|\bpress ?out\b/,'Anti-Rotation'],
+    [/anti[- ]?lateral|side ?plank|copenhagen plank/,'Anti-Lateral Flexion'],
+    [/anti[- ]?extension|\bplank\b|dead ?bug|ab ?wheel|roll ?out|body ?saw|\bhollow\b/,'Anti-Extension'],
+    [/anti[- ]?flexion/,'Anti-Flexion'],[/side ?bend|lateral flexion/,'Lateral Flexion'],
+    [/woodchop|\bchop\b|russian ?twist|\btwist\b|rotation/,'Rotation'],
+    [/back ?extension|superman|reverse hyper|\bextension\b/,'Extension'],
+    [/crunch|sit[- ]?up|leg raise|knee raise|\bv[- ]?up\b|toes ?to ?bar|\bflexion\b/,'Flexion']],
+  'Carry':[[/farmer/,"Farmer's Carry"],[/suitcase/,'Suitcase Carry'],[/front ?rack|rack carry|goblet carry/,'Front Rack Carry'],
+    [/overhead|waiter/,'Overhead Carry'],[/zercher/,'Zercher Carry']],
+  'Olympic Lift':[[/\bpull\b/,'Olympic Pull'],[/snatch/,'Snatch'],[/\bjerk\b/,'Jerk'],[/clean/,'Clean'],
+    [/drill|technique|teknik|complex|balance|muscle|tall|scarecrow/,'Technique / Assistance']],
+  'Plyometric':[[/push[- ]?up|clap|upper|plyo push|med ?ball push/,'Upper Body'],[/bound/,'Bound'],[/\bhop|pogo|skip/,'Hop'],
+    [/jump|cmj|\bdj\b|depth|drop/,'Jump']],
+  'Medicine Ball':[[/scoop/,'Scoop Toss'],[/shot ?put/,'Shot Put Throw'],[/slam/,'Slam'],[/chest pass|chest throw|\bpass\b/,'Chest Pass'],
+    [/rotational|side toss|\btwist\b|rotation/,'Rotational Throw'],[/overhead|backward throw|over the head/,'Overhead Throw']],
+  'Full Body':[[/get[- ]?up|turkish/,'Get-up'],[/burpee|ground to stand|sprawl/,'Ground to Standing'],[/complex|flow/,'Complex / Flow'],
+    [/thruster|squat.*press|wall ball/,'Squat + Press'],[/lunge.*press/,'Lunge + Press'],[/squat.*(row|pull)/,'Squat + Pull'],
+    [/(deadlift|rdl|hinge|clean).*(press)/,'Hinge + Press'],[/(deadlift|rdl|hinge).*(row|pull)|renegade/,'Hinge + Pull'],
+    [/(row|pull).*press|press.*(row|pull)/,'Pull + Press']],
+  'Accessory':[[/external rotation|internal rotation|rotator|\bcuff\b|\ber\b/,'Rotator Cuff'],[/scap|y[- ]?t[- ]?w|\bytw\b|serratus/,'Scapula'],
+    [/neck/,'Neck'],[/tibialis|tib raise|\btib\b/,'Tibialis'],[/calf|soleus/,'Calf'],[/leg extension|knee extension|tke/,'Knee Extension'],
+    [/leg curl|hamstring curl|nordic|knee flexion/,'Knee Flexion'],[/adduct|copenhagen/,'Adductor'],
+    [/abduct|clam|band walk|monster walk|lateral walk/,'Abductor'],[/grip|wrist|forearm|plate pinch/,'Forearm / Grip'],
+    [/curl|bicep|tricep|skull|pushdown|kickback/,'Arm'],[/raise|delt|shoulder|\bfly\b/,'Shoulder'],
+    [/glute|hip (ext|abd|flex)|kick ?back|fire hydrant/,'Hip Isolation']],
+};
+const MV_DIR_WORDS={
+  'Knee Dominant':[[/lateral|side|cossack|skater/,'Lateral'],[/reverse|backward|rear(?![- ]?foot)/,'Backward'],[/curtsy|crossover|diagonal/,'Diagonal'],
+    [/walking|forward/,'Forward'],[/clock|multi/,'Multi-Directional']],
+  'Upper Body Push':[[/incline|decline|landmine/,'Angled']],
+  'Upper Body Pull':[[/high row|low row|incline/,'Angled']],
+  'Plyometric':[[/lateral|skater|side/,'Lateral'],[/backward|reverse/,'Backward'],[/diagonal|zig ?zag/,'Diagonal'],
+    [/broad|forward|horizontal|\bbound/,'Forward'],[/multi/,'Multi-Directional'],[/box|tuck|vertical|cmj|squat jump|depth|drop|pogo/,'Vertical']],
+  'Medicine Ball':[[/slam/,'Down'],[/scoop|backward|overhead back/,'Backward'],[/rotational|side|twist/,'Rotational'],
+    [/vertical|up/,'Up'],[/chest|shot ?put|forward/,'Forward']],
+  'Full Body':[[/lateral|side/,'Lateral'],[/reverse|backward/,'Backward'],[/walking|forward/,'Forward']],
+};
+/* What a direction follows from its type when the name says nothing else: a vertical push is
+   pressed vertically. */
+const MV_DIR_FROM_TYPE={'Horizontal Push':'Horizontal','Vertical Push':'Vertical','Horizontal Pull':'Horizontal','Vertical Pull':'Vertical',
+  'Slam':'Down','Chest Pass':'Forward','Rotational Throw':'Rotational','Scoop Toss':'Backward','Overhead Throw':'Backward','Shot Put Throw':'Rotational'};
+function mvGuessType(k,name){
+  const nm=String(name||'').toLowerCase();
+  if(!nm)return'';
+  const ok=mvTypes(k);
+  const hit=(MV_TYPE_WORDS[k]||[]).find(([re,t])=>ok.includes(t)&&re.test(nm));
+  return hit?hit[1]:'';
+}
+function mvGuessDir(k,name,type){
+  const ok=mvDirs(k);if(!ok.length)return'';
+  const nm=String(name||'').toLowerCase();
+  const hit=nm&&(MV_DIR_WORDS[k]||[]).find(([re,d])=>ok.includes(d)&&re.test(nm));
+  if(hit)return hit[1];
+  const d=MV_DIR_FROM_TYPE[type];
+  return d&&ok.includes(d)?d:'';
+}
+/* Words an older version of the app stored as a row's "execution", read into the type they
+   now are. Anything else that is not one of the category's types is read off the name. */
+const MV_TYPE_ALIAS={
+  'Upper Body Push':{Horizontal:'Horizontal Push',Vertical:'Vertical Push'},
+  'Upper Body Pull':{Horizontal:'Horizontal Pull',Vertical:'Vertical Pull'},
+};
+const MV_DIR_ALIAS={'Upper Body Push':{Horizontal:'Horizontal',Vertical:'Vertical'},'Upper Body Pull':{Horizontal:'Horizontal',Vertical:'Vertical'}};
+function mvNormType(k,v,name){
+  const ok=mvTypes(k);if(!ok.length)return'';
+  const s=String(v||'').trim();
+  if(ok.includes(s))return s;
+  const al=(MV_TYPE_ALIAS[k]||{})[s];
+  if(al)return al;
+  return mvGuessType(k,name);
+}
+function mvNormDir(k,v,name,type,plane){
+  const ok=mvDirs(k);if(!ok.length)return'';
+  const s=String(v||'').trim();
+  if(ok.includes(s))return s;
+  const al=(MV_DIR_ALIAS[k]||{})[String(plane||'').trim()];
+  if(al&&ok.includes(al))return al;
+  return mvGuessDir(k,name,type);
+}
+/* A library card's category — the shelf it sits on, else the category a program row last
+   tagged it with — and its type and direction under that category. */
+function mvLibCat(it){
+  if(!it)return'';
+  if(MV_KEYS.includes(it.type))return it.type;
+  if(MV_KEYS.includes(it.exPattern))return it.exPattern;
+  return'';
+}
+function mvLibType(it,k){
+  if(!it||!k)return'';
+  const ok=mvTypes(k);
+  if(ok.includes(it.subType))return it.subType;
+  if(it.exPattern===k&&ok.includes(it.exPlane))return it.exPlane;
+  return mvNormType(k,it.exPattern===k?it.exPlane:'',it.name);
+}
+function mvLibDir(it,k,type){
+  if(!it||!k)return'';
+  const ok=mvDirs(k);
+  if(ok.includes(it.dir))return it.dir;
+  return mvGuessDir(k,it.name,type||mvLibType(it,k));
+}
+/* A library card saved under the shelves an older version had, read into this taxonomy once
+   (data migration). Only a sub-type that is set and is not one of its category's types is
+   touched — a card the coach left blank stays blank — so running it again changes nothing.
+   What the old value said is kept where it still means something: a Horizontal press is a
+   horizontal push pressed horizontally, a plyometric filed "Lateral" jumps sideways, an
+   eccentric squat keeps its contraction on the contraction field. */
+const MV_OLD_DIR={'Plyometric':{Vertical:'Vertical',Horizontal:'Forward',Lateral:'Lateral','Multi-Directional':'Multi-Directional'},
+  'Medicine Ball':{Vertical:'Up',Horizontal:'Forward',Rotational:'Rotational'}};
+const MV_OLD_KIND={'Plyometric':{Jump:'Jump','Drop Jump':'Jump',Hop:'Hop',Bound:'Bound'},'Medicine Ball':{Slam:'Slam',Pass:'Chest Pass'}};
+const MV_OLD_ACC={'Shoulder & Scapula':'Shoulder','Arms':'Arm','Forearm & Grip':'Forearm / Grip','Calf & Ankle':'Calf','Neck':'Neck',
+  'Glutes':'Hip Isolation','Quadriceps':'Knee Extension','Adductors & Abductors':'Adductor'};
+function mvMigrateLibCard(e){
+  if(!e||typeof e!=='object')return e;
+  let type=e.type;
+  const sub=String(e.subType||'').trim();
+  if(sub==='Olympic Lift'&&type==='Full Body')type='Olympic Lift';
+  if(!MV_KEYS.includes(type))return type===e.type?e:{...e,type};
+  const ok=mvTypes(type);
+  if(!sub||ok.includes(sub))return type===e.type?e:{...e,type};
+  const out={...e,type};
+  const nm=String(e.name||'');
+  const oldDir=(MV_OLD_DIR[type]||{})[sub]||(MV_DIR_ALIAS[type]||{})[sub]||'';
+  if(oldDir&&!e.dir&&mvDirs(type).includes(oldDir))out.dir=oldDir;
+  if(['Concentric','Eccentric','Isometric'].includes(sub)){
+    const cur=Array.isArray(e.contraction)?e.contraction:(e.contraction?[e.contraction]:[]);
+    if(!cur.includes(sub))out.contraction=[...cur,sub];
+  }
+  out.subType=(MV_TYPE_ALIAS[type]||{})[sub]||(MV_OLD_KIND[type]||{})[e.exKind]
+    ||(type==='Knee Dominant'&&({'Step-Up':'Step-up',Lunges:'Lunge'})[e.pattern])
+    ||mvGuessType(type,nm)||(type==='Accessory'&&MV_OLD_ACC[sub])||'';
+  return out;
+}
+/* =========================================================
    SESSION ANALYSIS HELPERS
    ========================================================= */
 function sesAnalyze(ses,exLib){
@@ -16505,54 +16794,14 @@ const MOVE_PATTERNS=[['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Domi
 const PATTERN_PLANES={'Hip Dominant':['Push','Pull','ISO','Eccentric'],'Knee Dominant':['Push','Pull','ISO','Eccentric'],'Upper Body Push':['Vertical','Horizontal','Rotational'],'Upper Body Pull':['Vertical','Horizontal','Rotational'],'Core':['Flexion','Extension','Lateral Flexion','Rotation','Anti-Flexion','Anti-Extension','Anti-Lateral Flexion','Anti-Rotation']};
 const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
-/* The same taxonomy, one level down: a single exercise on an athlete's sheet is
-   tagged with the pattern it trains and HOW that pattern is executed. Full Body and
-   Accessory are the two extra patterns — a clean, a jerk or a curl exists per exercise
-   but is not something a whole session gets labelled with, so they are added here
-   rather than to MOVE_PATTERNS. A Full Body lift is not executed in a plane or a
-   contraction; what varies is how fast the bar has to move, so its executions are the
-   three speeds a coach writes one for. */
-const EX_PATTERNS=[...MOVE_PATTERNS.map(([k])=>k),'Full Body','Accessory'];
-const EX_PATTERN_STYLES={...PATTERN_PLANES,
-  'Full Body':['Basic Strength','Explosive','Olympic Lift'],
-  'Accessory':['Push','Pull','ISO','Eccentric']};
+/* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
+   with the category it trains (Kategori), its type (Tür) and, where the category has one,
+   its direction (Yön) — the eleven categories of the MOVEMENT TAXONOMY. */
+const EX_PATTERNS=MV_KEYS;
+/* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
+   execution — is one of its category's own types (MOVEMENT TAXONOMY). */
+const EX_PATTERN_STYLES=Object.fromEntries(MV_CATS.map(c=>[c.k,c.types.map(t=>t[0])]));
 const exStylesFor=p=>EX_PATTERN_STYLES[p]||[];
-/* How a pattern is USUALLY executed, per pattern: a hinge is pulled, a squat is pushed,
-   a press is horizontal far more often than not. Read only when nothing better is
-   known, so the box is filled with the likely answer instead of being left blank. */
-const EX_STYLE_DEFAULT={'Hip Dominant':'Pull','Knee Dominant':'Push','Upper Body Push':'Horizontal',
-  'Upper Body Pull':'Horizontal','Core':'Anti-Extension','Full Body':'Basic Strength','Accessory':'Push'};
-/* The words that name an execution inside an exercise's own name, per pattern, most
-   specific first — "Split Squat ISO Hold" is an ISO before it is a squat, and a
-   "Tempo Box Squat (3-1-1)" is eccentric work whatever it says after that. Every
-   rule is checked against the pattern's own executions, so a Core rule can never
-   put "Horizontal" on a plank. */
-const EX_STYLE_WORDS={
-  hinge:[[/eccentric|nordic|negative|\btempo\b|\d\s*-\s*\d\s*-\s*\d/,'Eccentric'],
-         [/\biso\b|isometric|\bhold\b|wall sit|\bplank\b/,'ISO'],
-         [/thrust|bridge|hip ext|abduct|adduct|\bkick\s*back/,'Push'],
-         [/deadlift|\brdl\b|hinge|good ?morning|\bswing\b|pull ?through|back ext|\bcurl\b|hamstring|glute ham|\bpull\b/,'Pull'],
-         [/squat|lunge|step[- ]?up|leg press|\bpress\b|split|\bpush\b|extension/,'Push']],
-  push:[[/rotational|\btwist\b|\bchop\b|\bscoop\b|shot ?put/,'Rotational'],
-        [/overhead|shoulder press|military|\bohp\b|landmine|push press|\bjerk\b|\bdip\b|\bz press\b|arnold/,'Vertical'],
-        [/bench|push[- ]?up|chest|\bfly\b|floor press|incline|decline|\bdb press\b/,'Horizontal']],
-  pull:[[/rotational|\btwist\b|\bchop\b/,'Rotational'],
-        [/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\blat\b|pullover|hang(ing)? ?pull/,'Vertical'],
-        [/\brow\b|face ?pull|rear delt|\bshrug\b|\bpulls?\b/,'Horizontal']],
-  core:[[/anti[- ]?rotation|pallof|bird ?dog|\bpress ?out\b/,'Anti-Rotation'],
-        [/anti[- ]?lateral|side ?plank|suitcase|farmer|\bcarry\b/,'Anti-Lateral Flexion'],
-        [/anti[- ]?extension|\bplank\b|dead ?bug|ab ?wheel|roll ?out|body ?saw|\bhollow\b|\bpush ?up plank\b/,'Anti-Extension'],
-        [/anti[- ]?flexion/,'Anti-Flexion'],
-        [/side ?bend|lateral flexion/,'Lateral Flexion'],
-        [/woodchop|\bchop\b|russian ?twist|\btwist\b|rotation|\blift\b|med ?ball (side|rotational)/,'Rotation'],
-        [/back ?extension|superman|reverse hyper|\bextension\b/,'Extension'],
-        [/crunch|sit[- ]?up|leg raise|knee raise|\bv[- ]?up\b|toes ?to ?bar|\bflexion\b/,'Flexion']],
-  full:[[/clean|snatch|\bjerk\b|olympic|high pull/,'Olympic Lift'],
-        [/jump|\bhop\b|bound|throw|\bslam\b|explosive|\bpower\b|med ?ball|ballistic|sprint/,'Explosive'],
-        [/squat|deadlift|press|\bstrength\b|complex|carry/,'Basic Strength']],
-};
-const EX_STYLE_RULES={'Hip Dominant':'hinge','Knee Dominant':'hinge','Accessory':'hinge',
-  'Upper Body Push':'push','Upper Body Pull':'pull','Core':'core','Full Body':'full'};
 /* The execution an exercise is most likely trained with, so the pair fills itself in
    rather than being answered twice on every row. In order: what this exact exercise was
    last tagged with anywhere (the library remembers it), then the assistant coach's pool
@@ -16563,16 +16812,10 @@ function exGuessStyle(name,pattern){
   const styles=exStylesFor(pattern);
   if(!styles.length)return'';
   const nm=String(name||'').trim().toLowerCase();
-  if(nm){
-    const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
-    if(hit&&String(hit.exPattern||'')===pattern&&styles.includes(hit.exPlane))return hit.exPlane;
-    for(const k in CA_POOL)for(const c of CA_POOL[k])
-      if(c.n.toLowerCase()===nm&&styles.includes(c.ex))return c.ex;
-    for(const[re,st]of(EX_STYLE_WORDS[EX_STYLE_RULES[pattern]]||[]))
-      if(styles.includes(st)&&re.test(nm))return st;
-  }
-  const d=EX_STYLE_DEFAULT[pattern];
-  return styles.includes(d)?d:styles[0];
+  if(!nm)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
+  if(hit&&mvLibCat(hit)===pattern){const t=mvLibType(hit,pattern);if(t)return t;}
+  return mvGuessType(pattern,nm);
 }
 /* Which pattern an exercise trains, read off what is known about it — so a row whose name
    was typed (or written by a model) does not have to be answered by hand. In order: what
@@ -16580,15 +16823,21 @@ function exGuessStyle(name,pattern){
    exercise under a slot), then the words in the name. Returns '' when nothing says: a
    wrong pattern is worse than a blank one, so there is no default here. */
 const EX_NAME_PATTERN=[
-  ['Full Body',/\bclean\b|snatch|\bjerk\b|thruster|high pull|burpee/],
-  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|suitcase|\bcarry\b|farmer|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Olympic Lift',/\bclean\b|snatch|\bjerk\b|high pull/],
+  ['Medicine Ball',/med(icine)? ?ball|\bmb\b|wall ball|chest pass|scoop toss|shot ?put|\bslam\b/],
+  ['Plyometric',/jump|\bhop|bound|pogo|depth|plyo|skater/],
+  ['Carry',/farmer|suitcase|\bcarry\b|\bwalk\b.*(kb|kettlebell|db|dumbbell)/],
+  ['Full Body',/thruster|burpee|get[- ]?up|complex|man ?maker/],
+  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Accessory',/\bcurl\b|bicep|tricep|skull ?crusher|push ?down|lateral raise|front raise|rear delt|calf raise|tib(ialis)? raise|neck|external rotation|internal rotation|leg ext|copenhagen|\bclam|band walk|monster walk|y[- ]?t[- ]?w|wrist|grip|shrug/],
   ['Hip Dominant',/deadlift|\brdl\b|hip thrust|glute bridge|\bbridge\b|good ?morning|\bswing\b|pull ?through|back ext|hyperext|reverse hyper|hamstring|nordic|glute ham|\bkick ?back|hip ext|\bhinge\b|\bglute\b/],
-  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|leg ext|split|wall sit|\bsissy\b|\bpistol\b/],
-  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|rear delt|\bshrug\b|\blat\b|pullover|bicep|\bcurl\b/],
-  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|tricep|\braise\b|landmine/]];
+  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|split|wall sit|\bsissy\b|\bpistol\b/],
+  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|\blat\b|pullover/],
+  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|landmine/]];
 /* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
 const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
-  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core','Carry':'Carry',
+  'Jump / Plyo':'Plyometric'};
 /* The library card carrying exactly this name, or null. */
 const exLibHit=name=>{const nm=String(name||'').trim().toLowerCase();
   return nm?(getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm)||null):null;};
@@ -16596,7 +16845,7 @@ function exGuessPattern(name){
   const nm=String(name||'').trim().toLowerCase();
   if(!nm)return'';
   const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
-  if(hit&&EX_PATTERNS.includes(hit.exPattern))return hit.exPattern;
+  if(hit&&mvLibCat(hit))return mvLibCat(hit);
   for(const k in CA_POOL)for(const c of CA_POOL[k]){
     if(c.n.toLowerCase()!==nm)continue;
     const slot=CA_SLOTS.find(sl=>sl.id===k);
@@ -16611,8 +16860,7 @@ function exResolveTags(name,pattern,plane){
   let pat=String(pattern||'').trim();
   if(!EX_PATTERNS.includes(pat))pat=EX_VOCAB_PATTERN[pat]||exGuessPattern(name);
   if(!pat)return{pattern:'',plane:''};
-  const st=String(plane||'').trim();
-  return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(name,pat)};
+  return{pattern:pat,plane:mvNormType(pat,plane,name)};
 }
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
@@ -16622,20 +16870,19 @@ function exResolveTags(name,pattern,plane){
    Returns null when the entry has nothing to say. */
 function exTagsFromLib(it,row){
   const nm=(it&&it.name)||'';
-  const pat=String((it&&it.exPattern)||'').trim();
-  if(pat&&EX_PATTERNS.includes(pat)){
-    const st=String((it&&it.exPlane)||'').trim();
-    return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(nm,pat)};
-  }
-  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:exGuessPattern(nm);
-  if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:exGuessStyle(nm,guess)};
+  const pat=mvLibCat(it);
+  if(pat){const t=mvLibType(it,pat);return{pattern:pat,plane:t,dir:mvLibDir(it,pat,t),noPat:false};}
+  const guess=exGuessPattern(nm);
+  if(guess&&!String((row&&row.pattern)||'').trim()&&!(row&&row.noPat)){const t=mvGuessType(guess,nm);
+    return{pattern:guess,plane:t,dir:mvGuessDir(guess,nm,t)};}
   return null;
 }
 /* "Hip · Eccentric" — the key the execution pie counts. Keeping pattern and style
    in one label is what lets the pie show both at once; the pattern is abbreviated
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
-const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Full Body':'Full Body','Accessory':'Accessory'};
+const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core',
+  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory'};
 /* What a set of exercise rows trains, read off the rows themselves. Every row already
    carries the pattern it trains and how that pattern is executed; a row nobody tagged is
    looked up in the shared library by name, exactly the way the load distribution resolves
@@ -16643,7 +16890,8 @@ const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push
    own rows were written in — so a block that is all hinges and presses says so without
    anybody ticking a box, and two blocks of one session can say two different things. */
 function exercisePatterns(list){
-  const rows=(list||[]).filter(e=>e&&(String(e.pattern||'').trim()||String(e.name||'').trim()));
+  /* A row whose category the coach took off (a warm-up drill) trains nothing here. */
+  const rows=(list||[]).filter(e=>e&&!e.noPat&&(String(e.pattern||'').trim()||String(e.name||'').trim()));
   if(!rows.length)return[];
   const lib=libPatternIndex();
   const found=new Map();
@@ -16657,6 +16905,7 @@ function exercisePatterns(list){
       else if(pat===hit.pattern&&!st)st=hit.style;
     }
     if(!pat||EX_PATTERNS.indexOf(pat)<0)return;
+    st=mvNormType(pat,st,e.name);
     const planes=found.get(pat)||[];
     if(st&&planes.indexOf(st)<0)planes.push(st);
     found.set(pat,planes);
@@ -16727,8 +16976,8 @@ function TrainContent({session,onPatch,readOnly}){
   const fallback=blocks.every(x=>!x.pats.length)?sessionPatterns(session):[];
   const chips=pats=>(<div className="tc-pats">
     {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}>
-      <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
-      {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
+      <b>{mvCatLabel(p.pattern)}</b>
+      {p.planes.length>0&&<i>{p.planes.map(x=>mvTermOr(p.pattern,x)).join(' · ')}</i>}
     </span>)}
   </div>);
   return(<div className="tc-wrap">
@@ -16808,31 +17057,16 @@ function MuscleLoadFigure({slugLoad}){
    looked up by name and takes what the library says. The types that are not movement
    patterns — Warm-Up, Medicine Ball, Plyometric, Speed, Mobility — resolve to nothing on
    purpose: filing them under a pattern they do not train would be a worse answer than none. */
-const LIB_TYPE_PATTERN={'Upper Body Push':'Upper Body Push','Upper Body Pull':'Upper Body Pull',
-  'Hip Dominant':'Hip Dominant','Knee Dominant':'Knee Dominant','Core':'Core','Full Body':'Full Body',
-  'Accessory':'Accessory'};
-/* The library writes the contraction out in full where this taxonomy abbreviates it, and
-   files a Full Body lift under plain "Strength" where the execution names the speed. */
-const LIB_STYLE_ALIAS={'Isometric':'ISO','Strength':'Basic Strength'};
-/* Built once per library, not once per caller: the strip on every block asks this
-   question on every keystroke, and rebuilding the whole index for each of them is what
-   would make typing an exercise name feel slow. The library array is replaced wholesale
-   when it changes, so its identity is all the cache needs to watch. */
 let _libPatIdx=null,_libPatFor=null;
 function libPatternIndex(){
   const items=getLibItems()||[];
   if(_libPatIdx&&_libPatFor===items)return _libPatIdx;
   const idx=new Map();
   items.forEach(it=>{
-    const pat=LIB_TYPE_PATTERN[it.type];
+    const pat=mvLibCat(it);
     if(!pat)return;
-    const raw=String(it.subType||'').trim();
-    /* Hip / Knee Dominant carry the contraction and the direction on two fields. An
-       eccentric or isometric focus IS the execution; a concentric one is executed as
-       whichever way the load moves, which is the Action (Push / Pull). */
-    const st=(raw==='Concentric'||(!raw&&it.action))?String(it.action||''):(LIB_STYLE_ALIAS[raw]||raw);
-    idx.set(String(it.name||'').trim().toLowerCase(),
-      {pattern:pat,style:exStylesFor(pat).includes(st)?st:''});
+    const st=mvLibType(it,pat);
+    idx.set(String(it.name||'').trim().toLowerCase(),{pattern:pat,style:st,dir:mvLibDir(it,pat,st)});
   });
   _libPatIdx=idx;_libPatFor=items;
   return idx;
@@ -16869,6 +17103,8 @@ function aggSessions(days){
     Object.entries(pls).forEach(([pat,arr])=>(arr||[]).forEach(pl=>{
       add(planes,pl);add(combos,EX_COMBO(pat,pl));}));
     (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
+      /* The coach took this row's category off (a warm-up drill): it is not load. */
+      if(e&&e.noPat)return;
       let pat=(e.pattern||'').trim(),st=(e.plane||'').trim();
       /* A tag the coach set always wins; the library only fills in what is missing.
          Its execution is only borrowed when the pattern agrees — a row re-tagged as
@@ -16878,7 +17114,8 @@ function aggSessions(days){
         if(!pat){pat=hit.pattern;st=st||hit.style;}
         else if(pat===hit.pattern)st=hit.style;
       }
-      if(!pat)return;
+      if(!pat||!EX_PATTERNS.includes(pat))return;
+      st=mvNormType(pat,st,e.name);
       add(patterns,pat);
       addEx(pat,e.name,st);
       // An exercise with a pattern but no execution still counts as that pattern.
@@ -16889,7 +17126,7 @@ function aggSessions(days){
 }
 /* Fixed per-pattern pie colors (CVD-validated against the dark panel surface).
    Keyed by movement pattern so each pattern keeps its color week to week. */
-const ML_PIE_COLS={'Hip Dominant':'#199e70','Knee Dominant':'#3987e5','Upper Body Push':'#d55181','Upper Body Pull':'#c98500','Core':'#8b5cf6','Full Body':'#b85c38','Accessory':'#5c8a99'};
+const ML_PIE_COLS=Object.fromEntries(MV_CATS.map(c=>[c.k,c.color]));
 /* Execution slices inherit their pattern's colour and separate by lightness, so a
    glance at the second pie still reads "this much hip work" before it reads which
    flavour of it. Styles are spread across a fixed lightness band rather than
@@ -16932,23 +17169,23 @@ function LoadDistBars({entries}){
   const total=entries.reduce((s,e)=>s+e.value,0)||1;
   const max=Math.max(1,...entries.map(e=>e.value));
   const pct=v=>{const x=Math.round(v/total*1000)/10;return`${Number.isInteger(x)?x:x.toFixed(1)}%`;};
-  const name=n=>n==='not set'?L('belirtilmemiş','not set'):exLabel(n);
+  const name=(p,n)=>n==='not set'?L('tür belirtilmemiş','type not set'):mvTermOr(p,n);
   const rows=entries.slice().sort((a,b)=>b.value-a.value);
   return(<div className="ldb">
     {rows.map(e=>{const kt=e.kids.reduce((s,k)=>s+k.value,0)||1;return(
       <div key={e.key} className="ldb-row on">
         <div className="ldb-main">
-          <span className="ldb-n"><i style={{background:e.color}}/>{exLabel(e.name)}</span>
+          <span className="ldb-n"><i style={{background:e.color}}/>{mvCatLabel(e.name)}</span>
           <span className="ldb-track"><span className="ldb-bar" style={{width:`${Math.max(2,e.value/max*100)}%`}}>
             {e.kids.map(k=><span key={k.key} className="ldb-seg" style={{width:`${k.value/kt*100}%`,background:k.color}}
-              title={`${exLabel(e.name)} · ${name(k.name)} — ${k.value} · ${pct(k.value)}`}/>)}
+              title={`${mvCatLabel(e.name)} · ${name(e.name,k.name)} — ${k.value} · ${pct(k.value)}`}/>)}
           </span></span>
           <span className="ldb-p">{pct(e.value)}</span>
           <span className="ldb-c">{e.value}×</span>
         </div>
         <div className="ldb-kids">{e.kids.slice().sort((a,b)=>b.value-a.value).map(k=>
           <div key={k.key} className="ldb-kid">
-            <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
+            <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(e.name,k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
             {(k.exs||[]).length>0&&<div className="ldb-exs">{k.exs.map(x=><span key={x.name}>{x.name} <em>×{x.count}</em></span>)}</div>}
           </div>)}</div>
       </div>);})}
@@ -17018,9 +17255,9 @@ function MuscleLoadDistribution({days,title,refDate}){
       </div>
     </div>
     {!hasData
-      ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} etiketlenmiş bir şey yok — seansta hareket paterni seç ya da Bireyselleştirme kartında egzersiz bazında etiketle.`,`Nothing tagged in this ${mode==='week'?'week':'month'} — pick movement patterns on the session, or tag them per exercise on the Individualization card.`)}</div>
+      ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} kategorisi olan egzersiz yok — antrenman tablosunda egzersizlere kategori ver.`,`No categorised exercise in this ${mode==='week'?'week':'month'} — give the exercises in the training table a category.`)}</div>
       :<>
-      <div className="mld-sub">{L('Hareket paterni · uygulama — çubuk dönemin payını, renkler uygulamaları gösterir; egzersizler her satırın altında','Movement pattern · execution — the bar is the share of the period, the colours its executions; the exercises are listed under each row')}</div>
+      <div className="mld-sub">{L('Kategori · tür — çubuk dönemin payını, renkler türleri gösterir; egzersizler her satırın altında','Category · type — the bar is the share of the period, the colours its types; the exercises are listed under each row')}</div>
       <LoadDistBars entries={entries}/>
       </>}
   </div>);
@@ -18540,7 +18777,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     return a;})();
   const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
   const monthLoad=useMemo(()=>calMode==='month'?monthFocusLoad(days,yr,mo):null,[calMode,days,yr,mo]);
-  return(<>
+  /* Whose load the training table's "Haftalık Yük Dağılımı" opens: this calendar's own days
+     (the athlete's, or the team's), around the day being written. */
+  const loadCtx=useMemo(()=>({days,name:labelOwner||'',date:editDate||selected.date}),[days,labelOwner,editDate,selected.date]);
+  return(<PlanLoadCtx.Provider value={loadCtx}>
   {/* Controls only. The screen is named once, by the masthead above it — the calendar
       used to title itself as well, so the tab opened with the word "Calendar" twice. */}
   {!inlineOpen&&<div className="cal-head">
@@ -18952,7 +19192,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </aside>
     </>))}
   </div>
-  </>);
+  </PlanLoadCtx.Provider>);
 }
 
 /* =========================================================
@@ -19327,40 +19567,10 @@ function SesKindCard({session,index,total,onUpdate,onRemove,onMove,athletes,date
    WITH a custom autocomplete dropdown fed from the shared exercise library
    (textarea can't use a native <datalist>, so we render our own list). */
 const UNCAT='Kategorisiz';
-/* The picker's category rail is a FIXED, ordered list — the coach's own taxonomy — instead
-   of every tag found in the library, which piled Exercise Types, contraction types and
-   movement patterns into one alphabetical list ("Anti-Extension" next to "Bilateral").
-   A category claims an exercise when any of its `tags` matches the exercise's Exercise
-   Type, sub-type or pattern (case-insensitive), so one row can gather several library
-   values — Agility takes both agility skills, Change of Direction takes the stored "COD".
-   Rows are always rendered in this order, count included, so the rail never reshuffles. */
-const EX_PICK_CATS=[
-  {name:'Upper Body Push',tags:['Upper Body Push']},
-  {name:'Upper Body Pull',tags:['Upper Body Pull']},
-  {name:'Hip Dominant',tags:['Hip Dominant']},
-  {name:'Knee Dominant',tags:['Knee Dominant']},
-  {name:'Core',tags:['Core']},
-  {name:'Eccentric',tags:['Eccentric']},
-  {name:'Isometric',tags:['Isometric']},
-  {name:'Plyometric',tags:['Plyometric']},
-  {name:'Medicine Ball',tags:['Medicine Ball']},
-  // Plain "Multi Directional Speed" work (no skill picked yet) reads as sprint/speed work,
-  // so it lands here rather than falling out of the rail entirely.
-  {name:'Speed/Sprint Technique',tags:['Sprint Technique','Speed/Sprint Technique','Speed','Multi Directional Speed']},
-  {name:'Acceleration',tags:['Acceleration']},
-  {name:'Deceleration',tags:['Deceleration']},
-  {name:'Change of Direction',tags:['COD','Change of Direction']},
-  {name:'Agility',tags:['Agility','Reactive Agility','Non-Reactive Agility']},
-  {name:'Mobility',tags:['Mobility','Mobilisation']},
-  {name:'Stability',tags:['Stability']},
-  {name:'Recovery',tags:['Recovery']},
-  {name:'Corrective',tags:['Corrective']},
-];
-const exCatKey=s=>String(s||'').trim().toLowerCase();
-const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
-// Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
-const exCatsOf=e=>{const t=exCatTags(e);
-  return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
+/* The picker lists the exercises of the row's own category only (Kategori), and filters
+   them by that category's types and directions (Tür · Yön) — the same boxes the row has.
+   A row with no category yet lists the library by category instead. */
+const EN_NO_TYPE='__none';
 function ExNameField({value,onChange,onPick,tags,onNewName}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
@@ -19393,7 +19603,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
      exercise written here is filed the way it is trained — whichever order the coach
      works in. Typing the name first and tagging it after already wrote the pair; this
      covers the other order, and a rename, which otherwise left a bare stub behind. */
-  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'');};
+  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
   /* A name the box has not filed before — freshly typed or renamed — is also the moment
      the row can be read for how the exercise is executed. An unchanged name is not: the
      coach may have cleared the execution on purpose, and re-entering the name field is
@@ -19404,34 +19614,51 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     if(nm===prev){withTags(nm);return;}
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
-  const lib=focus?getLibItems():[];
-  // Text query narrows the pool first; the category counts on the right are computed
-  // from that pool so they always say how many rows a category would actually show.
+  const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
+  const[dirs,setDirs]=useState([]);   // directions ticked (empty = no filter)
+  /* A different category on the row is a different list: what was ticked for the last one
+     does not carry over. */
+  useEffect(()=>{setCats([]);setDirs([]);},[cat]);
+  const libAll=focus?getLibItems():[];
+  /* The row's category narrows the library first, so nothing of another category is offered. */
+  const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);
+    return{...e,_t:t,_d:mvLibDir(e,cat,t)};}):libAll,[libAll,cat]);
+  // Text query narrows the pool first; the counts on the right are computed from that pool
+  // so they always say how many rows a filter would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  // Every category of EX_PICK_CATS is listed, in order, with how many of the currently
-  // searched exercises it holds. Anything the list doesn't claim (an untagged name, a
-  // Full Body lift) is gathered at the end under "Kategorisiz" so it stays reachable.
+  /* The filters on the right: the category's types (and its directions), or — on a row with
+     no category — the categories themselves, with "Kategorisiz" for what none of them claims. */
   const catList=useMemo(()=>{
-    const cnt=new Map();let uncat=0;
-    for(const e of pool){
-      const hits=exCatsOf(e);
-      if(!hits.length){uncat++;continue;}
-      for(const n of hits)cnt.set(n,(cnt.get(n)||0)+1);
+    const cnt=new Map();
+    if(cat){
+      pool.forEach(e=>{const k=e._t||EN_NO_TYPE;cnt.set(k,(cnt.get(k)||0)+1);});
+      const out=mvTypes(cat).map(t=>({name:t,label:mvTerm(cat,t),n:cnt.get(t)||0}));
+      if(cnt.get(EN_NO_TYPE))out.push({name:EN_NO_TYPE,label:L('Türsüz','No type'),n:cnt.get(EN_NO_TYPE)});
+      return out;
     }
-    const out=EX_PICK_CATS.map(c=>({name:c.name,n:cnt.get(c.name)||0}));
-    if(uncat)out.push({name:UNCAT,n:uncat});
+    pool.forEach(e=>{const k=mvLibCat(e)||UNCAT;cnt.set(k,(cnt.get(k)||0)+1);});
+    const out=MV_KEYS.map(k=>({name:k,label:mvCatLabel(k),n:cnt.get(k)||0}));
+    if(cnt.get(UNCAT))out.push({name:UNCAT,label:L('Kategorisiz','Uncategorized'),n:cnt.get(UNCAT)});
     return out;
-  },[pool]);
-  // Selected categories are OR-ed — ticking two shows the exercises of both.
+  },[pool,cat]);
+  const dirList=useMemo(()=>{
+    if(!cat||!mvDirs(cat).length)return[];
+    const cnt=new Map();pool.forEach(e=>{if(e._d)cnt.set(e._d,(cnt.get(e._d)||0)+1);});
+    return mvDirs(cat).map(d=>({name:d,label:mvTerm(cat,d),n:cnt.get(d)||0}));
+  },[pool,cat]);
+  // Ticked values are OR-ed inside a list; the type and the direction lists are AND-ed.
   const matchesCats=e=>{
-    if(!cats.length)return true;
-    const hits=exCatsOf(e);
-    if(!hits.length)return cats.includes(UNCAT);
-    return hits.some(n=>cats.includes(n));
+    if(cat){
+      if(cats.length&&!cats.includes(e._t||EN_NO_TYPE))return false;
+      if(dirs.length&&!dirs.includes(e._d))return false;
+      return true;
+    }
+    return!cats.length||cats.includes(mvLibCat(e)||UNCAT);
   };
-  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats]);
+  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,dirs,cat]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
   const toggleCat=c=>{setHi(-1);setCats(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
+  const toggleDir=c=>{setHi(-1);setDirs(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
   // Picking a library row hands the whole entry back (not just the name) so the caller can
   // pull its cover image and video link onto the exercise; typing a free name never does.
   const pick=it=>{const n=it.name;if(onPick)onPick(it);else onChange(n);
@@ -19463,38 +19690,51 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
         else if(e.key==='Escape'){setFocus(false);setHi(-1);}
       }}/>
     {/* Rendered in a body portal so no ancestor's overflow:hidden can clip it. */}
-    {focus&&rect&&lib.length>0&&ReactDOM.createPortal(
+    {focus&&rect&&(lib.length>0||cat)&&ReactDOM.createPortal(
       <div className="en-sugg en-pick" style={box}
         onMouseEnter={()=>{insideRef.current=true;}}
         onMouseLeave={()=>{insideRef.current=false;}}
         onMouseDown={e=>e.preventDefault()}
         onMouseUp={()=>{if(taRef.current)taRef.current.focus();}}>
         <div className="en-pane en-pane-ex">
-          <div className="en-phd"><span>{L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
-            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
+          <div className="en-phd"><span>{cat
+            ?<><i className="en-catdot" style={{background:ML_PIE_COLS[cat]}}/><b>{mvCatLabel(cat)}</b> · {L(`${shown.length} egzersiz`,`${shown.length} exercises`)}</>
+            :L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
+            {(cats.length>0||dirs.length>0)&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setDirs([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
                 onMouseDown={ev=>{ev.preventDefault();pick(e);}}>
                 <span className="en-badge">{(e.name[0]||'?').toUpperCase()}</span>
                 <span className="en-nm">{e.name}</span>
-                <span className="en-tag">{exLabel(e.type)||e.sub[0]||UNCAT}</span>
+                <span className="en-tag">{cat
+                  ?[mvTerm(cat,e._t),mvTerm(cat,e._d)].filter(Boolean).join(' · ')||'—'
+                  :(mvLibCat(e)?mvCatLabel(mvLibCat(e)):L('Kategorisiz','Uncategorized'))}</span>
               </div>)}
-            {shown.length===0&&<div className="en-none">{L('Bu filtreyle eşleşen egzersiz yok','No exercises match this filter')}</div>}
+            {shown.length===0&&<div className="en-none">{cat&&!lib.length
+              ?L(`Kütüphanede ${mvCatLabel(cat)} kategorisinde egzersiz yok — adını yazarak ekleyebilirsin.`,`The library has no ${mvCatLabel(cat)} exercise yet — type a name to add one.`)
+              :L('Bu filtreyle eşleşen egzersiz yok','No exercises match this filter')}</div>}
             {shown.length>sugg.length&&<div className="en-none">{L(`+${shown.length-sugg.length} egzersiz daha — aramayı daraltın`,`+${shown.length-sugg.length} more exercises — narrow your search`)}</div>}
           </div>
         </div>
         <div className="en-pane en-pane-cat">
-          <div className="en-phd"><span>{L('Kategoriler','Categories')}</span></div>
+          <div className="en-phd"><span>{cat?L('Tür','Type'):L('Kategori','Category')}</span></div>
           <div className="en-plist">
             {catList.map(c=>
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
-                <span className="en-cnm">{exLabel(c.name)}</span>
+                <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
-            {catList.length===0&&<div className="en-none">{L('Kategori yok','No categories')}</div>}
+            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L('Yön','Direction')}</span></div>}
+            {dirList.map(c=>
+              <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
+                onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>
+                <span className="en-cbx">{dirs.includes(c.name)?'✓':''}</span>
+                <span className="en-cnm">{c.label}</span>
+                <span className="en-cn">{c.n}</span>
+              </label>)}
           </div>
         </div>
       </div>,document.body)}
@@ -19827,35 +20067,6 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
-/* What this block trains, and what colour its session's card is — one strip, sitting
-   directly above the exercises it describes.
-
-   The patterns are not ticked any more: they are READ OFF the rows below. Writing a hinge
-   into a block makes that block say Hip, and writing a press into the next one makes that
-   one say UB Push — which is what lets two blocks of the same session say two different
-   things without the coach maintaining a second, parallel answer by hand. The card colour
-   stays the session's: one session is one card on the calendar, whichever block it is
-   picked from. */
-function TrainStrip({block,session,u,isTemplate}){
-  const pats=block?blockPatterns(block):sessionPatterns(session);
-  /* A drill is drawn, not tagged: a ball block has no pattern field on its rows, and with
-     the card colour gone up into the block's header there is nothing left to show. */
-  if(block&&blkKind(block)==='ball')return null;
-  return(<div className="sess-strip blk-strip">
-    <div className="sess-strip-l">
-      <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
-      {pats.length===0
-        ?<div className="sess-pat-empty">{L(<>Henüz egzersiz yok — bir egzersiz ekleyip <b>örüntü</b> alanını doldur, burası kendiliğinden dolar.</>,<>No exercise yet — add one and set its <b>pattern</b>; this fills itself in.</>)}</div>
-        :<div className="sess-pat-row">
-          {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}
-            title={L(`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — bu bloğun egzersizlerinden okundu`,`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — read from this block's exercises`)}>
-            <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
-            {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
-          </span>)}
-        </div>}
-    </div>
-  </div>);
-}
 /* ---- Card colour, in the block's own header ----------------------------
    It stands where the assignment button used to (ticking names in the picker below IS
    the assignment, so the button had nothing left to do). Picking a swatch tints the
@@ -19988,8 +20199,6 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
           </div>
         </section>
       </div>
-      {/* Last in the panel, so it sits directly on top of the exercises it is read from. */}
-      <TrainStrip block={block} session={session} u={u} isTemplate={isTemplate}/>
     </div>}
   </div>);
 }
@@ -20013,10 +20222,14 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
      onNew(key,name)          a name the library did not have was typed (optional)
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
-     onPattern(key,id)        a row without a pattern was given one (optional)
-     onType(key,id)           the row's type box ("Tür": Horizontal, Anti-Extension, Squat …) was
+     onRowCat(key,id)         an uncategorised row was given a category
+     onGroupCat(gid,id)       the group's category box (Kategori) was changed — every row of the
+                              group takes it; '' takes the category off (the rows stay, written as
+                              uncategorised work that the load distribution does not count)
+     onType(key,id)           the row's type box (Tür: Squat, Yatay İtiş, Anti-rotasyon …) was
                               changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
-                              current one in `typeVal` (optional — no box when a slot has none)
+                              current one in `typeVal` (no box when a slot has none)
+     onDir(key,id)            the row's direction box (Yön), the same way: `dirOpts` / `dirVal`
      onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
                               go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
@@ -20068,17 +20281,34 @@ function PtTag({tag,val,onChange}){
     </select>
   </label>);
 }
-/* The row's type — how the pattern is executed (horizontal / vertical, anti-extension …) or what
-   kind of lift it is — as a small box under the pattern's name. Pressing it opens the list. */
-function PtType({value,opts,onChange,label}){
+/* The row's type (Tür) or direction (Yön), as a small box under its category. Pressing it
+   opens the list. */
+function PtSel({value,opts,onChange,label,ph}){
   if(!opts||!opts.length)return null;
   const known=opts.some(o=>o[0]===value);
-  return(<label className={'pt-type'+(known?' on':'')} title={L('Egzersizin türü — değiştirmek için seç','The exercise\'s type — pick to change it')}>
+  return(<label className={'pt-type'+(known?' on':'')} title={label}>
     <select value={known?value:''} aria-label={label} onChange={e=>onChange(e.target.value)}>
-      <option value="">{L('Tür seç…','Pick type…')}</option>
+      <option value="">{ph}</option>
       {opts.map(o=><option key={o[0]} value={o[0]}>{o[1]}</option>)}
     </select>
   </label>);
+}
+/* The group's category (Kategori). It comes on its own — the exercise picked off the library
+   brings its category — and can be changed, or taken off with ✕: a warm-up drill the library
+   files under a category should not read as main work in the load distribution. */
+function PtCat({value,color,options,onChange,label}){
+  return(<span className={'pt-cat'+(value?' on':'')} style={{'--pat-c':color||'var(--border2)'}}>
+    <label className="pt-catsel" title={value?L('Kategori — değiştirmek için seç','Category — pick to change it'):L('Kategori seç','Pick a category')}>
+      <i className="pt-dot"/>
+      <select value={value||''} aria-label={label} onChange={e=>onChange(e.target.value)}>
+        <option value="">{value?L('— Kategorisiz','— No category'):L('Kategori seç…','Pick category…')}</option>
+        {options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+      </select>
+    </label>
+    {value&&<button type="button" className="pt-catx" onClick={()=>onChange('')}
+      aria-label={L('Kategoriyi kaldır','Remove the category')}
+      title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
+  </span>);
 }
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
@@ -20125,23 +20355,21 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   return(<>
     <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
       <div className="pt-pat" role="rowheader">
-        {first&&(grp.pick
-          ?<label className="pt-patpick"><span className="pt-cl">{L('Patern','Pattern')}</span>
-            <select value="" aria-label={L('Patern seç','Pick a pattern')} onChange={e=>{if(e.target.value)cb.onPattern(k,e.target.value);}}>
-              <option value="">{L('Patern seç…','Pick pattern…')}</option>
-              {grp.options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-            </select></label>
-          :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
-            <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
-              aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
-        <PtType value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} onChange={v=>cb.onType(k,v)}/>
+        {/* A category covers its whole group and is set on its first row; an uncategorised row is
+            given one on its own. */}
+        {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
+          onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
+        {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
+          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} ph={L('Tür…','Type…')} onChange={v=>cb.onType(k,v)}/>
+          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L('Yön','Direction'))} ph={L('Yön…','Direction…')} onChange={v=>cb.onDir(k,v)}/>
+        </span>}
       </div>
       <div className="pt-td pt-ex" role="cell">
         <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
         <div className="pt-exmain">
           <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
           <div className="pt-exname">
-            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS}}
+            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
               onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
               onPick={it=>cb.onPick(k,it,false)}/>
           </div>
@@ -20153,7 +20381,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
             <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
               aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
           </span>}
-          {(grp.count>1||grp.pick)&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+          {<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
       </div>
@@ -20177,7 +20405,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           {showAlt
             ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
               <div className="pt-exname alt">
-                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}/>
+                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
+                  tags={{pattern:slot.tagP}}/>
               </div>
               <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
                 aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button></>
@@ -20196,7 +20425,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   </>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
-  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options);
+  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
 
 function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
@@ -20212,9 +20441,11 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onRemove:k=>live.current.onRemove(k),
     onRemoveGroup:g=>live.current.onRemoveGroup(g),
     onCount:(g,n)=>live.current.onCount(g,n),
-    onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
+    onGroupCat:(g,v)=>live.current.onGroupCat&&live.current.onGroupCat(g,v),
+    onRowCat:(k,v)=>live.current.onRowCat&&live.current.onRowCat(k,v),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
+    onDir:(k,v)=>live.current.onDir&&live.current.onDir(k,v),
     onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
     hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
@@ -20223,13 +20454,14 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
     <div className="pt-top">
-      <div className="pt-chips" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
+      <span className="pt-chipl">{L('Kategori','Category')}</span>
+      <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
         {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
           className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
           onClick={()=>handlers.onChip(c.id)}>{c.label}{c.warn?<i>!</i>:null}</button>)}
       </div>
       {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} patern`,`${total} patterns`)}</span>}
+        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
     </div>
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
@@ -20238,13 +20470,13 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
         <div className="pt-tr pt-th" role="row">
-          {[L('Patern','Pattern'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
+          {[L('Kategori · Tür · Yön','Category · Type · Direction'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
             L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),'Link']
             .map((h,i)=><span key={i} role="columnheader">{h}</span>)}
         </div>
         {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
           {g.slots.map((s,ix)=><React.Fragment key={s.key}>
-            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options}}
+            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
               first={ix===0} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
             {hasDetail&&openDet.has(s.key)&&<div className="pt-detail" role="row"><div role="cell">{detail(s.key)}</div></div>}
           </React.Fragment>)}
@@ -20252,98 +20484,170 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
       </div></div>
       :(onAdd
         ?<button type="button" className="pt-empty pt-emptybtn" onClick={onAdd}>+ {addLabel}</button>
-        :<div className="pt-empty">{empty||L('Paterni seçince egzersizleri burada açılır.','Pick a pattern to write its exercises here.')}</div>)}
+        :<div className="pt-empty">{empty||L('Bir kategori seç ya da egzersiz ekle.','Pick a category or add an exercise.')}</div>)}
     {rows.length>0&&onAdd&&<button type="button" className="iv-addslot pt-add" onClick={onAdd}>+ {addLabel}</button>}
     {children}
   </div>);
 }
 
+/* ---- Phases and the load window: one look for both homes ------------------
+   The calendar's block editor and the individualization brief cut a session into phases the
+   same way, so they draw them with the same three pieces: the bar that adds a phase (only the
+   ready-made phases not open yet, then a phase named by hand) with the weekly load
+   distribution at its right, the header of each phase (fold, name typed over, how many
+   exercises, ✕), and the tray of rows not placed in a phase. */
+/* Whose weekly load distribution the bar's button opens: the calendar (team or athlete) and the
+   brief provide it; without a provider there is no button. */
+const PlanLoadCtx=React.createContext(null);
+function LoadDistButton(){
+  const ctx=React.useContext(PlanLoadCtx);
+  const[open,setOpen]=useState(false);
+  useEffect(()=>{
+    if(!open)return;
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('keydown',esc);
+    return()=>document.removeEventListener('keydown',esc);
+  },[open]);
+  if(!ctx)return null;
+  return(<>
+    <button type="button" className={'pp-load'+(open?' on':'')} aria-pressed={open} onClick={()=>setOpen(o=>!o)}
+      title={L('Haftalık yük dağılımını bir pencerede göster — kategori ve türe göre','Show the weekly load distribution in a window — by category and type')}>
+      <i aria-hidden="true">◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button>
+    {/* A small window at the side of the screen — no backdrop, the page behind stays usable. */}
+    {open&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
+      <div className="di-loadwin-hd">
+        <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}{ctx.name?` — ${ctx.name}`:''}</b>
+        <button type="button" className="x-btn" onClick={()=>setOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+      </div>
+      <div className="di-loadwin-body">
+        <MuscleLoadDistribution days={ctx.days||{}} refDate={ctx.date} title={L('Yük Dağılımı','Load Distribution')}/>
+      </div>
+    </aside>,document.body)}
+  </>);
+}
+/* `presets` are the ready-made phases not open yet ({id,label}); `onAdd(id)` opens one, '' a
+   phase named by hand. */
+function PlanPhaseBar({presets,onAdd}){
+  return(<div className="pp-bar">
+    <span className="pp-bar-l">{L('Fazlar','Phases')}</span>
+    <div className="pp-bar-add">
+      {presets.map(p=><button key={p.id} type="button" className="pp-add" onClick={()=>onAdd(p.id)}
+        title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>)}
+      <button type="button" className="pp-add custom" onClick={()=>onAdd('')}
+        title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>+ {L('Özel Faz','Custom Phase')}</button>
+    </div>
+    <LoadDistButton/>
+  </div>);
+}
+/* One phase: `cls` is its colour (pc0…pc5, or 'loose' for the tray), `name` its name with
+   `onRename` to type over it (none for the tray), `count` how many exercises it holds. */
+function PlanPhase({cls,name,onRename,count,unit,folded,onFold,onClose,acts,note,children}){
+  return(<section className={'pp-sec '+cls+(folded?' folded':'')}>
+    <header className="pp-h">
+      <button type="button" className="pp-ch" aria-expanded={!folded} onClick={onFold}
+        title={folded?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded?'▶':'▼'}</button>
+      <i className="pp-dot"/>
+      {onRename
+        ?<PhaseNameInput className="pp-nm" value={name} onChange={onRename} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
+        :<span className="pp-nm static">{name}</span>}
+      <span className="pp-n">{count} {unit||L('egzersiz','exercises')}</span>
+      {note?<span className="pp-note">{note}</span>:null}
+      <span className="pp-acts">{acts}
+        {onClose&&<button type="button" className="pp-x" onClick={onClose}
+          title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}
+          aria-label={L('Fazı kapat','Close the phase')}>✕</button>}</span>
+    </header>
+    {!folded&&<div className="pp-body">{children}</div>}
+  </section>);
+}
+
 /* ---- The calendar's version ----------------------------------------------
    A block's exercises are an ordered list; the table reads it as it is, in running order,
-   and only folds neighbours that share a pattern into one group — so the sheet, the printout
-   and the athlete's copy keep the order the session is run in. A chip adds a pattern at the
+   and only folds neighbours that share a category into one group — so the sheet, the printout
+   and the athlete's copy keep the order the session is run in. A chip adds a category at the
    end of the section; the stepper adds or drops an exercise at the end of its group. Every
-   edit is written straight back onto the exercise, with the same tagging rules the old
-   one-card-per-exercise editor had (pattern ↔ execution ↔ library). */
-function CalSlotDetail({ex,onChange,onMove,first,last}){
+   edit is written straight back onto the exercise: its category in `pattern` (with `noPat`
+   when the coach took it off), its type in `plane`, its direction in `dir`. */
+function CalSlotDetail({ex,onChange}){
   const f=(k,v)=>onChange({...ex,[k]:v});
-  const styles=exStylesFor(ex.pattern);
   const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
   const exClip=useExerciseClipboard();
   const pasteEx=()=>{if(!exClip)return;onChange(slotFromExClipboard(ex,exClip));
     rememberExerciseTags(exClip.name,exClip.pattern||'',exClip.plane||'');};
   return(<div className="pt-det">
-    <label className="pt-dl">{L('Uygulama','Execution')}
-      <select value={ex.plane||''} disabled={!styles.length}
-        title={styles.length?L('Örüntünün nasıl uygulandığı','How the pattern is executed'):L('Önce bir hareket örüntüsü seç','Pick a movement pattern first')}
-        onChange={e=>{onChange({...ex,plane:e.target.value});rememberExerciseTags(ex.name,ex.pattern,e.target.value);}}>
-        <option value="">{styles.length?L('— seçilmedi','— not set'):'—'}</option>
-        {styles.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
-      </select>
-    </label>
     <label className="pt-dl">{L('Görsel','Image')}
       <ExImgBtn image={ex.image||''} onChange={url=>{f('image',url||'');rememberExerciseImage(ex.name,url||'');}}/></label>
     {(alt&&String(alt.name||'').trim())&&<label className="pt-dl wide">{L('Alternatif neden?','Why this alternative?')}
       <LiveInput value={alt.reason||''} onChange={v=>onChange({...ex,alt:{...alt,reason:v}})}
         placeholder={L('ör. Omuz ağrısı nedeniyle nötr tutuş — aynı örüntü, ağrısız açı.','e.g. Shoulder pain, so a neutral grip — same pattern, pain-free angle.')}/></label>}
     <span className="pt-dacts">
-      <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={first} title={L('Yukarı taşı','Move up')}>↑</button>
-      <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={last} title={L('Aşağı taşı','Move down')}>↓</button>
       <button type="button" className="btn xs sec" disabled={!exClip} onClick={pasteEx}
         title={exClip?L(`Yapıştır: ${exClip.name||'egzersiz'}`,`Paste: ${exClip.name||'exercise'}`):L('Panoda egzersiz yok — Ass. Coach kutusundan Copy\'ye bas','Nothing on the clipboard — click Copy in the Assistant Coach box')}>⇩ {L('Yapıştır','Paste')}</button>
     </span>
   </div>);
 }
+/* The category options of the Kategori box, one list for both homes (`id` is what the host stores). */
+const ptCatOpts=(idOf)=>MV_CATS.map(c=>({id:idOf(c),label:L(c.tr,c.en)}));
+const ptTypeOpts=k=>{const c=mvCat(k);return c?c.types.map(t=>[t[0],L(t[1],t[2])]):[];};
+const ptDirOpts=k=>{const c=mvCat(k);return c?c.dirs.map(t=>[t[0],L(t[1],t[2])]):[];};
 function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
   const byI=useMemo(()=>{const m={};rows.forEach(r=>{m[r.i]=r.ex;});return m;},[rows]);
   const rowsRef=useRef(rows);rowsRef.current=rows;
   const fnsRef=useRef(fns);fnsRef.current=fns;
-  /* Neighbours sharing a pattern fold into one group; a row with no pattern yet gathers
-     with its unpatterned neighbours and asks for one. */
+  /* A row's category as the table reads it: what is written on it, else — unless the coach
+     took it off — nothing (the library fills it in when the exercise is picked). */
+  const catOf=ex=>ex.noPat?'':(MV_KEYS.includes(ex.pattern)?ex.pattern:'');
+  /* Neighbours sharing a category fold into one group; a row with no category yet gathers
+     with its uncategorised neighbours and asks for one. */
   const runs=useMemo(()=>{
     const out=[];
     rows.forEach(r=>{
-      const p=r.ex.pattern||'';const last=out[out.length-1];
+      const p=catOf(r.ex);const last=out[out.length-1];
       if(last&&last.pat===p)last.rows.push(r);else out.push({pat:p,rows:[r]});
     });
     return out;
   },[rows]);
-  const patOpts=useMemo(()=>EX_PATTERNS.map(p=>({id:p,label:exLabel(p)})),[]);
+  const patOpts=useMemo(()=>ptCatOpts(c=>c.k),[REPORT_LANG]);
   const posOf=useMemo(()=>{const m={};rows.forEach((r,ix)=>{m[r.i]=ix;});return m;},[rows]);
   const groups=runs.map((run,gi)=>({
     id:`${gi}:${run.pat}`,pat:run.pat,
-    label:run.pat?exLabel(run.pat):L('Patern seçilmedi','No pattern'),
+    label:run.pat?mvCatLabel(run.pat):L('Kategorisiz','No category'),
     color:run.pat?ML_PIE_COLS[run.pat]:'',pick:!run.pat,options:patOpts,
     slots:run.rows.map(r=>{const ex=r.ex;const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
       const tg=String(labels[r.i]||'');
       const a=alt||{};
+      const ty=run.pat?mvNormType(run.pat,ex.plane,ex.name):'';
       return{key:r.i,tag:tg.replace(/\.$/,''),tagVal:String(ex.superset||'').toUpperCase(),
         name:ex.name||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
-        typeOpts:exStylesFor(ex.pattern).map(o=>[o,exLabel(o)]),typeVal:ex.plane||'',
+        typeOpts:ptTypeOpts(run.pat),typeVal:ty,
+        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty,ex.plane):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
-        tagP:ex.pattern||'',tagS:ex.plane||''};})}));
-  const chips=EX_PATTERNS.map(p=>({id:p,label:exLabel(p),on:rows.some(r=>r.ex.pattern===p)}));
+        tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
+  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(
     `${list.length} egzersiz silinecek. Devam edilsin mi?`,`${list.length} exercise${list.length>1?'s':''} will be deleted. Continue?`));
-  const groupById=id=>groups.find(g=>g.id===id);
   const rowsOfGroup=id=>{const run=runs[parseInt(id,10)];return run?run.rows:[];};
   const edit=(k,fn)=>{const f=fnsRef.current[k];if(f)f.update(fn);};
+  /* A row given a category keeps the type and direction it has where they are the category's,
+     and reads the rest off its name. '' takes the category off: the row stays, uncounted. */
   const setPattern=(ex,v)=>{
-    const keep=exStylesFor(v).includes(ex.plane)?ex.plane:'';
-    const plane=keep||exGuessStyle(ex.name,v);
-    rememberExerciseTags(ex.name,v,plane);
-    return{...ex,pattern:v,plane};
+    if(!v){const{pattern,plane,dir,...rest}=ex;return{...rest,pattern:'',plane:'',dir:'',noPat:true};}
+    const plane=mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
+    const dir=mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
+    rememberExerciseTags(ex.name,v,plane,dir);
+    const{noPat,...rest}=ex;
+    return{...rest,pattern:v,plane,dir};
   };
   const handlers={
     onChip:p=>{
-      const hit=rowsRef.current.filter(r=>r.ex.pattern===p);
+      const hit=rowsRef.current.filter(r=>catOf(r.ex)===p);
       if(!hit.length){
-        /* A block opens with one blank row: the first pattern picked takes it over rather
+        /* A block opens with one blank row: the first category picked takes it over rather
            than leaving it behind as an orphan above the real rows. */
         const blank=rowsRef.current.find(r=>!r.ex.pattern&&!named(r.ex)&&!String(r.ex.description||'').trim());
         if(blank){edit(blank.i,ex=>setPattern(ex,p));return;}
@@ -20354,7 +20658,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onCount:(gid,n)=>{
       const rs=rowsOfGroup(gid);if(!rs.length)return;
       const want=Math.max(1,Math.min(12,Math.round(n)||1));
-      if(want>rs.length)onAdd(phase,rs[0].ex.pattern||'',rs[rs.length-1].i,want-rs.length);
+      if(want>rs.length)onAdd(phase,catOf(rs[0].ex),rs[rs.length-1].i,want-rs.length);
       else if(want<rs.length){const drop=rs.slice(want);if(confirmDrop(drop))onRemoveIdx(drop.map(r=>r.i));}
     },
     onSlot:(k,patch)=>edit(k,ex=>{
@@ -20385,39 +20689,49 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       if(nx.alt&&!['name','sets','reps','duration','tempo','rpe','load','rest','link','reason'].some(f=>String(nx.alt[f]||'').trim()))delete nx.alt;
       return nx;
     }),
+    /* Picking an exercise off the library brings its category, type and direction with it — the
+       category comes on its own, and the coach can still take it off. */
     onPick:(k,it,isAlt)=>edit(k,ex=>{
       if(isAlt){const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:{};
-        return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||'',...(exTagsFromLib(it,alt)||{})}};}
-      return{...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',
-        description:it.desc||ex.description||'',...(exTagsFromLib(it,ex)||{})};
+        return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||''}};}
+      const t=exTagsFromLib(it,{});
+      const nx={...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
+      if(t&&t.pattern){delete nx.noPat;nx.pattern=t.pattern;nx.plane=t.plane||'';nx.dir=t.dir||'';}
+      return nx;
     }),
+    /* A typed name: a row with no category takes the one the library (or the name) gives it —
+       unless the coach took it off — and a categorised row with no type yet takes its type. */
     onNew:(k,nm)=>edit(k,ex=>{
-      if(ex.plane)return ex;
-      /* A card the library already has for this name says how it is filed; only without one is
-         the row read off its name. */
+      if(ex.noPat)return ex;
       const hit=exLibHit(nm),lt=hit?exTagsFromLib(hit,ex):null;
-      const t=lt||(ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'',''));
-      if(!t.pattern||!t.plane)return ex;
-      rememberExerciseTags(nm,t.pattern,t.plane);
-      return{...ex,name:nm,pattern:t.pattern,plane:t.plane};
+      if(!ex.pattern){
+        const t=lt||exResolveTags(nm,'','');
+        if(!t.pattern)return ex;
+        const dir=t.dir||mvGuessDir(t.pattern,nm,t.plane);
+        rememberExerciseTags(nm,t.pattern,t.plane,dir);
+        return{...ex,name:nm,pattern:t.pattern,plane:t.plane||'',dir};
+      }
+      if(mvTypes(ex.pattern).includes(ex.plane))return ex;
+      const plane=mvNormType(ex.pattern,'',nm);
+      return plane?{...ex,plane,dir:ex.dir||mvGuessDir(ex.pattern,nm,plane)}:ex;
     }),
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
-    onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
-    onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
-    onType:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,v);edit(k,x=>({...x,plane:v}));},
+    onGroupCat:(gid,v)=>{const rs=rowsOfGroup(gid);rs.forEach(r=>edit(r.i,ex=>setPattern(ex,v)));},
+    onRowCat:(k,v)=>edit(k,ex=>setPattern(ex,v)),
+    onType:(k,v)=>{const ex=byI[k];if(!ex)return;
+      const dir=ex.dir||mvGuessDir(ex.pattern,ex.name,v);
+      rememberExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
+    onDir:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,ex.plane,v);edit(k,x=>({...x,dir:v}));},
     onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
     <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}
-      max={12} hasDetail detail={k=>{const ex=byI[k];const pos=rows.findIndex(r=>r.i===k);
-        return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange} onMove={fns[k].onMove} first={pos===0} last={pos===rows.length-1}/>:null;}}
-      empty={L('Bir patern seç ya da "+ Egzersiz ekle" ile başla.','Pick a pattern, or start with "+ Add exercise".')}>
-      {!loose&&<button type="button" className="iv-addslot pt-add" onClick={()=>onAdd(phase,'',null)}
-        title={L('Paternsiz bir egzersiz satırı ekler','Adds an exercise row with no pattern yet')}>
-        + {L('Egzersiz ekle','Add exercise')}</button>}
-    </PlanTable>
+      max={12} hasDetail detail={k=>{const ex=byI[k];
+        return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange}/>:null;}}
+      onAdd={loose?undefined:()=>onAdd(phase,'',null)} addLabel={L('Egzersiz Ekle','Add Exercise')}
+      empty={L('Fazsız satır yok.','No unplaced rows.')}/>
   </div>);
 }
 /* =========================================================
@@ -21345,24 +21659,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           a session that still reads down the page in the order it is run. The bar sits
           between what the block IS and what it holds, which is where the coach decides
           how the session is shaped. */}
-      <div className="blk-phbar">
-        <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
-        <div className="blk-phbar-chips">
-          {phaseOpts.map(o=><span key={o.id} className={'blk-phchip '+o.cls}>
-            <i/><LiveInput className="blk-phname" value={(block.phaseNames&&block.phaseNames[o.id]!=null)?block.phaseNames[o.id]:o.label}
-              size={Math.max(4,Math.min(34,String(o.label).length+1))}
-              onChange={v=>renamePhase(o.id,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
-            <b>{phaseN(o.id)}</b>
-            <button type="button" onClick={()=>closePhase(o.id)}
-              title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button>
-          </span>)}
-          {BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>
-            <button key={p} type="button" className="blk-phadd" onClick={()=>addPhase(p)}
-              title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}</button>)}
-          <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
-            title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
-        </div>
-      </div>
+      <PlanPhaseBar presets={BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>({id:p,label:L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}))}
+        onAdd={id=>addPhase(id)}/>
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
       {/* A ball-practice block runs its drills one to a row: each carries a court diagram
@@ -21389,34 +21687,22 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           :<CalPlanGrid rows={g.rows} labels={labels} fns={slotFns} phase={g.phase} loose={!!g.loose}
             onAdd={addExAt} onRemoveIdx={removeIdx}/>;
         if(g.flat)return<React.Fragment key="flat">{grid}</React.Fragment>;
-        return(<section key={gKey} className={'blk-ph '+(g.phase?phC(g.phase):'p-loose')}>
-          <header className="blk-ph-h">
-            <button type="button" className="blk-ph-ch" onClick={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
-              title={shut?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{shut?'▶':'▼'}</button>
-            {g.loose?<span className="blk-ph-nm">{L('Fazsız','Unplaced')}</span>
-              :<PhaseNameInput className="blk-ph-nm" value={(block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase)}
-                onChange={v=>renamePhase(g.phase,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>}
-            <span className="blk-ph-n">{isBall
-              ?L(`${g.rows.length} dril`,`${g.rows.length} drill${g.rows.length!==1?'s':''}`)
-              :L(`${g.rows.length} egzersiz`,`${g.rows.length} exercise${g.rows.length!==1?'s':''}`)}</span>
-            <span className="blk-ph-note">{g.loose
-              ?L('Henüz bir faza konmadı — aşağıdan ya da satırın kendi seçicisinden yerleştir','Not placed in a phase yet — put them somewhere from here, or from each row\'s own picker')
-              :blkPhaseNote(g.phase,block)}</span>
-            <span className="blk-ph-acts">
-              {g.loose
-                ?phaseList.map(p=><button key={p} type="button" className={'blk-ph-mv '+phC(p)} onClick={()=>placeLooseIn(p)}
-                  title={L(`Yerleştirilmemiş ${g.rows.length} satırı ${phLbl(p)} bölümüne taşı`,`Move the ${g.rows.length} unplaced row${g.rows.length!==1?'s':''} into ${phLbl(p)}`)}>
-                  → {phLbl(p)}</button>)
-                :<button type="button" className="blk-ph-x" onClick={()=>closePhase(g.phase)}
-                  title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button>}
-            </span>
-          </header>
-          {!shut&&grid}
-        </section>);
+        return(<PlanPhase key={gKey} cls={g.phase?phC(g.phase):'loose'} folded={shut}
+          onFold={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
+          name={g.loose?L('Fazsız','Unplaced'):((block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase))}
+          onRename={g.loose?null:(v=>renamePhase(g.phase,v))}
+          count={g.rows.length} unit={isBall?L('dril','drills'):L('egzersiz','exercises')}
+          onClose={g.loose?null:(()=>closePhase(g.phase))}
+          note={g.loose?L('Henüz bir faza konmadı','Not placed in a phase yet'):null}
+          acts={g.loose?phaseList.map(p=><button key={p} type="button" className={'pp-mv '+phC(p)} onClick={()=>placeLooseIn(p)}
+            title={L(`Yerleştirilmemiş ${g.rows.length} satırı ${phLbl(p)} bölümüne taşı`,`Move the ${g.rows.length} unplaced row${g.rows.length!==1?'s':''} into ${phLbl(p)}`)}>
+            → {phLbl(p)}</button>):null}>
+          {grid}
+        </PlanPhase>);
       })}</div>
       {exs.length===0&&!phased&&<div className="iv-dim" style={{padding:'9px 13px'}}>{isBall
         ?L('Bu blokta dril yok — bir tane çizmek için "+ Dril ekle"yi kullan.','No drills in this block — use "+ Add drill" to draw one.')
-        :L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
+        :L('Bu blokta egzersiz yok — bir kategori seç ya da "+ Egzersiz Ekle"yi kullan.','No exercises in this block — pick a category or use "+ Add Exercise".')}</div>}
     </>}
   </div>);
 }
@@ -21989,7 +22275,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const printDay=()=>{if(!day.sessions.length){alert(L('Yazdırılacak seans yok','No sessions to print'));return;}printDayA4(labelOwner||setup.teamName,dayLabel,day.sessions);};
   const printWeek=()=>{printWeekA4Land(labelOwner||setup.teamName,ws,days,athletes);};
 
-  return(<div>
+  return(<PlanLoadCtx.Provider value={{days,name:labelOwner||'',date:dateKey}}><div>
     <div className="panel" style={{paddingBottom:14}}>
       <div className="wv-bar">
         <div className="row"><button className="btn sec sm" onClick={()=>goWeek(-1)}>‹ {L('Hafta','Week')}</button>
@@ -22050,7 +22336,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
       <div className="hr"/><label>{L('Günlük notlar','Daily notes')}</label>
       <textarea value={day.dailyNotes||''} onChange={e=>sv({dailyNotes:e.target.value})} placeholder={L('Wellness, uyku, kas ağrısı…','Wellness, sleep, soreness…')}/>
     </div>
-  </div>);
+  </div></PlanLoadCtx.Provider>);
 }
 
 /* =========================================================
@@ -33054,68 +33340,23 @@ function PrivacyLink({className,children}){
 /* =========================================================
    EXERCISES LIBRARY
    ========================================================= */
-const EX_TYPES=['Upper Body Push','Upper Body Pull','Hip Dominant','Knee Dominant','Core','Full Body','Multi Directional Speed','Plyometric','Medicine Ball','Mobility','Stability','Balance','Corrective','Accessory'];
+/* The library's shelves are the eleven categories of the MOVEMENT TAXONOMY (185): the same
+   Kategori the training table writes, filtered by the same Tür and Yön. A card filed under a
+   shelf an older version had (Mobility, Stability …) keeps its value and is listed under
+   "Kategorisiz" until it is given one of these. */
+const EX_TYPES=MV_KEYS.slice();
 const EX_MUSCLES=['Abs & Core','Chest','Upper Back','Lats','Shoulders','Biceps','Triceps','Quadriceps','Hamstrings','Glutes','Calves','Forearms','Hip Flexors','Adductors','Abductors','Full Body','Cardio'];
-// Phosphor color for each category tile.
-const TYPE_COLORS={
-  'Warm-Up':'#fdba74',                   // peach
-  'Upper Body Push':'#22d3ee',           // cyan
-  'Upper Body Pull':'#fcd34d',           // amber
-  'Hip Dominant':'#86efac',              // green
-  'Knee Dominant':'#fb923c',             // orange
-  'Core':'#c4b5fd',                      // purple
-  'Full Body':'#f9a8d4',                 // pink
-  'Multi Directional Speed':'#fca5a5',   // red
-  'Plyometric':'#5eead4',                // teal
-  'Medicine Ball':'#a78bfa',             // violet
-  'Mobility':'#a7f3d0',                  // mint
-  'Stability':'#93c5fd',                 // light blue
-  'Balance':'#fde68a',                   // pale yellow
-  'Corrective':'#f0abfc',                // orchid
-  'Accessory':'#cbd5e1',                 // slate
-};
-const KNEE_PATTERNS=['Bilateral','Unilateral','Lunges','Step-Up'];
-const HIP_PATTERNS=['Bilateral','Unilateral'];
-const PATTERNS_FOR={'Knee Dominant':KNEE_PATTERNS,'Hip Dominant':HIP_PATTERNS};
-/* Hip and Knee Dominant are described on two separate axes: WHICH contraction the
-   exercise is built around (Contraction Focus — the sub-type) and WHICH way the load
-   moves (Action). They used to share one list, "Push · Pull · Eccentric · Isometric",
-   which forced a coach to choose between saying a Nordic is eccentric and saying it is
-   a pull. `action` is its own field on the entry. */
+const TYPE_COLORS=Object.fromEntries(MV_CATS.map(c=>[c.k,c.color]));
+/* Retired with the old shelves: Hip / Knee Dominant no longer carry an Action or a Movement
+   Pattern box — the type (Squat, Lunge, RDL …) says what they used to. Kept empty so the old
+   readers find nothing to ask. */
+const PATTERNS_FOR={};
 const EX_ACTIONS=['Push','Pull'];
-const ACTIONS_FOR={'Hip Dominant':EX_ACTIONS,'Knee Dominant':EX_ACTIONS};
+const ACTIONS_FOR={};
 const DIFFICULTIES=['Level 1','Level 2','Level 3'];
 const DIFF_COLOR={'Level 1':'#10b981','Level 2':'#f59e0b','Level 3':'#ef4444'};
-// Each Exercise Type has its own secondary filter dimension.
-const SUB_TYPES={
-  'Upper Body Push':{label:'Movement',values:['Horizontal','Vertical']},
-  'Upper Body Pull':{label:'Movement',values:['Horizontal','Vertical']},
-  'Hip Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
-  'Knee Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
-  'Core':{label:'Movement',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
-  'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
-  'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
-  'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational','Multi-Directional']},
-  'Medicine Ball':{label:'Direction',values:['Vertical','Horizontal','Rotational','Multi-Directional']},
-  /* The spine is one region: "Thoracic" entries were moved onto it (migrate). */
-  'Mobility':{label:'Region',values:['Ankle','Hip','Spine','Shoulder','Wrist']},
-  /* Stability is filed by the joint it is holding, top to bottom — the order a coach
-     reads a body down, not alphabetical. The shoulder and the scapula hold together and
-     are trained together, so they are one region rather than two. */
-  'Stability':{label:'Region',values:['Shoulder Girdle','Core','Pelvis','Knee','Ankle']},
-  /* Balance is filed by the demand it makes: holding still, holding while moving, holding
-     on one leg, and recovering from a perturbation — the order balance work progresses in. */
-  'Balance':{label:'Category',values:['Static Balance','Dynamic Balance','Unilateral Balance','Reactive Balance']},
-  /* Corrective work is filed by what it restores, in the order a return runs: range
-     first, then control of it, then the quality of the movement, then performance. The
-     body region it targets is its own filter (EX_EXTRA_FILTERS). */
-  'Corrective':{label:'Type',values:['Mobility','Stability','Movement Quality','Return to Performance']},
-  /* Accessory work is filed by where it goes, with prehab as its own shelf: the
-     injury-prevention pieces are what a coach looks for first when writing a warm-up. */
-  'Accessory':{label:'Region',values:['Upper Body','Neck','Chest','Upper Back','Shoulder & Scapula','Arms','Forearm & Grip',
-    'Core & Trunk','Lower Body','Hip & Hamstring','Glutes','Quadriceps','Adductors & Abductors','Calf & Ankle','Foot',
-    'Prehab & Injury Prevention']},
-};
+// Each category is filtered by its own types (Tür).
+const SUB_TYPES=Object.fromEntries(MV_CATS.map(c=>[c.k,{label:'Type',values:c.types.map(t=>t[0])}]));
 /* The filters a category carries beyond its sub-type (and, for Hip / Knee Dominant, the
    Action and Movement Pattern above): each is its own field on the library entry, set
    on the exercise card and filtered on in the library. */
@@ -33127,38 +33368,15 @@ const EX_EQUIPMENT=['Barbell','Trap Bar','Dumbbell','Kettlebell','Machine','Cabl
    what loads or resists the jump, and what measures it — so Plyometric has its own list. */
 const EX_PLYO_EQUIPMENT=['No Equipment','Box','Resistance Band','Hurdle','Mini Hurdle','Agility Ladder','Cone','Jump Rope',
   'Medicine Ball','Dumbbell','Trap Bar','TRX','Weight Vest','Barbell','VertiMax','Force Plate'];
-const EX_POSITIONS=['Standing','Half-Kneeling','Tall-Kneeling','Seated','Supine','Prone','Quadruped'];
-const EX_EXTRA_FILTERS={
-  'Plyometric':[
-    {key:'exKind',label:'Exercise Type',values:['Jump','Hop','Bound','Drop Jump','Landing']},
-    {key:'technique',label:'Technique',values:['Bilateral','Unilateral']},
-    {key:'equipment',label:'Equipment',values:EX_PLYO_EQUIPMENT,multi:true}],
-  'Medicine Ball':[
-    {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
-  'Core':[{key:'position',label:'Position',values:EX_POSITIONS}],
-  'Mobility':[{key:'position',label:'Position',values:EX_POSITIONS}],
-  /* Read top to bottom, foot to hand, with the whole-body pieces last. */
-  'Corrective':[{key:'bodyRegion',label:'Region',values:['Foot & Ankle','Knee','Hip','Pelvis','Lumbar Spine',
-    'Thoracic Spine','Shoulder','Elbow & Wrist','Full Body']}],
-  'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
-  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
-  'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
-  'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
-};
-/* Every category carries a Contraction Type and an Equipment box. Hip / Knee Dominant already
-   file by contraction (their sub-type) and Plyometric has its own kit list, so those keep
-   theirs; the rest take the shared lists. Equipment stays the last filter of a category. */
-const EX_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
+/* Beyond its type, a category is filtered by its direction (Yön, where it has one) and by the
+   kit it is done with. */
 const EX_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
   'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
-EX_TYPES.forEach(t=>{
-  const list=(EX_EXTRA_FILTERS[t]=(EX_EXTRA_FILTERS[t]||[]).slice());
-  const eq=list.find(d=>d.key==='equipment');
-  const rest=list.filter(d=>d.key!=='equipment');
-  if(!(t in ACTIONS_FOR))rest.push({key:'contraction',label:'Contraction Type',values:EX_CONTRACTIONS,multi:true});
-  EX_EXTRA_FILTERS[t]=[...rest,eq||{key:'equipment',label:'Equipment',values:EX_GENERAL_EQUIPMENT,multi:true}];
-});
-const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion','contraction'];
+const EX_EXTRA_FILTERS=Object.fromEntries(MV_CATS.map(c=>[c.k,[
+  ...(c.dirs.length?[{key:'dir',label:'Direction',values:c.dirs.map(d=>d[0])}]:[]),
+  {key:'equipment',label:'Equipment',values:c.k==='Plyometric'?EX_PLYO_EQUIPMENT:EX_GENERAL_EQUIPMENT,multi:true}]]));
+const EX_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
+const EX_EXTRA_KEYS=['exKind','technique','position','equipment','bodyRegion','contraction','dir'];
 /* A `multi` filter (Equipment) holds a list — a step-up takes dumbbells AND a box. Entries
    saved before it became a list hold one string; both read the same through exMulti. */
 const exMulti=v=>Array.isArray(v)?v.filter(Boolean):(v?[v]:[]);
@@ -33172,10 +33390,10 @@ const exEquipText=v=>exMulti(v).join(', ');
    exercise library despite the name. */
 const EX_TERM_TR={
   'No Equipment':'Ekipmansız',
-  'Warm-Up':'Isınma','Upper Body Push':'Üst Vücut İtme','Upper Body Pull':'Üst Vücut Çekme',
-  'Hip Dominant':'Kalça Baskın','Knee Dominant':'Diz Baskın','Core':'Core','Full Body':'Tüm Vücut',
+  'Warm-Up':'Isınma','Upper Body Push':'Üst Vücut İtiş','Upper Body Pull':'Üst Vücut Çekiş',
+  'Hip Dominant':'Kalça Dominant','Knee Dominant':'Diz Dominant','Carry':'Carry','Core':'Core','Full Body':'Tüm Vücut',
   'Multi Directional Speed':'Çok Yönlü Hız','Multidirectional Speed':'Çok Yönlü Hız','Plyometric':'Pliometrik',
-  'Medicine Ball':'Sağlık Topu','Mobility':'Mobilite','Stability':'Stabilite',
+  'Medicine Ball':'Med Ball','Mobility':'Mobilite','Stability':'Stabilite',
   'Balance':'Denge','Static Balance':'Statik Denge','Dynamic Balance':'Dinamik Denge',
   'Unilateral Balance':'Tek Taraflı Denge','Reactive Balance':'Reaktif Denge',
   'Upper Body':'Üst Vücut','Lower Body':'Alt Vücut','Shoulder & Scapula':'Omuz & Skapula',
@@ -33201,14 +33419,14 @@ const EX_TERM_TR={
   'Anti-Flexion':'Anti-Fleksiyon','Anti-Extension':'Anti-Ekstansiyon','Anti-Rotation':'Anti-Rotasyon',
   'Anti-Lateral Flexion':'Anti-Lateral Fleksiyon','Flexion':'Fleksiyon','Extension':'Ekstansiyon',
   'Rotation':'Rotasyon','Lateral Flexion':'Lateral Fleksiyon',
-  'Strength':'Kuvvet','Explosive':'Patlayıcı','Olympic Lift':'Olimpik Halter',
+  'Strength':'Kuvvet','Explosive':'Patlayıcı','Olympic Lift':'Olimpik Kaldırış',
   'Non-Reactive Agility':'Reaktif Olmayan Çeviklik','Reactive Agility':'Reaktif Çeviklik',
   'Acceleration':'İvmelenme','Deceleration':'Yavaşlama','COD':'Yön Değiştirme','Sprint Technique':'Sprint Tekniği',
   'Lateral':'Lateral','Rotational':'Rotasyonel','Multi-Directional':'Çok Yönlü',
   'Thoracic':'Torasik','Shoulder':'Omuz','Hip':'Kalça','Ankle':'Ayak Bileği','Spine':'Omurga','Wrist':'El Bileği',
   'Exercise Type':'Egzersiz Tipi','Technique':'Teknik','Position':'Pozisyon','Equipment':'Ekipman',
   'Shoulder Girdle':'Omuz Kuşağı','Pelvis':'Pelvis','Knee':'Diz',
-  'Type':'Tip','Return to Performance':'Performansa Dönüş',
+  'Type':'Tür','Return to Performance':'Performansa Dönüş',
   'Foot & Ankle':'Ayak & Ayak Bileği','Lumbar Spine':'Lomber Omurga','Thoracic Spine':'Torakal Omurga',
   'Elbow & Wrist':'Dirsek & El Bileği',
   'All categories':'Tüm kategoriler','Kategorisiz':'Kategorisiz',
@@ -33260,8 +33478,8 @@ const EX_TERM_TR={
      spoken by other lists — exercise types, ball-practice categories, training means.
      The rest of that vocabulary went with the stage. */
   'Accommodating Resistance (Bands / Chains)':'Değişken Direnç (Lastik / Zincir)',
-  'Blood Flow Restriction':'Kan Akımı Kısıtlama','Cluster Sets':'Küme Setler','Olympic Lift':'Olimpik Halter',
-  'Medicine Ball':'Sağlık Topu','French Contrast':'Fransız Kontrast','Sprint':'Sprint',
+  'Blood Flow Restriction':'Kan Akımı Kısıtlama','Cluster Sets':'Küme Setler','Olympic Lift':'Olimpik Kaldırış',
+  'Medicine Ball':'Med Ball','French Contrast':'Fransız Kontrast','Sprint':'Sprint',
   'Shuttle Run':'Mekik Koşusu','Dynamic Stretching':'Dinamik Germe','Static Stretching':'Statik Germe',
   'Joint Mobility / CARs':'Eklem Hareketliliği / CARs',
   'Self-Myofascial Release':'Kendi Kendine Miyofasyal Gevşetme','1v1':'1v1','5v5':'5v5',
@@ -33631,7 +33849,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
       {/* One grid for every field, so an optional field that is absent (no action, no
           movement pattern) closes up instead of leaving an empty cell in the middle. */}
       <div className="grid cols-2">
-        <div><label>{ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type')}</label>
+        <div><label>{ball?L('Dril Tipi','Drill Type'):L('Kategori','Category')}</label>
           <select value={ex.type||''} onChange={e=>{const v=e.target.value;
             /* The category's own extra fields go with it: an Equipment set on a push is
                not carried onto a Core entry, where there is no filter to find it by. */
@@ -33639,13 +33857,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             const drop={};EX_EXTRA_KEYS.forEach(k=>{if(!keep.has(k)&&ex[k])drop[k]='';});
             onChange({type:v,subType:'',...(ACTIONS_FOR[v]?{}:{action:''}),...drop});}}>
             <option value="">—</option>
-            {TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
+            {TYPES.map(t=><option key={t} value={t}>{ball?exLabel(t):mvCatLabel(t)}</option>)}
+            {!ball&&ex.type&&!TYPES.includes(ex.type)&&<option value={ex.type}>{exLabel(ex.type)} ({L('eski','old')})</option>}
           </select>
         </div>
         <div><label>{SUBS[ex.type]?exLabel(SUBS[ex.type].label):L('Alt Tip','Sub Type')}</label>
           <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUBS[ex.type]}>
             <option value="">{SUBS[ex.type]?'—':L('Önce tip seç','Select type first')}</option>
-            {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+            {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{ball?exLabel(v):mvTermOr(ex.type,v)}</option>)}
           </select>
         </div>
         {!ball&&ACTIONS_FOR[ex.type]&&<div><label>{exLabel('Action')}</label>
@@ -33665,7 +33884,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         </div>:<div key={d.key}><label>{exLabel(d.label)}</label>
           <select value={ex[d.key]||''} onChange={e=>set(d.key,e.target.value)}>
             <option value="">—</option>
-            {d.values.map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+            {d.values.map(v=><option key={v} value={v}>{mvTermOr(ex.type,v)}</option>)}
           </select>
         </div>)}
         {ball
@@ -33838,7 +34057,8 @@ const exLib=e=>(e&&e.lib==='ball')?'ball':'sc';
 /* One library filter as a dropdown: a compact button carrying the filter's name and the
    value picked, opening the values as a list. A row of these fits every filter of a
    category on one line, where a track of every value ran off the screen. */
-function FilterDD({label,values,value,onChange}){
+function FilterDD({label,values,value,onChange,lab}){
+  const nm=lab||exLabel;
   const[open,setOpen]=useState(false);
   const[right,setRight]=useState(false);
   const ref=useRef(null),menuRef=useRef(null);
@@ -33853,13 +34073,13 @@ function FilterDD({label,values,value,onChange}){
   return(<div className={'exf'+(value?' on':'')+(open?' open':'')} ref={ref}>
     <button type="button" className="exf-btn" onClick={()=>setOpen(o=>!o)} aria-haspopup="listbox" aria-expanded={open}>
       <span className="exf-k">{label}</span>
-      <span className="exf-v">{value?exLabel(value):L('Tümü','All')}</span>
+      <span className="exf-v">{value?nm(value):L('Tümü','All')}</span>
       <span className="exf-car" aria-hidden="true">▾</span>
     </button>
     {open&&<div className={'exf-menu'+(right?' right':'')} ref={menuRef} role="listbox" aria-label={label}>
       {['',...values].map(v=><button key={v||'__all'} type="button" role="option" aria-selected={value===v}
         className={'exf-opt'+(value===v?' on':'')} onClick={()=>pick(v)}>
-        {v?exLabel(v):L('Tümü','All')}{value===v?<b>✓</b>:null}</button>)}
+        {v?nm(v):L('Tümü','All')}{value===v?<b>✓</b>:null}</button>)}
     </div>}
   </div>);
 }
@@ -33972,13 +34192,13 @@ function ExercisesView({data,setData}){
       hint:L('AI projesine referans dosyası olarak yüklenir','The reference file an AI project is loaded with')},
   ]}/>;
   // Top-right category dropdown (label → the active shelf's own category values).
-  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
+  const CAT_OPTIONS=EX_TYPES.map(t=>[mvCatLabel(t),t]);
   // Every category carries its exercise count in parentheses, so the coach sees how
   // full each one is without opening it (the whole library's count is in the header).
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFilt({});setQ('');}}}>
       <option value="">{L('Tüm kategoriler','All categories')}</option>
-      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{exLabel(lbl)} ({typeCounts[val]||0})</option>)}
+      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{lbl} ({typeCounts[val]||0})</option>)}
       {uncatCount>0&&<option value="__uncat__">{L('Kategorisiz','Uncategorized')} ({uncatCount})</option>}
     </select>);
 
@@ -34039,19 +34259,19 @@ function ExercisesView({data,setData}){
     <div className="ex-top">
       <div>
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← {L('Kategoriler','Categories')}</button>
-        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):exLabel(activeType)}</h1>
+        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):mvCatLabel(activeType)}</h1>
         {isUncat&&<div className="sub">{L('Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart\'a tıklayıp kategori ata.','Exercises added automatically from the program / not yet assigned a category. Click a card to assign one.')}</div>}
         {dims.length>0&&<div className="sub">{L('Filtre:','Filter:')} <b>{dims.map(d=>exLabel(d.label)).join(' · ')}</b></div>}
       </div>
     </div>
     <div className="ex-toolbar">
       {catDropdown}
-      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
+      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${mvCatLabel(activeType)} ara…`,`Search ${mvCatLabel(activeType)}…`)}/></div>
       <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
     <div className="exf-bar">
-      {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
+      {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values} lab={v=>mvTermOr(activeType,v)}
         value={filt[d.key]||''} onChange={v=>setFilt(f=>({...f,[d.key]:v}))}/>)}
       {filtered&&<button type="button" className="exf-clear" onClick={()=>setFilt({})}>✕ {L('Temizle','Clear')}</button>}
       <LevelSeg value={filt.difficulty||''} onChange={v=>setFilt(f=>({...f,difficulty:v}))}/>
@@ -34531,7 +34751,7 @@ const PAIN_RULES={
 const IV_PATTERNS=['Squat','Hinge','Lunge / Unilateral','Push','Pull','Carry','Rotation','Jump / Plyo','Sprint / Locomotion','Core / Brace','Mobility'];
 const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip Dominant':'Hinge','Knee Dominant':'Squat',
   'Core':'Core / Brace','Plyometric':'Jump / Plyo','Multi Directional Speed':'Sprint / Locomotion','Medicine Ball':'Rotation',
-  'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
+  'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat','Carry':'Carry','Olympic Lift':'Hinge'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
 /* The exercise's own picture — the one the coach pastes on the library entry (`image`),
@@ -34552,6 +34772,9 @@ function exLibraryEntries(list,opts){
   const tr=o.lang==='tr';
   const T=(a,b)=>tr?a:b;
   const lab=s=>tr?(EX_TERM_TR[s]||s):s;
+  /* A type or a direction is worded by its own category (taxonomy), in the file's language. */
+  const tl=(t,v)=>{const c=!o.ball&&mvCat(t);const h=c&&(c.types.find(x=>x[0]===v)||c.dirs.find(x=>x[0]===v));
+    return h?(tr?h[1]:h[2]):lab(v);};
   const subs=o.ball?BALL_SUB_TYPES:SUB_TYPES;
   const types=o.ball?BALL_TYPES:EX_TYPES;
   const one=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
@@ -34567,11 +34790,11 @@ function exLibraryEntries(list,opts){
       const fields=[];
       const put=(k,v,wide)=>{const s=one(v);if(s)fields.push({k,v:s,wide:!!wide});};
       const sub=subs[e.type];
-      if(sub)put(lab(sub.label),e.subType?lab(e.subType):'');
+      if(sub)put(lab(sub.label),e.subType?tl(e.type,e.subType):'');
       if(!o.ball){
         if(ACTIONS_FOR[e.type])put(lab('Action'),e.action?lab(e.action):'');
         if(PATTERNS_FOR[e.type])put(lab('Movement Pattern'),e.pattern?lab(e.pattern):'');
-        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),exMulti(e[d.key]).map(lab).join(', ')));
+        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),exMulti(e[d.key]).map(v=>tl(e.type,v)).join(', ')));
         put('movement_pattern',exPatternOf(e));
       }
       put(T('Zorluk','Difficulty'),e.difficulty?`${lab(e.difficulty)}${LEVEL_LABEL[e.difficulty]?` (${tr?({Beginner:'Başlangıç',Intermediate:'Orta',Advanced:'İleri'}[LEVEL_LABEL[e.difficulty]]):LEVEL_LABEL[e.difficulty]})`:''}`:'');
@@ -35355,6 +35578,10 @@ function buildIndivPlan(src,ath,ctx){
          load distribution reads. Defaults to whatever the template row carries. */
       pattern:pick('pattern',base.pattern||''),
       plane:pick('plane',base.plane||''),
+      dir:pick('dir',base.dir||''),
+      /* A row the coach wrote with no category on purpose (a warm-up drill) stays out of the
+         load distribution: nothing reads one into it off its name. */
+      noPat:!!pick('noPat',!!base.noPat),
       /* The reference link is the coach's to set per athlete, like every other box on
          the row: it starts from whatever the template attached and is overridden the
          same way, so one athlete can be pointed at a different clip without the
@@ -35614,7 +35841,8 @@ function planToSession(plan,src,dateKey,srcKey){
       ...descI18nFor(r.base.aiDesc,[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':'')),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
-      ...exResolveTags(t(r.name),t(r.pattern),t(r.plane)),
+      ...(r.noPat?{pattern:'',plane:'',dir:'',noPat:true}:(()=>{const x=exResolveTags(t(r.name),t(r.pattern),t(r.plane));
+        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane,t(r.plane)):''};})()),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option
@@ -36845,12 +37073,77 @@ const ATP_EQUIP_RE=[
    (its sub-type, Action and Movement Pattern for hip / knee, and the extra filters). Built
    from the same tables the library screen uses, so the coverage read below speaks the
    coach's vocabulary and cannot drift from it. */
-const ATP_TAXONOMY=Object.keys(SUB_TYPES).map(type=>{
-  const s=SUB_TYPES[type];
+/* The library's filing as it stood before the movement taxonomy (185) replaced its shelves —
+   frozen here, because the profile's coverage read is written in these words (Movement,
+   Contraction Focus, Region, Skill …) and the model it is handed to has always read them. */
+const ATP_LIB_SUB={
+  'Upper Body Push':{label:'Movement',values:['Horizontal','Vertical']},
+  'Upper Body Pull':{label:'Movement',values:['Horizontal','Vertical']},
+  'Hip Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
+  'Knee Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
+  'Core':{label:'Movement',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
+  'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
+  'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
+  'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational','Multi-Directional']},
+  'Medicine Ball':{label:'Direction',values:['Vertical','Horizontal','Rotational','Multi-Directional']},
+  /* The spine is one region: "Thoracic" entries were moved onto it (migrate). */
+  'Mobility':{label:'Region',values:['Ankle','Hip','Spine','Shoulder','Wrist']},
+  /* Stability is filed by the joint it is holding, top to bottom — the order a coach
+     reads a body down, not alphabetical. The shoulder and the scapula hold together and
+     are trained together, so they are one region rather than two. */
+  'Stability':{label:'Region',values:['Shoulder Girdle','Core','Pelvis','Knee','Ankle']},
+  /* Balance is filed by the demand it makes: holding still, holding while moving, holding
+     on one leg, and recovering from a perturbation — the order balance work progresses in. */
+  'Balance':{label:'Category',values:['Static Balance','Dynamic Balance','Unilateral Balance','Reactive Balance']},
+  /* Corrective work is filed by what it restores, in the order a return runs: range
+     first, then control of it, then the quality of the movement, then performance. The
+     body region it targets is its own filter (EX_EXTRA_FILTERS). */
+  'Corrective':{label:'Type',values:['Mobility','Stability','Movement Quality','Return to Performance']},
+  /* Accessory work is filed by where it goes, with prehab as its own shelf: the
+     injury-prevention pieces are what a coach looks for first when writing a warm-up. */
+  'Accessory':{label:'Region',values:['Upper Body','Neck','Chest','Upper Back','Shoulder & Scapula','Arms','Forearm & Grip',
+    'Core & Trunk','Lower Body','Hip & Hamstring','Glutes','Quadriceps','Adductors & Abductors','Calf & Ankle','Foot',
+    'Prehab & Injury Prevention']},
+};
+const ATP_LIB_ACTIONS={'Hip Dominant':['Push','Pull'],'Knee Dominant':['Push','Pull']};
+const ATP_LIB_PATTERNS={'Knee Dominant':['Bilateral','Unilateral','Lunges','Step-Up'],'Hip Dominant':['Bilateral','Unilateral']};
+const ATP_LIB_POSITIONS=['Standing','Half-Kneeling','Tall-Kneeling','Seated','Supine','Prone','Quadruped'];
+const ATP_LIB_EXTRA={
+  'Plyometric':[
+    {key:'exKind',label:'Exercise Type',values:['Jump','Hop','Bound','Drop Jump','Landing']},
+    {key:'technique',label:'Technique',values:['Bilateral','Unilateral']},
+    {key:'equipment',label:'Equipment',values:EX_PLYO_EQUIPMENT,multi:true}],
+  'Medicine Ball':[
+    {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
+  'Core':[{key:'position',label:'Position',values:ATP_LIB_POSITIONS}],
+  'Mobility':[{key:'position',label:'Position',values:ATP_LIB_POSITIONS}],
+  /* Read top to bottom, foot to hand, with the whole-body pieces last. */
+  'Corrective':[{key:'bodyRegion',label:'Region',values:['Foot & Ankle','Knee','Hip','Pelvis','Lumbar Spine',
+    'Thoracic Spine','Shoulder','Elbow & Wrist','Full Body']}],
+  'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+};
+/* Every category carries a Contraction Type and an Equipment box. Hip / Knee Dominant already
+   file by contraction (their sub-type) and Plyometric has its own kit list, so those keep
+   theirs; the rest take the shared lists. Equipment stays the last filter of a category. */
+const ATP_LIB_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
+const ATP_LIB_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
+  'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
+Object.keys(ATP_LIB_SUB).forEach(t=>{
+  const list=(ATP_LIB_EXTRA[t]=(ATP_LIB_EXTRA[t]||[]).slice());
+  const eq=list.find(d=>d.key==='equipment');
+  const rest=list.filter(d=>d.key!=='equipment');
+  if(!(t in ATP_LIB_ACTIONS))rest.push({key:'contraction',label:'Contraction Type',values:ATP_LIB_CONTRACTIONS,multi:true});
+  ATP_LIB_EXTRA[t]=[...rest,eq||{key:'equipment',label:'Equipment',values:ATP_LIB_GENERAL_EQUIPMENT,multi:true}];
+});
+const ATP_TAXONOMY=Object.keys(ATP_LIB_SUB).map(type=>{
+  const s=ATP_LIB_SUB[type];
   const facets=[{label:s.label,values:s.values}];
-  if(ACTIONS_FOR[type])facets.push({label:'Action',values:ACTIONS_FOR[type]});
-  if(PATTERNS_FOR[type])facets.push({label:'Movement Pattern',values:PATTERNS_FOR[type]});
-  (EX_EXTRA_FILTERS[type]||[]).forEach(x=>facets.push({label:x.label,values:x.values}));
+  if(ATP_LIB_ACTIONS[type])facets.push({label:'Action',values:ATP_LIB_ACTIONS[type]});
+  if(ATP_LIB_PATTERNS[type])facets.push({label:'Movement Pattern',values:ATP_LIB_PATTERNS[type]});
+  (ATP_LIB_EXTRA[type]||[]).forEach(x=>facets.push({label:x.label,values:x.values}));
   return{type,facets};
 });
 const atpFacetValues=(type,label)=>{
@@ -36954,7 +37247,7 @@ function atpClassify(row,libMap){
   if(axis==='core'){
     const q=CORE_QUALITIES.has(S)?S:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
       'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'})[fam0]
-      ||(mp==='Rotation'?'Rotation':EX_STYLE_DEFAULT.Core);
+      ||(mp==='Rotation'?'Rotation':'Anti-Extension');
     pats.add(['Flexion','Extension','Lateral Flexion'].includes(q)?'Trunk Flexion / Extension':q);
   }
   if(axis==='full')pats.add('Full Body');
@@ -38571,8 +38864,8 @@ function diVolumeAdj(adj,instr){
 
 /* ---- Movement patterns the coach puts in the session -----------------------
    The brief's second field. A pattern ticked here is IN the session — not a wish the
-   model may weigh — and each one carries its own filter box: what kind of exercise,
-   which side or stance, which direction, which strength quality it is dosed for.
+   model may weigh — and each one carries its own boxes: its type (Tür) and, where the
+   category has one, its direction (Yön).
    Every facet is optional and takes ONE value: an empty one leaves that choice to the
    model, a filled one names exactly what that exercise is (a squat OR a split squat,
    never "either").
@@ -38582,120 +38875,29 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-const DI_STR_GOALS=[
-  ['foundational','Temel kuvvet','Foundational strength'],
-  ['maximal','Maksimal kuvvet','Maximal strength'],
-  ['hypertrophy','Hipertrofi','Hypertrophy'],
-  ['power','Patlayıcı kuvvet / Güç','Explosive strength / Power'],
-  ['reactive','Reaktif kuvvet','Reactive strength'],
-  ['endurance','Kuvvet dayanıklılığı','Strength endurance'],
-];
-const diStrGoals=(ids,rename)=>ids.map(id=>{const g=DI_STR_GOALS.find(x=>x[0]===id);
-  return rename&&rename[id]?[id,...rename[id]]:g;});
-/* The lower body names power plainly ("Güç"); the upper body keeps "Patlayıcı kuvvet / Güç".
-   Reactive strength is a knee-dominant goal only (hops, bounds, drop jumps). */
-const DI_POWER_PLAIN={power:['Güç','Power']};
-const DI_STR_GOALS_KNEE=diStrGoals(['foundational','maximal','hypertrophy','power','reactive','endurance'],DI_POWER_PLAIN);
-const DI_STR_GOALS_HIP=diStrGoals(['foundational','maximal','hypertrophy','power','endurance'],DI_POWER_PLAIN);
-const DI_STR_GOALS_ARM=diStrGoals(['foundational','maximal','hypertrophy','power','endurance']);
-const DI_STR_GOALS_BASIC=diStrGoals(['foundational','endurance']);
-/* The muscle action the exercise emphasises — on every pattern, because it changes the
-   exercise as much as its type does (a slow-lowering split squat and a split-squat hold are
-   two sessions). Standard is an ordinary controlled tempo with no phase singled out. Carry
-   and core have no eccentric choice: they are held, not lowered. */
-const DI_ACTIONS=[
-  ['standard','Standart','Standard'],
-  ['eccentric','Eksantrik','Eccentric'],
-  ['isometric','İzometrik','Isometric'],
-];
-const diActionFacet=ids=>({k:'contraction',ai:'muscle_action_emphasis',label:['Kas aksiyonu vurgusu','Muscle action emphasis'],
-  opts:DI_ACTIONS.filter(a=>ids.includes(a[0]))});
-const DI_ACTION_FACET=diActionFacet(['standard','eccentric','isometric']);
-const DI_ACTION_FACET_HOLD=diActionFacet(['standard','isometric']);
-const DI_ARM_SIDE=[['bilateral','Çift kol','Both arms'],['unilateral','Tek kol','Single arm'],['alternating','Alternatif','Alternating']];
-const diArmPattern=(id,tr,en,vocab)=>({id,label:[tr,en],vocab,facets:[
-  {k:'side',label:['Taraf / Destek','Side / support'],opts:DI_ARM_SIDE},
-  {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
-  DI_ACTION_FACET,
-]});
-const DI_MOVE_PATTERNS=[
-  {id:'knee_dominant',label:['Diz dominant','Knee dominant'],vocab:['Squat','Lunge / Unilateral'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],
-      ['lunge','Lunge','Lunge'],['step_up','Step-up','Step-up'],['step_down','Step-down','Step-down']]},
-    {k:'side',ai:'stance',label:['Duruş','Stance'],opts:[['bilateral','Bilateral','Bilateral'],
-      ['unilateral','Unilateral','Unilateral'],['split','Split stance','Split stance']]},
-    {k:'direction',label:['Yön','Direction'],opts:[['in_place','Yerinde','In place'],['forward','Öne','Forward'],
-      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['diagonal','Çapraz','Diagonal'],
-      ['multi','Çok yönlü','Multi-directional']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_KNEE},
-    DI_ACTION_FACET,
-  ]},
-  {id:'hip_dominant',label:['Kalça dominant','Hip dominant'],vocab:['Hinge'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['deadlift','Deadlift','Deadlift'],['rdl','RDL','RDL'],
-      ['good_morning','Good morning','Good morning'],['hip_thrust','Hip thrust','Hip thrust'],
-      ['glute_bridge','Glute bridge','Glute bridge'],['pull_through','Pull-through','Pull-through'],['swing','Swing','Swing']]},
-    {k:'side',ai:'stance_support',label:['Stance / Destek','Stance / support'],opts:[['bilateral','Bilateral','Bilateral'],
-      ['unilateral','Unilateral','Unilateral'],['b_stance','B-stance','B-stance']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_HIP},
-    DI_ACTION_FACET,
-  ]},
-  diArmPattern('horizontal_push','Yatay itiş','Horizontal push',['Push']),
-  diArmPattern('vertical_push','Dikey itiş','Vertical push',['Push']),
-  diArmPattern('horizontal_pull','Yatay çekiş','Horizontal pull',['Pull']),
-  diArmPattern('vertical_pull','Dikey çekiş','Vertical pull',['Pull']),
-  {id:'carry',label:['Carry','Carry'],vocab:['Carry'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['side','Yanda taşıma','Side (suitcase / farmer) carry'],
-      ['front_rack','Front rack taşıma','Front rack carry'],['overhead','Baş üstü taşıma','Overhead carry'],
-      ['goblet','Goblet taşıma','Goblet carry'],['bear_hug','Bear-hug taşıma','Bear-hug carry'],['mixed','Karma taşıma','Mixed carry']]},
-    {k:'side',ai:'load_distribution',label:['Yük dağılımı','Load distribution'],opts:[['unilateral','Tek taraflı yük','Unilateral load'],
-      ['bilateral','Çift taraflı yük','Bilateral load'],['centred','Merkezde yük','Centred load']]},
-    {k:'direction',label:['Yön / İlerleme','Direction / progression'],opts:[['forward','Öne','Forward'],
-      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['march','Yerinde march','March in place'],
-      ['hold','Sabit tutuş','Static hold']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_ACTION_FACET_HOLD,
-  ]},
-  {id:'core',label:['Core','Core'],vocab:['Core / Brace','Rotation'],facets:[
-    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['symmetrical','Simetrik','Symmetrical'],
-      ['asymmetrical','Tek taraflı / Asimetrik','Unilateral / asymmetrical'],
-      ['contralateral','Çapraz','Contralateral (cross-body)']]},
-    {k:'task',label:['Görev','Task'],opts:[['anti_extension','Antiekstansiyon','Anti-extension'],
-      ['anti_flexion','Antifleksiyon','Anti-flexion'],['anti_rotation','Antirotasyon','Anti-rotation'],
-      ['anti_lateral_flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],['flexion','Fleksiyon','Flexion'],
-      ['extension','Ekstansiyon','Extension'],['rotation','Rotasyon','Rotation'],
-      ['lateral_flexion','Lateral fleksiyon','Lateral flexion']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_ACTION_FACET_HOLD,
-  ]},
-  /* Accessory work has no movement_pattern of its own — a curl, a calf raise, a neck
-     isometric are filed under whatever pattern fits — so its vocabulary is empty: it is
-     matched on its coach_pattern tag only, and picking it opens no pain-closed pattern. */
-  {id:'accessory',label:['Aksesuar','Accessory'],vocab:[],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['shoulder','Omuz','Shoulder'],['arm','Kol','Arm'],
-      ['forearm_grip','Ön kol / Kavrama','Forearm / Grip'],['calf','Baldır','Calf'],['tibialis','Tibialis','Tibialis'],
-      ['hip_isolation','Kalça izolasyonu','Hip isolation'],['knee_isolation','Diz izolasyonu','Knee isolation'],
-      ['neck','Boyun','Neck'],['scapula','Skapula','Scapula'],['rotator_cuff','Rotator cuff','Rotator cuff'],
-      ['adductor','Adduktor','Adductor'],['abductor','Abduktor','Abductor']]},
-    {k:'side',ai:'position',label:['Duruş','Position'],opts:[['standing','Ayakta','Standing'],['seated','Oturarak','Seated'],
-      ['lying','Yatarak','Lying'],['kneeling','Diz üstü','Kneeling'],['half_kneeling','Tek diz üstü','Half-kneeling'],
-      ['hanging','Asılı','Hanging'],['supported','Destekli','Supported']]},
-    {k:'direction',label:['Yön','Direction'],opts:[['forward','Öne','Forward'],['backward','Arkaya','Backward'],
-      ['lateral','Yana','Lateral'],['up','Yukarı','Up'],['down','Aşağı','Down'],['rotation','Rotasyon','Rotation'],
-      ['multi','Çok yönlü','Multi-directional'],['na','Uygulanamaz','Not applicable']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
-    DI_ACTION_FACET,
-  ]},
-];
+/* The coach's patterns are the eleven categories of the MOVEMENT TAXONOMY — the same chips,
+   the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
+   category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
+   throws and full-body lifts have no movement_pattern of their own: they are matched on their
+   coach_pattern tag only, and picking one opens no pain-closed pattern. */
+const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
+const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
+  {k:'type',label:['Tür','Type'],opts:c.types},
+  ...(c.dirs.length?[{k:'direction',label:['Yön','Direction'],opts:c.dirs}]:[])]}));
+/* Briefs written before the taxonomy: the four push / pull patterns became the type of one
+   push and one pull category, and the old facet ids ("step_up", "anti_rotation") are read as
+   the values they name. */
+const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push','Horizontal'],vertical_push:['upper_push','Vertical Push','Vertical'],
+  horizontal_pull:['upper_pull','Horizontal Pull','Horizontal'],vertical_pull:['upper_pull','Vertical Pull','Vertical']};
+const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional'};
 /* The table the picker draws: one column per facet kind, the same five for every
    pattern. A pattern's facet sits in the column of its kind (the core's task is its
    type, every side / stance / load-distribution facet is its stance); a pattern with
    no facet of a kind leaves that cell empty. */
 const DI_MOVE_COLS=[
-  {ks:['type','task'],label:['Tür','Type']},
-  {ks:['side'],label:['Duruş','Stance']},
+  {ks:['type'],label:['Tür','Type']},
   {ks:['direction'],label:['Yön','Direction']},
-  {ks:['goal'],label:['Kuvvet hedefi','Strength goal']},
-  {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
 /* The extra filters, on every pattern alike: the kit the exercise is done with (any of
@@ -38717,41 +38919,15 @@ const DI_MOVE_EXTRAS=[
 const DI_MOVE_MAX_SLOTS=6;
 /* What the coach writes against each exercise of a pattern: the prescription. */
 const DI_MOVE_DOSE=['sets','reps','duration','tempo','rpe','load','rest'];
-/* How the calendar files each coach pattern: its movement pattern and the execution that
-   goes with it. A carry is trunk work against a side load, which is how the calendar's own
-   taxonomy reads it. */
-const DI_PAT_EX={knee_dominant:['Knee Dominant',''],hip_dominant:['Hip Dominant',''],
-  horizontal_push:['Upper Body Push','Horizontal'],vertical_push:['Upper Body Push','Vertical'],
-  horizontal_pull:['Upper Body Pull','Horizontal'],vertical_pull:['Upper Body Pull','Vertical'],
-  carry:['Core','Anti-Lateral Flexion'],core:['Core',''],accessory:['Accessory','']};
-/* Which of the brief's patterns — and which type under it — a library exercise is filed as,
-   read off the pair its card was tagged with (movement pattern + execution), falling back to
-   the card's Exercise Type and then nothing: `{id,type}`, each '' when the library does not
-   say. Rotational pressing and pulling, full-body lifts and untagged cards have no pattern
-   of the brief's to land in. The type is the execution of a core row (anti-extension …) and,
-   for squat / hinge rows, the lift read off the name. */
-const DI_TYPE_WORDS={
-  knee_dominant:[[/step[- ]?down/,'step_down'],[/step[- ]?up/,'step_up'],[/lunge|split squat|\bsplit\b/,'lunge'],[/squat|leg press/,'squat']],
-  hip_dominant:[[/good ?morning/,'good_morning'],[/hip thrust/,'hip_thrust'],[/glute bridge|\bbridge\b/,'glute_bridge'],
-    [/pull[- ]?through/,'pull_through'],[/\bswing\b/,'swing'],[/\brdl\b|romanian/,'rdl'],[/deadlift/,'deadlift']]};
+/* How the calendar files each coach pattern: its category. */
+const DI_PAT_EX=Object.fromEntries(MV_CATS.map(c=>[c.id,[c.k,'']]));
+/* Which of the brief's categories — with which type and direction — a library exercise is filed
+   as: `{id,type,dir}`, each '' when neither the library nor the name says. */
 function diPickTags(it,name){
-  const t=exTagsFromLib(it,{})||{pattern:'',plane:''};
-  const nm=String(name||(it&&it.name)||'').toLowerCase();
-  let id='';
-  if(t.pattern==='Knee Dominant')id='knee_dominant';
-  else if(t.pattern==='Hip Dominant')id='hip_dominant';
-  else if(t.pattern==='Core')id='core';
-  else if(t.pattern==='Accessory')id='accessory';
-  else if(t.pattern==='Upper Body Push'||t.pattern==='Upper Body Pull'){
-    const arm=t.pattern==='Upper Body Push'?'push':'pull';
-    id=t.plane==='Vertical'?`vertical_${arm}`:t.plane==='Horizontal'?`horizontal_${arm}`:'';
-  }
-  let type='';
-  if(id==='core')type=String(t.plane||'').toLowerCase().replace(/[- ]/g,'_');
-  else if(DI_TYPE_WORDS[id]){const hit=DI_TYPE_WORDS[id].find(([re])=>re.test(nm));type=hit?hit[1]:'';}
-  const row=diMoveRow(id),tf=row&&row.facets.find(f=>f.k==='type'||f.k==='task');
-  if(!tf||!tf.opts.some(op=>op[0]===type))type='';
-  return{id,type};
+  const t=exTagsFromLib(it&&name&&!it.name?{...it,name}:it,{})||{pattern:'',plane:'',dir:''};
+  const c=mvCat(t.pattern);
+  if(!c)return{id:'',type:'',dir:''};
+  return{id:c.id,type:mvTypes(c.k).includes(t.plane)?t.plane:'',dir:mvDirs(c.k).includes(t.dir)?t.dir:''};
 }
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
@@ -38761,12 +38937,17 @@ function diPickTags(it,name){
 function diMovePatterns(v){
   const counts=new Map(),out=[];
   (Array.isArray(v)?v:[]).forEach(x=>{
-    const id=typeof x==='string'?x:(x&&x.id);
+    let id=typeof x==='string'?x:(x&&x.id);
+    const old=DI_MOVE_OLD_ID[id];
+    if(old)id=old[0];
     const row=diMoveRow(id);
     /* An exercise with no pattern yet ("Egzersiz Ekle") has the empty id; any other unknown
        id is dropped. */
     if(!row&&id!=='')return;
-    const obj=x&&typeof x==='object'?x:{};
+    let obj=x&&typeof x==='object'?x:{};
+    if(old)obj={...obj,type:[old[1]],direction:[old[2]]};
+    /* The core's old "task" box is its type now. */
+    else if(id==='core'&&!(Array.isArray(obj.type)&&obj.type.length)&&Array.isArray(obj.task))obj={...obj,type:obj.task};
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
     const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
     const gk=id+'|'+phase;
@@ -38776,10 +38957,14 @@ function diMovePatterns(v){
        of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
     const txt=(val,max)=>String(val==null?'':val).slice(0,max);
     const o={id,phase,exercise:txt(obj.exercise,120)};
+    const sq=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const clean=(f,max)=>{
       const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
-      return[...new Set(raw.map(String).filter(val=>ok.has(val)))].slice(0,max);
+      /* An old id ("step_up") is read as the value it spells ("Step-up"). */
+      const fix=val=>{if(ok.has(val))return val;const al=DI_MOVE_OLD_VAL[val];if(al&&ok.has(al))return al;
+        const hit=f.opts.find(op=>sq(op[0])===sq(val));return hit?hit[0]:'';};
+      return[...new Set(raw.map(String).map(fix).filter(Boolean))].slice(0,max);
     };
     if(row)row.facets.forEach(f=>{o[f.k]=clean(f,1);});
     DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
@@ -39305,9 +39490,12 @@ const diBlockedSet=blocked=>{
 function diMoveIdOf(v){
   const k=diExName(v==null?'':String(v)).replace(/[\s_\-()]+/g,'');
   if(!k||k==='null')return null;
-  const hit=DI_MOVE_PATTERNS.find(p=>[p.id,p.label[0],p.label[1]]
+  const hit=DI_MOVE_PATTERNS.find(p=>[p.id,p.k,p.label[0],p.label[1]]
     .some(x=>diExName(x).replace(/[\s_\-()]+/g,'')===k));
-  return hit?hit.id:null;
+  if(hit)return hit.id;
+  /* A model that still writes one of the four retired push / pull ids means its category. */
+  const old=Object.keys(DI_MOVE_OLD_ID).find(o=>o.replace(/_/g,'')===k);
+  return old?DI_MOVE_OLD_ID[old][0]:null;
 }
 function diParseProgram(text){
   let s=(text||'').trim();
@@ -39405,18 +39593,17 @@ function diManualProgram(instr,libMap,sessionName){
     :/soğuma|soguma|cool|tamamlayıcı|tamamlayici|complement|finish/i.test(nm)?'tamamlayici':'ana';
   const exOf=(p,bi,i,ph)=>{
     const row=diMoveRow(p.id);
-    const[exPat,exPlane0]=DI_PAT_EX[p.id]||['',''];
-    /* A core row's task (anti-extension, rotation …) is the calendar's execution for it. */
-    const taskPlane=p.id==='core'&&p.task&&p.task[0]
-      ?exStylesFor('Core').find(x=>x.toLowerCase().replace(/[- ]/g,'')===String(p.task[0]).replace(/_/g,'')):'';
-    const exPlane=taskPlane||exPlane0;
+    const[exPat]=DI_PAT_EX[p.id]||['',''];
+    /* The row's type and direction are the calendar's own (one taxonomy). */
+    const exPlane=(p.type&&p.type[0])||'';
+    const exDir=(p.direction&&p.direction[0])||'';
     const nm=String(p.exercise).trim();
     const al=p.alt||{};
     const altName=String(al.name||'').trim();
     return{key:`man:${bi}:${i}`,phase:ph,name:nm,source:lib[nm.toLowerCase()]?'library':'custom',
       sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
       rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
-      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,superset:p.superset||'',link:t(p.link),
+      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,exDir:exDir,noPat:!row,superset:p.superset||'',link:t(p.link),
       ...(altName?{alt:{name:altName,pattern:exPat,plane:exPlane,
         sets:String(al.sets||'').trim(),reps:String(al.reps||'').trim(),duration:String(al.duration||'').trim(),
         tempo:String(al.tempo||'').trim(),rpe:String(al.rpe||'').trim(),load:String(al.load||'').trim(),
@@ -39932,7 +40119,8 @@ function diProgramPlan(plan,program,pct){
       name:e.name,added:true,addId:e.key,
       sets:adj.sets||'',reps:adj.reps||'',duration:adj.duration||'',
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
-      superset:e.superset||'',pattern:e.exPattern||e.pattern||'',plane:e.exPlane||'',link:e.link||'',
+      superset:e.superset||'',pattern:e.noPat?'':(e.exPattern||e.pattern||''),plane:e.noPat?'':(e.exPlane||''),
+      dir:e.noPat?'':(e.exDir||''),noPat:!!e.noPat,link:e.link||'',
       description:why,image:'',changedName:false,
       ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};
@@ -40041,10 +40229,6 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
-/* The facet that says what kind of exercise a pattern's row is — the squat / lunge / step-up of a
-   knee-dominant row, the anti-extension of a core row. The push and pull patterns carry theirs in
-   the pattern itself (horizontal / vertical) and have none. */
-const diTypeFacet=id=>{const row=diMoveRow(id);return row?(row.facets.find(f=>f.k==='type'||f.k==='task')||null):null;};
 function DiPatternPlan({plan,onChange:emit,closed}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -40130,40 +40314,54 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     {const cnt={};let plain=0;
       at.forEach((gi,n)=>{const ss=String(latest.current.list[gi].superset||'').toUpperCase();
         tags[`${ph}|${n}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);});}
-    const patOpts=DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1])}));
+    const patOpts=ptCatOpts(c=>c.id);
     const runs=runsOf(ph);
     let n0=0;
     const groups=runs.map((run,ri)=>{
       const row=diMoveRow(run.id);
       const g={id:`${ph}|${ri}`,pat:run.id,
-        label:row?L(row.label[0],row.label[1]):L('Patern seçilmedi','No pattern'),
-        color:row?(ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||''):'',pick:run.id==='',options:patOpts,
+        label:row?L(row.label[0],row.label[1]):L('Kategorisiz','No category'),
+        color:row?(ML_PIE_COLS[row.k]||''):'',pick:run.id==='',options:patOpts,
         slots:run.at.map(gi=>{const p=latest.current.list[gi];const n=n0++;const k=`${ph}|${n}`;const a=p.alt||{};
-          const tf=diTypeFacet(p.id);
+          const ck=row?row.k:'';
           return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
             sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
             a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
-            a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
-            typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
+            a_rest:a.rest,a_link:a.link,tagP:ck,tagS:(p.type||[])[0]||'',tagD:(p.direction||[])[0]||'',
+            typeOpts:ptTypeOpts(ck),typeVal:(p.type||[])[0]||'',
+            dirOpts:ptDirOpts(ck),dirVal:(p.direction||[])[0]||'',
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
     const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
-    /* What a library exercise says about the row it lands on: the pattern the card is filed under
-       and the card's type go onto the row. `force` is a pick (the row's exercise is being
-       replaced, so the new one brings its own pattern and type); without it (a typed name) only
-       an unpatterned row takes the pattern, and a type already set stays. */
+    /* What a library exercise says about the row it lands on: its category, type and direction.
+       `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
+       without it (a typed name) only an uncategorised row takes the category, and a type or a
+       direction already set stays. */
     const withLib=(k,it,force)=>{
       const gi=gidx(k);if(gi==null||!it)return;
       const p=latest.current.list[gi];
       const t=diPickTags(it,p.exercise);
-      const nid=(force||p.id==='')&&t.id?t.id:p.id;
-      const tf=diTypeFacet(nid);
+      if(!t.id)return;
+      const nid=(force||p.id==='')?t.id:p.id;
+      if(nid!==t.id)return;
       const nx={...p,id:nid};
-      if(tf&&t.type&&(nid===t.id)&&(force||!(p[tf.k]||[])[0]))nx[tf.k]=[t.type];
-      if(nx.id===p.id&&nx[tf?tf.k:'id']===p[tf?tf.k:'id'])return;
+      if(t.type&&(force||nid!==p.id||!(p.type||[])[0]))nx.type=[t.type];
+      if(t.dir&&(force||nid!==p.id||!(p.direction||[])[0]))nx.direction=[t.dir];
+      if(nid!==p.id){if(!t.type)nx.type=[];if(!t.dir)nx.direction=[];}
+      if(JSON.stringify([nx.id,nx.type,nx.direction])===JSON.stringify([p.id,p.type,p.direction]))return;
       setList(latest.current.list.map((x,i)=>i===gi?nx:x));
+    };
+    /* A row put under a category keeps the type and direction it has where they are that
+       category's, and reads the rest off its exercise's name; '' takes the category off. */
+    const recat=(p,nid)=>{
+      const c=mvCatById(nid);
+      if(!c)return{...p,id:'',type:[],direction:[]};
+      const keep=(v,ok)=>ok.includes(v)?v:'';
+      const ty=(p.id===nid&&keep((p.type||[])[0],mvTypes(c.k)))||mvGuessType(c.k,p.exercise);
+      const dr=(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
+      return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
     const handlers={
       onChip:id=>{
@@ -40216,16 +40414,19 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       /* A name the library has never seen was typed and the box left: if a card by that name
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
-        if(p&&p.id==='')withLib(k,exLibHit(nm),false);},
+        if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
       onLinkBlur:(k,isAlt,v)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];if(!p)return;
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
-      /* A row with no pattern was given one: it stays where it is and folds into its neighbours. */
-      onPattern:(k,nid)=>{if(!diMoveRow(nid))return;patch(k,p=>({...p,id:nid}));},
-      /* The type box writes the pattern's own "type" (or, for the core, "task") facet. */
-      onType:(k,v)=>patch(k,p=>{const tf=diTypeFacet(p.id);return tf?{...p,[tf.k]:v?[v]:[]}:p;}),
+      /* A row with no category was given one: it stays where it is and folds into its neighbours. */
+      onRowCat:(k,nid)=>patch(k,p=>recat(p,nid)),
+      /* The group's category box: every row of the run takes it ('' takes it off, rows stay). */
+      onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
+        setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
+      onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
+      onDir:(k,v)=>patch(k,p=>({...p,direction:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
         if(a==null||b==null)return;
@@ -40240,39 +40441,20 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   };
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
-    <div className="blk-phbar di-ppbar">
-      <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
-      <div className="blk-phbar-chips">
-        {DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>
-          <button key={pr.id} type="button" className="blk-phadd" onClick={()=>addPhase(pr.id)}
-            title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(pr.label[0],pr.label[1])}</button>)}
-        <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
-          title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
-      </div>
-    </div>
+    <PlanPhaseBar presets={DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1])}))}
+      onAdd={id=>addPhase(id)}/>
     {phases.length===0
       ?section('',false)
-      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)+(folded.has(p.id)?' folded':'')}>
-          <header className="di-pph">
-            <button type="button" className="di-pph-ch" aria-expanded={!folded.has(p.id)} onClick={()=>toggleFold(p.id)}
-              title={folded.has(p.id)?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has(p.id)?'▶':'▼'}</button>
-            <i className="di-pph-dot"/>
-            <PhaseNameInput className="di-pph-nm" value={diPhaseName(p)} onChange={v=>renamePhase(p.id,v)}
-              title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
-            <span className="di-pph-n">{L(`${list.filter(x=>x.phase===p.id).length} egzersiz`,`${list.filter(x=>x.phase===p.id).length} exercises`)}</span>
-            <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}
-              title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button></span>
-          </header>
-          {!folded.has(p.id)&&section(p.id,false)}
-        </section>)}
-        {unplaced&&<section className={'di-ppsec loose'+(folded.has('_loose')?' folded':'')}>
-          <header className="di-pph">
-            <button type="button" className="di-pph-ch" aria-expanded={!folded.has('_loose')} onClick={()=>toggleFold('_loose')}
-              title={folded.has('_loose')?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has('_loose')?'▶':'▼'}</button>
-            <span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
-            <span className="di-pph-n">{L('Henüz bir faza konmadı — program bunları sona ekler.','Not placed in a phase yet — the programme puts them last.')}</span></header>
-          {!folded.has('_loose')&&section('',true)}
-        </section>}</>}
+      :<>{phases.map((p,i)=><PlanPhase key={p.id} cls={'pc'+(i%PH_COLORS)} folded={folded.has(p.id)} onFold={()=>toggleFold(p.id)}
+          name={diPhaseName(p)} onRename={v=>renamePhase(p.id,v)} count={list.filter(x=>x.phase===p.id).length}
+          onClose={()=>closePhase(p.id)}>
+          {section(p.id,false)}
+        </PlanPhase>)}
+        {unplaced&&<PlanPhase cls="loose" folded={folded.has('_loose')} onFold={()=>toggleFold('_loose')}
+          name={L('Fazsız','Unplaced')} count={list.filter(x=>!known(x.phase||'')).length}
+          note={L('Henüz bir faza konmadı — program bunları sona ekler','Not placed in a phase yet — the programme puts them last')}>
+          {section('',true)}
+        </PlanPhase>}</>}
   </div>);
 }
 
@@ -40280,24 +40462,21 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,onShowLoad,closed}){
+function DiInstructionForm({instr,save,onBuild,closed}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
-          <label>{L('Hareket paterni','Movement pattern')}</label>
-          {onShowLoad&&<div className="di-fhd-x"><button type="button" className="di-viewbtn" onClick={onShowLoad}
-            title={L('Bu sporcunun haftalık yük dağılımını bir pencerede göster','Show this athlete\'s weekly load distribution in a window')}>
-            <i>◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button></div>}</div>
-        <span className="di-fhint">{L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
-          'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
+          <label>{L('Antrenman tablosu','Training table')}</label></div>
+        <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
+          'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>
     {onBuild&&<div className="di-genbar">
-      <span className="di-dim">{L('Hareket Paterni tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
-        'The exercises and doses in the Movement Pattern table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
+      <span className="di-dim">{L('Antrenman tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
+        'The exercises and doses in the training table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
       <button type="button" className="di-gen" onClick={onBuild}>
         <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
       </button>
@@ -40544,13 +40723,9 @@ function DiSection({n,title,meta,children,className}){
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
   const panelRef=useRef(null);
   const[err,setErr]=useState('');
-  const[loadOpen,setLoadOpen]=useState(false);   // the weekly load distribution, in a window
-  useEffect(()=>{
-    if(!loadOpen)return;
-    const esc=e=>{if(e.key==='Escape')setLoadOpen(false);};
-    document.addEventListener('keydown',esc);
-    return()=>document.removeEventListener('keydown',esc);
-  },[loadOpen]);
+  /* Whose load the table's "Haftalık Yük Dağılımı" opens — this athlete's, around this day. */
+  const loadCtx=useMemo(()=>({days:(plan&&plan.ath&&plan.ath.days)||{},name:(plan&&plan.ath&&plan.ath.name)||'',date}),
+    [plan&&plan.ath&&plan.ath.days,plan&&plan.ath&&plan.ath.name,date]);
   /* Open or folded. Remembered per device, so a coach who works with the panel folded
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
@@ -40762,18 +40937,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
-      {/* A small window at the side of the screen — no backdrop, nothing dimmed or blurred, the
-          page behind stays usable while the chart is open. */}
-      {loadOpen&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
-        <div className="di-loadwin-hd">
-          <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</b>
-          <button type="button" className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-        </div>
-        <div className="di-loadwin-body">
-          <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
-        </div>
-      </aside>,document.body)}
+      <PlanLoadCtx.Provider value={loadCtx}>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+      </PlanLoadCtx.Provider>
     </DiSection>
     </>}
 
@@ -43249,14 +43415,20 @@ function App(){
   /* Tagging an exercise's pattern / execution on any program writes the pair onto the
      library entry, so writing that exercise into the next program fills both in. A name
      the library has never seen is added carrying the tags, exactly as typing it would. */
-  registerLibTags((nm,pattern,plane)=>setData(prev=>{
+  registerLibTags((nm,pattern,plane,dir)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
     const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
-    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',exPattern:pattern,exPlane:plane},...exs]};
+    /* A card not yet on a shelf of the movement taxonomy is filed where the row put it — the
+       library's Kategori · Tür · Yön are the same boxes. A filed card keeps its shelf: the
+       library card is where it is moved. */
+    const file=cur=>(!cur||!MV_KEYS.includes(cur.type))&&MV_KEYS.includes(pattern)
+      ?{type:pattern,subType:mvTypes(pattern).includes(plane)?plane:'',dir:mvDirs(pattern).includes(dir)?dir:''}:{};
+    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',exPattern:pattern,exPlane:plane,...file(null)},...exs]};
     const cur=exs[i];
-    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane)return prev;
-    const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane};
+    const f=file(cur);
+    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane&&!f.type)return prev;
+    const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane,...f};
     return{...prev,exercises:next};
   }));
   /* Putting a picture on a program row writes it onto the library entry as its plan
@@ -43312,7 +43484,7 @@ function App(){
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
-        exPattern:e.exPattern||'',exPlane:e.exPlane||'',
+        exPattern:e.exPattern||'',exPlane:e.exPlane||'',dir:e.dir||'',
         desc:(e.purpose||'').trim()});
     }
     setLibItems(items);

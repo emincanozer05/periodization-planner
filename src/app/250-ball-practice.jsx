@@ -923,24 +923,8 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           a session that still reads down the page in the order it is run. The bar sits
           between what the block IS and what it holds, which is where the coach decides
           how the session is shaped. */}
-      <div className="blk-phbar">
-        <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
-        <div className="blk-phbar-chips">
-          {phaseOpts.map(o=><span key={o.id} className={'blk-phchip '+o.cls}>
-            <i/><LiveInput className="blk-phname" value={(block.phaseNames&&block.phaseNames[o.id]!=null)?block.phaseNames[o.id]:o.label}
-              size={Math.max(4,Math.min(34,String(o.label).length+1))}
-              onChange={v=>renamePhase(o.id,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
-            <b>{phaseN(o.id)}</b>
-            <button type="button" onClick={()=>closePhase(o.id)}
-              title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button>
-          </span>)}
-          {BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>
-            <button key={p} type="button" className="blk-phadd" onClick={()=>addPhase(p)}
-              title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}</button>)}
-          <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
-            title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
-        </div>
-      </div>
+      <PlanPhaseBar presets={BLK_PHASES.filter(p=>!phaseList.includes(p)).map(p=>({id:p,label:L(BLK_PHASE_LBL[p][0],BLK_PHASE_LBL[p][1])}))}
+        onAdd={id=>addPhase(id)}/>
       {/* Two slots to a row — 1|2, 3|4, 5|6 — so a whole block is readable without
           scrolling past one exercise to reach the next. */}
       {/* A ball-practice block runs its drills one to a row: each carries a court diagram
@@ -967,34 +951,22 @@ function BlockEd({block,onUpdate,onRemove,onDuplicate,index,dragB,setDragB,onDro
           :<CalPlanGrid rows={g.rows} labels={labels} fns={slotFns} phase={g.phase} loose={!!g.loose}
             onAdd={addExAt} onRemoveIdx={removeIdx}/>;
         if(g.flat)return<React.Fragment key="flat">{grid}</React.Fragment>;
-        return(<section key={gKey} className={'blk-ph '+(g.phase?phC(g.phase):'p-loose')}>
-          <header className="blk-ph-h">
-            <button type="button" className="blk-ph-ch" onClick={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
-              title={shut?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{shut?'▶':'▼'}</button>
-            {g.loose?<span className="blk-ph-nm">{L('Fazsız','Unplaced')}</span>
-              :<PhaseNameInput className="blk-ph-nm" value={(block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase)}
-                onChange={v=>renamePhase(g.phase,v)} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>}
-            <span className="blk-ph-n">{isBall
-              ?L(`${g.rows.length} dril`,`${g.rows.length} drill${g.rows.length!==1?'s':''}`)
-              :L(`${g.rows.length} egzersiz`,`${g.rows.length} exercise${g.rows.length!==1?'s':''}`)}</span>
-            <span className="blk-ph-note">{g.loose
-              ?L('Henüz bir faza konmadı — aşağıdan ya da satırın kendi seçicisinden yerleştir','Not placed in a phase yet — put them somewhere from here, or from each row\'s own picker')
-              :blkPhaseNote(g.phase,block)}</span>
-            <span className="blk-ph-acts">
-              {g.loose
-                ?phaseList.map(p=><button key={p} type="button" className={'blk-ph-mv '+phC(p)} onClick={()=>placeLooseIn(p)}
-                  title={L(`Yerleştirilmemiş ${g.rows.length} satırı ${phLbl(p)} bölümüne taşı`,`Move the ${g.rows.length} unplaced row${g.rows.length!==1?'s':''} into ${phLbl(p)}`)}>
-                  → {phLbl(p)}</button>)
-                :<button type="button" className="blk-ph-x" onClick={()=>closePhase(g.phase)}
-                  title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button>}
-            </span>
-          </header>
-          {!shut&&grid}
-        </section>);
+        return(<PlanPhase key={gKey} cls={g.phase?phC(g.phase):'loose'} folded={shut}
+          onFold={()=>setShutPh(m=>({...m,[gKey]:!shut}))}
+          name={g.loose?L('Fazsız','Unplaced'):((block.phaseNames&&block.phaseNames[g.phase]!=null)?block.phaseNames[g.phase]:phLbl(g.phase))}
+          onRename={g.loose?null:(v=>renamePhase(g.phase,v))}
+          count={g.rows.length} unit={isBall?L('dril','drills'):L('egzersiz','exercises')}
+          onClose={g.loose?null:(()=>closePhase(g.phase))}
+          note={g.loose?L('Henüz bir faza konmadı','Not placed in a phase yet'):null}
+          acts={g.loose?phaseList.map(p=><button key={p} type="button" className={'pp-mv '+phC(p)} onClick={()=>placeLooseIn(p)}
+            title={L(`Yerleştirilmemiş ${g.rows.length} satırı ${phLbl(p)} bölümüne taşı`,`Move the ${g.rows.length} unplaced row${g.rows.length!==1?'s':''} into ${phLbl(p)}`)}>
+            → {phLbl(p)}</button>):null}>
+          {grid}
+        </PlanPhase>);
       })}</div>
       {exs.length===0&&!phased&&<div className="iv-dim" style={{padding:'9px 13px'}}>{isBall
         ?L('Bu blokta dril yok — bir tane çizmek için "+ Dril ekle"yi kullan.','No drills in this block — use "+ Add drill" to draw one.')
-        :L('Bu blokta egzersiz yok — bir tane yazmak için "+ Egzersiz ekle"yi kullan.','No exercises in this block — use "+ Add exercise" to write one.')}</div>}
+        :L('Bu blokta egzersiz yok — bir kategori seç ya da "+ Egzersiz Ekle"yi kullan.','No exercises in this block — pick a category or use "+ Add Exercise".')}</div>}
     </>}
   </div>);
 }

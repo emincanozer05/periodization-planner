@@ -347,6 +347,9 @@ function migrate(data){
     /* Mobility's regions became Ankle · Hip · Spine · Shoulder · Wrist; the thoracic
        spine is part of the spine, so an entry filed "Thoracic" reads Spine. */
     .map(e=>(e.type==='Mobility'&&e.subType==='Thoracic')?{...e,subType:'Spine'}:e)
+    /* The shelves became the eleven categories of the movement taxonomy (Kategori · Tür · Yön):
+       an old sub-type is read into the type / direction it now is. */
+    .map(e=>exLib(e)==='ball'?e:mvMigrateLibCard(e))
     /* "Step-up" is spelled "Step-Up" now, as the rest of the pattern list is cased. */
     .map(e=>e.pattern==='Step-up'?{...e,pattern:'Step-Up'}:e)
     /* The one-off suggestion import marked every field it filled as "awaiting review".

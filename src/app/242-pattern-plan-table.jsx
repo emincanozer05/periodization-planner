@@ -18,10 +18,14 @@
      onNew(key,name)          a name the library did not have was typed (optional)
      onRemove(key)            one exercise removed
      onRemoveGroup(gid)       the whole pattern removed
-     onPattern(key,id)        a row without a pattern was given one (optional)
-     onType(key,id)           the row's type box ("Tür": Horizontal, Anti-Extension, Squat …) was
+     onRowCat(key,id)         an uncategorised row was given a category
+     onGroupCat(gid,id)       the group's category box (Kategori) was changed — every row of the
+                              group takes it; '' takes the category off (the rows stay, written as
+                              uncategorised work that the load distribution does not count)
+     onType(key,id)           the row's type box (Tür: Squat, Yatay İtiş, Anti-rotasyon …) was
                               changed; a slot brings its choices in `typeOpts` [[id,label]…] and the
-                              current one in `typeVal` (optional — no box when a slot has none)
+                              current one in `typeVal` (no box when a slot has none)
+     onDir(key,id)            the row's direction box (Yön), the same way: `dirOpts` / `dirVal`
      onMove(key,dir)          the ↑ / ↓ buttons of a row, dir -1 or +1; a slot says whether it can
                               go either way in `canUp` / `canDown` (optional — no buttons without it)
      onLinkBlur(key,isAlt,v)  a link box was left — the host files it in the library
@@ -73,17 +77,34 @@ function PtTag({tag,val,onChange}){
     </select>
   </label>);
 }
-/* The row's type — how the pattern is executed (horizontal / vertical, anti-extension …) or what
-   kind of lift it is — as a small box under the pattern's name. Pressing it opens the list. */
-function PtType({value,opts,onChange,label}){
+/* The row's type (Tür) or direction (Yön), as a small box under its category. Pressing it
+   opens the list. */
+function PtSel({value,opts,onChange,label,ph}){
   if(!opts||!opts.length)return null;
   const known=opts.some(o=>o[0]===value);
-  return(<label className={'pt-type'+(known?' on':'')} title={L('Egzersizin türü — değiştirmek için seç','The exercise\'s type — pick to change it')}>
+  return(<label className={'pt-type'+(known?' on':'')} title={label}>
     <select value={known?value:''} aria-label={label} onChange={e=>onChange(e.target.value)}>
-      <option value="">{L('Tür seç…','Pick type…')}</option>
+      <option value="">{ph}</option>
       {opts.map(o=><option key={o[0]} value={o[0]}>{o[1]}</option>)}
     </select>
   </label>);
+}
+/* The group's category (Kategori). It comes on its own — the exercise picked off the library
+   brings its category — and can be changed, or taken off with ✕: a warm-up drill the library
+   files under a category should not read as main work in the load distribution. */
+function PtCat({value,color,options,onChange,label}){
+  return(<span className={'pt-cat'+(value?' on':'')} style={{'--pat-c':color||'var(--border2)'}}>
+    <label className="pt-catsel" title={value?L('Kategori — değiştirmek için seç','Category — pick to change it'):L('Kategori seç','Pick a category')}>
+      <i className="pt-dot"/>
+      <select value={value||''} aria-label={label} onChange={e=>onChange(e.target.value)}>
+        <option value="">{value?L('— Kategorisiz','— No category'):L('Kategori seç…','Pick category…')}</option>
+        {options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+      </select>
+    </label>
+    {value&&<button type="button" className="pt-catx" onClick={()=>onChange('')}
+      aria-label={L('Kategoriyi kaldır','Remove the category')}
+      title={L('Kategoriyi kaldır — egzersiz kalır, yük dağılımına girmez','Remove the category — the exercise stays and is left out of the load distribution')}>✕</button>}
+  </span>);
 }
 const ptSame=(a,b)=>{
   const ka=Object.keys(a),kb=Object.keys(b);
@@ -130,23 +151,21 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   return(<>
     <div className={'pt-tr'+(first?' first':'')} role="row" style={style}>
       <div className="pt-pat" role="rowheader">
-        {first&&(grp.pick
-          ?<label className="pt-patpick"><span className="pt-cl">{L('Patern','Pattern')}</span>
-            <select value="" aria-label={L('Patern seç','Pick a pattern')} onChange={e=>{if(e.target.value)cb.onPattern(k,e.target.value);}}>
-              <option value="">{L('Patern seç…','Pick pattern…')}</option>
-              {grp.options.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
-            </select></label>
-          :<><span className="pt-patn"><i className="pt-dot"/><b>{grp.label}</b></span>
-            <button type="button" className="pt-x" onClick={()=>cb.onRemoveGroup(gid)}
-              aria-label={L('Paterni kaldır','Remove the pattern')} title={L('Paterni ve egzersizlerini kaldır','Remove the pattern and its exercises')}>✕</button></>)}
-        <PtType value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} onChange={v=>cb.onType(k,v)}/>
+        {/* A category covers its whole group and is set on its first row; an uncategorised row is
+            given one on its own. */}
+        {(first||grp.pick)&&<PtCat value={grp.pick?'':grp.pat} color={grp.color} options={grp.options} label={L('Kategori','Category')}
+          onChange={v=>grp.pick?cb.onRowCat(k,v):cb.onGroupCat(gid,v)}/>}
+        {(slot.typeOpts&&slot.typeOpts.length>0||slot.dirOpts&&slot.dirOpts.length>0)&&<span className="pt-tdr">
+          <PtSel value={slot.typeVal} opts={slot.typeOpts} label={lab(L('Tür','Type'))} ph={L('Tür…','Type…')} onChange={v=>cb.onType(k,v)}/>
+          <PtSel value={slot.dirVal} opts={slot.dirOpts} label={lab(L('Yön','Direction'))} ph={L('Yön…','Direction…')} onChange={v=>cb.onDir(k,v)}/>
+        </span>}
       </div>
       <div className="pt-td pt-ex" role="cell">
         <span className="pt-cl">{L('Egzersiz','Exercise')}</span>
         <div className="pt-exmain">
           <PtTag tag={slot.tag} val={slot.tagVal} onChange={v=>f('superset',v)}/>
           <div className="pt-exname">
-            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS}}
+            <ExNameField value={slot.name} onChange={v=>f('name',v)} tags={{pattern:slot.tagP,plane:slot.tagS,dir:slot.tagD}}
               onNewName={cb.onNew?(nm=>cb.onNew(k,nm)):undefined}
               onPick={it=>cb.onPick(k,it,false)}/>
           </div>
@@ -158,7 +177,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
             <button type="button" className="dn" disabled={!slot.canDown} onClick={()=>cb.onMove(k,1)}
               aria-label={L('Aşağı taşı','Move down')} title={L('Aşağı taşı','Move down')}/>
           </span>}
-          {(grp.count>1||grp.pick)&&<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
+          {<button type="button" className="pt-x" onClick={()=>cb.onRemove(k)}
             aria-label={L('Egzersizi kaldır','Remove exercise')} title={L('Bu egzersizi kaldır','Remove this exercise')}>✕</button>}
         </div>
       </div>
@@ -182,7 +201,8 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
           {showAlt
             ?<><span className="pt-altk" title={L('Bu egzersiz yapılamazsa yerine yapılacak egzersiz','What is done if this exercise cannot be')}>⇄</span>
               <div className="pt-exname alt">
-                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}/>
+                <ExNameField value={slot.a_name||''} onChange={v=>f('a_name',v)} onPick={it=>cb.onPick(k,it,true)}
+                  tags={{pattern:slot.tagP}}/>
               </div>
               <button type="button" className="pt-altx" onClick={()=>{setAltOn(false);cb.onSlot(k,{alt:null});}}
                 aria-label={L('Alternatifi sil','Delete the alternative')} title={L('Alternatifi sil','Delete the alternative')}>✕</button></>
@@ -201,7 +221,7 @@ const PtRow=React.memo(function PtRow({gid,slot,grp,first,cb,ids,hasDetail,detai
   </>);
 },(a,b)=>a.gid===b.gid&&a.first===b.first&&a.cb===b.cb&&a.ids===b.ids&&a.hasDetail===b.hasDetail&&a.detailOpen===b.detailOpen
   &&ptSame(a.slot,b.slot)&&a.grp.label===b.grp.label&&a.grp.color===b.grp.color&&a.grp.count===b.grp.count
-  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options);
+  &&a.grp.max===b.grp.max&&a.grp.pick===b.grp.pick&&a.grp.options===b.grp.options&&a.grp.pat===b.grp.pat);
 
 function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,empty,onAdd,addLabel,children}){
   const uid=useRef(0);if(!uid.current)uid.current=++PT_UID;
@@ -217,9 +237,11 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
     onRemove:k=>live.current.onRemove(k),
     onRemoveGroup:g=>live.current.onRemoveGroup(g),
     onCount:(g,n)=>live.current.onCount(g,n),
-    onPattern:(k,p)=>live.current.onPattern&&live.current.onPattern(k,p),
+    onGroupCat:(g,v)=>live.current.onGroupCat&&live.current.onGroupCat(g,v),
+    onRowCat:(k,v)=>live.current.onRowCat&&live.current.onRowCat(k,v),
     onLinkBlur:(k,alt,v)=>live.current.onLinkBlur&&live.current.onLinkBlur(k,alt,v),
     onType:(k,v)=>live.current.onType&&live.current.onType(k,v),
+    onDir:(k,v)=>live.current.onDir&&live.current.onDir(k,v),
     onMove:(k,d)=>live.current.onMove&&live.current.onMove(k,d),
     hasMove:!!handlers.onMove,
     toggleDetail:k=>setOpenDet(s=>{const n=new Set(s);n.has(k)?n.delete(k):n.add(k);return n;}),
@@ -228,13 +250,14 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
   const rows=groups.filter(g=>g.slots.length);
   return(<div className="pt">
     <div className="pt-top">
-      <div className="pt-chips" role="group" aria-label={L('Hareket paterni','Movement pattern')}>
+      <span className="pt-chipl">{L('Kategori','Category')}</span>
+      <div className="pt-chips" role="group" aria-label={L('Kategori','Category')}>
         {chips.map(c=><button key={c.id} type="button" aria-pressed={!!c.on}
           className={'pt-chip'+(c.on?' on':'')+(c.warn?' warn':'')} title={c.title||undefined}
           onClick={()=>handlers.onChip(c.id)}>{c.label}{c.warn?<i>!</i>:null}</button>)}
       </div>
       {total!=null&&<span className={'pt-n'+(selected?' on':'')}>
-        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} patern`,`${total} patterns`)}</span>}
+        <b>{L(`${selected} seçili`,`${selected} selected`)}</b> / {L(`${total} kategori`,`${total} categories`)}</span>}
     </div>
     {rows.length>0
       ?<div className="pt-scroll"><div className="pt-grid" role="table" aria-label={L('Antrenman tablosu','Training table')}>
@@ -243,13 +266,13 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
         <datalist id={ids.load}>{sug.load.map(o=><option key={o} value={o}/>)}</datalist>
         <datalist id={ids.rest}>{sug.rest.map(o=><option key={o} value={o}/>)}</datalist>
         <div className="pt-tr pt-th" role="row">
-          {[L('Patern','Pattern'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
+          {[L('Kategori · Tür · Yön','Category · Type · Direction'),L('Egzersiz','Exercise'),L('Egzersiz Adedi','Exercises'),L('Set','Sets'),L('Tekrar','Reps'),
             L('Süre','Time'),'Tempo','RPE',L('Yük','Load'),L('Dinlenme','Rest'),'Link']
             .map((h,i)=><span key={i} role="columnheader">{h}</span>)}
         </div>
         {rows.map(g=><div key={g.id} className="pt-grp" role="rowgroup">
           {g.slots.map((s,ix)=><React.Fragment key={s.key}>
-            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options}}
+            <PtRow gid={g.id} slot={s} grp={{label:g.label,color:g.color,count:g.slots.length,max:max||6,pick:!!g.pick,options:g.options,pat:g.pat||''}}
               first={ix===0} cb={cb} ids={ids} hasDetail={!!hasDetail} detailOpen={openDet.has(s.key)}/>
             {hasDetail&&openDet.has(s.key)&&<div className="pt-detail" role="row"><div role="cell">{detail(s.key)}</div></div>}
           </React.Fragment>)}
@@ -257,98 +280,170 @@ function PlanTable({chips,groups,selected,total,handlers,max,detail,hasDetail,em
       </div></div>
       :(onAdd
         ?<button type="button" className="pt-empty pt-emptybtn" onClick={onAdd}>+ {addLabel}</button>
-        :<div className="pt-empty">{empty||L('Paterni seçince egzersizleri burada açılır.','Pick a pattern to write its exercises here.')}</div>)}
+        :<div className="pt-empty">{empty||L('Bir kategori seç ya da egzersiz ekle.','Pick a category or add an exercise.')}</div>)}
     {rows.length>0&&onAdd&&<button type="button" className="iv-addslot pt-add" onClick={onAdd}>+ {addLabel}</button>}
     {children}
   </div>);
 }
 
+/* ---- Phases and the load window: one look for both homes ------------------
+   The calendar's block editor and the individualization brief cut a session into phases the
+   same way, so they draw them with the same three pieces: the bar that adds a phase (only the
+   ready-made phases not open yet, then a phase named by hand) with the weekly load
+   distribution at its right, the header of each phase (fold, name typed over, how many
+   exercises, ✕), and the tray of rows not placed in a phase. */
+/* Whose weekly load distribution the bar's button opens: the calendar (team or athlete) and the
+   brief provide it; without a provider there is no button. */
+const PlanLoadCtx=React.createContext(null);
+function LoadDistButton(){
+  const ctx=React.useContext(PlanLoadCtx);
+  const[open,setOpen]=useState(false);
+  useEffect(()=>{
+    if(!open)return;
+    const esc=e=>{if(e.key==='Escape')setOpen(false);};
+    document.addEventListener('keydown',esc);
+    return()=>document.removeEventListener('keydown',esc);
+  },[open]);
+  if(!ctx)return null;
+  return(<>
+    <button type="button" className={'pp-load'+(open?' on':'')} aria-pressed={open} onClick={()=>setOpen(o=>!o)}
+      title={L('Haftalık yük dağılımını bir pencerede göster — kategori ve türe göre','Show the weekly load distribution in a window — by category and type')}>
+      <i aria-hidden="true">◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button>
+    {/* A small window at the side of the screen — no backdrop, the page behind stays usable. */}
+    {open&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
+      <div className="di-loadwin-hd">
+        <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}{ctx.name?` — ${ctx.name}`:''}</b>
+        <button type="button" className="x-btn" onClick={()=>setOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
+      </div>
+      <div className="di-loadwin-body">
+        <MuscleLoadDistribution days={ctx.days||{}} refDate={ctx.date} title={L('Yük Dağılımı','Load Distribution')}/>
+      </div>
+    </aside>,document.body)}
+  </>);
+}
+/* `presets` are the ready-made phases not open yet ({id,label}); `onAdd(id)` opens one, '' a
+   phase named by hand. */
+function PlanPhaseBar({presets,onAdd}){
+  return(<div className="pp-bar">
+    <span className="pp-bar-l">{L('Fazlar','Phases')}</span>
+    <div className="pp-bar-add">
+      {presets.map(p=><button key={p.id} type="button" className="pp-add" onClick={()=>onAdd(p.id)}
+        title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>+ {p.label}</button>)}
+      <button type="button" className="pp-add custom" onClick={()=>onAdd('')}
+        title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>+ {L('Özel Faz','Custom Phase')}</button>
+    </div>
+    <LoadDistButton/>
+  </div>);
+}
+/* One phase: `cls` is its colour (pc0…pc5, or 'loose' for the tray), `name` its name with
+   `onRename` to type over it (none for the tray), `count` how many exercises it holds. */
+function PlanPhase({cls,name,onRename,count,unit,folded,onFold,onClose,acts,note,children}){
+  return(<section className={'pp-sec '+cls+(folded?' folded':'')}>
+    <header className="pp-h">
+      <button type="button" className="pp-ch" aria-expanded={!folded} onClick={onFold}
+        title={folded?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded?'▶':'▼'}</button>
+      <i className="pp-dot"/>
+      {onRename
+        ?<PhaseNameInput className="pp-nm" value={name} onChange={onRename} title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
+        :<span className="pp-nm static">{name}</span>}
+      <span className="pp-n">{count} {unit||L('egzersiz','exercises')}</span>
+      {note?<span className="pp-note">{note}</span>:null}
+      <span className="pp-acts">{acts}
+        {onClose&&<button type="button" className="pp-x" onClick={onClose}
+          title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}
+          aria-label={L('Fazı kapat','Close the phase')}>✕</button>}</span>
+    </header>
+    {!folded&&<div className="pp-body">{children}</div>}
+  </section>);
+}
+
 /* ---- The calendar's version ----------------------------------------------
    A block's exercises are an ordered list; the table reads it as it is, in running order,
-   and only folds neighbours that share a pattern into one group — so the sheet, the printout
-   and the athlete's copy keep the order the session is run in. A chip adds a pattern at the
+   and only folds neighbours that share a category into one group — so the sheet, the printout
+   and the athlete's copy keep the order the session is run in. A chip adds a category at the
    end of the section; the stepper adds or drops an exercise at the end of its group. Every
-   edit is written straight back onto the exercise, with the same tagging rules the old
-   one-card-per-exercise editor had (pattern ↔ execution ↔ library). */
-function CalSlotDetail({ex,onChange,onMove,first,last}){
+   edit is written straight back onto the exercise: its category in `pattern` (with `noPat`
+   when the coach took it off), its type in `plane`, its direction in `dir`. */
+function CalSlotDetail({ex,onChange}){
   const f=(k,v)=>onChange({...ex,[k]:v});
-  const styles=exStylesFor(ex.pattern);
   const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
   const exClip=useExerciseClipboard();
   const pasteEx=()=>{if(!exClip)return;onChange(slotFromExClipboard(ex,exClip));
     rememberExerciseTags(exClip.name,exClip.pattern||'',exClip.plane||'');};
   return(<div className="pt-det">
-    <label className="pt-dl">{L('Uygulama','Execution')}
-      <select value={ex.plane||''} disabled={!styles.length}
-        title={styles.length?L('Örüntünün nasıl uygulandığı','How the pattern is executed'):L('Önce bir hareket örüntüsü seç','Pick a movement pattern first')}
-        onChange={e=>{onChange({...ex,plane:e.target.value});rememberExerciseTags(ex.name,ex.pattern,e.target.value);}}>
-        <option value="">{styles.length?L('— seçilmedi','— not set'):'—'}</option>
-        {styles.map(o=><option key={o} value={o}>{exLabel(o)}</option>)}
-      </select>
-    </label>
     <label className="pt-dl">{L('Görsel','Image')}
       <ExImgBtn image={ex.image||''} onChange={url=>{f('image',url||'');rememberExerciseImage(ex.name,url||'');}}/></label>
     {(alt&&String(alt.name||'').trim())&&<label className="pt-dl wide">{L('Alternatif neden?','Why this alternative?')}
       <LiveInput value={alt.reason||''} onChange={v=>onChange({...ex,alt:{...alt,reason:v}})}
         placeholder={L('ör. Omuz ağrısı nedeniyle nötr tutuş — aynı örüntü, ağrısız açı.','e.g. Shoulder pain, so a neutral grip — same pattern, pain-free angle.')}/></label>}
     <span className="pt-dacts">
-      <button type="button" className="btn xs sec" onClick={()=>onMove(-1)} disabled={first} title={L('Yukarı taşı','Move up')}>↑</button>
-      <button type="button" className="btn xs sec" onClick={()=>onMove(1)} disabled={last} title={L('Aşağı taşı','Move down')}>↓</button>
       <button type="button" className="btn xs sec" disabled={!exClip} onClick={pasteEx}
         title={exClip?L(`Yapıştır: ${exClip.name||'egzersiz'}`,`Paste: ${exClip.name||'exercise'}`):L('Panoda egzersiz yok — Ass. Coach kutusundan Copy\'ye bas','Nothing on the clipboard — click Copy in the Assistant Coach box')}>⇩ {L('Yapıştır','Paste')}</button>
     </span>
   </div>);
 }
+/* The category options of the Kategori box, one list for both homes (`id` is what the host stores). */
+const ptCatOpts=(idOf)=>MV_CATS.map(c=>({id:idOf(c),label:L(c.tr,c.en)}));
+const ptTypeOpts=k=>{const c=mvCat(k);return c?c.types.map(t=>[t[0],L(t[1],t[2])]):[];};
+const ptDirOpts=k=>{const c=mvCat(k);return c?c.dirs.map(t=>[t[0],L(t[1],t[2])]):[];};
 function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
   const byI=useMemo(()=>{const m={};rows.forEach(r=>{m[r.i]=r.ex;});return m;},[rows]);
   const rowsRef=useRef(rows);rowsRef.current=rows;
   const fnsRef=useRef(fns);fnsRef.current=fns;
-  /* Neighbours sharing a pattern fold into one group; a row with no pattern yet gathers
-     with its unpatterned neighbours and asks for one. */
+  /* A row's category as the table reads it: what is written on it, else — unless the coach
+     took it off — nothing (the library fills it in when the exercise is picked). */
+  const catOf=ex=>ex.noPat?'':(MV_KEYS.includes(ex.pattern)?ex.pattern:'');
+  /* Neighbours sharing a category fold into one group; a row with no category yet gathers
+     with its uncategorised neighbours and asks for one. */
   const runs=useMemo(()=>{
     const out=[];
     rows.forEach(r=>{
-      const p=r.ex.pattern||'';const last=out[out.length-1];
+      const p=catOf(r.ex);const last=out[out.length-1];
       if(last&&last.pat===p)last.rows.push(r);else out.push({pat:p,rows:[r]});
     });
     return out;
   },[rows]);
-  const patOpts=useMemo(()=>EX_PATTERNS.map(p=>({id:p,label:exLabel(p)})),[]);
+  const patOpts=useMemo(()=>ptCatOpts(c=>c.k),[REPORT_LANG]);
   const posOf=useMemo(()=>{const m={};rows.forEach((r,ix)=>{m[r.i]=ix;});return m;},[rows]);
   const groups=runs.map((run,gi)=>({
     id:`${gi}:${run.pat}`,pat:run.pat,
-    label:run.pat?exLabel(run.pat):L('Patern seçilmedi','No pattern'),
+    label:run.pat?mvCatLabel(run.pat):L('Kategorisiz','No category'),
     color:run.pat?ML_PIE_COLS[run.pat]:'',pick:!run.pat,options:patOpts,
     slots:run.rows.map(r=>{const ex=r.ex;const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:null;
       const tg=String(labels[r.i]||'');
       const a=alt||{};
+      const ty=run.pat?mvNormType(run.pat,ex.plane,ex.name):'';
       return{key:r.i,tag:tg.replace(/\.$/,''),tagVal:String(ex.superset||'').toUpperCase(),
         name:ex.name||'',link:ex.link||'',sets:ex.sets||'',reps:ex.reps||'',duration:ex.duration||'',
         tempo:ex.tempo||'',rpe:ex.rpe||'',load:ex.load||'',rest:ex.rest||'',note:exDesc(ex),
         a_name:a.name||'',a_sets:a.sets||'',a_reps:a.reps||'',a_duration:a.duration||'',a_tempo:a.tempo||'',
         a_rpe:a.rpe||'',a_load:a.load||'',a_rest:a.rest||'',a_link:a.link||'',
-        typeOpts:exStylesFor(ex.pattern).map(o=>[o,exLabel(o)]),typeVal:ex.plane||'',
+        typeOpts:ptTypeOpts(run.pat),typeVal:ty,
+        dirOpts:ptDirOpts(run.pat),dirVal:run.pat?mvNormDir(run.pat,ex.dir,ex.name,ty,ex.plane):'',
         canUp:posOf[r.i]>0,canDown:posOf[r.i]<rows.length-1,
-        tagP:ex.pattern||'',tagS:ex.plane||''};})}));
-  const chips=EX_PATTERNS.map(p=>({id:p,label:exLabel(p),on:rows.some(r=>r.ex.pattern===p)}));
+        tagP:run.pat,tagS:ty,tagD:ex.dir||''};})}));
+  const chips=MV_KEYS.map(p=>({id:p,label:mvCatLabel(p),on:rows.some(r=>catOf(r.ex)===p)}));
   const selected=chips.filter(c=>c.on).length;
   const named=ex=>!!(String(ex.name||'').trim()||String(ex.sets||'').trim()||String(ex.reps||'').trim());
   const confirmDrop=list=>!list.some(r=>named(r.ex))||confirm(L(
     `${list.length} egzersiz silinecek. Devam edilsin mi?`,`${list.length} exercise${list.length>1?'s':''} will be deleted. Continue?`));
-  const groupById=id=>groups.find(g=>g.id===id);
   const rowsOfGroup=id=>{const run=runs[parseInt(id,10)];return run?run.rows:[];};
   const edit=(k,fn)=>{const f=fnsRef.current[k];if(f)f.update(fn);};
+  /* A row given a category keeps the type and direction it has where they are the category's,
+     and reads the rest off its name. '' takes the category off: the row stays, uncounted. */
   const setPattern=(ex,v)=>{
-    const keep=exStylesFor(v).includes(ex.plane)?ex.plane:'';
-    const plane=keep||exGuessStyle(ex.name,v);
-    rememberExerciseTags(ex.name,v,plane);
-    return{...ex,pattern:v,plane};
+    if(!v){const{pattern,plane,dir,...rest}=ex;return{...rest,pattern:'',plane:'',dir:'',noPat:true};}
+    const plane=mvNormType(v,ex.pattern===v?ex.plane:'',ex.name);
+    const dir=mvNormDir(v,ex.pattern===v?ex.dir:'',ex.name,plane,'');
+    rememberExerciseTags(ex.name,v,plane,dir);
+    const{noPat,...rest}=ex;
+    return{...rest,pattern:v,plane,dir};
   };
   const handlers={
     onChip:p=>{
-      const hit=rowsRef.current.filter(r=>r.ex.pattern===p);
+      const hit=rowsRef.current.filter(r=>catOf(r.ex)===p);
       if(!hit.length){
-        /* A block opens with one blank row: the first pattern picked takes it over rather
+        /* A block opens with one blank row: the first category picked takes it over rather
            than leaving it behind as an orphan above the real rows. */
         const blank=rowsRef.current.find(r=>!r.ex.pattern&&!named(r.ex)&&!String(r.ex.description||'').trim());
         if(blank){edit(blank.i,ex=>setPattern(ex,p));return;}
@@ -359,7 +454,7 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
     onCount:(gid,n)=>{
       const rs=rowsOfGroup(gid);if(!rs.length)return;
       const want=Math.max(1,Math.min(12,Math.round(n)||1));
-      if(want>rs.length)onAdd(phase,rs[0].ex.pattern||'',rs[rs.length-1].i,want-rs.length);
+      if(want>rs.length)onAdd(phase,catOf(rs[0].ex),rs[rs.length-1].i,want-rs.length);
       else if(want<rs.length){const drop=rs.slice(want);if(confirmDrop(drop))onRemoveIdx(drop.map(r=>r.i));}
     },
     onSlot:(k,patch)=>edit(k,ex=>{
@@ -390,38 +485,48 @@ function CalPlanGrid({rows,labels,fns,phase,loose,onAdd,onRemoveIdx}){
       if(nx.alt&&!['name','sets','reps','duration','tempo','rpe','load','rest','link','reason'].some(f=>String(nx.alt[f]||'').trim()))delete nx.alt;
       return nx;
     }),
+    /* Picking an exercise off the library brings its category, type and direction with it — the
+       category comes on its own, and the coach can still take it off. */
     onPick:(k,it,isAlt)=>edit(k,ex=>{
       if(isAlt){const alt=(ex.alt&&typeof ex.alt==='object')?ex.alt:{};
-        return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||'',...(exTagsFromLib(it,alt)||{})}};}
-      return{...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',
-        description:it.desc||ex.description||'',...(exTagsFromLib(it,ex)||{})};
+        return{...ex,alt:{...alt,name:it.name,link:it.link||alt.link||'',description:it.desc||alt.description||''}};}
+      const t=exTagsFromLib(it,{});
+      const nx={...ex,name:it.name,image:it.image||ex.image||'',link:it.link||ex.link||'',description:it.desc||ex.description||''};
+      if(t&&t.pattern){delete nx.noPat;nx.pattern=t.pattern;nx.plane=t.plane||'';nx.dir=t.dir||'';}
+      return nx;
     }),
+    /* A typed name: a row with no category takes the one the library (or the name) gives it —
+       unless the coach took it off — and a categorised row with no type yet takes its type. */
     onNew:(k,nm)=>edit(k,ex=>{
-      if(ex.plane)return ex;
-      /* A card the library already has for this name says how it is filed; only without one is
-         the row read off its name. */
+      if(ex.noPat)return ex;
       const hit=exLibHit(nm),lt=hit?exTagsFromLib(hit,ex):null;
-      const t=lt||(ex.pattern?{pattern:ex.pattern,plane:exGuessStyle(nm,ex.pattern)}:exResolveTags(nm,'',''));
-      if(!t.pattern||!t.plane)return ex;
-      rememberExerciseTags(nm,t.pattern,t.plane);
-      return{...ex,name:nm,pattern:t.pattern,plane:t.plane};
+      if(!ex.pattern){
+        const t=lt||exResolveTags(nm,'','');
+        if(!t.pattern)return ex;
+        const dir=t.dir||mvGuessDir(t.pattern,nm,t.plane);
+        rememberExerciseTags(nm,t.pattern,t.plane,dir);
+        return{...ex,name:nm,pattern:t.pattern,plane:t.plane||'',dir};
+      }
+      if(mvTypes(ex.pattern).includes(ex.plane))return ex;
+      const plane=mvNormType(ex.pattern,'',nm);
+      return plane?{...ex,plane,dir:ex.dir||mvGuessDir(ex.pattern,nm,plane)}:ex;
     }),
     onRemove:k=>{if(fnsRef.current[k])fnsRef.current[k].onRemove();},
-    onRemoveGroup:gid=>{const rs=rowsOfGroup(gid);if(rs.length&&confirmDrop(rs))onRemoveIdx(rs.map(r=>r.i));},
-    onPattern:(k,p)=>edit(k,ex=>setPattern(ex,p)),
-    onType:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,v);edit(k,x=>({...x,plane:v}));},
+    onGroupCat:(gid,v)=>{const rs=rowsOfGroup(gid);rs.forEach(r=>edit(r.i,ex=>setPattern(ex,v)));},
+    onRowCat:(k,v)=>edit(k,ex=>setPattern(ex,v)),
+    onType:(k,v)=>{const ex=byI[k];if(!ex)return;
+      const dir=ex.dir||mvGuessDir(ex.pattern,ex.name,v);
+      rememberExerciseTags(ex.name,ex.pattern,v,dir);edit(k,x=>({...x,plane:v,dir}));},
+    onDir:(k,v)=>{const ex=byI[k];if(!ex)return;rememberExerciseTags(ex.name,ex.pattern,ex.plane,v);edit(k,x=>({...x,dir:v}));},
     onMove:(k,d)=>{const f=fnsRef.current[k];if(f)f.onMove(d);},
     onLinkBlur:(k,isAlt,v)=>{const ex=byI[k];if(!ex)return;
       rememberExerciseLink(isAlt?(ex.alt&&ex.alt.name):ex.name,v);},
   };
   return(<div className="pt-host">
     <PlanTable chips={loose?[]:chips} groups={groups} selected={selected} total={loose?null:chips.length} handlers={handlers}
-      max={12} hasDetail detail={k=>{const ex=byI[k];const pos=rows.findIndex(r=>r.i===k);
-        return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange} onMove={fns[k].onMove} first={pos===0} last={pos===rows.length-1}/>:null;}}
-      empty={L('Bir patern seç ya da "+ Egzersiz ekle" ile başla.','Pick a pattern, or start with "+ Add exercise".')}>
-      {!loose&&<button type="button" className="iv-addslot pt-add" onClick={()=>onAdd(phase,'',null)}
-        title={L('Paternsiz bir egzersiz satırı ekler','Adds an exercise row with no pattern yet')}>
-        + {L('Egzersiz ekle','Add exercise')}</button>}
-    </PlanTable>
+      max={12} hasDetail detail={k=>{const ex=byI[k];
+        return ex?<CalSlotDetail ex={ex} onChange={fns[k].onChange}/>:null;}}
+      onAdd={loose?undefined:()=>onAdd(phase,'',null)} addLabel={L('Egzersiz Ekle','Add Exercise')}
+      empty={L('Fazsız satır yok.','No unplaced rows.')}/>
   </div>);
 }

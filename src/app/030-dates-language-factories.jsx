@@ -158,9 +158,9 @@ function replaceExerciseInLibrary(oldName,newName){if(_libReplace)_libReplace(ol
    exercise everywhere else. The library card is where the pair is cleared for good. */
 let _libTags=null;
 function registerLibTags(fn){_libTags=fn;}
-function rememberExerciseTags(name,pattern,plane){
+function rememberExerciseTags(name,pattern,plane,dir){
   const nm=(name||'').trim();
-  if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'');
+  if(nm&&String(pattern||'').trim()&&_libTags)_libTags(nm,pattern,plane||'',dir||'');
 }
 /* The picture the coach puts on a program row, remembered against the exercise ITSELF
    the same way its pattern / execution are — write the exercise into the next program

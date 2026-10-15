@@ -7,7 +7,10 @@
    and note across the top, the dose boxes wrapping underneath — so it never scrolls sideways. */
 .pt{display:flex;flex-direction:column;gap:14px;container-type:inline-size;min-width:0}
 .pt-host{padding:12px 14px 14px;min-width:0}
-.pt-top{display:flex;align-items:flex-start;gap:12px}
+.pt-top{display:flex;align-items:center;gap:12px}
+/* "KATEGORİ" in front of the chips: the chips are the categories a row can be written under. */
+.pt-chipl{flex:none;align-self:center;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--muted,var(--dim))}
 .pt-chips{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:8px}
 .pt-chip{border:1px solid var(--border2);background:var(--panel);color:var(--text2);border-radius:10px;padding:7px 15px;
   font-size:13px;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
@@ -24,7 +27,7 @@
 .pt-scroll{overflow-x:auto;padding-bottom:2px}
 .pt-grid{min-width:0;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
 .pt-tr{display:grid;gap:8px;align-items:start;padding:10px 12px;
-  grid-template-columns:minmax(128px,.9fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
+  grid-template-columns:minmax(170px,1fr) minmax(210px,2.1fr) 96px 72px 72px 64px 90px 72px 106px 96px minmax(120px,1.2fr)}
 .pt-th{align-items:center;padding-top:13px;padding-bottom:11px;border-bottom:1px solid var(--border)}
 .pt-th span{font-size:12px;font-weight:600;color:var(--dim);white-space:nowrap}
 .pt-grp+.pt-grp{border-top:1px solid var(--border)}
@@ -38,9 +41,27 @@
 .pt-tr:hover{background:rgba(255,255,255,.012)}
 .pt-cl{display:none}
 .pt-td,.pt-pat{min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
-/* The pattern's name — bold, a dot of its colour in front, and its ✕ when the row is hovered. */
-.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;min-height:36px;
-  padding-right:24px;color:var(--text)}
+/* Kategori · Tür · Yön: the category box (its colour's dot in front, ✕ to take it off) on the
+   group's first row, then the row's own type and direction boxes. */
+.pt-pat{position:relative;display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:6px;min-height:36px;
+  color:var(--text)}
+.pt-cat{display:flex;align-items:center;gap:2px;min-width:0}
+.pt-catsel{position:relative;flex:1;min-width:0;margin:0;text-transform:none;letter-spacing:normal;font-weight:400}
+.pt-catsel .pt-dot{position:absolute;left:10px;top:50%;margin-top:-4px;pointer-events:none}
+.pt-catsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--text);
+  border:1px solid var(--border2);border-radius:8px;padding:8px 24px 8px 25px;font-size:13px;font-weight:700;font-family:inherit;
+  cursor:pointer;text-overflow:ellipsis;transition:border-color .15s}
+.pt-catsel::after{content:'';position:absolute;right:10px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
+  border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
+.pt-catsel select:hover{border-color:var(--pat-c)}
+.pt-catsel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
+.pt-cat:not(.on) .pt-catsel select{border-style:dashed;color:var(--dim);font-weight:500}
+.pt-cat:not(.on) .pt-dot{background:transparent;border:1.5px dashed var(--border2)}
+.pt-catx{flex:none;width:24px;height:24px;border:0;border-radius:6px;background:none;color:var(--dim);font-size:11px;cursor:pointer;
+  opacity:.55;transition:opacity .12s,background .12s,color .12s}
+.pt-catx:hover,.pt-catx:focus-visible{opacity:1;color:#fda4af;background:rgba(244,63,94,.12);outline:none}
+.pt-tdr{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pt-tdr .pt-type select{font-size:12px;padding:7px 22px 7px 9px;border-radius:8px}
 .pt-patn{display:flex;align-items:flex-start;gap:8px;min-width:0}
 .pt-pat b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;overflow-wrap:anywhere}
 .pt-dot{width:8px;height:8px;border-radius:2px;flex:none;background:var(--pat-c);margin-top:5px}
@@ -52,7 +73,6 @@
 .pt-type select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,212,167,.18)}
 .pt-type::after{content:'';position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-4px;pointer-events:none;
   border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(45deg)}
-.pt-pat>.pt-x{position:absolute;right:0;top:7px;margin:0}
 .pt-patpick select{width:100%;-webkit-appearance:none;appearance:none;background:var(--elevated);color:var(--dim);border:1px dashed var(--border2);
   border-radius:8px;padding:8px 9px;font-size:12px;cursor:pointer}
 .pt-patpick select:focus-visible{outline:none;border-color:var(--accent)}
@@ -148,12 +168,14 @@
      them, and the alternative button beside the note. Only the number boxes carry a caption —
      the others say what they are in their own placeholder. */
   .pt-tr{grid-template-columns:repeat(12,minmax(0,1fr));gap:8px 8px;padding:10px 12px}
-  .pt-pat{grid-column:span 3}
-  .pt-ex{grid-column:span 9}
+  /* Kategori · Tür · Yön read as one line across the top of the exercise's card. */
+  .pt-pat{grid-column:1/-1}
+  .pt-ex{grid-column:1/-1}
   .pt-pat:empty{display:none}
-  .pt-pat:empty+.pt-ex{grid-column:1/-1}
-  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:4px 8px;min-height:36px}
-  .pt-pat .pt-type{flex:1 1 100%}
+  .pt-pat{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:6px 8px;min-height:0}
+  .pt-cat{flex:0 1 240px}
+  .pt-tdr{flex:1 1 260px;flex-direction:row;gap:8px}
+  .pt-tdr .pt-type{flex:1 1 0;min-width:110px;max-width:220px}
   .pt-patpick .pt-cl,.pt-ex>.pt-cl,.pt-note .pt-cl{display:none}
   /* The link box has no caption of its own, but keeps the room for one so it sits level with the
      boxes beside it. */
@@ -179,29 +201,63 @@
   .pt-link{grid-column:1/-1}
 }
 
-/* The movement-pattern table inside the brief, with phases. */
+/* ---- Phases: one look in the calendar and in the brief -------------------
+   A slim bar adds the phases not open yet (and one named by hand), with the weekly load
+   distribution at its right; each open phase is a card with a header of its own. */
 .di-pp{display:flex;flex-direction:column;gap:12px;min-width:0}
-.di-ppbar{border:0;padding:0;background:none}
-.di-ppsec{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg2)}
-.di-ppsec .pt{padding:12px}
-/* A phase: a bar with its name (typed over), how much it holds and its ✕, then its own table. */
-.di-pph{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--elevated);border-bottom:1px solid var(--border)}
-.di-pph-ch{flex:none;border:0;background:none;color:var(--ph-c,var(--dim));font-size:10px;cursor:pointer;padding:4px 5px;margin:0 -2px 0 -4px;border-radius:5px}
-.di-pph-ch:hover{background:var(--panel)}
-.di-pph-ch:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
-.di-ppsec.folded .di-pph{border-bottom:0}
-.di-pph-dot{width:9px;height:9px;border-radius:3px;flex:none;background:var(--ph-c,var(--accent))}
-.di-pph-nm{background:none;border:0;color:var(--text);font-size:12.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  padding:3px 6px;margin:0 0 0 -6px;border-radius:6px;min-width:60px;font-family:inherit}
-.di-pph-nm:hover,.di-pph-nm:focus{background:var(--panel);outline:none}
-.di-pph-nm.static{cursor:default}
-.di-pph-n{font-size:11.5px;color:var(--dim)}
-.di-pph-acts{margin-left:auto}
-.di-pph-x{border:0;background:none;color:var(--dim);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:11px}
-.di-pph-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
-.di-ppsec.pc0{--ph-c:#38bdf8}.di-ppsec.pc1{--ph-c:#f59e0b}.di-ppsec.pc2{--ph-c:#a78bfa}
-.di-ppsec.pc3{--ph-c:#34d399}.di-ppsec.pc4{--ph-c:#f472b6}.di-ppsec.pc5{--ph-c:#fb923c}
-.di-ppsec.loose{border-style:dashed}
+.pp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--border)}
+.di-pp>.pp-bar{padding:0;border:0}
+.pp-bar-l{flex:none;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--muted,var(--dim));margin-right:2px}
+.pp-bar-add{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.pp-add{display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;background:transparent;
+  border:1px dashed var(--border2);color:var(--text2);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:border-color .14s,color .14s,background .14s}
+.pp-add:hover{border-color:var(--accent);border-style:solid;color:var(--text);background:var(--hover)}
+.pp-add.custom{color:var(--dim)}
+.pp-add:focus-visible,.pp-load:focus-visible,.pp-ch:focus-visible,.pp-x:focus-visible{outline:none;box-shadow:0 0 0 2px rgba(45,212,167,.3)}
+.pp-load{margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:999px;
+  background:var(--elevated);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:border-color .14s,background .14s}
+.pp-load i{font-style:normal;font-size:14px;line-height:1;color:var(--accent)}
+.pp-load:hover,.pp-load.on{border-color:var(--accent)}
+.pp-load.on{background:var(--hover)}
+.pp-sec{--pp-c:var(--border2);margin:12px 14px;border:1px solid var(--border);border-left:3px solid var(--pp-c);border-radius:12px;
+  background:var(--panel);overflow:hidden;min-width:0}
+.di-pp .pp-sec{margin:0}
+.pp-sec.pc0{--pp-c:#38bdf8}.pp-sec.pc1{--pp-c:#2dd4a7}.pp-sec.pc2{--pp-c:#f59e0b}
+.pp-sec.pc3{--pp-c:#a78bfa}.pp-sec.pc4{--pp-c:#f472b6}.pp-sec.pc5{--pp-c:#fb923c}
+.pp-sec.loose{border-style:dashed;border-left-style:dashed}
+/* !important: a site-wide `header{background:…!important}` would paint every phase header grey. */
+.pp-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--elevated)!important;
+  border-bottom:1px solid var(--border)}
+.pp-sec.folded .pp-h{border-bottom:0}
+.pp-ch{flex:none;border:0;background:none;color:var(--dim);font-size:10px;cursor:pointer;padding:4px 5px;margin:0 -4px 0 -4px;border-radius:5px}
+.pp-ch:hover{background:var(--panel);color:var(--text)}
+.pp-dot{flex:none;width:9px;height:9px;border-radius:3px;background:var(--pp-c)}
+.pp-nm{background:transparent;border:0;outline:none;color:var(--text);font-family:inherit;font-size:12.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;padding:3px 6px;margin:0 0 0 -6px;border-radius:6px;min-width:4ch;max-width:100%;box-shadow:none}
+@supports (field-sizing:content){input.pp-nm{field-sizing:content;width:auto!important}}
+input.pp-nm:hover,input.pp-nm:focus{background:var(--panel)}
+.pp-nm.static{color:var(--text2)}
+.pp-n{flex:none;font-size:11.5px;font-weight:600;color:var(--dim);padding:1px 9px;border-radius:999px;border:1px solid var(--border);
+  font-variant-numeric:tabular-nums}
+.pp-note{flex:1 1 160px;min-width:0;font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-acts{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pp-x{flex:none;border:0;background:none;color:var(--dim);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:11px}
+.pp-x:hover{color:#fda4af;background:rgba(244,63,94,.12)}
+.pp-mv{background:none;border:1px solid var(--border2);color:var(--text2);border-radius:999px;padding:3px 10px;font-family:inherit;
+  font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pp-mv:hover{border-color:var(--accent);color:var(--text)}
+.pp-body{min-width:0}
+.pp-body>.pt-host{padding:12px}
+.di-pp .pp-body>.pt{padding:12px}
+.pp-body>.iv-slots{padding:10px 12px}
+
+/* The exercise picker, narrowed to the row's category: its colour in the header, and the
+   direction filters under the type filters. */
+.en-catdot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+.en-phd-sub{border-top:1px solid var(--border2)}
 
 /* The weekly load distribution, as a small window at the right edge: no backdrop, no blur. */
 .di-loadwin{position:fixed;right:16px;top:76px;z-index:900;width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 100px);

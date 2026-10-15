@@ -49,6 +49,10 @@ function buildIndivPlan(src,ath,ctx){
          load distribution reads. Defaults to whatever the template row carries. */
       pattern:pick('pattern',base.pattern||''),
       plane:pick('plane',base.plane||''),
+      dir:pick('dir',base.dir||''),
+      /* A row the coach wrote with no category on purpose (a warm-up drill) stays out of the
+         load distribution: nothing reads one into it off its name. */
+      noPat:!!pick('noPat',!!base.noPat),
       /* The reference link is the coach's to set per athlete, like every other box on
          the row: it starts from whatever the template attached and is overridden the
          same way, so one athlete can be pointed at a different clip without the
@@ -308,7 +312,8 @@ function planToSession(plan,src,dateKey,srcKey){
       ...descI18nFor(r.base.aiDesc,[r.base.description||'',note].filter(Boolean).join(r.base.description&&note?' · ':'')),
       notes:r.base.notes||'',superset:t(r.superset),image:r.image||'',link:r.link||'',
       phase:exPhase(r),
-      ...exResolveTags(t(r.name),t(r.pattern),t(r.plane)),
+      ...(r.noPat?{pattern:'',plane:'',dir:'',noPat:true}:(()=>{const x=exResolveTags(t(r.name),t(r.pattern),t(r.plane));
+        return{...x,dir:x.pattern?mvNormDir(x.pattern,t(r.dir),t(r.name),x.plane,t(r.plane)):''};})()),
       /* The alternative rides across with the exercise it stands in for. Without this
          an alternative written on a template was dropped the moment the session was
          individualized, and an approved substitution had nowhere to record the option

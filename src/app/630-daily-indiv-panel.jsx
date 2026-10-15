@@ -1,13 +1,9 @@
 function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setup,libMap,writeOne,customTests,calSes,calendar}){
   const panelRef=useRef(null);
   const[err,setErr]=useState('');
-  const[loadOpen,setLoadOpen]=useState(false);   // the weekly load distribution, in a window
-  useEffect(()=>{
-    if(!loadOpen)return;
-    const esc=e=>{if(e.key==='Escape')setLoadOpen(false);};
-    document.addEventListener('keydown',esc);
-    return()=>document.removeEventListener('keydown',esc);
-  },[loadOpen]);
+  /* Whose load the table's "Haftalık Yük Dağılımı" opens — this athlete's, around this day. */
+  const loadCtx=useMemo(()=>({days:(plan&&plan.ath&&plan.ath.days)||{},name:(plan&&plan.ath&&plan.ath.name)||'',date}),
+    [plan&&plan.ath&&plan.ath.days,plan&&plan.ath&&plan.ath.name,date]);
   /* Open or folded. Remembered per device, so a coach who works with the panel folded
      away does not have to fold it again on every card. */
   const[open,setOpenRaw]=useState(()=>{try{return localStorage.getItem('coachos_di_open')!=='0';}catch(e){return true;}});
@@ -219,18 +215,9 @@ function DailyIndivPanel({plan,bundle,team,updateTeam,srcKey,date,exercises,setu
 
     <DiSection n="2" title={L('Antrenör talimatı','Coach brief')}
       meta={diInstrFilled(instr)?L('bu güne ve bu sporcuya ait','for this athlete, this day'):L('tamamı isteğe bağlı','every field optional')}>
-      <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} onShowLoad={()=>setLoadOpen(true)} closed={closedPats}/>
-      {/* A small window at the side of the screen — no backdrop, nothing dimmed or blurred, the
-          page behind stays usable while the chart is open. */}
-      {loadOpen&&ReactDOM.createPortal(<aside className="di-loadwin" role="dialog" aria-label={L('Haftalık Yük Dağılımı','Weekly Load Distribution')}>
-        <div className="di-loadwin-hd">
-          <b>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')} — {plan.ath.name||'—'}</b>
-          <button type="button" className="x-btn" onClick={()=>setLoadOpen(false)} aria-label={L('Kapat','Close')}>✕</button>
-        </div>
-        <div className="di-loadwin-body">
-          <MuscleLoadDistribution days={plan.ath.days||{}} refDate={date} title={L('Yük Dağılımı','Load Distribution')}/>
-        </div>
-      </aside>,document.body)}
+      <PlanLoadCtx.Provider value={loadCtx}>
+        <DiInstructionForm instr={instr} save={saveInstr} onBuild={buildProgram} closed={closedPats}/>
+      </PlanLoadCtx.Provider>
     </DiSection>
     </>}
 

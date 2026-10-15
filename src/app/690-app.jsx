@@ -34,14 +34,20 @@ function App(){
   /* Tagging an exercise's pattern / execution on any program writes the pair onto the
      library entry, so writing that exercise into the next program fills both in. A name
      the library has never seen is added carrying the tags, exactly as typing it would. */
-  registerLibTags((nm,pattern,plane)=>setData(prev=>{
+  registerLibTags((nm,pattern,plane,dir)=>setData(prev=>{
     const exs=prev.exercises||[];
     const lo=nm.trim().toLowerCase();
     const i=exs.findIndex(e=>(e.name||'').trim().toLowerCase()===lo);
-    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',exPattern:pattern,exPlane:plane},...exs]};
+    /* A card not yet on a shelf of the movement taxonomy is filed where the row put it — the
+       library's Kategori · Tür · Yön are the same boxes. A filed card keeps its shelf: the
+       library card is where it is moved. */
+    const file=cur=>(!cur||!MV_KEYS.includes(cur.type))&&MV_KEYS.includes(pattern)
+      ?{type:pattern,subType:mvTypes(pattern).includes(plane)?plane:'',dir:mvDirs(pattern).includes(dir)?dir:''}:{};
+    if(i<0)return{...prev,exercises:[{id:uid(),name:nm.trim(),type:'',subType:'',pattern:'',movePattern:'',contra:[],difficulty:'',muscle:[],videoUrl:'',videoData:'',thumb:'',purpose:'',exPattern:pattern,exPlane:plane,...file(null)},...exs]};
     const cur=exs[i];
-    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane)return prev;
-    const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane};
+    const f=file(cur);
+    if((cur.exPattern||'')===pattern&&(cur.exPlane||'')===plane&&!f.type)return prev;
+    const next=[...exs];next[i]={...cur,exPattern:pattern,exPlane:plane,...f};
     return{...prev,exercises:next};
   }));
   /* Putting a picture on a program row writes it onto the library entry as its plan
@@ -97,7 +103,7 @@ function App(){
         link:safeURL(e.videoUrl),
         /* The pattern / execution pair the entry was last tagged with, on either program
            screen or on the library card itself — picking the exercise carries it over. */
-        exPattern:e.exPattern||'',exPlane:e.exPlane||'',
+        exPattern:e.exPattern||'',exPlane:e.exPlane||'',dir:e.dir||'',
         desc:(e.purpose||'').trim()});
     }
     setLibItems(items);
