@@ -241,8 +241,8 @@ function diVolumeAdj(adj,instr){
 
 /* ---- Movement patterns the coach puts in the session -----------------------
    The brief's second field. A pattern ticked here is IN the session — not a wish the
-   model may weigh — and each one carries its own filter box: what kind of exercise,
-   which side or stance, which direction, which strength quality it is dosed for.
+   model may weigh — and each one carries its own boxes: its type (Tür) and, where the
+   category has one, its direction (Yön).
    Every facet is optional and takes ONE value: an empty one leaves that choice to the
    model, a filled one names exactly what that exercise is (a squat OR a split squat,
    never "either").
@@ -252,120 +252,29 @@ function diVolumeAdj(adj,instr){
    The vocabulary has no horizontal / vertical split, so the answer also tags each
    exercise with the pattern id it fulfils (`coach_pattern`) and the check reads that
    tag first. */
-const DI_STR_GOALS=[
-  ['foundational','Temel kuvvet','Foundational strength'],
-  ['maximal','Maksimal kuvvet','Maximal strength'],
-  ['hypertrophy','Hipertrofi','Hypertrophy'],
-  ['power','Patlayıcı kuvvet / Güç','Explosive strength / Power'],
-  ['reactive','Reaktif kuvvet','Reactive strength'],
-  ['endurance','Kuvvet dayanıklılığı','Strength endurance'],
-];
-const diStrGoals=(ids,rename)=>ids.map(id=>{const g=DI_STR_GOALS.find(x=>x[0]===id);
-  return rename&&rename[id]?[id,...rename[id]]:g;});
-/* The lower body names power plainly ("Güç"); the upper body keeps "Patlayıcı kuvvet / Güç".
-   Reactive strength is a knee-dominant goal only (hops, bounds, drop jumps). */
-const DI_POWER_PLAIN={power:['Güç','Power']};
-const DI_STR_GOALS_KNEE=diStrGoals(['foundational','maximal','hypertrophy','power','reactive','endurance'],DI_POWER_PLAIN);
-const DI_STR_GOALS_HIP=diStrGoals(['foundational','maximal','hypertrophy','power','endurance'],DI_POWER_PLAIN);
-const DI_STR_GOALS_ARM=diStrGoals(['foundational','maximal','hypertrophy','power','endurance']);
-const DI_STR_GOALS_BASIC=diStrGoals(['foundational','endurance']);
-/* The muscle action the exercise emphasises — on every pattern, because it changes the
-   exercise as much as its type does (a slow-lowering split squat and a split-squat hold are
-   two sessions). Standard is an ordinary controlled tempo with no phase singled out. Carry
-   and core have no eccentric choice: they are held, not lowered. */
-const DI_ACTIONS=[
-  ['standard','Standart','Standard'],
-  ['eccentric','Eksantrik','Eccentric'],
-  ['isometric','İzometrik','Isometric'],
-];
-const diActionFacet=ids=>({k:'contraction',ai:'muscle_action_emphasis',label:['Kas aksiyonu vurgusu','Muscle action emphasis'],
-  opts:DI_ACTIONS.filter(a=>ids.includes(a[0]))});
-const DI_ACTION_FACET=diActionFacet(['standard','eccentric','isometric']);
-const DI_ACTION_FACET_HOLD=diActionFacet(['standard','isometric']);
-const DI_ARM_SIDE=[['bilateral','Çift kol','Both arms'],['unilateral','Tek kol','Single arm'],['alternating','Alternatif','Alternating']];
-const diArmPattern=(id,tr,en,vocab)=>({id,label:[tr,en],vocab,facets:[
-  {k:'side',label:['Taraf / Destek','Side / support'],opts:DI_ARM_SIDE},
-  {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
-  DI_ACTION_FACET,
-]});
-const DI_MOVE_PATTERNS=[
-  {id:'knee_dominant',label:['Diz dominant','Knee dominant'],vocab:['Squat','Lunge / Unilateral'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['squat','Squat','Squat'],
-      ['lunge','Lunge','Lunge'],['step_up','Step-up','Step-up'],['step_down','Step-down','Step-down']]},
-    {k:'side',ai:'stance',label:['Duruş','Stance'],opts:[['bilateral','Bilateral','Bilateral'],
-      ['unilateral','Unilateral','Unilateral'],['split','Split stance','Split stance']]},
-    {k:'direction',label:['Yön','Direction'],opts:[['in_place','Yerinde','In place'],['forward','Öne','Forward'],
-      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['diagonal','Çapraz','Diagonal'],
-      ['multi','Çok yönlü','Multi-directional']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_KNEE},
-    DI_ACTION_FACET,
-  ]},
-  {id:'hip_dominant',label:['Kalça dominant','Hip dominant'],vocab:['Hinge'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['deadlift','Deadlift','Deadlift'],['rdl','RDL','RDL'],
-      ['good_morning','Good morning','Good morning'],['hip_thrust','Hip thrust','Hip thrust'],
-      ['glute_bridge','Glute bridge','Glute bridge'],['pull_through','Pull-through','Pull-through'],['swing','Swing','Swing']]},
-    {k:'side',ai:'stance_support',label:['Stance / Destek','Stance / support'],opts:[['bilateral','Bilateral','Bilateral'],
-      ['unilateral','Unilateral','Unilateral'],['b_stance','B-stance','B-stance']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_HIP},
-    DI_ACTION_FACET,
-  ]},
-  diArmPattern('horizontal_push','Yatay itiş','Horizontal push',['Push']),
-  diArmPattern('vertical_push','Dikey itiş','Vertical push',['Push']),
-  diArmPattern('horizontal_pull','Yatay çekiş','Horizontal pull',['Pull']),
-  diArmPattern('vertical_pull','Dikey çekiş','Vertical pull',['Pull']),
-  {id:'carry',label:['Carry','Carry'],vocab:['Carry'],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['side','Yanda taşıma','Side (suitcase / farmer) carry'],
-      ['front_rack','Front rack taşıma','Front rack carry'],['overhead','Baş üstü taşıma','Overhead carry'],
-      ['goblet','Goblet taşıma','Goblet carry'],['bear_hug','Bear-hug taşıma','Bear-hug carry'],['mixed','Karma taşıma','Mixed carry']]},
-    {k:'side',ai:'load_distribution',label:['Yük dağılımı','Load distribution'],opts:[['unilateral','Tek taraflı yük','Unilateral load'],
-      ['bilateral','Çift taraflı yük','Bilateral load'],['centred','Merkezde yük','Centred load']]},
-    {k:'direction',label:['Yön / İlerleme','Direction / progression'],opts:[['forward','Öne','Forward'],
-      ['backward','Geriye','Backward'],['lateral','Yana','Lateral'],['march','Yerinde march','March in place'],
-      ['hold','Sabit tutuş','Static hold']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_ACTION_FACET_HOLD,
-  ]},
-  {id:'core',label:['Core','Core'],vocab:['Core / Brace','Rotation'],facets:[
-    {k:'side',label:['Taraf / Destek','Side / support'],opts:[['symmetrical','Simetrik','Symmetrical'],
-      ['asymmetrical','Tek taraflı / Asimetrik','Unilateral / asymmetrical'],
-      ['contralateral','Çapraz','Contralateral (cross-body)']]},
-    {k:'task',label:['Görev','Task'],opts:[['anti_extension','Antiekstansiyon','Anti-extension'],
-      ['anti_flexion','Antifleksiyon','Anti-flexion'],['anti_rotation','Antirotasyon','Anti-rotation'],
-      ['anti_lateral_flexion','Anti-lateral fleksiyon','Anti-lateral flexion'],['flexion','Fleksiyon','Flexion'],
-      ['extension','Ekstansiyon','Extension'],['rotation','Rotasyon','Rotation'],
-      ['lateral_flexion','Lateral fleksiyon','Lateral flexion']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_BASIC},
-    DI_ACTION_FACET_HOLD,
-  ]},
-  /* Accessory work has no movement_pattern of its own — a curl, a calf raise, a neck
-     isometric are filed under whatever pattern fits — so its vocabulary is empty: it is
-     matched on its coach_pattern tag only, and picking it opens no pain-closed pattern. */
-  {id:'accessory',label:['Aksesuar','Accessory'],vocab:[],facets:[
-    {k:'type',label:['Tür','Type'],opts:[['shoulder','Omuz','Shoulder'],['arm','Kol','Arm'],
-      ['forearm_grip','Ön kol / Kavrama','Forearm / Grip'],['calf','Baldır','Calf'],['tibialis','Tibialis','Tibialis'],
-      ['hip_isolation','Kalça izolasyonu','Hip isolation'],['knee_isolation','Diz izolasyonu','Knee isolation'],
-      ['neck','Boyun','Neck'],['scapula','Skapula','Scapula'],['rotator_cuff','Rotator cuff','Rotator cuff'],
-      ['adductor','Adduktor','Adductor'],['abductor','Abduktor','Abductor']]},
-    {k:'side',ai:'position',label:['Duruş','Position'],opts:[['standing','Ayakta','Standing'],['seated','Oturarak','Seated'],
-      ['lying','Yatarak','Lying'],['kneeling','Diz üstü','Kneeling'],['half_kneeling','Tek diz üstü','Half-kneeling'],
-      ['hanging','Asılı','Hanging'],['supported','Destekli','Supported']]},
-    {k:'direction',label:['Yön','Direction'],opts:[['forward','Öne','Forward'],['backward','Arkaya','Backward'],
-      ['lateral','Yana','Lateral'],['up','Yukarı','Up'],['down','Aşağı','Down'],['rotation','Rotasyon','Rotation'],
-      ['multi','Çok yönlü','Multi-directional'],['na','Uygulanamaz','Not applicable']]},
-    {k:'goal',label:['Kuvvet hedefi','Strength goal'],opts:DI_STR_GOALS_ARM},
-    DI_ACTION_FACET,
-  ]},
-];
+/* The coach's patterns are the eleven categories of the MOVEMENT TAXONOMY — the same chips,
+   the same Tür and Yön as the calendar's table. `vocab` is the movement_pattern vocabulary a
+   category stands for (what the rules and today's pain read). Accessory, Olympic lifts, med-ball
+   throws and full-body lifts have no movement_pattern of their own: they are matched on their
+   coach_pattern tag only, and picking one opens no pain-closed pattern. */
+const DI_MOVE_VOCAB={knee_dominant:['Squat','Lunge / Unilateral'],hip_dominant:['Hinge'],upper_push:['Push'],upper_pull:['Pull'],
+  core:['Core / Brace','Rotation'],carry:['Carry'],olympic:[],plyometric:['Jump / Plyo'],med_ball:[],full_body:[],accessory:[]};
+const DI_MOVE_PATTERNS=MV_CATS.map(c=>({id:c.id,k:c.k,label:[c.tr,c.en],vocab:DI_MOVE_VOCAB[c.id]||[],facets:[
+  {k:'type',label:['Tür','Type'],opts:c.types},
+  ...(c.dirs.length?[{k:'direction',label:['Yön','Direction'],opts:c.dirs}]:[])]}));
+/* Briefs written before the taxonomy: the four push / pull patterns became the type of one
+   push and one pull category, and the old facet ids ("step_up", "anti_rotation") are read as
+   the values they name. */
+const DI_MOVE_OLD_ID={horizontal_push:['upper_push','Horizontal Push','Horizontal'],vertical_push:['upper_push','Vertical Push','Vertical'],
+  horizontal_pull:['upper_pull','Horizontal Pull','Horizontal'],vertical_pull:['upper_pull','Vertical Pull','Vertical']};
+const DI_MOVE_OLD_VAL={side:'Suitcase Carry',front_rack:'Front Rack Carry',overhead:'Overhead Carry',multi:'Multi-Directional'};
 /* The table the picker draws: one column per facet kind, the same five for every
    pattern. A pattern's facet sits in the column of its kind (the core's task is its
    type, every side / stance / load-distribution facet is its stance); a pattern with
    no facet of a kind leaves that cell empty. */
 const DI_MOVE_COLS=[
-  {ks:['type','task'],label:['Tür','Type']},
-  {ks:['side'],label:['Duruş','Stance']},
+  {ks:['type'],label:['Tür','Type']},
   {ks:['direction'],label:['Yön','Direction']},
-  {ks:['goal'],label:['Kuvvet hedefi','Strength goal']},
-  {ks:['contraction'],label:['Kas aksiyonu','Muscle action']},
 ];
 const diMoveRow=id=>DI_MOVE_PATTERNS.find(p=>p.id===id)||null;
 /* The extra filters, on every pattern alike: the kit the exercise is done with (any of
@@ -387,41 +296,15 @@ const DI_MOVE_EXTRAS=[
 const DI_MOVE_MAX_SLOTS=6;
 /* What the coach writes against each exercise of a pattern: the prescription. */
 const DI_MOVE_DOSE=['sets','reps','duration','tempo','rpe','load','rest'];
-/* How the calendar files each coach pattern: its movement pattern and the execution that
-   goes with it. A carry is trunk work against a side load, which is how the calendar's own
-   taxonomy reads it. */
-const DI_PAT_EX={knee_dominant:['Knee Dominant',''],hip_dominant:['Hip Dominant',''],
-  horizontal_push:['Upper Body Push','Horizontal'],vertical_push:['Upper Body Push','Vertical'],
-  horizontal_pull:['Upper Body Pull','Horizontal'],vertical_pull:['Upper Body Pull','Vertical'],
-  carry:['Core','Anti-Lateral Flexion'],core:['Core',''],accessory:['Accessory','']};
-/* Which of the brief's patterns — and which type under it — a library exercise is filed as,
-   read off the pair its card was tagged with (movement pattern + execution), falling back to
-   the card's Exercise Type and then nothing: `{id,type}`, each '' when the library does not
-   say. Rotational pressing and pulling, full-body lifts and untagged cards have no pattern
-   of the brief's to land in. The type is the execution of a core row (anti-extension …) and,
-   for squat / hinge rows, the lift read off the name. */
-const DI_TYPE_WORDS={
-  knee_dominant:[[/step[- ]?down/,'step_down'],[/step[- ]?up/,'step_up'],[/lunge|split squat|\bsplit\b/,'lunge'],[/squat|leg press/,'squat']],
-  hip_dominant:[[/good ?morning/,'good_morning'],[/hip thrust/,'hip_thrust'],[/glute bridge|\bbridge\b/,'glute_bridge'],
-    [/pull[- ]?through/,'pull_through'],[/\bswing\b/,'swing'],[/\brdl\b|romanian/,'rdl'],[/deadlift/,'deadlift']]};
+/* How the calendar files each coach pattern: its category. */
+const DI_PAT_EX=Object.fromEntries(MV_CATS.map(c=>[c.id,[c.k,'']]));
+/* Which of the brief's categories — with which type and direction — a library exercise is filed
+   as: `{id,type,dir}`, each '' when neither the library nor the name says. */
 function diPickTags(it,name){
-  const t=exTagsFromLib(it,{})||{pattern:'',plane:''};
-  const nm=String(name||(it&&it.name)||'').toLowerCase();
-  let id='';
-  if(t.pattern==='Knee Dominant')id='knee_dominant';
-  else if(t.pattern==='Hip Dominant')id='hip_dominant';
-  else if(t.pattern==='Core')id='core';
-  else if(t.pattern==='Accessory')id='accessory';
-  else if(t.pattern==='Upper Body Push'||t.pattern==='Upper Body Pull'){
-    const arm=t.pattern==='Upper Body Push'?'push':'pull';
-    id=t.plane==='Vertical'?`vertical_${arm}`:t.plane==='Horizontal'?`horizontal_${arm}`:'';
-  }
-  let type='';
-  if(id==='core')type=String(t.plane||'').toLowerCase().replace(/[- ]/g,'_');
-  else if(DI_TYPE_WORDS[id]){const hit=DI_TYPE_WORDS[id].find(([re])=>re.test(nm));type=hit?hit[1]:'';}
-  const row=diMoveRow(id),tf=row&&row.facets.find(f=>f.k==='type'||f.k==='task');
-  if(!tf||!tf.opts.some(op=>op[0]===type))type='';
-  return{id,type};
+  const t=exTagsFromLib(it&&name&&!it.name?{...it,name}:it,{})||{pattern:'',plane:'',dir:''};
+  const c=mvCat(t.pattern);
+  if(!c)return{id:'',type:'',dir:''};
+  return{id:c.id,type:mvTypes(c.k).includes(t.plane)?t.plane:'',dir:mvDirs(c.k).includes(t.dir)?t.dir:''};
 }
 /* A stored pattern pick, cleaned: an unknown pattern is dropped, an unknown or
    duplicate value inside a facet is dropped. A facet holds one value: a brief saved
@@ -431,12 +314,17 @@ function diPickTags(it,name){
 function diMovePatterns(v){
   const counts=new Map(),out=[];
   (Array.isArray(v)?v:[]).forEach(x=>{
-    const id=typeof x==='string'?x:(x&&x.id);
+    let id=typeof x==='string'?x:(x&&x.id);
+    const old=DI_MOVE_OLD_ID[id];
+    if(old)id=old[0];
     const row=diMoveRow(id);
     /* An exercise with no pattern yet ("Egzersiz Ekle") has the empty id; any other unknown
        id is dropped. */
     if(!row&&id!=='')return;
-    const obj=x&&typeof x==='object'?x:{};
+    let obj=x&&typeof x==='object'?x:{};
+    if(old)obj={...obj,type:[old[1]],direction:[old[2]]};
+    /* The core's old "task" box is its type now. */
+    else if(id==='core'&&!(Array.isArray(obj.type)&&obj.type.length)&&Array.isArray(obj.task))obj={...obj,type:obj.task};
     /* One pattern may stand in several phases; the cap is per pattern per phase. */
     const phase=/^[\w-]{1,24}$/.test(String(obj.phase||''))?String(obj.phase):'';
     const gk=id+'|'+phase;
@@ -446,10 +334,14 @@ function diMovePatterns(v){
        of "2-3 " the moment it is typed and the box would drop it; readers trim on use. */
     const txt=(val,max)=>String(val==null?'':val).slice(0,max);
     const o={id,phase,exercise:txt(obj.exercise,120)};
+    const sq=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const clean=(f,max)=>{
       const raw=Array.isArray(obj[f.k])?obj[f.k]:[];
       const ok=new Set(f.opts.map(op=>op[0]));
-      return[...new Set(raw.map(String).filter(val=>ok.has(val)))].slice(0,max);
+      /* An old id ("step_up") is read as the value it spells ("Step-up"). */
+      const fix=val=>{if(ok.has(val))return val;const al=DI_MOVE_OLD_VAL[val];if(al&&ok.has(al))return al;
+        const hit=f.opts.find(op=>sq(op[0])===sq(val));return hit?hit[0]:'';};
+      return[...new Set(raw.map(String).map(fix).filter(Boolean))].slice(0,max);
     };
     if(row)row.facets.forEach(f=>{o[f.k]=clean(f,1);});
     DI_MOVE_EXTRAS.forEach(f=>{o[f.k]=clean(f,f.multi?f.opts.length:1);});
@@ -975,9 +867,12 @@ const diBlockedSet=blocked=>{
 function diMoveIdOf(v){
   const k=diExName(v==null?'':String(v)).replace(/[\s_\-()]+/g,'');
   if(!k||k==='null')return null;
-  const hit=DI_MOVE_PATTERNS.find(p=>[p.id,p.label[0],p.label[1]]
+  const hit=DI_MOVE_PATTERNS.find(p=>[p.id,p.k,p.label[0],p.label[1]]
     .some(x=>diExName(x).replace(/[\s_\-()]+/g,'')===k));
-  return hit?hit.id:null;
+  if(hit)return hit.id;
+  /* A model that still writes one of the four retired push / pull ids means its category. */
+  const old=Object.keys(DI_MOVE_OLD_ID).find(o=>o.replace(/_/g,'')===k);
+  return old?DI_MOVE_OLD_ID[old][0]:null;
 }
 function diParseProgram(text){
   let s=(text||'').trim();
@@ -1075,18 +970,17 @@ function diManualProgram(instr,libMap,sessionName){
     :/soğuma|soguma|cool|tamamlayıcı|tamamlayici|complement|finish/i.test(nm)?'tamamlayici':'ana';
   const exOf=(p,bi,i,ph)=>{
     const row=diMoveRow(p.id);
-    const[exPat,exPlane0]=DI_PAT_EX[p.id]||['',''];
-    /* A core row's task (anti-extension, rotation …) is the calendar's execution for it. */
-    const taskPlane=p.id==='core'&&p.task&&p.task[0]
-      ?exStylesFor('Core').find(x=>x.toLowerCase().replace(/[- ]/g,'')===String(p.task[0]).replace(/_/g,'')):'';
-    const exPlane=taskPlane||exPlane0;
+    const[exPat]=DI_PAT_EX[p.id]||['',''];
+    /* The row's type and direction are the calendar's own (one taxonomy). */
+    const exPlane=(p.type&&p.type[0])||'';
+    const exDir=(p.direction&&p.direction[0])||'';
     const nm=String(p.exercise).trim();
     const al=p.alt||{};
     const altName=String(al.name||'').trim();
     return{key:`man:${bi}:${i}`,phase:ph,name:nm,source:lib[nm.toLowerCase()]?'library':'custom',
       sets:t(p.sets),reps:t(p.reps),duration:t(p.duration),distance:null,load:t(p.load),tempo:t(p.tempo),
       rest:t(p.rest),rpe:t(p.rpe),equipment:null,pattern:(row&&row.vocab[0])||'',coachPattern:p.id,
-      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,superset:p.superset||'',link:t(p.link),
+      why:t(p.note),basis:[],exPattern:exPat,exPlane:exPlane,exDir:exDir,noPat:!row,superset:p.superset||'',link:t(p.link),
       ...(altName?{alt:{name:altName,pattern:exPat,plane:exPlane,
         sets:String(al.sets||'').trim(),reps:String(al.reps||'').trim(),duration:String(al.duration||'').trim(),
         tempo:String(al.tempo||'').trim(),rpe:String(al.rpe||'').trim(),load:String(al.load||'').trim(),
@@ -1602,7 +1496,8 @@ function diProgramPlan(plan,program,pct){
       name:e.name,added:true,addId:e.key,
       sets:adj.sets||'',reps:adj.reps||'',duration:adj.duration||'',
       tempo:e.tempo||'',rpe:e.rpe||'',load:e.load||'',rest:e.rest||'',
-      superset:e.superset||'',pattern:e.exPattern||e.pattern||'',plane:e.exPlane||'',link:e.link||'',
+      superset:e.superset||'',pattern:e.noPat?'':(e.exPattern||e.pattern||''),plane:e.noPat?'':(e.exPlane||''),
+      dir:e.noPat?'':(e.exDir||''),noPat:!!e.noPat,link:e.link||'',
       description:why,image:'',changedName:false,
       ...(e.alt?{alt:e.alt}:{}),
       note:e.distance?String(e.distance):''};

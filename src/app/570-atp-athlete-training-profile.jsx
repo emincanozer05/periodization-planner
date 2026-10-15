@@ -372,12 +372,77 @@ const ATP_EQUIP_RE=[
    (its sub-type, Action and Movement Pattern for hip / knee, and the extra filters). Built
    from the same tables the library screen uses, so the coverage read below speaks the
    coach's vocabulary and cannot drift from it. */
-const ATP_TAXONOMY=Object.keys(SUB_TYPES).map(type=>{
-  const s=SUB_TYPES[type];
+/* The library's filing as it stood before the movement taxonomy (185) replaced its shelves —
+   frozen here, because the profile's coverage read is written in these words (Movement,
+   Contraction Focus, Region, Skill …) and the model it is handed to has always read them. */
+const ATP_LIB_SUB={
+  'Upper Body Push':{label:'Movement',values:['Horizontal','Vertical']},
+  'Upper Body Pull':{label:'Movement',values:['Horizontal','Vertical']},
+  'Hip Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
+  'Knee Dominant':{label:'Contraction Focus',values:['Concentric','Eccentric','Isometric']},
+  'Core':{label:'Movement',values:['Anti-Flexion','Anti-Extension','Anti-Rotation','Anti-Lateral Flexion','Flexion','Extension','Rotation','Lateral Flexion']},
+  'Full Body':{label:'Category',values:['Strength','Explosive','Olympic Lift']},
+  'Multi Directional Speed':{label:'Skill',values:['Non-Reactive Agility','Reactive Agility','Acceleration','Deceleration','COD','Sprint Technique']},
+  'Plyometric':{label:'Direction',values:['Vertical','Horizontal','Lateral','Rotational','Multi-Directional']},
+  'Medicine Ball':{label:'Direction',values:['Vertical','Horizontal','Rotational','Multi-Directional']},
+  /* The spine is one region: "Thoracic" entries were moved onto it (migrate). */
+  'Mobility':{label:'Region',values:['Ankle','Hip','Spine','Shoulder','Wrist']},
+  /* Stability is filed by the joint it is holding, top to bottom — the order a coach
+     reads a body down, not alphabetical. The shoulder and the scapula hold together and
+     are trained together, so they are one region rather than two. */
+  'Stability':{label:'Region',values:['Shoulder Girdle','Core','Pelvis','Knee','Ankle']},
+  /* Balance is filed by the demand it makes: holding still, holding while moving, holding
+     on one leg, and recovering from a perturbation — the order balance work progresses in. */
+  'Balance':{label:'Category',values:['Static Balance','Dynamic Balance','Unilateral Balance','Reactive Balance']},
+  /* Corrective work is filed by what it restores, in the order a return runs: range
+     first, then control of it, then the quality of the movement, then performance. The
+     body region it targets is its own filter (EX_EXTRA_FILTERS). */
+  'Corrective':{label:'Type',values:['Mobility','Stability','Movement Quality','Return to Performance']},
+  /* Accessory work is filed by where it goes, with prehab as its own shelf: the
+     injury-prevention pieces are what a coach looks for first when writing a warm-up. */
+  'Accessory':{label:'Region',values:['Upper Body','Neck','Chest','Upper Back','Shoulder & Scapula','Arms','Forearm & Grip',
+    'Core & Trunk','Lower Body','Hip & Hamstring','Glutes','Quadriceps','Adductors & Abductors','Calf & Ankle','Foot',
+    'Prehab & Injury Prevention']},
+};
+const ATP_LIB_ACTIONS={'Hip Dominant':['Push','Pull'],'Knee Dominant':['Push','Pull']};
+const ATP_LIB_PATTERNS={'Knee Dominant':['Bilateral','Unilateral','Lunges','Step-Up'],'Hip Dominant':['Bilateral','Unilateral']};
+const ATP_LIB_POSITIONS=['Standing','Half-Kneeling','Tall-Kneeling','Seated','Supine','Prone','Quadruped'];
+const ATP_LIB_EXTRA={
+  'Plyometric':[
+    {key:'exKind',label:'Exercise Type',values:['Jump','Hop','Bound','Drop Jump','Landing']},
+    {key:'technique',label:'Technique',values:['Bilateral','Unilateral']},
+    {key:'equipment',label:'Equipment',values:EX_PLYO_EQUIPMENT,multi:true}],
+  'Medicine Ball':[
+    {key:'exKind',label:'Exercise Type',values:['Throw','Slam','Catch','Pass']}],
+  'Core':[{key:'position',label:'Position',values:ATP_LIB_POSITIONS}],
+  'Mobility':[{key:'position',label:'Position',values:ATP_LIB_POSITIONS}],
+  /* Read top to bottom, foot to hand, with the whole-body pieces last. */
+  'Corrective':[{key:'bodyRegion',label:'Region',values:['Foot & Ankle','Knee','Hip','Pelvis','Lumbar Spine',
+    'Thoracic Spine','Shoulder','Elbow & Wrist','Full Body']}],
+  'Upper Body Push':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Upper Body Pull':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Hip Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+  'Knee Dominant':[{key:'equipment',label:'Equipment',values:EX_EQUIPMENT,multi:true}],
+};
+/* Every category carries a Contraction Type and an Equipment box. Hip / Knee Dominant already
+   file by contraction (their sub-type) and Plyometric has its own kit list, so those keep
+   theirs; the rest take the shared lists. Equipment stays the last filter of a category. */
+const ATP_LIB_CONTRACTIONS=['Concentric','Eccentric','Isometric','Plyometric'];
+const ATP_LIB_GENERAL_EQUIPMENT=[...EX_EQUIPMENT,'Foam Roller','Lacrosse Ball','Mini Band','Slider','Bench','Pull-Up Bar',
+  'Wall','Ab Wheel','Balance Pad','Agility Ladder','Cone','Hurdle'];
+Object.keys(ATP_LIB_SUB).forEach(t=>{
+  const list=(ATP_LIB_EXTRA[t]=(ATP_LIB_EXTRA[t]||[]).slice());
+  const eq=list.find(d=>d.key==='equipment');
+  const rest=list.filter(d=>d.key!=='equipment');
+  if(!(t in ATP_LIB_ACTIONS))rest.push({key:'contraction',label:'Contraction Type',values:ATP_LIB_CONTRACTIONS,multi:true});
+  ATP_LIB_EXTRA[t]=[...rest,eq||{key:'equipment',label:'Equipment',values:ATP_LIB_GENERAL_EQUIPMENT,multi:true}];
+});
+const ATP_TAXONOMY=Object.keys(ATP_LIB_SUB).map(type=>{
+  const s=ATP_LIB_SUB[type];
   const facets=[{label:s.label,values:s.values}];
-  if(ACTIONS_FOR[type])facets.push({label:'Action',values:ACTIONS_FOR[type]});
-  if(PATTERNS_FOR[type])facets.push({label:'Movement Pattern',values:PATTERNS_FOR[type]});
-  (EX_EXTRA_FILTERS[type]||[]).forEach(x=>facets.push({label:x.label,values:x.values}));
+  if(ATP_LIB_ACTIONS[type])facets.push({label:'Action',values:ATP_LIB_ACTIONS[type]});
+  if(ATP_LIB_PATTERNS[type])facets.push({label:'Movement Pattern',values:ATP_LIB_PATTERNS[type]});
+  (ATP_LIB_EXTRA[type]||[]).forEach(x=>facets.push({label:x.label,values:x.values}));
   return{type,facets};
 });
 const atpFacetValues=(type,label)=>{
@@ -481,7 +546,7 @@ function atpClassify(row,libMap){
   if(axis==='core'){
     const q=CORE_QUALITIES.has(S)?S:({'Anti-Rotation Family':'Anti-Rotation','Anti-Lateral Flexion Family':'Anti-Lateral Flexion',
       'Anti-Extension Family':'Anti-Extension','Rotation Family':'Rotation','Trunk Flexion Family':'Flexion'})[fam0]
-      ||(mp==='Rotation'?'Rotation':EX_STYLE_DEFAULT.Core);
+      ||(mp==='Rotation'?'Rotation':'Anti-Extension');
     pats.add(['Flexion','Extension','Lateral Flexion'].includes(q)?'Trunk Flexion / Extension':q);
   }
   if(axis==='full')pats.add('Full Body');

@@ -90,54 +90,14 @@ const MOVE_PATTERNS=[['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Domi
 const PATTERN_PLANES={'Hip Dominant':['Push','Pull','ISO','Eccentric'],'Knee Dominant':['Push','Pull','ISO','Eccentric'],'Upper Body Push':['Vertical','Horizontal','Rotational'],'Upper Body Pull':['Vertical','Horizontal','Rotational'],'Core':['Flexion','Extension','Lateral Flexion','Rotation','Anti-Flexion','Anti-Extension','Anti-Lateral Flexion','Anti-Rotation']};
 const ALL_PLANES=['Vertical','Horizontal','Rotational'];
 const CORE_QUALITIES=new Set(PATTERN_PLANES['Core']);
-/* The same taxonomy, one level down: a single exercise on an athlete's sheet is
-   tagged with the pattern it trains and HOW that pattern is executed. Full Body and
-   Accessory are the two extra patterns — a clean, a jerk or a curl exists per exercise
-   but is not something a whole session gets labelled with, so they are added here
-   rather than to MOVE_PATTERNS. A Full Body lift is not executed in a plane or a
-   contraction; what varies is how fast the bar has to move, so its executions are the
-   three speeds a coach writes one for. */
-const EX_PATTERNS=[...MOVE_PATTERNS.map(([k])=>k),'Full Body','Accessory'];
-const EX_PATTERN_STYLES={...PATTERN_PLANES,
-  'Full Body':['Basic Strength','Explosive','Olympic Lift'],
-  'Accessory':['Push','Pull','ISO','Eccentric']};
+/* The same taxonomy, one level down: a single exercise on an athlete's sheet is tagged
+   with the category it trains (Kategori), its type (Tür) and, where the category has one,
+   its direction (Yön) — the eleven categories of the MOVEMENT TAXONOMY. */
+const EX_PATTERNS=MV_KEYS;
+/* An exercise row's "type" (Tür) — stored in `plane`, the field that used to carry the
+   execution — is one of its category's own types (MOVEMENT TAXONOMY). */
+const EX_PATTERN_STYLES=Object.fromEntries(MV_CATS.map(c=>[c.k,c.types.map(t=>t[0])]));
 const exStylesFor=p=>EX_PATTERN_STYLES[p]||[];
-/* How a pattern is USUALLY executed, per pattern: a hinge is pulled, a squat is pushed,
-   a press is horizontal far more often than not. Read only when nothing better is
-   known, so the box is filled with the likely answer instead of being left blank. */
-const EX_STYLE_DEFAULT={'Hip Dominant':'Pull','Knee Dominant':'Push','Upper Body Push':'Horizontal',
-  'Upper Body Pull':'Horizontal','Core':'Anti-Extension','Full Body':'Basic Strength','Accessory':'Push'};
-/* The words that name an execution inside an exercise's own name, per pattern, most
-   specific first — "Split Squat ISO Hold" is an ISO before it is a squat, and a
-   "Tempo Box Squat (3-1-1)" is eccentric work whatever it says after that. Every
-   rule is checked against the pattern's own executions, so a Core rule can never
-   put "Horizontal" on a plank. */
-const EX_STYLE_WORDS={
-  hinge:[[/eccentric|nordic|negative|\btempo\b|\d\s*-\s*\d\s*-\s*\d/,'Eccentric'],
-         [/\biso\b|isometric|\bhold\b|wall sit|\bplank\b/,'ISO'],
-         [/thrust|bridge|hip ext|abduct|adduct|\bkick\s*back/,'Push'],
-         [/deadlift|\brdl\b|hinge|good ?morning|\bswing\b|pull ?through|back ext|\bcurl\b|hamstring|glute ham|\bpull\b/,'Pull'],
-         [/squat|lunge|step[- ]?up|leg press|\bpress\b|split|\bpush\b|extension/,'Push']],
-  push:[[/rotational|\btwist\b|\bchop\b|\bscoop\b|shot ?put/,'Rotational'],
-        [/overhead|shoulder press|military|\bohp\b|landmine|push press|\bjerk\b|\bdip\b|\bz press\b|arnold/,'Vertical'],
-        [/bench|push[- ]?up|chest|\bfly\b|floor press|incline|decline|\bdb press\b/,'Horizontal']],
-  pull:[[/rotational|\btwist\b|\bchop\b/,'Rotational'],
-        [/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\blat\b|pullover|hang(ing)? ?pull/,'Vertical'],
-        [/\brow\b|face ?pull|rear delt|\bshrug\b|\bpulls?\b/,'Horizontal']],
-  core:[[/anti[- ]?rotation|pallof|bird ?dog|\bpress ?out\b/,'Anti-Rotation'],
-        [/anti[- ]?lateral|side ?plank|suitcase|farmer|\bcarry\b/,'Anti-Lateral Flexion'],
-        [/anti[- ]?extension|\bplank\b|dead ?bug|ab ?wheel|roll ?out|body ?saw|\bhollow\b|\bpush ?up plank\b/,'Anti-Extension'],
-        [/anti[- ]?flexion/,'Anti-Flexion'],
-        [/side ?bend|lateral flexion/,'Lateral Flexion'],
-        [/woodchop|\bchop\b|russian ?twist|\btwist\b|rotation|\blift\b|med ?ball (side|rotational)/,'Rotation'],
-        [/back ?extension|superman|reverse hyper|\bextension\b/,'Extension'],
-        [/crunch|sit[- ]?up|leg raise|knee raise|\bv[- ]?up\b|toes ?to ?bar|\bflexion\b/,'Flexion']],
-  full:[[/clean|snatch|\bjerk\b|olympic|high pull/,'Olympic Lift'],
-        [/jump|\bhop\b|bound|throw|\bslam\b|explosive|\bpower\b|med ?ball|ballistic|sprint/,'Explosive'],
-        [/squat|deadlift|press|\bstrength\b|complex|carry/,'Basic Strength']],
-};
-const EX_STYLE_RULES={'Hip Dominant':'hinge','Knee Dominant':'hinge','Accessory':'hinge',
-  'Upper Body Push':'push','Upper Body Pull':'pull','Core':'core','Full Body':'full'};
 /* The execution an exercise is most likely trained with, so the pair fills itself in
    rather than being answered twice on every row. In order: what this exact exercise was
    last tagged with anywhere (the library remembers it), then the assistant coach's pool
@@ -148,16 +108,10 @@ function exGuessStyle(name,pattern){
   const styles=exStylesFor(pattern);
   if(!styles.length)return'';
   const nm=String(name||'').trim().toLowerCase();
-  if(nm){
-    const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
-    if(hit&&String(hit.exPattern||'')===pattern&&styles.includes(hit.exPlane))return hit.exPlane;
-    for(const k in CA_POOL)for(const c of CA_POOL[k])
-      if(c.n.toLowerCase()===nm&&styles.includes(c.ex))return c.ex;
-    for(const[re,st]of(EX_STYLE_WORDS[EX_STYLE_RULES[pattern]]||[]))
-      if(styles.includes(st)&&re.test(nm))return st;
-  }
-  const d=EX_STYLE_DEFAULT[pattern];
-  return styles.includes(d)?d:styles[0];
+  if(!nm)return'';
+  const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
+  if(hit&&mvLibCat(hit)===pattern){const t=mvLibType(hit,pattern);if(t)return t;}
+  return mvGuessType(pattern,nm);
 }
 /* Which pattern an exercise trains, read off what is known about it — so a row whose name
    was typed (or written by a model) does not have to be answered by hand. In order: what
@@ -165,15 +119,21 @@ function exGuessStyle(name,pattern){
    exercise under a slot), then the words in the name. Returns '' when nothing says: a
    wrong pattern is worse than a blank one, so there is no default here. */
 const EX_NAME_PATTERN=[
-  ['Full Body',/\bclean\b|snatch|\bjerk\b|thruster|high pull|burpee/],
-  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|suitcase|\bcarry\b|farmer|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Olympic Lift',/\bclean\b|snatch|\bjerk\b|high pull/],
+  ['Medicine Ball',/med(icine)? ?ball|\bmb\b|wall ball|chest pass|scoop toss|shot ?put|\bslam\b/],
+  ['Plyometric',/jump|\bhop|bound|pogo|depth|plyo|skater/],
+  ['Carry',/farmer|suitcase|\bcarry\b|\bwalk\b.*(kb|kettlebell|db|dumbbell)/],
+  ['Full Body',/thruster|burpee|get[- ]?up|complex|man ?maker/],
+  ['Core',/dead ?bug|\bplank\b|pallof|bird ?dog|ab ?wheel|roll ?out|body ?saw|hollow|woodchop|\bchop\b|russian twist|side bend|crunch|sit[- ]?up|leg raise|knee raise|toes ?to ?bar|v[- ]?up|anti[- ]?(rotation|extension|flexion|lateral)|\bcore\b|\babs?\b/],
+  ['Accessory',/\bcurl\b|bicep|tricep|skull ?crusher|push ?down|lateral raise|front raise|rear delt|calf raise|tib(ialis)? raise|neck|external rotation|internal rotation|leg ext|copenhagen|\bclam|band walk|monster walk|y[- ]?t[- ]?w|wrist|grip|shrug/],
   ['Hip Dominant',/deadlift|\brdl\b|hip thrust|glute bridge|\bbridge\b|good ?morning|\bswing\b|pull ?through|back ext|hyperext|reverse hyper|hamstring|nordic|glute ham|\bkick ?back|hip ext|\bhinge\b|\bglute\b/],
-  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|leg ext|split|wall sit|\bsissy\b|\bpistol\b/],
-  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|rear delt|\bshrug\b|\blat\b|pullover|bicep|\bcurl\b/],
-  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|tricep|\braise\b|landmine/]];
+  ['Knee Dominant',/squat|lunge|step[- ]?(up|down)|leg press|split|wall sit|\bsissy\b|\bpistol\b/],
+  ['Upper Body Pull',/pull[- ]?up|chin[- ]?up|pulldown|pull ?down|\brow\b|face ?pull|\blat\b|pullover/],
+  ['Upper Body Push',/bench|push[- ]?up|press|\bdip\b|\bfly\b|\bflye\b|landmine/]];
 /* The movement vocabulary a model writes in (IV_PATTERNS) onto the pattern a row is tagged with. */
 const EX_VOCAB_PATTERN={'Squat':'Knee Dominant','Lunge / Unilateral':'Knee Dominant','Hinge':'Hip Dominant',
-  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core'};
+  'Push':'Upper Body Push','Pull':'Upper Body Pull','Core / Brace':'Core','Rotation':'Core','Carry':'Carry',
+  'Jump / Plyo':'Plyometric'};
 /* The library card carrying exactly this name, or null. */
 const exLibHit=name=>{const nm=String(name||'').trim().toLowerCase();
   return nm?(getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm)||null):null;};
@@ -181,7 +141,7 @@ function exGuessPattern(name){
   const nm=String(name||'').trim().toLowerCase();
   if(!nm)return'';
   const hit=getLibItems().find(it=>(it.name||'').trim().toLowerCase()===nm);
-  if(hit&&EX_PATTERNS.includes(hit.exPattern))return hit.exPattern;
+  if(hit&&mvLibCat(hit))return mvLibCat(hit);
   for(const k in CA_POOL)for(const c of CA_POOL[k]){
     if(c.n.toLowerCase()!==nm)continue;
     const slot=CA_SLOTS.find(sl=>sl.id===k);
@@ -196,8 +156,7 @@ function exResolveTags(name,pattern,plane){
   let pat=String(pattern||'').trim();
   if(!EX_PATTERNS.includes(pat))pat=EX_VOCAB_PATTERN[pat]||exGuessPattern(name);
   if(!pat)return{pattern:'',plane:''};
-  const st=String(plane||'').trim();
-  return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(name,pat)};
+  return{pattern:pat,plane:mvNormType(pat,plane,name)};
 }
 /* What a library entry says about how its exercise is trained, as a patch for the program
    row that just picked it. A pair the coach has TAGGED wins outright — the row's exercise
@@ -207,20 +166,19 @@ function exResolveTags(name,pattern,plane){
    Returns null when the entry has nothing to say. */
 function exTagsFromLib(it,row){
   const nm=(it&&it.name)||'';
-  const pat=String((it&&it.exPattern)||'').trim();
-  if(pat&&EX_PATTERNS.includes(pat)){
-    const st=String((it&&it.exPlane)||'').trim();
-    return{pattern:pat,plane:exStylesFor(pat).includes(st)?st:exGuessStyle(nm,pat)};
-  }
-  const guess=EX_PATTERNS.includes(it&&it.type)?it.type:exGuessPattern(nm);
-  if(guess&&!String((row&&row.pattern)||'').trim())return{pattern:guess,plane:exGuessStyle(nm,guess)};
+  const pat=mvLibCat(it);
+  if(pat){const t=mvLibType(it,pat);return{pattern:pat,plane:t,dir:mvLibDir(it,pat,t),noPat:false};}
+  const guess=exGuessPattern(nm);
+  if(guess&&!String((row&&row.pattern)||'').trim()&&!(row&&row.noPat)){const t=mvGuessType(guess,nm);
+    return{pattern:guess,plane:t,dir:mvGuessDir(guess,nm,t)};}
   return null;
 }
 /* "Hip · Eccentric" — the key the execution pie counts. Keeping pattern and style
    in one label is what lets the pie show both at once; the pattern is abbreviated
    because the label is a callout beside a slice, and "Upper Body Push · Horizontal"
    does not fit next to one. The slice colour carries the pattern anyway. */
-const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core','Full Body':'Full Body','Accessory':'Accessory'};
+const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push':'UB Push','Upper Body Pull':'UB Pull','Core':'Core',
+  'Carry':'Carry','Olympic Lift':'Olympic','Plyometric':'Plyo','Medicine Ball':'Med Ball','Full Body':'Full Body','Accessory':'Accessory'};
 /* What a set of exercise rows trains, read off the rows themselves. Every row already
    carries the pattern it trains and how that pattern is executed; a row nobody tagged is
    looked up in the shared library by name, exactly the way the load distribution resolves
@@ -228,7 +186,8 @@ const EX_PAT_SHORT={'Hip Dominant':'Hip','Knee Dominant':'Knee','Upper Body Push
    own rows were written in — so a block that is all hinges and presses says so without
    anybody ticking a box, and two blocks of one session can say two different things. */
 function exercisePatterns(list){
-  const rows=(list||[]).filter(e=>e&&(String(e.pattern||'').trim()||String(e.name||'').trim()));
+  /* A row whose category the coach took off (a warm-up drill) trains nothing here. */
+  const rows=(list||[]).filter(e=>e&&!e.noPat&&(String(e.pattern||'').trim()||String(e.name||'').trim()));
   if(!rows.length)return[];
   const lib=libPatternIndex();
   const found=new Map();
@@ -242,6 +201,7 @@ function exercisePatterns(list){
       else if(pat===hit.pattern&&!st)st=hit.style;
     }
     if(!pat||EX_PATTERNS.indexOf(pat)<0)return;
+    st=mvNormType(pat,st,e.name);
     const planes=found.get(pat)||[];
     if(st&&planes.indexOf(st)<0)planes.push(st);
     found.set(pat,planes);
@@ -312,8 +272,8 @@ function TrainContent({session,onPatch,readOnly}){
   const fallback=blocks.every(x=>!x.pats.length)?sessionPatterns(session):[];
   const chips=pats=>(<div className="tc-pats">
     {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}>
-      <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
-      {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
+      <b>{mvCatLabel(p.pattern)}</b>
+      {p.planes.length>0&&<i>{p.planes.map(x=>mvTermOr(p.pattern,x)).join(' · ')}</i>}
     </span>)}
   </div>);
   return(<div className="tc-wrap">
@@ -393,31 +353,16 @@ function MuscleLoadFigure({slugLoad}){
    looked up by name and takes what the library says. The types that are not movement
    patterns — Warm-Up, Medicine Ball, Plyometric, Speed, Mobility — resolve to nothing on
    purpose: filing them under a pattern they do not train would be a worse answer than none. */
-const LIB_TYPE_PATTERN={'Upper Body Push':'Upper Body Push','Upper Body Pull':'Upper Body Pull',
-  'Hip Dominant':'Hip Dominant','Knee Dominant':'Knee Dominant','Core':'Core','Full Body':'Full Body',
-  'Accessory':'Accessory'};
-/* The library writes the contraction out in full where this taxonomy abbreviates it, and
-   files a Full Body lift under plain "Strength" where the execution names the speed. */
-const LIB_STYLE_ALIAS={'Isometric':'ISO','Strength':'Basic Strength'};
-/* Built once per library, not once per caller: the strip on every block asks this
-   question on every keystroke, and rebuilding the whole index for each of them is what
-   would make typing an exercise name feel slow. The library array is replaced wholesale
-   when it changes, so its identity is all the cache needs to watch. */
 let _libPatIdx=null,_libPatFor=null;
 function libPatternIndex(){
   const items=getLibItems()||[];
   if(_libPatIdx&&_libPatFor===items)return _libPatIdx;
   const idx=new Map();
   items.forEach(it=>{
-    const pat=LIB_TYPE_PATTERN[it.type];
+    const pat=mvLibCat(it);
     if(!pat)return;
-    const raw=String(it.subType||'').trim();
-    /* Hip / Knee Dominant carry the contraction and the direction on two fields. An
-       eccentric or isometric focus IS the execution; a concentric one is executed as
-       whichever way the load moves, which is the Action (Push / Pull). */
-    const st=(raw==='Concentric'||(!raw&&it.action))?String(it.action||''):(LIB_STYLE_ALIAS[raw]||raw);
-    idx.set(String(it.name||'').trim().toLowerCase(),
-      {pattern:pat,style:exStylesFor(pat).includes(st)?st:''});
+    const st=mvLibType(it,pat);
+    idx.set(String(it.name||'').trim().toLowerCase(),{pattern:pat,style:st,dir:mvLibDir(it,pat,st)});
   });
   _libPatIdx=idx;_libPatFor=items;
   return idx;
@@ -454,6 +399,8 @@ function aggSessions(days){
     Object.entries(pls).forEach(([pat,arr])=>(arr||[]).forEach(pl=>{
       add(planes,pl);add(combos,EX_COMBO(pat,pl));}));
     (s.blocks||[]).forEach(b=>(b.exercises||[]).forEach(e=>{
+      /* The coach took this row's category off (a warm-up drill): it is not load. */
+      if(e&&e.noPat)return;
       let pat=(e.pattern||'').trim(),st=(e.plane||'').trim();
       /* A tag the coach set always wins; the library only fills in what is missing.
          Its execution is only borrowed when the pattern agrees — a row re-tagged as
@@ -463,7 +410,8 @@ function aggSessions(days){
         if(!pat){pat=hit.pattern;st=st||hit.style;}
         else if(pat===hit.pattern)st=hit.style;
       }
-      if(!pat)return;
+      if(!pat||!EX_PATTERNS.includes(pat))return;
+      st=mvNormType(pat,st,e.name);
       add(patterns,pat);
       addEx(pat,e.name,st);
       // An exercise with a pattern but no execution still counts as that pattern.
@@ -474,7 +422,7 @@ function aggSessions(days){
 }
 /* Fixed per-pattern pie colors (CVD-validated against the dark panel surface).
    Keyed by movement pattern so each pattern keeps its color week to week. */
-const ML_PIE_COLS={'Hip Dominant':'#199e70','Knee Dominant':'#3987e5','Upper Body Push':'#d55181','Upper Body Pull':'#c98500','Core':'#8b5cf6','Full Body':'#b85c38','Accessory':'#5c8a99'};
+const ML_PIE_COLS=Object.fromEntries(MV_CATS.map(c=>[c.k,c.color]));
 /* Execution slices inherit their pattern's colour and separate by lightness, so a
    glance at the second pie still reads "this much hip work" before it reads which
    flavour of it. Styles are spread across a fixed lightness band rather than
@@ -517,23 +465,23 @@ function LoadDistBars({entries}){
   const total=entries.reduce((s,e)=>s+e.value,0)||1;
   const max=Math.max(1,...entries.map(e=>e.value));
   const pct=v=>{const x=Math.round(v/total*1000)/10;return`${Number.isInteger(x)?x:x.toFixed(1)}%`;};
-  const name=n=>n==='not set'?L('belirtilmemiş','not set'):exLabel(n);
+  const name=(p,n)=>n==='not set'?L('tür belirtilmemiş','type not set'):mvTermOr(p,n);
   const rows=entries.slice().sort((a,b)=>b.value-a.value);
   return(<div className="ldb">
     {rows.map(e=>{const kt=e.kids.reduce((s,k)=>s+k.value,0)||1;return(
       <div key={e.key} className="ldb-row on">
         <div className="ldb-main">
-          <span className="ldb-n"><i style={{background:e.color}}/>{exLabel(e.name)}</span>
+          <span className="ldb-n"><i style={{background:e.color}}/>{mvCatLabel(e.name)}</span>
           <span className="ldb-track"><span className="ldb-bar" style={{width:`${Math.max(2,e.value/max*100)}%`}}>
             {e.kids.map(k=><span key={k.key} className="ldb-seg" style={{width:`${k.value/kt*100}%`,background:k.color}}
-              title={`${exLabel(e.name)} · ${name(k.name)} — ${k.value} · ${pct(k.value)}`}/>)}
+              title={`${mvCatLabel(e.name)} · ${name(e.name,k.name)} — ${k.value} · ${pct(k.value)}`}/>)}
           </span></span>
           <span className="ldb-p">{pct(e.value)}</span>
           <span className="ldb-c">{e.value}×</span>
         </div>
         <div className="ldb-kids">{e.kids.slice().sort((a,b)=>b.value-a.value).map(k=>
           <div key={k.key} className="ldb-kid">
-            <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
+            <div className="ldb-kh"><i style={{background:k.color}}/><b>{name(e.name,k.name)}</b><span>{Math.round(k.value/kt*100)}% · {k.value}×</span></div>
             {(k.exs||[]).length>0&&<div className="ldb-exs">{k.exs.map(x=><span key={x.name}>{x.name} <em>×{x.count}</em></span>)}</div>}
           </div>)}</div>
       </div>);})}
@@ -603,9 +551,9 @@ function MuscleLoadDistribution({days,title,refDate}){
       </div>
     </div>
     {!hasData
-      ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} etiketlenmiş bir şey yok — seansta hareket paterni seç ya da Bireyselleştirme kartında egzersiz bazında etiketle.`,`Nothing tagged in this ${mode==='week'?'week':'month'} — pick movement patterns on the session, or tag them per exercise on the Individualization card.`)}</div>
+      ?<div className="mm-hint" style={{padding:'12px 0'}}>{L(`Bu ${mode==='week'?'haftada':'ayda'} kategorisi olan egzersiz yok — antrenman tablosunda egzersizlere kategori ver.`,`No categorised exercise in this ${mode==='week'?'week':'month'} — give the exercises in the training table a category.`)}</div>
       :<>
-      <div className="mld-sub">{L('Hareket paterni · uygulama — çubuk dönemin payını, renkler uygulamaları gösterir; egzersizler her satırın altında','Movement pattern · execution — the bar is the share of the period, the colours its executions; the exercises are listed under each row')}</div>
+      <div className="mld-sub">{L('Kategori · tür — çubuk dönemin payını, renkler türleri gösterir; egzersizler her satırın altında','Category · type — the bar is the share of the period, the colours its types; the exercises are listed under each row')}</div>
       <LoadDistBars entries={entries}/>
       </>}
   </div>);

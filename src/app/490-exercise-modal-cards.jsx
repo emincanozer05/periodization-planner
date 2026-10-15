@@ -161,7 +161,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
       {/* One grid for every field, so an optional field that is absent (no action, no
           movement pattern) closes up instead of leaving an empty cell in the middle. */}
       <div className="grid cols-2">
-        <div><label>{ball?L('Dril Tipi','Drill Type'):L('Egzersiz Tipi','Exercise Type')}</label>
+        <div><label>{ball?L('Dril Tipi','Drill Type'):L('Kategori','Category')}</label>
           <select value={ex.type||''} onChange={e=>{const v=e.target.value;
             /* The category's own extra fields go with it: an Equipment set on a push is
                not carried onto a Core entry, where there is no filter to find it by. */
@@ -169,13 +169,14 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
             const drop={};EX_EXTRA_KEYS.forEach(k=>{if(!keep.has(k)&&ex[k])drop[k]='';});
             onChange({type:v,subType:'',...(ACTIONS_FOR[v]?{}:{action:''}),...drop});}}>
             <option value="">—</option>
-            {TYPES.map(t=><option key={t} value={t}>{exLabel(t)}</option>)}
+            {TYPES.map(t=><option key={t} value={t}>{ball?exLabel(t):mvCatLabel(t)}</option>)}
+            {!ball&&ex.type&&!TYPES.includes(ex.type)&&<option value={ex.type}>{exLabel(ex.type)} ({L('eski','old')})</option>}
           </select>
         </div>
         <div><label>{SUBS[ex.type]?exLabel(SUBS[ex.type].label):L('Alt Tip','Sub Type')}</label>
           <select value={ex.subType||''} onChange={e=>set('subType',e.target.value)} disabled={!SUBS[ex.type]}>
             <option value="">{SUBS[ex.type]?'—':L('Önce tip seç','Select type first')}</option>
-            {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+            {(SUBS[ex.type]?.values||[]).map(v=><option key={v} value={v}>{ball?exLabel(v):mvTermOr(ex.type,v)}</option>)}
           </select>
         </div>
         {!ball&&ACTIONS_FOR[ex.type]&&<div><label>{exLabel('Action')}</label>
@@ -195,7 +196,7 @@ function ExerciseModal({ex,onChange,onDelete,onClose,customMuscles,onRememberMus
         </div>:<div key={d.key}><label>{exLabel(d.label)}</label>
           <select value={ex[d.key]||''} onChange={e=>set(d.key,e.target.value)}>
             <option value="">—</option>
-            {d.values.map(v=><option key={v} value={v}>{exLabel(v)}</option>)}
+            {d.values.map(v=><option key={v} value={v}>{mvTermOr(ex.type,v)}</option>)}
           </select>
         </div>)}
         {ball
@@ -368,7 +369,8 @@ const exLib=e=>(e&&e.lib==='ball')?'ball':'sc';
 /* One library filter as a dropdown: a compact button carrying the filter's name and the
    value picked, opening the values as a list. A row of these fits every filter of a
    category on one line, where a track of every value ran off the screen. */
-function FilterDD({label,values,value,onChange}){
+function FilterDD({label,values,value,onChange,lab}){
+  const nm=lab||exLabel;
   const[open,setOpen]=useState(false);
   const[right,setRight]=useState(false);
   const ref=useRef(null),menuRef=useRef(null);
@@ -383,13 +385,13 @@ function FilterDD({label,values,value,onChange}){
   return(<div className={'exf'+(value?' on':'')+(open?' open':'')} ref={ref}>
     <button type="button" className="exf-btn" onClick={()=>setOpen(o=>!o)} aria-haspopup="listbox" aria-expanded={open}>
       <span className="exf-k">{label}</span>
-      <span className="exf-v">{value?exLabel(value):L('Tümü','All')}</span>
+      <span className="exf-v">{value?nm(value):L('Tümü','All')}</span>
       <span className="exf-car" aria-hidden="true">▾</span>
     </button>
     {open&&<div className={'exf-menu'+(right?' right':'')} ref={menuRef} role="listbox" aria-label={label}>
       {['',...values].map(v=><button key={v||'__all'} type="button" role="option" aria-selected={value===v}
         className={'exf-opt'+(value===v?' on':'')} onClick={()=>pick(v)}>
-        {v?exLabel(v):L('Tümü','All')}{value===v?<b>✓</b>:null}</button>)}
+        {v?nm(v):L('Tümü','All')}{value===v?<b>✓</b>:null}</button>)}
     </div>}
   </div>);
 }

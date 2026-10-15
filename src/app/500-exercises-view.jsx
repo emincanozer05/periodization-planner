@@ -71,13 +71,13 @@ function ExercisesView({data,setData}){
       hint:L('AI projesine referans dosyası olarak yüklenir','The reference file an AI project is loaded with')},
   ]}/>;
   // Top-right category dropdown (label → the active shelf's own category values).
-  const CAT_OPTIONS=[['Upper Body Push','Upper Body Push'],['Upper Body Pull','Upper Body Pull'],['Hip Dominant','Hip Dominant'],['Knee Dominant','Knee Dominant'],['Full Body','Full Body'],['Core','Core'],['Multidirectional Speed','Multi Directional Speed'],['Plyometric','Plyometric'],['Medicine Ball','Medicine Ball'],['Mobility','Mobility'],['Stability','Stability'],['Balance','Balance'],['Corrective','Corrective'],['Accessory','Accessory']];
+  const CAT_OPTIONS=EX_TYPES.map(t=>[mvCatLabel(t),t]);
   // Every category carries its exercise count in parentheses, so the coach sees how
   // full each one is without opening it (the whole library's count is in the header).
   const catDropdown=(
     <select className="ex-cat-dd" value={activeType||''} onChange={e=>{const v=e.target.value;if(!v){goBack();}else{setActiveType(v);setFilt({});setQ('');}}}>
       <option value="">{L('Tüm kategoriler','All categories')}</option>
-      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{exLabel(lbl)} ({typeCounts[val]||0})</option>)}
+      {CAT_OPTIONS.map(([lbl,val])=><option key={val} value={val}>{lbl} ({typeCounts[val]||0})</option>)}
       {uncatCount>0&&<option value="__uncat__">{L('Kategorisiz','Uncategorized')} ({uncatCount})</option>}
     </select>);
 
@@ -138,19 +138,19 @@ function ExercisesView({data,setData}){
     <div className="ex-top">
       <div>
         <button className="btn sec sm" onClick={goBack} style={{marginBottom:8}}>← {L('Kategoriler','Categories')}</button>
-        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):exLabel(activeType)}</h1>
+        <h1 className="ex-h1">{isUncat?L('Kategorisiz','Uncategorized'):mvCatLabel(activeType)}</h1>
         {isUncat&&<div className="sub">{L('Programdan otomatik eklenen / kategorisi atanmamış egzersizler. Kart\'a tıklayıp kategori ata.','Exercises added automatically from the program / not yet assigned a category. Click a card to assign one.')}</div>}
         {dims.length>0&&<div className="sub">{L('Filtre:','Filter:')} <b>{dims.map(d=>exLabel(d.label)).join(' · ')}</b></div>}
       </div>
     </div>
     <div className="ex-toolbar">
       {catDropdown}
-      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${exLabel(activeType)} ara…`,`Search ${exLabel(activeType)}…`)}/></div>
+      <div className="ex-search"><span aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg></span><input value={q} onChange={e=>setQ(e.target.value)} placeholder={L(`${mvCatLabel(activeType)} ara…`,`Search ${mvCatLabel(activeType)}…`)}/></div>
       <button className="btn sm white" onClick={()=>addExercise()}>＋ {L('Egzersiz Ekle','Add Exercise')}</button>
         {mdBtn}
     </div>
     <div className="exf-bar">
-      {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values}
+      {dims.map(d=><FilterDD key={activeType+':'+d.key} label={exLabel(d.label)} values={d.values} lab={v=>mvTermOr(activeType,v)}
         value={filt[d.key]||''} onChange={v=>setFilt(f=>({...f,[d.key]:v}))}/>)}
       {filtered&&<button type="button" className="exf-clear" onClick={()=>setFilt({})}>✕ {L('Temizle','Clear')}</button>}
       <LevelSeg value={filt.difficulty||''} onChange={v=>setFilt(f=>({...f,difficulty:v}))}/>

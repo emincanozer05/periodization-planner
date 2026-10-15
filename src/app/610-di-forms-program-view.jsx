@@ -21,10 +21,6 @@ function DiSignals({items,limit}){
    written, and closing one puts its rows back as unplaced.
    A pattern that loads a region reported painful today is marked, and stays a full choice:
    the coach has seen the pain, so a picked pattern is never dropped for it. */
-/* The facet that says what kind of exercise a pattern's row is — the squat / lunge / step-up of a
-   knee-dominant row, the anti-extension of a core row. The push and pull patterns carry theirs in
-   the pattern itself (horizontal / vertical) and have none. */
-const diTypeFacet=id=>{const row=diMoveRow(id);return row?(row.facets.find(f=>f.k==='type'||f.k==='task')||null):null;};
 function DiPatternPlan({plan,onChange:emit,closed}){
   const list=diMovePatterns(plan&&plan.patterns);
   const phases=diMovePhases(plan&&plan.phases);
@@ -110,40 +106,54 @@ function DiPatternPlan({plan,onChange:emit,closed}){
     {const cnt={};let plain=0;
       at.forEach((gi,n)=>{const ss=String(latest.current.list[gi].superset||'').toUpperCase();
         tags[`${ph}|${n}`]=ss?`${ss}${cnt[ss]=(cnt[ss]||0)+1}`:String(++plain);});}
-    const patOpts=DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1])}));
+    const patOpts=ptCatOpts(c=>c.id);
     const runs=runsOf(ph);
     let n0=0;
     const groups=runs.map((run,ri)=>{
       const row=diMoveRow(run.id);
       const g={id:`${ph}|${ri}`,pat:run.id,
-        label:row?L(row.label[0],row.label[1]):L('Patern seçilmedi','No pattern'),
-        color:row?(ML_PIE_COLS[(DI_PAT_EX[row.id]||[])[0]]||''):'',pick:run.id==='',options:patOpts,
+        label:row?L(row.label[0],row.label[1]):L('Kategorisiz','No category'),
+        color:row?(ML_PIE_COLS[row.k]||''):'',pick:run.id==='',options:patOpts,
         slots:run.at.map(gi=>{const p=latest.current.list[gi];const n=n0++;const k=`${ph}|${n}`;const a=p.alt||{};
-          const tf=diTypeFacet(p.id);
+          const ck=row?row.k:'';
           return{key:k,tag:tags[k],tagVal:p.superset||'',name:p.exercise,link:p.link,note:p.note,
             sets:p.sets,reps:p.reps,duration:p.duration,tempo:p.tempo,rpe:p.rpe,load:p.load,rest:p.rest,
             a_name:a.name,a_sets:a.sets,a_reps:a.reps,a_duration:a.duration,a_tempo:a.tempo,a_rpe:a.rpe,a_load:a.load,
-            a_rest:a.rest,a_link:a.link,tagP:'',tagS:'',
-            typeOpts:tf?tf.opts.map(op=>[op[0],L(op[1],op[2])]):[],typeVal:tf?((p[tf.k]||[])[0]||''):'',
+            a_rest:a.rest,a_link:a.link,tagP:ck,tagS:(p.type||[])[0]||'',tagD:(p.direction||[])[0]||'',
+            typeOpts:ptTypeOpts(ck),typeVal:(p.type||[])[0]||'',
+            dirOpts:ptDirOpts(ck),dirVal:(p.direction||[])[0]||'',
             canUp:n>0,canDown:n<at.length-1};})};
       return g;
     });
     const chips=loose?[]:DI_MOVE_PATTERNS.map(row=>({id:row.id,label:L(row.label[0],row.label[1]),
       on:itemsOf(row.id,ph).length>0,warn:isClosed(row),title:isClosed(row)?painTip:undefined}));
-    /* What a library exercise says about the row it lands on: the pattern the card is filed under
-       and the card's type go onto the row. `force` is a pick (the row's exercise is being
-       replaced, so the new one brings its own pattern and type); without it (a typed name) only
-       an unpatterned row takes the pattern, and a type already set stays. */
+    /* What a library exercise says about the row it lands on: its category, type and direction.
+       `force` is a pick (the row's exercise is being replaced, so the new one brings its own);
+       without it (a typed name) only an uncategorised row takes the category, and a type or a
+       direction already set stays. */
     const withLib=(k,it,force)=>{
       const gi=gidx(k);if(gi==null||!it)return;
       const p=latest.current.list[gi];
       const t=diPickTags(it,p.exercise);
-      const nid=(force||p.id==='')&&t.id?t.id:p.id;
-      const tf=diTypeFacet(nid);
+      if(!t.id)return;
+      const nid=(force||p.id==='')?t.id:p.id;
+      if(nid!==t.id)return;
       const nx={...p,id:nid};
-      if(tf&&t.type&&(nid===t.id)&&(force||!(p[tf.k]||[])[0]))nx[tf.k]=[t.type];
-      if(nx.id===p.id&&nx[tf?tf.k:'id']===p[tf?tf.k:'id'])return;
+      if(t.type&&(force||nid!==p.id||!(p.type||[])[0]))nx.type=[t.type];
+      if(t.dir&&(force||nid!==p.id||!(p.direction||[])[0]))nx.direction=[t.dir];
+      if(nid!==p.id){if(!t.type)nx.type=[];if(!t.dir)nx.direction=[];}
+      if(JSON.stringify([nx.id,nx.type,nx.direction])===JSON.stringify([p.id,p.type,p.direction]))return;
       setList(latest.current.list.map((x,i)=>i===gi?nx:x));
+    };
+    /* A row put under a category keeps the type and direction it has where they are that
+       category's, and reads the rest off its exercise's name; '' takes the category off. */
+    const recat=(p,nid)=>{
+      const c=mvCatById(nid);
+      if(!c)return{...p,id:'',type:[],direction:[]};
+      const keep=(v,ok)=>ok.includes(v)?v:'';
+      const ty=(p.id===nid&&keep((p.type||[])[0],mvTypes(c.k)))||mvGuessType(c.k,p.exercise);
+      const dr=(p.id===nid&&keep((p.direction||[])[0],mvDirs(c.k)))||mvGuessDir(c.k,p.exercise,ty);
+      return{...p,id:nid,type:ty?[ty]:[],direction:dr?[dr]:[]};
     };
     const handlers={
       onChip:id=>{
@@ -196,16 +206,19 @@ function DiPatternPlan({plan,onChange:emit,closed}){
       /* A name the library has never seen was typed and the box left: if a card by that name
          exists, an unpatterned row is filed the way the card is. */
       onNew:(k,nm)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];
-        if(p&&p.id==='')withLib(k,exLibHit(nm),false);},
+        if(p&&p.id==='')withLib(k,exLibHit(nm)||{name:nm},false);},
       onLinkBlur:(k,isAlt,v)=>{const gi=gidx(k);const p=gi!=null&&latest.current.list[gi];if(!p)return;
         rememberExerciseLink(isAlt?(p.alt&&p.alt.name):p.exercise,v);},
       onRemove:k=>{const gi=gidx(k);if(gi!=null)setList(latest.current.list.filter((_,i)=>i!==gi));},
       onRemoveGroup:gid=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
         if(confirmDrop(run.at.map(gi=>latest.current.list[gi])))setList(latest.current.list.filter((_,i)=>!run.at.includes(i)));},
-      /* A row with no pattern was given one: it stays where it is and folds into its neighbours. */
-      onPattern:(k,nid)=>{if(!diMoveRow(nid))return;patch(k,p=>({...p,id:nid}));},
-      /* The type box writes the pattern's own "type" (or, for the core, "task") facet. */
-      onType:(k,v)=>patch(k,p=>{const tf=diTypeFacet(p.id);return tf?{...p,[tf.k]:v?[v]:[]}:p;}),
+      /* A row with no category was given one: it stays where it is and folds into its neighbours. */
+      onRowCat:(k,nid)=>patch(k,p=>recat(p,nid)),
+      /* The group's category box: every row of the run takes it ('' takes it off, rows stay). */
+      onGroupCat:(gid,nid)=>{const run=runsOf(ph)[Number(gid.split('|')[1])];if(!run)return;
+        setList(latest.current.list.map((p,i)=>run.at.includes(i)?recat(p,nid):p));},
+      onType:(k,v)=>patch(k,p=>({...p,type:v?[v]:[]})),
+      onDir:(k,v)=>patch(k,p=>({...p,direction:v?[v]:[]})),
       /* Up and down swap a row with the one beside it in the phase, whatever pattern that is. */
       onMove:(k,d)=>{const[h,n]=parse(k);const idx=phIdx(h);const a=idx[n],b=idx[n+d];
         if(a==null||b==null)return;
@@ -220,39 +233,20 @@ function DiPatternPlan({plan,onChange:emit,closed}){
   };
   const unplaced=list.some(p=>!known(p.phase||''));
   return(<div className="di-pp">
-    <div className="blk-phbar di-ppbar">
-      <span className="blk-phbar-l">{L('Seans Fazları','Session Phases')}</span>
-      <div className="blk-phbar-chips">
-        {DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>
-          <button key={pr.id} type="button" className="blk-phadd" onClick={()=>addPhase(pr.id)}
-            title={L('Hazır faz — adı yazmana gerek yok','A ready-made phase — no name to type')}>＋ {L(pr.label[0],pr.label[1])}</button>)}
-        <button type="button" className="blk-phadd" onClick={()=>addPhase('')}
-          title={L('Adını kendin yazacağın bir faz ekle','Add a phase you name yourself')}>＋ {L('Faz Ekle','Add Phase')}</button>
-      </div>
-    </div>
+    <PlanPhaseBar presets={DI_PHASE_PRESETS.filter(pr=>!phases.some(x=>x.preset===pr.id)).map(pr=>({id:pr.id,label:L(pr.label[0],pr.label[1])}))}
+      onAdd={id=>addPhase(id)}/>
     {phases.length===0
       ?section('',false)
-      :<>{phases.map((p,i)=><section key={p.id} className={'di-ppsec pc'+(i%PH_COLORS)+(folded.has(p.id)?' folded':'')}>
-          <header className="di-pph">
-            <button type="button" className="di-pph-ch" aria-expanded={!folded.has(p.id)} onClick={()=>toggleFold(p.id)}
-              title={folded.has(p.id)?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has(p.id)?'▶':'▼'}</button>
-            <i className="di-pph-dot"/>
-            <PhaseNameInput className="di-pph-nm" value={diPhaseName(p)} onChange={v=>renamePhase(p.id,v)}
-              title={L('Faz adı — değiştirmek için yaz','Phase name — type to change it')}/>
-            <span className="di-pph-n">{L(`${list.filter(x=>x.phase===p.id).length} egzersiz`,`${list.filter(x=>x.phase===p.id).length} exercises`)}</span>
-            <span className="di-pph-acts"><button type="button" className="di-pph-x" onClick={()=>closePhase(p.id)}
-              title={L('Bu fazı kapat — egzersizleri silinmez, fazsıza döner','Close this phase — its exercises are not deleted, they go back to unplaced')}>✕</button></span>
-          </header>
-          {!folded.has(p.id)&&section(p.id,false)}
-        </section>)}
-        {unplaced&&<section className={'di-ppsec loose'+(folded.has('_loose')?' folded':'')}>
-          <header className="di-pph">
-            <button type="button" className="di-pph-ch" aria-expanded={!folded.has('_loose')} onClick={()=>toggleFold('_loose')}
-              title={folded.has('_loose')?L('Bu bölümü aç','Expand this section'):L('Bu bölümü daralt','Collapse this section')}>{folded.has('_loose')?'▶':'▼'}</button>
-            <span className="di-pph-nm static">{L('Fazsız','Unplaced')}</span>
-            <span className="di-pph-n">{L('Henüz bir faza konmadı — program bunları sona ekler.','Not placed in a phase yet — the programme puts them last.')}</span></header>
-          {!folded.has('_loose')&&section('',true)}
-        </section>}</>}
+      :<>{phases.map((p,i)=><PlanPhase key={p.id} cls={'pc'+(i%PH_COLORS)} folded={folded.has(p.id)} onFold={()=>toggleFold(p.id)}
+          name={diPhaseName(p)} onRename={v=>renamePhase(p.id,v)} count={list.filter(x=>x.phase===p.id).length}
+          onClose={()=>closePhase(p.id)}>
+          {section(p.id,false)}
+        </PlanPhase>)}
+        {unplaced&&<PlanPhase cls="loose" folded={folded.has('_loose')} onFold={()=>toggleFold('_loose')}
+          name={L('Fazsız','Unplaced')} count={list.filter(x=>!known(x.phase||'')).length}
+          note={L('Henüz bir faza konmadı — program bunları sona ekler','Not placed in a phase yet — the programme puts them last')}>
+          {section('',true)}
+        </PlanPhase>}</>}
   </div>);
 }
 
@@ -260,24 +254,21 @@ function DiPatternPlan({plan,onChange:emit,closed}){
    in every row, phases if the session has them (priority, dose, length, ceiling, keep-out and
    notes left the form — the coach writes the session itself). It is stored per athlete PER
    DAY, beside the session it produced, so yesterday's table never silently drives today's. */
-function DiInstructionForm({instr,save,onBuild,onShowLoad,closed}){
+function DiInstructionForm({instr,save,onBuild,closed}){
   return(<div className="di-brief">
     <div className="di-fgrid">
       <div className="di-field wide">
         <div className="di-fhd"><i className="di-num">3</i>
-          <label>{L('Hareket paterni','Movement pattern')}</label>
-          {onShowLoad&&<div className="di-fhd-x"><button type="button" className="di-viewbtn" onClick={onShowLoad}
-            title={L('Bu sporcunun haftalık yük dağılımını bir pencerede göster','Show this athlete\'s weekly load distribution in a window')}>
-            <i>◔</i><span>{L('Haftalık Yük Dağılımı','Weekly Load Distribution')}</span></button></div>}</div>
-        <span className="di-fhint">{L('Seçilen her patern için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
-          'Write the exercise, its alternative, how many and the dose of every pattern picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
+          <label>{L('Antrenman tablosu','Training table')}</label></div>
+        <span className="di-fhint">{L('Seçilen her kategori için egzersizi, alternatifini, sayısını ve dozunu yaz. Kütüphaneden seç ya da yaz — yeni yazılan egzersiz kütüphaneye kaydedilir. Boş bıraktığın satır programa girmez.',
+          'Write the exercise, its alternative, how many and the dose of every category picked. Pick from the library or type one — a new name is filed into the library. A row left empty stays out of the session.')}</span>
         <div className="di-fctl"><DiPatternPlan plan={{patterns:instr.patterns,phases:instr.phases}} closed={closed}
           onChange={pl=>save({...instr,patterns:pl.patterns,phases:pl.phases})}/></div>
       </div>
     </div>
     {onBuild&&<div className="di-genbar">
-      <span className="di-dim">{L('Hareket Paterni tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
-        'The exercises and doses in the Movement Pattern table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
+      <span className="di-dim">{L('Antrenman tablosundaki egzersizler ve dozlar bir program olarak toplanır; "Programı Gör" yüzünde okuyup onaylayınca sporcunun takvimine yazılır.',
+        'The exercises and doses in the training table are gathered into a programme; it reaches the athlete\'s calendar when you read it on the "View Programme" face and approve it.')}</span>
       <button type="button" className="di-gen" onClick={onBuild}>
         <span className="di-gen-t">{L('Programı Kaydet','Save Programme')}</span>
       </button>

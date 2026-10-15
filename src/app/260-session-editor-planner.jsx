@@ -566,7 +566,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const printDay=()=>{if(!day.sessions.length){alert(L('Yazdırılacak seans yok','No sessions to print'));return;}printDayA4(labelOwner||setup.teamName,dayLabel,day.sessions);};
   const printWeek=()=>{printWeekA4Land(labelOwner||setup.teamName,ws,days,athletes);};
 
-  return(<div>
+  return(<PlanLoadCtx.Provider value={{days,name:labelOwner||'',date:dateKey}}><div>
     <div className="panel" style={{paddingBottom:14}}>
       <div className="wv-bar">
         <div className="row"><button className="btn sec sm" onClick={()=>goWeek(-1)}>‹ {L('Hafta','Week')}</button>
@@ -627,6 +627,6 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
       <div className="hr"/><label>{L('Günlük notlar','Daily notes')}</label>
       <textarea value={day.dailyNotes||''} onChange={e=>sv({dailyNotes:e.target.value})} placeholder={L('Wellness, uyku, kas ağrısı…','Wellness, sleep, soreness…')}/>
     </div>
-  </div>);
+  </div></PlanLoadCtx.Provider>);
 }
 

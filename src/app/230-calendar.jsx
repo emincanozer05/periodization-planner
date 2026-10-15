@@ -548,7 +548,10 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     return a;})();
   const pickMonth=k=>{const n=parseD(k);setSelected({year:n.getFullYear(),month:n.getMonth()+1,date:k});openEdit(k);};
   const monthLoad=useMemo(()=>calMode==='month'?monthFocusLoad(days,yr,mo):null,[calMode,days,yr,mo]);
-  return(<>
+  /* Whose load the training table's "Haftalık Yük Dağılımı" opens: this calendar's own days
+     (the athlete's, or the team's), around the day being written. */
+  const loadCtx=useMemo(()=>({days,name:labelOwner||'',date:editDate||selected.date}),[days,labelOwner,editDate,selected.date]);
+  return(<PlanLoadCtx.Provider value={loadCtx}>
   {/* Controls only. The screen is named once, by the masthead above it — the calendar
       used to title itself as well, so the tab opened with the word "Calendar" twice. */}
   {!inlineOpen&&<div className="cal-head">
@@ -960,6 +963,6 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
       </aside>
     </>))}
   </div>
-  </>);
+  </PlanLoadCtx.Provider>);
 }
 

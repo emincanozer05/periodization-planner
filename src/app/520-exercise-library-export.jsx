@@ -55,7 +55,7 @@ const PAIN_RULES={
 const IV_PATTERNS=['Squat','Hinge','Lunge / Unilateral','Push','Pull','Carry','Rotation','Jump / Plyo','Sprint / Locomotion','Core / Brace','Mobility'];
 const PATTERN_FROM_TYPE={'Upper Body Push':'Push','Upper Body Pull':'Pull','Hip Dominant':'Hinge','Knee Dominant':'Squat',
   'Core':'Core / Brace','Plyometric':'Jump / Plyo','Multi Directional Speed':'Sprint / Locomotion','Medicine Ball':'Rotation',
-  'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat'};
+  'Mobility':'Mobility','Warm-Up':'Mobility','Full Body':'Squat','Carry':'Carry','Olympic Lift':'Hinge'};
 const exPatternOf=e=>(e&&(e.movePattern||(e.pattern==='Unilateral'?'Lunge / Unilateral':'')||PATTERN_FROM_TYPE[e.type]))||'';
 const exContraOf=e=>(e&&Array.isArray(e.contra))?e.contra:[];
 /* The exercise's own picture — the one the coach pastes on the library entry (`image`),
@@ -76,6 +76,9 @@ function exLibraryEntries(list,opts){
   const tr=o.lang==='tr';
   const T=(a,b)=>tr?a:b;
   const lab=s=>tr?(EX_TERM_TR[s]||s):s;
+  /* A type or a direction is worded by its own category (taxonomy), in the file's language. */
+  const tl=(t,v)=>{const c=!o.ball&&mvCat(t);const h=c&&(c.types.find(x=>x[0]===v)||c.dirs.find(x=>x[0]===v));
+    return h?(tr?h[1]:h[2]):lab(v);};
   const subs=o.ball?BALL_SUB_TYPES:SUB_TYPES;
   const types=o.ball?BALL_TYPES:EX_TYPES;
   const one=v=>String(v==null?'':v).replace(/\s+/g,' ').trim();
@@ -91,11 +94,11 @@ function exLibraryEntries(list,opts){
       const fields=[];
       const put=(k,v,wide)=>{const s=one(v);if(s)fields.push({k,v:s,wide:!!wide});};
       const sub=subs[e.type];
-      if(sub)put(lab(sub.label),e.subType?lab(e.subType):'');
+      if(sub)put(lab(sub.label),e.subType?tl(e.type,e.subType):'');
       if(!o.ball){
         if(ACTIONS_FOR[e.type])put(lab('Action'),e.action?lab(e.action):'');
         if(PATTERNS_FOR[e.type])put(lab('Movement Pattern'),e.pattern?lab(e.pattern):'');
-        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),exMulti(e[d.key]).map(lab).join(', ')));
+        (EX_EXTRA_FILTERS[e.type]||[]).forEach(d=>put(lab(d.label),exMulti(e[d.key]).map(v=>tl(e.type,v)).join(', ')));
         put('movement_pattern',exPatternOf(e));
       }
       put(T('Zorluk','Difficulty'),e.difficulty?`${lab(e.difficulty)}${LEVEL_LABEL[e.difficulty]?` (${tr?({Beginner:'Başlangıç',Intermediate:'Orta',Advanced:'İleri'}[LEVEL_LABEL[e.difficulty]]):LEVEL_LABEL[e.difficulty]})`:''}`:'');

@@ -5,40 +5,10 @@
    WITH a custom autocomplete dropdown fed from the shared exercise library
    (textarea can't use a native <datalist>, so we render our own list). */
 const UNCAT='Kategorisiz';
-/* The picker's category rail is a FIXED, ordered list — the coach's own taxonomy — instead
-   of every tag found in the library, which piled Exercise Types, contraction types and
-   movement patterns into one alphabetical list ("Anti-Extension" next to "Bilateral").
-   A category claims an exercise when any of its `tags` matches the exercise's Exercise
-   Type, sub-type or pattern (case-insensitive), so one row can gather several library
-   values — Agility takes both agility skills, Change of Direction takes the stored "COD".
-   Rows are always rendered in this order, count included, so the rail never reshuffles. */
-const EX_PICK_CATS=[
-  {name:'Upper Body Push',tags:['Upper Body Push']},
-  {name:'Upper Body Pull',tags:['Upper Body Pull']},
-  {name:'Hip Dominant',tags:['Hip Dominant']},
-  {name:'Knee Dominant',tags:['Knee Dominant']},
-  {name:'Core',tags:['Core']},
-  {name:'Eccentric',tags:['Eccentric']},
-  {name:'Isometric',tags:['Isometric']},
-  {name:'Plyometric',tags:['Plyometric']},
-  {name:'Medicine Ball',tags:['Medicine Ball']},
-  // Plain "Multi Directional Speed" work (no skill picked yet) reads as sprint/speed work,
-  // so it lands here rather than falling out of the rail entirely.
-  {name:'Speed/Sprint Technique',tags:['Sprint Technique','Speed/Sprint Technique','Speed','Multi Directional Speed']},
-  {name:'Acceleration',tags:['Acceleration']},
-  {name:'Deceleration',tags:['Deceleration']},
-  {name:'Change of Direction',tags:['COD','Change of Direction']},
-  {name:'Agility',tags:['Agility','Reactive Agility','Non-Reactive Agility']},
-  {name:'Mobility',tags:['Mobility','Mobilisation']},
-  {name:'Stability',tags:['Stability']},
-  {name:'Recovery',tags:['Recovery']},
-  {name:'Corrective',tags:['Corrective']},
-];
-const exCatKey=s=>String(s||'').trim().toLowerCase();
-const exCatTags=e=>[...(e.type?[e.type]:[]),...(e.sub||[])].map(exCatKey);
-// Categories an exercise belongs to — several at once (a type AND its sub-type can both hit).
-const exCatsOf=e=>{const t=exCatTags(e);
-  return EX_PICK_CATS.filter(c=>c.tags.some(x=>t.includes(exCatKey(x)))).map(c=>c.name);};
+/* The picker lists the exercises of the row's own category only (Kategori), and filters
+   them by that category's types and directions (Tür · Yön) — the same boxes the row has.
+   A row with no category yet lists the library by category instead. */
+const EN_NO_TYPE='__none';
 function ExNameField({value,onChange,onPick,tags,onNewName}){
   const[focus,setFocus]=useState(false);
   const[hi,setHi]=useState(-1);
@@ -71,7 +41,7 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
      exercise written here is filed the way it is trained — whichever order the coach
      works in. Typing the name first and tagging it after already wrote the pair; this
      covers the other order, and a rename, which otherwise left a bare stub behind. */
-  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'');};
+  const withTags=nm=>{if(nm&&tags&&String(tags.pattern||'').trim())rememberExerciseTags(nm,tags.pattern,tags.plane||'',tags.dir||'');};
   /* A name the box has not filed before — freshly typed or renamed — is also the moment
      the row can be read for how the exercise is executed. An unchanged name is not: the
      coach may have cleared the execution on purpose, and re-entering the name field is
@@ -82,34 +52,51 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
     if(nm===prev){withTags(nm);return;}
     replaceExerciseInLibrary(prev,nm);committedRef.current=nm;withTags(nm);fresh(nm);};
   const q=(val||'').trim().toLowerCase();
-  const lib=focus?getLibItems():[];
-  // Text query narrows the pool first; the category counts on the right are computed
-  // from that pool so they always say how many rows a category would actually show.
+  const cat=tags&&MV_KEYS.includes(tags.pattern)?tags.pattern:'';
+  const[dirs,setDirs]=useState([]);   // directions ticked (empty = no filter)
+  /* A different category on the row is a different list: what was ticked for the last one
+     does not carry over. */
+  useEffect(()=>{setCats([]);setDirs([]);},[cat]);
+  const libAll=focus?getLibItems():[];
+  /* The row's category narrows the library first, so nothing of another category is offered. */
+  const lib=useMemo(()=>cat?libAll.filter(e=>mvLibCat(e)===cat).map(e=>{const t=mvLibType(e,cat);
+    return{...e,_t:t,_d:mvLibDir(e,cat,t)};}):libAll,[libAll,cat]);
+  // Text query narrows the pool first; the counts on the right are computed from that pool
+  // so they always say how many rows a filter would actually show.
   const pool=useMemo(()=>q?lib.filter(e=>e.name.toLowerCase().includes(q)):lib,[lib,q]);
-  // Every category of EX_PICK_CATS is listed, in order, with how many of the currently
-  // searched exercises it holds. Anything the list doesn't claim (an untagged name, a
-  // Full Body lift) is gathered at the end under "Kategorisiz" so it stays reachable.
+  /* The filters on the right: the category's types (and its directions), or — on a row with
+     no category — the categories themselves, with "Kategorisiz" for what none of them claims. */
   const catList=useMemo(()=>{
-    const cnt=new Map();let uncat=0;
-    for(const e of pool){
-      const hits=exCatsOf(e);
-      if(!hits.length){uncat++;continue;}
-      for(const n of hits)cnt.set(n,(cnt.get(n)||0)+1);
+    const cnt=new Map();
+    if(cat){
+      pool.forEach(e=>{const k=e._t||EN_NO_TYPE;cnt.set(k,(cnt.get(k)||0)+1);});
+      const out=mvTypes(cat).map(t=>({name:t,label:mvTerm(cat,t),n:cnt.get(t)||0}));
+      if(cnt.get(EN_NO_TYPE))out.push({name:EN_NO_TYPE,label:L('Türsüz','No type'),n:cnt.get(EN_NO_TYPE)});
+      return out;
     }
-    const out=EX_PICK_CATS.map(c=>({name:c.name,n:cnt.get(c.name)||0}));
-    if(uncat)out.push({name:UNCAT,n:uncat});
+    pool.forEach(e=>{const k=mvLibCat(e)||UNCAT;cnt.set(k,(cnt.get(k)||0)+1);});
+    const out=MV_KEYS.map(k=>({name:k,label:mvCatLabel(k),n:cnt.get(k)||0}));
+    if(cnt.get(UNCAT))out.push({name:UNCAT,label:L('Kategorisiz','Uncategorized'),n:cnt.get(UNCAT)});
     return out;
-  },[pool]);
-  // Selected categories are OR-ed — ticking two shows the exercises of both.
+  },[pool,cat]);
+  const dirList=useMemo(()=>{
+    if(!cat||!mvDirs(cat).length)return[];
+    const cnt=new Map();pool.forEach(e=>{if(e._d)cnt.set(e._d,(cnt.get(e._d)||0)+1);});
+    return mvDirs(cat).map(d=>({name:d,label:mvTerm(cat,d),n:cnt.get(d)||0}));
+  },[pool,cat]);
+  // Ticked values are OR-ed inside a list; the type and the direction lists are AND-ed.
   const matchesCats=e=>{
-    if(!cats.length)return true;
-    const hits=exCatsOf(e);
-    if(!hits.length)return cats.includes(UNCAT);
-    return hits.some(n=>cats.includes(n));
+    if(cat){
+      if(cats.length&&!cats.includes(e._t||EN_NO_TYPE))return false;
+      if(dirs.length&&!dirs.includes(e._d))return false;
+      return true;
+    }
+    return!cats.length||cats.includes(mvLibCat(e)||UNCAT);
   };
-  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats]);
+  const shown=useMemo(()=>pool.filter(matchesCats),[pool,cats,dirs,cat]);
   const sugg=shown.slice(0,300);   // cap the rendered rows; the header keeps the real total
   const toggleCat=c=>{setHi(-1);setCats(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
+  const toggleDir=c=>{setHi(-1);setDirs(a=>a.includes(c)?a.filter(x=>x!==c):[...a,c]);};
   // Picking a library row hands the whole entry back (not just the name) so the caller can
   // pull its cover image and video link onto the exercise; typing a free name never does.
   const pick=it=>{const n=it.name;if(onPick)onPick(it);else onChange(n);
@@ -141,38 +128,51 @@ function ExNameField({value,onChange,onPick,tags,onNewName}){
         else if(e.key==='Escape'){setFocus(false);setHi(-1);}
       }}/>
     {/* Rendered in a body portal so no ancestor's overflow:hidden can clip it. */}
-    {focus&&rect&&lib.length>0&&ReactDOM.createPortal(
+    {focus&&rect&&(lib.length>0||cat)&&ReactDOM.createPortal(
       <div className="en-sugg en-pick" style={box}
         onMouseEnter={()=>{insideRef.current=true;}}
         onMouseLeave={()=>{insideRef.current=false;}}
         onMouseDown={e=>e.preventDefault()}
         onMouseUp={()=>{if(taRef.current)taRef.current.focus();}}>
         <div className="en-pane en-pane-ex">
-          <div className="en-phd"><span>{L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
-            {cats.length>0&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
+          <div className="en-phd"><span>{cat
+            ?<><i className="en-catdot" style={{background:ML_PIE_COLS[cat]}}/><b>{mvCatLabel(cat)}</b> · {L(`${shown.length} egzersiz`,`${shown.length} exercises`)}</>
+            :L(`${shown.length} egzersiz gösteriliyor`,`${shown.length} exercises shown`)}</span>
+            {(cats.length>0||dirs.length>0)&&<button type="button" className="en-clear" onClick={()=>{setCats([]);setDirs([]);setHi(-1);}}>{L('filtreyi temizle','clear filter')}</button>}</div>
           <div className="en-plist">
             {sugg.map((e,i)=>
               <div key={e.name} className={"en-sopt"+(i===hi?" on":"")}
                 onMouseDown={ev=>{ev.preventDefault();pick(e);}}>
                 <span className="en-badge">{(e.name[0]||'?').toUpperCase()}</span>
                 <span className="en-nm">{e.name}</span>
-                <span className="en-tag">{exLabel(e.type)||e.sub[0]||UNCAT}</span>
+                <span className="en-tag">{cat
+                  ?[mvTerm(cat,e._t),mvTerm(cat,e._d)].filter(Boolean).join(' · ')||'—'
+                  :(mvLibCat(e)?mvCatLabel(mvLibCat(e)):L('Kategorisiz','Uncategorized'))}</span>
               </div>)}
-            {shown.length===0&&<div className="en-none">{L('Bu filtreyle eşleşen egzersiz yok','No exercises match this filter')}</div>}
+            {shown.length===0&&<div className="en-none">{cat&&!lib.length
+              ?L(`Kütüphanede ${mvCatLabel(cat)} kategorisinde egzersiz yok — adını yazarak ekleyebilirsin.`,`The library has no ${mvCatLabel(cat)} exercise yet — type a name to add one.`)
+              :L('Bu filtreyle eşleşen egzersiz yok','No exercises match this filter')}</div>}
             {shown.length>sugg.length&&<div className="en-none">{L(`+${shown.length-sugg.length} egzersiz daha — aramayı daraltın`,`+${shown.length-sugg.length} more exercises — narrow your search`)}</div>}
           </div>
         </div>
         <div className="en-pane en-pane-cat">
-          <div className="en-phd"><span>{L('Kategoriler','Categories')}</span></div>
+          <div className="en-phd"><span>{cat?L('Tür','Type'):L('Kategori','Category')}</span></div>
           <div className="en-plist">
             {catList.map(c=>
               <label key={c.name} className={"en-cat"+(cats.includes(c.name)?" on":"")+(c.n?"":" zero")}
                 onMouseDown={ev=>{ev.preventDefault();toggleCat(c.name);}}>
                 <span className="en-cbx">{cats.includes(c.name)?'✓':''}</span>
-                <span className="en-cnm">{exLabel(c.name)}</span>
+                <span className="en-cnm">{c.label}</span>
                 <span className="en-cn">{c.n}</span>
               </label>)}
-            {catList.length===0&&<div className="en-none">{L('Kategori yok','No categories')}</div>}
+            {dirList.length>0&&<div className="en-phd en-phd-sub"><span>{L('Yön','Direction')}</span></div>}
+            {dirList.map(c=>
+              <label key={c.name} className={"en-cat"+(dirs.includes(c.name)?" on":"")+(c.n?"":" zero")}
+                onMouseDown={ev=>{ev.preventDefault();toggleDir(c.name);}}>
+                <span className="en-cbx">{dirs.includes(c.name)?'✓':''}</span>
+                <span className="en-cnm">{c.label}</span>
+                <span className="en-cn">{c.n}</span>
+              </label>)}
           </div>
         </div>
       </div>,document.body)}
@@ -505,35 +505,6 @@ const CalSlotEd=React.memo(CalSlotEdRaw);
    session's own name and participant list.
    The panel folds away per block, so a session made of several blocks does not repeat
    a full athlete grid down the whole panel. */
-/* What this block trains, and what colour its session's card is — one strip, sitting
-   directly above the exercises it describes.
-
-   The patterns are not ticked any more: they are READ OFF the rows below. Writing a hinge
-   into a block makes that block say Hip, and writing a press into the next one makes that
-   one say UB Push — which is what lets two blocks of the same session say two different
-   things without the coach maintaining a second, parallel answer by hand. The card colour
-   stays the session's: one session is one card on the calendar, whichever block it is
-   picked from. */
-function TrainStrip({block,session,u,isTemplate}){
-  const pats=block?blockPatterns(block):sessionPatterns(session);
-  /* A drill is drawn, not tagged: a ball block has no pattern field on its rows, and with
-     the card colour gone up into the block's header there is nothing left to show. */
-  if(block&&blkKind(block)==='ball')return null;
-  return(<div className="sess-strip blk-strip">
-    <div className="sess-strip-l">
-      <label>{L('Hareketler ve örüntüler','Movements & patterns')}</label>
-      {pats.length===0
-        ?<div className="sess-pat-empty">{L(<>Henüz egzersiz yok — bir egzersiz ekleyip <b>örüntü</b> alanını doldur, burası kendiliğinden dolar.</>,<>No exercise yet — add one and set its <b>pattern</b>; this fills itself in.</>)}</div>
-        :<div className="sess-pat-row">
-          {pats.map(p=><span key={p.pattern} className="sess-pat" style={{'--pat-c':ML_PIE_COLS[p.pattern]||'var(--accent)'}}
-            title={L(`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — bu bloğun egzersizlerinden okundu`,`${p.pattern}${p.planes.length?' · '+p.planes.join(', '):''} — read from this block's exercises`)}>
-            <b>{EX_PAT_SHORT[p.pattern]||p.pattern}</b>
-            {p.planes.length>0&&<i>{p.planes.join(' · ')}</i>}
-          </span>)}
-        </div>}
-    </div>
-  </div>);
-}
 /* ---- Card colour, in the block's own header ----------------------------
    It stands where the assignment button used to (ticking names in the picker below IS
    the assignment, so the button had nothing left to do). Picking a swatch tints the
@@ -666,8 +637,6 @@ function SessionDetails({session,u,athletes,showPicker,isTemplate,coach,block,bl
           </div>
         </section>
       </div>
-      {/* Last in the panel, so it sits directly on top of the exercises it is read from. */}
-      <TrainStrip block={block} session={session} u={u} isTemplate={isTemplate}/>
     </div>}
   </div>);
 }
