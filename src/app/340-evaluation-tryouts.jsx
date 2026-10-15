@@ -573,14 +573,14 @@ function EvaluationView({team,updateTeam,data,setData}){
     // Measurement (height/weight/wingspan/body fat/leg length + its date) into ath.measurements.
     const tt=nextTests.find(t=>t.id===id);
     if(tt){
-      const ANTHRO=['height','weight','wingspan','bodyFat','legLength'];
+      const ANTHRO=['height','weight','wingspan','bodyFat','legLength','sittingHeight'];
       const has=k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k]));
       const hasAnthro=ANTHRO.some(has);
       const ms=a.measurements||[];
       const exIdx=ms.findIndex(m=>m.srcTest===id);
       if(hasAnthro&&tt.date){
         const rec={id:exIdx>=0?ms[exIdx].id:uid(),srcTest:id,date:tt.date,
-          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',sittingHeight:tt.sittingHeight||'',
           notes:exIdx>=0?(ms[exIdx].notes||''):''};
         patch.measurements=exIdx>=0?ms.map((m,i)=>i===exIdx?{...m,...rec}:m):[...ms,rec];
       }else if(exIdx>=0){

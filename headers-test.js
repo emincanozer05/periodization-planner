@@ -64,7 +64,7 @@ const hostOk = (url, list) => {
   });
 };
 
-const PAGES = ['index.html', 'travel.html', 'checkin.html', 'alerts.html', 'wellness.html', 'rpe.html'];
+const PAGES = ['index.html', 'travel.html', 'checkin.html', 'alerts.html', 'wellness.html', 'rpe.html', 'lift.html'];
 test('sayfaların dış script adresleri script-src içinde', () => {
   const bad = [];
   for (const f of PAGES)

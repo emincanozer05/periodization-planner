@@ -641,6 +641,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
             </div>
           </div>
         </div>
+        <FvSprintInput test={test} onUpdate={onUpdate} ath={(athletes||[]).find(a=>a.id===athId)}/>
         <MkObs value={obsVal} onChange={setObs} placeholder={L('Sprint mekaniği, reaksiyon süresi notları…','Sprint mechanics, reaction time notes…')}/>
       </div>
     </div>);
@@ -669,6 +670,7 @@ function TestCard({id,index,test,onUpdate,custom,athletes,athId}){
       <div className="tcard-col">
         <div className="mk-input mk-solo"><input type="number" step={step} inputMode="decimal" value={test[id]||''} onChange={e=>u(id,e.target.value)}/><span className="mk-unit">{MK_SOLO_UNIT[id]}</span></div>
         <MkTeamAvg id={id} value={test[id]} athletes={athletes} athId={athId}/>
+        {id==='squatJump'&&<FvVerticalInput test={test} onUpdate={onUpdate} ath={(athletes||[]).find(a=>a.id===athId)}/>}
         <MkObs value={obsVal} onChange={setObs}/>
       </div>
     </div>);

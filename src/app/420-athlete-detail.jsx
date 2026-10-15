@@ -171,6 +171,7 @@ function injMissed(inj,setup){
 }
 function AthInjuries({ath,updAth,setup}){
   const[open,setOpen]=useState(null);
+  const oneAth=useMemo(()=>[ath],[ath]);
   const list=ath.injuries||[];
   const order=list.map((inj,idx)=>({inj,idx})).sort((a,b)=>(b.inj.date||'').localeCompare(a.inj.date||''));
   const nActive=list.filter(i=>!i.actualReturn).length;
@@ -183,6 +184,7 @@ function AthInjuries({ath,updAth,setup}){
       <button className="btn sm" onClick={add}>+ {L('Sakatlık Ekle','Add Injury')}</button>
     </div>
     {list.length===0&&<div className="empty-st">{L('Kayıtlı sakatlık yok','No injuries recorded')}</div>}
+    <InjurySurveillance athletes={oneAth} setup={setup} compact title={L('Bu sporcunun sürveyansı','Athlete surveillance')}/>
     <div className="inj-list">{order.map(({inj,idx})=>{
       const ui=(k,v)=>{const a=[...ath.injuries];a[idx]={...a[idx],[k]:v};updAth(ath.id,{injuries:a});};
       const miss=injMissed(inj,setup);
@@ -275,6 +277,7 @@ function AthBody({ath,updAth,setup}){
     </div>);
   };
   return(<div>
+    <PhvCard ath={ath}/>
     <div className="ath-stat-row body-stats" style={{gridTemplateColumns:`repeat(${dws!=null?6:5},minmax(0,1fr))`}}>
       <div className="ath-stat"><div className="k">{L('Güncel Kilo','Current Wt')}</div><div className="v">{w!=null?w:'—'}<span className="u">kg</span></div></div>
       <div className="ath-stat"><div className="k">{L('Değişim','Change')}</div><div className="v">{fmtD(dw,'')||'—'}<span className="u">kg</span></div>{dw!=null&&<div className={`d ${dw>0?'pos':'neg'}`}>{dw>0?L('arttı','gain'):L('azaldı','loss')}</div>}</div>
@@ -290,7 +293,7 @@ function AthBody({ath,updAth,setup}){
           <button className="btn sec sm" disabled={ms.length===0} onClick={()=>printBodyComp(ath,setup)} title={L('Vücut Kompozisyonu raporu (A4 çıktı)','Body Composition report (A4 print)')}>⎙ {L('Çıktı al','Print')}</button>
           {/* A new row is an empty row waiting to be typed into, so open the table with it
               — otherwise the button looks like it did nothing. */}
-          <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',wingspan:'',legLength:'',trunkLength:'',notes:''};updAth(ath.id,{measurements:[...ms,m]});setTableOpen(true);}}>+ {L('Ölçüm Ekle','Add Measurement')}</button>
+          <button className="btn sm" onClick={()=>{const m={id:uid(),date:fmt(today),height:'',weight:'',bodyFat:'',wingspan:'',legLength:'',trunkLength:'',sittingHeight:'',notes:''};updAth(ath.id,{measurements:[...ms,m]});setTableOpen(true);}}>+ {L('Ölçüm Ekle','Add Measurement')}</button>
         </div>
       </div>
       {ms.length>0&&<div>
@@ -301,7 +304,7 @@ function AthBody({ath,updAth,setup}){
           <button className="btn sec sm" onClick={()=>setTableOpen(o=>!o)}>{tableOpen?L('▲ Gizle','▲ Hide'):L('▼ Göster','▼ Show')}</button>
         </div>
         {tableOpen&&(()=>{const rev=ms.map((m,i)=>({m,i})).sort((a,b)=>(b.m.date||'').localeCompare(a.m.date||''));const vis=rev.slice(0,mLimit);const hasMore=rev.length>mLimit;
-          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Bacak (cm)','Leg (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
+          return<div style={{overflowX:'auto'}}><table><thead><tr><th>{L('Tarih','Date')}</th><th>{L('Boy (cm)','Height (cm)')}</th><th>{L('Kilo (kg)','Weight (kg)')}</th><th>{L('Yağ (%)','Body Fat (%)')}</th><th>{L('Kulaç (cm)','Wingspan (cm)')}</th><th>{L('Bacak (cm)','Leg (cm)')}</th><th>{L('Gövde (cm)','Trunk (cm)')}</th><th>{L('Oturma Boyu (cm)','Sitting Ht (cm)')}</th><th>{L('Notlar','Notes')}</th><th style={{width:50}}></th></tr></thead><tbody>
             {vis.map(({m,i:realIdx},idx)=>{
               const um=(k,v)=>{const a=[...ath.measurements];a[realIdx]={...a[realIdx],[k]:v};updAth(ath.id,{measurements:a});};
               // Rows mirrored from an Anthropometric Measurement test are read-only here —
@@ -310,7 +313,7 @@ function AthBody({ath,updAth,setup}){
               const num=(k,ph,wd)=><td><input type="number" step="0.1" value={m[k]??''} onChange={e=>um(k,e.target.value)} placeholder={ph} style={{width:wd}} disabled={synced}/></td>;
               return<tr key={m.id||idx} style={synced?{opacity:.92}:undefined}>
                 <td><input type="date" value={m.date} onChange={e=>um('date',e.target.value)} style={{width:130}} disabled={synced}/><div className="help">{fd(m.date)}</div></td>
-                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('legLength','cm',76)}{num('trunkLength','cm',76)}
+                {num('height','cm',76)}{num('weight','kg',76)}{num('bodyFat','%',66)}{num('wingspan','cm',76)}{num('legLength','cm',76)}{num('trunkLength','cm',76)}{num('sittingHeight','cm',76)}
                 <td><input value={m.notes||''} onChange={e=>um('notes',e.target.value)} placeholder={L('Notlar…','Notes…')}/></td>
                 <td>{synced?<span className="help" title={L('Test sekmesinden yönetiliyor','Managed by the Testing tab')} style={{fontSize:16}}>🔗</span>:<button className="btn xs danger" onClick={()=>updAth(ath.id,{measurements:ath.measurements.filter((_,j)=>j!==realIdx)})}>✕</button>}</td>
               </tr>;})}

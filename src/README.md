@@ -79,6 +79,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/310-drive-embed-body-model.jsx` | GOOGLE DRIVE EMBED HELPERS · 2D BODY CIRCUMFERENCE MODEL |
 | `app/320-testing-session.jsx` | TESTING SESSION — every test renders its own purpose-built, |
 | `app/330-test-progression-compare.jsx` | TEST PROGRESSION CHARTS · COMPARE ATHLETES — the printout. Landscape A4, and the same table the screen |
+| `app/335-fv-profile.jsx` | KUVVET-HIZ (F-V) PROFİLİ — Samozino dikey (yüklü SJ + hpo) ve sprint (ara zamanlar); Squat Jump / Sprint kartı içi girdi, Atletik Profil özeti |
 | `app/340-evaluation-tryouts.jsx` | TESTING & ASSESSMENT — dedicated section · TRYOUTS (Seçmeler) — the pool of players who are not on the |
 | `app/350-athlete-detail-snapshot.jsx` | ATHLETE DETAIL (Profile · Calendar · Week · Reports · Tests) · ATHLETE SNAPSHOT — compact text summary of an athlete's body |
 | `app/360-program-design-assistant.jsx` | PROGRAM DESIGN ASSISTANT — analyses the athlete's profile |
@@ -88,6 +89,8 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/400-profile-tab.jsx` | — |
 | `app/410-atp-profile-ui.jsx` | — |
 | `app/420-athlete-detail.jsx` | Sporcu detayı: başlık, altı sekme, Sakatlıklar, Antropometri |
+| `app/421-athlete-phv.jsx` | PHV — Mirwald 2002 maturity offset (Antropometri sekmesindeki kart) |
+| `app/422-injury-surveillance.jsx` | SAKATLIK SÜRVEYANSI — maruziyet, insidans/1000 sa, burden, şiddet, nüks; Yük Takibi altında ve sporcunun Sakatlıklar sekmesinde |
 | `app/425-athlete-wellness-hrv.jsx` | WELLNESS TAB — wellness kaydı, uyku, HRV izleme (CoachOS_HRV_Monitoring v1.0: ln RMSSD, 7/28 günlük pencereler, 3 seviyeli uyarı) |
 | `app/426-athlete-info-report.jsx` | BİLGİLERİ AL — sporcunun A4 dikey bilgi formu (Sporcu Profili, Baş Antrenör Gözlemleri, Atletik Profil, Sakatlıklar) |
 | `app/430-staff-roster-backup.jsx` | STAFF — the other half of the roster · ATHLETES ROSTER · ROSTER NAME MATCHING · BACKUP |
@@ -101,6 +104,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/500-exercises-view.jsx` | — |
 | `app/510-researches.jsx` | RESEARCHES — article-summary blog (auto APA via CrossRef) · Daily research feed — pulls fresh training-science RCTs from |
 | `app/520-exercise-library-export.jsx` | PROGRAM INDIVIDUALIZATION — one source session, one editable sheet per athlete. |
+| `app/525-program-history.jsx` | PROGRAM GEÇMİŞİ — Bireyselleştirme → Program geçmişi: arama, kopyala (taslak), şablon |
 | `app/530-athlete-context-readiness.jsx` | — |
 | `app/540-indiv-plan-descriptions.jsx` | — |
 | `app/550-coach-assistant.jsx` | — |
@@ -115,6 +119,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/650-language-selector-nav-icons.jsx` | — |
 | `app/660-ai-coach.jsx` | AI COACH ASSISTANT — talks to the Claude Messages API directly |
 | `app/670-checkin-wellness-alerts-client.jsx` | CHECK-IN FORMLARI — uygulamanın kendi anketleri (Tally'siz yol) · WELLNESS UYARILARI — istemci tarafı |
+| `app/675-lift-log.jsx` | ANTRENMAN GÜNLÜĞÜ — lift.html planı yayını, gelen günlüğün işlenmesi, 1RM / e1RM / PR, sporcu kartı, Check-in bölümü |
 | `app/680-wellness-alerts-coach.jsx` | WELLNESS ALERTS — the coach's side |
 | `app/690-app.jsx` | — |
 | `app/700-boot.jsx` | — |

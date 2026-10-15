@@ -187,11 +187,11 @@ function migrateTeam(t){
     // measurement row linked via srcTest, so past tests populate Body Comp too.
     let measurements=(a.measurements||[]).slice();
     tests.forEach(tt=>{
-      const hasAnthro=['height','weight','wingspan','bodyFat','legLength'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
+      const hasAnthro=['height','weight','wingspan','bodyFat','legLength','sittingHeight'].some(k=>tt[k]!==''&&tt[k]!=null&&!isNaN(Number(tt[k])));
       const exIdx=measurements.findIndex(m=>m.srcTest===tt.id);
       if(hasAnthro&&tt.date){
         const rec={id:exIdx>=0?measurements[exIdx].id:uid(),srcTest:tt.id,date:tt.date,
-          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',
+          height:tt.height||'',weight:tt.weight||'',bodyFat:tt.bodyFat||'',wingspan:tt.wingspan||'',legLength:tt.legLength||'',sittingHeight:tt.sittingHeight||'',
           notes:exIdx>=0?(measurements[exIdx].notes||''):''};
         if(exIdx>=0)measurements[exIdx]={...measurements[exIdx],...rec};else measurements.push(rec);
       }else if(exIdx>=0){measurements.splice(exIdx,1);}

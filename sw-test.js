@@ -154,7 +154,7 @@ test('Firestore, Auth, Cloud Function ve check-in istekleri DOKUNULMADAN ağa gi
     'https://identitytoolkit.googleapis.com/v1/accounts:lookup',
     'https://us-central1-periodization-planner.cloudfunctions.net/x',
     'https://securetoken.googleapis.com/v1/token',
-    APP + 'checkin.html', APP + 'wellness.html', APP + 'rpe.html', APP + 'api/crest',
+    APP + 'checkin.html', APP + 'wellness.html', APP + 'rpe.html', APP + 'lift.html', APP + 'api/crest',
   ]) {
     assert.strictEqual(await w.fetchEvent(get(u)), null, u);
   }

@@ -152,3 +152,37 @@ Uygulama açıkken gelenler saniyeler içinde düşer.
   en çok 40 ağrı bölgesi) — açık bir uçtan gelen çöp veri grafiklere sızmasın diye.
 - Gönderim, koçun tarayıcısında işlenir. Tamamen sunucu tarafında işlensin istenirse
   Cloud Functions gerekir; o da Firebase'in **Blaze** planını gerektirir.
+
+---
+
+## Antrenman günlüğü (kg / tekrar) — `lift.html`
+
+İki form dışında üçüncü bir sporcu sayfası: sporcu, takvimindeki o günkü programa **set set kg ve
+tekrar** girer. Koç tarafı **Check-in Formları → Antrenman Günlüğü** bölümünde.
+
+```
+https://<siten>/lift.html#k=<token>        (token check-in linkleriyle AYNI)
+```
+
+Akış:
+
+1. Koçun uygulaması sporcunun o günkü programını (egzersiz adı + hedef set/tekrar/yük, %1RM ise
+   1RM tablosundan kg'a çevrilmiş) `lift_plans/<token>_<sporcu>_<tarih>` dokümanına yayımlar.
+   Pencere: dün … +6 gün. **Takvim değişince otomatik yayımla** açıksa değişenler 4 sn sonra
+   kendiliğinden yazılır; değişmeyen doküman yeniden yazılmaz.
+2. Sporcu linki açar, adını seçer, setleri girer, **Gönder**.
+3. Gönderim `lift_logs` koleksiyonuna düşer; uygulama açıkken dinlenir ve sporcunun
+   Atletik Profil sekmesindeki **Kuvvet Günlüğü ve 1RM** kartına işlenir. Aynı gün ve plan için
+   tekrar gönderim eskisinin üzerine yazar. Doküman 14 gün sonra silinir.
+
+**Kurallar (bir kerelik):** `firestore.rules` iki yeni koleksiyon içeriyor (`lift_plans`,
+`lift_logs`). Kurallar `main`'e girişte otomatik yayımlanır (`functions.yml`, servis hesabı
+tanımlıysa); değilse dosyanın tamamını Firebase Console → Firestore → Rules'a yapıştırıp
+**Publish** et. Yayımlanmadan sporcu gönderimi "izin yok" ile döner, plan okunamaz.
+
+Güven modeli check-in'lerle aynı: anonim oturum + takım token'ı. Plan dokümanını yalnızca adını
+(token'ı içeren) bilen okuyabilir, listelenemez; günlüğü yalnızca geçerli token'la yazılır,
+değiştirilemez; okuma ve silme yalnızca koçun.
+
+**Veri sınırları:** gönderim en çok 40 egzersiz × 20 set; aralık dışı sayılar (kg > 1000,
+tekrar > 1000) koç tarafında reddedilir.

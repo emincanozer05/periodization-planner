@@ -771,6 +771,76 @@ with them, and the model is asked to cite the rules that decided
 the session by number in its rationale.
 
 
+TRAINING LOG, F-V PROFILE, INJURY SURVEILLANCE, MATURATION, PROGRAMME HISTORY
+-----------------------------------------------------------------------------
+Five additions that close the loop between what is planned and what
+the athlete actually does. None of them changes a number you have
+already written; all of them read, none prescribe.
+
+1. Training log (kg / reps) - lift.html
+   - Check-in Forms -> "Training Log": copy the log link and send it
+     to the athletes (same team key as the check-in links).
+   - The coach app publishes each athlete's programme for the day
+     (yesterday ... +6 days) from THEIR calendar - individualization
+     included. "Auto-publish" keeps it current as the calendar moves.
+   - The athlete opens the link, picks their name and types kg and reps
+     (and optionally RPE) set by set. "Done as planned" fills a row
+     from the plan. The last time's numbers are shown as a hint.
+   - The log lands on the athlete's page (Athletic Profile -> Strength
+     Log & 1RM): volume load (kg x reps) per week, plan vs actual per
+     exercise (sets, reps, load), adherence, new e1RM records (Epley).
+   - 1RM table: a load written as "70% 1RM" is shown to the athlete in
+     kg (rounded to 2.5) when that exercise has a 1RM; without one the
+     percentage is shown as written - no kg is invented. The table can
+     be filled from the log (best set of <=6 reps).
+   - A resend for the same day replaces the earlier one. Numbers out
+     of range (kg > 1000, reps > 1000) are rejected, not clamped.
+   - Rules: firestore.rules -> lift_plans, lift_logs (see
+     CHECKIN_SETUP.md).
+
+2. Force-velocity profile (Samozino)
+   - Squat Jump test: add jumps with extra load (kg + height) and the
+     push-off distance hpo. The box above is the 0 kg point. Needs
+     two different loads; a narrow load range (<20 kg) is flagged.
+   - Sprint test: add 5 / 10 / 30 m split times (the 20 m time is the
+     existing box). Fits v(t) = Vmax(1 - e^(-t/tau)); F0 = m Vmax/tau.
+     Net horizontal force, air drag not included.
+   - Result: F0, V0, Pmax, slope, and - for the vertical profile - how
+     far the slope is from the optimum for that athlete's Pmax and
+     hpo: force-dominant (velocity is lacking) or velocity-dominant
+     (force is lacking). Shown on Athletic Profile. An estimate that
+     depends on measurement quality, said so on screen.
+
+3. Injury surveillance (Load Monitoring, and each athlete's Injuries)
+   - Time-loss injuries only (a sidelined date is filled). Exposure is
+     read from the calendar session durations (tests and days the
+     athlete was sidelined excluded), training and match apart.
+   - Incidence per 1000 h, burden (days lost per 1000 h), severity
+     classes (0-1, 2-3, 4-7, 8-28, >28 days), location, tissue,
+     context, recurrence (same location within 12 months of return),
+     and the 4 weeks of load before each injury beside it.
+   - Descriptive only: nothing here predicts injury risk. A small
+     sample says so. CSV export.
+
+4. Biological maturation (PHV) - Anthropometry tab
+   - Mirwald 2002 maturity offset from height, sitting height, mass,
+     age and sex: pre-PHV (< -1), circa-PHV (-1 to +1), post-PHV
+     (> +1), estimated age at PHV, growth velocity (cm/year).
+   - Sitting height is a column of the measurement table (and mirrors
+     from the Anthropometric test). Defined for ages 8-18 only. An
+     estimate: about +/-1 year, said so on screen.
+
+5. Programme history (Individualization -> Programme history)
+   - Every programme written in Individualization, searchable
+     (exercise, pattern, athlete, note, date; Turkish letters
+     optional), filterable by athlete, status and dates.
+   - Copy a programme to other athletes / another day: it is written
+     as a DRAFT and reaches a calendar only after "Approve and write
+     to calendar". An athlete who already has a programme that day
+     is not overwritten.
+   - "Save as template" keeps a copy that survives the history.
+
+
 WHAT CHANGED IN THIS VERSION
 ----------------------------
 1. sRPE fixed
