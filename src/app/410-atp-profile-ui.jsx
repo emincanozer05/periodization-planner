@@ -557,6 +557,8 @@ function TrainingProfileTab({ath,updAth,exercises}){
   };
   return(<div className="atp-wrap">
     <AtpTestStrip ath={ath}/>
+    <FvSummaryCard ath={ath}/>
+    <LiftCard ath={ath} updAth={updAth}/>
     <AtpJoints joints={tp.joints} onSet={setJ} onNote={(key,v)=>setJ(key,'note',v)}/>
     <AtpProfile q={tp.qualities} onSet={setQ} onClear={clearQ}/>
     <AtpConstraints con={tp.constraints} onChange={c=>save({constraints:c})}/>

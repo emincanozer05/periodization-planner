@@ -18,7 +18,7 @@ const fs = require('fs');
 const babel = require('@babel/standalone');
 
 // Gömülü script taşıyan sayfalar. Dış dosyaya (src=…) bakan etiketler atlanıyor.
-const PAGES = ['index.html', 'checkin.html', 'alerts.html', 'wellness.html', 'rpe.html'];
+const PAGES = ['index.html', 'checkin.html', 'alerts.html', 'wellness.html', 'rpe.html', 'lift.html'];
 // Tarayıcıya klasik script olarak inen bağımsız dosyalar.
 // (tally-worker.js bilerek dışarıda: o bir ES modülü ve Cloudflare Worker'da çalışıyor.)
 const SCRIPTS = ['push-config.js', 'firebase-messaging-sw.js', 'pain-body.js'];

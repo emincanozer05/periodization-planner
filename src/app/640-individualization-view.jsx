@@ -7,6 +7,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
   const[sel,setSel]=useState(null);           // null = auto (assigned / all)
   const[open,setOpen]=useState({});
   const[toast,setToast]=useState('');
+  const[ivMode,setIvMode]=useState('sheet');   // 'sheet' = günün sayfası, 'hist' = program geçmişi
   // Edits made from the calendar on a card go straight onto that athlete.
   const saveAthDays=(athId,days)=>updateTeam(team.id,{athletes:athletes.map(a=>a.id===athId?{...a,days}:a)});
 
@@ -360,6 +361,12 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       sub={L('Her sporcuya tek bir kaynak seans, kendi takvimine yazılır.','One source session per athlete, written onto their own calendar.')}
       stats={[{v:athletes.length,l:L('Sporcu','Athletes')},
               {v:fd(date),l:L('Tarih','Date')}]}/>
+    <div className="row" style={{gap:6,marginBottom:12}}>
+      <button className={'btn sm'+(ivMode==='sheet'?'':' sec')} onClick={()=>setIvMode('sheet')}>{L('Günün sayfası','Day sheet')}</button>
+      <button className={'btn sm'+(ivMode==='hist'?'':' sec')} onClick={()=>setIvMode('hist')}>{L('Program geçmişi','Programme history')}</button>
+    </div>
+    {ivMode==='hist'&&<ProgramHistory team={team} updateTeam={updateTeam}/>}
+    {ivMode==='sheet'&&<>
     <div className="panel iv-bar">
       {/* Moving to another day drops the source pick with it: the program belongs to the
           day, and a template chosen for Monday must not still be sitting in the box —
@@ -428,6 +435,7 @@ function IndividualizationView({data,team,updateTeam,weeks}){
       ?L('Bu seans yalnızca kadroda olmayan sporculara atanmış — seansın katılımcı listesini takvimden güncelle.',
          'This session is assigned only to athletes who have left the roster — update its participant list on the session itself.')
       :'No athlete selected — pick one above.'}</div>}
+    </>}
   </div>);
 }
 

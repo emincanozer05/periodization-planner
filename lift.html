@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Antrenman Günlüğü — kg / Tekrar</title>
+<meta property="og:site_name" content="CoachOS"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="Antrenman Günlüğü — kg / Tekrar"/>
+<meta property="og:description" content="Bugünkü programına set set kg ve tekrar gir. Koçun planla gerçekleşeni karşılaştırır."/>
+<meta name="description" content="Bugünkü programına set set kg ve tekrar gir."/>
+<link rel="icon" href="logo-mark.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Sporcunun antrenman sırasında doldurduğu kg / tekrar günlüğü. Koçun uygulamasından
+  KOPYALANAN linkle açılır (check-in formlarıyla AYNI takım token'ı):
+
+      lift.html#k=<token>
+
+  Akış:
+    1) Koçun uygulaması sporcunun o günkü programını `lift_plans/<token>_<sporcu>_<tarih>`
+       dokümanına yayımlar (yalnızca egzersiz adı + hedef set/tekrar/yük; token'ı bilmeyen
+       okuyamaz, liste çıkarılamaz).
+    2) Sporcu adını seçer, her egzersizin altına set set kg ve tekrar girer, Gönder'e basar.
+    3) Gönderim `lift_logs` koleksiyonuna tek doküman olarak yazılır; koçun uygulaması açıkken
+       bunu dinler ve sporcunun `liftLog` kaydına işler.
+
+  Token adresin # kısmında durur: tarayıcı orayı sunucuya göndermez, link loglara düşmez.
+  Kurallar için firestore.rules → lift_plans / lift_logs.
+-->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#101010;--bg2:#101216;--panel:#14171c;--elevated:#181c22;--hover:#1d2128;
+  --border:#23272e;--border2:#2e333c;
+  --text:#f3f4f6;--text2:#b5bac4;--muted:#8b9099;--dim:#5c626c;
+  --accent:#0094ff;--accent2:#5cb8ff;--accent-bg:rgba(0,148,255,.10);
+  --grad:linear-gradient(135deg,#0094ff,#0080dc);
+  --low-t:#46d6a0;--med-t:#fcd34d;--high-t:#ff6b5b;
+  --shadow:0 4px 18px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{font-family:'Space Grotesk','Inter','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+h1,h2{font-weight:700;letter-spacing:-.01em}
+.wrap{max-width:620px;margin:0 auto;padding:26px 16px 130px}
+.langbar{max-width:620px;margin:0 auto;position:relative;height:0;z-index:5}
+.seg{position:absolute;right:16px;top:20px;display:inline-flex;background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:var(--muted);font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:999px;padding:4px 10px}
+.seg button.on{background:var(--accent);color:#fff}
+@media (max-width:420px){.wrap{padding-top:52px}.seg{top:14px}}
+header{padding:2px 0 20px}
+.brand{display:block;height:22px;width:auto;margin:0 auto 7px;opacity:.92}
+.tagline{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.16em;color:var(--dim);text-align:center;margin:0 0 18px}
+.team{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:500;
+  display:flex;align-items:center;gap:11px;background:#000;border:1px solid var(--border);border-radius:12px;padding:8px 15px 8px 8px}
+.team.nologo{padding:7px 14px}
+.team span{min-width:0;overflow-wrap:anywhere}
+.team-logo{height:50px;width:50px;flex:none;object-fit:contain;border-radius:8px}
+h1{margin:13px 0 0;font-size:27px;line-height:1.15}
+.sub{margin-top:8px;color:var(--muted);font-size:13px;max-width:46ch}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card.filled{border-color:rgba(0,148,255,.55)}
+.q{font-size:14px;font-weight:600;margin:0 0 6px;position:relative;padding-left:12px}
+.q::before{content:'';position:absolute;left:0;top:2px;width:3px;height:14px;background:var(--accent);border-radius:2px}
+.hint{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--dim);margin-top:8px;letter-spacing:.02em;line-height:1.6}
+input[type=date],input[type=number],input[type=text],select,textarea{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg2);color:var(--text);font-size:16px;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+input::placeholder{color:var(--dim)}
+textarea{min-height:70px;resize:vertical}
+.ex-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ex-n{font-size:16px;font-weight:700}
+.ex-b{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.ex-t{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--accent2);margin:4px 0 2px}
+.ex-pv{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;color:var(--muted);margin-bottom:6px}
+.ex-note{font-size:12px;color:var(--muted);margin-bottom:6px}
+.sets{display:grid;grid-template-columns:28px 1fr 1fr 64px 34px;gap:6px;align-items:center;margin-top:8px}
+.sets .hd{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);text-align:center}
+.sets .no{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--muted);text-align:center}
+.sets input{text-align:center;padding:10px 4px}
+.sets .x{border:1px solid var(--border);background:var(--bg2);color:var(--muted);border-radius:8px;height:40px;cursor:pointer}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:1px solid var(--border2);background:var(--bg2);color:var(--text2);border-radius:8px;padding:9px 12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.pri{background:var(--grad);border-color:transparent;color:#0a0b0d}
+.msg{border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px;border:1px solid var(--border2);background:var(--elevated);color:var(--text2)}
+.msg.bad{border-color:rgba(255,107,91,.5);color:#ffb4aa}
+.msg.warn{border-color:rgba(252,211,77,.4);color:#f7dd8c}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 70%,rgba(16,16,16,0));z-index:10}
+.bar-in{max-width:620px;margin:0 auto}
+.send{width:100%;border:0;border-radius:12px;padding:15px;font-family:inherit;font-size:16px;font-weight:700;background:var(--grad);color:#0a0b0d;cursor:pointer}
+.send:disabled{opacity:.6}
+.done{text-align:center;padding:40px 10px}
+.tick{width:64px;height:64px;border-radius:50%;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--accent-bg);color:var(--accent2);border:1px solid rgba(0,148,255,.4)}
+.linkish{margin-top:18px;background:none;border:0;color:var(--accent2);font-family:inherit;font-size:14px;cursor:pointer;text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="langbar"><div class="seg" id="lang"></div></div>
+<div class="wrap" id="root"><div id="boot" style="color:var(--muted);text-align:center;padding:60px 0"></div></div>
+<noscript><div style="padding:30px;text-align:center;color:#8b9099">Bu tarayıcıda JavaScript kapalı — formu açmak için açman gerekiyor.</div></noscript>
+<script>
+/* ── Dil ─────────────────────────────────────────────────────────────────── */
+var I18N={
+  tr:{
+    loading:'Yükleniyor…',title:'Antrenman Günlüğü',sub:'Programındaki her egzersize set set kg ve tekrar gir. Koçun planla gerçekleşeni karşılaştırır.',
+    date:'Tarih',athlete:'Sen kimsin?',pick:'— adını seç —',plan:'Bugünün programı',noplan:'Bu tarih için yayımlanmış program yok.',
+    noplan_h:'İstersen aşağıdan kendi egzersizini ekleyip kaydedebilirsin.',addex:'+ Egzersiz ekle',exname:'Egzersiz adı',
+    set:'Set',kg:'kg',reps:'Tekrar',rpe:'RPE',addset:'+ Set',same:'Plandaki gibi yaptım',copy1:'İlk seti kopyala',
+    target:'Hedef',prev:'Geçen sefer',note:'Not (isteğe bağlı)',note_ph:'Nasıl geçti? Ağrı, hissiyat…',
+    send:'Gönder',sending:'Gönderiliyor…',v_athlete:'Önce adını seç.',v_sets:'En az bir sete tekrar sayısı gir.',
+    done_h:'Kaydedildi',done_p:'Günlüğün koçuna ulaştı. Eline sağlık!',queued_h:'Gönderim yolda',queued_p:'Bağlantı zayıf; günlüğün cihazda sırada, bağlantı gelince kendiliğinden gidecek.',
+    again:'Yeni bir kayıt gir',roster_empty:'Bu linkin arkasında kadro yok. Koçuna haber ver.',
+    f_nolink:'Link eksik',f_nolink_d:'Bu adres koçunun gönderdiği linkle açılmalı.',f_gone:'Link geçerli değil',f_gone_d:'Bu link iptal edilmiş ya da hiç yayımlanmamış. Koçundan güncel linki iste.',
+    f_load:'Form açılamadı',e_denied:'Gönderim reddedildi. Sayfayı yenileyip tekrar dene; sürerse koçuna haber ver.',e_send:'Gönderilemedi: {m}',
+    left:'dolu set',free:'Serbest',block:'Blok'
+  },
+  en:{
+    loading:'Loading…',title:'Training Log',sub:'Enter kg and reps set by set for each exercise in your programme. Your coach compares plan with what you did.',
+    date:'Date',athlete:'Who are you?',pick:'— choose your name —',plan:"Today's programme",noplan:'No programme has been published for this date.',
+    noplan_h:'You can still add your own exercises below and save them.',addex:'+ Add exercise',exname:'Exercise name',
+    set:'Set',kg:'kg',reps:'Reps',rpe:'RPE',addset:'+ Set',same:'Done as planned',copy1:'Copy first set',
+    target:'Target',prev:'Last time',note:'Note (optional)',note_ph:'How did it go? Pain, feel…',
+    send:'Send',sending:'Sending…',v_athlete:'Choose your name first.',v_sets:'Enter reps for at least one set.',
+    done_h:'Saved',done_p:'Your log reached your coach. Nice work!',queued_h:'On its way',queued_p:'The connection is weak; your log is queued on this device and will send itself when it is back.',
+    again:'Enter another log',roster_empty:'There is no roster behind this link. Tell your coach.',
+    f_nolink:'Link is incomplete',f_nolink_d:'This address has to be opened from the link your coach sent.',f_gone:'This link is not valid',f_gone_d:'It was revoked or never published. Ask your coach for the current link.',
+    f_load:'The form could not be opened',e_denied:'The submission was refused. Reload and try again; tell your coach if it persists.',e_send:'Could not send: {m}',
+    left:'sets filled',free:'Free',block:'Block'
+  }
+};
+var LS_LANG='coachos.checkin.lang';
+var LANG=(function(){try{var v=localStorage.getItem(LS_LANG);if(v==='tr'||v==='en')return v;}catch(e){}
+  return (navigator.language||'tr').slice(0,2)==='en'?'en':'tr';})();
+function T(k){var d=I18N[LANG]||I18N.tr;return d[k]!=null?d[k]:(I18N.tr[k]!=null?I18N.tr[k]:k);}
+function $(s,r){return (r||document).querySelector(s);}
+function el(tag,attrs,kids){
+  var n=document.createElement(tag);
+  Object.keys(attrs||{}).forEach(function(k){
+    var v=attrs[k];
+    if(k==='text')n.textContent=v;
+    else if(k==='html')n.innerHTML=v;
+    else if(k.slice(0,2)==='on'&&typeof v==='function')n.addEventListener(k.slice(2),v);
+    else if(v!=null&&v!==false)n.setAttribute(k,v);
+  });
+  (kids||[]).forEach(function(c){if(c)n.appendChild(typeof c==='string'?document.createTextNode(c):c);});
+  return n;
+}
+function todayStr(){var d=new Date(),p=function(n){return(n<10?'0':'')+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,'');}
+
+/* ── Firebase (check-in formuyla aynı proje ve aynı ayrı uygulama adı mantığı) ── */
+var FB_CONF={
+  apiKey:"AIzaSyAwMvuHeiTmH3Y01d39kMgnzzV41SGk5cs",
+  authDomain:"periodization-planner.firebaseapp.com",
+  projectId:"periodization-planner",
+  storageBucket:"periodization-planner.firebasestorage.app",
+  messagingSenderId:"225598184270",
+  appId:"1:225598184270:web:a2b812983e298441df1c1f"
+};
+/* Check-in formu 'checkin' adını kullanıyor; burada ayrı 'lift' adı: iki form aynı tarayıcıda
+   açık olsa da birbirinin anonim oturumuna dokunmaz, koçun uygulamasının oturumuna da. */
+var APP_NAME='lift';
+var APP;
+try{APP=firebase.app(APP_NAME);}catch(e){APP=firebase.initializeApp(FB_CONF,APP_NAME);}
+try{APP.firestore().settings({experimentalForceLongPolling:true});}catch(e){}
+var db=APP.firestore();
+try{db.enablePersistence({synchronizeTabs:false}).catch(function(){});}catch(e){}
+
+function openSession(){
+  var auth=APP.auth();
+  return auth.signInAnonymously().then(function(cred){
+    var u=auth.currentUser||(cred&&cred.user);
+    if(!u)throw new Error('no session');
+    return u.getIdToken(true).then(function(){return u;},function(e){
+      if((e&&e.code)==='auth/network-request-failed')return u;
+      throw e;
+    });
+  });
+}
+function ensureSession(force){
+  var auth=APP.auth();
+  var first=force?auth.signOut().catch(function(){}).then(openSession):openSession();
+  return first.catch(function(e){
+    var code=(e&&e.code)||'';
+    if(force||code==='auth/operation-not-allowed'||code==='auth/admin-restricted-operation'||code==='auth/network-request-failed')throw e;
+    return auth.signOut().catch(function(){}).then(openSession);
+  });
+}
+
+/* ── Durum ───────────────────────────────────────────────────────────────── */
+function params(){
+  var h=(location.hash||'').replace(/^#/,''),q=(location.search||'').replace(/^\?/,'');
+  var p=new URLSearchParams(h||q);
+  if(!p.get('k')&&q)p=new URLSearchParams(q);
+  return p;
+}
+var TOKEN=(params().get('k')||'').trim();
+var LINK=null;
+var S={date:todayStr(),athleteId:'',plan:null,planId:'',rows:[],note:'',loadedFor:'',loading:false};
+var LS_ATH='coachos.lift.athlete.',LS_DRAFT='coachos.lift.draft.';
+var VIEW=null;
+
+function fatal(title,detail){
+  VIEW=function(){fatal(title,detail);};
+  var r=$('#root');r.innerHTML='';
+  r.appendChild(el('header',null,[el('h1',{text:T(title)})]));
+  r.appendChild(el('div',{class:'msg bad',text:detail.indexOf('_d')>0?T(detail):detail}));
+}
+function num(v){if(v===''||v==null)return null;var n=Number(String(v).replace(',','.'));return isFinite(n)?n:null;}
+function plannedSets(s){var m=String(s==null?'':s).match(/\d+/);var n=m?parseInt(m[0],10):3;return Math.max(1,Math.min(10,n));}
+function plannedReps(r){var t=String(r==null?'':r).trim();return /^\d+$/.test(t)?t:'';}
+
+/* Plan satırından ekrandaki satır: set kutuları plandaki set sayısı kadar. */
+function rowFromItem(it){
+  var n=plannedSets(it.s),sets=[];
+  for(var i=0;i<n;i++)sets.push({kg:'',r:'',p:''});
+  return {k:it.k,n:it.n,b:it.b||'',ss:it.ss||'',pl:{s:it.s||'',r:it.r||'',l:it.l||'',kg:it.kg==null?null:it.kg,p:it.p||''},pv:it.pv||'',note:it.note||'',tempo:it.t||'',sets:sets,free:false};
+}
+function draftKey(){return LS_DRAFT+TOKEN+'.'+S.athleteId+'.'+S.date;}
+function saveDraft(){
+  try{localStorage.setItem(draftKey(),JSON.stringify({rows:S.rows.map(function(r){return{k:r.k,sets:r.sets,free:r.free,n:r.free?r.n:undefined};}),note:S.note}));}catch(e){}
+}
+function applyDraft(){
+  try{
+    var d=JSON.parse(localStorage.getItem(draftKey())||'null');
+    if(!d)return;
+    (d.rows||[]).forEach(function(dr){
+      if(dr.free){S.rows.push({k:dr.k,n:dr.n||'',b:'',ss:'',pl:{s:'',r:'',l:'',kg:null,p:''},pv:'',note:'',tempo:'',sets:dr.sets||[],free:true});return;}
+      var row=S.rows.filter(function(r){return r.k===dr.k;})[0];
+      if(row&&dr.sets&&dr.sets.length)row.sets=dr.sets;
+    });
+    S.note=d.note||'';
+  }catch(e){}
+}
+function clearDraft(){try{localStorage.removeItem(draftKey());}catch(e){}}
+
+function loadPlan(){
+  S.plan=null;S.planId='';S.rows=[];S.note='';
+  if(!S.athleteId){S.loadedFor='';S.loading=false;render();return Promise.resolve();}
+  var id=TOKEN+'_'+S.athleteId+'_'+S.date;
+  var stamp=id;S.loadedFor=stamp;S.loading=true;
+  render();
+  return db.collection('lift_plans').doc(id).get().then(function(snap){
+    if(S.loadedFor!==stamp)return;
+    S.loading=false;
+    if(snap.exists){
+      S.plan=snap.data()||null;S.planId=id;
+      S.rows=((S.plan&&S.plan.items)||[]).map(rowFromItem);
+    }
+    applyDraft();
+    render();
+  }).catch(function(){
+    if(S.loadedFor!==stamp)return;
+    S.loading=false;
+    applyDraft();render();
+  });
+}
+
+/* ── Çizim ───────────────────────────────────────────────────────────────── */
+function target(r){
+  var p=r.pl,out=[];
+  if(p.s||p.r)out.push((p.s||'?')+' × '+(p.r||'?'));
+  if(p.l)out.push(p.l+(p.kg!=null&&!/kg/i.test(p.l)?' ≈ '+p.kg+' kg':''));
+  if(p.p)out.push('RPE '+p.p);
+  if(r.tempo)out.push('tempo '+r.tempo);
+  return out.join(' · ');
+}
+function setInput(row,i,key,ph,step){
+  var inp=el('input',{type:'number',inputmode:'decimal',step:step||'any',placeholder:ph||'',value:row.sets[i][key]==null?'':row.sets[i][key]});
+  inp.addEventListener('input',function(){row.sets[i][key]=inp.value;saveDraft();updateBar();markCards();});
+  return inp;
+}
+function exerciseCard(row,idx){
+  var kids=[];
+  var head=[el('span',{class:'ex-n',text:(row.ss?row.ss+' ':'')+(row.free?'':row.n)})];
+  if(row.free){
+    var ni=el('input',{type:'text',placeholder:T('exname'),value:row.n});
+    ni.addEventListener('input',function(){row.n=ni.value;saveDraft();});
+    head=[ni];
+  }
+  if(row.b)head.push(el('span',{class:'ex-b',text:row.b}));
+  kids.push(el('div',{class:'ex-h'},head));
+  var tg=target(row);if(tg)kids.push(el('div',{class:'ex-t',text:T('target')+': '+tg}));
+  if(row.pv)kids.push(el('div',{class:'ex-pv',text:T('prev')+': '+row.pv}));
+  if(row.note)kids.push(el('div',{class:'ex-note',text:row.note}));
+  var grid=el('div',{class:'sets'});
+  ['#',T('kg'),T('reps'),T('rpe'),''].forEach(function(h){grid.appendChild(el('div',{class:'hd',text:h}));});
+  row.sets.forEach(function(s,i){
+    grid.appendChild(el('div',{class:'no',text:String(i+1)}));
+    grid.appendChild(setInput(row,i,'kg',row.pl.kg!=null?String(row.pl.kg):'kg','0.5'));
+    grid.appendChild(setInput(row,i,'r',plannedReps(row.pl.r)||'',  '1'));
+    grid.appendChild(setInput(row,i,'p','','0.5'));
+    var x=el('button',{type:'button',class:'x',text:'✕','aria-label':'Sil'});
+    x.addEventListener('click',function(){row.sets.splice(i,1);saveDraft();render();});
+    grid.appendChild(x);
+  });
+  kids.push(grid);
+  var acts=el('div',{class:'row'});
+  var add=el('button',{type:'button',class:'btn',text:T('addset')});
+  add.addEventListener('click',function(){
+    var last=row.sets[row.sets.length-1]||{kg:'',r:'',p:''};
+    row.sets.push({kg:last.kg,r:'',p:''});saveDraft();render();
+  });
+  acts.appendChild(add);
+  if(row.sets.length>1){
+    var cp=el('button',{type:'button',class:'btn',text:T('copy1')});
+    cp.addEventListener('click',function(){
+      var f=row.sets[0];
+      row.sets.forEach(function(s,i){if(i>0){s.kg=f.kg;s.r=f.r;}});saveDraft();render();
+    });
+    acts.appendChild(cp);
+  }
+  if(!row.free){
+    var same=el('button',{type:'button',class:'btn',text:'✓ '+T('same')});
+    same.addEventListener('click',function(){
+      row.sets.forEach(function(s){
+        if(row.pl.kg!=null&&s.kg==='')s.kg=String(row.pl.kg);
+        var pr=plannedReps(row.pl.r);if(pr&&s.r==='')s.r=pr;
+      });
+      saveDraft();render();
+    });
+    acts.appendChild(same);
+  }
+  kids.push(acts);
+  var card=el('div',{class:'card','data-ex':String(idx)},kids);
+  return card;
+}
+function filledSets(){
+  var n=0;S.rows.forEach(function(r){r.sets.forEach(function(s){if(num(s.r)>0)n++;});});return n;
+}
+function markCards(){
+  document.querySelectorAll('.card[data-ex]').forEach(function(c){
+    var r=S.rows[parseInt(c.getAttribute('data-ex'),10)];
+    c.classList.toggle('filled',!!(r&&r.sets.some(function(s){return num(s.r)>0;})));
+  });
+}
+var barLeft=null;
+function updateBar(){if(barLeft)barLeft.textContent=filledSets()?filledSets()+' '+T('left'):'';}
+
+function render(){
+  VIEW=render;
+  var oldBar=document.querySelector('.bar');if(oldBar)oldBar.remove();
+  var r=$('#root');r.innerHTML='';
+  var team=el('div',{class:'team'});
+  var logo=null;
+  if(LINK.teamLogo){logo=el('img',{class:'team-logo',src:LINK.teamLogo,alt:''});logo.addEventListener('error',function(){logo.remove();team.classList.add('nologo');});}
+  if(logo)team.appendChild(logo);else team.classList.add('nologo');
+  team.appendChild(el('span',{text:LINK.teamName||'CoachOS'}));
+  r.appendChild(el('header',null,[
+    el('img',{class:'brand',src:'logo-wordmark.png',alt:'CoachOS'}),
+    el('div',{class:'tagline',text:'coaching operating system'}),
+    team,el('h1',{text:T('title')}),el('div',{class:'sub',text:T('sub')})]));
+  var errBox=el('div',{class:'msg warn',style:'display:none'});
+  r.appendChild(errBox);
+  var roster=(LINK.athletes||[]).filter(function(a){return a&&a.id&&(a.name||'').trim();});
+  if(!roster.length){r.appendChild(el('div',{class:'msg bad',text:T('roster_empty')}));return;}
+  var dateIn=el('input',{type:'date',value:S.date});
+  dateIn.addEventListener('change',function(){if(!dateIn.value)return;S.date=dateIn.value;loadPlan();});
+  var sel=el('select',null,[el('option',{value:'',text:T('pick')})]);
+  roster.forEach(function(a){sel.appendChild(el('option',{value:a.id,text:a.name}));});
+  sel.value=S.athleteId;
+  sel.addEventListener('change',function(){
+    S.athleteId=sel.value;
+    try{if(S.athleteId)localStorage.setItem(LS_ATH+LINK.teamId,S.athleteId);}catch(e){}
+    loadPlan();
+  });
+  r.appendChild(el('div',{class:'card'},[el('div',{class:'q',text:T('date')}),dateIn,
+    el('div',{class:'q',style:'margin-top:14px',text:T('athlete')}),sel]));
+  if(!S.athleteId)return;
+  if(S.loading||S.loadedFor!==TOKEN+'_'+S.athleteId+'_'+S.date)return;
+  if(!S.plan){
+    r.appendChild(el('div',{class:'msg',text:T('noplan')+' '+T('noplan_h')}));
+  }else if(S.plan.title){
+    r.appendChild(el('div',{class:'q',style:'margin:4px 0 10px',text:T('plan')+' — '+S.plan.title}));
+  }
+  S.rows.forEach(function(row,i){r.appendChild(exerciseCard(row,i));});
+  var addEx=el('button',{type:'button',class:'btn',text:T('addex')});
+  addEx.addEventListener('click',function(){
+    S.rows.push({k:'f'+Date.now().toString(36),n:'',b:'',ss:'',pl:{s:'',r:'',l:'',kg:null,p:''},pv:'',note:'',tempo:'',sets:[{kg:'',r:'',p:''},{kg:'',r:'',p:''},{kg:'',r:'',p:''}],free:true});
+    saveDraft();render();
+  });
+  r.appendChild(el('div',{style:'margin-bottom:14px'},[addEx]));
+  var note=el('textarea',{placeholder:T('note_ph')});note.value=S.note;
+  note.addEventListener('input',function(){S.note=note.value;saveDraft();});
+  r.appendChild(el('div',{class:'card'},[el('div',{class:'q',text:T('note')}),note]));
+  var label=el('span',{text:T('send')});
+  barLeft=el('span',{style:'font-weight:500;font-size:12px;margin-left:10px;opacity:.75'});
+  var btn=el('button',{class:'send',type:'button'},[label,barLeft]);
+  btn.addEventListener('click',function(){submit(btn,errBox);});
+  document.body.appendChild(el('div',{class:'bar'},[el('div',{class:'bar-in'},[btn])]));
+  updateBar();markCards();
+}
+
+/* ── Gönderim ────────────────────────────────────────────────────────────── */
+function buildLog(){
+  var ex=[];
+  S.rows.forEach(function(r){
+    var sets=[];
+    r.sets.forEach(function(s){
+      var reps=num(s.r);if(!(reps>0))return;
+      var o={r:Math.round(reps)};
+      var kg=num(s.kg);o.kg=kg==null?0:Math.round(kg*100)/100;
+      var p=num(s.p);if(p!=null&&p>=1&&p<=10)o.p=p;
+      sets.push(o);
+    });
+    var name=String(r.n||'').trim();
+    if(!sets.length||!name)return;
+    ex.push({k:String(r.k||''),n:name.slice(0,80),pl:{s:String(r.pl.s||''),r:String(r.pl.r||''),l:String(r.pl.l||''),kg:r.pl.kg==null?null:r.pl.kg},s:sets.slice(0,20)});
+  });
+  return ex.slice(0,40);
+}
+var QUEUED_TIMER=null;
+function submit(btn,errBox){
+  if(!S.athleteId){errBox.className='msg warn';errBox.textContent=T('v_athlete');errBox.style.display='';return;}
+  var ex=buildLog();
+  if(!ex.length){errBox.className='msg warn';errBox.textContent=T('v_sets');errBox.style.display='';errBox.scrollIntoView({behavior:'smooth',block:'center'});return;}
+  errBox.style.display='none';btn.disabled=true;btn.textContent=T('sending');
+  var ath=(LINK.athletes||[]).filter(function(a){return a&&a.id===S.athleteId;})[0];
+  var doc={coachUid:LINK.coachUid,teamId:LINK.teamId,token:TOKEN,athleteId:S.athleteId,athleteName:(ath&&ath.name)||'',
+    date:S.date,planId:S.planId||'',ex:ex,note:String(S.note||'').slice(0,500),
+    at:firebase.firestore.FieldValue.serverTimestamp(),v:1};
+  var settled=false;
+  var write=db.collection('lift_logs').add(doc).catch(function(e){
+    if((e&&e.code)!=='permission-denied')throw e;
+    return ensureSession(true).then(function(){return db.collection('lift_logs').add(doc);});
+  });
+  var timer=setTimeout(function(){if(settled)return;settled=true;clearDraft();done(true);},7000);
+  write.then(function(){
+    if(settled)return;settled=true;clearTimeout(timer);clearDraft();done(false);
+  }).catch(function(e){
+    if(settled)return;settled=true;clearTimeout(timer);
+    btn.disabled=false;btn.textContent=T('send');
+    errBox.className='msg bad';errBox.style.display='';
+    errBox.textContent=((e&&e.code)==='permission-denied')?T('e_denied'):T('e_send').replace('{m}',String((e&&e.message)||e).replace(/[<>&]/g,''));
+  });
+}
+function done(queued){
+  VIEW=function(){done(queued);};
+  var bar=document.querySelector('.bar');if(bar)bar.remove();
+  var r=$('#root');r.innerHTML='';
+  r.appendChild(el('div',{class:'done'},[
+    el('div',{class:'tick',text:queued?'↗':'✓'}),
+    el('h2',{text:T(queued?'queued_h':'done_h')}),
+    el('p',{style:'color:var(--muted);margin-top:8px',text:T(queued?'queued_p':'done_p')}),
+    el('button',{class:'linkish',text:T('again'),onclick:function(){location.reload();}})]));
+}
+
+function drawLang(){
+  var box=$('#lang');if(!box)return;
+  box.innerHTML='';
+  [['tr','TR'],['en','EN']].forEach(function(o){
+    box.appendChild(el('button',{type:'button',class:LANG===o[0]?'on':'','aria-pressed':LANG===o[0]?'true':'false',text:o[1],onclick:function(){
+      if(LANG===o[0])return;
+      LANG=o[0];try{localStorage.setItem(LS_LANG,LANG);}catch(e){}
+      document.documentElement.lang=LANG;drawLang();
+      if(VIEW)VIEW();else{var b=$('#boot');if(b)b.textContent=T('loading');}
+    }}));
+  });
+}
+function start(){
+  drawLang();
+  var boot=$('#boot');if(boot)boot.textContent=T('loading');
+  if(!TOKEN){fatal('f_nolink','f_nolink_d');return;}
+  ensureSession().then(function(){
+    return db.collection('checkin_links').doc(TOKEN).get();
+  }).then(function(snap){
+    if(!snap.exists){fatal('f_gone','f_gone_d');return;}
+    LINK=snap.data()||{};
+    if(!LINK.coachUid||!LINK.teamId){fatal('f_gone','f_gone_d');return;}
+    try{
+      var saved=localStorage.getItem(LS_ATH+LINK.teamId);
+      if(saved&&(LINK.athletes||[]).some(function(a){return a.id===saved;}))S.athleteId=saved;
+    }catch(e){}
+    if(S.athleteId)loadPlan();else render();
+  }).catch(function(e){
+    fatal('f_load',String((e&&e.message)||e).replace(/[<>&]/g,''));
+  });
+}
+start();
+</script>
+</body>
+</html>

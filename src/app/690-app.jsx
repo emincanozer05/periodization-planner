@@ -332,7 +332,8 @@ function App(){
       {view==='exercises'&&<ExercisesView data={data} setData={setData}/>}
       {view==='individual'&&<IndividualizationView data={data} team={team} updateTeam={updateTeam} weeks={weeks}/>}
       {view==='tempo'&&<TempoView data={data} setData={setData}/>}
-      {view==='reports'&&<TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>}
+      {view==='reports'&&<><TeamReports team={team} weeks={weeks} selected={selected} setSelected={setSelected}/>
+        <InjurySurveillance key={team.id} athletes={team.athletes||[]} setup={team.setup}/></>}
       {view==='checkin'&&<CheckinPanel key={team.id} data={data} setData={setData} team={team} sync={sync}/>}
       {/* No `team` prop and no `key` off the team: the pool is the same list whichever
           squad is selected, so switching teams must not remount or refilter it. */}
@@ -348,6 +349,10 @@ function App(){
     {/* Aynı sebeple burada: sporcuların check-in gönderimleri, koç hangi ekranda olursa
         olsun dinlenir ve günlüğe işlenir. */}
     <CheckinInbox sync={sync} setData={setData}/>
+    {/* Antrenman günlüğü (lift.html): sporcunun kg/tekrar girişleri dinlenir; açıksa takvimdeki
+        programlar sporcuya otomatik yayımlanır. */}
+    <LiftInbox sync={sync} setData={setData}/>
+    <LiftSync team={team} sync={sync}/>
     {/* Aynı sebeple burada: sunucunun uyarıyı kime göndereceğini bildiği kadro
         özeti, koç hangi ekranda olursa olsun — ve HANGİ TAKIMA bakıyor olursa
         olsun — güncel tutulur. */}

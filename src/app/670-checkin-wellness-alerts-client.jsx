@@ -773,6 +773,8 @@ function CheckinPanel({data,setData,team,sync}){
       </div>}
     </div>
 
+    <LiftSection team={team} setData={setData} user={user} loaded={loaded} ensureLink={ensureLink} copyText={copyText}/>
+
     <div className="panel" ref={sumRef}>
       <div className="ck-head">
         <div className="ck-head-t">

@@ -307,6 +307,8 @@ const makeTest=(period='pre')=>({
     frontRightFoot:null,frontLeftFoot:null},
   // Power
   verticalJump:'',cmj:'',squatJump:'',dropJump:'',horizontalJump:'',
+  // F-V profili (335): yüklü squat jump satırları [{load kg,h cm}], itiş mesafesi hpo (cm); sprint ara zamanları
+  sjLoaded:[],sjHpo:'',sprintSplits:{t5:'',t10:'',t30:''},
   // Lateral CMJ — sideways counter-movement jump distance per side (cm)
   lateralCmj:{right:'',left:''},
   // Agility / Conditioning

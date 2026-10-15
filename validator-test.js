@@ -92,7 +92,10 @@ function loadApp() {
     'aiKeyOf', 'migrate', 'diPain', 'diFlag', 'blkPhases', 'exPhase', 'blkPhaseLbl', 'buildIndivPlan', 'planToSession',
     'geminiListModels', 'diWriteReviews', 'diManualProgram', 'diMovePatterns', 'diPickTags', 'buildSessionHTMLDoc', 'rememberExerciseLink', 'libLinkOf', 'setLibItems', 'registerLibLink', 'diMovePhases', 'diReadReview',
     'atpClassify', 'atpExposure', 'atpSnapshot', 'atpRead', 'ATP_QUALITIES', 'ATP_GROUPS', 'ATP_JOINTS', 'ATP_JOINT_ROWS', 'L', 'painRegionEn', 'monthFocusLoad', 'buildMonthHTMLDoc', 'MODELS', 'phaseModel', 'modelOf', 'defWeek', 'exDesc', 'descI18nFor', 'descLangOf', 'indivSig', 'exLibraryEntries', 'exLibraryPDF', 'exPicture', 'EXPDF_IMG', 'exLibraryDescriptions', 'syncCompetitions', 'backfillMatchesFromComps', 'compRowToSesPatch', 'diCompetition', 'diBrief', 'DN', 'MN', 'exLibraryText', 'IV_PATTERNS', 'exLibraryNote', 'ctLabelIn', 'exPatternOf', 'diMovePatterns', 'DI_MOVE_PATTERNS', 'diMoveIdOf', 'ATP_HIGH_MAX', 'atpT', 'athACWR', 'athDayLoad', 'acwrZoneOf', 'loadWindows', 'athLoadWindows', 'athFirstLoad', 'firstLoadKey', 'diVolumeAdj', 'DI_INTENSITY',
-    'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint'];
+    'hrvModel', 'hrvAssess', 'nightSleepMin', 'athLatestTests', 'scRead', 'SC_TECH', 'weekMono', 'athWeekLoads', 'blkTint',
+    'phvOffset', 'phvCompute', 'phvStatus', 'phvAgeAt', 'phvGrowthVelocity', 'isxAnalyse', 'isxSeverity', 'isxDaysLost', 'isxExposure',
+    'fvVertical', 'fvSprint', 'fvOptSlope', 'fvJumpHeight', 'phEntries', 'phFilter', 'phTemplates', 'phNorm',
+    'liftParseLoad', 'liftResolveKg', 'liftE1rm', 'liftMerge', 'liftEntryFromDoc', 'liftEntryStats', 'liftPlanForDay', 'liftPRsOf', 'liftSuggestRm', 'liftBuildDocs', 'liftWeekly'];
   /* Arayüz dilini sınama süresince Türkçeye çevirmek için: JSON'un arayüz dilinden
      bağımsız İngilizce olduğunu ancak Türkçe açıkken bakarak görebiliriz. */
   const tail = '\n;' + expose.map(n => `try{bag.${n}=${n};}catch(e){}`).join('') +
@@ -1625,6 +1628,203 @@ group('16 — Seçilen model gerçekten tele gidiyor');
     check('hazır fazlar: Hazırlık Bölümü / Ana Bölüm / Soğuma, dile göre okunuyor', en === 'Preparation|Main Phase|Cool Down' && tr === 'Hazırlık Bölümü|Ana Bölüm|Soğuma', en + ' / ' + tr);
     check('hazır fazın üstüne yazılan ad hazır adın yerine geçiyor',
       A.blkPhaseLbl('ana', { phaseNames: { ana: 'Güç Bölümü' } }) === 'Güç Bölümü');
+  }
+
+
+  group('Yeni — PHV (Mirwald 2002 maturity offset)');
+  {
+    const off = A.phvOffset('M', 14, 165, 55, 86);
+    check('PHV erkek: elle hesaplanan örnek (14 y, 165/86 cm, 55 kg) ≈ +0.22',
+      off != null && Math.abs(off - 0.2166) < 0.01, `offset=${off}`);
+    const offG = A.phvOffset('F', 12, 152, 44, 80);
+    check('PHV kız denklemi sayı veriyor', offG != null && isFinite(offG), `offset=${offG}`);
+    check('PHV: cinsiyet yoksa hesap yok (tahmin edilmez)', A.phvOffset('', 14, 165, 55, 86) === null);
+    check('PHV: oturma boyu ≥ boy → hesap yok', A.phvOffset('M', 14, 165, 55, 170) === null);
+    check('PHV: aynı ölçümde yaş büyüdükçe offset artıyor',
+      A.phvOffset('M', 15, 165, 55, 86) > A.phvOffset('M', 13, 165, 55, 86));
+    check('PHV sınıfı: −1.5 öncesi, 0 civarı, +1.5 sonrası',
+      A.phvStatus(-1.5).id === 'pre' && A.phvStatus(0).id === 'circa' && A.phvStatus(1.5).id === 'post');
+    const ath = (o) => Object.assign({ sex: 'M', dateOfBirth: '2012-09-22', tests: [], measurements: [
+      { date: '2026-09-22', height: '165', weight: '55', sittingHeight: '86' }] }, o);
+    const r = A.phvCompute(ath());
+    check('PHV compute: tam veriyle ok, APHV = yaş − offset',
+      r.ok && Math.abs(r.aphv - (r.age - r.offset)) < 0.06, JSON.stringify(r));
+    check('PHV compute: cinsiyet yoksa neden=sex', A.phvCompute(ath({ sex: '' })).why === 'sex');
+    check('PHV compute: oturma boyu yoksa neden=data',
+      A.phvCompute(ath({ measurements: [{ date: '2026-09-22', height: '165', weight: '55' }] })).why === 'data');
+    check('PHV compute: 8-18 yaş dışında sonuç yok',
+      A.phvCompute(ath({ dateOfBirth: '2000-01-01' })).why === 'age');
+    const gv = A.phvGrowthVelocity([{ date: '2026-01-01', height: 160 }, { date: '2026-07-02', height: 164 }]);
+    check('büyüme hızı: 6 ayda 4 cm ≈ 8 cm/yıl', gv && gv.cmPerYear > 7.5 && gv.cmPerYear < 8.5, JSON.stringify(gv));
+    check('büyüme hızı: 90 günden kısa aralıkta hesaplanmıyor',
+      A.phvGrowthVelocity([{ date: '2026-09-01', height: 160 }, { date: '2026-09-22', height: 161 }]) === null);
+  }
+
+  group('Yeni — Sakatlık sürveyansı');
+  {
+    const day = (dur, kind) => ({ sessions: [Object.assign({ duration: dur }, kind ? { kind } : {})] });
+    const days = {};
+    for (let d = 1; d <= 30; d++) {
+      const k = '2026-09-' + String(d).padStart(2, '0');
+      days[k] = day(60);
+    }
+    days['2026-09-25'] = day(90, 'match');
+    days['2026-09-28'] = day(45, 'test');
+    const a = {
+      id: 'a1', name: 'Test Sporcu', days, srpeLog: [],
+      injuries: [
+        { id: 'i1', date: '2026-09-10', sidelinedDate: '2026-09-10', actualReturn: '2026-09-17', context: 'Training', location: 'Knee', tissueType: 'Ligament' },
+        { id: 'i2', date: '2026-09-22', sidelinedDate: '2026-09-22', actualReturn: '2026-10-30', context: 'Match', location: 'Ankle', tissueType: 'Ligament' },
+        { id: 'i3', date: '2026-09-05', sidelinedDate: '', context: 'Training', location: 'Back' },
+      ],
+    };
+    const res = A.isxAnalyse([a], '2026-09-01', '2026-09-30');
+    check('sürveyans: kadro dışı 2 sakatlık sayıldı, tarihsiz kayıt tıbbi müdahale', res.nTL === 2 && res.nMed === 1, `nTL=${res.nTL} nMed=${res.nMed}`);
+    check('sürveyans: kaybedilen gün pencereye kırpılıyor (7 + 8)', res.lost === 15, `lost=${res.lost}`);
+    check('sürveyans: 7 gün → hafif, uzun kayıp → orta/ağır sınıfı',
+      A.isxSeverity(7).id === 'mild' && A.isxSeverity(8).id === 'moderate' && A.isxSeverity(29).id === 'severe' && A.isxSeverity(1).id === 'slight');
+    const ex = A.isxExposure(a, '2026-09-01', '2026-09-30');
+    const outN = 8 + 9;  // 10-17 ve 22-30 kadro dışı günler
+    check('maruziyet: sakat günlerdeki seanslar sayılmıyor (22-30 maç 25. günde → 0)', ex.match === 0 && ex.train > 0, JSON.stringify(ex));
+    const expTrain = (30 - 8 - 9) * 60;
+    check('maruziyet: antrenman dakikası elle sayımla aynı', ex.train === expTrain, `${ex.train} vs ${expTrain}`);
+    check('insidans = sakatlık / saat × 1000', res.incAll === +(2 / ((expTrain) / 60) * 1000).toFixed(1), `inc=${res.incAll}`);
+    check('maç / antrenman insidansı ayrı', res.incMatch === null && res.incTrain !== null, `m=${res.incMatch} t=${res.incTrain}`);
+  }
+
+
+  group('Yeni — F-V profili (Samozino)');
+  {
+    /* İleri model: verilen F0/V0/hpo/kütle ile her yük için sıçrama yüksekliğini üret, sonra
+       fvVertical bunlardan F0/V0'ı GERİ bulmalı. */
+    const m = 75, hpo = 0.40;
+    const heightFor = (F0, S, load) => {                       // sabit ivmeli itiş modeli
+      const mt = m + load, b = hpo * S / mt, c = 8 * hpo * (F0 / mt - 9.81);
+      const vto = (-b + Math.sqrt(b * b + c)) / 2;
+      return vto * vto / (2 * 9.81) * 100;                       // cm
+    };
+    const mk = (F0, V0) => { const S = F0 / V0;
+      return [0, 20, 40].map(l => ({ load: l, h: heightFor(F0, S, l) })); };
+    const r = A.fvVertical(m, 40, mk(2400, 3.2));
+    check('F-V dikey: üretilen F0/V0 geri bulunuyor',
+      r.ok && Math.abs(r.F0 - 2400) < 15 && Math.abs(r.V0 - 3.2) < 0.05, r.ok ? `F0=${r.F0.toFixed(0)} V0=${r.V0.toFixed(2)}` : r.why);
+    check('F-V dikey: Pmax = F0·V0/4', r.ok && Math.abs(r.Pmax - 2400 * 3.2 / 4) < 40, r.ok ? `Pmax=${r.Pmax.toFixed(0)}` : '');
+    check('F-V dikey: tek yükle profil ÇIKMAZ', A.fvVertical(m, 40, [{ load: 0, h: 40 }]).why === 'points');
+    check('F-V dikey: hpo yoksa hesap yok', A.fvVertical(m, '', mk(2400, 3.2)).why === 'hpo');
+    check('F-V dikey: kütle yoksa hesap yok', A.fvVertical('', 40, mk(2400, 3.2)).why === 'mass');
+    check('F-V dikey: yük arttıkça hız düşmüyorsa (fizyolojik olmayan) reddedilir',
+      A.fvVertical(m, 40, [{ load: 0, h: 30 }, { load: 20, h: 40 }]).ok === false);
+    /* Optimum: aynı Pmax ile eğimi optimumun 2 katı → kuvvet baskın, 0.5 katı → hız baskın. */
+    const P = 2400 * 3.2 / 4, opt = A.fvOptSlope(P, m, hpo);
+    const build = k => { const S = opt.absS * k, F0 = 2 * Math.sqrt(P * S);
+      return A.fvVertical(m, 40, [0, 20, 40].map(l => ({ load: l, h: heightFor(F0, S, l) }))); };
+    const atOpt = build(1), steep = build(2), flat = build(0.5);
+    check('F-V optimum: optimum eğimde sapma ≈ 0 ve "dengeli"', atOpt.ok && Math.abs(atOpt.imbalance) < 3 && atOpt.orientation === 'balanced', atOpt.ok ? `imb=${atOpt.imbalance}` : atOpt.why);
+    check('F-V optimum: dik eğim → kuvvet baskın (hız eksik)', steep.ok && steep.orientation === 'force' && steep.imbalance > 50, steep.ok ? `imb=${steep.imbalance}` : steep.why);
+    check('F-V optimum: yatay eğim → hız baskın (kuvvet eksik)', flat.ok && flat.orientation === 'velocity' && flat.imbalance < -30, flat.ok ? `imb=${flat.imbalance}` : flat.why);
+    check('F-V optimum: optimumdan sapınca sıçrama kazancı pozitif', steep.ok && steep.gain > 0 && flat.gain > 0, `${steep.gain} / ${flat.gain}`);
+    check('F-V dar yük aralığı uyarı veriyor', (() => { const w = A.fvVertical(m, 40, [{ load: 0, h: 38 }, { load: 10, h: 36 }]); return w.ok && w.warn.includes('span'); })());
+
+    /* Sprint: v(t)=Vmax(1−e^(−t/τ)). Vmax=9, τ=1.2 ile ara zamanları üret → geri bul. */
+    const Vmax = 9, tau = 1.2;
+    const xAt = t => Vmax * (t + tau * (Math.exp(-t / tau) - 1));
+    const tAt = x => { let lo = 0, hi = 10; for (let i = 0; i < 80; i++) { const mid = (lo + hi) / 2; xAt(mid) < x ? lo = mid : hi = mid; } return (lo + hi) / 2; };
+    const sp = A.fvSprint(75, [10, 20, 30].map(d => ({ d, t: tAt(d) })));
+    check('F-V sprint: Vmax ve τ geri bulunuyor', sp.ok && Math.abs(sp.Vmax - 9) < 0.1 && Math.abs(sp.tau - 1.2) < 0.03, sp.ok ? `Vmax=${sp.Vmax} tau=${sp.tau}` : sp.why);
+    check('F-V sprint: F0 = m·Vmax/τ', sp.ok && Math.abs(sp.F0 - 75 * 9 / 1.2) < 15, sp.ok ? `F0=${sp.F0}` : '');
+    check('F-V sprint: tek ara zamanla hesap yok', A.fvSprint(75, [{ d: 20, t: 3.1 }]).why === 'points');
+    check('F-V sprint: zamanlar mesafeyle artmıyorsa reddedilir', A.fvSprint(75, [{ d: 10, t: 2.0 }, { d: 20, t: 1.9 }]).why === 'order');
+  }
+
+  group('Yeni — Program geçmişi');
+  {
+    const prog = (nm, exs) => ({ session_name: nm, blocks: [{ name: 'Ana', exercises: exs.map(n => ({ name: n, sets: '3', reps: '8', coachPattern: 'knee_dominant' })) }] });
+    const team = {
+      id: 't', athletes: [{ id: 'a1', name: 'Çağrı Işık' }, { id: 'a2', name: 'Deniz' }],
+      indiv: {
+        ai: {
+          '2026-09-20|team:2026-09-20:s1|a1': { athlete: 'a1', date: '2026-09-20', program: prog('Kuvvet A', ['Back Squat', 'Nordic Curl']), decision: 'accept', model: 'manual' },
+          '2026-09-21|team:2026-09-21:s2|a2': { athlete: 'a2', date: '2026-09-21', program: prog('Güç B', ['Box Jump']), decision: null, model: 'manual' },
+          '2026-09-22|team:2026-09-22:s3|a1': { athlete: 'a1', date: '2026-09-22', program: null },
+        },
+        lib: { x1: { id: 'x1', name: 'Hamstring şablonu', program: prog('H', ['Nordic Curl']), created_at: '2026-09-01' } },
+      },
+    };
+    const h = A.phEntries(team);
+    check('geçmiş: yalnızca programı olan kayıtlar listeleniyor (2/3)', h.length === 2, `n=${h.length}`);
+    check('geçmiş: en yeni üstte', h[0].date === '2026-09-21');
+    check('geçmiş: onaylı / taslak ayrımı', h.find(r => r.athId === 'a1').status === 'approved' && h.find(r => r.athId === 'a2').status === 'draft');
+    check('arama: Türkçe karakter ve büyük/küçük harften bağımsız ("cagri isik")', A.phFilter(h, { q: 'cagri isik' }).length === 1);
+    check('arama: egzersiz adından ("nordic")', A.phFilter(h, { q: 'nordic' }).length === 1 && A.phFilter(h, { q: 'nordic' })[0].athId === 'a1');
+    check('arama: tüm terimler birlikte geçmeli (ve)', A.phFilter(h, { q: 'nordic box' }).length === 0);
+    check('filtre: sporcu + durum + tarih aralığı', A.phFilter(h, { q: '', ath: 'a2', status: 'draft', from: '2026-09-21', to: '2026-09-21' }).length === 1
+      && A.phFilter(h, { q: '', status: 'approved', from: '2026-09-21' }).length === 0);
+    const t = A.phTemplates(team);
+    check('şablonlar ayrı listeleniyor ve aranabiliyor', t.length === 1 && A.phFilter(t, { q: 'hamstring' }).length === 1);
+  }
+
+
+  group('Yeni — Antrenman günlüğü (kg/tekrar)');
+  {
+    check('yük çözümü: "80 kg" / "80" / "70% 1RM" / "%70" / "65-75%" / BW',
+      A.liftParseLoad('80 kg').kg === 80 && A.liftParseLoad('80').kg === 80 && A.liftParseLoad('70% 1RM').pct === 70
+      && A.liftParseLoad('%70').pct === 70 && A.liftParseLoad('65-75%').pct === 70 && A.liftParseLoad('BW').kind === 'bw'
+      && A.liftParseLoad('5RM') === null && A.liftParseLoad('') === null);
+    check('%1RM → kg: 120 kg × %70 = 84 → 85 (2.5 kg yuvarlama)', A.liftResolveKg('70% 1RM', 120) === 85);
+    check('%1RM + 1RM yok → çözülmez (uydurma kg yok)', A.liftResolveKg('70% 1RM', null) === null);
+    check('düz kg doğrudan geçiyor', A.liftResolveKg('62.5 kg', null) === 62.5);
+    check('Epley: 100 kg × 5 ≈ 116.7; tek tekrar = kg', Math.abs(A.liftE1rm(100, 5) - 116.667) < 0.01 && A.liftE1rm(140, 1) === 140);
+    check('Epley: 12 tekrardan sonrası kesiliyor', A.liftE1rm(50, 30) === A.liftE1rm(50, 12));
+
+    const D = '2026-09-22';
+    const ath = {
+      id: 'a1', name: 'A', rm: { 'back squat': { n: 'Back Squat', kg: 120 } },
+      days: { [D]: { date: D, sessions: [
+        { name: 'Kuvvet', blocks: [{ name: 'Ana', kind: 'sc', exercises: [
+          { name: 'Back Squat', sets: '4', reps: '6', load: '70% 1RM', rpe: '8' },
+          { name: 'Boş Satır', sets: '', reps: '' },
+          { name: 'Plank', sets: '3', reps: '30s' }] }] },
+        { name: 'Maç', kind: 'match', blocks: [] }] } },
+      liftLog: [{ id: 'p', date: '2026-09-15', at: '2026-09-15T10:00:00Z', pid: 'x', ex: [{ n: 'Back Squat', pl: {}, s: [[80, 6, 8], [80, 6, 8]] }] }],
+    };
+    const plan = A.liftPlanForDay(ath, D);
+    check('plan: yalnızca adı ve seti olan satırlar, maç/test seansı hariç', plan.items.length === 2 && plan.items[0].n === 'Back Squat', JSON.stringify(plan.items.map(i => i.n)));
+    check('plan: %1RM kg\'a çözülmüş ve geçen sefer ipucu yazılmış', plan.items[0].kg === 85 && plan.items[0].pv === '80×6 · 80×6', JSON.stringify(plan.items[0]));
+    const docs = A.liftBuildDocs('coach', { id: 't1', athletes: [ath] }, 'TOK', [D, '2026-09-23']);
+    const key = 'TOK_a1_' + D;
+    check('yayın: yalnızca programı olan gün için doküman (gün+token anahtarlı)', Object.keys(docs).length === 1 && docs[key] && docs[key].coachUid === 'coach', Object.keys(docs).join(','));
+    check('yayın: aynı içerik aynı damgayı veriyor (değişmeyen yeniden yazılmaz)',
+      A.liftBuildDocs('coach', { id: 't1', athletes: [ath] }, 'TOK', [D])[key].rev === docs[key].rev);
+
+    /* Gelen gönderim: güvenilmez veri sınırlanıyor, idempotent birleşiyor. */
+    const raw = (id, at, sets, extra) => Object.assign({ _docId: id, athleteId: 'a1', teamId: 't1', date: D, planId: key, at,
+      ex: [{ k: '0.0.0', n: 'Back Squat', pl: { s: '4', r: '6', l: '70% 1RM', kg: 85 }, s: sets }] }, extra || {});
+    const team = { id: 't1', athletes: [{ id: 'a1', name: 'A', liftLog: [] }] };
+    const r1 = A.liftMerge(team, [raw('d1', '2026-09-22T10:00:00Z', [{ kg: 85, r: 6, p: 8 }, { kg: 85, r: 6 }])]);
+    check('birleştirme: günlük sporcunun liftLog\'una işlendi', r1 && r1.athletes[0].liftLog.length === 1 && r1.athletes[0].liftLog[0].ex[0].s.length === 2);
+    const t2 = { id: 't1', athletes: r1.athletes };
+    check('birleştirme: aynı gönderim ikinci kez işlenince DEĞİŞİKLİK YOK (null)', A.liftMerge(t2, [raw('d1', '2026-09-22T10:00:00Z', [{ kg: 85, r: 6, p: 8 }, { kg: 85, r: 6 }])]) === null);
+    const r2 = A.liftMerge(t2, [raw('d2', '2026-09-22T11:00:00Z', [{ kg: 87.5, r: 5 }])]);
+    check('birleştirme: aynı gün+plan için yeni gönderim eskisinin ÜZERİNE yazıyor (satır çoğalmıyor)',
+      r2 && r2.athletes[0].liftLog.length === 1 && r2.athletes[0].liftLog[0].ex[0].s[0][0] === 87.5);
+    check('birleştirme: daha ESKİ gönderim yeniyi ezmiyor', A.liftMerge({ id: 't1', athletes: r2.athletes }, [raw('d0', '2026-09-22T09:00:00Z', [{ kg: 1, r: 1 }])]) === null);
+    const evil = A.liftEntryFromDoc(raw('e1', '2026-09-22T10:00:00Z', [{ kg: 99999, r: 5000, p: 99 }, { kg: -5, r: 5 }, 'x', null, { kg: 'abc', r: 5 }, { kg: 60, r: 5, p: 99 }]));
+    check('güvensiz veri: aralık dışı set reddediliyor, geçerli set kalıyor, geçersiz RPE atılıyor',
+      evil.ex.length === 1 && evil.ex[0].s.length === 1 && evil.ex[0].s[0][0] === 60 && evil.ex[0].s[0][2] === null, JSON.stringify(evil.ex));
+    check('güvensiz veri: tanınmayan sporcu / bozuk tarih atlanıyor',
+      A.liftMerge(team, [raw('z1', '2026-09-22T10:00:00Z', [{ kg: 50, r: 5 }], { athleteId: 'ghost' }), raw('z2', '2026-09-22T10:00:00Z', [{ kg: 50, r: 5 }], { date: 'yarın' })]) === null);
+
+    const e = r2.athletes[0].liftLog[0];
+    const st = A.liftEntryStats(e);
+    check('istatistik: hacim yükü Σ kg×tekrar ve plana uyum', st.vol === Math.round(87.5 * 5) && st.adherence === 25, `vol=${st.vol} adh=${st.adherence}`);
+    const hist = { liftLog: [
+      { id: '1', date: '2026-09-01', ex: [{ n: 'Back Squat', s: [[100, 5, null]] }] },
+      { id: '2', date: '2026-09-08', ex: [{ n: 'Back Squat', s: [[105, 5, null]] }] },
+      { id: '3', date: '2026-09-15', ex: [{ n: 'Back Squat', s: [[100, 5, null]] }] }] };
+    check('PR: yalnızca önceki tüm e1RM\'lerin üstündeki gün PR sayılıyor',
+      A.liftPRsOf(hist, hist.liftLog[1]).length === 1 && A.liftPRsOf(hist, hist.liftLog[2]).length === 0 && A.liftPRsOf(hist, hist.liftLog[0]).length === 0);
+    const sg = A.liftSuggestRm(hist);
+    check('1RM önerisi: ≤6 tekrarlı en iyi sette Epley, 2.5 kg\'a yuvarlı', sg['back squat'] && sg['back squat'].kg === 122.5, JSON.stringify(sg));
   }
 
   /* ─── özet ─────────────────────────────────────────────────────────────── */
