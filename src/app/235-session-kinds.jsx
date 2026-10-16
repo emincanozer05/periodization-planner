@@ -5,7 +5,7 @@
    hovering it (or tabbing onto it) opens a small card saying what that block covers, in
    the language the app is showing. The card is portalled to <body> with fixed
    coordinates, so the scrolling drawer it sits in can never clip it. */
-function BlockAddBar({onAdd,variant}){
+function BlockAddBar({onAdd,onPaste,athId,variant}){
   const[tip,setTip]=useState(null);
   const show=(p,e)=>{
     const r=e.currentTarget.getBoundingClientRect();
@@ -18,6 +18,9 @@ function BlockAddBar({onAdd,variant}){
     onClick={()=>{hide();onAdd(spData(p));}}
     onMouseEnter={e=>show(p,e)} onMouseLeave={hide} onFocus={e=>show(p,e)} onBlur={hide}
     aria-label={`${spLabel(p)} — ${spDesc(p)}`}>+ {spLabel(p)}</button>);
+  /* A programme written before, pasted as a new session — from any athlete's profile or calendar. */
+  const paste=onPaste&&<ProgramPickBtn athId={athId} cls="copy" label={L('Kayıtlı program','Saved programme')}
+    title={L('Önceden yazılmış bir programı bul ve yeni seans olarak yapıştır','Find a programme written before and paste it as a new session')} onPick={onPaste}/>;
   const card=tip&&ReactDOM.createPortal(<div className={'qa-tip'+(tip.below?'':' up')} role="tooltip"
     style={{left:tip.x,top:tip.y}}>
     <b>{spLabel(tip.p)}</b>
@@ -25,9 +28,9 @@ function BlockAddBar({onAdd,variant}){
   </div>,document.body);
   if(variant==='planner')return(<div className="pbar">
     <strong style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'.5px'}}>{lbl}</strong>
-    {btns}{card}
+    {btns}{paste}{card}
   </div>);
-  return(<div className="dw-quickadd"><span className="qa-lbl">{lbl}</span>{btns}{card}</div>);
+  return(<div className="dw-quickadd"><span className="qa-lbl">{lbl}</span>{btns}{paste}{card}</div>);
 }
 
 /* The kind's name, and the short line a week card shows for it in place of the goals —

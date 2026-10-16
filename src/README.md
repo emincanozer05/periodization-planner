@@ -43,6 +43,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `19b-notebook.css` | "Açık Defter" tasarımı, son stil katmanı: açık tema renkleri (varsayılan), masaüstü üst çubuğu + yalnız menüden oluşan kenar çubuğu, kutusuz sayfa başlığı, tek ana/ikincil düğme stili, tek panelli takvim haftası. Cam ve gradyan yok |
 | `19c-athlete-profile.css` | Sporcu detayı: başlık + "Bilgileri Al", altı kutu sekme, Sporcu Profili (S&C deneyimi, hedefler, açılır Baş Antrenör Gözlemleri, teknik-taktik radarı), Atletik Profil (son test kutuları, manken fotoğraflı Joint by Joint), takvimin sporcu özeti ve yatay yük dağılımı, Antropometri, açılır sakatlık satırları, Wellness + Uyku ve HRV. Düz yüzey, gradyan yok |
 | `19d-plan-table.css` | Hareket paterni tablosu (`pt-*`): paterni seçen çipler, patern başına egzersiz satırı (süperset etiketi, alternatif, adet, set / tekrar / süre / tempo / RPE / yük / dinlenme, not); dar kartta kart düzenine döner |
+| `19e-program-bank.css` | Program bankası: kayıtlı program seçici penceresi (`pbk-*`) ve Sporcu Profili → Antrenman Programları paneli; önizleme satırları 19d'nin `ph-*` biçimini kullanır |
 | `20-app-open.html` | `</head><body>`, `#root` ve JSX betiğinin açılışı |
 | `app/010-prelude.jsx` | — |
 | `app/020-constants-session-focus.jsx` | CONSTANTS · SESSION FOCUS — two stages, asked in the order a coach actually decides. |
@@ -106,6 +107,7 @@ Bağımlılık haritası (hangi parça hangisine bağlı, çekirdek parçalar, d
 | `app/510-researches.jsx` | RESEARCHES — article-summary blog (auto APA via CrossRef) · Daily research feed — pulls fresh training-science RCTs from |
 | `app/520-exercise-library-export.jsx` | PROGRAM INDIVIDUALIZATION — one source session, one editable sheet per athlete. |
 | `app/525-program-history.jsx` | PROGRAM GEÇMİŞİ — Bireyselleştirme → Program geçmişi: arama, kopyala (taslak), şablon |
+| `app/527-program-bank.jsx` | PROGRAM BANKASI — sporcunun kayıtlı programları (`ath.programs`) + takvimde yazılanlar; her yazım yerinden yapıştıran seçici (`ProgramPicker` / `ProgramPickBtn`), Sporcu Profili paneli (`AthPrograms`), bloktan Bireyselleştirme tablosuna çeviri |
 | `app/530-athlete-context-readiness.jsx` | — |
 | `app/540-indiv-plan-descriptions.jsx` | — |
 | `app/550-coach-assistant.jsx` | — |

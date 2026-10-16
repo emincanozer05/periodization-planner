@@ -388,7 +388,7 @@ function RpeGauge({value,onChange,hideZone}){
   </div>);
 }
 
-function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach}){
+function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printContext,athletes,coach,ownerId,dateKey}){
   const u=upd=>onUpdate({...session,...upd});
   const isTemplate=String(session.id||'').startsWith('tpl_'); // hide "Save to Templates" inside the Templates editor
   const[dragB,setDragB]=useState(null);
@@ -412,6 +412,35 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
      and the calendar card start out saying the same thing. */
   const addBlk=(n,kind)=>u({blocks:[...session.blocks,BLK(n||(session.blocks.length?'':(session.soloName||session.name||'')),kind)]});
   const[noteOpen,setNoteOpen]=useState(!!(session.planNote||'').trim());
+  /* A programme written before, pasted as blocks at the end of this session; and — on an athlete's own
+     calendar — this session's blocks kept on the athlete's profile for next time. */
+  const pasteBlocks=row=>u(withName(pbAppendBlocks(session.blocks,row)));
+  const saveAth=ownerId||(coach&&coach.ath&&coach.ath.id)||'';
+  const[saved,setSaved]=useState('');
+  const sesDate=dateKey||(coach&&coach.date)||'';
+  /* On an athlete's own calendar a session is kept on their profile as it is written: one record per
+     session, updated in place a moment after the last change. Opening a session is not an edit, and
+     closing the editor inside that moment writes what is pending rather than dropping it. */
+  const autoRef=useRef({sig:null,timer:null,run:null});
+  useEffect(()=>{
+    if(!saveAth||isTemplate||!pbOwn(session))return;
+    const sig=pbSig(session.blocks),a=autoRef.current;
+    if(a.sig===null){a.sig=sig;return;}
+    if(sig===a.sig)return;
+    a.sig=sig;
+    clearTimeout(a.timer);
+    a.run=()=>{a.run=null;pbAutoSave(saveAth,session,sesDate);};
+    a.timer=setTimeout(()=>a.run&&a.run(),2000);
+  },[session.blocks]);
+  useEffect(()=>()=>{const a=autoRef.current;clearTimeout(a.timer);if(a.run)a.run();},[]);
+  const saveToProfile=()=>{
+    const nm=prompt(L('Programın adı','Programme name'),String(session.name||'').trim());
+    if(nm==null)return;
+    if(autoRef.current.run){clearTimeout(autoRef.current.timer);autoRef.current.run=null;}
+    const r=pbSave(saveAth,nm,session.blocks,{date:sesDate,session:session.name||'',sessionId:session.id});
+    setSaved(r==='ok'?L('✓ Profile kaydedildi','✓ Saved to profile'):r==='dup'?L('Zaten kayıtlı','Already saved'):L('Kaydedilecek egzersiz yok','No exercises to save'));
+    setTimeout(()=>setSaved(''),4000);
+  };
   const fromTeam=!!session.sourceId;
   const showPicker=Array.isArray(athletes)&&!fromTeam; // only team-mode sessions get the picker
   /* Writing THIS block's participant list. The other blocks keep whoever they had — a
@@ -482,6 +511,10 @@ function SessEd({session,index,total,onUpdate,onRemove,onDuplicate,onMove,printC
       <div className="add-blk">
         <button className="ab-sc" onClick={()=>addBlk('','sc')}
           title={L('Bu seansa yeni bir blok ekle','Add a new block to this session')}>+ {L('Blok Ekle','Add Block')}</button>
+        {!isTemplate&&<ProgramPickBtn cls="ab-paste" athId={saveAth} label={L('Kayıtlı Program','Saved Programme')} onPick={pasteBlocks}
+          title={L('Önceden yazılmış bir programı bu seansa blok olarak yapıştır','Paste a programme written before into this session as blocks')}/>}
+        {!isTemplate&&saveAth&&<button className="ab-save" onClick={saveToProfile}
+          title={L('Seans sporcunun profiline kendiliğinden kaydedilir; burada ona bir ad verirsin','The session is kept on the athlete\'s profile automatically; here you give it a name')}>{saved||('💾 '+L('Profilde Adlandır','Name in Profile'))}</button>}
         <button className="ab-note" onClick={()=>setNoteOpen(o=>!o)} title={L('Bu seansa serbest metin notu ekle','Add a free-text note to this session')}>{noteOpen?L('− Notları Gizle','− Hide Notes'):L('+ Not Ekle','+ Add Notes')}</button>
       </div>
       {noteOpen&&<div className="ses-note">
@@ -526,6 +559,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
   const dupS=sid=>{const o=day.sessions.find(s=>s.id===sid);sv({sessions:[...day.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:o.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}]});};
   const mvS=(sid,d)=>{const a=[...day.sessions];const i=a.findIndex(s=>s.id===sid);const j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];sv({sessions:a});};
   const addS=p=>sv({sessions:[...day.sessions,SESS(p)]});
+  const pasteS=row=>sv({sessions:[...day.sessions,pbToSession(row)]});
   const cpY=()=>{const yk=fmt(addD(parseD(selDay),-1));const y=days[yk];if(!y?.sessions?.length){alert(L('Dün seans yok','No sessions yesterday'));return;}
     sv({sessions:y.sessions.map(s=>({...s,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:s.blocks.map(b=>({...b,id:uid(),athletes:[],exercises:b.exercises.map(e=>({...e}))}))}))});};
   // ---- Drag-drop & quick-duplicate across days ----
@@ -614,7 +648,7 @@ function Planner({days,saveDays,setup,dateKey,setDateKey,labelOwner,athletes,sav
             <ShareIcon/> {L('Paylaş','Share')}</button>
         </div>
       </div>
-      <BlockAddBar variant="planner" onAdd={addS}/>
+      <BlockAddBar variant="planner" onAdd={addS} onPaste={pasteS}/>
       {day.sessions.length===0&&<div className="empty-st">{L('Planlanmış seans yok — yukarıdan bir antrenman bloğu ekle','No sessions planned — add a training block above')}</div>}
       {day.sessions.map((s,i)=>sesKind(s)
         ?<SesKindCard key={s.id} session={s} index={i} total={day.sessions.length}

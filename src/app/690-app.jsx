@@ -142,6 +142,11 @@ function App(){
     return{...prev,exercises:next};
   }));
   return()=>registerBallSave(null);},[setData]);
+  /* The program bank reads every team's athletes (a programme written for one can be pasted for
+     another) and writes through the latest state, like updateTeam does. */
+  useEffect(()=>{registerProgramBank(data.teams,(athId,fn)=>setData(prev=>({...prev,teams:prev.teams.map(t=>
+    (t.athletes||[]).some(a=>a.id===athId)?{...t,athletes:t.athletes.map(a=>a.id===athId?{...a,...fn(a)}:a)}:t)})));
+  },[data.teams,setData]);
   // Brand every printout / shared PDF with the active team's logo.
   useEffect(()=>{registerTeamLogo((team&&team.setup&&team.setup.logo)||'');
     registerClubName((team&&team.setup&&(team.setup.clubName||team.setup.teamName))||'');},[team]);

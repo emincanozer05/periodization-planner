@@ -201,6 +201,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
     else saveDays(nd);
   };
   const edAdd=p=>svDay(editDate,{sessions:[...(edDay.sessions||[]),SESS(p)]});
+  const edPaste=row=>svDay(editDate,{sessions:[...(edDay.sessions||[]),pbToSession(row)]});
   const edUpd=(sid,ns)=>svDay(editDate,{sessions:edDay.sessions.map(s=>s.id===sid?ns:s)});
   const edDel=sid=>svDay(editDate,{sessions:edDay.sessions.filter(s=>s.id!==sid)});
   const edDup=sid=>{const o=edDay.sessions.find(s=>s.id===sid);svDay(editDate,{sessions:[...edDay.sessions,{...o,id:uid(),sRPE:'',au:'',athletes:[],sourceId:null,blocks:(o.blocks||[]).map(b=>({...b,id:uid(),athletes:[],exercises:(b.exercises||[]).map(e=>({...e}))}))}]});};
@@ -944,7 +945,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
         </div>
         <div className="dw-layout">
         <div className="dw-b">
-          <BlockAddBar onAdd={edAdd}/>
+          <BlockAddBar onAdd={edAdd} onPaste={edPaste} athId={(ownerAth||coachAthlete||{}).id}/>
           {(edDay.sessions||[]).length===0&&<div className="dw-empty">{L('Henüz seans yok — yukarıdan bir antrenman bloğu ekleyerek başla','No sessions yet — start by adding a training block above')}</div>}
           {(edDay.sessions||[]).map((s,i)=>sesKind(s)
             ?<SesKindCard key={s.id} session={s} index={i} total={edDay.sessions.length}
@@ -954,7 +955,7 @@ function CalendarView({days,selected,setSelected,goDayView,weeks,saveDays,setup,
             onUpdate={ns=>edUpd(s.id,ns)} onRemove={()=>edDel(s.id)} onDuplicate={()=>edDup(s.id)} onMove={dir=>edMv(s.id,dir)}
             printContext={{title:labelOwner||setup?.teamName||'',subtitle:fdLong(editDate)}}
             athletes={teamMode?athletes:undefined}
-            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null}/>)}
+            coach={coachAthlete?{ath:coachAthlete,date:editDate}:null} ownerId={(ownerAth||coachAthlete||{}).id} dateKey={editDate}/>)}
           <div style={{marginTop:18,display:'flex',gap:8,justifyContent:'flex-end'}}>
             <button className="btn sm" onClick={()=>setEditDate(null)}>{L('Bitti','Done')}</button>
           </div>
